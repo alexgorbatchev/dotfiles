@@ -56,13 +56,13 @@ The system uses TypeScript branded types to enforce execution timing at compile 
 
 ```typescript
 // Scripts that run only once after tool installation/updates
-const onceScript = once/* zsh */`
+const onceScript = once /* zsh */`
   # Generate completions (expensive operation)
   tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool"
 `;
 
 // Scripts that run every shell startup (lightweight operations)
-const alwaysScript = always/* zsh */`
+const alwaysScript = always /* zsh */`
   # Fast runtime setup
   export TOOL_CONFIG_DIR="$HOME/.tool"
   alias t="tool"
@@ -79,9 +79,9 @@ interface IScriptFormatter {
 }
 
 interface IFormattedScriptOutput {
-  content: string;           // The formatted shell code
+  content: string; // The formatted shell code
   requiresExecution?: boolean; // Whether script needs external execution
-  outputPath?: string;       // File path for external scripts
+  outputPath?: string; // File path for external scripts
 }
 ```
 
@@ -96,6 +96,7 @@ interface IFormattedScriptOutput {
 #### Shell-Specific Output:
 
 **Zsh/Bash:**
+
 ```bash
 # Input: always/* zsh */`export MY_VAR="value"`
 # Output:
@@ -107,6 +108,7 @@ unset -f __dotfiles_tool_always
 ```
 
 **PowerShell:**
+
 ```powershell
 # Input: always/* powershell */`$env:MY_VAR = "value"`
 # Output:
@@ -118,6 +120,7 @@ Remove-Item Function:__dotfiles_tool_always
 ```
 
 #### Benefits:
+
 - **Variable Isolation**: Functions prevent local variables from polluting the global shell environment
 - **Automatic Cleanup**: Functions are immediately unset after execution
 - **Performance**: Lightweight execution suitable for every shell startup
@@ -131,10 +134,11 @@ Remove-Item Function:__dotfiles_tool_always
 #### File Generation:
 
 Scripts are written to `.once/` directory with index-based naming:
+
 ```
 .once/
 ├── tool-0.zsh      # First once script for 'tool'
-├── tool-1.zsh      # Second once script for 'tool'  
+├── tool-1.zsh      # Second once script for 'tool'
 ├── other-0.bash    # First once script for 'other'
 └── other-0.ps1     # PowerShell version
 ```
@@ -142,6 +146,7 @@ Scripts are written to `.once/` directory with index-based naming:
 #### Shell-Specific Output:
 
 **Zsh:**
+
 ```bash
 # Generated once script - will self-delete after execution
 tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool"
@@ -149,6 +154,7 @@ rm "/full/path/to/.once/tool-0.zsh"
 ```
 
 **Bash:**
+
 ```bash
 # Generated once script - will self-delete after execution
 tool gen-completions --shell bash > "$DOTFILES/.generated/completions/_tool"
@@ -156,6 +162,7 @@ rm "/full/path/to/.once/tool-0.bash"
 ```
 
 **PowerShell:**
+
 ```powershell
 # Generated once script - will self-delete after execution
 tool gen-completions --shell powershell > "$DOTFILES/.generated/completions/_tool"
@@ -163,6 +170,7 @@ Remove-Item "/full/path/to/.once/tool-0.ps1"
 ```
 
 #### Benefits:
+
 - **Performance Optimization**: Expensive operations only run once
 - **Automatic Cleanup**: Scripts delete themselves to prevent re-execution
 - **Version Safety**: Index-based naming prevents multiple versions from executing
@@ -171,22 +179,24 @@ Remove-Item "/full/path/to/.once/tool-0.ps1"
 ## Usage Workflow
 
 ### 1. Script Creation
+
 ```typescript
 // In a .tool.ts file
 c.zsh(
-  once/* zsh */`
+  once /* zsh */`
     # Expensive operation - runs once
     tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool"
   `,
-  always/* zsh */`
+  always /* zsh */`
     # Fast setup - runs every shell startup
     export TOOL_CONFIG_DIR="$HOME/.tool"
     alias t="tool"
-  `
+  `,
 );
 ```
 
 ### 2. Formatting Process
+
 ```typescript
 const alwaysFormatter = new AlwaysScriptFormatter();
 const onceFormatter = new OnceScriptFormatter(shellScriptsDir);
@@ -203,6 +213,7 @@ const onceOutput = onceFormatter.format(onceScript, 'tool', 'zsh', 0);
 ### 3. Integration with Shell Generation
 
 **Always Scripts**: Embedded directly in main shell initialization file:
+
 ```bash
 # main.zsh
 # ... other initialization ...
@@ -217,6 +228,7 @@ unset -f __dotfiles_tool_always
 ```
 
 **Once Scripts**: Written to separate files and sourced on demand:
+
 ```bash
 # main.zsh
 # Execute once scripts (runs only once per script)
@@ -228,6 +240,7 @@ done
 ## Performance Impact
 
 ### Before Branded Types:
+
 ```bash
 # Every shell startup (slow):
 tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool" # 500ms
@@ -237,6 +250,7 @@ alias t="tool"  # 1ms
 ```
 
 ### After Branded Types:
+
 ```bash
 # First shell startup after installation:
 # - Once script runs: 500ms (then deletes itself)
@@ -251,21 +265,25 @@ alias t="tool"  # 1ms
 ## Key Features
 
 ### Type Safety
+
 - Compile-time enforcement of script categorization
 - Prevents accidental misuse of expensive operations
 - Clear intent through branded types
 
 ### Security
+
 - Self-deletion prevents once scripts from running multiple times
 - Full file paths prevent accidental deletions
 - No executable permissions needed (scripts are sourced)
 
 ### Cross-Platform
+
 - Consistent behavior across Zsh, Bash, and PowerShell
 - Shell-specific syntax handling
 - Proper cleanup commands for each shell
 
 ### Maintainability
+
 - Clear separation between once and always logic
 - Standardized formatter interface
 - Easy to extend for new shells

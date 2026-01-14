@@ -29,8 +29,7 @@ import { defineTool } from '@gitea/dotfiles';
 export default defineTool((install, ctx) =>
   install('github-release', {
     repo: 'junegunn/fzf',
-  })
-    .bin('fzf')
+  }).bin('fzf')
 );
 ```
 
@@ -46,11 +45,7 @@ export default defineTool((install, ctx) =>
     .bin('rg')
     .dependsOn('pcre2')
     .symlink('./ripgreprc', '~/.ripgreprc')
-    .zsh((shell) =>
-      shell
-        .environment({ RIPGREP_CONFIG_PATH: '~/.ripgreprc' })
-        .aliases({ rgi: 'rg -i' })
-    )
+    .zsh((shell) => shell.environment({ RIPGREP_CONFIG_PATH: '~/.ripgreprc' }).aliases({ rgi: 'rg -i' }))
 );
 ```
 
@@ -58,15 +53,15 @@ export default defineTool((install, ctx) =>
 
 After calling `install()`, these methods are available:
 
-| Method | Purpose |
-|--------|---------|
-| `.bin(name)` | Define binary name(s) to expose |
-| `.version(v)` | Set version (`'latest'` or specific) |
-| `.dependsOn(bin)` | Declare binary dependencies |
-| `.symlink(src, dest)` | Create config file symlinks |
-| `.hook(event, fn)` | Lifecycle hooks ([details](./hooks.md)) |
-| `.zsh(fn)` / `.bash(fn)` | Shell-specific configuration |
-| `.platform(p, fn)` | Platform-specific overrides |
+| Method                   | Purpose                                 |
+| ------------------------ | --------------------------------------- |
+| `.bin(name)`             | Define binary name(s) to expose         |
+| `.version(v)`            | Set version (`'latest'` or specific)    |
+| `.dependsOn(bin)`        | Declare binary dependencies             |
+| `.symlink(src, dest)`    | Create config file symlinks             |
+| `.hook(event, fn)`       | Lifecycle hooks ([details](./hooks.md)) |
+| `.zsh(fn)` / `.bash(fn)` | Shell-specific configuration            |
+| `.platform(p, fn)`       | Platform-specific overrides             |
 
 ## Next Steps
 
@@ -79,25 +74,21 @@ After calling `install()`, these methods are available:
 ### Imports
 
 ```typescript
-import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
+import { Architecture, defineTool, Platform } from '@gitea/dotfiles';
 ```
 
-| Export | Description |
-|--------|-------------|
-| `defineTool` | Factory function to create tool configurations |
-| `Platform` | Enum: `Darwin`, `Linux`, `Windows`, `MacOS` |
-| `Architecture` | Enum: `X86_64`, `Arm64` |
+| Export         | Description                                    |
+| -------------- | ---------------------------------------------- |
+| `defineTool`   | Factory function to create tool configurations |
+| `Platform`     | Enum: `Darwin`, `Linux`, `Windows`, `MacOS`    |
+| `Architecture` | Enum: `X86_64`, `Arm64`                        |
 
 ### Configuration-Only Tools
 
 Tools that only contribute shell configuration (no binary installation):
 
 ```typescript
-export default defineTool((install) =>
-  install().zsh((shell) =>
-    shell.environment({ FOO: 'bar' })
-  )
-);
+export default defineTool((install) => install().zsh((shell) => shell.environment({ FOO: 'bar' })));
 ```
 
 ### Auto-Generated Types
@@ -108,10 +99,7 @@ Add to your `tsconfig.json`:
 
 ```json
 {
-  "include": [
-    "tools/**/*.tool.ts",
-    ".generated/tool-types.d.ts"
-  ]
+  "include": ["tools/**/*.tool.ts", ".generated/tool-types.d.ts"]
 }
 ```
 

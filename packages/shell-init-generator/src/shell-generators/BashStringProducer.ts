@@ -1,6 +1,6 @@
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellCompletionConfig, ShellScript, ToolConfig } from '@dotfiles/core';
+import path from 'node:path';
 import type { IShellStringProducer } from './BaseShellGenerator';
 
 /**
@@ -23,8 +23,8 @@ export class BashStringProducer implements IShellStringProducer {
 
     if (completions.cmd || completions.source) {
       const defaultSubdir = completions.cmd ? 'completions' : '';
-      const completionDir =
-        completions.targetDir ?? path.join(this.projectConfig.paths.shellScriptsDir, 'bash', defaultSubdir);
+      const completionDir = completions.targetDir ??
+        path.join(this.projectConfig.paths.shellScriptsDir, 'bash', defaultSubdir);
       const completionFile = path.join(completionDir, completions.name ?? `${toolName}.bash`);
       completionSetup.push(`[[ -f "${completionFile}" ]] && source "${completionFile}"`);
     }

@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import { Architecture, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -15,6 +13,8 @@ import {
   createTestDirectories,
   type ITestDirectories,
 } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import path from 'node:path';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 /**
@@ -112,7 +112,7 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
       mockProjectConfig,
       fileRegistry,
       mockFileSystem,
-      createMockTrackedFileSystem(mockFileSystem)
+      createMockTrackedFileSystem(mockFileSystem),
     );
   });
 
@@ -369,7 +369,7 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
         ['DEBUG', 'WARN'],
         ['GeneratorOrchestrator', 'cleanupToolArtifacts'],
         [],
-        [/cleaning up artifacts/i, /found.*artifact/i, /removed.*shim/i, /cleanup completed/i]
+        [/cleaning up artifacts/i, /found.*artifact/i, /removed.*shim/i, /cleanup completed/i],
       );
     });
 
@@ -393,7 +393,7 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
         ['DEBUG'],
         ['GeneratorOrchestrator', 'cleanupToolArtifacts'],
         [],
-        [/cleaning up artifacts/i, /no tracked artifacts/i]
+        [/cleaning up artifacts/i, /no tracked artifacts/i],
       );
     });
   });

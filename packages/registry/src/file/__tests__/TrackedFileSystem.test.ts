@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { randomUUID } from 'node:crypto';
-import { unlink } from 'node:fs/promises';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { randomUUID } from 'node:crypto';
+import { unlink } from 'node:fs/promises';
+import path from 'node:path';
 import { FileRegistry } from '../FileRegistry';
 import { type ITrackingContext, TrackedFileSystem } from '../TrackedFileSystem';
 
@@ -408,7 +408,7 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(3); // 2 files + directory
 
-      const deletedPaths = operations.map((op) => op.filePath).sort();
+      const deletedPaths = operations.map((op) => op.filePath).toSorted();
       expect(deletedPaths).toEqual([path.resolve(dirPath), path.resolve(file1Path), path.resolve(file2Path)]);
     });
   });

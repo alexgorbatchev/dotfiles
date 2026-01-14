@@ -17,8 +17,7 @@ export default defineTool((install, ctx) =>
   install('brew', {
     formula: 'ripgrep',
     tap: 'homebrew/core',
-  })
-    .bin('rg')
+  }).bin('rg')
 );
 ```
 
@@ -40,8 +39,7 @@ The `install('brew', params)` function accepts the following parameters:
 export default defineTool((install, ctx) =>
   install('brew', {
     formula: 'bat',
-  })
-    .bin('bat')
+  }).bin('bat')
 );
 ```
 
@@ -52,8 +50,7 @@ export default defineTool((install, ctx) =>
   install('brew', {
     formula: 'docker',
     cask: true,
-  })
-    .bin('docker')
+  }).bin('docker')
 );
 ```
 
@@ -64,8 +61,7 @@ export default defineTool((install, ctx) =>
   install('brew', {
     formula: 'my-tool',
     tap: 'myorg/tap',
-  })
-    .bin('my-tool')
+  }).bin('my-tool')
 );
 ```
 
@@ -76,23 +72,26 @@ export default defineTool((install, ctx) =>
   install('brew', {
     formula: 'tool',
     tap: ['user/tap1', 'user/tap2'],
-  })
-    .bin('tool')
+  }).bin('tool')
 );
 ```
 
 ## Features
 
 ### Tap Management
+
 Automatically executes `brew tap` for specified taps before installation, enabling access to formulas from custom repositories.
 
 ### Cask Support
+
 Installs GUI applications and large binaries via Homebrew Casks when `cask: true` is specified.
 
 ### Version Detection
+
 Queries `brew info --json` to determine installed versions, supporting version tracking and update checks.
 
 ### Force Reinstall
+
 Supports forced reinstallation via `--force` flag when installation options specify force mode.
 
 ## Implementation Details
@@ -109,11 +108,12 @@ Supports forced reinstallation via `--force` flag when installation options spec
 This plugin operates with `externallyManaged = true`, meaning Homebrew maintains full control over binary installation locations. The dotfiles system integrates with Homebrew-installed binaries through symlinks:
 
 **Directory Structure:**
+
 ```
 User runs: rg
     ↓
 Shim at: /usr/local/bin/rg (generated shim in PATH)
-    ↓ 
+    ↓
 Points to: .../generated/binaries/ripgrep/rg (symlink)
     ↓
 Points to: /opt/homebrew/bin/rg (Homebrew symlink)
@@ -122,6 +122,7 @@ Points to: /opt/homebrew/Cellar/ripgrep/14.1.0/bin/rg (actual binary)
 ```
 
 **No Conflicts:**
+
 - Homebrew installs binaries to `/opt/homebrew/bin` (Apple Silicon) or `/usr/local/opt/` (Intel)
 - Generated shims are placed in `targetDir` (typically `/usr/local/bin` or custom PATH location)
 - These directories are completely separate, preventing any overwrites

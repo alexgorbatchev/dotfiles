@@ -11,7 +11,7 @@ describe('GitHubApiClient', () => {
 
   beforeEach(async () => {
     mocks = await setupMockGitHubApiClient(
-      createGitHubConfigOverride({ githubApiCacheEnabled: false, githubToken: '' })
+      createGitHubConfigOverride({ githubApiCacheEnabled: false, githubToken: '' }),
     );
   });
 
@@ -30,7 +30,7 @@ describe('GitHubApiClient', () => {
           headers: {
             location: 'https://github.com/test-owner/test-repo/releases/tag/v2.24.0',
           },
-        })
+        }),
       );
 
       const tag = await mocks.apiClient.probeLatestTag('test-owner', 'test-repo');
@@ -46,7 +46,7 @@ describe('GitHubApiClient', () => {
         ['DEBUG'],
         ['GitHubApiClient', 'probeLatestTag'],
         [],
-        ['Probing release tag pattern', 'Detected latest release tag']
+        ['Probing release tag pattern', 'Detected latest release tag'],
       );
     });
 
@@ -57,7 +57,7 @@ describe('GitHubApiClient', () => {
           headers: {
             location: 'https://github.com/denisidoro/navi/releases/tag/v2.24.0',
           },
-        })
+        }),
       );
 
       const tag = await mocks.apiClient.probeLatestTag('denisidoro', 'navi');
@@ -71,7 +71,7 @@ describe('GitHubApiClient', () => {
           headers: {
             location: 'https://github.com/BurntSushi/ripgrep/releases/tag/15.1.0',
           },
-        })
+        }),
       );
 
       const tag = await mocks.apiClient.probeLatestTag('BurntSushi', 'ripgrep');
@@ -85,7 +85,7 @@ describe('GitHubApiClient', () => {
           headers: {
             location: 'https://github.com/jqlang/jq/releases/tag/jq-1.8.1',
           },
-        })
+        }),
       );
 
       const tag = await mocks.apiClient.probeLatestTag('jqlang', 'jq');
@@ -99,7 +99,7 @@ describe('GitHubApiClient', () => {
           headers: {
             location: 'https://github.com/owner/repo/releases/tag/v1.0.0%2Bbuild.123',
           },
-        })
+        }),
       );
 
       const tag = await mocks.apiClient.probeLatestTag('owner', 'repo');
@@ -111,7 +111,7 @@ describe('GitHubApiClient', () => {
         new Response(null, {
           status: 200,
           headers: {},
-        })
+        }),
       );
 
       const tag = await mocks.apiClient.probeLatestTag('test-owner', 'test-repo');
@@ -121,7 +121,7 @@ describe('GitHubApiClient', () => {
         ['DEBUG'],
         ['GitHubApiClient', 'probeLatestTag'],
         [],
-        ['Probing release tag pattern', 'No redirect found']
+        ['Probing release tag pattern', 'No redirect found'],
       );
     });
 
@@ -132,7 +132,7 @@ describe('GitHubApiClient', () => {
           headers: {
             location: 'https://github.com/test-owner/test-repo/releases',
           },
-        })
+        }),
       );
 
       const tag = await mocks.apiClient.probeLatestTag('test-owner', 'test-repo');
@@ -149,7 +149,7 @@ describe('GitHubApiClient', () => {
         ['DEBUG'],
         ['GitHubApiClient', 'probeLatestTag'],
         [],
-        ['Probing release tag pattern', 'Failed to probe tag pattern']
+        ['Probing release tag pattern', 'Failed to probe tag pattern'],
       );
     });
 
@@ -158,7 +158,7 @@ describe('GitHubApiClient', () => {
         new Response(null, {
           status: 404,
           headers: {},
-        })
+        }),
       );
 
       const tag = await mocks.apiClient.probeLatestTag('nonexistent', 'repo');

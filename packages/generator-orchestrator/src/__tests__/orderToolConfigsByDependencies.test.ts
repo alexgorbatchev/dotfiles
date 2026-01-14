@@ -1,7 +1,7 @@
-import { describe, expect, test } from 'bun:test';
 import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
+import { describe, expect, test } from 'bun:test';
 import { orderToolConfigsByDependencies } from '../orderToolConfigsByDependencies';
 
 const systemInfoLinux: ISystemInfo = {
@@ -96,7 +96,7 @@ describe('orderToolConfigsByDependencies', () => {
 
     const logger = new TestLogger();
     expect(() => orderToolConfigsByDependencies(logger, toolConfigs, systemInfoLinux)).toThrowError(
-      'Dependency validation failed'
+      'Dependency validation failed',
     );
     logger.expect(
       ['ERROR'],
@@ -104,7 +104,7 @@ describe('orderToolConfigsByDependencies', () => {
       [],
       [
         'Missing dependency: tool "consumer" requires binary "mac-bin" but no tool provides it for platform linux/x86_64.',
-      ]
+      ],
     );
   });
 
@@ -130,13 +130,13 @@ describe('orderToolConfigsByDependencies', () => {
 
     const logger = new TestLogger();
     expect(() => orderToolConfigsByDependencies(logger, toolConfigs, systemInfoLinux)).toThrowError(
-      'Dependency validation failed'
+      'Dependency validation failed',
     );
     logger.expect(
       ['ERROR'],
       ['orderToolConfigsByDependencies'],
       [],
-      [/Ambiguous dependency: binary "shared-bin" is provided by multiple tools/]
+      [/Ambiguous dependency: binary "shared-bin" is provided by multiple tools/],
     );
   });
 
@@ -159,7 +159,7 @@ describe('orderToolConfigsByDependencies', () => {
 
     const logger = new TestLogger();
     expect(() => orderToolConfigsByDependencies(logger, toolConfigs, systemInfoLinux)).toThrowError(
-      'Dependency validation failed'
+      'Dependency validation failed',
     );
     logger.expect(['ERROR'], ['orderToolConfigsByDependencies'], [], [/Circular dependency detected between tools/]);
   });

@@ -10,7 +10,7 @@ export async function getInstalledPackageVersions(packageNames: string[]): Promi
   const pmLsResult = await $`bun pm ls --all`.quiet();
   const pmLsOutput: string = pmLsResult.stdout.toString();
 
-  const uniquePackageNames: string[] = Array.from(new Set(packageNames)).sort((a, b) => a.localeCompare(b));
+  const uniquePackageNames: string[] = Array.from(new Set(packageNames)).toSorted((a, b) => a.localeCompare(b));
   const versionsByName: Record<string, string> = {};
 
   for (const packageName of uniquePackageNames) {

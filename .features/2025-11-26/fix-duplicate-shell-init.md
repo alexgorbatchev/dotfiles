@@ -1,18 +1,18 @@
 ---
 # User Prompt
 > when ~/.zshrc file is updated, the tool may write multiple
-> 
+>
 > # Generated via dotfiles generator - do not modify
 > # /Users/alex/Development/github/dotfiles-tool-installer/test-project/config.ts
 > # ------------------------------------------------------------------------------
 > source "/Users/alex/Development/github/dotfiles-tool-installer/test-project/.generated/shell-scripts/main.zsh"
-> 
+>
 > # Generated via dotfiles generator - do not modify
 > # /Users/alex/.dotfiles/config.ts
 > # ------------------------------------------------------------------------------
 > source "/Users/alex/.dotfiles/.generated/shell-init/main.zsh"
-> 
-> 
+>
+>
 > this shouldn't happen, it should update the source if it already exists, so i think we need a bit of special markers here, we can remove config path from the comment so that the header is constant and use it to identify existing source and update it maybe, make a test, then implement
 
 # Primary Objective

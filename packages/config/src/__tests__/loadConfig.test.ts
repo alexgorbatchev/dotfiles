@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import path from 'node:path';
 import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
 import { createMemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import path from 'node:path';
 import { loadConfig } from '../loadConfig';
 
 describe('loadConfig', () => {
@@ -108,7 +108,7 @@ describe('loadConfig', () => {
       });
 
       expect(loadConfig(logger, fs, '/test/config.json', mockSystemInfo, {})).rejects.toThrow(
-        'Unsupported configuration file type'
+        'Unsupported configuration file type',
       );
     });
   });

@@ -15,5 +15,4 @@ import '@dotfiles/installer-github';
 import '@dotfiles/installer-manual';
 
 // Now export defineTool with fully populated types
-// biome-ignore lint/plugin: Named exports required for selective API exposure
 export { createInstallFunction, defineTool } from './defineTool';

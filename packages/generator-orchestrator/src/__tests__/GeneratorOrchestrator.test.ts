@@ -1,8 +1,5 @@
-import { beforeEach, describe, expect, it, mock, type spyOn } from 'bun:test';
-import assert from 'node:assert';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import { Architecture, always, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
+import { always, Architecture, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
@@ -11,6 +8,9 @@ import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, expect, it, mock, type spyOn } from 'bun:test';
+import assert from 'node:assert';
+import path from 'node:path';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 /**
@@ -108,7 +108,7 @@ describe('GeneratorOrchestrator', () => {
       mockProjectConfig,
       createMockFileRegistry(),
       mockFileSystem,
-      createMockTrackedFileSystem(mockFileSystem)
+      createMockTrackedFileSystem(mockFileSystem),
     );
   });
 
@@ -185,21 +185,21 @@ describe('GeneratorOrchestrator', () => {
         {},
         {
           overwrite: true,
-        }
+        },
       );
       expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(
         {},
         {
           shellTypes: ['zsh', 'bash', 'powershell'],
           systemInfo,
-        }
+        },
       );
       expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(
         {},
         {
           overwrite: true,
           backup: true,
-        }
+        },
       );
     });
 
@@ -369,7 +369,7 @@ describe('GeneratorOrchestrator', () => {
             ['INFO'],
             ['GeneratorOrchestrator', 'generateCompletionsForTool'],
             [],
-            [expectedCompletionPath]
+            [expectedCompletionPath],
           );
         });
 
@@ -384,7 +384,7 @@ describe('GeneratorOrchestrator', () => {
             generatedBy: 'url',
           });
 
-          const completionsCallback = (ctx: { version?: string }) => ({
+          const completionsCallback = (ctx: { version?: string; }) => ({
             url: `https://example.com/completions/${ctx.version}/completion.zsh`,
           });
 
@@ -410,7 +410,7 @@ describe('GeneratorOrchestrator', () => {
           const firstCall = calls[0];
           assert(firstCall);
           // First arg is the options object containing the completion config with resolved URL
-          const options = firstCall[0] as { config: { url?: string } };
+          const options = firstCall[0] as { config: { url?: string; }; };
           expect(options.config.url).toBe('https://example.com/completions/2.5.0/completion.zsh');
         });
       });
@@ -487,7 +487,7 @@ describe('GeneratorOrchestrator', () => {
             {},
             {
               overwrite: true,
-            }
+            },
           );
         });
       });

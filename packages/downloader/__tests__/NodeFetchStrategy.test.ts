@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { createMemFileSystem, type IFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { FetchMockHelper } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import {
   ClientError,
   ForbiddenError,
@@ -502,7 +502,7 @@ describe('NodeFetchStrategy', () => {
       headers.append('X-Test', 'TestValue');
       // Testing private method - legitimate use of type assertion for internal testing
       const result = (
-        strategy as unknown as { getResponseHeaders: (headers: Headers) => Record<string, string> }
+        strategy as unknown as { getResponseHeaders: (headers: Headers) => Record<string, string>; }
       ).getResponseHeaders(headers);
       expect(result).toEqual({
         'content-type': 'application/json',

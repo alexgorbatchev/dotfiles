@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { IResolvedFileSystem, MockedFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { LogLevel, TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
+import path from 'node:path';
 import { z } from 'zod';
 import { Architecture, type ISystemInfo, Platform } from '../../common';
 import { createToolConfigContext } from '../createToolConfigContext';
@@ -249,4 +249,3 @@ describe('createToolConfigContext', () => {
     });
   });
 });
-

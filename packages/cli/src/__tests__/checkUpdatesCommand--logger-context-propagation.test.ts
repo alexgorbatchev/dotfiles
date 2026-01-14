@@ -3,13 +3,13 @@
  *
  * Verifies that tool name context flows through log messages when checking for updates.
  */
-import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService } from '@dotfiles/config';
 import type { IInstallerPlugin, InstallerPluginRegistry, UpdateCheckResult } from '@dotfiles/core';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
+import { beforeEach, describe, mock, test } from 'bun:test';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
@@ -45,7 +45,7 @@ describe('checkUpdatesCommand - Logger Context Propagation', () => {
           hasUpdate: true,
           currentVersion: '1.0.0',
           latestVersion: '1.1.0',
-        })
+        }),
       ),
     };
 
@@ -89,7 +89,7 @@ describe('checkUpdatesCommand - Logger Context Propagation', () => {
       ['INFO'],
       ['registerCheckUpdatesCommand'],
       [],
-      [messages.toolUpdateAvailable(TOOL_NAME, '1.0.0', '1.1.0')]
+      [messages.toolUpdateAvailable(TOOL_NAME, '1.0.0', '1.1.0')],
     );
   });
 
@@ -135,7 +135,7 @@ describe('checkUpdatesCommand - Logger Context Propagation', () => {
       ['INFO'],
       ['registerCheckUpdatesCommand'],
       [],
-      [messages.toolUpToDate(TOOL_NAME, '1.0.0', '1.0.0'), messages.toolUpToDate('second-tool', '1.0.0', '1.0.0')]
+      [messages.toolUpToDate(TOOL_NAME, '1.0.0', '1.0.0'), messages.toolUpToDate('second-tool', '1.0.0', '1.0.0')],
     );
   });
 });

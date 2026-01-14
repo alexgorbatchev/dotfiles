@@ -1,8 +1,8 @@
-import { beforeEach, test } from 'bun:test';
 import type { ProjectConfig } from '@dotfiles/core';
 import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
+import { beforeEach, test } from 'bun:test';
 import { FileRegistry } from '../FileRegistry';
 import { TrackedFileSystem } from '../TrackedFileSystem';
 
@@ -34,7 +34,7 @@ beforeEach(() => {
     fs,
     registry,
     TrackedFileSystem.createContext('nodejs', 'binary'),
-    mockProjectConfig
+    mockProjectConfig,
   );
 });
 
@@ -56,7 +56,7 @@ test('should show different tool names for different contexts', async () => {
     fs,
     registry,
     TrackedFileSystem.createContext('curl', 'binary'),
-    mockProjectConfig
+    mockProjectConfig,
   );
 
   // Create parent directories
@@ -72,6 +72,6 @@ test('should show different tool names for different contexts', async () => {
     ['INFO'],
     ['TrackedFileSystem'],
     [],
-    ['[nodejs] mkdir /nodejs', '[curl] mkdir /curl', '[nodejs] write /nodejs/file.txt', '[curl] write /curl/file.txt']
+    ['[nodejs] mkdir /nodejs', '[curl] mkdir /curl', '[nodejs] write /nodejs/file.txt', '[curl] write /curl/file.txt'],
   );
 });

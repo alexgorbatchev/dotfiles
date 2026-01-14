@@ -1,8 +1,14 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { $ } from 'dax-sh';
 import { createLoggingShell } from '../createLoggingShell';
 import type { $extended } from '../extendedShell.types';
+
+// Extended interface for testing methods not exposed in $extended type
+interface ICommandWithBlobMethods {
+  blob(): Promise<Blob>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
 
 describe('createLoggingShell', () => {
   let logger: TestLogger;
@@ -88,8 +94,7 @@ describe('createLoggingShell', () => {
   });
 
   it('works with .blob() result method', async () => {
-    // biome-ignore lint/suspicious/noExplicitAny: blob() exists on CommandBuilder but not in TS types
-    const result = await (loggingShell`echo "blob"` as any).blob();
+    const result = await (loggingShell`echo "blob"` as unknown as ICommandWithBlobMethods).blob();
 
     expect(result).toBeInstanceOf(Blob);
     const text = await result.text();
@@ -97,8 +102,7 @@ describe('createLoggingShell', () => {
   });
 
   it('works with .arrayBuffer() result method', async () => {
-    // biome-ignore lint/suspicious/noExplicitAny: arrayBuffer() exists on CommandBuilder but not in TS types
-    const result = await (loggingShell`echo "buffer"` as any).arrayBuffer();
+    const result = await (loggingShell`echo "buffer"` as unknown as ICommandWithBlobMethods).arrayBuffer();
 
     expect(result).toBeInstanceOf(ArrayBuffer);
     const text = new TextDecoder().decode(result);

@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IGitHubRateLimit } from '@dotfiles/core';
 import { HttpError } from '@dotfiles/downloader';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
   createGitHubConfigOverride,
@@ -57,7 +57,7 @@ describe('GitHubApiClient', () => {
             Accept: 'application/vnd.github.v3+json',
             'User-Agent': mocks.mockProjectConfig.github.userAgent,
           }),
-        })
+        }),
       );
 
       // Verify logger received request message
@@ -67,7 +67,7 @@ describe('GitHubApiClient', () => {
     it('should throw a GitHubApiClientError if fetching rate limit fails with HttpError', async () => {
       const url = 'https://api.github.com/rate_limit';
       mocks.mockDownloader.download.mockRejectedValue(
-        new HttpError(mocks.logger, 'API unavailable', url, 500, 'Internal Server Error')
+        new HttpError(mocks.logger, 'API unavailable', url, 500, 'Internal Server Error'),
       );
 
       expect(mocks.apiClient.getRateLimit()).rejects.toThrow(GitHubApiClientError);
@@ -80,7 +80,7 @@ describe('GitHubApiClient', () => {
           expect(error.statusCode).toBe(500);
           expect(error.originalError).toBeInstanceOf(HttpError);
         } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type');
+          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
         }
       }
     });

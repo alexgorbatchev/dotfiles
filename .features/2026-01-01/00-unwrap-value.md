@@ -1,13 +1,17 @@
 # Task
+
 > Create a new package called `unwrap-value` that implements the `Resolvable<TParams, TReturn>` type pattern and `resolveValue` function to handle values that may be static, sync functions, or async functions.
 
 # Primary Objective
+
 Create a standalone `unwrap-value` package with type definitions and resolution function, starting with tests, including README documentation, with no dependencies or logging.
 
 # Open Questions
+
 - None
 
 # Tasks
+
 - [x] **TS001**: Create package structure in `.tmp/worktrees/unwrap-value/packages/unwrap-value/`
 - [x] **TS002**: Write tests first covering:
   - Static value resolution
@@ -20,6 +24,7 @@ Create a standalone `unwrap-value` package with type definitions and resolution 
 - [x] **TS006**: Verify all tests pass and code quality checks succeed
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -35,6 +40,7 @@ Create a standalone `unwrap-value` package with type definitions and resolution 
 - [x] Tests do not print anything to console.
 
 # Change Log
+
 - Created feature branch and worktree
 - Created task file
 - Implemented @dotfiles/unwrap-value package with Resolvable type and resolveValue function

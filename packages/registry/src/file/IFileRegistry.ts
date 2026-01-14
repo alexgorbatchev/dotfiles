@@ -116,7 +116,7 @@ export interface IFileRegistry {
   /**
    * Validates registry integrity and repairs any issues found.
    */
-  validate(): Promise<{ valid: boolean; issues: string[]; repaired: string[] }>;
+  validate(): Promise<{ valid: boolean; issues: string[]; repaired: string[]; }>;
 
   /**
    * Gets registry statistics.

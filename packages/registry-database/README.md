@@ -32,8 +32,8 @@ Gracefully closes the database connection. This should be called during the appl
 ## Usage Example
 
 ```typescript
-import { RegistryDatabase } from '@dotfiles/registry-database';
 import { createLogger } from '@dotfiles/logger';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 
 // 1. Create a logger instance
 const logger = createLogger();

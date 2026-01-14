@@ -1,6 +1,3 @@
-// biome-ignore-all assist/source/organizeImports: this file is used by the build process
-// biome-ignore-all lint/plugin: named export required for selective API exposure
-
 // ============================================================================
 // These types are only used for testing during the build
 // ============================================================================

@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, type Mock, mock } from 'bun:test';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, it, type Mock, mock } from 'bun:test';
 import { Downloader } from '../Downloader';
 import type { IDownloadOptions } from '../IDownloader';
 import type { IDownloadStrategy } from '../IDownloadStrategy';
@@ -135,7 +135,7 @@ describe('Downloader', () => {
     const url = 'http://example.com/file.txt';
 
     expect(downloader.download(logger, url)).rejects.toThrow(
-      'No available download strategy succeeded for http://example.com/file.txt.'
+      'No available download strategy succeeded for http://example.com/file.txt.',
     );
   });
 
@@ -181,11 +181,11 @@ describe('Downloader', () => {
     const url = 'http://example.com/file.txt';
 
     expect(downloader.download(logger, url)).rejects.toThrowError(
-      'An unknown error occurred during download: {"message":"simulated non-error object","code":123}'
+      'An unknown error occurred during download: {"message":"simulated non-error object","code":123}',
     );
     expect(
       (nonErrorObjectThrowingStrategy.download as Mock<typeof nonErrorObjectThrowingStrategy.download>).mock.calls
-        .length
+        .length,
     ).toBe(1);
   });
 
@@ -196,7 +196,7 @@ describe('Downloader', () => {
     expect(downloader.download(logger, url)).rejects.toThrowError(new Error('simulated string error'));
     expect(
       (nonErrorStringThrowingStrategy.download as Mock<typeof nonErrorStringThrowingStrategy.download>).mock.calls
-        .length
+        .length,
     ).toBe(1);
   });
 
@@ -226,7 +226,7 @@ describe('Downloader', () => {
       expect(mockOnProgress).toHaveBeenNthCalledWith(2, 100, 100);
       expect(mockStrategyDownload).toHaveBeenCalledWith(
         'http://example.com/file',
-        expect.objectContaining({ onProgress: mockOnProgress })
+        expect.objectContaining({ onProgress: mockOnProgress }),
       );
     });
 
@@ -250,7 +250,7 @@ describe('Downloader', () => {
       expect(downloader.download(logger, 'http://example.com/file', {})).resolves.toBeInstanceOf(Buffer);
       expect(mockStrategyDownload).toHaveBeenCalledWith(
         'http://example.com/file',
-        expect.not.objectContaining({ onProgress: expect.any(Function) })
+        expect.not.objectContaining({ onProgress: expect.any(Function) }),
       );
     });
   });

@@ -24,7 +24,7 @@ export interface IFeaturesCommandOptions extends IBaseCommandOptions {
 async function catalogActionLogic(
   logger: TsLogger,
   _options: IFeaturesCommandOptions,
-  services: IServices
+  services: IServices,
 ): Promise<void> {
   try {
     const { projectConfig, fs, configService, readmeService, systemInfo } = services;
@@ -34,7 +34,7 @@ async function catalogActionLogic(
       projectConfig.paths.toolConfigsDir,
       fs,
       projectConfig,
-      systemInfo
+      systemInfo,
     );
 
     await readmeService.generateCatalogFromConfigs(projectConfig.features.catalog.filePath, toolConfigs);
@@ -47,7 +47,7 @@ async function catalogActionLogic(
 export function registerFeaturesCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>
+  servicesFactory: () => Promise<IServices>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerFeaturesCommand' });
 

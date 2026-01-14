@@ -1,5 +1,5 @@
-import { join } from 'node:path';
 import type { IBinaryConfig } from '@dotfiles/core';
+import { join } from 'node:path';
 import { normalizeBinaries } from './normalizeBinaries';
 
 /**
@@ -20,7 +20,7 @@ import { normalizeBinaries } from './normalizeBinaries';
 export function getBinaryPaths(
   binaries: (string | IBinaryConfig)[] | undefined,
   fallbackName: string,
-  installedDir: string
+  installedDir: string,
 ): string[] {
   const normalizedBinaries = normalizeBinaries(binaries, fallbackName);
   return normalizedBinaries.map((binary) => join(installedDir, binary.name));

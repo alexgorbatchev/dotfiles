@@ -15,11 +15,9 @@ export default defineTool((install) =>
         .aliases({
           cqt: 'cargo-quickinstall-tool --preview "ps -f -p {+}"',
         })
-        .completions('shell/completion.zsh')
-        .once(/* zsh */ `
+        .completions('shell/completion.zsh').once(/* zsh */ `
           echo "once from cargo-quickinstall-tool"
-        `)
-        .always(/* zsh */ `
+        `).always(/* zsh */ `
           echo "always from cargo-quickinstall-tool"
         `)
     )

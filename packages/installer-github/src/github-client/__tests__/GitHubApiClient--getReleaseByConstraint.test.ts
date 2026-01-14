@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IGitHubRelease } from '@dotfiles/core';
 import { NotFoundError } from '@dotfiles/downloader';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import {
   createGitHubConfigOverride,
   type IMockSetup,
@@ -40,7 +40,7 @@ describe('GitHubApiClient', () => {
       expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
         expect.anything(),
         'https://api.github.com/repos/test-owner/test-repo/releases/latest',
-        expect.anything()
+        expect.anything(),
       );
 
       // Verify logger received request message
@@ -49,7 +49,7 @@ describe('GitHubApiClient', () => {
 
     it("should return null if constraint is 'latest' and getLatestRelease fails with NotFoundError from downloader", async () => {
       mocks.mockDownloader.download.mockRejectedValue(
-        new NotFoundError(mocks.logger, 'https://api.github.com/repos/test-owner/test-repo/releases/latest')
+        new NotFoundError(mocks.logger, 'https://api.github.com/repos/test-owner/test-repo/releases/latest'),
       );
       const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', 'latest');
       expect(release).toBeNull();
@@ -120,8 +120,9 @@ describe('GitHubApiClient', () => {
 
     it('should correctly identify the latest satisfying release from multiple pages', async () => {
       const perPage = 30; // Align with GitHubApiClient's internal default
-      const page1Releases: IGitHubRelease[] = Array.from({ length: perPage }, (_, i) =>
-        createMockRelease(i + 1, `v0.${i + 1}.0`)
+      const page1Releases: IGitHubRelease[] = Array.from(
+        { length: perPage },
+        (_, i) => createMockRelease(i + 1, `v0.${i + 1}.0`),
       );
       // Ensure IDs are unique across pages for clarity, starting page 2 IDs after page 1
       const targetReleaseId = perPage + 2;
@@ -130,7 +131,7 @@ describe('GitHubApiClient', () => {
         createMockRelease(perPage + 1, 'v1.1.0'),
         targetRelease,
         createMockRelease(perPage + 3, 'v1.2.3'),
-      ].sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()); // Simulate API sort
+      ].toSorted((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()); // Simulate API sort
 
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(page1Releases))) // Page 1

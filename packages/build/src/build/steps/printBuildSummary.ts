@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noConsole: build script */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { computeFileSizeKb } from '../helpers/computeFileSizeKb';
@@ -15,7 +13,7 @@ export async function printBuildSummary(context: IBuildContext): Promise<void> {
 
   const files: string[] = fs.readdirSync(context.paths.outputDir);
 
-  for (const file of files.sort()) {
+  for (const file of files.toSorted()) {
     const filePath: string = path.join(context.paths.outputDir, file);
     const relativePath: string = path.relative(context.paths.rootDir, filePath);
     const stats = fs.statSync(filePath);

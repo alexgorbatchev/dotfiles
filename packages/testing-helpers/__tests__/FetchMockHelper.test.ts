@@ -58,7 +58,7 @@ describe('FetchMockHelper', () => {
       fetchMockHelper.setup();
       fetchMockHelper.restore();
       expect(() => fetchMockHelper.getSpy()).toThrow(
-        'FetchMockHelper not setup. Call setup() first to initialize the spy, or it may have been restored.'
+        'FetchMockHelper not setup. Call setup() first to initialize the spy, or it may have been restored.',
       );
     });
 
@@ -313,7 +313,7 @@ describe('FetchMockHelper', () => {
       fetchMockHelper.setup();
       fetchMockHelper.restore();
       expect(() => fetchMockHelper.getSpy()).toThrow(
-        'FetchMockHelper not setup. Call setup() first to initialize the spy, or it may have been restored.'
+        'FetchMockHelper not setup. Call setup() first to initialize the spy, or it may have been restored.',
       );
     });
   });

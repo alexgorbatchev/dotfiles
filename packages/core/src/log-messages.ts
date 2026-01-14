@@ -14,7 +14,7 @@ export const messages = {
 
   noPluginForMethod: (method: string, availableMethods: string) =>
     createSafeLogMessage(
-      `No plugin registered for installation method: ${method}. Available methods: ${availableMethods}`
+      `No plugin registered for installation method: ${method}. Available methods: ${availableMethods}`,
     ),
 
   pluginValidationFailed: (errors: string) => createSafeLogMessage(`Plugin validation failed: ${errors}`),

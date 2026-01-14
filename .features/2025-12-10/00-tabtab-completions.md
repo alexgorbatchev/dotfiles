@@ -1,4 +1,5 @@
 # User Prompt
+
 > lets implement completions using https://github.com/pnpm/tabtab, it should be worked into out main.zsh at first, we can probably create a run time tool config to take advantage of existing generate pipeline for tools
 > create a tool at runtime that produces dotfiles shim, uses after-install to call tabtab api to generate completions and put completions file into the folder where all completions get symlinked to, focus on zsh for now
 > individual command files should export their details, do NOT make a centralized location for that because it will get out of sync
@@ -6,22 +7,25 @@
 > use native zsh completion instead of tabtab
 
 # Primary Objective
+
 Implement native zsh shell tab completions for dotfiles CLI, where each command file exports its own completion metadata, and a static completion script is generated during the `generate` phase.
 
 # Open Questions
+
 - [x] What commands/subcommands should have completions? → Only CLI commands (install, generate, etc.), not tool names
 - [x] Should completions include tool names from the registry? → No, tools manage their own completions
 - [x] Are there any specific completion behaviors desired? → Native zsh completion, static file generation
 - [x] What is the CLI binary name? → `dotfiles`
 
 # Tasks
+
 - [x] **TS001**: Research tabtab library API and understand how it generates completions
 - [x] **TS002**: Analyze existing shell-init-generator and generator pipeline to understand integration points
 - [x] **TS003**: Design the integration approach - native zsh completion with decentralized metadata
 - [x] **TS004**: Think very hard, step by step, to identify a solution
-    - Problem: Need CLI tab completions without new commands or runtime servers
-    - Solution: Native zsh completion file generated from command-exported metadata
-    - User approved native zsh approach
+  - Problem: Need CLI tab completions without new commands or runtime servers
+  - Solution: Native zsh completion file generated from command-exported metadata
+  - User approved native zsh approach
 - [x] **TS005**: Write down follow up tasks needed to implement the solution
 - [x] **TS006**: Define `ICommandCompletionMeta` interface in cli/src/types.ts
 - [x] **TS007**: Update each command file to export completion metadata
@@ -33,6 +37,7 @@ Implement native zsh shell tab completions for dotfiles CLI, where each command 
 - [x] **TS013**: Update documentation in docs/completions.md
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -45,6 +50,7 @@ Implement native zsh shell tab completions for dotfiles CLI, where each command 
 - [x] `bun lint`, `bun typecheck` and `bun test` commands runs successfully in the new worktree
 
 # Change Log
+
 - Created feature file and branch for tabtab completions implementation
 - Revised approach to use native zsh completion instead of tabtab
 - Defined ICommandCompletionMeta and ICompletionOption interfaces in types.ts

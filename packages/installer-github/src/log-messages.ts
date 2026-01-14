@@ -16,7 +16,7 @@ export const messages = {
     createSafeLogMessage(`Resolved relative URL. Base: "${base}", Relative Path: "${rawUrl}", Result: "${resolved}"`),
   finalDownloadUrl: (rawUrl: string, resolved: string, hasCustomHost: boolean) =>
     createSafeLogMessage(
-      `Final download URL determined. Raw: "${rawUrl}", Result: "${resolved}", hasCustomHost=${hasCustomHost}`
+      `Final download URL determined. Raw: "${rawUrl}", Result: "${resolved}", hasCustomHost=${hasCustomHost}`,
     ),
   downloadUrlError: (rawUrl: string, hasCustomHost: boolean) =>
     createSafeLogMessage(`Download URL construction failed: Raw: "${rawUrl}", hasCustomHost=${hasCustomHost}`),

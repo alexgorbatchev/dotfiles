@@ -1,20 +1,24 @@
 # User Prompt
+
 > currently a symlink for completions is named using toolName, which is basically tool file name, however when toolName doesn't match bin, we get incorrect symlink name and completions obviously will not work, we need to optional `bin` here which would be used to name completions files correctly based on shell
 
 # Primary Objective
+
 Fix completion symlink naming to use the binary name instead of the tool name when they differ, ensuring shell completions work correctly.
 
 # Open Questions
+
 - [ ] None at this time
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of the problem
 - [x] **TS002**: Create a failing test to isolate the problem, if unable to create a failing test STOP and report to the user
 - [x] **TS003**: Confirm the root cause of the problem based on the failing test
 - [x] **TS004**: Think very hard, step by step, to identify a solution, then STOP and:
-    - Describe the problem as you understand it
-    - Describe proposed solution
-    - Iterate with the user on proposed solution
+  - Describe the problem as you understand it
+  - Describe proposed solution
+  - Iterate with the user on proposed solution
 - [x] **TS005**: Write down follow up tasks needed to implement the solution
 - [x] **TS006**: Add `bin` field to `shellCompletionConfigSchema` in core package
 - [x] **TS007**: Add `bin` to `IShellCompletionConfigOptions` in builder types
@@ -34,6 +38,7 @@ When a tool file is named differently from its binary (e.g., `curl-script--fnm.t
 Add a `bin` property to `ShellCompletionConfig` that specifies which binary the completion is for. This is more explicit and user-friendly than inferring from context.
 
 **Usage:**
+
 ```typescript
 .completions({ cmd: 'fnm completions --shell zsh', bin: 'fnm' })
 ```
@@ -93,6 +98,7 @@ private generateCompletionFilename(customName: string | undefined, toolName: str
 When a tool file is named `curl-script--fnm.tool.ts` but the binary is `fnm`, the completion file gets named `_curl-script--fnm` instead of `_fnm`. Shell completion systems expect the filename to match the binary name (e.g., `_fnm` for zsh).
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -105,6 +111,7 @@ When a tool file is named `curl-script--fnm.tool.ts` but the binary is `fnm`, th
 - [x] `bun lint`, `bun typecheck` and `bun test` commands runs successfully in the new worktree
 
 # Change Log
+
 - Initial task file created
 - TS001: Identified root cause - `generateCompletionFilename()` uses `toolName` not binary name
 - TS002, TS003: Created failing tests demonstrating the issue

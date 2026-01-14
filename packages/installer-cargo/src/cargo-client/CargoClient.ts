@@ -87,7 +87,7 @@ export class CargoClient implements ICargoClient {
     config: ProjectConfig,
     downloader: IDownloader,
     cratesIoCache?: ICache,
-    githubRawCache?: ICache
+    githubRawCache?: ICache,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'CargoClient' });
     this.downloader = downloader;
@@ -123,7 +123,7 @@ export class CargoClient implements ICargoClient {
 
   private resolveCacheOptions(
     url: string,
-    cacheOptions?: ICargoCacheOptions
+    cacheOptions?: ICargoCacheOptions,
   ): {
     useCache: boolean;
     cacheKey?: string;

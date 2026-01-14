@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'bun:test';
 import { createProjectConfigFromObject } from '@dotfiles/config';
 import type { ISystemInfo } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { describe, expect, it } from 'bun:test';
 import { createMockProjectConfig, type PartialProjectConfig } from '../src/createMockProjectConfig';
 
 describe('createMockProjectConfig', () => {

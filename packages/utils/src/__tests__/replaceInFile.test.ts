@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'bun:test';
 import { createMemFileSystem } from '@dotfiles/file-system';
+import { describe, expect, test } from 'bun:test';
 import type { IReplaceInFileMatch } from '../replaceInFile';
 import { replaceInFile } from '../replaceInFile';
 
@@ -32,7 +32,7 @@ describe('replaceInFile', () => {
       async ({ substring }: IReplaceInFileMatch): Promise<string> => {
         const replacement: string = `(${substring})`;
         return replacement;
-      }
+      },
     );
 
     const updated: string = await memFs.fs.readFile('/tmp/input.txt', 'utf8');
@@ -93,7 +93,7 @@ describe('replaceInFile', () => {
       memFs.fs.asIResolvedFileSystem,
       '/tmp/input.txt',
       /does-not-exist/,
-      'replacement'
+      'replacement',
     );
 
     expect(wasReplaced).toBe(false);
@@ -125,7 +125,7 @@ describe('replaceInFile', () => {
       '/tmp/input.txt',
       /does-not-exist/,
       'replacement',
-      { mode: 'line' }
+      { mode: 'line' },
     );
 
     expect(wasReplaced).toBe(false);

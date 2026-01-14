@@ -8,9 +8,9 @@
  *
  * This ensures log messages include the tool name for easier debugging.
  */
+import type { IInstallContext } from '@dotfiles/core';
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import path from 'node:path';
-import type { IInstallContext } from '@dotfiles/core';
 import {
   createGithubReleaseToolConfig,
   createInstallerTestSetup,
@@ -108,7 +108,7 @@ describe('Installer - Logger Context Propagation', () => {
         'executeHook',
       ],
       [MOCK_TOOL_NAME],
-      ['Hook failed']
+      ['Hook failed'],
     );
   });
 

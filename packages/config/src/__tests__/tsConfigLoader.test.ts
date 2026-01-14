@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import path from 'node:path';
 import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
 import { createMemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import path from 'node:path';
 import { loadTsConfig } from '../tsConfigLoader';
 
 describe('tsConfigLoader', () => {
@@ -187,7 +187,7 @@ describe('tsConfigLoader', () => {
       const { fs } = await createMemFileSystem();
 
       expect(loadTsConfig(logger, fs, '/nonexistent/config.ts', mockSystemInfo, {})).rejects.toThrow(
-        /MOCK_EXIT_CLI_CALLED_WITH_1/
+        /MOCK_EXIT_CLI_CALLED_WITH_1/,
       );
     });
 

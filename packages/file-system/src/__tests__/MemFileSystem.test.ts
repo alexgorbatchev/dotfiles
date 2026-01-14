@@ -81,7 +81,7 @@ describe('MemFileSystem', () => {
   it('should read directory contents with readdir', async () => {
     const entries = await fileSystem.readdir('/data');
     // Sort for consistent comparison as readdir order isn't guaranteed
-    expect(entries.sort()).toEqual(['empty_dir', 'file1.txt'].sort());
+    expect(entries.toSorted()).toEqual(['empty_dir', 'file1.txt'].toSorted());
   });
 
   it('should remove a file with rm', async () => {

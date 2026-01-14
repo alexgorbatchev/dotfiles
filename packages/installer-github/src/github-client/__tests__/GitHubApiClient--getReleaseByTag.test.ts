@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IGitHubRelease } from '@dotfiles/core';
 import { ClientError, NotFoundError, RateLimitError } from '@dotfiles/downloader';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
   createGitHubConfigOverride,
@@ -53,7 +53,7 @@ describe('GitHubApiClient', () => {
             Accept: 'application/vnd.github.v3+json',
             'User-Agent': mocks.mockProjectConfig.github.userAgent,
           }),
-        })
+        }),
       );
 
       // Verify logger received request message
@@ -63,7 +63,7 @@ describe('GitHubApiClient', () => {
     it('should return null if the release tag is not found (404)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/tags/non-existent-tag';
       mocks.mockDownloader.download.mockRejectedValue(
-        new NotFoundError(mocks.logger, url, new Error('Original 404 from downloader'))
+        new NotFoundError(mocks.logger, url, new Error('Original 404 from downloader')),
       );
       const release = await mocks.apiClient.getReleaseByTag('test-owner', 'test-repo', 'non-existent-tag');
       expect(release).toBeNull();
@@ -81,12 +81,12 @@ describe('GitHubApiClient', () => {
           'Too Many Requests',
           undefined, // responseBody
           {}, // headers
-          resetTimestamp
-        )
+          resetTimestamp,
+        ),
       );
 
       expect(mocks.apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0')).rejects.toThrow(
-        GitHubApiClientError
+        GitHubApiClientError,
       );
 
       try {
@@ -97,7 +97,7 @@ describe('GitHubApiClient', () => {
           expect(error.statusCode).toBe(429);
           expect(error.originalError).toBeInstanceOf(RateLimitError);
         } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type');
+          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
         }
       }
     });
@@ -107,7 +107,7 @@ describe('GitHubApiClient', () => {
       mocks.mockDownloader.download.mockRejectedValue(new ClientError(mocks.logger, url, 400, 'Bad Request'));
 
       expect(mocks.apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0')).rejects.toThrow(
-        GitHubApiClientError
+        GitHubApiClientError,
       );
 
       try {
@@ -118,7 +118,7 @@ describe('GitHubApiClient', () => {
           expect(error.statusCode).toBe(400);
           expect(error.originalError).toBeInstanceOf(ClientError);
         } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type');
+          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
         }
       }
     });

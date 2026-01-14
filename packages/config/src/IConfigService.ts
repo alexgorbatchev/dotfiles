@@ -26,7 +26,7 @@ export interface IConfigService {
     toolConfigsDir: string,
     fs: IResolvedFileSystem,
     projectConfig: ProjectConfig,
-    systemInfo: ISystemInfo
+    systemInfo: ISystemInfo,
   ): Promise<ToolConfig | undefined>;
 
   /**
@@ -44,6 +44,6 @@ export interface IConfigService {
     toolConfigsDir: string,
     fs: IResolvedFileSystem,
     projectConfig: ProjectConfig,
-    systemInfo: ISystemInfo
+    systemInfo: ISystemInfo,
   ): Promise<Record<string, ToolConfig>>;
 }

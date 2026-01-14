@@ -66,15 +66,16 @@ export async function replaceInFile(
   filePath: string,
   from: ReplaceInFilePattern,
   to: ReplaceInFileReplacer,
-  options?: IReplaceInFileOptions
+  options?: IReplaceInFileOptions,
 ): Promise<boolean> {
   const mode: ReplaceInFileMode = options?.mode ?? 'file';
   const pattern: RegExp = normalizePattern(from);
 
   const content = await fileSystem.readFile(filePath, 'utf8');
 
-  const finalContent: string =
-    mode === 'line' ? await replaceInLines(content, pattern, to) : await replaceInString(content, pattern, to);
+  const finalContent: string = mode === 'line'
+    ? await replaceInLines(content, pattern, to)
+    : await replaceInString(content, pattern, to);
 
   const wasReplaced: boolean = finalContent !== content;
 

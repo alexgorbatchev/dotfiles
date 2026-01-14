@@ -1,12 +1,12 @@
-import path from 'node:path';
 import type { IConfigService, ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/config';
 import { createToolLog, type IInstallContext } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import { createConfiguredShell } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
-import { ExitCode, exitCli, replaceInFile } from '@dotfiles/utils';
+import { exitCli, ExitCode, replaceInFile } from '@dotfiles/utils';
 import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
 import { $ } from 'dax-sh';
+import path from 'node:path';
 import { messages } from './log-messages';
 import type { ICommandCompletionMeta, IGlobalProgram, IServices } from './types';
 
@@ -27,7 +27,7 @@ async function loadToolConfigs(
   toolName: string | undefined,
   projectConfig: ProjectConfig,
   fs: IResolvedFileSystem,
-  systemInfo: ISystemInfo
+  systemInfo: ISystemInfo,
 ): Promise<Record<string, ToolConfig> | null> {
   let toolConfigs: Record<string, ToolConfig> = {};
   if (toolName) {
@@ -39,7 +39,7 @@ async function loadToolConfigs(
         projectConfig.paths.toolConfigsDir,
         fs,
         projectConfig,
-        systemInfo
+        systemInfo,
       );
       if (config) {
         toolConfigs[toolName] = config;
@@ -59,7 +59,7 @@ async function loadToolConfigs(
         projectConfig.paths.toolConfigsDir,
         fs,
         projectConfig,
-        systemInfo
+        systemInfo,
       );
       if (Object.keys(toolConfigs).length === 0) {
         logger.error(messages.toolNoConfigurationsFound(projectConfig.paths.toolConfigsDir));
@@ -78,7 +78,7 @@ function createInstallContext(
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
   fs: IResolvedFileSystem,
-  logger: TsLogger
+  logger: TsLogger,
 ): IInstallContext {
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
   const toolDir: string = config.configFilePath
@@ -111,7 +111,7 @@ async function logVersionStatus(
   config: ToolConfig,
   currentVersion: string,
   latestVersion: string,
-  hasUpdate: boolean
+  hasUpdate: boolean,
 ): Promise<void> {
   if (currentVersion === 'latest') {
     logger.info(messages.toolConfiguredToLatest(config.name, latestVersion));
@@ -144,8 +144,8 @@ async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: I
     logger.warn(
       messages.commandUnsupportedOperation(
         'check-updates',
-        `installation method: "${config.installationMethod}" for tool "${config.name}"`
-      )
+        `installation method: "${config.installationMethod}" for tool "${config.name}"`,
+      ),
     );
     return;
   }
@@ -154,8 +154,8 @@ async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: I
     logger.info(
       messages.commandUnsupportedOperation(
         'check-updates',
-        `installation method: "${config.installationMethod}" for tool "${config.name}"`
-      )
+        `installation method: "${config.installationMethod}" for tool "${config.name}"`,
+      ),
     );
     return;
   }
@@ -181,7 +181,7 @@ async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: I
 export async function checkUpdatesActionLogic(
   logger: TsLogger,
   toolName: string | undefined,
-  services: IServices
+  services: IServices,
 ): Promise<void> {
   logger.trace(messages.commandActionStarted('check-updates', toolName || 'all'));
 
@@ -191,7 +191,7 @@ export async function checkUpdatesActionLogic(
     toolName,
     services.projectConfig,
     services.fs,
-    services.systemInfo
+    services.systemInfo,
   );
 
   if (!toolConfigs) {
@@ -206,7 +206,7 @@ export async function checkUpdatesActionLogic(
 export function registerCheckUpdatesCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>
+  servicesFactory: () => Promise<IServices>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerCheckUpdatesCommand' });
   program

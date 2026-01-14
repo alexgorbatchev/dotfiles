@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import path from 'node:path';
 import type { IInstallContext, PlatformConfigEntry, ToolConfig } from '@dotfiles/core';
 import { Platform } from '@dotfiles/core';
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import path from 'node:path';
 import {
   createGithubReleaseToolConfig,
   createInstallerTestSetup,
@@ -32,7 +32,7 @@ describe('Installer - install (orchestrator)', () => {
       const firstArg: string | undefined = call[0];
       return Boolean(
         firstArg?.includes(MOCK_TOOL_NAME) &&
-          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(firstArg)
+          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(firstArg),
       );
     });
     expect(stagingDirCall).toBeDefined();
@@ -64,7 +64,7 @@ describe('Installer - install (orchestrator)', () => {
       MOCK_TOOL_NAME, // toolName
       toolConfig, // toolConfig
       expect.objectContaining({ toolName: MOCK_TOOL_NAME }), // context
-      undefined // options
+      undefined, // options
     );
 
     installSpy.mockRestore();
@@ -123,7 +123,7 @@ describe('Installer - install (orchestrator)', () => {
             assetName: 'test-asset.tar.gz',
           },
         };
-      }
+      },
     );
 
     const result = await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
@@ -188,7 +188,7 @@ describe('Installer - install (orchestrator)', () => {
         binaries: expect.arrayContaining(['eza-macos']), // Assuming test runs on macOS
       }),
       expect.objectContaining({ toolName: 'eza' }),
-      undefined // options
+      undefined, // options
     );
 
     installSpy.mockRestore();

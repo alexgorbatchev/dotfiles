@@ -42,7 +42,7 @@ export function extractTypeAliasSignature(tsconfigPath: string, sourceFilePath: 
   const parsedConfig: ts.ParsedCommandLine = ts.parseJsonConfigFileContent(
     configFileResult.config,
     ts.sys,
-    path.dirname(absoluteTsconfigPath)
+    path.dirname(absoluteTsconfigPath),
   );
 
   const program: ts.Program = ts.createProgram(parsedConfig.fileNames, parsedConfig.options);
@@ -103,8 +103,7 @@ export function extractTypeAliasSignature(tsconfigPath: string, sourceFilePath: 
     throw new Error(`Type alias '${aliasName}' resolved to 'any'.`);
   }
 
-  const nodeBuilderFlags: ts.NodeBuilderFlags =
-    ts.NodeBuilderFlags.NoTruncation |
+  const nodeBuilderFlags: ts.NodeBuilderFlags = ts.NodeBuilderFlags.NoTruncation |
     ts.NodeBuilderFlags.MultilineObjectLiterals |
     ts.NodeBuilderFlags.WriteTypeArgumentsOfSignature |
     ts.NodeBuilderFlags.InTypeAlias |
@@ -113,7 +112,7 @@ export function extractTypeAliasSignature(tsconfigPath: string, sourceFilePath: 
   const printableTypeNode: ts.TypeNode | undefined = typeChecker.typeToTypeNode(
     resolvedType,
     aliasDeclaration,
-    nodeBuilderFlags
+    nodeBuilderFlags,
   );
 
   if (!printableTypeNode) {
@@ -129,14 +128,14 @@ export function extractTypeAliasSignature(tsconfigPath: string, sourceFilePath: 
     undefined,
     aliasIdentifier,
     aliasDeclaration.typeParameters,
-    printableTypeNode
+    printableTypeNode,
   );
 
   const printer: ts.Printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
   const aliasSourceFile: ts.SourceFile = ts.factory.createSourceFile(
     [aliasStatement],
     ts.factory.createToken(ts.SyntaxKind.EndOfFileToken),
-    ts.NodeFlags.None
+    ts.NodeFlags.None,
   );
 
   const printedSignature: string = printer.printNode(ts.EmitHint.Unspecified, aliasStatement, aliasSourceFile);

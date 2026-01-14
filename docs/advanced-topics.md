@@ -13,15 +13,15 @@ export default defineTool((install) =>
     assetSelector: ({ assets, systemInfo, release, log }) => {
       const osMap: Record<string, string> = { darwin: 'macos', linux: 'linux' };
       const archMap: Record<string, string> = { x64: 'amd64', arm64: 'arm64' };
-      
-      return assets.find(a =>
-        a.name.includes(osMap[systemInfo.platform]) &&
-        a.name.includes(archMap[systemInfo.arch]) &&
-        a.name.endsWith('.tar.gz')
+
+      return assets.find(
+        (a) =>
+          a.name.includes(osMap[systemInfo.platform]) &&
+          a.name.includes(archMap[systemInfo.arch]) &&
+          a.name.endsWith('.tar.gz'),
       );
     },
-  })
-    .bin('tool')
+  }).bin('tool')
 );
 ```
 
@@ -36,9 +36,7 @@ export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .version(isDev ? 'latest' : 'v1.2.3')
-    .zsh((shell) =>
-      shell.environment({ TOOL_LOG_LEVEL: isDev ? 'debug' : 'info' })
-    )
+    .zsh((shell) => shell.environment({ TOOL_LOG_LEVEL: isDev ? 'debug' : 'info' }))
 );
 ```
 
@@ -116,9 +114,11 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .zsh((shell) =>
       shell
-        .once(`
+        .once(
+          `
           tool completion zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
-        `)
+        `,
+        )
         .completions(`${ctx.projectConfig.paths.generatedDir}/completions/_tool`)
     )
 );
@@ -131,11 +131,7 @@ export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .hook('after-install', async ({ $, log }) => {
-      await Promise.all([
-        $`tool setup-task-1`,
-        $`tool setup-task-2`,
-        $`tool setup-task-3`,
-      ]);
+      await Promise.all([$`tool setup-task-1`, $`tool setup-task-2`, $`tool setup-task-3`]);
       log.info('All setup tasks completed');
     })
 );

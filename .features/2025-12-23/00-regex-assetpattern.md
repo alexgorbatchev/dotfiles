@@ -1,11 +1,14 @@
 # Task Prompt
+
 > install('github-release', { repo: 'oven-sh/bun', assetPattern: '' }) need to support regex for assetPattern here and in all other installers
 > one more thing. regex should be against the same path value that current assetselector glob is used with
 
 # Primary Objective
+
 Add regex support for `assetPattern` across all installers that select release assets, without changing which path/value is matched compared to the existing glob-based selector.
 
 # Open Questions
+
 - [x] How should users specify regex patterns in config?
   - [x] Option A: allow `assetPattern: /.../` as a real `RegExp` in TypeScript configs.
   - [x] Option B (partial): support regex-as-string in the `/pattern/flags` form.
@@ -13,6 +16,7 @@ Add regex support for `assetPattern` across all installers that select release a
   - [x] Yes; support `/pattern/flags` with standard JS flags.
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of the limitation (glob-only matching) and catalog all installer code paths that consume `assetPattern`.
   - [x] Locate the asset selection implementation and confirm what "path" value the glob matches today.
   - [x] Enumerate all installers/options that use `assetPattern` (GitHub releases and any other release-asset selectors).
@@ -32,6 +36,7 @@ Add regex support for `assetPattern` across all installers that select release a
   - [x] Run `bun lint`, `bun typecheck`, `bun test`, and `bun run build` in the new worktree.
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -48,6 +53,7 @@ Add regex support for `assetPattern` across all installers that select release a
 - [x] Tests do not print anything to console.
 
 # Change Log
+
 - 2025-12-23: Initialized worktree and created task file.
 - 2025-12-23: Added regex support for `assetPattern` (RegExp + `/pattern/flags` string), updated docs, and verified lint/typecheck/tests/build.
 - 2025-12-23: Updated `docs/` to document regex `assetPattern` support.

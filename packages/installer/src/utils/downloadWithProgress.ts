@@ -25,7 +25,7 @@ export async function downloadWithProgress(
   destinationPath: string,
   filename: string,
   downloader: IDownloader,
-  options?: IInstallOptions
+  options?: IInstallOptions,
 ): Promise<void> {
   const showProgress = shouldShowProgress(options?.quiet);
   const progressBar = new ProgressBar(filename, { enabled: showProgress });

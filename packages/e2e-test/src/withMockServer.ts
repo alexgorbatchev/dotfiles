@@ -178,7 +178,7 @@ export function withMockServer(): void {
             'fixtures',
             'tools',
             'curl-script--cmd-completion-test',
-            'mock-install-for-cmd-completion-test.sh'
+            'mock-install-for-cmd-completion-test.sh',
           );
           return new Response(Bun.file(scriptPath), {
             headers: { 'Content-Type': 'application/x-sh' },
@@ -193,7 +193,7 @@ export function withMockServer(): void {
             'fixtures',
             'tools',
             'version-detection--curl-script--with-args',
-            'mock-install.sh'
+            'mock-install.sh',
           );
           return new Response(Bun.file(scriptPath), {
             headers: { 'Content-Type': 'application/x-sh' },
@@ -208,7 +208,7 @@ export function withMockServer(): void {
             'fixtures',
             'tools',
             'version-detection--curl-script--default-args',
-            'mock-install.sh'
+            'mock-install.sh',
           );
           return new Response(Bun.file(scriptPath), {
             headers: { 'Content-Type': 'application/x-sh' },
@@ -223,7 +223,7 @@ export function withMockServer(): void {
             'fixtures',
             'tools',
             'version-detection--curl-script--no-version',
-            'mock-install-version-detection-curl-script-no-version.sh'
+            'mock-install-version-detection-curl-script-no-version.sh',
           );
           return new Response(Bun.file(scriptPath), {
             headers: { 'Content-Type': 'application/x-sh' },
@@ -238,7 +238,7 @@ export function withMockServer(): void {
             'fixtures',
             'tools',
             'version-detection--curl-tar--with-args',
-            'mock-install-version-detection-curl-tar-with-args.tar.gz'
+            'mock-install-version-detection-curl-tar-with-args.tar.gz',
           );
           return new Response(Bun.file(filePath), {
             headers: { 'Content-Type': 'application/gzip' },
@@ -253,7 +253,7 @@ export function withMockServer(): void {
             'fixtures',
             'tools',
             'version-detection--curl-tar--default-args',
-            'mock-install-version-detection-curl-tar-default-args.tar.gz'
+            'mock-install-version-detection-curl-tar-default-args.tar.gz',
           );
           return new Response(Bun.file(filePath), {
             headers: { 'Content-Type': 'application/gzip' },

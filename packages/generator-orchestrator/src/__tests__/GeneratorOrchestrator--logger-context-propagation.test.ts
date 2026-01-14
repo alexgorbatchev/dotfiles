@@ -4,8 +4,6 @@
  * Verifies that tool name context flows through log messages during generation.
  * The GeneratorOrchestrator uses { context: toolName } to prefix logs with [toolName].
  */
-import { beforeEach, describe, it, mock } from 'bun:test';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import { Architecture, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
@@ -15,6 +13,8 @@ import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, it, mock } from 'bun:test';
+import path from 'node:path';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 describe('GeneratorOrchestrator - Logger Context Propagation', () => {
@@ -94,7 +94,7 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
       mockFileSystem,
       mockFileRegistry,
       TrackedFileSystem.createContext('system', 'shim'),
-      mockProjectConfig
+      mockProjectConfig,
     );
 
     orchestrator = new GeneratorOrchestrator(
@@ -107,7 +107,7 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
       mockProjectConfig,
       mockFileRegistry,
       mockFileSystem,
-      trackedFs
+      trackedFs,
     );
   });
 

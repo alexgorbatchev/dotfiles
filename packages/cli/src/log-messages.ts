@@ -33,11 +33,11 @@ export const messages = {
     createSafeLogMessage(`${toolName} (${currentVersion}) is ahead of the latest known version (${latestVersion})`),
   toolConfiguredToLatest: (toolName: string, latestVersion: string) =>
     createSafeLogMessage(
-      `Tool "${toolName}" is configured to 'latest'. The latest available version is ${latestVersion}`
+      `Tool "${toolName}" is configured to 'latest'. The latest available version is ${latestVersion}`,
     ),
   toolVersionComparisonFailed: (toolName: string, currentVersion: string, latestVersion: string) =>
     createSafeLogMessage(
-      `Could not determine update status for ${toolName} (${currentVersion}) against latest ${latestVersion}`
+      `Could not determine update status for ${toolName} (${currentVersion}) against latest ${latestVersion}`,
     ),
   toolShimUpToDate: (toolName: string, version: string) =>
     createSafeLogMessage(`${toolName} is already up to date (${version})`),
@@ -69,7 +69,7 @@ export const messages = {
     createSafeLogMessage(
       dryRun
         ? `Would remove registry entries for tool: ${toolName} (dry run)`
-        : `Removed registry entries for tool: ${toolName}`
+        : `Removed registry entries for tool: ${toolName}`,
     ),
   cleanupTypeFiles: (fileType: string) => createSafeLogMessage(`Registry-based cleanup: files of type '${fileType}'`),
   cleanupFoundFiles: (count: number, toolName: string, fileType?: string) =>

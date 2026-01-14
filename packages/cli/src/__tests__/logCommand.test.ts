@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
+import { describe, expect, it } from 'bun:test';
 import { createProgram } from '../createProgram';
 import { registerLogCommand } from '../logCommand';
 import type { IServices } from '../types';

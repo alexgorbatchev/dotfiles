@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import path from 'node:path';
 import type { IGenerateSymlinksOptions } from '../ISymlinkGenerator';
 import { SymlinkGenerator } from '../SymlinkGenerator';
 
@@ -40,7 +40,7 @@ describe('SymlinkGenerator', () => {
     symlinkGenerator = new SymlinkGenerator(logger, mockFs.fs, projectConfig, systemInfo);
   });
 
-  const createToolConfig = (symlinks: Array<{ source: string; target: string }>): ToolConfig => ({
+  const createToolConfig = (symlinks: Array<{ source: string; target: string; }>): ToolConfig => ({
     name: 'test-tool',
     binaries: ['test-tool'],
     version: '1.0.0',
@@ -136,7 +136,7 @@ describe('SymlinkGenerator', () => {
       [],
       [
         'Tool "test-tool" source file not found', // partial matcher
-      ]
+      ],
     );
   });
 
@@ -649,7 +649,7 @@ describe('SymlinkGenerator', () => {
 
       // Attempt to create symlink - should fail
       expect(symlinkGenerator.createBinarySymlink(logger, sourcePath, targetPath)).rejects.toThrow(
-        `Cannot create symlink: binary does not exist at ${sourcePath}`
+        `Cannot create symlink: binary does not exist at ${sourcePath}`,
       );
     });
 
@@ -740,7 +740,7 @@ describe('SymlinkGenerator', () => {
 
       // Attempt to create symlink - should fail verification
       expect(symlinkGenerator.createBinarySymlink(logger, sourcePath, targetPath)).rejects.toThrow(
-        /Symlink verification failed/
+        /Symlink verification failed/,
       );
     });
   });

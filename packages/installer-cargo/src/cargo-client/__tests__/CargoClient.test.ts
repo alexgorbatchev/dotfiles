@@ -1,9 +1,9 @@
-import { describe, expect, test } from 'bun:test';
 import { Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 import { dedentString } from '@dotfiles/utils';
+import { describe, expect, test } from 'bun:test';
 import { CargoClient } from '../';
 
 describe('CargoClient', () => {
@@ -55,7 +55,7 @@ describe('CargoClient', () => {
                 bin_names: ['eza'],
               },
             ],
-          })
+          }),
         ),
       registerStrategy: () => {},
       downloadToFile: async () => {},
@@ -99,7 +99,7 @@ describe('CargoClient', () => {
               newest_version: '0.23.1',
             },
             versions: [],
-          })
+          }),
         ),
       registerStrategy: () => {},
       downloadToFile: async () => {},

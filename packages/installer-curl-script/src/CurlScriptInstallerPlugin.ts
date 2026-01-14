@@ -6,8 +6,8 @@ import type { TsLogger } from '@dotfiles/logger';
 import { installFromCurlScript } from './installFromCurlScript';
 import {
   type CurlScriptInstallParams,
-  type CurlScriptToolConfig,
   curlScriptInstallParamsSchema,
+  type CurlScriptToolConfig,
   curlScriptToolConfigSchema,
 } from './schemas';
 import type { ICurlScriptInstallMetadata } from './types';
@@ -26,8 +26,13 @@ const PLUGIN_VERSION = '1.0.0';
  * Note: This plugin does not support version checking or automatic updates since
  * the installation is delegated to the external script.
  */
-export class CurlScriptInstallerPlugin
-  implements IInstallerPlugin<'curl-script', CurlScriptInstallParams, CurlScriptToolConfig, ICurlScriptInstallMetadata>
+export class CurlScriptInstallerPlugin implements
+  IInstallerPlugin<
+    'curl-script',
+    CurlScriptInstallParams,
+    CurlScriptToolConfig,
+    ICurlScriptInstallMetadata
+  >
 {
   readonly method = 'curl-script';
   readonly displayName = 'Curl Script Installer';
@@ -45,7 +50,7 @@ export class CurlScriptInstallerPlugin
   constructor(
     private readonly fs: IFileSystem,
     private readonly downloader: IDownloader,
-    private readonly hookExecutor: HookExecutor
+    private readonly hookExecutor: HookExecutor,
   ) {}
 
   /**
@@ -63,7 +68,7 @@ export class CurlScriptInstallerPlugin
     toolConfig: CurlScriptToolConfig,
     context: IInstallContext,
     options: IInstallOptions | undefined,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<InstallResult<ICurlScriptInstallMetadata>> {
     const result = await installFromCurlScript(
       toolName,
@@ -73,7 +78,7 @@ export class CurlScriptInstallerPlugin
       this.fs,
       this.downloader,
       this.hookExecutor,
-      logger
+      logger,
     );
 
     if (!result.success) {

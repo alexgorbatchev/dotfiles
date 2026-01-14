@@ -37,6 +37,7 @@ dotfiles install --skip-tools
 ```
 
 **Options:**
+
 - `--force` - Force reinstall even if tool is already installed
 - `--skip-tools` - Skip tool installation, only generate configurations
 - `--verbose` - Enable verbose logging
@@ -60,6 +61,7 @@ dotfiles generate --symlinks-only
 ```
 
 **Options:**
+
 - `--shell-only` - Generate only shell initialization files
 - `--shims-only` - Generate only executable shims
 - `--symlinks-only` - Generate only symbolic links
@@ -82,6 +84,7 @@ eval "$(dotfiles init bash)"
 
 **Usage:**
 Add to your shell configuration file:
+
 ```bash
 # ~/.zshrc
 eval "$(dotfiles init zsh)"
@@ -103,6 +106,7 @@ dotfiles check-updates --verbose
 ```
 
 **Output:**
+
 ```
 Checking for updates...
 
@@ -143,6 +147,7 @@ dotfiles detect-conflicts --fix
 ```
 
 **Output:**
+
 ```
 Checking for conflicts...
 
@@ -150,7 +155,7 @@ Conflicts found:
   fzf:
     - System: /usr/local/bin/fzf
     - Shim: ~/.dotfiles/bin/fzf
-    
+
   ripgrep:
     - System: /usr/bin/rg
     - Shim: ~/.dotfiles/bin/rg
@@ -172,11 +177,13 @@ dotfiles docs ~/notes --dry-run
 ```
 
 **Output:**
+
 ```
 Created symlink: ~/notes/dotfiles -> /path/to/dotfiles-tool-installer/docs
 ```
 
 If the symlink already exists:
+
 ```
 Symlink already exists: ~/notes/dotfiles
 ```
@@ -223,6 +230,7 @@ dotfiles cleanup --force
 ```
 
 **Options:**
+
 - `--dry-run` - Show what would be deleted without actually deleting
 - `--force` - Skip confirmation prompt
 - `--category` - Only clean specific category (shims, shell-init, symlinks)
@@ -394,6 +402,7 @@ Each command is implemented as a separate module:
 ## Dependencies
 
 ### Internal Dependencies
+
 - `@dotfiles/config` - Configuration loading and management
 - `@dotfiles/downloader` - File downloading capabilities
 - `@dotfiles/file-system` - Filesystem operations
@@ -407,6 +416,7 @@ Each command is implemented as a separate module:
 - `@dotfiles/version-checker` - Version checking and comparison
 
 ### External Dependencies
+
 - `commander` - CLI framework
 - `@commander-js/extra-typings` - TypeScript support for Commander
 
@@ -422,6 +432,7 @@ The CLI uses structured logging with log levels:
 ```
 
 Example log output:
+
 ```
 [INFO] Installing tool: fzf
 [DEBUG] Downloading from: https://github.com/junegunn/fzf/releases/...
@@ -459,11 +470,13 @@ The CLI uses standard exit codes:
 ## Testing
 
 Run tests with:
+
 ```bash
 bun test packages/cli
 ```
 
 The package includes tests for:
+
 - All command implementations
 - Argument parsing
 - Error handling
@@ -488,21 +501,27 @@ await program.parseAsync(['node', 'cli', 'install', 'fzf']);
 ## Design Decisions
 
 ### Why Commander.js?
+
 Commander.js provides:
+
 - Intuitive API for defining commands
 - Automatic help generation
 - TypeScript support via extra-typings
 - Mature, well-maintained library
 
 ### Why Separate Command Modules?
+
 Separating commands into modules:
+
 - Improves maintainability
 - Enables focused testing
 - Reduces cognitive load
 - Allows parallel development
 
 ### Why Dependency Injection?
+
 Injecting dependencies makes:
+
 - Testing easier
 - Components reusable
 - Dependencies explicit
@@ -511,12 +530,14 @@ Injecting dependencies makes:
 ## Best Practices
 
 ### Use Structured Logging
+
 ```typescript
 logger.info('Installing tool', { toolName, version });
 logger.error('Installation failed', { toolName, error });
 ```
 
 ### Validate Arguments
+
 ```typescript
 if (!toolName) {
   logger.error('Tool name is required');
@@ -525,6 +546,7 @@ if (!toolName) {
 ```
 
 ### Provide Progress Feedback
+
 ```typescript
 console.log('Installing tools...');
 // Show progress
@@ -532,6 +554,7 @@ console.log('Installation complete!');
 ```
 
 ### Handle Interrupts
+
 ```typescript
 process.on('SIGINT', async () => {
   logger.info('Interrupted, cleaning up...');
@@ -543,6 +566,7 @@ process.on('SIGINT', async () => {
 ## Future Enhancements
 
 Potential improvements:
+
 - Interactive mode for tool selection
 - Plugin system for custom commands
 - Configuration wizard

@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type { InstallerPluginRegistry, ToolConfig } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import { FileCache } from '@dotfiles/downloader';
@@ -6,6 +5,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry';
 import type { TrackedFileSystem } from '@dotfiles/registry/file';
+import path from 'node:path';
 import { DEFAULT_README_CACHE_TTL, GITHUB_RAW_BASE_URL, README_FILENAME } from './constants';
 import type { IReadmeService } from './IReadmeService';
 import { messages } from './log-messages';
@@ -31,7 +31,7 @@ export class ReadmeService implements IReadmeService {
     fileSystem: IFileSystem,
     catalogFileSystem: TrackedFileSystem,
     cacheDir: string,
-    pluginRegistry: InstallerPluginRegistry
+    pluginRegistry: InstallerPluginRegistry,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'ReadmeService' });
     this.downloader = downloader;
@@ -57,7 +57,7 @@ export class ReadmeService implements IReadmeService {
     owner: string,
     repo: string,
     version: string,
-    toolName: string
+    toolName: string,
   ): Promise<IReadmeContent | null> {
     const cacheKey: string = this.readmeCache.generateCacheKey(owner, repo, version);
 
@@ -160,7 +160,7 @@ export class ReadmeService implements IReadmeService {
   private async addToolSections(
     sections: string[],
     tools: IToolInstallationRecord[],
-    options: Required<ICombinedReadmeOptions>
+    options: Required<ICombinedReadmeOptions>,
   ): Promise<void> {
     for (const tool of tools) {
       // Extract owner/repo from download URL
@@ -179,7 +179,7 @@ export class ReadmeService implements IReadmeService {
         owner,
         repo,
         resolvedVersion,
-        tool.toolName
+        tool.toolName,
       );
 
       const versionSuffix: string = options.includeVersions ? ` (${tool.version})` : '';
@@ -238,7 +238,7 @@ export class ReadmeService implements IReadmeService {
     toolName: string,
     version: string,
     owner: string,
-    repo: string
+    repo: string,
   ): Promise<string | null> {
     try {
       // Fetch or get cached README content
@@ -279,7 +279,7 @@ export class ReadmeService implements IReadmeService {
   async generateCatalogFromConfigs(
     catalogPath: string,
     toolConfigs: Record<string, ToolConfig>,
-    options: ICombinedReadmeOptions = {}
+    options: ICombinedReadmeOptions = {},
   ): Promise<string | null> {
     try {
       this.logger.debug(messages.catalogGeneration.started(catalogPath));
@@ -312,7 +312,7 @@ export class ReadmeService implements IReadmeService {
 
   private async generateCatalogContentFromConfigs(
     toolConfigs: Record<string, ToolConfig>,
-    options: ICombinedReadmeOptions = {}
+    options: ICombinedReadmeOptions = {},
   ): Promise<string> {
     const combinedOptions: Required<ICombinedReadmeOptions> = {
       title: options.title || 'Tool Catalog',
@@ -346,7 +346,7 @@ export class ReadmeService implements IReadmeService {
   private addCatalogTableOfContents(
     sections: string[],
     githubConfigs: [string, ToolConfig][],
-    includeVersions: boolean
+    includeVersions: boolean,
   ): void {
     sections.push('## Table of Contents\n');
     for (const [toolName, config] of githubConfigs) {
@@ -359,7 +359,7 @@ export class ReadmeService implements IReadmeService {
   private async addCatalogToolSections(
     sections: string[],
     githubConfigs: [string, ToolConfig][],
-    options: Required<ICombinedReadmeOptions>
+    options: Required<ICombinedReadmeOptions>,
   ): Promise<void> {
     for (const [toolName, config] of githubConfigs) {
       if (config.installationMethod !== 'github-release') continue;
@@ -376,7 +376,7 @@ export class ReadmeService implements IReadmeService {
         owner,
         repoName,
         resolvedVersion,
-        toolName
+        toolName,
       );
 
       const versionSuffix: string = options.includeVersions ? ` (${version})` : '';

@@ -49,7 +49,7 @@ describe('GitHubApiClient', () => {
         ['DEBUG'],
         ['GitHubApiClient', 'getLatestReleaseTags'],
         [],
-        ['Fetching 3 latest release tags']
+        ['Fetching 3 latest release tags'],
       );
     });
 
@@ -65,7 +65,7 @@ describe('GitHubApiClient', () => {
         ['DEBUG'],
         ['GitHubApiClient', 'getLatestReleaseTags'],
         [],
-        ['Fetching 5 latest release tags', 'Error fetching release tags']
+        ['Fetching 5 latest release tags', 'Error fetching release tags'],
       );
     });
 
@@ -89,7 +89,7 @@ describe('GitHubApiClient', () => {
         ['DEBUG'],
         ['GitHubApiClient', 'getLatestReleaseTags'],
         [],
-        ['Fetching 5 latest release tags']
+        ['Fetching 5 latest release tags'],
       );
     });
 
@@ -105,7 +105,7 @@ describe('GitHubApiClient', () => {
         ['DEBUG'],
         ['GitHubApiClient', 'getLatestReleaseTags'],
         [],
-        ['Fetching 5 latest release tags', 'Fetched 0 release tags']
+        ['Fetching 5 latest release tags', 'Fetched 0 release tags'],
       );
     });
   });

@@ -117,7 +117,7 @@ export function generateHoistingExplanation(shellType: ShellType, sectionTitle: 
   return [
     commentLine(
       shellType,
-      `The following ${sectionTitle.toLowerCase()} have been hoisted from tool-specific configurations`
+      `The following ${sectionTitle.toLowerCase()} have been hoisted from tool-specific configurations`,
     ),
     commentLine(shellType, 'for better organization and to avoid conflicts'),
     '',
@@ -205,6 +205,6 @@ export function generateSourceLine(shellType: ShellType, scriptPath: string): st
  */
 export function generateProfileHeader(shellType: ShellType, _projectConfigPath: string): string {
   return [commentLine(shellType, 'Generated via dotfiles generator - do not modify'), headerLine(shellType, '-')].join(
-    '\n'
+    '\n',
   );
 }

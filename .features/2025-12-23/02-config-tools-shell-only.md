@@ -1,21 +1,25 @@
 # Task Prompt
+
 > Follow instructions in alex--feature--new.prompt.md.
 > i want to add support for configuration tools only that don't install anything, they should only contribute to shell files but skip shims and install pipeline, for example
 >
->   install()
->     .zsh((shell) =>
->       shell
->         .environment({ ...        })
+> install()
+> .zsh((shell) =>
+> shell
+> .environment({ ... })
 
 # Primary Objective
+
 Add support for config-only tools that contribute shell configuration but do not install binaries or generate shims.
 
 # Open Questions
+
 - [ ] How should a tool be marked as "config-only" (explicit flag in tool definition vs inferred from missing installers/binaries)?
 - [ ] Should config-only tools still be allowed to define installers (and just skip them), or should it be a hard validation error to define installers/binaries when config-only?
 - [ ] Should config-only tools participate in any version checking / update logic, or be entirely excluded from install/version flows?
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of the problem
   - [x] Locate how config-only tools are represented in ToolConfig
   - [x] Confirm `install()` with no args is currently mapped to `installationMethod="manual"` and empty params
@@ -49,6 +53,7 @@ Add support for config-only tools that contribute shell configuration but do not
   - [ ] `bun test-project` and verify `.generated` is created correctly
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -65,6 +70,7 @@ Add support for config-only tools that contribute shell configuration but do not
 - [x] Tests do not print anything to console.
 
 # Change Log
+
 - Initialized task file
 - Added config-only tool install skipping (CLI)
 - Ran full quality gates (fix/lint/typecheck/test/build/test-project)

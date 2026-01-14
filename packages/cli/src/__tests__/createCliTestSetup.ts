@@ -1,5 +1,3 @@
-import { mock } from 'bun:test';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
@@ -12,6 +10,8 @@ import {
   type MockedInterface,
 } from '@dotfiles/testing-helpers';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
+import { mock } from 'bun:test';
+import path from 'node:path';
 import { createProgram } from '../createProgram';
 import type { IGlobalProgram, IServices } from '../types';
 
@@ -167,7 +167,7 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
           case 'versionChecker':
             mockServices.versionChecker = {
               checkVersionStatus: mock(
-                async (_currentVersion: string, _latestVersion: string) => VersionComparisonStatus.NEWER_AVAILABLE
+                async (_currentVersion: string, _latestVersion: string) => VersionComparisonStatus.NEWER_AVAILABLE,
               ),
               getLatestToolVersion: mock(async () => '1.0.0'),
             };
@@ -212,8 +212,8 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
       } else {
         // Use provided mock directly - bypass strict typing for test setup
         const serviceKey = serviceName as keyof IServices;
-        // biome-ignore lint/suspicious/noExplicitAny: Test utility needs to bypass strict service typing
-        mockServices[serviceKey] = serviceConfig as any;
+        // @ts-expect-error: Test utility needs to bypass strict service typing
+        mockServices[serviceKey] = serviceConfig as unknown;
       }
     }
   }
@@ -226,8 +226,8 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
       // Default mocks for all required services
       configService: {
         loadSingleToolConfig: mock(async () => undefined),
-        // biome-ignore lint/suspicious/noExplicitAny: Mock returns empty array for testing
-        loadToolConfigs: mock(async () => [] as any),
+        // @ts-expect-error: Mock returns empty array for testing
+        loadToolConfigs: mock(async () => [] as IServices['configService']['loadToolConfigs']),
       },
       readmeService: {
         fetchReadmeForVersion: mock(async () => null),
@@ -244,8 +244,7 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
         getAll: mock(() => []),
       },
       ...mockServices,
-      // biome-ignore lint/suspicious/noExplicitAny: Partial mocks for testing
-    }) as any;
+    }) as unknown as MockedInterface<IServices>;
 
   return {
     program,

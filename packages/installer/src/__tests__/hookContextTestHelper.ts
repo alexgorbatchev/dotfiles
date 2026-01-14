@@ -27,7 +27,7 @@ interface ICreateTestInstallHookContextResult {
  */
 export function createTestInstallHookContext(
   overrides: Partial<IInstallContext> = {},
-  testLogger?: TestLogger
+  testLogger?: TestLogger,
 ): ICreateTestInstallHookContextResult {
   const logger = testLogger || new TestLogger();
 

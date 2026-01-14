@@ -16,8 +16,7 @@ import { defineTool } from '@dotfiles/cli';
 export default defineTool((install, ctx) =>
   install('github-release', {
     repo: 'BurntSushi/ripgrep',
-  })
-    .bin('rg')
+  }).bin('rg')
 );
 ```
 
@@ -43,8 +42,7 @@ The `install('github-release', params)` function accepts the following parameter
 export default defineTool((install, ctx) =>
   install('github-release', {
     repo: 'sharkdp/bat',
-  })
-    .bin('bat')
+  }).bin('bat')
 );
 ```
 
@@ -55,8 +53,7 @@ export default defineTool((install, ctx) =>
   install('github-release', {
     repo: 'junegunn/fzf',
     version: 'v0.48.0',
-  })
-    .bin('fzf')
+  }).bin('fzf')
 );
 ```
 
@@ -67,8 +64,7 @@ export default defineTool((install, ctx) =>
   install('github-release', {
     repo: 'caddyserver/caddy',
     assetPattern: 'caddy_*.tar.gz',
-  })
-    .bin('caddy')
+  }).bin('caddy')
 );
 ```
 
@@ -80,13 +76,9 @@ export default defineTool((install, ctx) =>
     repo: 'example/tool',
     assetSelector: (context) => {
       const { assets, systemInfo } = context;
-      return assets.find(asset =>
-        asset.name.includes(systemInfo.platform) &&
-        asset.name.endsWith('.tar.gz')
-      );
+      return assets.find((asset) => asset.name.includes(systemInfo.platform) && asset.name.endsWith('.tar.gz'));
     },
-  })
-    .bin('tool')
+  }).bin('tool')
 );
 ```
 
@@ -133,6 +125,7 @@ Automatically selects appropriate assets for the current platform and architectu
 ### Download URL Construction
 
 Handles both absolute and relative download URLs with support for:
+
 - Public GitHub (github.com)
 - GitHub Enterprise installations
 - Custom API endpoints
@@ -153,6 +146,7 @@ For non-archive releases, handles direct binary downloads with automatic executa
 ### Lifecycle Hooks
 
 Supports two installation lifecycle hooks:
+
 - **afterDownload**: Executed after asset download, before extraction/binary setup
 - **afterExtract**: Executed after extraction (archives only), before binary setup
 
@@ -231,6 +225,7 @@ Installation returns `GitHubReleaseInstallResult`:
 ## GitHub Enterprise Support
 
 Supports GitHub Enterprise installations through configuration:
+
 - Custom API endpoints via `projectConfig.github.host`
 - Custom authentication tokens via `projectConfig.github.token`
 - Custom User-Agent strings via `projectConfig.github.userAgent`
@@ -238,6 +233,7 @@ Supports GitHub Enterprise installations through configuration:
 ## Caching
 
 Leverages GitHub API client's built-in caching for:
+
 - Release information
 - API rate limit status
 - Reduced API calls and faster repeated operations

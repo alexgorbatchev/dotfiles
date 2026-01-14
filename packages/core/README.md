@@ -52,25 +52,25 @@ interface IInstallerPlugin<TMethod, TParams, TConfig, TMetadata> {
   readonly externallyManaged?: boolean;
   readonly paramsSchema: z.ZodType<TParams>;
   readonly toolConfigSchema: z.ZodTypeAny;
-  
+
   install(
     toolName: string,
     toolConfig: TConfig,
     context: BaseInstallContext,
     options?: IInstallOptions,
-    logger?: TsLogger
+    logger?: TsLogger,
   ): Promise<InstallResult<TMetadata>>;
-  
+
   validate?(context: BaseInstallContext): Promise<ValidationResult>;
   initialize?(): Promise<void>;
   cleanup?(): Promise<void>;
-  
+
   supportsUpdateCheck?(): boolean;
   checkUpdate?(/* ... */): Promise<UpdateCheckResult>;
-  
+
   supportsUpdate?(): boolean;
   updateTool?(/* ... */): Promise<UpdateResult>;
-  
+
   supportsReadme?(): boolean;
   getReadmeUrl?(toolName: string, toolConfig: TConfig): string | null;
 }
@@ -92,16 +92,16 @@ interface IOperationFailure {
   error: string;
 }
 
-type InstallResult<TMetadata> = 
+type InstallResult<TMetadata> =
   | (OperationSuccess & {
-      version?: string;
-      binaryPaths?: string[];
-      metadata?: TMetadata;
-      installationMethod?: string;
-    })
+    version?: string;
+    binaryPaths?: string[];
+    metadata?: TMetadata;
+    installationMethod?: string;
+  })
   | (OperationFailure & {
-      installationMethod?: string;
-    });
+    installationMethod?: string;
+  });
 ```
 
 ### Context Types
@@ -113,8 +113,8 @@ interface IBaseToolContext {
   toolName: string;
   toolDir: string;
   currentDir: string;
-  replaceInFile: BoundReplaceInFile;  // Regex-based file text replacement
-  log: IToolLog;  // User-facing logger for tool operations
+  replaceInFile: BoundReplaceInFile; // Regex-based file text replacement
+  log: IToolLog; // User-facing logger for tool operations
 }
 
 // User-facing logging interface for tool configurations
@@ -127,7 +127,6 @@ interface IToolLog {
 }
 
 interface IToolConfigContext extends IBaseToolContext {}
-
 
 interface IInstallContext extends IBaseToolContext {
   toolConfig: ToolConfig;
@@ -249,11 +248,11 @@ declare module '@dotfiles/core' {
   interface IInstallParamsRegistry {
     'my-method': MyMethodParams;
   }
-  
+
   interface IToolConfigRegistry {
     'my-method': MyMethodToolConfig;
   }
-  
+
   interface IPluginResultRegistry {
     'my-method': MyMethodResult;
   }
@@ -263,20 +262,15 @@ declare module '@dotfiles/core' {
 ### Creating a Plugin
 
 ```typescript
-import type { IInstallerPlugin, BaseInstallContext } from '@dotfiles/core';
+import type { BaseInstallContext, IInstallerPlugin } from '@dotfiles/core';
 
-export const myPlugin: IInstallerPlugin<
-  'my-method',
-  MyMethodParams,
-  MyMethodToolConfig,
-  MyMethodMetadata
-> = {
+export const myPlugin: IInstallerPlugin<'my-method', MyMethodParams, MyMethodToolConfig, MyMethodMetadata> = {
   method: 'my-method',
   displayName: 'My Method',
   version: '1.0.0',
   paramsSchema: myMethodParamsSchema,
   toolConfigSchema: myMethodToolConfigSchema,
-  
+
   async install(toolName, toolConfig, context, options, logger) {
     // Implementation
     return {
@@ -302,11 +296,11 @@ interface IValidationResult {
 // Example validation
 async validate(context: BaseInstallContext): Promise<ValidationResult> {
   const errors: string[] = [];
-  
+
   if (context.system !== 'darwin') {
     errors.push('This plugin only works on macOS');
   }
-  
+
   return {
     valid: errors.length === 0,
     errors,
@@ -345,8 +339,8 @@ interface InstallHooks {
 
 ```typescript
 type UpdateCheckResult =
-  | { success: true; hasUpdate: boolean; currentVersion?: string; latestVersion?: string }
-  | { success: false; error: string };
+  | { success: true; hasUpdate: boolean; currentVersion?: string; latestVersion?: string; }
+  | { success: false; error: string; };
 ```
 
 ### Update Operations
@@ -357,9 +351,7 @@ interface IUpdateOptions {
   targetVersion?: string;
 }
 
-type UpdateResult =
-  | { success: true; oldVersion?: string; newVersion?: string }
-  | { success: false; error: string };
+type UpdateResult = { success: true; oldVersion?: string; newVersion?: string; } | { success: false; error: string; };
 ```
 
 ## Usage
@@ -367,11 +359,9 @@ type UpdateResult =
 ### In Application Code
 
 ```typescript
-import { type InstallResult, type BaseInstallContext } from '@dotfiles/core';
+import { type BaseInstallContext, type InstallResult } from '@dotfiles/core';
 
-async function installTool(
-  context: BaseInstallContext
-): Promise<InstallResult> {
+async function installTool(context: BaseInstallContext): Promise<InstallResult> {
   // Use core types
 }
 ```
@@ -380,12 +370,12 @@ async function installTool(
 
 ```typescript
 import {
-  type IInstallerPlugin,
   type BaseInstallContext,
+  type IInstallerPlugin,
   type InstallResult,
 } from '@dotfiles/core';
 
-export const myPlugin: IInstallerPlugin</* ... */> = {
+export const myPlugin: IInstallerPlugin<> /* ... */ = {
   // Implementation
 };
 ```
@@ -405,11 +395,13 @@ const toolConfig: ToolConfig = {
 ## Dependencies
 
 ### Internal Dependencies
+
 - `@dotfiles/file-system` - File system abstractions
 - `@dotfiles/logger` - Logging infrastructure
 - All installer plugins (for type augmentation)
 
 ### External Dependencies
+
 - `zod` - Runtime type validation
 - `type-fest` - TypeScript utility types
 
@@ -478,6 +470,7 @@ The core package is tested through its usage in plugins and the installer system
 ### Why Module Augmentation?
 
 Module augmentation allows plugins to:
+
 - Register types without modifying core
 - Maintain type safety across packages
 - Enable intellisense for plugin-specific configs
@@ -486,6 +479,7 @@ Module augmentation allows plugins to:
 ### Why Zod Schemas?
 
 Zod provides:
+
 - Runtime type validation
 - Type inference from schemas
 - Composable schema definitions
@@ -494,6 +488,7 @@ Zod provides:
 ### Why Separate Registries?
 
 Separate registries for params, configs, and results:
+
 - Allow independent evolution
 - Provide clear contracts
 - Enable better type inference
@@ -502,6 +497,7 @@ Separate registries for params, configs, and results:
 ## Future Enhancements
 
 Potential improvements:
+
 - Plugin lifecycle events
 - Dependency management between plugins
 - Plugin composition patterns

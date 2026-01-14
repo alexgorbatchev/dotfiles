@@ -46,7 +46,7 @@ export interface ICompletionGenerator {
     config: ShellCompletionConfig,
     toolName: string,
     shellType: ShellType,
-    context: ICompletionGenerationContext
+    context: ICompletionGenerationContext,
   ): Promise<IGeneratedCompletion>;
 
   generateAndWriteCompletionFile(options: IGenerateAndWriteCompletionFileOptions): Promise<IGeneratedCompletion>;

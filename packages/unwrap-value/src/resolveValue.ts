@@ -16,7 +16,7 @@ import type { Resolvable } from './types';
  */
 export async function resolveValue<TParams, TReturn>(
   params: TParams,
-  resolvable: Resolvable<TParams, TReturn>
+  resolvable: Resolvable<TParams, TReturn>,
 ): Promise<TReturn> {
   if (typeof resolvable === 'function') {
     const fn = resolvable as (params: TParams) => TReturn | Promise<TReturn>;

@@ -22,18 +22,16 @@ export type GithubReleaseSchemaMatchesParams = ExpectTrue<
 >;
 export type GithubReleaseRequiresRepo = ExpectTrue<'repo' extends keyof GithubReleaseParams ? true : false>;
 export type GithubReleaseRepoIsRequired = ExpectTrue<
-  Pick<GithubReleaseParams, 'repo'> extends { repo: GithubReleaseParams['repo'] } ? true : false
+  Pick<GithubReleaseParams, 'repo'> extends { repo: GithubReleaseParams['repo']; } ? true : false
 >;
 
 defineTool((install) =>
   install('github-release', {
     repo: 'BurntSushi/ripgrep',
   }).zsh((shell) =>
-    shell
-      .once(/* zsh */ `
+    shell.once(/* zsh */ `
         echo "once"
-      `)
-      .always(/* zsh */ `
+      `).always(/* zsh */ `
         echo "always"
       `)
   )

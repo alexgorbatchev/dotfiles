@@ -24,12 +24,7 @@ Main class for coordinating generation tasks.
 ```typescript
 import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 
-const orchestrator = new GeneratorOrchestrator(
-  logger,
-  shellInitGenerator,
-  shimGenerator,
-  symlinkGenerator
-);
+const orchestrator = new GeneratorOrchestrator(logger, shellInitGenerator, shimGenerator, symlinkGenerator);
 
 const manifest = await orchestrator.generate(config, toolRegistry);
 ```
@@ -40,10 +35,7 @@ Interface for generation orchestration.
 
 ```typescript
 interface IGeneratorOrchestrator {
-  generate(
-    config: ProjectConfig,
-    toolRegistry: IToolRegistry
-  ): Promise<GeneratedArtifactsManifest>;
+  generate(config: ProjectConfig, toolRegistry: IToolRegistry): Promise<GeneratedArtifactsManifest>;
 }
 ```
 
@@ -75,12 +67,7 @@ interface IGeneratedArtifactsManifest {
 ```typescript
 import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 
-const orchestrator = new GeneratorOrchestrator(
-  logger,
-  shellInitGenerator,
-  shimGenerator,
-  symlinkGenerator
-);
+const orchestrator = new GeneratorOrchestrator(logger, shellInitGenerator, shimGenerator, symlinkGenerator);
 
 const manifest = await orchestrator.generate(config, toolRegistry);
 
@@ -111,6 +98,7 @@ The orchestrator executes generators in this order:
 3. **Symlink Generation**: Creates symbolic links for configuration files
 
 This order ensures that:
+
 - Shell scripts are available before shims need them
 - Shims are created before symlinks reference them
 - Dependencies are satisfied
@@ -118,6 +106,7 @@ This order ensures that:
 ## Dependencies
 
 ### Internal Dependencies
+
 - `@dotfiles/config` - Configuration management
 - `@dotfiles/file-system` - Filesystem operations
 - `@dotfiles/logger` - Structured logging
@@ -129,6 +118,7 @@ This order ensures that:
 ## Testing
 
 Run tests with:
+
 ```bash
 bun test packages/generator-orchestrator
 ```
@@ -136,14 +126,18 @@ bun test packages/generator-orchestrator
 ## Design Decisions
 
 ### Why Orchestrator Pattern?
+
 The orchestrator pattern:
+
 - Centralizes coordination logic
 - Manages dependencies between generators
 - Provides single point of control
 - Simplifies error handling
 
 ### Why Manifest Output?
+
 Returning a manifest:
+
 - Tracks all generated files
 - Enables cleanup operations
 - Supports verification

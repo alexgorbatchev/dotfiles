@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noConsole: build script */
-
 import { handleBuildError } from './handleBuildError';
 import { createBuildContext } from './helpers';
 import {
@@ -32,7 +30,7 @@ async function runBuild(context: IBuildContext): Promise<void> {
   await generateDistPackageJson(
     context,
     runtimeDependencies.dependencyVersions,
-    runtimeDependencies.runtimeDependencyVersions
+    runtimeDependencies.runtimeDependencyVersions,
   );
 
   await verifyDistCheckInstall(context);
@@ -57,7 +55,7 @@ async function main(): Promise<void> {
     },
     async () => {
       await cleanupTempFiles(context);
-    }
+    },
   );
 }
 

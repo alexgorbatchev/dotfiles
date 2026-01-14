@@ -3,7 +3,6 @@
  *
  * Verifies that tool name context flows through log messages during updates.
  */
-import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService } from '@dotfiles/config';
 import type { IInstallerPlugin } from '@dotfiles/core';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
@@ -11,6 +10,7 @@ import type { GithubReleaseToolConfig, IGitHubReleaseInstallMetadata } from '@do
 import type { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, mock, test } from 'bun:test';
 import { z } from 'zod';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
@@ -66,7 +66,7 @@ describe('updateCommand - Logger Context Propagation', () => {
           version: '1.1.0',
           originalTag: 'v1.1.0',
           metadata: githubReleaseMetadata,
-        })
+        }),
       ),
     };
 
@@ -123,7 +123,7 @@ describe('updateCommand - Logger Context Propagation', () => {
       ['INFO'],
       ['registerUpdateCommand'],
       [],
-      [messages.commandCheckingUpdatesFor(TOOL_NAME), messages.toolUpdated(TOOL_NAME, '1.0.0', '1.1.0')]
+      [messages.commandCheckingUpdatesFor(TOOL_NAME), messages.toolUpdated(TOOL_NAME, '1.0.0', '1.1.0')],
     );
   });
 
@@ -146,7 +146,7 @@ describe('updateCommand - Logger Context Propagation', () => {
         version: '1.0.0',
         originalTag: 'v1.0.0',
         metadata: githubReleaseMetadata,
-      })
+      }),
     );
 
     await program.parseAsync(['update', TOOL_NAME], { from: 'user' });
@@ -155,7 +155,7 @@ describe('updateCommand - Logger Context Propagation', () => {
       ['INFO'],
       ['registerUpdateCommand'],
       [],
-      [messages.commandCheckingUpdatesFor(TOOL_NAME), messages.toolUpdated(TOOL_NAME, '1.0.0', '1.0.0')]
+      [messages.commandCheckingUpdatesFor(TOOL_NAME), messages.toolUpdated(TOOL_NAME, '1.0.0', '1.0.0')],
     );
   });
 });

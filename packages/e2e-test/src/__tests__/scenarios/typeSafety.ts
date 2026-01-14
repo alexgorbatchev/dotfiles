@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
 import { Architecture, defineTool, Platform } from '@dotfiles/cli';
+import { describe, expect, it } from 'bun:test';
 
 /**
  * Defines test scenarios for type safety of the defineTool API.
@@ -122,8 +122,7 @@ export function typeSafetyScenarios(): void {
             .platform(Platform.Linux, (install) =>
               install('github-release', {
                 repo: 'BurntSushi/ripgrep',
-              })
-            )
+              }))
         );
 
         expect(true).toBe(true);
@@ -137,14 +136,12 @@ export function typeSafetyScenarios(): void {
               install('github-release', {
                 repo: 'owner/tool',
                 assetPattern: '*linux-amd64*',
-              })
-            )
+              }))
             .platform(Platform.Linux, Architecture.Arm64, (install) =>
               install('github-release', {
                 repo: 'owner/tool',
                 assetPattern: '*linux-arm64*',
-              })
-            )
+              }))
         );
 
         expect(true).toBe(true);

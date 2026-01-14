@@ -2,6 +2,7 @@
 description: Detailed instructions on how to correctly handle logging in the project.
 applyTo: '**/*'
 ---
+
 # Project Logging Requirements
 
 The purpose of logging is to provide insights into what the application is doing to the END USER.
@@ -31,28 +32,30 @@ Use `context` for runtime values that identify WHAT is being operated on (tool n
 const logger = parentLogger.getSubLogger({ name: 'install', context: toolName });
 logger.error(messages.installFailed()); // Output: [toolName] Installation failed
 
-// ✅ CORRECT: context identifies the specific hook  
+// ✅ CORRECT: context identifies the specific hook
 const logger = parentLogger.getSubLogger({ name: 'executeHook', context: hookName });
 logger.error(messages.hookFailed()); // Output: [after-install] Hook failed
 ```
 
 **Key distinction:**
+
 - `name` = structural hierarchy (method/class names) - used for log filtering by path
 - `context` = runtime identifier (tool name, hook name) - appears as `[value]` prefix in output
 
 ### What NOT to embed in log messages
 
 Since `context` provides the runtime identifier, log messages should NOT include:
+
 - Tool names (use `context: toolName`)
-- Hook names (use `context: hookName`)  
+- Hook names (use `context: hookName`)
 - Any value that varies per invocation
 
 ```typescript
 // ❌ BAD: toolName embedded in message
-installFailed: (toolName: string) => createSafeLogMessage(`[${toolName}] Installation failed`)
+installFailed: ((toolName: string) => createSafeLogMessage(`[${toolName}] Installation failed`));
 
 // ✅ GOOD: simple message, toolName comes from logger context
-installFailed: () => createSafeLogMessage('Installation failed')
+installFailed: (() => createSafeLogMessage('Installation failed'));
 ```
 
 ## Log Message Templates
@@ -71,11 +74,11 @@ installFailed: () => createSafeLogMessage('Installation failed')
 
 ```typescript
 // ✅ GOOD: system values only
-installFailed: (method: string) => createSafeLogMessage(`Installation failed via ${method}`)
-extracted: (count: number) => createSafeLogMessage(`Extracted ${count} files`)
+installFailed: ((method: string) => createSafeLogMessage(`Installation failed via ${method}`));
+extracted: ((count: number) => createSafeLogMessage(`Extracted ${count} files`));
 
 // ❌ BAD: partial English sentence in parameter
-logMessage: (action: string) => createSafeLogMessage(`${action} completed`) // "Downloading" is English
+logMessage: ((action: string) => createSafeLogMessage(`${action} completed`)); // "Downloading" is English
 ```
 
 ## Error Handling
@@ -131,5 +134,3 @@ if (!result.success) {
 - Do not wrap function calls with begin/end logs if those functions have their own logging
 - Do not log more than one message per event
 - Log output uses the tab character (`\t`) as a separator between fields (eg `WARN\t`). Tests verifying log output must match this character explicitly.
-
-

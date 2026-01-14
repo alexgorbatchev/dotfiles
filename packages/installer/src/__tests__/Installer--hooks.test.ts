@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import assert from 'node:assert';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import assert from 'node:assert';
 import type { Installer } from '../Installer';
 import { createInstallerTestSetup } from './installer-test-helpers';
 

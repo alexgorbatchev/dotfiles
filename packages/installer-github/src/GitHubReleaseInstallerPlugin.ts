@@ -20,8 +20,8 @@ import { fetchGitHubRelease, installFromGitHubRelease } from './installFromGitHu
 import { messages } from './log-messages';
 import {
   type GithubReleaseInstallParams,
-  type GithubReleaseToolConfig,
   githubReleaseInstallParamsSchema,
+  type GithubReleaseToolConfig,
   githubReleaseToolConfigSchema,
 } from './schemas';
 import type { IGitHubReleaseInstallMetadata } from './types';
@@ -54,14 +54,13 @@ import type { IGitHubReleaseInstallMetadata } from './types';
  * - Tracks installed versions for update checking
  * - Can install specific versions or latest releases
  */
-export class GitHubReleaseInstallerPlugin
-  implements
-    IInstallerPlugin<
-      'github-release',
-      GithubReleaseInstallParams,
-      GithubReleaseToolConfig,
-      IGitHubReleaseInstallMetadata
-    >
+export class GitHubReleaseInstallerPlugin implements
+  IInstallerPlugin<
+    'github-release',
+    GithubReleaseInstallParams,
+    GithubReleaseToolConfig,
+    IGitHubReleaseInstallMetadata
+  >
 {
   public readonly method = 'github-release' as const;
   public readonly displayName = 'GitHub Release';
@@ -87,7 +86,7 @@ export class GitHubReleaseInstallerPlugin
     private readonly githubApiClient: IGitHubApiClient,
     private readonly archiveExtractor: IArchiveExtractor,
     private readonly projectConfig: ProjectConfig,
-    private readonly hookExecutor: HookExecutor
+    private readonly hookExecutor: HookExecutor,
   ) {}
 
   async install(
@@ -95,7 +94,7 @@ export class GitHubReleaseInstallerPlugin
     toolConfig: GithubReleaseToolConfig,
     context: IInstallContext,
     options: IInstallOptions | undefined,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<InstallResult<IGitHubReleaseInstallMetadata>> {
     // Create tool-specific file system
     const toolFs = createToolFileSystem(this.fs, toolName);
@@ -112,7 +111,7 @@ export class GitHubReleaseInstallerPlugin
       this.archiveExtractor,
       this.projectConfig,
       this.hookExecutor,
-      logger
+      logger,
     );
 
     return result;
@@ -132,7 +131,7 @@ export class GitHubReleaseInstallerPlugin
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
     _context: IInstallContext,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<string | null> {
     try {
       const params = toolConfig.installParams as GithubReleaseInstallParams;
@@ -164,7 +163,7 @@ export class GitHubReleaseInstallerPlugin
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
     _context: IInstallContext,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<UpdateCheckResult> {
     try {
       const githubParams = toolConfig.installParams;
@@ -227,7 +226,7 @@ export class GitHubReleaseInstallerPlugin
     toolConfig: GithubReleaseToolConfig,
     context: IInstallContext,
     options: IUpdateOptions,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<UpdateResult> {
     try {
       const githubParams = toolConfig.installParams;
@@ -266,7 +265,7 @@ export class GitHubReleaseInstallerPlugin
         updatedConfig,
         context,
         { force: options.force || true },
-        logger
+        logger,
       );
 
       if (installResult.success) {

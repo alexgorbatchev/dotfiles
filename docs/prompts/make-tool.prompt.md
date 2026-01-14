@@ -1,22 +1,28 @@
 ---
 agent: agent
 ---
+
 # LLM Agent Instructions: Create `.tool.ts` Configuration
 
 ## Mission
+
 Create a complete, working `.tool.ts` configuration file for a CLI tool.
 
 Your job is to analyze the tool and its distribution method, then generate a configuration that follows the repository's best practices and aligns with the current API.
 
 ## Input
+
 You will receive:
+
 - **Tool Source**: a URL (GitHub repo, homepage) or a tool name.
 - **Tool Name** (optional): if not provided, derive it from the source.
 
 ## Required Analysis Steps
 
 ### 1) Tool Investigation
+
 Analyze the tool’s source and documentation to understand:
+
 - **Tool purpose**: what it does.
 - **Primary distribution method**: how the authors expect users to install it.
 - **Package managers**: whether it’s available via Homebrew, Cargo, etc.
@@ -26,14 +32,18 @@ Analyze the tool’s source and documentation to understand:
 - **Dependencies**: runtime requirements (shared libs, language runtimes, etc.).
 
 ### 2) Release Asset Analysis (if applicable)
+
 If the tool uses GitHub releases, examine the latest release to determine:
+
 - **Asset naming patterns** (OS/arch/target naming).
 - **Archive structure** (`.tar.gz`, `.zip`).
 - **Binary locations** within the archive.
 - **Platform variants** (different archives/assets per OS/arch).
 
 ### 3) Tool Behavior Analysis
+
 Research the tool’s runtime behavior:
+
 - **CLI surface**: common commands/options.
 - **Configuration files**: expected locations and formats.
 - **Shell integration**: completions, aliases, functions.
@@ -42,6 +52,7 @@ Research the tool’s runtime behavior:
 ## Configuration Generation Process
 
 ### Step 1: Choose the Best Installation Method
+
 Select the most appropriate method based on your investigation. Prefer official, precompiled, and well-supported methods.
 
 - **`github-release`**: best for tools with prebuilt binaries on GitHub.
@@ -63,24 +74,22 @@ Select the most appropriate method based on your investigation. Prefer official,
   - Guide: [Manual Installation Guide](<root>/docs/installation/manual.md)
 
 ### Step 2: Configure Binary Specification
+
 **Important**: `.bin(name, pattern?)` declares which executables the tool provides. It generates a shim for each binary name.
 
 ```ts
 // Single binary with default pattern
-install('github-release', { repo: 'owner/tool' })
-  .bin('tool');
+install('github-release', { repo: 'owner/tool' }).bin('tool');
 
 // Multiple binaries - chain .bin() calls
-install('github-release', { repo: 'owner/tool' })
-  .bin('tool')
-  .bin('tool-helper');
+install('github-release', { repo: 'owner/tool' }).bin('tool').bin('tool-helper');
 
 // Custom pattern for binary location in archive
-install('github-release', { repo: 'owner/tool' })
-  .bin('tool', '*/bin/tool');  // Pattern: {,*/}tool by default
+install('github-release', { repo: 'owner/tool' }).bin('tool', '*/bin/tool'); // Pattern: {,*/}tool by default
 ```
 
 **Binary Pattern Matching (for archive-based installation methods only)**:
+
 - **Default Pattern**: `{,*/}name` - matches binary at root or one level deep
 - **Custom Patterns**: Use [minimatch](https://github.com/isaacs/minimatch) glob patterns with brace expansion
   - `'*/bin/tool'` - Binary in bin subdirectory
@@ -88,6 +97,7 @@ install('github-release', { repo: 'owner/tool' })
   - `'tool'` - Exact binary at archive root
 
 **Key Context Variables** (used throughout configuration):
+
 - `ctx.toolDir` → Directory containing the `.tool.ts` file (for files next to tool config)
 - `ctx.currentDir` → Tool's stable `current` symlink directory (for installed assets after install)
 - `ctx.toolName` → Name of the tool being configured
@@ -100,6 +110,7 @@ install('github-release', { repo: 'owner/tool' })
 Reference: [API Reference](<root>/docs/api-reference.md) and [Context API](<root>/docs/context-api.md)
 
 ### Step 3: Add Shell Integration
+
 Use the fluent shell configurator with `.zsh()`, `.bash()`, or `.powershell()` methods.
 
 ```ts
@@ -116,8 +127,8 @@ install('github-release', { repo: 'owner/tool' })
         ts: 'tool status',
       })
       .completions('completions/_tool')
-      .source('shell/init.zsh')  // Source a file (skips if missing)
-      .always(/* zsh */`
+      .source('shell/init.zsh') // Source a file (skips if missing)
+      .always(/* zsh */ `
         # Fast runtime setup (runs every shell startup)
         ...
       `)
@@ -125,11 +136,13 @@ install('github-release', { repo: 'owner/tool' })
 ```
 
 **Script Timing**:
+
 - `.always(template)` - Runs every time shell starts (fast operations only)
 - `.once(template)` - Runs only once after install/update (expensive operations)
 - `.functions(record)` - Define shell functions with HOME override for isolation
 
 **Shell Configurator Methods**:
+
 - `.environment(record)` - Set environment variables
 - `.aliases(record)` - Set command aliases
 - `.completions(path | config)` - Set command completions
@@ -139,6 +152,7 @@ install('github-release', { repo: 'owner/tool' })
 - `.functions(record)` - Define shell functions with HOME isolation
 
 **Completions Syntax**:
+
 ```ts
 // From static file in archive
 .completions('completions/_tool')
@@ -163,6 +177,7 @@ install('github-release', { repo: 'owner/tool' })
 ```
 
 **Functions Syntax**:
+
 ```ts
 // Define shell functions with HOME isolation
 .functions({
@@ -180,6 +195,7 @@ Functions defined via `.functions()` automatically run in a subshell with `HOME`
 Reference: [Shell Integration Guide](<root>/docs/shell-integration.md) and [Completions Guide](<root>/docs/completions.md)
 
 ### Step 4: Configure File Management (Symlinks)
+
 Symlink sources starting with `./` are relative to the tool config directory (same directory as the `.tool.ts` file).
 
 ```ts
@@ -192,38 +208,36 @@ install('github-release', { repo: 'owner/tool' })
 Reference: [Shell Integration Guide](<root>/docs/shell-integration.md#symbolic-links)
 
 ### Step 5: Add Platform Support
+
 Use `.platform()` for platform- and architecture-specific overrides. The callback receives an `install` function for that specific platform.
 
 ```ts
-import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
+import { Architecture, defineTool, Platform } from '@gitea/dotfiles';
 
 export default defineTool((install) =>
   install()
     .bin('tool')
     // macOS-specific installation
-    .platform(Platform.MacOS, (install) =>
-      install('brew', { formula: 'tool' })
-    )
+    .platform(Platform.MacOS, (install) => install('brew', { formula: 'tool' }))
     // Linux-specific installation
     .platform(Platform.Linux, (install) =>
       install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*linux*.tar.gz',
-      })
-    )
+      }))
     // Windows with Arm64
     .platform(Platform.Windows, Architecture.Arm64, (install) =>
       install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*windows-arm64.zip',
-      })
-    )
+      }))
 );
 ```
 
 Reference: [Platform Support Guide](<root>/docs/platform-support.md)
 
 ### Step 6: Add Installation Hooks (if needed)
+
 Use hooks for custom installation logic when fluent configuration is insufficient.
 
 ```ts
@@ -232,7 +246,7 @@ install('github-release', { repo: 'owner/tool' })
   .hook('after-install', async ({ log, $, installedDir }) => {
     await $`${installedDir}/tool init`;
     log.info('Tool initialized');
-  })
+  });
 ```
 
 **Hook Events**: `'before-install'`, `'after-download'`, `'after-extract'`, `'after-install'`
@@ -247,7 +261,7 @@ install('github-release', { repo: 'owner/tool' })
     await $`tool --version`;
     await $`tool init`;
     log.info('Tool initialized');
-  })
+  });
 ```
 
 **File Modifications in Hooks**: Use `ctx.replaceInFile()` for regex-based file modifications:
@@ -260,28 +274,26 @@ install('github-release', { repo: 'owner/tool' })
     const wasReplaced = await ctx.replaceInFile(
       `${ctx.installedDir}/config.toml`,
       /default_theme = ".*"/,
-      'default_theme = "dark"'
+      'default_theme = "dark"',
     );
-    
+
     // Line-by-line replacement with callback
     await ctx.replaceInFile(
       `${ctx.installedDir}/settings.ini`,
       /version=(\d+)/,
       (match) => `version=${Number(match.captures[0]) + 1}`,
-      { mode: 'line' }
+      { mode: 'line' },
     );
 
     // With error message - logs "message: filePath: pattern" if pattern not found
-    await ctx.replaceInFile(
-      `${ctx.installedDir}/config.toml`,
-      /api_key = ".*"/,
-      'api_key = "secret"',
-      { errorMessage: 'Could not find api_key setting in config.toml' }
-    );
+    await ctx.replaceInFile(`${ctx.installedDir}/config.toml`, /api_key = ".*"/, 'api_key = "secret"', {
+      errorMessage: 'Could not find api_key setting in config.toml',
+    });
   });
 ```
 
 **`replaceInFile` options:**
+
 - `mode` - `'file'` (default) or `'line'` (process each line separately)
 - `errorMessage` - If provided and no matches found, logs error: `Could not find '<pattern>' in <filePath>`
 
@@ -290,15 +302,15 @@ install('github-release', { repo: 'owner/tool' })
 Reference: [Hooks Guide](<root>/docs/hooks.md) and [API Reference](<root>/docs/api-reference.md#hook-event-string-handler-hookhandler)
 
 ### Step 7: Disable a Tool (if needed)
+
 Use `.disable()` to temporarily skip a tool during generation without removing its configuration. A warning will be logged when the tool is skipped.
 
 ```ts
-install('github-release', { repo: 'owner/tool' })
-  .bin('tool')
-  .disable();  // Tool will be skipped with a warning
+install('github-release', { repo: 'owner/tool' }).bin('tool').disable(); // Tool will be skipped with a warning
 ```
 
 This is useful for:
+
 - Temporarily disabling a broken or unavailable tool
 - Testing configurations without installing certain tools
 - Keeping tool configurations for future use
@@ -306,6 +318,7 @@ This is useful for:
 ## Output Requirements
 
 ### File Structure
+
 Create a file named `{tool-name}.tool.ts`:
 
 ```ts
@@ -317,12 +330,16 @@ export default defineTool((install, ctx) =>
 ```
 
 ### Required Elements
+
 Your configuration MUST include:
+
 1. An installation method via `install(...)`.
 2. Binary declaration(s) via `.bin(...)` if the tool provides binaries.
 
 ### Documentation Comments
+
 Include a brief JSDoc comment explaining:
+
 - What the tool does.
 - Platform notes (if applicable).
 - The tool’s home URL as the very last line.
@@ -332,6 +349,7 @@ Do NOT include archive-structure narration in the comment (the code already show
 ## Example Output
 
 ### Example 1: Simple GitHub Release Tool
+
 ```ts
 import { defineTool } from '@gitea/dotfiles';
 
@@ -344,12 +362,12 @@ import { defineTool } from '@gitea/dotfiles';
 export default defineTool((install) =>
   install('github-release', {
     repo: 'BurntSushi/ripgrep',
-  })
-    .bin('rg')
+  }).bin('rg')
 );
 ```
 
 ### Example 2: Tool with Shell Integration
+
 ```ts
 import { defineTool } from '@gitea/dotfiles';
 
@@ -376,6 +394,7 @@ export default defineTool((install) =>
 ```
 
 ### Example 3: Manual Installation (Dotfiles Script)
+
 ```ts
 import { defineTool } from '@gitea/dotfiles';
 
@@ -394,6 +413,7 @@ export default defineTool((install) =>
 ```
 
 ### Example 4: Configuration-Only Tool
+
 ```ts
 import { defineTool } from '@gitea/dotfiles';
 
@@ -403,7 +423,7 @@ import { defineTool } from '@gitea/dotfiles';
  * https://git-scm.com
  */
 export default defineTool((install) =>
-  install()  // Configuration-only: no install params, no .bin()
+  install() // Configuration-only: no install params, no .bin()
     .symlink('./gitconfig', '~/.gitconfig')
     .zsh((shell) =>
       shell.aliases({
@@ -417,6 +437,7 @@ export default defineTool((install) =>
 ```
 
 ### Example 5: Rust Tool with Cargo
+
 ```ts
 import { defineTool } from '@gitea/dotfiles';
 
@@ -437,7 +458,7 @@ export default defineTool((install) =>
           ls: 'eza',
           ll: 'eza -l',
           la: 'eza -la',
-          tree: 'eza --tree'
+          tree: 'eza --tree',
         })
         .completions('completions/eza.zsh')
     )
@@ -445,6 +466,7 @@ export default defineTool((install) =>
 ```
 
 ### Example 6: Tool with Shell Functions
+
 ```ts
 import { defineTool } from '@gitea/dotfiles';
 
@@ -469,10 +491,10 @@ export default defineTool((install) =>
         })
         .completions({ cmd: 'kubectl completion zsh' })
         .functions({
-          'kns': /* zsh */`
+          kns: /* zsh */ `
             kubectl config set-context --current --namespace="$1"
           `,
-          'kctx': /* zsh */`
+          kctx: /* zsh */ `
             kubectl config use-context "$1"
           `,
         })
@@ -481,6 +503,7 @@ export default defineTool((install) =>
 ```
 
 ### Example 7: Tool with Dynamic Initialization
+
 ```ts
 import { defineTool } from '@gitea/dotfiles';
 
@@ -499,8 +522,7 @@ export default defineTool((install) =>
         .environment({
           _ZO_DATA_DIR: '~/.local/share/zoxide',
         })
-        .completions({ cmd: 'zoxide completions zsh' })
-        .always(/* zsh */`
+        .completions({ cmd: 'zoxide completions zsh' }).always(/* zsh */ `
           # Initialize zoxide with cd replacement
           eval "$(zoxide init zsh --cmd cd)"
         `)
@@ -511,12 +533,14 @@ export default defineTool((install) =>
 ## Quality Checklist
 
 **Installation & binaries**
+
 - ✅ Installation method matches the tool's official distribution
 - ✅ `.bin(name, pattern?)` declarations match actual executables
 - ✅ Binary patterns are correct for archive structures
 - ✅ `.dependsOn()` uses binary names (not tool names) from other tools' `.bin()` declarations
 
 **Paths**
+
 - ✅ Use `ctx.toolDir` for files next to `.tool.ts` (tool configuration directory)
 - ✅ Use `ctx.currentDir` for installed assets (stable symlink to versioned directory)
 - ✅ For symlink targets and environment variables: use `~/` (tilde expansion is automatic)
@@ -524,6 +548,7 @@ export default defineTool((install) =>
 - ✅ Never use hardcoded absolute paths like `/home/user/...`
 
 **Shell integration**
+
 - ✅ Use `.completions({ cmd: '...' })` for dynamic completions (not `.once()`)
 - ✅ Use `.once()` only for expensive one-time setup (cache building, initialization)
 - ✅ Use `.always()` for fast runtime setup (environment, eval statements)
@@ -532,6 +557,7 @@ export default defineTool((install) =>
 - ✅ Completions configured within shell blocks (`.zsh()`, `.bash()`, `.powershell()`)
 
 **Function signature**
+
 - ✅ Import `defineTool` from `'@gitea/dotfiles'`
 - ✅ Use `export default defineTool((install, ctx) => ...)` - omit `ctx` if not used
 - ✅ Call `install(method, params)` first to specify installation
@@ -540,16 +566,19 @@ export default defineTool((install) =>
 ## References
 
 **Core Documentation**
+
 - [API Reference](<root>/docs/api-reference.md) - Complete API with all parameters
 - [Getting Started](<root>/docs/getting-started.md) - Basic structure and anatomy
 - [Context API](<root>/docs/context-api.md) - Path resolution and context variables
 
 **Configuration Guides**
+
 - [Common Patterns](<root>/docs/common-patterns.md) - Real-world examples
 - [Shell Integration](<root>/docs/shell-integration.md) - Shell configuration, symlinks
 - [Completions](<root>/docs/completions.md) - Command completion setup
 
 **Installation Methods**
+
 - [GitHub Release Installation](<root>/docs/installation/github-release.md)
 - [Homebrew Installation](<root>/docs/installation/homebrew.md)
 - [Cargo Installation](<root>/docs/installation/cargo.md)
@@ -558,7 +587,7 @@ export default defineTool((install) =>
 - [Manual Installation](<root>/docs/installation/manual.md)
 
 **Other Resources**
+
 - [Platform Support](<root>/docs/platform-support.md) - Platform-specific configurations
 - [Hooks](<root>/docs/hooks.md) - Installation lifecycle hooks
 - [Troubleshooting](<root>/docs/troubleshooting.md) - Common issues and solutions
-

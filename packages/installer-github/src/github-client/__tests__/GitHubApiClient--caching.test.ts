@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IGitHubRateLimit } from '@dotfiles/core';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { FIXTURE_RELEASE, FIXTURE_RELEASES_LIST } from './fixtures/cacheTestFixtures';
 import {
   createGitHubConfigOverride,
@@ -14,7 +14,7 @@ describe('GitHubApiClient', () => {
     beforeEach(async () => {
       // Default setup for most caching tests, cache enabled.
       mocks = await setupMockGitHubApiClient(
-        createGitHubConfigOverride({ githubApiCacheEnabled: true, githubToken: '' })
+        createGitHubConfigOverride({ githubApiCacheEnabled: true, githubToken: '' }),
       );
     });
 
@@ -25,7 +25,7 @@ describe('GitHubApiClient', () => {
 
       expect(release).toEqual(FIXTURE_RELEASE);
       expect(mocks.mockCache.get).toHaveBeenCalledWith(
-        expect.stringMatching(/^GET:\/repos\/test-owner\/test-repo\/releases\/latest$/)
+        expect.stringMatching(/^GET:\/repos\/test-owner\/test-repo\/releases\/latest$/),
       );
       expect(mocks.mockDownloader.download).not.toHaveBeenCalled();
     });
@@ -42,7 +42,7 @@ describe('GitHubApiClient', () => {
       expect(mocks.mockCache.set).toHaveBeenCalledWith(
         'GET:/repos/test-owner/test-repo/releases/latest',
         FIXTURE_RELEASE,
-        mocks.mockProjectConfig.github.cache.ttl
+        mocks.mockProjectConfig.github.cache.ttl,
       );
     });
 
@@ -116,7 +116,7 @@ describe('GitHubApiClient', () => {
       expect(localMocks.mockCache.set).toHaveBeenCalledWith(
         expect.any(String),
         FIXTURE_RELEASE,
-        customTtl // Expect the custom TTL
+        customTtl, // Expect the custom TTL
       );
     });
 
@@ -135,7 +135,7 @@ describe('GitHubApiClient', () => {
       expect(mocks.mockCache.set).toHaveBeenCalledWith(
         'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1',
         FIXTURE_RELEASES_LIST,
-        mocks.mockProjectConfig.github.cache.ttl
+        mocks.mockProjectConfig.github.cache.ttl,
       );
       expect(mocks.mockCache.set).toHaveBeenCalledTimes(1);
     });
@@ -151,7 +151,7 @@ describe('GitHubApiClient', () => {
       expect(release).toEqual(expectedRelease);
       expect(mocks.mockCache.get).toHaveBeenCalledWith('GET:/repos/test-owner/test-repo/releases?per_page=30&page=1');
       const relevantGetCalls = mocks.mockCache.get.mock.calls.filter(
-        (call) => call[0] === 'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1'
+        (call) => call[0] === 'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1',
       );
       expect(relevantGetCalls.length).toBeGreaterThanOrEqual(1);
 
@@ -159,10 +159,10 @@ describe('GitHubApiClient', () => {
       expect(mocks.mockCache.set).toHaveBeenCalledWith(
         'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1',
         FIXTURE_RELEASES_LIST,
-        mocks.mockProjectConfig.github.cache.ttl
+        mocks.mockProjectConfig.github.cache.ttl,
       );
       const relevantSetCalls = mocks.mockCache.set.mock.calls.filter(
-        (call) => call[0] === 'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1'
+        (call) => call[0] === 'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1',
       );
       expect(relevantSetCalls.length).toBeGreaterThanOrEqual(1);
     });
@@ -190,7 +190,7 @@ describe('GitHubApiClient', () => {
       expect(mocks.mockCache.set).toHaveBeenCalledWith(
         'GET:/rate_limit',
         mockRateLimitData,
-        mocks.mockProjectConfig.github.cache.ttl
+        mocks.mockProjectConfig.github.cache.ttl,
       );
     });
 

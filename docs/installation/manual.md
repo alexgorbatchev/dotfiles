@@ -11,22 +11,18 @@ import { defineTool } from '@gitea/dotfiles';
 export default defineTool((install, ctx) =>
   install('manual', {
     binaryPath: './scripts/my-tool.sh',
-  })
-    .bin('my-tool')
+  }).bin('my-tool')
 );
 
 // Configuration-only tool (no binary)
-export default defineTool((install, ctx) =>
-  install()
-    .zsh((shell) => shell.aliases({ ll: 'ls -la' }))
-);
+export default defineTool((install, ctx) => install().zsh((shell) => shell.aliases({ ll: 'ls -la' })));
 ```
 
 ## Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `binaryPath` | `string` | No | Path to binary relative to `.tool.ts` file |
+| Parameter    | Type     | Required | Description                                |
+| ------------ | -------- | -------- | ------------------------------------------ |
+| `binaryPath` | `string` | No       | Path to binary relative to `.tool.ts` file |
 
 ## Examples
 
@@ -36,18 +32,14 @@ export default defineTool((install, ctx) =>
 export default defineTool((install, ctx) =>
   install('manual', {
     binaryPath: './binaries/linux/x64/custom-tool',
-  })
-    .bin('custom-tool')
+  }).bin('custom-tool')
 );
 ```
 
 ### Configuration-Only Tool
 
 ```typescript
-export default defineTool((install, ctx) =>
-  install()
-    .zsh((shell) => shell.aliases({ ll: 'ls -la', la: 'ls -A' }))
-);
+export default defineTool((install, ctx) => install().zsh((shell) => shell.aliases({ ll: 'ls -la', la: 'ls -A' })));
 ```
 
 ### With Shell Configuration
@@ -58,15 +50,12 @@ export default defineTool((install, ctx) =>
     binaryPath: './bin/my-tool.sh',
   })
     .bin('my-tool')
-    .zsh((shell) =>
-      shell
-        .aliases({ mt: 'my-tool' })
-        .completions('./completions/_my-tool')
-    )
+    .zsh((shell) => shell.aliases({ mt: 'my-tool' }).completions('./completions/_my-tool'))
 );
 ```
 
 **Notes:**
+
 - Binary paths are relative to the tool configuration file location
 - Files are copied to the managed installation directory with executable permissions
 - Configuration-only tools use `install()` with no arguments and must not define `.bin()`

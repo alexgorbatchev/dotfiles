@@ -15,11 +15,9 @@ export default defineTool((install) =>
         .aliases({
           grt: 'github-release-tool --preview "ps -f -p {+}"',
         })
-        .completions('./github-release-tool.completion.sh')
-        .once(/* zsh */ `
+        .completions('./github-release-tool.completion.sh').once(/* zsh */ `
           echo "echo from github-release-tool"
-        `)
-        .always(/* zsh */ `
+        `).always(/* zsh */ `
           echo "always from github-release-tool"
         `)
     )

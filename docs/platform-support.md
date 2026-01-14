@@ -5,19 +5,19 @@ Use `.platform()` for cross-platform tool configurations.
 ## Platform and Architecture Enums
 
 ```typescript
-import { Platform, Architecture } from '@gitea/dotfiles';
+import { Architecture, Platform } from '@gitea/dotfiles';
 
 // Platforms (bitwise flags)
-Platform.Linux    // 1
-Platform.MacOS    // 2
-Platform.Windows  // 4
-Platform.Unix     // Linux | MacOS (3)
-Platform.All      // All platforms (7)
+Platform.Linux; // 1
+Platform.MacOS; // 2
+Platform.Windows; // 4
+Platform.Unix; // Linux | MacOS (3)
+Platform.All; // All platforms (7)
 
 // Architectures (bitwise flags)
-Architecture.X86_64  // 1
-Architecture.Arm64   // 2
-Architecture.All     // Both (3)
+Architecture.X86_64; // 1
+Architecture.Arm64; // 2
+Architecture.All; // Both (3)
 ```
 
 ## Basic Usage
@@ -28,28 +28,24 @@ import { defineTool, Platform } from '@gitea/dotfiles';
 export default defineTool((install) =>
   install()
     .bin('tool')
-    .platform(Platform.MacOS, (install) =>
-      install('brew', { formula: 'tool' })
-    )
+    .platform(Platform.MacOS, (install) => install('brew', { formula: 'tool' }))
     .platform(Platform.Linux, (install) =>
       install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*linux*.tar.gz',
-      })
-    )
+      }))
     .platform(Platform.Windows, (install) =>
       install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*windows*.zip',
-      })
-    )
+      }))
 );
 ```
 
 ## With Architecture
 
 ```typescript
-import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
+import { Architecture, defineTool, Platform } from '@gitea/dotfiles';
 
 export default defineTool((install) =>
   install()
@@ -58,17 +54,13 @@ export default defineTool((install) =>
       install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*linux-amd64*.tar.gz',
-      })
-    )
+      }))
     .platform(Platform.Linux, Architecture.Arm64, (install) =>
       install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*linux-arm64*.tar.gz',
-      })
-    )
-    .platform(Platform.MacOS, Architecture.All, (install) =>
-      install('brew', { formula: 'tool' })
-    )
+      }))
+    .platform(Platform.MacOS, Architecture.All, (install) => install('brew', { formula: 'tool' }))
 );
 ```
 
@@ -84,14 +76,12 @@ export default defineTool((install) =>
       install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*unix*.tar.gz',
-      })
-    )
+      }))
     .platform(Platform.Windows, (install) =>
       install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*windows*.zip',
-      })
-    )
+      }))
 );
 ```
 
@@ -102,21 +92,17 @@ export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .platform(Platform.Unix, (install) =>
-      install()
-        .zsh((shell) =>
-          shell.environment({
-            TOOL_CONFIG: '~/.config/tool',
-          })
-        )
-    )
+      install().zsh((shell) =>
+        shell.environment({
+          TOOL_CONFIG: '~/.config/tool',
+        })
+      ))
     .platform(Platform.Windows, (install) =>
-      install()
-        .powershell((shell) =>
-          shell.environment({
-            TOOL_CONFIG: '~\.config\tool',
-          })
-        )
-    )
+      install().powershell((shell) =>
+        shell.environment({
+          TOOL_CONFIG: '~\.config\tool',
+        })
+      ))
 );
 ```
 
@@ -132,7 +118,7 @@ export default defineTool((install) =>
       } else if (systemInfo.platform === 'linux') {
         await $`./setup-linux.sh`;
       }
-      
+
       if (systemInfo.arch === 'arm64') {
         await $`./configure-arm64.sh`;
       }
@@ -142,10 +128,10 @@ export default defineTool((install) =>
 
 ## Common Asset Patterns
 
-| Platform | Pattern Examples |
-|----------|------------------|
-| macOS | `*darwin*.tar.gz`, `*macos*.zip` |
-| Linux | `*linux*.tar.gz`, `*x86_64-unknown-linux-gnu*` |
-| Windows | `*windows*.zip`, `*pc-windows-msvc*` |
-| x86_64 | `*amd64*`, `*x86_64*` |
-| ARM64 | `*arm64*`, `*aarch64*` |
+| Platform | Pattern Examples                               |
+| -------- | ---------------------------------------------- |
+| macOS    | `*darwin*.tar.gz`, `*macos*.zip`               |
+| Linux    | `*linux*.tar.gz`, `*x86_64-unknown-linux-gnu*` |
+| Windows  | `*windows*.zip`, `*pc-windows-msvc*`           |
+| x86_64   | `*amd64*`, `*x86_64*`                          |
+| ARM64    | `*arm64*`, `*aarch64*`                         |

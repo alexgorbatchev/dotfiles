@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import type { IInstallContext, ToolConfig } from '@dotfiles/core';
 import type { IManualInstallSuccess } from '@dotfiles/installer-manual';
+import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - Environment Setup', () => {
@@ -32,7 +32,7 @@ describe('Installer - Environment Setup', () => {
           version: '1.0.0',
           metadata: { method: 'manual', manualInstall: true },
         } as IManualInstallSuccess;
-      }
+      },
     );
 
     const originalPath = process.env['PATH'];

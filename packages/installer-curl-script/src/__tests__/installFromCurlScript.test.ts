@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IInstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { installFromCurlScript } from '../installFromCurlScript';
 import type { CurlScriptToolConfig } from '../schemas';
 import type { ICurlScriptArgsContext } from '../types';
@@ -76,7 +76,7 @@ describe('installFromCurlScript', () => {
       mockFs,
       mockDownloader,
       mockHookExecutor,
-      logger
+      logger,
     );
 
     expect(mockShell).toHaveBeenCalled();
@@ -116,7 +116,7 @@ describe('installFromCurlScript', () => {
       mockFs,
       mockDownloader,
       mockHookExecutor,
-      logger
+      logger,
     );
 
     expect(mockShell).toHaveBeenCalled();
@@ -153,7 +153,7 @@ describe('installFromCurlScript', () => {
       mockFs,
       mockDownloader,
       mockHookExecutor,
-      logger
+      logger,
     );
 
     expect(mockShell).toHaveBeenCalled();
@@ -194,7 +194,7 @@ describe('installFromCurlScript', () => {
       mockFs,
       mockDownloader,
       mockHookExecutor,
-      logger
+      logger,
     );
 
     expect(mockShell).toHaveBeenCalled();

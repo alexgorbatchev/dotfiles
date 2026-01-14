@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IGitHubRelease } from '@dotfiles/core';
 import { RateLimitError, ServerError } from '@dotfiles/downloader';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
   createGitHubConfigOverride,
@@ -34,11 +34,13 @@ describe('GitHubApiClient', () => {
 
   describe('getAllReleases', () => {
     it('should fetch all releases with default pagination (30 per page)', async () => {
-      const page1Releases: IGitHubRelease[] = Array.from({ length: 30 }, (_, i) =>
-        createMockRelease(i + 1, `v1.${i}.0`)
+      const page1Releases: IGitHubRelease[] = Array.from(
+        { length: 30 },
+        (_, i) => createMockRelease(i + 1, `v1.${i}.0`),
       );
-      const page2Releases: IGitHubRelease[] = Array.from({ length: 30 }, (_, i) =>
-        createMockRelease(i + 31, `v0.${i}.0`)
+      const page2Releases: IGitHubRelease[] = Array.from(
+        { length: 30 },
+        (_, i) => createMockRelease(i + 31, `v0.${i}.0`),
       );
 
       mocks.mockDownloader.download
@@ -126,8 +128,8 @@ describe('GitHubApiClient', () => {
           'Forbidden',
           {}, // responseBody
           {}, // headers
-          resetTimestamp
-        )
+          resetTimestamp,
+        ),
       );
 
       expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(GitHubApiClientError);
@@ -140,7 +142,7 @@ describe('GitHubApiClient', () => {
           expect(error.statusCode).toBe(403);
           expect(error.originalError).toBeInstanceOf(RateLimitError);
         } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type');
+          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
         }
       }
     });
@@ -159,7 +161,7 @@ describe('GitHubApiClient', () => {
           expect(error.statusCode).toBe(503);
           expect(error.originalError).toBeInstanceOf(ServerError);
         } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type');
+          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
         }
       }
     });

@@ -5,17 +5,17 @@ import type {
   IInstallParamsRegistry,
   InstallerPluginRegistry,
   InstallMethod,
+  IPlatformConfigBuilder as PlatformConfigBuilderInterface,
   IPlatformInstallFunction,
+  IToolConfigBuilder as ToolConfigBuilderInterface,
   IToolConfigContext,
   Platform,
   PlatformConfig,
-  IPlatformConfigBuilder as PlatformConfigBuilderInterface,
   PlatformConfigEntry,
   ShellConfigs,
   ShellConfiguratorAsyncCallback,
   ShellConfiguratorCallback,
   ToolConfig,
-  IToolConfigBuilder as ToolConfigBuilderInterface,
   ToolConfigUpdateCheck,
 } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
@@ -72,7 +72,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   };
   private context?: IToolConfigContext;
 
-  public symlinkPairs: { source: string; target: string }[] = [];
+  public symlinkPairs: { source: string; target: string; }[] = [];
   private updateCheckConfig?: ToolConfigUpdateCheck;
   private platformConfigEntries: PlatformConfigEntry[] = [];
 
@@ -143,8 +143,8 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       this.logger.warn(
         messages.configurationFieldIgnored(
           'hook',
-          `hook() called for tool "${this.toolName}" before install(). Hook will not be set as install() was not called first.`
-        )
+          `hook() called for tool "${this.toolName}" before install(). Hook will not be set as install() was not called first.`,
+        ),
       );
       return this;
     }
@@ -302,7 +302,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   platform(
     platforms: Platform,
     architecturesOrConfigure: Architecture | ((install: IPlatformInstallFunction) => PlatformConfigBuilderInterface),
-    configureCallback?: (install: IPlatformInstallFunction) => PlatformConfigBuilderInterface
+    configureCallback?: (install: IPlatformInstallFunction) => PlatformConfigBuilderInterface,
   ): this {
     let targetArchitectures: Architecture | undefined;
     let configureFn: (install: IPlatformInstallFunction) => PlatformConfigBuilderInterface;
@@ -315,7 +315,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       if (typeof configureCallback !== 'function') {
         const missingCallbackError = messages.configurationFieldRequired(
           'configure callback',
-          `platform() called for tool "${this.toolName}" with architectures but without a configure callback`
+          `platform() called for tool "${this.toolName}" with architectures but without a configure callback`,
         );
         this.logger.error(missingCallbackError);
         throw new Error(missingCallbackError);
@@ -399,7 +399,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
             const validationError = messages.configurationFieldInvalid(
               'tool configuration',
               this.toolName,
-              result.error.message
+              result.error.message,
             );
             this.logger.error(validationError);
             throw new Error(validationError);
@@ -431,8 +431,9 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   private buildBaseConfig() {
     return {
       name: this.toolName,
-      binaries:
-        this.binaries.length > 0 ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b)) : undefined,
+      binaries: this.binaries.length > 0
+        ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b))
+        : undefined,
       version: this.versionNum,
       disabled: this.isDisabled ? true : undefined,
       shellConfigs: this.buildShellConfigs(),
@@ -442,8 +443,8 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       platformConfigs: this.isPlatformScope
         ? undefined
         : this.platformConfigEntries.length > 0
-          ? this.platformConfigEntries
-          : undefined,
+        ? this.platformConfigEntries
+        : undefined,
     };
   }
 
@@ -458,8 +459,9 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   private buildPlatformConfig(): PlatformConfig {
     const config: Record<string, unknown> = {
-      binaries:
-        this.binaries.length > 0 ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b)) : undefined,
+      binaries: this.binaries.length > 0
+        ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b))
+        : undefined,
       version: this.versionNum !== 'latest' ? this.versionNum : undefined,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
@@ -546,7 +548,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     const invalidMethodError = messages.configurationFieldInvalid(
       'installationMethod',
       this.currentInstallationMethod ?? 'unknown',
-      'github-release | brew | curl-script | curl-tar | cargo | manual'
+      'github-release | brew | curl-script | curl-tar | cargo | manual',
     );
     this.logger.error(invalidMethodError);
     throw new Error(invalidMethodError);
@@ -563,8 +565,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   private validateConfigurationOnly(baseConfig: ReturnType<typeof this.buildBaseConfig>): void {
     const finalBinaries = baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [];
-    const hasContent =
-      finalBinaries.length > 0 ||
+    const hasContent = finalBinaries.length > 0 ||
       baseConfig.shellConfigs ||
       baseConfig.symlinks ||
       (baseConfig.platformConfigs && baseConfig.platformConfigs.length > 0);
@@ -572,7 +573,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     if (!hasContent) {
       const requiredConfigError = messages.configurationFieldRequired(
         'tool definition',
-        `Tool "${baseConfig.name}" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs`
+        `Tool "${baseConfig.name}" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs`,
       );
       this.logger.error(requiredConfigError);
       throw new Error(requiredConfigError);
@@ -612,7 +613,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     parentLogger: TsLogger,
     toolName: string,
     registryOrIsPlatformScope?: InstallerPluginRegistry | boolean,
-    isPlatformScope = false
+    isPlatformScope = false,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'IToolConfigBuilder' });
     this.toolName = toolName;
@@ -648,7 +649,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
 
   private configureShell(
     shellType: ShellTypeKey,
-    callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback
+    callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback,
   ): this | Promise<this> {
     const storage: IShellStorage = this.internalShellConfigs[shellType];
     const configurator = new ShellConfigurator(storage, shellType, this.context, this.logger, this.toolName);

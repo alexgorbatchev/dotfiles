@@ -4,8 +4,8 @@ import type { TsLogger } from '@dotfiles/logger';
 import { installManually } from './installManually';
 import {
   type ManualInstallParams,
-  type ManualToolConfig,
   manualInstallParamsSchema,
+  type ManualToolConfig,
   manualToolConfigSchema,
 } from './schemas';
 
@@ -24,8 +24,13 @@ type ManualPluginMetadata = {
  * directory. Since manual tools are managed by the user, this plugin does not
  * support version checking or automatic updates.
  */
-export class ManualInstallerPlugin
-  implements IInstallerPlugin<'manual', ManualInstallParams, ManualToolConfig, ManualPluginMetadata>
+export class ManualInstallerPlugin implements
+  IInstallerPlugin<
+    'manual',
+    ManualInstallParams,
+    ManualToolConfig,
+    ManualPluginMetadata
+  >
 {
   readonly method = 'manual';
   readonly displayName = 'Manual Installer';
@@ -55,7 +60,7 @@ export class ManualInstallerPlugin
     toolConfig: ManualToolConfig,
     context: IInstallContext,
     options: IInstallOptions | undefined,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<InstallResult<ManualPluginMetadata>> {
     const result = await installManually(toolName, toolConfig, context, options, this.fs, logger);
 

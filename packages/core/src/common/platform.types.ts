@@ -68,7 +68,7 @@ export const platformSchema = z
     {
       message:
         'Must be a valid Platform value. Use `Platform.None`, `Platform.Linux`, `Platform.MacOS`, `Platform.Windows`, `Platform.Unix`, or `Platform.All`. You can combine values with a bitwise OR (e.g., `Platform.Linux | Platform.MacOS`).',
-    }
+    },
   );
 
 /**
@@ -90,7 +90,7 @@ export const architectureSchema = z
     {
       message:
         'Must be a valid Architecture value. Use `Architecture.None`, `Architecture.X86_64`, `Architecture.Arm64`, or `Architecture.All`. You can combine values with a bitwise OR (e.g., `Architecture.X86_64 | Architecture.Arm64`).',
-    }
+    },
   );
 
 /**

@@ -1,5 +1,3 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import * as path from 'node:path';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import { Architecture, Platform } from '@dotfiles/core';
 import type { IMemFileSystemReturn } from '@dotfiles/file-system';
@@ -7,6 +5,8 @@ import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import * as path from 'node:path';
 import { registerDetectConflictsCommand } from '../detectConflictsCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
@@ -70,7 +70,7 @@ describe('detectConflictsCommand', () => {
     const command = program.commands.find((cmd) => cmd.name() === 'detect-conflicts');
     expect(command).toBeDefined();
     expect(command?.description()).toBe(
-      'Detects conflicts between potential generated artifacts and existing system files.'
+      'Detects conflicts between potential generated artifacts and existing system files.',
     );
   });
 
@@ -89,13 +89,13 @@ describe('detectConflictsCommand', () => {
           platform: Platform.Linux,
           arch: Architecture.X86_64,
           homeDir: mockProjectConfig.paths.homeDir,
-        })
+        }),
       );
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand'],
         [],
-        [messages.toolNoConfigurationsFound(mockProjectConfig.paths.toolConfigsDir)]
+        [messages.toolNoConfigurationsFound(mockProjectConfig.paths.toolConfigsDir)],
       );
     });
 
@@ -109,7 +109,7 @@ describe('detectConflictsCommand', () => {
         ['ERROR'],
         ['registerDetectConflictsCommand'],
         [],
-        [messages.configLoadFailed('tool configurations')]
+        [messages.configLoadFailed('tool configurations')],
       );
     });
 
@@ -136,7 +136,7 @@ describe('detectConflictsCommand', () => {
       const conflictsMessage = `  - [toolA]: ${shimPath} (exists but is not a generator shim)`;
       const expectedMessageShim = messages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
-        conflictsMessage
+        conflictsMessage,
       );
       logger.expect(['WARN'], ['registerDetectConflictsCommand'], [], [expectedMessageShim]);
     });
@@ -167,7 +167,7 @@ describe('detectConflictsCommand', () => {
       const conflictsMessage = `  - [toolA]: ${configPath} (exists but is not a symlink)`;
       const expectedMessageSymlinkFile = messages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
-        conflictsMessage
+        conflictsMessage,
       );
       logger.expect(['WARN'], ['registerDetectConflictsCommand'], [], [expectedMessageSymlinkFile]);
     });
@@ -186,10 +186,11 @@ describe('detectConflictsCommand', () => {
 
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-      const conflictsMessage = `  - [toolA]: ${symlinkTargetPath} (points to '${pointsToWrongAbsolutePath}', expected '${expectedSourcePath}')`;
+      const conflictsMessage =
+        `  - [toolA]: ${symlinkTargetPath} (points to '${pointsToWrongAbsolutePath}', expected '${expectedSourcePath}')`;
       const expectedMessage = messages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
-        conflictsMessage
+        conflictsMessage,
       );
       logger.expect(['WARN'], ['registerDetectConflictsCommand'], [], [expectedMessage]);
     });
@@ -213,10 +214,11 @@ describe('detectConflictsCommand', () => {
 
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-      const conflictsMessage = `  - [toolA]: ${shimPathA} (exists but is not a generator shim)\n  - [toolB]: ${symlinkPathB} (exists but is not a symlink)`;
+      const conflictsMessage =
+        `  - [toolA]: ${shimPathA} (exists but is not a generator shim)\n  - [toolB]: ${symlinkPathB} (exists but is not a symlink)`;
       const expectedMessageMultiple = messages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
-        conflictsMessage
+        conflictsMessage,
       );
       logger.expect(['WARN'], ['registerDetectConflictsCommand'], [], [expectedMessageMultiple]);
     });

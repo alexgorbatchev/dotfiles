@@ -11,19 +11,18 @@ export default defineTool((install, ctx) =>
   install('curl-script', {
     url: 'https://bun.sh/install',
     shell: 'bash',
-  })
-    .bin('bun')
+  }).bin('bun')
 );
 ```
 
 ## Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `url` | `string` | Yes | URL of the installation script |
-| `shell` | `'bash' \| 'sh'` | Yes | Shell interpreter to use |
-| `args` | `string[] \| (ctx) => string[]` | No | Arguments to pass to the script |
-| `env` | `Record<string, string>` | No | Environment variables for execution |
+| Parameter | Type                            | Required | Description                         |
+| --------- | ------------------------------- | -------- | ----------------------------------- |
+| `url`     | `string`                        | Yes      | URL of the installation script      |
+| `shell`   | `'bash' \| 'sh'`                | Yes      | Shell interpreter to use            |
+| `args`    | `string[] \| (ctx) => string[]` | No       | Arguments to pass to the script     |
+| `env`     | `Record<string, string>`        | No       | Environment variables for execution |
 
 ## Examples
 
@@ -35,8 +34,7 @@ export default defineTool((install, ctx) =>
     url: 'https://fnm.vercel.app/install',
     shell: 'bash',
     args: ['--skip-shell', '--install-dir', '$LOCAL_BIN'],
-  })
-    .bin('fnm')
+  }).bin('fnm')
 );
 ```
 
@@ -48,8 +46,7 @@ export default defineTool((install, ctx) =>
     url: 'https://fnm.vercel.app/install',
     shell: 'bash',
     args: (argsCtx) => ['--install-dir', argsCtx.stagingDir],
-  })
-    .bin('fnm')
+  }).bin('fnm')
 );
 ```
 
@@ -63,8 +60,7 @@ export default defineTool((install, ctx) =>
     url: 'https://fly.io/install.sh',
     shell: 'sh',
     env: { INSTALL_DIR: '$HOME/.local/bin' },
-  })
-    .bin('fly')
+  }).bin('fly')
 );
 ```
 

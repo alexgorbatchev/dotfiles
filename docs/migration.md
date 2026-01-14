@@ -4,29 +4,28 @@ Convert shell-based tool configurations (like Zinit) to TypeScript `.tool.ts` fo
 
 ## Zinit Pattern Mapping
 
-| Zinit Pattern | ToolConfig Equivalent |
-|---------------|----------------------|
-| `zinit ice from"gh-r"` | `install('github-release', { repo: '...' })` |
-| `pick"path/to/binary"` | `binaryPath: 'path/to/binary'` |
+| Zinit Pattern             | ToolConfig Equivalent                           |
+| ------------------------- | ----------------------------------------------- |
+| `zinit ice from"gh-r"`    | `install('github-release', { repo: '...' })`    |
+| `pick"path/to/binary"`    | `binaryPath: 'path/to/binary'`                  |
 | `mv="*/binary -> binary"` | Not needed - binary stays in extracted location |
-| `atclone"make install"` | `.hook('after-extract', ...)` |
+| `atclone"make install"`   | `.hook('after-extract', ...)`                   |
 
 ### Example
 
 **Before (Zinit):**
+
 ```bash
 zinit ice from"gh-r" as"program" mv"ripgrep*/rg -> rg" pick"rg"
 zinit load BurntSushi/ripgrep
 ```
 
 **After:**
+
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((install) =>
-  install('github-release', { repo: 'BurntSushi/ripgrep' })
-    .bin('rg')
-);
+export default defineTool((install) => install('github-release', { repo: 'BurntSushi/ripgrep' }).bin('rg'));
 ```
 
 ## Shell Script Conversion
@@ -66,10 +65,10 @@ export default defineTool((install) =>
 
 ## Path Variables
 
-| Old Path | Recommended |
-|----------|-------------|
-| `$HOME` | `~/` (tilde expansion) |
-| `$DOTFILES` | `ctx.projectConfig.paths.dotfilesDir` |
+| Old Path       | Recommended                           |
+| -------------- | ------------------------------------- |
+| `$HOME`        | `~/` (tilde expansion)                |
+| `$DOTFILES`    | `ctx.projectConfig.paths.dotfilesDir` |
 | Tool directory | `ctx.projectConfig.paths.binariesDir` |
 
 ## Migration Checklist

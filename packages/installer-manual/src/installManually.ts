@@ -1,10 +1,10 @@
-import path from 'node:path';
 import type { IInstallContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IInstallOptions } from '@dotfiles/installer';
 import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { expandToolConfigPath } from '@dotfiles/utils';
+import path from 'node:path';
 import { messages } from './log-messages';
 import type { ManualToolConfig } from './schemas';
 import type { IManualInstallMetadata, ManualInstallResult } from './types';
@@ -30,7 +30,7 @@ export async function installManually(
   context: IInstallContext,
   _options: IInstallOptions | undefined,
   fs: IFileSystem,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<ManualInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installManually' });
@@ -47,7 +47,7 @@ export async function installManually(
         toolConfig.configFilePath,
         params.binaryPath,
         context.projectConfig,
-        context.systemInfo
+        context.systemInfo,
       );
 
       if (!(await toolFs.exists(binaryPath))) {
@@ -97,7 +97,7 @@ async function installBinariesManually(
   context: IInstallContext,
   toolFs: IFileSystem,
   binaryPath: string,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'installBinariesManually' });
   const binaryNames = getBinaryNames(toolConfig.binaries, toolName);

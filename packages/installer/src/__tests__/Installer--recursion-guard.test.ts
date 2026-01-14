@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
 import type { IManualInstallSuccess } from '@dotfiles/installer-manual';
+import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - Recursion Guard', () => {

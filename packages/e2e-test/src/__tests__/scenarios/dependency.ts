@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
 import type { Architecture, Platform } from '@dotfiles/core';
+import { describe, expect, it } from 'bun:test';
 import { TestHarness } from '../../TestHarness';
 
 /**
@@ -59,7 +59,7 @@ export function dependencyScenarios(baseTestDir: string, platform: Platform, arc
       expect(result.code).toBe(1);
       const combinedOutput = `${result.stdout}${result.stderr}`;
       expect(combinedOutput).toContain(
-        'Ambiguous dependency: binary "shared-dependency" is provided by multiple tools'
+        'Ambiguous dependency: binary "shared-dependency" is provided by multiple tools',
       );
       expect(combinedOutput).toContain('dependency-provider-a');
       expect(combinedOutput).toContain('dependency-provider-b');

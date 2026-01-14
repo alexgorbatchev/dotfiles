@@ -1,13 +1,17 @@
 # Task
+
 > Fix shell script output ordering so all scripts from one tool are grouped together under a single tool header
 
 # Primary Objective
+
 Group all shell scripts produced by one tool under a single header with simplified format: `====\nfull-tool-file-path\n====`
 
 # Open Questions
+
 - [x] Identified the relevant package: `shell-init-generator`
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of the problem - scripts from the same tool are scattered instead of grouped
 - [x] **TS002**: Create a failing test to isolate the problem
 - [x] **TS003**: Confirm the root cause of the problem based on the failing test
@@ -16,6 +20,7 @@ Group all shell scripts produced by one tool under a single header with simplifi
 - [x] **TS006**: Verify all tests pass
 
 # Acceptance Criteria
+
 - [x] Primary objective is met - all scripts from one tool grouped under single header
 - [x] Header format is simplified to just file path with horizontal lines
 - [x] All temporary code is removed
@@ -33,6 +38,7 @@ Group all shell scripts produced by one tool under a single header with simplifi
 - [ ] All acceptance criteria are met
 
 # Change Log
+
 - Initial task file created
 - Implemented script grouping and simplified header format
 - Updated tests to reflect new structure

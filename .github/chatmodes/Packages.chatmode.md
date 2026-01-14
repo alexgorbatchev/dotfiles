@@ -6,7 +6,9 @@ tools: ['runCommands', 'edit']
 we are splitting up src/modules into packages/ using bun workspaces.
 
 if asked to move a module:
+
 - read all available packages:
+
   ```
   find packages -type d -maxdepth 1 -mindepth 1 | while read -r dir; do echo "$(basename "$dir")"; done
   ```
@@ -35,6 +37,7 @@ if asked to move a module:
 - do not modify root level tsconfig.json
 
 if asked to fix references:
+
 - run bun typecheck to identify broken references
 - update references to use @dotfiles/ package
 - if @dotfiles/ package is missing required export, update its index.ts

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import assert from 'node:assert';
 import type { IAfterInstallContext, IInstallContext } from '@dotfiles/core';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import assert from 'node:assert';
 import type { Installer } from '../Installer';
 import { createInstallerTestSetup, createManualToolConfig, type IInstallerTestSetup } from './installer-test-helpers';
 

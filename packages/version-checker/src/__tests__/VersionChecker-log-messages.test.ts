@@ -24,7 +24,7 @@ describe('messages', () => {
 
   test('comparingVersions', () => {
     expect(String(messages.comparingVersions('1.0.0', '2.0.0'))).toBe(
-      'Comparing versions configured 1.0.0 vs latest 2.0.0'
+      'Comparing versions configured 1.0.0 vs latest 2.0.0',
     );
   });
 
@@ -38,7 +38,7 @@ describe('messages', () => {
 
   test('versionComparisonResult', () => {
     expect(String(messages.versionComparisonResult('NEWER_AVAILABLE'))).toBe(
-      'Version comparison result NEWER_AVAILABLE'
+      'Version comparison result NEWER_AVAILABLE',
     );
   });
 });

@@ -26,11 +26,9 @@ defineTool((install) =>
   install('brew', {
     formula: 'ripgrep',
   }).zsh((shell) =>
-    shell
-      .once(/* zsh */ `
+    shell.once(/* zsh */ `
         echo "once"
-      `)
-      .always(/* zsh */ `
+      `).always(/* zsh */ `
         echo "always"
       `)
   )

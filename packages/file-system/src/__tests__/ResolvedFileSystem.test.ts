@@ -25,7 +25,7 @@ class SpyFileSystem implements IFileSystem {
   public async writeFile(
     filePath: string,
     content: string | NodeJS.ArrayBufferView,
-    encoding?: BufferEncoding
+    encoding?: BufferEncoding,
   ): Promise<void> {
     this.calls.push({ method: 'writeFile', args: [filePath, content, encoding] });
   }
@@ -36,7 +36,7 @@ class SpyFileSystem implements IFileSystem {
     return result;
   }
 
-  public async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+  public async mkdir(dirPath: string, options?: { recursive?: boolean; }): Promise<void> {
     this.calls.push({ method: 'mkdir', args: [dirPath, options] });
   }
 
@@ -46,11 +46,11 @@ class SpyFileSystem implements IFileSystem {
     return result;
   }
 
-  public async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
+  public async rm(filePath: string, options?: { recursive?: boolean; force?: boolean; }): Promise<void> {
     this.calls.push({ method: 'rm', args: [filePath, options] });
   }
 
-  public async rmdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+  public async rmdir(dirPath: string, options?: { recursive?: boolean; }): Promise<void> {
     this.calls.push({ method: 'rmdir', args: [dirPath, options] });
   }
 

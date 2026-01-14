@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { createSectionHeader } from '../../shellTemplates';
 import { BashGenerator } from '../BashGenerator';
 import { createMockProjectConfigWithPathsOnly } from './createMockProjectConfigWithPathsOnly';
@@ -52,7 +52,7 @@ describe('BashGenerator', () => {
     const result = generator.processCompletions('test-tool', completions);
 
     expect(result).toContain(
-      '[[ -f "/home/test/.dotfiles/.generated/shell-scripts/bash/test-tool.bash" ]] && source "/home/test/.dotfiles/.generated/shell-scripts/bash/test-tool.bash"'
+      '[[ -f "/home/test/.dotfiles/.generated/shell-scripts/bash/test-tool.bash" ]] && source "/home/test/.dotfiles/.generated/shell-scripts/bash/test-tool.bash"',
     );
   });
 

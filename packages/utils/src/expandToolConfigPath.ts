@@ -1,9 +1,9 @@
-import path from 'node:path';
 import type { ISystemInfo } from '@dotfiles/core';
+import path from 'node:path';
 import { expandHomePath } from './expandHomePath';
 
 /**
- * Config paths interface to avoid circular dependency with @dotfiles/config
+ * Config paths interface to avoid circular dependency with the config package.
  */
 interface IConfigWithPaths {
   paths: {
@@ -33,7 +33,7 @@ export function expandToolConfigPath(
   toolConfigFilePath: string | undefined,
   inputPath: string,
   projectConfig: IConfigWithPaths,
-  _systemInfo: ISystemInfo
+  _systemInfo: ISystemInfo,
 ): string {
   // Step 1: Expand variables like ${paths.homeDir}
   let expandedPath = expandVariables(inputPath, projectConfig);

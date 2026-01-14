@@ -1,8 +1,8 @@
-import path from 'node:path';
 import {
   type $extended,
   type AsyncInstallHook,
   createLoggingShell,
+  hasLoggingShell,
   type IInstallBaseContext,
   type IOperationFailure,
   type IOperationSuccess,
@@ -10,6 +10,7 @@ import {
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
+import path from 'node:path';
 import { extractErrorCause } from './extractErrorCause';
 import { messages } from './log-messages';
 import { writeHookErrorDetails } from './writeHookErrorDetails';
@@ -25,14 +26,11 @@ function isShellError(error: unknown): boolean {
 export type HookHandler<TContext extends IInstallBaseContext = IInstallBaseContext> = AsyncInstallHook<TContext>;
 
 function createToolConfigCwdShell($shell: $extended, cwdPath: string): $extended {
-  const configuredShell: $extended = Object.assign(
-    (strings: TemplateStringsArray, ...expressions: unknown[]) => {
-      // biome-ignore lint/suspicious/noExplicitAny: dax-sh typing
-      const shellPromise = $shell(strings, ...(expressions as any[])).cwd(cwdPath);
-      return shellPromise;
-    },
-    $shell
-  );
+  const configuredShell: $extended = Object.assign((strings: TemplateStringsArray, ...expressions: unknown[]) => {
+    // @ts-expect-error: dax-sh typing
+    const shellPromise = $shell(strings, ...expressions).cwd(cwdPath);
+    return shellPromise;
+  }, $shell);
 
   return configuredShell;
 }
@@ -65,22 +63,19 @@ function createShellWithEnhancedPath($shell: $extended, additionalPaths: string[
     PATH: enhancedPath,
   };
 
-  const configuredShell: $extended = Object.assign(
-    (strings: TemplateStringsArray, ...expressions: unknown[]) => {
-      // Build the command string from the template literal
-      // Bun shell escapes ${} expressions, so we reconstruct the intended command
-      let command = strings[0] || '';
-      for (let i = 0; i < expressions.length; i++) {
-        command += String(expressions[i]) + (strings[i + 1] || '');
-      }
+  const configuredShell: $extended = Object.assign((strings: TemplateStringsArray, ...expressions: unknown[]) => {
+    // Build the command string from the template literal
+    // Bun shell escapes ${} expressions, so we reconstruct the intended command
+    let command = strings[0] || '';
+    for (let i = 0; i < expressions.length; i++) {
+      command += String(expressions[i]) + (strings[i + 1] || '');
+    }
 
-      // Wrap in sh -c so the subshell inherits PATH and performs command resolution
-      // Bun escapes ${command} as a single argument, preventing injection
-      const shellPromise = $shell`sh -c ${command}`.env(enhancedEnv);
-      return shellPromise;
-    },
-    $shell
-  );
+    // Wrap in sh -c so the subshell inherits PATH and performs command resolution
+    // Bun escapes ${command} as a single argument, preventing injection
+    const shellPromise = $shell`sh -c ${command}`.env(enhancedEnv);
+    return shellPromise;
+  }, $shell);
 
   return configuredShell;
 }
@@ -101,17 +96,17 @@ export interface IHookExecutionOptions {
  */
 export type HookExecutionResult =
   | (IOperationSuccess & {
-      /** Duration of hook execution in milliseconds */
-      durationMs: number;
-      /** Whether hook was skipped due to timeout or other reason */
-      skipped: boolean;
-    })
+    /** Duration of hook execution in milliseconds */
+    durationMs: number;
+    /** Whether hook was skipped due to timeout or other reason */
+    skipped: boolean;
+  })
   | (IOperationFailure & {
-      /** Duration of hook execution in milliseconds */
-      durationMs: number;
-      /** Whether hook was skipped due to timeout or other reason */
-      skipped: boolean;
-    });
+    /** Duration of hook execution in milliseconds */
+    durationMs: number;
+    /** Whether hook was skipped due to timeout or other reason */
+    skipped: boolean;
+  });
 
 /**
  * Complete definition of a hook including the function, name, and execution options.
@@ -172,7 +167,7 @@ export class HookExecutor {
     hookName: string,
     hook: HookHandler<TContext>,
     enhancedContext: TContext,
-    options: IHookExecutionOptions = {}
+    options: IHookExecutionOptions = {},
   ): Promise<HookExecutionResult> {
     const methodLogger = parentLogger
       .getSubLogger({ name: 'HookExecutor' })
@@ -285,18 +280,20 @@ export class HookExecutor {
   createEnhancedContext<TContext extends IInstallBaseContext>(
     baseContext: TContext,
     fileSystem: IFileSystem,
-    logger?: TsLogger
+    logger?: TsLogger,
   ): TContext {
     // Create a tool-specific TrackedFileSystem if we have one
-    const enhancedFileSystem: IFileSystem =
-      fileSystem instanceof TrackedFileSystem ? fileSystem.withToolName(baseContext.toolName) : fileSystem;
+    const enhancedFileSystem: IFileSystem = fileSystem instanceof TrackedFileSystem
+      ? fileSystem.withToolName(baseContext.toolName)
+      : fileSystem;
 
     const toolConfigFilePath: string | undefined = baseContext.toolConfig?.configFilePath;
     const toolConfigDirPath: string | undefined = toolConfigFilePath ? path.dirname(toolConfigFilePath) : undefined;
 
     // Extract unique binary directories from binaryPaths (if present, e.g., for after-install context)
-    const binaryPaths: string[] =
-      'binaryPaths' in baseContext && Array.isArray(baseContext.binaryPaths) ? baseContext.binaryPaths : [];
+    const binaryPaths: string[] = 'binaryPaths' in baseContext && Array.isArray(baseContext.binaryPaths)
+      ? baseContext.binaryPaths
+      : [];
     const binaryDirs: string[] = [...new Set(binaryPaths.map((p) => path.dirname(p)))];
 
     // Start with the base shell
@@ -312,9 +309,10 @@ export class HookExecutor {
       enhancedShell = createToolConfigCwdShell(enhancedShell, toolConfigDirPath);
     }
 
-    // Wrap shell with logging if logger is provided
-    if (logger) {
-      enhancedShell = createLoggingShell(enhancedShell, logger, { cwd: toolConfigDirPath });
+    // Wrap shell with logging if logger is provided AND shell doesn't already have logging
+    // This prevents double-logging when the base shell already has createLoggingShell applied
+    if (logger && !hasLoggingShell(baseContext.$)) {
+      enhancedShell = createLoggingShell(enhancedShell, logger);
     }
 
     const result: TContext = {
@@ -340,7 +338,7 @@ export class HookExecutor {
   async executeHooks<TContext extends IInstallBaseContext>(
     parentLogger: TsLogger,
     hooks: IHookDefinition<TContext>[],
-    enhancedContext: TContext
+    enhancedContext: TContext,
   ): Promise<HookExecutionResult[]> {
     const methodLogger = parentLogger.getSubLogger({ name: 'HookExecutor' }).getSubLogger({ name: 'executeHooks' });
     const results: HookExecutionResult[] = [];

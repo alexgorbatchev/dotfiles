@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
+import { describe, expect, it } from 'bun:test';
 import { GitHubApiClient } from '../GitHubApiClient';
 import {
   createGitHubConfigOverride,
@@ -26,7 +26,7 @@ describe('GitHubApiClient', () => {
 
     it('should initialize correctly with a token', async () => {
       const mockProjectConfig = await createMockProjectConfigForGitHubApi(
-        createGitHubConfigOverride({ githubToken: 'test-token' })
+        createGitHubConfigOverride({ githubToken: 'test-token' }),
       );
       const mockDownloader = createMockDownloader();
       const client = new GitHubApiClient(new TestLogger(), mockProjectConfig, mockDownloader);
@@ -45,7 +45,7 @@ describe('GitHubApiClient', () => {
       const mockDownloader = createMockDownloader();
       const mockCache = createMockGitHubApiCache();
       const configWithCacheDisabled = await createMockProjectConfigForGitHubApi(
-        createGitHubConfigOverride({ githubApiCacheEnabled: false })
+        createGitHubConfigOverride({ githubApiCacheEnabled: false }),
       );
       const clientNoCache = new GitHubApiClient(new TestLogger(), configWithCacheDisabled, mockDownloader, mockCache);
       expect(clientNoCache).toBeInstanceOf(GitHubApiClient);
@@ -53,7 +53,7 @@ describe('GitHubApiClient', () => {
       // and they are accessible for testing, e.g. client.isCacheEnabled()
 
       const configWithCustomTtl = await createMockProjectConfigForGitHubApi(
-        createGitHubConfigOverride({ githubApiCacheTtl: 7200000 }) // 2 hours
+        createGitHubConfigOverride({ githubApiCacheTtl: 7200000 }), // 2 hours
       );
       const clientWithCustomTtl = new GitHubApiClient(new TestLogger(), configWithCustomTtl, mockDownloader, mockCache);
       expect(clientWithCustomTtl).toBeInstanceOf(GitHubApiClient);

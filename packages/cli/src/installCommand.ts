@@ -35,7 +35,7 @@ async function loadToolConfigSafely(
   fs: IResolvedFileSystem,
   projectConfig: ProjectConfig,
   configService: IConfigService,
-  systemInfo: ISystemInfo
+  systemInfo: ISystemInfo,
 ): Promise<ToolConfig | null> {
   const toolConfig = await configService.loadSingleToolConfig(
     logger,
@@ -43,7 +43,7 @@ async function loadToolConfigSafely(
     toolConfigsDir,
     fs,
     projectConfig,
-    systemInfo
+    systemInfo,
   );
 
   if (!toolConfig) {
@@ -58,7 +58,7 @@ function handleInstallationResult(
   logger: TsLogger,
   result: InstallResult,
   toolName: string,
-  shimMode: boolean
+  shimMode: boolean,
 ): number | null {
   if (result.success) {
     if (shimMode) {
@@ -112,14 +112,14 @@ async function executeInstallCommandAction(
   logger: TsLogger,
   toolName: string,
   combinedOptions: InstallCommandSpecificOptions & IGlobalProgramOptions,
-  services: IServices
+  services: IServices,
 ): Promise<number | null> {
   const { projectConfig, fs, installer, configService, generatorOrchestrator, systemInfo } = services;
 
   logger.debug(
     messages.commandActionStarted('install', toolName),
     projectConfig.paths.toolConfigsDir,
-    fs.constructor.name
+    fs.constructor.name,
   );
 
   const toolConfig = await loadToolConfigSafely(
@@ -129,7 +129,7 @@ async function executeInstallCommandAction(
     fs,
     projectConfig,
     configService,
-    systemInfo
+    systemInfo,
   );
 
   if (!toolConfig) {
@@ -163,7 +163,7 @@ async function executeInstallCommandAction(
 export function registerInstallCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>
+  servicesFactory: () => Promise<IServices>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerInstallCommand' });
   program

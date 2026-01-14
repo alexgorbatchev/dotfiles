@@ -1,7 +1,22 @@
 {
-  "editor.formatOnSave": false,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "dprint.dprint",
+  "[typescript]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+
   "eslint.enable": false,
   "prettier.enable": false,
+  "dprint.path": "./node_modules/dprint/dprint",
 
   "search.exclude": {
     "**/dist": true,
@@ -17,13 +32,30 @@
   },
   "peacock.color": "#632399",
 
-  "bun.test.customScript": "bun test:agent",
-  "bun.test.customFlag": "",
   "testing.coverageToolbarEnabled": true,
   "typescript.tsdk": "node_modules/typescript/lib",
-  "biome.lsp.bin": "./node_modules/.bin/biome",
 
   "todo-tree.filtering.includeGlobs": ["**/packages/**"],
   "todo-tree.filtering.excludeGlobs": ["**/node_modules/**", "**/README.md"],
   "todo-tree.tree.autoRefresh": false,
+  "workbench.colorCustomizations": {
+    "activityBar.activeBackground": "#7e2cc2",
+    "activityBar.background": "#7e2cc2",
+    "activityBar.foreground": "#e7e7e7",
+    "activityBar.inactiveForeground": "#e7e7e799",
+    "activityBarBadge.background": "#34220c",
+    "activityBarBadge.foreground": "#e7e7e7",
+    "commandCenter.border": "#e7e7e799",
+    "panel.border": "#7e2cc2",
+    "sash.hoverBorder": "#7e2cc2",
+    "statusBar.background": "#632399",
+    "statusBar.foreground": "#e7e7e7",
+    "statusBarItem.hoverBackground": "#7e2cc2",
+    "statusBarItem.remoteBackground": "#632399",
+    "statusBarItem.remoteForeground": "#e7e7e7",
+    "titleBar.activeBackground": "#632399",
+    "titleBar.activeForeground": "#e7e7e7",
+    "titleBar.inactiveBackground": "#63239999",
+    "titleBar.inactiveForeground": "#e7e7e799"
+  }
 }

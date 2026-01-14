@@ -1,5 +1,6 @@
 // re-export these to make build work
-export type NodeStats = import('node:fs').Stats;
+import type { Stats as NodeStats } from 'node:fs';
+export type { NodeStats };
 export type Stats = NodeStats;
 
 export interface IFileSystem {
@@ -40,7 +41,7 @@ export interface IFileSystem {
    * @param options - Options for creating the directory.
    * @returns A promise that resolves when the directory has been created.
    */
-  mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
+  mkdir(path: string, options?: { recursive?: boolean; }): Promise<void>;
 
   /**
    * Reads the contents of a directory.
@@ -55,7 +56,7 @@ export interface IFileSystem {
    * @param options - Options for removal.
    * @returns A promise that resolves when the file or directory has been removed.
    */
-  rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void>;
+  rm(path: string, options?: { recursive?: boolean; force?: boolean; }): Promise<void>;
 
   /**
    * Asynchronously removes a directory.
@@ -64,7 +65,7 @@ export interface IFileSystem {
    * @returns A promise that resolves when the directory has been removed.
    * @deprecated Use {@link IFileSystem.rm} with `recursive: true` instead.
    */
-  rmdir(path: string, options?: { recursive?: boolean }): Promise<void>;
+  rmdir(path: string, options?: { recursive?: boolean; }): Promise<void>;
 
   /**
    * Gets file or directory stats.

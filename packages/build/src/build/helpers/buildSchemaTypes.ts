@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noConsole: build script */
-
 import { $ } from 'dax-sh';
 
 import type { IBuildContext, IDependencyVersions } from '../types';

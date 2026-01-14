@@ -1,4 +1,3 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IInstallerPlugin, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import { InstallerPluginRegistry } from '@dotfiles/core';
 import { Downloader } from '@dotfiles/downloader';
@@ -8,6 +7,7 @@ import { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry';
 import { createMockFileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { FetchMockHelper } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { ReadmeService } from '../ReadmeService';
 import type { IReadmeContent } from '../types';
 
@@ -76,7 +76,7 @@ describe('ReadmeService', () => {
       fileSystem,
       mockFileRegistry,
       TrackedFileSystem.createContext('readme-service', 'catalog'),
-      mockProjectConfig
+      mockProjectConfig,
     );
 
     readmeService = new ReadmeService(
@@ -86,7 +86,7 @@ describe('ReadmeService', () => {
       fileSystem,
       catalogFileSystem,
       CACHE_DIR,
-      mockPluginRegistry
+      mockPluginRegistry,
     );
   });
 
@@ -103,7 +103,7 @@ describe('ReadmeService', () => {
         'owner',
         'repo',
         'v1.0.0',
-        'test-tool'
+        'test-tool',
       );
 
       expect(result).not.toBeNull();
@@ -115,7 +115,7 @@ describe('ReadmeService', () => {
       expect(result!.sourceUrl).toBe('https://raw.githubusercontent.com/owner/repo/v1.0.0/README.md');
       expect(fetchMock.getSpy()).toHaveBeenCalledWith(
         'https://raw.githubusercontent.com/owner/repo/v1.0.0/README.md',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -126,7 +126,7 @@ describe('ReadmeService', () => {
         'owner',
         'repo',
         'v1.0.0',
-        'test-tool'
+        'test-tool',
       );
 
       expect(result).toBeNull();
@@ -141,7 +141,7 @@ describe('ReadmeService', () => {
         'owner',
         'repo',
         'v1.0.0',
-        'test-tool'
+        'test-tool',
       );
 
       // Second call should use cache
@@ -149,7 +149,7 @@ describe('ReadmeService', () => {
         'owner',
         'repo',
         'v1.0.0',
-        'test-tool'
+        'test-tool',
       );
 
       expect(result1).toEqual(result2);
@@ -305,13 +305,13 @@ describe('ReadmeService', () => {
 
       (mockRegistry.getAllToolInstallations as ReturnType<typeof mock>).mockResolvedValueOnce(mockInstallations);
       fetchMock.mockTextResponseOnce(
-        '# Tool 1\n\nThis is the full description of the tool with all its details and documentation.'
+        '# Tool 1\n\nThis is the full description of the tool with all its details and documentation.',
       );
 
       const result: string = await readmeService.generateCombinedReadme();
 
       expect(result).toContain(
-        '# Tool 1\n\nThis is the full description of the tool with all its details and documentation.'
+        '# Tool 1\n\nThis is the full description of the tool with all its details and documentation.',
       );
     });
   });
@@ -334,7 +334,7 @@ describe('ReadmeService', () => {
         'test-tool',
         'v1.0.0',
         'owner',
-        'repo'
+        'repo',
       );
 
       expect(result).toBe('/output/test-tool/v1.0.0/README.md');
@@ -352,7 +352,7 @@ describe('ReadmeService', () => {
         'test-tool',
         'v1.0.0',
         'owner',
-        'repo'
+        'repo',
       );
 
       expect(result).toBeNull();
@@ -373,7 +373,7 @@ describe('ReadmeService', () => {
         'test-tool',
         'v1.0.0',
         'owner',
-        'repo'
+        'repo',
       );
 
       expect(result).toBeNull();
@@ -412,7 +412,7 @@ describe('ReadmeService', () => {
         ['WARN'],
         ['ReadmeService'],
         [],
-        ['No GitHub tools installed. Run the generate command to install tools before generating a catalog.']
+        ['No GitHub tools installed. Run the generate command to install tools before generating a catalog.'],
       );
     });
 

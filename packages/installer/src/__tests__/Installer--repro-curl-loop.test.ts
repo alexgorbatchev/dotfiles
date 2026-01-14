@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
-import path from 'node:path';
 import type { AggregateInstallResult, IInstallContext, ToolConfig } from '@dotfiles/core';
 import type { IToolInstallationRecord } from '@dotfiles/registry/tool';
+import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import path from 'node:path';
 import { createInstallerTestSetup, type IInstallerTestSetup, MOCK_TOOL_NAME } from './installer-test-helpers';
 
 describe('Installer - Reproduction of curl-script loop issue', () => {
@@ -29,7 +29,7 @@ describe('Installer - Reproduction of curl-script loop issue', () => {
         _method: string,
         _toolName: string,
         _toolConfig: unknown,
-        context: IInstallContext
+        context: IInstallContext,
       ): Promise<AggregateInstallResult> => {
         const binaryPath: string = path.join(context.stagingDir, MOCK_TOOL_NAME);
 
@@ -47,7 +47,7 @@ describe('Installer - Reproduction of curl-script loop issue', () => {
           },
         };
         return result;
-      }
+      },
     );
 
     // First installation
@@ -58,7 +58,7 @@ describe('Installer - Reproduction of curl-script loop issue', () => {
     const installDirCall1 = ensureDirCalls1.find(
       (call) =>
         call[0].includes(MOCK_TOOL_NAME) &&
-        /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(call[0])
+        /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(call[0]),
     );
     expect(installDirCall1).toBeDefined();
 

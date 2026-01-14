@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
-import path from 'node:path';
 import type { ShellType } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { dedentString } from '@dotfiles/utils';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import path from 'node:path';
 import type { IProfileUpdateConfig } from '../IProfileUpdater';
 import { ProfileUpdater } from '../ProfileUpdater';
 
@@ -197,7 +197,7 @@ describe('ProfileUpdater', () => {
       expect(updatedContent).toContain(existingContent);
       expect(updatedContent).toContain('# Generated via dotfiles generator - do not modify');
       expect(updatedContent).toContain(
-        '# ------------------------------------------------------------------------------'
+        '# ------------------------------------------------------------------------------',
       );
       expect(updatedContent).toContain(`source "${scriptPath}"`);
     });

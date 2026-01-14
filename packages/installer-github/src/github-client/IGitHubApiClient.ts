@@ -37,7 +37,7 @@ export interface IGitHubApiClient {
   getAllReleases(
     owner: string,
     repo: string,
-    options?: { perPage?: number; includePrerelease?: boolean }
+    options?: { perPage?: number; includePrerelease?: boolean; },
   ): Promise<IGitHubRelease[]>;
 
   /**

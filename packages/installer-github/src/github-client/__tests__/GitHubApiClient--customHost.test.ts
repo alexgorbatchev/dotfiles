@@ -25,8 +25,8 @@ describe('GitHubApiClient with custom host', () => {
           published_at: '2023-01-01T00:00:00Z',
           assets: [],
           html_url: 'https://github.com/test-owner/test-repo/releases/tag/v1.0.0',
-        })
-      )
+        }),
+      ),
     );
 
     await mocks.apiClient.getLatestRelease('test-owner', 'test-repo');
@@ -35,7 +35,7 @@ describe('GitHubApiClient with custom host', () => {
     expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
       expect.anything(),
       `${customHost}/repos/test-owner/test-repo/releases/latest`,
-      expect.anything()
+      expect.anything(),
     );
 
     // Verify logger received request message with custom host
@@ -56,8 +56,8 @@ describe('GitHubApiClient with custom host', () => {
           published_at: '2023-01-01T00:00:00Z',
           assets: [],
           html_url: 'https://github.com/test-owner/test-repo/releases/tag/v1.0.0',
-        })
-      )
+        }),
+      ),
     );
 
     await mocks.apiClient.getReleaseByTag('test-owner', 'test-repo', 'v1.0.0');
@@ -66,7 +66,7 @@ describe('GitHubApiClient with custom host', () => {
     expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
       expect.anything(),
       `${customHost}/repos/test-owner/test-repo/releases/tags/v1.0.0`,
-      expect.anything()
+      expect.anything(),
     );
   });
 
@@ -80,7 +80,7 @@ describe('GitHubApiClient with custom host', () => {
     expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
       expect.anything(),
       `${customHost}/repos/test-owner/test-repo/releases?per_page=30&page=1`,
-      expect.anything()
+      expect.anything(),
     );
   });
 
@@ -154,8 +154,8 @@ describe('GitHubApiClient with custom host', () => {
             used: 1,
             resource: 'core',
           },
-        })
-      )
+        }),
+      ),
     );
 
     await mocks.apiClient.getRateLimit();
@@ -164,7 +164,7 @@ describe('GitHubApiClient with custom host', () => {
     expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
       expect.anything(),
       `${customHost}/rate_limit`,
-      expect.anything()
+      expect.anything(),
     );
   });
 });

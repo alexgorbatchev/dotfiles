@@ -46,7 +46,6 @@ export type CreateMockProjectConfigOptions = {
  * @param options - Options for creating the mock project config.
  * @returns A promise that resolves with the `ProjectConfig` object.
  *
- * @testing
  * This function is a utility for creating mock project configuration files in tests.  It simplifies the process of
  * generating valid YAML content from a partial config object and writing it to a mock file system, making it easier to
  * set up test preconditions for modules that consume these configuration files.

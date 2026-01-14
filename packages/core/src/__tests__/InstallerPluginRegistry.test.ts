@@ -1,12 +1,12 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
-import assert from 'node:assert';
-import path from 'node:path';
 import type { IInstallContext, ISystemInfo, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { createConfiguredShell } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
 import { createMock$, createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { replaceInFile } from '@dotfiles/utils';
+import { beforeEach, describe, expect, test } from 'bun:test';
+import assert from 'node:assert';
+import path from 'node:path';
 import { z } from 'zod';
 import { Architecture, Platform } from '../common';
 import { createToolLog } from '../context/createToolConfigContext';
@@ -61,7 +61,7 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
   const toolConfigFilePath = path.join(
     projectConfig.paths.toolConfigsDir,
     toolConfig.name,
-    `${toolConfig.name}.tool.ts`
+    `${toolConfig.name}.tool.ts`,
   );
   toolConfig.configFilePath = toolConfigFilePath;
 
@@ -282,7 +282,7 @@ describe('InstallerPluginRegistry', () => {
   describe('getToolConfigSchema', () => {
     test('throws if schemas not composed', () => {
       expect(() => registry.getToolConfigSchema()).toThrow(
-        'Schemas not composed. Call composeSchemas() after registering all plugins.'
+        'Schemas not composed. Call composeSchemas() after registering all plugins.',
       );
     });
 
@@ -300,7 +300,7 @@ describe('InstallerPluginRegistry', () => {
   describe('getInstallParamsSchema', () => {
     test('throws if schemas not composed', () => {
       expect(() => registry.getInstallParamsSchema()).toThrow(
-        'Schemas not composed. Call composeSchemas() after registering all plugins.'
+        'Schemas not composed. Call composeSchemas() after registering all plugins.',
       );
     });
 
@@ -403,7 +403,7 @@ describe('InstallerPluginRegistry', () => {
         ['WARN'],
         ['InstallerPluginRegistry', 'install'],
         [],
-        ['Validation warning for test-method: Warning 1', 'Validation warning for test-method: Warning 2']
+        ['Validation warning for test-method: Warning 1', 'Validation warning for test-method: Warning 2'],
       );
     });
 
@@ -484,7 +484,7 @@ describe('InstallerPluginRegistry', () => {
         ['DEBUG'],
         ['InstallerPluginRegistry', 'install'],
         [],
-        ['Delegating installation to plugin: test-method']
+        ['Delegating installation to plugin: test-method'],
       );
     });
   });
@@ -574,7 +574,7 @@ describe('InstallerPluginRegistry', () => {
         ['INFO', 'DEBUG'],
         ['InstallerPluginRegistry', 'cleanup'],
         [],
-        ['Cleaning up plugins...', 'Cleaned up plugin: test-method', 'Plugin cleanup complete']
+        ['Cleaning up plugins...', 'Cleaned up plugin: test-method', 'Plugin cleanup complete'],
       );
     });
 

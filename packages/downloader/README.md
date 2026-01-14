@@ -80,8 +80,8 @@ interface IDownloadStrategy {
 
 ```typescript
 import { Downloader, NodeFetchStrategy } from '@dotfiles/downloader';
-import { createTsLogger } from '@dotfiles/logger';
 import { FileSystem } from '@dotfiles/file-system';
+import { createTsLogger } from '@dotfiles/logger';
 
 const logger = createTsLogger();
 const fileSystem = new FileSystem(logger);
@@ -117,11 +117,7 @@ await downloader.download({
 ### Download with Caching
 
 ```typescript
-import { 
-  Downloader, 
-  NodeFetchStrategy, 
-  CachedDownloadStrategy 
-} from '@dotfiles/downloader';
+import { CachedDownloadStrategy, Downloader, NodeFetchStrategy } from '@dotfiles/downloader';
 import { FileCache } from '@dotfiles/downloader/cache';
 
 // Create cache
@@ -157,8 +153,8 @@ await downloader.download({
   destination: '/tmp/asset.zip',
   filename: 'asset.zip',
   headers: {
-    'Accept': 'application/octet-stream',
-    'Authorization': `Bearer ${githubToken}`,
+    Accept: 'application/octet-stream',
+    Authorization: `Bearer ${githubToken}`,
   },
 });
 ```
@@ -201,6 +197,7 @@ try {
 Default strategy using Node.js native fetch API.
 
 **Features:**
+
 - Uses native fetch (no external dependencies)
 - Streaming downloads (memory efficient)
 - Automatic progress tracking
@@ -217,6 +214,7 @@ const strategy = new NodeFetchStrategy(logger, fileSystem);
 Wrapper that adds caching to any download strategy.
 
 **Features:**
+
 - Caches downloaded files by URL
 - Configurable TTL (time-to-live)
 - Automatic cache cleanup
@@ -233,7 +231,7 @@ const cachedStrategy = new CachedDownloadStrategy(baseStrategy, cache);
 Implement your own download strategy:
 
 ```typescript
-import type { DownloadStrategy, DownloadOptions } from '@dotfiles/downloader';
+import type { DownloadOptions, DownloadStrategy } from '@dotfiles/downloader';
 
 class CustomStrategy implements DownloadStrategy {
   async download(options: DownloadOptions): Promise<void> {
@@ -280,13 +278,13 @@ interface ICacheOptions {
    * @default 86400 (24 hours)
    */
   ttl?: number;
-  
+
   /**
    * Maximum cache size in bytes
    * @default undefined (no limit)
    */
   maxSize?: number;
-  
+
   /**
    * Whether to validate cache entries
    * @default true
@@ -310,6 +308,7 @@ progressBar.stop();
 ```
 
 **Features:**
+
 - Real-time progress percentage
 - Download speed calculation
 - ETA (estimated time remaining)
@@ -328,7 +327,7 @@ class DownloadError extends Error {
     message: string,
     public readonly url: string,
     public readonly statusCode?: number,
-    public readonly cause?: Error
+    public readonly cause?: Error,
   ) {
     super(message);
   }
@@ -354,20 +353,24 @@ Error: Failed to create directory: Disk full
 ## Dependencies
 
 ### Internal Dependencies
+
 - `@dotfiles/file-system` - Filesystem operations
 - `@dotfiles/logger` - Structured logging
 
 ### External Dependencies
+
 - `cli-progress` - Progress bar implementation
 
 ## Testing
 
 Run tests with:
+
 ```bash
 bun test packages/downloader
 ```
 
 The package includes tests for:
+
 - Download success scenarios
 - Progress tracking
 - Error handling
@@ -393,6 +396,7 @@ logger.debug('Cache miss', { url });
 ## Performance Considerations
 
 ### Streaming Downloads
+
 ```typescript
 // Downloads are streamed to avoid loading entire file in memory
 const stream = response.body;
@@ -401,6 +405,7 @@ await stream.pipeTo(fileStream);
 ```
 
 ### Concurrent Downloads
+
 ```typescript
 // Download multiple files in parallel
 await Promise.all([
@@ -411,6 +416,7 @@ await Promise.all([
 ```
 
 ### Cache Efficiency
+
 ```typescript
 // Cache reduces network usage for repeated downloads
 // First download: 10s
@@ -420,6 +426,7 @@ await Promise.all([
 ## Best Practices
 
 ### Always Show Progress for Large Files
+
 ```typescript
 const isLargeFile = fileSize > 10 * 1024 * 1024; // > 10 MB
 
@@ -432,6 +439,7 @@ await downloader.download({
 ```
 
 ### Use Caching for Repeated Downloads
+
 ```typescript
 // Enable caching for tool installations
 const cachedStrategy = new CachedDownloadStrategy(baseStrategy, cache);
@@ -439,6 +447,7 @@ const downloader = new Downloader(logger, fileSystem, cachedStrategy);
 ```
 
 ### Handle Network Errors Gracefully
+
 ```typescript
 try {
   await downloader.download(options);
@@ -453,6 +462,7 @@ try {
 ```
 
 ### Clean Up Failed Downloads
+
 ```typescript
 try {
   await downloader.download(options);
@@ -466,21 +476,27 @@ try {
 ## Design Decisions
 
 ### Why Strategy Pattern?
+
 The strategy pattern allows:
+
 - Easy testing with mock strategies
 - Multiple download implementations
 - Runtime strategy selection
 - Transparent caching addition
 
 ### Why Separate Cache Package?
+
 Separating cache functionality:
+
 - Enables reuse in other packages
 - Simplifies testing
 - Allows alternative cache implementations
 - Keeps concerns separated
 
 ### Why Progress Bar?
+
 Progress feedback:
+
 - Improves user experience
 - Shows download is active
 - Provides time estimates
@@ -489,6 +505,7 @@ Progress feedback:
 ## Future Enhancements
 
 Potential improvements:
+
 - Resume interrupted downloads
 - Parallel chunk downloading
 - Download verification (checksums)

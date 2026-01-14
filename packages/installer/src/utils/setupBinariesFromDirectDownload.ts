@@ -1,7 +1,7 @@
-import path from 'node:path';
 import type { IInstallContext, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import path from 'node:path';
 import { createBinaryEntrypoint } from './createBinaryEntrypoint';
 import { messages } from './log-messages';
 import { normalizeBinaries } from './normalizeBinaries';
@@ -15,7 +15,7 @@ export async function setupBinariesFromDirectDownload(
   toolConfig: ToolConfig,
   context: IInstallContext,
   downloadPath: string,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'setupBinariesFromDirectDownload' });
   const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);

@@ -1,7 +1,7 @@
+import type { TsLogger } from '@dotfiles/logger';
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
-import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
 
 /**

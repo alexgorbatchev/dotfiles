@@ -3,12 +3,15 @@
 > Check VS Code problems for unused symbols, for each one verify if it's really unused and remove it if it is.
 
 # Primary Objective
+
 Identify and remove all unused symbols from the codebase after verifying they are truly unused.
 
 # Open Questions
+
 - [x] None at this time
 
 # Tasks
+
 - [x] **TS001**: Analyze all unused symbols reported by VS Code
 - [x] **TS002**: Verify each symbol is truly unused (check all usages)
 - [x] **TS003**: Remove unused symbols
@@ -16,6 +19,7 @@ Identify and remove all unused symbols from the codebase after verifying they ar
 - [x] **TS005**: Commit changes
 
 # Acceptance Criteria
+
 - [x] All unused symbols are identified
 - [x] Each symbol is verified to be truly unused
 - [x] All unused symbols are removed
@@ -29,10 +33,12 @@ Identify and remove all unused symbols from the codebase after verifying they ar
 ## Removed Unused Symbols
 
 ### packages/build/src/git-utils.ts
+
 - ❌ Removed `expectToFail` property from `IExecuteCommandOptions`
 - ❌ Removed `validateGitRepository()` function
 
 ### packages/config/src (Legacy File Cleanup)
+
 - ❌ Deleted entire `projectConfigLoader.ts` file (all exports removed)
   - Removed `getDefaultConfig()` function
   - Removed `loadProjectConfig()` function
@@ -44,14 +50,17 @@ Identify and remove all unused symbols from the codebase after verifying they ar
 ## Verified False Positives (Not Removed)
 
 ### Type-Related Issues (Not Unused Symbols)
+
 - ✅ `formatLogMessage()` - Used 3 times in TestLogger.ts (type issue about return value, not unused)
 - ✅ `handleAbsoluteUrl()` - Return type union issue, not unused (function is called)
 
 ### GitHub API Incomplete Code (Not Unused)
+
 - ✅ GitHub API methods (`probeLatestTag`, `getLatestReleaseTags`) - Methods exist and are called
 - ✅ Log messages for GitHub operations - Messages exist, code that uses them just incomplete
 
 ### Design Patterns (Not Unused)
+
 - ✅ `ResolvedFileSystemBrand` type - Used for internal type annotations
 - ✅ `__placeholder__` property - Required for TypeScript module augmentation
 - ✅ `message` property in error interface - Used in error formatting
@@ -59,9 +68,9 @@ Identify and remove all unused symbols from the codebase after verifying they ar
 
 ## Final Verification
 
-✅ **Type checking**: Zero errors  
-✅ **Test suite**: 1321 tests pass  
-✅ **Linting**: No issues (34 formatting fixes applied)  
+✅ **Type checking**: Zero errors\
+✅ **Test suite**: 1321 tests pass\
+✅ **Linting**: No issues (34 formatting fixes applied)\
 ✅ **All functionality preserved**
 
 ## Commits

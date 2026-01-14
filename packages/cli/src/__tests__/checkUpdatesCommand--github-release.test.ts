@@ -1,10 +1,10 @@
-import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService } from '@dotfiles/config';
 import type { IInstallerPlugin, InstallerPluginRegistry, UpdateCheckResult } from '@dotfiles/core';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
+import { beforeEach, describe, mock, test } from 'bun:test';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
@@ -40,7 +40,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
           hasUpdate: true,
           currentVersion: '0.40.0',
           latestVersion: '0.41.0',
-        })
+        }),
       ),
     };
 
@@ -98,7 +98,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
       ['INFO'],
       ['registerCheckUpdatesCommand'],
       [],
-      [messages.toolUpdateAvailable('fzf', '0.40.0', '0.41.0')]
+      [messages.toolUpdateAvailable('fzf', '0.40.0', '0.41.0')],
     );
   });
 

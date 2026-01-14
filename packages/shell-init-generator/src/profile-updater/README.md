@@ -85,18 +85,18 @@ interface IProfileUpdater {
 }
 
 interface IProfileUpdateConfig {
-  shellType: ShellType;              // 'zsh', 'bash', 'powershell'
-  generatedScriptPath: string;       // Path to generated script
-  onlyIfExists: boolean;             // Skip if profile doesn't exist
-  projectConfigPath: string;            // Reference for comments
+  shellType: ShellType; // 'zsh', 'bash', 'powershell'
+  generatedScriptPath: string; // Path to generated script
+  onlyIfExists: boolean; // Skip if profile doesn't exist
+  projectConfigPath: string; // Reference for comments
 }
 
 interface IProfileUpdateResult {
-  shellType: ShellType;              // Shell that was processed
-  profilePath: string;               // Path to profile file
-  fileExists: boolean;               // Whether profile existed
-  wasUpdated: boolean;               // Whether we added a sourcing line
-  wasAlreadyPresent: boolean;        // Whether sourcing line already existed
+  shellType: ShellType; // Shell that was processed
+  profilePath: string; // Path to profile file
+  fileExists: boolean; // Whether profile existed
+  wasUpdated: boolean; // Whether we added a sourcing line
+  wasAlreadyPresent: boolean; // Whether sourcing line already existed
 }
 ```
 
@@ -158,6 +158,7 @@ private getSourcePatterns(scriptPath: string): string[] {
 ```
 
 This prevents duplicate entries when:
+
 - User manually added the line with different quoting
 - Previous runs used different source syntax
 - Mixed quoting styles are present
@@ -167,6 +168,7 @@ This prevents duplicate entries when:
 When adding the sourcing line, the updater includes a clear header block:
 
 #### Zsh/Bash Format
+
 ```bash
 # ============================================================================
 # Dotfiles Generator - Auto-generated shell initialization
@@ -177,6 +179,7 @@ source "/path/to/.generated/shell-scripts/main.zsh"
 ```
 
 #### PowerShell Format
+
 ```powershell
 # ============================================================================
 # Dotfiles Generator - Auto-generated shell initialization
@@ -189,21 +192,25 @@ source "/path/to/.generated/shell-scripts/main.zsh"
 ### Safety Features
 
 #### 1. Non-Destructive Updates
+
 - Always appends to existing files, never overwrites
 - Preserves all existing user configuration
 - Creates clear boundaries with header comments
 
 #### 2. Idempotency
+
 - Multiple runs don't create duplicate entries
 - Smart detection handles different formatting styles
 - Returns accurate status about what was done
 
 #### 3. Error Handling
+
 - Creates parent directories if they don't exist
 - Handles permission issues gracefully
 - Provides detailed results for troubleshooting
 
 #### 4. Rollback Safety
+
 - Changes are clearly marked and isolated
 - Users can easily identify and remove generated sections
 - Reference to source YAML file for context
@@ -211,12 +218,13 @@ source "/path/to/.generated/shell-scripts/main.zsh"
 ## Usage Workflow
 
 ### 1. Configuration Setup
+
 ```typescript
 const configs: ProfileUpdateConfig[] = [
   {
     shellType: 'zsh',
     generatedScriptPath: '/path/to/.generated/shell-scripts/main.zsh',
-    onlyIfExists: true,  // Only update if .zshrc already exists
+    onlyIfExists: true, // Only update if .zshrc already exists
     projectConfigPath: '/path/to/dotfiles.yml',
   },
   {
@@ -229,6 +237,7 @@ const configs: ProfileUpdateConfig[] = [
 ```
 
 ### 2. Update Execution
+
 ```typescript
 const updater = new ProfileUpdater(fileSystem, homeDir);
 const results = await updater.updateProfiles(configs);
@@ -245,17 +254,18 @@ for (const result of results) {
 ```
 
 ### 3. Integration with Shell Generation
+
 ```typescript
 // In ShellInitGenerator
 export class ShellInitGenerator {
   async generate(): Promise<void> {
     // 1. Generate shell initialization files
     await this.generateShellFiles();
-    
+
     // 2. Update profile files to source generated files
     const profileConfigs = this.createProfileConfigs();
     const results = await this.profileUpdater.updateProfiles(profileConfigs);
-    
+
     // 3. Report results
     this.reportProfileUpdates(results);
   }
@@ -277,19 +287,22 @@ Controls whether to create profile files if they don't exist:
 
 // Aggressive approach - create files as needed
 {
-  shellType: 'zsh', 
+  shellType: 'zsh',
   onlyIfExists: false, // Create ~/.zshrc if it doesn't exist
 }
 ```
 
 **Use Cases:**
+
 - **`onlyIfExists: true`**: Respect user's shell choice, don't force configuration
 - **`onlyIfExists: false`**: Ensure dotfiles work regardless of existing setup
 
 ### Cross-Platform Considerations
 
 #### PowerShell Profiles
+
 PowerShell has multiple profile locations depending on host and scope:
+
 - `$PROFILE.CurrentUserCurrentHost` (most common)
 - `$PROFILE.CurrentUserAllHosts`
 - `$PROFILE.AllUsersCurrentHost`
@@ -314,18 +327,21 @@ getProfilePath(shellType: ShellType): string {
 ## Benefits
 
 ### User Experience
+
 - **Zero Manual Setup**: Users don't need to manually add sourcing lines
 - **Preserve Customization**: Existing configuration is never modified
 - **Clear Attribution**: Comments explain what was added and why
 - **Easy Removal**: Generated sections are clearly marked for easy removal
 
 ### Development Experience
+
 - **Automated Integration**: No manual steps required after generation
 - **Consistent Behavior**: Same integration approach across all shells
 - **Detailed Feedback**: Results show exactly what happened
 - **Testing Friendly**: Clear interface enables comprehensive testing
 
 ### Maintenance
+
 - **Idempotent**: Safe to run multiple times
 - **Self-Documenting**: Code clearly shows intent and configuration
 - **Error Resilient**: Handles edge cases and permission issues
@@ -336,17 +352,20 @@ getProfilePath(shellType: ShellType): string {
 The ProfileUpdater is designed to be easily testable:
 
 ### Unit Tests
+
 - Mock file system operations
 - Test each shell type individually
 - Verify duplicate detection logic
 - Test error conditions (missing directories, permissions, etc.)
 
 ### Integration Tests
+
 - Test with real file systems (using temporary directories)
 - Verify cross-platform behavior
 - Test interaction with shell generators
 
 ### Edge Cases Tested
+
 - Non-existent profile files
 - Empty profile files
 - Profile files with various existing sourcing lines

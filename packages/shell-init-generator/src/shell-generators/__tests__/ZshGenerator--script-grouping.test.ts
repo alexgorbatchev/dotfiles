@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import { always } from '@dotfiles/core';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IShellInitContent } from '../IShellGenerator';
 import { ZshGenerator } from '../ZshGenerator';
 import { createMockProjectConfigWithPathsOnly } from './createMockProjectConfigWithPathsOnly';

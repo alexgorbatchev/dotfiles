@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import { Architecture, Platform, type ToolConfig } from '@dotfiles/core';
 import type { IMemFileSystemReturn } from '@dotfiles/file-system';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { registerFeaturesCommand } from '../featuresCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
@@ -69,7 +69,7 @@ describe('featuresCommand', () => {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: mockProjectConfig.paths.homeDir,
-      })
+      }),
     );
 
     // Should log DONE message at the end
@@ -88,7 +88,7 @@ describe('featuresCommand', () => {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: mockProjectConfig.paths.homeDir,
-      })
+      }),
     );
 
     // Should log DONE (dry run) message at the end
@@ -127,14 +127,14 @@ describe('featuresCommand', () => {
     }));
 
     expect(errorTestProgram.parseAsync(['features', 'catalog'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1'
+      'MOCK_EXIT_CLI_CALLED_WITH_1',
     );
 
     errorLogger.expect(
       ['ERROR'],
       ['registerFeaturesCommand'],
       [],
-      [messages.commandExecutionFailed('features catalog', 1)]
+      [messages.commandExecutionFailed('features catalog', 1)],
     );
   });
 });

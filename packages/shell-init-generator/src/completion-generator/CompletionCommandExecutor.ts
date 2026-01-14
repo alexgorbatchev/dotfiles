@@ -15,7 +15,7 @@ export class CompletionCommandExecutor implements ICompletionCommandExecutor {
     cmd: string,
     toolName: string,
     shellType: ShellType,
-    workingDir: string
+    workingDir: string,
   ): Promise<string> {
     const logger = this.logger.getSubLogger({ name: 'executeCompletionCommand' }).setPrefix(toolName);
     logger.debug(messages.commandExecutionStarted(toolName, cmd, shellType));
@@ -28,12 +28,13 @@ export class CompletionCommandExecutor implements ICompletionCommandExecutor {
       return result.stdout;
     } catch (error) {
       const exitCode = error && typeof error === 'object' && 'exitCode' in error ? (error.exitCode as number) : -1;
-      const stderr =
-        error && typeof error === 'object' && 'stderr' in error ? (error.stderr as Buffer).toString() : 'Unknown error';
+      const stderr = error && typeof error === 'object' && 'stderr' in error
+        ? (error.stderr as Buffer).toString()
+        : 'Unknown error';
 
       const errorMessage = `Completion command failed for ${toolName}: ${cmd}`;
       logger.error(messages.commandExecutionFailed(toolName, cmd, exitCode, stderr));
-      throw new Error(`${errorMessage}\nExit code: ${exitCode}\nStderr: ${stderr}`);
+      throw new Error(`${errorMessage}\nExit code: ${exitCode}\nStderr: ${stderr}`, { cause: error });
     }
   }
 }

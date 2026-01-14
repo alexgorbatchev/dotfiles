@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/suspicious/noConsole: build script logging */
 export class BuildError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message, { cause });
@@ -39,7 +38,7 @@ function logErrorDetails(error: unknown): void {
 
 export async function handleBuildError(
   operation: () => Promise<unknown>,
-  finallyCallback?: () => Promise<unknown> | unknown
+  finallyCallback?: () => Promise<unknown> | unknown,
 ): Promise<void> {
   try {
     await operation();

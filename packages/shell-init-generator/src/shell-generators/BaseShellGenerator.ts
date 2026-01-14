@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
   ShellCompletionConfig,
@@ -8,6 +7,7 @@ import type {
   ToolConfig,
 } from '@dotfiles/core';
 import { getScriptContent, isAlwaysScript, isOnceScript } from '@dotfiles/core';
+import path from 'node:path';
 import { AlwaysScriptFormatter, FunctionScriptFormatter, OnceScriptFormatter } from '../script-formatters';
 import { OnceScriptInitializer } from '../script-initializers';
 import {
@@ -70,8 +70,8 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   }
 
   protected abstract getShellConfig(
-    toolConfig: ToolConfig
-  ): { completions?: ShellCompletionConfigInput; functions?: Record<string, string> } | undefined;
+    toolConfig: ToolConfig,
+  ): { completions?: ShellCompletionConfigInput; functions?: Record<string, string>; } | undefined;
 
   extractShellContent(toolName: string, toolConfig: ToolConfig): IShellInitContent {
     const content: IShellInitContent = {
@@ -184,7 +184,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
       'PATH Modifications',
       allPathModifications,
       toolContents,
-      'pathModifications'
+      'pathModifications',
     );
 
     // Add environment variables section with hoisting comments
@@ -192,7 +192,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
       'Environment Variables',
       allEnvironmentVariables,
       toolContents,
-      'environmentVariables'
+      'environmentVariables',
     );
 
     // Add tool-specific initializations section with all tool content grouped together
@@ -223,7 +223,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     const additionalFiles: IAdditionalShellFile[] = [];
     const onceFormatter = new OnceScriptFormatter(
       this.projectConfig.paths.shellScriptsDir,
-      this.projectConfig.paths.homeDir
+      this.projectConfig.paths.homeDir,
     );
 
     for (const [toolName, content] of toolContents) {
@@ -252,7 +252,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     toolContents: Map<string, IShellInitContent>,
     allPathModifications: string[],
     allEnvironmentVariables: string[],
-    allCompletionSetup: string[]
+    allCompletionSetup: string[],
   ): void {
     for (const [, content] of toolContents) {
       allPathModifications.push(...content.pathModifications);
@@ -316,7 +316,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
 
     // Add always scripts for this tool
     const formattedAlwaysScripts = content.alwaysScripts.map(
-      (script) => alwaysFormatter.format(script, toolName, this.shellType).content
+      (script) => alwaysFormatter.format(script, toolName, this.shellType).content,
     );
 
     if (formattedAlwaysScripts.length > 0) {
@@ -325,7 +325,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
 
     // Add shell functions for this tool
     const formattedFunctions = Object.entries(content.functions).map(
-      ([funcName, funcBody]) => functionFormatter.format(funcName, funcBody, this.shellType).content
+      ([funcName, funcBody]) => functionFormatter.format(funcName, funcBody, this.shellType).content,
     );
 
     if (formattedFunctions.length > 0) {
@@ -348,7 +348,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     sectionTitle: string,
     items: string[],
     toolContents: Map<string, IShellInitContent>,
-    contentType: keyof IShellInitContent
+    contentType: keyof IShellInitContent,
   ): string {
     if (items.length === 0) return '';
 
@@ -397,7 +397,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   private findSourceTools(
     item: string,
     toolContents: Map<string, IShellInitContent>,
-    contentType: keyof IShellInitContent
+    contentType: keyof IShellInitContent,
   ): string[] {
     const sourceTools: string[] = [];
 

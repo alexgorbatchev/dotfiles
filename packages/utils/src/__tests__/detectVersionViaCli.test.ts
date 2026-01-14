@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test';
-import type { $ } from 'dax-sh';
+import { type $ } from 'dax-sh';
 import { detectVersionViaCli } from '../detectVersionViaCli';
 
 // Helper to create a mock shell
-function createMockShell(stdout: string, stderr = '', exitCode = 0) {
+function createMockShell(stdout: string, stderr = '', exitCode = 0): typeof $ {
   const mockShell = (_strings: TemplateStringsArray, ..._values: unknown[]) => {
     return {
       env: () => ({
@@ -17,7 +17,7 @@ function createMockShell(stdout: string, stderr = '', exitCode = 0) {
       }),
     };
   };
-  return mockShell as unknown as typeof import('dax-sh').$;
+  return mockShell as unknown as typeof $;
 }
 
 describe('detectVersionViaCli', () => {

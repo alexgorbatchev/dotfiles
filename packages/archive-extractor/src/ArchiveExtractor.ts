@@ -1,10 +1,10 @@
-import { randomUUID } from 'node:crypto';
-import { basename, extname, join } from 'node:path';
 import type { ArchiveFormat, IExtractOptions, IExtractResult } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { getAllFilesRecursively } from '@dotfiles/utils';
 import { $ } from 'dax-sh';
+import { randomUUID } from 'node:crypto';
+import { basename, extname, join } from 'node:path';
 import type { IArchiveExtractor } from './IArchiveExtractor';
 import { messages } from './log-messages';
 
@@ -158,7 +158,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
   private async extractArchiveByFormat(
     format: ArchiveFormat,
     archivePath: string,
-    tempExtractDir: string
+    tempExtractDir: string,
   ): Promise<void> {
     switch (format) {
       case 'tar.gz':
@@ -188,7 +188,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
   public async extract(
     parentLogger: TsLogger,
     archivePath: string,
-    options: IExtractOptions = {}
+    options: IExtractOptions = {},
   ): Promise<IExtractResult> {
     const logger = parentLogger.getSubLogger({ name: 'extract' });
     const {

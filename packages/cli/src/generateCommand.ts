@@ -1,6 +1,6 @@
-import path from 'node:path';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli, generateToolTypes } from '@dotfiles/utils';
+import path from 'node:path';
 import { generateZshCompletion } from './generateZshCompletion';
 import { messages } from './log-messages';
 import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
@@ -44,7 +44,7 @@ async function generateCliCompletions(logger: TsLogger, services: IServices, too
 export function registerGenerateCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>
+  servicesFactory: () => Promise<IServices>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerGenerateCommand' });
   program
@@ -63,7 +63,7 @@ export function registerGenerateCommand(
           projectConfig.paths.toolConfigsDir,
           fs,
           projectConfig,
-          systemInfo
+          systemInfo,
         );
         logger.debug(messages.toolConfigsLoaded(projectConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length));
 
@@ -74,7 +74,7 @@ export function registerGenerateCommand(
         await generatorOrchestrator.generateAll(toolConfigs, { overwrite: combinedOptions.overwrite });
 
         // Generate CLI completions after tool completions
-        const toolNames = Object.keys(toolConfigs).sort((a, b) => a.localeCompare(b));
+        const toolNames = Object.keys(toolConfigs).toSorted((a, b) => a.localeCompare(b));
         await generateCliCompletions(logger, services, toolNames);
 
         logger.info(messages.commandCompleted(Boolean(combinedOptions.dryRun)));

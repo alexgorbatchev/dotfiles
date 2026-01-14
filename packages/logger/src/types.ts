@@ -24,8 +24,9 @@ export type SafeLogMessage = string & {
  * A type representing a map of functions that generate {@link SafeLogMessage}s.
  *
  * This is typically used to define a collection of log message templates.
+ * The `any[]` is intentional to support message factories with varying parameter types.
  */
-// biome-ignore lint/suspicious/noExplicitAny: Template functions need varying parameter types
+// oxlint-disable-next-line no-explicit-any -- Generic message factory type requires flexible parameter signature
 export type SafeLogMessageMap = Record<string, (...args: any[]) => SafeLogMessage>;
 
 /**

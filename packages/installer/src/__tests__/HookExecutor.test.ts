@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import assert from 'node:assert';
 import { Architecture, type AsyncInstallHook, type IInstallContext, Platform, type ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import type { $ } from 'dax-sh';
+import assert from 'node:assert';
 import { HookExecutor, type IHookExecutionOptions } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
 
@@ -427,7 +427,7 @@ describe('HookExecutor', () => {
         ['DEBUG'],
         ['HookExecutor', 'executeHook'],
         [],
-        [/Executing testHook hook with \d+ms timeout/, 'Hook testHook completed successfully in']
+        [/Executing testHook hook with \d+ms timeout/, 'Hook testHook completed successfully in'],
       );
     });
 

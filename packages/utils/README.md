@@ -51,11 +51,7 @@ Expands a tool config path, supporting both `~` and `${dotfilesDir}` placeholder
 ```typescript
 import { expandToolConfigPath } from '@dotfiles/utils';
 
-const configPath = expandToolConfigPath(
-  '/Users/john',
-  '/Users/john/dotfiles',
-  '${dotfilesDir}/tools/ripgrep.tool.ts'
-);
+const configPath = expandToolConfigPath('/Users/john', '/Users/john/dotfiles', '${dotfilesDir}/tools/ripgrep.tool.ts');
 // Returns: '/Users/john/dotfiles/tools/ripgrep.tool.ts'
 ```
 
@@ -151,7 +147,7 @@ await replaceInFile(
   /foo/,
   async ({ substring, captures, offset, input, groups }: IReplaceInFileMatch): Promise<string> => {
     return substring.toUpperCase();
-  }
+  },
 );
 ```
 
@@ -165,7 +161,7 @@ Normalizes version strings by making them safe for file paths (replaces unsafe c
 import { normalizeVersion } from '@dotfiles/utils';
 
 normalizeVersion('v1.2.3'); // Returns: 'v1.2.3'
-normalizeVersion('1.2.3');   // Returns: '1.2.3'
+normalizeVersion('1.2.3'); // Returns: '1.2.3'
 normalizeVersion('1.2.3/beta'); // Returns: '1.2.3-beta'
 ```
 
@@ -178,7 +174,7 @@ import { stripVersionPrefix } from '@dotfiles/utils';
 
 stripVersionPrefix('v1.2.3'); // Returns: '1.2.3'
 stripVersionPrefix('V1.2.3'); // Returns: '1.2.3'
-stripVersionPrefix('1.2.3');  // Returns: '1.2.3'
+stripVersionPrefix('1.2.3'); // Returns: '1.2.3'
 ```
 
 #### `detectVersionViaCli(options: DetectVersionOptions): Promise<string | undefined>`
@@ -203,6 +199,7 @@ const customVersion = await detectVersionViaCli({
 ```
 
 **Options:**
+
 - `binaryPath` (required): Path to the binary to run
 - `args` (optional): Arguments to pass to the binary (default: `['--version']`)
 - `regex` (optional): Custom regex to extract version from output (first capture group is used)
@@ -216,8 +213,8 @@ const customVersion = await detectVersionViaCli({
 Resolves platform-specific configuration by merging base config with platform overrides.
 
 ```typescript
-import { resolvePlatformConfig } from '@dotfiles/utils';
 import type { ToolConfig } from '@dotfiles/core';
+import { resolvePlatformConfig } from '@dotfiles/utils';
 
 const config: ToolConfig = {
   method: 'github-release',
@@ -333,8 +330,8 @@ const script2 = dedentTemplate`
 ### Resolve Platform-Specific Config
 
 ```typescript
+import type { PlatformInfo, ToolConfig } from '@dotfiles/core';
 import { resolvePlatformConfig } from '@dotfiles/utils';
-import type { ToolConfig, PlatformInfo } from '@dotfiles/core';
 
 const toolConfig: ToolConfig = {
   method: 'github-release',
@@ -361,11 +358,13 @@ const resolved = resolvePlatformConfig(toolConfig, darwinInfo);
 ## Dependencies
 
 ### Internal Dependencies
+
 - `@dotfiles/core` - Core types and interfaces
 - `@dotfiles/config` - Configuration types
 - `@dotfiles/logger` - Logging infrastructure (for some utilities)
 
 ### External Dependencies
+
 - None - This is a pure utility package with minimal dependencies
 
 ## Design Decisions
@@ -373,6 +372,7 @@ const resolved = resolvePlatformConfig(toolConfig, darwinInfo);
 ### Why Separate Utility Functions?
 
 Each utility function is in its own file for several reasons:
+
 - **Tree-shaking**: Allows bundlers to only include used utilities
 - **Testability**: Each function can be tested in isolation
 - **Clarity**: Clear single-responsibility principle
@@ -381,6 +381,7 @@ Each utility function is in its own file for several reasons:
 ### Path Manipulation Strategy
 
 The path utilities use simple string replacement rather than path parsing libraries because:
+
 - The use case is specific and well-defined
 - Avoid platform-specific path handling complexities
 - Keep dependencies minimal

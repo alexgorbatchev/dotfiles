@@ -1,18 +1,18 @@
-import path from 'node:path';
 import {
   Architecture,
   hasArchitecture,
   hasPlatform,
   type ISystemInfo,
   Platform,
+  privateProjectConfigFields,
   type ProjectConfig,
   type ProjectConfigPartial,
-  privateProjectConfigFields,
   projectConfigSchema,
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli, expandHomePath } from '@dotfiles/utils';
+import path from 'node:path';
 import { z } from 'zod';
 import { messages } from './log-messages';
 
@@ -100,22 +100,20 @@ function applyPlatformOverrides(parentLogger: TsLogger, config: RecordUnknown, s
 
   logger.debug(messages.platformOverrides(currentPlatform, currentArch));
 
-  const currentPlatformEnum: Platform =
-    (
-      {
-        macos: Platform.MacOS,
-        linux: Platform.Linux,
-        windows: Platform.Windows,
-      } satisfies Record<string, Platform>
-    )[currentPlatform] ?? Platform.None;
+  const currentPlatformEnum: Platform = (
+    {
+      macos: Platform.MacOS,
+      linux: Platform.Linux,
+      windows: Platform.Windows,
+    } satisfies Record<string, Platform>
+  )[currentPlatform] ?? Platform.None;
 
-  const currentArchEnum: Architecture =
-    (
-      {
-        x86_64: Architecture.X86_64,
-        arm64: Architecture.Arm64,
-      } satisfies Record<string, Architecture>
-    )[currentArch] ?? Architecture.None;
+  const currentArchEnum: Architecture = (
+    {
+      x86_64: Architecture.X86_64,
+      arm64: Architecture.Arm64,
+    } satisfies Record<string, Architecture>
+  )[currentArch] ?? Architecture.None;
 
   let result: RecordUnknown = deepMerge({}, config);
 
@@ -139,26 +137,24 @@ function applyPlatformOverrides(parentLogger: TsLogger, config: RecordUnknown, s
       const matchOs: unknown = match['os'];
       const matchArch: unknown = match['arch'];
 
-      const targetPlatform: Platform =
-        typeof matchOs === 'string'
-          ? ((
-              {
-                macos: Platform.MacOS,
-                linux: Platform.Linux,
-                windows: Platform.Windows,
-              } satisfies Record<string, Platform>
-            )[matchOs] ?? Platform.None)
-          : Platform.None;
+      const targetPlatform: Platform = typeof matchOs === 'string'
+        ? ((
+          {
+            macos: Platform.MacOS,
+            linux: Platform.Linux,
+            windows: Platform.Windows,
+          } satisfies Record<string, Platform>
+        )[matchOs] ?? Platform.None)
+        : Platform.None;
 
-      const targetArch: Architecture =
-        typeof matchArch === 'string'
-          ? ((
-              {
-                x86_64: Architecture.X86_64,
-                arm64: Architecture.Arm64,
-              } satisfies Record<string, Architecture>
-            )[matchArch] ?? Architecture.None)
-          : Architecture.None;
+      const targetArch: Architecture = typeof matchArch === 'string'
+        ? ((
+          {
+            x86_64: Architecture.X86_64,
+            arm64: Architecture.Arm64,
+          } satisfies Record<string, Architecture>
+        )[matchArch] ?? Architecture.None)
+        : Architecture.None;
 
       const osMatches: boolean = typeof matchOs !== 'string' || hasPlatform(targetPlatform, currentPlatformEnum);
       const archMatches: boolean = typeof matchArch !== 'string' || hasArchitecture(targetArch, currentArchEnum);
@@ -332,7 +328,7 @@ function processConfig(
   defaultConfig: RecordUnknown,
   userConfig: RecordUnknown,
   systemInfo: ISystemInfo,
-  env: EnvMap
+  env: EnvMap,
 ): ProjectConfig {
   const logger = parentLogger.getSubLogger({ name: 'processConfig' });
   logger.debug(messages.configurationProcessing(), userConfigPath);
@@ -386,7 +382,7 @@ export async function getDefaultConfig(
   fileSystem: IFileSystem,
   systemInfo: ISystemInfo,
   env: EnvMap,
-  userConfigPath: string
+  userConfigPath: string,
 ): Promise<ProjectConfig> {
   const defaultConfig: RecordUnknown = await loadDefaultProjectConfigAsRecord(fileSystem);
   const result: ProjectConfig = processConfig(parentLogger, userConfigPath, defaultConfig, {}, systemInfo, env);
@@ -398,7 +394,7 @@ export async function loadProjectConfig(
   fileSystem: IFileSystem,
   userConfigPath: string,
   systemInfo: ISystemInfo,
-  env: EnvMap
+  env: EnvMap,
 ): Promise<ProjectConfig> {
   const logger = parentLogger.getSubLogger({ name: 'loadProjectConfig' });
   const defaultConfig: RecordUnknown = await loadDefaultProjectConfigAsRecord(fileSystem);
@@ -416,7 +412,7 @@ export async function loadProjectConfig(
     userConfig = toRecord(parsed);
   } catch (error) {
     logger.error(
-      messages.configurationParseError(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error))
+      messages.configurationParseError(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error)),
     );
   }
 
@@ -430,7 +426,7 @@ export async function createProjectConfigFromObject(
   userConfig: ProjectConfigPartial = {},
   systemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/Users/testuser' },
   env: EnvMap = {},
-  options: ICreateProjectConfigFromObjectOptions
+  options: ICreateProjectConfigFromObjectOptions,
 ): Promise<ProjectConfig> {
   const resolvedUserConfigPath: string = options.userConfigPath;
   const defaultConfig: RecordUnknown = await loadDefaultProjectConfigAsRecord(fileSystem);
@@ -442,7 +438,7 @@ export async function createProjectConfigFromObject(
     defaultConfig,
     userConfigRecord,
     systemInfo,
-    env
+    env,
   );
   return result;
 }

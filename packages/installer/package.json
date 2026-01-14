@@ -32,15 +32,15 @@
     "@dotfiles/installer-curl-tar": "workspace:*",
     "@dotfiles/installer-github": "workspace:*",
     "@dotfiles/installer-manual": "workspace:*",
-    "@dotfiles/testing-helpers": "workspace:*",
     "@dotfiles/registry-database": "workspace:*",
+    "@dotfiles/testing-helpers": "workspace:*",
+    "@rageltd/bun-test-utils": "catalog:testing",
     "@types/babel__code-frame": "^7.0.6",
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
     "@types/semver": "^7.5.8",
-    "@rageltd/bun-test-utils": "catalog:testing",
-    "typescript": "catalog:typescript",
     "@typescript/native-preview": "catalog:typescript",
-    "tslog": "catalog:"
+    "tslog": "catalog:",
+    "typescript": "catalog:typescript"
   }
 }

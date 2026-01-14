@@ -24,12 +24,7 @@ Main class for generating symlinks.
 ```typescript
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 
-const generator = new SymlinkGenerator(
-  logger,
-  fileSystem,
-  config,
-  toolRegistry
-);
+const generator = new SymlinkGenerator(logger, fileSystem, config, toolRegistry);
 
 const symlinkPaths = await generator.generate();
 ```
@@ -51,12 +46,7 @@ interface ISymlinkGenerator {
 ```typescript
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 
-const generator = new SymlinkGenerator(
-  logger,
-  fileSystem,
-  config,
-  toolRegistry
-);
+const generator = new SymlinkGenerator(logger, fileSystem, config, toolRegistry);
 
 // Generate all configured symlinks
 const symlinkPaths = await generator.generate();
@@ -86,12 +76,7 @@ const config = {
   // ...
 };
 
-const generator = new SymlinkGenerator(
-  logger,
-  fileSystem,
-  config,
-  toolRegistry
-);
+const generator = new SymlinkGenerator(logger, fileSystem, config, toolRegistry);
 
 await generator.generate();
 ```
@@ -105,19 +90,19 @@ symlinks:
   # Git configuration
   - source: ~/.dotfiles/configs/git/.gitconfig
     target: ~/.gitconfig
-  
+
   # Vim configuration
   - source: ~/.dotfiles/configs/vim/.vimrc
     target: ~/.vimrc
-  
+
   # Zsh configuration
   - source: ~/.dotfiles/configs/zsh/.zshrc
     target: ~/.zshrc
-  
+
   # SSH configuration
   - source: ~/.dotfiles/configs/ssh/config
     target: ~/.ssh/config
-  
+
   # Tool-specific configs
   - source: ~/.dotfiles/configs/bat/config
     target: ~/.config/bat/config
@@ -151,7 +136,7 @@ const targetExists = await fileSystem.exists(targetPath);
 if (targetExists) {
   // Backup existing file
   await fileSystem.copy(targetPath, `${targetPath}.backup`);
-  
+
   // Remove old file
   await fileSystem.remove(targetPath);
 }
@@ -227,6 +212,7 @@ symlinks:
 ## Dependencies
 
 ### Internal Dependencies
+
 - `@dotfiles/config` - Configuration management
 - `@dotfiles/file-system` - Filesystem operations (symlink creation)
 - `@dotfiles/logger` - Structured logging
@@ -237,11 +223,13 @@ symlinks:
 ## Testing
 
 Run tests with:
+
 ```bash
 bun test packages/symlink-generator
 ```
 
 The package includes tests for:
+
 - Symlink creation
 - Conflict handling
 - Backup creation
@@ -277,6 +265,7 @@ Solution: Enable backup option or remove existing file
 ## Best Practices
 
 ### Always Use Absolute Paths
+
 ```typescript
 // Resolve paths to absolute
 const absoluteSource = await fileSystem.realpath(sourcePath);
@@ -286,6 +275,7 @@ await fileSystem.symlink(absoluteSource, absoluteTarget);
 ```
 
 ### Check Source Exists
+
 ```typescript
 const sourceExists = await fileSystem.exists(sourcePath);
 
@@ -295,19 +285,21 @@ if (!sourceExists) {
 ```
 
 ### Handle Existing Targets
+
 ```typescript
 if (await fileSystem.exists(targetPath)) {
   if (options.backup) {
     // Create backup
     await fileSystem.copy(targetPath, `${targetPath}.backup`);
   }
-  
+
   // Remove existing
   await fileSystem.remove(targetPath);
 }
 ```
 
 ### Create Parent Directories
+
 ```typescript
 const targetDir = path.dirname(targetPath);
 await fileSystem.ensureDir(targetDir);
@@ -342,21 +334,27 @@ if (backups.length > 0) {
 ## Design Decisions
 
 ### Why Symbolic Links?
+
 Symbolic links:
+
 - Keep files in version control
 - Allow editing from either location
 - Maintain single source of truth
 - Support version control tracking
 
 ### Why Track in Registry?
+
 Registry tracking:
+
 - Enables cleanup on uninstall
 - Supports conflict detection
 - Allows restoration
 - Aids debugging
 
 ### Why Support Backups?
+
 Backups:
+
 - Prevent data loss
 - Allow rollback
 - Build user confidence
@@ -373,11 +371,11 @@ const isSymlink = await fileSystem.isSymlink(targetPath);
 if (isSymlink) {
   const linkTarget = await fileSystem.readlink(targetPath);
   const targetExists = await fileSystem.exists(linkTarget);
-  
+
   if (!targetExists) {
-    logger.warn('Broken symlink detected', { 
-      symlink: targetPath, 
-      target: linkTarget 
+    logger.warn('Broken symlink detected', {
+      symlink: targetPath,
+      target: linkTarget,
     });
   }
 }
@@ -393,7 +391,7 @@ for (const symlink of symlinks) {
   if (await fileSystem.isSymlink(symlink)) {
     const target = await fileSystem.readlink(symlink);
     const targetExists = await fileSystem.exists(target);
-    
+
     if (!targetExists) {
       await fileSystem.remove(symlink);
       logger.info('Removed broken symlink', { symlink, target });
@@ -410,10 +408,7 @@ for (const symlink of symlinks) {
 // Create symlinks based on conditions
 if (systemInfo.platform === 'darwin') {
   // macOS-specific symlinks
-  await generator.createSymlink(
-    '~/.dotfiles/configs/macos/.skhdrc',
-    '~/.skhdrc'
-  );
+  await generator.createSymlink('~/.dotfiles/configs/macos/.skhdrc', '~/.skhdrc');
 }
 ```
 
@@ -426,7 +421,7 @@ const configFiles = await fileSystem.glob('~/.dotfiles/configs/**/*');
 for (const configFile of configFiles) {
   const relativePath = path.relative('~/.dotfiles/configs', configFile);
   const targetPath = path.join('~', relativePath);
-  
+
   await generator.createSymlink(configFile, targetPath);
 }
 ```
@@ -434,6 +429,7 @@ for (const configFile of configFiles) {
 ## Future Enhancements
 
 Potential improvements:
+
 - Symlink templates
 - Conditional symlink creation
 - Symlink groups

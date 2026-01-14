@@ -1,12 +1,12 @@
+import { createLoggingShell, type IAfterInstallContext, type ToolConfig } from '@dotfiles/core';
+import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
+import { TestLogger } from '@dotfiles/logger';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { $ } from 'dax-sh';
 import { existsSync, realpathSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createLoggingShell, type IAfterInstallContext, type ToolConfig } from '@dotfiles/core';
-import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { $ } from 'dax-sh';
 import { createConfiguredShell } from '../utils/createConfiguredShell';
 import { HookExecutor, type HookHandler } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
@@ -154,7 +154,7 @@ describe('HookExecutor $ Integration', () => {
       logger,
       'afterInstall',
       hookThatUsesShellFallback,
-      enhancedContext
+      enhancedContext,
     );
     expect(hookResult.success).toBe(true);
   });

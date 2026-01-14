@@ -1,15 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
-import { randomUUID } from 'node:crypto';
-import { unlink } from 'node:fs/promises';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type FileSystemSpies, type IFileSystem, type Stats } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { FileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { RegistryDatabase } from '@dotfiles/registry-database';
+import { FileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { randomUUID } from 'node:crypto';
+import { unlink } from 'node:fs/promises';
+import path from 'node:path';
 import { ShimGenerator } from '../ShimGenerator';
 
 import '@dotfiles/testing-helpers';
@@ -174,7 +174,7 @@ describe('ShimGenerator', () => {
         mockConfig.paths.binariesDir,
         configNoBinaries.name,
         'current',
-        toolName
+        toolName,
       );
       const result = await shimGenerator.generateForTool(toolName, configNoBinaries);
       const fallbackShimPath = path.join(mockConfig.paths.targetDir, toolName);
@@ -200,7 +200,7 @@ describe('ShimGenerator', () => {
         mockConfig.paths.binariesDir,
         configUndefinedBinaries.name,
         'current',
-        toolName
+        toolName,
       );
       const result = await shimGenerator.generateForTool(toolName, configUndefinedBinaries);
       const fallbackShimPath = path.join(mockConfig.paths.targetDir, toolName);
@@ -415,7 +415,7 @@ describe('ShimGenerator', () => {
         ['ERROR'],
         ['ShimGenerator', 'generateShimForBinary'],
         [],
-        [/Cannot create shim for "test-tool": conflicting file exists/]
+        [/Cannot create shim for "test-tool": conflicting file exists/],
       );
     });
 
@@ -465,7 +465,7 @@ describe('ShimGenerator', () => {
         ['ERROR'],
         ['ShimGenerator', 'generateShimForBinary'],
         [],
-        [/Cannot create shim for "test-tool": conflicting file exists/]
+        [/Cannot create shim for "test-tool": conflicting file exists/],
       );
     });
 
@@ -516,7 +516,7 @@ describe('ShimGenerator', () => {
         ['ERROR'],
         ['ShimGenerator', 'generateShimForBinary'],
         [],
-        [/Cannot create shim for "test-tool": conflicting file exists/]
+        [/Cannot create shim for "test-tool": conflicting file exists/],
       );
     });
   });
@@ -633,7 +633,7 @@ describe('ShimGenerator', () => {
       const expectedTargetDirPath: string = path.resolve(mockConfig.paths.targetDir);
 
       const mkdirOperation = operations.find(
-        (operation) => operation.operationType === 'mkdir' && operation.filePath === expectedTargetDirPath
+        (operation) => operation.operationType === 'mkdir' && operation.filePath === expectedTargetDirPath,
       );
       expect(mkdirOperation?.toolName).toBe('system');
 

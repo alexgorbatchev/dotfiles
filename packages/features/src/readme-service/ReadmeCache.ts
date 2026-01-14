@@ -78,7 +78,7 @@ export class ReadmeCache implements IReadmeCache {
       await this.cache.delete(cacheKey);
     } catch (error) {
       this.logger.error(
-        messages.cacheError('delete', cacheKey, error instanceof Error ? error.message : String(error))
+        messages.cacheError('delete', cacheKey, error instanceof Error ? error.message : String(error)),
       );
     }
   }
@@ -93,7 +93,7 @@ export class ReadmeCache implements IReadmeCache {
       this.logger.debug(messages.cacheCleared(0)); // Cache doesn't return count
     } catch (error) {
       this.logger.error(
-        messages.cacheError('clearExpired', 'all', error instanceof Error ? error.message : String(error))
+        messages.cacheError('clearExpired', 'all', error instanceof Error ? error.message : String(error)),
       );
     }
   }

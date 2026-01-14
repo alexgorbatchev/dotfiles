@@ -1,5 +1,5 @@
+import type { ProjectConfig, ShellCompletionConfig } from '@dotfiles/core';
 import { describe, expect, test } from 'bun:test';
-import type { ShellCompletionConfig } from '@dotfiles/core';
 import { BashStringProducer } from '../shell-generators/BashStringProducer';
 import { PowerShellStringProducer } from '../shell-generators/PowerShellStringProducer';
 import { ZshStringProducer } from '../shell-generators/ZshStringProducer';
@@ -8,8 +8,7 @@ const mockConfig = {
   paths: {
     shellScriptsDir: '/home/user/.dotfiles/.generated/shell-scripts',
   },
-  // biome-ignore lint/suspicious/noExplicitAny: Mock config for testing
-} as any;
+} as unknown as ProjectConfig;
 
 describe('Shell String Producers - Completion Handling', () => {
   describe('ZshStringProducer', () => {

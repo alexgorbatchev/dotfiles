@@ -72,6 +72,7 @@ interface InitializationOutput {
 ### Shell-Specific Implementation
 
 #### Zsh Implementation
+
 ```bash
 # Execute once scripts (runs only once per script)
 for once_script in "/path/.once"/*.zsh(N); do
@@ -80,11 +81,13 @@ done
 ```
 
 **Zsh Features Used:**
+
 - **`(N)` glob qualifier**: Enables null_glob option locally - if no files match, the loop doesn't execute
 - **`[[ -f ]]` check**: Ensures the file exists before sourcing (additional safety)
 - **`source`**: Executes the script in the current shell context
 
 #### Bash Implementation
+
 ```bash
 # Execute once scripts (runs only once per script)
 shopt -s nullglob
@@ -95,12 +98,14 @@ shopt -u nullglob
 ```
 
 **Bash Features Used:**
+
 - **`shopt -s nullglob`**: Temporarily enables null_glob - patterns with no matches expand to nothing
 - **`shopt -u nullglob`**: Restores original nullglob setting to avoid side effects
 - **`[[ -f ]]` check**: Ensures the file exists before sourcing
 - **`source`**: Executes the script in the current shell context
 
 #### PowerShell Implementation
+
 ```powershell
 # Execute once scripts (runs only once per script)
 Get-ChildItem -Path "/path/.once\*.ps1" -ErrorAction SilentlyContinue | ForEach-Object {
@@ -111,6 +116,7 @@ Get-ChildItem -Path "/path/.once\*.ps1" -ErrorAction SilentlyContinue | ForEach-
 ```
 
 **PowerShell Features Used:**
+
 - **`Get-ChildItem`**: PowerShell's equivalent to ls/glob
 - **`-ErrorAction SilentlyContinue`**: Suppresses errors if directory doesn't exist
 - **`Test-Path`**: Verifies file exists before execution
@@ -119,20 +125,26 @@ Get-ChildItem -Path "/path/.once\*.ps1" -ErrorAction SilentlyContinue | ForEach-
 ### Key Design Decisions
 
 #### 1. Null Glob Handling
+
 Each shell handles empty directories differently:
+
 - **Zsh**: Uses `(N)` qualifier for elegant null glob behavior
 - **Bash**: Temporarily enables `nullglob` option
 - **PowerShell**: Uses `-ErrorAction SilentlyContinue`
 
 #### 2. File Existence Checks
+
 Double-checking file existence provides additional safety:
+
 ```bash
 # Even with null glob, we verify file exists
 [[ -f "$once_script" ]] && source "$once_script"
 ```
 
 #### 3. No Executable Permissions Required
+
 Scripts are sourced, not executed, so they don't need executable permissions:
+
 - Safer (no accidental execution)
 - Works consistently across platforms
 - Simpler permission management
@@ -140,18 +152,20 @@ Scripts are sourced, not executed, so they don't need executable permissions:
 ## Usage Workflow
 
 ### 1. Generation Process
+
 ```typescript
 // During shell file generation
 if (hasOnceScripts) {
   const initializer = new OnceScriptInitializer();
   const initialization = initializer.initialize('zsh', '/path/to/shell-scripts');
-  
+
   // Add to main shell file
   fileContent += initialization.content + '\n\n';
 }
 ```
 
 ### 2. Runtime Execution Flow
+
 ```bash
 # Shell startup sequence:
 1. Shell starts up
@@ -192,26 +206,32 @@ if (hasOnceScripts) {
 ## Performance Characteristics
 
 ### Empty Directory Performance
+
 When no once scripts exist, the performance impact is minimal:
 
 **Zsh**: `(N)` qualifier prevents iteration entirely - O(1)
+
 ```bash
 for once_script in "/path/.once"/*.zsh(N); do  # No iteration if no matches
 ```
 
 **Bash**: `nullglob` produces empty expansion - O(1)
+
 ```bash
 shopt -s nullglob
 for once_script in "/path/.once"/*.bash; do  # No iteration if no matches
 ```
 
 **PowerShell**: `Get-ChildItem` with error suppression - O(1)
+
 ```powershell
 Get-ChildItem -Path "/path/.once\*.ps1" -ErrorAction SilentlyContinue  # No output if no matches
 ```
 
 ### With Scripts Performance
+
 When scripts exist, the overhead is minimal:
+
 - File existence check: ~0.1ms per file
 - Sourcing: Depends on script content
 - Self-deletion: ~0.1ms per file
@@ -221,19 +241,25 @@ When scripts exist, the overhead is minimal:
 ## Error Handling
 
 ### Directory Doesn't Exist
+
 Each shell handles missing `.once/` directory gracefully:
+
 - **Zsh**: `(N)` qualifier handles missing directories
 - **Bash**: `nullglob` prevents errors on non-existent patterns
 - **PowerShell**: `-ErrorAction SilentlyContinue` suppresses errors
 
 ### Permission Issues
+
 If scripts exist but can't be read:
+
 - File existence check (`[[ -f ]]` / `Test-Path`) fails safely
 - No error messages displayed to user
 - Shell startup continues normally
 
 ### Corrupted Scripts
+
 If a once script has syntax errors:
+
 - Error appears during shell startup (expected behavior)
 - Script may not self-delete (will be cleaned up on next generation)
 - User can fix the tool configuration and regenerate
@@ -241,21 +267,25 @@ If a once script has syntax errors:
 ## Benefits
 
 ### Simplicity
+
 - Single-purpose: only handles once script discovery and execution
 - Minimal code generation
 - Clear shell-specific implementations
 
-### Reliability  
+### Reliability
+
 - Handles edge cases (empty directories, missing files)
 - No side effects on shell configuration
 - Graceful error handling
 
 ### Performance
+
 - Zero overhead when no once scripts exist
 - Minimal overhead when scripts exist
 - Scripts self-delete to avoid future overhead
 
 ### Maintainability
+
 - Clear interface and single responsibility
 - Shell-specific logic is isolated
 - Easy to test and debug

@@ -1,13 +1,20 @@
-import { describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
-import path from 'node:path';
-import { Architecture, createToolLog, type IAfterInstallContext, type ISystemInfo, Platform, createLoggingShell } from '@dotfiles/core';
+import {
+  Architecture,
+  createLoggingShell,
+  createToolLog,
+  type IAfterInstallContext,
+  type ISystemInfo,
+  Platform,
+} from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { LogLevel, TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { replaceInFile } from '@dotfiles/utils';
+import { describe, expect, it } from 'bun:test';
 import { $ } from 'dax-sh';
+import assert from 'node:assert';
+import path from 'node:path';
 import type { ILogObj } from 'tslog';
 import { createConfiguredShell } from '../createConfiguredShell';
 import { HookExecutor } from '../HookExecutor';
@@ -87,7 +94,7 @@ describe('HookExecutor - stack trace filtering', () => {
       const meta = log['_meta'];
       const parentNames = meta?.parentNames ?? [];
       return Boolean(
-        meta && meta.logLevelName === 'ERROR' && meta.name === 'executeHook' && parentNames.includes('HookExecutor')
+        meta && meta.logLevelName === 'ERROR' && meta.name === 'executeHook' && parentNames.includes('HookExecutor'),
       );
     });
 
@@ -184,7 +191,7 @@ describe('HookExecutor - stack trace filtering', () => {
       const meta = log['_meta'];
       const parentNames = meta?.parentNames ?? [];
       return Boolean(
-        meta && meta.logLevelName === 'ERROR' && meta.name === 'executeHook' && parentNames.includes('HookExecutor')
+        meta && meta.logLevelName === 'ERROR' && meta.name === 'executeHook' && parentNames.includes('HookExecutor'),
       );
     });
 

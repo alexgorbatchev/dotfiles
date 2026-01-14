@@ -2,11 +2,12 @@
 description: Tool-agnostic development practices for LLM assistance.
 applyTo: '**/*'
 ---
+
 # Universal Tooling Practices
 
 ## Tool Usage Principles
 
-- DO NOT use ` << EOF` when running CLI commands, no exceptions!
+- DO NOT use `<< EOF` when running CLI commands, no exceptions!
 - DO NOT change multiple files via CLI commands, no exceptions!
 - If installing a module causes a certificate error, stop and notify the user, you can't fix this issue by yourself.
 

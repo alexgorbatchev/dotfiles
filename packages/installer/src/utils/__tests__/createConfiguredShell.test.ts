@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'bun:test';
 import type { $extended } from '@dotfiles/core';
 import { extendedShellBrand } from '@dotfiles/core';
+import { describe, expect, it } from 'bun:test';
 import { $ } from 'dax-sh';
 import { createConfiguredShell } from '../createConfiguredShell';
 

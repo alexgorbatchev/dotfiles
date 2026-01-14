@@ -1,8 +1,8 @@
-import path from 'node:path';
 import type { ISystemInfo, ProjectConfig, ProjectConfigPartial } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
+import path from 'node:path';
 import type { ConfigContext } from './defineConfig';
 import { messages } from './log-messages';
 import { createProjectConfigFromObject } from './stagedProjectConfigLoader';
@@ -57,7 +57,7 @@ export async function loadTsConfig(
   fileSystem: IFileSystem,
   userConfigPath: string,
   systemInfo: ISystemInfo,
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
 ): Promise<ProjectConfig> {
   const logger = parentLogger.getSubLogger({ name: 'loadTsConfig' });
 
@@ -91,8 +91,8 @@ export async function loadTsConfig(
         messages.configurationParseError(
           userConfigPath,
           'TypeScript',
-          'default export must be an object, function or Promise'
-        )
+          'default export must be an object, function or Promise',
+        ),
       );
       exitCli(1);
     }
@@ -101,8 +101,8 @@ export async function loadTsConfig(
       messages.configurationParseError(
         userConfigPath,
         'TypeScript',
-        error instanceof Error ? error.message : String(error)
-      )
+        error instanceof Error ? error.message : String(error),
+      ),
     );
     exitCli(1);
   }

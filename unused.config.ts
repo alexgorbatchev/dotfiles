@@ -1,17 +1,12 @@
-import { defineConfig } from "ts-unused";
+import { defineConfig } from 'ts-unused';
 
+// oxlint-disable-next-line import/no-default-export
 export default defineConfig({
   // Custom patterns for identifying test files
-  testFilePatterns: [
-    "**/*.test-d.ts",
-    "**/__tests__/**",
-  ],
+  testFilePatterns: ['**/*.test-d.ts', '**/__tests__/**'],
 
   // Files to completely ignore during analysis
-  ignoreFilePatterns: [
-    "**/dist/**",
-    "**/packages/cli/src/schema-exports.ts"
-  ],
+  ignoreFilePatterns: ['**/dist/**', '**/packages/cli/src/schema-exports.ts'],
 
   // Export names to ignore (supports glob patterns)
   ignoreExports: [],

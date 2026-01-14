@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-/** biome-ignore-all lint/suspicious/noConsole: build script */
 
 /**
  * Release Script
@@ -14,7 +13,7 @@
  *
  * Prerequisites:
  * - Must be authenticated with npm (npm login)
- * - Must have publish permissions for the @gitea/dotfiles package
+ * - Must have publish permissions for the dotfiles package
  * - Git working directory should be clean (will warn if not)
  *
  * Usage:
@@ -24,9 +23,9 @@
  *   bun run release major    # Major bump (1.0.0 -> 2.0.0)
  */
 
+import { $ } from 'dax-sh';
 import fs from 'node:fs';
 import path from 'node:path';
-import { $ } from 'dax-sh';
 import { executeCommand } from '../git-utils';
 import { cdToRepoRoot } from '../path-utils';
 
@@ -154,7 +153,7 @@ async function release(): Promise<void> {
       } catch (revertError) {
         console.error(
           '⚠️  Failed to revert version change:',
-          revertError instanceof Error ? revertError.message : revertError
+          revertError instanceof Error ? revertError.message : revertError,
         );
       }
     }

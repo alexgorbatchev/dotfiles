@@ -1,9 +1,9 @@
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellType, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { resolvePlatformConfig } from '@dotfiles/utils';
+import path from 'node:path';
 import type { IGenerateShellInitOptions, IShellInitGenerationResult, IShellInitGenerator } from './IShellInitGenerator';
 import { messages } from './log-messages';
 import { type IProfileUpdateConfig, ProfileUpdater } from './profile-updater';
@@ -54,7 +54,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
   async generate(
     toolConfigs: Record<string, ToolConfig>,
-    options?: IGenerateShellInitOptions
+    options?: IGenerateShellInitOptions,
   ): Promise<IShellInitGenerationResult | null> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
     const shellTypes: ShellType[] = options?.shellTypes ?? ['zsh'];
@@ -94,8 +94,8 @@ export class ShellInitGenerator implements IShellInitGenerator {
   private async generateForShellType(
     shellType: ShellType,
     toolConfigs: Record<string, ToolConfig>,
-    options?: IGenerateShellInitOptions
-  ): Promise<{ outputPath: string } | null> {
+    options?: IGenerateShellInitOptions,
+  ): Promise<{ outputPath: string; } | null> {
     const logger = this.logger.getSubLogger({ name: 'generateForShellType' });
     try {
       const generator = createGenerator(shellType, this.projectConfig);
@@ -119,7 +119,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
   private async extractToolContents(
     toolConfigs: Record<string, ToolConfig>,
     generator: IShellGenerator,
-    options?: IGenerateShellInitOptions
+    options?: IGenerateShellInitOptions,
   ): Promise<Map<string, IShellInitContent>> {
     const toolContents = new Map<string, IShellInitContent>();
 
@@ -143,7 +143,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
   private async writeShellFiles(
     outputPath: string,
     fileContent: string,
-    additionalFiles: IAdditionalShellFile[]
+    additionalFiles: IAdditionalShellFile[],
   ): Promise<boolean> {
     const logger = this.logger.getSubLogger({ name: 'writeShellFiles' });
     try {

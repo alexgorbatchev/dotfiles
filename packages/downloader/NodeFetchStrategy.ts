@@ -68,8 +68,8 @@ export class NodeFetchStrategy implements IDownloadStrategy {
   private async setupDownloadRequest(
     url: string,
     headers: Record<string, string> | undefined,
-    timeout: number | undefined
-  ): Promise<{ response: Response; timeoutId?: NodeJS.Timeout }> {
+    timeout: number | undefined,
+  ): Promise<{ response: Response; timeoutId?: NodeJS.Timeout; }> {
     const controller = new AbortController();
     let timeoutId: NodeJS.Timeout | undefined;
 
@@ -101,7 +101,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     const statusText = response.statusText;
 
     this.logger.debug(
-      nodeFetchStrategyLogMessages.downloadFailed(url, statusCode, statusText, responseBody?.substring(0, 100))
+      nodeFetchStrategyLogMessages.downloadFailed(url, statusCode, statusText, responseBody?.substring(0, 100)),
     );
 
     if (statusCode === 404) {
@@ -120,7 +120,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
           statusText,
           responseBody,
           responseHeaders,
-          resetTimestamp
+          resetTimestamp,
         );
       }
       throw new ForbiddenError(this.logger, url, responseBody, responseHeaders);
@@ -135,7 +135,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
         statusText,
         responseBody,
         responseHeaders,
-        resetTimestamp
+        resetTimestamp,
       );
     }
 
@@ -155,14 +155,14 @@ export class NodeFetchStrategy implements IDownloadStrategy {
       statusCode,
       statusText,
       responseBody,
-      responseHeaders
+      responseHeaders,
     );
   }
 
   private async processResponseStream(
     response: Response,
     url: string,
-    onProgress?: (bytesDownloaded: number, totalBytes: number | null) => void
+    onProgress?: (bytesDownloaded: number, totalBytes: number | null) => void,
   ): Promise<Buffer> {
     const contentLength = response.headers.get('content-length');
     let totalBytes: number | null = null;
@@ -203,7 +203,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
   private async handleDownloadAttempt(
     url: string,
     options: IDownloadOptions,
-    attempt: number
+    attempt: number,
   ): Promise<Buffer | undefined> {
     const { headers, timeout, onProgress, destinationPath } = options;
 
@@ -237,7 +237,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     url: string,
     attempt: number,
     retryCount: number,
-    _onProgress?: (bytesDownloaded: number, totalBytes: number | null) => void
+    _onProgress?: (bytesDownloaded: number, totalBytes: number | null) => void,
   ): void {
     this.logger.debug(nodeFetchStrategyLogMessages.downloadAttemptError(attempt + 1, url, error));
 
@@ -261,7 +261,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     attempt: number,
     retryCount: number,
     retryDelay: number,
-    onProgress?: (bytesDownloaded: number, totalBytes: number | null) => void
+    onProgress?: (bytesDownloaded: number, totalBytes: number | null) => void,
   ): Promise<void> {
     this.logger.debug(nodeFetchStrategyLogMessages.retryingDownload(url, attempt + 2, retryCount + 1, retryDelay));
     if (onProgress) {

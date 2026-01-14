@@ -44,7 +44,7 @@ export async function installFromBrew(
   _context: IInstallContext,
   options: IInstallOptions | undefined,
   parentLogger: TsLogger,
-  shellExecutor: ShellExecutor = $
+  shellExecutor: ShellExecutor = $,
 ): Promise<BrewInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromBrew' });
   logger.debug(messages.installing(toolName), toolConfig.installParams);
@@ -182,7 +182,7 @@ async function executeBrewInstall(
   tap: string | string[] | undefined,
   force: boolean | undefined,
   logger: TsLogger,
-  $: ShellExecutor
+  $: ShellExecutor,
 ): Promise<void> {
   if (tap) {
     const taps = Array.isArray(tap) ? tap : [tap];

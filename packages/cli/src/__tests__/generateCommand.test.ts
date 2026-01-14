@@ -1,5 +1,3 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import path from 'node:path';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
@@ -7,6 +5,8 @@ import type { IMemFileSystemReturn } from '@dotfiles/file-system';
 import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import path from 'node:path';
 import { registerGenerateCommand } from '../generateCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
@@ -77,7 +77,7 @@ describe('generateCommand', () => {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: mockProjectConfig.paths.homeDir,
-      })
+      }),
     );
 
     // Should log DONE message at the end
@@ -96,7 +96,7 @@ describe('generateCommand', () => {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: mockProjectConfig.paths.homeDir,
-      })
+      }),
     );
 
     // Should log DONE (dry run) message at the end

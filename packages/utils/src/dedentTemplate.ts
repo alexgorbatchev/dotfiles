@@ -6,7 +6,7 @@ import { dedentString } from './dedentString';
 function processStandalonePlaceholder(
   line: string,
   standalonePlaceholderMatch: RegExpMatchArray,
-  values: Record<string, string>
+  values: Record<string, string>,
 ): string[] {
   const key = standalonePlaceholderMatch[1];
 

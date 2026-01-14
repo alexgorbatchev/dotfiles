@@ -11,7 +11,7 @@ describe('createTsLogger - trace flag', () => {
     });
 
     // Access the internal settings to verify prettyLogTemplate includes file path
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
+    const settings = (logger as unknown as { settings: { prettyLogTemplate: string; }; }).settings;
     expect(settings.prettyLogTemplate).toContain('{{filePathWithLine}}');
   });
 
@@ -22,7 +22,7 @@ describe('createTsLogger - trace flag', () => {
       trace: false,
     });
 
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
+    const settings = (logger as unknown as { settings: { prettyLogTemplate: string; }; }).settings;
     expect(settings.prettyLogTemplate).not.toContain('{{filePathWithLine}}');
   });
 
@@ -32,7 +32,7 @@ describe('createTsLogger - trace flag', () => {
       level: LogLevel.DEFAULT,
     });
 
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
+    const settings = (logger as unknown as { settings: { prettyLogTemplate: string; }; }).settings;
     expect(settings.prettyLogTemplate).not.toContain('{{filePathWithLine}}');
   });
 
@@ -43,7 +43,7 @@ describe('createTsLogger - trace flag', () => {
       trace: true,
     });
 
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
+    const settings = (logger as unknown as { settings: { prettyLogTemplate: string; }; }).settings;
     expect(settings.prettyLogTemplate).toContain('{{filePathWithLine}}');
   });
 
@@ -55,7 +55,7 @@ describe('createTsLogger - trace flag', () => {
       trace: true,
     });
 
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
+    const settings = (logger as unknown as { settings: { prettyLogTemplate: string; }; }).settings;
     expect(settings.prettyLogTemplate).toContain('{{filePathWithLine}}');
   });
 
@@ -65,7 +65,7 @@ describe('createTsLogger - trace flag', () => {
       level: LogLevel.VERBOSE,
     });
 
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
+    const settings = (logger as unknown as { settings: { prettyLogTemplate: string; }; }).settings;
     expect(settings.prettyLogTemplate).not.toContain('{{filePathWithLine}}');
   });
 });

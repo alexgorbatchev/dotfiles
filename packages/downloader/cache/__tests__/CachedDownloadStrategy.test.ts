@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { CachedDownloadStrategy } from '../../CachedDownloadStrategy';
 import type { IDownloadOptions } from '../../IDownloader';
 import type { IDownloadStrategy } from '../../IDownloadStrategy';
@@ -8,7 +8,7 @@ import type { ICache } from '../types';
 
 class MockDownloadStrategy implements IDownloadStrategy {
   public readonly name = 'mock-strategy';
-  public downloadCalls: Array<{ url: string; options: IDownloadOptions }> = [];
+  public downloadCalls: Array<{ url: string; options: IDownloadOptions; }> = [];
   public downloadResult: Buffer = Buffer.from('mock-download-result');
   public shouldFail = false;
   public isAvailableResult = true;
@@ -40,8 +40,8 @@ class MockDownloadStrategy implements IDownloadStrategy {
 class MockCache implements ICache {
   public storage = new Map<string, unknown>();
   public getCalls: string[] = [];
-  public setCalls: Array<{ key: string; data: unknown; ttl?: number }> = [];
-  public setDownloadCalls: Array<{ key: string; data: Buffer; ttl?: number; url: string; contentType?: string }> = [];
+  public setCalls: Array<{ key: string; data: unknown; ttl?: number; }> = [];
+  public setDownloadCalls: Array<{ key: string; data: Buffer; ttl?: number; url: string; contentType?: string; }> = [];
   public shouldFailGet = false;
   public shouldFailSet = false;
 
@@ -66,7 +66,7 @@ class MockCache implements ICache {
     data: Buffer,
     ttlMs: number | undefined,
     url: string,
-    contentType?: string
+    contentType?: string,
   ): Promise<void> {
     this.setDownloadCalls.push({ key, data, ttl: ttlMs, url, contentType });
     if (this.shouldFailSet) {
@@ -124,7 +124,7 @@ describe('CachedDownloadStrategy', () => {
         ['DEBUG'],
         ['CachedDownloadStrategy'],
         [],
-        ['Wrapping strategy mock-strategy with cache, TTL: 60000 ms']
+        ['Wrapping strategy mock-strategy with cache, TTL: 60000 ms'],
       );
     });
   });
@@ -257,7 +257,7 @@ describe('CachedDownloadStrategy', () => {
           /Error checking cache for key: download:[a-f0-9]{64}/,
           /download from mock-strategy/,
           /Cached data for key: download:[a-f0-9]{64} \(binary\), size: 15 bytes, expires: TTL-based/,
-        ]
+        ],
       );
     });
 
@@ -279,7 +279,7 @@ describe('CachedDownloadStrategy', () => {
           /No cache entry found for key: download:[a-f0-9]{64}/,
           /download from mock-strategy/,
           /Error caching data for key: download:[a-f0-9]{64}/,
-        ]
+        ],
       );
     });
 

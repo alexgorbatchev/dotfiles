@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { IInstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
@@ -6,8 +5,9 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { CargoToolConfig } from '@dotfiles/installer-cargo';
 import { TestLogger } from '@dotfiles/logger';
-import { CargoInstallerPlugin } from '../CargoInstallerPlugin';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { ICargoClient } from '../cargo-client';
+import { CargoInstallerPlugin } from '../CargoInstallerPlugin';
 
 describe('CargoInstallerPlugin', () => {
   let logger: TestLogger;
@@ -32,7 +32,7 @@ describe('CargoInstallerPlugin', () => {
       mockCargoClient,
       mockArchiveExtractor,
       mockHookExecutor,
-      'https://github.com'
+      'https://github.com',
     );
   });
 

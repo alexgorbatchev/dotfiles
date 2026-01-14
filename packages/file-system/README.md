@@ -23,7 +23,7 @@ An in-memory implementation of `IFileSystem` using `memfs`. It's designed for te
 In your application's entry point, inject `NodeFileSystem` wherever `IFileSystem` is required.
 
 ```typescript
-import { NodeFileSystem, type IFileSystem } from '@dotfiles/file-system';
+import { type IFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 
 const fs: IFileSystem = new NodeFileSystem();
 
@@ -42,7 +42,7 @@ main();
 In tests, use `MemFileSystem` to create a sandboxed file system. You can initialize it with a predefined directory structure.
 
 ```typescript
-import { MemFileSystem, type IFileSystem } from '@dotfiles/file-system';
+import { type IFileSystem, MemFileSystem } from '@dotfiles/file-system';
 
 // Initialize with a file
 const fs: IFileSystem = new MemFileSystem({
@@ -62,4 +62,3 @@ test();
 ```
 
 For more advanced testing scenarios, this package also exports a `createMemFileSystem` factory function that simplifies creating and spying on `MemFileSystem` instances.
-

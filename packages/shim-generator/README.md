@@ -34,12 +34,7 @@ Main class for generating shims.
 ```typescript
 import { ShimGenerator } from '@dotfiles/shim-generator';
 
-const generator = new ShimGenerator(
-  logger,
-  fileSystem,
-  config,
-  toolRegistry
-);
+const generator = new ShimGenerator(logger, fileSystem, config, toolRegistry);
 
 const shimPaths = await generator.generate();
 ```
@@ -62,12 +57,7 @@ interface IShimGenerator {
 ```typescript
 import { ShimGenerator } from '@dotfiles/shim-generator';
 
-const generator = new ShimGenerator(
-  logger,
-  fileSystem,
-  config,
-  toolRegistry
-);
+const generator = new ShimGenerator(logger, fileSystem, config, toolRegistry);
 
 // Generate shims for all installed tools
 const shimPaths = await generator.generate();
@@ -204,9 +194,9 @@ Shim paths are configured in `config.yaml`:
 
 ```yaml
 paths:
-  targetDir: ~/.dotfiles/bin        # Where shims are created
-  binariesDir: ~/.local/binaries    # Where tool binaries are located
-  
+  targetDir: ~/.dotfiles/bin # Where shims are created
+  binariesDir: ~/.local/binaries # Where tool binaries are located
+
 # Other configuration...
 userConfigPath: /path/to/config.yaml
 ```
@@ -214,6 +204,7 @@ userConfigPath: /path/to/config.yaml
 ## Dependencies
 
 ### Internal Dependencies
+
 - `@dotfiles/config` - Configuration management
 - `@dotfiles/file-system` - Filesystem operations
 - `@dotfiles/logger` - Structured logging
@@ -224,11 +215,13 @@ userConfigPath: /path/to/config.yaml
 ## Testing
 
 Run tests with:
+
 ```bash
 bun test packages/shim-generator
 ```
 
 The package includes tests for:
+
 - Shim generation
 - Multiple binaries
 - File permissions
@@ -262,6 +255,7 @@ Ensure tool is installed before generating shims
 ## Best Practices
 
 ### Regenerate After Installation
+
 ```typescript
 // Always regenerate shims after tool installation
 await installer.install('fzf', toolConfig);
@@ -269,6 +263,7 @@ await shimGenerator.generateForTool('fzf');
 ```
 
 ### Validate Binary Exists
+
 ```typescript
 // Check binary exists before creating shim
 const binaryPath = path.join(config.paths.binariesDir, toolName, 'current', binaryName);
@@ -280,12 +275,14 @@ if (!exists) {
 ```
 
 ### Use Absolute Paths
+
 ```typescript
 // Shims should use absolute paths
 const absoluteBinaryPath = await fileSystem.realpath(binaryPath);
 ```
 
 ### Set Correct Permissions
+
 ```typescript
 // Ensure shims are executable
 await fileSystem.chmod(shimPath, 0o755);
@@ -296,6 +293,7 @@ await fileSystem.chmod(shimPath, 0o755);
 ### Why Shims Instead of Symlinks?
 
 **Advantages of Shims:**
+
 - Can include initialization logic
 - Can redirect to different versions
 - Can set environment variables
@@ -303,6 +301,7 @@ await fileSystem.chmod(shimPath, 0o755);
 - Can validate preconditions
 
 **Symlinks are simpler but less flexible:**
+
 ```bash
 # Symlink (simple but inflexible)
 ln -s ~/.dotfiles/tools/fzf/bin/fzf ~/.dotfiles/bin/fzf
@@ -349,6 +348,7 @@ exec "{config.paths.binariesDir}/fzf/current/fzf" "$@"
 ## Performance Considerations
 
 ### Minimal Overhead
+
 ```bash
 # Using exec replaces the shell process
 # No additional process overhead
@@ -356,6 +356,7 @@ exec "$PATH_TO_BINARY" "$@"
 ```
 
 ### Fast Startup
+
 ```bash
 # Shims are simple bash scripts
 # Startup time: ~1-2ms
@@ -389,7 +390,9 @@ file $(which fzf)
 ## Design Decisions
 
 ### Why Bash for Shims?
+
 Bash is used because:
+
 - Universal availability on Unix-like systems
 - Simple syntax for forwarding execution
 - Good performance
@@ -397,7 +400,9 @@ Bash is used because:
 - Note: PowerShell support is planned for Windows compatibility
 
 ### Why Single Target Directory?
+
 A single target directory (configured via `paths.targetDir`):
+
 - Simplifies PATH management
 - Makes tools discoverable
 - Centralizes access control
@@ -405,7 +410,9 @@ A single target directory (configured via `paths.targetDir`):
 - User-configurable location
 
 ### Why Track in Registry?
+
 Registry tracking enables:
+
 - Cleanup on uninstall
 - Conflict detection
 - Status reporting
@@ -414,6 +421,7 @@ Registry tracking enables:
 ## Future Enhancements
 
 Potential improvements:
+
 - Windows batch file shims
 - PowerShell shims
 - Shim templates

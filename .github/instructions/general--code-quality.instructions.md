@@ -2,6 +2,7 @@
 description: Universal and mandatory code quality standards for the project.
 applyTo: '**/*'
 ---
+
 # Universal Code Quality Standards
 
 ## File Organization
@@ -14,7 +15,7 @@ applyTo: '**/*'
 ## Code Clarity
 
 - Write self-documenting code with clear naming
-- Add comments for complex business logic or non-obvious decisions. When logic is ported or inspired by an external source, retain comments that map the implementation back to the original source's specific sections or reasoning, even if a general link is provided. This context is critical for future maintenance and debugging. For example, if a shell script loop is ported to TypeScript, the original shell code should be kept in a comment block next to the new implementation for direct comparison.  
+- Add comments for complex business logic or non-obvious decisions. When logic is ported or inspired by an external source, retain comments that map the implementation back to the original source's specific sections or reasoning, even if a general link is provided. This context is critical for future maintenance and debugging. For example, if a shell script loop is ported to TypeScript, the original shell code should be kept in a comment block next to the new implementation for direct comparison.
 - Remove dead code rather than commenting it out
 - Use meaningful variable and function names that express intent
 
@@ -45,6 +46,7 @@ applyTo: '**/*'
 - All other code quality standards
 
 **Rationale**: Maintaining mixed patterns within files creates:
+
 - Inconsistent codebase that's harder to understand
 - Technical debt accumulation
 - Confusion about which patterns to follow
@@ -75,6 +77,7 @@ Production code must NEVER include code solely for testing purposes. This includ
 RATIONALE:
 
 Test-specific code in production:
+
 - Creates security vulnerabilities through undocumented code paths
 - Increases complexity and maintenance burden
 - Reduces confidence in production behavior
@@ -87,6 +90,7 @@ NON-NEGOTIABLE: All testing needs must be satisfied through proper dependency in
 ### Stub Implementation Policy
 
 When replacing production code:
+
 - NEVER commit stub/placeholder implementations to production code paths
 - If implementation is incomplete, either:
   1. Complete the implementation before integration, OR
@@ -108,6 +112,7 @@ If compilation errors occur after architectural changes, fix them by updating th
 RATIONALE:
 
 Legacy code creates:
+
 - Two ways to do the same thing (confusion)
 - Impossible maintenance burden
 - No visibility into actual usage

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { BrewToolConfig } from '@dotfiles/installer-brew';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { BrewInstallerPlugin } from '../BrewInstallerPlugin';
 
 describe('BrewInstallerPlugin', () => {

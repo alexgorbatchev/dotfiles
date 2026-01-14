@@ -58,7 +58,7 @@ export interface IReadmeService {
     toolName: string,
     version: string,
     owner: string,
-    repo: string
+    repo: string,
   ): Promise<string | null>;
 
   /**
@@ -71,7 +71,7 @@ export interface IReadmeService {
   generateCatalogFromConfigs(
     catalogPath: string,
     toolConfigs: Record<string, ToolConfig>,
-    options?: ICombinedReadmeOptions
+    options?: ICombinedReadmeOptions,
   ): Promise<string | null>;
 }
 

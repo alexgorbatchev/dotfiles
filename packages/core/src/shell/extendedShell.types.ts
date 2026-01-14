@@ -1,6 +1,7 @@
 import type { $ } from 'dax-sh';
 
 export const extendedShellBrand: unique symbol = Symbol('extendedShellBrand');
+export const loggingShellBrand: unique symbol = Symbol('loggingShellBrand');
 
 /**
  * A configured Bun shell instance that extends Bun's `$`.

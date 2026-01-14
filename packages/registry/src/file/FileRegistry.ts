@@ -1,5 +1,5 @@
-import type { Database } from 'bun:sqlite';
 import type { TsLogger } from '@dotfiles/logger';
+import type { Database } from 'bun:sqlite';
 import type { IFileOperation, IFileOperationFilter, IFileRegistry, IFileState } from './IFileRegistry';
 import { messages } from './log-messages';
 
@@ -69,7 +69,7 @@ export class FileRegistry implements IFileRegistry {
       operation.sizeBytes || null,
       operation.permissions || null,
       now,
-      operation.operationId
+      operation.operationId,
     );
 
     logger.debug(messages.operationRecorded(), operation.operationType, operation.toolName, operation.filePath);
@@ -146,7 +146,7 @@ export class FileRegistry implements IFileRegistry {
     const fileStates = new Map<string, IFileState>();
 
     // Process operations chronologically (oldest first) - create a copy to reverse
-    for (const op of [...operations].reverse()) {
+    for (const op of [...operations].toReversed()) {
       if (op.operationType === 'rm') {
         // Mark file as deleted by removing it from the map
         fileStates.delete(op.filePath);
@@ -188,7 +188,7 @@ export class FileRegistry implements IFileRegistry {
     // Process operations chronologically (oldest first) to get final state
     let state: IFileState | null = null;
 
-    for (const op of [...operations].reverse()) {
+    for (const op of [...operations].toReversed()) {
       if (op.operationType === 'rm') {
         // File was deleted
         state = null;
@@ -215,7 +215,7 @@ export class FileRegistry implements IFileRegistry {
 
   async getRegisteredTools(): Promise<string[]> {
     const stmt = this.db.prepare('SELECT DISTINCT tool_name FROM file_operations ORDER BY tool_name');
-    const rows = stmt.all() as { tool_name: string }[];
+    const rows = stmt.all() as { tool_name: string; }[];
 
     const tools = rows.map((row) => row.tool_name);
     this.logger.debug(messages.toolsFound(), tools.length);
@@ -257,7 +257,7 @@ export class FileRegistry implements IFileRegistry {
     logger.debug(messages.compactionComplete(), before.totalOperations, after.totalOperations);
   }
 
-  async validate(): Promise<{ valid: boolean; issues: string[]; repaired: string[] }> {
+  async validate(): Promise<{ valid: boolean; issues: string[]; repaired: string[]; }> {
     const logger = this.logger.getSubLogger({ name: 'validate' });
     const issues: string[] = [];
     const repaired: string[] = [];
@@ -270,7 +270,7 @@ export class FileRegistry implements IFileRegistry {
       GROUP BY operation_id 
       HAVING count > 1
     `)
-      .all() as { operation_id: string; count: number }[];
+      .all() as { operation_id: string; count: number; }[];
 
     if (duplicateIds.length > 0) {
       issues.push(`Found ${duplicateIds.length} duplicate operation IDs`);
@@ -303,7 +303,9 @@ export class FileRegistry implements IFileRegistry {
     oldestOperation: number;
     newestOperation: number;
   }> {
-    const totalOperations = this.db.prepare('SELECT COUNT(*) as count FROM file_operations').get() as { count: number };
+    const totalOperations = this.db.prepare('SELECT COUNT(*) as count FROM file_operations').get() as {
+      count: number;
+    };
     const totalFiles = this.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM file_operations').get() as {
       count: number;
     };
@@ -312,7 +314,7 @@ export class FileRegistry implements IFileRegistry {
     };
     const timeRange = this.db
       .prepare('SELECT MIN(created_at) as oldest, MAX(created_at) as newest FROM file_operations')
-      .get() as { oldest: number; newest: number };
+      .get() as { oldest: number; newest: number; };
 
     return {
       totalOperations: totalOperations.count,

@@ -5,6 +5,5 @@ import type { Mock } from 'bun:test';
  * while adding mock functionality.
  */
 export type MockedInterface<T> = {
-  // biome-ignore lint/suspicious/noExplicitAny: Generic type constraint requires any for function signature matching
-  [K in keyof T]: T[K] extends (...args: any[]) => any ? Mock<T[K]> : T[K];
+  [K in keyof T]: T[K] extends (...args: infer A) => infer R ? Mock<(...args: A) => R> : T[K];
 };

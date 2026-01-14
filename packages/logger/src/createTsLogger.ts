@@ -53,9 +53,7 @@ export function createTsLogger(configOrName: ILoggerConfig | string): TsLogger {
 
   config.level = config.level ?? LogLevel.DEFAULT;
 
-  const prettyLogTemplate = config.trace
-    ? '{{logLevelName}}\t{{filePathWithLine}} - '
-    : '{{logLevelName}}\t';
+  const prettyLogTemplate = config.trace ? '{{logLevelName}}\t{{filePathWithLine}} - ' : '{{logLevelName}}\t';
 
   const isColorDisabled = process.env['NO_COLOR'] === '1' || process.env['TERM'] === 'dumb';
 

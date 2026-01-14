@@ -2,6 +2,7 @@
 description: Project tooling requirements.
 applyTo: '**/*'
 ---
+
 # Project Tooling Requirements
 
 The project is using Bun as the main run time.

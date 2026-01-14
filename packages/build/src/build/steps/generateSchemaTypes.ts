@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noConsole: build script */
-
 import { BuildError } from '../handleBuildError';
 import { buildSchemaTypes } from '../helpers/buildSchemaTypes';
 import { checkProjectConfigTypeSignature } from '../helpers/checkProjectConfigTypeSignature';
@@ -11,7 +9,7 @@ import type { IBuildContext, IDependencyVersions } from '../types';
  */
 export async function generateSchemaTypes(
   context: IBuildContext,
-  dependencyVersions: IDependencyVersions
+  dependencyVersions: IDependencyVersions,
 ): Promise<void> {
   console.log('📝 Building @dotfiles/core config types...');
 

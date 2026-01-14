@@ -56,6 +56,6 @@ export interface IShellInitGenerator {
    */
   generate(
     toolConfigs: Record<string, ToolConfig>,
-    options?: IGenerateShellInitOptions
+    options?: IGenerateShellInitOptions,
   ): Promise<IShellInitGenerationResult | null>;
 }

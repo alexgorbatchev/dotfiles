@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import { Architecture, Platform } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { messages } from '../log-messages';
 import { IToolConfigBuilder } from '../toolConfigBuilder';
 
@@ -69,7 +69,7 @@ describe('IToolConfigBuilder - Platform Support', () => {
     builder.platform(Platform.Linux | Platform.MacOS, (install) => {
       // Changed to bitwise OR and MacOS
       return install('manual', { binaryPath: 'multi-platform-bin' }).bin(
-        'multi-platform-bin'
+        'multi-platform-bin',
       ) as unknown as IToolConfigBuilder;
     });
 
@@ -93,14 +93,14 @@ describe('IToolConfigBuilder - Platform Support', () => {
     // Linux X86_64 specific
     builder.platform(Platform.Linux, Architecture.X86_64, (install) => {
       return install('github-release', { repo: 'test/repo', assetPattern: 'linux-x86_64.tar.gz' }).bin(
-        'linux-x86_64-bin'
+        'linux-x86_64-bin',
       ) as unknown as IToolConfigBuilder;
     });
 
     // Linux Arm64 specific
     builder.platform(Platform.Linux, Architecture.Arm64, (install) => {
       return install('github-release', { repo: 'test/repo', assetPattern: 'linux-arm64.tar.gz' }).bin(
-        'linux-arm64-bin'
+        'linux-arm64-bin',
       ) as unknown as IToolConfigBuilder;
     });
 
@@ -108,13 +108,13 @@ describe('IToolConfigBuilder - Platform Support', () => {
     expect(config.platformConfigs).toBeDefined();
 
     const linuxCommonConfig = config.platformConfigs!.find(
-      (p) => p.platforms === Platform.Linux && p.architectures === undefined
+      (p) => p.platforms === Platform.Linux && p.architectures === undefined,
     );
     const linuxX86Config = config.platformConfigs!.find(
-      (p) => p.platforms === Platform.Linux && p.architectures === Architecture.X86_64
+      (p) => p.platforms === Platform.Linux && p.architectures === Architecture.X86_64,
     );
     const linuxArmConfig = config.platformConfigs!.find(
-      (p) => p.platforms === Platform.Linux && p.architectures === Architecture.Arm64
+      (p) => p.platforms === Platform.Linux && p.architectures === Architecture.Arm64,
     );
 
     expect(linuxCommonConfig).toBeDefined();
@@ -133,7 +133,7 @@ describe('IToolConfigBuilder - Platform Support', () => {
     // Platform MacOS, specific for Arm64
     builder.platform(Platform.MacOS, Architecture.Arm64, (install) => {
       return install('github-release', { repo: 'test/macrepo', assetPattern: 'macos-arm64.zip' }).bin(
-        'darwin-arm64-app'
+        'darwin-arm64-app',
       ) as unknown as IToolConfigBuilder;
     });
 
@@ -143,7 +143,7 @@ describe('IToolConfigBuilder - Platform Support', () => {
 
     expect(config.platformConfigs).toHaveLength(1);
     const darwinArmConfig = config.platformConfigs!.find(
-      (p) => p.platforms === Platform.MacOS && p.architectures === Architecture.Arm64
+      (p) => p.platforms === Platform.MacOS && p.architectures === Architecture.Arm64,
     );
     expect(darwinArmConfig).toBeDefined();
     expect(darwinArmConfig!.config.binaries).toEqual(['darwin-arm64-app']);
@@ -172,9 +172,9 @@ describe('IToolConfigBuilder - Platform Support', () => {
       [
         messages.configurationFieldRequired(
           'configure callback',
-          'platform() called for tool "test-tool" with architectures but without a configure callback'
+          'platform() called for tool "test-tool" with architectures but without a configure callback',
         ),
-      ]
+      ],
     );
   });
 });

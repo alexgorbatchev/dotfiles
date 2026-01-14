@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import path from 'node:path';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import path from 'node:path';
 import { registerFilesCommand } from '../filesCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram, IServices } from '../types';
@@ -56,7 +56,7 @@ describe('filesCommand', () => {
         ...mockServices,
         configService: mockConfigService,
       }),
-      mockPrint
+      mockPrint,
     );
   });
 
@@ -116,14 +116,14 @@ describe('filesCommand', () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(undefined);
 
     expect(program.parseAsync(['files', 'nonexistent'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1'
+      'MOCK_EXIT_CLI_CALLED_WITH_1',
     );
 
     testLogger.expect(
       ['ERROR'],
       ['registerFilesCommand'],
       [],
-      [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)]
+      [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)],
     );
   });
 

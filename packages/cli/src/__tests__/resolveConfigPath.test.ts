@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
-import os from 'node:os';
 import { NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import os from 'node:os';
 import { DEFAULT_CONFIG_FILES, resolveConfigPath } from '../resolveConfigPath';
 
 describe('resolveConfigPath', () => {
@@ -106,7 +106,7 @@ describe('resolveConfigPath', () => {
         ['DEBUG'],
         ['test', 'resolveConfigPath'],
         [],
-        ['Using configuration: /project/dotfiles.config.yaml']
+        ['Using configuration: /project/dotfiles.config.yaml'],
       );
     });
   });

@@ -122,7 +122,7 @@ function resolveDependencyProvider(
   toolName: string,
   dependencyName: string,
   binaryProviders: Map<string, Set<string>>,
-  systemInfo: ISystemInfo
+  systemInfo: ISystemInfo,
 ): string {
   const providers = binaryProviders.get(dependencyName);
   if (!providers || providers.size === 0) {
@@ -131,8 +131,8 @@ function resolveDependencyProvider(
         toolName,
         dependencyName,
         platformToString(systemInfo.platform),
-        architectureToString(systemInfo.arch)
-      )
+        architectureToString(systemInfo.arch),
+      ),
     );
     throw new Error('Dependency validation failed');
   }
@@ -150,8 +150,8 @@ function resolveDependencyProvider(
         toolName,
         dependencyName,
         platformToString(systemInfo.platform),
-        architectureToString(systemInfo.arch)
-      )
+        architectureToString(systemInfo.arch),
+      ),
     );
     throw new Error('Dependency validation failed');
   }
@@ -164,7 +164,7 @@ function buildDependencyGraph(
   toolNames: string[],
   metadataByTool: Map<string, IToolDependencyMetadata>,
   binaryProviders: Map<string, Set<string>>,
-  systemInfo: ISystemInfo
+  systemInfo: ISystemInfo,
 ): IDependencyGraph {
   const adjacency: Map<string, Set<string>> = new Map();
   const inDegree: Map<string, number> = new Map();
@@ -207,7 +207,7 @@ function buildDependencyGraph(
 function performTopologicalSort(
   toolNames: string[],
   graph: IDependencyGraph,
-  toolOrderIndex: Map<string, number>
+  toolOrderIndex: Map<string, number>,
 ): string[] {
   const zeroInDegreeQueue: string[] = [];
 
@@ -247,7 +247,7 @@ function performTopologicalSort(
 export function orderToolConfigsByDependencies(
   parentLogger: TsLogger,
   toolConfigs: Record<string, ToolConfig>,
-  systemInfo: ISystemInfo
+  systemInfo: ISystemInfo,
 ): Record<string, ToolConfig> {
   const logger = parentLogger.getSubLogger({ name: 'orderToolConfigsByDependencies' });
 

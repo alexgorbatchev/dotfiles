@@ -1,13 +1,17 @@
 # Task
+
 > Change how always and once scripts are generated from self-executing functions to subshell execution
 
 # Primary Objective
+
 Replace self-executing function pattern with subshell `( )` syntax for always and once script generation.
 
 # Open Questions
+
 - [x] Should PowerShell use the same pattern or maintain function syntax? → Use `try { } finally {}` pattern
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of the problem
   - Current implementation wraps scripts in self-executing functions with `__dotfiles_*_always()` or `__dotfiles_*_once()` patterns
   - Files affected:
@@ -39,6 +43,7 @@ Replace self-executing function pattern with subshell `( )` syntax for always an
 - [x] **TS007**: Verify with test-project that generation works correctly
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -55,6 +60,7 @@ Replace self-executing function pattern with subshell `( )` syntax for always an
 - [x] Tests do not print anything to console.
 
 # Change Log
+
 - Initial task file created with analysis of affected files
 - Implemented subshell syntax for AlwaysScriptFormatter and OnceScriptFormatter
 - Created AlwaysScriptFormatter.test.ts with tests for all shell types

@@ -1,8 +1,3 @@
-import { afterEach, describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import {
   type $extended,
@@ -16,7 +11,12 @@ import { NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
+import { afterEach, describe, expect, it } from 'bun:test';
 import { $ } from 'dax-sh';
+import assert from 'node:assert';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { z } from 'zod';
 import { Installer } from '../Installer';
 import { HookExecutor } from '../utils/HookExecutor';
@@ -132,7 +132,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
       registry,
       symlinkGenerator,
       $ as unknown as $extended,
-      hookExecutor
+      hookExecutor,
     );
 
     // 4. Run Install with Modified PATH
@@ -151,7 +151,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
       assert.ok(result.success);
 
       // Verify that the output came from the real binary, not the shim
-      expect((result.metadata as { output?: string }).output).toBe('REAL_BINARY');
+      expect((result.metadata as { output?: string; }).output).toBe('REAL_BINARY');
     } finally {
       process.env['PATH'] = originalPath;
     }

@@ -22,7 +22,7 @@ export async function withInstallErrorHandling<T extends InstallResult>(
   methodName: string,
   _toolName: string,
   logger: TsLogger,
-  operation: () => Promise<T>
+  operation: () => Promise<T>,
 ): Promise<T> {
   try {
     return await operation();

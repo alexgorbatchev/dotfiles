@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
 import type { ISystemInfo } from '@dotfiles/core';
+import { describe, expect, it } from 'bun:test';
 import { defineConfig } from '../defineConfig';
 
 const mockContext = {

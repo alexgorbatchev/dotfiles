@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import {
   ClientError,
   DownloaderError,
@@ -35,7 +35,7 @@ describe('Downloader Errors', () => {
       ['DEBUG'],
       ['NetworkError'],
       [],
-      ['NetworkError created: message=message, url=url, originalError=undefined']
+      ['NetworkError created: message=message, url=url, originalError=undefined'],
     );
   });
 
@@ -49,7 +49,7 @@ describe('Downloader Errors', () => {
       [],
       [
         /^HttpError created: message=message, url=url, statusCode=400, statusText=Bad Request, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/,
-      ]
+      ],
     );
   });
 
@@ -62,7 +62,7 @@ describe('Downloader Errors', () => {
       ['DEBUG'],
       ['NotFoundError'],
       [],
-      [/^NotFoundError created: url=url, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/]
+      [/^NotFoundError created: url=url, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/],
     );
   });
 
@@ -75,7 +75,7 @@ describe('Downloader Errors', () => {
       ['DEBUG'],
       ['ForbiddenError'],
       [],
-      [/^ForbiddenError created: url=url, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/]
+      [/^ForbiddenError created: url=url, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/],
     );
   });
 
@@ -90,7 +90,7 @@ describe('Downloader Errors', () => {
       [],
       [
         /^RateLimitError created: message=message, url=url, statusCode=429, statusText=Too Many Requests, responseBody=undefined, responseHeaders=\{\}, resetTimestamp=undefined(?:[\s\S]*)$/,
-      ]
+      ],
     );
   });
 
@@ -104,7 +104,7 @@ describe('Downloader Errors', () => {
       [],
       [
         /^ClientError created: url=url, statusCode=400, statusText=Bad Request, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/,
-      ]
+      ],
     );
   });
 
@@ -118,7 +118,7 @@ describe('Downloader Errors', () => {
       [],
       [
         /^ServerError created: url=url, statusCode=500, statusText=Internal Server Error, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/,
-      ]
+      ],
     );
   });
 });

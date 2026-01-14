@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
+import { describe, expect, test } from 'bun:test';
 import { CompletionCommandExecutor } from '../CompletionCommandExecutor';
 
 describe('CompletionCommandExecutor', () => {
@@ -41,7 +41,7 @@ describe('CompletionCommandExecutor', () => {
 
   test('should handle command failure with non-zero exit code', async () => {
     expect(executor.executeCompletionCommand('exit 1', 'test-tool', 'zsh', '/tmp')).rejects.toThrow(
-      'Completion command failed for test-tool: exit 1'
+      'Completion command failed for test-tool: exit 1',
     );
   });
 });

@@ -23,7 +23,7 @@ export class ConfigService implements IConfigService {
     toolConfigsDir: string,
     fs: IResolvedFileSystem,
     projectConfig: ProjectConfig,
-    systemInfo: ISystemInfo
+    systemInfo: ISystemInfo,
   ): Promise<ToolConfig | undefined> {
     return actualLoadSingleToolConfig(logger, toolName, toolConfigsDir, fs, projectConfig, systemInfo);
   }
@@ -36,7 +36,7 @@ export class ConfigService implements IConfigService {
     toolConfigsDir: string,
     fs: IResolvedFileSystem,
     projectConfig: ProjectConfig,
-    systemInfo: ISystemInfo
+    systemInfo: ISystemInfo,
   ): Promise<Record<string, ToolConfig>> {
     return actualLoadToolConfigs(logger, toolConfigsDir, fs, projectConfig, systemInfo);
   }

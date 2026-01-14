@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import path from 'node:path';
 import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
 import { NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import path from 'node:path';
 import { loadConfig } from '../loadConfig';
 
 describe('loadConfig - TypeScript path substitution', () => {

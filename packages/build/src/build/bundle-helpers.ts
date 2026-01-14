@@ -1,8 +1,6 @@
-/** biome-ignore-all lint/suspicious/noConsole: build script */
-
+import { init, parse } from 'es-module-lexer';
 import { readFile } from 'node:fs/promises';
 import { builtinModules } from 'node:module';
-import { init, parse } from 'es-module-lexer';
 import { BuildError } from './handleBuildError';
 
 const DOTFILES_PACKAGE_PREFIX = '@dotfiles/';
@@ -147,7 +145,7 @@ export async function getBundledDependenciesFromSourceMap(sourceMapPath: string)
     }
   }
 
-  const bundled: string[] = Array.from(bundledPackages).sort((a, b) => a.localeCompare(b));
+  const bundled: string[] = Array.from(bundledPackages).toSorted((a, b) => a.localeCompare(b));
   return bundled;
 }
 
@@ -174,13 +172,13 @@ export async function getExternalRuntimeDependenciesFromBundle(bundlePath: strin
     new Set(
       bareNonBuiltinImports
         .filter((name) => name.startsWith(DOTFILES_PACKAGE_PREFIX))
-        .map((name) => getPackageNameFromImportSpecifier(name))
-    )
-  ).sort((a, b) => a.localeCompare(b));
+        .map((name) => getPackageNameFromImportSpecifier(name)),
+    ),
+  ).toSorted((a, b) => a.localeCompare(b));
 
   if (dotfilesRuntimeImports.length > 0) {
     throw new BuildError(
-      `@dotfiles packages must be bundled, found external imports: ${dotfilesRuntimeImports.join(', ')}`
+      `@dotfiles packages must be bundled, found external imports: ${dotfilesRuntimeImports.join(', ')}`,
     );
   }
 
@@ -188,9 +186,9 @@ export async function getExternalRuntimeDependenciesFromBundle(bundlePath: strin
     new Set(
       bareNonBuiltinImports
         .filter((name) => !name.startsWith(DOTFILES_PACKAGE_PREFIX))
-        .map((name) => getPackageNameFromImportSpecifier(name))
-    )
-  ).sort((a, b) => a.localeCompare(b));
+        .map((name) => getPackageNameFromImportSpecifier(name)),
+    ),
+  ).toSorted((a, b) => a.localeCompare(b));
 
   return externalPackageNames;
 }

@@ -1,14 +1,18 @@
 # Task Prompt
+
 > Upgrade bun types to 1.3.5 and figure out why build is failing
 
 # Primary Objective
+
 Standardize `@types/bun` versions across all packages to use version 1.3.5, resolve the version mismatch that's causing inconsistent type definitions, ensure the build passes successfully, and fix API changes in type definitions.
 
 # Open Questions
+
 - [x] Are there any packages that intentionally need "latest" vs "catalog:system"? → No, only downloader was using "latest"
 - [x] What version constraints should be enforced in the future? → Use catalog:system consistently
 
 # Tasks
+
 - [x] **TS001**: Identify all packages with non-standard @types/bun versions → Found downloader using "latest"
 - [x] **TS002**: Update downloader package.json to use catalog:system instead of "latest"
 - [x] **TS003**: Verify package.json catalog specifies ^1.3.5 for @types/bun
@@ -21,6 +25,7 @@ Standardize `@types/bun` versions across all packages to use version 1.3.5, reso
 - [x] **TS010**: Update tests for the new rmdir behavior
 
 # Current Findings
+
 - **Bun Runtime Version**: 1.3.5 (correctly installed)
 - **Package.json Catalog**: Updated to `@types/bun: ^1.3.5` and `@types/node: ^25.0.0`
 - **Issue #1 (RESOLVED)**: `packages/downloader` used `@types/bun: "latest"` → Fixed to use `catalog:system`
@@ -32,6 +37,7 @@ Standardize `@types/bun` versions across all packages to use version 1.3.5, reso
 - **Linting**: ✅ Passing
 
 # Acceptance Criteria
+
 - [x] All packages use `@types/bun` from `catalog:system`
 - [x] Root package.json catalog specifies `@types/bun: ^1.3.5`
 - [x] `bun lint`, `bun typecheck` and `bun test` commands run successfully
@@ -42,6 +48,7 @@ Standardize `@types/bun` versions across all packages to use version 1.3.5, reso
 - [x] NodeFileSystem API updated to match new @types/node signatures
 
 # Change Log
+
 - Created feature branch: `feature/2025-12-22/bun-types-upgrade`
 - Created git worktree for isolated development
 - Identified version mismatch: downloader package uses "latest" instead of "catalog:system"
@@ -57,4 +64,3 @@ Standardize `@types/bun` versions across all packages to use version 1.3.5, reso
 - Type checking passes
 - Linting passes
 - Committed all changes to feature branch
-

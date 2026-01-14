@@ -79,7 +79,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
         ...settings,
         parentNames,
       },
-      this.logs
+      this.logs,
     );
     return subLogger;
   }
@@ -173,7 +173,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     const logs = this.getLogs(levels, path, context, matcher);
     for (const log of logs) {
       const { _meta, ...rest } = log;
-      // biome-ignore lint/suspicious/noConsole: needed for debugging
+      // oxlint-disable-next-line no-console -- Debug method for printing captured test logs to stdout
       console.log(JSON.stringify(rest));
     }
   }

@@ -1,5 +1,5 @@
-import { mock } from 'bun:test';
 import type { IFileOperation, IFileRegistry, IFileState } from '@dotfiles/registry';
+import { mock } from 'bun:test';
 
 /**
  * Input type for setFileState - minimal properties needed to track a file.

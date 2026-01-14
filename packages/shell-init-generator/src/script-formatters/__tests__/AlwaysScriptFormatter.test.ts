@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import { always, once } from '@dotfiles/core';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { AlwaysScriptFormatter } from '../AlwaysScriptFormatter';
 
 import '@dotfiles/testing-helpers';
@@ -186,7 +186,7 @@ describe('AlwaysScriptFormatter', () => {
       const script = once`echo "test"`;
 
       expect(() => formatter.format(script, 'test-tool', 'zsh')).toThrow(
-        'AlwaysScriptFormatter can only format AlwaysScript'
+        'AlwaysScriptFormatter can only format AlwaysScript',
       );
     });
 

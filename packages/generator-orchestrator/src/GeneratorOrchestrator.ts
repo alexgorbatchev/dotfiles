@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
   ICompletionContext,
@@ -22,6 +21,7 @@ import type { IGenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-gener
 import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
 import { resolveValue } from '@dotfiles/unwrap-value';
 import { resolvePlatformConfig } from '@dotfiles/utils';
+import path from 'node:path';
 import type { IGenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { messages } from './log-messages';
 import { orderToolConfigsByDependencies } from './orderToolConfigsByDependencies';
@@ -30,7 +30,7 @@ import { orderToolConfigsByDependencies } from './orderToolConfigsByDependencies
  * File types that should be cleaned up when a tool is disabled.
  * Binary files are intentionally excluded to preserve downloaded tools.
  */
-const CLEANABLE_FILE_TYPES: IFileState['fileType'][] = ['shim', 'symlink', 'completion'];
+const CLEANABLE_FILE_TYPES: Set<IFileState['fileType']> = new Set(['shim', 'symlink', 'completion']);
 
 /**
  * Orchestrates the generation of all dotfiles artifacts.
@@ -76,7 +76,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     projectConfig: ProjectConfig,
     fileRegistry: IFileRegistry,
     fs: IFileSystem,
-    completionTrackedFs: TrackedFileSystem
+    completionTrackedFs: TrackedFileSystem,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'GeneratorOrchestrator' });
     const logger = this.logger.getSubLogger({ name: 'constructor' });
@@ -113,7 +113,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     const orderedToolConfigs: Record<string, ToolConfig> = orderToolConfigsByDependencies(
       this.logger,
       enabledToolConfigs,
-      this.systemInfo
+      this.systemInfo,
     );
 
     const toolConfigsCount = Object.keys(orderedToolConfigs).length;
@@ -140,7 +140,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     const symlinkOptions: IGenerateSymlinksOptions = { overwrite: true, backup: true };
     const symlinkResults: SymlinkOperationResult[] = await this.symlinkGenerator.generate(
       orderedToolConfigs,
-      symlinkOptions
+      symlinkOptions,
     );
     const symlinkResultCount = symlinkResults?.length ?? 0;
     logger.debug(messages.generateAll.symlinkGenerationComplete(symlinkResultCount));
@@ -176,7 +176,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
         // Resolve the completion config (handles static values and callbacks)
         const resolvedCompletionValue: ShellCompletionConfigValue = await resolveValue(
           completionContext,
-          completionInput
+          completionInput,
         );
 
         // Convert to ShellCompletionConfig format
@@ -252,7 +252,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     const fileStates = await this.fileRegistry.getFileStatesForTool(toolName);
 
     // Filter for cleanable file types (shims, symlinks, completions - NOT binaries)
-    const filesToCleanup = fileStates.filter((state) => CLEANABLE_FILE_TYPES.includes(state.fileType));
+    const filesToCleanup = fileStates.filter((state) => CLEANABLE_FILE_TYPES.has(state.fileType));
 
     if (filesToCleanup.length === 0) {
       logger.debug(messages.cleanup.noFilesToCleanup(toolName));

@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'bun:test';
-import path from 'node:path';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { describe, expect, it } from 'bun:test';
+import path from 'node:path';
 import { createAllBinaryEntrypoints, createBinaryEntrypoint } from '../createBinaryEntrypoint';
 
 describe('createBinaryEntrypoint', () => {

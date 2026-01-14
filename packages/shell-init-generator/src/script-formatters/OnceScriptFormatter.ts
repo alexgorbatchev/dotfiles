@@ -1,7 +1,7 @@
-import path from 'node:path';
 import type { ShellScript, ShellType } from '@dotfiles/core';
 import { getScriptContent, isOnceScript } from '@dotfiles/core';
 import { dedentString, dedentTemplate } from '@dotfiles/utils';
+import path from 'node:path';
 import type { IFormattedScriptOutput, IScriptFormatter } from './IScriptFormatter';
 
 /**
@@ -77,7 +77,7 @@ export class OnceScriptFormatter implements IScriptFormatter {
         homeDir: this.homeDir,
         scriptContent,
         outputPath,
-      }
+      },
     );
   }
 
@@ -95,7 +95,7 @@ export class OnceScriptFormatter implements IScriptFormatter {
         homeDir: this.homeDir,
         scriptContent,
         outputPath,
-      }
+      },
     );
   }
 
@@ -121,7 +121,7 @@ export class OnceScriptFormatter implements IScriptFormatter {
         homeDir: this.homeDir,
         scriptContent,
         outputPath,
-      }
+      },
     );
   }
 }

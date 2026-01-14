@@ -4,13 +4,14 @@ Configure shell environments, aliases, completions, and functions.
 
 ## Shell Methods
 
-| Method | Shell |
-|--------|-------|
-| `.zsh(callback)` | Zsh |
-| `.bash(callback)` | Bash |
+| Method                  | Shell      |
+| ----------------------- | ---------- |
+| `.zsh(callback)`        | Zsh        |
+| `.bash(callback)`       | Bash       |
 | `.powershell(callback)` | PowerShell |
 
 Each callback receives:
+
 - `shell` - Shell configurator for setting up environment, aliases, completions, etc.
 - `ctx` - Context with `version` property (only available after installation)
 
@@ -79,8 +80,8 @@ my-command() {
 
 This is useful when you need functions that should operate with the sandboxed
 HOME environment, similar to `always()` and `once()` scripts.
-```
 
+````
 ## Script Timing
 
 ### `.always()` - Every Shell Startup
@@ -93,7 +94,7 @@ For fast inline operations. Runs in a subshell with HOME override:
     eval "$(tool init zsh)"
   `)
 )
-```
+````
 
 ### `.once()` - After Installation
 
@@ -108,7 +109,7 @@ export default defineTool((install, ctx) =>
         tool gen-completions --zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
       `)
     )
-)
+);
 ```
 
 ## Cross-Shell Configuration
@@ -117,15 +118,9 @@ Share configuration across shells using the outer `ctx` from `defineTool`:
 
 ```typescript
 export default defineTool((install, ctx) => {
-  const configureShell = (shell) =>
-    shell
-      .environment({ TOOL_HOME: ctx.currentDir })
-      .aliases({ t: 'tool' });
+  const configureShell = (shell) => shell.environment({ TOOL_HOME: ctx.currentDir }).aliases({ t: 'tool' });
 
-  return install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh(configureShell)
-    .bash(configureShell);
+  return install('github-release', { repo: 'owner/tool' }).bin('tool').zsh(configureShell).bash(configureShell);
 });
 ```
 
@@ -138,17 +133,15 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) =>
-      shell
-        .environment({
-          TOOL_CONFIG: ctx.toolDir,                              // Tool config directory
-          TOOL_DATA: '~/.local/share/tool',
-        })
-        .always(`
+      shell.environment({
+        TOOL_CONFIG: ctx.toolDir, // Tool config directory
+        TOOL_DATA: '~/.local/share/tool',
+      }).always(`
           FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
           [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
         `)
     )
-)
+);
 ```
 
 ## Best Practices
@@ -168,20 +161,20 @@ Create symlinks for configuration files with `.symlink()`.
 .symlink(source, target)
 ```
 
-| Parameter | Description |
-|-----------|-------------|
-| `source` | Path to source file/directory. `./` is relative to tool config directory |
-| `target` | Absolute path for symlink. Use context variables or `~` |
+| Parameter | Description                                                              |
+| --------- | ------------------------------------------------------------------------ |
+| `source`  | Path to source file/directory. `./` is relative to tool config directory |
+| `target`  | Absolute path for symlink. Use context variables or `~`                  |
 
 ### Path Resolution
 
-| Source | Resolution |
-|--------|------------|
-| `./config.toml` | Relative to `.tool.ts` directory |
-| `/etc/tool.conf` | Absolute path |
+| Source           | Resolution                       |
+| ---------------- | -------------------------------- |
+| `./config.toml`  | Relative to `.tool.ts` directory |
+| `/etc/tool.conf` | Absolute path                    |
 
-| Target | Resolution |
-|--------|------------|
+| Target           | Resolution                                     |
+| ---------------- | ---------------------------------------------- |
 | `~/.config/tool` | Expanded automatically via home path expansion |
 
 ### Example

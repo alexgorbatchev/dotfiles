@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type {
   AlwaysScript,
   IShellConfigurator,
@@ -9,6 +8,7 @@ import type {
 import { always, once } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { VALID_FUNCTION_NAME_PATTERN } from '@dotfiles/shell-init-generator';
+import path from 'node:path';
 import { messages } from './log-messages';
 import type { IShellStorage, ShellTypeKey } from './types';
 
@@ -28,7 +28,7 @@ export class ShellConfigurator implements IShellConfigurator {
     shellType: ShellTypeKey,
     context: IToolConfigContext | undefined,
     logger: TsLogger,
-    toolName: string
+    toolName: string,
   ) {
     this.storage = storage;
     this.shellType = shellType;
@@ -151,7 +151,7 @@ export class ShellConfigurator implements IShellConfigurator {
     if (!this.context) {
       const message = messages.configurationFieldRequired(
         'tool context',
-        `Please ensure createInstallFunction receives tool context before using shell.source() for "${this.toolName}"`
+        `Please ensure createInstallFunction receives tool context before using shell.source() for "${this.toolName}"`,
       );
       this.logger.error(message);
       throw new Error(message);

@@ -43,12 +43,10 @@ interface IToolConfigBuilder {
 import type { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
 
 export default async (c: ToolConfigBuilder): Promise<void> => {
-  c.bin('fzf')
-    .version('latest')
-    .install('github-release', {
-      repo: 'junegunn/fzf',
-      assetPattern: '*linux*amd64*.tar.gz',
-    });
+  c.bin('fzf').version('latest').install('github-release', {
+    repo: 'junegunn/fzf',
+    assetPattern: '*linux*amd64*.tar.gz',
+  });
 };
 ```
 
@@ -56,11 +54,9 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
 
 ```typescript
 export default async (c: ToolConfigBuilder): Promise<void> => {
-  c.bin(['node', 'npm', 'npx'])
-    .version('20.0.0')
-    .install('curl-tar', {
-      url: 'https://nodejs.org/dist/v20.0.0/node-v20.0.0-linux-x64.tar.xz',
-    });
+  c.bin(['node', 'npm', 'npx']).version('20.0.0').install('curl-tar', {
+    url: 'https://nodejs.org/dist/v20.0.0/node-v20.0.0-linux-x64.tar.xz',
+  });
 };
 ```
 
@@ -96,70 +92,60 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
 #### GitHub Release
 
 ```typescript
-c.bin('bat')
-  .version('latest')
-  .install('github-release', {
-    repo: 'sharkdp/bat',
-    assetPattern: '*linux*amd64*.tar.gz',
-  });
+c.bin('bat').version('latest').install('github-release', {
+  repo: 'sharkdp/bat',
+  assetPattern: '*linux*amd64*.tar.gz',
+});
 ```
 
 #### Homebrew
 
 ```typescript
-c.bin('jq')
-  .version('latest')
-  .install('brew', {
-    formula: 'jq',
-  });
+c.bin('jq').version('latest').install('brew', {
+  formula: 'jq',
+});
 ```
 
 #### Cargo
 
 ```typescript
-c.bin('eza')
-  .version('latest')
-  .install('cargo', {
-    crateName: 'eza',
-    binarySource: 'cargo-quickinstall',
-    versionSource: 'cargo-toml',
-    githubRepo: 'eza-community/eza',
-  });
+c.bin('eza').version('latest').install('cargo', {
+  crateName: 'eza',
+  binarySource: 'cargo-quickinstall',
+  versionSource: 'cargo-toml',
+  githubRepo: 'eza-community/eza',
+});
 ```
 
 #### Curl Script
 
 ```typescript
-c.bin(['rustup', 'cargo'])
-  .version('latest')
-  .install('curl-script', {
-    url: 'https://sh.rustup.rs',
-    shell: 'bash',
-  });
+c.bin(['rustup', 'cargo']).version('latest').install('curl-script', {
+  url: 'https://sh.rustup.rs',
+  shell: 'bash',
+});
 ```
 
 #### Curl Tar
 
 ```typescript
-c.bin('tool')
-  .version('1.0.0')
-  .install('curl-tar', {
-    url: 'https://example.com/tool-1.0.0.tar.gz',
-  });
+c.bin('tool').version('1.0.0').install('curl-tar', {
+  url: 'https://example.com/tool-1.0.0.tar.gz',
+});
 ```
 
 #### Manual
 
 ```typescript
-c.bin('system-tool')
-  .install('manual', {
-    binaryPath: '/usr/local/bin/system-tool',
-  });
+c.bin('system-tool').install('manual', {
+  binaryPath: '/usr/local/bin/system-tool',
+});
 ```
 
 ### Disabling a Tool
 
 Use `.disable()` to temporarily skip a tool during generation. When a tool is disabled:
+
 - A warning is logged indicating the tool is disabled
 - Any previously generated artifacts (shims, symlinks, completions) are automatically removed
 - Downloaded binaries are preserved for quick re-enablement
@@ -189,13 +175,10 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
       // Create config directory
       const configDir = path.join(context.stagingDir, 'config');
       await context.fileSystem.mkdir(configDir, { recursive: true });
-      
+
       // Create default config
       const configPath = path.join(configDir, 'config');
-      await context.fileSystem.writeFile(
-        configPath,
-        '--theme="Monokai Extended"\n--style="numbers,changes,header"\n'
-      );
+      await context.fileSystem.writeFile(configPath, '--theme="Monokai Extended"\n--style="numbers,changes,header"\n');
     });
 };
 ```
@@ -212,11 +195,9 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
         // Custom logic to select the right asset
         const platform = systemInfo.platform === 'darwin' ? 'macOS' : 'linux';
         const arch = systemInfo.arch === 'x86_64' ? 'amd64' : 'arm64';
-        
-        return assets.find(asset => 
-          asset.name.includes(platform) && 
-          asset.name.includes(arch) &&
-          asset.name.endsWith('.tar.gz')
+
+        return assets.find(
+          (asset) => asset.name.includes(platform) && asset.name.includes(arch) && asset.name.endsWith('.tar.gz'),
         );
       },
     });
@@ -231,10 +212,10 @@ Defines the binary name(s) for the tool.
 
 ```typescript
 // Single binary
-c.bin('fzf')
+c.bin('fzf');
 
 // Multiple binaries
-c.bin(['node', 'npm', 'npx'])
+c.bin(['node', 'npm', 'npx']);
 ```
 
 ### `version(version: string)`
@@ -242,9 +223,9 @@ c.bin(['node', 'npm', 'npx'])
 Sets the tool version. Use `'latest'` for the latest version.
 
 ```typescript
-c.version('14.0.0')
-c.version('latest')
-c.version('^1.0.0')  // Semver constraint
+c.version('14.0.0');
+c.version('latest');
+c.version('^1.0.0'); // Semver constraint
 ```
 
 ### `install(method: InstallationMethod, params: InstallParams)`
@@ -256,15 +237,15 @@ c.install('github-release', {
   repo: 'owner/repo',
   assetPattern: '*.tar.gz',
   // Regex string form is also supported, e.g. '/^tool-.*\\.tar\\.gz$/'
-})
+});
 
 c.install('brew', {
   formula: 'formula-name',
-})
+});
 
 c.install('cargo', {
   crateName: 'crate-name',
-})
+});
 ```
 
 ### `platform(platform: Platform, callback: (builder: PlatformConfigBuilder) => void)`
@@ -273,11 +254,11 @@ Adds platform-specific overrides.
 
 ```typescript
 c.platform(Platform.MacOS, (p) => {
-  p.version('1.0.1')  // Different version for macOS
+  p.version('1.0.1') // Different version for macOS
     .install('brew', {
       formula: 'tool',
     });
-})
+});
 ```
 
 ### `build(): ToolConfig`
@@ -285,10 +266,7 @@ c.platform(Platform.MacOS, (p) => {
 Builds and validates the final configuration.
 
 ```typescript
-const config = c.bin('tool')
-  .version('1.0.0')
-  .install('github-release', { repo: 'owner/repo' })
-  .build();
+const config = c.bin('tool').version('1.0.0').install('github-release', { repo: 'owner/repo' }).build();
 ```
 
 ## Platform Configuration
@@ -298,9 +276,9 @@ const config = c.bin('tool')
 ```typescript
 enum Platform {
   Darwin = 'darwin',
-  Linux = 'linux', 
+  Linux = 'linux',
   Windows = 'windows',
-  MacOS = 'darwin',  // Alias for Darwin
+  MacOS = 'darwin', // Alias for Darwin
 }
 ```
 
@@ -339,7 +317,7 @@ c.bin('tool')
   .version('2.0.0')
   .install('github-release', { repo: 'owner/repo' })
   .platform(Platform.Windows, (p) => {
-    p.version('1.9.0');  // Use older version on Windows
+    p.version('1.9.0'); // Use older version on Windows
   });
 ```
 
@@ -352,9 +330,9 @@ The builder validates configurations using Zod schemas:
 c.bin('tool')
   .version('1.0.0')
   .install('github-release', {
-    repo: 'owner/repo',  // Required for github-release
+    repo: 'owner/repo', // Required for github-release
   })
-  .build();  // ✓ Valid
+  .build(); // ✓ Valid
 
 // Invalid configuration
 c.bin('tool')
@@ -362,7 +340,7 @@ c.bin('tool')
   .install('github-release', {
     // Missing required 'repo' parameter
   })
-  .build();  // ✗ Throws validation error
+  .build(); // ✗ Throws validation error
 ```
 
 ## Type Safety
@@ -372,31 +350,34 @@ The builder provides full type safety:
 ```typescript
 // TypeScript knows the params type based on the method
 c.install('github-release', {
-  repo: 'owner/repo',       // ✓ Valid
+  repo: 'owner/repo', // ✓ Valid
   assetPattern: '*.tar.gz', // ✓ Valid
-  formula: 'tool',          // ✗ Type error: formula not valid for github-release
+  formula: 'tool', // ✗ Type error: formula not valid for github-release
 });
 
 c.install('brew', {
-  formula: 'tool',  // ✓ Valid
-  repo: 'owner/repo',  // ✗ Type error: repo not valid for brew
+  formula: 'tool', // ✓ Valid
+  repo: 'owner/repo', // ✗ Type error: repo not valid for brew
 });
 ```
 
 ## Dependencies
 
 ### Internal Dependencies
+
 - `@dotfiles/logger` - Structured logging
 - `@dotfiles/schemas` - Type definitions and validation schemas
 
 ## Testing
 
 Run tests with:
+
 ```bash
 bun test packages/tool-config-builder
 ```
 
 The package includes tests for:
+
 - Basic configuration building
 - Platform overrides
 - All installation methods
@@ -406,21 +387,27 @@ The package includes tests for:
 ## Design Decisions
 
 ### Why Fluent API?
+
 The fluent API:
+
 - Makes configurations readable
 - Provides IDE autocomplete
 - Chains naturally
 - Follows common patterns
 
 ### Why Type-Safe Params?
+
 Type-safe parameters:
+
 - Catch errors at compile time
 - Provide better IDE support
 - Reduce runtime errors
 - Document expected parameters
 
 ### Why Platform Callbacks?
+
 Platform callbacks:
+
 - Allow complex overrides
 - Keep syntax consistent
 - Enable partial overrides
@@ -432,8 +419,8 @@ Platform callbacks:
 
 ```typescript
 // Good
-c.version('latest')
-c.version('14.0.0')
+c.version('latest');
+c.version('14.0.0');
 
 // Avoid implicit versions
 ```
@@ -468,10 +455,9 @@ c.install('github-release', {
 ```typescript
 c.install('github-release', {
   repo: 'owner/repo',
-})
-  .hook('after-install', async (context) => {
-    // Post-installation setup
-  });
+}).hook('after-install', async (context) => {
+  // Post-installation setup
+});
 ```
 
 ## Common Patterns
@@ -523,19 +509,18 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
 
 ```typescript
 export default async (c: ToolConfigBuilder): Promise<void> => {
-  c.bin('ripgrep')
-    .version('latest')
-    .install('cargo', {
-      crateName: 'ripgrep',
-      binarySource: 'cargo-quickinstall',
-      versionSource: 'crates-io',
-    });
+  c.bin('ripgrep').version('latest').install('cargo', {
+    crateName: 'ripgrep',
+    binarySource: 'cargo-quickinstall',
+    versionSource: 'crates-io',
+  });
 };
 ```
 
 ## Future Enhancements
 
 Potential improvements:
+
 - Configuration templates
 - Inheritance/composition
 - Configuration validation

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
 import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
+import { describe, expect, it } from 'bun:test';
 import { selectBestMatch } from '../selectBestMatch';
 
 describe('selectBestMatch', () => {
@@ -24,7 +24,7 @@ describe('selectBestMatch', () => {
 
     const result = selectBestMatch(
       ['tool-darwin-arm64.tar.gz', 'tool-linux-amd64.tar.gz', 'tool-windows-x64.exe'],
-      systemInfo
+      systemInfo,
     );
 
     expect(result).toBe('tool-darwin-arm64.tar.gz');
@@ -43,7 +43,7 @@ describe('selectBestMatch', () => {
         'tool-linux-x86_64-musl.tar.gz', // musl comes first in variant patterns
         'tool-darwin-arm64.tar.gz',
       ],
-      systemInfo
+      systemInfo,
     );
 
     // Should prefer musl (first in Linux variants: ['musl', 'gnu', 'unknown-linux'])
@@ -59,7 +59,7 @@ describe('selectBestMatch', () => {
 
     const result = selectBestMatch(
       ['tool-linux-x86_64-gnu.tar.gz', 'tool-darwin-arm64.tar.gz', 'tool-windows-x64.exe'],
-      systemInfo
+      systemInfo,
     );
 
     expect(result).toBe('tool-linux-x86_64-gnu.tar.gz');
@@ -74,7 +74,7 @@ describe('selectBestMatch', () => {
 
     const result = selectBestMatch(
       ['fzf-0.66.0-linux_amd64.tar.gz', 'fzf-0.66.0-darwin_arm64.tar.gz', 'fzf-0.66.0-windows_amd64.zip'],
-      systemInfo
+      systemInfo,
     );
 
     expect(result).toBe('fzf-0.66.0-linux_amd64.tar.gz');
@@ -91,7 +91,7 @@ describe('selectBestMatch', () => {
     // return the first one (zinit behavior)
     const result = selectBestMatch(
       ['tool-linux-amd64.tar.gz', 'tool-linux-x86_64.tar.gz', 'tool-darwin-arm64.tar.gz'],
-      systemInfo
+      systemInfo,
     );
 
     expect(result).toBe('tool-linux-amd64.tar.gz');
@@ -110,7 +110,7 @@ describe('selectBestMatch', () => {
         'tool-windows-x64-mingw.zip', // mingw comes first in Windows variants
         'tool-linux-amd64.tar.gz',
       ],
-      systemInfo
+      systemInfo,
     );
 
     // Should prefer mingw (first in Windows variants: ['mingw', 'msys', 'cygwin', 'pc-windows'])
@@ -126,7 +126,7 @@ describe('selectBestMatch', () => {
 
     const result = selectBestMatch(
       ['tool-linux-armv7-eabihf.tar.gz', 'tool-linux-armv7.tar.gz', 'tool-linux-amd64.tar.gz'],
-      systemInfo
+      systemInfo,
     );
 
     // Should prefer eabihf variant for armv7l

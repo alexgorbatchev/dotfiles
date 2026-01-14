@@ -3,11 +3,11 @@
  *
  * Verifies that tool name context flows through log messages when displaying files.
  */
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { registerFilesCommand } from '../filesCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram, IServices } from '../types';
@@ -62,7 +62,7 @@ describe('filesCommand - Logger Context Propagation', () => {
         ...mockServices,
         configService: mockConfigService,
       }),
-      mockPrint
+      mockPrint,
     );
   });
 
@@ -81,7 +81,7 @@ describe('filesCommand - Logger Context Propagation', () => {
       ['ERROR'],
       ['registerFilesCommand'],
       [],
-      [messages.toolNotFound(TOOL_NAME, mockProjectConfig.paths.toolConfigsDir)]
+      [messages.toolNotFound(TOOL_NAME, mockProjectConfig.paths.toolConfigsDir)],
     );
   });
 

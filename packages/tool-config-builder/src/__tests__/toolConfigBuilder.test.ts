@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
-import { type AsyncInstallHook, always } from '@dotfiles/core';
+import { always, type AsyncInstallHook } from '@dotfiles/core';
 import type { GithubReleaseInstallParams } from '@dotfiles/installer-github';
 import { isGitHubReleaseToolConfig } from '@dotfiles/installer-github';
 import { TestLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, test } from 'bun:test';
 import { messages } from '../log-messages';
 import { IToolConfigBuilder } from '../toolConfigBuilder';
 
@@ -144,9 +144,9 @@ describe('IToolConfigBuilder', () => {
       [
         messages.configurationFieldIgnored(
           'hook',
-          'hook() called for tool "test-tool" before install(). Hook will not be set as install() was not called first.'
+          'hook() called for tool "test-tool" before install(). Hook will not be set as install() was not called first.',
         ),
-      ]
+      ],
     );
   });
 
@@ -218,7 +218,7 @@ describe('IToolConfigBuilder', () => {
         /Invalid function name: "123invalid"/,
         /Invalid function name: "has space"/,
         /Invalid function name: "func;injection"/,
-      ]
+      ],
     );
   });
 
@@ -280,7 +280,7 @@ describe('IToolConfigBuilder', () => {
   test('completions accepts callback function for dynamic resolution', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
 
-    const completionsCallback = (ctx: { version?: string }) => ({
+    const completionsCallback = (ctx: { version?: string; }) => ({
       url: `https://example.com/completions/${ctx.version}/completion.zsh`,
     });
 
@@ -349,7 +349,7 @@ describe('IToolConfigBuilder', () => {
   test('build method throws error if nothing is configured', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
     expect(() => builder.build()).toThrow(
-      'Required configuration missing: tool definition. Example: Tool "test-tool" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs'
+      'Required configuration missing: tool definition. Example: Tool "test-tool" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs',
     );
   });
 
@@ -389,9 +389,9 @@ describe('IToolConfigBuilder', () => {
         messages.configurationFieldInvalid(
           'installationMethod',
           'invalid-method',
-          'github-release | brew | curl-script | curl-tar | cargo | manual'
+          'github-release | brew | curl-script | curl-tar | cargo | manual',
         ),
-      ]
+      ],
     );
   });
 
@@ -417,9 +417,9 @@ describe('IToolConfigBuilder', () => {
       [
         messages.configurationFieldRequired(
           'tool definition',
-          'Tool "empty-tool" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs'
+          'Tool "empty-tool" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs',
         ),
-      ]
+      ],
     );
   });
 

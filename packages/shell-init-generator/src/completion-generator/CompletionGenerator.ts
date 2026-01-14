@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ArchiveFormat, ShellCompletionConfig, ShellType } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
@@ -6,6 +5,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { getAllFilesRecursively } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
+import path from 'node:path';
 import { CompletionCommandExecutor } from './CompletionCommandExecutor';
 import { messages } from './log-messages';
 import type {
@@ -34,7 +34,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     parentLogger: TsLogger,
     fs: IFileSystem,
     commandExecutor?: ICompletionCommandExecutor,
-    deps?: ICompletionGeneratorDependencies
+    deps?: ICompletionGeneratorDependencies,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'CompletionGenerator' });
     this.fs = fs;
@@ -47,7 +47,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     config: ShellCompletionConfig,
     toolName: string,
     shellType: ShellType,
-    context: ICompletionGenerationContext
+    context: ICompletionGenerationContext,
   ): Promise<IGeneratedCompletion> {
     const logger = this.logger.getSubLogger({ name: 'generateCompletionFile' }).setPrefix(toolName);
     logger.debug(messages.generationStarted(toolName, shellType));
@@ -178,7 +178,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     config: ShellCompletionConfig,
     toolName: string,
     shellType: ShellType,
-    context: ICompletionGenerationContext
+    context: ICompletionGenerationContext,
   ): Promise<IGeneratedCompletion> {
     if (!config.cmd) {
       throw new Error(`Command not provided for ${toolName}`);
@@ -188,7 +188,7 @@ export class CompletionGenerator implements ICompletionGenerator {
       config.cmd,
       toolName,
       shellType,
-      context.toolInstallDir
+      context.toolInstallDir,
     );
 
     const filename = this.generateCompletionFilename(config, toolName, shellType);
@@ -206,7 +206,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     config: ShellCompletionConfig,
     toolName: string,
     shellType: ShellType,
-    context: ICompletionGenerationContext
+    context: ICompletionGenerationContext,
   ): Promise<IGeneratedCompletion> {
     if (!config.source) {
       throw new Error(`Source not provided for ${toolName}`);
@@ -291,7 +291,7 @@ export class CompletionGenerator implements ICompletionGenerator {
   private resolveTargetPath(
     customTargetDir: string | undefined,
     shellType: ShellType,
-    context: ICompletionGenerationContext
+    context: ICompletionGenerationContext,
   ): string {
     if (customTargetDir) {
       return customTargetDir;

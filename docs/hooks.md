@@ -20,28 +20,28 @@ export default defineTool((install, ctx) =>
 
 ## Hook Events
 
-| Event | When | Available Properties |
-|-------|------|---------------------|
-| `before-install` | Before installation starts | `stagingDir` |
-| `after-download` | After file download | `stagingDir`, `downloadPath` |
-| `after-extract` | After archive extraction | `stagingDir`, `downloadPath`, `extractDir` |
-| `after-install` | After installation completes | `installedDir`, `binaryPaths`, `version` |
+| Event            | When                         | Available Properties                       |
+| ---------------- | ---------------------------- | ------------------------------------------ |
+| `before-install` | Before installation starts   | `stagingDir`                               |
+| `after-download` | After file download          | `stagingDir`, `downloadPath`               |
+| `after-extract`  | After archive extraction     | `stagingDir`, `downloadPath`, `extractDir` |
+| `after-install`  | After installation completes | `installedDir`, `binaryPaths`, `version`   |
 
 ## Context Properties
 
 All hooks receive a context object with:
 
-| Property | Description |
-|----------|-------------|
-| `toolName` | Name of the tool |
-| `currentDir` | Stable path (symlink) for this tool |
-| `systemInfo` | Platform, architecture, home directory |
-| `fileSystem` | File operations (mkdir, writeFile, exists, etc.) |
-| `replaceInFile` | Regex-based file text replacement |
-| `log` | Structured logging (trace, debug, info, warn, error) |
-| `projectConfig` | Project configuration |
-| `toolConfig` | Tool configuration |
-| `$` | Bun shell executor |
+| Property        | Description                                          |
+| --------------- | ---------------------------------------------------- |
+| `toolName`      | Name of the tool                                     |
+| `currentDir`    | Stable path (symlink) for this tool                  |
+| `systemInfo`    | Platform, architecture, home directory               |
+| `fileSystem`    | File operations (mkdir, writeFile, exists, etc.)     |
+| `replaceInFile` | Regex-based file text replacement                    |
+| `log`           | Structured logging (trace, debug, info, warn, error) |
+| `projectConfig` | Project configuration                                |
+| `toolConfig`    | Tool configuration                                   |
+| `$`             | Bun shell executor                                   |
 
 ## Examples
 
@@ -62,7 +62,7 @@ All hooks receive a context object with:
 .hook('after-install', async ({ $, installedDir }) => {
   // Run tool command
   await $`${installedDir}/tool init`;
-  
+
   // Capture output
   const version = await $`./tool --version`.text();
 })
@@ -76,7 +76,7 @@ In `after-install` hooks, the shell's PATH is automatically enhanced to include 
 .hook('after-install', async ({ $ }) => {
   // The installed binary is automatically available by name
   await $`my-tool --version`;
-  
+
   // No need to use full paths like:
   // await $`${installedDir}/bin/my-tool --version`;
 })
@@ -93,6 +93,7 @@ Shell commands executed in hooks are automatically logged to help with debugging
 - Stderr lines are logged as `| line` at error level (only if stderr has content)
 
 Example output:
+
 ```
 $ my-tool init
 | Initializing configuration...
@@ -179,8 +180,8 @@ export default defineTool((install, ctx) =>
       if (extractDir) {
         // Custom binary selection and processing
         const binaries = await fileSystem.readdir(path.join(extractDir, 'bin'));
-        const mainBinary = binaries.find(name => name.startsWith('main-'));
-        
+        const mainBinary = binaries.find((name) => name.startsWith('main-'));
+
         if (mainBinary) {
           const sourcePath = path.join(extractDir, 'bin', mainBinary);
           const targetPath = path.join(stagingDir ?? '', 'tool');
@@ -209,7 +210,7 @@ export default defineTool((install, ctx) =>
         // Linux-specific setup
         await $`./setup-linux.sh`;
       }
-      
+
       // Architecture-specific setup
       if (systemInfo.arch === 'arm64') {
         log.info('Configuring for ARM64 architecture');
@@ -235,8 +236,7 @@ export default defineTool((install) =>
       ENABLE_FEATURE: 'true',
       API_KEY: process.env.TOOL_API_KEY || 'default',
     },
-  })
-    .bin('my-tool')
+  }).bin('my-tool')
 );
 ```
 
@@ -285,19 +285,19 @@ export default defineTool((install, ctx) =>
       // Create data directory
       const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
       await fileSystem.mkdir(dataDir, { recursive: true });
-      
+
       // Initialize tool
       await $`${path.join(installedDir ?? '', toolName)} init --data-dir ${dataDir}`;
-      
+
       // Set up completion
-      await $`${path.join(installedDir ?? '', toolName)} completion zsh > ${ctx.projectConfig.paths.generatedDir}/completions/_${toolName}`;
-      
+      await $`${
+        path.join(installedDir ?? '', toolName)
+      } completion zsh > ${ctx.projectConfig.paths.generatedDir}/completions/_${toolName}`;
+
       log.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
     .zsh((shell) =>
-      shell
-        .environment({ CUSTOM_TOOL_DATA: '~/.local/share/custom-tool' })
-        .aliases({ ct: 'custom-tool' })
+      shell.environment({ CUSTOM_TOOL_DATA: '~/.local/share/custom-tool' }).aliases({ ct: 'custom-tool' })
     )
 );
 ```

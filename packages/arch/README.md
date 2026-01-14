@@ -8,10 +8,10 @@ The logic is heavily inspired by the architecture detection mechanism in [Zinit]
 
 The primary goal of this package is to answer the question: "Which of these files is the right one for my computer?" It achieves this through a multi-step process:
 
-1.  **Pattern Generation**: It takes system information (e.g., `platform: 'darwin'`, `arch: 'arm64'`) and generates a list of common string patterns used to describe that architecture (e.g., `system: ['apple', 'darwin', 'macos']`, `cpu: ['arm64', 'aarch64']`).
-2.  **Regex Creation**: These string patterns are compiled into regular expressions for efficient matching.
-3.  **Asset Matching**: It provides functions to filter a list of asset names to find those that match the current system's architecture.
-4.  **Disambiguation**: If multiple assets match (e.g., `...-linux-gnu.tar.gz` vs. `...-linux-musl.tar.gz`), it uses an ordered list of "variants" to select the best fit, mimicking Zinit's tie-breaking logic.
+1. **Pattern Generation**: It takes system information (e.g., `platform: 'darwin'`, `arch: 'arm64'`) and generates a list of common string patterns used to describe that architecture (e.g., `system: ['apple', 'darwin', 'macos']`, `cpu: ['arm64', 'aarch64']`).
+2. **Regex Creation**: These string patterns are compiled into regular expressions for efficient matching.
+3. **Asset Matching**: It provides functions to filter a list of asset names to find those that match the current system's architecture.
+4. **Disambiguation**: If multiple assets match (e.g., `...-linux-gnu.tar.gz` vs. `...-linux-musl.tar.gz`), it uses an ordered list of "variants" to select the best fit, mimicking Zinit's tie-breaking logic.
 
 ## API
 
@@ -50,7 +50,7 @@ A convenience function that combines `getArchitecturePatterns` and `createArchit
 Checks if a single asset name matches the primary system and CPU architecture patterns. This is useful for an initial, broad filtering of assets.
 
 ```typescript
-import { matchesArchitecture, getArchitectureRegex } from '@dotfiles/arch';
+import { getArchitectureRegex, matchesArchitecture } from '@dotfiles/arch';
 
 const regex = getArchitectureRegex({ platform: 'linux', arch: 'x64', homeDir: '~' });
 matchesArchitecture('my-tool-linux-amd64.zip', regex); // true
@@ -64,10 +64,7 @@ This is the highest-level function, designed to select the single best asset fro
 ```typescript
 import { selectBestMatch } from '@dotfiles/arch';
 
-const assets = [
-  'ripgrep-13.0.0-x86_64-unknown-linux-musl.tar.gz',
-  'ripgrep-13.0.0-x86_64-unknown-linux-gnu.tar.gz',
-];
+const assets = ['ripgrep-13.0.0-x86_64-unknown-linux-musl.tar.gz', 'ripgrep-13.0.0-x86_64-unknown-linux-gnu.tar.gz'];
 
 // On a standard glibc system, this would be the systemInfo
 const systemInfo = { platform: 'linux', arch: 'x64', homeDir: '~' };

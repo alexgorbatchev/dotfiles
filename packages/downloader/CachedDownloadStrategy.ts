@@ -31,7 +31,7 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
     fileSystem: IFileSystem,
     cache: ICache,
     underlyingStrategy: IDownloadStrategy,
-    cacheTtl: number = 24 * 60 * 60 * 1000 // Default 24 hours
+    cacheTtl: number = 24 * 60 * 60 * 1000, // Default 24 hours
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'CachedDownloadStrategy' });
     this.fileSystem = fileSystem;
@@ -56,7 +56,7 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
     cachedBuffer: Buffer,
     cacheKey: string,
     url: string,
-    options: IDownloadOptions
+    options: IDownloadOptions,
   ): Promise<Buffer | undefined> {
     logger.trace(cachedDownloadStrategyLogMessages.cacheHit(cacheKey, 'binary', cachedBuffer.length), { url });
 
@@ -97,7 +97,7 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
   private async determineBufferToCache(
     logger: TsLogger,
     result: Buffer | undefined,
-    options: IDownloadOptions
+    options: IDownloadOptions,
   ): Promise<Buffer | null> {
     if (result instanceof Buffer) {
       return result;
@@ -113,7 +113,7 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
     bufferToCache: Buffer,
     cacheKey: string,
     url: string,
-    options: IDownloadOptions
+    options: IDownloadOptions,
   ): Promise<void> {
     try {
       await this.cache.setDownload(
@@ -121,11 +121,11 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
         bufferToCache,
         this.cacheTtl,
         url,
-        this.extractContentTypeFromHeaders(options.headers)
+        this.extractContentTypeFromHeaders(options.headers),
       );
       logger.trace(
         cachedDownloadStrategyLogMessages.cacheStored(cacheKey, 'binary', 'TTL-based', bufferToCache.length),
-        { url }
+        { url },
       );
     } catch (error) {
       logger.trace(cachedDownloadStrategyLogMessages.cacheStorageFailed(cacheKey), error);

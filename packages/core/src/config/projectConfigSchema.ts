@@ -13,7 +13,7 @@ import { z } from 'zod';
  *
  * @internal
  */
-function createCacheSchema(defaults?: { enabled?: boolean; ttl?: number }) {
+function createCacheSchema(defaults?: { enabled?: boolean; ttl?: number; }) {
   const enabledDefault = defaults?.enabled ?? true;
   const ttlDefault = defaults?.ttl ?? 86400000; // 24 hours in milliseconds
 

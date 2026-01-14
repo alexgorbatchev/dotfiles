@@ -15,7 +15,7 @@ import { copyFileIfExists } from './copyFileIfExists';
  */
 export async function createTempSchemasPackage(
   context: IBuildContext,
-  dependencyVersions: IDependencyVersions
+  dependencyVersions: IDependencyVersions,
 ): Promise<void> {
   const tempPackageJson: Record<string, unknown> = {
     name: 'temp-schemas',

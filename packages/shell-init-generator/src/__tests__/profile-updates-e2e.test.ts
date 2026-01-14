@@ -1,12 +1,12 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
-import { Architecture, always, Platform } from '@dotfiles/core';
+import { always, Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { dedentString } from '@dotfiles/utils';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import path from 'node:path';
 import type { IGenerateShellInitOptions } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 
@@ -231,7 +231,7 @@ describe('Profile Updates E2E Tests', () => {
         // Verify the header comments were added
         expect(profileContent).toContain('# Generated via dotfiles generator - do not modify');
         expect(profileContent).toContain(
-          '# ------------------------------------------------------------------------------'
+          '# ------------------------------------------------------------------------------',
         );
       }
 
@@ -243,10 +243,10 @@ describe('Profile Updates E2E Tests', () => {
       // Original content should come first, then sourcing line at the end
       expect(zshContent.indexOf('export ZSH=')).toBeLessThan(zshContent.indexOf('# Generated via dotfiles generator'));
       expect(bashContent.indexOf('export PS1=')).toBeLessThan(
-        bashContent.indexOf('# Generated via dotfiles generator')
+        bashContent.indexOf('# Generated via dotfiles generator'),
       );
       expect(psContent.indexOf('$PSDefaultParameterValues')).toBeLessThan(
-        psContent.indexOf('# Generated via dotfiles generator')
+        psContent.indexOf('# Generated via dotfiles generator'),
       );
     });
 
@@ -472,7 +472,7 @@ describe('Profile Updates E2E Tests', () => {
 
         # Existing PATH modification
         export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
-      `)
+      `),
       );
 
       await mockFileSystem.ensureDir(path.dirname(bashProfile));
@@ -491,7 +491,7 @@ describe('Profile Updates E2E Tests', () => {
 
         # Existing aliases
         alias grep='grep --color=auto'
-      `)
+      `),
       );
 
       const options: IGenerateShellInitOptions = {
@@ -518,14 +518,14 @@ describe('Profile Updates E2E Tests', () => {
 
       // Check hoisted PATH modifications
       expect(zshScriptContent).toContain(
-        '# ============================= PATH Modifications =============================='
+        '# ============================= PATH Modifications ==============================',
       );
       expect(zshScriptContent).toContain(`export PATH="${testDirs.paths.targetDir}:$PATH"`);
       expect(zshScriptContent).toContain('export PATH="$HOME/.cargo/bin:$PATH"');
 
       // Check tool-specific initializations section (now includes always scripts)
       expect(zshScriptContent).toContain(
-        '# ======================== Tool-Specific Initializations ========================'
+        '# ======================== Tool-Specific Initializations ========================',
       );
       expect(zshScriptContent).toContain('export EDITOR="nvim"');
       expect(zshScriptContent).toContain('export VISUAL="nvim"');
@@ -539,7 +539,7 @@ describe('Profile Updates E2E Tests', () => {
 
       // Check completions section (only for zsh in this case)
       expect(zshScriptContent).toContain(
-        '# =========================== Shell Completions Setup ==========================='
+        '# =========================== Shell Completions Setup ===========================',
       );
       expect(zshScriptContent).toContain('typeset -U fpath');
 

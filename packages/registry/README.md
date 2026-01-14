@@ -27,5 +27,7 @@ await trackedFs.symlink('/source', '/target');
 import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 
 const registry = new ToolInstallationRegistry(logger, registryDb);
-await registry.saveInstallation('my-tool', '1.0.0', { /* metadata */ });
+await registry.saveInstallation('my-tool', '1.0.0', {
+  /* metadata */
+});
 ```

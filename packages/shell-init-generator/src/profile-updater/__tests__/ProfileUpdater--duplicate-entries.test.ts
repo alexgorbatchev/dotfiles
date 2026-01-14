@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IProfileUpdateConfig } from '../IProfileUpdater';
 import { ProfileUpdater } from '../ProfileUpdater';
 

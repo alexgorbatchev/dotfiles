@@ -10,9 +10,9 @@ import type {
   IInstallParamsRegistry,
   InstallFunction,
   InstallMethod,
+  IToolConfigBuilder as ToolConfigBuilderContract,
   IToolConfigContext,
   ToolConfig,
-  IToolConfigBuilder as ToolConfigBuilderContract,
 } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { IToolConfigBuilder } from '@dotfiles/tool-config-builder';
@@ -59,12 +59,12 @@ export function defineTool(
      * Context object providing access to paths, configuration, and system information.
      * Use `ctx.projectConfig.paths.*` for configured directory paths.
      */
-    ctx: IToolConfigContext
-  ) => ConfigureToolFnResult
+    ctx: IToolConfigContext,
+  ) => ConfigureToolFnResult,
 ): AsyncConfigureTool {
   return async (
     install: InstallFunction,
-    ctx: IToolConfigContext
+    ctx: IToolConfigContext,
   ): Promise<ToolConfig | ToolConfigBuilderContract | undefined> => {
     const result = fn(install, ctx);
     if (result instanceof Promise) {
@@ -85,7 +85,7 @@ export function defineTool(
 export function createInstallFunction(
   logger: TsLogger,
   toolName: string,
-  context?: IToolConfigContext
+  context?: IToolConfigContext,
 ): InstallFunction {
   let builderInstance: IToolConfigBuilder | null = null;
 

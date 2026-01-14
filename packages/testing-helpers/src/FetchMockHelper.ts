@@ -76,8 +76,9 @@ export class FetchMockHelper {
     if (error) {
       this.spyFetch.mockImplementationOnce((() => Promise.reject(error)) as unknown as typeof fetch);
     } else {
-      this.spyFetch.mockImplementationOnce((() =>
-        Promise.resolve(new Response(body, { status, statusText, headers }))) as unknown as typeof fetch);
+      this.spyFetch.mockImplementationOnce(
+        (() => Promise.resolve(new Response(body, { status, statusText, headers }))) as unknown as typeof fetch,
+      );
     }
   }
 
@@ -136,8 +137,9 @@ export class FetchMockHelper {
     if (error) {
       this.spyFetch.mockImplementation((() => Promise.reject(error)) as unknown as typeof fetch);
     } else {
-      this.spyFetch.mockImplementation((() =>
-        Promise.resolve(new Response(body, { status, statusText, headers }))) as unknown as typeof fetch);
+      this.spyFetch.mockImplementation(
+        (() => Promise.resolve(new Response(body, { status, statusText, headers }))) as unknown as typeof fetch,
+      );
     }
   }
 
@@ -150,7 +152,7 @@ export class FetchMockHelper {
   getSpy(): ReturnType<typeof spyOn<typeof globalThis, 'fetch'>> {
     if (!this.spyFetch) {
       throw new Error(
-        'FetchMockHelper not setup. Call setup() first to initialize the spy, or it may have been restored.'
+        'FetchMockHelper not setup. Call setup() first to initialize the spy, or it may have been restored.',
       );
     }
     return this.spyFetch;

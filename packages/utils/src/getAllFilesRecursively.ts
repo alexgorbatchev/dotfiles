@@ -1,5 +1,5 @@
-import path from 'node:path';
 import type { IFileSystem } from '@dotfiles/file-system';
+import path from 'node:path';
 
 /**
  * Recursively collects all file paths in a directory.

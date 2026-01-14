@@ -1,8 +1,8 @@
 paths:
-  generatedDir: "{configFileDir}/.generated"
-  homeDir: "{paths.generatedDir}/user-home"
-  targetDir: "{paths.generatedDir}/user-bin"
-  toolConfigsDir: "{configFileDir}"
+  generatedDir: '{configFileDir}/.generated'
+  homeDir: '{paths.generatedDir}/user-home'
+  targetDir: '{paths.generatedDir}/user-bin'
+  toolConfigsDir: '{configFileDir}'
 
 github:
   host: http://127.0.0.1:8765

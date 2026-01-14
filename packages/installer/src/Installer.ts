@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
   $extended,
@@ -7,8 +5,8 @@ import type {
   IAfterInstallContext,
   IInstallBaseContext,
   IInstallContext,
-  InstallEvent,
   InstallerPluginRegistry,
+  InstallEvent,
   ISystemInfo,
   PluginEmittedHookEvent,
   ToolConfig,
@@ -20,6 +18,8 @@ import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
+import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 import type { IInstaller, IInstallOptions, InstallResult } from './types';
 import { createConfiguredShell, type HookExecutor, messages } from './utils';
 
@@ -170,7 +170,7 @@ export class Installer implements IInstaller {
     registry: InstallerPluginRegistry,
     symlinkGenerator: ISymlinkGenerator,
     $shell: $extended,
-    hookExecutor: HookExecutor
+    hookExecutor: HookExecutor,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.fs = fileSystem;
@@ -262,7 +262,7 @@ export class Installer implements IInstaller {
     toolName: string,
     resolvedToolConfig: ToolConfig,
     options: IInstallOptions | undefined,
-    parentLogger: TsLogger
+    parentLogger: TsLogger,
   ): Promise<boolean> {
     const logger = parentLogger.getSubLogger({ name: 'shouldSkipInstallation' });
     if (options?.force) {
@@ -312,7 +312,7 @@ export class Installer implements IInstaller {
     resolvedToolConfig: ToolConfig,
     context: IInstallContext,
     toolFs: IFileSystem,
-    parentLogger: TsLogger
+    parentLogger: TsLogger,
   ): Promise<InstallResult | null> {
     const logger = parentLogger.getSubLogger({ name: 'executeBeforeInstallHook' });
     const hooks = getInstallHooksFromToolConfig(resolvedToolConfig);
@@ -366,7 +366,7 @@ export class Installer implements IInstaller {
     resolvedToolConfig: ToolConfig,
     context: IAfterInstallContext,
     toolFs: IFileSystem,
-    parentLogger: TsLogger
+    parentLogger: TsLogger,
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'executeAfterInstallHook' });
     const hooks = getInstallHooksFromToolConfig(resolvedToolConfig);
@@ -410,7 +410,7 @@ export class Installer implements IInstaller {
     installedDir: string,
     context: IInstallContext,
     result: InstallResult,
-    parentLogger: TsLogger
+    parentLogger: TsLogger,
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'recordInstallation' });
     if (!result.success) {
@@ -423,17 +423,17 @@ export class Installer implements IInstaller {
 
       // Extract configured version from tool config
       const installParams: unknown = resolvedToolConfig.installParams;
-      const configuredVersion: string | undefined =
-        installParams &&
-        typeof installParams === 'object' &&
-        'version' in installParams &&
-        typeof installParams.version === 'string'
-          ? installParams.version
-          : undefined;
+      const configuredVersion: string | undefined = installParams &&
+          typeof installParams === 'object' &&
+          'version' in installParams &&
+          typeof installParams.version === 'string'
+        ? installParams.version
+        : undefined;
 
       // Extract original tag if provided by plugin
-      const originalTag: string | undefined =
-        'originalTag' in result && typeof result.originalTag === 'string' ? result.originalTag : undefined;
+      const originalTag: string | undefined = 'originalTag' in result && typeof result.originalTag === 'string'
+        ? result.originalTag
+        : undefined;
 
       // Spread metadata - installers now extend IToolInstallationDetails so they provide the right fields
       await this.toolInstallationRegistry.recordToolInstallation({
@@ -469,7 +469,7 @@ export class Installer implements IInstaller {
     resolvedToolConfig: ToolConfig,
     context: IInstallContext,
     options: IInstallOptions | undefined,
-    parentLogger: TsLogger
+    parentLogger: TsLogger,
   ): Promise<InstallResult> {
     const result: InstallResult = await this.registry.install(
       parentLogger,
@@ -477,7 +477,7 @@ export class Installer implements IInstaller {
       toolName,
       resolvedToolConfig,
       context,
-      options
+      options,
     );
     return result;
   }
@@ -491,7 +491,6 @@ export class Installer implements IInstaller {
    * @param options - Optional installation options (force, quiet, verbose, shimMode)
    * @returns Installation result with success status, binary paths, version, and metadata
    */
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multiple stages require sequential checks
   async install(toolName: string, toolConfig: ToolConfig, options?: IInstallOptions): Promise<InstallResult> {
     const logger = this.logger.getSubLogger({ name: 'install', context: toolName });
 
@@ -548,7 +547,7 @@ export class Installer implements IInstaller {
             toolName,
             resolvedToolConfig,
             tempContext,
-            logger
+            logger,
           );
 
           if (resolvedVersion) {
@@ -583,13 +582,13 @@ export class Installer implements IInstaller {
         timestamp,
         resolvedToolConfig,
         logger,
-        configuredShell
+        configuredShell,
       ); // Run beforeInstall hook if defined
       const beforeInstallResult = await this.executeBeforeInstallHook(
         resolvedToolConfig,
         context,
         toolFs,
-        contextLogger
+        contextLogger,
       );
       if (beforeInstallResult) {
         return beforeInstallResult;
@@ -678,7 +677,7 @@ export class Installer implements IInstaller {
             toolFs,
             logger,
             installedDir,
-            isExternallyManaged
+            isExternallyManaged,
           );
         }
       }
@@ -707,8 +706,9 @@ export class Installer implements IInstaller {
       }
 
       if (result.success) {
-        const binaryPaths: string[] =
-          'binaryPaths' in result && Array.isArray(result.binaryPaths) ? result.binaryPaths : [];
+        const binaryPaths: string[] = 'binaryPaths' in result && Array.isArray(result.binaryPaths)
+          ? result.binaryPaths
+          : [];
         const version: string | undefined = 'version' in result ? result.version : undefined;
 
         const afterInstallContext: IAfterInstallContext = {
@@ -777,7 +777,7 @@ export class Installer implements IInstaller {
     fs: IFileSystem,
     parentLogger: TsLogger,
     installedDir: string,
-    isExternallyManaged: boolean
+    isExternallyManaged: boolean,
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'createBinaryEntrypoints' });
     const toolDir = path.join(this.projectConfig.paths.binariesDir, toolName);
@@ -839,7 +839,7 @@ export class Installer implements IInstaller {
     fs: IFileSystem,
     parentLogger: TsLogger,
     installedDir: string,
-    isExternallyManaged: boolean
+    isExternallyManaged: boolean,
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'updateCurrentSymlink' });
     const toolDir = path.join(this.projectConfig.paths.binariesDir, toolName);
@@ -870,7 +870,7 @@ export class Installer implements IInstaller {
       if (linkTarget !== currentTarget) {
         logger.error(messages.lifecycle.symlinkVerificationFailed(currentSymlinkPath));
         throw new Error(
-          `Symlink verification failed: ${currentSymlinkPath} points to ${linkTarget}, expected ${currentTarget}`
+          `Symlink verification failed: ${currentSymlinkPath} points to ${linkTarget}, expected ${currentTarget}`,
         );
       }
     } catch (error) {
@@ -904,7 +904,7 @@ export class Installer implements IInstaller {
       toolName,
       toolDir,
       this.resolvedFs,
-      contextLogger
+      contextLogger,
     );
 
     const minimalContext: IInstallContext = {
@@ -943,7 +943,7 @@ export class Installer implements IInstaller {
     timestamp: string,
     toolConfig: ToolConfig,
     parentLogger: TsLogger,
-    $shell: $extended = createConfiguredShell(this.$, process.env)
+    $shell: $extended = createConfiguredShell(this.$, process.env),
   ): ICreateBaseInstallContextResult {
     const methodLogger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
 
@@ -959,7 +959,7 @@ export class Installer implements IInstaller {
       toolName,
       toolDir,
       this.resolvedFs,
-      contextLogger
+      contextLogger,
     );
 
     const context: IInstallContextWithEmitter = {

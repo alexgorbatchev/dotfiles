@@ -70,7 +70,7 @@ export const messages = {
 
     noGitHubTools: () =>
       createSafeLogMessage(
-        'No GitHub tools installed. Run the generate command to install tools before generating a catalog.'
+        'No GitHub tools installed. Run the generate command to install tools before generating a catalog.',
       ),
   },
 };

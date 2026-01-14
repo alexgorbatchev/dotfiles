@@ -1,8 +1,8 @@
-import path from 'node:path';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { SafeLogMessage, TsLogger } from '@dotfiles/logger';
 import type { ReplaceInFilePattern, ReplaceInFileReplacer } from '@dotfiles/utils';
 import { replaceInFile } from '@dotfiles/utils';
+import path from 'node:path';
 import type { IToolConfigContext } from '../builder';
 import type { BoundReplaceInFile, IBoundReplaceInFileOptions, ISystemInfo, IToolLog } from '../common';
 import type { ProjectConfig } from '../config';
@@ -52,7 +52,7 @@ export function createToolConfigContext(
   toolName: string,
   toolDir: string,
   fileSystem: IResolvedFileSystem,
-  logger: TsLogger
+  logger: TsLogger,
 ): IToolConfigContext {
   const currentDir = path.join(projectConfig.paths.binariesDir, toolName, 'current');
 
@@ -66,7 +66,7 @@ export function createToolConfigContext(
     filePath: string,
     from: ReplaceInFilePattern,
     to: ReplaceInFileReplacer,
-    options?: IBoundReplaceInFileOptions
+    options?: IBoundReplaceInFileOptions,
   ): Promise<boolean> => {
     const wasReplaced = await replaceInFile(fileSystem, filePath, from, to, options);
 

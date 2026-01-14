@@ -1,13 +1,17 @@
 # Task
+
 > Binary installation is incorrectly relocating binaries by copying them from their extracted archive location to the versioned directory root. This breaks tools that rely on supplementary files (completions, docs, man pages) being in the same directory as the binary.
 
 # Primary Objective
+
 Replace binary copy operations with symlinks to preserve tool's access to co-located supplementary files.
 
 # Open Questions
+
 - [ ] None
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of the problem
   - **Root cause**: In `packages/installer/src/utils/createBinaryEntrypoint.ts` line 48, the function uses `fs.copyFile()` to copy the binary from its extracted location to the entrypoint path
   - This creates a duplicate copy of the binary at the versioned directory root (e.g., `15.1.0/rg`) instead of pointing to the original location within the extracted archive (e.g., `15.1.0/ripgrep-15.1.0-aarch64-apple-darwin/rg`)
@@ -63,6 +67,7 @@ Replace binary copy operations with symlinks to preserve tool's access to co-loc
   - Supplementary files (complete/, doc/, README.md) accessible alongside binary
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -79,6 +84,7 @@ Replace binary copy operations with symlinks to preserve tool's access to co-loc
 - [x] Tests do not print anything to console
 
 # Change Log
+
 - Created task file
 - TS001: Identified root cause - `fs.copyFile()` in `createBinaryEntrypoint.ts` duplicates binaries
 - TS002: Added failing tests in `createBinaryEntrypoint.test.ts` that verify symlinks

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { getAllFilesRecursively } from '../getAllFilesRecursively';
 
 describe('getAllFilesRecursively', () => {

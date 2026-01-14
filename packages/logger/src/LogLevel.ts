@@ -4,9 +4,9 @@
  * Each level corresponds to a specific `tslog` level number, determining which
  * messages are displayed based on their severity.
  *
- * @property VERBOSE - Level 1: Equivalent to a debug level, showing debug, info, warn, error, and fatal messages.
- * @property DEFAULT - Level 3: The standard info level, showing info, warn, error, and fatal messages.
- * @property QUIET - Level 5: The error level, showing only error and fatal messages.
+ * @property {number} VERBOSE - Level 1: Equivalent to a debug level, showing debug, info, warn, error, and fatal messages.
+ * @property {number} DEFAULT - Level 3: The standard info level, showing info, warn, error, and fatal messages.
+ * @property {number} QUIET - Level 5: The error level, showing only error and fatal messages.
  *
  * @example
  * ```typescript

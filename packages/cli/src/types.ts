@@ -132,7 +132,7 @@ export interface ILogCommandSpecificOptions {
 /**
  * Command-specific options for files command (excludes global options)
  */
-// biome-ignore lint/complexity/noBannedTypes: No command-specific options for files command
+// oxlint-disable-next-line @typescript-eslint/no-empty-object-type: No command-specific options for files command
 export type IFilesCommandSpecificOptions = {};
 
 export interface IGlobalProgram extends Omit<Command, 'opts'> {

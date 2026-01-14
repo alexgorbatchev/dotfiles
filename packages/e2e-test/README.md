@@ -62,19 +62,25 @@ src/
 All scenarios are functions that create `describe` blocks and are called from the main `e2e.test.ts` file within a platform loop.
 
 ### Generate, Install, Update
+
 Tests core CLI functionality including:
+
 - Generate command (shims, shell scripts, environment variables, aliases)
 - Install command (binary downloads, symlinks, execution)
 - Update command (version detection, upgrades)
 
 ### Conflict Detection
+
 Tests handling of existing files and conflict resolution.
 
 ### Completion Generation
+
 Tests shell completion file generation for tools that provide dynamic completions.
 
 ### Dependency Resolution
+
 Tests tool dependency resolution and validation:
+
 - Successful dependency resolution
 - Missing dependency provider errors
 - Ambiguous dependency (multiple providers) errors
@@ -84,6 +90,7 @@ Tests tool dependency resolution and validation:
 Each dependency scenario uses its own config file located next to its tool files.
 
 ### Type Safety
+
 Compile-time tests verifying TypeScript type checking for the `defineTool` API.
 
 ## Running Tests
@@ -102,6 +109,7 @@ bun test packages/e2e-test/src/__tests__/e2e.test.ts -t "completion"
 ## Test Harness
 
 The `TestHarness` class provides utilities for:
+
 - Running CLI commands with specific platform/architecture overrides
 - Verifying generated files (shims, shell scripts, completions)
 - Checking file permissions and executability
@@ -111,6 +119,7 @@ The `TestHarness` class provides utilities for:
 ## Mock Server
 
 Tests use a mock HTTP server (via `withMockServer`) to simulate:
+
 - GitHub releases API
 - Cargo registry
 - Tool binary downloads

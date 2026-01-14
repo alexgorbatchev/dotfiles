@@ -16,8 +16,8 @@ import { installFromCargo } from './installFromCargo';
 import { messages } from './log-messages';
 import {
   type CargoInstallParams,
-  type CargoToolConfig,
   cargoInstallParamsSchema,
+  type CargoToolConfig,
   cargoToolConfigSchema,
 } from './schemas';
 
@@ -55,8 +55,13 @@ type CargoPluginMetadata = {
  * - Can install specific versions or "latest"
  * - Tracks installed versions for update detection
  */
-export class CargoInstallerPlugin
-  implements IInstallerPlugin<'cargo', CargoInstallParams, CargoToolConfig, CargoPluginMetadata>
+export class CargoInstallerPlugin implements
+  IInstallerPlugin<
+    'cargo',
+    CargoInstallParams,
+    CargoToolConfig,
+    CargoPluginMetadata
+  >
 {
   readonly method = 'cargo';
   readonly displayName = 'Cargo Installer';
@@ -80,7 +85,7 @@ export class CargoInstallerPlugin
     private readonly cargoClient: ICargoClient,
     private readonly archiveExtractor: IArchiveExtractor,
     private readonly hookExecutor: HookExecutor,
-    private readonly githubHost: string
+    private readonly githubHost: string,
   ) {}
 
   async install(
@@ -88,7 +93,7 @@ export class CargoInstallerPlugin
     toolConfig: CargoToolConfig,
     context: IInstallContext,
     options: IInstallOptions | undefined,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<InstallResult<CargoPluginMetadata>> {
     const result = await installFromCargo(
       toolName,
@@ -101,7 +106,7 @@ export class CargoInstallerPlugin
       this.archiveExtractor,
       this.hookExecutor,
       logger,
-      this.githubHost
+      this.githubHost,
     );
 
     if (!result.success) {
@@ -138,7 +143,7 @@ export class CargoInstallerPlugin
     toolName: string,
     toolConfig: CargoToolConfig,
     _context: IInstallContext,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<string | null> {
     const subLogger: TsLogger = logger.getSubLogger({ name: 'resolveVersion' });
 
@@ -177,7 +182,7 @@ export class CargoInstallerPlugin
     toolName: string,
     toolConfig: CargoToolConfig,
     _context: IInstallContext,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<UpdateCheckResult> {
     try {
       const cargoParams = toolConfig.installParams;

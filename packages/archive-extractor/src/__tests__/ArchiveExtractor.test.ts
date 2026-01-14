@@ -1,9 +1,9 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'bun:test';
-import { dirname, join } from 'node:path';
 import { type IFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import { beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { $ } from 'dax-sh';
+import { dirname, join } from 'node:path';
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
 
@@ -50,7 +50,7 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
       await nodeFs.writeFile(dummyFilePath, 'dummy data'); // file command needs a real file
 
       expect(extractor.detectFormat(dummyFilePath)).rejects.toThrow(
-        `Unsupported or undetectable archive format for: ${dummyFilePath}`
+        `Unsupported or undetectable archive format for: ${dummyFilePath}`,
       );
     });
   });
@@ -71,7 +71,7 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
     const createTestTarGzUtil = async (
       archiveName: string,
       filePathInArchive: string,
-      fileContent: string
+      fileContent: string,
     ): Promise<string> => {
       const sourceDir = join(testDirs.paths.homeDir, 'source-tar');
       const fullPathToFileInSource = join(sourceDir, filePathInArchive);
@@ -86,7 +86,7 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
     const createTestZipWithSingleFile = async (
       archiveName: string,
       fileNameInArchive: string,
-      fileContent: string
+      fileContent: string,
     ): Promise<string> => {
       const sourceDir = join(testDirs.paths.homeDir, 'source-zip-file');
       const fullPathToFileInSource = join(sourceDir, fileNameInArchive);

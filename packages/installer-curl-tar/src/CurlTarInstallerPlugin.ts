@@ -7,8 +7,8 @@ import type { TsLogger } from '@dotfiles/logger';
 import { installFromCurlTar } from './installFromCurlTar';
 import {
   type CurlTarInstallParams,
-  type CurlTarToolConfig,
   curlTarInstallParamsSchema,
+  type CurlTarToolConfig,
   curlTarToolConfigSchema,
 } from './schemas';
 import type { ICurlTarInstallMetadata } from './types';
@@ -27,8 +27,13 @@ const PLUGIN_VERSION = '1.0.0';
  * after extraction). It does not support version checking or automatic updates since the URLs
  * are typically static.
  */
-export class CurlTarInstallerPlugin
-  implements IInstallerPlugin<'curl-tar', CurlTarInstallParams, CurlTarToolConfig, ICurlTarInstallMetadata>
+export class CurlTarInstallerPlugin implements
+  IInstallerPlugin<
+    'curl-tar',
+    CurlTarInstallParams,
+    CurlTarToolConfig,
+    ICurlTarInstallMetadata
+  >
 {
   readonly method = 'curl-tar';
   readonly displayName = 'Curl Tar Installer';
@@ -48,7 +53,7 @@ export class CurlTarInstallerPlugin
     private readonly fs: IFileSystem,
     private readonly downloader: IDownloader,
     private readonly archiveExtractor: IArchiveExtractor,
-    private readonly hookExecutor: HookExecutor
+    private readonly hookExecutor: HookExecutor,
   ) {}
 
   /**
@@ -66,7 +71,7 @@ export class CurlTarInstallerPlugin
     toolConfig: CurlTarToolConfig,
     context: IInstallContext,
     options: IInstallOptions | undefined,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<InstallResult<ICurlTarInstallMetadata>> {
     const result = await installFromCurlTar(
       toolName,
@@ -77,7 +82,7 @@ export class CurlTarInstallerPlugin
       this.downloader,
       this.archiveExtractor,
       this.hookExecutor,
-      logger
+      logger,
     );
 
     if (!result.success) {

@@ -1,9 +1,9 @@
-import { describe, expect, test } from 'bun:test';
 import { Architecture, Platform } from '@dotfiles/core';
 import { FileCache } from '@dotfiles/downloader';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
+import { describe, expect, test } from 'bun:test';
 import { CargoClient } from '../';
 
 function createMockDownloader(responses: string[]) {

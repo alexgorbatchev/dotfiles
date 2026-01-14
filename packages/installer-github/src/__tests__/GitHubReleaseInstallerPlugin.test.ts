@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { IGitHubRelease, IInstallContext } from '@dotfiles/core';
@@ -7,8 +6,9 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { TestLogger } from '@dotfiles/logger';
-import { GitHubReleaseInstallerPlugin } from '../GitHubReleaseInstallerPlugin';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IGitHubApiClient } from '../github-client';
+import { GitHubReleaseInstallerPlugin } from '../GitHubReleaseInstallerPlugin';
 
 function createMockRelease(tagName: string): IGitHubRelease {
   const mockRelease: IGitHubRelease = {
@@ -48,7 +48,7 @@ describe('GitHubReleaseInstallerPlugin', () => {
       mockGitHubClient,
       mockArchiveExtractor,
       mockProjectConfig,
-      mockHookExecutor
+      mockHookExecutor,
     );
   });
 

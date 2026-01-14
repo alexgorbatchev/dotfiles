@@ -26,10 +26,10 @@ This project replaces that fragile, manual system with a declarative, programmat
 
 ## How It Works
 
-1.  **Define**: You describe a tool's installation and configuration in a `.tool.ts` file.
-2.  **Generate**: You run `dotfiles generate`. This creates lightweight executable **shims** for all your defined tools and generates a single shell file to source.
-3.  **Run & Auto-Install**: The first time you execute a tool's command (e.g., `rg --version`), the shim intercepts the call, triggers the generator to download and install the tool, and then seamlessly executes your command. All subsequent calls are instantaneous.
-4.  **Source**: Your `.zshrc` or `.bash_profile` sources one line, and all your tools, aliases, and functions become available everywhere.
+1. **Define**: You describe a tool's installation and configuration in a `.tool.ts` file.
+2. **Generate**: You run `dotfiles generate`. This creates lightweight executable **shims** for all your defined tools and generates a single shell file to source.
+3. **Run & Auto-Install**: The first time you execute a tool's command (e.g., `rg --version`), the shim intercepts the call, triggers the generator to download and install the tool, and then seamlessly executes your command. All subsequent calls are instantaneous.
+4. **Source**: Your `.zshrc` or `.bash_profile` sources one line, and all your tools, aliases, and functions become available everywhere.
 
 ## Quick Start
 
@@ -133,10 +133,7 @@ If any dependency checks fail, the CLI exits with detailed diagnostics so you ca
 
 ```json
 {
-  "include": [
-    "tools/**/*.tool.ts",
-    ".generated/tool-types.d.ts"
-  ]
+  "include": ["tools/**/*.tool.ts", ".generated/tool-types.d.ts"]
 }
 ```
 
@@ -145,16 +142,19 @@ This enables IDE autocomplete for the `dependsOn()` method with all known binary
 ## Documentation
 
 ### Getting Started
+
 - **[Tool Configuration Guide](docs/README.md)** - The complete guide to creating `.tool.ts` files
 - **[Migration Guide](docs/migration-guide.md)** - How to move from shell scripts to the new system
 - **[Common Patterns](docs/common-patterns.md)** - Real-world configuration examples
 
 ### Shell Integration
+
 - **[Shell Configuration](docs/shell-integration.md)** - Aliases, environment variables, and shell functions
 - **[Command Completions](docs/completions.md)** - Setting up tab completions for your tools
 - **[Symbolic Links](docs/symlinks.md)** - Managing configuration file symlinks
 
 ### Installation Methods
+
 - **[GitHub Releases](docs/installation/github-release.md)** - Install from GitHub release archives
 - **[Cargo/Crates.io](docs/installation/cargo.md)** - Install Rust tools via Cargo
 - **[Homebrew](docs/installation/homebrew.md)** - Install via Homebrew package manager
@@ -168,7 +168,7 @@ The generator can be customized via a `config.yaml` file located in your dotfile
 ```yaml
 # Path to the user's config file.
 # (string, default: ~/.dotfiles/generator/config.yaml)
-userConfigPath: "~/.dotfiles/generator/config.yaml"
+userConfigPath: '~/.dotfiles/generator/config.yaml'
 
 # -----------------------------------------------------------------------------
 # File System Paths
@@ -176,25 +176,25 @@ userConfigPath: "~/.dotfiles/generator/config.yaml"
 paths:
   # Root directory of the dotfiles repository. You SHOULD set this value.
   # (string, default: ~/.dotfiles)
-  dotfilesDir: "~/.dotfiles"
+  dotfilesDir: '~/.dotfiles'
   # Target directory for executable shims. This directory MUST be in your shell's $PATH.
   # (string, default: /usr/local/bin)
-  targetDir: "/usr/local/bin"
+  targetDir: '/usr/local/bin'
   # The user's home directory.
   # (string, default: value of $HOME)
-  homeDir: "~"
+  homeDir: '~'
   # Directory where all generated files will be stored.
   # (string, default: ~/.dotfiles/.generated)
-  generatedDir: "~/.dotfiles/.generated"
+  generatedDir: '~/.dotfiles/.generated'
   # Directory containing *.tool.ts tool configuration files.
   # (string, default: ~/.dotfiles/tools)
-  toolConfigsDir: "~/.dotfiles/tools"
+  toolConfigsDir: '~/.dotfiles/tools'
   # Directory where generated shell scripts are stored.
   # (string, default: ~/.dotfiles/.generated/shell-scripts)
-  shellScriptsDir: "~/.dotfiles/.generated/shell-scripts"
+  shellScriptsDir: '~/.dotfiles/.generated/shell-scripts'
   # Directory where downloaded tool binaries are stored.
   # (string, default: ~/.dotfiles/.generated/binaries)
-  binariesDir: "~/.dotfiles/.generated/binaries"
+  binariesDir: '~/.dotfiles/.generated/binaries'
 
 # -----------------------------------------------------------------------------
 # System Settings
@@ -202,7 +202,7 @@ paths:
 system:
   # Custom prompt message to display when sudo is required.
   # (string, default: "Please enter your password to continue:")
-  sudoPrompt: "Please enter your password to continue:"
+  sudoPrompt: 'Please enter your password to continue:'
 
 # -----------------------------------------------------------------------------
 # Logging Configuration
@@ -210,7 +210,7 @@ system:
 logging:
   # Controls debug logging output. Set to "*" to enable all debug logs.
   # (string, default: "")
-  debug: ""
+  debug: ''
 
 # -----------------------------------------------------------------------------
 # Automatic Updates
@@ -234,20 +234,20 @@ features:
     generate: true
     # Path where the catalog file will be generated.
     # (string, default: {paths.dotfilesDir}/CATALOG.md)
-    filePath: "{paths.dotfilesDir}/CATALOG.md"
+    filePath: '{paths.dotfilesDir}/CATALOG.md'
 
   # Configuration for shell initialization.
   # Controls where the shell initialization scripts are sourced.
   shellInstall:
     # Path to zsh configuration file (e.g., ~/.zshrc).
     # If not provided, zsh initialization will be skipped.
-    zsh: "~/.zshrc"
+    zsh: '~/.zshrc'
     # Path to bash configuration file (e.g., ~/.bashrc).
     # If not provided, bash initialization will be skipped.
-    bash: "~/.bashrc"
+    bash: '~/.bashrc'
     # Path to powershell configuration file (e.g., ~/.config/powershell/profile.ps1).
     # If not provided, powershell initialization will be skipped.
-    powershell: "~/.config/powershell/profile.ps1"
+    powershell: '~/.config/powershell/profile.ps1'
 
 # -----------------------------------------------------------------------------
 # API and Service Configurations
@@ -255,13 +255,13 @@ features:
 github:
   # GitHub API host.
   # (string, default: "https://api.github.com")
-  host: "https://api.github.com"
+  host: 'https://api.github.com'
   # GitHub API token. Can be set via GITHUB_TOKEN environment variable.
   # (string, optional)
-  token: ""
+  token: ''
   # User-Agent for GitHub API requests.
   # (string, default: "dotfiles-generator")
-  userAgent: "dotfiles-generator"
+  userAgent: 'dotfiles-generator'
   # Caching for GitHub API requests.
   cache:
     enabled: true
@@ -269,22 +269,22 @@ github:
 
 cargo:
   # User-Agent for Cargo-related requests.
-  userAgent: "dotfiles-generator"
+  userAgent: 'dotfiles-generator'
   # Configuration for the crates.io API.
   cratesIo:
-    host: "https://crates.io"
+    host: 'https://crates.io'
     cache:
       enabled: true
       ttl: 86400000
   # Configuration for accessing raw files on GitHub (e.g., Cargo.toml).
   githubRaw:
-    host: "https://raw.githubusercontent.com"
+    host: 'https://raw.githubusercontent.com'
     cache:
       enabled: true
       ttl: 86400000
   # Configuration for accessing GitHub releases.
   githubRelease:
-    host: "https://github.com"
+    host: 'https://github.com'
     cache:
       enabled: true
       ttl: 86400000
@@ -313,13 +313,13 @@ downloader:
 platform:
   - # An array of platform/architecture matchers.
     match:
-      - os: "macos"
-        arch: "arm64"
+      - os: 'macos'
+        arch: 'arm64'
     # The configuration overrides for this platform/architecture combination.
     # You can override any of the settings defined above.
     config:
       paths:
-        dotfilesDir: "~/macos-dotfiles"
+        dotfilesDir: '~/macos-dotfiles'
 ```
 
 ## Development

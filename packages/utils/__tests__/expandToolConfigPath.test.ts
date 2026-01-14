@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { expandToolConfigPath } from '../src/expandToolConfigPath';
 
 describe('expandToolConfigPath', () => {
@@ -55,7 +55,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       '~/.config/lazygit/config.yml',
       mockProjectConfig,
-      mockSystemInfo
+      mockSystemInfo,
     );
 
     expect(result).toBe('/Users/testuser/.config/lazygit/config.yml');
@@ -78,7 +78,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       '{paths.homeDir}/.config/lazygit/config.yml',
       mockProjectConfig,
-      mockSystemInfo
+      mockSystemInfo,
     );
 
     expect(result).toBe('/Users/testuser/.config/lazygit/config.yml');
@@ -89,7 +89,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       '{paths.dotfilesDir}/configs/lazygit/config.yml',
       mockProjectConfig,
-      mockSystemInfo
+      mockSystemInfo,
     );
 
     expect(result).toBe('/Users/testuser/.dotfiles/configs/lazygit/config.yml');
@@ -100,7 +100,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       '{paths.binariesDir}/lazygit/lazygit',
       mockProjectConfig,
-      mockSystemInfo
+      mockSystemInfo,
     );
 
     expect(result).toBe('/Users/testuser/.dotfiles/.generated/binaries/lazygit/lazygit');
@@ -112,7 +112,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       '{paths.dotfilesDir}/some/relative/path.yml',
       mockProjectConfig,
-      mockSystemInfo
+      mockSystemInfo,
     );
 
     expect(result).toBe('/Users/testuser/.dotfiles/some/relative/path.yml');
@@ -124,7 +124,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       '{paths.homeDir}/.config/lazygit/config.yml',
       mockProjectConfig,
-      mockSystemInfo
+      mockSystemInfo,
     );
 
     expect(result).toBe('/Users/testuser/.config/lazygit/config.yml');
@@ -135,7 +135,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       '{unknownVariable}/config.yml',
       mockProjectConfig,
-      mockSystemInfo
+      mockSystemInfo,
     );
 
     // Should resolve relative to config file since variable expansion failed
@@ -147,7 +147,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       '../../../some/deep/path/config.yml',
       mockProjectConfig,
-      mockSystemInfo
+      mockSystemInfo,
     );
 
     expect(result).toBe('/Users/testuser/some/deep/path/config.yml');

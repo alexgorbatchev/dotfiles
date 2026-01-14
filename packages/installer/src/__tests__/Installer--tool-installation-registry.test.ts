@@ -1,10 +1,10 @@
+import { TestLogger } from '@dotfiles/logger';
+import { RegistryDatabase } from '@dotfiles/registry-database';
+import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
-import { TestLogger } from '@dotfiles/logger';
-import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
-import { RegistryDatabase } from '@dotfiles/registry-database';
 
 describe('Installer Integration - Tool Installation Registry', () => {
   let logger: TestLogger;

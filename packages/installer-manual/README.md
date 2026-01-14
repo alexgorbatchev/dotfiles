@@ -15,7 +15,7 @@ import { defineTool } from '@dotfiles/cli';
 
 // For existing system tools
 export default defineTool((install, ctx) =>
-  install()  // Manual-style tool config (add .bin() if you want shims)
+  install() // Manual-style tool config (add .bin() if you want shims)
     .bin('existing-tool')
 );
 
@@ -23,8 +23,7 @@ export default defineTool((install, ctx) =>
 export default defineTool((install, ctx) =>
   install('manual', {
     binaryPath: '~/dotfiles/bin/custom-tool',
-  })
-    .bin('custom-tool')
+  }).bin('custom-tool')
 );
 ```
 
@@ -43,10 +42,7 @@ If `binaryPath` is not specified, the plugin only processes shell configurations
 #### Configuration-Only Tool
 
 ```typescript
-export default defineTool((install, ctx) =>
-  install()
-    .zsh((shell) => shell.aliases({ ll: 'ls -la' }))
-);
+export default defineTool((install, ctx) => install().zsh((shell) => shell.aliases({ ll: 'ls -la' })));
 ```
 
 #### With Binary Path
@@ -55,8 +51,7 @@ export default defineTool((install, ctx) =>
 export default defineTool((install, ctx) =>
   install('manual', {
     binaryPath: '~/dotfiles/bin/tool',
-  })
-    .bin('tool')
+  }).bin('tool')
 );
 ```
 
@@ -73,21 +68,27 @@ export default defineTool((install, ctx) =>
 ## Features
 
 ### Binary Verification
+
 Checks that the specified binary path exists before attempting to copy it to the installation directory.
 
 ### Path Expansion
+
 Supports path expansion for the `binaryPath` parameter:
+
 - Home directory expansion (`~`)
 - Environment variable substitution
 - Relative paths from tool configuration file location
 
 ### Binary Relocation
+
 Copies binaries from source locations to the versioned installation directory, enabling consistent binary management across all installation methods.
 
 ### Single Binary Support
+
 Currently supports one binary per tool when using `binaryPath`. Multiple binaries in configuration will log a warning and only process the first one.
 
 ### Minimal Installation
+
 Does not perform downloads, extractions, or complex setup procedures. Focuses on binary registration and path management.
 
 ## Implementation Details
@@ -145,15 +146,19 @@ Installation returns `ManualInstallResult`:
 ## Use Cases
 
 ### Pre-installed Tools
+
 For system tools or binaries installed via other means that need to be registered in the dotfiles system.
 
 ### Custom Scripts
+
 For custom shell scripts or binaries stored within the dotfiles repository itself.
 
 ### Fallback Option
+
 When no automatic installation method is available or appropriate for a particular tool.
 
 ### Configuration-Only Tools
+
 Configuration-only (shell-only) tools should not use the manual installer. Define them with `install()` (no args) and shell
 configuration methods (e.g. `.zsh(...)`) without calling `.bin()`.
 

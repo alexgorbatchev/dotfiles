@@ -1,5 +1,5 @@
-import type { Database } from 'bun:sqlite';
 import type { TsLogger } from '@dotfiles/logger';
+import type { Database } from 'bun:sqlite';
 import type { IToolInstallationRegistry } from './IToolInstallationRegistry';
 import { messages } from './log-messages';
 import type { IToolInstallationDetails, IToolInstallationRecord } from './types';
@@ -84,7 +84,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
       installation.downloadUrl || null,
       installation.assetName || null,
       installation.configuredVersion || null,
-      installation.originalTag || null
+      installation.originalTag || null,
     );
     logger.debug(messages.toolInstallationRecorded(), installation.toolName, installation.version);
   }

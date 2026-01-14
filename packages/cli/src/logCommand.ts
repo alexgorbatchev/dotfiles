@@ -2,7 +2,7 @@ import type { ProjectConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IFileOperation, IFileRegistry } from '@dotfiles/registry/file';
-import { contractHomePath, ExitCode, exitCli, formatPermissions } from '@dotfiles/utils';
+import { contractHomePath, exitCli, ExitCode, formatPermissions } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type {
   ICommandCompletionMeta,
@@ -30,8 +30,8 @@ export const LOG_COMMAND_COMPLETION: ICommandCompletionMeta = {
 
 function buildOperationsFilter(
   options: ILogCommandSpecificOptions & IGlobalProgramOptions,
-  parentLogger: TsLogger
-): { filter: Record<string, unknown>; exitCode: ExitCode } {
+  parentLogger: TsLogger,
+): { filter: Record<string, unknown>; exitCode: ExitCode; } {
   const logger = parentLogger.getSubLogger({ name: 'buildOperationsFilter' });
   const { tool, type, since } = options;
   const filter: Record<string, unknown> = {};
@@ -60,7 +60,7 @@ async function showFileStates(
   parentLogger: TsLogger,
   fileRegistry: IFileRegistry,
   fs: IFileSystem,
-  tool?: string
+  tool?: string,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'showFileStates' });
   const allTools = await fileRegistry.getRegisteredTools();
@@ -83,7 +83,7 @@ async function showFileStates(
 async function logFileState(
   parentLogger: TsLogger,
   fs: IFileSystem,
-  state: { filePath: string; fileType: string; sizeBytes?: number; targetPath?: string }
+  state: { filePath: string; fileType: string; sizeBytes?: number; targetPath?: string; },
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'logFileState' });
   const exists = await fs.exists(state.filePath);
@@ -151,7 +151,7 @@ function logOperationByType(
   timestamp: string,
   contractedPath: string,
   metadataString: string,
-  projectConfig: ProjectConfig
+  projectConfig: ProjectConfig,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'logOperationByType' });
   switch (operation.operationType) {
@@ -223,7 +223,7 @@ function groupOperationsByTool(operations: IFileOperation[]): Record<string, IFi
 async function showOperations(
   parentLogger: TsLogger,
   operations: IFileOperation[],
-  projectConfig: ProjectConfig
+  projectConfig: ProjectConfig,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'showOperations' });
   if (operations.length === 0) {
@@ -247,7 +247,7 @@ async function showOperations(
 async function logActionLogic(
   parentLogger: TsLogger,
   options: ILogCommandSpecificOptions & IGlobalProgramOptions,
-  services: IServices
+  services: IServices,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'logActionLogic' });
   const { fileRegistry, fs, projectConfig } = services;
@@ -274,7 +274,7 @@ async function logActionLogic(
 export function registerLogCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>
+  servicesFactory: () => Promise<IServices>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerLogCommand' });
 

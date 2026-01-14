@@ -350,7 +350,7 @@ export interface IToolConfigBuilder {
   platform(
     platforms: Platform,
     architectures: Architecture,
-    configure: (install: IPlatformInstallFunction) => IPlatformConfigBuilder
+    configure: (install: IPlatformInstallFunction) => IPlatformConfigBuilder,
   ): this;
 
   /**
@@ -492,7 +492,7 @@ export interface IToolConfigContext extends IBaseToolContext {}
  */
 export type AsyncConfigureTool = (
   install: InstallFunction,
-  ctx: IToolConfigContext
+  ctx: IToolConfigContext,
 ) => Promise<undefined | IToolConfigBuilder | ToolConfig> | undefined | IToolConfigBuilder | ToolConfig;
 
 /**
@@ -500,5 +500,5 @@ export type AsyncConfigureTool = (
  */
 export type AsyncConfigureToolWithReturn = (
   install: InstallFunction,
-  ctx: IToolConfigContext
+  ctx: IToolConfigContext,
 ) => Promise<ToolConfig> | ToolConfig;

@@ -36,7 +36,7 @@ describe('resolveValue', () => {
         await resolveValue({ id: 'test', n: 1 }, async (p: Ctx) => {
           await Bun.sleep(5);
           return `delayed-${p.id}`;
-        })
+        }),
       ).toBe('delayed-test'));
     test('object', async () =>
       expect(await resolveValue({ id: 'item', n: 5 }, async (p: Ctx) => ({ items: [p.id], count: p.n }))).toEqual({
@@ -51,13 +51,13 @@ describe('resolveValue', () => {
       expect(
         resolveValue({}, () => {
           throw new Error('sync');
-        })
+        }),
       ).rejects.toThrow('sync'));
     test('async error', () =>
       expect(
         resolveValue({}, async () => {
           throw new Error('async');
-        })
+        }),
       ).rejects.toThrow('async'));
   });
 });

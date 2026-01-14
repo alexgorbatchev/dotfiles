@@ -81,16 +81,17 @@ The `BaseShellGenerator` contains all the shared business logic that was previou
 - **Hoisting Logic**: Groups PATH modifications and environment variables
 
 **Key Methods:**
+
 ```typescript
 abstract class BaseShellGenerator implements IShellGenerator {
   // Shared logic methods
-  extractShellContent(toolName: string, toolConfig: ToolConfig): ShellInitContent
-  generateFileContent(toolContents: Map<string, ShellInitContent>): string
-  getAdditionalFiles(toolContents: Map<string, ShellInitContent>): AdditionalShellFile[]
-  getDefaultOutputPath(): string
-  
+  extractShellContent(toolName: string, toolConfig: ToolConfig): ShellInitContent;
+  generateFileContent(toolContents: Map<string, ShellInitContent>): string;
+  getAdditionalFiles(toolContents: Map<string, ShellInitContent>): AdditionalShellFile[];
+  getDefaultOutputPath(): string;
+
   // Uses strategy for shell-specific operations
-  processCompletions(toolName: string, completions: CompletionConfig): string[]
+  processCompletions(toolName: string, completions: CompletionConfig): string[];
 }
 ```
 
@@ -99,16 +100,17 @@ abstract class BaseShellGenerator implements IShellGenerator {
 Each shell has a corresponding string producer that handles shell-specific syntax and conventions:
 
 #### ZshStringProducer
+
 ```typescript
 class ZshStringProducer implements IShellStringProducer {
   extractInitScripts(toolConfig: ToolConfig): ShellScript[] {
     return toolConfig.zshInit || [];
   }
-  
+
   processCompletions(toolName: string, completions: CompletionConfig): string[] {
     // Handles fpath setup: fpath=("/path/to/completions" $fpath)
   }
-  
+
   generateCompletionSetup(allCompletionSetup: string[], allToolInits: string[]): string[] {
     // Special handling for typeset -U fpath deduplication
   }
@@ -116,12 +118,13 @@ class ZshStringProducer implements IShellStringProducer {
 ```
 
 #### BashStringProducer
+
 ```typescript
 class BashStringProducer implements IShellStringProducer {
   extractInitScripts(toolConfig: ToolConfig): ShellScript[] {
     return toolConfig.bashInit || [];
   }
-  
+
   processCompletions(toolName: string, completions: CompletionConfig): string[] {
     // Handles sourcing: [[ -f "/path/to/completion" ]] && source "/path/to/completion"
   }
@@ -129,12 +132,13 @@ class BashStringProducer implements IShellStringProducer {
 ```
 
 #### PowerShellStringProducer
+
 ```typescript
 class PowerShellStringProducer implements IShellStringProducer {
   extractInitScripts(toolConfig: ToolConfig): ShellScript[] {
     return toolConfig.powershellInit || [];
   }
-  
+
   processCompletions(toolName: string, completions: CompletionConfig): string[] {
     // Handles sourcing: if (Test-Path "/path/to/completion") { . "/path/to/completion" }
   }
@@ -167,16 +171,19 @@ export class ZshGenerator extends BaseShellGenerator {
 ## Benefits of This Architecture
 
 ### Code Reuse
+
 - **Before**: ~800 lines of duplicated logic across 3 generators
 - **After**: ~50 lines per generator + shared base class
 - **Reduction**: ~85% less code duplication
 
 ### Maintainability
+
 - Bug fixes and feature additions only need to be made in one place
 - Shell-specific logic is clearly separated and easy to understand
 - Easy to add new shells by creating new string producers
 
 ### Testability
+
 - Shared logic is tested once in the base class
 - Shell-specific behavior is isolated and easily tested
 - Strategy pattern makes unit testing straightforward
@@ -186,13 +193,14 @@ export class ZshGenerator extends BaseShellGenerator {
 To add support for a new shell (e.g., Fish):
 
 1. **Create String Producer**:
+
 ```typescript
 // FishStringProducer.ts
 export class FishStringProducer implements IShellStringProducer {
   extractInitScripts(toolConfig: ToolConfig): ShellScript[] {
     return toolConfig.fishInit || [];
   }
-  
+
   processCompletions(toolName: string, completions: CompletionConfig): string[] {
     // Fish-specific completion handling
   }
@@ -200,6 +208,7 @@ export class FishStringProducer implements IShellStringProducer {
 ```
 
 2. **Create Generator**:
+
 ```typescript
 // FishGenerator.ts
 export class FishGenerator extends BaseShellGenerator {
@@ -225,7 +234,7 @@ shell-generators/
 ├── BaseShellGenerator.ts         # Abstract base with shared logic
 │
 ├── ZshStringProducer.ts          # Zsh-specific string generation
-├── BashStringProducer.ts         # Bash-specific string generation  
+├── BashStringProducer.ts         # Bash-specific string generation
 ├── PowerShellStringProducer.ts   # PowerShell-specific string generation
 │
 ├── ZshGenerator.ts               # Zsh concrete generator

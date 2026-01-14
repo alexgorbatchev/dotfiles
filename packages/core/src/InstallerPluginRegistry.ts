@@ -128,8 +128,12 @@ export class InstallerPluginRegistry {
     if (toolConfigSchemas.length === 1) {
       this.composedToolConfigSchema = toolConfigSchemas[0];
     } else {
-      // biome-ignore lint/suspicious/noExplicitAny: Zod discriminatedUnion requires specific tuple type that can't be inferred from runtime array
-      this.composedToolConfigSchema = z.discriminatedUnion('installationMethod', toolConfigSchemas as any);
+      // Zod discriminatedUnion requires specific tuple type [DiscriminableSchema, ...DiscriminableSchema[]]
+      // Runtime: all plugin schemas have 'installationMethod' discriminator (enforced by plugin interface)
+      // Type: ZodTypeAny cannot satisfy Zod's $ZodTypeDiscriminable constraint, requiring cast
+      const [first, ...rest] = toolConfigSchemas;
+      // @ts-expect-error: Zod 4 discriminatedUnion requires $ZodTypeDiscriminable but plugins use ZodTypeAny
+      this.composedToolConfigSchema = z.discriminatedUnion('installationMethod', [first, ...rest]);
     }
 
     // Compose install params schema
@@ -137,8 +141,10 @@ export class InstallerPluginRegistry {
     if (paramsSchemas.length === 1) {
       this.composedInstallParamsSchema = paramsSchemas[0];
     } else {
-      // biome-ignore lint/suspicious/noExplicitAny: Zod union requires specific tuple type that can't be inferred from runtime array
-      this.composedInstallParamsSchema = z.union(paramsSchemas as any);
+      // Zod union requires tuple type [Schema, Schema, ...Schema[]] - we verified length > 1
+      const [first, second, ...rest] = paramsSchemas;
+      // @ts-expect-error: Zod 4 union requires specific tuple but array destructure produces array | undefined
+      this.composedInstallParamsSchema = z.union([first, second, ...rest]);
     }
 
     this.schemasComposed = true;
@@ -171,7 +177,7 @@ export class InstallerPluginRegistry {
   private async validatePlugin(
     plugin: IInstallerPlugin,
     context: IInstallContext,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<InstallResult | null> {
     if (!plugin.validate) {
       return null;
@@ -214,13 +220,15 @@ export class InstallerPluginRegistry {
     toolName: string,
     toolConfig: unknown,
     context: IInstallContext,
-    options?: IInstallOptions
+    options?: IInstallOptions,
   ): Promise<AggregateInstallResult> {
     const logger = parentLogger.getSubLogger({ name: 'InstallerPluginRegistry' }).getSubLogger({ name: 'install' });
     const plugin = this.get(method);
 
     if (!plugin) {
-      const error = `No plugin registered for installation method: ${method}. Available methods: ${this.getMethods().join(', ')}`;
+      const error = `No plugin registered for installation method: ${method}. Available methods: ${
+        this.getMethods().join(', ')
+      }`;
       logger.error(messages.noPluginForMethod(method, this.getMethods().join(', ')));
       return {
         success: false,

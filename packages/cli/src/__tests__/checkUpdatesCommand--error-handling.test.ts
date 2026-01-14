@@ -1,8 +1,8 @@
-import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { IInstallerPlugin, InstallerPluginRegistry, ToolConfig } from '@dotfiles/core';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, mock, test } from 'bun:test';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
@@ -66,7 +66,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
       ['INFO'],
       ['registerCheckUpdatesCommand'],
       [],
-      [messages.commandUnsupportedOperation('check-updates', 'installation method: "manual" for tool "manualtool"')]
+      [messages.commandUnsupportedOperation('check-updates', 'installation method: "manual" for tool "manualtool"')],
     );
   });
 
@@ -79,7 +79,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
       ['ERROR'],
       ['registerCheckUpdatesCommand'],
       [],
-      [messages.toolNotFound('nonexistenttool', mockProjectConfig.paths.toolConfigsDir)]
+      [messages.toolNotFound('nonexistenttool', mockProjectConfig.paths.toolConfigsDir)],
     );
   });
 
@@ -92,7 +92,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
       ['ERROR'],
       ['registerCheckUpdatesCommand'],
       [],
-      [messages.toolNoConfigurationsFound(mockProjectConfig.paths.toolConfigsDir)]
+      [messages.toolNoConfigurationsFound(mockProjectConfig.paths.toolConfigsDir)],
     );
   });
 

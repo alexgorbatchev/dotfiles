@@ -33,7 +33,7 @@ export async function loadConfig(
   fileSystem: IFileSystem,
   userConfigPath: string,
   systemInfo: ISystemInfo,
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
 ): Promise<ProjectConfig> {
   const logger = parentLogger.getSubLogger({ name: 'loadConfig' });
 

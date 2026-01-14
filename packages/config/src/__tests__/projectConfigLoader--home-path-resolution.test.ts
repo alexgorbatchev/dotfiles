@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { createProjectConfigFromObject } from '../stagedProjectConfigLoader';
 
 describe('projectConfigLoader - staged home/path resolution', () => {
@@ -32,7 +32,7 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       },
       bootstrapSystemInfo,
       {},
-      { userConfigPath }
+      { userConfigPath },
     );
 
     expect(result.paths.homeDir).toBe('/bootstrap-home/configured');
@@ -52,7 +52,7 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       },
       bootstrapSystemInfo,
       {},
-      { userConfigPath }
+      { userConfigPath },
     );
 
     expect(result.paths.dotfilesDir).toBe('/configured-home/dotfiles');
@@ -72,7 +72,7 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       },
       bootstrapSystemInfo,
       {},
-      { userConfigPath }
+      { userConfigPath },
     );
 
     expect(result.paths.targetDir).toBe('/configured-home/bin');
@@ -91,7 +91,7 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       },
       bootstrapSystemInfo,
       {},
-      { userConfigPath }
+      { userConfigPath },
     );
 
     expect(result.logging.debug).toBe('~/should-not-expand');
@@ -111,7 +111,7 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       },
       bootstrapSystemInfo,
       {},
-      { userConfigPath }
+      { userConfigPath },
     );
 
     expect(result.paths.dotfilesDir).toBe('/configured-home\\dotfiles');
@@ -132,8 +132,8 @@ describe('projectConfigLoader - staged home/path resolution', () => {
         },
         bootstrapSystemInfo,
         {},
-        { userConfigPath }
-      )
+        { userConfigPath },
+      ),
     ).rejects.toThrow('unsupported tilde');
   });
 });

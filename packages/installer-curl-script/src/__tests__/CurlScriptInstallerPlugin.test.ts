@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { CurlScriptInstallerPlugin } from '../CurlScriptInstallerPlugin';
 
 describe('CurlScriptInstallerPlugin', () => {

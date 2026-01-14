@@ -21,11 +21,9 @@ defineTool((install) =>
   install('curl-tar', {
     url: 'https://example.com/tool.tar.gz',
   }).zsh((shell) =>
-    shell
-      .once(/* zsh */ `
+    shell.once(/* zsh */ `
         echo "once"
-      `)
-      .always(/* zsh */ `
+      `).always(/* zsh */ `
         echo "always"
       `)
   )

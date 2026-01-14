@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import type fs from 'node:fs';
 import type { Stats } from 'node:fs';
 import type { IFileSystem } from '../IFileSystem';
 import { NodeFileSystem } from '../NodeFileSystem';
@@ -44,8 +45,8 @@ describe('NodeFileSystem', () => {
 
   beforeEach(() => {
     fileSystem = new NodeFileSystem(
-      mockFsPromises as unknown as typeof import('node:fs').promises,
-      mockConstants as unknown as typeof import('node:fs').constants
+      mockFsPromises as unknown as typeof fs.promises,
+      mockConstants as unknown as typeof fs.constants,
     );
   });
 

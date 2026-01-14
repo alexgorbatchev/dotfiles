@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/suspicious/noConsole: console methods are stubbed */
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { BuildError, handleBuildError } from '../handleBuildError';
 

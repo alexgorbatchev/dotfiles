@@ -1,13 +1,13 @@
 ---
 # User Prompt
 > system currently automatically adds source to zshrc and to bashrc, we need to make this configurable like so
-> 
+>
 >   features: {
 >     shellInstall: {
 >       zsh: '~/.zshrc',
 >       bash: '~/.bashrc',
 >     },
-> 
+>
 >     if these are missing, then source must not be added
 
 # Primary Objective

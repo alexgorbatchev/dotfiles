@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
+import { $ } from 'dax-sh';
 import assert from 'node:assert';
 import { access, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { $ } from 'dax-sh';
 
 function getRepoRootPath(): string {
   const repoRootPath: string = path.resolve(__dirname, '../../../..');
@@ -34,7 +34,7 @@ describe('test-project generate', () => {
       'test-project',
       '.generated',
       'user-bin',
-      'shell-only--foo'
+      'shell-only--foo',
     );
     const hasUserBinShim = await access(userBinShimPath)
       .then(() => true)

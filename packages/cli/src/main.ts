@@ -1,13 +1,11 @@
 #!/usr/bin/env bun
 
-import os from 'node:os';
-import path from 'node:path';
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
 import { ConfigService, loadConfig, type ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo } from '@dotfiles/core';
 import {
   architectureFromNodeJS,
-  createLoggingShell,
+  createExtendedShell,
   InstallerPluginRegistry,
   platformFromNodeJS,
 } from '@dotfiles/core';
@@ -23,15 +21,17 @@ import { CurlTarInstallerPlugin } from '@dotfiles/installer-curl-tar';
 import { GitHubApiClient, GitHubReleaseInstallerPlugin } from '@dotfiles/installer-github';
 import { ManualInstallerPlugin } from '@dotfiles/installer-manual';
 import { createTsLogger, getLogLevelFromFlags, type LogLevelValue, type TsLogger } from '@dotfiles/logger';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 import { FileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
-import { RegistryDatabase } from '@dotfiles/registry-database';
 import { CompletionCommandExecutor, CompletionGenerator, ShellInitGenerator } from '@dotfiles/shell-init-generator';
 import { ShimGenerator } from '@dotfiles/shim-generator';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { contractHomePath } from '@dotfiles/utils';
 import { VersionChecker } from '@dotfiles/version-checker';
 import { $ } from 'dax-sh';
+import os from 'node:os';
+import path from 'node:path';
 
 import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
 import { registerCleanupCommand } from './cleanupCommand';
@@ -94,7 +94,7 @@ async function copyToolConfigFile(
   fs: IFileSystem,
   nodeFs: NodeFileSystem,
   filePath: string,
-  systemInfo: ISystemInfo
+  systemInfo: ISystemInfo,
 ): Promise<void> {
   try {
     const content = await nodeFs.readFile(filePath, 'utf8');
@@ -110,7 +110,7 @@ async function loadToolConfigsForDryRun(
   logger: TsLogger,
   fs: IFileSystem,
   projectConfig: ProjectConfig,
-  systemInfo: ISystemInfo
+  systemInfo: ISystemInfo,
 ): Promise<void> {
   logger.trace(messages.toolConfigsForDryRun());
   const realToolConfigsDir = projectConfig.paths.toolConfigsDir;
@@ -139,7 +139,7 @@ async function loadToolConfigsForDryRun(
 function initializeDownloadCache(
   parentLogger: TsLogger,
   fs: IFileSystem,
-  projectConfig: ProjectConfig
+  projectConfig: ProjectConfig,
 ): ICache | undefined {
   if (!projectConfig.downloader.cache.enabled) {
     parentLogger.info(messages.cachingDisabled());
@@ -161,7 +161,7 @@ function createTrackedFileSystems(
   parentLogger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
-  projectConfig: ProjectConfig
+  projectConfig: ProjectConfig,
 ): {
   shimTrackedFs: TrackedFileSystem;
   shellInitTrackedFs: TrackedFileSystem;
@@ -175,7 +175,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'shim'),
-    projectConfig
+    projectConfig,
   );
 
   const shellInitTrackedFs = new TrackedFileSystem(
@@ -183,7 +183,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'init'),
-    projectConfig
+    projectConfig,
   );
 
   const symlinkTrackedFs = new TrackedFileSystem(
@@ -191,7 +191,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'symlink'),
-    projectConfig
+    projectConfig,
   );
 
   const installerTrackedFs = new TrackedFileSystem(
@@ -199,7 +199,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'binary'),
-    projectConfig
+    projectConfig,
   );
 
   const catalogTrackedFs = new TrackedFileSystem(
@@ -207,7 +207,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'catalog'),
-    projectConfig
+    projectConfig,
   );
 
   const completionTrackedFs = new TrackedFileSystem(
@@ -215,7 +215,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'completion'),
-    projectConfig
+    projectConfig,
   );
 
   return {
@@ -343,7 +343,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     projectConfig,
     fileRegistry,
     resolvedFs,
-    completionTrackedFs
+    completionTrackedFs,
   );
 
   // Initialize plugin registry
@@ -362,8 +362,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       githubApiClient,
       archiveExtractor,
       projectConfig,
-      hookExecutor
-    )
+      hookExecutor,
+    ),
   );
   pluginRegistry.register(new BrewInstallerPlugin());
   pluginRegistry.register(
@@ -373,8 +373,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       cargoClient,
       archiveExtractor,
       hookExecutor,
-      projectConfig.cargo.githubRelease.host
-    )
+      projectConfig.cargo.githubRelease.host,
+    ),
   );
   pluginRegistry.register(new CurlScriptInstallerPlugin(installerTrackedFs, downloader, hookExecutor));
   pluginRegistry.register(new CurlTarInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor));
@@ -389,8 +389,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     finalSystemInfo,
     pluginRegistry,
     symlinkGenerator,
-    createLoggingShell($, logger),
-    hookExecutor
+    createExtendedShell($), // Don't add logging here - HookExecutor.createEnhancedContext adds logging with tool context
+    hookExecutor,
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
   const configService = new ConfigService();
@@ -401,7 +401,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     resolvedFs,
     catalogTrackedFs,
     path.join(projectConfig.paths.generatedDir, 'cache', 'readme'),
-    pluginRegistry
+    pluginRegistry,
   );
 
   return {
@@ -434,7 +434,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 export function registerAllCommands(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>
+  servicesFactory: () => Promise<IServices>,
 ) {
   const logger = parentLogger.getSubLogger({ name: 'registerAllCommands' });
   registerInstallCommand(logger, program, servicesFactory);

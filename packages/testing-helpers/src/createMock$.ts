@@ -14,10 +14,13 @@ export interface IMockShellResponse {
   shouldThrow?: boolean;
 }
 
-export type MockShell = typeof $ & IMockShellExtensions & {
-  (command: string): ReturnType<typeof $>;
-  readonly [extendedShellBrand]: true;
-};
+export type MockShell =
+  & typeof $
+  & IMockShellExtensions
+  & {
+    (command: string): ReturnType<typeof $>;
+    readonly [extendedShellBrand]: true;
+  };
 
 function reconstructCommand(pieces: TemplateStringsArray | string, args: unknown[]): string {
   if (typeof pieces === 'string') {
@@ -67,8 +70,12 @@ export function createMock$(): MockShell {
 
     const mockResult = {
       ...resultData,
-      get stdoutBytes() { return new TextEncoder().encode(stdoutVal) },
-      get stderrBytes() { return new TextEncoder().encode(stderrVal) },
+      get stdoutBytes() {
+        return new TextEncoder().encode(stdoutVal);
+      },
+      get stderrBytes() {
+        return new TextEncoder().encode(stderrVal);
+      },
       // Legacy compat properties if needed by consumers of result directly ??
       // But typically tests use result.stdout or .text()
     };
@@ -138,8 +145,7 @@ export function createMock$(): MockShell {
     echo: () => {},
     sleep: () => Promise.resolve(),
     which: () => Promise.resolve(undefined),
-    // biome-ignore lint/suspicious/noExplicitAny: dax internals
-    fetch: () => Promise.resolve({} as any),
+    fetch: () => Promise.resolve(new Response()),
     withTimeout: () => {},
     retry: () => {},
     raw: (s: string) => s,

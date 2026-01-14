@@ -1,6 +1,8 @@
 import { createSafeLogMessage, type TsLogger } from '@dotfiles/logger';
-import { type CommandBuilder, $ } from 'dax-sh';
-import { extendedShellBrand, type $extended } from './extendedShell.types';
+import { type $, type CommandBuilder } from 'dax-sh';
+import { type $extended, extendedShellBrand, loggingShellBrand } from './extendedShell.types';
+
+type BaseShell = typeof $ | $extended;
 
 interface LoggingShellOptions {
   cwd?: string;
@@ -29,31 +31,49 @@ interface LoggingShellOptions {
  * // Logs: | hello
  * ```
  */
-export function createLoggingShell($shell: typeof $ | $extended, logger: TsLogger, options?: LoggingShellOptions): $extended {
-  const defaultCwd = options?.cwd ?? process.cwd();
-
-  const loggingShell = Object.assign(
-    (first: TemplateStringsArray | string, ...expressions: unknown[]) => {
-      const command = typeof first === 'string' ? first : reconstructCommand(first, expressions);
-      logger.info(createSafeLogMessage(`$ ${command}`));
-      return createLoggingCommand(command, logger, defaultCwd);
-    },
-    $shell
-  );
+export function createLoggingShell(
+  $shell: BaseShell,
+  logger: TsLogger,
+  _options?: LoggingShellOptions,
+): $extended {
+  const loggingShell = Object.assign((first: TemplateStringsArray | string, ...expressions: unknown[]) => {
+    const command = typeof first === 'string' ? first : reconstructCommand(first, expressions);
+    logger.info(createSafeLogMessage(`$ ${command}`));
+    return createLoggingCommand($shell, first, expressions, logger);
+  }, $shell);
 
   Object.defineProperty(loggingShell, extendedShellBrand, { value: true, enumerable: false });
+  Object.defineProperty(loggingShell, loggingShellBrand, { value: true, enumerable: false });
   return loggingShell as $extended;
 }
 
 /**
  * Creates a proxied dax command that logs output and preserves chaining.
+ * Invokes the wrapped shell using template literal syntax to preserve custom shell behavior.
  */
-function createLoggingCommand(command: string, logger: TsLogger, cwd: string): ReturnType<$extended> {
+function createLoggingCommand(
+  $shell: BaseShell,
+  first: TemplateStringsArray | string,
+  expressions: unknown[],
+  logger: TsLogger,
+): ReturnType<$extended> {
   const stdoutCollector = createLoggingStream((line) => logger.info(createSafeLogMessage(`| ${line}`)));
   const stderrCollector = createLoggingStream((line) => logger.error(createSafeLogMessage(`| ${line}`)));
 
-  // biome-ignore lint/suspicious/noExplicitAny: $.raw expects TemplateStringsArray, cast command string instead
-  const daxCmd: CommandBuilder = $.raw(command as any).cwd(cwd).stdout(stdoutCollector.stream).stderr(stderrCollector.stream);
+  // Invoke the wrapped shell using template literal syntax to preserve custom shell behavior
+  // (e.g., cwd, env modifications from createToolConfigCwdShell or createShellWithEnhancedPath)
+  let daxCmd: CommandBuilder;
+  if (typeof first === 'string') {
+    daxCmd = ($shell as $extended)(first) as unknown as CommandBuilder;
+  } else {
+    // @ts-expect-error: dax-sh typing for template expressions
+    daxCmd = $shell(first, ...expressions) as unknown as CommandBuilder;
+  }
+
+  // IMPORTANT: Attach streams EAGERLY before any chaining.
+  // dax-sh's chaining methods (.quiet(), .cwd(), .env()) preserve streams set BEFORE them,
+  // but don't respect streams set AFTER. So we must attach streams immediately.
+  daxCmd = daxCmd.stdout(stdoutCollector.stream).stderr(stderrCollector.stream);
 
   const decode = (bytes: Uint8Array): string => new TextDecoder().decode(bytes);
   // Strip trailing newline to match dax's native .text() behavior (e.g., `echo "hello"` returns "hello" not "hello\n")
@@ -68,15 +88,118 @@ function createLoggingCommand(command: string, logger: TsLogger, cwd: string): R
     arrayBuffer: (bytes) => new Uint8Array(bytes).buffer,
   };
 
+  /**
+   * Enhances a dax shell error with captured stderr content.
+   * dax-sh doesn't populate error.stderr when using custom streams,
+   * so we need to add it from our collector.
+   * Note: dax-sh throws plain Error with message pattern "Exited with code: X"
+   */
+  const enhanceErrorWithStderr = (error: unknown): unknown => {
+    if (typeof error === 'object' && error !== null) {
+      const errorObj = error as Record<string, unknown>;
+      // Check for dax error pattern (message starts with "Exited with code:")
+      const isDaxError = typeof errorObj['message'] === 'string'
+        && (errorObj['message'] as string).startsWith('Exited with code:');
+      if (isDaxError && !errorObj['stderr']) {
+        const stderrBytes = stderrCollector.getBytes();
+        if (stderrBytes.length > 0) {
+          errorObj['stderr'] = stderrBytes;
+          // Also set name to 'ShellError' for compatibility with error handlers
+          errorObj['name'] = 'ShellError';
+        }
+      }
+    }
+    return error;
+  };
+
+  /**
+   * Enhances a CommandResult with captured stdout/stderr from our streams.
+   * dax's CommandResult throws when accessing stdout/stderr if they were streamed,
+   * so we need to provide our captured data instead.
+   */
+  const enhanceResultWithStreams = (result: unknown): unknown => {
+    if (typeof result !== 'object' || result === null) {
+      return result;
+    }
+
+    const resultObj = result as Record<string, unknown>;
+
+    // Check if this looks like a dax CommandResult (has 'code' property and getters that throw)
+    if (typeof resultObj['code'] !== 'number') {
+      return result;
+    }
+
+    // Create a proxy that intercepts stdout/stderr property access
+    return new Proxy(result, {
+      get(target, prop) {
+        if (prop === 'stdout') {
+          return decode(stdoutCollector.getBytes());
+        }
+        if (prop === 'stderr') {
+          return decode(stderrCollector.getBytes());
+        }
+        if (prop === 'stdoutBytes') {
+          return stdoutCollector.getBytes();
+        }
+        if (prop === 'stderrBytes') {
+          return stderrCollector.getBytes();
+        }
+        return Reflect.get(target, prop);
+      },
+    });
+  };
+
   const wrapWithProxy = (cmd: CommandBuilder): CommandBuilder => {
     return new Proxy(cmd, {
       get(target, prop) {
-        const transform = outputMethods[String(prop)];
+        const propName = String(prop);
+
+        // For output methods, execute and transform
+        const transform = outputMethods[propName];
         if (transform) {
           return async () => {
-            await target;
-            return transform(stdoutCollector.getBytes());
+            try {
+              await target;
+              return transform(stdoutCollector.getBytes());
+            } catch (error) {
+              throw enhanceErrorWithStderr(error);
+            }
           };
+        }
+
+        // For then, wrap both success and error handlers
+        if (propName === 'then') {
+          const originalThen = Reflect.get(target, prop) as (
+            onfulfilled?: (value: unknown) => unknown,
+            onrejected?: (reason: unknown) => unknown,
+          ) => Promise<unknown>;
+          return (
+            onfulfilled?: (value: unknown) => unknown,
+            onrejected?: (reason: unknown) => unknown,
+          ): Promise<unknown> => {
+            return originalThen.call(
+              target,
+              (result) => {
+                const enhanced = enhanceResultWithStreams(result);
+                if (onfulfilled) {
+                  return onfulfilled(enhanced);
+                }
+                return enhanced;
+              },
+              (error) => {
+                const enhanced = enhanceErrorWithStderr(error);
+                if (onrejected) {
+                  return onrejected(enhanced);
+                }
+                throw enhanced;
+              },
+            );
+          };
+        }
+
+        // For catch/finally, just return as-is
+        if (propName === 'catch' || propName === 'finally') {
+          return Reflect.get(target, prop);
         }
 
         const value = Reflect.get(target, prop);
@@ -93,7 +216,7 @@ function createLoggingCommand(command: string, logger: TsLogger, cwd: string): R
         }
 
         return value;
-      }
+      },
     });
   };
 

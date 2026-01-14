@@ -4,43 +4,29 @@ import type { z } from 'zod';
 
 type Primitive = string | number | bigint | boolean | symbol | undefined | null;
 
-type DeepPartialArray<T extends readonly unknown[]> = number extends T['length']
-  ? readonly PartialDeep<T[number]>[]
-  : { [K in keyof T]?: PartialDeep<T[K]> };
+type DeepPartialArray<T extends readonly unknown[]> = number extends T['length'] ? readonly PartialDeep<T[number]>[]
+  : { [K in keyof T]?: PartialDeep<T[K]>; };
 
-type DeepPartialSet<T> =
-  T extends Set<infer TValue>
-    ? Set<PartialDeep<TValue>>
-    : T extends ReadonlySet<infer TValue>
-      ? ReadonlySet<PartialDeep<TValue>>
-      : never;
+type DeepPartialSet<T> = T extends Set<infer TValue> ? Set<PartialDeep<TValue>>
+  : T extends ReadonlySet<infer TValue> ? ReadonlySet<PartialDeep<TValue>>
+  : never;
 
-type DeepPartialMap<T> =
-  T extends Map<infer TKey, infer TValue>
-    ? Map<TKey, PartialDeep<TValue>>
-    : T extends ReadonlyMap<infer TKey, infer TValue>
-      ? ReadonlyMap<TKey, PartialDeep<TValue>>
-      : never;
+type DeepPartialMap<T> = T extends Map<infer TKey, infer TValue> ? Map<TKey, PartialDeep<TValue>>
+  : T extends ReadonlyMap<infer TKey, infer TValue> ? ReadonlyMap<TKey, PartialDeep<TValue>>
+  : never;
 
 type DeepPartialObject<T extends object> = {
   [K in keyof T]?: PartialDeep<T[K]>;
 };
 
-export type PartialDeep<T> = T extends Primitive
-  ? T
-  : T extends (...args: infer TArgs) => infer TResult
-    ? (...args: TArgs) => TResult
-    : T extends Promise<infer TValue>
-      ? Promise<PartialDeep<TValue>>
-      : T extends readonly unknown[]
-        ? DeepPartialArray<T>
-        : T extends Set<unknown> | ReadonlySet<unknown>
-          ? DeepPartialSet<T>
-          : T extends Map<unknown, unknown> | ReadonlyMap<unknown, unknown>
-            ? DeepPartialMap<T>
-            : T extends object
-              ? DeepPartialObject<T>
-              : Partial<T>;
+export type PartialDeep<T> = T extends Primitive ? T
+  : T extends (...args: infer TArgs) => infer TResult ? (...args: TArgs) => TResult
+  : T extends Promise<infer TValue> ? Promise<PartialDeep<TValue>>
+  : T extends readonly unknown[] ? DeepPartialArray<T>
+  : T extends Set<unknown> | ReadonlySet<unknown> ? DeepPartialSet<T>
+  : T extends Map<unknown, unknown> | ReadonlyMap<unknown, unknown> ? DeepPartialMap<T>
+  : T extends object ? DeepPartialObject<T>
+  : Partial<T>;
 
 /**
  * Standard success result for operations.
@@ -146,7 +132,6 @@ export type UpdateResult = UpdateResultSuccess | UpdateResultFailure;
  * }
  * ```
  */
-// biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extended via module augmentation
 export interface IInstallParamsRegistry {
   // Plugins add their install param types via module augmentation
 }
@@ -164,7 +149,6 @@ export interface IInstallParamsRegistry {
  * }
  * ```
  */
-// biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extended via module augmentation
 export interface IToolConfigRegistry {
   // Plugins add their tool config types via module augmentation
 }
@@ -182,7 +166,6 @@ export interface IToolConfigRegistry {
  * }
  * ```
  */
-// biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extended via module augmentation
 export interface IPluginResultRegistry {
   // Plugins add their result types via module augmentation
 }
@@ -206,19 +189,15 @@ export type RegisterPluginResult<TMethod extends string, TResult> = {
  * Union of all registered plugin tool config types.
  * Built dynamically from plugins via module augmentation.
  */
-export type ToolConfig =
-  IToolConfigRegistry extends Record<string, never>
-    ? never // No plugins registered - this should be an error case
-    : IToolConfigRegistry[keyof IToolConfigRegistry];
+export type ToolConfig = IToolConfigRegistry extends Record<string, never> ? never // No plugins registered - this should be an error case
+  : IToolConfigRegistry[keyof IToolConfigRegistry];
 
 /**
  * Union of all registered plugin result types
  * If no plugins are registered, falls back to generic InstallResult<unknown>
  */
-export type AggregateInstallResult =
-  IPluginResultRegistry extends Record<string, never>
-    ? InstallResult<unknown>
-    : IPluginResultRegistry[keyof IPluginResultRegistry];
+export type AggregateInstallResult = IPluginResultRegistry extends Record<string, never> ? InstallResult<unknown>
+  : IPluginResultRegistry[keyof IPluginResultRegistry];
 
 /**
  * Plugin validation result
@@ -274,7 +253,7 @@ export interface IInstallerPlugin<
     toolConfig: TConfig,
     context: IInstallContext,
     options: IInstallOptions | undefined,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<InstallResult<TMetadata>>;
 
   /** Optional: Validate plugin can run in current environment */
@@ -294,7 +273,7 @@ export interface IInstallerPlugin<
     toolName: string,
     toolConfig: TConfig,
     context: IInstallContext,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<UpdateCheckResult>;
 
   /** Optional: Check if plugin supports updating tools */
@@ -306,7 +285,7 @@ export interface IInstallerPlugin<
     toolConfig: TConfig,
     context: IInstallContext,
     options: IUpdateOptions,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<UpdateResult>;
 
   /** Optional: Check if plugin can provide README */
@@ -330,6 +309,6 @@ export interface IInstallerPlugin<
     toolName: string,
     toolConfig: TConfig,
     context: IInstallContext,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<string | null>;
 }

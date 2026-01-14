@@ -1,7 +1,7 @@
-import path from 'node:path';
 import { NodeFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { ExitCode, exitCli, getCliBinPath } from '@dotfiles/utils';
+import { exitCli, ExitCode, getCliBinPath } from '@dotfiles/utils';
+import path from 'node:path';
 import { messages } from './log-messages';
 import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 
@@ -88,7 +88,7 @@ async function createDocsSymlink(parentLogger: TsLogger, targetPath: string, dry
 
 async function docsActionLogic(
   parentLogger: TsLogger,
-  options: IDocsCommandSpecificOptions & IGlobalProgramOptions
+  options: IDocsCommandSpecificOptions & IGlobalProgramOptions,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'docsActionLogic' });
   const { targetPath, dryRun } = options;
@@ -102,7 +102,7 @@ async function docsActionLogic(
 export function registerDocsCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  _servicesFactory: () => Promise<IServices>
+  _servicesFactory: () => Promise<IServices>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerDocsCommand' });
 

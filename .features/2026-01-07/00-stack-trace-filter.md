@@ -1,14 +1,18 @@
 # Task
+
 > Filter stack traces in hook error output to show only .tool.ts references
 
 # Primary Objective
+
 Simplify hook error output to show only the relevant .tool.ts stack frames and hide internal framework stack traces from end users.
 
 # Open Questions
-- [x] Is there existing stack manipulation code? YES - `writeHookErrorDetails.ts` already has `parseFirstToolFrame()` 
+
+- [x] Is there existing stack manipulation code? YES - `writeHookErrorDetails.ts` already has `parseFirstToolFrame()`
 - [x] Are there pre-installed libraries for stack parsing? YES - `@babel/code-frame` is used for code frames
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of the verbose stack trace output
   - Current behavior: When a hook fails with a ShellError, the error is logged via `methodLogger.error(messages.outcome.hookFailed(), error)` in `HookExecutor.ts:163`
   - The `error` object is passed to tslog which uses `prettyErrorTemplate: '\n{{errorName}} {{errorMessage}}\nerror stack:\n{{errorStack}}'`
@@ -54,6 +58,7 @@ Simplify hook error output to show only the relevant .tool.ts stack frames and h
 - [ ] **TS010**: Update documentation if needed
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -69,6 +74,7 @@ Simplify hook error output to show only the relevant .tool.ts stack frames and h
 - [x] Tests do not print anything to console.
 
 # Files Changed
+
 - `packages/installer/src/utils/extractErrorCause.ts` - NEW: Extract error cause from errors
 - `packages/installer/src/utils/index.ts` - Added export for extractErrorCause
 - `packages/installer/src/utils/log-messages.ts` - Modified hookFailed() to accept cause parameter
@@ -76,10 +82,12 @@ Simplify hook error output to show only the relevant .tool.ts stack frames and h
 - `packages/installer/src/utils/writeHookErrorDetails.ts` - Simplified output format
 
 # Tests Added
+
 - `packages/installer/src/utils/__tests__/extractErrorCause.test.ts` - 12 tests
 - `packages/installer/src/utils/__tests__/HookExecutor--stack-trace-filter.test.ts` - 3 tests
 
 # Change Log
+
 - 2026-01-07: Created task file and identified existing code in `writeHookErrorDetails.ts`
 - 2026-01-07: Implemented solution - extractErrorCause utility, modified HookExecutor and log-messages
 - 2026-01-07: All tests pass, lint/typecheck/build pass

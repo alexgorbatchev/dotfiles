@@ -39,21 +39,21 @@ function deepCopyShellConfigs(shellConfigs: ToolConfig['shellConfigs']): ToolCon
   return {
     zsh: shellConfigs.zsh
       ? {
-          ...shellConfigs.zsh,
-          scripts: shellConfigs.zsh.scripts ? [...shellConfigs.zsh.scripts] : undefined,
-        }
+        ...shellConfigs.zsh,
+        scripts: shellConfigs.zsh.scripts ? [...shellConfigs.zsh.scripts] : undefined,
+      }
       : undefined,
     bash: shellConfigs.bash
       ? {
-          ...shellConfigs.bash,
-          scripts: shellConfigs.bash.scripts ? [...shellConfigs.bash.scripts] : undefined,
-        }
+        ...shellConfigs.bash,
+        scripts: shellConfigs.bash.scripts ? [...shellConfigs.bash.scripts] : undefined,
+      }
       : undefined,
     powershell: shellConfigs.powershell
       ? {
-          ...shellConfigs.powershell,
-          scripts: shellConfigs.powershell.scripts ? [...shellConfigs.powershell.scripts] : undefined,
-        }
+        ...shellConfigs.powershell,
+        scripts: shellConfigs.powershell.scripts ? [...shellConfigs.powershell.scripts] : undefined,
+      }
       : undefined,
   };
 }
@@ -71,7 +71,7 @@ function initializeShellConfigs(finalConfig: ToolConfig): void {
 function mergeShellConfig(
   shellConfigs: NonNullable<ToolConfig['shellConfigs']>,
   shellType: 'zsh' | 'bash' | 'powershell',
-  platformShellConfig: NonNullable<ToolConfig['shellConfigs']>[typeof shellType]
+  platformShellConfig: NonNullable<ToolConfig['shellConfigs']>[typeof shellType],
 ): void {
   if (!platformShellConfig) return;
 
@@ -79,7 +79,7 @@ function mergeShellConfig(
     shellConfigs[shellType] = {};
   }
 
-  // biome-ignore lint/style/noNonNullAssertion: shellConfigs[shellType] is guaranteed to exist after the check above
+  // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion: shellConfigs[shellType] is guaranteed to exist after the check above
   const targetShellConfig = shellConfigs[shellType]!;
 
   if (platformShellConfig.scripts) {
@@ -91,12 +91,12 @@ function mergeShellConfig(
   }
 
   if (platformShellConfig.aliases) {
-    targetShellConfig.aliases = { ...(targetShellConfig.aliases || {}), ...platformShellConfig.aliases };
+    targetShellConfig.aliases = { ...targetShellConfig.aliases, ...platformShellConfig.aliases };
   }
 
   if (platformShellConfig.environment) {
     targetShellConfig.environment = {
-      ...(targetShellConfig.environment || {}),
+      ...targetShellConfig.environment,
       ...platformShellConfig.environment,
     };
   }
@@ -107,7 +107,7 @@ function mergeShellConfigs(finalConfig: ToolConfig, platformShellConfigs: ToolCo
 
   initializeShellConfigs(finalConfig);
   // shellConfigs is guaranteed to exist after initializeShellConfigs
-  // biome-ignore lint/style/noNonNullAssertion: shellConfigs is guaranteed to exist after initializeShellConfigs
+  // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion: shellConfigs is guaranteed to exist after initializeShellConfigs
   const shellConfigs = finalConfig.shellConfigs!;
 
   mergeShellConfig(shellConfigs, 'zsh', platformShellConfigs.zsh);

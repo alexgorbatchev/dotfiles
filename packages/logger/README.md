@@ -54,6 +54,7 @@ This is useful when the context isn't known at construction time but is availabl
 To ensure strong module encapsulation and maintainability, every feature package **MUST** co-locate its own log messages in a `log-messages.ts` file. This file should live directly beside the feature's primary source file(s).
 
 **Co-location benefits:**
+
 - Keeps intent and message evolution close to the business logic.
 - Prevents global template bloat with one-off messages.
 - Encourages single responsibility and easier refactoring.
@@ -78,22 +79,18 @@ import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
 // Group by semantic intent, not by log level.
 export const messages = {
-  resolvingConfig: (path: string) =>
-    createSafeLogMessage(`Resolving example config at ${path}`),
-  configResolved: (path: string) =>
-    createSafeLogMessage(`Example config resolved from ${path}`),
-  operationSkipped: (reason: string) =>
-    createSafeLogMessage(`Example operation skipped: ${reason}`),
-  invalidState: (state: string) =>
-    createSafeLogMessage(`Invalid example state: ${state}`),
+  resolvingConfig: (path: string) => createSafeLogMessage(`Resolving example config at ${path}`),
+  configResolved: (path: string) => createSafeLogMessage(`Example config resolved from ${path}`),
+  operationSkipped: (reason: string) => createSafeLogMessage(`Example operation skipped: ${reason}`),
+  invalidState: (state: string) => createSafeLogMessage(`Invalid example state: ${state}`),
 } satisfies SafeLogMessageMap;
 ```
 
 ### Usage in a Package
 
 ```typescript
-import { messages } from './log-messages';
 import type { TsLogger } from '@dotfiles/logger';
+import { messages } from './log-messages';
 
 export function runExample(logger: TsLogger) {
   const l = logger.getSubLogger({ name: 'runExample' });
@@ -135,10 +132,6 @@ test('should log an error when initialization fails', () => {
 
   subLogger.error(messages.initializationFailed('Something went wrong'));
 
-  logger.expect(
-    ['ERROR'],
-    ['MyModule', 'initialize'],
-    ['Initialization failed: Something went wrong']
-  );
+  logger.expect(['ERROR'], ['MyModule', 'initialize'], ['Initialization failed: Something went wrong']);
 });
 ```

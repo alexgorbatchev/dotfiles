@@ -65,7 +65,7 @@ export interface ISymlinkGenerator {
    */
   generate(
     toolConfigs: Record<string, ToolConfig>,
-    options?: IGenerateSymlinksOptions
+    options?: IGenerateSymlinksOptions,
   ): Promise<SymlinkOperationResult[]>;
 
   /**

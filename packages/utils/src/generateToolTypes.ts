@@ -1,6 +1,6 @@
-import path from 'node:path';
 import type { IBinaryConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
+import path from 'node:path';
 import { getBuiltPackageName } from './getBuiltPackageName';
 
 /**
@@ -53,7 +53,7 @@ export function generateUnionType(binaryNames: Set<string>): string {
     return 'string';
   }
 
-  const sortedNames: string[] = Array.from(binaryNames).sort();
+  const sortedNames: string[] = Array.from(binaryNames).toSorted();
   const quotedNames: string[] = sortedNames.map((name: string): string => `'${name}'`);
   return quotedNames.join(' | ');
 }
@@ -61,7 +61,7 @@ export function generateUnionType(binaryNames: Set<string>): string {
 export function generateToolTypesContent(toolConfigs: Record<string, ToolConfig>, moduleName?: string): string {
   const binaryNames: Set<string> = extractBinaryNames(toolConfigs);
   const unionType: string = generateUnionType(binaryNames);
-  const sortedNames: string[] = unionType === 'string' ? [] : Array.from(binaryNames).sort();
+  const sortedNames: string[] = unionType === 'string' ? [] : Array.from(binaryNames).toSorted();
   const registryEntries: string = sortedNames.map((name: string): string => `    '${name}': never;`).join('\n');
   const hasEntries: boolean = registryEntries.length > 0;
   const registryBody: string = hasEntries
@@ -86,7 +86,7 @@ export async function generateToolTypes(
   toolConfigs: Record<string, ToolConfig>,
   outputPath: string,
   fs: IFileSystem,
-  moduleName?: string
+  moduleName?: string,
 ): Promise<void> {
   const content: string = generateToolTypesContent(toolConfigs, moduleName);
   await fs.ensureDir(path.dirname(outputPath));

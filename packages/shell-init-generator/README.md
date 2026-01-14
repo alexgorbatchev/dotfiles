@@ -35,12 +35,7 @@ Main class for generating shell initialization scripts.
 ```typescript
 import { ShellInitGenerator } from '@dotfiles/shell-init-generator';
 
-const generator = new ShellInitGenerator(
-  logger,
-  fileSystem,
-  config,
-  toolRegistry
-);
+const generator = new ShellInitGenerator(logger, fileSystem, config, toolRegistry);
 
 await generator.generate();
 ```
@@ -62,12 +57,7 @@ interface IShellInitGenerator {
 ```typescript
 import { ShellInitGenerator } from '@dotfiles/shell-init-generator';
 
-const generator = new ShellInitGenerator(
-  logger,
-  fileSystem,
-  config,
-  toolRegistry
-);
+const generator = new ShellInitGenerator(logger, fileSystem, config, toolRegistry);
 
 // Generate initialization scripts for all configured shells
 const generatedFiles = await generator.generate();
@@ -91,12 +81,7 @@ const config = {
   // ...
 };
 
-const generator = new ShellInitGenerator(
-  logger,
-  fileSystem,
-  config,
-  toolRegistry
-);
+const generator = new ShellInitGenerator(logger, fileSystem, config, toolRegistry);
 
 await generator.generate();
 ```
@@ -130,10 +115,7 @@ Example completion discovery:
 
 ```typescript
 // Finds completions in tool directories
-const completions = [
-  '~/.dotfiles/tools/fzf/completion.zsh',
-  '~/.dotfiles/tools/gh/gh_completion.zsh',
-];
+const completions = ['~/.dotfiles/tools/fzf/completion.zsh', '~/.dotfiles/tools/gh/gh_completion.zsh'];
 ```
 
 ## Components
@@ -145,17 +127,13 @@ Discovers and generates completion loading scripts.
 ```typescript
 import { CompletionGenerator } from '@dotfiles/shell-init-generator';
 
-const completionGenerator = new CompletionGenerator(
-  logger,
-  fileSystem,
-  config,
-  toolRegistry
-);
+const completionGenerator = new CompletionGenerator(logger, fileSystem, config, toolRegistry);
 
 const completions = await completionGenerator.discover();
 ```
 
 **Features:**
+
 - Automatic completion discovery
 - Shell-specific completion formats
 - Lazy loading for performance
@@ -174,6 +152,7 @@ await updater.update('~/.zshrc', '~/.dotfiles/shell/init.zsh');
 ```
 
 **Features:**
+
 - Idempotent updates (safe to run multiple times)
 - Backup creation before updates
 - Profile detection
@@ -254,6 +233,7 @@ If a shell is not configured in `shellInstall`, initialization scripts will stil
 ## Dependencies
 
 ### Internal Dependencies
+
 - `@dotfiles/config` - Configuration management
 - `@dotfiles/file-system` - Filesystem operations
 - `@dotfiles/logger` - Structured logging
@@ -263,11 +243,13 @@ If a shell is not configured in `shellInstall`, initialization scripts will stil
 ## Testing
 
 Run tests with:
+
 ```bash
 bun test packages/shell-init-generator
 ```
 
 The package includes tests for:
+
 - All shell generators
 - Completion discovery
 - Profile updating
@@ -277,21 +259,27 @@ The package includes tests for:
 ## Design Decisions
 
 ### Why Shell-Specific Generators?
+
 Each shell has unique:
+
 - Syntax requirements
 - Completion systems
 - Initialization patterns
 - Performance characteristics
 
 ### Why Separate Completion Generation?
+
 Separating completions:
+
 - Enables lazy loading
 - Improves startup time
 - Simplifies debugging
 - Allows selective loading
 
 ### Why Profile Updates?
+
 Automatic profile updates:
+
 - Simplifies user setup
 - Ensures consistency
 - Prevents manual errors
@@ -300,6 +288,7 @@ Automatic profile updates:
 ## Performance Optimizations
 
 ### Lazy Loading
+
 ```bash
 # Load completions only when needed
 autoload -Uz compinit
@@ -307,12 +296,14 @@ compinit -C  # Skip security check for speed
 ```
 
 ### Caching
+
 ```bash
 # Cache completion dump
 compinit -d ~/.zcompdump-$ZSH_VERSION
 ```
 
 ### Conditional Initialization
+
 ```bash
 # Only initialize if tool exists
 [[ -x ~/.dotfiles/tools/fzf/bin/fzf ]] && eval "$(fzf --zsh)"
@@ -321,17 +312,20 @@ compinit -d ~/.zcompdump-$ZSH_VERSION
 ## Best Practices
 
 ### Always Backup Profiles
+
 ```typescript
 await updater.update(profilePath, initScript, { backup: true });
 ```
 
 ### Validate Generated Scripts
+
 ```typescript
 // Ensure generated scripts are valid shell syntax
 await $`zsh -n ${generatedScript}`;
 ```
 
 ### Use Idempotent Operations
+
 ```typescript
 // Safe to run multiple times
 await generator.generate();
@@ -341,6 +335,7 @@ await generator.generate(); // No side effects
 ## Future Enhancements
 
 Potential improvements:
+
 - Fish shell support
 - PowerShell support
 - Async completion loading

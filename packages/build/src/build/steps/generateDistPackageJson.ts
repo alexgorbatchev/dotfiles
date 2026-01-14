@@ -9,7 +9,7 @@ import type { IBuildContext, IDependencyVersions } from '../types';
 export async function generateDistPackageJson(
   context: IBuildContext,
   dependencyVersions: IDependencyVersions,
-  runtimeDependencies: Record<string, string>
+  runtimeDependencies: Record<string, string>,
 ): Promise<void> {
   const dependencies: Record<string, string> = {
     ...runtimeDependencies,

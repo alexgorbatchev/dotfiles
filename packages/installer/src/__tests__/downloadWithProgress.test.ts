@@ -21,7 +21,7 @@ describe('downloadWithProgress utility', () => {
       url,
       expect.objectContaining({
         destinationPath,
-      })
+      }),
     );
 
     // Verify downloader was called with correct parameters (logger is mocked)

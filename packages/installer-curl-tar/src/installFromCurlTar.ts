@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { IDownloadContext, IExtractContext, IExtractResult, IInstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
@@ -16,6 +15,7 @@ import {
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli } from '@dotfiles/utils';
 import { $ } from 'dax-sh';
+import path from 'node:path';
 import { messages } from './log-messages';
 import type { CurlTarToolConfig } from './schemas';
 import type { CurlTarInstallResult, ICurlTarInstallMetadata } from './types';
@@ -57,7 +57,7 @@ export async function installFromCurlTar(
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
-  shellExecutor: ShellExecutor = $
+  shellExecutor: ShellExecutor = $,
 ): Promise<CurlTarInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlTar' });
@@ -96,7 +96,7 @@ export async function installFromCurlTar(
       postDownloadContext,
       hookExecutor,
       fs,
-      logger
+      logger,
     );
     if (!afterDownloadResult.success) {
       return {

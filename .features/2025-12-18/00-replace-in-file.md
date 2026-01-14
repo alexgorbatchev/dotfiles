@@ -36,7 +36,7 @@
 >       const replacement = await getReplacement(match[0], ...match.slice(1), match.index, str);
 >       const start = (match.index ?? 0) + offset;
 >       const end = start + match[0].length;
->       
+>
 >       result = result.slice(0, start) + replacement + result.slice(end);
 >       offset += replacement.length - match[0].length;
 >     }

@@ -1,15 +1,19 @@
 # Task
+
 > Add ability to download completions from a URL. The URL can be a completions file itself or an archive containing them.
 
 # Primary Objective
+
 Extend shell completion configuration to support downloading completion files from URLs, including support for direct file downloads and archives.
 
 # Open Questions
+
 - [x] Should we support both direct file URLs and archive URLs in the same config field (`url`)? **Yes, auto-detection based on file extension**
 - [x] For archives, should we use the same `source` field to specify which file to extract, similar to existing source-based completions? **Yes**
 - [x] Should we cache downloaded completion files similar to how tool downloads are cached? **Yes, files persist in binary directory**
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of the problem
   - Current completion config supports: `source` (local file/glob) and `cmd` (generate via command)
   - Missing: ability to download completions from a URL
@@ -52,6 +56,7 @@ Extend shell completion configuration to support downloading completion files fr
   - Typecheck passes
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -68,6 +73,7 @@ Extend shell completion configuration to support downloading completion files fr
 - [x] All acceptance criteria are met
 
 # Change Log
+
 - Initial task file created with context gathered from codebase analysis
 - Implemented URL-based completions download feature
 - Updated documentation with URL completions section

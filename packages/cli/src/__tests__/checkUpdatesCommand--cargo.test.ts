@@ -1,10 +1,10 @@
-import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService } from '@dotfiles/config';
 import type { IInstallerPlugin, InstallerPluginRegistry, UpdateCheckResult } from '@dotfiles/core';
 import type { CargoToolConfig } from '@dotfiles/installer-cargo';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
+import { beforeEach, describe, mock, test } from 'bun:test';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
@@ -40,7 +40,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
           hasUpdate: false,
           currentVersion: '0.10.1',
           latestVersion: '0.10.1',
-        })
+        }),
       ),
     };
 
@@ -97,7 +97,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
       ['INFO'],
       ['registerCheckUpdatesCommand'],
       [],
-      [messages.toolUpdateAvailable('exa', '0.10.1', '0.11.0')]
+      [messages.toolUpdateAvailable('exa', '0.10.1', '0.11.0')],
     );
   });
 

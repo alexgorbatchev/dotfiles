@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { CurlTarToolConfig } from '@dotfiles/installer-curl-tar';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { CurlTarInstallerPlugin } from '../CurlTarInstallerPlugin';
 
 describe('CurlTarInstallerPlugin', () => {

@@ -57,7 +57,7 @@ describe('SafeLogger - stack trace filtering', () => {
           frame.method === 'internalFunction' ||
           frame.method === 'frameworkCode' ||
           frame.method === 'moreInternalCode' ||
-          frame.fullFilePath?.includes('node_modules')
+          frame.fullFilePath?.includes('node_modules'),
       );
       expect(hasInternalFrames).toBe(false);
     } else {

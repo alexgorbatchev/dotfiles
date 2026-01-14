@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type {
   AsyncConfigureTool,
   AsyncConfigureToolWithReturn,
@@ -10,6 +9,7 @@ import { createToolConfigContext } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { createInstallFunction } from '@dotfiles/tool-config-builder';
+import path from 'node:path';
 import { messages } from './log-messages';
 
 interface IToolConfigModule {
@@ -25,7 +25,7 @@ function isToolConfig(config: unknown): config is ToolConfig {
 }
 
 function isConfigureToolFunction(
-  exportedValue: unknown
+  exportedValue: unknown,
 ): exportedValue is AsyncConfigureTool | AsyncConfigureToolWithReturn {
   return typeof exportedValue === 'function';
 }
@@ -74,7 +74,7 @@ async function processFunctionExport(
   filePath: string,
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
-  fileSystem: IResolvedFileSystem
+  fileSystem: IResolvedFileSystem,
 ): Promise<ToolConfig | null> {
   const toolDir = path.dirname(filePath);
   const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, fileSystem, logger);
@@ -115,7 +115,7 @@ function processDirectExport(
   exportedObject: unknown,
   logger: TsLogger,
   filePath: string,
-  toolName: string
+  toolName: string,
 ): ToolConfig | null {
   const validatedConfig = validateToolConfig(exportedObject);
   if (validatedConfig) {
@@ -123,7 +123,7 @@ function processDirectExport(
     if (validatedConfig.name !== toolName) {
       logger.warn(
         messages.configurationFieldInvalid('tool config object name', validatedConfig.name, `filename: ${toolName}`),
-        filePath
+        filePath,
       );
     }
   }
@@ -141,7 +141,7 @@ async function loadToolConfigFromModule(
   toolName: string,
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
-  fileSystem: IResolvedFileSystem
+  fileSystem: IResolvedFileSystem,
 ): Promise<ToolConfig | null> {
   try {
     const moduleExports: IToolConfigModule = await import(filePath);
@@ -162,7 +162,7 @@ async function loadToolConfigFromModule(
         filePath,
         projectConfig,
         systemInfo,
-        fileSystem
+        fileSystem,
       );
     } else {
       toolConfig = processDirectExport(exportedValue, logger, filePath, toolName);
@@ -184,7 +184,7 @@ function validateAndStoreToolConfig(
   logger: TsLogger,
   toolConfig: ToolConfig | null,
   filePath: string,
-  toolConfigs: Record<string, ToolConfig>
+  toolConfigs: Record<string, ToolConfig>,
 ): void {
   if (toolConfig?.name) {
     toolConfigs[toolConfig.name] = toolConfig;
@@ -210,9 +210,9 @@ function validateAndStoreToolConfig(
 async function scanDirectoryForToolFiles(
   fs: IResolvedFileSystem,
   dirPath: string,
-  logger: TsLogger
-): Promise<{ filePath: string; toolName: string }[]> {
-  const results: { filePath: string; toolName: string }[] = [];
+  logger: TsLogger,
+): Promise<{ filePath: string; toolName: string; }[]> {
+  const results: { filePath: string; toolName: string; }[] = [];
 
   try {
     const entries = await fs.readdir(dirPath);
@@ -267,7 +267,7 @@ export async function loadToolConfigs(
   fs: IResolvedFileSystem,
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
-  toolName?: string
+  toolName?: string,
 ): Promise<Record<string, ToolConfig>> {
   const logger = parentLogger.getSubLogger({ name: 'loadToolConfigs' });
   const toolConfigs: Record<string, ToolConfig> = {};
@@ -302,7 +302,7 @@ export async function loadToolConfigs(
         discoveredToolName,
         projectConfig,
         systemInfo,
-        fs
+        fs,
       );
       validateAndStoreToolConfig(logger, toolConfig, filePath, toolConfigs);
     }
@@ -335,7 +335,7 @@ export async function loadSingleToolConfig(
   toolConfigsDir: string,
   fs: IResolvedFileSystem,
   projectConfig: ProjectConfig,
-  systemInfo: ISystemInfo
+  systemInfo: ISystemInfo,
 ): Promise<ToolConfig | undefined> {
   const configs = await loadToolConfigs(parentLogger, toolConfigsDir, fs, projectConfig, systemInfo, toolName);
   return configs[toolName];

@@ -1,9 +1,9 @@
-import * as path from 'node:path';
 import type { ProjectConfigPaths } from '@dotfiles/config';
 import { getDefaultConfig } from '@dotfiles/config';
 import { Architecture, Platform } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import * as path from 'node:path';
 
 type InternalProjectConfigPaths = Omit<ProjectConfigPaths, 'manifestPath'>;
 
@@ -14,7 +14,7 @@ export interface ITestDirectoryOptions {
   /** Name for the temporary directory */
   testName?: string;
   /** Optional map of additional directories to create (key: directory identifier, value: path relative to base directory) */
-  additionalDirs?: Record<string, { path: string; relativeTo?: keyof InternalProjectConfigPaths }>;
+  additionalDirs?: Record<string, { path: string; relativeTo?: keyof InternalProjectConfigPaths; }>;
   /** Optional array of tool-specific directories to create in binaries directory */
   toolDirs?: string[];
 
@@ -65,20 +65,20 @@ async function createTempDir(fs: IFileSystem, name: string) {
 export async function createTestDirectories(
   logger: TsLogger,
   fs: IFileSystem,
-  options: ITestDirectoryOptions
+  options: ITestDirectoryOptions,
 ): Promise<ITestDirectories> {
   const homeDir = await createTempDir(
     fs,
-    `createTestDirectories${options.testName !== undefined ? `--${options.testName}` : ''}`
+    `createTestDirectories${options.testName !== undefined ? `--${options.testName}` : ''}`,
   );
   const defaultConfig = await getDefaultConfig(
     logger,
     fs,
     { homeDir, platform: Platform.Linux, arch: Architecture.X86_64 },
     { HOME: homeDir },
-    `${homeDir}/config.yaml`
+    `${homeDir}/config.yaml`,
   );
-  const paths = { ...defaultConfig.paths, ...(options.paths || {}) };
+  const paths = { ...defaultConfig.paths, ...options.paths };
 
   await fs.ensureDir(paths.homeDir);
   await fs.ensureDir(paths.dotfilesDir);
@@ -100,7 +100,7 @@ export async function createTestDirectories(
       const dir = this.additionalDirs[key];
       if (!dir) {
         throw new Error(
-          `Additional directory '${key}' not found. Available keys: ${Object.keys(this.additionalDirs).join(', ')}`
+          `Additional directory '${key}' not found. Available keys: ${Object.keys(this.additionalDirs).join(', ')}`,
         );
       }
       return dir;

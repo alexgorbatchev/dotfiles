@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { FetchMockHelper } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { FileCache } from '../cache/FileCache';
 import type { ICacheConfig } from '../cache/types';
 import { Downloader } from '../Downloader';

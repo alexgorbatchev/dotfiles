@@ -16,8 +16,7 @@ import { defineTool } from '@dotfiles/cli';
 export default defineTool((install, ctx) =>
   install('cargo', {
     crateName: 'ripgrep',
-  })
-    .bin('rg')
+  }).bin('rg')
 );
 ```
 
@@ -47,8 +46,7 @@ The `install('cargo', params)` function accepts the following parameters:
 export default defineTool((install, ctx) =>
   install('cargo', {
     crateName: 'fd-find',
-  })
-    .bin('fd')
+  }).bin('fd')
 );
 ```
 
@@ -61,8 +59,7 @@ export default defineTool((install, ctx) =>
     binarySource: 'github-releases',
     githubRepo: 'sharkdp/bat',
     assetPattern: '{crateName}-{version}-{arch}-{platform}.tar.gz',
-  })
-    .bin('bat')
+  }).bin('bat')
 );
 ```
 
@@ -73,8 +70,7 @@ export default defineTool((install, ctx) =>
   install('cargo', {
     crateName: 'ripgrep',
     versionSource: 'crates-io',
-  })
-    .bin('rg')
+  }).bin('rg')
 );
 ```
 
@@ -113,12 +109,14 @@ export default defineTool((install, ctx) =>
 ### Platform Detection
 
 Automatically maps Node.js platform/architecture names to Rust target triples:
+
 - Platforms: `darwin` → `apple-darwin`, `linux` → `unknown-linux-gnu`, `win32` → `pc-windows-msvc`
 - Architectures: `arm64` → `aarch64`, `x64` → `x86_64`
 
 ### Lifecycle Hooks
 
 Supports installation hooks at key points:
+
 - **afterDownload**: Executed after archive download, before extraction
 - **afterInstall**: Executed after binary setup is complete
 

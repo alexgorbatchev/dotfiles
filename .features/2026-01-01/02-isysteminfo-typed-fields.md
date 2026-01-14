@@ -1,13 +1,17 @@
 # Task
+
 > Change `ISystemInfo` interface to use proper types for `platform` and `arch` fields instead of `string`.
 
 # Primary Objective
+
 Update `ISystemInfo.platform` to use `NodeJS.Platform` type and `ISystemInfo.arch` to use `NodeJS.Architecture` type.
 
 # Open Questions
+
 - [x] What types should be used? → `NodeJS.Platform` and `NodeJS.Architecture` from Node.js types
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of the problem
   - `ISystemInfo` uses `string` for `platform` and `arch` fields
   - Node.js provides specific types: `NodeJS.Platform` and `NodeJS.Architecture`
@@ -30,6 +34,7 @@ Update `ISystemInfo.platform` to use `NodeJS.Platform` type and `ISystemInfo.arc
 - [x] **TS007**: Run typecheck and tests to verify all changes are correct
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -46,6 +51,7 @@ Update `ISystemInfo.platform` to use `NodeJS.Platform` type and `ISystemInfo.arc
 - [x] Tests do not print anything to console.
 
 # Change Log
+
 - Initial task file created
 - Updated `ISystemInfo` interface to use `NodeJS.Platform` and `NodeJS.Architecture` types
 - Added `'arm'` case to `getArchitecturePatterns.ts`

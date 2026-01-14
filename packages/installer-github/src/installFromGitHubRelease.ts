@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { selectBestMatch } from '@dotfiles/arch';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
@@ -30,6 +29,7 @@ import type {
 } from '@dotfiles/installer-github';
 import type { TsLogger } from '@dotfiles/logger';
 import { normalizeVersion } from '@dotfiles/utils';
+import path from 'node:path';
 import type { IGitHubApiClient } from './github-client';
 import { messages } from './log-messages';
 import { type AssetPattern, formatAssetPatternForLog, matchAssetPattern } from './matchAssetPattern';
@@ -49,7 +49,7 @@ export async function installFromGitHubRelease(
   archiveExtractor: IArchiveExtractor,
   projectConfig: ProjectConfig,
   hookExecutor: HookExecutor,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<GitHubReleaseInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromGitHubRelease' });
   logger.debug(messages.startingInstallation(toolName));
@@ -115,7 +115,7 @@ export async function installFromGitHubRelease(
       archiveExtractor,
       hookExecutor,
       toolFs,
-      logger
+      logger,
     );
     if (!installResult.success) {
       const result: GitHubReleaseInstallResult = installResult;
@@ -150,7 +150,7 @@ export async function installFromGitHubRelease(
   }
 }
 
-type OperationResult<T> = { success: true; data: T } | { success: false; error: string };
+type OperationResult<T> = { success: true; data: T; } | { success: false; error: string; };
 
 interface IDownloadAssetResultData {
   downloadPath: string;
@@ -162,7 +162,7 @@ export async function fetchGitHubRelease(
   repo: string,
   version: string,
   githubApiClient: IGitHubApiClient,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<OperationResult<IGitHubRelease>> {
   const logger = parentLogger.getSubLogger({ name: 'fetchGitHubRelease' });
   const [owner, repoName] = repo.split('/');
@@ -219,7 +219,7 @@ async function fetchWithTagPatternDetection(
   repoName: string,
   version: string,
   githubApiClient: IGitHubApiClient,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<IGitHubRelease | null> {
   const logger = parentLogger.getSubLogger({ name: 'fetchWithTagPatternDetection' });
   // Import utilities from github-client
@@ -254,7 +254,7 @@ async function showAvailableReleaseTags(
   owner: string,
   repoName: string,
   githubApiClient: IGitHubApiClient,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'showAvailableReleaseTags' });
   const tags = await githubApiClient.getLatestReleaseTags(owner, repoName, TAG_SUGGESTIONS_COUNT);
@@ -274,7 +274,7 @@ async function selectAsset(
   release: IGitHubRelease,
   params: GithubReleaseInstallParams,
   context: IInstallContext,
-  logger: TsLogger
+  logger: TsLogger,
 ): Promise<OperationResult<IGitHubReleaseAsset>> {
   let asset: IGitHubReleaseAsset | undefined;
 
@@ -295,8 +295,8 @@ async function selectAsset(
     logger.debug(
       messages.assetPlatformMatch(
         platformToString(context.systemInfo.platform),
-        architectureToString(context.systemInfo.arch)
-      )
+        architectureToString(context.systemInfo.arch),
+      ),
     );
     asset = findPlatformAsset(release.assets, context.systemInfo);
   }
@@ -327,7 +327,7 @@ function findPlatformAsset(assets: IGitHubReleaseAsset[], systemInfo: ISystemInf
 function createAssetNotFoundError(
   release: IGitHubRelease,
   params: GithubReleaseInstallParams,
-  context: IInstallContext
+  context: IInstallContext,
 ): string {
   const availableAssetNames = release.assets.map((a) => a.name);
   const platform = platformToString(context.systemInfo.platform);
@@ -354,7 +354,7 @@ function createAssetNotFoundError(
 function constructDownloadUrl(
   rawBrowserDownloadUrl: string,
   projectConfig: ProjectConfig,
-  logger: TsLogger
+  logger: TsLogger,
 ): OperationResult<string> {
   const customHost = projectConfig.github.host;
   const hasCustomHost = Boolean(customHost);
@@ -426,7 +426,7 @@ async function downloadAsset(
   context: IInstallContext,
   downloader: IDownloader,
   options: IInstallOptions | undefined,
-  logger: TsLogger
+  logger: TsLogger,
 ): Promise<OperationResult<IDownloadAssetResultData>> {
   logger.debug(messages.downloadingAsset(downloadUrl));
   const downloadPath = path.join(context.stagingDir, asset.name);
@@ -450,7 +450,7 @@ async function executeAfterDownloadHook(
   postDownloadContext: IDownloadContext,
   hookExecutor: HookExecutor,
   fs: IFileSystem,
-  logger: TsLogger
+  logger: TsLogger,
 ): Promise<OperationResult<void>> {
   const result = await executeAfterDownloadHookUtil(toolConfig, postDownloadContext, hookExecutor, fs, logger);
   if (result.success) {
@@ -479,7 +479,7 @@ async function processAssetInstallation(
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
   fs: IFileSystem,
-  logger: TsLogger
+  logger: TsLogger,
 ): Promise<OperationResult<void>> {
   if (isArchiveFile(asset.name)) {
     return await processArchiveInstallation(
@@ -493,7 +493,7 @@ async function processAssetInstallation(
       archiveExtractor,
       hookExecutor,
       fs,
-      logger
+      logger,
     );
   } else {
     await setupBinariesFromDirectDownload(toolFs, toolName, toolConfig, context, downloadPath, logger);
@@ -513,7 +513,7 @@ async function processArchiveInstallation(
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
   fs: IFileSystem,
-  logger: TsLogger
+  logger: TsLogger,
 ): Promise<OperationResult<void>> {
   logger.debug(messages.extractingArchive(asset.name));
 
@@ -549,7 +549,7 @@ async function executeAfterExtractHook(
   postExtractContext: IExtractContext,
   fs: IFileSystem,
   hookExecutor: HookExecutor,
-  logger: TsLogger
+  logger: TsLogger,
 ): Promise<OperationResult<void>> {
   const result = await executeAfterExtractHookUtil(toolConfig, postExtractContext, hookExecutor, fs, logger);
   if (result.success) {

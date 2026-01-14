@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'bun:test';
 import { LogLevel } from '@dotfiles/logger';
+import { describe, expect, test } from 'bun:test';
 import { resolveLogLevel } from '../main';
 import type { IGlobalProgramOptions } from '../types';
 

@@ -1,4 +1,4 @@
-import { extendedShellBrand, type $extended } from '@dotfiles/core';
+import { type $extended, extendedShellBrand, hasLoggingShell, loggingShellBrand } from '@dotfiles/core';
 import type { $ } from 'dax-sh';
 
 /**
@@ -14,15 +14,15 @@ import type { $ } from 'dax-sh';
  */
 export function createConfiguredShell(
   $shell: typeof $ | $extended,
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
 ): $extended {
   // Create a wrapper function that applies the environment to every command
   const configuredShell = (first: TemplateStringsArray | string, ...expressions: unknown[]) => {
     if (typeof first === 'string') {
       return ($shell as $extended)(first).env(env);
     }
-    // biome-ignore lint/suspicious/noExplicitAny: dax-sh typing for template expressions
-    return $shell(first, ...(expressions as any[])).env(env);
+    // @ts-expect-error: dax-sh typing for template expressions
+    return $shell(first, ...expressions).env(env);
   };
 
   // Copy all properties from the original shell to the wrapper
@@ -31,6 +31,12 @@ export function createConfiguredShell(
 
   // Add the brand symbol to mark this as an extended shell
   Object.defineProperty(configuredShell, extendedShellBrand, { value: true, enumerable: false });
+
+  // Preserve the logging shell brand if present on the source shell
+  // (Object.assign doesn't copy non-enumerable symbol properties)
+  if (hasLoggingShell($shell)) {
+    Object.defineProperty(configuredShell, loggingShellBrand, { value: true, enumerable: false });
+  }
 
   return configuredShell as unknown as $extended;
 }

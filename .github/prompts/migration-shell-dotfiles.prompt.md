@@ -1,6 +1,7 @@
 ---
 mode: agent
 ---
+
 # Tool Configuration Migration Guide
 
 ## Overview
@@ -78,16 +79,16 @@ configs/
 
 ```typescript
 // fzf releases: fzf-0.54.0-darwin_arm64.tar.gz contains fzf-0.54.0/fzf
-c.bin('fzf')  // Default pattern handles this automatically
+c.bin('fzf'); // Default pattern handles this automatically
 
-// ripgrep releases: ripgrep-14.1.1-aarch64-apple-darwin.tar.gz contains ripgrep-14.1.1-aarch64-apple-darwin/rg  
-c.bin('rg')  // Default pattern handles this automatically
+// ripgrep releases: ripgrep-14.1.1-aarch64-apple-darwin.tar.gz contains ripgrep-14.1.1-aarch64-apple-darwin/rg
+c.bin('rg'); // Default pattern handles this automatically
 
 // GitHub CLI: gh_2.40.1_darwin_arm64.tar.gz contains gh_2.40.1_darwin_arm64/bin/gh
-c.bin('gh', '*/bin/gh')  // Custom pattern needed for nested bin directory
+c.bin('gh', '*/bin/gh'); // Custom pattern needed for nested bin directory
 
 // Neovim: nvim-macos-arm64.tar.gz contains nvim-macos-arm64/bin/nvim
-c.bin('nvim', '*/bin/nvim')  // Custom pattern needed for nested bin directory
+c.bin('nvim', '*/bin/nvim'); // Custom pattern needed for nested bin directory
 ```
 
 > **💡 More Examples**: See [Common Patterns](../../docs/common-patterns.md) for additional real-world configuration examples.
@@ -98,11 +99,12 @@ When no pattern is specified, `c.bin('name')` automatically uses the flexible pa
 
 ```typescript
 // These are equivalent:
-c.bin('tool')
-c.bin('tool', '{,*/}tool')
+c.bin('tool');
+c.bin('tool', '{,*/}tool');
 ```
 
 **Pattern Explanation:**
+
 - `{,*/}tool` uses minimatch brace expansion
 - Matches `tool` (flat archive extraction)
 - Matches `*/tool` (archive with single subdirectory)
@@ -117,6 +119,7 @@ This flexible default handles both flat and single-level nested archives, coveri
 The new system centralizes all tool-related assets. Instead of copying files with shell commands, you move all related assets (e.g., `config.toml`, fonts, themes) into the same directory as your `.tool.ts` file and then use the `.symlink()` method to link them to their expected locations in your home directory.
 
 **Before (Shell):**
+
 ```bash
 # In install script
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
@@ -124,6 +127,7 @@ cp config.toml ~/.config/tool/
 ```
 
 **After (TypeScript):**
+
 ```typescript
 // File: configs/my-tool/my-tool.tool.ts
 // Place all assets (e.g., 'config.toml') in configs/my-tool/ directory
@@ -141,12 +145,14 @@ export default defineTool((c, ctx) =>
 ### Converting Aliases and Functions
 
 **Before (Shell):**
+
 ```bash
 alias ll='ls -la'
 function mkcd() { mkdir -p "$1" && cd "$1"; }
 ```
 
 **After (TypeScript):**
+
 ```typescript
 // File: configs/shell-utils/shell-utils.tool.ts
 import { defineTool } from '@dotfiles/schemas';
@@ -157,7 +163,7 @@ export default defineTool((c, ctx) =>
       ll: 'ls -la',
     },
     shellInit: [
-      always/* zsh */`
+      always /* zsh */`
         function mkcd() { mkdir -p "$1" && cd "$1"; }
       `,
     ],
@@ -180,6 +186,7 @@ If you see "Installation completed but binary not found", check:
 ### Pattern Debugging
 
 To debug pattern matching:
+
 1. Download the actual release archive
 2. Extract it manually to see the directory structure
 3. Adjust the pattern to match the actual structure
@@ -200,6 +207,7 @@ tar -tzf rg.tar.gz | head -10
 ## Complete Migration Checklist
 
 ### Pre-Migration Planning
+
 - [ ] Read [Getting Started Guide](../../docs/getting-started.md)
 - [ ] Review [Installation Methods](../../docs/installation/README.md) to choose appropriate installation type
 - [ ] Understand [Platform Support](../../docs/platform-support.md) requirements
@@ -208,28 +216,33 @@ tar -tzf rg.tar.gz | head -10
 ### For Each Tool Configuration
 
 #### File Structure Setup
+
 - [ ] Create tool directory in `configs/{tool-name}/`
 - [ ] Create main configuration file `configs/{tool-name}/{tool-name}.tool.ts`
 - [ ] Move all related tool assets to the tool directory
 
 #### Shell Integration Migration
+
 See [Shell Integration Guide](../../docs/shell-integration.md)
 
-- [ ] Convert aliases 
-- [ ] Convert functions 
-- [ ] Convert environment variables 
+- [ ] Convert aliases
+- [ ] Convert functions
+- [ ] Convert environment variables
 - [ ] Set up completions
 
 #### Configuration Files
+
 - [ ] Move all related tool assets (configs, fonts, themes, binaries, etc.) to the tool directory (`configs/{tool-name}/`) preserving their original file layout
 - [ ] Set up symlinks using [Symlinks Guide](../../docs/symlinks.md)
 - [ ] Configure platform-specific paths using [Platform Support](../../docs/platform-support.md)
 
 #### Advanced Features (if needed)
+
 - [ ] Add installation hooks using [Hooks Guide](../../docs/hooks.md)
 - [ ] Implement custom logic using [Advanced Topics](../../docs/advanced-topics.md)
 
 #### Testing and Validation
+
 - [ ] Test the migrated configuration using [Testing Guide](../../docs/testing.md)
 - [ ] Verify symlinks are created correctly
 - [ ] Confirm tool functionality is preserved
@@ -237,6 +250,7 @@ See [Shell Integration Guide](../../docs/shell-integration.md)
 - [ ] Validate shell integration works correctly
 
 ### Post-Migration
+
 - [ ] Remove old shell scripts and configuration files
 - [ ] Update documentation
 - [ ] Test complete system integration

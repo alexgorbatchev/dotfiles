@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noConsole: build script */
-
 import fs from 'node:fs';
 
 import { extractTypeAliasSignature } from '../../extractTypeAliasSignature';
@@ -28,7 +26,7 @@ export function checkProjectConfigTypeSignature(context: IBuildContext): void {
     const signature = extractTypeAliasSignature(
       context.paths.schemaCheckTsconfigPath,
       context.paths.outputSchemasDtsPath,
-      'ProjectConfig'
+      'ProjectConfig',
     );
 
     if (!signature.includes('generatedDir: string')) {

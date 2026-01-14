@@ -1,19 +1,24 @@
 # User Prompt
+
 > Follow instructions in [alex--feature--new.prompt.md](file:///Users/alex/.dotfiles/instructions/chat/prompts/alex--feature--new.prompt.md).
-> - INFO    Tool "fnm" >>>vunknown<<< installed successfully using curl-script 
-> 
+>
+> - INFO Tool "fnm" >>>vunknown<<< installed successfully using curl-script
+>
 > when installing from curl, we should try calling --version on the tool... im wondering if this could be done to also determine the version used for the folder creation because currently we use fnm/timestamp, but if fnm --version could be obtained, we could create fnm/version instead, which would be a much better end user experience, investigate
 
 # Primary Objective
+
 Implement version detection for curl-script installations by calling `--version` on installed tools to create version-based directories (e.g., `fnm/18.0.0`) instead of timestamp-based directories (e.g., `fnm/20251202-123456`).
 
 # Open Questions
+
 - [x] Should we make version detection optional or mandatory for curl-script installations? **Optional (fall back to timestamp)**
 - [x] What should happen if `--version` call fails - fall back to timestamp or fail the installation? **Fall back to timestamp**
 - [x] Should we support other version flag patterns like `-v`, `-V`, `version`? **Yes, try all patterns**
 - [x] Should this approach be extended to other installer types beyond curl-script? **Yes: curl-script, curl-tar, and brew**
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause - understand why curl-script uses timestamps instead of version directories
 - [x] **TS002**: Investigate current version resolution implementation across installer plugins
 - [x] **TS003**: Create shared utility for detecting version via CLI flags (`--version`, `-v`, `-V`, `version`)
@@ -35,6 +40,7 @@ Implement version detection for curl-script installations by calling `--version`
 - [x] **TS019**: Add version detection tests for brew installer (brew uses `brew info` for version detection - already implemented)
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -47,6 +53,7 @@ Implement version detection for curl-script installations by calling `--version`
 - [x] `bun lint`, `bun typecheck` and `bun test` commands runs successfully in the new worktree
 
 # Change Log
+
 - Created feature branch and worktree for version detection in curl-script installations
 - TS001: Investigated Installer.ts - found existing `resolveVersion` infrastructure that falls back to timestamps
 - TS002: Confirmed GitHub Release and Cargo already implement `resolveVersion`, brew/curl-script/curl-tar do not

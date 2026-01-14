@@ -18,7 +18,7 @@ export const messages = {
       createSafeLogMessage(`No matches found for pattern ${patternSegment} in directory ${directoryPath}`),
     directDownloadSingleBinary: (configuredCount: number, primaryBinary: string) =>
       createSafeLogMessage(
-        `Direct download only provides one binary, but ${configuredCount} were configured. Only ${primaryBinary} will be available.`
+        `Direct download only provides one binary, but ${configuredCount} were configured. Only ${primaryBinary} will be available.`,
       ),
     patternDebug: (pattern: string, parts: string[], extractDir: string) =>
       createSafeLogMessage(`Pattern: ${pattern}, Parts: [${parts.join(', ')}], ExtractDir: ${extractDir}`),
@@ -32,7 +32,7 @@ export const messages = {
   binarySymlink: {
     targetBinaryMissing: (toolName: string, binaryName: string, targetPath: string) =>
       createSafeLogMessage(
-        `Cannot create entrypoint for ${toolName}/${binaryName}: target binary missing at ${targetPath}`
+        `Cannot create entrypoint for ${toolName}/${binaryName}: target binary missing at ${targetPath}`,
       ),
     removingExisting: (symlinkPath: string) => createSafeLogMessage(`Removing old entrypoint: ${symlinkPath}`),
     removeExistingFailed: (symlinkPath: string) =>
@@ -63,7 +63,7 @@ export const messages = {
       createSafeLogMessage(`install: Version resolution failed, using timestamp: ${String(error)}`),
     externalBinaryMissing: (toolName: string, binaryName: string, binaryPath: string) =>
       createSafeLogMessage(
-        `Cannot create symlink for ${toolName}/${binaryName}: external binary missing at ${binaryPath}`
+        `Cannot create symlink for ${toolName}/${binaryName}: external binary missing at ${binaryPath}`,
       ),
     removingExistingSymlink: (symlinkPath: string) => createSafeLogMessage(`Removing existing symlink: ${symlinkPath}`),
     creatingExternalSymlink: (symlinkPath: string, targetPath: string) =>

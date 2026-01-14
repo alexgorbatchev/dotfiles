@@ -99,7 +99,7 @@ Schema type generation is a multi-stage process:
 
 - Declaration emit happens first (via `tsgo`) to generate `.d.ts` files for the schema entry.
 - A temporary workspace is created to make subsequent bundling/validation deterministic.
-	- This is important because schema bundling can otherwise work by accident depending on what is available from the root workspace installation and how tolerant the bundler is to unresolved externals.
+  - This is important because schema bundling can otherwise work by accident depending on what is available from the root workspace installation and how tolerant the bundler is to unresolved externals.
 - `dts-bundle-generator` bundles the emitted declarations into `.dist/schemas.d.ts`.
 
 The bundler is configured to keep specific modules external (and not inline them into the declarations) to match how the runtime package is structured.

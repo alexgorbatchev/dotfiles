@@ -1,7 +1,7 @@
-import crypto from 'node:crypto';
-import path from 'node:path';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import crypto from 'node:crypto';
+import path from 'node:path';
 import { messages } from './log-messages';
 import type {
   CacheEntry,
@@ -167,7 +167,7 @@ export class FileCache implements ICache {
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
       logger.warn(messages.storageFailed(key, errorMessage));
-      throw new Error(`Failed to cache data: ${errorMessage}`);
+      throw new Error(`Failed to cache data: ${errorMessage}`, { cause: error });
     }
   }
 
@@ -176,7 +176,7 @@ export class FileCache implements ICache {
     data: Buffer,
     ttlMs: number | undefined,
     url: string,
-    contentType?: string
+    contentType?: string,
   ): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'setDownload' });
     if (!this.config.enabled) {
@@ -224,7 +224,7 @@ export class FileCache implements ICache {
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
       logger.warn(messages.storageFailed(key, errorMessage));
-      throw new Error(`Failed to cache download: ${errorMessage}`);
+      throw new Error(`Failed to cache download: ${errorMessage}`, { cause: error });
     }
   }
 
@@ -291,7 +291,7 @@ export class FileCache implements ICache {
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
       logger.warn(messages.deleteFailed(key, errorMessage));
-      throw new Error(`Failed to delete cache entry: ${errorMessage}`);
+      throw new Error(`Failed to delete cache entry: ${errorMessage}`, { cause: error });
     }
   }
 
@@ -339,7 +339,7 @@ export class FileCache implements ICache {
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
       logger.warn(messages.clearExpiredFailed(errorMessage));
-      throw new Error(`Failed to clear expired cache entries: ${errorMessage}`);
+      throw new Error(`Failed to clear expired cache entries: ${errorMessage}`, { cause: error });
     }
   }
 
@@ -362,7 +362,7 @@ export class FileCache implements ICache {
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
       logger.warn(messages.clearFailed(errorMessage));
-      throw new Error(`Failed to clear cache: ${errorMessage}`);
+      throw new Error(`Failed to clear cache: ${errorMessage}`, { cause: error });
     }
   }
 
@@ -381,7 +381,7 @@ export class FileCache implements ICache {
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
       logger.warn(messages.directoryCreationFailed(errorMessage));
-      throw new Error(`Failed to create cache directories: ${errorMessage}`);
+      throw new Error(`Failed to create cache directories: ${errorMessage}`, { cause: error });
     }
   }
 

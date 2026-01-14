@@ -1,9 +1,24 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IInstallContext } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { $ } from 'dax-sh';
 import { installFromBrew } from '../installFromBrew';
 import type { BrewToolConfig } from '../schemas';
+
+interface IMockShellPromise extends
+  Promise<{
+    stdout: Buffer;
+    stderr: Buffer;
+    exitCode: number;
+    code: number;
+    toString: () => string;
+  }>
+{
+  quiet: () => IMockShellPromise;
+  nothrow: () => IMockShellPromise;
+  noThrow: () => IMockShellPromise;
+  env: () => IMockShellPromise;
+}
 
 describe('installFromBrew', () => {
   let logger: TestLogger;
@@ -32,15 +47,13 @@ describe('installFromBrew', () => {
         toString: () => stdout,
       };
 
-      const promise = Promise.resolve(result);
-      // biome-ignore lint/suspicious/noExplicitAny: Mocking shell promise
-      const self = promise as any;
-      self.quiet = () => self;
-      self.nothrow = () => self;
-      self.noThrow = () => self;
-      self.env = () => self;
+      const promise = Promise.resolve(result) as IMockShellPromise;
+      promise.quiet = () => promise;
+      promise.nothrow = () => promise;
+      promise.noThrow = () => promise;
+      promise.env = () => promise;
 
-      return self;
+      return promise;
     }) as unknown as typeof $;
   });
 

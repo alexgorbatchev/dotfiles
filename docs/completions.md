@@ -9,16 +9,17 @@ Tab completions are configured per-shell using `.completions()`:
 
 ## Configuration Options
 
-| Property | Description |
-|----------|-------------|
-| `source` | Path to completion file relative to extracted archive or downloaded content (supports globs) |
-| `url` | URL to download completion file or archive from |
-| `cmd` | Command to generate completions dynamically |
-| `bin` | Binary name for completion filename (when different from tool name) |
-| `name` | Custom filename (overrides `bin` and defaults) |
-| `targetDir` | Custom installation directory (absolute path with context) |
+| Property    | Description                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------- |
+| `source`    | Path to completion file relative to extracted archive or downloaded content (supports globs) |
+| `url`       | URL to download completion file or archive from                                              |
+| `cmd`       | Command to generate completions dynamically                                                  |
+| `bin`       | Binary name for completion filename (when different from tool name)                          |
+| `name`      | Custom filename (overrides `bin` and defaults)                                               |
+| `targetDir` | Custom installation directory (absolute path with context)                                   |
 
 **Note**: Use one of these combinations:
+
 - `source` alone - Local file from tool archive
 - `cmd` alone - Generate via command
 - `url` alone - Direct file download (source auto-derived from URL filename)
@@ -27,6 +28,7 @@ Tab completions are configured per-shell using `.completions()`:
 ## Shell Callback Context
 
 The shell callback receives two parameters:
+
 - `shell` - The shell configurator for setting up completions, aliases, etc.
 - `ctx` - Context with `version` property (only available after installation)
 
@@ -89,6 +91,7 @@ For completions that need the installed version in the URL, use a callback:
 ```
 
 The callback receives `ctx` with:
+
 - `version` - The installed version of the tool (e.g., `'v10.3.0'`, `'15.1.0'`)
 
 URL-based completions are downloaded to the tool's binary directory and symlinked to the shell completions directory. The download is cached - subsequent `generate` runs will use the cached file.
@@ -109,7 +112,7 @@ For tools that generate completions at runtime (recommended for version-dependen
 When tool filename differs from binary name (e.g., `curl-script--fnm.tool.ts` for binary `fnm`):
 
 ```typescript
-.zsh((shell) => shell.completions({ 
+.zsh((shell) => shell.completions({
   cmd: 'fnm completions --shell zsh',
   bin: 'fnm'  // Results in '_fnm' instead of '_curl-script--fnm'
 }))
@@ -121,10 +124,12 @@ When tool filename differs from binary name (e.g., `curl-script--fnm.tool.ts` fo
 export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .zsh((shell) => shell.completions({
-      source: 'completions/_tool.zsh',
-      targetDir: '~/.zsh/completions'
-    }))
+    .zsh((shell) =>
+      shell.completions({
+        source: 'completions/_tool.zsh',
+        targetDir: '~/.zsh/completions',
+      })
+    )
 );
 ```
 

@@ -1,7 +1,7 @@
-import os from 'node:os';
-import path from 'node:path';
 import { NodeFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import os from 'node:os';
+import path from 'node:path';
 import { messages } from './log-messages';
 
 /**
@@ -24,7 +24,7 @@ export const DEFAULT_CONFIG_FILES: string[] = ['dotfiles.config.ts', 'dotfiles.c
 export async function resolveConfigPath(
   parentLogger: TsLogger,
   configOption: string,
-  cwd: string
+  cwd: string,
 ): Promise<string | undefined> {
   const logger = parentLogger.getSubLogger({ name: 'resolveConfigPath' });
 

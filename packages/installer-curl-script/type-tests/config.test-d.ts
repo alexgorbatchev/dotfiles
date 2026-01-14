@@ -18,7 +18,7 @@ export type CurlScriptParamsMatchSchema = ExpectTrue<CurlScriptParams extends Cu
 export type CurlScriptSchemaMatchesParams = ExpectTrue<CurlScriptInstallParams extends CurlScriptParams ? true : false>;
 export type CurlScriptRequiresUrl = ExpectTrue<'url' extends keyof CurlScriptParams ? true : false>;
 export type CurlScriptUrlIsRequired = ExpectTrue<
-  Pick<CurlScriptParams, 'url'> extends { url: CurlScriptParams['url'] } ? true : false
+  Pick<CurlScriptParams, 'url'> extends { url: CurlScriptParams['url']; } ? true : false
 >;
 
 defineTool((install) =>
@@ -26,11 +26,9 @@ defineTool((install) =>
     url: 'https://example.com/install.sh',
     shell: 'bash',
   }).zsh((shell) =>
-    shell
-      .once(/* zsh */ `
+    shell.once(/* zsh */ `
         echo "once"
-      `)
-      .always(/* zsh */ `
+      `).always(/* zsh */ `
         echo "always"
       `)
   )

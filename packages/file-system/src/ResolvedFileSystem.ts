@@ -26,7 +26,7 @@ export class ResolvedFileSystem implements IResolvedFileSystem {
   public async writeFile(
     filePath: string,
     content: string | NodeJS.ArrayBufferView,
-    encoding?: BufferEncoding
+    encoding?: BufferEncoding,
   ): Promise<void> {
     await this.inner.writeFile(expandHomePath(this.homeDir, filePath), content, encoding);
   }
@@ -35,7 +35,7 @@ export class ResolvedFileSystem implements IResolvedFileSystem {
     return this.inner.exists(expandHomePath(this.homeDir, filePath));
   }
 
-  public async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+  public async mkdir(dirPath: string, options?: { recursive?: boolean; }): Promise<void> {
     await this.inner.mkdir(expandHomePath(this.homeDir, dirPath), options);
   }
 
@@ -43,11 +43,11 @@ export class ResolvedFileSystem implements IResolvedFileSystem {
     return this.inner.readdir(expandHomePath(this.homeDir, dirPath));
   }
 
-  public async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
+  public async rm(filePath: string, options?: { recursive?: boolean; force?: boolean; }): Promise<void> {
     await this.inner.rm(expandHomePath(this.homeDir, filePath), options);
   }
 
-  public async rmdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+  public async rmdir(dirPath: string, options?: { recursive?: boolean; }): Promise<void> {
     await this.inner.rmdir(expandHomePath(this.homeDir, dirPath), options);
   }
 

@@ -1,5 +1,5 @@
-import { describe, expect, it, mock } from 'bun:test';
 import { createMemFileSystem } from '@dotfiles/file-system';
+import { describe, expect, it, mock } from 'bun:test';
 
 describe('createMemFileSystem', () => {
   it('should create a functional IFileSystem instance without any options', async () => {

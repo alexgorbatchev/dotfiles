@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
 import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
+import { describe, expect, it } from 'bun:test';
 import { getArchitecturePatterns } from '../getArchitecturePatterns';
 
 describe('getArchitecturePatterns', () => {

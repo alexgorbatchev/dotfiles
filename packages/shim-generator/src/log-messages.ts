@@ -18,7 +18,7 @@ export const messages = {
       createSafeLogMessage(`Existing shim found at ${shimPath}; overwrite is disabled`),
     conflictingFile: (toolName: string, shimPath: string) =>
       createSafeLogMessage(
-        `Cannot create shim for "${toolName}": conflicting file exists at ${shimPath}. Use --overwrite to replace it.`
+        `Cannot create shim for "${toolName}": conflicting file exists at ${shimPath}. Use --overwrite to replace it.`,
       ),
     overwritingConflict: (shimPath: string) => createSafeLogMessage(`Overwriting conflicting file at ${shimPath}`),
     resolvedBinaryPath: (toolName: string, binaryName: string, binaryPath: string) =>

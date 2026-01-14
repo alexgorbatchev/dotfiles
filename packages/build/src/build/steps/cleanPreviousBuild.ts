@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noConsole: build script */
-
 import fs from 'node:fs';
 
 import type { IBuildContext } from '../types';

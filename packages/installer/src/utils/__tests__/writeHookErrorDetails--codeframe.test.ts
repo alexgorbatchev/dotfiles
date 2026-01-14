@@ -1,7 +1,7 @@
-import { describe, it } from 'bun:test';
-import assert from 'node:assert';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { LogLevel, TestLogger } from '@dotfiles/logger';
+import { describe, it } from 'bun:test';
+import assert from 'node:assert';
 import type { ILogObj } from 'tslog';
 import { writeHookErrorDetails } from '../writeHookErrorDetails';
 

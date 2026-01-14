@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { AggregateInstallResult, IInstallerPlugin } from '@dotfiles/core';
 import type { GithubReleaseToolConfig, IGitHubReleaseInstallMetadata } from '@dotfiles/installer-github';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - externally managed plugins', () => {
@@ -99,7 +99,7 @@ describe('Installer - externally managed plugins', () => {
       const firstArg: string | undefined = call[0];
       return Boolean(
         firstArg?.includes('test-tool') &&
-          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(firstArg)
+          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(firstArg),
       );
     });
 

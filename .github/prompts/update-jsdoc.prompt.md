@@ -1,49 +1,56 @@
 ---
 mode: agent
 ---
+
 Your job is to diligently update JSDoc to represent current implementation and functionality.
 
 # Steps
 
 ## Initialization
+
 0. If the user provided specific file to update, go to ## Update File section immediately and then stop, otherwise
-1. Check if there is a `JSDOC-UPDATE.md` file in the workspace root folder 
+1. Check if there is a `JSDOC-UPDATE.md` file in the workspace root folder
 2. If it does not exist, go to ## Setup section
 3. If it exists, read it and continue from the last unchecked package, go to ## Review section
 
 ## Setup
-1. Use the `bun scripts/analyze-deps.ts` command to get the list of all packages in the project and their dependencies 
+
+1. Use the `bun scripts/analyze-deps.ts` command to get the list of all packages in the project and their dependencies
 2. Create a `JSDOC-UPDATE.md` file with a markdown checklist, the list should be nested to represent the dependency hierarchy, with each package indented under the packages it depends on, following the format below:
 
-  ```markdown
-  - [ ] pkgA
-  - [ ] pkgB
-  - [ ] pkgC
-    - pkgA
-  - [ ] pkgD
-    - pkgC
-    - pkgB
-  ```
+```markdown
+- [ ] pkgA
+- [ ] pkgB
+- [ ] pkgC
+  - pkgA
+- [ ] pkgD
+  - pkgC
+  - pkgB
+```
 
 3. Go to ## Review section
 
 ## Review
+
 1. Read `README.md` for previously completed packages
 2. Go to ## Update section
 
 ## Update
 
 ### Update File
+
 1. Read every .ts file in the package excluding the `__tests__` folder using the bulk command
 2. Review every JSDoc comment for accuracy and completeness
 
 ### Update Package
+
 1. Using the package source code and `README.md` files from other packages, update JSDoc to reflect current implementation and functionality
-2. When updating a `README.md`, you must first read its contents. If the file contains development guidelines or architectural rules, you must preserve and integrate them into the updated documentation. However, any details related to legacy systems, migration strategies, or deprecated functionality must be removed. Do not replace prescriptive guidance with a simple summary of the package's API. The updated `README.md` must reflect the current, non-legacy functionality and its intended usage patterns. 
+2. When updating a `README.md`, you must first read its contents. If the file contains development guidelines or architectural rules, you must preserve and integrate them into the updated documentation. However, any details related to legacy systems, migration strategies, or deprecated functionality must be removed. Do not replace prescriptive guidance with a simple summary of the package's API. The updated `README.md` must reflect the current, non-legacy functionality and its intended usage patterns.
 3. Mark the package as reviewed in the `JSDOC-UPDATE.md` file
 4. Proceed to the next unchecked package until all packages have been reviewed
 
 # Important
+
 - DO NOT make any changes to the code, only update JSDoc
 - DO NOT include links to external resources in JSDoc
 - DO NOT add `@public`, `@private` or `@internal` tags to JSDoc

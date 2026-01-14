@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { IGitHubRateLimit, IGitHubRelease } from '@dotfiles/core';
 import type { ICache } from '@dotfiles/downloader';
@@ -13,6 +12,7 @@ import {
   ServerError,
 } from '@dotfiles/downloader';
 import type { TsLogger } from '@dotfiles/logger';
+import crypto from 'node:crypto';
 import semver from 'semver';
 import { GitHubApiClientError } from './GitHubApiClientError';
 import type { IGitHubApiClient } from './IGitHubApiClient';
@@ -41,7 +41,6 @@ import { messages } from './log-messages';
  * The GitHub API base URL is configurable via `projectConfig.github.host`, which is
  * essential for testing against a mock server.
  *
- * @testing
  * For testing this client, two primary helpers are available:
  * - `FetchMockHelper`: For mocking `fetch` requests and their responses.
  *   (from `src/testing-helpers/FetchMockHelper.ts`)
@@ -219,7 +218,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     throw new GitHubApiClientError(
       `GitHub API rate limit exceeded for ${url}. Status: ${error.statusCode}. Resets at ${resetTime}.`,
       error.statusCode,
-      error
+      error,
     );
   }
 
@@ -229,7 +228,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     throw new GitHubApiClientError(
       `GitHub API request forbidden for ${url}. Status: ${error.statusCode}.`,
       error.statusCode,
-      error
+      error,
     );
   }
 
@@ -239,7 +238,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     throw new GitHubApiClientError(
       `GitHub API client error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
       error.statusCode,
-      error
+      error,
     );
   }
 
@@ -249,7 +248,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     throw new GitHubApiClientError(
       `GitHub API server error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
       error.statusCode,
-      error
+      error,
     );
   }
 
@@ -259,7 +258,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     throw new GitHubApiClientError(
       `GitHub API HTTP error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
       error.statusCode,
-      error
+      error,
     );
   }
 
@@ -276,7 +275,7 @@ export class GitHubApiClient implements IGitHubApiClient {
       throw new GitHubApiClientError(
         `Unknown error during GitHub API request to ${url}: ${error.message}`,
         undefined,
-        error
+        error,
       );
     }
     throw new GitHubApiClientError(`Unknown error during GitHub API request to ${url}`);
@@ -315,7 +314,7 @@ export class GitHubApiClient implements IGitHubApiClient {
   async getAllReleases(
     owner: string,
     repo: string,
-    options?: { perPage?: number; includePrerelease?: boolean }
+    options?: { perPage?: number; includePrerelease?: boolean; },
   ): Promise<IGitHubRelease[]> {
     const logger = this.logger.getSubLogger({ name: 'getAllReleases' });
     logger.debug(messages.releases.fetchingAll(owner, repo), options);
@@ -377,7 +376,7 @@ export class GitHubApiClient implements IGitHubApiClient {
   private async findReleaseByVersionConstraint(
     owner: string,
     repo: string,
-    constraint: string
+    constraint: string,
   ): Promise<IGitHubRelease | null> {
     const logger = this.logger.getSubLogger({ name: 'findReleaseByVersionConstraint' });
     logger.debug(messages.constraints.pageFetch(constraint));
@@ -402,7 +401,7 @@ export class GitHubApiClient implements IGitHubApiClient {
         releasesPage,
         constraint,
         latestSatisfyingRelease,
-        latestSatisfyingVersionClean
+        latestSatisfyingVersionClean,
       );
 
       if (bestFromPage.release) {
@@ -426,7 +425,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     repo: string,
     page: number,
     perPage: number,
-    constraint: string
+    constraint: string,
   ): Promise<IGitHubRelease[] | null> {
     const endpoint = `/repos/${owner}/${repo}/releases?per_page=${perPage}&page=${page}`;
     const logger = this.logger.getSubLogger({ name: 'fetchReleasesPage' });
@@ -444,8 +443,8 @@ export class GitHubApiClient implements IGitHubApiClient {
     releasesPage: IGitHubRelease[],
     constraint: string,
     currentBest: IGitHubRelease | null,
-    currentBestVersion: string | null
-  ): { release: IGitHubRelease | null; version: string | null } {
+    currentBestVersion: string | null,
+  ): { release: IGitHubRelease | null; version: string | null; } {
     const logger = this.logger.getSubLogger({ name: 'findBestReleaseFromPage' });
     let bestRelease = currentBest;
     let bestVersion = currentBestVersion;

@@ -1,39 +1,39 @@
 ---
 # User Prompt
 > Follow instructions in alex--feature--new.prompt.md.
-> 
+>
 > remove
-> 
+>
 >   /**
 >    * The absolute path to the user's home directory, as defined in the
 >    * application configuration (`projectConfig.paths.homeDir`).
 >    */
 >   homeDir: string;
-> 
+>
 >   /**
 >    * The absolute path to the directory where generated binaries (shims) are
 >    * stored, as defined in `projectConfig.paths.binariesDir`.
 >    */
 >   binDir: string;
-> 
+>
 >   /**
 >    * The absolute path to the directory where generated shell scripts are
 >    * stored, as defined in `projectConfig.paths.shellScriptsDir`.
 >    */
 >   shellScriptsDir: string;
-> 
+>
 >   /**
 >    * The absolute path to the root directory containing the user's dotfiles,
 >    * as defined in `projectConfig.paths.dotfilesDir`).
 >    */
 >   dotfilesDir: string;
-> 
+>
 >   /**
 >    * The absolute path to the directory where all generated files are stored,
 >    * as defined in `projectConfig.paths.generatedDir`.
 >    */
 >   generatedDir: string;
-> 
+>
 > from IBaseToolContext, projectConfig already provides these values
 
 # Primary Objective

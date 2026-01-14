@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellType } from '@dotfiles/core';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { BashGenerator } from '../BashGenerator';
 import { PowerShellGenerator } from '../PowerShellGenerator';
 import * as ShellGeneratorFactory from '../ShellGeneratorFactory';
@@ -34,7 +34,7 @@ describe('ShellGeneratorFactory', () => {
 
   it('should throw error for unsupported shell type', () => {
     expect(() => ShellGeneratorFactory.createGenerator('fish' as ShellType, mockProjectConfig)).toThrow(
-      'Unsupported shell type: fish'
+      'Unsupported shell type: fish',
     );
   });
 

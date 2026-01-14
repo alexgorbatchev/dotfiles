@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'bun:test';
 import type { IArchitectureRegex } from '@dotfiles/arch';
 import { getArchitectureRegex, matchesArchitecture } from '@dotfiles/arch';
 import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
+import { describe, expect, it } from 'bun:test';
 
 describe('matchesArchitecture', () => {
   const macosArm64SystemInfo: ISystemInfo = {

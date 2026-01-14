@@ -1,15 +1,19 @@
 # Task
+
 > Add `install().disable()` method that skips the tool with a WARN message
 
 # Primary Objective
+
 Implement a `disable()` method on the tool config builder that marks the tool as disabled, causing it to be skipped during generation with a warning message.
 
 # Open Questions
+
 - [x] Where should the disabled state be stored? In ToolConfig as a new property via commonToolConfigPropertiesSchema.
 - [x] Where should the disabled check happen? In GeneratorOrchestrator.generateAll when processing tools.
 - [x] What should the warning message say? "Skipping disabled tool: {toolName}"
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of the problem - understand the full flow
 - [x] **TS002**: Create a failing test to isolate the problem
 - [x] **TS003**: Confirm the root cause of the problem based on the failing test
@@ -23,6 +27,7 @@ Implement a `disable()` method on the tool config builder that marks the tool as
 - [x] **TS007**: Verify all tests pass
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -62,12 +67,13 @@ Implement a `disable()` method on the tool config builder that marks the tool as
 
 ## Files Added (Tests)
 
-1. **packages/tool-config-builder/src/__tests__/toolConfigBuilder.test.ts**
+1. **packages/tool-config-builder/src/**tests**/toolConfigBuilder.test.ts**
    - Added 4 tests for `disable()` method
 
-2. **packages/generator-orchestrator/src/__tests__/GeneratorOrchestrator.test.ts**
+2. **packages/generator-orchestrator/src/**tests**/GeneratorOrchestrator.test.ts**
    - Added 2 tests for disabled tools filtering
 
 # Change Log
+
 - Initial task file created
 - Completed implementation of disable() feature

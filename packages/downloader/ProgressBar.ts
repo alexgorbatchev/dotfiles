@@ -30,7 +30,7 @@ export class ProgressBar {
    */
   constructor(
     private filename: string,
-    options: IProgressBarOptions = {}
+    options: IProgressBarOptions = {},
   ) {
     this.enabled = options.enabled ?? true;
   }
@@ -58,13 +58,14 @@ export class ProgressBar {
           // Create determinate progress bar
           this.progressBar = new cliProgress.SingleBar(
             {
-              format: `Downloading ${this.filename} |{bar}| {percentage}% | {value}/{total} | {speed} | ETA: {eta_formatted}`,
+              format:
+                `Downloading ${this.filename} |{bar}| {percentage}% | {value}/{total} | {speed} | ETA: {eta_formatted}`,
               barCompleteChar: '█',
               barIncompleteChar: '░',
               hideCursor: true,
               stream: process.stderr,
             },
-            cliProgress.Presets.shades_classic
+            cliProgress.Presets.shades_classic,
           );
 
           this.progressBar.start(totalBytes, 0, {
@@ -80,7 +81,7 @@ export class ProgressBar {
               hideCursor: true,
               stream: process.stderr,
             },
-            cliProgress.Presets.shades_classic
+            cliProgress.Presets.shades_classic,
           );
 
           this.progressBar.start(100, 0, {

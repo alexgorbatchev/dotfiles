@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IGitHubRelease } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IGitHubApiClient } from '../github-client';
 import { fetchGitHubRelease } from '../installFromGitHubRelease';
 
@@ -112,7 +112,7 @@ describe('fetchGitHubRelease', () => {
         ['INFO'],
         ['fetchGitHubRelease', 'fetchWithTagPatternDetection'],
         [],
-        [/Found release with corrected tag 'v2.23.0'/]
+        [/Found release with corrected tag 'v2.23.0'/],
       );
     });
 
@@ -174,7 +174,7 @@ describe('fetchGitHubRelease', () => {
         ['INFO'],
         ['fetchGitHubRelease', 'showAvailableReleaseTags'],
         [],
-        [/Available release tags/, /v2\.24\.0/, /v2\.23\.0/, /v2\.22\.0/]
+        [/Available release tags/, /v2\.24\.0/, /v2\.23\.0/, /v2\.22\.0/],
       );
     });
 

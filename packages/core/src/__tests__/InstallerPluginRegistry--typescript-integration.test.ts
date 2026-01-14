@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
 import { IToolConfigBuilder } from '@dotfiles/tool-config-builder';
+import { beforeEach, describe, expect, test } from 'bun:test';
 import { z } from 'zod';
 import { InstallerPluginRegistry } from '../InstallerPluginRegistry';
 import type { IInstallerPlugin, InstallResult } from '../types';
@@ -46,14 +46,14 @@ describe('InstallerPluginRegistry - TypeScript Integration', () => {
 
   test('IToolConfigBuilder with custom plugin method - TypeScript types work correctly', async () => {
     // Create a custom plugin using module-level schemas and types
-    const customPlugin: IInstallerPlugin<'custom-npm', CustomNpmParams, CustomNpmConfig, { npmVersion: string }> = {
+    const customPlugin: IInstallerPlugin<'custom-npm', CustomNpmParams, CustomNpmConfig, { npmVersion: string; }> = {
       method: 'custom-npm',
       displayName: 'Custom NPM Installer',
       version: '1.0.0',
       paramsSchema: customNpmParamsSchema,
       toolConfigSchema: customNpmConfigSchema,
       install: async () => {
-        const result: InstallResult<{ npmVersion: string }> = {
+        const result: InstallResult<{ npmVersion: string; }> = {
           success: true,
           binaryPaths: ['/usr/local/bin/custom-tool'],
           metadata: { npmVersion: '1.0.0' },

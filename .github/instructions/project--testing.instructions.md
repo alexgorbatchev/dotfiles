@@ -2,10 +2,11 @@
 description: Project testing requirements.
 applyTo: '**/*'
 ---
+
 # Project Testing Requirements
 
 - `bun test [file]` - Run a single test file
-- `bun lint` - Run linting 
+- `bun lint` - Run linting
 
 ## Available Testing Helpers
 
@@ -24,7 +25,7 @@ Before creating any bespoke mocks, check for existing testing utilities. Shared 
 - **Mocking:**
   - `fetch` must be mocked, typically using the `FetchMockHelper` utility (imported from `@dotfiles/testing-helpers`).
   - All packages should be passed in as dependencies.
-  - When mocking real public API calls, the `curl` command must be use to capture the real API response and must be captured in fixtures. An `express` server must be used to serve the fixtures. 
+  - When mocking real public API calls, the `curl` command must be use to capture the real API response and must be captured in fixtures. An `express` server must be used to serve the fixtures.
 
 ## Test Coverage Requirements
 
@@ -44,7 +45,7 @@ const mockModules = createModuleMocker();
 describe('...', () => {
   beforeEach(async () => {
     await mockModules.mock('@/hooks', () => ({
-      useUser: () => ({ id: 1, name: 'Test User' })
+      useUser: () => ({ id: 1, name: 'Test User' }),
     }));
   });
 

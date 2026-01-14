@@ -1,10 +1,13 @@
 # Task
+
 > Implement cleanup of tool contributions when a tool is disabled via `.disable()` method
 
 # Primary Objective
+
 When a tool is disabled, remove all its generated contributions (shims, shell entries, symlinks, completions) while preserving downloaded binaries.
 
 # Open Questions
+
 - [x] Where is the `.disable()` method currently implemented?
   - In `packages/tool-config-builder/src/toolConfigBuilder.ts` - sets `isDisabled = true` which becomes `disabled: true` in built config
 - [x] What generates shims and how are they tracked?
@@ -19,19 +22,22 @@ When a tool is disabled, remove all its generated contributions (shims, shell en
   - Currently disabled tools are simply skipped - their existing contributions are NOT cleaned up
 
 # Root Cause Analysis
+
 The current implementation in `GeneratorOrchestrator.generateAll()` only filters out disabled tools and skips them. It does not:
+
 1. Remove existing shims for disabled tools
 2. Regenerate shell init files without the disabled tool's contributions
 3. Remove symlinks created by disabled tools
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of the problem - understand current `.disable()` implementation and generation flow
 - [x] **TS002**: Create a failing test to isolate the problem - test that disabled tools should not have shims/shell entries remaining after regeneration
 - [x] **TS003**: Confirm the root cause of the problem based on the failing test
 - [x] **TS004**: Think very hard, step by step, to identify a solution, then STOP and:
-    - Describe the problem as you understand it
-    - Describe proposed solution
-    - Iterate with the user on proposed solution
+  - Describe the problem as you understand it
+  - Describe proposed solution
+  - Iterate with the user on proposed solution
 - [x] **TS005**: Write down follow up tasks needed to implement the solution
 - [x] **TS006**: Fix CompletionGenerator to use TrackedFileSystem (currently uses untracked fs)
 - [x] **TS007**: Add `IFileRegistry` dependency to `GeneratorOrchestrator` constructor
@@ -44,6 +50,7 @@ The current implementation in `GeneratorOrchestrator.generateAll()` only filters
 - [ ] **TS014**: Verify with test-project that disabled tools are cleaned up
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -60,6 +67,7 @@ The current implementation in `GeneratorOrchestrator.generateAll()` only filters
 - [x] Tests do not print anything to console.
 
 # Change Log
+
 - Initial task setup with worktree `feature/2026-01-01/disable-tool-cleanup`
 - Completed TS001: Identified root cause - `GeneratorOrchestrator.generateAll()` only skips disabled tools but does not clean up their contributions
 - Completed TS002: Created failing tests in `GeneratorOrchestrator--disabled-cleanup.test.ts`:

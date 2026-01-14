@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
-import { Architecture, always, Platform } from '@dotfiles/core';
+import { always, Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import path from 'node:path';
 import type { IShellInitGenerator } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 import { createSectionHeader, generateEndOfFile, generateFileHeader } from '../shellTemplates';
@@ -101,7 +101,7 @@ describe('ShellInitGenerator', () => {
     expect(mockFileSystem.ensureDir).toHaveBeenCalledWith(testDirs.paths.shellScriptsDir);
     expect(mockFileSystem.writeFile).toHaveBeenCalledWith(
       expectedPath,
-      expect.stringContaining('export TEST_TOOL_VAR="hello"')
+      expect.stringContaining('export TEST_TOOL_VAR="hello"'),
     );
 
     // Verify content in MemFileSystem
@@ -252,7 +252,7 @@ describe('ShellInitGenerator', () => {
     expect(content).toContain(createSectionHeader('zsh', 'Shell Completions Setup'));
     expect(content).toContain('typeset -U fpath');
     expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`
+      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`,
     );
   });
 
@@ -282,7 +282,7 @@ describe('ShellInitGenerator', () => {
     expect(content).toContain('fpath=("/my/custom/fpath" $fpath)');
     // The completion specific fpath add should still be there for its own directory
     expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`
+      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`,
     );
   });
 
@@ -345,7 +345,7 @@ describe('ShellInitGenerator', () => {
     // Completions
     expect(content).toContain('typeset -U fpath');
     expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`
+      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`,
     ); // For alpha
     expect(content).toContain(`fpath=(${JSON.stringify('/usr/local/share/zsh/site-functions')} $fpath)`); // For gamma
   });

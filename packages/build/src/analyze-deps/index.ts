@@ -120,7 +120,7 @@ async function loadPackages(projectRoot: string) {
  */
 async function analyzeDependencies(
   packages: Map<string, IPackageJson>,
-  packagePaths: Map<string, string>
+  packagePaths: Map<string, string>,
 ): Promise<IPackageInfo[]> {
   const packageNames = [...packages.keys()];
   const packageInfos: IPackageInfo[] = [];
@@ -132,9 +132,9 @@ async function analyzeDependencies(
     }
 
     const allDependencies = {
-      ...(pkg.dependencies || {}),
-      ...(pkg.devDependencies || {}),
-      ...(pkg.peerDependencies || {}),
+      ...pkg.dependencies,
+      ...pkg.devDependencies,
+      ...pkg.peerDependencies,
     };
 
     const internalDependencies = Object.keys(allDependencies).filter((depName) => packageNames.includes(depName));
@@ -189,5 +189,5 @@ async function main() {
   printDependencyTree(packageInfos);
 }
 
-// biome-ignore lint/suspicious/noConsole: build script
+// oxlint-disable-next-line no-console: build script
 main().catch(console.error);

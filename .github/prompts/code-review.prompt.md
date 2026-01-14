@@ -6,7 +6,7 @@
 
 ## 0) Non-Negotiables
 
-1. **NO SAMPLING.** If a package is selected for “full review”, read *every* source file in that package (and its tests).
+1. **NO SAMPLING.** If a package is selected for “full review”, read _every_ source file in that package (and its tests).
 2. **Evidence-based findings.** Every issue must include: location, minimal code excerpt, impact, and a concrete fix.
 3. **State-driven continuity.** The only `.review/` file you read is `.review/STATE.md`. Never read `.review/modules/*.md`, `.review/SUMMARY.md`, `.review/CRITICAL.md`, or `.review/INDEX.md`.
 4. **Deterministic progress.** Each run reviews exactly one package, updates STATE, and stops.
@@ -53,6 +53,7 @@ Total packages: [N] (from `packages/*/`)
 ## Queue (Remaining)
 
 Packages awaiting full-source review (in order):
+
 1. [pkg-name]
 2. [pkg-name]
 
@@ -68,11 +69,13 @@ Packages awaiting full-source review (in order):
 ## Global Themes
 
 Cross-cutting themes across reviewed packages (maximum 5 bullets):
+
 - [Exactly one sentence ending with a period.]
 
 ## Critical/High Issues Index
 
 🔴/🟠 issues only, sorted by package:
+
 - [pkg-name] / [Issue Title] ([🔴|🟠]): [Exactly one sentence ending with a period.] → `.review/modules/[pkg-name].md#[anchor]`
 
 Anchor rules (deterministic):
@@ -122,6 +125,7 @@ find packages/[pkg]/src -name "*.ts" ! -path "*__tests__*" ! -path "*node_module
 ```
 
 While reading, track:
+
 - **Architecture:** responsibilities, boundaries, layering, public API
 - **Correctness:** edge cases, invariants, state transitions
 - **Error handling:** propagation, typed errors, lost context, retries/backoff
@@ -139,6 +143,7 @@ done
 ```
 
 Assess:
+
 - Coverage breadth (key modules/functions present?)
 - Coverage depth (error paths, edge cases, boundary conditions?)
 - Test isolation & mocking quality
@@ -146,7 +151,7 @@ Assess:
 
 #### D) Targeted Pattern Scans (Find Hotspots)
 
-Use only to *identify* areas needing deeper inspection; do not skip full reads.
+Use only to _identify_ areas needing deeper inspection; do not skip full reads.
 
 ```bash
 grep -R "\$\|exec\|spawn\|child_process" packages/[pkg]/src --include="*.ts"
@@ -162,6 +167,7 @@ Create `.review/modules/[pkg].md` for the selected package using the exact forma
 ### Step 4: Update State File
 
 Edit `.review/STATE.md`:
+
 1. Move the reviewed package from `Queue (Remaining)` to `Completed`.
 2. Add a one-line summary for the completed package.
 3. Add any 🔴/🟠 issues to the `Critical/High Issues Index`.
@@ -204,10 +210,12 @@ Given a severity token and issue title, produce `[anchor]`:
 1. `severity` is one of: `critical`, `high`.
 2. `title` is the issue title string.
 3. Build `title-slug` by:
-  - lowercasing
-  - replacing any non-alphanumeric character with `-`
-  - collapsing multiple `-` to a single `-`
-  - trimming leading/trailing `-`
+
+- lowercasing
+- replacing any non-alphanumeric character with `-`
+- collapsing multiple `-` to a single `-`
+- trimming leading/trailing `-`
+
 4. Anchor is: `[severity]-[title-slug]`.
 5. If an anchor is duplicated within the same module file, append `-2`, then `-3`, etc.
 
@@ -269,20 +277,23 @@ Exact required section order (do not rename headings):
 
 Exact issue block format (use everywhere issues appear; include HTML anchor for 🔴/🟠):
 
-```markdown
+````markdown
 <a id="[anchor]"></a>
 
 [emoji] **[SEVERITY]:** [Issue Title]
 **Location:** `packages/[pkg-name]/path/to/file.ts` — [function `name` | line N]
 **Description:** [Exactly one sentence ending with a period.]
 **Evidence:**
+
 ```ts
 [minimal excerpt]
 ```
+````
+
 **Impact:** [Exactly one sentence ending with a period.]
 **Fix:** [A numbered list of concrete steps.]
-```
 
+````
 Notes:
 
 - For 🟡/🟢 issues, omit the anchor line.
@@ -318,7 +329,7 @@ See `.review/SUMMARY.md`.
 ## Critical Issues
 
 See `.review/CRITICAL.md`.
-```
+````
 
 ### 4G) `.review/SUMMARY.md` (Regenerated)
 
@@ -333,6 +344,7 @@ Exact structure:
 ## Completed Packages
 
 #### [pkg-name]
+
 - **Grade:** [A|A-|B+|C|D+|D|F]
 - **Risk:** [low|medium|high]
 - **Module:** `.review/modules/[pkg-name].md`
@@ -364,6 +376,7 @@ Exact structure:
 ## 🔴 CRITICAL
 
 #### [pkg-name] / [Issue Title]
+
 - **Location:** `.review/modules/[pkg-name].md#[anchor]`
 - **Description:** [One sentence from STATE]
 - **Impact:** [Exactly one sentence ending with a period.]
@@ -371,6 +384,7 @@ Exact structure:
 ## 🟠 HIGH
 
 #### [pkg-name] / [Issue Title]
+
 - **Location:** `.review/modules/[pkg-name].md#[anchor]`
 - **Description:** [One sentence from STATE]
 - **Impact:** [Exactly one sentence ending with a period.]
@@ -426,4 +440,3 @@ Grades are an overall signal, not an average.
 - [ ] Every package has a summary entry
 - [ ] All artifacts live under `.review/`
 - [ ] Grades reflect severity caps and rubric
-

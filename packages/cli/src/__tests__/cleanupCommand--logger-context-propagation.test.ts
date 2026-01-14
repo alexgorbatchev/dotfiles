@@ -3,10 +3,10 @@
  *
  * Verifies that tool name context flows through log messages when cleaning up files.
  */
-import { beforeEach, describe, it, mock } from 'bun:test';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { TestLogger } from '@dotfiles/logger';
 import { createMockFileRegistry } from '@dotfiles/registry/file';
+import { beforeEach, describe, it, mock } from 'bun:test';
 import { registerCleanupCommand } from '../cleanupCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
@@ -71,7 +71,7 @@ describe('cleanupCommand - Logger Context Propagation', () => {
       ['INFO'],
       ['registerCleanupCommand'],
       [],
-      [messages.cleanupToolFiles(TOOL_NAME), /rm/, messages.cleanupRegistryTool(TOOL_NAME, false)]
+      [messages.cleanupToolFiles(TOOL_NAME), /rm/, messages.cleanupRegistryTool(TOOL_NAME, false)],
     );
   });
 
@@ -82,7 +82,7 @@ describe('cleanupCommand - Logger Context Propagation', () => {
       ['INFO'],
       ['registerCleanupCommand'],
       [],
-      [messages.cleanupAllTrackedFiles(), /rm/, messages.cleanupRegistryDatabase()]
+      [messages.cleanupAllTrackedFiles(), /rm/, messages.cleanupRegistryDatabase()],
     );
   });
 });

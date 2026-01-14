@@ -14,10 +14,10 @@ import {
   generateScenarios,
   hookScenarios,
   installScenarios,
+  traceScenarios,
   typeSafetyScenarios,
   updateScenarios,
   versionDetectionScenarios,
-  traceScenarios,
 } from '../helpers';
 import { TestHarness } from '../TestHarness';
 import { withMockServer } from '../withMockServer';

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
 import type { TestLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, test } from 'bun:test';
 import { registerDocsCommand } from '../docsCommand';
 import type { IGlobalProgram, IServices } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';

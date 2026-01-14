@@ -54,7 +54,7 @@ export class FunctionScriptFormatter {
 
     if (!VALID_FUNCTION_NAME_PATTERN.test(functionName)) {
       throw new Error(
-        `Invalid function name: "${functionName}". Function names must start with a letter or underscore, followed by letters, numbers, underscores, or hyphens.`
+        `Invalid function name: "${functionName}". Function names must start with a letter or underscore, followed by letters, numbers, underscores, or hyphens.`,
       );
     }
   }
@@ -81,7 +81,7 @@ export class FunctionScriptFormatter {
         )
       }
       `,
-      { functionName, homeDir: this.homeDir, functionBody: dedentString(functionBody) }
+      { functionName, homeDir: this.homeDir, functionBody: dedentString(functionBody) },
     );
   }
 
@@ -103,7 +103,7 @@ export class FunctionScriptFormatter {
         }
       }
       `,
-      { functionName, homeDir: this.homeDir, functionBody: dedentString(functionBody) }
+      { functionName, homeDir: this.homeDir, functionBody: dedentString(functionBody) },
     );
   }
 }

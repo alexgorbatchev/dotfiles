@@ -1,12 +1,15 @@
 # Task
+
 > Add `shell.functions({ 'funcname': 'funcbody' })` API to shell-init-generator that generates shell functions with HOME override similar to `always` and `once`.
 
 # Primary Objective
+
 Implement `shell.functions()` API that allows defining shell functions where HOME is automatically overridden to the configured home path, consistent with `always` and `once` behavior.
 
 # Analysis
 
 ## Current Architecture
+
 - `IShellConfigurator` interface in `packages/core/src/builder/builder.types.ts` defines the API for shell configuration
 - `ShellConfigurator` class in `packages/tool-config-builder/src/ShellConfigurator.ts` implements the interface
 - `IShellStorage` in `packages/tool-config-builder/src/types.ts` holds accumulated shell config
@@ -15,7 +18,9 @@ Implement `shell.functions()` API that allows defining shell functions where HOM
 - Shell types supported: zsh, bash, powershell
 
 ## How HOME Override Works
+
 For zsh/bash always scripts:
+
 ```zsh
 (
   HOME="{homeDir}"
@@ -24,6 +29,7 @@ For zsh/bash always scripts:
 ```
 
 For powershell:
+
 ```powershell
 $homeOrig = $env:HOME
 $userProfileOrig = $env:USERPROFILE
@@ -38,9 +44,11 @@ try {
 ```
 
 ## Proposed Design for Functions
+
 Shell functions need similar HOME override but in function body:
 
 For zsh/bash:
+
 ```zsh
 funcname() {
   (
@@ -51,6 +59,7 @@ funcname() {
 ```
 
 For powershell:
+
 ```powershell
 function funcname {
   $homeOrig = $env:HOME
@@ -67,13 +76,15 @@ function funcname {
 ```
 
 # Open Questions
+
 - [x] Should functions support multiple shells (zsh, bash, fish)? **YES - same as always/once**
 - [x] Should the function body be shell-specific or generic? **Shell-specific via shell callback**
 
 # Tasks
+
 - [x] **TS001**: Analyze codebase to understand current architecture
 - [x] **TS002**: Add `functions` property to `IShellStorage` interface
-- [x] **TS003**: Add `functions()` method to `IShellConfigurator` interface  
+- [x] **TS003**: Add `functions()` method to `IShellConfigurator` interface
 - [x] **TS004**: Implement `functions()` method in `ShellConfigurator` class
 - [x] **TS005**: Add `IShellInitContent.functions` property
 - [x] **TS006**: Create `FunctionScriptFormatter` to format functions with HOME override
@@ -83,6 +94,7 @@ function funcname {
 - [x] **TS010**: Update documentation
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -99,6 +111,7 @@ function funcname {
 - [x] Tests do not print anything to console.
 
 # Change Log
+
 - Initial task file created
 - Implemented `shell.functions()` API with HOME override for all shells (zsh, bash, powershell)
 - Created `FunctionScriptFormatter` class with shell-specific formatting

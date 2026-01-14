@@ -9,7 +9,7 @@ import type { IBuildContext, IDependencyVersions, IResolvedRuntimeDependencies }
  */
 export async function resolveRuntimeDependencies(context: IBuildContext): Promise<IResolvedRuntimeDependencies> {
   const externalRuntimeDependencies: string[] = await getExternalRuntimeDependenciesFromBundle(
-    context.paths.cliOutputFile
+    context.paths.cliOutputFile,
   );
 
   const packageNamesToResolve: string[] = [...externalRuntimeDependencies, 'zod', '@types/bun', '@types/node'];
@@ -17,7 +17,7 @@ export async function resolveRuntimeDependencies(context: IBuildContext): Promis
 
   const runtimeDependencyVersions: Record<string, string> = pickPackageVersions(
     externalRuntimeDependencies,
-    allResolvedVersions
+    allResolvedVersions,
   );
 
   const dependencyVersions: IDependencyVersions = {

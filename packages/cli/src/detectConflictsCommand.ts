@@ -1,9 +1,9 @@
-import path from 'node:path';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem, IResolvedFileSystem, Stats } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { ExitCode, exitCli } from '@dotfiles/utils';
+import { exitCli, ExitCode } from '@dotfiles/utils';
+import path from 'node:path';
 import { messages } from './log-messages';
 import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 
@@ -20,15 +20,15 @@ async function loadToolConfigs(
   projectConfig: ProjectConfig,
   fs: IResolvedFileSystem,
   configService: IConfigService,
-  systemInfo: ISystemInfo
-): Promise<{ toolConfigs: ToolConfig[]; exitCode: ExitCode }> {
+  systemInfo: ISystemInfo,
+): Promise<{ toolConfigs: ToolConfig[]; exitCode: ExitCode; }> {
   try {
     const toolConfigsRecord = await configService.loadToolConfigs(
       logger,
       projectConfig.paths.toolConfigsDir,
       fs,
       projectConfig,
-      systemInfo
+      systemInfo,
     );
     return { toolConfigs: Object.values(toolConfigsRecord), exitCode: ExitCode.SUCCESS };
   } catch (error: unknown) {
@@ -42,7 +42,7 @@ async function checkShimConflicts(
   fs: IFileSystem,
   toolConfig: ToolConfig,
   targetDir: string,
-  conflictMessages: string[]
+  conflictMessages: string[],
 ): Promise<void> {
   if (!toolConfig.binaries) return;
 
@@ -69,7 +69,7 @@ async function checkSymlinkConflicts(
   toolConfig: ToolConfig,
   homeDir: string,
   dotfilesDir: string,
-  conflictMessages: string[]
+  conflictMessages: string[],
 ): Promise<void> {
   if (!toolConfig.symlinks) return;
 
@@ -85,7 +85,7 @@ async function checkSymlinkConflicts(
           const resolvedLinkTarget = path.resolve(path.dirname(targetPath), linkString);
           if (resolvedLinkTarget !== sourcePath) {
             conflictMessages.push(
-              `[${toolConfig.name}]: ${targetPath} (points to '${linkString}', expected '${sourcePath}')`
+              `[${toolConfig.name}]: ${targetPath} (points to '${linkString}', expected '${sourcePath}')`,
             );
           }
         } else {
@@ -115,7 +115,7 @@ function reportConflicts(logger: TsLogger, conflictMessages: string[]): ExitCode
 export async function detectConflictsActionLogic(
   logger: TsLogger,
   _options: IGlobalProgramOptions,
-  services: IServices
+  services: IServices,
 ): Promise<ExitCode> {
   const { projectConfig, fs, configService, systemInfo } = services;
   const conflictMessages: string[] = [];
@@ -144,7 +144,7 @@ export async function detectConflictsActionLogic(
       toolConfig,
       projectConfig.paths.homeDir,
       projectConfig.paths.dotfilesDir,
-      conflictMessages
+      conflictMessages,
     );
   }
 
@@ -154,7 +154,7 @@ export async function detectConflictsActionLogic(
 export function registerDetectConflictsCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>
+  servicesFactory: () => Promise<IServices>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerDetectConflictsCommand' });
   program

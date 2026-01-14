@@ -1,6 +1,6 @@
-import fs from 'node:fs';
 import type { ToolConfig } from '@dotfiles/core';
 import { generateToolTypesContent, getBuiltPackageName } from '@dotfiles/utils';
+import fs from 'node:fs';
 
 /**
  * Generates and writes the tool-types.d.ts file using Node.js fs (for build script).

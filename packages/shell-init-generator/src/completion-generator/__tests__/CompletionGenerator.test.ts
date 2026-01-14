@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import type { ShellCompletionConfig } from '@dotfiles/core';
 import type { IMemFileSystemReturn } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { CompletionGenerator } from '../CompletionGenerator';
 import type { ICompletionGenerationContext } from '../types';
 
@@ -59,7 +59,7 @@ describe('CompletionGenerator', () => {
     };
 
     expect(generator.generateCompletionFile(config, 'test-tool', 'zsh', context)).rejects.toThrow(
-      "either 'cmd', 'source', or 'url' must be provided"
+      "either 'cmd', 'source', or 'url' must be provided",
     );
   });
 
@@ -273,7 +273,7 @@ describe('CompletionGenerator', () => {
         shellType: 'zsh',
         context,
         fs: memFs.fs,
-      })
+      }),
     ).rejects.toThrow('Completion source file not found');
   });
 

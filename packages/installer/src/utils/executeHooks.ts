@@ -47,7 +47,7 @@ export async function executeAfterDownloadHook(
   context: IDownloadContext,
   hookExecutor: HookExecutor,
   fs: IFileSystem,
-  logger: TsLogger
+  logger: TsLogger,
 ): Promise<ExecuteHooksResult> {
   const hooks = getHooksFromConfig(toolConfig);
   const afterDownloadHooks = hooks?.['after-download'];
@@ -97,7 +97,7 @@ export async function executeAfterExtractHook(
   context: IExtractContext,
   hookExecutor: HookExecutor,
   fs: IFileSystem,
-  logger: TsLogger
+  logger: TsLogger,
 ): Promise<ExecuteHooksResult> {
   const hooks = getHooksFromConfig(toolConfig);
   const afterExtractHooks = hooks?.['after-extract'];

@@ -10,11 +10,7 @@ import { defineTool } from '@gitea/dotfiles';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'BurntSushi/ripgrep' })
     .bin('rg')
-    .zsh((shell) =>
-      shell
-        .completions('complete/_rg')
-        .aliases({ rg: 'ripgrep' })
-    )
+    .zsh((shell) => shell.completions('complete/_rg').aliases({ rg: 'ripgrep' }))
     .bash((shell) => shell.completions('complete/rg.bash'))
 );
 ```
@@ -25,16 +21,11 @@ Use `.dependsOn()` when a tool needs other binaries to exist first:
 
 ```typescript
 // provider.tool.ts
-export default defineTool((install) =>
-  install('manual', { binaryPath: './bin/provider' })
-    .bin('provider')
-);
+export default defineTool((install) => install('manual', { binaryPath: './bin/provider' }).bin('provider'));
 
 // consumer.tool.ts
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/consumer' })
-    .bin('consumer')
-    .dependsOn('provider')
+  install('github-release', { repo: 'owner/consumer' }).bin('consumer').dependsOn('provider')
 );
 ```
 
@@ -47,10 +38,7 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'junegunn/fzf' })
     .bin('fzf')
     .zsh((shell) =>
-      shell
-        .environment({ FZF_DEFAULT_OPTS: '--color=fg+:cyan' })
-        .completions('shell/completion.zsh')
-        .always(/* zsh */`
+      shell.environment({ FZF_DEFAULT_OPTS: '--color=fg+:cyan' }).completions('shell/completion.zsh').always(/* zsh */ `
           if [[ -f "${ctx.currentDir}/shell/key-bindings.zsh" ]]; then
             source "${ctx.currentDir}/shell/key-bindings.zsh"
           fi
@@ -66,16 +54,10 @@ export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) =>
-      shell
-        .completions('completions/_tool')
-        .environment({ TOOL_CONFIG: '~/.config/tool' })
-        .aliases({ t: 'tool' })
+      shell.completions('completions/_tool').environment({ TOOL_CONFIG: '~/.config/tool' }).aliases({ t: 'tool' })
     )
     .bash((shell) =>
-      shell
-        .completions('completions/tool.bash')
-        .environment({ TOOL_CONFIG: '~/.config/tool' })
-        .aliases({ t: 'tool' })
+      shell.completions('completions/tool.bash').environment({ TOOL_CONFIG: '~/.config/tool' }).aliases({ t: 'tool' })
     )
 );
 ```
@@ -98,26 +80,22 @@ export default defineTool((install) =>
 ## Platform-Specific Installation
 
 ```typescript
-import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
+import { Architecture, defineTool, Platform } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .platform(Platform.MacOS, (installMac) =>
-      installMac('brew', { formula: 'tool' })
-    )
+    .platform(Platform.MacOS, (installMac) => installMac('brew', { formula: 'tool' }))
     .platform(Platform.Linux, (installLinux) =>
       installLinux('github-release', {
         repo: 'owner/tool',
         assetPattern: '*linux*.tar.gz',
-      })
-    )
+      }))
     .platform(Platform.Windows, Architecture.Arm64, (installWin) =>
       installWin('github-release', {
         repo: 'owner/tool',
         assetPattern: '*windows-arm64.zip',
-      })
-    )
+      }))
 );
 ```
 
@@ -130,11 +108,7 @@ export default defineTool((install) =>
     githubRepo: 'eza-community/eza',
   })
     .bin('eza')
-    .zsh((shell) =>
-      shell
-        .completions('completions/eza.zsh')
-        .aliases({ ls: 'eza', ll: 'eza -l', la: 'eza -la' })
-    )
+    .zsh((shell) => shell.completions('completions/eza.zsh').aliases({ ls: 'eza', ll: 'eza -l', la: 'eza -la' }))
 );
 ```
 
@@ -160,11 +134,7 @@ export default defineTool((install) =>
 export default defineTool((install) =>
   install()
     .symlink('./gitconfig', '~/.gitconfig')
-    .zsh((shell) =>
-      shell
-        .aliases({ g: 'git', gs: 'git status', ga: 'git add' })
-        .environment({ GIT_EDITOR: 'nvim' })
-    )
+    .zsh((shell) => shell.aliases({ g: 'git', gs: 'git status', ga: 'git add' }).environment({ GIT_EDITOR: 'nvim' }))
 );
 ```
 
@@ -179,22 +149,19 @@ export default defineTool((install) =>
       const archMap: Record<string, string> = { x64: 'amd64', arm64: 'arm64' };
       const platform = platformMap[systemInfo.platform];
       const arch = archMap[systemInfo.arch];
-      return assets.find(a =>
-        a.name.includes(platform) && a.name.includes(arch) && a.name.endsWith('.tar.gz')
-      );
+      return assets.find((a) => a.name.includes(platform) && a.name.includes(arch) && a.name.endsWith('.tar.gz'));
     },
-  })
-    .bin('tool')
+  }).bin('tool')
 );
 ```
 
 ## Installation Method Quick Reference
 
-| Use Case | Method | Example Tools |
-|----------|--------|---------------|
-| GitHub releases | `github-release` | fzf, ripgrep, bat |
-| Homebrew | `brew` | git, jq |
-| Rust crates | `cargo` | eza, fd, ripgrep |
-| Custom scripts | `manual` | deployment scripts |
-| Shell config only | `install()` | aliases, env vars |
-| Installer scripts | `curl-script` | rustup, nvm |
+| Use Case          | Method           | Example Tools      |
+| ----------------- | ---------------- | ------------------ |
+| GitHub releases   | `github-release` | fzf, ripgrep, bat  |
+| Homebrew          | `brew`           | git, jq            |
+| Rust crates       | `cargo`          | eza, fd, ripgrep   |
+| Custom scripts    | `manual`         | deployment scripts |
+| Shell config only | `install()`      | aliases, env vars  |
+| Installer scripts | `curl-script`    | rustup, nvm        |

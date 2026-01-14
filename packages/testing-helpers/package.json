@@ -17,11 +17,11 @@
     "type-fest": "catalog:"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/bun": "catalog:system",
-    "@types/node": "catalog:system",
     "@rageltd/bun-test-utils": "catalog:testing",
-    "typescript": "catalog:typescript",
-    "@typescript/native-preview": "catalog:typescript"
+    "@types/bun": "catalog:system",
+    "@types/express": "^4.17.21",
+    "@types/node": "catalog:system",
+    "@typescript/native-preview": "catalog:typescript",
+    "typescript": "catalog:typescript"
   }
 }

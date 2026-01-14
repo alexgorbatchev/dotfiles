@@ -8,7 +8,7 @@ import type {
 import type { TsLogger } from '@dotfiles/logger';
 import { installFromBrew } from './installFromBrew';
 import { messages } from './log-messages';
-import { type BrewInstallParams, type BrewToolConfig, brewInstallParamsSchema, brewToolConfigSchema } from './schemas';
+import { type BrewInstallParams, brewInstallParamsSchema, type BrewToolConfig, brewToolConfigSchema } from './schemas';
 
 const PLUGIN_VERSION = '1.0.0';
 
@@ -30,8 +30,13 @@ type BrewPluginMetadata = {
  * Note: Tools installed via Homebrew are externally managed, meaning Homebrew
  * handles the actual file placement and versioning.
  */
-export class BrewInstallerPlugin
-  implements IInstallerPlugin<'brew', BrewInstallParams, BrewToolConfig, BrewPluginMetadata>
+export class BrewInstallerPlugin implements
+  IInstallerPlugin<
+    'brew',
+    BrewInstallParams,
+    BrewToolConfig,
+    BrewPluginMetadata
+  >
 {
   readonly method = 'brew';
   readonly displayName = 'Homebrew Installer';
@@ -55,7 +60,7 @@ export class BrewInstallerPlugin
     toolConfig: BrewToolConfig,
     context: IInstallContext,
     options: IInstallOptions | undefined,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<InstallResult<BrewPluginMetadata>> {
     const result = await installFromBrew(toolName, toolConfig, context, options, logger);
 
@@ -98,7 +103,7 @@ export class BrewInstallerPlugin
     toolName: string,
     toolConfig: BrewToolConfig,
     _context: IInstallContext,
-    logger: TsLogger
+    logger: TsLogger,
   ): Promise<UpdateCheckResult> {
     // TODO: Implement actual brew info check
     // For now, return a placeholder result

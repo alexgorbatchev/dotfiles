@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { ProjectConfig } from '@dotfiles/config';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { BashGenerator } from '../BashGenerator';
 import { ZshGenerator } from '../ZshGenerator';
 import { createMockProjectConfigWithPathsOnly } from './createMockProjectConfigWithPathsOnly';
@@ -94,7 +94,7 @@ describe('PATH generation', () => {
       const targetDir = mockProjectConfig.paths.targetDir;
       const pathCheckCount = (
         content.match(
-          new RegExp(`if \\[\\[ ":\\$PATH:" != \\*":${targetDir.replace(/\//g, '\\/')}:"\\* \\]\\]`, 'g')
+          new RegExp(`if \\[\\[ ":\\$PATH:" != \\*":${targetDir.replace(/\//g, '\\/')}:"\\* \\]\\]`, 'g'),
         ) || []
       ).length;
       expect(pathCheckCount).toBe(1);

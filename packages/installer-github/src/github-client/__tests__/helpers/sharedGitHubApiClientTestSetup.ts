@@ -1,15 +1,15 @@
-import { mock } from 'bun:test';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import { Architecture, Platform } from '@dotfiles/core';
 import type { ICache, IDownloader } from '@dotfiles/downloader';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories, type PartialProjectConfig } from '@dotfiles/testing-helpers';
+import { mock } from 'bun:test';
+import path from 'node:path';
 import { GitHubApiClient } from '../../GitHubApiClient';
 
 export const createMockProjectConfigForGitHubApi = async (
-  overrides: PartialProjectConfig = {}
+  overrides: PartialProjectConfig = {},
 ): Promise<ProjectConfig> => {
   const memFs = await createMemFileSystem();
   const logger = new TestLogger();
@@ -130,7 +130,7 @@ function setBasicGitHubConfig(
     githubToken?: string;
     githubHost?: string;
     githubClientUserAgent?: string;
-  }
+  },
 ): void {
   if (githubToken !== undefined) {
     config.token = githubToken;
@@ -152,7 +152,7 @@ function setGitHubCacheConfig(
   }: {
     githubApiCacheEnabled?: boolean;
     githubApiCacheTtl?: number;
-  }
+  },
 ): void {
   if (githubApiCacheEnabled !== undefined || githubApiCacheTtl !== undefined) {
     config.cache = {

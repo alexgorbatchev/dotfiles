@@ -1,5 +1,3 @@
-import { mock } from 'bun:test';
-import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
 import {
@@ -30,6 +28,8 @@ import {
   type ITestDirectories,
 } from '@dotfiles/testing-helpers';
 import { replaceInFile } from '@dotfiles/utils';
+import { mock } from 'bun:test';
+import path from 'node:path';
 import type { ILogObj } from 'tslog';
 import { z } from 'zod';
 import type { Installer } from '../Installer';
@@ -295,7 +295,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     async (_parentLogger: TsLogger, _url: string, filePath: string, _options?: IDownloadOptions) => {
       await fs.ensureDir(path.dirname(filePath));
       await fs.writeFile(filePath, 'mock binary content');
-    }
+    },
   );
   const mockDownloader: IDownloader = {
     download: mockDownload,
@@ -338,13 +338,12 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
         extractedFiles: [MOCK_TOOL_NAME, 'tool', 'README.md', 'LICENSE', 'Makefile'],
         executables: [MOCK_TOOL_NAME, 'tool'],
       };
-    }
+    },
   );
   const mockArchiveExtractor: IArchiveExtractor = {
     extract: mockExtract,
     detectFormat: mock(async () => {
-      const result: 'tar.gz' = 'tar.gz';
-      return result;
+      return 'tar.gz' as const;
     }),
     isSupported: mock(() => true),
   };
@@ -379,7 +378,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     install: async (
       toolName: string,
       _toolConfig: unknown,
-      context: IInstallContextWithEmitter
+      context: IInstallContextWithEmitter,
     ): Promise<InstallResult> => {
       // Simulate download event - this will throw if hook throws
       if (context.emitEvent) {
@@ -470,7 +469,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     pluginRegistry,
     mockSymlinkGenerator,
     shell,
-    hookExecutor
+    hookExecutor,
   );
 
   const result: IInstallerTestSetup = {
@@ -506,7 +505,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
  * Creates a GitHub release tool config for testing
  */
 export function createGithubReleaseToolConfig(
-  overrides: Partial<GithubReleaseToolConfig> = {}
+  overrides: Partial<GithubReleaseToolConfig> = {},
 ): GithubReleaseToolConfig {
   const baseConfig: GithubReleaseToolConfig = {
     name: MOCK_TOOL_NAME,
@@ -603,7 +602,7 @@ export function createCargoToolConfig(overrides: Partial<CargoToolConfig> = {}):
  */
 export function createTestContext(
   setup: IInstallerTestSetup,
-  overrides: Partial<IInstallContext> = {}
+  overrides: Partial<IInstallContext> = {},
 ): IInstallContext {
   const shell: $extended = createConfiguredShell(createMock$(), process.env);
   const toolDir = path.join(setup.mockProjectConfig.paths.toolConfigsDir, MOCK_TOOL_NAME);

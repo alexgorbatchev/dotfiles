@@ -1,6 +1,6 @@
 import { type Mock, mock } from 'bun:test';
-import path from 'node:path';
 import type { DirectoryJSON } from 'memfs';
+import path from 'node:path';
 import type { IFileSystem } from '../IFileSystem';
 import type { IResolvedFileSystem } from '../IResolvedFileSystem';
 import { MemFileSystem } from '../MemFileSystem';
@@ -43,12 +43,17 @@ export type FileSystemSpies = {
 /**
  * Type for the collection of spies/mocks on the file system methods.
  */
-export type MockedFileSystem = IFileSystem & {
-  asIFileSystem: IFileSystem;
-  asIResolvedFileSystem: IResolvedFileSystem;
-} & {
-  [K in keyof IFileSystem as IFileSystem[K] extends (...args: unknown[]) => unknown ? K : never]: Mock<IFileSystem[K]>;
-};
+export type MockedFileSystem =
+  & IFileSystem
+  & {
+    asIFileSystem: IFileSystem;
+    asIResolvedFileSystem: IResolvedFileSystem;
+  }
+  & {
+    [K in keyof IFileSystem as IFileSystem[K] extends (...args: unknown[]) => unknown ? K : never]: Mock<
+      IFileSystem[K]
+    >;
+  };
 
 /**
  * Defines the structure of the object returned by `createMemFileSystem`.
@@ -114,7 +119,6 @@ export async function createMemFileSystem(options: IMemFileSystemOptions = {}): 
   };
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Test helper function with many mock bindings
 function createFileSystemSpies(memFs: MemFileSystem, mocks: Partial<IFileSystem>): FileSystemSpies {
   return {
     ensureDir: mock(mocks.ensureDir ?? memFs.ensureDir.bind(memFs)),

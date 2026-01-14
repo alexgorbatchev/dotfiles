@@ -1,7 +1,7 @@
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import { ExitCode, exitCli } from '@dotfiles/utils';
+import { exitCli, ExitCode } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type {
   ICommandCompletionMeta,
@@ -57,7 +57,7 @@ async function buildTreeFromDirectory(logger: TsLogger, fs: IFileSystem, dirPath
   }
 
   // Sort: directories first, then files, both alphabetically
-  return nodes.sort((a, b) => {
+  return nodes.toSorted((a, b) => {
     if (a.isDirectory === b.isDirectory) {
       return a.name.localeCompare(b.name);
     }
@@ -95,7 +95,7 @@ async function displayTreeForTool(
   fs: IFileSystem,
   toolInstallationRegistry: IToolInstallationRegistry,
   toolName: string,
-  print: PrintFunction
+  print: PrintFunction,
 ): Promise<ExitCode> {
   const installation = await toolInstallationRegistry.getToolInstallation(toolName);
 
@@ -134,7 +134,7 @@ async function filesActionLogic(
   toolName: string,
   _options: IFilesCommandSpecificOptions & IGlobalProgramOptions,
   services: IServices,
-  print: PrintFunction
+  print: PrintFunction,
 ): Promise<void> {
   const { fs, projectConfig, configService, toolInstallationRegistry, systemInfo } = services;
 
@@ -145,7 +145,7 @@ async function filesActionLogic(
       projectConfig.paths.toolConfigsDir,
       fs,
       projectConfig,
-      systemInfo
+      systemInfo,
     );
 
     if (!toolConfig) {
@@ -168,8 +168,8 @@ export function registerFilesCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
   servicesFactory: () => Promise<IServices>,
-  // biome-ignore lint/suspicious/noConsole: default print function
-  print: PrintFunction = console.log
+  // oxlint-disable-next-line no-console: default print function
+  print: PrintFunction = console.log,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerFilesCommand' });
 

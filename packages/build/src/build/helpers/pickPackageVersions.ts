@@ -5,7 +5,7 @@ import { BuildError } from '../handleBuildError';
  */
 export function pickPackageVersions(
   packageNames: string[],
-  versionsByName: Record<string, string>
+  versionsByName: Record<string, string>,
 ): Record<string, string> {
   const selected: Record<string, string> = {};
 

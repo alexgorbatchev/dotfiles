@@ -6,17 +6,17 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "devDependencies": {
-    "dts-bundle-generator": "^9.5.1",
-    "es-module-lexer": "^2.0.0",
-    "ts-unused": "^1.0.0",
-    "ts-morph": "^24.0.0",
-    "typescript": "catalog:typescript",
-    "@types/bun": "catalog:system",
-    "@types/node": "catalog:system",
-    "@typescript/native-preview": "catalog:typescript"
-  },
   "dependencies": {
     "dax-sh": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:system",
+    "@types/node": "catalog:system",
+    "@typescript/native-preview": "catalog:typescript",
+    "dts-bundle-generator": "^9.5.1",
+    "es-module-lexer": "^2.0.0",
+    "ts-morph": "^24.0.0",
+    "ts-unused": "^1.0.0",
+    "typescript": "catalog:typescript"
   }
 }

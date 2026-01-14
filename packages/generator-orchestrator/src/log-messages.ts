@@ -14,11 +14,11 @@ export const messages = {
       createSafeLogMessage(`Dependency order resolved: ${orderedTools}`),
     missingDependency: (toolName: string, dependencyName: string, platform: string, arch: string) =>
       createSafeLogMessage(
-        `Missing dependency: tool "${toolName}" requires binary "${dependencyName}" but no tool provides it for platform ${platform}/${arch}.`
+        `Missing dependency: tool "${toolName}" requires binary "${dependencyName}" but no tool provides it for platform ${platform}/${arch}.`,
       ),
     ambiguousDependency: (dependencyName: string, providers: string, toolName: string) =>
       createSafeLogMessage(
-        `Ambiguous dependency: binary "${dependencyName}" is provided by multiple tools (${providers}). Tool "${toolName}" cannot determine which to use.`
+        `Ambiguous dependency: binary "${dependencyName}" is provided by multiple tools (${providers}). Tool "${toolName}" cannot determine which to use.`,
       ),
     circularDependency: (tools: string) => createSafeLogMessage(`Circular dependency detected between tools: ${tools}`),
     shimGenerate: () => createSafeLogMessage('Generating shims with resolved options'),

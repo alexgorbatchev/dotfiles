@@ -1,10 +1,10 @@
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import { dedentString, getCliBinPath } from '@dotfiles/utils';
+import path from 'node:path';
 import type { IGenerateShimsOptions, IShimGenerator } from './IShimGenerator';
 import { messages } from './log-messages';
 
@@ -99,7 +99,7 @@ export class ShimGenerator implements IShimGenerator {
         toolConfig,
         binaryName,
         overwrite,
-        overwriteConflicts
+        overwriteConflicts,
       );
       if (shimPath) {
         generatedShimPaths.push(shimPath);
@@ -126,7 +126,7 @@ export class ShimGenerator implements IShimGenerator {
     _toolConfig: ToolConfig,
     binaryName: string,
     overwrite: boolean,
-    overwriteConflicts: boolean
+    overwriteConflicts: boolean,
   ): Promise<string | null> {
     const logger = this.logger.getSubLogger({ name: 'generateShimForBinary' });
     const shimDir = this.config.paths.targetDir;

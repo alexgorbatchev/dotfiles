@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IGitHubRelease } from '@dotfiles/core';
 import { NetworkError, NotFoundError, RateLimitError } from '@dotfiles/downloader';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
   createGitHubConfigOverride,
@@ -14,7 +14,7 @@ describe('GitHubApiClient', () => {
   beforeEach(async () => {
     // Explicitly disable API cache for these non-caching tests
     mocks = await setupMockGitHubApiClient(
-      createGitHubConfigOverride({ githubApiCacheEnabled: false, githubToken: '' })
+      createGitHubConfigOverride({ githubApiCacheEnabled: false, githubToken: '' }),
     );
   });
 
@@ -44,7 +44,7 @@ describe('GitHubApiClient', () => {
             Accept: 'application/vnd.github.v3+json',
             'User-Agent': mocks.mockProjectConfig.github.userAgent,
           },
-        }
+        },
       );
 
       // Verify logger received request message
@@ -54,7 +54,7 @@ describe('GitHubApiClient', () => {
     it('should return null if the release is not found (404)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
       mocks.mockDownloader.download.mockRejectedValue(
-        new NotFoundError(mocks.logger, url, new Error('Original 404 from downloader'))
+        new NotFoundError(mocks.logger, url, new Error('Original 404 from downloader')),
       );
 
       const release = await mocks.apiClient.getLatestRelease('test-owner', 'test-repo');
@@ -73,8 +73,8 @@ describe('GitHubApiClient', () => {
           'Forbidden',
           'Rate limit details', // responseBody
           {}, // headers
-          resetTimestamp
-        )
+          resetTimestamp,
+        ),
       );
 
       expect(mocks.apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(GitHubApiClientError);
@@ -87,7 +87,7 @@ describe('GitHubApiClient', () => {
           expect(error.statusCode).toBe(403);
           expect(error.originalError).toBeInstanceOf(RateLimitError);
         } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type');
+          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
         }
       }
     });
@@ -105,7 +105,7 @@ describe('GitHubApiClient', () => {
           expect(error.message).toContain(`Network error while requesting ${url}: Connection lost`);
           expect(error.originalError).toBeInstanceOf(NetworkError);
         } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type');
+          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
         }
       }
     });

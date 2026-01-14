@@ -32,7 +32,7 @@ const projectConfig = await loadProjectConfig(
   createRealFileSystem(),
   './config.yaml',
   { platform: 'darwin', arch: 'x64', homeDir: '/Users/username' },
-  process.env
+  process.env,
 );
 
 console.log(projectConfig.paths.binariesDir);
@@ -53,7 +53,7 @@ const toolConfigs = await loadToolConfigs(
   projectConfig.paths.toolConfigsDir,
   fileSystem,
   projectConfig,
-  systemInfo
+  systemInfo,
 );
 
 // Access specific tool config
@@ -79,7 +79,7 @@ const fzfConfig = await loadSingleToolConfig(
   projectConfig.paths.toolConfigsDir,
   fileSystem,
   projectConfig,
-  systemInfo
+  systemInfo,
 );
 
 if (fzfConfig) {
@@ -104,7 +104,7 @@ const toolConfig = await configService.loadSingleToolConfig(
   toolConfigsDir,
   fileSystem,
   projectConfig,
-  systemInfo
+  systemInfo,
 );
 ```
 
@@ -186,7 +186,7 @@ export default (c: ToolConfigBuilder, ctx: ToolConfigContext) => {
       assetPattern: 'fzf-*-linux_amd64.tar.gz',
     })
     .zsh((shell) =>
-      shell.always(/* zsh */`
+      shell.always(/* zsh */ `
         source <(fzf --zsh)
       `)
     );
@@ -228,16 +228,11 @@ const projectConfig = await loadProjectConfig(
     arch: process.arch,
     homeDir: process.env.HOME || '~',
   },
-  process.env
+  process.env,
 );
 
 // Load all tool configurations
-const toolConfigs = await loadToolConfigs(
-  logger,
-  projectConfig.paths.toolConfigsDir,
-  fs,
-  projectConfig
-);
+const toolConfigs = await loadToolConfigs(logger, projectConfig.paths.toolConfigsDir, fs, projectConfig);
 
 console.log(`Loaded ${Object.keys(toolConfigs).length} tool configurations`);
 ```
@@ -252,7 +247,7 @@ const ripgrepConfig = await loadSingleToolConfig(
   'ripgrep',
   projectConfig.paths.toolConfigsDir,
   fs,
-  projectConfig
+  projectConfig,
 );
 
 if (ripgrepConfig) {
@@ -268,7 +263,7 @@ import { ConfigService, type IConfigService } from '@dotfiles/config';
 class MyApp {
   constructor(
     private logger: TsLogger,
-    private configService: IConfigService
+    private configService: IConfigService,
   ) {}
 
   async loadToolConfig(toolName: string) {
@@ -277,7 +272,7 @@ class MyApp {
       toolName,
       this.toolConfigsDir,
       this.fs,
-      this.projectConfig
+      this.projectConfig,
     );
   }
 }
@@ -309,7 +304,7 @@ platform:
     config:
       paths:
         targetDir: ~/bin
-  
+
   # Linux ARM64 override
   - match:
       - os: linux
@@ -317,7 +312,7 @@ platform:
     config:
       paths:
         binariesDir: ~/.dotfiles/binaries-arm64
-  
+
   # Multiple platforms
   - match:
       - os: macos
@@ -339,6 +334,7 @@ paths:
 ```
 
 Supported token formats:
+
 - `{ENV_VAR}` - Environment variable
 - `{paths.dotfilesDir}` - Reference to another config value
 - `{VAR:-default}` - Environment variable with default value
@@ -359,15 +355,15 @@ The `loadToolConfigs` function performs the following steps:
 ### Tool Configuration Patterns
 
 **Function Export (Recommended)**:
+
 ```typescript
 export default (c: ToolConfigBuilder, ctx: ToolConfigContext) => {
-  c.bin('tool')
-    .version('1.0.0')
-    .install('github-release', { repo: 'owner/tool' });
+  c.bin('tool').version('1.0.0').install('github-release', { repo: 'owner/tool' });
 };
 ```
 
 **Function with Return Value**:
+
 ```typescript
 export default (c: ToolConfigBuilder, ctx: ToolConfigContext): ToolConfig => {
   return {
@@ -381,6 +377,7 @@ export default (c: ToolConfigBuilder, ctx: ToolConfigContext): ToolConfig => {
 ```
 
 **Direct Object Export**:
+
 ```typescript
 export default {
   name: 'tool',
@@ -396,16 +393,19 @@ export default {
 The package provides detailed error messages and logging for various failure scenarios:
 
 ### Configuration File Not Found
+
 ```
 ERROR Config file not found: /path/to/config.yaml
 ```
 
 ### YAML Parse Errors
+
 ```
 ERROR Failed to parse YAML configuration /path/to/config.yaml: Unexpected token
 ```
 
 ### Schema Validation Errors
+
 ```
 ERROR Configuration validation failed:
   paths.binariesDir: Expected string, received undefined
@@ -413,6 +413,7 @@ ERROR Configuration validation failed:
 ```
 
 ### Tool Configuration Errors
+
 ```
 ERROR Failed to load configuration: tools/fzf.tool.ts
 ERROR Failed to parse ToolConfig configuration tools/fzf.tool.ts: Builder validation failed
@@ -420,6 +421,7 @@ ERROR Failed to parse ToolConfig configuration tools/fzf.tool.ts: Builder valida
 ```
 
 ### Tool Name Mismatch
+
 ```
 WARN Invalid tool config object name: "fzf-tool" (expected filename: fzf)
 ```
@@ -436,6 +438,7 @@ WARN Invalid tool config object name: "fzf-tool" (expected filename: fzf)
 ## Testing
 
 Run tests:
+
 ```bash
 bun test packages/config
 ```
@@ -473,27 +476,33 @@ const projectConfig: ProjectConfig = await loadProjectConfig(/*...*/);
 const toolConfigs: Record<string, ToolConfig> = await loadToolConfigs(/*...*/);
 
 // TypeScript provides full autocomplete and type checking
-console.log(projectConfig.paths.binariesDir);  // string
-console.log(projectConfig.configFilePath);      // string (injected by loader)
-console.log(toolConfigs['fzf'].version);     // string
+console.log(projectConfig.paths.binariesDir); // string
+console.log(projectConfig.configFilePath); // string (injected by loader)
+console.log(toolConfigs['fzf'].version); // string
 ```
 
 ## Design Philosophy
 
 ### Type-Safe Configuration
+
 All configuration is validated at runtime with Zod schemas and provides full TypeScript types, catching errors early in the development process.
 
 ### Platform Awareness
+
 Built-in support for platform-specific overrides allows a single configuration file to work across macOS, Linux, and Windows with different architectures.
 
 ### Flexible Tool Configuration
+
 Tool configurations can be:
+
 - Simple objects for basic tools
 - Functions for complex configuration logic
 - Organized in subdirectories for better structure
 
 ### Token Substitution
+
 Environment variables and config references can be used throughout configuration, enabling flexible deployment across different environments.
 
 ### Dependency Injection
+
 The `IConfigService` interface allows for easy mocking in tests and swapping implementations without changing consuming code.

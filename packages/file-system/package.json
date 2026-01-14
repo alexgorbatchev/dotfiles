@@ -15,10 +15,10 @@
     "memfs": "^4.49.0"
   },
   "devDependencies": {
+    "@rageltd/bun-test-utils": "catalog:testing",
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
-    "@rageltd/bun-test-utils": "catalog:testing",
-    "typescript": "catalog:typescript",
-    "@typescript/native-preview": "catalog:typescript"
+    "@typescript/native-preview": "catalog:typescript",
+    "typescript": "catalog:typescript"
   }
 }

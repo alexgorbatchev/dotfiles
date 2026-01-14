@@ -25,7 +25,7 @@ const githubPlugin = new GitHubReleaseInstallerPlugin(
   githubApiClient,
   archiveExtractor,
   projectConfig,
-  hookExecutor
+  hookExecutor,
 );
 
 // Register with registry

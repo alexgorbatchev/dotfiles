@@ -21,11 +21,9 @@ defineTool((install) =>
   install('cargo', {
     crateName: 'ripgrep',
   }).zsh((shell) =>
-    shell
-      .once(/* zsh */ `
+    shell.once(/* zsh */ `
         echo "once"
-      `)
-      .always(/* zsh */ `
+      `).always(/* zsh */ `
         echo "always"
       `)
   )

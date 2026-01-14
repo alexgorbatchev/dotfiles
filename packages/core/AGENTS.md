@@ -24,7 +24,7 @@ interface IInstallerPlugin<TMethod, TParams, TConfig, TMetadata> {
   readonly version: string;
   readonly paramsSchema: z.ZodType<TParams>;
   readonly toolConfigSchema: z.ZodType<TConfig>;
-  
+
   install(/* ... */): Promise<InstallResult<TMetadata>>;
   validate?(/* ... */): Promise<ValidationResult>;
   initialize?(/* ... */): Promise<void>;
@@ -89,27 +89,27 @@ export class MyInstallerPlugin implements IInstallerPlugin<'my-method', MyParams
   readonly paramsSchema = myParamsSchema;
   readonly toolConfigSchema = myToolConfigSchema;
   readonly staticValidation = true;
-  
+
   constructor(private myService: MyService) {}
-  
+
   async validate(context: BaseInstallContext): Promise<ValidationResult> {
     // Validate plugin can run in this environment
     return { valid: true };
   }
-  
+
   async install(
     toolName: string,
     toolConfig: MyConfig,
     context: BaseInstallContext,
     options?: IInstallOptions,
-    logger?: TsLogger
+    logger?: TsLogger,
   ): Promise<InstallResult<MyMetadata>> {
     // Implement installation logic
     return {
       success: true,
       version: '1.0.0',
       binaryPaths: ['/path/to/binary'],
-      metadata: { method: 'my-method' }
+      metadata: { method: 'my-method' },
     };
   }
 }
@@ -131,7 +131,7 @@ registry.register(new MyInstallerPlugin(myService));
 registry.composeSchemas();
 
 // Pass registry to services
-const installer = new Installer(logger, fs, registry, /* ... */);
+const installer = new Installer(logger, fs, registry /* ... */);
 ```
 
 ## Dependencies
@@ -157,10 +157,10 @@ describe('MyInstallerPlugin', () => {
   it('should install tool', async () => {
     const registry = new InstallerPluginRegistry(logger);
     const plugin = new MyInstallerPlugin(mockService);
-    
+
     registry.register(plugin);
     registry.composeSchemas();
-    
+
     const toolLogger = logger.getSubLogger({ context: 'tool' });
     const result = await registry.install(toolLogger, 'my-method', 'tool', config, context);
     expect(result.success).toBe(true);

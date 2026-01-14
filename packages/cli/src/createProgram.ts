@@ -55,7 +55,7 @@ export function createProgram(): IGlobalProgram {
     .option(
       '--quiet',
       'Suppress all informational and debug output. Errors are still displayed (alias for --log=quiet)',
-      false
+      false,
     )
     .option('--platform <platform>', `Override the detected platform (${OS_VALUES.join(', ')})`)
     .option('--arch <arch>', `Override the detected architecture (${ARCH_VALUES.join(', ')})`);

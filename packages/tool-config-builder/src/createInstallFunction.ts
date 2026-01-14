@@ -33,7 +33,7 @@ import { IToolConfigBuilder } from './toolConfigBuilder';
 export function createInstallFunction(
   logger: TsLogger,
   toolName: string,
-  context?: IToolConfigContext
+  context?: IToolConfigContext,
 ): InstallFunction {
   let builderInstance: IToolConfigBuilder | null = null;
 

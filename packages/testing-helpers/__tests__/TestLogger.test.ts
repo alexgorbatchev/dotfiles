@@ -1,5 +1,5 @@
+import { createSafeLogMessage, type SafeLogMessage, TestLogger, type TestLogLevel } from '@dotfiles/logger';
 import { describe, expect, it, spyOn } from 'bun:test';
-import { createSafeLogMessage, TestLogger, type TestLogLevel } from '@dotfiles/logger';
 import type { ILogObjMeta } from 'tslog';
 
 interface ITestLoggerWithPrivates {
@@ -137,9 +137,8 @@ describe('TestLogger', () => {
 
       it('should not match if the log argument is not a string', () => {
         const logger = new TestLogger();
-        // Use any to bypass SafeLogMessage requirement for this specific test case
-        // biome-ignore lint/suspicious/noExplicitAny: Testing non-string log argument behavior
-        logger.info({ message: 'info message 1' } as any);
+        // Use unknown to bypass SafeLogMessage requirement for this specific test case
+        logger.info({ message: 'info message 1' } as unknown as SafeLogMessage);
 
         const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['INFO'], [], [], 'info message 1');
         expect(logs).toHaveLength(0);

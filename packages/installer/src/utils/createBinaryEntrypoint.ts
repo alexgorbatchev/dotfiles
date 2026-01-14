@@ -1,6 +1,6 @@
-import path from 'node:path';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import path from 'node:path';
 
 import { messages } from './log-messages';
 
@@ -11,7 +11,7 @@ export async function createBinaryEntrypoint(
   timestamp: string,
   binaryPath: string,
   binariesDir: string,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'createBinaryEntrypoint' });
   const toolDir = path.join(binariesDir, toolName);
@@ -39,7 +39,7 @@ export async function createBinaryEntrypoint(
   } catch (error) {
     logger.error(messages.binarySymlink.removeExistingFailed(entrypointPath), error);
     const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to remove old entrypoint ${entrypointPath}: ${reason}`);
+    throw new Error(`Failed to remove old entrypoint ${entrypointPath}: ${reason}`, { cause: error });
   }
 
   try {
@@ -55,7 +55,7 @@ export async function createBinaryEntrypoint(
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     logger.error(messages.binarySymlink.creationFailed(entrypointPath, actualBinaryPath), error);
-    throw new Error(`Failed to create entrypoint at ${entrypointPath}: ${reason}`);
+    throw new Error(`Failed to create entrypoint at ${entrypointPath}: ${reason}`, { cause: error });
   }
 
   const didEntrypointCreate: boolean = await fs.exists(entrypointPath);
@@ -74,7 +74,7 @@ export async function createAllBinaryEntrypoints(
   timestamp: string,
   binaryBasePath: string,
   binariesDir: string,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'createAllBinaryEntrypoints' });
   for (const binaryName of binaries) {

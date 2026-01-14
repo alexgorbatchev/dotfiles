@@ -31,9 +31,7 @@ const server = createMockApiServer();
 server.get('/api/releases/latest', (req, res) => {
   res.json({
     tag_name: 'v1.0.0',
-    assets: [
-      { name: 'tool-linux-amd64.tar.gz', browser_download_url: '/download/1' }
-    ]
+    assets: [{ name: 'tool-linux-amd64.tar.gz', browser_download_url: '/download/1' }],
   });
 });
 
@@ -69,11 +67,12 @@ await fs.writeFile(path.join(workingDir, 'config.yaml'), '...');
 ```
 
 **Returns:**
+
 ```typescript
 interface ITestDirectories {
-  workingDir: string;    // Temporary working directory
-  homeDir: string;       // Temporary home directory
-  cleanup: () => Promise<void>;  // Cleanup function
+  workingDir: string; // Temporary working directory
+  homeDir: string; // Temporary home directory
+  cleanup: () => Promise<void>; // Cleanup function
 }
 ```
 
@@ -88,13 +87,13 @@ const fetchMock = new FetchMockHelper();
 
 beforeEach(() => {
   fetchMock.setup();
-  
+
   // Mock successful response
   fetchMock.mockResponse('https://api.example.com/data', {
     status: 200,
     body: JSON.stringify({ key: 'value' }),
   });
-  
+
   // Mock error response
   fetchMock.mockResponse('https://api.example.com/error', {
     status: 404,
@@ -138,7 +137,8 @@ Creates a temporary tool configuration file.
 ```typescript
 import { createToolConfig } from '@dotfiles/testing-helpers';
 
-const toolConfigPath = await createToolConfig(`
+const toolConfigPath = await createToolConfig(
+  `
   export default async (c) => {
     c.bin('fzf')
       .version('latest')
@@ -146,7 +146,9 @@ const toolConfigPath = await createToolConfig(`
         repo: 'junegunn/fzf',
       });
   };
-`, 'fzf.tool.ts');
+`,
+  'fzf.tool.ts',
+);
 
 // Load and use config
 const toolConfigs = await loadToolConfigs(path.dirname(toolConfigPath), logger);
@@ -205,7 +207,7 @@ test('loose snapshot matching', () => {
     Path: /home/user/.dotfiles/tools/fzf
     Size: 1234567 bytes
   `;
-  
+
   expect(output).toMatchLooseInlineSnapshot`
     Tool: fzf
     Version: \\d+\\.\\d+\\.\\d+
@@ -216,6 +218,7 @@ test('loose snapshot matching', () => {
 ```
 
 **Features:**
+
 - Regex pattern support
 - Whitespace normalization
 - Flexible line matching
@@ -226,11 +229,11 @@ test('loose snapshot matching', () => {
 ### Complete Test Setup
 
 ```typescript
-import { 
-  createITestDirectories, 
+import {
+  createITestDirectories,
+  createMockApiServer,
   createMockProjectConfig,
   FetchMockHelper,
-  createMockApiServer 
 } from '@dotfiles/testing-helpers';
 
 describe('MyFeature', () => {
@@ -238,22 +241,22 @@ describe('MyFeature', () => {
   let config: ProjectConfig;
   let fetchMock: FetchMockHelper;
   let apiServer: MockApiServer;
-  
+
   beforeEach(async () => {
     // Setup test directories
     testDirs = await createITestDirectories('my-feature-test');
-    
+
     // Create config
     config = createMockProjectConfig({
       paths: {
         targetDir: testDirs.workingDir,
       },
     });
-    
+
     // Setup fetch mock
     fetchMock = new FetchMockHelper();
     fetchMock.setup();
-    
+
     // Setup API server
     apiServer = createMockApiServer();
     apiServer.get('/api/data', (req, res) => {
@@ -261,13 +264,13 @@ describe('MyFeature', () => {
     });
     await apiServer.listen();
   });
-  
+
   afterEach(async () => {
     await testDirs.cleanup();
     fetchMock.restore();
     await apiServer.close();
   });
-  
+
   test('my test', async () => {
     // Test implementation
   });
@@ -277,34 +280,32 @@ describe('MyFeature', () => {
 ### Testing Tool Installation
 
 ```typescript
-import { 
-  createMockApiServer,
-  createMockProjectConfig,
-  createITestDirectories 
-} from '@dotfiles/testing-helpers';
+import { createITestDirectories, createMockApiServer, createMockProjectConfig } from '@dotfiles/testing-helpers';
 
 test('installs tool from GitHub release', async () => {
   const server = createMockApiServer();
   const testDirs = await createITestDirectories('install-test');
-  
+
   // Mock GitHub API
   server.get('/repos/:owner/:repo/releases/latest', (req, res) => {
     res.json({
       tag_name: 'v1.0.0',
-      assets: [{
-        name: 'tool-linux-amd64.tar.gz',
-        browser_download_url: `${server.url}/download/asset`,
-      }],
+      assets: [
+        {
+          name: 'tool-linux-amd64.tar.gz',
+          browser_download_url: `${server.url}/download/asset`,
+        },
+      ],
     });
   });
-  
+
   // Serve binary
   server.get('/download/asset', (req, res) => {
     res.sendFile('/fixtures/tool.tar.gz');
   });
-  
+
   const { url } = await server.listen();
-  
+
   // Test installation
   const installer = new Installer(/* ... */);
   const result = await installer.install('tool', {
@@ -314,9 +315,9 @@ test('installs tool from GitHub release', async () => {
       githubApiUrl: url,
     },
   });
-  
+
   expect(result.success).toBe(true);
-  
+
   await server.close();
   await testDirs.cleanup();
 });
@@ -329,7 +330,8 @@ import { createToolConfig } from '@dotfiles/testing-helpers';
 import path from 'node:path';
 
 test('loads tool configuration', async () => {
-  const configPath = await createToolConfig(`
+  const configPath = await createToolConfig(
+    `
     export default async (c) => {
       c.bin('ripgrep')
         .version('14.0.0')
@@ -338,11 +340,13 @@ test('loads tool configuration', async () => {
           assetPattern: '*linux*amd64*.tar.gz',
         });
     };
-  `, 'ripgrep.tool.ts');
-  
+  `,
+    'ripgrep.tool.ts',
+  );
+
   const configDir = path.dirname(configPath);
   const toolConfigs = await loadToolConfigs(configDir, logger);
-  
+
   expect(toolConfigs.ripgrep).toBeDefined();
   expect(toolConfigs.ripgrep.version).toBe('14.0.0');
 });
@@ -360,14 +364,14 @@ test('generates shims', async () => {
     paths: { targetDir: testDirs.workingDir },
   });
   const generator = new ShimGenerator(logger, fileSystem, config);
-  
+
   // Act
   const shimPaths = await generator.generate(toolConfigs);
-  
+
   // Assert
   expect(shimPaths).toHaveLength(3);
   expect(shimPaths[0]).toContain('fzf');
-  
+
   await testDirs.cleanup();
 });
 ```
@@ -377,15 +381,15 @@ test('generates shims', async () => {
 ```typescript
 describe('Feature', () => {
   let testContext: TestContext;
-  
+
   beforeEach(async () => {
     testContext = await setupTestContext();
   });
-  
+
   afterEach(async () => {
     await teardownTestContext(testContext);
   });
-  
+
   test('test case', async () => {
     // Use testContext
   });
@@ -395,6 +399,7 @@ describe('Feature', () => {
 ## Dependencies
 
 ### Internal Dependencies
+
 - `@dotfiles/config` - Configuration types
 - `@dotfiles/file-system` - Filesystem types
 - `@dotfiles/logger` - Logger types
@@ -402,11 +407,13 @@ describe('Feature', () => {
 - `@dotfiles/utils` - Utility types
 
 ### External Dependencies
+
 - `express` - HTTP server for mocking APIs
 
 ## Testing the Helpers
 
 Run tests with:
+
 ```bash
 bun test packages/testing-helpers
 ```
@@ -414,21 +421,27 @@ bun test packages/testing-helpers
 ## Design Decisions
 
 ### Why Centralize Test Helpers?
+
 Centralizing test utilities:
+
 - Eliminates duplication
 - Ensures consistency
 - Simplifies maintenance
 - Makes tests more readable
 
 ### Why Mock Servers Instead of Stubs?
+
 Mock servers provide:
+
 - Realistic network behavior
 - HTTP-level testing
 - Easy debugging
 - Reusable fixtures
 
 ### Why Custom Matchers?
+
 Custom matchers:
+
 - Express test intent clearly
 - Handle complex assertions
 - Improve error messages
@@ -452,7 +465,7 @@ afterEach(async () => {
 test('creates temporary directory with unique name', async () => {
   const dirs1 = await createITestDirectories('test');
   const dirs2 = await createITestDirectories('test');
-  
+
   expect(dirs1.workingDir).not.toBe(dirs2.workingDir);
 });
 ```
@@ -480,7 +493,9 @@ test('test 2', async () => {
 // Store complex test data in fixtures
 const FIXTURE_GITHUB_RELEASE = {
   tag_name: 'v1.0.0',
-  assets: [/* ... */],
+  assets: [
+    /* ... */
+  ],
 };
 
 test('parses GitHub release', () => {
@@ -492,6 +507,7 @@ test('parses GitHub release', () => {
 ## Future Enhancements
 
 Potential improvements:
+
 - Snapshot testing utilities
 - Performance testing helpers
 - Database mocking utilities

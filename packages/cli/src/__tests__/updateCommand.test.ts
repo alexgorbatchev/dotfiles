@@ -1,4 +1,3 @@
-import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { IInstallerPlugin, ToolConfig } from '@dotfiles/core';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
@@ -10,6 +9,7 @@ import type {
 import type { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { z } from 'zod';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
@@ -84,7 +84,7 @@ describe('updateCommand', () => {
       paramsSchema: z.unknown(),
       toolConfigSchema: z.unknown(),
       install: mock(async () => {
-        const result: { success: false; error: string } = { success: false, error: 'not used' };
+        const result: { success: false; error: string; } = { success: false, error: 'not used' };
         return result;
       }),
       supportsUpdate: mock(() => true),
@@ -155,7 +155,7 @@ describe('updateCommand', () => {
       ['INFO'],
       ['registerUpdateCommand'],
       [],
-      [messages.commandCheckingUpdatesFor('fzf'), messages.toolUpdated('fzf', '0.40.0', '0.40.0')]
+      [messages.commandCheckingUpdatesFor('fzf'), messages.toolUpdated('fzf', '0.40.0', '0.40.0')],
     );
 
     expect(mockInstaller.install).toHaveBeenCalled();
@@ -192,7 +192,7 @@ describe('updateCommand', () => {
       ['INFO'],
       ['registerUpdateCommand'],
       [],
-      [messages.commandCheckingUpdatesFor('fzf'), messages.toolUpdated('fzf', '0.40.0', '0.41.0')]
+      [messages.commandCheckingUpdatesFor('fzf'), messages.toolUpdated('fzf', '0.40.0', '0.41.0')],
     );
     expect(mockInstaller.install).toHaveBeenCalled();
   });
@@ -214,7 +214,7 @@ describe('updateCommand', () => {
       ['ERROR'],
       ['registerUpdateCommand'],
       [],
-      [messages.toolUpdateFailed('fzf', 'Install failed miserably')]
+      [messages.toolUpdateFailed('fzf', 'Install failed miserably')],
     );
   });
 
@@ -222,14 +222,14 @@ describe('updateCommand', () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(undefined);
 
     expect(program.parseAsync(['update', 'nonexistent'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1'
+      'MOCK_EXIT_CLI_CALLED_WITH_1',
     );
 
     logger.expect(
       ['ERROR'],
       ['registerUpdateCommand'],
       [],
-      [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)]
+      [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)],
     );
   });
 
@@ -245,7 +245,7 @@ describe('updateCommand', () => {
       [
         messages.commandCheckingUpdatesFor('manualtool'),
         messages.commandUnsupportedOperation('Update', 'installation method: "manual" for tool "manualtool"'),
-      ]
+      ],
     );
     expect(mockInstaller.install).not.toHaveBeenCalled();
   });
@@ -298,7 +298,7 @@ describe('updateCommand', () => {
       ['INFO'],
       ['registerUpdateCommand'],
       [],
-      [messages.commandCheckingUpdatesFor('fzf'), messages.toolUpdated('fzf', 'latest', '0.50.0')]
+      [messages.commandCheckingUpdatesFor('fzf'), messages.toolUpdated('fzf', 'latest', '0.50.0')],
     );
     expect(mockInstaller.install).toHaveBeenCalled();
   });
@@ -335,7 +335,7 @@ describe('updateCommand', () => {
         ['INFO'],
         ['registerUpdateCommand'],
         [],
-        [messages.toolShimUpdateStarting('fzf', '0.40.0', '0.41.0'), messages.toolShimUpdateSuccess('fzf', '0.41.0')]
+        [messages.toolShimUpdateStarting('fzf', '0.40.0', '0.41.0'), messages.toolShimUpdateSuccess('fzf', '0.41.0')],
       );
       expect(mockInstaller.install).toHaveBeenCalled();
     });
@@ -372,7 +372,7 @@ describe('updateCommand', () => {
         ['INFO'],
         ['registerUpdateCommand'],
         [],
-        [messages.toolShimUpdateStarting('fzf', 'latest', '0.41.0'), messages.toolShimUpdateSuccess('fzf', '0.41.0')]
+        [messages.toolShimUpdateStarting('fzf', 'latest', '0.41.0'), messages.toolShimUpdateSuccess('fzf', '0.41.0')],
       );
       expect(mockInstaller.install).toHaveBeenCalled();
     });

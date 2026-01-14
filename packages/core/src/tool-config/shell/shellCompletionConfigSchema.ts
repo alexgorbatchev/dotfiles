@@ -99,7 +99,7 @@ export const shellCompletionConfigSchema = z
     {
       message:
         "Invalid completion config: use 'source' alone, 'cmd' alone, 'url' alone, or 'url' with 'source'. Cannot combine 'cmd' with 'url' or 'source'.",
-    }
+    },
   );
 
 /**

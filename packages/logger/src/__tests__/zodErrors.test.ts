@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
+import { describe, expect, test } from 'bun:test';
 import { z } from 'zod';
 
 // Helper function to extract log messages from TestLogger logs

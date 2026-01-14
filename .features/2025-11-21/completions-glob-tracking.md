@@ -1,19 +1,24 @@
 # User Prompt
+
 > Follow instructions in [new-feature.prompt.md](vscode-userdata:/Users/alex/Library/Application%20Support/Code/User/profiles/-4257d6dd/prompts/new-feature.prompt.md).
 > #file:TASK-completions-glob-and-tracking.md
 
 # Source Branch
+
 main
 
 # Primary Objective
+
 Ensure completion symlinks for tools with glob-based completion sources are fully tracked in the file registry with proper `toolName`, `fileType='completion'`, and `operationType='symlink'` metadata, and are queryable via the CLI `files` command.
 
 # Open Questions
+
 - [x] Is the current implementation of `withFileType()` sufficient for scoping file operations?
 - [x] Should completion tracking be scoped at the `setupCompletions` call site or within the function?
 - [x] Are there other file types besides completion that need similar tracking?
 
 # Tasks
+
 - [ ] **TS001**: Scope TrackedFileSystem for completions - modify setupCompletions call site to use `fs.withFileType('completion')` when the filesystem is a TrackedFileSystem
 - [ ] **TS002**: Verify registry contents - test that rg installation creates completion-typed symlink records in the registry database
 - [ ] **TS003**: Align files command output - ensure CLI files command properly filters and displays completion-typed operations
@@ -22,6 +27,7 @@ Ensure completion symlinks for tools with glob-based completion sources are full
 - [ ] **TS006**: Run full test suite - ensure bun test and bun lint pass with only pre-existing failures
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All code quality standards are met
 - [x] All tests pass
@@ -34,6 +40,7 @@ Ensure completion symlinks for tools with glob-based completion sources are full
 - [x] All new/updated tests pass; global test run remains at 997 pass / 2 skip / 2 fail (pre-existing)
 
 # Change Log
+
 - Created feature branch and work file
 - **TS001**: Fixed TrackedFileSystem scoping for completions by removing TODO comment in setupCompletions.ts
 - **TS001**: Identified root cause - installer plugins were receiving raw `fs` instead of `installerTrackedFs` in main.ts

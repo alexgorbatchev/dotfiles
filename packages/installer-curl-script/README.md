@@ -17,8 +17,7 @@ export default defineTool((install, ctx) =>
   install('curl-script', {
     url: 'https://example.com/install.sh',
     shell: 'bash',
-  })
-    .bin('tool')
+  }).bin('tool')
 );
 ```
 
@@ -41,8 +40,7 @@ export default defineTool((install, ctx) =>
   install('curl-script', {
     url: 'https://example.com/install.sh',
     shell: 'bash',
-  })
-    .bin('tool')
+  }).bin('tool')
 );
 ```
 
@@ -56,8 +54,7 @@ export default defineTool((install, ctx) =>
     env: {
       INSTALL_DIR: '$HOME/.local/bin',
     },
-  })
-    .bin('fly')
+  }).bin('fly')
 );
 ```
 
@@ -70,8 +67,7 @@ export default defineTool((install, ctx) =>
     shell: 'bash',
     // Static arguments
     args: ['--verbose', '--install-dir', '/usr/local/bin'],
-  })
-    .bin('tool')
+  }).bin('tool')
 );
 ```
 
@@ -81,14 +77,8 @@ export default defineTool((install, ctx) =>
     url: 'https://example.com/install.sh',
     shell: 'bash',
     // Dynamic arguments with context
-    args: (context) => [
-      '--install-dir',
-      context.stagingDir,
-      '--platform',
-      context.projectConfig.platform
-    ],
-  })
-    .bin('tool')
+    args: (context) => ['--install-dir', context.stagingDir, '--platform', context.projectConfig.platform],
+  }).bin('tool')
 );
 ```
 
@@ -102,8 +92,7 @@ export default defineTool((install, ctx) =>
     env: {
       INSTALL_DIR: '$HOME/.local/bin',
     },
-  })
-    .bin('fly')
+  }).bin('fly')
 );
 ```
 
@@ -127,15 +116,19 @@ export default defineTool((install, ctx) =>
 ## Features
 
 ### Shell Script Execution
+
 Downloads shell installation scripts and executes them with the specified interpreter, supporting both bash and sh shells.
 
 ### Hook Support
+
 Supports the afterDownload lifecycle hook, enabling custom logic after script download but before execution.
 
 ### Binary Management
+
 After script execution, handles copying installed binaries from system locations (e.g., `/usr/local/bin`) to the tool's versioned installation directory.
 
 ### Progress Display
+
 Integrates with the downloader to display download progress for the installation script.
 
 ## Implementation Details

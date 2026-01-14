@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { extractBinaryNames, generateToolTypesContent, generateUnionType } from '../generateToolTypes';
 
-function createMockToolConfig(name: string, binaries?: (string | { name: string })[]): ToolConfig {
+function createMockToolConfig(name: string, binaries?: (string | { name: string; })[]): ToolConfig {
   const config: ToolConfig = {
     name,
     binaries,

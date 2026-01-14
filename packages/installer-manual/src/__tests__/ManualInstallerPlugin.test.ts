@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { ManualInstallerPlugin } from '../ManualInstallerPlugin';
 
 describe('ManualInstallerPlugin', () => {

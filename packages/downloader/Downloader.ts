@@ -1,7 +1,7 @@
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { CachedDownloadStrategy } from './CachedDownloadStrategy';
 import type { ICache } from './cache/types';
+import { CachedDownloadStrategy } from './CachedDownloadStrategy';
 import type { IDownloader, IDownloadOptions } from './IDownloader';
 import type { IDownloadStrategy } from './IDownloadStrategy';
 import { downloaderLogMessages } from './log-messages';
@@ -39,7 +39,7 @@ export class Downloader implements IDownloader {
       const baseStrategy = new NodeFetchStrategy(this.logger, this.fs);
       if (cache) {
         this.logger.debug(
-          downloaderLogMessages.strategyCreated('CachedDownloadStrategy', ' wrapping NodeFetchStrategy')
+          downloaderLogMessages.strategyCreated('CachedDownloadStrategy', ' wrapping NodeFetchStrategy'),
         );
         this.strategies.push(new CachedDownloadStrategy(this.logger, this.fs, cache, baseStrategy));
       } else {
@@ -67,8 +67,8 @@ export class Downloader implements IDownloader {
   private async tryDownloadWithStrategy(
     strategy: IDownloadStrategy,
     url: string,
-    options: IDownloadOptions
-  ): Promise<{ success: boolean; result?: Buffer }> {
+    options: IDownloadOptions,
+  ): Promise<{ success: boolean; result?: Buffer; }> {
     if (!(await strategy.isAvailable())) {
       return { success: false };
     }
@@ -83,7 +83,7 @@ export class Downloader implements IDownloader {
   public async download(
     parentLogger: TsLogger,
     url: string,
-    options: IDownloadOptions = {}
+    options: IDownloadOptions = {},
   ): Promise<Buffer | undefined> {
     const logger = parentLogger.getSubLogger({ name: 'Downloader' }).getSubLogger({ name: 'download' });
     logger.debug(downloaderLogMessages.downloadStarted(url));
@@ -124,7 +124,7 @@ export class Downloader implements IDownloader {
   private async tryDownloadToFileWithStrategy(
     strategy: IDownloadStrategy,
     url: string,
-    fileOptions: IDownloadOptions
+    fileOptions: IDownloadOptions,
   ): Promise<boolean> {
     if (!(await strategy.isAvailable())) {
       return false;
@@ -160,7 +160,7 @@ export class Downloader implements IDownloader {
     parentLogger: TsLogger,
     url: string,
     filePath: string,
-    options: IDownloadOptions = {}
+    options: IDownloadOptions = {},
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'Downloader' }).getSubLogger({ name: 'downloadToFile' });
     logger.debug(downloaderLogMessages.downloadToFileStarted(url, filePath));

@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noConsole: testing */
+/* oxlint-disable no-console */
 import { defineTool, Platform } from '@dotfiles/cli';
 
 export default defineTool((install) =>
@@ -15,7 +15,6 @@ export default defineTool((install) =>
     .bin('fnm')
     .zsh((shell) =>
       shell
-        //
         .completions({ cmd: 'fnm completions --shell zsh', bin: 'fnm' })
         .source('/path/that/does/not/exist')
         .always(/* zsh */ `

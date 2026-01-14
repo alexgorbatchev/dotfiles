@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
 import type { IAfterInstallContext } from '@dotfiles/core';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import { createInstallerTestSetup, type IInstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
 
 describe('AfterInstallContext shape', () => {

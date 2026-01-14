@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { createSectionHeader } from '../../shellTemplates';
 import { ZshGenerator } from '../ZshGenerator';
 import { createMockProjectConfigWithPathsOnly } from './createMockProjectConfigWithPathsOnly';

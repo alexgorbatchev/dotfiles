@@ -1,5 +1,5 @@
-import { describe, expect, it, mock } from 'bun:test';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
+import { describe, expect, it, mock } from 'bun:test';
 import { createCliTestSetup } from './createCliTestSetup';
 
 describe('createCliTestSetup', () => {

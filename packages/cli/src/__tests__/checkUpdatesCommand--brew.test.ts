@@ -1,13 +1,13 @@
-import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService } from '@dotfiles/config';
 import type { IInstallerPlugin, UpdateCheckResult } from '@dotfiles/core';
 import type { BrewToolConfig } from '@dotfiles/installer-brew';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
+import { beforeEach, describe, mock, test } from 'bun:test';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import { messages } from '../log-messages';
-import type { IGlobalProgram } from '../types';
+import type { IGlobalProgram, IServices } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 describe('checkUpdatesCommand - Brew Updates', () => {
@@ -48,7 +48,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
           hasUpdate: false,
           currentVersion: '13.0.0',
           latestVersion: '13.0.0',
-        })
+        }),
       ),
     };
 
@@ -61,8 +61,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
           get: mock((method: string) => (method === 'brew' ? (mockPlugin as IInstallerPlugin) : undefined)),
           register: mock(() => Promise.resolve()),
           getAll: mock(() => []),
-          // biome-ignore lint/suspicious/noExplicitAny: Test mock bypasses strict typing
-        } as any,
+        } as unknown as MockedInterface<IServices['pluginRegistry']>,
         versionChecker: {
           checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
           getLatestToolVersion: mock(async () => '13.0.0'),
@@ -91,7 +90,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
       ['INFO'],
       ['registerCheckUpdatesCommand'],
       [],
-      [messages.toolUpToDate('ripgrep', '13.0.0', '13.0.0')]
+      [messages.toolUpToDate('ripgrep', '13.0.0', '13.0.0')],
     );
   });
 
@@ -110,7 +109,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
       ['INFO'],
       ['registerCheckUpdatesCommand'],
       [],
-      [messages.toolUpdateAvailable('ripgrep', '13.0.0', '14.0.0')]
+      [messages.toolUpdateAvailable('ripgrep', '13.0.0', '14.0.0')],
     );
   });
 
@@ -129,7 +128,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
       ['INFO'],
       ['registerCheckUpdatesCommand'],
       [],
-      [messages.toolUpdateAvailable('vscode', '1.85.0', '1.86.0')]
+      [messages.toolUpdateAvailable('vscode', '1.85.0', '1.86.0')],
     );
   });
 
@@ -149,7 +148,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
       ['INFO'],
       ['registerCheckUpdatesCommand'],
       [],
-      [messages.toolConfiguredToLatest('ripgrep', '14.0.0')]
+      [messages.toolConfiguredToLatest('ripgrep', '14.0.0')],
     );
   });
 

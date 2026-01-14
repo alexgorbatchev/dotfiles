@@ -1,6 +1,6 @@
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellCompletionConfig, ShellScript, ToolConfig } from '@dotfiles/core';
+import path from 'node:path';
 import { generateCompletionSetup } from '../shellTemplates';
 import type { IShellStringProducer } from './BaseShellGenerator';
 
@@ -24,8 +24,8 @@ export class ZshStringProducer implements IShellStringProducer {
 
     if (completions.cmd || completions.source) {
       const defaultSubdir = 'completions';
-      const completionDir =
-        completions.targetDir ?? path.join(this.projectConfig.paths.shellScriptsDir, 'zsh', defaultSubdir);
+      const completionDir = completions.targetDir ??
+        path.join(this.projectConfig.paths.shellScriptsDir, 'zsh', defaultSubdir);
       const fpathAdd = `fpath=(${JSON.stringify(completionDir)} $fpath)`;
       completionSetup.push(fpathAdd);
     }
@@ -66,7 +66,7 @@ export class ZshStringProducer implements IShellStringProducer {
     // Add shell-specific completion setup
     const shellCompletionSetup = generateCompletionSetup(
       'zsh',
-      path.join(this.projectConfig.paths.shellScriptsDir, 'zsh')
+      path.join(this.projectConfig.paths.shellScriptsDir, 'zsh'),
     );
 
     // If typeset is already in tool init, filter it out from shell completion setup

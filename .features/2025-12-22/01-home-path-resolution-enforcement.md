@@ -1,17 +1,22 @@
 ---
+
 # Task Prompt
+
 > Follow instructions in [alex--feature--new.prompt.md](file:///Users/alex/.dotfiles/instructions/chat/prompts/alex--feature--new.prompt.md).
 > #file:HOME-PATH.md
 
 # Primary Objective
+
 Implement staged HOME/path resolution and enforce post-load invariants so `~/` is always resolved against `projectConfig.paths.homeDir` after config load, and accidental bypasses are prevented.
 
 # Open Questions
+
 - [x] Prefer `{paths.homeDir}` in docs/examples; `{HOME}` remains supported but is not the recommended form.
 - [x] Only the `projectConfig.paths.*` subtree is treated as config “path fields” for `~` expansion.
 - [x] Expand `~\\` during config normalization and at the filesystem boundary (PowerShell support).
 
 # Tasks
+
 - [x] **TS001**: Identify the root cause of mismatched tilde/token behavior
   - [x] Locate the config load + normalization pipeline and document the exact current behavior for:
     - `--config` resolution when it contains `~/`
@@ -86,6 +91,7 @@ Implement staged HOME/path resolution and enforce post-load invariants so `~/` i
   - [x] Run `bun run build` - build succeeds, `.dist/cli.js` (233 KB) generated.
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -101,6 +107,7 @@ Implement staged HOME/path resolution and enforce post-load invariants so `~/` i
 - [x] Tests do not print anything to console.
 
 # Change Log
+
 - Initialized feature worktree and task file.
 - Added failing tests for staged HOME/tilde model and confirmed current behavior mismatches.
 - Implemented staged config loader (`stagedProjectConfigLoader.ts`) with fixed-point substitution.

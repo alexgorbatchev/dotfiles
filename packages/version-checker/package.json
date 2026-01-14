@@ -11,19 +11,19 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
+    "@dotfiles/core": "workspace:*",
     "@dotfiles/installer": "workspace:*",
     "@dotfiles/installer-github": "workspace:*",
     "@dotfiles/logger": "workspace:*",
-    "@dotfiles/core": "workspace:*",
     "semver": "^7.7.3"
   },
   "devDependencies": {
     "@dotfiles/testing-helpers": "workspace:*",
+    "@rageltd/bun-test-utils": "catalog:testing",
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
     "@types/semver": "^7.5.8",
-    "@rageltd/bun-test-utils": "catalog:testing",
-    "typescript": "catalog:typescript",
-    "@typescript/native-preview": "catalog:typescript"
+    "@typescript/native-preview": "catalog:typescript",
+    "typescript": "catalog:typescript"
   }
 }

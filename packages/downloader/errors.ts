@@ -59,7 +59,7 @@ export class HttpError extends DownloaderError {
     statusCode: number,
     statusText: string,
     responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>
+    responseHeaders?: Record<string, string | string[] | undefined>,
   ) {
     super(parentLogger, message, url);
     const logger = parentLogger.getSubLogger({ name: 'HttpError' });
@@ -76,7 +76,7 @@ export class HttpError extends DownloaderError {
         statusText,
         responseBody,
         responseHeaders,
-      }
+      },
     );
   }
 }
@@ -92,7 +92,7 @@ export class NotFoundError extends HttpError {
     parentLogger: TsLogger,
     url: string,
     responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>
+    responseHeaders?: Record<string, string | string[] | undefined>,
   ) {
     super(parentLogger, 'Resource not found', url, 404, 'Not Found', responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: 'NotFoundError' });
@@ -117,7 +117,7 @@ export class ForbiddenError extends HttpError {
     parentLogger: TsLogger,
     url: string,
     responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>
+    responseHeaders?: Record<string, string | string[] | undefined>,
   ) {
     super(parentLogger, 'Access forbidden', url, 403, 'Forbidden', responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: 'ForbiddenError' });
@@ -149,7 +149,7 @@ export class RateLimitError extends HttpError {
     statusText: string,
     responseBody?: string | Buffer | object,
     responseHeaders?: Record<string, string | string[] | undefined>,
-    resetTimestamp?: number
+    resetTimestamp?: number,
   ) {
     super(parentLogger, message, url, statusCode, statusText, responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: 'RateLimitError' });
@@ -163,7 +163,7 @@ export class RateLimitError extends HttpError {
         statusText,
         responseBody,
         responseHeaders,
-        resetTimestamp
+        resetTimestamp,
       ),
       {
         url,
@@ -172,7 +172,7 @@ export class RateLimitError extends HttpError {
         responseBody,
         responseHeaders,
         resetTimestamp,
-      }
+      },
     );
   }
 }
@@ -191,7 +191,7 @@ export class ClientError extends HttpError {
     statusCode: number,
     statusText: string,
     responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>
+    responseHeaders?: Record<string, string | string[] | undefined>,
   ) {
     super(parentLogger, `Client error: ${statusText}`, url, statusCode, statusText, responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: 'ClientError' });
@@ -204,7 +204,7 @@ export class ClientError extends HttpError {
         statusText,
         responseBody,
         responseHeaders,
-      }
+      },
     );
   }
 }
@@ -223,7 +223,7 @@ export class ServerError extends HttpError {
     statusCode: number,
     statusText: string,
     responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>
+    responseHeaders?: Record<string, string | string[] | undefined>,
   ) {
     super(parentLogger, `Server error: ${statusText}`, url, statusCode, statusText, responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: 'ServerError' });
@@ -236,7 +236,7 @@ export class ServerError extends HttpError {
         statusText,
         responseBody,
         responseHeaders,
-      }
+      },
     );
   }
 }

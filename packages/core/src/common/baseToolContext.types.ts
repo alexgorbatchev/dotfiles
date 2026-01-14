@@ -142,7 +142,7 @@ export type BoundReplaceInFile = (
   filePath: string,
   from: ReplaceInFilePattern,
   to: ReplaceInFileReplacer,
-  options?: IBoundReplaceInFileOptions
+  options?: IBoundReplaceInFileOptions,
 ) => Promise<boolean>;
 
 /**

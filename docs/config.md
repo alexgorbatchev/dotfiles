@@ -82,7 +82,7 @@ Automatically adds sourcing to your shell configuration:
 features: {
   shellInstall: {
     zsh: '~/.zshrc',                               // Path to zsh config
-    bash: '~/.bashrc',                             // Path to bash config  
+    bash: '~/.bashrc',                             // Path to bash config
     powershell: '~/.config/powershell/profile.ps1', // Path to PowerShell config
   },
 }

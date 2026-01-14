@@ -72,7 +72,7 @@ function formatToolNameList(toolNames: string[]): string {
 function formatPositionalArgLine(
   description: string,
   positionalArgType: CompletionPositionalArgType | undefined,
-  toolNames: string[]
+  toolNames: string[],
 ): string {
   if (positionalArgType === 'tool' && toolNames.length > 0) {
     const toolList = formatToolNameList(toolNames);
@@ -143,7 +143,7 @@ function generateSubcommandLines(subcommands: ICommandCompletionMeta[]): string[
 function generateSingleCommandCase(
   cmd: ICommandCompletionMeta,
   globalOptions: ICompletionOption[],
-  toolNames: string[]
+  toolNames: string[],
 ): string {
   const caseLines: string[] = [];
   caseLines.push(`${cmd.name})`);
@@ -182,7 +182,7 @@ function generateSingleCommandCase(
 function generateArgsCases(
   commands: ICommandCompletionMeta[],
   globalOptions: ICompletionOption[],
-  toolNames: string[]
+  toolNames: string[],
 ): string {
   const cases: string[] = commands.map((cmd) => generateSingleCommandCase(cmd, globalOptions, toolNames));
   return cases.join('\n');
@@ -197,7 +197,7 @@ function generateArgsCases(
 export function generateZshCompletion(binaryName: string, toolNames: string[]): string {
   const commands = ALL_COMMAND_COMPLETIONS;
   const globalOptions = GLOBAL_OPTIONS_COMPLETION.options || [];
-  const sortedToolNames = [...toolNames].sort((a, b) => a.localeCompare(b));
+  const sortedToolNames = [...toolNames].toSorted((a, b) => a.localeCompare(b));
 
   // Build the list of command descriptions for the initial command completion
   const commandDescriptions = commands.map((cmd) => `'${cmd.name}:${cmd.description.replace(/'/g, "\\'")}'`).join('\n');
@@ -239,7 +239,7 @@ export function generateZshCompletion(binaryName: string, toolNames: string[]): 
       globalArgs: formatCommandArgs(globalOptions),
       commandsCase: generateCommandsCase(),
       argsCases: generateArgsCases(commands, globalOptions, sortedToolNames),
-    }
+    },
   );
 
   return script;

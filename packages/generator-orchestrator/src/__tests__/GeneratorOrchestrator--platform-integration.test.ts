@@ -1,8 +1,6 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, PlatformConfig, ToolConfig } from '@dotfiles/core';
-import { Architecture, always, architectureToString, Platform, platformToString } from '@dotfiles/core';
+import { always, Architecture, architectureToString, Platform, platformToString } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
@@ -20,6 +18,8 @@ import {
   createTestDirectories,
   type ITestDirectories,
 } from '@dotfiles/testing-helpers';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import path from 'node:path';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 /**
@@ -41,8 +41,7 @@ function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, system
   for (const [toolName, config] of Object.entries(toolConfigs)) {
     if (config.platformConfigs) {
       for (const platformConfig of config.platformConfigs) {
-        const isMatch =
-          ((platformConfig.platforms & Platform.MacOS) !== 0 && systemInfo.platform === Platform.MacOS) ||
+        const isMatch = ((platformConfig.platforms & Platform.MacOS) !== 0 && systemInfo.platform === Platform.MacOS) ||
           ((platformConfig.platforms & Platform.Linux) !== 0 && systemInfo.platform === Platform.Linux);
 
         const config = platformConfig.config as PlatformConfig;
@@ -178,7 +177,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockProjectConfig,
         createMockFileRegistry(),
         mockFileSystem,
-        createMockTrackedFileSystem(mockFileSystem)
+        createMockTrackedFileSystem(mockFileSystem),
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -234,7 +233,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockProjectConfig,
         createMockFileRegistry(),
         mockFileSystem,
-        createMockTrackedFileSystem(mockFileSystem)
+        createMockTrackedFileSystem(mockFileSystem),
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -279,7 +278,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       expect(shellContent).toContain('# Platform: linux');
       expect(shellContent).toContain('# Arch: x86_64');
       expect(shellContent).toContain(
-        '# Platform-specific content for cross-platform-tool: # Linux specific - should appear'
+        '# Platform-specific content for cross-platform-tool: # Linux specific - should appear',
       );
       expect(shellContent).not.toContain('# macOS specific - should not appear');
     });
@@ -295,7 +294,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockProjectConfig,
         createMockFileRegistry(),
         mockFileSystem,
-        createMockTrackedFileSystem(mockFileSystem)
+        createMockTrackedFileSystem(mockFileSystem),
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -336,7 +335,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockProjectConfig,
         createMockFileRegistry(),
         mockFileSystem,
-        createMockTrackedFileSystem(mockFileSystem)
+        createMockTrackedFileSystem(mockFileSystem),
       );
 
       const toolConfigs: Record<string, ToolConfig> = {

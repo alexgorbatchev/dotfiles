@@ -9,7 +9,7 @@ export const messages = {
   process: {
     symlinkDetails: (source: string, sourceAbs: string, target: string, targetAbs: string) =>
       createSafeLogMessage(
-        `Processing symlink: source="${source}" (abs: "${sourceAbs}"), target="${target}" (abs: "${targetAbs}")`
+        `Processing symlink: source="${source}" (abs: "${sourceAbs}"), target="${target}" (abs: "${targetAbs}")`,
       ),
     sourceMissing: (toolName: string, sourceAbsPath: string) =>
       createSafeLogMessage(`Tool "${toolName}" source file not found: ${sourceAbsPath}`),

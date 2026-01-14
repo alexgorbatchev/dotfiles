@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
 import { projectConfigSchema } from '@dotfiles/core';
+import { describe, expect, it } from 'bun:test';
 
 /**
  * Tests focused on the new per-host configuration + cache behavior for network services.

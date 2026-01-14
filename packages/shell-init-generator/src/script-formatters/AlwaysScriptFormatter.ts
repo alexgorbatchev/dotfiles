@@ -49,7 +49,7 @@ export class AlwaysScriptFormatter implements IScriptFormatter {
         {scriptContent}
       )
       `,
-      { homeDir: this.homeDir, scriptContent: dedentString(scriptContent) }
+      { homeDir: this.homeDir, scriptContent: dedentString(scriptContent) },
     );
   }
 
@@ -69,7 +69,7 @@ export class AlwaysScriptFormatter implements IScriptFormatter {
         Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue
       }
       `,
-      { homeDir: this.homeDir, scriptContent: dedentString(scriptContent) }
+      { homeDir: this.homeDir, scriptContent: dedentString(scriptContent) },
     );
   }
 }

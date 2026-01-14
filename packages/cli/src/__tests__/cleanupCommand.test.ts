@@ -1,9 +1,9 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { MockedFileSystem } from '@dotfiles/file-system';
 import type { TestLogger } from '@dotfiles/logger';
 import { createMockFileRegistry } from '@dotfiles/registry/file';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { registerCleanupCommand } from '../cleanupCommand';
 import type { IGlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
@@ -135,7 +135,7 @@ describe('cleanupCommand', () => {
         '[cleanup] rm ~/.generated/shell-scripts/main.zsh',
         '[cleanup] rm ~/.generated/bin-default/.config/tool/config.yml',
         'registry database cleanup',
-      ]
+      ],
     );
   });
 
@@ -158,7 +158,7 @@ describe('cleanupCommand', () => {
         '[cleanup] rm ~/.generated/shell-scripts/main.zsh',
         '[cleanup] rm ~/.generated/bin-default/.config/tool/config.yml',
         'Removed registry entries for tool: tool1',
-      ]
+      ],
     );
   });
 
@@ -178,7 +178,7 @@ describe('cleanupCommand', () => {
         `Would delete: ${mockShellInit}`,
         `Would delete: ${mockSymlinkTarget}`,
         'Would clean up registry database (dry run)',
-      ]
+      ],
     );
   });
 });

@@ -7,8 +7,8 @@
   },
   "dependencies": {
     "@dotfiles/config": "workspace:*",
-    "@dotfiles/file-system": "workspace:*",
     "@dotfiles/core": "workspace:*",
+    "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/shell-init-generator": "workspace:*",
     "@dotfiles/shim-generator": "workspace:*",
@@ -18,10 +18,10 @@
   },
   "devDependencies": {
     "@dotfiles/testing-helpers": "workspace:*",
+    "@rageltd/bun-test-utils": "catalog:testing",
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
-    "@rageltd/bun-test-utils": "catalog:testing",
-    "typescript": "catalog:typescript",
-    "@typescript/native-preview": "catalog:typescript"
+    "@typescript/native-preview": "catalog:typescript",
+    "typescript": "catalog:typescript"
   }
 }

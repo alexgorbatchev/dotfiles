@@ -1,4 +1,3 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
@@ -7,6 +6,7 @@ import type { IInstaller, InstallResult } from '@dotfiles/installer';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { createInstallFunction } from '@dotfiles/tool-config-builder';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { registerInstallCommand } from '../installCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram, IServices } from '../types';
@@ -51,7 +51,7 @@ describe('installCommand', () => {
             formula: 'test',
             isCask: false,
           },
-        })
+        }),
       ),
     };
 
@@ -104,7 +104,7 @@ describe('installCommand', () => {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: mockProjectConfig.paths.homeDir,
-      })
+      }),
     );
     expect(mockInstaller.install).toHaveBeenCalledWith('toolA', toolAConfig, {
       force: false,
@@ -132,7 +132,7 @@ describe('installCommand', () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(toolAConfig);
 
     expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_0'
+      'MOCK_EXIT_CLI_CALLED_WITH_0',
     );
 
     expect(mockInstaller.install).toHaveBeenCalledWith('toolA', toolAConfig, {
@@ -159,7 +159,7 @@ describe('installCommand', () => {
 
     try {
       expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
-        'MOCK_EXIT_CLI_CALLED_WITH_1'
+        'MOCK_EXIT_CLI_CALLED_WITH_1',
       );
 
       // Should output user-friendly error to stderr
@@ -178,7 +178,7 @@ describe('installCommand', () => {
 
     try {
       expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
-        'MOCK_EXIT_CLI_CALLED_WITH_1'
+        'MOCK_EXIT_CLI_CALLED_WITH_1',
       );
 
       // Should output user-friendly error to stderr
@@ -192,14 +192,14 @@ describe('installCommand', () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(undefined);
 
     expect(program.parseAsync(['install', 'nonexistent'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1'
+      'MOCK_EXIT_CLI_CALLED_WITH_1',
     );
 
     testLogger.expect(
       ['ERROR'],
       ['registerInstallCommand'],
       [],
-      [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)]
+      [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)],
     );
   });
 

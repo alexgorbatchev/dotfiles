@@ -7,7 +7,7 @@
  *
  * @see {@link once}
  */
-export type OnceScript = string & { readonly __brand: 'once' };
+export type OnceScript = string & { readonly __brand: 'once'; };
 
 /**
  * A branded string type representing a shell script that should run on every
@@ -19,7 +19,7 @@ export type OnceScript = string & { readonly __brand: 'once' };
  *
  * @see {@link always}
  */
-export type AlwaysScript = string & { readonly __brand: 'always' };
+export type AlwaysScript = string & { readonly __brand: 'always'; };
 
 /**
  * A union type representing any kind of shell script, whether it runs once or
@@ -50,7 +50,7 @@ export function once(strings: TemplateStringsArray, ...values: unknown[]): OnceS
   const content = String.raw(strings, ...values);
   const script = new String(content) as OnceScript;
   // Intentionally augmenting String object for branded type
-  (script as OnceScript & { __brand: string }).__brand = 'once';
+  (script as OnceScript & { __brand: string; }).__brand = 'once';
   return script as OnceScript;
 }
 
@@ -78,7 +78,7 @@ export function always(strings: TemplateStringsArray, ...values: unknown[]): Alw
   const content = String.raw(strings, ...values);
   const script = new String(content) as AlwaysScript;
   // Intentionally augmenting String object for branded type
-  (script as AlwaysScript & { __brand: string }).__brand = 'always';
+  (script as AlwaysScript & { __brand: string; }).__brand = 'always';
   return script as AlwaysScript;
 }
 

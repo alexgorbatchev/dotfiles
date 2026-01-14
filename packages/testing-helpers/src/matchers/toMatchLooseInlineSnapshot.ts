@@ -1,5 +1,5 @@
-import { expect } from 'bun:test';
 import { dedentString } from '@dotfiles/utils';
+import { expect } from 'bun:test';
 
 declare module 'bun:test' {
   interface ILooseInlineSnapshotMatchers<T> {
@@ -14,8 +14,8 @@ function escapeRegexLiteral(value: unknown): string {
 }
 
 function validateInput(
-  received: unknown
-): { isValid: true; value: string } | { isValid: false; result: { pass: false; message: () => string } } {
+  received: unknown,
+): { isValid: true; value: string; } | { isValid: false; result: { pass: false; message: () => string; }; } {
   if (typeof received !== 'string') {
     return {
       isValid: false,
@@ -58,7 +58,7 @@ function processMatcherAtIndex(matcher: unknown): string {
   return escapeRegexLiteral(matcher);
 }
 
-function executeRegexMatch(fullRegex: string, received: string): { pass: boolean; message: () => string } {
+function executeRegexMatch(fullRegex: string, received: string): { pass: boolean; message: () => string; } {
   try {
     const re = new RegExp(fullRegex, 'sm');
     const pass = re.test(received);

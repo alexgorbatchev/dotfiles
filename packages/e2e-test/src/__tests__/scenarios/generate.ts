@@ -42,7 +42,7 @@ export function generateScenarios(harness: TestHarness, additionalTests?: () => 
         await harness.verifyEnvironmentVariable(
           'github-release-tool',
           'GITHUB_RELEASE_TOOL_DEFAULT_OPTS',
-          '--color=fg'
+          '--color=fg',
         );
         await harness.verifyEnvironmentVariable('github-release-tool', 'GITHUB_RELEASE_TOOL_OTHER_OPTS', '--arg=1');
       });
@@ -88,12 +88,12 @@ export function generateScenarios(harness: TestHarness, additionalTests?: () => 
         await harness.verifyEnvironmentVariable(
           'cargo-quickinstall-tool',
           'CARGO_QUICKINSTALL_TOOL_DEFAULT_OPTS',
-          '--color=fg'
+          '--color=fg',
         );
         await harness.verifyEnvironmentVariable(
           'cargo-quickinstall-tool',
           'CARGO_QUICKINSTALL_TOOL_OTHER_OPTS',
-          '--arg=1'
+          '--arg=1',
         );
       });
 

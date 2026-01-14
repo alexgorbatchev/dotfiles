@@ -4,7 +4,7 @@
 > we need to add support for args for   install('curl-script', {
 >     url: 'https://fnm.vercel.app/install',
 >     shell: 'bash',
-> 
+>
 > currently, it's impossible to implement this kind of installation:     curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell --install-dir "$LOCAL_BIN"
 
 # Primary Objective

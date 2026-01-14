@@ -1,10 +1,13 @@
 # User Prompt
-> we need to add a new files command that takes toolName and prints tree of files in current version binaries, for example tree of eza/version/*, this is a helper command to allow tool authors to see the content of folder
+
+> we need to add a new files command that takes toolName and prints tree of files in current version binaries, for example tree of eza/version/\*, this is a helper command to allow tool authors to see the content of folder
 
 # Primary Objective
+
 Add a new CLI command `files <toolName>` that displays a tree structure of files in the tool's current version binaries directory to help tool authors inspect installed tool contents.
 
 # Open Questions
+
 - [x] Should the command show the full tree or just the top-level structure by default? **No depth limit, show full tree**
 - [x] Should there be a depth limit option? **No**
 - [x] What should happen if the tool doesn't exist or has no installed version? **Same error handling as other commands that take toolName**
@@ -12,6 +15,7 @@ Add a new CLI command `files <toolName>` that displays a tree structure of files
 - [x] Should the command output include the full path to the binaries directory at the top? **Yes, full path as first line with tree branching from it**
 
 # Tasks
+
 - [x] **TS001**: Research existing CLI commands to understand toolName error handling patterns
 - [x] **TS002**: Research how other commands display information (check existing command structure in packages/cli)
 - [x] **TS003**: Create a failing test for the new `files` command
@@ -23,6 +27,7 @@ Add a new CLI command `files <toolName>` that displays a tree structure of files
 - [x] **TS009**: Update relevant documentation
 
 # Acceptance Criteria
+
 - [x] Primary objective is met
 - [x] All temporary code is removed
 - [x] All tasks are complete
@@ -34,6 +39,7 @@ Add a new CLI command `files <toolName>` that displays a tree structure of files
 - [x] `bun lint`, `bun typecheck` and `bun test` commands runs successfully in the new worktree
 
 # Change Log
+
 - Created feature branch and worktree
 - Created feature work file
 - Researched existing CLI command patterns

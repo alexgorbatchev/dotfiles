@@ -1,8 +1,8 @@
+import type { IAfterInstallContext, IExtractContext } from '@dotfiles/core';
+import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
-import type { IAfterInstallContext, IExtractContext } from '@dotfiles/core';
-import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { createInstallerTestSetup, type IInstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
 
 /**
@@ -59,7 +59,8 @@ describe('Hook Integration Tests', () => {
 
                 // Create a default configuration file
                 const configPath = path.join(configDir, 'default.yaml');
-                const configContent = `# Default configuration for ${context.toolName}\nversion: ${context.version}\ninstall_dir: ${context.installedDir}`;
+                const configContent =
+                  `# Default configuration for ${context.toolName}\nversion: ${context.version}\ninstall_dir: ${context.installedDir}`;
                 await context.fileSystem.writeFile(configPath, configContent);
 
                 // Make the main binary executable with specific permissions
@@ -84,7 +85,7 @@ describe('Hook Integration Tests', () => {
       const toolDirContents = await setup.fs.readdir(toolDir);
       // Version directory should be '1.0.0' from the resolved tag_name
       const versionDir = toolDirContents.find(
-        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/)
+        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/),
       );
       expect(versionDir).toBeDefined();
 
@@ -156,7 +157,7 @@ describe('Hook Integration Tests', () => {
 
                 // Copy documentation files
                 const docFiles = context.extractResult.extractedFiles.filter(
-                  (file) => file.includes('README') || file.includes('LICENSE')
+                  (file) => file.includes('README') || file.includes('LICENSE'),
                 );
 
                 if (docFiles.length > 0) {
@@ -195,7 +196,7 @@ describe('Hook Integration Tests', () => {
 
       // Version directory should be '1.0.0' from the resolved tag_name
       const versionDir = toolDirContents.find(
-        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/)
+        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/),
       );
       if (!versionDir) {
         throw new Error(`No version directory found in: ${toolDirContents}`);
@@ -298,7 +299,7 @@ describe('Hook Integration Tests', () => {
       const toolDirContents = await setup.fs.readdir(toolDir);
       // Version directory should be '1.0.0' from the resolved tag_name
       const versionDir = toolDirContents.find(
-        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/)
+        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/),
       );
       expect(versionDir).toBeDefined();
 
@@ -369,7 +370,7 @@ describe('Hook Integration Tests', () => {
         ['ERROR'],
         ['Installer', 'install', 'createBaseInstallContext', 'install-failing-tool', 'HookExecutor', 'executeHook'],
         ['failing-tool'],
-        ['Hook failed']
+        ['Hook failed'],
       );
     });
   });

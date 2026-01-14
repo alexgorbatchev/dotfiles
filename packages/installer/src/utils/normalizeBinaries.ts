@@ -19,7 +19,7 @@ import type { IBinaryConfig } from '@dotfiles/core';
  */
 export function normalizeBinaries(
   binaries: (string | IBinaryConfig)[] | undefined,
-  fallbackName: string
+  fallbackName: string,
 ): IBinaryConfig[] {
   if (!binaries || binaries.length === 0) {
     return [{ name: fallbackName, pattern: `{,*/}${fallbackName}` }];

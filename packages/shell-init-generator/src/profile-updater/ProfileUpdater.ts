@@ -1,8 +1,8 @@
-import path from 'node:path';
 import type { ShellType } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
+import path from 'node:path';
 import { generateProfileHeader, generateSourceLine } from '../shellTemplates';
-import type { IProfileUpdateConfig, IProfileUpdateResult, IProfileUpdater } from './IProfileUpdater';
+import type { IProfileUpdateConfig, IProfileUpdater, IProfileUpdateResult } from './IProfileUpdater';
 
 /**
  * Implementation of profile file updater that manages sourcing generated shell scripts

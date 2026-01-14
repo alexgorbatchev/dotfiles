@@ -2,6 +2,7 @@
 description: file-structure
 applyTo: '**/*'
 ---
+
 # File Structure
 
 - **Small Files & Single Responsibility:** Each file should have a single primary responsibility. Generally, this means one main export (function, class, or a complex standalone type). Associated helper types or minor interfaces directly related to this primary export can be co-located.

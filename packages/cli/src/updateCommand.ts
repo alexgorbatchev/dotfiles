@@ -2,7 +2,7 @@ import type { IConfigService } from '@dotfiles/config';
 import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { ExitCode, exitCli } from '@dotfiles/utils';
+import { exitCli, ExitCode } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type {
   ICommandCompletionMeta,
@@ -36,7 +36,7 @@ async function loadToolConfigSafely(
   toolConfigsDir: string,
   fs: IResolvedFileSystem,
   projectConfig: ProjectConfig,
-  systemInfo: ISystemInfo
+  systemInfo: ISystemInfo,
 ): Promise<ILoadToolConfigSafelyResult> {
   try {
     const toolConfig = await configService.loadSingleToolConfig(
@@ -45,7 +45,7 @@ async function loadToolConfigSafely(
       toolConfigsDir,
       fs,
       projectConfig,
-      systemInfo
+      systemInfo,
     );
 
     if (!toolConfig) {
@@ -68,7 +68,7 @@ async function handleToolUpdate(
   services: IServices,
   toolName: string,
   toolConfig: ToolConfig,
-  shimMode: boolean
+  shimMode: boolean,
 ): Promise<void> {
   const { pluginRegistry, toolInstallationRegistry, installer } = services;
 
@@ -78,8 +78,8 @@ async function handleToolUpdate(
     logger.info(
       messages.commandUnsupportedOperation(
         'Update',
-        `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`
-      )
+        `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`,
+      ),
     );
     return;
   }
@@ -88,8 +88,8 @@ async function handleToolUpdate(
     logger.info(
       messages.commandUnsupportedOperation(
         'Update',
-        `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`
-      )
+        `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`,
+      ),
     );
     return;
   }
@@ -105,8 +105,9 @@ async function handleToolUpdate(
     return;
   }
 
-  const resolvedNewVersion: string =
-    'version' in installResult && typeof installResult.version === 'string' ? installResult.version : 'unknown';
+  const resolvedNewVersion: string = 'version' in installResult && typeof installResult.version === 'string'
+    ? installResult.version
+    : 'unknown';
   const isUpToDate = oldVersion === resolvedNewVersion;
 
   if (shimMode) {
@@ -124,7 +125,7 @@ async function handleToolUpdate(
 export function registerUpdateCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>
+  servicesFactory: () => Promise<IServices>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerUpdateCommand' });
   program
@@ -148,7 +149,7 @@ export function registerUpdateCommand(
           projectConfig.paths.toolConfigsDir,
           fs,
           projectConfig,
-          systemInfo
+          systemInfo,
         );
 
         if (toolConfigResult.exitCode !== ExitCode.SUCCESS) {

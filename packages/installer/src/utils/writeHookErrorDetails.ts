@@ -137,7 +137,7 @@ async function buildToolCodeFrame(fileSystem: IFileSystem, frame: IToolStackFram
       linesBelow: 2,
       highlightCode: true,
       forceColor: true,
-    }
+    },
   );
 
   const result = `${frame.filePath}:${frame.line}:${frame.column}\n${codeFrame}\n`;

@@ -5,13 +5,13 @@ Reference for the public API available in `@gitea/dotfiles`.
 ## Exports
 
 ```typescript
-import { 
-  defineTool,      // Create tool configurations
-  defineConfig,    // Create project configuration
-  Platform,        // Platform enum for cross-platform configs
-  Architecture,    // Architecture enum
-  dedentString,    // Utility for template strings
-  dedentTemplate,  // Tagged template for dedenting
+import {
+  Architecture, // Architecture enum
+  dedentString, // Utility for template strings
+  dedentTemplate, // Tagged template for dedenting
+  defineConfig, // Create project configuration
+  defineTool, // Create tool configurations
+  Platform, // Platform enum for cross-platform configs
 } from '@gitea/dotfiles';
 ```
 
@@ -20,10 +20,7 @@ import {
 Creates a tool configuration.
 
 ```typescript
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-);
+export default defineTool((install, ctx) => install('github-release', { repo: 'owner/tool' }).bin('tool'));
 ```
 
 ### Parameters
@@ -33,18 +30,18 @@ export default defineTool((install, ctx) =>
 
 ### Builder Methods
 
-| Method | Description |
-|--------|-------------|
-| `.bin(name)` | Define binary name(s) to expose |
-| `.version(v)` | Set version (`'latest'` or specific) |
-| `.dependsOn(...bins)` | Declare binary dependencies |
-| `.symlink(src, dest)` | Create config file symlink |
-| `.hook(event, fn)` | Lifecycle hooks ([details](./hooks.md)) |
-| `.zsh(fn)` | Zsh shell configuration |
-| `.bash(fn)` | Bash shell configuration |
-| `.powershell(fn)` | PowerShell configuration |
-| `.platform(p, fn)` | Platform-specific overrides |
-| `.disable()` | Skip tool during generation (logs warning) |
+| Method                | Description                                |
+| --------------------- | ------------------------------------------ |
+| `.bin(name)`          | Define binary name(s) to expose            |
+| `.version(v)`         | Set version (`'latest'` or specific)       |
+| `.dependsOn(...bins)` | Declare binary dependencies                |
+| `.symlink(src, dest)` | Create config file symlink                 |
+| `.hook(event, fn)`    | Lifecycle hooks ([details](./hooks.md))    |
+| `.zsh(fn)`            | Zsh shell configuration                    |
+| `.bash(fn)`           | Bash shell configuration                   |
+| `.powershell(fn)`     | PowerShell configuration                   |
+| `.platform(p, fn)`    | Platform-specific overrides                |
+| `.disable()`          | Skip tool during generation (logs warning) |
 
 ### Shell Configuration
 
@@ -62,15 +59,16 @@ The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
 )
 ```
 
-| Shell Method | Description |
-|--------------|-------------|
+| Shell Method                               | Description                                                    |
+| ------------------------------------------ | -------------------------------------------------------------- |
 | `.completions(path \| config \| callback)` | Completion file, config object, or callback with `ctx.version` |
-| `.environment(obj)` | Environment variables |
-| `.aliases(obj)` | Shell aliases |
-| `.always(script)` | Script run on every shell init |
-| `.once(script)` | Script run once after install |
+| `.environment(obj)`                        | Environment variables                                          |
+| `.aliases(obj)`                            | Shell aliases                                                  |
+| `.always(script)`                          | Script run on every shell init                                 |
+| `.once(script)`                            | Script run once after install                                  |
 
 **Completions examples:**
+
 ```typescript
 .completions('completions/_tool')                    // Static path
 .completions({ cmd: 'tool completion zsh' })         // Command
@@ -98,26 +96,24 @@ import { defineTool, Platform } from '@gitea/dotfiles';
 export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .platform(Platform.MacOS, (install) =>
-      install('brew', { formula: 'tool' })
-    )
+    .platform(Platform.MacOS, (install) => install('brew', { formula: 'tool' }))
 );
 ```
 
-| Value | Description |
-|-------|-------------|
-| `Platform.Linux` | Linux systems |
-| `Platform.MacOS` | macOS (alias: `Platform.Darwin`) |
-| `Platform.Windows` | Windows systems |
+| Value              | Description                      |
+| ------------------ | -------------------------------- |
+| `Platform.Linux`   | Linux systems                    |
+| `Platform.MacOS`   | macOS (alias: `Platform.Darwin`) |
+| `Platform.Windows` | Windows systems                  |
 
 ## Architecture
 
 Enum for architecture-specific configurations.
 
-| Value | Description |
-|-------|-------------|
-| `Architecture.X86_64` | Intel/AMD 64-bit |
-| `Architecture.Arm64` | ARM 64-bit (Apple Silicon, etc.) |
+| Value                 | Description                      |
+| --------------------- | -------------------------------- |
+| `Architecture.X86_64` | Intel/AMD 64-bit                 |
+| `Architecture.Arm64`  | ARM 64-bit (Apple Silicon, etc.) |
 
 ## Utilities
 
@@ -126,7 +122,8 @@ Enum for architecture-specific configurations.
 Performs a regex-based replacement within a file. Pre-bound with the context's file system.
 
 **Key behaviors:**
-- Always replaces *all* matches (global replacement), even if `from` does not include the `g` flag
+
+- Always replaces _all_ matches (global replacement), even if `from` does not include the `g` flag
 - Supports `to` as either a string or a (a)sync callback
 - Supports `mode: 'file'` (default) and `mode: 'line'` (process each line separately)
 - No-op write: if output equals input, the file is not written
@@ -160,6 +157,7 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
 ```
 
 **Parameters:**
+
 - `filePath` - Path to the file (supports `~` expansion)
 - `from` - Pattern to match (string or RegExp, always global)
 - `to` - Replacement string or callback receiving `IReplaceInFileMatch`
@@ -170,6 +168,7 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
 **Returns:** `Promise<boolean>` - `true` if replacements were made, `false` if no matches found
 
 **Callback argument (`IReplaceInFileMatch`):**
+
 - `substring` - The matched substring
 - `captures` - Array of capture groups (may contain `undefined`)
 - `offset` - Match offset in the input
@@ -183,18 +182,19 @@ User-facing logger for tool operations. Messages are automatically prefixed with
 ```typescript
 .hook('after-install', async () => {
   ctx.log.info('Configuring tool settings...');
-  
+
   const result = await configureSettings();
-  
+
   if (result.warnings.length > 0) {
     ctx.log.warn('Some settings could not be applied');
   }
-  
+
   ctx.log.debug('Configuration complete');
 })
 ```
 
 **Methods:**
+
 - `ctx.log.trace(message)` - Detailed debugging (hidden by default)
 - `ctx.log.debug(message)` - Debug information (hidden by default)
 - `ctx.log.info(message)` - Informational messages
@@ -202,6 +202,7 @@ User-facing logger for tool operations. Messages are automatically prefixed with
 - `ctx.log.error(message, error?)` - Error messages (optionally with error object)
 
 **Output:** Messages include the tool name as context:
+
 ```
 INFO    [my-tool] Configuring tool settings...
 ```

@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type { IInstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -13,6 +12,7 @@ import {
 } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli } from '@dotfiles/utils';
+import path from 'node:path';
 import { messages } from './log-messages';
 import type { CurlScriptToolConfig } from './schemas';
 import { shell as bunShell } from './shell';
@@ -31,7 +31,7 @@ async function resolveScriptArgs(
     args?: CurlScriptArgs;
   },
   context: IInstallContext,
-  scriptPath: string
+  scriptPath: string,
 ): Promise<string[]> {
   if (!params.args) {
     return [];
@@ -57,7 +57,7 @@ async function handleBinaryInstallation(
   toolName: string,
   context: IInstallContext,
   fs: IFileSystem,
-  logger: TsLogger
+  logger: TsLogger,
 ): Promise<void> {
   const binaryNames = getBinaryNames(toolConfig.binaries, toolName);
 
@@ -107,7 +107,7 @@ export async function installFromCurlScript(
   fs: IFileSystem,
   downloader: IDownloader,
   hookExecutor: HookExecutor,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<CurlScriptInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlScript' });
@@ -145,7 +145,7 @@ export async function installFromCurlScript(
       postDownloadContext,
       hookExecutor,
       fs,
-      logger
+      logger,
     );
     if (!afterDownloadResult.success) {
       return afterDownloadResult;

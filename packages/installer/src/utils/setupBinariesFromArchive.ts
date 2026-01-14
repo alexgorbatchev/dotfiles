@@ -1,9 +1,9 @@
-import path from 'node:path';
 import type { IBinaryConfig, IInstallContext, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { getAllFilesRecursively } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
+import path from 'node:path';
 import { createBinaryEntrypoint } from './createBinaryEntrypoint';
 import { messages } from './log-messages';
 import { normalizeBinaries } from './normalizeBinaries';
@@ -34,7 +34,7 @@ export async function setupBinariesFromArchive(
   toolConfig: ToolConfig,
   context: IInstallContext,
   extractDir: string,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'setupBinariesFromArchive' });
   const binariesDir = path.join(context.projectConfig.paths.generatedDir, 'binaries');
@@ -58,7 +58,7 @@ async function setupBinariesUsingPatterns(
   versionOrTimestamp: string,
   extractDir: string,
   binariesDir: string,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<boolean> {
   const logger = parentLogger.getSubLogger({ name: 'setupBinariesUsingPatterns' });
   let foundAnyBinary = false;
@@ -101,7 +101,7 @@ async function generateDirectoryTree(
   dirPath: string,
   prefix = '',
   maxDepth = 3,
-  currentDepth = 0
+  currentDepth = 0,
 ): Promise<string[]> {
   const lines: string[] = [];
 
@@ -116,7 +116,7 @@ async function generateDirectoryTree(
     return lines; // Skip directories that can't be read
   }
 
-  const sortedEntries = entries.sort();
+  const sortedEntries = entries.toSorted();
 
   for (let i = 0; i < sortedEntries.length; i++) {
     const entry = sortedEntries[i];
@@ -135,7 +135,7 @@ async function generateDirectoryTree(
       connector,
       childPrefix,
       maxDepth,
-      currentDepth
+      currentDepth,
     );
     lines.push(...entryLines);
   }
@@ -154,7 +154,7 @@ async function formatDirectoryEntry(
   connector: string,
   childPrefix: string,
   maxDepth: number,
-  currentDepth: number
+  currentDepth: number,
 ): Promise<string[]> {
   const lines: string[] = [];
 
@@ -192,7 +192,7 @@ async function findBinaryUsingPattern(
   extractDir: string,
   pattern: string,
   binaryName: string,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
 ): Promise<string | null> {
   const logger = parentLogger.getSubLogger({ name: 'findBinaryUsingPattern' });
   logger.debug(messages.binarySetupService.searchingWithPattern(pattern, extractDir));

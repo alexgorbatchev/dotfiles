@@ -16,8 +16,7 @@ import { defineTool } from '@dotfiles/cli';
 export default defineTool((install, ctx) =>
   install('curl-tar', {
     url: 'https://example.com/releases/tool-1.0.0.tar.gz',
-  })
-    .bin('tool')
+  }).bin('tool')
 );
 ```
 
@@ -37,8 +36,7 @@ The `install('curl-tar', params)` function accepts the following parameters:
 export default defineTool((install, ctx) =>
   install('curl-tar', {
     url: 'https://example.com/tool.tar.gz',
-  })
-    .bin('tool')
+  }).bin('tool')
 );
 ```
 
@@ -61,24 +59,28 @@ export default defineTool((install, ctx) =>
 #### Binary in Subdirectory
 
 ```typescript
-export default defineTool((install, ctx) =>
-  install('curl-tar', {
-    url: 'https://example.com/tool.tar.gz',
-  })
-    .bin('tool', 'bin/tool')  // Pattern to find binary
+export default defineTool(
+  (install, ctx) =>
+    install('curl-tar', {
+      url: 'https://example.com/tool.tar.gz',
+    }).bin('tool', 'bin/tool'), // Pattern to find binary
 );
 ```
 
 ## Features
 
 ### Archive Download
+
 Downloads tar archives from any accessible URL with progress display and force-download support.
 
 ### Archive Extraction
+
 Automatically extracts tar archives (.tar, .tar.gz, .tgz) to the installation directory using the injected archive extractor.
 
 ### Binary Location
+
 Supports flexible binary locations within archives:
+
 - Root-level binaries
 - Binaries in subdirectories (e.g., `bin/tool`)
 - Multiple binaries per archive
@@ -86,10 +88,12 @@ Supports flexible binary locations within archives:
 ### Lifecycle Hooks
 
 Supports two installation lifecycle hooks:
+
 - **afterDownload**: Executed after tarball download, before extraction
 - **afterExtract**: Executed after extraction, before binary setup
 
 ### Archive Cleanup
+
 Automatically removes the downloaded tarball after successful extraction to conserve disk space.
 
 ## Implementation Details

@@ -1,6 +1,3 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
-import path from 'node:path';
 import type {
   AsyncConfigureTool,
   InstallFunction,
@@ -14,6 +11,9 @@ import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { createInstallFunction, IToolConfigBuilder as ToolConfigBuilderImpl } from '@dotfiles/tool-config-builder';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
+import path from 'node:path';
 
 describe('IToolConfigContext', () => {
   let logger: TestLogger;
@@ -53,7 +53,7 @@ describe('IToolConfigContext', () => {
         'test-tool',
         path.dirname(toolConfigFilePath),
         resolvedFs,
-        logger
+        logger,
       );
 
       expect(context.projectConfig.paths.homeDir).toBe(mockProjectConfig.paths.homeDir);
@@ -74,7 +74,7 @@ describe('IToolConfigContext', () => {
         'shell-tool',
         path.dirname(toolConfigFilePath),
         resolvedFs,
-        logger
+        logger,
       );
 
       // Test that context can be used in a tool configuration function
@@ -116,7 +116,7 @@ describe('IToolConfigContext', () => {
       const toolConfigFilePath = path.join(
         mockProjectConfig.paths.toolConfigsDir,
         'dependent-tool',
-        'dependent-tool.tool.ts'
+        'dependent-tool.tool.ts',
       );
       const context = createToolConfigContext(
         mockProjectConfig,
@@ -124,7 +124,7 @@ describe('IToolConfigContext', () => {
         'dependent-tool',
         path.dirname(toolConfigFilePath),
         resolvedFs,
-        logger
+        logger,
       );
 
       // Test a tool that references other tools
@@ -155,10 +155,10 @@ describe('IToolConfigContext', () => {
 
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockProjectConfig.paths.binariesDir, 'fzf')
+        path.join(mockProjectConfig.paths.binariesDir, 'fzf'),
       );
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockProjectConfig.paths.binariesDir, 'dependent-tool', 'config.yaml')
+        path.join(mockProjectConfig.paths.binariesDir, 'dependent-tool', 'config.yaml'),
       );
     });
 
@@ -166,7 +166,7 @@ describe('IToolConfigContext', () => {
       const toolConfigFilePath = path.join(
         mockProjectConfig.paths.toolConfigsDir,
         'completion-tool',
-        'completion-tool.tool.ts'
+        'completion-tool.tool.ts',
       );
       const context = createToolConfigContext(
         mockProjectConfig,
@@ -174,7 +174,7 @@ describe('IToolConfigContext', () => {
         'completion-tool',
         path.dirname(toolConfigFilePath),
         resolvedFs,
-        logger
+        logger,
       );
 
       // Test a tool that generates completions
@@ -199,7 +199,7 @@ describe('IToolConfigContext', () => {
 
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockProjectConfig.paths.generatedDir, 'completions/_completion-tool')
+        path.join(mockProjectConfig.paths.generatedDir, 'completions/_completion-tool'),
       );
     });
   });
@@ -235,7 +235,7 @@ describe('IToolConfigContext', () => {
       const toolConfigFilePath = path.join(
         customProjectConfig.paths.toolConfigsDir,
         'custom-path-tool',
-        'custom-path-tool.tool.ts'
+        'custom-path-tool.tool.ts',
       );
       const context = createToolConfigContext(
         customProjectConfig,
@@ -243,14 +243,14 @@ describe('IToolConfigContext', () => {
         'custom-path-tool',
         path.dirname(toolConfigFilePath),
         customMockFs.fs.asIResolvedFileSystem,
-        logger
+        logger,
       );
 
       expect(context.projectConfig.paths.homeDir).toBe(customProjectConfig.paths.homeDir);
       expect(context.projectConfig.paths.dotfilesDir).toBe(customProjectConfig.paths.dotfilesDir);
       expect(context.projectConfig.paths.generatedDir).toBe(customProjectConfig.paths.generatedDir);
       expect(path.join(context.projectConfig.paths.binariesDir, context.toolName)).toBe(
-        path.join(customProjectConfig.paths.binariesDir, 'custom-path-tool')
+        path.join(customProjectConfig.paths.binariesDir, 'custom-path-tool'),
       );
       expect(context.toolDir).toBe(path.dirname(toolConfigFilePath));
     });
@@ -265,7 +265,7 @@ describe('IToolConfigContext', () => {
         'fzf-like',
         path.dirname(toolConfigFilePath),
         resolvedFs,
-        logger
+        logger,
       );
 
       // Test fzf-like pattern with context
@@ -296,7 +296,7 @@ describe('IToolConfigContext', () => {
       expect(toolConfig.shellConfigs?.zsh?.completions).toBeDefined();
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockProjectConfig.paths.binariesDir, 'fzf-like')
+        path.join(mockProjectConfig.paths.binariesDir, 'fzf-like'),
       );
     });
 
@@ -308,7 +308,7 @@ describe('IToolConfigContext', () => {
         'atuin-like',
         path.dirname(toolConfigFilePath),
         resolvedFs,
-        logger
+        logger,
       );
 
       // Test atuin-like pattern with context
@@ -338,10 +338,10 @@ describe('IToolConfigContext', () => {
       expect(toolConfig.symlinks).toBeDefined();
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockProjectConfig.paths.binariesDir, 'atuin-like')
+        path.join(mockProjectConfig.paths.binariesDir, 'atuin-like'),
       );
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockProjectConfig.paths.generatedDir, 'completions/_atuin-like')
+        path.join(mockProjectConfig.paths.generatedDir, 'completions/_atuin-like'),
       );
     });
   });
