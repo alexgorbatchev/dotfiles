@@ -5,7 +5,6 @@ applyTo: '**/*'
 
 # Troubleshooting Rules
 
-- If bun fails to install packages, you need to symlink ~/.npmrc to be next to package.json
 - When user provides a URL, use the `webpage-to-markdown` tool to get its content, don't hesitate to explore returned URLs futher to obtain relevant content that could be help you to understand the issue better
 - For CLI command issues, verify the current working directory and environment configuration
 - When running tests, avoid grepping results by ERROR|FAIL|etc, you `head` or `tail` to determine if tests pass or fail
