@@ -1,12 +1,11 @@
-import type { $extended } from '@dotfiles/core';
+import { type $extended, createShell } from '@dotfiles/core';
 import { extendedShellBrand } from '@dotfiles/core';
 import { describe, expect, it } from 'bun:test';
-import { $ } from 'dax-sh';
 import { createConfiguredShell } from '../createConfiguredShell';
 
 describe('createConfiguredShell', () => {
   it('should return a branded $extended type', () => {
-    const shell = createConfiguredShell($, {});
+    const shell = createConfiguredShell(createShell(), {});
 
     // Verify it has the extended shell brand
     expect(extendedShellBrand in shell).toBe(true);
@@ -21,7 +20,7 @@ describe('createConfiguredShell', () => {
       TEST_VAR: 'test-value',
     };
 
-    const shell = createConfiguredShell($, env);
+    const shell = createConfiguredShell(createShell(), env);
 
     // Verify env var is present
     const output = await shell`echo $TEST_VAR`.text();
@@ -37,7 +36,7 @@ describe('createConfiguredShell', () => {
     process.env['TEST_OVERRIDE'] = 'old-value';
 
     try {
-      const shell = createConfiguredShell($, env);
+      const shell = createConfiguredShell(createShell(), env);
       const output = await shell`echo $TEST_OVERRIDE`.text();
       expect(output.trim()).toBe('new-value');
     } finally {
@@ -47,7 +46,7 @@ describe('createConfiguredShell', () => {
 
   it('should merge environment variables when chaining .env()', async () => {
     const baseEnv = { BASE: 'base' };
-    const shell = createConfiguredShell($, baseEnv);
+    const shell = createConfiguredShell(createShell(), baseEnv);
 
     // With the fix, this should now output "BASE=base EXTRA=extra"
     const output = await shell`echo "BASE=$BASE EXTRA=$EXTRA"`.env({ EXTRA: 'extra' }).text();

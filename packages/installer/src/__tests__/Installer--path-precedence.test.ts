@@ -2,6 +2,7 @@ import type { ProjectConfig } from '@dotfiles/config';
 import {
   type $extended,
   Architecture,
+  createShell,
   InstallerPluginRegistry,
   type ISystemInfo,
   Platform,
@@ -12,7 +13,6 @@ import { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { afterEach, describe, expect, it } from 'bun:test';
-import { $ } from 'dax-sh';
 import assert from 'node:assert';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -131,7 +131,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
       systemInfo,
       registry,
       symlinkGenerator,
-      $ as unknown as $extended,
+      createShell() as unknown as $extended,
       hookExecutor,
     );
 

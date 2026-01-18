@@ -13,8 +13,7 @@
   "dependencies": {
     "@dotfiles/core": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
-    "@dotfiles/logger": "workspace:*",
-    "dax-sh": "catalog:"
+    "@dotfiles/logger": "workspace:*"
   },
   "devDependencies": {
     "@dotfiles/testing-helpers": "workspace:*",

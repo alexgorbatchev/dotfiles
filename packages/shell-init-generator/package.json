@@ -12,8 +12,7 @@
     "@dotfiles/downloader": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
-    "@dotfiles/utils": "workspace:*",
-    "dax-sh": "catalog:"
+    "@dotfiles/utils": "workspace:*"
   },
   "devDependencies": {
     "@dotfiles/testing-helpers": "workspace:*",

@@ -29,7 +29,6 @@ import { ShimGenerator } from '@dotfiles/shim-generator';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { contractHomePath } from '@dotfiles/utils';
 import { VersionChecker } from '@dotfiles/version-checker';
-import { $ } from 'dax-sh';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -321,17 +320,26 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   // Create system-context logger for generators that operate at system level
   const systemLogger = parentLogger.getSubLogger({ context: 'system' });
 
+  // Create shell instance for all components
+  const shell = createExtendedShell();
+
   const shimGenerator = new ShimGenerator(systemLogger, shimTrackedFs, projectConfig);
   const shellInitGenerator = new ShellInitGenerator(systemLogger, shellInitTrackedFs, projectConfig);
   const symlinkGenerator = new SymlinkGenerator(systemLogger, symlinkTrackedFs, projectConfig, systemInfo);
-  const completionCommandExecutor = new CompletionCommandExecutor(systemLogger);
+  const completionCommandExecutor = new CompletionCommandExecutor(systemLogger, shell);
 
-  const archiveExtractor = new ArchiveExtractor(parentLogger, resolvedFs);
+  const archiveExtractor = new ArchiveExtractor(parentLogger, resolvedFs, shell);
 
-  const completionGenerator = new CompletionGenerator(systemLogger, completionTrackedFs, completionCommandExecutor, {
-    downloader,
-    archiveExtractor,
-  });
+  const completionGenerator = new CompletionGenerator(
+    systemLogger,
+    completionTrackedFs,
+    shell,
+    completionCommandExecutor,
+    {
+      downloader,
+      archiveExtractor,
+    },
+  );
 
   const generatorOrchestrator = new GeneratorOrchestrator(
     systemLogger,
@@ -365,7 +373,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       hookExecutor,
     ),
   );
-  pluginRegistry.register(new BrewInstallerPlugin());
+  pluginRegistry.register(new BrewInstallerPlugin(shell));
   pluginRegistry.register(
     new CargoInstallerPlugin(
       installerTrackedFs,
@@ -376,8 +384,10 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       projectConfig.cargo.githubRelease.host,
     ),
   );
-  pluginRegistry.register(new CurlScriptInstallerPlugin(installerTrackedFs, downloader, hookExecutor));
-  pluginRegistry.register(new CurlTarInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor));
+  pluginRegistry.register(new CurlScriptInstallerPlugin(installerTrackedFs, downloader, hookExecutor, shell));
+  pluginRegistry.register(
+    new CurlTarInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor, shell),
+  );
   pluginRegistry.register(new ManualInstallerPlugin(installerTrackedFs));
 
   const installer = new Installer(
@@ -389,7 +399,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     finalSystemInfo,
     pluginRegistry,
     symlinkGenerator,
-    createExtendedShell($), // Don't add logging here - HookExecutor.createEnhancedContext adds logging with tool context
+    shell, // Don't add logging here - HookExecutor.createEnhancedContext adds logging with tool context
     hookExecutor,
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);

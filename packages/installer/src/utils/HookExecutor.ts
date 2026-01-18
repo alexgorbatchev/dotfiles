@@ -2,6 +2,7 @@ import {
   type $extended,
   type AsyncInstallHook,
   createLoggingShell,
+  createShell,
   hasLoggingShell,
   type IInstallBaseContext,
   type IOperationFailure,
@@ -27,7 +28,6 @@ export type HookHandler<TContext extends IInstallBaseContext = IInstallBaseConte
 
 function createToolConfigCwdShell($shell: $extended, cwdPath: string): $extended {
   const configuredShell: $extended = Object.assign((strings: TemplateStringsArray, ...expressions: unknown[]) => {
-    // @ts-expect-error: dax-sh typing
     const shellPromise = $shell(strings, ...expressions).cwd(cwdPath);
     return shellPromise;
   }, $shell);
@@ -296,8 +296,16 @@ export class HookExecutor {
       : [];
     const binaryDirs: string[] = [...new Set(binaryPaths.map((p) => path.dirname(p)))];
 
-    // Start with the base shell
+    // Determine starting shell - if logger provided and no existing logging, use streaming shell
+    // skipCommandLog: true means this shell only streams output, command logging happens in wrapper
     let enhancedShell: $extended = baseContext.$;
+    const needsLogging = logger && !hasLoggingShell(baseContext.$);
+
+    if (needsLogging) {
+      // Create a fresh shell with logger for real-time output streaming
+      // skipCommandLog: true because the logging wrapper will log the original command
+      enhancedShell = createShell({ logger, skipCommandLog: true }) as unknown as $extended;
+    }
 
     // Add binary directories to PATH if present
     if (binaryDirs.length > 0) {
@@ -309,9 +317,8 @@ export class HookExecutor {
       enhancedShell = createToolConfigCwdShell(enhancedShell, toolConfigDirPath);
     }
 
-    // Wrap shell with logging if logger is provided AND shell doesn't already have logging
-    // This prevents double-logging when the base shell already has createLoggingShell applied
-    if (logger && !hasLoggingShell(baseContext.$)) {
+    // Wrap shell with logging for command logging (output streaming handled by base shell)
+    if (needsLogging) {
       enhancedShell = createLoggingShell(enhancedShell, logger);
     }
 

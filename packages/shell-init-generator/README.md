@@ -126,8 +126,10 @@ Discovers and generates completion loading scripts.
 
 ```typescript
 import { CompletionGenerator } from '@dotfiles/shell-init-generator';
+import { createShell } from '@dotfiles/core';
 
-const completionGenerator = new CompletionGenerator(logger, fileSystem, config, toolRegistry);
+const shell = createShell();
+const completionGenerator = new CompletionGenerator(logger, fileSystem, shell);
 
 const completions = await completionGenerator.discover();
 ```
@@ -235,6 +237,7 @@ If a shell is not configured in `shellInstall`, initialization scripts will stil
 ### Internal Dependencies
 
 - `@dotfiles/config` - Configuration management
+- `@dotfiles/core` - Shell execution interface
 - `@dotfiles/file-system` - Filesystem operations
 - `@dotfiles/logger` - Structured logging
 - `@dotfiles/schemas` - Type definitions

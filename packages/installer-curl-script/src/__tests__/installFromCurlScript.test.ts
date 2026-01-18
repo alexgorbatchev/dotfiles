@@ -1,4 +1,4 @@
-import type { IInstallContext } from '@dotfiles/core';
+import type { IInstallContext, Shell } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -8,14 +8,12 @@ import { installFromCurlScript } from '../installFromCurlScript';
 import type { CurlScriptToolConfig } from '../schemas';
 import type { ICurlScriptArgsContext } from '../types';
 
-// Mock Bun $
-const mockQuiet = mock(() => Promise.resolve());
-const mockShell = mock(() => ({
-  quiet: mockQuiet,
-}));
-mock.module('../shell', () => ({
-  shell: mockShell,
-}));
+function createMockShell(): { shell: Shell; mockFn: ReturnType<typeof mock>; mockQuiet: ReturnType<typeof mock>; } {
+  const mockQuiet = mock(() => Promise.resolve());
+  const mockEnv = mock(() => ({ quiet: mockQuiet }));
+  const mockFn = mock(() => ({ env: mockEnv }));
+  return { shell: mockFn as unknown as Shell, mockFn, mockQuiet };
+}
 
 describe('installFromCurlScript', () => {
   let logger: TestLogger;
@@ -50,12 +48,10 @@ describe('installFromCurlScript', () => {
         },
       },
     } as unknown as IInstallContext;
-
-    mockShell.mockClear();
-    mockQuiet.mockClear();
   });
 
   it('should execute script with args when provided', async () => {
+    const { shell, mockFn } = createMockShell();
     const toolConfig: CurlScriptToolConfig = {
       name: 'test-tool',
       version: '1.0.0',
@@ -77,14 +73,15 @@ describe('installFromCurlScript', () => {
       mockDownloader,
       mockHookExecutor,
       logger,
+      shell,
     );
 
-    expect(mockShell).toHaveBeenCalled();
+    expect(mockFn).toHaveBeenCalled();
     // Verify arguments passed to $
     // The first call to $ should be with template strings and values
     // $`bash ${scriptPath} ${args}`
     // arguments: [strings, scriptPath, args]
-    const calls = mockShell.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
+    const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
     expect(calls.length).toBe(1);
     const call = calls[0];
     if (!call) throw new Error('Expected call');
@@ -97,6 +94,7 @@ describe('installFromCurlScript', () => {
   });
 
   it('should execute script without args when not provided', async () => {
+    const { shell, mockFn } = createMockShell();
     const toolConfig: CurlScriptToolConfig = {
       name: 'test-tool',
       version: '1.0.0',
@@ -117,10 +115,11 @@ describe('installFromCurlScript', () => {
       mockDownloader,
       mockHookExecutor,
       logger,
+      shell,
     );
 
-    expect(mockShell).toHaveBeenCalled();
-    const calls = mockShell.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
+    expect(mockFn).toHaveBeenCalled();
+    const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
     expect(calls.length).toBe(1);
     const call = calls[0];
     if (!call) throw new Error('Expected call');
@@ -133,6 +132,7 @@ describe('installFromCurlScript', () => {
   });
 
   it('should execute script with args from function when provided', async () => {
+    const { shell, mockFn } = createMockShell();
     const toolConfig: CurlScriptToolConfig = {
       name: 'test-tool',
       version: '1.0.0',
@@ -154,10 +154,11 @@ describe('installFromCurlScript', () => {
       mockDownloader,
       mockHookExecutor,
       logger,
+      shell,
     );
 
-    expect(mockShell).toHaveBeenCalled();
-    const calls = mockShell.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
+    expect(mockFn).toHaveBeenCalled();
+    const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
     expect(calls.length).toBe(1);
     const call = calls[0];
     if (!call) throw new Error('Expected call');
@@ -170,6 +171,7 @@ describe('installFromCurlScript', () => {
   });
 
   it('should execute script with args from async function when provided', async () => {
+    const { shell, mockFn } = createMockShell();
     const toolConfig: CurlScriptToolConfig = {
       name: 'test-tool',
       version: '1.0.0',
@@ -195,10 +197,11 @@ describe('installFromCurlScript', () => {
       mockDownloader,
       mockHookExecutor,
       logger,
+      shell,
     );
 
-    expect(mockShell).toHaveBeenCalled();
-    const calls = mockShell.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
+    expect(mockFn).toHaveBeenCalled();
+    const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
     expect(calls.length).toBe(1);
     const call = calls[0];
     if (!call) throw new Error('Expected call');

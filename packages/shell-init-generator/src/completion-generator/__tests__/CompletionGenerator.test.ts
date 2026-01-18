@@ -1,4 +1,4 @@
-import type { ShellCompletionConfig } from '@dotfiles/core';
+import { createShell, type ShellCompletionConfig } from '@dotfiles/core';
 import type { IMemFileSystemReturn } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
@@ -9,6 +9,8 @@ import path from 'node:path';
 import { CompletionGenerator } from '../CompletionGenerator';
 import type { ICompletionGenerationContext } from '../types';
 
+const shell = createShell();
+
 describe('CompletionGenerator', () => {
   let logger: TestLogger;
   let memFs: IMemFileSystemReturn;
@@ -18,7 +20,7 @@ describe('CompletionGenerator', () => {
   beforeEach(async () => {
     logger = new TestLogger();
     memFs = await createMemFileSystem();
-    generator = new CompletionGenerator(logger, memFs.fs);
+    generator = new CompletionGenerator(logger, memFs.fs, shell);
     realTempDir = await mkdtemp(path.join(tmpdir(), 'completion-test-'));
   });
 

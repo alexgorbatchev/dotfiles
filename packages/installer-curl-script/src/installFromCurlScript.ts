@@ -1,4 +1,4 @@
-import type { IInstallContext } from '@dotfiles/core';
+import type { IInstallContext, Shell } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
@@ -15,7 +15,6 @@ import { detectVersionViaCli } from '@dotfiles/utils';
 import path from 'node:path';
 import { messages } from './log-messages';
 import type { CurlScriptToolConfig } from './schemas';
-import { shell as bunShell } from './shell';
 import type {
   CurlScriptArgs,
   CurlScriptInstallResult,
@@ -108,6 +107,7 @@ export async function installFromCurlScript(
   downloader: IDownloader,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
+  shellExecutor: Shell,
 ): Promise<CurlScriptInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlScript' });
@@ -163,9 +163,9 @@ export async function installFromCurlScript(
     };
 
     if (shell === 'bash') {
-      await bunShell`bash ${scriptPath} ${resolvedArgs}`.env(env).quiet();
+      await shellExecutor`bash ${scriptPath} ${resolvedArgs}`.env(env).quiet();
     } else {
-      await bunShell`sh ${scriptPath} ${resolvedArgs}`.env(env).quiet();
+      await shellExecutor`sh ${scriptPath} ${resolvedArgs}`.env(env).quiet();
     }
 
     await handleBinaryInstallation(toolConfig, toolName, context, fs, logger);
@@ -177,6 +177,7 @@ export async function installFromCurlScript(
     const mainBinaryPath = binaryPaths[0];
     if (mainBinaryPath) {
       detectedVersion = await detectVersionViaCli({
+        shellExecutor,
         binaryPath: mainBinaryPath,
         args: params.versionArgs,
         regex: params.versionRegex,

@@ -182,16 +182,21 @@ stripVersionPrefix('1.2.3'); // Returns: '1.2.3'
 Detects the version of a tool by running it with `--version` (or custom args) and parsing the output.
 
 ```typescript
+import { createShell } from '@dotfiles/core';
 import { detectVersionViaCli } from '@dotfiles/utils';
+
+const shell = createShell();
 
 // Using default --version args and semver regex
 const version = await detectVersionViaCli({
+  shellExecutor: shell,
   binaryPath: '/usr/local/bin/rg',
 });
 // Returns: '14.1.0' (parsed from output)
 
 // Using custom args and regex
 const customVersion = await detectVersionViaCli({
+  shellExecutor: shell,
   binaryPath: '/usr/local/bin/mytool',
   args: ['-v'],
   regex: /version[:\s]+(\d+\.\d+\.\d+)/i,
@@ -200,11 +205,11 @@ const customVersion = await detectVersionViaCli({
 
 **Options:**
 
+- `shellExecutor` (required): Shell executor for running the binary
 - `binaryPath` (required): Path to the binary to run
 - `args` (optional): Arguments to pass to the binary (default: `['--version']`)
 - `regex` (optional): Custom regex to extract version from output (first capture group is used)
 - `env` (optional): Environment variables to set when running the binary
-- `shellExecutor` (optional): Shell executor for testing
 
 ### Platform Configuration
 

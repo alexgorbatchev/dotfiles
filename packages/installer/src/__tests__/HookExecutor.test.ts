@@ -1,10 +1,16 @@
-import { Architecture, type AsyncInstallHook, type IInstallContext, Platform, type ToolConfig } from '@dotfiles/core';
+import {
+  type $extended,
+  Architecture,
+  type AsyncInstallHook,
+  type IInstallContext,
+  Platform,
+  type ToolConfig,
+} from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import type { $ } from 'dax-sh';
 import assert from 'node:assert';
 import { HookExecutor, type IHookExecutionOptions } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
@@ -222,7 +228,7 @@ describe('HookExecutor', () => {
   describe('$ shell executor functionality', () => {
     it('should provide $ instance to hooks that can execute shell commands', async () => {
       const { context: baseContext } = createTestInstallHookContext({});
-      let capturedDollar: typeof $ | undefined;
+      let capturedDollar: $extended | undefined;
 
       const hookThatUsesShell = mock(async (ctx: IInstallContext) => {
         capturedDollar = ctx.$;
@@ -257,7 +263,7 @@ describe('HookExecutor', () => {
         toolConfig: mockToolConfig,
       };
 
-      let receivedDollar: typeof $ | undefined;
+      let receivedDollar: $extended | undefined;
 
       const hook = mock(async (ctx: IInstallContext) => {
         receivedDollar = ctx.$;

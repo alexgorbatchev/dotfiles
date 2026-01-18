@@ -199,9 +199,87 @@ interface IPlatformConfig {
 }
 ```
 
-## Shell Integration
+## Shell Execution
+
+The core package provides a shell execution interface for running system commands with proper dependency injection.
 
 ### Shell Types
+
+```typescript
+/**
+ * Shell factory function - callable with template literals.
+ */
+interface Shell {
+  (strings: TemplateStringsArray, ...values: unknown[]): ShellCommand;
+  (command: string): ShellCommand;
+}
+
+/**
+ * Result of a shell command execution.
+ */
+interface ShellResult {
+  code: number;
+  stdout: string;
+  stderr: string;
+}
+
+/**
+ * Chainable shell command builder with fluent API.
+ */
+interface ShellCommand extends PromiseLike<ShellResult> {
+  cwd(path: string): ShellCommand;
+  env(vars: Record<string, string | undefined>): ShellCommand;
+  quiet(): ShellCommand;
+  noThrow(): ShellCommand;
+  text(): Promise<string>;
+  json<T = unknown>(): Promise<T>;
+  lines(): Promise<string[]>;
+  bytes(): Promise<Uint8Array>;
+}
+```
+
+### createShell
+
+Creates a shell instance for executing system commands.
+
+```typescript
+import { createShell } from '@dotfiles/core';
+
+// Create a shell instance
+const shell = createShell();
+
+// Execute commands using template literals
+const result = await shell`echo hello`;
+console.log(result.stdout); // "hello\n"
+
+// Use fluent API for options
+const output = await shell`ls -la`.cwd('/tmp').quiet().text();
+
+// Parse JSON output
+const data = await shell`cat package.json`.json();
+
+// Get lines as array
+const files = await shell`ls`.lines();
+
+// Don't throw on errors
+const result = await shell`exit 1`.noThrow();
+console.log(result.code); // 1
+```
+
+**Usage Pattern**: Shell instances should be created once at application entry point and passed to all components that need shell execution. This follows dependency injection principles and enables testing.
+
+```typescript
+// In main.ts - create once
+const shell = createShell();
+
+// Pass to components
+const extractor = new ArchiveExtractor(logger, fs, shell);
+const completionGenerator = new CompletionGenerator(logger, fs, shell);
+```
+
+## Shell Configuration Types
+
+### ShellType
 
 ```typescript
 type ShellType = 'zsh' | 'bash' | 'fish';

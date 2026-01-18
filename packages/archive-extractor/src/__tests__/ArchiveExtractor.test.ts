@@ -1,11 +1,14 @@
+import { createShell } from '@dotfiles/core';
 import { type IFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import { $ } from 'bun';
 import { beforeAll, beforeEach, describe, expect, it } from 'bun:test';
-import { $ } from 'dax-sh';
 import { dirname, join } from 'node:path';
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
+
+const shell = createShell();
 
 describe('ArchiveExtractor (with NodeFS)', (): void => {
   let nodeFsInstance: IFileSystem;
@@ -22,7 +25,7 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
   beforeEach(async (): Promise<void> => {
     logger = new TestLogger();
     nodeFsInstance = new NodeFileSystem();
-    extractor = new ArchiveExtractor(logger, nodeFsInstance);
+    extractor = new ArchiveExtractor(logger, nodeFsInstance, shell);
   });
 
   describe('detectFormat', (): void => {

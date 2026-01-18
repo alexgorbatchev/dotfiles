@@ -32,8 +32,7 @@
     "@dotfiles/tool-config-builder": "workspace:*",
     "@dotfiles/utils": "workspace:*",
     "@dotfiles/version-checker": "workspace:*",
-    "commander": "^14.0.1",
-    "dax-sh": "catalog:"
+    "commander": "^14.0.1"
   },
   "devDependencies": {
     "@dotfiles/testing-helpers": "workspace:*",

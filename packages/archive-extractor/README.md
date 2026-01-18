@@ -40,8 +40,10 @@ Main implementation of the archive extractor.
 
 ```typescript
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
+import { createShell } from '@dotfiles/core';
 
-const extractor = new ArchiveExtractor(logger, fileSystem);
+const shell = createShell();
+const extractor = new ArchiveExtractor(logger, fileSystem, shell);
 ```
 
 ### `ExtractResult`
@@ -61,12 +63,14 @@ interface IExtractResult {
 
 ```typescript
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
+import { createShell } from '@dotfiles/core';
 import { FileSystem } from '@dotfiles/file-system';
 import { createTsLogger } from '@dotfiles/logger';
 
 const logger = createTsLogger();
 const fileSystem = new FileSystem(logger);
-const extractor = new ArchiveExtractor(logger, fileSystem);
+const shell = createShell();
+const extractor = new ArchiveExtractor(logger, fileSystem, shell);
 
 // Extract a tar.gz archive
 const result = await extractor.extract('/downloads/tool-v1.0.0.tar.gz', {
@@ -82,8 +86,10 @@ logger.info(`Executables: ${result.executables.length}`);
 
 ```typescript
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
+import { createShell } from '@dotfiles/core';
 
-const extractor = new ArchiveExtractor(logger, fileSystem);
+const shell = createShell();
+const extractor = new ArchiveExtractor(logger, fileSystem, shell);
 
 const result = await extractor.extract('/downloads/large-tool.tar.gz', {
   targetDir: '/install/tool',
@@ -98,8 +104,10 @@ const result = await extractor.extract('/downloads/large-tool.tar.gz', {
 
 ```typescript
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
+import { createShell } from '@dotfiles/core';
 
-const extractor = new ArchiveExtractor(logger, fileSystem);
+const shell = createShell();
+const extractor = new ArchiveExtractor(logger, fileSystem, shell);
 
 try {
   await extractor.extract('/downloads/tool.tar.gz', {
@@ -115,9 +123,11 @@ try {
 
 ```typescript
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
+import { createShell } from '@dotfiles/core';
 import path from 'node:path';
 
-const extractor = new ArchiveExtractor(logger, fileSystem);
+const shell = createShell();
+const extractor = new ArchiveExtractor(logger, fileSystem, shell);
 
 const result = await extractor.extract('/downloads/tool.tar.gz', {
   targetDir: '/install/tool',
@@ -214,6 +224,7 @@ The extractor provides detailed error messages using structured logging:
 
 ### Internal Dependencies
 
+- `@dotfiles/core` - Shell execution interface
 - `@dotfiles/file-system` - Filesystem operations
 - `@dotfiles/logger` - Structured logging
 - `@dotfiles/schemas` - Type definitions

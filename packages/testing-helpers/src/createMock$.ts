@@ -1,5 +1,4 @@
-import { extendedShellBrand } from '@dotfiles/core';
-import type { $ } from 'dax-sh';
+import { extendedShellBrand, type Shell, type ShellCommand } from '@dotfiles/core';
 
 export interface IMockShellExtensions {
   reset(): void;
@@ -15,10 +14,10 @@ export interface IMockShellResponse {
 }
 
 export type MockShell =
-  & typeof $
+  & Shell
   & IMockShellExtensions
   & {
-    (command: string): ReturnType<typeof $>;
+    (command: string): ShellCommand;
     readonly [extendedShellBrand]: true;
   };
 
@@ -53,8 +52,8 @@ export function createMock$(): MockShell {
   const responses: Map<string, IMockShellResponse> = new Map();
   let lastCommand: string | null = null;
 
-  // Create a chainable result that supports Bun's $ methods
-  const createChainableResult = (command: string, shouldNothrow = false): ReturnType<typeof $> => {
+  // Create a chainable result that supports Shell's ShellCommand methods
+  const createChainableResult = (command: string, shouldNothrow = false): ShellCommand => {
     // Check if we have a mocked response for this command
     const mockedResponse: IMockShellResponse | undefined = responses.get(command);
 
@@ -76,8 +75,6 @@ export function createMock$(): MockShell {
       get stderrBytes() {
         return new TextEncoder().encode(stderrVal);
       },
-      // Legacy compat properties if needed by consumers of result directly ??
-      // But typically tests use result.stdout or .text()
     };
 
     // If shouldThrow is true and nothrow wasn't called, create a rejected promise
@@ -86,27 +83,22 @@ export function createMock$(): MockShell {
       ? Promise.reject(new Error(stderrVal))
       : Promise.resolve(mockResult);
 
-    // Add all Bun ShellPromise methods with proper chaining
+    // Add all ShellCommand methods with proper chaining
     const chainable = Object.assign(resultPromise, {
-      stdin: null,
       cwd: (_dir: string) => createChainableResult(command, shouldNothrow),
-      env: (_env: Record<string, string>) => createChainableResult(command, shouldNothrow),
+      env: (_env: Record<string, string | undefined>) => createChainableResult(command, shouldNothrow),
       quiet: () => createChainableResult(command, shouldNothrow),
-      nothrow: () => createChainableResult(command, true),
-      noThrow: (val?: boolean) => createChainableResult(command, val !== false),
+      noThrow: () => createChainableResult(command, true),
       text: () => Promise.resolve(stdoutVal),
       json: () => Promise.resolve(JSON.parse(stdoutVal || '{}')),
-      blob: () => Promise.resolve(new Blob([new TextEncoder().encode(stdoutVal)])),
-      arrayBuffer: () => Promise.resolve(new TextEncoder().encode(stdoutVal).buffer as ArrayBuffer),
       lines: () => Promise.resolve(stdoutVal.split('\n')),
       bytes: () => Promise.resolve(new TextEncoder().encode(stdoutVal)),
-      throws: (val: boolean) => createChainableResult(command, !val),
     });
 
-    return chainable as unknown as ReturnType<typeof $>;
+    return chainable as unknown as ShellCommand;
   };
 
-  // Main shell function with proper typing for Bun
+  // Main shell function
   const mockShellFunction = (pieces: TemplateStringsArray | string, ...args: unknown[]) => {
     // Reconstruct the command string from template literal
     const command = reconstructCommand(pieces, args);
@@ -133,22 +125,7 @@ export function createMock$(): MockShell {
     mockResponse: (command: string, response: IMockShellResponse) => {
       responses.set(command, response);
     },
-
-    // Stub implementations of Bun $ static properties
-    braces: () => '',
-    escape: (str: string) => str,
-    env: {},
-    cwd: () => process.cwd(),
     [extendedShellBrand]: true as const,
-    // Stubs for dax
-    cd: () => {},
-    echo: () => {},
-    sleep: () => Promise.resolve(),
-    which: () => Promise.resolve(undefined),
-    fetch: () => Promise.resolve(new Response()),
-    withTimeout: () => {},
-    retry: () => {},
-    raw: (s: string) => s,
   });
 
   // Use type assertion to make it compatible

@@ -1,10 +1,13 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import { createShell } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { CurlTarToolConfig } from '@dotfiles/installer-curl-tar';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { CurlTarInstallerPlugin } from '../CurlTarInstallerPlugin';
+
+const shell = createShell();
 
 describe('CurlTarInstallerPlugin', () => {
   let plugin: CurlTarInstallerPlugin;
@@ -19,7 +22,7 @@ describe('CurlTarInstallerPlugin', () => {
     mockArchiveExtractor = {} as IArchiveExtractor;
     mockHookExecutor = {} as HookExecutor;
 
-    plugin = new CurlTarInstallerPlugin(mockFs, mockDownloader, mockArchiveExtractor, mockHookExecutor);
+    plugin = new CurlTarInstallerPlugin(mockFs, mockDownloader, mockArchiveExtractor, mockHookExecutor, shell);
   });
 
   it('should have correct plugin metadata', () => {

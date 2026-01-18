@@ -1,6 +1,6 @@
 import {
   Architecture,
-  createLoggingShell,
+  createShell,
   createToolLog,
   type IAfterInstallContext,
   type ISystemInfo,
@@ -12,7 +12,6 @@ import { LogLevel, TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { replaceInFile } from '@dotfiles/utils';
 import { describe, expect, it } from 'bun:test';
-import { $ } from 'dax-sh';
 import assert from 'node:assert';
 import path from 'node:path';
 import type { ILogObj } from 'tslog';
@@ -56,7 +55,7 @@ describe('HookExecutor - stack trace filtering', () => {
     const toolConfigFilePath = path.join(process.cwd(), `${toolName}.tool.ts`);
     toolConfig.configFilePath = toolConfigFilePath;
 
-    const configuredShell = createConfiguredShell(createLoggingShell($, logger), process.env);
+    const configuredShell = createConfiguredShell(createShell({ logger }), process.env);
 
     const currentDir: string = path.join(projectConfig.paths.binariesDir, toolName, 'current');
 
@@ -154,7 +153,7 @@ describe('HookExecutor - stack trace filtering', () => {
     const toolConfigFilePath = path.join(process.cwd(), `${toolName}.tool.ts`);
     toolConfig.configFilePath = toolConfigFilePath;
 
-    const configuredShell = createConfiguredShell(createLoggingShell($, logger), process.env);
+    const configuredShell = createConfiguredShell(createShell({ logger }), process.env);
 
     const currentDir: string = path.join(projectConfig.paths.binariesDir, toolName, 'current');
 

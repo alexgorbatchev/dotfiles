@@ -1,11 +1,10 @@
 import type { IConfigService, ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/config';
-import { createToolLog, type IInstallContext } from '@dotfiles/core';
+import { createShell, createToolLog, type IInstallContext } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import { createConfiguredShell } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli, ExitCode, replaceInFile } from '@dotfiles/utils';
 import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
-import { $ } from 'dax-sh';
 import path from 'node:path';
 import { messages } from './log-messages';
 import type { ICommandCompletionMeta, IGlobalProgram, IServices } from './types';
@@ -96,7 +95,7 @@ function createInstallContext(
     systemInfo,
     toolConfig: config,
     projectConfig: projectConfig,
-    $: createConfiguredShell($, process.env),
+    $: createConfiguredShell(createShell(), process.env),
     fileSystem: fs,
     replaceInFile: (filePath, from, to, options) => replaceInFile(fs, filePath, from, to, options),
     log: createToolLog(logger, config.name),

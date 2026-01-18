@@ -1,14 +1,13 @@
-import type { IInstallContext } from '@dotfiles/core';
+import type { IInstallContext, Shell } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { $ } from 'dax-sh';
 import { installFromBrew } from '../installFromBrew';
 import type { BrewToolConfig } from '../schemas';
 
 interface IMockShellPromise extends
   Promise<{
-    stdout: Buffer;
-    stderr: Buffer;
+    stdout: string;
+    stderr: string;
     exitCode: number;
     code: number;
     toString: () => string;
@@ -22,7 +21,7 @@ interface IMockShellPromise extends
 
 describe('installFromBrew', () => {
   let logger: TestLogger;
-  let mockShell: typeof $;
+  let mockShell: Shell;
 
   beforeEach(() => {
     logger = new TestLogger();
@@ -40,8 +39,8 @@ describe('installFromBrew', () => {
       }
 
       const result = {
-        stdout: Buffer.from(stdout),
-        stderr: Buffer.from(''),
+        stdout,
+        stderr: '',
         exitCode: 0,
         code: 0,
         toString: () => stdout,
@@ -54,7 +53,7 @@ describe('installFromBrew', () => {
       promise.env = () => promise;
 
       return promise;
-    }) as unknown as typeof $;
+    }) as unknown as Shell;
   });
 
   it('should detect version using brew info when versionArgs are not provided', async () => {

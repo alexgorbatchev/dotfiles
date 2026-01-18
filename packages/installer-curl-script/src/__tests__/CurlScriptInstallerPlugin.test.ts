@@ -1,9 +1,12 @@
+import { createShell } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { CurlScriptInstallerPlugin } from '../CurlScriptInstallerPlugin';
+
+const shell = createShell();
 
 describe('CurlScriptInstallerPlugin', () => {
   let plugin: CurlScriptInstallerPlugin;
@@ -16,7 +19,7 @@ describe('CurlScriptInstallerPlugin', () => {
     mockDownloader = {} as IDownloader;
     mockHookExecutor = {} as HookExecutor;
 
-    plugin = new CurlScriptInstallerPlugin(mockFs, mockDownloader, mockHookExecutor);
+    plugin = new CurlScriptInstallerPlugin(mockFs, mockDownloader, mockHookExecutor, shell);
   });
 
   it('should have correct plugin metadata', () => {

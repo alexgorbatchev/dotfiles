@@ -1,22 +1,14 @@
-import type { $ } from 'dax-sh';
-import { type $extended, extendedShellBrand } from './extendedShell.types';
+import { createShell } from './createShell';
+import { type $extended, extendedShellBrand, type ShellOptions } from './types';
 
 /**
- * Creates an extended shell from a plain dax shell by adding the brand symbol.
- * This is a minimal wrapper that doesn't add logging - use createLoggingShell for that.
- * Used when you need an $extended shell but don't want logging at this layer.
+ * Creates an extended shell with the brand symbol.
+ * This is a thin wrapper around createShell that adds the brand for type compatibility.
+ *
+ * @deprecated Use createShell directly. This exists for backward compatibility.
  */
-export function createExtendedShell($shell: typeof $): $extended {
-  const extended = Object.assign(
-    (first: TemplateStringsArray | string, ...expressions: unknown[]) => {
-      if (typeof first === 'string') {
-        return ($shell as $extended)(first);
-      }
-      // @ts-expect-error: dax-sh typing for template expressions
-      return $shell(first, ...expressions);
-    },
-    $shell,
-  );
-  Object.defineProperty(extended, extendedShellBrand, { value: true, enumerable: false });
-  return extended as unknown as $extended;
+export function createExtendedShell(options: ShellOptions = {}): $extended {
+  const shell = createShell(options);
+  Object.defineProperty(shell, extendedShellBrand, { value: true, enumerable: false });
+  return shell as $extended;
 }

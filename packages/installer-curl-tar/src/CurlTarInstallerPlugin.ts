@@ -1,5 +1,5 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult } from '@dotfiles/core';
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -48,12 +48,14 @@ export class CurlTarInstallerPlugin implements
    * @param downloader - The downloader for fetching tarballs.
    * @param archiveExtractor - The archive extractor for unpacking tarballs.
    * @param hookExecutor - The hook executor for running lifecycle hooks.
+   * @param shell - The shell executor for running commands.
    */
   constructor(
     private readonly fs: IFileSystem,
     private readonly downloader: IDownloader,
     private readonly archiveExtractor: IArchiveExtractor,
     private readonly hookExecutor: HookExecutor,
+    private readonly shell: Shell,
   ) {}
 
   /**
@@ -83,6 +85,7 @@ export class CurlTarInstallerPlugin implements
       this.archiveExtractor,
       this.hookExecutor,
       logger,
+      this.shell,
     );
 
     if (!result.success) {

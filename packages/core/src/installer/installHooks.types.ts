@@ -1,7 +1,7 @@
 import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IBaseToolContext } from '../common/baseToolContext.types';
-import type { $extended } from '../shell/extendedShell.types';
+import type { $extended } from '../shell/types';
 import type { IExtractResult } from './archive.types';
 
 /**

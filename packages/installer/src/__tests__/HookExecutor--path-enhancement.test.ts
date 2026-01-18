@@ -1,8 +1,7 @@
-import { createLoggingShell, type IAfterInstallContext, type ToolConfig } from '@dotfiles/core';
+import { createShell, type IAfterInstallContext, type ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { $ } from 'dax-sh';
 import { chmod } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -18,11 +17,13 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
   let tempDir: string;
   let toolConfigPath: string;
   let binaryDir: string;
+  let $: ReturnType<typeof createShell>;
 
   beforeEach(async () => {
     logger = new TestLogger();
     hookExecutor = new HookExecutor((): void => {});
     memFs = await createMemFileSystem();
+    $ = createShell();
 
     // Create a temporary directory for integration tests
     tempDir = await mkdtemp(path.join(tmpdir(), 'hook-executor-path-test-'));
@@ -63,7 +64,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
     const testBinaryPath = path.join(binaryDir, 'test-tool');
 
     const { context: baseContext } = createTestInstallHookContext({
-      $: createConfiguredShell(createLoggingShell($, logger), process.env),
+      $: createConfiguredShell(createShell({ logger }), process.env),
     });
 
     const afterInstallContext: IAfterInstallContext = {
@@ -122,7 +123,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
     };
 
     const { context: baseContext } = createTestInstallHookContext({
-      $: createConfiguredShell(createLoggingShell($, logger), process.env),
+      $: createConfiguredShell(createShell({ logger }), process.env),
     });
 
     const afterInstallContext: IAfterInstallContext = {
@@ -167,7 +168,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
     };
 
     const { context: baseContext } = createTestInstallHookContext({
-      $: createConfiguredShell(createLoggingShell($, logger), process.env),
+      $: createConfiguredShell(createShell({ logger }), process.env),
     });
 
     const afterInstallContext: IAfterInstallContext = {

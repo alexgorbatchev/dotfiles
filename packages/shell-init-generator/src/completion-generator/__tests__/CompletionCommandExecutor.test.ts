@@ -1,10 +1,13 @@
+import { createShell } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
 import { describe, expect, test } from 'bun:test';
 import { CompletionCommandExecutor } from '../CompletionCommandExecutor';
 
+const shell = createShell();
+
 describe('CompletionCommandExecutor', () => {
   const logger = new TestLogger();
-  const executor = new CompletionCommandExecutor(logger);
+  const executor = new CompletionCommandExecutor(logger, shell);
 
   test('should execute simple shell commands', async () => {
     const result = await executor.executeCompletionCommand('echo "test completion"', 'test-tool', 'zsh', '/tmp');

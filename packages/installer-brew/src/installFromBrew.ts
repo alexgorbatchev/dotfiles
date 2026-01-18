@@ -1,14 +1,11 @@
-import type { IInstallContext, IInstallOptions } from '@dotfiles/core';
+import { type IInstallContext, type IInstallOptions, type Shell } from '@dotfiles/core';
 import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli, normalizeVersion } from '@dotfiles/utils';
-import { $ } from 'dax-sh';
 import { z } from 'zod';
 import { messages } from './log-messages';
 import type { BrewToolConfig } from './schemas';
 import type { BrewInstallResult, IBrewInstallMetadata } from './types';
-
-type ShellExecutor = typeof $;
 
 const BrewInfoSchema = z.object({
   name: z.string(),
@@ -44,7 +41,7 @@ export async function installFromBrew(
   _context: IInstallContext,
   options: IInstallOptions | undefined,
   parentLogger: TsLogger,
-  shellExecutor: ShellExecutor = $,
+  shellExecutor: Shell,
 ): Promise<BrewInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromBrew' });
   logger.debug(messages.installing(toolName), toolConfig.installParams);
@@ -109,13 +106,13 @@ export async function installFromBrew(
  *
  * @param formula - The name of the Homebrew formula.
  * @param logger - The logger instance for logging operations.
- * @param $ - The shell executor function.
+ * @param shell - The shell executor.
  * @returns A promise that resolves to the version string, or null if not found.
  */
-async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecutor): Promise<string | null> {
+async function getBrewVersion(formula: string, logger: TsLogger, shell: Shell): Promise<string | null> {
   try {
     logger.debug(messages.fetchingVersion(formula));
-    const result = await $`brew info --json ${formula}`.quiet().noThrow();
+    const result = await shell`brew info --json ${formula}`.quiet().noThrow();
     const output: string = result.stdout.toString();
     const rawData = JSON.parse(output);
     const info: BrewInfo[] = z.array(BrewInfoSchema).parse(rawData);
@@ -140,13 +137,13 @@ async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecuto
  *
  * @param formula - The name of the Homebrew formula.
  * @param logger - The logger instance for logging operations.
- * @param $ - The shell executor function.
+ * @param shell - The shell executor.
  * @returns A promise that resolves to the prefix path.
  * @throws {Error} If the prefix cannot be determined.
  */
-async function getBrewPrefix(formula: string, logger: TsLogger, $: ShellExecutor): Promise<string> {
+async function getBrewPrefix(formula: string, logger: TsLogger, shell: Shell): Promise<string> {
   try {
-    const result = await $`brew --prefix ${formula}`.quiet();
+    const result = await shell`brew --prefix ${formula}`.quiet();
     const prefix: string = result.stdout.toString().trim();
     logger.debug(messages.prefixFetched(formula, prefix));
     return prefix;
@@ -154,7 +151,7 @@ async function getBrewPrefix(formula: string, logger: TsLogger, $: ShellExecutor
     logger.debug(messages.prefixFetchFailed(formula), error);
     // Fall back to /opt/homebrew/opt/{formula} on Apple Silicon
     // or /usr/local/opt/{formula} on Intel
-    const brewPrefix = await $`brew --prefix`.quiet();
+    const brewPrefix = await shell`brew --prefix`.quiet();
     const fallbackPrefix: string = `${brewPrefix.stdout.toString().trim()}/opt/${formula}`;
     logger.debug(messages.prefixFallback(formula, fallbackPrefix));
     return fallbackPrefix;
@@ -172,7 +169,7 @@ async function getBrewPrefix(formula: string, logger: TsLogger, $: ShellExecutor
  * @param tap - Optional tap repository or array of repositories to add.
  * @param force - Whether to force reinstallation.
  * @param logger - The logger instance for logging operations.
- * @param $ - The shell executor function.
+ * @param shell - The shell executor.
  * @returns A promise that resolves when installation is complete.
  * @throws {Error} If the installation fails.
  */
@@ -182,14 +179,14 @@ async function executeBrewInstall(
   tap: string | string[] | undefined,
   force: boolean | undefined,
   logger: TsLogger,
-  $: ShellExecutor,
+  shell: Shell,
 ): Promise<void> {
   if (tap) {
     const taps = Array.isArray(tap) ? tap : [tap];
     for (const t of taps) {
       const tapCommand = `brew tap ${t}`;
       logger.debug(messages.executingCommand(tapCommand));
-      await $`brew tap ${t}`.quiet();
+      await shell`brew tap ${t}`.quiet();
     }
   }
 
@@ -205,5 +202,5 @@ async function executeBrewInstall(
   const installCommand = `brew ${installArgs.join(' ')}`;
   logger.debug(messages.executingCommand(installCommand));
 
-  await $`brew ${installArgs}`.quiet();
+  await shell`brew ${installArgs}`.quiet();
 }

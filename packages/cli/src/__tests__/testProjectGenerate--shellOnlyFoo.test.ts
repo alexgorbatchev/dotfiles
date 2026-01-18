@@ -1,8 +1,10 @@
+import { createShell } from '@dotfiles/core';
 import { describe, expect, test } from 'bun:test';
-import { $ } from 'dax-sh';
 import assert from 'node:assert';
 import { access, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
+
+const $ = createShell();
 
 function getRepoRootPath(): string {
   const repoRootPath: string = path.resolve(__dirname, '../../../..');

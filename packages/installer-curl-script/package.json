@@ -13,7 +13,6 @@
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/registry": "workspace:*",
     "@dotfiles/utils": "workspace:*",
-    "dax-sh": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

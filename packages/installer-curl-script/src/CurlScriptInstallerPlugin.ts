@@ -1,4 +1,4 @@
-import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult } from '@dotfiles/core';
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -46,11 +46,13 @@ export class CurlScriptInstallerPlugin implements
    * @param fs - The file system interface for file operations.
    * @param downloader - The downloader for fetching installation scripts.
    * @param hookExecutor - The hook executor for running post-download hooks.
+   * @param shell - The shell executor for running commands.
    */
   constructor(
     private readonly fs: IFileSystem,
     private readonly downloader: IDownloader,
     private readonly hookExecutor: HookExecutor,
+    private readonly shell: Shell,
   ) {}
 
   /**
@@ -79,6 +81,7 @@ export class CurlScriptInstallerPlugin implements
       this.downloader,
       this.hookExecutor,
       logger,
+      this.shell,
     );
 
     if (!result.success) {

@@ -1,12 +1,15 @@
+import { createShell } from '@dotfiles/core';
 import type { BrewToolConfig } from '@dotfiles/installer-brew';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { BrewInstallerPlugin } from '../BrewInstallerPlugin';
+
+const shell = createShell();
 
 describe('BrewInstallerPlugin', () => {
   let plugin: BrewInstallerPlugin;
 
   beforeEach(() => {
-    plugin = new BrewInstallerPlugin();
+    plugin = new BrewInstallerPlugin(shell);
   });
 
   it('should have correct plugin metadata', () => {

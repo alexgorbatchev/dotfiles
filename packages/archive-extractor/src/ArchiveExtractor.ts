@@ -1,8 +1,7 @@
-import type { ArchiveFormat, IExtractOptions, IExtractResult } from '@dotfiles/core';
+import { type ArchiveFormat, type IExtractOptions, type IExtractResult, type Shell } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { getAllFilesRecursively } from '@dotfiles/utils';
-import { $ } from 'dax-sh';
 import { randomUUID } from 'node:crypto';
 import { basename, extname, join } from 'node:path';
 import type { IArchiveExtractor } from './IArchiveExtractor';
@@ -22,16 +21,19 @@ import { messages } from './log-messages';
 export class ArchiveExtractor implements IArchiveExtractor {
   private readonly fs: IFileSystem;
   private readonly logger: TsLogger;
+  private readonly shell: Shell;
 
   /**
    * Creates a new ArchiveExtractor instance.
    *
    * @param parentLogger - The parent logger for creating sub-loggers.
    * @param fileSystem - The file system interface for file operations.
+   * @param shell - The shell executor for running system commands.
    */
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, shell: Shell) {
     this.fs = fileSystem;
     this.logger = parentLogger.getSubLogger({ name: 'ArchiveExtractor' });
+    this.shell = shell;
   }
 
   /**
@@ -84,7 +86,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
     try {
       const commandName = 'file';
       logger.debug(messages.shellCommandStarted(commandName));
-      const result = await $`file -b --mime-type ${filePath}`.quiet();
+      const result = await this.shell`file -b --mime-type ${filePath}`.quiet();
       const output = result.stdout.trim();
 
       return this.detectFormatByMimeType(output);
@@ -168,13 +170,13 @@ export class ArchiveExtractor implements IArchiveExtractor {
         const tarFlag = this.getTarFlagForFormat(format);
         const commandName = 'tar';
         this.logger.debug(messages.shellCommandStarted(commandName));
-        await $`tar ${tarFlag} ${archivePath} -C ${tempExtractDir}`.quiet();
+        await this.shell`tar ${tarFlag} ${archivePath} -C ${tempExtractDir}`.quiet();
         break;
       }
       case 'zip': {
         const commandName = 'unzip';
         this.logger.debug(messages.shellCommandStarted(commandName));
-        await $`unzip -qo ${archivePath} -d ${tempExtractDir}`.quiet();
+        await this.shell`unzip -qo ${archivePath} -d ${tempExtractDir}`.quiet();
         break;
       }
       default:

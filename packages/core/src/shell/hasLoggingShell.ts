@@ -1,4 +1,4 @@
-import { loggingShellBrand } from './extendedShell.types';
+import { loggingShellBrand } from './types';
 
 /**
  * Checks if a shell has logging capabilities attached.

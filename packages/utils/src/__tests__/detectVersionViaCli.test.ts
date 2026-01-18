@@ -1,9 +1,9 @@
+import type { Shell } from '@dotfiles/core';
 import { describe, expect, it } from 'bun:test';
-import { type $ } from 'dax-sh';
 import { detectVersionViaCli } from '../detectVersionViaCli';
 
 // Helper to create a mock shell
-function createMockShell(stdout: string, stderr = '', exitCode = 0): typeof $ {
+function createMockShell(stdout: string, stderr = '', exitCode = 0): Shell {
   const mockShell = (_strings: TemplateStringsArray, ..._values: unknown[]) => {
     return {
       env: () => ({
@@ -17,7 +17,7 @@ function createMockShell(stdout: string, stderr = '', exitCode = 0): typeof $ {
       }),
     };
   };
-  return mockShell as unknown as typeof $;
+  return mockShell as unknown as Shell;
 }
 
 describe('detectVersionViaCli', () => {
@@ -61,20 +61,11 @@ describe('detectVersionViaCli', () => {
   });
 
   it('should return undefined if command fails', async () => {
-    const mockShell = (_strings: TemplateStringsArray, ..._values: unknown[]) => {
-      return {
-        env: () => ({
-          quiet: () => ({
-            nothrow: async () => {
-              throw new Error('Command failed');
-            },
-          }),
-        }),
-      };
-    };
+    // Use a non-zero exit code with no version in output
+    const shellExecutor = createMockShell('', 'error: command not found', 1);
     const version = await detectVersionViaCli({
       binaryPath: 'tool',
-      shellExecutor: mockShell as unknown as typeof $,
+      shellExecutor,
     });
     expect(version).toBeUndefined();
   });

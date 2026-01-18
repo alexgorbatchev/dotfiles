@@ -140,6 +140,26 @@ const installer = new Installer(logger, fs, registry /* ... */);
 - `@dotfiles/schemas` - Type definitions and base types
 - `zod` - Runtime schema validation
 
+## Shell Execution
+
+The core package exports `createShell` for shell command execution with dependency injection:
+
+```typescript
+import { createShell, type Shell } from '@dotfiles/core';
+
+// Create shell once at app startup
+const shell = createShell();
+
+// Execute commands
+const result = await shell`echo hello`;
+const output = await shell`ls`.cwd('/tmp').quiet().text();
+
+// Pass shell to components that need it
+const extractor = new ArchiveExtractor(logger, fs, shell);
+```
+
+**Important**: Shell instances should be created once and injected into components. Do not create module-scope singletons.
+
 ## Design Principles
 
 1. **Registry is created once** at application startup

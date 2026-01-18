@@ -3,6 +3,7 @@ import type {
   IInstallerPlugin,
   IInstallOptions,
   InstallResult,
+  Shell,
   UpdateCheckResult,
 } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
@@ -43,6 +44,13 @@ export class BrewInstallerPlugin implements
   readonly version = PLUGIN_VERSION;
   readonly paramsSchema = brewInstallParamsSchema;
   readonly toolConfigSchema = brewToolConfigSchema;
+
+  /**
+   * Creates a new BrewInstallerPlugin instance.
+   *
+   * @param shell - The shell executor for running commands.
+   */
+  constructor(private readonly shell: Shell) {}
   readonly externallyManaged = true;
 
   /**
@@ -62,7 +70,7 @@ export class BrewInstallerPlugin implements
     options: IInstallOptions | undefined,
     logger: TsLogger,
   ): Promise<InstallResult<BrewPluginMetadata>> {
-    const result = await installFromBrew(toolName, toolConfig, context, options, logger);
+    const result = await installFromBrew(toolName, toolConfig, context, options, logger, this.shell);
 
     if (!result.success) {
       return {

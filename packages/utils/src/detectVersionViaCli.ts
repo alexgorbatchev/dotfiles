@@ -1,9 +1,11 @@
-import { $ } from 'dax-sh';
+import type { Shell } from '@dotfiles/core';
 import { normalizeVersion } from './normalizeVersion';
 
-type ShellExecutor = typeof $;
-
 export interface DetectVersionOptions {
+  /**
+   * The shell executor to use for running commands.
+   */
+  shellExecutor: Shell;
   /**
    * The binary to run.
    */
@@ -22,10 +24,6 @@ export interface DetectVersionOptions {
    * Environment variables to set when running the binary.
    */
   env?: Record<string, string>;
-  /**
-   * Optional shell executor for testing.
-   */
-  shellExecutor?: ShellExecutor;
 }
 
 /**
@@ -33,7 +31,7 @@ export interface DetectVersionOptions {
  * and parsing the output.
  */
 export async function detectVersionViaCli(options: DetectVersionOptions): Promise<string | undefined> {
-  const { binaryPath, args = ['--version'], regex, env, shellExecutor = $ } = options;
+  const { binaryPath, args = ['--version'], regex, env, shellExecutor } = options;
 
   try {
     const result = await shellExecutor`${binaryPath} ${args}`
