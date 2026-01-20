@@ -12,6 +12,7 @@
   },
   "rules": {
     "no-console": "error",
+    "no-await-in-loop": "off",
     "import/no-default-export": "error",
     "import/no-named-as-default": "warn",
     "typescript/no-explicit-any": "error",

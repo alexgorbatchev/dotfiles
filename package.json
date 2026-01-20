@@ -16,6 +16,7 @@
     "release": "bun packages/build/src/release/index.ts",
     "find-unused": "bun packages/build/src/unused-analyzer/analyze.ts",
     "cli": "bun run ./cli.ts",
+    "proxy": "bun run packages/http-proxy/src/server.ts",
     "check": "bun lint && bun typecheck && bun test"
   },
   "devDependencies": {
@@ -41,8 +42,7 @@
       "@types/semver": "^7.5.8"
     },
     "testing": {
-      "@rageltd/bun-test-utils": "^2.0.0",
-      "express": "^5.1.0"
+      "@rageltd/bun-test-utils": "^2.0.0"
     },
     "typescript": {
       "@typescript/native-preview": "^7.0.0-dev.20251218.1",

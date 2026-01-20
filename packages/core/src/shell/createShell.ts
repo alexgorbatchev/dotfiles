@@ -84,7 +84,7 @@ function createShellCommand(command: string, options: ShellOptions): ShellComman
       return new TextEncoder().encode(result.stdout);
     },
 
-    // eslint-disable-next-line unicorn/no-thenable -- Required for PromiseLike interface to enable await syntax
+    // oxlint-disable-next-line unicorn/no-thenable -- Required for PromiseLike interface to enable await syntax
     then<TResult1 = ShellResult, TResult2 = never>(
       onfulfilled?: ((value: ShellResult) => TResult1 | PromiseLike<TResult1>) | null,
       onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,

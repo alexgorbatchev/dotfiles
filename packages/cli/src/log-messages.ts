@@ -1,6 +1,12 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
 export const messages = {
+  proxyUnavailable: (port: number) =>
+    createSafeLogMessage(
+      `HTTP proxy not available on port ${port}. Start with 'bun proxy' or unset DEV_PROXY env var.`,
+    ),
+  proxyEnabled: (port: number) => createSafeLogMessage(`Routing requests through HTTP proxy on port ${port}`),
+  proxyCheckingAvailability: (port: number) => createSafeLogMessage(`Checking proxy availability on port ${port}`),
   commandActionStarted: (commandName: string, targetTool?: string) =>
     createSafeLogMessage(`${commandName} command action logic started${targetTool ? `. Tool: ${targetTool}` : ''}`),
   commandConfigErrorDetails: () => createSafeLogMessage('Configuration loading error details: %O'),

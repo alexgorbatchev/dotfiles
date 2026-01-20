@@ -1,5 +1,6 @@
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import { proxyFetch, type ProxyFetchConfig } from '@dotfiles/utils';
 import {
   ClientError,
   ForbiddenError,
@@ -17,11 +18,13 @@ export class NodeFetchStrategy implements IDownloadStrategy {
   public readonly name = 'node-fetch';
   private readonly logger: TsLogger;
   private readonly fileSystem: IFileSystem;
+  private readonly proxyConfig: ProxyFetchConfig | undefined;
 
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, proxyConfig?: ProxyFetchConfig) {
     this.logger = parentLogger.getSubLogger({ name: 'NodeFetchStrategy' });
     this.logger.debug(nodeFetchStrategyLogMessages.constructed(fileSystem ? 'provided' : 'undefined'));
     this.fileSystem = fileSystem;
+    this.proxyConfig = proxyConfig;
   }
 
   public async isAvailable(): Promise<boolean> {
@@ -80,10 +83,10 @@ export class NodeFetchStrategy implements IDownloadStrategy {
       }, timeout);
     }
 
-    const response = await fetch(url, {
+    const response = await proxyFetch(url, {
       headers,
       signal: controller.signal,
-    });
+    }, this.proxyConfig);
 
     return { response, timeoutId };
   }

@@ -263,25 +263,31 @@ export class Installer implements IInstaller {
     resolvedToolConfig: ToolConfig,
     options: IInstallOptions | undefined,
     parentLogger: TsLogger,
-  ): Promise<boolean> {
+  ): Promise<InstallResult | null> {
     const logger = parentLogger.getSubLogger({ name: 'shouldSkipInstallation' });
     if (options?.force) {
-      return false;
+      return null;
     }
 
     const existingInstallation = await this.toolInstallationRegistry.getToolInstallation(toolName);
     if (!existingInstallation) {
-      return false;
+      return null;
     }
 
     const targetVersion = await this.getTargetVersion(toolName, resolvedToolConfig);
     if (targetVersion) {
       if (existingInstallation.version === targetVersion) {
         logger.debug(messages.outcome.installSuccess(toolName, targetVersion, 'already-installed'));
-        return true;
+        // Use type assertion: "already-installed" is a skip scenario, not a real plugin execution
+        const result = {
+          success: true,
+          version: existingInstallation.version,
+          installationMethod: 'already-installed',
+        } as InstallResult;
+        return result;
       }
       logger.debug(messages.outcome.outdatedVersion(toolName, existingInstallation.version, targetVersion));
-      return false;
+      return null;
     }
 
     // If target version is NOT explicit (e.g. 'latest'), and we have an installation
@@ -290,7 +296,13 @@ export class Installer implements IInstaller {
     // assuming "installed is good enough" prevents the infinite reinstall loop.
     // Users can use --force to update.
     logger.debug(messages.outcome.installSuccess(toolName, existingInstallation.version, 'already-installed-latest'));
-    return true;
+    // Use type assertion: "already-installed" is a skip scenario, not a real plugin execution
+    const result = {
+      success: true,
+      version: existingInstallation.version,
+      installationMethod: 'already-installed',
+    } as InstallResult;
+    return result;
   }
 
   /**
@@ -511,13 +523,8 @@ export class Installer implements IInstaller {
 
     try {
       // Check if tool is already installed (unless force option is used)
-      const shouldSkip = await this.shouldSkipInstallation(toolName, resolvedToolConfig, options, logger);
-      if (shouldSkip) {
-        const skipResult: InstallResult = {
-          success: false,
-          error: `Tool ${toolName} is already installed at the target version. Use --force to reinstall.`,
-          installationMethod: resolvedToolConfig.installationMethod,
-        };
+      const skipResult = await this.shouldSkipInstallation(toolName, resolvedToolConfig, options, logger);
+      if (skipResult) {
         return skipResult;
       }
 

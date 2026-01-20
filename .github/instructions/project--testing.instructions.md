@@ -16,7 +16,6 @@ Before creating any bespoke mocks, check for existing testing utilities. Shared 
 - **TestLogger** - Extended logger for tests that captures logs for verification with `expect()` methods and filtering capabilities
 - **createMemFileSystem** - Creates in-memory file system for testing with customizable mock implementations and initial directory structure
 - **createMockYamlConfig** - Factory for creating mock YAML configurations with partial overrides and default values
-- **createMockApiServer** - Express server mock for API endpoints and binary downloads with configurable responses (formerly createMockGitHubServer)
 - **createTestDirectories** - Utility for setting up temporary test directories with proper cleanup and path configuration
 - **createToolConfig** - Helper for creating tool configuration files from content or fixtures for testing
 - **createFile** - Simple utility for creating files with optional executable permissions in test file systems
@@ -25,7 +24,7 @@ Before creating any bespoke mocks, check for existing testing utilities. Shared 
 - **Mocking:**
   - `fetch` must be mocked, typically using the `FetchMockHelper` utility (imported from `@dotfiles/testing-helpers`).
   - All packages should be passed in as dependencies.
-  - When mocking real public API calls, the `curl` command must be use to capture the real API response and must be captured in fixtures. An `express` server must be used to serve the fixtures.
+  - When mocking real public API calls, the `curl` command must be used to capture the real API response and store in fixtures.
 
 ## Test Coverage Requirements
 

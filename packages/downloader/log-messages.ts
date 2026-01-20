@@ -7,6 +7,11 @@ export const downloaderLogMessages = {
     createSafeLogMessage(`Downloading URL ${url} to file: ${filePath}`),
 } satisfies SafeLogMessageMap;
 
+export const proxiedFetchStrategyLogMessages = {
+  proxyingRequest: (originalUrl: string, proxiedUrl: string) =>
+    createSafeLogMessage(`Proxying request: ${originalUrl} → ${proxiedUrl}`),
+} satisfies SafeLogMessageMap;
+
 export const cachedDownloadStrategyLogMessages = {
   strategyWrapped: (strategyName: string, ttlMs: number) =>
     createSafeLogMessage(`Wrapping strategy ${strategyName} with cache, TTL: ${ttlMs} ms`),

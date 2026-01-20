@@ -4,51 +4,17 @@ Testing utilities and helpers for the dotfiles generator system. Provides mock i
 
 ## Overview
 
-The testing-helpers package centralizes common testing utilities used across the dotfiles system. It provides mock servers, filesystem helpers, test fixtures, and custom matchers to make tests more maintainable and consistent.
+The testing-helpers package centralizes common testing utilities used across the dotfiles system. It provides filesystem helpers, test fixtures, and custom matchers to make tests more maintainable and consistent.
 
 ## Features
 
-- **Mock API Server**: Express-based server for mocking external APIs (GitHub, crates.io, etc.)
 - **Test Directories**: Utilities for creating temporary test directories with cleanup
 - **Fetch Mocking**: Helper for mocking global fetch in tests
 - **Mock Configurations**: Factory functions for creating test configurations
-- **Tool Config Builders**: Helpers for creating tool configuration fixtures
 - **Custom Matchers**: Extended Jest/Bun matchers for flexible assertions
-- **File Creation**: Utilities for creating test files with permissions
+- **File Registry Mocking**: Mock file registry for testing
 
 ## API
-
-### `createMockApiServer(options?: ServerOptions): MockApiServer`
-
-Creates an Express server for mocking external APIs.
-
-```typescript
-import { createMockApiServer } from '@dotfiles/testing-helpers';
-
-const server = createMockApiServer();
-
-// Add routes
-server.get('/api/releases/latest', (req, res) => {
-  res.json({
-    tag_name: 'v1.0.0',
-    assets: [{ name: 'tool-linux-amd64.tar.gz', browser_download_url: '/download/1' }],
-  });
-});
-
-// Serve binary files
-server.get('/download/:id', (req, res) => {
-  res.sendFile('/path/to/test/binary.tar.gz');
-});
-
-// Start server
-const { url, port } = await server.listen();
-
-// Use in tests
-const response = await fetch(`${url}/api/releases/latest`);
-
-// Cleanup
-await server.close();
-```
 
 ### `createITestDirectories(testName: string): ITestDirectories`
 
@@ -104,98 +70,60 @@ beforeEach(() => {
 afterEach(() => {
   fetchMock.restore();
 });
-
-test('fetch works', async () => {
-  const response = await fetch('https://api.example.com/data');
-  const data = await response.json();
-  expect(data.key).toBe('value');
-});
 ```
+
+**Methods:**
+
+- `setup()` - Initialize the mock
+- `mockResponse(url, options)` - Mock a specific URL
+- `mockError(url, error)` - Mock a network error
+- `restore()` - Restore original fetch
+- `getCalls()` - Get all fetch calls made
+- `getCallCount(url?)` - Get call count for URL
 
 ### `createMockProjectConfig(overrides?: Partial<ProjectConfig>): ProjectConfig`
 
-Creates a mock project configuration with default values.
+Creates a mock project configuration for testing.
 
 ```typescript
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 
 const config = createMockProjectConfig({
   paths: {
-    targetDir: '/custom/bin',
-    binariesDir: '/custom/binaries',
+    targetDir: '/test/target',
+    homeDir: '/test/home',
   },
 });
-
-// Use in tests
-const generator = new ShimGenerator(logger, fileSystem, config);
 ```
 
-### `createToolConfig(content: string, filename?: string): Promise<string>`
+### `createMockFileRegistry(overrides?: Partial<FileRegistry>): FileRegistry`
 
-Creates a temporary tool configuration file.
+Creates a mock file registry for testing.
 
 ```typescript
-import { createToolConfig } from '@dotfiles/testing-helpers';
+import { createMockFileRegistry } from '@dotfiles/testing-helpers';
 
-const toolConfigPath = await createToolConfig(
-  `
-  export default async (c) => {
-    c.bin('fzf')
-      .version('latest')
-      .install('github-release', {
-        repo: 'junegunn/fzf',
-      });
-  };
-`,
-  'fzf.tool.ts',
-);
-
-// Load and use config
-const toolConfigs = await loadToolConfigs(path.dirname(toolConfigPath), logger);
+const registry = createMockFileRegistry({
+  files: new Map([['tool.sh', { path: '/bin/tool.sh', hash: 'abc123' }]]),
+});
 ```
 
-### `createFile(fs: IFileSystem, filePath: string, content: string, executable?: boolean): Promise<void>`
+### `createMock$(overrides?): MockedShell`
 
-Creates a file with optional executable permissions.
-
-```typescript
-import { createFile } from '@dotfiles/testing-helpers';
-
-// Create regular file
-await createFile(fileSystem, '/path/to/file.txt', 'content');
-
-// Create executable file
-await createFile(fileSystem, '/path/to/script.sh', '#!/bin/bash\necho "hello"', true);
-```
-
-### `createMock$(options?: MockShellOptions): MockShell`
-
-Creates a mock Bun shell executor for testing.
+Creates a mock shell command executor.
 
 ```typescript
 import { createMock$ } from '@dotfiles/testing-helpers';
 
 const mock$ = createMock$();
-
-// Configure mock responses
-mock$.mockCommand('git --version', {
-  stdout: 'git version 2.40.0',
-  exitCode: 0,
-});
-
-// Use in code under test
-const result = await mock$`git --version`;
-expect(result.stdout).toContain('git version');
-
-// Verify commands were called
-expect(mock$.wasCommandCalled('git --version')).toBe(true);
+mock$.mockCommand('which brew', { stdout: '/opt/homebrew/bin/brew', exitCode: 0 });
 ```
 
-## Snapshot Helpers
+### Custom Matchers
 
-### `toMatchLooseInlineSnapshot`
+#### `toMatchLooseInlineSnapshot`
 
-Custom Bun matcher for flexible inline snapshot testing with regex support. Import `@dotfiles/testing-helpers` once in your test suite to register the matcher globally, then use the standard `expect(...).toMatchLooseInlineSnapshot\`\`` syntax.
+Matches output with regex patterns and whitespace normalization.
 
 ```typescript
 import '@dotfiles/testing-helpers';
@@ -229,18 +157,12 @@ test('loose snapshot matching', () => {
 ### Complete Test Setup
 
 ```typescript
-import {
-  createITestDirectories,
-  createMockApiServer,
-  createMockProjectConfig,
-  FetchMockHelper,
-} from '@dotfiles/testing-helpers';
+import { createITestDirectories, createMockProjectConfig, FetchMockHelper } from '@dotfiles/testing-helpers';
 
 describe('MyFeature', () => {
   let testDirs: ITestDirectories;
   let config: ProjectConfig;
   let fetchMock: FetchMockHelper;
-  let apiServer: MockApiServer;
 
   beforeEach(async () => {
     // Setup test directories
@@ -256,19 +178,11 @@ describe('MyFeature', () => {
     // Setup fetch mock
     fetchMock = new FetchMockHelper();
     fetchMock.setup();
-
-    // Setup API server
-    apiServer = createMockApiServer();
-    apiServer.get('/api/data', (req, res) => {
-      res.json({ data: 'test' });
-    });
-    await apiServer.listen();
   });
 
   afterEach(async () => {
     await testDirs.cleanup();
     fetchMock.restore();
-    await apiServer.close();
   });
 
   test('my test', async () => {
@@ -277,78 +191,29 @@ describe('MyFeature', () => {
 });
 ```
 
-### Testing Tool Installation
+### Mocking HTTP Responses
 
 ```typescript
-import { createITestDirectories, createMockApiServer, createMockProjectConfig } from '@dotfiles/testing-helpers';
+import { FetchMockHelper } from '@dotfiles/testing-helpers';
 
-test('installs tool from GitHub release', async () => {
-  const server = createMockApiServer();
-  const testDirs = await createITestDirectories('install-test');
+test('fetches data from API', async () => {
+  const fetchMock = new FetchMockHelper();
+  fetchMock.setup();
 
-  // Mock GitHub API
-  server.get('/repos/:owner/:repo/releases/latest', (req, res) => {
-    res.json({
+  fetchMock.mockResponse('https://api.github.com/repos/owner/repo/releases/latest', {
+    status: 200,
+    body: JSON.stringify({
       tag_name: 'v1.0.0',
-      assets: [
-        {
-          name: 'tool-linux-amd64.tar.gz',
-          browser_download_url: `${server.url}/download/asset`,
-        },
-      ],
-    });
+      assets: [{ name: 'tool-linux-amd64.tar.gz', browser_download_url: 'https://example.com/download' }],
+    }),
   });
 
-  // Serve binary
-  server.get('/download/asset', (req, res) => {
-    res.sendFile('/fixtures/tool.tar.gz');
-  });
+  const response = await fetch('https://api.github.com/repos/owner/repo/releases/latest');
+  const data = await response.json();
 
-  const { url } = await server.listen();
+  expect(data.tag_name).toBe('v1.0.0');
 
-  // Test installation
-  const installer = new Installer(/* ... */);
-  const result = await installer.install('tool', {
-    installationMethod: 'github-release',
-    installParams: {
-      repo: 'owner/repo',
-      githubApiUrl: url,
-    },
-  });
-
-  expect(result.success).toBe(true);
-
-  await server.close();
-  await testDirs.cleanup();
-});
-```
-
-### Testing with Fixtures
-
-```typescript
-import { createToolConfig } from '@dotfiles/testing-helpers';
-import path from 'node:path';
-
-test('loads tool configuration', async () => {
-  const configPath = await createToolConfig(
-    `
-    export default async (c) => {
-      c.bin('ripgrep')
-        .version('14.0.0')
-        .install('github-release', {
-          repo: 'BurntSushi/ripgrep',
-          assetPattern: '*linux*amd64*.tar.gz',
-        });
-    };
-  `,
-    'ripgrep.tool.ts',
-  );
-
-  const configDir = path.dirname(configPath);
-  const toolConfigs = await loadToolConfigs(configDir, logger);
-
-  expect(toolConfigs.ripgrep).toBeDefined();
-  expect(toolConfigs.ripgrep.version).toBe('14.0.0');
+  fetchMock.restore();
 });
 ```
 
@@ -403,12 +268,7 @@ describe('Feature', () => {
 - `@dotfiles/config` - Configuration types
 - `@dotfiles/file-system` - Filesystem types
 - `@dotfiles/logger` - Logger types
-- `@dotfiles/schemas` - Schema types
 - `@dotfiles/utils` - Utility types
-
-### External Dependencies
-
-- `express` - HTTP server for mocking APIs
 
 ## Testing the Helpers
 
@@ -429,20 +289,11 @@ Centralizing test utilities:
 - Simplifies maintenance
 - Makes tests more readable
 
-### Why Mock Servers Instead of Stubs?
-
-Mock servers provide:
-
-- Realistic network behavior
-- HTTP-level testing
-- Easy debugging
-- Reusable fixtures
-
 ### Why Custom Matchers?
 
 Custom matchers:
 
-- Express test intent clearly
+- Clarify test intent
 - Handle complex assertions
 - Improve error messages
 - Support domain-specific testing
@@ -454,7 +305,6 @@ Custom matchers:
 ```typescript
 afterEach(async () => {
   await testDirs.cleanup();
-  await server.close();
   fetchMock.restore();
 });
 ```
@@ -503,15 +353,3 @@ test('parses GitHub release', () => {
   expect(release.version).toBe('1.0.0');
 });
 ```
-
-## Future Enhancements
-
-Potential improvements:
-
-- Snapshot testing utilities
-- Performance testing helpers
-- Database mocking utilities
-- Network condition simulation
-- Time manipulation utilities
-- Memory leak detection
-- Test data generators

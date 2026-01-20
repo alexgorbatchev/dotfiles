@@ -1,5 +1,6 @@
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import type { ProxyFetchConfig } from '@dotfiles/utils';
 import type { ICache } from './cache/types';
 import { CachedDownloadStrategy } from './CachedDownloadStrategy';
 import type { IDownloader, IDownloadOptions } from './IDownloader';
@@ -27,24 +28,34 @@ export class Downloader implements IDownloader {
    * @param fileSystem - The file system interface for file operations.
    * @param strategies - Optional array of download strategies. If not provided, defaults to NodeFetchStrategy.
    * @param cache - Optional cache instance. If provided, wraps the default strategy with caching.
+   * @param proxyConfig - Optional proxy configuration. If provided and enabled, routes requests through proxy.
    */
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, strategies?: IDownloadStrategy[], cache?: ICache) {
+  constructor(
+    parentLogger: TsLogger,
+    fileSystem: IFileSystem,
+    strategies?: IDownloadStrategy[],
+    cache?: ICache,
+    proxyConfig?: ProxyFetchConfig,
+  ) {
     this.logger = parentLogger.getSubLogger({ name: 'Downloader' });
     this.fs = fileSystem;
 
     if (typeof strategies !== 'undefined') {
       this.strategies = strategies;
     } else {
-      // Create default strategy, optionally wrapped with cache
-      const baseStrategy = new NodeFetchStrategy(this.logger, this.fs);
+      // Create default strategy with optional proxy support
+      const strategy: IDownloadStrategy = new NodeFetchStrategy(this.logger, this.fs, proxyConfig);
+      const proxyStatus = proxyConfig?.enabled ? ` (proxy port ${proxyConfig.port})` : '';
+
+      // Wrap with cache if provided
       if (cache) {
         this.logger.debug(
-          downloaderLogMessages.strategyCreated('CachedDownloadStrategy', ' wrapping NodeFetchStrategy'),
+          downloaderLogMessages.strategyCreated('CachedDownloadStrategy', ` wrapping NodeFetchStrategy${proxyStatus}`),
         );
-        this.strategies.push(new CachedDownloadStrategy(this.logger, this.fs, cache, baseStrategy));
+        this.strategies.push(new CachedDownloadStrategy(this.logger, this.fs, cache, strategy));
       } else {
-        this.logger.debug(downloaderLogMessages.strategyCreated('NodeFetchStrategy', ' (no cache)'));
-        this.strategies.push(baseStrategy);
+        this.logger.debug(downloaderLogMessages.strategyCreated('NodeFetchStrategy', proxyStatus || ' (no cache)'));
+        this.strategies.push(strategy);
       }
     }
   }

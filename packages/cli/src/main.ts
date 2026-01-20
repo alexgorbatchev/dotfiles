@@ -29,6 +29,7 @@ import { ShimGenerator } from '@dotfiles/shim-generator';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { contractHomePath } from '@dotfiles/utils';
 import { VersionChecker } from '@dotfiles/version-checker';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -54,6 +55,40 @@ type SetupServicesOptions = IGlobalProgramOptions & {
   cwd: string;
   env: NodeJS.ProcessEnv;
 };
+
+/**
+ * Checks if a TCP port is available by attempting to connect.
+ * Returns true if connection succeeds, false otherwise.
+ */
+async function isProxyAvailable(port: number, timeoutMs: number = 2000): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+
+    const cleanup = (): void => {
+      socket.removeAllListeners();
+      socket.destroy();
+    };
+
+    socket.setTimeout(timeoutMs);
+
+    socket.on('connect', () => {
+      cleanup();
+      resolve(true);
+    });
+
+    socket.on('timeout', () => {
+      cleanup();
+      resolve(false);
+    });
+
+    socket.on('error', () => {
+      cleanup();
+      resolve(false);
+    });
+
+    socket.connect(port, 'localhost');
+  });
+}
 
 function initializeFileSystem(logger: TsLogger, dryRun: boolean): IFileSystem {
   let fs: IFileSystem;
@@ -248,6 +283,21 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const configFs = dryRun && isRunningDirectly ? new NodeFileSystem() : fs;
   const projectConfig = await loadConfig(logger, configFs, userConfigPath, systemInfo, env);
 
+  // Check proxy availability if DEV_PROXY env var is set
+  const devProxyPort = process.env['DEV_PROXY'];
+  if (devProxyPort) {
+    const proxyPort = parseInt(devProxyPort, 10);
+    if (!isNaN(proxyPort)) {
+      logger.debug(messages.proxyCheckingAvailability(proxyPort));
+      const proxyAvailable = await isProxyAvailable(proxyPort);
+      if (!proxyAvailable) {
+        logger.error(messages.proxyUnavailable(proxyPort));
+        process.exit(1);
+      }
+      logger.warn(messages.proxyEnabled(proxyPort));
+    }
+  }
+
   // Create final systemInfo with correct homeDir from projectConfig
   const finalSystemInfo: ISystemInfo = {
     platform: systemInfo.platform,
@@ -282,7 +332,9 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const toolInstallationRegistry = new ToolInstallationRegistry(registryLogger, db);
 
   // Initialize services with projectConfig
-  const downloader = new Downloader(parentLogger, resolvedFs, undefined, downloadCache);
+  // Pass proxy config to enable routing requests through HTTP caching proxy
+  const proxyConfig = devProxyPort ? { enabled: true, port: parseInt(devProxyPort, 10) } : undefined;
+  const downloader = new Downloader(parentLogger, resolvedFs, undefined, downloadCache, proxyConfig);
 
   // Initialize GitHub API cache using generic FileCache with JSON strategy
   const githubApiCache = new FileCache(parentLogger, resolvedFs, {

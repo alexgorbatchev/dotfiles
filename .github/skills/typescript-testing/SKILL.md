@@ -10,6 +10,7 @@ Mandatory testing guidelines for TypeScript projects using Bun's test runner.
 ## Test Organization
 
 **Before writing tests:**
+
 - Review adjacent tests in the same `__tests__` directory for patterns and conventions
 - Check existing fixtures in `__tests__/fixtures` and reuse whenever possible
 - Check for shared testing helpers or package-specific testing utilities
@@ -17,10 +18,12 @@ Mandatory testing guidelines for TypeScript projects using Bun's test runner.
 - Only create new fixtures or helpers when existing ones don't meet the test requirements
 
 **File naming and location:**
+
 - Test files: `*.test.ts` in `__tests__` directory next to the code being tested
 - Fixtures: `fixtures--{purpose}.ts` in `__tests__/fixtures` with `FIXTURE_[SNAKE_CASE]` exports
 
 Example structure:
+
 ```
 packages/utils/src/
 ├── myUtil.ts
@@ -77,15 +80,16 @@ Use `toMatchInlineSnapshot()` for multi-line strings or complex output.
 ## Test Structure Best Practices
 
 **Arrange-Act-Assert pattern:**
+
 ```typescript
 describe('myFunction', () => {
   it('should return success when input is valid', () => {
     // Arrange
     const input = 'test';
-    
+
     // Act
     const result = myFunction(input);
-    
+
     // Assert
     assert(result.success);
     expect(result.value).toBe('test');
@@ -94,9 +98,10 @@ describe('myFunction', () => {
 ```
 
 **Type narrowing with assertions:**
+
 ```typescript
 // For union types, use assert to narrow before accessing properties
-type Result = { success: true; value: string } | { success: false; error: string };
+type Result = { success: true; value: string; } | { success: false; error: string; };
 
 const result: Result = functionUnderTest();
 
@@ -110,6 +115,7 @@ expect(result.value).toBe('expected');
 ## Common Testing Patterns
 
 **Snapshot testing for formatted output:**
+
 ```typescript
 expect(formattedOutput).toMatchInlineSnapshot(`
   "line 1
@@ -119,6 +125,7 @@ expect(formattedOutput).toMatchInlineSnapshot(`
 ```
 
 **Testing error cases:**
+
 ```typescript
 it('should throw when input is invalid', () => {
   expect(() => myFunction(null)).toThrow('Invalid input');
@@ -126,6 +133,7 @@ it('should throw when input is invalid', () => {
 ```
 
 **Array and object testing:**
+
 ```typescript
 // Exact match
 expect(result).toEqual({ id: 1, name: 'test' });
@@ -142,6 +150,7 @@ expect(result).toMatchObject({ name: 'test' });
 - Lint: `bun lint`
 
 **Task completion requires:**
+
 - All tests passing
 - Type checking passing (`bun typecheck`)
 - Linting passing (`bun lint`)

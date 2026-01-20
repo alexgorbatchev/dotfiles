@@ -104,6 +104,35 @@ github: {
 }
 ```
 
+### proxy
+
+HTTP caching proxy to prevent API rate limiting during development:
+
+```typescript
+proxy: {
+  enabled: false,                                  // Enable proxy server
+  port: 3128,                                      // Proxy server port
+  cacheDir: '{paths.generatedDir}/.http-proxy-cache', // Cache directory
+  ttl: 86400000,                                   // Cache TTL (24 hours)
+}
+```
+
+When enabled, the proxy ignores server cache headers, ensuring responses are always cached for the configured TTL. Use the proxy to avoid rate limits when frequently testing tool installations.
+
+#### Endpoints
+
+- `POST /cache/clear` - Clear cache entries by glob pattern (use `*` to clear all)
+- `POST /cache/populate` - Pre-populate cache entries
+- `GET /cache/stats` - Get cache statistics
+
+#### Standalone Usage
+
+The proxy can also be run standalone without enabling it in the config:
+
+```bash
+bun run packages/http-proxy/src/server.ts --port=3128 --cache-dir=.tmp/cache
+```
+
 ### system
 
 ```typescript

@@ -125,8 +125,8 @@ const completions = ['~/.dotfiles/tools/fzf/completion.zsh', '~/.dotfiles/tools/
 Discovers and generates completion loading scripts.
 
 ```typescript
-import { CompletionGenerator } from '@dotfiles/shell-init-generator';
 import { createShell } from '@dotfiles/core';
+import { CompletionGenerator } from '@dotfiles/shell-init-generator';
 
 const shell = createShell();
 const completionGenerator = new CompletionGenerator(logger, fileSystem, shell);
