@@ -14,7 +14,7 @@ export async function createTempTsConfig(context: IBuildContext): Promise<void> 
       skipLibCheck: true,
       skipDefaultLibCheck: true,
       noImplicitAny: false,
-      types: ['node'],
+      types: ['bun', 'node'],
       paths: {
         '@dotfiles/*': [
           `${context.paths.rootDir}/packages/*/src/index.ts`,
