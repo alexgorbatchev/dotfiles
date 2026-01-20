@@ -17,7 +17,7 @@ export function createMockBuildContext(overrides?: MockBuildContextOverrides): I
     outputDir: '/root/.dist',
     cliOutputFile: '/root/.dist/cli.js',
     cliOutputSourceMapFile: '/root/.dist/cli.js.map',
-    entryPoint: '/root/packages/cli/src/main.ts',
+    entryPoint: '/root/packages/cli/src/cli.ts',
     npmrcPath: '/root/.npmrc',
     bunfigPath: '/root/bunfig.toml',
     buildTsconfigPath: '/root/.tmp/build-tsconfig.json',

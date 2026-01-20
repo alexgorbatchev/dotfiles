@@ -30,6 +30,7 @@ import type {
 import type { TsLogger } from '@dotfiles/logger';
 import { normalizeVersion } from '@dotfiles/utils';
 import path from 'node:path';
+import { buildCorrectedTag } from './github-client';
 import type { IGitHubApiClient } from './github-client';
 import { messages } from './log-messages';
 import { type AssetPattern, formatAssetPatternForLog, matchAssetPattern } from './matchAssetPattern';
@@ -222,8 +223,6 @@ async function fetchWithTagPatternDetection(
   parentLogger: TsLogger,
 ): Promise<IGitHubRelease | null> {
   const logger = parentLogger.getSubLogger({ name: 'fetchWithTagPatternDetection' });
-  // Import utilities from github-client
-  const { buildCorrectedTag } = await import('./github-client');
 
   // Probe the latest release to detect the tag pattern
   logger.debug(messages.detectingTagPattern());

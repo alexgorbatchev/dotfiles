@@ -9,16 +9,72 @@ const BUN_BUILTIN_PREFIX = 'bun:';
 const BUN_MODULE_NAME = 'bun';
 const NODE_BUILTIN_MODULES: Set<string> = new Set(builtinModules);
 
+/**
+ * Determines if a specifier is a "bare import" (a package name, not a path or URL).
+ *
+ * Bare imports are package specifiers like 'lodash' or '@scope/package'.
+ * Non-bare imports include:
+ * - Relative paths: './foo', '../bar'
+ * - Absolute paths: '/foo/bar'
+ * - URLs: 'https://...', 'data:...'
+ */
 function isBareImportSpecifier(specifier: string): boolean {
-  return !specifier.startsWith('.') && !specifier.startsWith('/');
+  // Relative paths, absolute paths, and URLs are not bare imports
+  if (specifier.startsWith('.') || specifier.startsWith('/')) {
+    return false;
+  }
+
+  // URLs are not bare imports (http://, https://, data:, etc.)
+  if (specifier.includes('://') || specifier.startsWith('data:')) {
+    return false;
+  }
+
+  return true;
 }
 
+/**
+ * Packages that should be bundled into the output instead of externalized.
+ *
+ * The dashboard uses Preact for its client-side UI. These packages must be bundled
+ * (not externalized) because:
+ * 1. The dashboard client runs in the browser context (via Bun's HTML import)
+ * 2. Externalized packages would require a separate install in .dist/
+ * 3. Preact is small enough that bundling doesn't significantly impact CLI size
+ */
+const PACKAGES_TO_BUNDLE = new Set(['preact', 'preact-iso']);
+
+function shouldBundlePackage(specifier: string): boolean {
+  // Extract package name from specifier (e.g., 'preact/hooks' -> 'preact')
+  const packageName = specifier.startsWith('@')
+    ? specifier.split('/').slice(0, 2).join('/')
+    : specifier.split('/')[0];
+
+  return PACKAGES_TO_BUNDLE.has(packageName ?? '');
+}
+
+/**
+ * Determines if a bare import should be externalized (kept as a runtime dependency).
+ *
+ * Externalization rules:
+ * 1. Non-bare imports (paths, URLs) are never externalized by this function
+ * 2. @dotfiles/* packages are bundled (not externalized)
+ * 3. Dashboard dependencies (preact, preact-iso) are bundled (not externalized)
+ * 4. All other bare imports are externalized
+ *
+ * This allows the CLI to ship as a self-contained bundle while keeping large
+ * third-party dependencies as runtime requirements listed in package.json.
+ */
 export function shouldExternalizeNonDotfilesBareImport(specifier: string): boolean {
   if (!isBareImportSpecifier(specifier)) {
     return false;
   }
 
   if (specifier.startsWith(DOTFILES_PACKAGE_PREFIX)) {
+    return false;
+  }
+
+  // Dashboard dependencies should be bundled, not externalized
+  if (shouldBundlePackage(specifier)) {
     return false;
   }
 

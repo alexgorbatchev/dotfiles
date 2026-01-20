@@ -1,6 +1,6 @@
 import { LogLevel } from '@dotfiles/logger';
 import { describe, expect, test } from 'bun:test';
-import { resolveLogLevel } from '../main';
+import { resolveLogLevel } from '../cli';
 import type { IGlobalProgramOptions } from '../types';
 
 describe('resolveLogLevel', () => {

@@ -23,6 +23,9 @@ This section describes how `bun run build` produces the distributable CLI bundle
 The build writes the following artifacts to `.dist/`:
 
 - `cli.js` and `cli.js.map`: the bundled CLI entry.
+- `dashboard.js`: the dashboard HTML entry (processed by Bun at runtime).
+- `dashboard-*.js`: dashboard client chunks (Preact components).
+- `cli-*.js`: Preact runtime chunks used by the dashboard.
 - `schemas.d.ts`: bundled schema/config declaration output.
 - `tool-types.d.ts`: generated tool type declarations.
 - `package.json`: a publishable/runtime package manifest for the `.dist` folder.
@@ -72,9 +75,48 @@ If `.dist/` exists, it is removed to avoid stale artifacts influencing the resul
 
 The CLI is built via `Bun.build` into `.dist/cli.js`.
 
-Externalization policy:
+#### Dashboard Integration
+
+The CLI includes an embedded dashboard (a web UI for managing tools). The dashboard uses **Bun's HTML import feature**, which requires specific build configuration:
+
+```typescript
+// In dashboard-server.ts
+import clientApp from '../client/dashboard.html';
+```
+
+When Bun encounters this import at runtime, it automatically bundles the HTML file and its referenced scripts (Preact components). This is a runtime feature, not a build-time bundling step.
+
+##### Build Configuration for Dashboard Support
+
+1. **Plugin Filter (`/^[^./]/`)**: The externalization plugin must only intercept "bare imports" (package names like `lodash`), not relative paths. Using a catch-all filter like `/.*/` would intercept the HTML import and cause build failures.
+
+2. **Code Splitting (`splitting: true`)**: Required for Bun to properly handle HTML imports and generate separate chunks for client code.
+
+3. **Preact Bundling**: The `preact` and `preact-iso` packages are explicitly bundled (not externalized) because the dashboard client needs them at runtime in the browser context.
+
+4. **JSX Configuration**: Configured for Preact with automatic runtime to support the dashboard's TSX components.
+
+##### Output Files
+
+The build produces:
+- `cli.js` - The CLI entry point bundle
+- `dashboard.js` - The dashboard HTML entry (processed by Bun at runtime)
+- `dashboard-*.js` - Dashboard client chunks (Preact components)
+- `cli-*.js` - Preact runtime chunks shared by the dashboard
+
+##### Dashboard Build Test
+
+The build includes a test step that:
+1. Starts the built CLI with the `dashboard` command
+2. Verifies the server responds to health checks
+3. Verifies HTML is served correctly
+
+**Important**: The test must run from the `.dist/` directory (using `cwd` option) because the chunk files are located there.
+
+#### Externalization policy
 
 - All `@dotfiles/*` packages are bundled into the CLI output.
+- Dashboard dependencies (`preact`, `preact-iso`) are bundled into the output.
 - All other non-relative bare imports are externalized (kept as runtime dependencies).
 
 After the build succeeds, the step:
@@ -133,6 +175,14 @@ A temporary `tsd` project is created and `tsd` is executed against the built out
 
 The build runs the built `.dist/cli.js` with `--version` to ensure it executes.
 
+### 11.1) Test the built dashboard
+
+The build starts the dashboard server and verifies:
+- The `/api/health` endpoint responds with valid JSON
+- The root `/` endpoint returns HTML content
+
+This test runs from the `.dist/` directory to ensure chunk files are accessible.
+
 ### 12) Cleanup
 
 Temporary build files and directories created during schema generation and type testing are removed.
@@ -143,9 +193,17 @@ Finally, the build prints a summary of the files in `.dist/` including their siz
 
 ### Troubleshooting
 
-- Bundle size failure: indicates that external dependencies are likely being bundled into `cli.js`. Review the externalization rules and the printed dependency analysis.
-- Schema type generation failures: often relate to declaration emit output location or bundling configuration. Confirm that the schema export declaration file is generated and that temporary workspace install steps ran.
-- Type test failures: run `bun run build` again with a clean `.dist/` and ensure workspace dependencies are installed.
+- **Bundle size failure**: indicates that external dependencies are likely being bundled into `cli.js`. Review the externalization rules and the printed dependency analysis.
+
+- **Dashboard build failure ("No matching export in index.html")**: The plugin filter is likely catching HTML imports. Ensure the filter is `/^[^./]/` (bare imports only), not `/.*/` (all imports).
+
+- **Dashboard test failure ("Bundled file not found")**: The test is not running from the `.dist/` directory. Ensure `cwd: context.paths.outputDir` is set in the spawn options.
+
+- **Dynamic import causing extra chunks**: Check for `await import(...)` statements. Dynamic imports cause Bun to split code into separate chunks. Convert to static imports if the split is unwanted.
+
+- **Schema type generation failures**: often relate to declaration emit output location or bundling configuration. Confirm that the schema export declaration file is generated and that temporary workspace install steps ran.
+
+- **Type test failures**: run `bun run build` again with a clean `.dist/` and ensure workspace dependencies are installed.
 
 ## Scripts
 

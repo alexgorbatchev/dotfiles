@@ -127,7 +127,7 @@ if (!result.success) {
 ## General Rules
 
 - Code must not have any `console.[fn]` statements
-- Only `main.ts` and tests can create root logger instances
+- Only `cli.ts` and tests can create root logger instances
 - All other code receives logger as parameter and creates sublogger
 - Log messages must not include method names (sublogger `name` provides this)
 - Do not log objects, arrays, or long string values

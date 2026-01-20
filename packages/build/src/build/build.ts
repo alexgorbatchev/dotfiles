@@ -14,6 +14,7 @@ import {
   resolveRuntimeDependencies,
   runTypeTests,
   testBuiltCli,
+  testBuiltDashboard,
   verifyDistCheckInstall,
 } from './steps';
 import type { IBuildContext, IResolvedRuntimeDependencies } from './types';
@@ -41,6 +42,7 @@ async function runBuild(context: IBuildContext): Promise<void> {
 
   await runTypeTests(context);
   await testBuiltCli(context);
+  await testBuiltDashboard(context);
   await cleanupTempFiles(context);
 
   await printBuildSummary(context);

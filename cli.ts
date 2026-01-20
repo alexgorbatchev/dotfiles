@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { main } from './packages/cli/src/main';
+import { main } from './packages/cli/src/cli';
 
 if (import.meta.main) {
   main(process.argv).catch((error: unknown) => {

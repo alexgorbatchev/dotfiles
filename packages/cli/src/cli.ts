@@ -36,6 +36,7 @@ import path from 'node:path';
 import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
 import { registerCleanupCommand } from './cleanupCommand';
 import { createProgram } from './createProgram';
+import { registerDashboardCommand } from './dashboardCommand';
 import { registerDetectConflictsCommand } from './detectConflictsCommand';
 import { registerDocsCommand } from './docsCommand';
 import { registerFeaturesCommand } from './featuresCommand';
@@ -509,6 +510,7 @@ export function registerAllCommands(
   registerLogCommand(logger, program, servicesFactory);
   registerFilesCommand(logger, program, servicesFactory);
   registerDocsCommand(logger, program, servicesFactory);
+  registerDashboardCommand(logger, program, servicesFactory);
 }
 
 function hasFlag(argv: string[], flag: string): boolean {

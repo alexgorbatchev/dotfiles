@@ -15,7 +15,7 @@ export function createBuildContext(): IBuildContext {
   const cliOutputFile: string = path.join(outputDir, 'cli.js');
   const cliOutputSourceMapFile: string = path.join(outputDir, 'cli.js.map');
 
-  const entryPoint: string = path.resolve(packagesDir, 'cli/src/main.ts');
+  const entryPoint: string = path.resolve(packagesDir, 'cli/src/cli.ts');
 
   const npmrcPath: string = path.join(rootDir, '.npmrc');
   const bunfigPath: string = path.join(rootDir, 'bunfig.toml');

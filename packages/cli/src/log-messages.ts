@@ -125,4 +125,7 @@ export const messages = {
     createSafeLogMessage(`Created symlink: ${symlinkPath} -> ${targetPath}`),
   docsSymlinkFailed: (symlinkPath: string) => createSafeLogMessage(`Failed to create symlink: ${symlinkPath}`),
   cliCompletionGenerated: (path: string) => createSafeLogMessage(`CLI completion generated: ${path}`),
+  dashboardStarting: (port: number) => createSafeLogMessage(`Starting dashboard server on port ${port}`),
+  dashboardRunning: (url: string) => createSafeLogMessage(`Dashboard running at ${url}`),
+  dashboardStopping: () => createSafeLogMessage('Stopping dashboard server'),
 } satisfies SafeLogMessageMap;

@@ -9,6 +9,12 @@ import type { IBuildContext } from '../types';
 
 /**
  * Builds the CLI bundle into the output directory and prints a post-build dependency analysis.
+ *
+ * Output Structure:
+ * - `cli.js` - The CLI entry point bundle
+ * - `dashboard.js` - The dashboard HTML entry (processed by Bun at runtime)
+ * - `dashboard-*.js` - Dashboard client chunks (Preact components)
+ * - `cli-*.js` - Preact runtime chunks used by the dashboard
  */
 export async function buildCli(context: IBuildContext): Promise<Bun.BuildOutput> {
   console.log('🏗️  Building CLI...');
@@ -18,7 +24,12 @@ export async function buildCli(context: IBuildContext): Promise<Bun.BuildOutput>
   const externalizeNonDotfilesPackagesPlugin: Bun.BunPlugin = {
     name: 'externalize-non-dotfiles-packages',
     setup(build: Bun.PluginBuilder) {
-      build.onResolve({ filter: /.*/ }, (args: Bun.OnResolveArgs) => {
+      // IMPORTANT: Only intercept bare imports (not starting with . or /)
+      // Using /^[^./]/ instead of /.*/ is critical for dashboard HTML imports.
+      // The dashboard uses Bun's HTML import feature:
+      //   import clientApp from '../client/dashboard.html';
+      // A catch-all filter would intercept this relative import and break the build.
+      build.onResolve({ filter: /^[^./]/ }, (args: Bun.OnResolveArgs) => {
         const specifier: string = args.path;
 
         if (!shouldExternalizeNonDotfilesBareImport(specifier)) {
@@ -35,21 +46,42 @@ export async function buildCli(context: IBuildContext): Promise<Bun.BuildOutput>
     },
   };
 
-  const result = await Bun.build({
-    entrypoints: [context.paths.entryPoint],
-    outdir: context.paths.outputDir,
-    naming: 'cli.js',
-    minify: true,
-    sourcemap: 'external',
-    target: 'bun',
-    format: 'esm',
-    splitting: false,
-    plugins: [externalizeNonDotfilesPackagesPlugin],
-    define: {
-      'import.meta.main': 'true',
-    },
-    env: 'inline',
-  });
+  let result: Bun.BuildOutput;
+
+  try {
+    result = await Bun.build({
+      entrypoints: [context.paths.entryPoint],
+      outdir: context.paths.outputDir,
+      naming: {
+        entry: '[name].js',
+        chunk: '[name]-[hash].js',
+        asset: '[name]-[hash].[ext]',
+      },
+      minify: true,
+      sourcemap: 'external',
+      target: 'bun',
+      format: 'esm',
+      // Required for Bun to properly handle HTML imports. When the dashboard server runs,
+      // Bun processes the HTML file and generates separate chunks for the client-side code
+      // (Preact components). Without splitting, the HTML import mechanism fails.
+      splitting: true,
+      plugins: [externalizeNonDotfilesPackagesPlugin],
+      // Configured for Preact to support the dashboard's Preact-based client.
+      // The 'automatic' runtime enables the modern JSX transform.
+      jsx: {
+        runtime: 'automatic',
+        importSource: 'preact',
+      },
+      define: {
+        'import.meta.main': 'true',
+      },
+      env: 'inline',
+    });
+  } catch (error) {
+    console.error('❌ Build threw an exception:');
+    console.error(error);
+    throw new BuildError('CLI build failed');
+  }
 
   if (!result.success) {
     console.error('❌ Build failed:');

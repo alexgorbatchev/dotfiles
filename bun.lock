@@ -148,6 +148,30 @@
         "typescript": "catalog:typescript",
       },
     },
+    "packages/dashboard": {
+      "name": "@dotfiles/dashboard",
+      "version": "1.0.0",
+      "dependencies": {
+        "@dotfiles/config": "workspace:*",
+        "@dotfiles/core": "workspace:*",
+        "@dotfiles/file-system": "workspace:*",
+        "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
+        "@dotfiles/version-checker": "workspace:*",
+        "preact": "^10.25.4",
+        "preact-iso": "^2.9.0",
+        "preact-render-to-string": "^6.5.11",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@dotfiles/testing-helpers": "workspace:*",
+        "@rageltd/bun-test-utils": "catalog:testing",
+        "@types/bun": "catalog:system",
+        "@types/node": "catalog:system",
+        "@typescript/native-preview": "catalog:typescript",
+        "typescript": "catalog:typescript",
+      },
+    },
     "packages/downloader": {
       "name": "@dotfiles/downloader",
       "version": "1.0.0",
@@ -644,6 +668,8 @@
 
     "@dotfiles/core": ["@dotfiles/core@workspace:packages/core"],
 
+    "@dotfiles/dashboard": ["@dotfiles/dashboard@workspace:packages/dashboard"],
+
     "@dotfiles/downloader": ["@dotfiles/downloader@workspace:packages/downloader"],
 
     "@dotfiles/e2e-test": ["@dotfiles/e2e-test@workspace:packages/e2e-test"],
@@ -979,6 +1005,12 @@
     "picomatch": ["picomatch@4.0.3", "https://registry.npmjs.org/picomatch/-/picomatch-4.0.3.tgz", {}, "sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q=="],
 
     "plur": ["plur@4.0.0", "https://registry.npmjs.org/plur/-/plur-4.0.0.tgz", { "dependencies": { "irregular-plurals": "^3.2.0" } }, "sha512-4UGewrYgqDFw9vV6zNV+ADmPAUAfJPKtGvb/VdpQAx25X5f3xXdGdyOEVFwkl8Hl/tl7+xbeHqSEM+D5/TirUg=="],
+
+    "preact": ["preact@10.28.2", "https://registry.npmjs.org/preact/-/preact-10.28.2.tgz", {}, "sha512-lbteaWGzGHdlIuiJ0l2Jq454m6kcpI1zNje6d8MlGAFlYvP2GO4ibnat7P74Esfz4sPTdM6UxtTwh/d3pwM9JA=="],
+
+    "preact-iso": ["preact-iso@2.11.1", "https://registry.npmjs.org/preact-iso/-/preact-iso-2.11.1.tgz", { "peerDependencies": { "preact": ">=10 || >= 11.0.0-0", "preact-render-to-string": ">=6.4.0" } }, "sha512-rLy0RmzP/hrDjnFdnEblxFgKtzUj4njkHrpGJBGS7S4QuYw1zv0lA38qsWpeAAB10JAz/hF2CsHrLen9ufCtbw=="],
+
+    "preact-render-to-string": ["preact-render-to-string@6.6.5", "https://registry.npmjs.org/preact-render-to-string/-/preact-render-to-string-6.6.5.tgz", { "peerDependencies": { "preact": ">=10 || >= 11.0.0-0" } }, "sha512-O6MHzYNIKYaiSX3bOw0gGZfEbOmlIDtDfWwN1JJdc/T3ihzRT6tGGSEWE088dWrEDGa1u7101q+6fzQnO9XCPA=="],
 
     "pretty-format": ["pretty-format@29.7.0", "https://registry.npmjs.org/pretty-format/-/pretty-format-29.7.0.tgz", { "dependencies": { "@jest/schemas": "^29.6.3", "ansi-styles": "^5.0.0", "react-is": "^18.0.0" } }, "sha512-Pdlw/oPxN+aXdmM9R00JVC9WVFoCLTKJvDVLgmJ+qAffBMxsV85l/Lu7sNx4zSzPyoL2euImuEwHhOXdEgNFZQ=="],
 

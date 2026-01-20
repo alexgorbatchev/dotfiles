@@ -11,4 +11,5 @@ export * from './printBuildSummary';
 export * from './resolveRuntimeDependencies';
 export * from './runTypeTests';
 export * from './testBuiltCli';
+export * from './testBuiltDashboard';
 export * from './verifyDistCheckInstall';
