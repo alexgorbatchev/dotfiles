@@ -1,0 +1,60 @@
+% pip
+
+# Upgrade all packages
+pip install --upgrade -r requirements.txt
+
+# Freeze the updated package versions
+pip freeze > requirements.txt
+
+# List and remove all packages
+pip freeze | xargs pip uninstall -y
+
+;---------------------------------------------------------------
+
+% pyenv
+
+# Create a virtual environment
+pyenv virtualenv <python_version> <virtual_env_name>
+
+# Activate a virtual environment
+pyenv activate <virtual_env_name>
+
+# Delete a virtual environment
+pyenv virtualenv-delete <virtual_env_name>
+
+# Deactivate current virtual environment
+pyenv deactivate
+
+# Activate local Python version
+pyenv local <python_version>
+
+# Activate global Python version
+pyenv global <python_version>
+
+$ virtual_env_name: pyenv virtualenvs --bare --skip-aliases
+$ python_version: pyenv versions --bare --skip-envs --skip-aliases
+
+;---------------------------------------------------------------
+
+% conda
+
+# Disable PS1 changes
+conda config --set changeps1 False
+
+# Activate a virtual environment
+conda activate <conda_env_name>
+
+# Package info
+conda search <input>
+
+$ conda_env_name: conda env list --json | jq -r '.envs[] | split("/")[-1]'
+
+% uv
+
+# Lock requirements
+uv pip compile pyproject.toml -o requirements.txt
+
+# Upgrade dependency
+echo "<package_name>" | uv pip compile - -o requirements.txt --upgrade
+
+

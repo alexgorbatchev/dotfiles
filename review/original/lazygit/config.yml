@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json
+os:
+  # Command for editing a file. Should contain "{{filename}}".
+  edit: "code {{filename}}"
+
+  # Command for editing a file at a given line number. Should contain
+  # "{{filename}}", and may optionally contain "{{line}}".
+  editAtLine: "code {{filename}}:{{line}}"
+
+  # Command for opening a file, as if the file is double-clicked. Should
+  # contain "{{filename}}", but doesn't support "{{line}}".
+  open: "code {{filename}}"
+
+git:
+  skipHookPrefix: '-'
+  branchPrefix: "agrobatchev/"
+
+gui:
+  # DRACULA
+  # https://github.com/dracula/lazygit/blob/main/config/dracula.yml
+  theme:
+    activeBorderColor:
+      - "#FF79C6"
+      - bold
+    inactiveBorderColor:
+      - "#BD93F9"
+
+    searchingActiveBorderColor:
+      - "#8BE9FD"
+      - bold
+
+    optionsTextColor:
+      - "#6272A4"
+
+    selectedLineBgColor:
+      - "#6272A4"
+
+    inactiveViewSelectedLineBgColor:
+      - bold
+
+    cherryPickedCommitFgColor:
+      - "#6272A4"
+
+    cherryPickedCommitBgColor:
+      - "#8BE9FD"
+
+    markedBaseCommitFgColor:
+      - "#8BE9FD"
+
+    markedBaseCommitBgColor:
+      - "#F1FA8C"
+
+    unstagedChangesColor:
+      - "#FF5555"
+
+    defaultFgColor:
+      - "#F8F8F2"

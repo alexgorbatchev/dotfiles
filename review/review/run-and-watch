@@ -1,0 +1,18 @@
+cd /Users/alex/Development/github/dotfiles-tool-installer/1/tree-sitter-zsh && tree-sitter build --wasm -o tree-sitter-zsh.wasm &
+BUILD_PID=$!
+echo "Build started with PID: $BUILD_PID"
+while kill -0 $BUILD_PID 2>/dev/null; do
+  CLANG_INFO=$(ps aux | grep clang | grep -v grep | head -1)
+  if [ -n "$CLANG_INFO" ]; then
+    CPU=$(echo "$CLANG_INFO" | awk '{print $3}')
+    MEM=$(echo "$CLANG_INFO" | awk '{print $4}')
+    TIME=$(echo "$CLANG_INFO" | awk '{print $10}')
+    echo "$(date +%H:%M:%S) - clang running: CPU=${CPU}% MEM=${MEM}% TIME=${TIME}"
+  else
+    echo "$(date +%H:%M:%S) - waiting..."
+  fi
+  sleep 5
+done
+wait $BUILD_PID
+echo "Build finished with exit code: $?"
+ls -la tree-sitter-zsh.wasm 2>/dev/null || echo "No wasm file created"

@@ -1,0 +1,13 @@
+% shell
+
+# Who is listening on port
+ps aux | grep "$(lsof -n -i4TCP:<port> | grep LISTEN)"
+
+# Kill on port
+kill-on-port <port>
+
+# Print available disk space
+get-free-disk-space | as-gb
+
+# Print my IPs
+ip -4 addr show | grep -oP '(?<=inet\s)\d+\.\d+\.\d+\.\d+'

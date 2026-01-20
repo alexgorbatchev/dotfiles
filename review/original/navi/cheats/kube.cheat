@@ -1,0 +1,39 @@
+% kubernetes, k8s
+
+; IMAGES -----------------------------------------------------------------------------
+
+# Scale a deployment up/down
+kube-scale-deployments "<namespace>" "<target>"
+
+# Export PVC to tar
+korb \
+  --kube-config="$KUBECONFIG" \
+  --source-namespace="<namespace>" \
+  --strategy="export" \
+  "<pvc>"
+
+# Move PVC from one StorageClass to another
+korb \
+  --kube-config="$KUBECONFIG" \
+  --new-pvc-storage-class="<storageclass>" \
+  --source-namespace="<namespace>" \
+  --new-pvc-namespace="<namespace>" \
+  --strategy="copy-twice-name" \
+  --new-pvc-name="<pvc>" \
+  "<pvc>"
+
+; ------------------------------------------------------------------------------------
+
+# Get secret value
+kubectl get secret "<secretname>" -n "<namespace>" -o go-template='{{ index .data "<secretkey>" }}'  | base64 --decode | od -c
+
+# Describe a resource in a namespace
+kubectl describe <resource> -n <namespace>
+
+$ namespace: kubectl get ns -o custom-columns=NAME:.metadata.name --no-headers
+$ pvc: kubectl get pvc -n "<namespace>" -o custom-columns=NAME:.metadata.name --no-headers
+$ storageclass: kubectl get storageclass -o custom-columns=NAME:.metadata.name --no-headers
+$ secretname: kubectl get secrets -n "<namespace>" -o custom-columns=NAME:.metadata.name --no-headers
+$ secretkey: kubectl get secret "<secretname>" -n "<namespace>" -o go-template='{{ range $key, $value := .data }}{{ $key }}{{ "\n" }}{{ end }}'
+$ resource: echo "Fetching resources..." && kubectl api-resources --namespaced=true -o name | xargs -n1 -I{} kubectl get {} -n <namespace> -o name 2>/dev/null | grep "/"
+

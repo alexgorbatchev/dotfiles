@@ -1,0 +1,121 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json
+#
+# 󰅁
+# 
+#
+version: 3
+final_space: true
+palette:
+  black: "#262B44"
+  blue: "#82aaff"
+  dark-blue: "#3b4261"
+  dark-gray: "#606060"
+  gray: "#e0e0e0"
+  green: "#59C9A5"
+  orange: "#F07623"
+  red: "#D81E5B"
+  white: "#E0DEF4"
+  yellow: "#F3AE35"
+
+secondary_prompt:
+  template: "<p:yellow,transparent>\ue0b6</><,p:yellow> > </><p:yellow,transparent>\ue0b0</> "
+  foreground: p:black
+  background: transparent
+
+transient_prompt:
+  template: "<p:blue,p:dark-blue> {{ .PWD }} </><p:dark-blue,transparent>\ue0b0</> "
+  foreground: p:black
+  background: transparent
+
+console_title_template: "{{ .Shell }} in {{ .Folder }}"
+
+blocks:
+  - type: prompt
+    newline: true
+    alignment: left
+    segments:
+      # current directory relative to the git root
+      - type: path
+        style: plain
+        foreground: p:gray
+        background: transparent
+        template: "\uea83 {{ if .Segments.Git.Dir }}{{ .Segments.Git.Dir | base }}/{{ .Path | replace .Segments.Git.Dir \"\" | trimPrefix \"/\" }}{{ else }}{{ .Path }}{{ end }} "
+        properties:
+          cache_duration: none
+          style: full
+          folder_separator_icon: "/"
+
+      # git branch
+      - type: git
+        style: plain
+        foreground: p:gray
+        background: p:transparent
+        template: "› {{ .HEAD }} "
+        properties:
+          cache_duration: none
+          fetch_status: true
+          fetch_upstream_icon: true
+
+  - type: prompt
+    alignment: left
+    newline: true
+    segments:
+      - type: text
+        style: powerline
+        foreground: p:black
+        background: p:white
+        template: "{{ if .Env.HERMIT_ENV }}🐚 {{ .Env.HERMIT_ENV | base }}{{ end }} "
+
+      - properties:
+          cache_duration: none
+          display_mode: environment
+          fetch_version: true
+          fetch_virtual_env: true
+        template: " \ue235 {{ if .Venv }}pyenv:{{ .Venv }}{{ end }} "
+        foreground: p:black
+        background: p:white
+        type: python
+        style: powerline
+
+      - template: " {{ if .SSHSession }}\ueba9 {{ end }}{{ .UserName }} "
+        foreground: p:black
+        background: p:blue
+        type: session
+        powerline_symbol: 
+        style: diamond
+        trailing_diamond: ""
+
+      - type: command
+        template: "{{ if .Output }} \uf487 {{ .Output }} {{ end }}"
+        foreground: p:black
+        background: p:orange
+        style: diamond
+        trailing_diamond: ""
+        properties:
+          command: "$DOTFILES_OH_MY_POSH_DIR/get-subapp.sh"
+          cache_duration: none
+
+      - properties:
+          always_enabled: true
+          cache_duration: none
+        template: " {{ if gt .Code 0 }}\uf00d{{ else }}\uf00c{{ end }} "
+        foreground: p:black
+        background: p:green
+        type: status
+        style: diamond
+        trailing_diamond: 
+        foreground_templates:
+          - "{{ if gt .Code 0 }}p:white{{ end }}"
+        background_templates:
+          - "{{ if gt .Code 0 }}p:red{{ end }}"
+
+      - properties:
+          always_enabled: false
+          cache_duration: none
+          style: austin
+          threshold: 100
+        template: " \ueba2 {{ .FormattedMs }}"
+        foreground: p:gray
+        background: transparent
+        type: executiontime
+        style: plain

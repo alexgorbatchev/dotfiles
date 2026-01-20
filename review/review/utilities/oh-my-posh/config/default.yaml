@@ -1,0 +1,136 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json
+#
+# 󰅁
+# 
+#
+version: 3
+final_space: true
+palette:
+  black: "#262B44"
+  blue: "#82aaff"
+  dark-blue: "#3b4261"
+  dark-gray: "#606060"
+  gray: "#e0e0e0"
+  green: "#59C9A5"
+  orange: "#F07623"
+  red: "#D81E5B"
+  white: "#E0DEF4"
+  yellow: "#F3AE35"
+
+secondary_prompt:
+  template: "<p:yellow,transparent>\ue0b6</><,p:yellow> > </><p:yellow,transparent>\ue0b0</> "
+  foreground: p:black
+  background: transparent
+
+transient_prompt:
+  template: "<p:blue,p:dark-blue> {{ .PWD }} </><p:dark-blue,transparent>\ue0b0</> "
+  foreground: p:black
+  background: transparent
+
+console_title_template: "{{ .Shell }} in {{ .Folder }}"
+
+blocks:
+  - type: prompt
+    newline: true
+    alignment: left
+    segments:
+      - template: " {{ if .SSHSession }}\ueba9 {{ end }}{{ .UserName }} "
+        foreground: p:black
+        background: p:blue
+        type: session
+        # powerline_symbol: 
+        style: diamond
+        trailing_diamond: 
+      - type: git
+        style: plain
+        powerline_symbol: ""
+        foreground: p:dark-gray
+        background: p:transparent
+        # template: " {{ .HEAD }}{{if .BranchStatus }} {{ .BranchStatus }}{{ end }}{{ if .Working.Changed }} \uf044 {{ .Working.String }}{{ end }}{{ if and (.Working.Changed) (.Staging.Changed) }} |{{ end }}{{ if .Staging.Changed }} \uf046 {{ .Staging.String }}{{ end }} "
+        template: " {{ .HEAD }} "
+        properties:
+          cache_duration: none
+          fetch_status: true
+          fetch_upstream_icon: true
+
+  - type: prompt
+    alignment: left
+    newline: true
+    segments:
+      - type: text
+        style: powerline
+        foreground: p:black
+        background: p:white
+        template: "{{ if .Env.HERMIT_ENV }}🐚 {{ .Env.HERMIT_ENV | base }}{{ end }} "
+
+      - properties:
+          cache_duration: none
+          display_mode: environment
+          fetch_version: true
+          fetch_virtual_env: true
+        template: " \ue235 {{ if .Venv }}pyenv:{{ .Venv }}{{ end }} "
+        foreground: p:black
+        background: p:white
+        type: python
+        style: powerline
+
+      - properties:
+          cache_duration: none
+        template: " \uf0e7 "
+        foreground: p:white
+        powerline_symbol: 
+        background: p:red
+        type: root
+        style: powerline
+
+      - properties:
+          cache_duration: none
+          style: powerlevel
+          # style: agnoster
+          gitdir_format: "%s"
+        # powerline_symbol: 
+        # template: "{{ if .Segments.Git.Dir }} \uea83 {{ .Segments.Git.Dir | base }}{{ .Path | trimPrefix .Segments.Git.Dir }}{{ end }} "
+        # template: " {{ .Parent }}{{ .Path }} "
+        # template: " {{ if .Segments.Git.Dir }}{{ .Path | trimPrefix .Env.HOME }}{{ end }} "
+        template: "{{ if .Segments.Git.Dir }} {{ .Path | trimPrefix .Env.HOME }} {{ end }}"
+        foreground: p:white
+        background: p:dark-blue
+        type: path
+        style: powerline
+
+      - properties:
+          cache_duration: none
+          # style: agnoster
+          style: powerlevel
+        # powerline_symbol: 
+        template: "{{ if not .Segments.Git.Dir }} \uea83 {{ .Path }} {{ end }}"
+        foreground: p:white
+        background: p:dark-blue
+        type: path
+        style: powerline
+
+      - properties:
+          always_enabled: true
+          cache_duration: none
+        powerline_symbol: 
+        template: " {{ if gt .Code 0 }}\uf00d{{ else }}\uf00c{{ end }} "
+        foreground: p:black
+        background: p:green
+        type: status
+        style: powerline
+        foreground_templates:
+          - "{{ if gt .Code 0 }}p:white{{ end }}"
+        background_templates:
+          - "{{ if gt .Code 0 }}p:red{{ end }}"
+
+      - properties:
+          always_enabled: false
+          cache_duration: none
+          style: austin
+          threshold: 100
+        leading_diamond: 
+        template: " \ueba2 {{ .FormattedMs }}"
+        foreground: p:gray
+        background: transparent
+        type: executiontime
+        style: diamond

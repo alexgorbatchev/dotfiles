@@ -1,0 +1,4 @@
+% grit
+
+# Search
+grit apply '`<pattern>`'

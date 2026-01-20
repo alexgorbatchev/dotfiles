@@ -1,0 +1,87 @@
+% docker
+
+; BUILD ------------------------------------------------------------------------------
+
+# Build file
+docker build --progress=plain --file <docker_file> .
+
+$ docker_file: find . -type f -name '*.dockerfile' -or -name 'Dockerfile*' -maxdepth 1 | fzf
+
+; IMAGES -----------------------------------------------------------------------------
+
+# List local images
+docker images | grep $1 | awk {'print $3'} | sort | uniq
+
+# Delete untagged images
+docker rmi $(docker images | grep "^<none>" | awk "{print $3}")
+
+# Delete specific image
+docker rmi <image_id>
+
+# Force delete specific image
+docker rmi --force <image_id>
+
+; CONTAINERS -------------------------------------------------------------------------
+
+# Stop a running container through SIGTERM
+docker stop <container_id>
+
+# Stop a running container through SIGKILL
+docker kill <container_id>
+
+# Get IP of a running container
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' <container_id>
+
+# Get IP of all running containers
+docker ps -q | xargs -n 1 docker inspect --format '{{ .NetworkSettings.IPAddress }} {{ .Name }}' | sed 's/ \// /'
+
+# Delete all running and stopped containers
+docker rm -f $(docker ps -aq)
+
+# Print the last lines of a container’s logs
+docker logs --tail 100 <container_id> | less
+
+# Watch container logs
+docker logs --follow <container_id>
+
+# Create container with running bash process
+docker run -i -t <image_id> /bin/bash
+
+# Shell into a running container
+docker exec -it <container_id> /bin/bash
+
+# Remove all stopped containers
+docker rm $(docker ps -a -q)
+
+; CLEANUP ----------------------------------------------------------------------------
+
+# Remove all old volumes
+docker volume prune
+
+# Prune everything
+docker system prune --all
+
+# Prune build
+docker builder prune
+
+# Stop & remove containers
+docker stop $(docker ps -a -q)
+docker rm $(docker ps -a -q)
+
+; OTHER ------------------------------------------------------------------------------
+
+# Build an image from the Dockerfile in the current directory and tag the image
+docker build -t <image>:<version> .
+
+# List Docker networks
+docker network ls
+
+# Restart Docker machine 
+docker-machine restart default
+eval $(docker-machine env default)
+
+; ------------------------------------------------------------------------------------
+
+$ image_id: docker images --- --headers 1 --column 3
+$ container_id: docker ps --- --headers 1 --column 1
+
