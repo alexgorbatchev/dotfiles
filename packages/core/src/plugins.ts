@@ -10,9 +10,11 @@
 
 // Import all plugins to load their type augmentations
 // These side-effect imports register the plugin types with TypeScript
+/* oxlint-disable import/no-unassigned-import */
 import '@dotfiles/installer-brew';
 import '@dotfiles/installer-cargo';
 import '@dotfiles/installer-curl-script';
 import '@dotfiles/installer-curl-tar';
 import '@dotfiles/installer-github';
 import '@dotfiles/installer-manual';
+/* oxlint-enable import/no-unassigned-import */

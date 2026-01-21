@@ -1,22 +1,8 @@
-import { useEffect, useState } from 'preact/hooks';
 import type { IConfigSummary } from '../../shared/types';
-import { fetchApi } from '../api';
+import { useFetch } from '../hooks/useFetch';
 
 export function Settings() {
-  const [config, setConfig] = useState<IConfigSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchApi<IConfigSummary>('/config')
-      .then((data) => {
-        setConfig(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load config:', err);
-        setLoading(false);
-      });
-  }, []);
+  const { data: config, loading } = useFetch<IConfigSummary>('/config');
 
   if (loading) {
     return (

@@ -1,5 +1,15 @@
 import type { IFileEntry, IFilesList, IFileTreeNode } from './types';
 
+function sortTreeNode(n: IFileTreeNode): void {
+  if (n.children) {
+    n.children.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    n.children.forEach(sortTreeNode);
+  }
+}
+
 /**
  * Build file tree grouped by tool from flat file list.
  * UI function for converting API response to tree structure.
@@ -11,8 +21,12 @@ export function buildTreeByTool(filesList: IFilesList | null): Record<string, IF
   // Group by tool
   const byTool: Record<string, IFileEntry[]> = {};
   for (const f of filesList.files) {
-    if (!byTool[f.toolName]) byTool[f.toolName] = [];
-    byTool[f.toolName]!.push(f);
+    const existing = byTool[f.toolName];
+    if (existing) {
+      existing.push(f);
+    } else {
+      byTool[f.toolName] = [f];
+    }
   }
 
   // Build tree for each tool
@@ -24,7 +38,8 @@ export function buildTreeByTool(filesList: IFilesList | null): Record<string, IF
 
     if (paths.length === 1) {
       // For single file, go up two levels: one for file, one for root dir
-      const parts = paths[0]!.split('/').filter(Boolean);
+      const firstPath = paths[0];
+      const parts = firstPath?.split('/').filter(Boolean) ?? [];
       if (parts.length >= 2) {
         basePath = '/' + parts.slice(0, parts.length - 2).join('/');
         if (basePath === '/') basePath = '';
@@ -55,7 +70,8 @@ export function buildTreeByTool(filesList: IFilesList | null): Record<string, IF
 
       // Create directories
       for (let i = 0; i < fileParts.length - 1; i++) {
-        const part = fileParts[i]!;
+        const part = fileParts[i];
+        if (!part) continue;
         const parentPath = currentPath;
         currentPath = currentPath ? currentPath + '/' + part : '/' + part;
         const existing = tree.get(currentPath);
@@ -105,16 +121,7 @@ export function buildTreeByTool(filesList: IFilesList | null): Record<string, IF
     }
 
     // Sort recursively
-    function sortNode(n: IFileTreeNode): void {
-      if (n.children) {
-        n.children.sort((a, b) => {
-          if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-          return a.name.localeCompare(b.name);
-        });
-        n.children.forEach(sortNode);
-      }
-    }
-    roots.forEach(sortNode);
+    roots.forEach(sortTreeNode);
     roots.sort((a, b) => {
       if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
       return a.name.localeCompare(b.name);

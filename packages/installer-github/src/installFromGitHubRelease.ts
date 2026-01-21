@@ -384,12 +384,7 @@ function constructDownloadUrl(
 }
 
 function isAbsoluteUrl(url: string): boolean {
-  try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
+  return URL.canParse(url);
 }
 
 function handleAbsoluteUrl(url: string, logger: TsLogger): OperationResult<string> {

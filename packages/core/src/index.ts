@@ -15,4 +15,5 @@ export * from './types';
 // CRITICAL: Import plugins LAST to load type augmentations
 // This ensures all core exports are available BEFORE plugins try to import them
 // The plugins extend IInstallParamsRegistry and IToolConfigRegistry via module augmentation
+// oxlint-disable-next-line import/no-unassigned-import
 import './plugins';

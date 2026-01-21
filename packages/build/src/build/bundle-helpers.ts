@@ -57,7 +57,7 @@ function shouldBundlePackage(specifier: string): boolean {
  *
  * Externalization rules:
  * 1. Non-bare imports (paths, URLs) are never externalized by this function
- * 2. @dotfiles/* packages are bundled (not externalized)
+ * 2. `@dotfiles/*` packages are bundled (not externalized)
  * 3. Dashboard dependencies (preact, preact-iso) are bundled (not externalized)
  * 4. All other bare imports are externalized
  *

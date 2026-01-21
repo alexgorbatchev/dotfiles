@@ -2,6 +2,24 @@ import { describe, expect, test } from 'bun:test';
 import { buildTreeByTool } from '../buildTreeByTool';
 import type { IFilesList } from '../types';
 
+interface CollectableNode {
+  name: string;
+  type: string;
+  fileType?: string;
+  children?: CollectableNode[];
+}
+
+function collectNodes(nodes: CollectableNode[]): Array<{ name: string; fileType?: string; }> {
+  const collected: Array<{ name: string; fileType?: string; }> = [];
+  for (const node of nodes) {
+    collected.push({ name: node.name, fileType: node.fileType });
+    if (node.children) {
+      collected.push(...collectNodes(node.children));
+    }
+  }
+  return collected;
+}
+
 describe('buildTreeByTool', () => {
   test('returns empty object for null input', () => {
     const result = buildTreeByTool(null);
@@ -169,21 +187,7 @@ describe('buildTreeByTool', () => {
     };
     const result = buildTreeByTool(filesList);
 
-    // Collect all nodes recursively
-    function collectNodes(
-      nodes: Array<{ name: string; type: string; fileType?: string; children?: unknown[]; }>,
-    ): Array<{ name: string; fileType?: string; }> {
-      const collected: Array<{ name: string; fileType?: string; }> = [];
-      for (const node of nodes) {
-        collected.push({ name: node.name, fileType: node.fileType });
-        if (node.children) {
-          collected.push(...collectNodes(node.children as typeof nodes));
-        }
-      }
-      return collected;
-    }
-
-    const allNodes = collectNodes(result['fd']!);
+    const allNodes = collectNodes(result['fd'] ?? []);
     const fileTypes = allNodes.map((n) => n.fileType).filter(Boolean);
 
     // All three file types should be present

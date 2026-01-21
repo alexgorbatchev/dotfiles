@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import type { IToolDetail } from '../../shared/types';
-import { fetchApi } from '../api';
 import { TreeNode } from '../components/TreeNode';
+import { useFetch } from '../hooks/useFetch';
 import { buildTreeForTool } from '../utils/tree';
 
 interface ToolDetailProps {
@@ -10,22 +10,10 @@ interface ToolDetailProps {
 
 export function ToolDetail({ params }: ToolDetailProps) {
   const toolName = decodeURIComponent(params.name);
-  const [tool, setTool] = useState<IToolDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: tools, loading } = useFetch<IToolDetail[]>('/tools', [toolName]);
   const [activeTab, setActiveTab] = useState<'overview' | 'files' | 'history'>('overview');
 
-  useEffect(() => {
-    fetchApi<IToolDetail[]>('/tools')
-      .then((tools) => {
-        const found = tools.find((t) => t.name === toolName);
-        setTool(found || null);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load tool:', err);
-        setLoading(false);
-      });
-  }, [toolName]);
+  const tool = tools?.find((t) => t.name === toolName) || null;
 
   if (loading) {
     return (

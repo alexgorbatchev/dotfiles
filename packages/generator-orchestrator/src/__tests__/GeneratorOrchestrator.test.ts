@@ -13,6 +13,10 @@ import assert from 'node:assert';
 import path from 'node:path';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
+const testCompletionsCallback = (ctx: { version?: string; }): { url: string; } => ({
+  url: `https://example.com/completions/${ctx.version}/completion.zsh`,
+});
+
 /**
  * Creates a mock TrackedFileSystem for testing.
  * The mock implements withContext() by returning itself with the new context.
@@ -384,10 +388,6 @@ describe('GeneratorOrchestrator', () => {
             generatedBy: 'url',
           });
 
-          const completionsCallback = (ctx: { version?: string; }) => ({
-            url: `https://example.com/completions/${ctx.version}/completion.zsh`,
-          });
-
           const toolConfig: ToolConfig = {
             name: toolName,
             binaries: ['test-tool'],
@@ -397,7 +397,7 @@ describe('GeneratorOrchestrator', () => {
             shellConfigs: {
               zsh: {
                 scripts: [],
-                completions: completionsCallback,
+                completions: testCompletionsCallback,
               },
             },
           };

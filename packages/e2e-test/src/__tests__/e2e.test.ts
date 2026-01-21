@@ -4,6 +4,7 @@
  * Main entry point that runs all e2e test scenarios.
  */
 import { describe } from 'bun:test';
+// oxlint-disable-next-line import/no-unassigned-import
 import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
 import {

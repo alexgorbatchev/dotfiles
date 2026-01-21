@@ -61,7 +61,7 @@ describe('createToolConfigContext', () => {
     const expectedCurrentDir = path.join(projectConfig.paths.binariesDir, toolName, 'current');
     expect(currentDirParsed.data.currentDir).toBe(expectedCurrentDir);
 
-    const legacyKey = 'install' + 'Dir';
+    const legacyKey = 'installDir';
     const legacyShape: Record<string, z.ZodString> = { [legacyKey]: z.string() };
     const legacyParsed = z.object(legacyShape).safeParse(context);
     expect(legacyParsed.success).toBe(false);

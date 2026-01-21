@@ -58,8 +58,12 @@ async function waitForServerReady(port: number, serverProcess: ReturnType<typeof
   while (Date.now() - startTime < STARTUP_TIMEOUT_MS) {
     // Check if process exited early
     if (serverProcess.exitCode !== null) {
-      const stderr = await new Response(serverProcess.stderr).text();
-      const stdout = await new Response(serverProcess.stdout).text();
+      const stderr = serverProcess.stderr instanceof ReadableStream
+        ? await new Response(serverProcess.stderr).text()
+        : '';
+      const stdout = serverProcess.stdout instanceof ReadableStream
+        ? await new Response(serverProcess.stdout).text()
+        : '';
       throw new BuildError(
         `Dashboard process exited with code ${serverProcess.exitCode}\nstderr: ${stderr}\nstdout: ${stdout}`,
       );
@@ -78,8 +82,8 @@ async function waitForServerReady(port: number, serverProcess: ReturnType<typeof
 
   // Capture output on timeout
   serverProcess.kill();
-  const stderr = await new Response(serverProcess.stderr).text();
-  const stdout = await new Response(serverProcess.stdout).text();
+  const stderr = serverProcess.stderr instanceof ReadableStream ? await new Response(serverProcess.stderr).text() : '';
+  const stdout = serverProcess.stdout instanceof ReadableStream ? await new Response(serverProcess.stdout).text() : '';
   throw new BuildError(
     `Dashboard failed to start within ${STARTUP_TIMEOUT_MS}ms\nstderr: ${stderr}\nstdout: ${stdout}`,
   );

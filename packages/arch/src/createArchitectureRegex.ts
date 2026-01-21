@@ -1,5 +1,10 @@
 import type { IArchitecturePatterns, IArchitectureRegex } from './types';
 
+// Escape special regex characters in pattern strings
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Creates a set of combined regular expression patterns from architecture patterns.
  *
@@ -11,11 +16,6 @@ import type { IArchitecturePatterns, IArchitectureRegex } from './types';
  * @returns An object containing combined regex patterns for system, CPU, and variants.
  */
 export function createArchitectureRegex(patterns: IArchitecturePatterns): IArchitectureRegex {
-  // Escape special regex characters in pattern strings
-  const escapeRegex = (str: string): string => {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  };
-
   // Create alternations for each pattern group
   const systemPattern = patterns.system.length > 0 ? `(${patterns.system.map(escapeRegex).join('|')})` : '';
   const cpuPattern = patterns.cpu.length > 0 ? `(${patterns.cpu.map(escapeRegex).join('|')})` : '';

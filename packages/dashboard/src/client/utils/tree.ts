@@ -11,6 +11,16 @@ interface TreeNodeData {
   children?: TreeNodeData[];
 }
 
+function sortTreeNode(n: TreeNodeData): void {
+  if (n.children) {
+    n.children.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    n.children.forEach(sortTreeNode);
+  }
+}
+
 export function buildTreeForTool(files: FileData[]): TreeNodeData[] {
   if (!files?.length) return [];
 
@@ -85,16 +95,7 @@ export function buildTreeForTool(files: FileData[]): TreeNodeData[] {
     if (!parentPath || !tree.has(parentPath)) roots.push(node);
   }
 
-  function sortNode(n: TreeNodeData) {
-    if (n.children) {
-      n.children.sort((a, b) => {
-        if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      });
-      n.children.forEach(sortNode);
-    }
-  }
-  roots.forEach(sortNode);
+  roots.forEach(sortTreeNode);
   roots.sort((a, b) => {
     if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
     return a.name.localeCompare(b.name);

@@ -6,6 +6,17 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import { messages } from '../log-messages';
 import { IToolConfigBuilder } from '../toolConfigBuilder';
 
+// Shared noop hooks for testing - defined at module scope to avoid lint warnings
+const noopHook: AsyncInstallHook = async () => {};
+const noopHook2: AsyncInstallHook = async () => {};
+const noopHook3: AsyncInstallHook = async () => {};
+const noopHook4: AsyncInstallHook = async () => {};
+
+// Shared completions callback for testing
+const testCompletionsCallback = (ctx: { version?: string; }): { url: string; } => ({
+  url: `https://example.com/completions/${ctx.version}/completion.zsh`,
+});
+
 describe('IToolConfigBuilder', () => {
   let logger: TestLogger;
 
@@ -59,72 +70,64 @@ describe('IToolConfigBuilder', () => {
   test('hooks method sets hooks correctly on installParams', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin'); // Add bin to make build valid
-    const mockHook: AsyncInstallHook = async () => {};
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
 
     builder.install('github-release', installParams);
-    builder.hook('before-install', mockHook);
+    builder.hook('before-install', noopHook);
 
     const config = builder.build();
     if (isGitHubReleaseToolConfig(config)) {
-      expect(config.installParams?.hooks).toEqual({ 'before-install': [mockHook] });
+      expect(config.installParams?.hooks).toEqual({ 'before-install': [noopHook] });
     }
   });
 
   test('hook method sets individual hook correctly on installParams', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
-    const mockHook: AsyncInstallHook = async () => {};
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
 
     builder.install('github-release', installParams);
-    builder.hook('before-install', mockHook);
+    builder.hook('before-install', noopHook);
 
     const config = builder.build();
     if (isGitHubReleaseToolConfig(config)) {
-      expect(config.installParams?.hooks).toEqual({ 'before-install': [mockHook] });
+      expect(config.installParams?.hooks).toEqual({ 'before-install': [noopHook] });
     }
   });
 
   test('hook method appends multiple hooks for the same event', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
-    const mockHook1: AsyncInstallHook = async () => {};
-    const mockHook2: AsyncInstallHook = async () => {};
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
 
     builder.install('github-release', installParams);
-    builder.hook('after-install', mockHook1);
-    builder.hook('after-install', mockHook2);
+    builder.hook('after-install', noopHook);
+    builder.hook('after-install', noopHook2);
 
     const config = builder.build();
     if (isGitHubReleaseToolConfig(config)) {
-      expect(config.installParams?.hooks).toEqual({ 'after-install': [mockHook1, mockHook2] });
+      expect(config.installParams?.hooks).toEqual({ 'after-install': [noopHook, noopHook2] });
     }
   });
 
   test('hook method supports all lifecycle events', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
-    const beforeInstall: AsyncInstallHook = async () => {};
-    const afterDownload: AsyncInstallHook = async () => {};
-    const afterExtract: AsyncInstallHook = async () => {};
-    const afterInstall: AsyncInstallHook = async () => {};
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
 
     builder.install('github-release', installParams);
-    builder.hook('before-install', beforeInstall);
-    builder.hook('after-download', afterDownload);
-    builder.hook('after-extract', afterExtract);
-    builder.hook('after-install', afterInstall);
+    builder.hook('before-install', noopHook);
+    builder.hook('after-download', noopHook2);
+    builder.hook('after-extract', noopHook3);
+    builder.hook('after-install', noopHook4);
 
     const config = builder.build();
     if (isGitHubReleaseToolConfig(config)) {
       expect(config.installParams?.hooks).toEqual({
-        'before-install': [beforeInstall],
-        'after-download': [afterDownload],
-        'after-extract': [afterExtract],
-        'after-install': [afterInstall],
+        'before-install': [noopHook],
+        'after-download': [noopHook2],
+        'after-extract': [noopHook3],
+        'after-install': [noopHook4],
       });
     }
   });
@@ -132,8 +135,7 @@ describe('IToolConfigBuilder', () => {
   test('hook method does not set hooks and warns if install was not called first', () => {
     const testLogger = new TestLogger();
     const builder = new IToolConfigBuilder(testLogger, 'test-tool');
-    const mockHook: AsyncInstallHook = async () => {};
-    builder.hook('before-install', mockHook);
+    builder.hook('before-install', noopHook);
 
     expect(builder.currentInstallParams?.['hooks']).toBeUndefined();
 
@@ -236,13 +238,12 @@ describe('IToolConfigBuilder', () => {
   test('build method returns correct ToolConfig object for github-release', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
-    const mockHook: AsyncInstallHook = async () => {};
 
     builder
       .bin('tool-bin')
       .version('1.0.0')
       .install('github-release', installParams)
-      .hook('after-install', mockHook)
+      .hook('after-install', noopHook)
       .zsh((shell) => shell.always(/* zsh */ `alias tt="test-tool"`).completions('completion.bash'))
       .symlink('config.yml', '~/.config/tool/config.yml');
 
@@ -253,7 +254,7 @@ describe('IToolConfigBuilder', () => {
     expect(config.version).toBe('1.0.0');
     expect(config.installationMethod).toBe('github-release');
     if (isGitHubReleaseToolConfig(config)) {
-      expect(config.installParams).toEqual({ ...installParams, hooks: { 'after-install': [mockHook] } });
+      expect(config.installParams).toEqual({ ...installParams, hooks: { 'after-install': [noopHook] } });
     }
     expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias tt="test-tool"`]);
     expect(config.shellConfigs?.zsh?.completions).toBe('completion.bash');
@@ -280,14 +281,10 @@ describe('IToolConfigBuilder', () => {
   test('completions accepts callback function for dynamic resolution', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
 
-    const completionsCallback = (ctx: { version?: string; }) => ({
-      url: `https://example.com/completions/${ctx.version}/completion.zsh`,
-    });
-
-    builder.zsh((shell) => shell.completions(completionsCallback));
+    builder.zsh((shell) => shell.completions(testCompletionsCallback));
 
     const config = builder.build();
-    expect(config.shellConfigs?.zsh?.completions).toBe(completionsCallback);
+    expect(config.shellConfigs?.zsh?.completions).toBe(testCompletionsCallback);
   });
 
   test('zsh source generates non-fatal conditional sourcing', () => {

@@ -15,6 +15,19 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
 
+const createCompletionToolConfig = (generatedDir: string): AsyncConfigureTool => async (install: InstallFunction) =>
+  install('manual', { binaryPath: '/usr/bin/completion-tool' })
+    .bin('completion-tool')
+    .version('latest')
+    .zsh((shell) =>
+      shell.always(/* zsh */ `
+           # Generate completions to the proper directory
+           if command -v completion-tool >/dev/null 2>&1; then
+             completion-tool gen-completions --shell zsh > "${generatedDir}/completions/_completion-tool"
+           fi
+         `)
+    );
+
 describe('IToolConfigContext', () => {
   let logger: TestLogger;
   let mockProjectConfig: ProjectConfig;
@@ -177,20 +190,7 @@ describe('IToolConfigContext', () => {
         logger,
       );
 
-      // Test a tool that generates completions
-      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
-        return install('manual', { binaryPath: '/usr/bin/completion-tool' })
-          .bin('completion-tool')
-          .version('latest')
-          .zsh((shell) =>
-            shell.always(/* zsh */ `
-           # Generate completions to the proper directory
-           if command -v completion-tool >/dev/null 2>&1; then
-             completion-tool gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_completion-tool"
-           fi
-         `)
-          );
-      };
+      const configureToolFn = createCompletionToolConfig(mockProjectConfig.paths.generatedDir);
 
       const result = await configureToolFn(createInstallFunction(logger, 'completion-tool'), context);
       assert(result);

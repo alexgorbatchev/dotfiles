@@ -60,7 +60,7 @@ export function TreeNode({ node, depth = 0 }: TreeNodeProps) {
       </div>
       {isDirectory && expanded && hasChildren && (
         <div>
-          {node.children!.map((child, i) => <TreeNode key={i} node={child} depth={depth + 1} />)}
+          {node.children?.map((child, i) => <TreeNode key={i} node={child} depth={depth + 1} />)}
         </div>
       )}
     </div>

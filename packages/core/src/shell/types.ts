@@ -1,3 +1,5 @@
+import type { TsLogger } from '@dotfiles/logger';
+
 /**
  * Result of a shell command execution.
  */
@@ -19,7 +21,7 @@ export interface ShellOptions {
   /** Environment variables to set */
   env?: Record<string, string | undefined>;
   /** Logger for real-time output streaming */
-  logger?: import('@dotfiles/logger').TsLogger;
+  logger?: TsLogger;
   /** If true, don't log output (command still logged if not skipCommandLog) */
   quiet?: boolean;
   /** If true, don't throw on non-zero exit code */

@@ -402,45 +402,45 @@ bun build <entrypoints> [options]
 
 ### Common Options
 
-| Option | Description |
-|--------|-------------|
-| `--outdir <dir>` | Output directory |
-| `--outfile <file>` | Output to specific file |
-| `--target <target>` | `browser`, `bun`, or `node` |
-| `--format <format>` | `esm`, `cjs`, or `iife` |
-| `--splitting` | Enable code splitting |
-| `--minify` | Enable all minification |
-| `--sourcemap <type>` | `linked`, `inline`, `external`, `none` |
-| `--external <pkg>` | Exclude package from bundle |
-| `--packages external` | Exclude all packages |
-| `--watch` | Rebuild on changes |
-| `--compile` | Create standalone executable |
-| `--production` | Set NODE_ENV=production, enable minify |
+| Option                | Description                            |
+| --------------------- | -------------------------------------- |
+| `--outdir <dir>`      | Output directory                       |
+| `--outfile <file>`    | Output to specific file                |
+| `--target <target>`   | `browser`, `bun`, or `node`            |
+| `--format <format>`   | `esm`, `cjs`, or `iife`                |
+| `--splitting`         | Enable code splitting                  |
+| `--minify`            | Enable all minification                |
+| `--sourcemap <type>`  | `linked`, `inline`, `external`, `none` |
+| `--external <pkg>`    | Exclude package from bundle            |
+| `--packages external` | Exclude all packages                   |
+| `--watch`             | Rebuild on changes                     |
+| `--compile`           | Create standalone executable           |
+| `--production`        | Set NODE_ENV=production, enable minify |
 
 ### Naming Options
 
-| Option | Description |
-|--------|-------------|
+| Option                     | Description            |
+| -------------------------- | ---------------------- |
 | `--entry-naming <pattern>` | Entry filename pattern |
 | `--chunk-naming <pattern>` | Chunk filename pattern |
 | `--asset-naming <pattern>` | Asset filename pattern |
 
 ### Minification Options
 
-| Option | Description |
-|--------|-------------|
-| `--minify-syntax` | Minify syntax |
-| `--minify-whitespace` | Minify whitespace |
+| Option                 | Description        |
+| ---------------------- | ------------------ |
+| `--minify-syntax`      | Minify syntax      |
+| `--minify-whitespace`  | Minify whitespace  |
 | `--minify-identifiers` | Minify identifiers |
 
 ## Supported File Types
 
-| Extensions | Handling |
-|------------|----------|
-| `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.mts`, `.cjs`, `.cts` | Transpiled to JavaScript |
-| `.json`, `.jsonc` | Inlined as object |
-| `.toml`, `.yaml`, `.yml` | Parsed and inlined as object |
-| `.txt` | Inlined as string |
-| `.html` | Processed, referenced assets bundled |
-| `.css` | Bundled into single CSS file |
-| Other | Copied as asset, import resolves to path |
+| Extensions                                                   | Handling                                 |
+| ------------------------------------------------------------ | ---------------------------------------- |
+| `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.mts`, `.cjs`, `.cts` | Transpiled to JavaScript                 |
+| `.json`, `.jsonc`                                            | Inlined as object                        |
+| `.toml`, `.yaml`, `.yml`                                     | Parsed and inlined as object             |
+| `.txt`                                                       | Inlined as string                        |
+| `.html`                                                      | Processed, referenced assets bundled     |
+| `.css`                                                       | Bundled into single CSS file             |
+| Other                                                        | Copied as asset, import resolves to path |

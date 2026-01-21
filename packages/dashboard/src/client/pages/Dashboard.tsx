@@ -1,25 +1,13 @@
-import { useEffect, useState } from 'preact/hooks';
 import type { IDashboardStats, IToolDetail } from '../../shared/types';
-import { fetchApi } from '../api';
 import { StatCard } from '../components/StatCard';
+import { useFetch } from '../hooks/useFetch';
 
 export function Dashboard() {
-  const [stats, setStats] = useState<IDashboardStats | null>(null);
-  const [tools, setTools] = useState<IToolDetail[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: stats, loading: statsLoading } = useFetch<IDashboardStats>('/stats');
+  const { data: tools, loading: toolsLoading } = useFetch<IToolDetail[]>('/tools');
 
-  useEffect(() => {
-    Promise.all([fetchApi<IDashboardStats>('/stats'), fetchApi<IToolDetail[]>('/tools')])
-      .then(([statsData, toolsData]) => {
-        setStats(statsData);
-        setTools(toolsData);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load dashboard:', err);
-        setLoading(false);
-      });
-  }, []);
+  const loading = statsLoading || toolsLoading;
+  const toolsList = tools || [];
 
   if (loading) {
     return (
@@ -29,7 +17,7 @@ export function Dashboard() {
     );
   }
 
-  const methodCounts = tools.reduce<Record<string, number>>((acc, tool) => {
+  const methodCounts = toolsList.reduce<Record<string, number>>((acc, tool) => {
     const method = tool.installMethod || 'unknown';
     acc[method] = (acc[method] || 0) + 1;
     return acc;
@@ -60,7 +48,7 @@ export function Dashboard() {
         <div class='bg-gray-800 rounded-lg p-4'>
           <h2 class='text-lg font-semibold mb-4'>Recent Installations</h2>
           <div class='space-y-2'>
-            {tools.slice(0, 5).map((tool) => (
+            {toolsList.slice(0, 5).map((tool) => (
               <div key={tool.name} class='flex items-center justify-between py-2 border-b border-gray-700'>
                 <div>
                   <span class='font-medium'>{tool.name}</span>
@@ -69,7 +57,7 @@ export function Dashboard() {
                 <span class='status-badge bg-green-900 text-green-300'>✓ Installed</span>
               </div>
             ))}
-            {tools.length === 0 && <div class='text-gray-400 text-center py-4'>No tools installed yet</div>}
+            {toolsList.length === 0 && <div class='text-gray-400 text-center py-4'>No tools installed yet</div>}
           </div>
         </div>
 
@@ -80,7 +68,7 @@ export function Dashboard() {
             {Object.entries(methodCounts)
               .toSorted((a, b) => b[1] - a[1])
               .map(([method, count]) => {
-                const total = tools.length || 1;
+                const total = toolsList.length || 1;
                 const percent = Math.round((count / total) * 100);
                 return (
                   <div key={method}>

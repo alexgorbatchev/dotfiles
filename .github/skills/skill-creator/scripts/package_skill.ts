@@ -37,7 +37,6 @@ async function packageSkill(
   const resolvedPath = resolve(skillPath);
 
   // Validate skill folder exists
-  const skillDir = Bun.file(resolvedPath);
   try {
     const stat = await Bun.file(join(resolvedPath, 'SKILL.md')).exists();
     if (!stat) {

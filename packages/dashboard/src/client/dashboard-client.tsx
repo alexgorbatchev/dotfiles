@@ -2,7 +2,10 @@ import { hydrate, prerender as ssr } from 'preact-iso';
 import { App } from './App';
 
 if (typeof window !== 'undefined') {
-  hydrate(<App />, document.getElementById('app')!);
+  const appElement = document.getElementById('app');
+  if (appElement) {
+    hydrate(<App />, appElement);
+  }
 }
 
 export async function prerender() {

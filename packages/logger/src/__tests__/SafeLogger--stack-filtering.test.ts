@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import type { ILogObj } from 'tslog';
+import type { ILogObj, ILogObjMeta } from 'tslog';
 import { LogLevel } from '../LogLevel';
 import { TestLogger } from '../TestLogger';
 import type { SafeLogMessage } from '../types';
@@ -25,6 +25,10 @@ function isTslogErrorObject(value: unknown): value is ITslogErrorObject {
   );
 }
 
+function getLoggedError(log: ILogObjMeta): unknown {
+  return log[1];
+}
+
 describe('SafeLogger - stack trace filtering', () => {
   it('filters internal stack frames from error logs at INFO level', () => {
     const logger = new TestLogger<ILogObj>({ name: 'test', minLevel: LogLevel.DEFAULT });
@@ -38,10 +42,11 @@ describe('SafeLogger - stack trace filtering', () => {
 
     logger.error('Operation failed' as SafeLogMessage, error);
 
-    const errorLogs = logger.logs.filter((log) => log['_meta']?.logLevelName === 'ERROR');
-    expect(errorLogs).toHaveLength(1);
+    // Verify the log was emitted
+    logger.expect(['ERROR'], ['test'], [], ['Operation failed']);
 
-    const loggedError = errorLogs[0]?.[1];
+    // Access the raw log to verify error transformation
+    const loggedError = getLoggedError(logger.logs[0]!);
 
     // tslog transforms errors into objects with parsed stack frames
     if (isTslogErrorObject(loggedError)) {
@@ -76,8 +81,11 @@ describe('SafeLogger - stack trace filtering', () => {
 
     logger.warn('Warning occurred' as SafeLogMessage, error);
 
-    const warnLogs = logger.logs.filter((log) => log['_meta']?.logLevelName === 'WARN');
-    const loggedError = warnLogs[0]?.[1];
+    // Verify the log was emitted
+    logger.expect(['WARN'], ['test'], [], ['Warning occurred']);
+
+    // Access the raw log to verify error transformation
+    const loggedError = getLoggedError(logger.logs[0]!);
 
     if (isTslogErrorObject(loggedError)) {
       // Should only have the .tool.ts frame
@@ -100,8 +108,11 @@ describe('SafeLogger - stack trace filtering', () => {
 
     logger.error('Debug operation failed' as SafeLogMessage, error);
 
-    const errorLogs = logger.logs.filter((log) => log['_meta']?.logLevelName === 'ERROR');
-    const loggedError = errorLogs[0]?.[1];
+    // Verify the log was emitted
+    logger.expect(['ERROR'], ['test'], [], ['Debug operation failed']);
+
+    // Access the raw log to verify error transformation
+    const loggedError = getLoggedError(logger.logs[0]!);
 
     if (isTslogErrorObject(loggedError)) {
       // Stack filtering is always on - only .tool.ts frames shown
@@ -123,8 +134,11 @@ describe('SafeLogger - stack trace filtering', () => {
 
     logger.error('Operation failed' as SafeLogMessage, error);
 
-    const errorLogs = logger.logs.filter((log) => log['_meta']?.logLevelName === 'ERROR');
-    const loggedError = errorLogs[0]?.[1];
+    // Verify the log was emitted
+    logger.expect(['ERROR'], ['test'], [], ['Operation failed']);
+
+    // Access the raw log to verify error transformation
+    const loggedError = getLoggedError(logger.logs[0]!);
 
     if (isTslogErrorObject(loggedError)) {
       // When no .tool.ts frames, stack should be empty
@@ -138,8 +152,11 @@ describe('SafeLogger - stack trace filtering', () => {
     const context = { toolName: 'my-tool', path: '/some/path' };
     logger.error('Operation failed' as SafeLogMessage, context);
 
-    const errorLogs = logger.logs.filter((log) => log['_meta']?.logLevelName === 'ERROR');
-    const loggedContext = errorLogs[0]?.[1] as unknown;
+    // Verify the log was emitted
+    logger.expect(['ERROR'], ['test'], [], ['Operation failed']);
+
+    // Access the raw log to verify error transformation
+    const loggedContext = getLoggedError(logger.logs[0]!) as unknown;
 
     // Non-error objects should pass through unchanged
     expect(loggedContext).toEqual(context);

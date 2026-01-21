@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import { OnceScriptFormatter } from '../OnceScriptFormatter';
 
+// oxlint-disable-next-line import/no-unassigned-import
 import '@dotfiles/testing-helpers';
 
 describe('OnceScriptFormatter', () => {

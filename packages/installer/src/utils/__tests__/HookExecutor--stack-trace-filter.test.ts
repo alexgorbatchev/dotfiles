@@ -11,12 +11,15 @@ import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { LogLevel, TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { replaceInFile } from '@dotfiles/utils';
-import { describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
+import { describe, it } from 'bun:test';
 import path from 'node:path';
 import type { ILogObj } from 'tslog';
 import { createConfiguredShell } from '../createConfiguredShell';
 import { HookExecutor } from '../HookExecutor';
+
+const createFailingHookWithStderr = (stderrMessage: string) => async (context: IAfterInstallContext): Promise<void> => {
+  await context.$`sh -c "echo '${stderrMessage}' 1>&2; exit 1"`.quiet();
+};
 
 describe('HookExecutor - stack trace filtering', () => {
   it('only shows .tool.ts frames in error stack trace output', async () => {
@@ -81,40 +84,19 @@ describe('HookExecutor - stack trace filtering', () => {
     });
     const enhancedContext = hookExecutor.createEnhancedContext(baseContext, fs);
 
-    // Create a hook that fails with a shell error
-    const failingHook = async (context: IAfterInstallContext): Promise<void> => {
-      await context.$`sh -c "echo 'command not found: fake-tool' 1>&2; exit 1"`.quiet();
-    };
+    await hookExecutor.executeHook(
+      logger,
+      'after-install',
+      createFailingHookWithStderr('command not found: fake-tool'),
+      enhancedContext,
+      { continueOnError: true },
+    );
 
-    await hookExecutor.executeHook(logger, 'after-install', failingHook, enhancedContext, { continueOnError: true });
-
-    // Find the ERROR log entry
-    const errorLogs = logger.logs.filter((log) => {
-      const meta = log['_meta'];
-      const parentNames = meta?.parentNames ?? [];
-      return Boolean(
-        meta && meta.logLevelName === 'ERROR' && meta.name === 'executeHook' && parentNames.includes('HookExecutor'),
-      );
-    });
-
-    const errorLog = errorLogs[0];
-    assert(errorLog);
-
-    // The error IS passed to the logger, but SafeLogger filters the stack trace
-    // to only show .tool.ts frames (which won't exist in test hooks defined inline)
-    const errorArg = errorLog[2];
-    expect(errorArg).toBeDefined();
-
-    // Verify the log message includes the actual error cause
-    const contextArg = String(errorLog[0]);
-    const messageArg = String(errorLog[1]);
-    expect(contextArg).toBe('[after-install]');
-    expect(messageArg).toContain('command not found: fake-tool');
-
-    // The writeOutput may be empty if there's no .tool.ts file in the stack
-    // (which is the case in tests where the hook is defined inline)
-    // When there IS a .tool.ts file, the output will contain just the code frame
-    // wrapped in --- delimiters, not verbose exit code/stderr details
+    // Verify the error log was emitted with the correct context and message
+    // The log message includes the actual error cause
+    logger.expect(['ERROR'], ['test', 'HookExecutor', 'executeHook'], ['after-install'], [
+      /command not found: fake-tool/,
+    ]);
   });
 
   it('includes error cause in the log message', async () => {
@@ -179,34 +161,16 @@ describe('HookExecutor - stack trace filtering', () => {
     });
     const enhancedContext = hookExecutor.createEnhancedContext(baseContext, fs);
 
-    // Create a hook that fails with a shell error containing a specific message
-    const failingHook = async (context: IAfterInstallContext): Promise<void> => {
-      await context.$`sh -c "echo 'bun: command not found: navi' 1>&2; exit 1"`.quiet();
-    };
+    await hookExecutor.executeHook(
+      logger,
+      'after-install',
+      createFailingHookWithStderr('bun: command not found: navi'),
+      enhancedContext,
+      { continueOnError: true },
+    );
 
-    await hookExecutor.executeHook(logger, 'after-install', failingHook, enhancedContext, { continueOnError: true });
-
-    const errorLogs = logger.logs.filter((log) => {
-      const meta = log['_meta'];
-      const parentNames = meta?.parentNames ?? [];
-      return Boolean(
-        meta && meta.logLevelName === 'ERROR' && meta.name === 'executeHook' && parentNames.includes('HookExecutor'),
-      );
-    });
-
-    const errorLog = errorLogs[0];
-    assert(errorLog);
-
-    // The error message should include the actual cause from stderr
-    const contextArg = String(errorLog[0]);
-    const messageArg = String(errorLog[1]);
-
-    // Current behavior: Just "Hook failed"
-    // Desired behavior: "Hook failed: bun: command not found: navi"
-    expect(contextArg).toBe('[after-install]');
-
-    // This test will fail until we implement the fix
-    // The message should include the stderr output
-    expect(messageArg).toContain('command not found: navi');
+    // Verify the error log was emitted with the correct context and message
+    // The message should include the stderr output with the actual error cause
+    logger.expect(['ERROR'], ['test', 'HookExecutor', 'executeHook'], ['after-install'], [/command not found: navi/]);
   });
 });

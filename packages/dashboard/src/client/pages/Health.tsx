@@ -1,22 +1,8 @@
-import { useEffect, useState } from 'preact/hooks';
 import type { IHealthStatus } from '../../shared/types';
-import { fetchApi } from '../api';
+import { useFetch } from '../hooks/useFetch';
 
 export function Health() {
-  const [health, setHealth] = useState<IHealthStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchApi<IHealthStatus>('/health')
-      .then((data) => {
-        setHealth(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load health:', err);
-        setLoading(false);
-      });
-  }, []);
+  const { data: health, loading } = useFetch<IHealthStatus>('/health');
 
   if (loading) {
     return (

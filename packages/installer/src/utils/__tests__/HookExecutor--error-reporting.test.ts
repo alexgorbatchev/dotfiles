@@ -11,12 +11,15 @@ import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { LogLevel, TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { replaceInFile } from '@dotfiles/utils';
-import { describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
+import { describe, it } from 'bun:test';
 import path from 'node:path';
 import type { ILogObj } from 'tslog';
 import { createConfiguredShell } from '../createConfiguredShell';
 import { HookExecutor } from '../HookExecutor';
+
+const createFailingHookWithStderr = (stderrMessage: string) => async (context: IAfterInstallContext): Promise<void> => {
+  await context.$`sh -c "echo ${stderrMessage} 1>&2; exit 1"`.quiet();
+};
 
 describe('HookExecutor - error reporting', () => {
   it('prints short tslog error and writes multiline shell output details', async () => {
@@ -79,41 +82,16 @@ describe('HookExecutor - error reporting', () => {
     const hookExecutor = new HookExecutor((): void => {});
     const enhancedContext = hookExecutor.createEnhancedContext(baseContext, fs);
 
-    const failingHook = async (context: IAfterInstallContext): Promise<void> => {
-      await context.$`sh -c "echo shell-stderr 1>&2; exit 1"`.quiet();
-    };
+    await hookExecutor.executeHook(
+      logger,
+      'after-install',
+      createFailingHookWithStderr('shell-stderr'),
+      enhancedContext,
+      { continueOnError: true },
+    );
 
-    await hookExecutor.executeHook(logger, 'after-install', failingHook, enhancedContext, { continueOnError: true });
-
-    const errorLogs = logger.logs.filter((log) => {
-      const meta = log['_meta'];
-      const parentNames = meta?.parentNames ?? [];
-      return Boolean(
-        meta && meta.logLevelName === 'ERROR' && meta.name === 'executeHook' && parentNames.includes('HookExecutor'),
-      );
-    });
-
-    const errorLog = errorLogs[0];
-    assert(errorLog);
-
-    // With context logging, the first argument is the context prefix [after-install]
-    // and second argument is the log message "Hook failed: <error cause>"
-    const contextArg = errorLog[0];
-    const messageArg = errorLog[1];
-    assert.equal(typeof contextArg, 'string');
-    expect(String(contextArg)).toBe('[after-install]');
-
-    // The log message now includes the error cause from stderr
-    assert.equal(typeof messageArg, 'string');
-    expect(String(messageArg)).toContain('shell-stderr');
-
-    // The error object IS passed to the logger, but SafeLogger filters the stack trace
-    // to only show .tool.ts frames (which won't exist in test hooks defined inline)
-    const errorArg = errorLog[2];
-    expect(errorArg).toBeDefined();
-
-    // The writeOutput may be empty when there's no .tool.ts file in the stack
-    // (which is the case in tests where the hook is defined inline)
-    // Verbose details like exit code and stderr are only shown in trace mode
+    // Verify the error log was emitted with the correct context and message
+    // The log message includes the error cause from stderr
+    logger.expect(['ERROR'], ['test', 'HookExecutor', 'executeHook'], ['after-install'], [/shell-stderr/]);
   });
 });

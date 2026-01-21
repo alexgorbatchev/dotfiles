@@ -2,6 +2,7 @@ import { always, once } from '@dotfiles/core';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { AlwaysScriptFormatter } from '../AlwaysScriptFormatter';
 
+// oxlint-disable-next-line import/no-unassigned-import
 import '@dotfiles/testing-helpers';
 
 describe('AlwaysScriptFormatter', () => {

@@ -1,14 +1,13 @@
 import { useLocation } from 'preact-iso';
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import type { IToolDetail } from '../../shared/types';
-import { fetchApi } from '../api';
 import { TreeNode } from '../components/TreeNode';
+import { useFetch } from '../hooks/useFetch';
 import { buildTreeForTool } from '../utils/tree';
 
 export function Tools() {
   const { url } = useLocation();
-  const [tools, setTools] = useState<IToolDetail[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: tools, loading } = useFetch<IToolDetail[]>('/tools');
   const [viewMode, setViewMode] = useState<'grid' | 'files'>('grid');
 
   const getInitialFilters = useCallback(() => {
@@ -38,27 +37,17 @@ export function Tools() {
     updateUrlParams(filter, methodFilter);
   }, [filter, methodFilter, updateUrlParams]);
 
-  useEffect(() => {
-    fetchApi<IToolDetail[]>('/tools')
-      .then((data) => {
-        setTools(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load tools:', err);
-        setLoading(false);
-      });
-  }, []);
+  const toolsList = tools || [];
 
-  const filteredTools = tools.filter((tool) => {
+  const filteredTools = toolsList.filter((tool) => {
     const matchesSearch = !filter || tool.name.toLowerCase().includes(filter.toLowerCase());
     const matchesMethod = !methodFilter || tool.installMethod === methodFilter;
     return matchesSearch && matchesMethod;
   });
 
-  const methods = [...new Set(tools.map((t) => t.installMethod).filter(Boolean))] as string[];
-  const totalFiles = tools.reduce((sum, t) => sum + (t.files?.length || 0), 0);
-  const installedCount = tools.filter((t) => t.status === 'installed').length;
+  const methods = [...new Set(toolsList.map((t) => t.installMethod).filter(Boolean))] as string[];
+  const totalFiles = toolsList.reduce((sum, t) => sum + (t.files?.length || 0), 0);
+  const installedCount = toolsList.filter((t) => t.status === 'installed').length;
 
   if (loading) {
     return (
@@ -73,7 +62,7 @@ export function Tools() {
       {/* Stats row */}
       <div class='grid grid-cols-3 gap-4'>
         <div class='bg-gray-800 rounded-lg p-4 text-center'>
-          <div class='text-2xl font-bold text-blue-400'>{tools.length}</div>
+          <div class='text-2xl font-bold text-blue-400'>{toolsList.length}</div>
           <div class='text-gray-400 text-sm'>Total Tools</div>
         </div>
         <div class='bg-gray-800 rounded-lg p-4 text-center'>
