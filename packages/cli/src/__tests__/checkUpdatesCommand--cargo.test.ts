@@ -29,6 +29,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
     mockConfigService = {
       loadSingleToolConfig: mock(async () => cargoToolConfig),
       loadToolConfigs: mock(async () => ({})),
+      loadToolConfigByBinary: mock(async () => undefined),
     };
 
     // Create mock plugin that implements checkUpdate capability

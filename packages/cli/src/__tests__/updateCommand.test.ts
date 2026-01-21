@@ -52,6 +52,7 @@ describe('updateCommand', () => {
     mockConfigService = {
       loadSingleToolConfig: mock(async () => fzfToolConfig),
       loadToolConfigs: mock(async () => ({})),
+      loadToolConfigByBinary: mock(async () => undefined),
     };
 
     mockToolInstallationRegistry = {

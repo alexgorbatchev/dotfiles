@@ -35,6 +35,7 @@ describe('checkUpdatesCommand - Logger Context Propagation', () => {
     mockConfigService = {
       loadSingleToolConfig: mock(async () => toolConfig),
       loadToolConfigs: mock(async () => ({})),
+      loadToolConfigByBinary: mock(async () => undefined),
     };
 
     mockPlugin = {

@@ -15,6 +15,7 @@ import { createCliTestSetup } from './createCliTestSetup';
 const createMockConfigService = (): MockedInterface<IConfigService> => ({
   loadSingleToolConfig: mock(async () => undefined),
   loadToolConfigs: mock(async () => ({})),
+  loadToolConfigByBinary: mock(async () => undefined),
 });
 
 describe('generateCommand', () => {

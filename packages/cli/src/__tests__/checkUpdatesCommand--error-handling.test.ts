@@ -28,6 +28,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
     mockConfigService = {
       loadSingleToolConfig: mock(async () => manualToolConfig),
       loadToolConfigs: mock(async () => ({})),
+      loadToolConfigByBinary: mock(async () => undefined),
     };
 
     // Create mock plugin that does NOT support update checking (for manual method)

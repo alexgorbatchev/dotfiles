@@ -37,6 +37,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
     mockConfigService = {
       loadSingleToolConfig: mock(async () => brewToolConfig),
       loadToolConfigs: mock(async () => ({})),
+      loadToolConfigByBinary: mock(async () => undefined),
     };
 
     // Create mock plugin that implements checkUpdate capability

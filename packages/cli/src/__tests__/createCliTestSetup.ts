@@ -120,6 +120,7 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
             mockServices.configService = {
               loadSingleToolConfig: mock(async () => undefined),
               loadToolConfigs: mock(async () => ({})),
+              loadToolConfigByBinary: mock(async () => undefined),
             };
             break;
           case 'installer':

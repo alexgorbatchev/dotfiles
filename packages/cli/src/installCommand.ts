@@ -18,9 +18,9 @@ import type {
  */
 export const INSTALL_COMMAND_COMPLETION: ICommandCompletionMeta = {
   name: 'install',
-  description: 'Install a tool if not already installed',
+  description: 'Install a tool by name or binary',
   hasPositionalArg: true,
-  positionalArgDescription: 'tool name to install',
+  positionalArgDescription: 'tool name or binary name to install',
   positionalArgType: 'tool',
   options: [
     { flag: '--force', description: 'Force installation even if already installed' },
@@ -28,30 +28,92 @@ export const INSTALL_COMMAND_COMPLETION: ICommandCompletionMeta = {
   ],
 };
 
-async function loadToolConfigSafely(
+/**
+ * Result of loading a tool configuration.
+ * Returns the tool config and actual tool name (which may differ from input if looked up by binary).
+ */
+type LoadToolConfigResult =
+  | { success: true; toolConfig: ToolConfig; toolName: string; }
+  | { success: false; error: string; };
+
+/**
+ * Type guard to check if a result from loadToolConfigByBinary is an error object.
+ */
+function isConfigByBinaryError(result: unknown): result is { error: string; } {
+  return typeof result === 'object' && result !== null && 'error' in result;
+}
+
+/**
+ * Loads a tool configuration by name or binary name.
+ *
+ * First attempts to load by tool name (filename without .tool.ts extension).
+ * If not found, attempts to find a tool that provides a binary with the given name.
+ *
+ * @param logger - Logger instance for logging operations.
+ * @param nameOrBinary - The tool name or binary name to search for.
+ * @param toolConfigsDir - Directory containing tool configuration files.
+ * @param fs - File system interface for reading configuration files.
+ * @param projectConfig - Parsed project configuration object.
+ * @param configService - Configuration service for loading tool configs.
+ * @param systemInfo - System information for context creation.
+ * @returns Result object with tool config and actual tool name, or error message.
+ */
+async function loadToolConfigByNameOrBinary(
   logger: TsLogger,
-  toolName: string,
+  nameOrBinary: string,
   toolConfigsDir: string,
   fs: IResolvedFileSystem,
   projectConfig: ProjectConfig,
   configService: IConfigService,
   systemInfo: ISystemInfo,
-): Promise<ToolConfig | null> {
+): Promise<LoadToolConfigResult> {
+  // First, try to load by exact tool name
   const toolConfig = await configService.loadSingleToolConfig(
     logger,
-    toolName,
+    nameOrBinary,
     toolConfigsDir,
     fs,
     projectConfig,
     systemInfo,
   );
 
-  if (!toolConfig) {
-    logger.error(messages.toolNotFound(toolName, toolConfigsDir));
-    return null;
+  if (toolConfig) {
+    const result: LoadToolConfigResult = { success: true, toolConfig, toolName: nameOrBinary };
+    return result;
   }
 
-  return toolConfig;
+  // Not found by tool name, try to find by binary name
+  logger.debug(messages.toolLookupByBinaryStarted(nameOrBinary));
+  const binaryLookupResult = await configService.loadToolConfigByBinary(
+    logger,
+    nameOrBinary,
+    toolConfigsDir,
+    fs,
+    projectConfig,
+    systemInfo,
+  );
+
+  if (isConfigByBinaryError(binaryLookupResult)) {
+    const result: LoadToolConfigResult = { success: false, error: binaryLookupResult.error };
+    return result;
+  }
+
+  if (binaryLookupResult) {
+    logger.debug(messages.toolFoundByBinary(nameOrBinary, binaryLookupResult.name));
+    const result: LoadToolConfigResult = {
+      success: true,
+      toolConfig: binaryLookupResult,
+      toolName: binaryLookupResult.name,
+    };
+    return result;
+  }
+
+  // Not found by either method
+  const result: LoadToolConfigResult = {
+    success: false,
+    error: `No tool or binary named "${nameOrBinary}" found in ${toolConfigsDir}`,
+  };
+  return result;
 }
 
 function handleInstallationResult(
@@ -110,21 +172,21 @@ function toError(value: unknown): Error {
 
 async function executeInstallCommandAction(
   logger: TsLogger,
-  toolName: string,
+  nameOrBinary: string,
   combinedOptions: InstallCommandSpecificOptions & IGlobalProgramOptions,
   services: IServices,
 ): Promise<number | null> {
   const { projectConfig, fs, installer, configService, generatorOrchestrator, systemInfo } = services;
 
   logger.debug(
-    messages.commandActionStarted('install', toolName),
+    messages.commandActionStarted('install', nameOrBinary),
     projectConfig.paths.toolConfigsDir,
     fs.constructor.name,
   );
 
-  const toolConfig = await loadToolConfigSafely(
+  const loadResult = await loadToolConfigByNameOrBinary(
     logger,
-    toolName,
+    nameOrBinary,
     projectConfig.paths.toolConfigsDir,
     fs,
     projectConfig,
@@ -132,10 +194,13 @@ async function executeInstallCommandAction(
     systemInfo,
   );
 
-  if (!toolConfig) {
+  if (!loadResult.success) {
+    logger.error(messages.toolNotFoundByBinary(nameOrBinary, projectConfig.paths.toolConfigsDir));
     const result: number = 1;
     return result;
   }
+
+  const { toolConfig, toolName } = loadResult;
 
   if (isConfigurationOnlyToolConfig(toolConfig)) {
     if (!combinedOptions.shimMode) {
@@ -167,11 +232,13 @@ export function registerInstallCommand(
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerInstallCommand' });
   program
-    .command('install <toolName>')
-    .description('Installs a tool if it is not already installed. Typically called by shims.')
+    .command('install <nameOrBinary>')
+    .description(
+      'Installs a tool by name or binary. Accepts tool name (filename without .tool.ts) or binary name (from .bin()).',
+    )
     .option('--force', 'Force installation even if the tool is already installed', false)
     .option('--shim-mode', 'Optimized output for shim usage: shows progress bars but suppresses log messages', false)
-    .action(async (toolName: string, commandOptions: InstallCommandSpecificOptions) => {
+    .action(async (nameOrBinary: string, commandOptions: InstallCommandSpecificOptions) => {
       const combinedOptions: InstallCommandSpecificOptions & IGlobalProgramOptions = {
         ...commandOptions,
         ...program.opts(),
@@ -180,10 +247,10 @@ export function registerInstallCommand(
       let shouldExitWithCode: number | null = null;
 
       try {
-        shouldExitWithCode = await executeInstallCommandAction(logger, toolName, combinedOptions, services);
+        shouldExitWithCode = await executeInstallCommandAction(logger, nameOrBinary, combinedOptions, services);
       } catch (error) {
         const finalError = toError(error);
-        shouldExitWithCode = handleInstallationError(logger, finalError, toolName, combinedOptions.shimMode);
+        shouldExitWithCode = handleInstallationError(logger, finalError, nameOrBinary, combinedOptions.shimMode);
       }
 
       if (shouldExitWithCode !== null) {

@@ -79,6 +79,7 @@ export class Downloader implements IDownloader {
     strategy: IDownloadStrategy,
     url: string,
     options: IDownloadOptions,
+  // TODO use OperationResult
   ): Promise<{ success: boolean; result?: Buffer; }> {
     if (!(await strategy.isAvailable())) {
       return { success: false };

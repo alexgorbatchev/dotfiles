@@ -10,6 +10,7 @@ import type { TestHarness } from '../../TestHarness';
  * - Creates symlinks to installed binaries
  * - Makes binaries executable and accessible through shims
  * - Completes before shims are used
+ * - Resolves binary names to tool names for installation
  *
  * @param harness - The TestHarness instance to use for running tests.
  */
@@ -49,6 +50,54 @@ export function installScenarios(harness: TestHarness): void {
     it('should install completion file for github-release-tool', async () => {
       const completionPath = path.join(harness.shellScriptsDir, 'zsh', 'completions', '_github-release-tool');
       expect(await harness.fileExists(completionPath)).toBe(true);
+    });
+  });
+
+  describe('install by binary name', () => {
+    const installByBinaryToolDir = path.join(harness.generatedDir, 'binaries', 'install-by-binary-tool');
+    const installByBinaryCurrentDir = path.join(installByBinaryToolDir, 'current');
+    const installByBinaryPath = path.join(installByBinaryCurrentDir, 'my-custom-binary');
+
+    beforeAll(async () => {
+      // Clean up binaries directory to ensure fresh install
+      await harness.cleanBinaries();
+    });
+
+    it('should install tool when specifying a binary name instead of tool name', async () => {
+      // Verify the binary does NOT exist before install
+      expect(await harness.fileExists(installByBinaryPath)).toBe(false);
+
+      // Run install command with binary name instead of tool name
+      // The tool is called 'install-by-binary-tool' but provides binary 'my-custom-binary'
+      const result = await harness.install(['my-custom-binary']);
+      expect(result.code).toBe(0);
+
+      // Verify stdout indicates tool was found by binary name
+      expect(result.stdout).toContain('install-by-binary-tool');
+
+      // Check binary symlink exists
+      expect(await harness.fileExists(installByBinaryPath)).toBe(true);
+
+      // Verify binary is executable
+      expect(await harness.isExecutable(installByBinaryPath)).toBe(true);
+    });
+
+    it('should still work when installing by tool name directly', async () => {
+      // Clean up for fresh test
+      await harness.cleanBinaries();
+
+      // Verify the binary does NOT exist before install
+      expect(await harness.fileExists(installByBinaryPath)).toBe(false);
+
+      // Run install command with tool name directly
+      const result = await harness.install(['install-by-binary-tool']);
+      expect(result.code).toBe(0);
+
+      // Check binary symlink exists
+      expect(await harness.fileExists(installByBinaryPath)).toBe(true);
+
+      // Verify binary is executable
+      expect(await harness.isExecutable(installByBinaryPath)).toBe(true);
     });
   });
 }

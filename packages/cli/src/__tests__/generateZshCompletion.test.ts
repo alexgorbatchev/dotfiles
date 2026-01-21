@@ -112,7 +112,7 @@ describe('generateZshCompletion', () => {
     it('should include tool names for commands that accept tool arguments', () => {
       const script = generateZshCompletion('dotfiles', SAMPLE_TOOL_NAMES);
 
-      expect(script).toContain("'1:tool name to install:(dotbot fzf)'");
+      expect(script).toContain("'1:tool name or binary name to install:(dotbot fzf)'");
       expect(script).toContain("'1:tool name (optional, checks all if omitted):(dotbot fzf)'");
       expect(script).toContain("'1:tool name to update:(dotbot fzf)'");
       expect(script).toContain("'1:tool name (optional):(dotbot fzf)'");

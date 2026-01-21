@@ -77,6 +77,15 @@ Tests handling of existing files and conflict resolution.
 
 Tests shell completion file generation for tools that provide dynamic completions.
 
+### Install by Binary Name
+
+Tests the ability to install a tool by specifying a binary name instead of the tool name:
+
+- Installing a tool when specifying a binary name that the tool provides
+- Verifying traditional tool name installation still works alongside binary name lookup
+
+Uses `install-by-binary-tool` fixture with binary name `my-custom-binary`.
+
 ### Dependency Resolution
 
 Tests tool dependency resolution and validation:

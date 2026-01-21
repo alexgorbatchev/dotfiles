@@ -29,6 +29,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
     mockConfigService = {
       loadSingleToolConfig: mock(async () => fzfToolConfig),
       loadToolConfigs: mock(async () => ({})),
+      loadToolConfigByBinary: mock(async () => undefined),
     };
 
     // Create mock plugin that implements checkUpdate capability

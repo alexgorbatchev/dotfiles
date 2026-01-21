@@ -15,6 +15,7 @@ import { createCliTestSetup } from './createCliTestSetup';
 const createMockConfigService = (): MockedInterface<IConfigService> => {
   const result: MockedInterface<IConfigService> = {
     loadSingleToolConfig: mock(async () => undefined),
+    loadToolConfigByBinary: mock(async () => undefined),
     loadToolConfigs: mock(async () => ({})),
   };
   return result;
@@ -86,6 +87,7 @@ describe('installCommand', () => {
   afterEach(() => {
     // Reset all mocks
     mockConfigService.loadSingleToolConfig.mockReset();
+    mockConfigService.loadToolConfigByBinary.mockReset();
     mockConfigService.loadToolConfigs.mockReset();
   });
 
@@ -190,6 +192,7 @@ describe('installCommand', () => {
 
   test('should exit with error if tool config is not found', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(undefined);
+    mockConfigService.loadToolConfigByBinary.mockResolvedValue(undefined);
 
     expect(program.parseAsync(['install', 'nonexistent'], { from: 'user' })).rejects.toThrow(
       'MOCK_EXIT_CLI_CALLED_WITH_1',
@@ -199,7 +202,7 @@ describe('installCommand', () => {
       ['ERROR'],
       ['registerInstallCommand'],
       [],
-      [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)],
+      [messages.toolNotFoundByBinary('nonexistent', mockProjectConfig.paths.toolConfigsDir)],
     );
   });
 

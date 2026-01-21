@@ -78,7 +78,7 @@ Clear cache entries matching glob patterns.
 
 ```json
 {
-  "pattern": "string",   // Single glob pattern (optional)
+  "pattern": "string", // Single glob pattern (optional)
   "patterns": ["string"] // Array of glob patterns (optional)
 }
 ```
@@ -117,11 +117,11 @@ Pre-populate cache with a known response.
 {
   "url": "https://api.example.com/data",
   "body": "response content",
-  "method": "GET",           // Optional, defaults to GET
-  "status": 200,             // Optional, defaults to 200
-  "headers": {},             // Optional response headers
-  "bodyIsBase64": false,     // Optional, set true for binary data
-  "ttl": 86400000            // Optional TTL override
+  "method": "GET", // Optional, defaults to GET
+  "status": 200, // Optional, defaults to 200
+  "headers": {}, // Optional response headers
+  "bodyIsBase64": false, // Optional, set true for binary data
+  "ttl": 86400000 // Optional TTL override
 }
 ```
 

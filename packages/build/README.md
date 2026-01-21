@@ -99,6 +99,7 @@ When Bun encounters this import at runtime, it automatically bundles the HTML fi
 ##### Output Files
 
 The build produces:
+
 - `cli.js` - The CLI entry point bundle
 - `dashboard.js` - The dashboard HTML entry (processed by Bun at runtime)
 - `dashboard-*.js` - Dashboard client chunks (Preact components)
@@ -107,6 +108,7 @@ The build produces:
 ##### Dashboard Build Test
 
 The build includes a test step that:
+
 1. Starts the built CLI with the `dashboard` command
 2. Verifies the server responds to health checks
 3. Verifies HTML is served correctly
@@ -178,6 +180,7 @@ The build runs the built `.dist/cli.js` with `--version` to ensure it executes.
 ### 11.1) Test the built dashboard
 
 The build starts the dashboard server and verifies:
+
 - The `/api/health` endpoint responds with valid JSON
 - The root `/` endpoint returns HTML content
 

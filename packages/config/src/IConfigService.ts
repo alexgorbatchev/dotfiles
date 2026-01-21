@@ -30,6 +30,30 @@ export interface IConfigService {
   ): Promise<ToolConfig | undefined>;
 
   /**
+   * Loads a tool configuration by searching for a tool that provides the specified binary.
+   *
+   * This method scans all tool configurations in the directory and finds the tool that
+   * defines the given binary name via `.bin()`. If multiple tools define the same binary,
+   * returns an error result. If no tool defines the binary, returns undefined.
+   *
+   * @param logger - Logger instance for logging operations.
+   * @param binaryName - The name of the binary to search for.
+   * @param toolConfigsDir - Directory containing tool configuration files.
+   * @param fs - File system interface for reading configuration files.
+   * @param projectConfig - Parsed project configuration object.
+   * @param systemInfo - System information for context creation.
+   * @returns The tool configuration if found, undefined if not found, or an error message if multiple tools define the binary.
+   */
+  loadToolConfigByBinary(
+    logger: TsLogger,
+    binaryName: string,
+    toolConfigsDir: string,
+    fs: IResolvedFileSystem,
+    projectConfig: ProjectConfig,
+    systemInfo: ISystemInfo,
+  ): Promise<ToolConfig | undefined | { error: string; }>;
+
+  /**
    * Loads all tool configurations from a directory.
    *
    * @param logger - Logger instance for logging operations.

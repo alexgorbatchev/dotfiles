@@ -1,6 +1,9 @@
 import type {
   AsyncConfigureTool,
   AsyncConfigureToolWithReturn,
+  IBinaryConfig,
+  IOperationFailure,
+  IOperationSuccess,
   ISystemInfo,
   ProjectConfig,
   ToolConfig,
@@ -339,4 +342,156 @@ export async function loadSingleToolConfig(
 ): Promise<ToolConfig | undefined> {
   const configs = await loadToolConfigs(parentLogger, toolConfigsDir, fs, projectConfig, systemInfo, toolName);
   return configs[toolName];
+}
+
+/**
+ * Extracts the binary name from a binary entry.
+ *
+ * Binary entries can be either simple strings or IBinaryConfig objects.
+ * This function normalizes both formats to return just the binary name.
+ *
+ * @param binary - A binary entry that is either a string or an IBinaryConfig object.
+ * @returns The binary name.
+ */
+function getBinaryName(binary: string | IBinaryConfig): string {
+  if (typeof binary === 'string') {
+    return binary;
+  }
+  return binary.name;
+}
+
+/**
+ * Result of searching for a tool by binary name - success case.
+ */
+export type FindToolByBinarySuccess = IOperationSuccess & {
+  toolName: string;
+};
+
+/**
+ * Result of searching for a tool by binary name - failure case.
+ */
+export type FindToolByBinaryFailure = IOperationFailure & {
+  matchingTools?: string[];
+};
+
+/**
+ * Result of searching for a tool by binary name.
+ */
+export type FindToolByBinaryResult = FindToolByBinarySuccess | FindToolByBinaryFailure;
+
+/**
+ * Finds a tool that provides a specific binary.
+ *
+ * Scans all tool configurations in the directory and finds tools that define
+ * the given binary name via `.bin()`. If multiple tools define the same binary,
+ * returns an error result with the list of matching tools.
+ *
+ * @param parentLogger - Parent logger instance (a sublogger will be created).
+ * @param binaryName - The name of the binary to search for.
+ * @param toolConfigsDir - Root directory containing `.tool.ts` configuration files.
+ * @param fs - File system interface for reading files and directories.
+ * @param projectConfig - Parsed project configuration for context creation.
+ * @param systemInfo - System information for context creation.
+ * @returns A result object indicating whether the tool was found, not found, or an error occurred.
+ */
+export async function findToolByBinary(
+  parentLogger: TsLogger,
+  binaryName: string,
+  toolConfigsDir: string,
+  fs: IResolvedFileSystem,
+  projectConfig: ProjectConfig,
+  systemInfo: ISystemInfo,
+): Promise<FindToolByBinaryResult> {
+  const logger = parentLogger.getSubLogger({ name: 'findToolByBinary', context: binaryName });
+  logger.debug(messages.binarySearchStarted(binaryName, toolConfigsDir));
+
+  // Load all tool configs to search through them
+  const allConfigs = await loadToolConfigs(logger, toolConfigsDir, fs, projectConfig, systemInfo);
+  const matchingTools: string[] = [];
+
+  for (const [toolName, config] of Object.entries(allConfigs)) {
+    if (!config.binaries) {
+      continue;
+    }
+
+    const hasBinary = config.binaries.some((binary) => getBinaryName(binary) === binaryName);
+    if (hasBinary) {
+      matchingTools.push(toolName);
+    }
+  }
+
+  if (matchingTools.length === 0) {
+    logger.debug(messages.binaryNotFound(binaryName));
+    const result: FindToolByBinaryFailure = { success: false, error: `No tool provides binary '${binaryName}'` };
+    return result;
+  }
+
+  if (matchingTools.length > 1) {
+    logger.debug(messages.multipleBinaryProviders(binaryName, matchingTools));
+    const result: FindToolByBinaryFailure = {
+      success: false,
+      error: `Multiple tools provide the binary '${binaryName}': ${
+        matchingTools.join(', ')
+      }. Please specify the tool name instead.`,
+      matchingTools,
+    };
+    return result;
+  }
+
+  const toolName = matchingTools[0];
+  if (!toolName) {
+    const result: FindToolByBinaryFailure = { success: false, error: `No tool provides binary '${binaryName}'` };
+    return result;
+  }
+
+  logger.debug(messages.binaryFoundInTool(binaryName, toolName));
+  const result: FindToolByBinarySuccess = { success: true, toolName };
+  return result;
+}
+
+/**
+ * Loads a tool configuration by searching for a tool that provides the specified binary.
+ *
+ * This function first searches for a tool that defines the given binary name,
+ * then loads that tool's full configuration.
+ *
+ * @param parentLogger - Parent logger instance (a sublogger will be created).
+ * @param binaryName - The name of the binary to search for.
+ * @param toolConfigsDir - Root directory containing `.tool.ts` configuration files.
+ * @param fs - File system interface for reading files and directories.
+ * @param projectConfig - Parsed project configuration for context creation.
+ * @param systemInfo - System information for context creation.
+ * @returns The tool configuration if found, undefined if not found, or an error object if multiple tools define the binary.
+ */
+export async function loadToolConfigByBinary(
+  parentLogger: TsLogger,
+  binaryName: string,
+  toolConfigsDir: string,
+  fs: IResolvedFileSystem,
+  projectConfig: ProjectConfig,
+  systemInfo: ISystemInfo,
+): Promise<ToolConfig | undefined | { error: string; }> {
+  const logger = parentLogger.getSubLogger({ name: 'loadToolConfigByBinary' });
+  const findResult = await findToolByBinary(logger, binaryName, toolConfigsDir, fs, projectConfig, systemInfo);
+
+  if (!findResult.success) {
+    // Only return error if multiple tools provide the binary (matchingTools present)
+    // Otherwise return undefined for "not found"
+    if (findResult.matchingTools) {
+      const errorResult: { error: string; } = { error: findResult.error };
+      return errorResult;
+    }
+    return undefined;
+  }
+
+  // Load the full configuration for the found tool
+  const toolConfig = await loadSingleToolConfig(
+    logger,
+    findResult.toolName,
+    toolConfigsDir,
+    fs,
+    projectConfig,
+    systemInfo,
+  );
+  return toolConfig;
 }

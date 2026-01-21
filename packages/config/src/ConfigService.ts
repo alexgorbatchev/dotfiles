@@ -4,6 +4,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { IConfigService } from './IConfigService';
 import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
+  loadToolConfigByBinary as actualLoadToolConfigByBinary,
   loadToolConfigs as actualLoadToolConfigs,
 } from './loadToolConfigs';
 
@@ -26,6 +27,20 @@ export class ConfigService implements IConfigService {
     systemInfo: ISystemInfo,
   ): Promise<ToolConfig | undefined> {
     return actualLoadSingleToolConfig(logger, toolName, toolConfigsDir, fs, projectConfig, systemInfo);
+  }
+
+  /**
+   * @inheritdoc IConfigService.loadToolConfigByBinary
+   */
+  async loadToolConfigByBinary(
+    logger: TsLogger,
+    binaryName: string,
+    toolConfigsDir: string,
+    fs: IResolvedFileSystem,
+    projectConfig: ProjectConfig,
+    systemInfo: ISystemInfo,
+  ): Promise<ToolConfig | undefined | { error: string; }> {
+    return actualLoadToolConfigByBinary(logger, binaryName, toolConfigsDir, fs, projectConfig, systemInfo);
   }
 
   /**

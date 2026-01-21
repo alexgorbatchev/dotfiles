@@ -18,16 +18,19 @@ The CLI package serves as the main entry point for all dotfiles operations. It o
 
 ## Commands
 
-### `install [tool]`
+### `install [toolOrBinary]`
 
-Install a specific tool or all configured tools.
+Install a specific tool or all configured tools. You can specify either the tool name or any binary name that the tool provides.
 
 ```bash
 # Install all tools
 dotfiles install
 
-# Install specific tool
+# Install specific tool by name
 dotfiles install fzf
+
+# Install tool by binary name (finds tool that provides 'bat' binary)
+dotfiles install bat
 
 # Force reinstall
 dotfiles install --force
@@ -35,6 +38,12 @@ dotfiles install --force
 # Skip tool installation, only generate configs
 dotfiles install --skip-tools
 ```
+
+When installing by binary name:
+
+- The CLI first tries to find a tool with a matching name
+- If not found, it searches all tool configurations for one that provides the specified binary
+- If multiple tools provide the same binary, an error is shown listing all matching tools
 
 **Options:**
 

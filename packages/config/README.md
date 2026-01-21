@@ -87,6 +87,32 @@ if (fzfConfig) {
 }
 ```
 
+### `loadToolConfigByBinary(logger, binaryName, toolConfigsDir, fs, projectConfig, systemInfo): Promise<ToolConfig | undefined | { error: string }>`
+
+Loads configuration for a tool by searching for which tool provides a specific binary name.
+
+```typescript
+import { loadToolConfigByBinary } from '@dotfiles/config';
+
+const systemInfo = { platform: 'darwin', arch: 'x64', homeDir: projectConfig.paths.homeDir };
+
+const result = await loadToolConfigByBinary(
+  logger,
+  'bat', // Binary name, not tool name
+  projectConfig.paths.toolConfigsDir,
+  fileSystem,
+  projectConfig,
+  systemInfo,
+);
+
+if (result && 'error' in result) {
+  // Multiple tools provide this binary
+  console.error(result.error);
+} else if (result) {
+  console.log(`Found tool ${result.name} that provides 'bat' binary`);
+}
+```
+
 ### `ConfigService`
 
 Default implementation of `IConfigService` for dependency injection.

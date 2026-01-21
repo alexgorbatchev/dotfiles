@@ -37,8 +37,11 @@ This project replaces that fragile, manual system with a declarative, programmat
 # Initialize configuration for the first time
 dotfiles init
 
-# Install a tool defined in a .tool.ts file
+# Install a tool by name
 dotfiles install fzf
+
+# Install a tool by binary name (finds tool that provides 'bat')
+dotfiles install bat
 
 # Generate shims and shell configuration files
 dotfiles generate

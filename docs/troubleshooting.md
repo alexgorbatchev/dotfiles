@@ -73,7 +73,8 @@ bun typecheck
 ### Installation Commands
 
 ```bash
-dotfiles install tool-name           # Install
+dotfiles install tool-name           # Install by tool name
+dotfiles install binary-name         # Install by binary name
 dotfiles install tool-name --force   # Force reinstall
 dotfiles install tool-name --trace --log=verbose  # Debug logging
 dotfiles files tool-name             # List generated files

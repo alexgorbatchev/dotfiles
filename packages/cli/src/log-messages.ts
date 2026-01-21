@@ -128,4 +128,10 @@ export const messages = {
   dashboardStarting: (port: number) => createSafeLogMessage(`Starting dashboard server on port ${port}`),
   dashboardRunning: (url: string) => createSafeLogMessage(`Dashboard running at ${url}`),
   dashboardStopping: () => createSafeLogMessage('Stopping dashboard server'),
+  toolLookupByBinaryStarted: (binaryName: string) =>
+    createSafeLogMessage(`Tool not found by name '${binaryName}', searching by binary name`),
+  toolFoundByBinary: (binaryName: string, toolName: string) =>
+    createSafeLogMessage(`Binary '${binaryName}' is provided by tool '${toolName}'`),
+  toolNotFoundByBinary: (name: string, toolConfigsDir: string) =>
+    createSafeLogMessage(`No tool or binary named "${name}" found in ${toolConfigsDir}`),
 } satisfies SafeLogMessageMap;
