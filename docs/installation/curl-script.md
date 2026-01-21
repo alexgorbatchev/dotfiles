@@ -50,7 +50,11 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-The `args` context provides: `projectConfig`, `scriptPath`, `stagingDir`.
+The `args` function receives a context with:
+
+- `projectConfig` - Project configuration with paths and settings
+- `scriptPath` - Absolute path to the downloaded script (in `stagingDir`, already chmod +x)
+- `stagingDir` - Temporary directory for this installation attempt. The script is downloaded here, along with any files your code creates. After successful installation, the entire directory is renamed to the versioned path (e.g., `<tool-name>/1.2.3`), preserving all contents.
 
 ### With Environment Variables
 

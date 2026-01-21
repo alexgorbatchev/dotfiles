@@ -135,6 +135,18 @@ install('github-release', { repo: 'owner/tool' })
   );
 ```
 
+> **⚠️ CRITICAL: Shell Startup Performance**
+>
+> All tool configurations MUST be optimized for shell boot time. Every millisecond counts when the shell starts.
+>
+> **The golden rule**: Generate static files once (in `after-install` hook), then source them at shell startup.
+>
+> - ❌ **BAD**: Running `eval "$(tool init)"` in `.always()` - executes on every shell start
+> - ✅ **GOOD**: Using `.completions({ cmd: '...' })` - generates static file once, sources it at startup
+> - ✅ **GOOD**: Using `after-install` hook to generate static files, then `.source()` to load them
+>
+> If a tool requires dynamic initialization (e.g., `eval "$(tool init)"`), generate the output to a static file in the `after-install` hook and source that file instead.
+
 **Script Timing**:
 
 - `.always(template)` - Runs every time shell starts (fast operations only)
