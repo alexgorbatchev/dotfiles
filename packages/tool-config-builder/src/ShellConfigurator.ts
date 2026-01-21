@@ -8,6 +8,7 @@ import type {
 import { always, once } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { VALID_FUNCTION_NAME_PATTERN } from '@dotfiles/shell-init-generator';
+import { resolveToolRelativePath } from '@dotfiles/utils';
 import path from 'node:path';
 import { messages } from './log-messages';
 import type { IShellStorage, ShellTypeKey } from './types';
@@ -133,6 +134,7 @@ export class ShellConfigurator implements IShellConfigurator {
 
   /**
    * Resolves a relative path to an absolute path based on the tool context.
+   * Relative paths are resolved against toolDir (the .tool.ts file's directory).
    * Handles path normalization for the target shell.
    */
   private resolvePath(relativePath: string): string {
@@ -144,8 +146,7 @@ export class ShellConfigurator implements IShellConfigurator {
     }
 
     if (path.isAbsolute(trimmedPath)) {
-      const normalizedPath = this.normalizePath(trimmedPath);
-      return normalizedPath;
+      return this.normalizePath(trimmedPath);
     }
 
     if (!this.context) {
@@ -157,10 +158,8 @@ export class ShellConfigurator implements IShellConfigurator {
       throw new Error(message);
     }
 
-    const toolBinariesDir = path.join(this.context.projectConfig.paths.binariesDir, this.context.toolName);
-    const joinedPath = path.join(toolBinariesDir, trimmedPath);
-    const normalizedPath = this.normalizePath(joinedPath);
-    return normalizedPath;
+    const resolvedPath = resolveToolRelativePath(this.context.toolDir, trimmedPath);
+    return this.normalizePath(resolvedPath);
   }
 
   /**

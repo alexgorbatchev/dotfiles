@@ -37,9 +37,10 @@ The `.tool.ts` files in the `review` folder could be somewhat nested.
 Your job is to review the `.tool.ts` files in the `review` folder and ensure they correctly represent the corresponding tools from the `original` folder.
 
 To do that, follow these steps:
+
 - Read the `docs` folder completely, no sampling. This needs to be done once to understand how `.tool.ts` tools are defined.
 - List all original tools in the `original/*` folder.
-- Make `review/REVIEW.md ` file with the check list of all tools.
+- Make `review/REVIEW.md` file with the check list of all tools.
 - Start development proxy using `bun proxy` command, this proxy will cache and serve all responses from remote APIs so that we can avoid API rate limits.
 
 **important**: all commands to the test CLI must use this format `DEV_PROXY=3128 bun cli --config=review/config.ts [additional arguments]`, ensuring the proxy is used. We will refer to this as simply `dotfiles-cli` going forward.

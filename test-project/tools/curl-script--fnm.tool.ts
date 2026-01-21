@@ -1,7 +1,7 @@
 /* oxlint-disable no-console */
 import { defineTool, Platform } from '@dotfiles/cli';
 
-export default defineTool((install) =>
+export default defineTool((install, _ctx) =>
   install('curl-script', {
     url: 'https://fnm.vercel.app/install',
     shell: 'bash',

@@ -15,4 +15,5 @@ export * from './normalizeVersion';
 export * from './proxyFetch';
 export * from './replaceInFile';
 export * from './resolvePlatformConfig';
+export * from './resolveToolRelativePath';
 export * from './stripVersionPrefix';

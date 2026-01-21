@@ -3,7 +3,7 @@ import type { ArchiveFormat, Shell, ShellCompletionConfig, ShellType } from '@do
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { getAllFilesRecursively } from '@dotfiles/utils';
+import { getAllFilesRecursively, resolveToolRelativePath } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
 import path from 'node:path';
 import { CompletionCommandExecutor } from './CompletionCommandExecutor';
@@ -235,31 +235,35 @@ export class CompletionGenerator implements ICompletionGenerator {
   /**
    * Resolves the source path for a completion file.
    *
-   * Supports glob patterns (*, ?, []) for flexible file matching.
-   * Falls back to config file directory if not found in tool directory.
+   * Resolution:
+   * 1. Absolute paths are used as-is
+   * 2. Relative paths resolve to toolDir (directory containing the .tool.ts file)
    */
-  private async resolveSourcePath(toolDirPath: string, source: string, configFilePath?: string): Promise<string> {
-    // If source contains glob patterns, resolve using minimatch
+  private async resolveSourcePath(_toolInstallDir: string, source: string, configFilePath?: string): Promise<string> {
+    // Absolute paths are used as-is
+    if (path.isAbsolute(source)) {
+      return source;
+    }
+
+    // Determine toolDir from configFilePath
+    const toolDir = configFilePath ? path.dirname(configFilePath) : undefined;
+
+    if (!toolDir) {
+      throw new Error(`Cannot resolve relative path '${source}' without configFilePath`);
+    }
+
+    // If source contains glob patterns, search in toolDir
     if (source.includes('*') || source.includes('?') || source.includes('[')) {
-      const allFiles = await getAllFilesRecursively(this.fs, toolDirPath, toolDirPath);
-      const matched = allFiles.find((file) => minimatch(file, source));
-      if (matched) {
-        return path.join(toolDirPath, matched);
+      const toolDirFiles = await getAllFilesRecursively(this.fs, toolDir, toolDir);
+      const matchedInToolDir = toolDirFiles.find((file) => minimatch(file, source));
+      if (matchedInToolDir) {
+        return path.join(toolDir, matchedInToolDir);
       }
+      throw new Error(`No files matching pattern '${source}' found in toolDir: ${toolDir}`);
     }
 
-    let sourcePath = path.join(toolDirPath, source);
-
-    // If not found in toolDirPath, try relative to config file
-    if (!(await this.fs.exists(sourcePath)) && configFilePath) {
-      const configDir = path.dirname(configFilePath);
-      const localPath = path.resolve(configDir, source);
-      if (await this.fs.exists(localPath)) {
-        sourcePath = localPath;
-      }
-    }
-
-    return sourcePath;
+    // For non-glob paths, resolve relative to toolDir
+    return resolveToolRelativePath(toolDir, source);
   }
 
   /**

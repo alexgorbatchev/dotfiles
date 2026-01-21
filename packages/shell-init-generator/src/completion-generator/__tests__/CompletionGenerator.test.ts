@@ -186,8 +186,9 @@ describe('CompletionGenerator', () => {
   });
 
   test('generateAndWriteCompletionFile should create symlink for source-based completions', async () => {
-    // Create source completion file in the install directory
-    const sourceDir = '/install/tool/completions';
+    // Create source completion file in the toolDir (directory containing .tool.ts)
+    const toolDir = '/tools/my-tool';
+    const sourceDir = `${toolDir}/completions`;
     const sourcePath = `${sourceDir}/_my-tool`;
     await memFs.fs.ensureDir(sourceDir);
     await memFs.fs.writeFile(sourcePath, '# completion content');
@@ -202,6 +203,7 @@ describe('CompletionGenerator', () => {
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
+      configFilePath: `${toolDir}/my-tool.tool.ts`,
     };
 
     const result = await generator.generateAndWriteCompletionFile({
@@ -222,8 +224,9 @@ describe('CompletionGenerator', () => {
   });
 
   test('generateAndWriteCompletionFile should resolve glob patterns for source completions', async () => {
-    // Create source completion file with version in path
-    const sourceDir = '/install/tool/ripgrep-1.0.0/complete';
+    // Create source completion file with version in path within toolDir
+    const toolDir = '/tools/rg';
+    const sourceDir = `${toolDir}/ripgrep-1.0.0/complete`;
     const sourcePath = `${sourceDir}/_rg`;
     await memFs.fs.ensureDir(sourceDir);
     await memFs.fs.writeFile(sourcePath, '# rg completion');
@@ -238,6 +241,7 @@ describe('CompletionGenerator', () => {
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
+      configFilePath: `${toolDir}/rg.tool.ts`,
     };
 
     const result = await generator.generateAndWriteCompletionFile({
@@ -258,6 +262,9 @@ describe('CompletionGenerator', () => {
   });
 
   test('generateAndWriteCompletionFile should throw for missing source file', async () => {
+    const toolDir = '/tools/my-tool';
+    await memFs.fs.ensureDir(toolDir);
+
     const config: ShellCompletionConfig = {
       source: 'nonexistent/_completion',
     };
@@ -268,6 +275,7 @@ describe('CompletionGenerator', () => {
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
+      configFilePath: `${toolDir}/my-tool.tool.ts`,
     };
 
     expect(

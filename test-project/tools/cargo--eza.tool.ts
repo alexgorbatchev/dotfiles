@@ -1,6 +1,6 @@
 import { defineTool } from '@dotfiles/cli';
 
-export default defineTool((install, _ctx) =>
+export default defineTool((install, ctx) =>
   install('cargo', { crateName: 'eza' })
     .bin('eza')
     .dependsOn('fnm')
@@ -11,6 +11,6 @@ export default defineTool((install, _ctx) =>
           ll: 'el',
           l: 'el',
         })
-        .completions('completions/zsh/_eza')
+        .completions(`${ctx.currentDir}/completions/zsh/_eza`)
     )
 );
