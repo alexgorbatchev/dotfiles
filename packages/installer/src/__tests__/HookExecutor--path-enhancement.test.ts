@@ -1,10 +1,8 @@
 import { createShell, type IAfterInstallContext, type ToolConfig } from '@dotfiles/core';
-import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
+import { type IFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { chmod } from 'node:fs';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import { beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import { createConfiguredShell } from '../utils/createConfiguredShell';
 import { HookExecutor, type HookHandler } from '../utils/HookExecutor';
@@ -13,40 +11,35 @@ import { createTestInstallHookContext } from './hookContextTestHelper';
 describe('HookExecutor PATH Enhancement for after-install', () => {
   let logger: TestLogger;
   let hookExecutor: HookExecutor;
-  let memFs: IMemFileSystemReturn;
-  let tempDir: string;
+  let testDirs: ITestDirectories;
+  let nodeFs: IFileSystem;
   let toolConfigPath: string;
   let binaryDir: string;
   let $: ReturnType<typeof createShell>;
 
+  beforeAll(async () => {
+    nodeFs = new NodeFileSystem();
+    testDirs = await createTestDirectories(new TestLogger(), nodeFs, { testName: 'hook-executor-path-enhancement' });
+  });
+
   beforeEach(async () => {
     logger = new TestLogger();
     hookExecutor = new HookExecutor((): void => {});
-    memFs = await createMemFileSystem();
     $ = createShell();
 
-    // Create a temporary directory for integration tests
-    tempDir = await mkdtemp(path.join(tmpdir(), 'hook-executor-path-test-'));
-    toolConfigPath = path.join(tempDir, 'test-tool.tool.ts');
+    toolConfigPath = path.join(testDirs.paths.homeDir, 'test-tool.tool.ts');
 
     // Create a dummy tool config file
-    await writeFile(toolConfigPath, 'export default async (c) => { c.bin("test-tool"); };');
+    await nodeFs.writeFile(toolConfigPath, 'export default async (c) => { c.bin("test-tool"); };');
 
     // Create a binary directory with a test executable
-    binaryDir = path.join(tempDir, 'bin');
-    await $`mkdir -p ${binaryDir}`.quiet();
+    binaryDir = path.join(testDirs.paths.homeDir, 'bin');
+    await nodeFs.ensureDir(binaryDir);
 
     // Create a simple test executable script
     const testBinaryPath = path.join(binaryDir, 'test-tool');
-    await writeFile(testBinaryPath, '#!/bin/bash\necho "test-tool-executed"');
-    await new Promise<void>((resolve, reject) => {
-      chmod(testBinaryPath, 0o755, (err) => (err ? reject(err) : resolve()));
-    });
-  });
-
-  afterEach(async () => {
-    // Clean up temp directory
-    await rm(tempDir, { recursive: true, force: true });
+    await nodeFs.writeFile(testBinaryPath, '#!/bin/bash\necho "test-tool-executed"');
+    await $`chmod +x ${testBinaryPath}`.quiet();
   });
 
   it('should include binary directories in PATH for after-install hooks', async () => {
@@ -70,7 +63,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
     const afterInstallContext: IAfterInstallContext = {
       ...baseContext,
       toolConfig: mockToolConfig,
-      installedDir: tempDir,
+      installedDir: testDirs.paths.homeDir,
       binaryPaths: [testBinaryPath],
       version: '1.0.0',
     };
@@ -88,7 +81,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
       toolOutput = toolResult.stdout.toString().trim();
     };
 
-    const enhancedContext = hookExecutor.createEnhancedContext(afterInstallContext, memFs.fs);
+    const enhancedContext = hookExecutor.createEnhancedContext(afterInstallContext, nodeFs);
 
     await hookExecutor.executeHook(logger, 'after-install', hookThatUsesInstalledBinary, enhancedContext);
 
@@ -101,15 +94,13 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
 
   it('should include multiple binary directories in PATH when binaryPaths span different directories', async () => {
     // Create a second binary directory
-    const binaryDir2 = path.join(tempDir, 'lib', 'bin');
-    await $`mkdir -p ${binaryDir2}`.quiet();
+    const binaryDir2 = path.join(testDirs.paths.homeDir, 'lib', 'bin');
+    await nodeFs.ensureDir(binaryDir2);
 
     // Create a second test executable
     const testBinary2Path = path.join(binaryDir2, 'test-tool-2');
-    await writeFile(testBinary2Path, '#!/bin/bash\necho "test-tool-2-executed"');
-    await new Promise<void>((resolve, reject) => {
-      chmod(testBinary2Path, 0o755, (err) => (err ? reject(err) : resolve()));
-    });
+    await nodeFs.writeFile(testBinary2Path, '#!/bin/bash\necho "test-tool-2-executed"');
+    await $`chmod +x ${testBinary2Path}`.quiet();
 
     const mockToolConfig: ToolConfig = {
       configFilePath: toolConfigPath,
@@ -129,7 +120,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
     const afterInstallContext: IAfterInstallContext = {
       ...baseContext,
       toolConfig: mockToolConfig,
-      installedDir: tempDir,
+      installedDir: testDirs.paths.homeDir,
       binaryPaths: [path.join(binaryDir, 'test-tool'), testBinary2Path],
       version: '1.0.0',
     };
@@ -148,7 +139,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
       expect(tool2Result.stdout.toString().trim()).toBe('test-tool-2-executed');
     };
 
-    const enhancedContext = hookExecutor.createEnhancedContext(afterInstallContext, memFs.fs);
+    const enhancedContext = hookExecutor.createEnhancedContext(afterInstallContext, nodeFs);
 
     await hookExecutor.executeHook(logger, 'after-install', hookThatChecksPath, enhancedContext);
 
@@ -174,7 +165,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
     const afterInstallContext: IAfterInstallContext = {
       ...baseContext,
       toolConfig: mockToolConfig,
-      installedDir: tempDir,
+      installedDir: testDirs.paths.homeDir,
       binaryPaths: [],
       version: '1.0.0',
     };
@@ -185,7 +176,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
       expect(result.stdout.toString().trim()).toBe('works');
     };
 
-    const enhancedContext = hookExecutor.createEnhancedContext(afterInstallContext, memFs.fs);
+    const enhancedContext = hookExecutor.createEnhancedContext(afterInstallContext, nodeFs);
 
     const result = await hookExecutor.executeHook(logger, 'after-install', hookThatEchos, enhancedContext);
     expect(result.success).toBe(true);

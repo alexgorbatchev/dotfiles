@@ -1,10 +1,9 @@
 import { createShell, type IAfterInstallContext, type ToolConfig } from '@dotfiles/core';
-import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
+import { createMemFileSystem, type IMemFileSystemReturn, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { existsSync, realpathSync } from 'node:fs';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createConfiguredShell } from '../utils/createConfiguredShell';
 import { HookExecutor, type HookHandler } from '../utils/HookExecutor';
@@ -14,25 +13,29 @@ describe('HookExecutor $ Integration', () => {
   let logger: TestLogger;
   let hookExecutor: HookExecutor;
   let memFs: IMemFileSystemReturn;
-  let tempDir: string;
+  let nodeFs: NodeFileSystem;
+  let testDirs: ITestDirectories;
   let toolConfigPath: string;
 
   beforeEach(async () => {
     logger = new TestLogger();
     hookExecutor = new HookExecutor((): void => {});
     memFs = await createMemFileSystem();
+    nodeFs = new NodeFileSystem();
 
     // Create a temporary directory for integration tests
-    tempDir = await mkdtemp(path.join(tmpdir(), 'hook-executor-test-'));
-    toolConfigPath = path.join(tempDir, 'test-tool.tool.ts');
+    testDirs = await createTestDirectories(logger, nodeFs, {
+      testName: 'hook-executor-dollar-integration',
+    });
+    toolConfigPath = path.join(testDirs.paths.homeDir, 'test-tool.tool.ts');
 
     // Create a dummy tool config file
-    await writeFile(toolConfigPath, 'export default async (c) => { c.bin("test-tool"); };');
+    await nodeFs.writeFile(toolConfigPath, 'export default async (c) => { c.bin("test-tool"); };');
   });
 
   afterEach(async () => {
     // Clean up temp directory
-    await rm(tempDir, { recursive: true, force: true });
+    await nodeFs.rm(testDirs.paths.homeDir, { recursive: true, force: true });
   });
 
   it('should execute shell commands with correct working directory', async () => {
@@ -74,7 +77,7 @@ describe('HookExecutor $ Integration', () => {
 
     // Verify the working directory was set to the tool config directory
     // Use realpathSync to resolve symlinks for proper comparison on macOS
-    expect(realpathSync(actualCwd || '')).toBe(realpathSync(tempDir));
+    expect(realpathSync(actualCwd || '')).toBe(realpathSync(testDirs.paths.homeDir));
   });
 
   it('should create files relative to tool config directory', async () => {
@@ -114,7 +117,7 @@ describe('HookExecutor $ Integration', () => {
     await hookExecutor.executeHook(logger, 'afterInstall', hookThatCreatesFile, enhancedContext);
 
     // Verify the file exists in the expected location
-    const createdFilePath = path.join(tempDir, 'created-by-hook.txt');
+    const createdFilePath = path.join(testDirs.paths.homeDir, 'created-by-hook.txt');
     expect(existsSync(createdFilePath)).toBe(true);
   });
 

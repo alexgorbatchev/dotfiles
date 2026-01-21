@@ -12,52 +12,45 @@ import { NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
-import { afterEach, describe, expect, it } from 'bun:test';
+import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
-import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
 import { Installer } from '../Installer';
 import { HookExecutor } from '../utils/HookExecutor';
 
 describe('Installer - Path Precedence (Real FS)', () => {
-  let tempDir: string;
+  let logger: TestLogger;
+  let fileSystem: NodeFileSystem;
+  let testDirs: ITestDirectories;
+
+  beforeEach(async () => {
+    logger = new TestLogger();
+    fileSystem = new NodeFileSystem();
+    testDirs = await createTestDirectories(logger, fileSystem, {
+      testName: 'installer-path-precedence',
+    });
+  });
 
   afterEach(async () => {
-    if (tempDir) {
-      await fs.rm(tempDir, { recursive: true, force: true });
-    }
+    await fileSystem.rm(testDirs.paths.homeDir, { recursive: true, force: true });
   });
 
   it('should execute the newly installed binary instead of the shim during installation', async () => {
     // 1. Setup Real Temp Environment
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'installer-test-'));
-    const binDir = path.join(tempDir, 'bin'); // Shim dir
-    const generatedDir = path.join(tempDir, 'generated');
-    const installDirBase = path.join(generatedDir, 'binaries');
-
-    await fs.mkdir(binDir, { recursive: true });
+    const binDir = testDirs.paths.targetDir; // Shim dir
 
     // 2. Create Shim
     const toolName = 'real-fs-test-tool';
     const shimPath = path.join(binDir, toolName);
     // Create a fake shim that echoes "SHIM"
-    await fs.writeFile(shimPath, `#!/bin/sh\necho "SHIM"`);
-    await fs.chmod(shimPath, 0o755);
+    await fileSystem.writeFile(shimPath, `#!/bin/sh\necho "SHIM"`);
+    await fileSystem.chmod(shimPath, 0o755);
 
     // 3. Setup Installer Dependencies
-    const logger = new TestLogger();
-    const fileSystem = new NodeFileSystem();
     const projectConfig = {
-      paths: {
-        generatedDir,
-        targetDir: binDir,
-        binariesDir: installDirBase,
-        homeDir: tempDir,
-        shellScriptsDir: path.join(tempDir, 'scripts'),
-        dotfilesDir: path.join(tempDir, 'dotfiles'),
-      },
+      paths: testDirs.paths,
     } as unknown as ProjectConfig;
 
     const registry = new InstallerPluginRegistry(logger);
@@ -72,8 +65,8 @@ describe('Installer - Path Precedence (Real FS)', () => {
       install: async (_name, _config, context) => {
         // Create Real Binary in the install directory
         const binaryPath = path.join(context.stagingDir, toolName);
-        await fs.writeFile(binaryPath, `#!/bin/sh\necho "REAL_BINARY"`);
-        await fs.chmod(binaryPath, 0o755);
+        await fileSystem.writeFile(binaryPath, `#!/bin/sh\necho "REAL_BINARY"`);
+        await fileSystem.chmod(binaryPath, 0o755);
 
         // Execute the tool using bun shell
         // This should pick up the binary from stagingDir because Installer prepends it to PATH
@@ -117,10 +110,14 @@ describe('Installer - Path Precedence (Real FS)', () => {
       close: async () => {},
     };
 
-    const systemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: tempDir };
+    const systemInfo: ISystemInfo = {
+      platform: Platform.MacOS,
+      arch: Architecture.Arm64,
+      homeDir: testDirs.paths.homeDir,
+    };
     const symlinkGenerator = new SymlinkGenerator(logger, fileSystem, projectConfig, systemInfo);
     const hookExecutor = new HookExecutor((): void => {});
-    const resolvedFs = new ResolvedFileSystem(fileSystem, tempDir);
+    const resolvedFs = new ResolvedFileSystem(fileSystem, testDirs.paths.homeDir);
 
     const installer = new Installer(
       logger,

@@ -1,11 +1,9 @@
 import { createShell, type ShellCompletionConfig } from '@dotfiles/core';
 import type { IMemFileSystemReturn } from '@dotfiles/file-system';
-import { createMemFileSystem } from '@dotfiles/file-system';
+import { createMemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { CompletionGenerator } from '../CompletionGenerator';
 import type { ICompletionGenerationContext } from '../types';
 
@@ -14,18 +12,22 @@ const shell = createShell();
 describe('CompletionGenerator', () => {
   let logger: TestLogger;
   let memFs: IMemFileSystemReturn;
+  let nodeFs: NodeFileSystem;
   let generator: CompletionGenerator;
-  let realTempDir: string;
+  let testDirs: ITestDirectories;
 
   beforeEach(async () => {
     logger = new TestLogger();
     memFs = await createMemFileSystem();
+    nodeFs = new NodeFileSystem();
     generator = new CompletionGenerator(logger, memFs.fs, shell);
-    realTempDir = await mkdtemp(path.join(tmpdir(), 'completion-test-'));
+    testDirs = await createTestDirectories(logger, nodeFs, {
+      testName: 'completion-generator',
+    });
   });
 
   afterEach(async () => {
-    await rm(realTempDir, { recursive: true, force: true });
+    await nodeFs.rm(testDirs.paths.homeDir, { recursive: true, force: true });
   });
 
   test('should generate completion from command', async () => {
@@ -35,7 +37,7 @@ describe('CompletionGenerator', () => {
 
     const context: ICompletionGenerationContext = {
       toolName: 'test-tool',
-      toolInstallDir: realTempDir,
+      toolInstallDir: testDirs.paths.homeDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
@@ -72,7 +74,7 @@ describe('CompletionGenerator', () => {
 
     const context: ICompletionGenerationContext = {
       toolName: 'my-tool',
-      toolInstallDir: realTempDir,
+      toolInstallDir: testDirs.paths.homeDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
@@ -96,7 +98,7 @@ describe('CompletionGenerator', () => {
 
     const context: ICompletionGenerationContext = {
       toolName: 'my-tool',
-      toolInstallDir: realTempDir,
+      toolInstallDir: testDirs.paths.homeDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
@@ -114,7 +116,7 @@ describe('CompletionGenerator', () => {
 
     const context: ICompletionGenerationContext = {
       toolName: 'my-tool',
-      toolInstallDir: realTempDir,
+      toolInstallDir: testDirs.paths.homeDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
@@ -131,7 +133,7 @@ describe('CompletionGenerator', () => {
 
     const context: ICompletionGenerationContext = {
       toolName: 'my-tool',
-      toolInstallDir: realTempDir,
+      toolInstallDir: testDirs.paths.homeDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
@@ -161,7 +163,7 @@ describe('CompletionGenerator', () => {
 
     const context: ICompletionGenerationContext = {
       toolName: 'my-tool',
-      toolInstallDir: realTempDir,
+      toolInstallDir: testDirs.paths.homeDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
@@ -287,7 +289,7 @@ describe('CompletionGenerator', () => {
 
     const context: ICompletionGenerationContext = {
       toolName: 'curl-script--fnm',
-      toolInstallDir: realTempDir,
+      toolInstallDir: testDirs.paths.homeDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
@@ -307,7 +309,7 @@ describe('CompletionGenerator', () => {
 
     const context: ICompletionGenerationContext = {
       toolName: 'github--fd',
-      toolInstallDir: realTempDir,
+      toolInstallDir: testDirs.paths.homeDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
@@ -327,7 +329,7 @@ describe('CompletionGenerator', () => {
 
     const context: ICompletionGenerationContext = {
       toolName: 'ripgrep',
-      toolInstallDir: realTempDir,
+      toolInstallDir: testDirs.paths.homeDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
@@ -346,7 +348,7 @@ describe('CompletionGenerator', () => {
 
     const context: ICompletionGenerationContext = {
       toolName: 'curl-script--fnm',
-      toolInstallDir: realTempDir,
+      toolInstallDir: testDirs.paths.homeDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
       version: '1.0.0',
