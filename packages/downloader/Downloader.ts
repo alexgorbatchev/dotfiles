@@ -1,3 +1,4 @@
+import type { IOperationFailure, IOperationSuccess } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { ProxyFetchConfig } from '@dotfiles/utils';
@@ -7,6 +8,9 @@ import type { IDownloader, IDownloadOptions } from './IDownloader';
 import type { IDownloadStrategy } from './IDownloadStrategy';
 import { downloaderLogMessages } from './log-messages';
 import { NodeFetchStrategy } from './NodeFetchStrategy';
+
+type DownloadAttemptSuccess = IOperationSuccess & { buffer: Buffer | undefined; };
+type DownloadAttemptFailure = IOperationFailure;
 
 /**
  * Main downloader class that orchestrates file downloads using pluggable strategies.
@@ -73,20 +77,19 @@ export class Downloader implements IDownloader {
    * @param strategy - The download strategy to use.
    * @param url - The URL to download from.
    * @param options - Download options.
-   * @returns An object indicating success status and the result buffer if successful.
+   * @returns An operation result with the buffer if successful.
    */
   private async tryDownloadWithStrategy(
     strategy: IDownloadStrategy,
     url: string,
     options: IDownloadOptions,
-  // TODO use OperationResult
-  ): Promise<{ success: boolean; result?: Buffer; }> {
+  ): Promise<DownloadAttemptSuccess | DownloadAttemptFailure> {
     if (!(await strategy.isAvailable())) {
-      return { success: false };
+      return { success: false, error: 'Strategy not available' };
     }
 
-    const result = await strategy.download(url, options);
-    return { success: true, result };
+    const buffer = await strategy.download(url, options);
+    return { success: true, buffer };
   }
 
   /**
@@ -108,9 +111,9 @@ export class Downloader implements IDownloader {
 
     for (const strategy of this.strategies) {
       try {
-        const { success, result } = await this.tryDownloadWithStrategy(strategy, url, options);
-        if (success) {
-          return result;
+        const result = await this.tryDownloadWithStrategy(strategy, url, options);
+        if (result.success) {
+          return result.buffer;
         }
       } catch (error) {
         lastError = this.normalizeError(error);
@@ -130,21 +133,21 @@ export class Downloader implements IDownloader {
    * @param strategy - The download strategy to use.
    * @param url - The URL to download from.
    * @param fileOptions - Download options with destinationPath set.
-   * @returns True if the download was successful, false if the strategy is unavailable.
+   * @returns An operation result indicating success or failure.
    * @throws {Error} If the strategy returns a Buffer instead of writing to the file.
    */
   private async tryDownloadToFileWithStrategy(
     strategy: IDownloadStrategy,
     url: string,
     fileOptions: IDownloadOptions,
-  ): Promise<boolean> {
+  ): Promise<IOperationSuccess | IOperationFailure> {
     if (!(await strategy.isAvailable())) {
-      return false;
+      return { success: false, error: 'Strategy not available' };
     }
 
     const result = await strategy.download(url, fileOptions);
     if (result === undefined) {
-      return true; // Successfully saved to file
+      return { success: true }; // Successfully saved to file
     }
     throw new Error('Strategy returned Buffer instead of void for downloadToFile method');
   }
@@ -188,8 +191,8 @@ export class Downloader implements IDownloader {
 
     for (const strategy of this.strategies) {
       try {
-        const success = await this.tryDownloadToFileWithStrategy(strategy, url, fileOptions);
-        if (success) {
+        const result = await this.tryDownloadToFileWithStrategy(strategy, url, fileOptions);
+        if (result.success) {
           return;
         }
       } catch (error) {
