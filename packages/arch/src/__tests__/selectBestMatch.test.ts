@@ -132,4 +132,118 @@ describe('selectBestMatch', () => {
     // Should prefer eabihf variant for armv7l
     expect(result).toBe('tool-linux-armv7-eabihf.tar.gz');
   });
+
+  describe('non-binary pattern exclusion', () => {
+    it('should exclude .sha256sum checksum files', () => {
+      const systemInfo: ISystemInfo = {
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
+        homeDir: '/home/test',
+      };
+
+      const result = selectBestMatch(
+        [
+          'zellij-aarch64-apple-darwin.tar.gz.sha256sum',
+          'zellij-aarch64-apple-darwin.tar.gz',
+          'zellij-x86_64-apple-darwin.tar.gz',
+        ],
+        systemInfo,
+      );
+
+      expect(result).toBe('zellij-aarch64-apple-darwin.tar.gz');
+    });
+
+    it('should exclude .sig signature files', () => {
+      const systemInfo: ISystemInfo = {
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
+        homeDir: '/home/test',
+      };
+
+      const result = selectBestMatch(
+        [
+          'tool-linux-amd64.tar.gz.sig',
+          'tool-linux-amd64.tar.gz.asc',
+          'tool-linux-amd64.tar.gz',
+        ],
+        systemInfo,
+      );
+
+      expect(result).toBe('tool-linux-amd64.tar.gz');
+    });
+
+    it('should exclude buildable-artifact source archives', () => {
+      const systemInfo: ISystemInfo = {
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
+        homeDir: '/home/test',
+      };
+
+      const result = selectBestMatch(
+        [
+          'caddy_2.9.1_buildable-artifact.tar.gz',
+          'caddy_2.9.1_mac_arm64.tar.gz',
+          'caddy_2.9.1_linux_amd64.tar.gz',
+        ],
+        systemInfo,
+      );
+
+      expect(result).toBe('caddy_2.9.1_mac_arm64.tar.gz');
+    });
+
+    it('should exclude SHASUMS files', () => {
+      const systemInfo: ISystemInfo = {
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
+        homeDir: '/home/test',
+      };
+
+      const result = selectBestMatch(
+        [
+          'SHASUMS256.txt',
+          'tool-darwin-arm64.tar.gz',
+          'tool-linux-amd64.tar.gz',
+        ],
+        systemInfo,
+      );
+
+      expect(result).toBe('tool-darwin-arm64.tar.gz');
+    });
+
+    it('should exclude .sbom SBOM files', () => {
+      const systemInfo: ISystemInfo = {
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
+        homeDir: '/home/test',
+      };
+
+      const result = selectBestMatch(
+        [
+          'tool-linux-amd64.tar.gz.sbom',
+          'tool-linux-amd64.tar.gz',
+        ],
+        systemInfo,
+      );
+
+      expect(result).toBe('tool-linux-amd64.tar.gz');
+    });
+
+    it('should exclude .pem certificate files', () => {
+      const systemInfo: ISystemInfo = {
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
+        homeDir: '/home/test',
+      };
+
+      const result = selectBestMatch(
+        [
+          'tool-linux-amd64.pem',
+          'tool-linux-amd64.tar.gz',
+        ],
+        systemInfo,
+      );
+
+      expect(result).toBe('tool-linux-amd64.tar.gz');
+    });
+  });
 });
