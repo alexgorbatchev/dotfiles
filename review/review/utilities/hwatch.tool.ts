@@ -9,11 +9,11 @@ import { defineTool } from '@gitea/dotfiles';
  *
  * https://github.com/blacknon/hwatch
  */
-export default defineTool((install, _ctx) =>
+export default defineTool((install, ctx) =>
   install('github-release', {
     repo: 'blacknon/hwatch',
   })
     .bin('hwatch', 'bin/hwatch')
-    .bash((shell) => shell.completions('completion/bash/hwatch-completion.bash'))
-    .zsh((shell) => shell.completions('completion/zsh/_hwatch'))
+    .bash((shell) => shell.completions(`${ctx.currentDir}/completion/bash/hwatch-completion.bash`))
+    .zsh((shell) => shell.completions(`${ctx.currentDir}/completion/zsh/_hwatch`))
 );

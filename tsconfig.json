@@ -27,6 +27,6 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitAny": true
   },
-  "include": ["packages", "test-project", "cli.ts"],
+  "include": ["packages", "test-project", "cli.ts", "review"],
   "exclude": ["**/.tmp/**", "**/tmp/**", "packages/**/type-tests/**", "packages/**/__tests__/**/tool-types.d.ts"]
 }

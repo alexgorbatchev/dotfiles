@@ -9,9 +9,8 @@ export default defineTool((install, _ctx) =>
     .bin('bun')
     .zsh((shell) =>
       shell
-        .completions((ctx) => ({
-          url: `https://raw.githubusercontent.com/oven-sh/bun/refs/tags/${ctx.version}/completions/bun.zsh`,
-        }))
+        // bun supports generating completions via completions subcommand
+        .completions({ cmd: 'bun completions' })
         .aliases({
           br: 'bun run',
           brw: 'bun run --watch',

@@ -12,7 +12,7 @@ export default defineTool((install, ctx) => {
     .hook('after-install', async ({ $ }) => {
       // Generate navi widget
       const f = await $`which navi`;
-      console.log(`Current directory: ${f.text()}`);
+      console.log(`Current directory: ${f.stdout.toString()}`);
       await $`navi widget zsh > ${initFile}`;
 
       // Modify key binding from Ctrl-\ to Ctrl-G

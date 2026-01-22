@@ -6,6 +6,5 @@ export default defineTool((install, _ctx) =>
       formula: 'aerospace',
       cask: true,
       tap: 'nikitabobko/tap',
-    }).symlink('aerospace.toml', '~/.config/aerospace/aerospace.toml')
-  )
+    }).symlink('aerospace.toml', '~/.config/aerospace/aerospace.toml'))
 );

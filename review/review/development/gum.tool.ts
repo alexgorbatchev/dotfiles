@@ -1,9 +1,9 @@
 import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((install, _ctx) =>
+export default defineTool((install, ctx) =>
   install('github-release', {
     repo: 'charmbracelet/gum',
   })
     .bin('gum')
-    .zsh((shell) => shell.completions('completions/gum.zsh'))
+    .zsh((shell) => shell.completions(`${ctx.currentDir}/completions/gum.zsh`))
 );

@@ -1,5 +1,4 @@
-Gum
-===
+# Gum
 
 <p>
     <a href="https://stuff.charm.sh/gum/nutritional-information.png" target="_blank"><img src="https://stuff.charm.sh/gum/gum.png" alt="Gum Image" width="450" /></a>
@@ -10,8 +9,7 @@ Gum
 </p>
 
 A tool for glamorous shell scripts. Leverage the power of
-[Bubbles](https://github.com/charmbracelet/bubbles) and [Lip
-Gloss](https://github.com/charmbracelet/lipgloss) in your scripts and aliases
+[Bubbles](https://github.com/charmbracelet/bubbles) and [Lip Gloss](https://github.com/charmbracelet/lipgloss) in your scripts and aliases
 without writing any Go code!
 
 <img alt="Shell running the ./demo.sh script" width="600" src="https://stuff.charm.sh/gum/demo.gif">
@@ -23,11 +21,11 @@ The above example is running from a single shell script ([source](./examples/dem
 Gum provides highly configurable, ready-to-use utilities to help you write
 useful shell scripts and dotfiles aliases with just a few lines of code.
 
-Let's build a simple script to help you write [Conventional
-Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) for your
+Let's build a simple script to help you write [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) for your
 dotfiles.
 
 Start with a `#!/bin/sh`.
+
 ```bash
 #!/bin/sh
 ```
@@ -39,8 +37,8 @@ gum choose "fix" "feat" "docs" "style" "refactor" "test" "chore" "revert"
 ```
 
 > Tip: this command itself will print to `stdout` which is not all that useful.
-To make use of the command later on you can save the stdout to a `$VARIABLE` or
-`file.txt`.
+> To make use of the command later on you can save the stdout to a `$VARIABLE` or
+> `file.txt`.
 
 Prompt for an (optional) scope for the commit:
 
@@ -61,6 +59,7 @@ gum write --placeholder "Details of this change (CTRL+D to finish)"
 ```
 
 Prompt for a confirmation before committing:
+
 > `gum confirm` exits with status `0` if confirmed and status `1` if cancelled.
 
 ```bash
@@ -130,8 +129,8 @@ scoop install charm-gum
 
 Or download it:
 
-* [Packages][releases] are available in Debian, RPM, and Alpine formats
-* [Binaries][releases] are available for Linux, macOS, Windows, FreeBSD, OpenBSD, and NetBSD
+- [Packages][releases] are available in Debian, RPM, and Alpine formats
+- [Binaries][releases] are available for Linux, macOS, Windows, FreeBSD, OpenBSD, and NetBSD
 
 Or just install it with `go`:
 
@@ -373,8 +372,7 @@ echo '{{ Bold "Tasty" }} {{ Italic "Bubble" }} {{ Color "99" "0" " Gum " }}' \
 echo 'I :heart: Bubble Gum :candy:' | gum format -t emoji
 ```
 
-For more information on template helpers, see the [Termenv
-docs](https://github.com/muesli/termenv#template-helpers). For a full list of
+For more information on template helpers, see the [Termenv docs](https://github.com/muesli/termenv#template-helpers). For a full list of
 named emojis see the [GitHub API](https://api.github.com/emojis).
 
 <img src="https://stuff.charm.sh/gum/format.gif" width="600" alt="Running gum format for different types of formats" />
@@ -390,8 +388,7 @@ How to use `gum` in your daily workflows:
 Prompt for input to write git commit messages with a short summary and
 longer details with `gum input` and `gum write`.
 
-Bonus points: use `gum filter` with the [Conventional Commits
-Specification](https://www.conventionalcommits.org/en/v1.0.0/#summary) as a
+Bonus points: use `gum filter` with the [Conventional Commits Specification](https://www.conventionalcommits.org/en/v1.0.0/#summary) as a
 prefix for your commit message.
 
 ```bash
@@ -492,15 +489,15 @@ alias please="gum input --password | sudo -nS"
 
 We’d love to hear your thoughts on this project. Feel free to drop us a note!
 
-* [Twitter](https://twitter.com/charmcli)
-* [The Fediverse](https://mastodon.social/@charmcli)
-* [Discord](https://charm.sh/chat)
+- [Twitter](https://twitter.com/charmcli)
+- [The Fediverse](https://mastodon.social/@charmcli)
+- [Discord](https://charm.sh/chat)
 
 ## License
 
 [MIT](https://github.com/charmbracelet/gum/raw/main/LICENSE)
 
-***
+---
 
 Part of [Charm](https://charm.sh).
 

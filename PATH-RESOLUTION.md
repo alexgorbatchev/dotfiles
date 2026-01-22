@@ -1,4 +1,4 @@
-# Path Resolution Audit for `defineTool()`
+# Path Resolution for `defineTool()`
 
 This document describes how relative paths are resolved when absolute paths are not specified in `defineTool()` API methods.
 
@@ -6,37 +6,38 @@ This document describes how relative paths are resolved when absolute paths are 
 
 The `IToolConfigContext` (passed as `ctx` in `defineTool`) provides:
 
-| Property | Description | Derived From |
-|----------|-------------|--------------|
-| `toolDir` | Directory containing the `.tool.ts` file | `path.dirname(filePath)` |
-| `currentDir` | Stable symlink path after install | `${projectConfig.paths.binariesDir}/${toolName}/current` |
-| `projectConfig.paths.*` | All configured paths | User's config.yaml |
+| Property                | Description                              | Derived From                                             |
+| ----------------------- | ---------------------------------------- | -------------------------------------------------------- |
+| `toolDir`               | Directory containing the `.tool.ts` file | `path.dirname(filePath)`                                 |
+| `currentDir`            | Stable symlink path after install        | `${projectConfig.paths.binariesDir}/${toolName}/current` |
+| `projectConfig.paths.*` | All configured paths                     | User's config.yaml                                       |
 
 ---
 
 ## Path Resolution by API Method
+
+**All relative paths are resolved against `toolDir`** (the directory containing the `.tool.ts` file).
 
 ### 1. Shell `.source(path)`
 
 **File**: `packages/tool-config-builder/src/ShellConfigurator.ts`
 
 **Resolution Logic**:
+
 ```
 1. If absolute path → use as-is
-2. If relative path → resolve against: ${projectConfig.paths.binariesDir}/${toolName}
-```
-
-**Implementation**:
-```typescript
-const toolBinariesDir = path.join(this.context.projectConfig.paths.binariesDir, this.context.toolName);
-const joinedPath = path.join(toolBinariesDir, trimmedPath);
+2. If relative path → resolve against toolDir
 ```
 
 **Example**:
+
 ```typescript
-// If toolName = 'fzf' and binariesDir = '/home/user/.dotfiles/.generated/binaries'
-shell.source('current/shell/key-bindings.zsh')
-// Resolves to: /home/user/.dotfiles/.generated/binaries/fzf/current/shell/key-bindings.zsh
+// If tool config is at /home/user/dotfiles/tools/fzf/fzf.tool.ts
+shell.source('./shell/init.zsh');
+// Resolves to: /home/user/dotfiles/tools/fzf/shell/init.zsh
+
+// For files that ship with the installed tool, use ctx.currentDir:
+shell.source(`${ctx.currentDir}/shell/key-bindings.zsh`);
 ```
 
 ---
@@ -46,19 +47,19 @@ shell.source('current/shell/key-bindings.zsh')
 **File**: `packages/symlink-generator/src/SymlinkGenerator.ts` using `packages/utils/src/expandToolConfigPath.ts`
 
 **Resolution Logic** (for both `source` and `target`):
+
 ```
 1. Expand variables: ${paths.homeDir}, ${paths.dotfilesDir}, etc.
 2. Expand ~ to projectConfig.paths.homeDir
-3. If relative path:
-   - If configFilePath exists → resolve against path.dirname(configFilePath) (toolDir)
-   - Else fallback → resolve against projectConfig.paths.dotfilesDir
+3. If relative path → resolve against toolDir
 ```
 
 **Example**:
+
 ```typescript
-// If tool config is at /home/user/.dotfiles/tools/lazygit/lazygit.tool.ts
-symlink('./config.yml', '~/.config/lazygit/config.yml')
-// source resolves to: /home/user/.dotfiles/tools/lazygit/config.yml
+// If tool config is at /home/user/dotfiles/tools/lazygit/lazygit.tool.ts
+symlink('./config.yml', '~/.config/lazygit/config.yml');
+// source resolves to: /home/user/dotfiles/tools/lazygit/config.yml
 // target resolves to: /home/user/.config/lazygit/config.yml
 ```
 
@@ -69,23 +70,21 @@ symlink('./config.yml', '~/.config/lazygit/config.yml')
 **File**: `packages/shell-init-generator/src/completion-generator/CompletionGenerator.ts`
 
 **Resolution Logic** (for `source` property):
-```
-1. If contains glob patterns (*, ?, []) → search in toolInstallDir
-2. First, try: ${toolInstallDir}/${source}
-3. If not found AND configFilePath exists → try: ${configDir}/${source}
-```
 
-Where `toolInstallDir` = `${projectConfig.paths.binariesDir}/${toolName}/current`
+```
+1. If absolute path → use as-is
+2. If relative path → resolve against toolDir
+```
 
 **Example**:
-```typescript
-// Static source - checks installed dir first, then config dir
-shell.completions('completions/_fzf')
-// First tries: ${binariesDir}/fzf/current/completions/_fzf
-// Fallback: ${toolDir}/completions/_fzf
 
-// With callback
-shell.completions((ctx) => ({ source: 'completions/_fzf' }))
+```typescript
+// Static source - file next to .tool.ts
+shell.completions('_fzf');
+// Resolves to: ${toolDir}/_fzf
+
+// For files in installed archives, use ctx.currentDir:
+shell.completions(`${ctx.currentDir}/completions/_fzf`);
 ```
 
 ---
@@ -98,12 +97,13 @@ shell.completions((ctx) => ({ source: 'completions/_fzf' }))
 
 ```
 1. Expand variables and ~
-2. If relative → resolve against toolDir (config file directory)
+2. If relative → resolve against toolDir
 ```
 
 **Example**:
+
 ```typescript
-install('manual', { binaryPath: './bin/my-tool' })
+install('manual', { binaryPath: './bin/my-tool' });
 // Resolves to: ${toolDir}/bin/my-tool
 ```
 
@@ -118,8 +118,9 @@ install('manual', { binaryPath: './bin/my-tool' })
 **Resolution**: Patterns are resolved against `installedDir` at install time by the binary discovery utilities.
 
 **Example**:
+
 ```typescript
-bin('rg', '*/rg')
+bin('rg', '*/rg');
 // At install time, searches for 'rg' in: ${installedDir}/**/rg
 ```
 
@@ -130,50 +131,23 @@ bin('rg', '*/rg')
 **No automatic resolution** - paths are passed directly to the file system. Users must provide absolute paths or use context properties.
 
 **Example**:
+
 ```typescript
-ctx.replaceInFile(`${ctx.currentDir}/config.toml`, /pattern/, 'replacement')
+ctx.replaceInFile(`${ctx.currentDir}/config.toml`, /pattern/, 'replacement');
 ```
 
 ---
 
 ## Summary Table
 
-| API Method | Relative Path Resolution Base |
-|------------|------------------------------|
-| `shell.source(path)` | `${binariesDir}/${toolName}` |
-| `symlink(source, target)` | `toolDir` (config file directory) |
-| `completions({ source })` | `${binariesDir}/${toolName}/current` → fallback `toolDir` |
-| `manual({ binaryPath })` | `toolDir` (config file directory) |
-| `bin(name, pattern)` | `installedDir` (at install time) |
+| API Method                | Relative Path Resolution Base           |
+| ------------------------- | --------------------------------------- |
+| `shell.source(path)`      | `toolDir`                               |
+| `symlink(source, target)` | `toolDir`                               |
+| `completions({ source })` | `toolDir`                               |
+| `manual({ binaryPath })`  | `toolDir`                               |
+| `bin(name, pattern)`      | `installedDir` (at install time)        |
 | `ctx.replaceInFile(path)` | No resolution - absolute paths required |
-
----
-
-## ⚠️ Inconsistency Warning
-
-**Shell `.source()` resolves differently than symlinks and manual installer:**
-
-| Method | Resolves relative paths against |
-|--------|--------------------------------|
-| `symlink()` | `toolDir` (config file directory) |
-| `shell.source()` | `${binariesDir}/${toolName}` |
-
-This means a file at `./shell/init.zsh` next to your tool config:
-
-- **symlink**: Would resolve to `${toolDir}/shell/init.zsh` ✓
-- **shell.source**: Would resolve to `${binariesDir}/${toolName}/shell/init.zsh` ✗ (different!)
-
-### Recommended Pattern for shell.source()
-
-Since `shell.source()` resolves against the binaries directory, use paths that reference installed files:
-
-```typescript
-// For files installed WITH the tool (in currentDir):
-shell.source('current/shell/init.zsh')
-
-// For files next to your .tool.ts config, use absolute path:
-shell.source(`${ctx.toolDir}/shell/init.zsh`)
-```
 
 ---
 
@@ -181,11 +155,11 @@ shell.source(`${ctx.toolDir}/shell/init.zsh`)
 
 Different hook contexts provide different path properties:
 
-| Hook | Available Paths |
-|------|-----------------|
-| `before-install` | `stagingDir` (UUID-based temp directory) |
-| `after-download` | `stagingDir`, `downloadPath` |
-| `after-extract` | `stagingDir`, `downloadPath`, `extractDir` |
-| `after-install` | `installedDir`, `binaryPaths[]` |
+| Hook             | Available Paths                            |
+| ---------------- | ------------------------------------------ |
+| `before-install` | `stagingDir` (UUID-based temp directory)   |
+| `after-download` | `stagingDir`, `downloadPath`               |
+| `after-extract`  | `stagingDir`, `downloadPath`, `extractDir` |
+| `after-install`  | `installedDir`, `binaryPaths[]`            |
 
 **Note**: `stagingDir` is temporary and may be renamed/deleted. Use `installedDir` (only in `after-install`) for the final installation location.

@@ -1,9 +1,7 @@
 import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
-  install('manual', {
-    binaryPath: 'ssh',
-  })
+  install()
     .symlink('id_rsa', '~/.ssh/id_rsa')
     .symlink('id_rsa.pub', '~/.ssh/id_rsa.pub')
     .hook('after-install', async ({ $ }) => {
@@ -26,7 +24,6 @@ export default defineTool((install, ctx) =>
 
       // Add known hosts
       await $`ssh-keyscan -H "github.com" >> ~/.ssh/known_hosts 2>/dev/null || true`;
-      await $`ssh-keyscan -H "git-ssh.example.com" >> ~/.ssh/known_hosts 2>/dev/null || true`;
     })
     .zsh((shell) =>
       shell.always(/* zsh */ `

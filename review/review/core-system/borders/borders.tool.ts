@@ -7,6 +7,5 @@ export default defineTool((install, _ctx) =>
       tap: 'FelixKratz/formulae',
     })
       .bin('borders')
-      .symlink('bordersrc', '~/.config/borders/bordersrc')
-  )
+      .symlink('bordersrc', '~/.config/borders/bordersrc'))
 );

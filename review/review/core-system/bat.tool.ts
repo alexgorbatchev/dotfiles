@@ -1,6 +1,6 @@
 import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((install, _ctx) =>
+export default defineTool((install, ctx) =>
   install('github-release', {
     repo: 'sharkdp/bat',
   })
@@ -10,6 +10,6 @@ export default defineTool((install, _ctx) =>
         .aliases({
           b: 'bat',
         })
-        .completions('*/autocomplete/bat.zsh')
+        .completions(`${ctx.currentDir}/*/autocomplete/bat.zsh`)
     )
 );

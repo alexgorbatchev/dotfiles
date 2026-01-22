@@ -12,6 +12,5 @@ export default defineTool((install, _ctx) =>
     installMac('brew', {
       formula: 'meetingbar',
       cask: true,
-    })
-  )
+    }))
 );
