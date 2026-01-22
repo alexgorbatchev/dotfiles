@@ -39,17 +39,6 @@ describe('Shell String Producers - Completion Handling', () => {
       expect(result[0]).toContain('zsh');
       expect(result[0]).toContain('completions');
     });
-
-    test('should use custom target directory', () => {
-      const completions: ShellCompletionConfig = {
-        cmd: 'kubectl completion zsh',
-        targetDir: '/custom/completions',
-      };
-
-      const result = producer.processCompletions('kubectl', completions);
-
-      expect(result[0]).toContain('"/custom/completions"');
-    });
   });
 
   describe('BashStringProducer', () => {
@@ -81,18 +70,6 @@ describe('Shell String Producers - Completion Handling', () => {
       expect(result[0]).toContain(']] && source ');
       expect(result[0]).not.toContain('completions/completions');
     });
-
-    test('should use custom name', () => {
-      const completions: ShellCompletionConfig = {
-        cmd: 'kubectl completion bash',
-        name: 'custom-kubectl',
-      };
-
-      const result = producer.processCompletions('kubectl', completions);
-
-      expect(result[0]).toContain('custom-kubectl');
-      expect(result[0]).not.toContain('kubectl.bash');
-    });
   });
 
   describe('PowerShellStringProducer', () => {
@@ -123,17 +100,6 @@ describe('Shell String Producers - Completion Handling', () => {
       expect(result[0]).toContain('if (Test-Path ');
       expect(result[0]).toContain(') { . ');
       expect(result[0]).not.toContain('completions/completions');
-    });
-
-    test('should use custom target directory', () => {
-      const completions: ShellCompletionConfig = {
-        cmd: 'kubectl completion powershell',
-        targetDir: '/custom/completions',
-      };
-
-      const result = producer.processCompletions('kubectl', completions);
-
-      expect(result[0]).toContain('/custom/completions');
     });
   });
 

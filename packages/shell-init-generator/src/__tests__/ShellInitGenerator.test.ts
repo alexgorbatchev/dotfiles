@@ -320,7 +320,7 @@ describe('ShellInitGenerator', () => {
         shellConfigs: {
           zsh: {
             scripts: [always`export GAMMA_LEVEL=5`],
-            completions: { source: 'gamma_completion.sh', targetDir: '/usr/local/share/zsh/site-functions' },
+            completions: { source: 'gamma_completion.sh' },
           },
         },
         installationMethod: 'manual',
@@ -342,12 +342,11 @@ describe('ShellInitGenerator', () => {
     // Tool Inits - all tools should appear in Always Scripts section
     expect(content).toContain('alias b="beta -v"');
 
-    // Completions
+    // Completions - all completions use the standard completions directory
     expect(content).toContain('typeset -U fpath');
     expect(content).toContain(
       `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`,
-    ); // For alpha
-    expect(content).toContain(`fpath=(${JSON.stringify('/usr/local/share/zsh/site-functions')} $fpath)`); // For gamma
+    );
   });
 
   it('should correctly order the sections', async () => {

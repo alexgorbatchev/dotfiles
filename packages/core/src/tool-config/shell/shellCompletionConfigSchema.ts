@@ -7,36 +7,31 @@ import { z } from 'zod';
 export const shellCompletionConfigSchema = z
   .object({
     /**
-     * Path to the completion script file relative to the extracted archive root.
+     * Path to a completion file.
      *
-     * The path is automatically resolved during installation:
-     * 1. Primary: Looks for the file in the extracted archive directory
-     * 2. Fallback: Checks relative to the tool's config file if not found in archive
+     * When used alone:
+     * - **Relative paths** resolve to `toolDir` (directory containing `.tool.ts`)
+     * - **Absolute paths** are used as-is (e.g., `${ctx.currentDir}/completions/_tool`)
      *
-     * When used with `url`, this is the path within the downloaded archive.
+     * When used with `url`:
+     * - Path within the extracted archive (e.g., `${ctx.currentDir}/completions/_tool`)
+     * - The archive is extracted to `ctx.currentDir`
      *
      * @example
-     * // For an archive that extracts to: tool-v1.0/
-     * // And contains: tool-v1.0/completions/tool.zsh
-     * source: 'completions/tool.zsh'
+     * // Relative path (next to .tool.ts file)
+     * source: '_tool.zsh'
      *
-     * // No context variables needed - path resolution is automatic during installation
+     * // From extracted archive
+     * source: `${ctx.currentDir}/completions/_tool`
      */
     source: z.string().min(1).optional(),
     /**
-     * URL to download the completion file or archive from.
-     * The file is downloaded to the tool's binary directory.
-     *
-     * - Direct file URL: `source` is optional (filename derived from URL)
-     * - Archive URL: `source` required to specify path within the extracted archive
+     * URL to download the completion archive from.
+     * Must be used together with `source` to specify the file within the extracted archive.
      *
      * @example
-     * // Direct file download (source auto-derived as 'rg.zsh')
-     * url: 'https://raw.githubusercontent.com/user/repo/main/rg.zsh'
-     *
-     * // Archive download (source required for path within archive)
      * url: 'https://github.com/user/repo/releases/download/v1.0/completions.tar.gz'
-     * source: 'completions/tool.zsh'
+     * source: `${ctx.currentDir}/completions/_tool`
      */
     url: z.string().url().optional(),
     /**
@@ -58,52 +53,33 @@ export const shellCompletionConfigSchema = z
      * bin: 'fnm'  // Results in '_fnm' for zsh, 'fnm.bash' for bash
      */
     bin: z.string().optional(),
-    /**
-     * Optional custom name for the installed completion script file.
-     * Overrides both the default naming and the `bin` option.
-     * If not provided, defaults to shell-specific naming (e.g., `_toolName` for Zsh).
-     *
-     * @example
-     * name: '_my-custom-name'
-     */
-    name: z.string().optional(),
-    /**
-     * Optional custom directory where the completion script should be installed.
-     * Must be an absolute path. Use config values like `ctx.projectConfig.paths.homeDir` when configuring.
-     * If not provided, defaults to the shell-specific completion directory in generated files.
-     *
-     * @example
-     * targetDir: `${ctx.projectConfig.paths.homeDir}/.zsh/completions`
-     * targetDir: `${ctx.projectConfig.paths.generatedDir}/custom/completions`
-     */
-    targetDir: z.string().optional(),
   })
   .strict()
   .refine(
     (data) => {
       // Valid combinations:
-      // 1. source only (local file)
+      // 1. source only (local file - relative or absolute)
       // 2. cmd only (generate via command)
-      // 3. url only (direct file download, source auto-derived from URL)
-      // 4. url + source (archive download with path within archive)
+      // 3. url + source (archive download with path within archive)
       const hasSource = Boolean(data.source);
       const hasCmd = Boolean(data.cmd);
       const hasUrl = Boolean(data.url);
 
       if (hasCmd && hasUrl) return false; // cmd and url are mutually exclusive
       if (hasCmd && hasSource) return false; // cmd and source are mutually exclusive
-      if (!hasSource && !hasCmd && !hasUrl) return false; // must have source, cmd, or url
+      if (hasUrl && !hasSource) return false; // url requires source
+      if (!hasSource && !hasCmd) return false; // must have source or cmd
 
       return true;
     },
     {
       message:
-        "Invalid completion config: use 'source' alone, 'cmd' alone, 'url' alone, or 'url' with 'source'. Cannot combine 'cmd' with 'url' or 'source'.",
+        "Invalid completion config: use 'source' alone, 'cmd' alone, or 'url' with 'source'. Cannot combine 'cmd' with 'url' or 'source'. Cannot use 'url' alone.",
     },
   );
 
 /**
  * Configuration for installing command-line completion for a specific shell.
- * Specifies a source file, a command to generate completions, or a URL to download from.
+ * Specifies a source file, a command to generate completions, or a URL to download an archive from.
  */
 export type ShellCompletionConfig = z.infer<typeof shellCompletionConfigSchema>;

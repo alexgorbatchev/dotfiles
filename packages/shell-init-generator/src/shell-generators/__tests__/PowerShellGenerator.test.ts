@@ -52,7 +52,7 @@ describe('PowerShellGenerator', () => {
     const result = generator.processCompletions('test-tool', completions);
 
     expect(result).toContain(
-      'if (Test-Path "/home/test/.dotfiles/.generated/shell-scripts/powershell/test-tool.ps1") { . "/home/test/.dotfiles/.generated/shell-scripts/powershell/test-tool.ps1" }',
+      'if (Test-Path "/home/test/.dotfiles/.generated/shell-scripts/powershell/completions/test-tool.ps1") { . "/home/test/.dotfiles/.generated/shell-scripts/powershell/completions/test-tool.ps1" }',
     );
   });
 

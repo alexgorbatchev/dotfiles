@@ -193,7 +193,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     );
 
     const filename = this.generateCompletionFilename(config, toolName, shellType);
-    const targetPath = this.resolveTargetPath(config.targetDir, shellType, context);
+    const targetPath = this.resolveTargetPath(shellType, context);
 
     return {
       content,
@@ -221,7 +221,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     }
 
     const filename = this.generateCompletionFilename(config, toolName, shellType);
-    const targetPath = this.resolveTargetPath(config.targetDir, shellType, context);
+    const targetPath = this.resolveTargetPath(shellType, context);
 
     return {
       content: '', // No content needed for symlink-based completions
@@ -270,15 +270,10 @@ export class CompletionGenerator implements ICompletionGenerator {
    * Generates the completion filename based on config and shell type.
    *
    * Priority order:
-   * 1. config.name - explicit full filename override
-   * 2. config.bin - binary name with shell-specific naming applied
-   * 3. toolName - fallback to tool name with shell-specific naming
+   * 1. config.bin - binary name with shell-specific naming applied
+   * 2. toolName - fallback to tool name with shell-specific naming
    */
   private generateCompletionFilename(config: ShellCompletionConfig, toolName: string, shellType: ShellType): string {
-    if (config.name) {
-      return config.name;
-    }
-
     const baseName = config.bin ?? toolName;
 
     switch (shellType) {
@@ -293,15 +288,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     }
   }
 
-  private resolveTargetPath(
-    customTargetDir: string | undefined,
-    shellType: ShellType,
-    context: ICompletionGenerationContext,
-  ): string {
-    if (customTargetDir) {
-      return customTargetDir;
-    }
-
+  private resolveTargetPath(shellType: ShellType, context: ICompletionGenerationContext): string {
     return path.join(context.shellScriptsDir, shellType, 'completions');
   }
 }

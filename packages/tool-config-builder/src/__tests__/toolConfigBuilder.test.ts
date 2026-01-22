@@ -13,8 +13,8 @@ const noopHook3: AsyncInstallHook = async () => {};
 const noopHook4: AsyncInstallHook = async () => {};
 
 // Shared completions callback for testing
-const testCompletionsCallback = (ctx: { version?: string; }): { url: string; } => ({
-  url: `https://example.com/completions/${ctx.version}/completion.zsh`,
+const testCompletionsCallback = (ctx: { version: string; }): { cmd: string; } => ({
+  cmd: `tool completions --version ${ctx.version}`,
 });
 
 describe('IToolConfigBuilder', () => {

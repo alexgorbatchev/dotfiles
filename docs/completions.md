@@ -7,23 +7,25 @@ Tab completions are configured per-shell using `.completions()`:
 .bash((shell) => shell.completions('completions/tool.bash'))
 ```
 
+> **Lifecycle**: All completions are generated only after `dotfiles install <tool>` succeeds,
+> not during `dotfiles generate`. This ensures cmd-based completions can execute the installed
+> binary and callbacks receive the actual installed version in `ctx.version`.
+
 ## Configuration Options
 
-| Property    | Description                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------- |
-| `source`    | Path to completion file relative to extracted archive or downloaded content (supports globs) |
-| `url`       | URL to download completion file or archive from                                              |
-| `cmd`       | Command to generate completions dynamically                                                  |
-| `bin`       | Binary name for completion filename (when different from tool name)                          |
-| `name`      | Custom filename (overrides `bin` and defaults)                                               |
-| `targetDir` | Custom installation directory (absolute path with context)                                   |
+| Property | Description                                                                                  |
+| -------- | -------------------------------------------------------------------------------------------- |
+| `source` | Path to completion file relative to extracted archive or downloaded content (supports globs) |
+| `url`    | URL to download completion archive from (requires `source`)                                  |
+| `cmd`    | Command to generate completions dynamically                                                  |
+| `bin`    | Binary name for completion filename (when different from tool name)                          |
 
 **Note**: Use one of these combinations:
 
-- `source` alone - Local file from tool archive
-- `cmd` alone - Generate via command
-- `url` alone - Direct file download (source auto-derived from URL filename)
-- `url` + `source` - Archive download with path within archive
+- `'_tool.zsh'` - String path (relative to toolDir or absolute)
+- `{ source }` - Static file (relative to toolDir or absolute)
+- `{ cmd }` - Generate dynamically by running a command
+- `{ url, source }` - Download archive, extract, use source as absolute path to file within
 
 ## Shell Callback Context
 
@@ -56,45 +58,37 @@ For completion files bundled in tool archives:
 
 **Supported glob patterns**: `*`, `**`, `?`, `[abc]`
 
-## URL-Based Completions (url)
+## URL-Based Completions (url + source)
 
-For downloading completions from external sources:
+For downloading completion archives from external sources:
 
 ```typescript
-// Direct file download (source auto-derived from URL)
-.zsh((shell) => shell.completions({
-  url: 'https://raw.githubusercontent.com/user/repo/main/_tool.zsh'
-}))
-
-// Archive download with source path
+// Archive download with source path to file within
 .zsh((shell) => shell.completions({
   url: 'https://github.com/user/repo/releases/download/v1.0/completions.tar.gz',
-  source: 'completions/_tool.zsh'
+  source: `${ctx.currentDir}/completions/_tool.zsh`
 }))
 ```
+
+**Note**: `url` requires `source` - the archive is downloaded and extracted to `ctx.currentDir`, then `source` specifies the absolute path to the completion file within.
 
 ### Version-Dependent URLs (Callback)
 
 For completions that need the installed version in the URL, use a callback:
 
 ```typescript
-// Callback receives context with version
-.zsh((shell) => shell.completions((ctx) => ({
-  url: `https://raw.githubusercontent.com/sharkdp/fd/${ctx.version}/contrib/completion/_fd`,
-})))
-
-// Also works for archives
+// Callback receives context with version - archive URL requires source
 .zsh((shell) => shell.completions((ctx) => ({
   url: `https://github.com/user/repo/releases/download/${ctx.version}/completions.tar.gz`,
-  source: 'completions/_tool.zsh'
+  source: `${ctx.currentDir}/completions/_tool.zsh`
 })))
 ```
 
 The callback receives `ctx` with:
 
-- `version` - The installed version of the tool (e.g., `'v10.3.0'`, `'15.1.0'`)
+- `version` - The installed version of the tool (e.g., `'v10.3.0'`, `'15.1.0'`), only available after installation completes
 
-URL-based completions are downloaded to the tool's binary directory and symlinked to the shell completions directory. The download is cached - subsequent `generate` runs will use the cached file.
+URL-based completions are downloaded and extracted to `ctx.currentDir`. The `source` property specifies the absolute path to the completion file within the extracted archive.
 
 **Supported archive formats**: `.tar.gz`, `.tar.xz`, `.tar.bz2`, `.zip`, `.tar`, `.tar.lzma`, `.7z`
 
@@ -116,21 +110,6 @@ When tool filename differs from binary name (e.g., `curl-script--fnm.tool.ts` fo
   cmd: 'fnm completions --shell zsh',
   bin: 'fnm'  // Results in '_fnm' instead of '_curl-script--fnm'
 }))
-```
-
-## Custom Target Directory
-
-```typescript
-export default defineTool((install) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) =>
-      shell.completions({
-        source: 'completions/_tool.zsh',
-        targetDir: '~/.zsh/completions',
-      })
-    )
-);
 ```
 
 ## CLI Completions

@@ -126,8 +126,8 @@ install('github-release', { repo: 'owner/tool' })
         t: 'tool',
         ts: 'tool status',
       })
-      .completions('completions/_tool')
-      .source('shell/init.zsh') // Source a file (skips if missing)
+      .completions('_tool') // Relative path resolves to toolDir/_tool
+      .source('init.zsh') // Relative path resolves to toolDir/init.zsh (skips if missing)
       .always(/* zsh */ `
         # Fast runtime setup (runs every shell startup)
         ...
@@ -165,28 +165,44 @@ install('github-release', { repo: 'owner/tool' })
 
 **Completions Syntax**:
 
+> **Lifecycle**: All completions are generated only after `dotfiles install` succeeds,
+> not during `dotfiles generate`. This ensures cmd-based completions can execute the installed
+> binary and callbacks receive the actual installed version in `ctx.version`.
+
 ```ts
-// From static file in archive
-.completions('completions/_tool')
+// From static file next to .tool.ts
+.completions('_tool')
+
+// From installed archive (use ctx.currentDir for absolute path)
+.completions(`${ctx.currentDir}/completions/zsh/_tool`)
 
 // From command output
 .completions({ cmd: 'tool completion zsh' })
 
-// From URL
-.completions({ url: 'https://raw.githubusercontent.com/owner/repo/main/_tool' })
+// From archive URL (requires source path within extracted archive)
+.completions({
+  url: 'https://github.com/owner/repo/releases/download/v1.0/completions.tar.gz',
+  source: `${ctx.currentDir}/completions/_tool`
+})
 
 // With version in URL (callback receives ctx.version after install)
 .completions((ctx) => ({
-  url: `https://raw.githubusercontent.com/owner/repo/${ctx.version}/_tool`,
+  url: `https://github.com/owner/repo/releases/download/${ctx.version}/completions.tar.gz`,
+  source: `${ctx.currentDir}/completions/_tool`,
 }))
 
-// With custom options
+// With bin override (when binary name differs from tool name)
 .completions({
-  source: 'shell/completion.zsh',
-  bin: 'custom-name',  // If binary name differs from tool name
-  targetDir: `${ctx.projectConfig.paths.generatedDir}/completions`  // Custom directory
+  cmd: 'fnm completions --shell zsh',
+  bin: 'fnm',  // Results in '_fnm' instead of default
 })
 ```
+
+**Completion Path Resolution**:
+
+- **Relative paths** → resolve to `toolDir` (directory containing `.tool.ts`)
+- **Absolute paths** → used as-is
+- **For archive files** → use `ctx.currentDir` to build absolute paths
 
 **Functions Syntax**:
 
@@ -208,13 +224,13 @@ Reference: [Shell Integration Guide](<root>/docs/shell-integration.md) and [Comp
 
 ### Step 4: Configure File Management (Symlinks)
 
-Symlink sources starting with `./` are relative to the tool config directory (same directory as the `.tool.ts` file).
+Relative symlink source paths resolve to `ctx.toolDir` (the directory containing the `.tool.ts` file). Leading `./` is optional.
 
 ```ts
 install('github-release', { repo: 'owner/tool' })
   .bin('tool')
-  .symlink('./config.toml', '~/.config/tool/config.toml')
-  .symlink('./themes/', '~/.config/tool/themes');
+  .symlink('config.toml', '~/.config/tool/config.toml') // Resolves to ctx.toolDir/config.toml
+  .symlink('./themes/', '~/.config/tool/themes'); // Leading ./ is optional
 ```
 
 Reference: [Shell Integration Guide](<root>/docs/shell-integration.md#symbolic-links)
@@ -399,8 +415,8 @@ export default defineTool((install) =>
           FZF_DEFAULT_OPTS: '--color=fg+:cyan,bg+:black,hl+:yellow',
         })
         .aliases({ f: 'fzf' })
-        .completions('shell/completion.zsh')
-        .source('shell/key-bindings.zsh')
+        .completions('completion.zsh') // Resolves to ctx.toolDir/completion.zsh
+        .source('key-bindings.zsh') // Resolves to ctx.toolDir/key-bindings.zsh
     )
 );
 ```
@@ -472,7 +488,7 @@ export default defineTool((install) =>
           la: 'eza -la',
           tree: 'eza --tree',
         })
-        .completions('completions/eza.zsh')
+        .completions('_eza') // Resolves to ctx.toolDir/_eza
     )
 );
 ```
@@ -556,7 +572,8 @@ export default defineTool((install) =>
 - ✅ Use `ctx.toolDir` for files next to `.tool.ts` (tool configuration directory)
 - ✅ Use `ctx.currentDir` for installed assets (stable symlink to versioned directory)
 - ✅ For symlink targets and environment variables: use `~/` (tilde expansion is automatic)
-- ✅ Completion `source` paths are relative to extracted archive
+- ✅ All relative paths (`.completions()`, `.source()`, `.symlink()`) resolve to `toolDir`
+- ✅ For archive files, use `ctx.currentDir` to build absolute paths
 - ✅ Never use hardcoded absolute paths like `/home/user/...`
 
 **Shell integration**

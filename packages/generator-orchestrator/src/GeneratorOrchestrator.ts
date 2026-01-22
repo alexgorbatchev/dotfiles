@@ -224,13 +224,30 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       return result;
     }
 
+    // Determine which discriminated union variant we have
+    if ('cmd' in value) {
+      // IShellCompletionCmdConfig
+      const result: ShellCompletionConfig = {
+        cmd: value.cmd,
+        ...(value.bin && { bin: value.bin }),
+      };
+      return result;
+    }
+
+    if ('url' in value) {
+      // IShellCompletionUrlArchiveConfig
+      const result: ShellCompletionConfig = {
+        url: value.url,
+        source: value.source,
+        ...(value.bin && { bin: value.bin }),
+      };
+      return result;
+    }
+
+    // IShellCompletionSourceConfig
     const result: ShellCompletionConfig = {
-      ...(value.source && { source: value.source }),
-      ...(value.url && { url: value.url }),
-      ...(value.cmd && { cmd: value.cmd }),
+      source: value.source,
       ...(value.bin && { bin: value.bin }),
-      ...(value.name && { name: value.name }),
-      ...(value.targetDir && { targetDir: value.targetDir }),
     };
     return result;
   }

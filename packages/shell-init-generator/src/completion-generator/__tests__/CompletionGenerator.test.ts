@@ -90,42 +90,6 @@ describe('CompletionGenerator', () => {
     expect(psResult.filename).toBe('my-tool.ps1');
   });
 
-  test('should use custom name when provided', async () => {
-    const config: ShellCompletionConfig = {
-      cmd: 'echo "test"',
-      name: 'custom-completion',
-    };
-
-    const context: ICompletionGenerationContext = {
-      toolName: 'my-tool',
-      toolInstallDir: testDirs.paths.homeDir,
-      shellScriptsDir: '/tmp/shell-scripts',
-      homeDir: '/tmp/home',
-      version: '1.0.0',
-    };
-
-    const result = await generator.generateCompletionFile(config, 'my-tool', 'zsh', context);
-    expect(result.filename).toBe('custom-completion');
-  });
-
-  test('should use custom target directory when provided', async () => {
-    const config: ShellCompletionConfig = {
-      cmd: 'echo "test"',
-      targetDir: '/custom/completions',
-    };
-
-    const context: ICompletionGenerationContext = {
-      toolName: 'my-tool',
-      toolInstallDir: testDirs.paths.homeDir,
-      shellScriptsDir: '/tmp/shell-scripts',
-      homeDir: '/tmp/home',
-      version: '1.0.0',
-    };
-
-    const result = await generator.generateCompletionFile(config, 'my-tool', 'zsh', context);
-    expect(result.targetPath).toBe('/custom/completions/_my-tool');
-  });
-
   test('generateAndWriteCompletionFile should generate completion and write to file system', async () => {
     const config: ShellCompletionConfig = {
       cmd: 'echo "test completion"',
@@ -152,36 +116,6 @@ describe('CompletionGenerator', () => {
     expect(fileExists).toBe(true);
 
     const fileContent = await memFs.fs.readFile(expectedPath);
-    expect(fileContent).toBe('test completion\n');
-  });
-
-  test('generateAndWriteCompletionFile should write to custom target directory', async () => {
-    const config: ShellCompletionConfig = {
-      cmd: 'echo "test completion"',
-      targetDir: '/custom/dir',
-    };
-
-    const context: ICompletionGenerationContext = {
-      toolName: 'my-tool',
-      toolInstallDir: testDirs.paths.homeDir,
-      shellScriptsDir: '/tmp/shell-scripts',
-      homeDir: '/tmp/home',
-      version: '1.0.0',
-    };
-
-    const result = await generator.generateAndWriteCompletionFile({
-      config,
-      toolName: 'my-tool',
-      shellType: 'bash',
-      context,
-      fs: memFs.fs,
-    });
-
-    expect(result.targetPath).toBe('/custom/dir/my-tool.bash');
-    const fileExists = await memFs.fs.exists('/custom/dir/my-tool.bash');
-    expect(fileExists).toBe(true);
-
-    const fileContent = await memFs.fs.readFile('/custom/dir/my-tool.bash');
     expect(fileContent).toBe('test completion\n');
   });
 
@@ -345,24 +279,5 @@ describe('CompletionGenerator', () => {
 
     const result = await generator.generateCompletionFile(config, 'ripgrep', 'zsh', context);
     expect(result.filename).toBe('_ripgrep');
-  });
-
-  test('should prefer name over bin when both are provided', async () => {
-    const config: ShellCompletionConfig = {
-      cmd: 'echo "test"',
-      bin: 'fnm',
-      name: '_custom-name',
-    };
-
-    const context: ICompletionGenerationContext = {
-      toolName: 'curl-script--fnm',
-      toolInstallDir: testDirs.paths.homeDir,
-      shellScriptsDir: '/tmp/shell-scripts',
-      homeDir: '/tmp/home',
-      version: '1.0.0',
-    };
-
-    const result = await generator.generateCompletionFile(config, 'curl-script--fnm', 'zsh', context);
-    expect(result.filename).toBe('_custom-name');
   });
 });

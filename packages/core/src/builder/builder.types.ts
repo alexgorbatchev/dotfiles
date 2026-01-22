@@ -19,73 +19,9 @@ import type { IInstallParamsRegistry, ToolConfig } from '../types';
 import type { ICompletionContext } from './ICompletionContext';
 
 /**
- * Configuration options for shell completions.
- *
- * @example
- * shell.completions({ source: '_tool', name: '_mytool' })
- * shell.completions({ cmd: 'tool completion zsh' })
+ * Common options for all completion configurations.
  */
-export interface IShellCompletionConfigOptions {
-  /**
-   * Path to a static completion file.
-   *
-   * - **Relative paths** → resolve to `toolDir` (directory containing `.tool.ts`)
-   * - **Absolute paths** → used as-is
-   * - **Files from downloaded archives** (GitHub releases, tarballs) are extracted to
-   *   `ctx.currentDir`. Use this to build an absolute path: `${ctx.currentDir}/completions/_tool`
-   *
-   * Either `source` or `cmd` must be provided, but not both (unless using `url`).
-   *
-   * Equivalent bash:
-   * ```bash
-   * # Relative: '_tool.zsh' resolves to toolDir (next to .tool.ts)
-   * ln -s ${ctx.toolDir}/_tool.zsh ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_mytool
-   *
-   * # Extracted archive: ctx.currentDir = ${ctx.projectConfig.paths.installDir}/mytool/1.0.0
-   * ln -s ${ctx.currentDir}/completions/_tool ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_mytool
-   * ```
-   *
-   * @example '_tool.zsh'
-   * @example `${ctx.currentDir}/completions/_tool`
-   */
-  source?: string;
-
-  /**
-   * URL to download the completion file or archive from.
-   *
-   * The file is downloaded during shell script generation to `toolInstallDir`.
-   * If `source` is not provided, the filename is derived from the URL.
-   * For archives, use `source` with an absolute path: `${ctx.currentDir}/path/in/archive`.
-   * Cannot be combined with `cmd`.
-   *
-   * Equivalent bash:
-   * ```bash
-   * curl -fsSL "https://raw.githubusercontent.com/user/repo/main/_mycli" \
-   *   -o ${ctx.projectConfig.paths.installDir}/mytool/1.0.0/_mycli
-   * ```
-   *
-   * @example 'https://raw.githubusercontent.com/user/repo/main/_mycli'
-   */
-  url?: string;
-
-  /**
-   * Command to generate completion content dynamically.
-   *
-   * Executes in the tool's installation directory during shell script generation.
-   * The tool must be installed before this command can run.
-   * Cannot be combined with `source` or `url`.
-   *
-   * Equivalent bash:
-   * ```bash
-   * cd ${ctx.projectConfig.paths.installDir}/mytool/1.0.0
-   * ./bin/tool completion zsh > ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_tool
-   * ```
-   *
-   * @example 'tool completion zsh'
-   * @example 'fnm completions --shell zsh'
-   */
-  cmd?: string;
-
+interface IShellCompletionConfigBase {
   /**
    * Binary name for shell-specific completion filename.
    *
@@ -102,82 +38,117 @@ export interface IShellCompletionConfigOptions {
    * @example 'fnm' → '_fnm' for zsh
    */
   bin?: string;
-
-  /**
-   * Custom filename for the completion file.
-   *
-   * Overrides default naming and `bin` option.
-   *
-   * Equivalent bash:
-   * ```bash
-   * # name: '_mytool' → exact filename used
-   * ... > ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_mytool
-   * ```
-   *
-   * @example '_mytool'
-   */
-  name?: string;
-
-  /**
-   * Output directory where the completion file will be written.
-   *
-   * Affects both file placement and shell initialization (e.g., `fpath` for zsh).
-   * Defaults to `${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/`.
-   *
-   * Equivalent bash:
-   * ```bash
-   * # Default (using shellScriptsDir)
-   * cp _tool ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_tool
-   * fpath=("${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions" $fpath)
-   *
-   * # Custom targetDir
-   * cp _tool ${targetDir}/_tool
-   * fpath=("${targetDir}" $fpath)
-   * ```
-   *
-   * @example `${ctx.projectConfig.paths.homeDir}/.zsh/completions`
-   */
-  targetDir?: string;
 }
 
 /**
- * Static completion configuration value (string path or options object).
- * Used when completion configuration is known at definition time.
+ * Completion from a static file.
  */
-export type ShellCompletionConfigValue = string | IShellCompletionConfigOptions;
+interface IShellCompletionSourceConfig extends IShellCompletionConfigBase {
+  /**
+   * Path to an existing completion file.
+   *
+   * - **Relative** (e.g., `_tool.zsh`) → resolved from `toolDir` (next to `.tool.ts`)
+   * - **Absolute** (e.g., `${ctx.currentDir}/completions/_tool`) → used as-is
+   *
+   * For files extracted from archives, use `ctx.currentDir` to build the absolute path.
+   *
+   * Equivalent bash:
+   * ```bash
+   * # Relative: '_tool.zsh' resolves to toolDir (next to .tool.ts)
+   * ln -s ${ctx.toolDir}/_tool.zsh ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_mytool
+   *
+   * # Extracted archive: ctx.currentDir = ${ctx.projectConfig.paths.installDir}/mytool/1.0.0
+   * ln -s ${ctx.currentDir}/completions/_tool ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_mytool
+   * ```
+   *
+   * @example
+   * '_tool.zsh'
+   * `${ctx.currentDir}/completions/_tool`
+   */
+  source: string;
+}
+
+/**
+ * Completion generated dynamically by running a command.
+ */
+interface IShellCompletionCmdConfig extends IShellCompletionConfigBase {
+  /**
+   * Command to generate completion content dynamically.
+   *
+   * Executes in the tool's installation directory during shell script generation.
+   * The tool must be installed before this command can run.
+   *
+   * Equivalent bash:
+   * ```bash
+   * cd ${ctx.projectConfig.paths.installDir}/mytool/1.0.0
+   * ./bin/tool completion zsh > ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_tool
+   * ```
+   *
+   * @example
+   * 'tool completion zsh'
+   * 'fnm completions --shell zsh'
+   */
+  cmd: string;
+}
+
+/**
+ * Completion from a downloaded archive.
+ */
+interface IShellCompletionUrlArchiveConfig extends IShellCompletionConfigBase {
+  /**
+   * URL to download the completion archive from.
+   *
+   * The archive is downloaded and extracted to `ctx.currentDir`.
+   *
+   * Equivalent bash:
+   * ```bash
+   * curl -fsSL "https://github.com/user/repo/releases/download/v1.0.0/completions.tar.gz" \
+   *   -o ${ctx.projectConfig.paths.installDir}/mytool/1.0.0/completions.tar.gz
+   * tar -xzf completions.tar.gz -C ${ctx.projectConfig.paths.installDir}/mytool/1.0.0/
+   * ```
+   *
+   * @example 'https://github.com/user/repo/releases/download/v1.0.0/completions.tar.gz'
+   */
+  url: string;
+
+  /**
+   * Absolute path to the completion file within the extracted archive.
+   *
+   * The archive is extracted to `ctx.currentDir`, so use that to build the path.
+   *
+   * Equivalent bash:
+   * ```bash
+   * ln -s ${ctx.currentDir}/completions/_tool ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_tool
+   * ```
+   *
+   * @example `${ctx.currentDir}/completions/_tool`
+   */
+  source: string;
+}
+
+/**
+ * Configuration options for shell completions.
+ *
+ * Valid combinations:
+ * - `{ source }` - Static file (relative to toolDir or absolute)
+ * - `{ cmd }` - Generate dynamically by running a command
+ * - `{ url, source }` - Download archive, extract, use source as absolute path to file within
+ *
+ * @example
+ * shell.completions({ source: '_tool.zsh' })
+ * shell.completions({ cmd: 'tool completion zsh' })
+ * shell.completions({ url: 'https://.../completions.tar.gz', source: `${ctx.currentDir}/_tool` })
+ */
+export type ShellCompletionConfigValue =
+  | string
+  | IShellCompletionSourceConfig
+  | IShellCompletionCmdConfig
+  | IShellCompletionUrlArchiveConfig;
 
 /**
  * Input type for configuring shell completions.
- *
- * Accepts a string path, a configuration object, or a callback.
- * See `IShellCompletionConfigOptions` for object configuration details.
- *
- * **String paths:**
- * - **Relative paths** → resolve to `toolDir` (directory containing `.tool.ts`)
- * - **Files from downloaded archives** (GitHub releases, tarballs) are extracted to
- *   `ctx.currentDir`. Use this to build an absolute path.
- *
- * Equivalent bash:
- * ```bash
- * # Relative: '_tool.zsh' resolves to toolDir (next to .tool.ts)
- * ln -s ${ctx.toolDir}/_tool.zsh ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_mytool
- *
- * # Extracted archive: ctx.currentDir = ${ctx.projectConfig.paths.installDir}/mytool/1.0.0
- * ln -s ${ctx.currentDir}/completions/_tool ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_mytool
- * ```
- *
- * @example
- * shell.completions('_tool.zsh')
- * shell.completions(`${ctx.currentDir}/completions/_tool.zsh`)
- * shell.completions({ cmd: 'tool completion zsh' })
- * shell.completions({ url: 'https://raw.githubusercontent.com/user/repo/main/_mycli' })
  */
 export type ShellCompletionConfigInput = Resolvable<ICompletionContext, ShellCompletionConfigValue>;
-
-/**
- * Install params come from plugins via IInstallParamsRegistry module augmentation.
- * Each plugin registers its param types by augmenting the IInstallParamsRegistry interface.
- */
 
 /**
  * Fluent configurator used inside shell callbacks for the new shell API.
@@ -214,13 +185,18 @@ export interface IShellConfigurator {
    *
    * @param relativePath - Path to the script file relative to the tool directory.
    *
-   * @example shell.source('init.zsh')
-   * @example shell.source(`${ctx.currentDir}/shell/init.sh`)
+   * @example
+   * shell.source('init.zsh')
+   * shell.source(`${ctx.currentDir}/shell/init.sh`)
    */
   source(relativePath: string): IShellConfigurator;
 
   /**
    * Configures shell completions from static files or generated dynamically.
+   *
+   * **Lifecycle**: All completions are generated only after the tool is installed.
+   * This ensures cmd-based completions can execute the installed binary and callbacks
+   * receive the actual installed version in `ctx.version`.
    *
    * - **Relative paths** → resolve to `toolDir` (directory containing `.tool.ts`)
    * - **Files from downloaded archives** (GitHub releases, tarballs) are extracted to
@@ -229,9 +205,14 @@ export interface IShellConfigurator {
    *
    * @param completion - Path string, config object, or callback
    *
-   * @example shell.completions('_tool.zsh')
-   * @example shell.completions(`${ctx.currentDir}/completions/_tool`)
-   * @example shell.completions({ cmd: 'tool completion zsh' })
+   * @example
+   * shell.completions('_tool.zsh')
+   * shell.completions(`${ctx.currentDir}/completions/_tool`)
+   * shell.completions({ cmd: 'tool completion zsh' })
+   * shell.completions((ctx) => ({
+   *   url: `https://github.com/owner/repo/releases/download/${ctx.version}/completions.zsh`,
+   *   source: `${ctx.currentDir}/_tool`
+   * }))
    */
   completions(completion: ShellCompletionConfigInput): IShellConfigurator;
 

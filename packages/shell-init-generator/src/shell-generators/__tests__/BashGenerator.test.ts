@@ -52,7 +52,7 @@ describe('BashGenerator', () => {
     const result = generator.processCompletions('test-tool', completions);
 
     expect(result).toContain(
-      '[[ -f "/home/test/.dotfiles/.generated/shell-scripts/bash/test-tool.bash" ]] && source "/home/test/.dotfiles/.generated/shell-scripts/bash/test-tool.bash"',
+      '[[ -f "/home/test/.dotfiles/.generated/shell-scripts/bash/completions/test-tool.bash" ]] && source "/home/test/.dotfiles/.generated/shell-scripts/bash/completions/test-tool.bash"',
     );
   });
 

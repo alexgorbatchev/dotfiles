@@ -23,9 +23,7 @@ export class ZshStringProducer implements IShellStringProducer {
     const completionSetup: string[] = [];
 
     if (completions.cmd || completions.source) {
-      const defaultSubdir = 'completions';
-      const completionDir = completions.targetDir ??
-        path.join(this.projectConfig.paths.shellScriptsDir, 'zsh', defaultSubdir);
+      const completionDir = path.join(this.projectConfig.paths.shellScriptsDir, 'zsh', 'completions');
       const fpathAdd = `fpath=(${JSON.stringify(completionDir)} $fpath)`;
       completionSetup.push(fpathAdd);
     }

@@ -106,7 +106,7 @@ export function typeSafetyScenarios(): void {
                 })
                 .completions({
                   source: 'bat.zsh',
-                  name: '_bat',
+                  bin: 'bat',
                 })
             )
         );
