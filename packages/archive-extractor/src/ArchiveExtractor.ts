@@ -46,6 +46,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
     const lowerFileName = fileName.toLowerCase();
 
     if (lowerFileName.endsWith('.tar.gz') || lowerFileName.endsWith('.tgz')) return 'tar.gz';
+    if (lowerFileName.endsWith('.gz')) return 'gzip';
     if (lowerFileName.endsWith('.tar.bz2') || lowerFileName.endsWith('.tbz2') || lowerFileName.endsWith('.tbz'))
       return 'tar.bz2';
     if (lowerFileName.endsWith('.tar.xz') || lowerFileName.endsWith('.txz')) return 'tar.xz';
@@ -128,6 +129,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       'tar.xz',
       'tar',
       'zip',
+      'gzip',
       // 'rar', '7z', 'deb', 'rpm', 'dmg' // Add as implemented
     ];
     return supportedFormats.includes(format);
@@ -177,6 +179,18 @@ export class ArchiveExtractor implements IArchiveExtractor {
         const commandName = 'unzip';
         this.logger.debug(messages.shellCommandStarted(commandName));
         await this.shell`unzip -qo ${archivePath} -d ${tempExtractDir}`.quiet();
+        break;
+      }
+      case 'gzip': {
+        const commandName = 'gunzip';
+        this.logger.debug(messages.shellCommandStarted(commandName));
+        // For single-file gzip, output filename is the archive name without .gz extension
+        const archiveBasename = basename(archivePath);
+        const outputName = archiveBasename.endsWith('.gz')
+          ? archiveBasename.slice(0, -3)
+          : archiveBasename;
+        const outputPath = join(tempExtractDir, outputName);
+        await this.shell`gunzip -c ${archivePath} > ${outputPath}`.quiet();
         break;
       }
       default:

@@ -195,5 +195,38 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
         expect(item.startsWith('_extract_')).toBe(false);
       }
     });
+
+    it('should extract a single-file .gz archive (not tarball)', async (): Promise<void> => {
+      // Create a single-file gzip archive (like hermit distributes)
+      const binaryContent = '#!/bin/bash\necho "Hello from gzip binary"';
+      const sourceFile = join(testDirs.paths.homeDir, 'hermit-darwin-arm64');
+      await nodeFs.writeFile(sourceFile, binaryContent);
+
+      // Gzip the file (creates hermit-darwin-arm64.gz)
+      await $`gzip -f ${sourceFile}`.quiet();
+      const gzipPath = `${sourceFile}.gz`;
+
+      const outputDir = join(testDirs.paths.homeDir, 'output-gzip');
+      await nodeFs.mkdir(outputDir);
+
+      await extractor.extract(logger, gzipPath, { targetDir: outputDir });
+
+      // The extracted file should be named without the .gz extension
+      const extractedFilePath = join(outputDir, 'hermit-darwin-arm64');
+      expect(await nodeFs.exists(extractedFilePath)).toBe(true);
+      expect(await nodeFs.readFile(extractedFilePath, 'utf-8')).toBe(binaryContent);
+    });
+
+    it('should detect .gz format by extension (single-file gzip)', async (): Promise<void> => {
+      expect(await extractor.detectFormat('hermit-darwin-arm64.gz')).toBe('gzip');
+    });
+
+    it('should not detect .tar.gz as single-file gzip', async (): Promise<void> => {
+      expect(await extractor.detectFormat('tool-v1.0.0.tar.gz')).toBe('tar.gz');
+    });
+
+    it('should report gzip format as supported', (): void => {
+      expect(extractor.isSupported('gzip')).toBe(true);
+    });
   });
 });

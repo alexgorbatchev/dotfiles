@@ -31,7 +31,9 @@ export type ArchiveFormat =
   /** An RPM Package Manager package, commonly `.rpm`. */
   | 'rpm'
   /** A macOS Disk Image, commonly `.dmg`. */
-  | 'dmg';
+  | 'dmg'
+  /** A single-file gzip archive (not a tarball), commonly `.gz`. */
+  | 'gzip';
 
 /**
  * Defines the options available when extracting an archive.

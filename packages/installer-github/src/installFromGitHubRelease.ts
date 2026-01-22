@@ -457,9 +457,13 @@ async function executeAfterDownloadHook(
 }
 
 function isArchiveFile(filename: string): boolean {
-  return (
-    filename.endsWith('.tar.gz') || filename.endsWith('.tgz') || filename.endsWith('.zip') || filename.endsWith('.tar')
-  );
+  const lowerFilename = filename.toLowerCase();
+  // Check .tar.gz and .tgz first to avoid false match on .gz
+  if (lowerFilename.endsWith('.tar.gz') || lowerFilename.endsWith('.tgz')) return true;
+  if (lowerFilename.endsWith('.zip') || lowerFilename.endsWith('.tar')) return true;
+  // Single-file gzip (not tarball)
+  if (lowerFilename.endsWith('.gz')) return true;
+  return false;
 }
 
 async function processAssetInstallation(
