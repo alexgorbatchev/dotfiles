@@ -6,9 +6,7 @@ export default defineTool((install) => {
     shell: 'sh',
     versionArgs: ['--version'],
     versionRegex: 'version-detection--curl-script--with-args (\\d+\\.\\d+\\.\\d+)',
-    env: {
-      INSTALL_DIR: '{stagingDir}',
-    },
+    env: (ctx) => ({ INSTALL_DIR: ctx.stagingDir }),
   })
     .version('latest')
     .bin('version-detection--curl-script--with-args');

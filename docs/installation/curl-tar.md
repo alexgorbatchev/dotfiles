@@ -23,6 +23,7 @@ export default defineTool((install) =>
 | `stripComponents` | Directory levels to strip during extraction         |
 | `versionArgs`     | Arguments for version check (e.g., `['--version']`) |
 | `versionRegex`    | Regex to extract version from output                |
+| `env`             | Environment variables (static or dynamic function)  |
 
 ## Examples
 

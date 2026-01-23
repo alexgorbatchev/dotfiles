@@ -1,9 +1,10 @@
-import type { ProjectConfig } from '@dotfiles/core';
+import type { IEnvContext, ProjectConfig } from '@dotfiles/core';
 
 /**
  * Context provided to args function for dynamic argument generation.
+ * Extends IEnvContext with script-specific path.
  */
-export interface ICurlScriptArgsContext {
+export interface ICurlScriptArgsContext extends IEnvContext {
   /** Project configuration with paths and settings */
   projectConfig: ProjectConfig;
 

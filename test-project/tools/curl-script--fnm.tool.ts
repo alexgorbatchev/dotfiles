@@ -6,6 +6,7 @@ export default defineTool((install, _ctx) =>
     url: 'https://fnm.vercel.app/install',
     shell: 'bash',
     args: (ctx) => ['--skip-shell', '--install-dir', ctx.stagingDir, '--force-no-brew'],
+    env: (ctx) => ({ INSTALL_DIR: ctx.stagingDir }),
   })
     .hook('after-install', async (ctx) => {
       if (ctx.systemInfo.platform === Platform.MacOS) {

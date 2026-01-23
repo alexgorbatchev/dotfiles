@@ -25,6 +25,7 @@ export default defineTool((install, ctx) =>
 | `assetPattern`   | `string`                                           | No       | Pattern for GitHub release assets                      |
 | `cargoTomlUrl`   | `string`                                           | No       | Custom Cargo.toml URL                                  |
 | `customBinaries` | `string[]`                                         | No       | Custom binary names if different from crate            |
+| `env`            | `Record<string, string> \| (ctx) => Record<...>`   | No       | Environment variables (static or dynamic function)     |
 
 ### Asset Pattern Placeholders
 

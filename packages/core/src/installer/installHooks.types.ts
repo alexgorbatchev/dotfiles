@@ -1,8 +1,24 @@
 import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IBaseToolContext } from '../common/baseToolContext.types';
+import type { ProjectConfig } from '../config';
 import type { $extended } from '../shell/types';
 import type { IExtractResult } from './archive.types';
+
+/**
+ * Context provided to dynamic env functions for environment variable generation.
+ * This is the base context available to all installers.
+ */
+export interface IEnvContext {
+  /** Project configuration with paths and settings */
+  projectConfig: ProjectConfig;
+
+  /**
+   * The absolute path to the temporary staging directory for this installation attempt.
+   * After successful installation, the entire directory is renamed to the versioned path.
+   */
+  stagingDir: string;
+}
 
 /**
  * Phase 1: Installation Start

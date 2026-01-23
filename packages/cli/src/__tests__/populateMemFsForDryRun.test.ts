@@ -33,7 +33,7 @@ describe('populateMemFsForDryRun', () => {
 
     const result = await populateMemFsForDryRun(fs, '/tools', logger);
 
-    expect(result.sort()).toEqual(['/tools/config.json', '/tools/foo.tool.ts', '/tools/readme.md']);
+    expect(result.toSorted()).toEqual(['/tools/config.json', '/tools/foo.tool.ts', '/tools/readme.md']);
   });
 
   it('recursively scans subdirectories', async () => {
@@ -47,7 +47,7 @@ describe('populateMemFsForDryRun', () => {
 
     const result = await populateMemFsForDryRun(fs, '/tools', logger);
 
-    expect(result.sort()).toEqual(['/tools/deep/nested/deep.txt', '/tools/nested/inner.ts', '/tools/root.tool.ts']);
+    expect(result.toSorted()).toEqual(['/tools/deep/nested/deep.txt', '/tools/nested/inner.ts', '/tools/root.tool.ts']);
   });
 
   it('finds SSH tool supporting files in nested directories', async () => {
@@ -62,7 +62,7 @@ describe('populateMemFsForDryRun', () => {
 
     const result = await populateMemFsForDryRun(fs, '/tools', logger);
 
-    expect(result.sort()).toEqual([
+    expect(result.toSorted()).toEqual([
       '/tools/special/ssh/config',
       '/tools/special/ssh/id_rsa',
       '/tools/special/ssh/id_rsa.pub',
@@ -83,7 +83,7 @@ describe('populateMemFsForDryRun', () => {
 
     const result = await populateMemFsForDryRun(fs, '/tools', logger);
 
-    expect(result.sort()).toEqual([
+    expect(result.toSorted()).toEqual([
       '/tools/core/bat.tool.ts',
       '/tools/development/nvim/init.lua',
       '/tools/development/nvim/nvim.tool.ts',

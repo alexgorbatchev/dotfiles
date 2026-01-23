@@ -1,18 +1,26 @@
+import type { Resolvable } from '@dotfiles/unwrap-value';
 import { z } from 'zod';
+import type { IEnvContext } from '../../installer/installHooks.types';
 import { installHookSchema } from '../hooks/installHookSchema';
+
+/**
+ * Environment variables type - can be static object or function returning object.
+ */
+export type BaseEnv = Resolvable<IEnvContext, Record<string, string>>;
 
 export const baseInstallParamsSchema = z
   .object({
     /**
      * A record of environment variables to be set specifically for the duration of this tool's installation process.
      * These variables are applied before any installation commands or hooks are executed.
+     * Can be a static object or a function that receives context and returns the object.
      * @example
-     * env: {
-     *   CUSTOM_FLAG: 'true',
-     *   API_KEY: 'secret'
-     * }
+     * // Static
+     * env: { CUSTOM_FLAG: 'true' }
+     * // Dynamic
+     * env: (ctx) => ({ INSTALL_DIR: ctx.stagingDir })
      */
-    env: z.record(z.string(), z.string()).optional(),
+    env: z.any().optional(),
     /**
      * A collection of optional asynchronous hook functions that can be executed at different stages
      * of the installation lifecycle.
@@ -40,4 +48,6 @@ export const baseInstallParamsSchema = z
  * Base interface for parameters common to all installation methods.
  * This includes environment variables to set during installation and a set of lifecycle hooks.
  */
-export type BaseInstallParams = z.infer<typeof baseInstallParamsSchema>;
+export interface BaseInstallParams extends Omit<z.infer<typeof baseInstallParamsSchema>, 'env'> {
+  env?: BaseEnv;
+}

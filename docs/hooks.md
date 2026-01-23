@@ -35,6 +35,7 @@ All hooks receive a context object with:
 | --------------- | ---------------------------------------------------- |
 | `toolName`      | Name of the tool                                     |
 | `currentDir`    | Stable path (symlink) for this tool                  |
+| `stagingDir`    | Temporary installation directory                     |
 | `systemInfo`    | Platform, architecture, home directory               |
 | `fileSystem`    | File operations (mkdir, writeFile, exists, etc.)     |
 | `replaceInFile` | Regex-based file text replacement                    |
@@ -42,6 +43,8 @@ All hooks receive a context object with:
 | `projectConfig` | Project configuration                                |
 | `toolConfig`    | Tool configuration                                   |
 | `$`             | Bun shell executor                                   |
+
+> **Note:** The `stagingDir` and `projectConfig` properties form the base environment context (`IEnvContext`) that is also available to dynamic `env` functions in install parameters.
 
 ## Examples
 

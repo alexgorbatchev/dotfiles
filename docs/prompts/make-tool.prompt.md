@@ -109,6 +109,32 @@ install('github-release', { repo: 'owner/tool' }).bin('tool', '*/bin/tool'); // 
 
 Reference: [API Reference](<root>/docs/api-reference.md) and [Context API](<root>/docs/context-api.md)
 
+### Step 2.5: Configure Installation Environment (if needed)
+
+All installation methods support an `env` parameter for setting environment variables during installation. This can be static or dynamic:
+
+```ts
+// Static environment variables
+install('github-release', {
+  repo: 'owner/tool',
+  env: { CUSTOM_FLAG: 'true' },
+}).bin('tool');
+
+// Dynamic environment variables (receives context with projectConfig, stagingDir)
+install('curl-script', {
+  url: 'https://example.com/install.sh',
+  shell: 'bash',
+  env: (ctx) => ({ INSTALL_DIR: ctx.stagingDir }),
+}).bin('tool');
+```
+
+**Environment Context** (available in dynamic `env` functions):
+
+- `ctx.projectConfig` → Full project configuration
+- `ctx.stagingDir` → Temporary installation directory (becomes versioned path after success)
+
+> **Note:** For `curl-script`, the env context also includes `scriptPath` (path to downloaded script).
+
 ### Step 3: Add Shell Integration
 
 Use the fluent shell configurator with `.zsh()`, `.bash()`, or `.powershell()` methods.

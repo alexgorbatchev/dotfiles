@@ -8,11 +8,16 @@ import { installFromCurlScript } from '../installFromCurlScript';
 import type { CurlScriptToolConfig } from '../schemas';
 import type { ICurlScriptArgsContext } from '../types';
 
-function createMockShell(): { shell: Shell; mockFn: ReturnType<typeof mock>; mockQuiet: ReturnType<typeof mock>; } {
+function createMockShell(): {
+  shell: Shell;
+  mockFn: ReturnType<typeof mock>;
+  mockEnv: ReturnType<typeof mock>;
+  mockQuiet: ReturnType<typeof mock>;
+} {
   const mockQuiet = mock(() => Promise.resolve());
   const mockEnv = mock(() => ({ quiet: mockQuiet }));
   const mockFn = mock(() => ({ env: mockEnv }));
-  return { shell: mockFn as unknown as Shell, mockFn, mockQuiet };
+  return { shell: mockFn as unknown as Shell, mockFn, mockEnv, mockQuiet };
 }
 
 describe('installFromCurlScript', () => {
@@ -211,5 +216,107 @@ describe('installFromCurlScript', () => {
     expect(strings[0]).toContain('bash');
     expect(scriptPath).toContain('test-tool-install.sh');
     expect(args).toEqual(['--install-dir', context.stagingDir, '--skip-shell']);
+  });
+
+  it('should execute script with static env when provided', async () => {
+    const { shell, mockEnv } = createMockShell();
+    const toolConfig: CurlScriptToolConfig = {
+      name: 'test-tool',
+      version: '1.0.0',
+      binaries: ['tool'],
+      installationMethod: 'curl-script',
+      installParams: {
+        url: 'https://example.com/install.sh',
+        shell: 'bash',
+        env: { MY_VAR: 'my-value', ANOTHER_VAR: 'another-value' },
+      },
+    };
+
+    await installFromCurlScript(
+      'test-tool',
+      toolConfig,
+      context,
+      undefined,
+      mockFs,
+      mockDownloader,
+      mockHookExecutor,
+      logger,
+      shell,
+    );
+
+    expect(mockEnv).toHaveBeenCalled();
+    const envCalls = mockEnv.mock.calls as unknown as [Record<string, string>][];
+    expect(envCalls.length).toBe(1);
+    const [envArg] = envCalls[0] ?? [];
+    expect(envArg).toMatchObject({ MY_VAR: 'my-value', ANOTHER_VAR: 'another-value' });
+  });
+
+  it('should execute script with env from function when provided', async () => {
+    const { shell, mockEnv } = createMockShell();
+    const toolConfig: CurlScriptToolConfig = {
+      name: 'test-tool',
+      version: '1.0.0',
+      binaries: ['tool'],
+      installationMethod: 'curl-script',
+      installParams: {
+        url: 'https://example.com/install.sh',
+        shell: 'bash',
+        env: (ctx: ICurlScriptArgsContext) => ({ INSTALL_DIR: ctx.stagingDir }),
+      },
+    };
+
+    await installFromCurlScript(
+      'test-tool',
+      toolConfig,
+      context,
+      undefined,
+      mockFs,
+      mockDownloader,
+      mockHookExecutor,
+      logger,
+      shell,
+    );
+
+    expect(mockEnv).toHaveBeenCalled();
+    const envCalls = mockEnv.mock.calls as unknown as [Record<string, string>][];
+    expect(envCalls.length).toBe(1);
+    const [envArg] = envCalls[0] ?? [];
+    expect(envArg).toMatchObject({ INSTALL_DIR: context.stagingDir });
+  });
+
+  it('should execute script with env from async function when provided', async () => {
+    const { shell, mockEnv } = createMockShell();
+    const toolConfig: CurlScriptToolConfig = {
+      name: 'test-tool',
+      version: '1.0.0',
+      binaries: ['tool'],
+      installationMethod: 'curl-script',
+      installParams: {
+        url: 'https://example.com/install.sh',
+        shell: 'bash',
+        env: async (ctx: ICurlScriptArgsContext) => {
+          await Promise.resolve();
+          return { FLYCTL_INSTALL: ctx.stagingDir };
+        },
+      },
+    };
+
+    await installFromCurlScript(
+      'test-tool',
+      toolConfig,
+      context,
+      undefined,
+      mockFs,
+      mockDownloader,
+      mockHookExecutor,
+      logger,
+      shell,
+    );
+
+    expect(mockEnv).toHaveBeenCalled();
+    const envCalls = mockEnv.mock.calls as unknown as [Record<string, string>][];
+    expect(envCalls.length).toBe(1);
+    const [envArg] = envCalls[0] ?? [];
+    expect(envArg).toMatchObject({ FLYCTL_INSTALL: context.stagingDir });
   });
 });

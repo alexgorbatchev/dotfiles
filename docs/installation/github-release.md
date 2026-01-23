@@ -20,6 +20,7 @@ export default defineTool((install) => install('github-release', { repo: 'junegu
 | `version`           | Specific version (e.g., `'v1.2.3'`)                    |
 | `includePrerelease` | Include pre-releases when searching                    |
 | `githubHost`        | Custom GitHub API host for Enterprise                  |
+| `env`               | Environment variables (static or dynamic function)     |
 
 ## Examples
 

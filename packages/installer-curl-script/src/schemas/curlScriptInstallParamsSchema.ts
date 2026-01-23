@@ -35,7 +35,7 @@ export const curlScriptInstallParamsSchema = baseInstallParamsSchema.extend({
  * Example: `curl -fsSL <url> | sh`.
  * This is analogous to Zinit's `dl` ice combined with `atclone` for script execution.
  */
-export type CurlScriptInstallParams = Omit<BaseInstallParams, 'args'> & {
+export type CurlScriptInstallParams = Omit<BaseInstallParams, 'args' | 'env'> & {
   url: string;
   shell: 'bash' | 'sh';
   args?: CurlScriptArgs;

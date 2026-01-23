@@ -17,14 +17,16 @@ export default defineTool((install, ctx) =>
 
 ## Parameters
 
-| Parameter      | Type                                             | Required | Description                              |
-| -------------- | ------------------------------------------------ | -------- | ---------------------------------------- |
-| `url`          | `string`                                         | Yes      | URL of the installation script           |
-| `shell`        | `'bash' \| 'sh'`                                 | Yes      | Shell interpreter to use                 |
-| `args`         | `string[] \| (ctx) => string[]`                  | No       | Arguments to pass to the script          |
-| `env`          | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables for execution      |
-| `versionArgs`  | `string[]`                                       | No       | Args to pass to binary for version check |
-| `versionRegex` | `string`                                         | No       | Regex to extract version from output     |
+| Parameter      | Type                                             | Required | Description                               |
+| -------------- | ------------------------------------------------ | -------- | ----------------------------------------- |
+| `url`          | `string`                                         | Yes      | URL of the installation script            |
+| `shell`        | `'bash' \| 'sh'`                                 | Yes      | Shell interpreter to use                  |
+| `args`         | `string[] \| (ctx) => string[]`                  | No       | Arguments to pass to the script           |
+| `env`          | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables (static or dynamic) |
+| `versionArgs`  | `string[]`                                       | No       | Args to pass to binary for version check  |
+| `versionRegex` | `string`                                         | No       | Regex to extract version from output      |
+
+> **Note:** The `env` and `args` parameters support both static values and dynamic functions. Dynamic functions receive a context with `projectConfig`, `scriptPath`, and `stagingDir`.
 
 ## Understanding `stagingDir`
 
@@ -52,10 +54,10 @@ Then use `args` or `env` with the dynamic context to redirect:
 
 ```typescript
 // Using args (if script accepts command-line arguments)
-args: (ctx) => ['--install-dir', ctx.stagingDir]
+args: ((ctx) => ['--install-dir', ctx.stagingDir]);
 
 // Using env (if script reads environment variables)
-env: (ctx) => ({ FLYCTL_INSTALL: ctx.stagingDir })
+env: ((ctx) => ({ FLYCTL_INSTALL: ctx.stagingDir }));
 ```
 
 ## Examples
@@ -105,6 +107,12 @@ export default defineTool((install, ctx) =>
 ```
 
 Note: The fly.io script installs `flyctl` as the main binary. The second argument to `.bin()` creates `fly` as a symlink alias.
+
+The `env` context provides:
+
+- `projectConfig` - Project configuration with paths and settings
+- `stagingDir` - Temporary directory for installation (becomes versioned path after success)
+- `scriptPath` - Absolute path to the downloaded script (curl-script specific)
 
 ### With Hooks
 

@@ -43,6 +43,31 @@ export default defineTool((install, ctx) => install('github-release', { repo: 'o
 | `.platform(p, fn)`    | Platform-specific overrides                |
 | `.disable()`          | Skip tool during generation (logs warning) |
 
+### Base Install Parameters
+
+All installation methods support these parameters:
+
+| Parameter | Type                                                        | Description                            |
+| --------- | ----------------------------------------------------------- | -------------------------------------- |
+| `env`     | `Record<string, string> \| (ctx) => Record<string, string>` | Environment variables for installation |
+| `hooks`   | `object`                                                    | Lifecycle hooks configuration          |
+
+The `env` parameter can be static or dynamic:
+
+```typescript
+// Static environment variables
+install('github-release', {
+  repo: 'owner/tool',
+  env: { CUSTOM_FLAG: 'true' },
+}).bin('tool');
+
+// Dynamic environment variables (receives context with projectConfig, stagingDir)
+install('github-release', {
+  repo: 'owner/tool',
+  env: (ctx) => ({ INSTALL_DIR: ctx.stagingDir }),
+}).bin('tool');
+```
+
 ### Shell Configuration
 
 The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:

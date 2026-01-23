@@ -45,8 +45,8 @@ import { registerGenerateCommand } from './generateCommand';
 import { registerInstallCommand } from './installCommand';
 import { messages } from './log-messages';
 import { registerLogCommand } from './logCommand';
-import { DEFAULT_CONFIG_FILES, resolveConfigPath } from './resolveConfigPath';
 import { populateMemFsForDryRun } from './populateMemFsForDryRun';
+import { DEFAULT_CONFIG_FILES, resolveConfigPath } from './resolveConfigPath';
 import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
