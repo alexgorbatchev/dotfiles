@@ -46,6 +46,7 @@ import { registerInstallCommand } from './installCommand';
 import { messages } from './log-messages';
 import { registerLogCommand } from './logCommand';
 import { DEFAULT_CONFIG_FILES, resolveConfigPath } from './resolveConfigPath';
+import { scanDirectoryForToolFiles } from './scanDirectoryForToolFiles';
 import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
@@ -157,14 +158,11 @@ async function loadToolConfigsForDryRun(
       return;
     }
 
-    logger.trace(messages.toolConfigsLoaded(realToolConfigsDir, 0));
-    const filesInDir = await nodeFs.readdir(realToolConfigsDir);
+    const toolFilePaths = await scanDirectoryForToolFiles(nodeFs, realToolConfigsDir, logger);
+    logger.trace(messages.toolConfigsLoaded(realToolConfigsDir, toolFilePaths.length));
 
-    for (const fileName of filesInDir) {
-      if (fileName.endsWith('.tool.ts')) {
-        const filePath = path.join(realToolConfigsDir, fileName);
-        await copyToolConfigFile(logger, fs, nodeFs, filePath, systemInfo);
-      }
+    for (const filePath of toolFilePaths) {
+      await copyToolConfigFile(logger, fs, nodeFs, filePath, systemInfo);
     }
   } catch (_error) {
     logger.error(messages.fsAccessDenied('accessing', realToolConfigsDir));
