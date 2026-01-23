@@ -17,12 +17,14 @@ export default defineTool((install, ctx) =>
 
 ## Parameters
 
-| Parameter | Type                                             | Required | Description                         |
-| --------- | ------------------------------------------------ | -------- | ----------------------------------- |
-| `url`     | `string`                                         | Yes      | URL of the installation script      |
-| `shell`   | `'bash' \| 'sh'`                                 | Yes      | Shell interpreter to use            |
-| `args`    | `string[] \| (ctx) => string[]`                  | No       | Arguments to pass to the script     |
-| `env`     | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables for execution |
+| Parameter      | Type                                             | Required | Description                              |
+| -------------- | ------------------------------------------------ | -------- | ---------------------------------------- |
+| `url`          | `string`                                         | Yes      | URL of the installation script           |
+| `shell`        | `'bash' \| 'sh'`                                 | Yes      | Shell interpreter to use                 |
+| `args`         | `string[] \| (ctx) => string[]`                  | No       | Arguments to pass to the script          |
+| `env`          | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables for execution      |
+| `versionArgs`  | `string[]`                                       | No       | Args to pass to binary for version check |
+| `versionRegex` | `string`                                         | No       | Regex to extract version from output     |
 
 ## Understanding `stagingDir`
 

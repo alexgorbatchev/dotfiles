@@ -11,69 +11,16 @@ import {
   withInstallErrorHandling,
 } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
+import { resolveValue } from '@dotfiles/unwrap-value';
 import { detectVersionViaCli } from '@dotfiles/utils';
 import path from 'node:path';
 import { messages } from './log-messages';
 import type { CurlScriptToolConfig } from './schemas';
 import type {
-  CurlScriptArgs,
-  CurlScriptEnv,
   CurlScriptInstallResult,
   ICurlScriptArgsContext,
   ICurlScriptInstallMetadata,
 } from './types';
-
-/**
- * Resolves script arguments from static array or dynamic function
- */
-async function resolveScriptArgs(
-  params: {
-    args?: CurlScriptArgs;
-  },
-  context: IInstallContext,
-  scriptPath: string,
-): Promise<string[]> {
-  if (!params.args) {
-    return [];
-  }
-
-  if (typeof params.args === 'function') {
-    const argsContext: ICurlScriptArgsContext = {
-      projectConfig: context.projectConfig,
-      scriptPath,
-      stagingDir: context.stagingDir,
-    };
-    return await params.args(argsContext);
-  }
-
-  return params.args;
-}
-
-/**
- * Resolves environment variables from static object or dynamic function
- */
-async function resolveEnv(
-  params: {
-    env?: CurlScriptEnv;
-  },
-  context: IInstallContext,
-  scriptPath: string,
-): Promise<Record<string, string>> {
-  if (!params.env) {
-    return {};
-  }
-
-  if (typeof params.env === 'function') {
-    const envContext: ICurlScriptArgsContext = {
-      projectConfig: context.projectConfig,
-      scriptPath,
-      stagingDir: context.stagingDir,
-    };
-    return await params.env(envContext);
-  }
-
-  return params.env;
-}
 
 /**
  * Handles binary installation by copying from system directories to versioned directory
@@ -181,9 +128,14 @@ export async function installFromCurlScript(
     // Execute the script
     logger.debug(messages.executingScript(shell));
 
-    const resolvedArgs = await resolveScriptArgs(params, context, scriptPath);
+    const argsContext: ICurlScriptArgsContext = {
+      projectConfig: context.projectConfig,
+      scriptPath,
+      stagingDir: context.stagingDir,
+    };
 
-    const resolvedEnv = await resolveEnv(params, context, scriptPath);
+    const resolvedArgs = params.args ? await resolveValue(argsContext, params.args) : [];
+    const resolvedEnv = params.env ? await resolveValue(argsContext, params.env) : {};
 
     const env = {
       ...process.env,
