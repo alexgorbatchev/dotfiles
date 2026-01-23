@@ -27,7 +27,6 @@ import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { CompletionCommandExecutor, CompletionGenerator, ShellInitGenerator } from '@dotfiles/shell-init-generator';
 import { ShimGenerator } from '@dotfiles/shim-generator';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
-import { contractHomePath } from '@dotfiles/utils';
 import { VersionChecker } from '@dotfiles/version-checker';
 import net from 'node:net';
 import os from 'node:os';
@@ -123,50 +122,6 @@ function createSystemInfo(options: SetupServicesOptions, logger: TsLogger): ISys
   }
 
   return systemInfo;
-}
-
-async function copyToolConfigFile(
-  logger: TsLogger,
-  fs: IFileSystem,
-  nodeFs: NodeFileSystem,
-  filePath: string,
-  systemInfo: ISystemInfo,
-): Promise<void> {
-  try {
-    const content = await nodeFs.readFile(filePath, 'utf8');
-    await fs.ensureDir(path.dirname(filePath));
-    await fs.writeFile(filePath, content);
-    logger.trace(messages.fsWrite('memfs', contractHomePath(systemInfo.homeDir, filePath)));
-  } catch (readError: unknown) {
-    logger.error(messages.fsReadFailed(filePath), readError);
-  }
-}
-
-async function loadToolConfigsForDryRun(
-  logger: TsLogger,
-  fs: IFileSystem,
-  projectConfig: ProjectConfig,
-  systemInfo: ISystemInfo,
-): Promise<void> {
-  logger.trace(messages.toolConfigsForDryRun());
-  const realToolConfigsDir = projectConfig.paths.toolConfigsDir;
-  const nodeFs = new NodeFileSystem();
-
-  try {
-    if (!(await nodeFs.exists(realToolConfigsDir))) {
-      logger.warn(messages.fsItemNotFound('Tool configs directory', realToolConfigsDir));
-      return;
-    }
-
-    const allFilePaths = await populateMemFsForDryRun(nodeFs, realToolConfigsDir, logger);
-    logger.trace(messages.toolConfigsLoaded(realToolConfigsDir, allFilePaths.length));
-
-    for (const filePath of allFilePaths) {
-      await copyToolConfigFile(logger, fs, nodeFs, filePath, systemInfo);
-    }
-  } catch (_error) {
-    logger.error(messages.fsAccessDenied('accessing', realToolConfigsDir));
-  }
 }
 
 function initializeDownloadCache(
@@ -309,7 +264,13 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // If dry run, load tool configs into memory filesystem
   if (dryRun) {
-    await loadToolConfigsForDryRun(logger, resolvedFs, projectConfig, finalSystemInfo);
+    const nodeFs = new NodeFileSystem();
+    await populateMemFsForDryRun(logger, {
+      sourceFs: nodeFs,
+      targetFs: resolvedFs,
+      toolConfigsDir: projectConfig.paths.toolConfigsDir,
+      homeDir: finalSystemInfo.homeDir,
+    });
   }
 
   // Initialize download cache if enabled

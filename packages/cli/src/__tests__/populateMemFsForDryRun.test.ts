@@ -10,48 +10,70 @@ describe('populateMemFsForDryRun', () => {
     logger = new TestLogger({ name: 'test' });
   });
 
-  it('returns empty array for empty directory', async () => {
-    const { fs } = await createMemFileSystem({
+  it('handles empty directory', async () => {
+    const { fs: sourceFs } = await createMemFileSystem({
       initialVolumeJson: {
         '/tools': null,
       },
     });
+    const { fs: targetFs } = await createMemFileSystem();
 
-    const result = await populateMemFsForDryRun(fs, '/tools', logger);
-
-    expect(result).toEqual([]);
-  });
-
-  it('finds all files in root directory', async () => {
-    const { fs } = await createMemFileSystem({
-      initialVolumeJson: {
-        '/tools/foo.tool.ts': 'content',
-        '/tools/readme.md': 'content',
-        '/tools/config.json': 'content',
-      },
+    await populateMemFsForDryRun(logger, {
+      sourceFs,
+      targetFs,
+      toolConfigsDir: '/tools',
+      homeDir: '/home/user',
     });
 
-    const result = await populateMemFsForDryRun(fs, '/tools', logger);
+    expect(await targetFs.exists('/tools')).toBe(false);
+  });
 
-    expect(result.toSorted()).toEqual(['/tools/config.json', '/tools/foo.tool.ts', '/tools/readme.md']);
+  it('finds all files in root directory and copies to target', async () => {
+    const { fs: sourceFs } = await createMemFileSystem({
+      initialVolumeJson: {
+        '/tools/foo.tool.ts': 'content1',
+        '/tools/readme.md': 'content2',
+        '/tools/config.json': 'content3',
+      },
+    });
+    const { fs: targetFs } = await createMemFileSystem();
+
+    await populateMemFsForDryRun(logger, {
+      sourceFs,
+      targetFs,
+      toolConfigsDir: '/tools',
+      homeDir: '/home/user',
+    });
+
+    expect(await targetFs.readFile('/tools/foo.tool.ts', 'utf8')).toBe('content1');
+    expect(await targetFs.readFile('/tools/readme.md', 'utf8')).toBe('content2');
+    expect(await targetFs.readFile('/tools/config.json', 'utf8')).toBe('content3');
   });
 
   it('recursively scans subdirectories', async () => {
-    const { fs } = await createMemFileSystem({
+    const { fs: sourceFs } = await createMemFileSystem({
       initialVolumeJson: {
-        '/tools/root.tool.ts': 'content',
-        '/tools/nested/inner.ts': 'content',
-        '/tools/deep/nested/deep.txt': 'content',
+        '/tools/root.tool.ts': 'root content',
+        '/tools/nested/inner.ts': 'inner content',
+        '/tools/deep/nested/deep.txt': 'deep content',
       },
     });
+    const { fs: targetFs } = await createMemFileSystem();
 
-    const result = await populateMemFsForDryRun(fs, '/tools', logger);
+    await populateMemFsForDryRun(logger, {
+      sourceFs,
+      targetFs,
+      toolConfigsDir: '/tools',
+      homeDir: '/home/user',
+    });
 
-    expect(result.toSorted()).toEqual(['/tools/deep/nested/deep.txt', '/tools/nested/inner.ts', '/tools/root.tool.ts']);
+    expect(await targetFs.readFile('/tools/root.tool.ts', 'utf8')).toBe('root content');
+    expect(await targetFs.readFile('/tools/nested/inner.ts', 'utf8')).toBe('inner content');
+    expect(await targetFs.readFile('/tools/deep/nested/deep.txt', 'utf8')).toBe('deep content');
   });
 
   it('finds SSH tool supporting files in nested directories', async () => {
-    const { fs } = await createMemFileSystem({
+    const { fs: sourceFs } = await createMemFileSystem({
       initialVolumeJson: {
         '/tools/special/ssh/ssh.tool.ts': 'export default ...',
         '/tools/special/ssh/id_rsa': 'private key content',
@@ -59,65 +81,86 @@ describe('populateMemFsForDryRun', () => {
         '/tools/special/ssh/config': 'Host *\n  IdentityFile ...',
       },
     });
+    const { fs: targetFs } = await createMemFileSystem();
 
-    const result = await populateMemFsForDryRun(fs, '/tools', logger);
+    await populateMemFsForDryRun(logger, {
+      sourceFs,
+      targetFs,
+      toolConfigsDir: '/tools',
+      homeDir: '/home/user',
+    });
 
-    expect(result.toSorted()).toEqual([
-      '/tools/special/ssh/config',
-      '/tools/special/ssh/id_rsa',
-      '/tools/special/ssh/id_rsa.pub',
-      '/tools/special/ssh/ssh.tool.ts',
-    ]);
+    expect(await targetFs.readFile('/tools/special/ssh/ssh.tool.ts', 'utf8')).toBe('export default ...');
+    expect(await targetFs.readFile('/tools/special/ssh/id_rsa', 'utf8')).toBe('private key content');
+    expect(await targetFs.readFile('/tools/special/ssh/id_rsa.pub', 'utf8')).toBe('public key content');
+    expect(await targetFs.readFile('/tools/special/ssh/config', 'utf8')).toBe('Host *\n  IdentityFile ...');
   });
 
   it('handles mixed structure with multiple tool directories', async () => {
-    const { fs } = await createMemFileSystem({
+    const { fs: sourceFs } = await createMemFileSystem({
       initialVolumeJson: {
-        '/tools/core/bat.tool.ts': 'content',
-        '/tools/development/nvim/nvim.tool.ts': 'content',
+        '/tools/core/bat.tool.ts': 'bat content',
+        '/tools/development/nvim/nvim.tool.ts': 'nvim content',
         '/tools/development/nvim/init.lua': 'vim config',
-        '/tools/special/ssh/ssh.tool.ts': 'content',
-        '/tools/special/ssh/id_rsa': 'key',
+        '/tools/special/ssh/ssh.tool.ts': 'ssh content',
+        '/tools/special/ssh/id_rsa': 'key content',
       },
     });
+    const { fs: targetFs } = await createMemFileSystem();
 
-    const result = await populateMemFsForDryRun(fs, '/tools', logger);
+    await populateMemFsForDryRun(logger, {
+      sourceFs,
+      targetFs,
+      toolConfigsDir: '/tools',
+      homeDir: '/home/user',
+    });
 
-    expect(result.toSorted()).toEqual([
-      '/tools/core/bat.tool.ts',
-      '/tools/development/nvim/init.lua',
-      '/tools/development/nvim/nvim.tool.ts',
-      '/tools/special/ssh/id_rsa',
-      '/tools/special/ssh/ssh.tool.ts',
-    ]);
+    expect(await targetFs.readFile('/tools/core/bat.tool.ts', 'utf8')).toBe('bat content');
+    expect(await targetFs.readFile('/tools/development/nvim/nvim.tool.ts', 'utf8')).toBe('nvim content');
+    expect(await targetFs.readFile('/tools/development/nvim/init.lua', 'utf8')).toBe('vim config');
+    expect(await targetFs.readFile('/tools/special/ssh/ssh.tool.ts', 'utf8')).toBe('ssh content');
+    expect(await targetFs.readFile('/tools/special/ssh/id_rsa', 'utf8')).toBe('key content');
   });
 
-  it('returns empty array when directory does not exist', async () => {
-    const { fs } = await createMemFileSystem();
+  it('does nothing when directory does not exist', async () => {
+    const { fs: sourceFs } = await createMemFileSystem();
+    const { fs: targetFs } = await createMemFileSystem();
 
-    const result = await populateMemFsForDryRun(fs, '/nonexistent', logger);
+    await populateMemFsForDryRun(logger, {
+      sourceFs,
+      targetFs,
+      toolConfigsDir: '/nonexistent',
+      homeDir: '/home/user',
+    });
 
-    expect(result).toEqual([]);
+    expect(await targetFs.exists('/nonexistent')).toBe(false);
   });
 
-  it('logs debug message when directory read fails', async () => {
-    const { fs } = await createMemFileSystem();
+  it('logs warning when directory does not exist', async () => {
+    const { fs: sourceFs } = await createMemFileSystem();
+    const { fs: targetFs } = await createMemFileSystem();
 
-    await populateMemFsForDryRun(fs, '/nonexistent', logger);
+    await populateMemFsForDryRun(logger, {
+      sourceFs,
+      targetFs,
+      toolConfigsDir: '/nonexistent',
+      homeDir: '/home/user',
+    });
 
-    logger.expect(['DEBUG'], ['test'], [], ['Failed to read /nonexistent']);
+    logger.expect(['WARN'], ['test', 'populateMemFsForDryRun'], [], ['Tool configs directory not found']);
   });
 
   it('continues scanning when individual file stat fails', async () => {
-    const { fs } = await createMemFileSystem({
+    const { fs: baseSourceFs } = await createMemFileSystem({
       initialVolumeJson: {
-        '/tools/good.txt': 'content',
+        '/tools/good.txt': 'good content',
       },
     });
+    const { fs: targetFs } = await createMemFileSystem();
 
-    const originalStat = fs.stat.bind(fs);
-    const mockFs: IFileSystem = {
-      ...fs,
+    const originalStat = baseSourceFs.stat.bind(baseSourceFs);
+    const sourceFs: IFileSystem = {
+      ...baseSourceFs,
       stat: async (filePath: string) => {
         if (filePath === '/tools/bad-file') {
           throw new Error('Permission denied');
@@ -125,7 +168,7 @@ describe('populateMemFsForDryRun', () => {
         return originalStat(filePath);
       },
       readdir: async (dirPath: string) => {
-        const entries = await fs.readdir(dirPath);
+        const entries = await baseSourceFs.readdir(dirPath);
         if (dirPath === '/tools') {
           return [...entries, 'bad-file'];
         }
@@ -133,9 +176,33 @@ describe('populateMemFsForDryRun', () => {
       },
     };
 
-    const result = await populateMemFsForDryRun(mockFs, '/tools', logger);
+    await populateMemFsForDryRun(logger, {
+      sourceFs,
+      targetFs,
+      toolConfigsDir: '/tools',
+      homeDir: '/home/user',
+    });
 
-    expect(result).toEqual(['/tools/good.txt']);
-    logger.expect(['DEBUG'], ['test'], [], ['Failed to read /tools/bad-file']);
+    expect(await targetFs.readFile('/tools/good.txt', 'utf8')).toBe('good content');
+    logger.expect(['DEBUG'], ['test', 'populateMemFsForDryRun'], [], ['Failed to read /tools/bad-file']);
+  });
+
+  it('creates sublogger with correct name', async () => {
+    const { fs: sourceFs } = await createMemFileSystem({
+      initialVolumeJson: {
+        '/tools/test.tool.ts': 'content',
+      },
+    });
+    const { fs: targetFs } = await createMemFileSystem();
+
+    await populateMemFsForDryRun(logger, {
+      sourceFs,
+      targetFs,
+      toolConfigsDir: '/tools',
+      homeDir: '/home/user',
+    });
+
+    // Verify sublogger hierarchy is correct
+    logger.expect(['TRACE'], ['test', 'populateMemFsForDryRun'], [], ['tool configs for dry run']);
   });
 });
