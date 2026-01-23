@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { generateTimestamp } from '../src/generateTimestamp';
+import { generateTimestamp } from '../generateTimestamp';
 
 describe('generateTimestamp', () => {
   it('should generate timestamp in correct format', () => {

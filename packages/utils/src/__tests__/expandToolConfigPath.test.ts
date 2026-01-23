@@ -5,7 +5,7 @@ import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { expandToolConfigPath } from '../src/expandToolConfigPath';
+import { expandToolConfigPath } from '../expandToolConfigPath';
 
 describe('expandToolConfigPath', () => {
   let mockProjectConfig: ProjectConfig;

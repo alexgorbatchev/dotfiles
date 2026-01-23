@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { formatPermissions } from '../src/formatPermissions';
+import { formatPermissions } from '../formatPermissions';
 
 describe('formatPermissions', () => {
   it('should format octal number correctly', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { dedentTemplate } from '../src/dedentTemplate';
+import { dedentTemplate } from '../dedentTemplate';
 
 describe('dedentTemplate', () => {
   test('should dedent a simple template', () => {

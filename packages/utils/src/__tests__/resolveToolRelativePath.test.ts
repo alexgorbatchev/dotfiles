@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { resolveToolRelativePath } from '../src/resolveToolRelativePath';
+import { resolveToolRelativePath } from '../resolveToolRelativePath';
 
 describe('resolveToolRelativePath', () => {
   const toolDir = '/home/user/dotfiles/tools/fzf';

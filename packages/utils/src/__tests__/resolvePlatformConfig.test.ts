@@ -1,7 +1,7 @@
 import type { ToolConfig } from '@dotfiles/core';
 import { always, Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { resolvePlatformConfig } from '../src/resolvePlatformConfig';
+import { resolvePlatformConfig } from '../resolvePlatformConfig';
 
 describe('resolvePlatformConfig', () => {
   let baseToolConfig: ToolConfig;
