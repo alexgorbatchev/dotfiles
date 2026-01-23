@@ -8,6 +8,11 @@ import type { ICurlScriptArgsContext } from './types/ICurlScriptArgsContext';
 export type CurlScriptArgsFunction = (ctx: ICurlScriptArgsContext) => string[] | Promise<string[]>;
 export type CurlScriptArgs = string[] | CurlScriptArgsFunction;
 
+export type CurlScriptEnvFunction = (
+  ctx: ICurlScriptArgsContext,
+) => Record<string, string> | Promise<Record<string, string>>;
+export type CurlScriptEnv = Record<string, string> | CurlScriptEnvFunction;
+
 /**
  * Metadata specific to curl-script tool installation.
  */

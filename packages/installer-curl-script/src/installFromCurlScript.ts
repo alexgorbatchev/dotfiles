@@ -17,6 +17,7 @@ import { messages } from './log-messages';
 import type { CurlScriptToolConfig } from './schemas';
 import type {
   CurlScriptArgs,
+  CurlScriptEnv,
   CurlScriptInstallResult,
   ICurlScriptArgsContext,
   ICurlScriptInstallMetadata,
@@ -46,6 +47,32 @@ async function resolveScriptArgs(
   }
 
   return params.args;
+}
+
+/**
+ * Resolves environment variables from static object or dynamic function
+ */
+async function resolveEnv(
+  params: {
+    env?: CurlScriptEnv;
+  },
+  context: IInstallContext,
+  scriptPath: string,
+): Promise<Record<string, string>> {
+  if (!params.env) {
+    return {};
+  }
+
+  if (typeof params.env === 'function') {
+    const envContext: ICurlScriptArgsContext = {
+      projectConfig: context.projectConfig,
+      scriptPath,
+      stagingDir: context.stagingDir,
+    };
+    return await params.env(envContext);
+  }
+
+  return params.env;
 }
 
 /**
@@ -156,10 +183,11 @@ export async function installFromCurlScript(
 
     const resolvedArgs = await resolveScriptArgs(params, context, scriptPath);
 
+    const resolvedEnv = await resolveEnv(params, context, scriptPath);
+
     const env = {
       ...process.env,
-      ...params.env,
-      INSTALL_DIR: context.stagingDir,
+      ...resolvedEnv,
     };
 
     if (shell === 'bash') {
