@@ -235,16 +235,16 @@ After-install hook fails with `f.text is not a function`. Likely incorrect shell
 
 The following tools should be re-tested after system fixes:
 
-| Tool     | Original Issue          | Fix Applied        | Needs Re-test |
-| -------- | ----------------------- | ------------------ | ------------- |
-| caddy    | buildable-artifact      | Asset selection    | ✅            |
-| zellij   | .sha256sum selected     | Asset selection    | ✅            |
-| nvim     | linux instead of darwin | Asset selection    | ✅            |
-| onefetch | Non-standard naming     | Asset selection    | ✅            |
-| git-town | Asset selection failed  | Asset selection    | ✅            |
-| gitui    | Asset selection failed  | Asset selection    | ✅            |
-| hermit   | .gz not extracted       | Gzip support       | ✅            |
-| gum      | Completion path missing | Completions API    | ✅            |
+| Tool     | Original Issue          | Fix Applied     | Needs Re-test |
+| -------- | ----------------------- | --------------- | ------------- |
+| caddy    | buildable-artifact      | Asset selection | ✅            |
+| zellij   | .sha256sum selected     | Asset selection | ✅            |
+| nvim     | linux instead of darwin | Asset selection | ✅            |
+| onefetch | Non-standard naming     | Asset selection | ✅            |
+| git-town | Asset selection failed  | Asset selection | ✅            |
+| gitui    | Asset selection failed  | Asset selection | ✅            |
+| hermit   | .gz not extracted       | Gzip support    | ✅            |
+| gum      | Completion path missing | Completions API | ✅            |
 
 ---
 
@@ -262,16 +262,16 @@ The following tools should be re-tested after system fixes:
 
 ## Related Tickets
 
-| Ticket    | Title                                            | Status |
-| --------- | ------------------------------------------------ | ------ |
-| `717778e` | curl-script: Add env parameter to schema         | open   |
-| `c5b4582` | curl-script: Support dynamic env like args       | open   |
-| `81e0da8` | curl-script: Remove hardcoded INSTALL_DIR        | open   |
-| `336b0e1` | curl-script: Document stagingDir concept         | open   |
-| `f8b0f49` | curl-script: Fix incorrect fly.io example in docs| open   |
-| `9eadaf4` | install command should verify installation       | open   |
-| `7e5bdb9` | remove branded types for always/once             | open   |
-| `4fdc4fd` | utils tests should be moved to src               | open   |
+| Ticket    | Title                                             | Status |
+| --------- | ------------------------------------------------- | ------ |
+| `717778e` | curl-script: Add env parameter to schema          | open   |
+| `c5b4582` | curl-script: Support dynamic env like args        | open   |
+| `81e0da8` | curl-script: Remove hardcoded INSTALL_DIR         | open   |
+| `336b0e1` | curl-script: Document stagingDir concept          | open   |
+| `f8b0f49` | curl-script: Fix incorrect fly.io example in docs | open   |
+| `9eadaf4` | install command should verify installation        | open   |
+| `7e5bdb9` | remove branded types for always/once              | open   |
+| `4fdc4fd` | utils tests should be moved to src                | open   |
 
 ---
 

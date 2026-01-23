@@ -47,27 +47,27 @@ git-bug bug status:open sort:edit            # Combined filters
 
 ### Available Filters
 
-| Qualifier           | Description                                    |
-| ------------------- | ---------------------------------------------- |
-| `status:open`       | Open issues                                    |
-| `status:closed`     | Closed issues                                  |
-| `author:QUERY`      | Issues opened by user                          |
-| `participant:QUERY` | Issues where user opened or commented          |
-| `actor:QUERY`       | Issues where user had any interaction          |
-| `label:LABEL`       | Issues with specific label                     |
-| `title:TITLE`       | Issues with title containing text              |
-| `no:label`          | Issues without any labels                      |
+| Qualifier           | Description                           |
+| ------------------- | ------------------------------------- |
+| `status:open`       | Open issues                           |
+| `status:closed`     | Closed issues                         |
+| `author:QUERY`      | Issues opened by user                 |
+| `participant:QUERY` | Issues where user opened or commented |
+| `actor:QUERY`       | Issues where user had any interaction |
+| `label:LABEL`       | Issues with specific label            |
+| `title:TITLE`       | Issues with title containing text     |
+| `no:label`          | Issues without any labels             |
 
 ### Sorting
 
-| Qualifier           | Description                         |
-| ------------------- | ----------------------------------- |
-| `sort:id-desc`      | By ID, descending (default)         |
-| `sort:id-asc`       | By ID, ascending                    |
-| `sort:creation`     | By creation time, descending        |
-| `sort:creation-asc` | By creation time, ascending         |
-| `sort:edit`         | By last edit time, descending       |
-| `sort:edit-asc`     | By last edit time, ascending        |
+| Qualifier           | Description                   |
+| ------------------- | ----------------------------- |
+| `sort:id-desc`      | By ID, descending (default)   |
+| `sort:id-asc`       | By ID, ascending              |
+| `sort:creation`     | By creation time, descending  |
+| `sort:creation-asc` | By creation time, ascending   |
+| `sort:edit`         | By last edit time, descending |
+| `sort:edit-asc`     | By last edit time, ascending  |
 
 **Note**: Wrap values with spaces in quotes: `author:"René Descartes"`
 
@@ -110,6 +110,7 @@ git config --local --add remote.origin.push '+refs/bugs/*:refs/bugs/*'
 ```
 
 After configuration:
+
 - `git pull` / `git fetch` → fetches bugs
 - `git push` → pushes bugs
 
@@ -158,6 +159,7 @@ Before filing a new issue, ensure you have sufficient context:
 For multi-line descriptions, write content to a temp file and read from it:
 
 **Bug:**
+
 ```bash
 cat > /tmp/issue.md << 'ISSUE'
 **Current behavior:** What happens now
@@ -177,6 +179,7 @@ rm /tmp/issue.md
 ```
 
 **Feature:**
+
 ```bash
 cat > /tmp/issue.md << 'ISSUE'
 **Goal:** What this feature should accomplish
@@ -194,6 +197,7 @@ rm /tmp/issue.md
 ```
 
 **Change/Refactor:**
+
 ```bash
 cat > /tmp/issue.md << 'ISSUE'
 **Current state:** What exists now
@@ -269,6 +273,7 @@ Issue: <issue-id>"
 Commit types: `fix` (bugs), `feat` (features), `refactor` (changes)
 
 Example:
+
 ```bash
 git commit \
   -m "fix(installer): handle missing binary path in extraction" \

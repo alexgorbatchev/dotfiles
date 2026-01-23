@@ -4,12 +4,13 @@ import path from 'node:path';
 import { messages } from './log-messages';
 
 /**
- * Recursively scans a directory tree for `.tool.ts` configuration files.
+ * Collects all file paths from a directory tree for loading into MemFileSystem.
  *
- * Traverses the directory structure starting from the given path, collecting all files
- * that end with `.tool.ts`.
+ * Used in dry-run mode to ensure the in-memory filesystem contains all files
+ * that tools may reference, including configuration files, keys, and other
+ * supporting assets alongside .tool.ts files.
  */
-export async function scanDirectoryForToolFiles(
+export async function populateMemFsForDryRun(
   fs: IFileSystem,
   dirPath: string,
   logger: TsLogger,
@@ -26,9 +27,9 @@ export async function scanDirectoryForToolFiles(
         const stat = await fs.stat(entryPath);
 
         if (stat.isDirectory()) {
-          const subResults = await scanDirectoryForToolFiles(fs, entryPath, logger);
+          const subResults = await populateMemFsForDryRun(fs, entryPath, logger);
           results.push(...subResults);
-        } else if (entry.endsWith('.tool.ts')) {
+        } else {
           results.push(entryPath);
         }
       } catch (error) {

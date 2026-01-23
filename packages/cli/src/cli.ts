@@ -46,7 +46,7 @@ import { registerInstallCommand } from './installCommand';
 import { messages } from './log-messages';
 import { registerLogCommand } from './logCommand';
 import { DEFAULT_CONFIG_FILES, resolveConfigPath } from './resolveConfigPath';
-import { scanDirectoryForToolFiles } from './scanDirectoryForToolFiles';
+import { populateMemFsForDryRun } from './populateMemFsForDryRun';
 import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
@@ -158,10 +158,10 @@ async function loadToolConfigsForDryRun(
       return;
     }
 
-    const toolFilePaths = await scanDirectoryForToolFiles(nodeFs, realToolConfigsDir, logger);
-    logger.trace(messages.toolConfigsLoaded(realToolConfigsDir, toolFilePaths.length));
+    const allFilePaths = await populateMemFsForDryRun(nodeFs, realToolConfigsDir, logger);
+    logger.trace(messages.toolConfigsLoaded(realToolConfigsDir, allFilePaths.length));
 
-    for (const filePath of toolFilePaths) {
+    for (const filePath of allFilePaths) {
       await copyToolConfigFile(logger, fs, nodeFs, filePath, systemInfo);
     }
   } catch (_error) {
