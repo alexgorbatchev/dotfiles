@@ -136,7 +136,7 @@ describe('GeneratorOrchestrator', () => {
         version: '2.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`export TB=1`],
+            scripts: [always(`export TB=1`)],
           },
         },
         installationMethod: 'manual',
@@ -358,7 +358,7 @@ describe('GeneratorOrchestrator', () => {
             installParams: {},
             shellConfigs: {
               zsh: {
-                scripts: [always`export FNM=1`],
+                scripts: [always(`export FNM=1`)],
                 completions: {
                   cmd: 'fnm completions --shell zsh',
                   bin: 'fnm',

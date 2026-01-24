@@ -18,11 +18,11 @@ describe('OnceScriptFormatter', () => {
 
   describe('bash shell', () => {
     it('should generate properly formatted once script with subshell wrapping and HOME override', () => {
-      const script = once`
+      const script = once(`
         echo "Setting up tool..."
         export TOOL_PATH="/usr/local/bin/tool"
         echo "Tool setup complete"
-      `;
+      `);
 
       const result = formatter.format(script, 'test-tool', 'bash', 0);
 
@@ -41,7 +41,7 @@ describe('OnceScriptFormatter', () => {
     });
 
     it('should handle multi-line indented script content correctly', () => {
-      const script = once`
+      const script = once(`
         if [ -f ~/.bashrc ]; then
           echo "Found bashrc"
           source ~/.bashrc
@@ -49,7 +49,7 @@ describe('OnceScriptFormatter', () => {
         for file in ~/.config/*; do
           echo "Processing: $file"
         done
-      `;
+      `);
 
       const result = formatter.format(script, 'complex-tool', 'bash', 1);
 
@@ -72,11 +72,11 @@ describe('OnceScriptFormatter', () => {
 
   describe('zsh shell', () => {
     it('should generate properly formatted once script with subshell wrapping and HOME override', () => {
-      const script = once`
+      const script = once(`
         echo "Setting up tool..."
         export TOOL_PATH="/usr/local/bin/tool"
         echo "Tool setup complete"
-      `;
+      `);
 
       const result = formatter.format(script, 'test-tool', 'zsh', 0);
 
@@ -95,7 +95,7 @@ describe('OnceScriptFormatter', () => {
     });
 
     it('should handle multi-line indented script content correctly', () => {
-      const script = once`
+      const script = once(`
         if [ -f ~/.bashrc ]; then
           echo "Found bashrc"
           source ~/.bashrc
@@ -103,7 +103,7 @@ describe('OnceScriptFormatter', () => {
         for file in ~/.config/*; do
           echo "Processing: $file"
         done
-      `;
+      `);
 
       const result = formatter.format(script, 'complex-tool', 'zsh', 1);
 
@@ -126,11 +126,11 @@ describe('OnceScriptFormatter', () => {
 
   describe('powershell shell', () => {
     it('should generate properly formatted once script with HOME override and restoration', () => {
-      const script = once`
+      const script = once(`
         Write-Host "Setting up tool..."
         $env:TOOL_PATH = "/usr/local/bin/tool"
         Write-Host "Tool setup complete"
-      `;
+      `);
 
       const result = formatter.format(script, 'test-tool', 'powershell', 0);
 
@@ -157,7 +157,7 @@ describe('OnceScriptFormatter', () => {
     });
 
     it('should handle multi-line indented script content correctly', () => {
-      const script = once`
+      const script = once(`
         if (Test-Path ~/.bashrc) {
           Write-Host "Found bashrc"
           . ~/.bashrc
@@ -165,7 +165,7 @@ describe('OnceScriptFormatter', () => {
         Get-ChildItem ~/.config/* | ForEach-Object {
           Write-Host "Processing: $_"
         }
-      `;
+      `);
 
       const result = formatter.format(script, 'complex-tool', 'powershell', 1);
 
@@ -196,7 +196,7 @@ describe('OnceScriptFormatter', () => {
 
   describe('general functionality', () => {
     it('should generate unique output paths based on tool name and index', () => {
-      const script = once`echo "test"`;
+      const script = once(`echo "test"`);
 
       const result1 = formatter.format(script, 'my-tool', 'bash', 0);
       const result2 = formatter.format(script, 'my-tool', 'bash', 1);
@@ -208,7 +208,7 @@ describe('OnceScriptFormatter', () => {
     });
 
     it('should handle empty script content', () => {
-      const script = once``;
+      const script = once(``);
 
       const result = formatter.format(script, 'empty-tool', 'bash');
 
@@ -219,24 +219,24 @@ describe('OnceScriptFormatter', () => {
     });
 
     it('should handle script content with special characters', () => {
-      const script = once`
+      const script = once(`
         echo "Path with spaces: /Program Files/Tool"
         echo 'Single quotes work too'
         echo "Quotes within \\"quotes\\""
         export VAR="value with $HOME variable"
-      `;
+      `);
 
       const result = formatter.format(script, 'special-chars', 'bash');
 
       const content = result.content;
       expect(content).toContain('echo "Path with spaces: /Program Files/Tool"');
       expect(content).toContain("echo 'Single quotes work too'");
-      expect(content).toContain('echo "Quotes within \\\\"quotes\\\\""');
+      expect(content).toContain('echo "Quotes within \\"quotes\\""');
       expect(content).toContain('export VAR="value with $HOME variable"');
     });
 
     it('should throw error for non-once script types', () => {
-      const alwaysScript = always`echo "test"`;
+      const alwaysScript = always(`echo "test"`);
 
       expect(() => {
         formatter.format(alwaysScript, 'test-tool', 'bash');
@@ -244,7 +244,7 @@ describe('OnceScriptFormatter', () => {
     });
 
     it('should throw error for unsupported shell types', () => {
-      const script = once`echo "test"`;
+      const script = once(`echo "test"`);
 
       expect(() => {
         formatter.format(script, 'test-tool', 'fish' as ShellType);

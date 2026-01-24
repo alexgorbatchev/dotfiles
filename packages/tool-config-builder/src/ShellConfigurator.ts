@@ -1,8 +1,6 @@
 import type {
-  AlwaysScript,
   IShellConfigurator,
   IToolConfigContext,
-  OnceScript,
   ShellCompletionConfigInput,
 } from '@dotfiles/core';
 import { always, once } from '@dotfiles/core';
@@ -59,8 +57,7 @@ export class ShellConfigurator implements IShellConfigurator {
   /** @inheritdoc */
   public source(relativePath: string): IShellConfigurator {
     const command: string = this.createSourceCommand(relativePath);
-    const script: AlwaysScript = always`${command}`;
-    this.storage.scripts.push(script);
+    this.storage.scripts.push(always(command));
     return this;
   }
 
@@ -73,20 +70,14 @@ export class ShellConfigurator implements IShellConfigurator {
   }
 
   /** @inheritdoc */
-  public once(script: OnceScript): IShellConfigurator;
-  public once(script: string): IShellConfigurator;
-  public once(script: OnceScript | string): IShellConfigurator {
-    const normalizedScript: OnceScript = this.normalizeOnceScript(script);
-    this.storage.scripts.push(normalizedScript);
+  public once(script: string): IShellConfigurator {
+    this.storage.scripts.push(once(script));
     return this;
   }
 
   /** @inheritdoc */
-  public always(script: AlwaysScript): IShellConfigurator;
-  public always(script: string): IShellConfigurator;
-  public always(script: AlwaysScript | string): IShellConfigurator {
-    const normalizedScript: AlwaysScript = this.normalizeAlwaysScript(script);
-    this.storage.scripts.push(normalizedScript);
+  public always(script: string): IShellConfigurator {
+    this.storage.scripts.push(always(script));
     return this;
   }
 
@@ -171,21 +162,5 @@ export class ShellConfigurator implements IShellConfigurator {
       return resolvedPath.replace(/\//gu, '\\');
     }
     return resolvedPath.replace(/\\/gu, '/');
-  }
-
-  /**
-   * Normalizes a script input into a OnceScript object.
-   */
-  private normalizeOnceScript(script: OnceScript | string): OnceScript {
-    const normalizedScript: OnceScript = once`${script}`;
-    return normalizedScript;
-  }
-
-  /**
-   * Normalizes a script input into an AlwaysScript object.
-   */
-  private normalizeAlwaysScript(script: AlwaysScript | string): AlwaysScript {
-    const normalizedScript: AlwaysScript = always`${script}`;
-    return normalizedScript;
   }
 }

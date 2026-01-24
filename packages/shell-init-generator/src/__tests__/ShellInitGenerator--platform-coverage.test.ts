@@ -51,18 +51,18 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
           version: 'latest',
           installationMethod: 'manual',
           shellConfigs: {
-            zsh: { scripts: [always`# Base zsh`] },
-            bash: { scripts: [always`# Base bash`] },
-            powershell: { scripts: [always`# Base powershell`] },
+            zsh: { scripts: [always(`# Base zsh`)] },
+            bash: { scripts: [always(`# Base bash`)] },
+            powershell: { scripts: [always(`# Base powershell`)] },
           },
           platformConfigs: [
             {
               platforms: Platform.MacOS,
               config: {
                 shellConfigs: {
-                  zsh: { scripts: [always`# macOS zsh specific`] },
-                  bash: { scripts: [always`# macOS bash specific`] },
-                  powershell: { scripts: [always`# macOS powershell specific`] },
+                  zsh: { scripts: [always(`# macOS zsh specific`)] },
+                  bash: { scripts: [always(`# macOS bash specific`)] },
+                  powershell: { scripts: [always(`# macOS powershell specific`)] },
                 },
                 binaries: ['macos-tool'],
               },
@@ -111,13 +111,13 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
           name: 'symlink-tool',
           version: 'latest',
           installationMethod: 'manual',
-          shellConfigs: { zsh: { scripts: [always`# Base init`] } },
+          shellConfigs: { zsh: { scripts: [always(`# Base init`)] } },
           symlinks: [{ source: './base.conf', target: '~/.base.conf' }],
           platformConfigs: [
             {
               platforms: Platform.MacOS,
               config: {
-                shellConfigs: { zsh: { scripts: [always`# macOS init`] } },
+                shellConfigs: { zsh: { scripts: [always(`# macOS init`)] } },
                 symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],
               },
             },
@@ -161,9 +161,9 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
           shellConfigs: {
             zsh: {
               scripts: [
-                always`export BASE_VAR="base_value"`,
-                always`export PATH="/base/bin:$PATH"`,
-                always`# Some other init code`,
+                always(`export BASE_VAR="base_value"`),
+                always(`export PATH="/base/bin:$PATH"`),
+                always(`# Some other init code`),
               ],
             },
           },
@@ -174,10 +174,10 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
                 shellConfigs: {
                   zsh: {
                     scripts: [
-                      always`export LINUX_SPECIFIC="linux_value"`,
-                      always`export PATH="/linux/bin:$PATH"`,
-                      always`alias linux-cmd="some-command"`,
-                      always`fpath+="/linux/completions"`,
+                      always(`export LINUX_SPECIFIC="linux_value"`),
+                      always(`export PATH="/linux/bin:$PATH"`),
+                      always(`alias linux-cmd="some-command"`),
+                      always(`fpath+="/linux/completions"`),
                     ],
                   },
                 },
@@ -241,7 +241,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
                 binaries: ['aerospace'],
                 symlinks: [{ source: './aerospace.toml', target: '~/.config/aerospace/aerospace.toml' }],
                 // Aerospace might have shell init for keybindings or env vars
-                shellConfigs: { zsh: { scripts: [always`# Aerospace window manager integration`] } },
+                shellConfigs: { zsh: { scripts: [always(`# Aerospace window manager integration`)] } },
               },
             },
           ],
@@ -298,9 +298,9 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
           shellConfigs: {
             zsh: {
               scripts: [
-                always`# Base eza aliases`,
-                always`alias ls="eza --group-directories-first --git"`,
-                always`alias ll="eza -la --group-directories-first --git"`,
+                always(`# Base eza aliases`),
+                always(`alias ls="eza --group-directories-first --git"`),
+                always(`alias ll="eza -la --group-directories-first --git"`),
               ],
             },
           },
@@ -310,14 +310,14 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
               config: {
                 binaries: ['eza'],
                 // macOS has custom installation via script/hooks
-                shellConfigs: { zsh: { scripts: [always`# macOS specific eza setup`] } },
+                shellConfigs: { zsh: { scripts: [always(`# macOS specific eza setup`)] } },
               },
             },
             {
               platforms: Platform.Linux,
               config: {
                 binaries: ['eza'],
-                shellConfigs: { zsh: { scripts: [always`# Linux specific eza setup`] } },
+                shellConfigs: { zsh: { scripts: [always(`# Linux specific eza setup`)] } },
               },
             },
           ],
@@ -369,7 +369,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
           name: 'empty-platform-tool',
           version: 'latest',
           installationMethod: 'manual',
-          shellConfigs: { zsh: { scripts: [always`# Base init`] } },
+          shellConfigs: { zsh: { scripts: [always(`# Base init`)] } },
           platformConfigs: [
             {
               platforms: Platform.MacOS,
@@ -412,7 +412,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
             {
               platforms: Platform.Windows,
               config: {
-                shellConfigs: { zsh: { scripts: [always`# Windows-only init`] } },
+                shellConfigs: { zsh: { scripts: [always(`# Windows-only init`)] } },
                 binaries: ['win-tool.exe'],
               },
             },

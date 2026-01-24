@@ -300,4 +300,4 @@ script-initializers/
 └── index.ts                    # Module exports
 ```
 
-This initializer system provides the essential bridge between the main shell initialization files and the individually generated once scripts, enabling the performance optimization of the branded script types system.
+This initializer system provides the essential bridge between the main shell initialization files and the individually generated once scripts, enabling the performance optimization of the shell script types system.

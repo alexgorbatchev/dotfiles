@@ -15,11 +15,11 @@ describe('AlwaysScriptFormatter', () => {
 
   describe('bash shell', () => {
     it('should generate properly formatted always script with subshell wrapping and HOME override', () => {
-      const script = always`
+      const script = always(`
         echo "Setting up tool..."
         export TOOL_PATH="/usr/local/bin/tool"
         echo "Tool setup complete"
-      `;
+      `);
 
       const result = formatter.format(script, 'test-tool', 'bash');
 
@@ -35,7 +35,7 @@ describe('AlwaysScriptFormatter', () => {
     });
 
     it('should handle multi-line indented script content correctly', () => {
-      const script = always`
+      const script = always(`
         if [ -f ~/.bashrc ]; then
           echo "Found bashrc"
           source ~/.bashrc
@@ -44,7 +44,7 @@ describe('AlwaysScriptFormatter', () => {
         for file in ~/.config/*; do
           echo "Processing: $file"
         done
-      `;
+      `);
 
       const result = formatter.format(script, 'complex-tool', 'bash');
 
@@ -66,11 +66,11 @@ describe('AlwaysScriptFormatter', () => {
 
   describe('zsh shell', () => {
     it('should generate properly formatted always script with subshell wrapping and HOME override', () => {
-      const script = always`
+      const script = always(`
         echo "Setting up tool..."
         export TOOL_PATH="/usr/local/bin/tool"
         echo "Tool setup complete"
-      `;
+      `);
 
       const result = formatter.format(script, 'test-tool', 'zsh');
 
@@ -86,7 +86,7 @@ describe('AlwaysScriptFormatter', () => {
     });
 
     it('should handle multi-line indented script content correctly', () => {
-      const script = always`
+      const script = always(`
         if [ -f ~/.zshrc ]; then
           echo "Found zshrc"
           source ~/.zshrc
@@ -95,7 +95,7 @@ describe('AlwaysScriptFormatter', () => {
         for file in ~/.config/*; do
           echo "Processing: $file"
         done
-      `;
+      `);
 
       const result = formatter.format(script, 'complex-tool', 'zsh');
 
@@ -117,11 +117,11 @@ describe('AlwaysScriptFormatter', () => {
 
   describe('powershell shell', () => {
     it('should generate properly formatted always script with HOME override and restoration', () => {
-      const script = always`
+      const script = always(`
         Write-Host "Setting up tool..."
         $env:TOOL_PATH = "/usr/local/bin/tool"
         Write-Host "Tool setup complete"
-      `;
+      `);
 
       const result = formatter.format(script, 'test-tool', 'powershell');
 
@@ -145,7 +145,7 @@ describe('AlwaysScriptFormatter', () => {
     });
 
     it('should handle multi-line indented script content correctly', () => {
-      const script = always`
+      const script = always(`
         if (Test-Path ~/.bashrc) {
           Write-Host "Found bashrc"
           . ~/.bashrc
@@ -154,7 +154,7 @@ describe('AlwaysScriptFormatter', () => {
         Get-ChildItem ~/.config/* | ForEach-Object {
           Write-Host "Processing: $_"
         }
-      `;
+      `);
 
       const result = formatter.format(script, 'complex-tool', 'powershell');
 
@@ -184,7 +184,7 @@ describe('AlwaysScriptFormatter', () => {
 
   describe('error handling', () => {
     it('should throw error for non-always script', () => {
-      const script = once`echo "test"`;
+      const script = once(`echo "test"`);
 
       expect(() => formatter.format(script, 'test-tool', 'zsh')).toThrow(
         'AlwaysScriptFormatter can only format AlwaysScript',
@@ -192,7 +192,7 @@ describe('AlwaysScriptFormatter', () => {
     });
 
     it('should throw error for unsupported shell type', () => {
-      const script = always`echo "test"`;
+      const script = always(`echo "test"`);
 
       expect(() => formatter.format(script, 'test-tool', 'fish' as 'zsh')).toThrow('Unsupported shell type: fish');
     });

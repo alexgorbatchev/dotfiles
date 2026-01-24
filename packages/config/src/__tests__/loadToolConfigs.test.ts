@@ -120,9 +120,9 @@ describe('IToolConfigContext', () => {
       expect(toolConfig).toBeDefined();
       expect(toolConfig.name).toBe('shell-tool');
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockProjectConfig.paths.binariesDir);
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockProjectConfig.paths.homeDir);
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockProjectConfig.paths.generatedDir);
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]!.value).toContain(mockProjectConfig.paths.binariesDir);
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]!.value).toContain(mockProjectConfig.paths.homeDir);
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]!.value).toContain(mockProjectConfig.paths.generatedDir);
     });
 
     it('should handle tool dependencies by composing paths from projectConfig', async () => {
@@ -167,10 +167,10 @@ describe('IToolConfigContext', () => {
       const toolConfig = result.build();
 
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]!.value).toContain(
         path.join(mockProjectConfig.paths.binariesDir, 'fzf'),
       );
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]!.value).toContain(
         path.join(mockProjectConfig.paths.binariesDir, 'dependent-tool', 'config.yaml'),
       );
     });
@@ -198,7 +198,7 @@ describe('IToolConfigContext', () => {
       const toolConfig = result.build();
 
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]!.value).toContain(
         path.join(mockProjectConfig.paths.generatedDir, 'completions/_completion-tool'),
       );
     });
@@ -295,7 +295,7 @@ describe('IToolConfigContext', () => {
       expect(toolConfig.installationMethod).toBe('github-release');
       expect(toolConfig.shellConfigs?.zsh?.completions).toBeDefined();
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]!.value).toContain(
         path.join(mockProjectConfig.paths.binariesDir, 'fzf-like'),
       );
     });
@@ -337,10 +337,10 @@ describe('IToolConfigContext', () => {
 
       expect(toolConfig.symlinks).toBeDefined();
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]!.value).toContain(
         path.join(mockProjectConfig.paths.binariesDir, 'atuin-like'),
       );
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]!.value).toContain(
         path.join(mockProjectConfig.paths.generatedDir, 'completions/_atuin-like'),
       );
     });

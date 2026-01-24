@@ -1,25 +1,21 @@
 /**
- * A branded string type representing a shell script that should run only once,
- * typically after a tool is installed or updated.
- *
- * This is used for tasks like generating completions or performing initial setup
- * that do not need to be repeated on every shell startup.
- *
- * @see {@link once}
+ * This module defines shell script types using a discriminated union pattern.
+ * The `kind` property is used by type guards (`isOnceScript` and `isAlwaysScript`)
+ * in `BaseShellGenerator` to correctly route scripts into appropriate execution
+ * contexts (one-time setup vs. every shell startup).
  */
-export type OnceScript = string & { readonly __brand: 'once'; };
 
 /**
- * A branded string type representing a shell script that should run on every
- * shell startup.
- *
- * This is used for tasks like setting environment variables, initializing shell
- * functions, or running `eval` commands that are required for the tool to
- * function correctly in a new shell session.
- *
- * @see {@link always}
+ * A shell script that should run only once, typically after a tool is installed or updated.
+ * Used for tasks like generating completions or performing initial setup.
  */
-export type AlwaysScript = string & { readonly __brand: 'always'; };
+export type OnceScript = { readonly kind: 'once'; readonly value: string; };
+
+/**
+ * A shell script that should run on every shell startup.
+ * Used for tasks like setting environment variables or running `eval` commands.
+ */
+export type AlwaysScript = { readonly kind: 'always'; readonly value: string; };
 
 /**
  * A union type representing any kind of shell script, whether it runs once or
@@ -28,58 +24,23 @@ export type AlwaysScript = string & { readonly __brand: 'always'; };
 export type ShellScript = OnceScript | AlwaysScript;
 
 /**
- * A tagged template function that marks a shell script to be run only once
- * after a tool installation or update.
+ * Creates a shell script that runs only once after tool installation or update.
  *
- * Needs `bierner.comment-tagged-templates` VSCode extension to highlight
- * shell scripts correctly.
- *
- * @param strings - The template string array.
- * @param values - The values to interpolate into the string.
- * @returns A {@link OnceScript} branded string.
- *
- * @example
- * ```typescript
- * once /* zsh *\/`
- *   # This command generates completions and runs only once.
- *   tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool"
- * `
- * ```
+ * @param value - The shell script content.
+ * @returns A {@link OnceScript} object.
  */
-export function once(strings: TemplateStringsArray, ...values: unknown[]): OnceScript {
-  const content = String.raw(strings, ...values);
-  const script = new String(content) as OnceScript;
-  // Intentionally augmenting String object for branded type
-  (script as OnceScript & { __brand: string; }).__brand = 'once';
-  return script as OnceScript;
+export function once(value: string): OnceScript {
+  return { kind: 'once', value };
 }
 
 /**
- * A tagged template function that marks a shell script to be run on every
- * shell startup.
+ * Creates a shell script that runs on every shell startup.
  *
- * Needs `bierner.comment-tagged-templates` VSCode extension to highlight
- * shell scripts correctly.
- *
- * @param strings - The template string array.
- * @param values - The values to interpolate into the string.
- * @returns An {@link AlwaysScript} branded string.
- *
- * @example
- * ```typescript
- * always /* zsh *\/`
- *   # This command initializes the tool on every shell startup.
- *   export TOOL_CONFIG_DIR="$HOME/.config/tool"
- *   eval "$(tool init zsh)"
- * `
- * ```
+ * @param value - The shell script content.
+ * @returns An {@link AlwaysScript} object.
  */
-export function always(strings: TemplateStringsArray, ...values: unknown[]): AlwaysScript {
-  const content = String.raw(strings, ...values);
-  const script = new String(content) as AlwaysScript;
-  // Intentionally augmenting String object for branded type
-  (script as AlwaysScript & { __brand: string; }).__brand = 'always';
-  return script as AlwaysScript;
+export function always(value: string): AlwaysScript {
+  return { kind: 'always', value };
 }
 
 /**
@@ -89,7 +50,7 @@ export function always(strings: TemplateStringsArray, ...values: unknown[]): Alw
  * @returns `true` if the script is a `OnceScript`, otherwise `false`.
  */
 export function isOnceScript(script: ShellScript): script is OnceScript {
-  return (script as OnceScript).__brand === 'once';
+  return script.kind === 'once';
 }
 
 /**
@@ -99,15 +60,15 @@ export function isOnceScript(script: ShellScript): script is OnceScript {
  * @returns `true` if the script is an `AlwaysScript`, otherwise `false`.
  */
 export function isAlwaysScript(script: ShellScript): script is AlwaysScript {
-  return (script as AlwaysScript).__brand === 'always';
+  return script.kind === 'always';
 }
 
 /**
- * Extracts the raw string content from a branded shell script type.
+ * Extracts the raw string content from a shell script.
  *
  * @param script - The {@link ShellScript} to unwrap.
  * @returns The raw string content of the script.
  */
 export function getScriptContent(script: ShellScript): string {
-  return script as string;
+  return script.value;
 }

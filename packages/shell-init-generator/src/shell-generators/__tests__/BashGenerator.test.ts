@@ -25,10 +25,10 @@ describe('BashGenerator', () => {
       shellConfigs: {
         bash: {
           scripts: [
-            always`export TEST_VAR="value"`,
-            always`export PATH="/opt/test/bin:$PATH"`,
-            always`declare -U PATH`,
-            always`# Bash-specific completion setup`,
+            always(`export TEST_VAR="value"`),
+            always(`export PATH="/opt/test/bin:$PATH"`),
+            always(`declare -U PATH`),
+            always(`# Bash-specific completion setup`),
           ],
         },
       },

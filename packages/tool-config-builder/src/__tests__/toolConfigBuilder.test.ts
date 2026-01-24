@@ -159,8 +159,8 @@ describe('IToolConfigBuilder', () => {
     // build() is valid here as zshInit is provided
     const config = builder.build();
     expect(config.shellConfigs?.zsh?.scripts).toEqual([
-      always`alias ll="ls -l"`,
-      always`export PATH="$HOME/bin:$PATH"`,
+      always(`alias ll="ls -l"`),
+      always(`export PATH="$HOME/bin:$PATH"`),
     ]);
   });
 
@@ -256,7 +256,7 @@ describe('IToolConfigBuilder', () => {
     if (isGitHubReleaseToolConfig(config)) {
       expect(config.installParams).toEqual({ ...installParams, hooks: { 'after-install': [noopHook] } });
     }
-    expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias tt="test-tool"`]);
+    expect(config.shellConfigs?.zsh?.scripts).toEqual([always(`alias tt="test-tool"`)]);
     expect(config.shellConfigs?.zsh?.completions).toBe('completion.bash');
     expect(config.symlinks).toEqual([{ source: 'config.yml', target: '~/.config/tool/config.yml' }]);
   });
@@ -294,7 +294,7 @@ describe('IToolConfigBuilder', () => {
 
     const config = builder.build();
     expect(config.shellConfigs?.zsh?.scripts).toEqual([
-      always`[[ -f "/path/that/does/not/exist" ]] && source "/path/that/does/not/exist"`,
+      always(`[[ -f "/path/that/does/not/exist" ]] && source "/path/that/does/not/exist"`),
     ]);
   });
 
@@ -305,7 +305,7 @@ describe('IToolConfigBuilder', () => {
 
     const config = builder.build();
     expect(config.shellConfigs?.bash?.scripts).toEqual([
-      always`[[ -f "/path/that/does/not/exist" ]] && source "/path/that/does/not/exist"`,
+      always(`[[ -f "/path/that/does/not/exist" ]] && source "/path/that/does/not/exist"`),
     ]);
   });
 
@@ -330,7 +330,7 @@ describe('IToolConfigBuilder', () => {
     expect(config.installationMethod).toBe('manual');
     expect(config.installParams).toEqual({});
     expect(config.binaries).toEqual([]);
-    expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias tt="test-tool"`]);
+    expect(config.shellConfigs?.zsh?.scripts).toEqual([always(`alias tt="test-tool"`)]);
   });
 
   test('build method returns ManualToolConfig if only symlinks are present', () => {
@@ -430,7 +430,7 @@ describe('IToolConfigBuilder', () => {
           l: 'ls -la',
           v: 'vim',
         })
-        .always(always`echo "test init"`)
+        .always(`echo "test init"`)
     );
 
     expect(builder.shellConfigs.zsh.aliases).toEqual({

@@ -25,9 +25,9 @@ describe('ZshGenerator', () => {
       shellConfigs: {
         zsh: {
           scripts: [
-            always`export TEST_VAR="value"`,
-            always`export PATH="/opt/test/bin:$PATH"`,
-            always`alias test="test-tool --verbose"`,
+            always(`export TEST_VAR="value"`),
+            always(`export PATH="/opt/test/bin:$PATH"`),
+            always(`alias test="test-tool --verbose"`),
           ],
         },
       },

@@ -1,14 +1,14 @@
 # Script Formatters
 
-This directory contains formatters that transform branded shell scripts (`OnceScript` and `AlwaysScript`) into appropriate shell initialization code. The formatters handle the different execution timing requirements and shell-specific syntax.
+This directory contains formatters that transform shell scripts (`OnceScript` and `AlwaysScript`) into appropriate shell initialization code. The formatters handle the different execution timing requirements and shell-specific syntax.
 
 ## Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     Branded Shell Scripts                      │
+│                       Shell Script Types                        │
 │                                                                 │
-│  once`script content`     always`script content`               │
+│  once('script content')   always('script content')             │
 │  (OnceScript)             (AlwaysScript)                       │
 └─────────────┬─────────────────────────┬─────────────────────────┘
               │                         │
@@ -50,23 +50,23 @@ This directory contains formatters that transform branded shell scripts (`OnceSc
 
 ## How It Works
 
-### Branded Script Types
+### Shell Script Types
 
-The system uses TypeScript branded types to enforce execution timing at compile time:
+The system uses a discriminated union pattern to enforce execution timing:
 
 ```typescript
 // Scripts that run only once after tool installation/updates
-const onceScript = once /* zsh */`
+const onceScript = once(`
   # Generate completions (expensive operation)
   tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool"
-`;
+`);
 
 // Scripts that run every shell startup (lightweight operations)
-const alwaysScript = always /* zsh */`
+const alwaysScript = always(`
   # Fast runtime setup
   export TOOL_CONFIG_DIR="$HOME/.tool"
   alias t="tool"
-`;
+`);
 ```
 
 ### IScriptFormatter Interface
@@ -98,7 +98,7 @@ interface IFormattedScriptOutput {
 **Zsh/Bash:**
 
 ```bash
-# Input: always/* zsh */`export MY_VAR="value"`
+# Input: always('export MY_VAR="value"')
 # Output:
 __dotfiles_tool_always() {
   export MY_VAR="value"
@@ -110,7 +110,7 @@ unset -f __dotfiles_tool_always
 **PowerShell:**
 
 ```powershell
-# Input: always/* powershell */`$env:MY_VAR = "value"`
+# Input: always('$env:MY_VAR = "value"')
 # Output:
 function __dotfiles_tool_always {
   $env:MY_VAR = "value"

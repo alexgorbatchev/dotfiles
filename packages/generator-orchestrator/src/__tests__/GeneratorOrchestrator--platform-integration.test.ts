@@ -46,7 +46,9 @@ function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, system
 
         const config = platformConfig.config as PlatformConfig;
         if (isMatch && config.shellConfigs?.zsh?.scripts) {
-          content += `# Platform-specific content for ${toolName}: ${config.shellConfigs.zsh.scripts.join(' ')}\n`;
+          content += `# Platform-specific content for ${toolName}: ${
+            config.shellConfigs.zsh.scripts.map((s) => s.value).join(' ')
+          }\n`;
         }
       }
     }
@@ -192,7 +194,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
                 binaries: ['aerospace'],
                 shellConfigs: {
                   zsh: {
-                    scripts: [always`# macOS aerospace init`],
+                    scripts: [always(`# macOS aerospace init`)],
                   },
                 },
               },
@@ -207,7 +209,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           binaries: ['regular'],
           shellConfigs: {
             zsh: {
-              scripts: [always`# Regular tool init`],
+              scripts: [always(`# Regular tool init`)],
             },
           },
         },
@@ -243,7 +245,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           installationMethod: 'manual',
           shellConfigs: {
             zsh: {
-              scripts: [always`# Base init`],
+              scripts: [always(`# Base init`)],
             },
           },
           platformConfigs: [
@@ -252,7 +254,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
               config: {
                 shellConfigs: {
                   zsh: {
-                    scripts: [always`# macOS specific - should not appear`],
+                    scripts: [always(`# macOS specific - should not appear`)],
                   },
                 },
               },
@@ -262,7 +264,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
               config: {
                 shellConfigs: {
                   zsh: {
-                    scripts: [always`# Linux specific - should appear`],
+                    scripts: [always(`# Linux specific - should appear`)],
                   },
                 },
               },
@@ -306,7 +308,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           binaries: ['simple'],
           shellConfigs: {
             zsh: {
-              scripts: [always`# Simple tool init`],
+              scripts: [always(`# Simple tool init`)],
             },
           },
           // No platform configs
@@ -345,7 +347,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           installationMethod: 'manual',
           shellConfigs: {
             zsh: {
-              scripts: [always`# Base shell init`],
+              scripts: [always(`# Base shell init`)],
             },
           },
           symlinks: [{ source: './base.conf', target: '~/.base.conf' }],
@@ -356,7 +358,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
                 binaries: ['macos-binary'],
                 shellConfigs: {
                   zsh: {
-                    scripts: [always`# macOS shell init`],
+                    scripts: [always(`# macOS shell init`)],
                   },
                 },
                 symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],

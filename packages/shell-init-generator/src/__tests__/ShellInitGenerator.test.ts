@@ -85,7 +85,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`export TEST_TOOL_VAR="hello"`],
+            scripts: [always(`export TEST_TOOL_VAR="hello"`)],
           },
         },
         installationMethod: 'manual',
@@ -117,7 +117,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`export PATH="/opt/toolA/bin:$PATH"`],
+            scripts: [always(`export PATH="/opt/toolA/bin:$PATH"`)],
           },
         },
         installationMethod: 'manual',
@@ -129,7 +129,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`path+=("/opt/toolB/bin")`],
+            scripts: [always(`path+=("/opt/toolB/bin")`)],
           },
         },
         installationMethod: 'manual',
@@ -154,7 +154,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`export TOOL_A_ENABLED=true`],
+            scripts: [always(`export TOOL_A_ENABLED=true`)],
           },
         },
         installationMethod: 'manual',
@@ -166,7 +166,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`export TOOL_B_MODE="debug"`],
+            scripts: [always(`export TOOL_B_MODE="debug"`)],
           },
         },
         installationMethod: 'manual',
@@ -190,7 +190,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`alias ta="toolA --extended"`],
+            scripts: [always(`alias ta="toolA --extended"`)],
           },
         },
         installationMethod: 'manual',
@@ -202,7 +202,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`source /opt/toolB/init.sh`],
+            scripts: [always(`source /opt/toolB/init.sh`)],
           },
         },
         installationMethod: 'manual',
@@ -264,7 +264,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`typeset -U fpath`, always`fpath=("/my/custom/fpath" $fpath)`],
+            scripts: [always(`typeset -U fpath`), always(`fpath=("/my/custom/fpath" $fpath)`)],
             completions: { source: '_toolA' },
           },
         },
@@ -294,7 +294,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`export ALPHA_MODE=on`, always`export PATH="/opt/alpha/bin:$PATH"`],
+            scripts: [always(`export ALPHA_MODE=on`), always(`export PATH="/opt/alpha/bin:$PATH"`)],
             completions: { source: '_alpha' },
           },
         },
@@ -307,7 +307,7 @@ describe('ShellInitGenerator', () => {
         version: '2.1',
         shellConfigs: {
           zsh: {
-            scripts: [always`alias b="beta -v"`],
+            scripts: [always(`alias b="beta -v"`)],
           },
         },
         installationMethod: 'manual',
@@ -319,7 +319,7 @@ describe('ShellInitGenerator', () => {
         version: '0.5',
         shellConfigs: {
           zsh: {
-            scripts: [always`export GAMMA_LEVEL=5`],
+            scripts: [always(`export GAMMA_LEVEL=5`)],
             completions: { source: 'gamma_completion.sh' },
           },
         },
@@ -358,9 +358,9 @@ describe('ShellInitGenerator', () => {
         shellConfigs: {
           zsh: {
             scripts: [
-              always`export MY_VAR=123`,
-              always`export PATH="/opt/mytool/bin:$PATH"`,
-              always`alias mt="myTool --doit"`,
+              always(`export MY_VAR=123`),
+              always(`export PATH="/opt/mytool/bin:$PATH"`),
+              always(`alias mt="myTool --doit"`),
             ],
             completions: { source: '_myTool' },
           },
@@ -393,7 +393,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`export DUP_VAR="val"`, always`export PATH="/dup/path:$PATH"`],
+            scripts: [always(`export DUP_VAR="val"`), always(`export PATH="/dup/path:$PATH"`)],
           },
         },
         installationMethod: 'manual',
@@ -405,7 +405,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`export DUP_VAR="val"`, always`export PATH="/dup/path:$PATH"`],
+            scripts: [always(`export DUP_VAR="val"`), always(`export PATH="/dup/path:$PATH"`)],
           },
         },
         installationMethod: 'manual',
@@ -429,7 +429,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`export TOOL_A_VAR="set"`],
+            scripts: [always(`export TOOL_A_VAR="set"`)],
           },
         },
         installationMethod: 'manual',
@@ -442,7 +442,7 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         shellConfigs: {
           zsh: {
-            scripts: [always`export TOOL_C_VAR="active"`],
+            scripts: [always(`export TOOL_C_VAR="active"`)],
           },
         },
         installationMethod: 'manual',

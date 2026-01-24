@@ -25,10 +25,10 @@ describe('PowerShellGenerator', () => {
       shellConfigs: {
         powershell: {
           scripts: [
-            always`$env:TEST_VAR = "value"`,
-            always`$env:PATH = "/opt/test/bin;$env:PATH"`,
-            always`function test { test-tool --verbose }`,
-            always`. ~/.testrc`,
+            always(`$env:TEST_VAR = "value"`),
+            always(`$env:PATH = "/opt/test/bin;$env:PATH"`),
+            always(`function test { test-tool --verbose }`),
+            always(`. ~/.testrc`),
           ],
         },
       },

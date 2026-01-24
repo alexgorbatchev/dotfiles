@@ -14,7 +14,6 @@ import type {
   IExtractContext,
   IInstallContext,
 } from '../installer';
-import type { AlwaysScript, OnceScript } from '../shell';
 import type { IInstallParamsRegistry, ToolConfig } from '../types';
 import type { ICompletionContext } from './ICompletionContext';
 
@@ -218,16 +217,14 @@ export interface IShellConfigurator {
 
   /**
    * Adds a script to be executed once during shell initialization.
-   * @param script - The script content or OnceScript object.
+   * @param script - The script content.
    */
-  once(script: OnceScript): IShellConfigurator;
   once(script: string): IShellConfigurator;
 
   /**
    * Adds a script to be executed always during shell initialization.
-   * @param script - The script content or AlwaysScript object.
+   * @param script - The script content.
    */
-  always(script: AlwaysScript): IShellConfigurator;
   always(script: string): IShellConfigurator;
 
   /**

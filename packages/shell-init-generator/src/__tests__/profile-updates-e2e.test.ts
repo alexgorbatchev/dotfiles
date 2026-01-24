@@ -59,20 +59,20 @@ describe('Profile Updates E2E Tests', () => {
           shellConfigs: {
             zsh: {
               scripts: [
-                always`alias g="lazygit"`,
-                always`export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"`,
+                always(`alias g="lazygit"`),
+                always(`export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"`),
               ],
             },
             bash: {
               scripts: [
-                always`alias g="lazygit"`,
-                always`export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"`,
+                always(`alias g="lazygit"`),
+                always(`export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"`),
               ],
             },
             powershell: {
               scripts: [
-                always`Set-Alias g lazygit`,
-                always`$env:LAZYGIT_CONFIG_FILE = "$HOME/.config/lazygit/config.yml"`,
+                always(`Set-Alias g lazygit`),
+                always(`$env:LAZYGIT_CONFIG_FILE = "$HOME/.config/lazygit/config.yml"`),
               ],
             },
           },
@@ -88,15 +88,15 @@ describe('Profile Updates E2E Tests', () => {
           shellConfigs: {
             zsh: {
               scripts: [
-                always`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`,
-                always`export PATH="$HOME/.fzf/bin:$PATH"`,
+                always(`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`),
+                always(`export PATH="$HOME/.fzf/bin:$PATH"`),
               ],
               completions: { source: 'completion.zsh', name: '_fzf' },
             },
             bash: {
               scripts: [
-                always`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`,
-                always`export PATH="$HOME/.fzf/bin:$PATH"`,
+                always(`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`),
+                always(`export PATH="$HOME/.fzf/bin:$PATH"`),
               ],
               completions: { source: 'completion.bash', name: 'fzf' },
             },
@@ -257,8 +257,8 @@ describe('Profile Updates E2E Tests', () => {
           binaries: ['test-tool'],
           version: '1.0.0',
           shellConfigs: {
-            zsh: { scripts: [always`export TEST_VAR="value"`] },
-            bash: { scripts: [always`export TEST_VAR="value"`] },
+            zsh: { scripts: [always(`export TEST_VAR="value"`)] },
+            bash: { scripts: [always(`export TEST_VAR="value"`)] },
           },
           installationMethod: 'manual',
           installParams: {},
@@ -341,7 +341,7 @@ describe('Profile Updates E2E Tests', () => {
           binaries: ['custom'],
           version: '1.0.0',
           shellConfigs: {
-            zsh: { scripts: [always`export CUSTOM_VAR="test"`] },
+            zsh: { scripts: [always(`export CUSTOM_VAR="test"`)] },
           },
           installationMethod: 'manual',
           installParams: {},
@@ -387,18 +387,18 @@ describe('Profile Updates E2E Tests', () => {
           shellConfigs: {
             zsh: {
               scripts: [
-                always`export EDITOR="nvim"`,
-                always`export VISUAL="nvim"`,
-                always`alias vim="nvim"`,
-                always`alias vi="nvim"`,
+                always(`export EDITOR="nvim"`),
+                always(`export VISUAL="nvim"`),
+                always(`alias vim="nvim"`),
+                always(`alias vi="nvim"`),
               ],
             },
             bash: {
               scripts: [
-                always`export EDITOR="nvim"`,
-                always`export VISUAL="nvim"`,
-                always`alias vim="nvim"`,
-                always`alias vi="nvim"`,
+                always(`export EDITOR="nvim"`),
+                always(`export VISUAL="nvim"`),
+                always(`alias vim="nvim"`),
+                always(`alias vi="nvim"`),
               ],
             },
           },
@@ -414,14 +414,14 @@ describe('Profile Updates E2E Tests', () => {
           shellConfigs: {
             zsh: {
               scripts: [
-                always`export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"`,
-                always`export PATH="$HOME/.cargo/bin:$PATH"`,
+                always(`export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"`),
+                always(`export PATH="$HOME/.cargo/bin:$PATH"`),
               ],
             },
             bash: {
               scripts: [
-                always`export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"`,
-                always`export PATH="$HOME/.cargo/bin:$PATH"`,
+                always(`export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"`),
+                always(`export PATH="$HOME/.cargo/bin:$PATH"`),
               ],
             },
           },
@@ -436,11 +436,11 @@ describe('Profile Updates E2E Tests', () => {
           version: '0.24.0',
           shellConfigs: {
             zsh: {
-              scripts: [always`export BAT_THEME="ansi"`, always`alias cat="bat"`],
+              scripts: [always(`export BAT_THEME="ansi"`), always(`alias cat="bat"`)],
               completions: { source: 'bat.zsh', name: '_bat' },
             },
             bash: {
-              scripts: [always`export BAT_THEME="ansi"`, always`alias cat="bat"`],
+              scripts: [always(`export BAT_THEME="ansi"`), always(`alias cat="bat"`)],
               completions: { source: 'bat.bash', name: 'bat' },
             },
           },

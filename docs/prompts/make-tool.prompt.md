@@ -175,8 +175,8 @@ install('github-release', { repo: 'owner/tool' })
 
 **Script Timing**:
 
-- `.always(template)` - Runs every time shell starts (fast operations only)
-- `.once(template)` - Runs only once after install/update (expensive operations)
+- `.always(script)` - Runs every time shell starts (fast operations only)
+- `.once(script)` - Runs only once after install/update (expensive operations)
 - `.functions(record)` - Define shell functions with HOME override for isolation
 
 **Shell Configurator Methods**:

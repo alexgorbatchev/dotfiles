@@ -22,7 +22,7 @@ describe('ShellInitGenerator - Configurable Profiles', () => {
       name: 'testTool',
       binaries: ['tt'],
       version: '1.0.0',
-      shellConfigs: { zsh: { scripts: [always`export TEST_VAR="hello"`] } },
+      shellConfigs: { zsh: { scripts: [always(`export TEST_VAR="hello"`)] } },
       installationMethod: 'manual',
       installParams: {},
     },

@@ -50,7 +50,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           name: 'aerospace',
           version: 'latest',
           installationMethod: 'manual',
-          shellConfigs: { zsh: { scripts: [always`# Base aerospace init`] } },
+          shellConfigs: { zsh: { scripts: [always(`# Base aerospace init`)] } },
           platformConfigs: [
             {
               platforms: Platform.MacOS,
@@ -59,8 +59,8 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
                 shellConfigs: {
                   zsh: {
                     scripts: [
-                      always`# macOS aerospace init`,
-                      always`export AEROSPACE_CONFIG="~/.config/aerospace/aerospace.toml"`,
+                      always(`# macOS aerospace init`),
+                      always(`export AEROSPACE_CONFIG="~/.config/aerospace/aerospace.toml"`),
                     ],
                   },
                 },
@@ -101,12 +101,12 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           name: 'aerospace',
           version: 'latest',
           installationMethod: 'manual',
-          shellConfigs: { zsh: { scripts: [always`# Base aerospace init`] } },
+          shellConfigs: { zsh: { scripts: [always(`# Base aerospace init`)] } },
           platformConfigs: [
             {
               platforms: Platform.MacOS, // Only for macOS
               config: {
-                shellConfigs: { zsh: { scripts: [always`# macOS-only aerospace init`] } },
+                shellConfigs: { zsh: { scripts: [always(`# macOS-only aerospace init`)] } },
                 binaries: ['aerospace'],
               },
             },
@@ -142,18 +142,18 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           name: 'multi-platform-tool',
           version: 'latest',
           installationMethod: 'manual',
-          shellConfigs: { zsh: { scripts: [always`# Base init`] } },
+          shellConfigs: { zsh: { scripts: [always(`# Base init`)] } },
           platformConfigs: [
             {
               platforms: Platform.Unix, // Matches both Linux and macOS
               config: {
-                shellConfigs: { zsh: { scripts: [always`# Unix common init`] } },
+                shellConfigs: { zsh: { scripts: [always(`# Unix common init`)] } },
               },
             },
             {
               platforms: Platform.MacOS,
               config: {
-                shellConfigs: { zsh: { scripts: [always`# macOS specific init`] } },
+                shellConfigs: { zsh: { scripts: [always(`# macOS specific init`)] } },
                 binaries: ['macos-tool'],
               },
             },
@@ -204,13 +204,13 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           name: 'arch-specific-tool',
           version: 'latest',
           installationMethod: 'manual',
-          shellConfigs: { zsh: { scripts: [always`# Base init`] } },
+          shellConfigs: { zsh: { scripts: [always(`# Base init`)] } },
           platformConfigs: [
             {
               platforms: Platform.MacOS,
               architectures: Architecture.Arm64,
               config: {
-                shellConfigs: { zsh: { scripts: [always`# macOS ARM64 init`] } },
+                shellConfigs: { zsh: { scripts: [always(`# macOS ARM64 init`)] } },
                 binaries: ['arm64-tool'],
               },
             },
@@ -218,7 +218,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
               platforms: Platform.MacOS,
               architectures: Architecture.X86_64,
               config: {
-                shellConfigs: { zsh: { scripts: [always`# macOS x86_64 init`] } },
+                shellConfigs: { zsh: { scripts: [always(`# macOS x86_64 init`)] } },
                 binaries: ['x64-tool'],
               },
             },
@@ -263,12 +263,12 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           installationMethod: 'github-release',
           installParams: { repo: 'test/repo' },
           binaries: ['platform-tool'],
-          shellConfigs: { zsh: { scripts: [always`# Base init only`] } },
+          shellConfigs: { zsh: { scripts: [always(`# Base init only`)] } },
           platformConfigs: [
             {
               platforms: Platform.MacOS,
               config: {
-                shellConfigs: { zsh: { scripts: [always`# This should not appear`] } },
+                shellConfigs: { zsh: { scripts: [always(`# This should not appear`)] } },
               },
             },
           ],
@@ -353,18 +353,18 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           installationMethod: 'github-release',
           installParams: { repo: 'test/regular' },
           binaries: ['regular'],
-          shellConfigs: { zsh: { scripts: [always`# Regular tool init`] } },
+          shellConfigs: { zsh: { scripts: [always(`# Regular tool init`)] } },
         },
         'platform-tool': {
           name: 'platform-tool',
           version: 'latest',
           installationMethod: 'manual',
-          shellConfigs: { zsh: { scripts: [always`# Base platform init`] } },
+          shellConfigs: { zsh: { scripts: [always(`# Base platform init`)] } },
           platformConfigs: [
             {
               platforms: Platform.MacOS,
               config: {
-                shellConfigs: { zsh: { scripts: [always`# macOS platform init`] } },
+                shellConfigs: { zsh: { scripts: [always(`# macOS platform init`)] } },
                 binaries: ['macos-platform'],
               },
             },
@@ -378,7 +378,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
             {
               platforms: Platform.Linux,
               config: {
-                shellConfigs: { zsh: { scripts: [always`# Linux only - should not appear`] } },
+                shellConfigs: { zsh: { scripts: [always(`# Linux only - should not appear`)] } },
                 binaries: ['linux-only'],
               },
             },
