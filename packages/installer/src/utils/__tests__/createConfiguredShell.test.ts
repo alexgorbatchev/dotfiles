@@ -1,17 +1,13 @@
-import { type $extended, createShell } from '@dotfiles/core';
-import { extendedShellBrand } from '@dotfiles/core';
+import { createShell, type Shell } from '@dotfiles/core';
 import { describe, expect, it } from 'bun:test';
 import { createConfiguredShell } from '../createConfiguredShell';
 
 describe('createConfiguredShell', () => {
-  it('should return a branded $extended type', () => {
+  it('should return a Shell type', () => {
     const shell = createConfiguredShell(createShell(), {});
 
-    // Verify it has the extended shell brand
-    expect(extendedShellBrand in shell).toBe(true);
-
-    // Type-level assertion: this line would fail to compile if shell is not $extended
-    const _typeCheck: $extended = shell;
+    // Type-level assertion: this line would fail to compile if shell is not Shell
+    const _typeCheck: Shell = shell;
     expect(_typeCheck).toBeDefined();
   });
 

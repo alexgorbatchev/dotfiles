@@ -1,5 +1,4 @@
 import {
-  type $extended,
   type AsyncInstallHook,
   createLoggingShell,
   createShell,
@@ -7,6 +6,7 @@ import {
   type IInstallBaseContext,
   type IOperationFailure,
   type IOperationSuccess,
+  type Shell,
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -26,8 +26,8 @@ function isShellError(error: unknown): boolean {
 
 export type HookHandler<TContext extends IInstallBaseContext = IInstallBaseContext> = AsyncInstallHook<TContext>;
 
-function createToolConfigCwdShell($shell: $extended, cwdPath: string): $extended {
-  const configuredShell: $extended = Object.assign((strings: TemplateStringsArray, ...expressions: unknown[]) => {
+function createToolConfigCwdShell($shell: Shell, cwdPath: string): Shell {
+  const configuredShell: Shell = Object.assign((strings: TemplateStringsArray, ...expressions: unknown[]) => {
     const shellPromise = $shell(strings, ...expressions).cwd(cwdPath);
     return shellPromise;
   }, $shell);
@@ -48,7 +48,7 @@ function createToolConfigCwdShell($shell: $extended, cwdPath: string): $extended
  * @param additionalPaths - Array of directory paths to prepend to PATH
  * @returns A new shell instance with enhanced PATH
  */
-function createShellWithEnhancedPath($shell: $extended, additionalPaths: string[]): $extended {
+function createShellWithEnhancedPath($shell: Shell, additionalPaths: string[]): Shell {
   if (additionalPaths.length === 0) {
     return $shell;
   }
@@ -63,7 +63,7 @@ function createShellWithEnhancedPath($shell: $extended, additionalPaths: string[
     PATH: enhancedPath,
   };
 
-  const configuredShell: $extended = Object.assign((strings: TemplateStringsArray, ...expressions: unknown[]) => {
+  const configuredShell: Shell = Object.assign((strings: TemplateStringsArray, ...expressions: unknown[]) => {
     // Build the command string from the template literal
     // Bun shell escapes ${} expressions, so we reconstruct the intended command
     let command = strings[0] || '';
@@ -298,13 +298,13 @@ export class HookExecutor {
 
     // Determine starting shell - if logger provided and no existing logging, use streaming shell
     // skipCommandLog: true means this shell only streams output, command logging happens in wrapper
-    let enhancedShell: $extended = baseContext.$;
+    let enhancedShell: Shell = baseContext.$;
     const needsLogging = logger && !hasLoggingShell(baseContext.$);
 
     if (needsLogging) {
       // Create a fresh shell with logger for real-time output streaming
       // skipCommandLog: true because the logging wrapper will log the original command
-      enhancedShell = createShell({ logger, skipCommandLog: true }) as unknown as $extended;
+      enhancedShell = createShell({ logger, skipCommandLog: true });
     }
 
     // Add binary directories to PATH if present

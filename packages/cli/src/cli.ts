@@ -5,7 +5,7 @@ import { ConfigService, loadConfig, type ProjectConfig } from '@dotfiles/config'
 import type { ISystemInfo } from '@dotfiles/core';
 import {
   architectureFromNodeJS,
-  createExtendedShell,
+  createShell,
   InstallerPluginRegistry,
   platformFromNodeJS,
 } from '@dotfiles/core';
@@ -333,7 +333,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const systemLogger = parentLogger.getSubLogger({ context: 'system' });
 
   // Create shell instance for all components
-  const shell = createExtendedShell();
+  const shell = createShell();
 
   const shimGenerator = new ShimGenerator(systemLogger, shimTrackedFs, projectConfig);
   const shellInitGenerator = new ShellInitGenerator(systemLogger, shellInitTrackedFs, projectConfig);

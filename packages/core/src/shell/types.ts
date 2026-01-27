@@ -61,13 +61,4 @@ export interface Shell {
   (command: string): ShellCommand;
 }
 
-export const extendedShellBrand: unique symbol = Symbol('extendedShellBrand');
 export const loggingShellBrand: unique symbol = Symbol('loggingShellBrand');
-
-/**
- * A configured shell instance with brand symbols for type checking.
- * This is now an alias for Shell with brand symbols during migration.
- */
-export type $extended = Shell & {
-  readonly [extendedShellBrand]: true;
-};

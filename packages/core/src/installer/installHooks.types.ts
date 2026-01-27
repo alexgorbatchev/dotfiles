@@ -2,7 +2,7 @@ import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IBaseToolContext } from '../common/baseToolContext.types';
 import type { ProjectConfig } from '../config';
-import type { $extended } from '../shell/types';
+import type { Shell } from '../shell/types';
 import type { IExtractResult } from './archive.types';
 
 /**
@@ -50,7 +50,7 @@ export interface IInstallBaseContext extends IBaseToolContext {
    * Use the `$` tagged template literal to execute shell commands within hooks.
    * The working directory can be changed using `cd` commands or `process.chdir()`.
    */
-  $: $extended;
+  $: Shell;
 
   /**
    * An instance of the file system for performing file operations.

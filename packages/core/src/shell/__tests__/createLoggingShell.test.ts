@@ -1,5 +1,5 @@
 import { TestLogger } from '@dotfiles/logger';
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { beforeEach, describe, it } from 'bun:test';
 import { createLoggingShell } from '../createLoggingShell';
 import { createShell } from '../createShell';
 import type { Shell } from '../types';
@@ -50,13 +50,5 @@ describe('createLoggingShell (wrapping)', () => {
     await loggingShell`echo ${args}`.quiet();
 
     logger.expect(['INFO'], ['ShellTest'], [], ['$ echo arg1 arg2 arg3']);
-  });
-
-  it('adds brand symbols to wrapped shell', async () => {
-    const loggingShell = createLoggingShell(baseShell, logger);
-
-    // Verify brands are set (used by hasLoggingShell)
-    expect(Symbol.for('extendedShellBrand') in loggingShell || 'extendedShellBrand' in loggingShell).toBe(false);
-    // The actual brand symbols are non-enumerable, check via duck typing in real usage
   });
 });

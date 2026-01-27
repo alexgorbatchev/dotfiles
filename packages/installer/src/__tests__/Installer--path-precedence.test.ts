@@ -1,6 +1,5 @@
 import type { ProjectConfig } from '@dotfiles/config';
 import {
-  type $extended,
   Architecture,
   createShell,
   InstallerPluginRegistry,
@@ -128,7 +127,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
       systemInfo,
       registry,
       symlinkGenerator,
-      createShell() as unknown as $extended,
+      createShell(),
       hookExecutor,
     );
 

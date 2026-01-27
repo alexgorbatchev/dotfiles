@@ -1,6 +1,5 @@
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
-  $extended,
   AsyncInstallHook,
   IAfterInstallContext,
   IInstallBaseContext,
@@ -9,6 +8,7 @@ import type {
   InstallEvent,
   ISystemInfo,
   PluginEmittedHookEvent,
+  Shell,
   ToolConfig,
 } from '@dotfiles/core';
 import { createToolConfigContext } from '@dotfiles/core';
@@ -157,7 +157,7 @@ export class Installer implements IInstaller {
   private readonly systemInfo: ISystemInfo;
   private readonly registry: InstallerPluginRegistry;
   private readonly symlinkGenerator: ISymlinkGenerator;
-  private readonly $: $extended;
+  private readonly $: Shell;
   private currentToolConfig?: ToolConfig;
 
   constructor(
@@ -169,7 +169,7 @@ export class Installer implements IInstaller {
     systemInfo: ISystemInfo,
     registry: InstallerPluginRegistry,
     symlinkGenerator: ISymlinkGenerator,
-    $shell: $extended,
+    $shell: Shell,
     hookExecutor: HookExecutor,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
@@ -950,7 +950,7 @@ export class Installer implements IInstaller {
     timestamp: string,
     toolConfig: ToolConfig,
     parentLogger: TsLogger,
-    $shell: $extended = createConfiguredShell(this.$, process.env),
+    $shell: Shell = createConfiguredShell(this.$, process.env),
   ): ICreateBaseInstallContextResult {
     const methodLogger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
 

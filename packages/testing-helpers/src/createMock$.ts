@@ -1,4 +1,4 @@
-import { extendedShellBrand, type Shell, type ShellCommand } from '@dotfiles/core';
+import { type Shell, type ShellCommand } from '@dotfiles/core';
 
 export interface IMockShellExtensions {
   reset(): void;
@@ -13,13 +13,9 @@ export interface IMockShellResponse {
   shouldThrow?: boolean;
 }
 
-export type MockShell =
-  & Shell
-  & IMockShellExtensions
-  & {
-    (command: string): ShellCommand;
-    readonly [extendedShellBrand]: true;
-  };
+export type MockShell = Shell & IMockShellExtensions & {
+  (command: string): ShellCommand;
+};
 
 function reconstructCommand(pieces: TemplateStringsArray | string, args: unknown[]): string {
   if (typeof pieces === 'string') {
@@ -125,7 +121,6 @@ export function createMock$(): MockShell {
     mockResponse: (command: string, response: IMockShellResponse) => {
       responses.set(command, response);
     },
-    [extendedShellBrand]: true as const,
   });
 
   // Use type assertion to make it compatible

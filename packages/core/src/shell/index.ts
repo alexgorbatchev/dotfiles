@@ -1,4 +1,3 @@
-export * from './createExtendedShell';
 export * from './createLoggingShell';
 export * from './createShell';
 export * from './hasLoggingShell';

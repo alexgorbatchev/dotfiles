@@ -1,9 +1,9 @@
 import {
-  type $extended,
   Architecture,
   type AsyncInstallHook,
   type IInstallContext,
   Platform,
+  type Shell,
   type ToolConfig,
 } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
@@ -228,7 +228,7 @@ describe('HookExecutor', () => {
   describe('$ shell executor functionality', () => {
     it('should provide $ instance to hooks that can execute shell commands', async () => {
       const { context: baseContext } = createTestInstallHookContext({});
-      let capturedDollar: $extended | undefined;
+      let capturedDollar: Shell | undefined;
 
       const hookThatUsesShell = mock(async (ctx: IInstallContext) => {
         capturedDollar = ctx.$;
@@ -263,7 +263,7 @@ describe('HookExecutor', () => {
         toolConfig: mockToolConfig,
       };
 
-      let receivedDollar: $extended | undefined;
+      let receivedDollar: Shell | undefined;
 
       const hook = mock(async (ctx: IInstallContext) => {
         receivedDollar = ctx.$;
