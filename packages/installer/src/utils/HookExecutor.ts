@@ -48,20 +48,26 @@ function createToolConfigCwdShell($shell: Shell, cwdPath: string): Shell {
  * @param $shell - The base shell instance to wrap
  * @param additionalPaths - Array of directory paths to prepend to PATH
  * @param platform - The target platform
+ * @param baseEnv - Base environment to use (preserves recursion guard and other install-time env vars)
  * @returns A new shell instance with enhanced PATH
  */
-function createShellWithEnhancedPath($shell: Shell, additionalPaths: string[], platform: Platform): Shell {
+function createShellWithEnhancedPath(
+  $shell: Shell,
+  additionalPaths: string[],
+  platform: Platform,
+  baseEnv: Record<string, string | undefined>,
+): Shell {
   if (additionalPaths.length === 0) {
     return $shell;
   }
 
   const pathSeparator = platform === Platform.Windows ? ';' : ':';
-  const currentPath = process.env['PATH'] || '';
+  const currentPath = baseEnv['PATH'] || '';
   const enhancedPath = [...additionalPaths, currentPath].join(pathSeparator);
 
-  // Merge the enhanced PATH with current process.env to preserve all environment variables
+  // Merge the enhanced PATH with baseEnv to preserve recursion guard and other install-time env vars
   const enhancedEnv: Record<string, string | undefined> = {
-    ...process.env,
+    ...baseEnv,
     PATH: enhancedPath,
   };
 
@@ -313,8 +319,10 @@ export class HookExecutor {
     }
 
     // Add binary directories to PATH if present
+    // Use installEnv if available (preserves recursion guard), otherwise fall back to process.env
+    const baseEnv: Record<string, string | undefined> = baseContext.installEnv ?? process.env;
     if (binaryDirs.length > 0) {
-      enhancedShell = createShellWithEnhancedPath(enhancedShell, binaryDirs, baseContext.systemInfo.platform);
+      enhancedShell = createShellWithEnhancedPath(enhancedShell, binaryDirs, baseContext.systemInfo.platform, baseEnv);
     }
 
     // Set working directory to tool config directory if available
