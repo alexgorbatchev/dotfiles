@@ -153,7 +153,7 @@ install('github-release', { repo: 'owner/tool' })
         ts: 'tool status',
       })
       .completions('_tool') // Relative path resolves to toolDir/_tool
-      .source('init.zsh') // Relative path resolves to toolDir/init.zsh (skips if missing)
+      .sourceFile('init.zsh') // Relative path resolves to toolDir/init.zsh (skips if missing)
       .always(/* zsh */ `
         # Fast runtime setup (runs every shell startup)
         ...
@@ -169,7 +169,8 @@ install('github-release', { repo: 'owner/tool' })
 >
 > - ❌ **BAD**: Running `eval "$(tool init)"` in `.always()` - executes on every shell start
 > - ✅ **GOOD**: Using `.completions({ cmd: '...' })` - generates static file once, sources it at startup
-> - ✅ **GOOD**: Using `after-install` hook to generate static files, then `.source()` to load them
+> - ✅ **GOOD**: Using `after-install` hook to generate static files, then `.sourceFile()` to load them
+> - ✅ **GOOD**: Using `.functions()` with `.sourceFunction()` - defines function once, sources its output at startup
 >
 > If a tool requires dynamic initialization (e.g., `eval "$(tool init)"`), generate the output to a static file in the `after-install` hook and source that file instead.
 
@@ -184,7 +185,8 @@ install('github-release', { repo: 'owner/tool' })
 - `.environment(record)` - Set environment variables
 - `.aliases(record)` - Set command aliases
 - `.completions(path | config)` - Set command completions
-- `.source(path)` - Source a file (skips if missing)
+- `.sourceFile(path)` - Source a file (skips if missing)
+- `.sourceFunction(fnName)` - Source output of a function defined via `.functions()`
 - `.always(script)` - Fast runtime setup scripts
 - `.once(script)` - Expensive one-time setup scripts
 - `.functions(record)` - Define shell functions with HOME isolation
@@ -230,7 +232,7 @@ install('github-release', { repo: 'owner/tool' })
 - **Absolute paths** → used as-is
 - **For archive files** → use `ctx.currentDir` to build absolute paths
 
-**Functions Syntax**:
+**Functions and sourceFunction Syntax**:
 
 ```ts
 // Define shell functions with HOME isolation
@@ -242,9 +244,19 @@ install('github-release', { repo: 'owner/tool' })
     TOOL_CONFIG="${ctx.toolDir}/config.yaml" tool "$@"
   `,
 })
+
+// Source output of a function defined via .functions()
+// Useful for tools that require `eval "$(tool init)"` style initialization
+.functions({
+  initTool: 'tool env --use-on-cd',
+})
+.sourceFunction('initTool')
+// Generates: source <(initTool) in bash/zsh, . (initTool) in PowerShell
 ```
 
 Functions defined via `.functions()` automatically run in a subshell with `HOME` set to the project's home directory. This provides isolation and ensures the function uses the correct configuration paths. Use this for wrapper functions that need consistent environment behavior.
+
+**sourceFunction** is type-safe: you can only pass function names that were defined via `.functions()` earlier in the chain. This pattern is ideal for tools requiring dynamic initialization like `fnm`, `zoxide`, or `pyenv`.
 
 Reference: [Shell Integration Guide](<root>/docs/shell-integration.md) and [Completions Guide](<root>/docs/completions.md)
 
@@ -442,7 +454,7 @@ export default defineTool((install) =>
         })
         .aliases({ f: 'fzf' })
         .completions('completion.zsh') // Resolves to ctx.toolDir/completion.zsh
-        .source('key-bindings.zsh') // Resolves to ctx.toolDir/key-bindings.zsh
+        .sourceFile('key-bindings.zsh') // Resolves to ctx.toolDir/key-bindings.zsh
     )
 );
 ```
@@ -598,7 +610,7 @@ export default defineTool((install) =>
 - ✅ Use `ctx.toolDir` for files next to `.tool.ts` (tool configuration directory)
 - ✅ Use `ctx.currentDir` for installed assets (stable symlink to versioned directory)
 - ✅ For symlink targets and environment variables: use `~/` (tilde expansion is automatic)
-- ✅ All relative paths (`.completions()`, `.source()`, `.symlink()`) resolve to `toolDir`
+- ✅ All relative paths (`.completions()`, `.sourceFile()`, `.symlink()`) resolve to `toolDir`
 - ✅ For archive files, use `ctx.currentDir` to build absolute paths
 - ✅ Never use hardcoded absolute paths like `/home/user/...`
 

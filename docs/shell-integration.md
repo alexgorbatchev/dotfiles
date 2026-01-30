@@ -26,7 +26,8 @@ For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), u
     .aliases({ t: 'tool' })             // Shell aliases
     .functions({ myFunc: 'cmd' })       // Shell functions with HOME override
     .completions('completions/_tool')   // Completion file path
-    .source('shell/init.zsh')           // Source a file (skips if missing)
+    .sourceFile('shell/init.zsh')       // Source a file (skips if missing)
+    .sourceFunction('myFunc')           // Source output of a function (source <(myFunc))
     .always(`eval "$(tool init)"`)      // Run every shell startup
     .once(`tool gen-completions`)       // Run once after install
 )
@@ -81,7 +82,56 @@ my-command() {
 This is useful when you need functions that should operate with the sandboxed
 HOME environment, similar to `always()` and `once()` scripts.
 
-````
+## Sourcing Files and Functions
+
+### `.sourceFile()` - Source a Script File
+
+Source a script file during shell initialization. If the file doesn't exist, it's silently skipped.
+
+```typescript
+.zsh((shell) =>
+  shell
+    .sourceFile('init.zsh')                    // Relative to toolDir
+    .sourceFile(`${ctx.currentDir}/shell.zsh`) // Absolute path for installed archives
+)
+```
+
+- **Relative paths** → resolve to `toolDir` (directory containing `.tool.ts`)
+- **Absolute paths** → used as-is
+- The file existence is checked at shell startup
+
+### `.sourceFunction()` - Source Function Output
+
+Source the output of a shell function defined via `.functions()`. This is ideal for tools requiring dynamic initialization (e.g., `eval "$(tool init)"`).
+
+```typescript
+.zsh((shell) =>
+  shell
+    .functions({
+      initFnm: 'fnm env --use-on-cd',
+    })
+    .sourceFunction('initFnm')
+)
+```
+
+**Generated output (zsh/bash):**
+
+```zsh
+initFnm() {
+  (
+    HOME="/configured/home/path"
+    fnm env --use-on-cd
+  )
+}
+source <(initFnm)
+```
+
+**Key differences from `.always()`:**
+
+- `.sourceFunction()` sources the function's stdout as shell code
+- No subshell wrapper - the sourced code runs in the current shell
+- Type-safe: only accepts function names defined via `.functions()`
+
 ## Script Timing
 
 ### `.always()` - Every Shell Startup

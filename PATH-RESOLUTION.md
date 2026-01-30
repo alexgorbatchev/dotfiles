@@ -18,7 +18,7 @@ The `IToolConfigContext` (passed as `ctx` in `defineTool`) provides:
 
 **All relative paths are resolved against `toolDir`** (the directory containing the `.tool.ts` file).
 
-### 1. Shell `.source(path)`
+### 1. Shell `.sourceFile(path)`
 
 **File**: `packages/tool-config-builder/src/ShellConfigurator.ts`
 
@@ -33,11 +33,11 @@ The `IToolConfigContext` (passed as `ctx` in `defineTool`) provides:
 
 ```typescript
 // If tool config is at /home/user/dotfiles/tools/fzf/fzf.tool.ts
-shell.source('./shell/init.zsh');
+shell.sourceFile('./shell/init.zsh');
 // Resolves to: /home/user/dotfiles/tools/fzf/shell/init.zsh
 
 // For files that ship with the installed tool, use ctx.currentDir:
-shell.source(`${ctx.currentDir}/shell/key-bindings.zsh`);
+shell.sourceFile(`${ctx.currentDir}/shell/key-bindings.zsh`);
 ```
 
 ---
@@ -142,7 +142,8 @@ ctx.replaceInFile(`${ctx.currentDir}/config.toml`, /pattern/, 'replacement');
 
 | API Method                | Relative Path Resolution Base           |
 | ------------------------- | --------------------------------------- |
-| `shell.source(path)`      | `toolDir`                               |
+| `shell.sourceFile(path)`  | `toolDir`                               |
+| `shell.sourceFunction(fn)`| No resolution - uses defined function   |
 | `symlink(source, target)` | `toolDir`                               |
 | `completions({ source })` | `toolDir`                               |
 | `manual({ binaryPath })`  | `toolDir`                               |
