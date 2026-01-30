@@ -120,10 +120,15 @@ The function is automatically cleaned up after sourcing to avoid shell pollution
 
 Source the output of a shell function defined via `.functions()`. This is ideal for tools requiring dynamic initialization (e.g., `eval "$(tool init)"`).
 
+**Important**: When a function is used with `.sourceFunction()`, its body must **output shell code to stdout**. This output is then sourced (executed) in the current shell. Common tools like `fnm`, `pyenv`, `rbenv`, and `zoxide` have commands that print shell code for this purpose.
+
 ```typescript
 .zsh((shell) =>
   shell
     .functions({
+      // fnm env --use-on-cd PRINTS shell code like:
+      // export FNM_DIR="/Users/me/.fnm"
+      // export PATH="...fnm/bin:$PATH"
       initFnm: 'fnm env --use-on-cd',
     })
     .sourceFunction('initFnm')

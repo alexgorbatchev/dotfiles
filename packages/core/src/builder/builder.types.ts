@@ -195,12 +195,20 @@ export interface IShellConfigurator<KnownFunctions extends string = never> {
    * Sources the output of a shell function defined via `functions()`.
    * The function must be defined before this call via `.functions({ fnName: '...' })`.
    *
+   * **Important**: When a function is used with `sourceFunction()`, its body must
+   * **output shell code to stdout**. This output is then sourced (executed) in the
+   * current shell. Common tools like `fnm`, `pyenv`, `rbenv`, and `zoxide` have
+   * commands that print shell code for this purpose.
+   *
    * Unlike `sourceFile()`, this does NOT check if the output exists and is NOT wrapped
    * in a subshell. It emits: `source <(fnName)`
    *
    * @param functionName - Name of a function defined via `.functions()`.
    *
    * @example
+   * // fnm env --use-on-cd PRINTS shell code like:
+   * // export FNM_DIR="/Users/me/.fnm"
+   * // export PATH="...fnm/bin:$PATH"
    * shell.functions({ initFnm: 'fnm env --use-on-cd' })
    * shell.sourceFunction('initFnm')
    * // Generates: source <(initFnm)
