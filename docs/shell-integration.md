@@ -165,7 +165,7 @@ For fast inline operations. Runs in a subshell with HOME override:
     eval "$(tool init zsh)"
   `)
 )
-````
+```
 
 ### `.once()` - After Installation
 

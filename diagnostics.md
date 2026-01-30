@@ -5,6 +5,7 @@
 ### Problem Description
 
 An infinite loop can occur during shell initialization when:
+
 1. A tool is marked as "installed" in the registry
 2. The actual binary file is missing
 3. Shell init scripts run completion commands (e.g., `fnm completions --shell zsh`)
@@ -16,6 +17,7 @@ An infinite loop can occur during shell initialization when:
 ### How to Reproduce
 
 #### Setup
+
 ```bash
 # Generate all files including shims and shell init
 bun cli --config=test-project/config.ts generate
@@ -28,6 +30,7 @@ ls -la test-project/.generated/binaries/curl-script--fnm/current/fnm
 ```
 
 #### Trigger the Issue
+
 ```bash
 # Delete the binary but keep the registry entry
 rm -f test-project/.generated/binaries/curl-script--fnm/*/fnm
@@ -42,6 +45,7 @@ echo $?  # 143 = SIGTERM from timeout
 ### Root Cause
 
 The [`CompletionCommandExecutor`](packages/shell-init-generator/src/completion-generator/CompletionCommandExecutor.ts) was running completion commands with:
+
 ```bash
 PATH=${workingDir}:$PATH fnm completions --shell zsh
 ```
@@ -60,13 +64,14 @@ When the binary didn't exist in `workingDir`, the command fell back to the shim 
 #### Unit Tests
 
 Create tests that verify binary validation:
+
 ```typescript
 test('should fail fast when binary does not exist', async () => {
   const workingDir = path.join(tempDir, 'fnm-current');
   fs.mkdirSync(workingDir, { recursive: true });
-  
+
   const executor = new CompletionCommandExecutor(logger, shell);
-  
+
   await expect(
     executor.executeCompletionCommand(
       'fnm completions --shell zsh',
@@ -82,6 +87,7 @@ test('should fail fast when binary does not exist', async () => {
 #### Integration Tests
 
 Test the full flow:
+
 ```bash
 # 1. Clean state
 rm -rf test-project/.generated
@@ -143,6 +149,7 @@ fi
 ### Performance Considerations
 
 The binary existence check uses `command -v` with restricted PATH, which is fast:
+
 ```bash
 PATH=/custom/path command -v binary_name
 ```

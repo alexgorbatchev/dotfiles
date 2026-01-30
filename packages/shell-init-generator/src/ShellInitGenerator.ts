@@ -278,13 +278,16 @@ export class ShellInitGenerator implements IShellInitGenerator {
    * @returns True if content has meaningful data
    */
   private hasContent(content: IShellInitContent): boolean {
+    const hasFunctions = Object.keys(content.functions).length > 0;
     return (
       content.toolInit.length > 0 ||
       content.pathModifications.length > 0 ||
       content.environmentVariables.length > 0 ||
       content.completionSetup.length > 0 ||
       content.onceScripts.length > 0 ||
-      content.alwaysScripts.length > 0
+      content.alwaysScripts.length > 0 ||
+      content.rawScripts.length > 0 ||
+      hasFunctions
     );
   }
 }

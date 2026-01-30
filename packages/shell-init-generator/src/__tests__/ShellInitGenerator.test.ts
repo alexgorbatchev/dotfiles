@@ -1,6 +1,6 @@
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
-import { always, Architecture, Platform } from '@dotfiles/core';
+import { always, Architecture, Platform, raw } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
@@ -456,6 +456,54 @@ describe('ShellInitGenerator', () => {
     expect(content).toContain('export TOOL_A_VAR="set"');
     expect(content).toContain('export TOOL_C_VAR="active"');
   });
+
+  it('should include tools with only rawScripts', async () => {
+    const toolConfigs: Record<string, ToolConfig> = {
+      rawTool: {
+        name: 'rawTool',
+        binaries: [],
+        version: '1.0.0',
+        shellConfigs: {
+          zsh: {
+            scripts: [raw('source <(my-func)')],
+          },
+        },
+        installationMethod: 'manual',
+        installParams: {},
+      },
+    };
+    const result = await generator.generate(toolConfigs);
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+
+    expect(content).toContain('source <(my-func)');
+  });
+
+  it('should include tools with only functions', async () => {
+    const toolConfigs: Record<string, ToolConfig> = {
+      funcTool: {
+        name: 'funcTool',
+        binaries: [],
+        version: '1.0.0',
+        shellConfigs: {
+          zsh: {
+            functions: {
+              'my-custom-func': 'echo "hello from function"',
+            },
+          },
+        },
+        installationMethod: 'manual',
+        installParams: {},
+      },
+    };
+    const result = await generator.generate(toolConfigs);
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+
+    expect(content).toContain('my-custom-func()');
+    expect(content).toContain('echo "hello from function"');
+  });
+
   it('should return null if writeFile fails', async () => {
     const { fs, spies } = await createMemFileSystem();
     spies.writeFile.mockRejectedValueOnce(new Error('Disk full'));

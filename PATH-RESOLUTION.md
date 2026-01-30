@@ -140,15 +140,15 @@ ctx.replaceInFile(`${ctx.currentDir}/config.toml`, /pattern/, 'replacement');
 
 ## Summary Table
 
-| API Method                | Relative Path Resolution Base           |
-| ------------------------- | --------------------------------------- |
-| `shell.sourceFile(path)`  | `toolDir`                               |
-| `shell.sourceFunction(fn)`| No resolution - uses defined function   |
-| `symlink(source, target)` | `toolDir`                               |
-| `completions({ source })` | `toolDir`                               |
-| `manual({ binaryPath })`  | `toolDir`                               |
-| `bin(name, pattern)`      | `installedDir` (at install time)        |
-| `ctx.replaceInFile(path)` | No resolution - absolute paths required |
+| API Method                 | Relative Path Resolution Base           |
+| -------------------------- | --------------------------------------- |
+| `shell.sourceFile(path)`   | `toolDir`                               |
+| `shell.sourceFunction(fn)` | No resolution - uses defined function   |
+| `symlink(source, target)`  | `toolDir`                               |
+| `completions({ source })`  | `toolDir`                               |
+| `manual({ binaryPath })`   | `toolDir`                               |
+| `bin(name, pattern)`       | `installedDir` (at install time)        |
+| `ctx.replaceInFile(path)`  | No resolution - absolute paths required |
 
 ---
 
