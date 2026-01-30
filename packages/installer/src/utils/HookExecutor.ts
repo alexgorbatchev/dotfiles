@@ -296,15 +296,18 @@ export class HookExecutor {
       : [];
     const binaryDirs: string[] = [...new Set(binaryPaths.map((p) => path.dirname(p)))];
 
-    // Determine starting shell - if logger provided and no existing logging, use streaming shell
-    // skipCommandLog: true means this shell only streams output, command logging happens in wrapper
-    let enhancedShell: Shell = baseContext.$;
+    // Create the base shell - if we have a logger and installEnv, create a streaming shell
+    // that will log command output in real-time. Otherwise use the base context's shell.
+    let enhancedShell: Shell;
     const needsLogging = logger && !hasLoggingShell(baseContext.$);
 
-    if (needsLogging) {
-      // Create a fresh shell with logger for real-time output streaming
-      // skipCommandLog: true because the logging wrapper will log the original command
-      enhancedShell = createShell({ logger, skipCommandLog: true });
+    if (needsLogging && baseContext.installEnv) {
+      // Create a new shell with output streaming and the install environment
+      // skipCommandLog: true because createLoggingShell will log the command
+      enhancedShell = createShell({ logger, skipCommandLog: true, env: baseContext.installEnv });
+    } else {
+      // Use the base context's shell (preserves any environment configuration)
+      enhancedShell = baseContext.$;
     }
 
     // Add binary directories to PATH if present
@@ -317,7 +320,8 @@ export class HookExecutor {
       enhancedShell = createToolConfigCwdShell(enhancedShell, toolConfigDirPath);
     }
 
-    // Wrap shell with logging for command logging (output streaming handled by base shell)
+    // Wrap shell with logging for command logging
+    // This wraps the existing shell to preserve its environment configuration
     if (needsLogging) {
       enhancedShell = createLoggingShell(enhancedShell, logger);
     }

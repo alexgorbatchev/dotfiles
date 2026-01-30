@@ -4,21 +4,21 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { createInstallerTestSetup, createManualToolConfig, type IInstallerTestSetup } from './installer-test-helpers';
 
 /**
- * Tests that the recursion guard environment variable is still set during
- * after-install hook execution.
+ * Tests that the recursion guard environment variable is set in the shell environment
+ * during after-install hook execution.
  *
  * BUG: When a .tool.ts file's after-install hook calls a shimmed binary
  * (e.g., `bat --version` to generate completions), it falls into an infinite loop.
  *
- * ROOT CAUSE: The installer's finally block (which cleans up the recursion guard
- * env var DOTFILES_INSTALLING_<TOOL>) runs BEFORE the after-install hook executes.
+ * ROOT CAUSE: The shell environment didn't include the recursion guard env var.
  * This means:
  * 1. After-install hook runs a command like `bat --version`
  * 2. If the shim is in PATH, it gets invoked
- * 3. Shim checks for DOTFILES_INSTALLING_BAT - but it's NOT SET (already deleted!)
+ * 3. Shim checks for DOTFILES_INSTALLING_BAT - but it's NOT SET!
  * 4. Shim tries to install the tool → infinite loop
  *
- * The fix: Keep the recursion guard env var set until AFTER the after-install hook completes.
+ * The fix: Configure the shell with the recursion guard env var so all spawned
+ * processes inherit it. We avoid modifying process.env directly.
  */
 describe('Installer - Recursion Guard During After-Install Hook', () => {
   let setup: IInstallerTestSetup;
@@ -27,17 +27,17 @@ describe('Installer - Recursion Guard During After-Install Hook', () => {
     setup = await createInstallerTestSetup();
   });
 
-  it('should have recursion guard env var set during after-install hook execution', async () => {
+  it('should have recursion guard env var set in shell during after-install hook execution', async () => {
     const toolName = 'my-test-tool';
     const envVarName = 'DOTFILES_INSTALLING_MY_TEST_TOOL';
 
-    let envVarDuringAfterInstallHook: string | undefined;
+    let envVarSeenByShell: string | undefined;
 
-    const afterInstallHook = mock(async (_context: IAfterInstallContext) => {
-      // Capture the recursion guard env var state during hook execution
-      // This env var MUST be set to prevent infinite loops when the hook
-      // calls a shimmed binary (e.g., `tool --generate-completions`)
-      envVarDuringAfterInstallHook = process.env[envVarName];
+    const afterInstallHook = mock(async (context: IAfterInstallContext) => {
+      // Check the shell environment - this is what matters for shim detection.
+      // We use printenv to verify the shell process has the env var set.
+      const result = await context.$`printenv ${envVarName} || true`.quiet();
+      envVarSeenByShell = result.stdout.trim() || undefined;
     });
 
     const toolConfig: ManualToolConfig = createManualToolConfig({
@@ -55,13 +55,12 @@ describe('Installer - Recursion Guard During After-Install Hook', () => {
     // The hook must have been called
     expect(afterInstallHook).toHaveBeenCalledTimes(1);
 
-    // CRITICAL: The recursion guard env var must be set during after-install hook.
-    // If this is undefined, the shim will not detect recursion and will try to
-    // re-install the tool, causing an infinite loop.
-    expect(envVarDuringAfterInstallHook).toBe('true');
+    // CRITICAL: The recursion guard env var must be visible to shell commands.
+    // This is what prevents the shim from triggering re-installation.
+    expect(envVarSeenByShell).toBe('true');
 
-    // After installation completes, the env var should be cleaned up
-    expect(process.env[envVarName]).toBeUndefined();
+    // We no longer modify process.env, so no cleanup assertion needed.
+    // The env var is scoped to the shell environment passed to hooks.
   });
 
   it('should have recursion guard env var set during shell command in after-install hook', async () => {
@@ -98,19 +97,19 @@ describe('Installer - Recursion Guard During After-Install Hook', () => {
     // that might resolve to a shim.
     expect(envVarSeenByShell).toBe('true');
 
-    // After installation completes, the env var should be cleaned up
-    expect(process.env[envVarName]).toBeUndefined();
+    // We no longer modify process.env, so no cleanup assertion needed.
   });
 
-  it('should clean up recursion guard env var even if after-install hook throws', async () => {
+  it('should have recursion guard visible to shell even if after-install hook throws', async () => {
     const toolName = 'failing-hook-tool';
     const envVarName = 'DOTFILES_INSTALLING_FAILING_HOOK_TOOL';
 
-    let envVarDuringHook: string | undefined;
+    let envVarSeenByShell: string | undefined;
 
-    const afterInstallHook = mock(async () => {
-      // Capture the env var state before throwing
-      envVarDuringHook = process.env[envVarName];
+    const afterInstallHook = mock(async (context: IAfterInstallContext) => {
+      // Capture the env var via shell before throwing
+      const result = await context.$`printenv ${envVarName} || true`.quiet();
+      envVarSeenByShell = result.stdout.trim() || undefined;
       throw new Error('Hook failed intentionally');
     });
 
@@ -131,10 +130,9 @@ describe('Installer - Recursion Guard During After-Install Hook', () => {
     // The hook was called
     expect(afterInstallHook).toHaveBeenCalledTimes(1);
 
-    // The env var must have been set during hook execution
-    expect(envVarDuringHook).toBe('true');
+    // The env var must have been visible to shell during hook execution
+    expect(envVarSeenByShell).toBe('true');
 
-    // Env var must be cleaned up regardless of hook failure
-    expect(process.env[envVarName]).toBeUndefined();
+    // We no longer modify process.env, so no cleanup assertion needed.
   });
 });

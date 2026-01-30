@@ -1,4 +1,4 @@
-import type { ToolConfig } from '@dotfiles/core';
+import type { IInstallContext, ToolConfig } from '@dotfiles/core';
 import type { IManualInstallSuccess } from '@dotfiles/installer-manual';
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
@@ -10,7 +10,7 @@ describe('Installer - Recursion Guard', () => {
     setup = await createInstallerTestSetup();
   });
 
-  it('should set the recursion guard environment variable during installation', async () => {
+  it('should set the recursion guard environment variable in shell during installation', async () => {
     const toolName = 'my-test-tool';
     const envVarName = 'DOTFILES_INSTALLING_MY_TEST_TOOL';
 
@@ -21,27 +21,31 @@ describe('Installer - Recursion Guard', () => {
       installParams: {},
     } as unknown as ToolConfig;
 
-    let envVarDuringInstall: string | undefined;
+    let envVarSeenByShell: string | undefined;
 
-    // Mock plugin that captures the environment variable state during execution
-    const installSpy = spyOn(setup.pluginRegistry, 'install').mockImplementation(async () => {
-      envVarDuringInstall = process.env[envVarName];
-      return {
-        success: true,
-        binaryPaths: ['/fake/path'],
-        version: '1.0.0',
-        metadata: { method: 'manual', manualInstall: true },
-      } as IManualInstallSuccess;
-    });
+    // Mock plugin that captures the environment variable state via shell
+    const installSpy = spyOn(setup.pluginRegistry, 'install').mockImplementation(
+      async (_logger, _method, _name, _config, context: IInstallContext) => {
+        // Check the shell environment - this is what shimmed binaries will see
+        const result = await context.$`printenv ${envVarName} || true`.quiet();
+        envVarSeenByShell = result.stdout.trim() || undefined;
+        return {
+          success: true,
+          binaryPaths: ['/fake/path'],
+          version: '1.0.0',
+          metadata: { method: 'manual', manualInstall: true },
+        } as IManualInstallSuccess;
+      },
+    );
 
     // Execute installation
     await setup.installer.install(toolName, toolConfig);
 
-    // Verify the env var was set during execution
-    expect(envVarDuringInstall).toBe('true');
+    // Verify the env var was visible to shell commands
+    expect(envVarSeenByShell).toBe('true');
 
-    // Verify the env var was cleaned up after execution
-    expect(process.env[envVarName]).toBeUndefined();
+    // We no longer modify process.env, so no cleanup assertion needed.
+    // The env var is scoped to the shell environment passed to the context.
 
     // Verify the plugin was actually called
     expect(installSpy).toHaveBeenCalled();
@@ -58,25 +62,27 @@ describe('Installer - Recursion Guard', () => {
       installParams: {},
     } as unknown as ToolConfig;
 
-    let envVarDuringInstall: string | undefined;
+    let envVarSeenByShell: string | undefined;
 
-    spyOn(setup.pluginRegistry, 'install').mockImplementation(async () => {
-      envVarDuringInstall = process.env[envVarName];
-      return {
-        success: true,
-        binaryPaths: ['/fake/path'],
-        version: '1.0.0',
-        metadata: { method: 'manual', manualInstall: true },
-      } as IManualInstallSuccess;
-    });
+    spyOn(setup.pluginRegistry, 'install').mockImplementation(
+      async (_logger, _method, _name, _config, context: IInstallContext) => {
+        const result = await context.$`printenv ${envVarName} || true`.quiet();
+        envVarSeenByShell = result.stdout.trim() || undefined;
+        return {
+          success: true,
+          binaryPaths: ['/fake/path'],
+          version: '1.0.0',
+          metadata: { method: 'manual', manualInstall: true },
+        } as IManualInstallSuccess;
+      },
+    );
 
     await setup.installer.install(toolName, toolConfig);
 
-    expect(envVarDuringInstall).toBe('true');
-    expect(process.env[envVarName]).toBeUndefined();
+    expect(envVarSeenByShell).toBe('true');
   });
 
-  it('should clean up environment variable even if installation fails', async () => {
+  it('should not leak recursion guard to process.env even if installation fails', async () => {
     const toolName = 'failing-tool';
     const envVarName = 'DOTFILES_INSTALLING_FAILING_TOOL';
 
@@ -94,7 +100,7 @@ describe('Installer - Recursion Guard', () => {
     // Execute installation (which will fail)
     await setup.installer.install(toolName, toolConfig);
 
-    // Verify the env var was cleaned up despite the error
+    // Verify process.env was never polluted (since we don't modify it)
     expect(process.env[envVarName]).toBeUndefined();
   });
 });

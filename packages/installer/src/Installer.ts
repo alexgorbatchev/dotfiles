@@ -577,11 +577,23 @@ export class Installer implements IInstaller {
         logger.debug(messages.lifecycle.directoryCreated(stagingDir));
       }
 
-      // Create context for installation hooks
-      // Create a configured shell that automatically includes the current environment variables
-      // This ensures that plugins don't need to manually call .env({ ...process.env })
-      // to pick up the modified PATH and recursion guard variables.
-      const configuredShell = createConfiguredShell(this.$, process.env);
+      // Build installation environment with recursion guard and modified PATH
+      // This environment is passed to the configured shell so all commands inherit it.
+      // We avoid modifying process.env directly as that's a global mutation.
+      const envVarName = `DOTFILES_INSTALLING_${toolName.toUpperCase().replace(/[^A-Z0-9_]/g, '_')}`;
+      const originalPath = process.env['PATH'] || '';
+      const pathSeparator = process.platform === 'win32' ? ';' : ':';
+      const installPath: string = isExternallyManaged ? originalPath : `${stagingDir}${pathSeparator}${originalPath}`;
+
+      const installEnv: Record<string, string | undefined> = {
+        ...process.env,
+        [envVarName]: 'true',
+        PATH: installPath,
+      };
+
+      // Create a configured shell with the installation environment
+      // This ensures plugins and hooks see the recursion guard and modified PATH
+      const configuredShell = createConfiguredShell(this.$, installEnv);
 
       const { context, logger: contextLogger } = this.createBaseInstallContext(
         toolName,
@@ -590,7 +602,10 @@ export class Installer implements IInstaller {
         resolvedToolConfig,
         logger,
         configuredShell,
-      ); // Run beforeInstall hook if defined
+        installEnv,
+      );
+
+      // Run beforeInstall hook if defined
       const beforeInstallResult = await this.executeBeforeInstallHook(
         resolvedToolConfig,
         context,
@@ -602,18 +617,6 @@ export class Installer implements IInstaller {
       }
 
       let result: InstallResult;
-      // Set recursion guard environment variable
-      // Sanitize tool name to ensure valid env var name (replace non-alphanumeric chars with _)
-      const envVarName = `DOTFILES_INSTALLING_${toolName.toUpperCase().replace(/[^A-Z0-9_]/g, '_')}`;
-      process.env[envVarName] = 'true';
-
-      // Prepend stagingDir to PATH to allow scripts/hooks to find the newly installed binary
-      // This prevents recursion (finding the shim) and allows post-install steps to run the tool
-      const originalPath = process.env['PATH'] || '';
-      const pathSeparator = process.platform === 'win32' ? ';' : ':';
-      if (!isExternallyManaged) {
-        process.env['PATH'] = `${stagingDir}${pathSeparator}${originalPath}`;
-      }
 
       try {
         // Install based on the installation method
@@ -645,9 +648,6 @@ export class Installer implements IInstaller {
               p.startsWith(stagingDir) ? p.replace(stagingDir, installedDir) : p
             );
           }
-
-          // Update PATH to point to installedDir instead of stagingDir for after-install hooks
-          process.env['PATH'] = `${installedDir}${pathSeparator}${originalPath}`;
         }
 
         if (result.success && isExternallyManaged) {
@@ -707,11 +707,25 @@ export class Installer implements IInstaller {
             : [];
           const version: string | undefined = 'version' in result ? result.version : undefined;
 
+          // Create after-install environment with PATH pointing to installedDir
+          // This ensures after-install hooks can find the freshly installed binaries
+          const afterInstallPath: string = isExternallyManaged
+            ? originalPath
+            : `${installedDir}${pathSeparator}${originalPath}`;
+          const afterInstallEnv: Record<string, string | undefined> = {
+            ...process.env,
+            [envVarName]: 'true',
+            PATH: afterInstallPath,
+          };
+          const afterInstallShell = createConfiguredShell(this.$, afterInstallEnv);
+
           const afterInstallContext: IAfterInstallContext = {
             ...context,
+            $: afterInstallShell,
             installedDir,
             binaryPaths,
             version,
+            installEnv: afterInstallEnv,
           };
 
           await this.executeAfterInstallHook(resolvedToolConfig, afterInstallContext, toolFs, contextLogger);
@@ -729,15 +743,9 @@ export class Installer implements IInstaller {
           installationMethod: resolvedToolConfig.installationMethod,
         };
         return result;
-      } finally {
-        // Restore PATH
-        if (!isExternallyManaged) {
-          process.env['PATH'] = originalPath;
-        }
-        // Clean up recursion guard - must happen AFTER after-install hooks complete
-        // to prevent infinite loops when hooks call shimmed binaries
-        delete process.env[envVarName];
       }
+      // No finally block needed - we don't modify process.env, so no cleanup required.
+      // The recursion guard and PATH modifications are scoped to the shell environment.
     } catch (error) {
       const errorResult: InstallResult = {
         success: false,
@@ -957,6 +965,7 @@ export class Installer implements IInstaller {
     toolConfig: ToolConfig,
     parentLogger: TsLogger,
     $shell: Shell = createConfiguredShell(this.$, process.env),
+    installEnv?: Record<string, string | undefined>,
   ): ICreateBaseInstallContextResult {
     const methodLogger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
 
@@ -982,13 +991,22 @@ export class Installer implements IInstaller {
       toolConfig,
       $: $shell,
       fileSystem: this.fs,
+      installEnv,
       // Event emitter for plugins to trigger hooks
       emitEvent: async (type: PluginEmittedHookEvent, data: UnknownRecord) => {
         await this.registry.emitEvent({
           type,
           toolName,
           context: {
-            ...this.createBaseInstallContext(toolName, stagingDir, timestamp, toolConfig, parentLogger, $shell).context,
+            ...this.createBaseInstallContext(
+              toolName,
+              stagingDir,
+              timestamp,
+              toolConfig,
+              parentLogger,
+              $shell,
+              installEnv,
+            ).context,
             ...data,
             logger: contextLogger,
           },

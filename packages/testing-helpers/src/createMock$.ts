@@ -38,8 +38,36 @@ function reconstructCommand(pieces: TemplateStringsArray | string, args: unknown
 }
 
 /**
+ * Handles built-in commands like `printenv` by simulating their behavior.
+ * Returns undefined if the command is not a built-in or cannot be handled.
+ */
+function handleBuiltinCommand(
+  command: string,
+  env: Record<string, string | undefined>,
+): string | undefined {
+  // Handle: printenv VAR_NAME || true
+  const printenvMatch = command.match(/^printenv\s+(\S+)(?:\s+\|\|\s+true)?$/);
+  if (printenvMatch) {
+    const varName = printenvMatch[1] ?? '';
+    return env[varName] ?? '';
+  }
+
+  // Handle: echo $VAR_NAME
+  const echoVarMatch = command.match(/^echo\s+\$(\w+)$/);
+  if (echoVarMatch) {
+    const varName = echoVarMatch[1] ?? '';
+    return env[varName] ?? '';
+  }
+
+  return undefined;
+}
+
+/**
  * Creates a mock shell instance that matches the Bun $ interface.
  * This provides a comprehensive mock that can be used in tests that need shell execution.
+ *
+ * The mock shell tracks environment variables set via .env() and uses them to
+ * simulate built-in commands like `printenv`.
  *
  * @returns A mock shell instance compatible with typeof $ and captures commands
  */
@@ -49,11 +77,22 @@ export function createMock$(): MockShell {
   let lastCommand: string | null = null;
 
   // Create a chainable result that supports Shell's ShellCommand methods
-  const createChainableResult = (command: string, shouldNothrow = false): ShellCommand => {
+  const createChainableResult = (
+    command: string,
+    shouldNothrow = false,
+    currentEnv: Record<string, string | undefined> = {},
+  ): ShellCommand => {
     // Check if we have a mocked response for this command
     const mockedResponse: IMockShellResponse | undefined = responses.get(command);
 
-    const stdoutVal = mockedResponse?.stdout !== undefined ? mockedResponse.stdout.toString() : '';
+    // Try to handle built-in commands using the current environment
+    const builtinOutput = handleBuiltinCommand(command, currentEnv);
+
+    const stdoutVal = mockedResponse?.stdout !== undefined
+      ? mockedResponse.stdout.toString()
+      : builtinOutput !== undefined
+      ? builtinOutput
+      : '';
     const stderrVal = mockedResponse?.stderr !== undefined ? mockedResponse.stderr.toString() : '';
     const exitCodeVal = mockedResponse?.code ?? mockedResponse?.exitCode ?? 0;
 
@@ -80,11 +119,13 @@ export function createMock$(): MockShell {
       : Promise.resolve(mockResult);
 
     // Add all ShellCommand methods with proper chaining
+    // The env() method merges new env vars with existing ones
     const chainable = Object.assign(resultPromise, {
-      cwd: (_dir: string) => createChainableResult(command, shouldNothrow),
-      env: (_env: Record<string, string | undefined>) => createChainableResult(command, shouldNothrow),
-      quiet: () => createChainableResult(command, shouldNothrow),
-      noThrow: () => createChainableResult(command, true),
+      cwd: (_dir: string) => createChainableResult(command, shouldNothrow, currentEnv),
+      env: (newEnv: Record<string, string | undefined>) =>
+        createChainableResult(command, shouldNothrow, { ...currentEnv, ...newEnv }),
+      quiet: () => createChainableResult(command, shouldNothrow, currentEnv),
+      noThrow: () => createChainableResult(command, true, currentEnv),
       text: () => Promise.resolve(stdoutVal),
       json: () => Promise.resolve(JSON.parse(stdoutVal || '{}')),
       lines: () => Promise.resolve(stdoutVal.split('\n')),

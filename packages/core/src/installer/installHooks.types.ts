@@ -56,6 +56,15 @@ export interface IInstallBaseContext extends IBaseToolContext {
    * An instance of the file system for performing file operations.
    */
   fileSystem: IFileSystem;
+
+  /**
+   * The installation environment variables.
+   *
+   * This includes the recursion guard and modified PATH for the current installation.
+   * Used internally by HookExecutor to create shells with output streaming while
+   * preserving the installation environment.
+   */
+  installEnv?: Record<string, string | undefined>;
 }
 
 /**

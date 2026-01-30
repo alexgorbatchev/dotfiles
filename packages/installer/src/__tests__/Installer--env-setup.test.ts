@@ -10,7 +10,7 @@ describe('Installer - Environment Setup', () => {
     setup = await createInstallerTestSetup();
   });
 
-  it('should prepend stagingDir to PATH during installation', async () => {
+  it('should prepend stagingDir to PATH in shell environment during installation', async () => {
     const toolName = 'path-test-tool';
     const toolConfig: ToolConfig = {
       name: toolName,
@@ -19,13 +19,15 @@ describe('Installer - Environment Setup', () => {
       installParams: {},
     } as unknown as ToolConfig;
 
-    let pathDuringInstall: string | undefined;
+    let pathSeenByShell: string | undefined;
     let stagingDir: string | undefined;
 
     spyOn(setup.pluginRegistry, 'install').mockImplementation(
       async (_parentLogger, _method, _name, _config, context: IInstallContext) => {
-        pathDuringInstall = process.env['PATH'];
         stagingDir = context.stagingDir;
+        // Check the PATH via shell environment - this is what matters for finding binaries
+        const result = await context.$`printenv PATH || true`.quiet();
+        pathSeenByShell = result.stdout.trim() || undefined;
         return {
           success: true,
           binaryPaths: ['/fake/path'],
@@ -39,11 +41,11 @@ describe('Installer - Environment Setup', () => {
     await setup.installer.install(toolName, toolConfig);
 
     expect(stagingDir).toBeDefined();
-    expect(pathDuringInstall).toBeDefined();
-    expect(pathDuringInstall?.startsWith(stagingDir!)).toBe(true);
-    expect(pathDuringInstall).not.toBe(originalPath);
+    expect(pathSeenByShell).toBeDefined();
+    expect(pathSeenByShell?.startsWith(stagingDir!)).toBe(true);
+    expect(pathSeenByShell).not.toBe(originalPath);
 
-    // Verify PATH is restored
+    // process.env should NOT be modified (we use shell environment instead)
     expect(process.env['PATH']).toBe(originalPath);
   });
 });

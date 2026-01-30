@@ -1,4 +1,4 @@
-import type { ToolConfig } from '@dotfiles/core';
+import type { IInstallContext, ToolConfig } from '@dotfiles/core';
 import type { IManualInstallSuccess } from '@dotfiles/installer-manual';
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
@@ -22,21 +22,24 @@ describe('Installer - Recursion Guard Edge Cases', () => {
       installParams: {},
     } as unknown as ToolConfig;
 
-    let envVarDuringInstall: string | undefined;
+    let envVarSeenByShell: string | undefined;
 
-    spyOn(setup.pluginRegistry, 'install').mockImplementation(async () => {
-      envVarDuringInstall = process.env[envVarName];
-      return {
-        success: true,
-        binaryPaths: ['/fake/path'],
-        version: '1.0.0',
-        metadata: { method: 'manual', manualInstall: true },
-      } as IManualInstallSuccess;
-    });
+    spyOn(setup.pluginRegistry, 'install').mockImplementation(
+      async (_logger, _method, _name, _config, context: IInstallContext) => {
+        const result = await context.$`printenv ${envVarName} || true`.quiet();
+        envVarSeenByShell = result.stdout.trim() || undefined;
+        return {
+          success: true,
+          binaryPaths: ['/fake/path'],
+          version: '1.0.0',
+          metadata: { method: 'manual', manualInstall: true },
+        } as IManualInstallSuccess;
+      },
+    );
 
     await setup.installer.install(toolName, toolConfig);
 
-    expect(envVarDuringInstall).toBe('true');
-    expect(process.env[envVarName]).toBeUndefined();
+    expect(envVarSeenByShell).toBe('true');
+    // We no longer modify process.env
   });
 });
