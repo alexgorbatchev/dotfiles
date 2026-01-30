@@ -55,8 +55,15 @@ export class ShellConfigurator implements IShellConfigurator {
   }
 
   /** @inheritdoc */
-  public source(relativePath: string): IShellConfigurator {
-    const command: string = this.createSourceCommand(relativePath);
+  public sourceFile(relativePath: string): IShellConfigurator {
+    const command: string = this.createSourceFileCommand(relativePath);
+    this.storage.scripts.push(always(command));
+    return this;
+  }
+
+  /** @inheritdoc */
+  public sourceFunction(functionName: string): IShellConfigurator {
+    const command: string = this.createSourceFunctionCommand(functionName);
     this.storage.scripts.push(always(command));
     return this;
   }
@@ -111,8 +118,9 @@ export class ShellConfigurator implements IShellConfigurator {
   /**
    * Creates the appropriate shell command to source a file.
    * Handles shell-specific syntax (e.g., `.` for PowerShell vs `source` for others).
+   * Includes existence check to skip missing files gracefully.
    */
-  private createSourceCommand(relativePath: string): string {
+  private createSourceFileCommand(relativePath: string): string {
     const resolvedPath = this.resolvePath(relativePath);
     const quotedPath = JSON.stringify(resolvedPath);
 
@@ -121,6 +129,18 @@ export class ShellConfigurator implements IShellConfigurator {
     }
 
     return `[[ -f ${quotedPath} ]] && source ${quotedPath}`;
+  }
+
+  /**
+   * Creates the shell command to source the output of a function.
+   * No existence check - the function output is sourced directly.
+   */
+  private createSourceFunctionCommand(functionName: string): string {
+    if (this.shellType === 'powershell') {
+      return `. (${functionName})`;
+    }
+
+    return `source <(${functionName})`;
   }
 
   /**
@@ -143,7 +163,7 @@ export class ShellConfigurator implements IShellConfigurator {
     if (!this.context) {
       const message = messages.configurationFieldRequired(
         'tool context',
-        `Please ensure createInstallFunction receives tool context before using shell.source() for "${this.toolName}"`,
+        `Please ensure createInstallFunction receives tool context before using shell.sourceFile() for "${this.toolName}"`,
       );
       this.logger.error(message);
       throw new Error(message);

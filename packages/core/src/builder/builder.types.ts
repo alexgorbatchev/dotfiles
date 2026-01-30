@@ -185,10 +185,26 @@ export interface IShellConfigurator {
    * @param relativePath - Path to the script file relative to the tool directory.
    *
    * @example
-   * shell.source('init.zsh')
-   * shell.source(`${ctx.currentDir}/shell/init.sh`)
+   * shell.sourceFile('init.zsh')
+   * shell.sourceFile(`${ctx.currentDir}/shell/init.sh`)
    */
-  source(relativePath: string): IShellConfigurator;
+  sourceFile(relativePath: string): IShellConfigurator;
+
+  /**
+   * Sources the output of a shell function defined via `functions()`.
+   * The function must be defined before this call via `.functions({ fnName: '...' })`.
+   *
+   * Unlike `sourceFile()`, this does NOT check if the output exists and is NOT wrapped
+   * in a subshell. It emits: `source "$(fnName)"`
+   *
+   * @param functionName - Name of a function defined via `.functions()`.
+   *
+   * @example
+   * shell.functions({ initFnm: 'fnm env --use-on-cd' })
+   * shell.sourceFunction('initFnm')
+   * // Generates: source "$(initFnm)"
+   */
+  sourceFunction(functionName: string): IShellConfigurator;
 
   /**
    * Configures shell completions from static files or generated dynamically.

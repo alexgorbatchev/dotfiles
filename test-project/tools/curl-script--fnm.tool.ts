@@ -16,7 +16,7 @@ export default defineTool((install, ctx) => {
     .zsh((shell) =>
       shell
         .completions({ cmd: 'fnm completions --shell zsh', bin: 'fnm' })
-        .source(initFile)
-        .source('/path/that/does/not/exist')
+        .sourceFile(initFile)
+        .sourceFile('/path/that/does/not/exist')
     );
 });

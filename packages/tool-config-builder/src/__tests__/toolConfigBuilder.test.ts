@@ -287,10 +287,10 @@ describe('IToolConfigBuilder', () => {
     expect(config.shellConfigs?.zsh?.completions).toBe(testCompletionsCallback);
   });
 
-  test('zsh source generates non-fatal conditional sourcing', () => {
+  test('zsh sourceFile generates non-fatal conditional sourcing', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
 
-    builder.zsh((shell) => shell.source('/path/that/does/not/exist'));
+    builder.zsh((shell) => shell.sourceFile('/path/that/does/not/exist'));
 
     const config = builder.build();
     expect(config.shellConfigs?.zsh?.scripts).toEqual([
@@ -298,14 +298,36 @@ describe('IToolConfigBuilder', () => {
     ]);
   });
 
-  test('bash source generates non-fatal conditional sourcing', () => {
+  test('bash sourceFile generates non-fatal conditional sourcing', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
 
-    builder.bash((shell) => shell.source('/path/that/does/not/exist'));
+    builder.bash((shell) => shell.sourceFile('/path/that/does/not/exist'));
 
     const config = builder.build();
     expect(config.shellConfigs?.bash?.scripts).toEqual([
       always(`[[ -f "/path/that/does/not/exist" ]] && source "/path/that/does/not/exist"`),
+    ]);
+  });
+
+  test('zsh sourceFunction generates source from function output', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.zsh((shell) => shell.sourceFunction('initFnm'));
+
+    const config = builder.build();
+    expect(config.shellConfigs?.zsh?.scripts).toEqual([
+      always(`source <(initFnm)`),
+    ]);
+  });
+
+  test('bash sourceFunction generates source from function output', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.bash((shell) => shell.sourceFunction('initFnm'));
+
+    const config = builder.build();
+    expect(config.shellConfigs?.bash?.scripts).toEqual([
+      always(`source <(initFnm)`),
     ]);
   });
 

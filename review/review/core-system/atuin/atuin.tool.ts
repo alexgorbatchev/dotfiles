@@ -14,6 +14,6 @@ export default defineTool((install, ctx) =>
       shell
         .environment({ ATUIN_CONFIG_DIR: ctx.toolDir })
         .completions({ cmd: 'atuin gen-completions --shell zsh' })
-        .source('./atuin-init.zsh')
+        .sourceFile('./atuin-init.zsh')
     )
 );
