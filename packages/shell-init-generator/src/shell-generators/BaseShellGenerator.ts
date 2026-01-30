@@ -393,6 +393,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
 
   /**
    * Finds which tools contributed a specific item to a content type.
+   * Returns relative paths to the tool config files (e.g., "tools/fly.tool.ts").
    */
   private findSourceTools(
     item: string,
@@ -401,7 +402,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   ): string[] {
     const sourceTools: string[] = [];
 
-    for (const [toolName, content] of toolContents) {
+    for (const [, content] of toolContents) {
       const contentArray = content[contentType];
       if (Array.isArray(contentArray)) {
         // Handle both plain strings and ShellScript branded types
@@ -412,8 +413,10 @@ export abstract class BaseShellGenerator implements IShellGenerator {
           // For ShellScript branded types, compare the content
           return getScriptContent(arrayItem as ShellScript) === item;
         });
-        if (hasMatch) {
-          sourceTools.push(toolName);
+        if (hasMatch && content.configFilePath) {
+          // Return relative path from toolConfigsDir to the config file
+          const relativePath = path.relative(this.projectConfig.paths.toolConfigsDir, content.configFilePath);
+          sourceTools.push(relativePath);
         }
       }
     }
