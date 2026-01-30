@@ -129,7 +129,12 @@ function handleInstallationResult(
     } else {
       // Normal mode: log success message and continue (don't exit)
       const actualMethod = result.installationMethod ?? 'unknown';
-      logger.info(messages.toolInstalled(toolName, result.version ?? 'unknown', actualMethod));
+      const version = result.version ?? 'unknown';
+      if (actualMethod === 'already-installed') {
+        logger.info(messages.toolAlreadyInstalled(toolName, version));
+      } else {
+        logger.info(messages.toolInstalled(toolName, version, actualMethod));
+      }
       return null; // Don't exit on success in normal mode
     }
   } else {

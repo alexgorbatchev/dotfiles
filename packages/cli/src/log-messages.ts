@@ -26,6 +26,8 @@ export const messages = {
   toolNotFound: (toolName: string, source: string) => createSafeLogMessage(`Tool "${toolName}" not found in ${source}`),
   toolInstalled: (toolName: string, version: string, method: string) =>
     createSafeLogMessage(`Tool "${toolName}" v${version} installed successfully using ${method}`),
+  toolAlreadyInstalled: (toolName: string, version: string) =>
+    createSafeLogMessage(`Tool "${toolName}" v${version} is already installed`),
   toolInstallSkippedConfigurationOnly: (toolName: string) =>
     createSafeLogMessage(`Tool "${toolName}" has no installation steps`),
   toolNoConfigurationsFound: (toolConfigsDir: string) =>
