@@ -3,7 +3,7 @@ import type {
   IToolConfigContext,
   ShellCompletionConfigInput,
 } from '@dotfiles/core';
-import { always, once } from '@dotfiles/core';
+import { always, once, raw } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { VALID_FUNCTION_NAME_PATTERN } from '@dotfiles/shell-init-generator';
 import { resolveToolRelativePath } from '@dotfiles/utils';
@@ -15,7 +15,7 @@ import type { IShellStorage, ShellTypeKey } from './types';
  * Implementation of the shell configurator interface.
  * Handles the accumulation of shell configuration settings for a specific shell type.
  */
-export class ShellConfigurator implements IShellConfigurator {
+export class ShellConfigurator implements IShellConfigurator<string> {
   private readonly storage: IShellStorage;
   private readonly shellType: ShellTypeKey;
   private readonly context?: IToolConfigContext;
@@ -37,7 +37,7 @@ export class ShellConfigurator implements IShellConfigurator {
   }
 
   /** @inheritdoc */
-  public environment(values: Record<string, string>): IShellConfigurator {
+  public environment(values: Record<string, string>): IShellConfigurator<string> {
     this.storage.environment = {
       ...this.storage.environment,
       ...values,
@@ -46,7 +46,7 @@ export class ShellConfigurator implements IShellConfigurator {
   }
 
   /** @inheritdoc */
-  public aliases(values: Record<string, string>): IShellConfigurator {
+  public aliases(values: Record<string, string>): IShellConfigurator<string> {
     this.storage.aliases = {
       ...this.storage.aliases,
       ...values,
@@ -55,21 +55,21 @@ export class ShellConfigurator implements IShellConfigurator {
   }
 
   /** @inheritdoc */
-  public sourceFile(relativePath: string): IShellConfigurator {
+  public sourceFile(relativePath: string): IShellConfigurator<string> {
     const command: string = this.createSourceFileCommand(relativePath);
     this.storage.scripts.push(always(command));
     return this;
   }
 
   /** @inheritdoc */
-  public sourceFunction(functionName: string): IShellConfigurator {
+  public sourceFunction(functionName: string): IShellConfigurator<string> {
     const command: string = this.createSourceFunctionCommand(functionName);
-    this.storage.scripts.push(always(command));
+    this.storage.scripts.push(raw(command));
     return this;
   }
 
   /** @inheritdoc */
-  public completions(completion: ShellCompletionConfigInput): IShellConfigurator {
+  public completions(completion: ShellCompletionConfigInput): IShellConfigurator<string> {
     // Store the raw resolvable input - resolution happens at generation time
     // when version and other context properties are available
     this.storage.completions = completion;
@@ -77,19 +77,19 @@ export class ShellConfigurator implements IShellConfigurator {
   }
 
   /** @inheritdoc */
-  public once(script: string): IShellConfigurator {
+  public once(script: string): IShellConfigurator<string> {
     this.storage.scripts.push(once(script));
     return this;
   }
 
   /** @inheritdoc */
-  public always(script: string): IShellConfigurator {
+  public always(script: string): IShellConfigurator<string> {
     this.storage.scripts.push(always(script));
     return this;
   }
 
   /** @inheritdoc */
-  public functions(values: Record<string, string>): IShellConfigurator {
+  public functions<K extends string>(values: Record<K, string>): IShellConfigurator<string> {
     const validatedFunctions = this.validateFunctionNames(values);
     this.storage.functions = {
       ...this.storage.functions,

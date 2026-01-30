@@ -18,7 +18,6 @@ export default defineTool((install, ctx) => {
     })
     .zsh((shell) =>
       shell
-        .sourceFunction('oh-my-posh-select-config')
         .functions({
           'oh-my-posh-select-config': /* zsh */ `
             local config_kind
@@ -37,5 +36,6 @@ export default defineTool((install, ctx) => {
             echo "$init_file"
           `,
         })
+        .sourceFunction('oh-my-posh-select-config')
     );
 });

@@ -16,8 +16,10 @@ export interface IShellInitContent {
   completionSetup: string[];
   /** Scripts that run only once after tool installation/update */
   onceScripts: ShellScript[];
-  /** Scripts that run every time the shell starts */
+  /** Scripts that run every time the shell starts (wrapped with HOME override) */
   alwaysScripts: ShellScript[];
+  /** Raw scripts that run without any wrapping (e.g., source <(fnName)) */
+  rawScripts: string[];
   /** Shell functions (function name -> body) */
   functions: Record<string, string>;
 }

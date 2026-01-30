@@ -67,6 +67,7 @@ describe('PowerShellGenerator', () => {
           completionSetup: ['if (Test-Path "/completions/tool1.ps1") { . "/completions/tool1.ps1" }'],
           onceScripts: [],
           alwaysScripts: [],
+          rawScripts: [],
           functions: {},
         },
       ],

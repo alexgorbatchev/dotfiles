@@ -18,5 +18,11 @@ export default defineTool((install, ctx) => {
         .completions({ cmd: 'fnm completions --shell zsh', bin: 'fnm' })
         .sourceFile(initFile)
         .sourceFile('/path/that/does/not/exist')
+        .functions({
+          'fnm-func': /* zsh */ `
+            echo "/foo/bar"
+          `,
+        })
+        .sourceFunction('fnm-func')
     );
 });

@@ -64,6 +64,7 @@ describe('ZshGenerator', () => {
           completionSetup: ['fpath=("/completions/zsh" $fpath)'],
           onceScripts: [],
           alwaysScripts: [],
+          rawScripts: [],
           functions: {},
         },
       ],
@@ -76,6 +77,7 @@ describe('ZshGenerator', () => {
           completionSetup: [],
           onceScripts: [],
           alwaysScripts: [],
+          rawScripts: [],
           functions: {},
         },
       ],
@@ -192,6 +194,7 @@ describe('ZshGenerator', () => {
           completionSetup: [],
           onceScripts: [],
           alwaysScripts: [],
+          rawScripts: [],
           functions: {
             mycommand: 'echo "hello"',
           },

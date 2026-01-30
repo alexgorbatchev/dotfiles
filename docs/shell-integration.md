@@ -128,8 +128,8 @@ source <(initFnm)
 
 **Key differences from `.always()`:**
 
-- `.sourceFunction()` sources the function's stdout as shell code
-- No subshell wrapper - the sourced code runs in the current shell
+- `.sourceFunction()` emits `source <(fnName)` directly without any wrapping
+- The function's stdout is sourced as shell code, running in the current shell
 - Type-safe: only accepts function names defined via `.functions()`
 
 ## Script Timing

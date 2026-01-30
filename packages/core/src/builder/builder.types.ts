@@ -151,19 +151,20 @@ export type ShellCompletionConfigInput = Resolvable<ICompletionContext, ShellCom
 
 /**
  * Fluent configurator used inside shell callbacks for the new shell API.
+ * Generic parameter tracks function names defined via `functions()` for type-safe `sourceFunction()`.
  */
-export interface IShellConfigurator {
+export interface IShellConfigurator<KnownFunctions extends string = never> {
   /**
    * Sets environment variables for the shell.
    * @param values - A record of environment variable names and values.
    */
-  environment(values: Record<string, string>): IShellConfigurator;
+  environment(values: Record<string, string>): IShellConfigurator<KnownFunctions>;
 
   /**
    * Sets shell aliases.
    * @param values - A record of alias names and their commands.
    */
-  aliases(values: Record<string, string>): IShellConfigurator;
+  aliases(values: Record<string, string>): IShellConfigurator<KnownFunctions>;
 
   /**
    * Sources a script file during shell initialization.
@@ -188,23 +189,23 @@ export interface IShellConfigurator {
    * shell.sourceFile('init.zsh')
    * shell.sourceFile(`${ctx.currentDir}/shell/init.sh`)
    */
-  sourceFile(relativePath: string): IShellConfigurator;
+  sourceFile(relativePath: string): IShellConfigurator<KnownFunctions>;
 
   /**
    * Sources the output of a shell function defined via `functions()`.
    * The function must be defined before this call via `.functions({ fnName: '...' })`.
    *
    * Unlike `sourceFile()`, this does NOT check if the output exists and is NOT wrapped
-   * in a subshell. It emits: `source "$(fnName)"`
+   * in a subshell. It emits: `source <(fnName)`
    *
    * @param functionName - Name of a function defined via `.functions()`.
    *
    * @example
    * shell.functions({ initFnm: 'fnm env --use-on-cd' })
    * shell.sourceFunction('initFnm')
-   * // Generates: source "$(initFnm)"
+   * // Generates: source <(initFnm)
    */
-  sourceFunction(functionName: string): IShellConfigurator;
+  sourceFunction(functionName: KnownFunctions): IShellConfigurator<KnownFunctions>;
 
   /**
    * Configures shell completions from static files or generated dynamically.
@@ -229,19 +230,19 @@ export interface IShellConfigurator {
    *   source: `${ctx.currentDir}/_tool`
    * }))
    */
-  completions(completion: ShellCompletionConfigInput): IShellConfigurator;
+  completions(completion: ShellCompletionConfigInput): IShellConfigurator<KnownFunctions>;
 
   /**
    * Adds a script to be executed once during shell initialization.
    * @param script - The script content.
    */
-  once(script: string): IShellConfigurator;
+  once(script: string): IShellConfigurator<KnownFunctions>;
 
   /**
    * Adds a script to be executed always during shell initialization.
    * @param script - The script content.
    */
-  always(script: string): IShellConfigurator;
+  always(script: string): IShellConfigurator<KnownFunctions>;
 
   /**
    * Defines shell functions with automatic HOME override.
@@ -262,10 +263,10 @@ export interface IShellConfigurator {
    * //   )
    * // }
    */
-  functions(values: Record<string, string>): IShellConfigurator;
+  functions<K extends string>(values: Record<K, string>): IShellConfigurator<KnownFunctions | K>;
 }
 
-export type ShellConfiguratorSyncResult = IShellConfigurator | undefined;
+export type ShellConfiguratorSyncResult = IShellConfigurator<string> | undefined;
 export type ShellConfiguratorAsyncResult = Promise<ShellConfiguratorSyncResult>;
 
 export type ShellConfiguratorCallback = (shell: IShellConfigurator) => ShellConfiguratorSyncResult;

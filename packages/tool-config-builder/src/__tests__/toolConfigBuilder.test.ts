@@ -1,4 +1,4 @@
-import { always, type AsyncInstallHook } from '@dotfiles/core';
+import { always, raw, type AsyncInstallHook } from '@dotfiles/core';
 import type { GithubReleaseInstallParams } from '@dotfiles/installer-github';
 import { isGitHubReleaseToolConfig } from '@dotfiles/installer-github';
 import { TestLogger } from '@dotfiles/logger';
@@ -309,25 +309,25 @@ describe('IToolConfigBuilder', () => {
     ]);
   });
 
-  test('zsh sourceFunction generates source from function output', () => {
+  test('zsh sourceFunction generates raw source from function output (no subshell wrapping)', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
 
-    builder.zsh((shell) => shell.sourceFunction('initFnm'));
+    builder.zsh((shell) => shell.functions({ initFnm: 'fnm env --use-on-cd' }).sourceFunction('initFnm'));
 
     const config = builder.build();
     expect(config.shellConfigs?.zsh?.scripts).toEqual([
-      always(`source <(initFnm)`),
+      raw(`source <(initFnm)`),
     ]);
   });
 
-  test('bash sourceFunction generates source from function output', () => {
+  test('bash sourceFunction generates raw source from function output (no subshell wrapping)', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
 
-    builder.bash((shell) => shell.sourceFunction('initFnm'));
+    builder.bash((shell) => shell.functions({ initFnm: 'fnm env --use-on-cd' }).sourceFunction('initFnm'));
 
     const config = builder.build();
     expect(config.shellConfigs?.bash?.scripts).toEqual([
-      always(`source <(initFnm)`),
+      raw(`source <(initFnm)`),
     ]);
   });
 

@@ -6,7 +6,7 @@ import type {
   ShellType,
   ToolConfig,
 } from '@dotfiles/core';
-import { getScriptContent, isAlwaysScript, isOnceScript } from '@dotfiles/core';
+import { getScriptContent, isAlwaysScript, isOnceScript, isRawScript } from '@dotfiles/core';
 import path from 'node:path';
 import { AlwaysScriptFormatter, FunctionScriptFormatter, OnceScriptFormatter } from '../script-formatters';
 import { OnceScriptInitializer } from '../script-initializers';
@@ -82,6 +82,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
       completionSetup: [],
       onceScripts: [],
       alwaysScripts: [],
+      rawScripts: [],
       functions: {},
     };
 
@@ -90,6 +91,8 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     scripts.forEach((script: ShellScript) => {
       if (isOnceScript(script)) {
         content.onceScripts.push(script);
+      } else if (isRawScript(script)) {
+        content.rawScripts.push(getScriptContent(script));
       } else if (isAlwaysScript(script)) {
         content.alwaysScripts.push(script);
       }
@@ -298,7 +301,12 @@ export abstract class BaseShellGenerator implements IShellGenerator {
    */
   private hasToolContent(content: IShellInitContent): boolean {
     const hasFunctions = Object.keys(content.functions).length > 0;
-    return content.toolInit.length > 0 || content.alwaysScripts.length > 0 || hasFunctions;
+    return (
+      content.toolInit.length > 0 ||
+      content.alwaysScripts.length > 0 ||
+      content.rawScripts.length > 0 ||
+      hasFunctions
+    );
   }
 
   /**
@@ -323,13 +331,18 @@ export abstract class BaseShellGenerator implements IShellGenerator {
       section += `\n${formattedFunctions.join('\n')}`;
     }
 
-    // Add always scripts for this tool
+    // Add always scripts for this tool (wrapped with HOME override)
     const formattedAlwaysScripts = content.alwaysScripts.map(
       (script) => alwaysFormatter.format(script, toolName, this.shellType).content,
     );
 
     if (formattedAlwaysScripts.length > 0) {
       section += `\n${formattedAlwaysScripts.join('\n\n')}`;
+    }
+
+    // Add raw scripts for this tool (no wrapping)
+    if (content.rawScripts.length > 0) {
+      section += `\n${content.rawScripts.join('\n')}`;
     }
 
     // Add tool init (aliases, etc.)

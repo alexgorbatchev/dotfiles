@@ -21,7 +21,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         //
-        .source(`${ctx.toolDir}/zoxide-init`)
+        .sourceFile(`${ctx.toolDir}/zoxide-init`)
         .aliases({
           z: 'zoxide',
           ze: 'zoxide edit',
