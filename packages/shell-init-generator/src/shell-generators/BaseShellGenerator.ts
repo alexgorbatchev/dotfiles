@@ -314,6 +314,15 @@ export abstract class BaseShellGenerator implements IShellGenerator {
 
     let section = generateToolHeader(this.shellType, content.configFilePath);
 
+    // Add shell functions for this tool (before always scripts so functions are available)
+    const formattedFunctions = Object.entries(content.functions).map(
+      ([funcName, funcBody]) => functionFormatter.format(funcName, funcBody, this.shellType).content,
+    );
+
+    if (formattedFunctions.length > 0) {
+      section += `\n${formattedFunctions.join('\n')}`;
+    }
+
     // Add always scripts for this tool
     const formattedAlwaysScripts = content.alwaysScripts.map(
       (script) => alwaysFormatter.format(script, toolName, this.shellType).content,
@@ -321,15 +330,6 @@ export abstract class BaseShellGenerator implements IShellGenerator {
 
     if (formattedAlwaysScripts.length > 0) {
       section += `\n${formattedAlwaysScripts.join('\n\n')}`;
-    }
-
-    // Add shell functions for this tool
-    const formattedFunctions = Object.entries(content.functions).map(
-      ([funcName, funcBody]) => functionFormatter.format(funcName, funcBody, this.shellType).content,
-    );
-
-    if (formattedFunctions.length > 0) {
-      section += `\n${formattedFunctions.join('\n')}`;
     }
 
     // Add tool init (aliases, etc.)
