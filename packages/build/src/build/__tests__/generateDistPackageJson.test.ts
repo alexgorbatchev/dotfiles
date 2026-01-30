@@ -158,9 +158,9 @@ describe('generateDistPackageJson', () => {
     const packageJson = JSON.parse(content);
 
     expect(Array.isArray(packageJson.files)).toBe(true);
-    expect(packageJson.files).toContain('cli.js');
-    expect(packageJson.files).toContain('schemas.d.ts');
-    expect(packageJson.files).toContain('tool-types.d.ts');
+    expect(packageJson.files).toContain('*.js');
+    expect(packageJson.files).toContain('*.js.map');
+    expect(packageJson.files).toContain('*.d.ts');
     expect(packageJson.files).toContain('docs');
   });
 });

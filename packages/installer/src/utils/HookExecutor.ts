@@ -6,6 +6,7 @@ import {
   type IInstallBaseContext,
   type IOperationFailure,
   type IOperationSuccess,
+  Platform,
   type Shell,
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -46,14 +47,15 @@ function createToolConfigCwdShell($shell: Shell, cwdPath: string): Shell {
  *
  * @param $shell - The base shell instance to wrap
  * @param additionalPaths - Array of directory paths to prepend to PATH
+ * @param platform - The target platform
  * @returns A new shell instance with enhanced PATH
  */
-function createShellWithEnhancedPath($shell: Shell, additionalPaths: string[]): Shell {
+function createShellWithEnhancedPath($shell: Shell, additionalPaths: string[], platform: Platform): Shell {
   if (additionalPaths.length === 0) {
     return $shell;
   }
 
-  const pathSeparator = process.platform === 'win32' ? ';' : ':';
+  const pathSeparator = platform === Platform.Windows ? ';' : ':';
   const currentPath = process.env['PATH'] || '';
   const enhancedPath = [...additionalPaths, currentPath].join(pathSeparator);
 
@@ -312,7 +314,7 @@ export class HookExecutor {
 
     // Add binary directories to PATH if present
     if (binaryDirs.length > 0) {
-      enhancedShell = createShellWithEnhancedPath(enhancedShell, binaryDirs);
+      enhancedShell = createShellWithEnhancedPath(enhancedShell, binaryDirs, baseContext.systemInfo.platform);
     }
 
     // Set working directory to tool config directory if available

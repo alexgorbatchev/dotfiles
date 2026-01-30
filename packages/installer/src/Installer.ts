@@ -11,6 +11,7 @@ import type {
   Shell,
   ToolConfig,
 } from '@dotfiles/core';
+import { Platform } from '@dotfiles/core';
 import { createToolConfigContext } from '@dotfiles/core';
 import type { IFileSystem, IResolvedFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -582,7 +583,7 @@ export class Installer implements IInstaller {
       // We avoid modifying process.env directly as that's a global mutation.
       const envVarName = `DOTFILES_INSTALLING_${toolName.toUpperCase().replace(/[^A-Z0-9_]/g, '_')}`;
       const originalPath = process.env['PATH'] || '';
-      const pathSeparator = process.platform === 'win32' ? ';' : ':';
+      const pathSeparator = systemInfo.platform === Platform.Windows ? ';' : ':';
       const installPath: string = isExternallyManaged ? originalPath : `${stagingDir}${pathSeparator}${originalPath}`;
 
       const installEnv: Record<string, string | undefined> = {
