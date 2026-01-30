@@ -145,10 +145,10 @@ export async function installFromCurlScript(
     let scriptOutput = '';
     if (shell === 'bash') {
       const result = await shellExecutor`bash ${scriptPath} ${resolvedArgs}`.env(env).quiet();
-      scriptOutput = result.stdout + result.stderr;
+      scriptOutput = [result.stdout, result.stderr].filter(Boolean).join('\n');
     } else {
       const result = await shellExecutor`sh ${scriptPath} ${resolvedArgs}`.env(env).quiet();
-      scriptOutput = result.stdout + result.stderr;
+      scriptOutput = [result.stdout, result.stderr].filter(Boolean).join('\n');
     }
 
     await handleBinaryInstallation(toolConfig, toolName, context, fs, logger);

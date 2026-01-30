@@ -3,6 +3,7 @@ import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
+import assert from 'node:assert';
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { installFromCurlScript } from '../installFromCurlScript';
 import type { CurlScriptToolConfig } from '../schemas';
@@ -318,5 +319,98 @@ describe('installFromCurlScript', () => {
     expect(envCalls.length).toBe(1);
     const [envArg] = envCalls[0] ?? [];
     expect(envArg).toMatchObject({ FLYCTL_INSTALL: context.stagingDir });
+  });
+
+  it('should fail when no binaries are installed after script execution', async () => {
+    const { shell, mockQuiet } = createMockShell();
+    // Mock shell to return script output
+    mockQuiet.mockImplementation(() => Promise.resolve({ stdout: 'Script ran successfully', stderr: '' }));
+
+    // Mock fs.exists to return false for binary paths (simulating missing binaries)
+    const mockFsWithExists: IFileSystem = {
+      chmod: mock(() => Promise.resolve()),
+      exists: mock(() => Promise.resolve(false)),
+    } as unknown as IFileSystem;
+
+    const toolConfig: CurlScriptToolConfig = {
+      name: 'test-tool',
+      version: '1.0.0',
+      binaries: ['tool'],
+      installationMethod: 'curl-script',
+      installParams: {
+        url: 'https://example.com/install.sh',
+        shell: 'bash',
+      },
+    };
+
+    const result = await installFromCurlScript(
+      'test-tool',
+      toolConfig,
+      context,
+      undefined,
+      mockFsWithExists,
+      mockDownloader,
+      mockHookExecutor,
+      logger,
+      shell,
+    );
+
+    assert(!result.success);
+    expect(result.error).toBe(
+      'Installation script completed but no binaries were found at expected locations: /install/dir/tool',
+    );
+  });
+
+  it('should include script output in error when binaries not installed', async () => {
+    const { shell, mockQuiet } = createMockShell();
+    // Mock shell to return script output
+    mockQuiet.mockImplementation(() =>
+      Promise.resolve({ stdout: 'Installing to /wrong/dir\nDone!', stderr: 'Warning: something' })
+    );
+
+    const mockFsWithExists: IFileSystem = {
+      chmod: mock(() => Promise.resolve()),
+      exists: mock(() => Promise.resolve(false)),
+    } as unknown as IFileSystem;
+
+    const toolConfig: CurlScriptToolConfig = {
+      name: 'test-tool',
+      version: '1.0.0',
+      binaries: ['tool'],
+      installationMethod: 'curl-script',
+      installParams: {
+        url: 'https://example.com/install.sh',
+        shell: 'bash',
+      },
+    };
+
+    const result = await installFromCurlScript(
+      'test-tool',
+      toolConfig,
+      context,
+      undefined,
+      mockFsWithExists,
+      mockDownloader,
+      mockHookExecutor,
+      logger,
+      shell,
+    );
+
+    assert(!result.success);
+    expect(result.error).toBe(
+      'Installation script completed but no binaries were found at expected locations: /install/dir/tool',
+    );
+    // Verify script output was logged
+    const errorLogs = logger.logs.filter((log) => log['_meta']?.logLevelName === 'ERROR');
+    const logMessages = errorLogs.map((log) => String(log[0]));
+    expect(logMessages).toMatchInlineSnapshot(`
+[
+  "No binaries were installed. Expected at: /install/dir/tool",
+  "Install script output:",
+  "Installing to /wrong/dir",
+  "Done!",
+  "Warning: something",
+]
+`);
   });
 });
