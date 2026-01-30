@@ -117,10 +117,10 @@
       "problemMatcher": []
     },
     {
-      "label": "build",
+      "label": "compile",
       "type": "shell",
       "command": "bun",
-      "args": ["run", "build"],
+      "args": ["run", "compile"],
       "presentation": {
         "echo": true,
         "reveal": "always",

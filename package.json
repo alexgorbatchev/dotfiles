@@ -12,7 +12,7 @@
     "lint": "dprint fmt && oxlint --fix",
     "test:task": "bun test",
     "test-project": "DOTFILES_BUILT_PACKAGE_NAME='@dotfiles/core' bun run --silent cli --config test-project/config.ts",
-    "build": "bun packages/build/src/build/index.ts",
+    "compile": "bun packages/build/src/build/index.ts",
     "release": "bun packages/build/src/release/index.ts",
     "find-unused": "bun packages/build/src/unused-analyzer/analyze.ts",
     "cli": "bun run ./cli.ts",

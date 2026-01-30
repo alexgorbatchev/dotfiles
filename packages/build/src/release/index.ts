@@ -77,11 +77,11 @@ async function revertVersionChange(): Promise<void> {
 }
 
 /**
- * Runs the build script.
+ * Runs the compile script.
  */
 async function runBuild(): Promise<void> {
-  console.log('🏗️  Running build...');
-  await executeCommand(['bun', 'run', 'build']);
+  console.log('🏗️  Running compile...');
+  await executeCommand(['bun', 'run', 'compile']);
 }
 
 /**
