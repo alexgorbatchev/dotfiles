@@ -149,7 +149,12 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   /**
    * @inheritdoc IGeneratorOrchestrator.generateCompletionsForTool
    */
-  async generateCompletionsForTool(toolName: string, toolConfig: ToolConfig, version?: string): Promise<void> {
+  async generateCompletionsForTool(
+    toolName: string,
+    toolConfig: ToolConfig,
+    version?: string,
+    binaryPaths?: string[],
+  ): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'generateCompletionsForTool' }).setPrefix(toolName);
     const resolvedConfig = resolvePlatformConfig(toolConfig, this.systemInfo);
     const shellTypes: ShellType[] = ['zsh', 'bash', 'powershell'];
@@ -195,6 +200,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
           toolInstallDir: currentDir,
           toolName,
           configFilePath: toolConfig.configFilePath,
+          binaryPaths,
         };
 
         // Create a per-tool tracked filesystem for proper attribution

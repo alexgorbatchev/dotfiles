@@ -190,6 +190,7 @@ export class CompletionGenerator implements ICompletionGenerator {
       toolName,
       shellType,
       context.toolInstallDir,
+      context.binaryPaths,
     );
 
     const filename = this.generateCompletionFilename(config, toolName, shellType);

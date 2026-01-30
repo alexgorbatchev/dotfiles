@@ -16,6 +16,8 @@ export interface ICompletionGenerationContext extends ICompletionContext {
   homeDir: string;
   /** Absolute path to the tool's configuration file */
   configFilePath?: string;
+  /** Absolute paths to installed binaries (from install result) */
+  binaryPaths?: string[];
 }
 
 export interface IGeneratedCompletion {
@@ -29,7 +31,13 @@ export interface IGeneratedCompletion {
 }
 
 export interface ICompletionCommandExecutor {
-  executeCompletionCommand(cmd: string, toolName: string, shellType: ShellType, workingDir: string): Promise<string>;
+  executeCompletionCommand(
+    cmd: string,
+    toolName: string,
+    shellType: ShellType,
+    workingDir: string,
+    binaryPaths?: string[],
+  ): Promise<string>;
 }
 
 export interface IGenerateAndWriteCompletionFileOptions {

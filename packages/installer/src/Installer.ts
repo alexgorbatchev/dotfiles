@@ -22,7 +22,7 @@ import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { IInstaller, IInstallOptions, InstallResult } from './types';
-import { createConfiguredShell, type HookExecutor, messages } from './utils';
+import { createConfiguredShell, getBinaryPaths, type HookExecutor, messages } from './utils';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -275,6 +275,11 @@ export class Installer implements IInstaller {
       return null;
     }
 
+    // Compute binaryPaths for already-installed case
+    // This is needed for completion generation to know where binaries are
+    const currentDir = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
+    const binaryPaths = getBinaryPaths(resolvedToolConfig.binaries, toolName, currentDir);
+
     const targetVersion = await this.getTargetVersion(toolName, resolvedToolConfig);
     if (targetVersion) {
       if (existingInstallation.version === targetVersion) {
@@ -284,6 +289,7 @@ export class Installer implements IInstaller {
           success: true,
           version: existingInstallation.version,
           installationMethod: 'already-installed',
+          binaryPaths,
         } as InstallResult;
         return result;
       }
@@ -302,6 +308,7 @@ export class Installer implements IInstaller {
       success: true,
       version: existingInstallation.version,
       installationMethod: 'already-installed',
+      binaryPaths,
     } as InstallResult;
     return result;
   }

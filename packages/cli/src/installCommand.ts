@@ -218,7 +218,9 @@ async function executeInstallCommandAction(
   });
 
   if (result.success) {
-    await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig, result.version);
+    // Extract binaryPaths from install result if available
+    const binaryPaths = 'binaryPaths' in result ? result.binaryPaths : undefined;
+    await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig, result.version, binaryPaths);
   }
 
   const exitCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode);
