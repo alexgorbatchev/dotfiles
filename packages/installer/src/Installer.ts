@@ -618,120 +618,126 @@ export class Installer implements IInstaller {
       try {
         // Install based on the installation method
         result = await this.executeInstallationMethod(toolName, resolvedToolConfig, context, options, contextLogger);
+
+        // Add the resolved installation method to the result
+        result.installationMethod = resolvedToolConfig.installationMethod;
+
+        const detectedVersion: string | undefined = result.success && 'version' in result ? result.version : undefined;
+        const finalVersionOrTimestamp: string =
+          versionOrTimestamp === timestamp && detectedVersion && detectedVersion !== timestamp
+            ? detectedVersion
+            : versionOrTimestamp;
+
+        const installedDir: string = isExternallyManaged
+          ? path.join(toolRootDir, 'external')
+          : path.join(toolRootDir, finalVersionOrTimestamp);
+
+        if (result.success && !isExternallyManaged) {
+          if (await toolFs.exists(installedDir)) {
+            await toolFs.rm(installedDir, { recursive: true, force: true });
+          }
+
+          await toolFs.rename(stagingDir, installedDir);
+          logger.debug(messages.lifecycle.directoryRenamed(stagingDir, installedDir));
+
+          if (result.success && 'binaryPaths' in result && result.binaryPaths) {
+            result.binaryPaths = result.binaryPaths.map((p: string) =>
+              p.startsWith(stagingDir) ? p.replace(stagingDir, installedDir) : p
+            );
+          }
+
+          // Update PATH to point to installedDir instead of stagingDir for after-install hooks
+          process.env['PATH'] = `${installedDir}${pathSeparator}${originalPath}`;
+        }
+
+        if (result.success && isExternallyManaged) {
+          await toolFs.ensureDir(installedDir);
+        }
+
+        // Create stable binary entrypoints for all tools.
+        // Shims always execute via toolDir/current/<binary>, so <binary> must be a direct executable file.
+        // Filter out paths that don't exist - these may have been handled by setupBinariesFromArchive
+        const binaryPaths = result.success && 'binaryPaths' in result ? result.binaryPaths : undefined;
+        if (result.success && binaryPaths) {
+          const existingPaths: string[] = [];
+          for (const binaryPath of binaryPaths) {
+            const exists = await toolFs.exists(binaryPath);
+            if (exists) {
+              existingPaths.push(binaryPath);
+            }
+          }
+          if (existingPaths.length > 0) {
+            await this.createBinaryEntrypoints(
+              toolName,
+              existingPaths,
+              toolFs,
+              logger,
+              installedDir,
+              isExternallyManaged,
+            );
+          }
+        }
+
+        // Update current symlink after installation and any rename.
+        // This provides a stable directory for shims: {binariesDir}/{toolName}/current/...
+        if (result.success) {
+          await this.updateCurrentSymlink(toolName, toolFs, logger, installedDir, isExternallyManaged);
+        }
+
+        // If installation failed, clean up the empty installation directory (skip for externally managed)
+        if (!isExternallyManaged && !result.success && (await toolFs.exists(stagingDir))) {
+          logger.debug(messages.lifecycle.cleaningFailedInstallDir(stagingDir));
+          await toolFs.rm(stagingDir, { recursive: true, force: true });
+
+          // Also try to remove the parent tool directory if it's now empty
+          const toolDir = path.dirname(stagingDir);
+          try {
+            const entries = await toolFs.readdir(toolDir);
+            if (entries.length === 0) {
+              await toolFs.rmdir(toolDir);
+            }
+          } catch {
+            // Parent directory might not be empty or might not exist, which is fine
+          }
+        }
+
+        if (result.success) {
+          const binaryPaths: string[] = 'binaryPaths' in result && Array.isArray(result.binaryPaths)
+            ? result.binaryPaths
+            : [];
+          const version: string | undefined = 'version' in result ? result.version : undefined;
+
+          const afterInstallContext: IAfterInstallContext = {
+            ...context,
+            installedDir,
+            binaryPaths,
+            version,
+          };
+
+          await this.executeAfterInstallHook(resolvedToolConfig, afterInstallContext, toolFs, contextLogger);
+
+          // Record successful installation in the registry
+          await this.recordInstallation(toolName, resolvedToolConfig, installedDir, context, result, contextLogger);
+        }
+
+        return result;
       } catch (error) {
         // If installation method throws (e.g., from hook failure), create failure result
         result = {
           success: false,
           error: error instanceof Error ? error.message : String(error),
+          installationMethod: resolvedToolConfig.installationMethod,
         };
+        return result;
       } finally {
         // Restore PATH
         if (!isExternallyManaged) {
           process.env['PATH'] = originalPath;
         }
-        // Clean up recursion guard
+        // Clean up recursion guard - must happen AFTER after-install hooks complete
+        // to prevent infinite loops when hooks call shimmed binaries
         delete process.env[envVarName];
       }
-
-      // Add the resolved installation method to the result
-      result.installationMethod = resolvedToolConfig.installationMethod;
-
-      const detectedVersion: string | undefined = result.success && 'version' in result ? result.version : undefined;
-      const finalVersionOrTimestamp: string =
-        versionOrTimestamp === timestamp && detectedVersion && detectedVersion !== timestamp
-          ? detectedVersion
-          : versionOrTimestamp;
-
-      const installedDir: string = isExternallyManaged
-        ? path.join(toolRootDir, 'external')
-        : path.join(toolRootDir, finalVersionOrTimestamp);
-
-      if (result.success && !isExternallyManaged) {
-        if (await toolFs.exists(installedDir)) {
-          await toolFs.rm(installedDir, { recursive: true, force: true });
-        }
-
-        await toolFs.rename(stagingDir, installedDir);
-        logger.debug(messages.lifecycle.directoryRenamed(stagingDir, installedDir));
-
-        if (result.success && 'binaryPaths' in result && result.binaryPaths) {
-          result.binaryPaths = result.binaryPaths.map((p: string) =>
-            p.startsWith(stagingDir) ? p.replace(stagingDir, installedDir) : p
-          );
-        }
-      }
-
-      if (result.success && isExternallyManaged) {
-        await toolFs.ensureDir(installedDir);
-      }
-
-      // Create stable binary entrypoints for all tools.
-      // Shims always execute via toolDir/current/<binary>, so <binary> must be a direct executable file.
-      // Filter out paths that don't exist - these may have been handled by setupBinariesFromArchive
-      const binaryPaths = result.success && 'binaryPaths' in result ? result.binaryPaths : undefined;
-      if (result.success && binaryPaths) {
-        const existingPaths: string[] = [];
-        for (const binaryPath of binaryPaths) {
-          const exists = await toolFs.exists(binaryPath);
-          if (exists) {
-            existingPaths.push(binaryPath);
-          }
-        }
-        if (existingPaths.length > 0) {
-          await this.createBinaryEntrypoints(
-            toolName,
-            existingPaths,
-            toolFs,
-            logger,
-            installedDir,
-            isExternallyManaged,
-          );
-        }
-      }
-
-      // Update current symlink after installation and any rename.
-      // This provides a stable directory for shims: {binariesDir}/{toolName}/current/...
-      if (result.success) {
-        await this.updateCurrentSymlink(toolName, toolFs, logger, installedDir, isExternallyManaged);
-      }
-
-      // If installation failed, clean up the empty installation directory (skip for externally managed)
-      if (!isExternallyManaged && !result.success && (await toolFs.exists(stagingDir))) {
-        logger.debug(messages.lifecycle.cleaningFailedInstallDir(stagingDir));
-        await toolFs.rm(stagingDir, { recursive: true, force: true });
-
-        // Also try to remove the parent tool directory if it's now empty
-        const toolDir = path.dirname(stagingDir);
-        try {
-          const entries = await toolFs.readdir(toolDir);
-          if (entries.length === 0) {
-            await toolFs.rmdir(toolDir);
-          }
-        } catch {
-          // Parent directory might not be empty or might not exist, which is fine
-        }
-      }
-
-      if (result.success) {
-        const binaryPaths: string[] = 'binaryPaths' in result && Array.isArray(result.binaryPaths)
-          ? result.binaryPaths
-          : [];
-        const version: string | undefined = 'version' in result ? result.version : undefined;
-
-        const afterInstallContext: IAfterInstallContext = {
-          ...context,
-          installedDir,
-          binaryPaths,
-          version,
-        };
-
-        await this.executeAfterInstallHook(resolvedToolConfig, afterInstallContext, toolFs, contextLogger);
-
-        // Record successful installation in the registry
-        await this.recordInstallation(toolName, resolvedToolConfig, installedDir, context, result, contextLogger);
-      }
-
-      return result;
     } catch (error) {
       const errorResult: InstallResult = {
         success: false,
