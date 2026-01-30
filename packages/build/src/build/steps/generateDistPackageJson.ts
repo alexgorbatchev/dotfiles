@@ -33,7 +33,7 @@ export async function generateDistPackageJson(
         },
       },
     },
-    files: ['cli.js', 'cli.js.map', 'schemas.d.ts', 'tool-types.d.ts', 'docs'],
+    files: ['*.js', '*.js.map', '*.d.ts', 'docs'],
     dependencies,
   };
 
