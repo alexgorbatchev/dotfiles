@@ -10,7 +10,7 @@ import {
   getBinaryPaths,
   withInstallErrorHandling,
 } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
+import { createSafeLogMessage, type TsLogger } from '@dotfiles/logger';
 import { resolveValue } from '@dotfiles/unwrap-value';
 import { detectVersionViaCli } from '@dotfiles/utils';
 import path from 'node:path';
@@ -125,7 +125,7 @@ export async function installFromCurlScript(
       return afterDownloadResult;
     }
 
-    // Execute the script
+    // Execute the script and capture output for debugging
     logger.debug(messages.executingScript(shell));
 
     const argsContext: ICurlScriptArgsContext = {
@@ -142,16 +142,43 @@ export async function installFromCurlScript(
       ...resolvedEnv,
     };
 
+    let scriptOutput = '';
     if (shell === 'bash') {
-      await shellExecutor`bash ${scriptPath} ${resolvedArgs}`.env(env).quiet();
+      const result = await shellExecutor`bash ${scriptPath} ${resolvedArgs}`.env(env).quiet();
+      scriptOutput = result.stdout + result.stderr;
     } else {
-      await shellExecutor`sh ${scriptPath} ${resolvedArgs}`.env(env).quiet();
+      const result = await shellExecutor`sh ${scriptPath} ${resolvedArgs}`.env(env).quiet();
+      scriptOutput = result.stdout + result.stderr;
     }
 
     await handleBinaryInstallation(toolConfig, toolName, context, fs, logger);
 
     // Return paths to all binaries
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
+
+    // Verify at least one binary was actually installed
+    const installedBinaries: string[] = [];
+    for (const binaryPath of binaryPaths) {
+      if (await fs.exists(binaryPath)) {
+        installedBinaries.push(binaryPath);
+      }
+    }
+
+    if (installedBinaries.length === 0) {
+      const expectedPaths = binaryPaths.join(', ');
+      logger.error(messages.noBinariesInstalled(expectedPaths));
+      if (scriptOutput.trim()) {
+        logger.error(messages.scriptOutput());
+        // Print script output line by line for readability
+        for (const line of scriptOutput.trim().split('\n')) {
+          logger.error(createSafeLogMessage(line));
+        }
+      }
+      return {
+        success: false,
+        error: `Installation script completed but no binaries were found at expected locations: ${expectedPaths}`,
+      };
+    }
 
     let detectedVersion: string | undefined;
     const mainBinaryPath = binaryPaths[0];

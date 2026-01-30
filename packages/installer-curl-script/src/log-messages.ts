@@ -11,4 +11,7 @@ export const messages = {
     createSafeLogMessage(`Binary ${binaryName} not found in search paths: ${searchPaths}`),
   detectedVersion: (version: string) => createSafeLogMessage(`Detected version: ${version}`),
   versionDetectionFailed: (error: string) => createSafeLogMessage(`Failed to detect version: ${error}`),
+  noBinariesInstalled: (expectedPaths: string) =>
+    createSafeLogMessage(`No binaries were installed. Expected at: ${expectedPaths}`),
+  scriptOutput: () => createSafeLogMessage('Install script output:'),
 } as const satisfies SafeLogMessageMap;
