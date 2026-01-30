@@ -21,6 +21,7 @@ export class ShellConfigurator implements IShellConfigurator<string> {
   private readonly context?: IToolConfigContext;
   private readonly logger: TsLogger;
   private readonly toolName: string;
+  private sourceFileCounter = 0;
 
   constructor(
     storage: IShellStorage,
@@ -56,8 +57,20 @@ export class ShellConfigurator implements IShellConfigurator<string> {
 
   /** @inheritdoc */
   public sourceFile(relativePath: string): IShellConfigurator<string> {
-    const command: string = this.createSourceFileCommand(relativePath);
-    this.storage.scripts.push(always(command));
+    const resolvedPath = this.resolvePath(relativePath);
+    const functionName = this.generateSourceFileFunctionName();
+
+    // Create a function that cats the file content (with existence check)
+    // The function body will be wrapped in a subshell with HOME override by FunctionScriptFormatter
+    const functionBody = this.createSourceFileFunctionBody(resolvedPath);
+    this.storage.functions[functionName] = functionBody;
+
+    // Add raw scripts to source the function output and then unset the function
+    const sourceCommand = this.createSourceFunctionCommand(functionName);
+    const unsetCommand = this.createUnsetFunctionCommand(functionName);
+    this.storage.scripts.push(raw(sourceCommand));
+    this.storage.scripts.push(raw(unsetCommand));
+
     return this;
   }
 
@@ -116,19 +129,38 @@ export class ShellConfigurator implements IShellConfigurator<string> {
   }
 
   /**
-   * Creates the appropriate shell command to source a file.
-   * Handles shell-specific syntax (e.g., `.` for PowerShell vs `source` for others).
-   * Includes existence check to skip missing files gracefully.
+   * Generates a unique function name for sourceFile operations.
+   * Uses a prefix that indicates it's an internal function and should be unset after use.
    */
-  private createSourceFileCommand(relativePath: string): string {
-    const resolvedPath = this.resolvePath(relativePath);
+  private generateSourceFileFunctionName(): string {
+    const counter = this.sourceFileCounter++;
+    const sanitizedToolName = this.toolName.replace(/[^a-zA-Z0-9]/gu, '_');
+    return `__dotfiles_source_${sanitizedToolName}_${counter}`;
+  }
+
+  /**
+   * Creates the function body for sourceFile that cats the file content.
+   * The body will be wrapped in a subshell with HOME override by FunctionScriptFormatter.
+   */
+  private createSourceFileFunctionBody(resolvedPath: string): string {
     const quotedPath = JSON.stringify(resolvedPath);
 
     if (this.shellType === 'powershell') {
-      return `. ${quotedPath}`;
+      return `if (Test-Path ${quotedPath}) { Get-Content ${quotedPath} -Raw }`;
     }
 
-    return `[[ -f ${quotedPath} ]] && source ${quotedPath}`;
+    return `[[ -f ${quotedPath} ]] && cat ${quotedPath}`;
+  }
+
+  /**
+   * Creates the shell command to unset/remove a function.
+   */
+  private createUnsetFunctionCommand(functionName: string): string {
+    if (this.shellType === 'powershell') {
+      return `Remove-Item Function:\\${functionName} -ErrorAction SilentlyContinue`;
+    }
+
+    return `unset -f ${functionName}`;
   }
 
   /**

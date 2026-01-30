@@ -87,6 +87,7 @@ HOME environment, similar to `always()` and `once()` scripts.
 ### `.sourceFile()` - Source a Script File
 
 Source a script file during shell initialization. If the file doesn't exist, it's silently skipped.
+The file is sourced in a way that respects the configured HOME directory while still affecting the current shell.
 
 ```typescript
 .zsh((shell) =>
@@ -98,7 +99,22 @@ Source a script file during shell initialization. If the file doesn't exist, it'
 
 - **Relative paths** → resolve to `toolDir` (directory containing `.tool.ts`)
 - **Absolute paths** → used as-is
-- The file existence is checked at shell startup
+- File existence is checked before sourcing
+
+**Generated output (zsh/bash):**
+
+```zsh
+__dotfiles_source_mytool_0() {
+  (
+    HOME="/configured/home/path"
+    [[ -f "/path/to/init.zsh" ]] && cat "/path/to/init.zsh"
+  )
+}
+source <(__dotfiles_source_mytool_0)
+unset -f __dotfiles_source_mytool_0
+```
+
+The function is automatically cleaned up after sourcing to avoid shell pollution.
 
 ### `.sourceFunction()` - Source Function Output
 

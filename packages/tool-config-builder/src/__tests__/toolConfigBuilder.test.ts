@@ -1,4 +1,4 @@
-import { always, raw, type AsyncInstallHook } from '@dotfiles/core';
+import { always, type AsyncInstallHook, raw } from '@dotfiles/core';
 import type { GithubReleaseInstallParams } from '@dotfiles/installer-github';
 import { isGitHubReleaseToolConfig } from '@dotfiles/installer-github';
 import { TestLogger } from '@dotfiles/logger';
@@ -287,25 +287,35 @@ describe('IToolConfigBuilder', () => {
     expect(config.shellConfigs?.zsh?.completions).toBe(testCompletionsCallback);
   });
 
-  test('zsh sourceFile generates non-fatal conditional sourcing', () => {
+  test('zsh sourceFile generates function-based sourcing with cleanup', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
 
-    builder.zsh((shell) => shell.sourceFile('/path/that/does/not/exist'));
+    builder.zsh((shell) => shell.sourceFile('/path/to/init.zsh'));
 
     const config = builder.build();
+    // Should create a function and raw scripts to source+unset
+    expect(config.shellConfigs?.zsh?.functions).toEqual({
+      '__dotfiles_source_test_tool_0': '[[ -f "/path/to/init.zsh" ]] && cat "/path/to/init.zsh"',
+    });
     expect(config.shellConfigs?.zsh?.scripts).toEqual([
-      always(`[[ -f "/path/that/does/not/exist" ]] && source "/path/that/does/not/exist"`),
+      raw('source <(__dotfiles_source_test_tool_0)'),
+      raw('unset -f __dotfiles_source_test_tool_0'),
     ]);
   });
 
-  test('bash sourceFile generates non-fatal conditional sourcing', () => {
+  test('bash sourceFile generates function-based sourcing with cleanup', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
 
-    builder.bash((shell) => shell.sourceFile('/path/that/does/not/exist'));
+    builder.bash((shell) => shell.sourceFile('/path/to/init.bash'));
 
     const config = builder.build();
+    // Should create a function and raw scripts to source+unset
+    expect(config.shellConfigs?.bash?.functions).toEqual({
+      '__dotfiles_source_test_tool_0': '[[ -f "/path/to/init.bash" ]] && cat "/path/to/init.bash"',
+    });
     expect(config.shellConfigs?.bash?.scripts).toEqual([
-      always(`[[ -f "/path/that/does/not/exist" ]] && source "/path/that/does/not/exist"`),
+      raw('source <(__dotfiles_source_test_tool_0)'),
+      raw('unset -f __dotfiles_source_test_tool_0'),
     ]);
   });
 
