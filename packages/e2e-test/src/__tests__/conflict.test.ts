@@ -13,11 +13,11 @@ import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
 import fs from 'node:fs';
 import path from 'node:path';
+import { GITHUB_RELEASE_TOOL, withMockServer } from './helpers/mock-server';
 import { TestHarness } from './helpers/TestHarness';
-import { withMockServer } from './helpers/withMockServer';
 
 describe('E2E: conflict detection and handling', () => {
-  withMockServer();
+  withMockServer((b) => b.withGitHubTool(GITHUB_RELEASE_TOOL));
 
   const platformConfigs: ReadonlyArray<{
     platform: Platform;

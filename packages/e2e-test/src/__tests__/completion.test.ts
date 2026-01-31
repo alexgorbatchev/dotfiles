@@ -10,11 +10,16 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 // oxlint-disable-next-line import/no-unassigned-import
 import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
+import { withMockServer } from './helpers/mock-server';
 import { TestHarness } from './helpers/TestHarness';
-import { withMockServer } from './helpers/withMockServer';
 
 describe('E2E: completion generation', () => {
-  withMockServer();
+  withMockServer((b) =>
+    b.withScript(
+      '/mock-install-for-cmd-completion-test.sh',
+      'tools/curl-script--cmd-completion-test/mock-install-for-cmd-completion-test.sh',
+    )
+  );
 
   const platformConfigs: ReadonlyArray<{
     platform: Platform;

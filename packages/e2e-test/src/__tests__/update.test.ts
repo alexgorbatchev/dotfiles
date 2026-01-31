@@ -11,11 +11,11 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 // oxlint-disable-next-line import/no-unassigned-import
 import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
+import { GITHUB_RELEASE_TOOL, withMockServer } from './helpers/mock-server';
 import { TestHarness } from './helpers/TestHarness';
-import { withMockServer } from './helpers/withMockServer';
 
 describe('E2E: update command', () => {
-  withMockServer();
+  withMockServer((b) => b.withGitHubTool(GITHUB_RELEASE_TOOL));
 
   const platformConfigs: ReadonlyArray<{
     platform: Platform;
@@ -36,6 +36,8 @@ describe('E2E: update command', () => {
       });
 
       beforeAll(async () => {
+        // Reset mock server versions to defaults before each platform test
+        await fetch('http://127.0.0.1:8765/reset-versions');
         await harness.clean();
         const generateResult = await harness.generate();
         expect(generateResult.code).toBe(0);

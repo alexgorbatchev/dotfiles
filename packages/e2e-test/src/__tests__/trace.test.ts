@@ -10,11 +10,11 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 // oxlint-disable-next-line import/no-unassigned-import
 import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
+import { GITHUB_RELEASE_TOOL, withMockServer } from './helpers/mock-server';
 import { TestHarness } from './helpers/TestHarness';
-import { withMockServer } from './helpers/withMockServer';
 
 describe('E2E: trace configuration', () => {
-  withMockServer();
+  withMockServer((b) => b.withGitHubTool(GITHUB_RELEASE_TOOL));
 
   const platformConfigs: ReadonlyArray<{
     platform: Platform;
@@ -45,14 +45,14 @@ describe('E2E: trace configuration', () => {
           const result = await harness.generate(['--trace']);
           expect(result.code).toBe(0);
           expect(result.stdout.trim()).toMatchLooseInlineSnapshot`
-            WARN    ${/[^\s]+\.ts:\d+/} - Platform overridden to: ${expect.anything}
-            WARN    ${/[^\s]+\.ts:\d+/} - Arch overridden to: ${expect.anything}
-            INFO    ${/[^\s]+\.ts:\d+/} - Caching disabled
-            INFO    ${/[^\s]+\.ts:\d+/} - [system] rm ${expect.anything}
-            INFO    ${/[^\s]+\.ts:\d+/} - [system] rm ${expect.anything}
-            INFO    ${/[^\s]+\.ts:\d+/} - [system] write ${expect.anything}
-            INFO    ${/[^\s]+\.ts:\d+/} - [system] write ${expect.anything}
-            INFO    ${/[^\s]+\.ts:\d+/} - DONE
+            WARN	${/[^\s]+\.ts:\d+/} - Platform overridden to: ${expect.anything}
+            WARN	${/[^\s]+\.ts:\d+/} - Arch overridden to: ${expect.anything}
+            INFO	${/[^\s]+\.ts:\d+/} - Caching disabled
+            INFO	${/[^\s]+\.ts:\d+/} - [system] rm ${expect.anything}
+            INFO	${/[^\s]+\.ts:\d+/} - [system] rm ${expect.anything}
+            INFO	${/[^\s]+\.ts:\d+/} - [system] write ${expect.anything}
+            INFO	${/[^\s]+\.ts:\d+/} - [system] write ${expect.anything}
+            INFO	${/[^\s]+\.ts:\d+/} - DONE
           `;
         });
 
@@ -60,14 +60,14 @@ describe('E2E: trace configuration', () => {
           const result = await harness.generate([]);
           expect(result.code).toBe(0);
           expect(result.stdout.trim()).toMatchLooseInlineSnapshot`
-            WARN    Platform overridden to: ${expect.anything}
-            WARN    Arch overridden to: ${expect.anything}
-            INFO    Caching disabled
-            INFO    [system] rm ${expect.anything}
-            INFO    [system] rm ${expect.anything}
-            INFO    [system] write ${expect.anything}
-            INFO    [system] write ${expect.anything}
-            INFO    DONE
+            WARN	Platform overridden to: ${expect.anything}
+            WARN	Arch overridden to: ${expect.anything}
+            INFO	Caching disabled
+            INFO	[system] rm ${expect.anything}
+            INFO	[system] rm ${expect.anything}
+            INFO	[system] write ${expect.anything}
+            INFO	[system] write ${expect.anything}
+            INFO	DONE
           `;
         });
 

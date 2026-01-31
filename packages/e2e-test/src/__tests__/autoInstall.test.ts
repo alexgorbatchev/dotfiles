@@ -11,11 +11,16 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
 import path from 'node:path';
+import { AUTO_INSTALL_TOOL, MockServerBuilder, withMockServer } from './helpers/mock-server';
 import { TestHarness } from './helpers/TestHarness';
-import { withMockServer } from './helpers/withMockServer';
 
 describe('E2E: auto-install during generate', () => {
-  withMockServer();
+  // Auto-install test uses a different fixture directory
+  withMockServer(() => {
+    // Override the fixture directory to 'auto-install'
+    const builder = new MockServerBuilder('auto-install');
+    return builder.withGitHubTool(AUTO_INSTALL_TOOL);
+  });
 
   const platformConfigs: ReadonlyArray<{
     platform: Platform;

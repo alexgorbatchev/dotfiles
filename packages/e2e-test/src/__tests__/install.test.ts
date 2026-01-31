@@ -13,11 +13,11 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
 import path from 'node:path';
+import { GITHUB_RELEASE_TOOL, INSTALL_BY_BINARY_TOOL, withMockServer } from './helpers/mock-server';
 import { TestHarness } from './helpers/TestHarness';
-import { withMockServer } from './helpers/withMockServer';
 
 describe('E2E: install command', () => {
-  withMockServer();
+  withMockServer((b) => b.withGitHubTool(GITHUB_RELEASE_TOOL).withGitHubTool(INSTALL_BY_BINARY_TOOL));
 
   const platformConfigs: ReadonlyArray<{
     platform: Platform;

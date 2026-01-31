@@ -13,8 +13,8 @@ import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
 import assert from 'node:assert';
 import path from 'node:path';
+import { withMockServer } from './helpers/mock-server';
 import { TestHarness } from './helpers/TestHarness';
-import { withMockServer } from './helpers/withMockServer';
 
 interface ToolInstallationRow {
   tool_name: string;
@@ -33,7 +33,29 @@ function getToolInstallation(generatedDir: string, toolName: string): ToolInstal
 }
 
 describe('E2E: version detection', () => {
-  withMockServer();
+  withMockServer((b) =>
+    b
+      .withScript(
+        '/mock-install-version-detection-curl-script-with-args.sh',
+        'tools/version-detection--curl-script--with-args/mock-install.sh',
+      )
+      .withScript(
+        '/mock-install-version-detection-curl-script-default-args.sh',
+        'tools/version-detection--curl-script--default-args/mock-install.sh',
+      )
+      .withScript(
+        '/mock-install-version-detection-curl-script-no-version.sh',
+        'tools/version-detection--curl-script--no-version/mock-install-version-detection-curl-script-no-version.sh',
+      )
+      .withTarball(
+        '/mock-install-version-detection-curl-tar-with-args.tar.gz',
+        'tools/version-detection--curl-tar--with-args/mock-install-version-detection-curl-tar-with-args.tar.gz',
+      )
+      .withTarball(
+        '/mock-install-version-detection-curl-tar-default-args.tar.gz',
+        'tools/version-detection--curl-tar--default-args/mock-install-version-detection-curl-tar-default-args.tar.gz',
+      )
+  );
 
   const platformConfigs: ReadonlyArray<{
     platform: Platform;
