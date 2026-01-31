@@ -1,6 +1,6 @@
+import { dedentString } from '@dotfiles/utils';
 import { afterEach, beforeEach } from 'bun:test';
 import * as path from 'node:path';
-import { dedentString } from '../../utils/src/dedentString';
 
 const ASSET_NAMES_V1: string[] = [
   'github-release-tool-1.0.0-linux_amd64.tar.gz',
@@ -105,8 +105,8 @@ const currentVersions: Record<string, string> = {};
  * @returns A Response object with the binary file content and appropriate headers.
  */
 function createBinaryDownloadResponse(filename: string): Response {
-  // Determine which tool directory based on filename
-  let fixturesDir = 'fixtures';
+  // Determine which scenario directory based on filename
+  let scenarioDir = 'main';
   let toolDir = '';
   if (filename.startsWith('github-release-tool')) {
     toolDir = 'tools/github-release-tool';
@@ -117,11 +117,12 @@ function createBinaryDownloadResponse(filename: string): Response {
   } else if (filename.startsWith('install-by-binary-tool')) {
     toolDir = 'tools/install-by-binary-tool';
   } else if (filename.startsWith('auto-install-tool')) {
-    fixturesDir = 'fixtures-auto-install';
+    scenarioDir = 'auto-install';
     toolDir = 'tools/auto-install-tool';
   }
 
-  const mockBinaryPath = path.join(import.meta.dir, '__tests__', fixturesDir, toolDir, filename);
+  // import.meta.dir is __tests__/helpers/, so go up one level to __tests__/
+  const mockBinaryPath = path.join(import.meta.dir, '..', 'fixtures', scenarioDir, toolDir, filename);
   return new Response(Bun.file(mockBinaryPath), {
     headers: {
       'Content-Disposition': `attachment; filename=${filename}`,
@@ -216,8 +217,9 @@ export function withMockServer(): void {
         '/mock-install-for-cmd-completion-test.sh': () => {
           const scriptPath = path.join(
             import.meta.dir,
-            '__tests__',
+            '..',
             'fixtures',
+            'main',
             'tools',
             'curl-script--cmd-completion-test',
             'mock-install-for-cmd-completion-test.sh',
@@ -231,8 +233,9 @@ export function withMockServer(): void {
         '/mock-install-version-detection-curl-script-with-args.sh': () => {
           const scriptPath = path.join(
             import.meta.dir,
-            '__tests__',
+            '..',
             'fixtures',
+            'main',
             'tools',
             'version-detection--curl-script--with-args',
             'mock-install.sh',
@@ -246,8 +249,9 @@ export function withMockServer(): void {
         '/mock-install-version-detection-curl-script-default-args.sh': () => {
           const scriptPath = path.join(
             import.meta.dir,
-            '__tests__',
+            '..',
             'fixtures',
+            'main',
             'tools',
             'version-detection--curl-script--default-args',
             'mock-install.sh',
@@ -261,8 +265,9 @@ export function withMockServer(): void {
         '/mock-install-version-detection-curl-script-no-version.sh': () => {
           const scriptPath = path.join(
             import.meta.dir,
-            '__tests__',
+            '..',
             'fixtures',
+            'main',
             'tools',
             'version-detection--curl-script--no-version',
             'mock-install-version-detection-curl-script-no-version.sh',
@@ -276,8 +281,9 @@ export function withMockServer(): void {
         '/mock-install-version-detection-curl-tar-with-args.tar.gz': () => {
           const filePath = path.join(
             import.meta.dir,
-            '__tests__',
+            '..',
             'fixtures',
+            'main',
             'tools',
             'version-detection--curl-tar--with-args',
             'mock-install-version-detection-curl-tar-with-args.tar.gz',
@@ -291,8 +297,9 @@ export function withMockServer(): void {
         '/mock-install-version-detection-curl-tar-default-args.tar.gz': () => {
           const filePath = path.join(
             import.meta.dir,
-            '__tests__',
+            '..',
             'fixtures',
+            'main',
             'tools',
             'version-detection--curl-tar--default-args',
             'mock-install-version-detection-curl-tar-default-args.tar.gz',

@@ -7,15 +7,18 @@ End-to-end tests for the dotfiles tool installer system.
 ```
 src/
   __tests__/
-    e2e.test.ts              # Main test entry point with platform loop
-    scenarios/               # Scenario functions (not separate test files)
-      completion.ts          # Completion generation tests
-      conflict.ts            # Conflict detection tests
-      dependency.ts          # Dependency resolution tests
-      generate.ts            # Generate command tests
-      install.ts             # Install command tests
-      typeSafety.ts          # Type safety compile tests
-      update.ts              # Update command tests
+    autoInstall.test.ts      # Auto-install during generate tests
+    completion.test.ts       # Completion generation tests
+    conflict.test.ts         # Conflict detection tests
+    dependency.test.ts       # Dependency resolution tests
+    files.test.ts            # Files command tests
+    generate.test.ts         # Generate command tests
+    hook.test.ts             # After-install hook tests
+    install.test.ts          # Install command tests
+    trace.test.ts            # Trace flag tests
+    typeSafety.test.ts       # Type safety compile tests
+    update.test.ts           # Update command tests
+    versionDetection.test.ts # Version detection tests
     fixtures/
       config-tools.yaml      # Main configuration for standard tools
       tools/                 # Main tool fixtures
@@ -51,44 +54,46 @@ src/
           config.yaml
           dependency-platform-consumer.tool.ts
           dependency-platform-provider.tool.ts
-  helpers/
-    index.ts                 # Re-exports all scenarios from __tests__/scenarios/
   TestHarness.ts             # Test harness for running CLI commands
   withMockServer.ts          # Mock server setup for testing
 ```
 
-## Test Scenarios
+## Test Files
 
-All scenarios are functions that create `describe` blocks and are called from the main `e2e.test.ts` file within a platform loop.
+Each test file is a standalone test suite that covers a specific feature area. Tests run for both macOS ARM64 and Linux x86_64 platforms.
 
-### Generate, Install, Update
+### generate.test.ts
 
-Tests core CLI functionality including:
+Tests the generate command including:
 
-- Generate command (shims, shell scripts, environment variables, aliases)
-- Install command (binary downloads, symlinks, execution)
-- Update command (version detection, upgrades)
+- Shim creation and executability
+- Shell script generation (zsh, bash, powershell)
+- Environment variables, aliases, always/once scripts
+- Binary download on first shim execution
 
-### Conflict Detection
+### install.test.ts
 
-Tests handling of existing files and conflict resolution.
+Tests the install command including:
 
-### Completion Generation
+- Binary download and symlink creation
+- Install by tool name
+- Install by binary name (when tool provides a different binary name)
 
-Tests shell completion file generation for tools that provide dynamic completions.
+### update.test.ts
 
-### Install by Binary Name
+Tests version updates from mock server API.
 
-Tests the ability to install a tool by specifying a binary name instead of the tool name:
+### completion.test.ts
 
-- Installing a tool when specifying a binary name that the tool provides
-- Verifying traditional tool name installation still works alongside binary name lookup
+Tests shell completion file generation for tools with dynamic completions.
 
-Uses `install-by-binary-tool` fixture with binary name `my-custom-binary`.
+### conflict.test.ts
 
-### Dependency Resolution
+Tests handling of existing files and conflict resolution with --overwrite flag.
 
-Tests tool dependency resolution and validation:
+### dependency.test.ts
+
+Tests tool dependency resolution and validation including:
 
 - Successful dependency resolution
 - Missing dependency provider errors
@@ -96,9 +101,27 @@ Tests tool dependency resolution and validation:
 - Circular dependency detection
 - Platform-specific dependency validation
 
-Each dependency scenario uses its own config file located next to its tool files.
+### autoInstall.test.ts
 
-### Type Safety
+Tests tools with `auto: true` in their install params that are automatically installed during generate.
+
+### files.test.ts
+
+Tests the files command that displays installed tool file trees.
+
+### hook.test.ts
+
+Tests after-install hook execution and output logging.
+
+### trace.test.ts
+
+Tests --trace flag for source location logging.
+
+### versionDetection.test.ts
+
+Tests version detection from binary output after installation.
+
+### typeSafety.test.ts
 
 Compile-time tests verifying TypeScript type checking for the `defineTool` API.
 
@@ -109,10 +132,10 @@ Compile-time tests verifying TypeScript type checking for the `defineTool` API.
 bun test packages/e2e-test
 
 # Run specific test file
-bun test packages/e2e-test/src/__tests__/e2e.test.ts
+bun test packages/e2e-test/src/__tests__/generate.test.ts
 
 # Run with specific test name filter
-bun test packages/e2e-test/src/__tests__/e2e.test.ts -t "completion"
+bun test packages/e2e-test/src/__tests__/install.test.ts -t "binary name"
 ```
 
 ## Test Harness
