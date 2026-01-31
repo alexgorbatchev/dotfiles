@@ -178,7 +178,8 @@ async function loadToolConfigFromModule(
 
     return toolConfig;
   } catch (error) {
-    logger.error(messages.configurationLoadFailed(path.relative(projectConfig.configFileDir, filePath)), error);
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    logger.error(messages.configurationLoadFailed(path.relative(projectConfig.configFileDir, filePath)), errorMessage);
     return null;
   }
 }

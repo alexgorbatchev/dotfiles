@@ -1,5 +1,5 @@
 import type { ProjectConfig } from '@dotfiles/core';
-import { MemFileSystem } from '@dotfiles/file-system';
+import { type IResolvedFileSystem, MemFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import { beforeEach, test } from 'bun:test';
@@ -7,7 +7,7 @@ import { FileRegistry } from '../FileRegistry';
 import { TrackedFileSystem } from '../TrackedFileSystem';
 
 let logger: TestLogger;
-let fs: MemFileSystem;
+let fs: IResolvedFileSystem;
 let registry: FileRegistry;
 let registryDatabase: RegistryDatabase;
 let trackedFs: TrackedFileSystem;
@@ -15,7 +15,7 @@ let mockProjectConfig: ProjectConfig;
 
 beforeEach(() => {
   logger = new TestLogger();
-  fs = new MemFileSystem({});
+  fs = new ResolvedFileSystem(new MemFileSystem({}), '/home/test');
   registryDatabase = new RegistryDatabase(logger, ':memory:');
   registry = new FileRegistry(logger, registryDatabase.getConnection());
   mockProjectConfig = {

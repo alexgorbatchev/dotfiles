@@ -23,6 +23,7 @@
     "@dotfiles/installer-curl-tar": "workspace:*",
     "@dotfiles/installer-github": "workspace:*",
     "@dotfiles/installer-manual": "workspace:*",
+    "@dotfiles/installer-zsh-plugin": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/registry": "workspace:*",
     "@dotfiles/registry-database": "workspace:*",

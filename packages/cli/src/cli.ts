@@ -11,7 +11,13 @@ import {
 } from '@dotfiles/core';
 import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
 import { ReadmeService } from '@dotfiles/features';
-import { type IFileSystem, MemFileSystem, NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
+import {
+  type IFileSystem,
+  type IResolvedFileSystem,
+  MemFileSystem,
+  NodeFileSystem,
+  ResolvedFileSystem,
+} from '@dotfiles/file-system';
 import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import { HookExecutor, Installer } from '@dotfiles/installer';
 import { BrewInstallerPlugin } from '@dotfiles/installer-brew';
@@ -20,6 +26,7 @@ import { CurlScriptInstallerPlugin } from '@dotfiles/installer-curl-script';
 import { CurlTarInstallerPlugin } from '@dotfiles/installer-curl-tar';
 import { GitHubApiClient, GitHubReleaseInstallerPlugin } from '@dotfiles/installer-github';
 import { ManualInstallerPlugin } from '@dotfiles/installer-manual';
+import { ZshPluginInstallerPlugin } from '@dotfiles/installer-zsh-plugin';
 import { createTsLogger, getLogLevelFromFlags, type LogLevelValue, type TsLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import { FileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
@@ -147,7 +154,7 @@ function initializeDownloadCache(
 
 function createTrackedFileSystems(
   parentLogger: TsLogger,
-  fs: IFileSystem,
+  fs: IResolvedFileSystem,
   fileRegistry: IFileRegistry,
   projectConfig: ProjectConfig,
 ): {
@@ -401,6 +408,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     new CurlTarInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor, shell),
   );
   pluginRegistry.register(new ManualInstallerPlugin(installerTrackedFs));
+  pluginRegistry.register(new ZshPluginInstallerPlugin(installerTrackedFs, shell));
 
   const installer = new Installer(
     logger,

@@ -93,6 +93,21 @@ export default defineTool((install, ctx) =>
 export default defineTool((install, ctx) => install().zsh((shell) => shell.aliases({ ll: 'ls -la' })));
 ```
 
+### [Zsh Plugin](./zsh-plugin.md)
+
+Clone Git repositories for zsh plugins.
+
+```typescript
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('zsh-plugin', {
+    repo: 'jeffreytse/zsh-vi-mode',
+  })
+    .zsh((shell) => shell.always(`source "${ctx.currentDir}/zsh-vi-mode.plugin.zsh"`))
+);
+```
+
 ## Choosing the Right Method
 
 | Method             | Best For                            | Pros                                  | Cons                                 |
@@ -103,6 +118,7 @@ export default defineTool((install, ctx) => install().zsh((shell) => shell.alias
 | **Curl Script**    | Custom installers                   | Flexible, handles complex setups      | Less predictable, security concerns  |
 | **Curl Tar**       | Direct downloads                    | Simple, no dependencies               | Manual URL management                |
 | **Manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible | Manual file management               |
+| **Zsh Plugin**     | Zsh plugins from Git repos          | Simple, automatic updates             | Zsh plugins only                     |
 
 ## Manual Installation Guide
 

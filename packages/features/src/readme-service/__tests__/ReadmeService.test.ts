@@ -1,8 +1,8 @@
 import type { IInstallerPlugin, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import { InstallerPluginRegistry } from '@dotfiles/core';
 import { Downloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import { createMemFileSystem } from '@dotfiles/file-system';
+import type { IResolvedFileSystem } from '@dotfiles/file-system';
+import { createMemFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry';
 import { createMockFileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
@@ -13,7 +13,7 @@ import type { IReadmeContent } from '../types';
 
 describe('ReadmeService', () => {
   let logger: TestLogger;
-  let fileSystem: IFileSystem;
+  let fileSystem: IResolvedFileSystem;
   let downloader: Downloader;
   let mockRegistry: IToolInstallationRegistry;
   let mockFileRegistry: IFileRegistry;
@@ -29,7 +29,7 @@ describe('ReadmeService', () => {
     const memFs = await createMemFileSystem({
       [CACHE_DIR]: {},
     });
-    fileSystem = memFs.fs;
+    fileSystem = new ResolvedFileSystem(memFs.fs, '/home/test');
 
     fetchMock = new FetchMockHelper();
     fetchMock.setup();

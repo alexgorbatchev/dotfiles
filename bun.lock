@@ -82,6 +82,7 @@
         "@dotfiles/installer-curl-tar": "workspace:*",
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
+        "@dotfiles/installer-zsh-plugin": "workspace:*",
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/registry": "workspace:*",
         "@dotfiles/registry-database": "workspace:*",
@@ -424,6 +425,21 @@
         "@dotfiles/testing-helpers": "workspace:*",
       },
     },
+    "packages/installer-zsh-plugin": {
+      "name": "@dotfiles/installer-zsh-plugin",
+      "version": "0.0.0",
+      "dependencies": {
+        "@dotfiles/core": "workspace:*",
+        "@dotfiles/installer": "workspace:*",
+        "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@dotfiles/testing-helpers": "workspace:*",
+      },
+    },
     "packages/logger": {
       "name": "@dotfiles/logger",
       "version": "0.0.0",
@@ -695,6 +711,8 @@
     "@dotfiles/installer-github": ["@dotfiles/installer-github@workspace:packages/installer-github"],
 
     "@dotfiles/installer-manual": ["@dotfiles/installer-manual@workspace:packages/installer-manual"],
+
+    "@dotfiles/installer-zsh-plugin": ["@dotfiles/installer-zsh-plugin@workspace:packages/installer-zsh-plugin"],
 
     "@dotfiles/logger": ["@dotfiles/logger@workspace:packages/logger"],
 

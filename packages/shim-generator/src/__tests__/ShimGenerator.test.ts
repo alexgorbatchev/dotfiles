@@ -1,7 +1,13 @@
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
-import { createMemFileSystem, type FileSystemSpies, type IFileSystem, type Stats } from '@dotfiles/file-system';
+import {
+  createMemFileSystem,
+  type FileSystemSpies,
+  type IFileSystem,
+  ResolvedFileSystem,
+  type Stats,
+} from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import { FileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
@@ -622,7 +628,8 @@ describe('ShimGenerator', () => {
       };
 
       const systemContext = TrackedFileSystem.createContext('system', 'shim');
-      const trackedFs = new TrackedFileSystem(logger, fileSystem, registry, systemContext, mockConfig);
+      const resolvedFs = new ResolvedFileSystem(fileSystem, mockConfig.paths.homeDir);
+      const trackedFs = new TrackedFileSystem(logger, resolvedFs, registry, systemContext, mockConfig);
       const trackedGenerator = new ShimGenerator(logger, trackedFs, mockConfig);
 
       await fileSystem.rmdir(mockConfig.paths.targetDir, { recursive: true }).catch(() => undefined);

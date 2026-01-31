@@ -60,6 +60,12 @@ export type InstallResultSuccess<TMetadata = unknown> = IOperationSuccess & {
   binaryPaths?: string[];
   metadata?: TMetadata;
   installationMethod?: string;
+  /**
+   * Symlinks to create after installation succeeds.
+   * The source path should be relative to currentDir (e.g., 'pluginName' becomes '{currentDir}/pluginName').
+   * The target path should be absolute.
+   */
+  symlinks?: Array<{ source: string; target: string; }>;
 };
 
 /**

@@ -1,5 +1,6 @@
 import type { ProjectConfig } from '@dotfiles/core';
-import type { IFileSystem, Stats } from '@dotfiles/file-system';
+import type { IResolvedFileSystem, Stats } from '@dotfiles/file-system';
+import { resolvedFileSystemBrand } from '@dotfiles/file-system';
 import type { SafeLogMessage, TsLogger } from '@dotfiles/logger';
 import { contractHomePath, formatPermissions } from '@dotfiles/utils';
 import { randomUUID } from 'node:crypto';
@@ -26,8 +27,10 @@ export interface ITrackingContext {
  * Wrapper around IFileSystem that automatically tracks all filesystem operations
  * in the file registry. Users don't need to interact with the registry directly.
  */
-export class TrackedFileSystem implements IFileSystem {
-  private readonly fs: IFileSystem;
+export class TrackedFileSystem implements IResolvedFileSystem {
+  readonly [resolvedFileSystemBrand] = true as const;
+
+  private readonly fs: IResolvedFileSystem;
   private readonly registry: IFileRegistry;
   private readonly logger: TsLogger;
   private readonly parentLogger: TsLogger;
@@ -37,7 +40,7 @@ export class TrackedFileSystem implements IFileSystem {
 
   constructor(
     parentLogger: TsLogger,
-    fs: IFileSystem,
+    fs: IResolvedFileSystem,
     registry: IFileRegistry,
     context: ITrackingContext,
     projectConfig: ProjectConfig,

@@ -73,6 +73,9 @@ Select the most appropriate method based on your investigation. Prefer official,
 - **`manual`**: for custom install logic or dotfiles-provided binaries/scripts.
   - Guide: [Manual Installation Guide](<root>/docs/installation/manual.md)
 
+- **`zsh-plugin`**: for zsh plugins that are cloned from Git repositories.
+  - Guide: [Zsh Plugin Installation Guide](<root>/docs/installation/zsh-plugin.md)
+
 ### Step 2: Configure Binary Specification
 
 **Important**: `.bin(name, pattern?)` declares which executables the tool provides. It generates a shim for each binary name.
@@ -596,6 +599,31 @@ export default defineTool((install) =>
 );
 ```
 
+### Example 8: Zsh Plugin (Git Repository)
+
+```ts
+import { defineTool } from '@gitea/dotfiles';
+
+/**
+ * zsh-vi-mode - A better and friendly vi(vim) mode plugin for ZSH.
+ *
+ * https://github.com/jeffreytse/zsh-vi-mode
+ */
+export default defineTool((install, ctx) =>
+  install('zsh-plugin', {
+    repo: 'jeffreytse/zsh-vi-mode',
+  })
+    .zsh((shell) =>
+      shell
+        .environment({
+          ZVM_VI_INSERT_ESCAPE_BINDKEY: 'jj',
+          ZVM_CURSOR_STYLE_ENABLED: 'false',
+        })
+        .always(`source "${ctx.currentDir}/zsh-vi-mode.plugin.zsh"`)
+    )
+);
+```
+
 ## Quality Checklist
 
 **Installation & binaries**
@@ -652,6 +680,7 @@ export default defineTool((install) =>
 - [Curl Script Installation](<root>/docs/installation/curl-script.md)
 - [Curl Tar Installation](<root>/docs/installation/curl-tar.md)
 - [Manual Installation](<root>/docs/installation/manual.md)
+- [Zsh Plugin Installation](<root>/docs/installation/zsh-plugin.md)
 
 **Other Resources**
 

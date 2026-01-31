@@ -522,7 +522,15 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     }
 
     // Without registry, validate against known core methods
-    const validMethods: string[] = ['github-release', 'brew', 'curl-script', 'curl-tar', 'cargo', 'manual'];
+    const validMethods: string[] = [
+      'github-release',
+      'brew',
+      'curl-script',
+      'curl-tar',
+      'cargo',
+      'manual',
+      'zsh-plugin',
+    ];
 
     if (this.currentInstallationMethod && validMethods.includes(this.currentInstallationMethod)) {
       return {
@@ -548,7 +556,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     const invalidMethodError = messages.configurationFieldInvalid(
       'installationMethod',
       this.currentInstallationMethod ?? 'unknown',
-      'github-release | brew | curl-script | curl-tar | cargo | manual',
+      'github-release | brew | curl-script | curl-tar | cargo | manual | zsh-plugin',
     );
     this.logger.error(invalidMethodError);
     throw new Error(invalidMethodError);

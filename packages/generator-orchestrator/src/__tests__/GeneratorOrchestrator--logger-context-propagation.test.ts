@@ -6,7 +6,7 @@
  */
 import type { ProjectConfig } from '@dotfiles/config';
 import { Architecture, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
-import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
+import { createMemFileSystem, type IResolvedFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
@@ -22,7 +22,7 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
   let mockCompletionGenerator: ICompletionGenerator;
-  let mockFileSystem: IFileSystem;
+  let mockFileSystem: IResolvedFileSystem;
   let mockProjectConfig: ProjectConfig;
   let orchestrator: GeneratorOrchestrator;
   let logger: TestLogger;
@@ -71,7 +71,7 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
     };
 
     const { fs } = await createMemFileSystem({});
-    mockFileSystem = fs;
+    mockFileSystem = new ResolvedFileSystem(fs, '/home/test');
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'generator-context' });
 

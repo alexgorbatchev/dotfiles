@@ -1,5 +1,5 @@
 import type { ProjectConfig } from '@dotfiles/core';
-import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
+import { createMemFileSystem, type IResolvedFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
@@ -11,7 +11,7 @@ import { type ITrackingContext, TrackedFileSystem } from '../TrackedFileSystem';
 
 describe('TrackedFileSystem', () => {
   let logger: TestLogger;
-  let fs: IFileSystem;
+  let fs: IResolvedFileSystem;
   let registry: FileRegistry;
   let registryDatabase: RegistryDatabase;
   let trackedFs: TrackedFileSystem;
@@ -22,7 +22,7 @@ describe('TrackedFileSystem', () => {
   beforeEach(async () => {
     logger = new TestLogger();
     const { fs: memFs } = await createMemFileSystem();
-    fs = memFs;
+    fs = new ResolvedFileSystem(memFs, '/home/test');
 
     dbPath = path.join('/tmp', `test-tracked-fs-${randomUUID()}.db`);
     registryDatabase = new RegistryDatabase(logger, dbPath);

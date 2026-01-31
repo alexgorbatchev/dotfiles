@@ -162,6 +162,7 @@ This enables IDE autocomplete for the `dependsOn()` method with all known binary
 - **[Cargo/Crates.io](docs/installation/cargo.md)** - Install Rust tools via Cargo
 - **[Homebrew](docs/installation/homebrew.md)** - Install via Homebrew package manager
 - **[Curl Scripts](docs/installation/curl-script.md)** - Install via shell scripts
+- **[Zsh Plugins](docs/installation/zsh-plugin.md)** - Install zsh plugins to `$ZSH_CUSTOM`
 - **[Manual Installation](docs/installation/manual.md)** - Manually managed tools
 
 ## Global Configuration (`config.yaml`)

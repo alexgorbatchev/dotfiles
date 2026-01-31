@@ -61,3 +61,9 @@ export type { GithubReleaseInstallParams as z_internal_GithubReleaseInstallParam
  * Do not use in production code. May change or be removed without notice.
  */
 export type { ManualInstallParams as z_internal_ManualInstallParams } from '@dotfiles/installer-manual';
+/**
+ * @internal
+ * @deprecated Internal type for testing only. NOT part of the public API.
+ * Do not use in production code. May change or be removed without notice.
+ */
+export type { ZshPluginInstallParams as z_internal_ZshPluginInstallParams } from '@dotfiles/installer-zsh-plugin';
