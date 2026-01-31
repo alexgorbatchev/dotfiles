@@ -11,6 +11,16 @@ export type BaseEnv = Resolvable<IEnvContext, Record<string, string>>;
 export const baseInstallParamsSchema = z
   .object({
     /**
+     * When true, the tool will be automatically installed during the `generate` command
+     * if not already installed. This is useful for tools that must be installed before
+     * shell initialization can be generated (e.g., zsh plugins that need to be sourced).
+     *
+     * Default varies by installer:
+     * - `zsh-plugin`: defaults to `true`
+     * - All other installers: defaults to `false`
+     */
+    auto: z.boolean().optional(),
+    /**
      * A record of environment variables to be set specifically for the duration of this tool's installation process.
      * These variables are applied before any installation commands or hooks are executed.
      * Can be a static object or a function that receives context and returns the object.

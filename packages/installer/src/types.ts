@@ -24,6 +24,13 @@ export interface IInstallOptions {
    * Whether running in shim mode - suppresses log messages but keeps progress bars
    */
   shimMode?: boolean;
+
+  /**
+   * Skip the "already installed" version check and always run the plugin.
+   * Used for auto-install to ensure plugins can return shellInit even when
+   * already installed (the plugin decides whether to do actual work).
+   */
+  skipVersionCheck?: boolean;
 }
 
 /**

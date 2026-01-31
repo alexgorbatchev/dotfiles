@@ -1,7 +1,7 @@
 import type { IInstallContext, Shell } from '@dotfiles/core';
 import { createMemFileSystem, type IResolvedFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { installFromZshPlugin } from '../installFromZshPlugin';
 import type { ZshPluginToolConfig } from '../schemas';
 
@@ -25,13 +25,8 @@ describe('installFromZshPlugin', () => {
   let logger: TestLogger;
   let mockShell: Shell;
   let context: IInstallContext;
-  let originalZshCustom: string | undefined;
 
   beforeEach(async () => {
-    // Save and set ZSH_CUSTOM for tests
-    originalZshCustom = process.env['ZSH_CUSTOM'];
-    process.env['ZSH_CUSTOM'] = '/home/.oh-my-zsh/custom';
-
     const { fs } = await createMemFileSystem({});
     mockFs = new ResolvedFileSystem(fs, '/home');
     logger = new TestLogger();
@@ -96,15 +91,6 @@ describe('installFromZshPlugin', () => {
     } as unknown as IInstallContext;
   });
 
-  afterEach(() => {
-    // Restore original ZSH_CUSTOM
-    if (originalZshCustom === undefined) {
-      delete process.env['ZSH_CUSTOM'];
-    } else {
-      process.env['ZSH_CUSTOM'] = originalZshCustom;
-    }
-  });
-
   it('should return error when no params provided', async () => {
     const toolConfig: ZshPluginToolConfig = {
       name: 'test-plugin',
@@ -162,6 +148,7 @@ describe('installFromZshPlugin', () => {
       installParams: {
         repo: 'jeffreytse/zsh-vi-mode',
         source: 'zsh-vi-mode.plugin.zsh',
+        auto: true,
       },
     };
 
@@ -191,6 +178,7 @@ describe('installFromZshPlugin', () => {
       installParams: {
         url: 'https://gitlab.com/user/custom-plugin.git',
         source: 'custom-plugin.plugin.zsh',
+        auto: true,
       },
     };
 
@@ -220,6 +208,7 @@ describe('installFromZshPlugin', () => {
         repo: 'jeffreytse/zsh-vi-mode',
         pluginName: 'vi-mode',
         source: 'vi-mode.plugin.zsh',
+        auto: true,
       },
     };
 
@@ -247,6 +236,7 @@ describe('installFromZshPlugin', () => {
       installParams: {
         repo: 'user/repo',
         source: 'repo.plugin.zsh',
+        auto: true,
       },
     };
 
@@ -274,6 +264,7 @@ describe('installFromZshPlugin', () => {
       installParams: {
         repo: 'user/repo',
         source: 'repo.plugin.zsh',
+        auto: true,
       },
     };
 
@@ -289,6 +280,41 @@ describe('installFromZshPlugin', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.binaryPaths).toEqual([]);
+    }
+  });
+
+  it('should emit shellInit with source command for zsh', async () => {
+    const toolConfig: ZshPluginToolConfig = {
+      name: 'zsh-vi-mode',
+      version: '1.0.0',
+      binaries: [],
+      installationMethod: 'zsh-plugin',
+      installParams: {
+        repo: 'jeffreytse/zsh-vi-mode',
+        source: 'zsh-vi-mode.plugin.zsh',
+        auto: true,
+      },
+    };
+
+    const result = await installFromZshPlugin(
+      'zsh-vi-mode',
+      toolConfig,
+      context,
+      logger,
+      mockFs,
+      mockShell,
+    );
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.shellInit).toBeDefined();
+      expect(result.shellInit?.['zsh']).toBeDefined();
+      expect(result.shellInit?.['zsh']?.scripts).toHaveLength(1);
+      const script = result.shellInit?.['zsh']?.scripts?.[0];
+      expect(script).toBeDefined();
+      expect(script?.kind).toBe('raw');
+      expect(script?.value).toContain('source');
+      expect(script?.value).toContain('/bin/zsh-plugins/current/zsh-vi-mode/zsh-vi-mode.plugin.zsh');
     }
   });
 });

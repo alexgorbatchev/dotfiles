@@ -1,0 +1,2 @@
+#!/bin/bash
+echo "auto-install-tool version 1.0.0"

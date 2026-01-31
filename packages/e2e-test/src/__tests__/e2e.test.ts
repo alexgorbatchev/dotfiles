@@ -8,6 +8,7 @@ import { describe } from 'bun:test';
 import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
 import {
+  autoInstallScenarios,
   completionScenarios,
   conflictScenarios,
   dependencyScenarios,
@@ -54,6 +55,7 @@ describe('E2E: Dotfiles CLI', () => {
         traceScenarios(harness);
       });
 
+      autoInstallScenarios(import.meta.dir, config.platform, config.architecture);
       filesScenarios(harness);
       conflictScenarios(harness);
       dependencyScenarios(import.meta.dir, config.platform, config.architecture);

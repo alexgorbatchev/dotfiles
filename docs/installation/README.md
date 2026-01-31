@@ -176,6 +176,33 @@ Most installation methods support these common concepts:
 - **Platform Detection**: Automatic selection of appropriate binaries
 - **Binary Path**: Specify which file is the main executable
 - **Asset Selection**: Choose the right download for your platform
+- **Environment Variables**: Set `env` for installation (static or dynamic)
+
+### Environment Variables (`env`)
+
+All installation methods support an `env` parameter for setting environment variables during installation:
+
+```typescript
+// Static environment variables
+install('github-release', {
+  repo: 'owner/tool',
+  env: { CUSTOM_FLAG: 'true' },
+}).bin('tool');
+
+// Dynamic environment variables
+install('curl-script', {
+  url: 'https://example.com/install.sh',
+  shell: 'bash',
+  env: (ctx) => ({ INSTALL_DIR: ctx.stagingDir }),
+}).bin('tool');
+```
+
+Dynamic `env` functions receive a context with:
+
+- `projectConfig` - Full project configuration
+- `stagingDir` - Temporary installation directory
+
+For `curl-script`, the context also includes `scriptPath`.
 
 ## Next Steps
 

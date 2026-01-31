@@ -1,6 +1,6 @@
 # Zsh Plugin Installation
 
-The `zsh-plugin` installation method clones Git repositories for zsh plugins. This is useful for installing plugins that are not available via package managers.
+The `zsh-plugin` installation method clones Git repositories for zsh plugins and automatically configures them to be sourced in your shell. This is useful for installing plugins that are not available via package managers.
 
 ## Configuration
 
@@ -13,13 +13,14 @@ The simplest way to install a plugin from GitHub:
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('zsh-plugin', {
     repo: 'jeffreytse/zsh-vi-mode',
   })
-    .zsh((shell) => shell.always(`source "${ctx.currentDir}/zsh-vi-mode.plugin.zsh"`))
 );
 ```
+
+The plugin is automatically sourced - no additional configuration needed!
 
 #### Full Git URL
 
@@ -28,23 +29,45 @@ For plugins hosted elsewhere (GitLab, Bitbucket, private repos):
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('zsh-plugin', {
     url: 'https://gitlab.com/user/custom-plugin.git',
   })
-    .zsh((shell) => shell.always(`source "${ctx.currentDir}/custom-plugin.plugin.zsh"`))
 );
 ```
 
 ### Install Parameters
 
-| Parameter    | Type   | Required | Description                                                |
-| ------------ | ------ | -------- | ---------------------------------------------------------- |
-| `repo`       | string | No\*     | GitHub repository shorthand (e.g., `user/repo`)            |
-| `url`        | string | No\*     | Full Git URL (e.g., `https://github.com/user/repo.git`)    |
-| `pluginName` | string | No       | Custom plugin directory name (defaults to repository name) |
+| Parameter    | Type    | Required | Description                                                |
+| ------------ | ------- | -------- | ---------------------------------------------------------- |
+| `repo`       | string  | No\*     | GitHub repository shorthand (e.g., `user/repo`)            |
+| `url`        | string  | No\*     | Full Git URL (e.g., `https://github.com/user/repo.git`)    |
+| `pluginName` | string  | No       | Custom plugin directory name (defaults to repository name) |
+| `source`     | string  | No       | Explicit source file path (auto-detected if not specified) |
+| `auto`       | boolean | No       | Auto-install during `generate` command (default: `true`)   |
 
 \* Either `repo` or `url` must be provided.
+
+### Auto-Install Behavior
+
+By default (`auto: true`), zsh plugins are automatically installed during the `dotfiles generate` command. This means:
+
+1. When you run `dotfiles generate`, plugins with `auto: true` are cloned/updated
+2. The plugin's `source` command is automatically added to your shell init
+3. No separate `dotfiles install` step is needed for these plugins
+
+To disable auto-installation and require explicit `dotfiles install`:
+
+```typescript
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install) =>
+  install('zsh-plugin', {
+    repo: 'jeffreytse/zsh-vi-mode',
+    auto: false, // Requires explicit `dotfiles install`
+  })
+);
+```
 
 ### Custom Plugin Name
 
@@ -53,56 +76,70 @@ Use `pluginName` when you want the plugin directory name to differ from the repo
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('zsh-plugin', {
     repo: 'jeffreytse/zsh-vi-mode',
     pluginName: 'vi-mode', // Cloned to plugins/vi-mode instead of plugins/zsh-vi-mode
   })
-    .zsh((shell) => shell.always(`source "${ctx.currentDir}/zsh-vi-mode.plugin.zsh"`))
+);
+```
+
+### Explicit Source File
+
+If the plugin's source file doesn't follow standard naming conventions, specify it explicitly:
+
+```typescript
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install) =>
+  install('zsh-plugin', {
+    repo: 'some-org/some-plugin',
+    source: 'custom-init.zsh', // Use this file instead of auto-detection
+  })
 );
 ```
 
 ## How It Works
 
 1. **Clone**: The repository is cloned with `--depth 1` to minimize download size
-2. **Update**: On subsequent runs, `git pull --ff-only` updates the plugin
-3. **Version**: Version is determined from git tags (e.g., `v0.1.0`) or commit hash (e.g., `abc1234`)
+2. **Detect**: The plugin's source file is auto-detected (e.g., `*.plugin.zsh`)
+3. **Source**: A `source` command is automatically added to your shell init
+4. **Update**: On subsequent runs, `git pull --ff-only` updates the plugin
+5. **Version**: Version is determined from git tags (e.g., `v0.1.0`) or commit hash (e.g., `abc1234`)
 
-## Full Example
+### Auto-detected Source Files
+
+The installer checks for these files in order:
+
+- `{pluginName}.plugin.zsh`
+- `{pluginName}.zsh`
+- `init.zsh`
+- `plugin.zsh`
+- `{pluginName}.zsh-theme`
+
+## Adding Environment Variables
+
+Use `.zsh()` to add environment variables or other shell configuration:
 
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('zsh-plugin', {
     repo: 'jeffreytse/zsh-vi-mode',
   })
     .zsh((shell) =>
-      shell
-        .environment({
-          ZVM_VI_INSERT_ESCAPE_BINDKEY: 'jj',
-          ZVM_CURSOR_STYLE_ENABLED: 'false',
-        })
-        .always(`source "${ctx.currentDir}/zsh-vi-mode.plugin.zsh"`)
+      shell.environment({
+        ZVM_VI_INSERT_ESCAPE_BINDKEY: 'jj',
+        ZVM_CURSOR_STYLE_ENABLED: 'false',
+      })
     )
 );
 ```
 
-## Plugin Loading
-
-Zsh plugins installed via this method need to be sourced in your shell init. Use the `.always()` method to add the source command. The `ctx.currentDir` variable points to the plugin directory.
-
-Common plugin file patterns:
-
-- `${ctx.currentDir}/<plugin-name>.plugin.zsh`
-- `${ctx.currentDir}/<plugin-name>.zsh`
-- `${ctx.currentDir}/init.zsh`
+The environment variables are set **before** the plugin is sourced, allowing you to configure the plugin's behavior.
 
 ## Troubleshooting
-
-### Plugin not sourced
-
-Make sure the `.always()` block contains the correct path to the plugin file. Check the plugin's repository to find the correct file to source.
 
 ### Update fails
 

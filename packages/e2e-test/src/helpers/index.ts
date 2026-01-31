@@ -1,3 +1,4 @@
+export * from '../__tests__/scenarios/autoInstall';
 export * from '../__tests__/scenarios/completion';
 export * from '../__tests__/scenarios/conflict';
 export * from '../__tests__/scenarios/dependency';

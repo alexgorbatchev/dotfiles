@@ -266,7 +266,7 @@ export class Installer implements IInstaller {
     parentLogger: TsLogger,
   ): Promise<InstallResult | null> {
     const logger = parentLogger.getSubLogger({ name: 'shouldSkipInstallation' });
-    if (options?.force) {
+    if (options?.force || options?.skipVersionCheck) {
       return null;
     }
 
@@ -280,6 +280,10 @@ export class Installer implements IInstaller {
     const currentDir = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
     const binaryPaths = getBinaryPaths(resolvedToolConfig.binaries, toolName, currentDir);
 
+    // Get shellInit from plugin if available (for plugins like zsh-plugin that emit shellInit)
+    const plugin = this.registry.get(resolvedToolConfig.installationMethod);
+    const shellInit = plugin?.getShellInit?.(toolName, resolvedToolConfig, currentDir);
+
     const targetVersion = await this.getTargetVersion(toolName, resolvedToolConfig);
     if (targetVersion) {
       if (existingInstallation.version === targetVersion) {
@@ -290,6 +294,7 @@ export class Installer implements IInstaller {
           version: existingInstallation.version,
           installationMethod: 'already-installed',
           binaryPaths,
+          shellInit,
         } as InstallResult;
         return result;
       }
@@ -309,6 +314,7 @@ export class Installer implements IInstaller {
       version: existingInstallation.version,
       installationMethod: 'already-installed',
       binaryPaths,
+      shellInit,
     } as InstallResult;
     return result;
   }

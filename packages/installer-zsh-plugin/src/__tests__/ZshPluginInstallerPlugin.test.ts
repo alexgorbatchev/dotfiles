@@ -73,6 +73,7 @@ describe('ZshPluginInstallerPlugin', () => {
       installationMethod: 'zsh-plugin',
       installParams: {
         repo: 'user/repo',
+        auto: true,
       },
     };
 
@@ -94,5 +95,87 @@ describe('ZshPluginInstallerPlugin', () => {
 
   it('should not be externally managed', () => {
     expect(plugin.externallyManaged).toBe(false);
+  });
+
+  describe('getShellInit', () => {
+    it('should return shell init with source command for repo-based plugin', () => {
+      const toolConfig: ZshPluginToolConfig = {
+        name: 'zsh-vi-mode',
+        version: '1.0.0',
+        binaries: [],
+        installationMethod: 'zsh-plugin',
+        installParams: {
+          repo: 'jeffreytse/zsh-vi-mode',
+          auto: true,
+        },
+      };
+
+      const result = plugin.getShellInit('zsh-vi-mode', toolConfig, '/home/user/.dotfiles/plugins');
+
+      expect(result).toBeDefined();
+      expect(result?.zsh?.scripts).toHaveLength(1);
+      expect(result?.zsh?.scripts?.[0]).toEqual({
+        kind: 'raw',
+        value: 'source "/home/user/.dotfiles/plugins/zsh-vi-mode/zsh-vi-mode.plugin.zsh"',
+      });
+    });
+
+    it('should return shell init with custom source file', () => {
+      const toolConfig: ZshPluginToolConfig = {
+        name: 'custom-plugin',
+        version: '1.0.0',
+        binaries: [],
+        installationMethod: 'zsh-plugin',
+        installParams: {
+          repo: 'user/custom-plugin',
+          source: 'init.zsh',
+          auto: true,
+        },
+      };
+
+      const result = plugin.getShellInit('custom-plugin', toolConfig, '/plugins');
+
+      expect(result).toBeDefined();
+      expect(result?.zsh?.scripts?.[0]).toEqual({
+        kind: 'raw',
+        value: 'source "/plugins/custom-plugin/init.zsh"',
+      });
+    });
+
+    it('should return shell init with custom pluginName', () => {
+      const toolConfig: ZshPluginToolConfig = {
+        name: 'my-tool',
+        version: '1.0.0',
+        binaries: [],
+        installationMethod: 'zsh-plugin',
+        installParams: {
+          repo: 'user/repo',
+          pluginName: 'custom-name',
+          auto: true,
+        },
+      };
+
+      const result = plugin.getShellInit('my-tool', toolConfig, '/plugins');
+
+      expect(result).toBeDefined();
+      expect(result?.zsh?.scripts?.[0]).toEqual({
+        kind: 'raw',
+        value: 'source "/plugins/custom-name/custom-name.plugin.zsh"',
+      });
+    });
+
+    it('should return undefined when installParams is missing', () => {
+      const toolConfig = {
+        name: 'test',
+        version: '1.0.0',
+        binaries: [],
+        installationMethod: 'zsh-plugin',
+        installParams: undefined,
+      } as unknown as ZshPluginToolConfig;
+
+      const result = plugin.getShellInit('test', toolConfig, '/plugins');
+
+      expect(result).toBeUndefined();
+    });
   });
 });

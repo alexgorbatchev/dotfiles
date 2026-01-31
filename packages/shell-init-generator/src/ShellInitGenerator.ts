@@ -1,5 +1,6 @@
 import type { ProjectConfig } from '@dotfiles/config';
-import type { ShellType, ToolConfig } from '@dotfiles/core';
+import type { IPluginShellInit, ShellType, ToolConfig } from '@dotfiles/core';
+import { getScriptContent, isAlwaysScript, isOnceScript, isRawScript } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { resolvePlatformConfig } from '@dotfiles/utils';
@@ -132,12 +133,56 @@ export class ShellInitGenerator implements IShellInitGenerator {
       const resolvedConfig = options?.systemInfo ? resolvePlatformConfig(config, options.systemInfo) : config;
       const shellContent = generator.extractShellContent(toolName, resolvedConfig);
 
+      // Merge plugin-emitted shell init if present
+      const pluginShellInit = options?.pluginShellInit?.[toolName]?.[generator.shellType];
+      if (pluginShellInit) {
+        this.mergePluginShellInit(shellContent, pluginShellInit);
+      }
+
       if (this.hasContent(shellContent)) {
         toolContents.set(toolName, shellContent);
       }
     }
 
     return toolContents;
+  }
+
+  /**
+   * Merges plugin-emitted shell initialization content into the shell content.
+   * Plugin content is appended to user-defined content.
+   */
+  private mergePluginShellInit(shellContent: IShellInitContent, pluginInit: IPluginShellInit): void {
+    // Merge environment variables (convert Record to export statements)
+    if (pluginInit.environmentVariables) {
+      for (const [key, value] of Object.entries(pluginInit.environmentVariables)) {
+        shellContent.environmentVariables.push(`export ${key}="${value}"`);
+      }
+    }
+
+    // Merge aliases (convert Record to alias statements)
+    if (pluginInit.aliases) {
+      for (const [name, command] of Object.entries(pluginInit.aliases)) {
+        shellContent.toolInit.push(`alias ${name}="${command}"`);
+      }
+    }
+
+    // Merge scripts - route by kind discriminator
+    if (pluginInit.scripts) {
+      for (const script of pluginInit.scripts) {
+        if (isOnceScript(script)) {
+          shellContent.onceScripts.push(script);
+        } else if (isAlwaysScript(script)) {
+          shellContent.alwaysScripts.push(script);
+        } else if (isRawScript(script)) {
+          shellContent.rawScripts.push(getScriptContent(script));
+        }
+      }
+    }
+
+    // Merge functions
+    if (pluginInit.functions) {
+      Object.assign(shellContent.functions, pluginInit.functions);
+    }
   }
 
   private async writeShellFiles(

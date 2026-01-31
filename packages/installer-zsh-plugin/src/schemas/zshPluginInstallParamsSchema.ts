@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 /**
  * Parameters for a "zsh-plugin" installation method.
- * This method clones git repositories into a plugins directory for use with zsh.
+ * This method clones git repositories and automatically sources the plugin.
  */
 export const zshPluginInstallParamsSchema = baseInstallParamsSchema.extend({
   /**
@@ -33,11 +33,12 @@ export const zshPluginInstallParamsSchema = baseInstallParamsSchema.extend({
    */
   source: z.string().min(1).optional(),
   /**
-   * Target directory for the plugin symlink.
-   * Defaults to $ZSH_CUSTOM/plugins or ~/.oh-my-zsh/custom/plugins if $ZSH_CUSTOM is not set.
-   * The plugin will be symlinked to {target}/{pluginName}.
+   * Whether to automatically source the plugin in shell init.
+   * When true (default), the plugin is automatically sourced.
+   * Set to false if you want to manually configure sourcing via .zsh().
+   * @default true
    */
-  target: z.string().min(1).optional(),
+  auto: z.boolean().default(true),
 }).refine(
   (data) => data.repo || data.url,
   { message: 'Either repo or url must be specified' },
@@ -45,5 +46,6 @@ export const zshPluginInstallParamsSchema = baseInstallParamsSchema.extend({
 
 /**
  * Parameters for a "zsh-plugin" installation method.
+ * Uses z.input to allow omitting `auto` (which has a default value).
  */
-export type ZshPluginInstallParams = BaseInstallParams & z.infer<typeof zshPluginInstallParamsSchema>;
+export type ZshPluginInstallParams = BaseInstallParams & z.input<typeof zshPluginInstallParamsSchema>;

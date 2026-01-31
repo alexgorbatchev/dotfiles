@@ -1,6 +1,8 @@
 import type { IInstallContext } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import type { z } from 'zod';
+import type { ShellScript } from './shell/shellScript.types';
+import type { ShellType } from './tool-config/shell/shellType';
 
 type Primitive = string | number | bigint | boolean | symbol | undefined | null;
 
@@ -53,6 +55,21 @@ export interface IInstallOptions {
 }
 
 /**
+ * Shell initialization content that plugins can emit.
+ * This content will be merged with user-defined shell configuration from tool configs.
+ */
+export interface IPluginShellInit {
+  /** Environment variable exports */
+  environmentVariables?: Record<string, string>;
+  /** Shell aliases */
+  aliases?: Record<string, string>;
+  /** Shell scripts (once, always, or raw) - routed by kind discriminator */
+  scripts?: ShellScript[];
+  /** Shell functions (function name -> body) */
+  functions?: Record<string, string>;
+}
+
+/**
  * Result from plugin installation - success case
  */
 export type InstallResultSuccess<TMetadata = unknown> = IOperationSuccess & {
@@ -66,6 +83,12 @@ export type InstallResultSuccess<TMetadata = unknown> = IOperationSuccess & {
    * The target path should be absolute.
    */
   symlinks?: Array<{ source: string; target: string; }>;
+  /**
+   * Shell initialization content emitted by the plugin.
+   * Keyed by shell type (zsh, bash, powershell).
+   * This content will be merged with user-defined shell configuration from tool configs.
+   */
+  shellInit?: Partial<Record<ShellType, IPluginShellInit>>;
 };
 
 /**
@@ -317,4 +340,22 @@ export interface IInstallerPlugin<
     context: IInstallContext,
     logger: TsLogger,
   ): Promise<string | null>;
+
+  /**
+   * Optional: Get shell initialization content for an already-installed tool.
+   *
+   * This is called when the tool is already installed and the installer skips
+   * the installation process. Plugins that emit shellInit during install should
+   * implement this to provide the same shellInit without re-running installation.
+   *
+   * @param toolName - Name of the tool
+   * @param toolConfig - Complete tool configuration
+   * @param installPath - Path where the tool is installed (currentDir)
+   * @returns Shell initialization content keyed by shell type, or undefined if plugin doesn't emit shellInit
+   */
+  getShellInit?(
+    toolName: string,
+    toolConfig: TConfig,
+    installPath: string,
+  ): Partial<Record<ShellType, IPluginShellInit>> | undefined;
 }

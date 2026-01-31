@@ -16,8 +16,4 @@ export const messages = {
   invalidParams: (): SafeLogMessage => createSafeLogMessage('Either repo or url must be specified'),
   updateCheckNotImplemented: (toolName: string): SafeLogMessage =>
     createSafeLogMessage(`Update check not implemented for zsh-plugin: ${toolName}`),
-  symlinkCreated: (target: string, source: string): SafeLogMessage =>
-    createSafeLogMessage(`Created symlink: ${target} -> ${source}`),
-  symlinkTargetExists: (target: string): SafeLogMessage =>
-    createSafeLogMessage(`Symlink target already exists: ${target}`),
 } as const satisfies SafeLogMessageMap;

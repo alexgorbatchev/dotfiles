@@ -62,6 +62,7 @@ After calling `install()`, these methods are available:
 | `.hook(event, fn)`       | Lifecycle hooks ([details](./hooks.md)) |
 | `.zsh(fn)` / `.bash(fn)` | Shell-specific configuration            |
 | `.platform(p, fn)`       | Platform-specific overrides             |
+| `.disable()`             | Skip tool during generation             |
 
 ## Next Steps
 

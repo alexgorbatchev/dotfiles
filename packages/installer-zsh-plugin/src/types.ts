@@ -14,10 +14,6 @@ export interface IZshPluginInstallMetadata extends Partial<IToolInstallationDeta
    * This is the file that will be sourced to load the plugin.
    */
   sourceFile: string;
-  /**
-   * The symlink path where the plugin is linked.
-   */
-  symlinkPath: string;
 }
 
 /**

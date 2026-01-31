@@ -1,5 +1,10 @@
-import type { ISystemInfo, ShellType, ToolConfig } from '@dotfiles/core';
+import type { IPluginShellInit, ISystemInfo, ShellType, ToolConfig } from '@dotfiles/core';
 import type { IProfileUpdateResult } from './profile-updater/IProfileUpdater';
+
+/**
+ * Plugin-emitted shell initialization content, keyed by tool name and shell type.
+ */
+export type PluginShellInitMap = Record<string, Partial<Record<ShellType, IPluginShellInit>>>;
 
 /**
  * Options for generating shell initialization files.
@@ -28,6 +33,13 @@ export interface IGenerateShellInitOptions {
    * When provided, platform-specific configurations matching this system will be included.
    */
   systemInfo?: ISystemInfo;
+
+  /**
+   * Plugin-emitted shell initialization content.
+   * Keyed by tool name, then by shell type.
+   * This content is merged with user-defined shell configuration from tool configs.
+   */
+  pluginShellInit?: PluginShellInitMap;
 }
 
 /**

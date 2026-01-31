@@ -42,7 +42,8 @@ export default defineTool((install) =>
 
 - Plugins are cloned to the managed directory (`.generated/tools/{toolName}/{version}/`)
 - The `ctx.currentDir` symlink points to the installed version for stable references
-- Users must source the plugin manually via `.zsh((shell) => shell.always(...))`
+- Plugins with `auto: true` (default) are automatically installed during `dotfiles generate`
+- The installer emits `shellInit` with a `source` command that is merged into the shell init file
 - Supports both GitHub shorthand (`user/repo`) and full git URLs
 - Updates existing plugins via `git pull` when reinstalling
 - No binaries are generated; shell integration handles plugin loading

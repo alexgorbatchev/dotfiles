@@ -4,6 +4,9 @@ export const messages = {
   constructor: {
     initialized: () => createSafeLogMessage('Initializing GeneratorOrchestrator'),
   } satisfies SafeLogMessageMap,
+  autoInstall: {
+    completed: (toolName: string) => createSafeLogMessage(`Auto-installed: ${toolName}`),
+  } satisfies SafeLogMessageMap,
   generateAll: {
     parsedOptions: (toolConfigsCount: number) =>
       createSafeLogMessage(`Parsed ${toolConfigsCount} tool configuration entries`),

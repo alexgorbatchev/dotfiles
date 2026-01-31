@@ -1,4 +1,5 @@
 import type { IInstallContext, Shell } from '@dotfiles/core';
+import { raw } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import { withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
@@ -13,8 +14,9 @@ import type { IZshPluginInstallMetadata, ZshPluginInstallResult } from './types'
  * This function handles the complete installation process for zsh plugins:
  * 1. Resolves the git URL from repo shorthand or full URL
  * 2. Determines the plugin name (from params or derived from URL)
- * 3. Clones or updates the repository in the plugins directory
- * 4. Retrieves version information from git
+ * 3. Clones or updates the repository in the staging directory
+ * 4. Detects the plugin's source file (.plugin.zsh)
+ * 5. Emits shell init content to source the plugin
  *
  * @param toolName - The name of the tool to install.
  * @param toolConfig - The configuration for the zsh plugin.
@@ -83,24 +85,11 @@ export async function installFromZshPlugin(
       };
     }
 
-    // Create symlink to $ZSH_CUSTOM/plugins or custom target
-    const zshCustom = process.env['ZSH_CUSTOM'];
-    const targetDir = params.target ?? (zshCustom ? path.join(zshCustom, 'plugins') : null);
-
-    if (!targetDir) {
-      return {
-        success: false,
-        error: `$ZSH_CUSTOM environment variable is not set. Either set it or provide 'target' parameter explicitly.`,
-      };
-    }
-
-    const symlinkTarget = path.join(targetDir, pluginName);
-    const symlinkSource = path.join(context.currentDir, pluginName);
-
-    await createPluginSymlink(symlinkSource, symlinkTarget, fs, logger);
-
     // Get version from git
     const version = await getGitVersion(pluginPath, shell, logger);
+
+    // Build the source path for shell init (uses currentDir which points to installed version)
+    const sourceFilePath = path.join(context.currentDir, pluginName, sourceFile);
 
     const metadata: IZshPluginInstallMetadata = {
       method: 'zsh-plugin',
@@ -108,7 +97,6 @@ export async function installFromZshPlugin(
       gitUrl,
       pluginPath,
       sourceFile,
-      symlinkPath: symlinkTarget,
     };
 
     return {
@@ -116,6 +104,13 @@ export async function installFromZshPlugin(
       binaryPaths: [],
       version,
       metadata,
+      shellInit: {
+        zsh: {
+          // Use raw script to avoid subshell wrapping
+          // source commands need to run in the main shell context
+          scripts: [raw(`source "${sourceFilePath}"`)],
+        },
+      },
     };
   };
 
@@ -125,7 +120,7 @@ export async function installFromZshPlugin(
 /**
  * Resolves the plugin name from parameters.
  */
-function resolvePluginName(
+export function resolvePluginName(
   pluginName: string | undefined,
   repo: string | undefined,
   url: string | undefined,
@@ -234,35 +229,4 @@ async function getGitVersion(pluginPath: string, shell: Shell, parentLogger: TsL
   } catch {
     return undefined;
   }
-}
-
-/**
- * Creates a symlink for the plugin in the target directory.
- */
-async function createPluginSymlink(
-  source: string,
-  target: string,
-  fs: IResolvedFileSystem,
-  parentLogger: TsLogger,
-): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'createPluginSymlink' });
-
-  // Ensure target directory exists
-  const targetDir = path.dirname(target);
-  await fs.ensureDir(targetDir);
-
-  // Remove existing symlink if present
-  if (await fs.exists(target)) {
-    const stats = await fs.lstat(target);
-    if (stats.isSymbolicLink()) {
-      await fs.rm(target);
-    } else {
-      logger.warn(messages.symlinkTargetExists(target));
-      return;
-    }
-  }
-
-  // Create symlink
-  await fs.symlink(source, target);
-  logger.info(messages.symlinkCreated(target, source));
 }

@@ -609,17 +609,15 @@ import { defineTool } from '@gitea/dotfiles';
  *
  * https://github.com/jeffreytse/zsh-vi-mode
  */
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('zsh-plugin', {
     repo: 'jeffreytse/zsh-vi-mode',
   })
     .zsh((shell) =>
-      shell
-        .environment({
-          ZVM_VI_INSERT_ESCAPE_BINDKEY: 'jj',
-          ZVM_CURSOR_STYLE_ENABLED: 'false',
-        })
-        .always(`source "${ctx.currentDir}/zsh-vi-mode.plugin.zsh"`)
+      shell.environment({
+        ZVM_VI_INSERT_ESCAPE_BINDKEY: 'jj',
+        ZVM_CURSOR_STYLE_ENABLED: 'false',
+      })
     )
 );
 ```

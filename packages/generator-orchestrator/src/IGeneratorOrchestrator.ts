@@ -1,4 +1,30 @@
-import type { ToolConfig } from '@dotfiles/core';
+import type { InstallResultSuccess, IPluginShellInit, ShellType, ToolConfig } from '@dotfiles/core';
+
+/**
+ * Result type for auto-install operations.
+ */
+export interface IAutoInstallResult {
+  /** The name of the tool that was installed */
+  toolName: string;
+  /** Whether the installation was successful */
+  success: boolean;
+  /** Shell initialization data emitted by the installer (only on success) */
+  shellInit?: Partial<Record<ShellType, IPluginShellInit>>;
+}
+
+/**
+ * Interface for the installer used during auto-install operations.
+ * This is a minimal interface to avoid circular dependencies.
+ */
+export interface IAutoInstaller {
+  /**
+   * Install a tool based on its configuration.
+   */
+  install(
+    toolName: string,
+    toolConfig: ToolConfig,
+  ): Promise<InstallResultSuccess | { success: false; }>;
+}
 
 /**
  * Options for the generateAll operation.
@@ -9,6 +35,13 @@ export interface IGenerateAllOptions {
    * @default false
    */
   overwrite?: boolean;
+
+  /**
+   * Optional installer to use for auto-install operations.
+   * When provided, tools with `auto: true` in their install params will be
+   * automatically installed before shell init generation.
+   */
+  installer?: IAutoInstaller;
 }
 
 /**

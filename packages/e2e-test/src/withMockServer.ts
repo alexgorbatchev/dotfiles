@@ -22,6 +22,11 @@ const INSTALL_BY_BINARY_TOOL_ASSETS_V1: string[] = [
   'install-by-binary-tool-1.0.0-macos_arm64.tar.gz',
 ];
 
+const AUTO_INSTALL_TOOL_ASSETS_V1: string[] = [
+  'auto-install-tool-1.0.0-linux_amd64.tar.gz',
+  'auto-install-tool-1.0.0-macos_arm64.tar.gz',
+];
+
 const GITHUB_DEFAULTS: Record<string, Record<string, object>> = {
   'repo/github-release-tool': {
     '1.0.0': {
@@ -69,12 +74,25 @@ const GITHUB_DEFAULTS: Record<string, Record<string, object>> = {
       })),
     },
   },
+  'repo/auto-install-tool': {
+    '1.0.0': {
+      tag_name: 'v1.0.0',
+      name: 'v1.0.0',
+      assets: AUTO_INSTALL_TOOL_ASSETS_V1.map((name) => ({
+        name,
+        browser_download_url: `http://127.0.0.1:8765/repo/auto-install-tool/releases/download/v1.0.0/${name}`,
+        content_type: 'application/gzip',
+        size: 1024,
+      })),
+    },
+  },
 };
 
 const DEFAULT_VERSIONS: Record<string, string> = {
   'repo/github-release-tool': '1.0.0',
   'repo/hook-test-tool': '1.0.0',
   'repo/install-by-binary-tool': '1.0.0',
+  'repo/auto-install-tool': '1.0.0',
 };
 
 // Current version for each tool - mutable state that gets reset in afterEach
@@ -88,6 +106,7 @@ const currentVersions: Record<string, string> = {};
  */
 function createBinaryDownloadResponse(filename: string): Response {
   // Determine which tool directory based on filename
+  let fixturesDir = 'fixtures';
   let toolDir = '';
   if (filename.startsWith('github-release-tool')) {
     toolDir = 'tools/github-release-tool';
@@ -97,9 +116,12 @@ function createBinaryDownloadResponse(filename: string): Response {
     toolDir = 'tools/hook-test-tool';
   } else if (filename.startsWith('install-by-binary-tool')) {
     toolDir = 'tools/install-by-binary-tool';
+  } else if (filename.startsWith('auto-install-tool')) {
+    fixturesDir = 'fixtures-auto-install';
+    toolDir = 'tools/auto-install-tool';
   }
 
-  const mockBinaryPath = path.join(import.meta.dir, '__tests__', 'fixtures', toolDir, filename);
+  const mockBinaryPath = path.join(import.meta.dir, '__tests__', fixturesDir, toolDir, filename);
   return new Response(Bun.file(mockBinaryPath), {
     headers: {
       'Content-Disposition': `attachment; filename=${filename}`,

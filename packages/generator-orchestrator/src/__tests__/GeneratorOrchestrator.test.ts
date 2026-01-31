@@ -1,5 +1,5 @@
 import type { ProjectConfig } from '@dotfiles/config';
-import { always, Architecture, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
+import { always, Architecture, type ISystemInfo, Platform, raw, type ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
@@ -158,6 +158,7 @@ describe('GeneratorOrchestrator', () => {
       expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         shellTypes: ['zsh', 'bash', 'powershell'],
         systemInfo,
+        pluginShellInit: {},
       });
       expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         // dryRun: false, // Removed
@@ -175,6 +176,7 @@ describe('GeneratorOrchestrator', () => {
       expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         shellTypes: ['zsh', 'bash', 'powershell'],
         systemInfo,
+        pluginShellInit: {},
       });
       expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         overwrite: true,
@@ -196,6 +198,7 @@ describe('GeneratorOrchestrator', () => {
         {
           shellTypes: ['zsh', 'bash', 'powershell'],
           systemInfo,
+          pluginShellInit: {},
         },
       );
       expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(
@@ -250,6 +253,7 @@ describe('GeneratorOrchestrator', () => {
       expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         shellTypes: ['zsh', 'bash', 'powershell'],
         systemInfo,
+        pluginShellInit: {},
       });
       expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         overwrite: true,
@@ -298,6 +302,7 @@ describe('GeneratorOrchestrator', () => {
         expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
           shellTypes: ['zsh', 'bash', 'powershell'],
           systemInfo,
+          pluginShellInit: {},
         });
         expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
           overwrite: true,
@@ -331,6 +336,7 @@ describe('GeneratorOrchestrator', () => {
         expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
           shellTypes: ['zsh', 'bash', 'powershell'],
           systemInfo,
+          pluginShellInit: {},
         });
         expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
           overwrite: true,
@@ -450,6 +456,7 @@ describe('GeneratorOrchestrator', () => {
           expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(expectedFilteredConfigs, {
             shellTypes: ['zsh', 'bash', 'powershell'],
             systemInfo,
+            pluginShellInit: {},
           });
           expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(expectedFilteredConfigs, {
             overwrite: true,
@@ -489,6 +496,78 @@ describe('GeneratorOrchestrator', () => {
               overwrite: true,
             },
           );
+        });
+      });
+    });
+
+    describe('auto-install', () => {
+      it('should pass shellInit from auto-installed tools to shell init generator', async () => {
+        const autoToolConfigs: Record<string, ToolConfig> = {
+          'zsh-plugin--vi-mode': {
+            name: 'zsh-plugin--vi-mode',
+            binaries: [],
+            version: '1.0.0',
+            installationMethod: 'zsh-plugin',
+            installParams: { auto: true },
+          },
+        };
+
+        const expectedShellInit = {
+          zsh: {
+            scripts: [raw('source "/path/to/plugin.zsh"')],
+          },
+        };
+
+        const mockInstaller = {
+          install: mock(async () => ({
+            success: true as const,
+            version: '1.0.0',
+            binaryPaths: [],
+            shellInit: expectedShellInit,
+          })),
+        };
+
+        await orchestrator.generateAll(autoToolConfigs, { installer: mockInstaller });
+
+        expect(mockInstaller.install).toHaveBeenCalledWith(
+          'zsh-plugin--vi-mode',
+          autoToolConfigs['zsh-plugin--vi-mode'],
+        );
+        expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(autoToolConfigs, {
+          shellTypes: ['zsh', 'bash', 'powershell'],
+          systemInfo,
+          pluginShellInit: {
+            'zsh-plugin--vi-mode': expectedShellInit,
+          },
+        });
+      });
+
+      it('should not call installer when auto is false', async () => {
+        const nonAutoToolConfigs: Record<string, ToolConfig> = {
+          'some-tool': {
+            name: 'some-tool',
+            binaries: ['tool'],
+            version: '1.0.0',
+            installationMethod: 'manual',
+            installParams: { auto: false },
+          },
+        };
+
+        const mockInstaller = {
+          install: mock(async () => ({
+            success: true as const,
+            version: '1.0.0',
+            binaryPaths: [],
+          })),
+        };
+
+        await orchestrator.generateAll(nonAutoToolConfigs, { installer: mockInstaller });
+
+        expect(mockInstaller.install).not.toHaveBeenCalled();
+        expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(nonAutoToolConfigs, {
+          shellTypes: ['zsh', 'bash', 'powershell'],
+          systemInfo,
+          pluginShellInit: {},
         });
       });
     });

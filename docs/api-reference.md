@@ -47,10 +47,13 @@ export default defineTool((install, ctx) => install('github-release', { repo: 'o
 
 All installation methods support these parameters:
 
-| Parameter | Type                                                        | Description                            |
-| --------- | ----------------------------------------------------------- | -------------------------------------- |
-| `env`     | `Record<string, string> \| (ctx) => Record<string, string>` | Environment variables for installation |
-| `hooks`   | `object`                                                    | Lifecycle hooks configuration          |
+| Parameter | Type                                                        | Description                                               |
+| --------- | ----------------------------------------------------------- | --------------------------------------------------------- |
+| `env`     | `Record<string, string> \| (ctx) => Record<string, string>` | Environment variables for installation                    |
+| `hooks`   | `object`                                                    | Lifecycle hooks configuration                             |
+| `auto`    | `boolean`                                                   | Auto-install during `generate` (default: method-specific) |
+
+> **Note**: The `auto` parameter defaults to `true` for `zsh-plugin` and `false` for all other installation methods. When `auto: true`, the tool is automatically installed during `dotfiles generate` without requiring a separate `dotfiles install` step.
 
 The `env` parameter can be static or dynamic:
 
@@ -259,3 +262,4 @@ See [Installation Methods](./installation/README.md) for detailed parameters for
 - `curl-script` - [Curl Scripts](./installation/curl-script.md)
 - `curl-tar` - [Curl Tar](./installation/curl-tar.md)
 - `manual` - [Manual](./installation/manual.md)
+- `zsh-plugin` - [Zsh Plugin](./installation/zsh-plugin.md)

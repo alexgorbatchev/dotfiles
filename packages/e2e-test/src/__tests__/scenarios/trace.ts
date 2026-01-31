@@ -5,9 +5,12 @@ import type { TestHarness } from '../../TestHarness';
  * Defines test scenarios for the --trace flag.
  *
  * These tests verify that:
- * - --trace enables source location logging
+ * - --trace enables source location logging (file paths appear in output)
  * - Default behavior hides source location logging
  * - --quiet overrides --trace
+ *
+ * Note: These tests expect the auto-install-tool to already be installed.
+ * They run after autoInstallScenarios which handles the initial installation.
  *
  * @param harness - The TestHarness instance to use for running tests.
  */
@@ -46,7 +49,6 @@ export function traceScenarios(harness: TestHarness): void {
     it('should NOT show anything when --quiet --trace is used', async () => {
       const result = await harness.generate(['--quiet', '--trace']);
       expect(result.code).toBe(0);
-      // Usually quiet means empty stdout/stderr or very minimal
       expect(result.stdout.trim()).toBe('');
     });
   });

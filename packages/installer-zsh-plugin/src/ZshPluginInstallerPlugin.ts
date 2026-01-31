@@ -3,12 +3,16 @@ import type {
   IInstallerPlugin,
   IInstallOptions,
   InstallResult,
+  IPluginShellInit,
   Shell,
+  ShellType,
   UpdateCheckResult,
 } from '@dotfiles/core';
+import { raw } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { installFromZshPlugin } from './installFromZshPlugin';
+import path from 'node:path';
+import { installFromZshPlugin, resolvePluginName } from './installFromZshPlugin';
 import { messages } from './log-messages';
 import {
   type ZshPluginInstallParams,
@@ -100,6 +104,7 @@ export class ZshPluginInstallerPlugin implements
       binaryPaths: result.binaryPaths,
       version: result.version,
       metadata: result.metadata,
+      shellInit: result.shellInit,
     };
   }
 
@@ -152,5 +157,41 @@ export class ZshPluginInstallerPlugin implements
    */
   supportsReadme(): boolean {
     return false;
+  }
+
+  /**
+   * Gets shell initialization content for an already-installed zsh plugin.
+   *
+   * This is called when the tool is already installed and the installer skips
+   * the installation process. Returns the source command for the plugin.
+   *
+   * @param _toolName - Name of the tool (unused, pluginName derived from params).
+   * @param toolConfig - Complete tool configuration.
+   * @param installPath - Path where the tool is installed (currentDir).
+   * @returns Shell initialization content with the source command.
+   */
+  getShellInit(
+    _toolName: string,
+    toolConfig: ZshPluginToolConfig,
+    installPath: string,
+  ): Partial<Record<ShellType, IPluginShellInit>> | undefined {
+    const params = toolConfig.installParams;
+    if (!params) {
+      return undefined;
+    }
+
+    // Derive plugin name from params
+    const pluginName = resolvePluginName(params.pluginName, params.repo, params.url);
+
+    // Use explicit source or default pattern
+    // For already-installed case, we trust the first pattern since plugin was detected on install
+    const source = params.source ?? `${pluginName}.plugin.zsh`;
+    const sourceFilePath = path.join(installPath, pluginName, source);
+
+    return {
+      zsh: {
+        scripts: [raw(`source "${sourceFilePath}"`)],
+      },
+    };
   }
 }

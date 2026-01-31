@@ -1,5 +1,6 @@
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
+  BaseInstallParams,
   ICompletionContext,
   ISystemInfo,
   ShellCompletionConfig,
@@ -16,13 +17,14 @@ import type {
   ICompletionGenerator,
   IGenerateShellInitOptions,
   IShellInitGenerator,
+  PluginShellInitMap,
 } from '@dotfiles/shell-init-generator';
 import type { IGenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-generator';
 import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
 import { resolveValue } from '@dotfiles/unwrap-value';
 import { resolvePlatformConfig } from '@dotfiles/utils';
 import path from 'node:path';
-import type { IGenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
+import type { IAutoInstaller, IGenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { messages } from './log-messages';
 import { orderToolConfigsByDependencies } from './orderToolConfigsByDependencies';
 
@@ -119,6 +121,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     const toolConfigsCount = Object.keys(orderedToolConfigs).length;
     logger.debug(messages.generateAll.parsedOptions(toolConfigsCount));
 
+    // 0. Auto-install tools with auto: true in their install params
+    const pluginShellInit: PluginShellInitMap = await this.runAutoInstalls(orderedToolConfigs, options?.installer);
+
     // 1. Generate Shims
     const shimOptions: IGenerateShimsOptions = { overwrite: true, overwriteConflicts: options?.overwrite };
     logger.debug(messages.generateAll.shimGenerate());
@@ -130,6 +135,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     const shellInitOptions: IGenerateShellInitOptions = {
       shellTypes: ['zsh', 'bash', 'powershell'],
       systemInfo: this.systemInfo,
+      pluginShellInit,
     };
     logger.debug(messages.generateAll.shellGenerate());
     const shellInitResult = await this.shellInitGenerator.generate(orderedToolConfigs, shellInitOptions);
@@ -144,6 +150,54 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     );
     const symlinkResultCount = symlinkResults?.length ?? 0;
     logger.debug(messages.generateAll.symlinkGenerationComplete(symlinkResultCount));
+  }
+
+  /**
+   * Runs auto-install for tools that have `auto: true` in their install params.
+   * Returns a map of shellInit content emitted by installers for use in shell init generation.
+   *
+   * @param toolConfigs - The tool configurations to process.
+   * @param installer - Optional installer for auto-install operations.
+   * @returns Map of tool names to their emitted shellInit content.
+   */
+  private async runAutoInstalls(
+    toolConfigs: Record<string, ToolConfig>,
+    installer?: IAutoInstaller,
+  ): Promise<PluginShellInitMap> {
+    const logger = this.logger.getSubLogger({ name: 'runAutoInstalls' });
+    const pluginShellInit: PluginShellInitMap = {};
+
+    if (!installer) {
+      return pluginShellInit;
+    }
+
+    for (const [toolName, toolConfig] of Object.entries(toolConfigs)) {
+      const installParams = toolConfig.installParams as BaseInstallParams | undefined;
+      const shouldAutoInstall = installParams?.auto === true;
+
+      if (!shouldAutoInstall) {
+        continue;
+      }
+
+      // Call installer - it will return "already-installed" with shellInit if already installed
+      const result = await installer.install(toolName, toolConfig);
+
+      if (!result.success) {
+        continue;
+      }
+
+      // Only log when actually installed (not when already-installed)
+      if (result.installationMethod !== 'already-installed') {
+        logger.info(messages.autoInstall.completed(toolName));
+      }
+
+      // Collect shellInit from successful install
+      if (result.shellInit) {
+        pluginShellInit[toolName] = result.shellInit;
+      }
+    }
+
+    return pluginShellInit;
   }
 
   /**

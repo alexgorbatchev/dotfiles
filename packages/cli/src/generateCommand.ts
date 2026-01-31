@@ -54,7 +54,7 @@ export function registerGenerateCommand(
     .action(async (options: IGenerateCommandSpecificOptions) => {
       const combinedOptions: IGenerateCommandOptions = { ...options, ...program.opts() };
       const services = await servicesFactory();
-      const { projectConfig, fs, generatorOrchestrator, configService, systemInfo } = services;
+      const { projectConfig, fs, generatorOrchestrator, configService, systemInfo, installer } = services;
 
       try {
         logger.debug(messages.toolConfigsLoading(projectConfig.paths.toolConfigsDir), fs.constructor.name);
@@ -71,7 +71,7 @@ export function registerGenerateCommand(
         await generateToolTypes(toolConfigs, toolTypesPath, fs);
         logger.debug(messages.toolTypesGenerated(toolTypesPath));
 
-        await generatorOrchestrator.generateAll(toolConfigs, { overwrite: combinedOptions.overwrite });
+        await generatorOrchestrator.generateAll(toolConfigs, { overwrite: combinedOptions.overwrite, installer });
 
         // Generate CLI completions after tool completions
         const toolNames = Object.keys(toolConfigs).toSorted((a, b) => a.localeCompare(b));
