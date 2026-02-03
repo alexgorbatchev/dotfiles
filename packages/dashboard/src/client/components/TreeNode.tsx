@@ -1,3 +1,19 @@
+import {
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  File,
+  FileCode,
+  FileCog,
+  FileSymlink,
+  FileTerminal,
+  Folder,
+  FolderOpen,
+  Link,
+  Package,
+  Settings,
+  Zap,
+} from 'lucide-preact';
 import { type JSX } from 'preact';
 import { useState } from 'preact/hooks';
 
@@ -31,20 +47,61 @@ const fileTypeColors: Record<string, string> = {
   source: 'text-purple-400',
 };
 
-const fileTypeIcons: Record<string, string> = {
-  install: '📂',
-  'binary-path': '⚡',
-  source: '🔗',
-};
+function getFileIcon(fileType?: string): JSX.Element {
+  const iconClass = 'h-4 w-4';
+  switch (fileType) {
+    case 'shim':
+      return <FileCode class={iconClass} />;
+    case 'binary':
+      return <FileTerminal class={iconClass} />;
+    case 'binary-path':
+      return <Zap class={iconClass} />;
+    case 'symlink':
+      return <FileSymlink class={iconClass} />;
+    case 'config':
+      return <FileCog class={iconClass} />;
+    case 'completion':
+      return <Settings class={iconClass} />;
+    case 'init':
+      return <FileCode class={iconClass} />;
+    case 'hook-generated':
+      return <FileCode class={iconClass} />;
+    case 'catalog':
+      return <Package class={iconClass} />;
+    case 'install':
+      return <Package class={iconClass} />;
+    case 'source':
+      return <Link class={iconClass} />;
+    default:
+      return <File class={iconClass} />;
+  }
+}
 
 export function TreeNode({ node, depth = 0 }: TreeNodeProps): JSX.Element {
-  const [expanded, setExpanded] = useState(depth < 2);
+  const [expanded, setExpanded] = useState(true);
   const isDirectory = node.type === 'directory';
   const hasChildren = node.children && node.children.length > 0;
   const indent = depth * 16;
 
-  const icon = isDirectory ? '📁' : (fileTypeIcons[node.fileType || ''] || '📄');
   const colorClass = isDirectory ? 'text-amber-300' : (fileTypeColors[node.fileType || ''] || 'text-muted-foreground');
+
+  function renderChevron(): JSX.Element {
+    if (!hasChildren) {
+      return <Circle class='h-2 w-2 text-muted-foreground' />;
+    }
+    return expanded ?
+      <ChevronDown class='h-4 w-4 text-muted-foreground' /> :
+      <ChevronRight class='h-4 w-4 text-muted-foreground' />;
+  }
+
+  function renderIcon(): JSX.Element {
+    if (isDirectory) {
+      return expanded ?
+        <FolderOpen class='h-4 w-4' /> :
+        <Folder class='h-4 w-4' />;
+    }
+    return getFileIcon(node.fileType);
+  }
 
   return (
     <div>
@@ -54,9 +111,9 @@ export function TreeNode({ node, depth = 0 }: TreeNodeProps): JSX.Element {
         onClick={() => isDirectory && hasChildren && setExpanded(!expanded)}
       >
         {isDirectory ?
-          <span class='w-4 text-muted-foreground mr-1'>{hasChildren ? (expanded ? '▼' : '▶') : '•'}</span> :
+          <span class='w-4 mr-1 flex items-center justify-center'>{renderChevron()}</span> :
           <span class='w-4 mr-1' />}
-        <span class={colorClass}>{icon}</span>
+        <span class={colorClass}>{renderIcon()}</span>
         <span class={cn('ml-2', isDirectory && 'font-medium')}>{node.name}</span>
         {!isDirectory && node.fileType && (
           <Badge variant='outline' class='ml-2 text-xs'>
