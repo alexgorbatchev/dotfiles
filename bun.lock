@@ -487,6 +487,16 @@
         "typescript": "catalog:typescript",
       },
     },
+    "packages/shell-emissions": {
+      "name": "@dotfiles/shell-emissions",
+      "version": "1.0.0",
+      "devDependencies": {
+        "@types/bun": "catalog:system",
+        "@types/node": "catalog:system",
+        "@typescript/native-preview": "catalog:typescript",
+        "typescript": "catalog:typescript",
+      },
+    },
     "packages/shell-init-generator": {
       "name": "@dotfiles/shell-init-generator",
       "version": "1.0.0",
@@ -497,6 +507,7 @@
         "@dotfiles/downloader": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/logger": "workspace:*",
+        "@dotfiles/shell-emissions": "workspace:*",
         "@dotfiles/utils": "workspace:*",
       },
       "devDependencies": {
@@ -719,6 +730,8 @@
     "@dotfiles/registry": ["@dotfiles/registry@workspace:packages/registry"],
 
     "@dotfiles/registry-database": ["@dotfiles/registry-database@workspace:packages/registry-database"],
+
+    "@dotfiles/shell-emissions": ["@dotfiles/shell-emissions@workspace:packages/shell-emissions"],
 
     "@dotfiles/shell-init-generator": ["@dotfiles/shell-init-generator@workspace:packages/shell-init-generator"],
 

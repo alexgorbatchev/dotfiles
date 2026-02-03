@@ -4,124 +4,141 @@ import type {
   ShellCompletionConfigInput,
   ShellScript,
   ShellType,
+  ShellTypeConfig,
   ToolConfig,
 } from '@dotfiles/core';
 import { getScriptContent, isAlwaysScript, isOnceScript, isRawScript } from '@dotfiles/core';
-import path from 'node:path';
-import { AlwaysScriptFormatter, FunctionScriptFormatter, OnceScriptFormatter } from '../script-formatters';
-import { OnceScriptInitializer } from '../script-initializers';
+import type { Emission, FormatterConfig, RenderedOutput } from '@dotfiles/shell-emissions';
 import {
-  generateDefaultPathModification,
-  generateEndOfFile,
-  generateFileHeader,
-  generateHoistingAttribution,
-  generateHoistingExplanation,
-  generateSectionHeader,
-  generateToolHeader,
-} from '../shellTemplates';
-import type { IAdditionalShellFile, IShellGenerator, IShellInitContent } from './IShellGenerator';
-
-/**
- * Interface for shell-specific string generation strategy.
- * Each shell type implements this to handle shell-specific syntax.
- */
-export interface IShellStringProducer {
-  /**
-   * Extracts shell-specific init scripts from tool config.
-   */
-  extractInitScripts(toolConfig: ToolConfig): ShellScript[];
-
-  /**
-   * Processes completions configuration into shell-specific setup strings.
-   * Only processes resolved configs (not callbacks).
-   */
-  processCompletions(toolName: string, completions: ShellCompletionConfig): string[];
-
-  /**
-   * Processes environment variables into shell-specific export statements.
-   */
-  processEnvironmentVariables(toolConfig: ToolConfig): string[];
-
-  /**
-   * Processes aliases into shell-specific alias commands.
-   */
-  processAliases(toolConfig: ToolConfig): string[];
-
-  /**
-   * Generates shell-specific completion setup if needed.
-   */
-  generateCompletionSetup?(allCompletionSetup: string[], allToolInits: string[]): string[];
-}
+  alias,
+  BlockBuilder,
+  BlockRenderer,
+  completion,
+  environment,
+  fn,
+  path as pathEmission,
+  script,
+  SectionPriority,
+  withPriority,
+  withSource,
+} from '@dotfiles/shell-emissions';
+import path from 'node:path';
+import { createEmissionFormatter } from '../formatters';
+import type { IAdditionalShellFile, IShellGenerator } from './IShellGenerator';
 
 /**
  * Abstract base class for shell generators that contains all shared logic.
- * Shell-specific implementations only need to provide a string producer strategy.
+ * Shell-specific implementations only need to provide shell type information
+ * and the method to extract shell-specific configuration.
  */
 export abstract class BaseShellGenerator implements IShellGenerator {
   abstract readonly shellType: ShellType;
   abstract readonly fileExtension: string;
 
   protected readonly projectConfig: ProjectConfig;
-  protected readonly stringProducer: IShellStringProducer;
 
-  constructor(projectConfig: ProjectConfig, stringProducer: IShellStringProducer) {
+  constructor(projectConfig: ProjectConfig) {
     this.projectConfig = projectConfig;
-    this.stringProducer = stringProducer;
   }
 
-  protected abstract getShellConfig(
-    toolConfig: ToolConfig,
-  ): { completions?: ShellCompletionConfigInput; functions?: Record<string, string>; } | undefined;
+  /**
+   * Extracts shell-specific configuration from a tool config.
+   * Each shell generator implements this to return its shell's config section.
+   */
+  protected abstract getShellConfig(toolConfig: ToolConfig): ShellTypeConfig | undefined;
 
-  extractShellContent(toolName: string, toolConfig: ToolConfig): IShellInitContent {
-    const content: IShellInitContent = {
-      configFilePath: toolConfig.configFilePath,
-      toolInit: [],
-      pathModifications: [],
-      environmentVariables: [],
-      completionSetup: [],
-      onceScripts: [],
-      alwaysScripts: [],
-      rawScripts: [],
-      functions: {},
-    };
+  /**
+   * Gets the completion directory path for this shell.
+   */
+  protected abstract getCompletionDir(): string;
 
-    // Use string producer to extract shell-specific scripts
-    const scripts = this.stringProducer.extractInitScripts(toolConfig);
-    scripts.forEach((script: ShellScript) => {
-      if (isOnceScript(script)) {
-        content.onceScripts.push(script);
-      } else if (isRawScript(script)) {
-        content.rawScripts.push(getScriptContent(script));
-      } else if (isAlwaysScript(script)) {
-        content.alwaysScripts.push(script);
-      }
-    });
-
-    // Process declarative environment variables
-    const envVars = this.stringProducer.processEnvironmentVariables(toolConfig);
-    content.environmentVariables.push(...envVars);
-
-    // Process declarative aliases as tool init
-    const aliases = this.stringProducer.processAliases(toolConfig);
-    content.toolInit.push(...aliases);
-
-    // Process shell-specific config
+  /**
+   * Extracts typed emissions directly from a tool configuration.
+   * This is the primary content extraction method - emits structured data
+   * without intermediate string representation.
+   */
+  extractEmissions(toolConfig: ToolConfig): Emission[] {
+    const emissions: Emission[] = [];
+    const source = toolConfig.configFilePath;
     const shellConfig = this.getShellConfig(toolConfig);
+
+    // Process environment variables
+    if (shellConfig?.environment) {
+      const envEmission = environment(shellConfig.environment);
+      emissions.push(source ? withSource(envEmission, source) : envEmission);
+    }
+
+    // Process aliases
+    if (shellConfig?.aliases) {
+      const aliasEmission = alias(shellConfig.aliases);
+      emissions.push(source ? withSource(aliasEmission, source) : aliasEmission);
+    }
+
+    // Process shell functions
+    if (shellConfig?.functions) {
+      for (const [funcName, funcBody] of Object.entries(shellConfig.functions)) {
+        // Functions always have HOME override enabled
+        const funcEmission = fn(funcName, funcBody, true);
+        emissions.push(source ? withSource(funcEmission, source) : funcEmission);
+      }
+    }
+
+    // Process scripts
+    if (shellConfig?.scripts) {
+      for (const shellScript of shellConfig.scripts) {
+        const scriptEmission = this.createScriptEmission(shellScript);
+        if (scriptEmission) {
+          emissions.push(source ? withSource(scriptEmission, source) : scriptEmission);
+        }
+      }
+    }
+
+    // Process completions
     if (shellConfig?.completions) {
       const resolvedConfig = this.resolveCompletionConfig(shellConfig.completions);
       if (resolvedConfig) {
-        const completionSetup = this.stringProducer.processCompletions(toolName, resolvedConfig);
-        content.completionSetup.push(...completionSetup);
+        const completionEmission = this.createCompletionEmission(resolvedConfig);
+        if (completionEmission) {
+          emissions.push(source ? withSource(completionEmission, source) : completionEmission);
+        }
       }
     }
 
-    // Extract shell functions
-    if (shellConfig?.functions) {
-      content.functions = { ...shellConfig.functions };
+    return emissions;
+  }
+
+  /**
+   * Creates a script emission from a ShellScript.
+   */
+  private createScriptEmission(shellScript: ShellScript): Emission | undefined {
+    const scriptContent = getScriptContent(shellScript);
+
+    if (isOnceScript(shellScript)) {
+      return script(scriptContent, 'once', true);
+    } else if (isAlwaysScript(shellScript)) {
+      return script(scriptContent, 'always', true);
+    } else if (isRawScript(shellScript)) {
+      return script(scriptContent, 'raw', false);
     }
 
-    return content;
+    return undefined;
+  }
+
+  /**
+   * Creates a completion emission from resolved completion config.
+   * Default uses files-based completion (Bash, PowerShell).
+   * Override in ZshGenerator for fpath directory-based completion.
+   */
+  protected createCompletionEmission(config: ShellCompletionConfig): Emission | undefined {
+    const completionDir = this.getCompletionDir();
+
+    if (config.cmd || config.source) {
+      return completion({
+        files: [completionDir],
+      });
+    }
+
+    return undefined;
   }
 
   /**
@@ -147,293 +164,106 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     return input;
   }
 
-  processCompletions(toolName: string, completions: ShellCompletionConfig): string[] {
-    return this.stringProducer.processCompletions(toolName, completions);
+  /**
+   * Checks if a tool configuration has any meaningful shell content.
+   */
+  hasEmissions(toolConfig: ToolConfig): boolean {
+    const shellConfig = this.getShellConfig(toolConfig);
+    if (!shellConfig) {
+      return false;
+    }
+
+    return Boolean(
+      shellConfig.environment && Object.keys(shellConfig.environment).length > 0 ||
+        shellConfig.aliases && Object.keys(shellConfig.aliases).length > 0 ||
+        shellConfig.functions && Object.keys(shellConfig.functions).length > 0 ||
+        shellConfig.scripts && shellConfig.scripts.length > 0 ||
+        shellConfig.completions,
+    );
   }
 
-  generateFileContent(toolContents: Map<string, IShellInitContent>): string {
-    const allPathModifications: string[] = [];
-    const allEnvironmentVariables: string[] = [];
-    const allCompletionSetup: string[] = [];
-    let hasOnceScripts = false;
-
-    // Initialize formatters
-    const onceInitializer = new OnceScriptInitializer();
-
-    // Add default PATH modification first
-    allPathModifications.push(generateDefaultPathModification(this.shellType, this.projectConfig.paths.targetDir));
-
-    // Collect hoisted content from all tools
-    this.collectHoistedContent(toolContents, allPathModifications, allEnvironmentVariables, allCompletionSetup);
-
-    // Check if any tools have once scripts
-    for (const [, content] of toolContents) {
-      if (content.onceScripts.length > 0) {
-        hasOnceScripts = true;
-        break;
-      }
-    }
-
-    let fileContent = `${generateFileHeader(this.shellType, this.projectConfig.paths.dotfilesDir)}\n`;
-
-    // Add once script initialization if any tools use once scripts
-    if (hasOnceScripts) {
-      const initialization = onceInitializer.initialize(this.shellType, this.projectConfig.paths.shellScriptsDir);
-      fileContent += `${initialization.content}\n\n`;
-    }
-
-    // Add PATH modifications section with hoisting comments
-    fileContent += this.generateHoistedSection(
-      'PATH Modifications',
-      allPathModifications,
-      toolContents,
-      'pathModifications',
-    );
-
-    // Add environment variables section with hoisting comments
-    fileContent += this.generateHoistedSection(
-      'Environment Variables',
-      allEnvironmentVariables,
-      toolContents,
-      'environmentVariables',
-    );
-
-    // Add tool-specific initializations section with all tool content grouped together
-    fileContent += this.generateToolSection(toolContents);
-
-    // Add shell completions setup section
-    if (allCompletionSetup.length > 0) {
-      fileContent += `${generateSectionHeader(this.shellType, 'Shell Completions Setup')}\n`;
-
-      // Use string producer for shell-specific completion setup if available
-      const completionSetupStrings = this.stringProducer.generateCompletionSetup
-        ? this.stringProducer.generateCompletionSetup(allCompletionSetup, [])
-        : [...new Set(allCompletionSetup)];
-
-      fileContent += `${completionSetupStrings.join('\n')}\n\n`;
-    }
-
-    fileContent += `\n${generateEndOfFile(this.shellType)}`;
-
-    return fileContent;
+  generateFileContent(toolEmissions: Map<string, Emission[]>): string {
+    const result = this.renderContent(toolEmissions);
+    return result.content;
   }
 
   getDefaultOutputPath(): string {
     return path.join(this.projectConfig.paths.shellScriptsDir, `main${this.fileExtension}`);
   }
 
-  getAdditionalFiles(toolContents: Map<string, IShellInitContent>): IAdditionalShellFile[] {
-    const additionalFiles: IAdditionalShellFile[] = [];
-    const onceFormatter = new OnceScriptFormatter(
-      this.projectConfig.paths.shellScriptsDir,
-      this.projectConfig.paths.homeDir,
+  getAdditionalFiles(toolEmissions: Map<string, Emission[]>): IAdditionalShellFile[] {
+    const result = this.renderContent(toolEmissions);
+    return result.onceScripts.map((onceScript) => ({
+      content: onceScript.content,
+      outputPath: path.join(this.projectConfig.paths.shellScriptsDir, '.once', onceScript.filename),
+    }));
+  }
+
+  /**
+   * Creates the formatter configuration for this generator.
+   */
+  private createFormatterConfig(): FormatterConfig {
+    return {
+      homeDir: this.projectConfig.paths.homeDir,
+      onceScriptDir: path.join(this.projectConfig.paths.shellScriptsDir, '.once'),
+    };
+  }
+
+  /**
+   * Renders tool emissions to shell output using the emissions system.
+   */
+  private renderContent(toolEmissions: Map<string, Emission[]>): RenderedOutput {
+    const formatterConfig = this.createFormatterConfig();
+    const formatter = createEmissionFormatter(this.shellType, formatterConfig);
+    const renderer = new BlockRenderer();
+
+    // Build block structure with sections
+    const blockBuilder = new BlockBuilder()
+      .addSection('header', {
+        priority: SectionPriority.FileHeader,
+        isFileHeader: true,
+        metadata: { sourceFile: this.projectConfig.paths.dotfilesDir },
+      })
+      .addSection('path', {
+        title: 'PATH Modifications',
+        priority: SectionPriority.Path,
+        hoistKinds: ['path'],
+      })
+      .addSection('environment', {
+        title: 'Environment Variables',
+        priority: SectionPriority.Environment,
+        hoistKinds: ['environment'],
+      })
+      .addSection('main', {
+        title: 'Tool-Specific Initializations',
+        priority: SectionPriority.MainContent,
+        allowChildren: true,
+      })
+      .addSection('completions', {
+        title: 'Shell Completions Setup',
+        priority: SectionPriority.Completions,
+        hoistKinds: ['completion'],
+      })
+      .addSection('footer', {
+        priority: SectionPriority.FileFooter,
+        isFileFooter: true,
+      });
+
+    // Add default PATH emission for target bin directory (priority -1 ensures it comes first)
+    const defaultPathEmission = withPriority(
+      pathEmission(this.projectConfig.paths.targetDir, { deduplicate: true }),
+      -1,
     );
+    blockBuilder.addEmission(defaultPathEmission);
 
-    for (const [toolName, content] of toolContents) {
-      for (let i = 0; i < content.onceScripts.length; i++) {
-        const script = content.onceScripts[i];
-        if (script) {
-          const formatted = onceFormatter.format(script, toolName, this.shellType, i);
-          if (formatted.outputPath) {
-            additionalFiles.push({
-              content: formatted.content,
-              outputPath: formatted.outputPath,
-            });
-          }
-        }
+    // Add each tool's emissions to the builder
+    for (const [toolName, emissions] of toolEmissions) {
+      for (const emission of emissions) {
+        blockBuilder.addEmission(emission, toolName);
       }
     }
 
-    return additionalFiles;
-  }
-
-  /**
-   * Collects hoisted content from all tools (PATH, env vars, completions).
-   * Tool-specific content (toolInit, alwaysScripts) is handled in generateToolSection.
-   */
-  private collectHoistedContent(
-    toolContents: Map<string, IShellInitContent>,
-    allPathModifications: string[],
-    allEnvironmentVariables: string[],
-    allCompletionSetup: string[],
-  ): void {
-    for (const [, content] of toolContents) {
-      allPathModifications.push(...content.pathModifications);
-      allEnvironmentVariables.push(...content.environmentVariables);
-      allCompletionSetup.push(...content.completionSetup);
-    }
-  }
-
-  /**
-   * Generates the tool section with all content grouped under tool headers.
-   * Each tool gets a header followed by its always scripts and tool init content.
-   */
-  private generateToolSection(toolContents: Map<string, IShellInitContent>): string {
-    const hasContent = this.hasAnyToolContent(toolContents);
-    if (!hasContent) {
-      return '';
-    }
-
-    let section = `${generateSectionHeader(this.shellType, 'Tool-Specific Initializations')}\n`;
-
-    for (const [toolName, content] of toolContents) {
-      const toolSection = this.generateSingleToolContent(toolName, content);
-      section += toolSection;
-    }
-
-    return `${section}\n`;
-  }
-
-  /**
-   * Checks if any tool in the map has content to render.
-   */
-  private hasAnyToolContent(toolContents: Map<string, IShellInitContent>): boolean {
-    for (const [, content] of toolContents) {
-      if (this.hasToolContent(content)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Checks if a single tool's content has any renderable content.
-   */
-  private hasToolContent(content: IShellInitContent): boolean {
-    const hasFunctions = Object.keys(content.functions).length > 0;
-    return (
-      content.toolInit.length > 0 ||
-      content.alwaysScripts.length > 0 ||
-      content.rawScripts.length > 0 ||
-      hasFunctions
-    );
-  }
-
-  /**
-   * Generates the content section for a single tool.
-   */
-  private generateSingleToolContent(toolName: string, content: IShellInitContent): string {
-    if (!this.hasToolContent(content)) {
-      return '';
-    }
-
-    const alwaysFormatter = new AlwaysScriptFormatter(this.projectConfig.paths.homeDir);
-    const functionFormatter = new FunctionScriptFormatter(this.projectConfig.paths.homeDir);
-
-    let section = generateToolHeader(this.shellType, content.configFilePath);
-
-    // Add shell functions for this tool (before always scripts so functions are available)
-    const formattedFunctions = Object.entries(content.functions).map(
-      ([funcName, funcBody]) => functionFormatter.format(funcName, funcBody, this.shellType).content,
-    );
-
-    if (formattedFunctions.length > 0) {
-      section += `\n${formattedFunctions.join('\n')}`;
-    }
-
-    // Add always scripts for this tool (wrapped with HOME override)
-    const formattedAlwaysScripts = content.alwaysScripts.map(
-      (script) => alwaysFormatter.format(script, toolName, this.shellType).content,
-    );
-
-    if (formattedAlwaysScripts.length > 0) {
-      section += `\n${formattedAlwaysScripts.join('\n\n')}`;
-    }
-
-    // Add raw scripts for this tool (no wrapping)
-    if (content.rawScripts.length > 0) {
-      section += `\n${content.rawScripts.join('\n')}`;
-    }
-
-    // Add tool init (aliases, etc.)
-    if (content.toolInit.length > 0) {
-      section += `\n${content.toolInit.join('\n')}`;
-    }
-
-    section += '\n';
-    return section;
-  }
-
-  /**
-   * Generates a hoisted section with comments indicating original source.
-   */
-  private generateHoistedSection(
-    sectionTitle: string,
-    items: string[],
-    toolContents: Map<string, IShellInitContent>,
-    contentType: keyof IShellInitContent,
-  ): string {
-    if (items.length === 0) return '';
-
-    let section = `${generateSectionHeader(this.shellType, sectionTitle)}\n`;
-
-    // Add hoisting explanation comment
-    section += `${generateHoistingExplanation(this.shellType, sectionTitle)}\n`;
-
-    // For PATH modifications, ensure generated bin directory is first
-    if (sectionTitle === 'PATH Modifications') {
-      const uniquePaths = [...new Set(items)];
-      const generatedBinPathLine = uniquePaths.find((p) => p.includes(this.projectConfig.paths.binariesDir));
-      if (generatedBinPathLine) {
-        section += `${generatedBinPathLine}\n`;
-        uniquePaths.splice(uniquePaths.indexOf(generatedBinPathLine), 1);
-      }
-
-      // Add remaining paths with source attribution
-      for (const item of uniquePaths) {
-        const sourceTools = this.findSourceTools(item, toolContents, contentType);
-        const attribution = generateHoistingAttribution(this.shellType, sourceTools);
-        if (attribution) {
-          section += `${attribution}\n`;
-        }
-        section += `${item}\n`;
-      }
-    } else {
-      // For other sections, add items with source attribution
-      const uniqueItems = [...new Set(items)];
-      for (const item of uniqueItems) {
-        const sourceTools = this.findSourceTools(item, toolContents, contentType);
-        const attribution = generateHoistingAttribution(this.shellType, sourceTools);
-        if (attribution) {
-          section += `${attribution}\n`;
-        }
-        section += `${item}\n`;
-      }
-    }
-
-    return `${section}\n`;
-  }
-
-  /**
-   * Finds which tools contributed a specific item to a content type.
-   * Returns relative paths to the tool config files (e.g., "tools/fly.tool.ts").
-   */
-  private findSourceTools(
-    item: string,
-    toolContents: Map<string, IShellInitContent>,
-    contentType: keyof IShellInitContent,
-  ): string[] {
-    const sourceTools: string[] = [];
-
-    for (const [, content] of toolContents) {
-      const contentArray = content[contentType];
-      if (Array.isArray(contentArray)) {
-        // Handle both plain strings and ShellScript branded types
-        const hasMatch = contentArray.some((arrayItem) => {
-          if (typeof arrayItem === 'string') {
-            return arrayItem === item;
-          }
-          // For ShellScript branded types, compare the content
-          return getScriptContent(arrayItem as ShellScript) === item;
-        });
-        if (hasMatch && content.configFilePath) {
-          // Return relative path from toolConfigsDir to the config file
-          const relativePath = path.relative(this.projectConfig.paths.toolConfigsDir, content.configFilePath);
-          sourceTools.push(relativePath);
-        }
-      }
-    }
-
-    return sourceTools;
+    const blocks = blockBuilder.build();
+    return renderer.render(blocks, formatter);
   }
 }

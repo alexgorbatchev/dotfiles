@@ -418,8 +418,9 @@ export class TestHarness {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
 
-    // Look for the environment variable with the tool comment (may include multiple tools separated by commas)
-    const varRegex = new RegExp(`# Hoisted from: [^\\n]*${toolName}[^\\n]*\\s+export ${varName}=["']([^"']+)["']`, 'm');
+    // Look for the environment variable with optional source comment
+    // The emissions system uses "# source" format, not "# Hoisted from: source"
+    const varRegex = new RegExp(`(?:#[^\\n]*${toolName}[^\\n]*\\s+)?export ${varName}=["']([^"']+)["']`, 'm');
     const match = content.match(varRegex);
 
     expect(match).not.toBeNull();
@@ -440,7 +441,11 @@ export class TestHarness {
   /**
    * Verifies that an alias is set correctly in a shell script for a tool.
    *
-   * @param _toolName - The name of the tool that defines the alias (kept for API compatibility).
+   * Note: The _toolName parameter is not used for lookup (aliases are global in the output)
+   * but is retained for API stability with existing E2E tests. It serves as documentation
+   * of which tool the alias is expected to come from.
+   *
+   * @param _toolName - Descriptive tool name (unused for lookup, kept for API compatibility).
    * @param aliasName - The name of the alias to verify.
    * @param expectedCommand - The expected alias command, or a function to validate the actual command.
    * @param shellType - The type of shell script to check (default: 'zsh').
@@ -481,13 +486,13 @@ export class TestHarness {
    * Always scripts are executed every time the shell is initialized. This method checks that
    * the script is wrapped in a subshell (bash/zsh) or try-finally block (PowerShell).
    *
-   * @param toolName - The name of the tool that defines the always script.
+   * @param toolName - The tool name (used for error messages).
    * @param contentMatcher - Expected content string or a function to validate the script content.
    * @param shellType - The type of shell script to check (default: 'zsh').
    * @returns A Promise that resolves when verification is complete.
    */
   async verifyAlwaysScript(
-    _toolName: string,
+    toolName: string,
     contentMatcher: string | ((content: string) => boolean),
     shellType: 'zsh' | 'bash' | 'powershell' = 'zsh',
   ): Promise<void> {
@@ -495,8 +500,6 @@ export class TestHarness {
     const content = await this.readFile(scriptPath);
 
     // Look for subshell blocks (bash/zsh) or try-finally blocks (PowerShell)
-    // The toolName parameter is kept for API compatibility but is no longer used
-    // since we now use subshells instead of named functions
     const alwaysRegex = shellType === 'powershell' ? /try\s*\{([\s\S]*?)\}\s*finally\s*\{\}/gm : /\(([\s\S]*?)\)/gm;
 
     const matches = Array.from(content.matchAll(alwaysRegex));
@@ -508,39 +511,56 @@ export class TestHarness {
       return scriptContent.includes(contentMatcher);
     });
 
-    expect(isMatch).toBe(true);
+    expect(isMatch, `Always script for tool '${toolName}' not found in ${shellType} script`).toBe(true);
   }
 
   /**
-   * Verifies that a once script file exists for a tool.
+   * Verifies that a once script file exists containing specific content.
    *
-   * Once scripts are executed only once (tracked via a marker file). This method verifies
-   * that the once script file exists in the .once directory with the expected content.
+   * Once scripts are executed only once (tracked via a marker file). The emissions system
+   * uses global indexing (once-001.zsh, once-002.zsh) instead of per-tool naming,
+   * so we search all once scripts for matching content.
    *
-   * @param toolName - The name of the tool that defines the once script.
-   * @param contentMatcher - Expected content string or a function to validate the script content.
+   * When a string is provided as contentMatcher, this uses substring matching (includes)
+   * because once scripts contain generated headers, comments, and cleanup code in addition
+   * to the user-provided content. For exact matching, provide a predicate function.
+   *
+   * @param toolName - The tool name (used for error messages).
+   * @param contentMatcher - Expected content substring or a predicate function for custom matching.
    * @param shellType - The type of shell script to check (default: 'zsh').
-   * @param scriptIndex - Index of the script if a tool has multiple once scripts (default: 0).
    * @returns A Promise that resolves when verification is complete.
    */
   async verifyOnceScript(
     toolName: string,
     contentMatcher: string | ((content: string) => boolean),
     shellType: 'zsh' | 'bash' | 'powershell' = 'zsh',
-    scriptIndex: number = 0,
   ): Promise<void> {
     const extension = shellType === 'powershell' ? 'ps1' : shellType;
     const onceDir = path.join(this.shellScriptsDir, '.once');
-    const onceScriptPath = path.join(onceDir, `${toolName}-${scriptIndex}.${extension}`);
 
-    expect(await this.fileExists(onceScriptPath)).toBe(true);
+    // Once scripts are stored in the .once subdirectory with once-###.ext naming
+    // Search for any once script that matches the content
+    const files = await fs.promises.readdir(onceDir);
+    const onceScriptFiles = files.filter((f) => f.startsWith('once-') && f.endsWith(`.${extension}`));
 
-    const content = await this.readFile(onceScriptPath);
+    let foundMatchingScript = false;
+    for (const filename of onceScriptFiles) {
+      const scriptPath = path.join(onceDir, filename);
+      const content = await this.readFile(scriptPath);
 
-    if (typeof contentMatcher === 'function') {
-      expect(contentMatcher(content)).toBe(true);
-    } else {
-      expect(content).toContain(contentMatcher);
+      if (typeof contentMatcher === 'function') {
+        if (contentMatcher(content)) {
+          foundMatchingScript = true;
+          break;
+        }
+      } else if (content.includes(contentMatcher)) {
+        foundMatchingScript = true;
+        break;
+      }
     }
+
+    expect(foundMatchingScript, `Once script for tool '${toolName}' not found in ${shellType} .once directory`).toBe(
+      true,
+    );
   }
 }

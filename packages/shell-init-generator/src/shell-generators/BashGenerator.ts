@@ -1,7 +1,6 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { ShellCompletionConfigInput, ShellType, ToolConfig } from '@dotfiles/core';
+import type { ShellType, ShellTypeConfig, ToolConfig } from '@dotfiles/core';
+import path from 'node:path';
 import { BaseShellGenerator } from './BaseShellGenerator';
-import { BashStringProducer } from './BashStringProducer';
 
 /**
  * Bash-specific shell initialization generator.
@@ -12,22 +11,12 @@ export class BashGenerator extends BaseShellGenerator {
   readonly shellType: ShellType = 'bash';
   readonly fileExtension: string = '.bash';
 
-  constructor(projectConfig: ProjectConfig) {
-    super(projectConfig, new BashStringProducer(projectConfig));
+  protected getShellConfig(toolConfig: ToolConfig): ShellTypeConfig | undefined {
+    // ShellTypeConfig is manually typed; ToolConfig uses Zod inference with z.unknown() for completions
+    return toolConfig.shellConfigs?.bash as ShellTypeConfig | undefined;
   }
 
-  protected getShellConfig(
-    toolConfig: ToolConfig,
-  ): { completions?: ShellCompletionConfigInput; functions?: Record<string, string>; } | undefined {
-    const shellConfig = toolConfig.shellConfigs?.bash;
-    if (!shellConfig) {
-      return undefined;
-    }
-    // Cast completions since Zod schema uses z.unknown() but runtime type is ShellCompletionConfigInput
-    const result: { completions?: ShellCompletionConfigInput; functions?: Record<string, string>; } = {
-      completions: shellConfig.completions as ShellCompletionConfigInput | undefined,
-      functions: shellConfig.functions,
-    };
-    return result;
+  protected getCompletionDir(): string {
+    return path.join(this.projectConfig.paths.shellScriptsDir, 'bash', 'completions');
   }
 }

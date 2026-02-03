@@ -11,8 +11,8 @@ The shell-init-generator creates shell-specific initialization scripts that conf
 - **Multi-Shell Support**: Generate scripts for zsh, bash, and other shells
 - **Completion Management**: Automatically discover and load shell completions
 - **Profile Updates**: Update shell profile files to source generated scripts
-- **Script Formatters**: Format initialization scripts for readability
-- **Script Initializers**: Handle once-per-session vs always-run logic
+- **Emission-Based Generation**: Uses typed emissions for shell-agnostic content representation
+- **Shell Formatters**: Convert emissions to shell-specific syntax
 - **Performance Optimized**: Minimize shell startup time
 
 ## Architecture
@@ -20,11 +20,8 @@ The shell-init-generator creates shell-specific initialization scripts that conf
 ### Components
 
 - **ShellInitGenerator**: Main generator coordinating script creation
-- **Shell Generators**: Shell-specific script generators (ZshGenerator, BashGenerator)
-- **CompletionGenerator**: Discovers and generates completion loading
-- **ProfileUpdater**: Updates shell profile files
-- **ScriptFormatters**: Format different types of initialization scripts
-- **ScriptInitializers**: Handle script execution timing
+- **Shell Generators**: Shell-specific script generators (ZshGenerator, BashGenerator, PowerShellGenerator)
+- **Emission Formatters**: Convert typed emissions to shell-specific syntax (ZshEmissionFormatter, BashEmissionFormatter, PowerShellEmissionFormatter)
 
 ## API
 
@@ -160,21 +157,31 @@ await updater.update('~/.zshrc', '~/.dotfiles/shell/init.zsh');
 - Profile detection
 - Comment markers for managed sections
 
-### Script Formatters
+### Emission Formatters
 
-Format initialization scripts for different execution patterns.
+Convert typed emissions to shell-specific syntax.
 
 ```typescript
-import { AlwaysScriptFormatter, OnceScriptFormatter } from '@dotfiles/shell-init-generator';
+import type { FormatterConfig } from '@dotfiles/shell-emissions';
+import { createEmissionFormatter, ZshEmissionFormatter } from '@dotfiles/shell-init-generator';
 
-// Format script that runs every time shell starts
-const alwaysFormatter = new AlwaysScriptFormatter();
-const script = alwaysFormatter.format(commands);
+const config: FormatterConfig = {
+  homeDir: '/home/user',
+  onceScriptDir: '/home/user/.dotfiles/once',
+};
 
-// Format script that runs once per session
-const onceFormatter = new OnceScriptFormatter();
-const onceScript = onceFormatter.format(commands);
+// Get formatter for specific shell
+const formatter = createEmissionFormatter('zsh', config);
+
+// Or instantiate directly
+const zshFormatter = new ZshEmissionFormatter(config);
 ```
+
+**Features:**
+
+- Shell-specific syntax generation
+- Type-safe emission handling
+- Consistent formatting across shells
 
 ## Shell Support
 
@@ -340,7 +347,6 @@ await generator.generate(); // No side effects
 Potential improvements:
 
 - Fish shell support
-- PowerShell support
 - Async completion loading
 - Profile migration tools
 - Shell version detection

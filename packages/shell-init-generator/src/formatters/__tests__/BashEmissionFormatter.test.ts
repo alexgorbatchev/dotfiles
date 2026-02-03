@@ -1,0 +1,187 @@
+import {
+  alias,
+  completion,
+  environment,
+  fn,
+  path,
+  script,
+  sourceFile,
+  sourceFunction,
+} from '@dotfiles/shell-emissions';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import { BashEmissionFormatter } from '../BashEmissionFormatter';
+
+// oxlint-disable-next-line import/no-unassigned-import
+import '@dotfiles/testing-helpers';
+
+describe('BashEmissionFormatter', () => {
+  const homeDir = '/test/home';
+  const onceScriptDir = '/test/.once';
+  let formatter: BashEmissionFormatter;
+
+  beforeEach(() => {
+    formatter = new BashEmissionFormatter({ homeDir, onceScriptDir });
+  });
+
+  describe('formatEnvironment', () => {
+    it('should format environment variable', () => {
+      const emission = environment({ MY_VAR: 'my-value' });
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`"export MY_VAR="my-value""`);
+    });
+  });
+
+  describe('formatAlias', () => {
+    it('should format single alias', () => {
+      const emission = alias({ ll: 'ls -la' });
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`"alias ll="ls -la""`);
+    });
+  });
+
+  describe('formatFunction', () => {
+    it('should format function without HOME override', () => {
+      const emission = fn('greet', 'echo "Hello, $1!"', false);
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`
+        "greet() {
+          echo "Hello, $1!"
+        }"
+      `);
+    });
+
+    it('should format function with HOME override', () => {
+      const emission = fn('setup', 'echo "Setting up..."', true);
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`
+        "setup() {
+          (
+            HOME="/test/home"
+            echo "Setting up..."
+          )
+        }"
+      `);
+    });
+  });
+
+  describe('formatScript', () => {
+    it('should format always script with HOME override', () => {
+      const emission = script('echo "hello"', 'always', true);
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`
+        "(
+          HOME="/test/home"
+          echo "hello"
+        )"
+      `);
+    });
+  });
+
+  describe('formatOnceScript', () => {
+    it('should format once script with correct filename', () => {
+      const emission = script('echo "setup"', 'once', false);
+      const result = formatter.formatOnceScript(emission, 1);
+
+      expect(result.filename).toMatchInlineSnapshot(`"once-001.bash"`);
+      expect(result.content).toMatchInlineSnapshot(`
+        "# Generated once script - will self-delete after execution
+        echo "setup"
+        rm "/test/.once/once-001.bash""
+      `);
+    });
+  });
+
+  describe('formatSourceFile', () => {
+    it('should format simple source file', () => {
+      const emission = sourceFile('$HOME/.toolrc', false);
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`"source "$HOME/.toolrc""`);
+    });
+  });
+
+  describe('formatSourceFunction', () => {
+    it('should format source function', () => {
+      const emission = sourceFunction('myFunc');
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`"source <(myFunc)"`);
+    });
+  });
+
+  describe('formatCompletion', () => {
+    it('should format completion with files', () => {
+      const emission = completion({ files: ['/path/to/completion'] });
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`"[[ -f "/path/to/completion" ]] && source "/path/to/completion""`);
+    });
+  });
+
+  describe('formatPath', () => {
+    it('should format path with deduplication', () => {
+      const emission = path('/usr/local/bin', { position: 'prepend', deduplicate: true });
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`
+        "if [[ ":$PATH:" != *":/usr/local/bin:"* ]]; then
+          export PATH="/usr/local/bin:$PATH"
+        fi"
+      `);
+    });
+  });
+
+  describe('formatOnceScriptInitializer', () => {
+    it('should generate once script loop with nullglob', () => {
+      const result = formatter.formatOnceScriptInitializer();
+
+      expect(result).toMatchInlineSnapshot(`
+        "# Execute once scripts (runs only once per script)
+        shopt -s nullglob
+        for once_script in "/test/.once"/*.bash; do
+          [[ -f "$once_script" ]] && source "$once_script"
+        done
+        shopt -u nullglob"
+      `);
+    });
+  });
+
+  describe('formatFileHeader', () => {
+    it('should generate file header', () => {
+      const result = formatter.formatFileHeader();
+
+      expect(result).toMatchInlineSnapshot(`
+        "# ==============================================================================
+        # THIS FILE IS AUTOMATICALLY GENERATED BY THE DOTFILES MANAGEMENT TOOL
+        # DO NOT EDIT THIS FILE DIRECTLY - YOUR CHANGES WILL BE OVERWRITTEN
+        # ==============================================================================
+        "
+      `);
+    });
+  });
+
+  describe('formatSectionHeader', () => {
+    it('should generate section header', () => {
+      const result = formatter.formatSectionHeader('PATH Modifications');
+
+      expect(result).toMatchInlineSnapshot(
+        `"# ============================= PATH Modifications =============================="`,
+      );
+    });
+  });
+
+  describe('formatFileFooter', () => {
+    it('should generate file footer', () => {
+      const result = formatter.formatFileFooter();
+
+      expect(result).toMatchInlineSnapshot(
+        `"# ============================ End of Generated File ============================"`,
+      );
+    });
+  });
+});

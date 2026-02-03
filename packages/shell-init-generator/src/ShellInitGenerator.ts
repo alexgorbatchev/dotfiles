@@ -3,6 +3,8 @@ import type { IPluginShellInit, ShellType, ToolConfig } from '@dotfiles/core';
 import { getScriptContent, isAlwaysScript, isOnceScript, isRawScript } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import type { Emission } from '@dotfiles/shell-emissions';
+import { alias, environment, fn, script, withSource } from '@dotfiles/shell-emissions';
 import { resolvePlatformConfig } from '@dotfiles/utils';
 import path from 'node:path';
 import type { IGenerateShellInitOptions, IShellInitGenerationResult, IShellInitGenerator } from './IShellInitGenerator';
@@ -12,7 +14,6 @@ import {
   createGenerator,
   type IAdditionalShellFile,
   type IShellGenerator,
-  type IShellInitContent,
 } from './shell-generators';
 
 /**
@@ -103,11 +104,11 @@ export class ShellInitGenerator implements IShellInitGenerator {
       const outputPath = options?.outputPath ?? generator.getDefaultOutputPath();
       logger.debug(messages.generate.resolvedOutputPath(outputPath));
 
-      const toolContents = await this.extractToolContents(toolConfigs, generator, options);
-      const fileContent = generator.generateFileContent(toolContents);
+      const toolEmissions = this.extractToolEmissions(toolConfigs, generator, options);
+      const fileContent = generator.generateFileContent(toolEmissions);
 
       await this.cleanupOnceScriptsDirectory(shellType);
-      const additionalFiles = generator.getAdditionalFiles(toolContents);
+      const additionalFiles = generator.getAdditionalFiles(toolEmissions);
 
       const writeResult = await this.writeShellFiles(outputPath, fileContent, additionalFiles);
       return writeResult ? { outputPath } : null;
@@ -117,12 +118,15 @@ export class ShellInitGenerator implements IShellInitGenerator {
     }
   }
 
-  private async extractToolContents(
+  /**
+   * Extracts emissions from all tool configurations.
+   */
+  private extractToolEmissions(
     toolConfigs: Record<string, ToolConfig>,
     generator: IShellGenerator,
     options?: IGenerateShellInitOptions,
-  ): Promise<Map<string, IShellInitContent>> {
-    const toolContents = new Map<string, IShellInitContent>();
+  ): Map<string, Emission[]> {
+    const toolEmissions = new Map<string, Emission[]>();
 
     for (const toolName in toolConfigs) {
       const config = toolConfigs[toolName];
@@ -131,58 +135,71 @@ export class ShellInitGenerator implements IShellInitGenerator {
       }
 
       const resolvedConfig = options?.systemInfo ? resolvePlatformConfig(config, options.systemInfo) : config;
-      const shellContent = generator.extractShellContent(toolName, resolvedConfig);
+      const emissions = generator.extractEmissions(resolvedConfig);
 
       // Merge plugin-emitted shell init if present
       const pluginShellInit = options?.pluginShellInit?.[toolName]?.[generator.shellType];
       if (pluginShellInit) {
-        this.mergePluginShellInit(shellContent, pluginShellInit);
+        const pluginEmissions = this.convertPluginShellInit(pluginShellInit, resolvedConfig.configFilePath);
+        emissions.push(...pluginEmissions);
       }
 
-      if (this.hasContent(shellContent)) {
-        toolContents.set(toolName, shellContent);
+      if (emissions.length > 0) {
+        toolEmissions.set(toolName, emissions);
       }
     }
 
-    return toolContents;
+    return toolEmissions;
   }
 
   /**
-   * Merges plugin-emitted shell initialization content into the shell content.
-   * Plugin content is appended to user-defined content.
+   * Converts plugin-emitted shell initialization content to typed emissions.
    */
-  private mergePluginShellInit(shellContent: IShellInitContent, pluginInit: IPluginShellInit): void {
-    // Merge environment variables (convert Record to export statements)
+  private convertPluginShellInit(pluginInit: IPluginShellInit, configFilePath?: string): Emission[] {
+    const emissions: Emission[] = [];
+    const source = configFilePath;
+
+    // Convert environment variables
     if (pluginInit.environmentVariables) {
-      for (const [key, value] of Object.entries(pluginInit.environmentVariables)) {
-        shellContent.environmentVariables.push(`export ${key}="${value}"`);
-      }
+      const emission = environment(pluginInit.environmentVariables);
+      emissions.push(source ? withSource(emission, source) : emission);
     }
 
-    // Merge aliases (convert Record to alias statements)
+    // Convert aliases
     if (pluginInit.aliases) {
-      for (const [name, command] of Object.entries(pluginInit.aliases)) {
-        shellContent.toolInit.push(`alias ${name}="${command}"`);
-      }
+      const emission = alias(pluginInit.aliases);
+      emissions.push(source ? withSource(emission, source) : emission);
     }
 
-    // Merge scripts - route by kind discriminator
+    // Convert scripts
     if (pluginInit.scripts) {
-      for (const script of pluginInit.scripts) {
-        if (isOnceScript(script)) {
-          shellContent.onceScripts.push(script);
-        } else if (isAlwaysScript(script)) {
-          shellContent.alwaysScripts.push(script);
-        } else if (isRawScript(script)) {
-          shellContent.rawScripts.push(getScriptContent(script));
+      for (const shellScript of pluginInit.scripts) {
+        const scriptContent = getScriptContent(shellScript);
+        let emission: Emission | undefined;
+
+        if (isOnceScript(shellScript)) {
+          emission = script(scriptContent, 'once', true);
+        } else if (isAlwaysScript(shellScript)) {
+          emission = script(scriptContent, 'always', true);
+        } else if (isRawScript(shellScript)) {
+          emission = script(scriptContent, 'raw', false);
+        }
+
+        if (emission) {
+          emissions.push(source ? withSource(emission, source) : emission);
         }
       }
     }
 
-    // Merge functions
+    // Convert functions
     if (pluginInit.functions) {
-      Object.assign(shellContent.functions, pluginInit.functions);
+      for (const [funcName, funcBody] of Object.entries(pluginInit.functions)) {
+        const emission = fn(funcName, funcBody, true);
+        emissions.push(source ? withSource(emission, source) : emission);
+      }
     }
+
+    return emissions;
   }
 
   private async writeShellFiles(
@@ -315,24 +332,5 @@ export class ShellInitGenerator implements IShellInitGenerator {
       default:
         throw new Error(`Unsupported shell type: ${shellType}`);
     }
-  }
-
-  /**
-   * Checks if shell content has any meaningful content to generate.
-   * @param content - Shell content to check
-   * @returns True if content has meaningful data
-   */
-  private hasContent(content: IShellInitContent): boolean {
-    const hasFunctions = Object.keys(content.functions).length > 0;
-    return (
-      content.toolInit.length > 0 ||
-      content.pathModifications.length > 0 ||
-      content.environmentVariables.length > 0 ||
-      content.completionSetup.length > 0 ||
-      content.onceScripts.length > 0 ||
-      content.alwaysScripts.length > 0 ||
-      content.rawScripts.length > 0 ||
-      hasFunctions
-    );
   }
 }

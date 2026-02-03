@@ -12,6 +12,7 @@
     "@dotfiles/downloader": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
+    "@dotfiles/shell-emissions": "workspace:*",
     "@dotfiles/utils": "workspace:*"
   },
   "devDependencies": {

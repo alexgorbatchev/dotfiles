@@ -6,13 +6,14 @@
  * - The process exits cleanly after hook execution (no hangs)
  * - Shell command output is not duplicated (logged via logger only)
  */
-import { beforeAll, describe, expect, it } from 'bun:test';
-// oxlint-disable-next-line import/no-unassigned-import
-import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import { HOOK_TEST_TOOL, withMockServer } from './helpers/mock-server';
 import { TestHarness } from './helpers/TestHarness';
+
+// oxlint-disable-next-line import/no-unassigned-import
+import '@dotfiles/testing-helpers';
 
 describe('E2E: after-install hooks', () => {
   withMockServer((b) => b.withGitHubTool(HOOK_TEST_TOOL));
