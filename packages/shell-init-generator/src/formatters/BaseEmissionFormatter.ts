@@ -61,15 +61,8 @@ export abstract class BaseEmissionFormatter {
     return this.headerLine('=', title);
   }
 
-  formatChildBlockHeader(block: Block): string {
-    const lines = [this.headerLine('=')];
-
-    if (block.metadata?.sourceFile) {
-      lines.push(this.comment(block.metadata.sourceFile));
-    }
-
-    lines.push(this.headerLine('='));
-    return lines.join('\n');
+  formatChildBlockHeader(_block: Block): string {
+    return this.headerLine('=');
   }
 
   formatFileFooter(): string {

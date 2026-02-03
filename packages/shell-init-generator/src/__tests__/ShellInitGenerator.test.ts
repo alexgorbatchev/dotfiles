@@ -251,10 +251,9 @@ describe('ShellInitGenerator', () => {
     // Verify fpath setup appears only once even with multiple tools having completions
     const completionsDir = JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'));
     const typesetOccurrences = (content.match(/typeset -U fpath/g) || []).length;
-    const fpathOccurrences =
-      (content.match(
-        new RegExp(`fpath=\\(${completionsDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\$fpath\\)`, 'g'),
-      ) || []).length;
+    const fpathOccurrences = (content.match(
+      new RegExp(`fpath=\\(${completionsDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\$fpath\\)`, 'g'),
+    ) || []).length;
 
     expect(typesetOccurrences).toBe(1);
     expect(fpathOccurrences).toBe(1);
