@@ -109,9 +109,12 @@ export default defineTool((install, ctx) =>
     .dependsOn('pcre2')
     // 3. Create symlinks for configuration files
     .symlink('./ripgreprc', '~/.ripgreprc')
-    // 4. Configure shell-specific integration (aliases, functions, env vars)
+    // 4. Configure shell-specific integration (aliases, functions, env vars, PATH)
     .zsh((shell) =>
       shell
+        // Add custom directories to PATH
+        .path((ctx) => `${ctx.installDir}/bin`)
+        // Set environment variables (PATH is prohibited here - use .path() instead)
         .environment({
           RIPGREP_CONFIG_PATH: '~/.ripgreprc',
         })

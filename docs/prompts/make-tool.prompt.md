@@ -185,7 +185,8 @@ install('github-release', { repo: 'owner/tool' })
 
 **Shell Configurator Methods**:
 
-- `.environment(record)` - Set environment variables
+- `.environment(record)` - Set environment variables (PATH prohibited - use `.path()`)
+- `.path(dir)` - Add directory to PATH (deduplicated)
 - `.aliases(record)` - Set command aliases
 - `.completions(path | config)` - Set command completions
 - `.sourceFile(path)` - Source a file (skips if missing)

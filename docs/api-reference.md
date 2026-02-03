@@ -90,7 +90,8 @@ The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
 | Shell Method                               | Description                                                                                   |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------- |
 | `.completions(path \| config \| callback)` | Completion file, config object, or callback with `ctx.version` (generated after install only) |
-| `.environment(obj)`                        | Environment variables                                                                         |
+| `.environment(obj)`                        | Environment variables (PATH prohibited - use `.path()`)                                       |
+| `.path(dir)`                               | Add directory to PATH (deduplicated)                                                          |
 | `.aliases(obj)`                            | Shell aliases                                                                                 |
 | `.functions(obj)`                          | Shell functions                                                                               |
 | `.sourceFile(path)`                        | Source a file (skips if missing)                                                              |

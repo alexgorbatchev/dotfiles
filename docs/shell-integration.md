@@ -22,7 +22,8 @@ For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), u
 ```typescript
 .zsh((shell) =>
   shell
-    .environment({ VAR: 'value' })      // Environment variables
+    .environment({ VAR: 'value' })      // Environment variables (PATH prohibited)
+    .path('$HOME/.local/bin')            // Add directory to PATH
     .aliases({ t: 'tool' })             // Shell aliases
     .functions({ myFunc: 'cmd' })       // Shell functions
     .completions('completions/_tool')   // Completion file path
@@ -43,6 +44,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         .environment({ TOOL_HOME: ctx.currentDir })
+        .path(`${ctx.currentDir}/bin`) // Add tool's bin directory to PATH
         .aliases({ t: 'tool', ts: 'tool status' })
         .completions('completions/_tool')
         .functions({
@@ -51,6 +53,28 @@ export default defineTool((install, ctx) =>
     )
 );
 ```
+
+## PATH Modifications
+
+### `.path()` - Add Directory to PATH
+
+Add a directory to the PATH environment variable. Paths are deduplicated during shell init generation.
+
+```typescript
+.zsh((shell) =>
+  shell
+    .path('$HOME/.local/bin')           // Static path with shell variable
+    .path(`${ctx.currentDir}/bin`)      // Dynamic path using context
+)
+```
+
+**Why use `.path()` instead of `.environment({ PATH: ... })`?**
+
+- Paths are automatically deduplicated across all tools
+- Proper ordering is maintained (prepended to PATH by default)
+- TypeScript prevents using `PATH` in `.environment()` with a clear error message
+
+**Note**: Setting `PATH` via `.environment({ PATH: '...' })` is prohibited. Use `.path()` instead.
 
 ## Shell Functions
 

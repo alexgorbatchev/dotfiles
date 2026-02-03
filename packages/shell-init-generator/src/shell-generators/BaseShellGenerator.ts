@@ -1,5 +1,6 @@
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
+  PathConfigInput,
   ShellCompletionConfig,
   ShellCompletionConfigInput,
   ShellScript,
@@ -103,6 +104,19 @@ export abstract class BaseShellGenerator implements IShellGenerator {
       }
     }
 
+    // Process paths (deduplicated)
+    if (shellConfig?.paths) {
+      const seenPaths = new Set<string>();
+      for (const pathInput of shellConfig.paths) {
+        const resolvedPath = this.resolvePathInput(pathInput);
+        if (resolvedPath && !seenPaths.has(resolvedPath)) {
+          seenPaths.add(resolvedPath);
+          const pathEmissionValue = pathEmission(resolvedPath);
+          emissions.push(source ? withSource(pathEmissionValue, source) : pathEmissionValue);
+        }
+      }
+    }
+
     return emissions;
   }
 
@@ -164,6 +178,23 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   }
 
   /**
+   * Resolves a path config input to a string.
+   * Handles both static strings and synchronous callbacks.
+   */
+  private resolvePathInput(input: PathConfigInput): string | undefined {
+    if (typeof input === 'function') {
+      // Synchronously resolve the path (Resolvable<void, string>)
+      const result = input(undefined as void);
+      // Handle async functions - they're not supported in sync extraction
+      if (result instanceof Promise) {
+        return undefined;
+      }
+      return result;
+    }
+    return input;
+  }
+
+  /**
    * Checks if a tool configuration has any meaningful shell content.
    */
   hasEmissions(toolConfig: ToolConfig): boolean {
@@ -177,6 +208,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
         shellConfig.aliases && Object.keys(shellConfig.aliases).length > 0 ||
         shellConfig.functions && Object.keys(shellConfig.functions).length > 0 ||
         shellConfig.scripts && shellConfig.scripts.length > 0 ||
+        shellConfig.paths && shellConfig.paths.length > 0 ||
         shellConfig.completions,
     );
   }

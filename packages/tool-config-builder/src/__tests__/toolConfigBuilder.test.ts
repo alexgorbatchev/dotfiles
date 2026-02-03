@@ -609,6 +609,41 @@ describe('IToolConfigBuilder', () => {
     });
   });
 
+  test('shell.path method adds path to shell config', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.zsh((shell) => shell.path('$HOME/.local/bin'));
+
+    expect(builder.shellConfigs.zsh.paths).toEqual(['$HOME/.local/bin']);
+  });
+
+  test('shell.path method accepts callback returning string', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.zsh((shell) => shell.path(() => '/resolved/path'));
+
+    expect(builder.shellConfigs.zsh.paths).toHaveLength(1);
+    const pathValue = builder.shellConfigs.zsh.paths[0];
+    expect(typeof pathValue).toBe('function');
+  });
+
+  test('multiple shell.path calls accumulate paths', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.zsh((shell) => shell.path('$HOME/.local/bin').path('$HOME/.cargo/bin'));
+
+    expect(builder.shellConfigs.zsh.paths).toEqual(['$HOME/.local/bin', '$HOME/.cargo/bin']);
+  });
+
+  test('shell.path is included in build output', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.bin('test-bin').zsh((shell) => shell.path('$HOME/.local/bin'));
+
+    const config = builder.build();
+    expect(config.shellConfigs?.zsh?.paths).toEqual(['$HOME/.local/bin']);
+  });
+
   test('disable method sets disabled to true', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
 

@@ -35,6 +35,23 @@ interface IToolConfigBuilder {
 }
 ```
 
+### `IShellConfigurator`
+
+Interface for configuring shell-specific settings within `zsh()`, `bash()`, or `powershell()` callbacks.
+
+```typescript
+interface IShellConfigurator<KnownFunctions extends string = never> {
+  environment(variables: EnvironmentVariables): this;
+  alias(name: string, value: string): this;
+  function(name: string, body: string): this;
+  eval(expression: string): this;
+  source(path: string): this;
+  path(pathValue: Resolvable<void, string>): this;
+  fpath(fpathValue: string): this; // zsh only
+  completion(callback: (c: ICompletionConfigurator<KnownFunctions>) => void): this;
+}
+```
+
 ## Usage Examples
 
 ### Basic Tool Configuration
@@ -183,6 +200,48 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
 };
 ```
 
+### Shell Configuration
+
+Configure shell-specific settings using `zsh()`, `bash()`, or `powershell()`:
+
+````typescript
+export default async (c: ToolConfigBuilder): Promise<void> => {
+  c.bin('fzf')
+    .version('latest')
+    .install('github-release', {
+      repo: 'junegunn/fzf',
+      assetPattern: '*linux*amd64*.tar.gz',
+    })
+    .zsh((shell) => {
+      // Add a directory to PATH
+      shell.path((ctx) => `${ctx.installDir}/bin`);
+
+      // Set environment variables (PATH is prohibited - use .path() instead)
+      shell.environment({
+        FZF_DEFAULT_OPTS: '--height 40% --layout=reverse',
+      });
+
+      // Define aliases
+      shell.alias('fzp', 'fzf --preview "cat {}"');
+
+      // Define shell functions
+      shell.function(
+        'fcd',
+        `
+        local dir
+        dir=$(find . -type d | fzf)
+        cd "$dir"
+      `,
+      );
+
+      // Source additional scripts
+      shell.source((ctx) => `${ctx.installDir}/shell/completion.zsh`);
+
+      // Add custom eval expressions
+      shell.eval('source <(fzf --zsh)');
+    });
+};
+
 ### Custom Asset Selector
 
 ```typescript
@@ -202,7 +261,7 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
       },
     });
 };
-```
+````
 
 ## Builder Methods
 

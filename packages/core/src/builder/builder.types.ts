@@ -150,15 +150,33 @@ export type ShellCompletionConfigValue =
 export type ShellCompletionConfigInput = Resolvable<ICompletionContext, ShellCompletionConfigValue>;
 
 /**
+ * Error message type shown when attempting to set PATH via environment().
+ * Use shell.path() instead for PATH modifications.
+ */
+type PathProhibitedError = 'ERROR: Use shell.path() to modify PATH, not environment({ PATH: ... })';
+
+/**
+ * Environment variables record that prohibits setting PATH directly.
+ * PATH must be modified via shell.path() for proper deduplication.
+ */
+type EnvironmentVariables = {
+  [K in string]: K extends 'PATH' ? PathProhibitedError : string;
+};
+
+/**
  * Fluent configurator used inside shell callbacks for the new shell API.
  * Generic parameter tracks function names defined via `functions()` for type-safe `sourceFunction()`.
  */
 export interface IShellConfigurator<KnownFunctions extends string = never> {
   /**
    * Sets environment variables for the shell.
+   *
+   * **Note**: To modify PATH, use `shell.path()` instead. Setting PATH via
+   * environment() is prohibited to ensure proper deduplication.
+   *
    * @param values - A record of environment variable names and values.
    */
-  environment(values: Record<string, string>): IShellConfigurator<KnownFunctions>;
+  environment(values: EnvironmentVariables): IShellConfigurator<KnownFunctions>;
 
   /**
    * Sets shell aliases.
@@ -297,6 +315,18 @@ export interface IShellConfigurator<KnownFunctions extends string = never> {
    * // }
    */
   functions<K extends string>(values: Record<K, string>): IShellConfigurator<KnownFunctions | K>;
+
+  /**
+   * Adds a directory to the PATH environment variable.
+   * Paths are deduplicated during shell init generation.
+   *
+   * @param pathValue - Directory path to add to PATH. May contain $HOME or other env vars.
+   *
+   * @example
+   * shell.path('$HOME/.local/bin')
+   * shell.path('${ctx.currentDir}/bin')
+   */
+  path(pathValue: Resolvable<void, string>): IShellConfigurator<KnownFunctions>;
 }
 
 export type ShellConfiguratorSyncResult = IShellConfigurator<string> | undefined;

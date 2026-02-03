@@ -1,4 +1,10 @@
 import type { ShellCompletionConfigInput, ShellScript } from '@dotfiles/core';
+import type { Resolvable } from '@dotfiles/unwrap-value';
+
+/**
+ * Input type for path configuration - can be static or resolved via callback.
+ */
+export type PathConfigInput = Resolvable<void, string>;
 
 /**
  * Internal storage for shell configuration.
@@ -26,6 +32,12 @@ export interface IShellStorage {
    * Functions are wrapped with HOME override similar to always scripts.
    */
   functions: Record<string, string>;
+
+  /**
+   * List of paths to add to PATH environment variable.
+   * Paths are deduplicated during shell init generation.
+   */
+  paths: PathConfigInput[];
 
   /**
    * Resolvable configuration for shell completions.

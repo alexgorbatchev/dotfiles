@@ -66,9 +66,9 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
 
   // Organized shell storage matching final ToolConfig structure
   private internalShellConfigs: InternalShellConfigs = {
-    zsh: { scripts: [], aliases: {}, environment: {}, functions: {} },
-    bash: { scripts: [], aliases: {}, environment: {}, functions: {} },
-    powershell: { scripts: [], aliases: {}, environment: {}, functions: {} },
+    zsh: { scripts: [], aliases: {}, environment: {}, functions: {}, paths: [] },
+    bash: { scripts: [], aliases: {}, environment: {}, functions: {}, paths: [] },
+    powershell: { scripts: [], aliases: {}, environment: {}, functions: {}, paths: [] },
   };
   private context?: IToolConfigContext;
 
@@ -225,9 +225,11 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       const hasAliases = Object.keys(config.aliases).length > 0;
       const hasEnvironment = Object.keys(config.environment).length > 0;
       const hasFunctions = Object.keys(config.functions).length > 0;
+      const hasPaths = config.paths.length > 0;
       const hasCompletions = config.completions !== undefined;
 
-      const hasAnyShellConfig = hasScripts || hasAliases || hasEnvironment || hasFunctions || hasCompletions;
+      const hasAnyShellConfig = hasScripts || hasAliases || hasEnvironment || hasFunctions || hasPaths ||
+        hasCompletions;
 
       if (hasAnyShellConfig) {
         result[shellType] = {
@@ -235,6 +237,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
           ...(hasAliases && { aliases: config.aliases }),
           ...(hasEnvironment && { environment: config.environment }),
           ...(hasFunctions && { functions: config.functions }),
+          ...(hasPaths && { paths: config.paths }),
           ...(hasCompletions && { completions: config.completions }),
         };
         hasAnyConfig = true;

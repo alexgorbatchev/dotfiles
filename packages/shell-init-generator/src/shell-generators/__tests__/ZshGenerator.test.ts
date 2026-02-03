@@ -5,6 +5,7 @@ import {
   isCompletionEmission,
   isEnvironmentEmission,
   isFunctionEmission,
+  isPathEmission,
   isScriptEmission,
 } from '@dotfiles/shell-emissions';
 import { beforeEach, describe, expect, it } from 'bun:test';
@@ -197,6 +198,88 @@ describe('ZshGenerator', () => {
       };
 
       expect(generator.hasEmissions(toolConfig)).toBe(false);
+    });
+
+    it('should return true for tool with only paths', () => {
+      const toolConfig: ToolConfig = {
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: '1.0.0',
+        shellConfigs: {
+          zsh: {
+            paths: ['$HOME/.local/bin'],
+          },
+        },
+        installationMethod: 'manual',
+        installParams: {},
+      };
+
+      expect(generator.hasEmissions(toolConfig)).toBe(true);
+    });
+  });
+
+  describe('path extraction', () => {
+    it('should extract paths as emissions', () => {
+      const toolConfig: ToolConfig = {
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: '1.0.0',
+        shellConfigs: {
+          zsh: {
+            paths: ['$HOME/.local/bin', '$HOME/.cargo/bin'],
+          },
+        },
+        installationMethod: 'manual',
+        installParams: {},
+      };
+
+      const emissions = generator.extractEmissions(toolConfig);
+      const pathEmissions = emissions.filter(isPathEmission);
+
+      expect(pathEmissions).toHaveLength(2);
+      expect(pathEmissions[0]?.directory).toBe('$HOME/.local/bin');
+      expect(pathEmissions[1]?.directory).toBe('$HOME/.cargo/bin');
+    });
+
+    it('should deduplicate paths', () => {
+      const toolConfig: ToolConfig = {
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: '1.0.0',
+        shellConfigs: {
+          zsh: {
+            paths: ['$HOME/.local/bin', '$HOME/.cargo/bin', '$HOME/.local/bin'],
+          },
+        },
+        installationMethod: 'manual',
+        installParams: {},
+      };
+
+      const emissions = generator.extractEmissions(toolConfig);
+      const pathEmissions = emissions.filter(isPathEmission);
+
+      expect(pathEmissions).toHaveLength(2);
+    });
+
+    it('should resolve path callbacks', () => {
+      const toolConfig: ToolConfig = {
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: '1.0.0',
+        shellConfigs: {
+          zsh: {
+            paths: [() => '/resolved/path'],
+          },
+        },
+        installationMethod: 'manual',
+        installParams: {},
+      };
+
+      const emissions = generator.extractEmissions(toolConfig);
+      const pathEmissions = emissions.filter(isPathEmission);
+
+      expect(pathEmissions).toHaveLength(1);
+      expect(pathEmissions[0]?.directory).toBe('/resolved/path');
     });
   });
 

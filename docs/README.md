@@ -18,7 +18,12 @@ export default defineTool((install, ctx) =>
   })
     .bin('rg')
     .symlink('./ripgreprc', '~/.ripgreprc')
-    .zsh((shell) => shell.environment({ RIPGREP_CONFIG_PATH: '~/.ripgreprc' }).aliases({ rgi: 'rg -i' }))
+    .zsh((shell) =>
+      shell
+        .path((ctx) => `${ctx.installDir}/bin`)
+        .environment({ RIPGREP_CONFIG_PATH: '~/.ripgreprc' })
+        .aliases({ rgi: 'rg -i' })
+    )
 );
 ```
 

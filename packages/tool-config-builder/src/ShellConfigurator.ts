@@ -6,6 +6,7 @@ import type {
 import { always, once, raw } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { VALID_FUNCTION_NAME_PATTERN } from '@dotfiles/shell-init-generator';
+import type { Resolvable } from '@dotfiles/unwrap-value';
 import { resolveToolRelativePath } from '@dotfiles/utils';
 import path from 'node:path';
 import { messages } from './log-messages';
@@ -126,6 +127,12 @@ export class ShellConfigurator implements IShellConfigurator<string> {
       ...this.storage.functions,
       ...validatedFunctions,
     };
+    return this;
+  }
+
+  /** @inheritdoc */
+  public path(pathValue: Resolvable<void, string>): IShellConfigurator<string> {
+    this.storage.paths.push(pathValue);
     return this;
   }
 
