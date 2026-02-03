@@ -1,6 +1,6 @@
-import { isHoisted } from '../emissions/guards';
+import { isCompletionEmission, isHoisted } from '../emissions/guards';
 import { BlockValidationError } from '../errors';
-import type { Block, Emission, EmissionKind, SectionOptions } from '../types';
+import type { Block, CompletionEmission, Emission, EmissionKind, SectionOptions } from '../types';
 
 interface SectionDefinition {
   id: string;
@@ -137,7 +137,9 @@ export class BlockBuilder {
   }
 
   private buildBlock(section: SectionDefinition): Block {
-    const sortedEmissions = section.emissions.toSorted(
+    // Deduplicate completion emissions before building
+    const deduplicatedEmissions = this.deduplicateCompletions(section.emissions);
+    const sortedEmissions = deduplicatedEmissions.toSorted(
       (a, b) => (a.priority ?? 0) - (b.priority ?? 0),
     );
 
@@ -171,5 +173,65 @@ export class BlockBuilder {
       isFileHeader: section.options.isFileHeader,
       isFileFooter: section.options.isFileFooter,
     };
+  }
+
+  /**
+   * Merges completion emissions with duplicate directories/files into a single emission.
+   * Non-completion emissions pass through unchanged.
+   */
+  private deduplicateCompletions(emissions: Emission[]): Emission[] {
+    const completionEmissions: CompletionEmission[] = [];
+    const otherEmissions: Emission[] = [];
+
+    for (const emission of emissions) {
+      if (isCompletionEmission(emission)) {
+        completionEmissions.push(emission);
+      } else {
+        otherEmissions.push(emission);
+      }
+    }
+
+    if (completionEmissions.length <= 1) {
+      return emissions;
+    }
+
+    // Merge all completion emissions into one
+    const mergedDirectories = new Set<string>();
+    const mergedFiles = new Set<string>();
+    const mergedCommands = new Set<string>();
+    let minPriority: number | undefined;
+
+    for (const completion of completionEmissions) {
+      if (completion.directories) {
+        for (const dir of completion.directories) {
+          mergedDirectories.add(dir);
+        }
+      }
+      if (completion.files) {
+        for (const file of completion.files) {
+          mergedFiles.add(file);
+        }
+      }
+      if (completion.commands) {
+        for (const cmd of completion.commands) {
+          mergedCommands.add(cmd);
+        }
+      }
+      if (completion.priority !== undefined) {
+        minPriority = minPriority === undefined
+          ? completion.priority
+          : Math.min(minPriority, completion.priority);
+      }
+    }
+
+    const mergedCompletion: CompletionEmission = {
+      kind: 'completion',
+      directories: mergedDirectories.size > 0 ? [...mergedDirectories] : undefined,
+      files: mergedFiles.size > 0 ? [...mergedFiles] : undefined,
+      commands: mergedCommands.size > 0 ? [...mergedCommands] : undefined,
+      priority: minPriority,
+    };
+
+    return [...otherEmissions, mergedCompletion];
   }
 }

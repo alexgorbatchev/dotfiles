@@ -247,10 +247,17 @@ describe('ShellInitGenerator', () => {
     const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
 
     expect(content).toContain(createSectionHeader('zsh', 'Shell Completions Setup'));
-    expect(content).toContain('typeset -U fpath');
-    expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`,
-    );
+
+    // Verify fpath setup appears only once even with multiple tools having completions
+    const completionsDir = JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'));
+    const typesetOccurrences = (content.match(/typeset -U fpath/g) || []).length;
+    const fpathOccurrences =
+      (content.match(
+        new RegExp(`fpath=\\(${completionsDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\$fpath\\)`, 'g'),
+      ) || []).length;
+
+    expect(typesetOccurrences).toBe(1);
+    expect(fpathOccurrences).toBe(1);
   });
 
   it('should not add "typeset -U fpath" if fpath is already managed in zshInit', async () => {
