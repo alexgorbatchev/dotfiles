@@ -331,3 +331,24 @@ export interface IFileTreeNode {
   toolName?: string;
   children?: IFileTreeNode[];
 }
+
+/**
+ * Tool history entry for timeline display.
+ */
+export interface IToolHistoryEntry {
+  id: number;
+  operationType: string;
+  fileType: string;
+  filePath: string;
+  timestamp: string;
+  relativeTime: string;
+}
+
+/**
+ * Tool history response.
+ */
+export interface IToolHistory {
+  entries: IToolHistoryEntry[];
+  totalCount: number;
+  installedAt: string | null;
+}

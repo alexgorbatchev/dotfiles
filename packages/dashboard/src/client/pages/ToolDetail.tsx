@@ -1,7 +1,8 @@
 import { type JSX } from 'preact';
 
-import type { IToolDetail } from '../../shared/types';
+import type { IToolDetail, IToolHistory } from '../../shared/types';
 import { InstallMethodBadge } from '../components/InstallMethodBadge';
+import { ToolHistory } from '../components/ToolHistory';
 import { TreeNode } from '../components/TreeNode';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -15,9 +16,11 @@ interface ToolDetailProps {
 
 export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   const toolName = decodeURIComponent(params.name);
-  const { data: tools, loading } = useFetch<IToolDetail[]>('/tools', [toolName]);
+  const { data: tools, loading: toolsLoading } = useFetch<IToolDetail[]>('/tools', [toolName]);
+  const { data: history, loading: historyLoading } = useFetch<IToolHistory>(`/tools/${encodeURIComponent(toolName)}/history`, [toolName]);
 
   const tool = tools?.find((t) => t.config.name === toolName) || null;
+  const loading = toolsLoading || historyLoading;
 
   if (loading) {
     return (
@@ -151,7 +154,10 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
           <CardTitle>History</CardTitle>
         </CardHeader>
         <CardContent>
-          <div class='text-muted-foreground text-center py-4'>Installation history coming soon</div>
+          <ToolHistory
+            entries={history?.entries ?? []}
+            installedAt={history?.installedAt ?? null}
+          />
         </CardContent>
       </Card>
     </div>

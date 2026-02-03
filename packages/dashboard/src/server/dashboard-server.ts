@@ -75,6 +75,12 @@ export function createDashboardServer(
             return Response.json(result);
           },
 
+          '/api/tools/:name/history': async (req: Request & { params: { name: string; }; }) => {
+            const toolName = decodeURIComponent(req.params.name);
+            const result = await api.getToolHistory(toolName);
+            return Response.json(result);
+          },
+
           '/api/*': Response.json({ success: false, error: 'Not found' }, { status: 404 }),
 
           '/*': clientApp,
