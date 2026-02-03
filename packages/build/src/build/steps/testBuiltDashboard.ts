@@ -9,12 +9,11 @@ const POLL_INTERVAL_MS = 100;
 /**
  * Tests the built CLI's dashboard command by starting it and verifying HTTP responses.
  *
- * ## Important: Working Directory
+ * ## Dashboard Chunk Resolution
  *
- * The server process MUST run from the `.dist/` output directory (via `cwd` option).
- * This is because Bun's HTML import feature generates chunk files (like `dashboard-*.js`)
- * that are referenced with relative paths. If the process runs from a different directory,
- * it will fail to find these chunk files.
+ * The dashboard server internally changes to the package directory (using import.meta.dir)
+ * before starting. This ensures Bun can find the chunk files regardless of where the CLI
+ * is invoked from.
  *
  * ## Test Flow
  *
@@ -29,9 +28,8 @@ export async function testBuiltDashboard(context: IBuildContext): Promise<void> 
 
   const testConfigPath = path.join(context.paths.rootDir, 'test-project', 'config.ts');
 
-  // IMPORTANT: cwd must be the output directory where chunk files are located.
-  // The dashboard uses Bun's HTML import which generates chunks like `dashboard-*.js`.
-  // These are referenced with relative paths, so the process must run from .dist/.
+  // The dashboard server handles changing to the correct directory internally,
+  // but we still set cwd to the output directory for consistency.
   const serverProcess = Bun.spawn({
     cmd: ['bun', context.paths.cliOutputFile, '--config', testConfigPath, 'dashboard', '--port', String(TEST_PORT)],
     cwd: context.paths.outputDir,

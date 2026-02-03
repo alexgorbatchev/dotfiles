@@ -113,7 +113,7 @@ The build includes a test step that:
 2. Verifies the server responds to health checks
 3. Verifies HTML is served correctly
 
-**Important**: The test must run from the `.dist/` directory (using `cwd` option) because the chunk files are located there.
+**Important**: The dashboard server automatically changes to the package directory before starting. This is because Bun's HTML import generates chunk files with relative paths (like `./dashboard-*.js`) that are resolved from the current working directory. The `import.meta.dir` at runtime points to the directory containing the bundled `cli.js`, which is where the chunk files are located.
 
 #### Externalization policy
 
@@ -200,7 +200,7 @@ Finally, the build prints a summary of the files in `.dist/` including their siz
 
 - **Dashboard build failure ("No matching export in index.html")**: The plugin filter is likely catching HTML imports. Ensure the filter is `/^[^./]/` (bare imports only), not `/.*/` (all imports).
 
-- **Dashboard test failure ("Bundled file not found")**: The test is not running from the `.dist/` directory. Ensure `cwd: context.paths.outputDir` is set in the spawn options.
+- **Dashboard runtime failure ("Bundled file not found")**: Bun's HTML import generates chunks with relative paths that are resolved from CWD. The dashboard server must change to the package directory before serving. This is handled automatically via `process.chdir(import.meta.dir)` in `dashboard-server.ts`.
 
 - **Dynamic import causing extra chunks**: Check for `await import(...)` statements. Dynamic imports cause Bun to split code into separate chunks. Convert to static imports if the split is unwanted.
 

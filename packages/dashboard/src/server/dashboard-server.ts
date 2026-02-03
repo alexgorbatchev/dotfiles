@@ -7,6 +7,14 @@ import type { IDashboardServer, IDashboardServerOptions, IDashboardServices } fr
 import clientApp from '../client/dashboard.html';
 
 /**
+ * The directory containing this module (and the bundled chunk files).
+ * Bun's HTML import feature generates chunks with relative paths that are resolved
+ * from the current working directory. We need to ensure the CWD is the package
+ * directory where the chunks are located.
+ */
+const PACKAGE_DIR = import.meta.dir;
+
+/**
  * Creates and returns a dashboard server instance.
  */
 export function createDashboardServer(
@@ -22,6 +30,13 @@ export function createDashboardServer(
   return {
     async start() {
       logger.info(messages.serverStarting(options.port));
+
+      // IMPORTANT: Change to package directory before starting server.
+      // Bun's HTML import generates chunk files (like dashboard-*.js, cli-*.js)
+      // that are referenced with relative paths (e.g., "./dashboard-pks45b1c.js").
+      // These paths are resolved from the CWD, so we must ensure we're in the
+      // directory where the chunks are located.
+      process.chdir(PACKAGE_DIR);
 
       server = Bun.serve({
         port: options.port,
