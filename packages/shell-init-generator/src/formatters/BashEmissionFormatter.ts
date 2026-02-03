@@ -70,7 +70,7 @@ export class BashEmissionFormatter extends BasePosixEmissionFormatter implements
     const outputPath = `${this.onceScriptDir}/${filename}`;
     const scriptContent = dedentString(emission.content);
 
-    const content = this.generateOnceScriptContent(scriptContent, outputPath, emission.homeOverride);
+    const content = this.generateOnceScriptContent(scriptContent, outputPath);
 
     return { content, filename };
   }
@@ -110,18 +110,6 @@ export class BashEmissionFormatter extends BasePosixEmissionFormatter implements
     const body = dedentString(emission.body);
     const indent = ' '.repeat(this.indentSize);
 
-    if (emission.homeOverride) {
-      const indentedBody = body.split('\n').map((line) => `${indent}${indent}${line}`).join('\n');
-      return [
-        `${emission.name}() {`,
-        `${indent}(`,
-        `${indent}${indent}HOME="${this.homeDir}"`,
-        indentedBody,
-        `${indent})`,
-        `}`,
-      ].join('\n');
-    }
-
     const indentedBody = body.split('\n').map((line) => `${indent}${line}`).join('\n');
     return [
       `${emission.name}() {`,
@@ -132,41 +120,10 @@ export class BashEmissionFormatter extends BasePosixEmissionFormatter implements
 
   private formatScript(emission: ScriptEmission): string {
     const content = dedentString(emission.content);
-
-    if (emission.timing === 'raw') {
-      return content;
-    }
-
-    if (emission.homeOverride) {
-      const indent = ' '.repeat(this.indentSize);
-      const indentedContent = content.split('\n').map((line) => `${indent}${line}`).join('\n');
-      return [
-        '(',
-        `${indent}HOME="${this.homeDir}"`,
-        indentedContent,
-        ')',
-      ].join('\n');
-    }
-
     return content;
   }
 
   private formatSourceFile(emission: SourceFileEmission): string {
-    if (emission.homeOverride) {
-      const funcName = this.generateSourceFunctionName(emission.path);
-      return [
-        `# Source ${emission.path} with HOME override`,
-        `${funcName}() {`,
-        '  (',
-        `    HOME="${this.homeDir}"`,
-        `    cat "${emission.path}"`,
-        '  )',
-        '}',
-        `source <(${funcName})`,
-        `unset -f ${funcName}`,
-      ].join('\n');
-    }
-
     return `source "${emission.path}"`;
   }
 

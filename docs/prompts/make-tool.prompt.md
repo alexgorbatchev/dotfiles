@@ -181,7 +181,7 @@ install('github-release', { repo: 'owner/tool' })
 
 - `.always(script)` - Runs every time shell starts (fast operations only)
 - `.once(script)` - Runs only once after install/update (expensive operations)
-- `.functions(record)` - Define shell functions with HOME override for isolation
+- `.functions(record)` - Define shell functions
 
 **Shell Configurator Methods**:
 
@@ -192,7 +192,7 @@ install('github-release', { repo: 'owner/tool' })
 - `.sourceFunction(fnName)` - Source output of a function defined via `.functions()`
 - `.always(script)` - Fast runtime setup scripts
 - `.once(script)` - Expensive one-time setup scripts
-- `.functions(record)` - Define shell functions with HOME isolation
+- `.functions(record)` - Define shell functions
 
 **Completions Syntax**:
 
@@ -238,7 +238,7 @@ install('github-release', { repo: 'owner/tool' })
 **Functions and sourceFunction Syntax**:
 
 ```ts
-// Define shell functions with HOME isolation
+// Define shell functions
 .functions({
   'my-wrapper': /* zsh */`
     original-command --my-defaults "$@"
@@ -256,8 +256,6 @@ install('github-release', { repo: 'owner/tool' })
 .sourceFunction('initTool')
 // Generates: source <(initTool) in bash/zsh, . (initTool) in PowerShell
 ```
-
-Functions defined via `.functions()` automatically run in a subshell with `HOME` set to the project's home directory. This provides isolation and ensures the function uses the correct configuration paths. Use this for wrapper functions that need consistent environment behavior.
 
 **sourceFunction** is type-safe: you can only pass function names that were defined via `.functions()` earlier in the chain. This pattern is ideal for tools requiring dynamic initialization like `fnm`, `zoxide`, or `pyenv`.
 
@@ -645,7 +643,7 @@ export default defineTool((install) =>
 - ✅ Use `.completions({ cmd: '...' })` for dynamic completions (not `.once()`)
 - ✅ Use `.once()` only for expensive one-time setup (cache building, initialization)
 - ✅ Use `.always()` for fast runtime setup (environment, eval statements)
-- ✅ Use `.functions()` for shell function wrappers that need HOME isolation
+- ✅ Use `.functions()` for shell function wrappers
 - ✅ Shell scripts are fast and use context variables
 - ✅ Completions configured within shell blocks (`.zsh()`, `.bash()`, `.powershell()`)
 

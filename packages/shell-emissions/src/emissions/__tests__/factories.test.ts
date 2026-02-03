@@ -79,28 +79,14 @@ describe('alias', () => {
 });
 
 describe('fn', () => {
-  it('creates function emission with defaults', () => {
+  it('creates function emission', () => {
     const result = fn('greet', 'echo "Hello"');
 
     expect(result).toMatchInlineSnapshot(`
       {
         "body": "echo "Hello"",
-        "homeOverride": false,
         "kind": "function",
         "name": "greet",
-      }
-    `);
-  });
-
-  it('creates function emission with homeOverride', () => {
-    const result = fn('setup', 'mkdir -p $HOME/.config', true);
-
-    expect(result).toMatchInlineSnapshot(`
-      {
-        "body": "mkdir -p $HOME/.config",
-        "homeOverride": true,
-        "kind": "function",
-        "name": "setup",
       }
     `);
   });
@@ -111,7 +97,6 @@ describe('fn', () => {
     expect(result).toMatchInlineSnapshot(`
       {
         "body": "echo test",
-        "homeOverride": false,
         "kind": "function",
         "name": "my-func",
       }
@@ -138,7 +123,6 @@ describe('script', () => {
     expect(result).toMatchInlineSnapshot(`
       {
         "content": "echo "startup"",
-        "homeOverride": false,
         "kind": "script",
         "timing": "always",
       }
@@ -146,12 +130,11 @@ describe('script', () => {
   });
 
   it('creates script emission with once timing', () => {
-    const result = script('one-time-setup', 'once', true);
+    const result = script('one-time-setup', 'once');
 
     expect(result).toMatchInlineSnapshot(`
       {
         "content": "one-time-setup",
-        "homeOverride": true,
         "kind": "script",
         "timing": "once",
       }
@@ -164,7 +147,6 @@ describe('script', () => {
     expect(result).toMatchInlineSnapshot(`
       {
         "content": "raw content",
-        "homeOverride": false,
         "kind": "script",
         "timing": "raw",
       }
@@ -177,26 +159,13 @@ describe('script', () => {
 });
 
 describe('sourceFile', () => {
-  it('creates sourceFile emission with defaults', () => {
+  it('creates sourceFile emission', () => {
     const result = sourceFile('$HOME/.toolrc');
 
     expect(result).toMatchInlineSnapshot(`
       {
-        "homeOverride": false,
         "kind": "sourceFile",
         "path": "$HOME/.toolrc",
-      }
-    `);
-  });
-
-  it('creates sourceFile emission with homeOverride', () => {
-    const result = sourceFile('$HOME/.config/init.zsh', true);
-
-    expect(result).toMatchInlineSnapshot(`
-      {
-        "homeOverride": true,
-        "kind": "sourceFile",
-        "path": "$HOME/.config/init.zsh",
       }
     `);
   });
@@ -369,7 +338,6 @@ describe('withSource', () => {
     expect(result).toMatchInlineSnapshot(`
       {
         "body": "echo test",
-        "homeOverride": false,
         "kind": "function",
         "name": "test",
         "source": "/path/to/config.ts",

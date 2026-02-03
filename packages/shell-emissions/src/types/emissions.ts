@@ -58,8 +58,6 @@ export interface FunctionEmission extends BaseEmission {
   readonly name: string;
   /** Raw function body (WITHOUT declaration wrapper) */
   readonly body: string;
-  /** Execute with modified HOME */
-  readonly homeOverride: boolean;
 }
 
 /**
@@ -71,8 +69,6 @@ export interface ScriptEmission extends BaseEmission {
   readonly content: string;
   /** Execution timing */
   readonly timing: ScriptTiming;
-  /** Execute with modified HOME (default: false, ignored for 'raw' timing) */
-  readonly homeOverride?: boolean;
 }
 
 /**
@@ -82,8 +78,6 @@ export interface SourceFileEmission extends BaseEmission {
   readonly kind: 'sourceFile';
   /** Path to source (may contain $HOME) */
   readonly path: string;
-  /** Read file with modified HOME */
-  readonly homeOverride: boolean;
 }
 
 /**

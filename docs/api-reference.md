@@ -92,7 +92,7 @@ The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
 | `.completions(path \| config \| callback)` | Completion file, config object, or callback with `ctx.version` (generated after install only) |
 | `.environment(obj)`                        | Environment variables                                                                         |
 | `.aliases(obj)`                            | Shell aliases                                                                                 |
-| `.functions(obj)`                          | Shell functions with HOME isolation                                                           |
+| `.functions(obj)`                          | Shell functions                                                                               |
 | `.sourceFile(path)`                        | Source a file (skips if missing)                                                              |
 | `.sourceFunction(name)`                    | Source output of a function defined via `.functions()`                                        |
 | `.always(script)`                          | Script run on every shell init                                                                |

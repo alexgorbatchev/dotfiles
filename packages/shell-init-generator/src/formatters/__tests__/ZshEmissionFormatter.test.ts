@@ -15,12 +15,11 @@ import { ZshEmissionFormatter } from '../ZshEmissionFormatter';
 import '@dotfiles/testing-helpers';
 
 describe('ZshEmissionFormatter', () => {
-  const homeDir = '/test/home';
   const onceScriptDir = '/test/.once';
   let formatter: ZshEmissionFormatter;
 
   beforeEach(() => {
-    formatter = new ZshEmissionFormatter({ homeDir, onceScriptDir });
+    formatter = new ZshEmissionFormatter({ onceScriptDir });
   });
 
   describe('formatEnvironment', () => {
@@ -62,8 +61,8 @@ describe('ZshEmissionFormatter', () => {
   });
 
   describe('formatFunction', () => {
-    it('should format function without HOME override', () => {
-      const emission = fn('greet', 'echo "Hello, $1!"', false);
+    it('should format function', () => {
+      const emission = fn('greet', 'echo "Hello, $1!"');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -73,22 +72,8 @@ describe('ZshEmissionFormatter', () => {
       `);
     });
 
-    it('should format function with HOME override', () => {
-      const emission = fn('setup', 'echo "Setting up..."', true);
-      const result = formatter.formatEmission(emission);
-
-      expect(result).toMatchInlineSnapshot(`
-        "setup() {
-          (
-            HOME="/test/home"
-            echo "Setting up..."
-          )
-        }"
-      `);
-    });
-
     it('should handle multi-line function body', () => {
-      const emission = fn('multi', 'echo "line1"\necho "line2"', false);
+      const emission = fn('multi', 'echo "line1"\necho "line2"');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -102,35 +87,23 @@ describe('ZshEmissionFormatter', () => {
 
   describe('formatScript', () => {
     it('should format raw script without modification', () => {
-      const emission = script('echo "hello"', 'raw', false);
+      const emission = script('echo "hello"', 'raw');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"echo "hello""`);
     });
 
-    it('should format always script without HOME override', () => {
-      const emission = script('echo "hello"', 'always', false);
+    it('should format always script', () => {
+      const emission = script('echo "hello"', 'always');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"echo "hello""`);
-    });
-
-    it('should format always script with HOME override', () => {
-      const emission = script('echo "hello"', 'always', true);
-      const result = formatter.formatEmission(emission);
-
-      expect(result).toMatchInlineSnapshot(`
-        "(
-          HOME="/test/home"
-          echo "hello"
-        )"
-      `);
     });
   });
 
   describe('formatOnceScript', () => {
     it('should format once script with correct filename and content', () => {
-      const emission = script('echo "setup"', 'once', false);
+      const emission = script('echo "setup"', 'once');
       const result = formatter.formatOnceScript(emission, 1);
 
       expect(result.filename).toMatchInlineSnapshot(`"once-001.zsh"`);
@@ -140,46 +113,14 @@ describe('ZshEmissionFormatter', () => {
         rm "/test/.once/once-001.zsh""
       `);
     });
-
-    it('should format once script with HOME override', () => {
-      const emission = script('echo "setup"', 'once', true);
-      const result = formatter.formatOnceScript(emission, 2);
-
-      expect(result.filename).toMatchInlineSnapshot(`"once-002.zsh"`);
-      expect(result.content).toMatchInlineSnapshot(`
-        "# Generated once script - will self-delete after execution
-        (
-          HOME="/test/home"
-          echo "setup"
-        )
-        rm "/test/.once/once-002.zsh""
-      `);
-    });
   });
 
   describe('formatSourceFile', () => {
-    it('should format simple source file', () => {
-      const emission = sourceFile('$HOME/.toolrc', false);
+    it('should format source file', () => {
+      const emission = sourceFile('$HOME/.toolrc');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"source "$HOME/.toolrc""`);
-    });
-
-    it('should format source file with HOME override using process substitution', () => {
-      const emission = sourceFile('$HOME/.toolrc', true);
-      const result = formatter.formatEmission(emission);
-
-      expect(result).toMatchInlineSnapshot(`
-        "# Source $HOME/.toolrc with HOME override
-        __source_home__toolrc() {
-          (
-            HOME="/test/home"
-            cat "$HOME/.toolrc"
-          )
-        }
-        source <(__source_home__toolrc)
-        unset -f __source_home__toolrc"
-      `);
     });
   });
 

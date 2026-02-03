@@ -41,24 +41,12 @@ class MockFormatter implements IEmissionFormatter {
           .join('\n');
       }
       case 'function': {
-        if (emission.homeOverride) {
-          return `${emission.name}() {\n  (\n    HOME="$MOCK_HOME"\n    ${emission.body}\n  )\n}`;
-        }
         return `${emission.name}() {\n  ${emission.body}\n}`;
       }
       case 'script': {
-        if (emission.timing === 'raw') {
-          return emission.content;
-        }
-        if (emission.homeOverride) {
-          return `(\n  HOME="$MOCK_HOME"\n  ${emission.content}\n)`;
-        }
         return emission.content;
       }
       case 'sourceFile': {
-        if (emission.homeOverride) {
-          return `source_with_home_override "${emission.path}"`;
-        }
         return `source "${emission.path}"`;
       }
       case 'sourceFunction': {
@@ -429,11 +417,11 @@ describe('BlockRenderer', () => {
             environment({ VAR: 'value' }),
             alias({ ll: 'ls -la' }),
             fn('greet', 'echo "Hello"'),
-            fn('setup', 'mkdir $HOME/.config', true),
+            fn('setup', 'mkdir $HOME/.config'),
             script('echo "startup"', 'always'),
             script('echo "raw"', 'raw'),
             sourceFile('$HOME/.rc'),
-            sourceFile('$HOME/.config/init', true),
+            sourceFile('$HOME/.config/init'),
             sourceFunction('initTool'),
             completion({ directories: ['$HOME/.completions'], commands: ['node'] }),
             path('/usr/local/bin'),
@@ -452,15 +440,12 @@ describe('BlockRenderer', () => {
           echo "Hello"
         }
         setup() {
-          (
-            HOME="$MOCK_HOME"
-            mkdir $HOME/.config
-          )
+          mkdir $HOME/.config
         }
         echo "startup"
         echo "raw"
         source "$HOME/.rc"
-        source_with_home_override "$HOME/.config/init"
+        source "$HOME/.config/init"
         source <(initTool)
         fpath=($HOME/.completions $fpath)
         autoload -Uz compinit && compinit
@@ -599,7 +584,7 @@ describe('BlockRenderer', () => {
       builder
         .addEmission(path('/usr/local/bin'))
         .addEmission(environment({ NODE_ENV: 'production' }))
-        .addEmission(fn('initNode', 'eval "$(fnm env)"', true), 'node')
+        .addEmission(fn('initNode', 'eval "$(fnm env)"'), 'node')
         .addEmission(sourceFunction('initNode'), 'node')
         .addEmission(completion({ commands: ['node'] }));
 
@@ -619,10 +604,7 @@ describe('BlockRenderer', () => {
 
         # --- node ---
         initNode() {
-          (
-            HOME="$MOCK_HOME"
-            eval "$(fnm env)"
-          )
+          eval "$(fnm env)"
         }
         source <(initNode)
 

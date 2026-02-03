@@ -15,12 +15,11 @@ import { BashEmissionFormatter } from '../BashEmissionFormatter';
 import '@dotfiles/testing-helpers';
 
 describe('BashEmissionFormatter', () => {
-  const homeDir = '/test/home';
   const onceScriptDir = '/test/.once';
   let formatter: BashEmissionFormatter;
 
   beforeEach(() => {
-    formatter = new BashEmissionFormatter({ homeDir, onceScriptDir });
+    formatter = new BashEmissionFormatter({ onceScriptDir });
   });
 
   describe('formatEnvironment', () => {
@@ -42,8 +41,8 @@ describe('BashEmissionFormatter', () => {
   });
 
   describe('formatFunction', () => {
-    it('should format function without HOME override', () => {
-      const emission = fn('greet', 'echo "Hello, $1!"', false);
+    it('should format function', () => {
+      const emission = fn('greet', 'echo "Hello, $1!"');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -52,39 +51,20 @@ describe('BashEmissionFormatter', () => {
         }"
       `);
     });
-
-    it('should format function with HOME override', () => {
-      const emission = fn('setup', 'echo "Setting up..."', true);
-      const result = formatter.formatEmission(emission);
-
-      expect(result).toMatchInlineSnapshot(`
-        "setup() {
-          (
-            HOME="/test/home"
-            echo "Setting up..."
-          )
-        }"
-      `);
-    });
   });
 
   describe('formatScript', () => {
-    it('should format always script with HOME override', () => {
-      const emission = script('echo "hello"', 'always', true);
+    it('should format always script', () => {
+      const emission = script('echo "hello"', 'always');
       const result = formatter.formatEmission(emission);
 
-      expect(result).toMatchInlineSnapshot(`
-        "(
-          HOME="/test/home"
-          echo "hello"
-        )"
-      `);
+      expect(result).toMatchInlineSnapshot(`"echo "hello""`);
     });
   });
 
   describe('formatOnceScript', () => {
     it('should format once script with correct filename', () => {
-      const emission = script('echo "setup"', 'once', false);
+      const emission = script('echo "setup"', 'once');
       const result = formatter.formatOnceScript(emission, 1);
 
       expect(result.filename).toMatchInlineSnapshot(`"once-001.bash"`);
@@ -97,8 +77,8 @@ describe('BashEmissionFormatter', () => {
   });
 
   describe('formatSourceFile', () => {
-    it('should format simple source file', () => {
-      const emission = sourceFile('$HOME/.toolrc', false);
+    it('should format source file', () => {
+      const emission = sourceFile('$HOME/.toolrc');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"source "$HOME/.toolrc""`);

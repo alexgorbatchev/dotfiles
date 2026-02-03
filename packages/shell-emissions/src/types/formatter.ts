@@ -5,8 +5,6 @@ import type { Emission, ScriptEmission } from './emissions';
  * Configuration provided to formatters at construction.
  */
 export interface FormatterConfig {
-  /** Target HOME directory (required) */
-  homeDir: string;
   /** Comment line width (default: 80) */
   headerWidth?: number;
   /** Spaces per indent (default: 2) */

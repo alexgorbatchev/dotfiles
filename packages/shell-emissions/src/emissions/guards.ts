@@ -76,19 +76,3 @@ const HOISTED_KINDS = new Set(['environment', 'path', 'completion']);
 export function isHoisted(e: Emission): boolean {
   return HOISTED_KINDS.has(e.kind);
 }
-
-/**
- * Determines if an emission supports HOME override.
- */
-export function needsHomeOverride(e: Emission): boolean {
-  if (isFunctionEmission(e)) {
-    return e.homeOverride;
-  }
-  if (isScriptEmission(e)) {
-    return e.timing !== 'raw' && e.homeOverride === true;
-  }
-  if (isSourceFileEmission(e)) {
-    return e.homeOverride;
-  }
-  return false;
-}

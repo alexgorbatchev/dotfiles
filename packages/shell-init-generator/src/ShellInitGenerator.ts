@@ -178,11 +178,11 @@ export class ShellInitGenerator implements IShellInitGenerator {
         let emission: Emission | undefined;
 
         if (isOnceScript(shellScript)) {
-          emission = script(scriptContent, 'once', true);
+          emission = script(scriptContent, 'once');
         } else if (isAlwaysScript(shellScript)) {
-          emission = script(scriptContent, 'always', true);
+          emission = script(scriptContent, 'always');
         } else if (isRawScript(shellScript)) {
-          emission = script(scriptContent, 'raw', false);
+          emission = script(scriptContent, 'raw');
         }
 
         if (emission) {
@@ -194,7 +194,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     // Convert functions
     if (pluginInit.functions) {
       for (const [funcName, funcBody] of Object.entries(pluginInit.functions)) {
-        const emission = fn(funcName, funcBody, true);
+        const emission = fn(funcName, funcBody);
         emissions.push(source ? withSource(emission, source) : emission);
       }
     }

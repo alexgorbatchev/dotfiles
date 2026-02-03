@@ -19,7 +19,6 @@ import {
   isScriptEmission,
   isSourceFileEmission,
   isSourceFunctionEmission,
-  needsHomeOverride,
 } from '../guards';
 
 describe('isEnvironmentEmission', () => {
@@ -149,59 +148,5 @@ describe('isHoisted', () => {
 
   it('returns false for sourceFunction emissions', () => {
     expect(isHoisted(sourceFunction('init'))).toBe(false);
-  });
-});
-
-describe('needsHomeOverride', () => {
-  it('returns true for function with homeOverride', () => {
-    expect(needsHomeOverride(fn('test', 'echo', true))).toBe(true);
-  });
-
-  it('returns false for function without homeOverride', () => {
-    expect(needsHomeOverride(fn('test', 'echo', false))).toBe(false);
-  });
-
-  it('returns true for script with homeOverride and always timing', () => {
-    expect(needsHomeOverride(script('echo', 'always', true))).toBe(true);
-  });
-
-  it('returns true for script with homeOverride and once timing', () => {
-    expect(needsHomeOverride(script('echo', 'once', true))).toBe(true);
-  });
-
-  it('returns false for script with homeOverride and raw timing', () => {
-    expect(needsHomeOverride(script('echo', 'raw', true))).toBe(false);
-  });
-
-  it('returns false for script without homeOverride', () => {
-    expect(needsHomeOverride(script('echo', 'always', false))).toBe(false);
-  });
-
-  it('returns true for sourceFile with homeOverride', () => {
-    expect(needsHomeOverride(sourceFile('$HOME/.rc', true))).toBe(true);
-  });
-
-  it('returns false for sourceFile without homeOverride', () => {
-    expect(needsHomeOverride(sourceFile('$HOME/.rc', false))).toBe(false);
-  });
-
-  it('returns false for environment emissions', () => {
-    expect(needsHomeOverride(environment({ VAR: 'value' }))).toBe(false);
-  });
-
-  it('returns false for alias emissions', () => {
-    expect(needsHomeOverride(alias({ ll: 'ls' }))).toBe(false);
-  });
-
-  it('returns false for path emissions', () => {
-    expect(needsHomeOverride(path('/bin'))).toBe(false);
-  });
-
-  it('returns false for completion emissions', () => {
-    expect(needsHomeOverride(completion({ commands: ['node'] }))).toBe(false);
-  });
-
-  it('returns false for sourceFunction emissions', () => {
-    expect(needsHomeOverride(sourceFunction('init'))).toBe(false);
   });
 });

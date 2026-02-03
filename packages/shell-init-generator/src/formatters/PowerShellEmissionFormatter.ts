@@ -70,7 +70,7 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     const outputPath = `${this.onceScriptDir}/${filename}`;
     const scriptContent = dedentString(emission.content);
 
-    const content = this.generateOnceScriptContent(scriptContent, outputPath, emission.homeOverride);
+    const content = this.generateOnceScriptContent(scriptContent, outputPath);
 
     return { content, filename };
   }
@@ -110,26 +110,6 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     const body = dedentString(emission.body);
     const indent = ' '.repeat(this.indentSize);
 
-    if (emission.homeOverride) {
-      const indentedBody = body.split('\n').map((line) => `${indent}${indent}${line}`).join('\n');
-      return [
-        `function ${emission.name} {`,
-        `${indent}$homeOrig = $env:HOME`,
-        `${indent}$userProfileOrig = $env:USERPROFILE`,
-        `${indent}try {`,
-        `${indent}${indent}$env:HOME = "${this.homeDir}"`,
-        `${indent}${indent}$env:USERPROFILE = "${this.homeDir}"`,
-        indentedBody,
-        `${indent}} finally {`,
-        `${indent}${indent}$env:HOME = $homeOrig`,
-        `${indent}${indent}$env:USERPROFILE = $userProfileOrig`,
-        `${indent}${indent}Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue`,
-        `${indent}${indent}Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue`,
-        `${indent}}`,
-        `}`,
-      ].join('\n');
-    }
-
     const indentedBody = body.split('\n').map((line) => `${indent}${line}`).join('\n');
     return [
       `function ${emission.name} {`,
@@ -140,53 +120,10 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
 
   private formatScript(emission: ScriptEmission): string {
     const content = dedentString(emission.content);
-
-    if (emission.timing === 'raw') {
-      return content;
-    }
-
-    if (emission.homeOverride) {
-      const indent = ' '.repeat(this.indentSize);
-      const indentedContent = content.split('\n').map((line) => `${indent}${line}`).join('\n');
-      return [
-        '$homeOrig = $env:HOME',
-        '$userProfileOrig = $env:USERPROFILE',
-        'try {',
-        `${indent}$env:HOME = "${this.homeDir}"`,
-        `${indent}$env:USERPROFILE = "${this.homeDir}"`,
-        indentedContent,
-        '} finally {',
-        `${indent}$env:HOME = $homeOrig`,
-        `${indent}$env:USERPROFILE = $userProfileOrig`,
-        `${indent}Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue`,
-        `${indent}Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue`,
-        '}',
-      ].join('\n');
-    }
-
     return content;
   }
 
   private formatSourceFile(emission: SourceFileEmission): string {
-    if (emission.homeOverride) {
-      const indent = ' '.repeat(this.indentSize);
-      return [
-        `# Source ${emission.path} with HOME override`,
-        '$homeOrig = $env:HOME',
-        '$userProfileOrig = $env:USERPROFILE',
-        'try {',
-        `${indent}$env:HOME = "${this.homeDir}"`,
-        `${indent}$env:USERPROFILE = "${this.homeDir}"`,
-        `${indent}. "${emission.path}"`,
-        '} finally {',
-        `${indent}$env:HOME = $homeOrig`,
-        `${indent}$env:USERPROFILE = $userProfileOrig`,
-        `${indent}Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue`,
-        `${indent}Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue`,
-        '}',
-      ].join('\n');
-    }
-
     return `. "${emission.path}"`;
   }
 
@@ -230,29 +167,9 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
   private generateOnceScriptContent(
     scriptContent: string,
     outputPath: string,
-    homeOverride?: boolean,
   ): string {
     const lines = ['# Generated once script - will self-delete after execution'];
-    const indent = ' '.repeat(this.indentSize);
-
-    if (homeOverride) {
-      const indentedContent = scriptContent.split('\n').map((line) => `${indent}${line}`).join('\n');
-      lines.push('$homeOrig = $env:HOME');
-      lines.push('$userProfileOrig = $env:USERPROFILE');
-      lines.push('try {');
-      lines.push(`${indent}$env:HOME = "${this.homeDir}"`);
-      lines.push(`${indent}$env:USERPROFILE = "${this.homeDir}"`);
-      lines.push(indentedContent);
-      lines.push('} finally {');
-      lines.push(`${indent}$env:HOME = $homeOrig`);
-      lines.push(`${indent}$env:USERPROFILE = $userProfileOrig`);
-      lines.push(`${indent}Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue`);
-      lines.push(`${indent}Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue`);
-      lines.push('}');
-    } else {
-      lines.push(scriptContent);
-    }
-
+    lines.push(scriptContent);
     lines.push(`Remove-Item "${outputPath}"`);
     return lines.join('\n');
   }

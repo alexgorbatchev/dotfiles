@@ -484,7 +484,7 @@ export class TestHarness {
    * Verifies that an always script block exists for a tool in the shell initialization file.
    *
    * Always scripts are executed every time the shell is initialized. This method checks that
-   * the script is wrapped in a subshell (bash/zsh) or try-finally block (PowerShell).
+   * the script content exists in the shell initialization file.
    *
    * @param toolName - The tool name (used for error messages).
    * @param contentMatcher - Expected content string or a function to validate the script content.
@@ -499,17 +499,7 @@ export class TestHarness {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
 
-    // Look for subshell blocks (bash/zsh) or try-finally blocks (PowerShell)
-    const alwaysRegex = shellType === 'powershell' ? /try\s*\{([\s\S]*?)\}\s*finally\s*\{\}/gm : /\(([\s\S]*?)\)/gm;
-
-    const matches = Array.from(content.matchAll(alwaysRegex));
-    const isMatch = matches.some((match) => {
-      const scriptContent = match[1]?.trim() ?? '';
-      if (typeof contentMatcher === 'function') {
-        return contentMatcher(scriptContent);
-      }
-      return scriptContent.includes(contentMatcher);
-    });
+    const isMatch = typeof contentMatcher === 'function' ? contentMatcher(content) : content.includes(contentMatcher);
 
     expect(isMatch, `Always script for tool '${toolName}' not found in ${shellType} script`).toBe(true);
   }

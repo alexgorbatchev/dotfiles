@@ -46,12 +46,10 @@ export function alias(aliases: Record<string, string>): AliasEmission {
  * Creates a function emission.
  * @param name - Function name
  * @param body - Raw function body (without declaration wrapper)
- * @param homeOverride - Execute with modified HOME (default: false)
  */
 export function fn(
   name: string,
   body: string,
-  homeOverride: boolean = false,
 ): FunctionEmission {
   validateName('function', 'name', name);
   validateNonEmpty('function', 'body', body);
@@ -59,7 +57,6 @@ export function fn(
     kind: 'function',
     name,
     body,
-    homeOverride,
   };
 }
 
@@ -67,36 +64,30 @@ export function fn(
  * Creates a script emission.
  * @param content - Script content
  * @param timing - Execution timing ('always' | 'once' | 'raw')
- * @param homeOverride - Execute with modified HOME (default: false, ignored for 'raw')
  */
 export function script(
   content: string,
   timing: ScriptTiming,
-  homeOverride: boolean = false,
 ): ScriptEmission {
   validateNonEmpty('script', 'content', content);
   return {
     kind: 'script',
     content,
     timing,
-    homeOverride,
   };
 }
 
 /**
  * Creates a source file emission.
  * @param filePath - Path to source (may contain $HOME)
- * @param homeOverride - Read file with modified HOME (default: false)
  */
 export function sourceFile(
   filePath: string,
-  homeOverride: boolean = false,
 ): SourceFileEmission {
   validateNonEmpty('sourceFile', 'path', filePath);
   return {
     kind: 'sourceFile',
     path: filePath,
-    homeOverride,
   };
 }
 

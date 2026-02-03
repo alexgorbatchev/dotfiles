@@ -51,7 +51,6 @@ export {
   isScriptEmission,
   isSourceFileEmission,
   isSourceFunctionEmission,
-  needsHomeOverride,
 } from './emissions/guards';
 
 // Builder and Renderer

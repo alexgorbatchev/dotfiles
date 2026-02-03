@@ -71,16 +71,16 @@ console.log(output.onceScripts); // Array of once-only scripts
 
 Emissions are shell-agnostic data structures representing content to be rendered:
 
-| Type             | Factory                                  | Description           |
-| ---------------- | ---------------------------------------- | --------------------- |
-| `environment`    | `environment(vars)`                      | Environment variables |
-| `alias`          | `alias(aliases)`                         | Shell aliases         |
-| `function`       | `fn(name, body, homeOverride?)`          | Shell function        |
-| `script`         | `script(content, timing, homeOverride?)` | Inline script         |
-| `sourceFile`     | `sourceFile(path, homeOverride?)`        | Source external file  |
-| `sourceFunction` | `sourceFunction(functionName)`           | Lazy-loaded function  |
-| `completion`     | `completion(config)`                     | Shell completion      |
-| `path`           | `path(directory, options?)`              | PATH modification     |
+| Type             | Factory                        | Description           |
+| ---------------- | ------------------------------ | --------------------- |
+| `environment`    | `environment(vars)`            | Environment variables |
+| `alias`          | `alias(aliases)`               | Shell aliases         |
+| `function`       | `fn(name, body)`               | Shell function        |
+| `script`         | `script(content, timing)`      | Inline script         |
+| `sourceFile`     | `sourceFile(path)`             | Source external file  |
+| `sourceFunction` | `sourceFunction(functionName)` | Lazy-loaded function  |
+| `completion`     | `completion(config)`           | Shell completion      |
+| `path`           | `path(directory, options?)`    | PATH modification     |
 
 ### Script Timing
 
@@ -99,16 +99,6 @@ Certain emission types are automatically "hoisted" to designated sections:
 - `completion` → Completions section
 
 Non-hoisted emissions are grouped by `childBlockId` within their section.
-
-### HOME Override
-
-Emissions can request HOME directory override for isolated execution:
-
-```typescript
-const isolatedFunc = fn('myFunc', 'echo $HOME', { homeOverride: true });
-```
-
-The formatter determines the actual syntax based on `FormatterConfig.homeDir`.
 
 ### Source Attribution
 
@@ -144,24 +134,14 @@ environment(variables: Record<string, string>): EnvironmentEmission
 alias(aliases: Record<string, string>): AliasEmission
 
 // Function
-fn(
-  name: string,
-  body: string,
-  homeOverride?: boolean  // default: false
-): FunctionEmission
+fn(name: string, body: string): FunctionEmission
 
 // Script
-script(
-  content: string,
-  timing: ScriptTiming,   // 'always' | 'once' | 'raw'
-  homeOverride?: boolean  // default: false
-): ScriptEmission
+script(content: string, timing: ScriptTiming): ScriptEmission
+// timing: 'always' | 'once' | 'raw'
 
 // Source file
-sourceFile(
-  path: string,
-  homeOverride?: boolean  // default: false
-): SourceFileEmission
+sourceFile(path: string): SourceFileEmission
 
 // Source function (lazy-loaded)
 sourceFunction(functionName: string): SourceFunctionEmission
@@ -200,7 +180,6 @@ isPathEmission(e: Emission): e is PathEmission
 
 // Utility guards
 isHoisted(e: Emission): boolean  // Returns true for environment, path, completion
-needsHomeOverride(e: Emission): boolean  // Returns true if emission has homeOverride: true
 ```
 
 ### BlockBuilder
@@ -326,7 +305,6 @@ interface IEmissionFormatter {
 }
 
 interface FormatterConfig {
-  homeDir: string; // Target HOME directory (required)
   headerWidth?: number; // Comment line width (default: 80)
   indentSize?: number; // Spaces per indent (default: 2)
   onceScriptDir?: string; // Directory for once scripts (required if any exist)

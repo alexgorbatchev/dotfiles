@@ -77,8 +77,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     // Process shell functions
     if (shellConfig?.functions) {
       for (const [funcName, funcBody] of Object.entries(shellConfig.functions)) {
-        // Functions always have HOME override enabled
-        const funcEmission = fn(funcName, funcBody, true);
+        const funcEmission = fn(funcName, funcBody);
         emissions.push(source ? withSource(funcEmission, source) : funcEmission);
       }
     }
@@ -114,11 +113,11 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     const scriptContent = getScriptContent(shellScript);
 
     if (isOnceScript(shellScript)) {
-      return script(scriptContent, 'once', true);
+      return script(scriptContent, 'once');
     } else if (isAlwaysScript(shellScript)) {
-      return script(scriptContent, 'always', true);
+      return script(scriptContent, 'always');
     } else if (isRawScript(shellScript)) {
-      return script(scriptContent, 'raw', false);
+      return script(scriptContent, 'raw');
     }
 
     return undefined;
@@ -204,7 +203,6 @@ export abstract class BaseShellGenerator implements IShellGenerator {
    */
   private createFormatterConfig(): FormatterConfig {
     return {
-      homeDir: this.projectConfig.paths.homeDir,
       onceScriptDir: path.join(this.projectConfig.paths.shellScriptsDir, '.once'),
     };
   }

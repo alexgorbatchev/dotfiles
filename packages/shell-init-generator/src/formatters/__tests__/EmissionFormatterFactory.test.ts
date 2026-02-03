@@ -5,7 +5,7 @@ import { PowerShellEmissionFormatter } from '../PowerShellEmissionFormatter';
 import { ZshEmissionFormatter } from '../ZshEmissionFormatter';
 
 describe('EmissionFormatterFactory', () => {
-  const config = { homeDir: '/test/home' };
+  const config = {};
 
   it('should create ZshEmissionFormatter for zsh', () => {
     const formatter = createEmissionFormatter('zsh', config);

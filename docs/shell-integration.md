@@ -24,7 +24,7 @@ For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), u
   shell
     .environment({ VAR: 'value' })      // Environment variables
     .aliases({ t: 'tool' })             // Shell aliases
-    .functions({ myFunc: 'cmd' })       // Shell functions with HOME override
+    .functions({ myFunc: 'cmd' })       // Shell functions
     .completions('completions/_tool')   // Completion file path
     .sourceFile('shell/init.zsh')       // Source a file (skips if missing)
     .sourceFunction('myFunc')           // Source output of a function (source <(myFunc))
@@ -55,14 +55,12 @@ export default defineTool((install, ctx) =>
 
 ### `.functions()` - Define Shell Functions
 
-Define shell functions with automatic HOME override. Function bodies are wrapped
-in subshells with HOME set to the configured home directory, preventing tools
-from accessing the real home directory.
+Define shell functions that are generated into the shell init file.
 
 ```typescript
 .zsh((shell) =>
   shell.functions({
-    'my-command': 'echo "Running with HOME=$HOME"',
+    'my-command': 'echo "Hello, world!"',
     'tool-setup': 'cd /some/path && ./setup.sh',
   })
 )
@@ -72,15 +70,15 @@ from accessing the real home directory.
 
 ```zsh
 my-command() {
-  (
-    HOME="/configured/home/path"
-    echo "Running with HOME=$HOME"
-  )
+  echo "Hello, world!"
+}
+
+tool-setup() {
+  cd /some/path && ./setup.sh
 }
 ```
 
-This is useful when you need functions that should operate with the sandboxed
-HOME environment, similar to `always()` and `once()` scripts.
+This is useful for defining wrapper functions or custom commands.
 
 ## Sourcing Files and Functions
 
@@ -105,10 +103,7 @@ The file is sourced in a way that respects the configured HOME directory while s
 
 ```zsh
 __dotfiles_source_mytool_0() {
-  (
-    HOME="/configured/home/path"
-    [[ -f "/path/to/init.zsh" ]] && cat "/path/to/init.zsh"
-  )
+  [[ -f "/path/to/init.zsh" ]] && cat "/path/to/init.zsh"
 }
 source <(__dotfiles_source_mytool_0)
 unset -f __dotfiles_source_mytool_0
@@ -139,10 +134,7 @@ Source the output of a shell function defined via `.functions()`. This is ideal 
 
 ```zsh
 initFnm() {
-  (
-    HOME="/configured/home/path"
-    fnm env --use-on-cd
-  )
+  fnm env --use-on-cd
 }
 source <(initFnm)
 ```
@@ -157,7 +149,7 @@ source <(initFnm)
 
 ### `.always()` - Every Shell Startup
 
-For fast inline operations. Runs in a subshell with HOME override:
+For fast inline operations that run on every shell startup:
 
 ```typescript
 .zsh((shell) =>

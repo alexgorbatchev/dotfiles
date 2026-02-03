@@ -178,7 +178,6 @@ describe('BlockBuilder', () => {
             "emissions": [
               {
                 "body": "echo hello",
-                "homeOverride": false,
                 "kind": "function",
                 "name": "greet",
               },
@@ -210,7 +209,6 @@ describe('BlockBuilder', () => {
                 "emissions": [
                   {
                     "body": "echo hello",
-                    "homeOverride": false,
                     "kind": "function",
                     "name": "greet",
                   },
@@ -256,13 +254,11 @@ describe('BlockBuilder', () => {
                 "emissions": [
                   {
                     "body": "echo 1",
-                    "homeOverride": false,
                     "kind": "function",
                     "name": "func1",
                   },
                   {
                     "body": "echo 3",
-                    "homeOverride": false,
                     "kind": "function",
                     "name": "func3",
                   },
@@ -276,7 +272,6 @@ describe('BlockBuilder', () => {
                 "emissions": [
                   {
                     "body": "echo 2",
-                    "homeOverride": false,
                     "kind": "function",
                     "name": "func2",
                   },
@@ -423,7 +418,7 @@ describe('BlockBuilder', () => {
         .addEmission(path('/usr/local/bin'))
         .addEmission(path('$HOME/.local/bin'))
         .addEmission(environment({ NODE_ENV: 'production' }))
-        .addEmission(fn('initNode', 'eval "$(fnm env)"', true), 'node')
+        .addEmission(fn('initNode', 'eval "$(fnm env)"'), 'node')
         .addEmission(sourceFunction('initNode'), 'node')
         .addEmission(alias({ ll: 'ls -la' }), 'common')
         .addEmission(completion({ commands: ['node', 'npm'] }));
@@ -488,7 +483,6 @@ describe('BlockBuilder', () => {
                 "emissions": [
                   {
                     "body": "eval "$(fnm env)"",
-                    "homeOverride": true,
                     "kind": "function",
                     "name": "initNode",
                   },

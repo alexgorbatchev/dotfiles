@@ -15,13 +15,11 @@ const DEFAULT_INDENT_SIZE = 2;
 export abstract class BaseEmissionFormatter {
   abstract readonly fileExtension: string;
 
-  protected readonly homeDir: string;
   protected readonly headerWidth: number;
   protected readonly indentSize: number;
   protected readonly onceScriptDir?: string;
 
   constructor(config: FormatterConfig) {
-    this.homeDir = config.homeDir;
     this.headerWidth = config.headerWidth ?? DEFAULT_HEADER_WIDTH;
     this.indentSize = config.indentSize ?? DEFAULT_INDENT_SIZE;
     this.onceScriptDir = config.onceScriptDir;

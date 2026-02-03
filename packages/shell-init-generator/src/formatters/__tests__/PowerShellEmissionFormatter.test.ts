@@ -15,12 +15,11 @@ import { PowerShellEmissionFormatter } from '../PowerShellEmissionFormatter';
 import '@dotfiles/testing-helpers';
 
 describe('PowerShellEmissionFormatter', () => {
-  const homeDir = '/test/home';
   const onceScriptDir = '/test/.once';
   let formatter: PowerShellEmissionFormatter;
 
   beforeEach(() => {
-    formatter = new PowerShellEmissionFormatter({ homeDir, onceScriptDir });
+    formatter = new PowerShellEmissionFormatter({ onceScriptDir });
   });
 
   describe('formatEnvironment', () => {
@@ -52,8 +51,8 @@ describe('PowerShellEmissionFormatter', () => {
   });
 
   describe('formatFunction', () => {
-    it('should format function without HOME override', () => {
-      const emission = fn('greet', 'Write-Host "Hello, $args[0]!"', false);
+    it('should format function', () => {
+      const emission = fn('greet', 'Write-Host "Hello, $args[0]!"');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -62,55 +61,20 @@ describe('PowerShellEmissionFormatter', () => {
         }"
       `);
     });
-
-    it('should format function with HOME override', () => {
-      const emission = fn('setup', 'Write-Host "Setting up..."', true);
-      const result = formatter.formatEmission(emission);
-
-      expect(result).toMatchInlineSnapshot(`
-        "function setup {
-          $homeOrig = $env:HOME
-          $userProfileOrig = $env:USERPROFILE
-          try {
-            $env:HOME = "/test/home"
-            $env:USERPROFILE = "/test/home"
-            Write-Host "Setting up..."
-          } finally {
-            $env:HOME = $homeOrig
-            $env:USERPROFILE = $userProfileOrig
-            Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue
-            Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue
-          }
-        }"
-      `);
-    });
   });
 
   describe('formatScript', () => {
-    it('should format always script with HOME override', () => {
-      const emission = script('Write-Host "hello"', 'always', true);
+    it('should format always script', () => {
+      const emission = script('Write-Host "hello"', 'always');
       const result = formatter.formatEmission(emission);
 
-      expect(result).toMatchInlineSnapshot(`
-        "$homeOrig = $env:HOME
-        $userProfileOrig = $env:USERPROFILE
-        try {
-          $env:HOME = "/test/home"
-          $env:USERPROFILE = "/test/home"
-          Write-Host "hello"
-        } finally {
-          $env:HOME = $homeOrig
-          $env:USERPROFILE = $userProfileOrig
-          Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue
-          Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue
-        }"
-      `);
+      expect(result).toMatchInlineSnapshot(`"Write-Host "hello""`);
     });
   });
 
   describe('formatOnceScript', () => {
     it('should format once script with correct filename', () => {
-      const emission = script('Write-Host "setup"', 'once', false);
+      const emission = script('Write-Host "setup"', 'once');
       const result = formatter.formatOnceScript(emission, 1);
 
       expect(result.filename).toMatchInlineSnapshot(`"once-001.ps1"`);
@@ -123,32 +87,11 @@ describe('PowerShellEmissionFormatter', () => {
   });
 
   describe('formatSourceFile', () => {
-    it('should format simple source file', () => {
-      const emission = sourceFile('$HOME/.toolrc', false);
+    it('should format source file', () => {
+      const emission = sourceFile('$HOME/.toolrc');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`". "$HOME/.toolrc""`);
-    });
-
-    it('should format source file with HOME override', () => {
-      const emission = sourceFile('$HOME/.toolrc', true);
-      const result = formatter.formatEmission(emission);
-
-      expect(result).toMatchInlineSnapshot(`
-        "# Source $HOME/.toolrc with HOME override
-        $homeOrig = $env:HOME
-        $userProfileOrig = $env:USERPROFILE
-        try {
-          $env:HOME = "/test/home"
-          $env:USERPROFILE = "/test/home"
-          . "$HOME/.toolrc"
-        } finally {
-          $env:HOME = $homeOrig
-          $env:USERPROFILE = $userProfileOrig
-          Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue
-          Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue
-        }"
-      `);
     });
   });
 
