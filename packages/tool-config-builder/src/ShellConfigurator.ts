@@ -63,7 +63,6 @@ export class ShellConfigurator implements IShellConfigurator<string> {
     const functionName = this.generateSourceFileFunctionName();
 
     // Create a function that cats the file content (with existence check)
-    // The function body will be wrapped in a subshell with HOME override by FunctionScriptFormatter
     const functionBody = this.createSourceFileFunctionBody(resolvedPath);
     this.storage.functions[functionName] = functionBody;
 
@@ -175,7 +174,6 @@ export class ShellConfigurator implements IShellConfigurator<string> {
 
   /**
    * Creates the function body for sourceFile that cats the file content.
-   * The body will be wrapped in a subshell with HOME override by FunctionScriptFormatter.
    */
   private createSourceFileFunctionBody(resolvedPath: string): string {
     const quotedPath = JSON.stringify(resolvedPath);

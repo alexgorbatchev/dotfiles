@@ -296,22 +296,17 @@ export interface IShellConfigurator<KnownFunctions extends string = never> {
   always(script: string): IShellConfigurator<KnownFunctions>;
 
   /**
-   * Defines shell functions with automatic HOME override.
-   * Function bodies are wrapped in subshells with HOME set to the configured home directory,
-   * consistent with the behavior of `always` and `once` scripts.
+   * Defines shell functions.
    *
    * @param values - A record of function names to their body content.
    *
    * @example
    * shell.functions({
-   *   mycommand: 'echo "Running with HOME=$HOME"'
+   *   mycommand: 'echo "Running mycommand"'
    * })
    * // Generates:
    * // mycommand() {
-   * //   (
-   * //     HOME="/configured/home/path"
-   * //     echo "Running with HOME=$HOME"
-   * //   )
+   * //   echo "Running mycommand"
    * // }
    */
   functions<K extends string>(values: Record<K, string>): IShellConfigurator<KnownFunctions | K>;

@@ -14,7 +14,6 @@ export type OnceScript = { readonly kind: 'once'; readonly value: string; };
 /**
  * A shell script that should run on every shell startup.
  * Used for tasks like setting environment variables or running `eval` commands.
- * Wrapped in a subshell with HOME override.
  */
 export type AlwaysScript = { readonly kind: 'always'; readonly value: string; };
 

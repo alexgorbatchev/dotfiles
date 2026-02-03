@@ -29,7 +29,6 @@ export interface IShellStorage {
 
   /**
    * Map of function names to their bodies.
-   * Functions are wrapped with HOME override similar to always scripts.
    */
   functions: Record<string, string>;
 
