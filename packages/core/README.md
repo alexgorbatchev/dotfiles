@@ -114,6 +114,7 @@ interface IBaseToolContext {
   toolDir: string;
   currentDir: string;
   replaceInFile: BoundReplaceInFile; // Regex-based file text replacement
+  resolve: BoundResolve; // Resolve glob pattern to single path
   log: IToolLog; // User-facing logger for tool operations
 }
 

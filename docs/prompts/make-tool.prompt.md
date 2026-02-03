@@ -107,6 +107,7 @@ install('github-release', { repo: 'owner/tool' }).bin('tool', '*/bin/tool'); // 
 - `ctx.projectConfig.paths.binariesDir` → Tool binaries directory
 - `ctx.projectConfig.paths.generatedDir` → Generated files directory
 - `ctx.replaceInFile()` → Perform regex-based file modifications (see Step 6)
+- `ctx.resolve()` → Resolve a glob pattern to a single path (throws if 0 or multiple matches)
 - `ctx.log` → Logger for user-facing messages (trace/debug/info/warn/error)
 - Use `~/` for paths relative to user's home directory (tilde expansion is automatic)
 
@@ -386,6 +387,26 @@ install('github-release', { repo: 'owner/tool' })
 - `errorMessage` - If provided and no matches found, logs error: `Could not find '<pattern>' in <filePath>`
 
 **Returns:** `Promise<boolean>` - `true` if replacements were made, `false` if no matches found
+
+**Resolving Glob Patterns**: Use `ctx.resolve()` to match a glob pattern to a single path:
+
+```ts
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  .zsh((shell) =>
+    shell.always(/* zsh */ `
+      # Resolve versioned directory (e.g., tool-14.1.0-x86_64-linux)
+      source "${ctx.resolve('completions/*.zsh')}"
+    `)
+  );
+```
+
+`ctx.resolve(pattern)` returns the absolute path if exactly one match is found. It throws `ResolveError` and logs ERROR if:
+
+- No matches are found
+- Multiple matches are found (ambiguous)
+
+This is useful for referencing files with variable names (versioned directories, platform-specific assets).
 
 Reference: [Hooks Guide](<root>/docs/hooks.md) and [API Reference](<root>/docs/api-reference.md#hook-event-string-handler-hookhandler)
 

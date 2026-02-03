@@ -146,6 +146,46 @@ export type BoundReplaceInFile = (
 ) => Promise<boolean>;
 
 /**
+ * Resolves a glob pattern to a single path.
+ *
+ * This function is designed for tool configurations that need to reference files
+ * or directories with flexible naming (e.g., versioned directories, platform-specific
+ * binaries). It ensures exactly one match exists, failing with an error if the
+ * pattern is ambiguous or unmatched.
+ *
+ * **Important**: This function throws an error on failure, which stops tool processing.
+ * Use it when a missing or ambiguous match indicates a configuration problem that
+ * should halt installation.
+ *
+ * **Behavior**:
+ * - Returns the matched path as an absolute path if exactly one match is found
+ * - Logs ERROR and throws if zero matches are found
+ * - Logs ERROR and throws if multiple matches are found
+ *
+ * @param pattern - Glob pattern to match (relative to `toolDir` or absolute)
+ * @returns The resolved absolute path
+ * @throws Error if no matches or multiple matches are found
+ *
+ * @example
+ * ```ts
+ * // Resolve a versioned directory
+ * const versionDir = ctx.resolve('ripgrep-*-x86_64-*');
+ *
+ * // Resolve a specific file
+ * const binary = ctx.resolve('bin/my-tool-*');
+ *
+ * // Use in zsh configuration
+ * export default defineTool((install, ctx) =>
+ *   install('github-release', { repo: 'owner/tool' })
+ *     .bin('tool')
+ *     .zsh((shell) =>
+ *       shell.always(`source "${ctx.resolve('completions/*.zsh')}"`))
+ * );
+ * ```
+ */
+export type BoundResolve = (pattern: string) => string;
+
+/**
  * Provides a base context with common properties and utilities that are shared
  * across various phases of tool configuration and installation.
  *
@@ -253,4 +293,35 @@ export interface IBaseToolContext {
    * ```
    */
   log: IToolLog;
+
+  /**
+   * Resolves a glob pattern to a single path.
+   *
+   * Use this when you need to reference a file or directory with a flexible name
+   * (e.g., versioned directories, platform-specific binaries) and expect exactly
+   * one match.
+   *
+   * The pattern is resolved relative to `toolDir` unless it's an absolute path.
+   * Returns the absolute path of the matched file or directory.
+   *
+   * **Throws** if zero matches or multiple matches are found (stops tool processing).
+   *
+   * @param pattern - Glob pattern to match
+   * @returns The resolved absolute path
+   *
+   * @example
+   * ```ts
+   * // Resolve a versioned directory
+   * const versionDir = ctx.resolve('ripgrep-*-x86_64-*');
+   *
+   * // Use in shell configuration
+   * export default defineTool((install, ctx) =>
+   *   install('github-release', { repo: 'owner/tool' })
+   *     .bin('tool')
+   *     .zsh((shell) =>
+   *       shell.always(`source "${ctx.resolve('completions/*.zsh')}"`))
+   * );
+   * ```
+   */
+  resolve: BoundResolve;
 }

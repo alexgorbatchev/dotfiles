@@ -85,6 +85,9 @@ export function createTestInstallHookContext(
     timestamp: '2025-01-01-00-00-00',
     fileSystem: memFs,
     replaceInFile: (filePath, from, to, options) => replaceInFile(resolvedFs, filePath, from, to, options),
+    resolve: () => {
+      throw new Error('resolve not supported in test context');
+    },
     log: createToolLog(logger, 'test-tool'),
   };
 

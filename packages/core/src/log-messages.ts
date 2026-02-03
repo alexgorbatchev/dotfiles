@@ -39,4 +39,9 @@ export const messages = {
 
   replaceInFileNoMatch: (pattern: string, filePath: string) =>
     createSafeLogMessage(`Could not find '${pattern}' in ${filePath}`),
+
+  resolveNoMatches: (pattern: string) => createSafeLogMessage(`No matches found for pattern: ${pattern}`),
+
+  resolveMultipleMatches: (pattern: string, count: number, matches: string) =>
+    createSafeLogMessage(`Pattern '${pattern}' matched ${count} paths (expected exactly 1): ${matches}`),
 } satisfies SafeLogMessageMap;

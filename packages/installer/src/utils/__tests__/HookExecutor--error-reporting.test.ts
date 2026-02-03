@@ -76,6 +76,9 @@ describe('HookExecutor - error reporting', () => {
       fileSystem: fs,
       replaceInFile: (filePath, from, to, options) =>
         replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
+      resolve: () => {
+        throw new Error('resolve not supported in test context');
+      },
       log: createToolLog(logger, toolName),
     };
 

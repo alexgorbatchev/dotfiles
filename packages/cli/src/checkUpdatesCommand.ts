@@ -98,6 +98,9 @@ function createInstallContext(
     $: createConfiguredShell(createShell(), process.env),
     fileSystem: fs,
     replaceInFile: (filePath, from, to, options) => replaceInFile(fs, filePath, from, to, options),
+    resolve: () => {
+      throw new Error('resolve not supported in version check context');
+    },
     log: createToolLog(logger, config.name),
   };
 

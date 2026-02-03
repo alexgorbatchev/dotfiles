@@ -3,12 +3,14 @@ import type { IResolvedFileSystem, MockedFileSystem } from '@dotfiles/file-syste
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { LogLevel, TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
+import * as fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
 import { Architecture, type ISystemInfo, Platform } from '../../common';
-import { createToolConfigContext } from '../createToolConfigContext';
+import { createToolConfigContext, ResolveError } from '../createToolConfigContext';
 
 describe('createToolConfigContext', () => {
   let projectConfig: ProjectConfig;
@@ -246,6 +248,149 @@ describe('createToolConfigContext', () => {
       context.log.trace('Processing file: config.yaml');
 
       logger.expect(['TRACE'], [], ['my-tool'], ['Processing file: config.yaml']);
+    });
+  });
+
+  describe('resolve property', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'resolve-test-'));
+    });
+
+    afterEach(async () => {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    });
+
+    it('should expose resolve function', () => {
+      const toolName = 'test-tool';
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, tempDir, resolvedFs, logger);
+
+      expect(context.resolve).toBeDefined();
+      expect(typeof context.resolve).toBe('function');
+    });
+
+    it('should return the path when exactly one match is found (relative pattern)', async () => {
+      const toolName = 'test-tool';
+      const configDir = path.join(tempDir, 'config');
+
+      await fs.mkdir(configDir, { recursive: true });
+      await fs.writeFile(path.join(configDir, 'settings.yaml'), 'key: value', 'utf8');
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, tempDir, resolvedFs, logger);
+
+      const result = context.resolve('config/settings.yaml');
+
+      expect(result).toBe(path.join(tempDir, 'config/settings.yaml'));
+    });
+
+    it('should resolve glob patterns with wildcards', async () => {
+      const toolName = 'test-tool';
+      const versionDir = path.join(tempDir, 'ripgrep-14.1.0-x86_64-linux');
+
+      await fs.mkdir(versionDir, { recursive: true });
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, tempDir, resolvedFs, logger);
+
+      const result = context.resolve('ripgrep-*-x86_64-linux');
+
+      expect(result).toBe(versionDir);
+    });
+
+    it('should resolve absolute paths', async () => {
+      const toolName = 'test-tool';
+      const binDir = path.join(tempDir, 'bin');
+
+      await fs.mkdir(binDir, { recursive: true });
+      await fs.writeFile(path.join(binDir, 'myapp'), '#!/bin/bash', 'utf8');
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, tempDir, resolvedFs, logger);
+
+      const result = context.resolve(path.join(tempDir, 'bin/myapp'));
+
+      expect(result).toBe(path.join(binDir, 'myapp'));
+    });
+
+    it('should throw ResolveError when no matches are found', async () => {
+      const toolName = 'test-tool';
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, tempDir, resolvedFs, logger);
+
+      expect(() => context.resolve('non-existent-*')).toThrow(ResolveError);
+      expect(() => context.resolve('non-existent-*')).toThrow('No matches found');
+    });
+
+    it('should log ERROR when no matches are found', async () => {
+      const toolName = 'test-tool';
+      const testLogger = new TestLogger({ minLevel: LogLevel.VERBOSE });
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, tempDir, resolvedFs, testLogger);
+
+      try {
+        context.resolve('missing-pattern-*');
+      } catch {
+        // Expected
+      }
+
+      testLogger.expect(['ERROR'], [], [], ['No matches found for pattern: missing-pattern-*']);
+    });
+
+    it('should throw ResolveError when multiple matches are found', async () => {
+      const toolName = 'test-tool';
+
+      await fs.writeFile(path.join(tempDir, 'config-a.yaml'), 'a', 'utf8');
+      await fs.writeFile(path.join(tempDir, 'config-b.yaml'), 'b', 'utf8');
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, tempDir, resolvedFs, logger);
+
+      expect(() => context.resolve('config-*.yaml')).toThrow(ResolveError);
+      expect(() => context.resolve('config-*.yaml')).toThrow('matched 2 paths');
+    });
+
+    it('should log ERROR with match list when multiple matches are found', async () => {
+      const toolName = 'test-tool';
+      const testLogger = new TestLogger({ minLevel: LogLevel.VERBOSE });
+
+      await fs.writeFile(path.join(tempDir, 'file-1.txt'), '1', 'utf8');
+      await fs.writeFile(path.join(tempDir, 'file-2.txt'), '2', 'utf8');
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, tempDir, resolvedFs, testLogger);
+
+      try {
+        context.resolve('file-*.txt');
+      } catch {
+        // Expected
+      }
+
+      testLogger.expect(['ERROR'], [], [], ["Pattern 'file-*.txt' matched 2 paths"]);
+    });
+
+    it('should resolve directories as well as files', async () => {
+      const toolName = 'test-tool';
+      const themesDir = path.join(tempDir, 'share/themes');
+
+      await fs.mkdir(themesDir, { recursive: true });
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, tempDir, resolvedFs, logger);
+
+      const result = context.resolve('share/themes');
+
+      expect(result).toBe(themesDir);
+    });
+
+    it('should resolve nested glob patterns', async () => {
+      const toolName = 'test-tool';
+      const completionsDir = path.join(tempDir, 'completions');
+
+      await fs.mkdir(completionsDir, { recursive: true });
+      await fs.writeFile(path.join(completionsDir, '_mytool.zsh'), '# completion', 'utf8');
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, tempDir, resolvedFs, logger);
+
+      const result = context.resolve('completions/*.zsh');
+
+      expect(result).toBe(path.join(completionsDir, '_mytool.zsh'));
     });
   });
 });

@@ -622,6 +622,9 @@ export function createTestContext(
     fileSystem: setup.fs,
     replaceInFile: (filePath, from, to, options) =>
       replaceInFile(setup.fs.asIResolvedFileSystem, filePath, from, to, options),
+    resolve: () => {
+      throw new Error('resolve not supported in test context');
+    },
     log: createToolLog(setup.logger, MOCK_TOOL_NAME),
   };
 

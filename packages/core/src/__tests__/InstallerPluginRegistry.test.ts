@@ -81,6 +81,9 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
     fileSystem: fs,
     replaceInFile: (filePath, from, to, options) =>
       replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
+    resolve: () => {
+      throw new Error('resolve not supported in test context');
+    },
     log: createToolLog(logger, toolConfig.name),
   };
 

@@ -12,6 +12,7 @@ The `ctx` parameter in `defineTool` provides access to tool and project informat
 | `ctx.projectConfig` | Full project configuration                        |
 | `ctx.systemInfo`    | Platform, architecture, and home directory        |
 | `ctx.replaceInFile` | Replace text in files using regex patterns        |
+| `ctx.resolve`       | Resolve glob pattern to a single path             |
 | `ctx.log`           | Logger for user-facing output                     |
 
 ### Path Properties via projectConfig
@@ -166,6 +167,57 @@ export default defineTool((install, ctx) =>
 
 ```
 [my-tool] Configuring tool settings...
+```
+
+### Using resolve for Glob Pattern Matching
+
+The `ctx.resolve` method resolves a glob pattern to a single file or directory path. Use this when you need to reference files or directories with flexible naming (e.g., versioned directories, platform-specific binaries).
+
+**Key behaviors:**
+
+- Returns the absolute path if exactly one match is found
+- Throws `ResolveError` and logs ERROR if no matches are found
+- Throws `ResolveError` and logs ERROR if multiple matches are found
+- Patterns are resolved relative to `toolDir` unless absolute
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'BurntSushi/ripgrep' })
+    .bin('rg')
+    .zsh((shell) =>
+      shell.always(/* zsh */ `
+        source "${ctx.resolve('completions/_rg.zsh')}"
+      `)
+    )
+);
+```
+
+**Common use cases:**
+
+```typescript
+// Versioned directory with wildcard
+const versionDir = ctx.resolve('ripgrep-*-x86_64-*');
+// → "/path/to/tools/rg/ripgrep-14.1.0-x86_64-linux"
+
+// Single completion file
+const completion = ctx.resolve('completions/*.zsh');
+// → "/path/to/tools/rg/completions/_rg.zsh"
+
+// Absolute path pattern
+const binary = ctx.resolve('/opt/myapp/bin/myapp-*');
+// → "/opt/myapp/bin/myapp-1.2.3"
+```
+
+**Error handling:**
+
+Since `resolve` throws on no matches or multiple matches, failed resolutions stop tool processing. This is intentional - a missing or ambiguous path usually indicates a configuration problem.
+
+```typescript
+// No matches - throws ResolveError, logs:
+// ERROR  No matches found for pattern: non-existent-*
+
+// Multiple matches - throws ResolveError, logs:
+// ERROR  Pattern 'config-*.yaml' matched 2 paths (expected exactly 1): /path/config-a.yaml, /path/config-b.yaml
 ```
 
 ## Directory Structure

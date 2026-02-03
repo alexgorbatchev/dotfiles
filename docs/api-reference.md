@@ -207,6 +207,35 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
 - `input` - Original input string
 - `groups` - Named capture groups (if present)
 
+### ctx.resolve
+
+Resolves a glob pattern to a single file or directory path. Useful for referencing files with variable names (versioned directories, platform-specific assets).
+
+```typescript
+.zsh((shell) =>
+  shell.always(/* zsh */ `
+    source "${ctx.resolve('completions/*.zsh')}"
+  `)
+)
+
+// In hooks
+.hook('after-install', async (ctx) => {
+  const versionDir = ctx.resolve('tool-*-x86_64-linux');
+  await ctx.$`${versionDir}/bin/tool init`;
+})
+```
+
+**Parameters:**
+
+- `pattern` - Glob pattern to match (relative to `toolDir` or absolute)
+
+**Returns:** `string` - The resolved absolute path
+
+**Throws:** `ResolveError` if:
+
+- No matches are found (logs ERROR: `No matches found for pattern: <pattern>`)
+- Multiple matches are found (logs ERROR: `Pattern '<pattern>' matched N paths (expected exactly 1): ...`)
+
 ### ctx.log
 
 User-facing logger for tool operations. Messages are automatically prefixed with the tool name.
