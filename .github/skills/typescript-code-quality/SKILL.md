@@ -224,4 +224,4 @@ Configuration objects derived from external sources (like environment variables)
 - No file header comments
 - Imports at top of file, before any other code
 - Use shortest import path for `@foo/bar` packages
-- Use modern ECMAScript features (optional chaining, nullish coalescing, array methods, async/await)
+- Use latest TypeScript and ECMAScript features (optional chaining, nullish coalescing, array methods, async/await, toSorted, etc.)

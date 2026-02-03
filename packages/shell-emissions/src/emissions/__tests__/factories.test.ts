@@ -1,0 +1,396 @@
+import { describe, expect, it } from 'bun:test';
+import { EmissionValidationError } from '../../errors';
+import {
+  alias,
+  completion,
+  environment,
+  fn,
+  path,
+  script,
+  sourceFile,
+  sourceFunction,
+  withPriority,
+  withSource,
+} from '../factories';
+
+describe('environment', () => {
+  it('creates environment emission with valid variables', () => {
+    const result = environment({ NODE_ENV: 'production', DEBUG: 'false' });
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "kind": "environment",
+        "variables": {
+          "DEBUG": "false",
+          "NODE_ENV": "production",
+        },
+      }
+    `);
+  });
+
+  it('throws on empty variables', () => {
+    expect(() => environment({})).toThrow(EmissionValidationError);
+  });
+
+  it('throws on invalid variable name', () => {
+    expect(() => environment({ '123invalid': 'value' })).toThrow(EmissionValidationError);
+  });
+
+  it('throws on variable name with hyphen', () => {
+    expect(() => environment({ 'my-var': 'value' })).toThrow(EmissionValidationError);
+  });
+});
+
+describe('alias', () => {
+  it('creates alias emission with valid aliases', () => {
+    const result = alias({ ll: 'ls -la', g: 'git' });
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "aliases": {
+          "g": "git",
+          "ll": "ls -la",
+        },
+        "kind": "alias",
+      }
+    `);
+  });
+
+  it('allows hyphens in alias names', () => {
+    const result = alias({ 'my-alias': 'command' });
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "aliases": {
+          "my-alias": "command",
+        },
+        "kind": "alias",
+      }
+    `);
+  });
+
+  it('throws on empty aliases', () => {
+    expect(() => alias({})).toThrow(EmissionValidationError);
+  });
+
+  it('throws on invalid alias name', () => {
+    expect(() => alias({ '123invalid': 'command' })).toThrow(EmissionValidationError);
+  });
+});
+
+describe('fn', () => {
+  it('creates function emission with defaults', () => {
+    const result = fn('greet', 'echo "Hello"');
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "body": "echo "Hello"",
+        "homeOverride": false,
+        "kind": "function",
+        "name": "greet",
+      }
+    `);
+  });
+
+  it('creates function emission with homeOverride', () => {
+    const result = fn('setup', 'mkdir -p $HOME/.config', true);
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "body": "mkdir -p $HOME/.config",
+        "homeOverride": true,
+        "kind": "function",
+        "name": "setup",
+      }
+    `);
+  });
+
+  it('allows hyphens in function names', () => {
+    const result = fn('my-func', 'echo test');
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "body": "echo test",
+        "homeOverride": false,
+        "kind": "function",
+        "name": "my-func",
+      }
+    `);
+  });
+
+  it('throws on invalid function name', () => {
+    expect(() => fn('123func', 'body')).toThrow(EmissionValidationError);
+  });
+
+  it('throws on empty body', () => {
+    expect(() => fn('valid', '')).toThrow(EmissionValidationError);
+  });
+
+  it('throws on whitespace-only body', () => {
+    expect(() => fn('valid', '   ')).toThrow(EmissionValidationError);
+  });
+});
+
+describe('script', () => {
+  it('creates script emission with always timing', () => {
+    const result = script('echo "startup"', 'always');
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "content": "echo "startup"",
+        "homeOverride": false,
+        "kind": "script",
+        "timing": "always",
+      }
+    `);
+  });
+
+  it('creates script emission with once timing', () => {
+    const result = script('one-time-setup', 'once', true);
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "content": "one-time-setup",
+        "homeOverride": true,
+        "kind": "script",
+        "timing": "once",
+      }
+    `);
+  });
+
+  it('creates script emission with raw timing', () => {
+    const result = script('raw content', 'raw');
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "content": "raw content",
+        "homeOverride": false,
+        "kind": "script",
+        "timing": "raw",
+      }
+    `);
+  });
+
+  it('throws on empty content', () => {
+    expect(() => script('', 'always')).toThrow(EmissionValidationError);
+  });
+});
+
+describe('sourceFile', () => {
+  it('creates sourceFile emission with defaults', () => {
+    const result = sourceFile('$HOME/.toolrc');
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "homeOverride": false,
+        "kind": "sourceFile",
+        "path": "$HOME/.toolrc",
+      }
+    `);
+  });
+
+  it('creates sourceFile emission with homeOverride', () => {
+    const result = sourceFile('$HOME/.config/init.zsh', true);
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "homeOverride": true,
+        "kind": "sourceFile",
+        "path": "$HOME/.config/init.zsh",
+      }
+    `);
+  });
+
+  it('throws on empty path', () => {
+    expect(() => sourceFile('')).toThrow(EmissionValidationError);
+  });
+});
+
+describe('sourceFunction', () => {
+  it('creates sourceFunction emission', () => {
+    const result = sourceFunction('initTool');
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "functionName": "initTool",
+        "kind": "sourceFunction",
+      }
+    `);
+  });
+
+  it('allows hyphens in function name', () => {
+    const result = sourceFunction('init-tool');
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "functionName": "init-tool",
+        "kind": "sourceFunction",
+      }
+    `);
+  });
+
+  it('throws on invalid function name', () => {
+    expect(() => sourceFunction('123invalid')).toThrow(EmissionValidationError);
+  });
+});
+
+describe('completion', () => {
+  it('creates completion emission with directories', () => {
+    const result = completion({ directories: ['$HOME/.completions'] });
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "commands": undefined,
+        "directories": [
+          "$HOME/.completions",
+        ],
+        "files": undefined,
+        "kind": "completion",
+      }
+    `);
+  });
+
+  it('creates completion emission with files', () => {
+    const result = completion({ files: ['$HOME/.zsh/completions/_node'] });
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "commands": undefined,
+        "directories": undefined,
+        "files": [
+          "$HOME/.zsh/completions/_node",
+        ],
+        "kind": "completion",
+      }
+    `);
+  });
+
+  it('creates completion emission with commands', () => {
+    const result = completion({ commands: ['node', 'npm', 'git'] });
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "commands": [
+          "node",
+          "npm",
+          "git",
+        ],
+        "directories": undefined,
+        "files": undefined,
+        "kind": "completion",
+      }
+    `);
+  });
+
+  it('creates completion emission with all options', () => {
+    const result = completion({
+      directories: ['$HOME/.completions'],
+      files: ['$HOME/.zsh/_custom'],
+      commands: ['node'],
+    });
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "commands": [
+          "node",
+        ],
+        "directories": [
+          "$HOME/.completions",
+        ],
+        "files": [
+          "$HOME/.zsh/_custom",
+        ],
+        "kind": "completion",
+      }
+    `);
+  });
+
+  it('throws when no options provided', () => {
+    expect(() => completion({})).toThrow(EmissionValidationError);
+  });
+
+  it('throws when all arrays are empty', () => {
+    expect(() => completion({ directories: [], files: [], commands: [] })).toThrow(
+      EmissionValidationError,
+    );
+  });
+});
+
+describe('path', () => {
+  it('creates path emission with defaults', () => {
+    const result = path('/usr/local/bin');
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "deduplicate": true,
+        "directory": "/usr/local/bin",
+        "kind": "path",
+        "position": "prepend",
+      }
+    `);
+  });
+
+  it('creates path emission with append position', () => {
+    const result = path('$HOME/.local/bin', { position: 'append' });
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "deduplicate": true,
+        "directory": "$HOME/.local/bin",
+        "kind": "path",
+        "position": "append",
+      }
+    `);
+  });
+
+  it('creates path emission without deduplication', () => {
+    const result = path('/opt/bin', { deduplicate: false });
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "deduplicate": false,
+        "directory": "/opt/bin",
+        "kind": "path",
+        "position": "prepend",
+      }
+    `);
+  });
+
+  it('throws on empty directory', () => {
+    expect(() => path('')).toThrow(EmissionValidationError);
+  });
+});
+
+describe('withSource', () => {
+  it('sets source on emission', () => {
+    const emission = fn('test', 'echo test');
+    const result = withSource(emission, '/path/to/config.ts');
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "body": "echo test",
+        "homeOverride": false,
+        "kind": "function",
+        "name": "test",
+        "source": "/path/to/config.ts",
+      }
+    `);
+  });
+});
+
+describe('withPriority', () => {
+  it('sets priority on emission', () => {
+    const emission = environment({ VAR: 'value' });
+    const result = withPriority(emission, 10);
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "kind": "environment",
+        "priority": 10,
+        "variables": {
+          "VAR": "value",
+        },
+      }
+    `);
+  });
+});

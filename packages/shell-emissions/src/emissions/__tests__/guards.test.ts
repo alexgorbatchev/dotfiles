@@ -1,0 +1,207 @@
+import { describe, expect, it } from 'bun:test';
+import {
+  alias,
+  completion,
+  environment,
+  fn,
+  path,
+  script,
+  sourceFile,
+  sourceFunction,
+} from '../factories';
+import {
+  isAliasEmission,
+  isCompletionEmission,
+  isEnvironmentEmission,
+  isFunctionEmission,
+  isHoisted,
+  isPathEmission,
+  isScriptEmission,
+  isSourceFileEmission,
+  isSourceFunctionEmission,
+  needsHomeOverride,
+} from '../guards';
+
+describe('isEnvironmentEmission', () => {
+  it('returns true for environment emission', () => {
+    const emission = environment({ VAR: 'value' });
+    expect(isEnvironmentEmission(emission)).toBe(true);
+  });
+
+  it('returns false for other emissions', () => {
+    const emission = fn('test', 'echo');
+    expect(isEnvironmentEmission(emission)).toBe(false);
+  });
+});
+
+describe('isAliasEmission', () => {
+  it('returns true for alias emission', () => {
+    const emission = alias({ ll: 'ls -la' });
+    expect(isAliasEmission(emission)).toBe(true);
+  });
+
+  it('returns false for other emissions', () => {
+    const emission = environment({ VAR: 'value' });
+    expect(isAliasEmission(emission)).toBe(false);
+  });
+});
+
+describe('isFunctionEmission', () => {
+  it('returns true for function emission', () => {
+    const emission = fn('test', 'echo test');
+    expect(isFunctionEmission(emission)).toBe(true);
+  });
+
+  it('returns false for other emissions', () => {
+    const emission = alias({ ll: 'ls -la' });
+    expect(isFunctionEmission(emission)).toBe(false);
+  });
+});
+
+describe('isScriptEmission', () => {
+  it('returns true for script emission', () => {
+    const emission = script('echo test', 'always');
+    expect(isScriptEmission(emission)).toBe(true);
+  });
+
+  it('returns false for other emissions', () => {
+    const emission = fn('test', 'echo test');
+    expect(isScriptEmission(emission)).toBe(false);
+  });
+});
+
+describe('isSourceFileEmission', () => {
+  it('returns true for sourceFile emission', () => {
+    const emission = sourceFile('$HOME/.rc');
+    expect(isSourceFileEmission(emission)).toBe(true);
+  });
+
+  it('returns false for other emissions', () => {
+    const emission = script('echo test', 'always');
+    expect(isSourceFileEmission(emission)).toBe(false);
+  });
+});
+
+describe('isSourceFunctionEmission', () => {
+  it('returns true for sourceFunction emission', () => {
+    const emission = sourceFunction('initTool');
+    expect(isSourceFunctionEmission(emission)).toBe(true);
+  });
+
+  it('returns false for other emissions', () => {
+    const emission = sourceFile('$HOME/.rc');
+    expect(isSourceFunctionEmission(emission)).toBe(false);
+  });
+});
+
+describe('isCompletionEmission', () => {
+  it('returns true for completion emission', () => {
+    const emission = completion({ commands: ['node'] });
+    expect(isCompletionEmission(emission)).toBe(true);
+  });
+
+  it('returns false for other emissions', () => {
+    const emission = sourceFunction('initTool');
+    expect(isCompletionEmission(emission)).toBe(false);
+  });
+});
+
+describe('isPathEmission', () => {
+  it('returns true for path emission', () => {
+    const emission = path('/usr/local/bin');
+    expect(isPathEmission(emission)).toBe(true);
+  });
+
+  it('returns false for other emissions', () => {
+    const emission = completion({ commands: ['node'] });
+    expect(isPathEmission(emission)).toBe(false);
+  });
+});
+
+describe('isHoisted', () => {
+  it('returns true for environment emissions', () => {
+    expect(isHoisted(environment({ VAR: 'value' }))).toBe(true);
+  });
+
+  it('returns true for path emissions', () => {
+    expect(isHoisted(path('/bin'))).toBe(true);
+  });
+
+  it('returns true for completion emissions', () => {
+    expect(isHoisted(completion({ commands: ['node'] }))).toBe(true);
+  });
+
+  it('returns false for alias emissions', () => {
+    expect(isHoisted(alias({ ll: 'ls' }))).toBe(false);
+  });
+
+  it('returns false for function emissions', () => {
+    expect(isHoisted(fn('test', 'echo'))).toBe(false);
+  });
+
+  it('returns false for script emissions', () => {
+    expect(isHoisted(script('echo', 'always'))).toBe(false);
+  });
+
+  it('returns false for sourceFile emissions', () => {
+    expect(isHoisted(sourceFile('$HOME/.rc'))).toBe(false);
+  });
+
+  it('returns false for sourceFunction emissions', () => {
+    expect(isHoisted(sourceFunction('init'))).toBe(false);
+  });
+});
+
+describe('needsHomeOverride', () => {
+  it('returns true for function with homeOverride', () => {
+    expect(needsHomeOverride(fn('test', 'echo', true))).toBe(true);
+  });
+
+  it('returns false for function without homeOverride', () => {
+    expect(needsHomeOverride(fn('test', 'echo', false))).toBe(false);
+  });
+
+  it('returns true for script with homeOverride and always timing', () => {
+    expect(needsHomeOverride(script('echo', 'always', true))).toBe(true);
+  });
+
+  it('returns true for script with homeOverride and once timing', () => {
+    expect(needsHomeOverride(script('echo', 'once', true))).toBe(true);
+  });
+
+  it('returns false for script with homeOverride and raw timing', () => {
+    expect(needsHomeOverride(script('echo', 'raw', true))).toBe(false);
+  });
+
+  it('returns false for script without homeOverride', () => {
+    expect(needsHomeOverride(script('echo', 'always', false))).toBe(false);
+  });
+
+  it('returns true for sourceFile with homeOverride', () => {
+    expect(needsHomeOverride(sourceFile('$HOME/.rc', true))).toBe(true);
+  });
+
+  it('returns false for sourceFile without homeOverride', () => {
+    expect(needsHomeOverride(sourceFile('$HOME/.rc', false))).toBe(false);
+  });
+
+  it('returns false for environment emissions', () => {
+    expect(needsHomeOverride(environment({ VAR: 'value' }))).toBe(false);
+  });
+
+  it('returns false for alias emissions', () => {
+    expect(needsHomeOverride(alias({ ll: 'ls' }))).toBe(false);
+  });
+
+  it('returns false for path emissions', () => {
+    expect(needsHomeOverride(path('/bin'))).toBe(false);
+  });
+
+  it('returns false for completion emissions', () => {
+    expect(needsHomeOverride(completion({ commands: ['node'] }))).toBe(false);
+  });
+
+  it('returns false for sourceFunction emissions', () => {
+    expect(needsHomeOverride(sourceFunction('init'))).toBe(false);
+  });
+});

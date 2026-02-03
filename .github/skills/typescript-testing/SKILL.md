@@ -19,19 +19,33 @@ Mandatory testing guidelines for TypeScript projects using Bun's test runner.
 
 **File naming and location:**
 
-- Test files: `*.test.ts` in `__tests__` directory next to the code being tested
+- Test files: `*.test.ts` in `__tests__` directory **directly adjacent to the code being tested**
 - Fixtures: `fixtures--{purpose}.ts` in `__tests__/fixtures` with `FIXTURE_[SNAKE_CASE]` exports
+
+**Colocation rule:** The `__tests__` directory must be a sibling of the source file(s) it tests. Each directory containing source files should have its own `__tests__` directory.
 
 Example structure:
 
 ```
-packages/utils/src/
-├── myUtil.ts
-└── __tests__/
-    ├── myUtil.test.ts
-    └── fixtures/
-        └── fixtures--api-responses.ts
+packages/shell-emissions/src/
+├── index.ts
+├── blocks/
+│   ├── BlockBuilder.ts
+│   └── __tests__/
+│       └── BlockBuilder.test.ts
+├── emissions/
+│   ├── factories.ts
+│   ├── guards.ts
+│   └── __tests__/
+│       ├── factories.test.ts
+│       └── guards.test.ts
+└── renderer/
+    ├── BlockRenderer.ts
+    └── __tests__/
+        └── BlockRenderer.test.ts
 ```
+
+**Key principle:** Navigate from the source file to its test by going into the adjacent `__tests__` directory. Tests for `blocks/BlockBuilder.ts` go in `blocks/__tests__/BlockBuilder.test.ts`, not in a top-level `src/__tests__/` directory.
 
 ## Critical Rules
 
