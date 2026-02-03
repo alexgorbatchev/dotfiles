@@ -1,4 +1,6 @@
+import { type JSX } from 'preact';
 import { LocationProvider, Route, Router } from 'preact-iso';
+
 import { Nav } from './components/Nav';
 import { Dashboard } from './pages/Dashboard';
 import { Health } from './pages/Health';
@@ -7,10 +9,10 @@ import { Settings } from './pages/Settings';
 import { ToolDetail } from './pages/ToolDetail';
 import { Tools } from './pages/Tools';
 
-export function App() {
+export function App(): JSX.Element {
   return (
     <LocationProvider>
-      <div class='min-h-screen bg-gray-900 text-gray-100'>
+      <div class='min-h-screen bg-background text-foreground'>
         <Nav />
         <main class='max-w-7xl mx-auto px-4 py-6'>
           <Router>

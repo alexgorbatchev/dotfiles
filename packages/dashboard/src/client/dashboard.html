@@ -4,30 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dotfiles Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            mono: ['"Maple Mono Normal NF"', '"JetBrainsMono Nerd Font"', '"Cascadia Code"', 'Consolas', 'monospace'],
-          },
-        }
-      }
-    }
-  </script>
-  <style>
-    * { font-family: 'Maple Mono Normal NF', 'JetBrainsMono Nerd Font', 'Cascadia Code', 'Consolas', monospace; }
-    .stat-card { @apply bg-gray-800 rounded-lg p-4 text-center; }
-    .nav-link { @apply px-4 py-2 rounded hover:bg-gray-700 transition-colors; }
-    .nav-link.active { @apply bg-gray-700; }
-    .tool-card { @apply bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition-colors cursor-pointer; }
-    .status-badge { @apply px-2 py-1 rounded text-xs font-medium; }
-    .tab-button { @apply px-4 py-2 border-b-2 border-transparent hover:border-gray-600; }
-    .tab-button.active { @apply border-blue-500 text-blue-400; }
-  </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
+<body class="min-h-screen">
   <div id="app"></div>
   <script type="module" src="./dashboard-client.tsx"></script>
 </body>

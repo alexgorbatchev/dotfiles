@@ -1,8 +1,12 @@
+import { type JSX } from 'preact';
+
 import type { IDashboardStats, IToolDetail } from '../../shared/types';
 import { StatCard } from '../components/StatCard';
+import { Badge } from '../components/ui/Badge';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { useFetch } from '../hooks/useFetch';
 
-export function Dashboard() {
+export function Dashboard(): JSX.Element {
   const { data: stats, loading: statsLoading } = useFetch<IDashboardStats>('/stats');
   const { data: tools, loading: toolsLoading } = useFetch<IToolDetail[]>('/tools');
 
@@ -12,7 +16,7 @@ export function Dashboard() {
   if (loading) {
     return (
       <div class='flex items-center justify-center h-64'>
-        <div class='text-gray-400'>Loading...</div>
+        <div class='text-muted-foreground'>Loading...</div>
       </div>
     );
   }
@@ -29,7 +33,7 @@ export function Dashboard() {
     cargo: 'bg-orange-700',
     curl: 'bg-violet-500',
     manual: 'bg-slate-500',
-    unknown: 'bg-gray-500',
+    unknown: 'bg-muted',
   };
 
   return (
@@ -45,51 +49,63 @@ export function Dashboard() {
       {/* Recent tools and method distribution */}
       <div class='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         {/* Recent tools */}
-        <div class='bg-gray-800 rounded-lg p-4'>
-          <h2 class='text-lg font-semibold mb-4'>Recent Installations</h2>
-          <div class='space-y-2'>
-            {toolsList.slice(0, 5).map((tool) => (
-              <div key={tool.name} class='flex items-center justify-between py-2 border-b border-gray-700'>
-                <div>
-                  <span class='font-medium'>{tool.name}</span>
-                  <span class='text-gray-400 text-sm ml-2'>{tool.version}</span>
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Installations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div class='space-y-2'>
+              {toolsList.slice(0, 5).map((tool) => (
+                <div key={tool.name} class='flex items-center justify-between py-2 border-b border-border'>
+                  <div>
+                    <span class='font-medium'>{tool.name}</span>
+                    <span class='text-muted-foreground text-sm ml-2'>{tool.version}</span>
+                  </div>
+                  <Badge variant='success'>✓ Installed</Badge>
                 </div>
-                <span class='status-badge bg-green-900 text-green-300'>✓ Installed</span>
-              </div>
-            ))}
-            {toolsList.length === 0 && <div class='text-gray-400 text-center py-4'>No tools installed yet</div>}
-          </div>
-        </div>
+              ))}
+              {toolsList.length === 0 && (
+                <div class='text-muted-foreground text-center py-4'>No tools installed yet</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Method distribution */}
-        <div class='bg-gray-800 rounded-lg p-4'>
-          <h2 class='text-lg font-semibold mb-4'>Installation Methods</h2>
-          <div class='space-y-3'>
-            {Object.entries(methodCounts)
-              .toSorted((a, b) => b[1] - a[1])
-              .map(([method, count]) => {
-                const total = toolsList.length || 1;
-                const percent = Math.round((count / total) * 100);
-                return (
-                  <div key={method}>
-                    <div class='flex justify-between text-sm mb-1'>
-                      <span>{method}</span>
-                      <span class='text-gray-400'>
-                        {count} ({percent}%)
-                      </span>
+        <Card>
+          <CardHeader>
+            <CardTitle>Installation Methods</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div class='space-y-3'>
+              {Object.entries(methodCounts)
+                .toSorted((a, b) => b[1] - a[1])
+                .map(([method, count]) => {
+                  const total = toolsList.length || 1;
+                  const percent = Math.round((count / total) * 100);
+                  return (
+                    <div key={method}>
+                      <div class='flex justify-between text-sm mb-1'>
+                        <span>{method}</span>
+                        <span class='text-muted-foreground'>
+                          {count} ({percent}%)
+                        </span>
+                      </div>
+                      <div class='h-2 bg-muted rounded'>
+                        <div
+                          class={`h-2 rounded ${methodColors[method] || methodColors['unknown']}`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
                     </div>
-                    <div class='h-2 bg-gray-700 rounded'>
-                      <div
-                        class={`h-2 rounded ${methodColors[method] || methodColors['unknown']}`}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            {Object.keys(methodCounts).length === 0 && <div class='text-gray-400 text-center py-4'>No data</div>}
-          </div>
-        </div>
+                  );
+                })}
+              {Object.keys(methodCounts).length === 0 && (
+                <div class='text-muted-foreground text-center py-4'>No data</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

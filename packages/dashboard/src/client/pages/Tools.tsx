@@ -1,11 +1,17 @@
+import { type JSX } from 'preact';
 import { useLocation } from 'preact-iso';
 import { useCallback, useEffect, useState } from 'preact/hooks';
+
 import type { IToolDetail } from '../../shared/types';
+import { StatCard } from '../components/StatCard';
 import { TreeNode } from '../components/TreeNode';
+import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { useFetch } from '../hooks/useFetch';
 import { buildTreeForTool } from '../utils/tree';
 
-export function Tools() {
+export function Tools(): JSX.Element {
   const { url } = useLocation();
   const { data: tools, loading } = useFetch<IToolDetail[]>('/tools');
   const [viewMode, setViewMode] = useState<'grid' | 'files'>('grid');
@@ -52,7 +58,7 @@ export function Tools() {
   if (loading) {
     return (
       <div class='flex items-center justify-center h-64'>
-        <div class='text-gray-400'>Loading...</div>
+        <div class='text-muted-foreground'>Loading...</div>
       </div>
     );
   }
@@ -61,18 +67,9 @@ export function Tools() {
     <div class='space-y-4'>
       {/* Stats row */}
       <div class='grid grid-cols-3 gap-4'>
-        <div class='bg-gray-800 rounded-lg p-4 text-center'>
-          <div class='text-2xl font-bold text-blue-400'>{toolsList.length}</div>
-          <div class='text-gray-400 text-sm'>Total Tools</div>
-        </div>
-        <div class='bg-gray-800 rounded-lg p-4 text-center'>
-          <div class='text-2xl font-bold text-green-400'>{installedCount}</div>
-          <div class='text-gray-400 text-sm'>Installed</div>
-        </div>
-        <div class='bg-gray-800 rounded-lg p-4 text-center'>
-          <div class='text-2xl font-bold text-purple-400'>{totalFiles}</div>
-          <div class='text-gray-400 text-sm'>Files Tracked</div>
-        </div>
+        <StatCard value={toolsList.length} label='Total Tools' color='text-blue-400' />
+        <StatCard value={installedCount} label='Installed' color='text-green-400' />
+        <StatCard value={totalFiles} label='Files Tracked' color='text-purple-400' />
       </div>
 
       {/* Toolbar */}
@@ -83,12 +80,12 @@ export function Tools() {
             placeholder='Search tools...'
             value={filter}
             onInput={(e) => setFilter((e.target as HTMLInputElement).value)}
-            class='bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-blue-500'
+            class='bg-input border border-border rounded px-3 py-2 focus:outline-none focus:border-ring'
           />
           <select
             value={methodFilter}
             onChange={(e) => setMethodFilter((e.target as HTMLSelectElement).value)}
-            class='bg-gray-800 border border-gray-700 rounded px-3 py-2'
+            class='bg-input border border-border rounded px-3 py-2'
           >
             <option value=''>All Methods</option>
             {methods.map((m) => (
@@ -97,25 +94,23 @@ export function Tools() {
               </option>
             ))}
           </select>
-          <span class='text-gray-400 text-sm'>{filteredTools.length} tools</span>
+          <span class='text-muted-foreground text-sm'>{filteredTools.length} tools</span>
         </div>
         <div class='flex items-center space-x-2'>
-          <button
+          <Button
             onClick={() => setViewMode('grid')}
-            class={`px-3 py-1 rounded text-sm ${
-              viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
-            }`}
+            variant={viewMode === 'grid' ? 'default' : 'secondary'}
+            size='sm'
           >
             ⊞ Grid
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setViewMode('files')}
-            class={`px-3 py-1 rounded text-sm ${
-              viewMode === 'files' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
-            }`}
+            variant={viewMode === 'files' ? 'default' : 'secondary'}
+            size='sm'
           >
             🌳 Files
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -123,16 +118,22 @@ export function Tools() {
       {viewMode === 'grid' && (
         <div class='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'>
           {filteredTools.map((tool) => (
-            <a key={tool.name} href={`/tools/${encodeURIComponent(tool.name)}`} class='tool-card block'>
-              <div class='flex items-center justify-between mb-2'>
-                <span class='font-semibold'>{tool.name}</span>
-                <span class={`w-2 h-2 rounded-full ${tool.status === 'installed' ? 'bg-green-500' : 'bg-gray-500'}`} />
-              </div>
-              <div class='text-sm text-gray-400'>{tool.version || 'Unknown version'}</div>
-              <div class='mt-2 flex items-center justify-between'>
-                <span class='text-xs px-2 py-1 rounded bg-gray-700'>{tool.installMethod || 'manual'}</span>
-                {(tool.files?.length || 0) > 0 && <span class='text-xs text-gray-500'>{tool.files?.length} files</span>}
-              </div>
+            <a key={tool.name} href={`/tools/${encodeURIComponent(tool.name)}`}>
+              <Card class='hover:bg-accent transition-colors cursor-pointer'>
+                <CardContent class='pt-4'>
+                  <div class='flex items-center justify-between mb-2'>
+                    <span class='font-semibold'>{tool.name}</span>
+                    <span class={`w-2 h-2 rounded-full ${tool.status === 'installed' ? 'bg-green-500' : 'bg-muted'}`} />
+                  </div>
+                  <div class='text-sm text-muted-foreground'>{tool.version || 'Unknown version'}</div>
+                  <div class='mt-2 flex items-center justify-between'>
+                    <Badge variant='outline'>{tool.installMethod || 'manual'}</Badge>
+                    {(tool.files?.length || 0) > 0 && (
+                      <span class='text-xs text-muted-foreground'>{tool.files?.length} files</span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </a>
           ))}
         </div>
@@ -142,7 +143,7 @@ export function Tools() {
       {viewMode === 'files' && <ToolFilesView tools={filteredTools} />}
 
       {filteredTools.length === 0 && (
-        <div class='text-center text-gray-400 py-8'>No tools found matching your criteria</div>
+        <div class='text-center text-muted-foreground py-8'>No tools found matching your criteria</div>
       )}
     </div>
   );
@@ -152,11 +153,15 @@ interface ToolFilesViewProps {
   tools: IToolDetail[];
 }
 
-function ToolFilesView({ tools }: ToolFilesViewProps) {
+function ToolFilesView({ tools }: ToolFilesViewProps): JSX.Element {
   const toolsWithFiles = tools.filter((t) => (t.files?.length || 0) > 0);
 
   if (toolsWithFiles.length === 0) {
-    return <div class='bg-gray-800 rounded-lg p-4 text-center text-gray-400 py-8'>No files tracked yet</div>;
+    return (
+      <Card class='text-center'>
+        <CardContent class='py-8 text-muted-foreground'>No files tracked yet</CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -166,32 +171,32 @@ function ToolFilesView({ tools }: ToolFilesViewProps) {
         .map((tool) => {
           const roots = buildTreeForTool(tool.files || []);
           return (
-            <div key={tool.name} class='bg-gray-800 rounded-lg p-4'>
-              {/* Tool header */}
-              <a
-                href={`/tools/${encodeURIComponent(tool.name)}`}
-                class='flex items-center justify-between mb-3 cursor-pointer hover:bg-gray-700 -m-2 p-2 rounded'
-              >
-                <div class='flex items-center space-x-3'>
-                  <span
-                    class={`w-2 h-2 rounded-full ${tool.status === 'installed' ? 'bg-green-500' : 'bg-gray-500'}`}
-                  />
-                  <h3 class='font-semibold text-blue-400'>📦 {tool.name}</h3>
-                  {tool.version && <span class='text-sm text-gray-400'>{tool.version}</span>}
-                </div>
-                <div class='flex items-center space-x-3'>
-                  <span class='text-xs px-2 py-1 rounded bg-gray-700 text-gray-300'>
-                    {tool.installMethod || 'manual'}
-                  </span>
-                  <span class='text-xs text-gray-500'>{tool.files?.length} files</span>
-                  <span class='text-gray-400'>→</span>
-                </div>
-              </a>
+            <Card key={tool.name}>
+              <CardHeader class='py-3'>
+                {/* Tool header */}
+                <a
+                  href={`/tools/${encodeURIComponent(tool.name)}`}
+                  class='flex items-center justify-between cursor-pointer hover:bg-accent -m-2 p-2 rounded'
+                >
+                  <div class='flex items-center space-x-3'>
+                    <span
+                      class={`w-2 h-2 rounded-full ${tool.status === 'installed' ? 'bg-green-500' : 'bg-muted'}`}
+                    />
+                    <CardTitle class='text-blue-400'>📦 {tool.name}</CardTitle>
+                    {tool.version && <span class='text-sm text-muted-foreground'>{tool.version}</span>}
+                  </div>
+                  <div class='flex items-center space-x-3'>
+                    <Badge variant='outline'>{tool.installMethod || 'manual'}</Badge>
+                    <span class='text-xs text-muted-foreground'>{tool.files?.length} files</span>
+                    <span class='text-muted-foreground'>→</span>
+                  </div>
+                </a>
+              </CardHeader>
               {/* File tree */}
-              <div class='border-t border-gray-700 pt-3'>
+              <CardContent class='border-t border-border pt-3'>
                 {roots.map((node, i) => <TreeNode key={i} node={node} />)}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           );
         })}
     </div>

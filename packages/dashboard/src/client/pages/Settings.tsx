@@ -1,13 +1,16 @@
+import { type JSX } from 'preact';
+
 import type { IConfigSummary } from '../../shared/types';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { useFetch } from '../hooks/useFetch';
 
-export function Settings() {
+export function Settings(): JSX.Element {
   const { data: config, loading } = useFetch<IConfigSummary>('/config');
 
   if (loading) {
     return (
       <div class='flex items-center justify-center h-64'>
-        <div class='text-gray-400'>Loading...</div>
+        <div class='text-muted-foreground'>Loading...</div>
       </div>
     );
   }
@@ -22,19 +25,23 @@ export function Settings() {
 
   return (
     <div class='space-y-6'>
-      <div class='bg-gray-800 rounded-lg p-6'>
-        <h2 class='text-lg font-semibold mb-4'>Project Paths</h2>
-        <div class='space-y-4'>
-          {paths.map((p, i) => (
-            <div key={i}>
-              <div class='text-sm text-gray-400 mb-1'>{p.label}</div>
-              <code class='text-sm bg-gray-900 px-3 py-2 rounded block overflow-x-auto'>
-                {p.value || 'Not configured'}
-              </code>
-            </div>
-          ))}
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Project Paths</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class='space-y-4'>
+            {paths.map((p, i) => (
+              <div key={i}>
+                <div class='text-sm text-muted-foreground mb-1'>{p.label}</div>
+                <code class='text-sm bg-muted px-3 py-2 rounded block overflow-x-auto'>
+                  {p.value || 'Not configured'}
+                </code>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

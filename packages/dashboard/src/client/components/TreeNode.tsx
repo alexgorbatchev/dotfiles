@@ -1,4 +1,8 @@
+import { type JSX } from 'preact';
 import { useState } from 'preact/hooks';
+
+import { cn } from '../lib/utils';
+import { Badge } from './ui/Badge';
 
 interface TreeNodeData {
   name: string;
@@ -22,7 +26,7 @@ const fileTypeColors: Record<string, string> = {
   completion: 'text-cyan-400',
   init: 'text-pink-400',
   'hook-generated': 'text-orange-400',
-  catalog: 'text-gray-400',
+  catalog: 'text-muted-foreground',
   install: 'text-green-400',
   source: 'text-purple-400',
 };
@@ -33,29 +37,31 @@ const fileTypeIcons: Record<string, string> = {
   source: '🔗',
 };
 
-export function TreeNode({ node, depth = 0 }: TreeNodeProps) {
+export function TreeNode({ node, depth = 0 }: TreeNodeProps): JSX.Element {
   const [expanded, setExpanded] = useState(depth < 2);
   const isDirectory = node.type === 'directory';
   const hasChildren = node.children && node.children.length > 0;
   const indent = depth * 16;
 
   const icon = isDirectory ? '📁' : (fileTypeIcons[node.fileType || ''] || '📄');
-  const colorClass = isDirectory ? 'text-amber-300' : (fileTypeColors[node.fileType || ''] || 'text-gray-300');
+  const colorClass = isDirectory ? 'text-amber-300' : (fileTypeColors[node.fileType || ''] || 'text-muted-foreground');
 
   return (
     <div>
       <div
-        class='flex items-center py-1 hover:bg-gray-700 rounded cursor-pointer text-sm'
+        class='flex items-center py-1 hover:bg-accent rounded cursor-pointer text-sm'
         style={{ paddingLeft: `${indent}px` }}
         onClick={() => isDirectory && hasChildren && setExpanded(!expanded)}
       >
         {isDirectory ?
-          <span class='w-4 text-gray-400 mr-1'>{hasChildren ? (expanded ? '▼' : '▶') : '•'}</span> :
+          <span class='w-4 text-muted-foreground mr-1'>{hasChildren ? (expanded ? '▼' : '▶') : '•'}</span> :
           <span class='w-4 mr-1' />}
         <span class={colorClass}>{icon}</span>
-        <span class={`ml-2 ${isDirectory ? 'font-medium' : ''}`}>{node.name}</span>
+        <span class={cn('ml-2', isDirectory && 'font-medium')}>{node.name}</span>
         {!isDirectory && node.fileType && (
-          <span class='ml-2 text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-400'>{node.fileType}</span>
+          <Badge variant='outline' class='ml-2 text-xs'>
+            {node.fileType}
+          </Badge>
         )}
       </div>
       {isDirectory && expanded && hasChildren && (
