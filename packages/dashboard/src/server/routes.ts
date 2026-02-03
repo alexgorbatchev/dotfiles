@@ -1,3 +1,5 @@
+import type { ToolConfig } from '@dotfiles/core';
+import type { IToolInstallationRecord } from '@dotfiles/registry/tool';
 import type { TsLogger } from '@dotfiles/logger';
 import type {
   IActivityFeed,
@@ -10,7 +12,38 @@ import type {
 } from '../shared/types';
 import { formatRelativeTime, formatTimestamp, toToolDetail } from '../shared/types';
 import { messages } from './log-messages';
-import type { IDashboardServices } from './types';
+import type { IDashboardServices, ToolConfigsCache } from './types';
+
+/** Cache for loaded tool configs to avoid re-parsing on every request */
+let toolConfigsCache: ToolConfigsCache | null = null;
+
+/**
+ * Clear the tool configs cache. Used for testing.
+ */
+export function clearToolConfigsCache(): void {
+  toolConfigsCache = null;
+}
+
+/**
+ * Load tool configs, using cache if available.
+ */
+async function getToolConfigs(logger: TsLogger, services: IDashboardServices): Promise<Record<string, ToolConfig>> {
+  if (toolConfigsCache) {
+    return toolConfigsCache;
+  }
+
+  const { projectConfig, fs, configService, systemInfo } = services;
+
+  toolConfigsCache = await configService.loadToolConfigs(
+    logger,
+    projectConfig.paths.toolConfigsDir,
+    fs,
+    projectConfig,
+    systemInfo,
+  );
+
+  return toolConfigsCache;
+}
 
 /**
  * Creates API route handlers for the dashboard.
@@ -21,54 +54,31 @@ export function createApiRoutes(parentLogger: TsLogger, services: IDashboardServ
   return {
     /**
      * GET /api/tools - List all tools with full details
-     * Returns tools from both installation registry and file registry
+     * Returns tools from tool configs with runtime state from registry
      */
     async getTools(): Promise<IApiResponse<IToolDetail[]>> {
       try {
-        // Get tools from installation registry (with version info)
+        // Load tool configs from .tool.ts files
+        const toolConfigs = await getToolConfigs(logger, services);
+
+        // Get installation records and create lookup map
         const installations = await services.toolInstallationRegistry.getAllToolInstallations();
-        const installedToolNames = new Set(installations.map((i) => i.toolName));
+        const installationsMap = new Map<string, IToolInstallationRecord>(
+          installations.map((i) => [i.toolName, i]),
+        );
 
-        // Get all unique tool names from file registry (includes tools without installations)
-        const allToolNames = await services.fileRegistry.getRegisteredTools();
-
-        // Build tool details for installed tools
-        const installedDetails = await Promise.all(
-          installations.map(async (installation) => {
-            const files = await services.fileRegistry.getFileStatesForTool(installation.toolName);
-            return toToolDetail(installation, files);
+        // Build tool details from configs with runtime state overlay
+        const toolDetails = await Promise.all(
+          Object.values(toolConfigs).map(async (config) => {
+            const files = await services.fileRegistry.getFileStatesForTool(config.name);
+            return toToolDetail(config, installationsMap, files);
           }),
         );
 
-        // Build tool details for tools with files but no installation record
-        const uninstalledToolNames = allToolNames.filter((name) => !installedToolNames.has(name));
-        const uninstalledDetails: IToolDetail[] = await Promise.all(
-          uninstalledToolNames.map(async (toolName) => {
-            const files = await services.fileRegistry.getFileStatesForTool(toolName);
-            // Create a minimal tool detail without installation info
-            return {
-              name: toolName,
-              version: null,
-              status: 'not-installed' as const,
-              installMethod: null,
-              installPath: null,
-              installedAt: null,
-              downloadUrl: null,
-              assetName: null,
-              configuredVersion: null,
-              hasUpdate: false,
-              binaryPaths: [],
-              files,
-            };
-          }),
-        );
+        // Sort by name
+        const sortedDetails = toolDetails.toSorted((a, b) => a.config.name.localeCompare(b.config.name));
 
-        // Combine and sort by name
-        const allDetails = [...installedDetails, ...uninstalledDetails].toSorted((a, b) =>
-          a.name.localeCompare(b.name)
-        );
-
-        return { success: true, data: allDetails };
+        return { success: true, data: sortedDetails };
       } catch (error) {
         logger.error(messages.apiError('getTools'), error);
         return { success: false, error: 'Failed to retrieve tools' };

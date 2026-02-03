@@ -1,12 +1,21 @@
-import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
+import type { ToolConfig } from '@dotfiles/core';
+import type { IConfigService } from '@dotfiles/config';
+import { createMemFileSystem, type IResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import { FileRegistry } from '@dotfiles/registry/file';
 import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
-import { createMockProjectConfig, createMockVersionChecker } from '../../testing-helpers';
+import {
+  createMockConfigService,
+  createMockProjectConfig,
+  createMockSystemInfo,
+  createMockToolConfig,
+  createMockVersionChecker,
+} from '../../testing-helpers';
 import { createDashboardServer } from '../dashboard-server';
+import { clearToolConfigsCache } from '../routes';
 import type { IDashboardServices } from '../types';
 
 describe('Dashboard HTTP Server', () => {
@@ -17,9 +26,12 @@ describe('Dashboard HTTP Server', () => {
   let services: IDashboardServices;
   let server: ReturnType<typeof createDashboardServer>;
   let baseUrl: string;
-  let fs: IFileSystem;
+  let fs: IResolvedFileSystem;
+  let toolConfigs: Record<string, ToolConfig>;
+  let configService: IConfigService;
 
   beforeEach(async () => {
+    clearToolConfigsCache();
     logger = new TestLogger();
     registryDatabase = new RegistryDatabase(logger, ':memory:');
     const db = registryDatabase.getConnection();
@@ -27,11 +39,16 @@ describe('Dashboard HTTP Server', () => {
     toolInstallationRegistry = new ToolInstallationRegistry(logger, db);
 
     const memFs = await createMemFileSystem();
-    fs = memFs.fs;
+    fs = memFs.fs.asIResolvedFileSystem;
+
+    toolConfigs = {};
+    configService = createMockConfigService(toolConfigs);
 
     services = {
       projectConfig: createMockProjectConfig(),
       fs,
+      configService,
+      systemInfo: createMockSystemInfo(),
       fileRegistry,
       toolInstallationRegistry,
       versionChecker: createMockVersionChecker(),
@@ -50,7 +67,7 @@ describe('Dashboard HTTP Server', () => {
   });
 
   describe('GET /api/tools', () => {
-    test('returns empty array when no tools installed', async () => {
+    test('returns empty array when no tool configs', async () => {
       const response = await fetch(`${baseUrl}/api/tools`);
       const data = await response.json();
 
@@ -59,14 +76,13 @@ describe('Dashboard HTTP Server', () => {
       expect(data.data).toEqual([]);
     });
 
-    test('returns tool summaries for installed tools', async () => {
-      await toolInstallationRegistry.recordToolInstallation({
-        toolName: 'fzf',
-        version: '0.55.0',
-        installPath: '/binaries/fzf/2025-01-01',
-        timestamp: '2025-01-01-00-00-00',
-        binaryPaths: ['/binaries/fzf/fzf'],
-        downloadUrl: 'https://github.com/junegunn/fzf/releases/download/v0.55.0/fzf-0.55.0-darwin_arm64.tar.gz',
+    test('returns tool details from config', async () => {
+      toolConfigs['fzf'] = createMockToolConfig({
+        name: 'fzf',
+        version: 'latest',
+        installationMethod: 'github-release',
+        installParams: { repo: 'junegunn/fzf' },
+        binaries: ['fzf'],
       });
 
       const response = await fetch(`${baseUrl}/api/tools`);
@@ -75,25 +91,13 @@ describe('Dashboard HTTP Server', () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.data).toHaveLength(1);
-      expect(data.data[0].name).toBe('fzf');
-      expect(data.data[0].version).toBe('0.55.0');
+      expect(data.data[0].config.name).toBe('fzf');
+      expect(data.data[0].config.installationMethod).toBe('github-release');
     });
 
     test('returns multiple tools', async () => {
-      await toolInstallationRegistry.recordToolInstallation({
-        toolName: 'fzf',
-        version: '0.55.0',
-        installPath: '/binaries/fzf/2025-01-01',
-        timestamp: '2025-01-01-00-00-00',
-        binaryPaths: ['/binaries/fzf/fzf'],
-      });
-      await toolInstallationRegistry.recordToolInstallation({
-        toolName: 'bat',
-        version: '0.24.0',
-        installPath: '/binaries/bat/2025-01-01',
-        timestamp: '2025-01-01-00-00-00',
-        binaryPaths: ['/binaries/bat/bat'],
-      });
+      toolConfigs['fzf'] = createMockToolConfig({ name: 'fzf' });
+      toolConfigs['bat'] = createMockToolConfig({ name: 'bat' });
 
       const response = await fetch(`${baseUrl}/api/tools`);
       const data = await response.json();
@@ -323,8 +327,12 @@ describe('Dashboard HTTP Server', () => {
   });
 
   describe('Data consistency', () => {
-    test('files tracked without tool installations shows tools with files', async () => {
-      // File operations exist but no tool installations (like in the real test-project)
+    test('files tracked for tools that exist in config', async () => {
+      // Tool exists in config
+      toolConfigs['bat'] = createMockToolConfig({ name: 'bat' });
+      toolConfigs['fd'] = createMockToolConfig({ name: 'fd' });
+
+      // File operations exist
       await fileRegistry.recordOperation({
         toolName: 'bat',
         operationType: 'writeFile',
@@ -350,14 +358,16 @@ describe('Dashboard HTTP Server', () => {
       const toolsResponse = await fetch(`${baseUrl}/api/tools`);
       const tools = await toolsResponse.json();
 
-      // Tools with file operations should be returned even without installation records
+      // Tools from config should be returned
       expect(tools.data).toHaveLength(2);
-      expect(tools.data.map((t: { name: string; }) => t.name).toSorted()).toEqual(['bat', 'fd']);
-      expect(tools.data[0].status).toBe('not-installed');
+      expect(tools.data.map((t: { config: { name: string } }) => t.config.name).toSorted()).toEqual(['bat', 'fd']);
+      expect(tools.data[0].runtime.status).toBe('not-installed');
       expect(tools.data[0].files).toHaveLength(1);
     });
 
     test('tool detail includes associated files', async () => {
+      toolConfigs['fzf'] = createMockToolConfig({ name: 'fzf' });
+
       await toolInstallationRegistry.recordToolInstallation({
         toolName: 'fzf',
         version: '0.55.0',
@@ -382,21 +392,26 @@ describe('Dashboard HTTP Server', () => {
 
       const response = await fetch(`${baseUrl}/api/tools`);
       const data = await response.json();
-      const tool = data.data.find((t: { name: string; }) => t.name === 'fzf');
+      const tool = data.data.find((t: { config: { name: string } }) => t.config.name === 'fzf');
 
       expect(data.success).toBe(true);
-      expect(tool.name).toBe('fzf');
+      expect(tool.config.name).toBe('fzf');
       expect(tool.files).toHaveLength(2);
     });
 
     test('multiple tools with different file types', async () => {
-      // Install multiple tools
+      // Register tool configs
       const tools = [
         { name: 'fzf', version: '0.55.0' },
         { name: 'bat', version: '0.24.0' },
         { name: 'ripgrep', version: '14.1.0' },
       ];
 
+      for (const tool of tools) {
+        toolConfigs[tool.name] = createMockToolConfig({ name: tool.name });
+      }
+
+      // Install tools and create file operations
       for (const tool of tools) {
         await toolInstallationRegistry.recordToolInstallation({
           toolName: tool.name,
@@ -424,7 +439,11 @@ describe('Dashboard HTTP Server', () => {
       const toolsList = await toolsResponse.json();
 
       expect(toolsList.data).toHaveLength(3);
-      expect(toolsList.data.map((t: { name: string; }) => t.name).toSorted()).toEqual(['bat', 'fzf', 'ripgrep']);
+      expect(toolsList.data.map((t: { config: { name: string } }) => t.config.name).toSorted()).toEqual([
+        'bat',
+        'fzf',
+        'ripgrep',
+      ]);
     });
 
     test('health check shows warning when no tools installed', async () => {
@@ -457,6 +476,8 @@ describe('Dashboard HTTP Server', () => {
 
   describe('Edge cases', () => {
     test('handles special characters in tool names', async () => {
+      toolConfigs['tool-with-dash'] = createMockToolConfig({ name: 'tool-with-dash' });
+
       await toolInstallationRegistry.recordToolInstallation({
         toolName: 'tool-with-dash',
         version: '1.0.0',
@@ -467,13 +488,18 @@ describe('Dashboard HTTP Server', () => {
 
       const response = await fetch(`${baseUrl}/api/tools`);
       const data = await response.json();
-      const tool = data.data.find((t: { name: string; }) => t.name === 'tool-with-dash');
+      const tool = data.data.find((t: { config: { name: string } }) => t.config.name === 'tool-with-dash');
 
       expect(response.status).toBe(200);
-      expect(tool.name).toBe('tool-with-dash');
+      expect(tool.config.name).toBe('tool-with-dash');
     });
 
     test('handles tool with multiple binaries', async () => {
+      toolConfigs['multi-binary'] = createMockToolConfig({
+        name: 'multi-binary',
+        binaries: ['bin1', 'bin2', 'bin3'],
+      });
+
       await toolInstallationRegistry.recordToolInstallation({
         toolName: 'multi-binary',
         version: '1.0.0',
@@ -484,9 +510,9 @@ describe('Dashboard HTTP Server', () => {
 
       const response = await fetch(`${baseUrl}/api/tools`);
       const data = await response.json();
-      const tool = data.data.find((t: { name: string; }) => t.name === 'multi-binary');
+      const tool = data.data.find((t: { config: { name: string } }) => t.config.name === 'multi-binary');
 
-      expect(tool.binaryPaths).toHaveLength(3);
+      expect(tool.runtime.binaryPaths).toHaveLength(3);
     });
   });
 });

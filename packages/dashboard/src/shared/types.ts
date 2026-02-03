@@ -1,3 +1,4 @@
+import type { IBinaryConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileOperation, IFileState } from '@dotfiles/registry/file';
 import type { IToolInstallationRecord } from '@dotfiles/registry/tool';
 
@@ -11,34 +12,92 @@ export interface IApiResponse<T> {
 }
 
 /**
- * Tool summary for catalog listing.
+ * Serializable binary configuration for API response.
  */
-export interface IToolSummary {
-  name: string;
-  version: string | null;
-  installMethod: string | null;
-  status: 'installed' | 'not-installed' | 'error';
-  installedAt: string | null;
-  hasUpdate: boolean;
-  /** Install path - included for file tree display */
-  installPath?: string | null;
-  /** Binary paths - included for file tree display */
-  binaryPaths?: string[];
-  /** Download URL - included for file tree display */
-  downloadUrl?: string | null;
+export type ISerializableBinary = string | IBinaryConfig;
+
+/**
+ * Serializable install params - common fields across all methods.
+ * Method-specific fields are included as optional for flexibility.
+ */
+export interface ISerializableInstallParams {
+  /** GitHub repository (github-release) */
+  repo?: string;
+  /** Asset pattern (github-release) */
+  assetPattern?: string;
+  /** Crate name (cargo) */
+  crate?: string;
+  /** Package name (brew) */
+  package?: string;
+  /** Script URL (curl-script) */
+  scriptUrl?: string;
+  /** Archive URL (curl-tar) */
+  archiveUrl?: string;
+  /** Plugin repository (zsh-plugin) */
+  pluginRepo?: string;
 }
 
 /**
- * Extended tool details for detail view.
+ * Serializable symlink configuration.
  */
-export interface IToolDetail extends IToolSummary {
+export interface ISerializableSymlink {
+  source: string;
+  target: string;
+}
+
+/**
+ * JSON-serializable tool configuration from .tool.ts files.
+ * Contains static configuration, not runtime state.
+ */
+export interface ISerializableToolConfig {
+  name: string;
+  version: string;
+  installationMethod: string;
+  installParams: ISerializableInstallParams;
+  binaries?: ISerializableBinary[];
+  dependencies?: string[];
+  symlinks?: ISerializableSymlink[];
+  disabled?: boolean;
+  configFilePath?: string;
+}
+
+/**
+ * Runtime state from the installation registry.
+ */
+export interface IToolRuntimeState {
+  status: 'installed' | 'not-installed' | 'error';
+  installedVersion: string | null;
+  installedAt: string | null;
   installPath: string | null;
   binaryPaths: string[];
-  downloadUrl: string | null;
-  assetName: string | null;
-  configuredVersion: string | null;
+  hasUpdate: boolean;
+}
+
+/**
+ * Complete tool detail combining static config and runtime state.
+ */
+export interface IToolDetail {
+  /** Static configuration from .tool.ts */
+  config: ISerializableToolConfig;
+  /** Runtime state from registry */
+  runtime: IToolRuntimeState;
+  /** Files tracked by the file registry */
   files: IFileState[];
 }
+
+/**
+ * Tool summary for catalog listing (subset of detail).
+ */
+export interface IToolSummary {
+  name: string;
+  version: string;
+  installationMethod: string;
+  status: 'installed' | 'not-installed' | 'error';
+  installedVersion: string | null;
+  hasUpdate: boolean;
+  binaries?: ISerializableBinary[];
+}
+
 
 /**
  * Dashboard statistics for overview page.
@@ -90,55 +149,82 @@ export interface IConfigSummary {
 }
 
 /**
- * Convert a tool installation record to a tool summary.
+ * Serialize a ToolConfig to a JSON-safe structure.
+ * Strips functions and non-serializable fields.
  */
-export function toToolSummary(record: IToolInstallationRecord): IToolSummary {
+export function serializeToolConfig(config: ToolConfig): ISerializableToolConfig {
+  // Extract serializable install params (varies by method)
+  const installParams: ISerializableInstallParams = {};
+
+  if ('installParams' in config && config.installParams) {
+    const params = config.installParams as Record<string, unknown>;
+    if (typeof params['repo'] === 'string') installParams.repo = params['repo'];
+    if (typeof params['assetPattern'] === 'string') installParams.assetPattern = params['assetPattern'];
+    if (typeof params['crate'] === 'string') installParams.crate = params['crate'];
+    if (typeof params['package'] === 'string') installParams.package = params['package'];
+    if (typeof params['scriptUrl'] === 'string') installParams.scriptUrl = params['scriptUrl'];
+    if (typeof params['archiveUrl'] === 'string') installParams.archiveUrl = params['archiveUrl'];
+    if (typeof params['pluginRepo'] === 'string') installParams.pluginRepo = params['pluginRepo'];
+  }
+
   return {
-    name: record.toolName,
-    version: record.version,
-    installMethod: extractInstallMethod(record.downloadUrl),
-    status: 'installed',
-    installedAt: record.installedAt.toISOString(),
-    hasUpdate: false,
-    installPath: record.installPath,
-    binaryPaths: record.binaryPaths,
-    downloadUrl: record.downloadUrl ?? null,
+    name: config.name,
+    version: config.version,
+    installationMethod: config.installationMethod,
+    installParams,
+    binaries: config.binaries,
+    dependencies: config.dependencies,
+    symlinks: config.symlinks,
+    disabled: config.disabled,
+    configFilePath: config.configFilePath,
   };
 }
 
 /**
- * Extract installation method from download URL.
+ * Get runtime state for a tool from the installation registry.
  */
-function extractInstallMethod(downloadUrl: string | undefined): string | null {
-  if (!downloadUrl) {
-    return null;
+export function getToolRuntimeState(
+  toolName: string,
+  installations: Map<string, IToolInstallationRecord>,
+): IToolRuntimeState {
+  const record = installations.get(toolName);
+
+  if (!record) {
+    return {
+      status: 'not-installed',
+      installedVersion: null,
+      installedAt: null,
+      installPath: null,
+      binaryPaths: [],
+      hasUpdate: false,
+    };
   }
-  if (downloadUrl.includes('github.com') || downloadUrl.includes('api.github.com')) {
-    return 'github-release';
-  }
-  if (downloadUrl.includes('crates.io')) {
-    return 'cargo';
-  }
-  if (downloadUrl.includes('homebrew') || downloadUrl.includes('brew')) {
-    return 'brew';
-  }
-  return 'manual';
+
+  return {
+    status: 'installed',
+    installedVersion: record.version,
+    installedAt: record.installedAt.toISOString(),
+    installPath: record.installPath,
+    binaryPaths: record.binaryPaths || [],
+    hasUpdate: false,
+  };
 }
 
 /**
- * Convert a tool installation record to tool detail.
+ * Convert a ToolConfig and registry state to a full IToolDetail.
  */
-export function toToolDetail(record: IToolInstallationRecord, files: IFileState[]): IToolDetail {
+export function toToolDetail(
+  config: ToolConfig,
+  installations: Map<string, IToolInstallationRecord>,
+  files: IFileState[],
+): IToolDetail {
   return {
-    ...toToolSummary(record),
-    installPath: record.installPath,
-    binaryPaths: record.binaryPaths,
-    downloadUrl: record.downloadUrl ?? null,
-    assetName: record.assetName ?? null,
-    configuredVersion: record.configuredVersion ?? null,
+    config: serializeToolConfig(config),
+    runtime: getToolRuntimeState(config.name, installations),
     files,
   };
 }
+
 
 /**
  * Format a Unix timestamp for display.

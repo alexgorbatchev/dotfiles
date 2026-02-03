@@ -1,12 +1,20 @@
-import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
+import type { ToolConfig } from '@dotfiles/core';
+import type { IConfigService } from '@dotfiles/config';
+import { createMemFileSystem, type IResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import { FileRegistry } from '@dotfiles/registry/file';
 import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
-import { createMockProjectConfig, createMockVersionChecker } from '../../testing-helpers';
-import { createApiRoutes } from '../routes';
+import {
+  createMockConfigService,
+  createMockProjectConfig,
+  createMockSystemInfo,
+  createMockToolConfig,
+  createMockVersionChecker,
+} from '../../testing-helpers';
+import { clearToolConfigsCache, createApiRoutes } from '../routes';
 import type { IDashboardServices } from '../types';
 
 describe('Dashboard API Routes', () => {
@@ -16,9 +24,12 @@ describe('Dashboard API Routes', () => {
   let toolInstallationRegistry: ToolInstallationRegistry;
   let services: IDashboardServices;
   let api: ReturnType<typeof createApiRoutes>;
-  let fs: IFileSystem;
+  let fs: IResolvedFileSystem;
+  let toolConfigs: Record<string, ToolConfig>;
+  let configService: IConfigService;
 
   beforeEach(async () => {
+    clearToolConfigsCache();
     logger = new TestLogger();
     registryDatabase = new RegistryDatabase(logger, ':memory:');
     const db = registryDatabase.getConnection();
@@ -26,11 +37,16 @@ describe('Dashboard API Routes', () => {
     toolInstallationRegistry = new ToolInstallationRegistry(logger, db);
 
     const memFs = await createMemFileSystem();
-    fs = memFs.fs;
+    fs = memFs.fs.asIResolvedFileSystem;
+
+    toolConfigs = {};
+    configService = createMockConfigService(toolConfigs);
 
     services = {
       projectConfig: createMockProjectConfig(),
       fs,
+      configService,
+      systemInfo: createMockSystemInfo(),
       fileRegistry,
       toolInstallationRegistry,
       versionChecker: createMockVersionChecker(),
@@ -44,14 +60,40 @@ describe('Dashboard API Routes', () => {
   });
 
   describe('getTools', () => {
-    test('returns empty array when no tools installed', async () => {
+    test('returns empty array when no tool configs', async () => {
       const result = await api.getTools();
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual([]);
     });
 
-    test('returns tool summaries for installed tools', async () => {
+    test('returns tool details from config with not-installed status', async () => {
+      toolConfigs['fzf'] = createMockToolConfig({
+        name: 'fzf',
+        version: 'latest',
+        installationMethod: 'github-release',
+        installParams: { repo: 'junegunn/fzf' },
+        binaries: ['fzf'],
+      });
+
+      const result = await api.getTools();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(1);
+      expect(result.data?.[0]?.config.name).toBe('fzf');
+      expect(result.data?.[0]?.config.installationMethod).toBe('github-release');
+      expect(result.data?.[0]?.runtime.status).toBe('not-installed');
+    });
+
+    test('returns tool details with installed status when registry has record', async () => {
+      toolConfigs['fzf'] = createMockToolConfig({
+        name: 'fzf',
+        version: 'latest',
+        installationMethod: 'github-release',
+        installParams: { repo: 'junegunn/fzf' },
+        binaries: ['fzf'],
+      });
+
       await toolInstallationRegistry.recordToolInstallation({
         toolName: 'fzf',
         version: '0.55.0',
@@ -65,19 +107,18 @@ describe('Dashboard API Routes', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);
-      expect(result.data?.[0]?.name).toBe('fzf');
-      expect(result.data?.[0]?.version).toBe('0.55.0');
-      expect(result.data?.[0]?.status).toBe('installed');
+      expect(result.data?.[0]?.config.name).toBe('fzf');
+      expect(result.data?.[0]?.runtime.status).toBe('installed');
+      expect(result.data?.[0]?.runtime.installedVersion).toBe('0.55.0');
     });
 
-    test('returns tool details with files for installed tools', async () => {
-      await toolInstallationRegistry.recordToolInstallation({
-        toolName: 'fzf',
-        version: '0.55.0',
-        installPath: '/binaries/fzf/2025-01-01',
-        timestamp: '2025-01-01-00-00-00',
-        binaryPaths: ['/binaries/fzf/fzf'],
-        downloadUrl: 'https://github.com/junegunn/fzf/releases/download/v0.55.0/fzf-0.55.0-darwin_arm64.tar.gz',
+    test('returns tool details with files', async () => {
+      toolConfigs['fzf'] = createMockToolConfig({
+        name: 'fzf',
+        version: 'latest',
+        installationMethod: 'github-release',
+        installParams: { repo: 'junegunn/fzf' },
+        binaries: ['fzf'],
       });
 
       await fileRegistry.recordOperation({
@@ -92,7 +133,7 @@ describe('Dashboard API Routes', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);
-      expect(result.data?.[0]?.name).toBe('fzf');
+      expect(result.data?.[0]?.config.name).toBe('fzf');
       expect(result.data?.[0]?.files).toHaveLength(1);
       expect(result.data?.[0]?.files?.[0]?.filePath).toBe('/bin/fzf');
     });

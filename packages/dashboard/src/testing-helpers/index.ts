@@ -1,4 +1,6 @@
-import type { ProjectConfig } from '@dotfiles/core';
+import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
+import { Architecture, Platform } from '@dotfiles/core';
+import type { IConfigService } from '@dotfiles/config';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
 import { mock } from 'bun:test';
@@ -32,3 +34,41 @@ export function createMockVersionChecker(): MockedInterface<IVersionChecker> {
     ),
   };
 }
+
+/**
+ * Creates a mock ISystemInfo for testing.
+ */
+export function createMockSystemInfo(): ISystemInfo {
+  return {
+    platform: Platform.MacOS,
+    arch: Architecture.Arm64,
+    homeDir: '/home/user',
+  };
+}
+
+/**
+ * Creates a mock IConfigService that returns the provided tool configs.
+ */
+export function createMockConfigService(toolConfigs: Record<string, ToolConfig>): IConfigService {
+  return {
+    loadSingleToolConfig: mock(async () => undefined),
+    loadToolConfigByBinary: mock(async () => undefined),
+    loadToolConfigs: mock(async () => toolConfigs),
+  };
+}
+
+/**
+ * Creates a minimal mock ToolConfig for testing.
+ */
+export function createMockToolConfig(overrides: Partial<ToolConfig> & { name: string }): ToolConfig {
+  const { name, version, installationMethod, installParams, binaries, ...rest } = overrides;
+  return {
+    name,
+    version: version ?? 'latest',
+    installationMethod: installationMethod ?? 'github-release',
+    installParams: installParams ?? { repo: 'test/repo' },
+    binaries: binaries ?? [name],
+    ...rest,
+  } as ToolConfig;
+}
+
