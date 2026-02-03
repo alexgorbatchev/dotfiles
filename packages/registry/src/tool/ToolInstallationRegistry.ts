@@ -16,6 +16,7 @@ interface IToolInstallationRow {
   asset_name: string | null;
   configured_version: string | null;
   original_tag: string | null;
+  install_method: string | null;
 }
 
 /**
@@ -60,18 +61,36 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
         asset_name TEXT,
         configured_version TEXT,
         original_tag TEXT,
+        install_method TEXT,
         UNIQUE(tool_name)
       );
     `);
+
+    // Migration: Add install_method column if it doesn't exist (for existing databases)
+    this.migrateAddInstallMethod();
+
     logger.debug(messages.databaseInitialized());
+  }
+
+  private migrateAddInstallMethod(): void {
+    try {
+      // Check if column exists by querying table info
+      const columns = this.db.prepare('PRAGMA table_info(tool_installations)').all() as Array<{ name: string; }>;
+      const hasInstallMethod = columns.some((col) => col.name === 'install_method');
+      if (!hasInstallMethod) {
+        this.db.run('ALTER TABLE tool_installations ADD COLUMN install_method TEXT');
+      }
+    } catch {
+      // Column might already exist, ignore errors
+    }
   }
 
   async recordToolInstallation(installation: IToolInstallationDetails): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'recordToolInstallation' });
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO tool_installations 
-      (tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -85,6 +104,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
       installation.assetName || null,
       installation.configuredVersion || null,
       installation.originalTag || null,
+      installation.installMethod || null,
     );
     logger.debug(messages.toolInstallationRecorded(), installation.toolName, installation.version);
   }
@@ -113,6 +133,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
       assetName: row.asset_name || undefined,
       configuredVersion: row.configured_version || undefined,
       originalTag: row.original_tag || undefined,
+      installMethod: row.install_method || undefined,
     };
   }
 
@@ -136,6 +157,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
       assetName: row.asset_name || undefined,
       configuredVersion: row.configured_version || undefined,
       originalTag: row.original_tag || undefined,
+      installMethod: row.install_method || undefined,
     }));
   }
 

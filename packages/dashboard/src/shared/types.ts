@@ -1,6 +1,7 @@
-import type { IBinaryConfig, ToolConfig } from '@dotfiles/core';
+import type { IBinaryConfig, ISystemInfo, ToolConfig } from '@dotfiles/core';
 import type { IFileOperation, IFileState } from '@dotfiles/registry/file';
 import type { IToolInstallationRecord } from '@dotfiles/registry/tool';
+import { resolvePlatformConfig } from '@dotfiles/utils';
 
 /**
  * Standard API response wrapper for all dashboard endpoints.
@@ -212,14 +213,19 @@ export function getToolRuntimeState(
 
 /**
  * Convert a ToolConfig and registry state to a full IToolDetail.
+ * Resolves platform-specific configuration based on current system.
  */
 export function toToolDetail(
   config: ToolConfig,
   installations: Map<string, IToolInstallationRecord>,
   files: IFileState[],
+  systemInfo: ISystemInfo,
 ): IToolDetail {
+  // Resolve platform-specific config for current system
+  const resolvedConfig = resolvePlatformConfig(config, systemInfo);
+
   return {
-    config: serializeToolConfig(config),
+    config: serializeToolConfig(resolvedConfig),
     runtime: getToolRuntimeState(config.name, installations),
     files,
   };
@@ -351,4 +357,5 @@ export interface IToolHistory {
   entries: IToolHistoryEntry[];
   totalCount: number;
   installedAt: string | null;
+  dotfilesDir: string;
 }

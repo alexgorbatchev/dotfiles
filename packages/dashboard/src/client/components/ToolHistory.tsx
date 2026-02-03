@@ -16,6 +16,7 @@ import { Badge } from './ui/Badge';
 interface ToolHistoryProps {
   entries: IToolHistoryEntry[];
   installedAt: string | null;
+  dotfilesDir: string;
 }
 
 const operationIcons: Record<string, JSX.Element> = {
@@ -38,12 +39,15 @@ const operationLabels: Record<string, string> = {
   cp: 'Copied',
 };
 
-function getFileName(filePath: string): string {
-  const parts = filePath.split('/');
-  return parts[parts.length - 1] || filePath;
+function getDisplayPath(filePath: string, dotfilesDir: string): string {
+  if (filePath.startsWith(dotfilesDir)) {
+    const relativePath = filePath.slice(dotfilesDir.length);
+    return `<dotfiles>${relativePath}`;
+  }
+  return filePath;
 }
 
-export function ToolHistory({ entries, installedAt }: ToolHistoryProps): JSX.Element {
+export function ToolHistory({ entries, installedAt, dotfilesDir }: ToolHistoryProps): JSX.Element {
   if (entries.length === 0 && !installedAt) {
     return (
       <div class='text-muted-foreground text-center py-4'>
@@ -93,7 +97,7 @@ export function ToolHistory({ entries, installedAt }: ToolHistoryProps): JSX.Ele
                     </span>
                   </div>
                   <div class='text-sm text-muted-foreground truncate mt-1' title={entry.filePath}>
-                    {getFileName(entry.filePath)}
+                    {getDisplayPath(entry.filePath, dotfilesDir)}
                   </div>
                 </div>
               </div>

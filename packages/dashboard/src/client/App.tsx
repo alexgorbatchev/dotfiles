@@ -2,7 +2,6 @@ import { type JSX } from 'preact';
 import { LocationProvider, Route, Router } from 'preact-iso';
 
 import { Nav } from './components/Nav';
-import { Dashboard } from './pages/Dashboard';
 import { Health } from './pages/Health';
 import { NotFound } from './pages/NotFound';
 import { Settings } from './pages/Settings';
@@ -16,8 +15,7 @@ export function App(): JSX.Element {
         <Nav />
         <main class='max-w-7xl mx-auto px-4 py-6'>
           <Router>
-            <Route path='/' component={Dashboard} />
-            <Route path='/tools' component={Tools} />
+            <Route path='/' component={Tools} />
             <Route path='/tools/:name' component={ToolDetail} />
             <Route path='/health' component={Health} />
             <Route path='/settings' component={Settings} />

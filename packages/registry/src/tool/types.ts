@@ -18,6 +18,8 @@ export interface IToolInstallationDetails {
   assetName?: string;
   configuredVersion?: string;
   originalTag?: string;
+  /** Installation method used (e.g., 'brew', 'github-release', 'cargo', 'manual') */
+  installMethod?: string;
 }
 
 /**

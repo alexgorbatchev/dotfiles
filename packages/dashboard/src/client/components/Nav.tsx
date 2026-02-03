@@ -5,8 +5,7 @@ import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
 
 const links = [
-  { path: '/', label: '🏠 Dashboard' },
-  { path: '/tools', label: '📦 Tools' },
+  { path: '/', label: '🏠 Home' },
   { path: '/health', label: '🏥 Health' },
   { path: '/settings', label: '⚙️ Settings' },
 ];

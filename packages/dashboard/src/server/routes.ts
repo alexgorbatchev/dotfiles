@@ -72,7 +72,7 @@ export function createApiRoutes(parentLogger: TsLogger, services: IDashboardServ
         const toolDetails = await Promise.all(
           Object.values(toolConfigs).map(async (config) => {
             const files = await services.fileRegistry.getFileStatesForTool(config.name);
-            return toToolDetail(config, installationsMap, files);
+            return toToolDetail(config, installationsMap, files, services.systemInfo);
           }),
         );
 
@@ -294,6 +294,7 @@ export function createApiRoutes(parentLogger: TsLogger, services: IDashboardServ
             entries,
             totalCount: entries.length,
             installedAt: installation?.installedAt.toISOString() ?? null,
+            dotfilesDir: services.projectConfig.paths.dotfilesDir,
           },
         };
       } catch (error) {

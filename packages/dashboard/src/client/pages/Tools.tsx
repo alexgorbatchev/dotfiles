@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'preact/hooks';
 import type { IToolDetail } from '../../shared/types';
 import { InstallMethodBadge } from '../components/InstallMethodBadge';
 import { StatCard } from '../components/StatCard';
+import { StatusBadge } from '../components/StatusBadge';
 import { Table, TableBody, TableCell, TableRow } from '../components/ui/Table';
 import { useFetch } from '../hooks/useFetch';
 
@@ -124,9 +125,11 @@ function ToolsTable({ tools }: ToolsTableProps): JSX.Element {
             >
               <TableCell class='font-medium'>
                 <div class='flex items-center space-x-2'>
-                  <span class={`w-2 h-2 rounded-full ${tool.runtime.status === 'installed' ? 'bg-green-500' : 'bg-muted'}`} />
                   <span>📦 {tool.config.name}</span>
                 </div>
+              </TableCell>
+              <TableCell>
+                <StatusBadge status={tool.runtime.status} />
               </TableCell>
               <TableCell class='text-right'>
                 <div class='flex items-center justify-end space-x-3'>

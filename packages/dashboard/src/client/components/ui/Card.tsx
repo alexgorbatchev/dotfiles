@@ -30,7 +30,7 @@ function CardHeader({ class: className, ...props }: CardProps): JSX.Element {
 }
 
 function CardTitle({ class: className, ...props }: CardProps): JSX.Element {
-  return <div data-slot='card-title' class={cn('leading-none font-semibold', className)} {...props} />;
+  return <div data-slot='card-title' class={cn('text-lg leading-none font-bold', className)} {...props} />;
 }
 
 function CardDescription({ class: className, ...props }: CardProps): JSX.Element {

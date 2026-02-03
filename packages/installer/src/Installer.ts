@@ -93,6 +93,12 @@ function getPluginMetadataRecord(result: InstallResult): UnknownRecord {
     return empty;
   }
 
+  // Map 'method' from plugin metadata to 'installMethod' for registry storage
+  const { method, ...rest } = metadata;
+  if (typeof method === 'string') {
+    return { ...rest, installMethod: method };
+  }
+
   return metadata;
 }
 

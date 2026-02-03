@@ -12,4 +12,10 @@ export default defineTool((install, _ctx) =>
         })
           .bin('borders'),
     )
+    .platform(
+      Platform.Linux,
+      (install) =>
+        install()
+          .bin('borders'),
+    )
 );

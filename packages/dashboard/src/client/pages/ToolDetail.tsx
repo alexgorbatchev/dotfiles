@@ -2,6 +2,7 @@ import { type JSX } from 'preact';
 
 import type { IToolDetail, IToolHistory } from '../../shared/types';
 import { InstallMethodBadge } from '../components/InstallMethodBadge';
+import { StatusBadge } from '../components/StatusBadge';
 import { ToolHistory } from '../components/ToolHistory';
 import { TreeNode } from '../components/TreeNode';
 import { Badge } from '../components/ui/Badge';
@@ -51,37 +52,10 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       </Button>
 
       {/* Header */}
-      <Card>
-        <CardContent class='pt-6'>
-          <div class='flex items-center justify-between'>
-            <div>
-              <h1 class='text-2xl font-bold'>{tool.config.name}</h1>
-              <p class='text-muted-foreground mt-1'>
-                Version: {tool.runtime.installedVersion || tool.config.version || 'Unknown'}
-              </p>
-            </div>
-            <Badge variant={tool.runtime.status === 'installed' ? 'success' : 'secondary'}>
-              {tool.runtime.status === 'installed' ? '✓ Installed' : 'Not Installed'}
-            </Badge>
-          </div>
-          <div class='grid grid-cols-3 gap-4 mt-6'>
-            <div>
-              <div class='text-sm text-muted-foreground mb-1'>Method</div>
-              <InstallMethodBadge method={tool.config.installationMethod} />
-            </div>
-            <div>
-              <div class='text-sm text-muted-foreground'>Installed</div>
-              <div class='font-medium'>
-                {tool.runtime.installedAt ? new Date(tool.runtime.installedAt).toLocaleDateString() : 'Not installed'}
-              </div>
-            </div>
-            <div>
-              <div class='text-sm text-muted-foreground'>Files</div>
-              <div class='font-medium'>{tool.files?.length || 0} files</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div class='flex items-center gap-4'>
+        <h1 class='text-2xl font-bold'>{tool.config.name}</h1>
+        <StatusBadge status={tool.runtime.status} />
+      </div>
 
       {/* Overview Section */}
       <Card>
@@ -90,26 +64,28 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
         </CardHeader>
         <CardContent>
           <div class='space-y-4'>
-            {tool.runtime.installPath && (
+            <div class='grid grid-cols-4 gap-4'>
               <div>
-                <div class='text-sm text-muted-foreground mb-1'>Install Path</div>
-                <code class='text-sm bg-muted px-2 py-1 rounded'>{tool.runtime.installPath}</code>
+                <div class='text-sm text-muted-foreground mb-1'>Version</div>
+                <div class='font-medium'>
+                  {tool.runtime.installedVersion || tool.config.version || 'Unknown'}
+                </div>
               </div>
-            )}
-            {(tool.config.binaries?.length || 0) > 0 && (
               <div>
-                <div class='text-sm text-muted-foreground mb-1'>Binaries</div>
-                <ul class='space-y-1'>
-                  {tool.config.binaries?.map((b, i) => (
-                    <li key={i}>
-                      <code class='text-sm bg-muted px-2 py-1 rounded'>
-                        {typeof b === 'string' ? b : b.name}
-                      </code>
-                    </li>
-                  ))}
-                </ul>
+                <div class='text-sm text-muted-foreground mb-1'>Method</div>
+                <InstallMethodBadge method={tool.config.installationMethod} />
               </div>
-            )}
+              <div>
+                <div class='text-sm text-muted-foreground mb-1'>Installed</div>
+                <div class='font-medium'>
+                  {tool.runtime.installedAt ? new Date(tool.runtime.installedAt).toLocaleDateString() : 'Not installed'}
+                </div>
+              </div>
+              <div>
+                <div class='text-sm text-muted-foreground mb-1'>Files</div>
+                <div class='font-medium'>{tool.files?.length || 0} files</div>
+              </div>
+            </div>
             {tool.config.installParams.repo && (
               <div>
                 <div class='text-sm text-muted-foreground mb-1'>Repository</div>
@@ -157,6 +133,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
           <ToolHistory
             entries={history?.entries ?? []}
             installedAt={history?.installedAt ?? null}
+            dotfilesDir={history?.dotfilesDir ?? ''}
           />
         </CardContent>
       </Card>

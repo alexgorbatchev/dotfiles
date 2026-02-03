@@ -2,6 +2,10 @@
 
 Web-based visualization dashboard for the dotfiles-tool-installer system.
 
+## Component Source
+
+UI components should be adopted from [shadcn-preact](https://github.com/LiasCode/shadcn-preact/tree/main/src/components/ui).
+
 ## Package Structure
 
 ```

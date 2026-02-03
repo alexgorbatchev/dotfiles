@@ -46,6 +46,8 @@ export function registerDashboardCommand(
       const dashboardServices: IDashboardServices = {
         projectConfig: services.projectConfig,
         fs: services.fs,
+        configService: services.configService,
+        systemInfo: services.systemInfo,
         fileRegistry: services.fileRegistry,
         toolInstallationRegistry: services.toolInstallationRegistry,
         versionChecker: services.versionChecker,
