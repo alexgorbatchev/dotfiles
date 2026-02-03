@@ -16,7 +16,7 @@ defineTool((install) =>
 );
 
 // Invalid: PATH must be set via shell.path(), not environment()
-// Error message: "ERROR: Use shell.path() to modify PATH, not environment({ PATH: ... })"
+// Type error: Types of property 'PATH' are incompatible (string vs never)
 expectError(defineTool((install) => install().zsh((shell) => shell.environment({ PATH: '/usr/bin' }))));
 
 // Invalid: PATH mixed with other variables

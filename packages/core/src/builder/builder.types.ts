@@ -150,20 +150,6 @@ export type ShellCompletionConfigValue =
 export type ShellCompletionConfigInput = Resolvable<ICompletionContext, ShellCompletionConfigValue>;
 
 /**
- * Error message type shown when attempting to set PATH via environment().
- * Use shell.path() instead for PATH modifications.
- */
-type PathProhibitedError = 'ERROR: Use shell.path() to modify PATH, not environment({ PATH: ... })';
-
-/**
- * Environment variables record that prohibits setting PATH directly.
- * PATH must be modified via shell.path() for proper deduplication.
- */
-type EnvironmentVariables = {
-  [K in string]: K extends 'PATH' ? PathProhibitedError : string;
-};
-
-/**
  * Fluent configurator used inside shell callbacks for the new shell API.
  * Generic parameter tracks function names defined via `functions()` for type-safe `sourceFunction()`.
  */
@@ -176,7 +162,9 @@ export interface IShellConfigurator<KnownFunctions extends string = never> {
    *
    * @param values - A record of environment variable names and values.
    */
-  environment(values: EnvironmentVariables): IShellConfigurator<KnownFunctions>;
+  environment<T extends Record<string, string>>(
+    values: 'PATH' extends keyof T ? ['ERROR: Use shell.path() to modify PATH'] : T,
+  ): IShellConfigurator<KnownFunctions>;
 
   /**
    * Sets shell aliases.
