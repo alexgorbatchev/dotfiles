@@ -190,6 +190,7 @@ install('github-release', { repo: 'owner/tool' })
 - `.completions(path | config)` - Set command completions
 - `.sourceFile(path)` - Source a file (skips if missing)
 - `.sourceFunction(fnName)` - Source output of a function defined via `.functions()`
+- `.source(content)` - Source output of inline shell code (see below)
 - `.always(script)` - Fast runtime setup scripts
 - `.once(script)` - Expensive one-time setup scripts
 - `.functions(record)` - Define shell functions
@@ -258,6 +259,25 @@ install('github-release', { repo: 'owner/tool' })
 ```
 
 **sourceFunction** is type-safe: you can only pass function names that were defined via `.functions()` earlier in the chain. This pattern is ideal for tools requiring dynamic initialization like `fnm`, `zoxide`, or `pyenv`.
+
+**source Syntax** (inline sourcing):
+
+```ts
+// Source the output of inline shell code
+// Content must PRINT shell code to stdout - that output gets sourced
+.source('fnm env --use-on-cd')
+// Generates:
+// __dotfiles_source_toolname_0() {
+//   fnm env --use-on-cd
+// }
+// source <(__dotfiles_source_toolname_0)
+// unset -f __dotfiles_source_toolname_0
+
+// Useful when you don't need a named function
+.source('echo "export MY_VAR=value"')
+```
+
+Use `.source()` when you need to source command output inline without defining a named function via `.functions()`. The content must **print shell code to stdout** - this output is then sourced (executed) in the current shell.
 
 Reference: [Shell Integration Guide](<root>/docs/shell-integration.md) and [Completions Guide](<root>/docs/completions.md)
 

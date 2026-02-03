@@ -6,6 +6,7 @@ import {
   fn,
   path,
   script,
+  source,
   sourceFile,
   sourceFunction,
 } from '../factories';
@@ -17,6 +18,7 @@ import {
   isHoisted,
   isPathEmission,
   isScriptEmission,
+  isSourceEmission,
   isSourceFileEmission,
   isSourceFunctionEmission,
 } from '../guards';
@@ -78,6 +80,23 @@ describe('isSourceFileEmission', () => {
   it('returns false for other emissions', () => {
     const emission = script('echo test', 'always');
     expect(isSourceFileEmission(emission)).toBe(false);
+  });
+});
+
+describe('isSourceEmission', () => {
+  it('returns true for source emission', () => {
+    const emission = source('echo test', '__source_fn');
+    expect(isSourceEmission(emission)).toBe(true);
+  });
+
+  it('returns false for other emissions', () => {
+    const emission = sourceFile('$HOME/.rc');
+    expect(isSourceEmission(emission)).toBe(false);
+  });
+
+  it('returns false for sourceFunction emission', () => {
+    const emission = sourceFunction('initTool');
+    expect(isSourceEmission(emission)).toBe(false);
   });
 });
 

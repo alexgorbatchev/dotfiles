@@ -10,6 +10,7 @@ import type {
   PathOptions,
   ScriptEmission,
   ScriptTiming,
+  SourceEmission,
   SourceFileEmission,
   SourceFunctionEmission,
 } from '../types';
@@ -88,6 +89,31 @@ export function sourceFile(
   return {
     kind: 'sourceFile',
     path: filePath,
+  };
+}
+
+/**
+ * Creates a source emission for inline content.
+ * The content will be wrapped in a temporary function, sourced, and the function cleaned up.
+ *
+ * Generates:
+ *   functionName() { <content> }
+ *   source <(functionName)
+ *   unset -f functionName
+ *
+ * @param content - Content to source (typically shell code that outputs shell code)
+ * @param functionName - Unique function name for this source emission
+ */
+export function source(
+  content: string,
+  functionName: string,
+): SourceEmission {
+  validateNonEmpty('source', 'content', content);
+  validateName('source', 'functionName', functionName);
+  return {
+    kind: 'source',
+    content,
+    functionName,
   };
 }
 

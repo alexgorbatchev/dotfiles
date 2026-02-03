@@ -5,6 +5,7 @@ import {
   fn,
   path,
   script,
+  source,
   sourceFile,
   sourceFunction,
 } from '@dotfiles/shell-emissions';
@@ -101,6 +102,21 @@ describe('PowerShellEmissionFormatter', () => {
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"Invoke-Expression (& myFunc)"`);
+    });
+  });
+
+  describe('formatSource', () => {
+    it('should format source emission with inline content', () => {
+      const emission = source('Write-Host "hello"', '__dotfiles_test_0');
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`
+        "function __dotfiles_test_0 {
+          Write-Host "hello"
+        }
+        Invoke-Expression (& __dotfiles_test_0)
+        Remove-Item Function:\\__dotfiles_test_0 -ErrorAction SilentlyContinue"
+      `);
     });
   });
 

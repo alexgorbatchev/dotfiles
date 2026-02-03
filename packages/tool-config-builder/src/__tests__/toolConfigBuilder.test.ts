@@ -341,6 +341,60 @@ describe('IToolConfigBuilder', () => {
     ]);
   });
 
+  test('zsh source generates function-based sourcing with inline content and cleanup', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.zsh((shell) => shell.source('echo "my inline content"'));
+
+    const config = builder.build();
+    // Should create a function with inline content and raw scripts to source+unset
+    expect(config.shellConfigs?.zsh?.functions).toEqual({
+      '__dotfiles_source_inline_test_tool_0': 'echo "my inline content"',
+    });
+    expect(config.shellConfigs?.zsh?.scripts).toEqual([
+      raw('source <(__dotfiles_source_inline_test_tool_0)'),
+      raw('unset -f __dotfiles_source_inline_test_tool_0'),
+    ]);
+  });
+
+  test('bash source generates function-based sourcing with inline content and cleanup', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.bash((shell) => shell.source('echo "my inline content"'));
+
+    const config = builder.build();
+    // Should create a function with inline content and raw scripts to source+unset
+    expect(config.shellConfigs?.bash?.functions).toEqual({
+      '__dotfiles_source_inline_test_tool_0': 'echo "my inline content"',
+    });
+    expect(config.shellConfigs?.bash?.scripts).toEqual([
+      raw('source <(__dotfiles_source_inline_test_tool_0)'),
+      raw('unset -f __dotfiles_source_inline_test_tool_0'),
+    ]);
+  });
+
+  test('multiple source calls generate unique function names', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.zsh((shell) =>
+      shell
+        .source('echo "first"')
+        .source('echo "second"')
+    );
+
+    const config = builder.build();
+    expect(config.shellConfigs?.zsh?.functions).toEqual({
+      '__dotfiles_source_inline_test_tool_0': 'echo "first"',
+      '__dotfiles_source_inline_test_tool_1': 'echo "second"',
+    });
+    expect(config.shellConfigs?.zsh?.scripts).toEqual([
+      raw('source <(__dotfiles_source_inline_test_tool_0)'),
+      raw('unset -f __dotfiles_source_inline_test_tool_0'),
+      raw('source <(__dotfiles_source_inline_test_tool_1)'),
+      raw('unset -f __dotfiles_source_inline_test_tool_1'),
+    ]);
+  });
+
   test('build method returns ManualToolConfig if binaries are specified but no installation method', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');

@@ -5,6 +5,7 @@ import {
   fn,
   path,
   script,
+  source,
   sourceFile,
   sourceFunction,
 } from '@dotfiles/shell-emissions';
@@ -130,6 +131,35 @@ describe('ZshEmissionFormatter', () => {
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"source <(myFunc)"`);
+    });
+  });
+
+  describe('formatSource', () => {
+    it('should format source emission with inline content', () => {
+      const emission = source('echo "hello"', '__dotfiles_test_0');
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`
+        "__dotfiles_test_0() {
+          echo "hello"
+        }
+        source <(__dotfiles_test_0)
+        unset -f __dotfiles_test_0"
+      `);
+    });
+
+    it('should handle multi-line content', () => {
+      const emission = source('echo "line1"\necho "line2"', '__dotfiles_multi_0');
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`
+        "__dotfiles_multi_0() {
+          echo "line1"
+          echo "line2"
+        }
+        source <(__dotfiles_multi_0)
+        unset -f __dotfiles_multi_0"
+      `);
     });
   });
 

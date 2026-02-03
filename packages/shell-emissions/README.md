@@ -71,16 +71,17 @@ console.log(output.onceScripts); // Array of once-only scripts
 
 Emissions are shell-agnostic data structures representing content to be rendered:
 
-| Type             | Factory                        | Description           |
-| ---------------- | ------------------------------ | --------------------- |
-| `environment`    | `environment(vars)`            | Environment variables |
-| `alias`          | `alias(aliases)`               | Shell aliases         |
-| `function`       | `fn(name, body)`               | Shell function        |
-| `script`         | `script(content, timing)`      | Inline script         |
-| `sourceFile`     | `sourceFile(path)`             | Source external file  |
-| `sourceFunction` | `sourceFunction(functionName)` | Lazy-loaded function  |
-| `completion`     | `completion(config)`           | Shell completion      |
-| `path`           | `path(directory, options?)`    | PATH modification     |
+| Type             | Factory                         | Description                     |
+| ---------------- | ------------------------------- | ------------------------------- |
+| `environment`    | `environment(vars)`             | Environment variables           |
+| `alias`          | `alias(aliases)`                | Shell aliases                   |
+| `function`       | `fn(name, body)`                | Shell function                  |
+| `script`         | `script(content, timing)`       | Inline script                   |
+| `sourceFile`     | `sourceFile(path)`              | Source external file            |
+| `sourceFunction` | `sourceFunction(functionName)`  | Source output of named function |
+| `source`         | `source(content, functionName)` | Source output of inline code    |
+| `completion`     | `completion(config)`            | Shell completion                |
+| `path`           | `path(directory, options?)`     | PATH modification               |
 
 ### Script Timing
 
@@ -143,8 +144,11 @@ script(content: string, timing: ScriptTiming): ScriptEmission
 // Source file
 sourceFile(path: string): SourceFileEmission
 
-// Source function (lazy-loaded)
+// Source function output (sources output of a named function)
 sourceFunction(functionName: string): SourceFunctionEmission
+
+// Source inline code output (content must PRINT shell code to stdout)
+source(content: string, functionName: string): SourceEmission
 
 // Completion
 completion(config: {

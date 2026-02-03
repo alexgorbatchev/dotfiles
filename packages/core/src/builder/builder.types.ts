@@ -216,6 +216,31 @@ export interface IShellConfigurator<KnownFunctions extends string = never> {
   sourceFunction(functionName: KnownFunctions): IShellConfigurator<KnownFunctions>;
 
   /**
+   * Sources the output of inline shell code by wrapping it in a temporary function.
+   * The content must **output shell code to stdout** - this output is then sourced.
+   *
+   * This is useful when you need to source the output of a command inline without
+   * defining a named function via `functions()`.
+   *
+   * @param content - Shell code that **prints** shell code to stdout
+   *
+   * @example
+   * // Content outputs "export MY_VAR=value" which gets sourced
+   * shell.source('echo "export MY_VAR=value"')
+   * // Generates:
+   * // __dotfiles_source_toolname_0() {
+   * //   echo "export MY_VAR=value"
+   * // }
+   * // source <(__dotfiles_source_toolname_0)
+   * // unset -f __dotfiles_source_toolname_0
+   *
+   * @example
+   * // fnm env prints shell code like "export PATH=..." which gets sourced
+   * shell.source('fnm env --use-on-cd')
+   */
+  source(content: string): IShellConfigurator<KnownFunctions>;
+
+  /**
    * Configures shell completions from static files or generated dynamically.
    *
    * **Lifecycle**: All completions are generated only after the tool is installed.

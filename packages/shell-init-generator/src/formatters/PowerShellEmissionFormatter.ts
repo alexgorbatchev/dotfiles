@@ -8,6 +8,7 @@ import type {
   OnceScriptContent,
   PathEmission,
   ScriptEmission,
+  SourceEmission,
   SourceFileEmission,
   SourceFunctionEmission,
 } from '@dotfiles/shell-emissions';
@@ -18,6 +19,7 @@ import {
   isFunctionEmission,
   isPathEmission,
   isScriptEmission,
+  isSourceEmission,
   isSourceFileEmission,
   isSourceFunctionEmission,
   ONCE_SCRIPT_INDEX_PAD_LENGTH,
@@ -44,6 +46,9 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     }
     if (isScriptEmission(emission)) {
       return this.formatScript(emission);
+    }
+    if (isSourceEmission(emission)) {
+      return this.formatSource(emission);
     }
     if (isSourceFileEmission(emission)) {
       return this.formatSourceFile(emission);
@@ -125,6 +130,25 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
 
   private formatSourceFile(emission: SourceFileEmission): string {
     return `. "${emission.path}"`;
+  }
+
+  /**
+   * Formats a source emission with inline content.
+   * Creates a temporary function, invokes its output, and cleans up.
+   */
+  private formatSource(emission: SourceEmission): string {
+    const content = dedentString(emission.content);
+    const functionName = emission.functionName;
+    const indent = ' '.repeat(this.indentSize);
+
+    const indentedContent = content.split('\n').map((line) => `${indent}${line}`).join('\n');
+    return [
+      `function ${functionName} {`,
+      indentedContent,
+      `}`,
+      `Invoke-Expression (& ${functionName})`,
+      `Remove-Item Function:\\${functionName} -ErrorAction SilentlyContinue`,
+    ].join('\n');
   }
 
   private formatSourceFunction(emission: SourceFunctionEmission): string {

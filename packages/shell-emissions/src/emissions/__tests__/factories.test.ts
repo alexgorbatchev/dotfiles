@@ -7,6 +7,7 @@ import {
   fn,
   path,
   script,
+  source,
   sourceFile,
   sourceFunction,
   withPriority,
@@ -172,6 +173,44 @@ describe('sourceFile', () => {
 
   it('throws on empty path', () => {
     expect(() => sourceFile('')).toThrow(EmissionValidationError);
+  });
+});
+
+describe('source', () => {
+  it('creates source emission with content and function name', () => {
+    const result = source('echo "hello"', '__dotfiles_source_test_0');
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "content": "echo "hello"",
+        "functionName": "__dotfiles_source_test_0",
+        "kind": "source",
+      }
+    `);
+  });
+
+  it('allows hyphens in function name', () => {
+    const result = source('echo test', 'my-source-fn');
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "content": "echo test",
+        "functionName": "my-source-fn",
+        "kind": "source",
+      }
+    `);
+  });
+
+  it('throws on empty content', () => {
+    expect(() => source('', 'validFn')).toThrow(EmissionValidationError);
+  });
+
+  it('throws on whitespace-only content', () => {
+    expect(() => source('   ', 'validFn')).toThrow(EmissionValidationError);
+  });
+
+  it('throws on invalid function name', () => {
+    expect(() => source('echo test', '123invalid')).toThrow(EmissionValidationError);
   });
 });
 

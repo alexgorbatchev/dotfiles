@@ -46,6 +46,9 @@ class MockFormatter implements IEmissionFormatter {
       case 'script': {
         return emission.content;
       }
+      case 'source': {
+        return `${emission.functionName}() {\n  ${emission.content}\n}\nsource <(${emission.functionName})\nunset -f ${emission.functionName}`;
+      }
       case 'sourceFile': {
         return `source "${emission.path}"`;
       }

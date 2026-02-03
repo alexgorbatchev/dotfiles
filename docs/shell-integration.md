@@ -28,6 +28,7 @@ For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), u
     .completions('completions/_tool')   // Completion file path
     .sourceFile('shell/init.zsh')       // Source a file (skips if missing)
     .sourceFunction('myFunc')           // Source output of a function (source <(myFunc))
+    .source('tool env --shell zsh')     // Source output of inline shell code
     .always(`eval "$(tool init)"`)      // Run every shell startup
     .once(`tool gen-completions`)       // Run once after install
 )
@@ -144,6 +145,38 @@ source <(initFnm)
 - `.sourceFunction()` emits `source <(fnName)` directly without any wrapping
 - The function's stdout is sourced as shell code, running in the current shell
 - Type-safe: only accepts function names defined via `.functions()`
+
+### `.source()` - Source Inline Shell Code Output
+
+Source the output of inline shell code without defining a named function. The content must **print shell code to stdout** - this output is then sourced.
+
+```typescript
+.zsh((shell) =>
+  shell
+    // fnm env prints shell code like "export PATH=..."
+    .source('fnm env --use-on-cd')
+    // Or echo shell code directly
+    .source('echo "export MY_VAR=value"')
+)
+```
+
+**Generated output (zsh/bash):**
+
+```zsh
+__dotfiles_source_mytool_0() {
+  fnm env --use-on-cd
+}
+source <(__dotfiles_source_mytool_0)
+unset -f __dotfiles_source_mytool_0
+```
+
+Use `.source()` when:
+
+- You need to source command output inline without a named function
+- The command prints shell code that should be executed in the current shell
+- You don't need to call the function by name elsewhere
+
+For reusable functions, use `.functions()` + `.sourceFunction()` instead.
 
 ## Script Timing
 

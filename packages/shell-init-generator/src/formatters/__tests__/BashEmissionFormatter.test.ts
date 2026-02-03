@@ -5,6 +5,7 @@ import {
   fn,
   path,
   script,
+  source,
   sourceFile,
   sourceFunction,
 } from '@dotfiles/shell-emissions';
@@ -91,6 +92,21 @@ describe('BashEmissionFormatter', () => {
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"source <(myFunc)"`);
+    });
+  });
+
+  describe('formatSource', () => {
+    it('should format source emission with inline content', () => {
+      const emission = source('echo "hello"', '__dotfiles_test_0');
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`
+        "__dotfiles_test_0() {
+          echo "hello"
+        }
+        source <(__dotfiles_test_0)
+        unset -f __dotfiles_test_0"
+      `);
     });
   });
 

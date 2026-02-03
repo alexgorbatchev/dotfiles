@@ -6,6 +6,7 @@ import type {
   FunctionEmission,
   PathEmission,
   ScriptEmission,
+  SourceEmission,
   SourceFileEmission,
   SourceFunctionEmission,
 } from '../types';
@@ -43,6 +44,13 @@ export function isScriptEmission(e: Emission): e is ScriptEmission {
  */
 export function isSourceFileEmission(e: Emission): e is SourceFileEmission {
   return e.kind === 'sourceFile';
+}
+
+/**
+ * Type guard for source emission (inline content).
+ */
+export function isSourceEmission(e: Emission): e is SourceEmission {
+  return e.kind === 'source';
 }
 
 /**

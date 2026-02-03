@@ -22,6 +22,7 @@ export class ShellConfigurator implements IShellConfigurator<string> {
   private readonly logger: TsLogger;
   private readonly toolName: string;
   private sourceFileCounter = 0;
+  private sourceCounter = 0;
 
   constructor(
     storage: IShellStorage,
@@ -82,6 +83,23 @@ export class ShellConfigurator implements IShellConfigurator<string> {
   }
 
   /** @inheritdoc */
+  public source(content: string): IShellConfigurator<string> {
+    const functionName = this.generateSourceFunctionName();
+
+    // Create a function with the inline content
+    // Unlike sourceFile, this doesn't check for file existence - it just outputs the content
+    this.storage.functions[functionName] = content;
+
+    // Add raw scripts to source the function output and then unset the function
+    const sourceCommand = this.createSourceFunctionCommand(functionName);
+    const unsetCommand = this.createUnsetFunctionCommand(functionName);
+    this.storage.scripts.push(raw(sourceCommand));
+    this.storage.scripts.push(raw(unsetCommand));
+
+    return this;
+  }
+
+  /** @inheritdoc */
   public completions(completion: ShellCompletionConfigInput): IShellConfigurator<string> {
     // Store the raw resolvable input - resolution happens at generation time
     // when version and other context properties are available
@@ -136,6 +154,16 @@ export class ShellConfigurator implements IShellConfigurator<string> {
     const counter = this.sourceFileCounter++;
     const sanitizedToolName = this.toolName.replace(/[^a-zA-Z0-9]/gu, '_');
     return `__dotfiles_source_${sanitizedToolName}_${counter}`;
+  }
+
+  /**
+   * Generates a unique function name for source operations.
+   * Uses a prefix that indicates it's an internal function and should be unset after use.
+   */
+  private generateSourceFunctionName(): string {
+    const counter = this.sourceCounter++;
+    const sanitizedToolName = this.toolName.replace(/[^a-zA-Z0-9]/gu, '_');
+    return `__dotfiles_source_inline_${sanitizedToolName}_${counter}`;
   }
 
   /**

@@ -6,6 +6,7 @@ export type EmissionKind =
   | 'alias'
   | 'function'
   | 'script'
+  | 'source'
   | 'sourceFile'
   | 'sourceFunction'
   | 'completion'
@@ -81,6 +82,21 @@ export interface SourceFileEmission extends BaseEmission {
 }
 
 /**
+ * Sources inline content via a temporary function.
+ * Generates:
+ *   tempFunctionName() { <content> }
+ *   source <(tempFunctionName)
+ *   unset -f tempFunctionName
+ */
+export interface SourceEmission extends BaseEmission {
+  readonly kind: 'source';
+  /** Inline content to source */
+  readonly content: string;
+  /** Generated unique function name for this source emission */
+  readonly functionName: string;
+}
+
+/**
  * Sources output of a previously defined function.
  */
 export interface SourceFunctionEmission extends BaseEmission {
@@ -145,6 +161,7 @@ export type Emission =
   | AliasEmission
   | FunctionEmission
   | ScriptEmission
+  | SourceEmission
   | SourceFileEmission
   | SourceFunctionEmission
   | CompletionEmission

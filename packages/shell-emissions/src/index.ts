@@ -11,6 +11,7 @@ export type {
   PathOptions,
   ScriptEmission,
   ScriptTiming,
+  SourceEmission,
   SourceFileEmission,
   SourceFunctionEmission,
 } from './types/emissions';
@@ -34,6 +35,7 @@ export {
   fn,
   path,
   script,
+  source,
   sourceFile,
   sourceFunction,
   withPriority,
@@ -49,6 +51,7 @@ export {
   isHoisted,
   isPathEmission,
   isScriptEmission,
+  isSourceEmission,
   isSourceFileEmission,
   isSourceFunctionEmission,
 } from './emissions/guards';
