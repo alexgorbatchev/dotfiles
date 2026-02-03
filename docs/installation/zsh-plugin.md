@@ -129,7 +129,7 @@ export default defineTool((install) =>
     repo: 'jeffreytse/zsh-vi-mode',
   })
     .zsh((shell) =>
-      shell.environment({
+      shell.env({
         ZVM_VI_INSERT_ESCAPE_BINDKEY: 'jj',
         ZVM_CURSOR_STYLE_ENABLED: 'false',
       })

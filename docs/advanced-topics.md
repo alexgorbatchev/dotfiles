@@ -36,7 +36,7 @@ export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .version(isDev ? 'latest' : 'v1.2.3')
-    .zsh((shell) => shell.environment({ TOOL_LOG_LEVEL: isDev ? 'debug' : 'info' }))
+    .zsh((shell) => shell.env({ TOOL_LOG_LEVEL: isDev ? 'debug' : 'info' }))
 );
 ```
 

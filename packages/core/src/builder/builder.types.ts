@@ -158,11 +158,11 @@ export interface IShellConfigurator<KnownFunctions extends string = never> {
    * Sets environment variables for the shell.
    *
    * **Note**: To modify PATH, use `shell.path()` instead. Setting PATH via
-   * environment() is prohibited to ensure proper deduplication.
+   * env() is prohibited to ensure proper deduplication.
    *
    * @param values - A record of environment variable names and values.
    */
-  environment<T extends Record<string, string>>(
+  env<T extends Record<string, string>>(
     values: 'PATH' extends keyof T ? ['ERROR: Use shell.path() to modify PATH'] : T,
   ): IShellConfigurator<KnownFunctions>;
 

@@ -38,7 +38,7 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'junegunn/fzf' })
     .bin('fzf')
     .zsh((shell) =>
-      shell.environment({ FZF_DEFAULT_OPTS: '--color=fg+:cyan' }).completions('shell/completion.zsh').always(/* zsh */ `
+      shell.env({ FZF_DEFAULT_OPTS: '--color=fg+:cyan' }).completions('shell/completion.zsh').always(/* zsh */ `
           if [[ -f "${ctx.currentDir}/shell/key-bindings.zsh" ]]; then
             source "${ctx.currentDir}/shell/key-bindings.zsh"
           fi
@@ -54,10 +54,10 @@ export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) =>
-      shell.completions('completions/_tool').environment({ TOOL_CONFIG: '~/.config/tool' }).aliases({ t: 'tool' })
+      shell.completions('completions/_tool').env({ TOOL_CONFIG: '~/.config/tool' }).aliases({ t: 'tool' })
     )
     .bash((shell) =>
-      shell.completions('completions/tool.bash').environment({ TOOL_CONFIG: '~/.config/tool' }).aliases({ t: 'tool' })
+      shell.completions('completions/tool.bash').env({ TOOL_CONFIG: '~/.config/tool' }).aliases({ t: 'tool' })
     )
 );
 ```
@@ -134,7 +134,7 @@ export default defineTool((install) =>
 export default defineTool((install) =>
   install()
     .symlink('./gitconfig', '~/.gitconfig')
-    .zsh((shell) => shell.aliases({ g: 'git', gs: 'git status', ga: 'git add' }).environment({ GIT_EDITOR: 'nvim' }))
+    .zsh((shell) => shell.aliases({ g: 'git', gs: 'git status', ga: 'git add' }).env({ GIT_EDITOR: 'nvim' }))
 );
 ```
 

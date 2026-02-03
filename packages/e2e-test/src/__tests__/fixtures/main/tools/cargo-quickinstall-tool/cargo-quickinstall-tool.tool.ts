@@ -8,7 +8,7 @@ export default defineTool((install) =>
     .version('latest')
     .zsh((shell) =>
       shell
-        .environment({
+        .env({
           CARGO_QUICKINSTALL_TOOL_DEFAULT_OPTS: '--color=fg',
           CARGO_QUICKINSTALL_TOOL_OTHER_OPTS: '--arg=1',
         })

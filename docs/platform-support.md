@@ -93,14 +93,14 @@ export default defineTool((install) =>
     .bin('tool')
     .platform(Platform.Unix, (install) =>
       install().zsh((shell) =>
-        shell.environment({
+        shell.env({
           TOOL_CONFIG: '~/.config/tool',
         })
       ))
     .platform(Platform.Windows, (install) =>
       install().powershell((shell) =>
-        shell.environment({
-          TOOL_CONFIG: '~\.config\tool',
+        shell.env({
+          TOOL_CONFIG: '~\\.config\\tool',
         })
       ))
 );

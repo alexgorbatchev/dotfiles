@@ -115,7 +115,7 @@ export default defineTool((install, ctx) =>
         // Add custom directories to PATH
         .path((ctx) => `${ctx.installDir}/bin`)
         // Set environment variables (PATH is prohibited here - use .path() instead)
-        .environment({
+        .env({
           RIPGREP_CONFIG_PATH: '~/.ripgreprc',
         })
         .aliases({

@@ -20,7 +20,7 @@ export default defineTool((install, ctx) => {
     })
     .zsh((shell) =>
       shell
-        .environment({
+        .env({
           NAVI_CONFIG: `${ctx.toolDir}/config.yaml`,
         })
         .always(/* zsh */ `

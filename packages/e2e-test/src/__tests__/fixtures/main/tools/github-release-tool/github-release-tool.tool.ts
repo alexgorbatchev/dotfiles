@@ -8,7 +8,7 @@ export default defineTool((install) =>
     .version('latest')
     .zsh((shell) =>
       shell
-        .environment({
+        .env({
           GITHUB_RELEASE_TOOL_DEFAULT_OPTS: '--color=fg',
           GITHUB_RELEASE_TOOL_OTHER_OPTS: '--arg=1',
         })

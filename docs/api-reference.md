@@ -79,7 +79,7 @@ The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
 .zsh((shell) =>
   shell
     .completions('completions/_tool')
-    .environment({ VAR: 'value' })
+    .env({ VAR: 'value' })
     .aliases({ t: 'tool' })
     .always(/* zsh */`
       function my-func() { tool "$@"; }
@@ -87,17 +87,17 @@ The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
 )
 ```
 
-| Shell Method                               | Description                                                                                   |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `.completions(path \| config \| callback)` | Completion file, config object, or callback with `ctx.version` (generated after install only) |
-| `.environment(obj)`                        | Environment variables (PATH prohibited - use `.path()`)                                       |
-| `.path(dir)`                               | Add directory to PATH (deduplicated)                                                          |
-| `.aliases(obj)`                            | Shell aliases                                                                                 |
-| `.functions(obj)`                          | Shell functions                                                                               |
-| `.sourceFile(path)`                        | Source a file (skips if missing)                                                              |
-| `.sourceFunction(name)`                    | Source output of a function defined via `.functions()`                                        |
-| `.always(script)`                          | Script run on every shell init                                                                |
-| `.once(script)`                            | Script run once after install                                                                 |
+| Shell Method                                 | Description                                                                                   |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `.completions(path \\| config \\| callback)` | Completion file, config object, or callback with `ctx.version` (generated after install only) |
+| `.env(obj)`                                  | Environment variables (PATH prohibited - use `.path()`)                                       |
+| `.path(dir)`                                 | Add directory to PATH (deduplicated)                                                          |
+| `.aliases(obj)`                              | Shell aliases                                                                                 |
+| `.functions(obj)`                            | Shell functions                                                                               |
+| `.sourceFile(path)`                          | Source a file (skips if missing)                                                              |
+| `.sourceFunction(name)`                      | Source output of a function defined via `.functions()`                                        |
+| `.always(script)`                            | Script run on every shell init                                                                |
+| `.once(script)`                              | Script run once after install                                                                 |
 
 **Completions examples:**
 

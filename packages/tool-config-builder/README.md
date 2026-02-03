@@ -41,7 +41,7 @@ Interface for configuring shell-specific settings within `zsh()`, `bash()`, or `
 
 ```typescript
 interface IShellConfigurator<KnownFunctions extends string = never> {
-  environment(variables: EnvironmentVariables): this;
+  env(variables: EnvironmentVariables): this;
   alias(name: string, value: string): this;
   function(name: string, body: string): this;
   eval(expression: string): this;
@@ -217,7 +217,7 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
       shell.path((ctx) => `${ctx.installDir}/bin`);
 
       // Set environment variables (PATH is prohibited - use .path() instead)
-      shell.environment({
+      shell.env({
         FZF_DEFAULT_OPTS: '--height 40% --layout=reverse',
       });
 

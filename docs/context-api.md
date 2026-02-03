@@ -50,7 +50,7 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) =>
-      shell.environment({
+      shell.env({
         TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`,
       })
     )

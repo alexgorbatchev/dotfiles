@@ -99,7 +99,7 @@ describe('E2E: type safety', () => {
           .version('0.24.0')
           .zsh((shell) =>
             shell
-              .environment({
+              .env({
                 BAT_THEME: 'ansi',
               })
               .aliases({

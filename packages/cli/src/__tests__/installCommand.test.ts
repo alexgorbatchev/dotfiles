@@ -119,7 +119,7 @@ describe('installCommand', () => {
   test('should skip installation for configuration-only tool configs', async () => {
     const install = createInstallFunction(testLogger, 'config-tool');
     const configOnlyToolConfig = install()
-      .zsh((shell) => shell.environment({ CONFIG_ONLY: '1' }))
+      .zsh((shell) => shell.env({ CONFIG_ONLY: '1' }))
       .build();
 
     mockConfigService.loadSingleToolConfig.mockResolvedValue(configOnlyToolConfig);

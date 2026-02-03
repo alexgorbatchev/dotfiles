@@ -37,7 +37,7 @@ The installer has built-in recursion guards. If you see this, check that your in
 
 1. Source shell scripts: `source ~/.generated/shell-scripts/main.zsh`
 2. Check for syntax errors: `zsh -n ~/.generated/shell-scripts/main.zsh`
-3. Use declarative `.environment()` instead of inline exports
+3. Use declarative `.env()` instead of inline exports
 
 ### Completions Not Loading
 

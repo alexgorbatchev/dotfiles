@@ -7,7 +7,7 @@ export default defineTool((install, _ctx) =>
     .bin('hermit')
     .zsh((shell) =>
       shell
-        .environment({
+        .env({
           HERMIT_ROOT_BIN: '~/bin/hermit',
         })
         .always(/* zsh */ `

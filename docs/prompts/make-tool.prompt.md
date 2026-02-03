@@ -148,7 +148,7 @@ install('github-release', { repo: 'owner/tool' })
   .bin('tool')
   .zsh((shell) =>
     shell
-      .environment({
+      .env({
         TOOL_HOME: ctx.currentDir,
         TOOL_CONFIG_DIR: ctx.toolDir,
       })
@@ -186,7 +186,7 @@ install('github-release', { repo: 'owner/tool' })
 
 **Shell Configurator Methods**:
 
-- `.environment(record)` - Set environment variables (PATH prohibited - use `.path()`)
+- `.env(record)` - Set environment variables (PATH prohibited - use `.path()`)
 - `.path(dir)` - Add directory to PATH (deduplicated)
 - `.aliases(record)` - Set command aliases
 - `.completions(path | config)` - Set command completions
@@ -492,7 +492,7 @@ export default defineTool((install) =>
     .bin('fzf')
     .zsh((shell) =>
       shell
-        .environment({
+        .env({
           FZF_DEFAULT_OPTS: '--color=fg+:cyan,bg+:black,hl+:yellow',
         })
         .aliases({ f: 'fzf' })
@@ -591,7 +591,7 @@ export default defineTool((install) =>
     .bin('kubectl')
     .zsh((shell) =>
       shell
-        .environment({
+        .env({
           KUBECONFIG: '~/.kube/config',
         })
         .aliases({
@@ -628,7 +628,7 @@ export default defineTool((install) =>
     .bin('zoxide')
     .zsh((shell) =>
       shell
-        .environment({
+        .env({
           _ZO_DATA_DIR: '~/.local/share/zoxide',
         })
         .completions({ cmd: 'zoxide completions zsh' }).always(/* zsh */ `
@@ -654,7 +654,7 @@ export default defineTool((install) =>
     repo: 'jeffreytse/zsh-vi-mode',
   })
     .zsh((shell) =>
-      shell.environment({
+      shell.env({
         ZVM_VI_INSERT_ESCAPE_BINDKEY: 'jj',
         ZVM_CURSOR_STYLE_ENABLED: 'false',
       })

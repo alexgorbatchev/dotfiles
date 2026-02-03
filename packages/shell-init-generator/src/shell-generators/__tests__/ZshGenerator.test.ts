@@ -37,7 +37,7 @@ describe('ZshGenerator', () => {
         version: '1.0.0',
         shellConfigs: {
           zsh: {
-            environment: {
+            env: {
               TEST_VAR: 'value1',
               DEBUG: 'true',
             },
@@ -291,7 +291,7 @@ describe('ZshGenerator', () => {
         version: '1.0.0',
         shellConfigs: {
           zsh: {
-            environment: { TEST_VAR: 'value' },
+            env: { TEST_VAR: 'value' },
             aliases: { t: 'test' },
           },
         },

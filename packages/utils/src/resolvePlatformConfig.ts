@@ -94,10 +94,10 @@ function mergeShellConfig(
     targetShellConfig.aliases = { ...targetShellConfig.aliases, ...platformShellConfig.aliases };
   }
 
-  if (platformShellConfig.environment) {
-    targetShellConfig.environment = {
-      ...targetShellConfig.environment,
-      ...platformShellConfig.environment,
+  if (platformShellConfig.env) {
+    targetShellConfig.env = {
+      ...targetShellConfig.env,
+      ...platformShellConfig.env,
     };
   }
 }

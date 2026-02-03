@@ -22,7 +22,7 @@ For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), u
 ```typescript
 .zsh((shell) =>
   shell
-    .environment({ VAR: 'value' })      // Environment variables (PATH prohibited)
+    .env({ VAR: 'value' })              // Environment variables (PATH prohibited)
     .path('$HOME/.local/bin')            // Add directory to PATH
     .aliases({ t: 'tool' })             // Shell aliases
     .functions({ myFunc: 'cmd' })       // Shell functions
@@ -43,7 +43,7 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .zsh((shell) =>
       shell
-        .environment({ TOOL_HOME: ctx.currentDir })
+        .env({ TOOL_HOME: ctx.currentDir })
         .path(`${ctx.currentDir}/bin`) // Add tool's bin directory to PATH
         .aliases({ t: 'tool', ts: 'tool status' })
         .completions('completions/_tool')
@@ -68,13 +68,13 @@ Add a directory to the PATH environment variable. Paths are deduplicated during 
 )
 ```
 
-**Why use `.path()` instead of `.environment({ PATH: ... })`?**
+**Why use `.path()` instead of `.env({ PATH: ... })`?**
 
 - Paths are automatically deduplicated across all tools
 - Proper ordering is maintained (prepended to PATH by default)
-- TypeScript prevents using `PATH` in `.environment()` with a clear error message
+- TypeScript prevents using `PATH` in `.env()` with a clear error message
 
-**Note**: Setting `PATH` via `.environment({ PATH: '...' })` is prohibited. Use `.path()` instead.
+**Note**: Setting `PATH` via `.env({ PATH: '...' })` is prohibited. Use `.path()` instead.
 
 ## Shell Functions
 
@@ -238,7 +238,7 @@ Share configuration across shells using the outer `ctx` from `defineTool`:
 
 ```typescript
 export default defineTool((install, ctx) => {
-  const configureShell = (shell) => shell.environment({ TOOL_HOME: ctx.currentDir }).aliases({ t: 'tool' });
+  const configureShell = (shell) => shell.env({ TOOL_HOME: ctx.currentDir }).aliases({ t: 'tool' });
 
   return install('github-release', { repo: 'owner/tool' }).bin('tool').zsh(configureShell).bash(configureShell);
 });
@@ -253,7 +253,7 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) =>
-      shell.environment({
+      shell.env({
         TOOL_CONFIG: ctx.toolDir, // Tool config directory
         TOOL_DATA: '~/.local/share/tool',
       }).always(`
@@ -266,7 +266,7 @@ export default defineTool((install, ctx) =>
 
 ## Best Practices
 
-- Use declarative methods (`.environment()`, `.aliases()`) for simple config
+- Use declarative methods (`.env()`, `.aliases()`) for simple config
 - Use `.always()` for fast runtime setup only
 - Use `.once()` for expensive operations (completion generation, cache building)
 - Use context variables for all paths - never hardcode
@@ -315,7 +315,7 @@ export default defineTool((install) =>
     .symlink('./config.toml', '~/.config/my-tool/config.toml')
     .symlink('./themes/', '~/.config/my-tool/themes')
     .zsh((shell) =>
-      shell.environment({
+      shell.env({
         MY_TOOL_CONFIG: '~/.config/my-tool/config.toml',
       })
     )

@@ -45,7 +45,7 @@ export default defineTool((install, ctx) =>
     .bin('rg')
     .dependsOn('pcre2')
     .symlink('./ripgreprc', '~/.ripgreprc')
-    .zsh((shell) => shell.environment({ RIPGREP_CONFIG_PATH: '~/.ripgreprc' }).aliases({ rgi: 'rg -i' }))
+    .zsh((shell) => shell.env({ RIPGREP_CONFIG_PATH: '~/.ripgreprc' }).aliases({ rgi: 'rg -i' }))
 );
 ```
 
@@ -89,7 +89,7 @@ import { Architecture, defineTool, Platform } from '@gitea/dotfiles';
 Tools that only contribute shell configuration (no binary installation):
 
 ```typescript
-export default defineTool((install) => install().zsh((shell) => shell.environment({ FOO: 'bar' })));
+export default defineTool((install) => install().zsh((shell) => shell.env({ FOO: 'bar' })));
 ```
 
 ### Auto-Generated Types

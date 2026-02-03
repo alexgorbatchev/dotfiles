@@ -161,7 +161,7 @@ export default defineTool((install, ctx) =>
       .aliases({
         ll: 'ls -la',
       })
-      .environment({
+      .env({
         EDITOR: 'vim',
       })
   )

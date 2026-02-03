@@ -2,12 +2,12 @@ import { defineTool } from '@gitea/dotfiles';
 import { expectError } from 'tsd';
 
 // Valid: setting normal environment variables
-defineTool((install) => install().zsh((shell) => shell.environment({ NODE_ENV: 'production' })));
+defineTool((install) => install().zsh((shell) => shell.env({ NODE_ENV: 'production' })));
 
 // Valid: setting multiple environment variables
 defineTool((install) =>
   install().zsh((shell) =>
-    shell.environment({
+    shell.env({
       NODE_ENV: 'production',
       DEBUG: 'true',
       HOME_DIR: '/home/user',
@@ -15,7 +15,7 @@ defineTool((install) =>
   )
 );
 
-// Invalid: PATH must be set via shell.path(), not environment()
+// Invalid: PATH must be set via shell.path(), not env()
 // Type error: Types of property 'PATH' are incompatible (string vs never)
 expectError(defineTool((install) => install().zsh((shell) => shell.environment({ PATH: '/usr/bin' }))));
 
@@ -23,7 +23,7 @@ expectError(defineTool((install) => install().zsh((shell) => shell.environment({
 expectError(
   defineTool((install) =>
     install().zsh((shell) =>
-      shell.environment({
+      shell.env({
         NODE_ENV: 'production',
         PATH: '/usr/bin',
       })

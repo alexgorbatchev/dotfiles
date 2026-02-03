@@ -8,7 +8,7 @@ export default defineTool((install, ctx) =>
     .symlink('config.kdl', '~/.config/zellij/config.kdl')
     .zsh((shell) =>
       shell
-        .environment({
+        .env({
           ZELLIJ_CONFIG_DIR: `${ctx.toolDir}`,
         })
         .aliases({

@@ -9,7 +9,7 @@ export default defineTool((install, ctx) =>
     .bin('ya', 'yazi-*/ya')
     .zsh((shell) =>
       shell
-        .environment({
+        .env({
           YAZI_CONFIG_HOME: `${ctx.toolDir}/config`,
         })
         .functions({

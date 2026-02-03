@@ -34,7 +34,7 @@ export default defineTool((install) => install('github-release', { repo: 'BurntS
 
 ```typescript
 .zsh((shell) =>
-  shell.environment({
+  shell.env({
     TOOL_HOME: '~/.local/share/tool'
   })
 )
@@ -75,7 +75,7 @@ export default defineTool((install) => install('github-release', { repo: 'BurntS
 
 1. Create tool directory and `.tool.ts` file
 2. Map installation method (github-release, brew, etc.)
-3. Extract environment variables to `.environment()`
+3. Extract environment variables to `.env()`
 4. Extract aliases to `.aliases()`
 5. Keep complex functions in `.always()` or `.once()`
 6. Replace hardcoded paths with context variables

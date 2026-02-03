@@ -44,7 +44,7 @@ type InstallParams = IInstallParamsRegistry[InstallMethod];
  *   .bin('node')
  *   .bin('npm')
  *   .install('github-release', { repo: 'nodejs/node' })
- *   .zsh((shell) => shell.environment({ NODE_ENV: 'development' }))
+ *   .zsh((shell) => shell.env({ NODE_ENV: 'development' }))
  *   .platform(Platform.Windows, (p) => {
  *     p.install('manual', {
  *       // ... windows specific install
@@ -66,9 +66,9 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
 
   // Organized shell storage matching final ToolConfig structure
   private internalShellConfigs: InternalShellConfigs = {
-    zsh: { scripts: [], aliases: {}, environment: {}, functions: {}, paths: [] },
-    bash: { scripts: [], aliases: {}, environment: {}, functions: {}, paths: [] },
-    powershell: { scripts: [], aliases: {}, environment: {}, functions: {}, paths: [] },
+    zsh: { scripts: [], aliases: {}, env: {}, functions: {}, paths: [] },
+    bash: { scripts: [], aliases: {}, env: {}, functions: {}, paths: [] },
+    powershell: { scripts: [], aliases: {}, env: {}, functions: {}, paths: [] },
   };
   private context?: IToolConfigContext;
 
@@ -223,19 +223,19 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       const config = this.internalShellConfigs[shellType];
       const hasScripts = config.scripts.length > 0;
       const hasAliases = Object.keys(config.aliases).length > 0;
-      const hasEnvironment = Object.keys(config.environment).length > 0;
+      const hasEnv = Object.keys(config.env).length > 0;
       const hasFunctions = Object.keys(config.functions).length > 0;
       const hasPaths = config.paths.length > 0;
       const hasCompletions = config.completions !== undefined;
 
-      const hasAnyShellConfig = hasScripts || hasAliases || hasEnvironment || hasFunctions || hasPaths ||
+      const hasAnyShellConfig = hasScripts || hasAliases || hasEnv || hasFunctions || hasPaths ||
         hasCompletions;
 
       if (hasAnyShellConfig) {
         result[shellType] = {
           ...(hasScripts && { scripts: config.scripts }),
           ...(hasAliases && { aliases: config.aliases }),
-          ...(hasEnvironment && { environment: config.environment }),
+          ...(hasEnv && { env: config.env }),
           ...(hasFunctions && { functions: config.functions }),
           ...(hasPaths && { paths: config.paths }),
           ...(hasCompletions && { completions: config.completions }),

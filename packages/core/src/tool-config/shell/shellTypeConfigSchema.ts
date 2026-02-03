@@ -16,7 +16,7 @@ export const shellTypeConfigSchema = z
     /** Shell aliases (alias name -> command) */
     aliases: z.record(z.string(), z.string()).optional(),
     /** Environment variables to define (variable name -> value) */
-    environment: z.record(z.string(), z.string()).optional(),
+    env: z.record(z.string(), z.string()).optional(),
     /** Shell functions (function name -> body) */
     functions: z.record(z.string(), z.string()).optional(),
     /** Paths to add to PATH environment variable */
@@ -40,7 +40,7 @@ export interface ShellTypeConfig {
   /** Shell aliases (alias name -> command) */
   aliases?: Record<string, string>;
   /** Environment variables to define (variable name -> value) */
-  environment?: Record<string, string>;
+  env?: Record<string, string>;
   /** Shell functions (function name -> body) */
   functions?: Record<string, string>;
   /**

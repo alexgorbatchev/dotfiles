@@ -14,7 +14,7 @@ export default defineTool((install) =>
     .bin('auto-install-tool')
     .version('latest')
     .zsh((shell) =>
-      shell.environment({
+      shell.env({
         AUTO_INSTALL_TOOL_HOME: '~/.auto-install-tool',
       })
     )

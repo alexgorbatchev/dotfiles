@@ -25,7 +25,7 @@ export interface IShellStorage {
   /**
    * Map of environment variable names to their values.
    */
-  environment: Record<string, string>;
+  env: Record<string, string>;
 
   /**
    * Map of function names to their bodies.

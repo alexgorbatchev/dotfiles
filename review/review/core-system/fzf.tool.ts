@@ -7,7 +7,7 @@ export default defineTool((install, _ctx) =>
     .bin('fzf')
     .zsh((shell) =>
       shell
-        .environment({
+        .env({
           FZF_DEFAULT_OPTS: '--color=fg+:cyan,bg+:black,hl+:yellow,pointer:blue',
         })
         .always(/* zsh */ `

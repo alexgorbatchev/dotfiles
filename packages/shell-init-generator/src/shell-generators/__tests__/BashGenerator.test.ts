@@ -33,7 +33,7 @@ describe('BashGenerator', () => {
         version: '1.0.0',
         shellConfigs: {
           bash: {
-            environment: {
+            env: {
               MY_VAR: 'my_value',
             },
           },
@@ -117,7 +117,7 @@ describe('BashGenerator', () => {
         version: '1.0.0',
         shellConfigs: {
           bash: {
-            environment: { BASH_VAR: 'value' },
+            env: { BASH_VAR: 'value' },
           },
         },
         installationMethod: 'manual',

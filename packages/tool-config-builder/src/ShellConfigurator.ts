@@ -40,11 +40,11 @@ export class ShellConfigurator implements IShellConfigurator<string> {
   }
 
   /** @inheritdoc */
-  public environment<T extends Record<string, string>>(
+  public env<T extends Record<string, string>>(
     values: 'PATH' extends keyof T ? ['ERROR: Use shell.path() to modify PATH'] : T,
   ): IShellConfigurator<string> {
-    this.storage.environment = {
-      ...this.storage.environment,
+    this.storage.env = {
+      ...this.storage.env,
       ...(values as Record<string, string>),
     };
     return this;

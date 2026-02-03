@@ -64,8 +64,8 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     const shellConfig = this.getShellConfig(toolConfig);
 
     // Process environment variables
-    if (shellConfig?.environment) {
-      const envEmission = environment(shellConfig.environment);
+    if (shellConfig?.env) {
+      const envEmission = environment(shellConfig.env);
       emissions.push(source ? withSource(envEmission, source) : envEmission);
     }
 
@@ -204,7 +204,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     }
 
     return Boolean(
-      shellConfig.environment && Object.keys(shellConfig.environment).length > 0 ||
+      shellConfig.env && Object.keys(shellConfig.env).length > 0 ||
         shellConfig.aliases && Object.keys(shellConfig.aliases).length > 0 ||
         shellConfig.functions && Object.keys(shellConfig.functions).length > 0 ||
         shellConfig.scripts && shellConfig.scripts.length > 0 ||

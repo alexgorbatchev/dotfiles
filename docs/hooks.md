@@ -300,7 +300,7 @@ export default defineTool((install, ctx) =>
       log.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
     .zsh((shell) =>
-      shell.environment({ CUSTOM_TOOL_DATA: '~/.local/share/custom-tool' }).aliases({ ct: 'custom-tool' })
+      shell.env({ CUSTOM_TOOL_DATA: '~/.local/share/custom-tool' }).aliases({ ct: 'custom-tool' })\n    )
     )
 );
 ```

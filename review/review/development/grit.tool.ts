@@ -6,7 +6,7 @@ export default defineTool((install, _ctx) =>
   })
     .bin('grit', 'grit')
     .zsh((shell) =>
-      shell.environment({
+      shell.env({
         GRIT_TELEMETRY_DISABLED: 'true',
       })
     )

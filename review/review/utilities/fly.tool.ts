@@ -8,7 +8,7 @@ export default defineTool((install, _ctx) =>
     .bin('fly')
     .zsh((shell) =>
       shell
-        .environment({
+        .env({
           FLYCTL_INSTALL: '$HOME/.fly',
         })
         .always(/* zsh */ `

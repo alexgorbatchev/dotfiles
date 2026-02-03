@@ -33,7 +33,7 @@ describe('PowerShellGenerator', () => {
         version: '1.0.0',
         shellConfigs: {
           powershell: {
-            environment: {
+            env: {
               PS_VAR: 'ps_value',
             },
           },
@@ -117,7 +117,7 @@ describe('PowerShellGenerator', () => {
         version: '1.0.0',
         shellConfigs: {
           powershell: {
-            environment: { PS_VAR: 'value' },
+            env: { PS_VAR: 'value' },
           },
         },
         installationMethod: 'manual',
