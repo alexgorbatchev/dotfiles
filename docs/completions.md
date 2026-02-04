@@ -13,12 +13,12 @@ Tab completions are configured per-shell using `.completions()`:
 
 ## Configuration Options
 
-| Property | Description                                                                                  |
-| -------- | -------------------------------------------------------------------------------------------- |
-| `source` | Path to completion file (relative to toolDir, or absolute path within extracted archive)     |
-| `url`    | URL to download completion file or archive from                                              |
-| `cmd`    | Command to generate completions dynamically                                                  |
-| `bin`    | Binary name for completion filename (when different from tool name)                          |
+| Property | Description                                                                              |
+| -------- | ---------------------------------------------------------------------------------------- |
+| `source` | Path to completion file (relative to toolDir, or absolute path within extracted archive) |
+| `url`    | URL to download completion file or archive from                                          |
+| `cmd`    | Command to generate completions dynamically                                              |
+| `bin`    | Binary name for completion filename (when different from tool name)                      |
 
 **Note**: Use one of these combinations:
 

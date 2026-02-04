@@ -419,6 +419,40 @@ describe('GeneratorOrchestrator', () => {
           const options = firstCall[0] as { config: { url?: string; }; };
           expect(options.config.url).toBe('https://example.com/completions/2.5.0/completion.zsh');
         });
+
+        it('should log WARN when completion generation fails', async () => {
+          const toolName = 'failing-tool';
+
+          (mockCompletionGenerator.generateAndWriteCompletionFile as ReturnType<typeof mock>).mockRejectedValue(
+            new Error('Completion source file not found'),
+          );
+
+          const toolConfig: ToolConfig = {
+            name: toolName,
+            binaries: ['failing-tool'],
+            version: '1.0.0',
+            installationMethod: 'manual',
+            installParams: {},
+            shellConfigs: {
+              zsh: {
+                scripts: [],
+                completions: {
+                  url: 'https://example.com/completions/missing.zsh',
+                },
+              },
+            },
+          };
+
+          await orchestrator.generateCompletionsForTool(toolName, toolConfig);
+
+          // Should log WARN with tool/shell info
+          logger.expect(
+            ['WARN'],
+            ['GeneratorOrchestrator', 'generateCompletionsForTool'],
+            [],
+            ['Failed to generate completion for failing-tool (zsh)'],
+          );
+        });
       });
 
       describe('disabled tools', () => {

@@ -293,10 +293,10 @@ interface IShellScript {
 
 interface IShellCompletionConfig {
   shell: ShellType;
-  source?: string | string[];  // Path to completion file (optional for URL downloads)
-  url?: string;                // URL to download completion file or archive
-  cmd?: string;                // Command to generate completions
-  bin?: string;                // Binary name override for completion filename
+  source?: string | string[]; // Path to completion file (optional for URL downloads)
+  url?: string; // URL to download completion file or archive
+  cmd?: string; // Command to generate completions
+  bin?: string; // Binary name override for completion filename
 }
 ```
 

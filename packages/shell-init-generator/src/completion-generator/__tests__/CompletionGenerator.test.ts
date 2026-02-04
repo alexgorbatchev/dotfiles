@@ -280,4 +280,60 @@ describe('CompletionGenerator', () => {
     const result = await generator.generateCompletionFile(config, 'ripgrep', 'zsh', context);
     expect(result.filename).toBe('_ripgrep');
   });
+
+  describe('URL-based completions', () => {
+    test('should resolve downloaded completion file from toolInstallDir, not toolDir', async () => {
+      // Simulate the scenario from bun.tool.ts:
+      // - configFilePath is in toolDir: /tools/bun/bun.tool.ts
+      // - toolInstallDir is where binaries are: /binaries/bun/current
+      // - URL downloads to toolInstallDir: /binaries/bun/current/bun.zsh
+      // - The source should be found in toolInstallDir, NOT toolDir
+
+      const toolDir = '/tools/bun';
+      const toolInstallDir = '/binaries/bun/current';
+      const downloadedFile = `${toolInstallDir}/bun.zsh`;
+
+      // Create the toolDir (where .tool.ts lives) - file should NOT be here
+      await memFs.fs.ensureDir(toolDir);
+
+      // Create the downloaded file in toolInstallDir (where it would be downloaded)
+      await memFs.fs.ensureDir(toolInstallDir);
+      await memFs.fs.writeFile(downloadedFile, '# bun completion');
+
+      // Create mock downloader that simulates successful download
+      const mockDownloader = {
+        download: async () => Buffer.from(''),
+        downloadToFile: async () => {
+          // File already exists (simulating it was downloaded)
+        },
+        registerStrategy: () => {},
+      };
+
+      const generatorWithDownloader = new CompletionGenerator(logger, memFs.fs, shell, undefined, {
+        downloader: mockDownloader,
+      });
+
+      const config: ShellCompletionConfig = {
+        url: 'https://raw.githubusercontent.com/oven-sh/bun/refs/tags/bun-v1.2.0/completions/bun.zsh',
+        bin: 'bun',
+      };
+
+      const context: ICompletionGenerationContext = {
+        toolName: 'bun',
+        toolInstallDir,
+        shellScriptsDir: '/tmp/shell-scripts',
+        homeDir: '/tmp/home',
+        version: '1.2.0',
+        configFilePath: `${toolDir}/bun.tool.ts`,
+      };
+
+      // This should find the file in toolInstallDir where it was downloaded
+      // Currently FAILS because it looks in toolDir instead
+      const result = await generatorWithDownloader.generateCompletionFile(config, 'bun', 'zsh', context);
+
+      expect(result.generatedBy).toBe('source');
+      expect(result.sourcePath).toBe(downloadedFile);
+      expect(result.filename).toBe('_bun');
+    });
+  });
 });
