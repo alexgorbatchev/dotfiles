@@ -18,7 +18,7 @@
     "cli": "bun run ./cli.ts",
     "proxy": "bun run packages/http-proxy/src/server.ts",
     "check": "bun lint && bun typecheck && bun test",
-    "dashboard": "bun run --watch --hot cli.ts --config test-project/config.ts dashboard"
+    "dashboard": "bun --watch cli.ts --config test-project/config.ts dashboard"
   },
   "devDependencies": {
     "@dprint/json": "^0.21.1",
