@@ -39,8 +39,6 @@ export function registerDashboardCommand(
       const port = parseInt(options.port ?? '3000', 10);
       const host = options.host ?? 'localhost';
 
-      logger.info(messages.dashboardStarting(port));
-
       const services = await servicesFactory();
 
       const dashboardServices: IDashboardServices = {
@@ -56,8 +54,6 @@ export function registerDashboardCommand(
       const server = createDashboardServer(logger, dashboardServices, { port, host });
 
       await server.start();
-
-      logger.info(messages.dashboardRunning(server.getUrl()));
 
       // Keep the process running
       await new Promise<void>((resolve) => {

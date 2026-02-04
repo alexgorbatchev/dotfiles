@@ -29,8 +29,6 @@ export function createDashboardServer(
 
   return {
     async start() {
-      logger.info(messages.serverStarting(options.port));
-
       // IMPORTANT: Change to package directory before starting server.
       // Bun's HTML import generates chunk files (like dashboard-*.js, cli-*.js)
       // that are referenced with relative paths (e.g., "./dashboard-pks45b1c.js").
