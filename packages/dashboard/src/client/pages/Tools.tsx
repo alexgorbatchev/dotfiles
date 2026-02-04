@@ -4,6 +4,7 @@ import type { IToolDetail } from '../../shared/types';
 import { InstallMethodBadge } from '../components/InstallMethodBadge';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { ToolsTreeView } from '../components/ToolsTreeView';
 import { Table, TableBody, TableCell, TableRow } from '../components/ui/Table';
 import { useFetch } from '../hooks/useFetch';
 
@@ -33,6 +34,9 @@ export function Tools(): JSX.Element {
 
       {/* Tools table */}
       <ToolsTable tools={toolsList} />
+
+      {/* Tools tree view */}
+      <ToolsTreeView tools={toolsList} />
 
       {toolsList.length === 0 && <div class='text-center text-muted-foreground py-8'>No tools configured</div>}
     </div>
