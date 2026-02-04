@@ -1,0 +1,2 @@
+# UI tests require running with --preload flags:
+# bun test --preload ./preload/happydom.ts --preload ./preload/testing-library.ts src/client

@@ -7,6 +7,9 @@
     ".": "./src/index.ts",
     "./server": "./src/server/index.ts"
   },
+  "scripts": {
+    "test": "bun test src/server src/shared && bun test --preload ./preload/happydom.ts --preload ./preload/testing-library.ts src/client"
+  },
   "dependencies": {
     "@dotfiles/config": "workspace:*",
     "@dotfiles/core": "workspace:*",
@@ -27,6 +30,7 @@
     "@dotfiles/testing-helpers": "workspace:*",
     "@happy-dom/global-registrator": "^18.0.1",
     "@rageltd/bun-test-utils": "catalog:testing",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/preact": "^3.2.4",
     "@types/bun": "catalog:system",
