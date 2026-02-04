@@ -10,7 +10,7 @@ function Card({ class: className, ...props }: CardProps): JSX.Element {
   return (
     <div
       data-slot='card'
-      class={cn('bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm', className)}
+      class={cn('bg-card text-card-foreground flex flex-col gap-2 rounded-xl border py-6 shadow-sm', className)}
       {...props}
     />
   );

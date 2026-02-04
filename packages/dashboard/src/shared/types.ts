@@ -377,3 +377,26 @@ export interface IToolHistory {
   installedAt: string | null;
   dotfilesDir: string;
 }
+
+/**
+ * Timestamp source for recent tools.
+ */
+export type TimestampSource = 'git' | 'mtime';
+
+/**
+ * Recently added tool file entry.
+ */
+export interface IRecentToolFile {
+  name: string;
+  configFilePath: string;
+  createdAt: string;
+  relativeTime: string;
+  timestampSource: TimestampSource;
+}
+
+/**
+ * Recently added tools response.
+ */
+export interface IRecentTools {
+  tools: IRecentToolFile[];
+}

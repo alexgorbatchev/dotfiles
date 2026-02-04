@@ -1,7 +1,7 @@
 import { type JSX } from 'preact';
 
 import type { IConfigSummary } from '../../shared/types';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { TitledCard } from '../components/ui/TitledCard';
 import { useFetch } from '../hooks/useFetch';
 
 export function Settings(): JSX.Element {
@@ -25,23 +25,18 @@ export function Settings(): JSX.Element {
 
   return (
     <div class='space-y-6'>
-      <Card>
-        <CardHeader>
-          <CardTitle>Project Paths</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div class='space-y-4'>
-            {paths.map((p, i) => (
-              <div key={i}>
-                <div class='text-sm text-muted-foreground mb-1'>{p.label}</div>
-                <code class='text-sm bg-muted px-3 py-2 rounded block overflow-x-auto'>
-                  {p.value || 'Not configured'}
-                </code>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <TitledCard title='Project Paths'>
+        <div class='space-y-4'>
+          {paths.map((p, i) => (
+            <div key={i}>
+              <div class='text-sm text-muted-foreground mb-1'>{p.label}</div>
+              <code class='text-sm bg-muted px-3 py-2 rounded block overflow-x-auto'>
+                {p.value || 'Not configured'}
+              </code>
+            </div>
+          ))}
+        </div>
+      </TitledCard>
     </div>
   );
 }

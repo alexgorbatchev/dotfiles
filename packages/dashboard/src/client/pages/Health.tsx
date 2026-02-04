@@ -2,7 +2,8 @@ import { type JSX } from 'preact';
 
 import type { IHealthStatus } from '../../shared/types';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
+import { TitledCard } from '../components/ui/TitledCard';
 import { useFetch } from '../hooks/useFetch';
 
 export function Health(): JSX.Element {
@@ -48,33 +49,28 @@ export function Health(): JSX.Element {
       </Card>
 
       {/* Individual checks */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Health Checks</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div class='space-y-3'>
-            {health?.checks?.map((check, i) => (
-              <div key={i} class='flex items-start justify-between py-3 border-b border-border'>
-                <div>
-                  <div class='flex items-center space-x-2'>
-                    <Badge variant={checkStatusVariants[check.status] || 'success'}>
-                      {checkIcons[check.status] || checkIcons['pass']}
-                    </Badge>
-                    <span class='font-medium'>{check.name}</span>
-                  </div>
-                  <p class='text-sm text-muted-foreground mt-1'>{check.message}</p>
-                  {(check.details?.length || 0) > 0 && (
-                    <ul class='text-xs text-muted-foreground/70 mt-2 space-y-1'>
-                      {check.details?.map((d, j) => <li key={j}>• {d}</li>)}
-                    </ul>
-                  )}
+      <TitledCard title='Health Checks'>
+        <div class='space-y-3'>
+          {health?.checks?.map((check, i) => (
+            <div key={i} class='flex items-start justify-between py-3 border-b border-border'>
+              <div>
+                <div class='flex items-center space-x-2'>
+                  <Badge variant={checkStatusVariants[check.status] || 'success'}>
+                    {checkIcons[check.status] || checkIcons['pass']}
+                  </Badge>
+                  <span class='font-medium'>{check.name}</span>
                 </div>
+                <p class='text-sm text-muted-foreground mt-1'>{check.message}</p>
+                {(check.details?.length || 0) > 0 && (
+                  <ul class='text-xs text-muted-foreground/70 mt-2 space-y-1'>
+                    {check.details?.map((d, j) => <li key={j}>• {d}</li>)}
+                  </ul>
+                )}
               </div>
-            )) || <div class='text-muted-foreground'>No checks available</div>}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          )) || <div class='text-muted-foreground'>No checks available</div>}
+        </div>
+      </TitledCard>
     </div>
   );
 }

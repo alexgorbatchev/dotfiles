@@ -1,6 +1,7 @@
 import { type JSX } from 'preact';
 
 import type { IToolDetail } from '../../shared/types';
+import { RecentTools } from '../components/RecentTools';
 import { StatCard } from '../components/StatCard';
 import { ToolsTreeView } from '../components/ToolsTreeView';
 import { useFetch } from '../hooks/useFetch';
@@ -29,8 +30,13 @@ export function Tools(): JSX.Element {
         <StatCard value={totalFiles} label='Files Tracked' color='text-purple-400' />
       </div>
 
-      {/* Tools tree view */}
-      <ToolsTreeView tools={toolsList} />
+      {/* Tool files and recently added - same row */}
+      <div class='grid grid-cols-3 gap-4'>
+        <div class='col-span-2'>
+          <ToolsTreeView tools={toolsList} />
+        </div>
+        <RecentTools />
+      </div>
 
       {toolsList.length === 0 && <div class='text-center text-muted-foreground py-8'>No tools configured</div>}
     </div>

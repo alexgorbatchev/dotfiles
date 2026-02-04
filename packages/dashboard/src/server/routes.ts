@@ -8,6 +8,7 @@ import type {
   IDashboardStats,
   IFileTreeEntry,
   IHealthStatus,
+  IRecentTools,
   IShellIntegration,
   IToolConfigsTree,
   IToolDetail,
@@ -25,6 +26,35 @@ let toolConfigsCache: ToolConfigsCache | null = null;
  */
 export function clearToolConfigsCache(): void {
   toolConfigsCache = null;
+}
+
+/**
+ * Get the date when a file was first committed to git.
+ * Returns null if the file is not tracked by git.
+ */
+async function getGitFirstCommitDate(filePath: string): Promise<Date | null> {
+  try {
+    const proc = Bun.spawn(['git', 'log', '--diff-filter=A', '--format=%aI', '--', filePath], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    const output = await new Response(proc.stdout).text();
+    const exitCode = await proc.exited;
+
+    if (exitCode !== 0 || !output.trim()) {
+      return null;
+    }
+
+    // Take the first line (should be the only one for --diff-filter=A)
+    const dateStr = output.trim().split('\n')[0];
+    if (!dateStr) {
+      return null;
+    }
+
+    return new Date(dateStr);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -372,6 +402,84 @@ export function createApiRoutes(parentLogger: TsLogger, services: IDashboardServ
       } catch (error) {
         logger.error(messages.apiError('getToolHistory'), error);
         return { success: false, error: 'Failed to retrieve tool history' };
+      }
+    },
+
+    /**
+     * GET /api/recent-tools - Get recently added tool config files
+     * Returns the 10 most recently created .tool.ts files.
+     * Uses git commit date when available, falls back to filesystem mtime.
+     */
+    async getRecentTools(limit: number = 10): Promise<IApiResponse<IRecentTools>> {
+      try {
+        const toolConfigsDir = services.projectConfig.paths.toolConfigsDir;
+
+        // Collect all .tool.ts files
+        const toolFiles: Array<{ name: string; configFilePath: string; }> = [];
+
+        async function collectToolFiles(dirPath: string): Promise<void> {
+          const itemNames = await services.fs.readdir(dirPath);
+
+          for (const name of itemNames) {
+            const fullPath = `${dirPath}/${name}`;
+            const stat = await services.fs.stat(fullPath);
+
+            if (stat.isDirectory()) {
+              await collectToolFiles(fullPath);
+            } else if (name.endsWith('.tool.ts')) {
+              const toolName = name.replace(/\.tool\.ts$/, '');
+              toolFiles.push({
+                name: toolName,
+                configFilePath: fullPath,
+              });
+            }
+          }
+        }
+
+        await collectToolFiles(toolConfigsDir);
+
+        // Get timestamps for all files (git or mtime)
+        const toolsWithTimestamps = await Promise.all(
+          toolFiles.map(async (file) => {
+            const gitDate = await getGitFirstCommitDate(file.configFilePath);
+            if (gitDate) {
+              return {
+                name: file.name,
+                configFilePath: file.configFilePath,
+                timestamp: gitDate.getTime(),
+                source: 'git' as const,
+              };
+            }
+            const stat = await services.fs.stat(file.configFilePath);
+            return {
+              name: file.name,
+              configFilePath: file.configFilePath,
+              timestamp: stat.mtimeMs,
+              source: 'mtime' as const,
+            };
+          }),
+        );
+
+        // Sort by timestamp descending (most recent first) and take top N
+        const recentFiles = toolsWithTimestamps
+          .toSorted((a, b) => b.timestamp - a.timestamp)
+          .slice(0, limit);
+
+        const tools = recentFiles.map((file) => ({
+          name: file.name,
+          configFilePath: file.configFilePath,
+          createdAt: formatTimestamp(file.timestamp),
+          relativeTime: formatRelativeTime(file.timestamp),
+          timestampSource: file.source,
+        }));
+
+        return {
+          success: true,
+          data: { tools },
+        };
+      } catch (error) {
+        logger.error(messages.apiError('getRecentTools'), error);
+        return { success: false, error: 'Failed to retrieve recent tools' };
       }
     },
   };

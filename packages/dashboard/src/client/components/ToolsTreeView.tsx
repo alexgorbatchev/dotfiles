@@ -5,7 +5,7 @@ import { type JSX } from 'preact';
 import type { IFileTreeEntry, IToolConfigsTree, IToolDetail } from '../../shared/types';
 import { useFetch } from '../hooks/useFetch';
 import { InstallMethodBadge } from './InstallMethodBadge';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
+import { TitledCard } from './ui/TitledCard';
 import { Tree, type TreeItemData } from './ui/Tree';
 
 interface ToolsTreeViewProps {
@@ -125,14 +125,9 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Tool Files</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div class='text-muted-foreground text-sm'>Loading...</div>
-        </CardContent>
-      </Card>
+      <TitledCard title='Tool Files'>
+        <div class='text-muted-foreground text-sm'>Loading...</div>
+      </TitledCard>
     );
   }
 
@@ -142,31 +137,21 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
 
   if (treeItems.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Tool Files</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div class='text-muted-foreground text-sm'>No tool files found</div>
-        </CardContent>
-      </Card>
+      <TitledCard title='Tool Files'>
+        <div class='text-muted-foreground text-sm'>No tool files found</div>
+      </TitledCard>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Tool Files</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tree
-          items={treeItems}
-          defaultExpanded={true}
-          onItemClick={handleItemClick}
-          renderLabel={renderLabel}
-          iconClassName='mr-1'
-        />
-      </CardContent>
-    </Card>
+    <TitledCard title='Tool Files'>
+      <Tree
+        items={treeItems}
+        defaultExpanded={true}
+        onItemClick={handleItemClick}
+        renderLabel={renderLabel}
+        iconClassName='mr-1'
+      />
+    </TitledCard>
   );
 }

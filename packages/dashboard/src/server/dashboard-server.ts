@@ -85,6 +85,14 @@ export function createDashboardServer(
             return Response.json(result);
           },
 
+          '/api/recent-tools': async (req) => {
+            const url = new URL(req.url);
+            const limitParam = url.searchParams.get('limit');
+            const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+            const result = await api.getRecentTools(limit);
+            return Response.json(result);
+          },
+
           '/api/*': Response.json({ success: false, error: 'Not found' }, { status: 404 }),
 
           '/*': clientApp,

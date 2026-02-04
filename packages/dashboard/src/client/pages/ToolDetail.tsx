@@ -7,7 +7,7 @@ import { ToolHistory } from '../components/ToolHistory';
 import { FileTree } from '../components/TreeNode';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { TitledCard } from '../components/ui/TitledCard';
 import { useFetch } from '../hooks/useFetch';
 import { buildTreeForTool } from '../utils/tree';
 
@@ -61,79 +61,64 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       </div>
 
       {/* Overview Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div class='space-y-4'>
-            <div class='grid grid-cols-4 gap-4'>
-              <div>
-                <div class='text-sm text-muted-foreground mb-1'>Version</div>
-                <div class='font-medium'>
-                  {tool.runtime.installedVersion || tool.config.version || 'Unknown'}
-                </div>
-              </div>
-              <div>
-                <div class='text-sm text-muted-foreground mb-1'>Method</div>
-                <InstallMethodBadge method={tool.config.installationMethod} />
-              </div>
-              <div>
-                <div class='text-sm text-muted-foreground mb-1'>Installed</div>
-                <div class='font-medium'>
-                  {tool.runtime.installedAt ? new Date(tool.runtime.installedAt).toLocaleDateString() : 'Not installed'}
-                </div>
-              </div>
-              <div>
-                <div class='text-sm text-muted-foreground mb-1'>Files</div>
-                <div class='font-medium'>{tool.files?.length || 0} files</div>
+      <TitledCard title='Overview'>
+        <div class='space-y-4'>
+          <div class='grid grid-cols-4 gap-4'>
+            <div>
+              <div class='text-sm text-muted-foreground mb-1'>Version</div>
+              <div class='font-medium'>
+                {tool.runtime.installedVersion || tool.config.version || 'Unknown'}
               </div>
             </div>
-            {tool.config.installParams.repo && (
-              <div>
-                <div class='text-sm text-muted-foreground mb-1'>Repository</div>
-                <code class='text-sm bg-muted px-2 py-1 rounded break-all'>
-                  {tool.config.installParams.repo}
-                </code>
+            <div>
+              <div class='text-sm text-muted-foreground mb-1'>Method</div>
+              <InstallMethodBadge method={tool.config.installationMethod} />
+            </div>
+            <div>
+              <div class='text-sm text-muted-foreground mb-1'>Installed</div>
+              <div class='font-medium'>
+                {tool.runtime.installedAt ? new Date(tool.runtime.installedAt).toLocaleDateString() : 'Not installed'}
               </div>
-            )}
-            {tool.config.dependencies && tool.config.dependencies.length > 0 && (
-              <div>
-                <div class='text-sm text-muted-foreground mb-1'>Dependencies</div>
-                <div class='flex flex-wrap gap-2'>
-                  {tool.config.dependencies.map((d, i) => <Badge key={i} variant='outline'>{d}</Badge>)}
-                </div>
-              </div>
-            )}
+            </div>
+            <div>
+              <div class='text-sm text-muted-foreground mb-1'>Files</div>
+              <div class='font-medium'>{tool.files?.length || 0} files</div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          {tool.config.installParams.repo && (
+            <div>
+              <div class='text-sm text-muted-foreground mb-1'>Repository</div>
+              <code class='text-sm bg-muted px-2 py-1 rounded break-all'>
+                {tool.config.installParams.repo}
+              </code>
+            </div>
+          )}
+          {tool.config.dependencies && tool.config.dependencies.length > 0 && (
+            <div>
+              <div class='text-sm text-muted-foreground mb-1'>Dependencies</div>
+              <div class='flex flex-wrap gap-2'>
+                {tool.config.dependencies.map((d, i) => <Badge key={i} variant='outline'>{d}</Badge>)}
+              </div>
+            </div>
+          )}
+        </div>
+      </TitledCard>
 
       {/* Files Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Files</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {(tool.files?.length || 0) > 0 ?
-            <FileTree nodes={fileRoots} /> :
-            <div class='text-muted-foreground text-center py-4'>No files tracked</div>}
-        </CardContent>
-      </Card>
+      <TitledCard title='Files'>
+        {(tool.files?.length || 0) > 0 ?
+          <FileTree nodes={fileRoots} /> :
+          <div class='text-muted-foreground text-center py-4'>No files tracked</div>}
+      </TitledCard>
 
       {/* History Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ToolHistory
-            entries={history?.entries ?? []}
-            installedAt={history?.installedAt ?? null}
-            dotfilesDir={history?.dotfilesDir ?? ''}
-          />
-        </CardContent>
-      </Card>
+      <TitledCard title='History'>
+        <ToolHistory
+          entries={history?.entries ?? []}
+          installedAt={history?.installedAt ?? null}
+          dotfilesDir={history?.dotfilesDir ?? ''}
+        />
+      </TitledCard>
     </div>
   );
 }
