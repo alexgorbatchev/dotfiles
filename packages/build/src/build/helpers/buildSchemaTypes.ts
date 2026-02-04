@@ -26,7 +26,7 @@ export async function buildSchemaTypes(context: IBuildContext, dependencyVersion
   const schemaExportsPath: string = resolveSchemaExportsDtsPath(context.paths.tempSchemasBuildDir);
 
   await $`
-    bunx dts-bundle-generator \
+    bun x dts-bundle-generator \
       --silent \
       --project ${context.paths.buildTsconfigPath} \
       --out-file ${context.paths.outputSchemasDtsPath} \
