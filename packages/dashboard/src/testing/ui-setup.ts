@@ -20,7 +20,7 @@ if (typeof document === 'undefined') {
 const jestDomMatchers = await import('@testing-library/jest-dom/matchers');
 const testingLibrary = await import('@testing-library/preact');
 const userEventLib = await import('@testing-library/user-event');
-const { afterEach, expect } = await import('bun:test');
+const { afterEach, beforeEach, expect } = await import('bun:test');
 
 const { cleanup, fireEvent, render, screen } = testingLibrary;
 const userEvent = userEventLib.default;
@@ -29,10 +29,20 @@ const userEvent = userEventLib.default;
 const { default: _, ...matchers } = jestDomMatchers;
 expect.extend(matchers);
 
-// Clean up after each test
-afterEach(() => {
-  cleanup();
-});
+/**
+ * Register cleanup hooks for this test file.
+ * Must be called at the top level of each test file.
+ */
+function setupUITests(): void {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    cleanup();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+}
 
 // Re-export testing utilities
-export { fireEvent, render, screen, userEvent };
+export { fireEvent, render, screen, setupUITests, userEvent };

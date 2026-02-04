@@ -1,7 +1,9 @@
 // UI test setup - registers DOM and exports testing utilities
-import { fireEvent, render, screen } from '../../../../testing/ui-setup';
+import { fireEvent, render, screen, setupUITests } from '../../../../testing/ui-setup';
 
 import { describe, expect, mock, test } from 'bun:test';
+
+setupUITests();
 import { File, Folder } from 'lucide-preact';
 
 import { Tree, type TreeItemData } from '../Tree';

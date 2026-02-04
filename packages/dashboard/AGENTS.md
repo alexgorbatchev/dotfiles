@@ -39,17 +39,20 @@ Tests use mock registries and file systems. The server tests verify:
 
 ## UI Component Testing
 
-UI tests use `@testing-library/preact` with `happy-dom` for DOM simulation. The setup is handled automatically by importing from `src/testing/ui-setup.ts`.
+UI tests use `@testing-library/preact` with `happy-dom` for DOM simulation. The setup is handled by importing from `src/testing/ui-setup.ts` and calling `setupUITests()`.
 
 ### Creating a UI Test
 
 ```tsx
 // Import setup FIRST - registers DOM and exports testing utilities
-import { fireEvent, render, screen, userEvent } from '../../../../testing/ui-setup';
+import { fireEvent, render, screen, setupUITests, userEvent } from '../../../../testing/ui-setup';
 
 import { describe, expect, test } from 'bun:test';
 
 import { MyComponent } from '../MyComponent';
+
+// REQUIRED: Register cleanup hooks for this test file
+setupUITests();
 
 describe('MyComponent', () => {
   test('renders correctly', () => {
@@ -70,10 +73,10 @@ describe('MyComponent', () => {
 ### Key Points
 
 - **Import order matters**: `ui-setup.ts` must be the first import to register DOM before testing-library loads
-- **No preloads needed**: The setup module handles happy-dom registration via top-level await
-- **Available exports**: `render`, `screen`, `fireEvent`, `userEvent`
+- **setupUITests() is required**: Call at top level of each test file to register cleanup hooks
+- **Available exports**: `render`, `screen`, `fireEvent`, `userEvent`, `setupUITests`
 - **jest-dom matchers**: Automatically extended (e.g., `toBeInTheDocument()`, `toHaveClass()`)
-- **Cleanup**: Automatic cleanup after each test via `afterEach`
+- **Cleanup**: Handled by `setupUITests()` - clears DOM before/after each test
 
 ### Running Tests
 
