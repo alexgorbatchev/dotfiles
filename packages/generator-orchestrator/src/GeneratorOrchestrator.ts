@@ -295,10 +295,10 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     }
 
     if ('url' in value) {
-      // IShellCompletionUrlArchiveConfig
+      // IShellCompletionUrlConfig
       const result: ShellCompletionConfig = {
         url: value.url,
-        source: value.source,
+        ...(value.source && { source: value.source }),
         ...(value.bin && { bin: value.bin }),
       };
       return result;

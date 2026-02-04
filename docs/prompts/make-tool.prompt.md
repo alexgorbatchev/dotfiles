@@ -213,6 +213,11 @@ install('github-release', { repo: 'owner/tool' })
 // From command output
 .completions({ cmd: 'tool completion zsh' })
 
+// From direct URL (filename derived from URL)
+.completions({
+  url: 'https://raw.githubusercontent.com/owner/repo/main/completions/_tool'
+})
+
 // From archive URL (requires source path within extracted archive)
 .completions({
   url: 'https://github.com/owner/repo/releases/download/v1.0/completions.tar.gz',

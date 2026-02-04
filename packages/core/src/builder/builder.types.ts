@@ -91,38 +91,59 @@ interface IShellCompletionCmdConfig extends IShellCompletionConfigBase {
 }
 
 /**
- * Completion from a downloaded archive.
+ * Completion from a downloaded URL (archive or direct file).
  */
-interface IShellCompletionUrlArchiveConfig extends IShellCompletionConfigBase {
+interface IShellCompletionUrlConfig extends IShellCompletionConfigBase {
   /**
-   * URL to download the completion archive from.
+   * URL to download the completion file or archive from.
    *
-   * The archive is downloaded and extracted to `ctx.currentDir`.
+   * Supports both:
+   * - Direct completion files (e.g., `_tool.zsh`, `tool.bash`)
+   * - Archives (e.g., `.tar.gz`, `.zip`) which are automatically extracted
    *
-   * Equivalent bash:
+   * The file/archive is downloaded to `ctx.currentDir`.
+   *
+   * Equivalent bash (archive):
    * ```bash
    * curl -fsSL "https://github.com/user/repo/releases/download/v1.0.0/completions.tar.gz" \
    *   -o ${ctx.projectConfig.paths.installDir}/mytool/1.0.0/completions.tar.gz
    * tar -xzf completions.tar.gz -C ${ctx.projectConfig.paths.installDir}/mytool/1.0.0/
    * ```
    *
+   * Equivalent bash (direct file):
+   * ```bash
+   * curl -fsSL "https://raw.githubusercontent.com/user/repo/main/completions/_tool" \
+   *   -o ${ctx.projectConfig.paths.installDir}/mytool/1.0.0/_tool
+   * ```
+   *
    * @example 'https://github.com/user/repo/releases/download/v1.0.0/completions.tar.gz'
+   * @example 'https://raw.githubusercontent.com/user/repo/main/completions/_tool'
    */
   url: string;
 
   /**
-   * Absolute path to the completion file within the extracted archive.
+   * Path to the completion file.
+   *
+   * For archives: absolute path to the completion file within the extracted archive.
+   * For direct files: optional - if omitted, the filename is derived from the URL.
    *
    * The archive is extracted to `ctx.currentDir`, so use that to build the path.
    *
-   * Equivalent bash:
+   * Equivalent bash (archive - source required):
    * ```bash
    * ln -s ${ctx.currentDir}/completions/_tool ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_tool
    * ```
    *
-   * @example `${ctx.currentDir}/completions/_tool`
+   * Equivalent bash (direct file - source omitted):
+   * ```bash
+   * # Filename '_tool' derived from URL
+   * ln -s ${ctx.currentDir}/_tool ${ctx.projectConfig.paths.shellScriptsDir}/{shell}/completions/_tool
+   * ```
+   *
+   * @example `${ctx.currentDir}/completions/_tool` - for archives
+   * @example undefined - for direct files (filename derived from URL)
    */
-  source: string;
+  source?: string;
 }
 
 /**
@@ -131,18 +152,20 @@ interface IShellCompletionUrlArchiveConfig extends IShellCompletionConfigBase {
  * Valid combinations:
  * - `{ source }` - Static file (relative to toolDir or absolute)
  * - `{ cmd }` - Generate dynamically by running a command
- * - `{ url, source }` - Download archive, extract, use source as absolute path to file within
+ * - `{ url }` - Download direct completion file from URL
+ * - `{ url, source }` - Download archive, extract, use source as path to file within
  *
  * @example
  * shell.completions({ source: '_tool.zsh' })
  * shell.completions({ cmd: 'tool completion zsh' })
+ * shell.completions({ url: 'https://raw.githubusercontent.com/user/repo/main/_tool' })
  * shell.completions({ url: 'https://.../completions.tar.gz', source: `${ctx.currentDir}/_tool` })
  */
 export type ShellCompletionConfigValue =
   | string
   | IShellCompletionSourceConfig
   | IShellCompletionCmdConfig
-  | IShellCompletionUrlArchiveConfig;
+  | IShellCompletionUrlConfig;
 
 /**
  * Input type for configuring shell completions.

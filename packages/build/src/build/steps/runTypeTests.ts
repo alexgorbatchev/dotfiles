@@ -12,7 +12,7 @@ export async function runTypeTests(context: IBuildContext): Promise<void> {
   try {
     await setupTsdTestsProject(context);
 
-    const tsdResult = await $`bunx tsd --typings ./index.d.ts --files './**/*.test-d.ts'`
+    const tsdResult = await $`bun x tsd --typings ./index.d.ts --files './**/*.test-d.ts'`
       .noThrow()
       .cwd(context.paths.tsdTestsDir);
 

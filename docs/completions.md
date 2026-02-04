@@ -15,8 +15,8 @@ Tab completions are configured per-shell using `.completions()`:
 
 | Property | Description                                                                                  |
 | -------- | -------------------------------------------------------------------------------------------- |
-| `source` | Path to completion file relative to extracted archive or downloaded content (supports globs) |
-| `url`    | URL to download completion archive from (requires `source`)                                  |
+| `source` | Path to completion file (relative to toolDir, or absolute path within extracted archive)     |
+| `url`    | URL to download completion file or archive from                                              |
 | `cmd`    | Command to generate completions dynamically                                                  |
 | `bin`    | Binary name for completion filename (when different from tool name)                          |
 
@@ -25,7 +25,8 @@ Tab completions are configured per-shell using `.completions()`:
 - `'_tool.zsh'` - String path (relative to toolDir or absolute)
 - `{ source }` - Static file (relative to toolDir or absolute)
 - `{ cmd }` - Generate dynamically by running a command
-- `{ url, source }` - Download archive, extract, use source as absolute path to file within
+- `{ url }` - Download direct completion file from URL (filename derived from URL)
+- `{ url, source }` - Download archive, extract, use source as path to file within
 
 ## Shell Callback Context
 
@@ -58,9 +59,20 @@ For completion files bundled in tool archives:
 
 **Supported glob patterns**: `*`, `**`, `?`, `[abc]`
 
-## URL-Based Completions (url + source)
+## URL-Based Completions
 
-For downloading completion archives from external sources:
+For downloading completions from external sources. Supports both direct files and archives.
+
+### Direct File Download
+
+```typescript
+// Direct completion file download (source is optional - derived from URL)
+.zsh((shell) => shell.completions({
+  url: 'https://raw.githubusercontent.com/user/repo/main/completions/_tool'
+}))
+```
+
+### Archive Download
 
 ```typescript
 // Archive download with source path to file within
@@ -70,14 +82,19 @@ For downloading completion archives from external sources:
 }))
 ```
 
-**Note**: `url` requires `source` - the archive is downloaded and extracted to `ctx.currentDir`, then `source` specifies the absolute path to the completion file within.
+**Note**: For archives, `source` specifies the absolute path to the completion file within the extracted archive. For direct files, `source` is optional - the filename is derived from the URL.
 
 ### Version-Dependent URLs (Callback)
 
 For completions that need the installed version in the URL, use a callback:
 
 ```typescript
-// Callback receives context with version - archive URL requires source
+// Direct file with version in URL
+.zsh((shell) => shell.completions((ctx) => ({
+  url: `https://raw.githubusercontent.com/user/repo/${ctx.version}/completions/_tool`
+})))
+
+// Archive with version in URL (requires source)
 .zsh((shell) => shell.completions((ctx) => ({
   url: `https://github.com/user/repo/releases/download/${ctx.version}/completions.tar.gz`,
   source: `${ctx.currentDir}/completions/_tool.zsh`
@@ -88,7 +105,7 @@ The callback receives `ctx` with:
 
 - `version` - The installed version of the tool (e.g., `'v10.3.0'`, `'15.1.0'`), only available after installation completes
 
-URL-based completions are downloaded and extracted to `ctx.currentDir`. The `source` property specifies the absolute path to the completion file within the extracted archive.
+URL-based completions are downloaded to `ctx.currentDir`. For archives, they are automatically extracted and `source` specifies the path to the completion file within.
 
 **Supported archive formats**: `.tar.gz`, `.tar.xz`, `.tar.bz2`, `.zip`, `.tar`, `.tar.lzma`, `.7z`
 
