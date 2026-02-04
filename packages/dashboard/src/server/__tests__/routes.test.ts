@@ -1,5 +1,5 @@
-import type { ToolConfig } from '@dotfiles/core';
 import type { IConfigService } from '@dotfiles/config';
+import type { ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';

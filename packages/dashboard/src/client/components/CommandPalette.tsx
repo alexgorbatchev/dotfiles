@@ -1,7 +1,7 @@
+import { Search } from 'lucide-preact';
 import { type JSX } from 'preact';
 import { useLocation } from 'preact-iso';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { Search } from 'lucide-preact';
 
 import type { IToolDetail } from '../../shared/types';
 import { useFetch } from '../hooks/useFetch';
@@ -129,9 +129,7 @@ export function CommandPalette(): JSX.Element | null {
         {/* Results */}
         {query.trim() && (
           <div class='max-h-80 overflow-y-auto'>
-            {results.length === 0 ? (
-              <div class='px-4 py-8 text-center text-muted-foreground'>No tools found</div>
-            ) : (
+            {results.length === 0 ? <div class='px-4 py-8 text-center text-muted-foreground'>No tools found</div> : (
               <ul>
                 {results.map((result, index) => (
                   <li

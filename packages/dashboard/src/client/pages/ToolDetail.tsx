@@ -4,7 +4,7 @@ import type { IToolDetail, IToolHistory } from '../../shared/types';
 import { InstallMethodBadge } from '../components/InstallMethodBadge';
 import { StatusBadge } from '../components/StatusBadge';
 import { ToolHistory } from '../components/ToolHistory';
-import { TreeNode } from '../components/TreeNode';
+import { FileTree } from '../components/TreeNode';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -18,7 +18,10 @@ interface ToolDetailProps {
 export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   const toolName = decodeURIComponent(params.name);
   const { data: tools, loading: toolsLoading } = useFetch<IToolDetail[]>('/tools', [toolName]);
-  const { data: history, loading: historyLoading } = useFetch<IToolHistory>(`/tools/${encodeURIComponent(toolName)}/history`, [toolName]);
+  const { data: history, loading: historyLoading } = useFetch<IToolHistory>(
+    `/tools/${encodeURIComponent(toolName)}/history`,
+    [toolName],
+  );
 
   const tool = tools?.find((t) => t.config.name === toolName) || null;
   const loading = toolsLoading || historyLoading;
@@ -98,9 +101,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
               <div>
                 <div class='text-sm text-muted-foreground mb-1'>Dependencies</div>
                 <div class='flex flex-wrap gap-2'>
-                  {tool.config.dependencies.map((d, i) => (
-                    <Badge key={i} variant='outline'>{d}</Badge>
-                  ))}
+                  {tool.config.dependencies.map((d, i) => <Badge key={i} variant='outline'>{d}</Badge>)}
                 </div>
               </div>
             )}
@@ -115,11 +116,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
         </CardHeader>
         <CardContent>
           {(tool.files?.length || 0) > 0 ?
-            (
-              <div class='space-y-2'>
-                {fileRoots.map((node, i) => <TreeNode key={i} node={node} />)}
-              </div>
-            ) :
+            <FileTree nodes={fileRoots} /> :
             <div class='text-muted-foreground text-center py-4'>No files tracked</div>}
         </CardContent>
       </Card>

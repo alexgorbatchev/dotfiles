@@ -1,6 +1,6 @@
 import type { ToolConfig } from '@dotfiles/core';
-import type { IToolInstallationRecord } from '@dotfiles/registry/tool';
 import type { TsLogger } from '@dotfiles/logger';
+import type { IToolInstallationRecord } from '@dotfiles/registry/tool';
 import type {
   IActivityFeed,
   IApiResponse,

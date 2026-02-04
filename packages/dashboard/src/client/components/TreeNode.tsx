@@ -1,7 +1,4 @@
 import {
-  ChevronDown,
-  ChevronRight,
-  Circle,
   File,
   FileCode,
   FileCog,
@@ -15,10 +12,9 @@ import {
   Zap,
 } from 'lucide-preact';
 import { type JSX } from 'preact';
-import { useState } from 'preact/hooks';
 
-import { cn } from '../lib/utils';
 import { Badge } from './ui/Badge';
+import { Tree, type TreeItemData } from './ui/Tree';
 
 interface TreeNodeData {
   name: string;
@@ -29,11 +25,10 @@ interface TreeNodeData {
 }
 
 interface TreeNodeProps {
-  node: TreeNodeData;
-  depth?: number;
+  nodes: TreeNodeData[];
 }
 
-const fileTypeColors: Record<string, string> = {
+const FILE_TYPE_COLORS: Record<string, string> = {
   shim: 'text-blue-400',
   binary: 'text-green-400',
   'binary-path': 'text-cyan-400',
@@ -77,55 +72,54 @@ function getFileIcon(fileType?: string): JSX.Element {
   }
 }
 
-export function TreeNode({ node, depth = 0 }: TreeNodeProps): JSX.Element {
-  const [expanded, setExpanded] = useState(true);
+function getIcon(node: TreeNodeData): JSX.Element {
   const isDirectory = node.type === 'directory';
   const hasChildren = node.children && node.children.length > 0;
-  const indent = depth * 16;
+  const colorClass = isDirectory
+    ? 'text-amber-300'
+    : (FILE_TYPE_COLORS[node.fileType || ''] || 'text-muted-foreground');
 
-  const colorClass = isDirectory ? 'text-amber-300' : (fileTypeColors[node.fileType || ''] || 'text-muted-foreground');
-
-  function renderChevron(): JSX.Element {
-    if (!hasChildren) {
-      return <Circle class='h-2 w-2 text-muted-foreground' />;
-    }
-    return expanded ?
-      <ChevronDown class='h-4 w-4 text-muted-foreground' /> :
-      <ChevronRight class='h-4 w-4 text-muted-foreground' />;
+  if (isDirectory) {
+    return (
+      <span class={colorClass}>
+        {hasChildren ? <FolderOpen class='h-4 w-4' /> : <Folder class='h-4 w-4' />}
+      </span>
+    );
   }
+  return <span class={colorClass}>{getFileIcon(node.fileType)}</span>;
+}
 
-  function renderIcon(): JSX.Element {
-    if (isDirectory) {
-      return expanded ?
-        <FolderOpen class='h-4 w-4' /> :
-        <Folder class='h-4 w-4' />;
-    }
-    return getFileIcon(node.fileType);
-  }
+function convertToTreeItems(nodes: TreeNodeData[]): TreeItemData<TreeNodeData>[] {
+  return nodes.map((node) => ({
+    id: node.path,
+    label: node.name,
+    icon: getIcon(node),
+    data: node,
+    children: node.children ? convertToTreeItems(node.children) : undefined,
+  }));
+}
+
+function renderFileLabel(item: TreeItemData<TreeNodeData>): JSX.Element {
+  const node = item.data;
+  const isDirectory = node?.type === 'directory';
 
   return (
-    <div>
-      <div
-        class='flex items-center py-1 hover:bg-accent rounded cursor-pointer text-sm'
-        style={{ paddingLeft: `${indent}px` }}
-        onClick={() => isDirectory && hasChildren && setExpanded(!expanded)}
-      >
-        {isDirectory ?
-          <span class='w-4 mr-1 flex items-center justify-center'>{renderChevron()}</span> :
-          <span class='w-4 mr-1' />}
-        <span class={colorClass}>{renderIcon()}</span>
-        <span class={cn('ml-2', isDirectory && 'font-medium')}>{node.name}</span>
-        {!isDirectory && node.fileType && (
-          <Badge variant='outline' class='ml-2 text-xs'>
-            {node.fileType}
-          </Badge>
-        )}
-      </div>
-      {isDirectory && expanded && hasChildren && (
-        <div>
-          {node.children?.map((child, i) => <TreeNode key={i} node={child} depth={depth + 1} />)}
-        </div>
+    <span class='flex items-center'>
+      <span>{item.label}</span>
+      {!isDirectory && node?.fileType && (
+        <Badge variant='outline' class='ml-2 text-xs'>
+          {node.fileType}
+        </Badge>
       )}
-    </div>
+    </span>
   );
 }
+
+export function FileTree({ nodes }: TreeNodeProps): JSX.Element {
+  const treeItems = convertToTreeItems(nodes);
+  return <Tree items={treeItems} renderLabel={renderFileLabel} />;
+}
+
+// Re-export Tree for direct usage
+export { Tree } from './ui/Tree';
+export type { TreeItemData } from './ui/Tree';

@@ -1,6 +1,6 @@
+import type { IConfigService } from '@dotfiles/config';
 import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
-import type { IConfigService } from '@dotfiles/config';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
 import { mock } from 'bun:test';
@@ -60,7 +60,7 @@ export function createMockConfigService(toolConfigs: Record<string, ToolConfig>)
 /**
  * Creates a minimal mock ToolConfig for testing.
  */
-export function createMockToolConfig(overrides: Partial<ToolConfig> & { name: string }): ToolConfig {
+export function createMockToolConfig(overrides: Partial<ToolConfig> & { name: string; }): ToolConfig {
   const { name, version, installationMethod, installParams, binaries, ...rest } = overrides;
   return {
     name,
@@ -71,4 +71,3 @@ export function createMockToolConfig(overrides: Partial<ToolConfig> & { name: st
     ...rest,
   } as ToolConfig;
 }
-

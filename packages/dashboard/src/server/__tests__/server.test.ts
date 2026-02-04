@@ -1,5 +1,5 @@
-import type { ToolConfig } from '@dotfiles/core';
 import type { IConfigService } from '@dotfiles/config';
+import type { ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
@@ -360,7 +360,7 @@ describe('Dashboard HTTP Server', () => {
 
       // Tools from config should be returned
       expect(tools.data).toHaveLength(2);
-      expect(tools.data.map((t: { config: { name: string } }) => t.config.name).toSorted()).toEqual(['bat', 'fd']);
+      expect(tools.data.map((t: { config: { name: string; }; }) => t.config.name).toSorted()).toEqual(['bat', 'fd']);
       expect(tools.data[0].runtime.status).toBe('not-installed');
       expect(tools.data[0].files).toHaveLength(1);
     });
@@ -392,7 +392,7 @@ describe('Dashboard HTTP Server', () => {
 
       const response = await fetch(`${baseUrl}/api/tools`);
       const data = await response.json();
-      const tool = data.data.find((t: { config: { name: string } }) => t.config.name === 'fzf');
+      const tool = data.data.find((t: { config: { name: string; }; }) => t.config.name === 'fzf');
 
       expect(data.success).toBe(true);
       expect(tool.config.name).toBe('fzf');
@@ -439,7 +439,7 @@ describe('Dashboard HTTP Server', () => {
       const toolsList = await toolsResponse.json();
 
       expect(toolsList.data).toHaveLength(3);
-      expect(toolsList.data.map((t: { config: { name: string } }) => t.config.name).toSorted()).toEqual([
+      expect(toolsList.data.map((t: { config: { name: string; }; }) => t.config.name).toSorted()).toEqual([
         'bat',
         'fzf',
         'ripgrep',
@@ -488,7 +488,7 @@ describe('Dashboard HTTP Server', () => {
 
       const response = await fetch(`${baseUrl}/api/tools`);
       const data = await response.json();
-      const tool = data.data.find((t: { config: { name: string } }) => t.config.name === 'tool-with-dash');
+      const tool = data.data.find((t: { config: { name: string; }; }) => t.config.name === 'tool-with-dash');
 
       expect(response.status).toBe(200);
       expect(tool.config.name).toBe('tool-with-dash');
@@ -510,7 +510,7 @@ describe('Dashboard HTTP Server', () => {
 
       const response = await fetch(`${baseUrl}/api/tools`);
       const data = await response.json();
-      const tool = data.data.find((t: { config: { name: string } }) => t.config.name === 'multi-binary');
+      const tool = data.data.find((t: { config: { name: string; }; }) => t.config.name === 'multi-binary');
 
       expect(tool.runtime.binaryPaths).toHaveLength(3);
     });

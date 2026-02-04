@@ -34,9 +34,7 @@ export function Tools(): JSX.Element {
       {/* Tools table */}
       <ToolsTable tools={toolsList} />
 
-      {toolsList.length === 0 && (
-        <div class='text-center text-muted-foreground py-8'>No tools configured</div>
-      )}
+      {toolsList.length === 0 && <div class='text-center text-muted-foreground py-8'>No tools configured</div>}
     </div>
   );
 }
@@ -64,7 +62,9 @@ function ToolsTable({ tools }: ToolsTableProps): JSX.Element {
               <TableCell class='font-medium'>
                 <div class='flex items-center space-x-2'>
                   <span
-                    class={`w-2 h-2 rounded-full ${tool.runtime.status === 'installed' ? 'bg-green-500' : 'bg-gray-300'}`}
+                    class={`w-2 h-2 rounded-full ${
+                      tool.runtime.status === 'installed' ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
                   />
                   <span>{tool.config.name}</span>
                 </div>
@@ -84,4 +84,3 @@ function ToolsTable({ tools }: ToolsTableProps): JSX.Element {
     </Table>
   );
 }
-

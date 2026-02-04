@@ -1,5 +1,5 @@
-import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IConfigService } from '@dotfiles/config';
+import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { IFileRegistry } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
@@ -23,7 +23,6 @@ export interface IDashboardServices {
  * Cached to avoid re-parsing on every API request.
  */
 export type ToolConfigsCache = Record<string, ToolConfig>;
-
 
 /**
  * Options for starting the dashboard server.

@@ -99,7 +99,6 @@ export interface IToolSummary {
   binaries?: ISerializableBinary[];
 }
 
-
 /**
  * Dashboard statistics for overview page.
  */
@@ -230,7 +229,6 @@ export function toToolDetail(
     files,
   };
 }
-
 
 /**
  * Format a Unix timestamp for display.
