@@ -7,9 +7,6 @@
     ".": "./src/index.ts",
     "./server": "./src/server/index.ts"
   },
-  "scripts": {
-    "test": "bun test src/server src/shared && bun test --preload ./preload/happydom.ts --preload ./preload/testing-library.ts src/client"
-  },
   "dependencies": {
     "@dotfiles/config": "workspace:*",
     "@dotfiles/core": "workspace:*",
@@ -33,6 +30,7 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/preact": "^3.2.4",
+    "@testing-library/user-event": "^14.6.1",
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
     "@typescript/native-preview": "catalog:typescript",

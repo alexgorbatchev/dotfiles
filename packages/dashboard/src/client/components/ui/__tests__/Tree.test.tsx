@@ -1,4 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/preact';
+// UI test setup - registers DOM and exports testing utilities
+import { fireEvent, render, screen } from '../../../../testing/ui-setup';
+
 import { describe, expect, mock, test } from 'bun:test';
 import { File, Folder } from 'lucide-preact';
 
