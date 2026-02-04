@@ -51,10 +51,6 @@ export function Nav(): JSX.Element {
               <span>Search...</span>
               <kbd class='text-xs bg-muted px-1.5 py-0.5 rounded'>⌘K</kbd>
             </button>
-            <div class='flex items-center space-x-2 text-sm text-muted-foreground'>
-              <span class='w-2 h-2 rounded-full bg-green-500' />
-              Connected
-            </div>
           </div>
         </div>
       </div>

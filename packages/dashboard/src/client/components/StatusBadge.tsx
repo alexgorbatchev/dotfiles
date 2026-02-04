@@ -13,7 +13,7 @@ export function StatusBadge({ status }: StatusBadgeProps): JSX.Element {
     case 'installed':
       return <Badge variant='success'>✓ Installed</Badge>;
     case 'not-installed':
-      return <Badge variant='secondary'>Not Installed</Badge>;
+      return <Badge variant='error'>Not Installed</Badge>;
     case 'error':
       return <Badge variant='error'>Error</Badge>;
   }
