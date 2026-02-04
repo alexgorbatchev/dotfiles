@@ -41,6 +41,7 @@ export function createDashboardServer(
       server = Bun.serve({
         port: options.port,
         hostname: options.host,
+        development: process.env.NODE_ENV !== 'production',
         routes: {
           '/api/tools': async () => {
             const result = await api.getTools();
