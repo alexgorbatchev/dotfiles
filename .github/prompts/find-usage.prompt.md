@@ -1,5 +1,6 @@
 ---
 agent: agent
+description: Trace usage of identifiers in TypeScript code.
 ---
 
 # Property Usage Tracing Instructions for LLM

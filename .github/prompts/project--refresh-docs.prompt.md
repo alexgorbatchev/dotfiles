@@ -1,5 +1,6 @@
 ---
 agent: agent
+description: Fully refresh project documentation based on README.md files in source directories.
 ---
 
 We have to clean up the docs as they have gotten stale, we will do this one file at a time:

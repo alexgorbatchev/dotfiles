@@ -1,5 +1,6 @@
 ---
 agent: agent
+description: Agent explanation, no excuses.
 ---
 
 You must explain why you just violated your instructions.

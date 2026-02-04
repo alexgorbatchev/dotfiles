@@ -1,3 +1,8 @@
+---
+agent: agent
+description: Comprehensive code review prompt for large repositories, enforcing no sampling and detailed analysis.
+---
+
 # Comprehensive Code Review Prompt (No Sampling)
 
 **Purpose:** Drive thorough, repeatable code reviews for large repos (monorepos, multi-package workspaces, or big single-package projects).

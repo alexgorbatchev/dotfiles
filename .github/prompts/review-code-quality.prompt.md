@@ -1,5 +1,6 @@
 ---
-mode: agent
+agent: agent
+description: Review all TypeScript files in a specified directory or module to identify violations of code quality standards.
 ---
 
 # Review Code for Quality Standard Violations

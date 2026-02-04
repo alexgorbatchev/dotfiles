@@ -1,5 +1,6 @@
 ---
-mode: agent
+agent: agent
+description: Refresh JSDoc in projecty.
 ---
 
 Your job is to diligently update JSDoc to represent current implementation and functionality.
