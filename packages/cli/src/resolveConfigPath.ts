@@ -8,7 +8,7 @@ import { messages } from './log-messages';
  * Default configuration file names to search for when no explicit config is provided.
  * Files are searched in order of priority - the first existing file is used.
  */
-export const DEFAULT_CONFIG_FILES: string[] = ['dotfiles.config.ts', 'dotfiles.config.yaml'];
+export const DEFAULT_CONFIG_FILES: string[] = ['dotfiles.config.ts'];
 
 /**
  * Resolves the configuration file path.

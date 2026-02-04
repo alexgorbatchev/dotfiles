@@ -37,7 +37,7 @@ describe('HookExecutor - stack trace filtering', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: fs,
       logger,
       systemInfo,
@@ -117,7 +117,7 @@ describe('HookExecutor - stack trace filtering', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: fs,
       logger,
       systemInfo,

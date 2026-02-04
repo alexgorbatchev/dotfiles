@@ -24,7 +24,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'shell-init-profile-updates' });
 
-    configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
+    configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.ts');
 
     mockProjectConfig = await createMockProjectConfig({
       config: {

@@ -93,7 +93,7 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: mockFileSystem,
       logger,
       systemInfo,

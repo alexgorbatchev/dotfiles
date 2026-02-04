@@ -11,7 +11,7 @@ describe('projectConfigLoader - staged home/path resolution', () => {
     homeDir: '/bootstrap-home',
   };
 
-  const userConfigPath: string = '/config-dir/dotfiles.config.yaml';
+  const userConfigPath: string = '/config-dir/dotfiles.config.ts';
 
   let logger: TestLogger;
 

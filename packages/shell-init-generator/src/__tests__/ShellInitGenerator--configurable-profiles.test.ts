@@ -35,7 +35,7 @@ describe('ShellInitGenerator - Configurable Profiles', () => {
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'shell-init-configurable-profiles' });
 
-    configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
+    configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.ts');
   });
 
   it('should use custom profile path when configured', async () => {

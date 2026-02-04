@@ -353,7 +353,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     config: {
       paths: testDirs.paths,
     },
-    filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+    filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
     fileSystem: fs,
     logger,
     systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },

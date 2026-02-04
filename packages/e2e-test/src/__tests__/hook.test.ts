@@ -31,7 +31,7 @@ describe('E2E: after-install hooks', () => {
     describe(`${config.name}`, () => {
       const harness: TestHarness = new TestHarness({
         testDir: import.meta.dir,
-        configPath: 'fixtures/main/config.yaml',
+        configPath: 'fixtures/main/config.ts',
         platform: config.platform,
         architecture: config.architecture,
       });

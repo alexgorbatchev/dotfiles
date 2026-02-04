@@ -109,7 +109,7 @@ set -euo pipefail
 TOOL_NAME="fzf"
 TOOL_EXECUTABLE="{config.paths.binariesDir}/fzf/current/fzf"
 GENERATOR_CLI_EXECUTABLE="path/to/cli"
-CONFIG_PATH="path/to/config.yaml"
+CONFIG_PATH="path/to/dotfiles.config.ts"
 
 # Check for recursion
 RECURSION_ENV_VAR="DOTFILES_INSTALLING_FZF"
@@ -190,15 +190,17 @@ const hasShims = await toolRegistry.hasShims('fzf');
 
 ## Configuration
 
-Shim paths are configured in `config.yaml`:
+Shim paths are configured in `dotfiles.config.ts`:
 
-```yaml
-paths:
-  targetDir: ~/.dotfiles/bin # Where shims are created
-  binariesDir: ~/.local/binaries # Where tool binaries are located
+```typescript
+import { defineConfig } from '@gitea/dotfiles';
 
-# Other configuration...
-userConfigPath: /path/to/config.yaml
+export default defineConfig(() => ({
+  paths: {
+    targetDir: '~/.dotfiles/bin', // Where shims are created
+    binariesDir: '~/.local/binaries', // Where tool binaries are located
+  },
+}));
 ```
 
 ## Dependencies

@@ -49,7 +49,7 @@ describe('IToolConfigContext', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem,
       logger,
       systemInfo,
@@ -156,7 +156,7 @@ describe('IToolConfigContext', () => {
            fi
            
            # Use current tool directory
-           export DEPENDENT_TOOL_CONFIG="${dependentToolBinariesDir}/config.yaml"
+           export DEPENDENT_TOOL_CONFIG="${dependentToolBinariesDir}/config.ts"
          `)
           );
       };
@@ -171,7 +171,7 @@ describe('IToolConfigContext', () => {
         path.join(mockProjectConfig.paths.binariesDir, 'fzf'),
       );
       expect(toolConfig.shellConfigs!.zsh!.scripts![0]!.value).toContain(
-        path.join(mockProjectConfig.paths.binariesDir, 'dependent-tool', 'config.yaml'),
+        path.join(mockProjectConfig.paths.binariesDir, 'dependent-tool', 'config.ts'),
       );
     });
 
@@ -219,7 +219,7 @@ describe('IToolConfigContext', () => {
             binariesDir: '/custom/dotfiles/.custom-generated/custom-tools',
           },
         },
-        filePath: path.join(customTestDirs.paths.dotfilesDir, 'config.yaml'),
+        filePath: path.join(customTestDirs.paths.dotfilesDir, 'config.ts'),
         fileSystem: customMockFs.fs,
         logger,
         systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: customTestDirs.paths.homeDir },

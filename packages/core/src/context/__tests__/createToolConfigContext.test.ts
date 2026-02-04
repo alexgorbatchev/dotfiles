@@ -42,7 +42,7 @@ describe('createToolConfigContext', () => {
           toolConfigsDir: '/Users/testuser/.dotfiles/configs/tools',
         },
       },
-      filePath: '/test/config.yaml',
+      filePath: '/test/config.ts',
       fileSystem,
       logger,
       systemInfo,
@@ -245,9 +245,9 @@ describe('createToolConfigContext', () => {
 
       const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
 
-      context.log.trace('Processing file: config.yaml');
+      context.log.trace('Processing file: config.ts');
 
-      logger.expect(['TRACE'], [], ['my-tool'], ['Processing file: config.yaml']);
+      logger.expect(['TRACE'], [], ['my-tool'], ['Processing file: config.ts']);
     });
   });
 

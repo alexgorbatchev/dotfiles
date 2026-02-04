@@ -28,7 +28,7 @@ describe('ShellInitGenerator', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: mockFileSystem,
       logger,
       systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },

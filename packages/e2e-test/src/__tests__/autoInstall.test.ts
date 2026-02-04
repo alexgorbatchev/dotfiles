@@ -36,7 +36,7 @@ describe('E2E: auto-install during generate', () => {
       // Create a separate harness for auto-install tests with its own fixtures
       const harness = new TestHarness({
         testDir: import.meta.dir,
-        configPath: 'fixtures/auto-install/config.yaml',
+        configPath: 'fixtures/auto-install/config.ts',
         platform: config.platform,
         architecture: config.architecture,
       });

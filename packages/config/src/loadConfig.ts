@@ -2,29 +2,23 @@ import type { ISystemInfo, ProjectConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
-import { loadProjectConfig } from './stagedProjectConfigLoader';
 import { loadTsConfig } from './tsConfigLoader';
 
 /**
- * Loads configuration from either a YAML or TypeScript file.
+ * Loads configuration from a TypeScript file.
  *
- * Automatically detects the file type based on extension and uses the appropriate loader.
- * Supports both `.yaml` and `.ts` configuration files with the same validation and
- * processing pipeline.
+ * Configuration files must have a `.ts` extension and export a default configuration
+ * object or function.
  *
  * @param parentLogger - Parent logger instance (a sublogger will be created).
  * @param fileSystem - File system interface for reading configuration files.
- * @param userConfigPath - Path to the user's configuration file (`.yaml` or `.ts`).
+ * @param userConfigPath - Path to the user's TypeScript configuration file (`.ts`).
  * @param systemInfo - System information for platform detection and path expansion.
  * @param env - Environment variables for token substitution.
  * @returns A promise that resolves to the fully validated and processed configuration.
  *
  * @example
  * ```typescript
- * // Load YAML config
- * const config = await loadConfig(logger, fs, './config.yaml', systemInfo, env);
- *
- * // Load TypeScript config
  * const config = await loadConfig(logger, fs, './dotfiles.config.ts', systemInfo, env);
  * ```
  */
@@ -42,10 +36,5 @@ export async function loadConfig(
     return loadTsConfig(logger, fileSystem, userConfigPath, systemInfo, env);
   }
 
-  if (userConfigPath.endsWith('.yaml') || userConfigPath.endsWith('.yml')) {
-    logger.debug(messages.loadingProjectConfiguration());
-    return loadProjectConfig(logger, fileSystem, userConfigPath, systemInfo, env);
-  }
-
-  throw new Error(`Unsupported configuration file type: ${userConfigPath}. Use .yaml, .yml, or .ts`);
+  throw new Error(`Unsupported configuration file type: ${userConfigPath}. Configuration must use .ts extension.`);
 }

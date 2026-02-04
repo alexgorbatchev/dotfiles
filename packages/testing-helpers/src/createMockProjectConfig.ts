@@ -19,7 +19,7 @@ export type CreateMockProjectConfigOptions = {
    */
   config: PartialProjectConfig;
   /**
-   * The path to write the YAML file to.
+   * The path to write the config file to.
    */
   filePath: string;
   /**
@@ -41,14 +41,14 @@ export type CreateMockProjectConfigOptions = {
 };
 
 /**
- * Creates a mock `ProjectConfig` string and optionally writes it to a file.
+ * Creates a mock `ProjectConfig` for testing purposes.
  *
  * @param options - Options for creating the mock project config.
  * @returns A promise that resolves with the `ProjectConfig` object.
  *
- * This function is a utility for creating mock project configuration files in tests.  It simplifies the process of
- * generating valid YAML content from a partial config object and writing it to a mock file system, making it easier to
- * set up test preconditions for modules that consume these configuration files.
+ * This function is a utility for creating mock project configurations in tests. It simplifies the process of
+ * generating a valid config from a partial config object, making it easier to set up test preconditions
+ * for modules that consume configuration.
  *
  * Most commonly used together with `createTestingDirectories` and `createMemFileSystems`.
  */
@@ -63,7 +63,5 @@ export async function createMockProjectConfig({
   const fullConfig = await createProjectConfigFromObject(logger, fileSystem, config, systemInfo, env, {
     userConfigPath: filePath,
   });
-  const yamlString = Bun.YAML.stringify(fullConfig);
-  await fileSystem.writeFile(filePath, yamlString, 'utf8');
   return fullConfig;
 }

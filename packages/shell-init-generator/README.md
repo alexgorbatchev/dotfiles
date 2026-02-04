@@ -213,17 +213,23 @@ class CustomShellGenerator extends BaseShellGenerator {
 
 ## Configuration
 
-Shell init configuration in `config.yaml`:
+Shell init configuration in `dotfiles.config.ts`:
 
-```yaml
-features:
-  shellInstall:
-    # Path to zsh configuration file (optional)
-    zsh: ~/.zshrc
-    # Path to bash configuration file (optional)
-    bash: ~/.bashrc
-    # Path to powershell configuration file (optional)
-    powershell: ~/.config/powershell/profile.ps1
+```typescript
+import { defineConfig } from '@gitea/dotfiles';
+
+export default defineConfig(() => ({
+  features: {
+    shellInstall: {
+      // Path to zsh configuration file (optional)
+      zsh: '~/.zshrc',
+      // Path to bash configuration file (optional)
+      bash: '~/.bashrc',
+      // Path to powershell configuration file (optional)
+      powershell: '~/.config/powershell/profile.ps1',
+    },
+  },
+}));
 ```
 
 If a shell is not configured in `shellInstall`, initialization scripts will still be generated but the profile file will not be updated.

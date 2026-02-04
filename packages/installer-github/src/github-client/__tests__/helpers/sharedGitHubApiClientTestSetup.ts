@@ -20,7 +20,7 @@ export const createMockProjectConfigForGitHubApi = async (
       paths: testDirs.paths,
       ...overrides,
     },
-    filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+    filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
     fileSystem: memFs.fs,
     logger,
     systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },

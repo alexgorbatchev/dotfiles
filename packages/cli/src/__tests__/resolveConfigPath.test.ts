@@ -21,9 +21,9 @@ describe('resolveConfigPath', () => {
     it('expands ~/ in explicit config option using bootstrap home', async () => {
       const homedirSpy = spyOn(os, 'homedir').mockReturnValue('/bootstrap-home');
 
-      const result = await resolveConfigPath(logger, '~/config.yaml', '/cwd');
+      const result = await resolveConfigPath(logger, '~/config.ts', '/cwd');
 
-      expect(result).toBe('/bootstrap-home/config.yaml');
+      expect(result).toBe('/bootstrap-home/config.ts');
       expect(homedirSpy).toHaveBeenCalledTimes(1);
 
       homedirSpy.mockRestore();
@@ -74,17 +74,7 @@ describe('resolveConfigPath', () => {
 
       await resolveConfigPath(logger, '', '/project');
 
-      expect(checkedPaths).toEqual(['/project/dotfiles.config.ts', '/project/dotfiles.config.yaml']);
-    });
-
-    it('returns yaml config when ts config does not exist', async () => {
-      existsSpy.mockImplementation(async (filePath: string) => {
-        return filePath === '/project/dotfiles.config.yaml';
-      });
-
-      const result = await resolveConfigPath(logger, '', '/project');
-
-      expect(result).toBe('/project/dotfiles.config.yaml');
+      expect(checkedPaths).toEqual(['/project/dotfiles.config.ts']);
     });
 
     it('returns undefined when no default config files exist', async () => {
@@ -97,7 +87,7 @@ describe('resolveConfigPath', () => {
 
     it('logs resolved path when config found', async () => {
       existsSpy.mockImplementation(async (filePath: string) => {
-        return filePath === '/project/dotfiles.config.yaml';
+        return filePath === '/project/dotfiles.config.ts';
       });
 
       await resolveConfigPath(logger, '', '/project');
@@ -106,14 +96,14 @@ describe('resolveConfigPath', () => {
         ['DEBUG'],
         ['test', 'resolveConfigPath'],
         [],
-        ['Using configuration: /project/dotfiles.config.yaml'],
+        ['Using configuration: /project/dotfiles.config.ts'],
       );
     });
   });
 
   describe('DEFAULT_CONFIG_FILES', () => {
     it('contains expected default file names', () => {
-      expect(DEFAULT_CONFIG_FILES).toEqual(['dotfiles.config.ts', 'dotfiles.config.yaml']);
+      expect(DEFAULT_CONFIG_FILES).toEqual(['dotfiles.config.ts']);
     });
   });
 });

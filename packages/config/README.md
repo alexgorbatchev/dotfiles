@@ -4,11 +4,11 @@ Configuration loading and management for the dotfiles tool installer system.
 
 ## Overview
 
-This package provides functionality to load, validate, and process configuration files for the dotfiles system. It handles both the main YAML configuration (`config.yaml`) and individual tool configurations (`.tool.ts` files), applying platform-specific overrides and performing token substitution.
+This package provides functionality to load, validate, and process configuration files for the dotfiles system. It handles both the main TypeScript configuration (`dotfiles.config.ts`) and individual tool configurations (`.tool.ts` files), applying platform-specific overrides and performing token substitution.
 
 ## Features
 
-- **YAML Configuration**: Load and validate the main `config.yaml` file
+- **TypeScript Configuration**: Load and validate the main `dotfiles.config.ts` file with full type safety
 - **Tool Configuration Discovery**: Recursively scan directories for `.tool.ts` configuration files
 - **Platform Overrides**: Apply OS and architecture-specific configuration overrides
 - **Token Substitution**: Replace environment variables and config references in configuration values
@@ -30,7 +30,7 @@ import { createRealFileSystem } from '@dotfiles/file-system';
 const projectConfig = await loadProjectConfig(
   logger,
   createRealFileSystem(),
-  './config.yaml',
+  './dotfiles.config.ts',
   { platform: 'darwin', arch: 'x64', homeDir: '/Users/username' },
   process.env,
 );
@@ -169,31 +169,42 @@ export default defineConfig(({ configFileDir, systemInfo }) => ({
 
 ## Configuration File Structure
 
-### Main Configuration (config.yaml)
+### Main Configuration (dotfiles.config.ts)
 
-```yaml
-paths:
-  homeDir: ~
-  dotfilesDir: ~/.dotfiles
-  binariesDir: ~/.dotfiles/binaries
-  targetDir: ~/.local/bin
-  toolConfigsDir: ~/.dotfiles/tools
-  shellScriptsDir: ~/.dotfiles/shell-scripts
-  generatedDir: ~/.dotfiles/generated
+```typescript
+import { defineConfig } from '@dotfiles/config';
 
-# Platform-specific overrides
-platform:
-  - match:
-      - os: macos
-    config:
-      paths:
-        targetDir: ~/bin
-  - match:
-      - os: linux
-        arch: arm64
-    config:
-      paths:
-        binariesDir: ~/.dotfiles/binaries-arm64
+export default defineConfig(() => ({
+  paths: {
+    homeDir: '~',
+    dotfilesDir: '~/.dotfiles',
+    binariesDir: '~/.dotfiles/binaries',
+    targetDir: '~/.local/bin',
+    toolConfigsDir: '~/.dotfiles/tools',
+    shellScriptsDir: '~/.dotfiles/shell-scripts',
+    generatedDir: '~/.dotfiles/generated',
+  },
+
+  // Platform-specific overrides
+  platform: [
+    {
+      match: [{ os: 'macos' }],
+      config: {
+        paths: {
+          targetDir: '~/bin',
+        },
+      },
+    },
+    {
+      match: [{ os: 'linux', arch: 'arm64' }],
+      config: {
+        paths: {
+          binariesDir: '~/.dotfiles/binaries-arm64',
+        },
+      },
+    },
+  ],
+}));
 ```
 
 ### Tool Configuration Files
@@ -248,7 +259,7 @@ const fs = createRealFileSystem();
 const projectConfig = await loadProjectConfig(
   logger,
   fs,
-  './config.yaml',
+  './dotfiles.config.ts',
   {
     platform: process.platform,
     arch: process.arch,
@@ -421,13 +432,13 @@ The package provides detailed error messages and logging for various failure sce
 ### Configuration File Not Found
 
 ```
-ERROR Config file not found: /path/to/config.yaml
+ERROR Config file not found: /path/to/dotfiles.config.ts
 ```
 
-### YAML Parse Errors
+### Configuration Must Use TypeScript
 
 ```
-ERROR Failed to parse YAML configuration /path/to/config.yaml: Unexpected token
+ERROR Configuration must use .ts extension: /path/to/config.yaml
 ```
 
 ### Schema Validation Errors
@@ -476,7 +487,6 @@ import { createMemFileSystem, createMockProjectConfig } from '@dotfiles/testing-
 
 // Create in-memory file system with config files
 const fs = createMemFileSystem({
-  '/config.yaml': 'paths:\n  homeDir: /test',
   '/tools/fzf.tool.ts': 'export default (c) => c.bin("fzf")',
 });
 
@@ -488,7 +498,7 @@ const projectConfig = createMockProjectConfig({
 });
 
 // Load configuration in tests
-const config = await loadProjectConfig(logger, fs, '/config.yaml', systemInfo, {});
+const config = await loadProjectConfig(logger, fs, '/dotfiles.config.ts', systemInfo, {});
 ```
 
 ## Type Safety

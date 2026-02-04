@@ -10,7 +10,7 @@ describe('ProfileUpdater', () => {
   let mockFileSystem: IFileSystem;
   let profileUpdater: ProfileUpdater;
   const homeDir = '/home/test';
-  const testProjectConfigPath = '/path/to/config.yaml';
+  const testProjectConfigPath = '/path/to/config.ts';
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem({});

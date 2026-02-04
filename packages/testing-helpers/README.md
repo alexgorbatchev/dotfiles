@@ -26,7 +26,7 @@ import { createITestDirectories } from '@dotfiles/testing-helpers';
 const { workingDir, homeDir, cleanup } = await createITestDirectories('my-test');
 
 // Use directories in test
-await fs.writeFile(path.join(workingDir, 'config.yaml'), '...');
+await fs.writeFile(path.join(workingDir, 'dotfiles.config.ts'), '...');
 
 // Cleanup automatically runs after test
 // Or call manually: await cleanup();

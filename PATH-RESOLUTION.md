@@ -10,7 +10,7 @@ The `IToolConfigContext` (passed as `ctx` in `defineTool`) provides:
 | ----------------------- | ---------------------------------------- | -------------------------------------------------------- |
 | `toolDir`               | Directory containing the `.tool.ts` file | `path.dirname(filePath)`                                 |
 | `currentDir`            | Stable symlink path after install        | `${projectConfig.paths.binariesDir}/${toolName}/current` |
-| `projectConfig.paths.*` | All configured paths                     | User's config.yaml                                       |
+| `projectConfig.paths.*` | All configured paths                     | User's `dotfiles.config.ts`                              |
 
 ---
 

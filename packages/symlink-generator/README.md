@@ -83,35 +83,22 @@ await generator.generate();
 
 ## Configuration
 
-### Symlink Configuration in config.yaml
+### Symlink Configuration in Tool Files
 
-```yaml
-symlinks:
-  # Git configuration
-  - source: ~/.dotfiles/configs/git/.gitconfig
-    target: ~/.gitconfig
+Symlinks are typically configured in `.tool.ts` files using the `.symlink()` method:
 
-  # Vim configuration
-  - source: ~/.dotfiles/configs/vim/.vimrc
-    target: ~/.vimrc
+```typescript
+import { defineTool } from '@gitea/dotfiles';
 
-  # Zsh configuration
-  - source: ~/.dotfiles/configs/zsh/.zshrc
-    target: ~/.zshrc
-
-  # SSH configuration
-  - source: ~/.dotfiles/configs/ssh/config
-    target: ~/.ssh/config
-
-  # Tool-specific configs
-  - source: ~/.dotfiles/configs/bat/config
-    target: ~/.config/bat/config
-
-# Symlink options
-symlinkOptions:
-  backup: true
-  force: false
-  createParentDirs: true
+export default defineTool((install) =>
+  install()
+    // Git configuration
+    .symlink('./.gitconfig', '~/.gitconfig')
+    // Vim configuration
+    .symlink('./.vimrc', '~/.vimrc')
+    // Zsh configuration
+    .symlink('./.zshrc', '~/.zshrc')
+);
 ```
 
 ## Symlink Operations

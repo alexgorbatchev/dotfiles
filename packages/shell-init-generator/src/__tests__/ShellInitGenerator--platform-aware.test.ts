@@ -27,7 +27,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: mockFileSystem,
       logger,
       systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: testDirs.paths.homeDir },

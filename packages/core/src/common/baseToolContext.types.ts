@@ -197,7 +197,7 @@ export type BoundResolve = (pattern: string) => string;
  */
 export interface IBaseToolContext {
   /**
-   * The user's parsed application configuration from the main `config.yaml` file.
+   * The user's parsed application configuration from the main `config.ts` file.
    */
   projectConfig: ProjectConfig;
 

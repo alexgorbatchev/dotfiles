@@ -205,7 +205,7 @@ describe('HookExecutor', () => {
 
       const mockProjectConfig = await createMockProjectConfig({
         config: { paths: { generatedDir: '/generated' } },
-        filePath: '/test/config.yaml',
+        filePath: '/test/config.ts',
         fileSystem: memFs.fs,
         logger,
         systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: '/home/test' },

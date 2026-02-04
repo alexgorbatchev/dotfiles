@@ -30,42 +30,6 @@ describe('loadConfig', () => {
   });
 
   describe('file type detection', () => {
-    it('should load YAML config when file has .yaml extension', async () => {
-      const yamlContent = `
-        paths:
-          dotfilesDir: ~/yaml-dotfiles
-          targetDir: /yaml/bin
-      `;
-
-      const { fs } = await createMemFileSystem({
-        initialVolumeJson: {
-          '/test/config.yaml': yamlContent,
-        },
-      });
-
-      const result = await loadConfig(logger, fs, '/test/config.yaml', mockSystemInfo, {});
-
-      expect(result.paths.dotfilesDir).toBe('/Users/testuser/yaml-dotfiles');
-      expect(result.paths.targetDir).toBe('/yaml/bin');
-    });
-
-    it('should load YAML config when file has .yml extension', async () => {
-      const yamlContent = `
-        paths:
-          dotfilesDir: ~/yml-dotfiles
-      `;
-
-      const { fs } = await createMemFileSystem({
-        initialVolumeJson: {
-          '/test/config.yml': yamlContent,
-        },
-      });
-
-      const result = await loadConfig(logger, fs, '/test/config.yml', mockSystemInfo, {});
-
-      expect(result.paths.dotfilesDir).toBe('/Users/testuser/yml-dotfiles');
-    });
-
     it('should load TypeScript config when file has .ts extension', async () => {
       const realFs = new NodeFileSystem();
       const testDirs = await createTestDirectories(logger, realFs, {
@@ -100,6 +64,7 @@ describe('loadConfig', () => {
       expect(result.paths.dotfilesDir).toBe('/Users/testuser/ts-dotfiles');
       expect(result.paths.targetDir).toBe('/ts/bin');
     });
+
     it('should throw error for unsupported file extensions', async () => {
       const { fs } = await createMemFileSystem({
         initialVolumeJson: {
@@ -108,6 +73,18 @@ describe('loadConfig', () => {
       });
 
       expect(loadConfig(logger, fs, '/test/config.json', mockSystemInfo, {})).rejects.toThrow(
+        'Unsupported configuration file type',
+      );
+    });
+
+    it('should throw error for YAML files (no longer supported)', async () => {
+      const { fs } = await createMemFileSystem({
+        initialVolumeJson: {
+          '/test/config.yaml': 'paths: {}',
+        },
+      });
+
+      expect(loadConfig(logger, fs, '/test/config.yaml', mockSystemInfo, {})).rejects.toThrow(
         'Unsupported configuration file type',
       );
     });
@@ -135,19 +112,6 @@ describe('loadConfig', () => {
 
       const fs = new NodeFileSystem();
       await loadConfig(logger, fs, configPath, mockSystemInfo, {});
-
-      expect(logger.logs.length).toBeGreaterThan(0);
-    });
-    it('should log when loading YAML config', async () => {
-      const yamlContent = 'paths: {}';
-
-      const { fs } = await createMemFileSystem({
-        initialVolumeJson: {
-          '/test/config.yaml': yamlContent,
-        },
-      });
-
-      await loadConfig(logger, fs, '/test/config.yaml', mockSystemInfo, {});
 
       expect(logger.logs.length).toBeGreaterThan(0);
     });

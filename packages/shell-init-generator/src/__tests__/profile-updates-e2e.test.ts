@@ -25,7 +25,7 @@ describe('Profile Updates E2E Tests', () => {
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'profile-updates-e2e' });
 
-    configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
+    configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.ts');
 
     mockProjectConfig = await createMockProjectConfig({
       config: {

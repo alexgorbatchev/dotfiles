@@ -15,7 +15,7 @@ Before creating any bespoke mocks, check for existing testing utilities. Shared 
 - **FetchMockHelper** - Helper for spying on and mocking `globalThis.fetch` in tests with configurable responses and error simulation
 - **TestLogger** - Extended logger for tests that captures logs for verification with `expect()` methods and filtering capabilities
 - **createMemFileSystem** - Creates in-memory file system for testing with customizable mock implementations and initial directory structure
-- **createMockYamlConfig** - Factory for creating mock YAML configurations with partial overrides and default values
+- **createMockProjectConfig** - Factory for creating mock project configurations with partial overrides and default values
 - **createTestDirectories** - Utility for setting up temporary test directories with proper cleanup and path configuration
 - **createToolConfig** - Helper for creating tool configuration files from content or fixtures for testing
 - **createFile** - Simple utility for creating files with optional executable permissions in test file systems

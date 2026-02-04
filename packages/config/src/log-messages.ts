@@ -21,7 +21,6 @@ export const messages = {
   fsItemNotFound: (itemType: string, path: string) => createSafeLogMessage(`${itemType} not found: ${path}`),
   fsReadFailed: (path: string) => createSafeLogMessage(`Failed to read ${path}`),
   loadingTypeScriptConfiguration: () => createSafeLogMessage('Loading TypeScript configuration'),
-  loadingProjectConfiguration: () => createSafeLogMessage('Loading project configuration'),
   binarySearchStarted: (binaryName: string, toolConfigsDir: string) =>
     createSafeLogMessage(`Searching for tool providing binary '${binaryName}' in ${toolConfigsDir}`),
   binaryNotFound: (binaryName: string) => createSafeLogMessage(`No tool provides binary '${binaryName}'`),

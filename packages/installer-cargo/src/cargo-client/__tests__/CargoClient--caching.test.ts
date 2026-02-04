@@ -28,7 +28,7 @@ describe('CargoClient caching', () => {
     const logger = new TestLogger();
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/config.yaml',
+      filePath: '/config.ts',
       fileSystem: fs,
       logger,
       systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
@@ -62,7 +62,7 @@ describe('CargoClient caching', () => {
     const logger = new TestLogger();
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/config.yaml',
+      filePath: '/config.ts',
       fileSystem: fs,
       logger,
       systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },

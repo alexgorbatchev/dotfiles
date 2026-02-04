@@ -11,7 +11,7 @@ import {
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { exitCli, expandHomePath } from '@dotfiles/utils';
+import { expandHomePath } from '@dotfiles/utils';
 import path from 'node:path';
 import { z } from 'zod';
 import { messages } from './log-messages';
@@ -386,37 +386,6 @@ export async function getDefaultConfig(
 ): Promise<ProjectConfig> {
   const defaultConfig: RecordUnknown = await loadDefaultProjectConfigAsRecord(fileSystem);
   const result: ProjectConfig = processConfig(parentLogger, userConfigPath, defaultConfig, {}, systemInfo, env);
-  return result;
-}
-
-export async function loadProjectConfig(
-  parentLogger: TsLogger,
-  fileSystem: IFileSystem,
-  userConfigPath: string,
-  systemInfo: ISystemInfo,
-  env: EnvMap,
-): Promise<ProjectConfig> {
-  const logger = parentLogger.getSubLogger({ name: 'loadProjectConfig' });
-  const defaultConfig: RecordUnknown = await loadDefaultProjectConfigAsRecord(fileSystem);
-
-  if (!(await fileSystem.exists(userConfigPath))) {
-    logger.error(messages.fsItemNotFound('Config file', userConfigPath));
-    exitCli(1);
-  }
-
-  let userConfig: RecordUnknown = {};
-
-  try {
-    const userConfigContent: string = await fileSystem.readFile(userConfigPath, 'utf-8');
-    const parsed: unknown = Bun.YAML.parse(userConfigContent) ?? {};
-    userConfig = toRecord(parsed);
-  } catch (error) {
-    logger.error(
-      messages.configurationParseError(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error)),
-    );
-  }
-
-  const result: ProjectConfig = processConfig(parentLogger, userConfigPath, defaultConfig, userConfig, systemInfo, env);
   return result;
 }
 

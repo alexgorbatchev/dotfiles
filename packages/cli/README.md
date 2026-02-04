@@ -258,26 +258,25 @@ bun run cli.ts <command>
 
 ## Configuration
 
-The CLI reads configuration from `config.yaml` in the project root:
+The CLI reads configuration from `dotfiles.config.ts` in the project root:
 
-```yaml
-# Directory structure
-directories:
-  tools: ~/.dotfiles/tools
-  bin: ~/.dotfiles/bin
-  cache: ~/.dotfiles/.cache
-  configs: ~/.dotfiles/configs
+```typescript
+import { defineConfig } from '@gitea/dotfiles';
 
-# Installation options
-installOptions:
-  parallel: true
-  maxConcurrency: 4
-  continueOnError: false
+export default defineConfig(() => ({
+  // Directory structure
+  paths: {
+    toolConfigsDir: '~/.dotfiles/tools',
+    targetDir: '~/.dotfiles/bin',
+    generatedDir: '~/.dotfiles/.cache',
+  },
 
-# Update checking
-updateCheck:
-  enabled: true
-  frequency: daily
+  // Update checking
+  updates: {
+    checkOnRun: true,
+    checkInterval: 86400, // daily
+  },
+}));
 ```
 
 ## Usage Examples
@@ -454,7 +453,7 @@ The CLI provides user-friendly error messages:
 
 ```typescript
 // Configuration errors
-Error: config.yaml not found. Run 'dotfiles init' first.
+Error: dotfiles.config.ts not found. Run 'dotfiles init' first.
 
 // Installation errors
 Error: Failed to install fzf: network timeout

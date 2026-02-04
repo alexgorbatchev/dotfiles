@@ -35,23 +35,23 @@ src/
           mock-install-for-cmd-completion-test.sh
       tools-dependencies/    # Dependency test fixtures by scenario
         success/
-          config.yaml
+          config.ts
           dependency-provider.tool.ts
           dependency-consumer.tool.ts
         missing-provider/
-          config.yaml
+          config.ts
           dependency-consumer-missing.tool.ts
         ambiguous/
-          config.yaml
+          config.ts
           dependency-consumer-ambiguous.tool.ts
           dependency-provider-a.tool.ts
           dependency-provider-b.tool.ts
         circular/
-          config.yaml
+          config.ts
           dependency-cycle-a.tool.ts
           dependency-cycle-b.tool.ts
         platform-mismatch/
-          config.yaml
+          config.ts
           dependency-platform-consumer.tool.ts
           dependency-platform-provider.tool.ts
   TestHarness.ts             # Test harness for running CLI commands
@@ -157,7 +157,7 @@ Tests use a mock HTTP server (via `withMockServer`) to simulate:
 - Tool binary downloads
 - Version updates
 
-The mock server runs on `localhost:8765` and is configured in fixture `config.yaml` files.
+The mock server runs on `localhost:8765` and is configured in fixture `config.ts` files.
 
 ## Fixtures
 
@@ -169,7 +169,7 @@ Fixtures are organized to keep related files together:
   - For example: `github-release-tool/` contains the tool definition, completion script, and all tar.gz binaries
 
 - **Dependency tests**: Located in `fixtures/tools-dependencies/` with separate subdirectories for each scenario:
-  - Each scenario directory contains its own `config.yaml` and all `.tool.ts` files for that test
+  - Each scenario directory contains its own `config.ts` and all `.tool.ts` files for that test
   - Scenarios: `success/`, `missing-provider/`, `ambiguous/`, `circular/`, `platform-mismatch/`
   - Tool files are flat within each scenario directory (no additional nesting)
 

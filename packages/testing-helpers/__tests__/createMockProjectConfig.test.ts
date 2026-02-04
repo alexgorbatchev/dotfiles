@@ -17,13 +17,13 @@ describe('createMockProjectConfig', () => {
     },
   };
 
-  it('should write the YAML string to the specified path', async () => {
+  it('should return the full ProjectConfig', async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
-    const filePath = '/test.yaml';
+    const filePath = '/test/config.ts';
     const systemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' };
     const env: Record<string, string | undefined> = {};
-    await createMockProjectConfig({
+    const result = await createMockProjectConfig({
       config: mockConfig,
       filePath,
       fileSystem: fs,
@@ -31,10 +31,9 @@ describe('createMockProjectConfig', () => {
       systemInfo,
       env,
     });
-    const fileContent = await fs.readFile(filePath, 'utf8');
     const expectedConfig = await createProjectConfigFromObject(logger, fs, mockConfig, systemInfo, env, {
       userConfigPath: filePath,
     });
-    expect(fileContent).toBe(Bun.YAML.stringify(expectedConfig));
+    expect(result).toEqual(expectedConfig);
   });
 });

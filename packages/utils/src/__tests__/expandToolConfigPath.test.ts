@@ -36,7 +36,7 @@ describe('expandToolConfigPath', () => {
           toolConfigsDir: '/Users/testuser/.dotfiles/configs/tools',
         },
       },
-      filePath: '/test/config.yaml',
+      filePath: '/test/config.ts',
       fileSystem: memFs.fs,
       logger,
       systemInfo: mockSystemInfo,

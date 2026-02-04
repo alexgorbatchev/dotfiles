@@ -14,7 +14,7 @@ export interface ITestHarnessOptions {
   testDir: string;
 
   /**
-   * Path to the config.yaml file relative to testDir (default: 'config.yaml')
+   * Path to the config.ts file relative to testDir (default: 'config.ts')
    */
   configPath?: string;
 
@@ -90,7 +90,7 @@ export class TestHarness {
    */
   constructor(options: ITestHarnessOptions) {
     this.testDir = options.testDir;
-    this.configPath = options.configPath ?? 'config.yaml';
+    this.configPath = options.configPath ?? 'config.ts';
     this.cleanBeforeRun = options.cleanBeforeRun ?? false;
     this.platform = options.platform;
     this.architecture = options.architecture;

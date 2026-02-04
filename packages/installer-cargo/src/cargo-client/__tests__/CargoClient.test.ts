@@ -13,7 +13,7 @@ describe('CargoClient', () => {
     await fs.ensureDir('/test');
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/test/config.yaml',
+      filePath: '/test/config.ts',
       fileSystem: fs,
       logger,
       systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
@@ -35,7 +35,7 @@ describe('CargoClient', () => {
     await fs.ensureDir('/test');
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/test/config.yaml',
+      filePath: '/test/config.ts',
       fileSystem: fs,
       logger,
       systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
@@ -84,7 +84,7 @@ describe('CargoClient', () => {
     await fs.ensureDir('/test');
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/test/config.yaml',
+      filePath: '/test/config.ts',
       fileSystem: fs,
       logger,
       systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
@@ -117,7 +117,7 @@ describe('CargoClient', () => {
     await fs.ensureDir('/test');
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/test/config.yaml',
+      filePath: '/test/config.ts',
       fileSystem: fs,
       logger,
       systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
@@ -192,7 +192,7 @@ describe('CargoClient', () => {
     await fs.ensureDir('/test');
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/test/config.yaml',
+      filePath: '/test/config.ts',
       fileSystem: fs,
       logger,
       systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },

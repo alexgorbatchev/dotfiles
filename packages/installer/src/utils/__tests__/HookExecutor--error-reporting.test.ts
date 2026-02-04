@@ -37,7 +37,7 @@ describe('HookExecutor - error reporting', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: fs,
       logger,
       systemInfo,

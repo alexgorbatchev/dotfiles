@@ -43,7 +43,7 @@ describe('findToolByBinary', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: realFs,
       logger,
       systemInfo,
@@ -215,7 +215,7 @@ describe('loadToolConfigByBinary', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: realFs,
       logger,
       systemInfo,

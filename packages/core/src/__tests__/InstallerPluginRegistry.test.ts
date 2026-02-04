@@ -44,7 +44,7 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
 
   const projectConfig = await createMockProjectConfig({
     config: { paths: testDirs.paths },
-    filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+    filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
     fileSystem: fs,
     logger,
     systemInfo,

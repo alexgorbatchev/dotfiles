@@ -34,7 +34,7 @@ describe('E2E: dependency resolution', () => {
         it('generates successfully when dependencies are satisfied', async () => {
           const harness = new TestHarness({
             testDir: import.meta.dir,
-            configPath: 'fixtures/dependency-success/config.yaml',
+            configPath: 'fixtures/dependency-success/config.ts',
             platform: config.platform,
             architecture: config.architecture,
             cleanBeforeRun: true,
@@ -48,7 +48,7 @@ describe('E2E: dependency resolution', () => {
         it('fails when a dependency provider is missing', async () => {
           const harness = new TestHarness({
             testDir: import.meta.dir,
-            configPath: 'fixtures/dependency-missing/config.yaml',
+            configPath: 'fixtures/dependency-missing/config.ts',
             platform: config.platform,
             architecture: config.architecture,
             cleanBeforeRun: true,
@@ -63,7 +63,7 @@ describe('E2E: dependency resolution', () => {
         it('fails when multiple tools provide the same dependency', async () => {
           const harness = new TestHarness({
             testDir: import.meta.dir,
-            configPath: 'fixtures/dependency-ambiguous/config.yaml',
+            configPath: 'fixtures/dependency-ambiguous/config.ts',
             platform: config.platform,
             architecture: config.architecture,
             cleanBeforeRun: true,
@@ -82,7 +82,7 @@ describe('E2E: dependency resolution', () => {
         it('fails when dependencies create a cycle', async () => {
           const harness = new TestHarness({
             testDir: import.meta.dir,
-            configPath: 'fixtures/dependency-circular/config.yaml',
+            configPath: 'fixtures/dependency-circular/config.ts',
             platform: config.platform,
             architecture: config.architecture,
             cleanBeforeRun: true,
@@ -98,7 +98,7 @@ describe('E2E: dependency resolution', () => {
         it('fails when the dependency provider is unavailable on the active platform', async () => {
           const harness = new TestHarness({
             testDir: import.meta.dir,
-            configPath: 'fixtures/dependency-platform-mismatch/config.yaml',
+            configPath: 'fixtures/dependency-platform-mismatch/config.ts',
             platform: config.platform,
             architecture: config.architecture,
             cleanBeforeRun: true,

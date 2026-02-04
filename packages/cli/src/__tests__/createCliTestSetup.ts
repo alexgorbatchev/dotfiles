@@ -104,7 +104,7 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
     config: {
       paths: testDirs.paths,
     },
-    filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+    filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
     fileSystem: mockFs.fs,
     logger,
     systemInfo,

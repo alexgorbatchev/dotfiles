@@ -76,7 +76,7 @@ export async function createTestDirectories(
     fs,
     { homeDir, platform: Platform.Linux, arch: Architecture.X86_64 },
     { HOME: homeDir },
-    `${homeDir}/config.yaml`,
+    `${homeDir}/config.ts`,
   );
   const paths = { ...defaultConfig.paths, ...options.paths };
 
