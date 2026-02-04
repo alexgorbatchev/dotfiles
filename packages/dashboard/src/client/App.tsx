@@ -1,6 +1,7 @@
 import { type JSX } from 'preact';
 import { LocationProvider, Route, Router } from 'preact-iso';
 
+import { CommandPalette } from './components/CommandPalette';
 import { Nav } from './components/Nav';
 import { Health } from './pages/Health';
 import { NotFound } from './pages/NotFound';
@@ -22,6 +23,7 @@ export function App(): JSX.Element {
             <Route default component={NotFound} />
           </Router>
         </main>
+        <CommandPalette />
       </div>
     </LocationProvider>
   );

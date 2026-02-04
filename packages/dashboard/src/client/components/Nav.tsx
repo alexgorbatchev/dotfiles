@@ -1,5 +1,6 @@
 import { type JSX } from 'preact';
 import { useLocation } from 'preact-iso';
+import { Search } from 'lucide-preact';
 
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
@@ -12,6 +13,10 @@ const links = [
 
 export function Nav(): JSX.Element {
   const { url } = useLocation();
+
+  const openCommandPalette = () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+  };
 
   return (
     <nav class='bg-card border-b border-border'>
@@ -37,9 +42,19 @@ export function Nav(): JSX.Element {
               })}
             </div>
           </div>
-          <div class='flex items-center space-x-2 text-sm text-muted-foreground'>
-            <span class='w-2 h-2 rounded-full bg-green-500' />
-            Connected
+          <div class='flex items-center space-x-4'>
+            <button
+              onClick={openCommandPalette}
+              class='flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-input border border-border rounded-md hover:bg-accent transition-colors'
+            >
+              <Search class='w-4 h-4' />
+              <span>Search...</span>
+              <kbd class='text-xs bg-muted px-1.5 py-0.5 rounded'>⌘K</kbd>
+            </button>
+            <div class='flex items-center space-x-2 text-sm text-muted-foreground'>
+              <span class='w-2 h-2 rounded-full bg-green-500' />
+              Connected
+            </div>
           </div>
         </div>
       </div>
