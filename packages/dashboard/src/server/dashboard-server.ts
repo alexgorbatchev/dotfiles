@@ -13,6 +13,7 @@ import clientApp from '../client/dashboard.html';
  * directory where the chunks are located.
  */
 const PACKAGE_DIR = import.meta.dir;
+const IS_DEV = process.env.NODE_ENV === 'development';
 
 /**
  * Creates and returns a dashboard server instance.
@@ -24,7 +25,6 @@ export function createDashboardServer(
 ): IDashboardServer {
   const logger = parentLogger.getSubLogger({ name: 'DashboardServer' });
   const api = createApiRoutes(logger, services);
-
   let server: ReturnType<typeof Bun.serve> | null = null;
 
   return {
@@ -34,12 +34,14 @@ export function createDashboardServer(
       // that are referenced with relative paths (e.g., "./dashboard-pks45b1c.js").
       // These paths are resolved from the CWD, so we must ensure we're in the
       // directory where the chunks are located.
-      process.chdir(PACKAGE_DIR);
+      if (!IS_DEV) {
+        process.chdir(PACKAGE_DIR);
+      }
 
       server = Bun.serve({
         port: options.port,
         hostname: options.host,
-        development: process.env.NODE_ENV !== 'production',
+        development: IS_DEV,
         routes: {
           '/api/tools': async () => {
             const result = await api.getTools();

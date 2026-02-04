@@ -38,7 +38,6 @@ export function registerDashboardCommand(
     .action(async (options: DashboardCommandOptions) => {
       const port = parseInt(options.port ?? '3000', 10);
       const host = options.host ?? 'localhost';
-
       const services = await servicesFactory();
 
       const dashboardServices: IDashboardServices = {
@@ -52,22 +51,6 @@ export function registerDashboardCommand(
       };
 
       const server = createDashboardServer(logger, dashboardServices, { port, host });
-
       await server.start();
-
-      // Keep the process running
-      await new Promise<void>((resolve) => {
-        process.on('SIGINT', async () => {
-          logger.info(messages.dashboardStopping());
-          await server.stop();
-          resolve();
-        });
-
-        process.on('SIGTERM', async () => {
-          logger.info(messages.dashboardStopping());
-          await server.stop();
-          resolve();
-        });
-      });
     });
 }

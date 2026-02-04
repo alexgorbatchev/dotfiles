@@ -1,4 +1,5 @@
-import { hydrate, prerender as ssr } from 'preact-iso';
+import { hydrate } from 'preact';
+import { prerender as ssr } from 'preact-iso';
 
 // eslint-disable-next-line import/no-unassigned-import
 import './styles/globals.css';
@@ -14,3 +15,5 @@ if (typeof window !== 'undefined') {
 export async function prerender() {
   return await ssr(<App />);
 }
+
+import.meta.hot.accept();
