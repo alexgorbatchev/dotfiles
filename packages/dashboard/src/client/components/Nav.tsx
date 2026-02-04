@@ -11,12 +11,12 @@ const links = [
   { path: '/settings', label: '⚙️ Settings' },
 ];
 
+function openCommandPalette(): void {
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+}
+
 export function Nav(): JSX.Element {
   const { url } = useLocation();
-
-  const openCommandPalette = () => {
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
-  };
 
   return (
     <nav class='bg-card border-b border-border'>

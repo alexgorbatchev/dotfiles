@@ -43,11 +43,11 @@ interface ToolsTableProps {
   tools: IToolDetail[];
 }
 
-function ToolsTable({ tools }: ToolsTableProps): JSX.Element {
-  const handleRowClick = (toolName: string): void => {
-    window.location.href = `/tools/${encodeURIComponent(toolName)}`;
-  };
+function handleRowClick(toolName: string): void {
+  window.location.href = `/tools/${encodeURIComponent(toolName)}`;
+}
 
+function ToolsTable({ tools }: ToolsTableProps): JSX.Element {
   return (
     <Table>
       <TableBody>
