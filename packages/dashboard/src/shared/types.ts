@@ -100,6 +100,26 @@ export interface IToolSummary {
 }
 
 /**
+ * File tree entry for displaying tool config directory structure.
+ */
+export interface IFileTreeEntry {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  children?: IFileTreeEntry[];
+  /** For tool files, the associated tool name */
+  toolName?: string;
+}
+
+/**
+ * Tool configs file tree response.
+ */
+export interface IToolConfigsTree {
+  rootPath: string;
+  entries: IFileTreeEntry[];
+}
+
+/**
  * Dashboard statistics for overview page.
  */
 export interface IDashboardStats {

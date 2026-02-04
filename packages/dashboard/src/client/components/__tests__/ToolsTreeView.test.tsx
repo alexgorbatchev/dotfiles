@@ -1,16 +1,15 @@
 // UI test setup - registers DOM and exports testing utilities
 import { fireEvent, render, screen, setupUITests } from '../../../testing/ui-setup';
 
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 setupUITests();
 
-import type { IToolDetail } from '../../../shared/types';
+import type { IFileTreeEntry, IToolConfigsTree, IToolDetail } from '../../../shared/types';
 import { ToolsTreeView } from '../ToolsTreeView';
 
 function createTool(
   name: string,
-  configFilePath: string,
   status: 'installed' | 'not-installed' | 'error' = 'installed',
 ): IToolDetail {
   return {
@@ -19,7 +18,6 @@ function createTool(
       version: '1.0.0',
       installationMethod: 'github-release',
       installParams: {},
-      configFilePath,
     },
     runtime: {
       status,
@@ -33,78 +31,134 @@ function createTool(
   };
 }
 
+function createTreeResponse(entries: IFileTreeEntry[]): IToolConfigsTree {
+  return {
+    rootPath: '/home/user/tools',
+    entries,
+  };
+}
+
+// Store original fetch
+const originalFetch = globalThis.fetch;
+
+function mockFetchWith(treeData: IToolConfigsTree | null): void {
+  const mockFn = mock(async (url: string) => {
+    if (url.includes('/tool-configs-tree')) {
+      return new Response(JSON.stringify({ success: true, data: treeData }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response('Not found', { status: 404 });
+  });
+  globalThis.fetch = Object.assign(mockFn, { preconnect: () => {} }) as typeof fetch;
+}
+
 describe('ToolsTreeView', () => {
-  test('renders empty state when no tools', () => {
+  beforeEach(() => {
+    // Reset fetch mock
+    globalThis.fetch = originalFetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  test('renders loading state initially', () => {
+    // Don't resolve fetch immediately
+    const mockFn = mock(async () => new Promise(() => {}));
+    globalThis.fetch = Object.assign(mockFn, { preconnect: () => {} }) as typeof fetch;
     render(<ToolsTreeView tools={[]} />);
 
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+  });
+
+  test('renders empty state when no entries', async () => {
+    mockFetchWith(createTreeResponse([]));
+    render(<ToolsTreeView tools={[]} />);
+
+    // Wait for async render
+    await new Promise((r) => setTimeout(r, 10));
     expect(screen.getByText('No tool files found')).toBeInTheDocument();
   });
 
-  test('renders card with title', () => {
-    const tools = [createTool('fzf', '/home/user/tools/fzf.tool.ts')];
-    render(<ToolsTreeView tools={tools} />);
+  test('renders card with title', async () => {
+    mockFetchWith(createTreeResponse([
+      { name: 'fzf.tool.ts', path: '/home/user/tools/fzf.tool.ts', type: 'file', toolName: 'fzf' },
+    ]));
+    render(<ToolsTreeView tools={[createTool('fzf')]} />);
 
+    await new Promise((r) => setTimeout(r, 10));
     expect(screen.getByText('Tool Files')).toBeInTheDocument();
   });
 
-  test('renders tool file in tree', () => {
-    const tools = [createTool('fzf', '/home/user/tools/fzf.tool.ts')];
-    render(<ToolsTreeView tools={tools} />);
+  test('renders tool file in tree', async () => {
+    mockFetchWith(createTreeResponse([
+      { name: 'fzf.tool.ts', path: '/home/user/tools/fzf.tool.ts', type: 'file', toolName: 'fzf' },
+    ]));
+    render(<ToolsTreeView tools={[createTool('fzf')]} />);
 
-    expect(screen.getByText('fzf.tool.ts')).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 10));
+    // Text is split: base name + extension in separate spans
+    expect(screen.getByText('fzf')).toBeInTheDocument();
+    expect(screen.getByText('.tool.ts')).toBeInTheDocument();
   });
 
-  test('renders nested folder structure', () => {
-    const tools = [
-      createTool('fzf', '/home/user/tools/dev/fzf.tool.ts'),
-      createTool('bat', '/home/user/tools/dev/bat.tool.ts'),
-    ];
-    render(<ToolsTreeView tools={tools} />);
+  test('renders nested folder structure', async () => {
+    mockFetchWith(createTreeResponse([
+      {
+        name: 'dev',
+        path: '/home/user/tools/dev',
+        type: 'directory',
+        children: [
+          { name: 'fzf.tool.ts', path: '/home/user/tools/dev/fzf.tool.ts', type: 'file', toolName: 'fzf' },
+          { name: 'bat.tool.ts', path: '/home/user/tools/dev/bat.tool.ts', type: 'file', toolName: 'bat' },
+        ],
+      },
+    ]));
+    render(<ToolsTreeView tools={[createTool('fzf'), createTool('bat')]} />);
 
+    await new Promise((r) => setTimeout(r, 10));
     expect(screen.getByText('dev')).toBeInTheDocument();
-    expect(screen.getByText('fzf.tool.ts')).toBeInTheDocument();
-    expect(screen.getByText('bat.tool.ts')).toBeInTheDocument();
+    expect(screen.getByText('fzf')).toBeInTheDocument();
+    expect(screen.getByText('bat')).toBeInTheDocument();
   });
 
-  test('renders multiple folders', () => {
-    const tools = [
-      createTool('fzf', '/home/user/tools/dev/fzf.tool.ts'),
-      createTool('docker', '/home/user/tools/infra/docker.tool.ts'),
-    ];
-    render(<ToolsTreeView tools={tools} />);
+  test('renders multiple folders', async () => {
+    mockFetchWith(createTreeResponse([
+      {
+        name: 'dev',
+        path: '/home/user/tools/dev',
+        type: 'directory',
+        children: [
+          { name: 'fzf.tool.ts', path: '/home/user/tools/dev/fzf.tool.ts', type: 'file', toolName: 'fzf' },
+        ],
+      },
+      {
+        name: 'infra',
+        path: '/home/user/tools/infra',
+        type: 'directory',
+        children: [
+          { name: 'docker.tool.ts', path: '/home/user/tools/infra/docker.tool.ts', type: 'file', toolName: 'docker' },
+        ],
+      },
+    ]));
+    render(<ToolsTreeView tools={[createTool('fzf'), createTool('docker')]} />);
 
+    await new Promise((r) => setTimeout(r, 10));
     expect(screen.getByText('dev')).toBeInTheDocument();
     expect(screen.getByText('infra')).toBeInTheDocument();
-    expect(screen.getByText('fzf.tool.ts')).toBeInTheDocument();
-    expect(screen.getByText('docker.tool.ts')).toBeInTheDocument();
+    expect(screen.getByText('fzf')).toBeInTheDocument();
+    expect(screen.getByText('docker')).toBeInTheDocument();
   });
 
-  test('renders deeply nested structure', () => {
-    const tools = [
-      createTool('neovim', '/home/user/tools/editors/terminal/neovim.tool.ts'),
-    ];
-    render(<ToolsTreeView tools={tools} />);
-
-    expect(screen.getByText('editors')).toBeInTheDocument();
-    expect(screen.getByText('terminal')).toBeInTheDocument();
-    expect(screen.getByText('neovim.tool.ts')).toBeInTheDocument();
-  });
-
-  test('skips tools without configFilePath', () => {
-    const tools = [
-      createTool('fzf', '/home/user/tools/fzf.tool.ts'),
-      { ...createTool('bat', ''), config: { ...createTool('bat', '').config, configFilePath: undefined } },
-    ];
-    render(<ToolsTreeView tools={tools} />);
-
-    expect(screen.getByText('fzf.tool.ts')).toBeInTheDocument();
-    expect(screen.queryByText('bat.tool.ts')).not.toBeInTheDocument();
-  });
-
-  test('navigates to tool detail on file click', () => {
+  test('navigates to tool detail on file click', async () => {
     const originalLocation = window.location.href;
-    const tools = [createTool('fzf', '/home/user/tools/fzf.tool.ts')];
-    render(<ToolsTreeView tools={tools} />);
+    mockFetchWith(createTreeResponse([
+      { name: 'fzf.tool.ts', path: '/home/user/tools/fzf.tool.ts', type: 'file', toolName: 'fzf' },
+    ]));
+    render(<ToolsTreeView tools={[createTool('fzf')]} />);
+
+    await new Promise((r) => setTimeout(r, 10));
 
     // Mock window.location
     Object.defineProperty(window, 'location', {
@@ -112,7 +166,8 @@ describe('ToolsTreeView', () => {
       writable: true,
     });
 
-    fireEvent.click(screen.getByText('fzf.tool.ts'));
+    // Click on the base name (extension is in separate span)
+    fireEvent.click(screen.getByText('fzf'));
 
     expect(window.location.href).toBe('/tools/fzf');
 
@@ -123,19 +178,25 @@ describe('ToolsTreeView', () => {
     });
   });
 
-  test('sorts folders before files', () => {
-    const tools = [
-      createTool('zzz-file', '/home/user/tools/zzz-file.tool.ts'),
-      createTool('aaa-nested', '/home/user/tools/aaa-folder/nested.tool.ts'),
-    ];
-    const { container } = render(<ToolsTreeView tools={tools} />);
+  test('colors installed tool files green', async () => {
+    mockFetchWith(createTreeResponse([
+      { name: 'fzf.tool.ts', path: '/home/user/tools/fzf.tool.ts', type: 'file', toolName: 'fzf' },
+    ]));
+    const { container } = render(<ToolsTreeView tools={[createTool('fzf', 'installed')]} />);
 
-    const items = container.querySelectorAll('[class*="flex items-center py-1"]');
-    const texts = [...items].map((item) => item.textContent?.trim());
+    await new Promise((r) => setTimeout(r, 10));
+    const icon = container.querySelector('svg.lucide-file-code.text-green-400');
+    expect(icon).toBeInTheDocument();
+  });
 
-    // Folder should come before file
-    const folderIndex = texts.findIndex((t) => t?.includes('aaa-folder'));
-    const fileIndex = texts.findIndex((t) => t?.includes('zzz-file'));
-    expect(folderIndex).toBeLessThan(fileIndex);
+  test('colors not-installed tool files blue', async () => {
+    mockFetchWith(createTreeResponse([
+      { name: 'fzf.tool.ts', path: '/home/user/tools/fzf.tool.ts', type: 'file', toolName: 'fzf' },
+    ]));
+    const { container } = render(<ToolsTreeView tools={[createTool('fzf', 'not-installed')]} />);
+
+    await new Promise((r) => setTimeout(r, 10));
+    const icon = container.querySelector('svg.lucide-file-code.text-blue-400');
+    expect(icon).toBeInTheDocument();
   });
 });

@@ -8,6 +8,7 @@ interface TreeItemData<T = unknown> {
   id: string;
   label: string;
   icon?: JSX.Element;
+  iconDecorator?: JSX.Element;
   children?: TreeItemData<T>[];
   data?: T;
 }
@@ -73,6 +74,7 @@ function TreeItem<T = unknown>({
         onClick={handleClick}
       >
         {renderChevron()}
+        {item.iconDecorator && <span class='flex-shrink-0 mr-1'>{item.iconDecorator}</span>}
         {item.icon && <span class={cn('flex-shrink-0', iconClassName)}>{item.icon}</span>}
         <span class={cn('ml-2 flex-1 min-w-0', hasChildren && 'font-medium')}>
           {renderLabel ? renderLabel(item) : item.label}

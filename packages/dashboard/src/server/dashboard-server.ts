@@ -63,6 +63,11 @@ export function createDashboardServer(
             return Response.json(result);
           },
 
+          '/api/tool-configs-tree': async () => {
+            const result = await api.getToolConfigsTree();
+            return Response.json(result);
+          },
+
           '/api/shell': async () => {
             const result = await api.getShellIntegration();
             return Response.json(result);
