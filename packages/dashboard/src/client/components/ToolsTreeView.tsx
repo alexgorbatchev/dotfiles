@@ -1,4 +1,4 @@
-import { FileCode, FolderOpen } from 'lucide-preact';
+import { FileCode, FolderOpen, FolderTree } from 'lucide-preact';
 import type { ComponentChildren } from 'preact';
 import { type JSX } from 'preact';
 
@@ -125,7 +125,7 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
 
   if (loading) {
     return (
-      <TitledCard title='Tool Files'>
+      <TitledCard title='Tool Files' icon={<FolderTree class='h-4 w-4' />}>
         <div class='text-muted-foreground text-sm'>Loading...</div>
       </TitledCard>
     );
@@ -137,14 +137,14 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
 
   if (treeItems.length === 0) {
     return (
-      <TitledCard title='Tool Files'>
+      <TitledCard title='Tool Files' icon={<FolderTree class='h-4 w-4' />}>
         <div class='text-muted-foreground text-sm'>No tool files found</div>
       </TitledCard>
     );
   }
 
   return (
-    <TitledCard title='Tool Files'>
+    <TitledCard title='Tool Files' icon={<FolderTree class='h-4 w-4' />}>
       <Tree
         items={treeItems}
         defaultExpanded={true}

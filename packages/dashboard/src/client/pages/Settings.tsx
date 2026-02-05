@@ -1,3 +1,4 @@
+import { FolderCog } from 'lucide-preact';
 import { type JSX } from 'preact';
 
 import type { IConfigSummary } from '../../shared/types';
@@ -25,7 +26,7 @@ export function Settings(): JSX.Element {
 
   return (
     <div class='space-y-6'>
-      <TitledCard title='Project Paths'>
+      <TitledCard title='Project Paths' icon={<FolderCog class='h-4 w-4' />}>
         <div class='space-y-4'>
           {paths.map((p, i) => (
             <div key={i}>

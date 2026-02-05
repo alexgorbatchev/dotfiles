@@ -1,3 +1,4 @@
+import { ClipboardList, File, History, Info } from 'lucide-preact';
 import { type JSX } from 'preact';
 
 import type { IToolDetail, IToolHistory } from '../../shared/types';
@@ -62,7 +63,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       </div>
 
       {/* Overview Section */}
-      <TitledCard title='Overview'>
+      <TitledCard title='Overview' icon={<Info class='h-4 w-4' />}>
         <div class='space-y-4'>
           <div class='grid grid-cols-4 gap-4'>
             <div>
@@ -116,14 +117,14 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       </TitledCard>
 
       {/* Files Section */}
-      <TitledCard title='Files'>
+      <TitledCard title='Files' icon={<File class='h-4 w-4' />}>
         {(tool.files?.length || 0) > 0 ?
           <FileTree nodes={fileRoots} /> :
           <div class='text-muted-foreground text-center py-4'>No files tracked</div>}
       </TitledCard>
 
       {/* History Section */}
-      <TitledCard title='History'>
+      <TitledCard title='History' icon={<History class='h-4 w-4' />}>
         <ToolHistory
           entries={history?.entries ?? []}
           installedAt={history?.installedAt ?? null}

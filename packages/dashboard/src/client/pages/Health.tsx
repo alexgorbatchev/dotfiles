@@ -1,3 +1,4 @@
+import { HeartPulse } from 'lucide-preact';
 import { type JSX } from 'preact';
 
 import type { IHealthStatus } from '../../shared/types';
@@ -49,7 +50,7 @@ export function Health(): JSX.Element {
       </Card>
 
       {/* Individual checks */}
-      <TitledCard title='Health Checks'>
+      <TitledCard title='Health Checks' icon={<HeartPulse class='h-4 w-4' />}>
         <div class='space-y-3'>
           {health?.checks?.map((check, i) => (
             <div key={i} class='flex items-start justify-between py-3 border-b border-border'>

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './Card';
 
 interface TitledCardProps {
   title: string;
-  icon?: JSX.Element;
+  icon: JSX.Element;
   action?: JSX.Element;
   children: ComponentChildren;
   class?: string;

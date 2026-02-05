@@ -1,6 +1,6 @@
 import 'github-markdown-css/github-markdown-light.css';
 
-import { ExternalLink } from 'lucide-preact';
+import { BookOpen, ExternalLink } from 'lucide-preact';
 import { type JSX } from 'preact';
 import Markdown, { type Components } from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -62,7 +62,7 @@ export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
 
   if (loading) {
     return (
-      <TitledCard title='README'>
+      <TitledCard title='README' icon={<BookOpen class='h-4 w-4' />}>
         <div class='text-muted-foreground text-center py-8'>Loading README...</div>
       </TitledCard>
     );
@@ -70,7 +70,7 @@ export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
 
   if (error || !data?.content) {
     return (
-      <TitledCard title='README'>
+      <TitledCard title='README' icon={<BookOpen class='h-4 w-4' />}>
         <div class='text-muted-foreground text-center py-8'>
           <p class='mb-2'>README not available</p>
           <a
@@ -89,6 +89,7 @@ export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
   return (
     <TitledCard
       title='README'
+      icon={<BookOpen class='h-4 w-4' />}
       action={
         <a
           href={`https://github.com/${repo}#readme`}
