@@ -13,7 +13,6 @@ import { selectAsset } from '../installFromGitHubRelease';
 
 function createMockAsset(name: string): IGitHubReleaseAsset {
   const asset: IGitHubReleaseAsset = {
-    id: Math.random(),
     name,
     content_type: 'application/gzip',
     size: 1024,
@@ -22,10 +21,6 @@ function createMockAsset(name: string): IGitHubReleaseAsset {
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
     state: 'uploaded',
-    url: `https://api.github.com/repos/neovim/neovim/releases/assets/${name}`,
-    node_id: 'node_id',
-    label: null,
-    uploader: null,
   };
   return asset;
 }
@@ -59,7 +54,7 @@ function createNeovimRelease(): IGitHubRelease {
 }
 
 function createMacOSArm64Context(): IInstallContext {
-  const context: IInstallContext = {
+  return {
     toolName: 'nvim',
     currentDir: '/path/to/tools/nvim',
     stagingDir: '/path/to/tools/nvim/.staging',
@@ -68,12 +63,11 @@ function createMacOSArm64Context(): IInstallContext {
       arch: Architecture.Arm64,
       homeDir: '/Users/test',
     },
-  };
-  return context;
+  } as IInstallContext;
 }
 
 function createMacOSx64Context(): IInstallContext {
-  const context: IInstallContext = {
+  return {
     toolName: 'nvim',
     currentDir: '/path/to/tools/nvim',
     stagingDir: '/path/to/tools/nvim/.staging',
@@ -82,12 +76,11 @@ function createMacOSx64Context(): IInstallContext {
       arch: Architecture.X86_64,
       homeDir: '/Users/test',
     },
-  };
-  return context;
+  } as IInstallContext;
 }
 
 function createLinuxArm64Context(): IInstallContext {
-  const context: IInstallContext = {
+  return {
     toolName: 'nvim',
     currentDir: '/path/to/tools/nvim',
     stagingDir: '/path/to/tools/nvim/.staging',
@@ -96,12 +89,11 @@ function createLinuxArm64Context(): IInstallContext {
       arch: Architecture.Arm64,
       homeDir: '/home/test',
     },
-  };
-  return context;
+  } as IInstallContext;
 }
 
 function createLinuxx64Context(): IInstallContext {
-  const context: IInstallContext = {
+  return {
     toolName: 'nvim',
     currentDir: '/path/to/tools/nvim',
     stagingDir: '/path/to/tools/nvim/.staging',
@@ -110,8 +102,7 @@ function createLinuxx64Context(): IInstallContext {
       arch: Architecture.X86_64,
       homeDir: '/home/test',
     },
-  };
-  return context;
+  } as IInstallContext;
 }
 
 describe('selectAsset', () => {
