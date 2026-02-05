@@ -1,6 +1,6 @@
 {
   "name": "dotfiles",
-  "version": "1.0.51",
+  "version": "1.0.52",
   "private": true,
   "workspaces": ["packages/*"],
   "type": "module",
@@ -27,7 +27,8 @@
     "dprint": "^0.51.1",
     "oxlint": "^1.39.0",
     "ts-unused": "^1.0.3",
-    "tsd": "^0.33.0"
+    "tsd": "^0.33.0",
+    "rulesync": "^6.4.0"
   },
   "catalog": {
     "type-fest": "^5.1.0",
@@ -48,5 +49,10 @@
       "@typescript/native-preview": "^7.0.0-dev.20251218.1",
       "typescript": "^5.9.3"
     }
+  },
+  "dependencies": {
+    "@aws-sdk/credential-providers": "^3.982.0",
+    "oh-my-opencode": "^3.2.3",
+    "opencode-ai": "^1.1.51"
   }
 }
