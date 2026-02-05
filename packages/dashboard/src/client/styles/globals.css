@@ -122,11 +122,17 @@
 }
 
 /* GitHub markdown overrides */
-.markdown-body * {
-  font-size: 14px;
-}
+.markdown-body {
+  *, code {
+    font-size: 14px;
+  }
+  
+  br {
+    display: inline;
+  }
 
-.markdown-body br {
-  display: none;
+  img {
+    display: inline;
+    line-height: 24px;
+  }
 }
-
