@@ -2,9 +2,7 @@
   "name": "dotfiles",
   "version": "1.0.49",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": ["packages/*"],
   "type": "module",
   "module": "cli.ts",
   "scripts": {
@@ -25,6 +23,7 @@
     "@dprint/markdown": "^0.20.0",
     "@dprint/typescript": "^0.95.13",
     "@typescript/native-preview": "catalog:typescript",
+    "bun-plugin-tailwind": "^0.1.2",
     "dprint": "^0.51.1",
     "oxlint": "^1.39.0",
     "ts-unused": "^1.0.3",

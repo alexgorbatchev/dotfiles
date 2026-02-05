@@ -25,7 +25,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noPropertyAccessFromIndexSignature": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+
+    // dashboard specific
+    "paths": {
+      "react": ["./packages/dashboard/node_modules/preact/compat"],
+      "react/jsx-runtime": ["./packages/dashboard/node_modules/preact/compat/jsx-runtime"],
+      "react-dom": ["./packages/dashboard/node_modules/preact/compat/"]
+    }
   },
   "include": ["packages", "test-project", "cli.ts", "review"],
   "exclude": ["**/.tmp/**", "**/tmp/**", "packages/**/type-tests/**", "packages/**/__tests__/**/tool-types.d.ts"]

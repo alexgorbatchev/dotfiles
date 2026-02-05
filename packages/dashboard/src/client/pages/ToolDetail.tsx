@@ -2,6 +2,7 @@ import { type JSX } from 'preact';
 
 import type { IToolDetail, IToolHistory } from '../../shared/types';
 import { InstallMethodBadge } from '../components/InstallMethodBadge';
+import { ReadmeCard } from '../components/ReadmeCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { ToolHistory } from '../components/ToolHistory';
 import { FileTree } from '../components/TreeNode';
@@ -88,9 +89,19 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
           {tool.config.installParams.repo && (
             <div>
               <div class='text-sm text-muted-foreground mb-1'>Repository</div>
-              <code class='text-sm bg-muted px-2 py-1 rounded break-all'>
-                {tool.config.installParams.repo}
-              </code>
+              <div class='flex items-center gap-2'>
+                <code class='text-sm bg-muted px-2 py-1 rounded break-all'>
+                  {tool.config.installParams.repo}
+                </code>
+                <a
+                  href={`https://github.com/${tool.config.installParams.repo}#readme`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  class='text-sm text-blue-500 hover:underline'
+                >
+                  README
+                </a>
+              </div>
             </div>
           )}
           {tool.config.dependencies && tool.config.dependencies.length > 0 && (
@@ -119,6 +130,11 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
           dotfilesDir={history?.dotfilesDir ?? ''}
         />
       </TitledCard>
+
+      {/* README Section */}
+      {tool.config.installParams.repo && (
+        <ReadmeCard toolName={tool.config.name} repo={tool.config.installParams.repo} />
+      )}
     </div>
   );
 }

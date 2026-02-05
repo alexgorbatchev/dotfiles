@@ -87,6 +87,12 @@ export function createDashboardServer(
             return Response.json(result);
           },
 
+          '/api/tools/:name/readme': async (req: Request & { params: { name: string; }; }) => {
+            const toolName = decodeURIComponent(req.params.name);
+            const result = await api.getToolReadme(toolName);
+            return Response.json(result);
+          },
+
           '/api/recent-tools': async (req) => {
             const url = new URL(req.url);
             const limitParam = url.searchParams.get('limit');

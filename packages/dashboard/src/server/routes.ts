@@ -406,6 +406,48 @@ export function createApiRoutes(parentLogger: TsLogger, services: IDashboardServ
     },
 
     /**
+     * GET /api/tools/:name/readme - Get README content for a tool
+     * Fetches README from GitHub raw URL if tool has a repo configured
+     */
+    async getToolReadme(toolName: string): Promise<IApiResponse<{ content: string; }>> {
+      try {
+        const toolConfigs = await getToolConfigs(logger, services);
+        const config = toolConfigs[toolName];
+
+        if (!config) {
+          return { success: false, error: 'Tool not found' };
+        }
+
+        const installParams = config.installParams as Record<string, unknown>;
+        const repo = installParams['repo'];
+
+        if (typeof repo !== 'string') {
+          return { success: false, error: 'Tool does not have a GitHub repository' };
+        }
+
+        // Try version first if specified, then common default branches
+        const branchesToTry = config.version
+          ? [config.version, 'main', 'master']
+          : ['main', 'master'];
+
+        for (const branch of branchesToTry) {
+          const url = `https://raw.githubusercontent.com/${repo}/${branch}/README.md`;
+          const response = await fetch(url);
+
+          if (response.ok) {
+            const content = await response.text();
+            return { success: true, data: { content } };
+          }
+        }
+
+        return { success: false, error: 'README not found' };
+      } catch (error) {
+        logger.error(messages.apiError('getToolReadme'), error);
+        return { success: false, error: 'Failed to retrieve README' };
+      }
+    },
+
+    /**
      * GET /api/recent-tools - Get recently added tool config files
      * Returns the 10 most recently created .tool.ts files.
      * Uses git commit date when available, falls back to filesystem mtime.
