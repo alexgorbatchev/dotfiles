@@ -126,3 +126,7 @@
   font-size: 14px;
 }
 
+.markdown-body br {
+  display: none;
+}
+

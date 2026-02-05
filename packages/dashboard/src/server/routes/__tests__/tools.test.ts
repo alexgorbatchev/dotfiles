@@ -1,0 +1,94 @@
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { createMockToolConfigForTests, setupTestContext, type TestContext } from './test-setup';
+
+describe('getTools', () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setupTestContext();
+  });
+
+  afterEach(async () => {
+    ctx.registryDatabase.close();
+  });
+
+  test('returns empty array when no tool configs', async () => {
+    const result = await ctx.api.getTools();
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual([]);
+  });
+
+  test('returns tool details from config with not-installed status', async () => {
+    ctx.toolConfigs['fzf'] = createMockToolConfigForTests({
+      name: 'fzf',
+      version: 'latest',
+      installationMethod: 'github-release',
+      installParams: { repo: 'junegunn/fzf' },
+      binaries: ['fzf'],
+    });
+
+    const result = await ctx.api.getTools();
+
+    expect(result.success).toBe(true);
+    expect(result.data).toHaveLength(1);
+    expect(result.data?.[0]?.config.name).toBe('fzf');
+    expect(result.data?.[0]?.config.installationMethod).toBe('github-release');
+    expect(result.data?.[0]?.runtime.status).toBe('not-installed');
+  });
+
+  test('returns tool details with installed status when registry has record', async () => {
+    ctx.toolConfigs['fzf'] = createMockToolConfigForTests({
+      name: 'fzf',
+      version: 'latest',
+      installationMethod: 'github-release',
+      installParams: { repo: 'junegunn/fzf' },
+      binaries: ['fzf'],
+    });
+
+    await ctx.toolInstallationRegistry.recordToolInstallation({
+      toolName: 'fzf',
+      version: '0.55.0',
+      installPath: '/binaries/fzf/2025-01-01',
+      timestamp: '2025-01-01-00-00-00',
+      binaryPaths: ['/binaries/fzf/fzf'],
+      downloadUrl: 'https://github.com/junegunn/fzf/releases/download/v0.55.0/fzf-0.55.0-darwin_arm64.tar.gz',
+    });
+
+    const result = await ctx.api.getTools();
+
+    expect(result.success).toBe(true);
+    expect(result.data).toHaveLength(1);
+    expect(result.data?.[0]?.config.name).toBe('fzf');
+    expect(result.data?.[0]?.runtime.status).toBe('installed');
+    expect(result.data?.[0]?.runtime.installedVersion).toBe('0.55.0');
+  });
+
+  test('returns tool details with files', async () => {
+    ctx.toolConfigs['fzf'] = createMockToolConfigForTests({
+      name: 'fzf',
+      version: 'latest',
+      installationMethod: 'github-release',
+      installParams: { repo: 'junegunn/fzf' },
+      binaries: ['fzf'],
+    });
+
+    const { randomUUID } = await import('./test-setup');
+
+    await ctx.fileRegistry.recordOperation({
+      toolName: 'fzf',
+      operationType: 'writeFile',
+      filePath: '/bin/fzf',
+      fileType: 'shim',
+      operationId: randomUUID(),
+    });
+
+    const result = await ctx.api.getTools();
+
+    expect(result.success).toBe(true);
+    expect(result.data).toHaveLength(1);
+    expect(result.data?.[0]?.config.name).toBe('fzf');
+    expect(result.data?.[0]?.files).toHaveLength(1);
+    expect(result.data?.[0]?.files?.[0]?.filePath).toBe('/bin/fzf');
+  });
+});
