@@ -21,7 +21,7 @@ You will receive:
 
 ### 1) Tool Investigation
 
-Analyze the tool’s source and documentation to understand:
+Make best effort to find current README and installation instructions online for the tool to understand:
 
 - **Tool purpose**: what it does.
 - **Primary distribution method**: how the authors expect users to install it.
@@ -301,7 +301,9 @@ install('github-release', { repo: 'owner/tool' })
 
 Reference: [Shell Integration Guide](<root>/docs/shell-integration.md#symbolic-links)
 
-### Step 5: Add Platform Support
+### Step 5: Add Platform Support (only when needed)
+
+> **Important**: Only use `.platform()` when you need **different installation methods** per platform (e.g., Homebrew on macOS, github-release on Linux). The `github-release` installer automatically selects the correct asset based on standard naming conventions (`darwin`/`linux`, `amd64`/`arm64`/`x86_64`). Do not use `.platform()` just to specify different asset patterns for the same installation method.
 
 Use `.platform()` for platform- and architecture-specific overrides. The callback receives an `install` function for that specific platform.
 
@@ -311,9 +313,9 @@ import { Architecture, defineTool, Platform } from '@gitea/dotfiles';
 export default defineTool((install) =>
   install()
     .bin('tool')
-    // macOS-specific installation
+    // macOS-specific installation (different method: brew)
     .platform(Platform.MacOS, (install) => install('brew', { formula: 'tool' }))
-    // Linux-specific installation
+    // Linux-specific installation (different method: github-release)
     .platform(Platform.Linux, (install) =>
       install('github-release', {
         repo: 'owner/tool',
