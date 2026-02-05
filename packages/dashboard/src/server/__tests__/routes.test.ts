@@ -50,6 +50,9 @@ describe('Dashboard API Routes', () => {
       fileRegistry,
       toolInstallationRegistry,
       versionChecker: createMockVersionChecker(),
+      downloader: {
+        download: async () => undefined,
+      },
     };
 
     api = createApiRoutes(logger, services);

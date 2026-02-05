@@ -52,6 +52,9 @@ describe('Dashboard HTTP Server', () => {
       fileRegistry,
       toolInstallationRegistry,
       versionChecker: createMockVersionChecker(),
+      downloader: {
+        download: async () => undefined,
+      },
     };
 
     // Use random port to avoid conflicts

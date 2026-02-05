@@ -1,6 +1,9 @@
+import 'github-markdown-css/github-markdown-light.css';
+
 import { ExternalLink } from 'lucide-preact';
 import { type JSX } from 'preact';
-import Markdown from 'react-markdown';
+import Markdown, { type Components } from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 
 import { useFetch } from '../hooks/useFetch';
@@ -9,6 +12,46 @@ import { TitledCard } from './ui/TitledCard';
 interface ReadmeCardProps {
   toolName: string;
   repo: string;
+}
+
+function resolveGitHubUrl(url: string | undefined, repo: string, forImage: boolean = false): string | undefined {
+  if (!url) return url;
+  // Already absolute URL
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) {
+    return url;
+  }
+  // Anchor links
+  if (url.startsWith('#')) {
+    return url;
+  }
+  // Relative URL - use raw for images, blob for other files (like .md)
+  const cleanPath = url.startsWith('./') ? url.slice(2) : url;
+  const urlType = forImage ? 'raw' : 'blob';
+  return `https://github.com/${repo}/${urlType}/HEAD/${cleanPath}`;
+}
+
+function createMarkdownComponents(repo: string): Components {
+  return {
+    a: ({ href, children, ...props }) => {
+      const hrefStr = typeof href === 'string' ? href : undefined;
+      const resolvedHref = resolveGitHubUrl(hrefStr, repo, false);
+      const isAnchor = hrefStr?.startsWith('#');
+      return (
+        <a
+          {...props}
+          href={resolvedHref}
+          target={isAnchor ? undefined : '_blank'}
+          rel={isAnchor ? undefined : 'noopener noreferrer'}
+        >
+          {children}
+        </a>
+      );
+    },
+    img: ({ src, alt, ...props }) => {
+      const srcStr = typeof src === 'string' ? src : undefined;
+      return <img {...props} src={resolveGitHubUrl(srcStr, repo, true)} alt={alt} />;
+    },
+  };
 }
 
 export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
@@ -57,8 +100,14 @@ export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
         </a>
       }
     >
-      <div class='max-h-[600px] overflow-auto prose prose-sm dark:prose-invert max-w-none'>
-        <Markdown remarkPlugins={[remarkGfm]}>{data.content}</Markdown>
+      <div class='markdown-body p-4 text-lg'>
+        <Markdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={createMarkdownComponents(repo)}
+        >
+          {data.content}
+        </Markdown>
       </div>
     </TitledCard>
   );

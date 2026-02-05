@@ -1,4 +1,5 @@
 import type { ToolConfig } from '@dotfiles/core';
+import { NotFoundError } from '@dotfiles/downloader';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRecord } from '@dotfiles/registry/tool';
 import type {
@@ -407,7 +408,8 @@ export function createApiRoutes(parentLogger: TsLogger, services: IDashboardServ
 
     /**
      * GET /api/tools/:name/readme - Get README content for a tool
-     * Fetches README from GitHub raw URL if tool has a repo configured
+     * Fetches README from GitHub raw URL if tool has a repo configured.
+     * Uses the downloader service which has caching enabled.
      */
     async getToolReadme(toolName: string): Promise<IApiResponse<{ content: string; }>> {
       try {
@@ -432,11 +434,19 @@ export function createApiRoutes(parentLogger: TsLogger, services: IDashboardServ
 
         for (const branch of branchesToTry) {
           const url = `https://raw.githubusercontent.com/${repo}/${branch}/README.md`;
-          const response = await fetch(url);
+          try {
+            const response = await services.downloader.download(logger, url);
 
-          if (response.ok) {
-            const content = await response.text();
-            return { success: true, data: { content } };
+            if (response) {
+              const content = response.toString('utf-8');
+              return { success: true, data: { content } };
+            }
+          } catch (error) {
+            // NotFoundError means this branch doesn't have a README, try next branch
+            if (error instanceof NotFoundError) {
+              continue;
+            }
+            throw error;
           }
         }
 
