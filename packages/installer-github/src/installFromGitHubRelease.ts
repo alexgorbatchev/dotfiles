@@ -269,7 +269,7 @@ async function showAvailableReleaseTags(
   }
 }
 
-async function selectAsset(
+export async function selectAsset(
   release: IGitHubRelease,
   params: GithubReleaseInstallParams,
   context: IInstallContext,
@@ -289,7 +289,13 @@ async function selectAsset(
   } else if (params.assetPattern) {
     logger.debug(messages.assetPatternMatch(formatAssetPatternForLog(params.assetPattern)));
     const pattern: AssetPattern = params.assetPattern;
-    asset = release.assets.find((a) => matchAssetPattern(a.name, pattern));
+    const matchingAssets = release.assets.filter((a) => matchAssetPattern(a.name, pattern));
+    // Apply platform detection on pattern-filtered assets
+    asset = findPlatformAsset(matchingAssets, context.systemInfo);
+    // Fall back to first match if no platform-specific asset found
+    if (!asset && matchingAssets.length > 0) {
+      asset = matchingAssets[0];
+    }
   } else {
     logger.debug(
       messages.assetPlatformMatch(
