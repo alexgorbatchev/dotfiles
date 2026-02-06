@@ -28,11 +28,12 @@ describe('StatusBadge', () => {
     expect(screen.getByText('Not Installed')).toBeInTheDocument();
   });
 
-  test('applies secondary variant for not-installed status', () => {
+  test('applies error variant for not-installed status', () => {
     render(<StatusBadge status='not-installed' />);
 
     const badge = screen.getByText('Not Installed');
-    expect(badge).toHaveClass('bg-secondary');
+    expect(badge).toHaveClass('bg-red-500');
+    expect(badge).toHaveClass('text-white');
   });
 
   test('renders error status', () => {
@@ -45,7 +46,7 @@ describe('StatusBadge', () => {
     render(<StatusBadge status='error' />);
 
     const badge = screen.getByText('Error');
-    expect(badge).toHaveClass('bg-red-500/20');
-    expect(badge).toHaveClass('text-red-400');
+    expect(badge).toHaveClass('bg-red-500');
+    expect(badge).toHaveClass('text-white');
   });
 });

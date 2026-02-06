@@ -29,6 +29,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@dotfiles/registry-database": "workspace:*",
     "@dotfiles/testing-helpers": "workspace:*",
     "@happy-dom/global-registrator": "^18.0.1",
     "@rageltd/bun-test-utils": "catalog:testing",

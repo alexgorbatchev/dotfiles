@@ -62,8 +62,8 @@ describe('Badge', () => {
     render(<Badge variant='error'>Error</Badge>);
 
     const badge = screen.getByText('Error');
-    expect(badge).toHaveClass('bg-red-500/20');
-    expect(badge).toHaveClass('text-red-400');
+    expect(badge).toHaveClass('bg-red-500');
+    expect(badge).toHaveClass('text-white');
   });
 
   test('merges custom className', () => {
