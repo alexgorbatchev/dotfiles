@@ -11,7 +11,7 @@ import type { Rule } from 'eslint';
  */
 
 // Load the plugin (ESM default export)
-import plugin from '../no-partial-string-matchers.js';
+import plugin from '../plugin.js';
 
 interface ASTVisitor {
   // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- mock AST visitor for testing

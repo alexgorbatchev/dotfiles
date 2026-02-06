@@ -18,7 +18,7 @@
 const PROHIBITED_MATCHERS = new Set(['toContain', 'toMatch']);
 
 /** @type {import('eslint').Rule.RuleModule} */
-const rule = {
+export const noPartialStringMatchersRule = {
   meta: {
     type: 'problem',
     docs: {
@@ -27,10 +27,8 @@ const rule = {
     },
     schema: [],
     messages: {
-      noToContain:
-        "Avoid using 'toContain()' for string matching - it can cause false positives. Use 'toMatchLooseInlineSnapshot()' instead.",
-      noToMatch:
-        "Avoid using 'toMatch()' for string matching - it can cause false positives. Use 'toMatchLooseInlineSnapshot()' instead.",
+      noToContain: "Use 'toMatchLooseInlineSnapshot' with surrounding context.",
+      noToMatch: "Use 'toMatchLooseInlineSnapshot' with surrounding context.",
     },
   },
   create(context) {
@@ -79,16 +77,3 @@ const rule = {
     };
   },
 };
-
-const plugin = {
-  meta: {
-    name: 'dotfiles-testing',
-    version: '1.0.0',
-  },
-  rules: {
-    'no-partial-string-matchers': rule,
-  },
-};
-
-// oxlint-disable-next-line import/no-default-export
-export default plugin;
