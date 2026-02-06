@@ -49,10 +49,5 @@
       "@typescript/native-preview": "^7.0.0-dev.20251218.1",
       "typescript": "^5.9.3"
     }
-  },
-  "dependencies": {
-    "@aws-sdk/credential-providers": "^3.982.0",
-    "oh-my-opencode": "^3.2.3",
-    "opencode-ai": "^1.1.51"
   }
 }
