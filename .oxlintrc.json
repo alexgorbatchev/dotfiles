@@ -2,6 +2,7 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "ignorePatterns": ["**/tmp/**"],
   "plugins": ["eslint", "jsdoc", "import", "typescript", "node", "promise", "unicorn", "oxc"],
+  "jsPlugins": ["./packages/testing-helpers/src/oxlint/no-partial-string-matchers.js"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
@@ -37,10 +38,11 @@
   },
   "overrides": [
     {
-      "files": ["**/*.test.ts", "**/__tests__/**/*.ts"],
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**/*.ts"],
       "rules": {
         "typescript/no-non-null-assertion": "off",
-        "no-unused-expressions": "off"
+        "no-unused-expressions": "off",
+        "dotfiles-testing/no-partial-string-matchers": "error"
       }
     },
     {
