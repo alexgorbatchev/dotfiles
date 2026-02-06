@@ -14,9 +14,14 @@ export const ENV_NAME_VAR = 'DOTFILES_ENV_NAME';
 export const DEFAULT_ENV_NAME = 'env';
 
 /**
- * Name of the source/activation script file.
+ * Name of the source/activation script file (POSIX shells).
  */
 export const SOURCE_FILE_NAME = 'source';
+
+/**
+ * Name of the PowerShell source/activation script file.
+ */
+export const POWERSHELL_SOURCE_FILE_NAME = 'source.ps1';
 
 /**
  * Name of the configuration file.

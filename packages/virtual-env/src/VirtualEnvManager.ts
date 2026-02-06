@@ -6,10 +6,12 @@ import {
   DEFAULT_ENV_NAME,
   ENV_DIR_VAR,
   ENV_NAME_VAR,
+  POWERSHELL_SOURCE_FILE_NAME,
   SOURCE_FILE_NAME,
   TOOLS_DIR_NAME,
 } from './constants';
 import { generateDefaultConfig } from './generateDefaultConfig';
+import { generatePowerShellSourceScript } from './generatePowerShellSourceScript';
 import { generateSourceScript } from './generateSourceScript';
 import { messages } from './log-messages';
 import type { ActiveEnvResult, CreateEnvOptions, DetectEnvResult, EnvInfo, VirtualEnvResult } from './types';
@@ -98,12 +100,18 @@ export class VirtualEnvManager implements IVirtualEnvManager {
     await this.fs.ensureDir(toolsDir);
     logger.debug(messages.toolsDirCreated(toolsDir));
 
-    // Generate and write source script
+    // Generate and write source script (POSIX)
     const sourcePath = path.join(envDir, SOURCE_FILE_NAME);
     const sourceContent = generateSourceScript(envDir, envName);
     await this.fs.writeFile(sourcePath, sourceContent);
     await this.fs.chmod(sourcePath, 0o755);
     logger.debug(messages.sourceFileGenerated(sourcePath));
+
+    // Generate and write PowerShell source script
+    const psSourcePath = path.join(envDir, POWERSHELL_SOURCE_FILE_NAME);
+    const psSourceContent = generatePowerShellSourceScript(envDir, envName);
+    await this.fs.writeFile(psSourcePath, psSourceContent);
+    logger.debug(messages.sourceFileGenerated(psSourcePath));
 
     // Generate and write config file
     const configPath = path.join(envDir, CONFIG_FILE_NAME);
