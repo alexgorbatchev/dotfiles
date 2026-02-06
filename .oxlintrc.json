@@ -43,6 +43,7 @@
         "typescript/no-non-null-assertion": "off",
         "no-unused-expressions": "off",
         "dotfiles-testing/no-partial-string-matchers": "error",
+        "dotfiles-testing/no-unnecessary-testing-helpers-import": "error",
         "dotfiles-testing/require-multiline-loose-snapshot": "error"
       }
     },

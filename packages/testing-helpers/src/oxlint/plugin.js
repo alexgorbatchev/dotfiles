@@ -4,9 +4,11 @@
  * This plugin combines all testing-related linting rules:
  * - no-partial-string-matchers: Disallows toContain() and toMatch() in expect chains
  * - require-multiline-loose-snapshot: Requires toMatchLooseInlineSnapshot to use multiline templates
+ * - no-unnecessary-testing-helpers-import: Disallows bare imports of testing-helpers package
  */
 
 import { noPartialStringMatchersRule } from './no-partial-string-matchers.js';
+import { noUnnecessaryTestingHelpersImportRule } from './no-unnecessary-testing-helpers-import.js';
 import { requireMultilineLooseSnapshotRule } from './require-multiline-loose-snapshot.js';
 
 const plugin = {
@@ -16,6 +18,7 @@ const plugin = {
   },
   rules: {
     'no-partial-string-matchers': noPartialStringMatchersRule,
+    'no-unnecessary-testing-helpers-import': noUnnecessaryTestingHelpersImportRule,
     'require-multiline-loose-snapshot': requireMultilineLooseSnapshotRule,
   },
 };
