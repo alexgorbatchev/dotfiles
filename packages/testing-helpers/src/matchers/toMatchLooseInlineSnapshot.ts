@@ -3,6 +3,38 @@ import { expect } from 'bun:test';
 
 declare module 'bun:test' {
   interface ILooseInlineSnapshotMatchers<T> {
+    /**
+     * Asserts that a string contains a pattern defined by a template literal.
+     *
+     * Features:
+     * - **Substring matching**: Pattern can match anywhere in the string (no anchors)
+     * - **Whitespace flexibility**: All whitespace (spaces, tabs, newlines) is normalized,
+     *   so indentation differences don't cause failures
+     * - **Auto-dedent**: Template literal is automatically dedented
+     * - **Matchers**: Supports `expect.anything` and `RegExp` interpolations
+     *
+     * @example
+     * // Basic substring match
+     * expect('prefix hello world suffix').toMatchLooseInlineSnapshot`hello world`;
+     *
+     * @example
+     * // Indentation-agnostic matching
+     * const script = `
+     *   function foo() {
+     *     return 1;
+     *   }
+     * `;
+     * expect(script).toMatchLooseInlineSnapshot`
+     *   function foo() {
+     *     return 1;
+     *   }
+     * `;
+     *
+     * @example
+     * // With matchers
+     * expect('version 1.2.3').toMatchLooseInlineSnapshot`version ${/\d+\.\d+\.\d+/}`;
+     * expect('start middle end').toMatchLooseInlineSnapshot`start ${expect.anything} end`;
+     */
     toMatchLooseInlineSnapshot(strings: TemplateStringsArray, ...matchers: unknown[]): T;
   }
 
@@ -11,6 +43,11 @@ declare module 'bun:test' {
 
 function escapeRegexLiteral(value: unknown): string {
   return String(value).replace(/[-/\\^$*+?.()|[\]{}]/gm, '\\$&');
+}
+
+function makeWhitespaceFlexible(pattern: string): string {
+  // Replace runs of whitespace with \s+ for loose matching
+  return pattern.replace(/\s+/g, '\\s+');
 }
 
 function validateInput(
@@ -88,8 +125,8 @@ expect.extend({
 
     const pattern = buildPattern(strings, matchers);
     const dedentedPattern = dedentString(pattern);
-    const fullRegex = `^${dedentedPattern}$`;
+    const flexiblePattern = makeWhitespaceFlexible(dedentedPattern);
 
-    return executeRegexMatch(fullRegex, validationResult.value);
+    return executeRegexMatch(flexiblePattern, validationResult.value);
   },
 });
