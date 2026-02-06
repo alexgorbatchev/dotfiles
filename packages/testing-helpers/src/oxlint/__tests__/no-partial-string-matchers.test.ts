@@ -45,9 +45,10 @@ describe('no-partial-string-matchers plugin', () => {
       );
     });
 
-    it('has messages for both matchers', () => {
+    it('has messages for all matchers', () => {
       expect(rule.meta?.messages?.['noToContain']).toBeDefined();
       expect(rule.meta?.messages?.['noToMatch']).toBeDefined();
+      expect(rule.meta?.messages?.['noToMatchRegex']).toBeDefined();
     });
   });
 
@@ -93,7 +94,31 @@ describe('no-partial-string-matchers plugin', () => {
         });
       });
 
-      it('reports toMatch() on expect chain', () => {
+      it('reports toMatch() with string argument on expect chain', () => {
+        // AST for: expect(value).toMatch('pattern')
+        const node = {
+          type: 'CallExpression',
+          callee: {
+            type: 'MemberExpression',
+            object: {
+              type: 'CallExpression',
+              callee: { type: 'Identifier', name: 'expect' },
+            },
+            property: { type: 'Identifier', name: 'toMatch' },
+          },
+          arguments: [{ type: 'Literal', value: 'pattern' }],
+        };
+
+        visitor.CallExpression(node);
+
+        expect(reportMock).toHaveBeenCalledTimes(1);
+        expect(reportMock).toHaveBeenCalledWith({
+          node: node.callee?.property,
+          messageId: 'noToMatch',
+        });
+      });
+
+      it('reports toMatch() with regex literal using noToMatchRegex message', () => {
         // AST for: expect(value).toMatch(/pattern/)
         const node = {
           type: 'CallExpression',
@@ -105,6 +130,7 @@ describe('no-partial-string-matchers plugin', () => {
             },
             property: { type: 'Identifier', name: 'toMatch' },
           },
+          arguments: [{ type: 'Literal', regex: { pattern: 'pattern', flags: '' } }],
         };
 
         visitor.CallExpression(node);
@@ -112,7 +138,37 @@ describe('no-partial-string-matchers plugin', () => {
         expect(reportMock).toHaveBeenCalledTimes(1);
         expect(reportMock).toHaveBeenCalledWith({
           node: node.callee?.property,
-          messageId: 'noToMatch',
+          messageId: 'noToMatchRegex',
+        });
+      });
+
+      it('reports toMatch() with new RegExp() using noToMatchRegex message', () => {
+        // AST for: expect(value).toMatch(new RegExp('pattern'))
+        const node = {
+          type: 'CallExpression',
+          callee: {
+            type: 'MemberExpression',
+            object: {
+              type: 'CallExpression',
+              callee: { type: 'Identifier', name: 'expect' },
+            },
+            property: { type: 'Identifier', name: 'toMatch' },
+          },
+          arguments: [
+            {
+              type: 'NewExpression',
+              callee: { type: 'Identifier', name: 'RegExp' },
+              arguments: [{ type: 'Literal', value: 'pattern' }],
+            },
+          ],
+        };
+
+        visitor.CallExpression(node);
+
+        expect(reportMock).toHaveBeenCalledTimes(1);
+        expect(reportMock).toHaveBeenCalledWith({
+          node: node.callee?.property,
+          messageId: 'noToMatchRegex',
         });
       });
 

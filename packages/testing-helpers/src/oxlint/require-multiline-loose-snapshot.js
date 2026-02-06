@@ -1,34 +1,60 @@
 /**
- * Oxlint JS plugin rule that requires `toMatchLooseInlineSnapshot` to use multiline template literals.
+ * Oxlint JS plugin rule that requires `toMatchLooseInlineSnapshot` to use multiline template literals
+ * with at least two lines of content.
  *
  * The purpose of toMatchLooseInlineSnapshot is to capture surrounding context, which requires
- * the snapshot content to span multiple lines.
+ * the snapshot content to span at least two lines.
  *
  * Bad:
  * - expect().toMatchLooseInlineSnapshot(`...`)
  * - expect().toMatchLooseInlineSnapshot``
+ * - expect().toMatchLooseInlineSnapshot`
+ *     foo
+ *   `
  *
  * Good:
  * - expect().toMatchLooseInlineSnapshot`
- *     ...
+ *     foo
+ *     bar
  *   `
  */
 
 const MATCHER_NAME = 'toMatchLooseInlineSnapshot';
+const MIN_NEWLINES = 2;
 
 /**
- * Checks if a template literal spans multiple lines (has at least one newline in quasis)
+ * Counts the number of newlines in a template literal
+ * @param {import('estree').TemplateLiteral} templateLiteral
+ * @returns {number}
+ */
+function countNewlines(templateLiteral) {
+  let count = 0;
+  for (const quasi of templateLiteral.quasis) {
+    const matches = quasi.value.raw.match(/\n/g);
+    if (matches) {
+      count += matches.length;
+    }
+  }
+  return count;
+}
+
+/**
+ * Checks if a template literal has enough lines (at least MIN_NEWLINES newlines)
  * @param {import('estree').TemplateLiteral} templateLiteral
  * @returns {boolean}
  */
-function isMultilineTemplateLiteral(templateLiteral) {
-  // Check if any of the quasis (string parts) contain a newline
-  for (const quasi of templateLiteral.quasis) {
-    if (quasi.value.raw.includes('\n')) {
-      return true;
-    }
-  }
-  return false;
+function hasEnoughLines(templateLiteral) {
+  return countNewlines(templateLiteral) >= MIN_NEWLINES;
+}
+
+/**
+ * Checks if a string has enough lines (at least MIN_NEWLINES newlines)
+ * @param {string} str
+ * @returns {boolean}
+ */
+function stringHasEnoughLines(str) {
+  const matches = str.match(/\n/g);
+  return matches ? matches.length >= MIN_NEWLINES : false;
 }
 
 /**
@@ -87,8 +113,8 @@ export const requireMultilineLooseSnapshotRule = {
             return;
           }
 
-          // Check if the template literal is multiline
-          if (!isMultilineTemplateLiteral(node.quasi)) {
+          // Check if the template literal has enough lines
+          if (!hasEnoughLines(node.quasi)) {
             context.report({
               node: node.tag.property,
               messageId: 'requireMultiline',
@@ -112,15 +138,15 @@ export const requireMultilineLooseSnapshotRule = {
           // Check if the first argument is a template literal
           const firstArg = node.arguments[0];
           if (firstArg && firstArg.type === 'TemplateLiteral') {
-            if (!isMultilineTemplateLiteral(firstArg)) {
+            if (!hasEnoughLines(firstArg)) {
               context.report({
                 node: node.callee.property,
                 messageId: 'requireMultiline',
               });
             }
           } else if (firstArg && firstArg.type === 'Literal' && typeof firstArg.value === 'string') {
-            // String literal argument - check for newlines
-            if (!firstArg.value.includes('\n')) {
+            // String literal argument - check for enough lines
+            if (!stringHasEnoughLines(firstArg.value)) {
               context.report({
                 node: node.callee.property,
                 messageId: 'requireMultiline',

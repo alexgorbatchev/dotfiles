@@ -4,7 +4,8 @@
  *
  * Use more specific matchers instead:
  * - Instead of toContain(), use toMatchLooseInlineSnapshot() or toContainEqual() for arrays
- * - Instead of toMatch(), use toMatchLooseInlineSnapshot() for pattern matching
+ * - Instead of toMatch() with regex, use toMatchRegex() for single-line strings
+ * - Instead of toMatch() with string, use toMatchLooseInlineSnapshot() for pattern matching
  *
  * Allowed matchers (not flagged):
  * - toContainEqual (for arrays)
@@ -12,10 +13,31 @@
  * - toMatchInlineSnapshot
  * - toMatchLooseInlineSnapshot
  * - toMatchSnapshot
+ * - toMatchRegex
  */
 
 /** @type {string[]} */
 const PROHIBITED_MATCHERS = new Set(['toContain', 'toMatch']);
+
+/**
+ * Check if a node is a regex literal
+ * @param {import('estree').Node | undefined} node
+ * @returns {boolean}
+ */
+function isRegexLiteral(node) {
+  if (!node) return false;
+  // RegExp literal: /pattern/
+  if (node.type === 'Literal' && node.regex) return true;
+  // new RegExp(...) call
+  if (
+    node.type === 'NewExpression' &&
+    node.callee.type === 'Identifier' &&
+    node.callee.name === 'RegExp'
+  ) {
+    return true;
+  }
+  return false;
+}
 
 /** @type {import('eslint').Rule.RuleModule} */
 export const noPartialStringMatchersRule = {
@@ -29,6 +51,7 @@ export const noPartialStringMatchersRule = {
     messages: {
       noToContain: "Use 'toMatchLooseInlineSnapshot' with surrounding context.",
       noToMatch: "Use 'toMatchLooseInlineSnapshot' with surrounding context.",
+      noToMatchRegex: "Use 'toMatchRegex' for single-line regex matching.",
     },
   },
   create(context) {
@@ -43,7 +66,14 @@ export const noPartialStringMatchersRule = {
           PROHIBITED_MATCHERS.has(node.callee.property.name)
         ) {
           const matcherName = node.callee.property.name;
-          const messageId = matcherName === 'toContain' ? 'noToContain' : 'noToMatch';
+          let messageId = matcherName === 'toContain' ? 'noToContain' : 'noToMatch';
+
+          // For toMatch(), check if the argument is a regex
+          if (matcherName === 'toMatch' && node.arguments.length > 0) {
+            if (isRegexLiteral(node.arguments[0])) {
+              messageId = 'noToMatchRegex';
+            }
+          }
 
           // Verify this is part of an expect chain
           // The object should eventually lead back to an expect() call
