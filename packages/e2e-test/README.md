@@ -11,6 +11,7 @@ src/
     completion.test.ts       # Completion generation tests
     conflict.test.ts         # Conflict detection tests
     dependency.test.ts       # Dependency resolution tests
+    env.test.ts              # Virtual environment command tests
     files.test.ts            # Files command tests
     generate.test.ts         # Generate command tests
     hook.test.ts             # After-install hook tests
@@ -90,6 +91,16 @@ Tests shell completion file generation for tools with dynamic completions.
 ### conflict.test.ts
 
 Tests handling of existing files and conflict resolution with --overwrite flag.
+
+### env.test.ts
+
+Tests virtual environment management including:
+
+- Environment creation with config.ts, source, source.ps1, tools/
+- POSIX and PowerShell activation script generation
+- XDG_CONFIG_HOME export in activation scripts
+- Environment deletion with --force flag
+- Default environment name handling
 
 ### dependency.test.ts
 

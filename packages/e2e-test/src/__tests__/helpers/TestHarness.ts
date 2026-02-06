@@ -134,9 +134,10 @@ export class TestHarness {
    * --platform and --arch flags automatically.
    *
    * @param args - Array of command-line arguments to pass to the dotfiles CLI.
+   * @param options - Optional execution options.
    * @returns A Promise that resolves to the command result including exit code, stdout, and stderr.
    */
-  async runCommand(args: string[]): Promise<ICommandResult> {
+  async runCommand(args: string[], options?: { env?: Record<string, string>; }): Promise<ICommandResult> {
     if (this.cleanBeforeRun) {
       await this.clean();
     }
@@ -148,6 +149,45 @@ export class TestHarness {
 
     const proc = Bun.spawn({
       cmd: ['bun', this.dotfilesBin, ...argsWithPlatform],
+      cwd: this.testDir,
+      env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb', ...options?.env },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+
+    const code = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
+
+    const commandResult: ICommandResult = {
+      code,
+      stdout: stdout.trim(),
+      stderr: stderr.trim(),
+    };
+    return commandResult;
+  }
+
+  /**
+   * Executes a dotfiles CLI command after sourcing an environment's activation script.
+   *
+   * This simulates real user behavior where they first source the env, then run commands.
+   * The activation script sets DOTFILES_ENV_DIR, DOTFILES_ENV_NAME, and XDG_CONFIG_HOME.
+   *
+   * @param envDir - Absolute path to the virtual environment directory.
+   * @param args - Array of command-line arguments to pass to the dotfiles CLI.
+   * @returns A Promise that resolves to the command result including exit code, stdout, and stderr.
+   */
+  async runCommandWithActivatedEnv(envDir: string, args: string[]): Promise<ICommandResult> {
+    const platformString = platformToString(this.platform);
+    const archString = architectureToString(this.architecture);
+    const argsWithPlatform: string[] = [...args, '--platform', platformString, '--arch', archString];
+    const argsString = argsWithPlatform.map((arg) => `"${arg}"`).join(' ');
+
+    // Source the activation script then run the command in the same shell
+    const shellCommand = `source "${envDir}/source" && bun "${this.dotfilesBin}" ${argsString}`;
+
+    const proc = Bun.spawn({
+      cmd: ['bash', '-c', shellCommand],
       cwd: this.testDir,
       env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb' },
       stdout: 'pipe',

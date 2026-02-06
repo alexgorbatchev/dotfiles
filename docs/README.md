@@ -52,6 +52,7 @@ export default defineTool((install, ctx) =>
 
 ### Advanced Topics
 
+- [Virtual Environments](./virtual-environments.md) - Project-specific isolated configurations
 - [Context API](./context-api.md) - Dynamic paths with ToolConfigContext
 - [Hooks](./hooks.md) - Advanced customization with installation hooks
 - [Common Patterns](./common-patterns.md) - Examples and best practices

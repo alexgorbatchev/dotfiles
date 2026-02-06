@@ -1,3 +1,4 @@
+// oxlint-disable-next-line import/no-unassigned-import
 import '@dotfiles/testing-helpers';
 import { describe, expect, it } from 'bun:test';
 import { generatePowerShellSourceScript } from '../generatePowerShellSourceScript';
