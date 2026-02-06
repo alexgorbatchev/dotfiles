@@ -38,7 +38,8 @@ export interface IDashboardServerOptions {
  * Dashboard server interface.
  */
 export interface IDashboardServer {
-  start(): Promise<void>;
+  /** Starts the server. Returns true if this is a HMR restart. */
+  start(): Promise<boolean>;
   stop(): Promise<void>;
   getUrl(): string;
 }

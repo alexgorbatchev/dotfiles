@@ -29,6 +29,9 @@ export function createDashboardServer(
 
   return {
     async start() {
+      // Check if this is a HMR restart
+      const isRestart = IS_DEV && import.meta.hot !== undefined;
+
       // IMPORTANT: Change to package directory before starting server.
       // Bun's HTML import generates chunk files (like dashboard-*.js, cli-*.js)
       // that are referenced with relative paths (e.g., "./dashboard-pks45b1c.js").
@@ -113,6 +116,7 @@ export function createDashboardServer(
       });
 
       logger.info(messages.serverStarted(this.getUrl()));
+      return isRestart;
     },
 
     async stop() {

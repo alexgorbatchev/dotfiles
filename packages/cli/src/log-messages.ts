@@ -128,6 +128,7 @@ export const messages = {
   docsSymlinkFailed: (symlinkPath: string) => createSafeLogMessage(`Failed to create symlink: ${symlinkPath}`),
   cliCompletionGenerated: (path: string) => createSafeLogMessage(`CLI completion generated: ${path}`),
   dashboardStopping: () => createSafeLogMessage('Stopping dashboard server'),
+  dashboardBrowserOpenFailed: () => createSafeLogMessage('Failed to open browser'),
   toolLookupByBinaryStarted: (binaryName: string) =>
     createSafeLogMessage(`Tool not found by name '${binaryName}', searching by binary name`),
   toolFoundByBinary: (binaryName: string, toolName: string) =>
