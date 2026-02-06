@@ -10,6 +10,7 @@
     "@dotfiles/core": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
+    "@dotfiles/registry": "workspace:*",
     "@dotfiles/shell-init-generator": "workspace:*",
     "@dotfiles/shim-generator": "workspace:*",
     "@dotfiles/symlink-generator": "workspace:*",

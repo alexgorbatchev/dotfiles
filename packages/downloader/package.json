@@ -9,6 +9,7 @@
   "dependencies": {
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
+    "@dotfiles/utils": "workspace:*",
     "cli-progress": "^3.12.0"
   },
   "devDependencies": {

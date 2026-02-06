@@ -32,6 +32,7 @@
     "@dotfiles/installer-github": "workspace:*",
     "@dotfiles/installer-manual": "workspace:*",
     "@dotfiles/registry-database": "workspace:*",
+    "@dotfiles/symlink-generator": "workspace:*",
     "@dotfiles/testing-helpers": "workspace:*",
     "@rageltd/bun-test-utils": "catalog:testing",
     "@types/babel__code-frame": "^7.0.6",

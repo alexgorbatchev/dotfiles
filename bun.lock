@@ -38,6 +38,7 @@
         "@dotfiles/core": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/logger": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
       },
       "devDependencies": {
         "@dotfiles/testing-helpers": "workspace:*",
@@ -73,6 +74,7 @@
         "@dotfiles/archive-extractor": "workspace:*",
         "@dotfiles/config": "workspace:*",
         "@dotfiles/core": "workspace:*",
+        "@dotfiles/dashboard": "workspace:*",
         "@dotfiles/downloader": "workspace:*",
         "@dotfiles/features": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
@@ -104,6 +106,7 @@
         "@types/node": "catalog:system",
         "@typescript/native-preview": "catalog:typescript",
         "typescript": "catalog:typescript",
+        "zod": "catalog:",
       },
     },
     "packages/config": {
@@ -144,6 +147,8 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@dotfiles/installer": "workspace:*",
+        "@dotfiles/testing-helpers": "workspace:*",
         "@dotfiles/tool-config-builder": "workspace:*",
         "@rageltd/bun-test-utils": "catalog:testing",
         "@types/bun": "catalog:system",
@@ -162,6 +167,7 @@
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/registry": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
         "@dotfiles/version-checker": "workspace:*",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -200,6 +206,7 @@
       "dependencies": {
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/logger": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
         "cli-progress": "^3.12.0",
       },
       "devDependencies": {
@@ -221,6 +228,7 @@
         "dax-sh": "catalog:",
       },
       "devDependencies": {
+        "@dotfiles/testing-helpers": "workspace:*",
         "@rageltd/bun-test-utils": "catalog:testing",
         "@types/bun": "catalog:system",
         "@types/node": "catalog:system",
@@ -271,6 +279,7 @@
         "@dotfiles/core": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
         "@dotfiles/shell-init-generator": "workspace:*",
         "@dotfiles/shim-generator": "workspace:*",
         "@dotfiles/symlink-generator": "workspace:*",
@@ -327,6 +336,7 @@
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
         "@dotfiles/registry-database": "workspace:*",
+        "@dotfiles/symlink-generator": "workspace:*",
         "@dotfiles/testing-helpers": "workspace:*",
         "@rageltd/bun-test-utils": "catalog:testing",
         "@types/babel__code-frame": "^7.0.6",
@@ -383,6 +393,7 @@
         "@dotfiles/installer": "workspace:*",
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/registry": "workspace:*",
+        "@dotfiles/unwrap-value": "workspace:*",
         "@dotfiles/utils": "workspace:*",
         "zod": "catalog:",
       },
@@ -401,6 +412,7 @@
         "@dotfiles/installer": "workspace:*",
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/registry": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -451,6 +463,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@dotfiles/core": "workspace:*",
+        "@dotfiles/file-system": "workspace:*",
         "@dotfiles/installer": "workspace:*",
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/registry": "workspace:*",
@@ -530,6 +543,7 @@
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/shell-emissions": "workspace:*",
         "@dotfiles/utils": "workspace:*",
+        "minimatch": "^10.0.1",
       },
       "devDependencies": {
         "@dotfiles/testing-helpers": "workspace:*",
@@ -552,6 +566,7 @@
         "@dotfiles/utils": "workspace:*",
       },
       "devDependencies": {
+        "@dotfiles/registry-database": "workspace:*",
         "@dotfiles/testing-helpers": "workspace:*",
         "@rageltd/bun-test-utils": "catalog:testing",
         "@types/bun": "catalog:system",
@@ -612,6 +627,9 @@
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
         "@dotfiles/logger": "workspace:*",
+        "@dotfiles/shell-init-generator": "workspace:*",
+        "@dotfiles/unwrap-value": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -637,6 +655,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@dotfiles/core": "workspace:*",
+        "@dotfiles/unwrap-value": "workspace:*",
         "semver": "^7.6.3",
       },
       "devDependencies": {

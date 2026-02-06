@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@dotfiles/core": "workspace:*",
+    "@dotfiles/unwrap-value": "workspace:*",
     "semver": "^7.6.3"
   },
   "devDependencies": {

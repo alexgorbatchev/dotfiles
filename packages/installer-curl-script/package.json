@@ -8,6 +8,7 @@
   "dependencies": {
     "@dotfiles/core": "workspace:*",
     "@dotfiles/downloader": "workspace:*",
+    "@dotfiles/unwrap-value": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/installer": "workspace:*",
     "@dotfiles/logger": "workspace:*",

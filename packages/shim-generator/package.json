@@ -14,6 +14,7 @@
     "@dotfiles/utils": "workspace:*"
   },
   "devDependencies": {
+    "@dotfiles/registry-database": "workspace:*",
     "@dotfiles/testing-helpers": "workspace:*",
     "@rageltd/bun-test-utils": "catalog:testing",
     "@types/bun": "catalog:system",

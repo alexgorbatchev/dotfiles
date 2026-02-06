@@ -21,6 +21,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@dotfiles/installer": "workspace:*",
+    "@dotfiles/testing-helpers": "workspace:*",
     "@dotfiles/tool-config-builder": "workspace:*",
     "@rageltd/bun-test-utils": "catalog:testing",
     "@types/bun": "catalog:system",

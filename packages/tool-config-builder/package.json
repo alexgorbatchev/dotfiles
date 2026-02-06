@@ -13,6 +13,9 @@
   "dependencies": {
     "@dotfiles/core": "workspace:*",
     "@dotfiles/installer-brew": "workspace:*",
+    "@dotfiles/shell-init-generator": "workspace:*",
+    "@dotfiles/unwrap-value": "workspace:*",
+    "@dotfiles/utils": "workspace:*",
     "@dotfiles/installer-cargo": "workspace:*",
     "@dotfiles/installer-curl-script": "workspace:*",
     "@dotfiles/installer-curl-tar": "workspace:*",

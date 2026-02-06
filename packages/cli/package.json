@@ -12,6 +12,7 @@
     "@dotfiles/archive-extractor": "workspace:*",
     "@dotfiles/config": "workspace:*",
     "@dotfiles/core": "workspace:*",
+    "@dotfiles/dashboard": "workspace:*",
     "@dotfiles/downloader": "workspace:*",
     "@dotfiles/features": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
@@ -42,6 +43,7 @@
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
     "@typescript/native-preview": "catalog:typescript",
-    "typescript": "catalog:typescript"
+    "typescript": "catalog:typescript",
+    "zod": "catalog:"
   }
 }

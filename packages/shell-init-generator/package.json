@@ -13,7 +13,8 @@
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/shell-emissions": "workspace:*",
-    "@dotfiles/utils": "workspace:*"
+    "@dotfiles/utils": "workspace:*",
+    "minimatch": "^10.0.1"
   },
   "devDependencies": {
     "@dotfiles/testing-helpers": "workspace:*",
