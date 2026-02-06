@@ -22,20 +22,16 @@ export type ISerializableBinary = string | IBinaryConfig;
  * Method-specific fields are included as optional for flexibility.
  */
 export interface ISerializableInstallParams {
-  /** GitHub repository (github-release) */
+  /** GitHub repository (github-release, zsh-plugin) */
   repo?: string;
   /** Asset pattern (github-release) */
   assetPattern?: string;
   /** Crate name (cargo) */
   crate?: string;
-  /** Package name (brew) */
-  package?: string;
-  /** Script URL (curl-script) */
-  scriptUrl?: string;
-  /** Archive URL (curl-tar) */
-  archiveUrl?: string;
-  /** Plugin repository (zsh-plugin) */
-  pluginRepo?: string;
+  /** Homebrew formula or cask name (brew) */
+  formula?: string;
+  /** URL (curl-script, curl-tar) */
+  url?: string;
 }
 
 /**
@@ -181,10 +177,8 @@ export function serializeToolConfig(config: ToolConfig): ISerializableToolConfig
     if (typeof params['repo'] === 'string') installParams.repo = params['repo'];
     if (typeof params['assetPattern'] === 'string') installParams.assetPattern = params['assetPattern'];
     if (typeof params['crate'] === 'string') installParams.crate = params['crate'];
-    if (typeof params['package'] === 'string') installParams.package = params['package'];
-    if (typeof params['scriptUrl'] === 'string') installParams.scriptUrl = params['scriptUrl'];
-    if (typeof params['archiveUrl'] === 'string') installParams.archiveUrl = params['archiveUrl'];
-    if (typeof params['pluginRepo'] === 'string') installParams.pluginRepo = params['pluginRepo'];
+    if (typeof params['formula'] === 'string') installParams.formula = params['formula'];
+    if (typeof params['url'] === 'string') installParams.url = params['url'];
   }
 
   return {

@@ -1,17 +1,50 @@
-import { ClipboardList, File, History, Info } from 'lucide-preact';
+import { File, History, Info } from 'lucide-preact';
 import { type JSX } from 'preact';
+import { useMemo } from 'preact/hooks';
 
-import type { IToolDetail, IToolHistory } from '../../shared/types';
+import type { ISerializableToolConfig, IToolDetail, IToolHistory } from '../../shared/types';
 import { InstallMethodBadge } from '../components/InstallMethodBadge';
 import { ReadmeCard } from '../components/ReadmeCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { ToolHistory } from '../components/ToolHistory';
 import { FileTree } from '../components/TreeNode';
-import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { TitledCard } from '../components/ui/TitledCard';
 import { useFetch } from '../hooks/useFetch';
 import { buildTreeForTool } from '../utils/tree';
+import {
+  buildBinaryToToolMap,
+  findDependentTools,
+  getBinaryName,
+  getSourceInfo,
+} from './tool-detail-utils';
+
+function getSourceDisplay(config: ISerializableToolConfig): JSX.Element | null {
+  const sourceInfo = getSourceInfo(config);
+  if (!sourceInfo) return null;
+
+  return (
+    <div class='flex items-center gap-2'>
+      <span class='text-sm text-muted-foreground w-24'>Source</span>
+      {sourceInfo.url ?
+        (
+          <a
+            href={sourceInfo.url}
+            target='_blank'
+            rel='noopener noreferrer'
+            class='text-sm text-blue-500 hover:underline break-all'
+          >
+            {sourceInfo.value}
+          </a>
+        ) :
+        (
+          <span class='text-sm font-medium break-all'>
+            {sourceInfo.value}
+          </span>
+        )}
+    </div>
+  );
+}
 
 interface ToolDetailProps {
   params: { name: string; };
@@ -27,6 +60,18 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
 
   const tool = tools?.find((t) => t.config.name === toolName) || null;
   const loading = toolsLoading || historyLoading;
+
+  const binaryToToolMap = useMemo(() => buildBinaryToToolMap(tools ?? []), [tools]);
+
+  const currentToolBinaries = useMemo(
+    () => (tool?.config.binaries ?? []).map(getBinaryName),
+    [tool],
+  );
+
+  const dependentTools = useMemo(
+    () => findDependentTools(tools ?? [], currentToolBinaries),
+    [tools, currentToolBinaries],
+  );
 
   if (loading) {
     return (
@@ -64,52 +109,56 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
 
       {/* Overview Section */}
       <TitledCard title='Overview' icon={<Info class='h-4 w-4' />}>
-        <div class='space-y-4'>
-          <div class='grid grid-cols-4 gap-4'>
-            <div>
-              <div class='text-sm text-muted-foreground mb-1'>Version</div>
-              <div class='font-medium'>
-                {tool.runtime.installedVersion || tool.config.version || 'Unknown'}
-              </div>
-            </div>
-            <div>
-              <div class='text-sm text-muted-foreground mb-1'>Method</div>
-              <InstallMethodBadge method={tool.config.installationMethod} />
-            </div>
-            <div>
-              <div class='text-sm text-muted-foreground mb-1'>Installed</div>
-              <div class='font-medium'>
-                {tool.runtime.installedAt ? new Date(tool.runtime.installedAt).toLocaleDateString() : 'Not installed'}
-              </div>
-            </div>
-            <div>
-              <div class='text-sm text-muted-foreground mb-1'>Files</div>
-              <div class='font-medium'>{tool.files?.length || 0} files</div>
-            </div>
+        <div class='space-y-3'>
+          <div class='flex items-center gap-2'>
+            <span class='text-sm text-muted-foreground w-24'>Method</span>
+            <InstallMethodBadge method={tool.config.installationMethod} />
           </div>
-          {tool.config.installParams.repo && (
-            <div>
-              <div class='text-sm text-muted-foreground mb-1'>Repository</div>
-              <div class='flex items-center gap-2'>
-                <code class='text-sm bg-muted px-2 py-1 rounded break-all'>
-                  {tool.config.installParams.repo}
-                </code>
-                <a
-                  href={`https://github.com/${tool.config.installParams.repo}#readme`}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  class='text-sm text-blue-500 hover:underline'
-                >
-                  README
-                </a>
+          {getSourceDisplay(tool.config)}
+          <div class='flex items-center gap-2'>
+            <span class='text-sm text-muted-foreground w-24'>Version</span>
+            <span class='font-medium'>
+              {tool.runtime.installedVersion || tool.config.version || 'Unknown'}
+            </span>
+          </div>
+          <div class='flex items-center gap-2'>
+            <span class='text-sm text-muted-foreground w-24'>Installed</span>
+            <span class='font-medium'>
+              {tool.runtime.installedAt ? new Date(tool.runtime.installedAt).toLocaleDateString() : 'Not installed'}
+            </span>
+          </div>
+          {tool.config.dependencies && tool.config.dependencies.length > 0 && (
+            <div class='flex items-start gap-2'>
+              <span class='text-sm text-muted-foreground w-24'>Depends on</span>
+              <div class='flex flex-wrap gap-2'>
+                {tool.config.dependencies.map((binaryName, i) => {
+                  const linkedToolName = binaryToToolMap.get(binaryName);
+                  return (
+                    <a
+                      key={i}
+                      href={`/tools/${encodeURIComponent(linkedToolName ?? binaryName)}`}
+                      class='text-sm text-blue-500 hover:underline'
+                    >
+                      {linkedToolName ?? binaryName}
+                    </a>
+                  );
+                })}
               </div>
             </div>
           )}
-          {tool.config.dependencies && tool.config.dependencies.length > 0 && (
-            <div>
-              <div class='text-sm text-muted-foreground mb-1'>Dependencies</div>
+          {dependentTools.length > 0 && (
+            <div class='flex items-start gap-2'>
+              <span class='text-sm text-muted-foreground w-24'>Required by</span>
               <div class='flex flex-wrap gap-2'>
-                {tool.config.dependencies.map((d, i) => <Badge key={i} variant='outline'>{d}</Badge>)}
+                {dependentTools.map((depTool, i) => (
+                  <a
+                    key={i}
+                    href={`/tools/${encodeURIComponent(depTool.config.name)}`}
+                    class='text-sm text-blue-500 hover:underline'
+                  >
+                    {depTool.config.name}
+                  </a>
+                ))}
               </div>
             </div>
           )}
@@ -132,7 +181,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
         />
       </TitledCard>
 
-      {/* README Section */}
+      {/* README Section - only for installers with GitHub repos */}
       {tool.config.installParams.repo && (
         <ReadmeCard toolName={tool.config.name} repo={tool.config.installParams.repo} />
       )}
