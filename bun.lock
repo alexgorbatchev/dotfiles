@@ -94,6 +94,7 @@
         "@dotfiles/tool-config-builder": "workspace:*",
         "@dotfiles/utils": "workspace:*",
         "@dotfiles/version-checker": "workspace:*",
+        "@dotfiles/virtual-env": "workspace:*",
         "commander": "^14.0.1",
       },
       "devDependencies": {
@@ -671,6 +672,25 @@
         "typescript": "catalog:typescript",
       },
     },
+    "packages/virtual-env": {
+      "name": "@dotfiles/virtual-env",
+      "version": "1.0.0",
+      "dependencies": {
+        "@dotfiles/file-system": "workspace:*",
+        "@dotfiles/logger": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@dotfiles/testing-helpers": "workspace:*",
+        "@rageltd/bun-test-utils": "catalog:testing",
+        "@types/bun": "catalog:system",
+        "@types/node": "catalog:system",
+        "@typescript/native-preview": "catalog:typescript",
+        "tslog": "catalog:",
+        "typescript": "catalog:typescript",
+      },
+    },
   },
   "catalog": {
     "dax-sh": "^0.44.1",
@@ -774,6 +794,8 @@
     "@dotfiles/utils": ["@dotfiles/utils@workspace:packages/utils"],
 
     "@dotfiles/version-checker": ["@dotfiles/version-checker@workspace:packages/version-checker"],
+
+    "@dotfiles/virtual-env": ["@dotfiles/virtual-env@workspace:packages/virtual-env"],
 
     "@dprint/darwin-arm64": ["@dprint/darwin-arm64@0.51.1", "https://registry.npmjs.org/@dprint/darwin-arm64/-/darwin-arm64-0.51.1.tgz", { "os": "darwin", "cpu": "arm64" }, "sha512-C7fkaz0/NGf/X4G9Cq65izdJgerND5jWShOaPiOgGs4A0CyCMKMLRd45m3xKIttuO8x0IQiZVixD22qmVglXmQ=="],
 
@@ -1906,8 +1928,6 @@
     "@jsonjoy.com/json-pack/@jsonjoy.com/buffers": ["@jsonjoy.com/buffers@1.2.1", "https://registry.npmjs.org/@jsonjoy.com/buffers/-/buffers-1.2.1.tgz", { "peerDependencies": { "tslib": "2" } }, "sha512-12cdlDwX4RUM3QxmUbVJWqZ/mrK6dFQH4Zxq6+r1YXKXYBNgZXndx2qbCJwh3+WWkCSn67IjnlG3XYTvmvYtgA=="],
 
     "@jsonjoy.com/util/@jsonjoy.com/buffers": ["@jsonjoy.com/buffers@1.2.1", "https://registry.npmjs.org/@jsonjoy.com/buffers/-/buffers-1.2.1.tgz", { "peerDependencies": { "tslib": "2" } }, "sha512-12cdlDwX4RUM3QxmUbVJWqZ/mrK6dFQH4Zxq6+r1YXKXYBNgZXndx2qbCJwh3+WWkCSn67IjnlG3XYTvmvYtgA=="],
-
-    "@testing-library/jest-dom/aria-query": ["aria-query@5.3.2", "https://registry.npmjs.org/aria-query/-/aria-query-5.3.2.tgz", {}, "sha512-COROpnaoap1E2F000S62r6A60uHZnmlvomhfyT2DlTcrY1OrBKn2UhH7qn5wTC9zMvD0AY7csdPSNwKP+7WiQw=="],
 
     "@testing-library/jest-dom/dom-accessibility-api": ["dom-accessibility-api@0.6.3", "https://registry.npmjs.org/dom-accessibility-api/-/dom-accessibility-api-0.6.3.tgz", {}, "sha512-7ZgogeTnjuHbo+ct10G9Ffp0mif17idi0IyWNVA/wcwcm7NPOD/WEHVP3n7n3MhXqxoIYm8d6MuZohYWIZ4T3w=="],
 

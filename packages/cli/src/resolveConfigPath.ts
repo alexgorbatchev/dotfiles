@@ -1,5 +1,6 @@
 import { NodeFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import { CONFIG_FILE_NAME, ENV_DIR_VAR } from '@dotfiles/virtual-env';
 import os from 'node:os';
 import path from 'node:path';
 import { messages } from './log-messages';
@@ -29,6 +30,7 @@ export async function resolveConfigPath(
   const logger = parentLogger.getSubLogger({ name: 'resolveConfigPath' });
 
   const bootstrapHomeDir: string = os.homedir();
+  const nodeFs = new NodeFileSystem();
 
   // If explicit config path provided, resolve it relative to cwd
   if (configOption.length > 0) {
@@ -41,8 +43,17 @@ export async function resolveConfigPath(
     return resolvedPath;
   }
 
+  // Check if DOTFILES_ENV_DIR is set (virtual env is active)
+  const envDir = process.env[ENV_DIR_VAR];
+  if (envDir) {
+    const envConfigPath = path.join(envDir, CONFIG_FILE_NAME);
+    if (await nodeFs.exists(envConfigPath)) {
+      logger.debug(messages.envConfigFromEnvVar(envConfigPath));
+      return envConfigPath;
+    }
+  }
+
   // Search for default config files in order of priority
-  const nodeFs = new NodeFileSystem();
   for (const fileName of DEFAULT_CONFIG_FILES) {
     const configPath = path.join(cwd, fileName);
     if (await nodeFs.exists(configPath)) {

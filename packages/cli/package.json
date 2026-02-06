@@ -33,6 +33,7 @@
     "@dotfiles/tool-config-builder": "workspace:*",
     "@dotfiles/utils": "workspace:*",
     "@dotfiles/version-checker": "workspace:*",
+    "@dotfiles/virtual-env": "workspace:*",
     "commander": "^14.0.1"
   },
   "devDependencies": {

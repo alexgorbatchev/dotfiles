@@ -45,6 +45,7 @@ import { createProgram } from './createProgram';
 import { registerDashboardCommand } from './dashboardCommand';
 import { registerDetectConflictsCommand } from './detectConflictsCommand';
 import { registerDocsCommand } from './docsCommand';
+import { registerEnvCommand } from './envCommand';
 import { registerFeaturesCommand } from './featuresCommand';
 import { registerFilesCommand } from './filesCommand';
 import { registerGenerateCommand } from './generateCommand';
@@ -478,6 +479,7 @@ export function registerAllCommands(
   registerFilesCommand(logger, program, servicesFactory);
   registerDocsCommand(logger, program, servicesFactory);
   registerDashboardCommand(logger, program, servicesFactory);
+  registerEnvCommand(logger, program);
 }
 
 function hasFlag(argv: string[], flag: string): boolean {

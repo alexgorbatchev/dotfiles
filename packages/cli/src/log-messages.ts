@@ -135,4 +135,14 @@ export const messages = {
     createSafeLogMessage(`Binary '${binaryName}' is provided by tool '${toolName}'`),
   toolNotFoundByBinary: (name: string, toolConfigsDir: string) =>
     createSafeLogMessage(`No tool or binary named "${name}" found in ${toolConfigsDir}`),
+  envCreated: (envDir: string) => createSafeLogMessage(`Environment created at ${envDir}`),
+  envDeleted: (envDir: string) => createSafeLogMessage(`Environment deleted at ${envDir}`),
+  envNotFound: (envDir: string) => createSafeLogMessage(`Environment not found at ${envDir}`),
+  envOperationFailed: (operation: string, error: string) =>
+    createSafeLogMessage(`Environment ${operation} failed: ${error}`),
+  envDeletionCancelled: () => createSafeLogMessage('Deletion cancelled'),
+  envActivationHint: (envName: string) => createSafeLogMessage(`To activate: source ${envName}/source`),
+  envConfigPath: (configPath: string) => createSafeLogMessage(`Config file: ${configPath}`),
+  envConfigFromEnvVar: (configPath: string) =>
+    createSafeLogMessage(`Using config from DOTFILES_ENV_DIR: ${configPath}`),
 } satisfies SafeLogMessageMap;
