@@ -40,3 +40,4 @@ tmp
 # helper files
 .github/helpers
 
+*.png
