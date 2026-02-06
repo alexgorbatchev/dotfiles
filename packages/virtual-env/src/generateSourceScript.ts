@@ -34,6 +34,13 @@ export function generateSourceScript(envDir: string, envName: string): string {
     # Deactivate function to clean up environment
     dotfiles-deactivate() {
       if [ -n "\${${ENV_DIR_VAR}:-}" ]; then
+        # Restore original XDG_CONFIG_HOME
+        if [ -n "\${_DOTFILES_OLD_XDG_CONFIG_HOME:-}" ]; then
+          export XDG_CONFIG_HOME="\${_DOTFILES_OLD_XDG_CONFIG_HOME}"
+          unset _DOTFILES_OLD_XDG_CONFIG_HOME
+        else
+          unset XDG_CONFIG_HOME
+        fi
         unset ${ENV_DIR_VAR}
         unset ${ENV_NAME_VAR}
         unset -f dotfiles-deactivate 2>/dev/null
@@ -57,9 +64,15 @@ export function generateSourceScript(envDir: string, envName: string): string {
       _dotfiles_script_dir="${envDir}"
     fi
 
+    # Save old XDG_CONFIG_HOME for restoration on deactivate
+    if [ -n "\${XDG_CONFIG_HOME:-}" ]; then
+      export _DOTFILES_OLD_XDG_CONFIG_HOME="\${XDG_CONFIG_HOME}"
+    fi
+
     # Export environment variables
     export ${ENV_DIR_VAR}="\${_dotfiles_script_dir}"
     export ${ENV_NAME_VAR}="${envName}"
+    export XDG_CONFIG_HOME="\${_dotfiles_script_dir}/.config"
 
     # Clean up temporary variable
     unset _dotfiles_script_dir

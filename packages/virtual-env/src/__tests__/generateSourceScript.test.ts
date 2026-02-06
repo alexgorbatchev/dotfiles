@@ -24,6 +24,13 @@ describe('generateSourceScript', () => {
       # Deactivate function to clean up environment
       dotfiles-deactivate() {
         if [ -n "\${DOTFILES_ENV_DIR:-}" ]; then
+          # Restore original XDG_CONFIG_HOME
+          if [ -n "\${_DOTFILES_OLD_XDG_CONFIG_HOME:-}" ]; then
+            export XDG_CONFIG_HOME="\${_DOTFILES_OLD_XDG_CONFIG_HOME}"
+            unset _DOTFILES_OLD_XDG_CONFIG_HOME
+          else
+            unset XDG_CONFIG_HOME
+          fi
           unset DOTFILES_ENV_DIR
           unset DOTFILES_ENV_NAME
           unset -f dotfiles-deactivate 2>/dev/null
@@ -47,9 +54,15 @@ describe('generateSourceScript', () => {
         _dotfiles_script_dir="/home/user/project/env"
       fi
 
+      # Save old XDG_CONFIG_HOME for restoration on deactivate
+      if [ -n "\${XDG_CONFIG_HOME:-}" ]; then
+        export _DOTFILES_OLD_XDG_CONFIG_HOME="\${XDG_CONFIG_HOME}"
+      fi
+
       # Export environment variables
       export DOTFILES_ENV_DIR="\${_dotfiles_script_dir}"
       export DOTFILES_ENV_NAME="env"
+      export XDG_CONFIG_HOME="\${_dotfiles_script_dir}/.config"
 
       # Clean up temporary variable
       unset _dotfiles_script_dir
@@ -88,6 +101,7 @@ describe('generateSourceScript', () => {
       # Export environment variables
       export DOTFILES_ENV_DIR="\${_dotfiles_script_dir}"
       export DOTFILES_ENV_NAME="test-env"
+      export XDG_CONFIG_HOME="\${_dotfiles_script_dir}/.config"
     `;
   });
 

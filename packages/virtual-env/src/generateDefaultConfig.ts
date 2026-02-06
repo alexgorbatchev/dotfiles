@@ -1,4 +1,4 @@
-import { dedentString } from "@dotfiles/utils";
+import { dedentString, getBuiltPackageName } from "@dotfiles/utils";
 
 /**
  * Generates the default configuration file content for a virtual environment.
@@ -9,8 +9,10 @@ import { dedentString } from "@dotfiles/utils";
  * @returns TypeScript configuration file content as a string
  */
 export function generateDefaultConfig(): string {
+  const packageName = getBuiltPackageName();
+
   return dedentString(`
-    import { defineConfig } from '@dotfiles/cli';
+    import { defineConfig } from '${packageName}';
 
     export default defineConfig(({ configFileDir }) => {
       const generatedDir = \`\${configFileDir}/.generated\`;
@@ -18,7 +20,6 @@ export function generateDefaultConfig(): string {
       return {
         paths: {
           generatedDir,
-          homeDir: \`\${generatedDir}/user-home\`,
           targetDir: \`\${generatedDir}/user-bin\`,
           toolConfigsDir: \`\${configFileDir}/tools\`,
           binariesDir: \`\${generatedDir}/binaries\`,
