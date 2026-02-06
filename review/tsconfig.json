@@ -1,4 +1,0 @@
-{
-  "extends": "../tsconfig.json",
-  "include": ["./config.ts", "review", ".generated/tool-types.d.ts"]
-}
