@@ -385,7 +385,14 @@ export async function getDefaultConfig(
   userConfigPath: string,
 ): Promise<ProjectConfig> {
   const defaultConfig: RecordUnknown = await loadDefaultProjectConfigAsRecord(fileSystem);
-  const result: ProjectConfig = processConfig(parentLogger, userConfigPath, defaultConfig, {}, systemInfo, env);
+  const result: ProjectConfig = processConfig(
+    parentLogger,
+    userConfigPath,
+    defaultConfig,
+    {},
+    systemInfo,
+    env,
+  );
   return result;
 }
 

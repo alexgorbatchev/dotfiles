@@ -23,6 +23,7 @@ import {
   withPriority,
   withSource,
 } from '@dotfiles/shell-emissions';
+import { getCliBinPath } from '@dotfiles/utils';
 import path from 'node:path';
 import { createEmissionFormatter } from '../formatters';
 import type { IAdditionalShellFile, IShellGenerator } from './IShellGenerator';
@@ -254,6 +255,10 @@ export abstract class BaseShellGenerator implements IShellGenerator {
         isFileHeader: true,
         metadata: { sourceFile: this.projectConfig.paths.dotfilesDir },
       })
+      .addSection('cli', {
+        title: 'Dotfiles CLI',
+        priority: SectionPriority.Cli,
+      })
       .addSection('path', {
         title: 'PATH Modifications',
         priority: SectionPriority.Path,
@@ -285,6 +290,12 @@ export abstract class BaseShellGenerator implements IShellGenerator {
       -1,
     );
     blockBuilder.addEmission(defaultPathEmission);
+
+    // Add CLI function
+    const cliPath = getCliBinPath();
+    const cliFunctionBody = `${cliPath} "$@"`;
+    const cliFunctionEmission = fn('dotfiles', cliFunctionBody);
+    blockBuilder.addEmissionToSection(cliFunctionEmission, 'cli');
 
     // Add each tool's emissions to the builder
     for (const [toolName, emissions] of toolEmissions) {

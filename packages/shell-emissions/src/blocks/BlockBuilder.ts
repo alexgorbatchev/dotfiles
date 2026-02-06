@@ -62,6 +62,22 @@ export class BlockBuilder {
   }
 
   /**
+   * Adds an emission directly to a specific section, bypassing hoisting rules.
+   * Use for emissions that should be placed in a particular section regardless of kind.
+   * @param emission - The emission to add
+   * @param sectionId - The target section ID
+   * @throws BlockValidationError if the section doesn't exist
+   */
+  addEmissionToSection(emission: Emission, sectionId: string): BlockBuilder {
+    const section = this.sections.get(sectionId);
+    if (!section) {
+      throw new BlockValidationError(sectionId, 'section does not exist');
+    }
+    section.emissions.push(emission);
+    return this;
+  }
+
+  /**
    * Builds the final block structure.
    * Returns top-level blocks only; children are nested within.
    */

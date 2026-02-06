@@ -5,6 +5,8 @@
 export enum SectionPriority {
   /** File header with "DO NOT EDIT" warning */
   FileHeader = 0,
+  /** CLI function - provides access to dotfiles command */
+  Cli = 50,
   /** PATH modifications - must come first so tools are available */
   Path = 100,
   /** Environment variables */

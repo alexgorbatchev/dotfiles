@@ -302,6 +302,58 @@ describe('BlockBuilder', () => {
     });
   });
 
+  describe('addEmissionToSection', () => {
+    it('adds emission directly to specified section', () => {
+      const builder = new BlockBuilder()
+        .addSection('cli', { priority: SectionPriority.Cli })
+        .addSection('env', { priority: SectionPriority.Environment, hoistKinds: ['environment'] })
+        .addEmissionToSection(fn('dotfiles', 'echo "cli"'), 'cli');
+
+      const blocks = builder.build();
+      const cliBlock = blocks.find((b) => b.id === 'cli');
+
+      expect(cliBlock?.emissions).toHaveLength(1);
+      expect(cliBlock?.emissions[0]).toMatchObject({
+        kind: 'function',
+        name: 'dotfiles',
+        body: 'echo "cli"',
+      });
+    });
+
+    it('bypasses hoisting rules when adding to section', () => {
+      const builder = new BlockBuilder()
+        .addSection('custom', { priority: SectionPriority.Path })
+        .addSection('env', { priority: SectionPriority.Environment, hoistKinds: ['environment'] })
+        .addEmissionToSection(environment({ MY_VAR: 'value' }), 'custom');
+
+      const blocks = builder.build();
+      const customBlock = blocks.find((b) => b.id === 'custom');
+      const envBlock = blocks.find((b) => b.id === 'env');
+
+      expect(customBlock?.emissions).toHaveLength(1);
+      expect(envBlock?.emissions).toHaveLength(0);
+    });
+
+    it('throws when section does not exist', () => {
+      const builder = new BlockBuilder()
+        .addSection('env', { priority: SectionPriority.Environment });
+
+      expect(() => builder.addEmissionToSection(fn('test', 'echo'), 'nonexistent')).toThrow(BlockValidationError);
+    });
+
+    it('supports method chaining', () => {
+      const builder = new BlockBuilder()
+        .addSection('cli', { priority: SectionPriority.Cli })
+        .addEmissionToSection(fn('func1', 'echo 1'), 'cli')
+        .addEmissionToSection(fn('func2', 'echo 2'), 'cli');
+
+      const blocks = builder.build();
+      const cliBlock = blocks.find((b) => b.id === 'cli');
+
+      expect(cliBlock?.emissions).toHaveLength(2);
+    });
+  });
+
   describe('build', () => {
     it('sorts blocks by priority', () => {
       const builder = new BlockBuilder()
