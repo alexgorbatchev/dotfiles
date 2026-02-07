@@ -10,10 +10,30 @@ import path from 'node:path';
 import { MockServerBuilder } from './MockServerBuilder';
 import type { IMockServerConfig, IScriptConfig, ITarConfig } from './types';
 
-const PORT = 8765;
-
 /** Type for Bun.serve() return value */
 type BunServer = ReturnType<typeof Bun.serve>;
+
+/** Current server port (0 until server starts, then OS-assigned port) */
+let currentServerPort = 0;
+
+/**
+ * Returns the current mock server port.
+ * Call this after the server has started (in beforeAll or tests).
+ */
+export function getServerPort(): number {
+  if (currentServerPort === 0) {
+    throw new Error('Mock server not started yet. Call getServerPort() in beforeAll or test functions.');
+  }
+  return currentServerPort;
+}
+
+/**
+ * Returns the current mock server port, or undefined if server not started.
+ * Safe version that doesn't throw - useful for TestHarness.
+ */
+export function tryGetServerPort(): number | undefined {
+  return currentServerPort === 0 ? undefined : currentServerPort;
+}
 
 /** Runtime state for version management (can be changed via /set-tool-version endpoint) */
 const currentVersions: Map<string, string> = new Map();
@@ -31,8 +51,8 @@ function createMockServer(config: IMockServerConfig, fixturesBasePath: string): 
     currentVersions.set(tool.repo, tool.defaultVersion);
   }
 
-  return Bun.serve({
-    port: PORT,
+  const server = Bun.serve({
+    port: 0, // Let OS assign an available port
     fetch(req) {
       const url = new URL(req.url);
       const pathname = url.pathname;
@@ -138,6 +158,10 @@ function createMockServer(config: IMockServerConfig, fixturesBasePath: string): 
       return new Response('Not Found', { status: 404 });
     },
   });
+
+  // Store the OS-assigned port
+  currentServerPort = server.port;
+  return server;
 }
 
 // ============================================================================
@@ -168,7 +192,8 @@ function handleGitHubLatestRelease(
 
   const assets = Object.entries(versionConfig.assets).map(([_pattern, filename]) => ({
     name: filename,
-    browser_download_url: `http://127.0.0.1:${PORT}/${fullRepo}/releases/download/${currentVersion}/${filename}`,
+    browser_download_url:
+      `http://127.0.0.1:${currentServerPort}/${fullRepo}/releases/download/${currentVersion}/${filename}`,
   }));
 
   return new Response(
@@ -204,7 +229,7 @@ function handleGitHubTagRelease(
 
   const assets = Object.entries(versionConfig.assets).map(([_pattern, filename]) => ({
     name: filename,
-    browser_download_url: `http://127.0.0.1:${PORT}/${fullRepo}/releases/download/${tag}/${filename}`,
+    browser_download_url: `http://127.0.0.1:${currentServerPort}/${fullRepo}/releases/download/${tag}/${filename}`,
   }));
 
   return new Response(
@@ -372,6 +397,7 @@ export function withMockServer(configure?: (builder: MockServerBuilder) => MockS
       server = null;
     }
     currentVersions.clear();
+    currentServerPort = 0;
   });
 }
 

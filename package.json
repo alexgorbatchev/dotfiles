@@ -8,6 +8,8 @@
   "scripts": {
     "typecheck": "tsgo -p tsconfig.json",
     "lint": "dprint fmt && oxlint --fix",
+    "test:all": "BUN_TEST_ALL=1 bun test",
+    "test:native": "BUN_TEST_SEQUENTIAL=1 bun test",
     "test:task": "bun test",
     "test-project": "DOTFILES_BUILT_PACKAGE_NAME='@dotfiles/core' bun run --watch --silent cli --config test-project/config.ts",
     "compile": "bun packages/build/src/build/index.ts",

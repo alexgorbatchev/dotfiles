@@ -11,7 +11,7 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 // oxlint-disable-next-line import/no-unassigned-import
 import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
-import { GITHUB_RELEASE_TOOL, withMockServer } from './helpers/mock-server';
+import { getServerPort, GITHUB_RELEASE_TOOL, withMockServer } from './helpers/mock-server';
 import { TestHarness } from './helpers/TestHarness';
 
 describe('E2E: update command', () => {
@@ -37,7 +37,7 @@ describe('E2E: update command', () => {
 
       beforeAll(async () => {
         // Reset mock server versions to defaults before each platform test
-        await fetch('http://127.0.0.1:8765/reset-versions');
+        await fetch(`http://127.0.0.1:${getServerPort()}/reset-versions`);
         await harness.clean();
         const generateResult = await harness.generate();
         expect(generateResult.code).toBe(0);
@@ -60,7 +60,7 @@ describe('E2E: update command', () => {
           expect(versionBefore.trim()).toBe('1.0.0');
 
           // Set new version available in mock server
-          await fetch('http://127.0.0.1:8765/set-tool-version/repo/github-release-tool/2.0.0');
+          await fetch(`http://127.0.0.1:${getServerPort()}/set-tool-version/repo/github-release-tool/2.0.0`);
 
           // Run update command - should now get the NEW version
           const updateResult = await harness.update('github-release-tool');

@@ -81,11 +81,11 @@ describe('E2E: after-install hooks', () => {
             WARN	Platform overridden to: ${expect.anything}
             WARN	Arch overridden to: ${expect.anything}
             INFO	Caching disabled
-            INFO	[hook-test-tool] mkdir ${expect.anything}/.generated/binaries/hook-test-tool
-            INFO	[hook-test-tool] mkdir ${expect.anything}/.generated/binaries/hook-test-tool/${expect.anything}
-            INFO	[hook-test-tool] rm ${expect.anything}/.generated/binaries/hook-test-tool/${expect.anything}
-            INFO	[hook-test-tool] mv ${expect.anything}/.generated/binaries/hook-test-tool/${expect.anything} ${expect.anything}/.generated/binaries/hook-test-tool/1.0.0
-            INFO	[hook-test-tool] ln -s 1.0.0 ${expect.anything}/.generated/binaries/hook-test-tool/current
+            INFO	[hook-test-tool] mkdir ${expect.anything}binaries/hook-test-tool
+            INFO	[hook-test-tool] mkdir ${expect.anything}binaries/hook-test-tool/${expect.anything}
+            INFO	[hook-test-tool] rm ${expect.anything}binaries/hook-test-tool/${expect.anything}
+            INFO	[hook-test-tool] mv ${expect.anything}binaries/hook-test-tool/${expect.anything} ${expect.anything}binaries/hook-test-tool/1.0.0
+            INFO	[hook-test-tool] ln -s 1.0.0 ${expect.anything}binaries/hook-test-tool/current
             INFO	[hook-test-tool] $ echo "shell-output-for-hook-test-tool"
             INFO	[hook-test-tool] | shell-output-for-hook-test-tool
             INFO	[hook-test-tool] $ ./scripts/test-output.sh

@@ -2,6 +2,8 @@ import type { Architecture, Platform } from '@dotfiles/core';
 import { expect } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { findProjectRoot, getE2eGeneratedDir } from './e2eGeneratedDir';
+import { tryGetServerPort } from './mock-server';
 import { architectureToString, platformToString } from './platformUtils';
 
 /**
@@ -43,25 +45,6 @@ export interface ICommandResult {
   stderr: string;
 }
 
-function findProjectRoot(startDir: string): string {
-  let currentDir = startDir;
-
-  // Walk up the directory tree until cli.ts is found
-  for (;;) {
-    const candidatePath = path.join(currentDir, 'cli.ts');
-    if (fs.existsSync(candidatePath)) {
-      return currentDir;
-    }
-
-    const parentDir = path.dirname(currentDir);
-    if (parentDir === currentDir) {
-      throw new Error('Unable to locate project root. Expected to find cli.ts while traversing upwards.');
-    }
-
-    currentDir = parentDir;
-  }
-}
-
 /**
  * Testing harness for end-to-end tests that execute dotfiles CLI commands.
  *
@@ -96,7 +79,7 @@ export class TestHarness {
     this.architecture = options.architecture;
     const resolvedConfigPath = path.join(this.testDir, this.configPath);
     this.configDir = path.dirname(resolvedConfigPath);
-    this.generatedDir = path.join(this.configDir, '.generated');
+    this.generatedDir = getE2eGeneratedDir(this.configDir);
     this.userBinDir = path.join(this.generatedDir, 'user-bin');
     this.shellScriptsDir = path.join(this.generatedDir, 'shell-scripts');
     const projectRoot = findProjectRoot(this.testDir);
@@ -147,10 +130,14 @@ export class TestHarness {
     const archString = architectureToString(this.architecture);
     const argsWithPlatform: string[] = [...args, '--platform', platformString, '--arch', archString];
 
+    // Get mock server port if available
+    const mockServerPort = tryGetServerPort();
+    const mockServerEnv = mockServerPort ? { MOCK_SERVER_PORT: String(mockServerPort) } : {};
+
     const proc = Bun.spawn({
       cmd: ['bun', this.dotfilesBin, ...argsWithPlatform],
       cwd: this.testDir,
-      env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb', ...options?.env },
+      env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb', ...mockServerEnv, ...options?.env },
       stdout: 'pipe',
       stderr: 'pipe',
     });
@@ -186,10 +173,14 @@ export class TestHarness {
     // Source the activation script then run the command in the same shell
     const shellCommand = `source "${envDir}/source" && bun "${this.dotfilesBin}" ${argsString}`;
 
+    // Get mock server port if available
+    const mockServerPort = tryGetServerPort();
+    const mockServerEnv = mockServerPort ? { MOCK_SERVER_PORT: String(mockServerPort) } : {};
+
     const proc = Bun.spawn({
       cmd: ['bash', '-c', shellCommand],
       cwd: this.testDir,
-      env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb' },
+      env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb', ...mockServerEnv },
       stdout: 'pipe',
       stderr: 'pipe',
     });
@@ -376,10 +367,14 @@ export class TestHarness {
     let stdout = '';
     if (options) {
       const args: string[] = options.args ?? [];
+      // Get mock server port if available
+      const mockServerPort = tryGetServerPort();
+      const mockServerEnv = mockServerPort ? { MOCK_SERVER_PORT: String(mockServerPort) } : {};
+
       const proc = Bun.spawn({
         cmd: [shimPath, ...args],
         cwd: this.testDir,
-        env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb' },
+        env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb', ...mockServerEnv },
         stdout: 'pipe',
         stderr: 'pipe',
       });

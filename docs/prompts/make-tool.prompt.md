@@ -303,7 +303,7 @@ Reference: [Shell Integration Guide](<root>/docs/shell-integration.md#symbolic-l
 
 ### Step 5: Add Platform Support (only when needed)
 
-> **Important**: Only use `.platform()` when you need **different installation methods** per platform (e.g., Homebrew on macOS, github-release on Linux). The `github-release` installer automatically selects the correct asset based on standard naming conventions (`darwin`/`linux`, `amd64`/`arm64`/`x86_64`). Do not use `.platform()` just to specify different asset patterns for the same installation method.
+> **Important**: Only use `.platform()` when a single installer unable to provide necessary binaries. The `github-release` installer automatically selects the correct asset based on standard naming conventions (`darwin`/`linux`, `amd64`/`arm64`/`x86_64`). Do not use `.platform()` just to specify different asset patterns for the same installation method.
 
 Use `.platform()` for platform- and architecture-specific overrides. The callback receives an `install` function for that specific platform.
 
@@ -319,13 +319,11 @@ export default defineTool((install) =>
     .platform(Platform.Linux, (install) =>
       install('github-release', {
         repo: 'owner/tool',
-        assetPattern: '*linux*.tar.gz',
       }))
     // Windows with Arm64
     .platform(Platform.Windows, Architecture.Arm64, (install) =>
       install('github-release', {
         repo: 'owner/tool',
-        assetPattern: '*windows-arm64.zip',
       }))
 );
 ```

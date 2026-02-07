@@ -1,8 +1,12 @@
 import { defineTool } from '@dotfiles/cli';
 
+const mockServerHost = process.env['MOCK_SERVER_PORT']
+  ? `http://127.0.0.1:${process.env['MOCK_SERVER_PORT']}`
+  : 'http://127.0.0.1:8765';
+
 export default defineTool((install) =>
   install('curl-script', {
-    url: 'http://127.0.0.1:8765/mock-install-for-cmd-completion-test.sh',
+    url: `${mockServerHost}/mock-install-for-cmd-completion-test.sh`,
     shell: 'bash',
     env: (ctx) => ({ INSTALL_DIR: ctx.stagingDir }),
   })
