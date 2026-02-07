@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { Rule } from 'eslint';
 
 /**
  * Test file for require-multiline-loose-snapshot oxlint plugin rule.
@@ -56,7 +55,7 @@ describe('require-multiline-loose-snapshot plugin', () => {
     const rule = plugin.rules['require-multiline-loose-snapshot'];
 
     it('returns visitor with TaggedTemplateExpression and CallExpression handlers', () => {
-      const mockContext = { report: mock(() => {}) } as unknown as Rule.RuleContext;
+      const mockContext = { report: mock(() => {}) };
       const visitor = rule.create(mockContext) as ASTVisitor;
 
       expect(visitor.TaggedTemplateExpression).toBeFunction();
@@ -69,7 +68,7 @@ describe('require-multiline-loose-snapshot plugin', () => {
 
       beforeEach(() => {
         reportMock = mock(() => {});
-        visitor = rule.create({ report: reportMock } as unknown as Rule.RuleContext) as ASTVisitor;
+        visitor = rule.create({ report: reportMock }) as ASTVisitor;
       });
 
       it('reports single-line tagged template on expect chain', () => {
@@ -290,7 +289,7 @@ describe('require-multiline-loose-snapshot plugin', () => {
 
       beforeEach(() => {
         reportMock = mock(() => {});
-        visitor = rule.create({ report: reportMock } as unknown as Rule.RuleContext) as ASTVisitor;
+        visitor = rule.create({ report: reportMock }) as ASTVisitor;
       });
 
       it('reports single-line template literal argument', () => {

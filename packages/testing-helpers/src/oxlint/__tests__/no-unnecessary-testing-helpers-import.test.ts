@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { Rule } from 'eslint';
 
 /**
  * Test file for no-unnecessary-testing-helpers-import oxlint plugin rule.
@@ -45,7 +44,7 @@ describe('no-unnecessary-testing-helpers-import rule', () => {
     const rule = plugin.rules['no-unnecessary-testing-helpers-import'];
 
     it('returns visitor with ImportDeclaration handler', () => {
-      const mockContext = { report: mock(() => {}) } as unknown as Rule.RuleContext;
+      const mockContext = { report: mock(() => {}) };
       const visitor = rule.create(mockContext) as ASTVisitor;
 
       expect(visitor.ImportDeclaration).toBeFunction();
@@ -57,7 +56,7 @@ describe('no-unnecessary-testing-helpers-import rule', () => {
 
       beforeEach(() => {
         reportMock = mock(() => {});
-        visitor = rule.create({ report: reportMock } as unknown as Rule.RuleContext) as ASTVisitor;
+        visitor = rule.create({ report: reportMock }) as ASTVisitor;
       });
 
       it('reports bare import of @dotfiles/testing-helpers', () => {

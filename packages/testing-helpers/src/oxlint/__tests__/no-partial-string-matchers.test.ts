@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { Rule } from 'eslint';
 
 /**
  * Test file for no-partial-string-matchers oxlint plugin rule.
@@ -49,6 +48,7 @@ describe('no-partial-string-matchers plugin', () => {
       expect(rule.meta?.messages?.['noToContain']).toBeDefined();
       expect(rule.meta?.messages?.['noToMatch']).toBeDefined();
       expect(rule.meta?.messages?.['noToMatchRegex']).toBeDefined();
+      expect(rule.meta?.messages?.['noIncludesWorkaround']).toBeDefined();
     });
   });
 
@@ -56,7 +56,7 @@ describe('no-partial-string-matchers plugin', () => {
     const rule = plugin.rules['no-partial-string-matchers'];
 
     it('returns visitor with CallExpression handler', () => {
-      const mockContext = { report: mock(() => {}) } as unknown as Rule.RuleContext;
+      const mockContext = { report: mock(() => {}) };
       const visitor = rule.create(mockContext) as ASTVisitor;
 
       expect(visitor.CallExpression).toBeFunction();
@@ -68,7 +68,7 @@ describe('no-partial-string-matchers plugin', () => {
 
       beforeEach(() => {
         reportMock = mock(() => {});
-        visitor = rule.create({ report: reportMock } as unknown as Rule.RuleContext) as ASTVisitor;
+        visitor = rule.create({ report: reportMock });
       });
 
       it('reports toContain() on expect chain', () => {
@@ -172,8 +172,9 @@ describe('no-partial-string-matchers plugin', () => {
         });
       });
 
-      it('reports toContain() with .not modifier', () => {
+      it('does not report toContain() with .not modifier (negative assertions allowed)', () => {
         // AST for: expect(value).not.toContain('substring')
+        // Negative assertions are useful and don't have the same false positive issues
         const node = {
           type: 'CallExpression',
           callee: {
@@ -192,11 +193,31 @@ describe('no-partial-string-matchers plugin', () => {
 
         visitor.CallExpression(node);
 
-        expect(reportMock).toHaveBeenCalledTimes(1);
-        expect(reportMock).toHaveBeenCalledWith({
-          node: node.callee?.property,
-          messageId: 'noToContain',
-        });
+        expect(reportMock).not.toHaveBeenCalled();
+      });
+
+      it('does not report toMatch() with .not modifier (negative assertions allowed)', () => {
+        // AST for: expect(value).not.toMatch('pattern')
+        const node = {
+          type: 'CallExpression',
+          callee: {
+            type: 'MemberExpression',
+            object: {
+              type: 'MemberExpression',
+              object: {
+                type: 'CallExpression',
+                callee: { type: 'Identifier', name: 'expect' },
+              },
+              property: { type: 'Identifier', name: 'not' },
+            },
+            property: { type: 'Identifier', name: 'toMatch' },
+          },
+          arguments: [{ type: 'Literal', value: 'pattern' }],
+        };
+
+        visitor.CallExpression(node);
+
+        expect(reportMock).not.toHaveBeenCalled();
       });
 
       it('does not report toContainEqual()', () => {
@@ -326,6 +347,413 @@ describe('no-partial-string-matchers plugin', () => {
         visitor.CallExpression(node);
 
         expect(reportMock).not.toHaveBeenCalled();
+      });
+
+      describe('includes() workaround detection', () => {
+        it('reports expect(str.includes()).toBe(true)', () => {
+          // AST for: expect(strings[0].includes('bash')).toBe(true)
+          const includesProperty = { type: 'Identifier', name: 'includes' };
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: {
+                type: 'CallExpression',
+                callee: { type: 'Identifier', name: 'expect' },
+                arguments: [
+                  {
+                    type: 'CallExpression',
+                    callee: {
+                      type: 'MemberExpression',
+                      object: {
+                        type: 'MemberExpression',
+                        object: { type: 'Identifier', name: 'strings' },
+                        property: { type: 'Literal', value: 0 },
+                      },
+                      property: includesProperty,
+                    },
+                    arguments: [{ type: 'Literal', value: 'bash' }],
+                  },
+                ],
+              },
+              property: { type: 'Identifier', name: 'toBe' },
+            },
+            arguments: [{ type: 'Literal', value: true }],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).toHaveBeenCalledTimes(1);
+          expect(reportMock).toHaveBeenCalledWith({
+            node: includesProperty,
+            messageId: 'noIncludesWorkaround',
+          });
+        });
+
+        it('reports expect(str.includes()).toBe(false)', () => {
+          // AST for: expect(scriptPath.includes('test.sh')).toBe(false)
+          const includesProperty = { type: 'Identifier', name: 'includes' };
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: {
+                type: 'CallExpression',
+                callee: { type: 'Identifier', name: 'expect' },
+                arguments: [
+                  {
+                    type: 'CallExpression',
+                    callee: {
+                      type: 'MemberExpression',
+                      object: { type: 'Identifier', name: 'scriptPath' },
+                      property: includesProperty,
+                    },
+                    arguments: [{ type: 'Literal', value: 'test.sh' }],
+                  },
+                ],
+              },
+              property: { type: 'Identifier', name: 'toBe' },
+            },
+            arguments: [{ type: 'Literal', value: false }],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).toHaveBeenCalledTimes(1);
+          expect(reportMock).toHaveBeenCalledWith({
+            node: includesProperty,
+            messageId: 'noIncludesWorkaround',
+          });
+        });
+
+        it('reports expect(str.includes()).not.toBe(false)', () => {
+          // AST for: expect(strings[0].includes('bash')).not.toBe(false)
+          const includesProperty = { type: 'Identifier', name: 'includes' };
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: {
+                type: 'MemberExpression',
+                object: {
+                  type: 'CallExpression',
+                  callee: { type: 'Identifier', name: 'expect' },
+                  arguments: [
+                    {
+                      type: 'CallExpression',
+                      callee: {
+                        type: 'MemberExpression',
+                        object: {
+                          type: 'MemberExpression',
+                          object: { type: 'Identifier', name: 'strings' },
+                          property: { type: 'Literal', value: 0 },
+                        },
+                        property: includesProperty,
+                      },
+                      arguments: [{ type: 'Literal', value: 'bash' }],
+                    },
+                  ],
+                },
+                property: { type: 'Identifier', name: 'not' },
+              },
+              property: { type: 'Identifier', name: 'toBe' },
+            },
+            arguments: [{ type: 'Literal', value: false }],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).toHaveBeenCalledTimes(1);
+          expect(reportMock).toHaveBeenCalledWith({
+            node: includesProperty,
+            messageId: 'noIncludesWorkaround',
+          });
+        });
+
+        it('reports expect(str.includes()).toEqual(true)', () => {
+          // AST for: expect(str.includes('x')).toEqual(true)
+          const includesProperty = { type: 'Identifier', name: 'includes' };
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: {
+                type: 'CallExpression',
+                callee: { type: 'Identifier', name: 'expect' },
+                arguments: [
+                  {
+                    type: 'CallExpression',
+                    callee: {
+                      type: 'MemberExpression',
+                      object: { type: 'Identifier', name: 'str' },
+                      property: includesProperty,
+                    },
+                    arguments: [{ type: 'Literal', value: 'x' }],
+                  },
+                ],
+              },
+              property: { type: 'Identifier', name: 'toEqual' },
+            },
+            arguments: [{ type: 'Literal', value: true }],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).toHaveBeenCalledTimes(1);
+          expect(reportMock).toHaveBeenCalledWith({
+            node: includesProperty,
+            messageId: 'noIncludesWorkaround',
+          });
+        });
+
+        it('reports expect(str.includes()).toStrictEqual(true)', () => {
+          // AST for: expect(str.includes('x')).toStrictEqual(true)
+          const includesProperty = { type: 'Identifier', name: 'includes' };
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: {
+                type: 'CallExpression',
+                callee: { type: 'Identifier', name: 'expect' },
+                arguments: [
+                  {
+                    type: 'CallExpression',
+                    callee: {
+                      type: 'MemberExpression',
+                      object: { type: 'Identifier', name: 'str' },
+                      property: includesProperty,
+                    },
+                    arguments: [{ type: 'Literal', value: 'x' }],
+                  },
+                ],
+              },
+              property: { type: 'Identifier', name: 'toStrictEqual' },
+            },
+            arguments: [{ type: 'Literal', value: true }],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).toHaveBeenCalledTimes(1);
+          expect(reportMock).toHaveBeenCalledWith({
+            node: includesProperty,
+            messageId: 'noIncludesWorkaround',
+          });
+        });
+
+        it('does not report expect(value).toBe(true) without includes()', () => {
+          // AST for: expect(value).toBe(true) - no includes call
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: {
+                type: 'CallExpression',
+                callee: { type: 'Identifier', name: 'expect' },
+                arguments: [{ type: 'Identifier', name: 'value' }],
+              },
+              property: { type: 'Identifier', name: 'toBe' },
+            },
+            arguments: [{ type: 'Literal', value: true }],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).not.toHaveBeenCalled();
+        });
+
+        it('does not report expect(str.includes()).toBe("string") with non-boolean arg', () => {
+          // AST for: expect(str.includes('x')).toBe('yes') - non-boolean argument
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: {
+                type: 'CallExpression',
+                callee: { type: 'Identifier', name: 'expect' },
+                arguments: [
+                  {
+                    type: 'CallExpression',
+                    callee: {
+                      type: 'MemberExpression',
+                      object: { type: 'Identifier', name: 'str' },
+                      property: { type: 'Identifier', name: 'includes' },
+                    },
+                    arguments: [{ type: 'Literal', value: 'x' }],
+                  },
+                ],
+              },
+              property: { type: 'Identifier', name: 'toBe' },
+            },
+            arguments: [{ type: 'Literal', value: 'yes' }],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).not.toHaveBeenCalled();
+        });
+
+        it('does not report standalone includes() call', () => {
+          // AST for: str.includes('x') - not inside expect
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: { type: 'Identifier', name: 'str' },
+              property: { type: 'Identifier', name: 'includes' },
+            },
+            arguments: [{ type: 'Literal', value: 'x' }],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).not.toHaveBeenCalled();
+        });
+
+        it('reports expect(str.includes()).toBeTrue()', () => {
+          // AST for: expect(str.includes('x')).toBeTrue()
+          const includesProperty = { type: 'Identifier', name: 'includes' };
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: {
+                type: 'CallExpression',
+                callee: { type: 'Identifier', name: 'expect' },
+                arguments: [
+                  {
+                    type: 'CallExpression',
+                    callee: {
+                      type: 'MemberExpression',
+                      object: { type: 'Identifier', name: 'str' },
+                      property: includesProperty,
+                    },
+                    arguments: [{ type: 'Literal', value: 'x' }],
+                  },
+                ],
+              },
+              property: { type: 'Identifier', name: 'toBeTrue' },
+            },
+            arguments: [],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).toHaveBeenCalledTimes(1);
+          expect(reportMock).toHaveBeenCalledWith({
+            node: includesProperty,
+            messageId: 'noIncludesWorkaround',
+          });
+        });
+
+        it('reports expect(str.includes()).toBeTruthy()', () => {
+          // AST for: expect(str.includes('x')).toBeTruthy()
+          const includesProperty = { type: 'Identifier', name: 'includes' };
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: {
+                type: 'CallExpression',
+                callee: { type: 'Identifier', name: 'expect' },
+                arguments: [
+                  {
+                    type: 'CallExpression',
+                    callee: {
+                      type: 'MemberExpression',
+                      object: { type: 'Identifier', name: 'str' },
+                      property: includesProperty,
+                    },
+                    arguments: [{ type: 'Literal', value: 'x' }],
+                  },
+                ],
+              },
+              property: { type: 'Identifier', name: 'toBeTruthy' },
+            },
+            arguments: [],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).toHaveBeenCalledTimes(1);
+          expect(reportMock).toHaveBeenCalledWith({
+            node: includesProperty,
+            messageId: 'noIncludesWorkaround',
+          });
+        });
+
+        it('reports expect(str.includes()).toBeFalse()', () => {
+          // AST for: expect(str.includes('x')).toBeFalse()
+          const includesProperty = { type: 'Identifier', name: 'includes' };
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: {
+                type: 'CallExpression',
+                callee: { type: 'Identifier', name: 'expect' },
+                arguments: [
+                  {
+                    type: 'CallExpression',
+                    callee: {
+                      type: 'MemberExpression',
+                      object: { type: 'Identifier', name: 'str' },
+                      property: includesProperty,
+                    },
+                    arguments: [{ type: 'Literal', value: 'x' }],
+                  },
+                ],
+              },
+              property: { type: 'Identifier', name: 'toBeFalse' },
+            },
+            arguments: [],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).toHaveBeenCalledTimes(1);
+          expect(reportMock).toHaveBeenCalledWith({
+            node: includesProperty,
+            messageId: 'noIncludesWorkaround',
+          });
+        });
+
+        it('reports expect(str.includes()).toBeFalsy()', () => {
+          // AST for: expect(str.includes('x')).toBeFalsy()
+          const includesProperty = { type: 'Identifier', name: 'includes' };
+          const node = {
+            type: 'CallExpression',
+            callee: {
+              type: 'MemberExpression',
+              object: {
+                type: 'CallExpression',
+                callee: { type: 'Identifier', name: 'expect' },
+                arguments: [
+                  {
+                    type: 'CallExpression',
+                    callee: {
+                      type: 'MemberExpression',
+                      object: { type: 'Identifier', name: 'str' },
+                      property: includesProperty,
+                    },
+                    arguments: [{ type: 'Literal', value: 'x' }],
+                  },
+                ],
+              },
+              property: { type: 'Identifier', name: 'toBeFalsy' },
+            },
+            arguments: [],
+          };
+
+          visitor.CallExpression(node);
+
+          expect(reportMock).toHaveBeenCalledTimes(1);
+          expect(reportMock).toHaveBeenCalledWith({
+            node: includesProperty,
+            messageId: 'noIncludesWorkaround',
+          });
+        });
       });
     });
   });

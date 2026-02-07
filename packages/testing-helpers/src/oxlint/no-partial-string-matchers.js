@@ -8,6 +8,8 @@
  * - Instead of toMatch() with string, use toMatchLooseInlineSnapshot() for pattern matching
  *
  * Allowed matchers (not flagged):
+ * - .not.toContain() (negative assertions are useful)
+ * - .not.toMatch() (negative assertions are useful)
  * - toContainEqual (for arrays)
  * - toMatchObject (for object matching)
  * - toMatchInlineSnapshot
@@ -18,6 +20,12 @@
 
 /** @type {string[]} */
 const PROHIBITED_MATCHERS = new Set(['toContain', 'toMatch']);
+
+/** @type {Set<string>} */
+const BOOLEAN_MATCHERS_WITH_ARG = new Set(['toBe', 'toEqual', 'toStrictEqual']);
+
+/** @type {Set<string>} */
+const BOOLEAN_MATCHERS_NO_ARG = new Set(['toBeTrue', 'toBeTruthy', 'toBeFalse', 'toBeFalsy']);
 
 /**
  * Check if a node is a regex literal
@@ -39,6 +47,29 @@ function isRegexLiteral(node) {
   return false;
 }
 
+/**
+ * Check if a node is a boolean literal (true or false)
+ * @param {import('estree').Node | undefined} node
+ * @returns {boolean}
+ */
+function isBooleanLiteral(node) {
+  return node?.type === 'Literal' && typeof node.value === 'boolean';
+}
+
+/**
+ * Check if a CallExpression is a .includes() call on a string/array
+ * @param {import('estree').Node | undefined} node
+ * @returns {boolean}
+ */
+function isIncludesCall(node) {
+  return (
+    node?.type === 'CallExpression' &&
+    node.callee.type === 'MemberExpression' &&
+    node.callee.property.type === 'Identifier' &&
+    node.callee.property.name === 'includes'
+  );
+}
+
 /** @type {import('eslint').Rule.RuleModule} */
 export const noPartialStringMatchersRule = {
   meta: {
@@ -52,14 +83,60 @@ export const noPartialStringMatchersRule = {
       noToContain: "Use 'toMatchLooseInlineSnapshot' with surrounding context.",
       noToMatch: "Use 'toMatchLooseInlineSnapshot' with surrounding context.",
       noToMatchRegex: "Use 'toMatchRegex' for single-line regex matching.",
+      noIncludesWorkaround:
+        "Don't use '.includes()' with boolean matchers. Use 'toMatchLooseInlineSnapshot' with surrounding context.",
     },
   },
   create(context) {
     return {
       CallExpression(node) {
+        // Check for expect(x.includes(...)).toBe(true/false) pattern
+        // Also catches toBeTrue(), toBeTruthy(), toBeFalse(), toBeFalsy()
+        // This is a workaround for toContain that we also want to prohibit
+        if (
+          node.callee.type === 'MemberExpression' &&
+          node.callee.property.type === 'Identifier'
+        ) {
+          const matcherName = node.callee.property.name;
+          const isMatcherWithBoolArg = BOOLEAN_MATCHERS_WITH_ARG.has(matcherName) &&
+            node.arguments?.length === 1 &&
+            isBooleanLiteral(node.arguments[0]);
+          const isMatcherNoArg = BOOLEAN_MATCHERS_NO_ARG.has(matcherName);
+
+          if (isMatcherWithBoolArg || isMatcherNoArg) {
+            // Check if the object is expect() with an includes() call inside
+            // Also handle .not modifier: expect(...).not.toBe(...)
+            let expectCall = node.callee.object;
+
+            // Handle .not modifier
+            if (
+              expectCall?.type === 'MemberExpression' &&
+              expectCall.property.type === 'Identifier' &&
+              expectCall.property.name === 'not'
+            ) {
+              expectCall = expectCall.object;
+            }
+
+            if (
+              expectCall?.type === 'CallExpression' &&
+              expectCall.callee.type === 'Identifier' &&
+              expectCall.callee.name === 'expect' &&
+              expectCall.arguments.length > 0 &&
+              isIncludesCall(expectCall.arguments[0])
+            ) {
+              context.report({
+                node: expectCall.arguments[0].callee.property,
+                messageId: 'noIncludesWorkaround',
+              });
+              return;
+            }
+          }
+        }
+
         // Check for expect(...).toContain() or expect(...).toMatch()
         // AST structure: CallExpression with callee of type MemberExpression
         // where property is 'toContain' or 'toMatch'
+        // NOTE: We allow .not.toContain() and .not.toMatch() as negative assertions are useful
         if (
           node.callee.type === 'MemberExpression' &&
           node.callee.property.type === 'Identifier' &&
@@ -78,9 +155,20 @@ export const noPartialStringMatchersRule = {
           // Verify this is part of an expect chain
           // The object should eventually lead back to an expect() call
           let current = node.callee.object;
+          let hasNotModifier = false;
 
           // Walk up the chain to find expect()
           while (current) {
+            // Check for .not modifier - if present, allow the assertion
+            if (
+              current.type === 'MemberExpression' &&
+              current.property.type === 'Identifier' &&
+              current.property.name === 'not'
+            ) {
+              hasNotModifier = true;
+              break;
+            }
+
             if (
               current.type === 'CallExpression' && current.callee.type === 'Identifier' &&
               current.callee.name === 'expect'
@@ -101,6 +189,11 @@ export const noPartialStringMatchersRule = {
             } else {
               break;
             }
+          }
+
+          // Skip reporting if .not modifier was found
+          if (hasNotModifier) {
+            return;
           }
         }
       },

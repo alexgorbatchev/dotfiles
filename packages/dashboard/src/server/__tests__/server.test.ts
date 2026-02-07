@@ -53,7 +53,9 @@ describe('Dashboard HTTP Server', () => {
       toolInstallationRegistry,
       versionChecker: createMockVersionChecker(),
       downloader: {
+        registerStrategy: () => {},
         download: async () => undefined,
+        downloadToFile: async () => {},
       },
     };
 

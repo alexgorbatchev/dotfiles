@@ -160,7 +160,7 @@ function createMockServer(config: IMockServerConfig, fixturesBasePath: string): 
   });
 
   // Store the OS-assigned port
-  currentServerPort = server.port;
+  currentServerPort = server.port ?? 0;
   return server;
 }
 

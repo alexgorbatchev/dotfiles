@@ -72,7 +72,7 @@ export async function setupTestContext(): Promise<TestContext> {
   };
 }
 
-export function createMockToolConfigForTests(overrides: Partial<ToolConfig> = {}): ToolConfig {
+export function createMockToolConfigForTests(overrides: Partial<ToolConfig> & { name: string; }): ToolConfig {
   return createMockToolConfig(overrides);
 }
 

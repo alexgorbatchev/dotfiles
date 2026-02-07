@@ -56,6 +56,8 @@
         "dax-sh": "catalog:",
       },
       "devDependencies": {
+        "@dotfiles/core": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
         "@types/bun": "catalog:system",
         "@types/node": "catalog:system",
         "@typescript/native-preview": "catalog:typescript",
@@ -133,6 +135,7 @@
       "name": "@dotfiles/core",
       "version": "0.0.0",
       "dependencies": {
+        "@dotfiles/config": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/installer-brew": "workspace:*",
         "@dotfiles/installer-cargo": "workspace:*",
@@ -204,6 +207,7 @@
       "name": "@dotfiles/downloader",
       "version": "1.0.0",
       "dependencies": {
+        "@dotfiles/core": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/utils": "workspace:*",
@@ -493,6 +497,7 @@
       "name": "@dotfiles/registry",
       "version": "0.0.0",
       "dependencies": {
+        "@dotfiles/core": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/registry-database": "workspace:*",
@@ -603,6 +608,7 @@
         "@dotfiles/core": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
         "@dotfiles/utils": "workspace:*",
         "tslog": "catalog:",
         "type-fest": "catalog:",
@@ -708,6 +714,13 @@
         "@typescript/native-preview": "catalog:typescript",
         "tslog": "catalog:",
         "typescript": "catalog:typescript",
+      },
+    },
+    "test-project": {
+      "name": "test-project",
+      "version": "1.0.0",
+      "devDependencies": {
+        "@dotfiles/cli": "workspace:*",
       },
     },
   },
@@ -1825,6 +1838,8 @@
     "tailwind-merge": ["tailwind-merge@3.4.0", "https://registry.npmjs.org/tailwind-merge/-/tailwind-merge-3.4.0.tgz", {}, "sha512-uSaO4gnW+b3Y2aWoWfFpX62vn2sR3skfhbjsEnaBI81WD1wBLlHZe5sWf0AqjksNdYTbGBEd0UasQMT3SNV15g=="],
 
     "tailwindcss": ["tailwindcss@4.1.18", "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.1.18.tgz", {}, "sha512-4+Z+0yiYyEtUVCScyfHCxOYP06L5Ne+JiHhY2IjR2KWMIWhJOYZKLSGZaP5HkZ8+bY0cxfzwDE5uOmzFXyIwxw=="],
+
+    "test-project": ["test-project@workspace:test-project"],
 
     "thingies": ["thingies@2.5.0", "https://registry.npmjs.org/thingies/-/thingies-2.5.0.tgz", { "peerDependencies": { "tslib": "^2" } }, "sha512-s+2Bwztg6PhWUD7XMfeYm5qliDdSiZm7M7n8KjTkIsm3l/2lgVRc2/Gx/v+ZX8lT4FMA+i8aQvhcWylldc+ZNw=="],
 

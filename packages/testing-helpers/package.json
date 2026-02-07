@@ -11,6 +11,7 @@
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/utils": "workspace:*",
+    "@dotfiles/registry": "workspace:*",
     "tslog": "catalog:",
     "type-fest": "catalog:"
   },

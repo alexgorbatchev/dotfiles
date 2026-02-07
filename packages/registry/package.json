@@ -16,7 +16,8 @@
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/registry-database": "workspace:*",
-    "@dotfiles/utils": "workspace:*"
+    "@dotfiles/utils": "workspace:*",
+    "@dotfiles/core": "workspace:*"
   },
   "devDependencies": {
     "@dotfiles/testing-helpers": "workspace:*",

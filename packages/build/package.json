@@ -17,6 +17,8 @@
     "es-module-lexer": "^2.0.0",
     "ts-morph": "^24.0.0",
     "ts-unused": "^1.0.0",
-    "typescript": "catalog:typescript"
+    "typescript": "catalog:typescript",
+    "@dotfiles/core": "workspace:*",
+    "@dotfiles/utils": "workspace:*"
   }
 }
