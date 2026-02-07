@@ -20,41 +20,45 @@
  */
 
 const MATCHER_NAME = 'toMatchLooseInlineSnapshot';
-const MIN_NEWLINES = 2;
+const MIN_CONTENT_LINES = 2;
 
 /**
- * Counts the number of newlines in a template literal
- * @param {import('estree').TemplateLiteral} templateLiteral
+ * Counts non-empty content lines in a string (trimmed, split by newlines)
+ * @param {string} str
  * @returns {number}
  */
-function countNewlines(templateLiteral) {
-  let count = 0;
-  for (const quasi of templateLiteral.quasis) {
-    const matches = quasi.value.raw.match(/\n/g);
-    if (matches) {
-      count += matches.length;
-    }
-  }
-  return count;
+function countContentLines(str) {
+  return str
+    .trim()
+    .split('\n')
+    .filter((line) => line.trim().length > 0).length;
 }
 
 /**
- * Checks if a template literal has enough lines (at least MIN_NEWLINES newlines)
+ * Extracts the raw content from a template literal
+ * @param {import('estree').TemplateLiteral} templateLiteral
+ * @returns {string}
+ */
+function getTemplateContent(templateLiteral) {
+  return templateLiteral.quasis.map((quasi) => quasi.value.raw).join('');
+}
+
+/**
+ * Checks if a template literal has enough content lines
  * @param {import('estree').TemplateLiteral} templateLiteral
  * @returns {boolean}
  */
 function hasEnoughLines(templateLiteral) {
-  return countNewlines(templateLiteral) >= MIN_NEWLINES;
+  return countContentLines(getTemplateContent(templateLiteral)) >= MIN_CONTENT_LINES;
 }
 
 /**
- * Checks if a string has enough lines (at least MIN_NEWLINES newlines)
+ * Checks if a string has enough content lines
  * @param {string} str
  * @returns {boolean}
  */
 function stringHasEnoughLines(str) {
-  const matches = str.match(/\n/g);
-  return matches ? matches.length >= MIN_NEWLINES : false;
+  return countContentLines(str) >= MIN_CONTENT_LINES;
 }
 
 /**

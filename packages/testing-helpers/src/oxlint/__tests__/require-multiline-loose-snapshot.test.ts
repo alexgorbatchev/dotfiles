@@ -153,8 +153,8 @@ describe('require-multiline-loose-snapshot plugin', () => {
         expect(reportMock).not.toHaveBeenCalled();
       });
 
-      it('reports tagged template with only one newline', () => {
-        // AST for: expect(value).toMatchLooseInlineSnapshot`line1\nline2` (only 1 newline - not enough)
+      it('reports tagged template with only one content line', () => {
+        // AST for: expect(value).toMatchLooseInlineSnapshot`\n  single line\n` (only 1 content line - not enough)
         const propertyNode = { type: 'Identifier', name: 'toMatchLooseInlineSnapshot' };
         const node = {
           type: 'TaggedTemplateExpression',
@@ -168,7 +168,7 @@ describe('require-multiline-loose-snapshot plugin', () => {
           },
           quasi: {
             type: 'TemplateLiteral',
-            quasis: [{ value: { raw: 'line1\nline2' } }],
+            quasis: [{ value: { raw: '\n  single line\n' } }],
           },
         };
 
@@ -181,8 +181,8 @@ describe('require-multiline-loose-snapshot plugin', () => {
         });
       });
 
-      it('does not report tagged template with two or more newlines', () => {
-        // AST for: expect(value).toMatchLooseInlineSnapshot`line1\nline2\nline3`
+      it('does not report tagged template with two or more content lines', () => {
+        // AST for: expect(value).toMatchLooseInlineSnapshot`\n  line1\n  line2\n`
         const node = {
           type: 'TaggedTemplateExpression',
           tag: {
@@ -195,7 +195,7 @@ describe('require-multiline-loose-snapshot plugin', () => {
           },
           quasi: {
             type: 'TemplateLiteral',
-            quasis: [{ value: { raw: 'line1\nline2\nline3' } }],
+            quasis: [{ value: { raw: '\n  line1\n  line2\n' } }],
           },
         };
 
@@ -347,9 +347,10 @@ describe('require-multiline-loose-snapshot plugin', () => {
         });
       });
 
-      it('does not report multiline template literal argument', () => {
+      it('does not report template literal argument with two or more content lines', () => {
         // AST for: expect(value).toMatchLooseInlineSnapshot(`
-        //   multiline
+        //   line1
+        //   line2
         // `)
         const node = {
           type: 'CallExpression',
@@ -364,7 +365,7 @@ describe('require-multiline-loose-snapshot plugin', () => {
           arguments: [
             {
               type: 'TemplateLiteral',
-              quasis: [{ value: { raw: '\n  multiline\n' } }],
+              quasis: [{ value: { raw: '\n  line1\n  line2\n' } }],
             },
           ],
         };
@@ -374,8 +375,8 @@ describe('require-multiline-loose-snapshot plugin', () => {
         expect(reportMock).not.toHaveBeenCalled();
       });
 
-      it('does not report multiline string literal argument with enough lines', () => {
-        // AST for: expect(value).toMatchLooseInlineSnapshot('line1\nline2\nline3')
+      it('does not report string literal argument with two or more content lines', () => {
+        // AST for: expect(value).toMatchLooseInlineSnapshot('line1\nline2')
         const node = {
           type: 'CallExpression',
           callee: {
@@ -386,7 +387,7 @@ describe('require-multiline-loose-snapshot plugin', () => {
             },
             property: { type: 'Identifier', name: 'toMatchLooseInlineSnapshot' },
           },
-          arguments: [{ type: 'Literal', value: 'line1\nline2\nline3' }],
+          arguments: [{ type: 'Literal', value: 'line1\nline2' }],
         };
 
         visitor.CallExpression(node);
@@ -394,8 +395,8 @@ describe('require-multiline-loose-snapshot plugin', () => {
         expect(reportMock).not.toHaveBeenCalled();
       });
 
-      it('reports string literal argument with only one newline', () => {
-        // AST for: expect(value).toMatchLooseInlineSnapshot('line1\nline2') - only 1 newline
+      it('reports string literal argument with only one content line', () => {
+        // AST for: expect(value).toMatchLooseInlineSnapshot('single line') - only 1 content line
         const propertyNode = { type: 'Identifier', name: 'toMatchLooseInlineSnapshot' };
         const node = {
           type: 'CallExpression',
@@ -407,7 +408,7 @@ describe('require-multiline-loose-snapshot plugin', () => {
             },
             property: propertyNode,
           },
-          arguments: [{ type: 'Literal', value: 'line1\nline2' }],
+          arguments: [{ type: 'Literal', value: 'single line' }],
         };
 
         visitor.CallExpression(node);
