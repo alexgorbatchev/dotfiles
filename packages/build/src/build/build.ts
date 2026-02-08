@@ -1,5 +1,5 @@
 import { handleBuildError } from './handleBuildError';
-import { createBuildContext } from './helpers';
+import { createBuildContext, installDependenciesInOutputDir } from './helpers';
 import {
   buildCli,
   cleanPreviousBuild,
@@ -34,6 +34,10 @@ async function runBuild(context: IBuildContext): Promise<void> {
     runtimeDependencies.runtimeDependencyVersions,
   );
 
+  // Must reinstall after generating production package.json
+  // because the prior install used workspace mode
+  await installDependenciesInOutputDir(context);
+
   await verifyDistCheckInstall(context);
 
   enforceCliBundleSizeLimit(context);
@@ -55,9 +59,10 @@ async function main(): Promise<void> {
     async () => {
       await runBuild(context);
     },
-    async () => {
-      await cleanupTempFiles(context);
-    },
+    // Temporarily comment out cleanup to debug
+    // async () => {
+    //   await cleanupTempFiles(context);
+    // },
   );
 }
 

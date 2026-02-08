@@ -46,6 +46,19 @@ export const zshPluginInstallParamsSchema = baseInstallParamsSchema.extend({
 
 /**
  * Parameters for a "zsh-plugin" installation method.
- * Uses z.input to allow omitting `auto` (which has a default value).
+ *
+ * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
+ * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export type ZshPluginInstallParams = BaseInstallParams & z.input<typeof zshPluginInstallParamsSchema>;
+export interface ZshPluginInstallParams extends BaseInstallParams {
+  /** GitHub repository in `user/repo` format. Either `repo` or `url` must be specified. */
+  repo?: string;
+  /** Full git URL for non-GitHub repositories. Either `repo` or `url` must be specified. */
+  url?: string;
+  /** Custom plugin name for the cloned directory. */
+  pluginName?: string;
+  /** Path to the plugin's main source file relative to the plugin directory. */
+  source?: string;
+  /** Whether to automatically source the plugin in shell init. @default true */
+  auto?: boolean;
+}

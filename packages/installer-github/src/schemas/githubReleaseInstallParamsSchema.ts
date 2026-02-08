@@ -94,8 +94,26 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
 
 /**
  * Parameters for installing a tool from a GitHub Release.
- * This method involves fetching release information from GitHub, downloading a release asset,
- * extracting it (if it's an archive), and then locating/moving the binary.
- * This is analogous to Zinit's `from"gh-r"` ice.
+ *
+ * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
+ * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export type GithubReleaseInstallParams = BaseInstallParams & z.infer<typeof githubReleaseInstallParamsSchema>;
+export interface GithubReleaseInstallParams extends BaseInstallParams {
+  /**
+   * The GitHub repository in "owner/repo" format (e.g., `junegunn/fzf`).
+   */
+  repo: string;
+  /**
+   * A glob pattern or regular expression used to match the desired asset filename.
+   * Example: `*linux_amd64.tar.gz` or `/fzf-.*-linux_amd64\.tar\.gz/`.
+   */
+  assetPattern?: string | RegExp;
+  /**
+   * A specific version string (e.g., `v1.2.3`, `0.48.0`) or a SemVer constraint.
+   */
+  version?: string;
+  /**
+   * A custom function to select the desired asset from available release assets.
+   */
+  assetSelector?: AssetSelector;
+}

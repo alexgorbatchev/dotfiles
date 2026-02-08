@@ -1,11 +1,20 @@
 import { $ } from 'dax-sh';
+import path from 'node:path';
 
 import type { IBuildContext, IDependencyVersions } from '../types';
 import { copyPackagesToOutputDir } from './copyPackagesToOutputDir';
 import { createTempSchemasPackage } from './createTempSchemasPackage';
-import { createTempTsConfig } from './createTempTsConfig';
+import { createDtsBundlerTsConfig, createTempTsConfig } from './createTempTsConfig';
 import { installDependenciesInOutputDir } from './installDependenciesInOutputDir';
 import { resolveSchemaExportsDtsPath } from './resolveSchemaExportsDtsPath';
+
+/**
+ * Returns path to dts-bundle-generator binary.
+ * Using direct path avoids network resolution issues with `bun x`.
+ */
+function getDtsBundleGeneratorPath(rootDir: string): string {
+  return path.join(rootDir, 'node_modules/dts-bundle-generator/dist/bin/dts-bundle-generator.js');
+}
 
 /**
  * Builds the bundled schema declarations file used in the published output.
@@ -14,6 +23,7 @@ import { resolveSchemaExportsDtsPath } from './resolveSchemaExportsDtsPath';
  * - Declaration emit (`tsgo`) happens first and can use the root workspace environment.
  * - A temporary workspace is created and installed in the output directory to make subsequent
  *   bundling/validation steps deterministic.
+ * - dts-bundle-generator uses a separate tsconfig that points to generated .d.ts files.
  */
 export async function buildSchemaTypes(context: IBuildContext, dependencyVersions: IDependencyVersions): Promise<void> {
   await createTempTsConfig(context);
@@ -24,11 +34,13 @@ export async function buildSchemaTypes(context: IBuildContext, dependencyVersion
   await installDependenciesInOutputDir(context);
 
   const schemaExportsPath: string = resolveSchemaExportsDtsPath(context.paths.tempSchemasBuildDir);
+  const dtsBundlerConfigPath: string = await createDtsBundlerTsConfig(context);
+  const dtsBundleGeneratorPath: string = getDtsBundleGeneratorPath(context.paths.rootDir);
 
   await $`
-    bun x dts-bundle-generator \
+    bun ${dtsBundleGeneratorPath} \
       --silent \
-      --project ${context.paths.buildTsconfigPath} \
+      --project ${dtsBundlerConfigPath} \
       --out-file ${context.paths.outputSchemasDtsPath} \
       --no-check \
       --export-referenced-types=false \

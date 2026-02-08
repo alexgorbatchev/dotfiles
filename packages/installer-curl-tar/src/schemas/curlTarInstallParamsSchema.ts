@@ -24,6 +24,15 @@ export const curlTarInstallParamsSchema = baseInstallParamsSchema.extend({
 /**
  * Parameters for installing a tool by downloading a tarball (`.tar`, `.tar.gz`, etc.) using `curl`,
  * then extracting it and potentially moving a binary from within.
- * This is analogous to Zinit's `dl` ice for archives, combined with `extract` and `pick`.
+ *
+ * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
+ * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export type CurlTarInstallParams = BaseInstallParams & z.infer<typeof curlTarInstallParamsSchema>;
+export interface CurlTarInstallParams extends BaseInstallParams {
+  /** The URL of the tarball to download. */
+  url: string;
+  /** Arguments to pass to the binary to check the version. */
+  versionArgs?: string[];
+  /** Regex to extract version from output. */
+  versionRegex?: string;
+}
