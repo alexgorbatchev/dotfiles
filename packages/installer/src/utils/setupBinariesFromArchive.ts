@@ -185,9 +185,11 @@ async function isExecutable(fs: IFileSystem, filePath: string): Promise<boolean>
 }
 
 /**
- * Find binary file using minimatch pattern, returns executable matching binaryName
+ * Find binary file using minimatch pattern.
+ * Prefers executable with exact basename match, but falls back to first matching executable
+ * when pattern uses wildcards (e.g., 'hermit-*' matching 'hermit-darwin-arm64').
  */
-async function findBinaryUsingPattern(
+export async function findBinaryUsingPattern(
   fs: IFileSystem,
   extractDir: string,
   pattern: string,
@@ -216,11 +218,17 @@ async function findBinaryUsingPattern(
     return null;
   }
 
-  const matchingBinary = executables.find((file) => path.basename(file) === binaryName);
-
-  if (!matchingBinary) {
-    return null;
+  // Prefer exact basename match if available
+  const exactMatch = executables.find((file) => path.basename(file) === binaryName);
+  if (exactMatch) {
+    return path.join(extractDir, exactMatch);
   }
 
-  return path.join(extractDir, matchingBinary);
+  // Fall back to first matching executable (for patterns like 'hermit-*' matching 'hermit-darwin-arm64')
+  const firstMatch = executables[0];
+  if (firstMatch) {
+    return path.join(extractDir, firstMatch);
+  }
+
+  return null;
 }
