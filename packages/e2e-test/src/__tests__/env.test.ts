@@ -37,13 +37,14 @@ describe('E2E: env command', () => {
       const testEnvName = 'test-env';
       const testEnvDir = path.join(import.meta.dir, testEnvName);
       const defaultEnvDir = path.join(import.meta.dir, 'env');
-      const activatedEnvDir = path.join(import.meta.dir, 'activated-env');
+      // Use a temp directory for dynamically created envs, separate from static fixtures
+      const activatedEnvTempDir = path.join(import.meta.dir, 'activated-env-temp');
 
       afterAll(async () => {
         await Promise.all([
           fs.promises.rm(testEnvDir, { recursive: true, force: true }),
           fs.promises.rm(defaultEnvDir, { recursive: true, force: true }),
-          fs.promises.rm(activatedEnvDir, { recursive: true, force: true }),
+          fs.promises.rm(activatedEnvTempDir, { recursive: true, force: true }),
         ]);
       });
 
@@ -210,35 +211,35 @@ describe('E2E: env command', () => {
         `);
 
         beforeAll(async () => {
-          await fs.promises.rm(activatedEnvDir, { recursive: true, force: true });
-          await harness.runCommand(['env', 'create', 'activated-env'], {
+          await fs.promises.rm(activatedEnvTempDir, { recursive: true, force: true });
+          await harness.runCommand(['env', 'create', 'activated-env-temp'], {
             env: { DOTFILES_BUILT_PACKAGE_NAME: '@dotfiles/cli' },
           });
           // Add a shell-only tool that doesn't require network
-          const toolPath = path.join(activatedEnvDir, 'tools', 'test-tool.tool.ts');
+          const toolPath = path.join(activatedEnvTempDir, 'tools', 'test-tool.tool.ts');
           await fs.promises.writeFile(toolPath, shellOnlyToolContent);
         });
 
         it('should use env config when env is activated', async () => {
-          const result = await harness.runCommandWithActivatedEnv(activatedEnvDir, ['generate']);
+          const result = await harness.runCommandWithActivatedEnv(activatedEnvTempDir, ['generate']);
 
           expect(result.code).toBe(0);
         });
 
         it('should create .generated directory in env when activated', async () => {
-          const generatedDir = path.join(activatedEnvDir, '.generated');
+          const generatedDir = path.join(activatedEnvTempDir, '.generated');
           const exists = await fs.promises.access(generatedDir).then(() => true).catch(() => false);
           expect(exists).toBe(true);
         });
 
         it('should create shell-scripts in env .generated directory', async () => {
-          const shellScriptsDir = path.join(activatedEnvDir, '.generated', 'shell-scripts');
+          const shellScriptsDir = path.join(activatedEnvTempDir, '.generated', 'shell-scripts');
           const exists = await fs.promises.access(shellScriptsDir).then(() => true).catch(() => false);
           expect(exists).toBe(true);
         });
 
         it('should include tool alias in generated zsh script', async () => {
-          const zshScript = path.join(activatedEnvDir, '.generated', 'shell-scripts', 'main.zsh');
+          const zshScript = path.join(activatedEnvTempDir, '.generated', 'shell-scripts', 'main.zsh');
           const content = await fs.promises.readFile(zshScript, 'utf8');
           expect(content).toMatchLooseInlineSnapshot`
             alias env-test-alias="echo \\"env tool works\\""
@@ -246,7 +247,7 @@ describe('E2E: env command', () => {
         });
 
         it('should include tool alias in generated bash script', async () => {
-          const bashScript = path.join(activatedEnvDir, '.generated', 'shell-scripts', 'main.bash');
+          const bashScript = path.join(activatedEnvTempDir, '.generated', 'shell-scripts', 'main.bash');
           const content = await fs.promises.readFile(bashScript, 'utf8');
           expect(content).toMatchLooseInlineSnapshot`
             alias env-test-alias="echo \\"env tool works\\""
