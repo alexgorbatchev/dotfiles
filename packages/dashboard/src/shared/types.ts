@@ -55,6 +55,7 @@ export interface ISerializableToolConfig {
   dependencies?: string[];
   symlinks?: ISerializableSymlink[];
   disabled?: boolean;
+  hostname?: string;
   configFilePath?: string;
 }
 
@@ -190,6 +191,7 @@ export function serializeToolConfig(config: ToolConfig): ISerializableToolConfig
     dependencies: config.dependencies,
     symlinks: config.symlinks,
     disabled: config.disabled,
+    hostname: config.hostname,
     configFilePath: config.configFilePath,
   };
 }

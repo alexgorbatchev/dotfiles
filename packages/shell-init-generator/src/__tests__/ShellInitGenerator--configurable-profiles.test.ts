@@ -56,7 +56,12 @@ describe('ShellInitGenerator - Configurable Profiles', () => {
       filePath: configFilePath,
       fileSystem: mockFileSystem,
       logger,
-      systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },
+      systemInfo: {
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
+        homeDir: testDirs.paths.homeDir,
+        hostname: 'test-host',
+      },
       env: {},
     });
 
@@ -98,7 +103,12 @@ describe('ShellInitGenerator - Configurable Profiles', () => {
       filePath: configFilePath,
       fileSystem: mockFileSystem,
       logger,
-      systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },
+      systemInfo: {
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
+        homeDir: testDirs.paths.homeDir,
+        hostname: 'test-host',
+      },
       env: {},
     });
 
@@ -133,7 +143,12 @@ describe('ShellInitGenerator - Configurable Profiles', () => {
       filePath: configFilePath,
       fileSystem: mockFileSystem,
       logger,
-      systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },
+      systemInfo: {
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
+        homeDir: testDirs.paths.homeDir,
+        hostname: 'test-host',
+      },
       env: {},
     });
 

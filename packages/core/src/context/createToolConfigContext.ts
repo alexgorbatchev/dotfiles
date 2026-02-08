@@ -77,6 +77,7 @@ export function createToolConfigContext(
     platform: systemInfo.platform,
     arch: systemInfo.arch,
     homeDir: projectConfig.paths.homeDir,
+    hostname: systemInfo.hostname,
   };
 
   const boundReplaceInFile: BoundReplaceInFile = async (

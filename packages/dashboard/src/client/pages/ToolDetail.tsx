@@ -127,6 +127,14 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
               {tool.runtime.installedAt ? new Date(tool.runtime.installedAt).toLocaleDateString() : 'Not installed'}
             </span>
           </div>
+          {tool.config.hostname && (
+            <div class='flex items-center gap-2'>
+              <span class='text-sm text-muted-foreground w-24'>Hostname</span>
+              <code class='text-sm font-mono bg-muted px-1.5 py-0.5 rounded'>
+                {tool.config.hostname}
+              </code>
+            </div>
+          )}
           {tool.config.dependencies && tool.config.dependencies.length > 0 && (
             <div class='flex items-start gap-2'>
               <span class='text-sm text-muted-foreground w-24'>Depends on</span>

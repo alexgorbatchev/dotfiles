@@ -63,6 +63,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   public currentInstallParams?: InstallParams | Record<string, unknown>;
   private dependencies: string[] = [];
   private isDisabled: boolean = false;
+  private hostnamePattern?: string;
 
   // Organized shell storage matching final ToolConfig structure
   private internalShellConfigs: InternalShellConfigs = {
@@ -366,6 +367,36 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
+   * Restricts the tool to specific hostnames.
+   *
+   * When set, the tool is only installed on machines where the hostname matches.
+   * If the hostname doesn't match, the tool is skipped with a warning message.
+   *
+   * @param pattern - A literal hostname string or a RegExp for pattern matching.
+   *   - String: exact match (case-sensitive)
+   *   - RegExp: pattern match (e.g., `/^work-.*$/` matches any hostname starting with "work-")
+   * @returns The `IToolConfigBuilder` instance for chaining.
+   *
+   * @example
+   * // Exact hostname match
+   * install('github-release', { repo: 'tool/repo' })
+   *   .hostname('my-laptop')
+   *
+   * @example
+   * // Pattern match using regex
+   * install('github-release', { repo: 'tool/repo' })
+   *   .hostname(/^work-.*$/)
+   */
+  hostname(pattern: string | RegExp): this {
+    if (pattern instanceof RegExp) {
+      this.hostnamePattern = pattern.source;
+    } else {
+      this.hostnamePattern = pattern;
+    }
+    return this;
+  }
+
+  /**
    * Configures the behavior for checking for tool updates.
    *
    * **This method should only be called once**; subsequent calls will override the previous value.
@@ -439,6 +470,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
         : undefined,
       version: this.versionNum,
       disabled: this.isDisabled ? true : undefined,
+      hostname: this.hostnamePattern,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
       updateCheck: this.updateCheckConfig,

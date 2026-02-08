@@ -31,18 +31,21 @@ describe('resolvePlatformConfig', () => {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: '/Users/test',
+      hostname: 'test-host',
     };
 
     linuxSystemInfo = {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     windowsSystemInfo = {
       platform: Platform.Windows,
       arch: Architecture.X86_64,
       homeDir: 'C:\\Users\\test',
+      hostname: 'test-host',
     };
   });
 
@@ -266,6 +269,7 @@ describe('resolvePlatformConfig', () => {
         platform: Platform.None,
         arch: Architecture.X86_64,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
 
       const configWithPlatforms: ToolConfig = {
@@ -289,6 +293,7 @@ describe('resolvePlatformConfig', () => {
         platform: Platform.MacOS,
         arch: Architecture.None, // Unknown architecture
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const configWithArchitecture: ToolConfig = {

@@ -8,6 +8,7 @@ describe('selectBestMatch', () => {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const result = selectBestMatch(['tool-windows-x64.exe', 'tool-linux-amd64.tar.gz'], systemInfo);
@@ -20,6 +21,7 @@ describe('selectBestMatch', () => {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const result = selectBestMatch(
@@ -35,6 +37,7 @@ describe('selectBestMatch', () => {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const result = selectBestMatch(
@@ -55,6 +58,7 @@ describe('selectBestMatch', () => {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const result = selectBestMatch(
@@ -70,6 +74,7 @@ describe('selectBestMatch', () => {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const result = selectBestMatch(
@@ -85,6 +90,7 @@ describe('selectBestMatch', () => {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     // If somehow there are multiple matches with no variant differentiation,
@@ -102,6 +108,7 @@ describe('selectBestMatch', () => {
       platform: Platform.Windows,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const result = selectBestMatch(
@@ -122,6 +129,7 @@ describe('selectBestMatch', () => {
       platform: Platform.Linux,
       arch: Architecture.None,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const result = selectBestMatch(
@@ -139,6 +147,7 @@ describe('selectBestMatch', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
 
       const result = selectBestMatch(
@@ -158,6 +167,7 @@ describe('selectBestMatch', () => {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
 
       const result = selectBestMatch(
@@ -177,6 +187,7 @@ describe('selectBestMatch', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
 
       const result = selectBestMatch(
@@ -196,6 +207,7 @@ describe('selectBestMatch', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
 
       const result = selectBestMatch(
@@ -215,6 +227,7 @@ describe('selectBestMatch', () => {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
 
       const result = selectBestMatch(
@@ -233,6 +246,7 @@ describe('selectBestMatch', () => {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
 
       const result = selectBestMatch(

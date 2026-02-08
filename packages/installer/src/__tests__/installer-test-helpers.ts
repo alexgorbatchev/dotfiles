@@ -356,7 +356,12 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
     fileSystem: fs,
     logger,
-    systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },
+    systemInfo: {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
+    },
     env: {},
   });
 
@@ -456,6 +461,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
     homeDir: testDirs.paths.homeDir,
+    hostname: 'test-host',
   };
   const mockSymlinkGenerator = createMockSymlinkGenerator(fs);
   const shell = createConfiguredShell(createMock$(), process.env);
@@ -615,7 +621,12 @@ export function createTestContext(
     currentDir: baseCurrentDir,
     stagingDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'staging'),
     timestamp: '2024-08-13-16-45-23',
-    systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: setup.testDirs.paths.homeDir },
+    systemInfo: {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: setup.testDirs.paths.homeDir,
+      hostname: 'test-host',
+    },
     toolConfig: createGithubReleaseToolConfig(),
     projectConfig: setup.mockProjectConfig,
     $: shell,

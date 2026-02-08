@@ -40,7 +40,12 @@ describe('ShellInitGenerator - Profile Updates', () => {
       filePath: configFilePath,
       fileSystem: mockFileSystem,
       logger,
-      systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },
+      systemInfo: {
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
+        homeDir: testDirs.paths.homeDir,
+        hostname: 'test-host',
+      },
       env: {},
     });
 

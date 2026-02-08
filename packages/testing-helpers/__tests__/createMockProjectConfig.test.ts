@@ -21,7 +21,12 @@ describe('createMockProjectConfig', () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
     const filePath = '/test/config.ts';
-    const systemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' };
+    const systemInfo: ISystemInfo = {
+      platform: Platform.MacOS,
+      arch: Architecture.Arm64,
+      homeDir: '/home/test',
+      hostname: 'test-host',
+    };
     const env: Record<string, string | undefined> = {};
     const result = await createMockProjectConfig({
       config: mockConfig,

@@ -30,7 +30,12 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
       filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: mockFileSystem,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: testDirs.paths.homeDir },
+      systemInfo: {
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
+        homeDir: testDirs.paths.homeDir,
+        hostname: 'test-host',
+      },
       env: {},
     });
 
@@ -43,6 +48,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -94,6 +100,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -135,6 +142,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -191,12 +199,14 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const macosIntelSystemInfo: ISystemInfo = {
         platform: Platform.MacOS,
         arch: Architecture.X86_64,
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -296,6 +306,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -344,6 +355,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {

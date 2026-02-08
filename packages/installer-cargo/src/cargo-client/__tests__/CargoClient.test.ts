@@ -16,7 +16,7 @@ describe('CargoClient', () => {
       filePath: '/test/config.ts',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
       env: {},
     });
     const mockDownloader = {
@@ -38,7 +38,7 @@ describe('CargoClient', () => {
       filePath: '/test/config.ts',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
       env: {},
     });
     const mockDownloader = {
@@ -87,7 +87,7 @@ describe('CargoClient', () => {
       filePath: '/test/config.ts',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
       env: {},
     });
     const mockDownloader = {
@@ -120,7 +120,7 @@ describe('CargoClient', () => {
       filePath: '/test/config.ts',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
       env: {},
     });
 
@@ -195,7 +195,7 @@ describe('CargoClient', () => {
       filePath: '/test/config.ts',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
       env: {},
     });
 

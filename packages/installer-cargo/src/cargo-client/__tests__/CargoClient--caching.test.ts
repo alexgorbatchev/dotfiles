@@ -31,7 +31,7 @@ describe('CargoClient caching', () => {
       filePath: '/config.ts',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
       env: {},
     });
 
@@ -65,7 +65,7 @@ describe('CargoClient caching', () => {
       filePath: '/config.ts',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
       env: {},
     });
 

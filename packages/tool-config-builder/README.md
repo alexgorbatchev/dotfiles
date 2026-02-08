@@ -31,6 +31,7 @@ interface IToolConfigBuilder {
   bash(callback: (shell: IShellConfigurator) => void): this;
   powershell(callback: (shell: IShellConfigurator) => void): this;
   disable(): this;
+  hostname(pattern: string | RegExp): this;
   build(): ToolConfig;
 }
 ```
@@ -174,6 +175,32 @@ c.bin('deprecated-tool')
     repo: 'owner/deprecated-tool',
   })
   .disable(); // Tool will be skipped and its artifacts cleaned up
+```
+
+### Hostname Restriction
+
+Use `.hostname()` to restrict a tool to specific machines. When a hostname is specified:
+
+- The tool is only installed on machines where the hostname matches
+- A warning is logged when the hostname doesn't match
+- Any previously generated artifacts are cleaned up on non-matching hosts
+- Supports both literal string matching and regex patterns
+
+```typescript
+// Exact hostname match
+install('github-release', { repo: 'owner/work-tools' })
+  .bin('work-tool')
+  .hostname('my-work-laptop');
+
+// Regex pattern match (any hostname starting with "work-")
+install('github-release', { repo: 'owner/work-tools' })
+  .bin('work-tool')
+  .hostname(/^work-.*$/);
+
+// Regex pattern as string (alternative syntax)
+install('github-release', { repo: 'owner/home-tools' })
+  .bin('home-tool')
+  .hostname('^home-.*$');
 ```
 
 ### With Hooks

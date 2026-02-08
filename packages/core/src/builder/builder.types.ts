@@ -462,6 +462,13 @@ export interface IToolConfigBuilder {
   disable(): this;
 
   /**
+   * Restrict this tool to specific hostnames.
+   * When set, the tool is only installed on machines where the hostname matches.
+   * @param pattern - A literal hostname string or regex pattern (e.g., "my-laptop" or /^work-.*$/)
+   */
+  hostname(pattern: string | RegExp): this;
+
+  /**
    * Finalize and build the tool configuration.
    * Call this as the last method in the chain.
    * @returns The complete ToolConfig object

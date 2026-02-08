@@ -22,6 +22,7 @@ describe('createToolConfigContext', () => {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
     homeDir: '/Users/testuser',
+    hostname: 'test-host',
   };
 
   beforeEach(async () => {

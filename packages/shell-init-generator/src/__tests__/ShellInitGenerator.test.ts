@@ -31,7 +31,12 @@ describe('ShellInitGenerator', () => {
       filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: mockFileSystem,
       logger,
-      systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },
+      systemInfo: {
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
+        homeDir: testDirs.paths.homeDir,
+        hostname: 'test-host',
+      },
       env: {},
     });
     generator = new ShellInitGenerator(logger, mockFileSystem, mockProjectConfig);

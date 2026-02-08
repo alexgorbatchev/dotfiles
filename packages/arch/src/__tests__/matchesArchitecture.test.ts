@@ -8,12 +8,14 @@ describe('matchesArchitecture', () => {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
     homeDir: '/home/test',
+    hostname: 'test-host',
   };
 
   const linuxX64SystemInfo: ISystemInfo = {
     platform: Platform.Linux,
     arch: Architecture.X86_64,
     homeDir: '/home/test',
+    hostname: 'test-host',
   };
 
   const macosArm64Regex = getArchitectureRegex(macosArm64SystemInfo);
@@ -108,6 +110,7 @@ describe('matchesArchitecture with FZF release assets', () => {
         platform,
         arch,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
       const regex = getArchitectureRegex(systemInfo);
       const matchedAssets = assets.filter((asset) => matchesArchitecture(asset, regex));

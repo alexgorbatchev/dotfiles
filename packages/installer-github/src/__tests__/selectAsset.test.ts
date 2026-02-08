@@ -62,6 +62,7 @@ function createMacOSArm64Context(): IInstallContext {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: '/Users/test',
+      hostname: 'test-host',
     },
   } as IInstallContext;
 }
@@ -75,6 +76,7 @@ function createMacOSx64Context(): IInstallContext {
       platform: Platform.MacOS,
       arch: Architecture.X86_64,
       homeDir: '/Users/test',
+      hostname: 'test-host',
     },
   } as IInstallContext;
 }
@@ -88,6 +90,7 @@ function createLinuxArm64Context(): IInstallContext {
       platform: Platform.Linux,
       arch: Architecture.Arm64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     },
   } as IInstallContext;
 }
@@ -101,6 +104,7 @@ function createLinuxx64Context(): IInstallContext {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     },
   } as IInstallContext;
 }

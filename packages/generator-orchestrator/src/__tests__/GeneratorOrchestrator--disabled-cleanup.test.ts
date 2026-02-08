@@ -87,7 +87,12 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'generator-orchestrator-cleanup' });
 
-    systemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
+    systemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
+    };
 
     mockProjectConfig = await createMockProjectConfig({
       config: {

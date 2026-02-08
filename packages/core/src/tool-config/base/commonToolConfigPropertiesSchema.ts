@@ -23,6 +23,12 @@ export const commonToolConfigPropertiesSchema = z
      * Useful for temporarily disabling a tool without removing its configuration.
      */
     disabled: z.boolean().optional(),
+    /**
+     * Hostname pattern to match for this tool.
+     * Can be a literal string or a regex pattern (prefixed with / and suffixed with /).
+     * When set, the tool is only installed on machines where the hostname matches.
+     */
+    hostname: z.string().optional(),
     /** The desired version of the tool, defined by `c.version()`. Defaults to 'latest'. */
     version: z.string().optional(),
     /** Shell configurations organized by shell type, added via `c.zsh()`, `c.bash()`, `c.powershell()`. */

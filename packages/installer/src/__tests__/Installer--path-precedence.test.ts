@@ -113,6 +113,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
     };
     const symlinkGenerator = new SymlinkGenerator(logger, fileSystem, projectConfig, systemInfo);
     const hookExecutor = new HookExecutor((): void => {});

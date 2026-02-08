@@ -11,6 +11,7 @@ describe('tsConfigLoader context', () => {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
     homeDir: '/Users/testuser',
+    hostname: 'test-host',
   };
 
   let logger: TestLogger;

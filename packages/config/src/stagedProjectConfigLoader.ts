@@ -400,7 +400,12 @@ export async function createProjectConfigFromObject(
   parentLogger: TsLogger,
   fileSystem: IFileSystem,
   userConfig: ProjectConfigPartial = {},
-  systemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/Users/testuser' },
+  systemInfo: ISystemInfo = {
+    platform: Platform.MacOS,
+    arch: Architecture.Arm64,
+    homeDir: '/Users/testuser',
+    hostname: 'test-host',
+  },
   env: EnvMap = {},
   options: ICreateProjectConfigFromObjectOptions,
 ): Promise<ProjectConfig> {

@@ -31,6 +31,7 @@ describe('HookExecutor - stack trace filtering', () => {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
     };
 
     const projectConfig = await createMockProjectConfig({
@@ -111,6 +112,7 @@ describe('HookExecutor - stack trace filtering', () => {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
     };
 
     const projectConfig = await createMockProjectConfig({

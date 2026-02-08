@@ -63,6 +63,7 @@ After calling `install()`, these methods are available:
 | `.zsh(fn)` / `.bash(fn)` | Shell-specific configuration            |
 | `.platform(p, fn)`       | Platform-specific overrides             |
 | `.disable()`             | Skip tool during generation             |
+| `.hostname(pattern)`     | Restrict tool to specific hostname(s)   |
 
 ## Next Steps
 

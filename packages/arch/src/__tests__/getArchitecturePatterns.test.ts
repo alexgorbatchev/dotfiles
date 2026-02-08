@@ -8,6 +8,7 @@ describe('getArchitecturePatterns', () => {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -33,6 +34,7 @@ describe('getArchitecturePatterns', () => {
       platform: Platform.MacOS,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -58,6 +60,7 @@ describe('getArchitecturePatterns', () => {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -72,6 +75,7 @@ describe('getArchitecturePatterns', () => {
       platform: Platform.Linux,
       arch: Architecture.Arm64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -86,6 +90,7 @@ describe('getArchitecturePatterns', () => {
       platform: Platform.Windows,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -100,6 +105,7 @@ describe('getArchitecturePatterns', () => {
       platform: Platform.Linux,
       arch: Architecture.Arm64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -111,6 +117,7 @@ describe('getArchitecturePatterns', () => {
       platform: Platform.None,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -125,6 +132,7 @@ describe('getArchitecturePatterns', () => {
       platform: Platform.Linux,
       arch: Architecture.None,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);

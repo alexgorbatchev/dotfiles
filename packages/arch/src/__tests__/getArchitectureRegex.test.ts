@@ -8,6 +8,7 @@ describe('getArchitectureRegex', () => {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const regex = getArchitectureRegex(systemInfo);
@@ -24,6 +25,7 @@ describe('getArchitectureRegex', () => {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const regex = getArchitectureRegex(systemInfo);
@@ -40,6 +42,7 @@ describe('getArchitectureRegex', () => {
       platform: Platform.MacOS,
       arch: Architecture.X86_64,
       homeDir: '/home/test',
+      hostname: 'test-host',
     };
 
     const regex = getArchitectureRegex(systemInfo);

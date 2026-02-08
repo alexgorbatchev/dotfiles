@@ -24,7 +24,12 @@ describe('SymlinkGenerator', () => {
 
     testDirs = await createTestDirectories(logger, mockFs.fs, { testName: 'symlink-generator' });
 
-    systemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
+    systemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
+    };
 
     projectConfig = await createMockProjectConfig({
       config: {

@@ -429,6 +429,33 @@ This is useful for:
 - Testing configurations without installing certain tools
 - Keeping tool configurations for future use
 
+### Step 8: Restrict to Specific Hosts (if needed)
+
+Use `.hostname(pattern)` to restrict a tool to specific machines. When a hostname is specified, the tool is only installed on machines where the hostname matches the pattern.
+
+```ts
+// Exact hostname match
+install('github-release', { repo: 'owner/work-tools' })
+  .bin('work-tool')
+  .hostname('my-work-laptop');
+
+// Regex pattern match (any hostname starting with "work-")
+install('github-release', { repo: 'owner/work-tools' })
+  .bin('work-tool')
+  .hostname(/^work-.*$/);
+```
+
+This is useful for:
+
+- Work-specific tools that should only be installed on work machines
+- Personal tools that should only be installed on personal machines
+- Machine-specific configurations (different tools for laptops vs desktops)
+
+When the hostname doesn't match:
+
+- A warning is logged indicating the tool is being skipped
+- Any previously generated artifacts are cleaned up
+
 ## Output Requirements
 
 ### File Structure

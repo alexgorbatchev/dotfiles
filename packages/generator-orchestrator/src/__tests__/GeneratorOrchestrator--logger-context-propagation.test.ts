@@ -75,7 +75,12 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'generator-context' });
 
-    systemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
+    systemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
+    };
 
     mockProjectConfig = await createMockProjectConfig({
       config: {

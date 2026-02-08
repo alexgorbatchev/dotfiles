@@ -89,7 +89,12 @@ describe('GeneratorOrchestrator', () => {
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'generator-orchestrator' });
 
-    systemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
+    systemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
+    };
 
     mockProjectConfig = await createMockProjectConfig({
       config: {
@@ -530,6 +535,113 @@ describe('GeneratorOrchestrator', () => {
               overwrite: true,
             },
           );
+        });
+      });
+
+      describe('hostname filtering', () => {
+        it('should skip tools when hostname does not match exact pattern', async () => {
+          const enabledToolConfig: ToolConfig = {
+            name: 'enabledTool',
+            binaries: ['enabled-bin'],
+            version: '1.0',
+            installationMethod: 'manual',
+            installParams: {},
+          };
+
+          const toolConfigsWithHostname: Record<string, ToolConfig> = {
+            enabledTool: enabledToolConfig,
+            hostnameRestrictedTool: {
+              name: 'hostnameRestrictedTool',
+              binaries: ['restricted-bin'],
+              version: '1.0',
+              hostname: 'different-hostname',
+              installationMethod: 'manual',
+              installParams: {},
+            },
+          };
+
+          await orchestrator.generateAll(toolConfigsWithHostname);
+
+          // Verify only non-hostname-restricted tool is passed to generators
+          const expectedFilteredConfigs: Record<string, ToolConfig> = {
+            enabledTool: enabledToolConfig,
+          };
+
+          expect(mockShimGenerator.generate).toHaveBeenCalledWith(expectedFilteredConfigs, {
+            overwrite: true,
+          });
+
+          // Verify warning was logged for hostname mismatch
+          logger.expect(['WARN'], ['GeneratorOrchestrator', 'generateAll'], [], [/hostnameRestrictedTool.*hostname/]);
+        });
+
+        it('should include tools when hostname matches exact pattern', async () => {
+          const matchingHostnameConfig: ToolConfig = {
+            name: 'matchingTool',
+            binaries: ['matching-bin'],
+            version: '1.0',
+            hostname: 'test-host', // Matches systemInfo.hostname
+            installationMethod: 'manual',
+            installParams: {},
+          };
+
+          const toolConfigsWithMatchingHostname: Record<string, ToolConfig> = {
+            matchingTool: matchingHostnameConfig,
+          };
+
+          await orchestrator.generateAll(toolConfigsWithMatchingHostname);
+
+          // Tool should be passed to generators since hostname matches
+          expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigsWithMatchingHostname, {
+            overwrite: true,
+          });
+        });
+
+        it('should include tools when hostname matches regex pattern', async () => {
+          const regexMatchingConfig: ToolConfig = {
+            name: 'regexTool',
+            binaries: ['regex-bin'],
+            version: '1.0',
+            hostname: '^test-.*$', // Regex pattern that matches 'test-host'
+            installationMethod: 'manual',
+            installParams: {},
+          };
+
+          const toolConfigsWithRegex: Record<string, ToolConfig> = {
+            regexTool: regexMatchingConfig,
+          };
+
+          await orchestrator.generateAll(toolConfigsWithRegex);
+
+          // Tool should be passed to generators since hostname regex matches
+          expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigsWithRegex, {
+            overwrite: true,
+          });
+        });
+
+        it('should skip tools when hostname regex does not match', async () => {
+          const nonMatchingRegexConfig: ToolConfig = {
+            name: 'noMatchTool',
+            binaries: ['nomatch-bin'],
+            version: '1.0',
+            hostname: '^other-.*$', // Regex pattern that does NOT match 'test-host'
+            installationMethod: 'manual',
+            installParams: {},
+          };
+
+          const toolConfigsWithNonMatchingRegex: Record<string, ToolConfig> = {
+            noMatchTool: nonMatchingRegexConfig,
+          };
+
+          await orchestrator.generateAll(toolConfigsWithNonMatchingRegex);
+
+          // Tool should be skipped since hostname regex doesn't match
+          expect(mockShimGenerator.generate).toHaveBeenCalledWith({}, {
+            overwrite: true,
+          });
+
+          // Verify warning was logged
+          logger.expect(['WARN'], ['GeneratorOrchestrator', 'generateAll'], [], [/noMatchTool.*hostname/]);
         });
       });
     });

@@ -20,4 +20,10 @@ export interface ISystemInfo {
    * Used for expanding tilde (~) in file paths.
    */
   homeDir: string;
+  /**
+   * The machine hostname.
+   * Corresponds to the value returned by `os.hostname()` in Node.js.
+   * Used for hostname-based tool filtering.
+   */
+  hostname: string;
 }

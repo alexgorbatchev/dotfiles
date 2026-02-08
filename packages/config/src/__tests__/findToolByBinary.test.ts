@@ -34,7 +34,12 @@ describe('findToolByBinary', () => {
       }
     };
 
-    systemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
+    systemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
+    };
 
     // Create a ResolvedFileSystem with the real homeDir
     resolvedFs = new ResolvedFileSystem(realFs, testDirs.paths.homeDir);
@@ -206,7 +211,12 @@ describe('loadToolConfigByBinary', () => {
       }
     };
 
-    systemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
+    systemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
+    };
 
     // Create a ResolvedFileSystem with the real homeDir
     resolvedFs = new ResolvedFileSystem(realFs, testDirs.paths.homeDir);

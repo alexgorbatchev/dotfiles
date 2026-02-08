@@ -679,4 +679,38 @@ describe('IToolConfigBuilder', () => {
     const config = builder.build();
     expect(config.disabled).toBeUndefined();
   });
+
+  test('hostname method sets hostname pattern as string', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.bin('test-bin').install('github-release', { repo: 'owner/repo' }).hostname('my-workstation');
+
+    const config = builder.build();
+    expect(config.hostname).toBe('my-workstation');
+  });
+
+  test('hostname method converts regexp to source string', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.bin('test-bin').install('github-release', { repo: 'owner/repo' }).hostname(/^work-machine-.*$/);
+
+    const config = builder.build();
+    expect(config.hostname).toBe('^work-machine-.*$');
+  });
+
+  test('hostname method returns builder for chaining', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    const result = builder.hostname('test-host');
+    expect(result).toBe(builder);
+  });
+
+  test('build method does not include hostname property when not set', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.bin('test-bin');
+
+    const config = builder.build();
+    expect(config.hostname).toBeUndefined();
+  });
 });

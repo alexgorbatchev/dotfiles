@@ -80,6 +80,7 @@ describe('installFromZshPlugin', () => {
           dotfilesDir: '/dotfiles',
           generatedDir: '/generated',
           homeDir: '/home',
+          hostname: 'test-host',
         },
       },
       systemInfo: {

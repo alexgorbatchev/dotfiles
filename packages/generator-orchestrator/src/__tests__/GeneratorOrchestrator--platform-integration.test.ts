@@ -94,12 +94,14 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
     };
 
     linuxSystemInfo = {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
     };
 
     // Create mock generators

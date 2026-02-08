@@ -9,6 +9,7 @@ describe('projectConfigLoader - staged home/path resolution', () => {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
     homeDir: '/bootstrap-home',
+    hostname: 'test-host',
   };
 
   const userConfigPath: string = '/config-dir/dotfiles.config.ts';

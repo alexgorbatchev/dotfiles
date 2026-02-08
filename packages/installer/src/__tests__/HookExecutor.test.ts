@@ -208,7 +208,12 @@ describe('HookExecutor', () => {
         filePath: '/test/config.ts',
         fileSystem: memFs.fs,
         logger,
-        systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: '/home/test' },
+        systemInfo: {
+          platform: Platform.Linux,
+          arch: Architecture.X86_64,
+          homeDir: '/home/test',
+          hostname: 'test-host',
+        },
         env: {},
       });
 

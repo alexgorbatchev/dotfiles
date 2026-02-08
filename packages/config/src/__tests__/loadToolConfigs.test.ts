@@ -43,7 +43,12 @@ describe('IToolConfigContext', () => {
     resolvedFs = mockFs.fs.asIResolvedFileSystem;
     const testDirs = await createTestDirectories(logger, fileSystem, { testName: 'toolconfig-context-test' });
 
-    systemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
+    systemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
+    };
 
     mockProjectConfig = await createMockProjectConfig({
       config: {
@@ -222,7 +227,12 @@ describe('IToolConfigContext', () => {
         filePath: path.join(customTestDirs.paths.dotfilesDir, 'config.ts'),
         fileSystem: customMockFs.fs,
         logger,
-        systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: customTestDirs.paths.homeDir },
+        systemInfo: {
+          platform: Platform.Linux,
+          arch: Architecture.X86_64,
+          homeDir: customTestDirs.paths.homeDir,
+          hostname: 'test-host',
+        },
         env: {},
       });
 
@@ -230,6 +240,7 @@ describe('IToolConfigContext', () => {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: customTestDirs.paths.homeDir,
+        hostname: 'test-host',
       };
 
       const toolConfigFilePath = path.join(

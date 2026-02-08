@@ -43,6 +43,7 @@ export function createMockSystemInfo(): ISystemInfo {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
     homeDir: '/home/user',
+    hostname: 'test-host',
   };
 }
 

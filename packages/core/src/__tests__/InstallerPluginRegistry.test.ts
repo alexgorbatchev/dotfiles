@@ -40,6 +40,7 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
     platform: Platform.Linux,
     arch: Architecture.X86_64,
     homeDir: testDirs.paths.homeDir,
+    hostname: 'test-host',
   };
 
   const projectConfig = await createMockProjectConfig({

@@ -79,6 +79,7 @@ export function createTestInstallHookContext(
       platform: Platform.MacOS,
       arch: Architecture.X86_64,
       homeDir: '/home/user',
+      hostname: 'test-host',
     },
     $: configuredShell,
     toolConfig,

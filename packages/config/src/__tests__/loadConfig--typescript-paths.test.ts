@@ -11,6 +11,7 @@ describe('loadConfig - TypeScript path substitution', () => {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
     homeDir: '/Users/testuser',
+    hostname: 'test-host',
   };
 
   let logger: TestLogger;

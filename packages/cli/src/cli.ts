@@ -120,6 +120,7 @@ function createSystemInfo(options: SetupServicesOptions, logger: TsLogger): ISys
     platform: platformFromNodeJS(platformString),
     arch: architectureFromNodeJS(archString),
     homeDir: os.homedir(),
+    hostname: os.hostname(),
   };
 
   if (options.platform) {
@@ -265,6 +266,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     platform: systemInfo.platform,
     arch: systemInfo.arch,
     homeDir: projectConfig.paths.homeDir,
+    hostname: systemInfo.hostname,
   };
 
   // Wrap filesystem to resolve tilde paths using configured home

@@ -95,12 +95,44 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   }
 
   /**
+   * Checks if the current hostname matches the tool's hostname pattern.
+   * @param pattern - The hostname pattern (literal string or regex pattern)
+   * @returns true if the hostname matches, false otherwise
+   */
+  private matchesHostname(pattern: string): boolean {
+    const currentHostname = this.systemInfo.hostname;
+
+    // Check if pattern is a regex (starts and ends with /)
+    if (pattern.startsWith('/') && pattern.lastIndexOf('/') > 0) {
+      const lastSlash = pattern.lastIndexOf('/');
+      const regexBody = pattern.slice(1, lastSlash);
+      const flags = pattern.slice(lastSlash + 1);
+      try {
+        const regex = new RegExp(regexBody, flags);
+        return regex.test(currentHostname);
+      } catch {
+        // Invalid regex, treat as literal string
+        return currentHostname === pattern;
+      }
+    }
+
+    // Treat as regex source if it looks like a regex pattern
+    try {
+      const regex = new RegExp(pattern);
+      return regex.test(currentHostname);
+    } catch {
+      // If regex compilation fails, do exact match
+      return currentHostname === pattern;
+    }
+  }
+
+  /**
    * @inheritdoc IGeneratorOrchestrator.generateAll
    */
   async generateAll(toolConfigs: Record<string, ToolConfig>, options?: IGenerateAllOptions): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'generateAll' });
 
-    // Filter out disabled tools and cleanup their artifacts
+    // Filter out disabled tools and hostname mismatches, cleanup their artifacts
     const enabledToolConfigs: Record<string, ToolConfig> = {};
     for (const [name, config] of Object.entries(toolConfigs)) {
       if (config.disabled) {
@@ -109,6 +141,15 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
         await this.cleanupToolArtifacts(name);
         continue;
       }
+
+      // Check hostname restriction
+      if (config.hostname && !this.matchesHostname(config.hostname)) {
+        logger.warn(messages.generateAll.toolHostnameMismatch(name, config.hostname, this.systemInfo.hostname));
+        // Clean up artifacts for hostname-mismatched tools
+        await this.cleanupToolArtifacts(name);
+        continue;
+      }
+
       enabledToolConfigs[name] = config;
     }
 

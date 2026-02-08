@@ -75,6 +75,7 @@ describe('installFromBrew', () => {
           dotfilesDir: '/dotfiles',
           generatedDir: '/generated',
           homeDir: '/home',
+          hostname: 'test-host',
         },
       },
       systemInfo: {
@@ -85,6 +86,7 @@ describe('installFromBrew', () => {
       toolDir: '/tool/dir',
       getToolDir: () => '/tool/dir',
       homeDir: '/home',
+      hostname: 'test-host',
       binDir: '/bin',
       shellScriptsDir: '/scripts',
       dotfilesDir: '/dotfiles',
@@ -128,6 +130,7 @@ describe('installFromBrew', () => {
           dotfilesDir: '/dotfiles',
           generatedDir: '/generated',
           homeDir: '/home',
+          hostname: 'test-host',
         },
       },
       systemInfo: {
@@ -138,6 +141,7 @@ describe('installFromBrew', () => {
       toolDir: '/tool/dir',
       getToolDir: () => '/tool/dir',
       homeDir: '/home',
+      hostname: 'test-host',
       binDir: '/bin',
       shellScriptsDir: '/scripts',
       dotfilesDir: '/dotfiles',

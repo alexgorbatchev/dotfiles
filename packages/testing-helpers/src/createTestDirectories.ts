@@ -74,7 +74,7 @@ export async function createTestDirectories(
   const defaultConfig = await getDefaultConfig(
     logger,
     fs,
-    { homeDir, platform: Platform.Linux, arch: Architecture.X86_64 },
+    { homeDir, platform: Platform.Linux, arch: Architecture.X86_64, hostname: 'test-host' },
     { HOME: homeDir },
     `${homeDir}/config.ts`,
   );

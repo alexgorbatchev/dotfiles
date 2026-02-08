@@ -10,18 +10,21 @@ const macosSystem: ISystemInfo = {
   platform: Platform.MacOS,
   arch: Architecture.Arm64,
   homeDir: '/Users/test',
+  hostname: 'test-host',
 };
 
 const _linuxSystem: ISystemInfo = {
   platform: Platform.Linux,
   arch: Architecture.X86_64,
   homeDir: '/home/test',
+  hostname: 'test-host',
 };
 
 const _windowsSystem: ISystemInfo = {
   platform: Platform.Windows,
   arch: Architecture.X86_64,
   homeDir: 'C:\\Users\\test',
+  hostname: 'test-host',
 };
 
 // Verify the types are correct

@@ -30,7 +30,12 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: mockFileSystem,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: testDirs.paths.homeDir },
+      systemInfo: {
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
+        homeDir: testDirs.paths.homeDir,
+        hostname: 'test-host',
+      },
       env: {},
     });
 
@@ -43,6 +48,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -104,6 +110,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -151,6 +158,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -220,12 +228,14 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const linuxSystemInfo: ISystemInfo = {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
 
       // Mimic the actual aerospace.tool.ts structure
@@ -281,12 +291,14 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const linuxSystemInfo: ISystemInfo = {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: '/home/test',
+        hostname: 'test-host',
       };
 
       // Mimic the actual eza.tool.ts structure
@@ -362,6 +374,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         platform: Platform.MacOS,
         arch: Architecture.Arm64,
         homeDir: '/Users/test',
+        hostname: 'test-host',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -400,6 +413,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         platform: Platform.Windows,
         arch: Architecture.X86_64,
         homeDir: 'C:\\Users\\test',
+        hostname: 'test-host',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {

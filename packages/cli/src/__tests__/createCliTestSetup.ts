@@ -94,6 +94,7 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
     platform: Platform.Linux,
     arch: Architecture.X86_64,
     homeDir: testDirs.paths.homeDir,
+    hostname: 'test-host',
   };
 
   // Create the CLI source directory structure for __dirname resolution

@@ -14,6 +14,7 @@ describe('expandToolConfigPath', () => {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
     homeDir: '/Users/testuser',
+    hostname: 'test-host',
   };
 
   const toolConfigPath = '/Users/testuser/.dotfiles/configs/tools/lazygit.tool.ts';

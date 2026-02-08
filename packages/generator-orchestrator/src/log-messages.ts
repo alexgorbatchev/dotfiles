@@ -11,6 +11,10 @@ export const messages = {
     parsedOptions: (toolConfigsCount: number) =>
       createSafeLogMessage(`Parsed ${toolConfigsCount} tool configuration entries`),
     toolDisabled: (toolName: string) => createSafeLogMessage(`Skipping disabled tool: ${toolName}`),
+    toolHostnameMismatch: (toolName: string, pattern: string, currentHostname: string) =>
+      createSafeLogMessage(
+        `Skipping tool "${toolName}": hostname "${currentHostname}" does not match pattern "${pattern}"`,
+      ),
     dependenciesValidationStarted: (toolCount: number) =>
       createSafeLogMessage(`Validating tool dependencies (${toolCount} tools)`),
     dependenciesOrderResolved: (orderedTools: string) =>

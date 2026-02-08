@@ -8,6 +8,7 @@ const systemInfoLinux: ISystemInfo = {
   platform: Platform.Linux,
   arch: Architecture.X86_64,
   homeDir: '/home/test',
+  hostname: 'test-host',
 };
 
 type ManualToolConfigInput = {
@@ -181,6 +182,7 @@ describe('orderToolConfigsByDependencies', () => {
       platform: Platform.Linux,
       arch: Architecture.Arm64,
       homeDir: '/home/test-arm',
+      hostname: 'test-host',
     };
     const consumerConfig: ToolConfig = createManualToolConfig({
       name: 'consumer',
