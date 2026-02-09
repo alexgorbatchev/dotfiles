@@ -21,6 +21,7 @@ interface TreeNodeData {
   path: string;
   type: 'file' | 'directory';
   fileType?: string;
+  lastOperation?: string;
   children?: TreeNodeData[];
 }
 
@@ -103,12 +104,16 @@ function renderFileLabel(item: TreeItemData<TreeNodeData>): JSX.Element {
   const node = item.data;
   const isDirectory = node?.type === 'directory';
 
+  // For symlinks, show "symlink" badge instead of the fileType
+  // This makes it clear the entry is a reference, not the actual file
+  const badgeText = node?.lastOperation === 'symlink' ? 'symlink' : node?.fileType;
+
   return (
     <span class='flex items-center'>
       <span>{item.label}</span>
-      {!isDirectory && node?.fileType && (
+      {!isDirectory && badgeText && (
         <Badge variant='outline' class='ml-2 text-xs'>
-          {node.fileType}
+          {badgeText}
         </Badge>
       )}
     </span>

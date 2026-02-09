@@ -1,6 +1,7 @@
 interface FileData {
   filePath: string;
   fileType?: string;
+  lastOperation?: string;
 }
 
 interface TreeNodeData {
@@ -8,6 +9,7 @@ interface TreeNodeData {
   path: string;
   type: 'file' | 'directory';
   fileType?: string;
+  lastOperation?: string;
   children?: TreeNodeData[];
 }
 
@@ -82,7 +84,13 @@ export function buildTreeForTool(files: FileData[]): TreeNodeData[] {
     const fileName = fileParts[fileParts.length - 1];
     if (fileName) {
       const filePath = currentPath ? currentPath + '/' + fileName : '/' + fileName;
-      const node: TreeNodeData = { name: fileName, path: basePath + filePath, type: 'file', fileType: file.fileType };
+      const node: TreeNodeData = {
+        name: fileName,
+        path: basePath + filePath,
+        type: 'file',
+        fileType: file.fileType,
+        lastOperation: file.lastOperation,
+      };
       tree.set(filePath, node);
       const parent = currentPath ? tree.get(currentPath) : undefined;
       if (parent?.children) parent.children.push(node);

@@ -39,6 +39,12 @@ const operationLabels: Record<string, string> = {
   cp: 'Copied',
 };
 
+/**
+ * Operations where the fileType badge provides useful context.
+ * For structural operations (mkdir, chmod) the fileType is less meaningful.
+ */
+const SHOW_FILETYPE_FOR_OPERATIONS = new Set(['writeFile', 'cp', 'rename', 'rm']);
+
 function getDisplayPath(filePath: string, dotfilesDir: string): string {
   if (filePath.startsWith(dotfilesDir)) {
     const relativePath = filePath.slice(dotfilesDir.length);
@@ -89,9 +95,11 @@ export function ToolHistory({ entries, installedAt, dotfilesDir }: ToolHistoryPr
                     <span class='font-medium'>
                       {operationLabels[entry.operationType] || entry.operationType}
                     </span>
-                    <Badge variant='outline' class='text-xs'>
-                      {entry.fileType}
-                    </Badge>
+                    {SHOW_FILETYPE_FOR_OPERATIONS.has(entry.operationType) && (
+                      <Badge variant='outline' class='text-xs'>
+                        {entry.fileType}
+                      </Badge>
+                    )}
                     <span class='text-xs text-muted-foreground ml-auto'>
                       {entry.relativeTime}
                     </span>
