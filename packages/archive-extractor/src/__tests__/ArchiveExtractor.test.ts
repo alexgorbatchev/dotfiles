@@ -228,5 +228,57 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
     it('should report gzip format as supported', (): void => {
       expect(extractor.isSupported('gzip')).toBe(true);
     });
+
+    it('should detect .tbz format by extension', async (): Promise<void> => {
+      expect(await extractor.detectFormat('archive.tbz')).toBe('tar.bz2');
+    });
+
+    it('should detect .tbz2 format by extension', async (): Promise<void> => {
+      expect(await extractor.detectFormat('archive.tbz2')).toBe('tar.bz2');
+    });
+
+    it('should detect .tar.bz2 format by extension', async (): Promise<void> => {
+      expect(await extractor.detectFormat('archive.tar.bz2')).toBe('tar.bz2');
+    });
+
+    it('should extract a .tbz archive using real tar', async (): Promise<void> => {
+      const sourceDir = join(testDirs.paths.homeDir, 'source-tbz');
+      const fileName = 'testfile.txt';
+      const fileContent = 'Hello from tbz!';
+      const archiveFullPath = join(testDirs.paths.homeDir, 'test-archive.tbz');
+
+      await nodeFs.mkdir(sourceDir, { recursive: true });
+      await nodeFs.writeFile(join(sourceDir, fileName), fileContent);
+      await $`tar -cjf ${archiveFullPath} -C ${sourceDir} ${fileName}`.quiet();
+
+      const outputDir = join(testDirs.paths.homeDir, 'output-tbz');
+      await nodeFs.mkdir(outputDir);
+
+      await extractor.extract(logger, archiveFullPath, { targetDir: outputDir });
+
+      const extractedFilePath = join(outputDir, fileName);
+      expect(await nodeFs.exists(extractedFilePath)).toBe(true);
+      expect(await nodeFs.readFile(extractedFilePath, 'utf-8')).toBe(fileContent);
+    });
+
+    it('should extract a .tar.bz2 archive using real tar', async (): Promise<void> => {
+      const sourceDir = join(testDirs.paths.homeDir, 'source-tar-bz2');
+      const fileName = 'testfile.txt';
+      const fileContent = 'Hello from tar.bz2!';
+      const archiveFullPath = join(testDirs.paths.homeDir, 'test-archive.tar.bz2');
+
+      await nodeFs.mkdir(sourceDir, { recursive: true });
+      await nodeFs.writeFile(join(sourceDir, fileName), fileContent);
+      await $`tar -cjf ${archiveFullPath} -C ${sourceDir} ${fileName}`.quiet();
+
+      const outputDir = join(testDirs.paths.homeDir, 'output-tar-bz2');
+      await nodeFs.mkdir(outputDir);
+
+      await extractor.extract(logger, archiveFullPath, { targetDir: outputDir });
+
+      const extractedFilePath = join(outputDir, fileName);
+      expect(await nodeFs.exists(extractedFilePath)).toBe(true);
+      expect(await nodeFs.readFile(extractedFilePath, 'utf-8')).toBe(fileContent);
+    });
   });
 });
