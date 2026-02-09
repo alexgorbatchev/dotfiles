@@ -90,6 +90,26 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
    * Uses context-based signature: `(context: IAssetSelectionContext) => IGitHubReleaseAsset | undefined`
    */
   assetSelector: z.custom<AssetSelector>((val) => typeof val === 'function', 'Must be a function').optional(),
+  /**
+   * When true, uses the `gh` CLI for GitHub API requests instead of direct fetch.
+   * This is useful when:
+   * - Working behind corporate proxies that `gh` handles better
+   * - Leveraging existing `gh` authentication
+   * - Avoiding rate limits (gh uses authenticated requests by default)
+   *
+   * Requires the `gh` CLI to be installed and authenticated.
+   * Uses the same caching mechanism as the fetch-based client.
+   *
+   * @default false
+   * @example
+   * ```typescript
+   * install('github-release', {
+   *   repo: 'junegunn/fzf',
+   *   ghCli: true,
+   * }).bin('fzf')
+   * ```
+   */
+  ghCli: z.boolean().optional(),
 });
 
 /**

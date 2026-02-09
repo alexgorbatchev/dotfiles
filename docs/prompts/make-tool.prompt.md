@@ -57,6 +57,7 @@ Select the most appropriate method based on your investigation. Prefer official,
 
 - **`github-release`**: best for tools with prebuilt binaries on GitHub.
   - Guide: [GitHub Release Installation Guide](<root>/docs/installation/github-release.md)
+  - Use `ghCli: true` to fetch releases via `gh` CLI instead of direct API access (useful for GitHub Enterprise or when `GITHUB_TOKEN` isn't configured)
 
 - **`brew`**: use if the tool is officially available on Homebrew.
   - Guide: [Homebrew Installation Guide](<root>/docs/installation/homebrew.md)
@@ -503,6 +504,24 @@ import { defineTool } from '@gitea/dotfiles';
 export default defineTool((install) =>
   install('github-release', {
     repo: 'BurntSushi/ripgrep',
+  }).bin('rg')
+);
+```
+
+### Example 1b: GitHub Release with gh CLI
+
+```ts
+import { defineTool } from '@gitea/dotfiles';
+
+/**
+ * ripgrep - Using gh CLI for API access (GitHub Enterprise or auth via gh).
+ *
+ * https://github.com/BurntSushi/ripgrep
+ */
+export default defineTool((install) =>
+  install('github-release', {
+    repo: 'BurntSushi/ripgrep',
+    ghCli: true, // Use `gh api` instead of direct fetch
   }).bin('rg')
 );
 ```

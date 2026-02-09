@@ -7,6 +7,16 @@ export const messages = {
     authTokenPresent: () => createSafeLogMessage('GitHub token authentication enabled'),
     authTokenMissing: () => createSafeLogMessage('No GitHub token provided; requests will be unauthenticated'),
   } satisfies SafeLogMessageMap,
+  ghCli: {
+    initialized: (hostname: string) =>
+      createSafeLogMessage(`GitHub CLI API client initialized for hostname ${hostname}`),
+    executing: (endpoint: string) => createSafeLogMessage(`Executing gh api request for ${endpoint}`),
+    cacheHit: (endpoint: string) => createSafeLogMessage(`Cache hit for gh api ${endpoint}`),
+    cacheMiss: (endpoint: string) => createSafeLogMessage(`Cache miss for gh api ${endpoint}`),
+    commandFailed: (exitCode: number) => createSafeLogMessage(`gh cli command failed with exit code ${exitCode}`),
+    parseError: (endpoint: string) => createSafeLogMessage(`Failed to parse gh api response for ${endpoint}`),
+    notAvailable: () => createSafeLogMessage('gh cli is not available or not authenticated'),
+  } satisfies SafeLogMessageMap,
   cache: {
     enabled: (ttlMs: number) => createSafeLogMessage(`GitHub API cache enabled with TTL ${ttlMs} ms`),
     disabled: () => createSafeLogMessage('GitHub API cache provided but disabled by configuration'),

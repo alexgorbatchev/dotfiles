@@ -20,6 +20,7 @@ export default defineTool((install) => install('github-release', { repo: 'junegu
 | `version`           | Specific version (e.g., `'v1.2.3'`)                    |
 | `includePrerelease` | Include pre-releases when searching                    |
 | `githubHost`        | Custom GitHub API host for Enterprise                  |
+| `ghCli`             | Use `gh` CLI for API requests instead of fetch         |
 | `env`               | Environment variables (static or dynamic function)     |
 
 ## Examples
@@ -51,6 +52,17 @@ install('github-release', {
 install('github-release', {
   repo: 'owner/tool',
   version: 'v2.1.0',
+}).bin('tool');
+```
+
+### Using gh CLI
+
+Use the `gh` CLI for API requests instead of fetch. Useful when working behind proxies or leveraging existing `gh` authentication:
+
+```typescript
+install('github-release', {
+  repo: 'owner/tool',
+  ghCli: true,
 }).bin('tool');
 ```
 
