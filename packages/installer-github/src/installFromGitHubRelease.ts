@@ -1,5 +1,5 @@
 import { selectBestMatch } from '@dotfiles/arch';
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import { type IArchiveExtractor, isSupportedArchiveFile } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
   IDownloadContext,
@@ -462,16 +462,6 @@ async function executeAfterDownloadHook(
   return finalResult;
 }
 
-function isArchiveFile(filename: string): boolean {
-  const lowerFilename = filename.toLowerCase();
-  // Check .tar.gz and .tgz first to avoid false match on .gz
-  if (lowerFilename.endsWith('.tar.gz') || lowerFilename.endsWith('.tgz')) return true;
-  if (lowerFilename.endsWith('.zip') || lowerFilename.endsWith('.tar')) return true;
-  // Single-file gzip (not tarball)
-  if (lowerFilename.endsWith('.gz')) return true;
-  return false;
-}
-
 async function processAssetInstallation(
   asset: IGitHubReleaseAsset,
   downloadPath: string,
@@ -485,7 +475,7 @@ async function processAssetInstallation(
   fs: IFileSystem,
   logger: TsLogger,
 ): Promise<OperationResult<void>> {
-  if (isArchiveFile(asset.name)) {
+  if (isSupportedArchiveFile(asset.name)) {
     return await processArchiveInstallation(
       asset,
       downloadPath,
