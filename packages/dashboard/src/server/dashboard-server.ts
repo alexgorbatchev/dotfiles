@@ -4,6 +4,7 @@ import { createApiRoutes } from './routes';
 import type { IDashboardServer, IDashboardServerOptions, IDashboardServices } from './types';
 
 // Bun HTML import - handles bundling automatically
+// Used directly in routes for optimal bundling
 import clientApp from '../client/dashboard.html';
 
 /**
@@ -106,6 +107,16 @@ export function createDashboardServer(
 
           '/api/*': Response.json({ success: false, error: 'Not found' }, { status: 404 }),
 
+          // In development mode, Bun generates asset paths like "/../server/chunk-*.css"
+          // due to HTML being imported from a different directory. This route redirects
+          // those requests to the correct root-level paths where Bun actually serves them.
+          '/server/*': (req: Request) => {
+            const url = new URL(req.url);
+            const assetPath = url.pathname.replace(/^\/server\//, '/');
+            return Response.redirect(new URL(assetPath, url.origin).href, 302);
+          },
+
+          // Wildcard route for SPA - Bun handles HTMLBundle specially
           '/*': clientApp,
         },
         fetch(request) {
