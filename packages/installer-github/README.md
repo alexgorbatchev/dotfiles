@@ -31,6 +31,7 @@ The `install('github-release', params)` function accepts the following parameter
   - Regex string example: `/^bun-.*\\.zip$/`
   - TypeScript only: a real `RegExp` value (e.g. `/^bun-.*\.zip$/`)
 - **assetSelector** (optional): Custom function for advanced asset selection logic
+- **ghCli** (optional): Use `gh` CLI for GitHub API requests instead of fetch. Useful when working behind corporate proxies or leveraging existing `gh` authentication.
 - **env** (optional): Environment variables for the installation process
 - **hooks** (optional): Lifecycle hooks (`beforeInstall`, `afterDownload`, `afterExtract`, `afterInstall`)
 
@@ -65,6 +66,19 @@ export default defineTool((install, ctx) =>
     repo: 'caddyserver/caddy',
     assetPattern: 'caddy_*.tar.gz',
   }).bin('caddy')
+);
+```
+
+#### Using gh CLI
+
+Use the `gh` CLI for API requests (requires `gh` to be installed and authenticated):
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'junegunn/fzf',
+    ghCli: true,
+  }).bin('fzf')
 );
 ```
 
