@@ -4,6 +4,7 @@ import type { ICache } from '@dotfiles/downloader';
 import type { TsLogger } from '@dotfiles/logger';
 import crypto from 'node:crypto';
 import semver from 'semver';
+import { BunShellExecutor } from './BunShellExecutor';
 import { GitHubApiClientError } from './GitHubApiClientError';
 import type { IGitHubApiClient } from './IGitHubApiClient';
 import type { IShellExecutor } from './IShellExecutor';
@@ -37,13 +38,13 @@ export class GhCliApiClient implements IGitHubApiClient {
   constructor(
     parentLogger: TsLogger,
     projectConfig: ProjectConfig,
-    shellExecutor: IShellExecutor,
+    shellExecutor?: IShellExecutor,
     cache?: ICache,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'GhCliApiClient' });
     // Extract hostname from project config (e.g., 'api.github.com' -> 'github.com')
     this.hostname = this.extractHostname(projectConfig.github.host);
-    this.shellExecutor = shellExecutor;
+    this.shellExecutor = shellExecutor ?? new BunShellExecutor();
     this.cache = cache;
     this.cacheEnabled = projectConfig.github.cache.enabled;
     this.cacheTtlMs = projectConfig.github.cache.ttl;

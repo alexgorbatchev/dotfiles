@@ -24,7 +24,7 @@ import { BrewInstallerPlugin } from '@dotfiles/installer-brew';
 import { CargoClient, CargoInstallerPlugin } from '@dotfiles/installer-cargo';
 import { CurlScriptInstallerPlugin } from '@dotfiles/installer-curl-script';
 import { CurlTarInstallerPlugin } from '@dotfiles/installer-curl-tar';
-import { GitHubApiClient, GitHubReleaseInstallerPlugin } from '@dotfiles/installer-github';
+import { GhCliApiClient, GitHubApiClient, GitHubReleaseInstallerPlugin } from '@dotfiles/installer-github';
 import { ManualInstallerPlugin } from '@dotfiles/installer-manual';
 import { ZshPluginInstallerPlugin } from '@dotfiles/installer-zsh-plugin';
 import { createTsLogger, getLogLevelFromFlags, type LogLevelValue, type TsLogger } from '@dotfiles/logger';
@@ -314,6 +314,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     storageStrategy: 'json',
   });
   const githubApiClient = new GitHubApiClient(parentLogger, projectConfig, downloader, githubApiCache);
+  const ghCliApiClient = new GhCliApiClient(parentLogger, projectConfig, undefined, githubApiCache);
 
   const cargoCratesIoCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.cargo.cratesIo.cache.enabled,
@@ -390,6 +391,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       installerTrackedFs,
       downloader,
       githubApiClient,
+      ghCliApiClient,
       archiveExtractor,
       projectConfig,
       hookExecutor,

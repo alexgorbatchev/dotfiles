@@ -46,6 +46,7 @@ describe('GitHubReleaseInstallerPlugin', () => {
       mockFs,
       mockDownloader,
       mockGitHubClient,
+      undefined, // ghCliApiClient
       mockArchiveExtractor,
       mockProjectConfig,
       mockHookExecutor,

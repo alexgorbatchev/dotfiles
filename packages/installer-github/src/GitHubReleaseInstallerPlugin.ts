@@ -75,7 +75,8 @@ export class GitHubReleaseInstallerPlugin implements
    *
    * @param fs - The file system interface for file operations.
    * @param downloader - The downloader for fetching release assets.
-   * @param githubApiClient - The GitHub API client for fetching release metadata.
+   * @param githubApiClient - The GitHub API client for fetching release metadata (fetch-based).
+   * @param ghCliApiClient - Optional gh CLI-based API client for tools that prefer gh CLI.
    * @param archiveExtractor - The archive extractor for unpacking compressed releases.
    * @param projectConfig - The application configuration containing paths and settings.
    * @param hookExecutor - The hook executor for running lifecycle hooks.
@@ -84,10 +85,24 @@ export class GitHubReleaseInstallerPlugin implements
     private readonly fs: IFileSystem,
     private readonly downloader: IDownloader,
     private readonly githubApiClient: IGitHubApiClient,
+    private readonly ghCliApiClient: IGitHubApiClient | undefined,
     private readonly archiveExtractor: IArchiveExtractor,
     private readonly projectConfig: ProjectConfig,
     private readonly hookExecutor: HookExecutor,
   ) {}
+
+  /**
+   * Returns the appropriate GitHub API client based on tool configuration.
+   * If the tool has `ghCli: true` in installParams and a gh CLI client is available,
+   * returns the gh CLI client. Otherwise returns the default fetch-based client.
+   */
+  private getApiClient(toolConfig: GithubReleaseToolConfig): IGitHubApiClient {
+    const params = toolConfig.installParams as GithubReleaseInstallParams;
+    if (params.ghCli && this.ghCliApiClient) {
+      return this.ghCliApiClient;
+    }
+    return this.githubApiClient;
+  }
 
   async install(
     toolName: string,
@@ -107,7 +122,7 @@ export class GitHubReleaseInstallerPlugin implements
       options,
       toolFs,
       this.downloader,
-      this.githubApiClient,
+      this.getApiClient(toolConfig),
       this.archiveExtractor,
       this.projectConfig,
       this.hookExecutor,
@@ -138,7 +153,7 @@ export class GitHubReleaseInstallerPlugin implements
       const version: string = toolConfig.version || 'latest';
 
       // Fetch release information from GitHub API
-      const releaseResult = await fetchGitHubRelease(params.repo, version, this.githubApiClient, logger);
+      const releaseResult = await fetchGitHubRelease(params.repo, version, this.getApiClient(toolConfig), logger);
 
       if (!releaseResult.success) {
         logger.debug(messages.versionResolutionFailed(toolName, releaseResult.error));
@@ -178,7 +193,7 @@ export class GitHubReleaseInstallerPlugin implements
         return result;
       }
 
-      const latestRelease = await this.githubApiClient.getLatestRelease(owner, repoName);
+      const latestRelease = await this.getApiClient(toolConfig).getLatestRelease(owner, repoName);
       if (!latestRelease || !latestRelease.tag_name) {
         const result: UpdateCheckResult = {
           success: false,
@@ -240,7 +255,7 @@ export class GitHubReleaseInstallerPlugin implements
         };
       }
 
-      const latestRelease = await this.githubApiClient.getLatestRelease(owner, repoName);
+      const latestRelease = await this.getApiClient(toolConfig).getLatestRelease(owner, repoName);
       if (!latestRelease || !latestRelease.tag_name) {
         return {
           success: false,
