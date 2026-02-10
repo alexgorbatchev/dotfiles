@@ -306,6 +306,9 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const proxyConfig = devProxyPort ? { enabled: true, port: parseInt(devProxyPort, 10) } : undefined;
   const downloader = new Downloader(parentLogger, resolvedFs, undefined, downloadCache, proxyConfig);
 
+  // Create shell instance for all components
+  const shell = createShell();
+
   // Initialize GitHub API cache using generic FileCache with JSON strategy
   const githubApiCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.github.cache.enabled,
@@ -314,7 +317,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     storageStrategy: 'json',
   });
   const githubApiClient = new GitHubApiClient(parentLogger, projectConfig, downloader, githubApiCache);
-  const ghCliApiClient = new GhCliApiClient(parentLogger, projectConfig, undefined, githubApiCache);
+  const ghCliApiClient = new GhCliApiClient(parentLogger, projectConfig, shell, githubApiCache);
 
   const cargoCratesIoCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.cargo.cratesIo.cache.enabled,
@@ -342,9 +345,6 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // Create system-context logger for generators that operate at system level
   const systemLogger = parentLogger.getSubLogger({ context: 'system' });
-
-  // Create shell instance for all components
-  const shell = createShell();
 
   const shimGenerator = new ShimGenerator(systemLogger, shimTrackedFs, projectConfig);
   const shellInitGenerator = new ShellInitGenerator(systemLogger, shellInitTrackedFs, projectConfig);

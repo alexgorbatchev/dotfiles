@@ -1,11 +1,10 @@
 import type { ProjectConfig } from '@dotfiles/config';
+import type { Shell } from '@dotfiles/core';
 import type { ICache, IDownloader } from '@dotfiles/downloader';
 import type { TsLogger } from '@dotfiles/logger';
-import { BunShellExecutor } from './BunShellExecutor';
 import { GhCliApiClient } from './GhCliApiClient';
 import { GitHubApiClient } from './GitHubApiClient';
 import type { IGitHubApiClient } from './IGitHubApiClient';
-import type { IShellExecutor } from './IShellExecutor';
 
 /**
  * Options for creating a GitHub API client.
@@ -21,8 +20,8 @@ export interface ICreateGitHubApiClientOptions {
   cache?: ICache;
   /** Whether to use gh CLI instead of fetch */
   useGhCli?: boolean;
-  /** Shell executor for gh CLI-based client (optional, uses BunShellExecutor if not provided) */
-  shellExecutor?: IShellExecutor;
+  /** Shell for executing gh CLI commands */
+  shell: Shell;
 }
 
 /**
@@ -38,7 +37,7 @@ export interface ICreateGitHubApiClientOptions {
  *   parentLogger: logger,
  *   projectConfig: config,
  *   downloader: downloader,
- *   cache: cache,
+ *   shell: shell,
  * });
  *
  * // Create gh CLI-based client
@@ -46,17 +45,16 @@ export interface ICreateGitHubApiClientOptions {
  *   parentLogger: logger,
  *   projectConfig: config,
  *   downloader: downloader,
- *   cache: cache,
+ *   shell: shell,
  *   useGhCli: true,
  * });
  * ```
  */
 export function createGitHubApiClient(options: ICreateGitHubApiClientOptions): IGitHubApiClient {
-  const { parentLogger, projectConfig, downloader, cache, useGhCli, shellExecutor } = options;
+  const { parentLogger, projectConfig, downloader, cache, useGhCli, shell } = options;
 
   if (useGhCli) {
-    const executor = shellExecutor ?? new BunShellExecutor();
-    return new GhCliApiClient(parentLogger, projectConfig, executor, cache);
+    return new GhCliApiClient(parentLogger, projectConfig, shell, cache);
   }
 
   return new GitHubApiClient(parentLogger, projectConfig, downloader, cache);

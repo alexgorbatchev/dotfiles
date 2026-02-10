@@ -11,10 +11,10 @@ import { GitHubApiClientError } from '../GitHubApiClientError';
 import { FIXTURE_RELEASE } from './fixtures/cacheTestFixtures';
 import {
   createErrorResponse,
-  createMockShellExecutor,
+  createMockShell,
   createSuccessResponse,
-  type IMockShellExecutor,
-} from './helpers/createMockShellExecutor';
+  type IMockShell,
+} from './helpers/createMockShell';
 
 async function createTestProjectConfig(overrides: PartialProjectConfig = {}) {
   const memFs = await createMemFileSystem();
@@ -61,35 +61,34 @@ function createMockCache(): ICache & {
 }
 
 describe('GhCliApiClient', () => {
-  let mockShellExecutor: IMockShellExecutor;
+  let mockShell: IMockShell;
   let logger: TestLogger;
 
   beforeEach(() => {
-    mockShellExecutor = createMockShellExecutor();
+    mockShell = createMockShell();
     logger = new TestLogger();
   });
 
   describe('getLatestRelease', () => {
     it('should fetch and return the latest release', async () => {
       const projectConfig = await createTestProjectConfig();
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
 
-      mockShellExecutor.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
+      mockShell.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
 
       const release = await client.getLatestRelease('test-owner', 'test-repo');
 
       expect(release).toEqual(FIXTURE_RELEASE);
-      expect(mockShellExecutor.execute).toHaveBeenCalledWith('gh', [
-        'api',
-        'repos/test-owner/test-repo/releases/latest',
-      ]);
+      const commands = mockShell.getExecutedCommands();
+      expect(commands[0]).toContain('gh api');
+      expect(commands[0]).toContain('repos/test-owner/test-repo/releases/latest');
     });
 
     it('should return null if the release is not found (404)', async () => {
       const projectConfig = await createTestProjectConfig();
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
 
-      mockShellExecutor.mockNextResponse(createErrorResponse('gh: Not Found (HTTP 404)', 1));
+      mockShell.mockNextResponse(createErrorResponse('gh: Not Found (HTTP 404)', 1));
 
       const release = await client.getLatestRelease('test-owner', 'test-repo');
 
@@ -98,21 +97,21 @@ describe('GhCliApiClient', () => {
 
     it('should throw GitHubApiClientError on rate limit', async () => {
       const projectConfig = await createTestProjectConfig();
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
 
-      mockShellExecutor.mockNextResponse(createErrorResponse('API rate limit exceeded', 1));
+      mockShell.mockNextResponse(createErrorResponse('API rate limit exceeded', 1));
 
       expect(client.getLatestRelease('test-owner', 'test-repo')).rejects.toBeInstanceOf(GitHubApiClientError);
     });
 
     it('should throw GitHubApiClientError on parse error', async () => {
       const projectConfig = await createTestProjectConfig();
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
 
-      mockShellExecutor.mockNextResponse({
+      mockShell.mockNextResponse({
         stdout: 'not valid json',
         stderr: '',
-        exitCode: 0,
+        code: 0,
       });
 
       expect(client.getLatestRelease('test-owner', 'test-repo')).rejects.toBeInstanceOf(GitHubApiClientError);
@@ -128,42 +127,37 @@ describe('GhCliApiClient', () => {
           },
         },
       });
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
 
-      mockShellExecutor.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
+      mockShell.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
 
       await client.getLatestRelease('test-owner', 'test-repo');
 
-      expect(mockShellExecutor.execute).toHaveBeenCalledWith('gh', [
-        'api',
-        '--hostname',
-        'github.enterprise.com',
-        'repos/test-owner/test-repo/releases/latest',
-      ]);
+      const commands = mockShell.getExecutedCommands();
+      expect(commands[0]).toContain('--hostname');
+      expect(commands[0]).toContain('github.enterprise.com');
     });
   });
 
   describe('getReleaseByTag', () => {
     it('should fetch and return release by tag', async () => {
       const projectConfig = await createTestProjectConfig();
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
 
-      mockShellExecutor.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
+      mockShell.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
 
       const release = await client.getReleaseByTag('test-owner', 'test-repo', 'v1.0.0');
 
       expect(release).toEqual(FIXTURE_RELEASE);
-      expect(mockShellExecutor.execute).toHaveBeenCalledWith('gh', [
-        'api',
-        'repos/test-owner/test-repo/releases/tags/v1.0.0',
-      ]);
+      const commands = mockShell.getExecutedCommands();
+      expect(commands[0]).toContain('repos/test-owner/test-repo/releases/tags/v1.0.0');
     });
 
     it('should return null if tag is not found', async () => {
       const projectConfig = await createTestProjectConfig();
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
 
-      mockShellExecutor.mockNextResponse(createErrorResponse('gh: Not Found (HTTP 404)', 1));
+      mockShell.mockNextResponse(createErrorResponse('gh: Not Found (HTTP 404)', 1));
 
       const release = await client.getReleaseByTag('test-owner', 'test-repo', 'v999.0.0');
 
@@ -174,7 +168,7 @@ describe('GhCliApiClient', () => {
   describe('getLatestReleaseTags', () => {
     it('should fetch and return latest release tags', async () => {
       const projectConfig = await createTestProjectConfig();
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
 
       const mockReleases: IGitHubRelease[] = [
         { ...FIXTURE_RELEASE, tag_name: 'v3.0.0' },
@@ -182,7 +176,7 @@ describe('GhCliApiClient', () => {
         { ...FIXTURE_RELEASE, tag_name: 'v1.0.0' },
       ];
 
-      mockShellExecutor.mockNextResponse(createSuccessResponse(mockReleases));
+      mockShell.mockNextResponse(createSuccessResponse(mockReleases));
 
       const tags = await client.getLatestReleaseTags('test-owner', 'test-repo', 3);
 
@@ -191,9 +185,9 @@ describe('GhCliApiClient', () => {
 
     it('should return empty array on error', async () => {
       const projectConfig = await createTestProjectConfig();
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
 
-      mockShellExecutor.mockNextResponse(createErrorResponse('gh: error', 1));
+      mockShell.mockNextResponse(createErrorResponse('gh: error', 1));
 
       const tags = await client.getLatestReleaseTags('test-owner', 'test-repo');
 
@@ -204,9 +198,9 @@ describe('GhCliApiClient', () => {
   describe('probeLatestTag', () => {
     it('should return latest tag via getLatestRelease', async () => {
       const projectConfig = await createTestProjectConfig();
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
 
-      mockShellExecutor.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
+      mockShell.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
 
       const tag = await client.probeLatestTag('test-owner', 'test-repo');
 
@@ -215,9 +209,9 @@ describe('GhCliApiClient', () => {
 
     it('should return null on error', async () => {
       const projectConfig = await createTestProjectConfig();
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
 
-      mockShellExecutor.mockNextResponse(createErrorResponse('gh: error', 1));
+      mockShell.mockNextResponse(createErrorResponse('gh: error', 1));
 
       const tag = await client.probeLatestTag('test-owner', 'test-repo');
 
@@ -238,13 +232,13 @@ describe('GhCliApiClient', () => {
       const mockCache = createMockCache();
       mockCache.get.mockResolvedValue(FIXTURE_RELEASE);
 
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor, mockCache);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell, mockCache);
 
       const release = await client.getLatestRelease('test-owner', 'test-repo');
 
       expect(release).toEqual(FIXTURE_RELEASE);
       expect(mockCache.get).toHaveBeenCalled();
-      expect(mockShellExecutor.execute).not.toHaveBeenCalled();
+      expect(mockShell.getExecutedCommands()).toHaveLength(0);
     });
 
     it('should fetch and cache data on cache miss', async () => {
@@ -259,15 +253,15 @@ describe('GhCliApiClient', () => {
       const mockCache = createMockCache();
       mockCache.get.mockResolvedValue(null);
 
-      mockShellExecutor.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
+      mockShell.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
 
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor, mockCache);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell, mockCache);
 
       const release = await client.getLatestRelease('test-owner', 'test-repo');
 
       expect(release).toEqual(FIXTURE_RELEASE);
       expect(mockCache.get).toHaveBeenCalled();
-      expect(mockShellExecutor.execute).toHaveBeenCalled();
+      expect(mockShell.getExecutedCommands()).toHaveLength(1);
       expect(mockCache.set).toHaveBeenCalledWith(
         expect.stringContaining('GET:/repos/test-owner/test-repo/releases/latest'),
         FIXTURE_RELEASE,
@@ -286,9 +280,9 @@ describe('GhCliApiClient', () => {
       });
       const mockCache = createMockCache();
 
-      mockShellExecutor.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
+      mockShell.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
 
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor, mockCache);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell, mockCache);
 
       await client.getLatestRelease('test-owner', 'test-repo');
 
@@ -309,14 +303,14 @@ describe('GhCliApiClient', () => {
       mockCache.get.mockRejectedValue(new Error('Cache read error'));
       mockCache.set.mockRejectedValue(new Error('Cache write error'));
 
-      mockShellExecutor.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
+      mockShell.mockNextResponse(createSuccessResponse(FIXTURE_RELEASE));
 
-      const client = new GhCliApiClient(logger, projectConfig, mockShellExecutor, mockCache);
+      const client = new GhCliApiClient(logger, projectConfig, mockShell, mockCache);
 
       const release = await client.getLatestRelease('test-owner', 'test-repo');
 
       expect(release).toEqual(FIXTURE_RELEASE);
-      expect(mockShellExecutor.execute).toHaveBeenCalled();
+      expect(mockShell.getExecutedCommands()).toHaveLength(1);
     });
   });
 });

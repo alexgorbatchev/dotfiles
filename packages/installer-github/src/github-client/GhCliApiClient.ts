@@ -1,13 +1,11 @@
 import type { ProjectConfig } from '@dotfiles/config';
-import type { IGitHubRateLimit, IGitHubRelease } from '@dotfiles/core';
+import type { IGitHubRateLimit, IGitHubRelease, Shell } from '@dotfiles/core';
 import type { ICache } from '@dotfiles/downloader';
 import type { TsLogger } from '@dotfiles/logger';
 import crypto from 'node:crypto';
 import semver from 'semver';
-import { BunShellExecutor } from './BunShellExecutor';
 import { GitHubApiClientError } from './GitHubApiClientError';
 import type { IGitHubApiClient } from './IGitHubApiClient';
-import type { IShellExecutor } from './IShellExecutor';
 import { messages } from './log-messages';
 
 /**
@@ -29,7 +27,7 @@ import { messages } from './log-messages';
  */
 export class GhCliApiClient implements IGitHubApiClient {
   private readonly hostname: string;
-  private readonly shellExecutor: IShellExecutor;
+  private readonly shell: Shell;
   private readonly cache?: ICache;
   private readonly cacheEnabled: boolean;
   private readonly cacheTtlMs: number;
@@ -38,13 +36,13 @@ export class GhCliApiClient implements IGitHubApiClient {
   constructor(
     parentLogger: TsLogger,
     projectConfig: ProjectConfig,
-    shellExecutor?: IShellExecutor,
+    shell: Shell,
     cache?: ICache,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'GhCliApiClient' });
     // Extract hostname from project config (e.g., 'api.github.com' -> 'github.com')
     this.hostname = this.extractHostname(projectConfig.github.host);
-    this.shellExecutor = shellExecutor ?? new BunShellExecutor();
+    this.shell = shell;
     this.cache = cache;
     this.cacheEnabled = projectConfig.github.cache.enabled;
     this.cacheTtlMs = projectConfig.github.cache.ttl;
@@ -150,11 +148,12 @@ export class GhCliApiClient implements IGitHubApiClient {
    */
   private async executeGhCommand<T>(endpoint: string, args: string[]): Promise<T> {
     const logger = this.logger.getSubLogger({ name: 'executeGhCommand' });
-    const result = await this.shellExecutor.execute('gh', args);
+    const command = ['gh', ...args].join(' ');
+    const result = await this.shell(command).quiet().noThrow();
 
-    if (result.exitCode !== 0) {
-      logger.debug(messages.ghCli.commandFailed(result.exitCode));
-      throw this.parseGhError(result.stderr, result.exitCode, endpoint);
+    if (result.code !== 0) {
+      logger.debug(messages.ghCli.commandFailed(result.code));
+      throw this.parseGhError(result.stderr, result.code, endpoint);
     }
 
     try {

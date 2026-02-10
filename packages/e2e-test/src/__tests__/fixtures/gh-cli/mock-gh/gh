@@ -1,0 +1,101 @@
+#!/bin/bash
+# Mock gh CLI for e2e testing
+# Records all invocations and returns expected JSON responses
+
+# Log file location (set by test via MOCK_GH_LOG_FILE env var)
+LOG_FILE="${MOCK_GH_LOG_FILE:-/tmp/mock-gh-invocations.log}"
+
+# Log invocation
+echo "$@" >> "$LOG_FILE"
+
+# Parse arguments
+HOSTNAME=""
+METHOD="GET"
+ENDPOINT=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    api)
+      shift
+      ;;
+    --hostname)
+      HOSTNAME="$2"
+      shift 2
+      ;;
+    --method)
+      METHOD="$2"
+      shift 2
+      ;;
+    *)
+      # Assume this is the endpoint
+      ENDPOINT="$1"
+      shift
+      ;;
+  esac
+done
+
+# Get mock server port from environment, default to 8765
+MOCK_PORT="${MOCK_SERVER_PORT:-8765}"
+
+# Handle different endpoints
+if [[ "$ENDPOINT" == repos/org/gh-cli-test-tool/releases/latest ]]; then
+  cat <<EOF
+{
+  "tag_name": "1.0.0",
+  "assets": [
+    {
+      "name": "gh-cli-test-tool-1.0.0-macos_arm64.tar.gz",
+      "browser_download_url": "http://127.0.0.1:${MOCK_PORT}/org/gh-cli-test-tool/releases/download/1.0.0/gh-cli-test-tool-1.0.0-macos_arm64.tar.gz"
+    },
+    {
+      "name": "gh-cli-test-tool-1.0.0-linux_amd64.tar.gz",
+      "browser_download_url": "http://127.0.0.1:${MOCK_PORT}/org/gh-cli-test-tool/releases/download/1.0.0/gh-cli-test-tool-1.0.0-linux_amd64.tar.gz"
+    }
+  ]
+}
+EOF
+  exit 0
+fi
+
+if [[ "$ENDPOINT" == repos/org/gh-cli-test-tool/releases/tags/* ]]; then
+  TAG="${ENDPOINT##*/}"
+  cat <<EOF
+{
+  "tag_name": "${TAG}",
+  "assets": [
+    {
+      "name": "gh-cli-test-tool-${TAG}-macos_arm64.tar.gz",
+      "browser_download_url": "http://127.0.0.1:${MOCK_PORT}/org/gh-cli-test-tool/releases/download/${TAG}/gh-cli-test-tool-${TAG}-macos_arm64.tar.gz"
+    },
+    {
+      "name": "gh-cli-test-tool-${TAG}-linux_amd64.tar.gz",
+      "browser_download_url": "http://127.0.0.1:${MOCK_PORT}/org/gh-cli-test-tool/releases/download/${TAG}/gh-cli-test-tool-${TAG}-linux_amd64.tar.gz"
+    }
+  ]
+}
+EOF
+  exit 0
+fi
+
+if [[ "$ENDPOINT" == repos/enterprise-org/enterprise-tool/releases/latest ]]; then
+  cat <<EOF
+{
+  "tag_name": "2.0.0",
+  "assets": [
+    {
+      "name": "enterprise-tool-2.0.0-macos_arm64.tar.gz",
+      "browser_download_url": "http://127.0.0.1:${MOCK_PORT}/enterprise-org/enterprise-tool/releases/download/2.0.0/enterprise-tool-2.0.0-macos_arm64.tar.gz"
+    },
+    {
+      "name": "enterprise-tool-2.0.0-linux_amd64.tar.gz",
+      "browser_download_url": "http://127.0.0.1:${MOCK_PORT}/enterprise-org/enterprise-tool/releases/download/2.0.0/enterprise-tool-2.0.0-linux_amd64.tar.gz"
+    }
+  ]
+}
+EOF
+  exit 0
+fi
+
+# Unknown endpoint - return 404
+echo "gh: Not Found (HTTP 404)" >&2
+exit 1

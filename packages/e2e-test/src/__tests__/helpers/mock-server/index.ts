@@ -357,6 +357,7 @@ function handleTarball(fixturesBasePath: string, config: ITarConfig): Response {
  * Sets up a mock server for e2e tests using the builder pattern.
  *
  * @param configure - Callback to configure the mock server
+ * @param fixtureDir - Fixture directory relative to fixtures/ (default: 'main')
  *
  * @example
  * ```typescript
@@ -368,9 +369,18 @@ function handleTarball(fixturesBasePath: string, config: ITarConfig): Response {
  *
  *   it('should work', async () => { ... });
  * });
+ *
+ * // With custom fixture directory
+ * describe('Custom fixture tests', () => {
+ *   withMockServer((builder) => builder.withGitHubTool(MY_TOOL), 'my-fixtures');
+ *   // ...
+ * });
  * ```
  */
-export function withMockServer(configure?: (builder: MockServerBuilder) => MockServerBuilder): void {
+export function withMockServer(
+  configure?: (builder: MockServerBuilder) => MockServerBuilder,
+  fixtureDir: string = 'main',
+): void {
   let server: BunServer | null = null;
 
   beforeAll(() => {
@@ -380,8 +390,8 @@ export function withMockServer(configure?: (builder: MockServerBuilder) => MockS
     // This file is in packages/e2e-test/src/__tests__/helpers/mock-server/
     const fixturesBasePath = path.join(__dirname, '..', '..', 'fixtures');
 
-    // Default fixture dir is 'main' unless overridden
-    const builder = new MockServerBuilder('main');
+    // Use provided fixture dir
+    const builder = new MockServerBuilder(fixtureDir);
     const configuredBuilder = configure ? configure(builder) : builder;
     const config = configuredBuilder.build();
 
