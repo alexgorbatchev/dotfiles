@@ -6,6 +6,23 @@ const TEST_PORT = 13579;
 const STARTUP_TIMEOUT_MS = 5000;
 const POLL_INTERVAL_MS = 100;
 
+type BunProcess = ReturnType<typeof Bun.spawn>;
+
+interface ProcessOutput {
+  stdout: string;
+  stderr: string;
+}
+
+async function getProcessOutput(process: BunProcess): Promise<ProcessOutput> {
+  const stderr = process.stderr instanceof ReadableStream
+    ? await new Response(process.stderr).text()
+    : '';
+  const stdout = process.stdout instanceof ReadableStream
+    ? await new Response(process.stdout).text()
+    : '';
+  return { stdout, stderr };
+}
+
 /**
  * Tests the built CLI's dashboard command by starting it and verifying HTTP responses.
  *
@@ -31,15 +48,23 @@ export async function testBuiltDashboard(context: IBuildContext): Promise<void> 
   // The dashboard server handles changing to the correct directory internally,
   // but we still set cwd to the output directory for consistency.
   const serverProcess = Bun.spawn({
-    cmd: ['bun', context.paths.cliOutputFile, '--config', testConfigPath, 'dashboard', '--port', String(TEST_PORT)],
+    cmd: [
+      'bun',
+      context.paths.cliOutputFile,
+      '--config',
+      testConfigPath,
+      'dashboard',
+      '--port',
+      String(TEST_PORT),
+      '--no-open',
+    ],
     cwd: context.paths.outputDir,
-    stdout: 'pipe',
-    stderr: 'pipe',
+    stdout: 'inherit',
+    stderr: 'inherit',
   });
 
   try {
     await waitForServerReady(TEST_PORT, serverProcess);
-
     await verifyApiEndpoint(TEST_PORT);
     await verifyHtmlEndpoint(TEST_PORT);
 
@@ -50,18 +75,13 @@ export async function testBuiltDashboard(context: IBuildContext): Promise<void> 
   }
 }
 
-async function waitForServerReady(port: number, serverProcess: ReturnType<typeof Bun.spawn>): Promise<void> {
+async function waitForServerReady(port: number, serverProcess: BunProcess): Promise<void> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < STARTUP_TIMEOUT_MS) {
     // Check if process exited early
     if (serverProcess.exitCode !== null) {
-      const stderr = serverProcess.stderr instanceof ReadableStream
-        ? await new Response(serverProcess.stderr).text()
-        : '';
-      const stdout = serverProcess.stdout instanceof ReadableStream
-        ? await new Response(serverProcess.stdout).text()
-        : '';
+      const { stdout, stderr } = await getProcessOutput(serverProcess);
       throw new BuildError(
         `Dashboard process exited with code ${serverProcess.exitCode}\nstderr: ${stderr}\nstdout: ${stdout}`,
       );
@@ -80,8 +100,7 @@ async function waitForServerReady(port: number, serverProcess: ReturnType<typeof
 
   // Capture output on timeout
   serverProcess.kill();
-  const stderr = serverProcess.stderr instanceof ReadableStream ? await new Response(serverProcess.stderr).text() : '';
-  const stdout = serverProcess.stdout instanceof ReadableStream ? await new Response(serverProcess.stdout).text() : '';
+  const { stdout, stderr } = await getProcessOutput(serverProcess);
   throw new BuildError(
     `Dashboard failed to start within ${STARTUP_TIMEOUT_MS}ms\nstderr: ${stderr}\nstdout: ${stdout}`,
   );
