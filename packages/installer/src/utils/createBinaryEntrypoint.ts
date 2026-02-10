@@ -1,5 +1,6 @@
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import { TrackedFileSystem } from '@dotfiles/registry/file';
 import path from 'node:path';
 
 import { messages } from './log-messages';
@@ -46,7 +47,9 @@ export async function createBinaryEntrypoint(
     const targetPath = path.relative(timestampedDir, actualBinaryPath);
     logger.debug(messages.binarySymlink.creating(entrypointPath, targetPath));
 
-    await fs.symlink(targetPath, entrypointPath);
+    // Use withFileType('symlink') so the symlink is recorded with correct fileType
+    const symlinkFs = fs instanceof TrackedFileSystem ? fs.withFileType('symlink') : fs;
+    await symlinkFs.symlink(targetPath, entrypointPath);
 
     const entrypointStats = await fs.lstat(entrypointPath);
     if (!entrypointStats.isSymbolicLink()) {

@@ -20,6 +20,7 @@ import type { GithubReleaseToolConfig, IGitHubApiClient } from '@dotfiles/instal
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
 import { TestLogger, type TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationDetails, IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry';
+import { createMockFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import {
   createMock$,
@@ -246,6 +247,7 @@ export const MOCK_GITHUB_RELEASE_WITH_VARIANTS: IGitHubRelease = {
 export interface IInstallerTestSetup {
   logger: TestLogger<ILogObj>;
   fs: MockedFileSystem;
+  trackedFs: TrackedFileSystem;
   mockDownloader: IDownloader;
   mockGitHubApiClient: IGitHubApiClient;
   mockCargoClient: ICargoClient;
@@ -465,9 +467,20 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   };
   const mockSymlinkGenerator = createMockSymlinkGenerator(fs);
   const shell = createConfiguredShell(createMock$(), process.env);
+
+  // Create TrackedFileSystem wrapping the mock fs
+  const mockFileRegistry = createMockFileRegistry();
+  const trackedFs = new TrackedFileSystem(
+    logger,
+    fs.asIResolvedFileSystem,
+    mockFileRegistry,
+    TrackedFileSystem.createContext('system', 'binary'),
+    mockProjectConfig,
+  );
+
   const installer = new Installer(
     logger,
-    fs,
+    trackedFs,
     fs.asIResolvedFileSystem,
     mockProjectConfig,
     mockToolInstallationRegistry,
@@ -481,6 +494,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   const result: IInstallerTestSetup = {
     logger,
     fs,
+    trackedFs,
     mockDownloader,
     mockGitHubApiClient,
     mockCargoClient,

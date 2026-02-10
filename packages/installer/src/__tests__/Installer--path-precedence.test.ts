@@ -9,6 +9,7 @@ import {
 } from '@dotfiles/core';
 import { NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { createMockFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
@@ -119,9 +120,19 @@ describe('Installer - Path Precedence (Real FS)', () => {
     const hookExecutor = new HookExecutor((): void => {});
     const resolvedFs = new ResolvedFileSystem(fileSystem, testDirs.paths.homeDir);
 
+    // Create TrackedFileSystem wrapping the NodeFileSystem
+    const mockFileRegistry = createMockFileRegistry();
+    const trackedFs = new TrackedFileSystem(
+      logger,
+      resolvedFs,
+      mockFileRegistry,
+      TrackedFileSystem.createContext('system', 'binary'),
+      projectConfig,
+    );
+
     const installer = new Installer(
       logger,
-      fileSystem,
+      trackedFs,
       resolvedFs,
       projectConfig,
       toolRegistry,

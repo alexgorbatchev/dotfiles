@@ -104,33 +104,12 @@ function renderFileLabel(item: TreeItemData<TreeNodeData>): JSX.Element {
   const node = item.data;
   const isDirectory = node?.type === 'directory';
 
-  // Derive the display badge based on operation type and context
-  // This provides clearer information about what each entry represents
-  const getBadgeText = (): string | undefined => {
-    if (!node) return undefined;
-
-    // Symlinks need context-aware labeling
-    if (node.lastOperation === 'symlink') {
-      // "current" symlink points to the active version
-      if (node.name === 'current') return 'current';
-      // Version-like names (e.g., "0.10.1", "v1.2.3") are version symlinks
-      if (/^v?\d+(\.\d+)*/.test(node.name)) return 'version';
-      // Generic symlink
-      return 'symlink';
-    }
-
-    // For actual files (writeFile, cp, rename), use the fileType
-    return node.fileType;
-  };
-
-  const badgeText = getBadgeText();
-
   return (
     <span class='flex items-center'>
       <span>{item.label}</span>
-      {!isDirectory && badgeText && (
+      {!isDirectory && node?.fileType && (
         <Badge variant='outline' class='ml-2 text-xs'>
-          {badgeText}
+          {node.fileType}
         </Badge>
       )}
     </span>

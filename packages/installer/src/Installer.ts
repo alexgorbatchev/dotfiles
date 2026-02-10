@@ -15,7 +15,7 @@ import { Platform } from '@dotfiles/core';
 import { createToolConfigContext } from '@dotfiles/core';
 import type { IFileSystem, IResolvedFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { TrackedFileSystem } from '@dotfiles/registry/file';
+import type { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
@@ -156,7 +156,7 @@ function getPluginMetadataRecord(result: InstallResult): UnknownRecord {
  */
 export class Installer implements IInstaller {
   private readonly logger: TsLogger;
-  private readonly fs: IFileSystem;
+  private readonly fs: TrackedFileSystem;
   private readonly resolvedFs: IResolvedFileSystem;
   private readonly projectConfig: ProjectConfig;
   public readonly hookExecutor: HookExecutor;
@@ -169,7 +169,7 @@ export class Installer implements IInstaller {
 
   constructor(
     parentLogger: TsLogger,
-    fileSystem: IFileSystem,
+    fileSystem: TrackedFileSystem,
     resolvedFileSystem: IResolvedFileSystem,
     projectConfig: ProjectConfig,
     toolInstallationRegistry: IToolInstallationRegistry,
@@ -533,11 +533,11 @@ export class Installer implements IInstaller {
     // Store current tool config for event handler access
     this.currentToolConfig = resolvedToolConfig;
 
-    // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-    const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
+    // Create a tool-specific TrackedFileSystem
+    const toolFs = this.fs.withToolName(toolName);
 
-    // Suppress logging in TrackedFileSystem if in shim mode
-    if (options?.shimMode && toolFs instanceof TrackedFileSystem) {
+    // Suppress logging in shim mode
+    if (options?.shimMode) {
       toolFs.setSuppressLogging(true);
     }
 
@@ -815,7 +815,7 @@ export class Installer implements IInstaller {
   private async createBinaryEntrypoints(
     toolName: string,
     binaryPaths: string[],
-    fs: IFileSystem,
+    fs: TrackedFileSystem,
     parentLogger: TsLogger,
     installedDir: string,
     isExternallyManaged: boolean,
@@ -877,7 +877,7 @@ export class Installer implements IInstaller {
 
   private async updateCurrentSymlink(
     toolName: string,
-    fs: IFileSystem,
+    fs: TrackedFileSystem,
     parentLogger: TsLogger,
     installedDir: string,
     isExternallyManaged: boolean,
@@ -900,7 +900,9 @@ export class Installer implements IInstaller {
     }
 
     try {
-      await fs.symlink(currentTarget, currentSymlinkPath, 'dir');
+      // Use withFileType('symlink') so the symlink is recorded with correct fileType
+      const symlinkFs = fs.withFileType('symlink');
+      await symlinkFs.symlink(currentTarget, currentSymlinkPath, 'dir');
     } catch (error) {
       logger.error(messages.lifecycle.creatingExternalSymlink(currentSymlinkPath, currentTarget), error);
       throw error;
