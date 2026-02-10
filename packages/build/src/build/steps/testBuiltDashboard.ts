@@ -45,8 +45,9 @@ export async function testBuiltDashboard(context: IBuildContext): Promise<void> 
 
   const testConfigPath = path.join(context.paths.rootDir, 'test-project', 'config.ts');
 
-  // The dashboard server handles changing to the correct directory internally,
-  // but we still set cwd to the output directory for consistency.
+  // Run from the project root (not .dist) to simulate real user behavior.
+  // Users run the CLI from arbitrary directories, so chunk resolution
+  // must work regardless of CWD.
   const serverProcess = Bun.spawn({
     cmd: [
       'bun',
@@ -58,7 +59,7 @@ export async function testBuiltDashboard(context: IBuildContext): Promise<void> 
       String(TEST_PORT),
       '--no-open',
     ],
-    cwd: context.paths.outputDir,
+    cwd: context.paths.rootDir,
     stdout: 'inherit',
     stderr: 'inherit',
   });
