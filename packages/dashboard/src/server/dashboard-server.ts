@@ -4,7 +4,6 @@ import { createApiRoutes } from './routes';
 import type { IDashboardServer, IDashboardServerOptions, IDashboardServices } from './types';
 
 // Bun HTML import - handles bundling automatically
-// Used directly in routes for optimal bundling
 import clientApp from '../client/dashboard.html';
 
 /**

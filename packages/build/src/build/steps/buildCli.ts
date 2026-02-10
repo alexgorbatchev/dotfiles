@@ -74,6 +74,9 @@ export async function buildCli(context: IBuildContext): Promise<Bun.BuildOutput>
       },
       define: {
         'import.meta.main': 'true',
+        // Set NODE_ENV to production so IS_DEV is false in the dashboard server.
+        // This ensures the production code path uses absolute paths for serving files.
+        'process.env.NODE_ENV': '"production"',
       },
       env: 'inline',
     });
