@@ -136,4 +136,8 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
    * A custom function to select the desired asset from available release assets.
    */
   assetSelector?: AssetSelector;
+  /**
+   * When true, uses the `gh` CLI for GitHub API requests instead of direct fetch.
+   */
+  ghCli?: boolean;
 }

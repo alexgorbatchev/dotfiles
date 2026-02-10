@@ -35,7 +35,7 @@ async function createTestProjectConfig(overrides: PartialProjectConfig = {}) {
     filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
     fileSystem: memFs.fs,
     logger,
-    systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },
+    systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir, hostname: 'test-host' },
     env: {},
   });
 }
