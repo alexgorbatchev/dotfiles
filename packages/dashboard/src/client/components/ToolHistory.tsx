@@ -40,10 +40,30 @@ const operationLabels: Record<string, string> = {
 };
 
 /**
- * Operations where the fileType badge provides useful context.
- * For structural operations (mkdir, chmod) the fileType is less meaningful.
+ * Derive a meaningful display badge for a history entry.
+ * - For file operations: show the fileType (binary, shim, etc.)
+ * - For symlinks: show context-aware label (version, current, symlink)
+ * - For structural ops (mkdir, chmod): no badge needed
  */
-const SHOW_FILETYPE_FOR_OPERATIONS = new Set(['writeFile', 'cp', 'rename', 'rm']);
+function getEntryBadge(entry: IToolHistoryEntry): string | undefined {
+  const { operationType, fileType, filePath } = entry;
+
+  // File operations show the fileType
+  if (operationType === 'writeFile' || operationType === 'cp' || operationType === 'rename' || operationType === 'rm') {
+    return fileType;
+  }
+
+  // Symlinks get context-aware labels
+  if (operationType === 'symlink') {
+    const fileName = filePath.split('/').pop() || '';
+    if (fileName === 'current') return 'current';
+    if (/^v?\d+(\.\d+)*/.test(fileName)) return 'version';
+    return 'symlink';
+  }
+
+  // mkdir, chmod don't need badges
+  return undefined;
+}
 
 function getDisplayPath(filePath: string, dotfilesDir: string): string {
   if (filePath.startsWith(dotfilesDir)) {
@@ -95,9 +115,9 @@ export function ToolHistory({ entries, installedAt, dotfilesDir }: ToolHistoryPr
                     <span class='font-medium'>
                       {operationLabels[entry.operationType] || entry.operationType}
                     </span>
-                    {SHOW_FILETYPE_FOR_OPERATIONS.has(entry.operationType) && (
+                    {getEntryBadge(entry) && (
                       <Badge variant='outline' class='text-xs'>
-                        {entry.fileType}
+                        {getEntryBadge(entry)}
                       </Badge>
                     )}
                     <span class='text-xs text-muted-foreground ml-auto'>
