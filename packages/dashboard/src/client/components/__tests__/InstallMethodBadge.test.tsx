@@ -70,4 +70,22 @@ describe('InstallMethodBadge', () => {
     expect(svg).toBeInTheDocument();
     expect(screen.getByText('homebrew')).toBeInTheDocument();
   });
+
+  test('renders github-release:cli when ghCli is true', () => {
+    render(<InstallMethodBadge method='github-release' ghCli={true} />);
+
+    expect(screen.getByText('github-release:cli')).toBeInTheDocument();
+  });
+
+  test('renders github-release when ghCli is false', () => {
+    render(<InstallMethodBadge method='github-release' ghCli={false} />);
+
+    expect(screen.getByText('github-release')).toBeInTheDocument();
+  });
+
+  test('ignores ghCli for non-github-release methods', () => {
+    render(<InstallMethodBadge method='homebrew' ghCli={true} />);
+
+    expect(screen.getByText('homebrew')).toBeInTheDocument();
+  });
 });

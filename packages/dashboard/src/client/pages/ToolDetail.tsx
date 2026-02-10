@@ -112,7 +112,10 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
         <div class='space-y-3'>
           <div class='flex items-center gap-2'>
             <span class='text-sm text-muted-foreground w-24'>Method</span>
-            <InstallMethodBadge method={tool.config.installationMethod} />
+            <InstallMethodBadge
+              method={tool.config.installationMethod}
+              ghCli={tool.config.installParams.ghCli}
+            />
           </div>
           {getSourceDisplay(tool.config)}
           <div class='flex items-center gap-2'>

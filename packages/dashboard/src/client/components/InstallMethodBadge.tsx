@@ -13,10 +13,12 @@ import { Badge } from './ui/Badge';
 
 interface InstallMethodBadgeProps {
   method: string;
+  ghCli?: boolean;
 }
 
 const methodIcons: Record<string, JSX.Element> = {
   'github-release': <GitBranch class='h-3 w-3' />,
+  'github-release:cli': <GitBranch class='h-3 w-3' />,
   'homebrew': <Package class='h-3 w-3' />,
   'brew': <Package class='h-3 w-3' />,
   'cargo': <Box class='h-3 w-3' />,
@@ -26,13 +28,14 @@ const methodIcons: Record<string, JSX.Element> = {
   'manual': <Wrench class='h-3 w-3' />,
 };
 
-export function InstallMethodBadge({ method }: InstallMethodBadgeProps): JSX.Element {
-  const icon = methodIcons[method] || <Package class='h-3 w-3' />;
+export function InstallMethodBadge({ method, ghCli }: InstallMethodBadgeProps): JSX.Element {
+  const displayMethod = method === 'github-release' && ghCli ? 'github-release:cli' : method;
+  const icon = methodIcons[displayMethod] || <Package class='h-3 w-3' />;
 
   return (
     <Badge variant='outline' class='gap-1'>
       {icon}
-      {method}
+      {displayMethod}
     </Badge>
   );
 }

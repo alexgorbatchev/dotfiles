@@ -16,6 +16,7 @@ interface ToolTreeData {
   toolName?: string;
   isFile?: boolean;
   installMethod?: string;
+  ghCli?: boolean;
   fileCount?: number;
   status?: 'installed' | 'not-installed' | 'error';
 }
@@ -27,6 +28,7 @@ function fileTreeToTreeItems(
   entries: IFileTreeEntry[],
   toolStatusMap: Map<string, 'installed' | 'not-installed' | 'error'>,
   toolMethodMap: Map<string, string>,
+  toolGhCliMap: Map<string, boolean>,
   toolFileCountMap: Map<string, number>,
 ): TreeItemData<ToolTreeData>[] {
   return entries.map((entry) => {
@@ -36,7 +38,7 @@ function fileTreeToTreeItems(
         label: entry.name,
         icon: <FolderOpen class='h-4 w-4 text-amber-300' />,
         children: entry.children
-          ? fileTreeToTreeItems(entry.children, toolStatusMap, toolMethodMap, toolFileCountMap)
+          ? fileTreeToTreeItems(entry.children, toolStatusMap, toolMethodMap, toolGhCliMap, toolFileCountMap)
           : [],
       };
     }
@@ -59,6 +61,7 @@ function fileTreeToTreeItems(
         toolName: entry.toolName,
         isFile: true,
         installMethod: entry.toolName ? toolMethodMap.get(entry.toolName) : undefined,
+        ghCli: entry.toolName ? toolGhCliMap.get(entry.toolName) : undefined,
         fileCount: entry.toolName ? toolFileCountMap.get(entry.toolName) : undefined,
         status,
       },
@@ -95,7 +98,9 @@ function renderLabel(item: TreeItemData<ToolTreeData>): ComponentChildren {
           <span class='text-gray-400'>.tool.ts</span>
         </span>
         <span class='flex items-center gap-2'>
-          {item.data.installMethod && <InstallMethodBadge method={item.data.installMethod} />}
+          {item.data.installMethod && (
+            <InstallMethodBadge method={item.data.installMethod} ghCli={item.data.ghCli} />
+          )}
           <span class='text-xs text-muted-foreground'>{fileCount} files</span>
         </span>
       </span>
@@ -116,10 +121,12 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
   // Build maps from tools
   const toolStatusMap = new Map<string, 'installed' | 'not-installed' | 'error'>();
   const toolMethodMap = new Map<string, string>();
+  const toolGhCliMap = new Map<string, boolean>();
   const toolFileCountMap = new Map<string, number>();
   for (const tool of tools) {
     toolStatusMap.set(tool.config.name, tool.runtime.status);
     toolMethodMap.set(tool.config.name, tool.config.installationMethod);
+    toolGhCliMap.set(tool.config.name, tool.config.installParams.ghCli ?? false);
     toolFileCountMap.set(tool.config.name, tool.files.length);
   }
 
@@ -132,7 +139,7 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
   }
 
   const treeItems = treeData
-    ? fileTreeToTreeItems(treeData.entries, toolStatusMap, toolMethodMap, toolFileCountMap)
+    ? fileTreeToTreeItems(treeData.entries, toolStatusMap, toolMethodMap, toolGhCliMap, toolFileCountMap)
     : [];
 
   if (treeItems.length === 0) {

@@ -11,7 +11,6 @@ import {
 import { type JSX } from 'preact';
 
 import type { IToolHistoryEntry } from '../../shared/types';
-import { Badge } from './ui/Badge';
 
 interface ToolHistoryProps {
   entries: IToolHistoryEntry[];
@@ -89,11 +88,6 @@ export function ToolHistory({ entries, installedAt, dotfilesDir }: ToolHistoryPr
                     <span class='font-medium'>
                       {operationLabels[entry.operationType] || entry.operationType}
                     </span>
-                    {entry.fileType && (
-                      <Badge variant='outline' class='text-xs'>
-                        {entry.fileType}
-                      </Badge>
-                    )}
                     <span class='text-xs text-muted-foreground ml-auto'>
                       {entry.relativeTime}
                     </span>

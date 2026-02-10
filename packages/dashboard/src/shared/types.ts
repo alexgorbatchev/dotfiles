@@ -26,6 +26,8 @@ export interface ISerializableInstallParams {
   repo?: string;
   /** Asset pattern (github-release) */
   assetPattern?: string;
+  /** Use GitHub CLI for downloads (github-release) */
+  ghCli?: boolean;
   /** Crate name (cargo) */
   crate?: string;
   /** Homebrew formula or cask name (brew) */
@@ -177,6 +179,7 @@ export function serializeToolConfig(config: ToolConfig): ISerializableToolConfig
     const params = config.installParams as Record<string, unknown>;
     if (typeof params['repo'] === 'string') installParams.repo = params['repo'];
     if (typeof params['assetPattern'] === 'string') installParams.assetPattern = params['assetPattern'];
+    if (typeof params['ghCli'] === 'boolean') installParams.ghCli = params['ghCli'];
     if (typeof params['crate'] === 'string') installParams.crate = params['crate'];
     if (typeof params['formula'] === 'string') installParams.formula = params['formula'];
     if (typeof params['url'] === 'string') installParams.url = params['url'];
