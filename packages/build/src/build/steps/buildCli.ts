@@ -31,8 +31,9 @@ export async function buildCli(context: IBuildContext): Promise<Bun.BuildOutput>
       // A catch-all filter would intercept this relative import and break the build.
       build.onResolve({ filter: /^[^./]/ }, (args: Bun.OnResolveArgs) => {
         const specifier: string = args.path;
+        const importer: string = args.importer;
 
-        if (!shouldExternalizeNonDotfilesBareImport(specifier)) {
+        if (!shouldExternalizeNonDotfilesBareImport(specifier, importer)) {
           return;
         }
 

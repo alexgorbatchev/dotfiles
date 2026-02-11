@@ -33,23 +33,28 @@ function isBareImportSpecifier(specifier: string): boolean {
 }
 
 /**
- * Packages that should be bundled into the output instead of externalized.
+ * Checks if the import should be bundled because it's part of the dashboard client context.
+ * Dashboard client code runs in the browser, so all its dependencies must be bundled.
  *
- * The dashboard uses Preact for its client-side UI. These packages must be bundled
- * (not externalized) because:
- * 1. The dashboard client runs in the browser context (via Bun's HTML import)
- * 2. Externalized packages would require a separate install in .dist/
- * 3. Preact is small enough that bundling doesn't significantly impact CLI size
+ * This includes:
+ * 1. Direct imports from dashboard client source files
+ * 2. Transitive dependencies - if the importer is in node_modules, it means we're
+ *    resolving a dependency of a package we've already decided to bundle, so continue bundling
  */
-const PACKAGES_TO_BUNDLE = new Set(['preact', 'preact-iso', 'lucide-preact']);
+function isDashboardClientImport(importer: string): boolean {
+  // Direct imports from dashboard client source
+  if (importer.includes('/dashboard/') && importer.includes('/client/')) {
+    return true;
+  }
 
-function shouldBundlePackage(specifier: string): boolean {
-  // Extract package name from specifier (e.g., 'preact/hooks' -> 'preact')
-  const packageName = specifier.startsWith('@')
-    ? specifier.split('/').slice(0, 2).join('/')
-    : specifier.split('/')[0];
+  // Transitive dependencies - if the importer is in node_modules, it's a dependency
+  // of something we're already bundling (either dashboard client or its deps).
+  // Continue bundling to include the full dependency tree.
+  if (importer.includes('/node_modules/')) {
+    return true;
+  }
 
-  return PACKAGES_TO_BUNDLE.has(packageName ?? '');
+  return false;
 }
 
 /**
@@ -58,13 +63,13 @@ function shouldBundlePackage(specifier: string): boolean {
  * Externalization rules:
  * 1. Non-bare imports (paths, URLs) are never externalized by this function
  * 2. `@dotfiles/*` packages are bundled (not externalized)
- * 3. Dashboard dependencies (preact, preact-iso) are bundled (not externalized)
+ * 3. Imports from dashboard client code are bundled (browser context requires bundling)
  * 4. All other bare imports are externalized
  *
  * This allows the CLI to ship as a self-contained bundle while keeping large
  * third-party dependencies as runtime requirements listed in package.json.
  */
-export function shouldExternalizeNonDotfilesBareImport(specifier: string): boolean {
+export function shouldExternalizeNonDotfilesBareImport(specifier: string, importer: string): boolean {
   if (!isBareImportSpecifier(specifier)) {
     return false;
   }
@@ -73,8 +78,8 @@ export function shouldExternalizeNonDotfilesBareImport(specifier: string): boole
     return false;
   }
 
-  // Dashboard dependencies should be bundled, not externalized
-  if (shouldBundlePackage(specifier)) {
+  // Dashboard client imports must be bundled - browser can't resolve bare imports
+  if (isDashboardClientImport(importer)) {
     return false;
   }
 
