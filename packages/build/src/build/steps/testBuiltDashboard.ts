@@ -13,6 +13,13 @@ interface ProcessOutput {
   stderr: string;
 }
 
+interface EndpointVerification {
+  url: string;
+  expectedContentType: string;
+  label: string;
+  validateContent?: (content: string) => string | null;
+}
+
 async function getProcessOutput(process: BunProcess): Promise<ProcessOutput> {
   const stderr = process.stderr instanceof ReadableStream
     ? await new Response(process.stderr).text()
@@ -21,6 +28,58 @@ async function getProcessOutput(process: BunProcess): Promise<ProcessOutput> {
     ? await new Response(process.stdout).text()
     : '';
   return { stdout, stderr };
+}
+
+async function verifyEndpoint(config: EndpointVerification): Promise<string> {
+  const response = await fetch(config.url);
+
+  if (!response.ok) {
+    throw new BuildError(`${config.label} returned status ${response.status}`);
+  }
+
+  const contentType = response.headers.get('Content-Type');
+  if (!contentType?.includes(config.expectedContentType)) {
+    throw new BuildError(`${config.label} returned wrong content type: ${contentType}`);
+  }
+
+  const content = await response.text();
+
+  if (config.validateContent) {
+    const error = config.validateContent(content);
+    if (error) {
+      throw new BuildError(error);
+    }
+  }
+
+  return content;
+}
+
+async function findChunkFile(outputDir: string, pattern: string, isJavaScript: boolean): Promise<string> {
+  const glob = new Bun.Glob(pattern);
+
+  for await (const file of glob.scan(outputDir)) {
+    if (!isJavaScript) {
+      return file;
+    }
+
+    // For JS, verify it's actual JavaScript (not CSS with .js extension)
+    const filePath = `${outputDir}/${file}`;
+    const content = await Bun.file(filePath).text();
+    const jsStarters = ['import', 'export', 'var ', 'const ', 'let ', 'function'];
+    if (jsStarters.some((starter) => content.startsWith(starter))) {
+      return file;
+    }
+  }
+
+  const assetType = isJavaScript ? 'JavaScript' : 'CSS';
+  throw new BuildError(`No dashboard ${assetType} chunks found in output directory`);
+}
+
+function validateNotHtml(content: string, label: string): string | null {
+  if (content.startsWith('<!DOCTYPE') || content.startsWith('<html')) {
+    return `${label} returned HTML instead of expected content`;
+  }
+  return null;
 }
 
 /**
@@ -110,112 +169,53 @@ async function waitForServerReady(port: number, serverProcess: BunProcess): Prom
 }
 
 async function verifyApiEndpoint(port: number): Promise<void> {
-  const response = await fetch(`http://localhost:${port}/api/health`);
+  const content = await verifyEndpoint({
+    url: `http://localhost:${port}/api/health`,
+    expectedContentType: 'application/json',
+    label: 'Dashboard API',
+  });
 
-  if (!response.ok) {
-    throw new BuildError(`Dashboard API returned status ${response.status}`);
-  }
-
-  const contentType = response.headers.get('Content-Type');
-  if (!contentType?.includes('application/json')) {
-    throw new BuildError(`Dashboard API returned wrong content type: ${contentType}`);
-  }
-
-  const data = (await response.json()) as { success?: boolean; };
+  const data = JSON.parse(content) as { success?: boolean; };
   if (!data.success) {
     throw new BuildError('Dashboard API health check failed');
   }
 }
 
 async function verifyHtmlEndpoint(port: number): Promise<void> {
-  const response = await fetch(`http://localhost:${port}/`);
-
-  if (!response.ok) {
-    throw new BuildError(`Dashboard root returned status ${response.status}`);
-  }
-
-  const contentType = response.headers.get('Content-Type');
-  if (!contentType?.includes('text/html')) {
-    throw new BuildError(`Dashboard root returned wrong content type: ${contentType}`);
-  }
-
-  const html = await response.text();
-  if (!html.includes('<!DOCTYPE html>')) {
-    throw new BuildError('Dashboard root did not return valid HTML');
-  }
-
-  if (!html.includes('Dotfiles Dashboard')) {
-    throw new BuildError('Dashboard HTML missing expected title');
-  }
+  await verifyEndpoint({
+    url: `http://localhost:${port}/`,
+    expectedContentType: 'text/html',
+    label: 'Dashboard root',
+    validateContent: (html) => {
+      if (!html.includes('<!DOCTYPE html>')) {
+        return 'Dashboard root did not return valid HTML';
+      }
+      if (!html.includes('Dotfiles Dashboard')) {
+        return 'Dashboard HTML missing expected title';
+      }
+      return null;
+    },
+  });
 }
 
 async function verifyJsChunkEndpoint(port: number, outputDir: string): Promise<void> {
-  // Find a dashboard JS chunk file that contains actual JavaScript (not CSS)
-  const glob = new Bun.Glob('dashboard-*.js');
-  let jsChunkFile: string | null = null;
+  const jsChunkFile = await findChunkFile(outputDir, 'dashboard-*.js', true);
 
-  for await (const file of glob.scan(outputDir)) {
-    // Read first few bytes to check if it's JavaScript (starts with import/export/var/etc)
-    // CSS files will start with @layer, @import, etc.
-    const filePath = `${outputDir}/${file}`;
-    const content = await Bun.file(filePath).text();
-    if (
-      content.startsWith('import') || content.startsWith('export') || content.startsWith('var ') ||
-      content.startsWith('const ')
-    ) {
-      jsChunkFile = file;
-      break;
-    }
-  }
-
-  if (!jsChunkFile) {
-    throw new BuildError('No dashboard JavaScript chunks found in output directory');
-  }
-
-  const response = await fetch(`http://localhost:${port}/${jsChunkFile}`);
-
-  if (!response.ok) {
-    throw new BuildError(`Dashboard JS chunk ${jsChunkFile} returned status ${response.status}`);
-  }
-
-  const contentType = response.headers.get('Content-Type');
-  if (!contentType?.includes('javascript')) {
-    throw new BuildError(`Dashboard JS chunk ${jsChunkFile} returned wrong content type: ${contentType}`);
-  }
-
-  const content = await response.text();
-  if (content.startsWith('<!DOCTYPE') || content.startsWith('<html')) {
-    throw new BuildError(`Dashboard JS chunk ${jsChunkFile} returned HTML instead of JavaScript`);
-  }
+  await verifyEndpoint({
+    url: `http://localhost:${port}/${jsChunkFile}`,
+    expectedContentType: 'javascript',
+    label: `Dashboard JS chunk ${jsChunkFile}`,
+    validateContent: (content) => validateNotHtml(content, `Dashboard JS chunk ${jsChunkFile}`),
+  });
 }
 
 async function verifyCssChunkEndpoint(port: number, outputDir: string): Promise<void> {
-  // Find a dashboard CSS chunk file
-  const glob = new Bun.Glob('dashboard-*.css');
-  let cssChunkFile: string | null = null;
+  const cssChunkFile = await findChunkFile(outputDir, 'dashboard-*.css', false);
 
-  for await (const file of glob.scan(outputDir)) {
-    cssChunkFile = file;
-    break;
-  }
-
-  if (!cssChunkFile) {
-    throw new BuildError('No dashboard CSS chunks found in output directory');
-  }
-
-  const response = await fetch(`http://localhost:${port}/${cssChunkFile}`);
-
-  if (!response.ok) {
-    throw new BuildError(`Dashboard CSS chunk ${cssChunkFile} returned status ${response.status}`);
-  }
-
-  const contentType = response.headers.get('Content-Type');
-  if (!contentType?.includes('text/css')) {
-    throw new BuildError(`Dashboard CSS chunk ${cssChunkFile} returned wrong content type: ${contentType}`);
-  }
-
-  const content = await response.text();
-  if (content.startsWith('<!DOCTYPE') || content.startsWith('<html')) {
-    throw new BuildError(`Dashboard CSS chunk ${cssChunkFile} returned HTML instead of CSS`);
-  }
+  await verifyEndpoint({
+    url: `http://localhost:${port}/${cssChunkFile}`,
+    expectedContentType: 'text/css',
+    label: `Dashboard CSS chunk ${cssChunkFile}`,
+    validateContent: (content) => validateNotHtml(content, `Dashboard CSS chunk ${cssChunkFile}`),
+  });
 }

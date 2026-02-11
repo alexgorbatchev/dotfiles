@@ -1,5 +1,5 @@
-import fs from 'node:fs';
 import tailwindPlugin from 'bun-plugin-tailwind';
+import fs from 'node:fs';
 import {
   printBundledModuleAnalysis,
   printExternalModuleAnalysis,
