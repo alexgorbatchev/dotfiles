@@ -6,12 +6,14 @@
  * - no-partial-string-matchers: Disallows toContain() and toMatch() in expect chains
  * - require-multiline-loose-snapshot: Requires toMatchLooseInlineSnapshot to use multiline templates
  * - no-unnecessary-testing-helpers-import: Disallows bare imports of testing-helpers package
+ * - require-template-indent: Requires multiline template literals to match surrounding indentation
  */
 
 import { noConditionalLogicRule } from './no-conditional-logic.js';
 import { noPartialStringMatchersRule } from './no-partial-string-matchers.js';
 import { noUnnecessaryTestingHelpersImportRule } from './no-unnecessary-testing-helpers-import.js';
 import { requireMultilineLooseSnapshotRule } from './require-multiline-loose-snapshot.js';
+import { requireTemplateIndentRule } from './require-template-indent.js';
 
 const plugin = {
   meta: {
@@ -23,6 +25,7 @@ const plugin = {
     'no-partial-string-matchers': noPartialStringMatchersRule,
     'no-unnecessary-testing-helpers-import': noUnnecessaryTestingHelpersImportRule,
     'require-multiline-loose-snapshot': requireMultilineLooseSnapshotRule,
+    'require-template-indent': requireTemplateIndentRule,
   },
 };
 
