@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import tailwindPlugin from 'bun-plugin-tailwind';
 import {
   printBundledModuleAnalysis,
   printExternalModuleAnalysis,
@@ -67,7 +68,7 @@ export async function buildCli(context: IBuildContext): Promise<Bun.BuildOutput>
       // Bun processes the HTML file and generates separate chunks for the client-side code
       // (Preact components). Without splitting, the HTML import mechanism fails.
       splitting: true,
-      plugins: [externalizeNonDotfilesPackagesPlugin],
+      plugins: [tailwindPlugin, externalizeNonDotfilesPackagesPlugin],
       // Configured for Preact to support the dashboard's Preact-based client.
       // The 'automatic' runtime enables the modern JSX transform.
       jsx: {
