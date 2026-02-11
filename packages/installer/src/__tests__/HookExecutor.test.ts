@@ -59,7 +59,7 @@ describe('HookExecutor', () => {
     it('should handle hook errors and return failure result', async () => {
       const errorMessage = 'Hook execution failed';
       const mockHook = mock(async () => {
-        throw new Error(errorMessage);
+        assert(false, errorMessage);
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
@@ -91,7 +91,7 @@ describe('HookExecutor', () => {
     it('should continue on error when continueOnError is true', async () => {
       const errorMessage = 'Hook failed but should continue';
       const mockHook = mock(async () => {
-        throw new Error(errorMessage);
+        assert(false, errorMessage);
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
@@ -347,7 +347,7 @@ describe('HookExecutor', () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const hook1 = mock(async () => {});
       const hook2 = mock(async () => {
-        throw new Error('Hook2 failed');
+        assert(false, 'Hook2 failed');
       });
       const hook3 = mock(async () => {});
 
@@ -373,7 +373,7 @@ describe('HookExecutor', () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const hook1 = mock(async () => {});
       const hook2 = mock(async () => {
-        throw new Error('Hook2 failed');
+        assert(false, 'Hook2 failed');
       });
       const hook3 = mock(async () => {});
 
@@ -399,10 +399,10 @@ describe('HookExecutor', () => {
     it('should handle mixed hook options correctly', async () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const hook1 = mock(async () => {
-        throw new Error('Hook1 failed');
+        assert(false, 'Hook1 failed');
       });
       const hook2 = mock(async () => {
-        throw new Error('Hook2 failed');
+        assert(false, 'Hook2 failed');
       });
       const hook3 = mock(async () => {});
 
@@ -446,7 +446,7 @@ describe('HookExecutor', () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const errorMessage = 'Test hook error';
       const mockHook = mock(async () => {
-        throw new Error(errorMessage);
+        assert(false, errorMessage);
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);

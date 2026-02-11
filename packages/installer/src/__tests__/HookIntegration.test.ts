@@ -76,9 +76,7 @@ describe('Hook Integration Tests', () => {
       const result = await setup.installer.install('example-tool', toolConfig);
 
       expect(result.success).toBe(true);
-      if (!result.success) {
-        throw new Error(`Installation failed: ${result.error}`);
-      }
+      assert(result.success);
 
       // Find the version directory (version is resolved from tag_name: '1.0.0')
       const toolDir = `${setup.testDirs.paths.binariesDir}/example-tool`;
@@ -139,9 +137,7 @@ describe('Hook Integration Tests', () => {
           hooks: {
             'after-extract': [
               async (context: IExtractContext) => {
-                if (!context.extractDir || !context.extractResult) {
-                  throw new Error('No extraction results available');
-                }
+                assert(context.extractDir && context.extractResult);
 
                 // Organize binaries in a bin subdirectory
                 const binDir = path.join(context.stagingDir, 'bin');
@@ -160,15 +156,13 @@ describe('Hook Integration Tests', () => {
                   (file) => file.includes('README') || file.includes('LICENSE'),
                 );
 
-                if (docFiles.length > 0) {
-                  const docDir = path.join(context.stagingDir, 'docs');
-                  await context.fileSystem.ensureDir(docDir);
+                const docDir = path.join(context.stagingDir, 'docs');
+                await context.fileSystem.ensureDir(docDir);
 
-                  for (const docFile of docFiles) {
-                    const srcPath = path.join(context.extractDir, docFile);
-                    const destPath = path.join(docDir, docFile);
-                    await context.fileSystem.copyFile(srcPath, destPath);
-                  }
+                for (const docFile of docFiles) {
+                  const srcPath = path.join(context.extractDir, docFile);
+                  const destPath = path.join(docDir, docFile);
+                  await context.fileSystem.copyFile(srcPath, destPath);
                 }
               },
             ],
@@ -178,9 +172,7 @@ describe('Hook Integration Tests', () => {
 
       const result = await setup.installer.install('multi-binary-tool', toolConfig);
 
-      if (!result.success) {
-        throw new Error(`Installation failed: ${result.error}`);
-      }
+      assert(result.success);
       expect(result.success).toBe(true);
 
       // Find the version directory (version is resolved from tag_name: '1.0.0')
@@ -188,9 +180,7 @@ describe('Hook Integration Tests', () => {
 
       // Debug: Check if tool directory exists
       const toolDirExists = await setup.fs.exists(toolDir);
-      if (!toolDirExists) {
-        throw new Error(`Tool directory does not exist: ${toolDir}`);
-      }
+      assert(toolDirExists);
 
       const toolDirContents = await setup.fs.readdir(toolDir);
 
@@ -198,9 +188,7 @@ describe('Hook Integration Tests', () => {
       const versionDir = toolDirContents.find(
         (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/),
       );
-      if (!versionDir) {
-        throw new Error(`No version directory found in: ${toolDirContents}`);
-      }
+      assert(versionDir);
 
       // Verify hook created the expected directory structure
       const versionedPath = `${toolDir}/${versionDir}`;
@@ -260,30 +248,27 @@ describe('Hook Integration Tests', () => {
           hooks: {
             'after-extract': [
               async (context: IExtractContext) => {
-                if (!context.extractDir) {
-                  throw new Error('No extraction directory available');
-                }
+                assert(context.extractDir);
 
                 // Check if this is a source distribution
                 const makefilePath = path.join(context.extractDir, 'Makefile');
                 const hasMakefile = await context.fileSystem.exists(makefilePath);
+                assert(hasMakefile);
 
-                if (hasMakefile) {
-                  // In a real scenario, this would run: make PREFIX=${context.installedDir} install
-                  // For this test, we'll simulate the process
+                // In a real scenario, this would run: make PREFIX=${context.installedDir} install
+                // For this test, we'll simulate the process
 
-                  // Create the binary in the extract directory so the binary setup service can find it
-                  const binaryPath = path.join(context.extractDir, context.toolName);
-                  await context.fileSystem.writeFile(binaryPath, '#!/bin/bash\necho "Compiled binary"');
-                  await context.fileSystem.chmod(binaryPath, 0o755);
+                // Create the binary in the extract directory so the binary setup service can find it
+                const binaryPath = path.join(context.extractDir, context.toolName);
+                await context.fileSystem.writeFile(binaryPath, '#!/bin/bash\necho "Compiled binary"');
+                await context.fileSystem.chmod(binaryPath, 0o755);
 
-                  // Create additional compiled artifacts
-                  const libDir = path.join(context.stagingDir, 'lib');
-                  await context.fileSystem.ensureDir(libDir);
+                // Create additional compiled artifacts
+                const libDir = path.join(context.stagingDir, 'lib');
+                await context.fileSystem.ensureDir(libDir);
 
-                  const libPath = path.join(libDir, 'libsource-tool.so');
-                  await context.fileSystem.writeFile(libPath, 'compiled library content');
-                }
+                const libPath = path.join(libDir, 'libsource-tool.so');
+                await context.fileSystem.writeFile(libPath, 'compiled library content');
               },
             ],
           },
@@ -350,7 +335,7 @@ describe('Hook Integration Tests', () => {
           hooks: {
             'after-download': [
               async (_context) => {
-                throw new Error('Downloaded file validation failed: checksum mismatch');
+                assert(false, 'Downloaded file validation failed: checksum mismatch');
               },
             ],
           },

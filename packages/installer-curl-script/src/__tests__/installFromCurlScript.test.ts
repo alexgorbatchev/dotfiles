@@ -90,10 +90,11 @@ describe('installFromCurlScript', () => {
     const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
     expect(calls.length).toBe(1);
     const call = calls[0];
-    if (!call) throw new Error('Expected call');
+    assert(call);
     const [strings, scriptPath, args] = call;
 
-    if (!strings || !strings[0]) throw new Error('Expected strings');
+    assert(strings);
+    assert(strings[0]);
     expect(strings[0]).toContain('bash');
     expect(scriptPath).toContain('test-tool-install.sh');
     expect(args).toEqual(['--arg1', '--arg2']);
@@ -128,10 +129,11 @@ describe('installFromCurlScript', () => {
     const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
     expect(calls.length).toBe(1);
     const call = calls[0];
-    if (!call) throw new Error('Expected call');
+    assert(call);
     const [strings, scriptPath, args] = call;
 
-    if (!strings || !strings[0]) throw new Error('Expected strings');
+    assert(strings);
+    assert(strings[0]);
     expect(strings[0]).toContain('sh');
     expect(scriptPath).toContain('test-tool-install.sh');
     expect(args).toEqual([]);
@@ -167,10 +169,11 @@ describe('installFromCurlScript', () => {
     const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
     expect(calls.length).toBe(1);
     const call = calls[0];
-    if (!call) throw new Error('Expected call');
+    assert(call);
     const [strings, scriptPath, args] = call;
 
-    if (!strings || !strings[0]) throw new Error('Expected strings');
+    assert(strings);
+    assert(strings[0]);
     expect(strings[0]).toContain('bash');
     expect(scriptPath).toContain('test-tool-install.sh');
     expect(args).toEqual(['--install-dir', context.stagingDir, '--skip-shell']);
@@ -210,10 +213,11 @@ describe('installFromCurlScript', () => {
     const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
     expect(calls.length).toBe(1);
     const call = calls[0];
-    if (!call) throw new Error('Expected call');
+    assert(call);
     const [strings, scriptPath, args] = call;
 
-    if (!strings || !strings[0]) throw new Error('Expected strings');
+    assert(strings);
+    assert(strings[0]);
     expect(strings[0]).toContain('bash');
     expect(scriptPath).toContain('test-tool-install.sh');
     expect(args).toEqual(['--install-dir', context.stagingDir, '--skip-shell']);

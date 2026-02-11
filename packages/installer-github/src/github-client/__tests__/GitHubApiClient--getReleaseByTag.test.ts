@@ -1,6 +1,7 @@
 import type { IGitHubRelease } from '@dotfiles/core';
 import { ClientError, NotFoundError, RateLimitError } from '@dotfiles/downloader';
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
   createGitHubConfigOverride,
@@ -92,13 +93,10 @@ describe('GitHubApiClient', () => {
       try {
         await mocks.apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0');
       } catch (error) {
-        if (error instanceof GitHubApiClientError) {
-          expect(error.message).toContain(`GitHub API rate limit exceeded for ${url}`);
-          expect(error.statusCode).toBe(429);
-          expect(error.originalError).toBeInstanceOf(RateLimitError);
-        } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
-        }
+        assert(error instanceof GitHubApiClientError);
+        expect(error.message).toContain(`GitHub API rate limit exceeded for ${url}`);
+        expect(error.statusCode).toBe(429);
+        expect(error.originalError).toBeInstanceOf(RateLimitError);
       }
     });
 
@@ -113,13 +111,10 @@ describe('GitHubApiClient', () => {
       try {
         await mocks.apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0');
       } catch (error) {
-        if (error instanceof GitHubApiClientError) {
-          expect(error.message).toContain(`GitHub API client error for ${url}`);
-          expect(error.statusCode).toBe(400);
-          expect(error.originalError).toBeInstanceOf(ClientError);
-        } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
-        }
+        assert(error instanceof GitHubApiClientError);
+        expect(error.message).toContain(`GitHub API client error for ${url}`);
+        expect(error.statusCode).toBe(400);
+        expect(error.originalError).toBeInstanceOf(ClientError);
       }
     });
   });

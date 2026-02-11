@@ -1,6 +1,7 @@
 import type { IGitHubRateLimit } from '@dotfiles/core';
 import { HttpError } from '@dotfiles/downloader';
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
   createGitHubConfigOverride,
@@ -75,13 +76,10 @@ describe('GitHubApiClient', () => {
       try {
         await mocks.apiClient.getRateLimit();
       } catch (error) {
-        if (error instanceof GitHubApiClientError) {
-          expect(error.message).toContain(`GitHub API HTTP error for ${url}`);
-          expect(error.statusCode).toBe(500);
-          expect(error.originalError).toBeInstanceOf(HttpError);
-        } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
-        }
+        assert(error instanceof GitHubApiClientError);
+        expect(error.message).toContain(`GitHub API HTTP error for ${url}`);
+        expect(error.statusCode).toBe(500);
+        expect(error.originalError).toBeInstanceOf(HttpError);
       }
     });
   });

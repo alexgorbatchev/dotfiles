@@ -1,6 +1,7 @@
 import type { IGitHubRelease } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import assert from 'node:assert';
 import type { IGitHubApiClient } from '../github-client';
 import { fetchGitHubRelease } from '../installFromGitHubRelease';
 
@@ -42,9 +43,8 @@ describe('fetchGitHubRelease', () => {
       const result = await fetchGitHubRelease('invalid-repo', '1.0.0', mockGitHubApiClient, logger);
 
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error).toContain('Invalid GitHub repository format');
-      }
+      assert(!result.success);
+      expect(result.error).toContain('Invalid GitHub repository format');
     });
   });
 
@@ -56,9 +56,8 @@ describe('fetchGitHubRelease', () => {
       const result = await fetchGitHubRelease('owner/repo', 'latest', mockGitHubApiClient, logger);
 
       expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.tag_name).toBe('v1.0.0');
-      }
+      assert(result.success);
+      expect(result.data.tag_name).toBe('v1.0.0');
     });
 
     it('should return error when latest release is not found', async () => {
@@ -67,9 +66,8 @@ describe('fetchGitHubRelease', () => {
       const result = await fetchGitHubRelease('owner/repo', 'latest', mockGitHubApiClient, logger);
 
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error).toContain('Failed to fetch latest release');
-      }
+      assert(!result.success);
+      expect(result.error).toContain('Failed to fetch latest release');
     });
   });
 
@@ -81,9 +79,8 @@ describe('fetchGitHubRelease', () => {
       const result = await fetchGitHubRelease('owner/repo', 'v2.23.0', mockGitHubApiClient, logger);
 
       expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.tag_name).toBe('v2.23.0');
-      }
+      assert(result.success);
+      expect(result.data.tag_name).toBe('v2.23.0');
     });
   });
 
@@ -104,9 +101,8 @@ describe('fetchGitHubRelease', () => {
       const result = await fetchGitHubRelease('owner/repo', '2.23.0', mockGitHubApiClient, logger);
 
       expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.tag_name).toBe('v2.23.0');
-      }
+      assert(result.success);
+      expect(result.data.tag_name).toBe('v2.23.0');
       // Verify log message about corrected tag
       logger.expect(
         ['INFO'],
@@ -131,9 +127,8 @@ describe('fetchGitHubRelease', () => {
       const result = await fetchGitHubRelease('jqlang/jq', '1.7.0', mockGitHubApiClient, logger);
 
       expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.tag_name).toBe('jq-1.7.0');
-      }
+      assert(result.success);
+      expect(result.data.tag_name).toBe('jq-1.7.0');
     });
 
     it('should strip user v prefix when repo uses no prefix', async () => {
@@ -151,9 +146,8 @@ describe('fetchGitHubRelease', () => {
       const result = await fetchGitHubRelease('BurntSushi/ripgrep', 'v15.0.0', mockGitHubApiClient, logger);
 
       expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.tag_name).toBe('15.0.0');
-      }
+      assert(result.success);
+      expect(result.data.tag_name).toBe('15.0.0');
     });
   });
 
@@ -166,9 +160,8 @@ describe('fetchGitHubRelease', () => {
       const result = await fetchGitHubRelease('owner/repo', 'invalid-tag', mockGitHubApiClient, logger);
 
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error).toContain("Release 'invalid-tag' not found");
-      }
+      assert(!result.success);
+      expect(result.error).toContain("Release 'invalid-tag' not found");
       // Verify available tags are logged (header + 3 tags)
       logger.expect(
         ['INFO'],
@@ -211,9 +204,8 @@ describe('fetchGitHubRelease', () => {
       const result = await fetchGitHubRelease('owner/repo', '2.0.0', mockGitHubApiClient, logger);
 
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error).toContain("Release '2.0.0' not found");
-      }
+      assert(!result.success);
+      expect(result.error).toContain("Release '2.0.0' not found");
     });
   });
 });

@@ -2,6 +2,7 @@ import type { IInstallContext, Shell } from '@dotfiles/core';
 import { createMemFileSystem, type IResolvedFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import { installFromZshPlugin } from '../installFromZshPlugin';
 import type { ZshPluginToolConfig } from '../schemas';
 
@@ -111,9 +112,8 @@ describe('installFromZshPlugin', () => {
     );
 
     expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error).toContain('No install parameters');
-    }
+    assert(!result.success);
+    expect(result.error).toContain('No install parameters');
   });
 
   it('should return error when neither repo nor url provided', async () => {
@@ -135,9 +135,8 @@ describe('installFromZshPlugin', () => {
     );
 
     expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error).toContain('repo or url');
-    }
+    assert(!result.success);
+    expect(result.error).toContain('repo or url');
   });
 
   it('should clone plugin from GitHub shorthand', async () => {
@@ -163,11 +162,10 @@ describe('installFromZshPlugin', () => {
     );
 
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.metadata.pluginName).toBe('zsh-vi-mode');
-      expect(result.metadata.gitUrl).toBe('https://github.com/jeffreytse/zsh-vi-mode.git');
-      expect(result.metadata.method).toBe('zsh-plugin');
-    }
+    assert(result.success);
+    expect(result.metadata.pluginName).toBe('zsh-vi-mode');
+    expect(result.metadata.gitUrl).toBe('https://github.com/jeffreytse/zsh-vi-mode.git');
+    expect(result.metadata.method).toBe('zsh-plugin');
   });
 
   it('should clone plugin from full URL', async () => {
@@ -193,10 +191,9 @@ describe('installFromZshPlugin', () => {
     );
 
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.metadata.pluginName).toBe('custom-plugin');
-      expect(result.metadata.gitUrl).toBe('https://gitlab.com/user/custom-plugin.git');
-    }
+    assert(result.success);
+    expect(result.metadata.pluginName).toBe('custom-plugin');
+    expect(result.metadata.gitUrl).toBe('https://gitlab.com/user/custom-plugin.git');
   });
 
   it('should use custom pluginName when provided', async () => {
@@ -223,9 +220,8 @@ describe('installFromZshPlugin', () => {
     );
 
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.metadata.pluginName).toBe('vi-mode');
-    }
+    assert(result.success);
+    expect(result.metadata.pluginName).toBe('vi-mode');
   });
 
   it('should return version from git', async () => {
@@ -251,9 +247,8 @@ describe('installFromZshPlugin', () => {
     );
 
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.version).toBe('v0.1.0');
-    }
+    assert(result.success);
+    expect(result.version).toBe('v0.1.0');
   });
 
   it('should return empty binaryPaths for plugins', async () => {
@@ -279,9 +274,8 @@ describe('installFromZshPlugin', () => {
     );
 
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.binaryPaths).toEqual([]);
-    }
+    assert(result.success);
+    expect(result.binaryPaths).toEqual([]);
   });
 
   it('should emit shellInit with source command for zsh', async () => {
@@ -307,15 +301,14 @@ describe('installFromZshPlugin', () => {
     );
 
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.shellInit).toBeDefined();
-      expect(result.shellInit?.['zsh']).toBeDefined();
-      expect(result.shellInit?.['zsh']?.scripts).toHaveLength(1);
-      const script = result.shellInit?.['zsh']?.scripts?.[0];
-      expect(script).toBeDefined();
-      expect(script?.kind).toBe('raw');
-      expect(script?.value).toContain('source');
-      expect(script?.value).toContain('/bin/zsh-plugins/current/zsh-vi-mode/zsh-vi-mode.plugin.zsh');
-    }
+    assert(result.success);
+    expect(result.shellInit).toBeDefined();
+    expect(result.shellInit?.['zsh']).toBeDefined();
+    expect(result.shellInit?.['zsh']?.scripts).toHaveLength(1);
+    const script = result.shellInit?.['zsh']?.scripts?.[0];
+    expect(script).toBeDefined();
+    expect(script?.kind).toBe('raw');
+    expect(script?.value).toContain('source');
+    expect(script?.value).toContain('/bin/zsh-plugins/current/zsh-vi-mode/zsh-vi-mode.plugin.zsh');
   });
 });

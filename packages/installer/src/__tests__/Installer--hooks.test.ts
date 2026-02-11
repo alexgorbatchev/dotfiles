@@ -40,10 +40,7 @@ describe('Installer - Enhanced Hooks', () => {
 
       const result = await installer.install(mockToolName, toolConfig);
 
-      if (!result.success) {
-        throw new Error(`Hook test failed: ${result.error}`);
-      }
-
+      assert(result.success);
       expect(result.success).toBe(true);
       expect(beforeInstallHook).toHaveBeenCalledTimes(1);
     });
@@ -51,7 +48,7 @@ describe('Installer - Enhanced Hooks', () => {
     it('should fail installation if beforeInstall hook fails', async () => {
       const errorMessage = 'beforeInstall hook failed';
       const beforeInstallHook = mock(async () => {
-        throw new Error(errorMessage);
+        assert(false, errorMessage);
       });
 
       const toolConfig: GithubReleaseToolConfig = {
@@ -143,7 +140,7 @@ describe('Installer - Enhanced Hooks', () => {
     it('should continue installation if afterInstall hook fails (continueOnError=true)', async () => {
       const errorMessage = 'afterInstall hook failed';
       const afterInstallHook = mock(async () => {
-        throw new Error(errorMessage);
+        assert(false, errorMessage);
       });
 
       const toolConfig: GithubReleaseToolConfig = {
@@ -198,7 +195,7 @@ describe('Installer - Enhanced Hooks', () => {
     it('should fail installation if afterDownload hook fails', async () => {
       const errorMessage = 'afterDownload hook failed';
       const afterDownloadHook = mock(async () => {
-        throw new Error(errorMessage);
+        assert(false, errorMessage);
       });
 
       const toolConfig: GithubReleaseToolConfig = {
@@ -257,7 +254,7 @@ describe('Installer - Enhanced Hooks', () => {
     it('should fail installation if afterExtract hook fails', async () => {
       const errorMessage = 'afterExtract hook failed';
       const afterExtractHook = mock(async () => {
-        throw new Error(errorMessage);
+        assert(false, errorMessage);
       });
 
       const toolConfig: GithubReleaseToolConfig = {
@@ -333,7 +330,7 @@ describe('Installer - Enhanced Hooks', () => {
 
       const afterDownloadHook = mock(async () => {
         executionOrder.push('afterDownload');
-        throw new Error('afterDownload failed');
+        assert(false, 'afterDownload failed');
       });
 
       const afterExtractHook = mock(async () => {

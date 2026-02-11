@@ -3,6 +3,7 @@ import { createMemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories } from '@dotfiles/testing-helpers';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import path from 'node:path';
 import { loadConfig } from '../loadConfig';
 
@@ -23,11 +24,9 @@ describe('loadConfig', () => {
   });
 
   afterEach(async () => {
-    if (cleanupFn) {
-      await cleanupFn();
-      cleanupFn = undefined;
-      tempDir = undefined;
-    }
+    await cleanupFn?.();
+    cleanupFn = undefined;
+    tempDir = undefined;
   });
 
   describe('file type detection', () => {
@@ -38,14 +37,11 @@ describe('loadConfig', () => {
       });
       tempDir = testDirs.paths.homeDir;
       cleanupFn = async () => {
-        if (tempDir) {
-          await realFs.rm(tempDir, { recursive: true, force: true });
-        }
+        assert(tempDir);
+        await realFs.rm(tempDir, { recursive: true, force: true });
       };
 
-      if (!tempDir) {
-        throw new Error('tempDir is not defined');
-      }
+      assert(tempDir);
 
       const configPath = path.join(tempDir, 'config.ts');
       const tsContent = `
@@ -99,14 +95,11 @@ describe('loadConfig', () => {
       });
       tempDir = testDirs.paths.homeDir;
       cleanupFn = async () => {
-        if (tempDir) {
-          await realFs.rm(tempDir, { recursive: true, force: true });
-        }
+        assert(tempDir);
+        await realFs.rm(tempDir, { recursive: true, force: true });
       };
 
-      if (!tempDir) {
-        throw new Error('tempDir is not defined');
-      }
+      assert(tempDir);
 
       const configPath = path.join(tempDir, 'config.ts');
       await realFs.writeFile(configPath, `export default {};`);

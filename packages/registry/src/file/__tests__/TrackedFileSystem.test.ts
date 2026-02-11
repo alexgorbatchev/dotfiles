@@ -3,6 +3,7 @@ import { createMemFileSystem, type IResolvedFileSystem, ResolvedFileSystem } fro
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
@@ -203,7 +204,7 @@ describe('TrackedFileSystem', () => {
       await fs.writeFile(filePath, 'original');
       const originalReadFile = fs.readFile;
       fs.readFile = async () => {
-        throw new Error('Read failed');
+        assert(false, 'Read failed');
       };
 
       // Write content through tracked filesystem
@@ -315,11 +316,10 @@ describe('TrackedFileSystem', () => {
       // Should have rename operation with target path
       const renameOp = operations[0];
       expect(renameOp).toBeDefined();
-      if (renameOp) {
-        expect(renameOp.operationType).toBe('rename');
-        expect(renameOp.filePath).toBe(path.resolve(newPath));
-        expect(renameOp.targetPath).toBe(path.resolve(oldPath));
-      }
+      assert(renameOp);
+      expect(renameOp.operationType).toBe('rename');
+      expect(renameOp.filePath).toBe(path.resolve(newPath));
+      expect(renameOp.targetPath).toBe(path.resolve(oldPath));
     });
   });
 
@@ -556,10 +556,9 @@ describe('TrackedFileSystem', () => {
 
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(2);
-      if (operations[0] && operations[1]) {
-        expect(operations[0].operationId).toBe(operations[1].operationId);
-        expect(operations[0].operationId).toBe(context.operationId);
-      }
+      assert(operations[0] && operations[1]);
+      expect(operations[0].operationId).toBe(operations[1].operationId);
+      expect(operations[0].operationId).toBe(context.operationId);
     });
 
     it('should use different operation IDs for different contexts', async () => {
@@ -576,9 +575,8 @@ describe('TrackedFileSystem', () => {
 
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(2);
-      if (operations[0] && operations[1]) {
-        expect(operations[0].operationId).not.toBe(operations[1].operationId);
-      }
+      assert(operations[0] && operations[1]);
+      expect(operations[0].operationId).not.toBe(operations[1].operationId);
     });
   });
 });

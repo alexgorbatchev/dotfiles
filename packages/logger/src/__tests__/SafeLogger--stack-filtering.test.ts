@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import type { ILogObj, ILogObjMeta } from 'tslog';
 import { LogLevel } from '../LogLevel';
 import { TestLogger } from '../TestLogger';
@@ -49,26 +50,22 @@ describe('SafeLogger - stack trace filtering', () => {
     const loggedError = getLoggedError(logger.logs[0]!);
 
     // tslog transforms errors into objects with parsed stack frames
-    if (isTslogErrorObject(loggedError)) {
-      // The filtered error should ONLY contain the .tool.ts frame
-      const stackFrames = loggedError.stack;
-      expect(stackFrames).toHaveLength(1);
-      expect(stackFrames[0]?.fileName).toBe('my.tool.ts');
-      expect(stackFrames[0]?.method).toBe('hook');
+    assert(isTslogErrorObject(loggedError));
+    // The filtered error should ONLY contain the .tool.ts frame
+    const stackFrames = loggedError.stack;
+    expect(stackFrames).toHaveLength(1);
+    expect(stackFrames[0]?.fileName).toBe('my.tool.ts');
+    expect(stackFrames[0]?.method).toBe('hook');
 
-      // Verify internal frames are NOT present
-      const hasInternalFrames = stackFrames.some(
-        (frame) =>
-          frame.method === 'internalFunction' ||
-          frame.method === 'frameworkCode' ||
-          frame.method === 'moreInternalCode' ||
-          frame.fullFilePath?.includes('node_modules'),
-      );
-      expect(hasInternalFrames).toBe(false);
-    } else {
-      // Fallback for direct Error object (shouldn't happen with tslog)
-      expect(loggedError).toBeInstanceOf(Error);
-    }
+    // Verify internal frames are NOT present
+    const hasInternalFrames = stackFrames.some(
+      (frame) =>
+        frame.method === 'internalFunction' ||
+        frame.method === 'frameworkCode' ||
+        frame.method === 'moreInternalCode' ||
+        frame.fullFilePath?.includes('node_modules'),
+    );
+    expect(hasInternalFrames).toBe(false);
   });
 
   it('filters internal stack frames from warn logs', () => {
@@ -87,15 +84,14 @@ describe('SafeLogger - stack trace filtering', () => {
     // Access the raw log to verify error transformation
     const loggedError = getLoggedError(logger.logs[0]!);
 
-    if (isTslogErrorObject(loggedError)) {
-      // Should only have the .tool.ts frame
-      expect(loggedError.stack).toHaveLength(1);
-      expect(loggedError.stack[0]?.fileName).toBe('example.tool.ts');
+    assert(isTslogErrorObject(loggedError));
+    // Should only have the .tool.ts frame
+    expect(loggedError.stack).toHaveLength(1);
+    expect(loggedError.stack[0]?.fileName).toBe('example.tool.ts');
 
-      // Internal frame should be filtered out
-      const hasInternal = loggedError.stack.some((frame) => frame.method === 'someInternal');
-      expect(hasInternal).toBe(false);
-    }
+    // Internal frame should be filtered out
+    const hasInternal = loggedError.stack.some((frame) => frame.method === 'someInternal');
+    expect(hasInternal).toBe(false);
   });
 
   it('filters stack traces even when tracing is enabled', () => {
@@ -114,14 +110,13 @@ describe('SafeLogger - stack trace filtering', () => {
     // Access the raw log to verify error transformation
     const loggedError = getLoggedError(logger.logs[0]!);
 
-    if (isTslogErrorObject(loggedError)) {
-      // Stack filtering is always on - only .tool.ts frames shown
-      expect(loggedError.stack).toHaveLength(1);
-      expect(loggedError.stack[0]?.fileName).toBe('my.tool.ts');
+    assert(isTslogErrorObject(loggedError));
+    // Stack filtering is always on - only .tool.ts frames shown
+    expect(loggedError.stack).toHaveLength(1);
+    expect(loggedError.stack[0]?.fileName).toBe('my.tool.ts');
 
-      const hasInternalFrame = loggedError.stack.some((frame) => frame.method === 'internalFunction');
-      expect(hasInternalFrame).toBe(false);
-    }
+    const hasInternalFrame = loggedError.stack.some((frame) => frame.method === 'internalFunction');
+    expect(hasInternalFrame).toBe(false);
   });
 
   it('removes all stack frames when no .tool.ts frames exist', () => {
@@ -140,10 +135,9 @@ describe('SafeLogger - stack trace filtering', () => {
     // Access the raw log to verify error transformation
     const loggedError = getLoggedError(logger.logs[0]!);
 
-    if (isTslogErrorObject(loggedError)) {
-      // When no .tool.ts frames, stack should be empty
-      expect(loggedError.stack).toHaveLength(0);
-    }
+    assert(isTslogErrorObject(loggedError));
+    // When no .tool.ts frames, stack should be empty
+    expect(loggedError.stack).toHaveLength(0);
   });
 
   it('does not filter non-error arguments', () => {

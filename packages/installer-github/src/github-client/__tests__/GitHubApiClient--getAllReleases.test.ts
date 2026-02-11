@@ -1,6 +1,7 @@
 import type { IGitHubRelease } from '@dotfiles/core';
 import { RateLimitError, ServerError } from '@dotfiles/downloader';
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import assert from 'node:assert';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
   createGitHubConfigOverride,
@@ -137,13 +138,10 @@ describe('GitHubApiClient', () => {
       try {
         await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
       } catch (error) {
-        if (error instanceof GitHubApiClientError) {
-          expect(error.message).toContain(`GitHub API rate limit exceeded for ${url}`);
-          expect(error.statusCode).toBe(403);
-          expect(error.originalError).toBeInstanceOf(RateLimitError);
-        } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
-        }
+        assert(error instanceof GitHubApiClientError);
+        expect(error.message).toContain(`GitHub API rate limit exceeded for ${url}`);
+        expect(error.statusCode).toBe(403);
+        expect(error.originalError).toBeInstanceOf(RateLimitError);
       }
     });
 
@@ -156,13 +154,10 @@ describe('GitHubApiClient', () => {
       try {
         await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
       } catch (error) {
-        if (error instanceof GitHubApiClientError) {
-          expect(error.message).toContain(`GitHub API server error for ${url}`);
-          expect(error.statusCode).toBe(503);
-          expect(error.originalError).toBeInstanceOf(ServerError);
-        } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
-        }
+        assert(error instanceof GitHubApiClientError);
+        expect(error.message).toContain(`GitHub API server error for ${url}`);
+        expect(error.statusCode).toBe(503);
+        expect(error.originalError).toBeInstanceOf(ServerError);
       }
     });
   });

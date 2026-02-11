@@ -1,23 +1,10 @@
 import type { IInstallContext, Shell } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import { installFromBrew } from '../installFromBrew';
 import type { BrewToolConfig } from '../schemas';
-
-interface IMockShellPromise extends
-  Promise<{
-    stdout: string;
-    stderr: string;
-    exitCode: number;
-    code: number;
-    toString: () => string;
-  }>
-{
-  quiet: () => IMockShellPromise;
-  nothrow: () => IMockShellPromise;
-  noThrow: () => IMockShellPromise;
-  env: () => IMockShellPromise;
-}
+import { createMockShell } from './helpers/mocks';
 
 describe('installFromBrew', () => {
   let logger: TestLogger;
@@ -25,35 +12,7 @@ describe('installFromBrew', () => {
 
   beforeEach(() => {
     logger = new TestLogger();
-
-    mockShell = ((strings: TemplateStringsArray, ...values: unknown[]) => {
-      const cmd = strings.reduce((acc, str, i) => acc + str + (values[i] || ''), '');
-      let stdout = '';
-
-      if (cmd.includes('brew --prefix')) {
-        stdout = '/opt/homebrew/opt/test-tool';
-      } else if (cmd.includes('brew info --json')) {
-        stdout = JSON.stringify([{ name: 'test-tool', versions: { stable: '1.2.3' } }]);
-      } else if (cmd.includes('--version')) {
-        stdout = 'tool version 1.2.3';
-      }
-
-      const result = {
-        stdout,
-        stderr: '',
-        exitCode: 0,
-        code: 0,
-        toString: () => stdout,
-      };
-
-      const promise = Promise.resolve(result) as IMockShellPromise;
-      promise.quiet = () => promise;
-      promise.nothrow = () => promise;
-      promise.noThrow = () => promise;
-      promise.env = () => promise;
-
-      return promise;
-    }) as unknown as Shell;
+    mockShell = createMockShell();
   });
 
   it('should detect version using brew info when versionArgs are not provided', async () => {
@@ -100,10 +59,7 @@ describe('installFromBrew', () => {
 
     const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
 
-    if (!result.success) {
-      throw new Error(`Install failed: ${result.error}`);
-    }
-
+    assert(result.success);
     expect(result.success).toBe(true);
     expect(result.version).toBe('1.2.3');
     expect(result.metadata.formula).toBe('test-tool');
@@ -160,10 +116,7 @@ describe('installFromBrew', () => {
 
     const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
 
-    if (!result.success) {
-      throw new Error(`Install failed: ${result.error}`);
-    }
-
+    assert(result.success);
     expect(result.success).toBe(true);
     expect(result.version).toBe('1.2.3');
   });

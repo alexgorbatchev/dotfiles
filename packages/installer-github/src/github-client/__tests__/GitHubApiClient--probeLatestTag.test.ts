@@ -16,9 +16,7 @@ describe('GitHubApiClient', () => {
   });
 
   afterEach(() => {
-    if (fetchSpy) {
-      fetchSpy.mockRestore();
-    }
+    fetchSpy?.mockRestore();
   });
 
   describe('probeLatestTag', () => {

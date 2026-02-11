@@ -1,6 +1,7 @@
 import type { IGitHubRelease } from '@dotfiles/core';
 import { NetworkError, NotFoundError, RateLimitError } from '@dotfiles/downloader';
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
   createGitHubConfigOverride,
@@ -82,13 +83,10 @@ describe('GitHubApiClient', () => {
       try {
         await mocks.apiClient.getLatestRelease('test-owner', 'test-repo');
       } catch (error) {
-        if (error instanceof GitHubApiClientError) {
-          expect(error.message).toContain(`GitHub API rate limit exceeded for ${url}`);
-          expect(error.statusCode).toBe(403);
-          expect(error.originalError).toBeInstanceOf(RateLimitError);
-        } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
-        }
+        assert(error instanceof GitHubApiClientError);
+        expect(error.message).toContain(`GitHub API rate limit exceeded for ${url}`);
+        expect(error.statusCode).toBe(403);
+        expect(error.originalError).toBeInstanceOf(RateLimitError);
       }
     });
 
@@ -101,12 +99,9 @@ describe('GitHubApiClient', () => {
       try {
         await mocks.apiClient.getLatestRelease('test-owner', 'test-repo');
       } catch (error) {
-        if (error instanceof GitHubApiClientError) {
-          expect(error.message).toContain(`Network error while requesting ${url}: Connection lost`);
-          expect(error.originalError).toBeInstanceOf(NetworkError);
-        } else {
-          throw new Error('Expected GitHubApiClientError but got a different error type', { cause: error });
-        }
+        assert(error instanceof GitHubApiClientError);
+        expect(error.message).toContain(`Network error while requesting ${url}: Connection lost`);
+        expect(error.originalError).toBeInstanceOf(NetworkError);
       }
     });
   });

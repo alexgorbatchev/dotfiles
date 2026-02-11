@@ -3,6 +3,7 @@ import { NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories } from '@dotfiles/testing-helpers';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import path from 'node:path';
 import { loadConfig } from '../loadConfig';
 
@@ -25,11 +26,9 @@ describe('loadConfig - TypeScript path substitution', () => {
   });
 
   afterEach(async () => {
-    if (cleanupFn) {
-      await cleanupFn();
-      cleanupFn = undefined;
-      tempDir = undefined;
-    }
+    await cleanupFn?.();
+    cleanupFn = undefined;
+    tempDir = undefined;
   });
 
   it('should resolve targetDir path variable referencing paths.generatedDir', async () => {
@@ -38,14 +37,11 @@ describe('loadConfig - TypeScript path substitution', () => {
     });
     tempDir = testDirs.paths.homeDir;
     cleanupFn = async () => {
-      if (tempDir) {
-        await realFs.rm(tempDir, { recursive: true, force: true });
-      }
+      assert(tempDir);
+      await realFs.rm(tempDir, { recursive: true, force: true });
     };
 
-    if (!tempDir) {
-      throw new Error('tempDir is not defined');
-    }
+    assert(tempDir);
 
     const configPath = path.join(tempDir, 'config.ts');
     const tsContent = `
@@ -78,14 +74,11 @@ describe('loadConfig - TypeScript path substitution', () => {
     });
     tempDir = testDirs.paths.homeDir;
     cleanupFn = async () => {
-      if (tempDir) {
-        await realFs.rm(tempDir, { recursive: true, force: true });
-      }
+      assert(tempDir);
+      await realFs.rm(tempDir, { recursive: true, force: true });
     };
 
-    if (!tempDir) {
-      throw new Error('tempDir is not defined');
-    }
+    assert(tempDir);
 
     const configPath = path.join(tempDir, 'config.ts');
     const tsContent = `
@@ -118,14 +111,11 @@ describe('loadConfig - TypeScript path substitution', () => {
     });
     tempDir = testDirs.paths.homeDir;
     cleanupFn = async () => {
-      if (tempDir) {
-        await realFs.rm(tempDir, { recursive: true, force: true });
-      }
+      assert(tempDir);
+      await realFs.rm(tempDir, { recursive: true, force: true });
     };
 
-    if (!tempDir) {
-      throw new Error('tempDir is not defined');
-    }
+    assert(tempDir);
 
     const configPath = path.join(tempDir, 'config.ts');
     // This mimics test-project/config.ts structure
