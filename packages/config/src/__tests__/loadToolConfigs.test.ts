@@ -103,15 +103,15 @@ describe('IToolConfigContext', () => {
           .version('latest')
           .zsh((shell) =>
             shell.always(/* zsh */ `
-           export TOOL_BINARIES_DIR="${toolBinariesDir}"
-           export HOME_DIR="${ctx.projectConfig.paths.homeDir}"
-           export GENERATED_DIR="${ctx.projectConfig.paths.generatedDir}"
-           
-           # Source tool-specific files
-           if [[ -f "${toolBinariesDir}/shell/key-bindings.zsh" ]]; then
-             source "${toolBinariesDir}/shell/key-bindings.zsh"
-           fi
-         `)
+              export TOOL_BINARIES_DIR="${toolBinariesDir}"
+              export HOME_DIR="${ctx.projectConfig.paths.homeDir}"
+              export GENERATED_DIR="${ctx.projectConfig.paths.generatedDir}"
+
+              # Source tool-specific files
+              if [[ -f "${toolBinariesDir}/shell/key-bindings.zsh" ]]; then
+                source "${toolBinariesDir}/shell/key-bindings.zsh"
+              fi
+            `)
           );
       };
 
@@ -154,15 +154,15 @@ describe('IToolConfigContext', () => {
           .version('latest')
           .zsh((shell) =>
             shell.always(/* zsh */ `
-           # Reference another tool's directory
-           FZF_DIR="${fzfBinariesDir}"
-           if [[ -d "$FZF_DIR" ]]; then
-             export FZF_BASE="$FZF_DIR"
-           fi
-           
-           # Use current tool directory
-           export DEPENDENT_TOOL_CONFIG="${dependentToolBinariesDir}/config.ts"
-         `)
+              # Reference another tool's directory
+              FZF_DIR="${fzfBinariesDir}"
+              if [[ -d "$FZF_DIR" ]]; then
+                export FZF_BASE="$FZF_DIR"
+              fi
+
+              # Use current tool directory
+              export DEPENDENT_TOOL_CONFIG="${dependentToolBinariesDir}/config.ts"
+            `)
           );
       };
 
@@ -287,14 +287,14 @@ describe('IToolConfigContext', () => {
           .version('latest')
           .zsh((shell) =>
             shell.completions('shell/completion.zsh').always(/* zsh */ `
-           export FZF_LIKE_DEFAULT_OPTS="--color=fg+:cyan"
-           
-           # Source key bindings
-           _fzf_like_install_dir="${toolBinariesDir}"
-           if [ -f "$_fzf_like_install_dir/shell/key-bindings.zsh" ]; then
-             source "$_fzf_like_install_dir/shell/key-bindings.zsh"
-           fi
-         `)
+              export FZF_LIKE_DEFAULT_OPTS="--color=fg+:cyan"
+
+              # Source key bindings
+              _fzf_like_install_dir="${toolBinariesDir}"
+              if [ -f "$_fzf_like_install_dir/shell/key-bindings.zsh" ]; then
+                source "$_fzf_like_install_dir/shell/key-bindings.zsh"
+              fi
+            `)
           );
       };
 
@@ -331,13 +331,13 @@ describe('IToolConfigContext', () => {
           .symlink('./config.toml', '~/.config/atuin-like/config.toml')
           .zsh((shell) =>
             shell.always(/* zsh */ `
-           export ATUIN_LIKE_CONFIG_DIR="${toolBinariesDir}"
-           
-           # Generate completions
-           if command -v atuin-like >/dev/null 2>&1; then
-             atuin-like gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_atuin-like" 2>/dev/null || true
-           fi
-         `)
+              export ATUIN_LIKE_CONFIG_DIR="${toolBinariesDir}"
+
+              # Generate completions
+              if command -v atuin-like >/dev/null 2>&1; then
+                atuin-like gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_atuin-like" 2>/dev/null || true
+              fi
+            `)
           );
       };
 

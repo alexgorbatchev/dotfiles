@@ -8,6 +8,7 @@
     "start": "bun run src/server.ts"
   },
   "dependencies": {
+    "@dotfiles/utils": "workspace:*",
     "minimatch": "^10.0.1"
   },
   "devDependencies": {

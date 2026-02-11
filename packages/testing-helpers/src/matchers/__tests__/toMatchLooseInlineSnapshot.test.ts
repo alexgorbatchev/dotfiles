@@ -1,3 +1,4 @@
+import { dedentString } from '@dotfiles/utils';
 import { describe, expect, it } from 'bun:test';
 import '../toMatchLooseInlineSnapshot';
 
@@ -20,11 +21,12 @@ describe('toMatchLooseInlineSnapshot', () => {
 
   describe('whitespace flexibility', () => {
     it('matches with different indentation levels', () => {
-      const actual = `
-  local -a commands=(
-    'install:Install a tool'
-    'generate:Generate files'
-  )`;
+      const actual = dedentString(`
+        local -a commands=(
+          'install:Install a tool'
+          'generate:Generate files'
+        )
+      `);
 
       expect(actual).toMatchLooseInlineSnapshot`
         local -a commands=(
@@ -78,18 +80,18 @@ _dotfiles "$@"`;
 
   describe('multiline content', () => {
     it('matches multiline patterns in larger documents', () => {
-      const document = `
-Header section
-Some preamble text
+      const document = dedentString(`
+        Header section
+        Some preamble text
 
-function example() {
-  const x = 1;
-  const y = 2;
-  return x + y;
-}
+        function example() {
+          const x = 1;
+          const y = 2;
+          return x + y;
+        }
 
-Footer section
-`;
+        Footer section
+      `);
 
       expect(document).toMatchLooseInlineSnapshot`
         function example() {

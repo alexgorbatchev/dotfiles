@@ -1,6 +1,8 @@
 /* oxlint-disable no-console */
 import { join } from 'node:path';
 
+import { dedentString } from '@dotfiles/utils';
+
 import { createProxyServer } from './createProxyServer';
 import type { ProxyConfig } from './types';
 
@@ -34,24 +36,24 @@ function parseArgs(): ProxyConfig {
         config.ttl = value;
       }
     } else if (arg === '--help' || arg === '-h') {
-      console.log(`
-HTTP Caching Proxy
+      console.log(dedentString(`
+        HTTP Caching Proxy
 
-Usage: bun run packages/http-proxy/src/server.ts [options]
+        Usage: bun run packages/http-proxy/src/server.ts [options]
 
-Options:
-  --cache-dir=<path>  Cache directory (default: .tmp/http-proxy-cache)
-  --port=<number>     Server port (default: 3128)
-  --ttl=<ms>          Cache TTL in milliseconds (default: 86400000 = 24h)
-  --help, -h          Show this help
+        Options:
+          --cache-dir=<path>  Cache directory (default: .tmp/http-proxy-cache)
+          --port=<number>     Server port (default: 3128)
+          --ttl=<ms>          Cache TTL in milliseconds (default: 86400000 = 24h)
+          --help, -h          Show this help
 
-Endpoints:
-  POST /cache/clear   Clear cache entries (body: { pattern?: string, patterns?: string[] })
-  GET  /cache/stats   Get cache statistics
+        Endpoints:
+          POST /cache/clear   Clear cache entries (body: { pattern?: string, patterns?: string[] })
+          GET  /cache/stats   Get cache statistics
 
-Example:
-  bun run packages/http-proxy/src/server.ts --port=8080 --cache-dir=/tmp/my-cache
-`);
+        Example:
+          bun run packages/http-proxy/src/server.ts --port=8080 --cache-dir=/tmp/my-cache
+      `));
       process.exit(0);
     }
   }

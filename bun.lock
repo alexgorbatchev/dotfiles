@@ -303,6 +303,7 @@
       "name": "@dotfiles/http-proxy",
       "version": "1.0.0",
       "dependencies": {
+        "@dotfiles/utils": "workspace:*",
         "minimatch": "^10.0.1",
       },
       "devDependencies": {

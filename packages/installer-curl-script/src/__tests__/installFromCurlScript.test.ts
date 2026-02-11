@@ -404,13 +404,13 @@ describe('installFromCurlScript', () => {
     const errorLogs = logger.logs.filter((log) => log['_meta']?.logLevelName === 'ERROR');
     const logMessages = errorLogs.map((log) => String(log[0]));
     expect(logMessages).toMatchInlineSnapshot(`
-[
-  "No binaries were installed. Expected at: /install/dir/tool",
-  "Install script output:",
-  "Installing to /wrong/dir",
-  "Done!",
-  "Warning: something",
-]
-`);
+      [
+        "No binaries were installed. Expected at: /install/dir/tool",
+        "Install script output:",
+        "Installing to /wrong/dir",
+        "Done!",
+        "Warning: something",
+      ]
+    `);
   });
 });

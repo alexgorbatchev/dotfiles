@@ -98,9 +98,7 @@ function renderLabel(item: TreeItemData<ToolTreeData>): ComponentChildren {
           <span class='text-gray-400'>.tool.ts</span>
         </span>
         <span class='flex items-center gap-2'>
-          {item.data.installMethod && (
-            <InstallMethodBadge method={item.data.installMethod} ghCli={item.data.ghCli} />
-          )}
+          {item.data.installMethod && <InstallMethodBadge method={item.data.installMethod} ghCli={item.data.ghCli} />}
           <span class='text-xs text-muted-foreground'>{fileCount} files</span>
         </span>
       </span>

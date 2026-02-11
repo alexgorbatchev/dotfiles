@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { dedentString } from '../dedentString';
 import { dedentTemplate } from '../dedentTemplate';
 
 describe('dedentTemplate', () => {
@@ -96,13 +97,13 @@ describe('dedentTemplate', () => {
   });
 
   test('should handle complex indentation patterns', () => {
-    const template = `
-function main() {
-  if (condition) {
-    {codeBlock}
-  }
-}
-    `;
+    const template = dedentString(`
+      function main() {
+        if (condition) {
+          {codeBlock}
+        }
+      }
+    `);
 
     const values = {
       codeBlock: `console.log("Hello");
@@ -158,11 +159,11 @@ console.log("World");`,
   });
 
   test('should produce properly indented code', () => {
-    const template = `
-function main() {
-  {codeBlock}
-}
-    `;
+    const template = dedentString(`
+      function main() {
+        {codeBlock}
+      }
+    `);
 
     const values = {
       codeBlock: `if (condition) {

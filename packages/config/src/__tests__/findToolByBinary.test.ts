@@ -4,6 +4,7 @@ import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import { NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
+import { dedentString } from '@dotfiles/utils';
 import { afterEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
@@ -251,10 +252,10 @@ describe('loadToolConfigByBinary', () => {
     const binCalls = binaryNames.map((name) => `.bin('${name}')`).join('');
 
     // Use a simpler export that doesn't require external imports
-    const content = `
-export default (install) =>
-  install('manual', { binaryPath: '/usr/bin/${toolName}' })${binCalls};
-`;
+    const content = dedentString(`
+      export default (install) =>
+        install('manual', { binaryPath: '/usr/bin/${toolName}' })${binCalls};
+    `);
 
     await realFs.writeFile(toolFilePath, content);
   }
