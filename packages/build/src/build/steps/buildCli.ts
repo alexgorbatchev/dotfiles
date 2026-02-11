@@ -55,7 +55,8 @@ export async function buildCli(context: IBuildContext): Promise<Bun.BuildOutput>
       outdir: context.paths.outputDir,
       naming: {
         entry: '[name].js',
-        chunk: '[name]-[hash].js',
+        // Use [ext] to preserve correct extension for CSS vs JS chunks
+        chunk: '[name]-[hash].[ext]',
         asset: '[name]-[hash].[ext]',
       },
       minify: true,
