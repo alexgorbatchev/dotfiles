@@ -68,6 +68,7 @@ export async function testBuiltDashboard(context: IBuildContext): Promise<void> 
     await waitForServerReady(TEST_PORT, serverProcess);
     await verifyApiEndpoint(TEST_PORT);
     await verifyHtmlEndpoint(TEST_PORT);
+    await verifyJsChunkEndpoint(TEST_PORT, context.paths.outputDir);
 
     console.log('✅ Dashboard test passed');
   } finally {
@@ -144,5 +145,42 @@ async function verifyHtmlEndpoint(port: number): Promise<void> {
 
   if (!html.includes('Dotfiles Dashboard')) {
     throw new BuildError('Dashboard HTML missing expected title');
+  }
+}
+
+async function verifyJsChunkEndpoint(port: number, outputDir: string): Promise<void> {
+  // Find a dashboard JS chunk file that contains actual JavaScript (not CSS)
+  const glob = new Bun.Glob('dashboard-*.js');
+  let jsChunkFile: string | null = null;
+
+  for await (const file of glob.scan(outputDir)) {
+    // Read first few bytes to check if it's JavaScript (starts with import/export/var/etc)
+    // CSS files will start with @layer, @import, etc.
+    const filePath = `${outputDir}/${file}`;
+    const content = await Bun.file(filePath).text();
+    if (content.startsWith('import') || content.startsWith('export') || content.startsWith('var ') || content.startsWith('const ')) {
+      jsChunkFile = file;
+      break;
+    }
+  }
+
+  if (!jsChunkFile) {
+    throw new BuildError('No dashboard JavaScript chunks found in output directory');
+  }
+
+  const response = await fetch(`http://localhost:${port}/${jsChunkFile}`);
+
+  if (!response.ok) {
+    throw new BuildError(`Dashboard JS chunk ${jsChunkFile} returned status ${response.status}`);
+  }
+
+  const contentType = response.headers.get('Content-Type');
+  if (!contentType?.includes('javascript')) {
+    throw new BuildError(`Dashboard JS chunk ${jsChunkFile} returned wrong content type: ${contentType}`);
+  }
+
+  const content = await response.text();
+  if (content.startsWith('<!DOCTYPE') || content.startsWith('<html')) {
+    throw new BuildError(`Dashboard JS chunk ${jsChunkFile} returned HTML instead of JavaScript`);
   }
 }
