@@ -13,9 +13,7 @@ import {
   printBuildSummary,
   resolveRuntimeDependencies,
   runTypeTests,
-  testBuiltCli,
-  testBuiltDashboard,
-  verifyDistCheckInstall,
+  testPackedBuild,
 } from './steps';
 import type { IBuildContext, IResolvedRuntimeDependencies } from './types';
 
@@ -38,15 +36,15 @@ async function runBuild(context: IBuildContext): Promise<void> {
   // because the prior install used workspace mode
   await installDependenciesInOutputDir(context);
 
-  await verifyDistCheckInstall(context);
-
   enforceCliBundleSizeLimit(context);
   copyDocs(context);
   generateToolTypesFile(context);
 
   await runTypeTests(context);
-  await testBuiltCli(context);
-  await testBuiltDashboard(context);
+
+  // Test from packed npm package to catch missing files in `files` array
+  await testPackedBuild(context);
+
   await cleanupTempFiles(context);
 
   await printBuildSummary(context);

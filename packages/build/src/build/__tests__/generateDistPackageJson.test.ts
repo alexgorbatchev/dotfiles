@@ -148,7 +148,7 @@ describe('generateDistPackageJson', () => {
     expect(content).toContain('  ');
   });
 
-  test('generated package.json includes files array', async () => {
+  test('generated package.json includes files array with all required patterns', async () => {
     const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
     const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
 
@@ -161,6 +161,7 @@ describe('generateDistPackageJson', () => {
     expect(packageJson.files).toContain('*.js');
     expect(packageJson.files).toContain('*.js.map');
     expect(packageJson.files).toContain('*.d.ts');
+    expect(packageJson.files).toContain('*.css');
     expect(packageJson.files).toContain('docs');
   });
 });
