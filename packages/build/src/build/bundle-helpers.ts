@@ -41,7 +41,7 @@ function isBareImportSpecifier(specifier: string): boolean {
  * 2. Externalized packages would require a separate install in .dist/
  * 3. Preact is small enough that bundling doesn't significantly impact CLI size
  */
-const PACKAGES_TO_BUNDLE = new Set(['preact', 'preact-iso']);
+const PACKAGES_TO_BUNDLE = new Set(['preact', 'preact-iso', 'lucide-preact']);
 
 function shouldBundlePackage(specifier: string): boolean {
   // Extract package name from specifier (e.g., 'preact/hooks' -> 'preact')
