@@ -1,6 +1,5 @@
 import { dedentString } from '@dotfiles/utils';
 import { describe, expect, it } from 'bun:test';
-import '../toMatchLooseInlineSnapshot';
 
 describe('toMatchLooseInlineSnapshot', () => {
   describe('basic matching', () => {
