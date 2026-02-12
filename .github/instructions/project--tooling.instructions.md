@@ -11,6 +11,7 @@ The project is using Bun as the main run time.
 
 - Using `tsc` directly is PROHIBITED. Use `bun typecheck` instead.
 - Use `bun fix` and `bun test` before task completion, make sure all issues are addressed.
+- If `bun install` fails with cert issues, that means warp is disabled, STOP and notify the user.
 
 ## Data Validation
 

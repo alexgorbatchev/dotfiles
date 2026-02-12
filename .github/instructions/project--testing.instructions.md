@@ -4,8 +4,8 @@ description: Project testing requirements.
 
 # Project Testing
 
-- `bun test:native [file]` - run a single test file
-- `bun test:all` - run all project tests
+- `bun test:native [file]` - run a one or more test files with the native Bun test runner
+- `bun test:all` - run all project tests in parallel with a custom test runner
 - `bun lint` - run linting
 
 ## Available Testing Helpers
