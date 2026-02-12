@@ -85,6 +85,7 @@ interface Config {
   isWorker: boolean;
   isSequential: boolean;
   isParallel: boolean;
+  isBunExtension: boolean;
   workerCount: number;
 }
 
@@ -93,6 +94,8 @@ function getConfig(): Config {
     isWorker: process.env['BUN_TEST_WORKER'] === '1',
     isSequential: process.env['BUN_TEST_SEQUENTIAL'] === '1',
     isParallel: process.env['BUN_TEST_ALL'] === '1',
+    isBunExtension: process.env['BUN_DEBUG_QUIET_LOGS'] !== undefined &&
+      process.env['VSCODE_CRASH_REPORTER_PROCESS_TYPE'] !== undefined,
     workerCount: parseInt(process.env['BUN_TEST_WORKERS'] || String(cpus().length), 10),
   };
 }
@@ -298,13 +301,13 @@ async function main(): Promise<void> {
 function printUsageAndExit(): never {
   console.error(dedentString(`
     Usage:
-      bun test:all    - run all tests in parallel (doesn't respect arguments)
-      bun test:native - run tests sequentially (respects all original bun test arguments)
+      bun test:all    - much faster, doesn't accept arguments
+      bun test:native - slower, but respects all 'bun test' arguments
   `));
   process.exit(1);
 }
 
-if (initialConfig.isWorker || initialConfig.isSequential) {
+if (initialConfig.isWorker || initialConfig.isSequential || initialConfig.isBunExtension) {
   // Pass through - Bun will run tests normally
 } else if (initialConfig.isParallel) {
   // Main process - orchestrate parallel execution
