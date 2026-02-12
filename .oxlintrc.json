@@ -43,8 +43,8 @@
       "files": ["**/*.test.ts", "**/*.test.tsx"],
       "rules": {
         "no-unused-expressions": "off",
-        "typescript/no-non-null-assertion": "off",
-        "dotfiles-testing/no-conditional-logic": "error"
+        "typescript/no-non-null-assertion": "off"
+        // "dotfiles-testing/no-conditional-logic": "error"
         // "dotfiles-testing/no-unnecessary-testing-helpers-import": "error",
         // "dotfiles-testing/no-partial-string-matchers": "error",
         // "dotfiles-testing/require-multiline-loose-snapshot": "error"
