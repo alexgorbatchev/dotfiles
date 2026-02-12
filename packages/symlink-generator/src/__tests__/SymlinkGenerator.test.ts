@@ -749,4 +749,79 @@ describe('SymlinkGenerator', () => {
       );
     });
   });
+
+  describe('platform-specific symlinks', () => {
+    it('should resolve symlinks defined in platformConfigs for matching platform', async () => {
+      const sourcePath = 'src/config.toml';
+      const targetPath = '~/.config/tool/config.toml';
+      const sourceFullPath = getSourcePath(sourcePath);
+      const targetFullPath = path.join(projectConfig.paths.homeDir, '.config/tool/config.toml');
+
+      // Create tool config with symlinks only in platformConfigs (no base symlinks)
+      const toolConfigWithPlatformSymlinks: ToolConfig = {
+        name: 'platform-tool',
+        binaries: ['platform-tool'],
+        version: '1.0.0',
+        configFilePath: path.join(testDirs.paths.toolConfigsDir, 'platform-tool.tool.ts'),
+        installationMethod: 'brew',
+        installParams: { formula: 'platform-tool' },
+        platformConfigs: [
+          {
+            platforms: Platform.Linux, // Matches systemInfo.platform set in beforeEach
+            config: {
+              symlinks: [{ source: sourcePath, target: targetPath }],
+            },
+          },
+        ],
+      };
+
+      await mockFs.addFiles({ [sourceFullPath]: 'config content' });
+
+      const results = await symlinkGenerator.generate({ 'platform-tool': toolConfigWithPlatformSymlinks });
+
+      expect(await mockFs.fs.exists(targetFullPath)).toBe(true);
+      expect(await mockFs.fs.readlink(targetFullPath)).toBe(sourceFullPath);
+      expect(results).toEqual([
+        {
+          success: true,
+          sourcePath: sourceFullPath,
+          targetPath: targetFullPath,
+          status: 'created',
+        },
+      ]);
+    });
+
+    it('should not process symlinks from platformConfigs for non-matching platform', async () => {
+      const sourcePath = 'src/config.toml';
+      const targetPath = '~/.config/tool/config.toml';
+      const sourceFullPath = getSourcePath(sourcePath);
+      const targetFullPath = path.join(projectConfig.paths.homeDir, '.config/tool/config.toml');
+
+      // Create tool config with symlinks only in platformConfigs for macOS (non-matching)
+      const toolConfigWithPlatformSymlinks: ToolConfig = {
+        name: 'macos-only-tool',
+        binaries: ['macos-tool'],
+        version: '1.0.0',
+        configFilePath: path.join(testDirs.paths.toolConfigsDir, 'macos-tool.tool.ts'),
+        installationMethod: 'brew',
+        installParams: { formula: 'macos-tool', cask: true },
+        platformConfigs: [
+          {
+            platforms: Platform.MacOS, // Does NOT match systemInfo.platform (Linux)
+            config: {
+              symlinks: [{ source: sourcePath, target: targetPath }],
+            },
+          },
+        ],
+      };
+
+      await mockFs.addFiles({ [sourceFullPath]: 'config content' });
+
+      const results = await symlinkGenerator.generate({ 'macos-only-tool': toolConfigWithPlatformSymlinks });
+
+      // Should not create symlink because platform doesn't match
+      expect(await mockFs.fs.exists(targetFullPath)).toBe(false);
+      expect(results).toEqual([]);
+    });
+  });
 });

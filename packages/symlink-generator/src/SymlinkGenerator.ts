@@ -3,7 +3,7 @@ import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
-import { expandToolConfigPath } from '@dotfiles/utils';
+import { expandToolConfigPath, resolvePlatformConfig } from '@dotfiles/utils';
 import path from 'node:path';
 import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from './ISymlinkGenerator';
 import { messages } from './log-messages';
@@ -175,7 +175,12 @@ export class SymlinkGenerator implements ISymlinkGenerator {
 
     for (const toolName in toolConfigs) {
       const toolConfig = toolConfigs[toolName];
-      if (!this.shouldProcessTool(toolConfig, toolName, logger)) {
+      if (!toolConfig) {
+        continue;
+      }
+      // Resolve platform-specific configuration to get symlinks from platformConfigs
+      const resolvedToolConfig = resolvePlatformConfig(toolConfig, this.systemInfo);
+      if (!this.shouldProcessTool(resolvedToolConfig, toolName, logger)) {
         continue;
       }
 
@@ -183,8 +188,8 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
       toolLogger.debug(messages.generate.processingTool(toolName));
 
-      for (const symlinkConfig of toolConfig.symlinks) {
-        const result = await this.processSymlink(toolConfig, symlinkConfig, toolFs, options, toolLogger);
+      for (const symlinkConfig of resolvedToolConfig.symlinks) {
+        const result = await this.processSymlink(resolvedToolConfig, symlinkConfig, toolFs, options, toolLogger);
         results.push(result);
       }
     }
