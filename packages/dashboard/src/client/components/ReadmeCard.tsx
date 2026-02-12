@@ -1,3 +1,4 @@
+// oxlint-disable-next-line import/no-unassigned-import
 import 'github-markdown-css/github-markdown-light.css';
 
 import { BookOpen, ExternalLink } from 'lucide-preact';
