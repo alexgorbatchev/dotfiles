@@ -291,6 +291,12 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         };
         return result;
       }
+
+      // If symlink is correct but was skipped, ensure it's registered in the registry
+      if (targetHandlingResult.status === 'skipped_correct' && toolFs instanceof TrackedFileSystem) {
+        await toolFs.recordExistingSymlink(sourceAbsPath, targetAbsPath);
+      }
+
       const result: SymlinkOperationResult = {
         success: true,
         sourcePath: sourceAbsPath,

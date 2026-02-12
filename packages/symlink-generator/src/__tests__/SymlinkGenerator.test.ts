@@ -1,10 +1,14 @@
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
-import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
+import { createMemFileSystem, type IMemFileSystemReturn, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { RegistryDatabase } from '@dotfiles/registry-database';
+import { FileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { randomUUID } from 'node:crypto';
+import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { IGenerateSymlinksOptions } from '../ISymlinkGenerator';
 import { SymlinkGenerator } from '../SymlinkGenerator';
@@ -822,6 +826,72 @@ describe('SymlinkGenerator', () => {
       // Should not create symlink because platform doesn't match
       expect(await mockFs.fs.exists(targetFullPath)).toBe(false);
       expect(results).toEqual([]);
+    });
+  });
+
+  describe('TrackedFileSystem integration', () => {
+    let registryDatabase: RegistryDatabase;
+    let registry: FileRegistry;
+    let trackedFs: TrackedFileSystem;
+    let dbPath: string;
+
+    beforeEach(async () => {
+      dbPath = path.join('/tmp', `test-symlink-gen-${randomUUID()}.db`);
+      registryDatabase = new RegistryDatabase(logger, dbPath);
+      registry = new FileRegistry(logger, registryDatabase.getConnection());
+
+      const resolvedFs = new ResolvedFileSystem(mockFs.fs, testDirs.paths.homeDir);
+      const context = TrackedFileSystem.createContext('test-tool', 'symlink');
+      trackedFs = new TrackedFileSystem(logger, resolvedFs, registry, context, projectConfig);
+
+      // Recreate SymlinkGenerator with TrackedFileSystem
+      symlinkGenerator = new SymlinkGenerator(logger, trackedFs, projectConfig, systemInfo);
+    });
+
+    afterEach(async () => {
+      await registry.close();
+      registryDatabase.close();
+      try {
+        await unlink(dbPath);
+      } catch {
+        // Ignore cleanup errors
+      }
+    });
+
+    it('should register symlink in registry even when symlink already exists and is correct', async () => {
+      const sourcePath = 'src/config.txt';
+      const targetPath = '.config.txt';
+      const sourceFullPath = getSourcePath(sourcePath);
+      const targetFullPath = getTargetPath(targetPath);
+
+      const toolConfigs = {
+        tool1: createToolConfig([{ source: sourcePath, target: targetPath }]),
+      };
+      await mockFs.addFiles({ [sourceFullPath]: 'content' });
+
+      // First generate run - creates symlink and registers it
+      const results1 = await symlinkGenerator.generate(toolConfigs);
+      expect(results1[0]?.status).toBe('created');
+
+      // Verify symlink is registered
+      const statesAfterFirst = await registry.getFileStatesForTool('tool1');
+      expect(statesAfterFirst).toHaveLength(1);
+      expect(statesAfterFirst[0]?.filePath).toBe(targetFullPath);
+
+      // Clear the registry to simulate fresh state (but symlink still exists on disk)
+      await registry.removeToolOperations('tool1');
+      const statesAfterClear = await registry.getFileStatesForTool('tool1');
+      expect(statesAfterClear).toHaveLength(0);
+
+      // Second generate run - symlink already exists and is correct
+      const results2 = await symlinkGenerator.generate(toolConfigs);
+      expect(results2[0]?.status).toBe('skipped_correct');
+
+      // Verify symlink is re-registered in registry
+      const statesAfterSecond = await registry.getFileStatesForTool('tool1');
+      expect(statesAfterSecond).toHaveLength(1);
+      expect(statesAfterSecond[0]?.filePath).toBe(targetFullPath);
+      expect(statesAfterSecond[0]?.targetPath).toBe(sourceFullPath);
     });
   });
 });

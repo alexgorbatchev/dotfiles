@@ -240,6 +240,29 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     );
   }
 
+  /**
+   * Records an existing symlink in the registry without creating it on disk.
+   * Used when a symlink already exists and is correct, but needs to be tracked.
+   * Skips recording if the symlink is already registered with the same target.
+   *
+   * @param target - The target path the symlink points to.
+   * @param linkPath - The path of the symlink.
+   */
+  async recordExistingSymlink(target: string, linkPath: string): Promise<void> {
+    const resolvedLinkPath = path.resolve(linkPath);
+    const resolvedTarget = path.resolve(target);
+
+    // Check if symlink is already registered with the same target
+    const existingState = await this.registry.getFileState(resolvedLinkPath);
+    if (existingState && existingState.targetPath === resolvedTarget) {
+      // Already registered with correct target, skip
+      return;
+    }
+
+    // Record the symlink operation
+    await this.recordOperation('symlink', linkPath, { targetPath: target });
+  }
+
   async rm(filePath: string, options?: { recursive?: boolean; force?: boolean; }): Promise<void> {
     // If removing recursively, we need to track all files being removed
     if (options?.recursive && (await this.fs.exists(filePath))) {
