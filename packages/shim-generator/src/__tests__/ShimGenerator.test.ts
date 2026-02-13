@@ -1,5 +1,5 @@
 import type { ProjectConfig } from '@dotfiles/config';
-import type { ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
 import {
   createMemFileSystem,
@@ -28,6 +28,7 @@ describe('ShimGenerator', () => {
   let fsMocks: FileSystemSpies;
   let logger: TestLogger;
   let testDirs: ITestDirectories;
+  let systemInfo: ISystemInfo;
 
   beforeEach(async () => {
     const { fs, spies } = await createMemFileSystem({});
@@ -37,6 +38,13 @@ describe('ShimGenerator', () => {
 
     testDirs = await createTestDirectories(logger, fs, { testName: 'shim-generator' });
 
+    systemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: testDirs.paths.homeDir,
+      hostname: 'test-host',
+    };
+
     mockConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
@@ -44,16 +52,11 @@ describe('ShimGenerator', () => {
       filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
       fileSystem: fs,
       logger,
-      systemInfo: {
-        platform: Platform.Linux,
-        arch: Architecture.X86_64,
-        homeDir: testDirs.paths.homeDir,
-        hostname: 'test-host',
-      },
+      systemInfo,
       env: {},
     });
 
-    shimGenerator = new ShimGenerator(logger, fs, mockConfig);
+    shimGenerator = new ShimGenerator(logger, fs, mockConfig, systemInfo);
 
     // Clear all mock calls from the setup phase (createMockProjectConfig writes config file)
     Object.values(fsMocks).forEach((mock) => {
@@ -599,6 +602,70 @@ describe('ShimGenerator', () => {
     });
   });
 
+  describe('platform-specific binaries', () => {
+    const toolName = 'skhd';
+
+    it('should generate shims for binaries defined only in platform-specific config', async () => {
+      // This simulates the case where .bin() is called on the platform builder, not the root builder:
+      // install().platform(Platform.MacOS, (install) =>
+      //   install('brew', { formula: 'koekeishiya/formulae/skhd' }).bin('skhd')
+      // )
+      // In this case, the base config has empty binaries, but the platform config has ['skhd']
+      const toolConfigWithPlatformBinaries: ToolConfig = {
+        name: toolName,
+        version: '1.0.0',
+        binaries: [], // Empty at root level
+        installationMethod: 'manual',
+        installParams: {},
+        platformConfigs: [
+          {
+            platforms: Platform.Linux, // Matches the test's system platform
+            config: {
+              binaries: ['skhd'], // Binary defined only in platform config
+              installationMethod: 'brew',
+              installParams: { formula: 'koekeishiya/formulae/skhd' },
+            },
+          },
+        ],
+      };
+
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'skhd');
+      const result = await shimGenerator.generateForTool(toolName, toolConfigWithPlatformBinaries);
+
+      // This test SHOULD pass but currently FAILS because ShimGenerator
+      // doesn't resolve platform configs before checking binaries
+      expect(result).toEqual([expectedShimPath]);
+      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
+      expect(fsMocks.chmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
+    });
+
+    it('should merge platform binaries with root binaries', async () => {
+      // This simulates the case where both root and platform have binaries
+      const toolConfigWithMixedBinaries: ToolConfig = {
+        name: toolName,
+        version: '1.0.0',
+        binaries: ['root-binary'], // Root level binary
+        installationMethod: 'manual',
+        installParams: {},
+        platformConfigs: [
+          {
+            platforms: Platform.Linux,
+            config: {
+              binaries: ['platform-binary'], // Platform overrides binaries
+            },
+          },
+        ],
+      };
+
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'platform-binary');
+      const result = await shimGenerator.generateForTool(toolName, toolConfigWithMixedBinaries);
+
+      // Platform binaries should replace root binaries after resolution
+      expect(result).toEqual([expectedShimPath]);
+      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('tracking attribution', () => {
     let registry: FileRegistry;
     let registryDatabase: RegistryDatabase;
@@ -635,7 +702,7 @@ describe('ShimGenerator', () => {
       const systemContext = TrackedFileSystem.createContext('system', 'shim');
       const resolvedFs = new ResolvedFileSystem(fileSystem, mockConfig.paths.homeDir);
       const trackedFs = new TrackedFileSystem(logger, resolvedFs, registry, systemContext, mockConfig);
-      const trackedGenerator = new ShimGenerator(logger, trackedFs, mockConfig);
+      const trackedGenerator = new ShimGenerator(logger, trackedFs, mockConfig, systemInfo);
 
       await fileSystem.rmdir(mockConfig.paths.targetDir, { recursive: true }).catch(() => undefined);
 

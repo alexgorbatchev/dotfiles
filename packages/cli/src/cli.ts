@@ -346,7 +346,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   // Create system-context logger for generators that operate at system level
   const systemLogger = parentLogger.getSubLogger({ context: 'system' });
 
-  const shimGenerator = new ShimGenerator(systemLogger, shimTrackedFs, projectConfig);
+  const shimGenerator = new ShimGenerator(systemLogger, shimTrackedFs, projectConfig, systemInfo);
   const shellInitGenerator = new ShellInitGenerator(systemLogger, shellInitTrackedFs, projectConfig);
   const symlinkGenerator = new SymlinkGenerator(systemLogger, symlinkTrackedFs, projectConfig, systemInfo);
   const completionCommandExecutor = new CompletionCommandExecutor(systemLogger, shell);
