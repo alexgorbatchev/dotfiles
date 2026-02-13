@@ -210,11 +210,6 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
 
   return (
     <div class='space-y-4'>
-      {/* Back button */}
-      <Button variant='ghost' size='sm' asChild>
-        <a href='/'>← Back to Home</a>
-      </Button>
-
       {/* Header */}
       <div class='flex items-center justify-between'>
         <div class='flex items-center gap-4'>
