@@ -18,6 +18,7 @@ import { ToolHistory } from '../components/ToolHistory';
 import { ToolSourceCard } from '../components/ToolSourceCard';
 import { FileTree } from '../components/TreeNode';
 import { Button } from '../components/ui/Button';
+import { formatBytes } from '../utils/format';
 import { TitledCard } from '../components/ui/TitledCard';
 import { useFetch } from '../hooks/useFetch';
 import { buildTreeForTool } from '../utils/tree';
@@ -278,6 +279,14 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
               {tool.runtime.installedAt ? new Date(tool.runtime.installedAt).toLocaleDateString() : 'Not installed'}
             </span>
           </div>
+          {tool.binaryDiskSize > 0 && (
+            <div class='flex items-center gap-2'>
+              <span class='text-sm text-muted-foreground w-24'>Binary Size</span>
+              <span class='font-medium'>
+                {formatBytes(tool.binaryDiskSize)}
+              </span>
+            </div>
+          )}
           {tool.config.hostname && (
             <div class='flex items-center gap-2'>
               <span class='text-sm text-muted-foreground w-24'>Hostname</span>
@@ -324,6 +333,9 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
         </div>
       </TitledCard>
 
+      {/* Source Section */}
+      <ToolSourceCard toolName={tool.config.name} />
+
       {/* Platform Configs Section - only shown when platform overrides exist */}
       {tool.config.platformConfigs && tool.config.platformConfigs.length > 0 && (
         <TitledCard title='Platform Configurations' icon={<Layers class='h-4 w-4' />}>
@@ -352,9 +364,6 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
           />
         </TitledCard>
       )}
-
-      {/* Source Section */}
-      <ToolSourceCard toolName={tool.config.name} />
 
       {/* README Section - only for installers with GitHub repos */}
       {tool.config.installParams.repo && (

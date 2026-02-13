@@ -4,6 +4,7 @@ import { type JSX } from 'preact';
 
 import type { IFileTreeEntry, IToolConfigsTree, IToolDetail } from '../../shared/types';
 import { useFetch } from '../hooks/useFetch';
+import { formatBytes } from '../utils/format';
 import { InstallMethodBadge } from './InstallMethodBadge';
 import { TitledCard } from './ui/TitledCard';
 import { Tree, type TreeItemData } from './ui/Tree';
@@ -19,6 +20,7 @@ interface ToolTreeData {
   ghCli?: boolean;
   fileCount?: number;
   status?: 'installed' | 'not-installed' | 'error';
+  binaryDiskSize?: number;
 }
 
 /**
@@ -30,6 +32,7 @@ function fileTreeToTreeItems(
   toolMethodMap: Map<string, string>,
   toolGhCliMap: Map<string, boolean>,
   toolFileCountMap: Map<string, number>,
+  toolBinarySizeMap: Map<string, number>,
 ): TreeItemData<ToolTreeData>[] {
   return entries.map((entry) => {
     if (entry.type === 'directory') {
@@ -38,7 +41,7 @@ function fileTreeToTreeItems(
         label: entry.name,
         icon: <FolderOpen class='h-4 w-4 text-amber-300' />,
         children: entry.children
-          ? fileTreeToTreeItems(entry.children, toolStatusMap, toolMethodMap, toolGhCliMap, toolFileCountMap)
+          ? fileTreeToTreeItems(entry.children, toolStatusMap, toolMethodMap, toolGhCliMap, toolFileCountMap, toolBinarySizeMap)
           : [],
       };
     }
@@ -64,6 +67,7 @@ function fileTreeToTreeItems(
         ghCli: entry.toolName ? toolGhCliMap.get(entry.toolName) : undefined,
         fileCount: entry.toolName ? toolFileCountMap.get(entry.toolName) : undefined,
         status,
+        binaryDiskSize: entry.toolName ? toolBinarySizeMap.get(entry.toolName) : undefined,
       },
     };
   });
@@ -85,12 +89,13 @@ function getStatusDotColor(status?: 'installed' | 'not-installed' | 'error'): st
 
 /**
  * Custom label renderer that shows .tool.ts extension in gray for files,
- * and adds install method badge with file count, right-aligned.
+ * and adds install method badge with file count and binary size, right-aligned.
  */
 function renderLabel(item: TreeItemData<ToolTreeData>): ComponentChildren {
   if (item.data?.isFile && item.label.endsWith('.tool.ts')) {
     const baseName = item.label.replace(/\.tool\.ts$/, '');
     const fileCount = item.data.fileCount ?? 0;
+    const binarySize = item.data.binaryDiskSize ?? 0;
     return (
       <span class='flex items-center justify-between flex-1'>
         <span>
@@ -100,6 +105,7 @@ function renderLabel(item: TreeItemData<ToolTreeData>): ComponentChildren {
         <span class='flex items-center gap-2'>
           {item.data.installMethod && <InstallMethodBadge method={item.data.installMethod} ghCli={item.data.ghCli} />}
           <span class='text-xs text-muted-foreground'>{fileCount} files</span>
+          {binarySize > 0 && <span class='text-xs font-bold text-orange-400'>{formatBytes(binarySize)}</span>}
         </span>
       </span>
     );
@@ -121,11 +127,13 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
   const toolMethodMap = new Map<string, string>();
   const toolGhCliMap = new Map<string, boolean>();
   const toolFileCountMap = new Map<string, number>();
+  const toolBinarySizeMap = new Map<string, number>();
   for (const tool of tools) {
     toolStatusMap.set(tool.config.name, tool.runtime.status);
     toolMethodMap.set(tool.config.name, tool.config.installationMethod);
     toolGhCliMap.set(tool.config.name, tool.config.installParams.ghCli ?? false);
     toolFileCountMap.set(tool.config.name, tool.files.length);
+    toolBinarySizeMap.set(tool.config.name, tool.binaryDiskSize);
   }
 
   if (loading) {
@@ -137,7 +145,7 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
   }
 
   const treeItems = treeData
-    ? fileTreeToTreeItems(treeData.entries, toolStatusMap, toolMethodMap, toolGhCliMap, toolFileCountMap)
+    ? fileTreeToTreeItems(treeData.entries, toolStatusMap, toolMethodMap, toolGhCliMap, toolFileCountMap, toolBinarySizeMap)
     : [];
 
   if (treeItems.length === 0) {

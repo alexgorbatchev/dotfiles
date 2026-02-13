@@ -32,17 +32,14 @@ export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
     );
   }
 
-  const fileName = data.filePath.split('/').pop() ?? 'tool.ts';
-
   return (
     <TitledCard
       title='Source'
       icon={<Code class='h-4 w-4' />}
       action={<ExternalLinkButton href={`vscode://file/${data.filePath}`}>Open in VSCode</ExternalLinkButton>}
     >
-      <div class='text-xs text-muted-foreground mb-2 font-mono'>{fileName}</div>
-      <div class='overflow-x-auto rounded-md border border-border'>
-        <ShikiHighlighter language='typescript' theme='github-dark'>
+      <div class='overflow-x-auto rounded-md border border-border [&_pre]:!bg-muted/25'>
+        <ShikiHighlighter language='typescript' theme='github-light'>
           {data.content.trim()}
         </ShikiHighlighter>
       </div>

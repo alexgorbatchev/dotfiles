@@ -104,6 +104,8 @@ export interface IToolDetail {
   runtime: IToolRuntimeState;
   /** Files tracked by the file registry */
   files: IFileState[];
+  /** Binary disk size in bytes for this tool */
+  binaryDiskSize: number;
 }
 
 /**
@@ -322,12 +324,14 @@ export function toToolDetail(
   installations: Map<string, IToolInstallationRecord>,
   files: IFileState[],
   _systemInfo: ISystemInfo,
+  binaryDiskSize: number,
 ): IToolDetail {
   // Serialize the original config (not resolved) to preserve platformConfigs for visualization
   return {
     config: serializeToolConfig(config),
     runtime: getToolRuntimeState(config.name, installations),
     files,
+    binaryDiskSize,
   };
 }
 

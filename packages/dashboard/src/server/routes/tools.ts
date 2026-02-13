@@ -6,7 +6,7 @@ import type { IApiResponse, IToolDetail } from '../../shared/types';
 import { toToolDetail } from '../../shared/types';
 import { messages } from '../log-messages';
 import type { IDashboardServices } from '../types';
-import { getToolConfigs } from './helpers';
+import { getToolBinaryDiskSize, getToolConfigs } from './helpers';
 
 /**
  * Enriches file states with actual file sizes from disk when sizeBytes is missing.
@@ -55,7 +55,8 @@ export async function getTools(
       Object.values(toolConfigs).map(async (config) => {
         const files = await services.fileRegistry.getFileStatesForTool(config.name);
         const enrichedFiles = await enrichFileSizesFromDisk(files, services.fs);
-        return toToolDetail(config, installationsMap, enrichedFiles, services.systemInfo);
+        const binaryDiskSize = await getToolBinaryDiskSize(services, config.name);
+        return toToolDetail(config, installationsMap, enrichedFiles, services.systemInfo, binaryDiskSize);
       }),
     );
 

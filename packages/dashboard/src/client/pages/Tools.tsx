@@ -13,10 +13,7 @@ export function Tools(): JSX.Element {
   const toolsList = tools || [];
   const totalFiles = toolsList.reduce((sum, t) => sum + (t.files?.length || 0), 0);
   const installedCount = toolsList.filter((t) => t.runtime.status === 'installed').length;
-  const totalBinarySize = toolsList.reduce(
-    (sum, t) => sum + (t.files?.reduce((fileSum, f) => fileSum + (f.sizeBytes || 0), 0) || 0),
-    0,
-  );
+  const binariesDiskSize = toolsList.reduce((sum, t) => sum + (t.binaryDiskSize || 0), 0);
 
   if (loading) {
     return (
@@ -33,7 +30,7 @@ export function Tools(): JSX.Element {
         <StatCard value={toolsList.length} label='Total Tools' color='text-blue-400' />
         <StatCard value={installedCount} label='Installed' color='text-green-400' />
         <StatCard value={totalFiles} label='Files Tracked' color='text-purple-400' />
-        <StatCard value={formatBytes(totalBinarySize)} label='Binary Size' color='text-orange-400' />
+        <StatCard value={formatBytes(binariesDiskSize)} label='Binary Size' color='text-orange-400' />
       </div>
 
       {/* Tool files and recently added - same row */}

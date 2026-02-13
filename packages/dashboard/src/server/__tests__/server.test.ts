@@ -481,6 +481,86 @@ describe('Dashboard HTTP Server', () => {
       expect(toolCheck.status).toBe('pass');
       expect(toolCheck.message).toContain('1 tool');
     });
+
+    test('health check does not include unused binaries when none exist', async () => {
+      const response = await fetch(`${baseUrl}/api/health`);
+      const data = await response.json();
+
+      const checkNames = data.data.checks.map((c: { name: string; }) => c.name);
+      expect(checkNames).not.toContain('Unused Binaries');
+    });
+
+    test('health check shows warning when unused binaries exist', async () => {
+      const binariesDir = services.projectConfig.paths.binariesDir;
+      const toolDir = `${binariesDir}/fzf`;
+      const currentVersion = `${toolDir}/v0.55.0`;
+      const oldVersion = `${toolDir}/v0.54.0`;
+
+      // Create both versions
+      await fs.mkdir(currentVersion, { recursive: true });
+      await fs.mkdir(oldVersion, { recursive: true });
+      await fs.writeFile(`${currentVersion}/fzf`, '#!/bin/sh\necho fzf');
+      await fs.writeFile(`${oldVersion}/fzf`, '#!/bin/sh\necho fzf old');
+      // Current only points to new version
+      await fs.symlink('v0.55.0', `${toolDir}/current`);
+
+      const response = await fetch(`${baseUrl}/api/health`);
+      const data = await response.json();
+
+      const unusedCheck = data.data.checks.find((c: { name: string; }) => c.name === 'Unused Binaries');
+      expect(unusedCheck.status).toBe('warn');
+      expect(unusedCheck.message).toBe('');
+      expect(unusedCheck.details).toEqual([oldVersion]);
+    });
+
+    test('health check reports multiple unused binaries', async () => {
+      const binariesDir = services.projectConfig.paths.binariesDir;
+      const toolDir = `${binariesDir}/fzf`;
+      const currentVersion = `${toolDir}/v0.55.0`;
+      const oldVersion1 = `${toolDir}/v0.54.0`;
+      const oldVersion2 = `${toolDir}/v0.53.0`;
+
+      // Create all versions
+      await fs.mkdir(currentVersion, { recursive: true });
+      await fs.mkdir(oldVersion1, { recursive: true });
+      await fs.mkdir(oldVersion2, { recursive: true });
+      // Current only points to new version
+      await fs.symlink('v0.55.0', `${toolDir}/current`);
+
+      const response = await fetch(`${baseUrl}/api/health`);
+      const data = await response.json();
+
+      const unusedCheck = data.data.checks.find((c: { name: string; }) => c.name === 'Unused Binaries');
+      expect(unusedCheck.status).toBe('warn');
+      expect(unusedCheck.message).toBe('');
+      expect(unusedCheck.details).toHaveLength(2);
+      expect(unusedCheck.details).toContain(oldVersion1);
+      expect(unusedCheck.details).toContain(oldVersion2);
+    });
+
+    test('health check reports unused binaries across multiple tools', async () => {
+      const binariesDir = services.projectConfig.paths.binariesDir;
+
+      // Tool 1: fzf with old version
+      const fzfDir = `${binariesDir}/fzf`;
+      await fs.mkdir(`${fzfDir}/v0.55.0`, { recursive: true });
+      await fs.mkdir(`${fzfDir}/v0.54.0`, { recursive: true });
+      await fs.symlink('v0.55.0', `${fzfDir}/current`);
+
+      // Tool 2: bat with old version
+      const batDir = `${binariesDir}/bat`;
+      await fs.mkdir(`${batDir}/v0.25.0`, { recursive: true });
+      await fs.mkdir(`${batDir}/v0.24.0`, { recursive: true });
+      await fs.symlink('v0.25.0', `${batDir}/current`);
+
+      const response = await fetch(`${baseUrl}/api/health`);
+      const data = await response.json();
+
+      const unusedCheck = data.data.checks.find((c: { name: string; }) => c.name === 'Unused Binaries');
+      expect(unusedCheck.status).toBe('warn');
+      expect(unusedCheck.message).toBe('');
+      expect(unusedCheck.details).toHaveLength(2);
+    });
   });
 
   describe('Edge cases', () => {
