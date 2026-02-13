@@ -87,3 +87,7 @@ bun test
 # Run only UI tests
 bun test packages/dashboard/src/client
 ```
+
+## package.json changes
+
+When adding or removing dashboard dependencies, you must verify that `bun compile` still works.
