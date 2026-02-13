@@ -2,6 +2,7 @@ import type { IConfigService } from '@dotfiles/config';
 import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
+import type { IInstaller } from '@dotfiles/installer';
 import type { IFileRegistry } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { IVersionChecker } from '@dotfiles/version-checker';
@@ -18,6 +19,7 @@ export interface IDashboardServices {
   toolInstallationRegistry: IToolInstallationRegistry;
   versionChecker: IVersionChecker;
   downloader: IDownloader;
+  installer: IInstaller;
 }
 
 /**

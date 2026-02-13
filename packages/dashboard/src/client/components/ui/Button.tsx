@@ -38,6 +38,7 @@ type ButtonProps =
   & VariantProps<typeof buttonVariants>
   & {
     asChild?: boolean;
+    disabled?: boolean;
   };
 
 function Button({ class: className, variant, size, ...props }: ButtonProps): JSX.Element {

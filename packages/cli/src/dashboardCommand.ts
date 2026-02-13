@@ -75,6 +75,7 @@ export function registerDashboardCommand(
         toolInstallationRegistry: services.toolInstallationRegistry,
         versionChecker: services.versionChecker,
         downloader: services.downloader,
+        installer: services.installer,
       };
 
       const server = createServer(logger, dashboardServices, { port, host });

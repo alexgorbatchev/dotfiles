@@ -1,6 +1,7 @@
 import type { IConfigService } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IResolvedFileSystem } from '@dotfiles/file-system';
+import type { IInstaller } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import { FileRegistry } from '@dotfiles/registry/file';
@@ -57,6 +58,9 @@ describe('Dashboard HTTP Server', () => {
         download: async () => undefined,
         downloadToFile: async () => {},
       },
+      installer: {
+        install: async () => ({ success: true as const, version: '1.0.0', installationMethod: 'github-release' }),
+      } as unknown as IInstaller,
     };
 
     // Use random port to avoid conflicts

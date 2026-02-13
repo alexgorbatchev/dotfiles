@@ -1,10 +1,12 @@
 import type { IConfigService } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IResolvedFileSystem } from '@dotfiles/file-system';
+import type { IInstaller } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import { FileRegistry } from '@dotfiles/registry/file';
 import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
+import { mock } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import {
   createMockConfigService,
@@ -26,6 +28,7 @@ export interface TestContext {
   fs: IResolvedFileSystem;
   toolConfigs: Record<string, ToolConfig>;
   configService: IConfigService;
+  mockInstaller: { install: ReturnType<typeof mock>; };
 }
 
 export async function setupTestContext(): Promise<TestContext> {
@@ -42,6 +45,14 @@ export async function setupTestContext(): Promise<TestContext> {
   const toolConfigs: Record<string, ToolConfig> = {};
   const configService = createMockConfigService(toolConfigs);
 
+  const mockInstaller = {
+    install: mock(async () => ({
+      success: true as const,
+      version: '1.0.0',
+      installationMethod: 'github-release',
+    })),
+  };
+
   const services: IDashboardServices = {
     projectConfig: createMockProjectConfig(),
     fs,
@@ -55,6 +66,7 @@ export async function setupTestContext(): Promise<TestContext> {
       download: async () => undefined,
       downloadToFile: async () => {},
     },
+    installer: mockInstaller as unknown as IInstaller,
   };
 
   const api = createApiRoutes(logger, services);
@@ -69,6 +81,7 @@ export async function setupTestContext(): Promise<TestContext> {
     fs,
     toolConfigs,
     configService,
+    mockInstaller,
   };
 }
 

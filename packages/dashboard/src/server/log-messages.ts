@@ -6,4 +6,6 @@ export const messages = {
   serverStopped: () => createSafeLogMessage('Dashboard server stopped'),
   requestReceived: (method: string, path: string) => createSafeLogMessage(`${method} ${path}`),
   apiError: (endpoint: string) => createSafeLogMessage(`API error in ${endpoint}`),
+  installFailed: (error: string) => createSafeLogMessage(`Installation failed: ${error}`),
+  installSucceeded: () => createSafeLogMessage('Installation succeeded'),
 };
