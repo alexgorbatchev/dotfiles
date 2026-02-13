@@ -1,9 +1,9 @@
-import { Check, Code, Copy, ExternalLink } from 'lucide-preact';
+import { Code } from 'lucide-preact';
 import { type JSX } from 'preact';
-import { useCallback, useState } from 'preact/hooks';
 import { ShikiHighlighter } from 'react-shiki';
 
 import { useFetch } from '../hooks/useFetch';
+import { ExternalLinkButton } from './ui/ExternalLinkButton';
 import { TitledCard } from './ui/TitledCard';
 
 interface ToolSourceCardProps {
@@ -15,15 +15,6 @@ export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
     `/tools/${encodeURIComponent(toolName)}/source`,
     [toolName],
   );
-
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(async () => {
-    if (!data?.content) return;
-    await navigator.clipboard.writeText(data.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [data?.content]);
 
   if (loading) {
     return (
@@ -47,26 +38,7 @@ export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
     <TitledCard
       title='Source'
       icon={<Code class='h-4 w-4' />}
-      action={
-        <div class='flex items-center gap-2'>
-          <button
-            onClick={handleCopy}
-            class='text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1 transition-colors'
-            title='Copy source code'
-          >
-            {copied ?
-              <Check class='h-4 w-4 text-green-500' /> :
-              <Copy class='h-4 w-4' />}
-          </button>
-          <a
-            href={`vscode://file/${data.filePath}`}
-            class='text-sm text-blue-500 hover:underline inline-flex items-center gap-1'
-            title='Open in VS Code'
-          >
-            <ExternalLink class='h-3 w-3' />
-          </a>
-        </div>
-      }
+      action={<ExternalLinkButton href={`vscode://file/${data.filePath}`}>Open in VSCode</ExternalLinkButton>}
     >
       <div class='text-xs text-muted-foreground mb-2 font-mono'>{fileName}</div>
       <div class='overflow-x-auto rounded-md border border-border'>

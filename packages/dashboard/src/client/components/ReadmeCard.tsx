@@ -8,6 +8,7 @@ import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 
 import { useFetch } from '../hooks/useFetch';
+import { ExternalLinkButton } from './ui/ExternalLinkButton';
 import { TitledCard } from './ui/TitledCard';
 
 interface ReadmeCardProps {
@@ -91,16 +92,7 @@ export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
     <TitledCard
       title='README'
       icon={<BookOpen class='h-4 w-4' />}
-      action={
-        <a
-          href={`https://github.com/${repo}#readme`}
-          target='_blank'
-          rel='noopener noreferrer'
-          class='text-sm text-blue-500 hover:underline inline-flex items-center gap-1'
-        >
-          View on GitHub <ExternalLink class='h-3 w-3' />
-        </a>
-      }
+      action={<ExternalLinkButton href={`https://github.com/${repo}#readme`}>View on GitHub</ExternalLinkButton>}
     >
       <div class='markdown-body p-4 text-lg'>
         <Markdown
