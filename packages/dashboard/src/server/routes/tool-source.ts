@@ -2,7 +2,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { IApiResponse } from '../../shared/types';
 import { messages } from '../log-messages';
 import type { IDashboardServices } from '../types';
-import { getToolConfigs } from './shared';
+import { getToolConfigs } from './helpers';
 
 /**
  * GET /api/tools/:name/source - Get tool configuration source code

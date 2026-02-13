@@ -4,7 +4,7 @@ import type { IApiResponse, IToolDetail } from '../../shared/types';
 import { toToolDetail } from '../../shared/types';
 import { messages } from '../log-messages';
 import type { IDashboardServices } from '../types';
-import { getToolConfigs } from './shared';
+import { getToolConfigs } from './helpers';
 
 /**
  * GET /api/tools - List all tools with full details

@@ -2,7 +2,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { IApiResponse, IInstallToolRequest, IInstallToolResponse } from '../../shared/types';
 import { messages } from '../log-messages';
 import type { IDashboardServices } from '../types';
-import { getToolConfigs } from './shared';
+import { getToolConfigs } from './helpers';
 
 /**
  * POST /api/tools/:name/install - Install or reinstall a tool

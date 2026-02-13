@@ -3,7 +3,7 @@ import type { IApiResponse, IRecentTools } from '../../shared/types';
 import { formatRelativeTime, formatTimestamp } from '../../shared/types';
 import { messages } from '../log-messages';
 import type { IDashboardServices } from '../types';
-import { getGitFirstCommitDate } from './shared';
+import { getGitFirstCommitDate } from './helpers';
 
 /**
  * GET /api/recent-tools - Get recently added tool config files
