@@ -207,14 +207,15 @@ export async function fetchGitHubRelease(
     // GitHub's /releases/latest endpoint excludes prereleases by design
     if (includePrerelease) {
       const releases = await githubApiClient.getAllReleases(owner, repoName, { perPage: 1, includePrerelease: true });
-      if (releases.length === 0) {
+      const firstRelease = releases[0];
+      if (!firstRelease) {
         const result: OperationResult<IGitHubRelease> = {
           success: false,
           error: `Failed to fetch latest release for ${repo}`,
         };
         return result;
       }
-      const result: OperationResult<IGitHubRelease> = { success: true, data: releases[0] };
+      const result: OperationResult<IGitHubRelease> = { success: true, data: firstRelease };
       return result;
     }
 
