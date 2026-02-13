@@ -96,6 +96,22 @@ export function createDashboardServer(
             return Response.json(result);
           },
 
+          '/api/tools/:name/source': async (req: Request & { params: { name: string; }; }) => {
+            const toolName = decodeURIComponent(req.params.name);
+            const result = await api.getToolSource(toolName);
+            return Response.json(result);
+          },
+
+          '/api/tools/:name/install': async (req: Request & { params: { name: string; }; }) => {
+            if (req.method !== 'POST') {
+              return Response.json({ success: false, error: 'Method not allowed' }, { status: 405 });
+            }
+            const toolName = decodeURIComponent(req.params.name);
+            const body = await req.json().catch(() => ({}));
+            const result = await api.installTool(toolName, body);
+            return Response.json(result);
+          },
+
           '/api/recent-tools': async (req) => {
             const url = new URL(req.url);
             const limitParam = url.searchParams.get('limit');

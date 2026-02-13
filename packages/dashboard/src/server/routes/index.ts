@@ -1,4 +1,5 @@
 import type { TsLogger } from '@dotfiles/logger';
+import type { IInstallToolRequest } from '../../shared/types';
 import type { IDashboardServices } from '../types';
 import { getActivity } from './activity';
 import { getConfig } from './config';
@@ -9,7 +10,9 @@ import { getShellIntegration } from './shell-integration';
 import { getStats } from './stats';
 import { getToolConfigsTree } from './tool-configs-tree';
 import { getToolHistory } from './tool-history';
+import { installTool } from './tool-install';
 import { getToolReadme } from './tool-readme';
+import { getToolSource } from './tool-source';
 import { getTools } from './tools';
 
 /**
@@ -28,7 +31,9 @@ export function createApiRoutes(parentLogger: TsLogger, services: IDashboardServ
     getActivity: (limit?: number) => getActivity(logger, services, limit),
     getToolHistory: (toolName: string) => getToolHistory(logger, services, toolName),
     getToolReadme: (toolName: string) => getToolReadme(logger, services, toolName),
+    getToolSource: (toolName: string) => getToolSource(logger, services, toolName),
     getRecentTools: (limit?: number) => getRecentTools(logger, services, limit),
+    installTool: (toolName: string, request: IInstallToolRequest) => installTool(logger, services, toolName, request),
   };
 }
 

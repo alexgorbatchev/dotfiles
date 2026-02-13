@@ -15,6 +15,7 @@ import { InstallMethodBadge } from '../components/InstallMethodBadge';
 import { ReadmeCard } from '../components/ReadmeCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { ToolHistory } from '../components/ToolHistory';
+import { ToolSourceCard } from '../components/ToolSourceCard';
 import { FileTree } from '../components/TreeNode';
 import { Button } from '../components/ui/Button';
 import { TitledCard } from '../components/ui/TitledCard';
@@ -352,6 +353,9 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
           dotfilesDir={history?.dotfilesDir ?? ''}
         />
       </TitledCard>
+
+      {/* Source Section */}
+      <ToolSourceCard toolName={tool.config.name} />
 
       {/* README Section - only for installers with GitHub repos */}
       {tool.config.installParams.repo && (
