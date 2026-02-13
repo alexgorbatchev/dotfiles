@@ -1,8 +1,16 @@
-import { File, History, Info } from 'lucide-preact';
+import { Download, File, History, Info, Layers, RefreshCw } from 'lucide-preact';
 import { type JSX } from 'preact';
-import { useMemo } from 'preact/hooks';
+import { useCallback, useMemo, useState } from 'preact/hooks';
 
-import type { ISerializableToolConfig, IToolDetail, IToolHistory } from '../../shared/types';
+import type {
+  IInstallToolRequest,
+  IInstallToolResponse,
+  ISerializablePlatformConfigEntry,
+  ISerializableToolConfig,
+  IToolDetail,
+  IToolHistory,
+} from '../../shared/types';
+import { postApi } from '../api';
 import { InstallMethodBadge } from '../components/InstallMethodBadge';
 import { ReadmeCard } from '../components/ReadmeCard';
 import { StatusBadge } from '../components/StatusBadge';
@@ -46,6 +54,79 @@ function getSourceDisplay(config: ISerializableToolConfig): JSX.Element | null {
   );
 }
 
+function PlatformConfigEntry({ entry }: { entry: ISerializablePlatformConfigEntry; }): JSX.Element {
+  const platformLabel = entry.platforms.join(', ');
+  const archLabel = entry.architectures ? ` (${entry.architectures.join(', ')})` : '';
+
+  return (
+    <div class='border border-border rounded-md p-3 space-y-2'>
+      <div class='flex items-center gap-2'>
+        <span class='text-sm font-medium text-foreground'>
+          {platformLabel}
+          {archLabel}
+        </span>
+      </div>
+      <div class='pl-2 space-y-1.5 text-sm'>
+        {entry.installationMethod && (
+          <div class='flex items-center gap-2'>
+            <span class='text-muted-foreground'>Method:</span>
+            <InstallMethodBadge method={entry.installationMethod} ghCli={entry.installParams?.ghCli} />
+          </div>
+        )}
+        {entry.installParams?.repo && (
+          <div class='flex items-center gap-2'>
+            <span class='text-muted-foreground'>Repo:</span>
+            <a
+              href={`https://github.com/${entry.installParams.repo}`}
+              target='_blank'
+              rel='noopener noreferrer'
+              class='text-blue-500 hover:underline'
+            >
+              {entry.installParams.repo}
+            </a>
+          </div>
+        )}
+        {entry.installParams?.formula && (
+          <div class='flex items-center gap-2'>
+            <span class='text-muted-foreground'>Formula:</span>
+            <span class='font-mono'>{entry.installParams.formula}</span>
+          </div>
+        )}
+        {entry.installParams?.crate && (
+          <div class='flex items-center gap-2'>
+            <span class='text-muted-foreground'>Crate:</span>
+            <span class='font-mono'>{entry.installParams.crate}</span>
+          </div>
+        )}
+        {entry.installParams?.url && (
+          <div class='flex items-center gap-2'>
+            <span class='text-muted-foreground'>URL:</span>
+            <span class='font-mono text-xs break-all'>{entry.installParams.url}</span>
+          </div>
+        )}
+        {entry.binaries && entry.binaries.length > 0 && (
+          <div class='flex items-start gap-2'>
+            <span class='text-muted-foreground'>Binaries:</span>
+            <span class='font-mono'>{entry.binaries.map((b) => typeof b === 'string' ? b : b.name).join(', ')}</span>
+          </div>
+        )}
+        {entry.symlinks && entry.symlinks.length > 0 && (
+          <div class='flex flex-col gap-1'>
+            <span class='text-muted-foreground'>Symlinks:</span>
+            <div class='pl-2'>
+              {entry.symlinks.map((s, i) => (
+                <div key={i} class='font-mono text-xs'>
+                  {s.source} → {s.target}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface ToolDetailProps {
   params: { name: string; };
 }
@@ -57,6 +138,10 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
     `/tools/${encodeURIComponent(toolName)}/history`,
     [toolName],
   );
+
+  const [installing, setInstalling] = useState(false);
+  const [installError, setInstallError] = useState<string | null>(null);
+  const [installSuccess, setInstallSuccess] = useState<string | null>(null);
 
   const tool = tools?.find((t) => t.config.name === toolName) || null;
   const loading = toolsLoading || historyLoading;
@@ -72,6 +157,34 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
     () => findDependentTools(tools ?? [], currentToolBinaries),
     [tools, currentToolBinaries],
   );
+
+  const handleInstall = useCallback(async (force: boolean) => {
+    setInstalling(true);
+    setInstallError(null);
+    setInstallSuccess(null);
+
+    try {
+      const result = await postApi<IInstallToolResponse, IInstallToolRequest>(
+        `/tools/${encodeURIComponent(toolName)}/install`,
+        { force },
+      );
+
+      if (result.installed) {
+        const message = result.alreadyInstalled
+          ? `Already installed (${result.version})`
+          : `Installed ${result.version}`;
+        setInstallSuccess(message);
+        // Reload the page to refresh tool status
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setInstallError(result.error ?? 'Installation failed');
+      }
+    } catch (err) {
+      setInstallError(err instanceof Error ? err.message : 'Installation failed');
+    } finally {
+      setInstalling(false);
+    }
+  }, [toolName]);
 
   if (loading) {
     return (
@@ -102,10 +215,49 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       </Button>
 
       {/* Header */}
-      <div class='flex items-center gap-4'>
-        <h1 class='text-2xl font-bold'>{tool.config.name}</h1>
-        <StatusBadge status={tool.runtime.status} />
+      <div class='flex items-center justify-between'>
+        <div class='flex items-center gap-4'>
+          <h1 class='text-2xl font-bold'>{tool.config.name}</h1>
+          <StatusBadge status={tool.runtime.status} />
+        </div>
+        <div class='flex items-center gap-2'>
+          {tool.runtime.status === 'installed' ?
+            (
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => handleInstall(true)}
+                disabled={installing}
+              >
+                <RefreshCw class={`h-4 w-4 ${installing ? 'animate-spin' : ''}`} />
+                {installing ? 'Installing...' : 'Re-install'}
+              </Button>
+            ) :
+            (
+              <Button
+                variant='default'
+                size='sm'
+                onClick={() => handleInstall(false)}
+                disabled={installing}
+              >
+                <Download class='h-4 w-4' />
+                {installing ? 'Installing...' : 'Install'}
+              </Button>
+            )}
+        </div>
       </div>
+
+      {/* Install status messages */}
+      {installError && (
+        <div class='bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded-md text-sm'>
+          {installError}
+        </div>
+      )}
+      {installSuccess && (
+        <div class='bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 px-4 py-2 rounded-md text-sm'>
+          {installSuccess}
+        </div>
+      )}
 
       {/* Overview Section */}
       <TitledCard title='Overview' icon={<Info class='h-4 w-4' />}>
@@ -175,6 +327,15 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
           )}
         </div>
       </TitledCard>
+
+      {/* Platform Configs Section - only shown when platform overrides exist */}
+      {tool.config.platformConfigs && tool.config.platformConfigs.length > 0 && (
+        <TitledCard title='Platform Configurations' icon={<Layers class='h-4 w-4' />}>
+          <div class='space-y-3'>
+            {tool.config.platformConfigs.map((entry, i) => <PlatformConfigEntry key={i} entry={entry} />)}
+          </div>
+        </TitledCard>
+      )}
 
       {/* Files Section */}
       <TitledCard title='Files' icon={<File class='h-4 w-4' />}>
