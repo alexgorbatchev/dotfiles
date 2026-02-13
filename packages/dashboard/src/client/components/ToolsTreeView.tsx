@@ -41,7 +41,14 @@ function fileTreeToTreeItems(
         label: entry.name,
         icon: <FolderOpen class='h-4 w-4 text-amber-300' />,
         children: entry.children
-          ? fileTreeToTreeItems(entry.children, toolStatusMap, toolMethodMap, toolGhCliMap, toolFileCountMap, toolBinarySizeMap)
+          ? fileTreeToTreeItems(
+            entry.children,
+            toolStatusMap,
+            toolMethodMap,
+            toolGhCliMap,
+            toolFileCountMap,
+            toolBinarySizeMap,
+          )
           : [],
       };
     }
@@ -145,7 +152,14 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
   }
 
   const treeItems = treeData
-    ? fileTreeToTreeItems(treeData.entries, toolStatusMap, toolMethodMap, toolGhCliMap, toolFileCountMap, toolBinarySizeMap)
+    ? fileTreeToTreeItems(
+      treeData.entries,
+      toolStatusMap,
+      toolMethodMap,
+      toolGhCliMap,
+      toolFileCountMap,
+      toolBinarySizeMap,
+    )
     : [];
 
   if (treeItems.length === 0) {

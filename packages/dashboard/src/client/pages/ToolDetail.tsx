@@ -18,9 +18,9 @@ import { ToolHistory } from '../components/ToolHistory';
 import { ToolSourceCard } from '../components/ToolSourceCard';
 import { FileTree } from '../components/TreeNode';
 import { Button } from '../components/ui/Button';
-import { formatBytes } from '../utils/format';
 import { TitledCard } from '../components/ui/TitledCard';
 import { useFetch } from '../hooks/useFetch';
+import { formatBytes } from '../utils/format';
 import { buildTreeForTool } from '../utils/tree';
 import {
   buildBinaryToToolMap,
