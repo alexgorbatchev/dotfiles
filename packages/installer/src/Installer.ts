@@ -14,7 +14,7 @@ import type {
 import { Platform } from '@dotfiles/core';
 import { createToolConfigContext } from '@dotfiles/core';
 import type { IFileSystem, IResolvedFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
+import { createSafeLogMessage, type TsLogger } from '@dotfiles/logger';
 import type { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
@@ -723,7 +723,7 @@ export class Installer implements IInstaller {
 
         // Log the error message when installation fails
         if (!result.success && result.error) {
-          logger.error(messages.outcome.installFailed(resolvedToolConfig.installationMethod), result.error);
+          logger.error(createSafeLogMessage(result.error));
         }
 
         if (result.success) {
@@ -767,7 +767,7 @@ export class Installer implements IInstaller {
           error: error instanceof Error ? error.message : String(error),
           installationMethod: resolvedToolConfig.installationMethod,
         };
-        logger.error(messages.outcome.installFailed(resolvedToolConfig.installationMethod), result.error);
+        logger.error(createSafeLogMessage(result.error));
         return result;
       }
       // No finally block needed - we don't modify process.env, so no cleanup required.
@@ -778,7 +778,7 @@ export class Installer implements IInstaller {
         error: error instanceof Error ? error.message : String(error),
         installationMethod: resolvedToolConfig.installationMethod,
       };
-      logger.error(messages.outcome.installFailed(resolvedToolConfig.installationMethod), errorResult.error);
+      logger.error(createSafeLogMessage(errorResult.error));
       return errorResult;
     }
   }

@@ -87,7 +87,7 @@ describe('Installer - install (orchestrator)', () => {
 
     // Verify error was logged
     setup.logger.expect(['ERROR'], ['Installer', 'install'], [MOCK_TOOL_NAME], [
-      'Installation failed via github-release',
+      'Test error',
     ]);
 
     installSpy.mockRestore();
@@ -109,7 +109,7 @@ describe('Installer - install (orchestrator)', () => {
 
     // Verify error was logged with the error message
     setup.logger.expect(['ERROR'], ['Installer', 'install'], [MOCK_TOOL_NAME], [
-      'Installation failed via github-release',
+      'Failed to fetch latest release for owner/repo',
     ]);
 
     installSpy.mockRestore();
