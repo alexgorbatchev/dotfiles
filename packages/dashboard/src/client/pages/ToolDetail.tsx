@@ -338,21 +338,25 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
         </TitledCard>
       )}
 
-      {/* Files Section */}
-      <TitledCard title='Files' icon={<File class='h-4 w-4' />}>
-        {(tool.files?.length || 0) > 0 ?
-          <FileTree nodes={fileRoots} /> :
-          <div class='text-muted-foreground text-center py-4'>No files tracked</div>}
-      </TitledCard>
+      {/* Files Section - only shown when tool is installed */}
+      {tool.runtime.status === 'installed' && (
+        <TitledCard title='Files' icon={<File class='h-4 w-4' />}>
+          {(tool.files?.length || 0) > 0 ?
+            <FileTree nodes={fileRoots} /> :
+            <div class='text-muted-foreground text-center py-4'>No files tracked</div>}
+        </TitledCard>
+      )}
 
-      {/* History Section */}
-      <TitledCard title='History' icon={<History class='h-4 w-4' />}>
-        <ToolHistory
-          entries={history?.entries ?? []}
-          installedAt={history?.installedAt ?? null}
-          dotfilesDir={history?.dotfilesDir ?? ''}
-        />
-      </TitledCard>
+      {/* History Section - only shown when tool is installed */}
+      {tool.runtime.status === 'installed' && (
+        <TitledCard title='History' icon={<History class='h-4 w-4' />}>
+          <ToolHistory
+            entries={history?.entries ?? []}
+            installedAt={history?.installedAt ?? null}
+            dotfilesDir={history?.dotfilesDir ?? ''}
+          />
+        </TitledCard>
+      )}
 
       {/* Source Section */}
       <ToolSourceCard toolName={tool.config.name} />
