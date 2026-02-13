@@ -28,6 +28,7 @@ function createTool(
       hasUpdate: false,
     },
     files: [],
+    binaryDiskSize: 0,
   };
 }
 

@@ -32,6 +32,7 @@ function createMockToolDetail(
       hasUpdate: false,
     },
     files: [],
+    binaryDiskSize: 0,
   };
 }
 

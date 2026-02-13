@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
 import { createApiRoutes } from './routes';
@@ -15,6 +18,38 @@ import clientApp from '../client/dashboard.html';
 const PACKAGE_DIR = import.meta.dir;
 const IS_DEV = process.env.NODE_ENV === 'development';
 const IS_RELOAD = IS_DEV && process.env['DOTFILES_IS_RELOAD'] === '1';
+
+/**
+ * WORKAROUND: Bun HTMLBundle bug - certain JS chunks (especially those starting
+ * with "// @bun" CJS interop helpers) are served with Content-Type: text/html
+ * instead of text/javascript. This causes browser errors.
+ * Bug: https://github.com/oven-sh/bun/issues/23431
+ * TODO: Remove this workaround once the Bun bug is fixed
+ *
+ * Generate explicit routes for all JS files in the directory to ensure
+ * they are served with the correct Content-Type.
+ */
+function generateJsFileRoutes(dir: string): Record<string, () => Response> {
+  const routes: Record<string, () => Response> = {};
+
+  try {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      if (file.endsWith('.js')) {
+        const filePath = path.join(dir, file);
+        routes[`/${file}`] = () => {
+          return new Response(Bun.file(filePath), {
+            headers: { 'Content-Type': 'text/javascript' },
+          });
+        };
+      }
+    }
+  } catch {
+    // Ignore errors (e.g., in dev mode where chunks might not exist on disk)
+  }
+
+  return routes;
+}
 
 /**
  * Creates and returns a dashboard server instance.
@@ -41,11 +76,17 @@ export function createDashboardServer(
         process.chdir(PACKAGE_DIR);
       }
 
+      // Generate JS file routes AFTER chdir (in production) so we scan the correct directory
+      const jsRoutes = IS_DEV ? {} : generateJsFileRoutes(process.cwd());
+
       server = Bun.serve({
         port: options.port,
         hostname: options.host,
         development: IS_DEV,
         routes: {
+          // JS file routes first (workaround for Bun HTMLBundle Content-Type bug)
+          ...jsRoutes,
+
           '/api/tools': async () => {
             const result = await api.getTools();
             return Response.json(result);
