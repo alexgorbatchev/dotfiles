@@ -3,7 +3,7 @@ import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { InstallResult } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
-import { exitCli } from '@dotfiles/utils';
+import { exitCli, resolvePlatformConfig } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type {
   ICommandCompletionMeta,
@@ -207,7 +207,12 @@ async function executeInstallCommandAction(
 
   const { toolConfig, toolName } = loadResult;
 
-  if (isConfigurationOnlyToolConfig(toolConfig)) {
+  // Resolve platform-specific configuration before checking if it's configuration-only.
+  // Tools like skhd may define installation only in platform-specific configs, so we need
+  // to resolve the platform config first to determine if there are actual installation steps.
+  const resolvedToolConfig = resolvePlatformConfig(toolConfig, systemInfo);
+
+  if (isConfigurationOnlyToolConfig(resolvedToolConfig)) {
     if (!combinedOptions.shimMode) {
       logger.info(messages.toolInstallSkippedConfigurationOnly(toolName));
     }

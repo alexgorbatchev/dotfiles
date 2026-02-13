@@ -229,4 +229,30 @@ describe('installCommand', () => {
       shimMode: false,
     });
   });
+
+  test('should install tools with installation defined only in platform-specific config', async () => {
+    // This simulates tools like skhd that define installation only in platform configs:
+    // install().platform(Platform.MacOS, (install) =>
+    //   install('brew', { formula: 'koekeishiya/formulae/skhd' }).bin('skhd')
+    // )
+    // The base config appears as manual with no installParams/binaries
+    const install = createInstallFunction(testLogger, 'platform-only-tool');
+    const platformOnlyToolConfig = install()
+      .platform(
+        Platform.Linux,
+        (platformInstall) => platformInstall('brew', { formula: 'test/formula' }).bin('platform-only-tool'),
+      )
+      .build();
+
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(platformOnlyToolConfig);
+
+    await program.parseAsync(['install', 'platform-only-tool'], { from: 'user' });
+
+    // The installer SHOULD be called because platform config has installation steps
+    expect(mockInstaller.install).toHaveBeenCalledWith(
+      'platform-only-tool',
+      platformOnlyToolConfig,
+      expect.objectContaining({ force: false }),
+    );
+  });
 });
