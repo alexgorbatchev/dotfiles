@@ -5,7 +5,7 @@ import { getActivity } from './activity';
 import { getConfig } from './config';
 import { getHealth } from './health';
 import { getRecentTools } from './recent-tools';
-import { clearToolConfigsCache } from './shared';
+import { clearGitFirstCommitDatesCache, clearToolConfigsCache } from './shared';
 import { getShellIntegration } from './shell-integration';
 import { getStats } from './stats';
 import { getToolConfigsTree } from './tool-configs-tree';
@@ -39,5 +39,5 @@ export function createApiRoutes(parentLogger: TsLogger, services: IDashboardServ
 
 export type ApiRoutes = ReturnType<typeof createApiRoutes>;
 
-// Export cache clearing function for testing
-export { clearToolConfigsCache };
+// Export cache clearing functions for testing
+export { clearGitFirstCommitDatesCache, clearToolConfigsCache };
