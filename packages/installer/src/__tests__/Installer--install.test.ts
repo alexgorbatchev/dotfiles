@@ -1,6 +1,7 @@
 import type { IInstallContext, PlatformConfigEntry, ToolConfig } from '@dotfiles/core';
 import { Platform } from '@dotfiles/core';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import assert from 'node:assert';
 import path from 'node:path';
 import {
   createGithubReleaseToolConfig,
@@ -70,7 +71,7 @@ describe('Installer - install (orchestrator)', () => {
     installSpy.mockRestore();
   });
 
-  it('should handle errors during installation', async () => {
+  it('should handle errors during installation and log the error', async () => {
     const toolConfig = createGithubReleaseToolConfig();
 
     const error = new Error('Test error');
@@ -83,6 +84,33 @@ describe('Installer - install (orchestrator)', () => {
       error: 'Test error',
       installationMethod: 'github-release',
     });
+
+    // Verify error was logged
+    setup.logger.expect(['ERROR'], ['Installer', 'install'], [MOCK_TOOL_NAME], [
+      'Installation failed via github-release',
+    ]);
+
+    installSpy.mockRestore();
+  });
+
+  it('should log error when plugin returns failed result', async () => {
+    const toolConfig = createGithubReleaseToolConfig();
+    const errorMessage = 'Failed to fetch latest release for owner/repo';
+
+    const installSpy = spyOn(setup.pluginRegistry, 'install').mockResolvedValue({
+      success: false,
+      error: errorMessage,
+    });
+
+    const result = await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
+
+    assert(!result.success);
+    expect(result.error).toBe(errorMessage);
+
+    // Verify error was logged with the error message
+    setup.logger.expect(['ERROR'], ['Installer', 'install'], [MOCK_TOOL_NAME], [
+      'Installation failed via github-release',
+    ]);
 
     installSpy.mockRestore();
   });

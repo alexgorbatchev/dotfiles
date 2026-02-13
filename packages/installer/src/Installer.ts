@@ -721,6 +721,11 @@ export class Installer implements IInstaller {
           }
         }
 
+        // Log the error message when installation fails
+        if (!result.success && result.error) {
+          logger.error(messages.outcome.installFailed(resolvedToolConfig.installationMethod), result.error);
+        }
+
         if (result.success) {
           const binaryPaths: string[] = 'binaryPaths' in result && Array.isArray(result.binaryPaths)
             ? result.binaryPaths
@@ -762,6 +767,7 @@ export class Installer implements IInstaller {
           error: error instanceof Error ? error.message : String(error),
           installationMethod: resolvedToolConfig.installationMethod,
         };
+        logger.error(messages.outcome.installFailed(resolvedToolConfig.installationMethod), result.error);
         return result;
       }
       // No finally block needed - we don't modify process.env, so no cleanup required.
