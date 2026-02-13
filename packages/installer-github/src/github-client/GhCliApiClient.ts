@@ -493,4 +493,57 @@ export class GhCliApiClient implements IGitHubApiClient {
       return null;
     }
   }
+
+  /**
+   * Downloads a release asset using gh release download.
+   * This enables downloading from private repositories using gh CLI authentication.
+   *
+   * @param owner The owner of the repository.
+   * @param repo The name of the repository (without owner).
+   * @param tag The release tag.
+   * @param assetName The name of the asset to download.
+   * @param destinationPath The full path where the asset should be saved.
+   */
+  async downloadAsset(
+    owner: string,
+    repo: string,
+    tag: string,
+    assetName: string,
+    destinationPath: string,
+  ): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'downloadAsset' });
+    logger.debug(messages.ghCli.downloadingAsset(assetName, `${owner}/${repo}`, tag));
+
+    // Extract directory from destination path
+    const destinationDir = destinationPath.substring(0, destinationPath.lastIndexOf('/'));
+
+    // Build gh release download command
+    // --pattern matches the specific asset name
+    // --dir specifies the output directory
+    // --clobber overwrites if file exists
+    const args = ['release', 'download', tag];
+    args.push('--repo', `${owner}/${repo}`);
+    args.push('--pattern', assetName);
+    args.push('--dir', destinationDir);
+    args.push('--clobber');
+
+    // Add hostname if not default github.com
+    if (this.hostname !== 'github.com') {
+      // gh release download doesn't have --hostname, but the repo can include the host
+      // For now, default gh CLI uses the authenticated host
+    }
+
+    const command = ['gh', ...args].join(' ');
+    const result = await this.shell(command).quiet().noThrow();
+
+    if (result.code !== 0) {
+      logger.debug(messages.ghCli.downloadFailed(assetName, result.code));
+      throw new GitHubApiClientError(
+        `gh release download failed for ${assetName}: ${result.stderr.trim() || `exit code ${result.code}`}`,
+        undefined,
+      );
+    }
+
+    logger.debug(messages.ghCli.downloadComplete(assetName));
+  }
 }

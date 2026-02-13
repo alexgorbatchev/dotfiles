@@ -58,6 +58,7 @@ Select the most appropriate method based on your investigation. Prefer official,
 - **`github-release`**: best for tools with prebuilt binaries on GitHub.
   - Guide: [GitHub Release Installation Guide](<root>/docs/installation/github-release.md)
   - Use `ghCli: true` to fetch releases via `gh` CLI instead of direct API access (useful for GitHub Enterprise or when `GITHUB_TOKEN` isn't configured)
+  - Use `prerelease: true` to include prereleases when fetching latest (needed for repos that only publish prerelease versions)
 
 - **`brew`**: use if the tool is officially available on Homebrew.
   - Guide: [Homebrew Installation Guide](<root>/docs/installation/homebrew.md)

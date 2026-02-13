@@ -313,4 +313,61 @@ describe('GhCliApiClient', () => {
       expect(mockShell.getExecutedCommands()).toHaveLength(1);
     });
   });
+
+  describe('downloadAsset', () => {
+    it('should download asset using gh release download command', async () => {
+      const projectConfig = await createTestProjectConfig();
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
+
+      mockShell.mockNextResponse(createSuccessResponse({}));
+
+      await client.downloadAsset(
+        'test-owner',
+        'test-repo',
+        'v1.0.0',
+        'test-asset.tar.gz',
+        '/tmp/downloads/test-asset.tar.gz',
+      );
+
+      const commands = mockShell.getExecutedCommands();
+      expect(commands).toHaveLength(1);
+      expect(commands[0]).toBe(
+        'gh release download v1.0.0 --repo test-owner/test-repo --pattern test-asset.tar.gz --dir /tmp/downloads --clobber',
+      );
+    });
+
+    it('should throw GitHubApiClientError on download failure', async () => {
+      const projectConfig = await createTestProjectConfig();
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
+
+      mockShell.mockNextResponse(createErrorResponse('release not found', 1));
+
+      await expect(
+        client.downloadAsset(
+          'test-owner',
+          'test-repo',
+          'v1.0.0',
+          'test-asset.tar.gz',
+          '/tmp/downloads/test-asset.tar.gz',
+        ),
+      ).rejects.toThrow(GitHubApiClientError);
+    });
+
+    it('should include stderr message in error when download fails', async () => {
+      const projectConfig = await createTestProjectConfig();
+      const client = new GhCliApiClient(logger, projectConfig, mockShell);
+
+      mockShell.mockNextResponse(createErrorResponse('no release found with tag v1.0.0', 1));
+
+      await expect(
+        client.downloadAsset(
+          'test-owner',
+          'test-repo',
+          'v1.0.0',
+          'test-asset.tar.gz',
+          '/tmp/downloads/test-asset.tar.gz',
+        ),
+      ).rejects.toThrow('no release found with tag v1.0.0');
+    });
+  });
 });

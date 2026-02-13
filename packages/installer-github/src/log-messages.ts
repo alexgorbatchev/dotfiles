@@ -21,6 +21,9 @@ export const messages = {
   downloadUrlError: (rawUrl: string, hasCustomHost: boolean) =>
     createSafeLogMessage(`Download URL construction failed: Raw: "${rawUrl}", hasCustomHost=${hasCustomHost}`),
   downloadingAsset: (downloadUrl: string) => createSafeLogMessage(`Downloading asset: ${downloadUrl}`),
+  downloadingViaGhCli: (assetName: string) =>
+    createSafeLogMessage(`Downloading ${assetName} via gh release download (authenticated)`),
+  downloadingViaHttp: (assetName: string) => createSafeLogMessage(`Downloading ${assetName} via HTTP`),
   extractingArchive: (assetName: string) => createSafeLogMessage(`Extracting archive: ${assetName}`),
   archiveExtracted: (fileCount: number, executableCount: number) =>
     createSafeLogMessage(`Archive extracted. fileCount=${fileCount}, executableCount=${executableCount}`),

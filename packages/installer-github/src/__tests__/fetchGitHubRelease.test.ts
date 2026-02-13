@@ -40,7 +40,7 @@ describe('fetchGitHubRelease', () => {
 
   describe('invalid repo format', () => {
     it('should return error for invalid repo format', async () => {
-      const result = await fetchGitHubRelease('invalid-repo', '1.0.0', mockGitHubApiClient, logger);
+      const result = await fetchGitHubRelease('invalid-repo', '1.0.0', false, mockGitHubApiClient, logger);
 
       expect(result.success).toBe(false);
       assert(!result.success);
@@ -53,7 +53,7 @@ describe('fetchGitHubRelease', () => {
       const mockRelease = createMockRelease('v1.0.0');
       mockGitHubApiClient.getLatestRelease = mock(async () => mockRelease);
 
-      const result = await fetchGitHubRelease('owner/repo', 'latest', mockGitHubApiClient, logger);
+      const result = await fetchGitHubRelease('owner/repo', 'latest', false, mockGitHubApiClient, logger);
 
       expect(result.success).toBe(true);
       assert(result.success);
@@ -63,7 +63,29 @@ describe('fetchGitHubRelease', () => {
     it('should return error when latest release is not found', async () => {
       mockGitHubApiClient.getLatestRelease = mock(async () => null);
 
-      const result = await fetchGitHubRelease('owner/repo', 'latest', mockGitHubApiClient, logger);
+      const result = await fetchGitHubRelease('owner/repo', 'latest', false, mockGitHubApiClient, logger);
+
+      expect(result.success).toBe(false);
+      assert(!result.success);
+      expect(result.error).toContain('Failed to fetch latest release');
+    });
+
+    it('should fetch prerelease when includePrerelease is true', async () => {
+      const mockPrerelease = createMockRelease('v2.0.0-beta.1');
+      mockPrerelease.prerelease = true;
+      mockGitHubApiClient.getAllReleases = mock(async () => [mockPrerelease]);
+
+      const result = await fetchGitHubRelease('owner/repo', 'latest', true, mockGitHubApiClient, logger);
+
+      expect(result.success).toBe(true);
+      assert(result.success);
+      expect(result.data.tag_name).toBe('v2.0.0-beta.1');
+    });
+
+    it('should return error when no prereleases found and includePrerelease is true', async () => {
+      mockGitHubApiClient.getAllReleases = mock(async () => []);
+
+      const result = await fetchGitHubRelease('owner/repo', 'latest', true, mockGitHubApiClient, logger);
 
       expect(result.success).toBe(false);
       assert(!result.success);
@@ -76,7 +98,7 @@ describe('fetchGitHubRelease', () => {
       const mockRelease = createMockRelease('v2.23.0');
       mockGitHubApiClient.getReleaseByTag = mock(async () => mockRelease);
 
-      const result = await fetchGitHubRelease('owner/repo', 'v2.23.0', mockGitHubApiClient, logger);
+      const result = await fetchGitHubRelease('owner/repo', 'v2.23.0', false, mockGitHubApiClient, logger);
 
       expect(result.success).toBe(true);
       assert(result.success);
@@ -98,7 +120,7 @@ describe('fetchGitHubRelease', () => {
       mockGitHubApiClient.getReleaseByTag = getReleaseByTagMock;
       mockGitHubApiClient.probeLatestTag = mock(async () => 'v2.24.0');
 
-      const result = await fetchGitHubRelease('owner/repo', '2.23.0', mockGitHubApiClient, logger);
+      const result = await fetchGitHubRelease('owner/repo', '2.23.0', false, mockGitHubApiClient, logger);
 
       expect(result.success).toBe(true);
       assert(result.success);
@@ -124,7 +146,7 @@ describe('fetchGitHubRelease', () => {
       mockGitHubApiClient.getReleaseByTag = getReleaseByTagMock;
       mockGitHubApiClient.probeLatestTag = mock(async () => 'jq-1.8.1');
 
-      const result = await fetchGitHubRelease('jqlang/jq', '1.7.0', mockGitHubApiClient, logger);
+      const result = await fetchGitHubRelease('jqlang/jq', '1.7.0', false, mockGitHubApiClient, logger);
 
       expect(result.success).toBe(true);
       assert(result.success);
@@ -143,7 +165,7 @@ describe('fetchGitHubRelease', () => {
       mockGitHubApiClient.getReleaseByTag = getReleaseByTagMock;
       mockGitHubApiClient.probeLatestTag = mock(async () => '15.1.0');
 
-      const result = await fetchGitHubRelease('BurntSushi/ripgrep', 'v15.0.0', mockGitHubApiClient, logger);
+      const result = await fetchGitHubRelease('BurntSushi/ripgrep', 'v15.0.0', false, mockGitHubApiClient, logger);
 
       expect(result.success).toBe(true);
       assert(result.success);
@@ -157,7 +179,7 @@ describe('fetchGitHubRelease', () => {
       mockGitHubApiClient.probeLatestTag = mock(async () => null);
       mockGitHubApiClient.getLatestReleaseTags = mock(async () => ['v2.24.0', 'v2.23.0', 'v2.22.0']);
 
-      const result = await fetchGitHubRelease('owner/repo', 'invalid-tag', mockGitHubApiClient, logger);
+      const result = await fetchGitHubRelease('owner/repo', 'invalid-tag', false, mockGitHubApiClient, logger);
 
       expect(result.success).toBe(false);
       assert(!result.success);
@@ -176,7 +198,7 @@ describe('fetchGitHubRelease', () => {
       mockGitHubApiClient.probeLatestTag = mock(async () => null);
       mockGitHubApiClient.getLatestReleaseTags = mock(async () => []);
 
-      const result = await fetchGitHubRelease('owner/repo', 'invalid-tag', mockGitHubApiClient, logger);
+      const result = await fetchGitHubRelease('owner/repo', 'invalid-tag', false, mockGitHubApiClient, logger);
 
       expect(result.success).toBe(false);
       // Should show error about no release tags
@@ -190,7 +212,7 @@ describe('fetchGitHubRelease', () => {
       mockGitHubApiClient.probeLatestTag = mock(async () => null);
       mockGitHubApiClient.getLatestReleaseTags = mock(async () => ['v1.0.0']);
 
-      const result = await fetchGitHubRelease('owner/repo', '2.0.0', mockGitHubApiClient, logger);
+      const result = await fetchGitHubRelease('owner/repo', '2.0.0', false, mockGitHubApiClient, logger);
 
       expect(result.success).toBe(false);
     });
@@ -201,7 +223,7 @@ describe('fetchGitHubRelease', () => {
       mockGitHubApiClient.probeLatestTag = mock(async () => 'v1.0.0');
       mockGitHubApiClient.getLatestReleaseTags = mock(async () => ['v1.0.0', 'v0.9.0']);
 
-      const result = await fetchGitHubRelease('owner/repo', '2.0.0', mockGitHubApiClient, logger);
+      const result = await fetchGitHubRelease('owner/repo', '2.0.0', false, mockGitHubApiClient, logger);
 
       expect(result.success).toBe(false);
       assert(!result.success);

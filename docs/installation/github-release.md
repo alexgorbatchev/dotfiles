@@ -18,7 +18,7 @@ export default defineTool((install) => install('github-release', { repo: 'junegu
 | `assetPattern`      | Glob pattern to match release assets                   |
 | `assetSelector`     | Custom function to select the correct asset            |
 | `version`           | Specific version (e.g., `'v1.2.3'`)                    |
-| `includePrerelease` | Include pre-releases when searching                    |
+| `prerelease`        | Include prereleases when fetching latest (default: false) |
 | `githubHost`        | Custom GitHub API host for Enterprise                  |
 | `ghCli`             | Use `gh` CLI for API requests instead of fetch         |
 | `env`               | Environment variables (static or dynamic function)     |
@@ -63,6 +63,17 @@ Use the `gh` CLI for API requests instead of fetch. Useful when working behind p
 install('github-release', {
   repo: 'owner/tool',
   ghCli: true,
+}).bin('tool');
+```
+
+### Including Prereleases
+
+By default, GitHub's "latest" excludes prereleases. Use `prerelease: true` for repos that only publish prerelease versions:
+
+```typescript
+install('github-release', {
+  repo: 'owner/nightly-only-tool',
+  prerelease: true,
 }).bin('tool');
 ```
 

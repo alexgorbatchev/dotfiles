@@ -32,6 +32,7 @@ The `install('github-release', params)` function accepts the following parameter
   - TypeScript only: a real `RegExp` value (e.g. `/^bun-.*\.zip$/`)
 - **assetSelector** (optional): Custom function for advanced asset selection logic
 - **ghCli** (optional): Use `gh` CLI for GitHub API requests instead of fetch. Useful when working behind corporate proxies or leveraging existing `gh` authentication.
+- **prerelease** (optional): Include prerelease versions when fetching latest. Set to `true` for repos that only publish prereleases (default: `false`).
 - **env** (optional): Environment variables for the installation process
 - **hooks** (optional): Lifecycle hooks (`beforeInstall`, `afterDownload`, `afterExtract`, `afterInstall`)
 
@@ -79,6 +80,19 @@ export default defineTool((install, ctx) =>
     repo: 'junegunn/fzf',
     ghCli: true,
   }).bin('fzf')
+);
+```
+
+#### Including Prereleases
+
+For repositories that only publish prerelease versions (e.g., nightly builds):
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/nightly-tool',
+    prerelease: true,
+  }).bin('tool')
 );
 ```
 

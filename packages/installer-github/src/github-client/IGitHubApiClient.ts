@@ -73,4 +73,25 @@ export interface IGitHubApiClient {
    * @returns A promise that resolves to an array of release tag names.
    */
   getLatestReleaseTags(owner: string, repo: string, count?: number): Promise<string[]>;
+
+  /**
+   * Downloads a release asset to a local path.
+   * Optional method - only implemented by clients that support authenticated downloads
+   * (e.g., gh CLI for private repos).
+   *
+   * @param owner The owner of the repository.
+   * @param repo The name of the repository.
+   * @param tag The release tag.
+   * @param assetName The name of the asset to download.
+   * @param destinationPath The local file path to save the asset.
+   * @returns A promise that resolves when download is complete.
+   * @throws Error if download fails.
+   */
+  downloadAsset?(
+    owner: string,
+    repo: string,
+    tag: string,
+    assetName: string,
+    destinationPath: string,
+  ): Promise<void>;
 }

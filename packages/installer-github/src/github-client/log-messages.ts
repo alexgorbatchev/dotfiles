@@ -16,6 +16,11 @@ export const messages = {
     commandFailed: (exitCode: number) => createSafeLogMessage(`gh cli command failed with exit code ${exitCode}`),
     parseError: (endpoint: string) => createSafeLogMessage(`Failed to parse gh api response for ${endpoint}`),
     notAvailable: () => createSafeLogMessage('gh cli is not available or not authenticated'),
+    downloadingAsset: (assetName: string, repo: string, tag: string) =>
+      createSafeLogMessage(`Downloading ${assetName} from ${repo}@${tag} via gh release download`),
+    downloadComplete: (assetName: string) => createSafeLogMessage(`Downloaded ${assetName} via gh cli`),
+    downloadFailed: (assetName: string, exitCode: number) =>
+      createSafeLogMessage(`gh release download failed for ${assetName} with exit code ${exitCode}`),
   } satisfies SafeLogMessageMap,
   cache: {
     enabled: (ttlMs: number) => createSafeLogMessage(`GitHub API cache enabled with TTL ${ttlMs} ms`),

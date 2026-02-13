@@ -110,6 +110,21 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
    * ```
    */
   ghCli: z.boolean().optional(),
+  /**
+   * When true, includes prerelease versions when fetching the latest release.
+   * By default, GitHub's `/releases/latest` endpoint excludes prereleases.
+   * Set this to `true` for repositories that only publish prerelease versions.
+   *
+   * @default false
+   * @example
+   * ```typescript
+   * install('github-release', {
+   *   repo: 'owner/repo-with-only-prereleases',
+   *   prerelease: true,
+   * }).bin('tool')
+   * ```
+   */
+  prerelease: z.boolean().optional(),
 });
 
 /**
@@ -140,4 +155,8 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
    * When true, uses the `gh` CLI for GitHub API requests instead of direct fetch.
    */
   ghCli?: boolean;
+  /**
+   * When true, includes prerelease versions when fetching the latest release.
+   */
+  prerelease?: boolean;
 }

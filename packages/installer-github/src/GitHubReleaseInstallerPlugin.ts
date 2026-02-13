@@ -153,7 +153,13 @@ export class GitHubReleaseInstallerPlugin implements
       const version: string = toolConfig.version || 'latest';
 
       // Fetch release information from GitHub API
-      const releaseResult = await fetchGitHubRelease(params.repo, version, this.getApiClient(toolConfig), logger);
+      const releaseResult = await fetchGitHubRelease(
+        params.repo,
+        version,
+        params.prerelease ?? false,
+        this.getApiClient(toolConfig),
+        logger,
+      );
 
       if (!releaseResult.success) {
         logger.debug(messages.versionResolutionFailed(toolName, releaseResult.error));

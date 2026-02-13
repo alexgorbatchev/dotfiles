@@ -67,8 +67,18 @@ export async function installFromGitHubRelease(
   const repo = params.repo;
   const version = params.version || 'latest';
 
+  // Parse owner and repo name for API calls
+  const [owner, repoName] = repo.split('/');
+  if (!owner || !repoName) {
+    const result: GitHubReleaseInstallResult = {
+      success: false,
+      error: `Invalid GitHub repository format: ${repo}. Expected format: owner/repo`,
+    };
+    return result;
+  }
+
   try {
-    const release = await fetchGitHubRelease(repo, version, githubApiClient, logger);
+    const release = await fetchGitHubRelease(repo, version, params.prerelease ?? false, githubApiClient, logger);
     if (!release.success) {
       const result: GitHubReleaseInstallResult = release;
       return result;
@@ -86,7 +96,20 @@ export async function installFromGitHubRelease(
       return result;
     }
 
-    const downloadResult = await downloadAsset(downloadUrl.data, asset.data, context, downloader, options, logger);
+    // Use gh CLI download for clients that support it (e.g., for private repos)
+    const downloadPath = path.join(context.stagingDir, asset.data.name);
+    const downloadResult = await downloadAssetWithFallback(
+      downloadUrl.data,
+      asset.data,
+      downloader,
+      githubApiClient,
+      owner,
+      repoName,
+      release.data.tag_name,
+      downloadPath,
+      options,
+      logger,
+    );
     if (!downloadResult.success) {
       const result: GitHubReleaseInstallResult = downloadResult;
       return result;
@@ -162,6 +185,7 @@ const TAG_SUGGESTIONS_COUNT = 5;
 export async function fetchGitHubRelease(
   repo: string,
   version: string,
+  includePrerelease: boolean,
   githubApiClient: IGitHubApiClient,
   parentLogger: TsLogger,
 ): Promise<OperationResult<IGitHubRelease>> {
@@ -178,6 +202,22 @@ export async function fetchGitHubRelease(
   // Handle 'latest' version request
   if (version === 'latest') {
     logger.debug(messages.fetchLatest(repo));
+
+    // When includePrerelease is true, we need to use getAllReleases because
+    // GitHub's /releases/latest endpoint excludes prereleases by design
+    if (includePrerelease) {
+      const releases = await githubApiClient.getAllReleases(owner, repoName, { perPage: 1, includePrerelease: true });
+      if (releases.length === 0) {
+        const result: OperationResult<IGitHubRelease> = {
+          success: false,
+          error: `Failed to fetch latest release for ${repo}`,
+        };
+        return result;
+      }
+      const result: OperationResult<IGitHubRelease> = { success: true, data: releases[0] };
+      return result;
+    }
+
     const release = await githubApiClient.getLatestRelease(owner, repoName);
     if (!release) {
       const result: OperationResult<IGitHubRelease> = {
@@ -420,17 +460,45 @@ function handleRelativeUrl(rawUrl: string, customHost: string | undefined, logge
   return result;
 }
 
-async function downloadAsset(
+/**
+ * Downloads a release asset, preferring gh CLI download when available.
+ * This is important for private repositories where HTTP download requires authentication.
+ *
+ * Falls back to HTTP download if:
+ * - API client doesn't support downloadAsset (e.g., fetch-based client)
+ * - gh CLI download fails
+ */
+async function downloadAssetWithFallback(
   downloadUrl: string,
   asset: IGitHubReleaseAsset,
-  context: IInstallContext,
   downloader: IDownloader,
+  githubApiClient: IGitHubApiClient,
+  owner: string,
+  repoName: string,
+  tag: string,
+  downloadPath: string,
   options: IInstallOptions | undefined,
   logger: TsLogger,
 ): Promise<OperationResult<IDownloadAssetResultData>> {
-  logger.debug(messages.downloadingAsset(downloadUrl));
-  const downloadPath = path.join(context.stagingDir, asset.name);
+  // Try gh CLI download first if available (supports private repos)
+  if (githubApiClient.downloadAsset) {
+    logger.debug(messages.downloadingViaGhCli(asset.name));
+    try {
+      await githubApiClient.downloadAsset(owner, repoName, tag, asset.name, downloadPath);
+      const data: IDownloadAssetResultData = { downloadPath };
+      const result: OperationResult<IDownloadAssetResultData> = { success: true, data };
+      return result;
+    } catch (error) {
+      // Log the error but continue to HTTP fallback
+      logger.debug(
+        messages.downloadingAsset(downloadUrl),
+        error instanceof Error ? error : new Error(String(error)),
+      );
+    }
+  }
 
+  // Fall back to HTTP download
+  logger.debug(messages.downloadingViaHttp(asset.name));
   try {
     await downloadWithProgress(logger, downloadUrl, downloadPath, asset.name, downloader, options);
     const data: IDownloadAssetResultData = { downloadPath };
