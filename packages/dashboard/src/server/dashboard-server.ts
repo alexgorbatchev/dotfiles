@@ -14,6 +14,7 @@ import clientApp from '../client/dashboard.html';
  */
 const PACKAGE_DIR = import.meta.dir;
 const IS_DEV = process.env.NODE_ENV === 'development';
+const IS_RELOAD = IS_DEV && process.env['DOTFILES_IS_RELOAD'] === '1';
 
 /**
  * Creates and returns a dashboard server instance.
@@ -29,8 +30,7 @@ export function createDashboardServer(
 
   return {
     async start() {
-      // Check if this is a HMR restart
-      const isRestart = IS_DEV && import.meta.hot !== undefined;
+      process.env['DOTFILES_IS_RELOAD'] = '1';
 
       // IMPORTANT: Change to package directory before starting server.
       // Bun's HTML import generates chunk files (like dashboard-*.js, cli-*.js)
@@ -142,7 +142,7 @@ export function createDashboardServer(
       });
 
       logger.info(messages.serverStarted(this.getUrl()));
-      return isRestart;
+      return IS_RELOAD;
     },
 
     async stop() {
