@@ -275,12 +275,13 @@ export class GhCliApiClient implements IGitHubApiClient {
   async getAllReleases(
     owner: string,
     repo: string,
-    options?: { perPage?: number; includePrerelease?: boolean; },
+    options?: { perPage?: number; includePrerelease?: boolean; limit?: number; },
   ): Promise<IGitHubRelease[]> {
     const logger = this.logger.getSubLogger({ name: 'getAllReleases' });
     logger.debug(messages.releases.fetchingAll(owner, repo), options);
 
     const perPage = options?.perPage || 30;
+    const limit = options?.limit;
     let page = 1;
     let allReleases: IGitHubRelease[] = [];
     let keepFetching = true;
@@ -296,6 +297,11 @@ export class GhCliApiClient implements IGitHubApiClient {
         allReleases = allReleases.concat(releasesPage);
         page++;
         if (releasesPage.length < perPage) {
+          keepFetching = false;
+        }
+        // Stop if we've reached the limit
+        if (limit !== undefined && allReleases.length >= limit) {
+          allReleases = allReleases.slice(0, limit);
           keepFetching = false;
         }
       }

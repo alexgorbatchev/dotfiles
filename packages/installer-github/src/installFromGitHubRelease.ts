@@ -206,7 +206,11 @@ export async function fetchGitHubRelease(
     // When includePrerelease is true, we need to use getAllReleases because
     // GitHub's /releases/latest endpoint excludes prereleases by design
     if (includePrerelease) {
-      const releases = await githubApiClient.getAllReleases(owner, repoName, { perPage: 1, includePrerelease: true });
+      const releases = await githubApiClient.getAllReleases(owner, repoName, {
+        perPage: 1,
+        includePrerelease: true,
+        limit: 1,
+      });
       const firstRelease = releases[0];
       if (!firstRelease) {
         const result: OperationResult<IGitHubRelease> = {

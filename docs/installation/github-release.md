@@ -12,16 +12,16 @@ export default defineTool((install) => install('github-release', { repo: 'junegu
 
 ## Parameters
 
-| Parameter           | Description                                            |
-| ------------------- | ------------------------------------------------------ |
-| `repo`              | **Required**. GitHub repository in "owner/repo" format |
-| `assetPattern`      | Glob pattern to match release assets                   |
-| `assetSelector`     | Custom function to select the correct asset            |
-| `version`           | Specific version (e.g., `'v1.2.3'`)                    |
-| `prerelease`        | Include prereleases when fetching latest (default: false) |
-| `githubHost`        | Custom GitHub API host for Enterprise                  |
-| `ghCli`             | Use `gh` CLI for API requests instead of fetch         |
-| `env`               | Environment variables (static or dynamic function)     |
+| Parameter       | Description                                               |
+| --------------- | --------------------------------------------------------- |
+| `repo`          | **Required**. GitHub repository in "owner/repo" format    |
+| `assetPattern`  | Glob pattern to match release assets                      |
+| `assetSelector` | Custom function to select the correct asset               |
+| `version`       | Specific version (e.g., `'v1.2.3'`)                       |
+| `prerelease`    | Include prereleases when fetching latest (default: false) |
+| `githubHost`    | Custom GitHub API host for Enterprise                     |
+| `ghCli`         | Use `gh` CLI for API requests instead of fetch            |
+| `env`           | Environment variables (static or dynamic function)        |
 
 ## Examples
 

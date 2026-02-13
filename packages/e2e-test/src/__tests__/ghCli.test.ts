@@ -264,9 +264,10 @@ describe('E2E: GhCliApiClient', () => {
       const invocations = await getGhInvocations();
       expect(invocations.length).toBeGreaterThan(0);
 
-      // All invocations should start with 'api'
+      // All invocations should start with 'api' or 'release' (for downloads)
       for (const invocation of invocations) {
-        expect(invocation.startsWith('api ')).toBe(true);
+        const isValidCommand = invocation.startsWith('api ') || invocation.startsWith('release ');
+        expect(isValidCommand).toBe(true);
       }
     });
 

@@ -32,12 +32,13 @@ export interface IGitHubApiClient {
    * @param options Optional parameters for fetching releases.
    * @param options.perPage Number of results per page (max 100).
    * @param options.includePrerelease Whether to include pre-releases.
+   * @param options.limit Maximum total number of releases to fetch (stops pagination early).
    * @returns A promise that resolves to an array of GitHub releases.
    */
   getAllReleases(
     owner: string,
     repo: string,
-    options?: { perPage?: number; includePrerelease?: boolean; },
+    options?: { perPage?: number; includePrerelease?: boolean; limit?: number; },
   ): Promise<IGitHubRelease[]>;
 
   /**

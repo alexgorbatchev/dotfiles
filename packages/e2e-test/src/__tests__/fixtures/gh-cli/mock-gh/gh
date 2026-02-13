@@ -8,7 +8,51 @@ LOG_FILE="${MOCK_GH_LOG_FILE:-/tmp/mock-gh-invocations.log}"
 # Log invocation
 echo "$@" >> "$LOG_FILE"
 
-# Parse arguments
+# Get mock server port from environment, default to 8765
+MOCK_PORT="${MOCK_SERVER_PORT:-8765}"
+
+# Handle 'release download' command
+if [[ "$1" == "release" && "$2" == "download" ]]; then
+  TAG="$3"
+  REPO=""
+  PATTERN=""
+  DIR=""
+  
+  shift 3
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --repo)
+        REPO="$2"
+        shift 2
+        ;;
+      --pattern)
+        PATTERN="$2"
+        shift 2
+        ;;
+      --dir)
+        DIR="$2"
+        shift 2
+        ;;
+      --clobber)
+        shift
+        ;;
+      *)
+        shift
+        ;;
+    esac
+  done
+  
+  # Download from mock server using curl
+  # Determine the asset name from pattern (remove wildcards for simple matching)
+  ASSET_NAME="${PATTERN//\*/}"
+  URL="http://127.0.0.1:${MOCK_PORT}/${REPO}/releases/download/${TAG}/${ASSET_NAME}"
+  
+  # Use curl to download the file
+  curl -sSL -o "${DIR}/${ASSET_NAME}" "${URL}" 2>/dev/null
+  exit $?
+fi
+
+# Parse arguments for 'api' command
 HOSTNAME=""
 METHOD="GET"
 ENDPOINT=""
