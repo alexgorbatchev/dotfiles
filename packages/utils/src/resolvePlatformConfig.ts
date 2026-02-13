@@ -33,28 +33,24 @@ function matchesPlatform(entry: PlatformConfigEntry, systemInfo: ISystemInfo): b
   return true;
 }
 
+function deepCopyShellTypeConfig(
+  config: NonNullable<NonNullable<ToolConfig['shellConfigs']>['zsh']>,
+): NonNullable<NonNullable<ToolConfig['shellConfigs']>['zsh']> {
+  return {
+    ...config,
+    scripts: config.scripts ? [...config.scripts] : undefined,
+    functions: config.functions ? { ...config.functions } : undefined,
+    paths: config.paths ? [...config.paths] : undefined,
+  };
+}
+
 function deepCopyShellConfigs(shellConfigs: ToolConfig['shellConfigs']): ToolConfig['shellConfigs'] {
   if (!shellConfigs) return undefined;
 
   return {
-    zsh: shellConfigs.zsh
-      ? {
-        ...shellConfigs.zsh,
-        scripts: shellConfigs.zsh.scripts ? [...shellConfigs.zsh.scripts] : undefined,
-      }
-      : undefined,
-    bash: shellConfigs.bash
-      ? {
-        ...shellConfigs.bash,
-        scripts: shellConfigs.bash.scripts ? [...shellConfigs.bash.scripts] : undefined,
-      }
-      : undefined,
-    powershell: shellConfigs.powershell
-      ? {
-        ...shellConfigs.powershell,
-        scripts: shellConfigs.powershell.scripts ? [...shellConfigs.powershell.scripts] : undefined,
-      }
-      : undefined,
+    zsh: shellConfigs.zsh ? deepCopyShellTypeConfig(shellConfigs.zsh) : undefined,
+    bash: shellConfigs.bash ? deepCopyShellTypeConfig(shellConfigs.bash) : undefined,
+    powershell: shellConfigs.powershell ? deepCopyShellTypeConfig(shellConfigs.powershell) : undefined,
   };
 }
 
@@ -99,6 +95,14 @@ function mergeShellConfig(
       ...targetShellConfig.env,
       ...platformShellConfig.env,
     };
+  }
+
+  if (platformShellConfig.functions) {
+    targetShellConfig.functions = { ...targetShellConfig.functions, ...platformShellConfig.functions };
+  }
+
+  if (platformShellConfig.paths) {
+    targetShellConfig.paths = [...(targetShellConfig.paths || []), ...platformShellConfig.paths];
   }
 }
 

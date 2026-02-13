@@ -385,6 +385,95 @@ describe('resolvePlatformConfig', () => {
     });
   });
 
+  describe('platform shell functions merging', () => {
+    it('should merge functions from platform shell config into base config', () => {
+      const functionBody =
+        'komorebic --help 2>&1 | awk \'/^  [a-z]/{cmd=$1} /^          /{gsub(/^ +/, ""); print cmd " — " $0}\' | fzf --preview \'komorebic {1} --help 2>&1\'';
+
+      const configWithPlatformFunctions: ToolConfig = {
+        ...baseToolConfig,
+        platformConfigs: [
+          {
+            platforms: Platform.MacOS,
+            config: {
+              shellConfigs: {
+                zsh: {
+                  functions: {
+                    'kc-help': functionBody,
+                  },
+                },
+              },
+            },
+          },
+        ],
+      };
+
+      const result = resolvePlatformConfig(configWithPlatformFunctions, macosSystemInfo);
+
+      expect(result.shellConfigs?.zsh?.functions).toEqual({
+        'kc-help': functionBody,
+      });
+    });
+
+    it('should merge functions from platform config with existing base functions', () => {
+      const configWithBaseFunctions: ToolConfig = {
+        ...baseToolConfig,
+        shellConfigs: {
+          ...baseToolConfig.shellConfigs,
+          zsh: {
+            ...baseToolConfig.shellConfigs?.zsh,
+            functions: {
+              'base-func': 'echo "base"',
+            },
+          },
+        },
+        platformConfigs: [
+          {
+            platforms: Platform.MacOS,
+            config: {
+              shellConfigs: {
+                zsh: {
+                  functions: {
+                    'platform-func': 'echo "platform"',
+                  },
+                },
+              },
+            },
+          },
+        ],
+      };
+
+      const result = resolvePlatformConfig(configWithBaseFunctions, macosSystemInfo);
+
+      expect(result.shellConfigs?.zsh?.functions).toEqual({
+        'base-func': 'echo "base"',
+        'platform-func': 'echo "platform"',
+      });
+    });
+
+    it('should merge paths from platform shell config into base config', () => {
+      const configWithPlatformPaths: ToolConfig = {
+        ...baseToolConfig,
+        platformConfigs: [
+          {
+            platforms: Platform.MacOS,
+            config: {
+              shellConfigs: {
+                zsh: {
+                  paths: ['$HOME/.local/bin'],
+                },
+              },
+            },
+          },
+        ],
+      };
+
+      const result = resolvePlatformConfig(configWithPlatformPaths, macosSystemInfo);
+
+      expect(result.shellConfigs?.zsh?.paths).toEqual(['$HOME/.local/bin']);
+    });
+  });
+
   describe('when platform specifies different installation method', () => {
     it('should override base installation method with platform-specific one', () => {
       const configWithPlatformInstallMethod: ToolConfig = {
