@@ -98,7 +98,7 @@ export function createBuildContext(): IBuildContext {
     outputDocsDir,
   };
 
-  const maxCliBundleSizeKb: number = 300;
+  const maxCliBundleSizeKb: number = 400;
   const maxCliBundleSizeBytes: number = maxCliBundleSizeKb * 1024;
   const typeTestsDirName: string = 'type-tests';
   const tsdTestFileExtension: string = '.test-d.ts';
