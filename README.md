@@ -55,6 +55,9 @@ dotfiles log
 # Display tree of installed tool files
 dotfiles files <toolName>
 
+# Print the real path to a binary (resolves symlinks)
+dotfiles bin <name>
+
 # Create docs symlink in a directory
 dotfiles docs <path>
 ```
@@ -63,7 +66,7 @@ dotfiles docs <path>
 
 - `dotfiles generate` writes a zsh completion script to `${generatedDir}/shell-scripts/zsh/completions/_dotfiles`.
 - Reload completions with `autoload -U compinit && compinit` (or restart your shell) after generating.
-- Commands that accept a tool argument (e.g., `install`, `update`, `check-updates`, `files`, `log`) now suggest every configured tool name directly in completion menus, so you can pick a target without memorizing identifiers.
+- Commands that accept a tool argument (e.g., `install`, `update`, `check-updates`, `files`, `log`, `bin`) now suggest every configured tool name directly in completion menus, so you can pick a target without memorizing identifiers.
 - See [docs/completions.md](docs/completions.md) for shell-specific integration details.
 
 ### Configure with TypeScript

@@ -80,7 +80,7 @@ Select the most appropriate method based on your investigation. Prefer official,
 
 ### Step 2: Configure Binary Specification
 
-**Important**: `.bin(name, pattern?)` declares which executables the tool provides. It generates a shim for each binary name.
+**Important**: `.bin(name, pattern?)` declares which executables the tool provides. It generates a shim for each binary name. Users can resolve the real path to a binary (bypassing shims) with `dotfiles bin <name>`.
 
 ```ts
 // Single binary with default pattern

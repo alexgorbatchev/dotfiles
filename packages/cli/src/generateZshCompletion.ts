@@ -1,4 +1,5 @@
 import { dedentTemplate } from '@dotfiles/utils';
+import { BIN_COMMAND_COMPLETION } from './binCommand';
 import { CHECK_UPDATES_COMMAND_COMPLETION } from './checkUpdatesCommand';
 import { CLEANUP_COMMAND_COMPLETION } from './cleanupCommand';
 import { GLOBAL_OPTIONS_COMPLETION } from './createProgram';
@@ -16,6 +17,7 @@ import { UPDATE_COMMAND_COMPLETION } from './updateCommand';
  * All command completion metadata collected from individual command files.
  */
 export const ALL_COMMAND_COMPLETIONS: ICommandCompletionMeta[] = [
+  BIN_COMMAND_COMPLETION,
   INSTALL_COMMAND_COMPLETION,
   GENERATE_COMMAND_COMPLETION,
   CLEANUP_COMMAND_COMPLETION,

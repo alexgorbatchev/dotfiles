@@ -39,6 +39,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 
+import { registerBinCommand } from './binCommand';
 import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
 import { registerCleanupCommand } from './cleanupCommand';
 import { createProgram } from './createProgram';
@@ -472,6 +473,7 @@ export function registerAllCommands(
   servicesFactory: () => Promise<IServices>,
 ) {
   const logger = parentLogger.getSubLogger({ name: 'registerAllCommands' });
+  registerBinCommand(logger, program, servicesFactory);
   registerInstallCommand(logger, program, servicesFactory);
   registerGenerateCommand(logger, program, servicesFactory);
   registerFeaturesCommand(logger, program, servicesFactory);

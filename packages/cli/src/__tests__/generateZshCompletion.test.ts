@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { BIN_COMMAND_COMPLETION } from '../binCommand';
 import { CHECK_UPDATES_COMMAND_COMPLETION } from '../checkUpdatesCommand';
 import { CLEANUP_COMMAND_COMPLETION } from '../cleanupCommand';
 import { GLOBAL_OPTIONS_COMPLETION } from '../createProgram';
@@ -18,6 +19,7 @@ const SAMPLE_TOOL_NAMES: string[] = ['dotbot', 'fzf'];
 describe('generateZshCompletion', () => {
   describe('ALL_COMMAND_COMPLETIONS', () => {
     it('should include all command completion definitions', () => {
+      expect(ALL_COMMAND_COMPLETIONS).toContain(BIN_COMMAND_COMPLETION);
       expect(ALL_COMMAND_COMPLETIONS).toContain(INSTALL_COMMAND_COMPLETION);
       expect(ALL_COMMAND_COMPLETIONS).toContain(GENERATE_COMMAND_COMPLETION);
       expect(ALL_COMMAND_COMPLETIONS).toContain(CLEANUP_COMMAND_COMPLETION);
@@ -30,8 +32,8 @@ describe('generateZshCompletion', () => {
       expect(ALL_COMMAND_COMPLETIONS).toContain(FEATURES_COMMAND_COMPLETION);
     });
 
-    it('should have exactly 10 commands', () => {
-      expect(ALL_COMMAND_COMPLETIONS.length).toBe(10);
+    it('should have exactly 11 commands', () => {
+      expect(ALL_COMMAND_COMPLETIONS.length).toBe(11);
     });
   });
 

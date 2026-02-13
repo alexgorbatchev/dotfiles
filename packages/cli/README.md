@@ -13,6 +13,7 @@ The CLI package serves as the main entry point for all dotfiles operations. It o
 - **Shell Completions**: Auto-generated zsh completions for CLI commands
 - **Update Management**: Check for and install tool updates
 - **Conflict Detection**: Identify conflicts between installed tools and system binaries
+- **Binary Path Resolution**: Print the real path to a binary, resolving symlinks
 - **File Tracking**: Track and manage all generated files
 - **Cleanup Operations**: Remove generated files and reset state
 
@@ -168,6 +169,28 @@ Conflicts found:
   ripgrep:
     - System: /usr/bin/rg
     - Shim: ~/.dotfiles/bin/rg
+```
+
+### `bin <name>`
+
+Print the absolute real path to a binary, resolving all symlinks. Accepts a tool name or any binary name declared via `.bin()`. Outputs only the resolved path to stdout on success. Exits silently with code 1 on failure (tool not found, binary not installed, etc.).
+
+```bash
+# By tool name
+dotfiles bin fzf
+# /Users/you/.dotfiles/.generated/binaries/fzf/0.43.0/fzf
+
+# By binary name (finds the tool that provides 'rg')
+dotfiles bin rg
+# /Users/you/.dotfiles/.generated/binaries/ripgrep/14.0.0/rg
+```
+
+Useful for scripting when you need the real binary path rather than the shim:
+
+```bash
+# Use in scripts
+REAL_FZF=$(dotfiles bin fzf) || exit 1
+"$REAL_FZF" --version
 ```
 
 ### `docs <path>`
@@ -361,7 +384,7 @@ dotfiles <TAB>           # Shows available commands
 dotfiles install <TAB>   # Shows install command options
 dotfiles --<TAB>         # Shows global options
 
-# Tool names are suggested for commands like install, update, files, log, and check-updates
+# Tool names are suggested for commands like install, update, files, log, bin, and check-updates
 dotfiles install <TAB>   # Shows configured tool names
 ```
 
@@ -398,6 +421,7 @@ await program.parseAsync(process.argv);
 
 Each command is implemented as a separate module:
 
+- `binCommand` - Binary path resolution logic
 - `installCommand` - Tool installation logic
 - `generateCommand` - Configuration generation logic
 - `initCommand` - Shell initialization logic
