@@ -91,4 +91,42 @@ describe('getTools', () => {
     expect(result.data?.[0]?.files).toHaveLength(1);
     expect(result.data?.[0]?.files?.[0]?.filePath).toBe('/bin/fzf');
   });
+
+  test('handles special characters in tool names', async () => {
+    ctx.toolConfigs['tool-with-dash'] = createMockToolConfigForTests({ name: 'tool-with-dash' });
+
+    await ctx.toolInstallationRegistry.recordToolInstallation({
+      toolName: 'tool-with-dash',
+      version: '1.0.0',
+      installPath: '/binaries/tool-with-dash/2025-01-01',
+      timestamp: '2025-01-01-00-00-00',
+      binaryPaths: ['/binaries/tool-with-dash/tool'],
+    });
+
+    const result = await ctx.api.getTools();
+    const tool = result.data?.find((t) => t.config.name === 'tool-with-dash');
+
+    expect(result.success).toBe(true);
+    expect(tool?.config.name).toBe('tool-with-dash');
+  });
+
+  test('handles tool with multiple binaries', async () => {
+    ctx.toolConfigs['multi-binary'] = createMockToolConfigForTests({
+      name: 'multi-binary',
+      binaries: ['bin1', 'bin2', 'bin3'],
+    });
+
+    await ctx.toolInstallationRegistry.recordToolInstallation({
+      toolName: 'multi-binary',
+      version: '1.0.0',
+      installPath: '/binaries/multi-binary/2025-01-01',
+      timestamp: '2025-01-01-00-00-00',
+      binaryPaths: ['/binaries/multi-binary/bin1', '/binaries/multi-binary/bin2', '/binaries/multi-binary/bin3'],
+    });
+
+    const result = await ctx.api.getTools();
+    const tool = result.data?.find((t) => t.config.name === 'multi-binary');
+
+    expect(tool?.runtime.binaryPaths).toHaveLength(3);
+  });
 });
