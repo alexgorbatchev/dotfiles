@@ -1,10 +1,36 @@
+import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import type { IFileState } from '@dotfiles/registry/file';
 import type { IToolInstallationRecord } from '@dotfiles/registry/tool';
 import type { IApiResponse, IToolDetail } from '../../shared/types';
 import { toToolDetail } from '../../shared/types';
 import { messages } from '../log-messages';
 import type { IDashboardServices } from '../types';
 import { getToolConfigs } from './helpers';
+
+/**
+ * Enriches file states with actual file sizes from disk when sizeBytes is missing.
+ * This compensates for file operations that weren't tracked with size information.
+ */
+async function enrichFileSizesFromDisk(files: IFileState[], fs: IFileSystem): Promise<IFileState[]> {
+  return Promise.all(
+    files.map(async (file) => {
+      if (file.sizeBytes !== undefined) {
+        return file;
+      }
+
+      try {
+        const stat = await fs.stat(file.filePath);
+        if (stat.isFile()) {
+          return { ...file, sizeBytes: stat.size };
+        }
+      } catch {
+        // File doesn't exist or can't be read, return as-is
+      }
+      return file;
+    }),
+  );
+}
 
 /**
  * GET /api/tools - List all tools with full details
@@ -28,7 +54,8 @@ export async function getTools(
     const toolDetails = await Promise.all(
       Object.values(toolConfigs).map(async (config) => {
         const files = await services.fileRegistry.getFileStatesForTool(config.name);
-        return toToolDetail(config, installationsMap, files, services.systemInfo);
+        const enrichedFiles = await enrichFileSizesFromDisk(files, services.fs);
+        return toToolDetail(config, installationsMap, enrichedFiles, services.systemInfo);
       }),
     );
 

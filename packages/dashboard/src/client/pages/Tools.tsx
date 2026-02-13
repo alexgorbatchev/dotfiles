@@ -5,6 +5,7 @@ import { RecentTools } from '../components/RecentTools';
 import { StatCard } from '../components/StatCard';
 import { ToolsTreeView } from '../components/ToolsTreeView';
 import { useFetch } from '../hooks/useFetch';
+import { formatBytes } from '../utils/format';
 
 export function Tools(): JSX.Element {
   const { data: tools, loading } = useFetch<IToolDetail[]>('/tools');
@@ -12,6 +13,10 @@ export function Tools(): JSX.Element {
   const toolsList = tools || [];
   const totalFiles = toolsList.reduce((sum, t) => sum + (t.files?.length || 0), 0);
   const installedCount = toolsList.filter((t) => t.runtime.status === 'installed').length;
+  const totalBinarySize = toolsList.reduce(
+    (sum, t) => sum + (t.files?.reduce((fileSum, f) => fileSum + (f.sizeBytes || 0), 0) || 0),
+    0,
+  );
 
   if (loading) {
     return (
@@ -24,10 +29,11 @@ export function Tools(): JSX.Element {
   return (
     <div class='space-y-4'>
       {/* Stats row */}
-      <div class='grid grid-cols-3 gap-4'>
+      <div class='grid grid-cols-4 gap-4'>
         <StatCard value={toolsList.length} label='Total Tools' color='text-blue-400' />
         <StatCard value={installedCount} label='Installed' color='text-green-400' />
         <StatCard value={totalFiles} label='Files Tracked' color='text-purple-400' />
+        <StatCard value={formatBytes(totalBinarySize)} label='Binary Size' color='text-orange-400' />
       </div>
 
       {/* Tool files and recently added - same row */}
