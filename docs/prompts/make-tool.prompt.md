@@ -26,14 +26,14 @@ Make best effort to find current README and installation instructions online for
 - **Tool purpose**: what it does.
 - **Primary distribution method**: how the authors expect users to install it.
 - **Package managers**: whether it’s available via Homebrew, Cargo, etc.
-- **Release assets**: if it uses GitHub releases, what assets exist.
+- **Release assets**: if it uses GitHub or Gitea/Forgejo releases, what assets exist.
 - **Binary names**: which executables it provides.
 - **Platform support**: macOS/Linux/Windows and supported CPU architectures.
 - **Dependencies**: runtime requirements (shared libs, language runtimes, etc.).
 
 ### 2) Release Asset Analysis (if applicable)
 
-If the tool uses GitHub releases, examine the latest release to determine:
+If the tool uses GitHub or Gitea/Forgejo releases, examine the latest release to determine:
 
 - **Asset naming patterns** (OS/arch/target naming).
 - **Archive structure** (`.tar.gz`, `.zip`).
@@ -59,6 +59,12 @@ Select the most appropriate method based on your investigation. Prefer official,
   - Guide: [GitHub Release Installation Guide](<root>/docs/installation/github-release.md)
   - Use `ghCli: true` to fetch releases via `gh` CLI instead of direct API access (useful for GitHub Enterprise or when `GITHUB_TOKEN` isn't configured)
   - Use `prerelease: true` to include prereleases when fetching latest (needed for repos that only publish prerelease versions)
+
+- **`gitea-release`**: best for tools with prebuilt binaries on Gitea, Forgejo, or Codeberg.
+  - Guide: [Gitea/Forgejo Release Installation Guide](<root>/docs/installation/gitea-release.md)
+  - Requires `instanceUrl` (e.g., `https://codeberg.org`) and `repo` (e.g., `Codeberg/pages-server`)
+  - Supports optional `token` for private repos or rate-limited instances
+  - Use `prerelease: true` to include prereleases when fetching latest
 
 - **`brew`**: use if the tool is officially available on Homebrew.
   - Guide: [Homebrew Installation Guide](<root>/docs/installation/homebrew.md)
@@ -714,6 +720,24 @@ export default defineTool((install) =>
 );
 ```
 
+### Example 9: Gitea/Forgejo Release Tool
+
+```ts
+import { defineTool } from '@gitea/dotfiles';
+
+/**
+ * pages-server - Codeberg Pages static site server.
+ *
+ * https://codeberg.org/Codeberg/pages-server
+ */
+export default defineTool((install) =>
+  install('gitea-release', {
+    instanceUrl: 'https://codeberg.org',
+    repo: 'Codeberg/pages-server',
+  }).bin('pages-server')
+);
+```
+
 ## Quality Checklist
 
 **Installation & binaries**
@@ -765,6 +789,7 @@ export default defineTool((install) =>
 **Installation Methods**
 
 - [GitHub Release Installation](<root>/docs/installation/github-release.md)
+- [Gitea/Forgejo Release Installation](<root>/docs/installation/gitea-release.md)
 - [Homebrew Installation](<root>/docs/installation/homebrew.md)
 - [Cargo Installation](<root>/docs/installation/cargo.md)
 - [Curl Script Installation](<root>/docs/installation/curl-script.md)

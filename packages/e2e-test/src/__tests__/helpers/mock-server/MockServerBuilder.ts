@@ -4,7 +4,14 @@
  * Provides a fluent API for declaring what endpoints the mock server should serve
  * for each test. No side effects - configuration is explicit per test.
  */
-import type { ICargoToolConfig, IGitHubToolConfig, IMockServerConfig, IScriptConfig, ITarConfig } from './types';
+import type {
+  ICargoToolConfig,
+  IGiteaToolConfig,
+  IGitHubToolConfig,
+  IMockServerConfig,
+  IScriptConfig,
+  ITarConfig,
+} from './types';
 
 /**
  * Builder for configuring a mock server for e2e tests.
@@ -25,6 +32,7 @@ import type { ICargoToolConfig, IGitHubToolConfig, IMockServerConfig, IScriptCon
 export class MockServerBuilder {
   private readonly _fixtureDir: string;
   private readonly _githubTools: IGitHubToolConfig[] = [];
+  private readonly _giteaTools: IGiteaToolConfig[] = [];
   private readonly _cargoTools: ICargoToolConfig[] = [];
   private readonly _scripts: IScriptConfig[] = [];
   private readonly _tarballs: ITarConfig[] = [];
@@ -38,6 +46,14 @@ export class MockServerBuilder {
    */
   withGitHubTool(config: IGitHubToolConfig): MockServerBuilder {
     this._githubTools.push(config);
+    return this;
+  }
+
+  /**
+   * Adds a Gitea/Forgejo release tool mock.
+   */
+  withGiteaTool(config: IGiteaToolConfig): MockServerBuilder {
+    this._giteaTools.push(config);
     return this;
   }
 
@@ -72,6 +88,7 @@ export class MockServerBuilder {
     return {
       fixtureDir: this._fixtureDir,
       githubTools: this._githubTools,
+      giteaTools: this._giteaTools,
       cargoTools: this._cargoTools,
       scripts: this._scripts,
       tarballs: this._tarballs,
@@ -157,6 +174,31 @@ export const AUTO_INSTALL_TOOL: IGitHubToolConfig = {
       assets: {
         'macos.*arm64': 'auto-install-tool-1.0.0-macos_arm64.tar.gz',
         'linux.*(x86_64|amd64)': 'auto-install-tool-1.0.0-linux_amd64.tar.gz',
+      },
+    },
+  ],
+};
+
+/**
+ * Gitea Release Tool - used by gitea-release e2e tests.
+ */
+export const GITEA_RELEASE_TOOL: IGiteaToolConfig = {
+  repo: 'repo/gitea-release-tool',
+  toolDir: 'tools/gitea-release-tool',
+  defaultVersion: '1.0.0',
+  versions: [
+    {
+      version: '1.0.0',
+      assets: {
+        'macos.*arm64': 'gitea-release-tool-1.0.0-macos_arm64.tar.gz',
+        'linux.*(x86_64|amd64)': 'gitea-release-tool-1.0.0-linux_amd64.tar.gz',
+      },
+    },
+    {
+      version: '2.0.0',
+      assets: {
+        'macos.*arm64': 'gitea-release-tool-2.0.0-macos_arm64.tar.gz',
+        'linux.*(x86_64|amd64)': 'gitea-release-tool-2.0.0-linux_amd64.tar.gz',
       },
     },
   ],

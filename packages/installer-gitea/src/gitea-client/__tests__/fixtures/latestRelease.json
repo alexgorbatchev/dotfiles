@@ -1,0 +1,59 @@
+{
+  "id": 5151808,
+  "tag_name": "v6.4",
+  "target_commitish": "main",
+  "name": "v6.4",
+  "body": "New feature: IP logging\r\n\r\nHere is everything that changed from the last release: https://codeberg.org/Codeberg/pages-server/compare/v6.3...v6.4\r\n",
+  "url": "https://codeberg.org/api/v1/repos/Codeberg/pages-server/releases/5151808",
+  "html_url": "https://codeberg.org/Codeberg/pages-server/releases/tag/v6.4",
+  "tarball_url": "https://codeberg.org/Codeberg/pages-server/archive/v6.4.tar.gz",
+  "zipball_url": "https://codeberg.org/Codeberg/pages-server/archive/v6.4.zip",
+  "hide_archive_links": false,
+  "upload_url": "https://codeberg.org/api/v1/repos/Codeberg/pages-server/releases/5151808/assets",
+  "draft": false,
+  "prerelease": false,
+  "created_at": "2025-10-25T23:42:43+02:00",
+  "published_at": "2025-10-25T23:42:43+02:00",
+  "author": {
+    "id": 26734,
+    "login": "Gusted",
+    "login_name": "",
+    "source_id": 0,
+    "full_name": "",
+    "email": "gusted@noreply.codeberg.org",
+    "avatar_url": "https://codeberg.org/avatars/44a59264e976fa585ed9f0a92abad9d7",
+    "html_url": "https://codeberg.org/Gusted",
+    "language": "",
+    "is_admin": false,
+    "last_login": "0001-01-01T00:00:00Z",
+    "created": "2021-04-12T21:28:08+02:00",
+    "restricted": false,
+    "active": false,
+    "prohibit_login": false,
+    "location": "Error 451",
+    "pronouns": "",
+    "website": "https://gusted.xyz",
+    "description": "",
+    "visibility": "public",
+    "followers_count": 92,
+    "following_count": 26,
+    "starred_repos_count": 96,
+    "username": "Gusted"
+  },
+  "assets": [
+    {
+      "id": 556850,
+      "name": "codeberg-pages-server-v6.4-debian-x86_64.tar.gz",
+      "size": 38132162,
+      "download_count": 237,
+      "created_at": "2025-10-28T14:54:30+01:00",
+      "uuid": "244f2813-0337-48ed-8757-11e85f9b4699",
+      "browser_download_url": "https://codeberg.org/Codeberg/pages-server/releases/download/v6.4/codeberg-pages-server-v6.4-debian-x86_64.tar.gz",
+      "type": "attachment"
+    }
+  ],
+  "archive_download_count": {
+    "zip": 58,
+    "tar_gz": 24
+  }
+}

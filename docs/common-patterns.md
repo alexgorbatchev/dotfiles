@@ -160,6 +160,7 @@ export default defineTool((install) =>
 | Use Case          | Method           | Example Tools      |
 | ----------------- | ---------------- | ------------------ |
 | GitHub releases   | `github-release` | fzf, ripgrep, bat  |
+| Gitea/Forgejo     | `gitea-release`  | Codeberg tools     |
 | Homebrew          | `brew`           | git, jq            |
 | Rust crates       | `cargo`          | eza, fd, ripgrep   |
 | Custom scripts    | `manual`         | deployment scripts |

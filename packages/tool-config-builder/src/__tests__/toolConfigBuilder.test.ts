@@ -467,7 +467,7 @@ describe('IToolConfigBuilder', () => {
         messages.configurationFieldInvalid(
           'installationMethod',
           'invalid-method',
-          'github-release | brew | curl-script | curl-tar | cargo | manual | zsh-plugin',
+          'github-release | gitea-release | brew | curl-script | curl-tar | cargo | manual | zsh-plugin',
         ),
       ],
     );

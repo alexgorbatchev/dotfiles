@@ -86,6 +86,7 @@
         "@dotfiles/installer-cargo": "workspace:*",
         "@dotfiles/installer-curl-script": "workspace:*",
         "@dotfiles/installer-curl-tar": "workspace:*",
+        "@dotfiles/installer-gitea": "workspace:*",
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
         "@dotfiles/installer-zsh-plugin": "workspace:*",
@@ -141,6 +142,7 @@
         "@dotfiles/installer-cargo": "workspace:*",
         "@dotfiles/installer-curl-script": "workspace:*",
         "@dotfiles/installer-curl-tar": "workspace:*",
+        "@dotfiles/installer-gitea": "workspace:*",
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
         "@dotfiles/logger": "workspace:*",
@@ -424,6 +426,29 @@
       },
       "devDependencies": {
         "@dotfiles/testing-helpers": "workspace:*",
+      },
+    },
+    "packages/installer-gitea": {
+      "name": "@dotfiles/installer-gitea",
+      "version": "0.0.0",
+      "dependencies": {
+        "@dotfiles/arch": "workspace:*",
+        "@dotfiles/archive-extractor": "workspace:*",
+        "@dotfiles/config": "workspace:*",
+        "@dotfiles/core": "workspace:*",
+        "@dotfiles/downloader": "workspace:*",
+        "@dotfiles/file-system": "workspace:*",
+        "@dotfiles/installer": "workspace:*",
+        "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
+        "minimatch": "^10.0.1",
+        "semver": "^7.6.3",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@dotfiles/testing-helpers": "workspace:*",
+        "@types/semver": "catalog:system",
       },
     },
     "packages/installer-github": {
@@ -800,6 +825,8 @@
     "@dotfiles/installer-curl-script": ["@dotfiles/installer-curl-script@workspace:packages/installer-curl-script"],
 
     "@dotfiles/installer-curl-tar": ["@dotfiles/installer-curl-tar@workspace:packages/installer-curl-tar"],
+
+    "@dotfiles/installer-gitea": ["@dotfiles/installer-gitea@workspace:packages/installer-gitea"],
 
     "@dotfiles/installer-github": ["@dotfiles/installer-github@workspace:packages/installer-github"],
 

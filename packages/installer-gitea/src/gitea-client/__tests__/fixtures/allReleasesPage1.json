@@ -1,0 +1,101 @@
+[
+  {
+    "id": 5151808,
+    "tag_name": "v6.4",
+    "target_commitish": "main",
+    "name": "v6.4",
+    "body": "New feature: IP logging",
+    "url": "https://codeberg.org/api/v1/repos/Codeberg/pages-server/releases/5151808",
+    "html_url": "https://codeberg.org/Codeberg/pages-server/releases/tag/v6.4",
+    "tarball_url": "https://codeberg.org/Codeberg/pages-server/archive/v6.4.tar.gz",
+    "zipball_url": "https://codeberg.org/Codeberg/pages-server/archive/v6.4.zip",
+    "hide_archive_links": false,
+    "upload_url": "https://codeberg.org/api/v1/repos/Codeberg/pages-server/releases/5151808/assets",
+    "draft": false,
+    "prerelease": false,
+    "created_at": "2025-10-25T23:42:43+02:00",
+    "published_at": "2025-10-25T23:42:43+02:00",
+    "author": {
+      "id": 26734,
+      "login": "Gusted"
+    },
+    "assets": [
+      {
+        "id": 556850,
+        "name": "codeberg-pages-server-v6.4-debian-x86_64.tar.gz",
+        "size": 38132162,
+        "download_count": 237,
+        "created_at": "2025-10-28T14:54:30+01:00",
+        "uuid": "244f2813-0337-48ed-8757-11e85f9b4699",
+        "browser_download_url": "https://codeberg.org/Codeberg/pages-server/releases/download/v6.4/codeberg-pages-server-v6.4-debian-x86_64.tar.gz",
+        "type": "attachment"
+      }
+    ]
+  },
+  {
+    "id": 3819782,
+    "tag_name": "v6.3",
+    "target_commitish": "main",
+    "name": "v6.3",
+    "body": "Bug fixes and improvements",
+    "url": "https://codeberg.org/api/v1/repos/Codeberg/pages-server/releases/3819782",
+    "html_url": "https://codeberg.org/Codeberg/pages-server/releases/tag/v6.3",
+    "tarball_url": "https://codeberg.org/Codeberg/pages-server/archive/v6.3.tar.gz",
+    "zipball_url": "https://codeberg.org/Codeberg/pages-server/archive/v6.3.zip",
+    "hide_archive_links": false,
+    "upload_url": "https://codeberg.org/api/v1/repos/Codeberg/pages-server/releases/3819782/assets",
+    "draft": false,
+    "prerelease": false,
+    "created_at": "2025-07-03T23:00:11+02:00",
+    "published_at": "2025-07-03T23:00:11+02:00",
+    "author": {
+      "id": 28806,
+      "login": "crapStone"
+    },
+    "assets": [
+      {
+        "id": 360374,
+        "name": "codeberg-pages-server-v6.3-debian-x86_64.tar.gz",
+        "size": 30281060,
+        "download_count": 299,
+        "created_at": "2025-07-03T23:00:52+02:00",
+        "uuid": "d6e6b943-38b1-48da-b0f6-c46a69cdc4cf",
+        "browser_download_url": "https://codeberg.org/Codeberg/pages-server/releases/download/v6.3/codeberg-pages-server-v6.3-debian-x86_64.tar.gz",
+        "type": "attachment"
+      }
+    ]
+  },
+  {
+    "id": 2814309,
+    "tag_name": "v6.2.1",
+    "target_commitish": "main",
+    "name": "v6.2.1",
+    "body": "Bugfix release",
+    "url": "https://codeberg.org/api/v1/repos/Codeberg/pages-server/releases/2814309",
+    "html_url": "https://codeberg.org/Codeberg/pages-server/releases/tag/v6.2.1",
+    "tarball_url": "https://codeberg.org/Codeberg/pages-server/archive/v6.2.1.tar.gz",
+    "zipball_url": "https://codeberg.org/Codeberg/pages-server/archive/v6.2.1.zip",
+    "hide_archive_links": false,
+    "upload_url": "https://codeberg.org/api/v1/repos/Codeberg/pages-server/releases/2814309/assets",
+    "draft": false,
+    "prerelease": false,
+    "created_at": "2025-02-15T20:55:08+01:00",
+    "published_at": "2025-02-15T20:55:08+01:00",
+    "author": {
+      "id": 28806,
+      "login": "crapStone"
+    },
+    "assets": [
+      {
+        "id": 180025,
+        "name": "codeberg-pages-server-v6.2.1-debian-x86_64.tar.gz",
+        "size": 28876288,
+        "download_count": 370,
+        "created_at": "2025-02-15T20:55:06+01:00",
+        "uuid": "54c47740-aedc-4a73-a58b-70edd6591bd0",
+        "browser_download_url": "https://codeberg.org/Codeberg/pages-server/releases/download/v6.2.1/codeberg-pages-server-v6.2.1-debian-x86_64.tar.gz",
+        "type": "attachment"
+      }
+    ]
+  }
+]

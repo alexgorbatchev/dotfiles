@@ -24,6 +24,7 @@ import { BrewInstallerPlugin } from '@dotfiles/installer-brew';
 import { CargoClient, CargoInstallerPlugin } from '@dotfiles/installer-cargo';
 import { CurlScriptInstallerPlugin } from '@dotfiles/installer-curl-script';
 import { CurlTarInstallerPlugin } from '@dotfiles/installer-curl-tar';
+import { GiteaReleaseInstallerPlugin } from '@dotfiles/installer-gitea';
 import { GhCliApiClient, GitHubApiClient, GitHubReleaseInstallerPlugin } from '@dotfiles/installer-github';
 import { ManualInstallerPlugin } from '@dotfiles/installer-manual';
 import { ZshPluginInstallerPlugin } from '@dotfiles/installer-zsh-plugin';
@@ -320,6 +321,13 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const githubApiClient = new GitHubApiClient(parentLogger, projectConfig, downloader, githubApiCache);
   const ghCliApiClient = new GhCliApiClient(parentLogger, projectConfig, shell, githubApiCache);
 
+  const giteaApiCache = new FileCache(parentLogger, resolvedFs, {
+    enabled: projectConfig.github.cache.enabled,
+    defaultTtl: projectConfig.github.cache.ttl,
+    cacheDir: path.join(projectConfig.paths.generatedDir, 'cache', 'gitea-api'),
+    storageStrategy: 'json',
+  });
+
   const cargoCratesIoCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.cargo.cratesIo.cache.enabled,
     defaultTtl: projectConfig.cargo.cratesIo.cache.ttl,
@@ -396,6 +404,15 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       archiveExtractor,
       projectConfig,
       hookExecutor,
+    ),
+  );
+  pluginRegistry.register(
+    new GiteaReleaseInstallerPlugin(
+      installerTrackedFs,
+      downloader,
+      archiveExtractor,
+      hookExecutor,
+      giteaApiCache,
     ),
   );
   pluginRegistry.register(new BrewInstallerPlugin(shell));

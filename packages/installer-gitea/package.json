@@ -1,0 +1,27 @@
+{
+  "name": "@dotfiles/installer-gitea",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@dotfiles/arch": "workspace:*",
+    "@dotfiles/archive-extractor": "workspace:*",
+    "@dotfiles/config": "workspace:*",
+    "@dotfiles/core": "workspace:*",
+    "@dotfiles/downloader": "workspace:*",
+    "@dotfiles/file-system": "workspace:*",
+    "@dotfiles/installer": "workspace:*",
+    "@dotfiles/logger": "workspace:*",
+    "@dotfiles/registry": "workspace:*",
+    "@dotfiles/utils": "workspace:*",
+    "minimatch": "^10.0.1",
+    "semver": "^7.6.3",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@dotfiles/testing-helpers": "workspace:*",
+    "@types/semver": "catalog:system"
+  }
+}

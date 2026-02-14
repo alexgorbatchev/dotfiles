@@ -18,6 +18,21 @@ export default defineTool((install, ctx) =>
 );
 ```
 
+### [Gitea/Forgejo Release](./gitea-release.md)
+
+Install tools from Gitea, Forgejo, or Codeberg releases with automatic asset selection.
+
+```typescript
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('gitea-release', {
+    instanceUrl: 'https://codeberg.org',
+    repo: 'owner/repository',
+  }).bin('tool')
+);
+```
+
 ### [Homebrew](./homebrew.md)
 
 Install tools using Homebrew package manager (macOS and Linux).
@@ -113,6 +128,7 @@ export default defineTool((install, ctx) =>
 | Method             | Best For                            | Pros                                  | Cons                                 |
 | ------------------ | ----------------------------------- | ------------------------------------- | ------------------------------------ |
 | **GitHub Release** | Most open source tools              | Automatic updates, cross-platform     | Requires GitHub hosting              |
+| **Gitea/Forgejo**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host    | Requires instance URL                |
 | **Homebrew**       | macOS/Linux tools                   | Simple, well-maintained               | Platform-specific, requires Homebrew |
 | **Cargo**          | Rust tools                          | Fast pre-compiled binaries            | Rust tools only                      |
 | **Curl Script**    | Custom installers                   | Flexible, handles complex setups      | Less predictable, security concerns  |
@@ -209,5 +225,6 @@ For `curl-script`, the context also includes `scriptPath`.
 Choose an installation method to learn more:
 
 - [GitHub Release](./github-release.md) - Most common method for open source tools
+- [Gitea/Forgejo Release](./gitea-release.md) - Tools hosted on Codeberg, Forgejo, or self-hosted Gitea
 - [Homebrew](./homebrew.md) - Simple package manager installation
 - [Cargo](./cargo.md) - Fast Rust tool installation

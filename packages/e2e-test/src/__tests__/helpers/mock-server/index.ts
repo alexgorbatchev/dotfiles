@@ -1,14 +1,14 @@
 /**
  * Mock server for e2e tests.
  *
- * Provides mock endpoints for GitHub releases, Cargo crates, and script downloads.
+ * Provides mock endpoints for GitHub releases, Gitea/Forgejo releases, Cargo crates, and script downloads.
  * Configured via the MockServerBuilder - no side effects on import.
  */
 import { afterAll, beforeAll } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { MockServerBuilder } from './MockServerBuilder';
-import type { IMockServerConfig, IScriptConfig, ITarConfig } from './types';
+import type { IGiteaToolConfig, IMockServerConfig, IScriptConfig, ITarConfig } from './types';
 
 /** Type for Bun.serve() return value */
 type BunServer = ReturnType<typeof Bun.serve>;
@@ -38,6 +38,9 @@ export function tryGetServerPort(): number | undefined {
 /** Runtime state for version management (can be changed via /set-tool-version endpoint) */
 const currentVersions: Map<string, string> = new Map();
 
+/** Runtime state for Gitea tool version management */
+const currentGiteaVersions: Map<string, string> = new Map();
+
 /**
  * Creates a mock server with the given configuration.
  *
@@ -49,6 +52,11 @@ function createMockServer(config: IMockServerConfig, fixturesBasePath: string): 
   currentVersions.clear();
   for (const tool of config.githubTools) {
     currentVersions.set(tool.repo, tool.defaultVersion);
+  }
+
+  currentGiteaVersions.clear();
+  for (const tool of config.giteaTools) {
+    currentGiteaVersions.set(tool.repo, tool.defaultVersion);
   }
 
   const server = Bun.serve({
@@ -63,6 +71,10 @@ function createMockServer(config: IMockServerConfig, fixturesBasePath: string): 
         for (const tool of config.githubTools) {
           currentVersions.set(tool.repo, tool.defaultVersion);
         }
+        currentGiteaVersions.clear();
+        for (const tool of config.giteaTools) {
+          currentGiteaVersions.set(tool.repo, tool.defaultVersion);
+        }
         return new Response(JSON.stringify({ success: true }), {
           headers: { 'Content-Type': 'application/json' },
         });
@@ -76,9 +88,36 @@ function createMockServer(config: IMockServerConfig, fixturesBasePath: string): 
         const version = setVersionMatch[3] ?? '';
         const fullRepo = `${org}/${repo}`;
         currentVersions.set(fullRepo, version);
+        currentGiteaVersions.set(fullRepo, version);
         return new Response(JSON.stringify({ success: true, repo: fullRepo, version }), {
           headers: { 'Content-Type': 'application/json' },
         });
+      }
+
+      // Gitea API: /api/v1/repos/:owner/:repo/releases/latest
+      const giteaLatestMatch = pathname.match(/^\/api\/v1\/repos\/([^/]+)\/([^/]+)\/releases\/latest$/);
+      if (giteaLatestMatch) {
+        const owner = giteaLatestMatch[1] ?? '';
+        const repo = giteaLatestMatch[2] ?? '';
+        const fullRepo = `${owner}/${repo}`;
+        return handleGiteaLatestRelease(config, fixturesBasePath, fullRepo);
+      }
+
+      // Gitea API: /api/v1/repos/:owner/:repo/releases/tags/:tag
+      const giteaTagMatch = pathname.match(/^\/api\/v1\/repos\/([^/]+)\/([^/]+)\/releases\/tags\/([^/]+)$/);
+      if (giteaTagMatch) {
+        const owner = giteaTagMatch[1] ?? '';
+        const repo = giteaTagMatch[2] ?? '';
+        const tag = giteaTagMatch[3] ?? '';
+        const fullRepo = `${owner}/${repo}`;
+        return handleGiteaTagRelease(config, fixturesBasePath, fullRepo, tag);
+      }
+
+      // Gitea attachment download: /attachments/:uuid
+      const giteaAttachmentMatch = pathname.match(/^\/attachments\/([^/]+)$/);
+      if (giteaAttachmentMatch) {
+        const uuid = giteaAttachmentMatch[1] ?? '';
+        return handleGiteaAttachmentDownload(config, fixturesBasePath, uuid);
       }
 
       // GitHub API: /repos/:org/:repo/releases/latest
@@ -264,6 +303,141 @@ function handleGitHubDownload(
   });
 }
 
+// ============================================================================
+// Gitea/Forgejo route handlers
+// ============================================================================
+
+/**
+ * Builds a Gitea-format release response with attachment-style download URLs.
+ */
+function buildGiteaReleaseResponse(
+  tool: IGiteaToolConfig,
+  version: string,
+  assets: Record<string, string>,
+): Response {
+  let assetId = 1;
+  const giteaAssets = Object.entries(assets).map(([_pattern, filename]) => {
+    const uuid = `${tool.repo.replace('/', '-')}-${version}-${assetId}`;
+    const asset = {
+      id: assetId,
+      name: filename,
+      size: 1024,
+      download_count: 42,
+      created_at: '2025-01-01T00:00:00Z',
+      uuid,
+      browser_download_url: `http://127.0.0.1:${currentServerPort}/attachments/${uuid}`,
+      type: 'application/gzip',
+    };
+    assetId++;
+    return asset;
+  });
+
+  return new Response(
+    JSON.stringify({
+      id: 1,
+      tag_name: version,
+      target_commitish: 'main',
+      name: `Release ${version}`,
+      body: `Release notes for ${version}`,
+      url: `http://127.0.0.1:${currentServerPort}/api/v1/repos/${tool.repo}/releases/1`,
+      html_url: `http://127.0.0.1:${currentServerPort}/${tool.repo}/releases/tag/${version}`,
+      tarball_url: `http://127.0.0.1:${currentServerPort}/${tool.repo}/archive/${version}.tar.gz`,
+      zipball_url: `http://127.0.0.1:${currentServerPort}/${tool.repo}/archive/${version}.zip`,
+      draft: false,
+      prerelease: false,
+      created_at: '2025-01-01T00:00:00Z',
+      published_at: '2025-01-01T00:00:00Z',
+      author: { id: 1, login: 'test-user' },
+      assets: giteaAssets,
+    }),
+    { headers: { 'Content-Type': 'application/json' } },
+  );
+}
+
+function handleGiteaLatestRelease(
+  config: IMockServerConfig,
+  _fixturesBasePath: string,
+  fullRepo: string,
+): Response {
+  const tool = config.giteaTools.find((t) => t.repo === fullRepo);
+  if (!tool) {
+    return new Response(JSON.stringify({ message: 'Not Found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const currentVersion = currentGiteaVersions.get(fullRepo) ?? tool.defaultVersion;
+  const versionConfig = tool.versions.find((v) => v.version === currentVersion);
+  if (!versionConfig) {
+    return new Response(JSON.stringify({ message: 'Version not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  return buildGiteaReleaseResponse(tool, currentVersion, versionConfig.assets);
+}
+
+function handleGiteaTagRelease(
+  config: IMockServerConfig,
+  _fixturesBasePath: string,
+  fullRepo: string,
+  tag: string,
+): Response {
+  const tool = config.giteaTools.find((t) => t.repo === fullRepo);
+  if (!tool) {
+    return new Response(JSON.stringify({ message: 'Not Found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const versionConfig = tool.versions.find((v) => v.version === tag);
+  if (!versionConfig) {
+    return new Response(JSON.stringify({ message: 'Tag not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  return buildGiteaReleaseResponse(tool, tag, versionConfig.assets);
+}
+
+/**
+ * Handles download via Gitea attachment UUID.
+ * Maps the UUID back to the tool and asset filename to serve the fixture file.
+ */
+function handleGiteaAttachmentDownload(
+  config: IMockServerConfig,
+  fixturesBasePath: string,
+  uuid: string,
+): Response {
+  // UUID format: {owner}-{repo}-{version}-{assetId}
+  // We need to find the matching tool and asset
+  for (const tool of config.giteaTools) {
+    for (const versionConfig of tool.versions) {
+      let assetId = 1;
+      for (const [_pattern, filename] of Object.entries(versionConfig.assets)) {
+        const expectedUuid = `${tool.repo.replace('/', '-')}-${versionConfig.version}-${assetId}`;
+        if (expectedUuid === uuid) {
+          const filePath = path.join(fixturesBasePath, tool.toolDir, filename);
+          if (!fs.existsSync(filePath)) {
+            return new Response(`File not found: ${filePath}`, { status: 404 });
+          }
+          const data = fs.readFileSync(filePath);
+          return new Response(data, {
+            headers: { 'Content-Type': 'application/gzip' },
+          });
+        }
+        assetId++;
+      }
+    }
+  }
+
+  return new Response('Attachment not found', { status: 404 });
+}
+
 function handleCargoCrate(config: IMockServerConfig, crateName: string): Response {
   const tool = config.cargoTools.find((t) => t.crateName === crateName);
   if (!tool) {
@@ -407,6 +581,7 @@ export function withMockServer(
       server = null;
     }
     currentVersions.clear();
+    currentGiteaVersions.clear();
     currentServerPort = 0;
   });
 }
@@ -416,8 +591,16 @@ export { MockServerBuilder } from './MockServerBuilder';
 export {
   AUTO_INSTALL_TOOL,
   CARGO_QUICKINSTALL_TOOL,
+  GITEA_RELEASE_TOOL,
   GITHUB_RELEASE_TOOL,
   HOOK_TEST_TOOL,
   INSTALL_BY_BINARY_TOOL,
 } from './MockServerBuilder';
-export type { ICargoToolConfig, IGitHubToolConfig, IMockServerConfig, IScriptConfig, IVersionAssets } from './types';
+export type {
+  ICargoToolConfig,
+  IGiteaToolConfig,
+  IGitHubToolConfig,
+  IMockServerConfig,
+  IScriptConfig,
+  IVersionAssets,
+} from './types';

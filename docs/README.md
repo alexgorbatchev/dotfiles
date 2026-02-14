@@ -38,6 +38,7 @@ export default defineTool((install, ctx) =>
 
 - [Installation Overview](./installation/README.md) - Available installation methods
 - [GitHub Releases](./installation/github-release.md) - Installing from GitHub releases
+- [Gitea/Forgejo Releases](./installation/gitea-release.md) - Installing from Gitea, Forgejo, or Codeberg releases
 - [Homebrew](./installation/homebrew.md) - Installing via Homebrew
 - [Cargo](./installation/cargo.md) - Installing Rust tools from crates.io
 - [Curl Scripts](./installation/curl-script.md) - Installing via download scripts

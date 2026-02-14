@@ -45,6 +45,21 @@ export interface ICargoToolConfig {
 }
 
 /**
+ * Configuration for a Gitea/Forgejo release tool mock.
+ * Uses Gitea API format: /api/v1/repos/{owner}/{repo}/releases
+ */
+export interface IGiteaToolConfig {
+  /** Repository name in "owner/repo" format */
+  repo: string;
+  /** Directory within fixtures where tool assets are stored */
+  toolDir: string;
+  /** Version to return by default from /releases/latest */
+  defaultVersion: string;
+  /** All available versions and their assets */
+  versions: ReadonlyArray<IVersionAssets>;
+}
+
+/**
  * Configuration for a script endpoint mock.
  */
 export interface IScriptConfig {
@@ -74,6 +89,8 @@ export interface IMockServerConfig {
   fixtureDir: string;
   /** GitHub tool configurations */
   githubTools: IGitHubToolConfig[];
+  /** Gitea/Forgejo tool configurations */
+  giteaTools: IGiteaToolConfig[];
   /** Cargo tool configurations */
   cargoTools: ICargoToolConfig[];
   /** Script endpoint configurations */
