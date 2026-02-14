@@ -54,6 +54,12 @@ export type { CurlTarInstallParams as z_internal_CurlTarInstallParams } from '@d
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
+export type { CurlBinaryInstallParams as z_internal_CurlBinaryInstallParams } from '@dotfiles/installer-curl-binary';
+/**
+ * @internal
+ * @deprecated Internal type for testing only. NOT part of the public API.
+ * Do not use in production code. May change or be removed without notice.
+ */
 export type { GithubReleaseInstallParams as z_internal_GithubReleaseInstallParams } from '@dotfiles/installer-github';
 /**
  * @internal
