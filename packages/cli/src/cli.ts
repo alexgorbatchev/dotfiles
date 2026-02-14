@@ -22,6 +22,7 @@ import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import { HookExecutor, Installer } from '@dotfiles/installer';
 import { BrewInstallerPlugin } from '@dotfiles/installer-brew';
 import { CargoClient, CargoInstallerPlugin } from '@dotfiles/installer-cargo';
+import { CurlBinaryInstallerPlugin } from '@dotfiles/installer-curl-binary';
 import { CurlScriptInstallerPlugin } from '@dotfiles/installer-curl-script';
 import { CurlTarInstallerPlugin } from '@dotfiles/installer-curl-tar';
 import { GiteaReleaseInstallerPlugin } from '@dotfiles/installer-gitea';
@@ -430,6 +431,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   pluginRegistry.register(
     new CurlTarInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor, shell),
   );
+  pluginRegistry.register(new CurlBinaryInstallerPlugin(installerTrackedFs, downloader, hookExecutor, shell));
   pluginRegistry.register(new ManualInstallerPlugin(installerTrackedFs));
   pluginRegistry.register(new ZshPluginInstallerPlugin(installerTrackedFs, shell));
 

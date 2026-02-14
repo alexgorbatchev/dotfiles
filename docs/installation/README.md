@@ -90,6 +90,20 @@ export default defineTool((install, ctx) =>
 );
 ```
 
+### [Curl Binary](./curl-binary.md)
+
+Download standalone binary files directly from URLs (no archive extraction).
+
+```typescript
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-binary', {
+    url: 'https://example.com/tool-v1.0.0-linux-amd64',
+  }).bin('tool')
+);
+```
+
 ### [Manual](./manual.md)
 
 Install files from your dotfiles directory (custom scripts, pre-built binaries) or configuration-only tools.
@@ -132,7 +146,8 @@ export default defineTool((install, ctx) =>
 | **Homebrew**       | macOS/Linux tools                   | Simple, well-maintained               | Platform-specific, requires Homebrew |
 | **Cargo**          | Rust tools                          | Fast pre-compiled binaries            | Rust tools only                      |
 | **Curl Script**    | Custom installers                   | Flexible, handles complex setups      | Less predictable, security concerns  |
-| **Curl Tar**       | Direct downloads                    | Simple, no dependencies               | Manual URL management                |
+| **Curl Tar**       | Archive downloads                   | Simple, no dependencies               | Manual URL management                |
+| **Curl Binary**    | Direct binary downloads             | Simplest, no extraction needed        | Manual URL management                |
 | **Manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible | Manual file management               |
 | **Zsh Plugin**     | Zsh plugins from Git repos          | Simple, automatic updates             | Zsh plugins only                     |
 

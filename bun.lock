@@ -84,6 +84,7 @@
         "@dotfiles/installer": "workspace:*",
         "@dotfiles/installer-brew": "workspace:*",
         "@dotfiles/installer-cargo": "workspace:*",
+        "@dotfiles/installer-curl-binary": "workspace:*",
         "@dotfiles/installer-curl-script": "workspace:*",
         "@dotfiles/installer-curl-tar": "workspace:*",
         "@dotfiles/installer-gitea": "workspace:*",
@@ -386,6 +387,23 @@
         "@dotfiles/registry": "workspace:*",
         "@dotfiles/utils": "workspace:*",
         "smol-toml": "^1.3.1",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@dotfiles/testing-helpers": "workspace:*",
+      },
+    },
+    "packages/installer-curl-binary": {
+      "name": "@dotfiles/installer-curl-binary",
+      "version": "0.0.0",
+      "dependencies": {
+        "@dotfiles/core": "workspace:*",
+        "@dotfiles/downloader": "workspace:*",
+        "@dotfiles/file-system": "workspace:*",
+        "@dotfiles/installer": "workspace:*",
+        "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -821,6 +839,8 @@
     "@dotfiles/installer-brew": ["@dotfiles/installer-brew@workspace:packages/installer-brew"],
 
     "@dotfiles/installer-cargo": ["@dotfiles/installer-cargo@workspace:packages/installer-cargo"],
+
+    "@dotfiles/installer-curl-binary": ["@dotfiles/installer-curl-binary@workspace:packages/installer-curl-binary"],
 
     "@dotfiles/installer-curl-script": ["@dotfiles/installer-curl-script@workspace:packages/installer-curl-script"],
 

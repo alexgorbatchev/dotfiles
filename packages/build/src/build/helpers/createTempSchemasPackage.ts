@@ -30,6 +30,7 @@ export async function createTempSchemasPackage(
       '@dotfiles/logger': 'workspace:*',
       '@dotfiles/installer-brew': 'workspace:*',
       '@dotfiles/installer-cargo': 'workspace:*',
+      '@dotfiles/installer-curl-binary': 'workspace:*',
       '@dotfiles/installer-curl-script': 'workspace:*',
       '@dotfiles/installer-curl-tar': 'workspace:*',
       '@dotfiles/installer-github': 'workspace:*',

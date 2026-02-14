@@ -52,6 +52,7 @@ export async function buildSchemaTypes(context: IBuildContext, dependencyVersion
       --external-inlines=@dotfiles/installer-brew \
       --external-inlines=@dotfiles/installer-cargo \
       --external-inlines=@dotfiles/installer-curl-script \
+      --external-inlines=@dotfiles/installer-curl-binary \
       --external-inlines=@dotfiles/installer-curl-tar \
       --external-inlines=@dotfiles/installer-github \
       --external-inlines=@dotfiles/installer-manual \

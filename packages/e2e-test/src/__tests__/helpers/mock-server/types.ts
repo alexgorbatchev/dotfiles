@@ -82,6 +82,16 @@ export interface ITarConfig {
 }
 
 /**
+ * Configuration for a binary file endpoint mock.
+ */
+export interface IBinaryConfig {
+  /** URL path to serve the binary at */
+  path: string;
+  /** Path to the binary file relative to fixtures directory */
+  fixturePath: string;
+}
+
+/**
  * Combined configuration for the mock server.
  */
 export interface IMockServerConfig {
@@ -97,4 +107,6 @@ export interface IMockServerConfig {
   scripts: IScriptConfig[];
   /** Tarball endpoint configurations */
   tarballs: ITarConfig[];
+  /** Binary file endpoint configurations */
+  binaries: IBinaryConfig[];
 }

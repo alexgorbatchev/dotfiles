@@ -563,6 +563,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       'brew',
       'curl-script',
       'curl-tar',
+      'curl-binary',
       'cargo',
       'manual',
       'zsh-plugin',
@@ -592,7 +593,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     const invalidMethodError = messages.configurationFieldInvalid(
       'installationMethod',
       this.currentInstallationMethod ?? 'unknown',
-      'github-release | gitea-release | brew | curl-script | curl-tar | cargo | manual | zsh-plugin',
+      'github-release | gitea-release | brew | curl-script | curl-tar | curl-binary | cargo | manual | zsh-plugin',
     );
     this.logger.error(invalidMethodError);
     throw new Error(invalidMethodError);

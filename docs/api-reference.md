@@ -293,5 +293,6 @@ See [Installation Methods](./installation/README.md) for detailed parameters for
 - `cargo` - [Cargo](./installation/cargo.md)
 - `curl-script` - [Curl Scripts](./installation/curl-script.md)
 - `curl-tar` - [Curl Tar](./installation/curl-tar.md)
+- `curl-binary` - [Curl Binary](./installation/curl-binary.md)
 - `manual` - [Manual](./installation/manual.md)
 - `zsh-plugin` - [Zsh Plugin](./installation/zsh-plugin.md)

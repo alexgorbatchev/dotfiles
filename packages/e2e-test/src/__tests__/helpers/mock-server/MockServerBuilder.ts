@@ -5,6 +5,7 @@
  * for each test. No side effects - configuration is explicit per test.
  */
 import type {
+  IBinaryConfig,
   ICargoToolConfig,
   IGiteaToolConfig,
   IGitHubToolConfig,
@@ -36,6 +37,7 @@ export class MockServerBuilder {
   private readonly _cargoTools: ICargoToolConfig[] = [];
   private readonly _scripts: IScriptConfig[] = [];
   private readonly _tarballs: ITarConfig[] = [];
+  private readonly _binaries: IBinaryConfig[] = [];
 
   constructor(fixtureDir: string) {
     this._fixtureDir = fixtureDir;
@@ -82,6 +84,14 @@ export class MockServerBuilder {
   }
 
   /**
+   * Adds a binary file endpoint mock.
+   */
+  withBinary(path: string, fixturePath: string): MockServerBuilder {
+    this._binaries.push({ path, fixturePath });
+    return this;
+  }
+
+  /**
    * Builds the mock server configuration.
    */
   build(): IMockServerConfig {
@@ -92,6 +102,7 @@ export class MockServerBuilder {
       cargoTools: this._cargoTools,
       scripts: this._scripts,
       tarballs: this._tarballs,
+      binaries: this._binaries,
     };
   }
 }

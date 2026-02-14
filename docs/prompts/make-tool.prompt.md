@@ -78,6 +78,9 @@ Select the most appropriate method based on your investigation. Prefer official,
 - **`curl-tar`**: for direct archive downloads from a stable URL.
   - Guide: [Curl Tar Installation Guide](<root>/docs/installation/curl-tar.md)
 
+- **`curl-binary`**: for direct binary file downloads (no archive extraction).
+  - Guide: [Curl Binary Installation Guide](<root>/docs/installation/curl-binary.md)
+
 - **`manual`**: for custom install logic or dotfiles-provided binaries/scripts.
   - Guide: [Manual Installation Guide](<root>/docs/installation/manual.md)
 
@@ -794,6 +797,7 @@ export default defineTool((install) =>
 - [Cargo Installation](<root>/docs/installation/cargo.md)
 - [Curl Script Installation](<root>/docs/installation/curl-script.md)
 - [Curl Tar Installation](<root>/docs/installation/curl-tar.md)
+- [Curl Binary Installation](<root>/docs/installation/curl-binary.md)
 - [Manual Installation](<root>/docs/installation/manual.md)
 - [Zsh Plugin Installation](<root>/docs/installation/zsh-plugin.md)
 

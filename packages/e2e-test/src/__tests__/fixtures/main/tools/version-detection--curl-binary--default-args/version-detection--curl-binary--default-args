@@ -1,0 +1,6 @@
+#!/bin/sh
+if [ "$1" = "--version" ]; then
+  echo "version-detection--curl-binary--default-args 6.7.8"
+else
+  echo "Hello from version-detection--curl-binary--default-args"
+fi

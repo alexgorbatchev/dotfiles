@@ -166,3 +166,4 @@ export default defineTool((install) =>
 | Custom scripts    | `manual`         | deployment scripts |
 | Shell config only | `install()`      | aliases, env vars  |
 | Installer scripts | `curl-script`    | rustup, nvm        |
+| Direct binaries   | `curl-binary`    | single-file tools  |

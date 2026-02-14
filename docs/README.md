@@ -43,6 +43,7 @@ export default defineTool((install, ctx) =>
 - [Cargo](./installation/cargo.md) - Installing Rust tools from crates.io
 - [Curl Scripts](./installation/curl-script.md) - Installing via download scripts
 - [Curl Tar](./installation/curl-tar.md) - Installing from tarball URLs
+- [Curl Binary](./installation/curl-binary.md) - Installing standalone binary files
 - [Manual Installation](./installation/manual.md) - Configuring pre-installed tools
 
 ### Configuration Features

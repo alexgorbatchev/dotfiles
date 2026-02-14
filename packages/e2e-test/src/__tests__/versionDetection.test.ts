@@ -55,6 +55,14 @@ describe('E2E: version detection', () => {
         '/mock-install-version-detection-curl-tar-default-args.tar.gz',
         'tools/version-detection--curl-tar--default-args/mock-install-version-detection-curl-tar-default-args.tar.gz',
       )
+      .withBinary(
+        '/mock-binary-version-detection-curl-binary-with-args',
+        'tools/version-detection--curl-binary--with-args/version-detection--curl-binary--with-args',
+      )
+      .withBinary(
+        '/mock-binary-version-detection-curl-binary-default-args',
+        'tools/version-detection--curl-binary--default-args/version-detection--curl-binary--default-args',
+      )
   );
 
   const platformConfigs: ReadonlyArray<{
@@ -109,6 +117,14 @@ describe('E2E: version detection', () => {
 
         it('should detect version using default args (curl-tar)', async () => {
           await verifyVersionDetection('version-detection--curl-tar--default-args', '4.5.6');
+        }, 30000);
+
+        it('should detect version after installation (curl-binary)', async () => {
+          await verifyVersionDetection('version-detection--curl-binary--with-args', '5.6.7');
+        }, 30000);
+
+        it('should detect version using default args (curl-binary)', async () => {
+          await verifyVersionDetection('version-detection--curl-binary--default-args', '6.7.8');
         }, 30000);
 
         it('should fall back to timestamp when version detection fails', async () => {

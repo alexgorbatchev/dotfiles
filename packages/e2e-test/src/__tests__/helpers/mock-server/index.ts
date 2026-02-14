@@ -8,7 +8,7 @@ import { afterAll, beforeAll } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { MockServerBuilder } from './MockServerBuilder';
-import type { IGiteaToolConfig, IMockServerConfig, IScriptConfig, ITarConfig } from './types';
+import type { IBinaryConfig, IGiteaToolConfig, IMockServerConfig, IScriptConfig, ITarConfig } from './types';
 
 /** Type for Bun.serve() return value */
 type BunServer = ReturnType<typeof Bun.serve>;
@@ -191,6 +191,13 @@ function createMockServer(config: IMockServerConfig, fixturesBasePath: string): 
       for (const tarConfig of config.tarballs) {
         if (pathname === tarConfig.path) {
           return handleTarball(fixturesBasePath, tarConfig);
+        }
+      }
+
+      // Static binary file endpoints
+      for (const binaryConfig of config.binaries) {
+        if (pathname === binaryConfig.path) {
+          return handleBinaryFile(fixturesBasePath, binaryConfig);
         }
       }
 
@@ -523,6 +530,18 @@ function handleTarball(fixturesBasePath: string, config: ITarConfig): Response {
   });
 }
 
+function handleBinaryFile(fixturesBasePath: string, config: IBinaryConfig): Response {
+  const filePath = path.join(fixturesBasePath, config.fixturePath);
+  if (!fs.existsSync(filePath)) {
+    return new Response(`Binary not found: ${filePath}`, { status: 404 });
+  }
+
+  const data = fs.readFileSync(filePath);
+  return new Response(data, {
+    headers: { 'Content-Type': 'application/octet-stream' },
+  });
+}
+
 // ============================================================================
 // Main export
 // ============================================================================
@@ -597,6 +616,7 @@ export {
   INSTALL_BY_BINARY_TOOL,
 } from './MockServerBuilder';
 export type {
+  IBinaryConfig,
   ICargoToolConfig,
   IGiteaToolConfig,
   IGitHubToolConfig,
