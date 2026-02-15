@@ -75,7 +75,7 @@ export const messages = {
   } satisfies SafeLogMessageMap,
   outcome: {
     installSuccess: (toolName: string, version: string, method: string) =>
-      createSafeLogMessage(`Tool "${toolName}" v${version} installed successfully using ${method}`),
+      createSafeLogMessage(`Tool "${toolName}" \`${version}\` installed successfully using ${method}`),
     outdatedVersion: (toolName: string, currentVersion: string, latestVersion: string) =>
       createSafeLogMessage(`Tool "${toolName}" version ${currentVersion} is outdated (latest: ${latestVersion})`),
     installFailed: (method: string) => createSafeLogMessage(`Installation failed via ${method}`),

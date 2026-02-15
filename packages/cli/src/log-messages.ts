@@ -25,9 +25,9 @@ export const messages = {
     createSafeLogMessage(`${operation} not yet supported (${details})`),
   toolNotFound: (toolName: string, source: string) => createSafeLogMessage(`Tool "${toolName}" not found in ${source}`),
   toolInstalled: (toolName: string, version: string, method: string) =>
-    createSafeLogMessage(`Tool "${toolName}" v${version} installed successfully using ${method}`),
+    createSafeLogMessage(`Tool "${toolName}" \`${version}\` installed successfully using ${method}`),
   toolAlreadyInstalled: (toolName: string, version: string) =>
-    createSafeLogMessage(`Tool "${toolName}" v${version} is already installed`),
+    createSafeLogMessage(`Tool "${toolName}" \`${version}\` is already installed`),
   toolInstallSkippedConfigurationOnly: (toolName: string) =>
     createSafeLogMessage(`Tool "${toolName}" has no installation steps`),
   toolNoConfigurationsFound: (toolConfigsDir: string) =>
@@ -58,7 +58,7 @@ export const messages = {
   toolShimUpdateSuccess: (toolName: string, version: string) =>
     createSafeLogMessage(`${toolName} successfully updated to ${version}`),
   toolUpdated: (toolName: string, fromVersion: string, toVersion: string) =>
-    createSafeLogMessage(`Tool "${toolName}" updated from v${fromVersion} to v${toVersion}`),
+    createSafeLogMessage(`Tool "${toolName}" updated from \`${fromVersion}\` to \`${toVersion}\``),
   toolUpdateFailed: (toolName: string, reason: string) =>
     createSafeLogMessage(`Update failed for tool "${toolName}": ${reason}`),
   commandCheckingUpdatesFor: (toolName: string) => createSafeLogMessage(`Checking "${toolName}" for updates`),

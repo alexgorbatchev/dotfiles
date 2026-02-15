@@ -147,7 +147,7 @@ describe('installCommand', () => {
     expect(() => testLogger.expect(['INFO'], ['registerInstallCommand'], [], [/installed successfully/])).toThrow();
   });
 
-  test('should output error to stderr in shim mode when installation fails', async () => {
+  test('should exit with error in shim mode when installation fails', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(toolAConfig);
     const mockInstall = mockInstaller.install as ReturnType<typeof mock>;
     mockInstall.mockResolvedValueOnce({
@@ -155,20 +155,10 @@ describe('installCommand', () => {
       error: 'Download failed: Network timeout',
     });
 
-    const mockStderrWrite = mock((_chunk: string | Uint8Array) => true);
-    const originalStderrWrite = process.stderr.write;
-    process.stderr.write = mockStderrWrite as typeof process.stderr.write;
-
-    try {
-      expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
-        'MOCK_EXIT_CLI_CALLED_WITH_1',
-      );
-
-      // Should output user-friendly error to stderr
-      expect(mockStderrWrite).toHaveBeenCalledWith("Failed to install 'toolA': Download failed: Network timeout\n");
-    } finally {
-      process.stderr.write = originalStderrWrite;
-    }
+    // Error is logged by Installer at ERROR level (visible in QUIET/shim mode), CLI just exits
+    expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
+      'MOCK_EXIT_CLI_CALLED_WITH_1',
+    );
   });
 
   test('should output unhandled error to stderr in shim mode', async () => {

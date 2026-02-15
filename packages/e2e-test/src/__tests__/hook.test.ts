@@ -96,7 +96,7 @@ describe('E2E: after-install hooks', () => {
             INFO	[hook-test-tool] | Processing data...
             ERROR	[hook-test-tool] | Another stderr line
             INFO	[hook-test-tool] | Initialization complete!
-            INFO	Tool "hook-test-tool" v1.0.0 installed successfully using github-release
+            INFO	Tool "hook-test-tool" \`1.0.0\` installed successfully using github-release
           `;
         });
       });
