@@ -70,28 +70,17 @@ async function handleToolUpdate(
   toolConfig: ToolConfig,
   shimMode: boolean,
 ): Promise<void> {
-  const { pluginRegistry, toolInstallationRegistry, installer } = services;
+  const { toolInstallationRegistry, installer, pluginRegistry } = services;
 
-  const plugin = pluginRegistry.get(toolConfig.installationMethod);
-
-  if (!plugin) {
-    logger.info(
-      messages.commandUnsupportedOperation(
-        'Update',
-        `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`,
-      ),
-    );
+  if (toolConfig.version !== 'latest') {
+    logger.info(messages.toolVersionPinned(toolName, toolConfig.version));
     return;
   }
 
-  if (!plugin.supportsUpdate || !plugin.supportsUpdate()) {
-    logger.info(
-      messages.commandUnsupportedOperation(
-        'Update',
-        `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`,
-      ),
-    );
-    return;
+  const plugin = pluginRegistry.get(toolConfig.installationMethod);
+
+  if (plugin && !plugin.supportsUpdate()) {
+    logger.warn(messages.toolUpdateNotSupported(toolName, toolConfig.installationMethod));
   }
 
   const existingInstallation = await toolInstallationRegistry.getToolInstallation(toolName);

@@ -62,6 +62,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
       version: '1.0.0',
       paramsSchema: z.object({}),
       toolConfigSchema: z.object({}),
+      supportsUpdate: () => false,
       install: async (_name, _config, context) => {
         // Create Real Binary in the install directory
         const binaryPath = path.join(context.stagingDir, toolName);

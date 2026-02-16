@@ -280,15 +280,15 @@ describe('GiteaReleaseInstallerPlugin', () => {
     });
   });
 
-  describe('supportsUpdateCheck', () => {
-    it('should return true', () => {
-      expect(plugin.supportsUpdateCheck()).toBe(true);
-    });
-  });
-
   describe('supportsUpdate', () => {
     it('should return true', () => {
       expect(plugin.supportsUpdate()).toBe(true);
+    });
+  });
+
+  describe('supportsUpdateCheck', () => {
+    it('should return true', () => {
+      expect(plugin.supportsUpdateCheck()).toBe(true);
     });
   });
 
@@ -440,126 +440,6 @@ describe('GiteaReleaseInstallerPlugin', () => {
       expect(result.error).toMatchInlineSnapshot(
         `"Unknown error during Gitea API request to https://codeberg.org/api/v1/repos/owner/repo/releases/latest: Network connection failed"`,
       );
-    });
-  });
-
-  describe('updateTool', () => {
-    let testLogger: TestLogger;
-    let mockContext: IInstallContext;
-
-    beforeEach(() => {
-      testLogger = new TestLogger();
-      mockContext = {
-        toolName: 'test-tool',
-        currentDir: '/path/to/tools/test-tool',
-        stagingDir: '/path/to/tools/test-tool/.staging',
-        systemInfo: {
-          platform: 'darwin',
-          arch: 'arm64',
-          homeDir: '/Users/test',
-          hostname: 'test-host',
-        },
-      } as unknown as IInstallContext;
-    });
-
-    it('should return error for invalid repo format', async () => {
-      const toolConfig: GiteaReleaseToolConfig = {
-        name: 'test-tool',
-        version: '1.0.0',
-        binaries: ['test-tool'],
-        installationMethod: 'gitea-release',
-        installParams: {
-          instanceUrl: 'https://codeberg.org',
-          repo: 'invalid-repo',
-        },
-      } as unknown as GiteaReleaseToolConfig;
-
-      const result = await plugin.updateTool('test-tool', toolConfig, mockContext, { force: false }, testLogger);
-
-      assert(!result.success);
-      expect(result.error).toMatchInlineSnapshot(`"Invalid repo format: invalid-repo. Expected owner/repo"`);
-    });
-
-    it('should return error when latest release cannot be fetched', async () => {
-      const toolConfig: GiteaReleaseToolConfig = {
-        name: 'test-tool',
-        version: '1.0.0',
-        binaries: ['test-tool'],
-        installationMethod: 'gitea-release',
-        installParams: {
-          instanceUrl: 'https://codeberg.org',
-          repo: 'owner/repo',
-        },
-      };
-
-      const url = 'https://codeberg.org/api/v1/repos/owner/repo/releases/latest';
-      (mockDownloader.download as ReturnType<typeof mock>).mockRejectedValue(
-        new NotFoundError(testLogger, url, new Error('404')),
-      );
-
-      const result = await plugin.updateTool('test-tool', toolConfig, mockContext, { force: false }, testLogger);
-
-      assert(!result.success);
-      expect(result.error).toMatchInlineSnapshot(`"Could not fetch latest release for test-tool"`);
-    });
-
-    it('should return error when API throws an exception', async () => {
-      const toolConfig: GiteaReleaseToolConfig = {
-        name: 'test-tool',
-        version: '1.0.0',
-        binaries: ['test-tool'],
-        installationMethod: 'gitea-release',
-        installParams: {
-          instanceUrl: 'https://codeberg.org',
-          repo: 'owner/repo',
-        },
-      };
-
-      (mockDownloader.download as ReturnType<typeof mock>).mockRejectedValue(
-        new Error('Network connection lost'),
-      );
-
-      const result = await plugin.updateTool('test-tool', toolConfig, mockContext, { force: false }, testLogger);
-
-      assert(!result.success);
-      expect(result.error).toMatchInlineSnapshot(
-        `"Unknown error during Gitea API request to https://codeberg.org/api/v1/repos/owner/repo/releases/latest: Network connection lost"`,
-      );
-    });
-
-    it('should return install error when install fails after fetching release', async () => {
-      const toolConfig: GiteaReleaseToolConfig = {
-        name: 'test-tool',
-        version: '1.0.0',
-        binaries: ['test-tool'],
-        installationMethod: 'gitea-release',
-        installParams: {
-          instanceUrl: 'https://codeberg.org',
-          repo: 'owner/repo',
-        },
-      };
-
-      const releaseResponse = createGiteaReleaseApiResponse('v2.0.0');
-
-      let callCount = 0;
-      (mockDownloader.download as ReturnType<typeof mock>).mockImplementation(async () => {
-        callCount++;
-        // First call: updateTool fetches latest release
-        if (callCount === 1) {
-          return Buffer.from(JSON.stringify(releaseResponse));
-        }
-        // Second call: install fetches the release again for the install flow
-        if (callCount === 2) {
-          return Buffer.from(JSON.stringify(releaseResponse));
-        }
-        throw new Error('Unexpected call');
-      });
-
-      const result = await plugin.updateTool('test-tool', toolConfig, mockContext, { force: false }, testLogger);
-
-      assert(!result.success);
-      // Install fails because the release has no assets for asset selection
-      expect(result.error).toBeDefined();
     });
   });
 

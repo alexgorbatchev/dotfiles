@@ -65,11 +65,9 @@ interface IInstallerPlugin<TMethod, TParams, TConfig, TMetadata> {
   initialize?(): Promise<void>;
   cleanup?(): Promise<void>;
 
+  supportsUpdate?(): boolean;
   supportsUpdateCheck?(): boolean;
   checkUpdate?(/* ... */): Promise<UpdateCheckResult>;
-
-  supportsUpdate?(): boolean;
-  updateTool?(/* ... */): Promise<UpdateResult>;
 
   supportsReadme?(): boolean;
   getReadmeUrl?(toolName: string, toolConfig: TConfig): string | null;
@@ -422,17 +420,6 @@ interface InstallHooks {
 type UpdateCheckResult =
   | { success: true; hasUpdate: boolean; currentVersion?: string; latestVersion?: string; }
   | { success: false; error: string; };
-```
-
-### Update Operations
-
-```typescript
-interface IUpdateOptions {
-  force?: boolean;
-  targetVersion?: string;
-}
-
-type UpdateResult = { success: true; oldVersion?: string; newVersion?: string; } | { success: false; error: string; };
 ```
 
 ## Usage

@@ -106,20 +106,16 @@ export class CurlScriptInstallerPlugin implements
    *
    * @returns False, as curl-script installations delegate to external scripts.
    */
+  supportsUpdate(): boolean {
+    return false;
+  }
+
   supportsUpdateCheck(): boolean {
     return false; // curl-script doesn't support version checking
   }
 
   /**
-   * Indicates whether this plugin supports automatic updates.
-   *
-   * @returns False, as updates must be handled by re-running the installation script.
-   */
-  supportsUpdate(): boolean {
-    return false;
-  }
 
-  /**
    * Indicates whether this plugin supports README fetching.
    *
    * @returns False, as curl-script installations don't have associated READMEs to fetch.

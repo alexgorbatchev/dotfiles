@@ -129,6 +129,7 @@ When passing Error objects to logger methods (`logger.error(messages.something()
 - If no `.tool.ts` frames exist (purely internal error), the error is dropped — the `SafeLogMessage` already describes the failure.
 
 **Output examples:**
+
 ```
 ERROR   Installation failed via cargo (flux.tool.ts:14)
 ERROR   Installation failed via cargo

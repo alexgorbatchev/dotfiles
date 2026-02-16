@@ -94,6 +94,10 @@ export class BrewInstallerPlugin implements
    *
    * @returns True, as Homebrew provides version information via `brew info`.
    */
+  supportsUpdate(): boolean {
+    return true;
+  }
+
   supportsUpdateCheck(): boolean {
     return true;
   }
@@ -125,15 +129,7 @@ export class BrewInstallerPlugin implements
   }
 
   /**
-   * Indicates whether this plugin supports automatic updates.
-   *
-   * @returns False, as automatic updates are not yet implemented.
-   */
-  supportsUpdate(): boolean {
-    return false; // Not implemented yet
-  }
 
-  /**
    * Indicates whether this plugin supports README fetching.
    *
    * @returns False, as Homebrew formulas don't have direct README URLs.

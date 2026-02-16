@@ -61,6 +61,14 @@ export const messages = {
     createSafeLogMessage(`Tool "${toolName}" updated from \`${fromVersion}\` to \`${toVersion}\``),
   toolUpdateFailed: (toolName: string, reason: string) =>
     createSafeLogMessage(`Update failed for tool "${toolName}": ${reason}`),
+  toolVersionPinned: (toolName: string, version: string) =>
+    createSafeLogMessage(
+      `Tool "${toolName}" is pinned to version \`${version}\`. Set version to "latest" in the tool config to enable updates`,
+    ),
+  toolUpdateNotSupported: (toolName: string, method: string) =>
+    createSafeLogMessage(
+      `Tool "${toolName}" uses ${method} which does not support updates. Performing regular install instead`,
+    ),
   commandCheckingUpdatesFor: (toolName: string) => createSafeLogMessage(`Checking "${toolName}" for updates`),
   commandCheckingUpdatesForAll: () => createSafeLogMessage(`Checking all tools for updates`),
   fsReadFailed: (path: string) => createSafeLogMessage(`Failed to read ${path}`),

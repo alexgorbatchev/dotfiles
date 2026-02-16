@@ -174,6 +174,10 @@ export class CargoInstallerPlugin implements
     }
   }
 
+  supportsUpdate(): boolean {
+    return true;
+  }
+
   supportsUpdateCheck(): boolean {
     return true;
   }
@@ -232,10 +236,6 @@ export class CargoInstallerPlugin implements
       };
       return result;
     }
-  }
-
-  supportsUpdate(): boolean {
-    return false; // Not implemented yet
   }
 
   supportsReadme(): boolean {

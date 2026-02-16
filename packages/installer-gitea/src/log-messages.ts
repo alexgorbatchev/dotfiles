@@ -20,7 +20,6 @@ export const messages = {
   versionResolutionException: (toolName: string) =>
     createSafeLogMessage(`Exception while resolving version for ${toolName}`),
   updateCheckFailed: (toolName: string) => createSafeLogMessage(`Failed to check update for ${toolName}`),
-  updateFailed: (toolName: string) => createSafeLogMessage(`Failed to update ${toolName}`),
   availableReleaseTags: () => createSafeLogMessage('Available release tags:'),
   releaseTagItem: (tag: string) => createSafeLogMessage(`  - ${tag}`),
   noReleaseTagsAvailable: () => createSafeLogMessage('No release tags available for this repository'),

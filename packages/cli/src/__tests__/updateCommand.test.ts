@@ -1,5 +1,5 @@
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
-import type { IInstallerPlugin, ToolConfig } from '@dotfiles/core';
+import type { IInstallerPlugin, InstallerPluginRegistry, ToolConfig } from '@dotfiles/core';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
 import type {
   GithubReleaseToolConfig,
@@ -10,7 +10,6 @@ import type { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { z } from 'zod';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
 import { registerUpdateCommand } from '../updateCommand';
@@ -19,26 +18,26 @@ import { createCliTestSetup } from './createCliTestSetup';
 describe('updateCommand', () => {
   let program: IGlobalProgram;
   let mockProjectConfig: ProjectConfig;
-  let mockPlugin: IInstallerPlugin;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
   let mockToolInstallationRegistry: MockedInterface<IToolInstallationRegistry>;
   let mockInstaller: MockedInterface<IInstaller>;
+  let mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>>;
 
   const fzfToolConfig: GithubReleaseToolConfig = {
     name: 'fzf',
-    version: '0.40.0',
+    version: 'latest',
     installationMethod: 'github-release',
     installParams: { repo: 'junegunn/fzf' },
     binaries: ['fzf'],
   };
 
-  const manualToolConfig: ToolConfig = {
-    name: 'manualtool',
+  const pinnedToolConfig: ToolConfig = {
+    name: 'pinnedtool',
     version: '1.0.0',
-    installationMethod: 'manual',
-    installParams: { binaryPath: '/usr/local/bin/manualtool' },
-    binaries: ['manualtool'],
+    installationMethod: 'github-release',
+    installParams: { repo: 'owner/pinnedtool' },
+    binaries: ['pinnedtool'],
   };
 
   const githubReleaseMetadata: IGitHubReleaseInstallMetadata = {
@@ -78,17 +77,10 @@ describe('updateCommand', () => {
       }),
     };
 
-    mockPlugin = {
-      method: 'github-release',
-      displayName: 'Mock GitHub Release',
-      version: '1.0.0',
-      paramsSchema: z.unknown(),
-      toolConfigSchema: z.unknown(),
-      install: mock(async () => {
-        const result: { success: false; error: string; } = { success: false, error: 'not used' };
-        return result;
-      }),
-      supportsUpdate: mock(() => true),
+    mockPluginRegistry = {
+      get: mock(() => ({ supportsUpdate: () => true }) as unknown as IInstallerPlugin),
+      register: mock(async () => undefined),
+      getAll: mock(() => []),
     };
 
     const setup = await createCliTestSetup({
@@ -108,10 +100,10 @@ describe('updateCommand', () => {
     registerUpdateCommand(logger, program, async () => {
       const services = setup.createServices();
 
-      services.pluginRegistry.get = mock((method) => (method === 'github-release' ? mockPlugin : undefined));
       services.configService = mockConfigService;
       services.toolInstallationRegistry = mockToolInstallationRegistry;
       services.installer = mockInstaller;
+      services.pluginRegistry = mockPluginRegistry as unknown as InstallerPluginRegistry;
 
       return services;
     });
@@ -200,7 +192,6 @@ describe('updateCommand', () => {
 
   test('update available, installation fails', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-
     mockInstaller.install.mockImplementation(async (): Promise<InstallResult> => {
       const result: InstallResult = {
         success: false,
@@ -234,26 +225,62 @@ describe('updateCommand', () => {
     );
   });
 
-  test('unsupported installation method', async () => {
-    mockConfigService.loadSingleToolConfig.mockResolvedValue(manualToolConfig);
+  test('pinned version is rejected', async () => {
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(pinnedToolConfig);
 
-    await program.parseAsync(['update', 'manualtool'], { from: 'user' });
+    await program.parseAsync(['update', 'pinnedtool'], { from: 'user' });
 
     logger.expect(
       ['INFO'],
       ['registerUpdateCommand'],
       [],
       [
-        messages.commandCheckingUpdatesFor('manualtool'),
-        messages.commandUnsupportedOperation('Update', 'installation method: "manual" for tool "manualtool"'),
+        messages.commandCheckingUpdatesFor('pinnedtool'),
+        messages.toolVersionPinned('pinnedtool', '1.0.0'),
       ],
     );
     expect(mockInstaller.install).not.toHaveBeenCalled();
   });
 
+  test('unsupported plugin warns and performs regular install', async () => {
+    const curlToolConfig: ToolConfig = {
+      name: 'mytool',
+      version: 'latest',
+      installationMethod: 'curl-binary',
+      installParams: { url: 'https://example.com/mytool' },
+      binaries: ['mytool'],
+    };
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(curlToolConfig);
+    mockPluginRegistry.get!.mockReturnValue({ supportsUpdate: () => false } as unknown as IInstallerPlugin);
+
+    const installationRecord: IToolInstallationRecord = {
+      id: 1,
+      toolName: 'mytool',
+      version: '1.0.0',
+      installPath: '/fake/install',
+      timestamp: '2025-01-01-00-00-00',
+      binaryPaths: ['/fake/install/mytool'],
+      installedAt: new Date(),
+    };
+    mockToolInstallationRegistry.getToolInstallation.mockResolvedValue(installationRecord);
+
+    await program.parseAsync(['update', 'mytool'], { from: 'user' });
+
+    logger.expect(
+      ['WARN', 'INFO'],
+      ['registerUpdateCommand'],
+      [],
+      [
+        messages.commandCheckingUpdatesFor('mytool'),
+        messages.toolUpdateNotSupported('mytool', 'curl-binary'),
+        messages.toolUpdated('mytool', '1.0.0', '0.41.0'),
+      ],
+    );
+    expect(mockInstaller.install).toHaveBeenCalled();
+  });
+
   test('GitHub API error when fetching latest release', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-
     mockInstaller.install.mockImplementation(async (): Promise<InstallResult> => {
       const result: InstallResult = {
         success: false,
@@ -268,8 +295,7 @@ describe('updateCommand', () => {
   });
 
   test('tool configured with "latest" version', async () => {
-    const fzfLatestConfig: GithubReleaseToolConfig = { ...fzfToolConfig, version: 'latest' };
-    mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
 
     const installationRecord: IToolInstallationRecord = {
       id: 1,
@@ -307,7 +333,6 @@ describe('updateCommand', () => {
   describe('shim mode', () => {
     test('should use concise output when --shim-mode flag is provided', async () => {
       mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-
       const installationRecord: IToolInstallationRecord = {
         id: 1,
         toolName: 'fzf',
@@ -342,8 +367,7 @@ describe('updateCommand', () => {
     });
 
     test('should show concise message when tool is already latest in shim mode', async () => {
-      const fzfLatestConfig: GithubReleaseToolConfig = { ...fzfToolConfig, version: 'latest' };
-      mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
+      mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
 
       const installationRecord: IToolInstallationRecord = {
         id: 1,

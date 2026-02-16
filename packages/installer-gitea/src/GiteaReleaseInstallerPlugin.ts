@@ -4,9 +4,7 @@ import type {
   IInstallerPlugin,
   IInstallOptions,
   InstallResult,
-  IUpdateOptions,
   UpdateCheckResult,
-  UpdateResult,
 } from '@dotfiles/core';
 import type { ICache, IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -139,6 +137,10 @@ export class GiteaReleaseInstallerPlugin implements
     }
   }
 
+  supportsUpdate(): boolean {
+    return true;
+  }
+
   supportsUpdateCheck(): boolean {
     return true;
   }
@@ -195,81 +197,6 @@ export class GiteaReleaseInstallerPlugin implements
     } catch (error) {
       logger.error(messages.updateCheckFailed(toolName), error);
       const result: UpdateCheckResult = {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-      return result;
-    }
-  }
-
-  supportsUpdate(): boolean {
-    return true;
-  }
-
-  async updateTool(
-    toolName: string,
-    toolConfig: GiteaReleaseToolConfig,
-    context: IInstallContext,
-    options: IUpdateOptions,
-    logger: TsLogger,
-  ): Promise<UpdateResult> {
-    try {
-      const params = toolConfig.installParams as GiteaReleaseInstallParams;
-      const repo = params.repo;
-      const [owner, repoName] = repo.split('/');
-
-      if (!owner || !repoName) {
-        return {
-          success: false,
-          error: `Invalid repo format: ${repo}. Expected owner/repo`,
-        };
-      }
-
-      const apiClient = this.createApiClient(toolConfig, logger);
-      const latestRelease = await apiClient.getLatestRelease(owner, repoName);
-      if (!latestRelease || !latestRelease.tag_name) {
-        return {
-          success: false,
-          error: `Could not fetch latest release for ${toolName}`,
-        };
-      }
-
-      const oldVersion = params.version || toolConfig.version || 'latest';
-      const newVersion = options.targetVersion || latestRelease.tag_name.replace(/^v/, '');
-
-      const updatedConfig: GiteaReleaseToolConfig = {
-        ...toolConfig,
-        version: newVersion,
-        installParams: {
-          ...toolConfig.installParams,
-          version: newVersion,
-        },
-      };
-
-      const installResult = await this.install(
-        toolName,
-        updatedConfig,
-        context,
-        { force: options.force || true },
-        logger,
-      );
-
-      if (installResult.success) {
-        const result: UpdateResult = {
-          success: true,
-          oldVersion,
-          newVersion,
-        };
-        return result;
-      }
-      const result: UpdateResult = {
-        success: false,
-        error: installResult.error,
-      };
-      return result;
-    } catch (error) {
-      logger.error(messages.updateFailed(toolName), error);
-      const result: UpdateResult = {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       };

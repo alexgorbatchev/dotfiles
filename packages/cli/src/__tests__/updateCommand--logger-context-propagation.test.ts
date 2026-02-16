@@ -4,14 +4,13 @@
  * Verifies that tool name context flows through log messages during updates.
  */
 import type { IConfigService } from '@dotfiles/config';
-import type { IInstallerPlugin } from '@dotfiles/core';
+import type { IInstallerPlugin, InstallerPluginRegistry } from '@dotfiles/core';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
 import type { GithubReleaseToolConfig, IGitHubReleaseInstallMetadata } from '@dotfiles/installer-github';
 import type { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { beforeEach, describe, mock, test } from 'bun:test';
-import { z } from 'zod';
 import { messages } from '../log-messages';
 import type { IGlobalProgram } from '../types';
 import { registerUpdateCommand } from '../updateCommand';
@@ -19,17 +18,17 @@ import { createCliTestSetup } from './createCliTestSetup';
 
 describe('updateCommand - Logger Context Propagation', () => {
   let program: IGlobalProgram;
-  let mockPlugin: IInstallerPlugin;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
   let mockToolInstallationRegistry: MockedInterface<IToolInstallationRegistry>;
   let mockInstaller: MockedInterface<IInstaller>;
+  let mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>>;
 
   const TOOL_NAME = 'test-tool';
 
   const toolConfig: GithubReleaseToolConfig = {
     name: TOOL_NAME,
-    version: '1.0.0',
+    version: 'latest',
     installationMethod: 'github-release',
     installParams: { repo: 'owner/test-tool' },
     binaries: ['test-tool'],
@@ -71,14 +70,10 @@ describe('updateCommand - Logger Context Propagation', () => {
       ),
     };
 
-    mockPlugin = {
-      method: 'github-release',
-      displayName: 'Mock GitHub Release',
-      version: '1.0.0',
-      paramsSchema: z.unknown(),
-      toolConfigSchema: z.unknown(),
-      install: mock(async () => ({ success: false as const, error: 'not used' })),
-      supportsUpdate: mock(() => true),
+    mockPluginRegistry = {
+      get: mock(() => ({ supportsUpdate: () => true }) as unknown as IInstallerPlugin),
+      register: mock(async () => undefined),
+      getAll: mock(() => []),
     };
 
     const setup = await createCliTestSetup({
@@ -97,10 +92,10 @@ describe('updateCommand - Logger Context Propagation', () => {
     registerUpdateCommand(logger, program, async () => {
       const services = setup.createServices();
 
-      services.pluginRegistry.get = mock((method) => (method === 'github-release' ? mockPlugin : undefined));
       services.configService = mockConfigService;
       services.toolInstallationRegistry = mockToolInstallationRegistry;
       services.installer = mockInstaller;
+      services.pluginRegistry = mockPluginRegistry as unknown as InstallerPluginRegistry;
 
       return services;
     });

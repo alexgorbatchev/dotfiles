@@ -113,6 +113,10 @@ export class ZshPluginInstallerPlugin implements
    *
    * @returns True, as git repositories can check for updates.
    */
+  supportsUpdate(): boolean {
+    return true;
+  }
+
   supportsUpdateCheck(): boolean {
     return true;
   }
@@ -139,15 +143,6 @@ export class ZshPluginInstallerPlugin implements
       hasUpdate: false,
       currentVersion: 'unknown',
     };
-  }
-
-  /**
-   * Indicates whether this plugin supports automatic updates.
-   *
-   * @returns True, as git pull can update the plugin.
-   */
-  supportsUpdate(): boolean {
-    return true;
   }
 
   /**

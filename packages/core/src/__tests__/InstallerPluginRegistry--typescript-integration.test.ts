@@ -53,6 +53,7 @@ describe('InstallerPluginRegistry - TypeScript Integration', () => {
       version: '1.0.0',
       paramsSchema: customNpmParamsSchema,
       toolConfigSchema: customNpmConfigSchema,
+      supportsUpdate: () => true,
       install: async () => {
         const result: InstallResult<{ npmVersion: string; }> = {
           success: true,

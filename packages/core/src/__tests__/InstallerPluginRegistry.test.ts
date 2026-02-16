@@ -27,6 +27,9 @@ const createMockPlugin = (method: string, options: Partial<IInstallerPlugin> = {
       const result: InstallResult = { success: true, metadata: { method } };
       return result;
     },
+    supportsUpdate(): boolean {
+      return false;
+    },
     ...options,
   };
   return plugin;

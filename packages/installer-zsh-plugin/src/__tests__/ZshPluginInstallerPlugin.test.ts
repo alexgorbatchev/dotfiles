@@ -81,12 +81,12 @@ describe('ZshPluginInstallerPlugin', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should support update check', () => {
-    expect(plugin.supportsUpdateCheck()).toBe(true);
-  });
-
   it('should support update', () => {
     expect(plugin.supportsUpdate()).toBe(true);
+  });
+
+  it('should support update check', () => {
+    expect(plugin.supportsUpdateCheck()).toBe(true);
   });
 
   it('should not support readme', () => {

@@ -123,32 +123,6 @@ export type UpdateCheckResultFailure = IOperationFailure;
 export type UpdateCheckResult = UpdateCheckResultSuccess | UpdateCheckResultFailure;
 
 /**
- * Options for updating a tool
- */
-export interface IUpdateOptions {
-  force?: boolean;
-  targetVersion?: string;
-}
-
-/**
- * Result from plugin update - success case
- */
-export type UpdateResultSuccess = IOperationSuccess & {
-  oldVersion?: string;
-  newVersion?: string;
-};
-
-/**
- * Result from plugin update - failure case
- */
-export type UpdateResultFailure = IOperationFailure;
-
-/**
- * Result from plugin update
- */
-export type UpdateResult = UpdateResultSuccess | UpdateResultFailure;
-
-/**
  * Registry of plugin install parameter types - plugins extend this interface via module augmentation
  *
  * @example
@@ -294,6 +268,9 @@ export interface IInstallerPlugin<
   /** Optional: Plugin cleanup */
   cleanup?(): Promise<void>;
 
+  /** Whether this plugin supports updating to latest version */
+  supportsUpdate(): boolean;
+
   /** Optional: Check if plugin supports update checking */
   supportsUpdateCheck?(): boolean;
 
@@ -304,18 +281,6 @@ export interface IInstallerPlugin<
     context: IInstallContext,
     logger: TsLogger,
   ): Promise<UpdateCheckResult>;
-
-  /** Optional: Check if plugin supports updating tools */
-  supportsUpdate?(): boolean;
-
-  /** Optional: Update tool to latest version */
-  updateTool?(
-    toolName: string,
-    toolConfig: TConfig,
-    context: IInstallContext,
-    options: IUpdateOptions,
-    logger: TsLogger,
-  ): Promise<UpdateResult>;
 
   /** Optional: Check if plugin can provide README */
   supportsReadme?(): boolean;

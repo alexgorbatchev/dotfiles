@@ -85,20 +85,16 @@ export class ManualInstallerPlugin implements
    *
    * @returns False, as manual installations don't support automatic version checking.
    */
+  supportsUpdate(): boolean {
+    return false;
+  }
+
   supportsUpdateCheck(): boolean {
     return false; // manual installation doesn't support version checking
   }
 
   /**
-   * Indicates whether this plugin supports automatic updates.
-   *
-   * @returns False, as manual installations must be updated by the user.
-   */
-  supportsUpdate(): boolean {
-    return false;
-  }
 
-  /**
    * Indicates whether this plugin supports README fetching.
    *
    * @returns False, as manual installations don't have associated READMEs to fetch.

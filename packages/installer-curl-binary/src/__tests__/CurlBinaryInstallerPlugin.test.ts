@@ -87,12 +87,12 @@ describe('CurlBinaryInstallerPlugin', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should not support update checking', () => {
-    expect(plugin.supportsUpdateCheck()).toBe(false);
+  it('should not support update', () => {
+    expect(plugin.supportsUpdate()).toBe(false);
   });
 
-  it('should not support updates', () => {
-    expect(plugin.supportsUpdate()).toBe(false);
+  it('should not support update checking', () => {
+    expect(plugin.supportsUpdateCheck()).toBe(false);
   });
 
   it('should not support readme', () => {

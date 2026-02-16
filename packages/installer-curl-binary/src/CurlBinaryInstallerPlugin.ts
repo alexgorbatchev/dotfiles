@@ -106,20 +106,16 @@ export class CurlBinaryInstallerPlugin implements
    *
    * @returns False, as curl-binary installations use static URLs.
    */
+  supportsUpdate(): boolean {
+    return false;
+  }
+
   supportsUpdateCheck(): boolean {
     return false;
   }
 
   /**
-   * Indicates whether this plugin supports automatic updates.
-   *
-   * @returns False, as updates require re-running installation with new URLs.
-   */
-  supportsUpdate(): boolean {
-    return false;
-  }
 
-  /**
    * Indicates whether this plugin supports README fetching.
    *
    * @returns False, as curl-binary installations don't have associated READMEs to fetch.

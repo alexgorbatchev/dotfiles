@@ -382,6 +382,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     version: '1.0.0',
     toolConfigSchema: emptySchema,
     paramsSchema: emptySchema,
+    supportsUpdate: () => true,
     install: async (
       toolName: string,
       _toolConfig: unknown,
