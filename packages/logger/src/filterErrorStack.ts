@@ -1,9 +1,11 @@
-/**
- * Filters an error's stack trace to only include .tool.ts frames.
- * This provides cleaner output for end users by hiding internal framework details.
- */
-
 const TOOL_FILE_PATTERN = /\.tool\.(ts|js)/;
+
+/**
+ * Regex to extract filename and line number from a stack frame.
+ * Matches patterns like: `at fn (/path/to/file.tool.ts:14:13)`
+ * Captures: [1] = filename (e.g. `flux.tool.ts`), [2] = line number
+ */
+const FRAME_LOCATION_PATTERN = /([^/\\]+\.tool\.(?:ts|js)):(\d+)/;
 
 /**
  * Checks if a stack frame is from a .tool.ts file.
@@ -13,63 +15,57 @@ function isToolFrame(frameLine: string): boolean {
 }
 
 /**
- * Extracts the first .tool.ts frame from a stack trace string.
- * Returns null if no .tool.ts frame is found.
+ * Extracts `filename:line` from a stack frame string.
+ * Returns null if the frame doesn't match the expected pattern.
  */
-function extractFirstToolFrame(stack: string): string | null {
+function extractLocation(frameLine: string): string | null {
+  const match = FRAME_LOCATION_PATTERN.exec(frameLine);
+  if (!match) {
+    return null;
+  }
+  return `${match[1]}:${match[2]}`;
+}
+
+/**
+ * Extracts .tool.ts file locations from a stack trace string.
+ * Returns an array of `filename:line` strings (e.g. `["flux.tool.ts:14"]`).
+ */
+export function extractToolFileLocations(stack: string | undefined): string[] {
+  if (!stack) {
+    return [];
+  }
+
   const lines = stack.split('\n');
+  const locations: string[] = [];
 
   for (const line of lines) {
     if (isToolFrame(line)) {
-      return line.trim();
+      const location = extractLocation(line);
+      if (location) {
+        locations.push(location);
+      }
     }
   }
 
-  return null;
+  return locations;
 }
 
 /**
- * Creates a filtered stack trace containing only .tool.ts frames.
- * If no .tool.ts frames are found, returns null.
+ * Formats an error for user-facing output in non-trace mode.
+ * Returns a string with .tool.ts file:line locations, or null if
+ * no .tool.ts frames exist (meaning the error is purely internal).
+ *
+ * Output format: `(flux.tool.ts:14)` or `(flux.tool.ts:14, navi.tool.ts:8)`
  */
-export function filterStackToToolFiles(stack: string | undefined): string | null {
-  if (!stack) {
+export function formatErrorForUser(error: Error): string | null {
+  const stack = typeof error.stack === 'string' ? error.stack : undefined;
+  const locations = extractToolFileLocations(stack);
+
+  if (locations.length === 0) {
     return null;
   }
 
-  const toolFrame = extractFirstToolFrame(stack);
-  return toolFrame;
-}
-
-/**
- * Filters an Error object's stack to only include .tool.ts frames.
- * Creates a new Error with the filtered stack, preserving the original message.
- *
- * @param error - The error to filter
- * @returns A new Error with filtered stack, or the original if no filtering needed
- */
-export function filterErrorStackToToolFiles(error: Error): Error {
-  // Handle errors that might not have a standard stack property
-  const stack = typeof error.stack === 'string' ? error.stack : undefined;
-  const filteredStack = filterStackToToolFiles(stack);
-
-  // Get message safely - some error types (like ShellError) may not have standard message
-  const message = error.message ?? String(error);
-  const name = error.name ?? 'Error';
-
-  if (!filteredStack) {
-    // No .tool.ts frames found, create error with just message (no stack)
-    const filteredError = new Error(message);
-    filteredError.name = name;
-    filteredError.stack = `${name}: ${message}`;
-    return filteredError;
-  }
-
-  // Create new error with filtered stack
-  const filteredError = new Error(message);
-  filteredError.name = name;
-  filteredError.stack = `${name}: ${message}\n    ${filteredStack}`;
-  return filteredError;
+  return `(${locations.join(', ')})`;
 }
 
 /**

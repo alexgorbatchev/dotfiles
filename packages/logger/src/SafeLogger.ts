@@ -1,6 +1,6 @@
 import { type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
 import type { ZodError } from 'zod';
-import { filterErrorStackToToolFiles, isError } from './filterErrorStack';
+import { formatErrorForUser, isError } from './filterErrorStack';
 import { formatZodErrors } from './formatZodErrors';
 import type { SafeLogMessage } from './types';
 
@@ -39,6 +39,8 @@ function formatContext(context: string): string {
  * Uses tslog's built-in `prefix` array internally.
  */
 export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
+  private readonly _trace: boolean;
+
   constructor(settings?: ISafeLoggerSettings<LogObj>) {
     const existingPrefix = settings?.prefix ?? [];
     const prefix: string[] = existingPrefix.map((p) => String(p));
@@ -46,6 +48,7 @@ export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
       prefix.push(formatContext(settings.context));
     }
     super({ ...settings, prefix });
+    this._trace = settings?.trace === true;
   }
 
   /**
@@ -53,19 +56,28 @@ export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
    * When enabled, full error stacks and source locations are shown.
    */
   public isTracingEnabled(): boolean {
-    const settings = this.settings as ISafeLoggerSettings<LogObj>;
-    return settings.trace === true;
+    return this._trace;
   }
 
   /**
-   * Filters error arguments to only show .tool.ts stack frames.
-   * Stack filtering is always applied to keep output clean for end users.
+   * Processes error arguments based on tracing mode.
+   * In trace mode, error objects pass through unchanged for full debugging.
+   * In non-trace mode, errors are replaced with a formatted string showing
+   * only .tool.ts file:line locations. If no .tool.ts frames exist, the
+   * error is dropped entirely — the SafeLogMessage already describes the failure.
    */
   private filterErrorArgs(args: unknown[]): unknown[] {
+    if (this.isTracingEnabled()) {
+      return args;
+    }
+
     const filteredArgs: unknown[] = [];
     for (const arg of args) {
       if (isError(arg)) {
-        filteredArgs.push(filterErrorStackToToolFiles(arg));
+        const formatted = formatErrorForUser(arg);
+        if (formatted) {
+          filteredArgs.push(formatted);
+        }
       } else {
         filteredArgs.push(arg);
       }

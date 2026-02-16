@@ -118,6 +118,33 @@ export function runExample(logger: TsLogger) {
 - **`info`**: Successful completion of significant operations (e.g., tool installed, operation completed).
 - **`debug`**: Internal state details for debugging (e.g., cache hits, intermediate steps, variable values).
 
+## Error Object Handling
+
+When passing Error objects to logger methods (`logger.error(messages.something(), error)`), the logger automatically handles error output based on the tracing mode:
+
+### Default Mode (user-facing)
+
+- Error objects are **never passed to tslog** — they are converted to a `.tool.ts` location string or dropped entirely.
+- If the error stack contains `.tool.ts` frames, a `(filename.tool.ts:line)` string is appended to the log message. This tells the user which line in their tool config caused the failure.
+- If no `.tool.ts` frames exist (purely internal error), the error is dropped — the `SafeLogMessage` already describes the failure.
+
+**Output examples:**
+```
+ERROR   Installation failed via cargo (flux.tool.ts:14)
+ERROR   Installation failed via cargo
+```
+
+### Trace Mode (`--trace` flag)
+
+- Error objects pass through to tslog unchanged, showing the full error name, message, and complete stack trace with all frames.
+- Used for debugging internal issues.
+
+### Rules
+
+1. **Always pass error objects directly**: `logger.error(messages.something(), error)` — the logger decides what to show.
+2. **Never extract error.message into log templates**: The `SafeLogMessage` provides the user-facing description. Error details are only shown via `.tool.ts` file references in default mode, or full stack in trace mode.
+3. **Only `.tool.ts` files appear in user-facing error output**: Internal framework paths, `node_modules`, and other implementation details are never shown to end users.
+
 ## Testing
 
 Use `TestLogger` to capture and assert on log messages in your tests.

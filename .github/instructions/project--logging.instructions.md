@@ -100,6 +100,32 @@ try {
 }
 ```
 
+### Error Object Display Rules
+
+The logger automatically controls how error objects appear based on tracing mode:
+
+**Default mode (user-facing):**
+
+- Error objects are **never** passed to tslog — they are converted to a `.tool.ts` location string or dropped.
+- If the error stack contains `.tool.ts` frames, a `(filename.tool.ts:line)` string is appended.
+- If no `.tool.ts` frames exist (purely internal error), the error is silently dropped — the `SafeLogMessage` already describes the failure.
+- Internal paths (`node_modules`, framework code, etc.) are **never** shown to end users.
+
+```
+ERROR   Installation failed via cargo (flux.tool.ts:14)
+ERROR   Installation failed via cargo
+```
+
+**Trace mode (`--trace` flag):**
+
+- Error objects pass through to tslog unchanged with full stack traces.
+
+**Rules:**
+
+1. Always pass error objects directly — the logger decides what to show.
+2. Never extract `error.message` into log templates.
+3. Only `.tool.ts` file:line references appear in user-facing error output.
+
 ### No duplicate logging
 
 When an error occurs, log it ONCE at the appropriate level:

@@ -26,49 +26,30 @@ function isTslogErrorObject(value: unknown): value is ITslogErrorObject {
   );
 }
 
-function getLoggedError(log: ILogObjMeta): unknown {
-  return log[1];
+function getLoggedArg(log: ILogObjMeta, index: number): unknown {
+  return log[index];
 }
 
-describe('SafeLogger - stack trace filtering', () => {
-  it('filters internal stack frames from error logs at INFO level', () => {
+describe('SafeLogger - error argument handling', () => {
+  it('replaces error with .tool.ts location string in non-trace mode', () => {
     const logger = new TestLogger<ILogObj>({ name: 'test', minLevel: LogLevel.DEFAULT });
 
     const error = new Error('Test error');
     error.stack = `Error: Test error
     at internalFunction (/path/to/internal/file.ts:10:5)
-    at frameworkCode (/node_modules/some-lib/index.js:50:10)
     at hook (/path/to/my.tool.ts:14:13)
     at moreInternalCode (/path/to/internal/other.ts:20:10)`;
 
     logger.error('Operation failed' as SafeLogMessage, error);
 
-    // Verify the log was emitted
     logger.expect(['ERROR'], ['test'], [], ['Operation failed']);
 
-    // Access the raw log to verify error transformation
-    const loggedError = getLoggedError(logger.logs[0]!);
-
-    // tslog transforms errors into objects with parsed stack frames
-    assert(isTslogErrorObject(loggedError));
-    // The filtered error should ONLY contain the .tool.ts frame
-    const stackFrames = loggedError.stack;
-    expect(stackFrames).toHaveLength(1);
-    expect(stackFrames[0]?.fileName).toBe('my.tool.ts');
-    expect(stackFrames[0]?.method).toBe('hook');
-
-    // Verify internal frames are NOT present
-    const hasInternalFrames = stackFrames.some(
-      (frame) =>
-        frame.method === 'internalFunction' ||
-        frame.method === 'frameworkCode' ||
-        frame.method === 'moreInternalCode' ||
-        frame.fullFilePath?.includes('node_modules'),
-    );
-    expect(hasInternalFrames).toBe(false);
+    // Error is replaced with a plain string showing .tool.ts location
+    const loggedArg = getLoggedArg(logger.logs[0]!, 1);
+    expect(loggedArg).toBe('(my.tool.ts:14)');
   });
 
-  it('filters internal stack frames from warn logs', () => {
+  it('replaces error with .tool.ts location in warn logs', () => {
     const logger = new TestLogger<ILogObj>({ name: 'test', minLevel: LogLevel.DEFAULT });
 
     const error = new Error('Warning condition');
@@ -78,48 +59,13 @@ describe('SafeLogger - stack trace filtering', () => {
 
     logger.warn('Warning occurred' as SafeLogMessage, error);
 
-    // Verify the log was emitted
     logger.expect(['WARN'], ['test'], [], ['Warning occurred']);
 
-    // Access the raw log to verify error transformation
-    const loggedError = getLoggedError(logger.logs[0]!);
-
-    assert(isTslogErrorObject(loggedError));
-    // Should only have the .tool.ts frame
-    expect(loggedError.stack).toHaveLength(1);
-    expect(loggedError.stack[0]?.fileName).toBe('example.tool.ts');
-
-    // Internal frame should be filtered out
-    const hasInternal = loggedError.stack.some((frame) => frame.method === 'someInternal');
-    expect(hasInternal).toBe(false);
+    const loggedArg = getLoggedArg(logger.logs[0]!, 1);
+    expect(loggedArg).toBe('(example.tool.ts:25)');
   });
 
-  it('filters stack traces even when tracing is enabled', () => {
-    const logger = new TestLogger<ILogObj>({ name: 'test', trace: true });
-
-    const error = new Error('Debug error');
-    error.stack = `Error: Debug error
-    at internalFunction (/path/to/internal/file.ts:10:5)
-    at hook (/path/to/my.tool.ts:14:13)`;
-
-    logger.error('Debug operation failed' as SafeLogMessage, error);
-
-    // Verify the log was emitted
-    logger.expect(['ERROR'], ['test'], [], ['Debug operation failed']);
-
-    // Access the raw log to verify error transformation
-    const loggedError = getLoggedError(logger.logs[0]!);
-
-    assert(isTslogErrorObject(loggedError));
-    // Stack filtering is always on - only .tool.ts frames shown
-    expect(loggedError.stack).toHaveLength(1);
-    expect(loggedError.stack[0]?.fileName).toBe('my.tool.ts');
-
-    const hasInternalFrame = loggedError.stack.some((frame) => frame.method === 'internalFunction');
-    expect(hasInternalFrame).toBe(false);
-  });
-
-  it('removes all stack frames when no .tool.ts frames exist', () => {
+  it('drops error entirely when no .tool.ts frames exist', () => {
     const logger = new TestLogger<ILogObj>({ name: 'test', minLevel: LogLevel.DEFAULT });
 
     const error = new Error('Internal error');
@@ -129,15 +75,45 @@ describe('SafeLogger - stack trace filtering', () => {
 
     logger.error('Operation failed' as SafeLogMessage, error);
 
-    // Verify the log was emitted
     logger.expect(['ERROR'], ['test'], [], ['Operation failed']);
 
-    // Access the raw log to verify error transformation
-    const loggedError = getLoggedError(logger.logs[0]!);
+    // No .tool.ts frames — error is dropped, only message remains
+    const loggedArg = getLoggedArg(logger.logs[0]!, 1);
+    expect(loggedArg).toBeUndefined();
+  });
 
-    assert(isTslogErrorObject(loggedError));
-    // When no .tool.ts frames, stack should be empty
-    expect(loggedError.stack).toHaveLength(0);
+  it('shows multiple .tool.ts locations', () => {
+    const logger = new TestLogger<ILogObj>({ name: 'test', minLevel: LogLevel.DEFAULT });
+
+    const error = new Error('Multi-frame error');
+    error.stack = `Error: Multi-frame error
+    at firstHook (/path/to/navi.tool.ts:14:13)
+    at internal (/path/to/other.ts:20:10)
+    at secondHook (/path/to/flux.tool.ts:8:3)`;
+
+    logger.error('Operation failed' as SafeLogMessage, error);
+
+    const loggedArg = getLoggedArg(logger.logs[0]!, 1);
+    expect(loggedArg).toBe('(navi.tool.ts:14, flux.tool.ts:8)');
+  });
+
+  it('passes error objects through unchanged in trace mode', () => {
+    const logger = new TestLogger<ILogObj>({ name: 'test', trace: true });
+
+    const error = new Error('Debug error');
+    error.stack = `Error: Debug error
+    at internalFunction (/path/to/internal/file.ts:10:5)
+    at hook (/path/to/my.tool.ts:14:13)`;
+
+    logger.error('Debug operation failed' as SafeLogMessage, error);
+
+    logger.expect(['ERROR'], ['test'], [], ['Debug operation failed']);
+
+    // In trace mode, full error object is passed through to tslog
+    const loggedArg = getLoggedArg(logger.logs[0]!, 1);
+    assert(isTslogErrorObject(loggedArg));
+    expect(loggedArg.message).toBe('Debug error');
+    expect(loggedArg.stack.length).toBeGreaterThanOrEqual(2);
   });
 
   it('does not filter non-error arguments', () => {
@@ -146,13 +122,35 @@ describe('SafeLogger - stack trace filtering', () => {
     const context = { toolName: 'my-tool', path: '/some/path' };
     logger.error('Operation failed' as SafeLogMessage, context);
 
-    // Verify the log was emitted
     logger.expect(['ERROR'], ['test'], [], ['Operation failed']);
 
-    // Access the raw log to verify error transformation
-    const loggedContext = getLoggedError(logger.logs[0]!) as unknown;
+    const loggedArg = getLoggedArg(logger.logs[0]!, 1) as unknown;
+    expect(loggedArg).toEqual(context);
+  });
 
-    // Non-error objects should pass through unchanged
-    expect(loggedContext).toEqual(context);
+  it('does not filter errors from trace-level logs', () => {
+    const logger = new TestLogger<ILogObj>({ name: 'test', minLevel: 0 });
+
+    const error = new Error('Trace-level error');
+    logger.trace('Trace message' as SafeLogMessage, error);
+
+    logger.expect(['TRACE'], ['test'], [], ['Trace message']);
+
+    const loggedArg = getLoggedArg(logger.logs[0]!, 1);
+    assert(isTslogErrorObject(loggedArg));
+    expect(loggedArg.message).toBe('Trace-level error');
+  });
+
+  it('does not filter errors from debug-level logs', () => {
+    const logger = new TestLogger<ILogObj>({ name: 'test', minLevel: 0 });
+
+    const error = new Error('Debug-level error');
+    logger.debug('Debug message' as SafeLogMessage, error);
+
+    logger.expect(['DEBUG'], ['test'], [], ['Debug message']);
+
+    const loggedArg = getLoggedArg(logger.logs[0]!, 1);
+    assert(isTslogErrorObject(loggedArg));
+    expect(loggedArg.message).toBe('Debug-level error');
   });
 });
