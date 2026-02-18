@@ -1,5 +1,5 @@
 import type { IConfigService } from '@dotfiles/config';
-import type { ToolConfig } from '@dotfiles/core';
+import type { InstallerPluginRegistry, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IResolvedFileSystem } from '@dotfiles/file-system';
 import type { IInstaller } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
@@ -29,6 +29,7 @@ export interface TestContext {
   toolConfigs: Record<string, ToolConfig>;
   configService: IConfigService;
   mockInstaller: { install: ReturnType<typeof mock>; };
+  mockPluginRegistry: { get: ReturnType<typeof mock>; };
 }
 
 export async function setupTestContext(): Promise<TestContext> {
@@ -53,6 +54,10 @@ export async function setupTestContext(): Promise<TestContext> {
     })),
   };
 
+  const mockPluginRegistry = {
+    get: mock(() => undefined),
+  };
+
   const services: IDashboardServices = {
     projectConfig: createMockProjectConfig(),
     fs,
@@ -67,6 +72,7 @@ export async function setupTestContext(): Promise<TestContext> {
       downloadToFile: async () => {},
     },
     installer: mockInstaller as unknown as IInstaller,
+    pluginRegistry: mockPluginRegistry as unknown as InstallerPluginRegistry,
   };
 
   const api = createApiRoutes(logger, services);
@@ -82,6 +88,7 @@ export async function setupTestContext(): Promise<TestContext> {
     toolConfigs,
     configService,
     mockInstaller,
+    mockPluginRegistry,
   };
 }
 

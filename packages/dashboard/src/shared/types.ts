@@ -507,3 +507,35 @@ export interface IInstallToolResponse {
   /** Error message (when failed) */
   error?: string;
 }
+
+/**
+ * Response for POST /api/tools/:name/check-update
+ */
+export interface ICheckUpdateResponse {
+  /** Whether an update is available */
+  hasUpdate: boolean;
+  /** Currently configured or installed version */
+  currentVersion: string;
+  /** Latest available version */
+  latestVersion: string;
+  /** Whether the plugin supports update checking */
+  supported: boolean;
+  /** Error message when check fails */
+  error?: string;
+}
+
+/**
+ * Response for POST /api/tools/:name/update
+ */
+export interface IUpdateToolResponse {
+  /** Whether the update was successful */
+  updated: boolean;
+  /** The old version before update */
+  oldVersion?: string;
+  /** The new version after update */
+  newVersion?: string;
+  /** Whether the plugin supports updating */
+  supported: boolean;
+  /** Error message when update fails */
+  error?: string;
+}

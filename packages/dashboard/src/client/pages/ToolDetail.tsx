@@ -1,14 +1,16 @@
-import { Download, File, History, Info, Layers, RefreshCw } from 'lucide-preact';
+import { ArrowUpCircle, Download, File, History, Info, Layers, RefreshCw, Search } from 'lucide-preact';
 import { type JSX } from 'preact';
 import { useCallback, useMemo, useState } from 'preact/hooks';
 
 import type {
+  ICheckUpdateResponse,
   IInstallToolRequest,
   IInstallToolResponse,
   ISerializablePlatformConfigEntry,
   ISerializableToolConfig,
   IToolDetail,
   IToolHistory,
+  IUpdateToolResponse,
 } from '../../shared/types';
 import { postApi } from '../api';
 import { InstallMethodBadge } from '../components/InstallMethodBadge';
@@ -144,6 +146,10 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   const [installing, setInstalling] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
   const [installSuccess, setInstallSuccess] = useState<string | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [checkUpdateResult, setCheckUpdateResult] = useState<ICheckUpdateResponse | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [updateResult, setUpdateResult] = useState<IUpdateToolResponse | null>(null);
 
   const tool = tools?.find((t) => t.config.name === toolName) || null;
   const loading = toolsLoading || historyLoading;
@@ -188,6 +194,53 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
     }
   }, [toolName]);
 
+  const handleCheckUpdate = useCallback(async () => {
+    setCheckingUpdate(true);
+    setCheckUpdateResult(null);
+
+    try {
+      const result = await postApi<ICheckUpdateResponse>(
+        `/tools/${encodeURIComponent(toolName)}/check-update`,
+        {},
+      );
+      setCheckUpdateResult(result);
+    } catch (err) {
+      setCheckUpdateResult({
+        hasUpdate: false,
+        currentVersion: 'unknown',
+        latestVersion: 'unknown',
+        supported: false,
+        error: err instanceof Error ? err.message : 'Check failed',
+      });
+    } finally {
+      setCheckingUpdate(false);
+    }
+  }, [toolName]);
+
+  const handleUpdate = useCallback(async () => {
+    setUpdating(true);
+    setUpdateResult(null);
+
+    try {
+      const result = await postApi<IUpdateToolResponse>(
+        `/tools/${encodeURIComponent(toolName)}/update`,
+        {},
+      );
+      setUpdateResult(result);
+      if (result.updated) {
+        setTimeout(() => window.location.reload(), 1500);
+      }
+    } catch (err) {
+      setUpdateResult({
+        updated: false,
+        supported: false,
+        error: err instanceof Error ? err.message : 'Update failed',
+      });
+    } finally {
+      setUpdating(false);
+    }
+  }, [toolName]);
+
   if (loading) {
     return (
       <div class='flex items-center justify-center h-64'>
@@ -220,15 +273,35 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
         <div class='flex items-center gap-2'>
           {tool.runtime.status === 'installed' ?
             (
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => handleInstall(true)}
-                disabled={installing}
-              >
-                <RefreshCw class={`h-4 w-4 ${installing ? 'animate-spin' : ''}`} />
-                {installing ? 'Installing...' : 'Re-install'}
-              </Button>
+              <>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={handleCheckUpdate}
+                  disabled={checkingUpdate || installing || updating}
+                >
+                  <Search class={`h-4 w-4 ${checkingUpdate ? 'animate-spin' : ''}`} />
+                  {checkingUpdate ? 'Checking...' : 'Check for updates'}
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={handleUpdate}
+                  disabled={updating || installing || checkingUpdate}
+                >
+                  <ArrowUpCircle class={`h-4 w-4 ${updating ? 'animate-spin' : ''}`} />
+                  {updating ? 'Updating...' : 'Update'}
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => handleInstall(true)}
+                  disabled={installing || updating || checkingUpdate}
+                >
+                  <RefreshCw class={`h-4 w-4 ${installing ? 'animate-spin' : ''}`} />
+                  {installing ? 'Installing...' : 'Re-install'}
+                </Button>
+              </>
             ) :
             (
               <Button
@@ -253,6 +326,38 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       {installSuccess && (
         <div class='bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 px-4 py-2 rounded-md text-sm'>
           {installSuccess}
+        </div>
+      )}
+
+      {/* Check update status messages */}
+      {checkUpdateResult && !checkUpdateResult.error && (
+        <div
+          class={`px-4 py-2 rounded-md text-sm ${
+            checkUpdateResult.hasUpdate
+              ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400'
+              : 'bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400'
+          }`}
+        >
+          {checkUpdateResult.hasUpdate
+            ? `Update available: ${checkUpdateResult.currentVersion} → ${checkUpdateResult.latestVersion}`
+            : `Up to date (${checkUpdateResult.currentVersion})`}
+        </div>
+      )}
+      {checkUpdateResult?.error && (
+        <div class='bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded-md text-sm'>
+          {checkUpdateResult.error}
+        </div>
+      )}
+
+      {/* Update status messages */}
+      {updateResult && !updateResult.error && updateResult.updated && (
+        <div class='bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 px-4 py-2 rounded-md text-sm'>
+          {`Updated: ${updateResult.oldVersion} → ${updateResult.newVersion}`}
+        </div>
+      )}
+      {updateResult?.error && (
+        <div class='bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded-md text-sm'>
+          {updateResult.error}
         </div>
       )}
 

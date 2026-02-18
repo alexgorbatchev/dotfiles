@@ -153,6 +153,24 @@ export function createDashboardServer(
             return Response.json(result);
           },
 
+          '/api/tools/:name/check-update': async (req: Request & { params: { name: string; }; }) => {
+            if (req.method !== 'POST') {
+              return Response.json({ success: false, error: 'Method not allowed' }, { status: 405 });
+            }
+            const toolName = decodeURIComponent(req.params.name);
+            const result = await api.checkToolUpdate(toolName);
+            return Response.json(result);
+          },
+
+          '/api/tools/:name/update': async (req: Request & { params: { name: string; }; }) => {
+            if (req.method !== 'POST') {
+              return Response.json({ success: false, error: 'Method not allowed' }, { status: 405 });
+            }
+            const toolName = decodeURIComponent(req.params.name);
+            const result = await api.updateTool(toolName);
+            return Response.json(result);
+          },
+
           '/api/recent-tools': async (req) => {
             const url = new URL(req.url);
             const limitParam = url.searchParams.get('limit');

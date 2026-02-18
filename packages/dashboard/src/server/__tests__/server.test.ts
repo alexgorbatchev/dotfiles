@@ -3,7 +3,7 @@
  * Individual route tests (e.g., /api/tools, /api/health) should be placed in
  * routes/__tests__/*.test.ts, not here.
  */
-import type { ToolConfig } from '@dotfiles/core';
+import type { InstallerPluginRegistry, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IResolvedFileSystem } from '@dotfiles/file-system';
 import type { IInstaller } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
@@ -62,6 +62,9 @@ describe('Dashboard HTTP Server', () => {
       installer: {
         install: async () => ({ success: true as const, version: '1.0.0', installationMethod: 'github-release' }),
       } as unknown as IInstaller,
+      pluginRegistry: {
+        get: () => undefined,
+      } as unknown as InstallerPluginRegistry,
     };
 
     const port = 10000 + Math.floor(Math.random() * 50000);

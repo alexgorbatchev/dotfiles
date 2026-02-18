@@ -8,4 +8,13 @@ export const messages = {
   apiError: (endpoint: string) => createSafeLogMessage(`API error in ${endpoint}`),
   installFailed: (error: string) => createSafeLogMessage(`Installation failed: ${error}`),
   installSucceeded: () => createSafeLogMessage('Installation succeeded'),
+  checkUpdateCompleted: (hasUpdate: boolean, currentVersion: string, latestVersion: string) =>
+    createSafeLogMessage(
+      `Update check complete: hasUpdate=${hasUpdate} current=${currentVersion} latest=${latestVersion}`,
+    ),
+  checkUpdateFailed: (error: string) => createSafeLogMessage(`Update check failed: ${error}`),
+  updateNotSupported: (method: string) => createSafeLogMessage(`Update not supported for method ${method}`),
+  updateFailed: (error: string) => createSafeLogMessage(`Update failed: ${error}`),
+  updateSucceeded: (oldVersion: string, newVersion: string) =>
+    createSafeLogMessage(`Updated from ${oldVersion} to ${newVersion}`),
 };

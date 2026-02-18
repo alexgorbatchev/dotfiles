@@ -8,11 +8,13 @@ import { clearGitFirstCommitDatesCache, clearToolConfigsCache } from './helpers'
 import { getRecentTools } from './recent-tools';
 import { getShellIntegration } from './shell-integration';
 import { getStats } from './stats';
+import { checkToolUpdate } from './tool-check-update';
 import { getToolConfigsTree } from './tool-configs-tree';
 import { getToolHistory } from './tool-history';
 import { installTool } from './tool-install';
 import { getToolReadme } from './tool-readme';
 import { getToolSource } from './tool-source';
+import { updateTool } from './tool-update';
 import { getTools } from './tools';
 
 /**
@@ -34,6 +36,8 @@ export function createApiRoutes(parentLogger: TsLogger, services: IDashboardServ
     getToolSource: (toolName: string) => getToolSource(logger, services, toolName),
     getRecentTools: (limit?: number) => getRecentTools(logger, services, limit),
     installTool: (toolName: string, request: IInstallToolRequest) => installTool(logger, services, toolName, request),
+    checkToolUpdate: (toolName: string) => checkToolUpdate(logger, services, toolName),
+    updateTool: (toolName: string) => updateTool(logger, services, toolName),
   };
 }
 
