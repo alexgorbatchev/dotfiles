@@ -1,6 +1,6 @@
 {
   "name": "dotfiles",
-  "version": "1.0.67",
+  "version": "1.0.68",
   "private": true,
   "workspaces": ["packages/*", "test-project"],
   "type": "module",
