@@ -5,6 +5,7 @@ import { $ } from 'dax-sh';
 import { BuildError } from '../handleBuildError';
 import type { IBuildContext } from '../types';
 import { copyFileIfExists } from './copyFileIfExists';
+import { throwIfCertificateError } from './throwIfCertificateError';
 
 export interface IPackedTestEnvironment {
   /** Directory containing the unpacked and installed package */
@@ -60,6 +61,8 @@ export async function createPackedTestEnvironment(context: IBuildContext): Promi
 
   // Install dependencies in the unpacked package
   const installResult = await $`bun install`.quiet().noThrow().cwd(packageDir);
+
+  throwIfCertificateError(installResult.stderr.toString());
 
   if (installResult.code !== 0) {
     throw new BuildError(`bun install failed in packed environment: ${installResult.stderr.toString()}`);

@@ -23,3 +23,4 @@ export * from './installDependenciesInOutputDir';
 export * from './pickPackageVersions';
 export * from './setupTsdTestsProject';
 export * from './symlinkDirectory';
+export * from './throwIfCertificateError';
