@@ -46,6 +46,10 @@ export async function handleBuildError(
     if (error instanceof BuildError) {
       console.error('Build failed');
       console.error(`Reason: ${error.message}`);
+      const rootCause: unknown = getRootCause(error);
+      if (rootCause !== error) {
+        logErrorDetails(rootCause);
+      }
       process.exitCode = 1;
       return;
     } else {

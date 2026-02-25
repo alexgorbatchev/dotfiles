@@ -11,8 +11,8 @@ import type { IBuildContext } from '../types';
 export function checkProjectConfigTypeSignature(context: IBuildContext): void {
   const schemaContent: string = fs.readFileSync(context.paths.outputSchemasDtsPath, 'utf-8');
 
-  // Verify the file imports zod
-  if (!schemaContent.includes("import { z } from 'zod'")) {
+  // Verify the file imports zod (may include additional zod exports like ZodError)
+  if (!schemaContent.includes("from 'zod'")) {
     throw new BuildError('Generated schema is missing zod import');
   }
 

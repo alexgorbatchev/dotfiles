@@ -17,10 +17,11 @@
  * - Git working directory should be clean (will warn if not)
  *
  * Usage:
- *   bun run release          # Patch bump (1.0.0 -> 1.0.1)
- *   bun run release patch    # Patch bump (1.0.0 -> 1.0.1)
- *   bun run release minor    # Minor bump (1.0.0 -> 1.1.0)
- *   bun run release major    # Major bump (1.0.0 -> 2.0.0)
+ *   bun run release              # Patch bump (1.0.0 -> 1.0.1)
+ *   bun run release patch        # Patch bump (1.0.0 -> 1.0.1)
+ *   bun run release minor        # Minor bump (1.0.0 -> 1.1.0)
+ *   bun run release major        # Major bump (1.0.0 -> 2.0.0)
+ *   bun run release --dry-run    # Run everything except commit, tag, and publish
  */
 
 import { $ } from 'dax-sh';
@@ -117,11 +118,16 @@ async function hasUncommittedChanges(): Promise<boolean> {
  */
 async function release(): Promise<void> {
   const args = process.argv.slice(2);
-  const bumpType = args[0] ?? 'patch';
+  const dryRun = args.includes('--dry-run');
+  const bumpType = args.find((arg) => arg !== '--dry-run') ?? 'patch';
 
   if (!isValidBumpType(bumpType)) {
     console.error(`Invalid bump type: ${bumpType}. Use 'patch', 'minor', or 'major'.`);
     process.exit(1);
+  }
+
+  if (dryRun) {
+    console.log('🧪 Dry run mode — will skip commit, tag, and publish.');
   }
 
   // Warn if there are uncommitted changes
@@ -137,6 +143,12 @@ async function release(): Promise<void> {
 
     // Step 2: Run build
     await runBuild();
+
+    if (dryRun) {
+      await revertVersionChange();
+      console.log(`\n✅ Dry run complete — build succeeded for version ${newVersion}.`);
+      return;
+    }
 
     // Step 3: Build succeeded - commit and publish
     await commitAndTag(newVersion);
