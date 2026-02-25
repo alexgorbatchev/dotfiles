@@ -22,5 +22,6 @@ export * from './getTypeTestFiles';
 export * from './installDependenciesInOutputDir';
 export * from './pickPackageVersions';
 export * from './setupTsdTestsProject';
+export * from './shell';
 export * from './symlinkDirectory';
 export * from './throwIfCertificateError';

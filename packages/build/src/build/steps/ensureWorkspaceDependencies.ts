@@ -1,6 +1,5 @@
-import { $ } from 'dax-sh';
 import { BuildError } from '../handleBuildError';
-import { ensureBunCacheDirectory, throwIfCertificateError } from '../helpers';
+import { ensureBunCacheDirectory, shell, throwIfCertificateError } from '../helpers';
 import type { IBuildContext } from '../types';
 
 /**
@@ -11,7 +10,9 @@ export async function ensureWorkspaceDependencies(context: IBuildContext): Promi
   console.log('🔄 Ensuring workspace dependencies...');
 
   try {
-    const installResult = await $`bun install`.quiet().noThrow();
+    // stderr("inheritPiped") both prints stderr and captures it so throwIfCertificateError can inspect it.
+    // Without it, dax-sh inherits stdio and .stderr.toString() throws "Stdout was not piped".
+    const installResult = await shell`bun install`.stderr("inheritPiped").noThrow();
 
     throwIfCertificateError(installResult.stderr.toString());
 

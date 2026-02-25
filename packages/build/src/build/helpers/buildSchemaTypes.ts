@@ -1,5 +1,4 @@
-import { $ } from 'dax-sh';
-import path from 'node:path';
+import { shell } from './shell';
 
 import type { IBuildContext, IDependencyVersions } from '../types';
 import { copyPackagesToOutputDir } from './copyPackagesToOutputDir';
@@ -10,10 +9,11 @@ import { resolveSchemaExportsDtsPath } from './resolveSchemaExportsDtsPath';
 
 /**
  * Returns path to dts-bundle-generator binary.
- * Using direct path avoids network resolution issues with `bun x`.
+ * Uses require.resolve instead of a hardcoded path because bun may hoist the
+ * package into node_modules/.bun/ rather than the top-level node_modules/.
  */
-function getDtsBundleGeneratorPath(rootDir: string): string {
-  return path.join(rootDir, 'node_modules/dts-bundle-generator/dist/bin/dts-bundle-generator.js');
+function getDtsBundleGeneratorPath(): string {
+  return require.resolve('dts-bundle-generator/dist/bin/dts-bundle-generator.js');
 }
 
 /**
@@ -27,7 +27,7 @@ function getDtsBundleGeneratorPath(rootDir: string): string {
  */
 export async function buildSchemaTypes(context: IBuildContext, dependencyVersions: IDependencyVersions): Promise<void> {
   await createTempTsConfig(context);
-  await $`bun tsgo --project ${context.paths.buildTsconfigPath}`;
+  await shell`bun tsgo --project ${context.paths.buildTsconfigPath}`;
 
   copyPackagesToOutputDir(context);
   await createTempSchemasPackage(context, dependencyVersions);
@@ -35,9 +35,9 @@ export async function buildSchemaTypes(context: IBuildContext, dependencyVersion
 
   const schemaExportsPath: string = resolveSchemaExportsDtsPath(context.paths.tempSchemasBuildDir);
   const dtsBundlerConfigPath: string = await createDtsBundlerTsConfig(context);
-  const dtsBundleGeneratorPath: string = getDtsBundleGeneratorPath(context.paths.rootDir);
+  const dtsBundleGeneratorPath: string = getDtsBundleGeneratorPath();
 
-  await $`
+  await shell`
     bun ${dtsBundleGeneratorPath} \
       --silent \
       --project ${dtsBundlerConfigPath} \
@@ -56,6 +56,7 @@ export async function buildSchemaTypes(context: IBuildContext, dependencyVersion
       --external-inlines=@dotfiles/installer-curl-tar \
       --external-inlines=@dotfiles/installer-github \
       --external-inlines=@dotfiles/installer-manual \
+      --external-inlines=@dotfiles/tool-config-builder \
       -- ${schemaExportsPath}
   `;
 

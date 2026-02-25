@@ -1,5 +1,5 @@
-import { $ } from 'dax-sh';
 import { BuildError } from '../handleBuildError';
+import { shell } from '../helpers';
 import { setupTsdTestsProject } from '../helpers/setupTsdTestsProject';
 import type { IBuildContext } from '../types';
 
@@ -12,7 +12,7 @@ export async function runTypeTests(context: IBuildContext): Promise<void> {
   try {
     await setupTsdTestsProject(context);
 
-    const tsdResult = await $`bun x tsd --typings ./index.d.ts --files './**/*.test-d.ts'`
+    const tsdResult = await shell`bun x tsd --typings ./index.d.ts --files './**/*.test-d.ts'`
       .noThrow()
       .cwd(context.paths.tsdTestsDir);
 

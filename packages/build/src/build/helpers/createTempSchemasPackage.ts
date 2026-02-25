@@ -35,6 +35,7 @@ export async function createTempSchemasPackage(
       '@dotfiles/installer-curl-tar': 'workspace:*',
       '@dotfiles/installer-github': 'workspace:*',
       '@dotfiles/installer-manual': 'workspace:*',
+      '@dotfiles/tool-config-builder': 'workspace:*',
     },
   };
 

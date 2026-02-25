@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { $ } from 'dax-sh';
+import { shell } from './shell';
 import { BuildError } from '../handleBuildError';
 import type { IBuildContext } from '../types';
 import { copyFileIfExists } from './copyFileIfExists';
@@ -32,7 +32,7 @@ export async function createPackedTestEnvironment(context: IBuildContext): Promi
   fs.mkdirSync(testDir, { recursive: true });
 
   // Run npm pack in .dist to create a tarball
-  const packResult = await $`npm pack --pack-destination ${testDir}`.quiet().noThrow().cwd(context.paths.outputDir);
+  const packResult = await shell`npm pack --pack-destination ${testDir}`.quiet().noThrow().cwd(context.paths.outputDir);
 
   if (packResult.code !== 0) {
     throw new BuildError(`npm pack failed: ${packResult.stderr.toString()}`);
@@ -50,7 +50,7 @@ export async function createPackedTestEnvironment(context: IBuildContext): Promi
   const packageDir = path.join(testDir, 'package');
   fs.mkdirSync(packageDir, { recursive: true });
 
-  const unpackResult = await $`tar -xzf ${tarballPath} -C ${testDir}`.quiet().noThrow();
+  const unpackResult = await shell`tar -xzf ${tarballPath} -C ${testDir}`.quiet().noThrow();
 
   if (unpackResult.code !== 0) {
     throw new BuildError(`Failed to unpack tarball: ${unpackResult.stderr.toString()}`);
@@ -60,7 +60,9 @@ export async function createPackedTestEnvironment(context: IBuildContext): Promi
   copyFileIfExists(context.paths.npmrcPath, path.join(packageDir, '.npmrc'));
 
   // Install dependencies in the unpacked package
-  const installResult = await $`bun install`.quiet().noThrow().cwd(packageDir);
+  // stderr("inheritPiped") both prints stderr and captures it so throwIfCertificateError can inspect it.
+  // Without it, dax-sh inherits stdio and .stderr.toString() throws "Stdout was not piped".
+  const installResult = await shell`bun install`.stderr("inheritPiped").noThrow().cwd(packageDir);
 
   throwIfCertificateError(installResult.stderr.toString());
 

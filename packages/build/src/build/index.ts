@@ -10,11 +10,11 @@
  *   bun run build
  */
 
-import { $ } from 'dax-sh';
 import { getPackageJson } from '../getPackageJson';
+import { shell } from './helpers';
 
 async function main() {
-  const results = await $`bun run build.ts`
+  const results = await shell`bun run build.ts`
     //
     .noThrow()
     .cwd(__dirname)

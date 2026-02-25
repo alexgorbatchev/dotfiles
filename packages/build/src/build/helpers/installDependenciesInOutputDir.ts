@@ -1,4 +1,4 @@
-import { $ } from 'dax-sh';
+import { shell } from './shell';
 import { BuildError } from '../handleBuildError';
 import type { IBuildContext } from '../types';
 import { ensureBunCacheDirectory } from './ensureBunCacheDirectory';
@@ -17,7 +17,9 @@ export async function installDependenciesInOutputDir(context: IBuildContext): Pr
   ensureBunCacheDirectory(context);
 
   try {
-    const installResult = await $`cd ${context.paths.outputDir} && bun install`.quiet().noThrow();
+    // stderr("inheritPiped") both prints stderr and captures it so throwIfCertificateError can inspect it.
+    // Without it, dax-sh inherits stdio and .stderr.toString() throws "Stdout was not piped".
+    const installResult = await shell`cd ${context.paths.outputDir} && bun install`.stderr("inheritPiped").noThrow();
 
     throwIfCertificateError(installResult.stderr.toString());
 

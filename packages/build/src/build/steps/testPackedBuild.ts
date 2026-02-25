@@ -1,7 +1,6 @@
-import { $ } from 'dax-sh';
 import path from 'node:path';
 import { BuildError } from '../handleBuildError';
-import { createPackedTestEnvironment, type IPackedTestEnvironment } from '../helpers';
+import { createPackedTestEnvironment, shell, type IPackedTestEnvironment } from '../helpers';
 import type { IBuildContext } from '../types';
 
 const DASHBOARD_TEST_PORT = 13579;
@@ -49,7 +48,7 @@ export async function testPackedBuild(context: IBuildContext): Promise<void> {
 async function testCliFromPackedEnv(packedEnv: IPackedTestEnvironment): Promise<void> {
   console.log('🧪 Testing CLI from packed environment...');
 
-  const testResult = await $`bun ${packedEnv.cliPath} --version`.quiet().noThrow();
+  const testResult = await shell`bun ${packedEnv.cliPath} --version`.quiet().noThrow();
 
   if (testResult.code !== 0) {
     throw new BuildError(
