@@ -1,10 +1,16 @@
 /* oxlint-disable no-console */
-import { defineTool } from '@dotfiles/cli';
+import { defineTool, type IToolConfigBuilder } from '@dotfiles/cli';
+
+async function chainTest(
+  chain: IToolConfigBuilder,
+) {
+  return chain;
+}
 
 export default defineTool((install, ctx) => {
   const initFile = `${ctx.currentDir}/fnm-init.zsh`;
 
-  return install('curl-script', {
+  const chain = install('curl-script', {
     url: 'https://fnm.vercel.app/install',
     shell: 'bash',
     args: (ctx) => ['--skip-shell', '--install-dir', ctx.stagingDir, '--force-no-brew'],
@@ -27,4 +33,6 @@ export default defineTool((install, ctx) => {
         })
         .sourceFunction('fnm-func')
     );
+
+  return chainTest(chain);
 });

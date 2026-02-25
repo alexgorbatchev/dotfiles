@@ -1,9 +1,9 @@
-import { $ } from 'dax-sh';
+import { $, type TemplateExpr } from 'dax-sh';
 
 /**
  * Tagged template wrapper around dax-sh's `$` that logs the command before executing it.
  */
-export function shell(strings: TemplateStringsArray, ...exprs: unknown[]) {
+export function shell(strings: TemplateStringsArray, ...exprs: TemplateExpr[]) {
   let command = '';
 
   for (let i = 0; i < strings.length; i++) {
