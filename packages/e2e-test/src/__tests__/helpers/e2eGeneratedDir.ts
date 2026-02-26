@@ -24,7 +24,7 @@ export function findProjectRoot(startDir: string): string {
 
 /**
  * Gets the generated directory path for e2e tests.
- * Uses tmp/e2e-test/worker-{id}/{fixture-name}/ for parallel test isolation.
+ * Uses .tmp/e2e-test/worker-{id}/{fixture-name}/ for parallel test isolation.
  *
  * @param configDir - The directory containing the config file (import.meta.dirname)
  * @returns Absolute path to the generated directory
@@ -34,5 +34,5 @@ export function getE2eGeneratedDir(configDir: string): string {
   const fixtureName = path.basename(configDir);
   const workerId = process.env['BUN_TEST_WORKER_ID'] || 'default';
 
-  return path.join(projectRoot, 'tmp', 'e2e-test', `worker-${workerId}`, fixtureName);
+  return path.join(projectRoot, '.tmp', 'e2e-test', `worker-${workerId}`, fixtureName);
 }
