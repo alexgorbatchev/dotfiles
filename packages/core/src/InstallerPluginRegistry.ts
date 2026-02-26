@@ -114,6 +114,19 @@ export class InstallerPluginRegistry {
   }
 
   /**
+   * Get method names for plugins that are externally managed.
+   */
+  getExternallyManagedMethods(): Set<string> {
+    const methods = new Set<string>();
+    for (const [method, plugin] of this.plugins) {
+      if (plugin.externallyManaged) {
+        methods.add(method);
+      }
+    }
+    return methods;
+  }
+
+  /**
    * Compose schemas from all registered plugins (call once after all plugins registered)
    */
   composeSchemas(): void {

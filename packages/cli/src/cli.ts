@@ -357,46 +357,19 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   // Create system-context logger for generators that operate at system level
   const systemLogger = parentLogger.getSubLogger({ context: 'system' });
 
-  const shimGenerator = new ShimGenerator(systemLogger, shimTrackedFs, projectConfig, systemInfo);
   const shellInitGenerator = new ShellInitGenerator(systemLogger, shellInitTrackedFs, projectConfig);
   const symlinkGenerator = new SymlinkGenerator(systemLogger, symlinkTrackedFs, projectConfig, systemInfo);
   const completionCommandExecutor = new CompletionCommandExecutor(systemLogger, shell);
 
   const archiveExtractor = new ArchiveExtractor(parentLogger, resolvedFs, shell);
 
-  const completionGenerator = new CompletionGenerator(
-    systemLogger,
-    completionTrackedFs,
-    shell,
-    completionCommandExecutor,
-    {
-      downloader,
-      archiveExtractor,
-    },
-  );
-
-  const generatorOrchestrator = new GeneratorOrchestrator(
-    systemLogger,
-    shimGenerator,
-    shellInitGenerator,
-    symlinkGenerator,
-    completionGenerator,
-    systemInfo,
-    projectConfig,
-    fileRegistry,
-    resolvedFs,
-    completionTrackedFs,
-  );
-
-  // Initialize plugin registry
-  const pluginRegistry = new InstallerPluginRegistry(parentLogger);
-
   // Initialize hook executor for plugins
   const hookExecutor = new HookExecutor((chunk: string): void => {
     process.stdout.write(chunk);
   });
 
-  // Register all installer plugins
+  // Initialize plugin registry and register all installer plugins
+  const pluginRegistry = new InstallerPluginRegistry(parentLogger);
   pluginRegistry.register(
     new GitHubReleaseInstallerPlugin(
       installerTrackedFs,
@@ -436,6 +409,41 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   pluginRegistry.register(new ManualInstallerPlugin(installerTrackedFs));
   pluginRegistry.register(new NpmInstallerPlugin(shell));
   pluginRegistry.register(new ZshPluginInstallerPlugin(installerTrackedFs, shell));
+
+  // Create shim generator with knowledge of externally managed plugins (e.g., brew)
+  // so it can create symlinks instead of bash shims for those tools
+  const externallyManagedMethods = pluginRegistry.getExternallyManagedMethods();
+  const shimGenerator = new ShimGenerator(
+    systemLogger,
+    shimTrackedFs,
+    projectConfig,
+    systemInfo,
+    externallyManagedMethods,
+  );
+
+  const completionGenerator = new CompletionGenerator(
+    systemLogger,
+    completionTrackedFs,
+    shell,
+    completionCommandExecutor,
+    {
+      downloader,
+      archiveExtractor,
+    },
+  );
+
+  const generatorOrchestrator = new GeneratorOrchestrator(
+    systemLogger,
+    shimGenerator,
+    shellInitGenerator,
+    symlinkGenerator,
+    completionGenerator,
+    systemInfo,
+    projectConfig,
+    fileRegistry,
+    resolvedFs,
+    completionTrackedFs,
+  );
 
   const installer = new Installer(
     logger,

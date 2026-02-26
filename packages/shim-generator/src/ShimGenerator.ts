@@ -17,12 +17,17 @@ import { messages } from './log-messages';
  * After a successful installation, it proceeds to execute the actual tool.
  * This ensures that tools are available when needed without requiring
  * them to be installed beforehand.
+ *
+ * For externally managed tools (e.g., Homebrew), symlinks to the real binaries
+ * are created instead of bash shim scripts. This avoids PATH clobbering issues
+ * where the shim would intercept the binary lookup.
  */
 export class ShimGenerator implements IShimGenerator {
   private readonly fs: IFileSystem;
   private readonly config: ProjectConfig;
   private readonly logger: TsLogger;
   private readonly systemInfo: ISystemInfo;
+  private readonly externallyManagedMethods: Set<string>;
 
   private isConfigurationOnlyToolConfig(toolConfig: ToolConfig): boolean {
     const isManual = toolConfig.installationMethod === 'manual';
@@ -39,8 +44,15 @@ export class ShimGenerator implements IShimGenerator {
    * @param fileSystem - The file system interface for file operations.
    * @param config - The YAML configuration containing paths and settings.
    * @param systemInfo - The current system information for platform resolution.
+   * @param externallyManagedMethods - Set of installation method names that are externally managed.
    */
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, config: ProjectConfig, systemInfo: ISystemInfo) {
+  constructor(
+    parentLogger: TsLogger,
+    fileSystem: IFileSystem,
+    config: ProjectConfig,
+    systemInfo: ISystemInfo,
+    externallyManagedMethods?: Set<string>,
+  ) {
     const logger = parentLogger.getSubLogger({ name: 'ShimGenerator' });
     this.logger = logger;
     const constructorLogger = logger.getSubLogger({ name: 'constructor' });
@@ -48,6 +60,7 @@ export class ShimGenerator implements IShimGenerator {
     this.fs = fileSystem;
     this.config = config;
     this.systemInfo = systemInfo;
+    this.externallyManagedMethods = externallyManagedMethods ?? new Set();
   }
 
   /**
@@ -120,9 +133,13 @@ export class ShimGenerator implements IShimGenerator {
   /**
    * Generates a shim file for a specific binary.
    *
+   * For externally managed tools (e.g., Homebrew), creates a symlink to the real
+   * binary instead of a bash shim script. This avoids PATH clobbering where the
+   * shim would intercept binary lookups.
+   *
    * @param toolFs - The file system interface (may be tool-specific tracked FS).
    * @param toolName - The name of the tool.
-   * @param _toolConfig - The tool configuration (unused currently).
+   * @param toolConfig - The tool configuration.
    * @param binaryName - The name of the binary to generate a shim for.
    * @param overwrite - Whether to overwrite existing shims created by the generator.
    * @param overwriteConflicts - Whether to overwrite conflicting files not created by the generator.
@@ -131,7 +148,7 @@ export class ShimGenerator implements IShimGenerator {
   private async generateShimForBinary(
     toolFs: IFileSystem,
     toolName: string,
-    _toolConfig: ToolConfig,
+    toolConfig: ToolConfig,
     binaryName: string,
     overwrite: boolean,
     overwriteConflicts: boolean,
@@ -160,7 +177,8 @@ export class ShimGenerator implements IShimGenerator {
         return null;
       }
 
-      // It's our shim and overwrite is true - continue to overwrite
+      // Existing file will be overwritten by writeFile (bash shim) or
+      // removed-then-recreated by createSymlinkShim (symlink shim)
     }
 
     // Use the stable current symlink folder for execution
@@ -168,6 +186,57 @@ export class ShimGenerator implements IShimGenerator {
 
     logger.debug(messages.generateShim.resolvedBinaryPath(toolName, binaryName, toolBinaryPath));
 
+    // For externally managed tools, create a symlink to the real binary
+    // instead of a bash shim script to avoid PATH clobbering
+    const isExternallyManaged = this.externallyManagedMethods.has(toolConfig.installationMethod);
+
+    if (isExternallyManaged) {
+      return this.createSymlinkShim(toolFs, shimFilePath, toolBinaryPath, binaryName, logger);
+    }
+
+    return this.createBashShim(toolFs, shimFilePath, toolBinaryPath, toolName, binaryName, logger);
+  }
+
+  /**
+   * Creates a symlink from the shim path to the real binary path.
+   * Used for externally managed tools (e.g., Homebrew) to avoid PATH clobbering.
+   */
+  private async createSymlinkShim(
+    toolFs: IFileSystem,
+    shimFilePath: string,
+    toolBinaryPath: string,
+    binaryName: string,
+    logger: TsLogger,
+  ): Promise<string | null> {
+    logger.debug(messages.generateShim.creatingSymlink(binaryName, toolBinaryPath));
+
+    await this.fs.ensureDir(path.dirname(shimFilePath));
+
+    // Remove existing file/symlink before creating new symlink
+    try {
+      await toolFs.rm(shimFilePath, { force: true });
+    } catch {
+      // File may not exist, which is fine
+    }
+
+    await toolFs.symlink(toolBinaryPath, shimFilePath);
+
+    logger.debug(messages.generateShim.success(binaryName, shimFilePath, toolFs.constructor.name));
+    return shimFilePath;
+  }
+
+  /**
+   * Creates a bash shim script that auto-installs tools on first use.
+   * Used for tools that are managed by the dotfiles installer.
+   */
+  private async createBashShim(
+    toolFs: IFileSystem,
+    shimFilePath: string,
+    toolBinaryPath: string,
+    toolName: string,
+    binaryName: string,
+    logger: TsLogger,
+  ): Promise<string | null> {
     const envVarSuffix = toolName.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
 
     const shimContent = dedentString(`
@@ -210,7 +279,7 @@ export class ShimGenerator implements IShimGenerator {
         eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
         install_exit_code=$?
         set -e
-        
+
         if [ $install_exit_code -eq 0 ]; then
           # Installation successful, try to execute binary again
           if [ -x "$TOOL_EXECUTABLE" ]; then
@@ -251,12 +320,25 @@ export class ShimGenerator implements IShimGenerator {
 
   /**
    * Checks if a file is a shim generated by the dotfiles management tool.
+   * Recognizes both bash shim scripts (by header comment) and symlinks
+   * pointing into the binaries directory.
    *
    * @param fs - The filesystem interface to use.
    * @param filePath - The path to the file to check.
    * @returns True if the file is one of our generated shims, false otherwise.
    */
   private async isGeneratedShim(fs: IFileSystem, filePath: string): Promise<boolean> {
+    // Check if it's a symlink pointing to our binaries directory
+    try {
+      const stats = await fs.lstat(filePath);
+      if (stats.isSymbolicLink()) {
+        const linkTarget = await fs.readlink(filePath);
+        return linkTarget.startsWith(this.config.paths.binariesDir);
+      }
+    } catch {
+      // lstat failed, fall through to content check
+    }
+
     try {
       const content = await fs.readFile(filePath, 'utf8');
       // Check for our distinctive header comment

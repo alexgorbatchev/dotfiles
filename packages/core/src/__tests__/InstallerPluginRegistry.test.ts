@@ -212,6 +212,43 @@ describe('InstallerPluginRegistry', () => {
     });
   });
 
+  describe('getExternallyManagedMethods', () => {
+    test('returns empty set when no plugins are externally managed', async () => {
+      await registry.register(createMockPlugin('method1'));
+      await registry.register(createMockPlugin('method2'));
+
+      const methods = registry.getExternallyManagedMethods();
+      expect(methods.size).toBe(0);
+    });
+
+    test('returns set with externally managed method names', async () => {
+      await registry.register(createMockPlugin('method1'));
+      await registry.register(createMockPlugin('brew', { externallyManaged: true }));
+      await registry.register(createMockPlugin('method3'));
+
+      const methods = registry.getExternallyManagedMethods();
+      expect(methods.size).toBe(1);
+      expect(methods.has('brew')).toBe(true);
+    });
+
+    test('returns multiple externally managed methods', async () => {
+      await registry.register(createMockPlugin('brew', { externallyManaged: true }));
+      await registry.register(createMockPlugin('apt', { externallyManaged: true }));
+      await registry.register(createMockPlugin('github-release'));
+
+      const methods = registry.getExternallyManagedMethods();
+      expect(methods.size).toBe(2);
+      expect(methods.has('brew')).toBe(true);
+      expect(methods.has('apt')).toBe(true);
+      expect(methods.has('github-release')).toBe(false);
+    });
+
+    test('returns empty set when no plugins registered', () => {
+      const methods = registry.getExternallyManagedMethods();
+      expect(methods.size).toBe(0);
+    });
+  });
+
   describe('composeSchemas', () => {
     test('composes schemas from multiple plugins', async () => {
       await registry.register(createMockPlugin('method1'));

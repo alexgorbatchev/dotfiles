@@ -24,6 +24,8 @@ export const messages = {
     resolvedBinaryPath: (toolName: string, binaryName: string, binaryPath: string) =>
       createSafeLogMessage(`Resolved binary path for ${toolName}/${binaryName} to ${binaryPath}`),
     generatedContent: (binaryName: string) => createSafeLogMessage(`Generated shim content for ${binaryName}`),
+    creatingSymlink: (binaryName: string, targetPath: string) =>
+      createSafeLogMessage(`Creating symlink for ${binaryName} to ${targetPath}`),
     success: (binaryName: string, shimPath: string, fileSystemName: string) =>
       createSafeLogMessage(`Generated shim ${binaryName} at ${shimPath} using ${fileSystemName}`),
   } satisfies SafeLogMessageMap,
