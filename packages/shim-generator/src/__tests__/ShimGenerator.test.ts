@@ -803,6 +803,51 @@ describe('ShimGenerator', () => {
       );
     });
 
+    it('should use platform-resolved installationMethod for externally managed check', async () => {
+      // Tool has 'manual' at root but 'brew' in platform override for Linux (test system platform)
+      const platformOverrideConfig: ToolConfig = {
+        name: 'platform-brew-tool',
+        binaries: ['platform-brew-tool'],
+        version: '1.0.0',
+        installationMethod: 'manual',
+        installParams: {},
+        platformConfigs: [
+          {
+            platforms: Platform.Linux,
+            config: {
+              installationMethod: 'brew',
+              installParams: { formula: 'platform-brew-tool' },
+            },
+          },
+        ],
+      };
+
+      const externallyManagedMethods = new Set(['brew']);
+      const brewShimGenerator = new ShimGenerator(logger, fileSystem, mockConfig, systemInfo, externallyManagedMethods);
+
+      Object.values(fsMocks).forEach((m) => {
+        if (typeof m.mockClear === 'function') {
+          m.mockClear();
+        }
+      });
+
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'platform-brew-tool');
+      const expectedBinaryPath = path.join(
+        mockConfig.paths.binariesDir,
+        'platform-brew-tool',
+        'current',
+        'platform-brew-tool',
+      );
+
+      const result = await brewShimGenerator.generateForTool('platform-brew-tool', platformOverrideConfig);
+
+      expect(result).toEqual([expectedShimPath]);
+      // Should create symlink because resolved installationMethod is 'brew'
+      expect(fsMocks.symlink).toHaveBeenCalledWith(expectedBinaryPath, expectedShimPath);
+      expect(fsMocks.writeFile).not.toHaveBeenCalled();
+      expect(fsMocks.chmod).not.toHaveBeenCalled();
+    });
+
     it('should default to empty set when no externallyManagedMethods provided', async () => {
       const defaultGenerator = new ShimGenerator(logger, fileSystem, mockConfig, systemInfo);
 

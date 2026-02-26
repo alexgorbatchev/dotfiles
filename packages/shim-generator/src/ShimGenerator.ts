@@ -117,7 +117,7 @@ export class ShimGenerator implements IShimGenerator {
       const shimPath = await this.generateShimForBinary(
         toolFs,
         toolName,
-        toolConfig,
+        resolvedConfig,
         binaryName,
         overwrite,
         overwriteConflicts,
