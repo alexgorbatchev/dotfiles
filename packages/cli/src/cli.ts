@@ -28,6 +28,7 @@ import { CurlTarInstallerPlugin } from '@dotfiles/installer-curl-tar';
 import { GiteaReleaseInstallerPlugin } from '@dotfiles/installer-gitea';
 import { GhCliApiClient, GitHubApiClient, GitHubReleaseInstallerPlugin } from '@dotfiles/installer-github';
 import { ManualInstallerPlugin } from '@dotfiles/installer-manual';
+import { NpmInstallerPlugin } from '@dotfiles/installer-npm';
 import { ZshPluginInstallerPlugin } from '@dotfiles/installer-zsh-plugin';
 import { createTsLogger, getLogLevelFromFlags, type LogLevelValue, type TsLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
@@ -433,6 +434,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   );
   pluginRegistry.register(new CurlBinaryInstallerPlugin(installerTrackedFs, downloader, hookExecutor, shell));
   pluginRegistry.register(new ManualInstallerPlugin(installerTrackedFs));
+  pluginRegistry.register(new NpmInstallerPlugin(shell));
   pluginRegistry.register(new ZshPluginInstallerPlugin(installerTrackedFs, shell));
 
   const installer = new Installer(

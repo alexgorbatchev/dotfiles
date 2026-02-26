@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { BuildError } from '../handleBuildError';
-import { createPackedTestEnvironment, shell, type IPackedTestEnvironment } from '../helpers';
+import { createPackedTestEnvironment, type IPackedTestEnvironment, shell } from '../helpers';
 import type { IBuildContext } from '../types';
 
 const DASHBOARD_TEST_PORT = 13579;

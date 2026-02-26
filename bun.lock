@@ -90,6 +90,7 @@
         "@dotfiles/installer-gitea": "workspace:*",
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
+        "@dotfiles/installer-npm": "workspace:*",
         "@dotfiles/installer-zsh-plugin": "workspace:*",
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/registry": "workspace:*",
@@ -508,6 +509,21 @@
         "@dotfiles/testing-helpers": "workspace:*",
       },
     },
+    "packages/installer-npm": {
+      "name": "@dotfiles/installer-npm",
+      "version": "0.0.0",
+      "dependencies": {
+        "@dotfiles/core": "workspace:*",
+        "@dotfiles/installer": "workspace:*",
+        "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@dotfiles/testing-helpers": "workspace:*",
+      },
+    },
     "packages/installer-zsh-plugin": {
       "name": "@dotfiles/installer-zsh-plugin",
       "version": "0.0.0",
@@ -851,6 +867,8 @@
     "@dotfiles/installer-github": ["@dotfiles/installer-github@workspace:packages/installer-github"],
 
     "@dotfiles/installer-manual": ["@dotfiles/installer-manual@workspace:packages/installer-manual"],
+
+    "@dotfiles/installer-npm": ["@dotfiles/installer-npm@workspace:packages/installer-npm"],
 
     "@dotfiles/installer-zsh-plugin": ["@dotfiles/installer-zsh-plugin@workspace:packages/installer-zsh-plugin"],
 

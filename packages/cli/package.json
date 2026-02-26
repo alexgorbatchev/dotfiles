@@ -26,6 +26,7 @@
     "@dotfiles/installer-gitea": "workspace:*",
     "@dotfiles/installer-github": "workspace:*",
     "@dotfiles/installer-manual": "workspace:*",
+    "@dotfiles/installer-npm": "workspace:*",
     "@dotfiles/installer-zsh-plugin": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/registry": "workspace:*",

@@ -30,7 +30,13 @@ export function checkProjectConfigTypeSignature(context: IBuildContext): void {
   }
 
   // Verify key exports are present
-  const requiredExports: string[] = ['defineTool', 'defineConfig', 'dedentString', 'dedentTemplate', 'IToolConfigBuilder'];
+  const requiredExports: string[] = [
+    'defineTool',
+    'defineConfig',
+    'dedentString',
+    'dedentTemplate',
+    'IToolConfigBuilder',
+  ];
   for (const exportName of requiredExports) {
     if (!schemaContent.includes(exportName)) {
       throw new BuildError(`Generated schema is missing required export: ${exportName}`);

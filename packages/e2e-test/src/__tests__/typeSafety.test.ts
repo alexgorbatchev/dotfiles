@@ -187,7 +187,7 @@ describe('E2E: type safety', () => {
     it('invalid method name should cause compile error', () => {
       defineTool((install) =>
         // @ts-expect-error - Invalid installation method
-        install('npm', {
+        install('nonexistent-method', {
           package: 'something',
         }).bin('tool')
       );
