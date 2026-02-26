@@ -11,22 +11,9 @@ import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, ISe
 export const DOCS_COMMAND_COMPLETION: ICommandCompletionMeta = {
   name: 'docs',
   description: 'Create symlink to documentation',
-  options: [
-    {
-      flag: '--target-path',
-      description: 'Target directory for docs symlink',
-      hasArg: true,
-      argPlaceholder: '<path>',
-    },
-  ],
+  hasPositionalArg: true,
+  positionalArgDescription: 'target directory for docs symlink',
 };
-
-/**
- * Command-specific options for docs command
- */
-export interface IDocsCommandSpecificOptions {
-  targetPath: string;
-}
 
 /**
  * Gets the docs directory path.
@@ -88,7 +75,7 @@ async function createDocsSymlink(parentLogger: TsLogger, targetPath: string, dry
 
 async function docsActionLogic(
   parentLogger: TsLogger,
-  options: IDocsCommandSpecificOptions & IGlobalProgramOptions,
+  options: { targetPath: string } & IGlobalProgramOptions,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'docsActionLogic' });
   const { targetPath, dryRun } = options;
@@ -110,7 +97,7 @@ export function registerDocsCommand(
     .command('docs <path>')
     .description('Create a symlink called "dotfiles" pointing to the project docs folder')
     .action(async (targetPath: string) => {
-      const combinedOptions: IDocsCommandSpecificOptions & IGlobalProgramOptions = {
+      const combinedOptions: { targetPath: string } & IGlobalProgramOptions = {
         targetPath: path.resolve(targetPath),
         ...program.opts(),
       };
