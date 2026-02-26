@@ -18,7 +18,9 @@
     "cli": "bun run ./cli.ts",
     "proxy": "bun run packages/http-proxy/src/server.ts",
     "check": "bun lint && bun typecheck && bun test",
-    "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/config.ts dashboard"
+    "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/config.ts dashboard",
+    "ai": "rulesync generate --targets claudecode --features '*'",
+    "postinstall": "bun ai"
   },
   "devDependencies": {
     "@dprint/json": "^0.21.1",

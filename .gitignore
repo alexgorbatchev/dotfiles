@@ -41,3 +41,5 @@ tmp
 .github/helpers
 
 *.png
+.claude
+.mcp.json
