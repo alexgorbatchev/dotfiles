@@ -189,7 +189,7 @@ export class NpmInstallerPlugin implements
       };
       return successResult;
     } catch (error) {
-      logger.error(messages.updateCheckNotImplemented(toolName), error);
+      logger.error(messages.updateCheckFailed(toolName), error);
       const failResult: UpdateCheckResult = {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

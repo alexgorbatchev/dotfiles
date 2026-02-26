@@ -50,6 +50,16 @@ describe('E2E: type safety', () => {
       expect(true).toBe(true);
     });
 
+    it('Npm installer compiles', () => {
+      defineTool((install) =>
+        install('npm', {
+          package: 'prettier',
+        }).bin('prettier')
+      );
+
+      expect(true).toBe(true);
+    });
+
     it('Curl Script installer compiles', () => {
       defineTool((install) =>
         install('curl-script', {

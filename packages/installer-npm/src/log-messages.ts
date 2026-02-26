@@ -7,6 +7,5 @@ export const messages = {
     createSafeLogMessage(`Fetched version ${version} for npm package ${packageName}`),
   versionFetchFailed: (packageName: string) =>
     createSafeLogMessage(`Failed to fetch version for npm package ${packageName}`),
-  updateCheckNotImplemented: (toolName: string) =>
-    createSafeLogMessage(`Update check not fully implemented for npm tool: ${toolName}`),
+  updateCheckFailed: (toolName: string) => createSafeLogMessage(`Failed to check update for npm tool: ${toolName}`),
 } as const satisfies SafeLogMessageMap;

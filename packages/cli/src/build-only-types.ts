@@ -79,3 +79,9 @@ export type { ManualInstallParams as z_internal_ManualInstallParams } from '@dot
  * Do not use in production code. May change or be removed without notice.
  */
 export type { ZshPluginInstallParams as z_internal_ZshPluginInstallParams } from '@dotfiles/installer-zsh-plugin';
+/**
+ * @internal
+ * @deprecated Internal type for testing only. NOT part of the public API.
+ * Do not use in production code. May change or be removed without notice.
+ */
+export type { NpmInstallParams as z_internal_NpmInstallParams } from '@dotfiles/installer-npm';
