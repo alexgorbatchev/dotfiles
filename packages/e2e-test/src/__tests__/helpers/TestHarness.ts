@@ -495,8 +495,8 @@ export class TestHarness {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
 
-    // Look for the alias in the Tool-Specific Initializations section - handle escaped quotes inside the alias value
-    const aliasRegex = new RegExp(`alias ${aliasName}="((?:[^"\\\\]|\\\\.)*)"`, 'm');
+    // Look for the alias in the Tool-Specific Initializations section - single-quoted values
+    const aliasRegex = new RegExp(`alias ${aliasName}='((?:[^']|'\\\\'')*)'`, 'm');
     const match = content.match(aliasRegex);
 
     expect(match).not.toBeNull();
@@ -505,8 +505,8 @@ export class TestHarness {
       return;
     }
 
-    // Unescape the captured value
-    const actualCommand: string = match[1].replace(/\\"/g, '"');
+    // Unescape the captured value (reverse the '\'' single-quote escaping)
+    const actualCommand: string = match[1].replace(/'\\'''/g, "'");
 
     if (typeof expectedCommand === 'function') {
       expect(expectedCommand(actualCommand)).toBe(true);

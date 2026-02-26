@@ -242,7 +242,7 @@ describe('E2E: env command', () => {
           const zshScript = path.join(activatedEnvTempDir, '.generated', 'shell-scripts', 'main.zsh');
           const content = await fs.promises.readFile(zshScript, 'utf8');
           expect(content).toMatchLooseInlineSnapshot`
-            alias env-test-alias="echo \\"env tool works\\""
+            alias env-test-alias='echo "env tool works"'
           `;
         });
 
@@ -250,7 +250,7 @@ describe('E2E: env command', () => {
           const bashScript = path.join(activatedEnvTempDir, '.generated', 'shell-scripts', 'main.bash');
           const content = await fs.promises.readFile(bashScript, 'utf8');
           expect(content).toMatchLooseInlineSnapshot`
-            alias env-test-alias="echo \\"env tool works\\""
+            alias env-test-alias='echo "env tool works"'
           `;
         });
       });

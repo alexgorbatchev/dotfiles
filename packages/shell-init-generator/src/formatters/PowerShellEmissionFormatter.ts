@@ -106,7 +106,7 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
   private formatAlias(emission: AliasEmission): string {
     const lines: string[] = [];
     for (const [name, command] of Object.entries(emission.aliases)) {
-      lines.push(`Set-Alias -Name ${name} -Value ${JSON.stringify(command)}`);
+      lines.push(`Set-Alias -Name ${name} -Value '${command.replace(/'/g, "''")}'`);
     }
     return lines.join('\n');
   }

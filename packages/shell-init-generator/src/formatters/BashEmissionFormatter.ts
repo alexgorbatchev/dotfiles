@@ -106,7 +106,7 @@ export class BashEmissionFormatter extends BasePosixEmissionFormatter implements
   private formatAlias(emission: AliasEmission): string {
     const lines: string[] = [];
     for (const [name, command] of Object.entries(emission.aliases)) {
-      lines.push(`alias ${name}=${JSON.stringify(command)}`);
+      lines.push(`alias ${name}='${command.replace(/'/g, "'\\''")}'`);
     }
     return lines.join('\n');
   }

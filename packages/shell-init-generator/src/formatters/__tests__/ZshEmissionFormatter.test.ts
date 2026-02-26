@@ -47,7 +47,7 @@ describe('ZshEmissionFormatter', () => {
       const emission = alias({ ll: 'ls -la' });
       const result = formatter.formatEmission(emission);
 
-      expect(result).toMatchInlineSnapshot(`"alias ll="ls -la""`);
+      expect(result).toMatchInlineSnapshot(`"alias ll='ls -la'"`);
     });
 
     it('should format multiple aliases', () => {
@@ -55,9 +55,23 @@ describe('ZshEmissionFormatter', () => {
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
-        "alias ll="ls -la"
-        alias la="ls -la""
+        "alias ll='ls -la'
+        alias la='ls -la'"
       `);
+    });
+
+    it('should not expand subshell expressions', () => {
+      const emission = alias({ today: 'echo $(date)' });
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`"alias today='echo $(date)'"`);
+    });
+
+    it('should escape single quotes in alias value', () => {
+      const emission = alias({ greet: "echo 'hello'" });
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`"alias greet='echo '\\''hello'\\'''"`);
     });
   });
 

@@ -47,7 +47,21 @@ describe('PowerShellEmissionFormatter', () => {
       const emission = alias({ ll: 'ls -la' });
       const result = formatter.formatEmission(emission);
 
-      expect(result).toMatchInlineSnapshot(`"Set-Alias -Name ll -Value "ls -la""`);
+      expect(result).toMatchInlineSnapshot(`"Set-Alias -Name ll -Value 'ls -la'"`);
+    });
+
+    it('should not expand subshell expressions', () => {
+      const emission = alias({ today: 'echo $(date)' });
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`"Set-Alias -Name today -Value 'echo $(date)'"`);
+    });
+
+    it('should escape single quotes in alias value', () => {
+      const emission = alias({ greet: "echo 'hello'" });
+      const result = formatter.formatEmission(emission);
+
+      expect(result).toMatchInlineSnapshot(`"Set-Alias -Name greet -Value 'echo ''hello'''"`);
     });
   });
 
