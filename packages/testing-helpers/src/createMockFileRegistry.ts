@@ -69,12 +69,20 @@ export function createMockFileRegistry(): IMockFileRegistry {
     return states;
   });
 
+  const getRegisteredTools = mock(async (): Promise<string[]> => {
+    const tools = new Set<string>();
+    for (const state of fileStates) {
+      tools.add(state.toolName);
+    }
+    return Array.from(tools).toSorted();
+  });
+
   const mockRegistry: IMockFileRegistry = {
     recordOperation: mock(async () => {}),
     getOperations: mock(async () => []),
     getFileStatesForTool,
     getFileState: mock(async () => null),
-    getRegisteredTools: mock(async () => []),
+    getRegisteredTools,
     removeToolOperations: mock(async () => {}),
     compact: mock(async () => {}),
     validate: mock(async () => ({ valid: true, issues: [], repaired: [] })),

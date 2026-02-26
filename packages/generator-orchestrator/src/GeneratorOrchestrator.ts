@@ -153,6 +153,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       enabledToolConfigs[name] = config;
     }
 
+    // Clean up orphaned tools (tools that exist in the registry but no longer have config files)
+    await this.cleanupOrphanedTools(toolConfigs);
+
     const orderedToolConfigs: Record<string, ToolConfig> = orderToolConfigsByDependencies(
       this.logger,
       enabledToolConfigs,
@@ -351,6 +354,34 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       ...(value.bin && { bin: value.bin }),
     };
     return result;
+  }
+
+  /**
+   * Cleans up artifacts for tools that exist in the registry but no longer have configuration files.
+   * These are "orphaned" tools whose tool.ts files were removed.
+   *
+   * @param toolConfigs - The current set of all tool configurations (including disabled ones).
+   */
+  private async cleanupOrphanedTools(toolConfigs: Record<string, ToolConfig>): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'cleanupOrphanedTools' });
+
+    const registeredTools = await this.fileRegistry.getRegisteredTools();
+    const configuredToolNames = new Set(Object.keys(toolConfigs));
+
+    const orphanedTools = registeredTools.filter(
+      (toolName) => toolName !== 'system' && !configuredToolNames.has(toolName),
+    );
+
+    if (orphanedTools.length === 0) {
+      return;
+    }
+
+    logger.warn(messages.orphanCleanup.found(orphanedTools.length));
+
+    for (const toolName of orphanedTools) {
+      logger.warn(messages.orphanCleanup.cleaningUp(toolName));
+      await this.cleanupToolArtifacts(toolName);
+    }
   }
 
   /**
