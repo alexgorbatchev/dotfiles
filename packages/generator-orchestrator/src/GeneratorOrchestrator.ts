@@ -194,6 +194,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     );
     const symlinkResultCount = symlinkResults?.length ?? 0;
     logger.debug(messages.generateAll.symlinkGenerationComplete(symlinkResultCount));
+
+    // 4. Clean up stale symlinks for enabled tools
+    await this.cleanupStaleSymlinks(orderedToolConfigs, symlinkResults);
   }
 
   /**
@@ -425,5 +428,52 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     }
 
     logger.debug(messages.cleanup.completed(toolName, filesToCleanup.length));
+  }
+
+  /**
+   * Cleans up stale symlinks for enabled tools.
+   *
+   * After symlinks are generated, this method compares the set of currently declared
+   * symlinks against previously tracked symlinks in the FileRegistry. Any tracked
+   * symlink that is no longer declared is removed from disk.
+   *
+   * @param toolConfigs - The enabled tool configurations that were just processed.
+   * @param symlinkResults - The results from symlink generation.
+   */
+  private async cleanupStaleSymlinks(
+    toolConfigs: Record<string, ToolConfig>,
+    symlinkResults: SymlinkOperationResult[],
+  ): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'cleanupStaleSymlinks' });
+
+    const generatedTargetPaths: Set<string> = new Set(
+      symlinkResults.filter((r) => r.success).map((r) => r.targetPath),
+    );
+
+    const binariesDir = this.projectConfig.paths.binariesDir;
+
+    for (const toolName of Object.keys(toolConfigs)) {
+      const fileStates = await this.fileRegistry.getFileStatesForTool(toolName);
+      const trackedSymlinks = fileStates.filter(
+        (state) => state.fileType === 'symlink' && !state.filePath.startsWith(binariesDir),
+      );
+
+      for (const trackedSymlink of trackedSymlinks) {
+        if (generatedTargetPaths.has(trackedSymlink.filePath)) {
+          continue;
+        }
+
+        logger.warn(messages.staleSymlinkCleanup.removing(trackedSymlink.filePath, toolName));
+
+        try {
+          const fileExists = await this.fs.exists(trackedSymlink.filePath);
+          if (fileExists) {
+            await this.fs.rm(trackedSymlink.filePath);
+          }
+        } catch (error) {
+          logger.debug(messages.cleanup.deleteError(trackedSymlink.filePath, error));
+        }
+      }
+    }
   }
 }
