@@ -57,7 +57,8 @@ export const messages = {
       createSafeLogMessage(`Cleanup completed for ${toolName}: ${count} files removed`),
   } satisfies SafeLogMessageMap,
   orphanCleanup: {
-    found: (count: number) => createSafeLogMessage(`Found ${count} orphaned tools with no configuration`),
-    cleaningUp: (toolName: string) => createSafeLogMessage(`Cleaning up orphaned tool: ${toolName}`),
+    found: (count: number) =>
+      createSafeLogMessage(`Found ${count} orphaned tool${count === 1 ? '' : 's'} with no configuration`),
+    cleaningUp: () => createSafeLogMessage('Cleaning up orphaned tool'),
   } satisfies SafeLogMessageMap,
 } as const;

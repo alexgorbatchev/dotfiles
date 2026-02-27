@@ -379,7 +379,8 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     logger.warn(messages.orphanCleanup.found(orphanedTools.length));
 
     for (const toolName of orphanedTools) {
-      logger.warn(messages.orphanCleanup.cleaningUp(toolName));
+      const toolLogger: TsLogger = logger.getSubLogger({ name: 'cleanupOrphanedTools', context: toolName });
+      toolLogger.warn(messages.orphanCleanup.cleaningUp());
       await this.cleanupToolArtifacts(toolName);
     }
   }

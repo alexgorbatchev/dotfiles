@@ -154,6 +154,8 @@ export class NpmInstallerPlugin implements
     _context: IInstallContext,
     logger: TsLogger,
   ): Promise<UpdateCheckResult> {
+    const subLogger: TsLogger = logger.getSubLogger({ name: 'checkUpdate', context: toolName });
+
     try {
       const params = toolConfig.installParams;
       const packageName: string = params?.package || toolName;
@@ -189,7 +191,7 @@ export class NpmInstallerPlugin implements
       };
       return successResult;
     } catch (error) {
-      logger.error(messages.updateCheckFailed(toolName), error);
+      subLogger.error(messages.updateCheckFailed(), error);
       const failResult: UpdateCheckResult = {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

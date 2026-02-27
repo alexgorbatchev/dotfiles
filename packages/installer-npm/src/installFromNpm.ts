@@ -3,9 +3,14 @@ import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli, normalizeVersion } from '@dotfiles/utils';
 import path from 'node:path';
+import { z } from 'zod';
 import { messages } from './log-messages';
 import type { NpmToolConfig } from './schemas';
 import type { INpmInstallMetadata, NpmInstallResult } from './types';
+
+const npmLsOutputSchema = z.object({
+  dependencies: z.record(z.string(), z.object({ version: z.string() })),
+});
 
 /**
  * Installs a tool using npm.
@@ -56,7 +61,7 @@ export async function installFromNpm(
     let version: string | undefined;
 
     if (params.versionArgs && params.versionRegex) {
-      const mainBinaryPath = Object.values(binaryPaths)[0];
+      const mainBinaryPath = binaryPaths[0];
       if (mainBinaryPath) {
         version = await detectVersionViaCli({
           binaryPath: mainBinaryPath,
@@ -126,19 +131,13 @@ async function getNpmPackageVersion(
   try {
     const result = await shell`npm ls --prefix ${installDir} ${packageName} --json`.quiet().noThrow();
     const output: string = result.stdout.toString();
-    const parsed: unknown = JSON.parse(output);
+    const parsed = npmLsOutputSchema.safeParse(JSON.parse(output));
 
-    if (typeof parsed === 'object' && parsed !== null && 'dependencies' in parsed) {
-      const deps = (parsed as Record<string, unknown>)['dependencies'];
-      if (typeof deps === 'object' && deps !== null && packageName in deps) {
-        const pkgInfo = (deps as Record<string, unknown>)[packageName];
-        if (typeof pkgInfo === 'object' && pkgInfo !== null && 'version' in pkgInfo) {
-          const version: unknown = (pkgInfo as Record<string, unknown>)['version'];
-          if (typeof version === 'string') {
-            logger.debug(messages.versionFetched(packageName, version));
-            return version;
-          }
-        }
+    if (parsed.success) {
+      const pkgInfo = parsed.data.dependencies[packageName];
+      if (pkgInfo) {
+        logger.debug(messages.versionFetched(packageName, pkgInfo.version));
+        return pkgInfo.version;
       }
     }
 

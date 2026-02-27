@@ -287,7 +287,14 @@ describe('GeneratorOrchestrator - Orphaned Tool Cleanup', () => {
         ['WARN'],
         ['GeneratorOrchestrator', 'cleanupOrphanedTools'],
         [],
-        [/1 orphaned tools/, /orphanTool/],
+        [/1 orphaned tool /],
+      );
+
+      logger.expect(
+        ['WARN'],
+        ['GeneratorOrchestrator', 'cleanupOrphanedTools', 'cleanupOrphanedTools'],
+        ['orphanTool'],
+        [/Cleaning up orphaned tool/],
       );
     });
 
