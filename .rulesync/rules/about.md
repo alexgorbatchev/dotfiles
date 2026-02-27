@@ -1,7 +1,7 @@
 ---
 targets:
   - '*'
-root: false
+root: true
 ---
 
 # Dotfiles Generator Project
