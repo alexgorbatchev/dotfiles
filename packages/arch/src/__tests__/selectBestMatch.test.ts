@@ -141,6 +141,46 @@ describe('selectBestMatch', () => {
     expect(result).toBe('tool-linux-armv7-eabihf.tar.gz');
   });
 
+  describe('architecture-agnostic assets', () => {
+    it('should match asset with no CPU identifier (universal binary)', () => {
+      const systemInfo: ISystemInfo = {
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
+        homeDir: '/home/test',
+        hostname: 'test-host',
+      };
+
+      const result = selectBestMatch(
+        [
+          'onefetch-linux.tar.gz',
+          'onefetch-mac.tar.gz',
+          'onefetch-setup.exe',
+          'onefetch-win.tar.gz',
+          'onefetch_amd64.deb',
+        ],
+        systemInfo,
+      );
+
+      expect(result).toBe('onefetch-mac.tar.gz');
+    });
+
+    it('should prefer architecture-specific asset over universal when both exist', () => {
+      const systemInfo: ISystemInfo = {
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
+        homeDir: '/home/test',
+        hostname: 'test-host',
+      };
+
+      const result = selectBestMatch(
+        ['tool-linux.tar.gz', 'tool-linux-amd64.tar.gz', 'tool-darwin-arm64.tar.gz'],
+        systemInfo,
+      );
+
+      expect(result).toBe('tool-linux-amd64.tar.gz');
+    });
+  });
+
   describe('non-binary pattern exclusion', () => {
     it('should exclude .sha256sum checksum files', () => {
       const systemInfo: ISystemInfo = {

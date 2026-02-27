@@ -1,7 +1,6 @@
 import type { ISystemInfo } from '@dotfiles/core';
 import { getArchitecturePatterns } from './getArchitecturePatterns';
 import { getArchitectureRegex } from './getArchitectureRegex';
-import { matchesArchitecture } from './matchesArchitecture';
 
 /**
  * Patterns for non-binary files that should be excluded from asset selection.
@@ -57,19 +56,30 @@ function filterNonBinaryAssets(assetNames: string[]): string[] {
 }
 
 /**
- * Selects the best matching asset from a list based on architecture patterns,
- * including variant-based disambiguation.
+ * Applies a regex filter to a list of candidates, keeping the result only if
+ * it yields a non-empty subset. This is the core of zinit's iterative filtering.
  *
- * This function implements Zinit's full selection logic:
- * 1. It first filters out non-binary files (checksums, signatures, metadata).
- * 2. It then filters the list of asset names by the primary `system` and `cpu`
- *    patterns using `matchesArchitecture`.
- * 3. If multiple assets match, it then attempts to narrow down the selection by
- *    iterating through the `variants` patterns (e.g., 'musl', 'gnu').
- * 4. A variant is only used to filter the list if it results in a non-empty
- *    subset of matches. This prevents a variant from eliminating all candidates.
- * 5. The process continues until only one match remains or all variants have
- *    been tried.
+ * ```shell
+ * filtered=( ${(M)list[@]:#(#i)*${~part}*} ) && (( $#filtered > 0 )) && list=( ${filtered[@]} )
+ * ```
+ */
+function applySoftFilter(candidates: string[], pattern: string): string[] {
+  const regex = new RegExp(pattern, 'i');
+  const filtered = candidates.filter((name) => regex.test(name.toLowerCase()));
+  return filtered.length > 0 ? filtered : candidates;
+}
+
+/**
+ * Selects the best matching asset from a list based on architecture patterns,
+ * using zinit's iterative filtering approach.
+ *
+ * The filtering works in two phases:
+ * 1. **Hard filter**: System pattern must match. Assets that don't match the OS
+ *    are eliminated. If nothing matches, returns `undefined`.
+ * 2. **Soft filters**: CPU and variant patterns are applied iteratively. Each
+ *    filter is only applied if it yields results AND there are still multiple
+ *    candidates. This handles assets that omit CPU identifiers (e.g.,
+ *    `onefetch-mac.tar.gz`) by treating them as architecture-agnostic.
  *
  * ```shell
  * # zinit filtering logic
@@ -88,36 +98,41 @@ function filterNonBinaryAssets(assetNames: string[]): string[] {
  */
 export function selectBestMatch(assetNames: string[], systemInfo: ISystemInfo): string | undefined {
   const architectureRegex = getArchitectureRegex(systemInfo);
+  const patterns = getArchitecturePatterns(systemInfo);
 
   // First pass: filter out non-binary files (checksums, signatures, etc.)
   const binaryAssets = filterNonBinaryAssets(assetNames);
 
-  // Second pass: filter by system and CPU patterns
-  let matches = binaryAssets.filter((name) => matchesArchitecture(name, architectureRegex));
+  // Hard filter: system pattern is required — assets must match the OS.
+  let matches: string[];
+
+  if (architectureRegex.systemPattern) {
+    const systemRegex = new RegExp(architectureRegex.systemPattern, 'i');
+    matches = binaryAssets.filter((name) => systemRegex.test(name.toLowerCase()));
+  } else {
+    matches = [...binaryAssets];
+  }
 
   if (matches.length === 0) {
     return undefined;
   }
 
-  // If multiple matches remain, use variants for tie-breaking.
-  // The order of variants matters, as earlier ones are preferred.
-  if (matches.length > 1) {
-    const patterns = getArchitecturePatterns(systemInfo);
+  // Soft filters: CPU then variants, applied iteratively (zinit behavior).
+  // Each filter only narrows when it yields results and >1 candidates remain.
+  const softFilters: string[] = [];
 
-    for (const variant of patterns.variants) {
-      if (matches.length <= 1) {
-        break;
-      }
+  if (architectureRegex.cpuPattern) {
+    softFilters.push(architectureRegex.cpuPattern);
+  }
 
-      // Try filtering by the current variant
-      const variantRegex = new RegExp(variant, 'i');
-      const variantMatches = matches.filter((name) => variantRegex.test(name.toLowerCase()));
+  softFilters.push(...patterns.variants);
 
-      // Only apply the variant filter if it yields results
-      if (variantMatches.length > 0) {
-        matches = variantMatches;
-      }
+  for (const filter of softFilters) {
+    if (matches.length <= 1) {
+      break;
     }
+
+    matches = applySoftFilter(matches, filter);
   }
 
   // Return the first match. If only one remains, it's the best one.
