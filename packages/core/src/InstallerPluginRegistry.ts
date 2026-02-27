@@ -114,7 +114,7 @@ export class InstallerPluginRegistry {
   }
 
   /**
-   * Get method names for plugins that are externally managed.
+   * Get method names for plugins that manage binaries externally (e.g., Homebrew, apt).
    */
   getExternallyManagedMethods(): Set<string> {
     const methods = new Set<string>();

@@ -1,10 +1,54 @@
 import type { IInstallContext, Shell } from '@dotfiles/core';
+import type { IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import assert from 'node:assert';
 import { installFromBrew } from '../installFromBrew';
 import type { BrewToolConfig } from '../schemas';
 import { createMockShell } from './helpers/mocks';
+
+function createMockFileSystem(): IFileSystem {
+  return {
+    ensureDir: mock(() => Promise.resolve()),
+    exists: mock(() => Promise.resolve(false)),
+    rm: mock(() => Promise.resolve()),
+    symlink: mock(() => Promise.resolve()),
+  } as unknown as IFileSystem;
+}
+
+function createMockContext(toolConfig: BrewToolConfig, mockShell: Shell): IInstallContext {
+  return {
+    projectConfig: {
+      paths: {
+        binariesDir: '/bin',
+        shellScriptsDir: '/scripts',
+        dotfilesDir: '/dotfiles',
+        generatedDir: '/generated',
+        homeDir: '/home',
+        targetDir: '/generated/bin-default',
+        hostname: 'test-host',
+      },
+    },
+    systemInfo: {
+      platform: 'darwin',
+      arch: 'arm64',
+    },
+    toolName: 'test-tool',
+    toolDir: '/tool/dir',
+    getToolDir: () => '/tool/dir',
+    homeDir: '/home',
+    hostname: 'test-host',
+    binDir: '/bin',
+    shellScriptsDir: '/scripts',
+    dotfilesDir: '/dotfiles',
+    generatedDir: '/generated',
+    stagingDir: '/staging/dir',
+    timestamp: '2023-01-01',
+    $: mockShell,
+    fileSystem: createMockFileSystem(),
+    toolConfig,
+  } as unknown as IInstallContext;
+}
 
 describe('installFromBrew', () => {
   let logger: TestLogger;
@@ -26,37 +70,7 @@ describe('installFromBrew', () => {
       },
     };
 
-    const context = {
-      projectConfig: {
-        paths: {
-          binariesDir: '/bin',
-          shellScriptsDir: '/scripts',
-          dotfilesDir: '/dotfiles',
-          generatedDir: '/generated',
-          homeDir: '/home',
-          hostname: 'test-host',
-        },
-      },
-      systemInfo: {
-        platform: 'darwin',
-        arch: 'arm64',
-      },
-      toolName: 'test-tool',
-      toolDir: '/tool/dir',
-      getToolDir: () => '/tool/dir',
-      homeDir: '/home',
-      hostname: 'test-host',
-      binDir: '/bin',
-      shellScriptsDir: '/scripts',
-      dotfilesDir: '/dotfiles',
-      generatedDir: '/generated',
-      stagingDir: '/staging/dir',
-      timestamp: '2023-01-01',
-      $: mockShell,
-      fileSystem: {} as unknown,
-      toolConfig: toolConfig,
-    } as unknown as IInstallContext;
-
+    const context = createMockContext(toolConfig, mockShell);
     const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
 
     assert(result.success);
@@ -78,46 +92,65 @@ describe('installFromBrew', () => {
       },
     };
 
-    const context = {
-      projectConfig: {
-        paths: {
-          binariesDir: '/bin',
-          shellScriptsDir: '/scripts',
-          dotfilesDir: '/dotfiles',
-          generatedDir: '/generated',
-          homeDir: '/home',
-          hostname: 'test-host',
-        },
-      },
-      systemInfo: {
-        platform: 'darwin',
-        arch: 'arm64',
-      },
-      toolName: 'test-tool',
-      toolDir: '/tool/dir',
-      getToolDir: () => '/tool/dir',
-      homeDir: '/home',
-      hostname: 'test-host',
-      binDir: '/bin',
-      shellScriptsDir: '/scripts',
-      dotfilesDir: '/dotfiles',
-      generatedDir: '/generated',
-      stagingDir: '/staging/dir',
-      timestamp: '2023-01-01',
-      $: mockShell,
-      fileSystem: {} as unknown,
-      toolConfig: toolConfig,
-    } as unknown as IInstallContext;
-
-    // We need to ensure getBinaryPaths returns something that points to our mock shell command
-    // getBinaryPaths uses the prefix we return from brew --prefix.
-    // prefix is /opt/homebrew/opt/test-tool
-    // binary path will be /opt/homebrew/opt/test-tool/bin/test-tool
-
+    const context = createMockContext(toolConfig, mockShell);
     const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
 
     assert(result.success);
     expect(result.success).toBe(true);
     expect(result.version).toBe('1.2.3');
+  });
+
+  it('should create symlinks in targetDir for each binary', async () => {
+    const toolConfig: BrewToolConfig = {
+      name: 'test-tool',
+      version: '1.2.3',
+      binaries: ['test-tool', 'test-tool-extra'],
+      installationMethod: 'brew',
+      installParams: {
+        formula: 'test-tool',
+      },
+    };
+
+    const context = createMockContext(toolConfig, mockShell);
+    const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
+
+    assert(result.success);
+
+    const fs = context.fileSystem;
+    expect(fs.ensureDir).toHaveBeenCalledWith('/generated/bin-default');
+    expect(fs.symlink).toHaveBeenCalledTimes(2);
+    expect(fs.symlink).toHaveBeenCalledWith(
+      '/opt/homebrew/opt/test-tool/bin/test-tool',
+      '/generated/bin-default/test-tool',
+    );
+    expect(fs.symlink).toHaveBeenCalledWith(
+      '/opt/homebrew/opt/test-tool/bin/test-tool-extra',
+      '/generated/bin-default/test-tool-extra',
+    );
+  });
+
+  it('should remove existing shim before creating symlink', async () => {
+    const toolConfig: BrewToolConfig = {
+      name: 'test-tool',
+      version: '1.2.3',
+      binaries: ['test-tool'],
+      installationMethod: 'brew',
+      installParams: {
+        formula: 'test-tool',
+      },
+    };
+
+    const context = createMockContext(toolConfig, mockShell);
+    const fs = context.fileSystem;
+    (fs.exists as ReturnType<typeof mock>).mockResolvedValue(true);
+
+    const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
+
+    assert(result.success);
+    expect(fs.rm).toHaveBeenCalledWith('/generated/bin-default/test-tool', { force: true });
+    expect(fs.symlink).toHaveBeenCalledWith(
+      '/opt/homebrew/opt/test-tool/bin/test-tool',
+      '/generated/bin-default/test-tool',
+    );
   });
 });

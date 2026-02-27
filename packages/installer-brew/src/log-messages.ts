@@ -15,4 +15,8 @@ export const messages = {
     createSafeLogMessage(`Using fallback prefix for formula ${formula}: ${prefix}`),
   updateCheckNotImplemented: (toolName: string) =>
     createSafeLogMessage(`Update check not fully implemented for brew tool: ${toolName}`),
+  shimSymlinkCreated: (binaryName: string, shimPath: string, targetPath: string) =>
+    createSafeLogMessage(`Created shim symlink ${binaryName} at ${shimPath} -> ${targetPath}`),
+  shimSymlinkFailed: (binaryName: string, shimPath: string) =>
+    createSafeLogMessage(`Failed to create shim symlink ${binaryName} at ${shimPath}`),
 } as const satisfies SafeLogMessageMap;
