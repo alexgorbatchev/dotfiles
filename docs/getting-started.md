@@ -93,6 +93,10 @@ Tools that only contribute shell configuration (no binary installation):
 export default defineTool((install) => install().zsh((shell) => shell.env({ FOO: 'bar' })));
 ```
 
+### Orphaned Artifact Cleanup
+
+When a `.tool.ts` configuration file is removed, `dotfiles generate` automatically cleans up the corresponding generated shims and completions on the next run. No manual cleanup is needed.
+
 ### Auto-Generated Types
 
 Running `dotfiles generate` creates `.generated/tool-types.d.ts` with type-safe `dependsOn()` autocomplete for all your tool binaries.

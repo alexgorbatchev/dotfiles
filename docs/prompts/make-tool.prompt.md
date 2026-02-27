@@ -72,6 +72,9 @@ Select the most appropriate method based on your investigation. Prefer official,
 - **`cargo`**: prefer for Rust tools available on crates.io.
   - Guide: [Cargo Installation Guide](<root>/docs/installation/cargo.md)
 
+- **`npm`**: for tools published as npm packages.
+  - Guide: [npm Installation Guide](<root>/docs/installation/npm.md)
+
 - **`curl-script`**: for tools with an official install script.
   - Guide: [Curl Script Installation Guide](<root>/docs/installation/curl-script.md)
 
@@ -635,7 +638,24 @@ export default defineTool((install) =>
 );
 ```
 
-### Example 6: Tool with Shell Functions
+### Example 6: npm Tool
+
+```ts
+import { defineTool } from '@gitea/dotfiles';
+
+/**
+ * prettier - An opinionated code formatter.
+ *
+ * https://prettier.io
+ */
+export default defineTool((install) =>
+  install('npm', {
+    package: 'prettier',
+  }).bin('prettier')
+);
+```
+
+### Example 6b: Tool with Shell Functions
 
 ```ts
 import { defineTool } from '@gitea/dotfiles';
@@ -795,6 +815,7 @@ export default defineTool((install) =>
 - [Gitea/Forgejo Release Installation](<root>/docs/installation/gitea-release.md)
 - [Homebrew Installation](<root>/docs/installation/homebrew.md)
 - [Cargo Installation](<root>/docs/installation/cargo.md)
+- [npm Installation](<root>/docs/installation/npm.md)
 - [Curl Script Installation](<root>/docs/installation/curl-script.md)
 - [Curl Tar Installation](<root>/docs/installation/curl-tar.md)
 - [Curl Binary Installation](<root>/docs/installation/curl-binary.md)

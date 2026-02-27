@@ -41,6 +41,7 @@ export default defineTool((install, ctx) =>
 - [Gitea/Forgejo Releases](./installation/gitea-release.md) - Installing from Gitea, Forgejo, or Codeberg releases
 - [Homebrew](./installation/homebrew.md) - Installing via Homebrew
 - [Cargo](./installation/cargo.md) - Installing Rust tools from crates.io
+- [npm](./installation/npm.md) - Installing tools from npm
 - [Curl Scripts](./installation/curl-script.md) - Installing via download scripts
 - [Curl Tar](./installation/curl-tar.md) - Installing from tarball URLs
 - [Curl Binary](./installation/curl-binary.md) - Installing standalone binary files

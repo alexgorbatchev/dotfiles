@@ -291,6 +291,7 @@ See [Installation Methods](./installation/README.md) for detailed parameters for
 - `gitea-release` - [Gitea/Forgejo Releases](./installation/gitea-release.md)
 - `brew` - [Homebrew](./installation/homebrew.md)
 - `cargo` - [Cargo](./installation/cargo.md)
+- `npm` - [npm](./installation/npm.md)
 - `curl-script` - [Curl Scripts](./installation/curl-script.md)
 - `curl-tar` - [Curl Tar](./installation/curl-tar.md)
 - `curl-binary` - [Curl Binary](./installation/curl-binary.md)

@@ -163,6 +163,7 @@ export default defineTool((install) =>
 | Gitea/Forgejo     | `gitea-release`  | Codeberg tools     |
 | Homebrew          | `brew`           | git, jq            |
 | Rust crates       | `cargo`          | eza, fd, ripgrep   |
+| npm packages      | `npm`            | prettier, eslint   |
 | Custom scripts    | `manual`         | deployment scripts |
 | Shell config only | `install()`      | aliases, env vars  |
 | Installer scripts | `curl-script`    | rustup, nvm        |

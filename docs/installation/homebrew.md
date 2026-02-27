@@ -51,6 +51,10 @@ install('brew', {
 }).bin('custom-tool');
 ```
 
+## Binary Management
+
+Brew-installed tools use direct symlinks pointing to the real Homebrew binary (e.g., `/opt/homebrew/opt/formula/bin/tool`) instead of bash shim scripts. These symlinks are created at install time rather than during shim generation. This avoids PATH clobbering where shims would intercept Homebrew binary lookups.
+
 ## Platform Support
 
 | Platform | Support                 |

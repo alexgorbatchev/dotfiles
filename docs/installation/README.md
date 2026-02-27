@@ -61,6 +61,20 @@ export default defineTool((install, ctx) =>
 );
 ```
 
+### [npm](./npm.md)
+
+Install tools published as npm packages.
+
+```typescript
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('npm', {
+    package: 'prettier',
+  }).bin('prettier')
+);
+```
+
 ### [Curl Script](./curl-script.md)
 
 Download and execute installation scripts.
@@ -145,6 +159,7 @@ export default defineTool((install, ctx) =>
 | **Gitea/Forgejo**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host    | Requires instance URL                |
 | **Homebrew**       | macOS/Linux tools                   | Simple, well-maintained               | Platform-specific, requires Homebrew |
 | **Cargo**          | Rust tools                          | Fast pre-compiled binaries            | Rust tools only                      |
+| **npm**            | Node.js tools                       | Simple, version management            | Requires Node.js/npm                 |
 | **Curl Script**    | Custom installers                   | Flexible, handles complex setups      | Less predictable, security concerns  |
 | **Curl Tar**       | Archive downloads                   | Simple, no dependencies               | Manual URL management                |
 | **Curl Binary**    | Direct binary downloads             | Simplest, no extraction needed        | Manual URL management                |
@@ -243,3 +258,4 @@ Choose an installation method to learn more:
 - [Gitea/Forgejo Release](./gitea-release.md) - Tools hosted on Codeberg, Forgejo, or self-hosted Gitea
 - [Homebrew](./homebrew.md) - Simple package manager installation
 - [Cargo](./cargo.md) - Fast Rust tool installation
+- [npm](./npm.md) - Node.js tool installation
