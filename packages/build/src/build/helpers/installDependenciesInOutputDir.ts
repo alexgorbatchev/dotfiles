@@ -19,7 +19,7 @@ export async function installDependenciesInOutputDir(context: IBuildContext): Pr
   try {
     // stderr("inheritPiped") both prints stderr and captures it so throwIfCertificateError can inspect it.
     // Without it, dax-sh inherits stdio and .stderr.toString() throws "Stdout was not piped".
-    const installResult = await shell`cd ${context.paths.outputDir} && bun install`.stderr('inheritPiped').noThrow();
+    const installResult = await shell`cd ${context.paths.outputDir} && bun install --ignore-scripts`.stderr('inheritPiped').noThrow();
 
     throwIfCertificateError(installResult.stderr.toString());
 

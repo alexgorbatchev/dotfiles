@@ -62,7 +62,7 @@ export async function createPackedTestEnvironment(context: IBuildContext): Promi
   // Install dependencies in the unpacked package
   // stderr("inheritPiped") both prints stderr and captures it so throwIfCertificateError can inspect it.
   // Without it, dax-sh inherits stdio and .stderr.toString() throws "Stdout was not piped".
-  const installResult = await shell`bun install`.stderr('inheritPiped').noThrow().cwd(packageDir);
+  const installResult = await shell`bun install --ignore-scripts`.stderr('inheritPiped').noThrow().cwd(packageDir);
 
   throwIfCertificateError(installResult.stderr.toString());
 
