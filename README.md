@@ -153,21 +153,26 @@ This enables IDE autocomplete for the `dependsOn()` method with all known binary
 ### Getting Started
 
 - **[Tool Configuration Guide](docs/README.md)** - The complete guide to creating `.tool.ts` files
-- **[Migration Guide](docs/migration-guide.md)** - How to move from shell scripts to the new system
 - **[Common Patterns](docs/common-patterns.md)** - Real-world configuration examples
+- **[Getting Started](docs/getting-started.md)** - First steps and initial setup
 
 ### Shell Integration
 
 - **[Shell Configuration](docs/shell-integration.md)** - Aliases, environment variables, and shell functions
 - **[Command Completions](docs/completions.md)** - Setting up tab completions for your tools
-- **[Symbolic Links](docs/symlinks.md)** - Managing configuration file symlinks
+- **[Virtual Environments](docs/virtual-environments.md)** - Isolated tool environments
+- **[Hooks](docs/hooks.md)** - Lifecycle hooks for tool installation
 
 ### Installation Methods
 
 - **[GitHub Releases](docs/installation/github-release.md)** - Install from GitHub release archives
+- **[Gitea Releases](docs/installation/gitea-release.md)** - Install from Gitea release archives
 - **[Cargo/Crates.io](docs/installation/cargo.md)** - Install Rust tools via Cargo
+- **[npm](docs/installation/npm.md)** - Install tools via npm
 - **[Homebrew](docs/installation/homebrew.md)** - Install via Homebrew package manager
 - **[Curl Scripts](docs/installation/curl-script.md)** - Install via shell scripts
+- **[Curl Tar](docs/installation/curl-tar.md)** - Install from remote tarballs
+- **[Curl Binary](docs/installation/curl-binary.md)** - Install single binaries via curl
 - **[Zsh Plugins](docs/installation/zsh-plugin.md)** - Install zsh plugins to `$ZSH_CUSTOM`
 - **[Manual Installation](docs/installation/manual.md)** - Manually managed tools
 
@@ -362,14 +367,20 @@ export default defineConfig(() => ({
 ## Development
 
 ```bash
-# Run all tests
-bun test
+# Run all tests (fast parallel runner)
+bun test:all
 
-# Lint the codebase
+# Run tests with native bun test runner (accepts bun test arguments)
+bun test:native
+
+# Lint and format the codebase
 bun lint
 
-# Fix formatting issues
-bun fix
+# Type-check
+bun typecheck
+
+# Full check (lint + typecheck + test)
+bun check
 ```
 
 ### Development HTTP Proxy
