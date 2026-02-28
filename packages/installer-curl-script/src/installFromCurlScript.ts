@@ -41,14 +41,22 @@ async function handleBinaryInstallation(
       continue;
     }
 
-    const sourcePath = path.join('/usr/local/bin', binaryName);
+    const searchDirs = ['/usr/local/bin', path.join(context.systemInfo.homeDir, '.local', 'bin'), '/usr/bin'];
+    let found = false;
 
-    if (await fs.exists(sourcePath)) {
-      logger.debug(messages.movingBinary(sourcePath, finalBinaryPath));
-      await fs.copyFile(sourcePath, finalBinaryPath);
-      await fs.chmod(finalBinaryPath, 0o755);
-    } else {
-      logger.warn(messages.binaryNotFound(binaryName, `${context.stagingDir}, /usr/local/bin`));
+    for (const dir of searchDirs) {
+      const sourcePath = path.join(dir, binaryName);
+      if (await fs.exists(sourcePath)) {
+        logger.debug(messages.movingBinary(sourcePath, finalBinaryPath));
+        await fs.copyFile(sourcePath, finalBinaryPath);
+        await fs.chmod(finalBinaryPath, 0o755);
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      logger.warn(messages.binaryNotFound(binaryName, `${context.stagingDir}, ${searchDirs.join(', ')}`));
     }
   }
 }

@@ -71,7 +71,7 @@ export async function installFromNpm(
         });
       }
     } else {
-      version = await getNpmPackageVersion(packageName, context.stagingDir, logger, shellExecutor) ?? undefined;
+      version = await getNpmPackageVersion(packageName, context.stagingDir, logger, shellExecutor);
     }
 
     const metadata: INpmInstallMetadata = {
@@ -127,7 +127,7 @@ async function getNpmPackageVersion(
   installDir: string,
   logger: TsLogger,
   shell: Shell,
-): Promise<string | null> {
+): Promise<string | undefined> {
   try {
     const result = await shell`npm ls --prefix ${installDir} ${packageName} --json`.quiet().noThrow();
     const output: string = result.stdout.toString();
@@ -142,9 +142,9 @@ async function getNpmPackageVersion(
     }
 
     logger.debug(messages.versionFetchFailed(packageName));
-    return null;
+    return undefined;
   } catch (error) {
     logger.debug(messages.versionFetchFailed(packageName), error);
-    return null;
+    return undefined;
   }
 }

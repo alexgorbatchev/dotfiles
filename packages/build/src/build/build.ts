@@ -53,15 +53,9 @@ async function runBuild(context: IBuildContext): Promise<void> {
 async function main(): Promise<void> {
   const context: IBuildContext = createBuildContext();
 
-  await handleBuildError(
-    async () => {
-      await runBuild(context);
-    },
-    // Temporarily comment out cleanup to debug
-    // async () => {
-    //   await cleanupTempFiles(context);
-    // },
-  );
+  await handleBuildError(async () => {
+    await runBuild(context);
+  });
 }
 
 await main();

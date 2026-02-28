@@ -1,18 +1,6 @@
 import type { ShellType } from '@dotfiles/core';
 
-/**
- * Gets the comment prefix for a given shell type.
- */
-function getCommentPrefix(shellType: ShellType): string {
-  switch (shellType) {
-    case 'zsh':
-    case 'bash':
-    case 'powershell':
-      return '#';
-    default:
-      return '#';
-  }
-}
+const COMMENT_PREFIX = '#';
 
 /**
  * Creates a commented line with shell-appropriate comment syntax.
@@ -20,9 +8,8 @@ function getCommentPrefix(shellType: ShellType): string {
  * @param value - The text to comment
  * @returns Formatted comment line
  */
-export function commentLine(shellType: ShellType, value: string): string {
-  const comment = getCommentPrefix(shellType);
-  return `${comment} ${value}`;
+export function commentLine(_shellType: ShellType, value: string): string {
+  return `${COMMENT_PREFIX} ${value}`;
 }
 
 /**
@@ -198,12 +185,11 @@ export function generateSourceLine(shellType: ShellType, scriptPath: string): st
 
 /**
  * Generates a header comment block for profile file modifications.
- * Creates a double-line header with generator attribution and config path.
+ * Creates a double-line header with generator attribution.
  * @param shellType - Type of shell for comment syntax
- * @param projectConfigPath - Full path to the project config file
  * @returns Multi-line header comment block
  */
-export function generateProfileHeader(shellType: ShellType, _projectConfigPath: string): string {
+export function generateProfileHeader(shellType: ShellType): string {
   return [commentLine(shellType, 'Generated via dotfiles generator - do not modify'), headerLine(shellType, '-')].join(
     '\n',
   );

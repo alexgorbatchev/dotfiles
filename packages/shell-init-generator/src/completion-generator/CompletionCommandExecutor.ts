@@ -26,8 +26,7 @@ export class CompletionCommandExecutor implements ICompletionCommandExecutor {
     // Build directories to prepend to PATH (from binaryPaths + workingDir)
     const binaryDirs = binaryPaths?.map((p) => path.dirname(p)) ?? [];
     const pathDirs = [...new Set([...binaryDirs, workingDir])];
-    // TODO not multiplatform
-    const pathPrefix = pathDirs.join(':');
+    const pathPrefix = pathDirs.join(path.delimiter);
 
     // Validate binary existence BEFORE running the command
     // This prevents infinite loops when the command would fall through to a shim

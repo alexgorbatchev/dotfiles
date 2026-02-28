@@ -83,7 +83,7 @@ export class ProfileUpdater implements IProfileUpdater {
     }
 
     const sourceLine = generateSourceLine(config.shellType, config.generatedScriptPath);
-    const headerBlock = generateProfileHeader(config.shellType, config.projectConfigPath);
+    const headerBlock = generateProfileHeader(config.shellType);
     const newBlock = `${headerBlock}\n${sourceLine}`;
 
     const headerMarker = '# Generated via dotfiles generator - do not modify';

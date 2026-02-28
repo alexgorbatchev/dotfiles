@@ -79,7 +79,7 @@ export async function installFromBrew(
         shellExecutor,
       });
     } else {
-      version = (await getBrewVersion(formula, logger, shellExecutor)) ?? undefined;
+      version = await getBrewVersion(formula, logger, shellExecutor);
     }
 
     const metadata: IBrewInstallMetadata = {
@@ -132,7 +132,7 @@ export async function installFromBrew(
  * @param shell - The shell executor.
  * @returns A promise that resolves to the version string, or null if not found.
  */
-async function getBrewVersion(formula: string, logger: TsLogger, shell: Shell): Promise<string | null> {
+async function getBrewVersion(formula: string, logger: TsLogger, shell: Shell): Promise<string | undefined> {
   try {
     logger.debug(messages.fetchingVersion(formula));
     const result = await shell`brew info --json ${formula}`.quiet().noThrow();
@@ -148,10 +148,10 @@ async function getBrewVersion(formula: string, logger: TsLogger, shell: Shell): 
     }
 
     logger.debug(messages.versionNotFound(formula));
-    return null;
+    return undefined;
   } catch (error) {
     logger.debug(messages.versionFetchFailed(formula), error);
-    return null;
+    return undefined;
   }
 }
 

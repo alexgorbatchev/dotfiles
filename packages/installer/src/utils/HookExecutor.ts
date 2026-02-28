@@ -43,7 +43,6 @@ function createToolConfigCwdShell($shell: Shell, cwdPath: string): Shell {
  * WORKAROUND: Due to a bun shell bug where `.env()` PATH changes don't affect command resolution
  * (command lookup uses process.env.PATH, not the shell's export_env), we wrap commands in `sh -c`.
  * This delegates command resolution to the subshell which correctly inherits the modified PATH.
- * See: https://github.com/oven-sh/bun/issues/XXXX
  *
  * @param $shell - The base shell instance to wrap
  * @param additionalPaths - Array of directory paths to prepend to PATH
