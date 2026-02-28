@@ -58,7 +58,7 @@ export async function installManually(
       }
 
       await installBinariesManually(toolConfig, toolName, context, toolFs, binaryPath, logger);
-      binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
+      binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
     }
 
     const metadata: IManualInstallMetadata = {
@@ -100,7 +100,7 @@ async function installBinariesManually(
   parentLogger: TsLogger,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'installBinariesManually' });
-  const binaryNames = getBinaryNames(toolConfig.binaries, toolName);
+  const binaryNames = getBinaryNames(toolConfig.binaries);
 
   for (const binaryName of binaryNames) {
     const finalBinaryPath = path.join(context.stagingDir, binaryName);

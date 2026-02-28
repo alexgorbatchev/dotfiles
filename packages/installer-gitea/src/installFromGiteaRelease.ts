@@ -138,7 +138,7 @@ export async function installFromGiteaRelease(
       return result;
     }
 
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     const metadata: IGiteaReleaseInstallMetadata = {
       method: 'gitea-release',

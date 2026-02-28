@@ -5,17 +5,17 @@ import { normalizeBinaries } from '../normalizeBinaries';
 
 describe('normalizeBinaries', () => {
   test('should return empty array for undefined binaries', () => {
-    const result = normalizeBinaries(undefined, 'mytool');
+    const result = normalizeBinaries(undefined);
     expect(result).toEqual([]);
   });
 
   test('should return empty array for empty binaries array', () => {
-    const result = normalizeBinaries([], 'mytool');
+    const result = normalizeBinaries([]);
     expect(result).toEqual([]);
   });
 
   test('should convert string array to IBinaryConfig array', () => {
-    const result = normalizeBinaries(['tool1', 'tool2'], 'mytool');
+    const result = normalizeBinaries(['tool1', 'tool2']);
     expect(result).toEqual([
       { name: 'tool1', pattern: '{,*/}tool1' },
       { name: 'tool2', pattern: '{,*/}tool2' },
@@ -27,13 +27,13 @@ describe('normalizeBinaries', () => {
       { name: 'tool1', pattern: '*/tool1' },
       { name: 'tool2', pattern: 'bin/tool2' },
     ];
-    const result = normalizeBinaries(input, 'mytool');
+    const result = normalizeBinaries(input);
     expect(result).toEqual(input);
   });
 
   test('should handle mixed array of strings and IBinaryConfig', () => {
     const input = ['tool1', { name: 'tool2', pattern: '*/tool2' }];
-    const result = normalizeBinaries(input, 'mytool');
+    const result = normalizeBinaries(input);
     expect(result).toEqual([
       { name: 'tool1', pattern: '{,*/}tool1' },
       { name: 'tool2', pattern: '*/tool2' },
@@ -43,7 +43,7 @@ describe('normalizeBinaries', () => {
 
 describe('getBinaryNames', () => {
   test('should extract names from string array', () => {
-    const result = getBinaryNames(['tool1', 'tool2'], 'mytool');
+    const result = getBinaryNames(['tool1', 'tool2']);
     expect(result).toEqual(['tool1', 'tool2']);
   });
 
@@ -52,30 +52,30 @@ describe('getBinaryNames', () => {
       { name: 'tool1', pattern: '*/tool1' },
       { name: 'tool2', pattern: 'bin/tool2' },
     ];
-    const result = getBinaryNames(binaries, 'mytool');
+    const result = getBinaryNames(binaries);
     expect(result).toEqual(['tool1', 'tool2']);
   });
 
   test('should handle mixed array', () => {
     const binaries = ['tool1', { name: 'tool2', pattern: '*/tool2' }];
-    const result = getBinaryNames(binaries, 'mytool');
+    const result = getBinaryNames(binaries);
     expect(result).toEqual(['tool1', 'tool2']);
   });
 
   test('should return empty array when binaries is undefined', () => {
-    const result = getBinaryNames(undefined, 'mytool');
+    const result = getBinaryNames(undefined);
     expect(result).toEqual([]);
   });
 
   test('should return empty array when binaries is empty', () => {
-    const result = getBinaryNames([], 'mytool');
+    const result = getBinaryNames([]);
     expect(result).toEqual([]);
   });
 });
 
 describe('getBinaryPaths', () => {
   test('should get binary paths from string array', () => {
-    const result = getBinaryPaths(['tool1', 'tool2'], 'mytool', '/install/dir');
+    const result = getBinaryPaths(['tool1', 'tool2'], '/install/dir');
     expect(result).toEqual(['/install/dir/tool1', '/install/dir/tool2']);
   });
 
@@ -84,23 +84,23 @@ describe('getBinaryPaths', () => {
       { name: 'tool1', pattern: '*/tool1' },
       { name: 'tool2', pattern: 'bin/tool2' },
     ];
-    const result = getBinaryPaths(binaries, 'mytool', '/install/dir');
+    const result = getBinaryPaths(binaries, '/install/dir');
     expect(result).toEqual(['/install/dir/tool1', '/install/dir/tool2']);
   });
 
   test('should handle mixed array', () => {
     const binaries = ['tool1', { name: 'tool2', pattern: '*/tool2' }];
-    const result = getBinaryPaths(binaries, 'mytool', '/install/dir');
+    const result = getBinaryPaths(binaries, '/install/dir');
     expect(result).toEqual(['/install/dir/tool1', '/install/dir/tool2']);
   });
 
   test('should return empty array when binaries is undefined', () => {
-    const result = getBinaryPaths(undefined, 'mytool', '/install/dir');
+    const result = getBinaryPaths(undefined, '/install/dir');
     expect(result).toEqual([]);
   });
 
   test('should return empty array when binaries is empty', () => {
-    const result = getBinaryPaths([], 'mytool', '/install/dir');
+    const result = getBinaryPaths([], '/install/dir');
     expect(result).toEqual([]);
   });
 });

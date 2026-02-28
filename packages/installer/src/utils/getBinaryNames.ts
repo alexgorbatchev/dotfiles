@@ -11,10 +11,9 @@ import { normalizeBinaries } from './normalizeBinaries';
  * - Creating completion files
  *
  * @param binaries - Array of strings or IBinaryConfig objects, or undefined
- * @param fallbackName - Name to use if binaries array is empty or undefined
  * @returns Array of binary names (e.g., ['rg', 'ripgrep'])
  */
-export function getBinaryNames(binaries: (string | IBinaryConfig)[] | undefined, fallbackName: string): string[] {
-  const normalizedBinaries = normalizeBinaries(binaries, fallbackName);
+export function getBinaryNames(binaries: (string | IBinaryConfig)[] | undefined): string[] {
+  const normalizedBinaries = normalizeBinaries(binaries);
   return normalizedBinaries.map((config) => config.name);
 }

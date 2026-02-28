@@ -102,7 +102,7 @@ export async function installFromCargo(
       logger.debug(messages.cleaningArchive(downloadPath));
     }
 
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     const metadata: ICargoInstallMetadata = {
       method: 'cargo',

@@ -13,15 +13,13 @@ import { normalizeBinaries } from './normalizeBinaries';
  * - Verification
  *
  * @param binaries - Array of strings or IBinaryConfig objects, or undefined
- * @param fallbackName - Name to use if binaries array is empty or undefined
  * @param installedDir - Directory where binaries are installed
  * @returns Array of absolute paths to binaries (e.g., ['/path/to/install/rg', '/path/to/install/ripgrep'])
  */
 export function getBinaryPaths(
   binaries: (string | IBinaryConfig)[] | undefined,
-  fallbackName: string,
   installedDir: string,
 ): string[] {
-  const normalizedBinaries = normalizeBinaries(binaries, fallbackName);
+  const normalizedBinaries = normalizeBinaries(binaries);
   return normalizedBinaries.map((binary) => join(installedDir, binary.name));
 }

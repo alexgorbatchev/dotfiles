@@ -56,7 +56,7 @@ export async function installFromNpm(
     await executeNpmInstall(packageSpec, context.stagingDir, logger, shellExecutor);
 
     const binDir: string = path.join(context.stagingDir, 'node_modules', '.bin');
-    const binaryPaths: string[] = getBinaryPaths(toolConfig.binaries, toolName, binDir);
+    const binaryPaths: string[] = getBinaryPaths(toolConfig.binaries, binDir);
 
     let version: string | undefined;
 

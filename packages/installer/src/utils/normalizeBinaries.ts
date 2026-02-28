@@ -14,13 +14,9 @@ import type { IBinaryConfig } from '@dotfiles/core';
  * - Tools that do not call .bin() will have no shims generated
  *
  * @param binaries - Array of strings or IBinaryConfig objects, or undefined
- * @param fallbackName - Name to use as single binary if binaries is empty or undefined
  * @returns Array of IBinaryConfig objects with minimatch glob patterns for locating binaries
  */
-export function normalizeBinaries(
-  binaries: (string | IBinaryConfig)[] | undefined,
-  fallbackName: string,
-): IBinaryConfig[] {
+export function normalizeBinaries(binaries: (string | IBinaryConfig)[] | undefined): IBinaryConfig[] {
   if (!binaries || binaries.length === 0) {
     return [];
   }

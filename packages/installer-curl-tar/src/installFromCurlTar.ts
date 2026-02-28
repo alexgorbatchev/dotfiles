@@ -142,7 +142,7 @@ export async function installFromCurlTar(
     }
 
     // Return paths to all binaries
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     let detectedVersion: string | undefined;
     const mainBinaryPath = binaryPaths[0];

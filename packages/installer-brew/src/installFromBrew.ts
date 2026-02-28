@@ -63,7 +63,7 @@ export async function installFromBrew(
     await executeBrewInstall(formula, isCask, tap, options?.force, logger, shellExecutor);
 
     const formulaPrefix: string = await getBrewPrefix(formula, logger, shellExecutor);
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, `${formulaPrefix}/bin`);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, `${formulaPrefix}/bin`);
 
     let version: string | undefined;
 

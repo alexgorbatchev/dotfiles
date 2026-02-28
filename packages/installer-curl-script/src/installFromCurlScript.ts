@@ -27,12 +27,11 @@ import type {
  */
 async function handleBinaryInstallation(
   toolConfig: CurlScriptToolConfig,
-  toolName: string,
   context: IInstallContext,
   fs: IFileSystem,
   logger: TsLogger,
 ): Promise<void> {
-  const binaryNames = getBinaryNames(toolConfig.binaries, toolName);
+  const binaryNames = getBinaryNames(toolConfig.binaries);
 
   for (const binaryName of binaryNames) {
     const finalBinaryPath = path.join(context.stagingDir, binaryName);
@@ -151,10 +150,10 @@ export async function installFromCurlScript(
       scriptOutput = [result.stdout, result.stderr].filter(Boolean).join('\n');
     }
 
-    await handleBinaryInstallation(toolConfig, toolName, context, fs, logger);
+    await handleBinaryInstallation(toolConfig, context, fs, logger);
 
     // Return paths to all binaries
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     // Verify at least one binary was actually installed
     const installedBinaries: string[] = [];

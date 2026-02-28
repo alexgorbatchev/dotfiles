@@ -18,7 +18,7 @@ export async function setupBinariesFromDirectDownload(
   parentLogger: TsLogger,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'setupBinariesFromDirectDownload' });
-  const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
+  const binaryConfigs = normalizeBinaries(toolConfig.binaries);
   const primaryBinary = binaryConfigs[0]?.name || toolName;
 
   await fs.chmod(downloadPath, 0o755);

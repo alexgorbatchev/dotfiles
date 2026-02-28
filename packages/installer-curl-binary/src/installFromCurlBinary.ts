@@ -103,7 +103,7 @@ export async function installFromCurlBinary(
     await setupBinariesFromDirectDownload(toolFs, toolName, toolConfig, context, binaryPath, logger);
 
     // Return paths to all binaries
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     let detectedVersion: string | undefined;
     const mainBinaryPath = binaryPaths[0];

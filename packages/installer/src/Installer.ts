@@ -284,7 +284,7 @@ export class Installer implements IInstaller {
     // Compute binaryPaths for already-installed case
     // This is needed for completion generation to know where binaries are
     const currentDir = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
-    const binaryPaths = getBinaryPaths(resolvedToolConfig.binaries, toolName, currentDir);
+    const binaryPaths = getBinaryPaths(resolvedToolConfig.binaries, currentDir);
 
     // Get shellInit from plugin if available (for plugins like zsh-plugin that emit shellInit)
     const plugin = this.registry.get(resolvedToolConfig.installationMethod);

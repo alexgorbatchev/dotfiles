@@ -38,7 +38,7 @@ export async function setupBinariesFromArchive(
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'setupBinariesFromArchive' });
   const binariesDir = path.join(context.projectConfig.paths.generatedDir, 'binaries');
-  const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
+  const binaryConfigs = normalizeBinaries(toolConfig.binaries);
 
   // Extract subdirectory name from context.stagingDir
   // This will be either a version (e.g., "1.0.0") or timestamp (e.g., "2025-11-04-20-53-47")

@@ -146,7 +146,7 @@ export async function installFromGitHubRelease(
       return result;
     }
 
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     const metadata: IGitHubReleaseInstallMetadata = {
       method: 'github-release',
