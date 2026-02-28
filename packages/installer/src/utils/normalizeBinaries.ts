@@ -10,8 +10,8 @@ import type { IBinaryConfig } from '@dotfiles/core';
  * - Allows binaries to be located at root or one directory deep in archives
  *
  * Fallback Behavior:
- * - If binaries array is empty or undefined, creates config for fallbackName
- * - Ensures every tool has at least one binary configured
+ * - If binaries array is empty or undefined, returns an empty array (no binaries configured)
+ * - Tools that do not call .bin() will have no shims generated
  *
  * @param binaries - Array of strings or IBinaryConfig objects, or undefined
  * @param fallbackName - Name to use as single binary if binaries is empty or undefined
@@ -22,7 +22,7 @@ export function normalizeBinaries(
   fallbackName: string,
 ): IBinaryConfig[] {
   if (!binaries || binaries.length === 0) {
-    return [{ name: fallbackName, pattern: `{,*/}${fallbackName}` }];
+    return [];
   }
 
   return binaries.map((binary) => (typeof binary === 'string' ? { name: binary, pattern: `{,*/}${binary}` } : binary));

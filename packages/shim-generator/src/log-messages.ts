@@ -13,6 +13,8 @@ export const messages = {
       createSafeLogMessage(`Generating shims for ${toolName} using ${fileSystemName}`),
     skippedExternallyManaged: (toolName: string, method: string) =>
       createSafeLogMessage(`Skipping shim generation for ${toolName} (externally managed via ${method})`),
+    skippedNoBinaries: (toolName: string) =>
+      createSafeLogMessage(`Skipping shim generation for ${toolName} (no binaries defined)`),
   } satisfies SafeLogMessageMap,
   generateShim: {
     resolvedShimPath: (shimPath: string) => createSafeLogMessage(`Resolved shim output path ${shimPath}`),

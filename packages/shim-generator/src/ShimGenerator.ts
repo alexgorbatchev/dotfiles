@@ -114,9 +114,16 @@ export class ShimGenerator implements IShimGenerator {
     }
 
     // Get list of binaries to generate shims for
+    // If no binaries are defined (i.e., .bin() was never called), skip shim generation entirely
     const binaries = resolvedConfig.binaries && resolvedConfig.binaries.length > 0
       ? resolvedConfig.binaries
-      : [toolName];
+      : [];
+
+    if (binaries.length === 0) {
+      logger.debug(messages.generateForTool.skippedNoBinaries(toolName));
+      return generatedShimPaths;
+    }
+
     const binaryNames = binaries.map((binary) => (typeof binary === 'string' ? binary : binary.name));
 
     // Generate a shim for each binary

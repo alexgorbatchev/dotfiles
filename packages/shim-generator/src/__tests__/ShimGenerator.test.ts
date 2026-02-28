@@ -175,7 +175,7 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).not.toHaveBeenCalled();
     });
 
-    it('should use toolName as binary name if toolConfig.binaries is empty and tool is not configuration-only', async () => {
+    it('should skip shim generation when toolConfig.binaries is empty and tool is not configuration-only', async () => {
       const configNoBinaries: ToolConfig = {
         name: toolName,
         version: '1.0.0',
@@ -185,23 +185,14 @@ describe('ShimGenerator', () => {
           binaryPath: `/usr/local/bin/${toolName}`,
         },
       };
-      const expectedBinaryPathFallback = path.join(
-        mockConfig.paths.binariesDir,
-        configNoBinaries.name,
-        'current',
-        toolName,
-      );
       const result = await shimGenerator.generateForTool(toolName, configNoBinaries);
-      const fallbackShimPath = path.join(mockConfig.paths.targetDir, toolName);
 
-      expect(result).toEqual([fallbackShimPath]);
-      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
-      expect(fsMocks.writeFile.mock.calls[0]).toBeDefined();
-      const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
-      expect(writtenContent).toContain(`TOOL_EXECUTABLE="${expectedBinaryPathFallback}"`);
+      expect(result).toEqual([]);
+      expect(fsMocks.writeFile).not.toHaveBeenCalled();
+      expect(fsMocks.chmod).not.toHaveBeenCalled();
     });
 
-    it('should use toolName as binary name if toolConfig.binaries is undefined and tool is not configuration-only', async () => {
+    it('should skip shim generation when toolConfig.binaries is undefined and tool is not configuration-only', async () => {
       const configUndefinedBinaries: ToolConfig = {
         name: toolName,
         version: '1.0.0',
@@ -211,20 +202,11 @@ describe('ShimGenerator', () => {
           binaryPath: `/usr/local/bin/${toolName}`,
         },
       };
-      const expectedBinaryPathFallback = path.join(
-        mockConfig.paths.binariesDir,
-        configUndefinedBinaries.name,
-        'current',
-        toolName,
-      );
       const result = await shimGenerator.generateForTool(toolName, configUndefinedBinaries);
-      const fallbackShimPath = path.join(mockConfig.paths.targetDir, toolName);
 
-      expect(result).toEqual([fallbackShimPath]);
-      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
-      expect(fsMocks.writeFile.mock.calls[0]).toBeDefined();
-      const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
-      expect(writtenContent).toContain(`TOOL_EXECUTABLE="${expectedBinaryPathFallback}"`);
+      expect(result).toEqual([]);
+      expect(fsMocks.writeFile).not.toHaveBeenCalled();
+      expect(fsMocks.chmod).not.toHaveBeenCalled();
     });
 
     it('should attempt file operations and return path (simulating dry run with mock FS)', async () => {
