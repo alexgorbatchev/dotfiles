@@ -14,6 +14,4 @@ export const messages = {
     createSafeLogMessage(`Specified source file not found: ${file}`),
   noParamsProvided: (): SafeLogMessage => createSafeLogMessage('No install parameters provided'),
   invalidParams: (): SafeLogMessage => createSafeLogMessage('Either repo or url must be specified'),
-  updateCheckNotImplemented: (toolName: string): SafeLogMessage =>
-    createSafeLogMessage(`Update check not implemented for zsh-plugin: ${toolName}`),
 } as const satisfies SafeLogMessageMap;

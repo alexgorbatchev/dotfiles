@@ -13,8 +13,6 @@ export const messages = {
   prefixFetchFailed: (formula: string) => createSafeLogMessage(`Failed to fetch prefix for formula ${formula}`),
   prefixFallback: (formula: string, prefix: string) =>
     createSafeLogMessage(`Using fallback prefix for formula ${formula}: ${prefix}`),
-  updateCheckNotImplemented: (toolName: string) =>
-    createSafeLogMessage(`Update check not fully implemented for brew tool: ${toolName}`),
   shimSymlinkCreated: (binaryName: string, shimPath: string, targetPath: string) =>
     createSafeLogMessage(`Created shim symlink ${binaryName} at ${shimPath} -> ${targetPath}`),
   shimSymlinkFailed: (binaryName: string, shimPath: string) =>

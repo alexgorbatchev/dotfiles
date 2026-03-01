@@ -6,14 +6,12 @@ import type {
   IPluginShellInit,
   Shell,
   ShellType,
-  UpdateCheckResult,
 } from '@dotfiles/core';
 import { raw } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import path from 'node:path';
 import { installFromZshPlugin, resolvePluginName } from './installFromZshPlugin';
-import { messages } from './log-messages';
 import {
   type ZshPluginInstallParams,
   zshPluginInstallParamsSchema,
@@ -118,31 +116,7 @@ export class ZshPluginInstallerPlugin implements
   }
 
   supportsUpdateCheck(): boolean {
-    return true;
-  }
-
-  /**
-   * Checks for available updates for a zsh plugin.
-   *
-   * @param toolName - The name of the tool to check.
-   * @param _toolConfig - The configuration for the zsh plugin.
-   * @param _context - The base installation context.
-   * @param logger - The logger instance.
-   * @returns A promise that resolves to the update check result.
-   */
-  async checkUpdate(
-    toolName: string,
-    _toolConfig: ZshPluginToolConfig,
-    _context: IInstallContext,
-    logger: TsLogger,
-  ): Promise<UpdateCheckResult> {
-    // TODO: Implement git fetch/compare for update checking
-    logger.warn(messages.updateCheckNotImplemented(toolName));
-    return {
-      success: true,
-      hasUpdate: false,
-      currentVersion: 'unknown',
-    };
+    return false;
   }
 
   /**

@@ -6,21 +6,9 @@ Comprehensive code review performed 2026-02-27. All findings verified against so
 
 ---
 
-## 1. Stub Implementations
+### ~~1.1 BrewInstallerPlugin.checkUpdate() is a placeholder~~ FIXED
 
-### 1.1 BrewInstallerPlugin.checkUpdate() is a placeholder
-
-- **File**: `packages/installer-brew/src/BrewInstallerPlugin.ts:120`
-- **Current behavior**: Always returns `{ hasUpdate: false }` with a TODO comment and warning log. Does not query `brew info` or any other source.
-- **Expected behavior**: Should run `brew info --json=v2 <formula>` to compare installed vs. latest version.
-- **Why it matters**: Users relying on `dotfiles check-updates` will never be notified of Homebrew package updates.
-
-### 1.2 ZshPluginInstallerPlugin.checkUpdate() is a placeholder
-
-- **File**: `packages/installer-zsh-plugin/src/ZshPluginInstallerPlugin.ts:139`
-- **Current behavior**: Always returns `{ hasUpdate: false, currentVersion: 'unknown' }` with a TODO comment.
-- **Expected behavior**: Should run `git fetch` and compare HEAD vs. remote to detect new commits.
-- **Why it matters**: Same impact as 1.1 but for zsh plugins. Update checking is completely non-functional for this installer type.
+### ~~1.2 ZshPluginInstallerPlugin.checkUpdate() is a placeholder~~ FIXED
 
 ---
 

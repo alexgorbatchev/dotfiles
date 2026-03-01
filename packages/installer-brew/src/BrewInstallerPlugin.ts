@@ -1,14 +1,6 @@
-import type {
-  IInstallContext,
-  IInstallerPlugin,
-  IInstallOptions,
-  InstallResult,
-  Shell,
-  UpdateCheckResult,
-} from '@dotfiles/core';
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { installFromBrew } from './installFromBrew';
-import { messages } from './log-messages';
 import { type BrewInstallParams, brewInstallParamsSchema, type BrewToolConfig, brewToolConfigSchema } from './schemas';
 
 const PLUGIN_VERSION = '1.0.0';
@@ -99,33 +91,7 @@ export class BrewInstallerPlugin implements
   }
 
   supportsUpdateCheck(): boolean {
-    return true;
-  }
-
-  /**
-   * Checks for available updates for a Homebrew tool.
-   *
-   * @param toolName - The name of the tool to check.
-   * @param toolConfig - The configuration for the Homebrew tool.
-   * @param _context - The base installation context (unused).
-   * @param logger - The logger instance.
-   * @returns A promise that resolves to the update check result.
-   */
-  async checkUpdate(
-    toolName: string,
-    toolConfig: BrewToolConfig,
-    _context: IInstallContext,
-    logger: TsLogger,
-  ): Promise<UpdateCheckResult> {
-    // TODO: Implement actual brew info check
-    // For now, return a placeholder result
-    logger.warn(messages.updateCheckNotImplemented(toolName));
-    const result: UpdateCheckResult = {
-      success: true,
-      hasUpdate: false,
-      currentVersion: toolConfig.version || 'latest',
-    };
-    return result;
+    return false;
   }
 
   /**
