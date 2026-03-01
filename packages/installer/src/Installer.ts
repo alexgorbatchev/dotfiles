@@ -727,7 +727,7 @@ export class Installer implements IInstaller {
         }
 
         if (result.success) {
-          const binaryPaths: string[] = 'binaryPaths' in result && Array.isArray(result.binaryPaths)
+          const resultBinaryPaths: string[] = 'binaryPaths' in result && Array.isArray(result.binaryPaths)
             ? result.binaryPaths
             : [];
           const version: string | undefined = 'version' in result ? result.version : undefined;
@@ -748,7 +748,7 @@ export class Installer implements IInstaller {
             ...context,
             $: afterInstallShell,
             installedDir,
-            binaryPaths,
+            binaryPaths: resultBinaryPaths,
             version,
             installEnv: afterInstallEnv,
           };

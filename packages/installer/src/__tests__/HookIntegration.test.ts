@@ -160,9 +160,9 @@ describe('Hook Integration Tests', () => {
                 await context.fileSystem.ensureDir(docDir);
 
                 for (const docFile of docFiles) {
-                  const srcPath = path.join(context.extractDir, docFile);
+                  const docSrcPath = path.join(context.extractDir, docFile);
                   const destPath = path.join(docDir, docFile);
-                  await context.fileSystem.copyFile(srcPath, destPath);
+                  await context.fileSystem.copyFile(docSrcPath, destPath);
                 }
               },
             ],

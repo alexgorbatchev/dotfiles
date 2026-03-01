@@ -1,5 +1,5 @@
 {
-  "name": "@dotfiles/installer-brew",
+  "name": "@dotfiles/installer-dmg",
   "version": "0.0.0",
   "type": "module",
   "exports": {
@@ -7,6 +7,8 @@
   },
   "dependencies": {
     "@dotfiles/core": "workspace:*",
+    "@dotfiles/downloader": "workspace:*",
+    "@dotfiles/file-system": "workspace:*",
     "@dotfiles/installer": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/registry": "workspace:*",
@@ -14,7 +16,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@dotfiles/file-system": "workspace:*",
     "@dotfiles/testing-helpers": "workspace:*"
   }
 }

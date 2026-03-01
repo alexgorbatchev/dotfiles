@@ -44,10 +44,10 @@ function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, system
         const isMatch = ((platformConfig.platforms & Platform.MacOS) !== 0 && systemInfo.platform === Platform.MacOS) ||
           ((platformConfig.platforms & Platform.Linux) !== 0 && systemInfo.platform === Platform.Linux);
 
-        const config = platformConfig.config as PlatformConfig;
-        if (isMatch && config.shellConfigs?.zsh?.scripts) {
+        const platformCfg = platformConfig.config as PlatformConfig;
+        if (isMatch && platformCfg.shellConfigs?.zsh?.scripts) {
           content += `# Platform-specific content for ${toolName}: ${
-            config.shellConfigs.zsh.scripts.map((s) => s.value).join(' ')
+            platformCfg.shellConfigs.zsh.scripts.map((s) => s.value).join(' ')
           }\n`;
         }
       }

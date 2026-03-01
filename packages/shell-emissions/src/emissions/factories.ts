@@ -171,11 +171,11 @@ export function path(directory: string, options?: PathOptions): PathEmission {
 /**
  * Returns a new emission with source attribution set.
  * @param emission - The emission to copy
- * @param source - Attribution identifier (e.g., config file path)
+ * @param attribution - Attribution identifier (e.g., config file path)
  * @returns A new emission with source set
  */
-export function withSource<T extends Emission>(emission: T, source: string): T {
-  return { ...emission, source };
+export function withSource<T extends Emission>(emission: T, attribution: string): T {
+  return { ...emission, source: attribution };
 }
 
 /**

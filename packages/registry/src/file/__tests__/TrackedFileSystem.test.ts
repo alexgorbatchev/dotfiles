@@ -68,9 +68,9 @@ describe('TrackedFileSystem', () => {
 
     it('should include metadata in context', () => {
       const metadata = { version: '1.0.0' };
-      const context = TrackedFileSystem.createContext('nodejs', 'binary', metadata);
+      const metadataContext = TrackedFileSystem.createContext('nodejs', 'binary', metadata);
 
-      expect(context.metadata).toEqual(metadata);
+      expect(metadataContext.metadata).toEqual(metadata);
     });
   });
 
@@ -546,19 +546,19 @@ describe('TrackedFileSystem', () => {
 
   describe('operation grouping', () => {
     it('should use same operation ID for related operations', async () => {
-      const context = TrackedFileSystem.createContext('nodejs', 'shim', { version: '1.0' });
-      const trackedFs = new TrackedFileSystem(logger, fs, registry, context, mockProjectConfig);
+      const groupContext = TrackedFileSystem.createContext('nodejs', 'shim', { version: '1.0' });
+      const groupTrackedFs = new TrackedFileSystem(logger, fs, registry, groupContext, mockProjectConfig);
 
       // Ensure directory exists first
       await fs.mkdir('/test', { recursive: true });
-      await trackedFs.writeFile('/test/file1.txt', 'content1');
-      await trackedFs.writeFile('/test/file2.txt', 'content2');
+      await groupTrackedFs.writeFile('/test/file1.txt', 'content1');
+      await groupTrackedFs.writeFile('/test/file2.txt', 'content2');
 
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(2);
       assert(operations[0] && operations[1]);
       expect(operations[0].operationId).toBe(operations[1].operationId);
-      expect(operations[0].operationId).toBe(context.operationId);
+      expect(operations[0].operationId).toBe(groupContext.operationId);
     });
 
     it('should use different operation IDs for different contexts', async () => {

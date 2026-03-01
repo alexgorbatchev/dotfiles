@@ -120,9 +120,9 @@ describe('createToolConfigContext', () => {
   it('should log error with pattern and file when errorMessage provided and no matches found', async () => {
     const toolName = 'my-test-tool';
     const toolDir = '/tmp/tools/test-tool';
-    const logger = new TestLogger({ minLevel: LogLevel.VERBOSE });
+    const testLogger = new TestLogger({ minLevel: LogLevel.VERBOSE });
 
-    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, testLogger);
 
     await fileSystem.ensureDir('/test/files');
     await fileSystem.writeFile('/test/files/config.txt', 'hello world', 'utf8');
@@ -131,15 +131,15 @@ describe('createToolConfigContext', () => {
       errorMessage: 'Could not find pattern in config file',
     });
 
-    logger.expect(['ERROR'], [], [], ["Could not find 'does-not-exist' in /test/files/config.txt"]);
+    testLogger.expect(['ERROR'], [], [], ["Could not find 'does-not-exist' in /test/files/config.txt"]);
   });
 
   it('should not log error when errorMessage provided but matches found', async () => {
     const toolName = 'my-test-tool';
     const toolDir = '/tmp/tools/test-tool';
-    const logger = new TestLogger({ minLevel: LogLevel.VERBOSE });
+    const testLogger = new TestLogger({ minLevel: LogLevel.VERBOSE });
 
-    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, testLogger);
 
     await fileSystem.ensureDir('/test/files');
     await fileSystem.writeFile('/test/files/config.txt', 'foo bar foo', 'utf8');
@@ -149,15 +149,15 @@ describe('createToolConfigContext', () => {
     });
 
     // No error should be logged since matches were found
-    expect(logger.logs.length).toBe(0);
+    expect(testLogger.logs.length).toBe(0);
   });
 
   it('should not log error when no errorMessage provided even if no matches', async () => {
     const toolName = 'my-test-tool';
     const toolDir = '/tmp/tools/test-tool';
-    const logger = new TestLogger({ minLevel: LogLevel.VERBOSE });
+    const testLogger = new TestLogger({ minLevel: LogLevel.VERBOSE });
 
-    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, testLogger);
 
     await fileSystem.ensureDir('/test/files');
     await fileSystem.writeFile('/test/files/config.txt', 'hello world', 'utf8');
@@ -165,7 +165,7 @@ describe('createToolConfigContext', () => {
     await context.replaceInFile('/test/files/config.txt', /does-not-exist/, 'replacement');
 
     // No error should be logged since errorMessage wasn't provided
-    expect(logger.logs.length).toBe(0);
+    expect(testLogger.logs.length).toBe(0);
   });
 
   describe('log property', () => {

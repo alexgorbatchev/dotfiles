@@ -22,6 +22,7 @@
     "@dotfiles/installer-cargo": "workspace:*",
     "@dotfiles/installer-curl-binary": "workspace:*",
     "@dotfiles/installer-curl-script": "workspace:*",
+    "@dotfiles/installer-dmg": "workspace:*",
     "@dotfiles/installer-curl-tar": "workspace:*",
     "@dotfiles/installer-gitea": "workspace:*",
     "@dotfiles/installer-github": "workspace:*",
