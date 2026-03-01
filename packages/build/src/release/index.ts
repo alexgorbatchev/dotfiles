@@ -96,10 +96,16 @@ async function commitAndTag(version: string): Promise<void> {
 }
 
 /**
- * Publishes the package to npm.
+ * Publishes the package to the registry.
+ * Copies .npmrc into .dist/ so npm resolves the @gitea scope registry.
  */
 async function publishToNpm(): Promise<void> {
-  console.log('📤 Publishing to npm...');
+  console.log('📤 Publishing to registry...');
+  const npmrcSource = path.join(rootDir, '.npmrc');
+  const npmrcDest = path.join(distDir, '.npmrc');
+  if (fs.existsSync(npmrcSource)) {
+    fs.copyFileSync(npmrcSource, npmrcDest);
+  }
   await executeCommand(['npm', 'publish'], { cwd: distDir });
   console.log('✅ Package published successfully');
 }
@@ -150,9 +156,9 @@ async function release(): Promise<void> {
       return;
     }
 
-    // Step 3: Build succeeded - commit and publish
-    await commitAndTag(newVersion);
+    // Step 3: Build succeeded - publish first, then commit
     await publishToNpm();
+    await commitAndTag(newVersion);
 
     console.log(`\n🎉 Release ${newVersion} completed successfully!`);
   } catch (error) {
