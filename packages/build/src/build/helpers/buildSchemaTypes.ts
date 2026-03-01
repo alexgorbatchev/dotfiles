@@ -1,6 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
 import { shell } from './shell';
 
 import type { IBuildContext, IDependencyVersions } from '../types';
@@ -20,39 +17,10 @@ function getDtsBundleGeneratorPath(): string {
 }
 
 /**
- * Collects .d.ts files emitted in-place by tsgo into the temp schemas build directory.
- * tsgo may emit .d.ts files alongside source files instead of into outDir.
- */
-function collectInPlaceDtsFiles(context: IBuildContext): void {
-  const packagesDir: string = context.paths.packagesDir;
-  const tempDir: string = context.paths.tempSchemasBuildDir;
-
-  function walkDir(dir: string): void {
-    const entries: fs.Dirent[] = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath: string = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === 'node_modules' || entry.name === '__tests__' || entry.name === 'type-tests') continue;
-        walkDir(fullPath);
-      } else if (entry.isFile() && entry.name.endsWith('.d.ts')) {
-        const relativePath: string = path.relative(packagesDir, fullPath);
-        const destPath: string = path.join(tempDir, relativePath);
-        fs.mkdirSync(path.dirname(destPath), { recursive: true });
-        fs.copyFileSync(fullPath, destPath);
-      }
-    }
-  }
-
-  walkDir(packagesDir);
-}
-
-/**
  * Builds the bundled schema declarations file used in the published output.
  *
  * Notes:
  * - Declaration emit (`tsgo`) happens first and can use the root workspace environment.
- * - tsgo may emit .d.ts files in-place (alongside source) instead of into outDir;
- *   in that case, we collect them into the temp schemas build directory.
  * - A temporary workspace is created and installed in the output directory to make subsequent
  *   bundling/validation steps deterministic.
  * - dts-bundle-generator uses a separate tsconfig that points to generated .d.ts files.
@@ -60,12 +28,6 @@ function collectInPlaceDtsFiles(context: IBuildContext): void {
 export async function buildSchemaTypes(context: IBuildContext, dependencyVersions: IDependencyVersions): Promise<void> {
   await createTempTsConfig(context);
   await shell`bun tsgo --project ${context.paths.buildTsconfigPath}`;
-
-  // If tsgo emitted .d.ts files in-place, collect them into tempSchemasBuildDir
-  const expectedDtsPath: string = path.join(context.paths.tempSchemasBuildDir, 'cli', 'src', 'schema-exports.d.ts');
-  if (!fs.existsSync(expectedDtsPath)) {
-    collectInPlaceDtsFiles(context);
-  }
 
   copyPackagesToOutputDir(context);
   await createTempSchemasPackage(context, dependencyVersions);
