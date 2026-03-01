@@ -6,7 +6,6 @@ out
 dist
 .dist
 .release
-.npmrc
 .tmp
 tmp
 *.tgz
