@@ -515,8 +515,8 @@ describe('ShellInitGenerator', () => {
   it('should return null if writeFile fails', async () => {
     const { fs, spies } = await createMemFileSystem();
     spies.writeFile.mockRejectedValueOnce(new Error('Disk full'));
-    const logger = new TestLogger();
-    const generatorWithFailingWrite = new ShellInitGenerator(logger, fs, mockProjectConfig);
+    const failLogger = new TestLogger();
+    const generatorWithFailingWrite = new ShellInitGenerator(failLogger, fs, mockProjectConfig);
     const result = await generatorWithFailingWrite.generate({});
     expect(result).toBeNull();
   });

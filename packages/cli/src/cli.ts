@@ -25,6 +25,7 @@ import { CargoClient, CargoInstallerPlugin } from '@dotfiles/installer-cargo';
 import { CurlBinaryInstallerPlugin } from '@dotfiles/installer-curl-binary';
 import { CurlScriptInstallerPlugin } from '@dotfiles/installer-curl-script';
 import { CurlTarInstallerPlugin } from '@dotfiles/installer-curl-tar';
+import { DmgInstallerPlugin } from '@dotfiles/installer-dmg';
 import { GiteaReleaseInstallerPlugin } from '@dotfiles/installer-gitea';
 import { GhCliApiClient, GitHubApiClient, GitHubReleaseInstallerPlugin } from '@dotfiles/installer-github';
 import { ManualInstallerPlugin } from '@dotfiles/installer-manual';
@@ -406,6 +407,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     new CurlTarInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor, shell),
   );
   pluginRegistry.register(new CurlBinaryInstallerPlugin(installerTrackedFs, downloader, hookExecutor, shell));
+  pluginRegistry.register(new DmgInstallerPlugin(installerTrackedFs, downloader, hookExecutor, shell));
   pluginRegistry.register(new ManualInstallerPlugin(installerTrackedFs));
   pluginRegistry.register(new NpmInstallerPlugin(shell));
   pluginRegistry.register(new ZshPluginInstallerPlugin(installerTrackedFs, shell));

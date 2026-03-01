@@ -15,6 +15,7 @@ import '@dotfiles/installer-brew';
 import '@dotfiles/installer-cargo';
 import '@dotfiles/installer-curl-script';
 import '@dotfiles/installer-curl-tar';
+import '@dotfiles/installer-dmg';
 import '@dotfiles/installer-gitea';
 import '@dotfiles/installer-github';
 import '@dotfiles/installer-manual';
