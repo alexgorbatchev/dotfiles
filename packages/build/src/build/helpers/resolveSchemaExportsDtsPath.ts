@@ -34,9 +34,7 @@ function findFilesByNameRecursive(startDir: string, fileName: string): string[] 
 }
 
 /**
- * Locates the generated schema-exports.d.ts file.
- * Checks the temp build dir first, then falls back to the source tree
- * (tsgo may emit .d.ts files in-place instead of respecting outDir).
+ * Locates the generated schema-exports.d.ts file within the temporary schema build directory.
  */
 export function resolveSchemaExportsDtsPath(tempSchemasBuildDir: string): string {
   const directPath: string = path.join(tempSchemasBuildDir, 'schema-exports.d.ts');
@@ -44,20 +42,7 @@ export function resolveSchemaExportsDtsPath(tempSchemasBuildDir: string): string
     return directPath;
   }
 
-  // tsc emits with full path structure under outDir
-  const nestedWithPackagesPath: string = path.join(
-    tempSchemasBuildDir,
-    'packages',
-    'cli',
-    'src',
-    'schema-exports.d.ts',
-  );
-  if (fs.existsSync(nestedWithPackagesPath)) {
-    return nestedWithPackagesPath;
-  }
-
-  // collectInPlaceDtsFiles copies with paths relative to packages/
-  const nestedPath: string = path.join(tempSchemasBuildDir, 'cli', 'src', 'schema-exports.d.ts');
+  const nestedPath: string = path.join(tempSchemasBuildDir, 'packages', 'cli', 'src', 'schema-exports.d.ts');
   if (fs.existsSync(nestedPath)) {
     return nestedPath;
   }

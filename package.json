@@ -50,7 +50,7 @@
       "@rageltd/bun-test-utils": "^2.0.0"
     },
     "typescript": {
-      "@typescript/native-preview": "^7.0.0-dev.20251218.1",
+      "@typescript/native-preview": "7.0.0-dev.20251218.3",
       "typescript": "^5.9.3"
     }
   }
