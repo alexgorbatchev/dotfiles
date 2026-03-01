@@ -51,9 +51,16 @@
       }
     },
     {
+      "files": ["packages/e2e-test/src/__tests__/**/*.ts"],
+      "rules": {
+        "no-shadow": "off"
+      }
+    },
+    {
       "files": ["**/*.tool.ts", "test-project/config.ts", "**/__tests__/**/config.ts"],
       "rules": {
-        "import/no-default-export": "off"
+        "import/no-default-export": "off",
+        "no-shadow": "off"
       }
     }
   ]
