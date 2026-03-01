@@ -45,7 +45,13 @@ export function resolveSchemaExportsDtsPath(tempSchemasBuildDir: string): string
   }
 
   // tsc emits with full path structure under outDir
-  const nestedWithPackagesPath: string = path.join(tempSchemasBuildDir, 'packages', 'cli', 'src', 'schema-exports.d.ts');
+  const nestedWithPackagesPath: string = path.join(
+    tempSchemasBuildDir,
+    'packages',
+    'cli',
+    'src',
+    'schema-exports.d.ts',
+  );
   if (fs.existsSync(nestedWithPackagesPath)) {
     return nestedWithPackagesPath;
   }

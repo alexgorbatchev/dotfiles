@@ -7,6 +7,7 @@ description: >-
 copilot:
   agent: agent
 ---
+
 # Work Tickets
 
 Implements git-bug tickets using parallel sub-agents in isolated worktrees, reviews the results, fixes issues, merges to main, and closes tickets.
