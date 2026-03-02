@@ -20,8 +20,9 @@ import { IToolConfigBuilder } from '@dotfiles/tool-config-builder';
 type ConfigureToolFnResult =
   | ToolConfig
   | ToolConfigBuilderContract
+  | Omit<ToolConfigBuilderContract, 'bin'>
   | undefined
-  | Promise<ToolConfig | ToolConfigBuilderContract | undefined>;
+  | Promise<ToolConfig | ToolConfigBuilderContract | Omit<ToolConfigBuilderContract, 'bin'> | undefined>;
 
 /**
  * Define a tool configuration with type-safe install method selection.
@@ -65,7 +66,7 @@ export function defineTool(
   return async (
     install: InstallFunction,
     ctx: IToolConfigContext,
-  ): Promise<ToolConfig | ToolConfigBuilderContract | undefined> => {
+  ): Promise<ToolConfig | ToolConfigBuilderContract | Omit<ToolConfigBuilderContract, 'bin'> | undefined> => {
     const result = fn(install, ctx);
     if (result instanceof Promise) {
       return result;
@@ -98,8 +99,6 @@ export function createInstallFunction(
     return builderInstance;
   };
 
-  function install<M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): ToolConfigBuilderContract;
-  function install(): ToolConfigBuilderContract;
   function install(method?: InstallMethod, params?: IInstallParamsRegistry[InstallMethod]): ToolConfigBuilderContract {
     const builder = getOrCreateBuilder();
 
@@ -112,5 +111,5 @@ export function createInstallFunction(
     return builder;
   }
 
-  return install;
+  return install as InstallFunction;
 }

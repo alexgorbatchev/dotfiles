@@ -46,8 +46,6 @@ export function createInstallFunction(
     return builderInstance;
   };
 
-  function install<M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): IToolConfigBuilder;
-  function install(): IToolConfigBuilder;
   function install(method?: InstallMethod, params?: IInstallParamsRegistry[InstallMethod]): IToolConfigBuilder {
     const builder = getOrCreateBuilder();
 
@@ -60,5 +58,5 @@ export function createInstallFunction(
     return builder;
   }
 
-  return install;
+  return install as InstallFunction;
 }

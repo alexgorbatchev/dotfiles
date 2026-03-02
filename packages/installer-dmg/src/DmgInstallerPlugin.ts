@@ -40,6 +40,7 @@ export class DmgInstallerPlugin
   readonly paramsSchema = dmgInstallParamsSchema;
   readonly toolConfigSchema = dmgToolConfigSchema;
   readonly staticValidation = true;
+  readonly externallyManaged = true;
 
   constructor(
     private readonly fs: IFileSystem,

@@ -67,11 +67,8 @@ export async function installFromBrew(
 
     let version: string | undefined;
 
-    if (params.versionArgs && params.versionRegex) {
-      const mainBinaryPath = Object.values(binaryPaths)[0];
-      if (!mainBinaryPath) {
-        throw new Error(`No binary found to detect version for ${toolName}`);
-      }
+    const mainBinaryPath = binaryPaths[0];
+    if (params.versionArgs && params.versionRegex && mainBinaryPath) {
       version = await detectVersionViaCli({
         binaryPath: mainBinaryPath,
         args: params.versionArgs,

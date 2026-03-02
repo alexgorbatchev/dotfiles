@@ -37,7 +37,6 @@ describe('BrewInstallerPlugin', () => {
     const validConfig: BrewToolConfig = {
       name: 'test-tool',
       version: '1.0.0',
-      binaries: ['test-tool'],
       installationMethod: 'brew',
       installParams: {
         formula: 'test-tool',
@@ -52,7 +51,6 @@ describe('BrewInstallerPlugin', () => {
     const invalidConfig = {
       name: 'test-tool',
       version: '1.0.0',
-      binaries: ['test-tool'],
       installationMethod: 'github-release',
       installParams: {
         formula: 'test-tool',
