@@ -262,12 +262,13 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     );
 
     if (!(await toolFs.exists(sourceAbsPath))) {
-      methodLogger.warn(messages.process.sourceMissing(toolConfig.name, sourceAbsPath));
+      methodLogger.error(messages.process.sourceMissing(toolConfig.name, sourceAbsPath));
       const result: SymlinkOperationResult = {
-        success: true,
+        success: false,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
-        status: 'skipped_source_missing',
+        status: 'failed',
+        error: messages.process.sourceMissing(toolConfig.name, sourceAbsPath),
       };
       return result;
     }

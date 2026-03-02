@@ -27,8 +27,7 @@ export type SymlinkOperationStatus =
   | 'updated_target'
   | 'backed_up'
   | 'skipped_exists'
-  | 'skipped_correct'
-  | 'skipped_source_missing';
+  | 'skipped_correct';
 
 /**
  * Represents the result of a single symlink operation - success case

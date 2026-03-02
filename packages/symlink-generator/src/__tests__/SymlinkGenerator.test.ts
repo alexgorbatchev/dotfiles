@@ -118,7 +118,7 @@ describe('SymlinkGenerator', () => {
     ]);
   });
 
-  it('should skip symlink if source file does not exist and return skipped_source_missing', async () => {
+  it('should fail when source file does not exist', async () => {
     const sourcePath = 'nonexistent.txt';
     const sourceFullPath = getSourcePath(sourcePath);
     const toolConfigs = {
@@ -131,20 +131,20 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.exists(targetPath)).toBe(false);
     expect(results).toEqual([
       {
-        success: true,
+        success: false,
         sourcePath: sourceFullPath,
         targetPath,
-        status: 'skipped_source_missing',
+        status: 'failed',
+        error: expect.stringContaining('source file not found'),
       },
     ]);
 
-    // Expect a warning log including the tool name and missing source path
     logger.expect(
-      ['WARN'],
+      ['ERROR'],
       ['SymlinkGenerator', 'generate', 'processSymlink'],
       [],
       [
-        'Tool "test-tool" source file not found', // partial matcher
+        'Tool "test-tool" source file not found',
       ],
     );
   });
