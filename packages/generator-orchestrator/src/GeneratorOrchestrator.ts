@@ -470,9 +470,13 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
         logger.warn(messages.staleSymlinkCleanup.removing(trackedSymlink.filePath, toolName));
 
         try {
-          const fileExists = await this.fs.exists(trackedSymlink.filePath);
-          if (fileExists) {
+          // Use lstat (not exists) to detect broken symlinks — exists follows
+          // the symlink and returns false when the target is missing.
+          try {
+            await this.fs.lstat(trackedSymlink.filePath);
             await this.fs.rm(trackedSymlink.filePath);
+          } catch {
+            // File/symlink doesn't exist on disk, nothing to delete
           }
           await this.fileRegistry.recordOperation({
             toolName,
