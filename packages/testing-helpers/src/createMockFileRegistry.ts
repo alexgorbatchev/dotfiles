@@ -13,6 +13,8 @@ export interface ISetFileStateInput {
   fileType: IFileOperation['fileType'];
   /** Target path for symlinks */
   targetPath?: string;
+  /** Override the last operation (defaults based on fileType) */
+  lastOperation?: IFileOperation['operationType'];
 }
 
 /**
@@ -63,7 +65,7 @@ export function createMockFileRegistry(): IMockFileRegistry {
         toolName: state.toolName,
         fileType: state.fileType,
         targetPath: state.targetPath,
-        lastOperation: 'writeFile' as const,
+        lastOperation: state.lastOperation ?? (state.fileType === 'symlink' ? 'symlink' as const : 'writeFile' as const),
         lastModified: Date.now(),
       }));
     return states;

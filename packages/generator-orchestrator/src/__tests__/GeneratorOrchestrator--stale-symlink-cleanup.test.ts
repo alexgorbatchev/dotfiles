@@ -324,6 +324,87 @@ describe('GeneratorOrchestrator - Stale Symlink Cleanup', () => {
       expect(await mockFileSystem.exists(shimPath)).toBe(true);
     });
 
+    it('should record rm operation in registry so stale symlink is not reported again', async () => {
+      const staleSymlinkPath = path.join(testDirs.paths.homeDir, '.stale-config');
+
+      await mockFileSystem.ensureDir(path.dirname(staleSymlinkPath));
+      await mockFileSystem.writeFile(staleSymlinkPath, 'stale content');
+
+      fileRegistry.setFileState({
+        toolName: 'myTool',
+        fileType: 'symlink',
+        filePath: staleSymlinkPath,
+      });
+
+      (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue([]);
+
+      const toolConfig: ToolConfig = {
+        name: 'myTool',
+        binaries: [],
+        version: '1.0',
+        installationMethod: 'manual',
+        installParams: {},
+      };
+
+      await orchestrator.generateAll({ myTool: toolConfig });
+
+      expect(fileRegistry.recordOperation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          toolName: 'myTool',
+          operationType: 'rm',
+          filePath: staleSymlinkPath,
+          fileType: 'symlink',
+        }),
+      );
+    });
+
+    it('should not treat mkdir operations with symlink fileType as stale symlinks', async () => {
+      const symlinkDirPath = path.join(testDirs.paths.homeDir, '.config', 'myTool');
+      const activeSymlinkPath = path.join(symlinkDirPath, 'config.yml');
+
+      await mockFileSystem.ensureDir(symlinkDirPath);
+      await mockFileSystem.writeFile(activeSymlinkPath, 'config content');
+
+      // mkdir operation recorded with fileType 'symlink' (as TrackedFileSystem does)
+      fileRegistry.setFileState({
+        toolName: 'myTool',
+        fileType: 'symlink',
+        filePath: symlinkDirPath,
+        lastOperation: 'mkdir',
+      });
+      // actual symlink operation
+      fileRegistry.setFileState({
+        toolName: 'myTool',
+        fileType: 'symlink',
+        filePath: activeSymlinkPath,
+      });
+
+      const symlinkResults: SymlinkOperationResult[] = [
+        {
+          success: true,
+          sourcePath: path.join(testDirs.paths.dotfilesDir, 'config.yml'),
+          targetPath: activeSymlinkPath,
+          status: 'skipped_correct',
+        },
+      ];
+      (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(symlinkResults);
+
+      const toolConfig: ToolConfig = {
+        name: 'myTool',
+        binaries: [],
+        version: '1.0',
+        symlinks: [{ source: 'config.yml', target: '~/.config/myTool/config.yml' }],
+        installationMethod: 'manual',
+        installParams: {},
+      };
+
+      await orchestrator.generateAll({ myTool: toolConfig });
+
+      expect(await mockFileSystem.exists(symlinkDirPath)).toBe(true);
+      expect(await mockFileSystem.exists(activeSymlinkPath)).toBe(true);
+      expect(fileRegistry.recordOperation).not.toHaveBeenCalled();
+    });
+
     it('should not remove installer-created symlinks in the binaries directory', async () => {
       const currentSymlinkPath = path.join(mockProjectConfig.paths.binariesDir, 'myTool', 'current');
 

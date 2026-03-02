@@ -23,6 +23,7 @@ import type { IGenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-gener
 import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
 import { resolveValue } from '@dotfiles/unwrap-value';
 import { resolvePlatformConfig } from '@dotfiles/utils';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { IAutoInstaller, IGenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { messages } from './log-messages';
@@ -455,7 +456,10 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     for (const toolName of Object.keys(toolConfigs)) {
       const fileStates = await this.fileRegistry.getFileStatesForTool(toolName);
       const trackedSymlinks = fileStates.filter(
-        (state) => state.fileType === 'symlink' && !state.filePath.startsWith(binariesDir),
+        (state) =>
+          state.fileType === 'symlink' &&
+          state.lastOperation === 'symlink' &&
+          !state.filePath.startsWith(binariesDir),
       );
 
       for (const trackedSymlink of trackedSymlinks) {
@@ -470,6 +474,13 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
           if (fileExists) {
             await this.fs.rm(trackedSymlink.filePath);
           }
+          await this.fileRegistry.recordOperation({
+            toolName,
+            operationType: 'rm',
+            filePath: trackedSymlink.filePath,
+            fileType: 'symlink',
+            operationId: randomUUID(),
+          });
         } catch (error) {
           logger.debug(messages.cleanup.deleteError(trackedSymlink.filePath, error));
         }
