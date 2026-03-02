@@ -118,6 +118,20 @@ export default defineTool((install, ctx) =>
 );
 ```
 
+### [DMG](./dmg.md)
+
+Install macOS applications from DMG disk images (silently skipped on other platforms).
+
+```typescript
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('dmg', {
+    url: 'https://example.com/MyApp-1.0.0.dmg',
+  }).bin('myapp')
+);
+```
+
 ### [Manual](./manual.md)
 
 Install files from your dotfiles directory (custom scripts, pre-built binaries) or configuration-only tools.
@@ -163,6 +177,7 @@ export default defineTool((install, ctx) =>
 | **Curl Script**    | Custom installers                   | Flexible, handles complex setups      | Less predictable, security concerns  |
 | **Curl Tar**       | Archive downloads                   | Simple, no dependencies               | Manual URL management                |
 | **Curl Binary**    | Direct binary downloads             | Simplest, no extraction needed        | Manual URL management                |
+| **DMG**            | macOS .app bundles                  | Handles mount/unmount, auto-skip      | macOS only                           |
 | **Manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible | Manual file management               |
 | **Zsh Plugin**     | Zsh plugins from Git repos          | Simple, automatic updates             | Zsh plugins only                     |
 
@@ -258,4 +273,5 @@ Choose an installation method to learn more:
 - [Gitea/Forgejo Release](./gitea-release.md) - Tools hosted on Codeberg, Forgejo, or self-hosted Gitea
 - [Homebrew](./homebrew.md) - Simple package manager installation
 - [Cargo](./cargo.md) - Fast Rust tool installation
+- [DMG](./dmg.md) - macOS DMG disk image installation
 - [npm](./npm.md) - Node.js tool installation
