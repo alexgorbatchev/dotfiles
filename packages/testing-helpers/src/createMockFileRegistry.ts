@@ -65,7 +65,8 @@ export function createMockFileRegistry(): IMockFileRegistry {
         toolName: state.toolName,
         fileType: state.fileType,
         targetPath: state.targetPath,
-        lastOperation: state.lastOperation ?? (state.fileType === 'symlink' ? 'symlink' as const : 'writeFile' as const),
+        lastOperation: state.lastOperation ??
+          (state.fileType === 'symlink' ? 'symlink' as const : 'writeFile' as const),
         lastModified: Date.now(),
       }));
     return states;
