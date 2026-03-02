@@ -42,6 +42,12 @@ describe('installFromCurlScript', () => {
     context = {
       stagingDir: '/install/dir',
       version: '1.0.0',
+      systemInfo: {
+        homeDir: '/home/user',
+        platform: 'linux',
+        arch: 'x86_64',
+        hostname: 'test-host',
+      },
       projectConfig: {
         paths: {
           binariesDir: '/path/to/binaries',
