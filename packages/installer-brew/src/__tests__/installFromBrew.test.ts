@@ -63,7 +63,6 @@ describe('installFromBrew', () => {
     const toolConfig: BrewToolConfig = {
       name: 'test-tool',
       version: '1.2.3',
-      binaries: ['test-tool'],
       installationMethod: 'brew',
       installParams: {
         formula: 'test-tool',
@@ -79,11 +78,10 @@ describe('installFromBrew', () => {
     expect(result.metadata.formula).toBe('test-tool');
   });
 
-  it('should detect version using CLI when versionArgs are provided', async () => {
+  it('should fall back to brew info for version when versionArgs provided but no binaries', async () => {
     const toolConfig: BrewToolConfig = {
       name: 'test-tool',
       version: '1.2.3',
-      binaries: ['test-tool'],
       installationMethod: 'brew',
       installParams: {
         formula: 'test-tool',
@@ -100,11 +98,10 @@ describe('installFromBrew', () => {
     expect(result.version).toBe('1.2.3');
   });
 
-  it('should create symlinks in targetDir for each binary', async () => {
+  it('should not create symlinks when no binaries are defined', async () => {
     const toolConfig: BrewToolConfig = {
       name: 'test-tool',
       version: '1.2.3',
-      binaries: ['test-tool', 'test-tool-extra'],
       installationMethod: 'brew',
       installParams: {
         formula: 'test-tool',
@@ -117,40 +114,6 @@ describe('installFromBrew', () => {
     assert(result.success);
 
     const fs = context.fileSystem;
-    expect(fs.ensureDir).toHaveBeenCalledWith('/generated/bin-default');
-    expect(fs.symlink).toHaveBeenCalledTimes(2);
-    expect(fs.symlink).toHaveBeenCalledWith(
-      '/opt/homebrew/opt/test-tool/bin/test-tool',
-      '/generated/bin-default/test-tool',
-    );
-    expect(fs.symlink).toHaveBeenCalledWith(
-      '/opt/homebrew/opt/test-tool/bin/test-tool-extra',
-      '/generated/bin-default/test-tool-extra',
-    );
-  });
-
-  it('should remove existing shim before creating symlink', async () => {
-    const toolConfig: BrewToolConfig = {
-      name: 'test-tool',
-      version: '1.2.3',
-      binaries: ['test-tool'],
-      installationMethod: 'brew',
-      installParams: {
-        formula: 'test-tool',
-      },
-    };
-
-    const context = createMockContext(toolConfig, mockShell);
-    const fs = context.fileSystem;
-    (fs.exists as ReturnType<typeof mock>).mockResolvedValue(true);
-
-    const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
-
-    assert(result.success);
-    expect(fs.rm).toHaveBeenCalledWith('/generated/bin-default/test-tool', { force: true });
-    expect(fs.symlink).toHaveBeenCalledWith(
-      '/opt/homebrew/opt/test-tool/bin/test-tool',
-      '/generated/bin-default/test-tool',
-    );
+    expect(fs.symlink).not.toHaveBeenCalled();
   });
 });

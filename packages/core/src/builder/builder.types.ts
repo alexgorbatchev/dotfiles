@@ -440,7 +440,10 @@ export interface IToolConfigBuilder {
    * @param platforms - Target platform(s): 'macos', 'linux', 'windows', or array
    * @param configure - Function to configure platform-specific settings
    */
-  platform(platforms: Platform, configure: (install: IPlatformInstallFunction) => IPlatformConfigBuilder): this;
+  platform(
+    platforms: Platform,
+    configure: (install: IPlatformInstallFunction) => Omit<IPlatformConfigBuilder, 'bin'>,
+  ): this;
 
   /**
    * Add platform and architecture-specific configuration overrides.
@@ -451,7 +454,7 @@ export interface IToolConfigBuilder {
   platform(
     platforms: Platform,
     architectures: Architecture,
-    configure: (install: IPlatformInstallFunction) => IPlatformConfigBuilder,
+    configure: (install: IPlatformInstallFunction) => Omit<IPlatformConfigBuilder, 'bin'>,
   ): this;
 
   /**
@@ -552,6 +555,27 @@ export interface IPlatformConfigBuilder {
 export type InstallMethod = keyof IInstallParamsRegistry;
 
 /**
+ * Registry of installer methods that do not support .bin() / shim generation.
+ * Plugins that are externally managed (e.g., Homebrew, DMG) extend this via module augmentation.
+ */
+export interface INoBinMethodRegistry {
+  __placeholder__?: never;
+}
+
+type NoBinMethodKeys = Exclude<keyof INoBinMethodRegistry, '__placeholder__'>;
+
+/**
+ * Resolves the builder type based on whether the method supports .bin().
+ * Methods registered in INoBinMethodRegistry get a builder without .bin().
+ */
+type ToolBuilderForMethod<M extends InstallMethod> = [M] extends [NoBinMethodKeys] ? Omit<IToolConfigBuilder, 'bin'>
+  : IToolConfigBuilder;
+
+type PlatformBuilderForMethod<M extends InstallMethod> = [M] extends [NoBinMethodKeys]
+  ? Omit<IPlatformConfigBuilder, 'bin'>
+  : IPlatformConfigBuilder;
+
+/**
  * Install function with generic type inference for perfect type safety.
  *
  * This uses the tRPC/Zod pattern: a generic that narrows the params type
@@ -568,7 +592,7 @@ export type InstallMethod = keyof IInstallParamsRegistry;
  * install('brew', { repo: 'test' })
  */
 export interface InstallFunction {
-  <M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): IToolConfigBuilder;
+  <M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): ToolBuilderForMethod<M>;
   (): IToolConfigBuilder; // For manual tools with no install params
 }
 
@@ -576,7 +600,7 @@ export interface InstallFunction {
  * Platform-specific install function with the same generic type inference.
  */
 export interface IPlatformInstallFunction {
-  <M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): IPlatformConfigBuilder;
+  <M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): PlatformBuilderForMethod<M>;
   (): IPlatformConfigBuilder;
 }
 
@@ -601,7 +625,12 @@ export interface IToolConfigContext extends IBaseToolContext {}
 export type AsyncConfigureTool = (
   install: InstallFunction,
   ctx: IToolConfigContext,
-) => Promise<undefined | IToolConfigBuilder | ToolConfig> | undefined | IToolConfigBuilder | ToolConfig;
+) =>
+  | Promise<undefined | IToolConfigBuilder | Omit<IToolConfigBuilder, 'bin'> | ToolConfig>
+  | undefined
+  | IToolConfigBuilder
+  | Omit<IToolConfigBuilder, 'bin'>
+  | ToolConfig;
 
 /**
  * Tool configuration function that returns a ToolConfig.

@@ -33,7 +33,6 @@ describe('E2E: type safety', () => {
         install('brew', {
           formula: 'wget',
         })
-          .bin('wget')
           .version('latest')
       );
 
@@ -133,7 +132,7 @@ describe('E2E: type safety', () => {
           .platform(Platform.Linux, (install) =>
             install('github-release', {
               repo: 'BurntSushi/ripgrep',
-            }))
+            }).bin('rg'))
       );
 
       expect(true).toBe(true);
@@ -188,7 +187,7 @@ describe('E2E: type safety', () => {
         install('brew', {
           // @ts-expect-error - Wrong params for brew method
           repo: 'something',
-        }).bin('tool')
+        })
       );
 
       expect(true).toBe(true);
@@ -218,7 +217,7 @@ describe('E2E: type safety', () => {
     });
 
     it('empty params for brew should compile (formula is optional)', () => {
-      defineTool((install) => install('brew', {}).bin('tool'));
+      defineTool((install) => install('brew', {}));
 
       expect(true).toBe(true);
     });

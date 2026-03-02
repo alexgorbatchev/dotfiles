@@ -1,6 +1,8 @@
 # DMG Installation
 
-Install macOS applications distributed as DMG disk images. The plugin mounts the DMG, copies the `.app` bundle, and symlinks binaries from `Contents/MacOS/`. Silently skipped on non-macOS platforms.
+Install macOS applications distributed as DMG disk images. The plugin mounts the DMG, copies the `.app` bundle to the staging directory. Silently skipped on non-macOS platforms.
+
+Shims are not supported for DMG-installed applications. The `.bin()` method should not be used with this installer.
 
 ## Basic Usage
 
@@ -10,7 +12,7 @@ import { defineTool } from '@gitea/dotfiles';
 export default defineTool((install) =>
   install('dmg', {
     url: 'https://example.com/MyApp-1.0.0.dmg',
-  }).bin('myapp')
+  })
 );
 ```
 
@@ -33,9 +35,7 @@ export default defineTool((install) =>
 install('dmg', {
   url: 'https://example.com/MyApp-1.0.0.dmg',
   appName: 'MyApp.app',
-})
-  .bin('myapp')
-  .version('1.0.0');
+}).version('1.0.0');
 ```
 
 ### With Version Detection
@@ -45,17 +45,7 @@ install('dmg', {
   url: 'https://example.com/MyApp-1.0.0.dmg',
   versionArgs: ['--version'],
   versionRegex: 'v(\\d+\\.\\d+\\.\\d+)',
-}).bin('myapp');
-```
-
-### Custom Binary Path
-
-```typescript
-install('dmg', {
-  url: 'https://example.com/MyApp-1.0.0.dmg',
-  appName: 'MyApp.app',
-  binaryPath: 'Contents/MacOS/myapp-cli',
-}).bin('myapp');
+});
 ```
 
 ## Platform Behavior
@@ -71,7 +61,7 @@ No `.platform()` wrapper is needed — the plugin handles platform detection int
 ## When to Use
 
 - macOS applications distributed as `.dmg` disk images
-- Tools that ship as `.app` bundles with CLI binaries inside `Contents/MacOS/`
+- Tools that ship as `.app` bundles
 
 Prefer `brew` when the tool is available as a Homebrew formula or cask. Prefer `curl-binary` or `github-release` for cross-platform tools.
 

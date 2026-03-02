@@ -1,6 +1,5 @@
 import {
   baseToolConfigWithPlatformsSchema,
-  binaryConfigSchema,
   type InferToolConfigWithPlatforms,
 } from '@dotfiles/core';
 import { z } from 'zod';
@@ -11,8 +10,6 @@ export const dmgToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
   installationMethod: z.literal('dmg'),
   /** DMG installation parameters */
   installParams: dmgInstallParamsSchema,
-  /** Binaries are required for this installation method */
-  binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).min(1),
 });
 
 /** Resolved tool configuration for the 'dmg' installation method. */

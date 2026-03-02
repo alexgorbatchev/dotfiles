@@ -4,7 +4,9 @@ Installer plugin for macOS applications distributed as DMG disk images.
 
 ## Overview
 
-This plugin downloads `.dmg` files, mounts them with `hdiutil`, copies the `.app` bundle to the staging directory, and symlinks binaries from `Contents/MacOS/` for system-wide availability. On non-macOS platforms, installation is silently skipped.
+This plugin downloads `.dmg` files, mounts them with `hdiutil`, and copies the `.app` bundle to the staging directory. On non-macOS platforms, installation is silently skipped.
+
+Shims are not supported for DMG-installed applications. The `.bin()` method should not be used with this installer.
 
 ## Usage
 
@@ -14,7 +16,7 @@ import { defineTool } from '@dotfiles/cli';
 export default defineTool((install) =>
   install('dmg', {
     url: 'https://example.com/releases/MyApp-1.0.0.dmg',
-  }).bin('myapp')
+  })
 );
 ```
 
@@ -37,9 +39,7 @@ export default defineTool((install) =>
   install('dmg', {
     url: 'https://example.com/MyApp-1.0.0.dmg',
     appName: 'MyApp.app',
-  })
-    .bin('myapp')
-    .version('1.0.0')
+  }).version('1.0.0')
 );
 ```
 
@@ -51,19 +51,7 @@ export default defineTool((install) =>
     url: 'https://example.com/MyApp-1.0.0.dmg',
     versionArgs: ['--version'],
     versionRegex: 'v(\\d+\\.\\d+\\.\\d+)',
-  }).bin('myapp')
-);
-```
-
-#### With Custom Binary Path
-
-```typescript
-export default defineTool((install) =>
-  install('dmg', {
-    url: 'https://example.com/MyApp-1.0.0.dmg',
-    appName: 'MyApp.app',
-    binaryPath: 'Contents/MacOS/myapp-cli',
-  }).bin('myapp')
+  })
 );
 ```
 
@@ -77,9 +65,9 @@ The plugin checks `context.systemInfo.platform` at install time. On non-macOS pl
 
 When `appName` is not specified, the plugin scans the mounted DMG for the first `.app` directory.
 
-### Binary Symlinking
+### Externally Managed
 
-For each declared binary, a symlink is created from `stagingDir/{binaryName}` to `AppName.app/Contents/MacOS/{binaryName}` (or the custom `binaryPath` if provided).
+This plugin operates with `externallyManaged = true`. The shim generator will not create shims for DMG-installed tools. Applications installed via DMG are managed as `.app` bundles, not standalone binaries.
 
 ## Implementation Details
 
@@ -91,10 +79,8 @@ For each declared binary, a symlink is created from `stagingDir/{binaryName}` to
 4. Mount DMG via `hdiutil attach -nobrowse -noautoopen`
 5. Find `.app` bundle (explicit `appName` or auto-detect)
 6. Copy `.app` bundle to staging directory
-7. Symlink binaries from `Contents/MacOS/` to staging directory
-8. Unmount DMG (always, via `finally` block)
-9. Clean up downloaded DMG file
-10. Detect version if configured
+7. Unmount DMG (always, via `finally` block)
+8. Clean up downloaded DMG file
 
 ### Validation
 
@@ -106,6 +92,7 @@ Implements `IInstallerPlugin` with:
 
 - **Method**: `dmg`
 - **Schemas**: `dmgInstallParamsSchema`, `dmgToolConfigSchema`
+- **Externally Managed**: Yes — shims are not generated
 - **Update Check**: Not supported
 - **Update Tool**: Not supported
 - **README URL**: Not supported
@@ -133,7 +120,7 @@ Installation returns `DmgInstallResult`:
 ```typescript
 {
   success: true,
-  binaryPaths: string[],      // Paths to symlinked binaries (empty on non-macOS)
+  binaryPaths: string[],      // Empty — no shims generated
   version?: string,            // Detected version
   metadata: {
     method: 'dmg',

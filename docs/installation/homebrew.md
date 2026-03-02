@@ -2,12 +2,14 @@
 
 Install tools using Homebrew package manager on macOS and Linux.
 
+Shims are not supported for Homebrew-installed tools. The `.bin()` method should not be used with this installer. Homebrew manages binary placement and PATH integration natively.
+
 ## Basic Usage
 
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((install) => install('brew', { formula: 'ripgrep' }).bin('rg'));
+export default defineTool((install) => install('brew', { formula: 'ripgrep' }));
 ```
 
 ## Parameters
@@ -29,7 +31,7 @@ export default defineTool((install) => install('brew', { formula: 'ripgrep' }).b
 install('brew', {
   formula: 'visual-studio-code',
   cask: true,
-}).bin('code');
+});
 ```
 
 ### With Custom Tap
@@ -39,7 +41,7 @@ install('brew', {
   formula: 'aerospace',
   cask: true,
   tap: 'nikitabobko/tap',
-}).bin('aerospace');
+});
 ```
 
 ### Multiple Taps
@@ -48,12 +50,8 @@ install('brew', {
 install('brew', {
   formula: 'custom-tool',
   tap: ['custom/tap', 'another/tap'],
-}).bin('custom-tool');
+});
 ```
-
-## Binary Management
-
-Brew-installed tools use direct symlinks pointing to the real Homebrew binary (e.g., `/opt/homebrew/opt/formula/bin/tool`) instead of bash shim scripts. These symlinks are created at install time rather than during shim generation. This avoids PATH clobbering where shims would intercept Homebrew binary lookups.
 
 ## Platform Support
 

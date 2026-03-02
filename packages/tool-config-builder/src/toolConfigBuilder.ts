@@ -305,11 +305,13 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   platform(
     platforms: Platform,
-    architecturesOrConfigure: Architecture | ((install: IPlatformInstallFunction) => PlatformConfigBuilderInterface),
-    configureCallback?: (install: IPlatformInstallFunction) => PlatformConfigBuilderInterface,
+    architecturesOrConfigure:
+      | Architecture
+      | ((install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, 'bin'>),
+    configureCallback?: (install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, 'bin'>,
   ): this {
     let targetArchitectures: Architecture | undefined;
-    let configureFn: (install: IPlatformInstallFunction) => PlatformConfigBuilderInterface;
+    let configureFn: (install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, 'bin'>;
 
     if (typeof architecturesOrConfigure === 'function') {
       configureFn = architecturesOrConfigure;
@@ -567,6 +569,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       'cargo',
       'manual',
       'zsh-plugin',
+      'dmg',
     ];
 
     if (this.currentInstallationMethod && validMethods.includes(this.currentInstallationMethod)) {
