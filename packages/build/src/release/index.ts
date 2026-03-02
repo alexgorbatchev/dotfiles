@@ -96,8 +96,8 @@ async function commitAndTag(version: string): Promise<void> {
 }
 
 /**
- * Publishes the package to the registry.
- * Copies .npmrc into .dist/ so npm resolves the @gitea scope registry.
+ * Publishes the package to the registry configured in .dist/package.json publishConfig.
+ * Copies .npmrc into .dist/ for auth token resolution.
  */
 async function publishToNpm(): Promise<void> {
   console.log('📤 Publishing to registry...');

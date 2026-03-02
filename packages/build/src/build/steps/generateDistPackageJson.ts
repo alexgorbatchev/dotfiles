@@ -34,6 +34,9 @@ export async function generateDistPackageJson(
       },
     },
     files: ['*.js', '*.js.map', '*.d.ts', '*.css', 'docs'],
+    publishConfig: {
+      registry: 'https://git.example.com/api/packages/alex/npm/',
+    },
     dependencies,
   };
 
