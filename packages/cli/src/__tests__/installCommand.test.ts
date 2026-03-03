@@ -127,7 +127,10 @@ describe('installCommand', () => {
     await program.parseAsync(['install', 'config-tool'], { from: 'user' });
 
     expect(mockInstaller.install).not.toHaveBeenCalled();
-    expect(mockGeneratorOrchestrator.generateCompletionsForTool).not.toHaveBeenCalled();
+    expect(mockGeneratorOrchestrator.generateCompletionsForTool).toHaveBeenCalledWith(
+      'config-tool',
+      configOnlyToolConfig,
+    );
   });
 
   test('should exit silently in shim mode when installation succeeds', async () => {
@@ -230,7 +233,7 @@ describe('installCommand', () => {
     const platformOnlyToolConfig = install()
       .platform(
         Platform.Linux,
-        (platformInstall) => platformInstall('brew', { formula: 'test/formula' }),
+        (platformInstall) => platformInstall('brew', { formula: 'test/formula' }).bin('test'),
       )
       .build();
 

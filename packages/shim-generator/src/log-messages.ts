@@ -15,6 +15,8 @@ export const messages = {
       createSafeLogMessage(`Skipping shim generation for ${toolName} (externally managed via ${method})`),
     skippedNoBinaries: (toolName: string) =>
       createSafeLogMessage(`Skipping shim generation for ${toolName} (no binaries defined)`),
+    skippedAlreadyInstalled: (toolName: string) =>
+      createSafeLogMessage(`Skipping shim generation for ${toolName} (already installed)`),
   } satisfies SafeLogMessageMap,
   generateShim: {
     resolvedShimPath: (shimPath: string) => createSafeLogMessage(`Resolved shim output path ${shimPath}`),
