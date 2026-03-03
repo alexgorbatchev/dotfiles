@@ -115,8 +115,8 @@ export const messages = {
     createSafeLogMessage(`GitHub API failed [${operation}] ${status}`),
   configLoadFailed: (configPath: string) => createSafeLogMessage(`Failed to load configuration from ${configPath}`),
   configPathResolved: (configPath: string) => createSafeLogMessage(`Using configuration: ${configPath}`),
-  configNotFound: (searchedFiles: string) =>
-    createSafeLogMessage(`No configuration file found. Create one of: ${searchedFiles} or specify --config <path>`),
+  configNotFound: () =>
+    createSafeLogMessage('No configuration file found. Create dotfiles.config.ts or specify --config <path>'),
   configParameterIgnored: (field: string, reason: string) =>
     createSafeLogMessage(`Configuration field "${field}" ignored: ${reason}`),
   configParameterInvalid: (field: string, value: string, expected: string) =>

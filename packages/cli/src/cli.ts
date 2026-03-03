@@ -58,7 +58,7 @@ import { registerInstallCommand } from './installCommand';
 import { messages } from './log-messages';
 import { registerLogCommand } from './logCommand';
 import { populateMemFsForDryRun } from './populateMemFsForDryRun';
-import { DEFAULT_CONFIG_FILES, resolveConfigPath } from './resolveConfigPath';
+import { resolveConfigPath } from './resolveConfigPath';
 import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
@@ -242,7 +242,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const userConfigPath = await resolveConfigPath(logger, config, process.cwd());
 
   if (!userConfigPath) {
-    logger.error(messages.configNotFound(DEFAULT_CONFIG_FILES.join(', ')));
+    logger.error(messages.configNotFound());
     process.exit(1);
   }
 
