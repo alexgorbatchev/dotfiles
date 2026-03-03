@@ -70,7 +70,7 @@ describe('installFromBrew', () => {
     };
 
     const context = createMockContext(toolConfig, mockShell);
-    const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
+    const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell, mockShell);
 
     assert(result.success);
     expect(result.success).toBe(true);
@@ -91,7 +91,7 @@ describe('installFromBrew', () => {
     };
 
     const context = createMockContext(toolConfig, mockShell);
-    const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
+    const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell, mockShell);
 
     assert(result.success);
     expect(result.success).toBe(true);
@@ -109,7 +109,7 @@ describe('installFromBrew', () => {
     };
 
     const context = createMockContext(toolConfig, mockShell);
-    const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
+    const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell, mockShell);
 
     assert(result.success);
 
