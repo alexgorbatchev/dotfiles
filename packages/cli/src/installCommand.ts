@@ -213,6 +213,8 @@ async function executeInstallCommandAction(
       logger.info(messages.toolInstallSkippedConfigurationOnly(toolName));
     }
 
+    await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig);
+
     const result: number | null = combinedOptions.shimMode ? 0 : null;
     return result;
   }
