@@ -8,6 +8,6 @@ export default defineTool((install, _ctx) =>
         install('brew', {
           formula: 'borders',
           tap: 'FelixKratz/formulae',
-        }).bin('borders'),
+        }),
     )
 );

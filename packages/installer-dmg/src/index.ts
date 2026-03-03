@@ -16,7 +16,4 @@ declare module '@dotfiles/core' {
     dmg: DmgToolConfig;
   }
   interface IPluginResultRegistry extends RegisterPluginResult<'dmg', DmgInstallResult> {}
-  interface IRequireBinMethodRegistry {
-    dmg: true;
-  }
 }

@@ -233,7 +233,7 @@ describe('installCommand', () => {
     const platformOnlyToolConfig = install()
       .platform(
         Platform.Linux,
-        (platformInstall) => platformInstall('brew', { formula: 'test/formula' }).bin('test'),
+        (platformInstall) => platformInstall('brew', { formula: 'test/formula' }),
       )
       .build();
 

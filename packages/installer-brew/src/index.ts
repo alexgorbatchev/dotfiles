@@ -16,7 +16,4 @@ declare module '@dotfiles/core' {
     brew: BrewToolConfig;
   }
   interface IPluginResultRegistry extends RegisterPluginResult<'brew', BrewInstallResult> {}
-  interface IRequireBinMethodRegistry {
-    brew: true;
-  }
 }
