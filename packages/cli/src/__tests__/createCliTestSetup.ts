@@ -244,6 +244,7 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
         get: mock(() => undefined),
         register: mock(async () => undefined),
         getAll: mock(() => []),
+        getExternallyManagedMethods: mock(() => new Set<string>()),
       },
       ...mockServices,
     }) as unknown as MockedInterface<IServices>;

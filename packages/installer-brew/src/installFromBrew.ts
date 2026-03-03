@@ -2,7 +2,6 @@ import { createShell, type IInstallContext, type IInstallOptions, type Shell } f
 import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli, normalizeVersion } from '@dotfiles/utils';
-import path from 'node:path';
 import { z } from 'zod';
 import { messages } from './log-messages';
 import type { BrewToolConfig } from './schemas';
@@ -39,7 +38,7 @@ type BrewInfo = z.infer<typeof BrewInfoSchema>;
 export async function installFromBrew(
   toolName: string,
   toolConfig: BrewToolConfig,
-  context: IInstallContext,
+  _context: IInstallContext,
   options: IInstallOptions | undefined,
   parentLogger: TsLogger,
   shellExecutor: Shell,
@@ -87,28 +86,6 @@ export async function installFromBrew(
       isCask,
       tap,
     };
-
-    // Create symlinks in the shim directory (targetDir) pointing to the real brew binaries.
-    // This replaces what was previously done during shim generation.
-    const shimDir: string = context.projectConfig.paths.targetDir;
-    const fs = context.fileSystem;
-    await fs.ensureDir(shimDir);
-
-    for (const binaryPath of binaryPaths) {
-      const binaryName: string = path.basename(binaryPath);
-      const shimPath: string = path.join(shimDir, binaryName);
-
-      try {
-        const shimExists = await fs.exists(shimPath);
-        if (shimExists) {
-          await fs.rm(shimPath, { force: true });
-        }
-        await fs.symlink(binaryPath, shimPath);
-        logger.debug(messages.shimSymlinkCreated(binaryName, shimPath, binaryPath));
-      } catch (error) {
-        logger.error(messages.shimSymlinkFailed(binaryName, shimPath), error);
-      }
-    }
 
     const result: BrewInstallResult = {
       success: true,

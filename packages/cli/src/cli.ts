@@ -413,7 +413,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   pluginRegistry.register(new ZshPluginInstallerPlugin(installerTrackedFs, shell));
 
   // Create shim generator with knowledge of externally managed plugins (e.g., brew)
-  // so it can create symlinks instead of bash shims for those tools
+  // so it can skip shim generation for already-installed externally managed tools
   const externallyManagedMethods = pluginRegistry.getExternallyManagedMethods();
   const shimGenerator = new ShimGenerator(
     systemLogger,
@@ -421,6 +421,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     projectConfig,
     systemInfo,
     externallyManagedMethods,
+    toolInstallationRegistry,
   );
 
   const completionGenerator = new CompletionGenerator(

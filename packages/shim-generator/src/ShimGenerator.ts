@@ -3,6 +3,7 @@ import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
+import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { dedentString, getCliBinPath, resolvePlatformConfig } from '@dotfiles/utils';
 import path from 'node:path';
 import type { IGenerateShimsOptions, IShimGenerator } from './IShimGenerator';
@@ -28,6 +29,7 @@ export class ShimGenerator implements IShimGenerator {
   private readonly logger: TsLogger;
   private readonly systemInfo: ISystemInfo;
   private readonly externallyManagedMethods: Set<string>;
+  private readonly toolInstallationRegistry?: IToolInstallationRegistry;
 
   private isConfigurationOnlyToolConfig(toolConfig: ToolConfig): boolean {
     const isManual = toolConfig.installationMethod === 'manual';
@@ -45,6 +47,7 @@ export class ShimGenerator implements IShimGenerator {
    * @param config - The YAML configuration containing paths and settings.
    * @param systemInfo - The current system information for platform resolution.
    * @param externallyManagedMethods - Set of installation method names that are externally managed.
+   * @param toolInstallationRegistry - Registry for checking if tools are already installed.
    */
   constructor(
     parentLogger: TsLogger,
@@ -52,6 +55,7 @@ export class ShimGenerator implements IShimGenerator {
     config: ProjectConfig,
     systemInfo: ISystemInfo,
     externallyManagedMethods?: Set<string>,
+    toolInstallationRegistry?: IToolInstallationRegistry,
   ) {
     const logger = parentLogger.getSubLogger({ name: 'ShimGenerator' });
     this.logger = logger;
@@ -61,6 +65,7 @@ export class ShimGenerator implements IShimGenerator {
     this.config = config;
     this.systemInfo = systemInfo;
     this.externallyManagedMethods = externallyManagedMethods ?? new Set();
+    this.toolInstallationRegistry = toolInstallationRegistry;
   }
 
   /**
@@ -106,11 +111,18 @@ export class ShimGenerator implements IShimGenerator {
       return generatedShimPaths;
     }
 
-    // Skip shim generation for externally managed tools (e.g., Homebrew).
-    // Symlinks for these tools are created at install time by the installer plugin.
+    // For externally managed tools (e.g., Homebrew), only generate shims if not yet installed.
+    // After installation, the tool's binaries are in their own PATH location (e.g., /opt/homebrew/bin).
     if (this.externallyManagedMethods.has(resolvedConfig.installationMethod)) {
-      logger.debug(messages.generateForTool.skippedExternallyManaged(toolName, resolvedConfig.installationMethod));
-      return generatedShimPaths;
+      if (!this.toolInstallationRegistry) {
+        logger.debug(messages.generateForTool.skippedExternallyManaged(toolName, resolvedConfig.installationMethod));
+        return generatedShimPaths;
+      }
+      const isInstalled = await this.toolInstallationRegistry.isToolInstalled(toolName);
+      if (isInstalled) {
+        logger.debug(messages.generateForTool.skippedAlreadyInstalled(toolName));
+        return generatedShimPaths;
+      }
     }
 
     // Get list of binaries to generate shims for

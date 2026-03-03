@@ -556,23 +556,48 @@ export type InstallMethod = keyof IInstallParamsRegistry;
 
 /**
  * Registry of installer methods that do not support .bin() / shim generation.
- * Plugins that are externally managed (e.g., Homebrew, DMG) extend this via module augmentation.
+ * Plugins extend this via module augmentation.
  */
 export interface INoBinMethodRegistry {
   __placeholder__?: never;
 }
 
+/**
+ * Registry of installer methods that REQUIRE .bin() to be called.
+ * Externally managed plugins (e.g., Homebrew, DMG) extend this via module augmentation
+ * because shims must know the binary name to create a proxy before installation.
+ */
+export interface IRequireBinMethodRegistry {
+  __placeholder__?: never;
+}
+
 type NoBinMethodKeys = Exclude<keyof INoBinMethodRegistry, '__placeholder__'>;
+type RequireBinMethodKeys = Exclude<keyof IRequireBinMethodRegistry, '__placeholder__'>;
 
 /**
- * Resolves the builder type based on whether the method supports .bin().
- * Methods registered in INoBinMethodRegistry get a builder without .bin().
+ * Restricted builder that only exposes .bin(). Calling .bin() returns the full builder.
+ */
+export interface IBinRequiredToolConfigBuilder {
+  bin(name: string, pattern?: string): IToolConfigBuilder;
+}
+
+/**
+ * Restricted platform builder that only exposes .bin(). Calling .bin() returns the full builder.
+ */
+export interface IBinRequiredPlatformConfigBuilder {
+  bin(name: string, pattern?: string): IPlatformConfigBuilder;
+}
+
+/**
+ * Resolves the builder type based on whether the method supports/requires .bin().
  */
 type ToolBuilderForMethod<M extends InstallMethod> = [M] extends [NoBinMethodKeys] ? Omit<IToolConfigBuilder, 'bin'>
+  : [M] extends [RequireBinMethodKeys] ? IBinRequiredToolConfigBuilder
   : IToolConfigBuilder;
 
 type PlatformBuilderForMethod<M extends InstallMethod> = [M] extends [NoBinMethodKeys]
   ? Omit<IPlatformConfigBuilder, 'bin'>
+  : [M] extends [RequireBinMethodKeys] ? IBinRequiredPlatformConfigBuilder
   : IPlatformConfigBuilder;
 
 /**

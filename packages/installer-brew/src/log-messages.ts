@@ -13,8 +13,4 @@ export const messages = {
   prefixFetchFailed: (formula: string) => createSafeLogMessage(`Failed to fetch prefix for formula ${formula}`),
   prefixFallback: (formula: string, prefix: string) =>
     createSafeLogMessage(`Using fallback prefix for formula ${formula}: ${prefix}`),
-  shimSymlinkCreated: (binaryName: string, shimPath: string, targetPath: string) =>
-    createSafeLogMessage(`Created shim symlink ${binaryName} at ${shimPath} -> ${targetPath}`),
-  shimSymlinkFailed: (binaryName: string, shimPath: string) =>
-    createSafeLogMessage(`Failed to create shim symlink ${binaryName} at ${shimPath}`),
 } as const satisfies SafeLogMessageMap;

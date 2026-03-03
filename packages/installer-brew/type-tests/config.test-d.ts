@@ -25,13 +25,14 @@ export type BrewFormulaOptional = ExpectTrue<undefined extends FormulaType ? tru
 defineTool((install) =>
   install('brew', {
     formula: 'ripgrep',
-  }).zsh((shell) =>
-    shell.once(/* zsh */ `
+  }).bin('rg')
+    .zsh((shell) =>
+      shell.once(/* zsh */ `
         echo "once"
       `).always(/* zsh */ `
         echo "always"
       `)
-  )
+    )
 );
 
 expectError(() =>
@@ -39,6 +40,6 @@ expectError(() =>
     install('brew', {
       formula: 'ripgrep',
       unknown: 'value',
-    })
+    }).bin('rg')
   )
 );

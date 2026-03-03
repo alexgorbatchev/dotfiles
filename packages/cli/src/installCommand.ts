@@ -4,6 +4,7 @@ import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { InstallResult } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli, resolvePlatformConfig } from '@dotfiles/utils';
+import path from 'node:path';
 import { messages } from './log-messages';
 import type {
   ICommandCompletionMeta,
@@ -154,6 +155,28 @@ function handleInstallationError(logger: TsLogger, error: Error, toolName: strin
   return 1;
 }
 
+async function deleteShimsForTool(
+  toolConfig: ToolConfig,
+  targetDir: string,
+  fs: IResolvedFileSystem,
+  logger: TsLogger,
+): Promise<void> {
+  if (!toolConfig.binaries || toolConfig.binaries.length === 0) {
+    return;
+  }
+  for (const binary of toolConfig.binaries) {
+    const binaryName = typeof binary === 'string' ? binary : binary.name;
+    const shimPath = path.join(targetDir, binaryName);
+    try {
+      await fs.lstat(shimPath);
+      await fs.rm(shimPath, { force: true });
+      logger.debug(messages.shimDeleted(binaryName, shimPath));
+    } catch {
+      // Shim doesn't exist, nothing to delete
+    }
+  }
+}
+
 function isConfigurationOnlyToolConfig(toolConfig: ToolConfig): boolean {
   const isManual = toolConfig.installationMethod === 'manual';
   const hasNoInstallParams = !toolConfig.installParams || Object.keys(toolConfig.installParams).length === 0;
@@ -229,6 +252,13 @@ async function executeInstallCommandAction(
     // Extract binaryPaths from install result if available
     const binaryPaths = 'binaryPaths' in result ? result.binaryPaths : undefined;
     await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig, result.version, binaryPaths);
+
+    // Delete temporary shims for externally managed tools (brew, dmg).
+    // After install, the tool's binaries are in their own PATH location.
+    const externallyManagedMethods = services.pluginRegistry.getExternallyManagedMethods();
+    if (externallyManagedMethods.has(resolvedToolConfig.installationMethod)) {
+      await deleteShimsForTool(resolvedToolConfig, projectConfig.paths.targetDir, fs, logger);
+    }
   }
 
   const exitCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode);

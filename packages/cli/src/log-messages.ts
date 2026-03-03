@@ -30,6 +30,8 @@ export const messages = {
     createSafeLogMessage(`Tool "${toolName}" \`${version}\` is already installed`),
   toolInstallSkippedConfigurationOnly: (toolName: string) =>
     createSafeLogMessage(`Tool "${toolName}" has no installation steps`),
+  shimDeleted: (binaryName: string, shimPath: string) =>
+    createSafeLogMessage(`Deleted temporary shim ${binaryName} at ${shimPath}`),
   toolNoConfigurationsFound: (toolConfigsDir: string) =>
     createSafeLogMessage(`No tool configurations found in ${toolConfigsDir}`),
   toolCheckingUpdates: (toolName: string) => createSafeLogMessage(`updates for ${toolName}`),
