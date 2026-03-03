@@ -1,4 +1,4 @@
-import { type IInstallContext, type IInstallOptions, type Shell } from '@dotfiles/core';
+import { createShell, type IInstallContext, type IInstallOptions, type Shell } from '@dotfiles/core';
 import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli, normalizeVersion } from '@dotfiles/utils';
@@ -43,6 +43,7 @@ export async function installFromBrew(
   options: IInstallOptions | undefined,
   parentLogger: TsLogger,
   shellExecutor: Shell,
+  installShell?: Shell,
 ): Promise<BrewInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromBrew' });
   logger.debug(messages.installing(toolName), toolConfig.installParams);
@@ -60,7 +61,8 @@ export async function installFromBrew(
   const tap = params.tap;
 
   const operation = async (): Promise<BrewInstallResult> => {
-    await executeBrewInstall(formula, isCask, tap, options?.force, logger, shellExecutor);
+    const loggingShell = installShell ?? createShell({ logger, skipCommandLog: true });
+    await executeBrewInstall(formula, isCask, tap, options?.force, logger, shellExecutor, loggingShell);
 
     const formulaPrefix: string = await getBrewPrefix(formula, logger, shellExecutor);
     const binaryPaths = getBinaryPaths(toolConfig.binaries, `${formulaPrefix}/bin`);
@@ -200,12 +202,12 @@ async function executeBrewInstall(
   force: boolean | undefined,
   logger: TsLogger,
   shell: Shell,
+  installShell: Shell,
 ): Promise<void> {
   if (tap) {
     const taps = Array.isArray(tap) ? tap : [tap];
     for (const t of taps) {
-      const tapCommand = `brew tap ${t}`;
-      logger.debug(messages.executingCommand(tapCommand));
+      logger.debug(messages.executingCommand(`brew tap ${t}`));
       await shell`brew tap ${t}`.quiet();
     }
   }
@@ -219,8 +221,6 @@ async function executeBrewInstall(
   }
   installArgs.push(formula);
 
-  const installCommand = `brew ${installArgs.join(' ')}`;
-  logger.debug(messages.executingCommand(installCommand));
-
-  await shell`brew ${installArgs}`.quiet();
+  logger.info(messages.executingCommand(`brew ${installArgs.join(' ')}`));
+  await installShell`brew ${installArgs}`;
 }
