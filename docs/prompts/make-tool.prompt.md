@@ -92,7 +92,9 @@ Select the most appropriate method based on your investigation. Prefer official,
 
 ### Step 2: Configure Binary Specification
 
-**Important**: `.bin(name, pattern?)` declares which executables the tool provides. It generates a shim for each binary name. Users can resolve the real path to a binary (bypassing shims) with `dotfiles bin <name>`.
+**Important**: `.bin(name, pattern?)` declares which executables the tool provides. It generates a shim for each binary name. The shim acts as a launcher — when a user runs the shim, it triggers installation if the tool isn't installed yet, making the tool available system-wide without manual setup. Users can resolve the real path to a binary (bypassing shims) with `dotfiles bin <name>`.
+
+> **Every tool that provides a binary MUST have at least one `.bin()` declaration.** Without it, no shim is generated and the tool won't be accessible from the command line. Even if a tool is installed via brew or npm and is already on PATH, always declare `.bin()` so the dotfiles system manages it consistently.
 
 ```ts
 // Single binary with default pattern
@@ -761,11 +763,26 @@ export default defineTool((install) =>
 );
 ```
 
+## Syncing Changes
+
+After any `.tool.ts` file change, you **must** run `dotfiles generate` to sync the generated artifacts (shims, shell scripts, completions). This applies whenever:
+
+- A new `.tool.ts` file is created
+- An existing `.tool.ts` file is deleted
+- An existing `.tool.ts` file is modified
+
+```bash
+bun cli --config=<path-to-config.ts> generate
+```
+
+Without this step, the generated shims and shell configuration will be out of sync with the tool definitions.
+
 ## Quality Checklist
 
 **Installation & binaries**
 
 - ✅ Installation method matches the tool's official distribution
+- ✅ Every tool that provides executables has at least one `.bin()` declaration
 - ✅ `.bin(name, pattern?)` declarations match actual executables
 - ✅ Binary patterns are correct for archive structures
 - ✅ `.dependsOn()` uses binary names (not tool names) from other tools' `.bin()` declarations

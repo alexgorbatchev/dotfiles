@@ -265,6 +265,8 @@ const result = await shell`exit 1`.noThrow();
 console.log(result.code); // 1
 ```
 
+**Logging**: When a logger is provided via `createShell({ logger })`, both stdout and stderr are streamed in real-time at `INFO` level. Each output line is prefixed with `|`. Actual errors are handled via exit codes — non-zero exits throw `ShellError` (unless `.noThrow()` is used).
+
 **Usage Pattern**: Shell instances should be created once at application entry point and passed to all components that need shell execution. This follows dependency injection principles and enables testing.
 
 ```typescript
