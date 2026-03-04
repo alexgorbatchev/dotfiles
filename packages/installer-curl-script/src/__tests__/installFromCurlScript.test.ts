@@ -13,12 +13,16 @@ function createMockShell(): {
   shell: Shell;
   mockFn: ReturnType<typeof mock>;
   mockEnv: ReturnType<typeof mock>;
-  mockQuiet: ReturnType<typeof mock>;
+  mockResult: ReturnType<typeof mock>;
 } {
-  const mockQuiet = mock(() => Promise.resolve());
-  const mockEnv = mock(() => ({ quiet: mockQuiet }));
+  const mockResult = mock(() => Promise.resolve({ stdout: '', stderr: '', code: 0 }));
+  const mockEnv = mock(() => ({
+    quiet: mockResult,
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any, unicorn/no-thenable -- test mock simulating ShellCommand PromiseLike
+    then: (resolve: any, reject?: any) => mockResult().then(resolve, reject),
+  }));
   const mockFn = mock(() => ({ env: mockEnv }));
-  return { shell: mockFn as unknown as Shell, mockFn, mockEnv, mockQuiet };
+  return { shell: mockFn as unknown as Shell, mockFn, mockEnv, mockResult };
 }
 
 describe('installFromCurlScript', () => {
@@ -86,6 +90,7 @@ describe('installFromCurlScript', () => {
       mockHookExecutor,
       logger,
       shell,
+      shell,
     );
 
     expect(mockFn).toHaveBeenCalled();
@@ -129,6 +134,7 @@ describe('installFromCurlScript', () => {
       mockHookExecutor,
       logger,
       shell,
+      shell,
     );
 
     expect(mockFn).toHaveBeenCalled();
@@ -168,6 +174,7 @@ describe('installFromCurlScript', () => {
       mockDownloader,
       mockHookExecutor,
       logger,
+      shell,
       shell,
     );
 
@@ -213,6 +220,7 @@ describe('installFromCurlScript', () => {
       mockHookExecutor,
       logger,
       shell,
+      shell,
     );
 
     expect(mockFn).toHaveBeenCalled();
@@ -253,6 +261,7 @@ describe('installFromCurlScript', () => {
       mockHookExecutor,
       logger,
       shell,
+      shell,
     );
 
     expect(mockEnv).toHaveBeenCalled();
@@ -285,6 +294,7 @@ describe('installFromCurlScript', () => {
       mockDownloader,
       mockHookExecutor,
       logger,
+      shell,
       shell,
     );
 
@@ -322,6 +332,7 @@ describe('installFromCurlScript', () => {
       mockHookExecutor,
       logger,
       shell,
+      shell,
     );
 
     expect(mockEnv).toHaveBeenCalled();
@@ -332,9 +343,9 @@ describe('installFromCurlScript', () => {
   });
 
   it('should fail when no binaries are installed after script execution', async () => {
-    const { shell, mockQuiet } = createMockShell();
+    const { shell, mockResult } = createMockShell();
     // Mock shell to return script output
-    mockQuiet.mockImplementation(() => Promise.resolve({ stdout: 'Script ran successfully', stderr: '' }));
+    mockResult.mockImplementation(() => Promise.resolve({ stdout: 'Script ran successfully', stderr: '' }));
 
     // Mock fs.exists to return false for binary paths (simulating missing binaries)
     const mockFsWithExists: IFileSystem = {
@@ -363,6 +374,7 @@ describe('installFromCurlScript', () => {
       mockHookExecutor,
       logger,
       shell,
+      shell,
     );
 
     assert(!result.success);
@@ -372,9 +384,9 @@ describe('installFromCurlScript', () => {
   });
 
   it('should include script output in error when binaries not installed', async () => {
-    const { shell, mockQuiet } = createMockShell();
+    const { shell, mockResult } = createMockShell();
     // Mock shell to return script output
-    mockQuiet.mockImplementation(() =>
+    mockResult.mockImplementation(() =>
       Promise.resolve({ stdout: 'Installing to /wrong/dir\nDone!', stderr: 'Warning: something' })
     );
 
@@ -403,6 +415,7 @@ describe('installFromCurlScript', () => {
       mockDownloader,
       mockHookExecutor,
       logger,
+      shell,
       shell,
     );
 

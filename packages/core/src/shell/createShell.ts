@@ -134,7 +134,7 @@ async function executeCommand(command: string, options: ShellOptions): Promise<S
   // Collect output while streaming to logger (always logs if logger provided)
   const [stdout, stderr] = await Promise.all([
     collectStream(proc.stdout, logger ? (line: string) => logger.info(createSafeLogMessage(`| ${line}`)) : undefined),
-    collectStream(proc.stderr, logger ? (line: string) => logger.error(createSafeLogMessage(`| ${line}`)) : undefined),
+    collectStream(proc.stderr, logger ? (line: string) => logger.info(createSafeLogMessage(`| ${line}`)) : undefined),
   ]);
 
   const code = await proc.exited;

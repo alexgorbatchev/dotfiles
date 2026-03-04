@@ -1,4 +1,4 @@
-import type { IInstallContext, Shell } from '@dotfiles/core';
+import { createShell, type IInstallContext, type Shell } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
@@ -89,6 +89,7 @@ export async function installFromCurlScript(
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
   shellExecutor: Shell,
+  installShell?: Shell,
 ): Promise<CurlScriptInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlScript' });
@@ -149,12 +150,13 @@ export async function installFromCurlScript(
       ...resolvedEnv,
     };
 
+    const loggingShell = installShell ?? createShell({ logger, skipCommandLog: true });
     let scriptOutput = '';
     if (shell === 'bash') {
-      const result = await shellExecutor`bash ${scriptPath} ${resolvedArgs}`.env(env).quiet();
+      const result = await loggingShell`bash ${scriptPath} ${resolvedArgs}`.env(env);
       scriptOutput = [result.stdout, result.stderr].filter(Boolean).join('\n');
     } else {
-      const result = await shellExecutor`sh ${scriptPath} ${resolvedArgs}`.env(env).quiet();
+      const result = await loggingShell`sh ${scriptPath} ${resolvedArgs}`.env(env);
       scriptOutput = [result.stdout, result.stderr].filter(Boolean).join('\n');
     }
 

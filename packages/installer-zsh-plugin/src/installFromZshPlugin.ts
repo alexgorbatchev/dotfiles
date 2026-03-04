@@ -1,4 +1,4 @@
-import type { IInstallContext, Shell } from '@dotfiles/core';
+import { createShell, type IInstallContext, type Shell } from '@dotfiles/core';
 import { raw } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import { withInstallErrorHandling } from '@dotfiles/installer';
@@ -33,6 +33,7 @@ export async function installFromZshPlugin(
   parentLogger: TsLogger,
   fs: IResolvedFileSystem,
   shell: Shell,
+  installShell?: Shell,
 ): Promise<ZshPluginInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromZshPlugin' });
   logger.debug(messages.installing(toolName));
@@ -65,14 +66,15 @@ export async function installFromZshPlugin(
 
     // Check if plugin already exists (update vs fresh clone)
     const exists = await fs.exists(pluginPath);
+    const loggingShell = installShell ?? createShell({ logger, skipCommandLog: true });
 
     if (exists) {
       logger.debug(messages.updating(pluginPath));
-      await updatePlugin(pluginPath, shell);
+      await updatePlugin(pluginPath, loggingShell);
       logger.info(messages.updateSuccess(pluginName));
     } else {
       logger.debug(messages.cloning(gitUrl, pluginPath));
-      await clonePlugin(gitUrl, pluginPath, shell);
+      await clonePlugin(gitUrl, pluginPath, loggingShell);
       logger.info(messages.cloneSuccess(pluginName));
     }
 
@@ -192,14 +194,14 @@ async function detectSourceFile(
  * Clones a git repository.
  */
 async function clonePlugin(gitUrl: string, destPath: string, shell: Shell): Promise<void> {
-  await shell`git clone --depth 1 ${gitUrl} ${destPath}`.quiet();
+  await shell`git clone --depth 1 ${gitUrl} ${destPath}`;
 }
 
 /**
  * Updates an existing git repository.
  */
 async function updatePlugin(pluginPath: string, shell: Shell): Promise<void> {
-  await shell`git -C ${pluginPath} pull --ff-only`.quiet();
+  await shell`git -C ${pluginPath} pull --ff-only`;
 }
 
 /**

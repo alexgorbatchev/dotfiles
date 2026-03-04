@@ -198,11 +198,11 @@ describe('createShell', () => {
       logger.expect(['INFO'], [], [], [/\$ echo first/, '| first', '| second']);
     });
 
-    it('should log stderr lines at error level', async () => {
+    it('should log stderr lines at info level', async () => {
       const logger = new TestLogger();
       const $ = createShell({ logger });
       await $`echo "error" >&2`;
-      logger.expect(['ERROR'], [], [], ['| error']);
+      logger.expect(['INFO'], [], [], [/\$ echo/, '| error']);
     });
   });
 

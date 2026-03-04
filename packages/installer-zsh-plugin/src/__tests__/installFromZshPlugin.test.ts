@@ -109,6 +109,7 @@ describe('installFromZshPlugin', () => {
       logger,
       mockFs,
       mockShell,
+      mockShell,
     );
 
     expect(result.success).toBe(false);
@@ -131,6 +132,7 @@ describe('installFromZshPlugin', () => {
       context,
       logger,
       mockFs,
+      mockShell,
       mockShell,
     );
 
@@ -158,6 +160,7 @@ describe('installFromZshPlugin', () => {
       context,
       logger,
       mockFs,
+      mockShell,
       mockShell,
     );
 
@@ -188,6 +191,7 @@ describe('installFromZshPlugin', () => {
       logger,
       mockFs,
       mockShell,
+      mockShell,
     );
 
     expect(result.success).toBe(true);
@@ -217,6 +221,7 @@ describe('installFromZshPlugin', () => {
       logger,
       mockFs,
       mockShell,
+      mockShell,
     );
 
     expect(result.success).toBe(true);
@@ -243,6 +248,7 @@ describe('installFromZshPlugin', () => {
       context,
       logger,
       mockFs,
+      mockShell,
       mockShell,
     );
 
@@ -271,6 +277,7 @@ describe('installFromZshPlugin', () => {
       logger,
       mockFs,
       mockShell,
+      mockShell,
     );
 
     expect(result.success).toBe(true);
@@ -297,6 +304,7 @@ describe('installFromZshPlugin', () => {
       context,
       logger,
       mockFs,
+      mockShell,
       mockShell,
     );
 

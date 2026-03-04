@@ -1,4 +1,5 @@
 import {
+  createShell,
   type IDownloadContext,
   type IInstallContext,
   Platform,
@@ -73,10 +74,11 @@ export async function installFromDmg(
     }
 
     // 3. Mount the DMG
+    const loggingShell = createShell({ logger, skipCommandLog: true });
     const mountPoint = path.join(context.stagingDir, '.dmg-mount');
     await fs.ensureDir(mountPoint);
     logger.debug(messages.mountingDmg(dmgPath));
-    await shellExecutor`hdiutil attach -nobrowse -noautoopen -mountpoint ${mountPoint} ${dmgPath}`.quiet();
+    await loggingShell`hdiutil attach -nobrowse -noautoopen -mountpoint ${mountPoint} ${dmgPath}`;
     logger.debug(messages.dmgMounted(mountPoint));
 
     let appName: string;

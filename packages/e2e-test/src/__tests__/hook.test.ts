@@ -90,11 +90,11 @@ describe('E2E: after-install hooks', () => {
             INFO	[hook-test-tool] | shell-output-for-hook-test-tool
             INFO	[hook-test-tool] $ ./scripts/test-output.sh
             INFO	[hook-test-tool] | Starting initialization...
-            ERROR	[hook-test-tool] | Warning: this is a test warning
+            INFO	[hook-test-tool] | Warning: this is a test warning
             INFO	[hook-test-tool] | Loading configuration...
-            ERROR	[hook-test-tool] | Error: simulated error message
+            INFO	[hook-test-tool] | Error: simulated error message
             INFO	[hook-test-tool] | Processing data...
-            ERROR	[hook-test-tool] | Another stderr line
+            INFO	[hook-test-tool] | Another stderr line
             INFO	[hook-test-tool] | Initialization complete!
             INFO	Tool "hook-test-tool" \`1.0.0\` installed successfully using github-release
           `;

@@ -1,4 +1,4 @@
-import { type IInstallContext, type IInstallOptions, type Shell } from '@dotfiles/core';
+import { createShell, type IInstallContext, type IInstallOptions, type Shell } from '@dotfiles/core';
 import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli, normalizeVersion } from '@dotfiles/utils';
@@ -35,6 +35,7 @@ export async function installFromNpm(
   _options: IInstallOptions | undefined,
   parentLogger: TsLogger,
   shellExecutor: Shell,
+  installShell?: Shell,
 ): Promise<NpmInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromNpm' });
 
@@ -53,7 +54,8 @@ export async function installFromNpm(
   logger.debug(messages.installing(packageName));
 
   const operation = async (): Promise<NpmInstallResult> => {
-    await executeNpmInstall(packageSpec, context.stagingDir, logger, shellExecutor);
+    const loggingShell = installShell ?? createShell({ logger, skipCommandLog: true });
+    await executeNpmInstall(packageSpec, context.stagingDir, logger, loggingShell);
 
     const binDir: string = path.join(context.stagingDir, 'node_modules', '.bin');
     const binaryPaths: string[] = getBinaryPaths(toolConfig.binaries, binDir);
@@ -110,7 +112,7 @@ async function executeNpmInstall(
 ): Promise<void> {
   const command = `npm install --prefix ${installDir} ${packageSpec}`;
   logger.debug(messages.executingCommand(command));
-  await shell`npm install --prefix ${installDir} ${packageSpec}`.quiet();
+  await shell`npm install --prefix ${installDir} ${packageSpec}`;
 }
 
 /**

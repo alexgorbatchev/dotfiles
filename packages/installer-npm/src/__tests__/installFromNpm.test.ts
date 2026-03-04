@@ -60,7 +60,7 @@ describe('installFromNpm', () => {
     };
 
     const context = createContext(toolConfig, mockShell);
-    const result = await installFromNpm('prettier', toolConfig, context, undefined, logger, mockShell);
+    const result = await installFromNpm('prettier', toolConfig, context, undefined, logger, mockShell, mockShell);
 
     assert(result.success);
     expect(result.version).toBe('3.1.0');
@@ -79,7 +79,7 @@ describe('installFromNpm', () => {
     };
 
     const context = createContext(toolConfig, mockShell);
-    const result = await installFromNpm('prettier', toolConfig, context, undefined, logger, mockShell);
+    const result = await installFromNpm('prettier', toolConfig, context, undefined, logger, mockShell, mockShell);
 
     assert(result.success);
     expect(result.metadata.packageName).toBe('prettier');
@@ -125,7 +125,7 @@ describe('installFromNpm', () => {
     };
 
     const context = createContext(toolConfig, versionShell);
-    const result = await installFromNpm('mytool', toolConfig, context, undefined, logger, versionShell);
+    const result = await installFromNpm('mytool', toolConfig, context, undefined, logger, versionShell, versionShell);
 
     assert(result.success);
     expect(result.version).toBe('4.2.1');
@@ -146,7 +146,7 @@ describe('installFromNpm', () => {
     };
 
     const context = createContext(toolConfig, failShell);
-    const result = await installFromNpm('failing-tool', toolConfig, context, undefined, logger, failShell);
+    const result = await installFromNpm('failing-tool', toolConfig, context, undefined, logger, failShell, failShell);
 
     expect(result.success).toBe(false);
     assert(!result.success);
