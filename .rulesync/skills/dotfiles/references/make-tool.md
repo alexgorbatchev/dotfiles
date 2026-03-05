@@ -1,8 +1,4 @@
----
-agent: agent
----
-
-# LLM Agent Instructions: Create `.tool.ts` Configuration
+# Create `.tool.ts` Configuration
 
 ## Mission
 
@@ -56,39 +52,39 @@ Research the tool’s runtime behavior:
 Select the most appropriate method based on your investigation. Prefer official, precompiled, and well-supported methods.
 
 - **`github-release`**: best for tools with prebuilt binaries on GitHub.
-  - Guide: [GitHub Release Installation Guide](<root>/docs/installation/github-release.md)
+  - Guide: [GitHub Release Installation Guide](installation-methods.md#github-release.md)
   - Use `ghCli: true` to fetch releases via `gh` CLI instead of direct API access (useful for GitHub Enterprise or when `GITHUB_TOKEN` isn't configured)
   - Use `prerelease: true` to include prereleases when fetching latest (needed for repos that only publish prerelease versions)
 
 - **`gitea-release`**: best for tools with prebuilt binaries on Gitea, Forgejo, or Codeberg.
-  - Guide: [Gitea/Forgejo Release Installation Guide](<root>/docs/installation/gitea-release.md)
+  - Guide: [Gitea/Forgejo Release Installation Guide](installation-methods.md#gitea-release.md)
   - Requires `instanceUrl` (e.g., `https://codeberg.org`) and `repo` (e.g., `Codeberg/pages-server`)
   - Supports optional `token` for private repos or rate-limited instances
   - Use `prerelease: true` to include prereleases when fetching latest
 
 - **`brew`**: use if the tool is officially available on Homebrew.
-  - Guide: [Homebrew Installation Guide](<root>/docs/installation/homebrew.md)
+  - Guide: [Homebrew Installation Guide](installation-methods.md#homebrew.md)
 
 - **`cargo`**: prefer for Rust tools available on crates.io.
-  - Guide: [Cargo Installation Guide](<root>/docs/installation/cargo.md)
+  - Guide: [Cargo Installation Guide](installation-methods.md#cargo.md)
 
 - **`npm`**: for tools published as npm packages.
-  - Guide: [npm Installation Guide](<root>/docs/installation/npm.md)
+  - Guide: [npm Installation Guide](installation-methods.md#npm.md)
 
 - **`curl-script`**: for tools with an official install script.
-  - Guide: [Curl Script Installation Guide](<root>/docs/installation/curl-script.md)
+  - Guide: [Curl Script Installation Guide](installation-methods.md#curl-script.md)
 
 - **`curl-tar`**: for direct archive downloads from a stable URL.
-  - Guide: [Curl Tar Installation Guide](<root>/docs/installation/curl-tar.md)
+  - Guide: [Curl Tar Installation Guide](installation-methods.md#curl-tar.md)
 
 - **`curl-binary`**: for direct binary file downloads (no archive extraction).
-  - Guide: [Curl Binary Installation Guide](<root>/docs/installation/curl-binary.md)
+  - Guide: [Curl Binary Installation Guide](installation-methods.md#curl-binary.md)
 
 - **`manual`**: for custom install logic or dotfiles-provided binaries/scripts.
-  - Guide: [Manual Installation Guide](<root>/docs/installation/manual.md)
+  - Guide: [Manual Installation Guide](installation-methods.md#manual.md)
 
 - **`zsh-plugin`**: for zsh plugins that are cloned from Git repositories.
-  - Guide: [Zsh Plugin Installation Guide](<root>/docs/installation/zsh-plugin.md)
+  - Guide: [Zsh Plugin Installation Guide](installation-methods.md#zsh-plugin.md)
 
 ### Step 2: Configure Binary Specification
 
@@ -127,7 +123,7 @@ install('github-release', { repo: 'owner/tool' }).bin('tool', '*/bin/tool'); // 
 - `ctx.log` → Logger for user-facing messages (trace/debug/info/warn/error)
 - Use `~/` for paths relative to user's home directory (tilde expansion is automatic)
 
-Reference: [API Reference](<root>/docs/api-reference.md) and [Context API](<root>/docs/context-api.md)
+Reference: [API Reference](api-reference.md) and [Context API](api-reference.md#context-api)
 
 ### Step 2.5: Configure Installation Environment (if needed)
 
@@ -302,7 +298,7 @@ install('github-release', { repo: 'owner/tool' })
 
 Use `.source()` when you need to source command output inline without defining a named function via `.functions()`. The content must **print shell code to stdout** - this output is then sourced (executed) in the current shell.
 
-Reference: [Shell Integration Guide](<root>/docs/shell-integration.md) and [Completions Guide](<root>/docs/completions.md)
+Reference: [Shell Integration Guide](shell-and-hooks.md) and [Completions Guide](shell-and-hooks.md#completions)
 
 ### Step 4: Configure File Management (Symlinks)
 
@@ -315,7 +311,7 @@ install('github-release', { repo: 'owner/tool' })
   .symlink('./themes/', '~/.config/tool/themes'); // Leading ./ is optional
 ```
 
-Reference: [Shell Integration Guide](<root>/docs/shell-integration.md#symbolic-links)
+Reference: [Shell Integration Guide](shell-and-hooks.md#symbolic-links)
 
 ### Step 5: Add Platform Support (only when needed)
 
@@ -344,7 +340,7 @@ export default defineTool((install) =>
 );
 ```
 
-Reference: [Platform Support Guide](<root>/docs/platform-support.md)
+Reference: [Platform Support Guide](configuration.md#platform-support)
 
 ### Step 6: Add Installation Hooks (if needed)
 
@@ -429,7 +425,7 @@ install('github-release', { repo: 'owner/tool' })
 
 This is useful for referencing files with variable names (versioned directories, platform-specific assets).
 
-Reference: [Hooks Guide](<root>/docs/hooks.md) and [API Reference](<root>/docs/api-reference.md#hook-event-string-handler-hookhandler)
+Reference: [Hooks Guide](shell-and-hooks.md#hooks) and [API Reference](api-reference.md#hook-event-string-handler-hookhandler)
 
 ### Step 7: Disable a Tool (if needed)
 
@@ -816,31 +812,31 @@ Without this step, the generated shims and shell configuration will be out of sy
 
 **Core Documentation**
 
-- [API Reference](<root>/docs/api-reference.md) - Complete API with all parameters
-- [Getting Started](<root>/docs/getting-started.md) - Basic structure and anatomy
-- [Context API](<root>/docs/context-api.md) - Path resolution and context variables
+- [API Reference](api-reference.md) - Complete API with all parameters
+- [Getting Started](configuration.md#getting-started) - Basic structure and anatomy
+- [Context API](api-reference.md#context-api) - Path resolution and context variables
 
 **Configuration Guides**
 
-- [Common Patterns](<root>/docs/common-patterns.md) - Real-world examples
-- [Shell Integration](<root>/docs/shell-integration.md) - Shell configuration, symlinks
-- [Completions](<root>/docs/completions.md) - Command completion setup
+- [Common Patterns](configuration.md#common-patterns) - Real-world examples
+- [Shell Integration](shell-and-hooks.md) - Shell configuration, symlinks
+- [Completions](shell-and-hooks.md#completions) - Command completion setup
 
 **Installation Methods**
 
-- [GitHub Release Installation](<root>/docs/installation/github-release.md)
-- [Gitea/Forgejo Release Installation](<root>/docs/installation/gitea-release.md)
-- [Homebrew Installation](<root>/docs/installation/homebrew.md)
-- [Cargo Installation](<root>/docs/installation/cargo.md)
-- [npm Installation](<root>/docs/installation/npm.md)
-- [Curl Script Installation](<root>/docs/installation/curl-script.md)
-- [Curl Tar Installation](<root>/docs/installation/curl-tar.md)
-- [Curl Binary Installation](<root>/docs/installation/curl-binary.md)
-- [Manual Installation](<root>/docs/installation/manual.md)
-- [Zsh Plugin Installation](<root>/docs/installation/zsh-plugin.md)
+- [GitHub Release Installation](installation-methods.md#github-release.md)
+- [Gitea/Forgejo Release Installation](installation-methods.md#gitea-release.md)
+- [Homebrew Installation](installation-methods.md#homebrew.md)
+- [Cargo Installation](installation-methods.md#cargo.md)
+- [npm Installation](installation-methods.md#npm.md)
+- [Curl Script Installation](installation-methods.md#curl-script.md)
+- [Curl Tar Installation](installation-methods.md#curl-tar.md)
+- [Curl Binary Installation](installation-methods.md#curl-binary.md)
+- [Manual Installation](installation-methods.md#manual.md)
+- [Zsh Plugin Installation](installation-methods.md#zsh-plugin.md)
 
 **Other Resources**
 
-- [Platform Support](<root>/docs/platform-support.md) - Platform-specific configurations
-- [Hooks](<root>/docs/hooks.md) - Installation lifecycle hooks
-- [Troubleshooting](<root>/docs/troubleshooting.md) - Common issues and solutions
+- [Platform Support](configuration.md#platform-support) - Platform-specific configurations
+- [Hooks](shell-and-hooks.md#hooks) - Installation lifecycle hooks
+- [Troubleshooting](configuration.md#troubleshooting) - Common issues and solutions

@@ -67,7 +67,7 @@ dotfiles docs <path>
 - `dotfiles generate` writes a zsh completion script to `${generatedDir}/shell-scripts/zsh/completions/_dotfiles`.
 - Reload completions with `autoload -U compinit && compinit` (or restart your shell) after generating.
 - Commands that accept a tool argument (e.g., `install`, `update`, `check-updates`, `files`, `log`, `bin`) now suggest every configured tool name directly in completion menus, so you can pick a target without memorizing identifiers.
-- See [docs/completions.md](docs/completions.md) for shell-specific integration details.
+- See [Shell & Hooks Reference](.rulesync/skills/dotfiles/references/shell-and-hooks.md) for shell-specific integration details.
 
 ### Configure with TypeScript
 
@@ -152,29 +152,17 @@ This enables IDE autocomplete for the `dependsOn()` method with all known binary
 
 ### Getting Started
 
-- **[Tool Configuration Guide](docs/README.md)** - The complete guide to creating `.tool.ts` files
-- **[Common Patterns](docs/common-patterns.md)** - Real-world configuration examples
-- **[Getting Started](docs/getting-started.md)** - First steps and initial setup
+- **[Tool Creation Guide](.rulesync/skills/dotfiles/references/make-tool.md)** - Complete guide to creating `.tool.ts` files
+- **[Configuration](.rulesync/skills/dotfiles/references/configuration.md)** - Project config, getting started, common patterns, platform support
 
 ### Shell Integration
 
-- **[Shell Configuration](docs/shell-integration.md)** - Aliases, environment variables, and shell functions
-- **[Command Completions](docs/completions.md)** - Setting up tab completions for your tools
-- **[Virtual Environments](docs/virtual-environments.md)** - Isolated tool environments
-- **[Hooks](docs/hooks.md)** - Lifecycle hooks for tool installation
+- **[Shell & Hooks](.rulesync/skills/dotfiles/references/shell-and-hooks.md)** - Aliases, environment variables, shell functions, completions, lifecycle hooks
 
-### Installation Methods
+### Installation Methods & API
 
-- **[GitHub Releases](docs/installation/github-release.md)** - Install from GitHub release archives
-- **[Gitea Releases](docs/installation/gitea-release.md)** - Install from Gitea release archives
-- **[Cargo/Crates.io](docs/installation/cargo.md)** - Install Rust tools via Cargo
-- **[npm](docs/installation/npm.md)** - Install tools via npm
-- **[Homebrew](docs/installation/homebrew.md)** - Install via Homebrew package manager
-- **[Curl Scripts](docs/installation/curl-script.md)** - Install via shell scripts
-- **[Curl Tar](docs/installation/curl-tar.md)** - Install from remote tarballs
-- **[Curl Binary](docs/installation/curl-binary.md)** - Install single binaries via curl
-- **[Zsh Plugins](docs/installation/zsh-plugin.md)** - Install zsh plugins to `$ZSH_CUSTOM`
-- **[Manual Installation](docs/installation/manual.md)** - Manually managed tools
+- **[Installation Methods](.rulesync/skills/dotfiles/references/installation-methods.md)** - All 11 methods: GitHub releases, Gitea, Homebrew, Cargo, npm, curl-script, curl-tar, curl-binary, manual, DMG, zsh-plugin
+- **[API Reference](.rulesync/skills/dotfiles/references/api-reference.md)** - Complete method reference and context API
 
 ## Global Configuration (`config.ts`)
 

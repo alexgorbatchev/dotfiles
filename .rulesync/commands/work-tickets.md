@@ -80,10 +80,9 @@ If any changes affect user-facing features (new installer types, new CLI options
 
 1. Review all changes merged in Phase 5 to identify user-facing impacts.
 2. The agent should:
-   - Read existing docs in `docs/` to understand structure and style.
-   - Read `docs/prompts/make-tool.prompt.md` to check if it needs updates (e.g., new installation methods, new config options).
-   - Update relevant doc files to reflect the changes.
-   - Add new doc files only if the existing pattern requires it (e.g., a new installer gets a new `docs/installation/<method>.md`).
+   - Read the dotfiles skill references in `.rulesync/skills/dotfiles/references/` to understand structure and style.
+   - Read `.rulesync/skills/dotfiles/references/make-tool.md` to check if it needs updates (e.g., new installation methods, new config options).
+   - Update relevant reference files to reflect the changes.
    - Follow existing documentation conventions exactly.
 3. Commit the doc changes to main.
 
