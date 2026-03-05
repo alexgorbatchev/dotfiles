@@ -66,7 +66,7 @@ export default defineTool((install, ctx) => install('github-release', { repo: 'o
 | `.version(v)`         | Set version (`'latest'` or specific)                    |
 | `.dependsOn(...bins)` | Declare binary dependencies                             |
 | `.symlink(src, dest)` | Create config file symlink                              |
-| `.hook(event, fn)`    | Lifecycle hooks (details in Hooks section)               |
+| `.hook(event, fn)`    | Lifecycle hooks (details in Hooks section)              |
 | `.zsh(fn)`            | Zsh shell configuration                                 |
 | `.bash(fn)`           | Bash shell configuration                                |
 | `.powershell(fn)`     | PowerShell configuration                                |
@@ -118,17 +118,17 @@ The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
 )
 ```
 
-| Shell Method                                 | Description                                                                                   |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Shell Method                               | Description                                                                                   |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
 | `.completions(path \| config \| callback)` | Completion file, config object, or callback with `ctx.version` (generated after install only) |
-| `.env(obj)`                                  | Environment variables (PATH prohibited - use `.path()`)                                       |
-| `.path(dir)`                                 | Add directory to PATH (deduplicated)                                                          |
-| `.aliases(obj)`                              | Shell aliases                                                                                 |
-| `.functions(obj)`                            | Shell functions                                                                               |
-| `.sourceFile(path)`                          | Source a file (skips if missing)                                                              |
-| `.sourceFunction(name)`                      | Source output of a function defined via `.functions()`                                        |
-| `.always(script)`                            | Script run on every shell init                                                                |
-| `.once(script)`                              | Script run once after install                                                                 |
+| `.env(obj)`                                | Environment variables (PATH prohibited - use `.path()`)                                       |
+| `.path(dir)`                               | Add directory to PATH (deduplicated)                                                          |
+| `.aliases(obj)`                            | Shell aliases                                                                                 |
+| `.functions(obj)`                          | Shell functions                                                                               |
+| `.sourceFile(path)`                        | Source a file (skips if missing)                                                              |
+| `.sourceFunction(name)`                    | Source output of a function defined via `.functions()`                                        |
+| `.always(script)`                          | Script run on every shell init                                                                |
+| `.once(script)`                            | Script run once after install                                                                 |
 
 **Completions examples:**
 

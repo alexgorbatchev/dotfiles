@@ -117,17 +117,17 @@ export default defineTool((install, ctx) =>
 
 After calling `install()`, these methods are available:
 
-| Method                   | Purpose                                 |
-| ------------------------ | --------------------------------------- |
-| `.bin(name)`             | Define binary name(s) to expose         |
-| `.version(v)`            | Set version (`'latest'` or specific)    |
-| `.dependsOn(bin)`        | Declare binary dependencies             |
-| `.symlink(src, dest)`    | Create config file symlinks             |
-| `.hook(event, fn)`       | Lifecycle hooks                         |
-| `.zsh(fn)` / `.bash(fn)` | Shell-specific configuration            |
-| `.platform(p, fn)`       | Platform-specific overrides             |
-| `.disable()`             | Skip tool during generation             |
-| `.hostname(pattern)`     | Restrict tool to specific hostname(s)   |
+| Method                   | Purpose                               |
+| ------------------------ | ------------------------------------- |
+| `.bin(name)`             | Define binary name(s) to expose       |
+| `.version(v)`            | Set version (`'latest'` or specific)  |
+| `.dependsOn(bin)`        | Declare binary dependencies           |
+| `.symlink(src, dest)`    | Create config file symlinks           |
+| `.hook(event, fn)`       | Lifecycle hooks                       |
+| `.zsh(fn)` / `.bash(fn)` | Shell-specific configuration          |
+| `.platform(p, fn)`       | Platform-specific overrides           |
+| `.disable()`             | Skip tool during generation           |
+| `.hostname(pattern)`     | Restrict tool to specific hostname(s) |
 
 ## TypeScript Setup
 

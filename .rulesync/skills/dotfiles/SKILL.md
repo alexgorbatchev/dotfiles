@@ -49,17 +49,17 @@ Read these based on the task at hand:
 
 ## Method Selection Quick Reference
 
-| Use Case | Method | Example Tools |
-|---|---|---|
-| GitHub releases | `github-release` | fzf, ripgrep, bat |
-| Gitea/Forgejo/Codeberg | `gitea-release` | Codeberg tools |
-| Homebrew | `brew` | git, jq |
-| Rust crates | `cargo` | eza, fd |
-| npm packages | `npm` | prettier, eslint |
-| Install scripts | `curl-script` | rustup, nvm |
-| Tarball URLs | `curl-tar` | direct archives |
-| Direct binaries | `curl-binary` | single-file tools |
-| macOS DMG | `dmg` | GUI apps |
-| Custom/scripts | `manual` | deployment scripts |
-| Zsh plugins | `zsh-plugin` | zsh-vi-mode |
-| Config only | `install()` | aliases, env vars |
+| Use Case               | Method           | Example Tools      |
+| ---------------------- | ---------------- | ------------------ |
+| GitHub releases        | `github-release` | fzf, ripgrep, bat  |
+| Gitea/Forgejo/Codeberg | `gitea-release`  | Codeberg tools     |
+| Homebrew               | `brew`           | git, jq            |
+| Rust crates            | `cargo`          | eza, fd            |
+| npm packages           | `npm`            | prettier, eslint   |
+| Install scripts        | `curl-script`    | rustup, nvm        |
+| Tarball URLs           | `curl-tar`       | direct archives    |
+| Direct binaries        | `curl-binary`    | single-file tools  |
+| macOS DMG              | `dmg`            | GUI apps           |
+| Custom/scripts         | `manual`         | deployment scripts |
+| Zsh plugins            | `zsh-plugin`     | zsh-vi-mode        |
+| Config only            | `install()`      | aliases, env vars  |

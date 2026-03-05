@@ -828,8 +828,6 @@ export default defineTool((install, ctx) =>
 
       log.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
-    .zsh((shell) =>
-      shell.env({ CUSTOM_TOOL_DATA: '~/.local/share/custom-tool' }).aliases({ ct: 'custom-tool' })
-    )
+    .zsh((shell) => shell.env({ CUSTOM_TOOL_DATA: '~/.local/share/custom-tool' }).aliases({ ct: 'custom-tool' }))
 );
 ```
