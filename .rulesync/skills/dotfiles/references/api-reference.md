@@ -56,6 +56,8 @@ export default defineTool((install, ctx) => install('github-release', { repo: 'o
 ### Parameters
 
 - `install(method, params)` - Function to select installation method
+- `install(method)` - Some methods (e.g. `manual`) can be called without params
+- `install()` - Configuration-only tool (no installation method)
 - `ctx` - Context object with `projectConfig`, `toolName`, `systemInfo`
 
 ### Builder Methods

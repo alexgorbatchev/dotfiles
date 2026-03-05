@@ -181,7 +181,7 @@ export default defineTool((install, ctx) =>
 
 ### Manual
 
-Install files from your dotfiles directory (custom scripts, pre-built binaries) or configuration-only tools.
+Install files from your dotfiles directory (custom scripts, pre-built binaries) or configuration-only tools. Can be called without params: `install('manual')`.
 
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
@@ -191,6 +191,18 @@ export default defineTool((install, ctx) =>
   install('manual', {
     binaryPath: './bin/my-script.sh',
   }).bin('my-script')
+);
+
+// Without params (shell-only or dependency wrapper)
+export default defineTool((install) =>
+  install('manual')
+    .bin('tokscale')
+    .dependsOn('bun')
+    .zsh((shell) =>
+      shell.functions({
+        tokscale: `bun x tokscale@latest`,
+      })
+    )
 );
 
 // Configuration-only
@@ -1086,7 +1098,7 @@ Prefer `brew` when the tool is available as a Homebrew formula or cask. Prefer `
 
 # Manual Installation
 
-Installs files from your tool configuration directory (custom scripts, pre-built binaries) or registers configuration-only tools.
+Installs files from your tool configuration directory (custom scripts, pre-built binaries) or registers configuration-only tools. The `manual` method can be called with or without params.
 
 ## Basic Usage
 
@@ -1098,6 +1110,18 @@ export default defineTool((install, ctx) =>
   install('manual', {
     binaryPath: './scripts/my-tool.sh',
   }).bin('my-tool')
+);
+
+// Without params (shell-only or dependency wrapper)
+export default defineTool((install) =>
+  install('manual')
+    .bin('tokscale')
+    .dependsOn('bun')
+    .zsh((shell) =>
+      shell.functions({
+        tokscale: `bun x tokscale@latest`,
+      })
+    )
 );
 
 // Configuration-only tool (no binary)

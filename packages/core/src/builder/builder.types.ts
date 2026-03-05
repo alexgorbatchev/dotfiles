@@ -565,6 +565,16 @@ export interface INoBinMethodRegistry {
 type NoBinMethodKeys = Exclude<keyof INoBinMethodRegistry, '__placeholder__'>;
 
 /**
+ * Registry of installer methods that can be called without params.
+ * Plugins extend this via module augmentation.
+ */
+export interface INoParamsMethodRegistry {
+  __placeholder__?: never;
+}
+
+type NoParamsMethodKeys = Exclude<keyof INoParamsMethodRegistry, '__placeholder__'>;
+
+/**
  * Resolves the builder type based on whether the method supports .bin().
  * Methods registered in INoBinMethodRegistry get a builder without .bin().
  */
@@ -593,7 +603,8 @@ type PlatformBuilderForMethod<M extends InstallMethod> = [M] extends [NoBinMetho
  */
 export interface InstallFunction {
   <M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): ToolBuilderForMethod<M>;
-  (): IToolConfigBuilder; // For manual tools with no install params
+  <M extends NoParamsMethodKeys & InstallMethod>(method: M): ToolBuilderForMethod<M>;
+  (): IToolConfigBuilder;
 }
 
 /**
@@ -601,6 +612,7 @@ export interface InstallFunction {
  */
 export interface IPlatformInstallFunction {
   <M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): PlatformBuilderForMethod<M>;
+  <M extends NoParamsMethodKeys & InstallMethod>(method: M): PlatformBuilderForMethod<M>;
   (): IPlatformConfigBuilder;
 }
 

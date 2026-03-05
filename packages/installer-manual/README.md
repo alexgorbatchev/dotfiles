@@ -19,6 +19,18 @@ export default defineTool((install, ctx) =>
     .bin('existing-tool')
 );
 
+// Explicit manual method without params
+export default defineTool((install) =>
+  install('manual')
+    .bin('tokscale')
+    .dependsOn('bun')
+    .zsh((shell) =>
+      shell.functions({
+        tokscale: `bun x tokscale@latest`,
+      })
+    )
+);
+
 // With binary path
 export default defineTool((install, ctx) =>
   install('manual', {
@@ -120,6 +132,9 @@ This package extends the core type system via module augmentation:
 declare module '@dotfiles/core' {
   interface IInstallParamsRegistry {
     manual: ManualInstallParams;
+  }
+  interface INoParamsMethodRegistry {
+    manual: true;
   }
   interface IToolConfigRegistry {
     manual: ManualToolConfig;

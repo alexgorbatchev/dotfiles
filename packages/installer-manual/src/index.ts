@@ -11,6 +11,9 @@ declare module '@dotfiles/core' {
   interface IInstallParamsRegistry {
     manual: ManualInstallParams;
   }
+  interface INoParamsMethodRegistry {
+    manual: true;
+  }
   interface IToolConfigRegistry {
     manual: ManualToolConfig;
   }

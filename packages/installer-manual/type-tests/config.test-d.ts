@@ -41,3 +41,13 @@ expectError(() =>
     })
   )
 );
+
+defineTool((install) =>
+  install('manual')
+    .bin('tokscale')
+    .zsh((shell) =>
+      shell.functions({
+        tokscale: `bun x tokscale@latest`,
+      })
+    )
+);

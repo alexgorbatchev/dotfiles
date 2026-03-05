@@ -80,7 +80,7 @@ Select the most appropriate method based on your investigation. Prefer official,
 - **`curl-binary`**: for direct binary file downloads (no archive extraction).
   - Guide: [Curl Binary Installation Guide](installation-methods.md#curl-binary.md)
 
-- **`manual`**: for custom install logic or dotfiles-provided binaries/scripts.
+- **`manual`**: for custom install logic or dotfiles-provided binaries/scripts. Can be called without params: `install('manual')`.
   - Guide: [Manual Installation Guide](installation-methods.md#manual.md)
 
 - **`zsh-plugin`**: for zsh plugins that are cloned from Git repositories.
@@ -580,6 +580,28 @@ export default defineTool((install) =>
   })
     .bin('deploy')
     .symlink('./deploy.config.yaml', '~/.config/deploy/config.yaml')
+);
+```
+
+### Example 3b: Manual Without Params
+
+```ts
+import { defineTool } from '@gitea/dotfiles';
+
+/**
+ * tokscale - Token scaling utility via bun.
+ *
+ * https://example.com/tokscale
+ */
+export default defineTool((install) =>
+  install('manual')
+    .bin('tokscale')
+    .dependsOn('bun')
+    .zsh((shell) =>
+      shell.functions({
+        tokscale: `bun x tokscale@latest`,
+      })
+    )
 );
 ```
 

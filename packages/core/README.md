@@ -330,6 +330,11 @@ declare module '@dotfiles/core' {
     'my-method': MyMethodParams;
   }
 
+  // Optional: allow install('my-method') without params
+  interface INoParamsMethodRegistry {
+    'my-method': true;
+  }
+
   interface IToolConfigRegistry {
     'my-method': MyMethodToolConfig;
   }
