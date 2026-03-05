@@ -4,13 +4,13 @@ import { CHECK_UPDATES_COMMAND_COMPLETION } from '../checkUpdatesCommand';
 import { CLEANUP_COMMAND_COMPLETION } from '../cleanupCommand';
 import { GLOBAL_OPTIONS_COMPLETION } from '../createProgram';
 import { DETECT_CONFLICTS_COMMAND_COMPLETION } from '../detectConflictsCommand';
-import { DOCS_COMMAND_COMPLETION } from '../docsCommand';
 import { FEATURES_COMMAND_COMPLETION } from '../featuresCommand';
 import { FILES_COMMAND_COMPLETION } from '../filesCommand';
 import { GENERATE_COMMAND_COMPLETION } from '../generateCommand';
 import { ALL_COMMAND_COMPLETIONS, generateZshCompletion } from '../generateZshCompletion';
 import { INSTALL_COMMAND_COMPLETION } from '../installCommand';
 import { LOG_COMMAND_COMPLETION } from '../logCommand';
+import { SKILL_COMMAND_COMPLETION } from '../skillCommand';
 import { UPDATE_COMMAND_COMPLETION } from '../updateCommand';
 
 const EMPTY_TOOL_NAMES: string[] = [];
@@ -28,7 +28,7 @@ describe('generateZshCompletion', () => {
       expect(ALL_COMMAND_COMPLETIONS).toContain(DETECT_CONFLICTS_COMMAND_COMPLETION);
       expect(ALL_COMMAND_COMPLETIONS).toContain(LOG_COMMAND_COMPLETION);
       expect(ALL_COMMAND_COMPLETIONS).toContain(FILES_COMMAND_COMPLETION);
-      expect(ALL_COMMAND_COMPLETIONS).toContain(DOCS_COMMAND_COMPLETION);
+      expect(ALL_COMMAND_COMPLETIONS).toContain(SKILL_COMMAND_COMPLETION);
       expect(ALL_COMMAND_COMPLETIONS).toContain(FEATURES_COMMAND_COMPLETION);
     });
 
@@ -75,7 +75,7 @@ describe('generateZshCompletion', () => {
       expect(script).toContain("'detect-conflicts:");
       expect(script).toContain("'log:");
       expect(script).toContain("'files:");
-      expect(script).toContain("'docs:");
+      expect(script).toContain("'skill:");
       expect(script).toContain("'features:");
     });
 

@@ -1,38 +1,38 @@
 import type { TestLogger } from '@dotfiles/logger';
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { registerDocsCommand } from '../docsCommand';
+import { registerSkillCommand } from '../skillCommand';
 import type { IGlobalProgram, IServices } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
-describe('docsCommand', () => {
+describe('skillCommand', () => {
   let program: IGlobalProgram;
   let testLogger: TestLogger;
   let mockServices: IServices;
 
   beforeEach(async () => {
     const setup = await createCliTestSetup({
-      testName: 'docs-command',
+      testName: 'skill-command',
     });
 
     program = setup.program;
     testLogger = setup.logger;
     mockServices = setup.createServices();
 
-    registerDocsCommand(testLogger, program, async () => mockServices);
+    registerSkillCommand(testLogger, program, async () => mockServices);
   });
 
-  test('should register docs command successfully', () => {
+  test('should register skill command successfully', () => {
     const commands = program.commands;
-    const docsCommand = commands.find((cmd) => cmd.name() === 'docs');
+    const skillCommand = commands.find((cmd) => cmd.name() === 'skill');
 
-    expect(docsCommand).toBeDefined();
-    expect(docsCommand?.description()).toContain('symlink');
+    expect(skillCommand).toBeDefined();
+    expect(skillCommand?.description()).toContain('skill');
   });
 
   test('should require path argument', () => {
     const commands = program.commands;
-    const docsCommand = commands.find((cmd) => cmd.name() === 'docs');
-    const args = docsCommand?.registeredArguments;
+    const skillCommand = commands.find((cmd) => cmd.name() === 'skill');
+    const args = skillCommand?.registeredArguments;
 
     expect(args).toHaveLength(1);
     const pathArg = args?.[0];

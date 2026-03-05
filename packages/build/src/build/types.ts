@@ -57,8 +57,8 @@ export interface IBuildPaths {
   tsdTestsGeneratedDir: string;
   tsdTestsToolTypesPath: string;
 
-  docsDir: string;
-  outputDocsDir: string;
+  skillDir: string;
+  outputSkillDir: string;
 }
 
 export interface IBuildConstants {

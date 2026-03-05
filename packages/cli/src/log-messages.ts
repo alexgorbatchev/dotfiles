@@ -130,12 +130,12 @@ export const messages = {
   filesCommandShowingTree: (path: string) => createSafeLogMessage(path),
   filesCommandEmptyDirectory: () => createSafeLogMessage('(empty directory)'),
   filesCommandTree: (treeOutput: string) => createSafeLogMessage(treeOutput),
-  docsSymlinkExists: (symlinkPath: string) => createSafeLogMessage(`Symlink already exists: ${symlinkPath}`),
-  docsSymlinkDryRun: (symlinkPath: string, targetPath: string) =>
-    createSafeLogMessage(`Would create symlink: ${symlinkPath} -> ${targetPath}`),
-  docsSymlinkCreated: (symlinkPath: string, targetPath: string) =>
-    createSafeLogMessage(`Created symlink: ${symlinkPath} -> ${targetPath}`),
-  docsSymlinkFailed: (symlinkPath: string) => createSafeLogMessage(`Failed to create symlink: ${symlinkPath}`),
+  skillAlreadyExists: (destPath: string) => createSafeLogMessage(`Destination already exists, removing: ${destPath}`),
+  skillDryRun: (destPath: string, sourcePath: string) =>
+    createSafeLogMessage(`Would copy skill: ${sourcePath} -> ${destPath}`),
+  skillCopied: (destPath: string, sourcePath: string) =>
+    createSafeLogMessage(`Copied skill: ${sourcePath} -> ${destPath}`),
+  skillCopyFailed: (destPath: string) => createSafeLogMessage(`Failed to copy skill to: ${destPath}`),
   cliCompletionGenerated: (path: string) => createSafeLogMessage(`CLI completion generated: ${path}`),
   dashboardStopping: () => createSafeLogMessage('Stopping dashboard server'),
   dashboardBrowserOpenFailed: () => createSafeLogMessage('Failed to open browser'),

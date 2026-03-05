@@ -49,7 +49,6 @@ import { registerCleanupCommand } from './cleanupCommand';
 import { createProgram } from './createProgram';
 import { registerDashboardCommand } from './dashboardCommand';
 import { registerDetectConflictsCommand } from './detectConflictsCommand';
-import { registerDocsCommand } from './docsCommand';
 import { registerEnvCommand } from './envCommand';
 import { registerFeaturesCommand } from './featuresCommand';
 import { registerFilesCommand } from './filesCommand';
@@ -59,6 +58,7 @@ import { messages } from './log-messages';
 import { registerLogCommand } from './logCommand';
 import { populateMemFsForDryRun } from './populateMemFsForDryRun';
 import { resolveConfigPath } from './resolveConfigPath';
+import { registerSkillCommand } from './skillCommand';
 import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
@@ -515,7 +515,7 @@ export function registerAllCommands(
   registerDetectConflictsCommand(logger, program, servicesFactory);
   registerLogCommand(logger, program, servicesFactory);
   registerFilesCommand(logger, program, servicesFactory);
-  registerDocsCommand(logger, program, servicesFactory);
+  registerSkillCommand(logger, program, servicesFactory);
   registerDashboardCommand(logger, program, servicesFactory);
   registerEnvCommand(logger, program);
 }

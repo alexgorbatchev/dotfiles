@@ -42,8 +42,8 @@ export function createMockBuildContext(overrides?: MockBuildContextOverrides): I
     tsdTestsGiteaSymlinkPath: '/root/.tmp/tsd-tests/@gitea',
     tsdTestsGeneratedDir: '/root/.tmp/tsd-tests/.generated',
     tsdTestsToolTypesPath: '/root/.tmp/tsd-tests/.generated/tool-types.d.ts',
-    docsDir: '/root/docs',
-    outputDocsDir: '/root/.dist/docs',
+    skillDir: '/root/.rulesync/skills/dotfiles',
+    outputSkillDir: '/root/.dist/skill',
   };
 
   const defaultConstants: IBuildConstants = {

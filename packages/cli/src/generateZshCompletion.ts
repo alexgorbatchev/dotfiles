@@ -4,12 +4,12 @@ import { CHECK_UPDATES_COMMAND_COMPLETION } from './checkUpdatesCommand';
 import { CLEANUP_COMMAND_COMPLETION } from './cleanupCommand';
 import { GLOBAL_OPTIONS_COMPLETION } from './createProgram';
 import { DETECT_CONFLICTS_COMMAND_COMPLETION } from './detectConflictsCommand';
-import { DOCS_COMMAND_COMPLETION } from './docsCommand';
 import { FEATURES_COMMAND_COMPLETION } from './featuresCommand';
 import { FILES_COMMAND_COMPLETION } from './filesCommand';
 import { GENERATE_COMMAND_COMPLETION } from './generateCommandCompletion';
 import { INSTALL_COMMAND_COMPLETION } from './installCommand';
 import { LOG_COMMAND_COMPLETION } from './logCommand';
+import { SKILL_COMMAND_COMPLETION } from './skillCommand';
 import type { CompletionPositionalArgType, ICommandCompletionMeta, ICompletionOption } from './types';
 import { UPDATE_COMMAND_COMPLETION } from './updateCommand';
 
@@ -26,7 +26,7 @@ export const ALL_COMMAND_COMPLETIONS: ICommandCompletionMeta[] = [
   DETECT_CONFLICTS_COMMAND_COMPLETION,
   LOG_COMMAND_COMPLETION,
   FILES_COMMAND_COMPLETION,
-  DOCS_COMMAND_COMPLETION,
+  SKILL_COMMAND_COMPLETION,
   FEATURES_COMMAND_COMPLETION,
 ];
 

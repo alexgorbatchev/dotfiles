@@ -50,8 +50,8 @@ export function createBuildContext(): IBuildContext {
   const tsdTestsGeneratedDir: string = path.join(tsdTestsDir, '.generated');
   const tsdTestsToolTypesPath: string = path.join(tsdTestsGeneratedDir, 'tool-types.d.ts');
 
-  const docsDir: string = path.join(rootDir, 'docs');
-  const outputDocsDir: string = path.join(outputDir, 'docs');
+  const skillDir: string = path.join(rootDir, '.rulesync', 'skills', 'dotfiles');
+  const outputSkillDir: string = path.join(outputDir, 'skill');
 
   const paths: IBuildPaths = {
     rootDir,
@@ -94,8 +94,8 @@ export function createBuildContext(): IBuildContext {
     tsdTestsGeneratedDir,
     tsdTestsToolTypesPath,
 
-    docsDir,
-    outputDocsDir,
+    skillDir,
+    outputSkillDir,
   };
 
   const maxCliBundleSizeKb: number = 500;
