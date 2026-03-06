@@ -74,6 +74,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   private context?: IToolConfigContext;
 
   public symlinkPairs: { source: string; target: string; }[] = [];
+  public copyPairs: { source: string; target: string; }[] = [];
   private updateCheckConfig?: ToolConfigUpdateCheck;
   private platformConfigEntries: PlatformConfigEntry[] = [];
 
@@ -261,6 +262,22 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   symlink(source: string, target: string): this {
     this.symlinkPairs.push({ source, target });
+    return this;
+  }
+
+  /**
+   * Defines a file or directory to be copied.
+   *
+   * This is useful for configuration files that should be independently editable
+   * at the target location, unlike symlinks which reference the original file.
+   * **This method can be called multiple times**.
+   *
+   * @param source - The path to the source file or directory, relative to the location of the current `.tool.ts` file.
+   * @param target - The absolute path where the copy should be placed.
+   * @returns The `IToolConfigBuilder` instance for chaining.
+   */
+  copy(source: string, target: string): this {
+    this.copyPairs.push({ source, target });
     return this;
   }
 
@@ -475,6 +492,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       hostname: this.hostnamePattern,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
+      copies: this.copyPairs.length > 0 ? this.copyPairs : undefined,
       updateCheck: this.updateCheckConfig,
       dependencies: this.dependencies.length > 0 ? [...this.dependencies] : undefined,
       platformConfigs: this.isPlatformScope
@@ -502,6 +520,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       version: this.versionNum !== 'latest' ? this.versionNum : undefined,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
+      copies: this.copyPairs.length > 0 ? this.copyPairs : undefined,
       updateCheck: this.updateCheckConfig,
       dependencies: this.dependencies.length > 0 ? [...this.dependencies] : undefined,
     };
@@ -616,6 +635,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     const hasContent = finalBinaries.length > 0 ||
       baseConfig.shellConfigs ||
       baseConfig.symlinks ||
+      baseConfig.copies ||
       (baseConfig.platformConfigs && baseConfig.platformConfigs.length > 0);
 
     if (!hasContent) {

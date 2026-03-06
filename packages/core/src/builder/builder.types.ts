@@ -436,6 +436,13 @@ export interface IToolConfigBuilder {
   symlink(source: string, target: string): this;
 
   /**
+   * Copy a file or directory from source to target.
+   * @param source - The source path (what to copy from)
+   * @param target - The target path (where to copy to)
+   */
+  copy(source: string, target: string): this;
+
+  /**
    * Add platform-specific configuration overrides.
    * @param platforms - Target platform(s): 'macos', 'linux', 'windows', or array
    * @param configure - Function to configure platform-specific settings
@@ -546,6 +553,13 @@ export interface IPlatformConfigBuilder {
    * @param target - The target path (where to create the symlink)
    */
   symlink(source: string, target: string): this;
+
+  /**
+   * Copy a file or directory from source to target.
+   * @param source - The source path (what to copy from)
+   * @param target - The target path (where to copy to)
+   */
+  copy(source: string, target: string): this;
 }
 
 /**

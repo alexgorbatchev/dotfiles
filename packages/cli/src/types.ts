@@ -12,7 +12,7 @@ import type { IFileRegistry } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
-import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
+import type { ICopyGenerator, ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import type { IVersionChecker } from '@dotfiles/version-checker';
 import type { Command } from 'commander';
 
@@ -69,6 +69,7 @@ export interface IServices {
   shimGenerator: IShimGenerator;
   shellInitGenerator: IShellInitGenerator;
   symlinkGenerator: ISymlinkGenerator;
+  copyGenerator: ICopyGenerator;
   completionGenerator: ICompletionGenerator;
   generatorOrchestrator: IGeneratorOrchestrator;
   readmeService: IReadmeService;

@@ -11,7 +11,12 @@ import { TestLogger } from '@dotfiles/logger';
 import { createMockFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
-import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
+import type {
+  CopyOperationResult,
+  ICopyGenerator,
+  ISymlinkGenerator,
+  SymlinkOperationResult,
+} from '@dotfiles/symlink-generator';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { beforeEach, describe, it, mock } from 'bun:test';
 import path from 'node:path';
@@ -21,6 +26,7 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
   let mockShimGenerator: IShimGenerator;
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
+  let mockCopyGenerator: ICopyGenerator;
   let mockCompletionGenerator: ICompletionGenerator;
   let mockFileSystem: IResolvedFileSystem;
   let mockProjectConfig: ProjectConfig;
@@ -50,6 +56,9 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
     mockSymlinkGenerator = {
       generate: mock(async () => Promise.resolve([] as SymlinkOperationResult[])),
       createBinarySymlink: mock(async () => {}),
+    };
+    mockCopyGenerator = {
+      generate: mock(async () => Promise.resolve([] as CopyOperationResult[])),
     };
     mockCompletionGenerator = {
       generateCompletionFile: mock(async () =>
@@ -107,6 +116,7 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
       mockShimGenerator,
       mockShellInitGenerator,
       mockSymlinkGenerator,
+      mockCopyGenerator,
       mockCompletionGenerator,
       systemInfo,
       mockProjectConfig,

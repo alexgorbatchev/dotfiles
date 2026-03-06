@@ -37,7 +37,7 @@ import { FileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/r
 import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { CompletionCommandExecutor, CompletionGenerator, ShellInitGenerator } from '@dotfiles/shell-init-generator';
 import { ShimGenerator } from '@dotfiles/shim-generator';
-import { SymlinkGenerator } from '@dotfiles/symlink-generator';
+import { CopyGenerator, SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { VersionChecker } from '@dotfiles/version-checker';
 import net from 'node:net';
 import os from 'node:os';
@@ -168,6 +168,7 @@ function createTrackedFileSystems(
   shimTrackedFs: TrackedFileSystem;
   shellInitTrackedFs: TrackedFileSystem;
   symlinkTrackedFs: TrackedFileSystem;
+  copyTrackedFs: TrackedFileSystem;
   installerTrackedFs: TrackedFileSystem;
   catalogTrackedFs: TrackedFileSystem;
   completionTrackedFs: TrackedFileSystem;
@@ -193,6 +194,14 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'symlink'),
+    projectConfig,
+  );
+
+  const copyTrackedFs = new TrackedFileSystem(
+    parentLogger,
+    fs,
+    fileRegistry,
+    TrackedFileSystem.createContext('system', 'copy'),
     projectConfig,
   );
 
@@ -224,6 +233,7 @@ function createTrackedFileSystems(
     shimTrackedFs,
     shellInitTrackedFs,
     symlinkTrackedFs,
+    copyTrackedFs,
     installerTrackedFs,
     catalogTrackedFs,
     completionTrackedFs,
@@ -350,6 +360,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     shimTrackedFs,
     shellInitTrackedFs,
     symlinkTrackedFs,
+    copyTrackedFs,
     installerTrackedFs,
     catalogTrackedFs,
     completionTrackedFs,
@@ -360,6 +371,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   const shellInitGenerator = new ShellInitGenerator(systemLogger, shellInitTrackedFs, projectConfig);
   const symlinkGenerator = new SymlinkGenerator(systemLogger, symlinkTrackedFs, projectConfig, systemInfo);
+  const copyGenerator = new CopyGenerator(systemLogger, copyTrackedFs, projectConfig, systemInfo);
   const completionCommandExecutor = new CompletionCommandExecutor(systemLogger, shell);
 
   const archiveExtractor = new ArchiveExtractor(parentLogger, resolvedFs, shell);
@@ -440,6 +452,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     shimGenerator,
     shellInitGenerator,
     symlinkGenerator,
+    copyGenerator,
     completionGenerator,
     systemInfo,
     projectConfig,
@@ -489,6 +502,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     shimGenerator,
     shellInitGenerator,
     symlinkGenerator,
+    copyGenerator,
     completionGenerator,
     generatorOrchestrator,
     installer,

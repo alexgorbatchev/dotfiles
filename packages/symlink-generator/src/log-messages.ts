@@ -32,4 +32,19 @@ export const messages = {
       createSafeLogMessage(`Successfully created symlink: ${symlinkPath} -> ${targetPath}`),
     removingBrokenSymlink: (symlinkPath: string) => createSafeLogMessage(`Removing broken symlink: ${symlinkPath}`),
   } satisfies SafeLogMessageMap,
+  copy: {
+    processingTool: (toolName: string) => createSafeLogMessage(`Processing copies for tool "${toolName}"`),
+    missingToolConfig: (toolName: string) =>
+      createSafeLogMessage(`Tool config for "${toolName}" is undefined. Skipping.`),
+    copyDetails: (source: string, sourceAbs: string, target: string, targetAbs: string) =>
+      createSafeLogMessage(
+        `Processing copy: source="${source}" (abs: "${sourceAbs}"), target="${target}" (abs: "${targetAbs}")`,
+      ),
+    sourceMissing: (toolName: string, sourceAbsPath: string) =>
+      createSafeLogMessage(`Tool "${toolName}" source file not found: ${sourceAbsPath}`),
+    targetExists: (targetAbsPath: string) => createSafeLogMessage(`Target path "${targetAbsPath}" already exists.`),
+    skipExistingTarget: (targetAbsPath: string) =>
+      createSafeLogMessage(`Target "${targetAbsPath}" exists and overwrite is false. Skipping copy.`),
+    copyFailed: (source: string, target: string) => createSafeLogMessage(`Failed to copy ${source} → ${target}`),
+  } satisfies SafeLogMessageMap,
 } as const;

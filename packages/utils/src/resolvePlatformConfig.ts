@@ -188,6 +188,11 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: ISyste
       finalConfig.symlinks = [...(finalConfig.symlinks || []), ...config.symlinks];
     }
 
+    // Merge copies arrays
+    if (config.copies) {
+      finalConfig.copies = [...(finalConfig.copies || []), ...config.copies];
+    }
+
     // Override other properties
     applyPlatformOverrides(finalConfig, config);
   }

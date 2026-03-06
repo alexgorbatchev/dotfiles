@@ -44,6 +44,8 @@ export const messages = {
       createSafeLogMessage(`Skipping completion generation for ${toolName} (${shellType}) - tool not installed yet`),
     symlinkGenerationComplete: (resultCount: number) =>
       createSafeLogMessage(`Symlink generation completed with ${resultCount} operations recorded`),
+    copyGenerationComplete: (resultCount: number) =>
+      createSafeLogMessage(`Copy generation completed with ${resultCount} operations recorded`),
   } satisfies SafeLogMessageMap,
   cleanup: {
     started: (toolName: string) => createSafeLogMessage(`Cleaning up artifacts for disabled tool: ${toolName}`),
@@ -64,5 +66,9 @@ export const messages = {
   staleSymlinkCleanup: {
     removing: (filePath: string, toolName: string) =>
       createSafeLogMessage(`Removing stale symlink ${filePath} for tool: ${toolName}`),
+  } satisfies SafeLogMessageMap,
+  staleCopyCleanup: {
+    removing: (filePath: string, toolName: string) =>
+      createSafeLogMessage(`Removing stale copy ${filePath} for tool: ${toolName}`),
   } satisfies SafeLogMessageMap,
 } as const;

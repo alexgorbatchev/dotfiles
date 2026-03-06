@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { shellConfigsSchema } from '../shell/shellConfigsSchema';
 import { toolConfigUpdateCheckSchema } from '../toolConfigUpdateCheckSchema';
 import { binaryConfigSchema } from './binaryConfigSchema';
+import { copyConfigSchema } from './copyConfigSchema';
 import { symlinkConfigSchema } from './symlinkConfigSchema';
 
 /**
@@ -40,6 +41,13 @@ export const commonToolConfigPropertiesSchema = z
      * Analogous to `ln -s source target`.
      */
     symlinks: z.array(symlinkConfigSchema).optional(),
+    /**
+     * An array of copy configurations, added via `c.copy()`. Each object has `source` and `target` paths where
+     * `source` is the real file or directory and `target` is the destination.
+     *
+     * Analogous to `cp -r source target`.
+     */
+    copies: z.array(copyConfigSchema).optional(),
     /**
      * Configuration for automatic update checking for this tool.
      */

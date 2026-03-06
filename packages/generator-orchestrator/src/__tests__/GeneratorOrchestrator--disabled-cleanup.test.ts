@@ -6,7 +6,12 @@ import { TestLogger } from '@dotfiles/logger';
 import type { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
-import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
+import type {
+  CopyOperationResult,
+  ICopyGenerator,
+  ISymlinkGenerator,
+  SymlinkOperationResult,
+} from '@dotfiles/symlink-generator';
 import {
   createMockFileRegistry,
   createMockProjectConfig,
@@ -34,6 +39,7 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
   let mockShimGenerator: IShimGenerator;
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
+  let mockCopyGenerator: ICopyGenerator;
   let mockCompletionGenerator: ICompletionGenerator;
   let mockFileSystem: IFileSystem;
   let mockProjectConfig: ProjectConfig;
@@ -62,6 +68,9 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
     mockSymlinkGenerator = {
       generate: mock(async () => Promise.resolve([] as SymlinkOperationResult[])),
       createBinarySymlink: mock(async () => {}),
+    };
+    mockCopyGenerator = {
+      generate: mock(async () => Promise.resolve([] as CopyOperationResult[])),
     };
     mockCompletionGenerator = {
       generateCompletionFile: mock(async () =>
@@ -112,6 +121,7 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
       mockShimGenerator,
       mockShellInitGenerator,
       mockSymlinkGenerator,
+      mockCopyGenerator,
       mockCompletionGenerator,
       systemInfo,
       mockProjectConfig,

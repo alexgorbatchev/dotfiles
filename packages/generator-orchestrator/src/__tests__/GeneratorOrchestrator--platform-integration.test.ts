@@ -11,7 +11,12 @@ import type {
   IShellInitGenerator,
 } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
-import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
+import type {
+  CopyOperationResult,
+  ICopyGenerator,
+  ISymlinkGenerator,
+  SymlinkOperationResult,
+} from '@dotfiles/symlink-generator';
 import {
   createMockFileRegistry,
   createMockProjectConfig,
@@ -77,6 +82,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
   let mockShimGenerator: IShimGenerator;
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
+  let mockCopyGenerator: ICopyGenerator;
   let mockCompletionGenerator: ICompletionGenerator;
   let mockProjectConfig: ProjectConfig;
   let macosSystemInfo: ISystemInfo;
@@ -140,6 +146,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       createBinarySymlink: async () => {},
     };
 
+    mockCopyGenerator = {
+      generate: async () => Promise.resolve([] as CopyOperationResult[]),
+    };
+
     mockCompletionGenerator = {
       generateCompletionFile: async () =>
         Promise.resolve({
@@ -176,6 +186,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShimGenerator,
         mockShellInitGenerator,
         mockSymlinkGenerator,
+        mockCopyGenerator,
         mockCompletionGenerator,
         macosSystemInfo, // macOS system info
         mockProjectConfig,
@@ -232,6 +243,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShimGenerator,
         mockShellInitGenerator,
         mockSymlinkGenerator,
+        mockCopyGenerator,
         mockCompletionGenerator,
         linuxSystemInfo, // Linux system info
         mockProjectConfig,
@@ -293,6 +305,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShimGenerator,
         mockShellInitGenerator,
         mockSymlinkGenerator,
+        mockCopyGenerator,
         mockCompletionGenerator,
         linuxSystemInfo,
         mockProjectConfig,
@@ -334,6 +347,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShimGenerator,
         mockShellInitGenerator,
         mockSymlinkGenerator,
+        mockCopyGenerator,
         mockCompletionGenerator,
         macosSystemInfo,
         mockProjectConfig,

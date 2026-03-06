@@ -20,7 +20,14 @@ import type {
   PluginShellInitMap,
 } from '@dotfiles/shell-init-generator';
 import type { IGenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-generator';
-import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
+import type {
+  CopyOperationResult,
+  ICopyGenerator,
+  IGenerateCopiesOptions,
+  IGenerateSymlinksOptions,
+  ISymlinkGenerator,
+  SymlinkOperationResult,
+} from '@dotfiles/symlink-generator';
 import { resolveValue } from '@dotfiles/unwrap-value';
 import { resolvePlatformConfig } from '@dotfiles/utils';
 import { randomUUID } from 'node:crypto';
@@ -33,7 +40,7 @@ import { orderToolConfigsByDependencies } from './orderToolConfigsByDependencies
  * File types that should be cleaned up when a tool is disabled.
  * Binary files are intentionally excluded to preserve downloaded tools.
  */
-const CLEANABLE_FILE_TYPES: Set<IFileState['fileType']> = new Set(['shim', 'symlink', 'completion']);
+const CLEANABLE_FILE_TYPES: Set<IFileState['fileType']> = new Set(['shim', 'symlink', 'copy', 'completion']);
 
 /**
  * Orchestrates the generation of all dotfiles artifacts.
@@ -48,6 +55,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly shimGenerator: IShimGenerator;
   private readonly shellInitGenerator: IShellInitGenerator;
   private readonly symlinkGenerator: ISymlinkGenerator;
+  private readonly copyGenerator: ICopyGenerator;
   private readonly completionGenerator: ICompletionGenerator;
   private readonly systemInfo: ISystemInfo;
   private readonly projectConfig: ProjectConfig;
@@ -74,6 +82,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     shimGenerator: IShimGenerator,
     shellInitGenerator: IShellInitGenerator,
     symlinkGenerator: ISymlinkGenerator,
+    copyGenerator: ICopyGenerator,
     completionGenerator: ICompletionGenerator,
     systemInfo: ISystemInfo,
     projectConfig: ProjectConfig,
@@ -87,6 +96,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     this.shimGenerator = shimGenerator;
     this.shellInitGenerator = shellInitGenerator;
     this.symlinkGenerator = symlinkGenerator;
+    this.copyGenerator = copyGenerator;
     this.completionGenerator = completionGenerator;
     this.systemInfo = systemInfo;
     this.projectConfig = projectConfig;
@@ -196,8 +206,15 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     const symlinkResultCount = symlinkResults?.length ?? 0;
     logger.debug(messages.generateAll.symlinkGenerationComplete(symlinkResultCount));
 
-    // 4. Clean up stale symlinks for enabled tools
+    // 4. Generate Copies
+    const copyOptions: IGenerateCopiesOptions = { overwrite: true, backup: true };
+    const copyResults: CopyOperationResult[] = await this.copyGenerator.generate(orderedToolConfigs, copyOptions);
+    const copyResultCount = copyResults?.length ?? 0;
+    logger.debug(messages.generateAll.copyGenerationComplete(copyResultCount));
+
+    // 5. Clean up stale symlinks and copies for enabled tools
     await this.cleanupStaleSymlinks(orderedToolConfigs, symlinkResults);
+    await this.cleanupStaleCopies(orderedToolConfigs, copyResults);
   }
 
   /**
@@ -487,6 +504,58 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
           });
         } catch (error) {
           logger.debug(messages.cleanup.deleteError(trackedSymlink.filePath, error));
+        }
+      }
+    }
+  }
+
+  /**
+   * Cleans up stale copies for enabled tools.
+   *
+   * After copies are generated, this method compares the set of currently declared
+   * copies against previously tracked copies in the FileRegistry. Any tracked
+   * copy that is no longer declared is removed from disk.
+   *
+   * @param toolConfigs - The enabled tool configurations that were just processed.
+   * @param copyResults - The results from copy generation.
+   */
+  private async cleanupStaleCopies(
+    toolConfigs: Record<string, ToolConfig>,
+    copyResults: CopyOperationResult[],
+  ): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'cleanupStaleCopies' });
+
+    const generatedTargetPaths: Set<string> = new Set(
+      copyResults.filter((r) => r.success).map((r) => r.targetPath),
+    );
+
+    for (const toolName of Object.keys(toolConfigs)) {
+      const fileStates = await this.fileRegistry.getFileStatesForTool(toolName);
+      const trackedCopies = fileStates.filter(
+        (state) => state.fileType === 'copy' && state.lastOperation === 'cp',
+      );
+
+      for (const trackedCopy of trackedCopies) {
+        if (generatedTargetPaths.has(trackedCopy.filePath)) {
+          continue;
+        }
+
+        logger.warn(messages.staleCopyCleanup.removing(trackedCopy.filePath, toolName));
+
+        try {
+          const fileExists = await this.fs.exists(trackedCopy.filePath);
+          if (fileExists) {
+            await this.fs.rm(trackedCopy.filePath, { recursive: true, force: true });
+          }
+          await this.fileRegistry.recordOperation({
+            toolName,
+            operationType: 'rm',
+            filePath: trackedCopy.filePath,
+            fileType: 'copy',
+            operationId: randomUUID(),
+          });
+        } catch (error) {
+          logger.debug(messages.cleanup.deleteError(trackedCopy.filePath, error));
         }
       }
     }

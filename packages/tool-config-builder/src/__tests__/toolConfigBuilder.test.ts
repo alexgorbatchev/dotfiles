@@ -32,6 +32,7 @@ describe('IToolConfigBuilder', () => {
     expect(builder.binaries).toEqual([]);
     expect(builder.shellConfigs.zsh.scripts).toEqual([]);
     expect(builder.symlinkPairs).toEqual([]);
+    expect(builder.copyPairs).toEqual([]);
     expect(builder.currentInstallationMethod).toBeUndefined();
     expect(builder.currentInstallParams).toBeUndefined();
   });
@@ -229,6 +230,26 @@ describe('IToolConfigBuilder', () => {
       { source: 'configs/.mytoolrc', target: '~/.mytoolrc' },
       { source: 'configs/another.conf', target: '~/.config/another.conf' },
     ]);
+  });
+
+  test('copy method adds copies correctly', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+    builder.copy('configs/.mytoolrc', '~/.mytoolrc');
+    builder.copy('configs/another.conf', '~/.config/another.conf');
+    expect(builder.build().copies).toEqual([
+      { source: 'configs/.mytoolrc', target: '~/.mytoolrc' },
+      { source: 'configs/another.conf', target: '~/.config/another.conf' },
+    ]);
+  });
+
+  test('build method returns ManualToolConfig if only copies are present', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+    builder.copy('a', 'b');
+    const config = builder.build();
+    expect(config.installationMethod).toBe('manual');
+    expect(config.installParams).toEqual({});
+    expect(config.binaries).toEqual([]);
+    expect(config.copies).toEqual([{ source: 'a', target: 'b' }]);
   });
 
   test('build method returns correct ToolConfig object for github-release', () => {
