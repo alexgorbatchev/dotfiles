@@ -1,7 +1,6 @@
 import { NodeFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { CONFIG_FILE_NAME, ENV_DIR_VAR } from '@dotfiles/virtual-env';
-import os from 'node:os';
 import path from 'node:path';
 import { messages } from './log-messages';
 
@@ -13,31 +12,37 @@ export const DEFAULT_CONFIG_FILES: string[] = ['dotfiles.config.ts'];
 
 const BOUNDARY_MARKERS: string[] = ['project.json', '.git'];
 
+export interface ProcessInfo {
+  cwd: string;
+  homeDir: string;
+}
+
 /**
  * Resolves the configuration file path.
  *
  * If an explicit config path is provided via CLI, it is resolved relative to cwd.
- * If no config is provided, searches for default config files in order of priority.
+ * If no config is provided, walks up the directory tree searching for default config files.
+ * Stops at project boundaries (project.json, .git) or $HOME.
  *
  * @param parentLogger - Parent logger instance for logging.
  * @param configOption - The --config CLI option value (empty string if not provided).
- * @param cwd - Current working directory for path resolution.
+ * @param processInfo - Process-derived values: cwd and homeDir.
  * @returns Absolute path to the configuration file, or undefined if not found.
  */
 export async function resolveConfigPath(
   parentLogger: TsLogger,
   configOption: string,
-  cwd: string,
+  processInfo: ProcessInfo,
 ): Promise<string | undefined> {
   const logger = parentLogger.getSubLogger({ name: 'resolveConfigPath' });
 
-  const bootstrapHomeDir: string = os.homedir();
+  const { cwd, homeDir } = processInfo;
   const nodeFs = new NodeFileSystem();
 
   // If explicit config path provided, resolve it relative to cwd
   if (configOption.length > 0) {
     const expandedConfigOption: string = configOption.startsWith('~')
-      ? configOption.replace(/^~(?=$|\/|\\)/, bootstrapHomeDir)
+      ? configOption.replace(/^~(?=$|\/|\\)/, homeDir)
       : configOption;
 
     const resolvedPath = path.resolve(cwd, expandedConfigOption);
@@ -56,7 +61,6 @@ export async function resolveConfigPath(
   }
 
   // Search for default config files, walking up the directory tree
-  const homeDir: string = bootstrapHomeDir;
   let currentDir: string = cwd;
 
   while (true) {

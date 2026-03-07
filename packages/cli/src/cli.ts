@@ -249,7 +249,10 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const systemInfo = createSystemInfo(options, logger);
 
   // Resolve config path - if explicit path provided use it, otherwise search for default config files
-  const userConfigPath = await resolveConfigPath(logger, config, process.cwd());
+  const userConfigPath = await resolveConfigPath(logger, config, {
+    cwd: process.cwd(),
+    homeDir: systemInfo.homeDir,
+  });
 
   if (!userConfigPath) {
     logger.error(messages.configNotFound());
