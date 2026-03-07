@@ -162,6 +162,6 @@ describe('generateDistPackageJson', () => {
     expect(packageJson.files).toContain('*.js.map');
     expect(packageJson.files).toContain('*.d.ts');
     expect(packageJson.files).toContain('*.css');
-    expect(packageJson.files).toContain('docs');
+    expect(packageJson.files).toContain('skill');
   });
 });

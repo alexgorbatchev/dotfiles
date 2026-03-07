@@ -33,7 +33,7 @@ export async function generateDistPackageJson(
         },
       },
     },
-    files: ['*.js', '*.js.map', '*.d.ts', '*.css', 'docs'],
+    files: ['*.js', '*.js.map', '*.d.ts', '*.css', 'skill'],
     publishConfig: {
       registry: 'https://git.example.com/api/packages/alex/npm/',
     },

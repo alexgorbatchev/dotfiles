@@ -29,7 +29,7 @@ export const FIXTURE_EXPECTED_PACKAGE_JSON_SHAPE = {
       },
     },
   },
-  files: ['cli.js', 'cli.js.map', 'schemas.d.ts', 'tool-types.d.ts', 'docs'],
+  files: ['cli.js', 'cli.js.map', 'schemas.d.ts', 'tool-types.d.ts', 'skill'],
 };
 
 export const FIXTURE_REQUIRED_DEPENDENCY_FIELDS = ['zod', '@types/bun', '@types/node'];
