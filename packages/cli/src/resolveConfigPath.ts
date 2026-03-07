@@ -11,6 +11,8 @@ import { messages } from './log-messages';
  */
 export const DEFAULT_CONFIG_FILES: string[] = ['dotfiles.config.ts'];
 
+const BOUNDARY_MARKERS: string[] = ['project.json', '.git'];
+
 /**
  * Resolves the configuration file path.
  *
@@ -53,15 +55,37 @@ export async function resolveConfigPath(
     }
   }
 
-  // Search for default config files in order of priority
-  for (const fileName of DEFAULT_CONFIG_FILES) {
-    const configPath = path.join(cwd, fileName);
-    if (await nodeFs.exists(configPath)) {
-      logger.debug(messages.configPathResolved(configPath));
-      return configPath;
+  // Search for default config files, walking up the directory tree
+  const homeDir: string = bootstrapHomeDir;
+  let currentDir: string = cwd;
+
+  while (true) {
+    for (const fileName of DEFAULT_CONFIG_FILES) {
+      const configPath = path.join(currentDir, fileName);
+      if (await nodeFs.exists(configPath)) {
+        logger.debug(messages.configPathResolved(configPath));
+        return configPath;
+      }
     }
+
+    // Stop at $HOME (after checking it for config)
+    if (currentDir === homeDir) {
+      break;
+    }
+
+    // Stop at boundary markers: project.json or .git
+    for (const marker of BOUNDARY_MARKERS) {
+      if (await nodeFs.exists(path.join(currentDir, marker))) {
+        return undefined;
+      }
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      break;
+    }
+    currentDir = parentDir;
   }
 
-  // No config file found
   return undefined;
 }

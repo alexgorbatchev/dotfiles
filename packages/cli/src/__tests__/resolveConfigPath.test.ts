@@ -65,7 +65,8 @@ describe('resolveConfigPath', () => {
       expect(result).toBe('/project/dotfiles.config.ts');
     });
 
-    it('checks files in priority order', async () => {
+    it('checks config files then boundary markers at each level', async () => {
+      const homedirSpy = spyOn(os, 'homedir').mockReturnValue('/');
       const checkedPaths: string[] = [];
       existsSpy.mockImplementation(async (filePath: string) => {
         checkedPaths.push(filePath);
@@ -74,7 +75,14 @@ describe('resolveConfigPath', () => {
 
       await resolveConfigPath(logger, '', '/project');
 
-      expect(checkedPaths).toEqual(['/project/dotfiles.config.ts']);
+      expect(checkedPaths).toEqual([
+        '/project/dotfiles.config.ts',
+        '/project/project.json',
+        '/project/.git',
+        '/dotfiles.config.ts',
+      ]);
+
+      homedirSpy.mockRestore();
     });
 
     it('returns undefined when no default config files exist', async () => {
@@ -98,6 +106,104 @@ describe('resolveConfigPath', () => {
         [],
         ['Using configuration: /project/dotfiles.config.ts'],
       );
+    });
+
+    describe('directory walk-up', () => {
+      let homedirSpy: ReturnType<typeof spyOn>;
+
+      beforeEach(() => {
+        homedirSpy = spyOn(os, 'homedir').mockReturnValue('/home/user');
+      });
+
+      afterEach(() => {
+        homedirSpy.mockRestore();
+      });
+
+      it('finds config in parent directory when not in cwd', async () => {
+        existsSpy.mockImplementation(async (filePath: string) => {
+          return filePath === '/home/user/project/dotfiles.config.ts';
+        });
+
+        const result = await resolveConfigPath(logger, '', '/home/user/project/subdir');
+
+        expect(result).toBe('/home/user/project/dotfiles.config.ts');
+      });
+
+      it('finds config in grandparent directory', async () => {
+        existsSpy.mockImplementation(async (filePath: string) => {
+          return filePath === '/home/user/project/dotfiles.config.ts';
+        });
+
+        const result = await resolveConfigPath(logger, '', '/home/user/project/sub/deep');
+
+        expect(result).toBe('/home/user/project/dotfiles.config.ts');
+      });
+
+      it('stops walking at directory containing .git', async () => {
+        existsSpy.mockImplementation(async (filePath: string) => {
+          if (filePath === '/home/user/project/.git') return true;
+          if (filePath === '/home/user/dotfiles.config.ts') return true;
+          return false;
+        });
+
+        const result = await resolveConfigPath(logger, '', '/home/user/project/subdir');
+
+        expect(result).toBeUndefined();
+      });
+
+      it('stops walking at directory containing project.json', async () => {
+        existsSpy.mockImplementation(async (filePath: string) => {
+          if (filePath === '/home/user/project/project.json') return true;
+          if (filePath === '/home/user/dotfiles.config.ts') return true;
+          return false;
+        });
+
+        const result = await resolveConfigPath(logger, '', '/home/user/project/subdir');
+
+        expect(result).toBeUndefined();
+      });
+
+      it('stops walking at $HOME', async () => {
+        existsSpy.mockImplementation(async (filePath: string) => {
+          if (filePath === '/home/user/dotfiles.config.ts') return true;
+          return false;
+        });
+
+        const result = await resolveConfigPath(logger, '', '/home/user/project/subdir');
+
+        expect(result).toBe('/home/user/dotfiles.config.ts');
+      });
+
+      it('does not walk above $HOME', async () => {
+        existsSpy.mockImplementation(async (filePath: string) => {
+          if (filePath === '/home/dotfiles.config.ts') return true;
+          return false;
+        });
+
+        const result = await resolveConfigPath(logger, '', '/home/user/project');
+
+        expect(result).toBeUndefined();
+      });
+
+      it('checks config before boundary markers in the same directory', async () => {
+        existsSpy.mockImplementation(async (filePath: string) => {
+          if (filePath === '/home/user/project/dotfiles.config.ts') return true;
+          if (filePath === '/home/user/project/.git') return true;
+          return false;
+        });
+
+        const result = await resolveConfigPath(logger, '', '/home/user/project/subdir');
+
+        expect(result).toBe('/home/user/project/dotfiles.config.ts');
+      });
+
+      it('returns undefined when no config found up to boundary', async () => {
+        existsSpy.mockResolvedValue(false);
+
+        const result = await resolveConfigPath(logger, '', '/home/user/project/subdir');
+
+        expect(result).toBeUndefined();
+      });
     });
   });
 
