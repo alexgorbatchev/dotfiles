@@ -111,6 +111,13 @@ export class ShimGenerator implements IShimGenerator {
       return generatedShimPaths;
     }
 
+    // Manual tools without binaryPath can't produce binaries in the staging dir.
+    // The command should come from shell functions, not a shim.
+    if (resolvedConfig.installationMethod === 'manual' && !resolvedConfig.installParams?.binaryPath) {
+      logger.warn(messages.generateForTool.skippedManualNoBinaryPath());
+      return generatedShimPaths;
+    }
+
     // For externally managed tools (e.g., Homebrew), only generate shims if not yet installed.
     // After installation, the tool's binaries are in their own PATH location (e.g., /opt/homebrew/bin).
     if (this.externallyManagedMethods.has(resolvedConfig.installationMethod)) {

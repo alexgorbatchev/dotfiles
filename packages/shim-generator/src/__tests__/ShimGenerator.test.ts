@@ -79,7 +79,9 @@ describe('ShimGenerator', () => {
       binaries: ['my-tool-binary'],
       version: '1.0.0',
       installationMethod: 'manual',
-      installParams: {},
+      installParams: {
+        binaryPath: '/usr/local/bin/my-tool',
+      },
     };
     let expectedShimPath: string;
     let expectedBinaryPath: string;
@@ -173,6 +175,29 @@ describe('ShimGenerator', () => {
       expect(result).toEqual([]);
       expect(fsMocks.writeFile).not.toHaveBeenCalled();
       expect(fsMocks.chmod).not.toHaveBeenCalled();
+    });
+
+    it('should skip shim generation and warn when manual tool has .bin() but no binaryPath', async () => {
+      const manualNoBinaryPath: ToolConfig = {
+        name: toolName,
+        version: '1.0.0',
+        binaries: ['tokscale'],
+        installationMethod: 'manual',
+        installParams: {},
+      };
+
+      const result = await shimGenerator.generateForTool(toolName, manualNoBinaryPath);
+
+      expect(result).toEqual([]);
+      expect(fsMocks.writeFile).not.toHaveBeenCalled();
+      expect(fsMocks.chmod).not.toHaveBeenCalled();
+
+      logger.expect(
+        ['WARN'],
+        ['ShimGenerator', 'generateForTool'],
+        [toolName],
+        [/manual tool has \.bin\(\) but no binaryPath/],
+      );
     });
 
     it('should skip shim generation when toolConfig.binaries is empty and tool is not configuration-only', async () => {
@@ -328,7 +353,9 @@ describe('ShimGenerator', () => {
         binaries: ['test-tool'],
         version: '1.0.0',
         installationMethod: 'manual',
-        installParams: {},
+        installParams: {
+          binaryPath: '/usr/local/bin/test-tool',
+        },
       };
 
       await shimGenerator.generateForTool('test-tool', toolConfig);
@@ -352,7 +379,9 @@ describe('ShimGenerator', () => {
         binaries: ['test-tool'],
         version: '1.0.0',
         installationMethod: 'manual',
-        installParams: {},
+        installParams: {
+          binaryPath: '/usr/local/bin/test-tool',
+        },
       };
 
       await shimGenerator.generateForTool('test-tool', toolConfig);
@@ -374,7 +403,9 @@ describe('ShimGenerator', () => {
         binaries: ['test-tool'],
         version: '1.0.0',
         installationMethod: 'manual',
-        installParams: {},
+        installParams: {
+          binaryPath: '/usr/local/bin/test-tool',
+        },
       };
 
       await shimGenerator.generateForTool('test-tool', toolConfig);
@@ -393,7 +424,9 @@ describe('ShimGenerator', () => {
       binaries: ['test-tool'],
       version: '1.0.0',
       installationMethod: 'manual',
-      installParams: {},
+      installParams: {
+        binaryPath: '/usr/local/bin/test-tool',
+      },
     };
 
     it('should skip and log error when non-shim file exists at target location', async () => {
@@ -628,7 +661,9 @@ describe('ShimGenerator', () => {
         version: '1.0.0',
         binaries: ['root-binary'], // Root level binary
         installationMethod: 'manual',
-        installParams: {},
+        installParams: {
+          binaryPath: '/usr/local/bin/root-binary',
+        },
         platformConfigs: [
           {
             platforms: Platform.Linux,

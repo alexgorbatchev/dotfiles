@@ -41,8 +41,6 @@ describe('E2E: dependency resolution', () => {
           });
           const result = await harness.generate();
           expect(result.code).toBe(0);
-          await harness.verifyShim('dependency-provider');
-          await harness.verifyShim('dependency-consumer');
         });
 
         it('fails when a dependency provider is missing', async () => {
