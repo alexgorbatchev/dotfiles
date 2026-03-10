@@ -1,14 +1,11 @@
 ---
 name: dotfiles
 description: >-
-  Dotfiles tool installer system — creating, modifying, and managing .tool.ts configuration files
-  for CLI tool installations, shell integration, and cross-platform dotfiles management.
-  Use when working with: (1) .tool.ts configuration files, (2) installation methods (github-release,
-  brew, cargo, npm, curl-script, curl-tar, curl-binary, manual, dmg, zsh-plugin, gitea-release),
-  (3) shell integration (aliases, functions, completions, environment variables, symlinks),
-  (4) installation hooks (before-install, after-download, after-extract, after-install),
-  (5) platform-specific configuration, (6) dotfiles project configuration (config.ts),
-  (7) virtual environments for project-specific tool isolation.
+  .tool.ts configuration files, defineTool, install(), config.ts, defineConfig,
+  installation methods (github-release, gitea-release, brew, cargo, npm, curl-script, curl-tar, curl-binary, dmg, manual, zsh-plugin),
+  shell integration (aliases, functions, completions, env, symlinks, sourceFile),
+  hooks (before-install, after-download, after-extract, after-install),
+  platform overrides, virtual environments, shim generation, dotfiles management.
 ---
 
 # Dotfiles Tool Installer
@@ -41,7 +38,19 @@ Read these based on the task at hand:
 
 - **[api-reference.md](references/api-reference.md)** — Public API reference: `defineTool`, `defineConfig`, builder methods, shell configurator methods, `Platform`/`Architecture` enums, utilities (`replaceInFile`, `resolve`, `log`).
 
-- **[installation-methods.md](references/installation-methods.md)** — Parameters and examples for all 11 installation methods: github-release, gitea-release, brew, cargo, npm, curl-script, curl-tar, curl-binary, manual, dmg, zsh-plugin.
+- **Installation Methods** — Parameters and examples for each installation method:
+  - [overview.md](references/installation-methods/overview.md) — Available methods, choosing the right method, manual installation guide, common parameters
+  - [github-release.md](references/installation-methods/github-release.md) — GitHub release asset selection and platform detection
+  - [gitea-release.md](references/installation-methods/gitea-release.md) — Gitea/Forgejo/Codeberg release installation
+  - [brew.md](references/installation-methods/brew.md) — Homebrew formula and cask installation
+  - [cargo.md](references/installation-methods/cargo.md) — Rust crate installation via cargo-quickinstall or GitHub releases
+  - [npm.md](references/installation-methods/npm.md) — npm/bun package installation
+  - [curl-script.md](references/installation-methods/curl-script.md) — Shell script installation with stagingDir
+  - [curl-tar.md](references/installation-methods/curl-tar.md) — Tarball download and extraction
+  - [curl-binary.md](references/installation-methods/curl-binary.md) — Direct binary file download
+  - [dmg.md](references/installation-methods/dmg.md) — macOS DMG disk image installation
+  - [manual.md](references/installation-methods/manual.md) — Custom scripts, pre-built binaries, config-only tools
+  - [zsh-plugin.md](references/installation-methods/zsh-plugin.md) — Zsh plugin Git repository cloning
 
 - **[shell-and-hooks.md](references/shell-and-hooks.md)** — Shell integration (aliases, functions, env, path, completions, sourceFile, sourceFunction, source, symlinks), hook events and context, completions configuration.
 
