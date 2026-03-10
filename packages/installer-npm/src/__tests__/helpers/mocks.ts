@@ -29,7 +29,7 @@ function createDefaultHandler(): CommandHandler {
       });
     } else if (cmd.includes('npm view')) {
       stdout = '3.1.0';
-    } else if (cmd.includes('npm install')) {
+    } else if (cmd.includes('npm install') || cmd.includes('bun add')) {
       stdout = '';
     } else if (cmd.includes('--version')) {
       stdout = '3.1.0';
@@ -60,8 +60,8 @@ export function createFailingMockShell(): Shell {
   return ((strings: TemplateStringsArray, ...values: unknown[]) => {
     const cmd = strings.reduce((acc, str, i) => acc + str + (values[i] || ''), '');
 
-    if (cmd.includes('npm install')) {
-      const error = new Error('npm install failed');
+    if (cmd.includes('npm install') || cmd.includes('bun add')) {
+      const error = new Error('install failed');
       const rejectedPromise = Promise.reject(error) as IMockShellPromise;
       rejectedPromise.quiet = () => rejectedPromise;
       rejectedPromise.nothrow = () => rejectedPromise;

@@ -52,6 +52,21 @@ describe('NpmInstallerPlugin', () => {
     expect(result.success).toBe(true);
   });
 
+  it('should accept packageManager bun', () => {
+    const result = plugin.paramsSchema.safeParse({ package: 'prettier', packageManager: 'bun' });
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept packageManager npm', () => {
+    const result = plugin.paramsSchema.safeParse({ package: 'prettier', packageManager: 'npm' });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject invalid packageManager values', () => {
+    const result = plugin.paramsSchema.safeParse({ package: 'prettier', packageManager: 'yarn' });
+    expect(result.success).toBe(false);
+  });
+
   it('should validate correct tool config', () => {
     const validConfig: NpmToolConfig = {
       name: 'prettier',

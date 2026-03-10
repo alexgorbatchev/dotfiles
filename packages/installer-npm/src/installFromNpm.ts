@@ -53,9 +53,16 @@ export async function installFromNpm(
 
   logger.debug(messages.installing(packageName));
 
+  const isBun = params.packageManager === 'bun';
+
   const operation = async (): Promise<NpmInstallResult> => {
     const loggingShell = installShell ?? createShell({ logger, skipCommandLog: true });
-    await executeNpmInstall(packageSpec, context.stagingDir, logger, loggingShell);
+
+    if (isBun) {
+      await executeBunInstall(packageSpec, context.stagingDir, logger, loggingShell);
+    } else {
+      await executeNpmInstall(packageSpec, context.stagingDir, logger, loggingShell);
+    }
 
     const binDir: string = path.join(context.stagingDir, 'node_modules', '.bin');
     const binaryPaths: string[] = getBinaryPaths(toolConfig.binaries, binDir);
@@ -72,6 +79,8 @@ export async function installFromNpm(
           shellExecutor,
         });
       }
+    } else if (isBun) {
+      version = await getPackageVersionFromNodeModules(packageName, context.stagingDir, context.fileSystem);
     } else {
       version = await getNpmPackageVersion(packageName, context.stagingDir, logger, shellExecutor);
     }
@@ -113,6 +122,52 @@ async function executeNpmInstall(
   const command = `npm install --prefix ${installDir} ${packageSpec}`;
   logger.debug(messages.executingCommand(command));
   await shell`npm install --prefix ${installDir} ${packageSpec}`;
+}
+
+/**
+ * Executes the bun add command to install a package into a specific directory.
+ *
+ * @param packageSpec - The package specifier (e.g., `prettier`, `prettier@3.0.0`).
+ * @param installDir - The directory to install the package into.
+ * @param logger - The logger instance for logging operations.
+ * @param shell - The shell executor.
+ * @returns A promise that resolves when installation is complete.
+ * @throws {Error} If the installation fails.
+ */
+async function executeBunInstall(
+  packageSpec: string,
+  installDir: string,
+  logger: TsLogger,
+  shell: Shell,
+): Promise<void> {
+  const command = `bun add --cwd ${installDir} ${packageSpec}`;
+  logger.debug(messages.executingCommand(command));
+  await shell`bun add --cwd ${installDir} ${packageSpec}`;
+}
+
+const packageJsonVersionSchema = z.object({ version: z.string() });
+
+/**
+ * Retrieves the installed version of a package by reading its package.json from node_modules.
+ *
+ * @param packageName - The name of the package.
+ * @param installDir - The directory where the package is installed.
+ * @param fileSystem - The file system interface.
+ * @returns A promise that resolves to the version string, or undefined if not found.
+ */
+async function getPackageVersionFromNodeModules(
+  packageName: string,
+  installDir: string,
+  fileSystem: IInstallContext['fileSystem'],
+): Promise<string | undefined> {
+  try {
+    const packageJsonPath = path.join(installDir, 'node_modules', packageName, 'package.json');
+    const content = await fileSystem.readFile(packageJsonPath, 'utf-8');
+    const parsed = packageJsonVersionSchema.safeParse(JSON.parse(content));
+    return parsed.success ? parsed.data.version : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**

@@ -6,6 +6,17 @@ import { installFromNpm } from '../installFromNpm';
 import type { NpmToolConfig } from '../schemas';
 import { createFailingMockShell, createMockShell } from './helpers/mocks';
 
+function createMockFileSystem(): IInstallContext['fileSystem'] {
+  return {
+    readFile: async (filePath: string): Promise<string> => {
+      if (filePath.includes('package.json')) {
+        return JSON.stringify({ version: '3.1.0' });
+      }
+      throw new Error(`File not found: ${filePath}`);
+    },
+  } as unknown as IInstallContext['fileSystem'];
+}
+
 function createContext(toolConfig: NpmToolConfig, mockShell: Shell): IInstallContext {
   return {
     projectConfig: {
@@ -34,7 +45,7 @@ function createContext(toolConfig: NpmToolConfig, mockShell: Shell): IInstallCon
     stagingDir: '/staging/dir',
     timestamp: '2023-01-01',
     $: mockShell,
-    fileSystem: {} as unknown,
+    fileSystem: createMockFileSystem(),
     toolConfig: toolConfig,
   } as unknown as IInstallContext;
 }
@@ -142,6 +153,110 @@ describe('installFromNpm', () => {
       installationMethod: 'npm',
       installParams: {
         package: 'failing-tool',
+      },
+    };
+
+    const context = createContext(toolConfig, failShell);
+    const result = await installFromNpm('failing-tool', toolConfig, context, undefined, logger, failShell, failShell);
+
+    expect(result.success).toBe(false);
+    assert(!result.success);
+    expect(result.error).toBeDefined();
+  });
+
+  it('should install with bun and detect version from package.json', async () => {
+    const toolConfig: NpmToolConfig = {
+      name: 'prettier',
+      version: '3.1.0',
+      binaries: ['prettier'],
+      installationMethod: 'npm',
+      installParams: {
+        package: 'prettier',
+        packageManager: 'bun',
+      },
+    };
+
+    const context = createContext(toolConfig, mockShell);
+    const result = await installFromNpm('prettier', toolConfig, context, undefined, logger, mockShell, mockShell);
+
+    assert(result.success);
+    expect(result.version).toBe('3.1.0');
+    expect(result.metadata.packageName).toBe('prettier');
+    expect(result.metadata.method).toBe('npm');
+    expect(result.binaryPaths).toEqual(['/staging/dir/node_modules/.bin/prettier']);
+  });
+
+  it('should use bun add command when packageManager is bun', async () => {
+    const commands: string[] = [];
+    const capturingShell = createMockShell((cmd: string) => {
+      commands.push(cmd);
+      return { stdout: '', stderr: '', exitCode: 0, code: 0, toString: () => '' };
+    });
+
+    const toolConfig: NpmToolConfig = {
+      name: 'prettier',
+      version: '3.1.0',
+      binaries: ['prettier'],
+      installationMethod: 'npm',
+      installParams: {
+        package: 'prettier',
+        packageManager: 'bun',
+      },
+    };
+
+    const context = createContext(toolConfig, capturingShell);
+    await installFromNpm('prettier', toolConfig, context, undefined, logger, capturingShell, capturingShell);
+
+    const installCommand = commands.find((cmd) => cmd.includes('bun add'));
+    expect(installCommand).toBeDefined();
+    expect(installCommand).toBe('bun add --cwd /staging/dir prettier');
+  });
+
+  it('should default to npm install when packageManager is unset', async () => {
+    const commands: string[] = [];
+    const capturingShell = createMockShell((cmd: string) => {
+      commands.push(cmd);
+      if (cmd.includes('npm ls')) {
+        return {
+          stdout: JSON.stringify({ dependencies: { prettier: { version: '3.1.0' } } }),
+          stderr: '',
+          exitCode: 0,
+          code: 0,
+          toString: () => '',
+        };
+      }
+      return { stdout: '', stderr: '', exitCode: 0, code: 0, toString: () => '' };
+    });
+
+    const toolConfig: NpmToolConfig = {
+      name: 'prettier',
+      version: '3.1.0',
+      binaries: ['prettier'],
+      installationMethod: 'npm',
+      installParams: {
+        package: 'prettier',
+      },
+    };
+
+    const context = createContext(toolConfig, capturingShell);
+    await installFromNpm('prettier', toolConfig, context, undefined, logger, capturingShell, capturingShell);
+
+    const installCommand = commands.find((cmd) => cmd.includes('npm install'));
+    expect(installCommand).toBeDefined();
+    expect(commands.some((cmd) => cmd.includes('bun add'))).toBe(false);
+  });
+
+  it('should return failure when bun add command fails', async () => {
+    const failShell = createFailingMockShell();
+
+    const toolConfig: NpmToolConfig = {
+      name: 'failing-tool',
+      version: '1.0.0',
+      binaries: ['failing-tool'],
+      installationMethod: 'npm',
+      installParams: {
+        package: 'failing-tool',
+        packageManager: 'bun',
       },
     };
 

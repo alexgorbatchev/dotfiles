@@ -226,19 +226,19 @@ export default defineTool((install, ctx) =>
 
 ## Choosing the Right Method
 
-| Method             | Best For                            | Pros                                  | Cons                                 |
-| ------------------ | ----------------------------------- | ------------------------------------- | ------------------------------------ |
-| **GitHub Release** | Most open source tools              | Automatic updates, cross-platform     | Requires GitHub hosting              |
-| **Gitea/Forgejo**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host    | Requires instance URL                |
-| **Homebrew**       | macOS/Linux tools                   | Simple, well-maintained               | Platform-specific, requires Homebrew |
-| **Cargo**          | Rust tools                          | Fast pre-compiled binaries            | Rust tools only                      |
-| **npm**            | Node.js tools                       | Simple, version management            | Requires Node.js/npm                 |
-| **Curl Script**    | Custom installers                   | Flexible, handles complex setups      | Less predictable, security concerns  |
-| **Curl Tar**       | Archive downloads                   | Simple, no dependencies               | Manual URL management                |
-| **Curl Binary**    | Direct binary downloads             | Simplest, no extraction needed        | Manual URL management                |
+| Method             | Best For                            | Pros                                   | Cons                                 |
+| ------------------ | ----------------------------------- | -------------------------------------- | ------------------------------------ |
+| **GitHub Release** | Most open source tools              | Automatic updates, cross-platform      | Requires GitHub hosting              |
+| **Gitea/Forgejo**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host     | Requires instance URL                |
+| **Homebrew**       | macOS/Linux tools                   | Simple, well-maintained                | Platform-specific, requires Homebrew |
+| **Cargo**          | Rust tools                          | Fast pre-compiled binaries             | Rust tools only                      |
+| **npm**            | Node.js tools                       | Simple, version management             | Requires Node.js/npm                 |
+| **Curl Script**    | Custom installers                   | Flexible, handles complex setups       | Less predictable, security concerns  |
+| **Curl Tar**       | Archive downloads                   | Simple, no dependencies                | Manual URL management                |
+| **Curl Binary**    | Direct binary downloads             | Simplest, no extraction needed         | Manual URL management                |
 | **DMG**            | macOS .app bundles                  | Handles mount/unmount, archive extract | macOS only                           |
-| **Manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible | Manual file management               |
-| **Zsh Plugin**     | Zsh plugins from Git repos          | Simple, automatic updates             | Zsh plugins only                     |
+| **Manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible  | Manual file management               |
+| **Zsh Plugin**     | Zsh plugins from Git repos          | Simple, automatic updates              | Zsh plugins only                     |
 
 ## Manual Installation Guide
 
@@ -691,7 +691,7 @@ export default defineTool((install, ctx) =>
 
 # npm Installation
 
-Install tools published as npm packages using `npm install --prefix`.
+Install tools published as npm packages. Supports both `npm` and `bun` as package managers.
 
 ## Basic Usage
 
@@ -703,13 +703,14 @@ export default defineTool((install) => install('npm', { package: 'prettier' }).b
 
 ## Parameters
 
-| Parameter      | Type                                             | Required | Description                                                  |
-| -------------- | ------------------------------------------------ | -------- | ------------------------------------------------------------ |
-| `package`      | `string`                                         | No       | npm package name (defaults to tool name)                     |
-| `version`      | `string`                                         | No       | Version or version range (e.g., `3.0.0`, defaults to latest) |
-| `versionArgs`  | `string[]`                                       | No       | Arguments for version check (e.g., `['--version']`)          |
-| `versionRegex` | `string`                                         | No       | Regex to extract version from output                         |
-| `env`          | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables (static or dynamic function)           |
+| Parameter        | Type                                             | Required | Description                                                  |
+| ---------------- | ------------------------------------------------ | -------- | ------------------------------------------------------------ |
+| `package`        | `string`                                         | No       | npm package name (defaults to tool name)                     |
+| `version`        | `string`                                         | No       | Version or version range (e.g., `3.0.0`, defaults to latest) |
+| `packageManager` | `'npm' \| 'bun'`                                 | No       | Package manager to use for installation (defaults to `'npm'`) |
+| `versionArgs`    | `string[]`                                       | No       | Arguments for version check (e.g., `['--version']`)          |
+| `versionRegex`   | `string`                                         | No       | Regex to extract version from output                         |
+| `env`            | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables (static or dynamic function)           |
 
 ## Examples
 
@@ -720,6 +721,17 @@ export default defineTool((install) =>
   install('npm', {
     package: 'prettier',
     version: '3.0.0',
+  }).bin('prettier')
+);
+```
+
+### Using Bun
+
+```typescript
+export default defineTool((install) =>
+  install('npm', {
+    package: 'prettier',
+    packageManager: 'bun',
   }).bin('prettier')
 );
 ```
@@ -748,10 +760,10 @@ export default defineTool((install) =>
 
 ## How It Works
 
-1. **Install**: Runs `npm install --prefix <stagingDir> <package>[@version]`
+1. **Install**: Runs `npm install --prefix <stagingDir> <package>[@version]` (or `bun add --cwd <stagingDir> <package>[@version]` when `packageManager: 'bun'`)
 2. **Binaries**: Resolved from `node_modules/.bin/` in the install directory
-3. **Version**: Detected via `npm ls --json` or custom `versionArgs`/`versionRegex`
-4. **Updates**: Checked via `npm view <package> version`
+3. **Version**: Detected via `npm ls --json` (npm), `node_modules/<package>/package.json` (bun), or custom `versionArgs`/`versionRegex`
+4. **Updates**: Checked via `npm view <package> version` (regardless of package manager)
 
 ---
 

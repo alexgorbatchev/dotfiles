@@ -17,6 +17,8 @@ export const npmInstallParamsSchema = baseInstallParamsSchema.extend({
   versionArgs: z.array(z.string()).optional(),
   /** Regex to extract version from output. */
   versionRegex: z.string().optional(),
+  /** The package manager to use for installation. Defaults to `'npm'`. */
+  packageManager: z.enum(['npm', 'bun']).optional(),
 });
 
 /**
@@ -34,4 +36,6 @@ export interface NpmInstallParams extends BaseInstallParams {
   versionArgs?: string[];
   /** Regex to extract version from output. */
   versionRegex?: string;
+  /** The package manager to use for installation. Defaults to `'npm'`. */
+  packageManager?: 'npm' | 'bun';
 }
