@@ -1,6 +1,6 @@
-import { Code } from 'lucide-preact';
 import { type JSX } from 'preact';
 import { ShikiHighlighter } from 'react-shiki';
+import { Code } from '../icons';
 
 import { useFetch } from '../hooks/useFetch';
 import { ExternalLinkButton } from './ui/ExternalLinkButton';

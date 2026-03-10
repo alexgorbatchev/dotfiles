@@ -1,6 +1,6 @@
-import { ChevronDown, ChevronRight } from 'lucide-preact';
 import { type ComponentChildren, type JSX } from 'preact';
 import { useState } from 'preact/hooks';
+import { ChevronDown, ChevronRight } from '../../icons';
 
 import { cn } from '../../lib/utils';
 

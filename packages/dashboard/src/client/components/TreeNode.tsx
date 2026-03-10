@@ -1,3 +1,4 @@
+import { type JSX } from 'preact';
 import {
   File,
   FileCode,
@@ -10,8 +11,7 @@ import {
   Package,
   Settings,
   Zap,
-} from 'lucide-preact';
-import { type JSX } from 'preact';
+} from '../icons';
 
 import { Badge } from './ui/Badge';
 import { Tree, type TreeItemData } from './ui/Tree';

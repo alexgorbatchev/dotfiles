@@ -1,7 +1,7 @@
-import { Search } from 'lucide-preact';
 import { type JSX } from 'preact';
 import { useLocation } from 'preact-iso';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { Search } from '../icons';
 
 import type { IToolDetail } from '../../shared/types';
 import { useFetch } from '../hooks/useFetch';

@@ -4,7 +4,7 @@ import { fireEvent, render, screen, setupUITests } from '../../../../testing/ui-
 import { describe, expect, mock, test } from 'bun:test';
 
 setupUITests();
-import { File, Folder } from 'lucide-preact';
+import { File, Folder } from '../../../icons';
 
 import { Tree, type TreeItemData } from '../Tree';
 

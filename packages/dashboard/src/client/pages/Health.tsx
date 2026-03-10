@@ -1,5 +1,5 @@
-import { AlertTriangle, CircleCheck, CircleX, HeartPulse } from 'lucide-preact';
 import { type JSX } from 'preact';
+import { AlertTriangle, CircleCheck, CircleX, HeartPulse } from '../icons';
 
 import type { IHealthCheckResult, IHealthStatus } from '../../shared/types';
 import { Card, CardContent } from '../components/ui/Card';

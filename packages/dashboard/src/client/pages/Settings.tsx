@@ -1,5 +1,5 @@
-import { FolderCog } from 'lucide-preact';
 import { type JSX } from 'preact';
+import { FolderCog } from '../icons';
 
 import type { IConfigSummary } from '../../shared/types';
 import { TitledCard } from '../components/ui/TitledCard';

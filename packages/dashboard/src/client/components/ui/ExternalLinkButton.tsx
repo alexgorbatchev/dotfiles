@@ -1,5 +1,5 @@
-import { ExternalLink } from 'lucide-preact';
 import { type JSX } from 'preact';
+import { ExternalLink } from '../../icons';
 
 import { Button } from './Button';
 

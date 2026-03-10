@@ -1,6 +1,6 @@
-import { FileCode, FolderOpen, FolderTree } from 'lucide-preact';
 import type { ComponentChildren } from 'preact';
 import { type JSX } from 'preact';
+import { FileCode, FolderOpen, FolderTree } from '../icons';
 
 import type { IFileTreeEntry, IToolConfigsTree, IToolDetail } from '../../shared/types';
 import { useFetch } from '../hooks/useFetch';

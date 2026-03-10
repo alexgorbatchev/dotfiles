@@ -1,6 +1,6 @@
-import { ArrowUpCircle, Download, File, History, Info, Layers, RefreshCw, Search } from 'lucide-preact';
 import { type JSX } from 'preact';
 import { useCallback, useMemo, useState } from 'preact/hooks';
+import { ArrowUpCircle, Download, File, History, Info, Layers, RefreshCw, Search } from '../icons';
 
 import type {
   ICheckUpdateResponse,

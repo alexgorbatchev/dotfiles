@@ -1,3 +1,4 @@
+import { type JSX } from 'preact';
 import {
   Clock,
   Copy,
@@ -7,8 +8,7 @@ import {
   Link,
   Shield,
   Trash2,
-} from 'lucide-preact';
-import { type JSX } from 'preact';
+} from '../icons';
 
 import type { IToolHistoryEntry } from '../../shared/types';
 

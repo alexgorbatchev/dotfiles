@@ -1,5 +1,5 @@
-import { Clock, FileCode, GitBranch, HardDrive } from 'lucide-preact';
 import { type JSX } from 'preact';
+import { Clock, FileCode, GitBranch, HardDrive } from '../icons';
 
 import type { IRecentTools, TimestampSource } from '../../shared/types';
 import { useFetch } from '../hooks/useFetch';

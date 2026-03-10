@@ -1,6 +1,6 @@
-import { Search } from 'lucide-preact';
 import { type JSX } from 'preact';
 import { useLocation } from 'preact-iso';
+import { Search } from '../icons';
 
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';

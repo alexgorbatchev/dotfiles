@@ -1,11 +1,11 @@
 // oxlint-disable-next-line import/no-unassigned-import
 import 'github-markdown-css/github-markdown-light.css';
 
-import { BookOpen, ExternalLink } from 'lucide-preact';
 import { type JSX } from 'preact';
 import Markdown, { type Components } from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
+import { BookOpen, ExternalLink } from '../icons';
 
 import { useFetch } from '../hooks/useFetch';
 import { ExternalLinkButton } from './ui/ExternalLinkButton';
