@@ -1,6 +1,8 @@
+import { type IArchiveExtractor, isSupportedArchiveFile } from '@dotfiles/archive-extractor';
 import {
   createShell,
   type IDownloadContext,
+  type IExtractResult,
   type IInstallContext,
   Platform,
   type Shell,
@@ -30,6 +32,7 @@ export async function installFromDmg(
   options: IInstallOptions | undefined,
   fs: IFileSystem,
   downloader: IDownloader,
+  archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
   shellExecutor: Shell,
@@ -73,30 +76,48 @@ export async function installFromDmg(
       return { success: false, error: afterDownloadResult.error };
     }
 
-    // 3. Mount the DMG
+    // 3. If downloaded file is an archive, extract it to find the .dmg inside
+    let resolvedDmgPath = dmgPath;
+    if (isSupportedArchiveFile(url)) {
+      logger.debug(messages.extractingArchive());
+      const extractResult: IExtractResult = await archiveExtractor.extract(logger, dmgPath, {
+        targetDir: context.stagingDir,
+      });
+      logger.debug(messages.archiveExtracted(extractResult.extractedFiles.length));
+
+      const dmgFile = extractResult.extractedFiles.find((f) => f.endsWith('.dmg'));
+      if (!dmgFile) {
+        logger.error(messages.noDmgInArchive());
+        return { success: false, error: 'No .dmg file found in extracted archive' };
+      }
+      logger.debug(messages.dmgFoundInArchive(dmgFile));
+      resolvedDmgPath = dmgFile;
+    }
+
+    // 4. Mount the DMG
     const loggingShell = createShell({ logger, skipCommandLog: true });
     const mountPoint = path.join(context.stagingDir, '.dmg-mount');
     await fs.ensureDir(mountPoint);
-    logger.debug(messages.mountingDmg(dmgPath));
-    await loggingShell`hdiutil attach -nobrowse -noautoopen -mountpoint ${mountPoint} ${dmgPath}`;
+    logger.debug(messages.mountingDmg(resolvedDmgPath));
+    await loggingShell`hdiutil attach -nobrowse -noautoopen -mountpoint ${mountPoint} ${resolvedDmgPath}`;
     logger.debug(messages.dmgMounted(mountPoint));
 
     let appName: string;
     try {
-      // 4. Find the .app bundle
+      // 5. Find the .app bundle
       const resolvedAppName = await findAppBundle(params.appName, mountPoint, fs, logger);
       if (!resolvedAppName) {
         return { success: false, error: 'No .app bundle found in DMG' };
       }
       appName = resolvedAppName;
 
-      // 5. Copy the .app to staging dir
+      // 6. Copy the .app to staging dir
       const appSource = path.join(mountPoint, appName);
       const appDest = path.join(context.stagingDir, appName);
       logger.debug(messages.copyingApp(appName));
       await shellExecutor`cp -R ${appSource} ${appDest}`.quiet();
 
-      // 6. Symlink binaries from Contents/MacOS/ to stagingDir
+      // 7. Symlink binaries from Contents/MacOS/ to stagingDir
       const binaries = normalizeBinaries(toolConfig.binaries);
       for (const binary of binaries) {
         const binarySource = params.binaryPath
@@ -107,17 +128,20 @@ export async function installFromDmg(
         await fs.symlink(binarySource, binaryDest);
       }
     } finally {
-      // 7. Always unmount
+      // 8. Always unmount
       logger.debug(messages.unmountingDmg(mountPoint));
       await shellExecutor`hdiutil detach ${mountPoint}`.quiet().noThrow();
     }
 
-    // 8. Clean up downloaded DMG
-    if (await toolFs.exists(dmgPath)) {
+    // 9. Clean up downloaded DMG and archive
+    if (await toolFs.exists(resolvedDmgPath)) {
+      await toolFs.rm(resolvedDmgPath);
+    }
+    if (resolvedDmgPath !== dmgPath && (await toolFs.exists(dmgPath))) {
       await toolFs.rm(dmgPath);
     }
 
-    // 9. Resolve binary paths and detect version
+    // 10. Resolve binary paths and detect version
     const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     let detectedVersion: string | undefined;

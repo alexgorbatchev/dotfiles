@@ -6,6 +6,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@dotfiles/archive-extractor": "workspace:*",
     "@dotfiles/core": "workspace:*",
     "@dotfiles/downloader": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
@@ -16,6 +17,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@dotfiles/testing-helpers": "workspace:*"
+    "@dotfiles/testing-helpers": "workspace:*",
+    "@rageltd/bun-test-utils": "catalog:testing"
   }
 }

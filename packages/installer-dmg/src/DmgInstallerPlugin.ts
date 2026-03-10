@@ -1,3 +1,4 @@
+import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type {
   IInstallContext,
   IInstallerPlugin,
@@ -45,6 +46,7 @@ export class DmgInstallerPlugin
   constructor(
     private readonly fs: IFileSystem,
     private readonly downloader: IDownloader,
+    private readonly archiveExtractor: IArchiveExtractor,
     private readonly hookExecutor: HookExecutor,
     private readonly shell: Shell,
   ) {}
@@ -78,6 +80,7 @@ export class DmgInstallerPlugin
       options,
       this.fs,
       this.downloader,
+      this.archiveExtractor,
       this.hookExecutor,
       logger,
       this.shell,

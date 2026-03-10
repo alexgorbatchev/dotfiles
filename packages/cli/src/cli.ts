@@ -422,7 +422,9 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     new CurlTarInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor, shell),
   );
   pluginRegistry.register(new CurlBinaryInstallerPlugin(installerTrackedFs, downloader, hookExecutor, shell));
-  pluginRegistry.register(new DmgInstallerPlugin(installerTrackedFs, downloader, hookExecutor, shell));
+  pluginRegistry.register(
+    new DmgInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor, shell),
+  );
   pluginRegistry.register(new ManualInstallerPlugin(installerTrackedFs));
   pluginRegistry.register(new NpmInstallerPlugin(shell));
   pluginRegistry.register(new ZshPluginInstallerPlugin(installerTrackedFs, shell));
