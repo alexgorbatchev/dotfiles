@@ -461,39 +461,6 @@ describe('IToolConfigBuilder', () => {
     expect(config.binaries).toEqual(['my-binary']);
   });
 
-  test('build method should log error when invalid installation method is set', () => {
-    const testLogger = new TestLogger();
-    const builder = new IToolConfigBuilder(testLogger, 'test-tool');
-    builder.bin('test-binary');
-    // Test error handling by forcing an invalid installation method
-    // This simulates a corrupted state that should never occur in normal usage
-    builder.currentInstallationMethod = 'invalid-method';
-    builder.currentInstallParams = { repo: 'test/repo' };
-
-    let thrownError: Error | null = null;
-    try {
-      builder.build();
-    } catch (error) {
-      thrownError = error as Error;
-    }
-
-    expect(thrownError).toBeInstanceOf(Error);
-    expect(thrownError!.message).toContain('Invalid installationMethod');
-
-    testLogger.expect(
-      ['ERROR'],
-      ['IToolConfigBuilder'],
-      [],
-      [
-        messages.configurationFieldInvalid(
-          'installationMethod',
-          'invalid-method',
-          'github-release | gitea-release | brew | curl-script | curl-tar | curl-binary | cargo | manual | zsh-plugin',
-        ),
-      ],
-    );
-  });
-
   test('build method should log error when no configuration is provided', () => {
     const testLogger = new TestLogger();
     const builder = new IToolConfigBuilder(testLogger, 'empty-tool');

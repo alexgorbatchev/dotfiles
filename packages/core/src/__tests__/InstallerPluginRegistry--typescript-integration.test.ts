@@ -68,8 +68,8 @@ describe('InstallerPluginRegistry - TypeScript Integration', () => {
     await registry.register(customPlugin);
     registry.composeSchemas();
 
-    // Create IToolConfigBuilder with registry
-    const builder = new IToolConfigBuilder(logger, 'my-custom-tool', registry);
+    // Create IToolConfigBuilder
+    const builder = new IToolConfigBuilder(logger, 'my-custom-tool');
 
     // Valid params - should work fine
     const config = builder

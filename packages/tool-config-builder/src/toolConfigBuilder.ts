@@ -3,7 +3,6 @@ import type {
   AsyncInstallHook,
   HookEventName,
   IInstallParamsRegistry,
-  InstallerPluginRegistry,
   InstallMethod,
   IPlatformConfigBuilder as PlatformConfigBuilderInterface,
   IPlatformInstallFunction,
@@ -55,7 +54,6 @@ type InstallParams = IInstallParamsRegistry[InstallMethod];
  */
 export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   private logger: TsLogger;
-  private registry?: InstallerPluginRegistry;
   public toolName: string;
   public binaries: IBinaryConfig[] = [];
   public versionNum: string = 'latest';
@@ -432,7 +430,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    * Finalizes the configuration and returns the complete {@link @dotfiles/core#ToolConfig} object.
    *
    * This method validates the constructed configuration and returns the final, immutable
-   * tool configuration object. If a registry was provided, it will be used for schema validation.
+   * tool configuration object.
    *
    * @returns The built {@link @dotfiles/core#ToolConfig}.
    */
@@ -440,33 +438,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     const baseConfig = this.buildBaseConfig();
 
     if (this.hasInstallationMethod()) {
-      const config = this.buildInstallableToolConfig(baseConfig);
-
-      // Validate against registry schema if available
-      if (this.registry) {
-        try {
-          const schema = this.registry.getToolConfigSchema();
-          const result = schema.safeParse(config);
-
-          if (!result.success) {
-            const validationError = messages.configurationFieldInvalid(
-              'tool configuration',
-              this.toolName,
-              result.error.message,
-            );
-            this.logger.error(validationError);
-            throw new Error(validationError);
-          }
-        } catch (error) {
-          // If registry doesn't have composed schema yet, proceed without validation
-          // This maintains backward compatibility
-          if (error instanceof Error && !error.message.includes('not composed')) {
-            throw error;
-          }
-        }
-      }
-
-      return config;
+      return this.buildInstallableToolConfig(baseConfig);
     }
 
     this.validateConfigurationOnly(baseConfig);
@@ -554,71 +526,19 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    * Builds the final tool configuration for tools with an installation method.
    *
    * Takes the base configuration and adds the installation method and parameters,
-   * returning a properly typed configuration object. When a registry is available,
-   * it supports dynamic plugin-provided installation methods. Otherwise, it uses
-   * the hardcoded switch statement for backward compatibility.
+   * returning a properly typed configuration object.
    * Ensures binaries array is always defined for installable tools.
    *
    * @param baseConfig - The base configuration object.
    * @returns A typed ToolConfig based on the installation method.
    */
   private buildInstallableToolConfig(baseConfig: ReturnType<typeof this.buildBaseConfig>): ToolConfig {
-    const installableBase = {
+    return {
       ...baseConfig,
       binaries: baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [],
-    };
-
-    // If registry is available, support dynamic methods
-    if (this.registry) {
-      return {
-        ...installableBase,
-        installationMethod: this.currentInstallationMethod,
-        installParams: this.currentInstallParams,
-      } as ToolConfig;
-    }
-
-    // Without registry, validate against known core methods
-    const validMethods: string[] = [
-      'github-release',
-      'gitea-release',
-      'brew',
-      'curl-script',
-      'curl-tar',
-      'curl-binary',
-      'cargo',
-      'manual',
-      'zsh-plugin',
-      'dmg',
-    ];
-
-    if (this.currentInstallationMethod && validMethods.includes(this.currentInstallationMethod)) {
-      return {
-        ...installableBase,
-        installationMethod: this.currentInstallationMethod,
-        installParams: this.currentInstallParams,
-      } as ToolConfig;
-    }
-
-    // Invalid method without registry
-    return this.throwInvalidMethodError();
-  }
-
-  /**
-   * Throws an error for invalid installation methods.
-   *
-   * This is called when the installation method doesn't match any of the known types,
-   * which should not happen due to TypeScript's type checking but provides a runtime safeguard.
-   *
-   * @throws Always throws an error with details about the invalid method.
-   */
-  private throwInvalidMethodError(): never {
-    const invalidMethodError = messages.configurationFieldInvalid(
-      'installationMethod',
-      this.currentInstallationMethod ?? 'unknown',
-      'github-release | gitea-release | brew | curl-script | curl-tar | curl-binary | cargo | manual | zsh-plugin',
-    );
-    this.logger.error(invalidMethodError);
-    throw new Error(invalidMethodError);
+      installationMethod: this.currentInstallationMethod,
+      installParams: this.currentInstallParams,
+    } as ToolConfig;
   }
 
   /**
@@ -672,31 +592,17 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    *
    * @param parentLogger - The parent logger from which a sublogger will be created.
    * @param toolName - The name of the tool being configured.
-   * @param registryOrIsPlatformScope - Either an InstallerPluginRegistry for validation or a boolean
-   *   indicating if this is platform scope (for backward compatibility).
    * @param isPlatformScope - Whether this builder is used for platform-specific configuration.
    *   When true, the builder will not include platformConfigs in the output to avoid circular references.
    */
   constructor(
     parentLogger: TsLogger,
     toolName: string,
-    registryOrIsPlatformScope?: InstallerPluginRegistry | boolean,
     isPlatformScope = false,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'IToolConfigBuilder' });
     this.toolName = toolName;
-
-    // Handle overloaded constructor
-    if (typeof registryOrIsPlatformScope === 'boolean') {
-      this.isPlatformScope = registryOrIsPlatformScope;
-      this.registry = undefined;
-    } else if (registryOrIsPlatformScope) {
-      this.registry = registryOrIsPlatformScope;
-      this.isPlatformScope = isPlatformScope;
-    } else {
-      this.registry = undefined;
-      this.isPlatformScope = isPlatformScope;
-    }
+    this.isPlatformScope = isPlatformScope;
   }
 
   public setContext(context: IToolConfigContext | undefined): void {
