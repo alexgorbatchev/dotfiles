@@ -12,14 +12,14 @@ export default defineTool((install) => install('npm', { package: 'prettier' }).b
 
 ## Parameters
 
-| Parameter        | Type                                             | Required | Description                                                  |
-| ---------------- | ------------------------------------------------ | -------- | ------------------------------------------------------------ |
-| `package`        | `string`                                         | No       | npm package name (defaults to tool name)                     |
-| `version`        | `string`                                         | No       | Version or version range (e.g., `3.0.0`, defaults to latest) |
+| Parameter        | Type                                             | Required | Description                                                   |
+| ---------------- | ------------------------------------------------ | -------- | ------------------------------------------------------------- |
+| `package`        | `string`                                         | No       | npm package name (defaults to tool name)                      |
+| `version`        | `string`                                         | No       | Version or version range (e.g., `3.0.0`, defaults to latest)  |
 | `packageManager` | `'npm' \| 'bun'`                                 | No       | Package manager to use for installation (defaults to `'npm'`) |
-| `versionArgs`    | `string[]`                                       | No       | Arguments for version check (e.g., `['--version']`)          |
-| `versionRegex`   | `string`                                         | No       | Regex to extract version from output                         |
-| `env`            | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables (static or dynamic function)           |
+| `versionArgs`    | `string[]`                                       | No       | Arguments for version check (e.g., `['--version']`)           |
+| `versionRegex`   | `string`                                         | No       | Regex to extract version from output                          |
+| `env`            | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables (static or dynamic function)            |
 
 ## Examples
 
