@@ -161,9 +161,10 @@ describe('installFromDmg', () => {
       );
 
       assert(result.success);
-      expect(result.binaryPaths).toEqual(['/install/staging/test-app']);
+      expect(result.binaryPaths).toEqual(['/home/user/Applications/TestApp.app/Contents/MacOS/test-app']);
       expect(result.metadata.method).toBe('dmg');
       expect(result.metadata.dmgUrl).toBe('https://example.com/TestApp.dmg');
+      expect(mockFs.ensureDir).toHaveBeenCalledWith('/install/staging');
     });
 
     it('should skip installation on non-macOS', async () => {
@@ -387,12 +388,10 @@ describe('installFromDmg', () => {
 
     it('should use custom binaryPath when specified', async () => {
       const { shell } = createMockShell();
-      const symlinkMock = mock(() => Promise.resolve());
       mockFs = {
         ...mockFs,
         ensureDir: mock(() => Promise.resolve()),
         readdir: mock(() => Promise.resolve(['TestApp.app'])),
-        symlink: symlinkMock,
         exists: mock(() => Promise.resolve(true)),
         rm: mock(() => Promise.resolve()),
       } as unknown as IFileSystem;
@@ -424,10 +423,7 @@ describe('installFromDmg', () => {
       );
 
       assert(result.success);
-      expect(symlinkMock).toHaveBeenCalledWith(
-        '/install/staging/TestApp.app/Contents/Resources/bin/test-app',
-        '/install/staging/test-app',
-      );
+      expect(result.binaryPaths).toEqual(['/home/user/Applications/TestApp.app/Contents/Resources/bin/test-app']);
     });
 
     it('should use config version when detection returns nothing and version is not latest', async () => {
@@ -573,7 +569,7 @@ describe('installFromDmg', () => {
       );
 
       assert(result.success);
-      expect(result.binaryPaths).toEqual(['/install/staging/test-app']);
+      expect(result.binaryPaths).toEqual(['/home/user/Applications/TestApp.app/Contents/MacOS/test-app']);
       expect(mockArchiveExtractor.extract).toHaveBeenCalledTimes(1);
     });
 

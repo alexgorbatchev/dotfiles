@@ -40,6 +40,7 @@ describe('DmgInstallerPlugin', () => {
     expect(plugin.method).toBe('dmg');
     expect(plugin.displayName).toBe('DMG Installer');
     expect(plugin.version).toBe('1.0.0');
+    expect(plugin.externallyManaged).toBe(true);
   });
 
   it('should have valid schemas', () => {

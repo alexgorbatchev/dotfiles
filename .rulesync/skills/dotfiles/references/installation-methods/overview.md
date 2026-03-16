@@ -120,7 +120,7 @@ export default defineTool((install, ctx) =>
 
 ### DMG
 
-Install macOS applications from DMG disk images (silently skipped on other platforms).
+Install macOS applications from DMG disk images into `~/Applications` (silently skipped on other platforms).
 
 ```typescript
 import { defineTool } from '@gitea/dotfiles';

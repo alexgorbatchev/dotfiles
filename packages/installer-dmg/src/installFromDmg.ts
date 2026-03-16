@@ -16,7 +16,6 @@ import {
   createToolFileSystem,
   downloadWithProgress,
   executeAfterDownloadHook,
-  getBinaryPaths,
   withInstallErrorHandling,
 } from '@dotfiles/installer';
 import { normalizeBinaries } from '@dotfiles/installer';
@@ -73,6 +72,10 @@ export async function installFromDmg(
   const params: DmgInstallParams = toolConfig.installParams;
 
   const operation = async (): Promise<DmgInstallResult> => {
+    // DMG installer is externally managed, so stagingDir is not pre-created by Installer.
+    // Ensure it exists before any download writes into it.
+    await fs.ensureDir(context.stagingDir);
+
     const resolvedSource = await resolveDmgSource(
       params.source,
       context,
@@ -129,6 +132,7 @@ export async function installFromDmg(
     logger.debug(messages.dmgMounted(mountPoint));
 
     let appName: string;
+    let installedAppPath: string | undefined;
     try {
       // 5. Find the .app bundle
       const resolvedAppName = await findAppBundle(params.appName, mountPoint, fs, logger);
@@ -137,22 +141,20 @@ export async function installFromDmg(
       }
       appName = resolvedAppName;
 
-      // 6. Copy the .app to staging dir
+      // 6. Copy the .app to ~/Applications
       const appSource = path.join(mountPoint, appName);
-      const appDest = path.join(context.stagingDir, appName);
+      const applicationsDir = path.join(context.projectConfig.paths.homeDir, 'Applications');
+      await fs.ensureDir(applicationsDir);
+      const appDest = path.join(applicationsDir, appName);
+
+      if (await fs.exists(appDest)) {
+        await fs.rm(appDest, { recursive: true, force: true });
+      }
+
       logger.debug(messages.copyingApp(appName));
       await shellExecutor`cp -R ${appSource} ${appDest}`.quiet();
+      installedAppPath = appDest;
 
-      // 7. Symlink binaries from Contents/MacOS/ to stagingDir
-      const binaries = normalizeBinaries(toolConfig.binaries);
-      for (const binary of binaries) {
-        const binarySource = params.binaryPath
-          ? path.join(appDest, params.binaryPath)
-          : path.join(appDest, 'Contents', 'MacOS', binary.name);
-        const binaryDest = path.join(context.stagingDir, binary.name);
-        logger.debug(messages.symlinkingBinary(binarySource, binaryDest));
-        await fs.symlink(binarySource, binaryDest);
-      }
     } finally {
       // 8. Always unmount
       logger.debug(messages.unmountingDmg(mountPoint));
@@ -168,7 +170,16 @@ export async function installFromDmg(
     }
 
     // 10. Resolve binary paths and detect version
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
+    if (!installedAppPath) {
+      return { success: false, error: 'App installation path was not resolved' };
+    }
+
+    const binaries = normalizeBinaries(toolConfig.binaries);
+    const binaryPaths = binaries.map((binary) =>
+      params.binaryPath
+        ? path.join(installedAppPath, params.binaryPath)
+        : path.join(installedAppPath, 'Contents', 'MacOS', binary.name)
+    );
 
     let detectedVersion: string | undefined;
     const mainBinaryPath = binaryPaths[0];

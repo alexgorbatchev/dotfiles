@@ -1,10 +1,12 @@
 # DMG Installation
 
-Install macOS applications distributed as DMG disk images. The plugin mounts the DMG, copies the `.app` bundle to the staging directory, and is silently skipped on non-macOS platforms.
+Install macOS applications distributed as DMG disk images. The plugin mounts the DMG, copies the `.app` bundle to `~/Applications`, and is silently skipped on non-macOS platforms.
 
 The DMG source is configured via a required `source` object. Sources can be direct URLs or GitHub releases.
 
 If the resolved source points to a supported archive (`.zip`, `.tar.gz`, etc.) containing a `.dmg` file, the archive is automatically extracted first. This is common for GitHub releases that compress DMGs into zip files.
+
+DMG is externally managed. Temporary files (download, mount point, optional archive extraction) use `stagingDir`, but the final `.app` is installed to `~/Applications`.
 
 Shims are not supported for DMG-installed applications. The `.bin()` method should not be used with this installer.
 
