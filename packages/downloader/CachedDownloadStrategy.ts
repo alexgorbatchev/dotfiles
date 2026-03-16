@@ -1,5 +1,6 @@
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import path from 'node:path';
 import { createCacheKey } from './cache/helpers';
 import type { ICache } from './cache/types';
 import type { IDownloadOptions } from './IDownloader';
@@ -66,6 +67,7 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
 
     // If destinationPath is specified, write cached data to file and return void
     if (options.destinationPath) {
+      await this.fileSystem.ensureDir(path.dirname(options.destinationPath));
       await this.fileSystem.writeFile(options.destinationPath, cachedBuffer);
       logger.trace(cachedDownloadStrategyLogMessages.cachedFileWritten(options.destinationPath));
       if (options.onProgress) {

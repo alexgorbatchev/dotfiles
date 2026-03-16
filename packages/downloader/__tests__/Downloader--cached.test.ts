@@ -137,6 +137,35 @@ describe('Downloader with Cache', () => {
       ]);
     });
 
+    it('should create destination directory on cached file writes with progress callback', async () => {
+      fetchMockHelper.mockResponseOnce({
+        status: 200,
+        body: testData,
+        headers: { 'Content-Type': 'application/zip' },
+      });
+
+      await downloader.download(logger, testUrl, {
+        onProgress: () => {},
+      });
+
+      const cachedFilePath = '/staging/nested/path/test-file.zip';
+      const progressEvents: Array<[number, number | null]> = [];
+
+      await downloader.downloadToFile(logger, testUrl, cachedFilePath, {
+        onProgress: (bytesDownloaded, totalBytes) => {
+          progressEvents.push([bytesDownloaded, totalBytes]);
+        },
+      });
+
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(1);
+      expect(await mockFileSystem.exists(cachedFilePath)).toBe(true);
+      expect(await mockFileSystem.readFile(cachedFilePath)).toBe(testData);
+      expect(progressEvents).toEqual([
+        [0, Buffer.byteLength(testData)],
+        [Buffer.byteLength(testData), Buffer.byteLength(testData)],
+      ]);
+    });
+
     it('should work with disabled cache', async () => {
       const disabledCacheConfig = { ...cacheConfig, enabled: false };
       const disabledCache = new FileCache(logger, mockFileSystem, disabledCacheConfig);
