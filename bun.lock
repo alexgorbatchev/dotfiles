@@ -459,6 +459,7 @@
         "@dotfiles/downloader": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/installer": "workspace:*",
+        "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/registry": "workspace:*",
         "@dotfiles/utils": "workspace:*",

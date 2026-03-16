@@ -3,12 +3,14 @@ import {
   createShell,
   type IDownloadContext,
   type IExtractResult,
+  type IGitHubReleaseAsset,
   type IInstallContext,
   Platform,
   type Shell,
 } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
+import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
 import {
   createToolFileSystem,
@@ -18,12 +20,27 @@ import {
   withInstallErrorHandling,
 } from '@dotfiles/installer';
 import { normalizeBinaries } from '@dotfiles/installer';
+import { fetchGitHubRelease, selectAsset } from '@dotfiles/installer-github';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli } from '@dotfiles/utils';
 import path from 'node:path';
 import { messages } from './log-messages';
-import type { DmgToolConfig } from './schemas';
+import type {
+  DmgGitHubReleaseSource,
+  DmgInstallParams,
+  DmgSource,
+  DmgToolConfig,
+  DmgUrlSource,
+} from './schemas';
 import type { DmgInstallResult, IDmgInstallMetadata } from './types';
+
+type OperationResult<T> = { success: true; data: T; } | { success: false; error: string; };
+
+interface IResolvedDmgSource {
+  downloadPath: string;
+  downloadName: string;
+  sourceUrl: string;
+}
 
 export async function installFromDmg(
   toolName: string,
@@ -36,6 +53,8 @@ export async function installFromDmg(
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
   shellExecutor: Shell,
+  githubApiClient?: IGitHubApiClient,
+  ghCliApiClient?: IGitHubApiClient,
 ): Promise<DmgInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromDmg' });
@@ -47,23 +66,30 @@ export async function installFromDmg(
     return {
       success: true,
       binaryPaths: [],
-      metadata: { method: 'dmg', dmgUrl: toolConfig.installParams.url },
+      metadata: { method: 'dmg', dmgUrl: getSourceLabel(toolConfig.installParams.source) },
     };
   }
 
-  const params = toolConfig.installParams;
-  const url = params.url;
+  const params: DmgInstallParams = toolConfig.installParams;
 
   const operation = async (): Promise<DmgInstallResult> => {
-    // 1. Download the DMG
-    logger.debug(messages.downloadingDmg(url));
-    const dmgPath = path.join(context.stagingDir, `${toolName}.dmg`);
-    await downloadWithProgress(logger, url, dmgPath, `${toolName}.dmg`, downloader, options);
+    const resolvedSource = await resolveDmgSource(
+      params.source,
+      context,
+      options,
+      downloader,
+      githubApiClient,
+      ghCliApiClient,
+      logger,
+    );
+    if (!resolvedSource.success) {
+      return { success: false, error: resolvedSource.error };
+    }
 
     // 2. Run after-download hook
     const postDownloadContext: IDownloadContext = {
       ...context,
-      downloadPath: dmgPath,
+      downloadPath: resolvedSource.data.downloadPath,
     };
     const afterDownloadResult = await executeAfterDownloadHook(
       toolConfig,
@@ -77,10 +103,10 @@ export async function installFromDmg(
     }
 
     // 3. If downloaded file is an archive, extract it to find the .dmg inside
-    let resolvedDmgPath = dmgPath;
-    if (isSupportedArchiveFile(url)) {
+    let resolvedDmgPath = resolvedSource.data.downloadPath;
+    if (isSupportedArchiveFile(resolvedSource.data.downloadName)) {
       logger.debug(messages.extractingArchive());
-      const extractResult: IExtractResult = await archiveExtractor.extract(logger, dmgPath, {
+      const extractResult: IExtractResult = await archiveExtractor.extract(logger, resolvedSource.data.downloadPath, {
         targetDir: context.stagingDir,
       });
       logger.debug(messages.archiveExtracted(extractResult.extractedFiles.length));
@@ -137,8 +163,8 @@ export async function installFromDmg(
     if (await toolFs.exists(resolvedDmgPath)) {
       await toolFs.rm(resolvedDmgPath);
     }
-    if (resolvedDmgPath !== dmgPath && (await toolFs.exists(dmgPath))) {
-      await toolFs.rm(dmgPath);
+    if (resolvedDmgPath !== resolvedSource.data.downloadPath && (await toolFs.exists(resolvedSource.data.downloadPath))) {
+      await toolFs.rm(resolvedSource.data.downloadPath);
     }
 
     // 10. Resolve binary paths and detect version
@@ -157,8 +183,8 @@ export async function installFromDmg(
 
     const metadata: IDmgInstallMetadata = {
       method: 'dmg',
-      downloadUrl: url,
-      dmgUrl: url,
+      downloadUrl: resolvedSource.data.sourceUrl,
+      dmgUrl: resolvedSource.data.sourceUrl,
     };
 
     return {
@@ -170,6 +196,203 @@ export async function installFromDmg(
   };
 
   return withInstallErrorHandling('dmg', toolName, logger, operation);
+}
+
+function getSourceLabel(source: DmgSource): string {
+  if (source.type === 'url') {
+    return source.url;
+  }
+
+  return `github-release:${source.repo}`;
+}
+
+function getGitHubApiClient(
+  source: DmgGitHubReleaseSource,
+  githubApiClient: IGitHubApiClient,
+  ghCliApiClient: IGitHubApiClient | undefined,
+): IGitHubApiClient {
+  if (source.ghCli && ghCliApiClient) {
+    return ghCliApiClient;
+  }
+
+  return githubApiClient;
+}
+
+async function resolveDmgSource(
+  source: DmgSource,
+  context: IInstallContext,
+  options: IInstallOptions | undefined,
+  downloader: IDownloader,
+  githubApiClient: IGitHubApiClient | undefined,
+  ghCliApiClient: IGitHubApiClient | undefined,
+  logger: TsLogger,
+): Promise<OperationResult<IResolvedDmgSource>> {
+  if (source.type === 'url') {
+    return await resolveFromUrlSource(source, context, options, downloader, logger);
+  }
+
+  return await resolveFromGitHubReleaseSource(
+    source,
+    context,
+    options,
+    downloader,
+    githubApiClient,
+    ghCliApiClient,
+    logger,
+  );
+}
+
+async function resolveFromUrlSource(
+  source: DmgUrlSource,
+  context: IInstallContext,
+  options: IInstallOptions | undefined,
+  downloader: IDownloader,
+  logger: TsLogger,
+): Promise<OperationResult<IResolvedDmgSource>> {
+  logger.debug(messages.downloadingDmg(source.url));
+  const downloadName = inferDownloadFileName(source.url, 'download.dmg');
+  const downloadPath = path.join(context.stagingDir, downloadName);
+
+  try {
+    await downloadWithProgress(logger, source.url, downloadPath, downloadName, downloader, options);
+    return {
+      success: true,
+      data: {
+        downloadPath,
+        downloadName,
+        sourceUrl: source.url,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function resolveFromGitHubReleaseSource(
+  source: DmgGitHubReleaseSource,
+  context: IInstallContext,
+  options: IInstallOptions | undefined,
+  downloader: IDownloader,
+  githubApiClient: IGitHubApiClient | undefined,
+  ghCliApiClient: IGitHubApiClient | undefined,
+  logger: TsLogger,
+): Promise<OperationResult<IResolvedDmgSource>> {
+  if (!githubApiClient) {
+    return {
+      success: false,
+      error: 'GitHub API client is not configured for DMG github-release source',
+    };
+  }
+
+  const apiClient = getGitHubApiClient(source, githubApiClient, ghCliApiClient);
+  const releaseVersion = source.version || 'latest';
+
+  const release = await fetchGitHubRelease(
+    source.repo,
+    releaseVersion,
+    source.prerelease ?? false,
+    apiClient,
+    logger,
+  );
+  if (!release.success) {
+    return release;
+  }
+
+  const selectedAsset = await selectAsset(release.data, source, context, logger);
+  if (!selectedAsset.success) {
+    return selectedAsset;
+  }
+
+  const isDmgAsset = selectedAsset.data.name.endsWith('.dmg');
+  const isArchiveContainingDmg = isSupportedArchiveFile(selectedAsset.data.name);
+  if (!isDmgAsset && !isArchiveContainingDmg) {
+    return {
+      success: false,
+      error: `Selected GitHub release asset must be a .dmg or supported archive: ${selectedAsset.data.name}`,
+    };
+  }
+
+  const [owner, repoName] = source.repo.split('/');
+  if (!owner || !repoName) {
+    return {
+      success: false,
+      error: `Invalid GitHub repository format: ${source.repo}. Expected format: owner/repo`,
+    };
+  }
+
+  const downloadPath = path.join(context.stagingDir, selectedAsset.data.name);
+  const downloadResult = await downloadGitHubAsset(
+    source,
+    selectedAsset.data,
+    owner,
+    repoName,
+    release.data.tag_name,
+    downloadPath,
+    options,
+    downloader,
+    apiClient,
+    logger,
+  );
+  if (!downloadResult.success) {
+    return downloadResult;
+  }
+
+  return {
+    success: true,
+    data: {
+      downloadPath,
+      downloadName: selectedAsset.data.name,
+      sourceUrl: selectedAsset.data.browser_download_url,
+    },
+  };
+}
+
+async function downloadGitHubAsset(
+  source: DmgGitHubReleaseSource,
+  asset: IGitHubReleaseAsset,
+  owner: string,
+  repoName: string,
+  tagName: string,
+  downloadPath: string,
+  options: IInstallOptions | undefined,
+  downloader: IDownloader,
+  apiClient: IGitHubApiClient,
+  logger: TsLogger,
+): Promise<OperationResult<void>> {
+  if (source.ghCli && apiClient.downloadAsset) {
+    try {
+      await apiClient.downloadAsset(owner, repoName, tagName, asset.name, downloadPath);
+      return { success: true, data: undefined };
+    } catch {
+      // fall through to HTTP download
+    }
+  }
+
+  try {
+    await downloadWithProgress(logger, asset.browser_download_url, downloadPath, asset.name, downloader, options);
+    return { success: true, data: undefined };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+function inferDownloadFileName(rawUrl: string, fallback: string): string {
+  try {
+    const parsedUrl = new URL(rawUrl);
+    const lastPathSegment = parsedUrl.pathname.split('/').pop();
+    if (!lastPathSegment) {
+      return fallback;
+    }
+    return decodeURIComponent(lastPathSegment);
+  } catch {
+    return fallback;
+  }
 }
 
 async function findAppBundle(

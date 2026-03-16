@@ -1,8 +1,10 @@
 # DMG Installation
 
-Install macOS applications distributed as DMG disk images. The plugin mounts the DMG, copies the `.app` bundle to the staging directory. Silently skipped on non-macOS platforms.
+Install macOS applications distributed as DMG disk images. The plugin mounts the DMG, copies the `.app` bundle to the staging directory, and is silently skipped on non-macOS platforms.
 
-If the URL points to a supported archive (`.zip`, `.tar.gz`, etc.) containing a `.dmg` file, the archive is automatically extracted first. This is common for GitHub releases that compress DMGs into zip files.
+The DMG source is configured via a required `source` object. Sources can be direct URLs or GitHub releases.
+
+If the resolved source points to a supported archive (`.zip`, `.tar.gz`, etc.) containing a `.dmg` file, the archive is automatically extracted first. This is common for GitHub releases that compress DMGs into zip files.
 
 Shims are not supported for DMG-installed applications. The `.bin()` method should not be used with this installer.
 
@@ -13,7 +15,10 @@ import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install) =>
   install('dmg', {
-    url: 'https://example.com/MyApp-1.0.0.dmg',
+    source: {
+      type: 'url',
+      url: 'https://example.com/MyApp-1.0.0.dmg',
+    },
   })
 );
 ```
@@ -22,12 +27,19 @@ export default defineTool((install) =>
 
 | Parameter      | Description                                                                    |
 | -------------- | ------------------------------------------------------------------------------ |
-| `url`          | **Required**. URL of the DMG file or archive containing a DMG                  |
+| `source`       | **Required**. DMG source definition (see source variants below)                |
 | `appName`      | Name of the `.app` bundle (e.g., `'MyApp.app'`). Auto-detected if omitted      |
 | `binaryPath`   | Relative path to binary inside `.app`. Defaults to `Contents/MacOS/{bin name}` |
 | `versionArgs`  | Arguments for version check (e.g., `['--version']`)                            |
 | `versionRegex` | Regex to extract version from output                                           |
 | `env`          | Environment variables (static or dynamic function)                             |
+
+### Source Variants
+
+| Source type       | Required fields | Optional fields                                                | Notes                                                     |
+| ----------------- | --------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
+| `url`             | `url`           | —                                                              | Direct DMG URL or archive URL containing a DMG            |
+| `github-release`  | `repo`          | `version`, `assetPattern`, `assetSelector`, `ghCli`, `prerelease` | Resolves release asset first, then installs from the DMG |
 
 ## Examples
 
@@ -35,7 +47,10 @@ export default defineTool((install) =>
 
 ```typescript
 install('dmg', {
-  url: 'https://example.com/MyApp-1.0.0.dmg',
+  source: {
+    type: 'url',
+    url: 'https://example.com/MyApp-1.0.0.dmg',
+  },
   appName: 'MyApp.app',
 }).version('1.0.0');
 ```
@@ -44,7 +59,23 @@ install('dmg', {
 
 ```typescript
 install('dmg', {
-  url: 'https://github.com/example/app/releases/download/v1.0.0/MyApp.dmg.zip',
+  source: {
+    type: 'url',
+    url: 'https://github.com/example/app/releases/download/v1.0.0/MyApp.dmg.zip',
+  },
+});
+```
+
+### GitHub Release Source
+
+```typescript
+install('dmg', {
+  source: {
+    type: 'github-release',
+    repo: 'manaflow-ai/cmux',
+    assetPattern: '*macos*.dmg',
+  },
+  appName: 'cmux.app',
 });
 ```
 
@@ -52,7 +83,10 @@ install('dmg', {
 
 ```typescript
 install('dmg', {
-  url: 'https://example.com/MyApp-1.0.0.dmg',
+  source: {
+    type: 'url',
+    url: 'https://example.com/MyApp-1.0.0.dmg',
+  },
   versionArgs: ['--version'],
   versionRegex: 'v(\\d+\\.\\d+\\.\\d+)',
 });

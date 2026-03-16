@@ -2,6 +2,7 @@ import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import { createShell, Platform } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
+import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { DmgToolConfig } from '@dotfiles/installer-dmg';
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
@@ -15,14 +16,24 @@ describe('DmgInstallerPlugin', () => {
   let mockDownloader: IDownloader;
   let mockArchiveExtractor: IArchiveExtractor;
   let mockHookExecutor: HookExecutor;
+  let mockGitHubApiClient: IGitHubApiClient;
 
   beforeEach(() => {
     mockFs = {} as IFileSystem;
     mockDownloader = {} as IDownloader;
     mockArchiveExtractor = {} as IArchiveExtractor;
     mockHookExecutor = {} as HookExecutor;
+    mockGitHubApiClient = {} as IGitHubApiClient;
 
-    plugin = new DmgInstallerPlugin(mockFs, mockDownloader, mockArchiveExtractor, mockHookExecutor, shell);
+    plugin = new DmgInstallerPlugin(
+      mockFs,
+      mockDownloader,
+      mockArchiveExtractor,
+      mockHookExecutor,
+      shell,
+      mockGitHubApiClient,
+      undefined,
+    );
   });
 
   it('should have correct plugin metadata', () => {
@@ -38,7 +49,10 @@ describe('DmgInstallerPlugin', () => {
 
   it('should validate correct params', () => {
     const validParams = {
-      url: 'https://example.com/app.dmg',
+      source: {
+        type: 'url',
+        url: 'https://example.com/app.dmg',
+      },
     };
 
     const result = plugin.paramsSchema.safeParse(validParams);
@@ -47,7 +61,10 @@ describe('DmgInstallerPlugin', () => {
 
   it('should reject invalid URL in params', () => {
     const invalidParams = {
-      url: 'not-a-url',
+      source: {
+        type: 'url',
+        url: 'not-a-url',
+      },
     };
 
     const result = plugin.paramsSchema.safeParse(invalidParams);
@@ -61,7 +78,10 @@ describe('DmgInstallerPlugin', () => {
       binaries: ['test-app'],
       installationMethod: 'dmg',
       installParams: {
-        url: 'https://example.com/app.dmg',
+        source: {
+          type: 'url',
+          url: 'https://example.com/app.dmg',
+        },
       },
     };
 
@@ -96,6 +116,8 @@ describe('DmgInstallerPlugin', () => {
         mockArchiveExtractor,
         mockHookExecutor,
         mockShell as unknown as ReturnType<typeof createShell>,
+        mockGitHubApiClient,
+        undefined,
       );
 
       const context = {
@@ -116,6 +138,8 @@ describe('DmgInstallerPlugin', () => {
         mockArchiveExtractor,
         mockHookExecutor,
         mockShell as unknown as ReturnType<typeof createShell>,
+        mockGitHubApiClient,
+        undefined,
       );
 
       const context = {

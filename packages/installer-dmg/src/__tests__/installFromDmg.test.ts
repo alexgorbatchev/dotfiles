@@ -3,6 +3,7 @@ import { Platform } from '@dotfiles/core';
 import type { IInstallContext, Shell } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
+import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { HookExecutor } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
@@ -52,6 +53,7 @@ describe('installFromDmg', () => {
   let mockFs: IFileSystem;
   let mockDownloader: IDownloader;
   let mockArchiveExtractor: IArchiveExtractor;
+  let mockGitHubApiClient: IGitHubApiClient;
   let mockHookExecutor: HookExecutor;
   let context: IInstallContext;
 
@@ -77,6 +79,28 @@ describe('installFromDmg', () => {
         })
       ),
     } as unknown as IArchiveExtractor;
+    mockGitHubApiClient = {
+      getLatestRelease: mock(() => Promise.resolve(null)),
+      getReleaseByTag: mock(() => Promise.resolve(null)),
+      getAllReleases: mock(() => Promise.resolve([])),
+      getReleaseByConstraint: mock(() => Promise.resolve(null)),
+      getRateLimit: mock(() => Promise.resolve({
+        resources: {
+          core: { limit: 0, used: 0, remaining: 0, reset: 0 },
+          search: { limit: 0, used: 0, remaining: 0, reset: 0 },
+          graphql: { limit: 0, used: 0, remaining: 0, reset: 0 },
+          integration_manifest: { limit: 0, used: 0, remaining: 0, reset: 0 },
+          source_import: { limit: 0, used: 0, remaining: 0, reset: 0 },
+          code_scanning_upload: { limit: 0, used: 0, remaining: 0, reset: 0 },
+          actions_runner_registration: { limit: 0, used: 0, remaining: 0, reset: 0 },
+          scim: { limit: 0, used: 0, remaining: 0, reset: 0 },
+        },
+        rate: { limit: 0, used: 0, remaining: 0, reset: 0 },
+      })),
+      probeLatestTag: mock(() => Promise.resolve(null)),
+      getLatestReleaseTags: mock(() => Promise.resolve([])),
+      downloadAsset: mock(() => Promise.resolve()),
+    } as unknown as IGitHubApiClient;
     mockHookExecutor = {
       executeHook: mock(() => Promise.resolve({ success: true })),
       createEnhancedContext: mock((ctx: unknown) => ctx),
@@ -116,7 +140,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.dmg',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.dmg',
+          },
         },
       };
 
@@ -151,7 +178,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.dmg',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.dmg',
+          },
         },
       };
 
@@ -172,6 +202,111 @@ describe('installFromDmg', () => {
       expect(result.binaryPaths).toEqual([]);
     });
 
+    it('should resolve and download DMG from github-release source', async () => {
+      const { shell } = createMockShell();
+      mockGitHubApiClient = {
+        ...mockGitHubApiClient,
+        getLatestRelease: mock(() => Promise.resolve({
+          tag_name: 'v1.0.0',
+          name: 'v1.0.0',
+          html_url: 'https://github.com/manaflow-ai/cmux/releases/tag/v1.0.0',
+          published_at: '2026-01-01T00:00:00Z',
+          assets: [
+            {
+              name: 'cmux-macos.dmg',
+              browser_download_url: 'https://github.com/manaflow-ai/cmux/releases/download/v1.0.0/cmux-macos.dmg',
+            },
+          ],
+        })),
+      } as unknown as IGitHubApiClient;
+
+      const toolConfig: DmgToolConfig = {
+        name: 'cmux',
+        version: 'latest',
+        binaries: ['cmux'],
+        installationMethod: 'dmg',
+        installParams: {
+          source: {
+            type: 'github-release',
+            repo: 'manaflow-ai/cmux',
+            assetPattern: '*macos*.dmg',
+          },
+        },
+      };
+
+      const result = await installFromDmg(
+        'cmux',
+        toolConfig,
+        context,
+        undefined,
+        mockFs,
+        mockDownloader,
+        mockArchiveExtractor,
+        mockHookExecutor,
+        logger,
+        shell,
+        mockGitHubApiClient,
+        undefined,
+      );
+
+      assert(result.success);
+      expect(result.metadata.dmgUrl).toBe(
+        'https://github.com/manaflow-ai/cmux/releases/download/v1.0.0/cmux-macos.dmg',
+      );
+      expect(mockDownloader.download).toHaveBeenCalled();
+    });
+
+    it('should fail when github-release asset is not dmg or archive', async () => {
+      const { shell } = createMockShell();
+      mockGitHubApiClient = {
+        ...mockGitHubApiClient,
+        getLatestRelease: mock(() => Promise.resolve({
+          tag_name: 'v1.0.0',
+          name: 'v1.0.0',
+          html_url: 'https://github.com/manaflow-ai/cmux/releases/tag/v1.0.0',
+          published_at: '2026-01-01T00:00:00Z',
+          assets: [
+            {
+              name: 'cmux-linux-amd64',
+              browser_download_url: 'https://github.com/manaflow-ai/cmux/releases/download/v1.0.0/cmux-linux-amd64',
+            },
+          ],
+        })),
+      } as unknown as IGitHubApiClient;
+
+      const toolConfig: DmgToolConfig = {
+        name: 'cmux',
+        version: 'latest',
+        binaries: ['cmux'],
+        installationMethod: 'dmg',
+        installParams: {
+          source: {
+            type: 'github-release',
+            repo: 'manaflow-ai/cmux',
+            assetPattern: '*linux*',
+          },
+        },
+      };
+
+      const result = await installFromDmg(
+        'cmux',
+        toolConfig,
+        context,
+        undefined,
+        mockFs,
+        mockDownloader,
+        mockArchiveExtractor,
+        mockHookExecutor,
+        logger,
+        shell,
+        mockGitHubApiClient,
+        undefined,
+      );
+
+      assert(!result.success);
+      expect(result.error).toContain('must be a .dmg or supported archive');
+    });
+
     it('should return failure when after-download hook fails', async () => {
       const { shell } = createMockShell();
       mockHookExecutor = {
@@ -184,7 +319,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.dmg',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.dmg',
+          },
           hooks: {
             'after-download': [async () => {}],
           },
@@ -223,7 +361,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.dmg',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.dmg',
+          },
         },
       };
 
@@ -261,7 +402,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.dmg',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.dmg',
+          },
           binaryPath: 'Contents/Resources/bin/test-app',
         },
       };
@@ -294,7 +438,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.dmg',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.dmg',
+          },
         },
       };
 
@@ -330,7 +477,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.dmg',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.dmg',
+          },
         },
       };
 
@@ -368,7 +518,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.dmg',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.dmg',
+          },
         },
       };
 
@@ -386,7 +539,7 @@ describe('installFromDmg', () => {
       );
 
       assert(result.success);
-      expect(rmMock).toHaveBeenCalledWith('/install/staging/test-app.dmg');
+      expect(rmMock).toHaveBeenCalledWith('/install/staging/TestApp.dmg');
     });
   });
 
@@ -399,7 +552,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.dmg.zip',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.dmg.zip',
+          },
         },
       };
 
@@ -429,7 +585,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.tar.gz',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.tar.gz',
+          },
         },
       };
 
@@ -466,7 +625,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.zip',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.zip',
+          },
         },
       };
 
@@ -498,7 +660,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.zip',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.zip',
+          },
         },
       };
 
@@ -536,7 +701,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.zip',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.zip',
+          },
         },
       };
 
@@ -555,7 +723,7 @@ describe('installFromDmg', () => {
 
       assert(result.success);
       expect(rmMock).toHaveBeenCalledWith('/install/staging/TestApp.dmg');
-      expect(rmMock).toHaveBeenCalledWith('/install/staging/test-app.dmg');
+      expect(rmMock).toHaveBeenCalledWith('/install/staging/TestApp.zip');
     });
 
     it('should not call archiveExtractor for direct .dmg URL', async () => {
@@ -566,7 +734,10 @@ describe('installFromDmg', () => {
         binaries: ['test-app'],
         installationMethod: 'dmg',
         installParams: {
-          url: 'https://example.com/TestApp.dmg',
+          source: {
+            type: 'url',
+            url: 'https://example.com/TestApp.dmg',
+          },
         },
       };
 

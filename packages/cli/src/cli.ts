@@ -423,7 +423,15 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   );
   pluginRegistry.register(new CurlBinaryInstallerPlugin(installerTrackedFs, downloader, hookExecutor, shell));
   pluginRegistry.register(
-    new DmgInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor, shell),
+    new DmgInstallerPlugin(
+      installerTrackedFs,
+      downloader,
+      archiveExtractor,
+      hookExecutor,
+      shell,
+      githubApiClient,
+      ghCliApiClient,
+    ),
   );
   pluginRegistry.register(new ManualInstallerPlugin(installerTrackedFs));
   pluginRegistry.register(new NpmInstallerPlugin(shell));

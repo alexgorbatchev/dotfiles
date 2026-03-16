@@ -10,6 +10,7 @@ import type {
 import { Platform } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
+import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { installFromDmg } from './installFromDmg';
@@ -49,6 +50,8 @@ export class DmgInstallerPlugin
     private readonly archiveExtractor: IArchiveExtractor,
     private readonly hookExecutor: HookExecutor,
     private readonly shell: Shell,
+    private readonly githubApiClient: IGitHubApiClient,
+    private readonly ghCliApiClient: IGitHubApiClient | undefined,
   ) {}
 
   async validate(context: IInstallContext): Promise<IValidationResult> {
@@ -84,6 +87,8 @@ export class DmgInstallerPlugin
       this.hookExecutor,
       logger,
       this.shell,
+      this.githubApiClient,
+      this.ghCliApiClient,
     );
   }
 

@@ -127,9 +127,24 @@ import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('dmg', {
-    url: 'https://example.com/MyApp-1.0.0.dmg',
-  }).bin('myapp')
+    source: {
+      type: 'url',
+      url: 'https://example.com/MyApp-1.0.0.dmg',
+    },
+  })
 );
+```
+
+DMG also supports GitHub release sources:
+
+```typescript
+install('dmg', {
+  source: {
+    type: 'github-release',
+    repo: 'manaflow-ai/cmux',
+    assetPattern: '*macos*.dmg',
+  },
+});
 ```
 
 ### Manual

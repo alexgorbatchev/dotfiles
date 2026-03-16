@@ -15,7 +15,10 @@ import { defineTool } from '@dotfiles/cli';
 
 export default defineTool((install) =>
   install('dmg', {
-    url: 'https://example.com/releases/MyApp-1.0.0.dmg',
+    source: {
+      type: 'url',
+      url: 'https://example.com/releases/MyApp-1.0.0.dmg',
+    },
   })
 );
 ```
@@ -24,7 +27,9 @@ export default defineTool((install) =>
 
 The `install('dmg', params)` function accepts the following parameters:
 
-- **url** (required): URL of the DMG file to download
+- **source** (required): DMG source definition
+  - `type: 'url'` with `url`
+  - `type: 'github-release'` with `repo`, optional `version`, `assetPattern`, `assetSelector`, `ghCli`, `prerelease`
 - **appName** (optional): Name of the `.app` bundle inside the DMG (e.g., `'MyApp.app'`). Auto-detected if omitted.
 - **binaryPath** (optional): Relative path to the binary inside the `.app` bundle. Defaults to `Contents/MacOS/{binary name}`.
 - **versionArgs** (optional): Arguments to pass to the binary to check the version
@@ -37,7 +42,10 @@ The `install('dmg', params)` function accepts the following parameters:
 ```typescript
 export default defineTool((install) =>
   install('dmg', {
-    url: 'https://example.com/MyApp-1.0.0.dmg',
+    source: {
+      type: 'url',
+      url: 'https://example.com/MyApp-1.0.0.dmg',
+    },
     appName: 'MyApp.app',
   }).version('1.0.0')
 );
@@ -48,9 +56,27 @@ export default defineTool((install) =>
 ```typescript
 export default defineTool((install) =>
   install('dmg', {
-    url: 'https://example.com/MyApp-1.0.0.dmg',
+    source: {
+      type: 'url',
+      url: 'https://example.com/MyApp-1.0.0.dmg',
+    },
     versionArgs: ['--version'],
     versionRegex: 'v(\\d+\\.\\d+\\.\\d+)',
+  })
+);
+```
+
+#### GitHub Release Source
+
+```typescript
+export default defineTool((install) =>
+  install('dmg', {
+    source: {
+      type: 'github-release',
+      repo: 'manaflow-ai/cmux',
+      assetPattern: '*macos*.dmg',
+    },
+    appName: 'cmux.app',
   })
 );
 ```
