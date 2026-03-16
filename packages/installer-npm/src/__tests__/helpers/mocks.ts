@@ -21,15 +21,13 @@ function createDefaultHandler(): CommandHandler {
   return (cmd: string): IMockShellResult => {
     let stdout = '';
 
-    if (cmd.includes('npm ls')) {
-      stdout = JSON.stringify({
-        dependencies: {
-          prettier: { version: '3.1.0' },
-        },
-      });
+    if (cmd.includes('bun pm bin -g')) {
+      stdout = '/mock/global/bin';
+    } else if (cmd.includes('npm prefix -g')) {
+      stdout = '/mock/global';
     } else if (cmd.includes('npm view')) {
       stdout = '3.1.0';
-    } else if (cmd.includes('npm install') || cmd.includes('bun add')) {
+    } else if (cmd.includes('bun install -g') || cmd.includes('npm install -g')) {
       stdout = '';
     } else if (cmd.includes('--version')) {
       stdout = '3.1.0';
@@ -60,7 +58,7 @@ export function createFailingMockShell(): Shell {
   return ((strings: TemplateStringsArray, ...values: unknown[]) => {
     const cmd = strings.reduce((acc, str, i) => acc + str + (values[i] || ''), '');
 
-    if (cmd.includes('npm install') || cmd.includes('bun add')) {
+    if (cmd.includes('npm install -g') || cmd.includes('bun install -g')) {
       const error = new Error('install failed');
       const rejectedPromise = Promise.reject(error) as IMockShellPromise;
       rejectedPromise.quiet = () => rejectedPromise;

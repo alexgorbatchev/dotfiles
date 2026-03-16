@@ -23,10 +23,9 @@ type NpmPluginMetadata = {
  * Installer plugin for tools installed via npm.
  *
  * This plugin handles installation of tools published as npm packages.
- * It installs packages to a managed directory using `npm install --prefix`,
- * making binaries available through the node_modules/.bin directory.
- * The plugin supports version specification and version detection
- * via `npm view` for update checking.
+ * It installs packages globally using `npm install -g` or `bun install -g`,
+ * making binaries available through the global bin directory.
+ * The plugin is externally managed — the package manager controls binary placement.
  */
 export class NpmInstallerPlugin implements
   IInstallerPlugin<
@@ -39,6 +38,7 @@ export class NpmInstallerPlugin implements
   readonly method = 'npm';
   readonly displayName = 'npm Installer';
   readonly version = PLUGIN_VERSION;
+  readonly externallyManaged = true;
   readonly paramsSchema = npmInstallParamsSchema;
   readonly toolConfigSchema = npmToolConfigSchema;
 

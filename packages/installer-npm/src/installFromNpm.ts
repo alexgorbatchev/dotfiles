@@ -3,35 +3,23 @@ import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli, normalizeVersion } from '@dotfiles/utils';
 import path from 'node:path';
-import { z } from 'zod';
 import { messages } from './log-messages';
 import type { NpmToolConfig } from './schemas';
 import type { INpmInstallMetadata, NpmInstallResult } from './types';
 
-const npmLsOutputSchema = z.object({
-  dependencies: z.record(z.string(), z.object({ version: z.string() })),
-});
-
 /**
- * Installs a tool using npm.
+ * Installs a tool using npm/bun globally.
  *
  * This function handles the complete installation process for npm tools:
- * 1. Installs the npm package to the staging directory using `npm install --prefix`
- * 2. Retrieves version information from the installed package
- * 3. Determines binary paths from the node_modules/.bin directory
- *
- * @param toolName - The name of the tool to install.
- * @param toolConfig - The configuration for the npm tool.
- * @param context - The base installation context.
- * @param _options - Optional installation options.
- * @param parentLogger - The parent logger for creating sub-loggers.
- * @param shellExecutor - The shell executor function.
- * @returns A promise that resolves to the installation result.
+ * 1. Installs the npm package globally using `npm install -g` or `bun install -g`
+ * 2. Resolves the global bin directory to find where binaries land
+ * 3. Retrieves version information from the installed package
+ * 4. Determines binary paths from the global bin directory
  */
 export async function installFromNpm(
   toolName: string,
   toolConfig: NpmToolConfig,
-  context: IInstallContext,
+  _context: IInstallContext,
   _options: IInstallOptions | undefined,
   parentLogger: TsLogger,
   shellExecutor: Shell,
@@ -59,13 +47,13 @@ export async function installFromNpm(
     const loggingShell = installShell ?? createShell({ logger, skipCommandLog: true });
 
     if (isBun) {
-      await executeBunInstall(packageSpec, context.stagingDir, logger, loggingShell);
+      await executeBunGlobalInstall(packageSpec, logger, loggingShell);
     } else {
-      await executeNpmInstall(packageSpec, context.stagingDir, logger, loggingShell);
+      await executeNpmGlobalInstall(packageSpec, logger, loggingShell);
     }
 
-    const binDir: string = path.join(context.stagingDir, 'node_modules', '.bin');
-    const binaryPaths: string[] = getBinaryPaths(toolConfig.binaries, binDir);
+    const globalBinDir: string = await getGlobalBinDir(isBun, loggingShell);
+    const binaryPaths: string[] = getBinaryPaths(toolConfig.binaries, globalBinDir);
 
     let version: string | undefined;
 
@@ -80,9 +68,17 @@ export async function installFromNpm(
         });
       }
     } else if (isBun) {
-      version = await getPackageVersionFromNodeModules(packageName, context.stagingDir, context.fileSystem);
+      const mainBinaryPath = binaryPaths[0];
+      if (mainBinaryPath) {
+        version = await detectVersionViaCli({
+          binaryPath: mainBinaryPath,
+          args: ['--version'],
+          regex: '(\\d+\\.\\d+\\.\\d+)',
+          shellExecutor,
+        });
+      }
     } else {
-      version = await getNpmPackageVersion(packageName, context.stagingDir, logger, shellExecutor);
+      version = await getNpmViewVersion(packageName, shellExecutor);
     }
 
     const metadata: INpmInstallMetadata = {
@@ -104,104 +100,59 @@ export async function installFromNpm(
 }
 
 /**
- * Executes the npm install command to install a package into a specific directory.
+ * Returns the global bin directory for the given package manager.
  *
- * @param packageSpec - The package specifier (e.g., `prettier`, `prettier@3.0.0`).
- * @param installDir - The directory to install the package into.
- * @param logger - The logger instance for logging operations.
- * @param shell - The shell executor.
- * @returns A promise that resolves when installation is complete.
- * @throws {Error} If the installation fails.
+ * - bun: runs `bun pm bin -g` (e.g. `~/.bun/bin`)
+ * - npm: runs `npm prefix -g` + `/bin` (e.g. `/usr/local/bin`)
  */
-async function executeNpmInstall(
-  packageSpec: string,
-  installDir: string,
-  logger: TsLogger,
-  shell: Shell,
-): Promise<void> {
-  const command = `npm install --prefix ${installDir} ${packageSpec}`;
-  logger.debug(messages.executingCommand(command));
-  await shell`npm install --prefix ${installDir} ${packageSpec}`;
-}
-
-/**
- * Executes the bun add command to install a package into a specific directory.
- *
- * @param packageSpec - The package specifier (e.g., `prettier`, `prettier@3.0.0`).
- * @param installDir - The directory to install the package into.
- * @param logger - The logger instance for logging operations.
- * @param shell - The shell executor.
- * @returns A promise that resolves when installation is complete.
- * @throws {Error} If the installation fails.
- */
-async function executeBunInstall(
-  packageSpec: string,
-  installDir: string,
-  logger: TsLogger,
-  shell: Shell,
-): Promise<void> {
-  const command = `bun add --cwd ${installDir} ${packageSpec}`;
-  logger.debug(messages.executingCommand(command));
-  await shell`bun add --cwd ${installDir} ${packageSpec}`;
-}
-
-const packageJsonVersionSchema = z.object({ version: z.string() });
-
-/**
- * Retrieves the installed version of a package by reading its package.json from node_modules.
- *
- * @param packageName - The name of the package.
- * @param installDir - The directory where the package is installed.
- * @param fileSystem - The file system interface.
- * @returns A promise that resolves to the version string, or undefined if not found.
- */
-async function getPackageVersionFromNodeModules(
-  packageName: string,
-  installDir: string,
-  fileSystem: IInstallContext['fileSystem'],
-): Promise<string | undefined> {
-  try {
-    const packageJsonPath = path.join(installDir, 'node_modules', packageName, 'package.json');
-    const content = await fileSystem.readFile(packageJsonPath, 'utf-8');
-    const parsed = packageJsonVersionSchema.safeParse(JSON.parse(content));
-    return parsed.success ? parsed.data.version : undefined;
-  } catch {
-    return undefined;
+async function getGlobalBinDir(isBun: boolean, shell: Shell): Promise<string> {
+  if (isBun) {
+    const result = await shell`bun pm bin -g`.quiet();
+    return result.stdout.toString().trim();
   }
+
+  const result = await shell`npm prefix -g`.quiet();
+  return path.join(result.stdout.toString().trim(), 'bin');
 }
 
 /**
- * Retrieves the installed version of an npm package from the local installation.
- *
- * @param packageName - The name of the npm package.
- * @param installDir - The directory where the package is installed.
- * @param logger - The logger instance for logging operations.
- * @param shell - The shell executor.
- * @returns A promise that resolves to the version string, or null if not found.
+ * Executes `bun install -g` to install a package globally.
  */
-async function getNpmPackageVersion(
-  packageName: string,
-  installDir: string,
+async function executeBunGlobalInstall(
+  packageSpec: string,
   logger: TsLogger,
+  shell: Shell,
+): Promise<void> {
+  const command = `bun install -g ${packageSpec}`;
+  logger.debug(messages.executingCommand(command));
+  await shell`bun install -g ${packageSpec}`;
+}
+
+/**
+ * Executes `npm install -g` to install a package globally.
+ */
+async function executeNpmGlobalInstall(
+  packageSpec: string,
+  logger: TsLogger,
+  shell: Shell,
+): Promise<void> {
+  const command = `npm install -g ${packageSpec}`;
+  logger.debug(messages.executingCommand(command));
+  await shell`npm install -g ${packageSpec}`;
+}
+
+/**
+ * Retrieves the version of an npm package via `npm view`.
+ */
+async function getNpmViewVersion(
+  packageName: string,
   shell: Shell,
 ): Promise<string | undefined> {
   try {
-    const result = await shell`npm ls --prefix ${installDir} ${packageName} --json`.quiet().noThrow();
-    const output: string = result.stdout.toString();
-    const parsed = npmLsOutputSchema.safeParse(JSON.parse(output));
-
-    if (parsed.success) {
-      const pkgInfo = parsed.data.dependencies[packageName];
-      if (pkgInfo) {
-        logger.debug(messages.versionFetched(packageName, pkgInfo.version));
-        return pkgInfo.version;
-      }
-    }
-
-    logger.debug(messages.versionFetchFailed(packageName));
-    return undefined;
-  } catch (error) {
-    logger.debug(messages.versionFetchFailed(packageName), error);
+    const result = await shell`npm view ${packageName} version`.quiet().noThrow();
+    const version: string = result.stdout.toString().trim();
+    return version || undefined;
+  } catch {
     return undefined;
   }
 }
