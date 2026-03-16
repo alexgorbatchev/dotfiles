@@ -80,8 +80,8 @@ describe('Downloader with Cache', () => {
       logger.expect(['DEBUG'], ['Downloader', 'download'], [], ['Downloading URL']);
     });
 
-    it('should bypass cache when progress callback is provided', async () => {
-      // Mock two fetch requests since cache will be bypassed
+    it('should use cache when progress callback is provided', async () => {
+      // Mock one request; second call should hit cache
       fetchMockHelper.mockImplementation({
         status: 200,
         body: testData,
@@ -93,19 +93,48 @@ describe('Downloader with Cache', () => {
         progressCallCount++;
       };
 
-      // First download with progress callback - should bypass cache
+      // First download with progress callback - should hit network
       const result1 = await downloader.download(logger, testUrl, { onProgress });
       expect(result1).toEqual(Buffer.from(testData));
 
-      // Second download with progress callback - should bypass cache again
+      // Second download with progress callback - should use cache
       const result2 = await downloader.download(logger, testUrl, { onProgress });
       expect(result2).toEqual(Buffer.from(testData));
 
-      // Verify fetch was called twice (cache bypassed)
-      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(2);
+      // Verify fetch was called once (cache hit)
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(1);
 
-      // Verify progress callback was called
+      // Verify progress callback was called for both downloads
       expect(progressCallCount).toBeGreaterThan(0);
+    });
+
+    it('should report immediate 0->100 progress on cache hit', async () => {
+      fetchMockHelper.mockResponseOnce({
+        status: 200,
+        body: testData,
+        headers: { 'Content-Type': 'application/zip' },
+      });
+
+      const firstProgress: Array<[number, number | null]> = [];
+      await downloader.download(logger, testUrl, {
+        onProgress: (bytesDownloaded, totalBytes) => {
+          firstProgress.push([bytesDownloaded, totalBytes]);
+        },
+      });
+
+      const secondProgress: Array<[number, number | null]> = [];
+      await downloader.download(logger, testUrl, {
+        onProgress: (bytesDownloaded, totalBytes) => {
+          secondProgress.push([bytesDownloaded, totalBytes]);
+        },
+      });
+
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(1);
+      expect(firstProgress.length).toBeGreaterThan(0);
+      expect(secondProgress).toEqual([
+        [0, Buffer.byteLength(testData)],
+        [Buffer.byteLength(testData), Buffer.byteLength(testData)],
+      ]);
     });
 
     it('should work with disabled cache', async () => {

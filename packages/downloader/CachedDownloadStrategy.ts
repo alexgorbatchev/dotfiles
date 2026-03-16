@@ -60,11 +60,22 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
   ): Promise<Buffer | undefined> {
     logger.trace(cachedDownloadStrategyLogMessages.cacheHit(cacheKey, 'binary', cachedBuffer.length), { url });
 
+    if (options.onProgress) {
+      options.onProgress(0, cachedBuffer.length);
+    }
+
     // If destinationPath is specified, write cached data to file and return void
     if (options.destinationPath) {
       await this.fileSystem.writeFile(options.destinationPath, cachedBuffer);
       logger.trace(cachedDownloadStrategyLogMessages.cachedFileWritten(options.destinationPath));
+      if (options.onProgress) {
+        options.onProgress(cachedBuffer.length, cachedBuffer.length);
+      }
       return; // Return void for file downloads
+    }
+
+    if (options.onProgress) {
+      options.onProgress(cachedBuffer.length, cachedBuffer.length);
     }
 
     return cachedBuffer;
@@ -141,14 +152,6 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
    */
   async download(url: string, options: IDownloadOptions = {}): Promise<Buffer | undefined> {
     const logger = this.logger.getSubLogger({ name: 'download' });
-
-    // Don't cache downloads with progress callbacks as they are meant to be streamed
-    const shouldCache = !options.onProgress;
-
-    if (!shouldCache) {
-      logger.trace(cachedDownloadStrategyLogMessages.cacheDisabledForProgress(url));
-      return await this.underlyingStrategy.download(url, options);
-    }
 
     const cacheKey = createCacheKey(url, options);
 
