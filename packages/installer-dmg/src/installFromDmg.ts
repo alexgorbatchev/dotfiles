@@ -141,9 +141,9 @@ export async function installFromDmg(
       }
       appName = resolvedAppName;
 
-      // 6. Copy the .app to ~/Applications
+      // 6. Copy the .app to /Applications
       const appSource = path.join(mountPoint, appName);
-      const applicationsDir = path.join(context.projectConfig.paths.homeDir, 'Applications');
+      const applicationsDir = '/Applications';
       await fs.ensureDir(applicationsDir);
       const appDest = path.join(applicationsDir, appName);
 

@@ -28,7 +28,7 @@ const PLUGIN_VERSION = '1.0.0';
  * Installer plugin for macOS applications distributed as DMG disk images.
  *
  * This plugin downloads a .dmg file, mounts it, copies the .app bundle to
- * the staging directory, and symlinks binaries from Contents/MacOS/ for
+ * /Applications, and resolves binaries from Contents/MacOS/ for
  * system-wide availability.
  *
  * On non-macOS platforms, installation is silently skipped with a success result.

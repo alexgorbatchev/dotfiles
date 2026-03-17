@@ -4,7 +4,7 @@ Installer plugin for macOS applications distributed as DMG disk images.
 
 ## Overview
 
-This plugin downloads `.dmg` files, mounts them with `hdiutil`, and copies the `.app` bundle to `~/Applications`. On non-macOS platforms, installation is silently skipped.
+This plugin downloads `.dmg` files, mounts them with `hdiutil`, and copies the `.app` bundle to `/Applications`. On non-macOS platforms, installation is silently skipped.
 
 Shims are not supported for DMG-installed applications. The `.bin()` method should not be used with this installer.
 
@@ -93,7 +93,7 @@ When `appName` is not specified, the plugin scans the mounted DMG for the first 
 
 ### Externally Managed
 
-This plugin operates with `externallyManaged = true`. Temporary files are handled in `stagingDir`, while the final app is installed to `~/Applications`. The shim generator will not create shims for DMG-installed tools. Applications installed via DMG are managed as `.app` bundles, not standalone binaries.
+This plugin operates with `externallyManaged = true`. Temporary files are handled in `stagingDir`, while the final app is installed to `/Applications`. The shim generator will not create shims for DMG-installed tools. Applications installed via DMG are managed as `.app` bundles, not standalone binaries.
 
 ## Implementation Details
 
@@ -104,7 +104,7 @@ This plugin operates with `externallyManaged = true`. Temporary files are handle
 3. Execute `after-download` hook if configured
 4. Mount DMG via `hdiutil attach -nobrowse -noautoopen`
 5. Find `.app` bundle (explicit `appName` or auto-detect)
-6. Copy `.app` bundle to `~/Applications` (replace existing app if present)
+6. Copy `.app` bundle to `/Applications` (replace existing app if present)
 7. Unmount DMG (always, via `finally` block)
 8. Clean up downloaded DMG file
 
@@ -146,7 +146,7 @@ Installation returns `DmgInstallResult`:
 ```typescript
 {
   success: true,
-  binaryPaths: string[],      // Paths inside ~/Applications/<App>.app/Contents/MacOS/
+  binaryPaths: string[],      // Paths inside /Applications/<App>.app/Contents/MacOS/
   version?: string,            // Detected version
   metadata: {
     method: 'dmg',

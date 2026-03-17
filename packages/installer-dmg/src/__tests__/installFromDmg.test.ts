@@ -161,7 +161,7 @@ describe('installFromDmg', () => {
       );
 
       assert(result.success);
-      expect(result.binaryPaths).toEqual(['/home/user/Applications/TestApp.app/Contents/MacOS/test-app']);
+      expect(result.binaryPaths).toEqual(['/Applications/TestApp.app/Contents/MacOS/test-app']);
       expect(result.metadata.method).toBe('dmg');
       expect(result.metadata.dmgUrl).toBe('https://example.com/TestApp.dmg');
       expect(mockFs.ensureDir).toHaveBeenCalledWith('/install/staging');
@@ -423,7 +423,7 @@ describe('installFromDmg', () => {
       );
 
       assert(result.success);
-      expect(result.binaryPaths).toEqual(['/home/user/Applications/TestApp.app/Contents/Resources/bin/test-app']);
+      expect(result.binaryPaths).toEqual(['/Applications/TestApp.app/Contents/Resources/bin/test-app']);
     });
 
     it('should use config version when detection returns nothing and version is not latest', async () => {
@@ -569,7 +569,7 @@ describe('installFromDmg', () => {
       );
 
       assert(result.success);
-      expect(result.binaryPaths).toEqual(['/home/user/Applications/TestApp.app/Contents/MacOS/test-app']);
+      expect(result.binaryPaths).toEqual(['/Applications/TestApp.app/Contents/MacOS/test-app']);
       expect(mockArchiveExtractor.extract).toHaveBeenCalledTimes(1);
     });
 
