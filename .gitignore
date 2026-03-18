@@ -43,3 +43,6 @@ tmp
 .claude
 .mcp.json
 CLAUDE.md
+/.opencode
+/AGENTS.md
+/opencode.jsonc
