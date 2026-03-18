@@ -240,6 +240,12 @@ export interface IInstallerPlugin<
    */
   readonly externallyManaged?: boolean;
 
+  /**
+   * Optional message shown by generated shims when installation succeeds but
+   * the expected executable is still missing.
+   */
+  readonly missingBinaryMessage?: string;
+
   /** Zod schema for installation parameters */
   readonly paramsSchema: z.ZodType<TParams>;
 

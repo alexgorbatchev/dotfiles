@@ -127,6 +127,19 @@ export class InstallerPluginRegistry {
   }
 
   /**
+   * Get per-method missing-binary messages for plugins that provide one.
+   */
+  getMissingBinaryMessagesByMethod(): Map<string, string> {
+    const messagesByMethod = new Map<string, string>();
+    for (const [method, plugin] of this.plugins) {
+      if (plugin.missingBinaryMessage) {
+        messagesByMethod.set(method, plugin.missingBinaryMessage);
+      }
+    }
+    return messagesByMethod;
+  }
+
+  /**
    * Compose schemas from all registered plugins (call once after all plugins registered)
    */
   composeSchemas(): void {

@@ -249,6 +249,28 @@ describe('InstallerPluginRegistry', () => {
     });
   });
 
+  describe('getMissingBinaryMessagesByMethod', () => {
+    test('returns empty map when no plugins provide custom messages', async () => {
+      await registry.register(createMockPlugin('method1'));
+      await registry.register(createMockPlugin('method2'));
+
+      const messagesByMethod = registry.getMissingBinaryMessagesByMethod();
+      expect(messagesByMethod.size).toBe(0);
+    });
+
+    test('returns method-to-message map for plugins that provide custom messages', async () => {
+      await registry.register(createMockPlugin('dmg', {
+        missingBinaryMessage: 'Installed as app bundle in /Applications',
+      }));
+      await registry.register(createMockPlugin('brew'));
+
+      const messagesByMethod = registry.getMissingBinaryMessagesByMethod();
+      expect(messagesByMethod.size).toBe(1);
+      expect(messagesByMethod.get('dmg')).toBe('Installed as app bundle in /Applications');
+      expect(messagesByMethod.has('brew')).toBe(false);
+    });
+  });
+
   describe('composeSchemas', () => {
     test('composes schemas from multiple plugins', async () => {
       await registry.register(createMockPlugin('method1'));

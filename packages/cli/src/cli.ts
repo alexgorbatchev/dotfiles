@@ -403,12 +403,14 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   // Create shim generator with knowledge of externally managed plugins (e.g., brew)
   // so it can skip shim generation for already-installed externally managed tools
   const externallyManagedMethods = pluginRegistry.getExternallyManagedMethods();
+  const missingBinaryMessagesByMethod = pluginRegistry.getMissingBinaryMessagesByMethod();
   const shimGenerator = new ShimGenerator(
     systemLogger,
     shimTrackedFs,
     projectConfig,
     systemInfo,
     externallyManagedMethods,
+    missingBinaryMessagesByMethod,
     toolInstallationRegistry,
   );
 

@@ -43,6 +43,8 @@ export class DmgInstallerPlugin
   readonly toolConfigSchema = dmgToolConfigSchema;
   readonly staticValidation = true;
   readonly externallyManaged = true;
+  readonly missingBinaryMessage =
+    'Installation completed. This tool was installed as a macOS app bundle in /Applications. Launch it from Spotlight, Launchpad, or the Applications folder.';
 
   constructor(
     private readonly fs: IFileSystem,

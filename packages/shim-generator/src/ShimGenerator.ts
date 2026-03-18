@@ -29,6 +29,7 @@ export class ShimGenerator implements IShimGenerator {
   private readonly logger: TsLogger;
   private readonly systemInfo: ISystemInfo;
   private readonly externallyManagedMethods: Set<string>;
+  private readonly missingBinaryMessagesByMethod: Map<string, string>;
   private readonly toolInstallationRegistry?: IToolInstallationRegistry;
 
   private isConfigurationOnlyToolConfig(toolConfig: ToolConfig): boolean {
@@ -47,6 +48,7 @@ export class ShimGenerator implements IShimGenerator {
    * @param config - The YAML configuration containing paths and settings.
    * @param systemInfo - The current system information for platform resolution.
    * @param externallyManagedMethods - Set of installation method names that are externally managed.
+   * @param missingBinaryMessagesByMethod - Optional per-method messages shown when binary is missing post-install.
    * @param toolInstallationRegistry - Registry for checking if tools are already installed.
    */
   constructor(
@@ -55,6 +57,7 @@ export class ShimGenerator implements IShimGenerator {
     config: ProjectConfig,
     systemInfo: ISystemInfo,
     externallyManagedMethods?: Set<string>,
+    missingBinaryMessagesByMethod?: Map<string, string>,
     toolInstallationRegistry?: IToolInstallationRegistry,
   ) {
     const logger = parentLogger.getSubLogger({ name: 'ShimGenerator' });
@@ -65,6 +68,7 @@ export class ShimGenerator implements IShimGenerator {
     this.config = config;
     this.systemInfo = systemInfo;
     this.externallyManagedMethods = externallyManagedMethods ?? new Set();
+    this.missingBinaryMessagesByMethod = missingBinaryMessagesByMethod ?? new Map();
     this.toolInstallationRegistry = toolInstallationRegistry;
   }
 
@@ -150,7 +154,7 @@ export class ShimGenerator implements IShimGenerator {
       const shimPath = await this.generateShimForBinary(
         toolFs,
         toolName,
-        toolConfig,
+        resolvedConfig,
         binaryName,
         overwrite,
         overwriteConflicts,
@@ -177,7 +181,7 @@ export class ShimGenerator implements IShimGenerator {
   private async generateShimForBinary(
     toolFs: IFileSystem,
     toolName: string,
-    _toolConfig: ToolConfig,
+    toolConfig: ToolConfig,
     binaryName: string,
     overwrite: boolean,
     overwriteConflicts: boolean,
@@ -215,6 +219,11 @@ export class ShimGenerator implements IShimGenerator {
     logger.debug(messages.generateShim.resolvedBinaryPath(toolName, binaryName, toolBinaryPath));
 
     const envVarSuffix = toolName.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+
+    const missingBinaryMessage = this.missingBinaryMessagesByMethod.get(toolConfig.installationMethod);
+    const missingBinaryMessageCommand = missingBinaryMessage
+      ? `echo "${missingBinaryMessage.replaceAll('"', '\\"')}" >&2`
+      : 'echo "Installation completed but binary not found at: $TOOL_EXECUTABLE" >&2';
 
     const shimContent = dedentString(`
       #!/usr/bin/env bash
@@ -264,15 +273,15 @@ export class ShimGenerator implements IShimGenerator {
         install_exit_code=$?
         set -e
 
-        if [ $install_exit_code -eq 0 ]; then
-          # Installation successful, try to execute binary again
-          if [ -x "$TOOL_EXECUTABLE" ]; then
-            exec "$TOOL_EXECUTABLE" "$@"
+          if [ $install_exit_code -eq 0 ]; then
+            # Installation successful, try to execute binary again
+            if [ -x "$TOOL_EXECUTABLE" ]; then
+              exec "$TOOL_EXECUTABLE" "$@"
+            else
+              ${missingBinaryMessageCommand}
+              exit 1
+            fi
           else
-            echo "Installation completed but binary not found at: $TOOL_EXECUTABLE" >&2
-            exit 1
-          fi
-        else
           # Installation failed, exit with the same code
           exit $install_exit_code
         fi

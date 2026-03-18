@@ -168,6 +168,43 @@ describe('ShimGenerator', () => {
       `;
     });
 
+    it('should show app-launch guidance when DMG install has no executable binary', async () => {
+      const generatorWithMessages = new ShimGenerator(
+        logger,
+        fileSystem,
+        mockConfig,
+        systemInfo,
+        undefined,
+        new Map([
+          [
+            'dmg',
+            'Installation completed. This tool was installed as a macOS app bundle in /Applications. Launch it from Spotlight, Launchpad, or the Applications folder.',
+          ],
+        ]),
+      );
+
+      const dmgToolConfig: ToolConfig = {
+        name: 'telegram',
+        binaries: ['telegram'],
+        version: 'latest',
+        installationMethod: 'dmg',
+        installParams: {
+          source: {
+            type: 'url',
+            url: 'https://example.com/telegram.dmg',
+          },
+        },
+      };
+
+      await generatorWithMessages.generateForTool('telegram', dmgToolConfig);
+
+      const writtenContent = String(fsMocks.writeFile.mock.calls.at(-1)?.[1] ?? '');
+      expect(writtenContent).toContain(
+        'This tool was installed as a macOS app bundle in /Applications. Launch it from Spotlight, Launchpad, or the Applications folder.',
+      );
+      expect(writtenContent).not.toContain('Installation completed but binary not found at: $TOOL_EXECUTABLE');
+    });
+
     it('should skip shim generation for configuration-only tool configs', async () => {
       const configOnly: ToolConfig = {
         name: toolName,
