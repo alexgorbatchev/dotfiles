@@ -292,6 +292,47 @@ describe('ToolInstallationRegistry', () => {
     });
   });
 
+  describe('usage tracking', () => {
+    test('should create usage row on first invocation', async () => {
+      await registry.recordToolUsage('fzf', 'fzf');
+
+      const usage = await registry.getToolUsage('fzf', 'fzf');
+      expect(usage).not.toBeNull();
+      expect(usage).toMatchObject({
+        toolName: 'fzf',
+        binaryName: 'fzf',
+        usageCount: 1,
+      });
+      expect(usage?.lastUsedAt).toBeInstanceOf(Date);
+    });
+
+    test('should increment usage count for repeated invocations', async () => {
+      await registry.recordToolUsage('rg', 'rg');
+      await registry.recordToolUsage('rg', 'rg');
+      await registry.recordToolUsage('rg', 'rg');
+
+      const usage = await registry.getToolUsage('rg', 'rg');
+      expect(usage?.usageCount).toBe(3);
+    });
+
+    test('should track usage independently per binary', async () => {
+      await registry.recordToolUsage('node', 'node');
+      await registry.recordToolUsage('node', 'npm');
+      await registry.recordToolUsage('node', 'npm');
+
+      const nodeUsage = await registry.getToolUsage('node', 'node');
+      const npmUsage = await registry.getToolUsage('node', 'npm');
+
+      expect(nodeUsage?.usageCount).toBe(1);
+      expect(npmUsage?.usageCount).toBe(2);
+    });
+
+    test('should return null when usage row does not exist', async () => {
+      const usage = await registry.getToolUsage('missing-tool', 'missing-bin');
+      expect(usage).toBeNull();
+    });
+  });
+
   describe('database persistence', () => {
     test('should persist data across registry instances', async () => {
       const installation: IToolInstallationDetails = {

@@ -23,7 +23,22 @@ export class RegistryDatabase {
     const dbDir = path.dirname(registryDbPath);
     mkdirSync(dbDir, { recursive: true });
     this.db = new Database(registryDbPath);
+    this.configureConnectionPragmas();
     this.logger.debug(messages.initialized(), 'shared connection');
+  }
+
+  private configureConnectionPragmas(): void {
+    // Improve multi-process write behavior for shim usage tracking + foreground commands.
+    // busy_timeout prevents immediate SQLITE_BUSY failures when another process briefly holds a lock.
+    // WAL allows concurrent readers with a single writer and reduces lock contention.
+    // synchronous=NORMAL is a practical durability/performance balance for this metadata DB.
+    try {
+      this.db.run('PRAGMA busy_timeout = 5000;');
+      this.db.run('PRAGMA journal_mode = WAL;');
+      this.db.run('PRAGMA synchronous = NORMAL;');
+    } catch (error) {
+      this.logger.warn(messages.sqlitePragmaConfigFailed(), error);
+    }
   }
 
   /**

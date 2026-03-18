@@ -76,6 +76,16 @@ export default defineTool((install, ctx) => install('github-release', { repo: 'o
 | `.disable()`          | Skip tool during generation (logs warning)              |
 | `.hostname(pattern)`  | Restrict tool to specific hostname(s) (string or regex) |
 
+#### `.bin(name)` runtime behavior
+
+Declaring `.bin(name)` generates a shim for `name` in `paths.targetDir`.
+
+- Running the shim auto-installs the tool on first use (if needed)
+- Running `{binary} @update` triggers a shim-driven update flow
+- Shim executions are recorded for usage analytics via a private internal command
+
+Usage tracking is non-blocking and enabled by default. Set `DOTFILES_USAGE_TRACKING=0` to disable tracking.
+
 ### Base Install Parameters
 
 All installation methods support these parameters:

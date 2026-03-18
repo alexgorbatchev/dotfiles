@@ -30,3 +30,13 @@ export interface IToolInstallationRecord extends IToolInstallationDetails {
   id: number;
   readonly installedAt: Date;
 }
+
+/**
+ * Aggregate usage stats for a tool binary invocation tracked from shims.
+ */
+export interface IToolUsageRecord {
+  toolName: string;
+  binaryName: string;
+  usageCount: number;
+  readonly lastUsedAt: Date;
+}

@@ -106,6 +106,25 @@ export interface IToolDetail {
   files: IFileState[];
   /** Binary disk size in bytes for this tool */
   binaryDiskSize: number;
+  /** Usage statistics gathered from shim executions */
+  usage: IToolUsageSummary;
+}
+
+/**
+ * Per-binary usage stats for a tool.
+ */
+export interface IToolBinaryUsage {
+  binaryName: string;
+  count: number;
+  lastUsedAt: string | null;
+}
+
+/**
+ * Usage summary for a tool.
+ */
+export interface IToolUsageSummary {
+  totalCount: number;
+  binaries: IToolBinaryUsage[];
 }
 
 /**
@@ -325,6 +344,7 @@ export function toToolDetail(
   files: IFileState[],
   _systemInfo: ISystemInfo,
   binaryDiskSize: number,
+  usage: IToolUsageSummary,
 ): IToolDetail {
   // Serialize the original config (not resolved) to preserve platformConfigs for visualization
   return {
@@ -332,6 +352,7 @@ export function toToolDetail(
     runtime: getToolRuntimeState(config.name, installations),
     files,
     binaryDiskSize,
+    usage,
   };
 }
 

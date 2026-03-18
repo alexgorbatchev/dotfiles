@@ -108,6 +108,8 @@ describe('Installer - Path Precedence (Real FS)', () => {
       updateToolInstallation: async () => {},
       removeToolInstallation: async () => {},
       isToolInstalled: async () => false,
+      recordToolUsage: async () => {},
+      getToolUsage: async () => null,
       close: async () => {},
     };
 

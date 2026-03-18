@@ -2,7 +2,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { Database } from 'bun:sqlite';
 import type { IToolInstallationRegistry } from './IToolInstallationRegistry';
 import { messages } from './log-messages';
-import type { IToolInstallationDetails, IToolInstallationRecord } from './types';
+import type { IToolInstallationDetails, IToolInstallationRecord, IToolUsageRecord } from './types';
 
 interface IToolInstallationRow {
   id: number;
@@ -17,6 +17,13 @@ interface IToolInstallationRow {
   configured_version: string | null;
   original_tag: string | null;
   install_method: string | null;
+}
+
+interface IToolUsageRow {
+  tool_name: string;
+  binary_name: string;
+  usage_count: number;
+  last_used_at: number;
 }
 
 /**
@@ -68,6 +75,20 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
 
     // Migration: Add install_method column if it doesn't exist (for existing databases)
     this.migrateAddInstallMethod();
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS tool_usage (
+        tool_name TEXT NOT NULL,
+        binary_name TEXT NOT NULL,
+        usage_count INTEGER NOT NULL DEFAULT 0,
+        last_used_at INTEGER NOT NULL,
+        PRIMARY KEY (tool_name, binary_name)
+      );
+    `);
+
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_tool_usage_tool_name ON tool_usage(tool_name);
+    `);
 
     logger.debug(messages.databaseInitialized());
   }
@@ -242,6 +263,41 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
       logger.debug(messages.toolInstallationCheckCompleted(), toolName, 'any', isInstalled);
       return isInstalled;
     }
+  }
+
+  async recordToolUsage(toolName: string, binaryName: string): Promise<void> {
+    const now = Date.now();
+
+    const stmt = this.db.prepare(`
+      INSERT INTO tool_usage (tool_name, binary_name, usage_count, last_used_at)
+      VALUES (?, ?, 1, ?)
+      ON CONFLICT(tool_name, binary_name)
+      DO UPDATE SET
+        usage_count = usage_count + 1,
+        last_used_at = excluded.last_used_at
+    `);
+
+    stmt.run(toolName, binaryName, now);
+  }
+
+  async getToolUsage(toolName: string, binaryName: string): Promise<IToolUsageRecord | null> {
+    const stmt = this.db.prepare(`
+      SELECT tool_name, binary_name, usage_count, last_used_at
+      FROM tool_usage
+      WHERE tool_name = ? AND binary_name = ?
+    `);
+
+    const row = stmt.get(toolName, binaryName) as IToolUsageRow | undefined;
+    if (!row) {
+      return null;
+    }
+
+    return {
+      toolName: row.tool_name,
+      binaryName: row.binary_name,
+      usageCount: row.usage_count,
+      lastUsedAt: new Date(row.last_used_at),
+    };
   }
 
   async close(): Promise<void> {

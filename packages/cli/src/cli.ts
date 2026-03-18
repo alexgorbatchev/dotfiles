@@ -1,13 +1,10 @@
 #!/usr/bin/env bun
 
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
-import { ConfigService, loadConfig, type ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo } from '@dotfiles/core';
+import { ConfigService, type ProjectConfig } from '@dotfiles/config';
 import {
-  architectureFromNodeJS,
   createShell,
   InstallerPluginRegistry,
-  platformFromNodeJS,
 } from '@dotfiles/core';
 import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
 import { ReadmeService } from '@dotfiles/features';
@@ -32,15 +29,12 @@ import { ManualInstallerPlugin } from '@dotfiles/installer-manual';
 import { NpmInstallerPlugin } from '@dotfiles/installer-npm';
 import { ZshPluginInstallerPlugin } from '@dotfiles/installer-zsh-plugin';
 import { createTsLogger, getLogLevelFromFlags, type LogLevelValue, type TsLogger } from '@dotfiles/logger';
-import { RegistryDatabase } from '@dotfiles/registry-database';
-import { FileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
-import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
+import { type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { CompletionCommandExecutor, CompletionGenerator, ShellInitGenerator } from '@dotfiles/shell-init-generator';
 import { ShimGenerator } from '@dotfiles/shim-generator';
 import { CopyGenerator, SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { VersionChecker } from '@dotfiles/version-checker';
 import net from 'node:net';
-import os from 'node:os';
 import path from 'node:path';
 
 import { registerBinCommand } from './binCommand';
@@ -55,9 +49,10 @@ import { registerFilesCommand } from './filesCommand';
 import { registerGenerateCommand } from './generateCommand';
 import { registerInstallCommand } from './installCommand';
 import { messages } from './log-messages';
+import { runTrackUsageCommand } from './light/runTrackUsageCommand';
 import { registerLogCommand } from './logCommand';
 import { populateMemFsForDryRun } from './populateMemFsForDryRun';
-import { resolveConfigPath } from './resolveConfigPath';
+import { createBaseRuntimeContext } from './runtime/createBaseRuntimeContext';
 import { registerSkillCommand } from './skillCommand';
 import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 import { registerUpdateCommand } from './updateCommand';
@@ -114,28 +109,6 @@ function initializeFileSystem(logger: TsLogger, dryRun: boolean): IFileSystem {
   }
   logger.trace(messages.componentInitialized('filesystem'), fs.constructor.name);
   return fs;
-}
-
-function createSystemInfo(options: SetupServicesOptions, logger: TsLogger): ISystemInfo {
-  // CLI options are user-provided strings that override process.platform/arch for testing
-  const platformString: NodeJS.Platform = (options.platform as NodeJS.Platform) || process.platform;
-  const archString: NodeJS.Architecture = (options.arch as NodeJS.Architecture) || process.arch;
-
-  const systemInfo: ISystemInfo = {
-    platform: platformFromNodeJS(platformString),
-    arch: architectureFromNodeJS(archString),
-    homeDir: os.homedir(),
-    hostname: os.hostname(),
-  };
-
-  if (options.platform) {
-    logger.warn(messages.configParameterOverridden('platform', options.platform));
-  }
-  if (options.arch) {
-    logger.warn(messages.configParameterOverridden('arch', options.arch));
-  }
-
-  return systemInfo;
 }
 
 function initializeDownloadCache(
@@ -246,23 +219,34 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // Initialize filesystem first
   const fs = initializeFileSystem(logger, dryRun);
-  const systemInfo = createSystemInfo(options, logger);
-
-  // Resolve config path - if explicit path provided use it, otherwise search for default config files
-  const userConfigPath = await resolveConfigPath(logger, config, {
-    cwd: process.cwd(),
-    homeDir: systemInfo.homeDir,
-  });
-
-  if (!userConfigPath) {
-    logger.error(messages.configNotFound());
-    process.exit(1);
-  }
 
   // For config loading, use NodeFileSystem only in dry-run mode when running the CLI directly
   const isRunningDirectly = process.env.NODE_ENV !== 'test' && !process.env['BUN_TEST'];
   const configFs = dryRun && isRunningDirectly ? new NodeFileSystem() : fs;
-  const projectConfig = await loadConfig(logger, configFs, userConfigPath, systemInfo, env);
+
+  const baseContext = await createBaseRuntimeContext(logger, {
+    config,
+    cwd: options.cwd,
+    env,
+    platform: options.platform,
+    arch: options.arch,
+    fileSystem: fs,
+    configFileSystem: configFs,
+    warnOnPlatformArchOverride: true,
+  });
+
+  if (!baseContext) {
+    logger.error(messages.configNotFound());
+    process.exit(1);
+  }
+
+  const {
+    projectConfig,
+    systemInfo,
+    registryPath,
+    fileRegistry,
+    toolInstallationRegistry,
+  } = baseContext;
 
   // Check proxy availability if DEV_PROXY env var is set
   const devProxyPort = process.env['DEV_PROXY'];
@@ -279,14 +263,6 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     }
   }
 
-  // Create final systemInfo with correct homeDir from projectConfig
-  const finalSystemInfo: ISystemInfo = {
-    platform: systemInfo.platform,
-    arch: systemInfo.arch,
-    homeDir: projectConfig.paths.homeDir,
-    hostname: systemInfo.hostname,
-  };
-
   // Wrap filesystem to resolve tilde paths using configured home
   const resolvedFs = new ResolvedFileSystem(fs, projectConfig.paths.homeDir);
 
@@ -297,27 +273,14 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       sourceFs: nodeFs,
       targetFs: resolvedFs,
       toolConfigsDir: projectConfig.paths.toolConfigsDir,
-      homeDir: finalSystemInfo.homeDir,
+      homeDir: systemInfo.homeDir,
     });
   }
 
   // Initialize download cache if enabled
   const downloadCache = initializeDownloadCache(parentLogger, resolvedFs, projectConfig);
 
-  // Initialize shared registry database
-  const registryPath = path.join(projectConfig.paths.generatedDir, 'registry.db');
-  const registryDatabase = new RegistryDatabase(parentLogger, registryPath);
-  const db = registryDatabase.getConnection();
-
-  // Create system-context logger for registry operations
-  const registryLogger = parentLogger.getSubLogger({ context: 'system' });
-
-  // Initialize file registry with shared database connection
-  const fileRegistry = new FileRegistry(registryLogger, db);
   parentLogger.debug(messages.registryInitialized(registryPath));
-
-  // Initialize tool installation registry with shared database connection
-  const toolInstallationRegistry = new ToolInstallationRegistry(registryLogger, db);
 
   // Initialize services with projectConfig
   // Pass proxy config to enable routing requests through HTTP caching proxy
@@ -480,7 +443,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     resolvedFs,
     projectConfig,
     toolInstallationRegistry,
-    finalSystemInfo,
+    systemInfo,
     pluginRegistry,
     symlinkGenerator,
     shell, // Don't add logging here - HookExecutor.createEnhancedContext adds logging with tool context
@@ -551,6 +514,30 @@ function hasFlag(argv: string[], flag: string): boolean {
   return argv.includes(flag);
 }
 
+const COMMAND_FLAGS_WITH_VALUES = new Set(['--config', '--log', '--platform', '--arch']);
+
+function resolveCommand(argv: string[]): string | undefined {
+  for (let i = 2; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (!token) {
+      continue;
+    }
+
+    if (COMMAND_FLAGS_WITH_VALUES.has(token)) {
+      i += 1;
+      continue;
+    }
+
+    if (token.startsWith('-')) {
+      continue;
+    }
+
+    return token;
+  }
+
+  return undefined;
+}
+
 export function resolveLogLevel(argv: string[], options: IGlobalProgramOptions): LogLevelValue {
   const isShimMode = hasFlag(argv, '--shim-mode');
   const quiet = options.quiet || isShimMode;
@@ -584,9 +571,20 @@ export async function main(argv: string[]) {
   await program.parseAsync(argv);
 }
 
+export async function runCliEntrypoint(argv: string[]): Promise<void> {
+  const command = resolveCommand(argv);
+
+  if (command === '@track-usage') {
+    await runTrackUsageCommand(argv);
+    return;
+  }
+
+  await main(argv);
+}
+
 // Only run main if the script is executed directly
 if (import.meta.main) {
-  main(process.argv).catch((error) => {
+  runCliEntrypoint(process.argv).catch((error) => {
     // Create a basic logger for fatal errors only, since we don't have parsed options yet
     const fatalLogger = createTsLogger({ name: 'cli' });
     fatalLogger.fatal(messages.commandExecutionFailed('main', 1), error);

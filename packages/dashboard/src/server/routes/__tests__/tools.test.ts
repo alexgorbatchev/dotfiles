@@ -129,4 +129,26 @@ describe('getTools', () => {
 
     expect(tool?.runtime.binaryPaths).toHaveLength(3);
   });
+
+  test('includes usage details for overview panel', async () => {
+    ctx.toolConfigs['github-release--rg'] = createMockToolConfigForTests({
+      name: 'github-release--rg',
+      binaries: ['rg'],
+      installationMethod: 'github-release',
+      installParams: { repo: 'BurntSushi/ripgrep' },
+    });
+
+    await ctx.toolInstallationRegistry.recordToolUsage('github-release--rg', 'rg');
+    await ctx.toolInstallationRegistry.recordToolUsage('github-release--rg', 'rg');
+
+    const result = await ctx.api.getTools();
+    const tool = result.data?.find((t) => t.config.name === 'github-release--rg');
+
+    expect(result.success).toBe(true);
+    expect(tool?.usage.totalCount).toBe(2);
+    expect(tool?.usage.binaries).toHaveLength(1);
+    expect(tool?.usage.binaries[0]?.binaryName).toBe('rg');
+    expect(tool?.usage.binaries[0]?.count).toBe(2);
+    expect(tool?.usage.binaries[0]?.lastUsedAt).toBeString();
+  });
 });

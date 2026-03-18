@@ -1083,6 +1083,15 @@ dotfiles install tool-name --trace --log=verbose
 
 The installer has built-in recursion guards. If you see this, check that your installation scripts don't call the tool being installed via its shim.
 
+### Disable Shim Usage Tracking
+
+Shim usage tracking is enabled by default and runs in the background.
+
+- Disable temporarily for a single command:
+  `DOTFILES_USAGE_TRACKING=0 rg --version`
+- Disable for the current shell session:
+  `export DOTFILES_USAGE_TRACKING=0`
+
 ### Dependency Errors
 
 **Messages**: "Missing dependency", "Ambiguous dependency", "Circular dependency"

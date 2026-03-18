@@ -29,6 +29,10 @@ function createTool(
     },
     files: [],
     binaryDiskSize: 0,
+    usage: {
+      totalCount: 0,
+      binaries: [],
+    },
   };
 }
 

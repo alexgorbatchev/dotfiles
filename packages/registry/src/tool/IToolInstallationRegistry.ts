@@ -1,4 +1,4 @@
-import type { IToolInstallationDetails, IToolInstallationRecord } from './types';
+import type { IToolInstallationDetails, IToolInstallationRecord, IToolUsageRecord } from './types';
 
 /**
  * Registry interface for managing tool installation records in a persistent database.
@@ -113,6 +113,27 @@ export interface IToolInstallationRegistry {
    * @returns Promise resolving to true if the tool (and version, if specified) is installed, false otherwise
    */
   isToolInstalled(toolName: string, version?: string): Promise<boolean>;
+
+  /**
+   * Records a shim invocation for a tool binary.
+   *
+   * Creates or increments a usage counter keyed by `(toolName, binaryName)` and updates
+   * the last-used timestamp.
+   *
+   * @param toolName - Name of the tool that owns the shim
+   * @param binaryName - Name of the executed binary shim
+   * @returns Promise that resolves when usage has been recorded
+   */
+  recordToolUsage(toolName: string, binaryName: string): Promise<void>;
+
+  /**
+   * Retrieves usage stats for a specific `(toolName, binaryName)` pair.
+   *
+   * @param toolName - Name of the tool
+   * @param binaryName - Name of the binary shim
+   * @returns Promise resolving to usage stats, or null if no usage has been recorded
+   */
+  getToolUsage(toolName: string, binaryName: string): Promise<IToolUsageRecord | null>;
 
   /**
    * Closes the database connection and releases resources.

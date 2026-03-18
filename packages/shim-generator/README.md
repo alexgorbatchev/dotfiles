@@ -13,6 +13,7 @@ The shim-generator creates executable wrapper scripts (shims) for all installed 
 - **Performance**: Lightweight wrappers with minimal overhead
 - **Unix-like Systems**: Works on macOS, Linux, and other Unix-like systems with bash
 - **Tracking**: Integrates with registry for tracking generated shims
+- **Usage Telemetry**: Tracks shim execution counts in the background
 - **Auto-Install**: Automatically installs tools on first use
 
 ## How Shims Work
@@ -23,7 +24,8 @@ The shim-generator creates executable wrapper scripts (shims) for all installed 
 4. Shim is created at configured target directory (e.g., `{config.paths.targetDir}/{binary}`)
 5. User adds target directory to PATH
 6. Running `{binary}` executes the shim
-7. Shim forwards execution to actual binary or auto-installs if not found
+7. Shim records usage asynchronously (fire-and-forget)
+8. Shim forwards execution to actual binary or auto-installs if not found
 
 ## API
 
@@ -107,6 +109,7 @@ if (installResult.success) {
 set -euo pipefail
 
 TOOL_NAME="fzf"
+BINARY_NAME="fzf"
 TOOL_EXECUTABLE="{config.paths.binariesDir}/fzf/current/fzf"
 GENERATOR_CLI_EXECUTABLE="path/to/cli"
 CONFIG_PATH="path/to/dotfiles.config.ts"
@@ -117,6 +120,11 @@ RECURSION_ENV_VAR="DOTFILES_INSTALLING_FZF"
 if [ -n "${!RECURSION_ENV_VAR:-}" ]; then
   echo "Recursive installation detected for $TOOL_NAME. Aborting to prevent infinite loop." >&2
   exit 1
+fi
+
+# Record shim usage in the background (non-blocking)
+if [ "${DOTFILES_USAGE_TRACKING:-1}" != "0" ]; then
+  eval "$GENERATOR_CLI_EXECUTABLE" @track-usage '"$TOOL_NAME"' '"$BINARY_NAME"' --config '"$CONFIG_PATH"' >/dev/null 2>&1 &
 fi
 
 # Check if the first argument is @update
@@ -152,6 +160,8 @@ fi
 - **Auto-Install**: Automatically installs tool if not found
 - **Update Support**: Use `{tool} @update` to update tool to latest version
 - **Recursion Guard**: Prevents infinite loops if a tool calls itself during installation
+- **Background Usage Tracking**: Calls private `@track-usage` command without blocking execution
+- **Opt-Out Switch**: Set `DOTFILES_USAGE_TRACKING=0` to disable tracking
 
 ## Tool with Multiple Binaries
 

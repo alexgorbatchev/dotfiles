@@ -2,7 +2,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IFileState } from '@dotfiles/registry/file';
 import type { IToolInstallationRecord } from '@dotfiles/registry/tool';
-import type { IApiResponse, IToolDetail } from '../../shared/types';
+import type { IApiResponse, IToolBinaryUsage, IToolDetail, IToolUsageSummary } from '../../shared/types';
 import { toToolDetail } from '../../shared/types';
 import { messages } from '../log-messages';
 import type { IDashboardServices } from '../types';
@@ -32,6 +32,34 @@ async function enrichFileSizesFromDisk(files: IFileState[], fs: IFileSystem): Pr
   );
 }
 
+function getConfiguredBinaryNames(config: { binaries?: Array<string | { name: string; }>; }): string[] {
+  if (!config.binaries || config.binaries.length === 0) {
+    return [];
+  }
+
+  return config.binaries.map((binary) => (typeof binary === 'string' ? binary : binary.name));
+}
+
+async function getToolUsageSummary(services: IDashboardServices, toolName: string, binaryNames: string[]): Promise<IToolUsageSummary> {
+  const usageByBinary: IToolBinaryUsage[] = await Promise.all(
+    binaryNames.map(async (binaryName) => {
+      const usage = await services.toolInstallationRegistry.getToolUsage(toolName, binaryName);
+      return {
+        binaryName,
+        count: usage?.usageCount ?? 0,
+        lastUsedAt: usage?.lastUsedAt ? usage.lastUsedAt.toISOString() : null,
+      };
+    }),
+  );
+
+  const totalCount = usageByBinary.reduce((sum, item) => sum + item.count, 0);
+
+  return {
+    totalCount,
+    binaries: usageByBinary,
+  };
+}
+
 /**
  * GET /api/tools - List all tools with full details
  * Returns tools from tool configs with runtime state from registry
@@ -56,7 +84,9 @@ export async function getTools(
         const files = await services.fileRegistry.getFileStatesForTool(config.name);
         const enrichedFiles = await enrichFileSizesFromDisk(files, services.fs);
         const binaryDiskSize = await getToolBinaryDiskSize(services, config.name);
-        return toToolDetail(config, installationsMap, enrichedFiles, services.systemInfo, binaryDiskSize);
+        const binaryNames = getConfiguredBinaryNames(config);
+        const usage = await getToolUsageSummary(services, config.name, binaryNames);
+        return toToolDetail(config, installationsMap, enrichedFiles, services.systemInfo, binaryDiskSize, usage);
       }),
     );
 

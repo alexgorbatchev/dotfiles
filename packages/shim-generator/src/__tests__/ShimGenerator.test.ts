@@ -112,6 +112,7 @@ describe('ShimGenerator', () => {
         set -euo pipefail
 
         TOOL_NAME="my-tool"
+        BINARY_NAME="my-tool-binary"
         TOOL_EXECUTABLE="${expectedBinaryPath}"
         GENERATOR_CLI_EXECUTABLE="${expect.anything}"
         CONFIG_PATH="${/.+\/config\.ts/}"
@@ -122,6 +123,12 @@ describe('ShimGenerator', () => {
         if [ -n "\${!RECURSION_ENV_VAR:-}" ]; then
           echo "Recursive installation detected for $TOOL_NAME. Aborting to prevent infinite loop." >&2
           exit 1
+        fi
+
+        # Record shim usage in the background (non-blocking)
+        if [ "\${DOTFILES_USAGE_TRACKING:-1}" != "0" ]; then
+          # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+          eval "$GENERATOR_CLI_EXECUTABLE" @track-usage '"$TOOL_NAME"' '"$BINARY_NAME"' --config '"$CONFIG_PATH"' >/dev/null 2>&1 &
         fi
 
         # Check if the first argument is @update

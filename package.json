@@ -11,7 +11,7 @@
     "test:all": "BUN_TEST_ALL=1 bun test",
     "test:native": "BUN_TEST_SEQUENTIAL=1 bun test",
     "test:task": "bun test",
-    "test-project": "DOTFILES_BUILT_PACKAGE_NAME='@dotfiles/core' bun run --watch --silent cli --config test-project/config.ts",
+    "test-project": "DOTFILES_BUILT_PACKAGE_NAME='@dotfiles/core' bun run --watch --silent cli.ts --config test-project/config.ts",
     "compile": "bun packages/build/src/build/index.ts",
     "release": "bun packages/build/src/release/index.ts",
     "find-unused": "bun packages/build/src/unused-analyzer/analyze.ts",

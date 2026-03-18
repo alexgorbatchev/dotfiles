@@ -6,6 +6,7 @@ Web-based visualization dashboard for the dotfiles-tool-installer system.
 
 - **Dashboard Overview**: At-a-glance system health, stats, and activity feed
 - **Tool Catalog**: Browse, search, and filter all managed tools with file tree view
+- **Usage Insights**: See most-used tools, most recently used tools, and per-tool usage breakdowns
 - **Health Checks**: System validation with health status display
 - **Settings**: View project configuration paths
 
@@ -45,18 +46,21 @@ Overview page with:
 
 Unified tools and files view with:
 
-- Stats row (total tools, installed, files tracked)
-- Search and method filter
-- **Grid view**: Card-based tool listing with click-through to details
-- **Files view**: Tree view grouped by tool showing file hierarchy
+- Stats row (total tools, installed, files tracked, binary size)
+- Activity row with three cards:
+  - Recently Added
+  - Most Recently Used (top 10)
+  - Most Used (top 10)
+- Tool files tree view
 
 ### Tool Detail (`/tools/:name`)
 
 Detailed view for a single tool:
 
-- Overview tab: Install path, binaries, download URL
-- Files tab: Files tracked for this tool
-- History tab: Coming soon
+- Overview panel: install source, version, install date, binary size, dependencies
+- Usage panel (shown only when usage exists): total runs + per-binary counts and last-used timestamp
+- Files panel: files tracked for this tool
+- History panel: file operation timeline
 
 ### Health (`/health`)
 
@@ -70,7 +74,7 @@ Project configuration paths display.
 
 ### Tools API
 
-- `GET /api/tools` - List all tools with full details (name, version, status, install info, files)
+- `GET /api/tools` - List all tools with full details (name, version, status, install info, files, usage)
 
 ### Stats API
 

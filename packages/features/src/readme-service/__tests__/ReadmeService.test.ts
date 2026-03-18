@@ -43,6 +43,8 @@ describe('ReadmeService', () => {
       updateToolInstallation: mock(async () => {}),
       removeToolInstallation: mock(async () => {}),
       isToolInstalled: mock(async () => false),
+      recordToolUsage: mock(async () => {}),
+      getToolUsage: mock(async () => null),
       close: mock(async () => {}),
     };
 

@@ -55,6 +55,8 @@ describe('updateCommand - Logger Context Propagation', () => {
       updateToolInstallation: mock(async () => undefined),
       removeToolInstallation: mock(async () => undefined),
       isToolInstalled: mock(async () => false),
+      recordToolUsage: mock(async () => undefined),
+      getToolUsage: mock(async () => null),
       close: mock(async () => undefined),
     };
 

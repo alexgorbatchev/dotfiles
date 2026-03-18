@@ -19,7 +19,7 @@ import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
 import type { GithubReleaseToolConfig, IGitHubApiClient } from '@dotfiles/installer-github';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
 import { TestLogger, type TsLogger } from '@dotfiles/logger';
-import type { IToolInstallationDetails, IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry';
+import type { IToolInstallationDetails, IToolInstallationRecord, IToolInstallationRegistry, IToolUsageRecord } from '@dotfiles/registry';
 import { createMockFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import {
@@ -66,6 +66,12 @@ type RemoveToolInstallationMock = ReturnType<typeof mock<(toolName: string) => P
 
 type IsToolInstalledMock = ReturnType<typeof mock<(toolName: string, version?: string) => Promise<boolean>>>;
 
+type RecordToolUsageMock = ReturnType<typeof mock<(toolName: string, binaryName: string) => Promise<void>>>;
+
+type GetToolUsageMock = ReturnType<
+  typeof mock<(toolName: string, binaryName: string) => Promise<IToolUsageRecord | null>>
+>;
+
 type CloseToolInstallationRegistryMock = ReturnType<typeof mock<() => Promise<void>>>;
 
 export interface IToolInstallationRegistryMock extends IToolInstallationRegistry {
@@ -75,6 +81,8 @@ export interface IToolInstallationRegistryMock extends IToolInstallationRegistry
   updateToolInstallation: UpdateToolInstallationMock;
   removeToolInstallation: RemoveToolInstallationMock;
   isToolInstalled: IsToolInstalledMock;
+  recordToolUsage: RecordToolUsageMock;
+  getToolUsage: GetToolUsageMock;
   close: CloseToolInstallationRegistryMock;
 }
 
@@ -141,6 +149,8 @@ export function createMockToolInstallationRegistry(): IToolInstallationRegistryM
     updateToolInstallation: mock(async (): Promise<void> => {}),
     removeToolInstallation: mock(async (): Promise<void> => {}),
     isToolInstalled: mock(async (): Promise<boolean> => false),
+    recordToolUsage: mock(async (): Promise<void> => {}),
+    getToolUsage: mock(async (): Promise<IToolUsageRecord | null> => null),
     close: mock(async (): Promise<void> => {}),
   };
 
