@@ -28,6 +28,7 @@ import {
   buildBinaryToToolMap,
   findDependentTools,
   getBinaryName,
+  getReadmeRepo,
   getSourceInfo,
 } from './tool-detail-utils';
 
@@ -261,6 +262,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   }
 
   const fileRoots = buildTreeForTool(tool.files || []);
+  const readmeRepo = getReadmeRepo(tool.config);
 
   return (
     <div class='space-y-4'>
@@ -501,8 +503,8 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       )}
 
       {/* README Section - only for installers with GitHub repos */}
-      {tool.config.installParams.repo && (
-        <ReadmeCard toolName={tool.config.name} repo={tool.config.installParams.repo} />
+      {readmeRepo && (
+        <ReadmeCard toolName={tool.config.name} repo={readmeRepo} />
       )}
     </div>
   );

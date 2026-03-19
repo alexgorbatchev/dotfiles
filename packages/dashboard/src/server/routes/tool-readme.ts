@@ -5,6 +5,42 @@ import { messages } from '../log-messages';
 import type { IDashboardServices } from '../types';
 import { getToolConfigs } from './helpers';
 
+interface IPlatformConfigLike {
+  config?: {
+    installParams?: Record<string, unknown>;
+  };
+}
+
+interface IToolConfigLike {
+  installParams?: Record<string, unknown>;
+  platformConfigs?: IPlatformConfigLike[];
+}
+
+function getRepoFromInstallParams(installParams: Record<string, unknown> | undefined): string | null {
+  if (!installParams) {
+    return null;
+  }
+
+  const repo = installParams['repo'];
+  return typeof repo === 'string' ? repo : null;
+}
+
+function getRepoFromToolConfig(config: IToolConfigLike): string | null {
+  const topLevelRepo = getRepoFromInstallParams(config.installParams);
+  if (topLevelRepo) {
+    return topLevelRepo;
+  }
+
+  for (const entry of config.platformConfigs ?? []) {
+    const repo = getRepoFromInstallParams(entry.config?.installParams);
+    if (repo) {
+      return repo;
+    }
+  }
+
+  return null;
+}
+
 /**
  * GET /api/tools/:name/readme - Get README content for a tool
  * Fetches README from GitHub raw URL if tool has a repo configured.
@@ -23,10 +59,9 @@ export async function getToolReadme(
       return { success: false, error: 'Tool not found' };
     }
 
-    const installParams = config.installParams as Record<string, unknown>;
-    const repo = installParams['repo'];
+    const repo = getRepoFromToolConfig(config);
 
-    if (typeof repo !== 'string') {
+    if (!repo) {
       return { success: false, error: 'Tool does not have a GitHub repository' };
     }
 

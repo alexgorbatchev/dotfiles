@@ -1,37 +1,42 @@
-import type { ISerializableBinary, ISerializableToolConfig, IToolDetail } from '../../shared/types';
+import type {
+  ISerializableBinary,
+  ISerializableInstallParams,
+  ISerializableToolConfig,
+  IToolDetail,
+} from '../../shared/types';
 
 export interface SourceInfo {
   value: string;
   url?: string;
 }
 
-export function getBinaryName(binary: ISerializableBinary): string {
-  return typeof binary === 'string' ? binary : binary.name;
+interface IInstallConfigCandidate {
+  installationMethod: string;
+  installParams: ISerializableInstallParams;
 }
 
-export function buildBinaryToToolMap(tools: IToolDetail[]): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const tool of tools) {
-    const binaries = tool.config.binaries ?? [];
-    for (const binary of binaries) {
-      const name = getBinaryName(binary);
-      map.set(name, tool.config.name);
-    }
+function getInstallConfigCandidates(config: ISerializableToolConfig): IInstallConfigCandidate[] {
+  const candidates: IInstallConfigCandidate[] = [
+    {
+      installationMethod: config.installationMethod,
+      installParams: config.installParams,
+    },
+  ];
+
+  for (const platformConfig of config.platformConfigs ?? []) {
+    candidates.push({
+      installationMethod: platformConfig.installationMethod ?? config.installationMethod,
+      installParams: platformConfig.installParams ?? config.installParams,
+    });
   }
-  return map;
+
+  return candidates;
 }
 
-export function findDependentTools(tools: IToolDetail[], currentToolBinaries: string[]): IToolDetail[] {
-  const binarySet = new Set(currentToolBinaries);
-  return tools.filter((tool) => {
-    const deps = tool.config.dependencies ?? [];
-    return deps.some((dep) => binarySet.has(dep));
-  });
-}
-
-export function getSourceInfo(config: ISerializableToolConfig): SourceInfo | null {
-  const { installationMethod, installParams } = config;
-
+function getSourceInfoForInstallConfig(
+  installationMethod: string,
+  installParams: ISerializableInstallParams,
+): SourceInfo | null {
   switch (installationMethod) {
     case 'github-release':
       if (installParams.repo) {
@@ -83,6 +88,55 @@ export function getSourceInfo(config: ISerializableToolConfig): SourceInfo | nul
       break;
     default:
       return null;
+  }
+
+  return null;
+}
+
+export function getBinaryName(binary: ISerializableBinary): string {
+  return typeof binary === 'string' ? binary : binary.name;
+}
+
+export function buildBinaryToToolMap(tools: IToolDetail[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const tool of tools) {
+    const binaries = tool.config.binaries ?? [];
+    for (const binary of binaries) {
+      const name = getBinaryName(binary);
+      map.set(name, tool.config.name);
+    }
+  }
+  return map;
+}
+
+export function findDependentTools(tools: IToolDetail[], currentToolBinaries: string[]): IToolDetail[] {
+  const binarySet = new Set(currentToolBinaries);
+  return tools.filter((tool) => {
+    const deps = tool.config.dependencies ?? [];
+    return deps.some((dep) => binarySet.has(dep));
+  });
+}
+
+export function getReadmeRepo(config: ISerializableToolConfig): string | null {
+  if (config.installParams.repo) {
+    return config.installParams.repo;
+  }
+
+  for (const platformConfig of config.platformConfigs ?? []) {
+    if (platformConfig.installParams?.repo) {
+      return platformConfig.installParams.repo;
+    }
+  }
+
+  return null;
+}
+
+export function getSourceInfo(config: ISerializableToolConfig): SourceInfo | null {
+  for (const installConfig of getInstallConfigCandidates(config)) {
+    const sourceInfo = getSourceInfoForInstallConfig(installConfig.installationMethod, installConfig.installParams);
+    if (sourceInfo) {
+      return sourceInfo;
+    }
   }
 
   return null;
