@@ -3,6 +3,7 @@ import { TestLogger } from '@dotfiles/logger';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import { CachedDownloadStrategy } from '../../CachedDownloadStrategy';
+import { createCacheKey } from '../../cache/helpers';
 import type { IDownloadOptions } from '../../IDownloader';
 import { MockCache, MockDownloadStrategy } from './helpers/mocks';
 
@@ -53,18 +54,34 @@ describe('CachedDownloadStrategy', () => {
   });
 
   describe('download', () => {
-    it('should skip cache when progress callback is provided', async () => {
+    it('should read from cache when progress callback is provided', async () => {
+      const url = 'https://example.com/file.txt';
+      const progressCalls: Array<{ loaded: number; total: number; }> = [];
       const options: IDownloadOptions = {
-        onProgress: () => {},
+        onProgress: (loaded, total) => {
+          progressCalls.push({ loaded, total });
+        },
       };
 
-      const result = await cachedStrategy.download('https://example.com/file.txt', options);
+      const cacheKey = createCacheKey(url, options);
+      mockCache.storage.set(cacheKey, Buffer.from('cached-data'));
 
-      expect(result).toEqual(mockStrategy.downloadResult);
-      expect(mockStrategy.downloadCalls).toHaveLength(1);
-      expect(mockCache.getCalls).toHaveLength(0);
+      const result = await cachedStrategy.download(url, options);
+
+      expect(result).toEqual(Buffer.from('cached-data'));
+      expect(mockStrategy.downloadCalls).toHaveLength(0);
+      expect(mockCache.getCalls).toHaveLength(1);
       expect(mockCache.setDownloadCalls).toHaveLength(0);
-      logger.expect(['TRACE'], ['CachedDownloadStrategy', 'download'], [], ['Cache disabled, caching for key:']);
+      expect(progressCalls).toEqual([
+        { loaded: 0, total: 11 },
+        { loaded: 11, total: 11 },
+      ]);
+      logger.expect(
+        ['TRACE'],
+        ['CachedDownloadStrategy', 'download'],
+        [],
+        [/Cache hit for key: download:[a-f0-9]{64} \(binary\), size: 11 bytes/],
+      );
     });
 
     it('should use cache when destination path is provided', async () => {

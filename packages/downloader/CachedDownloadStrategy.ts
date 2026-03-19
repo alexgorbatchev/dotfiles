@@ -158,6 +158,8 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
     const cacheKey = createCacheKey(url, options);
 
     try {
+      // Cache remains enabled even when onProgress is provided.
+      // On cache hits, handleCacheHit emits synthetic progress updates.
       // Check cache first
       const cachedBuffer = await this.cache.get<Buffer>(cacheKey);
       if (cachedBuffer) {
