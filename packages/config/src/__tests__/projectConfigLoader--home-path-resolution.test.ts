@@ -137,4 +137,26 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       ),
     ).rejects.toThrow('unsupported tilde');
   });
+
+  it('throws when string token substitution is cyclic', async () => {
+    const { fs } = await createMemFileSystem({ initialVolumeJson: {} });
+
+    expect(
+      createProjectConfigFromObject(
+        logger,
+        fs,
+        {
+          paths: {
+            homeDir: '{A}',
+          },
+        },
+        bootstrapSystemInfo,
+        {
+          A: '{B}',
+          B: '{A}',
+        },
+        { userConfigPath },
+      ),
+    ).rejects.toThrow('String token substitution did not converge');
+  });
 });

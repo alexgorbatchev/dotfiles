@@ -210,16 +210,52 @@ function replaceTokensOnce(configStr: string, env: EnvMap, fullConfig: RecordUnk
   return result;
 }
 
-function performFixedPointStringSubstitution(configStr: string, env: EnvMap, fullConfig: RecordUnknown): string {
-  let previous: string = '';
-  let current: string = configStr;
+function extractUnresolvedTokens(value: string): string[] {
+  const tokenRegex: RegExp = /(?<!\$)\{([a-zA-Z0-9_.]+)\}/g;
+  const result: string[] = [];
 
-  while (previous !== current) {
-    previous = current;
-    current = replaceTokensOnce(current, env, fullConfig);
+  for (const match of value.matchAll(tokenRegex)) {
+    const tokenName: string | undefined = match[1];
+    if (typeof tokenName !== 'string') {
+      continue;
+    }
+
+    result.push(`{${tokenName}}`);
   }
 
-  return current;
+  const uniqueTokens: string[] = [...new Set(result)].sort((a: string, b: string) => a.localeCompare(b));
+  return uniqueTokens;
+}
+
+function performFixedPointStringSubstitution(configStr: string, env: EnvMap, fullConfig: RecordUnknown): string {
+  const maxIterations: number = 20;
+
+  let current: string = configStr;
+  const seenStates: Set<string> = new Set([current]);
+
+  for (let iteration = 0; iteration < maxIterations; iteration++) {
+    const next: string = replaceTokensOnce(current, env, fullConfig);
+    if (next === current) {
+      return current;
+    }
+
+    if (seenStates.has(next)) {
+      const unresolvedTokens: string[] = extractUnresolvedTokens(next);
+      const unresolvedSection: string = unresolvedTokens.length > 0
+        ? ` Possible cyclic/unresolved tokens: ${unresolvedTokens.join(', ')}.`
+        : '';
+      throw new Error(`String token substitution did not converge due to a cycle.${unresolvedSection}`);
+    }
+
+    seenStates.add(next);
+    current = next;
+  }
+
+  const unresolvedTokens: string[] = extractUnresolvedTokens(current);
+  const unresolvedSection: string = unresolvedTokens.length > 0
+    ? ` Remaining tokens after ${maxIterations} iterations: ${unresolvedTokens.join(', ')}.`
+    : '';
+  throw new Error(`String token substitution did not converge after ${maxIterations} iterations.${unresolvedSection}`);
 }
 
 function substituteTokensInValue(value: unknown, env: EnvMap, fullConfig: RecordUnknown): unknown {
