@@ -99,6 +99,45 @@ async function isProxyAvailable(port: number, timeoutMs: number = 2000): Promise
   });
 }
 
+interface IDevProxyValidationResult {
+  port: number | undefined;
+  invalidValue: string | undefined;
+}
+
+function validateDevProxyPort(rawValue: string | undefined): IDevProxyValidationResult {
+  if (typeof rawValue === 'undefined') {
+    return {
+      port: undefined,
+      invalidValue: undefined,
+    };
+  }
+
+  const normalizedValue = rawValue.trim();
+  const isIntegerString = /^\d+$/.test(normalizedValue);
+
+  if (!isIntegerString) {
+    return {
+      port: undefined,
+      invalidValue: rawValue,
+    };
+  }
+
+  const parsedPort = Number.parseInt(normalizedValue, 10);
+  const isValidPortRange = parsedPort >= 1 && parsedPort <= 65535;
+
+  if (!isValidPortRange) {
+    return {
+      port: undefined,
+      invalidValue: rawValue,
+    };
+  }
+
+  return {
+    port: parsedPort,
+    invalidValue: undefined,
+  };
+}
+
 function initializeFileSystem(logger: TsLogger, dryRun: boolean): IFileSystem {
   let fs: IFileSystem;
   if (dryRun) {
@@ -248,19 +287,23 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     toolInstallationRegistry,
   } = baseContext;
 
-  // Check proxy availability if DEV_PROXY env var is set
-  const devProxyPort = process.env['DEV_PROXY'];
-  if (devProxyPort) {
-    const proxyPort = parseInt(devProxyPort, 10);
-    if (!isNaN(proxyPort)) {
-      logger.debug(messages.proxyCheckingAvailability(proxyPort));
-      const proxyAvailable = await isProxyAvailable(proxyPort);
-      if (!proxyAvailable) {
-        logger.error(messages.proxyUnavailable(proxyPort));
-        process.exit(1);
-      }
-      logger.warn(messages.proxyEnabled(proxyPort));
+  const devProxyRawValue = env['DEV_PROXY'];
+  const devProxyValidation = validateDevProxyPort(devProxyRawValue);
+  const devProxyPort = devProxyValidation.port;
+
+  if (typeof devProxyValidation.invalidValue === 'string') {
+    logger.error(messages.configParameterInvalid('DEV_PROXY', devProxyValidation.invalidValue, 'an integer between 1 and 65535'));
+    process.exit(1);
+  }
+
+  if (typeof devProxyPort === 'number') {
+    logger.debug(messages.proxyCheckingAvailability(devProxyPort));
+    const proxyAvailable = await isProxyAvailable(devProxyPort);
+    if (!proxyAvailable) {
+      logger.error(messages.proxyUnavailable(devProxyPort));
+      process.exit(1);
     }
+    logger.warn(messages.proxyEnabled(devProxyPort));
   }
 
   // Wrap filesystem to resolve tilde paths using configured home
@@ -284,7 +327,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // Initialize services with projectConfig
   // Pass proxy config to enable routing requests through HTTP caching proxy
-  const proxyConfig = devProxyPort ? { enabled: true, port: parseInt(devProxyPort, 10) } : undefined;
+  const proxyConfig = typeof devProxyPort === 'number' ? { enabled: true, port: devProxyPort } : undefined;
   const downloader = new Downloader(parentLogger, resolvedFs, undefined, downloadCache, proxyConfig);
 
   // Create shell instance for all components
