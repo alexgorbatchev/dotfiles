@@ -1,3 +1,4 @@
+import { Architecture, type ISystemInfo, Platform, hasArchitecture, hasPlatform } from '@dotfiles/core';
 import { NotFoundError } from '@dotfiles/downloader';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IApiResponse } from '../../shared/types';
@@ -6,6 +7,8 @@ import type { IDashboardServices } from '../types';
 import { getToolConfigs } from './helpers';
 
 interface IPlatformConfigLike {
+  platforms: Platform;
+  architectures?: Architecture;
   config?: {
     installParams?: Record<string, unknown>;
   };
@@ -25,13 +28,37 @@ function getRepoFromInstallParams(installParams: Record<string, unknown> | undef
   return typeof repo === 'string' ? repo : null;
 }
 
-function getRepoFromToolConfig(config: IToolConfigLike): string | null {
+function matchesPlatformConfig(entry: IPlatformConfigLike, systemInfo: ISystemInfo): boolean {
+  if (systemInfo.platform === Platform.None) {
+    return false;
+  }
+
+  if (!hasPlatform(entry.platforms, systemInfo.platform)) {
+    return false;
+  }
+
+  if (entry.architectures === undefined) {
+    return true;
+  }
+
+  if (systemInfo.arch === Architecture.None) {
+    return false;
+  }
+
+  return hasArchitecture(entry.architectures, systemInfo.arch);
+}
+
+function getRepoFromToolConfig(config: IToolConfigLike, systemInfo: ISystemInfo): string | null {
   const topLevelRepo = getRepoFromInstallParams(config.installParams);
   if (topLevelRepo) {
     return topLevelRepo;
   }
 
   for (const entry of config.platformConfigs ?? []) {
+    if (!matchesPlatformConfig(entry, systemInfo)) {
+      continue;
+    }
+
     const repo = getRepoFromInstallParams(entry.config?.installParams);
     if (repo) {
       return repo;
@@ -59,7 +86,7 @@ export async function getToolReadme(
       return { success: false, error: 'Tool not found' };
     }
 
-    const repo = getRepoFromToolConfig(config);
+    const repo = getRepoFromToolConfig(config, services.systemInfo);
 
     if (!repo) {
       return { success: false, error: 'Tool does not have a GitHub repository' };
