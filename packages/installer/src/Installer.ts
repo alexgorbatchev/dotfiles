@@ -1,11 +1,8 @@
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
-  AsyncInstallHook,
   IAfterInstallContext,
-  IInstallBaseContext,
   IInstallContext,
   InstallerPluginRegistry,
-  InstallEvent,
   ISystemInfo,
   PluginEmittedHookEvent,
   Shell,
@@ -13,7 +10,7 @@ import type {
 } from '@dotfiles/core';
 import { Platform } from '@dotfiles/core';
 import { createToolConfigContext } from '@dotfiles/core';
-import type { IFileSystem, IResolvedFileSystem } from '@dotfiles/file-system';
+import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import { createSafeLogMessage, type TsLogger } from '@dotfiles/logger';
 import type { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
@@ -21,12 +18,11 @@ import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { HookLifecycle } from './hooks/HookLifecycle';
 import type { IInstaller, IInstallOptions, InstallResult } from './types';
 import { createConfiguredShell, getBinaryPaths, type HookExecutor, messages } from './utils';
 
 type UnknownRecord = Record<string, unknown>;
-
-type InstallHooks = Record<string, AsyncInstallHook<IInstallBaseContext>[]>;
 
 type EmitEvent = (type: PluginEmittedHookEvent, data: UnknownRecord) => Promise<void>;
 
@@ -41,41 +37,6 @@ interface ICreateBaseInstallContextResult {
 
 function isUnknownRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isAsyncInstallHookArray(value: unknown): value is AsyncInstallHook<IInstallBaseContext>[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'function');
-}
-
-function getInstallHooksFromToolConfig(toolConfig: unknown): InstallHooks | undefined {
-  if (!isUnknownRecord(toolConfig)) {
-    return undefined;
-  }
-
-  const installParams: unknown = toolConfig['installParams'];
-  if (!isUnknownRecord(installParams)) {
-    return undefined;
-  }
-
-  const hooks: unknown = installParams['hooks'];
-  if (!isUnknownRecord(hooks)) {
-    return undefined;
-  }
-
-  const hookEntries: [string, unknown][] = Object.entries(hooks);
-  if (hookEntries.length === 0) {
-    return undefined;
-  }
-
-  const normalizedHooks: InstallHooks = {};
-  for (const [hookName, maybeHookArray] of hookEntries) {
-    if (!isAsyncInstallHookArray(maybeHookArray)) {
-      return undefined;
-    }
-    normalizedHooks[hookName] = maybeHookArray;
-  }
-
-  return normalizedHooks;
 }
 
 function getPluginMetadataRecord(result: InstallResult): UnknownRecord {
@@ -160,6 +121,7 @@ export class Installer implements IInstaller {
   private readonly resolvedFs: IResolvedFileSystem;
   private readonly projectConfig: ProjectConfig;
   public readonly hookExecutor: HookExecutor;
+  private readonly hookLifecycle: HookLifecycle;
   private readonly toolInstallationRegistry: IToolInstallationRegistry;
   private readonly systemInfo: ISystemInfo;
   private readonly registry: InstallerPluginRegistry;
@@ -184,6 +146,7 @@ export class Installer implements IInstaller {
     this.resolvedFs = resolvedFileSystem;
     this.projectConfig = projectConfig;
     this.hookExecutor = hookExecutor;
+    this.hookLifecycle = new HookLifecycle(hookExecutor);
     this.toolInstallationRegistry = toolInstallationRegistry;
     this.systemInfo = systemInfo;
     this.registry = registry;
@@ -192,58 +155,8 @@ export class Installer implements IInstaller {
 
     // Register event handler for installation events to execute hooks
     this.registry.onEvent(async (event) => {
-      await this.handleInstallEvent(event);
+      await this.hookLifecycle.handleInstallEvent(event, this.currentToolConfig, this.logger);
     });
-  }
-
-  /**
-   * Handles installation events emitted by plugins by executing corresponding hooks.
-   * Registered with the plugin registry during constructor initialization.
-   *
-   * Flow:
-   * 1. Checks if current tool config exists
-   * 2. Extracts hooks from tool config install params
-   * 3. Maps plugin event names to hook keys
-   * 4. Finds hook function array matching the key
-   * 5. Creates enhanced context with file system from event
-   * 6. Executes hook(s) with proper error handling
-   * 7. Throws error if hook execution fails to propagate back to plugin
-   *
-   * @param event - Installation event containing type, tool name, and context
-   * @throws Error if hook execution fails
-   */
-  private async handleInstallEvent(event: InstallEvent): Promise<void> {
-    if (!this.currentToolConfig) {
-      return;
-    }
-
-    const hooks = getInstallHooksFromToolConfig(this.currentToolConfig);
-    if (!hooks) {
-      return;
-    }
-
-    const hookArray = hooks[event.type];
-    if (!hookArray) {
-      return;
-    }
-
-    // Extract logger from event context (includes tool context)
-    const eventLogger = event.context['logger'] as TsLogger;
-
-    // Create enhanced context with fileSystem from event
-    const toolFs = event.context.fileSystem;
-    const enhancedContext = this.hookExecutor.createEnhancedContext(event.context, toolFs, eventLogger);
-
-    // Execute all hooks in sequence
-    for (const hook of hookArray) {
-      const result = await this.hookExecutor.executeHook(eventLogger, event.type, hook, enhancedContext);
-
-      // If hook failed, throw error to propagate back to plugin
-      if (!result.success) {
-        const errorMessage = result.error ? `${event.type} hook failed: ${result.error}` : `Hook ${event.type} failed`;
-        throw new Error(errorMessage);
-      }
-    }
   }
 
   /**
@@ -323,99 +236,6 @@ export class Installer implements IInstaller {
       shellInit,
     } as InstallResult;
     return result;
-  }
-
-  /**
-   * Executes the beforeInstall hook if defined in tool configuration.
-   * Returns InstallResult with failure if hook fails, null if hook succeeds or doesn't exist.
-   *
-   * The beforeInstall hook runs before any installation steps and can be used for:
-   * - Pre-installation validation
-   * - Environment setup
-   * - Custom preparation tasks
-   *
-   * @param resolvedToolConfig - Platform-resolved tool configuration with hooks
-   * @param context - Base install context with paths and system info
-   * @param toolFs - Tool-specific file system instance for tracking
-   * @param parentLogger - Logger for hook execution messages
-   * @returns Null if hook succeeds or doesn't exist, InstallResult with error on failure
-   */
-  private async executeBeforeInstallHook(
-    resolvedToolConfig: ToolConfig,
-    context: IInstallContext,
-    toolFs: IFileSystem,
-    parentLogger: TsLogger,
-  ): Promise<InstallResult | null> {
-    const logger = parentLogger.getSubLogger({ name: 'executeBeforeInstallHook' });
-    const hooks = getInstallHooksFromToolConfig(resolvedToolConfig);
-    const beforeInstallHooks = hooks?.['before-install'];
-
-    if (!beforeInstallHooks) {
-      return null;
-    }
-
-    logger.debug(messages.lifecycle.hookExecution('before-install'));
-    const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs, logger);
-
-    // Execute all hooks in sequence
-    for (const hook of beforeInstallHooks) {
-      const result = await this.hookExecutor.executeHook(logger, 'before-install', hook, enhancedContext);
-
-      if (!result.success) {
-        const failureResult: InstallResult = {
-          success: false,
-          error: `beforeInstall hook failed: ${result.error}`,
-        };
-        return failureResult;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Executes the afterInstall hook if defined in tool configuration.
-   * Runs regardless of installation success or failure to allow cleanup tasks.
-   * Uses continueOnError option so hook failures don't stop the installation flow.
-   *
-   * The afterInstall hook receives enhanced context including:
-   * - binaryPaths: Paths to installed binaries if installation succeeded
-   * - version: Installed version if installation succeeded
-   *
-   * Common uses:
-   * - Post-installation configuration
-   * - Cleanup of temporary files
-   * - Additional binary setup
-   * - Environment modifications
-   *
-   * @param resolvedToolConfig - Platform-resolved tool configuration with hooks
-   * @param context - Base install context with paths and system info
-   * @param result - Installation result with success status and binary paths
-   * @param toolFs - Tool-specific file system instance for tracking
-   * @param parentLogger - Logger for hook execution messages
-   */
-  private async executeAfterInstallHook(
-    resolvedToolConfig: ToolConfig,
-    context: IAfterInstallContext,
-    toolFs: IFileSystem,
-    parentLogger: TsLogger,
-  ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'executeAfterInstallHook' });
-    const hooks = getInstallHooksFromToolConfig(resolvedToolConfig);
-    const afterInstallHooks = hooks?.['after-install'];
-
-    if (!afterInstallHooks) {
-      return;
-    }
-
-    logger.debug(messages.lifecycle.hookExecution('after-install'));
-
-    const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs, logger);
-
-    // Execute all hooks in sequence
-    for (const hook of afterInstallHooks) {
-      await this.hookExecutor.executeHook(logger, 'after-install', hook, enhancedContext, { continueOnError: true });
-    }
   }
 
   /**
@@ -626,7 +446,7 @@ export class Installer implements IInstaller {
       );
 
       // Run beforeInstall hook if defined
-      const beforeInstallResult = await this.executeBeforeInstallHook(
+      const beforeInstallResult = await this.hookLifecycle.executeBeforeInstallHook(
         resolvedToolConfig,
         context,
         toolFs,
@@ -753,7 +573,7 @@ export class Installer implements IInstaller {
             installEnv: afterInstallEnv,
           };
 
-          await this.executeAfterInstallHook(resolvedToolConfig, afterInstallContext, toolFs, contextLogger);
+          await this.hookLifecycle.executeAfterInstallHook(resolvedToolConfig, afterInstallContext, toolFs, contextLogger);
 
           // Record successful installation in the registry
           await this.recordInstallation(toolName, resolvedToolConfig, installedDir, context, result, contextLogger);
