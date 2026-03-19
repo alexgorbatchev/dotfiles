@@ -293,7 +293,9 @@ export abstract class BaseShellGenerator implements IShellGenerator {
 
     // Add CLI function
     const cliPath = getCliBinPath();
-    const cliFunctionBody = `${cliPath} "$@"`;
+    const escapedConfigPath = this.projectConfig.configFilePath?.replaceAll('"', '\\"');
+    const configFlag = escapedConfigPath ? ` --config "${escapedConfigPath}"` : '';
+    const cliFunctionBody = `${cliPath}${configFlag} "$@"`;
     const cliFunctionEmission = fn('dotfiles', cliFunctionBody);
     blockBuilder.addEmissionToSection(cliFunctionEmission, 'cli');
 

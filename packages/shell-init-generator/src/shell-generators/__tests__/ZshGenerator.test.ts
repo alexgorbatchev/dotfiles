@@ -313,6 +313,7 @@ describe('ZshGenerator', () => {
       const toolEmissions = new Map<string, never[]>();
       const content = generator.generateFileContent(toolEmissions);
 
+      expect(content).toContain('--config "/home/test/.dotfiles/dotfiles.config.ts"');
       expect(content).toMatchLooseInlineSnapshot`
         ${expect.anything}
         # ================================ Dotfiles CLI =================================

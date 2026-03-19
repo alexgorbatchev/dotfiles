@@ -2,6 +2,7 @@ import type { ProjectConfig } from '@dotfiles/config';
 
 export function createMockProjectConfigWithPathsOnly(): ProjectConfig {
   return {
+    configFilePath: '/home/test/.dotfiles/dotfiles.config.ts',
     paths: {
       homeDir: '/home/test',
       dotfilesDir: '/home/test/.dotfiles',
