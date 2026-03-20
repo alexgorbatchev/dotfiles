@@ -16,40 +16,11 @@ import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { InstallContextFactory, type ICreateBaseInstallContextResult } from './context';
+import { type ICreateBaseInstallContextResult, InstallContextFactory } from './context';
 import { HookLifecycle } from './hooks/HookLifecycle';
+import { InstallationStateWriter } from './state';
 import type { IInstaller, IInstallOptions, InstallResult } from './types';
 import { createConfiguredShell, getBinaryPaths, type HookExecutor, messages } from './utils';
-
-type UnknownRecord = Record<string, unknown>;
-
-function isUnknownRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function getPluginMetadataRecord(result: InstallResult): UnknownRecord {
-  const empty: UnknownRecord = {};
-  if (!result.success) {
-    return empty;
-  }
-
-  if (!('metadata' in result)) {
-    return empty;
-  }
-
-  const metadata: unknown = result.metadata;
-  if (!isUnknownRecord(metadata)) {
-    return empty;
-  }
-
-  // Map 'method' from plugin metadata to 'installMethod' for registry storage
-  const { method, ...rest } = metadata;
-  if (typeof method === 'string') {
-    return { ...rest, installMethod: method };
-  }
-
-  return metadata;
-}
 
 /**
  * Orchestrates the tool installation process by delegating to plugin-based installation methods
@@ -113,7 +84,7 @@ export class Installer implements IInstaller {
   private readonly toolInstallationRegistry: IToolInstallationRegistry;
   private readonly systemInfo: ISystemInfo;
   private readonly registry: InstallerPluginRegistry;
-  private readonly symlinkGenerator: ISymlinkGenerator;
+  private readonly installationStateWriter: InstallationStateWriter;
   private readonly $: Shell;
   private readonly installContextFactory: InstallContextFactory;
   private currentToolConfig?: ToolConfig;
@@ -139,7 +110,11 @@ export class Installer implements IInstaller {
     this.toolInstallationRegistry = toolInstallationRegistry;
     this.systemInfo = systemInfo;
     this.registry = registry;
-    this.symlinkGenerator = symlinkGenerator;
+    this.installationStateWriter = new InstallationStateWriter({
+      projectConfig: this.projectConfig,
+      toolInstallationRegistry: this.toolInstallationRegistry,
+      symlinkGenerator,
+    });
     this.$ = $shell;
     this.installContextFactory = new InstallContextFactory({
       projectConfig: this.projectConfig,
@@ -235,72 +210,6 @@ export class Installer implements IInstaller {
       shellInit,
     } as InstallResult;
     return result;
-  }
-
-  /**
-   * Records successful installation in the tool installation registry.
-   * Only records when installation succeeds and version information is available.
-   *
-   * Combines base installation details with plugin-specific metadata:
-   * - Base fields: toolName, version, installPath, timestamp, binaryPaths, configuredVersion, originalTag
-   * - Plugin metadata: Spread from result.metadata (plugins extending Partial<IToolInstallationDetails>)
-   *
-   * The Installer is plugin-agnostic and simply spreads whatever metadata the plugin provides.
-   * Plugins can include optional fields like downloadUrl, assetName, or any method-specific data.
-   *
-   * @param toolName - Name of the installed tool
-   * @param resolvedToolConfig - Platform-resolved tool configuration
-   * @param context - Base install context with paths
-   * @param result - Installation result with success status and metadata
-   * @param parentLogger - Logger for registry operations
-   * @see {@link IToolInstallationDetails} for the complete field structure
-   */
-  private async recordInstallation(
-    toolName: string,
-    resolvedToolConfig: ToolConfig,
-    installedDir: string,
-    context: IInstallContext,
-    result: InstallResult,
-    parentLogger: TsLogger,
-  ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'recordInstallation' });
-    if (!result.success) {
-      return;
-    }
-
-    try {
-      // Use detected version if available, otherwise fall back to timestamp
-      const version: string = 'version' in result && result.version ? result.version : context.timestamp;
-
-      // Extract configured version from tool config
-      const installParams: unknown = resolvedToolConfig.installParams;
-      const configuredVersion: string | undefined = installParams &&
-          typeof installParams === 'object' &&
-          'version' in installParams &&
-          typeof installParams.version === 'string'
-        ? installParams.version
-        : undefined;
-
-      // Extract original tag if provided by plugin
-      const originalTag: string | undefined = 'originalTag' in result && typeof result.originalTag === 'string'
-        ? result.originalTag
-        : undefined;
-
-      // Spread metadata - installers now extend IToolInstallationDetails so they provide the right fields
-      await this.toolInstallationRegistry.recordToolInstallation({
-        toolName,
-        version,
-        installPath: installedDir,
-        timestamp: context.timestamp,
-        binaryPaths: result.binaryPaths,
-        configuredVersion,
-        originalTag,
-        ...getPluginMetadataRecord(result),
-      });
-      logger.debug(messages.outcome.installSuccess(toolName, version, 'registry-recorded'));
-    } catch (error) {
-      logger.error(messages.outcome.installFailed('registry-record'), error);
-    }
   }
 
   /**
@@ -506,7 +415,7 @@ export class Installer implements IInstaller {
             }
           }
           if (existingPaths.length > 0) {
-            await this.createBinaryEntrypoints(
+            await this.installationStateWriter.createBinaryEntrypoints(
               toolName,
               existingPaths,
               toolFs,
@@ -520,7 +429,13 @@ export class Installer implements IInstaller {
         // Update current symlink after installation and any rename.
         // This provides a stable directory for shims: {binariesDir}/{toolName}/current/...
         if (result.success) {
-          await this.updateCurrentSymlink(toolName, toolFs, logger, installedDir, isExternallyManaged);
+          await this.installationStateWriter.updateCurrentSymlink(
+            toolName,
+            toolFs,
+            logger,
+            installedDir,
+            isExternallyManaged,
+          );
         }
 
         // If installation failed, clean up the empty installation directory (skip for externally managed)
@@ -572,10 +487,22 @@ export class Installer implements IInstaller {
             installEnv: afterInstallEnv,
           };
 
-          await this.hookLifecycle.executeAfterInstallHook(resolvedToolConfig, afterInstallContext, toolFs, contextLogger);
+          await this.hookLifecycle.executeAfterInstallHook(
+            resolvedToolConfig,
+            afterInstallContext,
+            toolFs,
+            contextLogger,
+          );
 
           // Record successful installation in the registry
-          await this.recordInstallation(toolName, resolvedToolConfig, installedDir, context, result, contextLogger);
+          await this.installationStateWriter.recordInstallation(
+            toolName,
+            resolvedToolConfig,
+            installedDir,
+            context,
+            result,
+            contextLogger,
+          );
         }
 
         return result;
@@ -625,126 +552,6 @@ export class Installer implements IInstaller {
     // For 'latest' or unspecified versions, we can't determine the target version
     // without executing the plugin logic, so return null to skip the version check
     return null;
-  }
-
-  /**
-   * Creates symlinks for binaries in the tool directory.
-   * This ensures that shims always point to a stable location in the tool directory
-   * regardless of whether the tool is versioned (timestamped) or externally managed.
-   *
-   * @param toolName - Name of the tool
-   * @param binaryPaths - Array of absolute paths to the actual binaries
-   * @param fs - File system instance for creating symlinks
-   * @param parentLogger - Logger for diagnostic messages
-   */
-  private async createBinaryEntrypoints(
-    toolName: string,
-    binaryPaths: string[],
-    fs: TrackedFileSystem,
-    parentLogger: TsLogger,
-    installedDir: string,
-    isExternallyManaged: boolean,
-  ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'createBinaryEntrypoints' });
-    const toolDir = path.join(this.projectConfig.paths.binariesDir, toolName);
-
-    // Ensure tool directory exists
-    await fs.ensureDir(toolDir);
-
-    if (isExternallyManaged) {
-      const externalDir = path.join(toolDir, 'external');
-      await fs.ensureDir(externalDir);
-
-      for (const binaryPath of binaryPaths) {
-        const binaryName = path.basename(binaryPath);
-        const symlinkPath = path.join(externalDir, binaryName);
-
-        try {
-          await this.symlinkGenerator.createBinarySymlink(logger, binaryPath, symlinkPath);
-        } catch (error) {
-          logger.error(messages.lifecycle.externalBinaryMissing(toolName, binaryName, binaryPath));
-          throw error;
-        }
-      }
-
-      return;
-    }
-
-    for (const binaryPath of binaryPaths) {
-      const binaryName = path.basename(binaryPath);
-      const entrypointPath = path.join(installedDir, binaryName);
-
-      if (binaryPath === entrypointPath) {
-        continue;
-      }
-
-      try {
-        if (await fs.exists(entrypointPath)) {
-          await fs.rm(entrypointPath, { force: true });
-        }
-      } catch (error) {
-        logger.error(messages.binarySymlink.removeExistingFailed(entrypointPath), error);
-        throw error;
-      }
-
-      try {
-        await fs.copyFile(binaryPath, entrypointPath);
-
-        const binaryStats = await fs.stat(binaryPath);
-        const binaryMode: number = binaryStats.mode & 0o777;
-        await fs.chmod(entrypointPath, binaryMode);
-      } catch (error) {
-        logger.error(messages.binarySymlink.creationFailed(entrypointPath, binaryPath), error);
-        throw error;
-      }
-    }
-  }
-
-  private async updateCurrentSymlink(
-    toolName: string,
-    fs: TrackedFileSystem,
-    parentLogger: TsLogger,
-    installedDir: string,
-    isExternallyManaged: boolean,
-  ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'updateCurrentSymlink' });
-    const toolDir = path.join(this.projectConfig.paths.binariesDir, toolName);
-    const currentSymlinkPath = path.join(toolDir, 'current');
-
-    await fs.ensureDir(toolDir);
-
-    const currentTarget: string = isExternallyManaged ? 'external' : path.basename(installedDir);
-
-    try {
-      if (await fs.exists(currentSymlinkPath)) {
-        await fs.rm(currentSymlinkPath, { force: true, recursive: true });
-      }
-    } catch (error) {
-      logger.error(messages.lifecycle.removingExistingSymlink(currentSymlinkPath), error);
-      throw error;
-    }
-
-    try {
-      // Use withFileType('symlink') so the symlink is recorded with correct fileType
-      const symlinkFs = fs.withFileType('symlink');
-      await symlinkFs.symlink(currentTarget, currentSymlinkPath, 'dir');
-    } catch (error) {
-      logger.error(messages.lifecycle.creatingExternalSymlink(currentSymlinkPath, currentTarget), error);
-      throw error;
-    }
-
-    try {
-      const linkTarget = await fs.readlink(currentSymlinkPath);
-      if (linkTarget !== currentTarget) {
-        logger.error(messages.lifecycle.symlinkVerificationFailed(currentSymlinkPath));
-        throw new Error(
-          `Symlink verification failed: ${currentSymlinkPath} points to ${linkTarget}, expected ${currentTarget}`,
-        );
-      }
-    } catch (error) {
-      logger.error(messages.lifecycle.symlinkVerificationFailed(currentSymlinkPath), error);
-      throw error;
-    }
   }
 
   /**
