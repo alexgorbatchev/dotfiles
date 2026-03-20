@@ -4,12 +4,10 @@ import type {
   IInstallContext,
   InstallerPluginRegistry,
   ISystemInfo,
-  PluginEmittedHookEvent,
   Shell,
   ToolConfig,
 } from '@dotfiles/core';
 import { Platform } from '@dotfiles/core';
-import { createToolConfigContext } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import { createSafeLogMessage, type TsLogger } from '@dotfiles/logger';
 import type { TrackedFileSystem } from '@dotfiles/registry/file';
@@ -18,22 +16,12 @@ import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { InstallContextFactory, type ICreateBaseInstallContextResult } from './context';
 import { HookLifecycle } from './hooks/HookLifecycle';
 import type { IInstaller, IInstallOptions, InstallResult } from './types';
 import { createConfiguredShell, getBinaryPaths, type HookExecutor, messages } from './utils';
 
 type UnknownRecord = Record<string, unknown>;
-
-type EmitEvent = (type: PluginEmittedHookEvent, data: UnknownRecord) => Promise<void>;
-
-export interface IInstallContextWithEmitter extends IInstallContext {
-  emitEvent?: EmitEvent;
-}
-
-interface ICreateBaseInstallContextResult {
-  context: IInstallContextWithEmitter;
-  logger: TsLogger;
-}
 
 function isUnknownRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -127,6 +115,7 @@ export class Installer implements IInstaller {
   private readonly registry: InstallerPluginRegistry;
   private readonly symlinkGenerator: ISymlinkGenerator;
   private readonly $: Shell;
+  private readonly installContextFactory: InstallContextFactory;
   private currentToolConfig?: ToolConfig;
 
   constructor(
@@ -152,6 +141,16 @@ export class Installer implements IInstaller {
     this.registry = registry;
     this.symlinkGenerator = symlinkGenerator;
     this.$ = $shell;
+    this.installContextFactory = new InstallContextFactory({
+      projectConfig: this.projectConfig,
+      systemInfo: this.systemInfo,
+      resolvedFileSystem: this.resolvedFs,
+      fileSystem: this.fs,
+      $shell: this.$,
+      emitInstallEvent: async (event) => {
+        await this.registry.emitEvent(event);
+      },
+    });
 
     // Register event handler for installation events to execute hooks
     this.registry.onEvent(async (event) => {
@@ -753,51 +752,22 @@ export class Installer implements IInstaller {
    * This lightweight context contains only system information needed
    * to resolve versions before installation directories are created.
    *
-   * Note: `toolDir` is derived from `toolConfig.configFilePath` when available.
-   *
    * @param toolName - Tool name
    * @param toolConfig - Complete tool configuration
    * @param parentLogger - Parent logger for context creation
    * @returns Minimal context with system info
    */
   private createMinimalContext(toolName: string, toolConfig: ToolConfig, parentLogger: TsLogger): IInstallContext {
-    const toolDir: string = toolConfig.configFilePath
-      ? path.dirname(toolConfig.configFilePath)
-      : this.projectConfig.paths.toolConfigsDir;
-
-    const contextLogger = parentLogger.getSubLogger({ name: 'minimalContext' });
-
-    const baseContext = createToolConfigContext(
-      this.projectConfig,
-      this.getSystemInfo(),
+    return this.installContextFactory.createMinimalContext({
       toolName,
-      toolDir,
-      this.resolvedFs,
-      contextLogger,
-    );
-
-    const minimalContext: IInstallContext = {
-      ...baseContext,
-      stagingDir: '',
-      timestamp: '',
       toolConfig,
-      $: createConfiguredShell(this.$, process.env),
-      fileSystem: this.fs,
-    };
-    return minimalContext;
+      parentLogger,
+    });
   }
 
   /**
    * Creates a complete InstallContext with all required properties for installation.
    * Includes properties from IBaseToolContext plus installation-specific fields.
-   *
-   * The context provides plugins with:
-   * - Tool identification (toolName)
-   * - Directory paths (stagingDir, installedDir, currentDir)
-   * - System information (platform, arch)
-   * - Application configuration
-   * - Logger instance
-   * - Event emitter for triggering hooks
    *
    * @param toolName - Name of the tool being installed
    * @param stagingDir - Per-attempt staging directory path
@@ -817,56 +787,15 @@ export class Installer implements IInstaller {
   ): ICreateBaseInstallContextResult {
     const methodLogger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
 
-    const toolDir: string = toolConfig.configFilePath
-      ? path.dirname(toolConfig.configFilePath)
-      : this.projectConfig.paths.toolConfigsDir;
-
-    const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
-
-    const baseContext = createToolConfigContext(
-      this.projectConfig,
-      this.getSystemInfo(),
+    return this.installContextFactory.createBaseInstallContext({
       toolName,
-      toolDir,
-      this.resolvedFs,
-      contextLogger,
-    );
-
-    const context: IInstallContextWithEmitter = {
-      ...baseContext,
       stagingDir,
       timestamp,
       toolConfig,
-      $: $shell,
-      fileSystem: this.fs,
+      parentLogger: methodLogger,
+      $shell,
       installEnv,
-      // Event emitter for plugins to trigger hooks
-      emitEvent: async (type: PluginEmittedHookEvent, data: UnknownRecord) => {
-        await this.registry.emitEvent({
-          type,
-          toolName,
-          context: {
-            ...this.createBaseInstallContext(
-              toolName,
-              stagingDir,
-              timestamp,
-              toolConfig,
-              parentLogger,
-              $shell,
-              installEnv,
-            ).context,
-            ...data,
-            logger: contextLogger,
-          },
-        });
-      },
-    };
-
-    const result: ICreateBaseInstallContextResult = {
-      context,
-      logger: contextLogger,
-    };
-    return result;
+    });
   }
 
   /**
