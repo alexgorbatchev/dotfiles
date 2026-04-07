@@ -3,7 +3,7 @@ import {
   type z_internal_CurlTarInstallParams,
   type z_internal_IInstallParamsRegistry,
   type z_internal_InstallMethod,
-} from '@gitea/dotfiles';
+} from '@alexgorbatchev/dotfiles';
 import { expectError } from 'tsd';
 
 type CurlTarInstallParams = z_internal_CurlTarInstallParams;

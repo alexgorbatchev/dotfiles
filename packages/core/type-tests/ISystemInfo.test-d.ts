@@ -1,4 +1,4 @@
-import { Architecture, Platform, type z_internal_ISystemInfo } from '@gitea/dotfiles';
+import { Architecture, Platform, type z_internal_ISystemInfo } from '@alexgorbatchev/dotfiles';
 import { expectType } from 'tsd';
 
 type ISystemInfo = z_internal_ISystemInfo;

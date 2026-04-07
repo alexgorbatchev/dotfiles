@@ -5,7 +5,7 @@ Download standalone binary files directly from URLs. Unlike `curl-tar`, this met
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install('curl-binary', {
@@ -48,7 +48,7 @@ install('curl-binary', {
 ### Platform-Specific URLs
 
 ```typescript
-import { Architecture, defineTool, Platform } from '@gitea/dotfiles';
+import { Architecture, defineTool, Platform } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install()

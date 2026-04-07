@@ -88,7 +88,7 @@ Files must be named `{tool-name}.tool.ts` and export a default using `defineTool
 ## Minimal Configuration
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', {
@@ -100,7 +100,7 @@ export default defineTool((install, ctx) =>
 ## Complete Example
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', {
@@ -134,7 +134,7 @@ After calling `install()`, these methods are available:
 ### Imports
 
 ```typescript
-import { Architecture, defineTool, Platform } from '@gitea/dotfiles';
+import { Architecture, defineTool, Platform } from '@alexgorbatchev/dotfiles';
 ```
 
 | Export         | Description                                    |
@@ -189,7 +189,7 @@ The project configuration file defines paths, features, and API settings for you
 ## Basic Configuration
 
 ```typescript
-import { defineConfig } from '@gitea/dotfiles';
+import { defineConfig } from '@alexgorbatchev/dotfiles';
 
 export default defineConfig(() => ({
   paths: {
@@ -381,7 +381,7 @@ Use `.platform()` for cross-platform tool configurations.
 ## Platform and Architecture Enums
 
 ```typescript
-import { Architecture, Platform } from '@gitea/dotfiles';
+import { Architecture, Platform } from '@alexgorbatchev/dotfiles';
 
 // Platforms (bitwise flags)
 Platform.Linux; // 1
@@ -399,7 +399,7 @@ Architecture.All; // Both (3)
 ## Basic Usage
 
 ```typescript
-import { defineTool, Platform } from '@gitea/dotfiles';
+import { defineTool, Platform } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install()
@@ -421,7 +421,7 @@ export default defineTool((install) =>
 ## With Architecture
 
 ```typescript
-import { Architecture, defineTool, Platform } from '@gitea/dotfiles';
+import { Architecture, defineTool, Platform } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install()
@@ -597,7 +597,7 @@ Create tool configuration files in the `tools/` directory:
 source env/source
 
 cat > env/tools/fd.tool.ts << 'EOF'
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install('github-release', { repo: 'sharkdp/fd' })
@@ -643,7 +643,7 @@ source env/source
 
 # Add project-specific tools
 cat > env/tools/jupyter.tool.ts << 'EOF'
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 export default defineTool((install) =>
   install('manual').bin('jupyter')
     .zsh((shell) => shell.aliases({
@@ -748,7 +748,7 @@ Real-world examples for common tool configuration scenarios.
 ## GitHub Tool with Shell Integration
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'BurntSushi/ripgrep' })
@@ -775,7 +775,7 @@ export default defineTool((install) =>
 ## Complex Shell Integration
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'junegunn/fzf' })
@@ -808,7 +808,7 @@ export default defineTool((install) =>
 ## With Hooks
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
@@ -823,7 +823,7 @@ export default defineTool((install) =>
 ## Platform-Specific Installation
 
 ```typescript
-import { Architecture, defineTool, Platform } from '@gitea/dotfiles';
+import { Architecture, defineTool, Platform } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })

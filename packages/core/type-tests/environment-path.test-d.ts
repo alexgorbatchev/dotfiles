@@ -1,4 +1,4 @@
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 import { expectError } from 'tsd';
 
 // Valid: setting normal environment variables

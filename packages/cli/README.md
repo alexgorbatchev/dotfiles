@@ -284,7 +284,7 @@ bun run cli.ts <command>
 The CLI reads configuration from `dotfiles.config.ts` in the project root:
 
 ```typescript
-import { defineConfig } from '@gitea/dotfiles';
+import { defineConfig } from '@alexgorbatchev/dotfiles';
 
 export default defineConfig(() => ({
   // Directory structure

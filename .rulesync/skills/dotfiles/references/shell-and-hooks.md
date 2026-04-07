@@ -534,7 +534,7 @@ Hooks allow custom logic at different stages of the installation process.
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
@@ -702,7 +702,7 @@ This logging happens regardless of whether `.quiet()` is used on the shell comma
 ### Custom Binary Processing
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 import path from 'path';
 
 export default defineTool((install, ctx) =>
@@ -728,7 +728,7 @@ export default defineTool((install, ctx) =>
 ### Environment-Specific Setup
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/custom-tool' })
@@ -757,7 +757,7 @@ export default defineTool((install, ctx) =>
 Set environment variables during installation (for curl-script installs):
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install('curl-script', {
@@ -796,7 +796,7 @@ export default defineTool((install) =>
 ## Complete Example
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 import path from 'path';
 
 export default defineTool((install, ctx) =>

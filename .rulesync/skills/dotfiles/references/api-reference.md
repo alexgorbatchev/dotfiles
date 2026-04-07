@@ -30,7 +30,7 @@
 
 # API Reference
 
-Reference for the public API available in `@gitea/dotfiles`.
+Reference for the public API available in `@alexgorbatchev/dotfiles`.
 
 ## Exports
 
@@ -42,7 +42,7 @@ import {
   defineConfig, // Create project configuration
   defineTool, // Create tool configurations
   Platform, // Platform enum for cross-platform configs
-} from '@gitea/dotfiles';
+} from '@alexgorbatchev/dotfiles';
 ```
 
 ## defineTool
@@ -166,7 +166,7 @@ export default defineConfig(() => ({
 Enum for platform-specific configurations.
 
 ```typescript
-import { defineTool, Platform } from '@gitea/dotfiles';
+import { defineTool, Platform } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
@@ -316,7 +316,7 @@ INFO    [my-tool] Configuring tool settings...
 Tagged template for removing indentation from multi-line strings.
 
 ```typescript
-import { dedentTemplate } from '@gitea/dotfiles';
+import { dedentTemplate } from '@alexgorbatchev/dotfiles';
 
 const script = dedentTemplate`
   if [[ -n "$VAR" ]]; then

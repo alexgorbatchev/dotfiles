@@ -5,7 +5,7 @@ Downloads and executes shell installation scripts.
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('curl-script', {

@@ -5,7 +5,7 @@ Download and extract tarballs directly from URLs.
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install('curl-tar', {

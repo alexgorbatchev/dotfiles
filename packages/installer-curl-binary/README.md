@@ -9,7 +9,7 @@ the downloaded file is the binary itself.
 ## Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install('curl-binary', {

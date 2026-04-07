@@ -5,7 +5,7 @@ Installs files from your tool configuration directory (custom scripts, pre-built
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 // Install a custom script
 export default defineTool((install, ctx) =>

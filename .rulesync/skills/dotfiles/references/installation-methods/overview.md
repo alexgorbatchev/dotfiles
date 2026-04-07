@@ -9,7 +9,7 @@ The system supports multiple installation methods to accommodate different tool 
 Install tools from GitHub releases with automatic asset selection and extraction.
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', {
@@ -23,7 +23,7 @@ export default defineTool((install, ctx) =>
 Install tools from Gitea, Forgejo, or Codeberg releases with automatic asset selection.
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('gitea-release', {
@@ -38,7 +38,7 @@ export default defineTool((install, ctx) =>
 Install tools using Homebrew package manager (macOS and Linux).
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('brew', {
@@ -52,7 +52,7 @@ export default defineTool((install, ctx) =>
 Install Rust tools from crates.io with cargo-quickinstall for faster downloads.
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('cargo', {
@@ -66,7 +66,7 @@ export default defineTool((install, ctx) =>
 Install tools published as npm packages.
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('npm', {
@@ -80,7 +80,7 @@ export default defineTool((install, ctx) =>
 Download and execute installation scripts.
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('curl-script', {
@@ -95,7 +95,7 @@ export default defineTool((install, ctx) =>
 Download and extract tarballs directly from URLs.
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('curl-tar', {
@@ -109,7 +109,7 @@ export default defineTool((install, ctx) =>
 Download standalone binary files directly from URLs (no archive extraction).
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('curl-binary', {
@@ -123,7 +123,7 @@ export default defineTool((install, ctx) =>
 Install macOS applications from DMG disk images into `/Applications` (silently skipped on other platforms).
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('dmg', {
@@ -152,7 +152,7 @@ install('dmg', {
 Install files from your dotfiles directory (custom scripts, pre-built binaries) or configuration-only tools. Can be called without params: `install('manual')`.
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 // With binary installation
 export default defineTool((install, ctx) =>
@@ -182,7 +182,7 @@ export default defineTool((install, ctx) => install().zsh((shell) => shell.alias
 Clone Git repositories for zsh plugins.
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('zsh-plugin', {
@@ -222,7 +222,7 @@ The `manual` method is the unified approach for binary installation from your do
 **Example:** Including a custom deployment script with your dotfiles.
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('manual', {
@@ -241,7 +241,7 @@ export default defineTool((install, ctx) =>
 **Example:** Setting up shell aliases and environment variables.
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install().zsh((shell) =>

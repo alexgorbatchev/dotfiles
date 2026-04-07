@@ -35,7 +35,8 @@ This project replaces that fragile, manual system with a declarative, programmat
 ## Quick Start
 
 ```bash
-# Initialize configuration for the first time
+# Install Bun first: https://bun.sh
+# Then initialize configuration for the first time
 dotfiles init
 
 # Install a tool by name
@@ -76,7 +77,7 @@ Create `dotfiles.config.ts` to take advantage of TypeScript tooling:
 
 ```typescript
 // dotfiles.config.ts
-import { defineConfig } from '@gitea/dotfiles';
+import { defineConfig } from '@alexgorbatchev/dotfiles';
 
 export default defineConfig(async () => ({
   paths: {
@@ -101,7 +102,7 @@ Define everything about a tool—installation, binary path, config file symlinks
 
 ```typescript
 // configs/tools/ripgrep.tool.ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', {
@@ -149,6 +150,15 @@ If any dependency checks fail, the CLI exits with detailed diagnostics so you ca
 
 This enables IDE autocomplete for the `dependsOn()` method with all known binary names. The file is regenerated each time you run `generate` to stay in sync with your current tool configurations.
 
+## Bun runtime requirement
+
+The published npm package installs JavaScript files, but the `dotfiles` CLI entrypoint is executed with `#!/usr/bin/env bun`. Bun must be installed and available on `PATH` before you run the public package.
+
+```bash
+# Example global install after Bun is available
+npm install -g @alexgorbatchev/dotfiles
+```
+
 ## Documentation
 
 ### Getting Started
@@ -170,7 +180,7 @@ This enables IDE autocomplete for the `dependsOn()` method with all known binary
 The generator can be customized via a `dotfiles.config.ts` file located in your dotfiles directory (e.g., `~/.dotfiles/dotfiles.config.ts`). The following is a reference for all available options.
 
 ```typescript
-import { defineConfig } from '@gitea/dotfiles';
+import { defineConfig } from '@alexgorbatchev/dotfiles';
 
 export default defineConfig(() => ({
   // Path to the user's config file.

@@ -15,7 +15,7 @@ Declarative, versioned dotfiles management. Define CLI tools in TypeScript `.too
 ## Quick Reference
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'BurntSushi/ripgrep' })

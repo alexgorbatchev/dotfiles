@@ -203,7 +203,7 @@ const hasShims = await toolRegistry.hasShims('fzf');
 Shim paths are configured in `dotfiles.config.ts`:
 
 ```typescript
-import { defineConfig } from '@gitea/dotfiles';
+import { defineConfig } from '@alexgorbatchev/dotfiles';
 
 export default defineConfig(() => ({
   paths: {

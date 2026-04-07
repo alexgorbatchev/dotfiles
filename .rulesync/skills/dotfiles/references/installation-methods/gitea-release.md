@@ -5,7 +5,7 @@ Download and install tools from Gitea or Forgejo instance releases with automati
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install('gitea-release', {

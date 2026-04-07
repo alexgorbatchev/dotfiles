@@ -108,7 +108,7 @@ source env/source
 
 # Add rust-specific tools
 cat > env/tools/rust-analyzer.tool.ts << 'EOF'
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 export default defineTool((install) =>
   install('github-release', { repo: 'rust-lang/rust-analyzer' })
     .bin('rust-analyzer')

@@ -13,7 +13,7 @@ Installer plugin for zsh plugins via git clone. Clones git repositories into a c
 ## Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 // GitHub shorthand
 export default defineTool((install) =>

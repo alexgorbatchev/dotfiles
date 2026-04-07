@@ -216,7 +216,7 @@ class CustomShellGenerator extends BaseShellGenerator {
 Shell init configuration in `dotfiles.config.ts`:
 
 ```typescript
-import { defineConfig } from '@gitea/dotfiles';
+import { defineConfig } from '@alexgorbatchev/dotfiles';
 
 export default defineConfig(() => ({
   features: {

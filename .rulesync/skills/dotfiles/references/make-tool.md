@@ -322,7 +322,7 @@ Reference: [Shell Integration Guide](shell-and-hooks.md#symbolic-links)
 Use `.platform()` for platform- and architecture-specific overrides. The callback receives an `install` function for that specific platform.
 
 ```ts
-import { Architecture, defineTool, Platform } from '@gitea/dotfiles';
+import { Architecture, defineTool, Platform } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install()
@@ -477,7 +477,7 @@ When the hostname doesn't match:
 Create a file named `{tool-name}.tool.ts`:
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   // Your configuration here
@@ -506,7 +506,7 @@ Do NOT include archive-structure narration in the comment (the code already show
 ### Example 1: Simple GitHub Release Tool
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * ripgrep - A line-oriented search tool that recursively searches your current
@@ -524,7 +524,7 @@ export default defineTool((install) =>
 ### Example 1b: GitHub Release with gh CLI
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * ripgrep - Using gh CLI for API access (GitHub Enterprise or auth via gh).
@@ -542,7 +542,7 @@ export default defineTool((install) =>
 ### Example 2: Tool with Shell Integration
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * fzf - Command-line fuzzy finder.
@@ -569,7 +569,7 @@ export default defineTool((install) =>
 ### Example 3: Manual Installation (Dotfiles Script)
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * deploy - Custom deployment script included with dotfiles.
@@ -588,7 +588,7 @@ export default defineTool((install) =>
 ### Example 3b: Manual Without Params
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * tokscale - Token scaling utility via bun.
@@ -610,7 +610,7 @@ export default defineTool((install) =>
 ### Example 4: Configuration-Only Tool
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * git - Git configuration and aliases.
@@ -634,7 +634,7 @@ export default defineTool((install) =>
 ### Example 5: Rust Tool with Cargo
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * eza - A modern replacement for ls.
@@ -663,7 +663,7 @@ export default defineTool((install) =>
 ### Example 6: npm Tool
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * prettier - An opinionated code formatter.
@@ -680,7 +680,7 @@ export default defineTool((install) =>
 ### Example 6b: Tool with Shell Functions
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * kubectl - Kubernetes command-line tool with custom wrappers.
@@ -717,7 +717,7 @@ export default defineTool((install) =>
 ### Example 7: Tool with Dynamic Initialization
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * zoxide - A smarter cd command with frecency tracking.
@@ -745,7 +745,7 @@ export default defineTool((install) =>
 ### Example 8: Zsh Plugin (Git Repository)
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * zsh-vi-mode - A better and friendly vi(vim) mode plugin for ZSH.
@@ -768,7 +768,7 @@ export default defineTool((install) =>
 ### Example 9: Gitea/Forgejo Release Tool
 
 ```ts
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 /**
  * pages-server - Codeberg Pages static site server.
@@ -827,7 +827,7 @@ Without this step, the generated shims and shell configuration will be out of sy
 
 **Function signature**
 
-- ✅ Import `defineTool` from `'@gitea/dotfiles'`
+- ✅ Import `defineTool` from `'@alexgorbatchev/dotfiles'`
 - ✅ Use `export default defineTool((install, ctx) => ...)` - omit `ctx` if not used
 - ✅ Call `install(method, params)` first to specify installation
 - ✅ Chain additional configuration methods

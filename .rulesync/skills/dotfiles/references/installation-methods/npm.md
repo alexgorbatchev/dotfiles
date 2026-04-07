@@ -5,7 +5,7 @@ Install tools published as npm packages. Supports both `npm` and `bun` as packag
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) => install('npm', { package: 'prettier' }).bin('prettier'));
 ```

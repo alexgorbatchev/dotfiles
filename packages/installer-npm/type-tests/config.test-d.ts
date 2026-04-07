@@ -3,7 +3,7 @@ import {
   type z_internal_IInstallParamsRegistry,
   type z_internal_InstallMethod,
   type z_internal_NpmInstallParams,
-} from '@gitea/dotfiles';
+} from '@alexgorbatchev/dotfiles';
 import { expectError } from 'tsd';
 
 type NpmInstallParams = z_internal_NpmInstallParams;

@@ -5,7 +5,7 @@ Installs Rust tools from crates.io using pre-compiled binaries via cargo-quickin
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('cargo', {

@@ -7,7 +7,7 @@ Shims are not supported for Homebrew-installed tools. The `.bin()` method should
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) => install('brew', { formula: 'ripgrep' }));
 ```

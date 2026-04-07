@@ -5,7 +5,7 @@ Download and install tools from GitHub releases with automatic platform asset se
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) => install('github-release', { repo: 'junegunn/fzf' }).bin('fzf'));
 ```

@@ -88,7 +88,7 @@ await generator.generate();
 Symlinks are typically configured in `.tool.ts` files using the `.symlink()` method:
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install) =>
   install()
