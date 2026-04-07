@@ -100,7 +100,7 @@ async function commitAndTag(version: string, didBump: boolean): Promise<void> {
     await executeCommand(['git', 'add', 'package.json']);
     await executeCommand(['git', 'commit', '-m', `Version ${version}`]);
   }
-  
+
   console.log(`📝 Creating tag v${version}...`);
   await executeCommand(['git', 'tag', `v${version}`]);
   console.log(`✅ Created tag v${version}`);
