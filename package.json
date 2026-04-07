@@ -1,6 +1,6 @@
 {
-  "name": "dotfiles",
-  "version": "1.0.93",
+  "name": "@alexgorbatchev/dotfiles",
+  "version": "0.0.1",
   "private": true,
   "workspaces": ["packages/*", "test-project"],
   "type": "module",
@@ -19,7 +19,7 @@
     "proxy": "bun run packages/http-proxy/src/server.ts",
     "check": "bun lint && bun typecheck && bun test:all",
     "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/config.ts dashboard",
-    "ai": "rulesync generate --targets claudecode --features '*'",
+    "ai": "rulesync generate --targets agentsmd,agentsskills --features '*'",
     "postinstall": "bun ai"
   },
   "devDependencies": {
