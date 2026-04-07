@@ -2,8 +2,8 @@ import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
-import { CachedDownloadStrategy } from '../../CachedDownloadStrategy';
 import { createCacheKey } from '../../cache/helpers';
+import { CachedDownloadStrategy } from '../../CachedDownloadStrategy';
 import type { IDownloadOptions } from '../../IDownloader';
 import { MockCache, MockDownloadStrategy } from './helpers/mocks';
 
@@ -56,7 +56,7 @@ describe('CachedDownloadStrategy', () => {
   describe('download', () => {
     it('should read from cache when progress callback is provided', async () => {
       const url = 'https://example.com/file.txt';
-      const progressCalls: Array<{ loaded: number; total: number; }> = [];
+      const progressCalls: Array<{ loaded: number; total: number | null; }> = [];
       const options: IDownloadOptions = {
         onProgress: (loaded, total) => {
           progressCalls.push({ loaded, total });
