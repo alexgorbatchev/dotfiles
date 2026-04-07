@@ -35,10 +35,12 @@ const rootDir = process.cwd();
 const packageJsonPath = path.join(rootDir, 'package.json');
 const distDir = path.join(rootDir, '.dist');
 
-type VersionBumpType = 'patch' | 'minor' | 'major';
+type VersionBumpType = 'patch' | 'minor' | 'major' | string;
 
 function isValidBumpType(value: string): value is VersionBumpType {
-  return value === 'patch' || value === 'minor' || value === 'major';
+  // It's a bump type or a direct semantic version string (e.g., "1.2.3")
+  return value === 'patch' || value === 'minor' || value === 'major' ||
+    /^\d+\.\d+\.\d+(?:-[\w.]+)?(?:\+[\w.]+)?$/.test(value);
 }
 
 /**
@@ -59,6 +61,11 @@ async function bumpVersion(bumpType: VersionBumpType): Promise<string> {
   const previousVersion = readCurrentVersion();
   console.log(`📦 Current version: ${previousVersion}`);
   console.log(`🔄 Bumping ${bumpType} version...`);
+
+  if (previousVersion === bumpType) {
+    console.log(`ℹ️ Version is already ${bumpType}, skipping bump.`);
+    return previousVersion;
+  }
 
   await executeCommand(['bun', 'pm', 'version', bumpType, '--no-git-tag-version']);
 
@@ -137,7 +144,9 @@ async function release(): Promise<void> {
   const bumpType = args.find((arg) => arg !== '--dry-run') ?? 'patch';
 
   if (!isValidBumpType(bumpType)) {
-    console.error(`Invalid bump type: ${bumpType}. Use 'patch', 'minor', or 'major'.`);
+    console.error(
+      `Invalid bump type/version: ${bumpType}. Use 'patch', 'minor', 'major', or a specific semantic version like '1.2.3'.`,
+    );
     process.exit(1);
   }
 
