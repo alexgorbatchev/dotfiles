@@ -6,7 +6,7 @@ description: Manage and debug the @alexgorbatchev/dotfiles release pipeline, Git
 # Dotfiles Release Pipeline
 
 The release pipeline for `@alexgorbatchev/dotfiles` is automated using GitHub Actions
-and local `bun run release` preparation scripts. The package is published automatically 
+and local `bun run release` preparation scripts. The package is published automatically
 to the public NPM registry (`registry.npmjs.org`) whenever a semantic version tag is pushed.
 
 ## Core Workflow
@@ -23,7 +23,7 @@ To trigger a release:
    bun run release major  # Bumps major version (e.g. 1.0.0 -> 2.0.0)
    ```
 3. The script will automatically:
-   - Calculate the new version 
+   - Calculate the new version
    - Verify the build compiles properly locally
    - Commit the `package.json` changes
    - Create a `vX.Y.Z` git tag
@@ -42,11 +42,11 @@ This runs the full pipeline (version bump, build `compile`, type tests) but **sk
 
 ## Publishing & CI Workflows
 
-If the publish pipeline fails, the issue is within GitHub Actions (`.github/workflows/publish.yml`) 
+If the publish pipeline fails, the issue is within GitHub Actions (`.github/workflows/publish.yml`)
 or the produced artifacts inside the compiled `.dist/` directory.
 
 - The package is compiled by `bun run compile`.
-- The GitHub action uses NPM provenance to publish the package securely. 
+- The GitHub action uses NPM provenance to publish the package securely.
 - You can manually test the publish command via:
   ```bash
   bun run release --dry-run
@@ -55,7 +55,7 @@ or the produced artifacts inside the compiled `.dist/` directory.
 
 ## Build Process Deep Dive
 
-The core compilation logic lives in `packages/build/src/build/build.ts` 
+The core compilation logic lives in `packages/build/src/build/build.ts`
 (executed via `bun run compile`).
 
 Sequential build steps (failure at any step aborts the workflow):
@@ -79,7 +79,7 @@ Sequential build steps (failure at any step aborts the workflow):
 
 **Type Test Failures (Step 11)**
 The build runs `tsd` against the **bundled** `.dist/schemas.d.ts`, not the source types.
-*Debugging*: Inspect the failing `packages/*/type-tests/*.test-d.ts` test files and `.dist/schemas.d.ts` to see how the bundled types diverge.
+_Debugging_: Inspect the failing `packages/*/type-tests/*.test-d.ts` test files and `.dist/schemas.d.ts` to see how the bundled types diverge.
 
 **Bundle Size Exceeded (Step 8)**
 The total CLI bundle must be `<= 500KB`. Check for accidentally bundled thick dependencies that should have been marked external.
@@ -93,6 +93,6 @@ This executes the CLI using an `npm pack` tarball to simulate what the user down
 - `packages/build/src/build/build.ts`: Compilation orchestrator
 - `packages/build/src/build/steps/`: Individual build steps
 - `packages/build/src/build/helpers/`: Build pipeline utilities
-- `.dist/`: The resulting compiled output that is published to NPM 
+- `.dist/`: The resulting compiled output that is published to NPM
 - `.github/workflows/publish.yml`: The remote CI publisher routine
 - `.github/workflows/ci.yml`: The standard PR and commit check routine
