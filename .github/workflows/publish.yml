@@ -60,7 +60,7 @@ jobs:
         env:
           CI: "false"
         run: |
-          bun run check
+          bun run check:ci
           bun run compile
 
       - name: Read package metadata

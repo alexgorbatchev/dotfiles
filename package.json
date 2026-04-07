@@ -18,6 +18,7 @@
     "cli": "bun run ./cli.ts",
     "proxy": "bun run packages/http-proxy/src/server.ts",
     "check": "bun lint && bun typecheck && bun test:all",
+    "check:ci": "bun lint && bun typecheck && bun test:native",
     "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/config.ts dashboard",
     "ai": "rulesync generate --targets agentsmd,agentsskills --features '*'",
     "postinstall": "bun ai"
