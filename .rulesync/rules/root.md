@@ -63,4 +63,3 @@ The project solves key problems developers face with dotfiles management:
 The canonical source for all AI files such as skills, commands, etc is in `.rulesync`. After making changes to AI files, run `bun ai` to regenerate.
 
 When making changes to the public API, `.rulesync/skills/dotfiles` documentation files must be updated.
-
