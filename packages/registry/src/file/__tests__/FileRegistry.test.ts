@@ -290,6 +290,37 @@ describe('SqliteFileRegistry', () => {
       const tools = await registry.getRegisteredTools();
       expect(tools).toEqual(['nodejs', 'python']);
     });
+
+    it('should exclude tools whose tracked files were removed', async () => {
+      const removedToolOperationId = randomUUID();
+
+      await registry.recordOperation({
+        toolName: 'nodejs',
+        operationType: 'writeFile',
+        filePath: '/usr/local/bin/node',
+        fileType: 'shim',
+        operationId: removedToolOperationId,
+      });
+
+      await registry.recordOperation({
+        toolName: 'nodejs',
+        operationType: 'rm',
+        filePath: '/usr/local/bin/node',
+        fileType: 'shim',
+        operationId: removedToolOperationId,
+      });
+
+      await registry.recordOperation({
+        toolName: 'python',
+        operationType: 'writeFile',
+        filePath: '/usr/local/bin/python',
+        fileType: 'binary',
+        operationId: randomUUID(),
+      });
+
+      const tools = await registry.getRegisteredTools();
+      expect(tools).toEqual(['python']);
+    });
   });
 
   describe('removeToolOperations', () => {

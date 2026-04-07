@@ -214,11 +214,25 @@ export class FileRegistry implements IFileRegistry {
   }
 
   async getRegisteredTools(): Promise<string[]> {
-    const stmt = this.db.prepare('SELECT DISTINCT tool_name FROM file_operations ORDER BY tool_name');
-    const rows = stmt.all() as { tool_name: string; }[];
+    const logger = this.logger.getSubLogger({ name: 'getRegisteredTools' });
+    const operations = await this.getOperations();
+    const latestOperationByFilePath = new Map<string, IFileOperation>();
 
-    const tools = rows.map((row) => row.tool_name);
-    this.logger.debug(messages.toolsFound(), tools.length);
+    for (const operation of operations) {
+      if (!latestOperationByFilePath.has(operation.filePath)) {
+        latestOperationByFilePath.set(operation.filePath, operation);
+      }
+    }
+
+    const tools = Array.from(
+      new Set(
+        Array.from(latestOperationByFilePath.values())
+          .filter((operation) => operation.operationType !== 'rm')
+          .map((operation) => operation.toolName),
+      ),
+    ).toSorted();
+
+    logger.debug(messages.toolsFound(), tools.length);
 
     return tools;
   }

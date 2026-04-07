@@ -388,18 +388,28 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
     const registeredTools = await this.fileRegistry.getRegisteredTools();
     const configuredToolNames = new Set(Object.keys(toolConfigs));
+    const orphanedToolsWithCleanableArtifacts: string[] = [];
 
-    const orphanedTools = registeredTools.filter(
-      (toolName) => toolName !== 'system' && !configuredToolNames.has(toolName),
-    );
+    for (const toolName of registeredTools) {
+      if (toolName === 'system' || configuredToolNames.has(toolName)) {
+        continue;
+      }
 
-    if (orphanedTools.length === 0) {
+      const fileStates = await this.fileRegistry.getFileStatesForTool(toolName);
+      const hasCleanableArtifacts = fileStates.some((state) => CLEANABLE_FILE_TYPES.has(state.fileType));
+
+      if (hasCleanableArtifacts) {
+        orphanedToolsWithCleanableArtifacts.push(toolName);
+      }
+    }
+
+    if (orphanedToolsWithCleanableArtifacts.length === 0) {
       return;
     }
 
-    logger.warn(messages.orphanCleanup.found(orphanedTools.length));
+    logger.warn(messages.orphanCleanup.found(orphanedToolsWithCleanableArtifacts.length));
 
-    for (const toolName of orphanedTools) {
+    for (const toolName of orphanedToolsWithCleanableArtifacts) {
       const toolLogger: TsLogger = logger.getSubLogger({ name: 'cleanupOrphanedTools', context: toolName });
       toolLogger.warn(messages.orphanCleanup.cleaningUp());
       await this.cleanupToolArtifacts(toolName);
@@ -432,14 +442,32 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
     logger.debug(messages.cleanup.filesFound(toolName, filesToCleanup.length));
 
+    const sortedFilesToCleanup = filesToCleanup.toSorted((left, right) => right.filePath.length - left.filePath.length);
+
     // Delete each file
-    for (const fileState of filesToCleanup) {
+    for (const fileState of sortedFilesToCleanup) {
       try {
-        const fileExists = await this.fs.exists(fileState.filePath);
+        const fileExists = fileState.fileType === 'symlink'
+          ? await this.fs.lstat(fileState.filePath).then(() => true, () => false)
+          : await this.fs.exists(fileState.filePath);
+
         if (fileExists) {
-          await this.fs.rm(fileState.filePath);
+          if (fileState.lastOperation === 'mkdir') {
+            await this.fs.rmdir(fileState.filePath);
+          } else {
+            await this.fs.rm(fileState.filePath, { recursive: fileState.fileType === 'copy', force: true });
+          }
+
           logger.warn(messages.cleanup.fileDeleted(fileState.filePath, fileState.fileType));
         }
+
+        await this.fileRegistry.recordOperation({
+          toolName,
+          operationType: 'rm',
+          filePath: fileState.filePath,
+          fileType: fileState.fileType,
+          operationId: randomUUID(),
+        });
       } catch (error) {
         logger.debug(messages.cleanup.deleteError(fileState.filePath, error));
       }
