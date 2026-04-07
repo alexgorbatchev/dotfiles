@@ -24,7 +24,6 @@
  *   bun run release --dry-run    # Run everything except commit, tag, and publish
  */
 
-import { $ } from 'dax-sh';
 import fs from 'node:fs';
 import path from 'node:path';
 import { executeCommand } from '../git-utils';
@@ -35,7 +34,6 @@ cdToRepoRoot();
 const rootDir = process.cwd();
 const packageJsonPath = path.join(rootDir, 'package.json');
 const distDir = path.join(rootDir, '.dist');
-const releaseReadmePath = path.join(distDir, 'README.md');
 
 type VersionBumpType = 'patch' | 'minor' | 'major';
 
@@ -108,24 +106,16 @@ async function pushRelease(version: string): Promise<void> {
 }
 
 /**
- * Publishes the package to npmjs using the caller's existing npm authentication.
- */
-async function publishToNpm(): Promise<void> {
-  console.log('📤 Publishing to npmjs...');
-  await executeCommand(['npm', 'publish', '--access', 'public'], { cwd: distDir });
-  console.log('✅ Package published successfully');
-}
-
-/**
  * Checks if there are uncommitted changes in the working directory.
  */
 async function hasUncommittedChanges(): Promise<boolean> {
-  const result = await $`git status --porcelain`.quiet().noThrow();
+  const result = await Bun.$`git status --porcelain`.quiet().nothrow();
   const output = result.stdout.toString().trim();
   return output.length > 0;
 }
 
 function verifyPublicReadme(): void {
+  const releaseReadmePath = path.join(distDir, 'README.md');
   if (!fs.existsSync(releaseReadmePath)) {
     throw new Error(`Built README is missing: ${releaseReadmePath}`);
   }
@@ -138,8 +128,9 @@ function verifyPublicReadme(): void {
 }
 
 /**
- * Main release entry point.
+ * Removes the npm publish step entirely, as it is now handled by GitHub Actions (.github/workflows/publish.yml).
  */
+
 async function release(): Promise<void> {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
@@ -174,19 +165,20 @@ async function release(): Promise<void> {
       return;
     }
 
-    // Step 3: Finalize git state before publishing
+    // Step 3: Finalize git state and trigger CI publish via tag push
     await commitAndTag(newVersion);
     await pushRelease(newVersion);
-    await publishToNpm();
 
-    console.log(`\n🎉 Release ${newVersion} completed successfully!`);
+    console.log(
+      `\n🎉 Version updated, tagged, and pushed! GitHub Actions will now publish release ${newVersion} to npm.`,
+    );
   } catch (error) {
-    // Build or publish failed - revert version change if it was not committed yet
-    console.error('\n❌ Release failed:', error instanceof Error ? error.message : error);
+    // Build or push failed - revert version change if it was not committed yet
+    console.error('\n❌ Release push failed:', error instanceof Error ? error.message : error);
 
     if (newVersion && !dryRun) {
       console.error(
-        '⚠️  Release state may be partially applied. Inspect git commit/tag and npm publish state manually.',
+        '⚠️  Git tagging/pushing may have failed mid-way. Inspect git commit/tag state manually.',
       );
       process.exit(1);
     }
