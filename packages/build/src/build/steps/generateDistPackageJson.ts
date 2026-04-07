@@ -36,16 +36,17 @@ export async function generateDistPackageJson(
     license: 'MIT',
     repository: {
       type: 'git',
-      url: 'git+https://github.com/alexgorbatchev/dotfiles-tool-install.git',
+      url: 'git+https://github.com/alexgorbatchev/dotfiles.git',
     },
-    homepage: 'https://github.com/alexgorbatchev/dotfiles-tool-install#readme',
+    homepage: 'https://github.com/alexgorbatchev/dotfiles#readme',
     bugs: {
-      url: 'https://github.com/alexgorbatchev/dotfiles-tool-install/issues',
+      url: 'https://github.com/alexgorbatchev/dotfiles/issues',
     },
     keywords: PUBLIC_PACKAGE_KEYWORDS,
     type: 'module',
+    main: './cli.js',
     bin: {
-      dotfiles: './cli.js',
+      dotfiles: 'cli.js',
     },
     types: './schemas.d.ts',
     exports: {

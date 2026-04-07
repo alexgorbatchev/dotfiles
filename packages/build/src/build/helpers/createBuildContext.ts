@@ -17,7 +17,6 @@ export function createBuildContext(): IBuildContext {
 
   const entryPoint: string = path.resolve(packagesDir, 'cli/src/cli.ts');
 
-  const npmrcPath: string = path.join(rootDir, '.npmrc');
   const bunfigPath: string = path.join(rootDir, 'bunfig.toml');
 
   const buildTsconfigPath: string = path.join(outputDir, 'tsconfig--build.json');
@@ -25,7 +24,6 @@ export function createBuildContext(): IBuildContext {
   const tempSchemasBuildDirName: string = 'temp-schemas-build';
   const tempSchemasBuildDir: string = path.join(tmpDir, tempSchemasBuildDirName);
   const tempSchemasPackagePath: string = path.join(tempSchemasBuildDir, 'package.json');
-  const tempSchemasNpmrcPath: string = path.join(tempSchemasBuildDir, '.npmrc');
 
   const outputPackagesDir: string = path.join(outputDir, 'packages');
 
@@ -42,7 +40,7 @@ export function createBuildContext(): IBuildContext {
   const tsdTestsDir: string = path.join(tmpDir, 'tsd-tests');
   const tsdTestsConfigPath: string = path.join(tsdTestsDir, 'tsconfig.json');
   const tsdTestsPackageJsonPath: string = path.join(tsdTestsDir, 'package.json');
-  const tsdTestsNpmrcPath: string = path.join(tsdTestsDir, '.npmrc');
+
   const tsdTestsNodeModulesPath: string = path.join(tsdTestsDir, 'node_modules');
   const tsdTestsGeneratedDir: string = path.join(tsdTestsDir, '.generated');
   const tsdTestsScopedNamespacePath: string = path.join(tsdTestsNodeModulesPath, '@alexgorbatchev');
@@ -62,14 +60,12 @@ export function createBuildContext(): IBuildContext {
     cliOutputSourceMapFile,
     entryPoint,
 
-    npmrcPath,
     bunfigPath,
 
     buildTsconfigPath,
 
     tempSchemasBuildDir,
     tempSchemasPackagePath,
-    tempSchemasNpmrcPath,
 
     outputPackagesDir,
     outputPackageJsonPath,
@@ -85,7 +81,6 @@ export function createBuildContext(): IBuildContext {
     tsdTestsDir,
     tsdTestsConfigPath,
     tsdTestsPackageJsonPath,
-    tsdTestsNpmrcPath,
     tsdTestsNodeModulesPath,
     tsdTestsScopedNamespacePath,
     tsdTestsScopedPackagePath,

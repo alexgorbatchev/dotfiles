@@ -17,7 +17,7 @@
     "find-unused": "echo \"find-unused analyzer is not configured in this workspace.\"",
     "cli": "bun run ./cli.ts",
     "proxy": "bun run packages/http-proxy/src/server.ts",
-    "check": "bun lint && bun typecheck && bun test",
+    "check": "bun lint && bun typecheck && bun test:all",
     "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/config.ts dashboard",
     "ai": "rulesync generate --targets claudecode --features '*'",
     "postinstall": "bun ai"

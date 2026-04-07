@@ -52,6 +52,5 @@ export async function createTempSchemasPackage(
   await Bun.write(context.paths.tempSchemasPackagePath, JSON.stringify(tempPackageJson, null, 2));
   await Bun.write(context.paths.outputPackageJsonPath, JSON.stringify(tempRootPackageJson, null, 2));
 
-  copyFileIfExists(context.paths.npmrcPath, context.paths.tempSchemasNpmrcPath);
   copyFileIfExists(context.paths.bunfigPath, context.paths.outputBunfigPath);
 }

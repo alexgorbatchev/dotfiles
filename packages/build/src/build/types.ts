@@ -26,14 +26,12 @@ export interface IBuildPaths {
   cliOutputSourceMapFile: string;
   entryPoint: string;
 
-  npmrcPath: string;
   bunfigPath: string;
 
   buildTsconfigPath: string;
 
   tempSchemasBuildDir: string;
   tempSchemasPackagePath: string;
-  tempSchemasNpmrcPath: string;
 
   outputPackagesDir: string;
   outputPackageJsonPath: string;
@@ -49,7 +47,6 @@ export interface IBuildPaths {
   tsdTestsDir: string;
   tsdTestsConfigPath: string;
   tsdTestsPackageJsonPath: string;
-  tsdTestsNpmrcPath: string;
   tsdTestsNodeModulesPath: string;
   tsdTestsScopedNamespacePath: string;
   tsdTestsScopedPackagePath: string;

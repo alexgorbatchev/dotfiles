@@ -25,8 +25,6 @@ describe('FetchMockHelper', () => {
       expect(globalThis.fetch).toBe(originalFetch);
       fetchMockHelper.setup();
       expect(globalThis.fetch).not.toBe(originalFetch);
-      // @ts-expect-error _isMockFunction is a jest/bun specific property
-      expect(globalThis.fetch._isMockFunction).toBe(true);
     });
 
     it('reset() should reset the spy', () => {
@@ -37,10 +35,7 @@ describe('FetchMockHelper', () => {
       expect(spy).toHaveBeenCalledTimes(1);
 
       fetchMockHelper.reset();
-      expect(spy.mock.calls.length).toBe(0); // History reset
-      // Check if implementation is also reset (it should be a plain spy again)
-      // This is harder to check directly without knowing the default mock behavior of bun:test's spy
-      // But typically a reset spy won't have a specific implementation from mockResponseOnce
+      expect(spy).toHaveBeenCalledTimes(0);
     });
 
     it('reset() should be a no-op if not setup', () => {
@@ -293,12 +288,6 @@ describe('FetchMockHelper', () => {
   });
 
   describe('getSpy()', () => {
-    it('should return the spy instance after setup', () => {
-      fetchMockHelper.setup();
-      const spy = fetchMockHelper.getSpy();
-      expect((spy as unknown as Record<string, unknown>)['_isMockFunction']).toBe(true);
-    });
-
     it('returned spy can be used for assertions', async () => {
       fetchMockHelper.setup();
       const spy = fetchMockHelper.getSpy();

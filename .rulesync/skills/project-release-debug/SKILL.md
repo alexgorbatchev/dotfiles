@@ -84,9 +84,8 @@ Runs CLI and dashboard from an `npm pack` tarball. Failures here mean the `files
 
 For publish failures:
 
-- Check `.npmrc` exists at repo root (auth token)
 - Check `publishConfig.registry` in `packages/build/src/build/steps/generateDistPackageJson.ts`
-- The release copies `.npmrc` → `.dist/.npmrc` before running `npm publish` from `.dist/`
+
 - Run `npm publish --dry-run` manually from `.dist/` after a successful `bun release --dry-run` to test publishing without actually uploading
 
 ## Key Paths

@@ -85,11 +85,11 @@ describe('generateDistPackageJson', () => {
 
     expect(packageJson.repository).toEqual({
       type: 'git',
-      url: 'git+https://github.com/alexgorbatchev/dotfiles-tool-install.git',
+      url: 'git+https://github.com/alexgorbatchev/dotfiles.git',
     });
-    expect(packageJson.homepage).toBe('https://github.com/alexgorbatchev/dotfiles-tool-install#readme');
+    expect(packageJson.homepage).toBe('https://github.com/alexgorbatchev/dotfiles#readme');
     expect(packageJson.bugs).toEqual({
-      url: 'https://github.com/alexgorbatchev/dotfiles-tool-install/issues',
+      url: 'https://github.com/alexgorbatchev/dotfiles/issues',
     });
     expect(packageJson.keywords).toEqual(['dotfiles', 'cli', 'developer-tools', 'tool-installer', 'shell', 'bun']);
     expect(packageJson.version).toBe(rootPackageJson.version);
@@ -108,7 +108,7 @@ describe('generateDistPackageJson', () => {
     const content = fs.readFileSync(tempFile, 'utf-8');
     const packageJson = JSON.parse(content);
 
-    expect(packageJson.bin.dotfiles).toBe('./cli.js');
+    expect(packageJson.bin.dotfiles).toBe('cli.js');
   });
 
   test('includes exports field with proper structure', async () => {
