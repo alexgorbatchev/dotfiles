@@ -225,7 +225,7 @@ export const CARGO_QUICKINSTALL_TOOL: ICargoToolConfig = {
   versions: {
     '1.0.0': {
       'aarch64-apple-darwin': 'cargo-quickinstall-tool-1.0.0-aarch64-apple-darwin.tar.gz',
-      'x86_64-unknown-linux-musl': 'cargo-quickinstall-tool-1.0.0-x86_64-unknown-linux-musl.tar.gz',
+      'x86_64-unknown-linux-gnu': 'cargo-quickinstall-tool-1.0.0-x86_64-unknown-linux-musl.tar.gz',
     },
   },
 };
