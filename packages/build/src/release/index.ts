@@ -94,12 +94,16 @@ async function runBuild(): Promise<void> {
 /**
  * Commits the version change and creates a git tag.
  */
-async function commitAndTag(version: string): Promise<void> {
-  console.log('📝 Committing version change...');
-  await executeCommand(['git', 'add', 'package.json']);
-  await executeCommand(['git', 'commit', '-m', `Version ${version}`]);
+async function commitAndTag(version: string, didBump: boolean): Promise<void> {
+  if (didBump) {
+    console.log('📝 Committing version change...');
+    await executeCommand(['git', 'add', 'package.json']);
+    await executeCommand(['git', 'commit', '-m', `Version ${version}`]);
+  }
+  
+  console.log(`📝 Creating tag v${version}...`);
   await executeCommand(['git', 'tag', `v${version}`]);
-  console.log(`✅ Committed version ${version} and created tag v${version}`);
+  console.log(`✅ Created tag v${version}`);
 }
 
 /**
@@ -159,23 +163,27 @@ async function release(): Promise<void> {
   }
 
   let newVersion: string | undefined;
+  let didBumpVersion = false;
 
   try {
+    const previousVersion = readCurrentVersion();
+
     // Step 1: Bump version (no commit yet)
     newVersion = await bumpVersion(bumpType);
+    didBumpVersion = newVersion !== previousVersion;
 
     // Step 2: Run build
     await runBuild();
     verifyPublicReadme();
 
     if (dryRun) {
-      await revertVersionChange();
+      if (didBumpVersion) await revertVersionChange();
       console.log(`\n✅ Dry run complete — build succeeded for version ${newVersion}.`);
       return;
     }
 
     // Step 3: Finalize git state and trigger CI publish via tag push
-    await commitAndTag(newVersion);
+    await commitAndTag(newVersion, didBumpVersion);
     await pushRelease(newVersion);
 
     console.log(
@@ -192,7 +200,7 @@ async function release(): Promise<void> {
       process.exit(1);
     }
 
-    if (newVersion) {
+    if (newVersion && didBumpVersion) {
       try {
         await revertVersionChange();
       } catch (revertError) {
