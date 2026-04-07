@@ -19,7 +19,12 @@ import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
 import type { GithubReleaseToolConfig, IGitHubApiClient } from '@dotfiles/installer-github';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
 import { TestLogger, type TsLogger } from '@dotfiles/logger';
-import type { IToolInstallationDetails, IToolInstallationRecord, IToolInstallationRegistry, IToolUsageRecord } from '@dotfiles/registry';
+import type {
+  IToolInstallationDetails,
+  IToolInstallationRecord,
+  IToolInstallationRegistry,
+  IToolUsageRecord,
+} from '@dotfiles/registry';
 import { createMockFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import {

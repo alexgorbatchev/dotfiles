@@ -72,8 +72,8 @@ export interface DmgUrlSource {
   url: string;
 }
 
-export interface DmgGitHubReleaseSource
-  extends Pick<
+export interface DmgGitHubReleaseSource extends
+  Pick<
     GithubReleaseInstallParams,
     'repo' | 'version' | 'assetPattern' | 'assetSelector' | 'ghCli' | 'prerelease'
   >

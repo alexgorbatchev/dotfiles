@@ -3,8 +3,8 @@ import { Platform } from '@dotfiles/core';
 import type { IInstallContext, Shell } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { HookExecutor } from '@dotfiles/installer';
+import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import { TestLogger } from '@dotfiles/logger';
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import assert from 'node:assert';
@@ -84,19 +84,21 @@ describe('installFromDmg', () => {
       getReleaseByTag: mock(() => Promise.resolve(null)),
       getAllReleases: mock(() => Promise.resolve([])),
       getReleaseByConstraint: mock(() => Promise.resolve(null)),
-      getRateLimit: mock(() => Promise.resolve({
-        resources: {
-          core: { limit: 0, used: 0, remaining: 0, reset: 0 },
-          search: { limit: 0, used: 0, remaining: 0, reset: 0 },
-          graphql: { limit: 0, used: 0, remaining: 0, reset: 0 },
-          integration_manifest: { limit: 0, used: 0, remaining: 0, reset: 0 },
-          source_import: { limit: 0, used: 0, remaining: 0, reset: 0 },
-          code_scanning_upload: { limit: 0, used: 0, remaining: 0, reset: 0 },
-          actions_runner_registration: { limit: 0, used: 0, remaining: 0, reset: 0 },
-          scim: { limit: 0, used: 0, remaining: 0, reset: 0 },
-        },
-        rate: { limit: 0, used: 0, remaining: 0, reset: 0 },
-      })),
+      getRateLimit: mock(() =>
+        Promise.resolve({
+          resources: {
+            core: { limit: 0, used: 0, remaining: 0, reset: 0 },
+            search: { limit: 0, used: 0, remaining: 0, reset: 0 },
+            graphql: { limit: 0, used: 0, remaining: 0, reset: 0 },
+            integration_manifest: { limit: 0, used: 0, remaining: 0, reset: 0 },
+            source_import: { limit: 0, used: 0, remaining: 0, reset: 0 },
+            code_scanning_upload: { limit: 0, used: 0, remaining: 0, reset: 0 },
+            actions_runner_registration: { limit: 0, used: 0, remaining: 0, reset: 0 },
+            scim: { limit: 0, used: 0, remaining: 0, reset: 0 },
+          },
+          rate: { limit: 0, used: 0, remaining: 0, reset: 0 },
+        })
+      ),
       probeLatestTag: mock(() => Promise.resolve(null)),
       getLatestReleaseTags: mock(() => Promise.resolve([])),
       downloadAsset: mock(() => Promise.resolve()),
@@ -207,18 +209,20 @@ describe('installFromDmg', () => {
       const { shell } = createMockShell();
       mockGitHubApiClient = {
         ...mockGitHubApiClient,
-        getLatestRelease: mock(() => Promise.resolve({
-          tag_name: 'v1.0.0',
-          name: 'v1.0.0',
-          html_url: 'https://github.com/manaflow-ai/cmux/releases/tag/v1.0.0',
-          published_at: '2026-01-01T00:00:00Z',
-          assets: [
-            {
-              name: 'cmux-macos.dmg',
-              browser_download_url: 'https://github.com/manaflow-ai/cmux/releases/download/v1.0.0/cmux-macos.dmg',
-            },
-          ],
-        })),
+        getLatestRelease: mock(() =>
+          Promise.resolve({
+            tag_name: 'v1.0.0',
+            name: 'v1.0.0',
+            html_url: 'https://github.com/manaflow-ai/cmux/releases/tag/v1.0.0',
+            published_at: '2026-01-01T00:00:00Z',
+            assets: [
+              {
+                name: 'cmux-macos.dmg',
+                browser_download_url: 'https://github.com/manaflow-ai/cmux/releases/download/v1.0.0/cmux-macos.dmg',
+              },
+            ],
+          })
+        ),
       } as unknown as IGitHubApiClient;
 
       const toolConfig: DmgToolConfig = {
@@ -261,18 +265,20 @@ describe('installFromDmg', () => {
       const { shell } = createMockShell();
       mockGitHubApiClient = {
         ...mockGitHubApiClient,
-        getLatestRelease: mock(() => Promise.resolve({
-          tag_name: 'v1.0.0',
-          name: 'v1.0.0',
-          html_url: 'https://github.com/manaflow-ai/cmux/releases/tag/v1.0.0',
-          published_at: '2026-01-01T00:00:00Z',
-          assets: [
-            {
-              name: 'cmux-linux-amd64',
-              browser_download_url: 'https://github.com/manaflow-ai/cmux/releases/download/v1.0.0/cmux-linux-amd64',
-            },
-          ],
-        })),
+        getLatestRelease: mock(() =>
+          Promise.resolve({
+            tag_name: 'v1.0.0',
+            name: 'v1.0.0',
+            html_url: 'https://github.com/manaflow-ai/cmux/releases/tag/v1.0.0',
+            published_at: '2026-01-01T00:00:00Z',
+            assets: [
+              {
+                name: 'cmux-linux-amd64',
+                browser_download_url: 'https://github.com/manaflow-ai/cmux/releases/download/v1.0.0/cmux-linux-amd64',
+              },
+            ],
+          })
+        ),
       } as unknown as IGitHubApiClient;
 
       const toolConfig: DmgToolConfig = {

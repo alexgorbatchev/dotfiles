@@ -10,7 +10,6 @@ import {
 } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
 import {
   createToolFileSystem,
@@ -19,6 +18,7 @@ import {
   withInstallErrorHandling,
 } from '@dotfiles/installer';
 import { normalizeBinaries } from '@dotfiles/installer';
+import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import { fetchGitHubRelease, selectAsset } from '@dotfiles/installer-github';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli } from '@dotfiles/utils';
@@ -154,7 +154,6 @@ export async function installFromDmg(
       logger.debug(messages.copyingApp(appName));
       await shellExecutor`cp -R ${appSource} ${appDest}`.quiet();
       installedAppPath = appDest;
-
     } finally {
       // 8. Always unmount
       logger.debug(messages.unmountingDmg(mountPoint));
@@ -165,7 +164,9 @@ export async function installFromDmg(
     if (await toolFs.exists(resolvedDmgPath)) {
       await toolFs.rm(resolvedDmgPath);
     }
-    if (resolvedDmgPath !== resolvedSource.data.downloadPath && (await toolFs.exists(resolvedSource.data.downloadPath))) {
+    if (
+      resolvedDmgPath !== resolvedSource.data.downloadPath && (await toolFs.exists(resolvedSource.data.downloadPath))
+    ) {
       await toolFs.rm(resolvedSource.data.downloadPath);
     }
 

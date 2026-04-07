@@ -1,4 +1,4 @@
-import { Architecture, type ISystemInfo, Platform, hasArchitecture, hasPlatform } from '@dotfiles/core';
+import { Architecture, hasArchitecture, hasPlatform, type ISystemInfo, Platform } from '@dotfiles/core';
 import { NotFoundError } from '@dotfiles/downloader';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IApiResponse } from '../../shared/types';

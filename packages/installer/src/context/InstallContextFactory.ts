@@ -139,6 +139,8 @@ export class InstallContextFactory {
   }
 
   private getToolDirectory(toolConfig: ToolConfig): string {
-    return toolConfig.configFilePath ? path.dirname(toolConfig.configFilePath) : this.projectConfig.paths.toolConfigsDir;
+    return toolConfig.configFilePath
+      ? path.dirname(toolConfig.configFilePath)
+      : this.projectConfig.paths.toolConfigsDir;
   }
 }

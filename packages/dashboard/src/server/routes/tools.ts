@@ -40,7 +40,11 @@ function getConfiguredBinaryNames(config: { binaries?: Array<string | { name: st
   return config.binaries.map((binary) => (typeof binary === 'string' ? binary : binary.name));
 }
 
-async function getToolUsageSummary(services: IDashboardServices, toolName: string, binaryNames: string[]): Promise<IToolUsageSummary> {
+async function getToolUsageSummary(
+  services: IDashboardServices,
+  toolName: string,
+  binaryNames: string[],
+): Promise<IToolUsageSummary> {
   const usageByBinary: IToolBinaryUsage[] = await Promise.all(
     binaryNames.map(async (binaryName) => {
       const usage = await services.toolInstallationRegistry.getToolUsage(toolName, binaryName);

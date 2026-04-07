@@ -17,9 +17,11 @@ describe('setupServices DEV_PROXY validation', () => {
   it('fails fast when DEV_PROXY is invalid', async () => {
     process.env['DEV_PROXY'] = 'abc';
 
-    const exitSpy = spyOn(process, 'exit').mockImplementation(((code?: number) => {
-      throw new Error(`EXIT:${code}`);
-    }) as typeof process.exit);
+    const exitSpy = spyOn(process, 'exit').mockImplementation(
+      ((code?: number) => {
+        throw new Error(`EXIT:${code}`);
+      }) as typeof process.exit,
+    );
 
     try {
       const logger = new TestLogger({ name: 'test' });

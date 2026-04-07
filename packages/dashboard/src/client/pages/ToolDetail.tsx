@@ -503,9 +503,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       )}
 
       {/* README Section - only for installers with GitHub repos */}
-      {readmeRepo && (
-        <ReadmeCard toolName={tool.config.name} repo={readmeRepo} />
-      )}
+      {readmeRepo && <ReadmeCard toolName={tool.config.name} repo={readmeRepo} />}
     </div>
   );
 }

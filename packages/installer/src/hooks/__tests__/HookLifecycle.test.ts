@@ -1,8 +1,8 @@
 import type { IAfterInstallContext } from '@dotfiles/core';
 import { describe, expect, it, mock, spyOn } from 'bun:test';
 import assert from 'node:assert';
-import { createGithubReleaseToolConfig } from '../../__tests__/installer-test-helpers';
 import { createTestInstallHookContext } from '../../__tests__/hookContextTestHelper';
+import { createGithubReleaseToolConfig } from '../../__tests__/installer-test-helpers';
 import { HookExecutor } from '../../utils/HookExecutor';
 import { HookLifecycle } from '../HookLifecycle';
 

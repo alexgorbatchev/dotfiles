@@ -1,10 +1,10 @@
 import { loadConfig, type ProjectConfig } from '@dotfiles/config';
-import { architectureFromNodeJS, platformFromNodeJS, type ISystemInfo } from '@dotfiles/core';
+import { architectureFromNodeJS, type ISystemInfo, platformFromNodeJS } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import { FileRegistry } from '@dotfiles/registry/file';
-import { RegistryDatabase } from '@dotfiles/registry-database';
-import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { TsLogger } from '@dotfiles/logger';
+import { RegistryDatabase } from '@dotfiles/registry-database';
+import { FileRegistry } from '@dotfiles/registry/file';
+import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import os from 'node:os';
 import path from 'node:path';
 import { messages } from '../log-messages';

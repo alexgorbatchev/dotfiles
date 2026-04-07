@@ -1,12 +1,12 @@
 import { type JSX } from 'preact';
 
 import type { IToolDetail } from '../../shared/types';
-import { History, Zap } from '../icons';
 import { RecentTools } from '../components/RecentTools';
 import { StatCard } from '../components/StatCard';
 import { ToolsTreeView } from '../components/ToolsTreeView';
 import { TitledCard } from '../components/ui/TitledCard';
 import { useFetch } from '../hooks/useFetch';
+import { History, Zap } from '../icons';
 import { formatBytes } from '../utils/format';
 
 interface IUsageListItem {
@@ -85,18 +85,20 @@ function UsageListCard({
     <TitledCard title={title} icon={icon} class='h-full' contentClass='flex-1 overflow-auto'>
       {items.length === 0 ?
         <div class='text-muted-foreground text-sm text-center py-4'>{emptyText}</div> :
-        <div class='space-y-0'>
-          {items.map((item) => (
-            <a
-              key={item.name}
-              href={`/tools/${encodeURIComponent(item.name)}`}
-              class='flex items-center gap-2 py-1 rounded hover:bg-accent cursor-pointer text-sm group'
-            >
-              <span class='font-medium truncate text-sm flex-1 min-w-0'>{item.name}</span>
-              <span class='text-xs text-muted-foreground flex-shrink-0'>{secondary(item)}</span>
-            </a>
-          ))}
-        </div>}
+        (
+          <div class='space-y-0'>
+            {items.map((item) => (
+              <a
+                key={item.name}
+                href={`/tools/${encodeURIComponent(item.name)}`}
+                class='flex items-center gap-2 py-1 rounded hover:bg-accent cursor-pointer text-sm group'
+              >
+                <span class='font-medium truncate text-sm flex-1 min-w-0'>{item.name}</span>
+                <span class='text-xs text-muted-foreground flex-shrink-0'>{secondary(item)}</span>
+              </a>
+            ))}
+          </div>
+        )}
     </TitledCard>
   );
 }

@@ -10,8 +10,8 @@ import type {
 import { Platform } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { HookExecutor } from '@dotfiles/installer';
+import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { TsLogger } from '@dotfiles/logger';
 import { installFromDmg } from './installFromDmg';
 import {

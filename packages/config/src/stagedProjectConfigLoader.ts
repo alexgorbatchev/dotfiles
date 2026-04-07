@@ -223,7 +223,7 @@ function extractUnresolvedTokens(value: string): string[] {
     result.push(`{${tokenName}}`);
   }
 
-  const uniqueTokens: string[] = [...new Set(result)].sort((a: string, b: string) => a.localeCompare(b));
+  const uniqueTokens: string[] = [...new Set(result)].toSorted((a: string, b: string) => a.localeCompare(b));
   return uniqueTokens;
 }
 

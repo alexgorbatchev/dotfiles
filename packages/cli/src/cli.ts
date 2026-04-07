@@ -48,8 +48,8 @@ import { registerFeaturesCommand } from './featuresCommand';
 import { registerFilesCommand } from './filesCommand';
 import { registerGenerateCommand } from './generateCommand';
 import { registerInstallCommand } from './installCommand';
-import { messages } from './log-messages';
 import { runTrackUsageCommand } from './light/runTrackUsageCommand';
+import { messages } from './log-messages';
 import { registerLogCommand } from './logCommand';
 import { populateMemFsForDryRun } from './populateMemFsForDryRun';
 import { createBaseRuntimeContext } from './runtime/createBaseRuntimeContext';
@@ -292,7 +292,9 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const devProxyPort = devProxyValidation.port;
 
   if (typeof devProxyValidation.invalidValue === 'string') {
-    logger.error(messages.configParameterInvalid('DEV_PROXY', devProxyValidation.invalidValue, 'an integer between 1 and 65535'));
+    logger.error(
+      messages.configParameterInvalid('DEV_PROXY', devProxyValidation.invalidValue, 'an integer between 1 and 65535'),
+    );
     process.exit(1);
   }
 

@@ -2,9 +2,9 @@ import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import { createShell, Platform } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { DmgToolConfig } from '@dotfiles/installer-dmg';
+import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { DmgInstallerPlugin } from '../DmgInstallerPlugin';
 

@@ -2,7 +2,7 @@ import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo } from '@dotfiles/core';
 import { NodeFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
+import type { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { createBaseRuntimeContext } from '../runtime/createBaseRuntimeContext';
 
 export interface ILightRuntimeOptions {
