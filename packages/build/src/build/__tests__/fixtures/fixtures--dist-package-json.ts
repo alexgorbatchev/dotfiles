@@ -15,7 +15,7 @@ export const FIXTURE_SAMPLE_DEPENDENCY_VERSIONS = {
 };
 
 export const FIXTURE_EXPECTED_PACKAGE_JSON_SHAPE = {
-  name: '@gitea/dotfiles',
+  name: '@alexgorbatchev/dotfiles',
   type: 'module',
   bin: {
     dotfiles: './cli.js',
@@ -29,7 +29,7 @@ export const FIXTURE_EXPECTED_PACKAGE_JSON_SHAPE = {
       },
     },
   },
-  files: ['cli.js', 'cli.js.map', 'schemas.d.ts', 'tool-types.d.ts', 'skill'],
+  files: ['cli.js', 'cli.js.map', 'schemas.d.ts', 'tool-types.d.ts', 'skill', 'README.md', 'LICENSE'],
 };
 
 export const FIXTURE_REQUIRED_DEPENDENCY_FIELDS = ['zod', '@types/bun', '@types/node'];

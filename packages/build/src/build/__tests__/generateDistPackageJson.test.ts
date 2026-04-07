@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { getPackageJson } from '../../getPackageJson';
 import { generateDistPackageJson } from '../steps/generateDistPackageJson';
 import type { IBuildContext, IDependencyVersions } from '../types';
 import {
@@ -60,13 +61,42 @@ describe('generateDistPackageJson', () => {
     const content = fs.readFileSync(tempFile, 'utf-8');
     const packageJson = JSON.parse(content);
 
-    expect(packageJson.name).toBe('@gitea/dotfiles');
+    expect(packageJson.name).toBe('@alexgorbatchev/dotfiles');
+    expect(packageJson.description).toBe(
+      'Declarative, versioned dotfiles management with generated shims and shell integration.',
+    );
     expect(packageJson.type).toBe('module');
     expect(packageJson.bin).toBeDefined();
     expect(packageJson.types).toBe('./schemas.d.ts');
     expect(packageJson.exports).toBeDefined();
     expect(packageJson.files).toBeDefined();
     expect(packageJson.dependencies).toBeDefined();
+  });
+
+  test('includes publish metadata for the public npm package', async () => {
+    const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
+    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
+
+    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
+
+    const content = fs.readFileSync(tempFile, 'utf-8');
+    const packageJson = JSON.parse(content);
+    const rootPackageJson = getPackageJson();
+
+    expect(packageJson.repository).toEqual({
+      type: 'git',
+      url: 'git+https://github.com/alexgorbatchev/dotfiles-tool-install.git',
+    });
+    expect(packageJson.homepage).toBe('https://github.com/alexgorbatchev/dotfiles-tool-install#readme');
+    expect(packageJson.bugs).toEqual({
+      url: 'https://github.com/alexgorbatchev/dotfiles-tool-install/issues',
+    });
+    expect(packageJson.keywords).toEqual(['dotfiles', 'cli', 'developer-tools', 'tool-installer', 'shell', 'bun']);
+    expect(packageJson.version).toBe(rootPackageJson.version);
+    expect(packageJson.publishConfig).toEqual({
+      registry: 'https://registry.npmjs.org/',
+      access: 'public',
+    });
   });
 
   test('includes bin field with dotfiles executable', async () => {
@@ -163,5 +193,7 @@ describe('generateDistPackageJson', () => {
     expect(packageJson.files).toContain('*.d.ts');
     expect(packageJson.files).toContain('*.css');
     expect(packageJson.files).toContain('skill');
+    expect(packageJson.files).toContain('README.md');
+    expect(packageJson.files).toContain('LICENSE');
   });
 });

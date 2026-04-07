@@ -7,7 +7,7 @@ describe('getBuiltPackageName', () => {
 
     const packageName: string = getBuiltPackageName(env);
 
-    expect(packageName).toBe('@gitea/dotfiles');
+    expect(packageName).toBe('@alexgorbatchev/dotfiles');
   });
 
   test('returns configured package name when environment variable is set', () => {
@@ -27,6 +27,6 @@ describe('getBuiltPackageName', () => {
 
     const packageName: string = getBuiltPackageName(env);
 
-    expect(packageName).toBe('@gitea/dotfiles');
+    expect(packageName).toBe('@alexgorbatchev/dotfiles');
   });
 });

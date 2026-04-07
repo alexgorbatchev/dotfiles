@@ -8,13 +8,13 @@
  * This script:
  * 1. Bumps version in package.json (without committing)
  * 2. Runs the build
- * 3. On success: commits the version change and publishes to npm
- * 4. On failure: reverts the version change in package.json
+ * 3. On success: commits the version change, creates and pushes a git tag, then publishes to npm
+ * 4. On failure before git finalization: reverts the version change in package.json
  *
  * Prerequisites:
  * - Must be authenticated with npm (npm login)
- * - Must have publish permissions for the dotfiles package
- * - Git working directory should be clean (will warn if not)
+ * - Must have publish permissions for the public @alexgorbatchev scope package
+ * - Git working directory must be clean for non-dry-run releases
  *
  * Usage:
  *   bun run release              # Patch bump (1.0.0 -> 1.0.1)
@@ -35,6 +35,7 @@ cdToRepoRoot();
 const rootDir = process.cwd();
 const packageJsonPath = path.join(rootDir, 'package.json');
 const distDir = path.join(rootDir, '.dist');
+const releaseReadmePath = path.join(distDir, 'README.md');
 
 type VersionBumpType = 'patch' | 'minor' | 'major';
 
@@ -92,21 +93,26 @@ async function commitAndTag(version: string): Promise<void> {
   console.log('📝 Committing version change...');
   await executeCommand(['git', 'add', 'package.json']);
   await executeCommand(['git', 'commit', '-m', `Version ${version}`]);
-  console.log(`✅ Committed version ${version}`);
+  await executeCommand(['git', 'tag', `v${version}`]);
+  console.log(`✅ Committed version ${version} and created tag v${version}`);
 }
 
 /**
- * Publishes the package to the registry configured in .dist/package.json publishConfig.
- * Copies .npmrc into .dist/ for auth token resolution.
+ * Pushes the release commit and tag before publishing.
+ */
+async function pushRelease(version: string): Promise<void> {
+  console.log('🚀 Pushing release commit and tag...');
+  await executeCommand(['git', 'push']);
+  await executeCommand(['git', 'push', 'origin', `v${version}`]);
+  console.log(`✅ Pushed release commit and tag v${version}`);
+}
+
+/**
+ * Publishes the package to npmjs using the caller's existing npm authentication.
  */
 async function publishToNpm(): Promise<void> {
-  console.log('📤 Publishing to registry...');
-  const npmrcSource = path.join(rootDir, '.npmrc');
-  const npmrcDest = path.join(distDir, '.npmrc');
-  if (fs.existsSync(npmrcSource)) {
-    fs.copyFileSync(npmrcSource, npmrcDest);
-  }
-  await executeCommand(['npm', 'publish'], { cwd: distDir });
+  console.log('📤 Publishing to npmjs...');
+  await executeCommand(['npm', 'publish', '--access', 'public'], { cwd: distDir });
   console.log('✅ Package published successfully');
 }
 
@@ -117,6 +123,18 @@ async function hasUncommittedChanges(): Promise<boolean> {
   const result = await $`git status --porcelain`.quiet().noThrow();
   const output = result.stdout.toString().trim();
   return output.length > 0;
+}
+
+function verifyPublicReadme(): void {
+  if (!fs.existsSync(releaseReadmePath)) {
+    throw new Error(`Built README is missing: ${releaseReadmePath}`);
+  }
+
+  const readmeContent = fs.readFileSync(releaseReadmePath, 'utf-8');
+
+  if (!readmeContent.includes('Bun runtime requirement')) {
+    throw new Error('Built README is missing the Bun runtime requirement section.');
+  }
 }
 
 /**
@@ -136,9 +154,8 @@ async function release(): Promise<void> {
     console.log('🧪 Dry run mode — will skip commit, tag, and publish.');
   }
 
-  // Warn if there are uncommitted changes
-  if (await hasUncommittedChanges()) {
-    console.warn('⚠️  Warning: You have uncommitted changes in your working directory.');
+  if (!dryRun && await hasUncommittedChanges()) {
+    throw new Error('Working directory is not clean. Release requires a clean git state.');
   }
 
   let newVersion: string | undefined;
@@ -149,6 +166,7 @@ async function release(): Promise<void> {
 
     // Step 2: Run build
     await runBuild();
+    verifyPublicReadme();
 
     if (dryRun) {
       await revertVersionChange();
@@ -156,14 +174,22 @@ async function release(): Promise<void> {
       return;
     }
 
-    // Step 3: Build succeeded - publish first, then commit
-    await publishToNpm();
+    // Step 3: Finalize git state before publishing
     await commitAndTag(newVersion);
+    await pushRelease(newVersion);
+    await publishToNpm();
 
     console.log(`\n🎉 Release ${newVersion} completed successfully!`);
   } catch (error) {
-    // Build or publish failed - revert version change
+    // Build or publish failed - revert version change if it was not committed yet
     console.error('\n❌ Release failed:', error instanceof Error ? error.message : error);
+
+    if (newVersion && !dryRun) {
+      console.error(
+        '⚠️  Release state may be partially applied. Inspect git commit/tag and npm publish state manually.',
+      );
+      process.exit(1);
+    }
 
     if (newVersion) {
       try {

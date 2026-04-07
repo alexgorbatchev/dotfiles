@@ -4,6 +4,7 @@ import {
   buildCli,
   cleanPreviousBuild,
   cleanupTempFiles,
+  copyPublicPackageAssets,
   copySkill,
   enforceCliBundleSizeLimit,
   ensureWorkspaceDependencies,
@@ -38,6 +39,7 @@ async function runBuild(context: IBuildContext): Promise<void> {
 
   enforceCliBundleSizeLimit(context);
   copySkill(context);
+  await copyPublicPackageAssets(context);
   generateToolTypesFile(context);
 
   await runTypeTests(context);

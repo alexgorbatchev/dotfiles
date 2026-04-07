@@ -135,7 +135,7 @@ describe('generateToolTypes', () => {
       }
     });
 
-    test('uses default @gitea/dotfiles when DOTFILES_BUILT_PACKAGE_NAME is not set', () => {
+    test('uses default @alexgorbatchev/dotfiles when DOTFILES_BUILT_PACKAGE_NAME is not set', () => {
       delete process.env.DOTFILES_BUILT_PACKAGE_NAME;
       const toolConfigs: Record<string, ToolConfig> = {
         ripgrep: createMockToolConfig('ripgrep', ['rg']),
@@ -143,7 +143,7 @@ describe('generateToolTypes', () => {
 
       const content: string = generateToolTypesContent(toolConfigs);
 
-      expect(content).toContain("declare module '@gitea/dotfiles'");
+      expect(content).toContain("declare module '@alexgorbatchev/dotfiles'");
       expect(content).toContain('interface IKnownBinNameRegistry');
       expect(content).toContain("    'rg': never;");
       expect(content).toContain('export {};');
@@ -169,13 +169,13 @@ describe('generateToolTypes', () => {
 
       const content: string = generateToolTypesContent(toolConfigs);
 
-      expect(content).toContain("declare module '@gitea/dotfiles'");
+      expect(content).toContain("declare module '@alexgorbatchev/dotfiles'");
       expect(content).toContain('interface IKnownBinNameRegistry {}');
       expect(content).toContain('export {};');
     });
 
     test('uses custom module name when provided (overrides env var)', () => {
-      process.env.DOTFILES_BUILT_PACKAGE_NAME = '@gitea/dotfiles';
+      process.env.DOTFILES_BUILT_PACKAGE_NAME = '@alexgorbatchev/dotfiles';
       const toolConfigs: Record<string, ToolConfig> = {
         ripgrep: createMockToolConfig('ripgrep', ['rg']),
       };
@@ -183,7 +183,7 @@ describe('generateToolTypes', () => {
       const content: string = generateToolTypesContent(toolConfigs, '@dotfiles/core');
 
       expect(content).toContain("declare module '@dotfiles/core'");
-      expect(content).not.toContain("declare module '@gitea/dotfiles'");
+      expect(content).not.toContain("declare module '@alexgorbatchev/dotfiles'");
     });
   });
 });

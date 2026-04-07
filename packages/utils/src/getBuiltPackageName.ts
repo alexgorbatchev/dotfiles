@@ -1,4 +1,4 @@
-const DEFAULT_BUILT_PACKAGE_NAME = '@gitea/dotfiles';
+const DEFAULT_BUILT_PACKAGE_NAME = '@alexgorbatchev/dotfiles';
 
 declare global {
   namespace NodeJS {

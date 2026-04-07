@@ -1,6 +1,7 @@
 export * from './buildCli';
 export * from './cleanPreviousBuild';
 export * from './cleanupTempFiles';
+export * from './copyPublicPackageAssets';
 export * from './copySkill';
 export * from './enforceCliBundleSizeLimit';
 export * from './ensureWorkspaceDependencies';

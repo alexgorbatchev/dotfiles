@@ -80,7 +80,7 @@ export function generateToolTypesContent(toolConfigs: Record<string, ToolConfig>
  * @param toolConfigs - Record of loaded tool configurations
  * @param outputPath - Path where the tool-types.d.ts file should be written
  * @param fs - File system interface for writing the file
- * @param moduleName - Optional module name to use in the declaration (defaults to @gitea/dotfiles)
+ * @param moduleName - Optional module name to use in the declaration (defaults to @alexgorbatchev/dotfiles)
  */
 export async function generateToolTypes(
   toolConfigs: Record<string, ToolConfig>,

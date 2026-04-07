@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import type { IBuildContext } from '../types';
-import { copyFileIfExists } from './copyFileIfExists';
 import { copyTypeTestFiles } from './copyTypeTestFiles';
 import { createTsdTestsEntryPoint } from './createTsdTestsEntryPoint';
 import { createTsdTestsPackageJson } from './createTsdTestsPackageJson';
@@ -21,7 +20,6 @@ export async function setupTsdTestsProject(context: IBuildContext): Promise<void
   await createTsdTestsPackageJson(context);
   await createTsdTestsEntryPoint(context);
   await createTsdTestsTsConfig(context);
-  copyFileIfExists(context.paths.npmrcPath, context.paths.tsdTestsNpmrcPath);
   ensureTsdTestsNodeModules(context);
 
   // Copy tool-types.d.ts to .generated folder (mimics end user setup)

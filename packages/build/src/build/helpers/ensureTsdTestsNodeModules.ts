@@ -22,12 +22,12 @@ export function ensureTsdTestsNodeModules(context: IBuildContext): void {
   symlinkDirectory(tsdModuleSourcePath, tsdModuleDestinationPath, 'tsd module');
 
   // Copy only package files (excluding tool-types.d.ts) to mimic npm package
-  fs.mkdirSync(context.paths.tsdTestsGiteaNamespacePath, { recursive: true });
-  fs.mkdirSync(context.paths.tsdTestsGiteaSymlinkPath, { recursive: true });
+  fs.mkdirSync(context.paths.tsdTestsScopedNamespacePath, { recursive: true });
+  fs.mkdirSync(context.paths.tsdTestsScopedPackagePath, { recursive: true });
 
   for (const fileName of PACKAGE_FILES) {
     const sourcePath: string = path.join(context.paths.outputDir, fileName);
-    const destPath: string = path.join(context.paths.tsdTestsGiteaSymlinkPath, fileName);
+    const destPath: string = path.join(context.paths.tsdTestsScopedPackagePath, fileName);
 
     if (fs.existsSync(sourcePath)) {
       fs.copyFileSync(sourcePath, destPath);
@@ -36,7 +36,7 @@ export function ensureTsdTestsNodeModules(context: IBuildContext): void {
 
   // Copy docs directory if it exists
   const sourceDocsDir: string = path.join(context.paths.outputDir, 'docs');
-  const destDocsDir: string = path.join(context.paths.tsdTestsGiteaSymlinkPath, 'docs');
+  const destDocsDir: string = path.join(context.paths.tsdTestsScopedPackagePath, 'docs');
 
   if (fs.existsSync(sourceDocsDir)) {
     fs.cpSync(sourceDocsDir, destDocsDir, { recursive: true });

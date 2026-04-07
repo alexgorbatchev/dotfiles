@@ -37,7 +37,6 @@ export interface IBuildPaths {
 
   outputPackagesDir: string;
   outputPackageJsonPath: string;
-  outputNpmrcPath: string;
   outputBunfigPath: string;
   outputBunLockPath: string;
 
@@ -52,8 +51,8 @@ export interface IBuildPaths {
   tsdTestsPackageJsonPath: string;
   tsdTestsNpmrcPath: string;
   tsdTestsNodeModulesPath: string;
-  tsdTestsGiteaNamespacePath: string;
-  tsdTestsGiteaSymlinkPath: string;
+  tsdTestsScopedNamespacePath: string;
+  tsdTestsScopedPackagePath: string;
   tsdTestsGeneratedDir: string;
   tsdTestsToolTypesPath: string;
 

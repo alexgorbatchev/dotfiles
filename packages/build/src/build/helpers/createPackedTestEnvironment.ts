@@ -3,7 +3,6 @@ import path from 'node:path';
 
 import { BuildError } from '../handleBuildError';
 import type { IBuildContext } from '../types';
-import { copyFileIfExists } from './copyFileIfExists';
 import { shell } from './shell';
 import { throwIfCertificateError } from './throwIfCertificateError';
 
@@ -56,10 +55,7 @@ export async function createPackedTestEnvironment(context: IBuildContext): Promi
     throw new BuildError(`Failed to unpack tarball: ${unpackResult.stderr.toString()}`);
   }
 
-  // Copy .npmrc if exists for registry configuration
-  copyFileIfExists(context.paths.npmrcPath, path.join(packageDir, '.npmrc'));
-
-  // Install dependencies in the unpacked package
+  // Install dependencies in the unpacked package using the caller's default npm registry/auth configuration
   // stderr("inheritPiped") both prints stderr and captures it so throwIfCertificateError can inspect it.
   // Without it, dax-sh inherits stdio and .stderr.toString() throws "Stdout was not piped".
   const installResult = await shell`bun install --ignore-scripts`.stderr('inheritPiped').noThrow().cwd(packageDir);

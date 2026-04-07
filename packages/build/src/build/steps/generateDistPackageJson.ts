@@ -3,6 +3,17 @@ import fs from 'node:fs';
 import { getPackageJson } from '../../getPackageJson';
 import type { IBuildContext, IDependencyVersions } from '../types';
 
+const NPM_PACKAGE_NAME = '@alexgorbatchev/dotfiles';
+const NPM_PUBLIC_REGISTRY_URL = 'https://registry.npmjs.org/';
+const PUBLIC_PACKAGE_KEYWORDS: string[] = [
+  'dotfiles',
+  'cli',
+  'developer-tools',
+  'tool-installer',
+  'shell',
+  'bun',
+];
+
 /**
  * Writes the output package.json used for publishing/running the built CLI, including runtime dependency versions.
  */
@@ -17,9 +28,21 @@ export async function generateDistPackageJson(
     '@types/node': dependencyVersions.nodeTypes,
   };
 
+  const rootPackageJson = getPackageJson();
   const packageJson: Record<string, unknown> = {
-    name: '@gitea/dotfiles',
-    version: getPackageJson().version,
+    name: NPM_PACKAGE_NAME,
+    version: rootPackageJson.version,
+    description: 'Declarative, versioned dotfiles management with generated shims and shell integration.',
+    license: 'MIT',
+    repository: {
+      type: 'git',
+      url: 'git+https://github.com/alexgorbatchev/dotfiles-tool-install.git',
+    },
+    homepage: 'https://github.com/alexgorbatchev/dotfiles-tool-install#readme',
+    bugs: {
+      url: 'https://github.com/alexgorbatchev/dotfiles-tool-install/issues',
+    },
+    keywords: PUBLIC_PACKAGE_KEYWORDS,
     type: 'module',
     bin: {
       dotfiles: './cli.js',
@@ -33,9 +56,10 @@ export async function generateDistPackageJson(
         },
       },
     },
-    files: ['*.js', '*.js.map', '*.d.ts', '*.css', 'skill'],
+    files: ['*.js', '*.js.map', '*.d.ts', '*.css', 'skill', 'README.md', 'LICENSE'],
     publishConfig: {
-      registry: 'https://git.example.com/api/packages/alex/npm/',
+      registry: NPM_PUBLIC_REGISTRY_URL,
+      access: 'public',
     },
     dependencies,
   };

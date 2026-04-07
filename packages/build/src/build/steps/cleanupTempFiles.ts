@@ -9,7 +9,6 @@ export async function cleanupTempFiles(context: IBuildContext): Promise<void> {
   const filesToCleanup: string[] = [
     context.paths.tempSchemasBuildDir,
     context.paths.buildTsconfigPath,
-    context.paths.outputNpmrcPath,
     context.paths.outputBunfigPath,
     context.paths.outputBunLockPath,
     context.paths.schemaCheckTsconfigPath,

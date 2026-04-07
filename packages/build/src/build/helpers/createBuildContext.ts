@@ -30,7 +30,6 @@ export function createBuildContext(): IBuildContext {
   const outputPackagesDir: string = path.join(outputDir, 'packages');
 
   const outputPackageJsonPath: string = path.join(outputDir, 'package.json');
-  const outputNpmrcPath: string = path.join(outputDir, '.npmrc');
   const outputBunfigPath: string = path.join(outputDir, 'bunfig.toml');
   const outputBunLockPath: string = path.join(outputDir, 'bun.lock');
 
@@ -45,9 +44,9 @@ export function createBuildContext(): IBuildContext {
   const tsdTestsPackageJsonPath: string = path.join(tsdTestsDir, 'package.json');
   const tsdTestsNpmrcPath: string = path.join(tsdTestsDir, '.npmrc');
   const tsdTestsNodeModulesPath: string = path.join(tsdTestsDir, 'node_modules');
-  const tsdTestsGiteaNamespacePath: string = path.join(tsdTestsNodeModulesPath, '@gitea');
-  const tsdTestsGiteaSymlinkPath: string = path.join(tsdTestsGiteaNamespacePath, 'dotfiles');
   const tsdTestsGeneratedDir: string = path.join(tsdTestsDir, '.generated');
+  const tsdTestsScopedNamespacePath: string = path.join(tsdTestsNodeModulesPath, '@alexgorbatchev');
+  const tsdTestsScopedPackagePath: string = path.join(tsdTestsScopedNamespacePath, 'dotfiles');
   const tsdTestsToolTypesPath: string = path.join(tsdTestsGeneratedDir, 'tool-types.d.ts');
 
   const skillDir: string = path.join(rootDir, '.rulesync', 'skills', 'dotfiles');
@@ -74,7 +73,6 @@ export function createBuildContext(): IBuildContext {
 
     outputPackagesDir,
     outputPackageJsonPath,
-    outputNpmrcPath,
     outputBunfigPath,
     outputBunLockPath,
 
@@ -89,8 +87,8 @@ export function createBuildContext(): IBuildContext {
     tsdTestsPackageJsonPath,
     tsdTestsNpmrcPath,
     tsdTestsNodeModulesPath,
-    tsdTestsGiteaNamespacePath,
-    tsdTestsGiteaSymlinkPath,
+    tsdTestsScopedNamespacePath,
+    tsdTestsScopedPackagePath,
     tsdTestsGeneratedDir,
     tsdTestsToolTypesPath,
 

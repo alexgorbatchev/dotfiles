@@ -20,7 +20,7 @@ async function main() {
     .cwd(__dirname)
     .env({
       ...process.env,
-      DOTFILES_BUILT_PACKAGE_NAME: '@gitea/dotfiles',
+      DOTFILES_BUILT_PACKAGE_NAME: '@alexgorbatchev/dotfiles',
       DOTFILES_VERSION: getPackageJson().version,
     });
 

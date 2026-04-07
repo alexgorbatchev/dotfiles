@@ -5,7 +5,7 @@ import type { IBuildContext } from '../types';
  */
 export async function createTsdTestsPackageJson(context: IBuildContext): Promise<void> {
   const packageJsonDependencies: Record<string, string> = {
-    '@gitea/dotfiles': `file://${context.paths.outputDir}`,
+    '@alexgorbatchev/dotfiles': `file://${context.paths.outputDir}`,
     '@types/node': '*',
   };
 
