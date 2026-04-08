@@ -26,6 +26,7 @@ import type {
   IToolUsageRecord,
 } from '@dotfiles/registry';
 import { createMockFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
+import { CompletionGenerator } from '@dotfiles/shell-init-generator';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import {
   createMock$,
@@ -493,6 +494,17 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     TrackedFileSystem.createContext('system', 'binary'),
     mockProjectConfig,
   );
+  const completionTrackedFs = new TrackedFileSystem(
+    logger,
+    fs.asIResolvedFileSystem,
+    mockFileRegistry,
+    TrackedFileSystem.createContext('system', 'completion'),
+    mockProjectConfig,
+  );
+  const completionGenerator = new CompletionGenerator(logger, completionTrackedFs, shell, undefined, {
+    downloader: mockDownloader,
+    archiveExtractor: mockArchiveExtractor,
+  });
 
   const installer = new Installer(
     logger,
@@ -505,6 +517,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     mockSymlinkGenerator,
     shell,
     hookExecutor,
+    completionGenerator,
   );
 
   const result: IInstallerTestSetup = {

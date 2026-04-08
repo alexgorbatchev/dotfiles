@@ -26,8 +26,13 @@ export const shellCompletionConfigSchema = z
      */
     source: z.string().min(1).optional(),
     /**
-     * URL to download the completion archive from.
-     * Must be used together with `source` to specify the file within the extracted archive.
+     * URL to download the completion file or archive from.
+     *
+     * - Direct files can omit `source`; the filename is derived from the URL.
+     * - Archives should provide `source` to identify the extracted completion file.
+     *
+     * @example
+     * url: 'https://raw.githubusercontent.com/user/repo/main/completions/_tool'
      *
      * @example
      * url: 'https://github.com/user/repo/releases/download/v1.0/completions.tar.gz'
@@ -60,21 +65,21 @@ export const shellCompletionConfigSchema = z
       // Valid combinations:
       // 1. source only (local file - relative or absolute)
       // 2. cmd only (generate via command)
-      // 3. url + source (archive download with path within archive)
+      // 3. url only (direct file download)
+      // 4. url + source (archive download or explicit source path)
       const hasSource = Boolean(data.source);
       const hasCmd = Boolean(data.cmd);
       const hasUrl = Boolean(data.url);
 
       if (hasCmd && hasUrl) return false; // cmd and url are mutually exclusive
       if (hasCmd && hasSource) return false; // cmd and source are mutually exclusive
-      if (hasUrl && !hasSource) return false; // url requires source
-      if (!hasSource && !hasCmd) return false; // must have source or cmd
+      if (!hasSource && !hasCmd && !hasUrl) return false; // must have source, cmd, or url
 
       return true;
     },
     {
       message:
-        "Invalid completion config: use 'source' alone, 'cmd' alone, or 'url' with 'source'. Cannot combine 'cmd' with 'url' or 'source'. Cannot use 'url' alone.",
+        "Invalid completion config: use 'source' alone, 'cmd' alone, 'url' alone, or 'url' with 'source'. Cannot combine 'cmd' with 'url' or 'source'.",
     },
   );
 

@@ -44,6 +44,30 @@ export class CompletionGenerator implements ICompletionGenerator {
     this.archiveExtractor = deps?.archiveExtractor;
   }
 
+  async prepareUrlCompletionSource(
+    config: ShellCompletionConfig,
+    toolName: string,
+    context: ICompletionGenerationContext,
+  ): Promise<string> {
+    if (!config.url) {
+      throw new Error(`URL not provided for ${toolName}`);
+    }
+
+    await this.downloadCompletionFromUrl(config.url, context.toolInstallDir, toolName);
+
+    const effectiveSource = config.source || this.getFilenameFromUrl(config.url);
+    const sourcePath = path.isAbsolute(effectiveSource)
+      ? effectiveSource
+      : path.join(context.toolInstallDir, effectiveSource);
+
+    if (!(await this.fs.exists(sourcePath))) {
+      this.logger.warn(messages.sourceNotFound(sourcePath));
+      throw new Error(`Completion source file not found: ${sourcePath}`);
+    }
+
+    return sourcePath;
+  }
+
   async generateCompletionFile(
     config: ShellCompletionConfig,
     toolName: string,
@@ -53,23 +77,20 @@ export class CompletionGenerator implements ICompletionGenerator {
     const logger = this.logger.getSubLogger({ name: 'generateCompletionFile' }).setPrefix(toolName);
     logger.debug(messages.generationStarted(toolName, shellType));
 
-    // If URL is provided, download the completion file/archive first
-    const isUrlBased = Boolean(config.url);
-    if (config.url) {
-      await this.downloadCompletionFromUrl(config.url, context.toolInstallDir, toolName);
-    }
-
-    // Derive source from URL if not explicitly provided
-    const effectiveSource = config.source || (config.url ? this.getFilenameFromUrl(config.url) : undefined);
+    const effectiveSource = config.url
+      ? await this.prepareUrlCompletionSource(config, toolName, context)
+      : config.source;
 
     if (config.cmd) {
       return this.generateFromCommand(config, toolName, shellType, context);
-    } else if (effectiveSource) {
-      const effectiveConfig: ShellCompletionConfig = { ...config, source: effectiveSource };
-      return this.generateFromSource(effectiveConfig, toolName, shellType, context, isUrlBased);
-    } else {
-      throw new Error(`Invalid completion config for ${toolName}: either 'cmd', 'source', or 'url' must be provided`);
     }
+
+    if (effectiveSource) {
+      const effectiveConfig: ShellCompletionConfig = { ...config, source: effectiveSource };
+      return this.generateFromSource(effectiveConfig, toolName, shellType, context);
+    }
+
+    throw new Error(`Invalid completion config for ${toolName}: either 'cmd', 'source', or 'url' must be provided`);
   }
 
   /**
@@ -210,18 +231,12 @@ export class CompletionGenerator implements ICompletionGenerator {
     toolName: string,
     shellType: ShellType,
     context: ICompletionGenerationContext,
-    isUrlBased: boolean = false,
   ): Promise<IGeneratedCompletion> {
     if (!config.source) {
       throw new Error(`Source not provided for ${toolName}`);
     }
 
-    const sourcePath = await this.resolveSourcePath(
-      context.toolInstallDir,
-      config.source,
-      context.configFilePath,
-      isUrlBased,
-    );
+    const sourcePath = await this.resolveSourcePath(config.source, context.configFilePath);
 
     if (!(await this.fs.exists(sourcePath))) {
       this.logger.warn(messages.sourceNotFound(sourcePath));
@@ -245,23 +260,12 @@ export class CompletionGenerator implements ICompletionGenerator {
    *
    * Resolution:
    * 1. Absolute paths are used as-is
-   * 2. URL-downloaded files resolve to toolInstallDir (where the file was downloaded)
-   * 3. Other relative paths resolve to toolDir (directory containing the .tool.ts file)
+   * 2. Relative paths resolve to toolDir (directory containing the .tool.ts file)
    */
-  private async resolveSourcePath(
-    toolInstallDir: string,
-    source: string,
-    configFilePath?: string,
-    isUrlBased: boolean = false,
-  ): Promise<string> {
+  private async resolveSourcePath(source: string, configFilePath?: string): Promise<string> {
     // Absolute paths are used as-is
     if (path.isAbsolute(source)) {
       return source;
-    }
-
-    // URL-downloaded files resolve to toolInstallDir where they were downloaded
-    if (isUrlBased) {
-      return path.join(toolInstallDir, source);
     }
 
     // Determine toolDir from configFilePath

@@ -104,6 +104,9 @@ export const messages = {
       createSafeLogMessage(`Symlinking completion for ${shellType} from ${sourcePath} to ${targetFile}`),
     notFound: (sourcePath: string) => createSafeLogMessage(`Completion file not found: ${sourcePath}`),
     directoryListing: (filePath: string) => createSafeLogMessage(`  ${filePath}`),
+    preparedFromUrl: (shellType: string, sourcePath: string) =>
+      createSafeLogMessage(`install: prepared ${shellType} completion source at ${sourcePath}`),
+    prepareFailed: (shellType: string) => createSafeLogMessage(`install: failed to prepare ${shellType} completion`),
   } satisfies SafeLogMessageMap,
   hookExecutor: {
     executingHook: (hookName: string, timeoutMs: number) =>

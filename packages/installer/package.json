@@ -18,6 +18,7 @@
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/registry": "workspace:*",
     "@dotfiles/shell-init-generator": "workspace:*",
+    "@dotfiles/unwrap-value": "workspace:*",
     "@dotfiles/utils": "workspace:*",
     "minimatch": "^10.0.1",
     "semver": "^7.6.3",

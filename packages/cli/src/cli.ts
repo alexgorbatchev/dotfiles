@@ -495,6 +495,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     symlinkGenerator,
     shell, // Don't add logging here - HookExecutor.createEnhancedContext adds logging with tool context
     hookExecutor,
+    completionGenerator,
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
   const configService = new ConfigService();

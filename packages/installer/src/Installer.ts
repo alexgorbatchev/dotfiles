@@ -1,10 +1,15 @@
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
   IAfterInstallContext,
+  ICompletionContext,
   IInstallContext,
   InstallerPluginRegistry,
   ISystemInfo,
   Shell,
+  ShellCompletionConfig,
+  ShellCompletionConfigInput,
+  ShellCompletionConfigValue,
+  ShellType,
   ToolConfig,
 } from '@dotfiles/core';
 import { Platform } from '@dotfiles/core';
@@ -12,7 +17,9 @@ import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import { createSafeLogMessage, type TsLogger } from '@dotfiles/logger';
 import type { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
+import type { ICompletionGenerationContext, ICompletionGenerator } from '@dotfiles/shell-init-generator';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
+import { resolveValue } from '@dotfiles/unwrap-value';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
@@ -86,6 +93,7 @@ export class Installer implements IInstaller {
   private readonly registry: InstallerPluginRegistry;
   private readonly installationStateWriter: InstallationStateWriter;
   private readonly $: Shell;
+  private readonly completionGenerator?: ICompletionGenerator;
   private readonly installContextFactory: InstallContextFactory;
   private currentToolConfig?: ToolConfig;
 
@@ -100,6 +108,7 @@ export class Installer implements IInstaller {
     symlinkGenerator: ISymlinkGenerator,
     $shell: Shell,
     hookExecutor: HookExecutor,
+    completionGenerator?: ICompletionGenerator,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.fs = fileSystem;
@@ -116,6 +125,7 @@ export class Installer implements IInstaller {
       symlinkGenerator,
     });
     this.$ = $shell;
+    this.completionGenerator = completionGenerator;
     this.installContextFactory = new InstallContextFactory({
       projectConfig: this.projectConfig,
       systemInfo: this.systemInfo,
@@ -240,6 +250,99 @@ export class Installer implements IInstaller {
       options,
     );
     return result;
+  }
+
+  private isShellCompletionConfigInput(value: unknown): value is ShellCompletionConfigInput {
+    if (typeof value === 'string' || typeof value === 'function') {
+      return true;
+    }
+
+    if (typeof value !== 'object' || value === null) {
+      return false;
+    }
+
+    return 'source' in value || 'cmd' in value || 'url' in value;
+  }
+
+  private normalizeCompletionConfig(value: ShellCompletionConfigValue): ShellCompletionConfig {
+    if (typeof value === 'string') {
+      return { source: value };
+    }
+
+    if ('cmd' in value) {
+      return {
+        cmd: value.cmd,
+        ...(value.bin ? { bin: value.bin } : {}),
+      };
+    }
+
+    if ('url' in value) {
+      return {
+        url: value.url,
+        ...(value.source ? { source: value.source } : {}),
+        ...(value.bin ? { bin: value.bin } : {}),
+      };
+    }
+
+    return {
+      source: value.source,
+      ...(value.bin ? { bin: value.bin } : {}),
+    };
+  }
+
+  private async prepareUrlCompletionAssets(
+    toolName: string,
+    toolConfig: ToolConfig,
+    installedDir: string,
+    version: string | undefined,
+    parentLogger: TsLogger,
+  ): Promise<void> {
+    const logger = parentLogger.getSubLogger({ name: 'prepareUrlCompletionAssets' });
+
+    if (!this.completionGenerator?.prepareUrlCompletionSource) {
+      return;
+    }
+
+    const shellTypes: ShellType[] = ['zsh', 'bash', 'powershell'];
+    const completionVersion = version ?? toolConfig.version ?? 'latest';
+
+    for (const shellType of shellTypes) {
+      const completionInputValue = toolConfig.shellConfigs?.[shellType]?.completions;
+      if (!this.isShellCompletionConfigInput(completionInputValue)) {
+        continue;
+      }
+
+      const completionContext: ICompletionContext = { version: completionVersion };
+      const resolvedCompletionValue: ShellCompletionConfigValue = await resolveValue(
+        completionContext,
+        completionInputValue,
+      );
+      const completionConfig = this.normalizeCompletionConfig(resolvedCompletionValue);
+
+      if (!completionConfig.url) {
+        continue;
+      }
+
+      const generationContext: ICompletionGenerationContext = {
+        ...completionContext,
+        toolName,
+        toolInstallDir: installedDir,
+        shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
+        homeDir: this.projectConfig.paths.homeDir,
+        configFilePath: toolConfig.configFilePath,
+      };
+
+      try {
+        const sourcePath = await this.completionGenerator.prepareUrlCompletionSource(
+          completionConfig,
+          toolName,
+          generationContext,
+        );
+        logger.debug(messages.completion.preparedFromUrl(shellType, sourcePath));
+      } catch (error) {
+        logger.warn(messages.completion.prepareFailed(shellType), error);
+      }
+    }
   }
 
   /**
@@ -465,6 +568,8 @@ export class Installer implements IInstaller {
             ? result.binaryPaths
             : [];
           const version: string | undefined = 'version' in result ? result.version : undefined;
+
+          await this.prepareUrlCompletionAssets(toolName, resolvedToolConfig, installedDir, version, logger);
 
           // Create after-install environment with PATH pointing to installedDir
           // This ensures after-install hooks can find the freshly installed binaries

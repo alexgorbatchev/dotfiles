@@ -396,6 +396,11 @@ Tab completions are configured per-shell using `.completions()`:
 > **Lifecycle**: All completions are generated only after `dotfiles install <tool>` succeeds,
 > not during `dotfiles generate`. This ensures cmd-based completions can execute the installed
 > binary and callbacks receive the actual installed version in `ctx.version`.
+>
+> **URL completions and hooks**: URL-based completion assets are downloaded or extracted during
+> installation before `after-install` hooks run. This means `after-install` hooks can patch or
+> sanitize those files in `ctx.installedDir` / `ctx.currentDir` before the completion symlink is
+> emitted into the generated shell scripts directory.
 
 ## Configuration Options
 
@@ -492,6 +497,8 @@ The callback receives `ctx` with:
 - `version` - The installed version of the tool (e.g., `'v10.3.0'`, `'15.1.0'`), only available after installation completes
 
 URL-based completions are downloaded to `ctx.currentDir`. For archives, they are automatically extracted and `source` specifies the path to the completion file within.
+
+Because the download/extract step happens before `after-install`, hook code can modify the downloaded file in place before the generated shell completion symlink points at it.
 
 **Supported archive formats**: `.tar.gz`, `.tar.xz`, `.tar.bz2`, `.zip`, `.tar`, `.tar.lzma`, `.7z`
 

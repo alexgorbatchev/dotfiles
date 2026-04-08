@@ -50,6 +50,12 @@ export interface IGenerateAndWriteCompletionFileOptions {
 }
 
 export interface ICompletionGenerator {
+  prepareUrlCompletionSource?(
+    config: ShellCompletionConfig,
+    toolName: string,
+    context: ICompletionGenerationContext,
+  ): Promise<string>;
+
   generateCompletionFile(
     config: ShellCompletionConfig,
     toolName: string,
