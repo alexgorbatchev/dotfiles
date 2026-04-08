@@ -1,0 +1,23 @@
+telemetry = false
+[install]
+peer = false
+[serve.static]
+# dashboard
+plugins = ["bun-plugin-tailwind"]
+[test]
+# coverage = false
+# onlyFailures = true
+coverageSkipTestFiles = true
+coverageThreshold = 0.9
+coveragePathIgnorePatterns = [
+  "**/packages/schemas/**",
+  "**/packages/testing-helpers/**",
+  "**/index.ts",
+  "**/log-messages.ts",
+]
+# Increased timeout for parallel execution (default 5000ms is too short under load)
+timeout = 30000
+# Parallel test runner - spawns multiple Bun instances (set BUN_TEST_SEQUENTIAL=1 to disable)
+preload = ["./packages/testing-helpers/src/preload.ts"]
+[reporter]
+dots = true
