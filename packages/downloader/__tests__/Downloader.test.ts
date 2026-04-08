@@ -18,11 +18,13 @@ let nonErrorStringThrowingStrategy: IDownloadStrategy;
 let fileSystem: IFileSystem;
 let logger: TestLogger;
 
+type DownloadHandler = () => Buffer | undefined;
+
 function resolveDownloadResult(url: string, options: IDownloadOptions, strategyName: string): Buffer | undefined {
-  const downloadHandler = new Map([
-    [true, () => undefined],
-    [false, () => Buffer.from(`content from ${url} via ${strategyName}`)],
-  ]).get(Boolean(options.destinationPath));
+  const downloadHandlers: Map<boolean, DownloadHandler> = new Map();
+  downloadHandlers.set(true, () => undefined);
+  downloadHandlers.set(false, () => Buffer.from(`content from ${url} via ${strategyName}`));
+  const downloadHandler = downloadHandlers.get(Boolean(options.destinationPath));
 
   assert(downloadHandler);
   return downloadHandler();

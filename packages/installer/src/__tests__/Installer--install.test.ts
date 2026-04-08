@@ -156,7 +156,7 @@ describe("Installer - install (orchestrator)", () => {
     );
 
     const result = await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
-    assert(result.success, `Installation failed: ${result.error}`);
+    assert(result.success, JSON.stringify(result));
 
     expect(beforeInstallHook).toHaveBeenCalledTimes(1);
     expect(afterInstallHook).toHaveBeenCalledTimes(1);
