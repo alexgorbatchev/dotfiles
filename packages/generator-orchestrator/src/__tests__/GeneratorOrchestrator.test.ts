@@ -1,5 +1,14 @@
 import type { ProjectConfig } from "@dotfiles/config";
-import { always, Architecture, type ISystemInfo, Platform, raw, type ToolConfig } from "@dotfiles/core";
+import {
+  always,
+  Architecture,
+  type ICompletionContext,
+  type ISystemInfo,
+  Platform,
+  raw,
+  type ShellCompletionConfig,
+  type ToolConfig,
+} from "@dotfiles/core";
 import type { IFileSystem } from "@dotfiles/file-system";
 import { createMemFileSystem } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
@@ -18,7 +27,23 @@ import assert from "node:assert";
 import path from "node:path";
 import { GeneratorOrchestrator } from "../GeneratorOrchestrator";
 
-const testCompletionsCallback = (ctx: { version?: string }): { url: string } => ({
+interface ICompletionGeneratorCallOptions {
+  config: ShellCompletionConfig;
+}
+
+interface ICompletionUrlConfig {
+  url: string;
+}
+
+function isCompletionGeneratorCallOptions(value: unknown): value is ICompletionGeneratorCallOptions {
+  return typeof value === "object" && value !== null && "config" in value;
+}
+
+function hasCompletionUrl(value: ShellCompletionConfig): value is ICompletionUrlConfig {
+  return typeof value === "object" && value !== null && "url" in value && typeof value.url === "string";
+}
+
+const testCompletionsCallback = (ctx: ICompletionContext): ShellCompletionConfig => ({
   url: `https://example.com/completions/${ctx.version}/completion.zsh`,
 });
 
@@ -431,7 +456,9 @@ describe("GeneratorOrchestrator", () => {
           const firstCall = calls[0];
           assert(firstCall);
           // First arg is the options object containing the completion config with resolved URL
-          const options = firstCall[0] as { config: { url?: string } };
+          const options = firstCall[0];
+          assert(isCompletionGeneratorCallOptions(options));
+          assert(hasCompletionUrl(options.config));
           expect(options.config.url).toBe("https://example.com/completions/2.5.0/completion.zsh");
         });
 

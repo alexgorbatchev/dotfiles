@@ -15,6 +15,7 @@ import assert from "node:assert";
 import path from "node:path";
 import { withMockServer } from "./helpers/mock-server";
 import { TestHarness } from "./helpers/TestHarness";
+import type { ITestTarget } from "./helpers/types";
 
 interface ToolInstallationRow {
   tool_name: string;
@@ -22,11 +23,15 @@ interface ToolInstallationRow {
   install_path: string;
 }
 
+type ToolInstallationQueryParameters = {
+  $toolName: string;
+};
+
 function getToolInstallation(generatedDir: string, toolName: string): ToolInstallationRow | null {
   const dbPath = path.join(generatedDir, "registry.db");
   const db = new Database(dbPath);
   const row = db
-    .query<ToolInstallationRow, { $toolName: string }>("SELECT * FROM tool_installations WHERE tool_name = $toolName")
+    .query<ToolInstallationRow, ToolInstallationQueryParameters>("SELECT * FROM tool_installations WHERE tool_name = $toolName")
     .get({ $toolName: toolName });
   db.close();
   return row;
@@ -65,11 +70,7 @@ describe("E2E: version detection", () => {
       ),
   );
 
-  const platformConfigs: ReadonlyArray<{
-    platform: Platform;
-    architecture: Architecture;
-    name: string;
-  }> = [
+  const platformConfigs: ReadonlyArray<ITestTarget> = [
     { platform: Platform.MacOS, architecture: Architecture.Arm64, name: "macOS ARM64" },
     { platform: Platform.Linux, architecture: Architecture.X86_64, name: "Linux x86_64" },
   ];

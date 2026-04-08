@@ -12,15 +12,12 @@ import "@dotfiles/testing-helpers";
 import { Architecture, Platform } from "@dotfiles/core";
 import { GITHUB_RELEASE_TOOL, withMockServer } from "./helpers/mock-server";
 import { TestHarness } from "./helpers/TestHarness";
+import type { ITestTarget } from "./helpers/types";
 
 describe("E2E: trace configuration", () => {
   withMockServer((b) => b.withGitHubTool(GITHUB_RELEASE_TOOL));
 
-  const platformConfigs: ReadonlyArray<{
-    platform: Platform;
-    architecture: Architecture;
-    name: string;
-  }> = [
+  const platformConfigs: ReadonlyArray<ITestTarget> = [
     { platform: Platform.MacOS, architecture: Architecture.Arm64, name: "macOS ARM64" },
     { platform: Platform.Linux, architecture: Architecture.X86_64, name: "Linux x86_64" },
   ];

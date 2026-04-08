@@ -1,4 +1,4 @@
-import type { Architecture, Platform } from "@dotfiles/core";
+import type { Architecture, Platform, ShellType } from "@dotfiles/core";
 import { expect } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
@@ -43,6 +43,19 @@ export interface ICommandResult {
   code: number;
   stdout: string;
   stderr: string;
+}
+
+interface IRunCommandOptions {
+  env?: Record<string, string>;
+}
+
+type StringMatcher = (value: string) => boolean;
+type StringExpectation = string | StringMatcher;
+
+interface IVerifyShimOptions {
+  args?: string[];
+  expectedExitCode?: number;
+  stdoutMatcher?: StringMatcher;
 }
 
 /**
@@ -120,7 +133,7 @@ export class TestHarness {
    * @param options - Optional execution options.
    * @returns A Promise that resolves to the command result including exit code, stdout, and stderr.
    */
-  async runCommand(args: string[], options?: { env?: Record<string, string> }): Promise<ICommandResult> {
+  async runCommand(args: string[], options?: IRunCommandOptions): Promise<ICommandResult> {
     if (this.cleanBeforeRun) {
       await this.clean();
     }
@@ -312,7 +325,7 @@ export class TestHarness {
    * @param shellType - The type of shell (zsh, bash, or powershell).
    * @returns The full path to the shell script file.
    */
-  getShellScriptPath(shellType: "zsh" | "bash" | "powershell"): string {
+  getShellScriptPath(shellType: ShellType): string {
     const extension = shellType === "powershell" ? "ps1" : shellType;
     return path.join(this.shellScriptsDir, `main.${extension}`);
   }
@@ -324,7 +337,7 @@ export class TestHarness {
    * @param shellType - The type of shell (zsh, bash, or powershell).
    * @returns The full path to the completion file.
    */
-  getCompletionPath(toolName: string, shellType: "zsh" | "bash" | "powershell"): string {
+  getCompletionPath(toolName: string, shellType: ShellType): string {
     const completionsDir = path.join(this.shellScriptsDir, shellType, "completions");
     const prefix = shellType === "zsh" ? "_" : "";
     const extension = shellType === "bash" ? ".bash" : "";
@@ -352,14 +365,7 @@ export class TestHarness {
    * @param options.stdoutMatcher - Function to validate the stdout output.
    * @returns A Promise that resolves to the trimmed stdout from executing the shim.
    */
-  async verifyShim(
-    shimName: string,
-    options?: {
-      args?: string[];
-      expectedExitCode?: number;
-      stdoutMatcher?: (stdout: string) => boolean;
-    },
-  ): Promise<string> {
+  async verifyShim(shimName: string, options?: IVerifyShimOptions): Promise<string> {
     const shimPath = this.getShimPath(shimName);
     expect(await this.fileExists(shimPath)).toBe(true);
     expect(await this.isExecutable(shimPath)).toBe(true);
@@ -420,7 +426,7 @@ export class TestHarness {
    * @param shellType - The type of shell (zsh, bash, or powershell).
    * @returns A Promise that resolves when verification is complete.
    */
-  async verifyShellScript(shellType: "zsh" | "bash" | "powershell"): Promise<void> {
+  async verifyShellScript(shellType: ShellType): Promise<void> {
     const scriptPath = this.getShellScriptPath(shellType);
     expect(await this.fileExists(scriptPath)).toBe(true);
   }
@@ -447,8 +453,8 @@ export class TestHarness {
   async verifyEnvironmentVariable(
     toolName: string,
     varName: string,
-    expectedValue: string | ((value: string) => boolean),
-    shellType: "zsh" | "bash" | "powershell" = "zsh",
+    expectedValue: StringExpectation,
+    shellType: ShellType = "zsh",
   ): Promise<void> {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
@@ -489,8 +495,8 @@ export class TestHarness {
   async verifyAlias(
     _toolName: string,
     aliasName: string,
-    expectedCommand: string | ((command: string) => boolean),
-    shellType: "zsh" | "bash" | "powershell" = "zsh",
+    expectedCommand: StringExpectation,
+    shellType: ShellType = "zsh",
   ): Promise<void> {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
@@ -528,8 +534,8 @@ export class TestHarness {
    */
   async verifyAlwaysScript(
     toolName: string,
-    contentMatcher: string | ((content: string) => boolean),
-    shellType: "zsh" | "bash" | "powershell" = "zsh",
+    contentMatcher: StringExpectation,
+    shellType: ShellType = "zsh",
   ): Promise<void> {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
@@ -557,8 +563,8 @@ export class TestHarness {
    */
   async verifyOnceScript(
     toolName: string,
-    contentMatcher: string | ((content: string) => boolean),
-    shellType: "zsh" | "bash" | "powershell" = "zsh",
+    contentMatcher: StringExpectation,
+    shellType: ShellType = "zsh",
   ): Promise<void> {
     const extension = shellType === "powershell" ? "ps1" : shellType;
     const onceDir = path.join(this.shellScriptsDir, ".once");

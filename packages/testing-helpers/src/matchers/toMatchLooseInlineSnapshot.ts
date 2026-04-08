@@ -50,9 +50,16 @@ function makeWhitespaceFlexible(pattern: string): string {
   return pattern.replace(/\s+/g, "\\s+");
 }
 
-function validateInput(
-  received: unknown,
-): { isValid: true; value: string } | { isValid: false; result: { pass: false; message: () => string } } {
+type MatcherExecutionResult = {
+  pass: boolean;
+  message: () => string;
+};
+
+type LooseInlineSnapshotValidationResult =
+  | { isValid: true; value: string }
+  | { isValid: false; result: MatcherExecutionResult & { pass: false } };
+
+function validateInput(received: unknown): LooseInlineSnapshotValidationResult {
   if (typeof received !== "string") {
     return {
       isValid: false,
@@ -95,7 +102,7 @@ function processMatcherAtIndex(matcher: unknown): string {
   return escapeRegexLiteral(matcher);
 }
 
-function executeRegexMatch(fullRegex: string, received: string): { pass: boolean; message: () => string } {
+function executeRegexMatch(fullRegex: string, received: string): MatcherExecutionResult {
   try {
     const re = new RegExp(fullRegex, "sm");
     const pass = re.test(received);

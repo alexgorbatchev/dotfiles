@@ -12,6 +12,7 @@ import type { IBinaryConfig, IGiteaToolConfig, IMockServerConfig, IScriptConfig,
 
 /** Type for Bun.serve() return value */
 type BunServer = ReturnType<typeof Bun.serve>;
+type MockServerConfigurator = (builder: MockServerBuilder) => MockServerBuilder;
 
 /** Current server port (0 until server starts, then OS-assigned port) */
 let currentServerPort = 0;
@@ -553,10 +554,7 @@ function handleBinaryFile(fixturesBasePath: string, config: IBinaryConfig): Resp
  * });
  * ```
  */
-export function withMockServer(
-  configure?: (builder: MockServerBuilder) => MockServerBuilder,
-  fixtureDir: string = "main",
-): void {
+export function withMockServer(configure?: MockServerConfigurator, fixtureDir: string = "main"): void {
   let server: BunServer | null = null;
 
   beforeAll(() => {

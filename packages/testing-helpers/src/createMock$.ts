@@ -13,12 +13,13 @@ export interface IMockShellResponse {
   shouldThrow?: boolean;
 }
 
-export type MockShell = Shell &
-  IMockShellExtensions & {
-    (command: string): ShellCommand;
-  };
+type ShellCommandInput = TemplateStringsArray | string;
 
-function reconstructCommand(pieces: TemplateStringsArray | string, args: unknown[]): string {
+type MockShellCallable = (command: string) => ShellCommand;
+
+export type MockShell = Shell & IMockShellExtensions & MockShellCallable;
+
+function reconstructCommand(pieces: ShellCommandInput, args: unknown[]): string {
   if (typeof pieces === "string") {
     return pieces;
   }
@@ -135,7 +136,7 @@ export function createMock$(): MockShell {
   };
 
   // Main shell function
-  const mockShellFunction = (pieces: TemplateStringsArray | string, ...args: unknown[]) => {
+  const mockShellFunction = (pieces: ShellCommandInput, ...args: unknown[]) => {
     // Reconstruct the command string from template literal
     const command = reconstructCommand(pieces, args);
     const trimmedCommand: string = command.trim();

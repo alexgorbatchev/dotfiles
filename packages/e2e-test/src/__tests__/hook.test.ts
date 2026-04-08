@@ -11,6 +11,7 @@ import { beforeAll, describe, expect, it } from "bun:test";
 import path from "node:path";
 import { HOOK_TEST_TOOL, withMockServer } from "./helpers/mock-server";
 import { TestHarness } from "./helpers/TestHarness";
+import type { ITestTarget } from "./helpers/types";
 
 // oxlint-disable-next-line import/no-unassigned-import
 import "@dotfiles/testing-helpers";
@@ -18,11 +19,7 @@ import "@dotfiles/testing-helpers";
 describe("E2E: after-install hooks", () => {
   withMockServer((b) => b.withGitHubTool(HOOK_TEST_TOOL));
 
-  const platformConfigs: ReadonlyArray<{
-    platform: Platform;
-    architecture: Architecture;
-    name: string;
-  }> = [
+  const platformConfigs: ReadonlyArray<ITestTarget> = [
     { platform: Platform.MacOS, architecture: Architecture.Arm64, name: "macOS ARM64" },
     { platform: Platform.Linux, architecture: Architecture.X86_64, name: "Linux x86_64" },
   ];

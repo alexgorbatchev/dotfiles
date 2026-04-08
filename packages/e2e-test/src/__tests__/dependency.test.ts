@@ -14,16 +14,13 @@ import "@dotfiles/testing-helpers";
 import { Architecture, Platform } from "@dotfiles/core";
 import { withMockServer } from "./helpers/mock-server";
 import { TestHarness } from "./helpers/TestHarness";
+import type { ITestTarget } from "./helpers/types";
 
 describe("E2E: dependency resolution", () => {
   // Dependency tests use manual installers, no mock endpoints needed
   withMockServer();
 
-  const platformConfigs: ReadonlyArray<{
-    platform: Platform;
-    architecture: Architecture;
-    name: string;
-  }> = [
+  const platformConfigs: ReadonlyArray<ITestTarget> = [
     { platform: Platform.MacOS, architecture: Architecture.Arm64, name: "macOS ARM64" },
     { platform: Platform.Linux, architecture: Architecture.X86_64, name: "Linux x86_64" },
   ];

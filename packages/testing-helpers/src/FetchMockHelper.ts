@@ -3,6 +3,8 @@ import { spyOn } from "bun:test";
 /**
  * Options for mocking a fetch response.
  */
+type MockResponseOmittedKeys = "body" | "error";
+
 interface IMockResponseOptions {
   /** The body of the response. Can be string, Blob, ArrayBuffer, FormData, URLSearchParams, ReadableStream, or null. */
   body?: string | Blob | ArrayBuffer | FormData | URLSearchParams | ReadableStream | null;
@@ -88,7 +90,7 @@ export class FetchMockHelper {
    * @param options - Options for the mock response (excluding `body` and `error` as they are handled by this method).
    * @throws {Error} If `setup()` has not been called before this method.
    */
-  mockJsonResponseOnce(data: unknown, options: Omit<IMockResponseOptions, "body" | "error"> = {}): void {
+  mockJsonResponseOnce(data: unknown, options: Omit<IMockResponseOptions, MockResponseOmittedKeys> = {}): void {
     const responseHeaders = new Headers(options.headers);
     responseHeaders.set("Content-Type", "application/json");
     this.mockResponseOnce({
@@ -104,7 +106,7 @@ export class FetchMockHelper {
    * @param options - Options for the mock response (excluding `body` and `error`).
    * @throws {Error} If `setup()` has not been called before this method.
    */
-  mockTextResponseOnce(text: string, options: Omit<IMockResponseOptions, "body" | "error"> = {}): void {
+  mockTextResponseOnce(text: string, options: Omit<IMockResponseOptions, MockResponseOmittedKeys> = {}): void {
     this.mockResponseOnce({
       body: text,
       ...options,
