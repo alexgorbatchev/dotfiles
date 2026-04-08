@@ -7,12 +7,12 @@ import {
 import { expectError } from "tsd";
 
 type GiteaReleaseInstallParams = z_internal_GiteaReleaseInstallParams;
-type IInstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallParamsRegistry = z_internal_IInstallParamsRegistry;
 type InstallMethod = z_internal_InstallMethod;
 
 type ExpectTrue<T extends true> = T;
 
-type GiteaReleaseParams = IInstallParamsRegistry["gitea-release"];
+type GiteaReleaseParams = InstallParamsRegistry["gitea-release"];
 export type InstallIncludesGiteaRelease = ExpectTrue<"gitea-release" extends InstallMethod ? true : false>;
 export type GiteaReleaseParamsMatchSchema = ExpectTrue<
   GiteaReleaseParams extends GiteaReleaseInstallParams ? true : false

@@ -7,12 +7,12 @@ import {
 import { expectError } from "tsd";
 
 type BrewInstallParams = z_internal_BrewInstallParams;
-type IInstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallParamsRegistry = z_internal_IInstallParamsRegistry;
 type InstallMethod = z_internal_InstallMethod;
 
 type ExpectTrue<T extends true> = T;
 
-type BrewParams = IInstallParamsRegistry["brew"];
+type BrewParams = InstallParamsRegistry["brew"];
 type UnknownKeyCheck = "unknown" extends keyof BrewParams ? true : false;
 type FormulaType = BrewParams["formula"];
 export type InstallIncludesBrew = ExpectTrue<"brew" extends InstallMethod ? true : false>;

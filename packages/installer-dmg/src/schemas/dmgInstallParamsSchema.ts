@@ -53,7 +53,7 @@ export const dmgInstallParamsSchema = baseInstallParamsSchema.extend({
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface DmgInstallParams extends BaseInstallParams {
+export interface IDmgInstallParams extends BaseInstallParams {
   /** Source definition for resolving the DMG file. */
   source: DmgSource;
   /** The name of the .app bundle inside the DMG. */
@@ -66,16 +66,22 @@ export interface DmgInstallParams extends BaseInstallParams {
   versionRegex?: string;
 }
 
-export interface DmgUrlSource {
+export type DmgInstallParams = IDmgInstallParams;
+
+export interface IDmgUrlSource {
   type: "url";
   url: string;
 }
 
-export interface DmgGitHubReleaseSource extends Pick<
+export type DmgUrlSource = IDmgUrlSource;
+
+export interface IDmgGitHubReleaseSource extends Pick<
   GithubReleaseInstallParams,
   "repo" | "version" | "assetPattern" | "assetSelector" | "ghCli" | "prerelease"
 > {
   type: "github-release";
 }
+
+export type DmgGitHubReleaseSource = IDmgGitHubReleaseSource;
 
 export type DmgSource = DmgUrlSource | DmgGitHubReleaseSource;

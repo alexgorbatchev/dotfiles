@@ -2,7 +2,7 @@ import type { InstallResultFailure, InstallResultSuccess } from "@dotfiles/core"
 import type { IToolInstallationDetails } from "@dotfiles/registry";
 import type { Resolvable } from "@dotfiles/unwrap-value";
 
-export * from "./types/ICurlScriptArgsContext";
+export type { ICurlScriptArgsContext } from "./types/ICurlScriptArgsContext";
 
 import type { ICurlScriptArgsContext } from "./types/ICurlScriptArgsContext";
 

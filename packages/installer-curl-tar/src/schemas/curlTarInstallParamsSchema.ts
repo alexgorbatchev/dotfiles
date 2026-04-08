@@ -28,7 +28,7 @@ export const curlTarInstallParamsSchema = baseInstallParamsSchema.extend({
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface CurlTarInstallParams extends BaseInstallParams {
+export interface ICurlTarInstallParams extends BaseInstallParams {
   /** The URL of the tarball to download. */
   url: string;
   /** Arguments to pass to the binary to check the version. */
@@ -36,3 +36,5 @@ export interface CurlTarInstallParams extends BaseInstallParams {
   /** Regex to extract version from output. */
   versionRegex?: string;
 }
+
+export type CurlTarInstallParams = ICurlTarInstallParams;

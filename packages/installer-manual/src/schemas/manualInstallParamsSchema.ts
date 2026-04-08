@@ -22,10 +22,12 @@ export const manualInstallParamsSchema = baseInstallParamsSchema.extend({
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface ManualInstallParams extends BaseInstallParams {
+export interface IManualInstallParams extends BaseInstallParams {
   /**
    * The path to the binary file relative to the tool configuration file location.
    * If not specified, only shell configurations and symlinks will be processed.
    */
   binaryPath?: string;
 }
+
+export type ManualInstallParams = IManualInstallParams;

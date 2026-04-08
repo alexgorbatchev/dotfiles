@@ -17,7 +17,7 @@ export const cargoToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface CargoInstallParams extends BaseInstallParams {
+export interface ICargoInstallParams extends BaseInstallParams {
   /** The crate name */
   crateName: string;
   /** Source for binaries - either cargo-quickinstall or GitHub releases */
@@ -31,6 +31,8 @@ export interface CargoInstallParams extends BaseInstallParams {
   /** Custom Cargo.toml URL if different from standard GitHub location */
   cargoTomlUrl?: string;
 }
+
+export type CargoInstallParams = ICargoInstallParams;
 
 /**
  * Tool configuration for Cargo-based installations

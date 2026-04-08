@@ -7,12 +7,12 @@ import {
 import { expectError } from "tsd";
 
 type GithubReleaseInstallParams = z_internal_GithubReleaseInstallParams;
-type IInstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallParamsRegistry = z_internal_IInstallParamsRegistry;
 type InstallMethod = z_internal_InstallMethod;
 
 type ExpectTrue<T extends true> = T;
 
-type GithubReleaseParams = IInstallParamsRegistry["github-release"];
+type GithubReleaseParams = InstallParamsRegistry["github-release"];
 export type InstallIncludesGithubRelease = ExpectTrue<"github-release" extends InstallMethod ? true : false>;
 export type GithubReleaseParamsMatchSchema = ExpectTrue<
   GithubReleaseParams extends GithubReleaseInstallParams ? true : false

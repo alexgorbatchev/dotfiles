@@ -52,7 +52,7 @@ export const zshPluginInstallParamsSchema = baseInstallParamsSchema
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface ZshPluginInstallParams extends BaseInstallParams {
+export interface IZshPluginInstallParams extends BaseInstallParams {
   /** GitHub repository in `user/repo` format. Either `repo` or `url` must be specified. */
   repo?: string;
   /** Full git URL for non-GitHub repositories. Either `repo` or `url` must be specified. */
@@ -64,3 +64,5 @@ export interface ZshPluginInstallParams extends BaseInstallParams {
   /** Whether to automatically source the plugin in shell init. @default true */
   auto?: boolean;
 }
+
+export type ZshPluginInstallParams = IZshPluginInstallParams;

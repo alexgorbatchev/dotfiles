@@ -7,12 +7,12 @@ import {
 import { expectError } from "tsd";
 
 type ZshPluginInstallParams = z_internal_ZshPluginInstallParams;
-type IInstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallParamsRegistry = z_internal_IInstallParamsRegistry;
 type InstallMethod = z_internal_InstallMethod;
 
 type ExpectTrue<T extends true> = T;
 
-type ZshPluginParams = IInstallParamsRegistry["zsh-plugin"];
+type ZshPluginParams = InstallParamsRegistry["zsh-plugin"];
 export type InstallIncludesZshPlugin = ExpectTrue<"zsh-plugin" extends InstallMethod ? true : false>;
 export type ZshPluginParamsMatchSchema = ExpectTrue<ZshPluginParams extends ZshPluginInstallParams ? true : false>;
 export type ZshPluginSchemaMatchesParams = ExpectTrue<ZshPluginInstallParams extends ZshPluginParams ? true : false>;

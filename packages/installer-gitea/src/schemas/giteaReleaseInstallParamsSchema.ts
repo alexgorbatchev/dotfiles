@@ -57,7 +57,7 @@ export const giteaReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
 /**
  * Parameters for installing a tool from a Gitea/Forgejo release.
  */
-export interface GiteaReleaseInstallParams extends BaseInstallParams {
+export interface IGiteaReleaseInstallParams extends BaseInstallParams {
   instanceUrl: string;
   repo: string;
   assetPattern?: string | RegExp;
@@ -66,3 +66,5 @@ export interface GiteaReleaseInstallParams extends BaseInstallParams {
   prerelease?: boolean;
   token?: string;
 }
+
+export type GiteaReleaseInstallParams = IGiteaReleaseInstallParams;

@@ -7,12 +7,12 @@ import {
 import { expectError } from "tsd";
 
 type CargoInstallParams = z_internal_CargoInstallParams;
-type IInstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallParamsRegistry = z_internal_IInstallParamsRegistry;
 type InstallMethod = z_internal_InstallMethod;
 
 type ExpectTrue<T extends true> = T;
 
-type CargoParams = IInstallParamsRegistry["cargo"];
+type CargoParams = InstallParamsRegistry["cargo"];
 export type InstallIncludesCargo = ExpectTrue<"cargo" extends InstallMethod ? true : false>;
 export type CargoParamsMatchSchema = ExpectTrue<CargoParams extends CargoInstallParams ? true : false>;
 export type CargoSchemaMatchesParams = ExpectTrue<CargoInstallParams extends CargoParams ? true : false>;

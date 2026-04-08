@@ -7,12 +7,12 @@ import {
 import { expectError } from "tsd";
 
 type NpmInstallParams = z_internal_NpmInstallParams;
-type IInstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallParamsRegistry = z_internal_IInstallParamsRegistry;
 type InstallMethod = z_internal_InstallMethod;
 
 type ExpectTrue<T extends true> = T;
 
-type NpmParams = IInstallParamsRegistry["npm"];
+type NpmParams = InstallParamsRegistry["npm"];
 export type InstallIncludesNpm = ExpectTrue<"npm" extends InstallMethod ? true : false>;
 export type NpmParamsMatchSchema = ExpectTrue<NpmParams extends NpmInstallParams ? true : false>;
 export type NpmSchemaMatchesParams = ExpectTrue<NpmInstallParams extends NpmParams ? true : false>;

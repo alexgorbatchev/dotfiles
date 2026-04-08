@@ -7,12 +7,12 @@ import {
 import { expectError } from "tsd";
 
 type ManualInstallParams = z_internal_ManualInstallParams;
-type IInstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallParamsRegistry = z_internal_IInstallParamsRegistry;
 type InstallMethod = z_internal_InstallMethod;
 
 type ExpectTrue<T extends true> = T;
 
-type ManualParams = IInstallParamsRegistry["manual"];
+type ManualParams = InstallParamsRegistry["manual"];
 export type InstallIncludesManual = ExpectTrue<"manual" extends InstallMethod ? true : false>;
 export type ManualParamsMatchSchema = ExpectTrue<ManualParams extends ManualInstallParams ? true : false>;
 export type ManualSchemaMatchesParams = ExpectTrue<ManualInstallParams extends ManualParams ? true : false>;

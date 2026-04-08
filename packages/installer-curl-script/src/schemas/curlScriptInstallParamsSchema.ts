@@ -36,7 +36,7 @@ export const curlScriptInstallParamsSchema = baseInstallParamsSchema.extend({
  * the property names, which is required for proper `keyof` behavior in declaration files.
  * Uses Omit because `env` has a more specific type than BaseInstallParams.env.
  */
-export interface CurlScriptInstallParams extends Omit<BaseInstallParams, "env"> {
+export interface ICurlScriptInstallParams extends Omit<BaseInstallParams, "env"> {
   /** The URL of the installation script to download. */
   url: string;
   /** The shell to use for executing the downloaded script. */
@@ -50,3 +50,5 @@ export interface CurlScriptInstallParams extends Omit<BaseInstallParams, "env"> 
   /** Regex to extract version from output. */
   versionRegex?: string;
 }
+
+export type CurlScriptInstallParams = ICurlScriptInstallParams;

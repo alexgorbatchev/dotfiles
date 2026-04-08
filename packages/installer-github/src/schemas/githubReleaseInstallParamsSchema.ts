@@ -133,7 +133,7 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface GithubReleaseInstallParams extends BaseInstallParams {
+export interface IGithubReleaseInstallParams extends BaseInstallParams {
   /**
    * The GitHub repository in "owner/repo" format (e.g., `junegunn/fzf`).
    */
@@ -160,3 +160,5 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
    */
   prerelease?: boolean;
 }
+
+export type GithubReleaseInstallParams = IGithubReleaseInstallParams;

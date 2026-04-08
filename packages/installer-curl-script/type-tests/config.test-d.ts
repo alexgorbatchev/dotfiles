@@ -7,12 +7,12 @@ import {
 import { expectError } from "tsd";
 
 type CurlScriptInstallParams = z_internal_CurlScriptInstallParams;
-type IInstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallParamsRegistry = z_internal_IInstallParamsRegistry;
 type InstallMethod = z_internal_InstallMethod;
 
 type ExpectTrue<T extends true> = T;
 
-type CurlScriptParams = IInstallParamsRegistry["curl-script"];
+type CurlScriptParams = InstallParamsRegistry["curl-script"];
 export type InstallIncludesCurlScript = ExpectTrue<"curl-script" extends InstallMethod ? true : false>;
 export type CurlScriptParamsMatchSchema = ExpectTrue<CurlScriptParams extends CurlScriptInstallParams ? true : false>;
 export type CurlScriptSchemaMatchesParams = ExpectTrue<CurlScriptInstallParams extends CurlScriptParams ? true : false>;
