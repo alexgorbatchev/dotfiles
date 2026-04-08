@@ -171,7 +171,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
       fileSystem: mockFileSystem,
       logger,
       systemInfo: macosSystemInfo,

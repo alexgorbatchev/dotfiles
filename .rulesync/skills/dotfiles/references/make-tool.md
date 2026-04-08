@@ -52,39 +52,39 @@ Research the tool’s runtime behavior:
 Select the most appropriate method based on your investigation. Prefer official, precompiled, and well-supported methods.
 
 - **`github-release`**: best for tools with prebuilt binaries on GitHub.
-  - Guide: [GitHub Release Installation Guide](installation-methods.md#github-release.md)
+  - Guide: [GitHub Release Installation Guide](installation-methods/github-release.md)
   - Use `ghCli: true` to fetch releases via `gh` CLI instead of direct API access (useful for GitHub Enterprise or when `GITHUB_TOKEN` isn't configured)
   - Use `prerelease: true` to include prereleases when fetching latest (needed for repos that only publish prerelease versions)
 
 - **`gitea-release`**: best for tools with prebuilt binaries on Gitea, Forgejo, or Codeberg.
-  - Guide: [Gitea/Forgejo Release Installation Guide](installation-methods.md#gitea-release.md)
+  - Guide: [Gitea/Forgejo Release Installation Guide](installation-methods/gitea-release.md)
   - Requires `instanceUrl` (e.g., `https://codeberg.org`) and `repo` (e.g., `Codeberg/pages-server`)
   - Supports optional `token` for private repos or rate-limited instances
   - Use `prerelease: true` to include prereleases when fetching latest
 
 - **`brew`**: use if the tool is officially available on Homebrew.
-  - Guide: [Homebrew Installation Guide](installation-methods.md#homebrew.md)
+  - Guide: [Homebrew Installation Guide](installation-methods/brew.md)
 
 - **`cargo`**: prefer for Rust tools available on crates.io.
-  - Guide: [Cargo Installation Guide](installation-methods.md#cargo.md)
+  - Guide: [Cargo Installation Guide](installation-methods/cargo.md)
 
 - **`npm`**: for tools published as npm packages.
-  - Guide: [npm Installation Guide](installation-methods.md#npm.md)
+  - Guide: [npm Installation Guide](installation-methods/npm.md)
 
 - **`curl-script`**: for tools with an official install script.
-  - Guide: [Curl Script Installation Guide](installation-methods.md#curl-script.md)
+  - Guide: [Curl Script Installation Guide](installation-methods/curl-script.md)
 
 - **`curl-tar`**: for direct archive downloads from a stable URL.
-  - Guide: [Curl Tar Installation Guide](installation-methods.md#curl-tar.md)
+  - Guide: [Curl Tar Installation Guide](installation-methods/curl-tar.md)
 
 - **`curl-binary`**: for direct binary file downloads (no archive extraction).
-  - Guide: [Curl Binary Installation Guide](installation-methods.md#curl-binary.md)
+  - Guide: [Curl Binary Installation Guide](installation-methods/curl-binary.md)
 
 - **`manual`**: for custom install logic or dotfiles-provided binaries/scripts. Can be called without params: `install('manual')`.
-  - Guide: [Manual Installation Guide](installation-methods.md#manual.md)
+  - Guide: [Manual Installation Guide](installation-methods/manual.md)
 
 - **`zsh-plugin`**: for zsh plugins that are cloned from Git repositories.
-  - Guide: [Zsh Plugin Installation Guide](installation-methods.md#zsh-plugin.md)
+  - Guide: [Zsh Plugin Installation Guide](installation-methods/zsh-plugin.md)
 
 ### Step 2: Configure Binary Specification
 
@@ -792,7 +792,7 @@ After any `.tool.ts` file change, you **must** run `dotfiles generate` to sync t
 - An existing `.tool.ts` file is modified
 
 ```bash
-bun cli --config=<path-to-config.ts> generate
+bun cli --config=<path-to-dotfiles.config.ts> generate
 ```
 
 Without this step, the generated shims and shell configuration will be out of sync with the tool definitions.
@@ -848,16 +848,16 @@ Without this step, the generated shims and shell configuration will be out of sy
 
 **Installation Methods**
 
-- [GitHub Release Installation](installation-methods.md#github-release.md)
-- [Gitea/Forgejo Release Installation](installation-methods.md#gitea-release.md)
-- [Homebrew Installation](installation-methods.md#homebrew.md)
-- [Cargo Installation](installation-methods.md#cargo.md)
-- [npm Installation](installation-methods.md#npm.md)
-- [Curl Script Installation](installation-methods.md#curl-script.md)
-- [Curl Tar Installation](installation-methods.md#curl-tar.md)
-- [Curl Binary Installation](installation-methods.md#curl-binary.md)
-- [Manual Installation](installation-methods.md#manual.md)
-- [Zsh Plugin Installation](installation-methods.md#zsh-plugin.md)
+- [GitHub Release Installation](installation-methods/github-release.md)
+- [Gitea/Forgejo Release Installation](installation-methods/gitea-release.md)
+- [Homebrew Installation](installation-methods/brew.md)
+- [Cargo Installation](installation-methods/cargo.md)
+- [npm Installation](installation-methods/npm.md)
+- [Curl Script Installation](installation-methods/curl-script.md)
+- [Curl Tar Installation](installation-methods/curl-tar.md)
+- [Curl Binary Installation](installation-methods/curl-binary.md)
+- [Manual Installation](installation-methods/manual.md)
+- [Zsh Plugin Installation](installation-methods/zsh-plugin.md)
 
 **Other Resources**
 

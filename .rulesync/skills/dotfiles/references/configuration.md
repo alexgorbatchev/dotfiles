@@ -355,15 +355,15 @@ export default defineConfig(() => ({
 ## CLI Usage
 
 ```bash
-dotfiles --config ~/.dotfiles/config.ts install
-dotfiles install  # Uses config.ts in current directory
+dotfiles --config ~/.dotfiles/dotfiles.config.ts install
+dotfiles install  # Uses dotfiles.config.ts in current directory
 ```
 
 ## Directory Structure
 
 ```
 ~/.dotfiles/
-├── config.ts              # Project configuration
+├── dotfiles.config.ts     # Project configuration
 ├── tools/                 # Tool definitions (*.tool.ts)
 ├── CATALOG.md            # Auto-generated
 └── .generated/           # Not version controlled
@@ -544,11 +544,11 @@ This creates:
 
 ```
 env/
-├── source       # POSIX shell activation script
-├── source.ps1   # PowerShell activation script
-├── config.ts    # Dotfiles configuration
-├── .config/     # XDG_CONFIG_HOME for tool configs
-└── tools/       # Tool configuration directory
+├── source               # POSIX shell activation script
+├── source.ps1           # PowerShell activation script
+├── dotfiles.config.ts   # Dotfiles configuration
+├── .config/             # XDG_CONFIG_HOME for tool configs
+└── tools/               # Tool configuration directory
 ```
 
 ## Activating an Environment
@@ -581,13 +581,13 @@ Once activated, all dotfiles commands use the environment's configuration automa
 ```bash
 source env/source
 
-# These all use env/config.ts automatically
+# These all use env/dotfiles.config.ts automatically
 dotfiles generate
 dotfiles install
 dotfiles update fd
 ```
 
-No need to pass `--config` - the CLI detects `DOTFILES_ENV_DIR` and uses its `config.ts`.
+No need to pass `--config` - the CLI detects `DOTFILES_ENV_DIR` and uses its `dotfiles.config.ts`.
 
 ## Adding Tools
 
@@ -669,7 +669,7 @@ dotfiles env create .devenv
 
 # Add to version control
 echo ".devenv/.generated" >> .gitignore
-git add .devenv/config.ts .devenv/tools/ .devenv/source .devenv/source.ps1
+git add .devenv/dotfiles.config.ts .devenv/tools/ .devenv/source .devenv/source.ps1
 git commit -m "Add development environment"
 ```
 
@@ -732,7 +732,7 @@ env/
 │       └── <installed tools>
 ├── source
 ├── source.ps1
-├── config.ts
+├── dotfiles.config.ts
 ├── .config/
 └── tools/
 ```

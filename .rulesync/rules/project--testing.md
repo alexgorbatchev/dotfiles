@@ -65,6 +65,6 @@ describe('...', () => {
 
 ## Testing project
 
-- Folder `test-project` contains a few tools and `config.ts` file that could be used for live testing, **but never in test files**.
-- Use `bun cli --config=test-project/config.ts` to run the CLI with the test project configuration
+- Folder `test-project` contains a few tools and a `dotfiles.config.ts` file that could be used for live testing, **but never in test files**.
+- Use `bun cli --config=test-project/dotfiles.config.ts` to run the CLI with the test project configuration
 - Sometimes it's necessary to delete `test-project/.generated` folder to force re-generating the project

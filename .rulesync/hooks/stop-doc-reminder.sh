@@ -20,7 +20,7 @@ If you changed production code in this session, check whether these need updatin
 
 2. **Dotfiles skill references** — `.rulesync/skills/dotfiles/references/`
    - `api-reference.md` — exports, builder methods, utilities
-   - `installation-methods.md` — installation method parameters
+   - `installation-methods/overview.md` and sibling files — installation method parameters
    - `shell-and-hooks.md` — shell integration, completions, hooks
    - `configuration.md` — project config, platform support, troubleshooting
 

@@ -172,10 +172,10 @@ npm install -g @alexgorbatchev/dotfiles
 
 ### Installation Methods & API
 
-- **[Installation Methods](.rulesync/skills/dotfiles/references/installation-methods.md)** - All 11 methods: GitHub releases, Gitea, Homebrew, Cargo, npm, curl-script, curl-tar, curl-binary, manual, DMG, zsh-plugin
+- **[Installation Methods](.rulesync/skills/dotfiles/references/installation-methods/overview.md)** - All 11 methods: GitHub releases, Gitea, Homebrew, Cargo, npm, curl-script, curl-tar, curl-binary, manual, DMG, zsh-plugin
 - **[API Reference](.rulesync/skills/dotfiles/references/api-reference.md)** - Complete method reference and context API
 
-## Global Configuration (`config.ts`)
+## Global Configuration (`dotfiles.config.ts`)
 
 The generator can be customized via a `dotfiles.config.ts` file located in your dotfiles directory (e.g., `~/.dotfiles/dotfiles.config.ts`). The following is a reference for all available options.
 

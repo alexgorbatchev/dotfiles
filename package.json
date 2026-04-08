@@ -11,7 +11,7 @@
     "test:all": "BUN_TEST_ALL=1 bun test",
     "test:native": "BUN_TEST_SEQUENTIAL=1 bun test",
     "test:task": "bun test",
-    "test-project": "DOTFILES_BUILT_PACKAGE_NAME='@dotfiles/core' bun run --silent cli.ts --config test-project/config.ts",
+    "test-project": "DOTFILES_BUILT_PACKAGE_NAME='@dotfiles/core' bun run --silent cli.ts --config test-project/dotfiles.config.ts",
     "compile": "bun packages/build/src/build/index.ts",
     "release": "bun packages/build/src/release/index.ts",
     "find-unused": "echo \"find-unused analyzer is not configured in this workspace.\"",
@@ -19,7 +19,7 @@
     "proxy": "bun run packages/http-proxy/src/server.ts",
     "check": "bun lint && bun typecheck && bun test:all",
     "check:ci": "bun lint && bun typecheck && bun test:native",
-    "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/config.ts dashboard",
+    "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/dotfiles.config.ts dashboard",
     "ai": "rulesync generate --targets agentsmd,agentsskills --features '*'",
     "postinstall": "bun ai"
   },

@@ -54,7 +54,7 @@ describe('IToolConfigContext', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
       fileSystem,
       logger,
       systemInfo,
@@ -224,7 +224,7 @@ describe('IToolConfigContext', () => {
             binariesDir: '/custom/dotfiles/.custom-generated/custom-tools',
           },
         },
-        filePath: path.join(customTestDirs.paths.dotfilesDir, 'config.ts'),
+        filePath: path.join(customTestDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
         fileSystem: customMockFs.fs,
         logger,
         systemInfo: {

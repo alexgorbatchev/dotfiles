@@ -49,7 +49,7 @@ describe('ShimGenerator', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
       fileSystem: fs,
       logger,
       systemInfo,
@@ -115,7 +115,7 @@ describe('ShimGenerator', () => {
         BINARY_NAME="my-tool-binary"
         TOOL_EXECUTABLE="${expectedBinaryPath}"
         GENERATOR_CLI_EXECUTABLE="${expect.anything}"
-        CONFIG_PATH="${/.+\/config\.ts/}"
+        CONFIG_PATH="${/.+\/dotfiles\.config\.ts/}"
 
         # Check for recursion
         RECURSION_ENV_VAR="DOTFILES_INSTALLING_MY_TOOL"

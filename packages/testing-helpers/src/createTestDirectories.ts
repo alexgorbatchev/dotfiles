@@ -76,7 +76,7 @@ export async function createTestDirectories(
     fs,
     { homeDir, platform: Platform.Linux, arch: Architecture.X86_64, hostname: 'test-host' },
     { HOME: homeDir },
-    `${homeDir}/config.ts`,
+    `${homeDir}/dotfiles.config.ts`,
   );
   const paths = { ...defaultConfig.paths, ...options.paths };
 

@@ -31,7 +31,7 @@ export function createTestInstallHookContext(
 ): ICreateTestInstallHookContextResult {
   const logger = testLogger || new TestLogger();
 
-  const mockProjectConfigFilePath = '/home/user/.dotfiles/config.ts';
+  const mockProjectConfigFilePath = '/home/user/.dotfiles/dotfiles.config.ts';
   const mockProjectConfigFileDir = '/home/user/.dotfiles';
 
   const parsedConfig = projectConfigSchema.parse({

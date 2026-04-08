@@ -8,7 +8,7 @@ Provides virtual environment management for dotfiles, allowing isolated configur
 
 - `VirtualEnvManager` - Core class for creating, deleting, and managing environments
 - `generateSourceScript()` - Generates shell activation script
-- `generateDefaultConfig()` - Generates default config.ts template
+- `generateDefaultConfig()` - Generates default dotfiles.config.ts template
 - `ENV_DIR_VAR`, `ENV_NAME_VAR` - Environment variable names
 
 ## Environment Structure
@@ -16,13 +16,13 @@ Provides virtual environment management for dotfiles, allowing isolated configur
 ```
 [env-name]/
 ├── source       # Shell activation script (source this to activate)
-├── config.ts    # Dotfiles configuration
+├── dotfiles.config.ts    # Dotfiles configuration
 └── tools/       # Tool configurations directory
 ```
 
 ## Integration Points
 
-- CLI config resolution checks `DOTFILES_ENV_DIR` and defaults `--config` to `$DOTFILES_ENV_DIR/config.ts`
+- CLI config resolution checks `DOTFILES_ENV_DIR` and defaults `--config` to `$DOTFILES_ENV_DIR/dotfiles.config.ts`
 - When sourced, sets `DOTFILES_ENV_DIR` and `DOTFILES_ENV_NAME` env vars
 - Provides `dotfiles-deactivate` function to clean up environment
 

@@ -429,7 +429,7 @@ const platformOverrideSchema = z
   .strict();
 
 /**
- * The main Zod schema for the application's `config.ts` file.
+ * The main Zod schema for the application's `dotfiles.config.ts` file.
  *
  * This schema combines the base configuration with an optional array of
  * platform-specific overrides. It is used to parse and validate the entire
@@ -461,7 +461,7 @@ export type ProjectConfigPartial = PartialDeep<ProjectConfig>;
 
 /**
  * A Zod schema for private fields that are added to the configuration object
- * after it is loaded. These fields are not part of the user-facing `config.ts`.
+ * after it is loaded. These fields are not part of the user-facing `dotfiles.config.ts`.
  *
  * @internal
  */
@@ -476,7 +476,7 @@ export const privateProjectConfigFields = z.object({
  * The complete TypeScript type for the application's configuration object.
  *
  * This type is inferred from the main Zod schema and includes both the
- * user-defined configuration from `config.ts` and the private, internally-managed
+ * user-defined configuration from `dotfiles.config.ts` and the private, internally-managed
  * fields.
  */
 export type ProjectConfig = z.infer<typeof projectConfigSchema> & z.infer<typeof privateProjectConfigFields>;

@@ -371,7 +371,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     config: {
       paths: testDirs.paths,
     },
-    filePath: path.join(testDirs.paths.dotfilesDir, 'config.ts'),
+    filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
     fileSystem: fs,
     logger,
     systemInfo: {
