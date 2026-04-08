@@ -2,6 +2,7 @@ import type { TsLogger } from "@dotfiles/logger";
 import type { Database } from "bun:sqlite";
 import type { IFileOperation, IFileOperationFilter, IFileRegistry, IFileState } from "./IFileRegistry";
 import { messages } from "./log-messages";
+import type { IFileRegistryStats, IFileRegistryValidationResult } from "./types";
 
 interface IDatabaseRow {
   id: number;
@@ -15,6 +16,23 @@ interface IDatabaseRow {
   permissions: string | null;
   created_at: string;
   operation_id: string;
+}
+
+type GeneratedFileOperationKeys = "id" | "createdAt";
+type FileRegistrySqlValue = string | number;
+
+interface IOperationIdCountRow {
+  operation_id: string;
+  count: number;
+}
+
+interface ICountRow {
+  count: number;
+}
+
+interface ITimeRangeRow {
+  oldest: number;
+  newest: number;
 }
 
 /**
@@ -46,7 +64,7 @@ export class FileRegistry implements IFileRegistry {
     this.initializeSchema();
   }
 
-  async recordOperation(operation: Omit<IFileOperation, "id" | "createdAt">): Promise<void> {
+  async recordOperation(operation: Omit<IFileOperation, GeneratedFileOperationKeys>): Promise<void> {
     const logger = this.logger.getSubLogger({ name: "recordOperation" });
 
     const stmt = this.db.prepare(`
@@ -79,7 +97,7 @@ export class FileRegistry implements IFileRegistry {
     const logger = this.logger.getSubLogger({ name: "getOperations" });
 
     let sql = "SELECT * FROM file_operations WHERE 1=1";
-    const params: (string | number)[] = [];
+    const params: FileRegistrySqlValue[] = [];
 
     if (filter.toolName) {
       sql += " AND tool_name = ?";
@@ -271,7 +289,7 @@ export class FileRegistry implements IFileRegistry {
     logger.debug(messages.compactionComplete(), before.totalOperations, after.totalOperations);
   }
 
-  async validate(): Promise<{ valid: boolean; issues: string[]; repaired: string[] }> {
+  async validate(): Promise<IFileRegistryValidationResult> {
     const logger = this.logger.getSubLogger({ name: "validate" });
     const issues: string[] = [];
     const repaired: string[] = [];
@@ -284,7 +302,7 @@ export class FileRegistry implements IFileRegistry {
       GROUP BY operation_id 
       HAVING count > 1
     `)
-      .all() as { operation_id: string; count: number }[];
+      .all() as IOperationIdCountRow[];
 
     if (duplicateIds.length > 0) {
       issues.push(`Found ${duplicateIds.length} duplicate operation IDs`);
@@ -310,25 +328,17 @@ export class FileRegistry implements IFileRegistry {
     };
   }
 
-  async getStats(): Promise<{
-    totalOperations: number;
-    totalFiles: number;
-    totalTools: number;
-    oldestOperation: number;
-    newestOperation: number;
-  }> {
-    const totalOperations = this.db.prepare("SELECT COUNT(*) as count FROM file_operations").get() as {
-      count: number;
-    };
-    const totalFiles = this.db.prepare("SELECT COUNT(DISTINCT file_path) as count FROM file_operations").get() as {
-      count: number;
-    };
-    const totalTools = this.db.prepare("SELECT COUNT(DISTINCT tool_name) as count FROM file_operations").get() as {
-      count: number;
-    };
+  async getStats(): Promise<IFileRegistryStats> {
+    const totalOperations = this.db.prepare("SELECT COUNT(*) as count FROM file_operations").get() as ICountRow;
+    const totalFiles = this.db
+      .prepare("SELECT COUNT(DISTINCT file_path) as count FROM file_operations")
+      .get() as ICountRow;
+    const totalTools = this.db
+      .prepare("SELECT COUNT(DISTINCT tool_name) as count FROM file_operations")
+      .get() as ICountRow;
     const timeRange = this.db
       .prepare("SELECT MIN(created_at) as oldest, MAX(created_at) as newest FROM file_operations")
-      .get() as { oldest: number; newest: number };
+      .get() as ITimeRangeRow;
 
     return {
       totalOperations: totalOperations.count,

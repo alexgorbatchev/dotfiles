@@ -3,6 +3,7 @@
 export * from "./IFileSystem";
 export * from "./IResolvedFileSystem";
 export * from "./MemFileSystem";
+export * from "./types";
 // Implementations
 export * from "./NodeFileSystem";
 export * from "./ResolvedFileSystem";

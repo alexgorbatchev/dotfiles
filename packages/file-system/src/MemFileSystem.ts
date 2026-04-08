@@ -1,8 +1,9 @@
+import type { Stats } from "node:fs"; // memfs Stats is compatible
 import { type DirectoryJSON, Volume } from "memfs";
 import type { IFileSystem } from "./IFileSystem";
-export type { DirectoryJSON }; // Re-export DirectoryJSON
+import type { FileMode, FileWriteContent, IRecursiveDirectoryOptions, IRemoveOptions, SymlinkKind } from "./types";
 
-import type { Stats } from "node:fs"; // memfs Stats is compatible
+export type { DirectoryJSON }; // Re-export DirectoryJSON
 
 /**
  * In-memory implementation of the {@link IFileSystem} interface using `memfs`.
@@ -65,11 +66,7 @@ export class MemFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.writeFile
    */
-  public async writeFile(
-    path: string,
-    content: string | NodeJS.ArrayBufferView,
-    encoding: BufferEncoding = "utf8",
-  ): Promise<void> {
+  public async writeFile(path: string, content: FileWriteContent, encoding: BufferEncoding = "utf8"): Promise<void> {
     // memfs.promises.writeFile expects Buffer or string.
     // If content is ArrayBufferView but not Buffer, convert.
     const data =
@@ -104,7 +101,7 @@ export class MemFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.mkdir
    */
-  public async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
+  public async mkdir(path: string, options?: IRecursiveDirectoryOptions): Promise<void> {
     await this.vol.promises.mkdir(path, options);
   }
 
@@ -121,7 +118,7 @@ export class MemFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.rm
    */
-  public async rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
+  public async rm(path: string, options?: IRemoveOptions): Promise<void> {
     // memfs.promises.rm handles both files and directories.
     // The `force` option in memfs.promises.rm will suppress ENOENT errors.
     // The `recursive` option is needed for directories.
@@ -157,7 +154,7 @@ export class MemFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.rmdir
    */
-  public async rmdir(path: string, options?: { recursive?: boolean }): Promise<void> {
+  public async rmdir(path: string, options?: IRecursiveDirectoryOptions): Promise<void> {
     await this.vol.promises.rmdir(path, options);
   }
 
@@ -185,11 +182,7 @@ export class MemFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.symlink
    */
-  public async symlink(
-    target: string,
-    path: string,
-    type?: "file" | "dir" | "junction", // memfs.promises.symlink also accepts type, behavior might vary.
-  ): Promise<void> {
+  public async symlink(target: string, path: string, type?: SymlinkKind): Promise<void> {
     // memfs.promises.symlink type argument might be handled differently than node:fs.
     // We pass it along; memfs typically infers if not strictly 'file'/'dir'.
     await this.vol.promises.symlink(target, path, type);
@@ -208,7 +201,7 @@ export class MemFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.chmod
    */
-  public async chmod(path: string, mode: number | string): Promise<void> {
+  public async chmod(path: string, mode: FileMode): Promise<void> {
     await this.vol.promises.chmod(path, typeof mode === "string" ? parseInt(mode, 8) : mode);
   }
 

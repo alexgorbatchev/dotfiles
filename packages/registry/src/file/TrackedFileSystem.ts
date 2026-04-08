@@ -1,5 +1,13 @@
 import type { ProjectConfig } from "@dotfiles/core";
-import type { IResolvedFileSystem, Stats } from "@dotfiles/file-system";
+import type {
+  FileMode,
+  FileWriteContent,
+  IRecursiveDirectoryOptions,
+  IRemoveOptions,
+  IResolvedFileSystem,
+  Stats,
+  SymlinkKind,
+} from "@dotfiles/file-system";
 import { resolvedFileSystemBrand } from "@dotfiles/file-system";
 import type { SafeLogMessage, TsLogger } from "@dotfiles/logger";
 import { contractHomePath, formatPermissions } from "@dotfiles/utils";
@@ -21,6 +29,17 @@ export interface ITrackingContext {
   operationId: string;
   /** Additional metadata to store */
   metadata?: Record<string, unknown>;
+}
+
+interface ITrackedFileStats {
+  sizeBytes: number;
+  permissions: number;
+}
+
+interface IRecordOperationOptions {
+  targetPath?: string;
+  sizeBytes?: number;
+  permissions?: number;
 }
 
 /**
@@ -134,11 +153,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     return this.fs.readFileBuffer(filePath);
   }
 
-  async writeFile(
-    filePath: string,
-    content: string | NodeJS.ArrayBufferView,
-    encoding?: BufferEncoding,
-  ): Promise<void> {
+  async writeFile(filePath: string, content: FileWriteContent, encoding?: BufferEncoding): Promise<void> {
     const fileExists = await this.fs.exists(filePath);
     let contentChanged = true;
 
@@ -225,7 +240,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     );
   }
 
-  async symlink(target: string, linkPath: string, type?: "file" | "dir" | "junction"): Promise<void> {
+  async symlink(target: string, linkPath: string, type?: SymlinkKind): Promise<void> {
     // Perform the actual operation
     await this.fs.symlink(target, linkPath, type);
 
@@ -263,7 +278,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     await this.recordOperation("symlink", linkPath, { targetPath: target });
   }
 
-  async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
+  async rm(filePath: string, options?: IRemoveOptions): Promise<void> {
     // If removing recursively, we need to track all files being removed
     if (options?.recursive && (await this.fs.exists(filePath))) {
       const stat = await this.fs.stat(filePath);
@@ -282,7 +297,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     this.logInfo(messages.fileRemoved(contractHomePath(this.projectConfig.paths.homeDir, filePath)));
   }
 
-  async chmod(filePath: string, mode: string | number): Promise<void> {
+  async chmod(filePath: string, mode: FileMode): Promise<void> {
     // Perform the actual operation
     await this.fs.chmod(filePath, mode);
 
@@ -321,7 +336,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     return this.fs.readdir(dirPath);
   }
 
-  async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+  async mkdir(dirPath: string, options?: IRecursiveDirectoryOptions): Promise<void> {
     const existed = await this.fs.exists(dirPath);
 
     // Perform the actual operation
@@ -335,7 +350,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     }
   }
 
-  async rmdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+  async rmdir(dirPath: string, options?: IRecursiveDirectoryOptions): Promise<void> {
     const logger = this.logger.getSubLogger({ name: "rmdir" });
 
     // Track directory deletion
@@ -370,7 +385,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
   /**
    * Helper method to get file stats for tracking purposes.
    */
-  private async getFileStats(filePath: string): Promise<{ sizeBytes: number; permissions: number } | null> {
+  private async getFileStats(filePath: string): Promise<ITrackedFileStats | null> {
     try {
       const stats = await this.fs.stat(filePath);
       return {
@@ -388,11 +403,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
   private async recordOperation(
     operationType: IFileOperation["operationType"],
     filePath: string,
-    options?: {
-      targetPath?: string;
-      sizeBytes?: number;
-      permissions?: number;
-    },
+    options?: IRecordOperationOptions,
   ): Promise<void> {
     await this.registry.recordOperation({
       toolName: this.context.toolName,

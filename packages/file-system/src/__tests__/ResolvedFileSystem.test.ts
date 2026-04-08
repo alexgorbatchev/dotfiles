@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { IFileSystem, NodeStats } from "../IFileSystem";
 import { ResolvedFileSystem } from "../ResolvedFileSystem";
+import type { FileMode, FileWriteContent, IRecursiveDirectoryOptions, IRemoveOptions, SymlinkKind } from "../types";
 
 type SpyCall = {
   method: string;
@@ -22,11 +23,7 @@ class SpyFileSystem implements IFileSystem {
     return result;
   }
 
-  public async writeFile(
-    filePath: string,
-    content: string | NodeJS.ArrayBufferView,
-    encoding?: BufferEncoding,
-  ): Promise<void> {
+  public async writeFile(filePath: string, content: FileWriteContent, encoding?: BufferEncoding): Promise<void> {
     this.calls.push({ method: "writeFile", args: [filePath, content, encoding] });
   }
 
@@ -36,7 +33,7 @@ class SpyFileSystem implements IFileSystem {
     return result;
   }
 
-  public async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+  public async mkdir(dirPath: string, options?: IRecursiveDirectoryOptions): Promise<void> {
     this.calls.push({ method: "mkdir", args: [dirPath, options] });
   }
 
@@ -46,11 +43,11 @@ class SpyFileSystem implements IFileSystem {
     return result;
   }
 
-  public async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
+  public async rm(filePath: string, options?: IRemoveOptions): Promise<void> {
     this.calls.push({ method: "rm", args: [filePath, options] });
   }
 
-  public async rmdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+  public async rmdir(dirPath: string, options?: IRecursiveDirectoryOptions): Promise<void> {
     this.calls.push({ method: "rmdir", args: [dirPath, options] });
   }
 
@@ -66,7 +63,7 @@ class SpyFileSystem implements IFileSystem {
     return result;
   }
 
-  public async symlink(target: string, linkPath: string, type?: "file" | "dir" | "junction"): Promise<void> {
+  public async symlink(target: string, linkPath: string, type?: SymlinkKind): Promise<void> {
     this.calls.push({ method: "symlink", args: [target, linkPath, type] });
   }
 
@@ -76,7 +73,7 @@ class SpyFileSystem implements IFileSystem {
     return result;
   }
 
-  public async chmod(filePath: string, mode: number | string): Promise<void> {
+  public async chmod(filePath: string, mode: FileMode): Promise<void> {
     this.calls.push({ method: "chmod", args: [filePath, mode] });
   }
 

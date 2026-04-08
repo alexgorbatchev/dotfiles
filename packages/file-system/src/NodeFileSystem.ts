@@ -1,6 +1,7 @@
 import type { Stats } from "node:fs";
 import { constants as fsConstants, promises as fsPromises } from "node:fs";
 import type { IFileSystem } from "./IFileSystem";
+import type { FileMode, FileWriteContent, IRecursiveDirectoryOptions, IRemoveOptions, SymlinkKind } from "./types";
 
 type FsPromises = typeof fsPromises;
 
@@ -63,11 +64,7 @@ export class NodeFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.writeFile
    */
-  public async writeFile(
-    path: string,
-    content: string | NodeJS.ArrayBufferView,
-    encoding: BufferEncoding = "utf8",
-  ): Promise<void> {
+  public async writeFile(path: string, content: FileWriteContent, encoding: BufferEncoding = "utf8"): Promise<void> {
     return this.fs.writeFile(path, content, { encoding });
   }
 
@@ -86,7 +83,7 @@ export class NodeFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.mkdir
    */
-  public async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
+  public async mkdir(path: string, options?: IRecursiveDirectoryOptions): Promise<void> {
     await this.fs.mkdir(path, options);
   }
 
@@ -100,14 +97,14 @@ export class NodeFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.rm
    */
-  public async rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
+  public async rm(path: string, options?: IRemoveOptions): Promise<void> {
     return this.fs.rm(path, options);
   }
 
   /**
    * @inheritdoc IFileSystem.rmdir
    */
-  public async rmdir(path: string, options?: { recursive?: boolean }): Promise<void> {
+  public async rmdir(path: string, options?: IRecursiveDirectoryOptions): Promise<void> {
     if (options?.recursive) {
       return this.fs.rm(path, { recursive: true, force: true });
     }
@@ -131,7 +128,7 @@ export class NodeFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.symlink
    */
-  public async symlink(target: string, path: string, type?: "file" | "dir" | "junction"): Promise<void> {
+  public async symlink(target: string, path: string, type?: SymlinkKind): Promise<void> {
     return this.fs.symlink(target, path, type);
   }
 
@@ -145,7 +142,7 @@ export class NodeFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.chmod
    */
-  public async chmod(path: string, mode: number | string): Promise<void> {
+  public async chmod(path: string, mode: FileMode): Promise<void> {
     return this.fs.chmod(path, mode);
   }
 

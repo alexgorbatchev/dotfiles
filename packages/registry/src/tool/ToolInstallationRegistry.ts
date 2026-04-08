@@ -26,6 +26,12 @@ interface IToolUsageRow {
   last_used_at: number;
 }
 
+type ToolInstallationUpdateValue = string | number | null;
+
+interface IToolInstallationColumn {
+  name: string;
+}
+
 /**
  * SQLite-based implementation of the tool installation registry.
  *
@@ -96,7 +102,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
   private migrateAddInstallMethod(): void {
     try {
       // Check if column exists by querying table info
-      const columns = this.db.prepare("PRAGMA table_info(tool_installations)").all() as Array<{ name: string }>;
+      const columns = this.db.prepare("PRAGMA table_info(tool_installations)").all() as IToolInstallationColumn[];
       const hasInstallMethod = columns.some((col) => col.name === "install_method");
       if (!hasInstallMethod) {
         this.db.run("ALTER TABLE tool_installations ADD COLUMN install_method TEXT");
@@ -185,7 +191,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
   async updateToolInstallation(toolName: string, updates: Partial<IToolInstallationRecord>): Promise<void> {
     const logger = this.logger.getSubLogger({ name: "updateToolInstallation" });
     const fields: string[] = [];
-    const values: (string | number | null)[] = [];
+    const values: ToolInstallationUpdateValue[] = [];
 
     if (updates.version !== undefined) {
       fields.push("version = ?");

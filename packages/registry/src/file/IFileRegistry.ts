@@ -1,3 +1,5 @@
+import type { IFileRegistryStats, IFileRegistryValidationResult } from "./types";
+
 /**
  * Represents a filesystem operation recorded in the registry.
  */
@@ -116,18 +118,12 @@ export interface IFileRegistry {
   /**
    * Validates registry integrity and repairs any issues found.
    */
-  validate(): Promise<{ valid: boolean; issues: string[]; repaired: string[] }>;
+  validate(): Promise<IFileRegistryValidationResult>;
 
   /**
    * Gets registry statistics.
    */
-  getStats(): Promise<{
-    totalOperations: number;
-    totalFiles: number;
-    totalTools: number;
-    oldestOperation: number;
-    newestOperation: number;
-  }>;
+  getStats(): Promise<IFileRegistryStats>;
 
   /**
    * Closes the registry and releases any resources.

@@ -1,5 +1,7 @@
 // re-export these to make build work
 import type { Stats as NodeStats } from "node:fs";
+import type { FileMode, FileWriteContent, IRecursiveDirectoryOptions, IRemoveOptions, SymlinkKind } from "./types";
+
 export type { NodeStats };
 export type Stats = NodeStats;
 
@@ -26,7 +28,7 @@ export interface IFileSystem {
    * @param encoding - The encoding to use.
    * @returns A promise that resolves when the file has been written.
    */
-  writeFile(path: string, content: string | NodeJS.ArrayBufferView, encoding?: BufferEncoding): Promise<void>;
+  writeFile(path: string, content: FileWriteContent, encoding?: BufferEncoding): Promise<void>;
 
   /**
    * Checks if a file or directory exists.
@@ -41,7 +43,7 @@ export interface IFileSystem {
    * @param options - Options for creating the directory.
    * @returns A promise that resolves when the directory has been created.
    */
-  mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
+  mkdir(path: string, options?: IRecursiveDirectoryOptions): Promise<void>;
 
   /**
    * Reads the contents of a directory.
@@ -56,7 +58,7 @@ export interface IFileSystem {
    * @param options - Options for removal.
    * @returns A promise that resolves when the file or directory has been removed.
    */
-  rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void>;
+  rm(path: string, options?: IRemoveOptions): Promise<void>;
 
   /**
    * Asynchronously removes a directory.
@@ -65,7 +67,7 @@ export interface IFileSystem {
    * @returns A promise that resolves when the directory has been removed.
    * @deprecated Use {@link IFileSystem.rm} with `recursive: true` instead.
    */
-  rmdir(path: string, options?: { recursive?: boolean }): Promise<void>;
+  rmdir(path: string, options?: IRecursiveDirectoryOptions): Promise<void>;
 
   /**
    * Gets file or directory stats.
@@ -88,7 +90,7 @@ export interface IFileSystem {
    * @param type - The type of symbolic link ('file', 'dir', or 'junction').
    * @returns A promise that resolves when the symbolic link has been created.
    */
-  symlink(target: string, path: string, type?: "file" | "dir" | "junction"): Promise<void>;
+  symlink(target: string, path: string, type?: SymlinkKind): Promise<void>;
 
   /**
    * Reads the value of a symbolic link.
@@ -103,7 +105,7 @@ export interface IFileSystem {
    * @param mode - The permissions mode (e.g., `0o755`).
    * @returns A promise that resolves when the permissions have been changed.
    */
-  chmod(path: string, mode: number | string): Promise<void>;
+  chmod(path: string, mode: FileMode): Promise<void>;
 
   /**
    * Asynchronously copies a file.
