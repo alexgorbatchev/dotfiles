@@ -1,6 +1,6 @@
 import type { ProjectConfig } from "@dotfiles/core";
 
-export const MOCK_PROJECT_CONFIG_OBJ: ProjectConfig = {
+export const fixture_projectConfigObj: ProjectConfig = {
   configFilePath: "",
   configFileDir: "",
 
