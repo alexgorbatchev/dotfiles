@@ -38,6 +38,15 @@ export interface IDashboardServerOptions {
 }
 
 /**
+ * Request for named tool routes.
+ */
+export interface INamedToolRequest extends Request {
+  params: {
+    name: string;
+  };
+}
+
+/**
  * Dashboard server interface.
  */
 export interface IDashboardServer {

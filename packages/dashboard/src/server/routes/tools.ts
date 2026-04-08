@@ -1,3 +1,4 @@
+import type { ToolConfig } from "@dotfiles/core";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
 import type { IFileState } from "@dotfiles/registry/file";
@@ -32,7 +33,7 @@ async function enrichFileSizesFromDisk(files: IFileState[], fs: IFileSystem): Pr
   );
 }
 
-function getConfiguredBinaryNames(config: { binaries?: Array<string | { name: string }> }): string[] {
+function getConfiguredBinaryNames(config: ToolConfig): string[] {
   if (!config.binaries || config.binaries.length === 0) {
     return [];
   }

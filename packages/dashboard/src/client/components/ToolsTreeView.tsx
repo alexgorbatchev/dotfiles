@@ -2,33 +2,33 @@ import type { ComponentChildren } from "preact";
 import { type JSX } from "preact";
 import { FileCode, FolderOpen, FolderTree } from "../icons";
 
-import type { IFileTreeEntry, IToolConfigsTree, IToolDetail } from "../../shared/types";
+import type { IFileTreeEntry, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../shared/types";
 import { useFetch } from "../hooks/useFetch";
 import { formatBytes } from "../utils/format";
 import { InstallMethodBadge } from "./InstallMethodBadge";
 import { TitledCard } from "./ui/TitledCard";
 import { Tree, type TreeItemData } from "./ui/Tree";
 
-interface ToolsTreeViewProps {
+type ToolsTreeViewProps = {
   tools: IToolDetail[];
-}
+};
 
-interface ToolTreeData {
+type ToolTreeData = {
   toolName?: string;
   isFile?: boolean;
   installMethod?: string;
   ghCli?: boolean;
   fileCount?: number;
-  status?: "installed" | "not-installed" | "error";
+  status?: ToolRuntimeStatus;
   binaryDiskSize?: number;
-}
+};
 
 /**
  * Convert API file tree entries to Tree component items.
  */
 function fileTreeToTreeItems(
   entries: IFileTreeEntry[],
-  toolStatusMap: Map<string, "installed" | "not-installed" | "error">,
+  toolStatusMap: Map<string, ToolRuntimeStatus>,
   toolMethodMap: Map<string, string>,
   toolGhCliMap: Map<string, boolean>,
   toolFileCountMap: Map<string, number>,
@@ -80,7 +80,7 @@ function fileTreeToTreeItems(
 /**
  * Get the status dot color based on tool status.
  */
-function getStatusDotColor(status?: "installed" | "not-installed" | "error"): string {
+function getStatusDotColor(status?: ToolRuntimeStatus): string {
   switch (status) {
     case "installed":
       return "bg-green-500";
@@ -127,7 +127,7 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
   const { data: treeData, loading } = useFetch<IToolConfigsTree>("/tool-configs-tree");
 
   // Build maps from tools
-  const toolStatusMap = new Map<string, "installed" | "not-installed" | "error">();
+  const toolStatusMap = new Map<string, ToolRuntimeStatus>();
   const toolMethodMap = new Map<string, string>();
   const toolGhCliMap = new Map<string, boolean>();
   const toolFileCountMap = new Map<string, number>();

@@ -1,17 +1,18 @@
 import { type JSX } from "preact";
 import { ShikiHighlighter } from "react-shiki";
+import type { IToolSourcePayload } from "../../shared/types";
 import { Code } from "../icons";
 
 import { useFetch } from "../hooks/useFetch";
 import { ExternalLinkButton } from "./ui/ExternalLinkButton";
 import { TitledCard } from "./ui/TitledCard";
 
-interface ToolSourceCardProps {
+type ToolSourceCardProps = {
   toolName: string;
-}
+};
 
 export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
-  const { data, loading, error } = useFetch<{ content: string; filePath: string }>(
+  const { data, loading, error } = useFetch<IToolSourcePayload>(
     `/tools/${encodeURIComponent(toolName)}/source`,
     [toolName],
   );

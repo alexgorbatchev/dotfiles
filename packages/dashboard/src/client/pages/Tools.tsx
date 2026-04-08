@@ -68,19 +68,15 @@ function buildUsageItems(tools: IToolDetail[]): IUsageListItem[] {
     .filter((tool) => tool.count > 0);
 }
 
-function UsageListCard({
-  title,
-  icon,
-  items,
-  secondary,
-  emptyText,
-}: {
+type UsageListCardProps = {
   title: string;
   icon: JSX.Element;
   items: IUsageListItem[];
   secondary: (item: IUsageListItem) => string;
   emptyText: string;
-}): JSX.Element {
+};
+
+function UsageListCard({ title, icon, items, secondary, emptyText }: UsageListCardProps): JSX.Element {
   return (
     <TitledCard title={title} icon={icon} class="h-full" contentClass="flex-1 overflow-auto">
       {items.length === 0 ? (

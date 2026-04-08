@@ -1,7 +1,7 @@
 import { Architecture, hasArchitecture, hasPlatform, type ISystemInfo, Platform } from "@dotfiles/core";
 import { NotFoundError } from "@dotfiles/downloader";
 import type { TsLogger } from "@dotfiles/logger";
-import type { IApiResponse } from "../../shared/types";
+import type { IApiResponse, IToolReadmePayload } from "../../shared/types";
 import { messages } from "../log-messages";
 import type { IDashboardServices } from "../types";
 import { getToolConfigs } from "./helpers";
@@ -77,7 +77,7 @@ export async function getToolReadme(
   logger: TsLogger,
   services: IDashboardServices,
   toolName: string,
-): Promise<IApiResponse<{ content: string }>> {
+): Promise<IApiResponse<IToolReadmePayload>> {
   try {
     const toolConfigs = await getToolConfigs(logger, services);
     const config = toolConfigs[toolName];

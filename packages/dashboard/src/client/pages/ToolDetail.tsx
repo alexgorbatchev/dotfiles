@@ -55,7 +55,11 @@ function getSourceDisplay(config: ISerializableToolConfig): JSX.Element | null {
   );
 }
 
-function PlatformConfigEntry({ entry }: { entry: ISerializablePlatformConfigEntry }): JSX.Element {
+type PlatformConfigEntryProps = {
+  entry: ISerializablePlatformConfigEntry;
+};
+
+function PlatformConfigEntry({ entry }: PlatformConfigEntryProps): JSX.Element {
   const platformLabel = entry.platforms.join(", ");
   const archLabel = entry.architectures ? ` (${entry.architectures.join(", ")})` : "";
 
@@ -128,9 +132,11 @@ function PlatformConfigEntry({ entry }: { entry: ISerializablePlatformConfigEntr
   );
 }
 
-interface ToolDetailProps {
-  params: { name: string };
-}
+type ToolDetailProps = {
+  params: {
+    name: string;
+  };
+};
 
 export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   const toolName = decodeURIComponent(params.name);

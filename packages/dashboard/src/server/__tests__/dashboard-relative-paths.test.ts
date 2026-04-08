@@ -15,6 +15,8 @@ import { createDashboardServer } from "../dashboard-server";
 import { clearToolConfigsCache } from "../routes";
 import type { IDashboardServer, IDashboardServices } from "../types";
 
+type CleanupFn = () => Promise<void>;
+
 describe("Dashboard server relative path resolution", () => {
   let logger: TestLogger;
   let registryDatabase: RegistryDatabase;
@@ -22,7 +24,7 @@ describe("Dashboard server relative path resolution", () => {
   let toolInstallationRegistry: ToolInstallationRegistry;
   let server: IDashboardServer;
   let baseUrl: string;
-  let cleanupFn: (() => Promise<void>) | undefined;
+  let cleanupFn: CleanupFn | undefined;
   let originalCwd: string;
 
   beforeEach(async () => {

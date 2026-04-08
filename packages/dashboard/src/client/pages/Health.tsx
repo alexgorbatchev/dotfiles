@@ -19,7 +19,11 @@ function getStatusIcon(status: string): JSX.Element {
   }
 }
 
-function HealthCheckCard({ check }: { check: IHealthCheckResult }): JSX.Element {
+type HealthCheckCardProps = {
+  check: IHealthCheckResult;
+};
+
+function HealthCheckCard({ check }: HealthCheckCardProps): JSX.Element {
   return (
     <TitledCard title={check.name} icon={getStatusIcon(check.status)}>
       {check.message && <p class="text-sm font-bold text-foreground">{check.message}</p>}

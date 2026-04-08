@@ -5,6 +5,10 @@ import type { MockedInterface } from "@dotfiles/testing-helpers";
 import { type IVersionChecker, VersionComparisonStatus } from "@dotfiles/version-checker";
 import { mock } from "bun:test";
 
+type MockToolConfigInput = Partial<ToolConfig> & {
+  name: string;
+};
+
 /**
  * Creates a mock ProjectConfig with standard test paths.
  * Uses a simple object mock since dashboard tests only need path configuration.
@@ -61,7 +65,7 @@ export function createMockConfigService(toolConfigs: Record<string, ToolConfig>)
 /**
  * Creates a minimal mock ToolConfig for testing.
  */
-export function createMockToolConfig(overrides: Partial<ToolConfig> & { name: string }): ToolConfig {
+export function createMockToolConfig(overrides: MockToolConfigInput): ToolConfig {
   const { name, version, installationMethod, installParams, binaries, ...rest } = overrides;
   return {
     name,

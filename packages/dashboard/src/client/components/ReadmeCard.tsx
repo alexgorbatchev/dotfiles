@@ -5,16 +5,17 @@ import { type JSX } from "preact";
 import Markdown, { type Components } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+import type { IToolReadmePayload } from "../../shared/types";
 import { BookOpen, ExternalLink } from "../icons";
 
 import { useFetch } from "../hooks/useFetch";
 import { ExternalLinkButton } from "./ui/ExternalLinkButton";
 import { TitledCard } from "./ui/TitledCard";
 
-interface ReadmeCardProps {
+type ReadmeCardProps = {
   toolName: string;
   repo: string;
-}
+};
 
 function resolveGitHubUrl(url: string | undefined, repo: string, forImage: boolean = false): string | undefined {
   if (!url) return url;
@@ -57,7 +58,7 @@ function createMarkdownComponents(repo: string): Components {
 }
 
 export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
-  const { data, loading, error } = useFetch<{ content: string }>(`/tools/${encodeURIComponent(toolName)}/readme`, [
+  const { data, loading, error } = useFetch<IToolReadmePayload>(`/tools/${encodeURIComponent(toolName)}/readme`, [
     toolName,
   ]);
 

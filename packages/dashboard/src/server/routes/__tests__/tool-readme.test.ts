@@ -38,7 +38,7 @@ describe("getToolReadme", () => {
     expect(result.success).toBe(true);
     expect(result.data?.content).toBe("# Atuin README");
     expect(download).toHaveBeenCalledTimes(1);
-    const firstDownloadCall = download.mock.calls[0] as [unknown, string] | undefined;
+    const firstDownloadCall = download.mock.calls[0];
     expect(firstDownloadCall?.[1]).toBe("https://raw.githubusercontent.com/atuinsh/atuin/latest/README.md");
   });
 
@@ -73,7 +73,7 @@ describe("getToolReadme", () => {
 
     expect(result.success).toBe(true);
     expect(result.data?.content).toBe("# Atuin README");
-    const firstDownloadCall = download.mock.calls[0] as [unknown, string] | undefined;
+    const firstDownloadCall = download.mock.calls[0];
     expect(firstDownloadCall?.[1]).toBe("https://raw.githubusercontent.com/macos/repo/latest/README.md");
   });
 
@@ -110,7 +110,7 @@ describe("getToolReadme", () => {
 
     expect(result.success).toBe(true);
     expect(result.data?.content).toBe("# Atuin README");
-    const firstDownloadCall = download.mock.calls[0] as [unknown, string] | undefined;
+    const firstDownloadCall = download.mock.calls[0];
     expect(firstDownloadCall?.[1]).toBe("https://raw.githubusercontent.com/macos-arm64/repo/latest/README.md");
   });
 

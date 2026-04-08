@@ -33,7 +33,7 @@ describe("getRecentTools", () => {
     expect(result.success).toBe(true);
     expect(result.data?.tools).toHaveLength(2);
     // Check that tool names are extracted correctly
-    const names = result.data?.tools.map((t: { name: string }) => t.name).toSorted();
+    const names = result.data?.tools.map((tool) => tool.name).toSorted();
     expect(names).toEqual(["bat", "fzf"]);
   });
 
@@ -84,7 +84,7 @@ describe("getRecentTools", () => {
 
     expect(result.success).toBe(true);
     expect(result.data?.tools).toHaveLength(3);
-    const names = result.data?.tools.map((t: { name: string }) => t.name).toSorted();
+    const names = result.data?.tools.map((tool) => tool.name).toSorted();
     expect(names).toEqual(["fzf", "node", "ripgrep"]);
   });
 

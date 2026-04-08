@@ -2,6 +2,14 @@ import { FetchMockHelper } from "@dotfiles/testing-helpers";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { fetchApi } from "../../api";
 
+type FetchApiNamePayload = {
+  name: string;
+};
+
+type UseFetchToolsPayload = {
+  tools: FetchApiNamePayload[];
+};
+
 describe("useFetch", () => {
   const fetchMock = new FetchMockHelper();
 
@@ -17,7 +25,7 @@ describe("useFetch", () => {
     it("should call fetch with correct URL prefix", async () => {
       fetchMock.mockJsonResponseOnce({ success: true, data: { name: "test" } });
 
-      const result = await fetchApi<{ name: string }>("/test-endpoint");
+      const result = await fetchApi<FetchApiNamePayload>("/test-endpoint");
 
       expect(result).toEqual({ name: "test" });
     });
@@ -38,7 +46,7 @@ describe("useFetch", () => {
       const expectedData = { tools: [{ name: "fzf" }, { name: "ripgrep" }] };
       fetchMock.mockJsonResponseOnce({ success: true, data: expectedData });
 
-      const result = await fetchApi<{ tools: { name: string }[] }>("/tools");
+      const result = await fetchApi<UseFetchToolsPayload>("/tools");
 
       expect(result).toEqual(expectedData);
     });

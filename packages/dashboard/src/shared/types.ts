@@ -83,10 +83,15 @@ export interface ISerializableToolConfig {
 }
 
 /**
+ * Runtime status for a tool.
+ */
+export type ToolRuntimeStatus = "installed" | "not-installed" | "error";
+
+/**
  * Runtime state from the installation registry.
  */
 export interface IToolRuntimeState {
-  status: "installed" | "not-installed" | "error";
+  status: ToolRuntimeStatus;
   installedVersion: string | null;
   installedAt: string | null;
   installPath: string | null;
@@ -134,7 +139,7 @@ export interface IToolSummary {
   name: string;
   version: string;
   installationMethod: string;
-  status: "installed" | "not-installed" | "error";
+  status: ToolRuntimeStatus;
   installedVersion: string | null;
   hasUpdate: boolean;
   binaries?: ISerializableBinary[];
@@ -505,6 +510,21 @@ export interface IRecentToolFile {
  */
 export interface IRecentTools {
   tools: IRecentToolFile[];
+}
+
+/**
+ * Tool source payload shared by server routes and client components.
+ */
+export interface IToolSourcePayload {
+  content: string;
+  filePath: string;
+}
+
+/**
+ * Tool README payload shared by server routes and client components.
+ */
+export interface IToolReadmePayload {
+  content: string;
 }
 
 /**

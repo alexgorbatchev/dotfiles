@@ -5,10 +5,10 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 setupUITests();
 
-import type { IFileTreeEntry, IToolConfigsTree, IToolDetail } from "../../../shared/types";
+import type { IFileTreeEntry, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../../shared/types";
 import { ToolsTreeView } from "../ToolsTreeView";
 
-function createTool(name: string, status: "installed" | "not-installed" | "error" = "installed"): IToolDetail {
+function createTool(name: string, status: ToolRuntimeStatus = "installed"): IToolDetail {
   return {
     config: {
       name,

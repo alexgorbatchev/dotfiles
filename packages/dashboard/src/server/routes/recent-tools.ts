@@ -5,6 +5,11 @@ import { messages } from "../log-messages";
 import type { IDashboardServices } from "../types";
 import { getGitFirstCommitDate } from "./helpers";
 
+type RecentToolFileStub = {
+  name: string;
+  configFilePath: string;
+};
+
 /**
  * GET /api/recent-tools - Get recently added tool config files
  * Returns the 10 most recently created .tool.ts files.
@@ -19,7 +24,7 @@ export async function getRecentTools(
     const toolConfigsDir = services.projectConfig.paths.toolConfigsDir;
 
     // Collect all .tool.ts files
-    const toolFiles: Array<{ name: string; configFilePath: string }> = [];
+    const toolFiles: RecentToolFileStub[] = [];
 
     async function collectToolFiles(dirPath: string): Promise<void> {
       const itemNames = await services.fs.readdir(dirPath);

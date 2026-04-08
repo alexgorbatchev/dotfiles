@@ -18,6 +18,10 @@ import {
 import type { IDashboardServices } from "../../types";
 import { clearToolConfigsCache, createApiRoutes } from "../index";
 
+type MockToolConfigInput = Partial<ToolConfig> & {
+  name: string;
+};
+
 export interface TestContext {
   logger: TestLogger;
   registryDatabase: RegistryDatabase;
@@ -92,7 +96,7 @@ export async function setupTestContext(): Promise<TestContext> {
   };
 }
 
-export function createMockToolConfigForTests(overrides: Partial<ToolConfig> & { name: string }): ToolConfig {
+export function createMockToolConfigForTests(overrides: MockToolConfigInput): ToolConfig {
   return createMockToolConfig(overrides);
 }
 

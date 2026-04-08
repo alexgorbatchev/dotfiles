@@ -9,7 +9,11 @@ import {
   getSourceInfo,
 } from "../tool-detail-utils";
 
-function createMockToolDetail(overrides: Partial<ISerializableToolConfig> & { name: string }): IToolDetail {
+type ToolDetailStub = Partial<ISerializableToolConfig> & {
+  name: string;
+};
+
+function createMockToolDetail(overrides: ToolDetailStub): IToolDetail {
   return {
     config: {
       name: overrides.name,

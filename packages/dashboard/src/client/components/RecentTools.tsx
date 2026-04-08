@@ -5,7 +5,11 @@ import type { IRecentTools, TimestampSource } from "../../shared/types";
 import { useFetch } from "../hooks/useFetch";
 import { TitledCard } from "./ui/TitledCard";
 
-function TimestampSourceIcon({ source }: { source: TimestampSource }): JSX.Element {
+type TimestampSourceIconProps = {
+  source: TimestampSource;
+};
+
+function TimestampSourceIcon({ source }: TimestampSourceIconProps): JSX.Element {
   if (source === "git") {
     return <GitBranch class="h-3 w-3 text-green-500" title="From git commit date" />;
   }

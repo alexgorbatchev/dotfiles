@@ -4,7 +4,7 @@ import path from "node:path";
 import type { TsLogger } from "@dotfiles/logger";
 import { messages } from "./log-messages";
 import { createApiRoutes } from "./routes";
-import type { IDashboardServer, IDashboardServerOptions, IDashboardServices } from "./types";
+import type { IDashboardServer, IDashboardServerOptions, IDashboardServices, INamedToolRequest } from "./types";
 
 // Bun HTML import - handles bundling automatically
 import clientApp from "../client/dashboard.html";
@@ -29,8 +29,11 @@ const IS_RELOAD = IS_DEV && process.env["DOTFILES_IS_RELOAD"] === "1";
  * Generate explicit routes for all JS files in the directory to ensure
  * they are served with the correct Content-Type.
  */
-function generateJsFileRoutes(dir: string): Record<string, () => Response> {
-  const routes: Record<string, () => Response> = {};
+type DashboardResponseFactory = () => Response;
+type DashboardJsFileRoutes = Record<string, DashboardResponseFactory>;
+
+function generateJsFileRoutes(dir: string): DashboardJsFileRoutes {
+  const routes: DashboardJsFileRoutes = {};
 
   try {
     const files = fs.readdirSync(dir);
@@ -125,25 +128,25 @@ export function createDashboardServer(
             return Response.json(result);
           },
 
-          "/api/tools/:name/history": async (req: Request & { params: { name: string } }) => {
+          "/api/tools/:name/history": async (req: INamedToolRequest) => {
             const toolName = decodeURIComponent(req.params.name);
             const result = await api.getToolHistory(toolName);
             return Response.json(result);
           },
 
-          "/api/tools/:name/readme": async (req: Request & { params: { name: string } }) => {
+          "/api/tools/:name/readme": async (req: INamedToolRequest) => {
             const toolName = decodeURIComponent(req.params.name);
             const result = await api.getToolReadme(toolName);
             return Response.json(result);
           },
 
-          "/api/tools/:name/source": async (req: Request & { params: { name: string } }) => {
+          "/api/tools/:name/source": async (req: INamedToolRequest) => {
             const toolName = decodeURIComponent(req.params.name);
             const result = await api.getToolSource(toolName);
             return Response.json(result);
           },
 
-          "/api/tools/:name/install": async (req: Request & { params: { name: string } }) => {
+          "/api/tools/:name/install": async (req: INamedToolRequest) => {
             if (req.method !== "POST") {
               return Response.json({ success: false, error: "Method not allowed" }, { status: 405 });
             }
@@ -153,7 +156,7 @@ export function createDashboardServer(
             return Response.json(result);
           },
 
-          "/api/tools/:name/check-update": async (req: Request & { params: { name: string } }) => {
+          "/api/tools/:name/check-update": async (req: INamedToolRequest) => {
             if (req.method !== "POST") {
               return Response.json({ success: false, error: "Method not allowed" }, { status: 405 });
             }
@@ -162,7 +165,7 @@ export function createDashboardServer(
             return Response.json(result);
           },
 
-          "/api/tools/:name/update": async (req: Request & { params: { name: string } }) => {
+          "/api/tools/:name/update": async (req: INamedToolRequest) => {
             if (req.method !== "POST") {
               return Response.json({ success: false, error: "Method not allowed" }, { status: 405 });
             }

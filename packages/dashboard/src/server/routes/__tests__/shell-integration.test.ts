@@ -44,7 +44,7 @@ describe("getShellIntegration", () => {
 
     expect(result.success).toBe(true);
     expect(result.data?.completions).toHaveLength(2);
-    expect(result.data?.completions.map((c: { toolName: string }) => c.toolName).toSorted()).toEqual(["bat", "fzf"]);
+    expect(result.data?.completions.map((completion) => completion.toolName).toSorted()).toEqual(["bat", "fzf"]);
   });
 
   test("returns init scripts grouped by tool", async () => {

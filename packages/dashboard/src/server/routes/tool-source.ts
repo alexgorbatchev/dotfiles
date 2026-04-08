@@ -1,5 +1,5 @@
 import type { TsLogger } from "@dotfiles/logger";
-import type { IApiResponse } from "../../shared/types";
+import type { IApiResponse, IToolSourcePayload } from "../../shared/types";
 import { messages } from "../log-messages";
 import type { IDashboardServices } from "../types";
 import { getToolConfigs } from "./helpers";
@@ -12,7 +12,7 @@ export async function getToolSource(
   logger: TsLogger,
   services: IDashboardServices,
   toolName: string,
-): Promise<IApiResponse<{ content: string; filePath: string }>> {
+): Promise<IApiResponse<IToolSourcePayload>> {
   try {
     const toolConfigs = await getToolConfigs(logger, services);
     const config = toolConfigs[toolName];

@@ -2,15 +2,20 @@ import { describe, expect, test } from "bun:test";
 import { buildTreeByTool } from "../buildTreeByTool";
 import type { IFilesList } from "../types";
 
-interface CollectableNode {
+type CollectableNode = {
   name: string;
   type: string;
   fileType?: string;
   children?: CollectableNode[];
-}
+};
 
-function collectNodes(nodes: CollectableNode[]): Array<{ name: string; fileType?: string }> {
-  const collected: Array<{ name: string; fileType?: string }> = [];
+type CollectedNode = {
+  name: string;
+  fileType?: string;
+};
+
+function collectNodes(nodes: CollectableNode[]): CollectedNode[] {
+  const collected: CollectedNode[] = [];
   for (const node of nodes) {
     collected.push({ name: node.name, fileType: node.fileType });
     if (node.children) {
