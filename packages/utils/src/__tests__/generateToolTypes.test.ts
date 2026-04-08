@@ -2,6 +2,10 @@ import type { ToolBinary, ToolConfig } from "@dotfiles/core";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { extractBinaryNames, generateToolTypesContent, generateUnionType } from "../generateToolTypes";
 
+function createMockBinaryConfig(name: string): ToolBinary {
+  return { name, pattern: name };
+}
+
 function createMockToolConfig(name: string, binaries?: ToolBinary[]): ToolConfig {
   const config: ToolConfig = {
     name,
@@ -76,7 +80,7 @@ describe("generateToolTypes", () => {
 
     test("should handle IBinaryConfig objects", () => {
       const toolConfigs: Record<string, ToolConfig> = {
-        tool: createMockToolConfig("tool", [{ name: "binary-name" }]),
+        tool: createMockToolConfig("tool", [createMockBinaryConfig("binary-name")]),
       };
 
       const binaryNames: Set<string> = extractBinaryNames(toolConfigs);
@@ -87,7 +91,7 @@ describe("generateToolTypes", () => {
 
     test("should handle mix of string and IBinaryConfig", () => {
       const toolConfigs: Record<string, ToolConfig> = {
-        tool: createMockToolConfig("tool", ["string-binary", { name: "config-binary" }]),
+        tool: createMockToolConfig("tool", ["string-binary", createMockBinaryConfig("config-binary")]),
       };
 
       const binaryNames: Set<string> = extractBinaryNames(toolConfigs);
@@ -125,14 +129,8 @@ describe("generateToolTypes", () => {
   });
 
   describe("generateToolTypesContent", () => {
-    const originalPackageName: string | undefined = process.env.DOTFILES_BUILT_PACKAGE_NAME;
-
     afterEach(() => {
-      if (originalPackageName === undefined) {
-        delete process.env.DOTFILES_BUILT_PACKAGE_NAME;
-      } else {
-        process.env.DOTFILES_BUILT_PACKAGE_NAME = originalPackageName;
-      }
+      delete process.env.DOTFILES_BUILT_PACKAGE_NAME;
     });
 
     test("uses default @alexgorbatchev/dotfiles when DOTFILES_BUILT_PACKAGE_NAME is not set", () => {

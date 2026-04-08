@@ -36,17 +36,47 @@ interface IOperationFilterResult {
   exitCode: ExitCode;
 }
 
+type FileOperationType = IFileOperation["fileType"];
+
+function isFileOperationType(value: string): value is FileOperationType {
+  switch (value) {
+    case "shim":
+    case "binary":
+    case "symlink":
+    case "copy":
+    case "config":
+    case "completion":
+    case "init":
+    case "hook-generated":
+    case "catalog":
+      return true;
+    default:
+      return false;
+  }
+}
+
 function buildOperationsFilter(options: LogCommandOptions, parentLogger: TsLogger): IOperationFilterResult {
   const logger = parentLogger.getSubLogger({ name: "buildOperationsFilter" });
   const { tool, type, since } = options;
   const filter: IFileOperationFilter = {};
 
   if (tool) {
-    filter["toolName"] = tool;
+    filter.toolName = tool;
   }
 
   if (type) {
-    filter["fileType"] = type;
+    if (!isFileOperationType(type)) {
+      logger.error(
+        messages.configParameterInvalid(
+          "file type for --type",
+          type,
+          "shim, binary, symlink, copy, config, completion, init, hook-generated, or catalog",
+        ),
+      );
+      return { filter: {}, exitCode: ExitCode.ERROR };
+    }
+
+    filter.fileType = type;
   }
 
   if (since) {
@@ -55,7 +85,7 @@ function buildOperationsFilter(options: LogCommandOptions, parentLogger: TsLogge
       logger.error(messages.configParameterInvalid("date format for --since", since, 'ISO format like "2025-08-01"'));
       return { filter: {}, exitCode: ExitCode.ERROR };
     }
-    filter["createdAfter"] = sinceDate.getTime();
+    filter.createdAfter = sinceDate.getTime();
   }
 
   return { filter, exitCode: ExitCode.SUCCESS };
