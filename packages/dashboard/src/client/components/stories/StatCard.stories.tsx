@@ -14,4 +14,5 @@ const Default: Story = {
   play: async () => {},
 };
 
-export { meta as default, Default as StatCard };
+export default meta;
+export { Default as StatCard };

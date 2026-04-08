@@ -2,6 +2,7 @@ declare module "@storybook/preact" {
   import type { JSX } from "preact";
 
   type StoryRender = () => JSX.Element;
+  type StoryPlay = () => Promise<void> | void;
 
   export interface Meta<TComponent = unknown> {
     title: string;
@@ -12,6 +13,7 @@ declare module "@storybook/preact" {
 
   export interface StoryObj<TMeta = unknown> {
     render?: StoryRender;
+    play?: StoryPlay;
     parameters?: Record<string, unknown>;
     args?: Record<string, unknown>;
   }

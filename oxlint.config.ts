@@ -29,6 +29,12 @@ export default createOxlintConfig(() => ({
   },
   overrides: [
     {
+      files: ["**/*.stories.tsx"],
+      rules: {
+        "import/no-default-export": "off",
+      },
+    },
+    {
       files: ["**/*.test.ts", "**/*.test.tsx"],
       rules: {
         "no-unused-expressions": "off",

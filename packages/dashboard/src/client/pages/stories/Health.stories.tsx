@@ -14,4 +14,5 @@ const Default: Story = {
   play: async () => {},
 };
 
-export { meta as default, Default as Health };
+export default meta;
+export { Default as Health };

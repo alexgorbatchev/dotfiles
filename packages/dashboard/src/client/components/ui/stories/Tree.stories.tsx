@@ -23,4 +23,5 @@ const Default: Story = {
   play: async () => {},
 };
 
-export { meta as default, Default as Tree };
+export default meta;
+export { Default as Tree };

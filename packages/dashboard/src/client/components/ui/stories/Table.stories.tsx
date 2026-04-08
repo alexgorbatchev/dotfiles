@@ -29,4 +29,5 @@ const Default: Story = {
   play: async () => {},
 };
 
-export { meta as default, Default as Table };
+export default meta;
+export { Default as Table };
