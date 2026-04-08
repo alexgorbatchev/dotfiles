@@ -320,6 +320,24 @@ function expandTildeInPathsSubtree(config: RecordUnknown, configuredHomeDir: str
   return result;
 }
 
+function resolveRelativePathsInPathsSubtree(config: RecordUnknown, configFileDir: string): RecordUnknown {
+  const pathsValue: unknown = config['paths'];
+  const pathsRecord: RecordUnknown = toRecord(pathsValue);
+
+  const resolvedPaths: RecordUnknown = {};
+  for (const [key, value] of Object.entries(pathsRecord)) {
+    if (typeof value !== 'string') {
+      resolvedPaths[key] = value;
+      continue;
+    }
+
+    resolvedPaths[key] = path.isAbsolute(value) ? value : path.resolve(configFileDir, value);
+  }
+
+  const result: RecordUnknown = { ...config, paths: resolvedPaths };
+  return result;
+}
+
 function assertNoTildeInPaths(config: RecordUnknown): void {
   const pathsValue: unknown = config['paths'];
   const pathsRecord: RecordUnknown = toRecord(pathsValue);
@@ -394,7 +412,8 @@ function processConfig(
 
   assertNoTildeInPaths(tildeExpanded);
 
-  const result = projectConfigSchema.extend(privateProjectConfigFields.shape).safeParse(tildeExpanded);
+  const relativePathsResolved: RecordUnknown = resolveRelativePathsInPathsSubtree(tildeExpanded, configFileDir);
+  const result = projectConfigSchema.extend(privateProjectConfigFields.shape).safeParse(relativePathsResolved);
 
   if (!result.success) {
     const pretty: string = z.prettifyError(result.error);

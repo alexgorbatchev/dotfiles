@@ -144,4 +144,45 @@ describe('loadConfig - TypeScript path substitution', () => {
     expect(result.paths.homeDir).toBe(path.join(expectedGeneratedDir, 'user-home'));
     expect(result.paths.toolConfigsDir).toBe(path.join(expectedConfigDir, 'tools'));
   });
+
+  it('should resolve relative paths against the config file directory', async () => {
+    const testDirs = await createTestDirectories(logger, realFs, {
+      testName: 'loadConfig-relative-paths',
+    });
+    tempDir = testDirs.paths.homeDir;
+    cleanupFn = async () => {
+      assert(tempDir);
+      await realFs.rm(tempDir, { recursive: true, force: true });
+    };
+
+    assert(tempDir);
+
+    const configPath = path.join(tempDir, 'config.ts');
+    const tsContent = `
+      export default {
+        paths: {
+          dotfilesDir: '.',
+          generatedDir: '.generated',
+          homeDir: './user-home',
+          targetDir: './user-bin',
+          toolConfigsDir: './tools',
+          shellScriptsDir: './shell-scripts',
+          binariesDir: './binaries',
+        },
+      };
+    `;
+
+    await realFs.writeFile(configPath, tsContent);
+    const result = await loadConfig(logger, realFs, configPath, mockSystemInfo, {});
+
+    const expectedConfigDir = path.dirname(configPath);
+
+    expect(result.paths.dotfilesDir).toBe(expectedConfigDir);
+    expect(result.paths.generatedDir).toBe(path.join(expectedConfigDir, '.generated'));
+    expect(result.paths.homeDir).toBe(path.join(expectedConfigDir, 'user-home'));
+    expect(result.paths.targetDir).toBe(path.join(expectedConfigDir, 'user-bin'));
+    expect(result.paths.toolConfigsDir).toBe(path.join(expectedConfigDir, 'tools'));
+    expect(result.paths.shellScriptsDir).toBe(path.join(expectedConfigDir, 'shell-scripts'));
+    expect(result.paths.binariesDir).toBe(path.join(expectedConfigDir, 'binaries'));
+  });
 });
