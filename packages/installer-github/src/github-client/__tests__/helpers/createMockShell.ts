@@ -1,6 +1,12 @@
 import type { Shell, ShellCommand, ShellResult } from "@dotfiles/core";
 import { mock } from "bun:test";
 
+type ShellCommandInput = string | TemplateStringsArray;
+type ShellEndpointPattern = string | RegExp;
+type ShellCommandOnFulfilled<TResult1> = ((value: ShellResult) => TResult1 | PromiseLike<TResult1>) | null;
+type ShellCommandOnRejected<TResult2> = ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null;
+type ShellCommandThenResult<TResult1, TResult2> = Promise<TResult1 | TResult2>;
+
 /**
  * Mock response for a shell command.
  */
@@ -18,7 +24,7 @@ export interface IMockShell extends Shell {
   /** Configure response for next call */
   mockNextResponse: (response: IMockShellResponse) => void;
   /** Configure response for specific endpoint pattern */
-  mockResponseForEndpoint: (endpointPattern: string | RegExp, response: IMockShellResponse) => void;
+  mockResponseForEndpoint: (endpointPattern: ShellEndpointPattern, response: IMockShellResponse) => void;
   /** Clear all mocked responses */
   clearMocks: () => void;
   /** Get all commands that were executed */
@@ -48,7 +54,7 @@ export interface IMockShell extends Shell {
  * ```
  */
 export function createMockShell(): IMockShell {
-  const endpointResponses = new Map<string | RegExp, IMockShellResponse>();
+  const endpointResponses = new Map<ShellEndpointPattern, IMockShellResponse>();
   let nextResponse: IMockShellResponse | null = null;
   const executedCommands: string[] = [];
 
@@ -105,9 +111,9 @@ export function createMockShell(): IMockShell {
       },
       // oxlint-disable-next-line unicorn/no-thenable
       then: <TResult1, TResult2>(
-        onfulfilled?: ((value: ShellResult) => TResult1 | PromiseLike<TResult1>) | null,
-        onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
-      ): Promise<TResult1 | TResult2> => {
+        onfulfilled?: ShellCommandOnFulfilled<TResult1>,
+        onrejected?: ShellCommandOnRejected<TResult2>,
+      ): ShellCommandThenResult<TResult1, TResult2> => {
         const response = findResponse(command);
         const result: ShellResult = {
           code: response.code,
@@ -121,7 +127,7 @@ export function createMockShell(): IMockShell {
     return shellCommand;
   }
 
-  const shellFn = mock((commandOrStrings: string | TemplateStringsArray, ...values: unknown[]): ShellCommand => {
+  const shellFn = mock((commandOrStrings: ShellCommandInput, ...values: unknown[]): ShellCommand => {
     let command: string;
     if (typeof commandOrStrings === "string") {
       command = commandOrStrings;
@@ -138,7 +144,7 @@ export function createMockShell(): IMockShell {
     nextResponse = response;
   };
 
-  shellFn.mockResponseForEndpoint = (pattern: string | RegExp, response: IMockShellResponse) => {
+  shellFn.mockResponseForEndpoint = (pattern: ShellEndpointPattern, response: IMockShellResponse) => {
     endpointResponses.set(pattern, response);
   };
 

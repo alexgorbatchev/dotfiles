@@ -9,12 +9,17 @@ import { installFromCurlScript } from "../installFromCurlScript";
 import type { CurlScriptToolConfig } from "../schemas";
 import type { ICurlScriptArgsContext } from "../types";
 
-function createMockShell(): {
+interface ICurlScriptMockShell {
   shell: Shell;
   mockFn: ReturnType<typeof mock>;
   mockEnv: ReturnType<typeof mock>;
   mockResult: ReturnType<typeof mock>;
-} {
+}
+
+type ShellTemplateInvocation = [TemplateStringsArray, string, string[]];
+type EnvInvocation = [Record<string, string>];
+
+function createMockShell(): ICurlScriptMockShell {
   const mockResult = mock(() => Promise.resolve({ stdout: "", stderr: "", code: 0 }));
   const mockEnv = mock(() => ({
     quiet: mockResult,
@@ -98,7 +103,7 @@ describe("installFromCurlScript", () => {
     // The first call to $ should be with template strings and values
     // $`bash ${scriptPath} ${args}`
     // arguments: [strings, scriptPath, args]
-    const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
+    const calls = mockFn.mock.calls as unknown as ShellTemplateInvocation[];
     expect(calls.length).toBe(1);
     const call = calls[0];
     assert(call);
@@ -138,7 +143,7 @@ describe("installFromCurlScript", () => {
     );
 
     expect(mockFn).toHaveBeenCalled();
-    const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
+    const calls = mockFn.mock.calls as unknown as ShellTemplateInvocation[];
     expect(calls.length).toBe(1);
     const call = calls[0];
     assert(call);
@@ -179,7 +184,7 @@ describe("installFromCurlScript", () => {
     );
 
     expect(mockFn).toHaveBeenCalled();
-    const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
+    const calls = mockFn.mock.calls as unknown as ShellTemplateInvocation[];
     expect(calls.length).toBe(1);
     const call = calls[0];
     assert(call);
@@ -224,7 +229,7 @@ describe("installFromCurlScript", () => {
     );
 
     expect(mockFn).toHaveBeenCalled();
-    const calls = mockFn.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
+    const calls = mockFn.mock.calls as unknown as ShellTemplateInvocation[];
     expect(calls.length).toBe(1);
     const call = calls[0];
     assert(call);
@@ -265,7 +270,7 @@ describe("installFromCurlScript", () => {
     );
 
     expect(mockEnv).toHaveBeenCalled();
-    const envCalls = mockEnv.mock.calls as unknown as [Record<string, string>][];
+    const envCalls = mockEnv.mock.calls as unknown as EnvInvocation[];
     expect(envCalls.length).toBe(1);
     const [envArg] = envCalls[0] ?? [];
     expect(envArg).toMatchObject({ MY_VAR: "my-value", ANOTHER_VAR: "another-value" });
@@ -299,7 +304,7 @@ describe("installFromCurlScript", () => {
     );
 
     expect(mockEnv).toHaveBeenCalled();
-    const envCalls = mockEnv.mock.calls as unknown as [Record<string, string>][];
+    const envCalls = mockEnv.mock.calls as unknown as EnvInvocation[];
     expect(envCalls.length).toBe(1);
     const [envArg] = envCalls[0] ?? [];
     expect(envArg).toMatchObject({ INSTALL_DIR: context.stagingDir });
@@ -336,7 +341,7 @@ describe("installFromCurlScript", () => {
     );
 
     expect(mockEnv).toHaveBeenCalled();
-    const envCalls = mockEnv.mock.calls as unknown as [Record<string, string>][];
+    const envCalls = mockEnv.mock.calls as unknown as EnvInvocation[];
     expect(envCalls.length).toBe(1);
     const [envArg] = envCalls[0] ?? [];
     expect(envArg).toMatchObject({ FLYCTL_INSTALL: context.stagingDir });

@@ -17,6 +17,7 @@ const BrewInfoSchema = z.object({
 });
 
 type BrewInfo = z.infer<typeof BrewInfoSchema>;
+type BrewTapInput = string | string[] | undefined;
 
 /**
  * Installs a tool using Homebrew.
@@ -175,7 +176,7 @@ async function getBrewPrefix(formula: string, logger: TsLogger, shell: Shell): P
 async function executeBrewInstall(
   formula: string,
   isCask: boolean,
-  tap: string | string[] | undefined,
+  tap: BrewTapInput,
   force: boolean | undefined,
   logger: TsLogger,
   shell: Shell,

@@ -17,6 +17,7 @@ import type { IGiteaRelease } from "./giteaApiTypes";
 import { mapGiteaAsset } from "./giteaApiTypes";
 import type { IGiteaApiClient } from "./IGiteaApiClient";
 import { messages } from "./log-messages";
+import type { IGiteaApiClientOptions, IGiteaReleaseQueryOptions } from "./types";
 
 /**
  * Maps a raw Gitea release response to the shared IGitHubRelease format.
@@ -61,7 +62,7 @@ export class GiteaApiClient implements IGiteaApiClient {
     instanceUrl: string,
     downloader: IDownloader,
     cache?: ICache,
-    options?: { token?: string; cacheEnabled?: boolean; cacheTtlMs?: number },
+    options?: IGiteaApiClientOptions,
   ) {
     this.logger = parentLogger.getSubLogger({ name: "GiteaApiClient" });
     // Normalize the instance URL: strip trailing slash, add /api/v1
@@ -269,11 +270,7 @@ export class GiteaApiClient implements IGiteaApiClient {
     }
   }
 
-  async getAllReleases(
-    owner: string,
-    repo: string,
-    options?: { limit?: number; includePrerelease?: boolean; maxResults?: number },
-  ): Promise<IGitHubRelease[]> {
+  async getAllReleases(owner: string, repo: string, options?: IGiteaReleaseQueryOptions): Promise<IGitHubRelease[]> {
     const logger = this.logger.getSubLogger({ name: "getAllReleases" });
     logger.debug(messages.releases.fetchingAll(owner, repo));
     const perPage = options?.limit || 30;

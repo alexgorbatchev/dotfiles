@@ -35,6 +35,12 @@ interface ICargoCacheOptions {
   kind: CargoCacheKind;
 }
 
+interface IResolvedCargoCacheOptions {
+  useCache: boolean;
+  cacheKey?: string;
+  cacheTtl: number;
+}
+
 /**
  * Zod schema for validating Cargo.toml package section
  */
@@ -121,14 +127,7 @@ export class CargoClient implements ICargoClient {
     return data;
   }
 
-  private resolveCacheOptions(
-    url: string,
-    cacheOptions?: ICargoCacheOptions,
-  ): {
-    useCache: boolean;
-    cacheKey?: string;
-    cacheTtl: number;
-  } {
+  private resolveCacheOptions(url: string, cacheOptions?: ICargoCacheOptions): IResolvedCargoCacheOptions {
     if (!cacheOptions) {
       return { useCache: false, cacheTtl: 0 };
     }

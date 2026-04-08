@@ -16,6 +16,11 @@ import {
   type IMockShell,
 } from "./helpers/createMockShell";
 
+interface IGhCliCacheMock extends ICache {
+  get: ReturnType<typeof mock<ICache["get"]>>;
+  set: ReturnType<typeof mock<ICache["set"]>>;
+}
+
 async function createTestProjectConfig(overrides: PartialProjectConfig = {}) {
   const memFs = await createMemFileSystem();
   const logger = new TestLogger();
@@ -45,10 +50,7 @@ async function createTestProjectConfig(overrides: PartialProjectConfig = {}) {
   });
 }
 
-function createMockCache(): ICache & {
-  get: ReturnType<typeof mock<ICache["get"]>>;
-  set: ReturnType<typeof mock<ICache["set"]>>;
-} {
+function createMockCache(): IGhCliCacheMock {
   return {
     get: mock(async () => null),
     set: mock(async () => {}),

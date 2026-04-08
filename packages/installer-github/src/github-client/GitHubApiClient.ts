@@ -17,6 +17,7 @@ import semver from "semver";
 import { GitHubApiClientError } from "./GitHubApiClientError";
 import type { IGitHubApiClient } from "./IGitHubApiClient";
 import { messages } from "./log-messages";
+import type { IGitHubRateLimitResponse, IGitHubReleaseQueryOptions, IReleaseSelectionResult } from "./types";
 
 /**
  * Implements the IGitHubApiClient interface for interacting with the GitHub API.
@@ -311,11 +312,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     }
   }
 
-  async getAllReleases(
-    owner: string,
-    repo: string,
-    options?: { perPage?: number; includePrerelease?: boolean; limit?: number },
-  ): Promise<IGitHubRelease[]> {
+  async getAllReleases(owner: string, repo: string, options?: IGitHubReleaseQueryOptions): Promise<IGitHubRelease[]> {
     const logger = this.logger.getSubLogger({ name: "getAllReleases" });
     logger.debug(messages.releases.fetchingAll(owner, repo), options);
     const perPage = options?.perPage || 30; // Default to 30, max 100
@@ -450,7 +447,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     constraint: string,
     currentBest: IGitHubRelease | null,
     currentBestVersion: string | null,
-  ): { release: IGitHubRelease | null; version: string | null } {
+  ): IReleaseSelectionResult {
     const logger = this.logger.getSubLogger({ name: "findBestReleaseFromPage" });
     let bestRelease = currentBest;
     let bestVersion = currentBestVersion;
@@ -495,20 +492,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     const logger = this.logger.getSubLogger({ name: "getRateLimit" });
     logger.debug(messages.rateLimit.fetching());
     // The actual rate limit data is nested under "resources"
-    type RateLimitResponse = {
-      resources: {
-        core: IGitHubRateLimit;
-        search: IGitHubRateLimit;
-        graphql: IGitHubRateLimit;
-        integration_manifest: IGitHubRateLimit;
-        source_import: IGitHubRateLimit;
-        code_scanning_upload: IGitHubRateLimit;
-        actions_runner_registration: IGitHubRateLimit;
-        scim: IGitHubRateLimit;
-      };
-      rate: IGitHubRateLimit; // This is the primary one usually referred to
-    };
-    const response = await this.request<RateLimitResponse>("/rate_limit");
+    const response = await this.request<IGitHubRateLimitResponse>("/rate_limit");
     return response.resources.core; // Or response.rate, depending on which one is more relevant
   }
 

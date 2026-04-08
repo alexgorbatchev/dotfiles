@@ -8,6 +8,39 @@ import { mock } from "bun:test";
 import path from "node:path";
 import { GitHubApiClient } from "../../GitHubApiClient";
 
+interface IMockDownloader extends IDownloader {
+  download: ReturnType<typeof mock<IDownloader["download"]>>;
+}
+
+interface IMockCache extends ICache {
+  get: ReturnType<typeof mock<ICache["get"]>>;
+  set: ReturnType<typeof mock<ICache["set"]>>;
+  setDownload: ReturnType<typeof mock<ICache["setDownload"]>>;
+  has: ReturnType<typeof mock<ICache["has"]>>;
+  delete: ReturnType<typeof mock<ICache["delete"]>>;
+  clearExpired: ReturnType<typeof mock<ICache["clearExpired"]>>;
+  clear: ReturnType<typeof mock<ICache["clear"]>>;
+}
+
+interface IGitHubConfigOverrideArgs {
+  githubToken?: string;
+  githubHost?: string;
+  githubClientUserAgent?: string;
+  githubApiCacheEnabled?: boolean;
+  githubApiCacheTtl?: number;
+}
+
+interface IBasicGitHubConfigArgs {
+  githubToken?: string;
+  githubHost?: string;
+  githubClientUserAgent?: string;
+}
+
+interface IGitHubCacheConfigArgs {
+  githubApiCacheEnabled?: boolean;
+  githubApiCacheTtl?: number;
+}
+
 export const createMockProjectConfigForGitHubApi = async (
   overrides: PartialProjectConfig = {},
 ): Promise<ProjectConfig> => {
@@ -33,9 +66,7 @@ export const createMockProjectConfigForGitHubApi = async (
   });
 };
 
-export const createMockDownloader = (): IDownloader & {
-  download: ReturnType<typeof mock<IDownloader["download"]>>;
-} => {
+export const createMockDownloader = (): IMockDownloader => {
   const mockDownloadFn = mock<IDownloader["download"]>(async () => Buffer.from(""));
   const mockRegisterStrategy = mock<IDownloader["registerStrategy"]>(() => {});
   const mockDownloadToFile = mock<IDownloader["downloadToFile"]>(async () => {});
@@ -46,15 +77,7 @@ export const createMockDownloader = (): IDownloader & {
   };
 };
 
-export const createMockGitHubApiCache = (): ICache & {
-  get: ReturnType<typeof mock<ICache["get"]>>;
-  set: ReturnType<typeof mock<ICache["set"]>>;
-  setDownload: ReturnType<typeof mock<ICache["setDownload"]>>;
-  has: ReturnType<typeof mock<ICache["has"]>>;
-  delete: ReturnType<typeof mock<ICache["delete"]>>;
-  clearExpired: ReturnType<typeof mock<ICache["clearExpired"]>>;
-  clear: ReturnType<typeof mock<ICache["clear"]>>;
-} => {
+export const createMockGitHubApiCache = (): IMockCache => {
   return {
     get: mock(async () => null), // Default to cache miss
     set: mock(async () => {}), // Default no-op
@@ -68,18 +91,8 @@ export const createMockGitHubApiCache = (): ICache & {
 
 export interface IMockSetup {
   mockProjectConfig: ProjectConfig;
-  mockDownloader: IDownloader & {
-    download: ReturnType<typeof mock<IDownloader["download"]>>;
-  };
-  mockCache: ICache & {
-    get: ReturnType<typeof mock<ICache["get"]>>;
-    set: ReturnType<typeof mock<ICache["set"]>>;
-    setDownload: ReturnType<typeof mock<ICache["setDownload"]>>;
-    has: ReturnType<typeof mock<ICache["has"]>>;
-    delete: ReturnType<typeof mock<ICache["delete"]>>;
-    clearExpired: ReturnType<typeof mock<ICache["clearExpired"]>>;
-    clear: ReturnType<typeof mock<ICache["clear"]>>;
-  };
+  mockDownloader: IMockDownloader;
+  mockCache: IMockCache;
   apiClient: GitHubApiClient;
   logger: TestLogger;
 }
@@ -108,13 +121,7 @@ function hasGitHubConfig({
   githubClientUserAgent,
   githubApiCacheEnabled,
   githubApiCacheTtl,
-}: {
-  githubToken?: string;
-  githubHost?: string;
-  githubClientUserAgent?: string;
-  githubApiCacheEnabled?: boolean;
-  githubApiCacheTtl?: number;
-}): boolean {
+}: IGitHubConfigOverrideArgs): boolean {
   return (
     githubToken !== undefined ||
     githubHost !== undefined ||
@@ -127,15 +134,7 @@ function hasGitHubConfig({
 // Helper function to set basic GitHub config properties
 function setBasicGitHubConfig(
   config: NonNullable<PartialProjectConfig["github"]>,
-  {
-    githubToken,
-    githubHost,
-    githubClientUserAgent,
-  }: {
-    githubToken?: string;
-    githubHost?: string;
-    githubClientUserAgent?: string;
-  },
+  { githubToken, githubHost, githubClientUserAgent }: IBasicGitHubConfigArgs,
 ): void {
   if (githubToken !== undefined) {
     config.token = githubToken;
@@ -151,13 +150,7 @@ function setBasicGitHubConfig(
 // Helper function to set GitHub cache config
 function setGitHubCacheConfig(
   config: NonNullable<PartialProjectConfig["github"]>,
-  {
-    githubApiCacheEnabled,
-    githubApiCacheTtl,
-  }: {
-    githubApiCacheEnabled?: boolean;
-    githubApiCacheTtl?: number;
-  },
+  { githubApiCacheEnabled, githubApiCacheTtl }: IGitHubCacheConfigArgs,
 ): void {
   if (githubApiCacheEnabled !== undefined || githubApiCacheTtl !== undefined) {
     config.cache = {
@@ -183,13 +176,7 @@ export const createGitHubConfigOverride = ({
   githubClientUserAgent,
   githubApiCacheEnabled,
   githubApiCacheTtl,
-}: {
-  githubToken?: string;
-  githubHost?: string;
-  githubClientUserAgent?: string;
-  githubApiCacheEnabled?: boolean;
-  githubApiCacheTtl?: number;
-} = {}): PartialProjectConfig => {
+}: IGitHubConfigOverrideArgs = {}): PartialProjectConfig => {
   const overrides: PartialProjectConfig = {};
 
   const params = {

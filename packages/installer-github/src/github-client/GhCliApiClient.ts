@@ -7,6 +7,7 @@ import semver from "semver";
 import { GitHubApiClientError } from "./GitHubApiClientError";
 import type { IGitHubApiClient } from "./IGitHubApiClient";
 import { messages } from "./log-messages";
+import type { IGitHubRateLimitResponse, IGitHubReleaseQueryOptions, IReleaseSelectionResult } from "./types";
 
 /**
  * GitHub API client implementation using the `gh` CLI.
@@ -267,11 +268,7 @@ export class GhCliApiClient implements IGitHubApiClient {
     }
   }
 
-  async getAllReleases(
-    owner: string,
-    repo: string,
-    options?: { perPage?: number; includePrerelease?: boolean; limit?: number },
-  ): Promise<IGitHubRelease[]> {
+  async getAllReleases(owner: string, repo: string, options?: IGitHubReleaseQueryOptions): Promise<IGitHubRelease[]> {
     const logger = this.logger.getSubLogger({ name: "getAllReleases" });
     logger.debug(messages.releases.fetchingAll(owner, repo), options);
 
@@ -405,7 +402,7 @@ export class GhCliApiClient implements IGitHubApiClient {
     constraint: string,
     currentBest: IGitHubRelease | null,
     currentBestVersion: string | null,
-  ): { release: IGitHubRelease | null; version: string | null } {
+  ): IReleaseSelectionResult {
     const logger = this.logger.getSubLogger({ name: "findBestReleaseFromPage" });
     let bestRelease = currentBest;
     let bestVersion = currentBestVersion;
@@ -450,14 +447,7 @@ export class GhCliApiClient implements IGitHubApiClient {
     const logger = this.logger.getSubLogger({ name: "getRateLimit" });
     logger.debug(messages.rateLimit.fetching());
 
-    type RateLimitResponse = {
-      resources: {
-        core: IGitHubRateLimit;
-      };
-      rate: IGitHubRateLimit;
-    };
-
-    const response = await this.request<RateLimitResponse>("/rate_limit");
+    const response = await this.request<IGitHubRateLimitResponse>("/rate_limit");
     return response.resources.core;
   }
 

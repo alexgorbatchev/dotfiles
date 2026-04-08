@@ -33,11 +33,13 @@ function mockBunSpawn(): void {
   })) as typeof Bun.spawn;
 }
 
-function createMockShell(): {
+interface IDmgShellMocks {
   shell: Shell;
   mockQuiet: ReturnType<typeof mock>;
   mockNoThrow: ReturnType<typeof mock>;
-} {
+}
+
+function createMockShell(): IDmgShellMocks {
   const mockNoThrow = mock(() => Promise.resolve({ stdout: "", stderr: "" }));
   const mockQuiet = mock(() => {
     const result = Promise.resolve({ stdout: "", stderr: "" });

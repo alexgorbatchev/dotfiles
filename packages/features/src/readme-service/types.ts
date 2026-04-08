@@ -1,3 +1,7 @@
+import type { ToolConfig } from "@dotfiles/core";
+
+export type ReadmeToolConfigEntry = [string, ToolConfig];
+
 /**
  * Represents README content with metadata
  */

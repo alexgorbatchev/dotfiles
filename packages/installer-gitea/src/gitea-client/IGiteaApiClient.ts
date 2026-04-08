@@ -1,4 +1,5 @@
 import type { IGitHubRelease } from "@dotfiles/core";
+import type { IGiteaReleaseQueryOptions } from "./types";
 
 /**
  * Interface for a client that interacts with the Gitea/Forgejo API.
@@ -21,11 +22,7 @@ export interface IGiteaApiClient {
    * Fetches all releases for a given repository.
    * Uses: {instanceUrl}/api/v1/repos/{owner}/{repo}/releases?limit={limit}&page={page}
    */
-  getAllReleases(
-    owner: string,
-    repo: string,
-    options?: { limit?: number; includePrerelease?: boolean; maxResults?: number },
-  ): Promise<IGitHubRelease[]>;
+  getAllReleases(owner: string, repo: string, options?: IGiteaReleaseQueryOptions): Promise<IGitHubRelease[]>;
 
   /**
    * Fetches the tags from the most recent releases.

@@ -6,3 +6,4 @@ export * from "./GitHubApiClient";
 export * from "./GitHubApiClientError";
 export * from "./IGitHubApiClient";
 export * from "./normalizeUserVersion";
+export * from "./types";

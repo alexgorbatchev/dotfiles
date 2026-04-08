@@ -1,4 +1,5 @@
 import type { IGitHubRateLimit, IGitHubRelease } from "@dotfiles/core";
+import type { IGitHubReleaseQueryOptions } from "./types";
 
 /**
  * Interface for a client that interacts with the GitHub API.
@@ -35,11 +36,7 @@ export interface IGitHubApiClient {
    * @param options.limit Maximum total number of releases to fetch (stops pagination early).
    * @returns A promise that resolves to an array of GitHub releases.
    */
-  getAllReleases(
-    owner: string,
-    repo: string,
-    options?: { perPage?: number; includePrerelease?: boolean; limit?: number },
-  ): Promise<IGitHubRelease[]>;
+  getAllReleases(owner: string, repo: string, options?: IGitHubReleaseQueryOptions): Promise<IGitHubRelease[]>;
 
   /**
    * Fetches a release that satisfies a given version constraint (e.g., "v1.2.x", "^2.0.0").

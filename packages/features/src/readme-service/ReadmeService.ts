@@ -10,7 +10,7 @@ import { DEFAULT_README_CACHE_TTL, GITHUB_RAW_BASE_URL, README_FILENAME } from "
 import type { IReadmeService } from "./IReadmeService";
 import { messages } from "./log-messages";
 import { ReadmeCache } from "./ReadmeCache";
-import type { ICombinedReadmeOptions, IReadmeContent } from "./types";
+import type { ICombinedReadmeOptions, IReadmeContent, ReadmeToolConfigEntry } from "./types";
 
 /**
  * Service for fetching and managing README files from GitHub repositories
@@ -323,7 +323,7 @@ export class ReadmeService implements IReadmeService {
     const sections: string[] = [];
     sections.push(`# ${combinedOptions.title}\n`);
 
-    const githubConfigs: [string, ToolConfig][] = this.filterGitHubConfigs(toolConfigs);
+    const githubConfigs: ReadmeToolConfigEntry[] = this.filterGitHubConfigs(toolConfigs);
 
     this.logger.debug(messages.githubToolsExtracted(githubConfigs.length));
 
@@ -336,7 +336,7 @@ export class ReadmeService implements IReadmeService {
     return sections.join("\n");
   }
 
-  private filterGitHubConfigs(toolConfigs: Record<string, ToolConfig>): [string, ToolConfig][] {
+  private filterGitHubConfigs(toolConfigs: Record<string, ToolConfig>): ReadmeToolConfigEntry[] {
     return Object.entries(toolConfigs).filter(([, config]) => {
       const plugin = this.pluginRegistry.get(config.installationMethod);
       return plugin?.supportsReadme?.() === true;
@@ -345,7 +345,7 @@ export class ReadmeService implements IReadmeService {
 
   private addCatalogTableOfContents(
     sections: string[],
-    githubConfigs: [string, ToolConfig][],
+    githubConfigs: ReadmeToolConfigEntry[],
     includeVersions: boolean,
   ): void {
     sections.push("## Table of Contents\n");
@@ -358,7 +358,7 @@ export class ReadmeService implements IReadmeService {
 
   private async addCatalogToolSections(
     sections: string[],
-    githubConfigs: [string, ToolConfig][],
+    githubConfigs: ReadmeToolConfigEntry[],
     options: Required<ICombinedReadmeOptions>,
   ): Promise<void> {
     for (const [toolName, config] of githubConfigs) {

@@ -8,12 +8,14 @@ import assert from "node:assert";
 import { installFromCurlBinary } from "../installFromCurlBinary";
 import type { CurlBinaryToolConfig } from "../schemas";
 
-function createMockShell(): {
+interface ICurlBinaryShellMocks {
   shell: Shell;
   mockFn: ReturnType<typeof mock>;
   mockEnv: ReturnType<typeof mock>;
   mockQuiet: ReturnType<typeof mock>;
-} {
+}
+
+function createMockShell(): ICurlBinaryShellMocks {
   const mockQuiet = mock(() => Promise.resolve({ stdout: "", stderr: "" }));
   const mockEnv = mock(() => ({ quiet: mockQuiet }));
   const mockFn = mock(() => ({ env: mockEnv }));
