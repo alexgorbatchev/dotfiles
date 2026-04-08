@@ -1,11 +1,11 @@
-import type { IDownloadOptions } from '../../../IDownloader';
-import type { IDownloadStrategy } from '../../../IDownloadStrategy';
-import type { ICache } from '../../types';
+import type { IDownloadOptions } from "../../../IDownloader";
+import type { IDownloadStrategy } from "../../../IDownloadStrategy";
+import type { ICache } from "../../types";
 
 export class MockDownloadStrategy implements IDownloadStrategy {
-  public readonly name = 'mock-strategy';
-  public downloadCalls: Array<{ url: string; options: IDownloadOptions; }> = [];
-  public downloadResult: Buffer = Buffer.from('mock-download-result');
+  public readonly name = "mock-strategy";
+  public downloadCalls: Array<{ url: string; options: IDownloadOptions }> = [];
+  public downloadResult: Buffer = Buffer.from("mock-download-result");
   public shouldFail = false;
   public isAvailableResult = true;
 
@@ -16,7 +16,7 @@ export class MockDownloadStrategy implements IDownloadStrategy {
   async download(url: string, options: IDownloadOptions): Promise<Buffer | undefined> {
     this.downloadCalls.push({ url, options });
     if (this.shouldFail) {
-      throw new Error('Mock download failed');
+      throw new Error("Mock download failed");
     }
     // Return void if destinationPath is provided, otherwise return buffer
     if (options.destinationPath) {
@@ -27,7 +27,7 @@ export class MockDownloadStrategy implements IDownloadStrategy {
 
   reset(): void {
     this.downloadCalls = [];
-    this.downloadResult = Buffer.from('mock-download-result');
+    this.downloadResult = Buffer.from("mock-download-result");
     this.shouldFail = false;
     this.isAvailableResult = true;
   }
@@ -36,7 +36,7 @@ export class MockDownloadStrategy implements IDownloadStrategy {
 export class MockCache implements ICache {
   public storage = new Map<string, unknown>();
   public getCalls: string[] = [];
-  public setCalls: Array<{ key: string; data: unknown; ttl?: number; }> = [];
+  public setCalls: Array<{ key: string; data: unknown; ttl?: number }> = [];
   public setDownloadCalls: Array<{
     key: string;
     data: Buffer;
@@ -50,7 +50,7 @@ export class MockCache implements ICache {
   async get<T>(key: string): Promise<T | null> {
     this.getCalls.push(key);
     if (this.shouldFailGet) {
-      throw new Error('Cache get failed');
+      throw new Error("Cache get failed");
     }
     return (this.storage.get(key) as T) || null;
   }
@@ -58,7 +58,7 @@ export class MockCache implements ICache {
   async set<T>(key: string, data: T, ttlMs?: number): Promise<void> {
     this.setCalls.push({ key, data, ttl: ttlMs });
     if (this.shouldFailSet) {
-      throw new Error('Cache set failed');
+      throw new Error("Cache set failed");
     }
     this.storage.set(key, data);
   }
@@ -72,7 +72,7 @@ export class MockCache implements ICache {
   ): Promise<void> {
     this.setDownloadCalls.push({ key, data, ttl: ttlMs, url, contentType });
     if (this.shouldFailSet) {
-      throw new Error('Cache setDownload failed');
+      throw new Error("Cache setDownload failed");
     }
     this.storage.set(key, data);
   }

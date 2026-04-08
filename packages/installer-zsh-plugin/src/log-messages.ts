@@ -1,4 +1,4 @@
-import { createSafeLogMessage, type SafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   installing: (toolName: string): SafeLogMessage => createSafeLogMessage(`Installing zsh plugin: ${toolName}`),
@@ -12,6 +12,6 @@ export const messages = {
   sourceFileDetected: (file: string): SafeLogMessage => createSafeLogMessage(`Detected source file: ${file}`),
   sourceFileNotFound: (file: string): SafeLogMessage =>
     createSafeLogMessage(`Specified source file not found: ${file}`),
-  noParamsProvided: (): SafeLogMessage => createSafeLogMessage('No install parameters provided'),
-  invalidParams: (): SafeLogMessage => createSafeLogMessage('Either repo or url must be specified'),
+  noParamsProvided: (): SafeLogMessage => createSafeLogMessage("No install parameters provided"),
+  invalidParams: (): SafeLogMessage => createSafeLogMessage("Either repo or url must be specified"),
 } as const satisfies SafeLogMessageMap;

@@ -3,7 +3,7 @@ import type {
   ISerializableInstallParams,
   ISerializableToolConfig,
   IToolDetail,
-} from '../../shared/types';
+} from "../../shared/types";
 
 export interface SourceInfo {
   value: string;
@@ -38,7 +38,7 @@ function getSourceInfoForInstallConfig(
   installParams: ISerializableInstallParams,
 ): SourceInfo | null {
   switch (installationMethod) {
-    case 'github-release':
+    case "github-release":
       if (installParams.repo) {
         return {
           value: installParams.repo,
@@ -46,7 +46,7 @@ function getSourceInfoForInstallConfig(
         };
       }
       break;
-    case 'cargo':
+    case "cargo":
       if (installParams.crate) {
         return {
           value: installParams.crate,
@@ -54,7 +54,7 @@ function getSourceInfoForInstallConfig(
         };
       }
       break;
-    case 'brew':
+    case "brew":
       if (installParams.formula) {
         return {
           value: installParams.formula,
@@ -62,7 +62,7 @@ function getSourceInfoForInstallConfig(
         };
       }
       break;
-    case 'zsh-plugin':
+    case "zsh-plugin":
       if (installParams.repo) {
         return {
           value: installParams.repo,
@@ -70,7 +70,7 @@ function getSourceInfoForInstallConfig(
         };
       }
       break;
-    case 'curl-script':
+    case "curl-script":
       if (installParams.url) {
         return {
           value: installParams.url,
@@ -78,7 +78,7 @@ function getSourceInfoForInstallConfig(
         };
       }
       break;
-    case 'curl-tar':
+    case "curl-tar":
       if (installParams.url) {
         return {
           value: installParams.url,
@@ -94,7 +94,7 @@ function getSourceInfoForInstallConfig(
 }
 
 export function getBinaryName(binary: ISerializableBinary): string {
-  return typeof binary === 'string' ? binary : binary.name;
+  return typeof binary === "string" ? binary : binary.name;
 }
 
 export function buildBinaryToToolMap(tools: IToolDetail[]): Map<string, string> {

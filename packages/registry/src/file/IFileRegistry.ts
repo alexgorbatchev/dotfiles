@@ -7,13 +7,13 @@ export interface IFileOperation {
   /** Tool that performed the operation */
   toolName: string;
   /** Type of operation performed */
-  operationType: 'writeFile' | 'chmod' | 'rm' | 'mkdir' | 'symlink' | 'rename' | 'cp';
+  operationType: "writeFile" | "chmod" | "rm" | "mkdir" | "symlink" | "rename" | "cp";
   /** Full path to the file */
   filePath: string;
   /** Target path for symlinks */
   targetPath?: string;
   /** Type of file being operated on */
-  fileType: 'shim' | 'binary' | 'symlink' | 'copy' | 'config' | 'completion' | 'init' | 'hook-generated' | 'catalog';
+  fileType: "shim" | "binary" | "symlink" | "copy" | "config" | "completion" | "init" | "hook-generated" | "catalog";
   /** Additional metadata as JSON */
   metadata?: Record<string, unknown>;
   /** File size in bytes */
@@ -33,9 +33,9 @@ export interface IFileOperationFilter {
   /** Filter by tool name */
   toolName?: string;
   /** Filter by operation type */
-  operationType?: IFileOperation['operationType'];
+  operationType?: IFileOperation["operationType"];
   /** Filter by file type */
-  fileType?: IFileOperation['fileType'];
+  fileType?: IFileOperation["fileType"];
   /** Filter by file path (exact match) */
   filePath?: string;
   /** Filter by operations after this timestamp */
@@ -55,9 +55,9 @@ export interface IFileState {
   /** Tool that owns this file */
   toolName: string;
   /** Current file type */
-  fileType: IFileOperation['fileType'];
+  fileType: IFileOperation["fileType"];
   /** Last operation performed on this file */
-  lastOperation: IFileOperation['operationType'];
+  lastOperation: IFileOperation["operationType"];
   /** Target path for symlinks */
   targetPath?: string;
   /** Last modification timestamp */
@@ -77,7 +77,7 @@ export interface IFileRegistry {
   /**
    * Records a filesystem operation in the registry.
    */
-  recordOperation(operation: Omit<IFileOperation, 'id' | 'createdAt'>): Promise<void>;
+  recordOperation(operation: Omit<IFileOperation, "id" | "createdAt">): Promise<void>;
 
   /**
    * Retrieves all operations matching the given filter.
@@ -116,7 +116,7 @@ export interface IFileRegistry {
   /**
    * Validates registry integrity and repairs any issues found.
    */
-  validate(): Promise<{ valid: boolean; issues: string[]; repaired: string[]; }>;
+  validate(): Promise<{ valid: boolean; issues: string[]; repaired: string[] }>;
 
   /**
    * Gets registry statistics.

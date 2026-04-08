@@ -2,7 +2,7 @@
  * Error thrown when a shell command exits with non-zero code.
  */
 export class ShellError extends Error {
-  override name = 'ShellError';
+  override name = "ShellError";
 
   constructor(
     public readonly code: number,

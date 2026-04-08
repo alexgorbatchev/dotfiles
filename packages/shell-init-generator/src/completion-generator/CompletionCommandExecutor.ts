@@ -1,15 +1,15 @@
-import { type Shell, type ShellType } from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
-import path from 'node:path';
-import { messages } from './log-messages';
-import type { ICompletionCommandExecutor } from './types';
+import { type Shell, type ShellType } from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
+import path from "node:path";
+import { messages } from "./log-messages";
+import type { ICompletionCommandExecutor } from "./types";
 
 export class CompletionCommandExecutor implements ICompletionCommandExecutor {
   private readonly logger: TsLogger;
   private readonly shell: Shell;
 
   constructor(parentLogger: TsLogger, shell: Shell) {
-    this.logger = parentLogger.getSubLogger({ name: 'CompletionCommandExecutor' });
+    this.logger = parentLogger.getSubLogger({ name: "CompletionCommandExecutor" });
     this.shell = shell;
   }
 
@@ -20,7 +20,7 @@ export class CompletionCommandExecutor implements ICompletionCommandExecutor {
     workingDir: string,
     binaryPaths?: string[],
   ): Promise<string> {
-    const logger = this.logger.getSubLogger({ name: 'executeCompletionCommand' }).setPrefix(toolName);
+    const logger = this.logger.getSubLogger({ name: "executeCompletionCommand" }).setPrefix(toolName);
     logger.debug(messages.commandExecutionStarted(toolName, cmd, shellType));
 
     // Build directories to prepend to PATH (from binaryPaths + workingDir)
@@ -34,9 +34,9 @@ export class CompletionCommandExecutor implements ICompletionCommandExecutor {
       const binaryNames = [...new Set(binaryPaths.map((p) => path.basename(p)))];
       const foundAny = await this.checkAnyBinaryExistsInPath(binaryNames, pathPrefix);
       if (!foundAny) {
-        const searchedLocations = pathDirs.join(', ');
+        const searchedLocations = pathDirs.join(", ");
         throw new Error(
-          `None of the expected binaries (${binaryNames.join(', ')}) found in: ${searchedLocations}. ` +
+          `None of the expected binaries (${binaryNames.join(", ")}) found in: ${searchedLocations}. ` +
             `Skipping completion generation to prevent infinite loop.`,
         );
       }
@@ -49,10 +49,9 @@ export class CompletionCommandExecutor implements ICompletionCommandExecutor {
       logger.debug(messages.commandExecutionCompleted(toolName, shellType));
       return result.stdout;
     } catch (error) {
-      const exitCode = error && typeof error === 'object' && 'exitCode' in error ? (error.exitCode as number) : -1;
-      const stderr = error && typeof error === 'object' && 'stderr' in error
-        ? (error.stderr as Buffer).toString()
-        : 'Unknown error';
+      const exitCode = error && typeof error === "object" && "exitCode" in error ? (error.exitCode as number) : -1;
+      const stderr =
+        error && typeof error === "object" && "stderr" in error ? (error.stderr as Buffer).toString() : "Unknown error";
 
       const errorMessage = `Completion command failed for ${toolName}: ${cmd}`;
       logger.error(messages.commandExecutionFailed(toolName, cmd, exitCode, stderr));

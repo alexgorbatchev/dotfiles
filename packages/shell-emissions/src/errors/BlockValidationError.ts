@@ -7,6 +7,6 @@ export class BlockValidationError extends Error {
     message: string,
   ) {
     super(`Block "${blockId}": ${message}`);
-    this.name = 'BlockValidationError';
+    this.name = "BlockValidationError";
   }
 }

@@ -1,9 +1,9 @@
-import type { IFileEntry, IFilesList, IFileTreeNode } from './types';
+import type { IFileEntry, IFilesList, IFileTreeNode } from "./types";
 
 function sortTreeNode(n: IFileTreeNode): void {
   if (n.children) {
     n.children.sort((a, b) => {
-      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
     n.children.forEach(sortTreeNode);
@@ -34,18 +34,18 @@ export function buildTreeByTool(filesList: IFilesList | null): Record<string, IF
   for (const [toolName, toolFiles] of Object.entries(byTool)) {
     // Find common base path (excluding the last directory which becomes the root)
     const paths = toolFiles.map((f) => f.filePath);
-    let basePath = '';
+    let basePath = "";
 
     if (paths.length === 1) {
       // For single file, go up two levels: one for file, one for root dir
       const firstPath = paths[0];
-      const parts = firstPath?.split('/').filter(Boolean) ?? [];
+      const parts = firstPath?.split("/").filter(Boolean) ?? [];
       if (parts.length >= 2) {
-        basePath = '/' + parts.slice(0, parts.length - 2).join('/');
-        if (basePath === '/') basePath = '';
+        basePath = "/" + parts.slice(0, parts.length - 2).join("/");
+        if (basePath === "/") basePath = "";
       }
     } else if (paths.length > 1) {
-      const parts = paths.map((p) => p.split('/').filter(Boolean));
+      const parts = paths.map((p) => p.split("/").filter(Boolean));
       const minLen = Math.min(...parts.map((p) => p.length));
       const common: string[] = [];
       for (let i = 0; i < minLen - 1; i++) {
@@ -55,7 +55,7 @@ export function buildTreeByTool(filesList: IFilesList | null): Record<string, IF
       }
       // Keep last common dir as root, rest as base path
       if (common.length > 0) {
-        basePath = common.length > 1 ? '/' + common.slice(0, -1).join('/') : '';
+        basePath = common.length > 1 ? "/" + common.slice(0, -1).join("/") : "";
       }
     }
 
@@ -64,22 +64,22 @@ export function buildTreeByTool(filesList: IFilesList | null): Record<string, IF
     for (const file of toolFiles) {
       let rel = file.filePath;
       if (basePath && rel.startsWith(basePath)) rel = rel.substring(basePath.length);
-      if (!rel.startsWith('/')) rel = '/' + rel;
-      const fileParts = rel.split('/').filter(Boolean);
-      let currentPath = '';
+      if (!rel.startsWith("/")) rel = "/" + rel;
+      const fileParts = rel.split("/").filter(Boolean);
+      let currentPath = "";
 
       // Create directories
       for (let i = 0; i < fileParts.length - 1; i++) {
         const part = fileParts[i];
         if (!part) continue;
         const parentPath = currentPath;
-        currentPath = currentPath ? currentPath + '/' + part : '/' + part;
+        currentPath = currentPath ? currentPath + "/" + part : "/" + part;
         const existing = tree.get(currentPath);
         if (!existing) {
           const node: IFileTreeNode = {
             name: part,
             path: basePath + currentPath,
-            type: 'directory',
+            type: "directory",
             children: [],
           };
           tree.set(currentPath, node);
@@ -87,9 +87,9 @@ export function buildTreeByTool(filesList: IFilesList | null): Record<string, IF
           if (parent?.children) {
             parent.children.push(node);
           }
-        } else if (existing.type === 'file') {
+        } else if (existing.type === "file") {
           // Convert file to directory (happens when install path has children)
-          existing.type = 'directory';
+          existing.type = "directory";
           existing.children = [];
         }
       }
@@ -97,11 +97,11 @@ export function buildTreeByTool(filesList: IFilesList | null): Record<string, IF
       // Create file
       const fileName = fileParts[fileParts.length - 1];
       if (fileName) {
-        const filePath = currentPath ? currentPath + '/' + fileName : '/' + fileName;
+        const filePath = currentPath ? currentPath + "/" + fileName : "/" + fileName;
         const node: IFileTreeNode = {
           name: fileName,
           path: basePath + filePath,
-          type: 'file',
+          type: "file",
           fileType: file.fileType,
           toolName: file.toolName,
         };
@@ -116,14 +116,14 @@ export function buildTreeByTool(filesList: IFilesList | null): Record<string, IF
     // Find roots
     const roots: IFileTreeNode[] = [];
     for (const [path, node] of tree) {
-      const parentPath = path.substring(0, path.lastIndexOf('/'));
+      const parentPath = path.substring(0, path.lastIndexOf("/"));
       if (!parentPath || !tree.has(parentPath)) roots.push(node);
     }
 
     // Sort recursively
     roots.forEach(sortTreeNode);
     roots.sort((a, b) => {
-      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
 

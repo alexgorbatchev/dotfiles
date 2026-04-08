@@ -1,12 +1,12 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { TrackedFileSystem } from '@dotfiles/registry/file';
-import { expandToolConfigPath, resolvePlatformConfig } from '@dotfiles/utils';
-import path from 'node:path';
-import type { CopyOperationResult, ICopyGenerator, IGenerateCopiesOptions } from './ICopyGenerator';
-import { messages } from './log-messages';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { TrackedFileSystem } from "@dotfiles/registry/file";
+import { expandToolConfigPath, resolvePlatformConfig } from "@dotfiles/utils";
+import path from "node:path";
+import type { CopyOperationResult, ICopyGenerator, IGenerateCopiesOptions } from "./ICopyGenerator";
+import { messages } from "./log-messages";
 
 /** Configuration for a single copy mapping from source to target */
 interface ICopyConfig {
@@ -15,7 +15,7 @@ interface ICopyConfig {
 }
 
 /** Status values for successful copy creation operations */
-type CopyCreationStatus = 'created' | 'updated_target' | 'backed_up';
+type CopyCreationStatus = "created" | "updated_target" | "backed_up";
 
 /**
  * Service that copies files for dotfiles.
@@ -34,14 +34,14 @@ export class CopyGenerator implements ICopyGenerator {
     this.fs = fileSystem;
     this.projectConfig = projectConfig;
     this.systemInfo = systemInfo;
-    this.logger = parentLogger.getSubLogger({ name: 'CopyGenerator' });
+    this.logger = parentLogger.getSubLogger({ name: "CopyGenerator" });
   }
 
   async generate(
     toolConfigs: Record<string, ToolConfig>,
     options: IGenerateCopiesOptions = {},
   ): Promise<CopyOperationResult[]> {
-    const logger = this.logger.getSubLogger({ name: 'generate' });
+    const logger = this.logger.getSubLogger({ name: "generate" });
     const results: CopyOperationResult[] = [];
 
     for (const toolName in toolConfigs) {
@@ -72,8 +72,8 @@ export class CopyGenerator implements ICopyGenerator {
     toolConfig: ToolConfig | undefined,
     toolName: string,
     logger: TsLogger,
-  ): toolConfig is ToolConfig & { copies: NonNullable<ToolConfig['copies']>; } {
-    const methodLogger = logger.getSubLogger({ name: 'shouldProcessTool' });
+  ): toolConfig is ToolConfig & { copies: NonNullable<ToolConfig["copies"]> } {
+    const methodLogger = logger.getSubLogger({ name: "shouldProcessTool" });
     if (!toolConfig) {
       methodLogger.debug(messages.copy.missingToolConfig(toolName));
       return false;
@@ -91,7 +91,7 @@ export class CopyGenerator implements ICopyGenerator {
     options: IGenerateCopiesOptions,
     logger: TsLogger,
   ): Promise<CopyOperationResult> {
-    const methodLogger = logger.getSubLogger({ name: 'processCopy' });
+    const methodLogger = logger.getSubLogger({ name: "processCopy" });
     const { overwrite = false, backup = false } = options;
     const sourceAbsPath = expandToolConfigPath(
       toolConfig.configFilePath,
@@ -106,9 +106,7 @@ export class CopyGenerator implements ICopyGenerator {
       this.systemInfo,
     );
 
-    methodLogger.debug(
-      messages.copy.copyDetails(copyConfig.source, sourceAbsPath, copyConfig.target, targetAbsPath),
-    );
+    methodLogger.debug(messages.copy.copyDetails(copyConfig.source, sourceAbsPath, copyConfig.target, targetAbsPath));
 
     if (!(await toolFs.exists(sourceAbsPath))) {
       methodLogger.error(messages.copy.sourceMissing(toolConfig.name, sourceAbsPath));
@@ -116,7 +114,7 @@ export class CopyGenerator implements ICopyGenerator {
         success: false,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
-        status: 'failed',
+        status: "failed",
         error: messages.copy.sourceMissing(toolConfig.name, sourceAbsPath),
       };
     }
@@ -131,7 +129,7 @@ export class CopyGenerator implements ICopyGenerator {
           success: true,
           sourcePath: sourceAbsPath,
           targetPath: targetAbsPath,
-          status: 'skipped_exists',
+          status: "skipped_exists",
         };
       }
 
@@ -142,7 +140,7 @@ export class CopyGenerator implements ICopyGenerator {
           success: false,
           sourcePath: sourceAbsPath,
           targetPath: targetAbsPath,
-          status: 'failed',
+          status: "failed",
           error: overwriteResult.error,
         };
       }
@@ -150,7 +148,7 @@ export class CopyGenerator implements ICopyGenerator {
       return this.performCopy(sourceAbsPath, targetAbsPath, toolFs, overwriteResult.status, methodLogger);
     }
 
-    return this.performCopy(sourceAbsPath, targetAbsPath, toolFs, 'created', methodLogger);
+    return this.performCopy(sourceAbsPath, targetAbsPath, toolFs, "created", methodLogger);
   }
 
   private async handleOverwrite(
@@ -158,7 +156,7 @@ export class CopyGenerator implements ICopyGenerator {
     toolFs: IFileSystem,
     shouldBackup: boolean,
     logger: TsLogger,
-  ): Promise<{ failed: false; status: CopyCreationStatus; } | { failed: true; error: string; }> {
+  ): Promise<{ failed: false; status: CopyCreationStatus } | { failed: true; error: string }> {
     if (shouldBackup) {
       const backupPath = `${targetAbsPath}.bak`;
       try {
@@ -166,7 +164,7 @@ export class CopyGenerator implements ICopyGenerator {
           await toolFs.rm(backupPath, { recursive: true, force: true });
         }
         await toolFs.rename(targetAbsPath, backupPath);
-        return { failed: false, status: 'backed_up' };
+        return { failed: false, status: "backed_up" };
       } catch {
         const errorMsg = messages.filesystem.backupFailed(targetAbsPath);
         logger.error(errorMsg);
@@ -181,7 +179,7 @@ export class CopyGenerator implements ICopyGenerator {
       } else {
         await toolFs.rm(targetAbsPath, { force: true });
       }
-      return { failed: false, status: 'updated_target' };
+      return { failed: false, status: "updated_target" };
     } catch {
       const errorMsg = messages.filesystem.deleteFailed(targetAbsPath);
       logger.error(errorMsg);
@@ -196,7 +194,7 @@ export class CopyGenerator implements ICopyGenerator {
     status: CopyCreationStatus,
     logger: TsLogger,
   ): Promise<CopyOperationResult> {
-    const methodLogger = logger.getSubLogger({ name: 'performCopy' });
+    const methodLogger = logger.getSubLogger({ name: "performCopy" });
     const targetDir = path.dirname(targetAbsPath);
 
     try {
@@ -208,7 +206,7 @@ export class CopyGenerator implements ICopyGenerator {
         success: false,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
-        status: 'failed',
+        status: "failed",
         error: errorMsg,
       };
     }
@@ -234,7 +232,7 @@ export class CopyGenerator implements ICopyGenerator {
         success: false,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
-        status: 'failed',
+        status: "failed",
         error: errorMsg,
       };
     }

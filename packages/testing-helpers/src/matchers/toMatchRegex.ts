@@ -1,6 +1,6 @@
-import { expect } from 'bun:test';
+import { expect } from "bun:test";
 
-declare module 'bun:test' {
+declare module "bun:test" {
   interface IMatchRegexMatchers<T> {
     /**
      * Asserts that a single-line string matches a regex pattern.
@@ -24,14 +24,14 @@ declare module 'bun:test' {
 
 expect.extend({
   toMatchRegex(this: unknown, received: unknown, pattern: RegExp) {
-    if (typeof received !== 'string') {
+    if (typeof received !== "string") {
       return {
         pass: false,
         message: () => `Expected a string, but received ${typeof received}.`,
       };
     }
 
-    if (received.includes('\n')) {
+    if (received.includes("\n")) {
       return {
         pass: false,
         message: () => `Input contains newlines. Use 'toMatchLooseInlineSnapshot' instead for multi-line content.`,

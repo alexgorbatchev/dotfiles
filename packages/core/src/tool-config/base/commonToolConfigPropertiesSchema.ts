@@ -1,9 +1,9 @@
-import { z } from 'zod';
-import { shellConfigsSchema } from '../shell/shellConfigsSchema';
-import { toolConfigUpdateCheckSchema } from '../toolConfigUpdateCheckSchema';
-import { binaryConfigSchema } from './binaryConfigSchema';
-import { copyConfigSchema } from './copyConfigSchema';
-import { symlinkConfigSchema } from './symlinkConfigSchema';
+import { z } from "zod";
+import { shellConfigsSchema } from "../shell/shellConfigsSchema";
+import { toolConfigUpdateCheckSchema } from "../toolConfigUpdateCheckSchema";
+import { binaryConfigSchema } from "./binaryConfigSchema";
+import { copyConfigSchema } from "./copyConfigSchema";
+import { symlinkConfigSchema } from "./symlinkConfigSchema";
 
 /**
  * Common properties shared between base tool config and platform config schemas.

@@ -1,15 +1,12 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { IApiResponse, IConfigSummary } from '../../shared/types';
-import { messages } from '../log-messages';
-import type { IDashboardServices } from '../types';
+import type { TsLogger } from "@dotfiles/logger";
+import type { IApiResponse, IConfigSummary } from "../../shared/types";
+import { messages } from "../log-messages";
+import type { IDashboardServices } from "../types";
 
 /**
  * GET /api/config - Get project configuration summary
  */
-export async function getConfig(
-  logger: TsLogger,
-  services: IDashboardServices,
-): Promise<IApiResponse<IConfigSummary>> {
+export async function getConfig(logger: TsLogger, services: IDashboardServices): Promise<IApiResponse<IConfigSummary>> {
   try {
     const paths = services.projectConfig.paths;
     const summary: IConfigSummary = {
@@ -21,7 +18,7 @@ export async function getConfig(
     };
     return { success: true, data: summary };
   } catch (error) {
-    logger.error(messages.apiError('getConfig'), error);
-    return { success: false, error: 'Failed to retrieve configuration' };
+    logger.error(messages.apiError("getConfig"), error);
+    return { success: false, error: "Failed to retrieve configuration" };
   }
 }

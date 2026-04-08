@@ -7,7 +7,8 @@
   "module": "cli.ts",
   "scripts": {
     "typecheck": "tsgo -p tsconfig.json",
-    "lint": "dprint fmt && oxlint --fix $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
+    "lint": "dprint check && bun --bun oxfmt --check . && bun --bun oxlint . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
+    "fix": "dprint fmt && bun --bun oxfmt . && bun --bun oxlint --fix . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
     "test:all": "BUN_TEST_ALL=1 bun test",
     "test:native": "BUN_TEST_SEQUENTIAL=1 bun test",
     "test:task": "bun test",
@@ -24,16 +25,17 @@
     "postinstall": "bun ai"
   },
   "devDependencies": {
+    "@alexgorbatchev/typescript-ai-policy": "^1.0.5",
     "@dprint/json": "^0.21.1",
     "@dprint/markdown": "^0.20.0",
-    "@dprint/typescript": "^0.95.13",
     "@typescript/native-preview": "catalog:typescript",
     "bun-plugin-tailwind": "^0.1.2",
     "dprint": "^0.51.1",
-    "oxlint": "^1.39.0",
+    "oxfmt": "0.42.0",
+    "oxlint": "^1.57.0",
+    "rulesync": "^6.4.0",
     "ts-unused": "^1.0.3",
-    "tsd": "^0.33.0",
-    "rulesync": "^6.4.0"
+    "tsd": "^0.33.0"
   },
   "catalog": {
     "type-fest": "^5.1.0",

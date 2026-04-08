@@ -39,7 +39,7 @@ export interface IGitHubReleaseAsset {
   /** The MIME type of the asset (e.g., `application/gzip`). */
   content_type: string;
   /** The state of the asset, typically 'uploaded'. */
-  state: 'uploaded' | 'open';
+  state: "uploaded" | "open";
   /** The number of times this asset has been downloaded. */
   download_count: number;
   /** An ISO 8601 timestamp string for when the asset was created. */

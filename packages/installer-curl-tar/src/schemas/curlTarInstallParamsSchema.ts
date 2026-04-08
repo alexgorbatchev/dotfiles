@@ -1,6 +1,6 @@
-import type { BaseInstallParams } from '@dotfiles/core';
-import { baseInstallParamsSchema } from '@dotfiles/core';
-import { z } from 'zod';
+import type { BaseInstallParams } from "@dotfiles/core";
+import { baseInstallParamsSchema } from "@dotfiles/core";
+import { z } from "zod";
 
 /**
  * Parameters for installing a tool by downloading a tarball (`.tar`, `.tar.gz`, etc.) using `curl`,

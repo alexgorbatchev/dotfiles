@@ -1,4 +1,4 @@
-import type { Architecture, Platform } from './platform.types';
+import type { Architecture, Platform } from "./platform.types";
 
 /**
  * Represents essential system information used for architecture detection and compatibility checks.

@@ -1,4 +1,4 @@
-import { dedentString, getBuiltPackageName } from '@dotfiles/utils';
+import { dedentString, getBuiltPackageName } from "@dotfiles/utils";
 
 /**
  * Generates the default configuration file content for a virtual environment.

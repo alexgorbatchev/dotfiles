@@ -1,5 +1,5 @@
-import type { IOperationFailure, IOperationSuccess, ToolConfig } from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
+import type { IOperationFailure, IOperationSuccess, ToolConfig } from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
 
 /**
  * Options for generating symlinks.
@@ -22,12 +22,7 @@ export interface IGenerateSymlinksOptions {
 /**
  * Status values for symlink operation success cases
  */
-export type SymlinkOperationStatus =
-  | 'created'
-  | 'updated_target'
-  | 'backed_up'
-  | 'skipped_exists'
-  | 'skipped_correct';
+export type SymlinkOperationStatus = "created" | "updated_target" | "backed_up" | "skipped_exists" | "skipped_correct";
 
 /**
  * Represents the result of a single symlink operation - success case
@@ -44,7 +39,7 @@ export type SymlinkOperationResultSuccess = IOperationSuccess & {
 export type SymlinkOperationResultFailure = IOperationFailure & {
   sourcePath: string;
   targetPath: string;
-  status: 'failed';
+  status: "failed";
 };
 
 /**

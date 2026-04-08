@@ -1,26 +1,26 @@
-import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import { createProjectConfigFromObject } from '../stagedProjectConfigLoader';
+import { Architecture, type ISystemInfo, Platform } from "@dotfiles/core";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { beforeEach, describe, expect, it } from "bun:test";
+import { createProjectConfigFromObject } from "../stagedProjectConfigLoader";
 
-describe('projectConfigLoader - staged home/path resolution', () => {
+describe("projectConfigLoader - staged home/path resolution", () => {
   const bootstrapSystemInfo: ISystemInfo = {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
-    homeDir: '/bootstrap-home',
-    hostname: 'test-host',
+    homeDir: "/bootstrap-home",
+    hostname: "test-host",
   };
 
-  const userConfigPath: string = '/config-dir/dotfiles.config.ts';
+  const userConfigPath: string = "/config-dir/dotfiles.config.ts";
 
   let logger: TestLogger;
 
   beforeEach(() => {
-    logger = new TestLogger({ name: 'test' });
+    logger = new TestLogger({ name: "test" });
   });
 
-  it('bootstraps paths.homeDir ~ using bootstrap home', async () => {
+  it("bootstraps paths.homeDir ~ using bootstrap home", async () => {
     const { fs } = await createMemFileSystem({ initialVolumeJson: {} });
 
     const result = await createProjectConfigFromObject(
@@ -28,7 +28,7 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       fs,
       {
         paths: {
-          homeDir: '~/configured',
+          homeDir: "~/configured",
         },
       },
       bootstrapSystemInfo,
@@ -36,10 +36,10 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       { userConfigPath },
     );
 
-    expect(result.paths.homeDir).toBe('/bootstrap-home/configured');
+    expect(result.paths.homeDir).toBe("/bootstrap-home/configured");
   });
 
-  it('expands ~ in config.paths.* against configured home, not config file dir', async () => {
+  it("expands ~ in config.paths.* against configured home, not config file dir", async () => {
     const { fs } = await createMemFileSystem({ initialVolumeJson: {} });
 
     const result = await createProjectConfigFromObject(
@@ -47,8 +47,8 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       fs,
       {
         paths: {
-          homeDir: '/configured-home',
-          dotfilesDir: '~/dotfiles',
+          homeDir: "/configured-home",
+          dotfilesDir: "~/dotfiles",
         },
       },
       bootstrapSystemInfo,
@@ -56,10 +56,10 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       { userConfigPath },
     );
 
-    expect(result.paths.dotfilesDir).toBe('/configured-home/dotfiles');
+    expect(result.paths.dotfilesDir).toBe("/configured-home/dotfiles");
   });
 
-  it('resolves {HOME} to configured home after paths.homeDir is established', async () => {
+  it("resolves {HOME} to configured home after paths.homeDir is established", async () => {
     const { fs } = await createMemFileSystem({ initialVolumeJson: {} });
 
     const result = await createProjectConfigFromObject(
@@ -67,8 +67,8 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       fs,
       {
         paths: {
-          homeDir: '/configured-home',
-          targetDir: '{HOME}/bin',
+          homeDir: "/configured-home",
+          targetDir: "{HOME}/bin",
         },
       },
       bootstrapSystemInfo,
@@ -76,10 +76,10 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       { userConfigPath },
     );
 
-    expect(result.paths.targetDir).toBe('/configured-home/bin');
+    expect(result.paths.targetDir).toBe("/configured-home/bin");
   });
 
-  it('does not expand ~ outside config.paths subtree', async () => {
+  it("does not expand ~ outside config.paths subtree", async () => {
     const { fs } = await createMemFileSystem({ initialVolumeJson: {} });
 
     const result = await createProjectConfigFromObject(
@@ -87,7 +87,7 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       fs,
       {
         logging: {
-          debug: '~/should-not-expand',
+          debug: "~/should-not-expand",
         },
       },
       bootstrapSystemInfo,
@@ -95,10 +95,10 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       { userConfigPath },
     );
 
-    expect(result.logging.debug).toBe('~/should-not-expand');
+    expect(result.logging.debug).toBe("~/should-not-expand");
   });
 
-  it('expands ~\\ prefix as home (PowerShell/Windows separator support)', async () => {
+  it("expands ~\\ prefix as home (PowerShell/Windows separator support)", async () => {
     const { fs } = await createMemFileSystem({ initialVolumeJson: {} });
 
     const result = await createProjectConfigFromObject(
@@ -106,8 +106,8 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       fs,
       {
         paths: {
-          homeDir: '/configured-home',
-          dotfilesDir: '~\\dotfiles',
+          homeDir: "/configured-home",
+          dotfilesDir: "~\\dotfiles",
         },
       },
       bootstrapSystemInfo,
@@ -115,10 +115,10 @@ describe('projectConfigLoader - staged home/path resolution', () => {
       { userConfigPath },
     );
 
-    expect(result.paths.dotfilesDir).toBe('/configured-home\\dotfiles');
+    expect(result.paths.dotfilesDir).toBe("/configured-home\\dotfiles");
   });
 
-  it('does not expand ~user/... forms (unsupported)', async () => {
+  it("does not expand ~user/... forms (unsupported)", async () => {
     const { fs } = await createMemFileSystem({ initialVolumeJson: {} });
 
     expect(
@@ -127,18 +127,18 @@ describe('projectConfigLoader - staged home/path resolution', () => {
         fs,
         {
           paths: {
-            homeDir: '/configured-home',
-            dotfilesDir: '~other/dotfiles',
+            homeDir: "/configured-home",
+            dotfilesDir: "~other/dotfiles",
           },
         },
         bootstrapSystemInfo,
         {},
         { userConfigPath },
       ),
-    ).rejects.toThrow('unsupported tilde');
+    ).rejects.toThrow("unsupported tilde");
   });
 
-  it('throws when string token substitution is cyclic', async () => {
+  it("throws when string token substitution is cyclic", async () => {
     const { fs } = await createMemFileSystem({ initialVolumeJson: {} });
 
     expect(
@@ -147,16 +147,16 @@ describe('projectConfigLoader - staged home/path resolution', () => {
         fs,
         {
           paths: {
-            homeDir: '{A}',
+            homeDir: "{A}",
           },
         },
         bootstrapSystemInfo,
         {
-          A: '{B}',
-          B: '{A}',
+          A: "{B}",
+          B: "{A}",
         },
         { userConfigPath },
       ),
-    ).rejects.toThrow('String token substitution did not converge');
+    ).rejects.toThrow("String token substitution did not converge");
   });
 });

@@ -3,25 +3,25 @@
  * Individual route tests (e.g., /api/tools, /api/health) should be placed in
  * routes/__tests__/*.test.ts, not here.
  */
-import type { InstallerPluginRegistry, ToolConfig } from '@dotfiles/core';
-import { createMemFileSystem, type IResolvedFileSystem } from '@dotfiles/file-system';
-import type { IInstaller } from '@dotfiles/installer';
-import { TestLogger } from '@dotfiles/logger';
-import { RegistryDatabase } from '@dotfiles/registry-database';
-import { FileRegistry } from '@dotfiles/registry/file';
-import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import type { InstallerPluginRegistry, ToolConfig } from "@dotfiles/core";
+import { createMemFileSystem, type IResolvedFileSystem } from "@dotfiles/file-system";
+import type { IInstaller } from "@dotfiles/installer";
+import { TestLogger } from "@dotfiles/logger";
+import { RegistryDatabase } from "@dotfiles/registry-database";
+import { FileRegistry } from "@dotfiles/registry/file";
+import { ToolInstallationRegistry } from "@dotfiles/registry/tool";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   createMockConfigService,
   createMockProjectConfig,
   createMockSystemInfo,
   createMockVersionChecker,
-} from '../../testing-helpers';
-import { createDashboardServer } from '../dashboard-server';
-import { clearToolConfigsCache } from '../routes';
-import type { IDashboardServices } from '../types';
+} from "../../testing-helpers";
+import { createDashboardServer } from "../dashboard-server";
+import { clearToolConfigsCache } from "../routes";
+import type { IDashboardServices } from "../types";
 
-describe('Dashboard HTTP Server', () => {
+describe("Dashboard HTTP Server", () => {
   let logger: TestLogger;
   let registryDatabase: RegistryDatabase;
   let fileRegistry: FileRegistry;
@@ -35,7 +35,7 @@ describe('Dashboard HTTP Server', () => {
   beforeEach(async () => {
     clearToolConfigsCache();
     logger = new TestLogger();
-    registryDatabase = new RegistryDatabase(logger, ':memory:');
+    registryDatabase = new RegistryDatabase(logger, ":memory:");
     const db = registryDatabase.getConnection();
     fileRegistry = new FileRegistry(logger, db);
     toolInstallationRegistry = new ToolInstallationRegistry(logger, db);
@@ -60,7 +60,7 @@ describe('Dashboard HTTP Server', () => {
         downloadToFile: async () => {},
       },
       installer: {
-        install: async () => ({ success: true as const, version: '1.0.0', installationMethod: 'github-release' }),
+        install: async () => ({ success: true as const, version: "1.0.0", installationMethod: "github-release" }),
       } as unknown as IInstaller,
       pluginRegistry: {
         get: () => undefined,
@@ -68,7 +68,7 @@ describe('Dashboard HTTP Server', () => {
     };
 
     const port = 10000 + Math.floor(Math.random() * 50000);
-    server = createDashboardServer(logger, services, { port, host: 'localhost' });
+    server = createDashboardServer(logger, services, { port, host: "localhost" });
     await server.start();
     baseUrl = server.getUrl();
   });
@@ -78,45 +78,45 @@ describe('Dashboard HTTP Server', () => {
     registryDatabase.close();
   });
 
-  describe('Unknown API routes', () => {
-    test('returns 404 for unknown API endpoint', async () => {
+  describe("Unknown API routes", () => {
+    test("returns 404 for unknown API endpoint", async () => {
       const response = await fetch(`${baseUrl}/api/unknown`);
       const data = await response.json();
 
       expect(response.status).toBe(404);
       expect(data.success).toBe(false);
-      expect(data.error).toBe('Not found');
+      expect(data.error).toBe("Not found");
     });
   });
 
-  describe('SPA routing', () => {
-    test('returns HTML for root path', async () => {
+  describe("SPA routing", () => {
+    test("returns HTML for root path", async () => {
       const response = await fetch(`${baseUrl}/`);
       const text = await response.text();
 
       expect(response.status).toBe(200);
-      expect(response.headers.get('Content-Type')).toContain('text/html');
-      expect(text).toContain('<!DOCTYPE html>');
-      expect(text).toContain('Dotfiles Dashboard');
+      expect(response.headers.get("Content-Type")).toContain("text/html");
+      expect(text).toContain("<!DOCTYPE html>");
+      expect(text).toContain("Dotfiles Dashboard");
     });
 
-    test('returns HTML for SPA routes', async () => {
-      const routes = ['/tools', '/tools/fzf', '/files', '/health', '/settings'];
+    test("returns HTML for SPA routes", async () => {
+      const routes = ["/tools", "/tools/fzf", "/files", "/health", "/settings"];
 
       for (const route of routes) {
         const response = await fetch(`${baseUrl}${route}`);
         expect(response.status).toBe(200);
-        expect(response.headers.get('Content-Type')).toContain('text/html');
+        expect(response.headers.get("Content-Type")).toContain("text/html");
       }
     });
   });
 
-  describe('Server lifecycle', () => {
-    test('returns correct URL', () => {
+  describe("Server lifecycle", () => {
+    test("returns correct URL", () => {
       expect(server.getUrl()).toMatch(/^http:\/\/localhost:\d+$/);
     });
 
-    test('can stop and restart', async () => {
+    test("can stop and restart", async () => {
       await server.stop();
 
       // Should throw or fail to connect after stop

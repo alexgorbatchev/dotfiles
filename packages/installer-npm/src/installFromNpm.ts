@@ -1,11 +1,11 @@
-import { createShell, type IInstallContext, type IInstallOptions, type Shell } from '@dotfiles/core';
-import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { detectVersionViaCli, normalizeVersion } from '@dotfiles/utils';
-import path from 'node:path';
-import { messages } from './log-messages';
-import type { NpmToolConfig } from './schemas';
-import type { INpmInstallMetadata, NpmInstallResult } from './types';
+import { createShell, type IInstallContext, type IInstallOptions, type Shell } from "@dotfiles/core";
+import { getBinaryPaths, withInstallErrorHandling } from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { detectVersionViaCli, normalizeVersion } from "@dotfiles/utils";
+import path from "node:path";
+import { messages } from "./log-messages";
+import type { NpmToolConfig } from "./schemas";
+import type { INpmInstallMetadata, NpmInstallResult } from "./types";
 
 /**
  * Installs a tool using npm/bun globally.
@@ -25,12 +25,12 @@ export async function installFromNpm(
   shellExecutor: Shell,
   installShell?: Shell,
 ): Promise<NpmInstallResult> {
-  const logger = parentLogger.getSubLogger({ name: 'installFromNpm' });
+  const logger = parentLogger.getSubLogger({ name: "installFromNpm" });
 
   if (!toolConfig.installParams) {
     return {
       success: false,
-      error: 'Install parameters not specified',
+      error: "Install parameters not specified",
     };
   }
 
@@ -41,7 +41,7 @@ export async function installFromNpm(
 
   logger.debug(messages.installing(packageName));
 
-  const isBun = params.packageManager === 'bun';
+  const isBun = params.packageManager === "bun";
 
   const operation = async (): Promise<NpmInstallResult> => {
     const loggingShell = installShell ?? createShell({ logger, skipCommandLog: true });
@@ -72,8 +72,8 @@ export async function installFromNpm(
       if (mainBinaryPath) {
         version = await detectVersionViaCli({
           binaryPath: mainBinaryPath,
-          args: ['--version'],
-          regex: '(\\d+\\.\\d+\\.\\d+)',
+          args: ["--version"],
+          regex: "(\\d+\\.\\d+\\.\\d+)",
           shellExecutor,
         });
       }
@@ -82,7 +82,7 @@ export async function installFromNpm(
     }
 
     const metadata: INpmInstallMetadata = {
-      method: 'npm',
+      method: "npm",
       packageName,
     };
 
@@ -96,7 +96,7 @@ export async function installFromNpm(
     return result;
   };
 
-  return withInstallErrorHandling('npm', toolName, logger, operation);
+  return withInstallErrorHandling("npm", toolName, logger, operation);
 }
 
 /**
@@ -112,17 +112,13 @@ async function getGlobalBinDir(isBun: boolean, shell: Shell): Promise<string> {
   }
 
   const result = await shell`npm prefix -g`.quiet();
-  return path.join(result.stdout.toString().trim(), 'bin');
+  return path.join(result.stdout.toString().trim(), "bin");
 }
 
 /**
  * Executes `bun install -g` to install a package globally.
  */
-async function executeBunGlobalInstall(
-  packageSpec: string,
-  logger: TsLogger,
-  shell: Shell,
-): Promise<void> {
+async function executeBunGlobalInstall(packageSpec: string, logger: TsLogger, shell: Shell): Promise<void> {
   const command = `bun install -g ${packageSpec}`;
   logger.debug(messages.executingCommand(command));
   await shell`bun install -g ${packageSpec}`;
@@ -131,11 +127,7 @@ async function executeBunGlobalInstall(
 /**
  * Executes `npm install -g` to install a package globally.
  */
-async function executeNpmGlobalInstall(
-  packageSpec: string,
-  logger: TsLogger,
-  shell: Shell,
-): Promise<void> {
+async function executeNpmGlobalInstall(packageSpec: string, logger: TsLogger, shell: Shell): Promise<void> {
   const command = `npm install -g ${packageSpec}`;
   logger.debug(messages.executingCommand(command));
   await shell`npm install -g ${packageSpec}`;
@@ -144,10 +136,7 @@ async function executeNpmGlobalInstall(
 /**
  * Retrieves the version of an npm package via `npm view`.
  */
-async function getNpmViewVersion(
-  packageName: string,
-  shell: Shell,
-): Promise<string | undefined> {
+async function getNpmViewVersion(packageName: string, shell: Shell): Promise<string | undefined> {
   try {
     const result = await shell`npm view ${packageName} version`.quiet().noThrow();
     const version: string = result.stdout.toString().trim();

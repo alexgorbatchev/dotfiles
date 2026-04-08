@@ -1,13 +1,13 @@
-import { mkdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { mkdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { createProxyServer, type ProxyServer, type ProxyServerOptions } from '../createProxyServer';
-import { ProxyCacheStore } from '../ProxyCacheStore';
+import { createProxyServer, type ProxyServer, type ProxyServerOptions } from "../createProxyServer";
+import { ProxyCacheStore } from "../ProxyCacheStore";
 
-describe('createProxyServer', () => {
+describe("createProxyServer", () => {
   let cacheDir: string;
   let server: ProxyServer | null = null;
 
@@ -41,17 +41,17 @@ describe('createProxyServer', () => {
     });
   }
 
-  describe('cache clear endpoint', () => {
-    test('POST /cache/clear returns cleared count', async () => {
+  describe("cache clear endpoint", () => {
+    test("POST /cache/clear returns cleared count", async () => {
       // Pre-populate cache
       const store = new ProxyCacheStore(cacheDir, 60000);
-      store.set('GET', 'https://api.example.com/data', 200, {}, Buffer.from('test'));
+      store.set("GET", "https://api.example.com/data", 200, {}, Buffer.from("test"));
 
       const baseUrl = await startServer();
 
       const clearResponse = await fetch(`${baseUrl}/cache/clear`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
 
@@ -61,18 +61,18 @@ describe('createProxyServer', () => {
       expect(result.message).toBeDefined();
     });
 
-    test('POST /cache/clear with pattern filters entries', async () => {
+    test("POST /cache/clear with pattern filters entries", async () => {
       // Pre-populate cache
       const store = new ProxyCacheStore(cacheDir, 60000);
-      store.set('GET', 'https://api.github.com/repos', 200, {}, Buffer.from('a'));
-      store.set('GET', 'https://api.example.com/data', 200, {}, Buffer.from('b'));
+      store.set("GET", "https://api.github.com/repos", 200, {}, Buffer.from("a"));
+      store.set("GET", "https://api.example.com/data", 200, {}, Buffer.from("b"));
 
       const baseUrl = await startServer();
 
       const clearResponse = await fetch(`${baseUrl}/cache/clear`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pattern: '**/github.com/**' }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pattern: "**/github.com/**" }),
       });
 
       expect(clearResponse.status).toBe(200);
@@ -81,21 +81,21 @@ describe('createProxyServer', () => {
 
       // Verify remaining entry
       expect(store.getAllEntries().length).toBe(1);
-      expect(store.getAllEntries()[0]!.url).toBe('https://api.example.com/data');
+      expect(store.getAllEntries()[0]!.url).toBe("https://api.example.com/data");
     });
 
-    test('POST /cache/clear with * pattern clears all entries', async () => {
+    test("POST /cache/clear with * pattern clears all entries", async () => {
       // Pre-populate cache
       const store = new ProxyCacheStore(cacheDir, 60000);
-      store.set('GET', 'https://api.github.com/repos', 200, {}, Buffer.from('a'));
-      store.set('GET', 'https://api.example.com/data', 200, {}, Buffer.from('b'));
+      store.set("GET", "https://api.github.com/repos", 200, {}, Buffer.from("a"));
+      store.set("GET", "https://api.example.com/data", 200, {}, Buffer.from("b"));
 
       const baseUrl = await startServer();
 
       const clearResponse = await fetch(`${baseUrl}/cache/clear`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pattern: '*' }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pattern: "*" }),
       });
 
       expect(clearResponse.status).toBe(200);
@@ -107,8 +107,8 @@ describe('createProxyServer', () => {
     });
   });
 
-  describe('cache stats endpoint', () => {
-    test('GET /cache/stats returns statistics', async () => {
+  describe("cache stats endpoint", () => {
+    test("GET /cache/stats returns statistics", async () => {
       const baseUrl = await startServer();
 
       const statsResponse = await fetch(`${baseUrl}/cache/stats`);
@@ -119,11 +119,11 @@ describe('createProxyServer', () => {
       expect(stats.size).toBe(0);
     });
 
-    test('GET /cache/stats returns correct count after caching', async () => {
+    test("GET /cache/stats returns correct count after caching", async () => {
       // Pre-populate cache
       const store = new ProxyCacheStore(cacheDir, 60000);
-      store.set('GET', 'https://api.example.com/a', 200, {}, Buffer.from('data-a'));
-      store.set('GET', 'https://api.example.com/b', 200, {}, Buffer.from('data-b'));
+      store.set("GET", "https://api.example.com/a", 200, {}, Buffer.from("data-a"));
+      store.set("GET", "https://api.example.com/b", 200, {}, Buffer.from("data-b"));
 
       const baseUrl = await startServer();
 
@@ -136,15 +136,15 @@ describe('createProxyServer', () => {
     });
   });
 
-  describe('cache populate endpoint', () => {
-    test('POST /cache/populate adds entry to cache', async () => {
+  describe("cache populate endpoint", () => {
+    test("POST /cache/populate adds entry to cache", async () => {
       const baseUrl = await startServer();
 
       const populateResponse = await fetch(`${baseUrl}/cache/populate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          url: 'https://api.example.com/data',
+          url: "https://api.example.com/data",
           body: '{"test": true}',
         }),
       });
@@ -152,26 +152,26 @@ describe('createProxyServer', () => {
       expect(populateResponse.status).toBe(200);
       const result = await populateResponse.json();
       expect(result.success).toBe(true);
-      expect(result.url).toBe('https://api.example.com/data');
+      expect(result.url).toBe("https://api.example.com/data");
       expect(result.key).toBeDefined();
 
       // Verify entry was added to cache
       const store = new ProxyCacheStore(cacheDir, 60000);
-      const entry = store.get('GET', 'https://api.example.com/data');
+      const entry = store.get("GET", "https://api.example.com/data");
       expect(entry).toBeDefined();
       expect(entry!.status).toBe(200);
     });
 
-    test('POST /cache/populate with custom method', async () => {
+    test("POST /cache/populate with custom method", async () => {
       const baseUrl = await startServer();
 
       const populateResponse = await fetch(`${baseUrl}/cache/populate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          method: 'POST',
-          url: 'https://api.example.com/submit',
-          body: 'submitted',
+          method: "POST",
+          url: "https://api.example.com/submit",
+          body: "submitted",
         }),
       });
 
@@ -181,20 +181,20 @@ describe('createProxyServer', () => {
 
       // Verify entry was added with correct method
       const store = new ProxyCacheStore(cacheDir, 60000);
-      const entry = store.get('POST', 'https://api.example.com/submit');
+      const entry = store.get("POST", "https://api.example.com/submit");
       expect(entry).toBeDefined();
     });
 
-    test('POST /cache/populate with base64 body', async () => {
+    test("POST /cache/populate with base64 body", async () => {
       const baseUrl = await startServer();
       const binaryData = Buffer.from([0x00, 0x01, 0x02, 0xff]);
-      const base64Body = binaryData.toString('base64');
+      const base64Body = binaryData.toString("base64");
 
       const populateResponse = await fetch(`${baseUrl}/cache/populate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          url: 'https://api.example.com/binary',
+          url: "https://api.example.com/binary",
           body: base64Body,
           bodyIsBase64: true,
         }),
@@ -204,21 +204,21 @@ describe('createProxyServer', () => {
 
       // Verify body was stored correctly
       const store = new ProxyCacheStore(cacheDir, 60000);
-      const entry = store.get('GET', 'https://api.example.com/binary');
+      const entry = store.get("GET", "https://api.example.com/binary");
       expect(entry).toBeDefined();
       expect(entry!.body).toEqual(binaryData);
     });
 
-    test('POST /cache/populate with custom status and headers', async () => {
+    test("POST /cache/populate with custom status and headers", async () => {
       const baseUrl = await startServer();
 
       const populateResponse = await fetch(`${baseUrl}/cache/populate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          url: 'https://api.example.com/custom',
+          url: "https://api.example.com/custom",
           status: 201,
-          headers: { 'X-Custom': 'value', 'Content-Type': 'application/json' },
+          headers: { "X-Custom": "value", "Content-Type": "application/json" },
           body: '{"created": true}',
         }),
       });
@@ -227,21 +227,21 @@ describe('createProxyServer', () => {
 
       // Verify entry was added with custom status and headers
       const store = new ProxyCacheStore(cacheDir, 60000);
-      const entry = store.get('GET', 'https://api.example.com/custom');
+      const entry = store.get("GET", "https://api.example.com/custom");
       expect(entry).toBeDefined();
       expect(entry!.status).toBe(201);
-      expect(entry!.headers['X-Custom']).toBe('value');
+      expect(entry!.headers["X-Custom"]).toBe("value");
     });
 
-    test('POST /cache/populate with custom ttl', async () => {
+    test("POST /cache/populate with custom ttl", async () => {
       const baseUrl = await startServer();
 
       const populateResponse = await fetch(`${baseUrl}/cache/populate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          url: 'https://api.example.com/ttl',
-          body: 'data',
+          url: "https://api.example.com/ttl",
+          body: "data",
           ttl: 5000,
         }),
       });
@@ -250,58 +250,58 @@ describe('createProxyServer', () => {
 
       // Verify entry was added with custom TTL
       const store = new ProxyCacheStore(cacheDir, 60000);
-      const entry = store.get('GET', 'https://api.example.com/ttl');
+      const entry = store.get("GET", "https://api.example.com/ttl");
       expect(entry).toBeDefined();
       expect(entry!.ttl).toBe(5000);
     });
 
-    test('POST /cache/populate returns error if url missing', async () => {
+    test("POST /cache/populate returns error if url missing", async () => {
       const baseUrl = await startServer();
 
       const populateResponse = await fetch(`${baseUrl}/cache/populate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: 'data' }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: "data" }),
       });
 
       expect(populateResponse.status).toBe(400);
       const result = await populateResponse.json();
       expect(result.success).toBe(false);
-      expect(result.message).toContain('url');
+      expect(result.message).toContain("url");
     });
 
-    test('POST /cache/populate returns error if body missing', async () => {
+    test("POST /cache/populate returns error if body missing", async () => {
       const baseUrl = await startServer();
 
       const populateResponse = await fetch(`${baseUrl}/cache/populate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: 'https://api.example.com/data' }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://api.example.com/data" }),
       });
 
       expect(populateResponse.status).toBe(400);
       const result = await populateResponse.json();
       expect(result.success).toBe(false);
-      expect(result.message).toContain('body');
+      expect(result.message).toContain("body");
     });
 
-    test('populated cache entry is returned on proxy request', async () => {
+    test("populated cache entry is returned on proxy request", async () => {
       let fetchCalled = false;
       const mockFetch = mock(() => {
         fetchCalled = true;
-        return Promise.resolve(new Response('should not see this', { status: 500 }));
+        return Promise.resolve(new Response("should not see this", { status: 500 }));
       });
 
       const baseUrl = await startServer({ fetchFn: mockFetch as unknown as typeof fetch });
 
       // Pre-populate cache via API
       const populateRes = await fetch(`${baseUrl}/cache/populate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          url: 'https://api.example.com/prepopulated',
+          url: "https://api.example.com/prepopulated",
           body: '{"cached": true}',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { "Content-Type": "application/json" },
         }),
       });
       expect(populateRes.status).toBe(200);
@@ -309,7 +309,7 @@ describe('createProxyServer', () => {
       // Request should be served from cache
       const response = await fetch(`${baseUrl}/https://api.example.com/prepopulated`);
       expect(response.status).toBe(200);
-      expect(response.headers.get('X-Dotfiles-Cache')).toBe('HIT');
+      expect(response.headers.get("X-Dotfiles-Cache")).toBe("HIT");
       const body = await response.json();
       expect(body.cached).toBe(true);
 
@@ -318,15 +318,15 @@ describe('createProxyServer', () => {
     });
   });
 
-  describe('proxy functionality', () => {
-    test('proxies request and caches response', async () => {
+  describe("proxy functionality", () => {
+    test("proxies request and caches response", async () => {
       let fetchCallCount = 0;
       const mockFetch = mock((_url: string | URL | Request) => {
         fetchCallCount++;
         return Promise.resolve(
           new Response('{"data":"test"}', {
             status: 200,
-            headers: { 'content-type': 'application/json' },
+            headers: { "content-type": "application/json" },
           }),
         );
       });
@@ -336,28 +336,28 @@ describe('createProxyServer', () => {
       // First request - should be MISS
       const response1 = await fetch(`${baseUrl}/https://api.example.com/data`);
       expect(response1.status).toBe(200);
-      expect(response1.headers.get('X-Dotfiles-Cache')).toBe('MISS');
+      expect(response1.headers.get("X-Dotfiles-Cache")).toBe("MISS");
       expect(fetchCallCount).toBe(1);
 
       // Second request - should be HIT
       const response2 = await fetch(`${baseUrl}/https://api.example.com/data`);
       expect(response2.status).toBe(200);
-      expect(response2.headers.get('X-Dotfiles-Cache')).toBe('HIT');
+      expect(response2.headers.get("X-Dotfiles-Cache")).toBe("HIT");
       // fetch should NOT be called again
       expect(fetchCallCount).toBe(1);
     });
 
-    test('returns X-Dotfiles-Cache: MISS on first request', async () => {
-      const mockFetch = mock(() => Promise.resolve(new Response('data', { status: 200 })));
+    test("returns X-Dotfiles-Cache: MISS on first request", async () => {
+      const mockFetch = mock(() => Promise.resolve(new Response("data", { status: 200 })));
 
       const baseUrl = await startServer({ fetchFn: mockFetch as unknown as typeof fetch });
 
       const response = await fetch(`${baseUrl}/https://api.example.com/test`);
-      expect(response.headers.get('X-Dotfiles-Cache')).toBe('MISS');
+      expect(response.headers.get("X-Dotfiles-Cache")).toBe("MISS");
     });
 
-    test('returns X-Dotfiles-Cache: HIT on cached request', async () => {
-      const mockFetch = mock(() => Promise.resolve(new Response('data', { status: 200 })));
+    test("returns X-Dotfiles-Cache: HIT on cached request", async () => {
+      const mockFetch = mock(() => Promise.resolve(new Response("data", { status: 200 })));
 
       const baseUrl = await startServer({ fetchFn: mockFetch as unknown as typeof fetch });
 
@@ -366,26 +366,26 @@ describe('createProxyServer', () => {
 
       // Second request should be cached
       const response = await fetch(`${baseUrl}/https://api.example.com/cached`);
-      expect(response.headers.get('X-Dotfiles-Cache')).toBe('HIT');
+      expect(response.headers.get("X-Dotfiles-Cache")).toBe("HIT");
     });
 
-    test('handles fetch errors gracefully', async () => {
-      const mockFetch = mock(() => Promise.reject(new Error('Network error')));
+    test("handles fetch errors gracefully", async () => {
+      const mockFetch = mock(() => Promise.reject(new Error("Network error")));
 
       const baseUrl = await startServer({ fetchFn: mockFetch as unknown as typeof fetch });
 
       const response = await fetch(`${baseUrl}/https://api.example.com/error`);
       expect(response.status).toBe(502);
       const body = await response.json();
-      expect(body.error).toBe('Bad Gateway');
-      expect(body.message).toBe('Network error');
+      expect(body.error).toBe("Bad Gateway");
+      expect(body.message).toBe("Network error");
     });
 
-    test('does not cache error responses', async () => {
+    test("does not cache error responses", async () => {
       let callCount = 0;
       const mockFetch = mock(() => {
         callCount++;
-        return Promise.resolve(new Response('Not Found', { status: 404 }));
+        return Promise.resolve(new Response("Not Found", { status: 404 }));
       });
 
       const baseUrl = await startServer({ fetchFn: mockFetch as unknown as typeof fetch });
@@ -399,14 +399,14 @@ describe('createProxyServer', () => {
       expect(callCount).toBe(2);
     });
 
-    test('rejects CONNECT requests with 501', async () => {
+    test("rejects CONNECT requests with 501", async () => {
       // CONNECT is used for HTTPS tunneling and Express may close the connection
       // We just verify the server doesn't crash and ideally returns 501
       const baseUrl = await startServer();
 
       try {
         const response = await fetch(`${baseUrl}/https://api.example.com`, {
-          method: 'CONNECT',
+          method: "CONNECT",
         });
         // If we get a response, it should be 501
         expect(response.status).toBe(501);
@@ -417,26 +417,26 @@ describe('createProxyServer', () => {
     });
   });
 
-  describe('caching ignores server headers', () => {
-    test('caches response regardless of Cache-Control: no-store', async () => {
+  describe("caching ignores server headers", () => {
+    test("caches response regardless of Cache-Control: no-store", async () => {
       const mockFetch = mock(() =>
         Promise.resolve(
-          new Response('data', {
+          new Response("data", {
             status: 200,
-            headers: { 'Cache-Control': 'no-store, no-cache' },
+            headers: { "Cache-Control": "no-store, no-cache" },
           }),
-        )
+        ),
       );
 
       const baseUrl = await startServer({ fetchFn: mockFetch as unknown as typeof fetch });
 
       // First request
       const response1 = await fetch(`${baseUrl}/https://api.example.com/no-cache`);
-      expect(response1.headers.get('X-Dotfiles-Cache')).toBe('MISS');
+      expect(response1.headers.get("X-Dotfiles-Cache")).toBe("MISS");
 
       // Second request should be cached despite Cache-Control: no-store
       const response2 = await fetch(`${baseUrl}/https://api.example.com/no-cache`);
-      expect(response2.headers.get('X-Dotfiles-Cache')).toBe('HIT');
+      expect(response2.headers.get("X-Dotfiles-Cache")).toBe("HIT");
     });
   });
 });

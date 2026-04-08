@@ -15,7 +15,7 @@ export function detectTagPrefix(tag: string): string {
 
   if (!match || match.index === undefined) {
     // No version pattern found, return empty prefix
-    return '';
+    return "";
   }
 
   // Everything before the version number is the prefix

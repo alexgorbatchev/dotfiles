@@ -1,6 +1,6 @@
-import { codeFrameColumns } from '@babel/code-frame';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
+import { codeFrameColumns } from "@babel/code-frame";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
 
 interface IToolStackFrame {
   filePath: string;
@@ -20,7 +20,7 @@ interface IShellErrorLike {
 type WriteOutput = (chunk: string) => void;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 function isShellErrorLike(value: unknown): value is IShellErrorLike {
@@ -28,12 +28,12 @@ function isShellErrorLike(value: unknown): value is IShellErrorLike {
     return false;
   }
 
-  const nameValue = value['name'];
-  if (typeof nameValue !== 'string') {
+  const nameValue = value["name"];
+  if (typeof nameValue !== "string") {
     return false;
   }
 
-  return nameValue === 'ShellError';
+  return nameValue === "ShellError";
 }
 
 function isTraceEnabled(logger: TsLogger): boolean {
@@ -41,7 +41,7 @@ function isTraceEnabled(logger: TsLogger): boolean {
 }
 
 function normalizeMultiline(value: string): string {
-  const normalizedValue = value.endsWith('\n') ? value : `${value}\n`;
+  const normalizedValue = value.endsWith("\n") ? value : `${value}\n`;
   return normalizedValue;
 }
 
@@ -90,10 +90,10 @@ function parseToolFrameLineOnly(stackLine: string): IToolStackFrame | null {
 }
 
 function parseFirstToolFrame(stack: string): IToolStackFrame | null {
-  const stackLines = stack.split('\n');
+  const stackLines = stack.split("\n");
 
   for (const stackLine of stackLines) {
-    if (!stackLine.includes('.tool.ts')) {
+    if (!stackLine.includes(".tool.ts")) {
       continue;
     }
 
@@ -122,7 +122,7 @@ async function buildToolCodeFrame(fileSystem: IFileSystem, frame: IToolStackFram
     return null;
   }
 
-  const source = await fileSystem.readFile(frame.filePath, 'utf8');
+  const source = await fileSystem.readFile(frame.filePath, "utf8");
 
   const codeFrame = codeFrameColumns(
     source,
@@ -147,36 +147,36 @@ async function buildToolCodeFrame(fileSystem: IFileSystem, frame: IToolStackFram
 function buildShellOutputDetails(error: IShellErrorLike): string {
   const chunks: string[] = [];
 
-  const exitCode = typeof error.exitCode === 'number' ? String(error.exitCode) : 'unknown';
+  const exitCode = typeof error.exitCode === "number" ? String(error.exitCode) : "unknown";
   chunks.push(`exit code: ${exitCode}`);
 
   const stderrValue = normalizeShellStream(error.stderr);
   if (stderrValue.length > 0) {
-    chunks.push('stderr:');
+    chunks.push("stderr:");
     chunks.push(stderrValue);
   }
 
   const stdoutValue = normalizeShellStream(error.stdout);
   if (stdoutValue.length > 0) {
-    chunks.push('stdout:');
+    chunks.push("stdout:");
     chunks.push(stdoutValue);
   }
 
-  const result = chunks.join('\n');
+  const result = chunks.join("\n");
   return result;
 }
 
 function normalizeShellStream(value: unknown): string {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return value;
   }
 
   if (value instanceof Uint8Array) {
-    const result = Buffer.from(value).toString('utf8');
+    const result = Buffer.from(value).toString("utf8");
     return result;
   }
 
-  return '';
+  return "";
 }
 
 function buildNonShellErrorDetails(error: unknown, includeStack: boolean): string {
@@ -184,18 +184,18 @@ function buildNonShellErrorDetails(error: unknown, includeStack: boolean): strin
 
   if (error instanceof Error) {
     chunks.push(`${error.name}: ${error.message}`);
-    if (includeStack && typeof error.stack === 'string' && error.stack.length > 0) {
-      chunks.push('stack:');
+    if (includeStack && typeof error.stack === "string" && error.stack.length > 0) {
+      chunks.push("stack:");
       chunks.push(error.stack);
     }
 
-    const result = chunks.join('\n');
+    const result = chunks.join("\n");
     return result;
   }
 
   chunks.push(String(error));
 
-  const result = chunks.join('\n');
+  const result = chunks.join("\n");
   return result;
 }
 
@@ -233,14 +233,14 @@ function buildStackLines(stack: string | undefined, includeStack: boolean): stri
     return result;
   }
 
-  const result: string[] = ['stack:', stack];
+  const result: string[] = ["stack:", stack];
   return result;
 }
 
 async function buildShellErrorVerboseSection(error: IShellErrorLike, includeStack: boolean): Promise<string[]> {
   const chunks: string[] = [buildShellOutputDetails(error)];
 
-  const stack = typeof error.stack === 'string' ? error.stack : undefined;
+  const stack = typeof error.stack === "string" ? error.stack : undefined;
   const stackLines = buildStackLines(stack, includeStack);
   chunks.push(...stackLines);
 
@@ -265,9 +265,9 @@ async function buildHookErrorOutput(params: IWriteHookErrorDetailsParams): Promi
   // Build the code frame section (always shown if available)
   const codeFrame = await buildCodeFrameSection(params.fileSystem, stack);
   if (codeFrame) {
-    chunks.push('---');
+    chunks.push("---");
     chunks.push(codeFrame);
-    chunks.push('---');
+    chunks.push("---");
   }
 
   // In verbose mode, also include detailed error info
@@ -282,16 +282,16 @@ async function buildHookErrorOutput(params: IWriteHookErrorDetailsParams): Promi
   }
 
   if (chunks.length === 0) {
-    return '';
+    return "";
   }
 
-  const output = normalizeMultiline(chunks.join('\n'));
+  const output = normalizeMultiline(chunks.join("\n"));
   return output;
 }
 
 function getErrorStack(error: unknown): string | undefined {
   if (isShellErrorLike(error)) {
-    return typeof error.stack === 'string' ? error.stack : undefined;
+    return typeof error.stack === "string" ? error.stack : undefined;
   }
   if (error instanceof Error) {
     return error.stack;

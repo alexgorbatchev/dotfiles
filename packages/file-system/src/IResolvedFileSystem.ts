@@ -1,6 +1,6 @@
-import type { IFileSystem } from './IFileSystem';
+import type { IFileSystem } from "./IFileSystem";
 
-export const resolvedFileSystemBrand = Symbol('resolvedFileSystemBrand');
+export const resolvedFileSystemBrand = Symbol("resolvedFileSystemBrand");
 export type ResolvedFileSystemBrand = typeof resolvedFileSystemBrand;
 
 /**

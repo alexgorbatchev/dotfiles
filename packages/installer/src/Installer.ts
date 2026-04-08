@@ -1,4 +1,4 @@
-import type { ProjectConfig } from '@dotfiles/config';
+import type { ProjectConfig } from "@dotfiles/config";
 import type {
   IAfterInstallContext,
   ICompletionContext,
@@ -11,23 +11,23 @@ import type {
   ShellCompletionConfigValue,
   ShellType,
   ToolConfig,
-} from '@dotfiles/core';
-import { Platform } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import { createSafeLogMessage, type TsLogger } from '@dotfiles/logger';
-import type { TrackedFileSystem } from '@dotfiles/registry/file';
-import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import type { ICompletionGenerationContext, ICompletionGenerator } from '@dotfiles/shell-init-generator';
-import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
-import { resolveValue } from '@dotfiles/unwrap-value';
-import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
-import { randomUUID } from 'node:crypto';
-import path from 'node:path';
-import { type ICreateBaseInstallContextResult, InstallContextFactory } from './context';
-import { HookLifecycle } from './hooks/HookLifecycle';
-import { InstallationStateWriter } from './state';
-import type { IInstaller, IInstallOptions, InstallResult } from './types';
-import { createConfiguredShell, getBinaryPaths, type HookExecutor, messages } from './utils';
+} from "@dotfiles/core";
+import { Platform } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import { createSafeLogMessage, type TsLogger } from "@dotfiles/logger";
+import type { TrackedFileSystem } from "@dotfiles/registry/file";
+import type { IToolInstallationRegistry } from "@dotfiles/registry/tool";
+import type { ICompletionGenerationContext, ICompletionGenerator } from "@dotfiles/shell-init-generator";
+import type { ISymlinkGenerator } from "@dotfiles/symlink-generator";
+import { resolveValue } from "@dotfiles/unwrap-value";
+import { generateTimestamp, resolvePlatformConfig } from "@dotfiles/utils";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { type ICreateBaseInstallContextResult, InstallContextFactory } from "./context";
+import { HookLifecycle } from "./hooks/HookLifecycle";
+import { InstallationStateWriter } from "./state";
+import type { IInstaller, IInstallOptions, InstallResult } from "./types";
+import { createConfiguredShell, getBinaryPaths, type HookExecutor, messages } from "./utils";
 
 /**
  * Orchestrates the tool installation process by delegating to plugin-based installation methods
@@ -110,7 +110,7 @@ export class Installer implements IInstaller {
     hookExecutor: HookExecutor,
     completionGenerator?: ICompletionGenerator,
   ) {
-    this.logger = parentLogger.getSubLogger({ name: 'Installer' });
+    this.logger = parentLogger.getSubLogger({ name: "Installer" });
     this.fs = fileSystem;
     this.resolvedFs = resolvedFileSystem;
     this.projectConfig = projectConfig;
@@ -168,7 +168,7 @@ export class Installer implements IInstaller {
     options: IInstallOptions | undefined,
     parentLogger: TsLogger,
   ): Promise<InstallResult | null> {
-    const logger = parentLogger.getSubLogger({ name: 'shouldSkipInstallation' });
+    const logger = parentLogger.getSubLogger({ name: "shouldSkipInstallation" });
     if (options?.force || options?.skipVersionCheck) {
       return null;
     }
@@ -180,7 +180,7 @@ export class Installer implements IInstaller {
 
     // Compute binaryPaths for already-installed case
     // This is needed for completion generation to know where binaries are
-    const currentDir = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
+    const currentDir = path.join(this.projectConfig.paths.binariesDir, toolName, "current");
     const binaryPaths = getBinaryPaths(resolvedToolConfig.binaries, currentDir);
 
     // Get shellInit from plugin if available (for plugins like zsh-plugin that emit shellInit)
@@ -190,12 +190,12 @@ export class Installer implements IInstaller {
     const targetVersion = await this.getTargetVersion(toolName, resolvedToolConfig);
     if (targetVersion) {
       if (existingInstallation.version === targetVersion) {
-        logger.debug(messages.outcome.installSuccess(toolName, targetVersion, 'already-installed'));
+        logger.debug(messages.outcome.installSuccess(toolName, targetVersion, "already-installed"));
         // Use type assertion: "already-installed" is a skip scenario, not a real plugin execution
         const result = {
           success: true,
           version: existingInstallation.version,
-          installationMethod: 'already-installed',
+          installationMethod: "already-installed",
           binaryPaths,
           shellInit,
         } as InstallResult;
@@ -210,12 +210,12 @@ export class Installer implements IInstaller {
     // Since we don't support update checks for some plugins (like curl-script),
     // assuming "installed is good enough" prevents the infinite reinstall loop.
     // Users can use --force to update.
-    logger.debug(messages.outcome.installSuccess(toolName, existingInstallation.version, 'already-installed-latest'));
+    logger.debug(messages.outcome.installSuccess(toolName, existingInstallation.version, "already-installed-latest"));
     // Use type assertion: "already-installed" is a skip scenario, not a real plugin execution
     const result = {
       success: true,
       version: existingInstallation.version,
-      installationMethod: 'already-installed',
+      installationMethod: "already-installed",
       binaryPaths,
       shellInit,
     } as InstallResult;
@@ -253,30 +253,30 @@ export class Installer implements IInstaller {
   }
 
   private isShellCompletionConfigInput(value: unknown): value is ShellCompletionConfigInput {
-    if (typeof value === 'string' || typeof value === 'function') {
+    if (typeof value === "string" || typeof value === "function") {
       return true;
     }
 
-    if (typeof value !== 'object' || value === null) {
+    if (typeof value !== "object" || value === null) {
       return false;
     }
 
-    return 'source' in value || 'cmd' in value || 'url' in value;
+    return "source" in value || "cmd" in value || "url" in value;
   }
 
   private normalizeCompletionConfig(value: ShellCompletionConfigValue): ShellCompletionConfig {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       return { source: value };
     }
 
-    if ('cmd' in value) {
+    if ("cmd" in value) {
       return {
         cmd: value.cmd,
         ...(value.bin ? { bin: value.bin } : {}),
       };
     }
 
-    if ('url' in value) {
+    if ("url" in value) {
       return {
         url: value.url,
         ...(value.source ? { source: value.source } : {}),
@@ -297,14 +297,14 @@ export class Installer implements IInstaller {
     version: string | undefined,
     parentLogger: TsLogger,
   ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'prepareUrlCompletionAssets' });
+    const logger = parentLogger.getSubLogger({ name: "prepareUrlCompletionAssets" });
 
     if (!this.completionGenerator?.prepareUrlCompletionSource) {
       return;
     }
 
-    const shellTypes: ShellType[] = ['zsh', 'bash', 'powershell'];
-    const completionVersion = version ?? toolConfig.version ?? 'latest';
+    const shellTypes: ShellType[] = ["zsh", "bash", "powershell"];
+    const completionVersion = version ?? toolConfig.version ?? "latest";
 
     for (const shellType of shellTypes) {
       const completionInputValue = toolConfig.shellConfigs?.[shellType]?.completions;
@@ -355,7 +355,7 @@ export class Installer implements IInstaller {
    * @returns Installation result with success status, binary paths, version, and metadata
    */
   async install(toolName: string, toolConfig: ToolConfig, options?: IInstallOptions): Promise<InstallResult> {
-    const logger = this.logger.getSubLogger({ name: 'install', context: toolName });
+    const logger = this.logger.getSubLogger({ name: "install", context: toolName });
 
     // Resolve platform-specific configuration
     const systemInfo = this.getSystemInfo();
@@ -392,7 +392,7 @@ export class Installer implements IInstaller {
       const timestamp: string = generateTimestamp();
       let versionOrTimestamp: string = timestamp;
 
-      if (resolvedToolConfig.version && resolvedToolConfig.version !== 'latest') {
+      if (resolvedToolConfig.version && resolvedToolConfig.version !== "latest") {
         versionOrTimestamp = resolvedToolConfig.version;
       }
 
@@ -431,14 +431,14 @@ export class Installer implements IInstaller {
       // Build installation environment with recursion guard and modified PATH
       // This environment is passed to the configured shell so all commands inherit it.
       // We avoid modifying process.env directly as that's a global mutation.
-      const envVarName = `DOTFILES_INSTALLING_${toolName.toUpperCase().replace(/[^A-Z0-9_]/g, '_')}`;
-      const originalPath = process.env['PATH'] || '';
-      const pathSeparator = systemInfo.platform === Platform.Windows ? ';' : ':';
+      const envVarName = `DOTFILES_INSTALLING_${toolName.toUpperCase().replace(/[^A-Z0-9_]/g, "_")}`;
+      const originalPath = process.env["PATH"] || "";
+      const pathSeparator = systemInfo.platform === Platform.Windows ? ";" : ":";
       const installPath: string = isExternallyManaged ? originalPath : `${stagingDir}${pathSeparator}${originalPath}`;
 
       const installEnv: Record<string, string | undefined> = {
         ...process.env,
-        [envVarName]: 'true',
+        [envVarName]: "true",
         PATH: installPath,
       };
 
@@ -476,14 +476,14 @@ export class Installer implements IInstaller {
         // Add the resolved installation method to the result
         result.installationMethod = resolvedToolConfig.installationMethod;
 
-        const detectedVersion: string | undefined = result.success && 'version' in result ? result.version : undefined;
+        const detectedVersion: string | undefined = result.success && "version" in result ? result.version : undefined;
         const finalVersionOrTimestamp: string =
           versionOrTimestamp === timestamp && detectedVersion && detectedVersion !== timestamp
             ? detectedVersion
             : versionOrTimestamp;
 
         const installedDir: string = isExternallyManaged
-          ? path.join(toolRootDir, 'external')
+          ? path.join(toolRootDir, "external")
           : path.join(toolRootDir, finalVersionOrTimestamp);
 
         if (result.success && !isExternallyManaged) {
@@ -494,9 +494,9 @@ export class Installer implements IInstaller {
           await toolFs.rename(stagingDir, installedDir);
           logger.debug(messages.lifecycle.directoryRenamed(stagingDir, installedDir));
 
-          if (result.success && 'binaryPaths' in result && result.binaryPaths) {
+          if (result.success && "binaryPaths" in result && result.binaryPaths) {
             result.binaryPaths = result.binaryPaths.map((p: string) =>
-              p.startsWith(stagingDir) ? p.replace(stagingDir, installedDir) : p
+              p.startsWith(stagingDir) ? p.replace(stagingDir, installedDir) : p,
             );
           }
         }
@@ -508,7 +508,7 @@ export class Installer implements IInstaller {
         // Create stable binary entrypoints for all tools.
         // Shims always execute via toolDir/current/<binary>, so <binary> must be a direct executable file.
         // Filter out paths that don't exist - these may have been handled by setupBinariesFromArchive
-        const binaryPaths = result.success && 'binaryPaths' in result ? result.binaryPaths : undefined;
+        const binaryPaths = result.success && "binaryPaths" in result ? result.binaryPaths : undefined;
         if (result.success && binaryPaths) {
           const existingPaths: string[] = [];
           for (const binaryPath of binaryPaths) {
@@ -564,10 +564,9 @@ export class Installer implements IInstaller {
         }
 
         if (result.success) {
-          const resultBinaryPaths: string[] = 'binaryPaths' in result && Array.isArray(result.binaryPaths)
-            ? result.binaryPaths
-            : [];
-          const version: string | undefined = 'version' in result ? result.version : undefined;
+          const resultBinaryPaths: string[] =
+            "binaryPaths" in result && Array.isArray(result.binaryPaths) ? result.binaryPaths : [];
+          const version: string | undefined = "version" in result ? result.version : undefined;
 
           await this.prepareUrlCompletionAssets(toolName, resolvedToolConfig, installedDir, version, logger);
 
@@ -578,7 +577,7 @@ export class Installer implements IInstaller {
             : `${installedDir}${pathSeparator}${originalPath}`;
           const afterInstallEnv: Record<string, string | undefined> = {
             ...process.env,
-            [envVarName]: 'true',
+            [envVarName]: "true",
             PATH: afterInstallPath,
           };
           const afterInstallShell = createConfiguredShell(this.$, afterInstallEnv);
@@ -651,7 +650,7 @@ export class Installer implements IInstaller {
    */
   private async getTargetVersion(_toolName: string, toolConfig: ToolConfig): Promise<string | null> {
     // If the version is explicitly set and not 'latest', return it
-    if (toolConfig.version && toolConfig.version !== 'latest') {
+    if (toolConfig.version && toolConfig.version !== "latest") {
       return toolConfig.version;
     }
     // For 'latest' or unspecified versions, we can't determine the target version
@@ -697,7 +696,7 @@ export class Installer implements IInstaller {
     $shell: Shell = createConfiguredShell(this.$, process.env),
     installEnv?: Record<string, string | undefined>,
   ): ICreateBaseInstallContextResult {
-    const methodLogger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
+    const methodLogger = parentLogger.getSubLogger({ name: "createBaseInstallContext" });
 
     return this.installContextFactory.createBaseInstallContext({
       toolName,

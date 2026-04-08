@@ -1,7 +1,7 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
-  initializing: () => createSafeLogMessage('Initializing VersionChecker with githubClient'),
+  initializing: () => createSafeLogMessage("Initializing VersionChecker with githubClient"),
   fetchingLatestRelease: (owner: string, repo: string) =>
     createSafeLogMessage(`Fetching latest version for ${owner}/${repo}`),
   latestReleaseFound: (version: string) => createSafeLogMessage(`Latest release found ${version}`),

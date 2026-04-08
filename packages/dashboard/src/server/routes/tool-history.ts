@@ -1,8 +1,8 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { IApiResponse, IToolHistory } from '../../shared/types';
-import { formatRelativeTime, formatTimestamp } from '../../shared/types';
-import { messages } from '../log-messages';
-import type { IDashboardServices } from '../types';
+import type { TsLogger } from "@dotfiles/logger";
+import type { IApiResponse, IToolHistory } from "../../shared/types";
+import { formatRelativeTime, formatTimestamp } from "../../shared/types";
+import { messages } from "../log-messages";
+import type { IDashboardServices } from "../types";
 
 /**
  * GET /api/tools/:name/history - Get file operation history for a tool
@@ -41,7 +41,7 @@ export async function getToolHistory(
       },
     };
   } catch (error) {
-    logger.error(messages.apiError('getToolHistory'), error);
-    return { success: false, error: 'Failed to retrieve tool history' };
+    logger.error(messages.apiError("getToolHistory"), error);
+    return { success: false, error: "Failed to retrieve tool history" };
   }
 }

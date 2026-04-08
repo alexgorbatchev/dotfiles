@@ -13,7 +13,7 @@ export class GitHubApiClientError extends Error {
    */
   constructor(message: string, statusCode?: number, originalError?: unknown) {
     super(message);
-    this.name = 'GitHubApiClientError';
+    this.name = "GitHubApiClientError";
     this.statusCode = statusCode;
     this.originalError = originalError;
 

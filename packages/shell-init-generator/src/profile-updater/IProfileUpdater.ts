@@ -1,4 +1,4 @@
-import type { ShellType } from '@dotfiles/core';
+import type { ShellType } from "@dotfiles/core";
 
 /**
  * Configuration for updating a specific profile file.

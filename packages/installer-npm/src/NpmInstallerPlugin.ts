@@ -5,17 +5,17 @@ import type {
   InstallResult,
   Shell,
   UpdateCheckResult,
-} from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
-import { stripVersionPrefix } from '@dotfiles/utils';
-import { installFromNpm } from './installFromNpm';
-import { messages } from './log-messages';
-import { type NpmInstallParams, npmInstallParamsSchema, type NpmToolConfig, npmToolConfigSchema } from './schemas';
+} from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
+import { stripVersionPrefix } from "@dotfiles/utils";
+import { installFromNpm } from "./installFromNpm";
+import { messages } from "./log-messages";
+import { type NpmInstallParams, npmInstallParamsSchema, type NpmToolConfig, npmToolConfigSchema } from "./schemas";
 
-const PLUGIN_VERSION = '1.0.0';
+const PLUGIN_VERSION = "1.0.0";
 
 type NpmPluginMetadata = {
-  method: 'npm';
+  method: "npm";
   packageName: string;
 };
 
@@ -27,16 +27,9 @@ type NpmPluginMetadata = {
  * making binaries available through the global bin directory.
  * The plugin is externally managed — the package manager controls binary placement.
  */
-export class NpmInstallerPlugin implements
-  IInstallerPlugin<
-    'npm',
-    NpmInstallParams,
-    NpmToolConfig,
-    NpmPluginMetadata
-  >
-{
-  readonly method = 'npm';
-  readonly displayName = 'npm Installer';
+export class NpmInstallerPlugin implements IInstallerPlugin<"npm", NpmInstallParams, NpmToolConfig, NpmPluginMetadata> {
+  readonly method = "npm";
+  readonly displayName = "npm Installer";
   readonly version = PLUGIN_VERSION;
   readonly externallyManaged = true;
   readonly paramsSchema = npmInstallParamsSchema;
@@ -103,7 +96,7 @@ export class NpmInstallerPlugin implements
     _context: IInstallContext,
     logger: TsLogger,
   ): Promise<string | null> {
-    const subLogger: TsLogger = logger.getSubLogger({ name: 'resolveVersion' });
+    const subLogger: TsLogger = logger.getSubLogger({ name: "resolveVersion" });
 
     try {
       const params = toolConfig.installParams;
@@ -154,7 +147,7 @@ export class NpmInstallerPlugin implements
     _context: IInstallContext,
     logger: TsLogger,
   ): Promise<UpdateCheckResult> {
-    const subLogger: TsLogger = logger.getSubLogger({ name: 'checkUpdate', context: toolName });
+    const subLogger: TsLogger = logger.getSubLogger({ name: "checkUpdate", context: toolName });
 
     try {
       const params = toolConfig.installParams;
@@ -171,9 +164,9 @@ export class NpmInstallerPlugin implements
         return failResult;
       }
 
-      const configuredVersion: string = toolConfig.version || 'latest';
+      const configuredVersion: string = toolConfig.version || "latest";
 
-      if (configuredVersion === 'latest') {
+      if (configuredVersion === "latest") {
         const successResult: UpdateCheckResult = {
           success: true,
           hasUpdate: false,
@@ -194,7 +187,7 @@ export class NpmInstallerPlugin implements
       subLogger.error(messages.updateCheckFailed(), error);
       const failResult: UpdateCheckResult = {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
       return failResult;
     }

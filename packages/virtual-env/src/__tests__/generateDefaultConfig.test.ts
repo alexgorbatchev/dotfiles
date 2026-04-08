@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { generateDefaultConfig } from '../generateDefaultConfig';
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { generateDefaultConfig } from "../generateDefaultConfig";
 
-describe('generateDefaultConfig', () => {
+describe("generateDefaultConfig", () => {
   const originalEnv = process.env.DOTFILES_BUILT_PACKAGE_NAME;
 
   beforeEach(() => {
-    process.env.DOTFILES_BUILT_PACKAGE_NAME = '@test/dotfiles';
+    process.env.DOTFILES_BUILT_PACKAGE_NAME = "@test/dotfiles";
   });
 
   afterEach(() => {
@@ -16,7 +16,7 @@ describe('generateDefaultConfig', () => {
     }
   });
 
-  it('should generate valid TypeScript config', () => {
+  it("should generate valid TypeScript config", () => {
     const config = generateDefaultConfig();
 
     expect(config).toMatchInlineSnapshot(`

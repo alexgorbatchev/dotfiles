@@ -1,5 +1,5 @@
 // Import aggregated plugin types from plugin system
-import type { AggregateInstallResult, ToolConfig } from '@dotfiles/core';
+import type { AggregateInstallResult, ToolConfig } from "@dotfiles/core";
 
 /**
  * Options for the install operation

@@ -1,7 +1,7 @@
-import type { IBinaryConfig, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import path from 'node:path';
-import { getBuiltPackageName } from './getBuiltPackageName';
+import type { IBinaryConfig, ToolConfig } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import path from "node:path";
+import { getBuiltPackageName } from "./getBuiltPackageName";
 
 /**
  * Header comment shared by all generated tool-types.d.ts files.
@@ -26,7 +26,7 @@ export function extractBinaryNames(toolConfigs: Record<string, ToolConfig>): Set
   for (const [toolName, toolConfig] of Object.entries(toolConfigs)) {
     if (toolConfig.binaries && toolConfig.binaries.length > 0) {
       for (const binary of toolConfig.binaries) {
-        if (typeof binary === 'string') {
+        if (typeof binary === "string") {
           binaryNames.add(binary);
         } else {
           const binaryConfig: IBinaryConfig = binary;
@@ -50,27 +50,27 @@ export function extractBinaryNames(toolConfigs: Record<string, ToolConfig>): Set
  */
 export function generateUnionType(binaryNames: Set<string>): string {
   if (binaryNames.size === 0) {
-    return 'string';
+    return "string";
   }
 
   const sortedNames: string[] = Array.from(binaryNames).toSorted();
   const quotedNames: string[] = sortedNames.map((name: string): string => `'${name}'`);
-  return quotedNames.join(' | ');
+  return quotedNames.join(" | ");
 }
 
 export function generateToolTypesContent(toolConfigs: Record<string, ToolConfig>, moduleName?: string): string {
   const binaryNames: Set<string> = extractBinaryNames(toolConfigs);
   const unionType: string = generateUnionType(binaryNames);
-  const sortedNames: string[] = unionType === 'string' ? [] : Array.from(binaryNames).toSorted();
-  const registryEntries: string = sortedNames.map((name: string): string => `    '${name}': never;`).join('\n');
+  const sortedNames: string[] = unionType === "string" ? [] : Array.from(binaryNames).toSorted();
+  const registryEntries: string = sortedNames.map((name: string): string => `    '${name}': never;`).join("\n");
   const hasEntries: boolean = registryEntries.length > 0;
   const registryBody: string = hasEntries
     ? `  interface IKnownBinNameRegistry {\n${registryEntries}\n  }`
-    : '  interface IKnownBinNameRegistry {}';
+    : "  interface IKnownBinNameRegistry {}";
   const resolvedModuleName: string = moduleName ?? getBuiltPackageName();
   const moduleBlock: string = `declare module '${resolvedModuleName}' {\n${registryBody}\n}`;
-  const contentParts: string[] = [TOOL_TYPES_HEADER, moduleBlock, 'export {};', ''];
-  const content: string = contentParts.join('\n\n');
+  const contentParts: string[] = [TOOL_TYPES_HEADER, moduleBlock, "export {};", ""];
+  const content: string = contentParts.join("\n\n");
   return content;
 }
 
@@ -90,5 +90,5 @@ export async function generateToolTypes(
 ): Promise<void> {
   const content: string = generateToolTypesContent(toolConfigs, moduleName);
   await fs.ensureDir(path.dirname(outputPath));
-  await fs.writeFile(outputPath, content, 'utf8');
+  await fs.writeFile(outputPath, content, "utf8");
 }

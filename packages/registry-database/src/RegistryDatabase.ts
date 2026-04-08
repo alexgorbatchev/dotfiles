@@ -1,8 +1,8 @@
-import type { TsLogger } from '@dotfiles/logger';
-import { Database } from 'bun:sqlite';
-import { mkdirSync } from 'node:fs';
-import path from 'node:path';
-import { messages } from './log-messages';
+import type { TsLogger } from "@dotfiles/logger";
+import { Database } from "bun:sqlite";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+import { messages } from "./log-messages";
 
 /**
  * Manages the shared SQLite database connection for the dotfiles project.
@@ -19,12 +19,12 @@ export class RegistryDatabase {
   private logger: TsLogger;
 
   constructor(parentLogger: TsLogger, registryDbPath: string) {
-    this.logger = parentLogger.getSubLogger({ name: 'RegistryDatabase' });
+    this.logger = parentLogger.getSubLogger({ name: "RegistryDatabase" });
     const dbDir = path.dirname(registryDbPath);
     mkdirSync(dbDir, { recursive: true });
     this.db = new Database(registryDbPath);
     this.configureConnectionPragmas();
-    this.logger.debug(messages.initialized(), 'shared connection');
+    this.logger.debug(messages.initialized(), "shared connection");
   }
 
   private configureConnectionPragmas(): void {
@@ -33,9 +33,9 @@ export class RegistryDatabase {
     // WAL allows concurrent readers with a single writer and reduces lock contention.
     // synchronous=NORMAL is a practical durability/performance balance for this metadata DB.
     try {
-      this.db.run('PRAGMA busy_timeout = 5000;');
-      this.db.run('PRAGMA journal_mode = WAL;');
-      this.db.run('PRAGMA synchronous = NORMAL;');
+      this.db.run("PRAGMA busy_timeout = 5000;");
+      this.db.run("PRAGMA journal_mode = WAL;");
+      this.db.run("PRAGMA synchronous = NORMAL;");
     } catch (error) {
       this.logger.warn(messages.sqlitePragmaConfigFailed(), error);
     }

@@ -1,4 +1,4 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   initialized: (cacheDir: string, defaultTtl: number, strategy: string, enabled: boolean) =>
@@ -10,19 +10,19 @@ export const messages = {
   entryMissing: (key: string) => createSafeLogMessage(`No cache entry found for key: ${key}`),
   entryExpired: (key: string) => createSafeLogMessage(`Cache entry expired for key: ${key}`),
   cacheHit: (key: string, strategy: string, size?: number) => {
-    const sizeDescription = size !== undefined ? `, size: ${size} bytes` : '';
+    const sizeDescription = size !== undefined ? `, size: ${size} bytes` : "";
     return createSafeLogMessage(`Cache hit for key: ${key} (${strategy})${sizeDescription}`);
   },
   cacheStored: (key: string, strategy: string, expiresAt: string, size?: number) => {
-    const sizeDescription = size !== undefined ? `, size: ${size} bytes` : '';
+    const sizeDescription = size !== undefined ? `, size: ${size} bytes` : "";
     return createSafeLogMessage(`Cached data for key: ${key} (${strategy})${sizeDescription}, expires: ${expiresAt}`);
   },
   cacheEntryRemoved: (key: string) => createSafeLogMessage(`Removed cache entry for key: ${key}`),
-  cacheCleared: () => createSafeLogMessage('Removed entire cache directory'),
+  cacheCleared: () => createSafeLogMessage("Removed entire cache directory"),
   expiredEntriesCleared: (count: number) => createSafeLogMessage(`Removed ${count} expired cache entries`),
   cacheEntryExists: (key: string) => createSafeLogMessage(`Valid cache entry exists for key: ${key}`),
   noEntryToDelete: (key: string) => createSafeLogMessage(`No cache entry to delete for key: ${key}`),
-  cacheDirectoryMissing: () => createSafeLogMessage('Cache directory does not exist, nothing to clear'),
+  cacheDirectoryMissing: () => createSafeLogMessage("Cache directory does not exist, nothing to clear"),
   binaryFileMissing: (key: string, filePath: string) =>
     createSafeLogMessage(`Binary file missing for key: ${key}, path: ${filePath}`),
   contentHashMismatch: (key: string, expected: string, actual: string) =>
@@ -41,6 +41,6 @@ export const messages = {
   clearFailed: (reason: string) => createSafeLogMessage(`Error clearing cache: ${reason}`),
   directoryCreationFailed: (reason: string) =>
     createSafeLogMessage(`Error ensuring cache directories exist: ${reason}`),
-  binaryDirectoryNotConfigured: () => createSafeLogMessage('Binary directory not configured for binary strategy'),
-  binaryDataRequired: () => createSafeLogMessage('Binary storage strategy requires Buffer data'),
+  binaryDirectoryNotConfigured: () => createSafeLogMessage("Binary directory not configured for binary strategy"),
+  binaryDataRequired: () => createSafeLogMessage("Binary storage strategy requires Buffer data"),
 } satisfies SafeLogMessageMap;

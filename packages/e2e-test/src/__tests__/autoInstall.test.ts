@@ -6,19 +6,19 @@
  * - Have their binaries available after generate completes
  * - Can be executed via shims after generate
  */
-import { beforeAll, describe, expect, it } from 'bun:test';
+import { beforeAll, describe, expect, it } from "bun:test";
 // oxlint-disable-next-line import/no-unassigned-import
-import '@dotfiles/testing-helpers';
-import { Architecture, Platform } from '@dotfiles/core';
-import path from 'node:path';
-import { AUTO_INSTALL_TOOL, MockServerBuilder, withMockServer } from './helpers/mock-server';
-import { TestHarness } from './helpers/TestHarness';
+import "@dotfiles/testing-helpers";
+import { Architecture, Platform } from "@dotfiles/core";
+import path from "node:path";
+import { AUTO_INSTALL_TOOL, MockServerBuilder, withMockServer } from "./helpers/mock-server";
+import { TestHarness } from "./helpers/TestHarness";
 
-describe('E2E: auto-install during generate', () => {
+describe("E2E: auto-install during generate", () => {
   // Auto-install test uses a different fixture directory
   withMockServer(() => {
     // Override the fixture directory to 'auto-install'
-    const builder = new MockServerBuilder('auto-install');
+    const builder = new MockServerBuilder("auto-install");
     return builder.withGitHubTool(AUTO_INSTALL_TOOL);
   });
 
@@ -27,8 +27,8 @@ describe('E2E: auto-install during generate', () => {
     architecture: Architecture;
     name: string;
   }> = [
-    { platform: Platform.MacOS, architecture: Architecture.Arm64, name: 'macOS ARM64' },
-    { platform: Platform.Linux, architecture: Architecture.X86_64, name: 'Linux x86_64' },
+    { platform: Platform.MacOS, architecture: Architecture.Arm64, name: "macOS ARM64" },
+    { platform: Platform.Linux, architecture: Architecture.X86_64, name: "Linux x86_64" },
   ];
 
   for (const config of platformConfigs) {
@@ -36,22 +36,22 @@ describe('E2E: auto-install during generate', () => {
       // Create a separate harness for auto-install tests with its own fixtures
       const harness = new TestHarness({
         testDir: import.meta.dir,
-        configPath: 'fixtures/auto-install/config.ts',
+        configPath: "fixtures/auto-install/config.ts",
         platform: config.platform,
         architecture: config.architecture,
       });
 
-      const toolDir = path.join(harness.generatedDir, 'binaries', 'auto-install-tool');
-      const currentDir = path.join(toolDir, 'current');
-      const binaryPath = path.join(currentDir, 'auto-install-tool');
+      const toolDir = path.join(harness.generatedDir, "binaries", "auto-install-tool");
+      const currentDir = path.join(toolDir, "current");
+      const binaryPath = path.join(currentDir, "auto-install-tool");
 
-      describe('auto-install during generate', () => {
+      describe("auto-install during generate", () => {
         beforeAll(async () => {
           // Clean up to ensure fresh state for auto-install testing
           await harness.clean();
         });
 
-        it('should auto-install tool with auto: true during generate', async () => {
+        it("should auto-install tool with auto: true during generate", async () => {
           // Verify the binary does NOT exist before generate
           expect(await harness.fileExists(binaryPath)).toBe(false);
 
@@ -60,7 +60,7 @@ describe('E2E: auto-install during generate', () => {
           expect(result.code).toBe(0);
 
           // Verify stdout contains auto-install message
-          expect(result.stdout).toContain('Auto-installed: auto-install-tool');
+          expect(result.stdout).toContain("Auto-installed: auto-install-tool");
 
           // Verify the binary was installed
           expect(await harness.fileExists(binaryPath)).toBe(true);
@@ -69,33 +69,33 @@ describe('E2E: auto-install during generate', () => {
           expect(await harness.isExecutable(binaryPath)).toBe(true);
         });
 
-        it('should generate shim for auto-installed tool', async () => {
-          await harness.verifyShim('auto-install-tool');
+        it("should generate shim for auto-installed tool", async () => {
+          await harness.verifyShim("auto-install-tool");
         });
 
-        it('should execute auto-installed tool via shim', async () => {
-          await harness.verifyShim('auto-install-tool', {
-            args: ['--version'],
+        it("should execute auto-installed tool via shim", async () => {
+          await harness.verifyShim("auto-install-tool", {
+            args: ["--version"],
             expectedExitCode: 0,
-            stdoutMatcher: (stdout) => stdout.includes('auto-install-tool version 1.0.0'),
+            stdoutMatcher: (stdout) => stdout.includes("auto-install-tool version 1.0.0"),
           });
         });
 
-        it('should set environment variables from auto-installed tool config', async () => {
+        it("should set environment variables from auto-installed tool config", async () => {
           await harness.verifyEnvironmentVariable(
-            'auto-install-tool',
-            'AUTO_INSTALL_TOOL_HOME',
-            '~/.auto-install-tool',
+            "auto-install-tool",
+            "AUTO_INSTALL_TOOL_HOME",
+            "~/.auto-install-tool",
           );
         });
 
-        it('should not reinstall on subsequent generate when already installed', async () => {
+        it("should not reinstall on subsequent generate when already installed", async () => {
           // Run generate again without cleaning
           const result = await harness.generate();
           expect(result.code).toBe(0);
 
           // Tool is already installed, so no "Auto-installed" message should appear
-          expect(result.stdout).not.toContain('Auto-installed: auto-install-tool');
+          expect(result.stdout).not.toContain("Auto-installed: auto-install-tool");
 
           // Binary should still exist
           expect(await harness.fileExists(binaryPath)).toBe(true);

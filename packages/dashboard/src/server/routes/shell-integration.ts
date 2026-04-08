@@ -1,8 +1,8 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { IApiResponse, IShellIntegration } from '../../shared/types';
-import { formatTimestamp } from '../../shared/types';
-import { messages } from '../log-messages';
-import type { IDashboardServices } from '../types';
+import type { TsLogger } from "@dotfiles/logger";
+import type { IApiResponse, IShellIntegration } from "../../shared/types";
+import { formatTimestamp } from "../../shared/types";
+import { messages } from "../log-messages";
+import type { IDashboardServices } from "../types";
 
 /**
  * GET /api/shell - Get shell integration (completions and init scripts)
@@ -13,8 +13,8 @@ export async function getShellIntegration(
 ): Promise<IApiResponse<IShellIntegration>> {
   try {
     // Get all file operations for completion and init types
-    const completionOps = await services.fileRegistry.getOperations({ fileType: 'completion' });
-    const initOps = await services.fileRegistry.getOperations({ fileType: 'init' });
+    const completionOps = await services.fileRegistry.getOperations({ fileType: "completion" });
+    const initOps = await services.fileRegistry.getOperations({ fileType: "init" });
 
     // Group by file path to get latest state
     const completionMap = new Map<string, (typeof completionOps)[0]>();
@@ -35,20 +35,20 @@ export async function getShellIntegration(
 
     // Filter out deleted files
     const completions = Array.from(completionMap.values())
-      .filter((op) => op.operationType !== 'rm')
+      .filter((op) => op.operationType !== "rm")
       .map((op) => ({
         toolName: op.toolName,
         filePath: op.filePath,
-        fileType: 'completion' as const,
+        fileType: "completion" as const,
         lastModified: formatTimestamp(op.createdAt),
       }));
 
     const initScripts = Array.from(initMap.values())
-      .filter((op) => op.operationType !== 'rm')
+      .filter((op) => op.operationType !== "rm")
       .map((op) => ({
         toolName: op.toolName,
         filePath: op.filePath,
-        fileType: 'init' as const,
+        fileType: "init" as const,
         lastModified: formatTimestamp(op.createdAt),
       }));
 
@@ -60,7 +60,7 @@ export async function getShellIntegration(
 
     return { success: true, data: integration };
   } catch (error) {
-    logger.error(messages.apiError('getShellIntegration'), error);
-    return { success: false, error: 'Failed to retrieve shell integration' };
+    logger.error(messages.apiError("getShellIntegration"), error);
+    return { success: false, error: "Failed to retrieve shell integration" };
   }
 }

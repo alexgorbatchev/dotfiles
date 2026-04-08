@@ -1,15 +1,15 @@
-import type { IOperationFailure, IOperationSuccess } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { ProxyFetchConfig } from '@dotfiles/utils';
-import type { ICache } from './cache/types';
-import { CachedDownloadStrategy } from './CachedDownloadStrategy';
-import type { IDownloader, IDownloadOptions } from './IDownloader';
-import type { IDownloadStrategy } from './IDownloadStrategy';
-import { downloaderLogMessages } from './log-messages';
-import { NodeFetchStrategy } from './NodeFetchStrategy';
+import type { IOperationFailure, IOperationSuccess } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import type { ProxyFetchConfig } from "@dotfiles/utils";
+import type { ICache } from "./cache/types";
+import { CachedDownloadStrategy } from "./CachedDownloadStrategy";
+import type { IDownloader, IDownloadOptions } from "./IDownloader";
+import type { IDownloadStrategy } from "./IDownloadStrategy";
+import { downloaderLogMessages } from "./log-messages";
+import { NodeFetchStrategy } from "./NodeFetchStrategy";
 
-type DownloadAttemptSuccess = IOperationSuccess & { buffer: Buffer | undefined; };
+type DownloadAttemptSuccess = IOperationSuccess & { buffer: Buffer | undefined };
 type DownloadAttemptFailure = IOperationFailure;
 
 /**
@@ -41,24 +41,24 @@ export class Downloader implements IDownloader {
     cache?: ICache,
     proxyConfig?: ProxyFetchConfig,
   ) {
-    this.logger = parentLogger.getSubLogger({ name: 'Downloader' });
+    this.logger = parentLogger.getSubLogger({ name: "Downloader" });
     this.fs = fileSystem;
 
-    if (typeof strategies !== 'undefined') {
+    if (typeof strategies !== "undefined") {
       this.strategies = strategies;
     } else {
       // Create default strategy with optional proxy support
       const strategy: IDownloadStrategy = new NodeFetchStrategy(this.logger, this.fs, proxyConfig);
-      const proxyStatus = proxyConfig?.enabled ? ` (proxy port ${proxyConfig.port})` : '';
+      const proxyStatus = proxyConfig?.enabled ? ` (proxy port ${proxyConfig.port})` : "";
 
       // Wrap with cache if provided
       if (cache) {
         this.logger.debug(
-          downloaderLogMessages.strategyCreated('CachedDownloadStrategy', ` wrapping NodeFetchStrategy${proxyStatus}`),
+          downloaderLogMessages.strategyCreated("CachedDownloadStrategy", ` wrapping NodeFetchStrategy${proxyStatus}`),
         );
         this.strategies.push(new CachedDownloadStrategy(this.logger, this.fs, cache, strategy));
       } else {
-        this.logger.debug(downloaderLogMessages.strategyCreated('NodeFetchStrategy', proxyStatus || ' (no cache)'));
+        this.logger.debug(downloaderLogMessages.strategyCreated("NodeFetchStrategy", proxyStatus || " (no cache)"));
         this.strategies.push(strategy);
       }
     }
@@ -85,7 +85,7 @@ export class Downloader implements IDownloader {
     options: IDownloadOptions,
   ): Promise<DownloadAttemptSuccess | DownloadAttemptFailure> {
     if (!(await strategy.isAvailable())) {
-      return { success: false, error: 'Strategy not available' };
+      return { success: false, error: "Strategy not available" };
     }
 
     const buffer = await strategy.download(url, options);
@@ -100,11 +100,11 @@ export class Downloader implements IDownloader {
     url: string,
     options: IDownloadOptions = {},
   ): Promise<Buffer | undefined> {
-    const logger = parentLogger.getSubLogger({ name: 'Downloader' }).getSubLogger({ name: 'download' });
+    const logger = parentLogger.getSubLogger({ name: "Downloader" }).getSubLogger({ name: "download" });
     logger.debug(downloaderLogMessages.downloadStarted(url));
 
     if (this.strategies.length === 0) {
-      throw new Error('No download strategies registered.');
+      throw new Error("No download strategies registered.");
     }
 
     let lastError: Error | undefined;
@@ -142,14 +142,14 @@ export class Downloader implements IDownloader {
     fileOptions: IDownloadOptions,
   ): Promise<IOperationSuccess | IOperationFailure> {
     if (!(await strategy.isAvailable())) {
-      return { success: false, error: 'Strategy not available' };
+      return { success: false, error: "Strategy not available" };
     }
 
     const result = await strategy.download(url, fileOptions);
     if (result === undefined) {
       return { success: true }; // Successfully saved to file
     }
-    throw new Error('Strategy returned Buffer instead of void for downloadToFile method');
+    throw new Error("Strategy returned Buffer instead of void for downloadToFile method");
   }
 
   /**
@@ -161,7 +161,7 @@ export class Downloader implements IDownloader {
   private normalizeError(error: unknown): Error {
     if (error instanceof Error) {
       return error;
-    } else if (typeof error === 'string') {
+    } else if (typeof error === "string") {
       return new Error(error);
     } else {
       return new Error(`An unknown error occurred during download: ${JSON.stringify(error)}`);
@@ -177,14 +177,14 @@ export class Downloader implements IDownloader {
     filePath: string,
     options: IDownloadOptions = {},
   ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'Downloader' }).getSubLogger({ name: 'downloadToFile' });
+    const logger = parentLogger.getSubLogger({ name: "Downloader" }).getSubLogger({ name: "downloadToFile" });
     logger.debug(downloaderLogMessages.downloadToFileStarted(url, filePath));
 
     // Set destination path in options to indicate file download
     const fileOptions = { ...options, destinationPath: filePath };
 
     if (this.strategies.length === 0) {
-      throw new Error('No download strategies registered.');
+      throw new Error("No download strategies registered.");
     }
 
     let lastError: Error | undefined;

@@ -13,4 +13,4 @@
 /* oxlint-enable import/no-unassigned-import */
 
 // Now export defineTool with fully populated types
-export { createInstallFunction, defineTool } from './defineTool';
+export { createInstallFunction, defineTool } from "./defineTool";

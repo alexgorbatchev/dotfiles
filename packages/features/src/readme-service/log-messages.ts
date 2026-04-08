@@ -1,4 +1,4 @@
-import { createSafeLogMessage } from '@dotfiles/logger';
+import { createSafeLogMessage } from "@dotfiles/logger";
 
 export const messages = {
   fetchingReadme: (owner: string, repo: string, version: string) =>
@@ -25,13 +25,13 @@ export const messages = {
   combinedReadmeGenerated: (toolCount: number, contentLength: number) =>
     createSafeLogMessage(`Combined README generated for ${toolCount} tools (${contentLength} characters)`),
 
-  fetchingInstalledTools: () => createSafeLogMessage('Fetching installed GitHub tools from registry'),
+  fetchingInstalledTools: () => createSafeLogMessage("Fetching installed GitHub tools from registry"),
 
   installedToolsFound: (count: number) => createSafeLogMessage(`Found ${count} GitHub tools in registry`),
 
   githubToolsExtracted: (count: number) => createSafeLogMessage(`Extracted ${count} GitHub tools from configurations`),
 
-  clearingExpiredCache: () => createSafeLogMessage('Clearing expired README cache entries'),
+  clearingExpiredCache: () => createSafeLogMessage("Clearing expired README cache entries"),
 
   cacheCleared: (count: number) => createSafeLogMessage(`Cleared ${count} expired README cache entries`),
 
@@ -43,9 +43,9 @@ export const messages = {
 
   urlConstruction: (url: string) => createSafeLogMessage(`Constructed README URL: ${url}`),
 
-  serviceInitialized: () => createSafeLogMessage('README service initialized'),
+  serviceInitialized: () => createSafeLogMessage("README service initialized"),
 
-  serviceDestroyed: () => createSafeLogMessage('README service destroyed'),
+  serviceDestroyed: () => createSafeLogMessage("README service destroyed"),
 
   writingReadmeToPath: (toolName: string, version: string, filePath: string) =>
     createSafeLogMessage(`Writing README for ${toolName}@${version} to ${filePath}`),
@@ -70,7 +70,7 @@ export const messages = {
 
     noGitHubTools: () =>
       createSafeLogMessage(
-        'No GitHub tools installed. Run the generate command to install tools before generating a catalog.',
+        "No GitHub tools installed. Run the generate command to install tools before generating a catalog.",
       ),
   },
 };

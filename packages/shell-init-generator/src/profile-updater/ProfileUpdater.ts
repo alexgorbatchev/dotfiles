@@ -1,8 +1,8 @@
-import type { ShellType } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import path from 'node:path';
-import { generateProfileHeader, generateSourceLine } from '../shellTemplates';
-import type { IProfileUpdateConfig, IProfileUpdater, IProfileUpdateResult } from './IProfileUpdater';
+import type { ShellType } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import path from "node:path";
+import { generateProfileHeader, generateSourceLine } from "../shellTemplates";
+import type { IProfileUpdateConfig, IProfileUpdater, IProfileUpdateResult } from "./IProfileUpdater";
 
 /**
  * Implementation of profile file updater that manages sourcing generated shell scripts
@@ -30,13 +30,13 @@ export class ProfileUpdater implements IProfileUpdater {
 
   getProfilePath(shellType: ShellType): string {
     switch (shellType) {
-      case 'zsh':
-        return path.join(this.homeDir, '.zshrc');
-      case 'bash':
-        return path.join(this.homeDir, '.bashrc');
-      case 'powershell':
+      case "zsh":
+        return path.join(this.homeDir, ".zshrc");
+      case "bash":
+        return path.join(this.homeDir, ".bashrc");
+      case "powershell":
         // PowerShell profile path varies by OS, use cross-platform approach
-        return path.join(this.homeDir, '.config/powershell/profile.ps1');
+        return path.join(this.homeDir, ".config/powershell/profile.ps1");
       default:
         throw new Error(`Unsupported shell type: ${shellType}`);
     }
@@ -73,12 +73,12 @@ export class ProfileUpdater implements IProfileUpdater {
       return result;
     }
 
-    let content = '';
+    let content = "";
     if (fileExists) {
       try {
         content = await this.fileSystem.readFile(profilePath);
       } catch (_error) {
-        content = '';
+        content = "";
       }
     }
 
@@ -86,7 +86,7 @@ export class ProfileUpdater implements IProfileUpdater {
     const headerBlock = generateProfileHeader(config.shellType);
     const newBlock = `${headerBlock}\n${sourceLine}`;
 
-    const headerMarker = '# Generated via dotfiles generator - do not modify';
+    const headerMarker = "# Generated via dotfiles generator - do not modify";
     if (content.includes(headerMarker)) {
       const newContent = this.replaceGeneratedBlocks(content, newBlock);
       if (newContent !== content) {
@@ -104,8 +104,8 @@ export class ProfileUpdater implements IProfileUpdater {
       return result;
     }
 
-    if (content && !content.endsWith('\n')) {
-      content += '\n';
+    if (content && !content.endsWith("\n")) {
+      content += "\n";
     }
     const finalContent = `${content}\n${newBlock}\n`;
 
@@ -119,15 +119,15 @@ export class ProfileUpdater implements IProfileUpdater {
   }
 
   private replaceGeneratedBlocks(content: string, newBlock: string): string {
-    const headerMarker = '# Generated via dotfiles generator - do not modify';
-    const escapedMarker = headerMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const blockRegex = new RegExp(`${escapedMarker}[\\s\\S]*?^\\s*(?:source|\\.)\\s+["'].*?["'].*?$`, 'gm');
+    const headerMarker = "# Generated via dotfiles generator - do not modify";
+    const escapedMarker = headerMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const blockRegex = new RegExp(`${escapedMarker}[\\s\\S]*?^\\s*(?:source|\\.)\\s+["'].*?["'].*?$`, "gm");
 
     const parts = content.split(blockRegex);
-    let newContent = parts[0] || '';
+    let newContent = parts[0] || "";
 
-    if (newContent && !newContent.endsWith('\n')) {
-      newContent += '\n';
+    if (newContent && !newContent.endsWith("\n")) {
+      newContent += "\n";
     }
 
     newContent += `${newBlock}\n`;

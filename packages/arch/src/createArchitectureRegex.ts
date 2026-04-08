@@ -1,8 +1,8 @@
-import type { IArchitecturePatterns, IArchitectureRegex } from './types';
+import type { IArchitecturePatterns, IArchitectureRegex } from "./types";
 
 // Escape special regex characters in pattern strings
 function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
@@ -17,9 +17,9 @@ function escapeRegex(str: string): string {
  */
 export function createArchitectureRegex(patterns: IArchitecturePatterns): IArchitectureRegex {
   // Create alternations for each pattern group
-  const systemPattern = patterns.system.length > 0 ? `(${patterns.system.map(escapeRegex).join('|')})` : '';
-  const cpuPattern = patterns.cpu.length > 0 ? `(${patterns.cpu.map(escapeRegex).join('|')})` : '';
-  const variantPattern = patterns.variants.length > 0 ? `(${patterns.variants.map(escapeRegex).join('|')})` : '';
+  const systemPattern = patterns.system.length > 0 ? `(${patterns.system.map(escapeRegex).join("|")})` : "";
+  const cpuPattern = patterns.cpu.length > 0 ? `(${patterns.cpu.map(escapeRegex).join("|")})` : "";
+  const variantPattern = patterns.variants.length > 0 ? `(${patterns.variants.map(escapeRegex).join("|")})` : "";
 
   const result: IArchitectureRegex = {
     systemPattern,

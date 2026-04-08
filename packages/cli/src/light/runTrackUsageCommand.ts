@@ -1,5 +1,5 @@
-import type { TsLogger } from '@dotfiles/logger';
-import { createLightRuntimeContext } from './createLightRuntimeContext';
+import type { TsLogger } from "@dotfiles/logger";
+import { createLightRuntimeContext } from "./createLightRuntimeContext";
 
 interface ITrackUsageArgs {
   toolName: string;
@@ -10,13 +10,13 @@ interface ITrackUsageArgs {
 }
 
 function parseTrackUsageArgs(argv: string[]): ITrackUsageArgs | null {
-  const commandIndex = argv.indexOf('@track-usage');
+  const commandIndex = argv.indexOf("@track-usage");
   if (commandIndex < 0) {
     return null;
   }
 
   const positionals: string[] = [];
-  let config = '';
+  let config = "";
   let platform: string | undefined;
   let arch: string | undefined;
 
@@ -26,23 +26,23 @@ function parseTrackUsageArgs(argv: string[]): ITrackUsageArgs | null {
       continue;
     }
 
-    if (token === '@track-usage') {
+    if (token === "@track-usage") {
       continue;
     }
 
-    if (token === '--config' || token === '--platform' || token === '--arch') {
+    if (token === "--config" || token === "--platform" || token === "--arch") {
       const value = argv[i + 1];
       if (!value) {
         continue;
       }
 
-      if (token === '--config') {
+      if (token === "--config") {
         config = value;
       }
-      if (token === '--platform') {
+      if (token === "--platform") {
         platform = value;
       }
-      if (token === '--arch') {
+      if (token === "--arch") {
         arch = value;
       }
 
@@ -50,7 +50,7 @@ function parseTrackUsageArgs(argv: string[]): ITrackUsageArgs | null {
       continue;
     }
 
-    if (i > commandIndex && !token.startsWith('-')) {
+    if (i > commandIndex && !token.startsWith("-")) {
       positionals.push(token);
     }
   }

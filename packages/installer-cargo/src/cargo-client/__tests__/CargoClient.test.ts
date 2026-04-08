@@ -1,26 +1,26 @@
-import { Architecture, Platform } from '@dotfiles/core';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig } from '@dotfiles/testing-helpers';
-import { dedentString } from '@dotfiles/utils';
-import { describe, expect, test } from 'bun:test';
-import { CargoClient } from '../';
+import { Architecture, Platform } from "@dotfiles/core";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { createMockProjectConfig } from "@dotfiles/testing-helpers";
+import { dedentString } from "@dotfiles/utils";
+import { describe, expect, test } from "bun:test";
+import { CargoClient } from "../";
 
-describe('CargoClient', () => {
-  test('should construct successfully', async () => {
+describe("CargoClient", () => {
+  test("should construct successfully", async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
-    await fs.ensureDir('/test');
+    await fs.ensureDir("/test");
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/test/config.ts',
+      filePath: "/test/config.ts",
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: "/home/test", hostname: "test-host" },
       env: {},
     });
     const mockDownloader = {
-      download: async () => Buffer.from('{}'),
+      download: async () => Buffer.from("{}"),
       registerStrategy: () => {},
       downloadToFile: async () => {},
     };
@@ -29,16 +29,16 @@ describe('CargoClient', () => {
     expect(client).toBeDefined();
   });
 
-  test('should fetch crate metadata from crates.io', async () => {
+  test("should fetch crate metadata from crates.io", async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
-    await fs.ensureDir('/test');
+    await fs.ensureDir("/test");
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/test/config.ts',
+      filePath: "/test/config.ts",
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: "/home/test", hostname: "test-host" },
       env: {},
     });
     const mockDownloader = {
@@ -46,13 +46,13 @@ describe('CargoClient', () => {
         Buffer.from(
           JSON.stringify({
             crate: {
-              name: 'eza',
-              newest_version: '0.23.1',
+              name: "eza",
+              newest_version: "0.23.1",
             },
             versions: [
               {
-                num: '0.23.1',
-                bin_names: ['eza'],
+                num: "0.23.1",
+                bin_names: ["eza"],
               },
             ],
           }),
@@ -62,32 +62,32 @@ describe('CargoClient', () => {
     };
 
     const client = new CargoClient(logger, config, mockDownloader);
-    const metadata = await client.getCrateMetadata('eza');
+    const metadata = await client.getCrateMetadata("eza");
 
     expect(metadata).toEqual({
       crate: {
-        name: 'eza',
-        newest_version: '0.23.1',
+        name: "eza",
+        newest_version: "0.23.1",
       },
       versions: [
         {
-          num: '0.23.1',
-          bin_names: ['eza'],
+          num: "0.23.1",
+          bin_names: ["eza"],
         },
       ],
     });
   });
 
-  test('should get latest version from crates.io', async () => {
+  test("should get latest version from crates.io", async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
-    await fs.ensureDir('/test');
+    await fs.ensureDir("/test");
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/test/config.ts',
+      filePath: "/test/config.ts",
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: "/home/test", hostname: "test-host" },
       env: {},
     });
     const mockDownloader = {
@@ -95,8 +95,8 @@ describe('CargoClient', () => {
         Buffer.from(
           JSON.stringify({
             crate: {
-              name: 'eza',
-              newest_version: '0.23.1',
+              name: "eza",
+              newest_version: "0.23.1",
             },
             versions: [],
           }),
@@ -106,21 +106,21 @@ describe('CargoClient', () => {
     };
 
     const client = new CargoClient(logger, config, mockDownloader);
-    const version = await client.getLatestVersion('eza');
+    const version = await client.getLatestVersion("eza");
 
-    expect(version).toBe('0.23.1');
+    expect(version).toBe("0.23.1");
   });
 
-  test('should parse Cargo.toml with additional fields', async () => {
+  test("should parse Cargo.toml with additional fields", async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
-    await fs.ensureDir('/test');
+    await fs.ensureDir("/test");
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/test/config.ts',
+      filePath: "/test/config.ts",
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: "/home/test", hostname: "test-host" },
       env: {},
     });
 
@@ -172,30 +172,30 @@ describe('CargoClient', () => {
     };
 
     const client = new CargoClient(logger, config, mockDownloader);
-    const packageInfo = await client.getCargoTomlPackage('https://example.com/Cargo.toml');
+    const packageInfo = await client.getCargoTomlPackage("https://example.com/Cargo.toml");
 
     expect(packageInfo).toEqual({
-      name: 'eza',
-      version: '0.18.2',
-      edition: '2021',
-      description: 'A modern, maintained replacement for ls',
-      authors: ['Christina Sørensen <christina@cafkafk.com>'],
-      license: 'MIT',
-      repository: 'https://github.com/eza-community/eza',
-      homepage: 'https://eza.rocks',
+      name: "eza",
+      version: "0.18.2",
+      edition: "2021",
+      description: "A modern, maintained replacement for ls",
+      authors: ["Christina Sørensen <christina@cafkafk.com>"],
+      license: "MIT",
+      repository: "https://github.com/eza-community/eza",
+      homepage: "https://eza.rocks",
     });
   });
 
-  test('should handle Cargo.toml with workspace configuration', async () => {
+  test("should handle Cargo.toml with workspace configuration", async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
-    await fs.ensureDir('/test');
+    await fs.ensureDir("/test");
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/test/config.ts',
+      filePath: "/test/config.ts",
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: "/home/test", hostname: "test-host" },
       env: {},
     });
 
@@ -258,16 +258,16 @@ describe('CargoClient', () => {
     };
 
     const client = new CargoClient(logger, config, mockDownloader);
-    const packageInfo = await client.getCargoTomlPackage('https://example.com/Cargo.toml');
+    const packageInfo = await client.getCargoTomlPackage("https://example.com/Cargo.toml");
 
     expect(packageInfo).toEqual({
-      name: 'complex-tool',
-      version: '1.2.3',
-      edition: '2021',
-      description: 'A complex tool with workspace',
-      authors: ['Test Author <test@example.com>'],
-      license: 'MIT OR Apache-2.0',
-      repository: 'https://github.com/example/complex-tool',
+      name: "complex-tool",
+      version: "1.2.3",
+      edition: "2021",
+      description: "A complex tool with workspace",
+      authors: ["Test Author <test@example.com>"],
+      license: "MIT OR Apache-2.0",
+      repository: "https://github.com/example/complex-tool",
     });
   });
 });

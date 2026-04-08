@@ -1,16 +1,16 @@
-import type { ShellType } from '@dotfiles/core';
-import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
-import { dedentString } from '@dotfiles/utils';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import path from 'node:path';
-import type { IProfileUpdateConfig } from '../IProfileUpdater';
-import { ProfileUpdater } from '../ProfileUpdater';
+import type { ShellType } from "@dotfiles/core";
+import { createMemFileSystem, type IFileSystem } from "@dotfiles/file-system";
+import { dedentString } from "@dotfiles/utils";
+import { beforeEach, describe, expect, it } from "bun:test";
+import path from "node:path";
+import type { IProfileUpdateConfig } from "../IProfileUpdater";
+import { ProfileUpdater } from "../ProfileUpdater";
 
-describe('ProfileUpdater', () => {
+describe("ProfileUpdater", () => {
   let mockFileSystem: IFileSystem;
   let profileUpdater: ProfileUpdater;
-  const homeDir = '/home/test';
-  const testProjectConfigPath = '/path/to/config.ts';
+  const homeDir = "/home/test";
+  const testProjectConfigPath = "/path/to/config.ts";
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem({});
@@ -18,34 +18,34 @@ describe('ProfileUpdater', () => {
     profileUpdater = new ProfileUpdater(mockFileSystem, homeDir);
   });
 
-  describe('getProfilePath', () => {
-    it('should return correct zsh profile path', () => {
-      const profilePath = profileUpdater.getProfilePath('zsh');
-      expect(profilePath).toBe(path.join(homeDir, '.zshrc'));
+  describe("getProfilePath", () => {
+    it("should return correct zsh profile path", () => {
+      const profilePath = profileUpdater.getProfilePath("zsh");
+      expect(profilePath).toBe(path.join(homeDir, ".zshrc"));
     });
 
-    it('should return correct bash profile path', () => {
-      const profilePath = profileUpdater.getProfilePath('bash');
-      expect(profilePath).toBe(path.join(homeDir, '.bashrc'));
+    it("should return correct bash profile path", () => {
+      const profilePath = profileUpdater.getProfilePath("bash");
+      expect(profilePath).toBe(path.join(homeDir, ".bashrc"));
     });
 
-    it('should return correct powershell profile path', () => {
-      const profilePath = profileUpdater.getProfilePath('powershell');
-      expect(profilePath).toBe(path.join(homeDir, '.config/powershell/profile.ps1'));
+    it("should return correct powershell profile path", () => {
+      const profilePath = profileUpdater.getProfilePath("powershell");
+      expect(profilePath).toBe(path.join(homeDir, ".config/powershell/profile.ps1"));
     });
 
-    it('should throw error for unsupported shell type', () => {
+    it("should throw error for unsupported shell type", () => {
       expect(() => {
-        profileUpdater.getProfilePath('fish' as ShellType);
-      }).toThrow('Unsupported shell type: fish');
+        profileUpdater.getProfilePath("fish" as ShellType);
+      }).toThrow("Unsupported shell type: fish");
     });
   });
 
-  describe('hasSourceLine', () => {
-    const scriptPath = '/path/to/script.zsh';
-    const profilePath = '/home/test/.zshrc';
+  describe("hasSourceLine", () => {
+    const scriptPath = "/path/to/script.zsh";
+    const profilePath = "/home/test/.zshrc";
 
-    it('should return true if exact source line exists', async () => {
+    it("should return true if exact source line exists", async () => {
       const content = dedentString(`
         # Some other content
         source "${scriptPath}"
@@ -59,7 +59,7 @@ describe('ProfileUpdater', () => {
       expect(result).toBe(true);
     });
 
-    it('should return true if source line exists with single quotes', async () => {
+    it("should return true if source line exists with single quotes", async () => {
       const content = dedentString(`
         # Some other content  
         source '${scriptPath}'
@@ -73,7 +73,7 @@ describe('ProfileUpdater', () => {
       expect(result).toBe(true);
     });
 
-    it('should return true if source line exists with dot syntax', async () => {
+    it("should return true if source line exists with dot syntax", async () => {
       const content = dedentString(`
         # Some other content
         . "${scriptPath}"
@@ -87,7 +87,7 @@ describe('ProfileUpdater', () => {
       expect(result).toBe(true);
     });
 
-    it('should return false if source line does not exist', async () => {
+    it("should return false if source line does not exist", async () => {
       const content = dedentString(`
         # Some other content
         source "/different/script.zsh"
@@ -101,18 +101,18 @@ describe('ProfileUpdater', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false if profile file does not exist', async () => {
-      const result = await profileUpdater.hasSourceLine('/nonexistent/profile', scriptPath);
+    it("should return false if profile file does not exist", async () => {
+      const result = await profileUpdater.hasSourceLine("/nonexistent/profile", scriptPath);
       expect(result).toBe(false);
     });
   });
 
-  describe('updateProfiles', () => {
-    it('should skip updating if profile does not exist and onlyIfExists is true', async () => {
+  describe("updateProfiles", () => {
+    it("should skip updating if profile does not exist and onlyIfExists is true", async () => {
       const configs: IProfileUpdateConfig[] = [
         {
-          shellType: 'zsh',
-          generatedScriptPath: '/path/to/script.zsh',
+          shellType: "zsh",
+          generatedScriptPath: "/path/to/script.zsh",
           onlyIfExists: true,
           projectConfigPath: testProjectConfigPath,
         },
@@ -122,19 +122,19 @@ describe('ProfileUpdater', () => {
 
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
-        shellType: 'zsh',
-        profilePath: path.join(homeDir, '.zshrc'),
+        shellType: "zsh",
+        profilePath: path.join(homeDir, ".zshrc"),
         fileExists: false,
         wasUpdated: false,
         wasAlreadyPresent: false,
       });
     });
 
-    it('should create profile file if it does not exist and onlyIfExists is false', async () => {
-      const scriptPath = '/path/to/script.zsh';
+    it("should create profile file if it does not exist and onlyIfExists is false", async () => {
+      const scriptPath = "/path/to/script.zsh";
       const configs: IProfileUpdateConfig[] = [
         {
-          shellType: 'zsh',
+          shellType: "zsh",
           generatedScriptPath: scriptPath,
           onlyIfExists: false,
           projectConfigPath: testProjectConfigPath,
@@ -145,25 +145,25 @@ describe('ProfileUpdater', () => {
 
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
-        shellType: 'zsh',
-        profilePath: path.join(homeDir, '.zshrc'),
+        shellType: "zsh",
+        profilePath: path.join(homeDir, ".zshrc"),
         fileExists: false,
         wasUpdated: true,
         wasAlreadyPresent: false,
       });
 
       // Check that the file was created with correct content
-      const profilePath = path.join(homeDir, '.zshrc');
+      const profilePath = path.join(homeDir, ".zshrc");
       const content = await mockFileSystem.readFile(profilePath);
 
-      expect(content).toContain('# Generated via dotfiles generator - do not modify');
-      expect(content).toContain('# ------------------------------------------------------------------------------');
+      expect(content).toContain("# Generated via dotfiles generator - do not modify");
+      expect(content).toContain("# ------------------------------------------------------------------------------");
       expect(content).toContain(`source "${scriptPath}"`);
     });
 
-    it('should add source line to existing profile file', async () => {
-      const scriptPath = '/path/to/script.zsh';
-      const profilePath = path.join(homeDir, '.zshrc');
+    it("should add source line to existing profile file", async () => {
+      const scriptPath = "/path/to/script.zsh";
+      const profilePath = path.join(homeDir, ".zshrc");
       const existingContent = dedentString(`
         # Existing zsh configuration
         export PATH=/usr/local/bin:$PATH
@@ -174,7 +174,7 @@ describe('ProfileUpdater', () => {
 
       const configs: IProfileUpdateConfig[] = [
         {
-          shellType: 'zsh',
+          shellType: "zsh",
           generatedScriptPath: scriptPath,
           onlyIfExists: true,
           projectConfigPath: testProjectConfigPath,
@@ -185,7 +185,7 @@ describe('ProfileUpdater', () => {
 
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
-        shellType: 'zsh',
+        shellType: "zsh",
         profilePath: profilePath,
         fileExists: true,
         wasUpdated: true,
@@ -195,16 +195,16 @@ describe('ProfileUpdater', () => {
       // Check that the sourcing line was added
       const updatedContent = await mockFileSystem.readFile(profilePath);
       expect(updatedContent).toContain(existingContent);
-      expect(updatedContent).toContain('# Generated via dotfiles generator - do not modify');
+      expect(updatedContent).toContain("# Generated via dotfiles generator - do not modify");
       expect(updatedContent).toContain(
-        '# ------------------------------------------------------------------------------',
+        "# ------------------------------------------------------------------------------",
       );
       expect(updatedContent).toContain(`source "${scriptPath}"`);
     });
 
-    it('should not add source line if already present', async () => {
-      const scriptPath = '/path/to/script.zsh';
-      const profilePath = path.join(homeDir, '.zshrc');
+    it("should not add source line if already present", async () => {
+      const scriptPath = "/path/to/script.zsh";
+      const profilePath = path.join(homeDir, ".zshrc");
       const existingContent = dedentString(`
         # Existing zsh configuration
         source "${scriptPath}"
@@ -216,7 +216,7 @@ describe('ProfileUpdater', () => {
 
       const configs: IProfileUpdateConfig[] = [
         {
-          shellType: 'zsh',
+          shellType: "zsh",
           generatedScriptPath: scriptPath,
           onlyIfExists: true,
           projectConfigPath: testProjectConfigPath,
@@ -227,7 +227,7 @@ describe('ProfileUpdater', () => {
 
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
-        shellType: 'zsh',
+        shellType: "zsh",
         profilePath: profilePath,
         fileExists: true,
         wasUpdated: false,
@@ -239,24 +239,24 @@ describe('ProfileUpdater', () => {
       expect(finalContent).toBe(existingContent);
     });
 
-    it('should handle multiple shell types', async () => {
-      const zshScriptPath = '/path/to/script.zsh';
-      const bashScriptPath = '/path/to/script.bash';
+    it("should handle multiple shell types", async () => {
+      const zshScriptPath = "/path/to/script.zsh";
+      const bashScriptPath = "/path/to/script.bash";
 
       // Create existing bash profile
-      const bashProfilePath = path.join(homeDir, '.bashrc');
+      const bashProfilePath = path.join(homeDir, ".bashrc");
       await mockFileSystem.ensureDir(path.dirname(bashProfilePath));
-      await mockFileSystem.writeFile(bashProfilePath, '# Existing bash config');
+      await mockFileSystem.writeFile(bashProfilePath, "# Existing bash config");
 
       const configs: IProfileUpdateConfig[] = [
         {
-          shellType: 'zsh',
+          shellType: "zsh",
           generatedScriptPath: zshScriptPath,
           onlyIfExists: true,
           projectConfigPath: testProjectConfigPath,
         },
         {
-          shellType: 'bash',
+          shellType: "bash",
           generatedScriptPath: bashScriptPath,
           onlyIfExists: true,
           projectConfigPath: testProjectConfigPath,
@@ -269,8 +269,8 @@ describe('ProfileUpdater', () => {
 
       // Zsh profile doesn't exist, should be skipped
       expect(results[0]).toEqual({
-        shellType: 'zsh',
-        profilePath: path.join(homeDir, '.zshrc'),
+        shellType: "zsh",
+        profilePath: path.join(homeDir, ".zshrc"),
         fileExists: false,
         wasUpdated: false,
         wasAlreadyPresent: false,
@@ -278,7 +278,7 @@ describe('ProfileUpdater', () => {
 
       // Bash profile exists, should be updated
       expect(results[1]).toEqual({
-        shellType: 'bash',
+        shellType: "bash",
         profilePath: bashProfilePath,
         fileExists: true,
         wasUpdated: true,
@@ -290,13 +290,13 @@ describe('ProfileUpdater', () => {
       expect(bashContent).toContain(`source "${bashScriptPath}"`);
     });
 
-    it('should handle powershell profile with correct syntax', async () => {
-      const scriptPath = '/path/to/script.ps1';
-      const profilePath = path.join(homeDir, '.config/powershell/profile.ps1');
+    it("should handle powershell profile with correct syntax", async () => {
+      const scriptPath = "/path/to/script.ps1";
+      const profilePath = path.join(homeDir, ".config/powershell/profile.ps1");
 
       const configs: IProfileUpdateConfig[] = [
         {
-          shellType: 'powershell',
+          shellType: "powershell",
           generatedScriptPath: scriptPath,
           onlyIfExists: false,
           projectConfigPath: testProjectConfigPath,
@@ -311,8 +311,8 @@ describe('ProfileUpdater', () => {
       // Check that PowerShell dot-source syntax is used
       const content = await mockFileSystem.readFile(profilePath);
       expect(content).toContain(`. "${scriptPath}"`);
-      expect(content).toContain('# Generated via dotfiles generator - do not modify');
-      expect(content).toContain('# ------------------------------------------------------------------------------');
+      expect(content).toContain("# Generated via dotfiles generator - do not modify");
+      expect(content).toContain("# ------------------------------------------------------------------------------");
     });
   });
 });

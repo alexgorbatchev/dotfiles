@@ -1,8 +1,8 @@
-import type { ISystemInfo, ProjectConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { messages } from './log-messages';
-import { loadTsConfig } from './tsConfigLoader';
+import type { ISystemInfo, ProjectConfig } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { messages } from "./log-messages";
+import { loadTsConfig } from "./tsConfigLoader";
 
 /**
  * Loads configuration from a TypeScript file.
@@ -29,9 +29,9 @@ export async function loadConfig(
   systemInfo: ISystemInfo,
   env: Record<string, string | undefined>,
 ): Promise<ProjectConfig> {
-  const logger = parentLogger.getSubLogger({ name: 'loadConfig' });
+  const logger = parentLogger.getSubLogger({ name: "loadConfig" });
 
-  if (userConfigPath.endsWith('.ts')) {
+  if (userConfigPath.endsWith(".ts")) {
     logger.debug(messages.loadingTypeScriptConfiguration());
     return loadTsConfig(logger, fileSystem, userConfigPath, systemInfo, env);
   }

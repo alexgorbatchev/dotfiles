@@ -1,4 +1,4 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   installing: (toolName: string) => createSafeLogMessage(`Installing from curl-script: toolName=${toolName}`),
@@ -13,5 +13,5 @@ export const messages = {
   versionDetectionFailed: (error: string) => createSafeLogMessage(`Failed to detect version: ${error}`),
   noBinariesInstalled: (expectedPaths: string) =>
     createSafeLogMessage(`No binaries were installed. Expected at: ${expectedPaths}`),
-  scriptOutput: () => createSafeLogMessage('Install script output:'),
+  scriptOutput: () => createSafeLogMessage("Install script output:"),
 } as const satisfies SafeLogMessageMap;

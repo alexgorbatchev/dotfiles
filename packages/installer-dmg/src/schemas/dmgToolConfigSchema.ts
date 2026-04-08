@@ -1,13 +1,10 @@
-import {
-  baseToolConfigWithPlatformsSchema,
-  type InferToolConfigWithPlatforms,
-} from '@dotfiles/core';
-import { z } from 'zod';
-import { dmgInstallParamsSchema } from './dmgInstallParamsSchema';
+import { baseToolConfigWithPlatformsSchema, type InferToolConfigWithPlatforms } from "@dotfiles/core";
+import { z } from "zod";
+import { dmgInstallParamsSchema } from "./dmgInstallParamsSchema";
 
 export const dmgToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
   /** Resolved tool configuration for the 'dmg' installation method */
-  installationMethod: z.literal('dmg'),
+  installationMethod: z.literal("dmg"),
   /** DMG installation parameters */
   installParams: dmgInstallParamsSchema,
 });

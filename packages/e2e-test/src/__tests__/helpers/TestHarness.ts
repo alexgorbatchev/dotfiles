@@ -1,10 +1,10 @@
-import type { Architecture, Platform } from '@dotfiles/core';
-import { expect } from 'bun:test';
-import fs from 'node:fs';
-import path from 'node:path';
-import { findProjectRoot, getE2eGeneratedDir } from './e2eGeneratedDir';
-import { tryGetServerPort } from './mock-server';
-import { architectureToString, platformToString } from './platformUtils';
+import type { Architecture, Platform } from "@dotfiles/core";
+import { expect } from "bun:test";
+import fs from "node:fs";
+import path from "node:path";
+import { findProjectRoot, getE2eGeneratedDir } from "./e2eGeneratedDir";
+import { tryGetServerPort } from "./mock-server";
+import { architectureToString, platformToString } from "./platformUtils";
 
 /**
  * Options for configuring the TestHarness instance.
@@ -73,17 +73,17 @@ export class TestHarness {
    */
   constructor(options: ITestHarnessOptions) {
     this.testDir = options.testDir;
-    this.configPath = options.configPath ?? 'config.ts';
+    this.configPath = options.configPath ?? "config.ts";
     this.cleanBeforeRun = options.cleanBeforeRun ?? false;
     this.platform = options.platform;
     this.architecture = options.architecture;
     const resolvedConfigPath = path.join(this.testDir, this.configPath);
     this.configDir = path.dirname(resolvedConfigPath);
     this.generatedDir = getE2eGeneratedDir(this.configDir);
-    this.userBinDir = path.join(this.generatedDir, 'user-bin');
-    this.shellScriptsDir = path.join(this.generatedDir, 'shell-scripts');
+    this.userBinDir = path.join(this.generatedDir, "user-bin");
+    this.shellScriptsDir = path.join(this.generatedDir, "shell-scripts");
     const projectRoot = findProjectRoot(this.testDir);
-    this.dotfilesBin = path.join(projectRoot, 'cli.ts');
+    this.dotfilesBin = path.join(projectRoot, "cli.ts");
   }
 
   /**
@@ -101,8 +101,8 @@ export class TestHarness {
    * @returns A Promise that resolves when the cleanup is complete.
    */
   async cleanBinaries(): Promise<void> {
-    const binariesDir = path.join(this.generatedDir, 'binaries');
-    const registryDb = path.join(this.generatedDir, 'registry.db');
+    const binariesDir = path.join(this.generatedDir, "binaries");
+    const registryDb = path.join(this.generatedDir, "registry.db");
     await Promise.all([
       fs.promises.rm(binariesDir, { recursive: true, force: true }),
       fs.promises.rm(registryDb, { recursive: true, force: true }),
@@ -120,7 +120,7 @@ export class TestHarness {
    * @param options - Optional execution options.
    * @returns A Promise that resolves to the command result including exit code, stdout, and stderr.
    */
-  async runCommand(args: string[], options?: { env?: Record<string, string>; }): Promise<ICommandResult> {
+  async runCommand(args: string[], options?: { env?: Record<string, string> }): Promise<ICommandResult> {
     if (this.cleanBeforeRun) {
       await this.clean();
     }
@@ -128,18 +128,18 @@ export class TestHarness {
     // Add platform and architecture flags to all commands
     const platformString = platformToString(this.platform);
     const archString = architectureToString(this.architecture);
-    const argsWithPlatform: string[] = [...args, '--platform', platformString, '--arch', archString];
+    const argsWithPlatform: string[] = [...args, "--platform", platformString, "--arch", archString];
 
     // Get mock server port if available
     const mockServerPort = tryGetServerPort();
     const mockServerEnv = mockServerPort ? { MOCK_SERVER_PORT: String(mockServerPort) } : {};
 
     const proc = Bun.spawn({
-      cmd: ['bun', this.dotfilesBin, ...argsWithPlatform],
+      cmd: ["bun", this.dotfilesBin, ...argsWithPlatform],
       cwd: this.testDir,
-      env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb', ...mockServerEnv, ...options?.env },
-      stdout: 'pipe',
-      stderr: 'pipe',
+      env: { ...process.env, NODE_ENV: "production", NO_COLOR: "1", TERM: "dumb", ...mockServerEnv, ...options?.env },
+      stdout: "pipe",
+      stderr: "pipe",
     });
 
     const code = await proc.exited;
@@ -167,8 +167,8 @@ export class TestHarness {
   async runCommandWithActivatedEnv(envDir: string, args: string[]): Promise<ICommandResult> {
     const platformString = platformToString(this.platform);
     const archString = architectureToString(this.architecture);
-    const argsWithPlatform: string[] = [...args, '--platform', platformString, '--arch', archString];
-    const argsString = argsWithPlatform.map((arg) => `"${arg}"`).join(' ');
+    const argsWithPlatform: string[] = [...args, "--platform", platformString, "--arch", archString];
+    const argsString = argsWithPlatform.map((arg) => `"${arg}"`).join(" ");
 
     // Source the activation script then run the command in the same shell
     const shellCommand = `source "${envDir}/source" && bun "${this.dotfilesBin}" ${argsString}`;
@@ -178,11 +178,11 @@ export class TestHarness {
     const mockServerEnv = mockServerPort ? { MOCK_SERVER_PORT: String(mockServerPort) } : {};
 
     const proc = Bun.spawn({
-      cmd: ['bash', '-c', shellCommand],
+      cmd: ["bash", "-c", shellCommand],
       cwd: this.testDir,
-      env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb', ...mockServerEnv },
-      stdout: 'pipe',
-      stderr: 'pipe',
+      env: { ...process.env, NODE_ENV: "production", NO_COLOR: "1", TERM: "dumb", ...mockServerEnv },
+      stdout: "pipe",
+      stderr: "pipe",
     });
 
     const code = await proc.exited;
@@ -204,7 +204,7 @@ export class TestHarness {
    * @returns A Promise that resolves to the command result.
    */
   async generate(additionalArgs: string[] = []): Promise<ICommandResult> {
-    return this.runCommand(['generate', '--config', this.configPath, ...additionalArgs]);
+    return this.runCommand(["generate", "--config", this.configPath, ...additionalArgs]);
   }
 
   /**
@@ -215,7 +215,7 @@ export class TestHarness {
    * @returns A Promise that resolves to the command result.
    */
   async install(tools: string[] = [], additionalArgs: string[] = []): Promise<ICommandResult> {
-    return this.runCommand(['install', '--config', this.configPath, ...tools, ...additionalArgs]);
+    return this.runCommand(["install", "--config", this.configPath, ...tools, ...additionalArgs]);
   }
 
   /**
@@ -226,7 +226,7 @@ export class TestHarness {
    * @returns A Promise that resolves to the command result.
    */
   async update(toolName: string, additionalArgs: string[] = []): Promise<ICommandResult> {
-    return this.runCommand(['update', '--config', this.configPath, toolName, ...additionalArgs]);
+    return this.runCommand(["update", "--config", this.configPath, toolName, ...additionalArgs]);
   }
 
   /**
@@ -236,7 +236,7 @@ export class TestHarness {
    * @returns A Promise that resolves to the command result.
    */
   async detectConflicts(additionalArgs: string[] = []): Promise<ICommandResult> {
-    return this.runCommand(['detect-conflicts', '--config', this.configPath, ...additionalArgs]);
+    return this.runCommand(["detect-conflicts", "--config", this.configPath, ...additionalArgs]);
   }
 
   /**
@@ -293,7 +293,7 @@ export class TestHarness {
    * @returns A Promise that resolves to the file contents as a string.
    */
   async readFile(filePath: string): Promise<string> {
-    return fs.promises.readFile(filePath, 'utf8');
+    return fs.promises.readFile(filePath, "utf8");
   }
 
   /**
@@ -312,8 +312,8 @@ export class TestHarness {
    * @param shellType - The type of shell (zsh, bash, or powershell).
    * @returns The full path to the shell script file.
    */
-  getShellScriptPath(shellType: 'zsh' | 'bash' | 'powershell'): string {
-    const extension = shellType === 'powershell' ? 'ps1' : shellType;
+  getShellScriptPath(shellType: "zsh" | "bash" | "powershell"): string {
+    const extension = shellType === "powershell" ? "ps1" : shellType;
     return path.join(this.shellScriptsDir, `main.${extension}`);
   }
 
@@ -324,10 +324,10 @@ export class TestHarness {
    * @param shellType - The type of shell (zsh, bash, or powershell).
    * @returns The full path to the completion file.
    */
-  getCompletionPath(toolName: string, shellType: 'zsh' | 'bash' | 'powershell'): string {
-    const completionsDir = path.join(this.shellScriptsDir, shellType, 'completions');
-    const prefix = shellType === 'zsh' ? '_' : '';
-    const extension = shellType === 'bash' ? '.bash' : '';
+  getCompletionPath(toolName: string, shellType: "zsh" | "bash" | "powershell"): string {
+    const completionsDir = path.join(this.shellScriptsDir, shellType, "completions");
+    const prefix = shellType === "zsh" ? "_" : "";
+    const extension = shellType === "bash" ? ".bash" : "";
     return path.join(completionsDir, `${prefix}${toolName}${extension}`);
   }
 
@@ -364,7 +364,7 @@ export class TestHarness {
     expect(await this.fileExists(shimPath)).toBe(true);
     expect(await this.isExecutable(shimPath)).toBe(true);
 
-    let stdout = '';
+    let stdout = "";
     if (options) {
       const args: string[] = options.args ?? [];
       // Get mock server port if available
@@ -374,9 +374,9 @@ export class TestHarness {
       const proc = Bun.spawn({
         cmd: [shimPath, ...args],
         cwd: this.testDir,
-        env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb', ...mockServerEnv },
-        stdout: 'pipe',
-        stderr: 'pipe',
+        env: { ...process.env, NODE_ENV: "production", NO_COLOR: "1", TERM: "dumb", ...mockServerEnv },
+        stdout: "pipe",
+        stderr: "pipe",
       });
 
       const code = await proc.exited;
@@ -397,11 +397,11 @@ export class TestHarness {
             `Shim execution failed: ${shimName}`,
             `Expected exit code: ${options.expectedExitCode}`,
             `Actual exit code: ${commandResult.code}`,
-            '--- stdout ---',
+            "--- stdout ---",
             commandResult.stdout,
-            '--- stderr ---',
+            "--- stderr ---",
             commandResult.stderr,
-          ].join('\n');
+          ].join("\n");
           throw new Error(errorMessage);
         }
       }
@@ -420,7 +420,7 @@ export class TestHarness {
    * @param shellType - The type of shell (zsh, bash, or powershell).
    * @returns A Promise that resolves when verification is complete.
    */
-  async verifyShellScript(shellType: 'zsh' | 'bash' | 'powershell'): Promise<void> {
+  async verifyShellScript(shellType: "zsh" | "bash" | "powershell"): Promise<void> {
     const scriptPath = this.getShellScriptPath(shellType);
     expect(await this.fileExists(scriptPath)).toBe(true);
   }
@@ -448,14 +448,14 @@ export class TestHarness {
     toolName: string,
     varName: string,
     expectedValue: string | ((value: string) => boolean),
-    shellType: 'zsh' | 'bash' | 'powershell' = 'zsh',
+    shellType: "zsh" | "bash" | "powershell" = "zsh",
   ): Promise<void> {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
 
     // Look for the environment variable with optional source comment
     // The emissions system uses "# source" format, not "# Hoisted from: source"
-    const varRegex = new RegExp(`(?:#[^\\n]*${toolName}[^\\n]*\\s+)?export ${varName}=["']([^"']+)["']`, 'm');
+    const varRegex = new RegExp(`(?:#[^\\n]*${toolName}[^\\n]*\\s+)?export ${varName}=["']([^"']+)["']`, "m");
     const match = content.match(varRegex);
 
     expect(match).not.toBeNull();
@@ -466,7 +466,7 @@ export class TestHarness {
 
     const actualValue: string = match[1];
 
-    if (typeof expectedValue === 'function') {
+    if (typeof expectedValue === "function") {
       expect(expectedValue(actualValue)).toBe(true);
     } else {
       expect(actualValue).toBe(expectedValue);
@@ -490,13 +490,13 @@ export class TestHarness {
     _toolName: string,
     aliasName: string,
     expectedCommand: string | ((command: string) => boolean),
-    shellType: 'zsh' | 'bash' | 'powershell' = 'zsh',
+    shellType: "zsh" | "bash" | "powershell" = "zsh",
   ): Promise<void> {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
 
     // Look for the alias in the Tool-Specific Initializations section - single-quoted values
-    const aliasRegex = new RegExp(`alias ${aliasName}='((?:[^']|'\\\\'')*)'`, 'm');
+    const aliasRegex = new RegExp(`alias ${aliasName}='((?:[^']|'\\\\'')*)'`, "m");
     const match = content.match(aliasRegex);
 
     expect(match).not.toBeNull();
@@ -508,7 +508,7 @@ export class TestHarness {
     // Unescape the captured value (reverse the '\'' single-quote escaping)
     const actualCommand: string = match[1].replace(/'\\'''/g, "'");
 
-    if (typeof expectedCommand === 'function') {
+    if (typeof expectedCommand === "function") {
       expect(expectedCommand(actualCommand)).toBe(true);
     } else {
       expect(actualCommand).toBe(expectedCommand);
@@ -529,12 +529,12 @@ export class TestHarness {
   async verifyAlwaysScript(
     toolName: string,
     contentMatcher: string | ((content: string) => boolean),
-    shellType: 'zsh' | 'bash' | 'powershell' = 'zsh',
+    shellType: "zsh" | "bash" | "powershell" = "zsh",
   ): Promise<void> {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
 
-    const isMatch = typeof contentMatcher === 'function' ? contentMatcher(content) : content.includes(contentMatcher);
+    const isMatch = typeof contentMatcher === "function" ? contentMatcher(content) : content.includes(contentMatcher);
 
     expect(isMatch, `Always script for tool '${toolName}' not found in ${shellType} script`).toBe(true);
   }
@@ -558,22 +558,22 @@ export class TestHarness {
   async verifyOnceScript(
     toolName: string,
     contentMatcher: string | ((content: string) => boolean),
-    shellType: 'zsh' | 'bash' | 'powershell' = 'zsh',
+    shellType: "zsh" | "bash" | "powershell" = "zsh",
   ): Promise<void> {
-    const extension = shellType === 'powershell' ? 'ps1' : shellType;
-    const onceDir = path.join(this.shellScriptsDir, '.once');
+    const extension = shellType === "powershell" ? "ps1" : shellType;
+    const onceDir = path.join(this.shellScriptsDir, ".once");
 
     // Once scripts are stored in the .once subdirectory with once-###.ext naming
     // Search for any once script that matches the content
     const files = await fs.promises.readdir(onceDir);
-    const onceScriptFiles = files.filter((f) => f.startsWith('once-') && f.endsWith(`.${extension}`));
+    const onceScriptFiles = files.filter((f) => f.startsWith("once-") && f.endsWith(`.${extension}`));
 
     let foundMatchingScript = false;
     for (const filename of onceScriptFiles) {
       const scriptPath = path.join(onceDir, filename);
       const content = await this.readFile(scriptPath);
 
-      if (typeof contentMatcher === 'function') {
+      if (typeof contentMatcher === "function") {
         if (contentMatcher(content)) {
           foundMatchingScript = true;
           break;

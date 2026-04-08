@@ -1,4 +1,4 @@
-import { EmissionValidationError } from '../errors';
+import { EmissionValidationError } from "../errors";
 import type {
   AliasEmission,
   CompletionConfig,
@@ -13,13 +13,8 @@ import type {
   SourceEmission,
   SourceFileEmission,
   SourceFunctionEmission,
-} from '../types';
-import {
-  validateAliases,
-  validateEnvironmentVariables,
-  validateName,
-  validateNonEmpty,
-} from './validation';
+} from "../types";
+import { validateAliases, validateEnvironmentVariables, validateName, validateNonEmpty } from "./validation";
 
 /**
  * Creates an environment emission.
@@ -27,7 +22,7 @@ import {
 export function environment(variables: Record<string, string>): EnvironmentEmission {
   validateEnvironmentVariables(variables);
   return {
-    kind: 'environment',
+    kind: "environment",
     variables,
   };
 }
@@ -38,7 +33,7 @@ export function environment(variables: Record<string, string>): EnvironmentEmiss
 export function alias(aliases: Record<string, string>): AliasEmission {
   validateAliases(aliases);
   return {
-    kind: 'alias',
+    kind: "alias",
     aliases,
   };
 }
@@ -48,14 +43,11 @@ export function alias(aliases: Record<string, string>): AliasEmission {
  * @param name - Function name
  * @param body - Raw function body (without declaration wrapper)
  */
-export function fn(
-  name: string,
-  body: string,
-): FunctionEmission {
-  validateName('function', 'name', name);
-  validateNonEmpty('function', 'body', body);
+export function fn(name: string, body: string): FunctionEmission {
+  validateName("function", "name", name);
+  validateNonEmpty("function", "body", body);
   return {
-    kind: 'function',
+    kind: "function",
     name,
     body,
   };
@@ -66,13 +58,10 @@ export function fn(
  * @param content - Script content
  * @param timing - Execution timing ('always' | 'once' | 'raw')
  */
-export function script(
-  content: string,
-  timing: ScriptTiming,
-): ScriptEmission {
-  validateNonEmpty('script', 'content', content);
+export function script(content: string, timing: ScriptTiming): ScriptEmission {
+  validateNonEmpty("script", "content", content);
   return {
-    kind: 'script',
+    kind: "script",
     content,
     timing,
   };
@@ -82,12 +71,10 @@ export function script(
  * Creates a source file emission.
  * @param filePath - Path to source (may contain $HOME)
  */
-export function sourceFile(
-  filePath: string,
-): SourceFileEmission {
-  validateNonEmpty('sourceFile', 'path', filePath);
+export function sourceFile(filePath: string): SourceFileEmission {
+  validateNonEmpty("sourceFile", "path", filePath);
   return {
-    kind: 'sourceFile',
+    kind: "sourceFile",
     path: filePath,
   };
 }
@@ -104,14 +91,11 @@ export function sourceFile(
  * @param content - Content to source (typically shell code that outputs shell code)
  * @param functionName - Unique function name for this source emission
  */
-export function source(
-  content: string,
-  functionName: string,
-): SourceEmission {
-  validateNonEmpty('source', 'content', content);
-  validateName('source', 'functionName', functionName);
+export function source(content: string, functionName: string): SourceEmission {
+  validateNonEmpty("source", "content", content);
+  validateName("source", "functionName", functionName);
   return {
-    kind: 'source',
+    kind: "source",
     content,
     functionName,
   };
@@ -122,9 +106,9 @@ export function source(
  * @param functionName - Name of function to source
  */
 export function sourceFunction(functionName: string): SourceFunctionEmission {
-  validateName('sourceFunction', 'functionName', functionName);
+  validateName("sourceFunction", "functionName", functionName);
   return {
-    kind: 'sourceFunction',
+    kind: "sourceFunction",
     functionName,
   };
 }
@@ -139,14 +123,14 @@ export function completion(config: CompletionConfig): CompletionEmission {
 
   if (!hasDirectories && !hasFiles && !hasCommands) {
     throw new EmissionValidationError(
-      'completion',
-      'config',
-      'at least one of directories, files, or commands must be provided',
+      "completion",
+      "config",
+      "at least one of directories, files, or commands must be provided",
     );
   }
 
   return {
-    kind: 'completion',
+    kind: "completion",
     directories: config.directories,
     files: config.files,
     commands: config.commands,
@@ -159,11 +143,11 @@ export function completion(config: CompletionConfig): CompletionEmission {
  * @param options - Position and deduplication options
  */
 export function path(directory: string, options?: PathOptions): PathEmission {
-  validateNonEmpty('path', 'directory', directory);
+  validateNonEmpty("path", "directory", directory);
   return {
-    kind: 'path',
+    kind: "path",
     directory,
-    position: options?.position ?? 'prepend',
+    position: options?.position ?? "prepend",
     deduplicate: options?.deduplicate ?? true,
   };
 }

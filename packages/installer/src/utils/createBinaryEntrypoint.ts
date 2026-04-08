@@ -1,9 +1,9 @@
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { TrackedFileSystem } from '@dotfiles/registry/file';
-import path from 'node:path';
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { TrackedFileSystem } from "@dotfiles/registry/file";
+import path from "node:path";
 
-import { messages } from './log-messages';
+import { messages } from "./log-messages";
 
 export async function createBinaryEntrypoint(
   fs: IFileSystem,
@@ -14,7 +14,7 @@ export async function createBinaryEntrypoint(
   binariesDir: string,
   parentLogger: TsLogger,
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'createBinaryEntrypoint' });
+  const logger = parentLogger.getSubLogger({ name: "createBinaryEntrypoint" });
   const toolDir = path.join(binariesDir, toolName);
   const timestampedDir = path.join(toolDir, timestamp);
   const entrypointPath = path.join(timestampedDir, binaryName);
@@ -48,12 +48,12 @@ export async function createBinaryEntrypoint(
     logger.debug(messages.binarySymlink.creating(entrypointPath, targetPath));
 
     // Use withFileType('symlink') so the symlink is recorded with correct fileType
-    const symlinkFs = fs instanceof TrackedFileSystem ? fs.withFileType('symlink') : fs;
+    const symlinkFs = fs instanceof TrackedFileSystem ? fs.withFileType("symlink") : fs;
     await symlinkFs.symlink(targetPath, entrypointPath);
 
     const entrypointStats = await fs.lstat(entrypointPath);
     if (!entrypointStats.isSymbolicLink()) {
-      throw new Error('Entrypoint unexpectedly created as regular file instead of symlink');
+      throw new Error("Entrypoint unexpectedly created as regular file instead of symlink");
     }
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
@@ -79,7 +79,7 @@ export async function createAllBinaryEntrypoints(
   binariesDir: string,
   parentLogger: TsLogger,
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'createAllBinaryEntrypoints' });
+  const logger = parentLogger.getSubLogger({ name: "createAllBinaryEntrypoints" });
   for (const binaryName of binaries) {
     const binaryPath = path.join(binaryBasePath, binaryName);
     await createBinaryEntrypoint(fs, toolName, binaryName, timestamp, binaryPath, binariesDir, logger);

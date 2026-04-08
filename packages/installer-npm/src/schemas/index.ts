@@ -1,2 +1,2 @@
-export * from './npmInstallParamsSchema';
-export * from './npmToolConfigSchema';
+export * from "./npmInstallParamsSchema";
+export * from "./npmToolConfigSchema";

@@ -1,4 +1,4 @@
-import type { IBinaryConfig } from '@dotfiles/core';
+import type { IBinaryConfig } from "@dotfiles/core";
 
 /**
  * Normalizes a mixed array of strings and IBinaryConfig objects to a consistent IBinaryConfig array.
@@ -21,5 +21,5 @@ export function normalizeBinaries(binaries: (string | IBinaryConfig)[] | undefin
     return [];
   }
 
-  return binaries.map((binary) => (typeof binary === 'string' ? { name: binary, pattern: `{,*/}${binary}` } : binary));
+  return binaries.map((binary) => (typeof binary === "string" ? { name: binary, pattern: `{,*/}${binary}` } : binary));
 }

@@ -1,22 +1,22 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { IConfigService, ProjectConfig } from '@dotfiles/config';
-import type { InstallerPluginRegistry, ISystemInfo } from '@dotfiles/core';
-import type { ICache, IDownloader } from '@dotfiles/downloader';
-import type { IReadmeService } from '@dotfiles/features';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
-import type { IInstaller } from '@dotfiles/installer';
-import type { ICargoClient } from '@dotfiles/installer-cargo';
-import type { IGitHubApiClient } from '@dotfiles/installer-github';
-import type { IFileRegistry } from '@dotfiles/registry/file';
-import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
-import type { IShimGenerator } from '@dotfiles/shim-generator';
-import type { ICopyGenerator, ISymlinkGenerator } from '@dotfiles/symlink-generator';
-import type { IVersionChecker } from '@dotfiles/version-checker';
-import type { Command } from 'commander';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
+import type { IConfigService, ProjectConfig } from "@dotfiles/config";
+import type { InstallerPluginRegistry, ISystemInfo } from "@dotfiles/core";
+import type { ICache, IDownloader } from "@dotfiles/downloader";
+import type { IReadmeService } from "@dotfiles/features";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { IGeneratorOrchestrator } from "@dotfiles/generator-orchestrator";
+import type { IInstaller } from "@dotfiles/installer";
+import type { ICargoClient } from "@dotfiles/installer-cargo";
+import type { IGitHubApiClient } from "@dotfiles/installer-github";
+import type { IFileRegistry } from "@dotfiles/registry/file";
+import type { IToolInstallationRegistry } from "@dotfiles/registry/tool";
+import type { ICompletionGenerator, IShellInitGenerator } from "@dotfiles/shell-init-generator";
+import type { IShimGenerator } from "@dotfiles/shim-generator";
+import type { ICopyGenerator, ISymlinkGenerator } from "@dotfiles/symlink-generator";
+import type { IVersionChecker } from "@dotfiles/version-checker";
+import type { Command } from "commander";
 
-export type CompletionPositionalArgType = 'tool';
+export type CompletionPositionalArgType = "tool";
 
 /**
  * Metadata for a CLI option used in shell completion generation.
@@ -136,7 +136,7 @@ export interface ILogCommandSpecificOptions {
 // oxlint-disable-next-line @typescript-eslint/no-empty-object-type: No command-specific options for files command
 export type IFilesCommandSpecificOptions = {};
 
-export interface IGlobalProgram extends Omit<Command, 'opts'> {
+export interface IGlobalProgram extends Omit<Command, "opts"> {
   /**
    * Get the parsed options for this command, properly typed as IGlobalProgramOptions
    * @returns The parsed global program options

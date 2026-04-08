@@ -1,8 +1,8 @@
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { Resolvable } from '@dotfiles/unwrap-value';
-import { resolveValue } from '@dotfiles/unwrap-value';
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { Resolvable } from "@dotfiles/unwrap-value";
+import { resolveValue } from "@dotfiles/unwrap-value";
 
-export type ReplaceInFileMode = 'file' | 'line';
+export type ReplaceInFileMode = "file" | "line";
 
 type ReplaceCapture = string | undefined;
 type ReplaceGroups = Record<string, string>;
@@ -68,32 +68,31 @@ export async function replaceInFile(
   to: ReplaceInFileReplacer,
   options?: IReplaceInFileOptions,
 ): Promise<boolean> {
-  const mode: ReplaceInFileMode = options?.mode ?? 'file';
+  const mode: ReplaceInFileMode = options?.mode ?? "file";
   const pattern: RegExp = normalizePattern(from);
 
-  const content = await fileSystem.readFile(filePath, 'utf8');
+  const content = await fileSystem.readFile(filePath, "utf8");
 
-  const finalContent: string = mode === 'line'
-    ? await replaceInLines(content, pattern, to)
-    : await replaceInString(content, pattern, to);
+  const finalContent: string =
+    mode === "line" ? await replaceInLines(content, pattern, to) : await replaceInString(content, pattern, to);
 
   const wasReplaced: boolean = finalContent !== content;
 
   if (wasReplaced) {
-    await fileSystem.writeFile(filePath, finalContent, 'utf8');
+    await fileSystem.writeFile(filePath, finalContent, "utf8");
   }
 
   return wasReplaced;
 }
 
 function normalizePattern(from: ReplaceInFilePattern): RegExp {
-  if (typeof from === 'string') {
-    const escaped: string = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pattern: RegExp = new RegExp(escaped, 'g');
+  if (typeof from === "string") {
+    const escaped: string = from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern: RegExp = new RegExp(escaped, "g");
     return pattern;
   }
 
-  const flags: string = from.flags.includes('g') ? from.flags : `${from.flags}g`;
+  const flags: string = from.flags.includes("g") ? from.flags : `${from.flags}g`;
   const pattern: RegExp = new RegExp(from.source, flags);
   return pattern;
 }
@@ -105,7 +104,7 @@ async function replaceInString(input: string, pattern: RegExp, to: ReplaceInFile
   let offset: number = 0;
 
   for (const match of matches) {
-    const substring: string = match[0] ?? '';
+    const substring: string = match[0] ?? "";
     const index: number = match.index ?? 0;
     const captures: ReplaceCapture[] = match.slice(1);
     const groups: ReplaceGroups | undefined = match.groups;
@@ -132,11 +131,11 @@ async function replaceInString(input: string, pattern: RegExp, to: ReplaceInFile
 async function replaceInLines(content: string, pattern: RegExp, to: ReplaceInFileReplacer): Promise<string> {
   const parts: string[] = content.split(/(\r\n|\n)/);
 
-  let result: string = '';
+  let result: string = "";
 
   for (let index = 0; index < parts.length; index += 2) {
-    const line: string = parts[index] ?? '';
-    const eol: string = parts[index + 1] ?? '';
+    const line: string = parts[index] ?? "";
+    const eol: string = parts[index + 1] ?? "";
 
     const replacedLine: string = await replaceInString(line, pattern, to);
     result += replacedLine + eol;

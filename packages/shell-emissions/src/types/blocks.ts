@@ -1,5 +1,5 @@
-import type { SectionPriority } from '../renderer/constants';
-import type { Emission, EmissionKind } from './emissions';
+import type { SectionPriority } from "../renderer/constants";
+import type { Emission, EmissionKind } from "./emissions";
 
 /**
  * Additional metadata for blocks.

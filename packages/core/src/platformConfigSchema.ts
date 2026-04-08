@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import { commonToolConfigPropertiesSchema } from './tool-config';
-import type { ToolConfig } from './types';
+import { z } from "zod";
+import { commonToolConfigPropertiesSchema } from "./tool-config";
+import type { ToolConfig } from "./types";
 
 /**
  * Platform configuration schema for runtime validation.
@@ -24,7 +24,7 @@ export const platformConfigSchema = commonToolConfigPropertiesSchema
  * The runtime schema validates with loose types (string, unknown), but the TypeScript type
  * is properly constrained to match the ToolConfig discriminated union.
  */
-export type PlatformConfig = Omit<z.infer<typeof platformConfigSchema>, 'installationMethod' | 'installParams'> & {
-  installationMethod?: ToolConfig['installationMethod'];
-  installParams?: ToolConfig['installParams'];
+export type PlatformConfig = Omit<z.infer<typeof platformConfigSchema>, "installationMethod" | "installParams"> & {
+  installationMethod?: ToolConfig["installationMethod"];
+  installParams?: ToolConfig["installParams"];
 };

@@ -13,7 +13,7 @@ interface IShellErrorLike {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 function isShellErrorLike(value: unknown): value is IShellErrorLike {
@@ -21,25 +21,25 @@ function isShellErrorLike(value: unknown): value is IShellErrorLike {
     return false;
   }
 
-  const nameValue = value['name'];
-  if (typeof nameValue !== 'string') {
+  const nameValue = value["name"];
+  if (typeof nameValue !== "string") {
     return false;
   }
 
-  return nameValue === 'ShellError';
+  return nameValue === "ShellError";
 }
 
 function normalizeShellStream(value: unknown): string {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return value.trim();
   }
 
   if (value instanceof Uint8Array) {
-    const result = Buffer.from(value).toString('utf8').trim();
+    const result = Buffer.from(value).toString("utf8").trim();
     return result;
   }
 
-  return '';
+  return "";
 }
 
 /**
@@ -66,7 +66,7 @@ export function extractErrorCause(error: unknown): string {
       return error.message;
     }
 
-    return `exit code ${error.exitCode ?? 'unknown'}`;
+    return `exit code ${error.exitCode ?? "unknown"}`;
   }
 
   if (error instanceof Error) {

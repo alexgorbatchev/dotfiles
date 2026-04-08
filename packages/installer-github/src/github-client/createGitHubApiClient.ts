@@ -1,10 +1,10 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { Shell } from '@dotfiles/core';
-import type { ICache, IDownloader } from '@dotfiles/downloader';
-import type { TsLogger } from '@dotfiles/logger';
-import { GhCliApiClient } from './GhCliApiClient';
-import { GitHubApiClient } from './GitHubApiClient';
-import type { IGitHubApiClient } from './IGitHubApiClient';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { Shell } from "@dotfiles/core";
+import type { ICache, IDownloader } from "@dotfiles/downloader";
+import type { TsLogger } from "@dotfiles/logger";
+import { GhCliApiClient } from "./GhCliApiClient";
+import { GitHubApiClient } from "./GitHubApiClient";
+import type { IGitHubApiClient } from "./IGitHubApiClient";
 
 /**
  * Options for creating a GitHub API client.

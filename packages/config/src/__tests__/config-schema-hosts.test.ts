@@ -1,21 +1,21 @@
-import { projectConfigSchema } from '@dotfiles/core';
-import { describe, expect, it } from 'bun:test';
+import { projectConfigSchema } from "@dotfiles/core";
+import { describe, expect, it } from "bun:test";
 
 /**
  * Tests focused on the new per-host configuration + cache behavior for network services.
  */
-describe('config schema - host configuration', () => {
-  it('should apply defaults for all hosts when omitted', () => {
+describe("config schema - host configuration", () => {
+  it("should apply defaults for all hosts when omitted", () => {
     const parsed = projectConfigSchema.parse({});
 
-    expect(parsed.github.host).toBe('https://api.github.com');
+    expect(parsed.github.host).toBe("https://api.github.com");
     expect(parsed.github.cache.enabled).toBe(true);
-    expect(parsed.cargo.cratesIo.host).toBe('https://crates.io');
-    expect(parsed.cargo.githubRaw.host).toBe('https://raw.githubusercontent.com');
-    expect(parsed.cargo.githubRelease.host).toBe('https://github.com');
+    expect(parsed.cargo.cratesIo.host).toBe("https://crates.io");
+    expect(parsed.cargo.githubRaw.host).toBe("https://raw.githubusercontent.com");
+    expect(parsed.cargo.githubRelease.host).toBe("https://github.com");
   });
 
-  it('should allow overriding a single host cache ttl without affecting others', () => {
+  it("should allow overriding a single host cache ttl without affecting others", () => {
     const parsed = projectConfigSchema.parse({
       cargo: {
         cratesIo: { cache: { ttl: 123 } },
@@ -28,9 +28,9 @@ describe('config schema - host configuration', () => {
     expect(parsed.cargo.githubRelease.cache.ttl).toBe(86400000);
   });
 
-  it('should reject deprecated cargo fields', () => {
+  it("should reject deprecated cargo fields", () => {
     const result = projectConfigSchema.safeParse({
-      cargo: { cratesIoHost: 'https://example.com' },
+      cargo: { cratesIoHost: "https://example.com" },
     });
     expect(result.success).toBe(false);
   });

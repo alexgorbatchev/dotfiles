@@ -1,8 +1,8 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { IApiResponse, ICheckUpdateResponse } from '../../shared/types';
-import { messages } from '../log-messages';
-import type { IDashboardServices } from '../types';
-import { getToolConfigs } from './helpers';
+import type { TsLogger } from "@dotfiles/logger";
+import type { IApiResponse, ICheckUpdateResponse } from "../../shared/types";
+import { messages } from "../log-messages";
+import type { IDashboardServices } from "../types";
+import { getToolConfigs } from "./helpers";
 
 /**
  * POST /api/tools/:name/check-update - Check for available updates
@@ -12,7 +12,7 @@ export async function checkToolUpdate(
   services: IDashboardServices,
   toolName: string,
 ): Promise<IApiResponse<ICheckUpdateResponse>> {
-  const subLogger = logger.getSubLogger({ name: 'checkToolUpdate', context: toolName });
+  const subLogger = logger.getSubLogger({ name: "checkToolUpdate", context: toolName });
 
   try {
     const toolConfigs = await getToolConfigs(logger, services);
@@ -29,8 +29,8 @@ export async function checkToolUpdate(
         success: true,
         data: {
           hasUpdate: false,
-          currentVersion: toolConfig.version || 'unknown',
-          latestVersion: 'unknown',
+          currentVersion: toolConfig.version || "unknown",
+          latestVersion: "unknown",
           supported: false,
           error: `Update checking is not supported for installation method "${toolConfig.installationMethod}"`,
         },
@@ -49,10 +49,10 @@ export async function checkToolUpdate(
         success: true,
         data: {
           hasUpdate: false,
-          currentVersion: toolConfig.version || 'unknown',
-          latestVersion: 'unknown',
+          currentVersion: toolConfig.version || "unknown",
+          latestVersion: "unknown",
           supported: false,
-          error: 'Update check returned no result',
+          error: "Update check returned no result",
         },
       };
     }
@@ -62,26 +62,28 @@ export async function checkToolUpdate(
         success: true,
         data: {
           hasUpdate: false,
-          currentVersion: toolConfig.version || 'unknown',
-          latestVersion: 'unknown',
+          currentVersion: toolConfig.version || "unknown",
+          latestVersion: "unknown",
           supported: true,
           error: updateCheckResult.error,
         },
       };
     }
 
-    subLogger.info(messages.checkUpdateCompleted(
-      updateCheckResult.hasUpdate,
-      updateCheckResult.currentVersion ?? 'unknown',
-      updateCheckResult.latestVersion ?? 'unknown',
-    ));
+    subLogger.info(
+      messages.checkUpdateCompleted(
+        updateCheckResult.hasUpdate,
+        updateCheckResult.currentVersion ?? "unknown",
+        updateCheckResult.latestVersion ?? "unknown",
+      ),
+    );
 
     return {
       success: true,
       data: {
         hasUpdate: updateCheckResult.hasUpdate,
-        currentVersion: updateCheckResult.currentVersion ?? toolConfig.version ?? 'unknown',
-        latestVersion: updateCheckResult.latestVersion ?? 'unknown',
+        currentVersion: updateCheckResult.currentVersion ?? toolConfig.version ?? "unknown",
+        latestVersion: updateCheckResult.latestVersion ?? "unknown",
         supported: true,
       },
     };

@@ -1,2 +1,2 @@
-export * from './dmgInstallParamsSchema';
-export * from './dmgToolConfigSchema';
+export * from "./dmgInstallParamsSchema";
+export * from "./dmgToolConfigSchema";

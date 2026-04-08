@@ -1,6 +1,6 @@
-import { selectBestMatch } from '@dotfiles/arch';
-import { type IArchiveExtractor, isSupportedArchiveFile } from '@dotfiles/archive-extractor';
-import type { ProjectConfig } from '@dotfiles/config';
+import { selectBestMatch } from "@dotfiles/arch";
+import { type IArchiveExtractor, isSupportedArchiveFile } from "@dotfiles/archive-extractor";
+import type { ProjectConfig } from "@dotfiles/config";
 import type {
   IDownloadContext,
   IExtractContext,
@@ -9,11 +9,11 @@ import type {
   IGitHubReleaseAsset,
   IInstallContext,
   ISystemInfo,
-} from '@dotfiles/core';
-import { architectureToString, platformToString } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
+} from "@dotfiles/core";
+import { architectureToString, platformToString } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor, IInstallOptions } from "@dotfiles/installer";
 import {
   downloadWithProgress,
   executeAfterDownloadHook as executeAfterDownloadHookUtil,
@@ -21,20 +21,20 @@ import {
   getBinaryPaths,
   setupBinariesFromArchive,
   setupBinariesFromDirectDownload,
-} from '@dotfiles/installer';
+} from "@dotfiles/installer";
 import type {
   GithubReleaseInstallParams,
   GithubReleaseToolConfig,
   IAssetSelectionContext,
-} from '@dotfiles/installer-github';
-import type { TsLogger } from '@dotfiles/logger';
-import { normalizeVersion } from '@dotfiles/utils';
-import path from 'node:path';
-import { buildCorrectedTag } from './github-client';
-import type { IGitHubApiClient } from './github-client';
-import { messages } from './log-messages';
-import { type AssetPattern, formatAssetPatternForLog, matchAssetPattern } from './matchAssetPattern';
-import type { GitHubReleaseInstallResult, IGitHubReleaseInstallMetadata } from './types';
+} from "@dotfiles/installer-github";
+import type { TsLogger } from "@dotfiles/logger";
+import { normalizeVersion } from "@dotfiles/utils";
+import path from "node:path";
+import { buildCorrectedTag } from "./github-client";
+import type { IGitHubApiClient } from "./github-client";
+import { messages } from "./log-messages";
+import { type AssetPattern, formatAssetPatternForLog, matchAssetPattern } from "./matchAssetPattern";
+import type { GitHubReleaseInstallResult, IGitHubReleaseInstallMetadata } from "./types";
 
 /**
  * Install a tool from GitHub releases
@@ -52,23 +52,23 @@ export async function installFromGitHubRelease(
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
 ): Promise<GitHubReleaseInstallResult> {
-  const logger = parentLogger.getSubLogger({ name: 'installFromGitHubRelease' });
+  const logger = parentLogger.getSubLogger({ name: "installFromGitHubRelease" });
   logger.debug(messages.startingInstallation(toolName));
 
-  if (!toolConfig.installParams || !('repo' in toolConfig.installParams)) {
+  if (!toolConfig.installParams || !("repo" in toolConfig.installParams)) {
     const result: GitHubReleaseInstallResult = {
       success: false,
-      error: 'GitHub repository not specified in installParams',
+      error: "GitHub repository not specified in installParams",
     };
     return result;
   }
 
   const params = toolConfig.installParams;
   const repo = params.repo;
-  const version = params.version || 'latest';
+  const version = params.version || "latest";
 
   // Parse owner and repo name for API calls
-  const [owner, repoName] = repo.split('/');
+  const [owner, repoName] = repo.split("/");
   if (!owner || !repoName) {
     const result: GitHubReleaseInstallResult = {
       success: false,
@@ -149,7 +149,7 @@ export async function installFromGitHubRelease(
     const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     const metadata: IGitHubReleaseInstallMetadata = {
-      method: 'github-release',
+      method: "github-release",
       releaseUrl: release.data.html_url,
       publishedAt: release.data.published_at,
       releaseName: release.data.name,
@@ -174,7 +174,7 @@ export async function installFromGitHubRelease(
   }
 }
 
-type OperationResult<T> = { success: true; data: T; } | { success: false; error: string; };
+type OperationResult<T> = { success: true; data: T } | { success: false; error: string };
 
 interface IDownloadAssetResultData {
   downloadPath: string;
@@ -189,8 +189,8 @@ export async function fetchGitHubRelease(
   githubApiClient: IGitHubApiClient,
   parentLogger: TsLogger,
 ): Promise<OperationResult<IGitHubRelease>> {
-  const logger = parentLogger.getSubLogger({ name: 'fetchGitHubRelease' });
-  const [owner, repoName] = repo.split('/');
+  const logger = parentLogger.getSubLogger({ name: "fetchGitHubRelease" });
+  const [owner, repoName] = repo.split("/");
   if (!owner || !repoName) {
     const result: OperationResult<IGitHubRelease> = {
       success: false,
@@ -200,7 +200,7 @@ export async function fetchGitHubRelease(
   }
 
   // Handle 'latest' version request
-  if (version === 'latest') {
+  if (version === "latest") {
     logger.debug(messages.fetchLatest(repo));
 
     // When includePrerelease is true, we need to use getAllReleases because
@@ -267,7 +267,7 @@ async function fetchWithTagPatternDetection(
   githubApiClient: IGitHubApiClient,
   parentLogger: TsLogger,
 ): Promise<IGitHubRelease | null> {
-  const logger = parentLogger.getSubLogger({ name: 'fetchWithTagPatternDetection' });
+  const logger = parentLogger.getSubLogger({ name: "fetchWithTagPatternDetection" });
 
   // Probe the latest release to detect the tag pattern
   logger.debug(messages.detectingTagPattern());
@@ -300,7 +300,7 @@ async function showAvailableReleaseTags(
   githubApiClient: IGitHubApiClient,
   parentLogger: TsLogger,
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'showAvailableReleaseTags' });
+  const logger = parentLogger.getSubLogger({ name: "showAvailableReleaseTags" });
   const tags = await githubApiClient.getLatestReleaseTags(owner, repoName, TAG_SUGGESTIONS_COUNT);
 
   if (tags.length === 0) {
@@ -382,7 +382,7 @@ function createAssetNotFoundError(
   const availableAssetNames = release.assets.map((a) => a.name);
   const platform = platformToString(context.systemInfo.platform);
   const arch = architectureToString(context.systemInfo.arch);
-  let searchedForMessage = '';
+  let searchedForMessage = "";
 
   if (params.assetSelector) {
     searchedForMessage = `using a custom assetSelector function for ${platform}/${arch}.`;
@@ -398,7 +398,7 @@ function createAssetNotFoundError(
     ...availableAssetNames.map((name) => `  - ${name}`),
   ];
 
-  return errorLines.join('\n');
+  return errorLines.join("\n");
 }
 
 function constructDownloadUrl(
@@ -445,7 +445,7 @@ function handleAbsoluteUrl(url: string, logger: TsLogger): OperationResult<strin
 }
 
 function handleRelativeUrl(rawUrl: string, customHost: string | undefined, logger: TsLogger): OperationResult<string> {
-  if (!rawUrl.startsWith('/')) {
+  if (!rawUrl.startsWith("/")) {
     logger.debug(messages.invalidRelativeUrl(rawUrl));
     const result: OperationResult<string> = {
       success: false,
@@ -454,9 +454,9 @@ function handleRelativeUrl(rawUrl: string, customHost: string | undefined, logge
     return result;
   }
 
-  let base = customHost && !customHost.includes('api.github.com') ? customHost : 'https://github.com';
+  let base = customHost && !customHost.includes("api.github.com") ? customHost : "https://github.com";
   if (!/^https?:\/\//.test(base)) {
-    base = `https:${base.startsWith('//') ? '' : '//'}${base}`;
+    base = `https:${base.startsWith("//") ? "" : "//"}${base}`;
   }
   const finalUrl = new URL(rawUrl, base);
   const downloadUrl = finalUrl.toString();
@@ -495,10 +495,7 @@ async function downloadAssetWithFallback(
       return result;
     } catch (error) {
       // Log the error but continue to HTTP fallback
-      logger.debug(
-        messages.downloadingAsset(downloadUrl),
-        error instanceof Error ? error : new Error(String(error)),
-      );
+      logger.debug(messages.downloadingAsset(downloadUrl), error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -531,7 +528,7 @@ async function executeAfterDownloadHook(
     return finalResult;
   }
 
-  const finalResult: OperationResult<void> = { success: false, error: result.error || 'Hook execution failed' };
+  const finalResult: OperationResult<void> = { success: false, error: result.error || "Hook execution failed" };
   return finalResult;
 }
 
@@ -624,6 +621,6 @@ async function executeAfterExtractHook(
     return finalResult;
   }
 
-  const finalResult: OperationResult<void> = { success: false, error: result.error || 'Hook execution failed' };
+  const finalResult: OperationResult<void> = { success: false, error: result.error || "Hook execution failed" };
   return finalResult;
 }

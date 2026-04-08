@@ -1,4 +1,4 @@
-import type { Mock } from 'bun:test';
+import type { Mock } from "bun:test";
 
 /**
  * Creates a strongly typed mock interface that preserves method signatures

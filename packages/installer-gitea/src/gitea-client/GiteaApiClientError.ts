@@ -7,7 +7,7 @@ export class GiteaApiClientError extends Error {
 
   constructor(message: string, statusCode?: number, originalError?: unknown) {
     super(message);
-    this.name = 'GiteaApiClientError';
+    this.name = "GiteaApiClientError";
     this.statusCode = statusCode;
     this.originalError = originalError;
     Object.setPrototypeOf(this, GiteaApiClientError.prototype);

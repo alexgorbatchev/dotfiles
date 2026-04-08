@@ -1,16 +1,16 @@
-import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
-import { Architecture, Platform } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import { NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
-import { dedentString } from '@dotfiles/utils';
-import { afterEach, describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
-import path from 'node:path';
-import { findToolByBinary, loadToolConfigByBinary } from '../loadToolConfigs';
+import type { ISystemInfo, ProjectConfig, ToolConfig } from "@dotfiles/core";
+import { Architecture, Platform } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import { NodeFileSystem, ResolvedFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { createMockProjectConfig, createTestDirectories } from "@dotfiles/testing-helpers";
+import { dedentString } from "@dotfiles/utils";
+import { afterEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
+import path from "node:path";
+import { findToolByBinary, loadToolConfigByBinary } from "../loadToolConfigs";
 
-describe('findToolByBinary', () => {
+describe("findToolByBinary", () => {
   let logger: TestLogger;
   let mockProjectConfig: ProjectConfig;
   let systemInfo: ISystemInfo;
@@ -39,7 +39,7 @@ describe('findToolByBinary', () => {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     };
 
     // Create a ResolvedFileSystem with the real homeDir
@@ -49,7 +49,7 @@ describe('findToolByBinary', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
       fileSystem: realFs,
       logger,
       systemInfo,
@@ -72,7 +72,7 @@ describe('findToolByBinary', () => {
     const toolConfigsDir = mockProjectConfig.paths.toolConfigsDir;
     const toolFilePath = path.join(toolConfigsDir, `${toolName}.tool.ts`);
 
-    const binCalls = binaryNames.map((name) => `.bin('${name}')`).join('');
+    const binCalls = binaryNames.map((name) => `.bin('${name}')`).join("");
 
     // Use a simpler export that doesn't require external imports
     const content = `
@@ -83,13 +83,13 @@ describe('findToolByBinary', () => {
     await realFs.writeFile(toolFilePath, content);
   }
 
-  it('should find a tool by its binary name', async () => {
+  it("should find a tool by its binary name", async () => {
     await setupTest();
-    await createToolFile('github-release--bat', ['bat']);
+    await createToolFile("github-release--bat", ["bat"]);
 
     const result = await findToolByBinary(
       logger,
-      'bat',
+      "bat",
       mockProjectConfig.paths.toolConfigsDir,
       resolvedFs,
       mockProjectConfig,
@@ -97,16 +97,16 @@ describe('findToolByBinary', () => {
     );
 
     assert(result.success);
-    expect(result.toolName).toBe('github-release--bat');
+    expect(result.toolName).toBe("github-release--bat");
   });
 
-  it('should return not found when binary does not exist', async () => {
+  it("should return not found when binary does not exist", async () => {
     await setupTest();
-    await createToolFile('tool-a', ['binary-a']);
+    await createToolFile("tool-a", ["binary-a"]);
 
     const result = await findToolByBinary(
       logger,
-      'nonexistent-binary',
+      "nonexistent-binary",
       mockProjectConfig.paths.toolConfigsDir,
       resolvedFs,
       mockProjectConfig,
@@ -118,14 +118,14 @@ describe('findToolByBinary', () => {
     expect(result.matchingTools).toBeUndefined();
   });
 
-  it('should return error when multiple tools provide the same binary', async () => {
+  it("should return error when multiple tools provide the same binary", async () => {
     await setupTest();
-    await createToolFile('tool-a', ['shared-binary']);
-    await createToolFile('tool-b', ['shared-binary']);
+    await createToolFile("tool-a", ["shared-binary"]);
+    await createToolFile("tool-b", ["shared-binary"]);
 
     const result = await findToolByBinary(
       logger,
-      'shared-binary',
+      "shared-binary",
       mockProjectConfig.paths.toolConfigsDir,
       resolvedFs,
       mockProjectConfig,
@@ -135,17 +135,17 @@ describe('findToolByBinary', () => {
     expect(result.success).toBe(false);
     assert(!result.success);
     expect(result.error).toContain("Multiple tools provide the binary 'shared-binary'");
-    expect(result.matchingTools).toContain('tool-a');
-    expect(result.matchingTools).toContain('tool-b');
+    expect(result.matchingTools).toContain("tool-a");
+    expect(result.matchingTools).toContain("tool-b");
   });
 
-  it('should find tool with multiple binaries when searching for any of them', async () => {
+  it("should find tool with multiple binaries when searching for any of them", async () => {
     await setupTest();
-    await createToolFile('multi-bin-tool', ['bin-one', 'bin-two']);
+    await createToolFile("multi-bin-tool", ["bin-one", "bin-two"]);
 
     const result1 = await findToolByBinary(
       logger,
-      'bin-one',
+      "bin-one",
       mockProjectConfig.paths.toolConfigsDir,
       resolvedFs,
       mockProjectConfig,
@@ -153,11 +153,11 @@ describe('findToolByBinary', () => {
     );
 
     assert(result1.success);
-    expect(result1.toolName).toBe('multi-bin-tool');
+    expect(result1.toolName).toBe("multi-bin-tool");
 
     const result2 = await findToolByBinary(
       logger,
-      'bin-two',
+      "bin-two",
       mockProjectConfig.paths.toolConfigsDir,
       resolvedFs,
       mockProjectConfig,
@@ -165,16 +165,16 @@ describe('findToolByBinary', () => {
     );
 
     assert(result2.success);
-    expect(result2.toolName).toBe('multi-bin-tool');
+    expect(result2.toolName).toBe("multi-bin-tool");
   });
 
-  it('should return not found when tool configs directory does not exist', async () => {
+  it("should return not found when tool configs directory does not exist", async () => {
     await setupTest();
-    const nonExistentDir = '/nonexistent/path/to/tools';
+    const nonExistentDir = "/nonexistent/path/to/tools";
 
     const result = await findToolByBinary(
       logger,
-      'some-binary',
+      "some-binary",
       nonExistentDir,
       resolvedFs,
       mockProjectConfig,
@@ -187,7 +187,7 @@ describe('findToolByBinary', () => {
   });
 });
 
-describe('loadToolConfigByBinary', () => {
+describe("loadToolConfigByBinary", () => {
   let logger: TestLogger;
   let mockProjectConfig: ProjectConfig;
   let systemInfo: ISystemInfo;
@@ -216,7 +216,7 @@ describe('loadToolConfigByBinary', () => {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     };
 
     // Create a ResolvedFileSystem with the real homeDir
@@ -226,7 +226,7 @@ describe('loadToolConfigByBinary', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
       fileSystem: realFs,
       logger,
       systemInfo,
@@ -249,7 +249,7 @@ describe('loadToolConfigByBinary', () => {
     const toolConfigsDir = mockProjectConfig.paths.toolConfigsDir;
     const toolFilePath = path.join(toolConfigsDir, `${toolName}.tool.ts`);
 
-    const binCalls = binaryNames.map((name) => `.bin('${name}')`).join('');
+    const binCalls = binaryNames.map((name) => `.bin('${name}')`).join("");
 
     // Use a simpler export that doesn't require external imports
     const content = dedentString(`
@@ -260,13 +260,13 @@ describe('loadToolConfigByBinary', () => {
     await realFs.writeFile(toolFilePath, content);
   }
 
-  it('should load tool config by binary name', async () => {
+  it("should load tool config by binary name", async () => {
     await setupTest();
-    await createToolFile('my-tool', ['my-binary']);
+    await createToolFile("my-tool", ["my-binary"]);
 
     const result = await loadToolConfigByBinary(
       logger,
-      'my-binary',
+      "my-binary",
       mockProjectConfig.paths.toolConfigsDir,
       resolvedFs,
       mockProjectConfig,
@@ -274,19 +274,19 @@ describe('loadToolConfigByBinary', () => {
     );
 
     assert(result);
-    assert(!('error' in result));
+    assert(!("error" in result));
     const toolConfig = result as ToolConfig;
-    expect(toolConfig.name).toBe('my-tool');
-    expect(toolConfig.binaries).toContain('my-binary');
+    expect(toolConfig.name).toBe("my-tool");
+    expect(toolConfig.binaries).toContain("my-binary");
   });
 
-  it('should return undefined when binary is not found', async () => {
+  it("should return undefined when binary is not found", async () => {
     await setupTest();
-    await createToolFile('tool-a', ['binary-a']);
+    await createToolFile("tool-a", ["binary-a"]);
 
     const result = await loadToolConfigByBinary(
       logger,
-      'nonexistent',
+      "nonexistent",
       mockProjectConfig.paths.toolConfigsDir,
       resolvedFs,
       mockProjectConfig,
@@ -296,14 +296,14 @@ describe('loadToolConfigByBinary', () => {
     expect(result).toBeUndefined();
   });
 
-  it('should return error object when multiple tools provide the same binary', async () => {
+  it("should return error object when multiple tools provide the same binary", async () => {
     await setupTest();
-    await createToolFile('tool-a', ['duplicate-bin']);
-    await createToolFile('tool-b', ['duplicate-bin']);
+    await createToolFile("tool-a", ["duplicate-bin"]);
+    await createToolFile("tool-b", ["duplicate-bin"]);
 
     const result = await loadToolConfigByBinary(
       logger,
-      'duplicate-bin',
+      "duplicate-bin",
       mockProjectConfig.paths.toolConfigsDir,
       resolvedFs,
       mockProjectConfig,
@@ -311,7 +311,7 @@ describe('loadToolConfigByBinary', () => {
     );
 
     assert(result);
-    assert('error' in result);
+    assert("error" in result);
     expect(result.error).toContain("Multiple tools provide the binary 'duplicate-bin'");
   });
 });

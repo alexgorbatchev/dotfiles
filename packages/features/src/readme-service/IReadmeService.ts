@@ -1,6 +1,6 @@
-import type { ToolConfig } from '@dotfiles/core';
-import type { IToolInstallationRecord } from '@dotfiles/registry';
-import type { ICombinedReadmeOptions, IReadmeContent } from './types';
+import type { ToolConfig } from "@dotfiles/core";
+import type { IToolInstallationRecord } from "@dotfiles/registry";
+import type { ICombinedReadmeOptions, IReadmeContent } from "./types";
 
 /**
  * Interface for a service that manages README files for tools

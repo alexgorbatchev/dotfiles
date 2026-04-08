@@ -1,14 +1,14 @@
-import type { IAfterInstallContext, IExtractContext } from '@dotfiles/core';
-import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
-import path from 'node:path';
-import { createInstallerTestSetup, type IInstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
+import type { IAfterInstallContext, IExtractContext } from "@dotfiles/core";
+import type { GithubReleaseToolConfig } from "@dotfiles/installer-github";
+import { beforeEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
+import path from "node:path";
+import { createInstallerTestSetup, type IInstallerTestSetup, setupFileSystemMocks } from "./installer-test-helpers";
 
 /**
  * Integration tests demonstrating real-world hook usage scenarios
  */
-describe('Hook Integration Tests', () => {
+describe("Hook Integration Tests", () => {
   let setup: IInstallerTestSetup;
 
   beforeEach(async () => {
@@ -16,51 +16,50 @@ describe('Hook Integration Tests', () => {
     setupFileSystemMocks(setup);
   });
 
-  describe('Real-world hook scenarios', () => {
-    it('should handle configuration setup hook that creates config files', async () => {
+  describe("Real-world hook scenarios", () => {
+    it("should handle configuration setup hook that creates config files", async () => {
       // Override the GitHub client mock for this specific test
       setup.mocks.getLatestRelease.mockResolvedValueOnce({
         id: 123,
-        tag_name: '1.0.0',
-        name: 'Test Release',
+        tag_name: "1.0.0",
+        name: "Test Release",
         draft: false,
         prerelease: false,
-        created_at: '2023-01-01T00:00:00Z',
-        published_at: '2023-01-01T00:00:00Z',
+        created_at: "2023-01-01T00:00:00Z",
+        published_at: "2023-01-01T00:00:00Z",
         assets: [
           {
-            name: 'example-tool-darwin-arm64.tar.gz',
+            name: "example-tool-darwin-arm64.tar.gz",
             browser_download_url:
-              'https://github.com/example/tool/releases/download/v1.0.0/example-tool-darwin-arm64.tar.gz',
+              "https://github.com/example/tool/releases/download/v1.0.0/example-tool-darwin-arm64.tar.gz",
             size: 1000,
-            content_type: 'application/gzip',
-            state: 'uploaded',
+            content_type: "application/gzip",
+            state: "uploaded",
             download_count: 100,
-            created_at: '2023-01-01T00:00:00Z',
-            updated_at: '2023-01-01T00:00:00Z',
+            created_at: "2023-01-01T00:00:00Z",
+            updated_at: "2023-01-01T00:00:00Z",
           },
         ],
-        html_url: 'https://github.com/example/tool/releases/tag/1.0.0',
+        html_url: "https://github.com/example/tool/releases/tag/1.0.0",
       });
 
       const toolConfig: GithubReleaseToolConfig = {
-        name: 'example-tool',
-        binaries: ['tool'],
-        version: 'latest',
-        installationMethod: 'github-release',
+        name: "example-tool",
+        binaries: ["tool"],
+        version: "latest",
+        installationMethod: "github-release",
         installParams: {
-          repo: 'example/tool',
+          repo: "example/tool",
           hooks: {
-            'after-install': [
+            "after-install": [
               async (context: IAfterInstallContext) => {
                 // Create a config directory
-                const configDir = path.join(context.installedDir, 'config');
+                const configDir = path.join(context.installedDir, "config");
                 await context.fileSystem.ensureDir(configDir);
 
                 // Create a default configuration file
-                const configPath = path.join(configDir, 'default.yaml');
-                const configContent =
-                  `# Default configuration for ${context.toolName}\nversion: ${context.version}\ninstall_dir: ${context.installedDir}`;
+                const configPath = path.join(configDir, "default.yaml");
+                const configContent = `# Default configuration for ${context.toolName}\nversion: ${context.version}\ninstall_dir: ${context.installedDir}`;
                 await context.fileSystem.writeFile(configPath, configContent);
 
                 // Make the main binary executable with specific permissions
@@ -73,7 +72,7 @@ describe('Hook Integration Tests', () => {
         },
       };
 
-      const result = await setup.installer.install('example-tool', toolConfig);
+      const result = await setup.installer.install("example-tool", toolConfig);
 
       expect(result.success).toBe(true);
       assert(result.success);
@@ -83,69 +82,69 @@ describe('Hook Integration Tests', () => {
       const toolDirContents = await setup.fs.readdir(toolDir);
       // Version directory should be '1.0.0' from the resolved tag_name
       const versionDir = toolDirContents.find(
-        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/),
+        (name) => name === "1.0.0" || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/),
       );
       expect(versionDir).toBeDefined();
 
       // Verify hook created the expected files and directories
-      const configDir = path.join(toolDir, versionDir!, 'config');
-      const configFile = path.join(configDir, 'default.yaml');
+      const configDir = path.join(toolDir, versionDir!, "config");
+      const configFile = path.join(configDir, "default.yaml");
 
       // Verify config directory was created
       expect(await setup.fs.exists(configDir)).toBe(true);
 
       // Verify config file was created with correct content
       expect(await setup.fs.exists(configFile)).toBe(true);
-      const configContent = await setup.fs.readFile(configFile, 'utf-8');
-      expect(configContent).toContain('Default configuration for example-tool');
+      const configContent = await setup.fs.readFile(configFile, "utf-8");
+      expect(configContent).toContain("Default configuration for example-tool");
       expect(configContent).toContain(`install_dir: ${path.join(toolDir, versionDir!)}`);
     });
 
-    it('should handle post-extraction binary organization hook', async () => {
+    it("should handle post-extraction binary organization hook", async () => {
       // Override the GitHub client mock for this specific test
       setup.mocks.getLatestRelease.mockResolvedValueOnce({
         id: 123,
-        tag_name: '1.0.0',
-        name: 'Test Release',
+        tag_name: "1.0.0",
+        name: "Test Release",
         draft: false,
         prerelease: false,
-        created_at: '2023-01-01T00:00:00Z',
-        published_at: '2023-01-01T00:00:00Z',
+        created_at: "2023-01-01T00:00:00Z",
+        published_at: "2023-01-01T00:00:00Z",
         assets: [
           {
-            name: 'multi-binary-tool-darwin-arm64.tar.gz',
+            name: "multi-binary-tool-darwin-arm64.tar.gz",
             browser_download_url:
-              'https://github.com/example/multi-binary-tool/releases/download/v1.0.0/multi-binary-tool-darwin-arm64.tar.gz',
+              "https://github.com/example/multi-binary-tool/releases/download/v1.0.0/multi-binary-tool-darwin-arm64.tar.gz",
             size: 1000,
-            content_type: 'application/gzip',
-            state: 'uploaded',
+            content_type: "application/gzip",
+            state: "uploaded",
             download_count: 100,
-            created_at: '2023-01-01T00:00:00Z',
-            updated_at: '2023-01-01T00:00:00Z',
+            created_at: "2023-01-01T00:00:00Z",
+            updated_at: "2023-01-01T00:00:00Z",
           },
         ],
-        html_url: 'https://github.com/example/multi-binary-tool/releases/tag/1.0.0',
+        html_url: "https://github.com/example/multi-binary-tool/releases/tag/1.0.0",
       });
 
       const toolConfig: GithubReleaseToolConfig = {
-        name: 'multi-binary-tool',
-        binaries: ['main-tool', 'helper-tool'],
-        version: 'latest',
-        installationMethod: 'github-release',
+        name: "multi-binary-tool",
+        binaries: ["main-tool", "helper-tool"],
+        version: "latest",
+        installationMethod: "github-release",
         installParams: {
-          repo: 'example/multi-binary-tool',
+          repo: "example/multi-binary-tool",
           hooks: {
-            'after-extract': [
+            "after-extract": [
               async (context: IExtractContext) => {
                 assert(context.extractDir && context.extractResult);
 
                 // Organize binaries in a bin subdirectory
-                const binDir = path.join(context.stagingDir, 'bin');
+                const binDir = path.join(context.stagingDir, "bin");
                 await context.fileSystem.ensureDir(binDir);
 
                 // Create the expected binaries from the extracted tool
-                const srcPath = path.join(context.extractDir, 'tool');
-                for (const binaryName of ['main-tool', 'helper-tool']) {
+                const srcPath = path.join(context.extractDir, "tool");
+                for (const binaryName of ["main-tool", "helper-tool"]) {
                   const destPath = path.join(binDir, binaryName);
                   await context.fileSystem.copyFile(srcPath, destPath);
                   await context.fileSystem.chmod(destPath, 0o755);
@@ -153,10 +152,10 @@ describe('Hook Integration Tests', () => {
 
                 // Copy documentation files
                 const docFiles = context.extractResult.extractedFiles.filter(
-                  (file) => file.includes('README') || file.includes('LICENSE'),
+                  (file) => file.includes("README") || file.includes("LICENSE"),
                 );
 
-                const docDir = path.join(context.stagingDir, 'docs');
+                const docDir = path.join(context.stagingDir, "docs");
                 await context.fileSystem.ensureDir(docDir);
 
                 for (const docFile of docFiles) {
@@ -170,7 +169,7 @@ describe('Hook Integration Tests', () => {
         },
       };
 
-      const result = await setup.installer.install('multi-binary-tool', toolConfig);
+      const result = await setup.installer.install("multi-binary-tool", toolConfig);
 
       assert(result.success);
       expect(result.success).toBe(true);
@@ -186,16 +185,16 @@ describe('Hook Integration Tests', () => {
 
       // Version directory should be '1.0.0' from the resolved tag_name
       const versionDir = toolDirContents.find(
-        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/),
+        (name) => name === "1.0.0" || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/),
       );
       assert(versionDir);
 
       // Verify hook created the expected directory structure
       const versionedPath = `${toolDir}/${versionDir}`;
-      const binDir = path.join(versionedPath, 'bin');
-      const docsDir = path.join(versionedPath, 'docs');
-      const mainToolBinary = path.join(binDir, 'main-tool');
-      const helperToolBinary = path.join(binDir, 'helper-tool');
+      const binDir = path.join(versionedPath, "bin");
+      const docsDir = path.join(versionedPath, "docs");
+      const mainToolBinary = path.join(binDir, "main-tool");
+      const helperToolBinary = path.join(binDir, "helper-tool");
 
       // Verify directories were created
       expect(await setup.fs.exists(binDir)).toBe(true);
@@ -206,52 +205,52 @@ describe('Hook Integration Tests', () => {
       expect(await setup.fs.exists(helperToolBinary)).toBe(true);
 
       // Verify documentation files were copied to docs directory
-      const readmeFile = path.join(docsDir, 'README.md');
-      const licenseFile = path.join(docsDir, 'LICENSE');
+      const readmeFile = path.join(docsDir, "README.md");
+      const licenseFile = path.join(docsDir, "LICENSE");
       expect(await setup.fs.exists(readmeFile)).toBe(true);
       expect(await setup.fs.exists(licenseFile)).toBe(true);
     });
 
-    it('should handle build/compile hook that processes source code', async () => {
+    it("should handle build/compile hook that processes source code", async () => {
       // Override the GitHub client mock for this specific test
       setup.mocks.getLatestRelease.mockResolvedValueOnce({
         id: 123,
-        tag_name: '1.0.0',
-        name: 'Test Release',
+        tag_name: "1.0.0",
+        name: "Test Release",
         draft: false,
         prerelease: false,
-        created_at: '2023-01-01T00:00:00Z',
-        published_at: '2023-01-01T00:00:00Z',
+        created_at: "2023-01-01T00:00:00Z",
+        published_at: "2023-01-01T00:00:00Z",
         assets: [
           {
-            name: 'source-tool-darwin-arm64.tar.gz',
+            name: "source-tool-darwin-arm64.tar.gz",
             browser_download_url:
-              'https://github.com/example/source-tool/releases/download/v1.0.0/source-tool-darwin-arm64.tar.gz',
+              "https://github.com/example/source-tool/releases/download/v1.0.0/source-tool-darwin-arm64.tar.gz",
             size: 1000,
-            content_type: 'application/gzip',
-            state: 'uploaded',
+            content_type: "application/gzip",
+            state: "uploaded",
             download_count: 100,
-            created_at: '2023-01-01T00:00:00Z',
-            updated_at: '2023-01-01T00:00:00Z',
+            created_at: "2023-01-01T00:00:00Z",
+            updated_at: "2023-01-01T00:00:00Z",
           },
         ],
-        html_url: 'https://github.com/example/source-tool/releases/tag/1.0.0',
+        html_url: "https://github.com/example/source-tool/releases/tag/1.0.0",
       });
 
       const toolConfig: GithubReleaseToolConfig = {
-        name: 'source-tool',
-        binaries: ['source-tool'],
-        version: 'latest',
-        installationMethod: 'github-release',
+        name: "source-tool",
+        binaries: ["source-tool"],
+        version: "latest",
+        installationMethod: "github-release",
         installParams: {
-          repo: 'example/source-tool',
+          repo: "example/source-tool",
           hooks: {
-            'after-extract': [
+            "after-extract": [
               async (context: IExtractContext) => {
                 assert(context.extractDir);
 
                 // Check if this is a source distribution
-                const makefilePath = path.join(context.extractDir, 'Makefile');
+                const makefilePath = path.join(context.extractDir, "Makefile");
                 const hasMakefile = await context.fileSystem.exists(makefilePath);
                 assert(hasMakefile);
 
@@ -264,18 +263,18 @@ describe('Hook Integration Tests', () => {
                 await context.fileSystem.chmod(binaryPath, 0o755);
 
                 // Create additional compiled artifacts
-                const libDir = path.join(context.stagingDir, 'lib');
+                const libDir = path.join(context.stagingDir, "lib");
                 await context.fileSystem.ensureDir(libDir);
 
-                const libPath = path.join(libDir, 'libsource-tool.so');
-                await context.fileSystem.writeFile(libPath, 'compiled library content');
+                const libPath = path.join(libDir, "libsource-tool.so");
+                await context.fileSystem.writeFile(libPath, "compiled library content");
               },
             ],
           },
         },
       };
 
-      const result = await setup.installer.install('source-tool', toolConfig);
+      const result = await setup.installer.install("source-tool", toolConfig);
 
       expect(result.success).toBe(true);
 
@@ -284,13 +283,13 @@ describe('Hook Integration Tests', () => {
       const toolDirContents = await setup.fs.readdir(toolDir);
       // Version directory should be '1.0.0' from the resolved tag_name
       const versionDir = toolDirContents.find(
-        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/),
+        (name) => name === "1.0.0" || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/),
       );
       expect(versionDir).toBeDefined();
 
       // Verify hook performed the expected build operations
-      const libDir = path.join(toolDir, versionDir!, 'lib');
-      const libFile = path.join(libDir, 'libsource-tool.so');
+      const libDir = path.join(toolDir, versionDir!, "lib");
+      const libFile = path.join(libDir, "libsource-tool.so");
 
       // Verify library directory was created
       expect(await setup.fs.exists(libDir)).toBe(true);
@@ -299,63 +298,63 @@ describe('Hook Integration Tests', () => {
       expect(await setup.fs.exists(libFile)).toBe(true);
     });
 
-    it('should handle hook failure gracefully with detailed error information', async () => {
+    it("should handle hook failure gracefully with detailed error information", async () => {
       // Override the GitHub client mock for this specific test
       setup.mocks.getLatestRelease.mockResolvedValueOnce({
         id: 123,
-        tag_name: '1.0.0',
-        name: 'Test Release',
+        tag_name: "1.0.0",
+        name: "Test Release",
         draft: false,
         prerelease: false,
-        created_at: '2023-01-01T00:00:00Z',
-        published_at: '2023-01-01T00:00:00Z',
+        created_at: "2023-01-01T00:00:00Z",
+        published_at: "2023-01-01T00:00:00Z",
         assets: [
           {
-            name: 'failing-tool-darwin-arm64.tar.gz',
+            name: "failing-tool-darwin-arm64.tar.gz",
             browser_download_url:
-              'https://github.com/example/failing-tool/releases/download/v1.0.0/failing-tool-darwin-arm64.tar.gz',
+              "https://github.com/example/failing-tool/releases/download/v1.0.0/failing-tool-darwin-arm64.tar.gz",
             size: 1000,
-            content_type: 'application/gzip',
-            state: 'uploaded',
+            content_type: "application/gzip",
+            state: "uploaded",
             download_count: 100,
-            created_at: '2023-01-01T00:00:00Z',
-            updated_at: '2023-01-01T00:00:00Z',
+            created_at: "2023-01-01T00:00:00Z",
+            updated_at: "2023-01-01T00:00:00Z",
           },
         ],
-        html_url: 'https://github.com/example/failing-tool/releases/tag/1.0.0',
+        html_url: "https://github.com/example/failing-tool/releases/tag/1.0.0",
       });
 
       const toolConfig: GithubReleaseToolConfig = {
-        name: 'failing-tool',
-        binaries: ['failing-tool'],
-        version: 'latest',
-        installationMethod: 'github-release',
+        name: "failing-tool",
+        binaries: ["failing-tool"],
+        version: "latest",
+        installationMethod: "github-release",
         installParams: {
-          repo: 'example/failing-tool',
+          repo: "example/failing-tool",
           hooks: {
-            'after-download': [
+            "after-download": [
               async (_context) => {
-                assert(false, 'Downloaded file validation failed: checksum mismatch');
+                assert(false, "Downloaded file validation failed: checksum mismatch");
               },
             ],
           },
         },
       };
 
-      const result = await setup.installer.install('failing-tool', toolConfig);
+      const result = await setup.installer.install("failing-tool", toolConfig);
 
       expect(result.success).toBe(false);
       assert(!result.success);
-      expect(result.error).toContain('after-download hook failed');
-      expect(result.error).toContain('Downloaded file validation failed: checksum mismatch');
+      expect(result.error).toContain("after-download hook failed");
+      expect(result.error).toContain("Downloaded file validation failed: checksum mismatch");
 
       // Verify that the hook failure was logged appropriately
       // Path: Installer -> install -> createBaseInstallContext -> install-failing-tool -> HookExecutor -> executeHook
       setup.logger.expect(
-        ['ERROR'],
-        ['Installer', 'install', 'createBaseInstallContext', 'install-failing-tool', 'HookExecutor', 'executeHook'],
-        ['failing-tool'],
-        ['Hook failed'],
+        ["ERROR"],
+        ["Installer", "install", "createBaseInstallContext", "install-failing-tool", "HookExecutor", "executeHook"],
+        ["failing-tool"],
+        ["Hook failed"],
       );
     });
   });

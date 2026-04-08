@@ -1,4 +1,4 @@
-import type { IEnvContext, ProjectConfig } from '@dotfiles/core';
+import type { IEnvContext, ProjectConfig } from "@dotfiles/core";
 
 /**
  * Context provided to args function for dynamic argument generation.

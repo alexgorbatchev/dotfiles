@@ -1,11 +1,11 @@
 // oxlint-disable-next-line import/no-unassigned-import
-import '@dotfiles/testing-helpers';
-import { describe, expect, it } from 'bun:test';
-import { generateSourceScript } from '../generateSourceScript';
+import "@dotfiles/testing-helpers";
+import { describe, expect, it } from "bun:test";
+import { generateSourceScript } from "../generateSourceScript";
 
-describe('generateSourceScript', () => {
-  it('should generate complete source script', () => {
-    const script = generateSourceScript('/home/user/project/env', 'env');
+describe("generateSourceScript", () => {
+  it("should generate complete source script", () => {
+    const script = generateSourceScript("/home/user/project/env", "env");
 
     expect(script).toMatchInlineSnapshot(`
       "#!/bin/sh
@@ -74,8 +74,8 @@ describe('generateSourceScript', () => {
     `);
   });
 
-  it('should include usage instructions with environment name', () => {
-    const script = generateSourceScript('/path/to/my-project', 'my-project');
+  it("should include usage instructions with environment name", () => {
+    const script = generateSourceScript("/path/to/my-project", "my-project");
 
     expect(script).toMatchLooseInlineSnapshot`
       # Usage:
@@ -84,8 +84,8 @@ describe('generateSourceScript', () => {
     `;
   });
 
-  it('should use fallback path in script when shell detection fails', () => {
-    const script = generateSourceScript('/custom/fallback/path', 'custom-env');
+  it("should use fallback path in script when shell detection fails", () => {
+    const script = generateSourceScript("/custom/fallback/path", "custom-env");
 
     expect(script).toMatchLooseInlineSnapshot`
       else
@@ -95,8 +95,8 @@ describe('generateSourceScript', () => {
     `;
   });
 
-  it('should export environment variables with correct values', () => {
-    const script = generateSourceScript('/any/path', 'test-env');
+  it("should export environment variables with correct values", () => {
+    const script = generateSourceScript("/any/path", "test-env");
 
     expect(script).toMatchLooseInlineSnapshot`
       # Export environment variables
@@ -106,8 +106,8 @@ describe('generateSourceScript', () => {
     `;
   });
 
-  it('should display activation message with environment name', () => {
-    const script = generateSourceScript('/any/path', 'dev-env');
+  it("should display activation message with environment name", () => {
+    const script = generateSourceScript("/any/path", "dev-env");
 
     expect(script).toMatchLooseInlineSnapshot`
       echo "Activated dotfiles environment: dev-env"

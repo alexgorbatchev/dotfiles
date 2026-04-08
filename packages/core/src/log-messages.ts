@@ -1,4 +1,4 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   pluginAlreadyRegistered: (method: string) =>
@@ -27,15 +27,15 @@ export const messages = {
 
   delegatingToPlugin: (method: string) => createSafeLogMessage(`Delegating installation to plugin: ${method}`),
 
-  validationCacheCleared: () => createSafeLogMessage('Validation cache cleared'),
+  validationCacheCleared: () => createSafeLogMessage("Validation cache cleared"),
 
-  cleaningUpPlugins: () => createSafeLogMessage('Cleaning up plugins...'),
+  cleaningUpPlugins: () => createSafeLogMessage("Cleaning up plugins..."),
 
   pluginCleanedUp: (method: string) => createSafeLogMessage(`Cleaned up plugin: ${method}`),
 
   pluginCleanupFailed: (method: string) => createSafeLogMessage(`Failed to cleanup plugin ${method}`),
 
-  pluginCleanupComplete: () => createSafeLogMessage('Plugin cleanup complete'),
+  pluginCleanupComplete: () => createSafeLogMessage("Plugin cleanup complete"),
 
   replaceInFileNoMatch: (pattern: string, filePath: string) =>
     createSafeLogMessage(`Could not find '${pattern}' in ${filePath}`),

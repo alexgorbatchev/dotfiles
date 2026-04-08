@@ -1,11 +1,11 @@
-import { shell } from './shell';
+import { shell } from "./shell";
 
-import type { IBuildContext, IDependencyVersions } from '../types';
-import { copyPackagesToOutputDir } from './copyPackagesToOutputDir';
-import { createTempSchemasPackage } from './createTempSchemasPackage';
-import { createDtsBundlerTsConfig, createTempTsConfig } from './createTempTsConfig';
-import { installDependenciesInOutputDir } from './installDependenciesInOutputDir';
-import { resolveSchemaExportsDtsPath } from './resolveSchemaExportsDtsPath';
+import type { IBuildContext, IDependencyVersions } from "../types";
+import { copyPackagesToOutputDir } from "./copyPackagesToOutputDir";
+import { createTempSchemasPackage } from "./createTempSchemasPackage";
+import { createDtsBundlerTsConfig, createTempTsConfig } from "./createTempTsConfig";
+import { installDependenciesInOutputDir } from "./installDependenciesInOutputDir";
+import { resolveSchemaExportsDtsPath } from "./resolveSchemaExportsDtsPath";
 
 /**
  * Returns path to dts-bundle-generator binary.
@@ -13,7 +13,7 @@ import { resolveSchemaExportsDtsPath } from './resolveSchemaExportsDtsPath';
  * package into node_modules/.bun/ rather than the top-level node_modules/.
  */
 function getDtsBundleGeneratorPath(): string {
-  return require.resolve('dts-bundle-generator/dist/bin/dts-bundle-generator.js');
+  return require.resolve("dts-bundle-generator/dist/bin/dts-bundle-generator.js");
 }
 
 /**
@@ -61,5 +61,5 @@ export async function buildSchemaTypes(context: IBuildContext, dependencyVersion
       -- ${schemaExportsPath}
   `;
 
-  console.log('✅ Successfully created schemas.d.ts with dts-bundle-generator');
+  console.log("✅ Successfully created schemas.d.ts with dts-bundle-generator");
 }

@@ -1,5 +1,5 @@
-import type { ICompletionContext, ShellCompletionConfig, ShellType } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
+import type { ICompletionContext, ShellCompletionConfig, ShellType } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
 
 /**
  * Context for completion generation, extending the base completion context.
@@ -25,7 +25,7 @@ export interface IGeneratedCompletion {
   content: string;
   filename: string;
   targetPath: string;
-  generatedBy: 'command' | 'source';
+  generatedBy: "command" | "source";
   /** Source path for symlink (only set for source-based completions) */
   sourcePath?: string;
 }

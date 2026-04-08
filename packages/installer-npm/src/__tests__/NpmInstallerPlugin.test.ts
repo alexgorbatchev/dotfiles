@@ -1,12 +1,12 @@
-import type { IInstallContext } from '@dotfiles/core';
-import type { NpmToolConfig } from '@dotfiles/installer-npm';
-import { TestLogger } from '@dotfiles/logger';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
-import { NpmInstallerPlugin } from '../NpmInstallerPlugin';
-import { createMockShell } from './helpers/mocks';
+import type { IInstallContext } from "@dotfiles/core";
+import type { NpmToolConfig } from "@dotfiles/installer-npm";
+import { TestLogger } from "@dotfiles/logger";
+import { beforeEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
+import { NpmInstallerPlugin } from "../NpmInstallerPlugin";
+import { createMockShell } from "./helpers/mocks";
 
-describe('NpmInstallerPlugin', () => {
+describe("NpmInstallerPlugin", () => {
   let plugin: NpmInstallerPlugin;
   let logger: TestLogger;
 
@@ -15,66 +15,66 @@ describe('NpmInstallerPlugin', () => {
     plugin = new NpmInstallerPlugin(createMockShell());
   });
 
-  it('should have correct plugin metadata', () => {
-    expect(plugin.method).toBe('npm');
-    expect(plugin.displayName).toBe('npm Installer');
-    expect(plugin.version).toBe('1.0.0');
+  it("should have correct plugin metadata", () => {
+    expect(plugin.method).toBe("npm");
+    expect(plugin.displayName).toBe("npm Installer");
+    expect(plugin.version).toBe("1.0.0");
   });
 
-  it('should have valid schemas', () => {
+  it("should have valid schemas", () => {
     expect(plugin.paramsSchema).toBeDefined();
     expect(plugin.toolConfigSchema).toBeDefined();
   });
 
-  it('should validate correct params', () => {
+  it("should validate correct params", () => {
     const validParams = {
-      package: 'prettier',
+      package: "prettier",
     };
 
     const result = plugin.paramsSchema.safeParse(validParams);
     expect(result.success).toBe(true);
   });
 
-  it('should validate params with version', () => {
+  it("should validate params with version", () => {
     const validParams = {
-      package: 'prettier',
-      version: '3.0.0',
+      package: "prettier",
+      version: "3.0.0",
     };
 
     const result = plugin.paramsSchema.safeParse(validParams);
     expect(result.success).toBe(true);
   });
 
-  it('should validate empty params', () => {
+  it("should validate empty params", () => {
     const validParams = {};
 
     const result = plugin.paramsSchema.safeParse(validParams);
     expect(result.success).toBe(true);
   });
 
-  it('should accept packageManager bun', () => {
-    const result = plugin.paramsSchema.safeParse({ package: 'prettier', packageManager: 'bun' });
+  it("should accept packageManager bun", () => {
+    const result = plugin.paramsSchema.safeParse({ package: "prettier", packageManager: "bun" });
     expect(result.success).toBe(true);
   });
 
-  it('should accept packageManager npm', () => {
-    const result = plugin.paramsSchema.safeParse({ package: 'prettier', packageManager: 'npm' });
+  it("should accept packageManager npm", () => {
+    const result = plugin.paramsSchema.safeParse({ package: "prettier", packageManager: "npm" });
     expect(result.success).toBe(true);
   });
 
-  it('should reject invalid packageManager values', () => {
-    const result = plugin.paramsSchema.safeParse({ package: 'prettier', packageManager: 'yarn' });
+  it("should reject invalid packageManager values", () => {
+    const result = plugin.paramsSchema.safeParse({ package: "prettier", packageManager: "yarn" });
     expect(result.success).toBe(false);
   });
 
-  it('should validate correct tool config', () => {
+  it("should validate correct tool config", () => {
     const validConfig: NpmToolConfig = {
-      name: 'prettier',
-      version: '3.0.0',
-      binaries: ['prettier'],
-      installationMethod: 'npm',
+      name: "prettier",
+      version: "3.0.0",
+      binaries: ["prettier"],
+      installationMethod: "npm",
       installParams: {
-        package: 'prettier',
+        package: "prettier",
       },
     };
 
@@ -82,14 +82,14 @@ describe('NpmInstallerPlugin', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject invalid installation method', () => {
+  it("should reject invalid installation method", () => {
     const invalidConfig = {
-      name: 'prettier',
-      version: '3.0.0',
-      binaries: ['prettier'],
-      installationMethod: 'github-release',
+      name: "prettier",
+      version: "3.0.0",
+      binaries: ["prettier"],
+      installationMethod: "github-release",
       installParams: {
-        package: 'prettier',
+        package: "prettier",
       },
     };
 
@@ -97,196 +97,186 @@ describe('NpmInstallerPlugin', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should support updates', () => {
+  it("should support updates", () => {
     expect(plugin.supportsUpdate()).toBe(true);
   });
 
-  it('should support update checks', () => {
+  it("should support update checks", () => {
     expect(plugin.supportsUpdateCheck()).toBe(true);
   });
 
-  it('should not support readme', () => {
+  it("should not support readme", () => {
     expect(plugin.supportsReadme()).toBe(false);
   });
 
-  describe('resolveVersion', () => {
+  describe("resolveVersion", () => {
     const mockContext = {} as IInstallContext;
 
-    it('should resolve version from npm view', async () => {
+    it("should resolve version from npm view", async () => {
       const toolConfig: NpmToolConfig = {
-        name: 'prettier',
-        version: 'latest',
-        binaries: ['prettier'],
-        installationMethod: 'npm',
+        name: "prettier",
+        version: "latest",
+        binaries: ["prettier"],
+        installationMethod: "npm",
         installParams: {
-          package: 'prettier',
+          package: "prettier",
         },
       };
 
-      const version: string | null = await plugin.resolveVersion('prettier', toolConfig, mockContext, logger);
+      const version: string | null = await plugin.resolveVersion("prettier", toolConfig, mockContext, logger);
 
-      expect(version).toBe('3.1.0');
+      expect(version).toBe("3.1.0");
     });
 
-    it('should use tool name when package is not specified', async () => {
+    it("should use tool name when package is not specified", async () => {
       const toolConfig: NpmToolConfig = {
-        name: 'prettier',
-        version: 'latest',
-        binaries: ['prettier'],
-        installationMethod: 'npm',
+        name: "prettier",
+        version: "latest",
+        binaries: ["prettier"],
+        installationMethod: "npm",
         installParams: {},
       };
 
-      const version: string | null = await plugin.resolveVersion('prettier', toolConfig, mockContext, logger);
+      const version: string | null = await plugin.resolveVersion("prettier", toolConfig, mockContext, logger);
 
-      expect(version).toBe('3.1.0');
+      expect(version).toBe("3.1.0");
     });
 
-    it('should return null when npm view returns empty output', async () => {
+    it("should return null when npm view returns empty output", async () => {
       const emptyShell = createMockShell(() => ({
-        stdout: '',
-        stderr: '',
+        stdout: "",
+        stderr: "",
         exitCode: 0,
         code: 0,
-        toString: () => '',
+        toString: () => "",
       }));
       const emptyPlugin = new NpmInstallerPlugin(emptyShell);
 
       const toolConfig: NpmToolConfig = {
-        name: 'nonexistent',
-        version: 'latest',
-        binaries: ['nonexistent'],
-        installationMethod: 'npm',
+        name: "nonexistent",
+        version: "latest",
+        binaries: ["nonexistent"],
+        installationMethod: "npm",
         installParams: {
-          package: 'nonexistent',
+          package: "nonexistent",
         },
       };
 
-      const version: string | null = await emptyPlugin.resolveVersion(
-        'nonexistent',
-        toolConfig,
-        mockContext,
-        logger,
-      );
+      const version: string | null = await emptyPlugin.resolveVersion("nonexistent", toolConfig, mockContext, logger);
 
       expect(version).toBeNull();
     });
 
-    it('should normalize version by stripping v prefix', async () => {
+    it("should normalize version by stripping v prefix", async () => {
       const vPrefixShell = createMockShell(() => ({
-        stdout: 'v2.5.0',
-        stderr: '',
+        stdout: "v2.5.0",
+        stderr: "",
         exitCode: 0,
         code: 0,
-        toString: () => 'v2.5.0',
+        toString: () => "v2.5.0",
       }));
       const vPrefixPlugin = new NpmInstallerPlugin(vPrefixShell);
 
       const toolConfig: NpmToolConfig = {
-        name: 'some-tool',
-        version: 'latest',
-        binaries: ['some-tool'],
-        installationMethod: 'npm',
+        name: "some-tool",
+        version: "latest",
+        binaries: ["some-tool"],
+        installationMethod: "npm",
         installParams: {
-          package: 'some-tool',
+          package: "some-tool",
         },
       };
 
-      const version: string | null = await vPrefixPlugin.resolveVersion(
-        'some-tool',
-        toolConfig,
-        mockContext,
-        logger,
-      );
+      const version: string | null = await vPrefixPlugin.resolveVersion("some-tool", toolConfig, mockContext, logger);
 
-      expect(version).toBe('2.5.0');
+      expect(version).toBe("2.5.0");
     });
   });
 
-  describe('checkUpdate', () => {
+  describe("checkUpdate", () => {
     const mockContext = {} as IInstallContext;
 
-    it('should return no update when configured version is latest', async () => {
+    it("should return no update when configured version is latest", async () => {
       const toolConfig: NpmToolConfig = {
-        name: 'prettier',
-        version: 'latest',
-        binaries: ['prettier'],
-        installationMethod: 'npm',
+        name: "prettier",
+        version: "latest",
+        binaries: ["prettier"],
+        installationMethod: "npm",
         installParams: {
-          package: 'prettier',
+          package: "prettier",
         },
       };
 
-      const result = await plugin.checkUpdate('prettier', toolConfig, mockContext, logger);
+      const result = await plugin.checkUpdate("prettier", toolConfig, mockContext, logger);
 
       assert(result.success);
       expect(result.hasUpdate).toBe(false);
-      expect(result.currentVersion).toBe('3.1.0');
-      expect(result.latestVersion).toBe('3.1.0');
+      expect(result.currentVersion).toBe("3.1.0");
+      expect(result.latestVersion).toBe("3.1.0");
     });
 
-    it('should return no update when configured version matches latest', async () => {
+    it("should return no update when configured version matches latest", async () => {
       const toolConfig: NpmToolConfig = {
-        name: 'prettier',
-        version: '3.1.0',
-        binaries: ['prettier'],
-        installationMethod: 'npm',
+        name: "prettier",
+        version: "3.1.0",
+        binaries: ["prettier"],
+        installationMethod: "npm",
         installParams: {
-          package: 'prettier',
+          package: "prettier",
         },
       };
 
-      const result = await plugin.checkUpdate('prettier', toolConfig, mockContext, logger);
+      const result = await plugin.checkUpdate("prettier", toolConfig, mockContext, logger);
 
       assert(result.success);
       expect(result.hasUpdate).toBe(false);
-      expect(result.currentVersion).toBe('3.1.0');
-      expect(result.latestVersion).toBe('3.1.0');
+      expect(result.currentVersion).toBe("3.1.0");
+      expect(result.latestVersion).toBe("3.1.0");
     });
 
-    it('should detect available update when versions differ', async () => {
+    it("should detect available update when versions differ", async () => {
       const toolConfig: NpmToolConfig = {
-        name: 'prettier',
-        version: '2.0.0',
-        binaries: ['prettier'],
-        installationMethod: 'npm',
+        name: "prettier",
+        version: "2.0.0",
+        binaries: ["prettier"],
+        installationMethod: "npm",
         installParams: {
-          package: 'prettier',
+          package: "prettier",
         },
       };
 
-      const result = await plugin.checkUpdate('prettier', toolConfig, mockContext, logger);
+      const result = await plugin.checkUpdate("prettier", toolConfig, mockContext, logger);
 
       assert(result.success);
       expect(result.hasUpdate).toBe(true);
-      expect(result.currentVersion).toBe('2.0.0');
-      expect(result.latestVersion).toBe('3.1.0');
+      expect(result.currentVersion).toBe("2.0.0");
+      expect(result.latestVersion).toBe("3.1.0");
     });
 
-    it('should return failure when npm view returns empty version', async () => {
+    it("should return failure when npm view returns empty version", async () => {
       const emptyShell = createMockShell(() => ({
-        stdout: '',
-        stderr: '',
+        stdout: "",
+        stderr: "",
         exitCode: 0,
         code: 0,
-        toString: () => '',
+        toString: () => "",
       }));
       const emptyPlugin = new NpmInstallerPlugin(emptyShell);
 
       const toolConfig: NpmToolConfig = {
-        name: 'nonexistent',
-        version: '1.0.0',
-        binaries: ['nonexistent'],
-        installationMethod: 'npm',
+        name: "nonexistent",
+        version: "1.0.0",
+        binaries: ["nonexistent"],
+        installationMethod: "npm",
         installParams: {
-          package: 'nonexistent',
+          package: "nonexistent",
         },
       };
 
-      const result = await emptyPlugin.checkUpdate('nonexistent', toolConfig, mockContext, logger);
+      const result = await emptyPlugin.checkUpdate("nonexistent", toolConfig, mockContext, logger);
 
       assert(!result.success);
-      expect(result.error).toBe('Could not fetch latest version for npm package: nonexistent');
+      expect(result.error).toBe("Could not fetch latest version for npm package: nonexistent");
     });
   });
 });

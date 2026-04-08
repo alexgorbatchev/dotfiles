@@ -1,9 +1,9 @@
-import type { Shell } from '@dotfiles/core';
-import { describe, expect, it } from 'bun:test';
-import { detectVersionViaCli } from '../detectVersionViaCli';
+import type { Shell } from "@dotfiles/core";
+import { describe, expect, it } from "bun:test";
+import { detectVersionViaCli } from "../detectVersionViaCli";
 
 // Helper to create a mock shell
-function createMockShell(stdout: string, stderr = '', exitCode = 0): Shell {
+function createMockShell(stdout: string, stderr = "", exitCode = 0): Shell {
   const mockShell = (_strings: TemplateStringsArray, ..._values: unknown[]) => {
     return {
       env: () => ({
@@ -20,59 +20,59 @@ function createMockShell(stdout: string, stderr = '', exitCode = 0): Shell {
   return mockShell as unknown as Shell;
 }
 
-describe('detectVersionViaCli', () => {
-  describe('default regex', () => {
+describe("detectVersionViaCli", () => {
+  describe("default regex", () => {
     const testCases = [
-      ['just semver', '1.2.3', '1.2.3'],
-      ['toolname semver', 'tool 1.2.3', '1.2.3'],
-      ['toolname version semver', 'tool version 1.2.3', '1.2.3'],
-      ['v prefix', 'v1.2.3', '1.2.3'],
-      ['toolname v prefix', 'tool v1.2.3', '1.2.3'],
-      ['multiline with prefix', 'some prefix\ntool 1.2.3', '1.2.3'],
-      ['multiline with prefix and suffix', 'some prefix\ntool 1.2.3\nsome suffix', '1.2.3'],
-      ['multiline with prefix and after', 'some prefix\ntool 1.2.3', '1.2.3'],
-      ['prerelease', '1.2.3-beta.1', '1.2.3-beta.1'],
-      ['build metadata', '1.2.3+build.123', '1.2.3+build.123'],
-      ['prerelease and build metadata', '1.2.3-beta.1+build.123', '1.2.3-beta.1+build.123'],
-      ['complex output', 'Found version: 10.20.30-rc.1+sha.5114f85', '10.20.30-rc.1+sha.5114f85'],
+      ["just semver", "1.2.3", "1.2.3"],
+      ["toolname semver", "tool 1.2.3", "1.2.3"],
+      ["toolname version semver", "tool version 1.2.3", "1.2.3"],
+      ["v prefix", "v1.2.3", "1.2.3"],
+      ["toolname v prefix", "tool v1.2.3", "1.2.3"],
+      ["multiline with prefix", "some prefix\ntool 1.2.3", "1.2.3"],
+      ["multiline with prefix and suffix", "some prefix\ntool 1.2.3\nsome suffix", "1.2.3"],
+      ["multiline with prefix and after", "some prefix\ntool 1.2.3", "1.2.3"],
+      ["prerelease", "1.2.3-beta.1", "1.2.3-beta.1"],
+      ["build metadata", "1.2.3+build.123", "1.2.3+build.123"],
+      ["prerelease and build metadata", "1.2.3-beta.1+build.123", "1.2.3-beta.1+build.123"],
+      ["complex output", "Found version: 10.20.30-rc.1+sha.5114f85", "10.20.30-rc.1+sha.5114f85"],
     ];
 
     it.each(testCases)(`should detect version from %s`, async (_name, stdout, expected) => {
       const shellExecutor = createMockShell(stdout);
-      const version = await detectVersionViaCli({ binaryPath: 'tool', shellExecutor });
+      const version = await detectVersionViaCli({ binaryPath: "tool", shellExecutor });
       expect(version).toBe(expected);
     });
   });
 
-  it('should use custom regex if provided', async () => {
-    const shellExecutor = createMockShell('custom output: version-1.2.3');
+  it("should use custom regex if provided", async () => {
+    const shellExecutor = createMockShell("custom output: version-1.2.3");
     const version = await detectVersionViaCli({
-      binaryPath: 'tool',
+      binaryPath: "tool",
       regex: /version-(\d+\.\d+\.\d+)/,
       shellExecutor,
     });
-    expect(version).toBe('1.2.3');
+    expect(version).toBe("1.2.3");
   });
 
-  it('should return undefined if no version found', async () => {
-    const shellExecutor = createMockShell('no version here');
-    const version = await detectVersionViaCli({ binaryPath: 'tool', shellExecutor });
+  it("should return undefined if no version found", async () => {
+    const shellExecutor = createMockShell("no version here");
+    const version = await detectVersionViaCli({ binaryPath: "tool", shellExecutor });
     expect(version).toBeUndefined();
   });
 
-  it('should return undefined if command fails', async () => {
+  it("should return undefined if command fails", async () => {
     // Use a non-zero exit code with no version in output
-    const shellExecutor = createMockShell('', 'error: command not found', 1);
+    const shellExecutor = createMockShell("", "error: command not found", 1);
     const version = await detectVersionViaCli({
-      binaryPath: 'tool',
+      binaryPath: "tool",
       shellExecutor,
     });
     expect(version).toBeUndefined();
   });
 
-  it('should handle stderr output', async () => {
-    const shellExecutor = createMockShell('', 'tool version 1.2.3');
-    const version = await detectVersionViaCli({ binaryPath: 'tool', shellExecutor });
-    expect(version).toBe('1.2.3');
+  it("should handle stderr output", async () => {
+    const shellExecutor = createMockShell("", "tool version 1.2.3");
+    const version = await detectVersionViaCli({ binaryPath: "tool", shellExecutor });
+    expect(version).toBe("1.2.3");
   });
 });

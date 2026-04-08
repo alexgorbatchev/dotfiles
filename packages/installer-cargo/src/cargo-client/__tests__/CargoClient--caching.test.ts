@@ -1,10 +1,10 @@
-import { Architecture, Platform } from '@dotfiles/core';
-import { FileCache } from '@dotfiles/downloader';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig } from '@dotfiles/testing-helpers';
-import { describe, expect, test } from 'bun:test';
-import { CargoClient } from '../';
+import { Architecture, Platform } from "@dotfiles/core";
+import { FileCache } from "@dotfiles/downloader";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { createMockProjectConfig } from "@dotfiles/testing-helpers";
+import { describe, expect, test } from "bun:test";
+import { CargoClient } from "../";
 
 function createMockDownloader(responses: string[]) {
   let callIndex = 0;
@@ -13,7 +13,7 @@ function createMockDownloader(responses: string[]) {
       const safeIndex = Math.min(callIndex, responses.length - 1);
       const value = responses[safeIndex];
       callIndex++;
-      return Buffer.from(value ?? '');
+      return Buffer.from(value ?? "");
     },
     registerStrategy: () => {},
     downloadToFile: async () => {},
@@ -22,50 +22,50 @@ function createMockDownloader(responses: string[]) {
   return downloader;
 }
 
-describe('CargoClient caching', () => {
-  test('should cache crates.io metadata when enabled', async () => {
+describe("CargoClient caching", () => {
+  test("should cache crates.io metadata when enabled", async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/config.ts',
+      filePath: "/config.ts",
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: "/home/test", hostname: "test-host" },
       env: {},
     });
 
     const mockDownloader = createMockDownloader([
-      JSON.stringify({ crate: { name: 'eza', newest_version: '1.0.0' }, versions: [] }),
+      JSON.stringify({ crate: { name: "eza", newest_version: "1.0.0" }, versions: [] }),
     ]);
 
     const cache = new FileCache(logger, fs, {
       enabled: true,
       defaultTtl: 60_000,
-      cacheDir: '/cache/cargo',
-      storageStrategy: 'json',
+      cacheDir: "/cache/cargo",
+      storageStrategy: "json",
     });
 
     const client = new CargoClient(logger, config, mockDownloader, cache);
 
-    const first = await client.getCrateMetadata('eza');
-    const second = await client.getCrateMetadata('eza');
+    const first = await client.getCrateMetadata("eza");
+    const second = await client.getCrateMetadata("eza");
 
-    expect(first?.crate.newest_version).toBe('1.0.0');
-    expect(second?.crate.newest_version).toBe('1.0.0');
+    expect(first?.crate.newest_version).toBe("1.0.0");
+    expect(second?.crate.newest_version).toBe("1.0.0");
     // Only one underlying download should have occurred
     expect(mockDownloader.getCallCount()).toBe(1);
   });
 
-  test('should cache Cargo.toml parsing when githubRaw cache enabled', async () => {
+  test("should cache Cargo.toml parsing when githubRaw cache enabled", async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
     const config = await createMockProjectConfig({
       config: {},
-      filePath: '/config.ts',
+      filePath: "/config.ts",
       fileSystem: fs,
       logger,
-      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test', hostname: 'test-host' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: "/home/test", hostname: "test-host" },
       env: {},
     });
 
@@ -75,16 +75,16 @@ describe('CargoClient caching', () => {
     const cache = new FileCache(logger, fs, {
       enabled: true,
       defaultTtl: 60_000,
-      cacheDir: '/cache/cargo',
-      storageStrategy: 'json',
+      cacheDir: "/cache/cargo",
+      storageStrategy: "json",
     });
 
     const client = new CargoClient(logger, config, mockDownloader, undefined, cache);
 
-    const first = await client.getCargoTomlPackage('https://raw.githubusercontent.com/owner/repo/main/Cargo.toml');
-    const second = await client.getCargoTomlPackage('https://raw.githubusercontent.com/owner/repo/main/Cargo.toml');
+    const first = await client.getCargoTomlPackage("https://raw.githubusercontent.com/owner/repo/main/Cargo.toml");
+    const second = await client.getCargoTomlPackage("https://raw.githubusercontent.com/owner/repo/main/Cargo.toml");
 
-    expect(first?.name).toBe('tool');
-    expect(second?.name).toBe('tool');
+    expect(first?.name).toBe("tool");
+    expect(second?.name).toBe("tool");
   });
 });

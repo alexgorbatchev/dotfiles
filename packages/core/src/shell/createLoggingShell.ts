@@ -1,5 +1,5 @@
-import { createSafeLogMessage, type TsLogger } from '@dotfiles/logger';
-import { loggingShellBrand, type Shell, type ShellCommand } from './types';
+import { createSafeLogMessage, type TsLogger } from "@dotfiles/logger";
+import { loggingShellBrand, type Shell, type ShellCommand } from "./types";
 
 /**
  * Wraps an existing shell to add command logging.
@@ -26,15 +26,15 @@ export function createLoggingShell(baseShell: Shell, logger: TsLogger): Shell {
   // Create a wrapper that logs the command and delegates to the base shell
   const loggingWrapper = (first: TemplateStringsArray, ...expressions: unknown[]): ShellCommand => {
     // Build the command string for logging BEFORE any transformations
-    let commandStr: string = first[0] || '';
+    let commandStr: string = first[0] || "";
     for (let i = 0; i < expressions.length; i++) {
       const expr = expressions[i];
       if (Array.isArray(expr)) {
-        commandStr += expr.map((e) => escapeArg(String(e))).join(' ');
+        commandStr += expr.map((e) => escapeArg(String(e))).join(" ");
       } else {
         commandStr += escapeArg(String(expr));
       }
-      commandStr += first[i + 1] || '';
+      commandStr += first[i + 1] || "";
     }
 
     // Log the command BEFORE passing to wrappers (which may transform it)
@@ -53,7 +53,7 @@ export function createLoggingShell(baseShell: Shell, logger: TsLogger): Shell {
 
 // Simple argument escaping for logging display
 function escapeArg(arg: string): string {
-  if (arg === '' || /[\s"'`$\\]/.test(arg)) {
+  if (arg === "" || /[\s"'`$\\]/.test(arg)) {
     return `'${arg.replace(/'/g, "'\\''")}'`;
   }
   return arg;

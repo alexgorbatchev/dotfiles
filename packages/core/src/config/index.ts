@@ -1,1 +1,1 @@
-export * from './projectConfigSchema';
+export * from "./projectConfigSchema";

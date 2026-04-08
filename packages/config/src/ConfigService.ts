@@ -1,12 +1,12 @@
-import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { IConfigService } from './IConfigService';
+import type { ISystemInfo, ProjectConfig, ToolConfig } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import type { IConfigService } from "./IConfigService";
 import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
   loadToolConfigByBinary as actualLoadToolConfigByBinary,
   loadToolConfigs as actualLoadToolConfigs,
-} from './loadToolConfigs';
+} from "./loadToolConfigs";
 
 /**
  * Default implementation of {@link IConfigService} that delegates to the actual config loading functions.
@@ -39,7 +39,7 @@ export class ConfigService implements IConfigService {
     fs: IResolvedFileSystem,
     projectConfig: ProjectConfig,
     systemInfo: ISystemInfo,
-  ): Promise<ToolConfig | undefined | { error: string; }> {
+  ): Promise<ToolConfig | undefined | { error: string }> {
     return actualLoadToolConfigByBinary(logger, binaryName, toolConfigsDir, fs, projectConfig, systemInfo);
   }
 

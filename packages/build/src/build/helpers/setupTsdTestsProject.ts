@@ -1,12 +1,12 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
-import type { IBuildContext } from '../types';
-import { copyTypeTestFiles } from './copyTypeTestFiles';
-import { createTsdTestsEntryPoint } from './createTsdTestsEntryPoint';
-import { createTsdTestsPackageJson } from './createTsdTestsPackageJson';
-import { createTsdTestsTsConfig } from './createTsdTestsTsConfig';
-import { ensureTsdTestsNodeModules } from './ensureTsdTestsNodeModules';
+import type { IBuildContext } from "../types";
+import { copyTypeTestFiles } from "./copyTypeTestFiles";
+import { createTsdTestsEntryPoint } from "./createTsdTestsEntryPoint";
+import { createTsdTestsPackageJson } from "./createTsdTestsPackageJson";
+import { createTsdTestsTsConfig } from "./createTsdTestsTsConfig";
+import { ensureTsdTestsNodeModules } from "./ensureTsdTestsNodeModules";
 
 /**
  * Creates a temporary project that runs tsd against the built package output.
@@ -24,6 +24,6 @@ export async function setupTsdTestsProject(context: IBuildContext): Promise<void
 
   // Copy tool-types.d.ts to .generated folder (mimics end user setup)
   fs.mkdirSync(context.paths.tsdTestsGeneratedDir, { recursive: true });
-  const sourceToolTypesPath: string = path.join(context.paths.outputDir, 'tool-types.d.ts');
+  const sourceToolTypesPath: string = path.join(context.paths.outputDir, "tool-types.d.ts");
   fs.copyFileSync(sourceToolTypesPath, context.paths.tsdTestsToolTypesPath);
 }

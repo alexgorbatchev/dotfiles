@@ -1,4 +1,4 @@
-import type { IOperationFailure, IOperationSuccess, ToolConfig } from '@dotfiles/core';
+import type { IOperationFailure, IOperationSuccess, ToolConfig } from "@dotfiles/core";
 
 /**
  * Options for generating copies.
@@ -21,11 +21,7 @@ export interface IGenerateCopiesOptions {
 /**
  * Status values for copy operation success cases
  */
-export type CopyOperationStatus =
-  | 'created'
-  | 'updated_target'
-  | 'backed_up'
-  | 'skipped_exists';
+export type CopyOperationStatus = "created" | "updated_target" | "backed_up" | "skipped_exists";
 
 /**
  * Represents the result of a single copy operation - success case
@@ -42,7 +38,7 @@ export type CopyOperationResultSuccess = IOperationSuccess & {
 export type CopyOperationResultFailure = IOperationFailure & {
   sourcePath: string;
   targetPath: string;
-  status: 'failed';
+  status: "failed";
 };
 
 /**
@@ -60,8 +56,5 @@ export interface ICopyGenerator {
    * @param options Options for generating copies.
    * @returns A promise that resolves with an array of results for each attempted copy.
    */
-  generate(
-    toolConfigs: Record<string, ToolConfig>,
-    options?: IGenerateCopiesOptions,
-  ): Promise<CopyOperationResult[]>;
+  generate(toolConfigs: Record<string, ToolConfig>, options?: IGenerateCopiesOptions): Promise<CopyOperationResult[]>;
 }

@@ -1,8 +1,8 @@
-import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { IToolInstallationDetails } from '@dotfiles/registry';
+import type { InstallResultFailure, InstallResultSuccess } from "@dotfiles/core";
+import type { IToolInstallationDetails } from "@dotfiles/registry";
 
 export interface IGiteaReleaseInstallMetadata extends Partial<IToolInstallationDetails> {
-  method: 'gitea-release';
+  method: "gitea-release";
   releaseUrl: string;
   publishedAt: string;
   releaseName: string;

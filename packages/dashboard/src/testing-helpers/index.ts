@@ -1,9 +1,9 @@
-import type { IConfigService } from '@dotfiles/config';
-import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
-import { Architecture, Platform } from '@dotfiles/core';
-import type { MockedInterface } from '@dotfiles/testing-helpers';
-import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
-import { mock } from 'bun:test';
+import type { IConfigService } from "@dotfiles/config";
+import type { ISystemInfo, ProjectConfig, ToolConfig } from "@dotfiles/core";
+import { Architecture, Platform } from "@dotfiles/core";
+import type { MockedInterface } from "@dotfiles/testing-helpers";
+import { type IVersionChecker, VersionComparisonStatus } from "@dotfiles/version-checker";
+import { mock } from "bun:test";
 
 /**
  * Creates a mock ProjectConfig with standard test paths.
@@ -12,13 +12,13 @@ import { mock } from 'bun:test';
 export function createMockProjectConfig(): ProjectConfig {
   return {
     paths: {
-      dotfilesDir: '/home/user/.dotfiles',
-      generatedDir: '/home/user/.dotfiles/.generated',
-      binariesDir: '/home/user/.dotfiles/.generated/binaries',
-      targetDir: '/home/user/.dotfiles/.generated/bin-default',
-      toolConfigsDir: '/home/user/.dotfiles/tools',
-      homeDir: '/home/user',
-      shellScriptsDir: '/home/user/.dotfiles/.generated/shell-scripts',
+      dotfilesDir: "/home/user/.dotfiles",
+      generatedDir: "/home/user/.dotfiles/.generated",
+      binariesDir: "/home/user/.dotfiles/.generated/binaries",
+      targetDir: "/home/user/.dotfiles/.generated/bin-default",
+      toolConfigsDir: "/home/user/.dotfiles/tools",
+      homeDir: "/home/user",
+      shellScriptsDir: "/home/user/.dotfiles/.generated/shell-scripts",
     },
   } as ProjectConfig;
 }
@@ -28,7 +28,7 @@ export function createMockProjectConfig(): ProjectConfig {
  */
 export function createMockVersionChecker(): MockedInterface<IVersionChecker> {
   return {
-    getLatestToolVersion: mock(async (_owner: string, _repo: string) => '1.0.0'),
+    getLatestToolVersion: mock(async (_owner: string, _repo: string) => "1.0.0"),
     checkVersionStatus: mock(
       async (_currentVersion: string, _latestVersion: string) => VersionComparisonStatus.UP_TO_DATE,
     ),
@@ -42,8 +42,8 @@ export function createMockSystemInfo(): ISystemInfo {
   return {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
-    homeDir: '/home/user',
-    hostname: 'test-host',
+    homeDir: "/home/user",
+    hostname: "test-host",
   };
 }
 
@@ -61,13 +61,13 @@ export function createMockConfigService(toolConfigs: Record<string, ToolConfig>)
 /**
  * Creates a minimal mock ToolConfig for testing.
  */
-export function createMockToolConfig(overrides: Partial<ToolConfig> & { name: string; }): ToolConfig {
+export function createMockToolConfig(overrides: Partial<ToolConfig> & { name: string }): ToolConfig {
   const { name, version, installationMethod, installParams, binaries, ...rest } = overrides;
   return {
     name,
-    version: version ?? 'latest',
-    installationMethod: installationMethod ?? 'github-release',
-    installParams: installParams ?? { repo: 'test/repo' },
+    version: version ?? "latest",
+    installationMethod: installationMethod ?? "github-release",
+    installParams: installParams ?? { repo: "test/repo" },
     binaries: binaries ?? [name],
     ...rest,
   } as ToolConfig;

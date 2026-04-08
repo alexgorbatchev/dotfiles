@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { commonToolConfigPropertiesSchema } from './commonToolConfigPropertiesSchema';
+import { z } from "zod";
+import { commonToolConfigPropertiesSchema } from "./commonToolConfigPropertiesSchema";
 
 /**
  * Base properties for tool configurations. This is the foundation schema that all plugin-specific

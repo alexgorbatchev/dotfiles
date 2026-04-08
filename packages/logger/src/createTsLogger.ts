@@ -1,6 +1,6 @@
-import { LogLevel } from './LogLevel';
-import { SafeLogger } from './SafeLogger';
-import type { ILoggerConfig, TsLogger } from './types';
+import { LogLevel } from "./LogLevel";
+import { SafeLogger } from "./SafeLogger";
+import type { ILoggerConfig, TsLogger } from "./types";
 
 /**
  * Creates a type-safe `tslog` logger instance with a configurable name and log level.
@@ -45,7 +45,7 @@ export function createTsLogger(config: ILoggerConfig): TsLogger;
 export function createTsLogger(configOrName: ILoggerConfig | string): TsLogger {
   let config: ILoggerConfig = {} as ILoggerConfig;
 
-  if (typeof configOrName === 'string') {
+  if (typeof configOrName === "string") {
     config.name = configOrName;
   } else {
     config = { ...configOrName };
@@ -53,9 +53,9 @@ export function createTsLogger(configOrName: ILoggerConfig | string): TsLogger {
 
   config.level = config.level ?? LogLevel.DEFAULT;
 
-  const prettyLogTemplate = config.trace ? '{{logLevelName}}\t{{filePathWithLine}} - ' : '{{logLevelName}}\t';
+  const prettyLogTemplate = config.trace ? "{{logLevelName}}\t{{filePathWithLine}} - " : "{{logLevelName}}\t";
 
-  const isColorDisabled = process.env['NO_COLOR'] === '1' || process.env['TERM'] === 'dumb';
+  const isColorDisabled = process.env["NO_COLOR"] === "1" || process.env["TERM"] === "dumb";
 
   return new SafeLogger({
     name: config.name,
@@ -66,16 +66,16 @@ export function createTsLogger(configOrName: ILoggerConfig | string): TsLogger {
 
     hideLogPositionForProduction: false,
 
-    prettyErrorTemplate: '\n{{errorName}} {{errorMessage}}\nerror stack:\n{{errorStack}}',
+    prettyErrorTemplate: "\n{{errorName}} {{errorMessage}}\nerror stack:\n{{errorStack}}",
 
     prettyLogStyles: {
       logLevelName: {
-        FATAL: ['bold', 'red'],
-        ERROR: ['bold', 'red'],
-        WARN: ['bold', 'yellow'],
-        INFO: ['bold', 'blue'],
-        DEBUG: ['bold', 'white'],
-        TRACE: ['bold', 'white'],
+        FATAL: ["bold", "red"],
+        ERROR: ["bold", "red"],
+        WARN: ["bold", "yellow"],
+        INFO: ["bold", "blue"],
+        DEBUG: ["bold", "white"],
+        TRACE: ["bold", "white"],
       },
     },
 

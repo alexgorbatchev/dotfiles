@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { runCliEntrypoint } from './packages/cli/src/cli';
+import { runCliEntrypoint } from "./packages/cli/src/cli";
 
 if (import.meta.main) {
   runCliEntrypoint(process.argv).catch((error: unknown) => {

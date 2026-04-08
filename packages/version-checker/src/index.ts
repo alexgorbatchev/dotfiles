@@ -1,2 +1,2 @@
-export * from './IVersionChecker';
-export * from './VersionChecker';
+export * from "./IVersionChecker";
+export * from "./VersionChecker";

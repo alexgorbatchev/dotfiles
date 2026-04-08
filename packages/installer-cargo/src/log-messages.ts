@@ -1,4 +1,4 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   installing: (toolName: string) => createSafeLogMessage(`Installing from cargo: ${toolName}`),
@@ -6,7 +6,7 @@ export const messages = {
     createSafeLogMessage(`Found crate ${crateName} version ${version}`),
   downloadingAsset: (assetName: string, url: string) =>
     createSafeLogMessage(`Downloading asset ${assetName} from ${url}`),
-  archiveExtracted: () => createSafeLogMessage('Archive extracted: %o'),
+  archiveExtracted: () => createSafeLogMessage("Archive extracted: %o"),
   cleaningArchive: (archivePath: string) => createSafeLogMessage(`Cleaning up downloaded archive: ${archivePath}`),
   parsingMetadata: (cargoTomlUrl: string) => createSafeLogMessage(`Parsing crate metadata from: ${cargoTomlUrl}`),
   queryingCratesIo: (crateName: string) => createSafeLogMessage(`Querying crates.io API for crate: ${crateName}`),

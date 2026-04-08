@@ -1,4 +1,4 @@
-import { defineConfig } from '@dotfiles/cli';
+import { defineConfig } from "@dotfiles/cli";
 
 export default defineConfig(({ configFileDir }) => {
   const generatedDir = `${configFileDir}/.generated`;

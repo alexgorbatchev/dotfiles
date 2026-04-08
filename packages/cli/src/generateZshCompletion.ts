@@ -1,17 +1,17 @@
-import { dedentTemplate } from '@dotfiles/utils';
-import { BIN_COMMAND_COMPLETION } from './binCommand';
-import { CHECK_UPDATES_COMMAND_COMPLETION } from './checkUpdatesCommand';
-import { CLEANUP_COMMAND_COMPLETION } from './cleanupCommand';
-import { GLOBAL_OPTIONS_COMPLETION } from './createProgram';
-import { DETECT_CONFLICTS_COMMAND_COMPLETION } from './detectConflictsCommand';
-import { FEATURES_COMMAND_COMPLETION } from './featuresCommand';
-import { FILES_COMMAND_COMPLETION } from './filesCommand';
-import { GENERATE_COMMAND_COMPLETION } from './generateCommandCompletion';
-import { INSTALL_COMMAND_COMPLETION } from './installCommand';
-import { LOG_COMMAND_COMPLETION } from './logCommand';
-import { SKILL_COMMAND_COMPLETION } from './skillCommand';
-import type { CompletionPositionalArgType, ICommandCompletionMeta, ICompletionOption } from './types';
-import { UPDATE_COMMAND_COMPLETION } from './updateCommand';
+import { dedentTemplate } from "@dotfiles/utils";
+import { BIN_COMMAND_COMPLETION } from "./binCommand";
+import { CHECK_UPDATES_COMMAND_COMPLETION } from "./checkUpdatesCommand";
+import { CLEANUP_COMMAND_COMPLETION } from "./cleanupCommand";
+import { GLOBAL_OPTIONS_COMPLETION } from "./createProgram";
+import { DETECT_CONFLICTS_COMMAND_COMPLETION } from "./detectConflictsCommand";
+import { FEATURES_COMMAND_COMPLETION } from "./featuresCommand";
+import { FILES_COMMAND_COMPLETION } from "./filesCommand";
+import { GENERATE_COMMAND_COMPLETION } from "./generateCommandCompletion";
+import { INSTALL_COMMAND_COMPLETION } from "./installCommand";
+import { LOG_COMMAND_COMPLETION } from "./logCommand";
+import { SKILL_COMMAND_COMPLETION } from "./skillCommand";
+import type { CompletionPositionalArgType, ICommandCompletionMeta, ICompletionOption } from "./types";
+import { UPDATE_COMMAND_COMPLETION } from "./updateCommand";
 
 /**
  * All command completion metadata collected from individual command files.
@@ -39,7 +39,7 @@ function formatZshOption(option: ICompletionOption): string {
 
   if (option.hasArg) {
     // Option with argument
-    return `'${flag}=[${description}]:${option.argPlaceholder || 'arg'}:'`;
+    return `'${flag}=[${description}]:${option.argPlaceholder || "arg"}:'`;
   }
   // Boolean flag
   return `'${flag}[${description}]'`;
@@ -60,7 +60,7 @@ function formatCommandArgs(globalOptions: ICompletionOption[]): string {
   lines.push("'1:command:->command'");
   lines.push("'*::arg:->args'");
 
-  return lines.join(' \\\n');
+  return lines.join(" \\\n");
 }
 
 function escapeSingleQuotes(value: string): string {
@@ -68,7 +68,7 @@ function escapeSingleQuotes(value: string): string {
 }
 
 function formatToolNameList(toolNames: string[]): string {
-  return toolNames.map((name) => escapeSingleQuotes(name)).join(' ');
+  return toolNames.map((name) => escapeSingleQuotes(name)).join(" ");
 }
 
 function formatPositionalArgLine(
@@ -76,7 +76,7 @@ function formatPositionalArgLine(
   positionalArgType: CompletionPositionalArgType | undefined,
   toolNames: string[],
 ): string {
-  if (positionalArgType === 'tool' && toolNames.length > 0) {
+  if (positionalArgType === "tool" && toolNames.length > 0) {
     const toolList = formatToolNameList(toolNames);
     return `'1:${description}:(${toolList})'`;
   }
@@ -97,7 +97,7 @@ function removeTrailingBackslash(lines: string[]): void {
   if (lines.length === 0) return;
   const lastIndex = lines.length - 1;
   const lastLine = lines[lastIndex];
-  if (lastLine?.endsWith(' \\')) {
+  if (lastLine?.endsWith(" \\")) {
     lines[lastIndex] = lastLine.slice(0, -2);
   }
 }
@@ -129,13 +129,13 @@ function generateSubcommandLines(subcommands: ICommandCompletionMeta[]): string[
   lines.push("'1:subcommand:->subcommand'");
   const subcommandDescriptions = subcommands
     .map((sub) => `'${sub.name}:${sub.description.replace(/'/g, "\\'")}'`)
-    .join(' ');
-  lines.push('case $state in');
-  lines.push('  subcommand)');
+    .join(" ");
+  lines.push("case $state in");
+  lines.push("  subcommand)");
   lines.push(`    local -a subcommands=(${subcommandDescriptions})`);
   lines.push("    _describe 'subcommand' subcommands");
-  lines.push('    ;;');
-  lines.push('esac');
+  lines.push("    ;;");
+  lines.push("esac");
   return lines;
 }
 
@@ -154,7 +154,7 @@ function generateSingleCommandCase(
   const hasContent = allOptions.length > 0 || cmd.hasPositionalArg || cmd.subcommands;
 
   if (hasContent) {
-    caseLines.push('  _arguments \\');
+    caseLines.push("  _arguments \\");
 
     for (const opt of allOptions) {
       caseLines.push(`    ${opt} \\`);
@@ -166,7 +166,7 @@ function generateSingleCommandCase(
         caseLines.push(`    ${line}`);
       }
     } else if (cmd.hasPositionalArg) {
-      const argDesc = cmd.positionalArgDescription || 'argument';
+      const argDesc = cmd.positionalArgDescription || "argument";
       const positionalLine = formatPositionalArgLine(argDesc, cmd.positionalArgType, toolNames);
       caseLines.push(`    ${positionalLine}`);
     } else {
@@ -174,8 +174,8 @@ function generateSingleCommandCase(
     }
   }
 
-  caseLines.push('  ;;');
-  return caseLines.join('\n');
+  caseLines.push("  ;;");
+  return caseLines.join("\n");
 }
 
 /**
@@ -187,7 +187,7 @@ function generateArgsCases(
   toolNames: string[],
 ): string {
   const cases: string[] = commands.map((cmd) => generateSingleCommandCase(cmd, globalOptions, toolNames));
-  return cases.join('\n');
+  return cases.join("\n");
 }
 
 /**
@@ -202,7 +202,7 @@ export function generateZshCompletion(binaryName: string, toolNames: string[]): 
   const sortedToolNames = [...toolNames].toSorted((a, b) => a.localeCompare(b));
 
   // Build the list of command descriptions for the initial command completion
-  const commandDescriptions = commands.map((cmd) => `'${cmd.name}:${cmd.description.replace(/'/g, "\\'")}'`).join('\n');
+  const commandDescriptions = commands.map((cmd) => `'${cmd.name}:${cmd.description.replace(/'/g, "\\'")}'`).join("\n");
 
   const script = dedentTemplate(
     `

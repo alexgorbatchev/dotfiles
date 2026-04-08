@@ -1,4 +1,4 @@
-import { spyOn } from 'bun:test';
+import { spyOn } from "bun:test";
 
 /**
  * Options for mocking a fetch response.
@@ -21,7 +21,7 @@ interface IMockResponseOptions {
  * using `bun:test`.
  */
 export class FetchMockHelper {
-  private spyFetch: ReturnType<typeof spyOn<typeof globalThis, 'fetch'>> | null = null;
+  private spyFetch: ReturnType<typeof spyOn<typeof globalThis, "fetch">> | null = null;
 
   /**
    * Sets up the spy on `globalThis.fetch`.
@@ -29,7 +29,7 @@ export class FetchMockHelper {
    * It replaces the global fetch with a spy that can be controlled for testing purposes.
    */
   setup(): void {
-    this.spyFetch = spyOn(globalThis, 'fetch');
+    this.spyFetch = spyOn(globalThis, "fetch");
   }
 
   /**
@@ -69,16 +69,15 @@ export class FetchMockHelper {
    */
   mockResponseOnce(options: IMockResponseOptions = {}): void {
     if (!this.spyFetch) {
-      throw new Error('FetchMockHelper not setup. Call setup() before mocking responses.');
+      throw new Error("FetchMockHelper not setup. Call setup() before mocking responses.");
     }
-    const { body = '', status = 200, statusText = 'OK', headers = {}, error } = options;
+    const { body = "", status = 200, statusText = "OK", headers = {}, error } = options;
 
     if (error) {
       this.spyFetch.mockImplementationOnce((() => Promise.reject(error)) as unknown as typeof fetch);
     } else {
-      this.spyFetch.mockImplementationOnce(
-        (() => Promise.resolve(new Response(body, { status, statusText, headers }))) as unknown as typeof fetch,
-      );
+      this.spyFetch.mockImplementationOnce((() =>
+        Promise.resolve(new Response(body, { status, statusText, headers }))) as unknown as typeof fetch);
     }
   }
 
@@ -89,9 +88,9 @@ export class FetchMockHelper {
    * @param options - Options for the mock response (excluding `body` and `error` as they are handled by this method).
    * @throws {Error} If `setup()` has not been called before this method.
    */
-  mockJsonResponseOnce(data: unknown, options: Omit<IMockResponseOptions, 'body' | 'error'> = {}): void {
+  mockJsonResponseOnce(data: unknown, options: Omit<IMockResponseOptions, "body" | "error"> = {}): void {
     const responseHeaders = new Headers(options.headers);
-    responseHeaders.set('Content-Type', 'application/json');
+    responseHeaders.set("Content-Type", "application/json");
     this.mockResponseOnce({
       body: JSON.stringify(data),
       ...options,
@@ -105,7 +104,7 @@ export class FetchMockHelper {
    * @param options - Options for the mock response (excluding `body` and `error`).
    * @throws {Error} If `setup()` has not been called before this method.
    */
-  mockTextResponseOnce(text: string, options: Omit<IMockResponseOptions, 'body' | 'error'> = {}): void {
+  mockTextResponseOnce(text: string, options: Omit<IMockResponseOptions, "body" | "error"> = {}): void {
     this.mockResponseOnce({
       body: text,
       ...options,
@@ -118,7 +117,7 @@ export class FetchMockHelper {
    * @param error - The error to throw. Defaults to a generic `Error('Simulated network error')`.
    * @throws {Error} If `setup()` has not been called before this method.
    */
-  mockErrorOnce(error: Error = new Error('Simulated network error')): void {
+  mockErrorOnce(error: Error = new Error("Simulated network error")): void {
     this.mockResponseOnce({ error });
   }
 
@@ -130,16 +129,15 @@ export class FetchMockHelper {
    */
   mockImplementation(options: IMockResponseOptions = {}): void {
     if (!this.spyFetch) {
-      throw new Error('FetchMockHelper not setup. Call setup() before mocking responses.');
+      throw new Error("FetchMockHelper not setup. Call setup() before mocking responses.");
     }
-    const { body = '', status = 200, statusText = 'OK', headers = {}, error } = options;
+    const { body = "", status = 200, statusText = "OK", headers = {}, error } = options;
 
     if (error) {
       this.spyFetch.mockImplementation((() => Promise.reject(error)) as unknown as typeof fetch);
     } else {
-      this.spyFetch.mockImplementation(
-        (() => Promise.resolve(new Response(body, { status, statusText, headers }))) as unknown as typeof fetch,
-      );
+      this.spyFetch.mockImplementation((() =>
+        Promise.resolve(new Response(body, { status, statusText, headers }))) as unknown as typeof fetch);
     }
   }
 
@@ -149,10 +147,10 @@ export class FetchMockHelper {
    * @returns The `SpyInstance` for `fetch`.
    * @throws {Error} If `setup()` has not been called or `restore()` has been called, as the spy would not be active.
    */
-  getSpy(): ReturnType<typeof spyOn<typeof globalThis, 'fetch'>> {
+  getSpy(): ReturnType<typeof spyOn<typeof globalThis, "fetch">> {
     if (!this.spyFetch) {
       throw new Error(
-        'FetchMockHelper not setup. Call setup() first to initialize the spy, or it may have been restored.',
+        "FetchMockHelper not setup. Call setup() first to initialize the spy, or it may have been restored.",
       );
     }
     return this.spyFetch;

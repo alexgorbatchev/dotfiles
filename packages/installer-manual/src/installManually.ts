@@ -1,13 +1,13 @@
-import type { IInstallContext } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { IInstallOptions } from '@dotfiles/installer';
-import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { expandToolConfigPath } from '@dotfiles/utils';
-import path from 'node:path';
-import { messages } from './log-messages';
-import type { ManualToolConfig } from './schemas';
-import type { IManualInstallMetadata, ManualInstallResult } from './types';
+import type { IInstallContext } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { IInstallOptions } from "@dotfiles/installer";
+import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { expandToolConfigPath } from "@dotfiles/utils";
+import path from "node:path";
+import { messages } from "./log-messages";
+import type { ManualToolConfig } from "./schemas";
+import type { IManualInstallMetadata, ManualInstallResult } from "./types";
 
 /**
  * Installs a manually managed tool.
@@ -33,7 +33,7 @@ export async function installManually(
   parentLogger: TsLogger,
 ): Promise<ManualInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
-  const logger = parentLogger.getSubLogger({ name: 'installManually' });
+  const logger = parentLogger.getSubLogger({ name: "installManually" });
   logger.debug(messages.installing(toolName));
 
   const params = toolConfig.installParams;
@@ -62,7 +62,7 @@ export async function installManually(
     }
 
     const metadata: IManualInstallMetadata = {
-      method: 'manual',
+      method: "manual",
       manualInstall: true,
     };
 
@@ -73,7 +73,7 @@ export async function installManually(
     };
   };
 
-  return withInstallErrorHandling('manual', toolName, logger, operation);
+  return withInstallErrorHandling("manual", toolName, logger, operation);
 }
 
 /**
@@ -99,7 +99,7 @@ async function installBinariesManually(
   binaryPath: string,
   parentLogger: TsLogger,
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'installBinariesManually' });
+  const logger = parentLogger.getSubLogger({ name: "installBinariesManually" });
   const binaryNames = getBinaryNames(toolConfig.binaries);
 
   for (const binaryName of binaryNames) {

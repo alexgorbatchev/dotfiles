@@ -1,11 +1,11 @@
-import { TestLogger } from '@dotfiles/logger';
-import { describe, expect, it } from 'bun:test';
-import { createProgram } from '../createProgram';
-import { registerLogCommand } from '../logCommand';
-import type { IServices } from '../types';
+import { TestLogger } from "@dotfiles/logger";
+import { describe, expect, it } from "bun:test";
+import { createProgram } from "../createProgram";
+import { registerLogCommand } from "../logCommand";
+import type { IServices } from "../types";
 
-describe('logCommand', () => {
-  it('should register log command successfully', () => {
+describe("logCommand", () => {
+  it("should register log command successfully", () => {
     const logger = new TestLogger();
     const program = createProgram();
     const servicesFactory = () => Promise.resolve({} as IServices);
@@ -13,18 +13,18 @@ describe('logCommand', () => {
     registerLogCommand(logger, program, servicesFactory);
 
     const commands = program.commands;
-    const logCommand = commands.find((cmd) => cmd.name() === 'log');
+    const logCommand = commands.find((cmd) => cmd.name() === "log");
 
     expect(logCommand).toBeDefined();
-    expect(logCommand?.description()).toBe('Inspect tracked files in the registry');
+    expect(logCommand?.description()).toBe("Inspect tracked files in the registry");
 
     // Check that all expected options are present
     const options = logCommand?.options;
-    expect(options?.some((opt) => opt.long === '--type')).toBe(true);
-    expect(options?.some((opt) => opt.long === '--status')).toBe(true);
-    expect(options?.some((opt) => opt.long === '--since')).toBe(true);
+    expect(options?.some((opt) => opt.long === "--type")).toBe(true);
+    expect(options?.some((opt) => opt.long === "--status")).toBe(true);
+    expect(options?.some((opt) => opt.long === "--since")).toBe(true);
 
     // Check that tool is a positional argument, not an option
-    expect(options?.some((opt) => opt.long === '--tool')).toBe(false);
+    expect(options?.some((opt) => opt.long === "--tool")).toBe(false);
   });
 });

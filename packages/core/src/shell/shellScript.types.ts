@@ -9,20 +9,20 @@
  * A shell script that should run only once, typically after a tool is installed or updated.
  * Used for tasks like generating completions or performing initial setup.
  */
-export type OnceScript = { readonly kind: 'once'; readonly value: string; };
+export type OnceScript = { readonly kind: "once"; readonly value: string };
 
 /**
  * A shell script that should run on every shell startup.
  * Used for tasks like setting environment variables or running `eval` commands.
  */
-export type AlwaysScript = { readonly kind: 'always'; readonly value: string; };
+export type AlwaysScript = { readonly kind: "always"; readonly value: string };
 
 /**
  * A raw shell script that runs on every shell startup without any wrapping.
  * Used for scripts that should run directly in the current shell context,
  * such as `source <(fnName)` which needs to affect the current shell.
  */
-export type RawScript = { readonly kind: 'raw'; readonly value: string; };
+export type RawScript = { readonly kind: "raw"; readonly value: string };
 
 /**
  * A union type representing any kind of shell script, whether it runs once or
@@ -37,7 +37,7 @@ export type ShellScript = OnceScript | AlwaysScript | RawScript;
  * @returns A {@link OnceScript} object.
  */
 export function once(value: string): OnceScript {
-  return { kind: 'once', value };
+  return { kind: "once", value };
 }
 
 /**
@@ -47,7 +47,7 @@ export function once(value: string): OnceScript {
  * @returns An {@link AlwaysScript} object.
  */
 export function always(value: string): AlwaysScript {
-  return { kind: 'always', value };
+  return { kind: "always", value };
 }
 
 /**
@@ -58,7 +58,7 @@ export function always(value: string): AlwaysScript {
  * @returns A {@link RawScript} object.
  */
 export function raw(value: string): RawScript {
-  return { kind: 'raw', value };
+  return { kind: "raw", value };
 }
 
 /**
@@ -68,7 +68,7 @@ export function raw(value: string): RawScript {
  * @returns `true` if the script is a `OnceScript`, otherwise `false`.
  */
 export function isOnceScript(script: ShellScript): script is OnceScript {
-  return script.kind === 'once';
+  return script.kind === "once";
 }
 
 /**
@@ -78,7 +78,7 @@ export function isOnceScript(script: ShellScript): script is OnceScript {
  * @returns `true` if the script is an `AlwaysScript`, otherwise `false`.
  */
 export function isAlwaysScript(script: ShellScript): script is AlwaysScript {
-  return script.kind === 'always';
+  return script.kind === "always";
 }
 
 /**
@@ -88,7 +88,7 @@ export function isAlwaysScript(script: ShellScript): script is AlwaysScript {
  * @returns `true` if the script is a `RawScript`, otherwise `false`.
  */
 export function isRawScript(script: ShellScript): script is RawScript {
-  return script.kind === 'raw';
+  return script.kind === "raw";
 }
 
 /**

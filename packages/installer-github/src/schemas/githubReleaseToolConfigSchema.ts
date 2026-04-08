@@ -1,15 +1,15 @@
-import type { ToolConfig } from '@dotfiles/core';
+import type { ToolConfig } from "@dotfiles/core";
 import {
   baseToolConfigWithPlatformsSchema,
   binaryConfigSchema,
   type InferToolConfigWithPlatforms,
-} from '@dotfiles/core';
-import { z } from 'zod';
-import { githubReleaseInstallParamsSchema } from './githubReleaseInstallParamsSchema';
+} from "@dotfiles/core";
+import { z } from "zod";
+import { githubReleaseInstallParamsSchema } from "./githubReleaseInstallParamsSchema";
 
 export const githubReleaseToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
   /** Resolved tool configuration for the 'github-release' installation method */
-  installationMethod: z.literal('github-release'),
+  installationMethod: z.literal("github-release"),
   /** GitHub release installation parameters */
   installParams: githubReleaseInstallParamsSchema,
   /** Binaries are typically required for this installation method */
@@ -26,5 +26,5 @@ export type GithubReleaseToolConfig = InferToolConfigWithPlatforms<typeof github
  * Type guard to check if a config is a GitHub Release tool config
  */
 export function isGitHubReleaseToolConfig(config: ToolConfig): config is GithubReleaseToolConfig {
-  return config.installationMethod === 'github-release';
+  return config.installationMethod === "github-release";
 }

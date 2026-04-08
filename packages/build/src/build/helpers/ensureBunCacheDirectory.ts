@@ -1,6 +1,6 @@
-import fs from 'node:fs';
+import fs from "node:fs";
 
-import type { IBuildContext } from '../types';
+import type { IBuildContext } from "../types";
 
 /**
  * Ensures the Bun cache directories exist so installs can proceed.

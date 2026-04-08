@@ -1,16 +1,16 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { ToolConfig } from '@dotfiles/core';
-import { always, Architecture, Platform, raw } from '@dotfiles/core';
-import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import path from 'node:path';
-import type { IShellInitGenerator } from '../IShellInitGenerator';
-import { ShellInitGenerator } from '../ShellInitGenerator';
-import { createSectionHeader } from '../shellTemplates';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { ToolConfig } from "@dotfiles/core";
+import { always, Architecture, Platform, raw } from "@dotfiles/core";
+import { createMemFileSystem, type IFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from "@dotfiles/testing-helpers";
+import { beforeEach, describe, expect, it } from "bun:test";
+import path from "node:path";
+import type { IShellInitGenerator } from "../IShellInitGenerator";
+import { ShellInitGenerator } from "../ShellInitGenerator";
+import { createSectionHeader } from "../shellTemplates";
 
-describe('ShellInitGenerator', () => {
+describe("ShellInitGenerator", () => {
   let mockFileSystem: IFileSystem;
   let mockProjectConfig: ProjectConfig;
   let generator: IShellInitGenerator;
@@ -22,31 +22,31 @@ describe('ShellInitGenerator', () => {
     mockFileSystem = fs;
     logger = new TestLogger();
 
-    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'shell-init-generator' });
+    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: "shell-init-generator" });
 
     mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
       fileSystem: mockFileSystem,
       logger,
       systemInfo: {
         platform: Platform.Linux,
         arch: Architecture.X86_64,
         homeDir: testDirs.paths.homeDir,
-        hostname: 'test-host',
+        hostname: "test-host",
       },
       env: {},
     });
     generator = new ShellInitGenerator(logger, mockFileSystem, mockProjectConfig);
   });
 
-  it('should generate a basic init file with no tool configs and return its path', async () => {
-    const expectedPath = path.join(testDirs.paths.shellScriptsDir, 'main.zsh');
+  it("should generate a basic init file with no tool configs and return its path", async () => {
+    const expectedPath = path.join(testDirs.paths.shellScriptsDir, "main.zsh");
     const result = await generator.generate({});
     expect(result?.primaryPath).toBe(expectedPath);
-    expect(result?.files.get('zsh')).toBe(expectedPath);
+    expect(result?.files.get("zsh")).toBe(expectedPath);
 
     const content = await mockFileSystem.readFile(expectedPath);
 
@@ -68,33 +68,33 @@ describe('ShellInitGenerator', () => {
     expect(mockFileSystem.ensureDir).toHaveBeenCalledWith(testDirs.paths.shellScriptsDir);
   });
 
-  it('should use custom output path if provided and return it', async () => {
-    const customPath = '/custom/path/to/my-main.zsh';
+  it("should use custom output path if provided and return it", async () => {
+    const customPath = "/custom/path/to/my-main.zsh";
     const result = await generator.generate({}, { outputPath: customPath });
     expect(result?.primaryPath).toBe(customPath);
-    expect(result?.files.get('zsh')).toBe(customPath);
+    expect(result?.files.get("zsh")).toBe(customPath);
     expect(mockFileSystem.writeFile).toHaveBeenCalledWith(customPath, expect.any(String));
-    expect(mockFileSystem.ensureDir).toHaveBeenCalledWith('/custom/path/to');
+    expect(mockFileSystem.ensureDir).toHaveBeenCalledWith("/custom/path/to");
   });
 
-  it('should attempt file operations and return path (simulating dry run with MemFS)', async () => {
+  it("should attempt file operations and return path (simulating dry run with MemFS)", async () => {
     // With the refactor, ShellInitGenerator always attempts to write.
     // The "dry run" nature comes from the IFileSystem implementation (MemFileSystem here).
     const toolConfigs: Record<string, ToolConfig> = {
       testTool: {
-        name: 'testTool',
-        binaries: ['tt'],
-        version: '1.0.0',
+        name: "testTool",
+        binaries: ["tt"],
+        version: "1.0.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`export TEST_TOOL_VAR="hello"`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
-    const expectedPath = path.join(testDirs.paths.shellScriptsDir, 'main.zsh');
+    const expectedPath = path.join(testDirs.paths.shellScriptsDir, "main.zsh");
     // No dryRun option passed to generate
     const result = await generator.generate(toolConfigs, {});
     expect(result?.primaryPath).toBe(expectedPath);
@@ -111,154 +111,155 @@ describe('ShellInitGenerator', () => {
     expect(content).toContain('export TEST_TOOL_VAR="hello"');
   });
 
-  it('should include PATH modifications from tool configs', async () => {
+  it("should include PATH modifications from tool configs", async () => {
     const toolConfigs: Record<string, ToolConfig> = {
       toolA: {
-        name: 'toolA',
-        binaries: ['ta'],
-        version: '1.0',
+        name: "toolA",
+        binaries: ["ta"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`export PATH="/opt/toolA/bin:$PATH"`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
       toolB: {
-        name: 'toolB',
-        binaries: ['tb'],
-        version: '1.0',
+        name: "toolB",
+        binaries: ["tb"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`path+=("/opt/toolB/bin")`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
-    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
 
-    expect(content).toContain(createSectionHeader('zsh', 'PATH Modifications'));
+    expect(content).toContain(createSectionHeader("zsh", "PATH Modifications"));
     expect(content).toContain(`export PATH="${testDirs.paths.targetDir}:$PATH"`);
     expect(content).toContain('export PATH="/opt/toolA/bin:$PATH"');
     expect(content).toContain('path+=("/opt/toolB/bin")');
   });
 
-  it('should include environment variables from tool configs', async () => {
+  it("should include environment variables from tool configs", async () => {
     const toolConfigs: Record<string, ToolConfig> = {
       toolA: {
-        name: 'toolA',
-        binaries: ['ta'],
-        version: '1.0',
+        name: "toolA",
+        binaries: ["ta"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`export TOOL_A_ENABLED=true`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
       toolB: {
-        name: 'toolB',
-        binaries: ['tb'],
-        version: '1.0',
+        name: "toolB",
+        binaries: ["tb"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`export TOOL_B_MODE="debug"`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
-    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
 
-    expect(content).toContain(createSectionHeader('zsh', 'Tool-Specific Initializations'));
-    expect(content).toContain('export TOOL_A_ENABLED=true');
+    expect(content).toContain(createSectionHeader("zsh", "Tool-Specific Initializations"));
+    expect(content).toContain("export TOOL_A_ENABLED=true");
     expect(content).toContain('export TOOL_B_MODE="debug"');
   });
 
-  it('should include tool-specific initializations from zshInit', async () => {
+  it("should include tool-specific initializations from zshInit", async () => {
     const toolConfigs: Record<string, ToolConfig> = {
       toolA: {
-        name: 'toolA',
-        binaries: ['ta'],
-        version: '1.0',
+        name: "toolA",
+        binaries: ["ta"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`alias ta="toolA --extended"`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
       toolB: {
-        name: 'toolB',
-        binaries: ['tb'],
-        version: '1.0',
+        name: "toolB",
+        binaries: ["tb"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`source /opt/toolB/init.sh`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
-    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
 
-    expect(content).toContain(createSectionHeader('zsh', 'Tool-Specific Initializations'));
+    expect(content).toContain(createSectionHeader("zsh", "Tool-Specific Initializations"));
     expect(content).toContain('alias ta="toolA --extended"');
-    expect(content).toContain('source /opt/toolB/init.sh');
+    expect(content).toContain("source /opt/toolB/init.sh");
   });
 
-  it('should set up Zsh completions correctly', async () => {
+  it("should set up Zsh completions correctly", async () => {
     const toolConfigs: Record<string, ToolConfig> = {
       toolA: {
-        name: 'toolA',
-        binaries: ['ta'],
-        version: '1.0',
+        name: "toolA",
+        binaries: ["ta"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
-            completions: { source: 'completion/toolA.zsh', name: '_toolA_custom' },
+            completions: { source: "completion/toolA.zsh", name: "_toolA_custom" },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
       toolB: {
-        name: 'toolB',
-        binaries: ['tb'],
-        version: '1.0',
+        name: "toolB",
+        binaries: ["tb"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
-            completions: { source: 'completions/_toolB' }, // Default name _toolB
+            completions: { source: "completions/_toolB" }, // Default name _toolB
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
-    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
 
-    expect(content).toContain(createSectionHeader('zsh', 'Shell Completions Setup'));
+    expect(content).toContain(createSectionHeader("zsh", "Shell Completions Setup"));
 
     // Verify fpath setup appears only once even with multiple tools having completions
-    const completionsDir = JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'));
+    const completionsDir = JSON.stringify(path.join(testDirs.paths.shellScriptsDir, "zsh", "completions"));
     const typesetOccurrences = (content.match(/typeset -U fpath/g) || []).length;
-    const fpathOccurrences = (content.match(
-      new RegExp(`fpath=\\(${completionsDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\$fpath\\)`, 'g'),
-    ) || []).length;
+    const fpathOccurrences = (
+      content.match(new RegExp(`fpath=\\(${completionsDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\$fpath\\)`, "g")) ||
+      []
+    ).length;
 
     expect(typesetOccurrences).toBe(1);
     expect(fpathOccurrences).toBe(1);
@@ -267,102 +268,102 @@ describe('ShellInitGenerator', () => {
   it('should not add "typeset -U fpath" if fpath is already managed in zshInit', async () => {
     const toolConfigs: Record<string, ToolConfig> = {
       toolA: {
-        name: 'toolA',
-        binaries: ['ta'],
-        version: '1.0',
+        name: "toolA",
+        binaries: ["ta"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`typeset -U fpath`), always(`fpath=("/my/custom/fpath" $fpath)`)],
-            completions: { source: '_toolA' },
+            completions: { source: "_toolA" },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
-    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
 
     const occurrences = (content.match(/typeset -U fpath/g) || []).length;
     expect(occurrences).toBe(2);
-    expect(content).toContain('typeset -U fpath');
+    expect(content).toContain("typeset -U fpath");
     expect(content).toContain('fpath=("/my/custom/fpath" $fpath)');
     // The completion specific fpath add should still be there for its own directory
     expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`,
+      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, "zsh", "completions"))} $fpath)`,
     );
   });
 
-  it('should handle mixed configurations for multiple tools', async () => {
+  it("should handle mixed configurations for multiple tools", async () => {
     const toolConfigs: Record<string, ToolConfig> = {
       alpha: {
-        name: 'alpha',
-        binaries: ['a'],
-        version: '1.0',
+        name: "alpha",
+        binaries: ["a"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`export ALPHA_MODE=on`), always(`export PATH="/opt/alpha/bin:$PATH"`)],
-            completions: { source: '_alpha' },
+            completions: { source: "_alpha" },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
       beta: {
-        name: 'beta',
-        binaries: ['b'],
-        version: '2.1',
+        name: "beta",
+        binaries: ["b"],
+        version: "2.1",
         shellConfigs: {
           zsh: {
             scripts: [always(`alias b="beta -v"`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
       gamma: {
-        name: 'gamma',
-        binaries: ['g'],
-        version: '0.5',
+        name: "gamma",
+        binaries: ["g"],
+        version: "0.5",
         shellConfigs: {
           zsh: {
             scripts: [always(`export GAMMA_LEVEL=5`)],
-            completions: { source: 'gamma_completion.sh' },
+            completions: { source: "gamma_completion.sh" },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
-    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
 
     // PATH
     expect(content).toContain('export PATH="/opt/alpha/bin:$PATH"');
     expect(content).toContain(`export PATH="${testDirs.paths.targetDir}:$PATH"`);
 
     // Env Vars
-    expect(content).toContain('export ALPHA_MODE=on');
-    expect(content).toContain('export GAMMA_LEVEL=5');
+    expect(content).toContain("export ALPHA_MODE=on");
+    expect(content).toContain("export GAMMA_LEVEL=5");
 
     // Tool Inits - all tools should appear in Always Scripts section
     expect(content).toContain('alias b="beta -v"');
 
     // Completions - all completions use the standard completions directory
-    expect(content).toContain('typeset -U fpath');
+    expect(content).toContain("typeset -U fpath");
     expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`,
+      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, "zsh", "completions"))} $fpath)`,
     );
   });
 
-  it('should correctly order the sections', async () => {
+  it("should correctly order the sections", async () => {
     const toolConfigs: Record<string, ToolConfig> = {
       myTool: {
-        name: 'myTool',
-        binaries: ['mt'],
-        version: '1.0',
+        name: "myTool",
+        binaries: ["mt"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [
@@ -370,20 +371,20 @@ describe('ShellInitGenerator', () => {
               always(`export PATH="/opt/mytool/bin:$PATH"`),
               always(`alias mt="myTool --doit"`),
             ],
-            completions: { source: '_myTool' },
+            completions: { source: "_myTool" },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
-    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
 
-    const pathSectionIndex = content.indexOf(createSectionHeader('zsh', 'PATH Modifications'));
-    const toolsSectionIndex = content.indexOf(createSectionHeader('zsh', 'Tool-Specific Initializations'));
-    const compSectionIndex = content.indexOf(createSectionHeader('zsh', 'Shell Completions Setup'));
+    const pathSectionIndex = content.indexOf(createSectionHeader("zsh", "PATH Modifications"));
+    const toolsSectionIndex = content.indexOf(createSectionHeader("zsh", "Tool-Specific Initializations"));
+    const compSectionIndex = content.indexOf(createSectionHeader("zsh", "Shell Completions Setup"));
 
     expect(pathSectionIndex).toBeGreaterThan(-1);
     expect(toolsSectionIndex).toBeGreaterThan(-1);
@@ -393,128 +394,128 @@ describe('ShellInitGenerator', () => {
     expect(toolsSectionIndex).toBeLessThan(compSectionIndex);
   });
 
-  it('should deduplicate identical lines within sections', async () => {
+  it("should deduplicate identical lines within sections", async () => {
     const toolConfigs: Record<string, ToolConfig> = {
       toolA: {
-        name: 'toolA',
-        binaries: ['ta'],
-        version: '1.0',
+        name: "toolA",
+        binaries: ["ta"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`export DUP_VAR="val"`), always(`export PATH="/dup/path:$PATH"`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
       toolB: {
-        name: 'toolB',
-        binaries: ['tb'],
-        version: '1.0',
+        name: "toolB",
+        binaries: ["tb"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`export DUP_VAR="val"`), always(`export PATH="/dup/path:$PATH"`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
-    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
 
     // In the new system, each tool gets its own function, so duplicates can exist across tools
     expect((content.match(/export DUP_VAR="val"/g) || []).length).toBe(2);
     expect((content.match(/export PATH="\/dup\/path:\$PATH"/g) || []).length).toBe(2);
   });
 
-  it('should handle tool config being undefined in the input record gracefully', async () => {
+  it("should handle tool config being undefined in the input record gracefully", async () => {
     const toolConfigs: Record<string, ToolConfig | undefined> = {
       toolA: {
-        name: 'toolA',
-        binaries: ['ta'],
-        version: '1.0',
+        name: "toolA",
+        binaries: ["ta"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`export TOOL_A_VAR="set"`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
       toolB: undefined, // This tool's config is undefined
       toolC: {
-        name: 'toolC',
-        binaries: ['tc'],
-        version: '1.0',
+        name: "toolC",
+        binaries: ["tc"],
+        version: "1.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`export TOOL_C_VAR="active"`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs as Record<string, ToolConfig>);
-    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
 
     expect(content).toContain('export TOOL_A_VAR="set"');
     expect(content).toContain('export TOOL_C_VAR="active"');
   });
 
-  it('should include tools with only rawScripts', async () => {
+  it("should include tools with only rawScripts", async () => {
     const toolConfigs: Record<string, ToolConfig> = {
       rawTool: {
-        name: 'rawTool',
+        name: "rawTool",
         binaries: [],
-        version: '1.0.0',
+        version: "1.0.0",
         shellConfigs: {
           zsh: {
-            scripts: [raw('source <(my-func)')],
+            scripts: [raw("source <(my-func)")],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
-    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
 
-    expect(content).toContain('source <(my-func)');
+    expect(content).toContain("source <(my-func)");
   });
 
-  it('should include tools with only functions', async () => {
+  it("should include tools with only functions", async () => {
     const toolConfigs: Record<string, ToolConfig> = {
       funcTool: {
-        name: 'funcTool',
+        name: "funcTool",
         binaries: [],
-        version: '1.0.0',
+        version: "1.0.0",
         shellConfigs: {
           zsh: {
             functions: {
-              'my-custom-func': 'echo "hello from function"',
+              "my-custom-func": 'echo "hello from function"',
             },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
-    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
+    expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+    const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
 
-    expect(content).toContain('my-custom-func()');
+    expect(content).toContain("my-custom-func()");
     expect(content).toContain('echo "hello from function"');
   });
 
-  it('should return null if writeFile fails', async () => {
+  it("should return null if writeFile fails", async () => {
     const { fs, spies } = await createMemFileSystem();
-    spies.writeFile.mockRejectedValueOnce(new Error('Disk full'));
+    spies.writeFile.mockRejectedValueOnce(new Error("Disk full"));
     const failLogger = new TestLogger();
     const generatorWithFailingWrite = new ShellInitGenerator(failLogger, fs, mockProjectConfig);
     const result = await generatorWithFailingWrite.generate({});

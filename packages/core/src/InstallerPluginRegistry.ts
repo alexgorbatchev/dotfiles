@@ -1,15 +1,15 @@
-import type { IInstallContext } from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
-import { z } from 'zod';
-import type { PluginEmittedHookEvent } from './builder/builder.types';
-import { messages } from './log-messages';
+import type { IInstallContext } from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
+import { z } from "zod";
+import type { PluginEmittedHookEvent } from "./builder/builder.types";
+import { messages } from "./log-messages";
 import type {
   AggregateInstallResult,
   IInstallerPlugin,
   IInstallOptions,
   InstallResult,
   IValidationResult,
-} from './types';
+} from "./types";
 
 type InstallEventHandler = (event: InstallEvent) => Promise<void>;
 
@@ -32,7 +32,7 @@ export class InstallerPluginRegistry {
   private eventHandlers: InstallEventHandler[] = [];
 
   constructor(parentLogger: TsLogger) {
-    this.logger = parentLogger.getSubLogger({ name: 'InstallerPluginRegistry' });
+    this.logger = parentLogger.getSubLogger({ name: "InstallerPluginRegistry" });
   }
 
   /**
@@ -59,12 +59,12 @@ export class InstallerPluginRegistry {
 
     try {
       // Validate plugin
-      if (!method || typeof method !== 'string') {
-        throw new Error('Plugin must have a valid method name');
+      if (!method || typeof method !== "string") {
+        throw new Error("Plugin must have a valid method name");
       }
 
       if (this.schemasComposed) {
-        throw new Error('Cannot register plugins after schemas have been composed');
+        throw new Error("Cannot register plugins after schemas have been composed");
       }
 
       if (this.plugins.has(method)) {
@@ -146,7 +146,7 @@ export class InstallerPluginRegistry {
     const plugins = this.getAll();
 
     if (plugins.length === 0) {
-      throw new Error('No plugins registered');
+      throw new Error("No plugins registered");
     }
 
     // Compose tool config schema
@@ -159,7 +159,7 @@ export class InstallerPluginRegistry {
       // Type: ZodTypeAny cannot satisfy Zod's $ZodTypeDiscriminable constraint, requiring cast
       const [first, ...rest] = toolConfigSchemas;
       // @ts-expect-error: Zod 4 discriminatedUnion requires $ZodTypeDiscriminable but plugins use ZodTypeAny
-      this.composedToolConfigSchema = z.discriminatedUnion('installationMethod', [first, ...rest]);
+      this.composedToolConfigSchema = z.discriminatedUnion("installationMethod", [first, ...rest]);
     }
 
     // Compose install params schema
@@ -174,7 +174,7 @@ export class InstallerPluginRegistry {
     }
 
     this.schemasComposed = true;
-    this.logger.info(messages.schemasComposed(plugins.length, this.getMethods().join(', ')));
+    this.logger.info(messages.schemasComposed(plugins.length, this.getMethods().join(", ")));
   }
 
   /**
@@ -182,7 +182,7 @@ export class InstallerPluginRegistry {
    */
   getToolConfigSchema(): z.ZodTypeAny {
     if (!this.composedToolConfigSchema) {
-      throw new Error('Schemas not composed. Call composeSchemas() after registering all plugins.');
+      throw new Error("Schemas not composed. Call composeSchemas() after registering all plugins.");
     }
     return this.composedToolConfigSchema;
   }
@@ -192,7 +192,7 @@ export class InstallerPluginRegistry {
    */
   getInstallParamsSchema(): z.ZodTypeAny {
     if (!this.composedInstallParamsSchema) {
-      throw new Error('Schemas not composed. Call composeSchemas() after registering all plugins.');
+      throw new Error("Schemas not composed. Call composeSchemas() after registering all plugins.");
     }
     return this.composedInstallParamsSchema;
   }
@@ -220,8 +220,8 @@ export class InstallerPluginRegistry {
     }
 
     if (!validation.valid) {
-      const error = `Plugin validation failed: ${validation.errors?.join(', ')}`;
-      logger.error(messages.validationFailed(plugin.method, validation.errors?.join(', ') ?? 'Unknown error'));
+      const error = `Plugin validation failed: ${validation.errors?.join(", ")}`;
+      logger.error(messages.validationFailed(plugin.method, validation.errors?.join(", ") ?? "Unknown error"));
       return {
         success: false,
         error,
@@ -248,14 +248,14 @@ export class InstallerPluginRegistry {
     context: IInstallContext,
     options?: IInstallOptions,
   ): Promise<AggregateInstallResult> {
-    const logger = parentLogger.getSubLogger({ name: 'InstallerPluginRegistry' }).getSubLogger({ name: 'install' });
+    const logger = parentLogger.getSubLogger({ name: "InstallerPluginRegistry" }).getSubLogger({ name: "install" });
     const plugin = this.get(method);
 
     if (!plugin) {
-      const error = `No plugin registered for installation method: ${method}. Available methods: ${
-        this.getMethods().join(', ')
-      }`;
-      logger.error(messages.noPluginForMethod(method, this.getMethods().join(', ')));
+      const error = `No plugin registered for installation method: ${method}. Available methods: ${this.getMethods().join(
+        ", ",
+      )}`;
+      logger.error(messages.noPluginForMethod(method, this.getMethods().join(", ")));
       return {
         success: false,
         error,
@@ -283,7 +283,7 @@ export class InstallerPluginRegistry {
    * Cleanup all plugins (useful for graceful shutdown)
    */
   async cleanup(): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'cleanup' });
+    const logger = this.logger.getSubLogger({ name: "cleanup" });
     logger.info(messages.cleaningUpPlugins());
 
     const plugins = this.getAll();

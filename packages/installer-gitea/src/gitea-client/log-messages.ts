@@ -1,15 +1,15 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   constructor: {
     initialized: (baseUrl: string) => createSafeLogMessage(`Gitea API client initialized. baseUrl=${baseUrl}`),
-    authTokenPresent: () => createSafeLogMessage('API token is configured'),
-    authTokenMissing: () => createSafeLogMessage('No API token configured'),
+    authTokenPresent: () => createSafeLogMessage("API token is configured"),
+    authTokenMissing: () => createSafeLogMessage("No API token configured"),
   } satisfies SafeLogMessageMap,
   cache: {
     enabled: (ttlMs: number) => createSafeLogMessage(`Cache enabled. TTL=${ttlMs}ms`),
-    disabled: () => createSafeLogMessage('Cache is present but disabled'),
-    missing: () => createSafeLogMessage('No cache configured'),
+    disabled: () => createSafeLogMessage("Cache is present but disabled"),
+    missing: () => createSafeLogMessage("No cache configured"),
   } satisfies SafeLogMessageMap,
   request: {
     performing: (method: string, url: string) => createSafeLogMessage(`Gitea API ${method} request to ${url}`),

@@ -1,22 +1,22 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { ArchiveFormat, Shell, ShellCompletionConfig, ShellType } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { getAllFilesRecursively, resolveToolRelativePath } from '@dotfiles/utils';
-import { minimatch } from 'minimatch';
-import path from 'node:path';
-import { CompletionCommandExecutor } from './CompletionCommandExecutor';
-import { messages } from './log-messages';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
+import type { ArchiveFormat, Shell, ShellCompletionConfig, ShellType } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { getAllFilesRecursively, resolveToolRelativePath } from "@dotfiles/utils";
+import { minimatch } from "minimatch";
+import path from "node:path";
+import { CompletionCommandExecutor } from "./CompletionCommandExecutor";
+import { messages } from "./log-messages";
 import type {
   ICompletionCommandExecutor,
   ICompletionGenerationContext,
   ICompletionGenerator,
   IGenerateAndWriteCompletionFileOptions,
   IGeneratedCompletion,
-} from './types';
+} from "./types";
 
-const ARCHIVE_EXTENSIONS: ArchiveFormat[] = ['tar.gz', 'tar.xz', 'tar.bz2', 'zip', 'tar', 'tar.lzma', '7z'];
+const ARCHIVE_EXTENSIONS: ArchiveFormat[] = ["tar.gz", "tar.xz", "tar.bz2", "zip", "tar", "tar.lzma", "7z"];
 
 export interface ICompletionGeneratorDependencies {
   downloader?: IDownloader;
@@ -37,7 +37,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     commandExecutor?: ICompletionCommandExecutor,
     deps?: ICompletionGeneratorDependencies,
   ) {
-    this.logger = parentLogger.getSubLogger({ name: 'CompletionGenerator' });
+    this.logger = parentLogger.getSubLogger({ name: "CompletionGenerator" });
     this.fs = fs;
     this.commandExecutor = commandExecutor || new CompletionCommandExecutor(this.logger, shell);
     this.downloader = deps?.downloader;
@@ -74,7 +74,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     shellType: ShellType,
     context: ICompletionGenerationContext,
   ): Promise<IGeneratedCompletion> {
-    const logger = this.logger.getSubLogger({ name: 'generateCompletionFile' }).setPrefix(toolName);
+    const logger = this.logger.getSubLogger({ name: "generateCompletionFile" }).setPrefix(toolName);
     logger.debug(messages.generationStarted(toolName, shellType));
 
     const effectiveSource = config.url
@@ -98,10 +98,10 @@ export class CompletionGenerator implements ICompletionGenerator {
    * If the URL points to an archive, it will be extracted to the tool's install directory.
    */
   private async downloadCompletionFromUrl(url: string, toolInstallDir: string, toolName: string): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'downloadCompletionFromUrl' }).setPrefix(toolName);
+    const logger = this.logger.getSubLogger({ name: "downloadCompletionFromUrl" }).setPrefix(toolName);
 
     if (!this.downloader) {
-      throw new Error('Downloader not provided - cannot download completion from URL');
+      throw new Error("Downloader not provided - cannot download completion from URL");
     }
 
     logger.info(messages.downloadingCompletion(url));
@@ -132,10 +132,10 @@ export class CompletionGenerator implements ICompletionGenerator {
    * Extracts a completion archive to the tool's install directory.
    */
   private async extractCompletionArchive(archivePath: string, toolInstallDir: string, toolName: string): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'extractCompletionArchive' }).setPrefix(toolName);
+    const logger = this.logger.getSubLogger({ name: "extractCompletionArchive" }).setPrefix(toolName);
 
     if (!this.archiveExtractor) {
-      throw new Error('Archive extractor not provided - cannot extract completion archive');
+      throw new Error("Archive extractor not provided - cannot extract completion archive");
     }
 
     logger.debug(messages.extractingCompletionArchive(archivePath));
@@ -152,7 +152,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     const urlObj = new URL(url);
     const pathname = urlObj.pathname;
     const filename = path.basename(pathname);
-    return filename || 'completion-download';
+    return filename || "completion-download";
   }
 
   /**
@@ -182,7 +182,7 @@ export class CompletionGenerator implements ICompletionGenerator {
 
     await fs.ensureDir(path.dirname(result.targetPath));
 
-    if (result.generatedBy === 'source' && result.sourcePath) {
+    if (result.generatedBy === "source" && result.sourcePath) {
       // For source-based completions, create a symlink
       if (await fs.exists(result.targetPath)) {
         await fs.rm(result.targetPath);
@@ -222,7 +222,7 @@ export class CompletionGenerator implements ICompletionGenerator {
       content,
       filename,
       targetPath: path.join(targetPath, filename),
-      generatedBy: 'command',
+      generatedBy: "command",
     };
   }
 
@@ -247,10 +247,10 @@ export class CompletionGenerator implements ICompletionGenerator {
     const targetPath = this.resolveTargetPath(shellType, context);
 
     return {
-      content: '', // No content needed for symlink-based completions
+      content: "", // No content needed for symlink-based completions
       filename,
       targetPath: path.join(targetPath, filename),
-      generatedBy: 'source',
+      generatedBy: "source",
       sourcePath,
     };
   }
@@ -276,7 +276,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     }
 
     // If source contains glob patterns, search in toolDir
-    if (source.includes('*') || source.includes('?') || source.includes('[')) {
+    if (source.includes("*") || source.includes("?") || source.includes("[")) {
       const toolDirFiles = await getAllFilesRecursively(this.fs, toolDir, toolDir);
       const matchedInToolDir = toolDirFiles.find((file) => minimatch(file, source));
       if (matchedInToolDir) {
@@ -300,11 +300,11 @@ export class CompletionGenerator implements ICompletionGenerator {
     const baseName = config.bin ?? toolName;
 
     switch (shellType) {
-      case 'zsh':
+      case "zsh":
         return `_${baseName}`;
-      case 'bash':
+      case "bash":
         return `${baseName}.bash`;
-      case 'powershell':
+      case "powershell":
         return `${baseName}.ps1`;
       default:
         return `${baseName}.${shellType}`;
@@ -312,6 +312,6 @@ export class CompletionGenerator implements ICompletionGenerator {
   }
 
   private resolveTargetPath(shellType: ShellType, context: ICompletionGenerationContext): string {
-    return path.join(context.shellScriptsDir, shellType, 'completions');
+    return path.join(context.shellScriptsDir, shellType, "completions");
   }
 }

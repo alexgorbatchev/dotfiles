@@ -1,2 +1,2 @@
-export * from './brewInstallParamsSchema';
-export * from './brewToolConfigSchema';
+export * from "./brewInstallParamsSchema";
+export * from "./brewToolConfigSchema";

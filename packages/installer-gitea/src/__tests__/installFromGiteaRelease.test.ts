@@ -1,43 +1,43 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import { Architecture, type IGitHubReleaseAsset, type IInstallContext, Platform } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
-import { TestLogger } from '@dotfiles/logger';
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import assert from 'node:assert';
-import type { IGiteaApiClient } from '../gitea-client';
-import { installFromGiteaRelease } from '../installFromGiteaRelease';
-import type { GiteaReleaseToolConfig } from '../schemas';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
+import { Architecture, type IGitHubReleaseAsset, type IInstallContext, Platform } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor } from "@dotfiles/installer";
+import { TestLogger } from "@dotfiles/logger";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import assert from "node:assert";
+import type { IGiteaApiClient } from "../gitea-client";
+import { installFromGiteaRelease } from "../installFromGiteaRelease";
+import type { GiteaReleaseToolConfig } from "../schemas";
 
 function createMockAsset(name: string): IGitHubReleaseAsset {
   const asset: IGitHubReleaseAsset = {
     name,
-    content_type: 'application/gzip',
+    content_type: "application/gzip",
     size: 1024,
     download_count: 100,
     browser_download_url: `https://codeberg.org/owner/repo/releases/download/v1.0.0/${name}`,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z',
-    state: 'uploaded',
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2024-01-01T00:00:00Z",
+    state: "uploaded",
   };
   return asset;
 }
 
 function createTestContext(): IInstallContext {
   return {
-    toolName: 'test-tool',
-    currentDir: '/path/to/tools/test-tool',
-    stagingDir: '/tmp/staging',
+    toolName: "test-tool",
+    currentDir: "/path/to/tools/test-tool",
+    stagingDir: "/tmp/staging",
     systemInfo: {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
-      homeDir: '/Users/test',
-      hostname: 'test-host',
+      homeDir: "/Users/test",
+      hostname: "test-host",
     },
     projectConfig: {
       paths: {
-        generatedDir: '/tmp/generated',
+        generatedDir: "/tmp/generated",
       },
     },
   } as IInstallContext;
@@ -54,7 +54,7 @@ function createMockGiteaApiClient(): IGiteaApiClient {
 
 function createMockDownloader(): IDownloader {
   return {
-    download: mock(async () => Buffer.from('')),
+    download: mock(async () => Buffer.from("")),
     registerStrategy: mock(() => {}),
     downloadToFile: mock(async () => {}),
   } as unknown as IDownloader;
@@ -67,7 +67,7 @@ function createMockFs(): IFileSystem {
     mkdir: mock(async () => undefined),
     ensureDir: mock(async () => {}),
     writeFile: mock(async () => {}),
-    readFile: mock(async () => ''),
+    readFile: mock(async () => ""),
     chmod: mock(async () => {}),
     stat: mock(async () => ({ isFile: () => true, isDirectory: () => false, mode: 0o755 })),
     lstat: mock(async () => ({ isSymbolicLink: () => true })),
@@ -75,8 +75,8 @@ function createMockFs(): IFileSystem {
     rename: mock(async () => {}),
     readdir: mock(async () => []),
     copyFile: mock(async () => {}),
-    join: (...parts: string[]) => parts.join('/'),
-    resolve: (...parts: string[]) => parts.join('/'),
+    join: (...parts: string[]) => parts.join("/"),
+    resolve: (...parts: string[]) => parts.join("/"),
   } as unknown as IFileSystem;
 }
 
@@ -90,27 +90,27 @@ function createMockHookExecutor(): HookExecutor {
 function createMockArchiveExtractor(): IArchiveExtractor {
   return {
     extract: mock(async () => ({
-      extractedFiles: ['test-tool'],
-      executables: ['test-tool'],
+      extractedFiles: ["test-tool"],
+      executables: ["test-tool"],
     })),
   } as unknown as IArchiveExtractor;
 }
 
 function createToolConfig(overrides: Partial<GiteaReleaseToolConfig> = {}): GiteaReleaseToolConfig {
   return {
-    name: 'test-tool',
-    version: '1.0.0',
-    binaries: ['test-tool'],
-    installationMethod: 'gitea-release',
+    name: "test-tool",
+    version: "1.0.0",
+    binaries: ["test-tool"],
+    installationMethod: "gitea-release",
     installParams: {
-      instanceUrl: 'https://codeberg.org',
-      repo: 'owner/repo',
+      instanceUrl: "https://codeberg.org",
+      repo: "owner/repo",
     },
     ...overrides,
   };
 }
 
-describe('installFromGiteaRelease', () => {
+describe("installFromGiteaRelease", () => {
   let logger: TestLogger;
   let context: IInstallContext;
   let apiClient: IGiteaApiClient;
@@ -129,14 +129,14 @@ describe('installFromGiteaRelease', () => {
     archiveExtractor = createMockArchiveExtractor();
   });
 
-  it('should return error when installParams has no repo', async () => {
+  it("should return error when installParams has no repo", async () => {
     const toolConfig = createToolConfig();
     toolConfig.installParams = {
-      instanceUrl: 'https://codeberg.org',
-    } as unknown as GiteaReleaseToolConfig['installParams'];
+      instanceUrl: "https://codeberg.org",
+    } as unknown as GiteaReleaseToolConfig["installParams"];
 
     const result = await installFromGiteaRelease(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -152,13 +152,13 @@ describe('installFromGiteaRelease', () => {
     expect(result.error).toMatchInlineSnapshot(`"Repository not specified in installParams"`);
   });
 
-  it('should return error for invalid repo format', async () => {
+  it("should return error for invalid repo format", async () => {
     const toolConfig = createToolConfig({
-      installParams: { instanceUrl: 'https://codeberg.org', repo: 'invalid' },
+      installParams: { instanceUrl: "https://codeberg.org", repo: "invalid" },
     }) as unknown as GiteaReleaseToolConfig;
 
     const result = await installFromGiteaRelease(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -171,17 +171,15 @@ describe('installFromGiteaRelease', () => {
     );
 
     assert(!result.success);
-    expect(result.error).toMatchInlineSnapshot(
-      `"Invalid repository format: invalid. Expected format: owner/repo"`,
-    );
+    expect(result.error).toMatchInlineSnapshot(`"Invalid repository format: invalid. Expected format: owner/repo"`);
   });
 
-  it('should return error when release fetch fails', async () => {
+  it("should return error when release fetch fails", async () => {
     apiClient.getLatestRelease = mock(async () => null);
     const toolConfig = createToolConfig();
 
     const result = await installFromGiteaRelease(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -197,22 +195,22 @@ describe('installFromGiteaRelease', () => {
     expect(result.error).toMatchInlineSnapshot(`"Failed to fetch latest release for owner/repo"`);
   });
 
-  it('should return error when no suitable asset found', async () => {
+  it("should return error when no suitable asset found", async () => {
     apiClient.getLatestRelease = mock(async () => ({
       id: 1,
-      tag_name: 'v1.0.0',
-      name: 'v1.0.0',
+      tag_name: "v1.0.0",
+      name: "v1.0.0",
       draft: false,
       prerelease: false,
-      created_at: '2024-01-01T00:00:00Z',
-      published_at: '2024-01-01T00:00:00Z',
-      assets: [createMockAsset('tool-windows-amd64.exe')],
-      html_url: 'https://codeberg.org/owner/repo/releases/tag/v1.0.0',
+      created_at: "2024-01-01T00:00:00Z",
+      published_at: "2024-01-01T00:00:00Z",
+      assets: [createMockAsset("tool-windows-amd64.exe")],
+      html_url: "https://codeberg.org/owner/repo/releases/tag/v1.0.0",
     }));
     const toolConfig = createToolConfig();
 
     const result = await installFromGiteaRelease(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -232,25 +230,23 @@ describe('installFromGiteaRelease', () => {
     `);
   });
 
-  it('should return error when download fails', async () => {
+  it("should return error when download fails", async () => {
     apiClient.getLatestRelease = mock(async () => ({
       id: 1,
-      tag_name: 'v1.0.0',
-      name: 'v1.0.0',
+      tag_name: "v1.0.0",
+      name: "v1.0.0",
       draft: false,
       prerelease: false,
-      created_at: '2024-01-01T00:00:00Z',
-      published_at: '2024-01-01T00:00:00Z',
-      assets: [createMockAsset('tool-macos-arm64.tar.gz')],
-      html_url: 'https://codeberg.org/owner/repo/releases/tag/v1.0.0',
+      created_at: "2024-01-01T00:00:00Z",
+      published_at: "2024-01-01T00:00:00Z",
+      assets: [createMockAsset("tool-macos-arm64.tar.gz")],
+      html_url: "https://codeberg.org/owner/repo/releases/tag/v1.0.0",
     }));
-    (downloader.download as ReturnType<typeof mock>).mockRejectedValue(
-      new Error('Download failed: connection reset'),
-    );
+    (downloader.download as ReturnType<typeof mock>).mockRejectedValue(new Error("Download failed: connection reset"));
     const toolConfig = createToolConfig();
 
     const result = await installFromGiteaRelease(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -266,24 +262,24 @@ describe('installFromGiteaRelease', () => {
     expect(result.error).toMatchInlineSnapshot(`"Download failed: connection reset"`);
   });
 
-  it('should return success for direct binary download', async () => {
-    const asset = createMockAsset('test-tool-macos-arm64');
+  it("should return success for direct binary download", async () => {
+    const asset = createMockAsset("test-tool-macos-arm64");
     apiClient.getLatestRelease = mock(async () => ({
       id: 1,
-      tag_name: 'v1.0.0',
-      name: 'v1.0.0',
+      tag_name: "v1.0.0",
+      name: "v1.0.0",
       draft: false,
       prerelease: false,
-      created_at: '2024-01-01T00:00:00Z',
-      published_at: '2024-01-01T00:00:00Z',
+      created_at: "2024-01-01T00:00:00Z",
+      published_at: "2024-01-01T00:00:00Z",
       assets: [asset],
-      html_url: 'https://codeberg.org/owner/repo/releases/tag/v1.0.0',
+      html_url: "https://codeberg.org/owner/repo/releases/tag/v1.0.0",
     }));
-    (downloader.download as ReturnType<typeof mock>).mockResolvedValue(Buffer.from('binary-content'));
+    (downloader.download as ReturnType<typeof mock>).mockResolvedValue(Buffer.from("binary-content"));
     const toolConfig = createToolConfig();
 
     const result = await installFromGiteaRelease(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -296,31 +292,31 @@ describe('installFromGiteaRelease', () => {
     );
 
     assert(result.success);
-    expect(result.originalTag).toBe('v1.0.0');
-    expect(result.metadata.method).toBe('gitea-release');
-    expect(result.metadata.instanceUrl).toBe('https://codeberg.org');
-    expect(result.metadata.assetName).toBe('test-tool-macos-arm64');
+    expect(result.originalTag).toBe("v1.0.0");
+    expect(result.metadata.method).toBe("gitea-release");
+    expect(result.metadata.instanceUrl).toBe("https://codeberg.org");
+    expect(result.metadata.assetName).toBe("test-tool-macos-arm64");
     expect(result.metadata.downloadUrl).toBe(asset.browser_download_url);
   });
 
-  it('should extract archive and return success for tar.gz assets', async () => {
-    const asset = createMockAsset('test-tool-macos-arm64.tar.gz');
+  it("should extract archive and return success for tar.gz assets", async () => {
+    const asset = createMockAsset("test-tool-macos-arm64.tar.gz");
     apiClient.getLatestRelease = mock(async () => ({
       id: 1,
-      tag_name: 'v2.0.0',
-      name: 'v2.0.0',
+      tag_name: "v2.0.0",
+      name: "v2.0.0",
       draft: false,
       prerelease: false,
-      created_at: '2024-01-01T00:00:00Z',
-      published_at: '2024-01-01T00:00:00Z',
+      created_at: "2024-01-01T00:00:00Z",
+      published_at: "2024-01-01T00:00:00Z",
       assets: [asset],
-      html_url: 'https://codeberg.org/owner/repo/releases/tag/v2.0.0',
+      html_url: "https://codeberg.org/owner/repo/releases/tag/v2.0.0",
     }));
-    (downloader.download as ReturnType<typeof mock>).mockResolvedValue(Buffer.from('archive-content'));
+    (downloader.download as ReturnType<typeof mock>).mockResolvedValue(Buffer.from("archive-content"));
     const toolConfig = createToolConfig();
 
     const result = await installFromGiteaRelease(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -333,30 +329,30 @@ describe('installFromGiteaRelease', () => {
     );
 
     assert(result.success);
-    expect(result.version).toBe('v2.0.0');
-    expect(result.metadata.assetName).toBe('test-tool-macos-arm64.tar.gz');
+    expect(result.version).toBe("v2.0.0");
+    expect(result.metadata.assetName).toBe("test-tool-macos-arm64.tar.gz");
     expect(archiveExtractor.extract).toHaveBeenCalled();
   });
 
-  it('should clean up archive file after extraction when it exists', async () => {
-    const asset = createMockAsset('test-tool-macos-arm64.tar.gz');
+  it("should clean up archive file after extraction when it exists", async () => {
+    const asset = createMockAsset("test-tool-macos-arm64.tar.gz");
     apiClient.getLatestRelease = mock(async () => ({
       id: 1,
-      tag_name: 'v1.0.0',
-      name: 'v1.0.0',
+      tag_name: "v1.0.0",
+      name: "v1.0.0",
       draft: false,
       prerelease: false,
-      created_at: '2024-01-01T00:00:00Z',
-      published_at: '2024-01-01T00:00:00Z',
+      created_at: "2024-01-01T00:00:00Z",
+      published_at: "2024-01-01T00:00:00Z",
       assets: [asset],
-      html_url: 'https://codeberg.org/owner/repo/releases/tag/v1.0.0',
+      html_url: "https://codeberg.org/owner/repo/releases/tag/v1.0.0",
     }));
-    (downloader.download as ReturnType<typeof mock>).mockResolvedValue(Buffer.from('archive'));
+    (downloader.download as ReturnType<typeof mock>).mockResolvedValue(Buffer.from("archive"));
     (fs.exists as ReturnType<typeof mock>).mockResolvedValue(true);
     const toolConfig = createToolConfig();
 
     const result = await installFromGiteaRelease(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -372,14 +368,14 @@ describe('installFromGiteaRelease', () => {
     expect(fs.rm).toHaveBeenCalled();
   });
 
-  it('should catch and return unexpected exceptions', async () => {
+  it("should catch and return unexpected exceptions", async () => {
     apiClient.getLatestRelease = mock(async () => {
-      throw new Error('Unexpected internal error');
+      throw new Error("Unexpected internal error");
     });
     const toolConfig = createToolConfig();
 
     const result = await installFromGiteaRelease(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,

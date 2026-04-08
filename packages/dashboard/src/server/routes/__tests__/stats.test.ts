@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { setupTestContext, type TestContext } from './test-setup';
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { setupTestContext, type TestContext } from "./test-setup";
 
-describe('getStats', () => {
+describe("getStats", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -12,7 +12,7 @@ describe('getStats', () => {
     ctx.registryDatabase.close();
   });
 
-  test('returns stats for empty registry', async () => {
+  test("returns stats for empty registry", async () => {
     const result = await ctx.api.getStats();
 
     expect(result.success).toBe(true);
@@ -21,22 +21,22 @@ describe('getStats', () => {
     expect(result.data?.totalOperations).toBe(0);
   });
 
-  test('returns stats with installed tools and files', async () => {
-    const { randomUUID } = await import('./test-setup');
+  test("returns stats with installed tools and files", async () => {
+    const { randomUUID } = await import("./test-setup");
 
     await ctx.toolInstallationRegistry.recordToolInstallation({
-      toolName: 'bat',
-      version: '0.24.0',
-      installPath: '/binaries/bat/2025-01-01',
-      timestamp: '2025-01-01-00-00-00',
-      binaryPaths: ['/binaries/bat/bat'],
+      toolName: "bat",
+      version: "0.24.0",
+      installPath: "/binaries/bat/2025-01-01",
+      timestamp: "2025-01-01-00-00-00",
+      binaryPaths: ["/binaries/bat/bat"],
     });
 
     await ctx.fileRegistry.recordOperation({
-      toolName: 'bat',
-      operationType: 'writeFile',
-      filePath: '/bin/bat',
-      fileType: 'shim',
+      toolName: "bat",
+      operationType: "writeFile",
+      filePath: "/bin/bat",
+      fileType: "shim",
       operationId: randomUUID(),
     });
 

@@ -1,42 +1,42 @@
-import { NodeFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { exitCli, ExitCode, getCliBinPath } from '@dotfiles/utils';
-import { cp } from 'node:fs/promises';
-import path from 'node:path';
-import { messages } from './log-messages';
-import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
+import { NodeFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { exitCli, ExitCode, getCliBinPath } from "@dotfiles/utils";
+import { cp } from "node:fs/promises";
+import path from "node:path";
+import { messages } from "./log-messages";
+import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, IServices } from "./types";
 
 export const SKILL_COMMAND_COMPLETION: ICommandCompletionMeta = {
-  name: 'skill',
-  description: 'Copy the dotfiles skill folder to the target directory',
+  name: "skill",
+  description: "Copy the dotfiles skill folder to the target directory",
   hasPositionalArg: true,
-  positionalArgDescription: 'target directory for skill folder',
+  positionalArgDescription: "target directory for skill folder",
 };
 
 function getSkillPath(): string {
   const cliBinPath = getCliBinPath();
-  const scriptPath = cliBinPath.split(' ').pop() ?? cliBinPath;
+  const scriptPath = cliBinPath.split(" ").pop() ?? cliBinPath;
   const scriptDir = path.dirname(scriptPath);
-  return path.join(scriptDir, 'skill');
+  return path.join(scriptDir, "skill");
 }
 
 async function copySkill(parentLogger: TsLogger, targetPath: string, dryRun: boolean): Promise<ExitCode> {
-  const logger = parentLogger.getSubLogger({ name: 'copySkill' });
+  const logger = parentLogger.getSubLogger({ name: "copySkill" });
 
   const nodeFs = new NodeFileSystem();
 
   const skillSourcePath = getSkillPath();
-  const destinationPath = path.join(targetPath, 'dotfiles');
+  const destinationPath = path.join(targetPath, "dotfiles");
 
   const skillExists = await nodeFs.exists(skillSourcePath);
   if (!skillExists) {
-    logger.error(messages.fsItemNotFound('Skill directory', skillSourcePath));
+    logger.error(messages.fsItemNotFound("Skill directory", skillSourcePath));
     return ExitCode.ERROR;
   }
 
   const targetExists = await nodeFs.exists(targetPath);
   if (!targetExists) {
-    logger.error(messages.fsItemNotFound('Target directory', targetPath));
+    logger.error(messages.fsItemNotFound("Target directory", targetPath));
     return ExitCode.ERROR;
   }
 
@@ -63,12 +63,12 @@ async function copySkill(parentLogger: TsLogger, targetPath: string, dryRun: boo
 
 async function skillActionLogic(
   parentLogger: TsLogger,
-  options: { targetPath: string; } & IGlobalProgramOptions,
+  options: { targetPath: string } & IGlobalProgramOptions,
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'skillActionLogic' });
+  const logger = parentLogger.getSubLogger({ name: "skillActionLogic" });
   const { targetPath, dryRun } = options;
 
-  logger.debug(messages.commandActionStarted('skill'));
+  logger.debug(messages.commandActionStarted("skill"));
 
   const exitCode = await copySkill(logger, targetPath, dryRun);
   exitCli(exitCode);
@@ -79,13 +79,13 @@ export function registerSkillCommand(
   program: IGlobalProgram,
   _servicesFactory: () => Promise<IServices>,
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'registerSkillCommand' });
+  const logger = parentLogger.getSubLogger({ name: "registerSkillCommand" });
 
   program
-    .command('skill <path>')
-    .description('Copy the dotfiles skill folder to the target directory')
+    .command("skill <path>")
+    .description("Copy the dotfiles skill folder to the target directory")
     .action(async (targetPath: string) => {
-      const combinedOptions: { targetPath: string; } & IGlobalProgramOptions = {
+      const combinedOptions: { targetPath: string } & IGlobalProgramOptions = {
         targetPath: path.resolve(targetPath),
         ...program.opts(),
       };

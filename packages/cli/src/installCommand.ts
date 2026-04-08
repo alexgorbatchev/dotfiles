@@ -1,31 +1,31 @@
-import type { IConfigService, ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { InstallResult } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { exitCli, resolvePlatformConfig } from '@dotfiles/utils';
-import path from 'node:path';
-import { messages } from './log-messages';
+import type { IConfigService, ProjectConfig } from "@dotfiles/config";
+import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { InstallResult } from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { exitCli, resolvePlatformConfig } from "@dotfiles/utils";
+import path from "node:path";
+import { messages } from "./log-messages";
 import type {
   ICommandCompletionMeta,
   IGlobalProgram,
   IGlobalProgramOptions,
   InstallCommandSpecificOptions,
   IServices,
-} from './types';
+} from "./types";
 
 /**
  * Completion metadata for the install command.
  */
 export const INSTALL_COMMAND_COMPLETION: ICommandCompletionMeta = {
-  name: 'install',
-  description: 'Install a tool by name or binary',
+  name: "install",
+  description: "Install a tool by name or binary",
   hasPositionalArg: true,
-  positionalArgDescription: 'tool name or binary name to install',
-  positionalArgType: 'tool',
+  positionalArgDescription: "tool name or binary name to install",
+  positionalArgType: "tool",
   options: [
-    { flag: '--force', description: 'Force installation even if already installed' },
-    { flag: '--shim-mode', description: 'Optimized output for shim usage' },
+    { flag: "--force", description: "Force installation even if already installed" },
+    { flag: "--shim-mode", description: "Optimized output for shim usage" },
   ],
 };
 
@@ -34,14 +34,14 @@ export const INSTALL_COMMAND_COMPLETION: ICommandCompletionMeta = {
  * Returns the tool config and actual tool name (which may differ from input if looked up by binary).
  */
 type LoadToolConfigResult =
-  | { success: true; toolConfig: ToolConfig; toolName: string; }
-  | { success: false; error: string; };
+  | { success: true; toolConfig: ToolConfig; toolName: string }
+  | { success: false; error: string };
 
 /**
  * Type guard to check if a result from loadToolConfigByBinary is an error object.
  */
-function isConfigByBinaryError(result: unknown): result is { error: string; } {
-  return typeof result === 'object' && result !== null && 'error' in result;
+function isConfigByBinaryError(result: unknown): result is { error: string } {
+  return typeof result === "object" && result !== null && "error" in result;
 }
 
 /**
@@ -129,9 +129,9 @@ function handleInstallationResult(
       return 0;
     } else {
       // Normal mode: log success message and continue (don't exit)
-      const actualMethod = result.installationMethod ?? 'unknown';
-      const version = result.version ?? 'unknown';
-      if (actualMethod === 'already-installed') {
+      const actualMethod = result.installationMethod ?? "unknown";
+      const version = result.version ?? "unknown";
+      if (actualMethod === "already-installed") {
         logger.info(messages.toolAlreadyInstalled(toolName, version));
       } else {
         logger.info(messages.toolInstalled(toolName, version, actualMethod));
@@ -150,7 +150,7 @@ function handleInstallationError(logger: TsLogger, error: Error, toolName: strin
     process.stderr.write(`Failed to install '${toolName}': ${error.message}\n`);
   } else {
     // Normal mode: use logger only
-    logger.error(messages.commandExecutionFailed('install', 1), error);
+    logger.error(messages.commandExecutionFailed("install", 1), error);
   }
   return 1;
 }
@@ -165,7 +165,7 @@ async function deleteShimsForTool(
     return;
   }
   for (const binary of toolConfig.binaries) {
-    const binaryName = typeof binary === 'string' ? binary : binary.name;
+    const binaryName = typeof binary === "string" ? binary : binary.name;
     const shimPath = path.join(targetDir, binaryName);
     try {
       await fs.lstat(shimPath);
@@ -178,7 +178,7 @@ async function deleteShimsForTool(
 }
 
 function isConfigurationOnlyToolConfig(toolConfig: ToolConfig): boolean {
-  const isManual = toolConfig.installationMethod === 'manual';
+  const isManual = toolConfig.installationMethod === "manual";
   const hasNoInstallParams = !toolConfig.installParams || Object.keys(toolConfig.installParams).length === 0;
   const hasNoBinaries = !toolConfig.binaries || toolConfig.binaries.length === 0;
   return isManual && hasNoInstallParams && hasNoBinaries;
@@ -189,7 +189,7 @@ function toError(value: unknown): Error {
     return value;
   }
 
-  const message = typeof value === 'string' ? value : 'Unknown error';
+  const message = typeof value === "string" ? value : "Unknown error";
   const error = new Error(message);
   return error;
 }
@@ -203,7 +203,7 @@ async function executeInstallCommandAction(
   const { projectConfig, fs, installer, configService, generatorOrchestrator, systemInfo } = services;
 
   logger.debug(
-    messages.commandActionStarted('install', nameOrBinary),
+    messages.commandActionStarted("install", nameOrBinary),
     projectConfig.paths.toolConfigsDir,
     fs.constructor.name,
   );
@@ -250,7 +250,7 @@ async function executeInstallCommandAction(
 
   if (result.success) {
     // Extract binaryPaths from install result if available
-    const binaryPaths = 'binaryPaths' in result ? result.binaryPaths : undefined;
+    const binaryPaths = "binaryPaths" in result ? result.binaryPaths : undefined;
     await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig, result.version, binaryPaths);
 
     // Delete temporary shims for externally managed tools (brew, dmg).
@@ -270,14 +270,14 @@ export function registerInstallCommand(
   program: IGlobalProgram,
   servicesFactory: () => Promise<IServices>,
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'registerInstallCommand' });
+  const logger = parentLogger.getSubLogger({ name: "registerInstallCommand" });
   program
-    .command('install <nameOrBinary>')
+    .command("install <nameOrBinary>")
     .description(
-      'Installs a tool by name or binary. Accepts tool name (filename without .tool.ts) or binary name (from .bin()).',
+      "Installs a tool by name or binary. Accepts tool name (filename without .tool.ts) or binary name (from .bin()).",
     )
-    .option('--force', 'Force installation even if the tool is already installed', false)
-    .option('--shim-mode', 'Optimized output for shim usage: shows progress bars but suppresses log messages', false)
+    .option("--force", "Force installation even if the tool is already installed", false)
+    .option("--shim-mode", "Optimized output for shim usage: shows progress bars but suppresses log messages", false)
     .action(async (nameOrBinary: string, commandOptions: InstallCommandSpecificOptions) => {
       const combinedOptions: InstallCommandSpecificOptions & IGlobalProgramOptions = {
         ...commandOptions,

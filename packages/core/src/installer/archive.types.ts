@@ -9,31 +9,31 @@ export type ArchiveFormat =
    * Instructs the extractor to auto-detect the archive format based on the
    * file's extension or magic bytes.
    */
-  | 'auto'
+  | "auto"
   /** A plain TAR archive (Tape Archive), typically with a `.tar` extension. */
-  | 'tar'
+  | "tar"
   /** A Gzip-compressed TAR archive, commonly `.tar.gz` or `.tgz`. */
-  | 'tar.gz'
+  | "tar.gz"
   /** A Bzip2-compressed TAR archive, commonly `.tar.bz2`. */
-  | 'tar.bz2'
+  | "tar.bz2"
   /** An XZ-compressed TAR archive, commonly `.tar.xz`. */
-  | 'tar.xz'
+  | "tar.xz"
   /** An LZMA-compressed TAR archive, commonly `.tar.lzma`. */
-  | 'tar.lzma'
+  | "tar.lzma"
   /** A ZIP archive, commonly `.zip`. */
-  | 'zip'
+  | "zip"
   /** A RAR archive, commonly `.rar`. */
-  | 'rar'
+  | "rar"
   /** A 7-Zip archive, commonly `.7z`. */
-  | '7z'
+  | "7z"
   /** A Debian software package, commonly `.deb`. */
-  | 'deb'
+  | "deb"
   /** An RPM Package Manager package, commonly `.rpm`. */
-  | 'rpm'
+  | "rpm"
   /** A macOS Disk Image, commonly `.dmg`. */
-  | 'dmg'
+  | "dmg"
   /** A single-file gzip archive (not a tarball), commonly `.gz`. */
-  | 'gzip';
+  | "gzip";
 
 /**
  * Defines the options available when extracting an archive.

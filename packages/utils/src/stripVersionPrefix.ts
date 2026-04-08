@@ -16,7 +16,7 @@ export function stripVersionPrefix(version: string): string {
     return version;
   }
 
-  if (version.startsWith('v') || version.startsWith('V')) {
+  if (version.startsWith("v") || version.startsWith("V")) {
     return version.slice(1);
   }
 

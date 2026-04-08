@@ -1,5 +1,5 @@
-import type { ShellCompletionConfigInput, ShellScript } from '@dotfiles/core';
-import type { Resolvable } from '@dotfiles/unwrap-value';
+import type { ShellCompletionConfigInput, ShellScript } from "@dotfiles/core";
+import type { Resolvable } from "@dotfiles/unwrap-value";
 
 /**
  * Input type for path configuration - can be static or resolved via callback.

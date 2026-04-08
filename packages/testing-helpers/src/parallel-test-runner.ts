@@ -69,17 +69,17 @@
  * 5. File Passthrough: If user specifies files directly (bun test foo.test.ts), it bypasses parallelization and runs normally
  */
 
-import { dedentString } from '@dotfiles/utils';
-import { spawn, type Subprocess } from 'bun';
-import { cpus } from 'os';
+import { dedentString } from "@dotfiles/utils";
+import { spawn, type Subprocess } from "bun";
+import { cpus } from "os";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 
 const E2E_TIMEOUT_MS = 30000;
-const TEST_FILE_GLOB = '**/packages/**/src/**/*.test.ts';
-const E2E_PATH_MARKER = 'packages/e2e-test/';
+const TEST_FILE_GLOB = "**/packages/**/src/**/*.test.ts";
+const E2E_PATH_MARKER = "packages/e2e-test/";
 
 interface Config {
   isWorker: boolean;
@@ -91,12 +91,13 @@ interface Config {
 
 function getConfig(): Config {
   return {
-    isWorker: process.env['BUN_TEST_WORKER'] === '1',
-    isSequential: process.env['BUN_TEST_SEQUENTIAL'] === '1',
-    isParallel: process.env['BUN_TEST_ALL'] === '1',
-    isBunExtension: process.env['BUN_DEBUG_QUIET_LOGS'] !== undefined &&
-      process.env['VSCODE_CRASH_REPORTER_PROCESS_TYPE'] !== undefined,
-    workerCount: parseInt(process.env['BUN_TEST_WORKERS'] || String(cpus().length), 10),
+    isWorker: process.env["BUN_TEST_WORKER"] === "1",
+    isSequential: process.env["BUN_TEST_SEQUENTIAL"] === "1",
+    isParallel: process.env["BUN_TEST_ALL"] === "1",
+    isBunExtension:
+      process.env["BUN_DEBUG_QUIET_LOGS"] !== undefined &&
+      process.env["VSCODE_CRASH_REPORTER_PROCESS_TYPE"] !== undefined,
+    workerCount: parseInt(process.env["BUN_TEST_WORKERS"] || String(cpus().length), 10),
   };
 }
 
@@ -131,9 +132,7 @@ interface TestPartition {
 
 function discoverTestFiles(): string[] {
   const glob = new Bun.Glob(TEST_FILE_GLOB);
-  return Array.from(glob.scanSync({ cwd: process.cwd() })).filter(
-    (f) => !f.includes('node_modules'),
-  );
+  return Array.from(glob.scanSync({ cwd: process.cwd() })).filter((f) => !f.includes("node_modules"));
 }
 
 function partitionTestFiles(files: string[]): TestPartition {
@@ -176,11 +175,11 @@ function createTestChunks(partition: TestPartition, workerCount: number): string
 
 function spawnWorker(files: string[], index: number, baseArgs: string[]): WorkerHandle {
   const isE2eWorker = files.some((f) => f.includes(E2E_PATH_MARKER));
-  const workerArgs = isE2eWorker ? ['--timeout', String(E2E_TIMEOUT_MS), ...baseArgs] : baseArgs;
+  const workerArgs = isE2eWorker ? ["--timeout", String(E2E_TIMEOUT_MS), ...baseArgs] : baseArgs;
 
-  const proc = spawn(['bun', 'test', ...workerArgs, ...files], {
-    env: { ...process.env, BUN_TEST_WORKER: '1', BUN_TEST_WORKER_ID: String(index + 1) },
-    stdio: ['inherit', 'pipe', 'pipe'],
+  const proc = spawn(["bun", "test", ...workerArgs, ...files], {
+    env: { ...process.env, BUN_TEST_WORKER: "1", BUN_TEST_WORKER_ID: String(index + 1) },
+    stdio: ["inherit", "pipe", "pipe"],
   });
 
   return { proc, index, files };
@@ -190,8 +189,8 @@ async function collectWorkerResult(worker: WorkerHandle): Promise<WorkerResult> 
   const { proc, index, files } = worker;
 
   // With stdio: ['inherit', 'pipe', 'pipe'], stdout/stderr are ReadableStreams
-  const stdout = proc.stdout instanceof ReadableStream ? await new Response(proc.stdout).text() : '';
-  const stderr = proc.stderr instanceof ReadableStream ? await new Response(proc.stderr).text() : '';
+  const stdout = proc.stdout instanceof ReadableStream ? await new Response(proc.stdout).text() : "";
+  const stderr = proc.stderr instanceof ReadableStream ? await new Response(proc.stderr).text() : "";
   const exitCode = await proc.exited;
 
   return {
@@ -210,7 +209,7 @@ function printWorkerOutput(result: WorkerResult): void {
 
   // Failed worker - print full output
   console.log(`\nWorker ${result.index + 1}: FAILED`);
-  const output = [result.stdout, result.stderr].filter((s) => s.trim()).join('\n');
+  const output = [result.stdout, result.stderr].filter((s) => s.trim()).join("\n");
   if (output) {
     console.log(output);
   }
@@ -221,13 +220,13 @@ function printWorkerOutput(result: WorkerResult): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function hasFileArguments(args: string[]): boolean {
-  return args.some((arg) => !arg.startsWith('-') && !arg.startsWith('--'));
+  return args.some((arg) => !arg.startsWith("-") && !arg.startsWith("--"));
 }
 
 async function runPassthrough(args: string[]): Promise<never> {
-  const result = await spawn(['bun', 'test', ...args], {
-    env: { ...process.env, BUN_TEST_WORKER: '1' },
-    stdio: ['inherit', 'inherit', 'inherit'],
+  const result = await spawn(["bun", "test", ...args], {
+    env: { ...process.env, BUN_TEST_WORKER: "1" },
+    stdio: ["inherit", "inherit", "inherit"],
   }).exited;
   process.exit(result);
 }
@@ -244,7 +243,7 @@ async function main(): Promise<void> {
   // Only works in interactive TTY, not piped output
   if (process.stdout.isTTY) {
     // Move cursor up 3 lines, clear from cursor to end of screen
-    process.stdout.write('\x1b[3A\x1b[0J');
+    process.stdout.write("\x1b[3A\x1b[0J");
   }
 
   const args = process.argv.slice(2);
@@ -257,7 +256,7 @@ async function main(): Promise<void> {
   // Discover and partition test files
   const allTestFiles = discoverTestFiles();
   if (allTestFiles.length === 0) {
-    console.log('No test files found');
+    console.log("No test files found");
     process.exit(0);
   }
 
@@ -299,11 +298,13 @@ async function main(): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function printUsageAndExit(): never {
-  console.error(dedentString(`
+  console.error(
+    dedentString(`
     Usage:
       bun test:all    - much faster, doesn't accept arguments
       bun test:native - slower, but respects all 'bun test' arguments
-  `));
+  `),
+  );
   process.exit(1);
 }
 

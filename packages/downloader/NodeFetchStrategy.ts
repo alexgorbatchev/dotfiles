@@ -1,6 +1,6 @@
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { proxyFetch, type ProxyFetchConfig } from '@dotfiles/utils';
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { proxyFetch, type ProxyFetchConfig } from "@dotfiles/utils";
 import {
   ClientError,
   ForbiddenError,
@@ -9,20 +9,20 @@ import {
   NotFoundError,
   RateLimitError,
   ServerError,
-} from './errors';
-import type { IDownloadOptions } from './IDownloader';
-import type { IDownloadStrategy } from './IDownloadStrategy';
-import { nodeFetchStrategyLogMessages } from './log-messages';
+} from "./errors";
+import type { IDownloadOptions } from "./IDownloader";
+import type { IDownloadStrategy } from "./IDownloadStrategy";
+import { nodeFetchStrategyLogMessages } from "./log-messages";
 
 export class NodeFetchStrategy implements IDownloadStrategy {
-  public readonly name = 'node-fetch';
+  public readonly name = "node-fetch";
   private readonly logger: TsLogger;
   private readonly fileSystem: IFileSystem;
   private readonly proxyConfig: ProxyFetchConfig | undefined;
 
   constructor(parentLogger: TsLogger, fileSystem: IFileSystem, proxyConfig?: ProxyFetchConfig) {
-    this.logger = parentLogger.getSubLogger({ name: 'NodeFetchStrategy' });
-    this.logger.debug(nodeFetchStrategyLogMessages.constructed(fileSystem ? 'provided' : 'undefined'));
+    this.logger = parentLogger.getSubLogger({ name: "NodeFetchStrategy" });
+    this.logger.debug(nodeFetchStrategyLogMessages.constructed(fileSystem ? "provided" : "undefined"));
     this.fileSystem = fileSystem;
     this.proxyConfig = proxyConfig;
   }
@@ -30,7 +30,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
   public async isAvailable(): Promise<boolean> {
     // Node.js fetch is generally available in modern Node versions.
     // Bun also provides a compatible fetch.
-    return typeof fetch === 'function';
+    return typeof fetch === "function";
   }
 
   private getResponseHeaders(headers: Headers): Record<string, string | string[] | undefined> {
@@ -46,14 +46,14 @@ export class NodeFetchStrategy implements IDownloadStrategy {
   }
 
   public parseRateLimitReset(headers: Headers): number | undefined {
-    const rateLimitResetHeader = headers.get('X-RateLimit-Reset');
+    const rateLimitResetHeader = headers.get("X-RateLimit-Reset");
     if (rateLimitResetHeader) {
       const timestamp = parseInt(rateLimitResetHeader, 10);
       if (!Number.isNaN(timestamp)) {
         return timestamp * 1000; // Convert seconds to milliseconds
       }
     }
-    const retryAfterHeader = headers.get('Retry-After');
+    const retryAfterHeader = headers.get("Retry-After");
     if (retryAfterHeader) {
       const delaySeconds = parseInt(retryAfterHeader, 10);
       if (!Number.isNaN(delaySeconds)) {
@@ -72,7 +72,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     url: string,
     headers: Record<string, string> | undefined,
     timeout: number | undefined,
-  ): Promise<{ response: Response; timeoutId?: NodeJS.Timeout; }> {
+  ): Promise<{ response: Response; timeoutId?: NodeJS.Timeout }> {
     const controller = new AbortController();
     let timeoutId: NodeJS.Timeout | undefined;
 
@@ -83,10 +83,14 @@ export class NodeFetchStrategy implements IDownloadStrategy {
       }, timeout);
     }
 
-    const response = await proxyFetch(url, {
-      headers,
-      signal: controller.signal,
-    }, this.proxyConfig);
+    const response = await proxyFetch(
+      url,
+      {
+        headers,
+        signal: controller.signal,
+      },
+      this.proxyConfig,
+    );
 
     return { response, timeoutId };
   }
@@ -117,7 +121,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
       if (resetTimestamp) {
         throw new RateLimitError(
           this.logger,
-          'Forbidden: Rate limit likely exceeded',
+          "Forbidden: Rate limit likely exceeded",
           url,
           statusCode,
           statusText,
@@ -132,7 +136,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     if (statusCode === 429) {
       throw new RateLimitError(
         this.logger,
-        'Too Many Requests',
+        "Too Many Requests",
         url,
         statusCode,
         statusText,
@@ -167,7 +171,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     url: string,
     onProgress?: (bytesDownloaded: number, totalBytes: number | null) => void,
   ): Promise<Buffer> {
-    const contentLength = response.headers.get('content-length');
+    const contentLength = response.headers.get("content-length");
     let totalBytes: number | null = null;
     if (contentLength) {
       const parsedTotal = parseInt(contentLength, 10);
@@ -185,7 +189,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     const chunks: Buffer[] = [];
     const reader = response.body?.getReader();
     if (!reader) {
-      throw new NetworkError(this.logger, 'Response body is not readable.', url);
+      throw new NetworkError(this.logger, "Response body is not readable.", url);
     }
 
     while (true) {
@@ -250,7 +254,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
       }
 
       let message = `Failed to download ${url}`;
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         message = `Download timed out for ${url}`;
       } else if (error instanceof Error) {
         message = error.message;

@@ -1,11 +1,7 @@
-import {
-  type IDownloadContext,
-  type IInstallContext,
-  type Shell,
-} from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
+import { type IDownloadContext, type IInstallContext, type Shell } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor, IInstallOptions } from "@dotfiles/installer";
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -13,13 +9,13 @@ import {
   getBinaryPaths,
   setupBinariesFromDirectDownload,
   withInstallErrorHandling,
-} from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { detectVersionViaCli } from '@dotfiles/utils';
-import path from 'node:path';
-import { messages } from './log-messages';
-import type { CurlBinaryToolConfig } from './schemas';
-import type { CurlBinaryInstallResult, ICurlBinaryInstallMetadata } from './types';
+} from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { detectVersionViaCli } from "@dotfiles/utils";
+import path from "node:path";
+import { messages } from "./log-messages";
+import type { CurlBinaryToolConfig } from "./schemas";
+import type { CurlBinaryInstallResult, ICurlBinaryInstallMetadata } from "./types";
 
 /**
  * Installs a tool by downloading a standalone binary file from a URL.
@@ -56,13 +52,13 @@ export async function installFromCurlBinary(
   shellExecutor: Shell,
 ): Promise<CurlBinaryInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
-  const logger = parentLogger.getSubLogger({ name: 'installFromCurlBinary' });
+  const logger = parentLogger.getSubLogger({ name: "installFromCurlBinary" });
   logger.debug(messages.installing(toolName));
 
-  if (!toolConfig.installParams || !('url' in toolConfig.installParams)) {
+  if (!toolConfig.installParams || !("url" in toolConfig.installParams)) {
     return {
       success: false,
-      error: 'URL not specified in installParams',
+      error: "URL not specified in installParams",
     };
   }
 
@@ -117,7 +113,7 @@ export async function installFromCurlBinary(
     }
 
     const metadata: ICurlBinaryInstallMetadata = {
-      method: 'curl-binary',
+      method: "curl-binary",
       downloadUrl: url,
       binaryUrl: url,
     };
@@ -126,9 +122,9 @@ export async function installFromCurlBinary(
       success: true,
       binaryPaths,
       metadata,
-      version: detectedVersion || (toolConfig.version !== 'latest' ? toolConfig.version : undefined),
+      version: detectedVersion || (toolConfig.version !== "latest" ? toolConfig.version : undefined),
     };
   };
 
-  return withInstallErrorHandling('curl-binary', toolName, logger, operation);
+  return withInstallErrorHandling("curl-binary", toolName, logger, operation);
 }

@@ -1,6 +1,6 @@
-import type { ToolConfig } from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
-import type { IDashboardServices, ToolConfigsCache } from '../../types';
+import type { ToolConfig } from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
+import type { IDashboardServices, ToolConfigsCache } from "../../types";
 
 /** Cache for loaded tool configs to avoid re-parsing on every request */
 let toolConfigsCache: ToolConfigsCache | null = null;

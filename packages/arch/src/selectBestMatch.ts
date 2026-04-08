@@ -1,6 +1,6 @@
-import type { ISystemInfo } from '@dotfiles/core';
-import { getArchitecturePatterns } from './getArchitecturePatterns';
-import { getArchitectureRegex } from './getArchitectureRegex';
+import type { ISystemInfo } from "@dotfiles/core";
+import { getArchitecturePatterns } from "./getArchitecturePatterns";
+import { getArchitectureRegex } from "./getArchitectureRegex";
 
 /**
  * Patterns for non-binary files that should be excluded from asset selection.
@@ -64,7 +64,7 @@ function filterNonBinaryAssets(assetNames: string[]): string[] {
  * ```
  */
 function applySoftFilter(candidates: string[], pattern: string): string[] {
-  const regex = new RegExp(pattern, 'i');
+  const regex = new RegExp(pattern, "i");
   const filtered = candidates.filter((name) => regex.test(name.toLowerCase()));
   return filtered.length > 0 ? filtered : candidates;
 }
@@ -107,7 +107,7 @@ export function selectBestMatch(assetNames: string[], systemInfo: ISystemInfo): 
   let matches: string[];
 
   if (architectureRegex.systemPattern) {
-    const systemRegex = new RegExp(architectureRegex.systemPattern, 'i');
+    const systemRegex = new RegExp(architectureRegex.systemPattern, "i");
     matches = binaryAssets.filter((name) => systemRegex.test(name.toLowerCase()));
   } else {
     matches = [...binaryAssets];

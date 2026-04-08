@@ -1,18 +1,18 @@
-import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { installFromCurlBinary } from './installFromCurlBinary';
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor } from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { installFromCurlBinary } from "./installFromCurlBinary";
 import {
   type CurlBinaryInstallParams,
   curlBinaryInstallParamsSchema,
   type CurlBinaryToolConfig,
   curlBinaryToolConfigSchema,
-} from './schemas';
-import type { ICurlBinaryInstallMetadata } from './types';
+} from "./schemas";
+import type { ICurlBinaryInstallMetadata } from "./types";
 
-const PLUGIN_VERSION = '1.0.0';
+const PLUGIN_VERSION = "1.0.0";
 
 /**
  * Installer plugin for tools distributed as standalone binary files via direct URLs.
@@ -26,16 +26,14 @@ const PLUGIN_VERSION = '1.0.0';
  * It does not support version checking or automatic updates since the URLs
  * are typically static.
  */
-export class CurlBinaryInstallerPlugin implements
-  IInstallerPlugin<
-    'curl-binary',
-    CurlBinaryInstallParams,
-    CurlBinaryToolConfig,
-    ICurlBinaryInstallMetadata
-  >
-{
-  readonly method = 'curl-binary';
-  readonly displayName = 'Curl Binary Installer';
+export class CurlBinaryInstallerPlugin implements IInstallerPlugin<
+  "curl-binary",
+  CurlBinaryInstallParams,
+  CurlBinaryToolConfig,
+  ICurlBinaryInstallMetadata
+> {
+  readonly method = "curl-binary";
+  readonly displayName = "Curl Binary Installer";
   readonly version = PLUGIN_VERSION;
   readonly paramsSchema = curlBinaryInstallParamsSchema;
   readonly toolConfigSchema = curlBinaryToolConfigSchema;

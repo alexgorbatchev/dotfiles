@@ -1,5 +1,5 @@
-import { detectTagPrefix } from './detectTagPrefix';
-import { normalizeUserVersion } from './normalizeUserVersion';
+import { detectTagPrefix } from "./detectTagPrefix";
+import { normalizeUserVersion } from "./normalizeUserVersion";
 
 /**
  * Builds a corrected tag by combining the detected prefix from the latest tag

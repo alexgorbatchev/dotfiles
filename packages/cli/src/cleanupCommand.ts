@@ -1,26 +1,26 @@
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { IFileOperation, IFileRegistry } from '@dotfiles/registry/file';
-import { contractHomePath, exitCli } from '@dotfiles/utils';
-import { messages } from './log-messages';
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import type { IFileOperation, IFileRegistry } from "@dotfiles/registry/file";
+import { contractHomePath, exitCli } from "@dotfiles/utils";
+import { messages } from "./log-messages";
 import type {
   ICleanupCommandSpecificOptions,
   ICommandCompletionMeta,
   IGlobalProgram,
   IGlobalProgramOptions,
   IServices,
-} from './types';
+} from "./types";
 
 /**
  * Completion metadata for the cleanup command.
  */
 export const CLEANUP_COMMAND_COMPLETION: ICommandCompletionMeta = {
-  name: 'cleanup',
-  description: 'Clean up generated files and registry entries',
+  name: "cleanup",
+  description: "Clean up generated files and registry entries",
   options: [
-    { flag: '--tool', description: 'Cleanup files for specific tool', hasArg: true, argPlaceholder: '<name>' },
-    { flag: '--type', description: 'Cleanup files of specific type', hasArg: true, argPlaceholder: '<type>' },
-    { flag: '--all', description: 'Cleanup all tracked files' },
+    { flag: "--tool", description: "Cleanup files for specific tool", hasArg: true, argPlaceholder: "<name>" },
+    { flag: "--type", description: "Cleanup files of specific type", hasArg: true, argPlaceholder: "<type>" },
+    { flag: "--all", description: "Cleanup all tracked files" },
   ],
 };
 
@@ -77,11 +77,11 @@ async function cleanupSpecificType(
   dryRun: boolean,
 ): Promise<void> {
   logger.info(messages.cleanupTypeFiles(fileType));
-  const operations = await fileRegistry.getOperations({ fileType: fileType as IFileOperation['fileType'] });
+  const operations = await fileRegistry.getOperations({ fileType: fileType as IFileOperation["fileType"] });
 
   for (const operation of operations) {
     const fileState = await fileRegistry.getFileState(operation.filePath);
-    if (fileState && fileState.lastOperation !== 'rm') {
+    if (fileState && fileState.lastOperation !== "rm") {
       await removeFile(logger, fs, operation.filePath, homeDir, dryRun);
     }
   }
@@ -105,8 +105,8 @@ async function registryBasedCleanup(
   } else {
     logger.warn(
       messages.configParameterIgnored(
-        'cleanup options',
-        'Registry-based cleanup requires --all, --tool <name>, or --type <type> option',
+        "cleanup options",
+        "Registry-based cleanup requires --all, --tool <name>, or --type <type> option",
       ),
     );
   }
@@ -131,11 +131,10 @@ async function cleanupToolFiles(
   logger.trace(messages.cleanupFoundFiles(filteredStates.length, toolName, fileType));
 
   for (const fileState of filteredStates) {
-    if (fileState.lastOperation !== 'rm') {
+    if (fileState.lastOperation !== "rm") {
       // For symlinks, remove the symlink (targetPath), not the original file (filePath)
-      const pathToRemove = fileState.fileType === 'symlink' && fileState.targetPath
-        ? fileState.targetPath
-        : fileState.filePath;
+      const pathToRemove =
+        fileState.fileType === "symlink" && fileState.targetPath ? fileState.targetPath : fileState.filePath;
       await removeFile(logger, fs, pathToRemove, homeDir, dryRun || false);
     }
   }
@@ -180,7 +179,7 @@ async function cleanupActionLogic(
 
     logger.trace(messages.cleanupProcessFinished(dryRun));
   } catch (error) {
-    logger.error(messages.commandExecutionFailed('cleanup', 1), error);
+    logger.error(messages.commandExecutionFailed("cleanup", 1), error);
     exitCli(1);
   }
 }
@@ -190,13 +189,13 @@ export function registerCleanupCommand(
   program: IGlobalProgram,
   servicesFactory: () => Promise<IServices>,
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'registerCleanupCommand' });
+  const logger = parentLogger.getSubLogger({ name: "registerCleanupCommand" });
   program
-    .command('cleanup')
-    .description('Remove all generated artifacts, including shims, shell configurations, and the .generated directory.')
-    .option('--tool <name>', 'Remove files for specific tool only (registry-based)')
-    .option('--type <type>', 'Remove files of specific type only (registry-based)')
-    .option('--all', 'Remove all tracked files (registry-based)')
+    .command("cleanup")
+    .description("Remove all generated artifacts, including shims, shell configurations, and the .generated directory.")
+    .option("--tool <name>", "Remove files for specific tool only (registry-based)")
+    .option("--type <type>", "Remove files of specific type only (registry-based)")
+    .option("--all", "Remove all tracked files (registry-based)")
     .action(async (options: ICleanupCommandSpecificOptions) => {
       const combinedOptions: ICleanupCommandSpecificOptions & IGlobalProgramOptions = { ...options, ...program.opts() };
       const services = await servicesFactory();

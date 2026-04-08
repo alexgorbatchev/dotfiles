@@ -16,11 +16,11 @@ import type {
   ShellConfiguratorCallback,
   ToolConfig,
   ToolConfigUpdateCheck,
-} from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
-import { messages } from './log-messages';
-import { ShellConfigurator } from './ShellConfigurator';
-import type { InternalShellConfigs, IShellStorage, ShellTypeKey } from './types';
+} from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
+import { messages } from "./log-messages";
+import { ShellConfigurator } from "./ShellConfigurator";
+import type { InternalShellConfigs, IShellStorage, ShellTypeKey } from "./types";
 
 export interface IBinaryConfig {
   name: string;
@@ -56,7 +56,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   private logger: TsLogger;
   public toolName: string;
   public binaries: IBinaryConfig[] = [];
-  public versionNum: string = 'latest';
+  public versionNum: string = "latest";
   public currentInstallationMethod?: string;
   public currentInstallParams?: InstallParams | Record<string, unknown>;
   private dependencies: string[] = [];
@@ -71,8 +71,8 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   };
   private context?: IToolConfigContext;
 
-  public symlinkPairs: { source: string; target: string; }[] = [];
-  public copyPairs: { source: string; target: string; }[] = [];
+  public symlinkPairs: { source: string; target: string }[] = [];
+  public copyPairs: { source: string; target: string }[] = [];
   private updateCheckConfig?: ToolConfigUpdateCheck;
   private platformConfigEntries: PlatformConfigEntry[] = [];
 
@@ -142,18 +142,18 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     if (!this.currentInstallParams) {
       this.logger.warn(
         messages.configurationFieldIgnored(
-          'hook',
+          "hook",
           `hook() called for tool "${this.toolName}" before install(). Hook will not be set as install() was not called first.`,
         ),
       );
       return this;
     }
 
-    const hooksObj = (this.currentInstallParams['hooks'] as Record<string, AsyncInstallHook<never>[]>) || {};
+    const hooksObj = (this.currentInstallParams["hooks"] as Record<string, AsyncInstallHook<never>[]>) || {};
     const eventHooks: AsyncInstallHook<never>[] = hooksObj[event] || [];
     eventHooks.push(handler);
     hooksObj[event] = eventHooks;
-    this.currentInstallParams['hooks'] = hooksObj;
+    this.currentInstallParams["hooks"] = hooksObj;
 
     return this;
   }
@@ -171,7 +171,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   zsh(callback: ShellConfiguratorCallback): this;
   zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
   zsh(callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback): this | Promise<this> {
-    return this.configureShell('zsh', callback);
+    return this.configureShell("zsh", callback);
   }
 
   /**
@@ -187,7 +187,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   bash(callback: ShellConfiguratorCallback): this;
   bash(callback: ShellConfiguratorAsyncCallback): Promise<this>;
   bash(callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback): this | Promise<this> {
-    return this.configureShell('bash', callback);
+    return this.configureShell("bash", callback);
   }
 
   /**
@@ -203,7 +203,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   powershell(callback: ShellConfiguratorCallback): this;
   powershell(callback: ShellConfiguratorAsyncCallback): Promise<this>;
   powershell(callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback): this | Promise<this> {
-    return this.configureShell('powershell', callback);
+    return this.configureShell("powershell", callback);
   }
 
   /**
@@ -215,7 +215,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    * @returns A ShellConfigs object if any shell has configuration, undefined otherwise.
    */
   private buildShellConfigs(): ShellConfigs | undefined {
-    const shellTypes = ['zsh', 'bash', 'powershell'] as const;
+    const shellTypes = ["zsh", "bash", "powershell"] as const;
     const result: ShellConfigs = {};
     let hasAnyConfig = false;
 
@@ -228,8 +228,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       const hasPaths = config.paths.length > 0;
       const hasCompletions = config.completions !== undefined;
 
-      const hasAnyShellConfig = hasScripts || hasAliases || hasEnv || hasFunctions || hasPaths ||
-        hasCompletions;
+      const hasAnyShellConfig = hasScripts || hasAliases || hasEnv || hasFunctions || hasPaths || hasCompletions;
 
       if (hasAnyShellConfig) {
         result[shellType] = {
@@ -289,7 +288,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     for (const rawName of binaryNames) {
       const trimmedName = rawName.trim();
       if (trimmedName.length === 0) {
-        const invalidDependencyWarning = messages.configurationFieldInvalid('dependency', rawName, 'non-empty string');
+        const invalidDependencyWarning = messages.configurationFieldInvalid("dependency", rawName, "non-empty string");
         this.logger.warn(invalidDependencyWarning);
         continue;
       }
@@ -322,20 +321,20 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     platforms: Platform,
     architecturesOrConfigure:
       | Architecture
-      | ((install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, 'bin'>),
-    configureCallback?: (install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, 'bin'>,
+      | ((install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, "bin">),
+    configureCallback?: (install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, "bin">,
   ): this {
     let targetArchitectures: Architecture | undefined;
-    let configureFn: (install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, 'bin'>;
+    let configureFn: (install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, "bin">;
 
-    if (typeof architecturesOrConfigure === 'function') {
+    if (typeof architecturesOrConfigure === "function") {
       configureFn = architecturesOrConfigure;
       targetArchitectures = undefined; // Applies to all architectures for the given platforms
     } else {
       targetArchitectures = architecturesOrConfigure;
-      if (typeof configureCallback !== 'function') {
+      if (typeof configureCallback !== "function") {
         const missingCallbackError = messages.configurationFieldRequired(
-          'configure callback',
+          "configure callback",
           `platform() called for tool "${this.toolName}" with architectures but without a configure callback`,
         );
         this.logger.error(missingCallbackError);
@@ -421,7 +420,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    * @param config - A {@link @dotfiles/core#ToolConfigUpdateCheck} object.
    * @returns The `IToolConfigBuilder` instance for chaining.
    */
-  updateCheck(config: ToolConfig['updateCheck']): this {
+  updateCheck(config: ToolConfig["updateCheck"]): this {
     this.updateCheckConfig = config;
     return this;
   }
@@ -456,9 +455,8 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   private buildBaseConfig() {
     return {
       name: this.toolName,
-      binaries: this.binaries.length > 0
-        ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b))
-        : undefined,
+      binaries:
+        this.binaries.length > 0 ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b)) : undefined,
       version: this.versionNum,
       disabled: this.isDisabled ? true : undefined,
       hostname: this.hostnamePattern,
@@ -470,8 +468,8 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       platformConfigs: this.isPlatformScope
         ? undefined
         : this.platformConfigEntries.length > 0
-        ? this.platformConfigEntries
-        : undefined,
+          ? this.platformConfigEntries
+          : undefined,
     };
   }
 
@@ -486,10 +484,9 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   private buildPlatformConfig(): PlatformConfig {
     const config: Record<string, unknown> = {
-      binaries: this.binaries.length > 0
-        ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b))
-        : undefined,
-      version: this.versionNum !== 'latest' ? this.versionNum : undefined,
+      binaries:
+        this.binaries.length > 0 ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b)) : undefined,
+      version: this.versionNum !== "latest" ? this.versionNum : undefined,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
       copies: this.copyPairs.length > 0 ? this.copyPairs : undefined,
@@ -499,8 +496,8 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
 
     // Add installation method and params if they exist
     if (this.hasInstallationMethod()) {
-      config['installationMethod'] = this.currentInstallationMethod;
-      config['installParams'] = this.currentInstallParams;
+      config["installationMethod"] = this.currentInstallationMethod;
+      config["installParams"] = this.currentInstallParams;
     }
 
     // Remove undefined values to keep the config clean
@@ -552,7 +549,8 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   private validateConfigurationOnly(baseConfig: ReturnType<typeof this.buildBaseConfig>): void {
     const finalBinaries = baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [];
-    const hasContent = finalBinaries.length > 0 ||
+    const hasContent =
+      finalBinaries.length > 0 ||
       baseConfig.shellConfigs ||
       baseConfig.symlinks ||
       baseConfig.copies ||
@@ -560,7 +558,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
 
     if (!hasContent) {
       const requiredConfigError = messages.configurationFieldRequired(
-        'tool definition',
+        "tool definition",
         `Tool "${baseConfig.name}" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs`,
       );
       this.logger.error(requiredConfigError);
@@ -582,7 +580,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     return {
       ...baseConfig,
       binaries: baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [],
-      installationMethod: 'manual',
+      installationMethod: "manual",
       installParams: {},
     } as unknown as ToolConfig;
   }
@@ -595,12 +593,8 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    * @param isPlatformScope - Whether this builder is used for platform-specific configuration.
    *   When true, the builder will not include platformConfigs in the output to avoid circular references.
    */
-  constructor(
-    parentLogger: TsLogger,
-    toolName: string,
-    isPlatformScope = false,
-  ) {
-    this.logger = parentLogger.getSubLogger({ name: 'IToolConfigBuilder' });
+  constructor(parentLogger: TsLogger, toolName: string, isPlatformScope = false) {
+    this.logger = parentLogger.getSubLogger({ name: "IToolConfigBuilder" });
     this.toolName = toolName;
     this.isPlatformScope = isPlatformScope;
   }
@@ -643,11 +637,11 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       return false;
     }
 
-    if (typeof value !== 'object' && typeof value !== 'function') {
+    if (typeof value !== "object" && typeof value !== "function") {
       return false;
     }
 
     const maybePromise = value as PromiseLike<unknown>;
-    return typeof maybePromise.then === 'function';
+    return typeof maybePromise.then === "function";
   }
 }

@@ -1,12 +1,12 @@
-import type { IBinaryConfig, IInstallContext, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { getAllFilesRecursively } from '@dotfiles/utils';
-import { minimatch } from 'minimatch';
-import path from 'node:path';
-import { createBinaryEntrypoint } from './createBinaryEntrypoint';
-import { messages } from './log-messages';
-import { normalizeBinaries } from './normalizeBinaries';
+import type { IBinaryConfig, IInstallContext, ToolConfig } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { getAllFilesRecursively } from "@dotfiles/utils";
+import { minimatch } from "minimatch";
+import path from "node:path";
+import { createBinaryEntrypoint } from "./createBinaryEntrypoint";
+import { messages } from "./log-messages";
+import { normalizeBinaries } from "./normalizeBinaries";
 
 /**
  * Sets up binaries from an extracted archive by finding them using patterns and creating symlinks.
@@ -36,8 +36,8 @@ export async function setupBinariesFromArchive(
   extractDir: string,
   parentLogger: TsLogger,
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'setupBinariesFromArchive' });
-  const binariesDir = path.join(context.projectConfig.paths.generatedDir, 'binaries');
+  const logger = parentLogger.getSubLogger({ name: "setupBinariesFromArchive" });
+  const binariesDir = path.join(context.projectConfig.paths.generatedDir, "binaries");
   const binaryConfigs = normalizeBinaries(toolConfig.binaries);
 
   // Extract subdirectory name from context.stagingDir
@@ -60,7 +60,7 @@ async function setupBinariesUsingPatterns(
   binariesDir: string,
   parentLogger: TsLogger,
 ): Promise<boolean> {
-  const logger = parentLogger.getSubLogger({ name: 'setupBinariesUsingPatterns' });
+  const logger = parentLogger.getSubLogger({ name: "setupBinariesUsingPatterns" });
   let foundAnyBinary = false;
 
   for (const binaryConfig of binaryConfigs) {
@@ -75,7 +75,7 @@ async function setupBinariesUsingPatterns(
       // Show extracted files to help user find the correct binary
       const tree = await generateDirectoryTree(fs, extractDir);
       if (tree.length > 0) {
-        const treeString = tree.join('\n');
+        const treeString = tree.join("\n");
         logger.error(messages.binarySetupService.extractedFilesTree(extractDir, treeString));
       }
 
@@ -99,7 +99,7 @@ async function setupBinariesUsingPatterns(
 async function generateDirectoryTree(
   fs: IFileSystem,
   dirPath: string,
-  prefix = '',
+  prefix = "",
   maxDepth = 3,
   currentDepth = 0,
 ): Promise<string[]> {
@@ -124,8 +124,8 @@ async function generateDirectoryTree(
 
     const isLastEntry = i === sortedEntries.length - 1;
     const entryPath = path.join(dirPath, entry);
-    const connector = isLastEntry ? '└── ' : '├── ';
-    const childPrefix = prefix + (isLastEntry ? '    ' : '│   ');
+    const connector = isLastEntry ? "└── " : "├── ";
+    const childPrefix = prefix + (isLastEntry ? "    " : "│   ");
 
     const entryLines = await formatDirectoryEntry(
       fs,
@@ -196,7 +196,7 @@ export async function findBinaryUsingPattern(
   binaryName: string,
   parentLogger: TsLogger,
 ): Promise<string | null> {
-  const logger = parentLogger.getSubLogger({ name: 'findBinaryUsingPattern' });
+  const logger = parentLogger.getSubLogger({ name: "findBinaryUsingPattern" });
   logger.debug(messages.binarySetupService.searchingWithPattern(pattern, extractDir));
 
   const allFiles = await getAllFilesRecursively(fs, extractDir, extractDir);

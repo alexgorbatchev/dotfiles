@@ -1,6 +1,6 @@
-import type { ILogObj } from 'tslog';
-import type { LogLevelValue } from './LogLevel';
-import type { SafeLogger } from './SafeLogger';
+import type { ILogObj } from "tslog";
+import type { LogLevelValue } from "./LogLevel";
+import type { SafeLogger } from "./SafeLogger";
 
 /**
  * A branded string type that represents a message that is safe for logging.
@@ -17,7 +17,7 @@ import type { SafeLogger } from './SafeLogger';
  * @see {@link isSafeLogMessage}
  */
 export type SafeLogMessage = string & {
-  readonly __brand: 'SafeLogMessage';
+  readonly __brand: "SafeLogMessage";
 };
 
 /**

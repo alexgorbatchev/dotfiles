@@ -1,10 +1,10 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   startingInstallation: (toolName: string) => createSafeLogMessage(`Starting installation: ${toolName}`),
   fetchLatest: (repo: string) => createSafeLogMessage(`Getting latest release for ${repo}`),
   fetchByTag: (version: string, repo: string) => createSafeLogMessage(`Fetching release ${version} for ${repo}`),
-  assetSelectorCustom: () => createSafeLogMessage('Using custom asset selector'),
+  assetSelectorCustom: () => createSafeLogMessage("Using custom asset selector"),
   assetPatternMatch: (pattern: string) => createSafeLogMessage(`Finding asset matching pattern: ${pattern}`),
   assetPlatformMatch: (platform: string, arch: string) =>
     createSafeLogMessage(`Selecting asset for platform ${platform} and architecture ${arch}`),
@@ -20,7 +20,7 @@ export const messages = {
   versionResolutionException: (toolName: string) =>
     createSafeLogMessage(`Exception while resolving version for ${toolName}`),
   updateCheckFailed: (toolName: string) => createSafeLogMessage(`Failed to check update for ${toolName}`),
-  availableReleaseTags: () => createSafeLogMessage('Available release tags:'),
+  availableReleaseTags: () => createSafeLogMessage("Available release tags:"),
   releaseTagItem: (tag: string) => createSafeLogMessage(`  - ${tag}`),
-  noReleaseTagsAvailable: () => createSafeLogMessage('No release tags available for this repository'),
+  noReleaseTagsAvailable: () => createSafeLogMessage("No release tags available for this repository"),
 } as const satisfies SafeLogMessageMap;

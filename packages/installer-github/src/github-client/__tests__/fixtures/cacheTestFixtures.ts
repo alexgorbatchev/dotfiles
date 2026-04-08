@@ -1,17 +1,17 @@
-import type { IGitHubRelease, IGitHubReleaseAsset } from '@dotfiles/core';
+import type { IGitHubRelease, IGitHubReleaseAsset } from "@dotfiles/core";
 
 /**
  * Mock GitHub release asset
  */
 export const FIXTURE_RELEASE_ASSET: IGitHubReleaseAsset = {
-  name: 'test-asset-v1.0.0-darwin-amd64.tar.gz',
-  browser_download_url: 'https://example.com/download/test-asset-v1.0.0-darwin-amd64.tar.gz',
+  name: "test-asset-v1.0.0-darwin-amd64.tar.gz",
+  browser_download_url: "https://example.com/download/test-asset-v1.0.0-darwin-amd64.tar.gz",
   size: 1024,
-  content_type: 'application/gzip',
-  state: 'uploaded',
+  content_type: "application/gzip",
+  state: "uploaded",
   download_count: 42,
-  created_at: '2025-01-01T00:00:00Z',
-  updated_at: '2025-01-01T00:00:00Z',
+  created_at: "2025-01-01T00:00:00Z",
+  updated_at: "2025-01-01T00:00:00Z",
 };
 
 /**
@@ -19,15 +19,15 @@ export const FIXTURE_RELEASE_ASSET: IGitHubReleaseAsset = {
  */
 export const FIXTURE_RELEASE: IGitHubRelease = {
   id: 12345,
-  tag_name: 'v1.0.0',
-  name: 'Release v1.0.0',
+  tag_name: "v1.0.0",
+  name: "Release v1.0.0",
   draft: false,
   prerelease: false,
-  created_at: '2025-01-01T00:00:00Z',
-  published_at: '2025-01-01T00:00:00Z',
+  created_at: "2025-01-01T00:00:00Z",
+  published_at: "2025-01-01T00:00:00Z",
   assets: [FIXTURE_RELEASE_ASSET],
-  body: 'Test release notes',
-  html_url: 'https://github.com/test-owner/test-repo/releases/tag/v1.0.0',
+  body: "Test release notes",
+  html_url: "https://github.com/test-owner/test-repo/releases/tag/v1.0.0",
 };
 
 /**
@@ -35,21 +35,21 @@ export const FIXTURE_RELEASE: IGitHubRelease = {
  */
 export const FIXTURE_PRERELEASE: IGitHubRelease = {
   id: 12346,
-  tag_name: 'v1.1.0-beta.1',
-  name: 'Beta Release v1.1.0-beta.1',
+  tag_name: "v1.1.0-beta.1",
+  name: "Beta Release v1.1.0-beta.1",
   draft: false,
   prerelease: true,
-  created_at: '2025-01-15T00:00:00Z',
-  published_at: '2025-01-15T00:00:00Z',
+  created_at: "2025-01-15T00:00:00Z",
+  published_at: "2025-01-15T00:00:00Z",
   assets: [
     {
       ...FIXTURE_RELEASE_ASSET,
-      name: 'test-asset-v1.1.0-beta.1-darwin-amd64.tar.gz',
-      browser_download_url: 'https://example.com/download/test-asset-v1.1.0-beta.1-darwin-amd64.tar.gz',
+      name: "test-asset-v1.1.0-beta.1-darwin-amd64.tar.gz",
+      browser_download_url: "https://example.com/download/test-asset-v1.1.0-beta.1-darwin-amd64.tar.gz",
     },
   ],
-  body: 'Beta release notes',
-  html_url: 'https://github.com/test-owner/test-repo/releases/tag/v1.1.0-beta.1',
+  body: "Beta release notes",
+  html_url: "https://github.com/test-owner/test-repo/releases/tag/v1.1.0-beta.1",
 };
 
 /**
@@ -60,20 +60,20 @@ export const FIXTURE_RELEASES_LIST: IGitHubRelease[] = [
   FIXTURE_PRERELEASE,
   {
     id: 12347,
-    tag_name: 'v0.9.0',
-    name: 'Release v0.9.0',
+    tag_name: "v0.9.0",
+    name: "Release v0.9.0",
     draft: false,
     prerelease: false,
-    created_at: '2024-12-01T00:00:00Z',
-    published_at: '2024-12-01T00:00:00Z',
+    created_at: "2024-12-01T00:00:00Z",
+    published_at: "2024-12-01T00:00:00Z",
     assets: [
       {
         ...FIXTURE_RELEASE_ASSET,
-        name: 'test-asset-v0.9.0-darwin-amd64.tar.gz',
-        browser_download_url: 'https://example.com/download/test-asset-v0.9.0-darwin-amd64.tar.gz',
+        name: "test-asset-v0.9.0-darwin-amd64.tar.gz",
+        browser_download_url: "https://example.com/download/test-asset-v0.9.0-darwin-amd64.tar.gz",
       },
     ],
-    body: 'Previous release notes',
-    html_url: 'https://github.com/test-owner/test-repo/releases/tag/v0.9.0',
+    body: "Previous release notes",
+    html_url: "https://github.com/test-owner/test-repo/releases/tag/v0.9.0",
   },
 ];

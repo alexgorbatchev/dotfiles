@@ -1,5 +1,5 @@
-import type { ArchiveFormat, IExtractOptions, IExtractResult } from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
+import type { ArchiveFormat, IExtractOptions, IExtractResult } from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
 
 /**
  * Interface for a service that extracts various archive formats.

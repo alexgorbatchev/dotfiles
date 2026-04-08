@@ -1,7 +1,7 @@
 export class BuildError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message, { cause });
-    this.name = 'BuildError';
+    this.name = "BuildError";
   }
 }
 
@@ -13,8 +13,8 @@ function getRootCause(error: unknown): unknown {
   let current: unknown = error;
   while (
     current &&
-    typeof current === 'object' &&
-    'cause' in current &&
+    typeof current === "object" &&
+    "cause" in current &&
     current.cause !== undefined &&
     current.cause !== null
   ) {
@@ -44,7 +44,7 @@ export async function handleBuildError(
     await operation();
   } catch (error: unknown) {
     if (error instanceof BuildError) {
-      console.error('Build failed');
+      console.error("Build failed");
       console.error(`Reason: ${error.message}`);
       const rootCause: unknown = getRootCause(error);
       if (rootCause !== error) {
@@ -54,7 +54,7 @@ export async function handleBuildError(
       return;
     } else {
       const rootCause: unknown = getRootCause(error);
-      console.error('Build failed unexpectedly');
+      console.error("Build failed unexpectedly");
       logErrorDetails(rootCause);
       process.exitCode = 1;
     }

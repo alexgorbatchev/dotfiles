@@ -1,9 +1,9 @@
-import type { ICache } from '@dotfiles/downloader';
-import type { TsLogger } from '@dotfiles/logger';
-import { DEFAULT_README_CACHE_TTL } from './constants';
-import type { IReadmeCache } from './IReadmeService';
-import { messages } from './log-messages';
-import type { IReadmeContent } from './types';
+import type { ICache } from "@dotfiles/downloader";
+import type { TsLogger } from "@dotfiles/logger";
+import { DEFAULT_README_CACHE_TTL } from "./constants";
+import type { IReadmeCache } from "./IReadmeService";
+import { messages } from "./log-messages";
+import type { IReadmeContent } from "./types";
 
 /**
  * Cache implementation specifically for README content.
@@ -25,7 +25,7 @@ export class ReadmeCache implements IReadmeCache {
    * @param defaultTtl - Default time-to-live in milliseconds for cached READMEs.
    */
   constructor(parentLogger: TsLogger, cache: ICache, defaultTtl: number = DEFAULT_README_CACHE_TTL) {
-    this.logger = parentLogger.getSubLogger({ name: 'ReadmeCache' });
+    this.logger = parentLogger.getSubLogger({ name: "ReadmeCache" });
     this.cache = cache;
     this.defaultTtl = defaultTtl;
   }
@@ -41,7 +41,7 @@ export class ReadmeCache implements IReadmeCache {
       }
       return content;
     } catch (error) {
-      this.logger.error(messages.cacheError('get', cacheKey, error instanceof Error ? error.message : String(error)));
+      this.logger.error(messages.cacheError("get", cacheKey, error instanceof Error ? error.message : String(error)));
       return null;
     }
   }
@@ -54,7 +54,7 @@ export class ReadmeCache implements IReadmeCache {
       await this.cache.set(cacheKey, content, ttlMs);
       this.logger.debug(messages.readmeCached(content.owner, content.repo, content.version, ttlMs));
     } catch (error) {
-      this.logger.error(messages.cacheError('set', cacheKey, error instanceof Error ? error.message : String(error)));
+      this.logger.error(messages.cacheError("set", cacheKey, error instanceof Error ? error.message : String(error)));
     }
   }
 
@@ -65,7 +65,7 @@ export class ReadmeCache implements IReadmeCache {
     try {
       return await this.cache.has(cacheKey);
     } catch (error) {
-      this.logger.error(messages.cacheError('has', cacheKey, error instanceof Error ? error.message : String(error)));
+      this.logger.error(messages.cacheError("has", cacheKey, error instanceof Error ? error.message : String(error)));
       return false;
     }
   }
@@ -78,7 +78,7 @@ export class ReadmeCache implements IReadmeCache {
       await this.cache.delete(cacheKey);
     } catch (error) {
       this.logger.error(
-        messages.cacheError('delete', cacheKey, error instanceof Error ? error.message : String(error)),
+        messages.cacheError("delete", cacheKey, error instanceof Error ? error.message : String(error)),
       );
     }
   }
@@ -93,7 +93,7 @@ export class ReadmeCache implements IReadmeCache {
       this.logger.debug(messages.cacheCleared(0)); // Cache doesn't return count
     } catch (error) {
       this.logger.error(
-        messages.cacheError('clearExpired', 'all', error instanceof Error ? error.message : String(error)),
+        messages.cacheError("clearExpired", "all", error instanceof Error ? error.message : String(error)),
       );
     }
   }

@@ -6,16 +6,16 @@
  * - The process exits cleanly after hook execution (no hangs)
  * - Shell command output is not duplicated (logged via logger only)
  */
-import { Architecture, Platform } from '@dotfiles/core';
-import { beforeAll, describe, expect, it } from 'bun:test';
-import path from 'node:path';
-import { HOOK_TEST_TOOL, withMockServer } from './helpers/mock-server';
-import { TestHarness } from './helpers/TestHarness';
+import { Architecture, Platform } from "@dotfiles/core";
+import { beforeAll, describe, expect, it } from "bun:test";
+import path from "node:path";
+import { HOOK_TEST_TOOL, withMockServer } from "./helpers/mock-server";
+import { TestHarness } from "./helpers/TestHarness";
 
 // oxlint-disable-next-line import/no-unassigned-import
-import '@dotfiles/testing-helpers';
+import "@dotfiles/testing-helpers";
 
-describe('E2E: after-install hooks', () => {
+describe("E2E: after-install hooks", () => {
   withMockServer((b) => b.withGitHubTool(HOOK_TEST_TOOL));
 
   const platformConfigs: ReadonlyArray<{
@@ -23,22 +23,22 @@ describe('E2E: after-install hooks', () => {
     architecture: Architecture;
     name: string;
   }> = [
-    { platform: Platform.MacOS, architecture: Architecture.Arm64, name: 'macOS ARM64' },
-    { platform: Platform.Linux, architecture: Architecture.X86_64, name: 'Linux x86_64' },
+    { platform: Platform.MacOS, architecture: Architecture.Arm64, name: "macOS ARM64" },
+    { platform: Platform.Linux, architecture: Architecture.X86_64, name: "Linux x86_64" },
   ];
 
   for (const config of platformConfigs) {
     describe(`${config.name}`, () => {
       const harness: TestHarness = new TestHarness({
         testDir: import.meta.dir,
-        configPath: 'fixtures/main/config.ts',
+        configPath: "fixtures/main/config.ts",
         platform: config.platform,
         architecture: config.architecture,
       });
 
-      const toolDir = path.join(harness.generatedDir, 'binaries', 'hook-test-tool');
-      const currentDir = path.join(toolDir, 'current');
-      const binaryPath = path.join(currentDir, 'hook-test-tool');
+      const toolDir = path.join(harness.generatedDir, "binaries", "hook-test-tool");
+      const currentDir = path.join(toolDir, "current");
+      const binaryPath = path.join(currentDir, "hook-test-tool");
 
       beforeAll(async () => {
         await harness.clean();
@@ -46,19 +46,19 @@ describe('E2E: after-install hooks', () => {
         expect(generateResult.code).toBe(0);
       });
 
-      describe('after-install hooks', () => {
+      describe("after-install hooks", () => {
         beforeAll(async () => {
           // Clean up binaries directory to ensure fresh install
           await harness.cleanBinaries();
         });
 
-        it('should install tool with after-install hook and exit cleanly', async () => {
+        it("should install tool with after-install hook and exit cleanly", async () => {
           // Verify the binary does NOT exist before install
           expect(await harness.fileExists(binaryPath)).toBe(false);
 
           // Run install command - this should NOT hang
           // If the process hangs, the test will timeout
-          const result = await harness.install(['hook-test-tool']);
+          const result = await harness.install(["hook-test-tool"]);
 
           // Verify the install completed successfully
           expect(result.code).toBe(0);
@@ -70,11 +70,11 @@ describe('E2E: after-install hooks', () => {
           expect(await harness.isExecutable(binaryPath)).toBe(true);
         });
 
-        it('should log stdout and stderr with proper prefixes', async () => {
+        it("should log stdout and stderr with proper prefixes", async () => {
           // Clean and reinstall to capture fresh output
           await harness.cleanBinaries();
 
-          const result = await harness.install(['hook-test-tool']);
+          const result = await harness.install(["hook-test-tool"]);
           expect(result.code).toBe(0);
 
           expect(result.stdout.trim()).toMatchLooseInlineSnapshot`

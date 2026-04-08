@@ -1,26 +1,26 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import { Architecture, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import type { TrackedFileSystem } from '@dotfiles/registry/file';
-import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
-import type { IShimGenerator } from '@dotfiles/shim-generator';
+import type { ProjectConfig } from "@dotfiles/config";
+import { Architecture, type ISystemInfo, Platform, type ToolConfig } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import type { TrackedFileSystem } from "@dotfiles/registry/file";
+import type { ICompletionGenerator, IShellInitGenerator } from "@dotfiles/shell-init-generator";
+import type { IShimGenerator } from "@dotfiles/shim-generator";
 import type {
   CopyOperationResult,
   ICopyGenerator,
   ISymlinkGenerator,
   SymlinkOperationResult,
-} from '@dotfiles/symlink-generator';
+} from "@dotfiles/symlink-generator";
 import {
   createMockFileRegistry,
   createMockProjectConfig,
   createTestDirectories,
   type ITestDirectories,
-} from '@dotfiles/testing-helpers';
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import path from 'node:path';
-import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
+} from "@dotfiles/testing-helpers";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import path from "node:path";
+import { GeneratorOrchestrator } from "../GeneratorOrchestrator";
 
 function createMockTrackedFileSystem(fs: IFileSystem): TrackedFileSystem {
   const mockTrackedFs: TrackedFileSystem = {
@@ -31,7 +31,7 @@ function createMockTrackedFileSystem(fs: IFileSystem): TrackedFileSystem {
   return mockTrackedFs;
 }
 
-describe('GeneratorOrchestrator - Orphaned Tool Cleanup', () => {
+describe("GeneratorOrchestrator - Orphaned Tool Cleanup", () => {
   let mockShimGenerator: IShimGenerator;
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
@@ -58,7 +58,7 @@ describe('GeneratorOrchestrator - Orphaned Tool Cleanup', () => {
         Promise.resolve({
           files: new Map(),
           primaryPath: null,
-        })
+        }),
       ),
     };
     mockSymlinkGenerator = {
@@ -71,39 +71,39 @@ describe('GeneratorOrchestrator - Orphaned Tool Cleanup', () => {
     mockCompletionGenerator = {
       generateCompletionFile: mock(async () =>
         Promise.resolve({
-          content: '# completion',
-          filename: '_tool',
-          targetPath: '/path/_tool',
-          generatedBy: 'command' as const,
-        })
+          content: "# completion",
+          filename: "_tool",
+          targetPath: "/path/_tool",
+          generatedBy: "command" as const,
+        }),
       ),
       generateAndWriteCompletionFile: mock(async () =>
         Promise.resolve({
-          content: '# completion',
-          filename: '_tool',
-          targetPath: '/path/_tool',
-          generatedBy: 'command' as const,
-        })
+          content: "# completion",
+          filename: "_tool",
+          targetPath: "/path/_tool",
+          generatedBy: "command" as const,
+        }),
       ),
     };
 
     const { fs } = await createMemFileSystem({});
     mockFileSystem = fs;
 
-    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'generator-orchestrator-orphan' });
+    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: "generator-orchestrator-orphan" });
 
     systemInfo = {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     };
 
     mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
       fileSystem: mockFileSystem,
       logger,
       systemInfo,
@@ -127,15 +127,15 @@ describe('GeneratorOrchestrator - Orphaned Tool Cleanup', () => {
     );
   });
 
-  describe('cleanup for orphaned tools', () => {
-    it('should remove shims for tools whose config files were removed', async () => {
-      const shimPath = path.join(mockProjectConfig.paths.targetDir, 'removed-bin');
+  describe("cleanup for orphaned tools", () => {
+    it("should remove shims for tools whose config files were removed", async () => {
+      const shimPath = path.join(mockProjectConfig.paths.targetDir, "removed-bin");
       await mockFileSystem.ensureDir(mockProjectConfig.paths.targetDir);
-      await mockFileSystem.writeFile(shimPath, '#!/bin/bash\n# Generated by Dotfiles Management Tool\nexec removed');
+      await mockFileSystem.writeFile(shimPath, "#!/bin/bash\n# Generated by Dotfiles Management Tool\nexec removed");
 
       fileRegistry.setFileState({
-        toolName: 'removedTool',
-        fileType: 'shim',
+        toolName: "removedTool",
+        fileType: "shim",
         filePath: shimPath,
       });
 
@@ -149,23 +149,23 @@ describe('GeneratorOrchestrator - Orphaned Tool Cleanup', () => {
       expect(shimExistsAfter).toBe(false);
     });
 
-    it('should remove multiple artifact types for orphaned tools', async () => {
-      const shimPath = path.join(mockProjectConfig.paths.targetDir, 'orphan-bin');
-      const completionPath = path.join(mockProjectConfig.paths.shellScriptsDir, 'zsh', 'completions', '_orphanTool');
+    it("should remove multiple artifact types for orphaned tools", async () => {
+      const shimPath = path.join(mockProjectConfig.paths.targetDir, "orphan-bin");
+      const completionPath = path.join(mockProjectConfig.paths.shellScriptsDir, "zsh", "completions", "_orphanTool");
 
       await mockFileSystem.ensureDir(path.dirname(shimPath));
-      await mockFileSystem.writeFile(shimPath, '#!/bin/bash\nexec orphan');
+      await mockFileSystem.writeFile(shimPath, "#!/bin/bash\nexec orphan");
       await mockFileSystem.ensureDir(path.dirname(completionPath));
-      await mockFileSystem.writeFile(completionPath, '#compdef orphanTool');
+      await mockFileSystem.writeFile(completionPath, "#compdef orphanTool");
 
       fileRegistry.setFileState({
-        toolName: 'orphanTool',
-        fileType: 'shim',
+        toolName: "orphanTool",
+        fileType: "shim",
         filePath: shimPath,
       });
       fileRegistry.setFileState({
-        toolName: 'orphanTool',
-        fileType: 'completion',
+        toolName: "orphanTool",
+        fileType: "completion",
         filePath: completionPath,
       });
 
@@ -175,22 +175,22 @@ describe('GeneratorOrchestrator - Orphaned Tool Cleanup', () => {
       expect(await mockFileSystem.exists(completionPath)).toBe(false);
     });
 
-    it('should not remove artifacts for tools that still have config files', async () => {
-      const shimPath = path.join(mockProjectConfig.paths.targetDir, 'active-bin');
+    it("should not remove artifacts for tools that still have config files", async () => {
+      const shimPath = path.join(mockProjectConfig.paths.targetDir, "active-bin");
       await mockFileSystem.ensureDir(path.dirname(shimPath));
-      await mockFileSystem.writeFile(shimPath, '#!/bin/bash\nexec active');
+      await mockFileSystem.writeFile(shimPath, "#!/bin/bash\nexec active");
 
       fileRegistry.setFileState({
-        toolName: 'activeTool',
-        fileType: 'shim',
+        toolName: "activeTool",
+        fileType: "shim",
         filePath: shimPath,
       });
 
       const activeToolConfig: ToolConfig = {
-        name: 'activeTool',
-        binaries: ['active-bin'],
-        version: '1.0',
-        installationMethod: 'manual',
+        name: "activeTool",
+        binaries: ["active-bin"],
+        version: "1.0",
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -199,22 +199,22 @@ describe('GeneratorOrchestrator - Orphaned Tool Cleanup', () => {
       expect(await mockFileSystem.exists(shimPath)).toBe(true);
     });
 
-    it('should not remove artifacts for disabled tools (handled separately)', async () => {
-      const shimPath = path.join(mockProjectConfig.paths.targetDir, 'disabled-bin');
+    it("should not remove artifacts for disabled tools (handled separately)", async () => {
+      const shimPath = path.join(mockProjectConfig.paths.targetDir, "disabled-bin");
       await mockFileSystem.ensureDir(path.dirname(shimPath));
-      await mockFileSystem.writeFile(shimPath, '#!/bin/bash\nexec disabled');
+      await mockFileSystem.writeFile(shimPath, "#!/bin/bash\nexec disabled");
 
       fileRegistry.setFileState({
-        toolName: 'disabledTool',
-        fileType: 'shim',
+        toolName: "disabledTool",
+        fileType: "shim",
         filePath: shimPath,
       });
 
       const disabledToolConfig: ToolConfig = {
-        name: 'disabledTool',
-        binaries: ['disabled-bin'],
-        version: '1.0',
-        installationMethod: 'manual',
+        name: "disabledTool",
+        binaries: ["disabled-bin"],
+        version: "1.0",
+        installationMethod: "manual",
         installParams: {},
         disabled: true,
       };
@@ -225,52 +225,47 @@ describe('GeneratorOrchestrator - Orphaned Tool Cleanup', () => {
 
       // The disabled tool cleanup will have removed it, but the point is that
       // orphan cleanup did not get involved. Verify through logs.
-      logger.expect(
-        ['WARN'],
-        ['GeneratorOrchestrator', 'generateAll'],
-        [],
-        [/disabledTool/],
-      );
+      logger.expect(["WARN"], ["GeneratorOrchestrator", "generateAll"], [], [/disabledTool/]);
     });
 
-    it('should not clean up system-tracked entries', async () => {
+    it("should not clean up system-tracked entries", async () => {
       // 'system' is used for directory creation tracking, not a real tool
       fileRegistry.setFileState({
-        toolName: 'system',
-        fileType: 'config',
+        toolName: "system",
+        fileType: "config",
         filePath: path.join(mockProjectConfig.paths.targetDir),
       });
 
       await orchestrator.generateAll({});
 
       // getRegisteredTools returns ['system'], but it should be skipped
-      expect(fileRegistry.getFileStatesForTool).not.toHaveBeenCalledWith('system');
+      expect(fileRegistry.getFileStatesForTool).not.toHaveBeenCalledWith("system");
     });
 
-    it('should clean up orphaned tools while preserving active tools', async () => {
-      const orphanShimPath = path.join(mockProjectConfig.paths.targetDir, 'orphan-bin');
-      const activeShimPath = path.join(mockProjectConfig.paths.targetDir, 'active-bin');
+    it("should clean up orphaned tools while preserving active tools", async () => {
+      const orphanShimPath = path.join(mockProjectConfig.paths.targetDir, "orphan-bin");
+      const activeShimPath = path.join(mockProjectConfig.paths.targetDir, "active-bin");
 
       await mockFileSystem.ensureDir(mockProjectConfig.paths.targetDir);
-      await mockFileSystem.writeFile(orphanShimPath, '#!/bin/bash\nexec orphan');
-      await mockFileSystem.writeFile(activeShimPath, '#!/bin/bash\nexec active');
+      await mockFileSystem.writeFile(orphanShimPath, "#!/bin/bash\nexec orphan");
+      await mockFileSystem.writeFile(activeShimPath, "#!/bin/bash\nexec active");
 
       fileRegistry.setFileState({
-        toolName: 'orphanTool',
-        fileType: 'shim',
+        toolName: "orphanTool",
+        fileType: "shim",
         filePath: orphanShimPath,
       });
       fileRegistry.setFileState({
-        toolName: 'activeTool',
-        fileType: 'shim',
+        toolName: "activeTool",
+        fileType: "shim",
         filePath: activeShimPath,
       });
 
       const activeToolConfig: ToolConfig = {
-        name: 'activeTool',
-        binaries: ['active-bin'],
-        version: '1.0',
-        installationMethod: 'manual',
+        name: "activeTool",
+        binaries: ["active-bin"],
+        version: "1.0",
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -280,47 +275,42 @@ describe('GeneratorOrchestrator - Orphaned Tool Cleanup', () => {
       expect(await mockFileSystem.exists(activeShimPath)).toBe(true);
     });
 
-    it('should log warnings when orphaned tools are found', async () => {
-      const shimPath = path.join(mockProjectConfig.paths.targetDir, 'orphan-bin');
+    it("should log warnings when orphaned tools are found", async () => {
+      const shimPath = path.join(mockProjectConfig.paths.targetDir, "orphan-bin");
       await mockFileSystem.ensureDir(path.dirname(shimPath));
-      await mockFileSystem.writeFile(shimPath, '#!/bin/bash\nexec orphan');
+      await mockFileSystem.writeFile(shimPath, "#!/bin/bash\nexec orphan");
 
       fileRegistry.setFileState({
-        toolName: 'orphanTool',
-        fileType: 'shim',
+        toolName: "orphanTool",
+        fileType: "shim",
         filePath: shimPath,
       });
 
       await orchestrator.generateAll({});
 
-      logger.expect(
-        ['WARN'],
-        ['GeneratorOrchestrator', 'cleanupOrphanedTools'],
-        [],
-        [/1 orphaned tool /],
-      );
+      logger.expect(["WARN"], ["GeneratorOrchestrator", "cleanupOrphanedTools"], [], [/1 orphaned tool /]);
 
       logger.expect(
-        ['WARN'],
-        ['GeneratorOrchestrator', 'cleanupOrphanedTools', 'cleanupOrphanedTools'],
-        ['orphanTool'],
+        ["WARN"],
+        ["GeneratorOrchestrator", "cleanupOrphanedTools", "cleanupOrphanedTools"],
+        ["orphanTool"],
         [/Cleaning up orphaned tool/],
       );
     });
 
-    it('should not log when no orphaned tools exist', async () => {
+    it("should not log when no orphaned tools exist", async () => {
       const activeToolConfig: ToolConfig = {
-        name: 'activeTool',
-        binaries: ['active-bin'],
-        version: '1.0',
-        installationMethod: 'manual',
+        name: "activeTool",
+        binaries: ["active-bin"],
+        version: "1.0",
+        installationMethod: "manual",
         installParams: {},
       };
 
       fileRegistry.setFileState({
-        toolName: 'activeTool',
-        fileType: 'shim',
-        filePath: path.join(mockProjectConfig.paths.targetDir, 'active-bin'),
+        toolName: "activeTool",
+        fileType: "shim",
+        filePath: path.join(mockProjectConfig.paths.targetDir, "active-bin"),
       });
 
       await orchestrator.generateAll({ activeTool: activeToolConfig });
@@ -328,19 +318,19 @@ describe('GeneratorOrchestrator - Orphaned Tool Cleanup', () => {
       // No orphan cleanup warnings should be logged - check that cleanupOrphanedTools didn't log
       const orphanLogs = logger.logs.filter((log) => {
         const firstArg = log[0] as unknown;
-        return typeof firstArg === 'string' && firstArg.includes('orphaned');
+        return typeof firstArg === "string" && firstArg.includes("orphaned");
       });
       expect(orphanLogs).toHaveLength(0);
     });
 
-    it('should preserve downloaded binaries for orphaned tools', async () => {
-      const binaryPath = path.join(mockProjectConfig.paths.binariesDir, 'orphanTool', 'current', 'orphan-bin');
+    it("should preserve downloaded binaries for orphaned tools", async () => {
+      const binaryPath = path.join(mockProjectConfig.paths.binariesDir, "orphanTool", "current", "orphan-bin");
       await mockFileSystem.ensureDir(path.dirname(binaryPath));
       await mockFileSystem.writeFile(binaryPath, '#!/bin/bash\necho "binary"');
 
       fileRegistry.setFileState({
-        toolName: 'orphanTool',
-        fileType: 'binary',
+        toolName: "orphanTool",
+        fileType: "binary",
         filePath: binaryPath,
       });
 

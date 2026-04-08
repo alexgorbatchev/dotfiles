@@ -1,10 +1,10 @@
 // Core components
-export { CacheInvalidator } from './CacheInvalidator';
-export { createProxyServer } from './createProxyServer';
-export { ProxyCacheStore } from './ProxyCacheStore';
+export { CacheInvalidator } from "./CacheInvalidator";
+export { createProxyServer } from "./createProxyServer";
+export { ProxyCacheStore } from "./ProxyCacheStore";
 
 // Types
-export type { ProxyServerOptions } from './createProxyServer';
+export type { ProxyServerOptions } from "./createProxyServer";
 export type {
   CacheClearRequest,
   CacheClearResult,
@@ -13,4 +13,4 @@ export type {
   CachePopulateResult,
   CacheStats,
   ProxyConfig,
-} from './types';
+} from "./types";

@@ -1,11 +1,11 @@
-import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { IToolInstallationDetails } from '@dotfiles/registry';
+import type { InstallResultFailure, InstallResultSuccess } from "@dotfiles/core";
+import type { IToolInstallationDetails } from "@dotfiles/registry";
 
 /**
  * Metadata specific to npm tool installation.
  */
 export interface INpmInstallMetadata extends Partial<IToolInstallationDetails> {
-  method: 'npm';
+  method: "npm";
   packageName: string;
 }
 

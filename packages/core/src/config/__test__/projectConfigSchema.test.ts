@@ -1,57 +1,57 @@
-import { describe, expect, test } from 'bun:test';
-import type { ProjectConfig } from '../projectConfigSchema';
+import { describe, expect, test } from "bun:test";
+import type { ProjectConfig } from "../projectConfigSchema";
 
-describe('projectConfigSchemaTest', () => {
-  test('type validation', () => {
+describe("projectConfigSchemaTest", () => {
+  test("type validation", () => {
     const config: ProjectConfig = {
-      configFilePath: '',
-      configFileDir: '',
+      configFilePath: "",
+      configFileDir: "",
 
       paths: {
-        homeDir: '',
-        dotfilesDir: 'test',
-        targetDir: '',
-        generatedDir: '',
-        toolConfigsDir: '',
-        shellScriptsDir: '',
-        binariesDir: '',
+        homeDir: "",
+        dotfilesDir: "test",
+        targetDir: "",
+        generatedDir: "",
+        toolConfigsDir: "",
+        shellScriptsDir: "",
+        binariesDir: "",
       },
       system: {
-        sudoPrompt: '',
+        sudoPrompt: "",
       },
       logging: {
-        debug: '',
+        debug: "",
       },
       updates: {
         checkOnRun: false,
         checkInterval: 0,
       },
       github: {
-        host: '',
-        token: '',
-        userAgent: '',
+        host: "",
+        token: "",
+        userAgent: "",
         cache: { enabled: false, ttl: 0 },
       },
       cargo: {
         cratesIo: {
-          host: '',
+          host: "",
           cache: { enabled: false, ttl: 0 },
-          token: '',
-          userAgent: '',
+          token: "",
+          userAgent: "",
         },
         githubRaw: {
-          host: '',
+          host: "",
           cache: { enabled: false, ttl: 0 },
-          token: '',
-          userAgent: '',
+          token: "",
+          userAgent: "",
         },
         githubRelease: {
-          host: '',
+          host: "",
           cache: { enabled: false, ttl: 0 },
-          token: '',
-          userAgent: '',
+          token: "",
+          userAgent: "",
         },
-        userAgent: '',
+        userAgent: "",
       },
       downloader: {
         timeout: 0,
@@ -70,10 +70,10 @@ describe('projectConfigSchemaTest', () => {
       },
       platform: [
         {
-          match: [{ os: 'macos' }, { arch: 'arm64' }],
+          match: [{ os: "macos" }, { arch: "arm64" }],
           config: {
             paths: {
-              dotfilesDir: 'macos-arm64-dotfiles',
+              dotfilesDir: "macos-arm64-dotfiles",
             },
           },
         },

@@ -1,4 +1,4 @@
-import type { IGitHubRelease } from '@dotfiles/core';
+import type { IGitHubRelease } from "@dotfiles/core";
 
 /**
  * Interface for a client that interacts with the Gitea/Forgejo API.
@@ -24,7 +24,7 @@ export interface IGiteaApiClient {
   getAllReleases(
     owner: string,
     repo: string,
-    options?: { limit?: number; includePrerelease?: boolean; maxResults?: number; },
+    options?: { limit?: number; includePrerelease?: boolean; maxResults?: number },
   ): Promise<IGitHubRelease[]>;
 
   /**

@@ -1,6 +1,6 @@
-import type { Stats } from 'node:fs';
-import { constants as fsConstants, promises as fsPromises } from 'node:fs';
-import type { IFileSystem } from './IFileSystem';
+import type { Stats } from "node:fs";
+import { constants as fsConstants, promises as fsPromises } from "node:fs";
+import type { IFileSystem } from "./IFileSystem";
 
 type FsPromises = typeof fsPromises;
 
@@ -49,7 +49,7 @@ export class NodeFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.readFile
    */
-  public async readFile(path: string, encoding: BufferEncoding = 'utf8'): Promise<string> {
+  public async readFile(path: string, encoding: BufferEncoding = "utf8"): Promise<string> {
     return this.fs.readFile(path, { encoding });
   }
 
@@ -66,7 +66,7 @@ export class NodeFileSystem implements IFileSystem {
   public async writeFile(
     path: string,
     content: string | NodeJS.ArrayBufferView,
-    encoding: BufferEncoding = 'utf8',
+    encoding: BufferEncoding = "utf8",
   ): Promise<void> {
     return this.fs.writeFile(path, content, { encoding });
   }
@@ -86,7 +86,7 @@ export class NodeFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.mkdir
    */
-  public async mkdir(path: string, options?: { recursive?: boolean; }): Promise<void> {
+  public async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
     await this.fs.mkdir(path, options);
   }
 
@@ -100,14 +100,14 @@ export class NodeFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.rm
    */
-  public async rm(path: string, options?: { recursive?: boolean; force?: boolean; }): Promise<void> {
+  public async rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
     return this.fs.rm(path, options);
   }
 
   /**
    * @inheritdoc IFileSystem.rmdir
    */
-  public async rmdir(path: string, options?: { recursive?: boolean; }): Promise<void> {
+  public async rmdir(path: string, options?: { recursive?: boolean }): Promise<void> {
     if (options?.recursive) {
       return this.fs.rm(path, { recursive: true, force: true });
     }
@@ -131,7 +131,7 @@ export class NodeFileSystem implements IFileSystem {
   /**
    * @inheritdoc IFileSystem.symlink
    */
-  public async symlink(target: string, path: string, type?: 'file' | 'dir' | 'junction'): Promise<void> {
+  public async symlink(target: string, path: string, type?: "file" | "dir" | "junction"): Promise<void> {
     return this.fs.symlink(target, path, type);
   }
 

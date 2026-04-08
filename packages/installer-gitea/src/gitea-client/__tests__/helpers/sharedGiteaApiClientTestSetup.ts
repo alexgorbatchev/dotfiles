@@ -1,14 +1,14 @@
-import type { ICache, IDownloader } from '@dotfiles/downloader';
-import { TestLogger } from '@dotfiles/logger';
-import { mock } from 'bun:test';
-import { GiteaApiClient } from '../../GiteaApiClient';
+import type { ICache, IDownloader } from "@dotfiles/downloader";
+import { TestLogger } from "@dotfiles/logger";
+import { mock } from "bun:test";
+import { GiteaApiClient } from "../../GiteaApiClient";
 
 export const createMockDownloader = (): IDownloader & {
-  download: ReturnType<typeof mock<IDownloader['download']>>;
+  download: ReturnType<typeof mock<IDownloader["download"]>>;
 } => {
-  const mockDownloadFn = mock<IDownloader['download']>(async () => Buffer.from(''));
-  const mockRegisterStrategy = mock<IDownloader['registerStrategy']>(() => {});
-  const mockDownloadToFile = mock<IDownloader['downloadToFile']>(async () => {});
+  const mockDownloadFn = mock<IDownloader["download"]>(async () => Buffer.from(""));
+  const mockRegisterStrategy = mock<IDownloader["registerStrategy"]>(() => {});
+  const mockDownloadToFile = mock<IDownloader["downloadToFile"]>(async () => {});
   return {
     download: mockDownloadFn,
     registerStrategy: mockRegisterStrategy,
@@ -17,13 +17,13 @@ export const createMockDownloader = (): IDownloader & {
 };
 
 export const createMockGiteaApiCache = (): ICache & {
-  get: ReturnType<typeof mock<ICache['get']>>;
-  set: ReturnType<typeof mock<ICache['set']>>;
-  setDownload: ReturnType<typeof mock<ICache['setDownload']>>;
-  has: ReturnType<typeof mock<ICache['has']>>;
-  delete: ReturnType<typeof mock<ICache['delete']>>;
-  clearExpired: ReturnType<typeof mock<ICache['clearExpired']>>;
-  clear: ReturnType<typeof mock<ICache['clear']>>;
+  get: ReturnType<typeof mock<ICache["get"]>>;
+  set: ReturnType<typeof mock<ICache["set"]>>;
+  setDownload: ReturnType<typeof mock<ICache["setDownload"]>>;
+  has: ReturnType<typeof mock<ICache["has"]>>;
+  delete: ReturnType<typeof mock<ICache["delete"]>>;
+  clearExpired: ReturnType<typeof mock<ICache["clearExpired"]>>;
+  clear: ReturnType<typeof mock<ICache["clear"]>>;
 } => {
   return {
     get: mock(async () => null),
@@ -38,16 +38,16 @@ export const createMockGiteaApiCache = (): ICache & {
 
 export interface IMockSetup {
   mockDownloader: IDownloader & {
-    download: ReturnType<typeof mock<IDownloader['download']>>;
+    download: ReturnType<typeof mock<IDownloader["download"]>>;
   };
   mockCache: ICache & {
-    get: ReturnType<typeof mock<ICache['get']>>;
-    set: ReturnType<typeof mock<ICache['set']>>;
-    setDownload: ReturnType<typeof mock<ICache['setDownload']>>;
-    has: ReturnType<typeof mock<ICache['has']>>;
-    delete: ReturnType<typeof mock<ICache['delete']>>;
-    clearExpired: ReturnType<typeof mock<ICache['clearExpired']>>;
-    clear: ReturnType<typeof mock<ICache['clear']>>;
+    get: ReturnType<typeof mock<ICache["get"]>>;
+    set: ReturnType<typeof mock<ICache["set"]>>;
+    setDownload: ReturnType<typeof mock<ICache["setDownload"]>>;
+    has: ReturnType<typeof mock<ICache["has"]>>;
+    delete: ReturnType<typeof mock<ICache["delete"]>>;
+    clearExpired: ReturnType<typeof mock<ICache["clearExpired"]>>;
+    clear: ReturnType<typeof mock<ICache["clear"]>>;
   };
   apiClient: GiteaApiClient;
   logger: TestLogger;
@@ -64,11 +64,11 @@ export const setupMockGiteaApiClient = (options?: {
 
   const apiClient = new GiteaApiClient(
     logger,
-    options?.instanceUrl ?? 'https://codeberg.org',
+    options?.instanceUrl ?? "https://codeberg.org",
     mockDownloader,
     mockCache,
     {
-      token: options?.token ?? '',
+      token: options?.token ?? "",
       cacheEnabled: options?.cacheEnabled ?? false,
     },
   );

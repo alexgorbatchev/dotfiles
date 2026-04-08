@@ -5,18 +5,18 @@ import {
   Platform,
   type Shell,
   type ToolConfig,
-} from '@dotfiles/core';
-import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { TrackedFileSystem } from '@dotfiles/registry/file';
-import { createMockProjectConfig } from '@dotfiles/testing-helpers';
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import assert from 'node:assert';
-import { HookExecutor, type IHookExecutionOptions } from '../utils/HookExecutor';
-import { createTestInstallHookContext } from './hookContextTestHelper';
+} from "@dotfiles/core";
+import { createMemFileSystem, type IMemFileSystemReturn } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { TrackedFileSystem } from "@dotfiles/registry/file";
+import { createMockProjectConfig } from "@dotfiles/testing-helpers";
+import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import assert from "node:assert";
+import { HookExecutor, type IHookExecutionOptions } from "../utils/HookExecutor";
+import { createTestInstallHookContext } from "./hookContextTestHelper";
 
 // Helper function for tests to create SafeLogMessage
-describe('HookExecutor', () => {
+describe("HookExecutor", () => {
   let logger: TestLogger;
   let hookExecutor: HookExecutor;
   let memFs: IMemFileSystemReturn;
@@ -32,7 +32,7 @@ describe('HookExecutor', () => {
     mockTrackedFileSystem.withToolName = mock(() => mockTrackedFileSystem);
   });
 
-  describe('executeHook', () => {
+  describe("executeHook", () => {
     let baseContext: IInstallContext;
 
     beforeEach(() => {
@@ -40,30 +40,30 @@ describe('HookExecutor', () => {
       baseContext = result.context;
     });
 
-    it('should execute hook successfully and return correct result', async () => {
+    it("should execute hook successfully and return correct result", async () => {
       const mockHook: AsyncInstallHook = mock(async (ctx) => {
-        expect(ctx.toolName).toBe('test-tool');
+        expect(ctx.toolName).toBe("test-tool");
         // These properties are available in the enhanced context
         expect(ctx.fileSystem).toBeDefined();
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      const result = await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
+      const result = await hookExecutor.executeHook(logger, "testHook", mockHook, enhancedContext);
 
       expect(result.success).toBe(true);
       assert(result.success);
-      expect(result).not.toHaveProperty('error');
+      expect(result).not.toHaveProperty("error");
     });
 
-    it('should handle hook errors and return failure result', async () => {
-      const errorMessage = 'Hook execution failed';
+    it("should handle hook errors and return failure result", async () => {
+      const errorMessage = "Hook execution failed";
       const mockHook = mock(async () => {
         assert(false, errorMessage);
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
-      const result = await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
+      const result = await hookExecutor.executeHook(logger, "testHook", mockHook, enhancedContext);
 
       expect(result.success).toBe(false);
       assert(!result.success);
@@ -72,7 +72,7 @@ describe('HookExecutor', () => {
       expect(result.skipped).toBe(false);
     });
 
-    it('should handle hook timeout', async () => {
+    it("should handle hook timeout", async () => {
       const mockHook = mock(async () => {
         // Simulate a slow hook that takes longer than timeout
         await new Promise((resolve) => setTimeout(resolve, 200));
@@ -80,35 +80,35 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
       const options: IHookExecutionOptions = { timeoutMs: 50 };
-      const result = await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext, options);
+      const result = await hookExecutor.executeHook(logger, "testHook", mockHook, enhancedContext, options);
 
       expect(result.success).toBe(false);
       assert(!result.success);
-      expect(result.error).toContain('timed out');
+      expect(result.error).toContain("timed out");
       expect(result.skipped).toBe(false);
     });
 
-    it('should continue on error when continueOnError is true', async () => {
-      const errorMessage = 'Hook failed but should continue';
+    it("should continue on error when continueOnError is true", async () => {
+      const errorMessage = "Hook failed but should continue";
       const mockHook = mock(async () => {
         assert(false, errorMessage);
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
       const options: IHookExecutionOptions = { continueOnError: true };
-      const result = await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext, options);
+      const result = await hookExecutor.executeHook(logger, "testHook", mockHook, enhancedContext, options);
 
       expect(result.success).toBe(false);
       assert(!result.success);
       expect(result.error).toBe(errorMessage);
     });
 
-    it('should use default timeout when not specified', async () => {
+    it("should use default timeout when not specified", async () => {
       const mockHook = mock(async () => {});
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
-      const setTimeoutSpy = spyOn(global, 'setTimeout');
+      const setTimeoutSpy = spyOn(global, "setTimeout");
 
-      await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
+      await hookExecutor.executeHook(logger, "testHook", mockHook, enhancedContext);
 
       // Check that setTimeout was called with default timeout (60000ms)
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 60000);
@@ -116,8 +116,8 @@ describe('HookExecutor', () => {
     });
   });
 
-  describe('createEnhancedContext', () => {
-    it('should create enhanced context with regular filesystem', () => {
+  describe("createEnhancedContext", () => {
+    it("should create enhanced context with regular filesystem", () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
@@ -125,32 +125,32 @@ describe('HookExecutor', () => {
       expect(enhancedContext.stagingDir).toBe(baseContext.stagingDir);
       expect(enhancedContext.fileSystem).toBe(memFs.fs);
       // Logger is not part of enhanced context - it's added by executeHook
-      expect(enhancedContext).not.toHaveProperty('logger');
+      expect(enhancedContext).not.toHaveProperty("logger");
     });
 
-    it('should create enhanced context with TrackedFileSystem and create tool-specific instance', () => {
+    it("should create enhanced context with TrackedFileSystem and create tool-specific instance", () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, mockTrackedFileSystem);
 
       expect(enhancedContext.fileSystem).toBe(mockTrackedFileSystem);
-      expect(mockTrackedFileSystem.withToolName).toHaveBeenCalledWith('test-tool');
+      expect(mockTrackedFileSystem.withToolName).toHaveBeenCalledWith("test-tool");
     });
 
-    it('should not include logger in enhanced context', () => {
+    it("should not include logger in enhanced context", () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
       // Logger is not part of enhanced context - it's added by executeHook
-      expect(enhancedContext).not.toHaveProperty('logger');
+      expect(enhancedContext).not.toHaveProperty("logger");
     });
 
-    it('should create $ instance with cwd set to tool config directory', () => {
+    it("should create $ instance with cwd set to tool config directory", () => {
       const mockToolConfig: ToolConfig = {
-        configFilePath: '/path/to/configs/tool.tool.ts',
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: 'latest',
-        installationMethod: 'manual',
+        configFilePath: "/path/to/configs/tool.tool.ts",
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "latest",
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -164,21 +164,21 @@ describe('HookExecutor', () => {
 
       // Verify $ instance is created and provided to hooks
       expect(enhancedContext.$).toBeDefined();
-      expect(typeof enhancedContext.$).toBe('function');
+      expect(typeof enhancedContext.$).toBe("function");
 
       // Bun's $ is a global tagged template function, not configurable per-instance
       // Hooks should use cd commands to change directories if needed
     });
 
-    it('should use fallback $ instance when configFilePath is missing', () => {
+    it("should use fallback $ instance when configFilePath is missing", () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const contextWithoutConfigPath = {
         ...baseContext,
         toolConfig: {
-          name: 'test-tool',
-          binaries: ['test-tool'],
-          version: 'latest',
-          installationMethod: 'manual',
+          name: "test-tool",
+          binaries: ["test-tool"],
+          version: "latest",
+          installationMethod: "manual",
           installParams: {},
         } as ToolConfig, // No configFilePath
       };
@@ -187,32 +187,32 @@ describe('HookExecutor', () => {
 
       // Verify $ instance is still created (fallback)
       expect(enhancedContext.$).toBeDefined();
-      expect(typeof enhancedContext.$).toBe('function');
+      expect(typeof enhancedContext.$).toBe("function");
     });
 
-    it('should preserve toolConfig and projectConfig in enhanced context', async () => {
+    it("should preserve toolConfig and projectConfig in enhanced context", async () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const mockToolConfig: ToolConfig = {
-        configFilePath: '/path/to/configs/tool.tool.ts',
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: 'latest',
-        installationMethod: 'manual',
+        configFilePath: "/path/to/configs/tool.tool.ts",
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "latest",
+        installationMethod: "manual",
         installParams: {},
       };
 
-      await memFs.fs.ensureDir('/test');
+      await memFs.fs.ensureDir("/test");
 
       const mockProjectConfig = await createMockProjectConfig({
-        config: { paths: { generatedDir: '/generated' } },
-        filePath: '/test/config.ts',
+        config: { paths: { generatedDir: "/generated" } },
+        filePath: "/test/config.ts",
         fileSystem: memFs.fs,
         logger,
         systemInfo: {
           platform: Platform.Linux,
           arch: Architecture.X86_64,
-          homeDir: '/home/test',
-          hostname: 'test-host',
+          homeDir: "/home/test",
+          hostname: "test-host",
         },
         env: {},
       });
@@ -230,15 +230,15 @@ describe('HookExecutor', () => {
     });
   });
 
-  describe('$ shell executor functionality', () => {
-    it('should provide $ instance to hooks that can execute shell commands', async () => {
+  describe("$ shell executor functionality", () => {
+    it("should provide $ instance to hooks that can execute shell commands", async () => {
       const { context: baseContext } = createTestInstallHookContext({});
       let capturedDollar: Shell | undefined;
 
       const hookThatUsesShell = mock(async (ctx: IInstallContext) => {
         capturedDollar = ctx.$;
         expect(ctx.$).toBeDefined();
-        expect(typeof ctx.$).toBe('function');
+        expect(typeof ctx.$).toBe("function");
 
         // Simulate using $ in the hook (but don't actually execute)
         // We just verify the function is available
@@ -246,20 +246,20 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      await hookExecutor.executeHook(logger, 'testShellHook', hookThatUsesShell, enhancedContext);
+      await hookExecutor.executeHook(logger, "testShellHook", hookThatUsesShell, enhancedContext);
 
       expect(capturedDollar).toBeDefined();
-      expect(typeof capturedDollar).toBe('function');
+      expect(typeof capturedDollar).toBe("function");
     });
 
-    it('should pass $ instance through hook executor chain', async () => {
+    it("should pass $ instance through hook executor chain", async () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const mockToolConfig: ToolConfig = {
-        configFilePath: '/path/to/configs/shell-tool/shell-tool.tool.ts',
-        name: 'shell-tool',
-        binaries: ['shell-tool'],
-        version: 'latest',
-        installationMethod: 'manual',
+        configFilePath: "/path/to/configs/shell-tool/shell-tool.tool.ts",
+        name: "shell-tool",
+        binaries: ["shell-tool"],
+        version: "latest",
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -278,29 +278,29 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs);
 
-      await hookExecutor.executeHook(logger, 'afterExtract', hook, enhancedContext);
+      await hookExecutor.executeHook(logger, "afterExtract", hook, enhancedContext);
 
       expect(receivedDollar).toBeDefined();
       expect(hook).toHaveBeenCalledTimes(1);
     });
 
-    it('should create different $ instances for different tool configs', () => {
+    it("should create different $ instances for different tool configs", () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const toolConfig1: ToolConfig = {
-        configFilePath: '/path/to/configs/tool1/tool1.tool.ts',
-        name: 'tool1',
-        binaries: ['tool1'],
-        version: 'latest',
-        installationMethod: 'manual',
+        configFilePath: "/path/to/configs/tool1/tool1.tool.ts",
+        name: "tool1",
+        binaries: ["tool1"],
+        version: "latest",
+        installationMethod: "manual",
         installParams: {},
       };
 
       const toolConfig2: ToolConfig = {
-        configFilePath: '/path/to/configs/tool2/tool2.tool.ts',
-        name: 'tool2',
-        binaries: ['tool2'],
-        version: 'latest',
-        installationMethod: 'manual',
+        configFilePath: "/path/to/configs/tool2/tool2.tool.ts",
+        name: "tool2",
+        binaries: ["tool2"],
+        version: "latest",
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -314,22 +314,22 @@ describe('HookExecutor', () => {
       expect(enhanced1.$).toBeDefined();
       expect(enhanced2.$).toBeDefined();
       // They should be different instances (though we can't easily verify cwd difference in tests)
-      expect(typeof enhanced1.$).toBe('function');
-      expect(typeof enhanced2.$).toBe('function');
+      expect(typeof enhanced1.$).toBe("function");
+      expect(typeof enhanced2.$).toBe("function");
     });
   });
 
-  describe('executeHooks', () => {
-    it('should execute multiple hooks in sequence', async () => {
+  describe("executeHooks", () => {
+    it("should execute multiple hooks in sequence", async () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const hook1 = mock(async () => {});
       const hook2 = mock(async () => {});
       const hook3 = mock(async () => {});
 
       const hooks = [
-        { name: 'hook1', hook: hook1 },
-        { name: 'hook2', hook: hook2 },
-        { name: 'hook3', hook: hook3 },
+        { name: "hook1", hook: hook1 },
+        { name: "hook2", hook: hook2 },
+        { name: "hook3", hook: hook3 },
       ];
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
@@ -343,18 +343,18 @@ describe('HookExecutor', () => {
       expect(hook3).toHaveBeenCalledTimes(1);
     });
 
-    it('should stop execution on hook failure when continueOnError is false', async () => {
+    it("should stop execution on hook failure when continueOnError is false", async () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const hook1 = mock(async () => {});
       const hook2 = mock(async () => {
-        assert(false, 'Hook2 failed');
+        assert(false, "Hook2 failed");
       });
       const hook3 = mock(async () => {});
 
       const hooks = [
-        { name: 'hook1', hook: hook1 },
-        { name: 'hook2', hook: hook2, options: { continueOnError: false } },
-        { name: 'hook3', hook: hook3 },
+        { name: "hook1", hook: hook1 },
+        { name: "hook2", hook: hook2, options: { continueOnError: false } },
+        { name: "hook3", hook: hook3 },
       ];
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
@@ -369,18 +369,18 @@ describe('HookExecutor', () => {
       expect(hook3).not.toHaveBeenCalled(); // Should not be called due to failure
     });
 
-    it('should continue execution on hook failure when continueOnError is true', async () => {
+    it("should continue execution on hook failure when continueOnError is true", async () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const hook1 = mock(async () => {});
       const hook2 = mock(async () => {
-        assert(false, 'Hook2 failed');
+        assert(false, "Hook2 failed");
       });
       const hook3 = mock(async () => {});
 
       const hooks = [
-        { name: 'hook1', hook: hook1 },
-        { name: 'hook2', hook: hook2, options: { continueOnError: true } },
-        { name: 'hook3', hook: hook3 },
+        { name: "hook1", hook: hook1 },
+        { name: "hook2", hook: hook2, options: { continueOnError: true } },
+        { name: "hook3", hook: hook3 },
       ];
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
@@ -396,20 +396,20 @@ describe('HookExecutor', () => {
       expect(hook3).toHaveBeenCalledTimes(1); // Should be called despite hook2 failure
     });
 
-    it('should handle mixed hook options correctly', async () => {
+    it("should handle mixed hook options correctly", async () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const hook1 = mock(async () => {
-        assert(false, 'Hook1 failed');
+        assert(false, "Hook1 failed");
       });
       const hook2 = mock(async () => {
-        assert(false, 'Hook2 failed');
+        assert(false, "Hook2 failed");
       });
       const hook3 = mock(async () => {});
 
       const hooks = [
-        { name: 'hook1', hook: hook1, options: { continueOnError: true } },
-        { name: 'hook2', hook: hook2, options: { continueOnError: false } },
-        { name: 'hook3', hook: hook3 },
+        { name: "hook1", hook: hook1, options: { continueOnError: true } },
+        { name: "hook2", hook: hook2, options: { continueOnError: false } },
+        { name: "hook3", hook: hook3 },
       ];
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
@@ -425,50 +425,50 @@ describe('HookExecutor', () => {
     });
   });
 
-  describe('error handling and logging', () => {
-    it('should log debug messages during hook execution', async () => {
+  describe("error handling and logging", () => {
+    it("should log debug messages during hook execution", async () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const mockHook = mock(async () => {});
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
+      await hookExecutor.executeHook(logger, "testHook", mockHook, enhancedContext);
 
       logger.expect(
-        ['DEBUG'],
-        ['HookExecutor', 'executeHook'],
+        ["DEBUG"],
+        ["HookExecutor", "executeHook"],
         [],
-        [/Executing testHook hook with \d+ms timeout/, 'Hook testHook completed successfully in'],
+        [/Executing testHook hook with \d+ms timeout/, "Hook testHook completed successfully in"],
       );
     });
 
-    it('should log errors when hooks fail', async () => {
+    it("should log errors when hooks fail", async () => {
       const { context: baseContext } = createTestInstallHookContext({});
-      const errorMessage = 'Test hook error';
+      const errorMessage = "Test hook error";
       const mockHook = mock(async () => {
         assert(false, errorMessage);
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
+      await hookExecutor.executeHook(logger, "testHook", mockHook, enhancedContext);
 
-      logger.expect(['ERROR'], ['HookExecutor', 'executeHook'], ['testHook'], ['Hook failed']);
+      logger.expect(["ERROR"], ["HookExecutor", "executeHook"], ["testHook"], ["Hook failed"]);
     });
 
-    it('should handle non-Error exceptions', async () => {
+    it("should handle non-Error exceptions", async () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const mockHook = mock(async () => {
-        throw 'String error';
+        throw "String error";
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      const result = await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
+      const result = await hookExecutor.executeHook(logger, "testHook", mockHook, enhancedContext);
 
       expect(result.success).toBe(false);
       assert(!result.success);
-      expect(result.error).toBe('String error');
+      expect(result.error).toBe("String error");
     });
   });
 });

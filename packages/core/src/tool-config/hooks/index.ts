@@ -1,1 +1,1 @@
-export * from './installHookSchema';
+export * from "./installHookSchema";

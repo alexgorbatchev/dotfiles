@@ -1,11 +1,11 @@
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import path from 'node:path';
-import { createCacheKey } from './cache/helpers';
-import type { ICache } from './cache/types';
-import type { IDownloadOptions } from './IDownloader';
-import type { IDownloadStrategy } from './IDownloadStrategy';
-import { cachedDownloadStrategyLogMessages } from './log-messages';
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import path from "node:path";
+import { createCacheKey } from "./cache/helpers";
+import type { ICache } from "./cache/types";
+import type { IDownloadOptions } from "./IDownloader";
+import type { IDownloadStrategy } from "./IDownloadStrategy";
+import { cachedDownloadStrategyLogMessages } from "./log-messages";
 
 /**
  * A download strategy decorator that adds caching functionality.
@@ -34,7 +34,7 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
     underlyingStrategy: IDownloadStrategy,
     cacheTtl: number = 24 * 60 * 60 * 1000, // Default 24 hours
   ) {
-    this.logger = parentLogger.getSubLogger({ name: 'CachedDownloadStrategy' });
+    this.logger = parentLogger.getSubLogger({ name: "CachedDownloadStrategy" });
     this.fileSystem = fileSystem;
     this.cache = cache;
     this.underlyingStrategy = underlyingStrategy;
@@ -59,7 +59,7 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
     url: string,
     options: IDownloadOptions,
   ): Promise<Buffer | undefined> {
-    logger.trace(cachedDownloadStrategyLogMessages.cacheHit(cacheKey, 'binary', cachedBuffer.length), { url });
+    logger.trace(cachedDownloadStrategyLogMessages.cacheHit(cacheKey, "binary", cachedBuffer.length), { url });
 
     if (options.onProgress) {
       options.onProgress(0, cachedBuffer.length);
@@ -137,7 +137,7 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
         this.extractContentTypeFromHeaders(options.headers),
       );
       logger.trace(
-        cachedDownloadStrategyLogMessages.cacheStored(cacheKey, 'binary', 'TTL-based', bufferToCache.length),
+        cachedDownloadStrategyLogMessages.cacheStored(cacheKey, "binary", "TTL-based", bufferToCache.length),
         { url },
       );
     } catch (error) {
@@ -153,7 +153,7 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
    * @returns A promise that resolves with a Buffer containing the downloaded file's content
    */
   async download(url: string, options: IDownloadOptions = {}): Promise<Buffer | undefined> {
-    const logger = this.logger.getSubLogger({ name: 'download' });
+    const logger = this.logger.getSubLogger({ name: "download" });
 
     const cacheKey = createCacheKey(url, options);
 
@@ -196,6 +196,6 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
     if (!headers) return undefined;
 
     // Look for Accept header as a hint for expected content type
-    return headers['Accept'] || headers['accept'];
+    return headers["Accept"] || headers["accept"];
   }
 }

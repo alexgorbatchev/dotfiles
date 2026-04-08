@@ -1,4 +1,4 @@
-import { BaseEmissionFormatter } from './BaseEmissionFormatter';
+import { BaseEmissionFormatter } from "./BaseEmissionFormatter";
 
 /**
  * Base class for POSIX-compatible shell formatters (Bash, Zsh).
@@ -12,13 +12,10 @@ export abstract class BasePosixEmissionFormatter extends BaseEmissionFormatter {
    * @param scriptContent - The script content to execute once
    * @param outputPath - Path to the script file (for self-deletion)
    */
-  protected generateOnceScriptContent(
-    scriptContent: string,
-    outputPath: string,
-  ): string {
-    const lines = ['# Generated once script - will self-delete after execution'];
+  protected generateOnceScriptContent(scriptContent: string, outputPath: string): string {
+    const lines = ["# Generated once script - will self-delete after execution"];
     lines.push(scriptContent);
     lines.push(`rm "${outputPath}"`);
-    return lines.join('\n');
+    return lines.join("\n");
   }
 }

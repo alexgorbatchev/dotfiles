@@ -1,11 +1,11 @@
-import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { IToolInstallationDetails } from '@dotfiles/registry';
+import type { InstallResultFailure, InstallResultSuccess } from "@dotfiles/core";
+import type { IToolInstallationDetails } from "@dotfiles/registry";
 
 /**
  * Metadata specific to zsh plugin installation.
  */
 export interface IZshPluginInstallMetadata extends Partial<IToolInstallationDetails> {
-  method: 'zsh-plugin';
+  method: "zsh-plugin";
   pluginName: string;
   gitUrl: string;
   pluginPath: string;

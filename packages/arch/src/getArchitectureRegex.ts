@@ -1,7 +1,7 @@
-import type { ISystemInfo } from '@dotfiles/core';
-import { createArchitectureRegex } from './createArchitectureRegex';
-import { getArchitecturePatterns } from './getArchitecturePatterns';
-import type { IArchitectureRegex } from './types';
+import type { ISystemInfo } from "@dotfiles/core";
+import { createArchitectureRegex } from "./createArchitectureRegex";
+import { getArchitecturePatterns } from "./getArchitecturePatterns";
+import type { IArchitectureRegex } from "./types";
 
 /**
  * The main function that combines pattern generation and regex creation.

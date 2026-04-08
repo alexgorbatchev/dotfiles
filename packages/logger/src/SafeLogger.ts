@@ -1,8 +1,8 @@
-import { type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
-import type { ZodError } from 'zod';
-import { formatErrorForUser, isError } from './filterErrorStack';
-import { formatZodErrors } from './formatZodErrors';
-import type { SafeLogMessage } from './types';
+import { type ILogObjMeta, type ISettingsParam, Logger } from "tslog";
+import type { ZodError } from "zod";
+import { formatErrorForUser, isError } from "./filterErrorStack";
+import { formatZodErrors } from "./formatZodErrors";
+import type { SafeLogMessage } from "./types";
 
 /**
  * Extended settings for SafeLogger that adds context support.

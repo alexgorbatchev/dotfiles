@@ -1,6 +1,6 @@
-import type { BaseInstallParams } from '@dotfiles/core';
-import { baseInstallParamsSchema } from '@dotfiles/core';
-import { z } from 'zod';
+import type { BaseInstallParams } from "@dotfiles/core";
+import { baseInstallParamsSchema } from "@dotfiles/core";
+import { z } from "zod";
 
 export const npmInstallParamsSchema = baseInstallParamsSchema.extend({
   /**
@@ -18,7 +18,7 @@ export const npmInstallParamsSchema = baseInstallParamsSchema.extend({
   /** Regex to extract version from output. */
   versionRegex: z.string().optional(),
   /** The package manager to use for installation. Defaults to `'npm'`. */
-  packageManager: z.enum(['npm', 'bun']).optional(),
+  packageManager: z.enum(["npm", "bun"]).optional(),
 });
 
 /**
@@ -37,5 +37,5 @@ export interface NpmInstallParams extends BaseInstallParams {
   /** Regex to extract version from output. */
   versionRegex?: string;
   /** The package manager to use for installation. Defaults to `'npm'`. */
-  packageManager?: 'npm' | 'bun';
+  packageManager?: "npm" | "bun";
 }

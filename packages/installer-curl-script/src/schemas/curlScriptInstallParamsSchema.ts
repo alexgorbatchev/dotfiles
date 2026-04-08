@@ -1,7 +1,7 @@
-import type { BaseInstallParams } from '@dotfiles/core';
-import { baseInstallParamsSchema } from '@dotfiles/core';
-import { z } from 'zod';
-import type { CurlScriptArgs, CurlScriptEnv } from '../types';
+import type { BaseInstallParams } from "@dotfiles/core";
+import { baseInstallParamsSchema } from "@dotfiles/core";
+import { z } from "zod";
+import type { CurlScriptArgs, CurlScriptEnv } from "../types";
 
 /**
  * Parameters for installing a tool by downloading and executing a shell script using `curl`.
@@ -18,7 +18,7 @@ export const curlScriptInstallParamsSchema = baseInstallParamsSchema.extend({
   /** The URL of the installation script to download. */
   url: z.string().url(),
   /** The shell to use for executing the downloaded script (e.g., `bash`, `sh`). */
-  shell: z.enum(['bash', 'sh']),
+  shell: z.enum(["bash", "sh"]),
   /** Arguments to pass to the script - can be static array or function returning array. */
   args: z.custom<CurlScriptArgs>().optional(),
   /** Environment variables to pass to the script - can be static object or function returning object. */
@@ -36,11 +36,11 @@ export const curlScriptInstallParamsSchema = baseInstallParamsSchema.extend({
  * the property names, which is required for proper `keyof` behavior in declaration files.
  * Uses Omit because `env` has a more specific type than BaseInstallParams.env.
  */
-export interface CurlScriptInstallParams extends Omit<BaseInstallParams, 'env'> {
+export interface CurlScriptInstallParams extends Omit<BaseInstallParams, "env"> {
   /** The URL of the installation script to download. */
   url: string;
   /** The shell to use for executing the downloaded script. */
-  shell: 'bash' | 'sh';
+  shell: "bash" | "sh";
   /** Arguments to pass to the script - can be static array or function returning array. */
   args?: CurlScriptArgs;
   /** Environment variables to pass to the script - can be static object or function returning object. */

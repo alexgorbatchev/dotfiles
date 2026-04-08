@@ -1,5 +1,5 @@
-export { createDashboardServer } from './server/dashboard-server';
-export type { IDashboardServer, IDashboardServerOptions, IDashboardServices } from './server/dashboard-server';
+export { createDashboardServer } from "./server/dashboard-server";
+export type { IDashboardServer, IDashboardServerOptions, IDashboardServices } from "./server/dashboard-server";
 export type {
   IApiResponse,
   ICheckUpdateResponse,
@@ -11,4 +11,4 @@ export type {
   IToolDetail,
   IToolSummary,
   IUpdateToolResponse,
-} from './shared/types';
+} from "./shared/types";

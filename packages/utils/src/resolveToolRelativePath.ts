@@ -1,4 +1,4 @@
-import path from 'node:path';
+import path from "node:path";
 
 /**
  * Resolves a relative path against the tool configuration directory (toolDir).

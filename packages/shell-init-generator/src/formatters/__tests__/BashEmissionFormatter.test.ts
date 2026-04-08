@@ -8,46 +8,46 @@ import {
   source,
   sourceFile,
   sourceFunction,
-} from '@dotfiles/shell-emissions';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import { BashEmissionFormatter } from '../BashEmissionFormatter';
+} from "@dotfiles/shell-emissions";
+import { beforeEach, describe, expect, it } from "bun:test";
+import { BashEmissionFormatter } from "../BashEmissionFormatter";
 
 // oxlint-disable-next-line import/no-unassigned-import
-import '@dotfiles/testing-helpers';
+import "@dotfiles/testing-helpers";
 
-describe('BashEmissionFormatter', () => {
-  const onceScriptDir = '/test/.once';
+describe("BashEmissionFormatter", () => {
+  const onceScriptDir = "/test/.once";
   let formatter: BashEmissionFormatter;
 
   beforeEach(() => {
     formatter = new BashEmissionFormatter({ onceScriptDir });
   });
 
-  describe('formatEnvironment', () => {
-    it('should format environment variable', () => {
-      const emission = environment({ MY_VAR: 'my-value' });
+  describe("formatEnvironment", () => {
+    it("should format environment variable", () => {
+      const emission = environment({ MY_VAR: "my-value" });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"export MY_VAR="my-value""`);
     });
   });
 
-  describe('formatAlias', () => {
-    it('should format single alias', () => {
-      const emission = alias({ ll: 'ls -la' });
+  describe("formatAlias", () => {
+    it("should format single alias", () => {
+      const emission = alias({ ll: "ls -la" });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"alias ll='ls -la'"`);
     });
 
-    it('should not expand subshell expressions', () => {
-      const emission = alias({ today: 'echo $(date)' });
+    it("should not expand subshell expressions", () => {
+      const emission = alias({ today: "echo $(date)" });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"alias today='echo $(date)'"`);
     });
 
-    it('should escape single quotes in alias value', () => {
+    it("should escape single quotes in alias value", () => {
       const emission = alias({ greet: "echo 'hello'" });
       const result = formatter.formatEmission(emission);
 
@@ -55,9 +55,9 @@ describe('BashEmissionFormatter', () => {
     });
   });
 
-  describe('formatFunction', () => {
-    it('should format function', () => {
-      const emission = fn('greet', 'echo "Hello, $1!"');
+  describe("formatFunction", () => {
+    it("should format function", () => {
+      const emission = fn("greet", 'echo "Hello, $1!"');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -68,18 +68,18 @@ describe('BashEmissionFormatter', () => {
     });
   });
 
-  describe('formatScript', () => {
-    it('should format always script', () => {
-      const emission = script('echo "hello"', 'always');
+  describe("formatScript", () => {
+    it("should format always script", () => {
+      const emission = script('echo "hello"', "always");
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"echo "hello""`);
     });
   });
 
-  describe('formatOnceScript', () => {
-    it('should format once script with correct filename', () => {
-      const emission = script('echo "setup"', 'once');
+  describe("formatOnceScript", () => {
+    it("should format once script with correct filename", () => {
+      const emission = script('echo "setup"', "once");
       const result = formatter.formatOnceScript(emission, 1);
 
       expect(result.filename).toMatchInlineSnapshot(`"once-001.bash"`);
@@ -91,27 +91,27 @@ describe('BashEmissionFormatter', () => {
     });
   });
 
-  describe('formatSourceFile', () => {
-    it('should format source file', () => {
-      const emission = sourceFile('$HOME/.toolrc');
+  describe("formatSourceFile", () => {
+    it("should format source file", () => {
+      const emission = sourceFile("$HOME/.toolrc");
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"source "$HOME/.toolrc""`);
     });
   });
 
-  describe('formatSourceFunction', () => {
-    it('should format source function', () => {
-      const emission = sourceFunction('myFunc');
+  describe("formatSourceFunction", () => {
+    it("should format source function", () => {
+      const emission = sourceFunction("myFunc");
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"source <(myFunc)"`);
     });
   });
 
-  describe('formatSource', () => {
-    it('should format source emission with inline content', () => {
-      const emission = source('echo "hello"', '__dotfiles_test_0');
+  describe("formatSource", () => {
+    it("should format source emission with inline content", () => {
+      const emission = source('echo "hello"', "__dotfiles_test_0");
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -124,18 +124,18 @@ describe('BashEmissionFormatter', () => {
     });
   });
 
-  describe('formatCompletion', () => {
-    it('should format completion with files', () => {
-      const emission = completion({ files: ['/path/to/completion'] });
+  describe("formatCompletion", () => {
+    it("should format completion with files", () => {
+      const emission = completion({ files: ["/path/to/completion"] });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"[[ -f "/path/to/completion" ]] && source "/path/to/completion""`);
     });
   });
 
-  describe('formatPath', () => {
-    it('should format path with deduplication', () => {
-      const emission = path('/usr/local/bin', { position: 'prepend', deduplicate: true });
+  describe("formatPath", () => {
+    it("should format path with deduplication", () => {
+      const emission = path("/usr/local/bin", { position: "prepend", deduplicate: true });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -146,8 +146,8 @@ describe('BashEmissionFormatter', () => {
     });
   });
 
-  describe('formatOnceScriptInitializer', () => {
-    it('should generate once script loop with nullglob', () => {
+  describe("formatOnceScriptInitializer", () => {
+    it("should generate once script loop with nullglob", () => {
       const result = formatter.formatOnceScriptInitializer();
 
       expect(result).toMatchInlineSnapshot(`
@@ -161,8 +161,8 @@ describe('BashEmissionFormatter', () => {
     });
   });
 
-  describe('formatFileHeader', () => {
-    it('should generate file header', () => {
+  describe("formatFileHeader", () => {
+    it("should generate file header", () => {
       const result = formatter.formatFileHeader();
 
       expect(result).toMatchInlineSnapshot(`
@@ -175,9 +175,9 @@ describe('BashEmissionFormatter', () => {
     });
   });
 
-  describe('formatSectionHeader', () => {
-    it('should generate section header', () => {
-      const result = formatter.formatSectionHeader('PATH Modifications');
+  describe("formatSectionHeader", () => {
+    it("should generate section header", () => {
+      const result = formatter.formatSectionHeader("PATH Modifications");
 
       expect(result).toMatchInlineSnapshot(
         `"# ============================= PATH Modifications =============================="`,
@@ -185,8 +185,8 @@ describe('BashEmissionFormatter', () => {
     });
   });
 
-  describe('formatFileFooter', () => {
-    it('should generate file footer', () => {
+  describe("formatFileFooter", () => {
+    it("should generate file footer", () => {
       const result = formatter.formatFileFooter();
 
       expect(result).toMatchInlineSnapshot(

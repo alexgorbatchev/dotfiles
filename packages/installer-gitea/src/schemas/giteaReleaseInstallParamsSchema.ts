@@ -1,7 +1,7 @@
-import type { BaseInstallParams, IGitHubRelease, IGitHubReleaseAsset, IInstallContext } from '@dotfiles/core';
-import { baseInstallParamsSchema } from '@dotfiles/core';
-import { z } from 'zod';
-import { type AssetPattern, isValidAssetPatternString } from '../matchAssetPattern';
+import type { BaseInstallParams, IGitHubRelease, IGitHubReleaseAsset, IInstallContext } from "@dotfiles/core";
+import { baseInstallParamsSchema } from "@dotfiles/core";
+import { z } from "zod";
+import { type AssetPattern, isValidAssetPatternString } from "../matchAssetPattern";
 
 /**
  * Context object for asset selection functions.
@@ -21,7 +21,7 @@ export const giteaReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
   /**
    * The base URL of the Gitea/Forgejo instance (e.g., `https://codeberg.org`).
    */
-  instanceUrl: z.string().url('instanceUrl must be a valid URL'),
+  instanceUrl: z.string().url("instanceUrl must be a valid URL"),
   /**
    * The repository in "owner/repo" format (e.g., `Codeberg/pages-server`).
    */
@@ -31,7 +31,7 @@ export const giteaReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
    */
   assetPattern: z
     .union([
-      z.string().refine(isValidAssetPatternString, 'assetPattern must be a valid glob or a regex string like /.../'),
+      z.string().refine(isValidAssetPatternString, "assetPattern must be a valid glob or a regex string like /.../"),
       z.instanceof(RegExp),
     ])
     .optional(),
@@ -43,7 +43,7 @@ export const giteaReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
   /**
    * A custom function to select the desired asset from available release assets.
    */
-  assetSelector: z.custom<GiteaAssetSelector>((val) => typeof val === 'function', 'Must be a function').optional(),
+  assetSelector: z.custom<GiteaAssetSelector>((val) => typeof val === "function", "Must be a function").optional(),
   /**
    * When true, includes prerelease versions when fetching the latest release.
    */

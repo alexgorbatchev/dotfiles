@@ -2,13 +2,13 @@ import {
   baseToolConfigWithPlatformsSchema,
   binaryConfigSchema,
   type InferToolConfigWithPlatforms,
-} from '@dotfiles/core';
-import { z } from 'zod';
-import { curlTarInstallParamsSchema } from './curlTarInstallParamsSchema';
+} from "@dotfiles/core";
+import { z } from "zod";
+import { curlTarInstallParamsSchema } from "./curlTarInstallParamsSchema";
 
 export const curlTarToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
   /** Resolved tool configuration for the 'curl-tar' installation method */
-  installationMethod: z.literal('curl-tar'),
+  installationMethod: z.literal("curl-tar"),
   /** Curl tar installation parameters */
   installParams: curlTarInstallParamsSchema,
   /** Binaries are typically required for this installation method */

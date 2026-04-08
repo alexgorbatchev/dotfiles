@@ -1,6 +1,6 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { InstallResult } from '../types';
-import { messages } from './log-messages';
+import type { TsLogger } from "@dotfiles/logger";
+import type { InstallResult } from "../types";
+import { messages } from "./log-messages";
 
 /**
  * Wraps installation operations with consistent error handling and logging.

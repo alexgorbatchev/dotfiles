@@ -1,4 +1,4 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   proxyUnavailable: (port: number) =>
@@ -8,15 +8,15 @@ export const messages = {
   proxyEnabled: (port: number) => createSafeLogMessage(`Routing requests through HTTP proxy on port ${port}`),
   proxyCheckingAvailability: (port: number) => createSafeLogMessage(`Checking proxy availability on port ${port}`),
   commandActionStarted: (commandName: string, targetTool?: string) =>
-    createSafeLogMessage(`${commandName} command action logic started${targetTool ? `. Tool: ${targetTool}` : ''}`),
-  commandConfigErrorDetails: () => createSafeLogMessage('Configuration loading error details: %O'),
-  dryRunEnabled: () => createSafeLogMessage('Dry run enabled. Initializing MemFileSystem'),
+    createSafeLogMessage(`${commandName} command action logic started${targetTool ? `. Tool: ${targetTool}` : ""}`),
+  commandConfigErrorDetails: () => createSafeLogMessage("Configuration loading error details: %O"),
+  dryRunEnabled: () => createSafeLogMessage("Dry run enabled. Initializing MemFileSystem"),
   componentInitialized: (component: string) => createSafeLogMessage(`${component} initialized`),
   toolConfigsLoading: (toolConfigsDir: string) => createSafeLogMessage(`tool config loading: ${toolConfigsDir}`),
   toolConfigsLoaded: (toolConfigsDir: string, toolCount: number) =>
     createSafeLogMessage(`Configuration loaded from ${toolConfigsDir} (${toolCount} tools configured)`),
-  toolConfigsForDryRun: () => createSafeLogMessage('tool configs for dry run'),
-  commandCompleted: (isDryRun: boolean) => createSafeLogMessage(`DONE${isDryRun ? ' (dry run)' : ''}`),
+  toolConfigsForDryRun: () => createSafeLogMessage("tool configs for dry run"),
+  commandCompleted: (isDryRun: boolean) => createSafeLogMessage(`DONE${isDryRun ? " (dry run)" : ""}`),
   commandExecutionFailed: (commandName: string, exitCode: number) =>
     createSafeLogMessage(`Command failed [${commandName}] exit ${exitCode}`),
   commandVersionComparison: (toolName: string, configuredVersion: string, latestVersion: string) =>
@@ -78,10 +78,10 @@ export const messages = {
   fsItemNotFound: (itemType: string, path: string) => createSafeLogMessage(`${itemType} not found: ${path}`),
   fsWrite: (toolName: string, path: string) => createSafeLogMessage(`[${toolName}] write ${path}`),
   toolConflictsDetected: (header: string, conflicts: string) => createSafeLogMessage(`${header}\n${conflicts}`),
-  noConflictsDetected: () => createSafeLogMessage('No conflicts detected'),
-  cleanupAllTrackedFiles: () => createSafeLogMessage('Registry-based cleanup: Removing all tracked files'),
-  cleanupRegistryDatabase: () => createSafeLogMessage('registry database cleanup'),
-  cleanupRegistryDryRun: () => createSafeLogMessage('Would clean up registry database (dry run)'),
+  noConflictsDetected: () => createSafeLogMessage("No conflicts detected"),
+  cleanupAllTrackedFiles: () => createSafeLogMessage("Registry-based cleanup: Removing all tracked files"),
+  cleanupRegistryDatabase: () => createSafeLogMessage("registry database cleanup"),
+  cleanupRegistryDryRun: () => createSafeLogMessage("Would clean up registry database (dry run)"),
   cleanupToolFiles: (toolName: string) => createSafeLogMessage(`Registry-based cleanup: files for tool '${toolName}'`),
   cleanupRegistryTool: (toolName: string, dryRun: boolean) =>
     createSafeLogMessage(
@@ -91,7 +91,7 @@ export const messages = {
     ),
   cleanupTypeFiles: (fileType: string) => createSafeLogMessage(`Registry-based cleanup: files of type '${fileType}'`),
   cleanupFoundFiles: (count: number, toolName: string, fileType?: string) =>
-    createSafeLogMessage(`Found ${count} files for tool '${toolName}'${fileType ? ` of type '${fileType}'` : ''}`),
+    createSafeLogMessage(`Found ${count} files for tool '${toolName}'${fileType ? ` of type '${fileType}'` : ""}`),
   cleanupFileRemoved: (path: string) => createSafeLogMessage(`[cleanup] rm ${path}`),
   fileCleanupDryRun: (filePath: string) => createSafeLogMessage(`Would delete: ${filePath}`),
   cleanupFileNotFound: (filePath: string) => createSafeLogMessage(`file not found ${filePath}`),
@@ -100,17 +100,17 @@ export const messages = {
   configParameterOverridden: (field: string, value: string) =>
     createSafeLogMessage(`${field.charAt(0).toUpperCase() + field.slice(1)} overridden to: ${value}`),
   cleanupProcessFinished: (dryRun: boolean) => createSafeLogMessage(`cleanup process finished, dryRun=${dryRun}`),
-  logCheckingFileStates: () => createSafeLogMessage('Checking file states for all tools'),
+  logCheckingFileStates: () => createSafeLogMessage("Checking file states for all tools"),
   logFileStatesForTool: (toolName: string) => createSafeLogMessage(`${toolName} files`),
   logFileStatus: (statusIcon: string, filePath: string, fileType: string, statusText: string, sizeText: string) =>
     createSafeLogMessage(`${statusIcon} ${filePath} [${fileType}] - ${statusText}${sizeText}`),
   logTargetStatus: (targetIcon: string, targetPath: string) => createSafeLogMessage(`${targetIcon} ${targetPath}`),
-  logNoOperationsFound: () => createSafeLogMessage('No file operations found matching criteria'),
+  logNoOperationsFound: () => createSafeLogMessage("No file operations found matching criteria"),
   logOperationHistory: (timestamp: string, operationMessage: string, metadata: string) =>
-    createSafeLogMessage(`${timestamp} ${operationMessage}${metadata ? ` ${metadata}` : ''}`),
-  cachingDisabled: () => createSafeLogMessage('Caching disabled'),
+    createSafeLogMessage(`${timestamp} ${operationMessage}${metadata ? ` ${metadata}` : ""}`),
+  cachingDisabled: () => createSafeLogMessage("Caching disabled"),
   registryInitialized: (path: string) => createSafeLogMessage(`File tracking initialized: ${path}`),
-  cliStarted: () => createSafeLogMessage('CLI starting with arguments'),
+  cliStarted: () => createSafeLogMessage("CLI starting with arguments"),
   serviceGithubResourceNotFound: (resource: string, identifier: string) =>
     createSafeLogMessage(`GitHub ${resource} not found: ${identifier}`),
   serviceGithubApiFailed: (operation: string, status: number) =>
@@ -118,17 +118,17 @@ export const messages = {
   configLoadFailed: (configPath: string) => createSafeLogMessage(`Failed to load configuration from ${configPath}`),
   configPathResolved: (configPath: string) => createSafeLogMessage(`Using configuration: ${configPath}`),
   configNotFound: () =>
-    createSafeLogMessage('No configuration file found. Create dotfiles.config.ts or specify --config <path>'),
+    createSafeLogMessage("No configuration file found. Create dotfiles.config.ts or specify --config <path>"),
   configParameterIgnored: (field: string, reason: string) =>
     createSafeLogMessage(`Configuration field "${field}" ignored: ${reason}`),
   configParameterInvalid: (field: string, value: string, expected: string) =>
     createSafeLogMessage(`Invalid ${field}: "${value}" (expected ${expected})`),
-  updatesCommandCompleted: () => createSafeLogMessage('Check-updates command completed'),
+  updatesCommandCompleted: () => createSafeLogMessage("Check-updates command completed"),
   toolTypesGenerated: (path: string) => createSafeLogMessage(`Generated tool types: ${path}`),
   toolNotInstalled: (toolName: string) => createSafeLogMessage(`Tool "${toolName}" is not installed`),
   installPathNotFound: (path: string) => createSafeLogMessage(`Installation path not found: ${path}`),
   filesCommandShowingTree: (path: string) => createSafeLogMessage(path),
-  filesCommandEmptyDirectory: () => createSafeLogMessage('(empty directory)'),
+  filesCommandEmptyDirectory: () => createSafeLogMessage("(empty directory)"),
   filesCommandTree: (treeOutput: string) => createSafeLogMessage(treeOutput),
   skillAlreadyExists: (destPath: string) => createSafeLogMessage(`Destination already exists, removing: ${destPath}`),
   skillDryRun: (destPath: string, sourcePath: string) =>
@@ -137,8 +137,8 @@ export const messages = {
     createSafeLogMessage(`Copied skill: ${sourcePath} -> ${destPath}`),
   skillCopyFailed: (destPath: string) => createSafeLogMessage(`Failed to copy skill to: ${destPath}`),
   cliCompletionGenerated: (path: string) => createSafeLogMessage(`CLI completion generated: ${path}`),
-  dashboardStopping: () => createSafeLogMessage('Stopping dashboard server'),
-  dashboardBrowserOpenFailed: () => createSafeLogMessage('Failed to open browser'),
+  dashboardStopping: () => createSafeLogMessage("Stopping dashboard server"),
+  dashboardBrowserOpenFailed: () => createSafeLogMessage("Failed to open browser"),
   toolLookupByBinaryStarted: (binaryName: string) =>
     createSafeLogMessage(`Tool not found by name '${binaryName}', searching by binary name`),
   toolFoundByBinary: (binaryName: string, toolName: string) =>
@@ -150,7 +150,7 @@ export const messages = {
   envNotFound: (envDir: string) => createSafeLogMessage(`Environment not found at ${envDir}`),
   envOperationFailed: (operation: string, error: string) =>
     createSafeLogMessage(`Environment ${operation} failed: ${error}`),
-  envDeletionCancelled: () => createSafeLogMessage('Deletion cancelled'),
+  envDeletionCancelled: () => createSafeLogMessage("Deletion cancelled"),
   envActivationHint: (envName: string) => createSafeLogMessage(`To activate: source ${envName}/source`),
   envConfigPath: (configPath: string) => createSafeLogMessage(`Config file: ${configPath}`),
   envConfigFromEnvVar: (configPath: string) =>

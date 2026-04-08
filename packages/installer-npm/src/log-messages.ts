@@ -1,4 +1,4 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   installing: (packageName: string) => createSafeLogMessage(`Installing from npm: package=${packageName}`),
@@ -7,5 +7,5 @@ export const messages = {
     createSafeLogMessage(`Fetched version ${version} for npm package ${packageName}`),
   versionFetchFailed: (packageName: string) =>
     createSafeLogMessage(`Failed to fetch version for npm package ${packageName}`),
-  updateCheckFailed: () => createSafeLogMessage('Failed to check update for npm tool'),
+  updateCheckFailed: () => createSafeLogMessage("Failed to check update for npm tool"),
 } as const satisfies SafeLogMessageMap;

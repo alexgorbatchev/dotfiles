@@ -1,13 +1,6 @@
-import { isScriptEmission } from '../emissions/guards';
-import type {
-  Block,
-  IBlockRenderer,
-  IEmissionFormatter,
-  OnceScript,
-  RenderedOutput,
-  ScriptEmission,
-} from '../types';
-import { ONCE_SCRIPT_STARTING_INDEX, SectionPriority } from './constants';
+import { isScriptEmission } from "../emissions/guards";
+import type { Block, IBlockRenderer, IEmissionFormatter, OnceScript, RenderedOutput, ScriptEmission } from "../types";
+import { ONCE_SCRIPT_STARTING_INDEX, SectionPriority } from "./constants";
 
 /**
  * Renders blocks using the provided formatter.
@@ -23,7 +16,7 @@ export class BlockRenderer implements IBlockRenderer {
     let onceScriptIndex = ONCE_SCRIPT_STARTING_INDEX;
 
     // Track once scripts to determine where to insert initializer
-    const onceScriptEmissions: Array<{ emission: ScriptEmission; blockPriority: number; }> = [];
+    const onceScriptEmissions: Array<{ emission: ScriptEmission; blockPriority: number }> = [];
 
     // First pass: collect once scripts
     for (const block of sortedBlocks) {
@@ -44,16 +37,11 @@ export class BlockRenderer implements IBlockRenderer {
 
     // Second pass: render blocks
     for (const [i, block] of sortedBlocks.entries()) {
-      const blockLines = this.renderBlock(
-        block,
-        formatter,
-        onceScripts,
-        onceScriptIndex,
-      );
+      const blockLines = this.renderBlock(block, formatter, onceScripts, onceScriptIndex);
 
       if (blockLines.length > 0) {
         if (lines.length > 0) {
-          lines.push('');
+          lines.push("");
         }
         lines.push(...blockLines);
       }
@@ -63,24 +51,21 @@ export class BlockRenderer implements IBlockRenderer {
 
       // Insert once script initializer after appropriate block
       if (i === initializerInsertIndex && onceScriptEmissions.length > 0) {
-        lines.push('');
+        lines.push("");
         lines.push(formatter.formatOnceScriptInitializer());
       }
     }
 
     return {
-      content: lines.join('\n'),
+      content: lines.join("\n"),
       fileExtension: formatter.fileExtension,
       onceScripts,
     };
   }
 
-  private collectOnceScripts(
-    block: Block,
-    results: Array<{ emission: ScriptEmission; blockPriority: number; }>,
-  ): void {
+  private collectOnceScripts(block: Block, results: Array<{ emission: ScriptEmission; blockPriority: number }>): void {
     for (const emission of block.emissions) {
-      if (isScriptEmission(emission) && emission.timing === 'once') {
+      if (isScriptEmission(emission) && emission.timing === "once") {
         results.push({ emission, blockPriority: block.priority });
       }
     }
@@ -133,7 +118,7 @@ export class BlockRenderer implements IBlockRenderer {
       }
 
       // Handle once scripts specially
-      if (isScriptEmission(emission) && emission.timing === 'once') {
+      if (isScriptEmission(emission) && emission.timing === "once") {
         const onceResult = formatter.formatOnceScript(emission, onceScriptIndex);
         onceScripts.push({
           filename: onceResult.filename,
@@ -152,7 +137,7 @@ export class BlockRenderer implements IBlockRenderer {
         continue;
       }
 
-      lines.push('');
+      lines.push("");
       lines.push(formatter.formatChildBlockHeader(child));
 
       let childPreviousSource: string | undefined;
@@ -162,7 +147,7 @@ export class BlockRenderer implements IBlockRenderer {
           childPreviousSource = emission.source;
         }
 
-        if (isScriptEmission(emission) && emission.timing === 'once') {
+        if (isScriptEmission(emission) && emission.timing === "once") {
           const onceResult = formatter.formatOnceScript(emission, onceScriptIndex);
           onceScripts.push({
             filename: onceResult.filename,

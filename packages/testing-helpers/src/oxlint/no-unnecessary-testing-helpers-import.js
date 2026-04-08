@@ -12,19 +12,19 @@
  * - (no import at all - let test setup handle it)
  */
 
-const PACKAGE_NAME = '@dotfiles/testing-helpers';
+const PACKAGE_NAME = "@dotfiles/testing-helpers";
 
 /** @type {import('eslint').Rule.RuleModule} */
 export const noUnnecessaryTestingHelpersImportRule = {
   meta: {
-    type: 'problem',
+    type: "problem",
     docs: {
-      description: 'Disallow bare imports of @dotfiles/testing-helpers',
+      description: "Disallow bare imports of @dotfiles/testing-helpers",
       recommended: true,
     },
     schema: [],
     messages: {
-      unnecessaryImport: 'This import is not necessary.',
+      unnecessaryImport: "This import is not necessary.",
     },
   },
   create(context) {
@@ -36,7 +36,7 @@ export const noUnnecessaryTestingHelpersImportRule = {
           if (node.specifiers.length === 0) {
             context.report({
               node,
-              messageId: 'unnecessaryImport',
+              messageId: "unnecessaryImport",
             });
           }
         }

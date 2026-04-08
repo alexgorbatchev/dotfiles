@@ -1,4 +1,4 @@
-import type { IArchitectureRegex } from './types';
+import type { IArchitectureRegex } from "./types";
 
 /**
  * Checks if a given asset name matches the specified architecture patterns.
@@ -34,11 +34,11 @@ export function matchesArchitecture(assetName: string, architectureRegex: IArchi
   // System and CPU patterns are the primary filters.
   // Both must match for an asset to be considered compatible.
   const systemMatch = architectureRegex.systemPattern
-    ? new RegExp(architectureRegex.systemPattern, 'i').test(lowerAssetName)
+    ? new RegExp(architectureRegex.systemPattern, "i").test(lowerAssetName)
     : true;
 
   const cpuMatch = architectureRegex.cpuPattern
-    ? new RegExp(architectureRegex.cpuPattern, 'i').test(lowerAssetName)
+    ? new RegExp(architectureRegex.cpuPattern, "i").test(lowerAssetName)
     : true;
 
   // Variants (musl/gnu, mingw/msys, eabihf, etc.) are used by zinit for

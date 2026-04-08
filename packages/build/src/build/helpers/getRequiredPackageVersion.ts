@@ -1,4 +1,4 @@
-import { BuildError } from '../handleBuildError';
+import { BuildError } from "../handleBuildError";
 
 /**
  * Returns a package version from a map, throwing when the version is missing.

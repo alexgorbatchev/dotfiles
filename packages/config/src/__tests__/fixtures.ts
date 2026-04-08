@@ -1,23 +1,23 @@
-import type { ProjectConfig } from '@dotfiles/core';
+import type { ProjectConfig } from "@dotfiles/core";
 
 export const MOCK_PROJECT_CONFIG_OBJ: ProjectConfig = {
-  configFilePath: '',
-  configFileDir: '',
+  configFilePath: "",
+  configFileDir: "",
 
   paths: {
-    homeDir: '/home/testuser',
+    homeDir: "/home/testuser",
     dotfilesDir: `\${paths.homeDir}/.dotfiles`,
-    targetDir: '/usr/local/bin',
+    targetDir: "/usr/local/bin",
     generatedDir: `\${paths.dotfilesDir}/.generated`,
     toolConfigsDir: `\${paths.dotfilesDir}/tools`,
     shellScriptsDir: `\${paths.generatedDir}/shell-scripts`,
     binariesDir: `\${paths.generatedDir}/bin`,
   },
   system: {
-    sudoPrompt: 'Enter password for generator:',
+    sudoPrompt: "Enter password for generator:",
   },
   logging: {
-    debug: '',
+    debug: "",
   },
   updates: {
     checkOnRun: true,
@@ -25,8 +25,8 @@ export const MOCK_PROJECT_CONFIG_OBJ: ProjectConfig = {
   },
   github: {
     token: `\${GITHUB_TOKEN}`,
-    host: 'https://api.github.com',
-    userAgent: 'dotfiles-generator',
+    host: "https://api.github.com",
+    userAgent: "dotfiles-generator",
     cache: {
       enabled: true,
       ttl: 86400000,
@@ -34,24 +34,24 @@ export const MOCK_PROJECT_CONFIG_OBJ: ProjectConfig = {
   },
   cargo: {
     cratesIo: {
-      host: 'https://crates.io',
+      host: "https://crates.io",
       cache: { enabled: true, ttl: 86400000 },
-      token: '',
-      userAgent: 'dotfiles-generator',
+      token: "",
+      userAgent: "dotfiles-generator",
     },
     githubRaw: {
-      host: 'https://raw.githubusercontent.com',
+      host: "https://raw.githubusercontent.com",
       cache: { enabled: true, ttl: 86400000 },
-      token: '',
-      userAgent: 'dotfiles-generator',
+      token: "",
+      userAgent: "dotfiles-generator",
     },
     githubRelease: {
-      host: 'https://github.com',
+      host: "https://github.com",
       cache: { enabled: true, ttl: 86400000 },
-      token: '',
-      userAgent: 'dotfiles-generator',
+      token: "",
+      userAgent: "dotfiles-generator",
     },
-    userAgent: 'dotfiles-generator',
+    userAgent: "dotfiles-generator",
   },
   downloader: {
     timeout: 300000,

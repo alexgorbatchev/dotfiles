@@ -1,8 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
-import type { IBuildContext } from '../types';
-import { getTypeTestFiles } from './getTypeTestFiles';
+import type { IBuildContext } from "../types";
+import { getTypeTestFiles } from "./getTypeTestFiles";
 
 /**
  * Copies per-package type test files into a single destination directory.

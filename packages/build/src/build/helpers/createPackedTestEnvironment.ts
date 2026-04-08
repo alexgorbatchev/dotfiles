@@ -1,10 +1,10 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
-import { BuildError } from '../handleBuildError';
-import type { IBuildContext } from '../types';
-import { shell } from './shell';
-import { throwIfCertificateError } from './throwIfCertificateError';
+import { BuildError } from "../handleBuildError";
+import type { IBuildContext } from "../types";
+import { shell } from "./shell";
+import { throwIfCertificateError } from "./throwIfCertificateError";
 
 export interface IPackedTestEnvironment {
   /** Directory containing the unpacked and installed package */
@@ -46,7 +46,7 @@ export async function createPackedTestEnvironment(context: IBuildContext): Promi
   }
 
   // Create package directory and unpack
-  const packageDir = path.join(testDir, 'package');
+  const packageDir = path.join(testDir, "package");
   fs.mkdirSync(packageDir, { recursive: true });
 
   const unpackResult = await shell`tar -xzf ${tarballPath} -C ${testDir}`.quiet().noThrow();
@@ -58,7 +58,7 @@ export async function createPackedTestEnvironment(context: IBuildContext): Promi
   // Install dependencies in the unpacked package using the caller's default npm registry/auth configuration
   // stderr("inheritPiped") both prints stderr and captures it so throwIfCertificateError can inspect it.
   // Without it, dax-sh inherits stdio and .stderr.toString() throws "Stdout was not piped".
-  const installResult = await shell`bun install --ignore-scripts`.stderr('inheritPiped').noThrow().cwd(packageDir);
+  const installResult = await shell`bun install --ignore-scripts`.stderr("inheritPiped").noThrow().cwd(packageDir);
 
   throwIfCertificateError(installResult.stderr.toString());
 
@@ -69,7 +69,7 @@ export async function createPackedTestEnvironment(context: IBuildContext): Promi
   // Remove tarball after unpacking
   fs.rmSync(tarballPath, { force: true });
 
-  const cliPath = path.join(packageDir, 'cli.js');
+  const cliPath = path.join(packageDir, "cli.js");
 
   if (!fs.existsSync(cliPath)) {
     throw new BuildError(`CLI entry point not found at ${cliPath}`);

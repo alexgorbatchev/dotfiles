@@ -1,7 +1,7 @@
-import type { IBinaryConfig, ISystemInfo, ToolConfig } from '@dotfiles/core';
-import { Architecture, Platform } from '@dotfiles/core';
-import type { IFileOperation, IFileState } from '@dotfiles/registry/file';
-import type { IToolInstallationRecord } from '@dotfiles/registry/tool';
+import type { IBinaryConfig, ISystemInfo, ToolConfig } from "@dotfiles/core";
+import { Architecture, Platform } from "@dotfiles/core";
+import type { IFileOperation, IFileState } from "@dotfiles/registry/file";
+import type { IToolInstallationRecord } from "@dotfiles/registry/tool";
 
 /**
  * Standard API response wrapper for all dashboard endpoints.
@@ -86,7 +86,7 @@ export interface ISerializableToolConfig {
  * Runtime state from the installation registry.
  */
 export interface IToolRuntimeState {
-  status: 'installed' | 'not-installed' | 'error';
+  status: "installed" | "not-installed" | "error";
   installedVersion: string | null;
   installedAt: string | null;
   installPath: string | null;
@@ -134,7 +134,7 @@ export interface IToolSummary {
   name: string;
   version: string;
   installationMethod: string;
-  status: 'installed' | 'not-installed' | 'error';
+  status: "installed" | "not-installed" | "error";
   installedVersion: string | null;
   hasUpdate: boolean;
   binaries?: ISerializableBinary[];
@@ -146,7 +146,7 @@ export interface IToolSummary {
 export interface IFileTreeEntry {
   name: string;
   path: string;
-  type: 'file' | 'directory';
+  type: "file" | "directory";
   children?: IFileTreeEntry[];
   /** For tool files, the associated tool name */
   toolName?: string;
@@ -177,7 +177,7 @@ export interface IDashboardStats {
  */
 export interface IHealthCheckResult {
   name: string;
-  status: 'pass' | 'warn' | 'fail';
+  status: "pass" | "warn" | "fail";
   message: string;
   details?: string[];
 }
@@ -186,7 +186,7 @@ export interface IHealthCheckResult {
  * Overall health status.
  */
 export interface IHealthStatus {
-  overall: 'healthy' | 'warning' | 'unhealthy';
+  overall: "healthy" | "warning" | "unhealthy";
   checks: IHealthCheckResult[];
   lastCheck: string;
 }
@@ -214,9 +214,9 @@ export interface IConfigSummary {
  */
 export function platformBitmaskToNames(platforms: Platform): string[] {
   const names: string[] = [];
-  if (platforms & Platform.Linux) names.push('Linux');
-  if (platforms & Platform.MacOS) names.push('macOS');
-  if (platforms & Platform.Windows) names.push('Windows');
+  if (platforms & Platform.Linux) names.push("Linux");
+  if (platforms & Platform.MacOS) names.push("macOS");
+  if (platforms & Platform.Windows) names.push("Windows");
   return names;
 }
 
@@ -225,8 +225,8 @@ export function platformBitmaskToNames(platforms: Platform): string[] {
  */
 export function architectureBitmaskToNames(architectures: Architecture): string[] {
   const names: string[] = [];
-  if (architectures & Architecture.X86_64) names.push('x86_64');
-  if (architectures & Architecture.Arm64) names.push('arm64');
+  if (architectures & Architecture.X86_64) names.push("x86_64");
+  if (architectures & Architecture.Arm64) names.push("arm64");
   return names;
 }
 
@@ -235,14 +235,14 @@ export function architectureBitmaskToNames(architectures: Architecture): string[
  */
 function extractInstallParams(params: Record<string, unknown>): ISerializableInstallParams {
   const installParams: ISerializableInstallParams = {};
-  if (typeof params['repo'] === 'string') installParams.repo = params['repo'];
-  if (typeof params['assetPattern'] === 'string') installParams.assetPattern = params['assetPattern'];
-  if (typeof params['ghCli'] === 'boolean') installParams.ghCli = params['ghCli'];
+  if (typeof params["repo"] === "string") installParams.repo = params["repo"];
+  if (typeof params["assetPattern"] === "string") installParams.assetPattern = params["assetPattern"];
+  if (typeof params["ghCli"] === "boolean") installParams.ghCli = params["ghCli"];
   // Handle both 'crate' and 'crateName' (cargo uses crateName internally)
-  if (typeof params['crate'] === 'string') installParams.crate = params['crate'];
-  if (typeof params['crateName'] === 'string') installParams.crate = params['crateName'];
-  if (typeof params['formula'] === 'string') installParams.formula = params['formula'];
-  if (typeof params['url'] === 'string') installParams.url = params['url'];
+  if (typeof params["crate"] === "string") installParams.crate = params["crate"];
+  if (typeof params["crateName"] === "string") installParams.crate = params["crateName"];
+  if (typeof params["formula"] === "string") installParams.formula = params["formula"];
+  if (typeof params["url"] === "string") installParams.url = params["url"];
   return installParams;
 }
 
@@ -254,7 +254,7 @@ export function serializeToolConfig(config: ToolConfig): ISerializableToolConfig
   // Extract serializable install params (varies by method)
   const installParams: ISerializableInstallParams = {};
 
-  if ('installParams' in config && config.installParams) {
+  if ("installParams" in config && config.installParams) {
     const params = config.installParams as Record<string, unknown>;
     Object.assign(installParams, extractInstallParams(params));
   }
@@ -315,7 +315,7 @@ export function getToolRuntimeState(
 
   if (!record) {
     return {
-      status: 'not-installed',
+      status: "not-installed",
       installedVersion: null,
       installedAt: null,
       installPath: null,
@@ -325,7 +325,7 @@ export function getToolRuntimeState(
   }
 
   return {
-    status: 'installed',
+    status: "installed",
     installedVersion: record.version,
     installedAt: record.installedAt.toISOString(),
     installPath: record.installPath,
@@ -369,7 +369,7 @@ export function formatTimestamp(timestamp: number): string {
 export interface IShellFile {
   toolName: string;
   filePath: string;
-  fileType: 'completion' | 'init';
+  fileType: "completion" | "init";
   lastModified: string;
 }
 
@@ -411,26 +411,26 @@ export function formatRelativeTime(timestamp: number): string {
 
   const seconds = Math.floor(diff / 1000);
   if (seconds < 60) {
-    return 'just now';
+    return "just now";
   }
 
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) {
-    return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
   }
 
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
-    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
   }
 
   const days = Math.floor(hours / 24);
   if (days < 30) {
-    return `${days} day${days === 1 ? '' : 's'} ago`;
+    return `${days} day${days === 1 ? "" : "s"} ago`;
   }
 
   const months = Math.floor(days / 30);
-  return `${months} month${months === 1 ? '' : 's'} ago`;
+  return `${months} month${months === 1 ? "" : "s"} ago`;
 }
 
 /**
@@ -456,7 +456,7 @@ export interface IFilesList {
 export interface IFileTreeNode {
   name: string;
   path: string;
-  type: 'directory' | 'file';
+  type: "directory" | "file";
   fileType?: string;
   toolName?: string;
   children?: IFileTreeNode[];
@@ -487,7 +487,7 @@ export interface IToolHistory {
 /**
  * Timestamp source for recent tools.
  */
-export type TimestampSource = 'git' | 'mtime';
+export type TimestampSource = "git" | "mtime";
 
 /**
  * Recently added tool file entry.

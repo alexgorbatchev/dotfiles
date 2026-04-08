@@ -1,22 +1,22 @@
-import { describe, expect, it } from 'bun:test';
-import { shellCompletionConfigSchema } from '../shellCompletionConfigSchema';
+import { describe, expect, it } from "bun:test";
+import { shellCompletionConfigSchema } from "../shellCompletionConfigSchema";
 
-describe('shellCompletionConfigSchema', () => {
-  it('accepts direct file URLs without source', () => {
+describe("shellCompletionConfigSchema", () => {
+  it("accepts direct file URLs without source", () => {
     const result = shellCompletionConfigSchema.parse({
-      url: 'https://raw.githubusercontent.com/oven-sh/bun/main/completions/bun.zsh',
+      url: "https://raw.githubusercontent.com/oven-sh/bun/main/completions/bun.zsh",
     });
 
     expect(result).toEqual({
-      url: 'https://raw.githubusercontent.com/oven-sh/bun/main/completions/bun.zsh',
+      url: "https://raw.githubusercontent.com/oven-sh/bun/main/completions/bun.zsh",
     });
   });
 
-  it('rejects cmd combined with url', () => {
+  it("rejects cmd combined with url", () => {
     const parseConfig = () =>
       shellCompletionConfigSchema.parse({
-        cmd: 'bun completion zsh',
-        url: 'https://raw.githubusercontent.com/oven-sh/bun/main/completions/bun.zsh',
+        cmd: "bun completion zsh",
+        url: "https://raw.githubusercontent.com/oven-sh/bun/main/completions/bun.zsh",
       });
 
     expect(parseConfig).toThrow(

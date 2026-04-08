@@ -1,12 +1,12 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { TrackedFileSystem } from '@dotfiles/registry/file';
-import { expandToolConfigPath, resolvePlatformConfig } from '@dotfiles/utils';
-import path from 'node:path';
-import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from './ISymlinkGenerator';
-import { messages } from './log-messages';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { TrackedFileSystem } from "@dotfiles/registry/file";
+import { expandToolConfigPath, resolvePlatformConfig } from "@dotfiles/utils";
+import path from "node:path";
+import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from "./ISymlinkGenerator";
+import { messages } from "./log-messages";
 
 /** Configuration for a single symlink mapping from source to target */
 interface ISymlinkConfig {
@@ -48,7 +48,7 @@ interface ITargetHandlingCreate {
 /** Result when target handling determines symlink should be skipped */
 interface ITargetHandlingSkip {
   shouldSkip: true;
-  status: 'skipped_correct' | 'skipped_exists' | 'failed';
+  status: "skipped_correct" | "skipped_exists" | "failed";
   error?: string;
 }
 
@@ -56,7 +56,7 @@ interface ITargetHandlingSkip {
 type TargetHandlingResult = ITargetHandlingCreate | ITargetHandlingSkip;
 
 /** Status values for overwrite operations (excludes 'created') */
-type OverwriteStatus = 'updated_target' | 'backed_up';
+type OverwriteStatus = "updated_target" | "backed_up";
 
 /** Result when overwrite handling succeeds */
 interface IOverwriteHandlingSuccess {
@@ -67,7 +67,7 @@ interface IOverwriteHandlingSuccess {
 /** Result when overwrite handling fails */
 interface IOverwriteHandlingFailure {
   shouldSkip: true;
-  status: 'failed';
+  status: "failed";
   error: string;
 }
 
@@ -75,7 +75,7 @@ interface IOverwriteHandlingFailure {
 type OverwriteHandlingResult = IOverwriteHandlingSuccess | IOverwriteHandlingFailure;
 
 /** Status values for successful symlink creation operations */
-type SymlinkCreationStatus = 'created' | 'updated_target' | 'backed_up';
+type SymlinkCreationStatus = "created" | "updated_target" | "backed_up";
 
 /**
  * Service that generates symbolic links for dotfiles.
@@ -103,14 +103,14 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     this.fs = fileSystem;
     this.projectConfig = projectConfig;
     this.systemInfo = systemInfo;
-    this.logger = parentLogger.getSubLogger({ name: 'SymlinkGenerator' });
+    this.logger = parentLogger.getSubLogger({ name: "SymlinkGenerator" });
   }
 
   /**
    * @inheritdoc ISymlinkGenerator.createBinarySymlink
    */
   async createBinarySymlink(parentLogger: TsLogger, sourcePath: string, targetPath: string): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'createBinarySymlink' });
+    const logger = parentLogger.getSubLogger({ name: "createBinarySymlink" });
 
     // Check if symlink already exists and is valid
     try {
@@ -170,7 +170,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolConfigs: Record<string, ToolConfig>,
     options: IGenerateSymlinksOptions = {},
   ): Promise<SymlinkOperationResult[]> {
-    const logger = this.logger.getSubLogger({ name: 'generate' });
+    const logger = this.logger.getSubLogger({ name: "generate" });
     const results: SymlinkOperationResult[] = [];
 
     for (const toolName in toolConfigs) {
@@ -209,8 +209,8 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolConfig: ToolConfig | undefined,
     toolName: string,
     logger: TsLogger,
-  ): toolConfig is ToolConfig & { symlinks: NonNullable<ToolConfig['symlinks']>; } {
-    const methodLogger = logger.getSubLogger({ name: 'shouldProcessTool' });
+  ): toolConfig is ToolConfig & { symlinks: NonNullable<ToolConfig["symlinks"]> } {
+    const methodLogger = logger.getSubLogger({ name: "shouldProcessTool" });
     if (!toolConfig) {
       methodLogger.debug(messages.generate.missingToolConfig(toolName));
       return false;
@@ -238,7 +238,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     options: IGenerateSymlinksOptions,
     logger: TsLogger,
   ): Promise<SymlinkOperationResult> {
-    const methodLogger = logger.getSubLogger({ name: 'processSymlink' });
+    const methodLogger = logger.getSubLogger({ name: "processSymlink" });
     const { overwrite = false, backup = false } = options;
     const sourceAbsPath = expandToolConfigPath(
       toolConfig.configFilePath,
@@ -267,7 +267,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         success: false,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
-        status: 'failed',
+        status: "failed",
         error: messages.process.sourceMissing(toolConfig.name, sourceAbsPath),
       };
       return result;
@@ -282,19 +282,19 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     );
 
     if (targetHandlingResult.shouldSkip) {
-      if (targetHandlingResult.status === 'failed') {
+      if (targetHandlingResult.status === "failed") {
         const result: SymlinkOperationResult = {
           success: false,
           sourcePath: sourceAbsPath,
           targetPath: targetAbsPath,
-          status: 'failed',
-          error: targetHandlingResult.error ?? 'Unknown error',
+          status: "failed",
+          error: targetHandlingResult.error ?? "Unknown error",
         };
         return result;
       }
 
       // If symlink is correct but was skipped, ensure it's registered in the registry
-      if (targetHandlingResult.status === 'skipped_correct' && toolFs instanceof TrackedFileSystem) {
+      if (targetHandlingResult.status === "skipped_correct" && toolFs instanceof TrackedFileSystem) {
         await toolFs.recordExistingSymlink(sourceAbsPath, targetAbsPath);
       }
 
@@ -317,28 +317,28 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     options: IOverwriteOptions,
     logger: TsLogger,
   ): Promise<TargetHandlingResult> {
-    const methodLogger = logger.getSubLogger({ name: 'handleExistingTarget' });
+    const methodLogger = logger.getSubLogger({ name: "handleExistingTarget" });
     const targetExists = await toolFs.exists(targetAbsPath);
 
     if (!targetExists) {
       // Check for broken symlink - exists() returns false but the symlink file itself may exist
       const brokenSymlinkRemoved = await this.removeBrokenSymlink(targetAbsPath, toolFs, methodLogger);
       if (brokenSymlinkRemoved.failed) {
-        return { shouldSkip: true, status: 'failed', error: brokenSymlinkRemoved.error };
+        return { shouldSkip: true, status: "failed", error: brokenSymlinkRemoved.error };
       }
-      return { shouldSkip: false, status: 'created' };
+      return { shouldSkip: false, status: "created" };
     }
 
     methodLogger.debug(messages.process.targetExists(targetAbsPath));
 
     const correctSymlinkResult = await this.checkCorrectSymlink(sourceAbsPath, targetAbsPath, toolFs);
     if (correctSymlinkResult.isCorrect) {
-      return { shouldSkip: true, status: 'skipped_correct' };
+      return { shouldSkip: true, status: "skipped_correct" };
     }
 
     if (!options.overwrite) {
       methodLogger.debug(messages.process.skipExistingTarget(targetAbsPath));
-      return { shouldSkip: true, status: 'skipped_exists' };
+      return { shouldSkip: true, status: "skipped_exists" };
     }
 
     return await this.handleOverwrite(targetAbsPath, toolFs, options.backup, methodLogger);
@@ -386,19 +386,19 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     backup: boolean,
     logger: TsLogger,
   ): Promise<OverwriteHandlingResult> {
-    const methodLogger = logger.getSubLogger({ name: 'handleOverwrite' });
-    let status: SymlinkOperationResult['status'] = 'updated_target';
+    const methodLogger = logger.getSubLogger({ name: "handleOverwrite" });
+    let status: SymlinkOperationResult["status"] = "updated_target";
 
     if (backup) {
       const backupResult = await this.createBackup(targetAbsPath, toolFs, methodLogger);
       if (backupResult.failed) {
-        return { shouldSkip: true, status: 'failed', error: backupResult.error };
+        return { shouldSkip: true, status: "failed", error: backupResult.error };
       }
-      status = 'backed_up';
+      status = "backed_up";
     } else {
       const deleteResult = await this.deleteTarget(targetAbsPath, toolFs, methodLogger);
       if (deleteResult.failed) {
-        return { shouldSkip: true, status: 'failed', error: deleteResult.error };
+        return { shouldSkip: true, status: "failed", error: deleteResult.error };
       }
     }
 
@@ -414,7 +414,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
    * @returns An object indicating success or failure with error message.
    */
   private async createBackup(targetAbsPath: string, toolFs: IFileSystem, logger: TsLogger): Promise<OperationResult> {
-    const methodLogger = logger.getSubLogger({ name: 'createBackup' });
+    const methodLogger = logger.getSubLogger({ name: "createBackup" });
     const backupPath = `${targetAbsPath}.bak`;
     try {
       if (await toolFs.exists(backupPath)) {
@@ -438,7 +438,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
    * @returns An object indicating success or failure with error message.
    */
   private async deleteTarget(targetAbsPath: string, toolFs: IFileSystem, logger: TsLogger): Promise<OperationResult> {
-    const methodLogger = logger.getSubLogger({ name: 'deleteTarget' });
+    const methodLogger = logger.getSubLogger({ name: "deleteTarget" });
     try {
       const targetStat = await toolFs.stat(targetAbsPath);
       const isDirectory = targetStat.isDirectory();
@@ -473,7 +473,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolFs: IFileSystem,
     logger: TsLogger,
   ): Promise<OperationResult> {
-    const methodLogger = logger.getSubLogger({ name: 'removeBrokenSymlink' });
+    const methodLogger = logger.getSubLogger({ name: "removeBrokenSymlink" });
     try {
       const stats = await toolFs.lstat(targetAbsPath);
       if (stats.isSymbolicLink()) {
@@ -504,7 +504,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     status: SymlinkCreationStatus,
     logger: TsLogger,
   ): Promise<SymlinkOperationResult> {
-    const methodLogger = logger.getSubLogger({ name: 'createSymlink' });
+    const methodLogger = logger.getSubLogger({ name: "createSymlink" });
     const targetDir = path.dirname(targetAbsPath);
 
     try {
@@ -516,7 +516,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         success: false,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
-        status: 'failed',
+        status: "failed",
         error: errorMsg,
       };
       return result;
@@ -538,7 +538,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         success: false,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
-        status: 'failed',
+        status: "failed",
         error: errorMsg,
       };
       return result;

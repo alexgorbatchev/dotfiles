@@ -1,4 +1,4 @@
-import type { IToolInstallationDetails, IToolInstallationRecord, IToolUsageRecord } from './types';
+import type { IToolInstallationDetails, IToolInstallationRecord, IToolUsageRecord } from "./types";
 
 /**
  * Registry interface for managing tool installation records in a persistent database.

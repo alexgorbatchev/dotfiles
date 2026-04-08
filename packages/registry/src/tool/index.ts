@@ -1,3 +1,3 @@
-export * from './IToolInstallationRegistry';
-export * from './ToolInstallationRegistry';
-export * from './types';
+export * from "./IToolInstallationRegistry";
+export * from "./ToolInstallationRegistry";
+export * from "./types";

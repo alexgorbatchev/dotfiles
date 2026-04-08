@@ -1,5 +1,5 @@
-import type { IFileOperation, IFileRegistry, IFileState } from '@dotfiles/registry';
-import { mock } from 'bun:test';
+import type { IFileOperation, IFileRegistry, IFileState } from "@dotfiles/registry";
+import { mock } from "bun:test";
 
 /**
  * Input type for setFileState - minimal properties needed to track a file.
@@ -10,11 +10,11 @@ export interface ISetFileStateInput {
   /** Tool that owns this file */
   toolName: string;
   /** Type of file */
-  fileType: IFileOperation['fileType'];
+  fileType: IFileOperation["fileType"];
   /** Target path for symlinks */
   targetPath?: string;
   /** Override the last operation (defaults based on fileType) */
-  lastOperation?: IFileOperation['operationType'];
+  lastOperation?: IFileOperation["operationType"];
 }
 
 /**
@@ -65,8 +65,8 @@ export function createMockFileRegistry(): IMockFileRegistry {
         toolName: state.toolName,
         fileType: state.fileType,
         targetPath: state.targetPath,
-        lastOperation: state.lastOperation ??
-          (state.fileType === 'symlink' ? 'symlink' as const : 'writeFile' as const),
+        lastOperation:
+          state.lastOperation ?? (state.fileType === "symlink" ? ("symlink" as const) : ("writeFile" as const)),
         lastModified: Date.now(),
       }));
     return states;

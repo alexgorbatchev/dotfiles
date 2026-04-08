@@ -1,2 +1,2 @@
-export * from './zshPluginInstallParamsSchema';
-export * from './zshPluginToolConfigSchema';
+export * from "./zshPluginInstallParamsSchema";
+export * from "./zshPluginToolConfigSchema";

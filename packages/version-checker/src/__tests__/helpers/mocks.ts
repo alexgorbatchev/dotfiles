@@ -1,6 +1,6 @@
-import type { IGitHubRelease } from '@dotfiles/core';
-import type { IGitHubApiClient } from '@dotfiles/installer-github';
-import { mock } from 'bun:test';
+import type { IGitHubRelease } from "@dotfiles/core";
+import type { IGitHubApiClient } from "@dotfiles/installer-github";
+import { mock } from "bun:test";
 
 // Mock IGitHubApiClient
 export class MockGitHubApiClient implements IGitHubApiClient {
@@ -28,7 +28,7 @@ export class MockGitHubApiClient implements IGitHubApiClient {
       remaining: 5000,
       reset: Math.floor(Date.now() / 1000) + 3600,
       used: 0, // Added to match updated IGitHubRateLimit type
-      resource: 'core', // Added to match updated IGitHubRateLimit type
+      resource: "core", // Added to match updated IGitHubRateLimit type
     };
   });
 

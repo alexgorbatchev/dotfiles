@@ -1,8 +1,8 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { Database } from 'bun:sqlite';
-import type { IToolInstallationRegistry } from './IToolInstallationRegistry';
-import { messages } from './log-messages';
-import type { IToolInstallationDetails, IToolInstallationRecord, IToolUsageRecord } from './types';
+import type { TsLogger } from "@dotfiles/logger";
+import type { Database } from "bun:sqlite";
+import type { IToolInstallationRegistry } from "./IToolInstallationRegistry";
+import { messages } from "./log-messages";
+import type { IToolInstallationDetails, IToolInstallationRecord, IToolUsageRecord } from "./types";
 
 interface IToolInstallationRow {
   id: number;
@@ -48,13 +48,13 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
   private logger: TsLogger;
 
   constructor(parentLogger: TsLogger, db: Database) {
-    this.logger = parentLogger.getSubLogger({ name: 'ToolInstallationRegistry' });
+    this.logger = parentLogger.getSubLogger({ name: "ToolInstallationRegistry" });
     this.db = db;
     this.initializeDatabase();
   }
 
   private initializeDatabase(): void {
-    const logger = this.logger.getSubLogger({ name: 'initializeDatabase' });
+    const logger = this.logger.getSubLogger({ name: "initializeDatabase" });
     this.db.run(`
       CREATE TABLE IF NOT EXISTS tool_installations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,10 +96,10 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
   private migrateAddInstallMethod(): void {
     try {
       // Check if column exists by querying table info
-      const columns = this.db.prepare('PRAGMA table_info(tool_installations)').all() as Array<{ name: string; }>;
-      const hasInstallMethod = columns.some((col) => col.name === 'install_method');
+      const columns = this.db.prepare("PRAGMA table_info(tool_installations)").all() as Array<{ name: string }>;
+      const hasInstallMethod = columns.some((col) => col.name === "install_method");
       if (!hasInstallMethod) {
-        this.db.run('ALTER TABLE tool_installations ADD COLUMN install_method TEXT');
+        this.db.run("ALTER TABLE tool_installations ADD COLUMN install_method TEXT");
       }
     } catch {
       // Column might already exist, ignore errors
@@ -107,7 +107,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
   }
 
   async recordToolInstallation(installation: IToolInstallationDetails): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'recordToolInstallation' });
+    const logger = this.logger.getSubLogger({ name: "recordToolInstallation" });
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO tool_installations 
       (tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method)
@@ -131,7 +131,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
   }
 
   async getToolInstallation(toolName: string): Promise<IToolInstallationRecord | null> {
-    const logger = this.logger.getSubLogger({ name: 'getToolInstallation' });
+    const logger = this.logger.getSubLogger({ name: "getToolInstallation" });
     const stmt = this.db.prepare(`
       SELECT * FROM tool_installations WHERE tool_name = ?
     `);
@@ -159,7 +159,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
   }
 
   async getAllToolInstallations(): Promise<IToolInstallationRecord[]> {
-    const logger = this.logger.getSubLogger({ name: 'getAllToolInstallations' });
+    const logger = this.logger.getSubLogger({ name: "getAllToolInstallations" });
     const stmt = this.db.prepare(`
       SELECT * FROM tool_installations ORDER BY tool_name
     `);
@@ -183,40 +183,40 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
   }
 
   async updateToolInstallation(toolName: string, updates: Partial<IToolInstallationRecord>): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'updateToolInstallation' });
+    const logger = this.logger.getSubLogger({ name: "updateToolInstallation" });
     const fields: string[] = [];
     const values: (string | number | null)[] = [];
 
     if (updates.version !== undefined) {
-      fields.push('version = ?');
+      fields.push("version = ?");
       values.push(updates.version);
     }
     if (updates.installPath !== undefined) {
-      fields.push('install_path = ?');
+      fields.push("install_path = ?");
       values.push(updates.installPath);
     }
     if (updates.timestamp !== undefined) {
-      fields.push('timestamp = ?');
+      fields.push("timestamp = ?");
       values.push(updates.timestamp);
     }
     if (updates.binaryPaths !== undefined) {
-      fields.push('binary_paths = ?');
+      fields.push("binary_paths = ?");
       values.push(JSON.stringify(updates.binaryPaths));
     }
     if (updates.downloadUrl !== undefined) {
-      fields.push('download_url = ?');
+      fields.push("download_url = ?");
       values.push(updates.downloadUrl);
     }
     if (updates.assetName !== undefined) {
-      fields.push('asset_name = ?');
+      fields.push("asset_name = ?");
       values.push(updates.assetName);
     }
     if (updates.configuredVersion !== undefined) {
-      fields.push('configured_version = ?');
+      fields.push("configured_version = ?");
       values.push(updates.configuredVersion);
     }
     if (updates.originalTag !== undefined) {
-      fields.push('original_tag = ?');
+      fields.push("original_tag = ?");
       values.push(updates.originalTag);
     }
 
@@ -227,7 +227,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
 
     values.push(toolName);
     const stmt = this.db.prepare(`
-      UPDATE tool_installations SET ${fields.join(', ')} WHERE tool_name = ?
+      UPDATE tool_installations SET ${fields.join(", ")} WHERE tool_name = ?
     `);
 
     stmt.run(...values);
@@ -235,7 +235,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
   }
 
   async removeToolInstallation(toolName: string): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'removeToolInstallation' });
+    const logger = this.logger.getSubLogger({ name: "removeToolInstallation" });
     const stmt = this.db.prepare(`
       DELETE FROM tool_installations WHERE tool_name = ?
     `);
@@ -245,7 +245,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
   }
 
   async isToolInstalled(toolName: string, version?: string): Promise<boolean> {
-    const logger = this.logger.getSubLogger({ name: 'isToolInstalled' });
+    const logger = this.logger.getSubLogger({ name: "isToolInstalled" });
     if (version) {
       const stmt = this.db.prepare(`
         SELECT 1 FROM tool_installations WHERE tool_name = ? AND version = ?
@@ -260,7 +260,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
       `);
       const result = stmt.get(toolName);
       const isInstalled: boolean = result !== null;
-      logger.debug(messages.toolInstallationCheckCompleted(), toolName, 'any', isInstalled);
+      logger.debug(messages.toolInstallationCheckCompleted(), toolName, "any", isInstalled);
       return isInstalled;
     }
   }
@@ -301,7 +301,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
   }
 
   async close(): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'close' });
+    const logger = this.logger.getSubLogger({ name: "close" });
     this.db.close();
     logger.debug(messages.databaseClosed());
   }

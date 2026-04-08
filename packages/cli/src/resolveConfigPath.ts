@@ -1,16 +1,16 @@
-import { NodeFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { CONFIG_FILE_NAME, ENV_DIR_VAR } from '@dotfiles/virtual-env';
-import path from 'node:path';
-import { messages } from './log-messages';
+import { NodeFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { CONFIG_FILE_NAME, ENV_DIR_VAR } from "@dotfiles/virtual-env";
+import path from "node:path";
+import { messages } from "./log-messages";
 
 /**
  * Default configuration file names to search for when no explicit config is provided.
  * Files are searched in order of priority - the first existing file is used.
  */
-export const DEFAULT_CONFIG_FILES: string[] = ['dotfiles.config.ts'];
+export const DEFAULT_CONFIG_FILES: string[] = ["dotfiles.config.ts"];
 
-const BOUNDARY_MARKERS: string[] = ['project.json', '.git'];
+const BOUNDARY_MARKERS: string[] = ["project.json", ".git"];
 
 export interface ProcessInfo {
   cwd: string;
@@ -34,14 +34,14 @@ export async function resolveConfigPath(
   configOption: string,
   processInfo: ProcessInfo,
 ): Promise<string | undefined> {
-  const logger = parentLogger.getSubLogger({ name: 'resolveConfigPath' });
+  const logger = parentLogger.getSubLogger({ name: "resolveConfigPath" });
 
   const { cwd, homeDir } = processInfo;
   const nodeFs = new NodeFileSystem();
 
   // If explicit config path provided, resolve it relative to cwd
   if (configOption.length > 0) {
-    const expandedConfigOption: string = configOption.startsWith('~')
+    const expandedConfigOption: string = configOption.startsWith("~")
       ? configOption.replace(/^~(?=$|\/|\\)/, homeDir)
       : configOption;
 

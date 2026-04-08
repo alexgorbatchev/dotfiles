@@ -1,5 +1,5 @@
-import { dedentString } from '@dotfiles/utils';
-import { CONFIG_FILE_NAME, ENV_DIR_VAR, ENV_NAME_VAR } from './constants';
+import { dedentString } from "@dotfiles/utils";
+import { CONFIG_FILE_NAME, ENV_DIR_VAR, ENV_NAME_VAR } from "./constants";
 
 /**
  * Generates the shell activation script content for a virtual environment.

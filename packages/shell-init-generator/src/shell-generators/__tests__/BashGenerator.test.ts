@@ -1,45 +1,41 @@
-import type { ToolConfig } from '@dotfiles/core';
-import {
-  isAliasEmission,
-  isCompletionEmission,
-  isEnvironmentEmission,
-} from '@dotfiles/shell-emissions';
-import '@dotfiles/testing-helpers';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import { BashGenerator } from '../BashGenerator';
-import { createMockProjectConfigWithPathsOnly } from './createMockProjectConfigWithPathsOnly';
+import type { ToolConfig } from "@dotfiles/core";
+import { isAliasEmission, isCompletionEmission, isEnvironmentEmission } from "@dotfiles/shell-emissions";
+import "@dotfiles/testing-helpers";
+import { beforeEach, describe, expect, it } from "bun:test";
+import { BashGenerator } from "../BashGenerator";
+import { createMockProjectConfigWithPathsOnly } from "./createMockProjectConfigWithPathsOnly";
 
-describe('BashGenerator', () => {
+describe("BashGenerator", () => {
   let generator: BashGenerator;
 
   beforeEach(() => {
     generator = new BashGenerator(createMockProjectConfigWithPathsOnly());
   });
 
-  it('should have correct shell type and file extension', () => {
-    expect(generator.shellType).toBe('bash');
-    expect(generator.fileExtension).toBe('.bash');
+  it("should have correct shell type and file extension", () => {
+    expect(generator.shellType).toBe("bash");
+    expect(generator.fileExtension).toBe(".bash");
   });
 
-  it('should return correct default output path', () => {
+  it("should return correct default output path", () => {
     const outputPath = generator.getDefaultOutputPath();
-    expect(outputPath).toBe('/home/test/.dotfiles/.generated/shell-scripts/main.bash');
+    expect(outputPath).toBe("/home/test/.dotfiles/.generated/shell-scripts/main.bash");
   });
 
-  describe('extractEmissions', () => {
-    it('should extract environment variables as emissions', () => {
+  describe("extractEmissions", () => {
+    it("should extract environment variables as emissions", () => {
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
         shellConfigs: {
           bash: {
             env: {
-              MY_VAR: 'my_value',
+              MY_VAR: "my_value",
             },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -47,22 +43,22 @@ describe('BashGenerator', () => {
       const envEmissions = emissions.filter(isEnvironmentEmission);
 
       expect(envEmissions).toHaveLength(1);
-      expect(envEmissions[0]?.variables).toEqual({ MY_VAR: 'my_value' });
+      expect(envEmissions[0]?.variables).toEqual({ MY_VAR: "my_value" });
     });
 
-    it('should extract aliases as emissions', () => {
+    it("should extract aliases as emissions", () => {
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
         shellConfigs: {
           bash: {
             aliases: {
-              ll: 'ls -la',
+              ll: "ls -la",
             },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -70,20 +66,20 @@ describe('BashGenerator', () => {
       const aliasEmissions = emissions.filter(isAliasEmission);
 
       expect(aliasEmissions).toHaveLength(1);
-      expect(aliasEmissions[0]?.aliases).toEqual({ ll: 'ls -la' });
+      expect(aliasEmissions[0]?.aliases).toEqual({ ll: "ls -la" });
     });
 
-    it('should extract completions with files instead of directories', () => {
+    it("should extract completions with files instead of directories", () => {
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
         shellConfigs: {
           bash: {
-            completions: { source: 'test-completion' },
+            completions: { source: "test-completion" },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -95,12 +91,12 @@ describe('BashGenerator', () => {
       expect(completionEmissions[0]?.files).toBeDefined();
     });
 
-    it('should return empty array for tool with no bash config', () => {
+    it("should return empty array for tool with no bash config", () => {
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
-        installationMethod: 'manual',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -110,30 +106,30 @@ describe('BashGenerator', () => {
     });
   });
 
-  describe('generateFileContent', () => {
-    it('should generate valid bash file content', () => {
+  describe("generateFileContent", () => {
+    it("should generate valid bash file content", () => {
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
         shellConfigs: {
           bash: {
-            env: { BASH_VAR: 'value' },
+            env: { BASH_VAR: "value" },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       };
 
       const emissions = generator.extractEmissions(toolConfig);
-      const toolEmissions = new Map([['test-tool', emissions]]);
+      const toolEmissions = new Map([["test-tool", emissions]]);
       const content = generator.generateFileContent(toolEmissions);
 
-      expect(content).toContain('# THIS FILE IS AUTOMATICALLY GENERATED');
+      expect(content).toContain("# THIS FILE IS AUTOMATICALLY GENERATED");
       expect(content).toContain('export BASH_VAR="value"');
     });
 
-    it('should include dotfiles CLI function in dedicated section', () => {
+    it("should include dotfiles CLI function in dedicated section", () => {
       const toolEmissions = new Map<string, never[]>();
       const content = generator.generateFileContent(toolEmissions);
 

@@ -1,5 +1,5 @@
-import type { ShellType, ToolConfig } from '@dotfiles/core';
-import type { Emission } from '@dotfiles/shell-emissions';
+import type { ShellType, ToolConfig } from "@dotfiles/core";
+import type { Emission } from "@dotfiles/shell-emissions";
 
 /**
  * Additional file that needs to be written during shell generation

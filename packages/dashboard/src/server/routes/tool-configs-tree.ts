@@ -1,8 +1,8 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { IApiResponse, IToolConfigsTree } from '../../shared/types';
-import { messages } from '../log-messages';
-import type { IDashboardServices } from '../types';
-import { getToolConfigs } from './helpers';
+import type { TsLogger } from "@dotfiles/logger";
+import type { IApiResponse, IToolConfigsTree } from "../../shared/types";
+import { messages } from "../log-messages";
+import type { IDashboardServices } from "../types";
+import { getToolConfigs } from "./helpers";
 
 /**
  * GET /api/tool-configs-tree - Get file tree of tool configs directory
@@ -28,7 +28,7 @@ export async function getToolConfigsTree(
       interface IFileTreeEntry {
         name: string;
         path: string;
-        type: 'file' | 'directory';
+        type: "file" | "directory";
         children?: IFileTreeEntry[];
         toolName?: string;
       }
@@ -47,15 +47,15 @@ export async function getToolConfigsTree(
             entries.push({
               name,
               path: fullPath,
-              type: 'directory',
+              type: "directory",
               children,
             });
           }
-        } else if (name.endsWith('.tool.ts')) {
+        } else if (name.endsWith(".tool.ts")) {
           entries.push({
             name,
             path: fullPath,
-            type: 'file',
+            type: "file",
             toolName: configPathToTool.get(fullPath),
           });
         }
@@ -64,7 +64,7 @@ export async function getToolConfigsTree(
       // Sort: directories first, then files, alphabetically
       return entries.toSorted((a, b) => {
         if (a.type !== b.type) {
-          return a.type === 'directory' ? -1 : 1;
+          return a.type === "directory" ? -1 : 1;
         }
         return a.name.localeCompare(b.name);
       });
@@ -80,7 +80,7 @@ export async function getToolConfigsTree(
       },
     };
   } catch (error) {
-    logger.error(messages.apiError('getToolConfigsTree'), error);
-    return { success: false, error: 'Failed to retrieve tool configs tree' };
+    logger.error(messages.apiError("getToolConfigsTree"), error);
+    return { success: false, error: "Failed to retrieve tool configs tree" };
   }
 }

@@ -1,18 +1,18 @@
-import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
-import { createMemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createTestDirectories } from '@dotfiles/testing-helpers';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
-import path from 'node:path';
-import { loadConfig } from '../loadConfig';
+import { Architecture, type ISystemInfo, Platform } from "@dotfiles/core";
+import { createMemFileSystem, NodeFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { createTestDirectories } from "@dotfiles/testing-helpers";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
+import path from "node:path";
+import { loadConfig } from "../loadConfig";
 
-describe('loadConfig', () => {
+describe("loadConfig", () => {
   const mockSystemInfo: ISystemInfo = {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
-    homeDir: '/Users/testuser',
-    hostname: 'test-host',
+    homeDir: "/Users/testuser",
+    hostname: "test-host",
   };
 
   let logger: TestLogger;
@@ -29,11 +29,11 @@ describe('loadConfig', () => {
     tempDir = undefined;
   });
 
-  describe('file type detection', () => {
-    it('should load TypeScript config when file has .ts extension', async () => {
+  describe("file type detection", () => {
+    it("should load TypeScript config when file has .ts extension", async () => {
       const realFs = new NodeFileSystem();
       const testDirs = await createTestDirectories(logger, realFs, {
-        testName: 'loadConfig-ts',
+        testName: "loadConfig-ts",
       });
       tempDir = testDirs.paths.homeDir;
       cleanupFn = async () => {
@@ -43,7 +43,7 @@ describe('loadConfig', () => {
 
       assert(tempDir);
 
-      const configPath = path.join(tempDir, 'config.ts');
+      const configPath = path.join(tempDir, "config.ts");
       const tsContent = `
         export default {
           paths: {
@@ -58,40 +58,40 @@ describe('loadConfig', () => {
 
       const result = await loadConfig(logger, fs, configPath, mockSystemInfo, {});
 
-      expect(result.paths.dotfilesDir).toBe('/Users/testuser/ts-dotfiles');
-      expect(result.paths.targetDir).toBe('/ts/bin');
+      expect(result.paths.dotfilesDir).toBe("/Users/testuser/ts-dotfiles");
+      expect(result.paths.targetDir).toBe("/ts/bin");
     });
 
-    it('should throw error for unsupported file extensions', async () => {
+    it("should throw error for unsupported file extensions", async () => {
       const { fs } = await createMemFileSystem({
         initialVolumeJson: {
-          '/test/config.json': '{}',
+          "/test/config.json": "{}",
         },
       });
 
-      expect(loadConfig(logger, fs, '/test/config.json', mockSystemInfo, {})).rejects.toThrow(
-        'Unsupported configuration file type',
+      expect(loadConfig(logger, fs, "/test/config.json", mockSystemInfo, {})).rejects.toThrow(
+        "Unsupported configuration file type",
       );
     });
 
-    it('should throw error for YAML files (no longer supported)', async () => {
+    it("should throw error for YAML files (no longer supported)", async () => {
       const { fs } = await createMemFileSystem({
         initialVolumeJson: {
-          '/test/config.yaml': 'paths: {}',
+          "/test/config.yaml": "paths: {}",
         },
       });
 
-      expect(loadConfig(logger, fs, '/test/config.yaml', mockSystemInfo, {})).rejects.toThrow(
-        'Unsupported configuration file type',
+      expect(loadConfig(logger, fs, "/test/config.yaml", mockSystemInfo, {})).rejects.toThrow(
+        "Unsupported configuration file type",
       );
     });
   });
 
-  describe('logging', () => {
-    it('should log when loading TypeScript config', async () => {
+  describe("logging", () => {
+    it("should log when loading TypeScript config", async () => {
       const realFs = new NodeFileSystem();
       const testDirs = await createTestDirectories(logger, realFs, {
-        testName: 'loadConfig-logging',
+        testName: "loadConfig-logging",
       });
       tempDir = testDirs.paths.homeDir;
       cleanupFn = async () => {
@@ -101,7 +101,7 @@ describe('loadConfig', () => {
 
       assert(tempDir);
 
-      const configPath = path.join(tempDir, 'config.ts');
+      const configPath = path.join(tempDir, "config.ts");
       await realFs.writeFile(configPath, `export default {};`);
 
       const fs = new NodeFileSystem();

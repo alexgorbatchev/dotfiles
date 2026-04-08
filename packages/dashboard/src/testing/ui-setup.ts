@@ -11,16 +11,16 @@
  */
 
 // Register DOM globals FIRST using top-level await to ensure order
-if (typeof document === 'undefined') {
-  const { GlobalRegistrator } = await import('@happy-dom/global-registrator');
+if (typeof document === "undefined") {
+  const { GlobalRegistrator } = await import("@happy-dom/global-registrator");
   GlobalRegistrator.register();
 }
 
 // Now we can safely import testing-library (it checks for document at import time)
-const jestDomMatchers = await import('@testing-library/jest-dom/matchers');
-const testingLibrary = await import('@testing-library/preact');
-const userEventLib = await import('@testing-library/user-event');
-const { afterEach, beforeEach, expect } = await import('bun:test');
+const jestDomMatchers = await import("@testing-library/jest-dom/matchers");
+const testingLibrary = await import("@testing-library/preact");
+const userEventLib = await import("@testing-library/user-event");
+const { afterEach, beforeEach, expect } = await import("bun:test");
 
 const { cleanup, fireEvent, render, screen } = testingLibrary;
 const userEvent = userEventLib.default;
@@ -35,7 +35,7 @@ expect.extend(matchers);
  */
 function setupUITests(): void {
   beforeEach(() => {
-    document.body.innerHTML = '';
+    document.body.innerHTML = "";
     cleanup();
   });
 

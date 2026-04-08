@@ -1,7 +1,7 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
-import type { IBuildContext, ITypeTestFile } from '../types';
+import type { IBuildContext, ITypeTestFile } from "../types";
 
 /**
  * Discovers type test files across workspace packages.

@@ -1,5 +1,5 @@
-import type { IPluginShellInit, ISystemInfo, ShellType, ToolConfig } from '@dotfiles/core';
-import type { IProfileUpdateResult } from './profile-updater/IProfileUpdater';
+import type { IPluginShellInit, ISystemInfo, ShellType, ToolConfig } from "@dotfiles/core";
+import type { IProfileUpdateResult } from "./profile-updater/IProfileUpdater";
 
 /**
  * Plugin-emitted shell initialization content, keyed by tool name and shell type.

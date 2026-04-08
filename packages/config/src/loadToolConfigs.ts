@@ -7,30 +7,30 @@ import type {
   ISystemInfo,
   ProjectConfig,
   ToolConfig,
-} from '@dotfiles/core';
-import { createToolConfigContext } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { createInstallFunction } from '@dotfiles/tool-config-builder';
-import path from 'node:path';
-import { messages } from './log-messages';
+} from "@dotfiles/core";
+import { createToolConfigContext } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { createInstallFunction } from "@dotfiles/tool-config-builder";
+import path from "node:path";
+import { messages } from "./log-messages";
 
 interface IToolConfigModule {
   default?: unknown;
 }
 
 function isToolConfig(config: unknown): config is ToolConfig {
-  if (typeof config !== 'object' || config === null) {
+  if (typeof config !== "object" || config === null) {
     return false;
   }
 
-  return 'name' in config;
+  return "name" in config;
 }
 
 function isConfigureToolFunction(
   exportedValue: unknown,
 ): exportedValue is AsyncConfigureTool | AsyncConfigureToolWithReturn {
-  return typeof exportedValue === 'function';
+  return typeof exportedValue === "function";
 }
 
 /**
@@ -85,20 +85,20 @@ async function processFunctionExport(
   const result = await configureToolFn(install, context);
 
   // Check if the function returned a ToolConfig object
-  if (result && typeof result === 'object' && 'name' in result) {
+  if (result && typeof result === "object" && "name" in result) {
     const validatedConfig = validateToolConfig(result);
     return validatedConfig;
   }
 
   // Function didn't return an object, use builder pattern
   // The install function creates and returns a builder, so we can call build() on the result
-  if (result && typeof result === 'object' && 'build' in result && typeof result.build === 'function') {
+  if (result && typeof result === "object" && "build" in result && typeof result.build === "function") {
     const builtConfig: unknown = result.build();
     const validatedConfig = validateToolConfig(builtConfig);
     return validatedConfig;
   }
 
-  logger.error(messages.configurationParseError(filePath, 'ToolConfig', 'Invalid return from configuration function'));
+  logger.error(messages.configurationParseError(filePath, "ToolConfig", "Invalid return from configuration function"));
   return null;
 }
 
@@ -125,7 +125,7 @@ function processDirectExport(
     // Ensure the toolConfig.name matches the filename if it's a direct object export
     if (validatedConfig.name !== toolName) {
       logger.warn(
-        messages.configurationFieldInvalid('tool config object name', validatedConfig.name, `filename: ${toolName}`),
+        messages.configurationFieldInvalid("tool config object name", validatedConfig.name, `filename: ${toolName}`),
         filePath,
       );
     }
@@ -149,7 +149,7 @@ async function loadToolConfigFromModule(
   try {
     const moduleExports: IToolConfigModule = await import(filePath);
     if (!moduleExports.default) {
-      logger.error(messages.configurationParseError(filePath, 'ToolConfig', 'no default export'));
+      logger.error(messages.configurationParseError(filePath, "ToolConfig", "no default export"));
       return null;
     }
 
@@ -194,9 +194,9 @@ function validateAndStoreToolConfig(
     toolConfigs[toolConfig.name] = toolConfig;
     logger.debug(messages.configurationLoaded(filePath, 1), toolConfig.name);
   } else if (toolConfig) {
-    logger.warn(messages.configurationFieldInvalid('tool config', 'missing name', 'valid name property'), filePath);
+    logger.warn(messages.configurationFieldInvalid("tool config", "missing name", "valid name property"), filePath);
   } else {
-    logger.error(messages.configurationParseError(filePath, 'ToolConfig', 'Could not derive valid configuration'));
+    logger.error(messages.configurationParseError(filePath, "ToolConfig", "Could not derive valid configuration"));
   }
 }
 
@@ -215,8 +215,8 @@ async function scanDirectoryForToolFiles(
   fs: IResolvedFileSystem,
   dirPath: string,
   logger: TsLogger,
-): Promise<{ filePath: string; toolName: string; }[]> {
-  const results: { filePath: string; toolName: string; }[] = [];
+): Promise<{ filePath: string; toolName: string }[]> {
+  const results: { filePath: string; toolName: string }[] = [];
 
   try {
     const entries = await fs.readdir(dirPath);
@@ -231,9 +231,9 @@ async function scanDirectoryForToolFiles(
           // Recursively scan subdirectories
           const subResults = await scanDirectoryForToolFiles(fs, entryPath, logger);
           results.push(...subResults);
-        } else if (entry.endsWith('.tool.ts')) {
+        } else if (entry.endsWith(".tool.ts")) {
           // Found a .tool.ts file
-          const toolName = path.basename(entry, '.tool.ts');
+          const toolName = path.basename(entry, ".tool.ts");
           results.push({
             filePath: entryPath,
             toolName,
@@ -273,7 +273,7 @@ export async function loadToolConfigs(
   systemInfo: ISystemInfo,
   toolName?: string,
 ): Promise<Record<string, ToolConfig>> {
-  const logger = parentLogger.getSubLogger({ name: 'loadToolConfigs' });
+  const logger = parentLogger.getSubLogger({ name: "loadToolConfigs" });
   const toolConfigs: Record<string, ToolConfig> = {};
 
   if (toolName) {
@@ -284,7 +284,7 @@ export async function loadToolConfigs(
 
   try {
     if (!(await fs.exists(toolConfigsDir))) {
-      logger.debug(messages.fsItemNotFound('tool configs directory', toolConfigsDir));
+      logger.debug(messages.fsItemNotFound("tool configs directory", toolConfigsDir));
       const emptyConfigs: Record<string, ToolConfig> = {};
       return emptyConfigs;
     }
@@ -355,7 +355,7 @@ export async function loadSingleToolConfig(
  * @returns The binary name.
  */
 function getBinaryName(binary: string | IBinaryConfig): string {
-  if (typeof binary === 'string') {
+  if (typeof binary === "string") {
     return binary;
   }
   return binary.name;
@@ -403,7 +403,7 @@ export async function findToolByBinary(
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
 ): Promise<FindToolByBinaryResult> {
-  const logger = parentLogger.getSubLogger({ name: 'findToolByBinary', context: binaryName });
+  const logger = parentLogger.getSubLogger({ name: "findToolByBinary", context: binaryName });
   logger.debug(messages.binarySearchStarted(binaryName, toolConfigsDir));
 
   // Load all tool configs to search through them
@@ -431,9 +431,9 @@ export async function findToolByBinary(
     logger.debug(messages.multipleBinaryProviders(binaryName, matchingTools));
     const result: FindToolByBinaryFailure = {
       success: false,
-      error: `Multiple tools provide the binary '${binaryName}': ${
-        matchingTools.join(', ')
-      }. Please specify the tool name instead.`,
+      error: `Multiple tools provide the binary '${binaryName}': ${matchingTools.join(
+        ", ",
+      )}. Please specify the tool name instead.`,
       matchingTools,
     };
     return result;
@@ -471,15 +471,15 @@ export async function loadToolConfigByBinary(
   fs: IResolvedFileSystem,
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
-): Promise<ToolConfig | undefined | { error: string; }> {
-  const logger = parentLogger.getSubLogger({ name: 'loadToolConfigByBinary' });
+): Promise<ToolConfig | undefined | { error: string }> {
+  const logger = parentLogger.getSubLogger({ name: "loadToolConfigByBinary" });
   const findResult = await findToolByBinary(logger, binaryName, toolConfigsDir, fs, projectConfig, systemInfo);
 
   if (!findResult.success) {
     // Only return error if multiple tools provide the binary (matchingTools present)
     // Otherwise return undefined for "not found"
     if (findResult.matchingTools) {
-      const errorResult: { error: string; } = { error: findResult.error };
+      const errorResult: { error: string } = { error: findResult.error };
       return errorResult;
     }
     return undefined;

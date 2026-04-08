@@ -1,44 +1,44 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import { Architecture, Platform } from '@dotfiles/core';
-import type { ICache, IDownloader } from '@dotfiles/downloader';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig, createTestDirectories, type PartialProjectConfig } from '@dotfiles/testing-helpers';
-import { mock } from 'bun:test';
-import path from 'node:path';
-import { GitHubApiClient } from '../../GitHubApiClient';
+import type { ProjectConfig } from "@dotfiles/config";
+import { Architecture, Platform } from "@dotfiles/core";
+import type { ICache, IDownloader } from "@dotfiles/downloader";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { createMockProjectConfig, createTestDirectories, type PartialProjectConfig } from "@dotfiles/testing-helpers";
+import { mock } from "bun:test";
+import path from "node:path";
+import { GitHubApiClient } from "../../GitHubApiClient";
 
 export const createMockProjectConfigForGitHubApi = async (
   overrides: PartialProjectConfig = {},
 ): Promise<ProjectConfig> => {
   const memFs = await createMemFileSystem();
   const logger = new TestLogger();
-  const testDirs = await createTestDirectories(logger, memFs.fs, { testName: 'github-api-client' });
+  const testDirs = await createTestDirectories(logger, memFs.fs, { testName: "github-api-client" });
 
   return createMockProjectConfig({
     config: {
       paths: testDirs.paths,
       ...overrides,
     },
-    filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+    filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
     fileSystem: memFs.fs,
     logger,
     systemInfo: {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     },
     env: {},
   });
 };
 
 export const createMockDownloader = (): IDownloader & {
-  download: ReturnType<typeof mock<IDownloader['download']>>;
+  download: ReturnType<typeof mock<IDownloader["download"]>>;
 } => {
-  const mockDownloadFn = mock<IDownloader['download']>(async () => Buffer.from(''));
-  const mockRegisterStrategy = mock<IDownloader['registerStrategy']>(() => {});
-  const mockDownloadToFile = mock<IDownloader['downloadToFile']>(async () => {});
+  const mockDownloadFn = mock<IDownloader["download"]>(async () => Buffer.from(""));
+  const mockRegisterStrategy = mock<IDownloader["registerStrategy"]>(() => {});
+  const mockDownloadToFile = mock<IDownloader["downloadToFile"]>(async () => {});
   return {
     download: mockDownloadFn,
     registerStrategy: mockRegisterStrategy,
@@ -47,13 +47,13 @@ export const createMockDownloader = (): IDownloader & {
 };
 
 export const createMockGitHubApiCache = (): ICache & {
-  get: ReturnType<typeof mock<ICache['get']>>;
-  set: ReturnType<typeof mock<ICache['set']>>;
-  setDownload: ReturnType<typeof mock<ICache['setDownload']>>;
-  has: ReturnType<typeof mock<ICache['has']>>;
-  delete: ReturnType<typeof mock<ICache['delete']>>;
-  clearExpired: ReturnType<typeof mock<ICache['clearExpired']>>;
-  clear: ReturnType<typeof mock<ICache['clear']>>;
+  get: ReturnType<typeof mock<ICache["get"]>>;
+  set: ReturnType<typeof mock<ICache["set"]>>;
+  setDownload: ReturnType<typeof mock<ICache["setDownload"]>>;
+  has: ReturnType<typeof mock<ICache["has"]>>;
+  delete: ReturnType<typeof mock<ICache["delete"]>>;
+  clearExpired: ReturnType<typeof mock<ICache["clearExpired"]>>;
+  clear: ReturnType<typeof mock<ICache["clear"]>>;
 } => {
   return {
     get: mock(async () => null), // Default to cache miss
@@ -69,16 +69,16 @@ export const createMockGitHubApiCache = (): ICache & {
 export interface IMockSetup {
   mockProjectConfig: ProjectConfig;
   mockDownloader: IDownloader & {
-    download: ReturnType<typeof mock<IDownloader['download']>>;
+    download: ReturnType<typeof mock<IDownloader["download"]>>;
   };
   mockCache: ICache & {
-    get: ReturnType<typeof mock<ICache['get']>>;
-    set: ReturnType<typeof mock<ICache['set']>>;
-    setDownload: ReturnType<typeof mock<ICache['setDownload']>>;
-    has: ReturnType<typeof mock<ICache['has']>>;
-    delete: ReturnType<typeof mock<ICache['delete']>>;
-    clearExpired: ReturnType<typeof mock<ICache['clearExpired']>>;
-    clear: ReturnType<typeof mock<ICache['clear']>>;
+    get: ReturnType<typeof mock<ICache["get"]>>;
+    set: ReturnType<typeof mock<ICache["set"]>>;
+    setDownload: ReturnType<typeof mock<ICache["setDownload"]>>;
+    has: ReturnType<typeof mock<ICache["has"]>>;
+    delete: ReturnType<typeof mock<ICache["delete"]>>;
+    clearExpired: ReturnType<typeof mock<ICache["clearExpired"]>>;
+    clear: ReturnType<typeof mock<ICache["clear"]>>;
   };
   apiClient: GitHubApiClient;
   logger: TestLogger;
@@ -126,7 +126,7 @@ function hasGitHubConfig({
 
 // Helper function to set basic GitHub config properties
 function setBasicGitHubConfig(
-  config: NonNullable<PartialProjectConfig['github']>,
+  config: NonNullable<PartialProjectConfig["github"]>,
   {
     githubToken,
     githubHost,
@@ -150,7 +150,7 @@ function setBasicGitHubConfig(
 
 // Helper function to set GitHub cache config
 function setGitHubCacheConfig(
-  config: NonNullable<PartialProjectConfig['github']>,
+  config: NonNullable<PartialProjectConfig["github"]>,
   {
     githubApiCacheEnabled,
     githubApiCacheTtl,

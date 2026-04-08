@@ -1,4 +1,4 @@
-import { BuildError } from '../handleBuildError';
+import { BuildError } from "../handleBuildError";
 
 /**
  * Picks a subset of versions from a version map for the given package names.

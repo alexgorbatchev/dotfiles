@@ -1,5 +1,5 @@
 // re-export these to make build work
-import type { Stats as NodeStats } from 'node:fs';
+import type { Stats as NodeStats } from "node:fs";
 export type { NodeStats };
 export type Stats = NodeStats;
 
@@ -41,7 +41,7 @@ export interface IFileSystem {
    * @param options - Options for creating the directory.
    * @returns A promise that resolves when the directory has been created.
    */
-  mkdir(path: string, options?: { recursive?: boolean; }): Promise<void>;
+  mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
 
   /**
    * Reads the contents of a directory.
@@ -56,7 +56,7 @@ export interface IFileSystem {
    * @param options - Options for removal.
    * @returns A promise that resolves when the file or directory has been removed.
    */
-  rm(path: string, options?: { recursive?: boolean; force?: boolean; }): Promise<void>;
+  rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void>;
 
   /**
    * Asynchronously removes a directory.
@@ -65,7 +65,7 @@ export interface IFileSystem {
    * @returns A promise that resolves when the directory has been removed.
    * @deprecated Use {@link IFileSystem.rm} with `recursive: true` instead.
    */
-  rmdir(path: string, options?: { recursive?: boolean; }): Promise<void>;
+  rmdir(path: string, options?: { recursive?: boolean }): Promise<void>;
 
   /**
    * Gets file or directory stats.
@@ -88,7 +88,7 @@ export interface IFileSystem {
    * @param type - The type of symbolic link ('file', 'dir', or 'junction').
    * @returns A promise that resolves when the symbolic link has been created.
    */
-  symlink(target: string, path: string, type?: 'file' | 'dir' | 'junction'): Promise<void>;
+  symlink(target: string, path: string, type?: "file" | "dir" | "junction"): Promise<void>;
 
   /**
    * Reads the value of a symbolic link.

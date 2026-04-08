@@ -1,12 +1,12 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { IGitHubRateLimit, IGitHubRelease, Shell } from '@dotfiles/core';
-import type { ICache } from '@dotfiles/downloader';
-import type { TsLogger } from '@dotfiles/logger';
-import crypto from 'node:crypto';
-import semver from 'semver';
-import { GitHubApiClientError } from './GitHubApiClientError';
-import type { IGitHubApiClient } from './IGitHubApiClient';
-import { messages } from './log-messages';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { IGitHubRateLimit, IGitHubRelease, Shell } from "@dotfiles/core";
+import type { ICache } from "@dotfiles/downloader";
+import type { TsLogger } from "@dotfiles/logger";
+import crypto from "node:crypto";
+import semver from "semver";
+import { GitHubApiClientError } from "./GitHubApiClientError";
+import type { IGitHubApiClient } from "./IGitHubApiClient";
+import { messages } from "./log-messages";
 
 /**
  * GitHub API client implementation using the `gh` CLI.
@@ -33,13 +33,8 @@ export class GhCliApiClient implements IGitHubApiClient {
   private readonly cacheTtlMs: number;
   private readonly logger: TsLogger;
 
-  constructor(
-    parentLogger: TsLogger,
-    projectConfig: ProjectConfig,
-    shell: Shell,
-    cache?: ICache,
-  ) {
-    this.logger = parentLogger.getSubLogger({ name: 'GhCliApiClient' });
+  constructor(parentLogger: TsLogger, projectConfig: ProjectConfig, shell: Shell, cache?: ICache) {
+    this.logger = parentLogger.getSubLogger({ name: "GhCliApiClient" });
     // Extract hostname from project config (e.g., 'api.github.com' -> 'github.com')
     this.hostname = this.extractHostname(projectConfig.github.host);
     this.shell = shell;
@@ -47,7 +42,7 @@ export class GhCliApiClient implements IGitHubApiClient {
     this.cacheEnabled = projectConfig.github.cache.enabled;
     this.cacheTtlMs = projectConfig.github.cache.ttl;
 
-    const logger = this.logger.getSubLogger({ name: 'constructor' });
+    const logger = this.logger.getSubLogger({ name: "constructor" });
     logger.debug(messages.ghCli.initialized(this.hostname));
 
     if (this.cache && this.cacheEnabled) {
@@ -68,13 +63,13 @@ export class GhCliApiClient implements IGitHubApiClient {
     try {
       const url = new URL(apiHost);
       // Convert api.github.com -> github.com for standard GitHub
-      if (url.hostname === 'api.github.com') {
-        return 'github.com';
+      if (url.hostname === "api.github.com") {
+        return "github.com";
       }
       // For GitHub Enterprise, remove 'api.' prefix if present
-      return url.hostname.replace(/^api\./, '');
+      return url.hostname.replace(/^api\./, "");
     } catch {
-      return 'github.com';
+      return "github.com";
     }
   }
 
@@ -87,7 +82,7 @@ export class GhCliApiClient implements IGitHubApiClient {
     let key = `${method}:${endpoint}`;
 
     // gh CLI uses its own auth, but we still include a marker for cache separation
-    const cliMarker = crypto.createHash('sha256').update('gh-cli').digest('hex').substring(0, 8);
+    const cliMarker = crypto.createHash("sha256").update("gh-cli").digest("hex").substring(0, 8);
     key += `:${cliMarker}`;
 
     return key;
@@ -96,8 +91,8 @@ export class GhCliApiClient implements IGitHubApiClient {
   /**
    * Makes a request using gh CLI.
    */
-  private async request<T>(endpoint: string, method: 'GET' = 'GET'): Promise<T> {
-    const logger = this.logger.getSubLogger({ name: 'request' });
+  private async request<T>(endpoint: string, method: "GET" = "GET"): Promise<T> {
+    const logger = this.logger.getSubLogger({ name: "request" });
     const cacheKey = this.generateCacheKey(endpoint, method);
 
     // Check cache first
@@ -124,20 +119,20 @@ export class GhCliApiClient implements IGitHubApiClient {
    * Builds arguments for the gh api command.
    */
   private buildGhApiArgs(endpoint: string, method: string): string[] {
-    const args: string[] = ['api'];
+    const args: string[] = ["api"];
 
     // Add hostname if not default github.com
-    if (this.hostname !== 'github.com') {
-      args.push('--hostname', this.hostname);
+    if (this.hostname !== "github.com") {
+      args.push("--hostname", this.hostname);
     }
 
     // Add method if not GET
-    if (method !== 'GET') {
-      args.push('--method', method);
+    if (method !== "GET") {
+      args.push("--method", method);
     }
 
     // Add the endpoint (without leading slash for gh api)
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    const cleanEndpoint = endpoint.startsWith("/") ? endpoint.substring(1) : endpoint;
     args.push(cleanEndpoint);
 
     return args;
@@ -147,8 +142,8 @@ export class GhCliApiClient implements IGitHubApiClient {
    * Executes the gh command and parses the response.
    */
   private async executeGhCommand<T>(endpoint: string, args: string[]): Promise<T> {
-    const logger = this.logger.getSubLogger({ name: 'executeGhCommand' });
-    const command = ['gh', ...args].join(' ');
+    const logger = this.logger.getSubLogger({ name: "executeGhCommand" });
+    const command = ["gh", ...args].join(" ");
     const result = await this.shell(command).quiet().noThrow();
 
     if (result.code !== 0) {
@@ -171,19 +166,19 @@ export class GhCliApiClient implements IGitHubApiClient {
     const stderrLower = stderr.toLowerCase();
 
     // Handle common gh CLI errors
-    if (stderrLower.includes('not found') || stderrLower.includes('404')) {
+    if (stderrLower.includes("not found") || stderrLower.includes("404")) {
       return new GitHubApiClientError(`GitHub resource not found: ${endpoint}. Status: 404`, 404);
     }
 
-    if (stderrLower.includes('rate limit') || stderrLower.includes('403')) {
+    if (stderrLower.includes("rate limit") || stderrLower.includes("403")) {
       return new GitHubApiClientError(`GitHub API rate limit exceeded for ${endpoint}. Status: 403`, 403);
     }
 
-    if (stderrLower.includes('unauthorized') || stderrLower.includes('401')) {
+    if (stderrLower.includes("unauthorized") || stderrLower.includes("401")) {
       return new GitHubApiClientError(`GitHub API unauthorized for ${endpoint}. Status: 401`, 401);
     }
 
-    if (stderrLower.includes('forbidden')) {
+    if (stderrLower.includes("forbidden")) {
       return new GitHubApiClientError(`GitHub API forbidden for ${endpoint}. Status: 403`, 403);
     }
 
@@ -195,9 +190,9 @@ export class GhCliApiClient implements IGitHubApiClient {
   }
 
   private async tryGetFromCache<T>(cacheKey: string, method: string, endpoint: string): Promise<T | null> {
-    const logger = this.logger.getSubLogger({ name: 'tryGetFromCache' });
+    const logger = this.logger.getSubLogger({ name: "tryGetFromCache" });
 
-    if (!this.cache || !this.cacheEnabled || method !== 'GET') {
+    if (!this.cache || !this.cacheEnabled || method !== "GET") {
       return null;
     }
 
@@ -216,7 +211,7 @@ export class GhCliApiClient implements IGitHubApiClient {
   }
 
   private async tryCacheResponse<T>(cacheKey: string, data: T, method: string): Promise<void> {
-    if (!this.cache || !this.cacheEnabled || method !== 'GET') {
+    if (!this.cache || !this.cacheEnabled || method !== "GET") {
       return;
     }
 
@@ -228,7 +223,7 @@ export class GhCliApiClient implements IGitHubApiClient {
   }
 
   private handleRequestError(error: unknown, endpoint: string): never {
-    const logger = this.logger.getSubLogger({ name: 'handleRequestError' });
+    const logger = this.logger.getSubLogger({ name: "handleRequestError" });
     logger.debug(messages.errors.requestFailure(endpoint), error);
 
     if (error instanceof GitHubApiClientError) {
@@ -243,7 +238,7 @@ export class GhCliApiClient implements IGitHubApiClient {
   }
 
   async getLatestRelease(owner: string, repo: string): Promise<IGitHubRelease | null> {
-    const logger = this.logger.getSubLogger({ name: 'getLatestRelease' });
+    const logger = this.logger.getSubLogger({ name: "getLatestRelease" });
     logger.debug(messages.releases.fetchingLatest(owner, repo));
     try {
       return await this.request<IGitHubRelease>(`/repos/${owner}/${repo}/releases/latest`);
@@ -258,7 +253,7 @@ export class GhCliApiClient implements IGitHubApiClient {
   }
 
   async getReleaseByTag(owner: string, repo: string, tag: string): Promise<IGitHubRelease | null> {
-    const logger = this.logger.getSubLogger({ name: 'getReleaseByTag' });
+    const logger = this.logger.getSubLogger({ name: "getReleaseByTag" });
     logger.debug(messages.releases.fetchingByTag(tag, owner, repo));
     try {
       return await this.request<IGitHubRelease>(`/repos/${owner}/${repo}/releases/tags/${tag}`);
@@ -275,9 +270,9 @@ export class GhCliApiClient implements IGitHubApiClient {
   async getAllReleases(
     owner: string,
     repo: string,
-    options?: { perPage?: number; includePrerelease?: boolean; limit?: number; },
+    options?: { perPage?: number; includePrerelease?: boolean; limit?: number },
   ): Promise<IGitHubRelease[]> {
-    const logger = this.logger.getSubLogger({ name: 'getAllReleases' });
+    const logger = this.logger.getSubLogger({ name: "getAllReleases" });
     logger.debug(messages.releases.fetchingAll(owner, repo), options);
 
     const perPage = options?.perPage || 30;
@@ -319,10 +314,10 @@ export class GhCliApiClient implements IGitHubApiClient {
   }
 
   async getReleaseByConstraint(owner: string, repo: string, constraint: string): Promise<IGitHubRelease | null> {
-    const logger = this.logger.getSubLogger({ name: 'getReleaseByConstraint' });
+    const logger = this.logger.getSubLogger({ name: "getReleaseByConstraint" });
     logger.debug(messages.constraints.searching(constraint, owner, repo));
 
-    if (constraint === 'latest') {
+    if (constraint === "latest") {
       return await this.handleLatestConstraint(owner, repo);
     }
 
@@ -333,7 +328,7 @@ export class GhCliApiClient implements IGitHubApiClient {
     try {
       return await this.getLatestRelease(owner, repo);
     } catch (error) {
-      const logger = this.logger.getSubLogger({ name: 'handleLatestConstraint' });
+      const logger = this.logger.getSubLogger({ name: "handleLatestConstraint" });
       logger.debug(messages.errors.constraintLatestError(), error);
       return null;
     }
@@ -344,7 +339,7 @@ export class GhCliApiClient implements IGitHubApiClient {
     repo: string,
     constraint: string,
   ): Promise<IGitHubRelease | null> {
-    const logger = this.logger.getSubLogger({ name: 'findReleaseByVersionConstraint' });
+    const logger = this.logger.getSubLogger({ name: "findReleaseByVersionConstraint" });
     logger.debug(messages.constraints.pageFetch(constraint));
 
     let latestSatisfyingRelease: IGitHubRelease | null = null;
@@ -394,7 +389,7 @@ export class GhCliApiClient implements IGitHubApiClient {
     constraint: string,
   ): Promise<IGitHubRelease[] | null> {
     const endpoint = `/repos/${owner}/${repo}/releases?per_page=${perPage}&page=${page}`;
-    const logger = this.logger.getSubLogger({ name: 'fetchReleasesPage' });
+    const logger = this.logger.getSubLogger({ name: "fetchReleasesPage" });
     logger.debug(messages.constraints.pageRequest(page, owner, repo));
 
     try {
@@ -410,8 +405,8 @@ export class GhCliApiClient implements IGitHubApiClient {
     constraint: string,
     currentBest: IGitHubRelease | null,
     currentBestVersion: string | null,
-  ): { release: IGitHubRelease | null; version: string | null; } {
-    const logger = this.logger.getSubLogger({ name: 'findBestReleaseFromPage' });
+  ): { release: IGitHubRelease | null; version: string | null } {
+    const logger = this.logger.getSubLogger({ name: "findBestReleaseFromPage" });
     let bestRelease = currentBest;
     let bestVersion = currentBestVersion;
 
@@ -420,7 +415,7 @@ export class GhCliApiClient implements IGitHubApiClient {
         continue;
       }
 
-      const cleanVersion = release.tag_name.startsWith('v') ? release.tag_name.substring(1) : release.tag_name;
+      const cleanVersion = release.tag_name.startsWith("v") ? release.tag_name.substring(1) : release.tag_name;
 
       if (this.isVersionSatisfying(cleanVersion, constraint)) {
         if (this.isBetterVersion(cleanVersion, bestVersion)) {
@@ -443,7 +438,7 @@ export class GhCliApiClient implements IGitHubApiClient {
   }
 
   private logConstraintResult(constraint: string, result: IGitHubRelease | null): void {
-    const logger = this.logger.getSubLogger({ name: 'logConstraintResult' });
+    const logger = this.logger.getSubLogger({ name: "logConstraintResult" });
     if (result) {
       logger.debug(messages.constraints.resultFound(constraint, result.tag_name));
     } else {
@@ -452,7 +447,7 @@ export class GhCliApiClient implements IGitHubApiClient {
   }
 
   async getRateLimit(): Promise<IGitHubRateLimit> {
-    const logger = this.logger.getSubLogger({ name: 'getRateLimit' });
+    const logger = this.logger.getSubLogger({ name: "getRateLimit" });
     logger.debug(messages.rateLimit.fetching());
 
     type RateLimitResponse = {
@@ -462,12 +457,12 @@ export class GhCliApiClient implements IGitHubApiClient {
       rate: IGitHubRateLimit;
     };
 
-    const response = await this.request<RateLimitResponse>('/rate_limit');
+    const response = await this.request<RateLimitResponse>("/rate_limit");
     return response.resources.core;
   }
 
   async getLatestReleaseTags(owner: string, repo: string, count: number = 5): Promise<string[]> {
-    const logger = this.logger.getSubLogger({ name: 'getLatestReleaseTags' });
+    const logger = this.logger.getSubLogger({ name: "getLatestReleaseTags" });
     logger.debug(messages.releases.fetchingLatestTags(owner, repo, count));
 
     try {
@@ -482,7 +477,7 @@ export class GhCliApiClient implements IGitHubApiClient {
   }
 
   async probeLatestTag(owner: string, repo: string): Promise<string | null> {
-    const logger = this.logger.getSubLogger({ name: 'probeLatestTag' });
+    const logger = this.logger.getSubLogger({ name: "probeLatestTag" });
     logger.debug(messages.tagPattern.probing(owner, repo));
 
     // For gh CLI, we can just fetch the latest release directly
@@ -517,29 +512,29 @@ export class GhCliApiClient implements IGitHubApiClient {
     assetName: string,
     destinationPath: string,
   ): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'downloadAsset' });
+    const logger = this.logger.getSubLogger({ name: "downloadAsset" });
     logger.debug(messages.ghCli.downloadingAsset(assetName, `${owner}/${repo}`, tag));
 
     // Extract directory from destination path
-    const destinationDir = destinationPath.substring(0, destinationPath.lastIndexOf('/'));
+    const destinationDir = destinationPath.substring(0, destinationPath.lastIndexOf("/"));
 
     // Build gh release download command
     // --pattern matches the specific asset name
     // --dir specifies the output directory
     // --clobber overwrites if file exists
-    const args = ['release', 'download', tag];
-    args.push('--repo', `${owner}/${repo}`);
-    args.push('--pattern', assetName);
-    args.push('--dir', destinationDir);
-    args.push('--clobber');
+    const args = ["release", "download", tag];
+    args.push("--repo", `${owner}/${repo}`);
+    args.push("--pattern", assetName);
+    args.push("--dir", destinationDir);
+    args.push("--clobber");
 
     // Add hostname if not default github.com
-    if (this.hostname !== 'github.com') {
+    if (this.hostname !== "github.com") {
       // gh release download doesn't have --hostname, but the repo can include the host
       // For now, default gh CLI uses the authenticated host
     }
 
-    const command = ['gh', ...args].join(' ');
+    const command = ["gh", ...args].join(" ");
     const result = await this.shell(command).quiet().noThrow();
 
     if (result.code !== 0) {

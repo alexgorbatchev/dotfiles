@@ -1,9 +1,9 @@
-import type { ShellType } from '@dotfiles/core';
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import type { ShellType } from "@dotfiles/core";
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   constructor: {
-    initialized: () => createSafeLogMessage('ShellInitGenerator initialized'),
+    initialized: () => createSafeLogMessage("ShellInitGenerator initialized"),
   } satisfies SafeLogMessageMap,
   generate: {
     parsedToolCount: (toolConfigCount: number) =>

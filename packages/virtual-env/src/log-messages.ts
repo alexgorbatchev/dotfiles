@@ -1,4 +1,4 @@
-import { createSafeLogMessage } from '@dotfiles/logger';
+import { createSafeLogMessage } from "@dotfiles/logger";
 
 export const messages = {
   creatingEnv: (name: string) => createSafeLogMessage(`Creating environment: ${name}`),
@@ -13,5 +13,5 @@ export const messages = {
   configFileGenerated: (path: string) => createSafeLogMessage(`Config file generated at ${path}`),
   toolsDirCreated: (path: string) => createSafeLogMessage(`Tools directory created at ${path}`),
   writeFile: (path: string) => createSafeLogMessage(`Writing ${path}`),
-  deleteConfirmationRequired: () => createSafeLogMessage('Deletion requires confirmation'),
+  deleteConfirmationRequired: () => createSafeLogMessage("Deletion requires confirmation"),
 };

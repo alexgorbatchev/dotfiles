@@ -1,11 +1,11 @@
-import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { IToolInstallationDetails } from '@dotfiles/registry';
+import type { InstallResultFailure, InstallResultSuccess } from "@dotfiles/core";
+import type { IToolInstallationDetails } from "@dotfiles/registry";
 
 /**
  * Metadata specific to curl-binary tool installation.
  */
 export interface ICurlBinaryInstallMetadata extends Partial<IToolInstallationDetails> {
-  method: 'curl-binary';
+  method: "curl-binary";
   binaryUrl: string;
 }
 

@@ -8,12 +8,12 @@
  * - Broken symlinks (target deleted) are properly removed when stale
  * - The remaining symlink is not affected by the cleanup
  */
-import { Architecture, Platform } from '@dotfiles/core';
-import '@dotfiles/testing-helpers';
-import { describe, expect, it } from 'bun:test';
-import fs from 'node:fs';
-import path from 'node:path';
-import { TestHarness } from './helpers/TestHarness';
+import { Architecture, Platform } from "@dotfiles/core";
+import "@dotfiles/testing-helpers";
+import { describe, expect, it } from "bun:test";
+import fs from "node:fs";
+import path from "node:path";
+import { TestHarness } from "./helpers/TestHarness";
 
 const TOOL_CONFIG_ONE_SYMLINK = `import { defineTool } from '@dotfiles/cli';
 
@@ -32,32 +32,26 @@ export default defineTool((install) =>
 );
 `;
 
-describe('E2E: stale symlink detection', () => {
+describe("E2E: stale symlink detection", () => {
   const harness = new TestHarness({
     testDir: import.meta.dir,
-    configPath: 'fixtures/symlink-stale/config.ts',
+    configPath: "fixtures/symlink-stale/config.ts",
     platform: Platform.MacOS,
     architecture: Architecture.Arm64,
   });
 
-  const toolConfigPath = path.join(
-    import.meta.dir,
-    'fixtures/symlink-stale/tools/symlink-tool/symlink-tool.tool.ts',
-  );
-  const extraSourcePath = path.join(
-    import.meta.dir,
-    'fixtures/symlink-stale/tools/symlink-tool/extra-config.yml',
-  );
+  const toolConfigPath = path.join(import.meta.dir, "fixtures/symlink-stale/tools/symlink-tool/symlink-tool.tool.ts");
+  const extraSourcePath = path.join(import.meta.dir, "fixtures/symlink-stale/tools/symlink-tool/extra-config.yml");
 
-  it('should handle symlink lifecycle: add, stabilize, remove, stabilize', async () => {
+  it("should handle symlink lifecycle: add, stabilize, remove, stabilize", async () => {
     await harness.clean();
     await fs.promises.writeFile(toolConfigPath, TOOL_CONFIG_ONE_SYMLINK);
     // Ensure extra source file exists for phase 2
-    await fs.promises.writeFile(extraSourcePath, 'extra: true\n');
+    await fs.promises.writeFile(extraSourcePath, "extra: true\n");
 
-    const symlinkDir = path.join(harness.generatedDir, 'user-home', '.config', 'symlink-tool');
-    const configPath = path.join(symlinkDir, 'config.yml');
-    const extraPath = path.join(symlinkDir, 'extra.yml');
+    const symlinkDir = path.join(harness.generatedDir, "user-home", ".config", "symlink-tool");
+    const configPath = path.join(symlinkDir, "config.yml");
+    const extraPath = path.join(symlinkDir, "extra.yml");
 
     // Phase 1: single symlink, generate twice — no stale warnings
     const run1 = await harness.generate();
@@ -91,7 +85,10 @@ describe('E2E: stale symlink detection', () => {
     expect(run5.stdout).toMatch(/Removing stale symlink.*extra\.yml/);
     expect((await fs.promises.lstat(configPath)).isSymbolicLink()).toBe(true);
     // Broken symlink must actually be deleted from disk
-    const extraLstat = await fs.promises.lstat(extraPath).then(() => true, () => false);
+    const extraLstat = await fs.promises.lstat(extraPath).then(
+      () => true,
+      () => false,
+    );
     expect(extraLstat).toBe(false);
 
     // Phase 4: generate again — no stale warnings (cleanup was recorded)
@@ -102,6 +99,6 @@ describe('E2E: stale symlink detection', () => {
 
     // Restore fixtures
     await fs.promises.writeFile(toolConfigPath, TOOL_CONFIG_ONE_SYMLINK);
-    await fs.promises.writeFile(extraSourcePath, 'extra: true\n');
+    await fs.promises.writeFile(extraSourcePath, "extra: true\n");
   });
 });

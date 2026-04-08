@@ -1,19 +1,13 @@
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { SafeLogMessage, TsLogger } from '@dotfiles/logger';
-import type { ReplaceInFilePattern, ReplaceInFileReplacer } from '@dotfiles/utils';
-import { replaceInFile } from '@dotfiles/utils';
-import { Glob } from 'bun';
-import path from 'node:path';
-import type { IToolConfigContext } from '../builder';
-import type {
-  BoundReplaceInFile,
-  BoundResolve,
-  IBoundReplaceInFileOptions,
-  ISystemInfo,
-  IToolLog,
-} from '../common';
-import type { ProjectConfig } from '../config';
-import { messages } from '../log-messages';
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { SafeLogMessage, TsLogger } from "@dotfiles/logger";
+import type { ReplaceInFilePattern, ReplaceInFileReplacer } from "@dotfiles/utils";
+import { replaceInFile } from "@dotfiles/utils";
+import { Glob } from "bun";
+import path from "node:path";
+import type { IToolConfigContext } from "../builder";
+import type { BoundReplaceInFile, BoundResolve, IBoundReplaceInFileOptions, ISystemInfo, IToolLog } from "../common";
+import type { ProjectConfig } from "../config";
+import { messages } from "../log-messages";
 
 /**
  * Error thrown when a resolve pattern matches zero or multiple paths.
@@ -21,7 +15,7 @@ import { messages } from '../log-messages';
 export class ResolveError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'ResolveError';
+    this.name = "ResolveError";
   }
 }
 
@@ -71,7 +65,7 @@ export function createToolConfigContext(
   fileSystem: IResolvedFileSystem,
   logger: TsLogger,
 ): IToolConfigContext {
-  const currentDir = path.join(projectConfig.paths.binariesDir, toolName, 'current');
+  const currentDir = path.join(projectConfig.paths.binariesDir, toolName, "current");
 
   const normalizedSystemInfo: ISystemInfo = {
     platform: systemInfo.platform,
@@ -128,7 +122,7 @@ export function createToolConfigContext(
           }
         }
 
-        cwd = cwdParts.join(path.sep) || '/';
+        cwd = cwdParts.join(path.sep) || "/";
         globPattern = patternParts.join(path.sep);
       } else {
         // Glob is only in the basename
@@ -153,7 +147,7 @@ export function createToolConfigContext(
     }
 
     if (matches.length > 1) {
-      const matchList = matches.slice(0, 5).join(', ') + (matches.length > 5 ? ', ...' : '');
+      const matchList = matches.slice(0, 5).join(", ") + (matches.length > 5 ? ", ..." : "");
       logger.error(messages.resolveMultipleMatches(pattern, matches.length, matchList));
       throw new ResolveError(`Pattern '${pattern}' matched ${matches.length} paths (expected exactly 1)`);
     }

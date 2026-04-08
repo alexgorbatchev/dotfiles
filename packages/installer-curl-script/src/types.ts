@@ -1,10 +1,10 @@
-import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { IToolInstallationDetails } from '@dotfiles/registry';
-import type { Resolvable } from '@dotfiles/unwrap-value';
+import type { InstallResultFailure, InstallResultSuccess } from "@dotfiles/core";
+import type { IToolInstallationDetails } from "@dotfiles/registry";
+import type { Resolvable } from "@dotfiles/unwrap-value";
 
-export * from './types/ICurlScriptArgsContext';
+export * from "./types/ICurlScriptArgsContext";
 
-import type { ICurlScriptArgsContext } from './types/ICurlScriptArgsContext';
+import type { ICurlScriptArgsContext } from "./types/ICurlScriptArgsContext";
 
 export type CurlScriptArgs = Resolvable<ICurlScriptArgsContext, string[]>;
 export type CurlScriptEnv = Resolvable<ICurlScriptArgsContext, Record<string, string>>;
@@ -13,7 +13,7 @@ export type CurlScriptEnv = Resolvable<ICurlScriptArgsContext, Record<string, st
  * Metadata specific to curl-script tool installation.
  */
 export interface ICurlScriptInstallMetadata extends Partial<IToolInstallationDetails> {
-  method: 'curl-script';
+  method: "curl-script";
   scriptUrl: string;
   shell: string;
 }

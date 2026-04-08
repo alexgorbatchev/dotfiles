@@ -1,11 +1,11 @@
-import type { ISystemInfo, ProjectConfig, ProjectConfigPartial } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { exitCli } from '@dotfiles/utils';
-import path from 'node:path';
-import type { ConfigContext } from './defineConfig';
-import { messages } from './log-messages';
-import { createProjectConfigFromObject } from './stagedProjectConfigLoader';
+import type { ISystemInfo, ProjectConfig, ProjectConfigPartial } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { exitCli } from "@dotfiles/utils";
+import path from "node:path";
+import type { ConfigContext } from "./defineConfig";
+import { messages } from "./log-messages";
+import { createProjectConfigFromObject } from "./stagedProjectConfigLoader";
 
 type ModuleWithDefaultExport = {
   default?: unknown;
@@ -14,7 +14,7 @@ type ModuleWithDefaultExport = {
 type ConfigFactory = (ctx: ConfigContext) => unknown;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function hasDefaultExport(value: unknown): value is ModuleWithDefaultExport {
@@ -22,11 +22,11 @@ function hasDefaultExport(value: unknown): value is ModuleWithDefaultExport {
     return false;
   }
 
-  return 'default' in value;
+  return "default" in value;
 }
 
 function isConfigFactory(value: unknown): value is ConfigFactory {
-  return typeof value === 'function';
+  return typeof value === "function";
 }
 
 function isPromise(value: unknown): value is Promise<unknown> {
@@ -59,10 +59,10 @@ export async function loadTsConfig(
   systemInfo: ISystemInfo,
   env: Record<string, string | undefined>,
 ): Promise<ProjectConfig> {
-  const logger = parentLogger.getSubLogger({ name: 'loadTsConfig' });
+  const logger = parentLogger.getSubLogger({ name: "loadTsConfig" });
 
   if (!(await fileSystem.exists(userConfigPath))) {
-    logger.error(messages.fsItemNotFound('Config file', userConfigPath));
+    logger.error(messages.fsItemNotFound("Config file", userConfigPath));
     exitCli(1);
   }
 
@@ -72,7 +72,7 @@ export async function loadTsConfig(
     const importedModule: unknown = await import(userConfigPath);
 
     if (!hasDefaultExport(importedModule) || !importedModule.default) {
-      logger.error(messages.configurationParseError(userConfigPath, 'TypeScript', 'no default export'));
+      logger.error(messages.configurationParseError(userConfigPath, "TypeScript", "no default export"));
       exitCli(1);
     }
 
@@ -90,8 +90,8 @@ export async function loadTsConfig(
       logger.error(
         messages.configurationParseError(
           userConfigPath,
-          'TypeScript',
-          'default export must be an object, function or Promise',
+          "TypeScript",
+          "default export must be an object, function or Promise",
         ),
       );
       exitCli(1);
@@ -100,7 +100,7 @@ export async function loadTsConfig(
     logger.error(
       messages.configurationParseError(
         userConfigPath,
-        'TypeScript',
+        "TypeScript",
         error instanceof Error ? error.message : String(error),
       ),
     );

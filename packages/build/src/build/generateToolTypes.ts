@@ -1,6 +1,6 @@
-import type { ToolConfig } from '@dotfiles/core';
-import { generateToolTypesContent, getBuiltPackageName } from '@dotfiles/utils';
-import fs from 'node:fs';
+import type { ToolConfig } from "@dotfiles/core";
+import { generateToolTypesContent, getBuiltPackageName } from "@dotfiles/utils";
+import fs from "node:fs";
 
 /**
  * Generates and writes the tool-types.d.ts file using Node.js fs (for build script).
@@ -11,5 +11,5 @@ import fs from 'node:fs';
  */
 export function generateToolTypes(toolConfigs: Record<string, ToolConfig>, outputPath: string): void {
   const content: string = generateToolTypesContent(toolConfigs, getBuiltPackageName());
-  fs.writeFileSync(outputPath, content, 'utf8');
+  fs.writeFileSync(outputPath, content, "utf8");
 }

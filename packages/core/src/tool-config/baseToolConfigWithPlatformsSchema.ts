@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import { baseToolConfigPropertiesSchema } from './base';
-import { type PlatformConfigEntry, platformConfigEntrySchema } from './platformConfigEntrySchema';
+import { z } from "zod";
+import { baseToolConfigPropertiesSchema } from "./base";
+import { type PlatformConfigEntry, platformConfigEntrySchema } from "./platformConfigEntrySchema";
 
 /**
  * Extended base tool config schema that includes platformConfigs.
@@ -35,6 +35,6 @@ export const baseToolConfigWithPlatformsSchema = baseToolConfigPropertiesSchema.
  * export type MyPluginToolConfig = InferToolConfigWithPlatforms<typeof myPluginToolConfigSchema>;
  * ```
  */
-export type InferToolConfigWithPlatforms<TSchema extends z.ZodType> = Omit<z.infer<TSchema>, 'platformConfigs'> & {
+export type InferToolConfigWithPlatforms<TSchema extends z.ZodType> = Omit<z.infer<TSchema>, "platformConfigs"> & {
   platformConfigs?: PlatformConfigEntry[];
 };

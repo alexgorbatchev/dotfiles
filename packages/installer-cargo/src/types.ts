@@ -4,11 +4,11 @@ import type {
   InstallResultSuccess,
   IOperationFailure,
   IOperationSuccess,
-} from '@dotfiles/core';
-import type { IToolInstallationDetails } from '@dotfiles/registry';
+} from "@dotfiles/core";
+import type { IToolInstallationDetails } from "@dotfiles/registry";
 
 export interface ICargoInstallMetadata extends Partial<IToolInstallationDetails> {
-  method: 'cargo';
+  method: "cargo";
   crateName: string;
   binarySource: string;
   downloadUrl: string;

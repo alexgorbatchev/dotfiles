@@ -1,4 +1,4 @@
-import type { Resolvable } from './types';
+import type { Resolvable } from "./types";
 
 /**
  * Resolves a Resolvable value to its actual value.
@@ -18,7 +18,7 @@ export async function resolveValue<TParams, TReturn>(
   params: TParams,
   resolvable: Resolvable<TParams, TReturn>,
 ): Promise<TReturn> {
-  if (typeof resolvable === 'function') {
+  if (typeof resolvable === "function") {
     const fn = resolvable as (params: TParams) => TReturn | Promise<TReturn>;
     return await fn(params);
   }

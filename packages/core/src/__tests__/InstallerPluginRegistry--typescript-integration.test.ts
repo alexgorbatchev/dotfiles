@@ -1,12 +1,12 @@
-import { TestLogger } from '@dotfiles/logger';
-import { IToolConfigBuilder } from '@dotfiles/tool-config-builder';
-import { beforeEach, describe, expect, test } from 'bun:test';
-import { z } from 'zod';
-import { InstallerPluginRegistry } from '../InstallerPluginRegistry';
-import type { IInstallerPlugin, InstallResult } from '../types';
+import { TestLogger } from "@dotfiles/logger";
+import { IToolConfigBuilder } from "@dotfiles/tool-config-builder";
+import { beforeEach, describe, expect, test } from "bun:test";
+import { z } from "zod";
+import { InstallerPluginRegistry } from "../InstallerPluginRegistry";
+import type { IInstallerPlugin, InstallResult } from "../types";
 // Import plugins to load type augmentations for this test
 // oxlint-disable-next-line import/no-unassigned-import
-import '../plugins';
+import "../plugins";
 
 // Custom plugin schemas and types (simulating what a real plugin package would export)
 const customNpmParamsSchema = z.object({
@@ -16,7 +16,7 @@ const customNpmParamsSchema = z.object({
 });
 
 const customNpmConfigSchema = z.object({
-  installationMethod: z.literal('custom-npm'),
+  installationMethod: z.literal("custom-npm"),
   installParams: customNpmParamsSchema,
   binaries: z.array(z.string()),
   name: z.string(),
@@ -27,16 +27,16 @@ type CustomNpmParams = z.infer<typeof customNpmParamsSchema>;
 type CustomNpmConfig = z.infer<typeof customNpmConfigSchema>;
 
 // Module augmentation using inferred types (as plugin packages would do)
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IToolConfigBuilder {
-    install(method: 'custom-npm', params: CustomNpmParams): this;
+    install(method: "custom-npm", params: CustomNpmParams): this;
   }
   interface IPlatformConfigBuilder {
-    install(method: 'custom-npm', params: CustomNpmParams): this;
+    install(method: "custom-npm", params: CustomNpmParams): this;
   }
 }
 
-describe('InstallerPluginRegistry - TypeScript Integration', () => {
+describe("InstallerPluginRegistry - TypeScript Integration", () => {
   let logger: TestLogger;
   let registry: InstallerPluginRegistry;
 
@@ -45,20 +45,20 @@ describe('InstallerPluginRegistry - TypeScript Integration', () => {
     registry = new InstallerPluginRegistry(logger);
   });
 
-  test('IToolConfigBuilder with custom plugin method - TypeScript types work correctly', async () => {
+  test("IToolConfigBuilder with custom plugin method - TypeScript types work correctly", async () => {
     // Create a custom plugin using module-level schemas and types
-    const customPlugin: IInstallerPlugin<'custom-npm', CustomNpmParams, CustomNpmConfig, { npmVersion: string; }> = {
-      method: 'custom-npm',
-      displayName: 'Custom NPM Installer',
-      version: '1.0.0',
+    const customPlugin: IInstallerPlugin<"custom-npm", CustomNpmParams, CustomNpmConfig, { npmVersion: string }> = {
+      method: "custom-npm",
+      displayName: "Custom NPM Installer",
+      version: "1.0.0",
       paramsSchema: customNpmParamsSchema,
       toolConfigSchema: customNpmConfigSchema,
       supportsUpdate: () => true,
       install: async () => {
-        const result: InstallResult<{ npmVersion: string; }> = {
+        const result: InstallResult<{ npmVersion: string }> = {
           success: true,
-          binaryPaths: ['/usr/local/bin/custom-tool'],
-          metadata: { npmVersion: '1.0.0' },
+          binaryPaths: ["/usr/local/bin/custom-tool"],
+          metadata: { npmVersion: "1.0.0" },
         };
         return result;
       },
@@ -69,23 +69,23 @@ describe('InstallerPluginRegistry - TypeScript Integration', () => {
     registry.composeSchemas();
 
     // Create IToolConfigBuilder
-    const builder = new IToolConfigBuilder(logger, 'my-custom-tool');
+    const builder = new IToolConfigBuilder(logger, "my-custom-tool");
 
     // Valid params - should work fine
     const config = builder
-      .version('2.0.0')
-      .bin('my-tool')
-      .install('custom-npm', {
-        packageName: '@myorg/my-tool',
-        registryUrl: 'https://npm.example.com',
+      .version("2.0.0")
+      .bin("my-tool")
+      .install("custom-npm", {
+        packageName: "@myorg/my-tool",
+        registryUrl: "https://npm.example.com",
         installGlobal: true,
       })
       .build();
 
     // Verify the config was built correctly
-    expect(config.name).toBe('my-custom-tool');
-    expect(config.version).toBe('2.0.0');
-    expect(config.binaries).toEqual(['my-tool']);
+    expect(config.name).toBe("my-custom-tool");
+    expect(config.version).toBe("2.0.0");
+    expect(config.binaries).toEqual(["my-tool"]);
 
     // Verify registry validates the config successfully
     const schema = registry.getToolConfigSchema();

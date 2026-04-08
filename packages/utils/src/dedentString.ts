@@ -21,7 +21,7 @@
  * ```
  */
 export function dedentString(str: string): string {
-  const lines = str.split('\n');
+  const lines = str.split("\n");
   const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
 
   if (nonEmptyLines.length === 0) {
@@ -34,6 +34,6 @@ export function dedentString(str: string): string {
   // Remove the common indentation from all lines
   return lines
     .map((line) => line.slice(minIndent))
-    .join('\n')
+    .join("\n")
     .trim(); // Remove leading/trailing empty lines
 }

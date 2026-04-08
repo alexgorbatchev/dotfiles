@@ -1,4 +1,4 @@
-import { type Shell, type ShellCommand } from '@dotfiles/core';
+import { type Shell, type ShellCommand } from "@dotfiles/core";
 
 export interface IMockShellExtensions {
   reset(): void;
@@ -13,22 +13,23 @@ export interface IMockShellResponse {
   shouldThrow?: boolean;
 }
 
-export type MockShell = Shell & IMockShellExtensions & {
-  (command: string): ShellCommand;
-};
+export type MockShell = Shell &
+  IMockShellExtensions & {
+    (command: string): ShellCommand;
+  };
 
 function reconstructCommand(pieces: TemplateStringsArray | string, args: unknown[]): string {
-  if (typeof pieces === 'string') {
+  if (typeof pieces === "string") {
     return pieces;
   }
-  let command = '';
+  let command = "";
   for (let i = 0; i < pieces.length; i++) {
     command += pieces[i];
     if (i < args.length) {
       const arg = args[i];
       // Handle arrays properly - join with spaces instead of commas
       if (Array.isArray(arg)) {
-        command += arg.join(' ');
+        command += arg.join(" ");
       } else {
         command += String(arg);
       }
@@ -41,22 +42,19 @@ function reconstructCommand(pieces: TemplateStringsArray | string, args: unknown
  * Handles built-in commands like `printenv` by simulating their behavior.
  * Returns undefined if the command is not a built-in or cannot be handled.
  */
-function handleBuiltinCommand(
-  command: string,
-  env: Record<string, string | undefined>,
-): string | undefined {
+function handleBuiltinCommand(command: string, env: Record<string, string | undefined>): string | undefined {
   // Handle: printenv VAR_NAME || true
   const printenvMatch = command.match(/^printenv\s+(\S+)(?:\s+\|\|\s+true)?$/);
   if (printenvMatch) {
-    const varName = printenvMatch[1] ?? '';
-    return env[varName] ?? '';
+    const varName = printenvMatch[1] ?? "";
+    return env[varName] ?? "";
   }
 
   // Handle: echo $VAR_NAME
   const echoVarMatch = command.match(/^echo\s+\$(\w+)$/);
   if (echoVarMatch) {
-    const varName = echoVarMatch[1] ?? '';
-    return env[varName] ?? '';
+    const varName = echoVarMatch[1] ?? "";
+    return env[varName] ?? "";
   }
 
   return undefined;
@@ -88,12 +86,13 @@ export function createMock$(): MockShell {
     // Try to handle built-in commands using the current environment
     const builtinOutput = handleBuiltinCommand(command, currentEnv);
 
-    const stdoutVal = mockedResponse?.stdout !== undefined
-      ? mockedResponse.stdout.toString()
-      : builtinOutput !== undefined
-      ? builtinOutput
-      : '';
-    const stderrVal = mockedResponse?.stderr !== undefined ? mockedResponse.stderr.toString() : '';
+    const stdoutVal =
+      mockedResponse?.stdout !== undefined
+        ? mockedResponse.stdout.toString()
+        : builtinOutput !== undefined
+          ? builtinOutput
+          : "";
+    const stderrVal = mockedResponse?.stderr !== undefined ? mockedResponse.stderr.toString() : "";
     const exitCodeVal = mockedResponse?.code ?? mockedResponse?.exitCode ?? 0;
 
     const resultData = {
@@ -127,8 +126,8 @@ export function createMock$(): MockShell {
       quiet: () => createChainableResult(command, shouldNothrow, currentEnv),
       noThrow: () => createChainableResult(command, true, currentEnv),
       text: () => Promise.resolve(stdoutVal),
-      json: () => Promise.resolve(JSON.parse(stdoutVal || '{}')),
-      lines: () => Promise.resolve(stdoutVal.split('\n')),
+      json: () => Promise.resolve(JSON.parse(stdoutVal || "{}")),
+      lines: () => Promise.resolve(stdoutVal.split("\n")),
       bytes: () => Promise.resolve(new TextEncoder().encode(stdoutVal)),
     });
 

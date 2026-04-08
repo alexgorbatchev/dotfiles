@@ -5,11 +5,11 @@ import type {
   IOperationFailure,
   IOperationSuccess,
   ToolConfig,
-} from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { HookExecutor } from './HookExecutor';
-import { messages } from './log-messages';
+} from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import type { HookExecutor } from "./HookExecutor";
+import { messages } from "./log-messages";
 
 /**
  * Result type for hook execution indicating success or failure with error message.
@@ -20,7 +20,7 @@ export type ExecuteHooksResult = IOperationSuccess | IOperationFailure;
  * Extracts hooks from tool configuration's install params.
  * Uses type assertion since all install params extend BaseInstallParams which has hooks.
  */
-function getHooksFromConfig(toolConfig: ToolConfig): BaseInstallParams['hooks'] | undefined {
+function getHooksFromConfig(toolConfig: ToolConfig): BaseInstallParams["hooks"] | undefined {
   const installParams = toolConfig.installParams as BaseInstallParams | undefined;
   return installParams?.hooks;
 }
@@ -50,18 +50,18 @@ export async function executeAfterDownloadHook(
   logger: TsLogger,
 ): Promise<ExecuteHooksResult> {
   const hooks = getHooksFromConfig(toolConfig);
-  const afterDownloadHooks = hooks?.['after-download'];
+  const afterDownloadHooks = hooks?.["after-download"];
 
   if (!afterDownloadHooks) {
     return { success: true };
   }
 
-  logger.debug(messages.lifecycle.hookExecution('after-download'));
+  logger.debug(messages.lifecycle.hookExecution("after-download"));
 
   const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
 
   for (const hook of afterDownloadHooks) {
-    const hookResult = await hookExecutor.executeHook(logger, 'after-download', hook, enhancedContext);
+    const hookResult = await hookExecutor.executeHook(logger, "after-download", hook, enhancedContext);
 
     if (!hookResult.success) {
       return {
@@ -100,18 +100,18 @@ export async function executeAfterExtractHook(
   logger: TsLogger,
 ): Promise<ExecuteHooksResult> {
   const hooks = getHooksFromConfig(toolConfig);
-  const afterExtractHooks = hooks?.['after-extract'];
+  const afterExtractHooks = hooks?.["after-extract"];
 
   if (!afterExtractHooks) {
     return { success: true };
   }
 
-  logger.debug(messages.lifecycle.hookExecution('after-extract'));
+  logger.debug(messages.lifecycle.hookExecution("after-extract"));
 
   const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
 
   for (const hook of afterExtractHooks) {
-    const hookResult = await hookExecutor.executeHook(logger, 'after-extract', hook, enhancedContext);
+    const hookResult = await hookExecutor.executeHook(logger, "after-extract", hook, enhancedContext);
 
     if (!hookResult.success) {
       return {

@@ -3,25 +3,8 @@
   "lineWidth": 120,
   "indentWidth": 2,
   "useTabs": false,
-  "typescript": {
-    "semiColons": "always",
-    "quoteStyle": "preferSingle",
-    "trailingCommas": "onlyMultiLine",
-    "useBraces": "maintain",
-    "bracePosition": "sameLineUnlessHanging",
-    "singleBodyPosition": "maintain",
-    "nextControlFlowPosition": "sameLine",
-    "operatorPosition": "maintain",
-    "preferHanging": false,
-    "preferSingleLine": false,
-    "arrowFunction.useParentheses": "force"
-  },
   "json": {},
-  "includes": ["**/*.{ts,tsx,js,jsx,json,jsonc,md}"],
+  "includes": ["**/*.{json,jsonc,md}"],
   "excludes": ["**/dist", "**/.generated", "**/node_modules", "**/tmp", "**/*.snap", "**/bun.lock"],
-  "plugins": [
-    "./node_modules/@dprint/typescript/plugin.wasm",
-    "./node_modules/@dprint/json/plugin.wasm",
-    "./node_modules/@dprint/markdown/plugin.wasm"
-  ]
+  "plugins": ["./node_modules/@dprint/json/plugin.wasm", "./node_modules/@dprint/markdown/plugin.wasm"]
 }

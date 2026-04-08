@@ -1,16 +1,16 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import { createShell, Platform } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
-import type { DmgToolConfig } from '@dotfiles/installer-dmg';
-import type { IGitHubApiClient } from '@dotfiles/installer-github';
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import { DmgInstallerPlugin } from '../DmgInstallerPlugin';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
+import { createShell, Platform } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor } from "@dotfiles/installer";
+import type { DmgToolConfig } from "@dotfiles/installer-dmg";
+import type { IGitHubApiClient } from "@dotfiles/installer-github";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { DmgInstallerPlugin } from "../DmgInstallerPlugin";
 
 const shell = createShell();
 
-describe('DmgInstallerPlugin', () => {
+describe("DmgInstallerPlugin", () => {
   let plugin: DmgInstallerPlugin;
   let mockFs: IFileSystem;
   let mockDownloader: IDownloader;
@@ -36,24 +36,24 @@ describe('DmgInstallerPlugin', () => {
     );
   });
 
-  it('should have correct plugin metadata', () => {
-    expect(plugin.method).toBe('dmg');
-    expect(plugin.displayName).toBe('DMG Installer');
-    expect(plugin.version).toBe('1.0.0');
+  it("should have correct plugin metadata", () => {
+    expect(plugin.method).toBe("dmg");
+    expect(plugin.displayName).toBe("DMG Installer");
+    expect(plugin.version).toBe("1.0.0");
     expect(plugin.externallyManaged).toBe(true);
-    expect(plugin.missingBinaryMessage).toContain('/Applications');
+    expect(plugin.missingBinaryMessage).toContain("/Applications");
   });
 
-  it('should have valid schemas', () => {
+  it("should have valid schemas", () => {
     expect(plugin.paramsSchema).toBeDefined();
     expect(plugin.toolConfigSchema).toBeDefined();
   });
 
-  it('should validate correct params', () => {
+  it("should validate correct params", () => {
     const validParams = {
       source: {
-        type: 'url',
-        url: 'https://example.com/app.dmg',
+        type: "url",
+        url: "https://example.com/app.dmg",
       },
     };
 
@@ -61,11 +61,11 @@ describe('DmgInstallerPlugin', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject invalid URL in params', () => {
+  it("should reject invalid URL in params", () => {
     const invalidParams = {
       source: {
-        type: 'url',
-        url: 'not-a-url',
+        type: "url",
+        url: "not-a-url",
       },
     };
 
@@ -73,16 +73,16 @@ describe('DmgInstallerPlugin', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should validate correct tool config', () => {
+  it("should validate correct tool config", () => {
     const validConfig: DmgToolConfig = {
-      name: 'test-app',
-      version: '1.0.0',
-      binaries: ['test-app'],
-      installationMethod: 'dmg',
+      name: "test-app",
+      version: "1.0.0",
+      binaries: ["test-app"],
+      installationMethod: "dmg",
       installParams: {
         source: {
-          type: 'url',
-          url: 'https://example.com/app.dmg',
+          type: "url",
+          url: "https://example.com/app.dmg",
         },
       },
     };
@@ -91,24 +91,24 @@ describe('DmgInstallerPlugin', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should not support updates', () => {
+  it("should not support updates", () => {
     expect(plugin.supportsUpdate()).toBe(false);
     expect(plugin.supportsUpdateCheck()).toBe(false);
     expect(plugin.supportsReadme()).toBe(false);
   });
 
-  describe('validate', () => {
-    it('should return valid with warning on non-macOS', async () => {
+  describe("validate", () => {
+    it("should return valid with warning on non-macOS", async () => {
       const context = {
         systemInfo: { platform: Platform.Linux },
       } as never;
 
       const result = await plugin.validate(context);
       expect(result.valid).toBe(true);
-      expect(result.warnings).toEqual(['DMG installer only works on macOS']);
+      expect(result.warnings).toEqual(["DMG installer only works on macOS"]);
     });
 
-    it('should return valid on macOS when hdiutil exists', async () => {
+    it("should return valid on macOS when hdiutil exists", async () => {
       const mockShell = mock(() => ({
         quiet: mock(() => Promise.resolve()),
       }));
@@ -130,9 +130,9 @@ describe('DmgInstallerPlugin', () => {
       expect(result.valid).toBe(true);
     });
 
-    it('should return invalid on macOS when hdiutil is missing', async () => {
+    it("should return invalid on macOS when hdiutil is missing", async () => {
       const mockShell = mock(() => ({
-        quiet: mock(() => Promise.reject(new Error('not found'))),
+        quiet: mock(() => Promise.reject(new Error("not found"))),
       }));
       const macPlugin = new DmgInstallerPlugin(
         mockFs,
@@ -150,7 +150,7 @@ describe('DmgInstallerPlugin', () => {
 
       const result = await macPlugin.validate(context);
       expect(result.valid).toBe(false);
-      expect(result.errors).toEqual(['hdiutil not found — required for DMG installation']);
+      expect(result.errors).toEqual(["hdiutil not found — required for DMG installation"]);
     });
   });
 });

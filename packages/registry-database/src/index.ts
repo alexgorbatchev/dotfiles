@@ -1,1 +1,1 @@
-export * from './RegistryDatabase';
+export * from "./RegistryDatabase";

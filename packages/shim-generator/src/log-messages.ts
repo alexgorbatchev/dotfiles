@@ -1,8 +1,8 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   constructor: {
-    initialized: () => createSafeLogMessage('ShimGenerator initialized'),
+    initialized: () => createSafeLogMessage("ShimGenerator initialized"),
   } satisfies SafeLogMessageMap,
   generate: {
     missingToolConfig: (toolName: string) =>
@@ -19,7 +19,7 @@ export const messages = {
       createSafeLogMessage(`Skipping shim generation for ${toolName} (already installed)`),
     skippedManualNoBinaryPath: () =>
       createSafeLogMessage(
-        'Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)',
+        "Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)",
       ),
   } satisfies SafeLogMessageMap,
   generateShim: {

@@ -1,6 +1,6 @@
-import { createSafeLogMessage, type SafeLogMessage, TestLogger, type TestLogLevel } from '@dotfiles/logger';
-import { describe, expect, it, spyOn } from 'bun:test';
-import type { ILogObjMeta } from 'tslog';
+import { createSafeLogMessage, type SafeLogMessage, TestLogger, type TestLogLevel } from "@dotfiles/logger";
+import { describe, expect, it, spyOn } from "bun:test";
+import type { ILogObjMeta } from "tslog";
 
 interface ITestLoggerWithPrivates {
   getLogs(levels: TestLogLevel[], path: string[], context: string[], matcher?: string | RegExp): ILogObjMeta[];
@@ -9,179 +9,179 @@ interface ITestLoggerWithPrivates {
 // Helper for tests to create safe log messages
 const msg = createSafeLogMessage;
 
-describe('TestLogger', () => {
-  describe('getLogs', () => {
-    it('should filter logs by level', () => {
+describe("TestLogger", () => {
+  describe("getLogs", () => {
+    it("should filter logs by level", () => {
       const logger = new TestLogger();
-      logger.info(msg('info message'));
-      logger.warn(msg('warn message'));
-      logger.error(msg('error message'));
+      logger.info(msg("info message"));
+      logger.warn(msg("warn message"));
+      logger.error(msg("error message"));
 
-      const infoLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['INFO'], [], []);
+      const infoLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["INFO"], [], []);
       expect(infoLogs).toHaveLength(1);
-      expect(infoLogs[0]?.[0]).toMatch('info message');
+      expect(infoLogs[0]?.[0]).toMatch("info message");
 
-      const warnLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['WARN'], [], []);
+      const warnLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["WARN"], [], []);
       expect(warnLogs).toHaveLength(1);
-      expect(warnLogs[0]?.[0]).toMatch('warn message');
+      expect(warnLogs[0]?.[0]).toMatch("warn message");
 
-      const errorLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['ERROR'], [], []);
+      const errorLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["ERROR"], [], []);
       expect(errorLogs).toHaveLength(1);
-      expect(errorLogs[0]?.[0]).toMatch('error message');
+      expect(errorLogs[0]?.[0]).toMatch("error message");
     });
 
-    it('should filter logs by path', () => {
+    it("should filter logs by path", () => {
       const logger = new TestLogger();
-      const subLogger = logger.getSubLogger({ name: 'Sub' });
-      const subSubLogger = subLogger.getSubLogger({ name: 'SubSub' });
+      const subLogger = logger.getSubLogger({ name: "Sub" });
+      const subSubLogger = subLogger.getSubLogger({ name: "SubSub" });
 
-      logger.info(msg('root message'));
-      subLogger.info(msg('sub message'));
-      subSubLogger.info(msg('sub-sub message'));
+      logger.info(msg("root message"));
+      subLogger.info(msg("sub message"));
+      subSubLogger.info(msg("sub-sub message"));
 
-      const rootLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['INFO'], [], []);
+      const rootLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["INFO"], [], []);
       expect(rootLogs).toHaveLength(1);
-      expect(rootLogs[0]?.[0]).toMatch('root message');
+      expect(rootLogs[0]?.[0]).toMatch("root message");
 
-      const subLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['INFO'], ['Sub'], []);
+      const subLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["INFO"], ["Sub"], []);
       expect(subLogs).toHaveLength(1);
-      expect(subLogs[0]?.[0]).toMatch('sub message');
+      expect(subLogs[0]?.[0]).toMatch("sub message");
 
-      const subSubLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['INFO'], ['Sub', 'SubSub'], []);
+      const subSubLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["INFO"], ["Sub", "SubSub"], []);
       expect(subSubLogs).toHaveLength(1);
-      expect(subSubLogs[0]?.[0]).toMatch('sub-sub message');
+      expect(subSubLogs[0]?.[0]).toMatch("sub-sub message");
     });
 
-    it('should filter by level and path', () => {
+    it("should filter by level and path", () => {
       const logger = new TestLogger();
-      const subLogger = logger.getSubLogger({ name: 'Sub' });
+      const subLogger = logger.getSubLogger({ name: "Sub" });
 
-      logger.info(msg('root info'));
-      logger.warn(msg('root warn'));
-      subLogger.info(msg('sub info'));
-      subLogger.warn(msg('sub warn'));
+      logger.info(msg("root info"));
+      logger.warn(msg("root warn"));
+      subLogger.info(msg("sub info"));
+      subLogger.warn(msg("sub warn"));
 
-      const rootInfoLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['INFO'], [], []);
+      const rootInfoLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["INFO"], [], []);
       expect(rootInfoLogs).toHaveLength(1);
-      expect(rootInfoLogs[0]?.[0]).toMatch('root info');
+      expect(rootInfoLogs[0]?.[0]).toMatch("root info");
 
-      const subWarnLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['WARN'], ['Sub'], []);
+      const subWarnLogs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["WARN"], ["Sub"], []);
       expect(subWarnLogs).toHaveLength(1);
-      expect(subWarnLogs[0]?.[0]).toMatch('sub warn');
+      expect(subWarnLogs[0]?.[0]).toMatch("sub warn");
     });
 
-    it('should return all levels with wildcard', () => {
+    it("should return all levels with wildcard", () => {
       const logger = new TestLogger();
-      logger.info(msg('info message'));
-      logger.warn(msg('warn message'));
+      logger.info(msg("info message"));
+      logger.warn(msg("warn message"));
 
-      const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['*'], [], []);
+      const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["*"], [], []);
       expect(logs).toHaveLength(2);
     });
 
-    it('should return empty array when no logs match', () => {
+    it("should return empty array when no logs match", () => {
       const logger = new TestLogger();
-      logger.info(msg('info message'));
+      logger.info(msg("info message"));
 
-      const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['WARN'], [], []);
+      const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["WARN"], [], []);
       expect(logs).toHaveLength(0);
     });
 
-    it('should print logs to the console', () => {
-      const logger = new TestLogger({ name: 'TestLogger' });
-      logger.info(msg('info message'));
-      logger.warn(msg('warn message'));
+    it("should print logs to the console", () => {
+      const logger = new TestLogger({ name: "TestLogger" });
+      logger.info(msg("info message"));
+      logger.warn(msg("warn message"));
 
-      const consoleSpy = spyOn(console, 'log').mockImplementation(() => {});
+      const consoleSpy = spyOn(console, "log").mockImplementation(() => {});
 
-      logger.printLogs(['INFO'], ['TestLogger'], []);
+      logger.printLogs(["INFO"], ["TestLogger"], []);
       expect(consoleSpy).toHaveBeenCalledTimes(1);
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify({ '0': 'info message' })));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify({ "0": "info message" })));
 
       consoleSpy.mockClear();
 
-      logger.printLogs(['*'], ['TestLogger'], []);
+      logger.printLogs(["*"], ["TestLogger"], []);
       expect(consoleSpy).toHaveBeenCalledTimes(2);
 
       consoleSpy.mockRestore();
     });
 
-    describe('with matcher', () => {
-      it('should filter logs by a string matcher', () => {
+    describe("with matcher", () => {
+      it("should filter logs by a string matcher", () => {
         const logger = new TestLogger();
-        logger.info(msg('info message 1'));
-        logger.info(msg('info message 2'));
+        logger.info(msg("info message 1"));
+        logger.info(msg("info message 2"));
 
-        const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['INFO'], [], [], 'message 1');
+        const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["INFO"], [], [], "message 1");
         expect(logs).toHaveLength(1);
-        expect(logs[0]?.[0]).toMatch('info message 1');
+        expect(logs[0]?.[0]).toMatch("info message 1");
       });
 
-      it('should filter logs by a regex matcher', () => {
+      it("should filter logs by a regex matcher", () => {
         const logger = new TestLogger();
-        logger.info(msg('info message 1'));
-        logger.info(msg('info message 2'));
+        logger.info(msg("info message 1"));
+        logger.info(msg("info message 2"));
 
-        const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['INFO'], [], [], /message 2/);
+        const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["INFO"], [], [], /message 2/);
         expect(logs).toHaveLength(1);
-        expect(logs[0]?.[0]).toMatch('info message 2');
+        expect(logs[0]?.[0]).toMatch("info message 2");
       });
 
-      it('should return no logs if matcher does not match', () => {
+      it("should return no logs if matcher does not match", () => {
         const logger = new TestLogger();
-        logger.info(msg('info message 1'));
+        logger.info(msg("info message 1"));
 
-        const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['INFO'], [], [], 'no match');
+        const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["INFO"], [], [], "no match");
         expect(logs).toHaveLength(0);
       });
 
-      it('should not match if the log argument is not a string', () => {
+      it("should not match if the log argument is not a string", () => {
         const logger = new TestLogger();
         // Use unknown to bypass SafeLogMessage requirement for this specific test case
-        logger.info({ message: 'info message 1' } as unknown as SafeLogMessage);
+        logger.info({ message: "info message 1" } as unknown as SafeLogMessage);
 
-        const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(['INFO'], [], [], 'info message 1');
+        const logs = (logger as unknown as ITestLoggerWithPrivates).getLogs(["INFO"], [], [], "info message 1");
         expect(logs).toHaveLength(0);
       });
 
-      it('should print filtered logs to the console', () => {
-        const logger = new TestLogger({ name: 'TestLogger' });
-        logger.info(msg('info message 1'));
-        logger.info(msg('info message 2'));
+      it("should print filtered logs to the console", () => {
+        const logger = new TestLogger({ name: "TestLogger" });
+        logger.info(msg("info message 1"));
+        logger.info(msg("info message 2"));
 
-        const consoleSpy = spyOn(console, 'log').mockImplementation(() => {});
+        const consoleSpy = spyOn(console, "log").mockImplementation(() => {});
 
-        logger.printLogs(['INFO'], ['TestLogger'], [], 'message 1');
+        logger.printLogs(["INFO"], ["TestLogger"], [], "message 1");
         expect(consoleSpy).toHaveBeenCalledTimes(1);
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify({ '0': 'info message 1' })));
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify({ "0": "info message 1" })));
 
         consoleSpy.mockRestore();
       });
     });
   });
 
-  describe('expect', () => {
-    it('should match each log with the corresponding matcher', () => {
+  describe("expect", () => {
+    it("should match each log with the corresponding matcher", () => {
       const logger = new TestLogger();
-      logger.info(msg('info message 1'));
-      logger.info(msg('info message 2'));
+      logger.info(msg("info message 1"));
+      logger.info(msg("info message 2"));
 
-      logger.expect(['INFO'], [], [], ['info message 1', 'info message 2']);
+      logger.expect(["INFO"], [], [], ["info message 1", "info message 2"]);
     });
 
-    it.failing('should fail if the number of logs does not match the number of matchers', () => {
+    it.failing("should fail if the number of logs does not match the number of matchers", () => {
       const logger = new TestLogger();
-      logger.info(msg('info message 1'));
+      logger.info(msg("info message 1"));
 
-      logger.expect(['INFO'], [], [], ['message 1', 'message 2']);
+      logger.expect(["INFO"], [], [], ["message 1", "message 2"]);
     });
 
-    it.failing('should fail if a log does not match the corresponding matcher', () => {
+    it.failing("should fail if a log does not match the corresponding matcher", () => {
       const logger = new TestLogger();
-      logger.info(msg('info message 1'));
-      logger.info(msg('info message 2'));
+      logger.info(msg("info message 1"));
+      logger.info(msg("info message 2"));
 
-      logger.expect(['INFO'], [], [], ['info message 1', 'unmatched']);
+      logger.expect(["INFO"], [], [], ["info message 1", "unmatched"]);
     });
   });
 });

@@ -1,23 +1,23 @@
-import type { IConfigService, ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/config';
-import { createShell, createToolLog, type IInstallContext } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import { createConfiguredShell } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { exitCli, ExitCode, replaceInFile } from '@dotfiles/utils';
-import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
-import path from 'node:path';
-import { messages } from './log-messages';
-import type { ICommandCompletionMeta, IGlobalProgram, IServices } from './types';
+import type { IConfigService, ISystemInfo, ProjectConfig, ToolConfig } from "@dotfiles/config";
+import { createShell, createToolLog, type IInstallContext } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import { createConfiguredShell } from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { exitCli, ExitCode, replaceInFile } from "@dotfiles/utils";
+import { type IVersionChecker, VersionComparisonStatus } from "@dotfiles/version-checker";
+import path from "node:path";
+import { messages } from "./log-messages";
+import type { ICommandCompletionMeta, IGlobalProgram, IServices } from "./types";
 
 /**
  * Completion metadata for the check-updates command.
  */
 export const CHECK_UPDATES_COMMAND_COMPLETION: ICommandCompletionMeta = {
-  name: 'check-updates',
-  description: 'Check for available tool updates',
+  name: "check-updates",
+  description: "Check for available tool updates",
   hasPositionalArg: true,
-  positionalArgDescription: 'tool name (optional, checks all if omitted)',
-  positionalArgType: 'tool',
+  positionalArgDescription: "tool name (optional, checks all if omitted)",
+  positionalArgType: "tool",
 };
 
 async function loadToolConfigs(
@@ -65,7 +65,7 @@ async function loadToolConfigs(
         return null;
       }
     } catch (error) {
-      logger.error(messages.configLoadFailed('tool configurations'), error);
+      logger.error(messages.configLoadFailed("tool configurations"), error);
       return null;
     }
   }
@@ -79,19 +79,19 @@ function createInstallContext(
   fs: IResolvedFileSystem,
   logger: TsLogger,
 ): IInstallContext {
-  const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+  const timestamp = new Date().toISOString().replace(/:/g, "-").split(".")[0];
   const toolDir: string = config.configFilePath
     ? path.dirname(config.configFilePath)
     : projectConfig.paths.toolConfigsDir;
 
-  const currentDir: string = path.join(projectConfig.paths.binariesDir, config.name, 'current');
+  const currentDir: string = path.join(projectConfig.paths.binariesDir, config.name, "current");
 
   const context: IInstallContext = {
     toolName: config.name,
     toolDir,
     currentDir,
-    stagingDir: '',
-    timestamp: timestamp || '',
+    stagingDir: "",
+    timestamp: timestamp || "",
     systemInfo,
     toolConfig: config,
     projectConfig: projectConfig,
@@ -99,7 +99,7 @@ function createInstallContext(
     fileSystem: fs,
     replaceInFile: (filePath, from, to, options) => replaceInFile(fs, filePath, from, to, options),
     resolve: () => {
-      throw new Error('resolve not supported in version check context');
+      throw new Error("resolve not supported in version check context");
     },
     log: createToolLog(logger, config.name),
   };
@@ -115,7 +115,7 @@ async function logVersionStatus(
   latestVersion: string,
   hasUpdate: boolean,
 ): Promise<void> {
-  if (currentVersion === 'latest') {
+  if (currentVersion === "latest") {
     logger.info(messages.toolConfiguredToLatest(config.name, latestVersion));
     return;
   }
@@ -145,7 +145,7 @@ async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: I
   if (!plugin) {
     logger.warn(
       messages.commandUnsupportedOperation(
-        'check-updates',
+        "check-updates",
         `installation method: "${config.installationMethod}" for tool "${config.name}"`,
       ),
     );
@@ -155,7 +155,7 @@ async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: I
   if (!plugin.supportsUpdateCheck || !plugin.supportsUpdateCheck()) {
     logger.info(
       messages.commandUnsupportedOperation(
-        'check-updates',
+        "check-updates",
         `installation method: "${config.installationMethod}" for tool "${config.name}"`,
       ),
     );
@@ -165,17 +165,17 @@ async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: I
   const updateCheckResult = await plugin.checkUpdate?.(config.name, config, context, logger);
 
   if (!updateCheckResult) {
-    logger.warn(messages.commandUnsupportedOperation('check-updates', config.name));
+    logger.warn(messages.commandUnsupportedOperation("check-updates", config.name));
     return;
   }
 
   if (!updateCheckResult.success) {
-    logger.error(messages.serviceGithubApiFailed('check update', 0), new Error(updateCheckResult.error));
+    logger.error(messages.serviceGithubApiFailed("check update", 0), new Error(updateCheckResult.error));
     return;
   }
 
-  const currentVersion = updateCheckResult.currentVersion || config.version || 'unknown';
-  const latestVersion = updateCheckResult.latestVersion || 'unknown';
+  const currentVersion = updateCheckResult.currentVersion || config.version || "unknown";
+  const latestVersion = updateCheckResult.latestVersion || "unknown";
 
   await logVersionStatus(logger, versionChecker, config, currentVersion, latestVersion, updateCheckResult.hasUpdate);
 }
@@ -185,7 +185,7 @@ export async function checkUpdatesActionLogic(
   toolName: string | undefined,
   services: IServices,
 ): Promise<void> {
-  logger.trace(messages.commandActionStarted('check-updates', toolName || 'all'));
+  logger.trace(messages.commandActionStarted("check-updates", toolName || "all"));
 
   const toolConfigs = await loadToolConfigs(
     logger,
@@ -210,16 +210,16 @@ export function registerCheckUpdatesCommand(
   program: IGlobalProgram,
   servicesFactory: () => Promise<IServices>,
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'registerCheckUpdatesCommand' });
+  const logger = parentLogger.getSubLogger({ name: "registerCheckUpdatesCommand" });
   program
-    .command('check-updates [toolName]')
-    .description('Checks for available updates for configured tools. If [toolName] is provided, checks only that tool.')
+    .command("check-updates [toolName]")
+    .description("Checks for available updates for configured tools. If [toolName] is provided, checks only that tool.")
     .action(async (toolName: string | undefined) => {
       try {
         const services = await servicesFactory();
         await checkUpdatesActionLogic(logger, toolName, services);
       } catch (error) {
-        logger.error(messages.commandExecutionFailed('check-updates', ExitCode.ERROR), error);
+        logger.error(messages.commandExecutionFailed("check-updates", ExitCode.ERROR), error);
         exitCli(ExitCode.ERROR);
       }
     });

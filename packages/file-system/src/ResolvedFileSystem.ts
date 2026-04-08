@@ -1,7 +1,7 @@
-import { expandHomePath } from '@dotfiles/utils';
-import type { IFileSystem, NodeStats } from './IFileSystem';
-import type { IResolvedFileSystem } from './IResolvedFileSystem';
-import { resolvedFileSystemBrand } from './IResolvedFileSystem';
+import { expandHomePath } from "@dotfiles/utils";
+import type { IFileSystem, NodeStats } from "./IFileSystem";
+import type { IResolvedFileSystem } from "./IResolvedFileSystem";
+import { resolvedFileSystemBrand } from "./IResolvedFileSystem";
 
 export class ResolvedFileSystem implements IResolvedFileSystem {
   public readonly [resolvedFileSystemBrand]: true;
@@ -35,7 +35,7 @@ export class ResolvedFileSystem implements IResolvedFileSystem {
     return this.inner.exists(expandHomePath(this.homeDir, filePath));
   }
 
-  public async mkdir(dirPath: string, options?: { recursive?: boolean; }): Promise<void> {
+  public async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
     await this.inner.mkdir(expandHomePath(this.homeDir, dirPath), options);
   }
 
@@ -43,11 +43,11 @@ export class ResolvedFileSystem implements IResolvedFileSystem {
     return this.inner.readdir(expandHomePath(this.homeDir, dirPath));
   }
 
-  public async rm(filePath: string, options?: { recursive?: boolean; force?: boolean; }): Promise<void> {
+  public async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
     await this.inner.rm(expandHomePath(this.homeDir, filePath), options);
   }
 
-  public async rmdir(dirPath: string, options?: { recursive?: boolean; }): Promise<void> {
+  public async rmdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
     await this.inner.rmdir(expandHomePath(this.homeDir, dirPath), options);
   }
 
@@ -59,7 +59,7 @@ export class ResolvedFileSystem implements IResolvedFileSystem {
     return this.inner.lstat(expandHomePath(this.homeDir, filePath));
   }
 
-  public async symlink(target: string, linkPath: string, type?: 'file' | 'dir' | 'junction'): Promise<void> {
+  public async symlink(target: string, linkPath: string, type?: "file" | "dir" | "junction"): Promise<void> {
     await this.inner.symlink(expandHomePath(this.homeDir, target), expandHomePath(this.homeDir, linkPath), type);
   }
 

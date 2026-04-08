@@ -1,11 +1,11 @@
-import type { IConfigService } from '@dotfiles/config';
-import type { InstallerPluginRegistry, ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { IInstaller } from '@dotfiles/installer';
-import type { IFileRegistry } from '@dotfiles/registry/file';
-import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import type { IVersionChecker } from '@dotfiles/version-checker';
+import type { IConfigService } from "@dotfiles/config";
+import type { InstallerPluginRegistry, ISystemInfo, ProjectConfig, ToolConfig } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { IInstaller } from "@dotfiles/installer";
+import type { IFileRegistry } from "@dotfiles/registry/file";
+import type { IToolInstallationRegistry } from "@dotfiles/registry/tool";
+import type { IVersionChecker } from "@dotfiles/version-checker";
 
 /**
  * Services required by the dashboard server.

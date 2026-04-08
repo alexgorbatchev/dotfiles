@@ -1,16 +1,12 @@
-import type {
-  IShellConfigurator,
-  IToolConfigContext,
-  ShellCompletionConfigInput,
-} from '@dotfiles/core';
-import { always, once, raw } from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
-import { VALID_FUNCTION_NAME_PATTERN } from '@dotfiles/shell-init-generator';
-import type { Resolvable } from '@dotfiles/unwrap-value';
-import { resolveToolRelativePath } from '@dotfiles/utils';
-import path from 'node:path';
-import { messages } from './log-messages';
-import type { IShellStorage, ShellTypeKey } from './types';
+import type { IShellConfigurator, IToolConfigContext, ShellCompletionConfigInput } from "@dotfiles/core";
+import { always, once, raw } from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
+import { VALID_FUNCTION_NAME_PATTERN } from "@dotfiles/shell-init-generator";
+import type { Resolvable } from "@dotfiles/unwrap-value";
+import { resolveToolRelativePath } from "@dotfiles/utils";
+import path from "node:path";
+import { messages } from "./log-messages";
+import type { IShellStorage, ShellTypeKey } from "./types";
 
 /**
  * Implementation of the shell configurator interface.
@@ -35,13 +31,13 @@ export class ShellConfigurator implements IShellConfigurator<string> {
     this.storage = storage;
     this.shellType = shellType;
     this.context = context;
-    this.logger = logger.getSubLogger({ name: 'ShellConfigurator' }).setPrefix(toolName);
+    this.logger = logger.getSubLogger({ name: "ShellConfigurator" }).setPrefix(toolName);
     this.toolName = toolName;
   }
 
   /** @inheritdoc */
   public env<T extends Record<string, string>>(
-    values: 'PATH' extends keyof T ? ['ERROR: Use shell.path() to modify PATH'] : T,
+    values: "PATH" extends keyof T ? ["ERROR: Use shell.path() to modify PATH"] : T,
   ): IShellConfigurator<string> {
     this.storage.env = {
       ...this.storage.env,
@@ -160,7 +156,7 @@ export class ShellConfigurator implements IShellConfigurator<string> {
    */
   private generateSourceFileFunctionName(): string {
     const counter = this.sourceFileCounter++;
-    const sanitizedToolName = this.toolName.replace(/[^a-zA-Z0-9]/gu, '_');
+    const sanitizedToolName = this.toolName.replace(/[^a-zA-Z0-9]/gu, "_");
     return `__dotfiles_source_${sanitizedToolName}_${counter}`;
   }
 
@@ -170,7 +166,7 @@ export class ShellConfigurator implements IShellConfigurator<string> {
    */
   private generateSourceFunctionName(): string {
     const counter = this.sourceCounter++;
-    const sanitizedToolName = this.toolName.replace(/[^a-zA-Z0-9]/gu, '_');
+    const sanitizedToolName = this.toolName.replace(/[^a-zA-Z0-9]/gu, "_");
     return `__dotfiles_source_inline_${sanitizedToolName}_${counter}`;
   }
 
@@ -180,7 +176,7 @@ export class ShellConfigurator implements IShellConfigurator<string> {
   private createSourceFileFunctionBody(resolvedPath: string): string {
     const quotedPath = JSON.stringify(resolvedPath);
 
-    if (this.shellType === 'powershell') {
+    if (this.shellType === "powershell") {
       return `if (Test-Path ${quotedPath}) { Get-Content ${quotedPath} -Raw }`;
     }
 
@@ -191,7 +187,7 @@ export class ShellConfigurator implements IShellConfigurator<string> {
    * Creates the shell command to unset/remove a function.
    */
   private createUnsetFunctionCommand(functionName: string): string {
-    if (this.shellType === 'powershell') {
+    if (this.shellType === "powershell") {
       return `Remove-Item Function:\\${functionName} -ErrorAction SilentlyContinue`;
     }
 
@@ -203,7 +199,7 @@ export class ShellConfigurator implements IShellConfigurator<string> {
    * No existence check - the function output is sourced directly.
    */
   private createSourceFunctionCommand(functionName: string): string {
-    if (this.shellType === 'powershell') {
+    if (this.shellType === "powershell") {
       return `. (${functionName})`;
     }
 
@@ -218,7 +214,7 @@ export class ShellConfigurator implements IShellConfigurator<string> {
   private resolvePath(relativePath: string): string {
     const trimmedPath = relativePath.trim();
     if (trimmedPath.length === 0) {
-      const message = messages.configurationFieldInvalid('shell source path', relativePath, 'non-empty value');
+      const message = messages.configurationFieldInvalid("shell source path", relativePath, "non-empty value");
       this.logger.error(message);
       throw new Error(message);
     }
@@ -229,7 +225,7 @@ export class ShellConfigurator implements IShellConfigurator<string> {
 
     if (!this.context) {
       const message = messages.configurationFieldRequired(
-        'tool context',
+        "tool context",
         `Please ensure createInstallFunction receives tool context before using shell.sourceFile() for "${this.toolName}"`,
       );
       this.logger.error(message);
@@ -245,9 +241,9 @@ export class ShellConfigurator implements IShellConfigurator<string> {
    * Uses backslashes for PowerShell and forward slashes for others.
    */
   private normalizePath(resolvedPath: string): string {
-    if (this.shellType === 'powershell') {
-      return resolvedPath.replace(/\//gu, '\\');
+    if (this.shellType === "powershell") {
+      return resolvedPath.replace(/\//gu, "\\");
     }
-    return resolvedPath.replace(/\\/gu, '/');
+    return resolvedPath.replace(/\\/gu, "/");
   }
 }

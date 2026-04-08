@@ -1,9 +1,9 @@
-import { describe, expect, test } from 'bun:test';
-import { dedentString } from '../dedentString';
-import { dedentTemplate } from '../dedentTemplate';
+import { describe, expect, test } from "bun:test";
+import { dedentString } from "../dedentString";
+import { dedentTemplate } from "../dedentTemplate";
 
-describe('dedentTemplate', () => {
-  test('should dedent a simple template', () => {
+describe("dedentTemplate", () => {
+  test("should dedent a simple template", () => {
     const template = `
       Hello
         World
@@ -16,12 +16,12 @@ describe('dedentTemplate', () => {
     `);
   });
 
-  test('should replace placeholders with values', () => {
+  test("should replace placeholders with values", () => {
     const template = `
       Hello {name}
         How are you?
     `;
-    const result = dedentTemplate(template, { name: 'World' });
+    const result = dedentTemplate(template, { name: "World" });
 
     expect(result).toMatchInlineSnapshot(`
       "Hello World
@@ -29,7 +29,7 @@ describe('dedentTemplate', () => {
     `);
   });
 
-  test('should handle multiline values with proper indentation', () => {
+  test("should handle multiline values with proper indentation", () => {
     const template = `
       <code>
         {code}
@@ -52,7 +52,7 @@ describe('dedentTemplate', () => {
     `);
   });
 
-  test('should handle multiple placeholders', () => {
+  test("should handle multiple placeholders", () => {
     const template = `
       <user>
         {name}
@@ -63,8 +63,8 @@ describe('dedentTemplate', () => {
     `;
 
     const values = {
-      name: 'John',
-      message: 'Hello\nWorld',
+      name: "John",
+      message: "Hello\nWorld",
     };
 
     const result = dedentTemplate(template, values);
@@ -80,14 +80,14 @@ describe('dedentTemplate', () => {
     `);
   });
 
-  test('should replace inline placeholders', () => {
+  test("should replace inline placeholders", () => {
     const template = `
       Hello {name}, welcome to {place}!
     `;
 
     const values = {
-      name: 'John',
-      place: 'Earth',
+      name: "John",
+      place: "Earth",
     };
 
     const result = dedentTemplate(template, values);
@@ -96,7 +96,7 @@ describe('dedentTemplate', () => {
     expect(result).toMatchInlineSnapshot(`"Hello John, welcome to Earth!"`);
   });
 
-  test('should handle complex indentation patterns', () => {
+  test("should handle complex indentation patterns", () => {
     const template = dedentString(`
       function main() {
         if (condition) {
@@ -122,7 +122,7 @@ console.log("World");`,
     `);
   });
 
-  test('should handle multiple levels of indentation', () => {
+  test("should handle multiple levels of indentation", () => {
     const template = `
       function nestedFunction() {
         if (true) {
@@ -158,7 +158,7 @@ console.log("World");`,
     `);
   });
 
-  test('should produce properly indented code', () => {
+  test("should produce properly indented code", () => {
     const template = dedentString(`
       function main() {
         {codeBlock}

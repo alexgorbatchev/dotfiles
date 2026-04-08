@@ -1,12 +1,12 @@
-import type { ProjectConfig } from '@dotfiles/core';
-import type { IResolvedFileSystem, Stats } from '@dotfiles/file-system';
-import { resolvedFileSystemBrand } from '@dotfiles/file-system';
-import type { SafeLogMessage, TsLogger } from '@dotfiles/logger';
-import { contractHomePath, formatPermissions } from '@dotfiles/utils';
-import { randomUUID } from 'node:crypto';
-import path from 'node:path';
-import type { IFileOperation, IFileRegistry } from './IFileRegistry';
-import { messages } from './log-messages';
+import type { ProjectConfig } from "@dotfiles/core";
+import type { IResolvedFileSystem, Stats } from "@dotfiles/file-system";
+import { resolvedFileSystemBrand } from "@dotfiles/file-system";
+import type { SafeLogMessage, TsLogger } from "@dotfiles/logger";
+import { contractHomePath, formatPermissions } from "@dotfiles/utils";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import type { IFileOperation, IFileRegistry } from "./IFileRegistry";
+import { messages } from "./log-messages";
 
 /**
  * Context for tracking filesystem operations.
@@ -16,7 +16,7 @@ export interface ITrackingContext {
   /** Tool performing the operations */
   toolName: string;
   /** Type of file being operated on */
-  fileType: IFileOperation['fileType'];
+  fileType: IFileOperation["fileType"];
   /** UUID to group related operations */
   operationId: string;
   /** Additional metadata to store */
@@ -46,7 +46,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     projectConfig: ProjectConfig,
   ) {
     this.parentLogger = parentLogger;
-    this.logger = parentLogger.getSubLogger({ name: 'TrackedFileSystem', context: context.toolName });
+    this.logger = parentLogger.getSubLogger({ name: "TrackedFileSystem", context: context.toolName });
     this.fs = fs;
     this.registry = registry;
     this.context = context;
@@ -58,7 +58,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
    */
   static createContext(
     toolName: string,
-    fileType: IFileOperation['fileType'],
+    fileType: IFileOperation["fileType"],
     metadata?: Record<string, unknown>,
   ): ITrackingContext {
     return {
@@ -120,7 +120,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
    * Creates a new TrackedFileSystem for a specific file type.
    * This is used to attribute filesystem operations to the correct file type.
    */
-  withFileType(fileType: IFileOperation['fileType']): TrackedFileSystem {
+  withFileType(fileType: IFileOperation["fileType"]): TrackedFileSystem {
     return this.withContext({ fileType });
   }
 
@@ -145,8 +145,8 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     // Check if content is identical to avoid unnecessary write
     if (fileExists) {
       try {
-        const existingContent = await this.fs.readFile(filePath, encoding || 'utf8');
-        const newContent = typeof content === 'string' ? content : content.toString();
+        const existingContent = await this.fs.readFile(filePath, encoding || "utf8");
+        const newContent = typeof content === "string" ? content : content.toString();
         contentChanged = existingContent !== newContent;
       } catch {
         // If we can't read the file, assume content is different
@@ -166,7 +166,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     const stats = await this.getFileStats(filePath);
 
     // Record the operation
-    await this.recordOperation('writeFile', filePath, {
+    await this.recordOperation("writeFile", filePath, {
       sizeBytes: stats?.sizeBytes,
       permissions: stats?.permissions,
     });
@@ -189,7 +189,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     const stats = await this.getFileStats(dest);
 
     // Record the operation
-    await this.recordOperation('cp', dest, {
+    await this.recordOperation("cp", dest, {
       targetPath: src,
       sizeBytes: stats?.sizeBytes,
       permissions: stats?.permissions,
@@ -211,7 +211,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     const stats = await this.getFileStats(newPath);
 
     // Record the rename operation
-    await this.recordOperation('rename', newPath, {
+    await this.recordOperation("rename", newPath, {
       targetPath: oldPath,
       sizeBytes: stats?.sizeBytes,
       permissions: stats?.permissions,
@@ -225,12 +225,12 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     );
   }
 
-  async symlink(target: string, linkPath: string, type?: 'file' | 'dir' | 'junction'): Promise<void> {
+  async symlink(target: string, linkPath: string, type?: "file" | "dir" | "junction"): Promise<void> {
     // Perform the actual operation
     await this.fs.symlink(target, linkPath, type);
 
     // Record the operation using context fileType (e.g., 'completion', 'symlink', 'binary')
-    await this.recordOperation('symlink', linkPath, { targetPath: target });
+    await this.recordOperation("symlink", linkPath, { targetPath: target });
 
     this.logInfo(
       messages.symlinkCreated(
@@ -260,10 +260,10 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     }
 
     // Record the symlink operation
-    await this.recordOperation('symlink', linkPath, { targetPath: target });
+    await this.recordOperation("symlink", linkPath, { targetPath: target });
   }
 
-  async rm(filePath: string, options?: { recursive?: boolean; force?: boolean; }): Promise<void> {
+  async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
     // If removing recursively, we need to track all files being removed
     if (options?.recursive && (await this.fs.exists(filePath))) {
       const stat = await this.fs.stat(filePath);
@@ -290,7 +290,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     const stats = await this.getFileStats(filePath);
 
     // Record as chmod operation
-    await this.recordOperation('chmod', filePath, { permissions: stats?.permissions });
+    await this.recordOperation("chmod", filePath, { permissions: stats?.permissions });
 
     this.logInfo(
       messages.permissionsChanged(
@@ -321,7 +321,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
     return this.fs.readdir(dirPath);
   }
 
-  async mkdir(dirPath: string, options?: { recursive?: boolean; }): Promise<void> {
+  async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
     const existed = await this.fs.exists(dirPath);
 
     // Perform the actual operation
@@ -329,14 +329,14 @@ export class TrackedFileSystem implements IResolvedFileSystem {
 
     // Only track if directory was actually created
     if (!existed) {
-      await this.recordOperation('mkdir', dirPath);
+      await this.recordOperation("mkdir", dirPath);
 
       this.logInfo(messages.directoryCreated(contractHomePath(this.projectConfig.paths.homeDir, dirPath)));
     }
   }
 
-  async rmdir(dirPath: string, options?: { recursive?: boolean; }): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'rmdir' });
+  async rmdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: "rmdir" });
 
     // Track directory deletion
     if (await this.fs.exists(dirPath)) {
@@ -361,7 +361,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
 
     // Only track if directory was actually created
     if (!existed) {
-      await this.recordOperation('mkdir', dirPath);
+      await this.recordOperation("mkdir", dirPath);
 
       this.logInfo(messages.directoryCreated(contractHomePath(this.projectConfig.paths.homeDir, dirPath)));
     }
@@ -370,7 +370,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
   /**
    * Helper method to get file stats for tracking purposes.
    */
-  private async getFileStats(filePath: string): Promise<{ sizeBytes: number; permissions: number; } | null> {
+  private async getFileStats(filePath: string): Promise<{ sizeBytes: number; permissions: number } | null> {
     try {
       const stats = await this.fs.stat(filePath);
       return {
@@ -386,7 +386,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
    * Helper method to record a file operation with common context fields.
    */
   private async recordOperation(
-    operationType: IFileOperation['operationType'],
+    operationType: IFileOperation["operationType"],
     filePath: string,
     options?: {
       targetPath?: string;
@@ -411,7 +411,7 @@ export class TrackedFileSystem implements IResolvedFileSystem {
    * Tracks deletion of a single file.
    */
   private async trackFileDeletion(filePath: string): Promise<void> {
-    await this.recordOperation('rm', filePath);
+    await this.recordOperation("rm", filePath);
   }
 
   /**

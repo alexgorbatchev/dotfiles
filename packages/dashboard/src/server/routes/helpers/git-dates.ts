@@ -17,9 +17,9 @@ async function loadGitFirstCommitDates(): Promise<Map<string, Date>> {
 
   try {
     // Get the repository root to resolve relative paths
-    const rootProc = Bun.spawn(['git', 'rev-parse', '--show-toplevel'], {
-      stdout: 'pipe',
-      stderr: 'pipe',
+    const rootProc = Bun.spawn(["git", "rev-parse", "--show-toplevel"], {
+      stdout: "pipe",
+      stderr: "pipe",
     });
     const repoRoot = (await new Response(rootProc.stdout).text()).trim();
     const rootExitCode = await rootProc.exited;
@@ -30,9 +30,9 @@ async function loadGitFirstCommitDates(): Promise<Map<string, Date>> {
 
     // Get all file additions with their dates in a single command
     // Output format: date\n\nfile1\nfile2\n\ndate2\n\nfile3\n...
-    const proc = Bun.spawn(['git', 'log', '--diff-filter=A', '--name-only', '--format=%aI'], {
-      stdout: 'pipe',
-      stderr: 'pipe',
+    const proc = Bun.spawn(["git", "log", "--diff-filter=A", "--name-only", "--format=%aI"], {
+      stdout: "pipe",
+      stderr: "pipe",
     });
     const output = await new Response(proc.stdout).text();
     const exitCode = await proc.exited;
@@ -43,7 +43,7 @@ async function loadGitFirstCommitDates(): Promise<Map<string, Date>> {
 
     // Parse the output: dates are ISO format, files follow each date
     // Format is: date\n\nfile1\nfile2\n\ndate2\n\nfile3...
-    const lines = output.split('\n');
+    const lines = output.split("\n");
     let currentDate: Date | null = null;
 
     for (const line of lines) {
@@ -75,9 +75,9 @@ async function loadGitFirstCommitDates(): Promise<Map<string, Date>> {
  */
 async function querySingleFileGitDate(filePath: string): Promise<Date | null> {
   try {
-    const proc = Bun.spawn(['git', 'log', '--diff-filter=A', '--format=%aI', '--', filePath], {
-      stdout: 'pipe',
-      stderr: 'pipe',
+    const proc = Bun.spawn(["git", "log", "--diff-filter=A", "--format=%aI", "--", filePath], {
+      stdout: "pipe",
+      stderr: "pipe",
     });
     const output = await new Response(proc.stdout).text();
     const exitCode = await proc.exited;
@@ -86,7 +86,7 @@ async function querySingleFileGitDate(filePath: string): Promise<Date | null> {
       return null;
     }
 
-    const dateStr = output.trim().split('\n')[0];
+    const dateStr = output.trim().split("\n")[0];
     if (!dateStr) {
       return null;
     }

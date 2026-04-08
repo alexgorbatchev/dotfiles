@@ -1,6 +1,6 @@
-import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
+import type { ISystemInfo, ProjectConfig, ToolConfig } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
 
 /**
  * Interface for configuration loading services.
@@ -51,7 +51,7 @@ export interface IConfigService {
     fs: IResolvedFileSystem,
     projectConfig: ProjectConfig,
     systemInfo: ISystemInfo,
-  ): Promise<ToolConfig | undefined | { error: string; }>;
+  ): Promise<ToolConfig | undefined | { error: string }>;
 
   /**
    * Loads all tool configurations from a directory.

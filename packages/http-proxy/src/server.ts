@@ -1,14 +1,14 @@
 /* oxlint-disable no-console */
-import { join } from 'node:path';
+import { join } from "node:path";
 
-import { dedentString } from '@dotfiles/utils';
+import { dedentString } from "@dotfiles/utils";
 
-import { createProxyServer } from './createProxyServer';
-import type { ProxyConfig } from './types';
+import { createProxyServer } from "./createProxyServer";
+import type { ProxyConfig } from "./types";
 
 const DEFAULT_PORT = 3128;
 const DEFAULT_TTL = 24 * 60 * 60 * 1000; // 24 hours
-const DEFAULT_CACHE_DIR = '.tmp/http-proxy-cache';
+const DEFAULT_CACHE_DIR = ".tmp/http-proxy-cache";
 
 /**
  * Parse CLI arguments.
@@ -22,21 +22,22 @@ function parseArgs(): ProxyConfig {
   };
 
   for (const arg of args) {
-    if (arg.startsWith('--cache-dir=')) {
-      const value = arg.slice('--cache-dir='.length);
-      config.cacheDir = value.startsWith('/') ? value : join(process.cwd(), value);
-    } else if (arg.startsWith('--port=')) {
-      const value = parseInt(arg.slice('--port='.length), 10);
+    if (arg.startsWith("--cache-dir=")) {
+      const value = arg.slice("--cache-dir=".length);
+      config.cacheDir = value.startsWith("/") ? value : join(process.cwd(), value);
+    } else if (arg.startsWith("--port=")) {
+      const value = parseInt(arg.slice("--port=".length), 10);
       if (!isNaN(value)) {
         config.port = value;
       }
-    } else if (arg.startsWith('--ttl=')) {
-      const value = parseInt(arg.slice('--ttl='.length), 10);
+    } else if (arg.startsWith("--ttl=")) {
+      const value = parseInt(arg.slice("--ttl=".length), 10);
       if (!isNaN(value)) {
         config.ttl = value;
       }
-    } else if (arg === '--help' || arg === '-h') {
-      console.log(dedentString(`
+    } else if (arg === "--help" || arg === "-h") {
+      console.log(
+        dedentString(`
         HTTP Caching Proxy
 
         Usage: bun run packages/http-proxy/src/server.ts [options]
@@ -53,7 +54,8 @@ function parseArgs(): ProxyConfig {
 
         Example:
           bun run packages/http-proxy/src/server.ts --port=8080 --cache-dir=/tmp/my-cache
-      `));
+      `),
+      );
       process.exit(0);
     }
   }

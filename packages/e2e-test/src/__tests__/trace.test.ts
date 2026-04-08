@@ -6,14 +6,14 @@
  * - Default behavior hides source location logging
  * - --quiet overrides --trace
  */
-import { beforeAll, describe, expect, it } from 'bun:test';
+import { beforeAll, describe, expect, it } from "bun:test";
 // oxlint-disable-next-line import/no-unassigned-import
-import '@dotfiles/testing-helpers';
-import { Architecture, Platform } from '@dotfiles/core';
-import { GITHUB_RELEASE_TOOL, withMockServer } from './helpers/mock-server';
-import { TestHarness } from './helpers/TestHarness';
+import "@dotfiles/testing-helpers";
+import { Architecture, Platform } from "@dotfiles/core";
+import { GITHUB_RELEASE_TOOL, withMockServer } from "./helpers/mock-server";
+import { TestHarness } from "./helpers/TestHarness";
 
-describe('E2E: trace configuration', () => {
+describe("E2E: trace configuration", () => {
   withMockServer((b) => b.withGitHubTool(GITHUB_RELEASE_TOOL));
 
   const platformConfigs: ReadonlyArray<{
@@ -21,15 +21,15 @@ describe('E2E: trace configuration', () => {
     architecture: Architecture;
     name: string;
   }> = [
-    { platform: Platform.MacOS, architecture: Architecture.Arm64, name: 'macOS ARM64' },
-    { platform: Platform.Linux, architecture: Architecture.X86_64, name: 'Linux x86_64' },
+    { platform: Platform.MacOS, architecture: Architecture.Arm64, name: "macOS ARM64" },
+    { platform: Platform.Linux, architecture: Architecture.X86_64, name: "Linux x86_64" },
   ];
 
   for (const config of platformConfigs) {
     describe(`${config.name}`, () => {
       const harness: TestHarness = new TestHarness({
         testDir: import.meta.dir,
-        configPath: 'fixtures/main/config.ts',
+        configPath: "fixtures/main/config.ts",
         platform: config.platform,
         architecture: config.architecture,
       });
@@ -40,9 +40,9 @@ describe('E2E: trace configuration', () => {
         expect(generateResult.code).toBe(0);
       });
 
-      describe('trace configuration', () => {
-        it('should show file paths when --trace is used', async () => {
-          const result = await harness.generate(['--trace']);
+      describe("trace configuration", () => {
+        it("should show file paths when --trace is used", async () => {
+          const result = await harness.generate(["--trace"]);
           expect(result.code).toBe(0);
           expect(result.stdout.trim()).toMatchLooseInlineSnapshot`
             WARN	${/[^\s]+\.ts:\d+/} - Platform overridden to: ${expect.anything}
@@ -56,7 +56,7 @@ describe('E2E: trace configuration', () => {
           `;
         });
 
-        it('should NOT show file paths when --trace is NOT used', async () => {
+        it("should NOT show file paths when --trace is NOT used", async () => {
           const result = await harness.generate([]);
           expect(result.code).toBe(0);
           expect(result.stdout.trim()).toMatchLooseInlineSnapshot`
@@ -71,10 +71,10 @@ describe('E2E: trace configuration', () => {
           `;
         });
 
-        it('should NOT show anything when --quiet --trace is used', async () => {
-          const result = await harness.generate(['--quiet', '--trace']);
+        it("should NOT show anything when --quiet --trace is used", async () => {
+          const result = await harness.generate(["--quiet", "--trace"]);
           expect(result.code).toBe(0);
-          expect(result.stdout.trim()).toBe('');
+          expect(result.stdout.trim()).toBe("");
         });
       });
     });

@@ -1,13 +1,13 @@
-import type { IInstallContext, Shell } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
-import { TestLogger } from '@dotfiles/logger';
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import assert from 'node:assert';
-import { installFromCurlScript } from '../installFromCurlScript';
-import type { CurlScriptToolConfig } from '../schemas';
-import type { ICurlScriptArgsContext } from '../types';
+import type { IInstallContext, Shell } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor } from "@dotfiles/installer";
+import { TestLogger } from "@dotfiles/logger";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import assert from "node:assert";
+import { installFromCurlScript } from "../installFromCurlScript";
+import type { CurlScriptToolConfig } from "../schemas";
+import type { ICurlScriptArgsContext } from "../types";
 
 function createMockShell(): {
   shell: Shell;
@@ -15,7 +15,7 @@ function createMockShell(): {
   mockEnv: ReturnType<typeof mock>;
   mockResult: ReturnType<typeof mock>;
 } {
-  const mockResult = mock(() => Promise.resolve({ stdout: '', stderr: '', code: 0 }));
+  const mockResult = mock(() => Promise.resolve({ stdout: "", stderr: "", code: 0 }));
   const mockEnv = mock(() => ({
     quiet: mockResult,
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any, unicorn/no-thenable -- test mock simulating ShellCommand PromiseLike
@@ -25,7 +25,7 @@ function createMockShell(): {
   return { shell: mockFn as unknown as Shell, mockFn, mockEnv, mockResult };
 }
 
-describe('installFromCurlScript', () => {
+describe("installFromCurlScript", () => {
   let logger: TestLogger;
   let mockFs: IFileSystem;
   let mockDownloader: IDownloader;
@@ -38,50 +38,50 @@ describe('installFromCurlScript', () => {
       chmod: mock(() => Promise.resolve()),
     } as unknown as IFileSystem;
     mockDownloader = {
-      download: mock(() => Promise.resolve('/path/to/download')),
+      download: mock(() => Promise.resolve("/path/to/download")),
     } as unknown as IDownloader;
     mockHookExecutor = {
       executeHook: mock(() => Promise.resolve({ success: true })),
     } as unknown as HookExecutor;
     context = {
-      stagingDir: '/install/dir',
-      version: '1.0.0',
+      stagingDir: "/install/dir",
+      version: "1.0.0",
       systemInfo: {
-        homeDir: '/home/user',
-        platform: 'linux',
-        arch: 'x86_64',
-        hostname: 'test-host',
+        homeDir: "/home/user",
+        platform: "linux",
+        arch: "x86_64",
+        hostname: "test-host",
       },
       projectConfig: {
         paths: {
-          binariesDir: '/path/to/binaries',
-          homeDir: '/home/user',
-          dotfilesDir: '/home/user/.dotfiles',
-          targetDir: '/home/user/.local/bin',
-          generatedDir: '/home/user/.dotfiles/.generated',
-          toolConfigsDir: '/home/user/.dotfiles/tools',
-          shellScriptsDir: '/home/user/.dotfiles/.generated/shell-scripts',
+          binariesDir: "/path/to/binaries",
+          homeDir: "/home/user",
+          dotfilesDir: "/home/user/.dotfiles",
+          targetDir: "/home/user/.local/bin",
+          generatedDir: "/home/user/.dotfiles/.generated",
+          toolConfigsDir: "/home/user/.dotfiles/tools",
+          shellScriptsDir: "/home/user/.dotfiles/.generated/shell-scripts",
         },
       },
     } as unknown as IInstallContext;
   });
 
-  it('should execute script with args when provided', async () => {
+  it("should execute script with args when provided", async () => {
     const { shell, mockFn } = createMockShell();
     const toolConfig: CurlScriptToolConfig = {
-      name: 'test-tool',
-      version: '1.0.0',
-      binaries: ['tool'],
-      installationMethod: 'curl-script',
+      name: "test-tool",
+      version: "1.0.0",
+      binaries: ["tool"],
+      installationMethod: "curl-script",
       installParams: {
-        url: 'https://example.com/install.sh',
-        shell: 'bash',
-        args: ['--arg1', '--arg2'],
+        url: "https://example.com/install.sh",
+        shell: "bash",
+        args: ["--arg1", "--arg2"],
       },
     };
 
     await installFromCurlScript(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -106,26 +106,26 @@ describe('installFromCurlScript', () => {
 
     assert(strings);
     assert(strings[0]);
-    expect(strings[0]).toContain('bash');
-    expect(scriptPath).toContain('test-tool-install.sh');
-    expect(args).toEqual(['--arg1', '--arg2']);
+    expect(strings[0]).toContain("bash");
+    expect(scriptPath).toContain("test-tool-install.sh");
+    expect(args).toEqual(["--arg1", "--arg2"]);
   });
 
-  it('should execute script without args when not provided', async () => {
+  it("should execute script without args when not provided", async () => {
     const { shell, mockFn } = createMockShell();
     const toolConfig: CurlScriptToolConfig = {
-      name: 'test-tool',
-      version: '1.0.0',
-      binaries: ['tool'],
-      installationMethod: 'curl-script',
+      name: "test-tool",
+      version: "1.0.0",
+      binaries: ["tool"],
+      installationMethod: "curl-script",
       installParams: {
-        url: 'https://example.com/install.sh',
-        shell: 'sh',
+        url: "https://example.com/install.sh",
+        shell: "sh",
       },
     };
 
     await installFromCurlScript(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -146,27 +146,27 @@ describe('installFromCurlScript', () => {
 
     assert(strings);
     assert(strings[0]);
-    expect(strings[0]).toContain('sh');
-    expect(scriptPath).toContain('test-tool-install.sh');
+    expect(strings[0]).toContain("sh");
+    expect(scriptPath).toContain("test-tool-install.sh");
     expect(args).toEqual([]);
   });
 
-  it('should execute script with args from function when provided', async () => {
+  it("should execute script with args from function when provided", async () => {
     const { shell, mockFn } = createMockShell();
     const toolConfig: CurlScriptToolConfig = {
-      name: 'test-tool',
-      version: '1.0.0',
-      binaries: ['tool'],
-      installationMethod: 'curl-script',
+      name: "test-tool",
+      version: "1.0.0",
+      binaries: ["tool"],
+      installationMethod: "curl-script",
       installParams: {
-        url: 'https://example.com/install.sh',
-        shell: 'bash',
-        args: (ctx: ICurlScriptArgsContext) => ['--install-dir', ctx.stagingDir, '--skip-shell'],
+        url: "https://example.com/install.sh",
+        shell: "bash",
+        args: (ctx: ICurlScriptArgsContext) => ["--install-dir", ctx.stagingDir, "--skip-shell"],
       },
     };
 
     await installFromCurlScript(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -187,31 +187,31 @@ describe('installFromCurlScript', () => {
 
     assert(strings);
     assert(strings[0]);
-    expect(strings[0]).toContain('bash');
-    expect(scriptPath).toContain('test-tool-install.sh');
-    expect(args).toEqual(['--install-dir', context.stagingDir, '--skip-shell']);
+    expect(strings[0]).toContain("bash");
+    expect(scriptPath).toContain("test-tool-install.sh");
+    expect(args).toEqual(["--install-dir", context.stagingDir, "--skip-shell"]);
   });
 
-  it('should execute script with args from async function when provided', async () => {
+  it("should execute script with args from async function when provided", async () => {
     const { shell, mockFn } = createMockShell();
     const toolConfig: CurlScriptToolConfig = {
-      name: 'test-tool',
-      version: '1.0.0',
-      binaries: ['tool'],
-      installationMethod: 'curl-script',
+      name: "test-tool",
+      version: "1.0.0",
+      binaries: ["tool"],
+      installationMethod: "curl-script",
       installParams: {
-        url: 'https://example.com/install.sh',
-        shell: 'bash',
+        url: "https://example.com/install.sh",
+        shell: "bash",
         args: async (ctx: ICurlScriptArgsContext) => {
           // Simulate async operation
           await Promise.resolve();
-          return ['--install-dir', ctx.stagingDir, '--skip-shell'];
+          return ["--install-dir", ctx.stagingDir, "--skip-shell"];
         },
       },
     };
 
     await installFromCurlScript(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -232,27 +232,27 @@ describe('installFromCurlScript', () => {
 
     assert(strings);
     assert(strings[0]);
-    expect(strings[0]).toContain('bash');
-    expect(scriptPath).toContain('test-tool-install.sh');
-    expect(args).toEqual(['--install-dir', context.stagingDir, '--skip-shell']);
+    expect(strings[0]).toContain("bash");
+    expect(scriptPath).toContain("test-tool-install.sh");
+    expect(args).toEqual(["--install-dir", context.stagingDir, "--skip-shell"]);
   });
 
-  it('should execute script with static env when provided', async () => {
+  it("should execute script with static env when provided", async () => {
     const { shell, mockEnv } = createMockShell();
     const toolConfig: CurlScriptToolConfig = {
-      name: 'test-tool',
-      version: '1.0.0',
-      binaries: ['tool'],
-      installationMethod: 'curl-script',
+      name: "test-tool",
+      version: "1.0.0",
+      binaries: ["tool"],
+      installationMethod: "curl-script",
       installParams: {
-        url: 'https://example.com/install.sh',
-        shell: 'bash',
-        env: { MY_VAR: 'my-value', ANOTHER_VAR: 'another-value' },
+        url: "https://example.com/install.sh",
+        shell: "bash",
+        env: { MY_VAR: "my-value", ANOTHER_VAR: "another-value" },
       },
     };
 
     await installFromCurlScript(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -268,25 +268,25 @@ describe('installFromCurlScript', () => {
     const envCalls = mockEnv.mock.calls as unknown as [Record<string, string>][];
     expect(envCalls.length).toBe(1);
     const [envArg] = envCalls[0] ?? [];
-    expect(envArg).toMatchObject({ MY_VAR: 'my-value', ANOTHER_VAR: 'another-value' });
+    expect(envArg).toMatchObject({ MY_VAR: "my-value", ANOTHER_VAR: "another-value" });
   });
 
-  it('should execute script with env from function when provided', async () => {
+  it("should execute script with env from function when provided", async () => {
     const { shell, mockEnv } = createMockShell();
     const toolConfig: CurlScriptToolConfig = {
-      name: 'test-tool',
-      version: '1.0.0',
-      binaries: ['tool'],
-      installationMethod: 'curl-script',
+      name: "test-tool",
+      version: "1.0.0",
+      binaries: ["tool"],
+      installationMethod: "curl-script",
       installParams: {
-        url: 'https://example.com/install.sh',
-        shell: 'bash',
+        url: "https://example.com/install.sh",
+        shell: "bash",
         env: (ctx: ICurlScriptArgsContext) => ({ INSTALL_DIR: ctx.stagingDir }),
       },
     };
 
     await installFromCurlScript(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -305,16 +305,16 @@ describe('installFromCurlScript', () => {
     expect(envArg).toMatchObject({ INSTALL_DIR: context.stagingDir });
   });
 
-  it('should execute script with env from async function when provided', async () => {
+  it("should execute script with env from async function when provided", async () => {
     const { shell, mockEnv } = createMockShell();
     const toolConfig: CurlScriptToolConfig = {
-      name: 'test-tool',
-      version: '1.0.0',
-      binaries: ['tool'],
-      installationMethod: 'curl-script',
+      name: "test-tool",
+      version: "1.0.0",
+      binaries: ["tool"],
+      installationMethod: "curl-script",
       installParams: {
-        url: 'https://example.com/install.sh',
-        shell: 'bash',
+        url: "https://example.com/install.sh",
+        shell: "bash",
         env: async (ctx: ICurlScriptArgsContext) => {
           await Promise.resolve();
           return { FLYCTL_INSTALL: ctx.stagingDir };
@@ -323,7 +323,7 @@ describe('installFromCurlScript', () => {
     };
 
     await installFromCurlScript(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -342,10 +342,10 @@ describe('installFromCurlScript', () => {
     expect(envArg).toMatchObject({ FLYCTL_INSTALL: context.stagingDir });
   });
 
-  it('should fail when no binaries are installed after script execution', async () => {
+  it("should fail when no binaries are installed after script execution", async () => {
     const { shell, mockResult } = createMockShell();
     // Mock shell to return script output
-    mockResult.mockImplementation(() => Promise.resolve({ stdout: 'Script ran successfully', stderr: '' }));
+    mockResult.mockImplementation(() => Promise.resolve({ stdout: "Script ran successfully", stderr: "" }));
 
     // Mock fs.exists to return false for binary paths (simulating missing binaries)
     const mockFsWithExists: IFileSystem = {
@@ -354,18 +354,18 @@ describe('installFromCurlScript', () => {
     } as unknown as IFileSystem;
 
     const toolConfig: CurlScriptToolConfig = {
-      name: 'test-tool',
-      version: '1.0.0',
-      binaries: ['tool'],
-      installationMethod: 'curl-script',
+      name: "test-tool",
+      version: "1.0.0",
+      binaries: ["tool"],
+      installationMethod: "curl-script",
       installParams: {
-        url: 'https://example.com/install.sh',
-        shell: 'bash',
+        url: "https://example.com/install.sh",
+        shell: "bash",
       },
     };
 
     const result = await installFromCurlScript(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -379,15 +379,15 @@ describe('installFromCurlScript', () => {
 
     assert(!result.success);
     expect(result.error).toBe(
-      'Installation script completed but no binaries were found at expected locations: /install/dir/tool',
+      "Installation script completed but no binaries were found at expected locations: /install/dir/tool",
     );
   });
 
-  it('should include script output in error when binaries not installed', async () => {
+  it("should include script output in error when binaries not installed", async () => {
     const { shell, mockResult } = createMockShell();
     // Mock shell to return script output
     mockResult.mockImplementation(() =>
-      Promise.resolve({ stdout: 'Installing to /wrong/dir\nDone!', stderr: 'Warning: something' })
+      Promise.resolve({ stdout: "Installing to /wrong/dir\nDone!", stderr: "Warning: something" }),
     );
 
     const mockFsWithExists: IFileSystem = {
@@ -396,18 +396,18 @@ describe('installFromCurlScript', () => {
     } as unknown as IFileSystem;
 
     const toolConfig: CurlScriptToolConfig = {
-      name: 'test-tool',
-      version: '1.0.0',
-      binaries: ['tool'],
-      installationMethod: 'curl-script',
+      name: "test-tool",
+      version: "1.0.0",
+      binaries: ["tool"],
+      installationMethod: "curl-script",
       installParams: {
-        url: 'https://example.com/install.sh',
-        shell: 'bash',
+        url: "https://example.com/install.sh",
+        shell: "bash",
       },
     };
 
     const result = await installFromCurlScript(
-      'test-tool',
+      "test-tool",
       toolConfig,
       context,
       undefined,
@@ -421,10 +421,10 @@ describe('installFromCurlScript', () => {
 
     assert(!result.success);
     expect(result.error).toBe(
-      'Installation script completed but no binaries were found at expected locations: /install/dir/tool',
+      "Installation script completed but no binaries were found at expected locations: /install/dir/tool",
     );
     // Verify script output was logged
-    const errorLogs = logger.logs.filter((log) => log['_meta']?.logLevelName === 'ERROR');
+    const errorLogs = logger.logs.filter((log) => log["_meta"]?.logLevelName === "ERROR");
     const logMessages = errorLogs.map((log) => String(log[0]));
     expect(logMessages).toMatchInlineSnapshot(`
       [

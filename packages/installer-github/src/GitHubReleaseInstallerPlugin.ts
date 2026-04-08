@@ -1,28 +1,28 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { ProjectConfig } from '@dotfiles/config';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
+import type { ProjectConfig } from "@dotfiles/config";
 import type {
   IInstallContext,
   IInstallerPlugin,
   IInstallOptions,
   InstallResult,
   UpdateCheckResult,
-} from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
-import { createToolFileSystem } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { stripVersionPrefix } from '@dotfiles/utils';
-import type { IGitHubApiClient } from './github-client';
-import { fetchGitHubRelease, installFromGitHubRelease } from './installFromGitHubRelease';
-import { messages } from './log-messages';
+} from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor } from "@dotfiles/installer";
+import { createToolFileSystem } from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { stripVersionPrefix } from "@dotfiles/utils";
+import type { IGitHubApiClient } from "./github-client";
+import { fetchGitHubRelease, installFromGitHubRelease } from "./installFromGitHubRelease";
+import { messages } from "./log-messages";
 import {
   type GithubReleaseInstallParams,
   githubReleaseInstallParamsSchema,
   type GithubReleaseToolConfig,
   githubReleaseToolConfigSchema,
-} from './schemas';
-import type { IGitHubReleaseInstallMetadata } from './types';
+} from "./schemas";
+import type { IGitHubReleaseInstallMetadata } from "./types";
 
 /**
  * Installer plugin for tools distributed via GitHub Releases.
@@ -52,17 +52,15 @@ import type { IGitHubReleaseInstallMetadata } from './types';
  * - Tracks installed versions for update checking
  * - Can install specific versions or latest releases
  */
-export class GitHubReleaseInstallerPlugin implements
-  IInstallerPlugin<
-    'github-release',
-    GithubReleaseInstallParams,
-    GithubReleaseToolConfig,
-    IGitHubReleaseInstallMetadata
-  >
-{
-  public readonly method = 'github-release' as const;
-  public readonly displayName = 'GitHub Release';
-  public readonly version = '1.0.0';
+export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
+  "github-release",
+  GithubReleaseInstallParams,
+  GithubReleaseToolConfig,
+  IGitHubReleaseInstallMetadata
+> {
+  public readonly method = "github-release" as const;
+  public readonly displayName = "GitHub Release";
+  public readonly version = "1.0.0";
 
   // Zod schemas for validation
   public readonly paramsSchema = githubReleaseInstallParamsSchema;
@@ -148,7 +146,7 @@ export class GitHubReleaseInstallerPlugin implements
   ): Promise<string | null> {
     try {
       const params = toolConfig.installParams as GithubReleaseInstallParams;
-      const version: string = toolConfig.version || 'latest';
+      const version: string = toolConfig.version || "latest";
 
       // Fetch release information from GitHub API
       const releaseResult = await fetchGitHubRelease(
@@ -191,7 +189,7 @@ export class GitHubReleaseInstallerPlugin implements
     try {
       const githubParams = toolConfig.installParams;
       const repo = githubParams.repo;
-      const [owner, repoName] = repo.split('/');
+      const [owner, repoName] = repo.split("/");
 
       if (!owner || !repoName) {
         const result: UpdateCheckResult = {
@@ -210,10 +208,10 @@ export class GitHubReleaseInstallerPlugin implements
         return result;
       }
 
-      const configuredVersion = toolConfig.version || 'latest';
-      const latestVersion = latestRelease.tag_name.replace(/^v/, '');
+      const configuredVersion = toolConfig.version || "latest";
+      const latestVersion = latestRelease.tag_name.replace(/^v/, "");
 
-      if (configuredVersion === 'latest') {
+      if (configuredVersion === "latest") {
         const result: UpdateCheckResult = {
           success: true,
           hasUpdate: false,
@@ -234,7 +232,7 @@ export class GitHubReleaseInstallerPlugin implements
       logger.error(messages.updateCheckFailed(toolName), error);
       const result: UpdateCheckResult = {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
       return result;
     }
@@ -247,13 +245,13 @@ export class GitHubReleaseInstallerPlugin implements
   getReadmeUrl(_toolName: string, toolConfig: GithubReleaseToolConfig): string | null {
     const githubParams = toolConfig.installParams;
     const repo = githubParams.repo;
-    const [owner, repoName] = repo.split('/');
+    const [owner, repoName] = repo.split("/");
 
     if (!owner || !repoName) {
       return null;
     }
 
-    const branch = toolConfig.version || 'main';
+    const branch = toolConfig.version || "main";
     return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/README.md`;
   }
 }

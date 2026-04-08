@@ -15,9 +15,9 @@
 /** @type {import('eslint').Rule.RuleModule} */
 export const noThrowInTestsRule = {
   meta: {
-    type: 'problem',
+    type: "problem",
     docs: {
-      description: 'Disallow throw new Error in test files',
+      description: "Disallow throw new Error in test files",
       recommended: true,
     },
     schema: [],
@@ -32,13 +32,13 @@ export const noThrowInTestsRule = {
         // Check if this is `throw new Error(...)`
         // We want to catch this pattern in tests
         if (
-          node.argument?.type === 'NewExpression' &&
-          node.argument.callee.type === 'Identifier' &&
-          node.argument.callee.name === 'Error'
+          node.argument?.type === "NewExpression" &&
+          node.argument.callee.type === "Identifier" &&
+          node.argument.callee.name === "Error"
         ) {
           context.report({
             node,
-            messageId: 'noThrowNewError',
+            messageId: "noThrowNewError",
           });
         }
       },

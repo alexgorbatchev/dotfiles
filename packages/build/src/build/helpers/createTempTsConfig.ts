@@ -1,4 +1,4 @@
-import type { IBuildContext } from '../types';
+import type { IBuildContext } from "../types";
 
 /**
  * Writes a temporary tsconfig used to emit schema declaration files.
@@ -19,7 +19,7 @@ export async function createTempTsConfig(context: IBuildContext): Promise<void> 
       // doesn't need bun/node types for bundling the schema declarations
       types: [],
       paths: {
-        '@dotfiles/*': [
+        "@dotfiles/*": [
           `${context.paths.rootDir}/packages/*/src/index.ts`,
           `${context.paths.rootDir}/packages/*/index.ts`,
         ],
@@ -48,7 +48,7 @@ export async function createDtsBundlerTsConfig(context: IBuildContext): Promise<
       noEmit: true,
       // Point to generated .d.ts files, not source .ts files
       paths: {
-        '@dotfiles/*': [
+        "@dotfiles/*": [
           `${context.paths.tempSchemasBuildDir}/*/src/index.d.ts`,
           `${context.paths.tempSchemasBuildDir}/*/index.d.ts`,
         ],

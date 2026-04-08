@@ -1,15 +1,15 @@
-import { LogLevel } from '@dotfiles/logger';
-import { describe, expect, test } from 'bun:test';
-import { resolveLogLevel } from '../cli';
-import type { IGlobalProgramOptions } from '../types';
+import { LogLevel } from "@dotfiles/logger";
+import { describe, expect, test } from "bun:test";
+import { resolveLogLevel } from "../cli";
+import type { IGlobalProgramOptions } from "../types";
 
-describe('resolveLogLevel', () => {
-  test('forces quiet when --shim-mode is present', () => {
-    const argv = ['install', 'fnm', '--shim-mode'];
+describe("resolveLogLevel", () => {
+  test("forces quiet when --shim-mode is present", () => {
+    const argv = ["install", "fnm", "--shim-mode"];
     const options: IGlobalProgramOptions = {
-      config: '',
+      config: "",
       dryRun: false,
-      log: 'default',
+      log: "default",
       verbose: false,
       quiet: false,
       trace: false,
@@ -21,12 +21,12 @@ describe('resolveLogLevel', () => {
     expect(level).toBe(LogLevel.QUIET);
   });
 
-  test('does not force quiet when --shim-mode is absent', () => {
-    const argv = ['install', 'fnm'];
+  test("does not force quiet when --shim-mode is absent", () => {
+    const argv = ["install", "fnm"];
     const options: IGlobalProgramOptions = {
-      config: '',
+      config: "",
       dryRun: false,
-      log: 'default',
+      log: "default",
       verbose: false,
       quiet: false,
       trace: false,

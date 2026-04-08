@@ -1,19 +1,19 @@
-export * from './CurlTarInstallerPlugin';
-export * from './installFromCurlTar';
-export * from './schemas';
-export * from './types';
+export * from "./CurlTarInstallerPlugin";
+export * from "./installFromCurlTar";
+export * from "./schemas";
+export * from "./types";
 
 // Module augmentation for curl-tar plugin
-import type { RegisterPluginResult } from '@dotfiles/core';
-import type { CurlTarInstallParams, CurlTarToolConfig } from './schemas';
-import type { CurlTarInstallResult } from './types';
+import type { RegisterPluginResult } from "@dotfiles/core";
+import type { CurlTarInstallParams, CurlTarToolConfig } from "./schemas";
+import type { CurlTarInstallResult } from "./types";
 
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    'curl-tar': CurlTarInstallParams;
+    "curl-tar": CurlTarInstallParams;
   }
   interface IToolConfigRegistry {
-    'curl-tar': CurlTarToolConfig;
+    "curl-tar": CurlTarToolConfig;
   }
-  interface IPluginResultRegistry extends RegisterPluginResult<'curl-tar', CurlTarInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<"curl-tar", CurlTarInstallResult> {}
 }

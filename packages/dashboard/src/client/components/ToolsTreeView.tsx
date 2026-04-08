@@ -1,13 +1,13 @@
-import type { ComponentChildren } from 'preact';
-import { type JSX } from 'preact';
-import { FileCode, FolderOpen, FolderTree } from '../icons';
+import type { ComponentChildren } from "preact";
+import { type JSX } from "preact";
+import { FileCode, FolderOpen, FolderTree } from "../icons";
 
-import type { IFileTreeEntry, IToolConfigsTree, IToolDetail } from '../../shared/types';
-import { useFetch } from '../hooks/useFetch';
-import { formatBytes } from '../utils/format';
-import { InstallMethodBadge } from './InstallMethodBadge';
-import { TitledCard } from './ui/TitledCard';
-import { Tree, type TreeItemData } from './ui/Tree';
+import type { IFileTreeEntry, IToolConfigsTree, IToolDetail } from "../../shared/types";
+import { useFetch } from "../hooks/useFetch";
+import { formatBytes } from "../utils/format";
+import { InstallMethodBadge } from "./InstallMethodBadge";
+import { TitledCard } from "./ui/TitledCard";
+import { Tree, type TreeItemData } from "./ui/Tree";
 
 interface ToolsTreeViewProps {
   tools: IToolDetail[];
@@ -19,7 +19,7 @@ interface ToolTreeData {
   installMethod?: string;
   ghCli?: boolean;
   fileCount?: number;
-  status?: 'installed' | 'not-installed' | 'error';
+  status?: "installed" | "not-installed" | "error";
   binaryDiskSize?: number;
 }
 
@@ -28,38 +28,35 @@ interface ToolTreeData {
  */
 function fileTreeToTreeItems(
   entries: IFileTreeEntry[],
-  toolStatusMap: Map<string, 'installed' | 'not-installed' | 'error'>,
+  toolStatusMap: Map<string, "installed" | "not-installed" | "error">,
   toolMethodMap: Map<string, string>,
   toolGhCliMap: Map<string, boolean>,
   toolFileCountMap: Map<string, number>,
   toolBinarySizeMap: Map<string, number>,
 ): TreeItemData<ToolTreeData>[] {
   return entries.map((entry) => {
-    if (entry.type === 'directory') {
+    if (entry.type === "directory") {
       return {
         id: entry.path,
         label: entry.name,
-        icon: <FolderOpen class='h-4 w-4 text-amber-300' />,
+        icon: <FolderOpen class="h-4 w-4 text-amber-300" />,
         children: entry.children
           ? fileTreeToTreeItems(
-            entry.children,
-            toolStatusMap,
-            toolMethodMap,
-            toolGhCliMap,
-            toolFileCountMap,
-            toolBinarySizeMap,
-          )
+              entry.children,
+              toolStatusMap,
+              toolMethodMap,
+              toolGhCliMap,
+              toolFileCountMap,
+              toolBinarySizeMap,
+            )
           : [],
       };
     }
 
     // File entry
     const status = entry.toolName ? toolStatusMap.get(entry.toolName) : undefined;
-    const statusColor = status === 'installed' ?
-      'text-green-400' :
-      status === 'error' ?
-      'text-red-400' :
-      'text-blue-400';
+    const statusColor =
+      status === "installed" ? "text-green-400" : status === "error" ? "text-red-400" : "text-blue-400";
     const dotColor = getStatusDotColor(status);
 
     return {
@@ -83,14 +80,14 @@ function fileTreeToTreeItems(
 /**
  * Get the status dot color based on tool status.
  */
-function getStatusDotColor(status?: 'installed' | 'not-installed' | 'error'): string {
+function getStatusDotColor(status?: "installed" | "not-installed" | "error"): string {
   switch (status) {
-    case 'installed':
-      return 'bg-green-500';
-    case 'error':
-      return 'bg-red-500';
+    case "installed":
+      return "bg-green-500";
+    case "error":
+      return "bg-red-500";
     default:
-      return 'bg-gray-300';
+      return "bg-gray-300";
   }
 }
 
@@ -99,20 +96,20 @@ function getStatusDotColor(status?: 'installed' | 'not-installed' | 'error'): st
  * and adds install method badge with file count and binary size, right-aligned.
  */
 function renderLabel(item: TreeItemData<ToolTreeData>): ComponentChildren {
-  if (item.data?.isFile && item.label.endsWith('.tool.ts')) {
-    const baseName = item.label.replace(/\.tool\.ts$/, '');
+  if (item.data?.isFile && item.label.endsWith(".tool.ts")) {
+    const baseName = item.label.replace(/\.tool\.ts$/, "");
     const fileCount = item.data.fileCount ?? 0;
     const binarySize = item.data.binaryDiskSize ?? 0;
     return (
-      <span class='flex items-center justify-between flex-1'>
+      <span class="flex items-center justify-between flex-1">
         <span>
           {baseName}
-          <span class='text-gray-400'>.tool.ts</span>
+          <span class="text-gray-400">.tool.ts</span>
         </span>
-        <span class='flex items-center gap-2'>
+        <span class="flex items-center gap-2">
           {item.data.installMethod && <InstallMethodBadge method={item.data.installMethod} ghCli={item.data.ghCli} />}
-          <span class='text-xs text-muted-foreground'>{fileCount} files</span>
-          {binarySize > 0 && <span class='text-xs font-bold text-orange-400'>{formatBytes(binarySize)}</span>}
+          <span class="text-xs text-muted-foreground">{fileCount} files</span>
+          {binarySize > 0 && <span class="text-xs font-bold text-orange-400">{formatBytes(binarySize)}</span>}
         </span>
       </span>
     );
@@ -127,10 +124,10 @@ function handleItemClick(item: TreeItemData<ToolTreeData>): void {
 }
 
 export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
-  const { data: treeData, loading } = useFetch<IToolConfigsTree>('/tool-configs-tree');
+  const { data: treeData, loading } = useFetch<IToolConfigsTree>("/tool-configs-tree");
 
   // Build maps from tools
-  const toolStatusMap = new Map<string, 'installed' | 'not-installed' | 'error'>();
+  const toolStatusMap = new Map<string, "installed" | "not-installed" | "error">();
   const toolMethodMap = new Map<string, string>();
   const toolGhCliMap = new Map<string, boolean>();
   const toolFileCountMap = new Map<string, number>();
@@ -145,39 +142,39 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
 
   if (loading) {
     return (
-      <TitledCard title='Tool Files' icon={<FolderTree class='h-4 w-4' />}>
-        <div class='text-muted-foreground text-sm'>Loading...</div>
+      <TitledCard title="Tool Files" icon={<FolderTree class="h-4 w-4" />}>
+        <div class="text-muted-foreground text-sm">Loading...</div>
       </TitledCard>
     );
   }
 
   const treeItems = treeData
     ? fileTreeToTreeItems(
-      treeData.entries,
-      toolStatusMap,
-      toolMethodMap,
-      toolGhCliMap,
-      toolFileCountMap,
-      toolBinarySizeMap,
-    )
+        treeData.entries,
+        toolStatusMap,
+        toolMethodMap,
+        toolGhCliMap,
+        toolFileCountMap,
+        toolBinarySizeMap,
+      )
     : [];
 
   if (treeItems.length === 0) {
     return (
-      <TitledCard title='Tool Files' icon={<FolderTree class='h-4 w-4' />}>
-        <div class='text-muted-foreground text-sm'>No tool files found</div>
+      <TitledCard title="Tool Files" icon={<FolderTree class="h-4 w-4" />}>
+        <div class="text-muted-foreground text-sm">No tool files found</div>
       </TitledCard>
     );
   }
 
   return (
-    <TitledCard title='Tool Files' icon={<FolderTree class='h-4 w-4' />}>
+    <TitledCard title="Tool Files" icon={<FolderTree class="h-4 w-4" />}>
       <Tree
         items={treeItems}
         defaultExpanded={true}
         onItemClick={handleItemClick}
         renderLabel={renderLabel}
-        iconClassName='mr-1'
+        iconClassName="mr-1"
       />
     </TitledCard>
   );

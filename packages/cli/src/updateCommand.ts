@@ -1,16 +1,16 @@
-import type { IConfigService } from '@dotfiles/config';
-import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { exitCli, ExitCode } from '@dotfiles/utils';
-import { messages } from './log-messages';
+import type { IConfigService } from "@dotfiles/config";
+import type { ISystemInfo, ProjectConfig, ToolConfig } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { exitCli, ExitCode } from "@dotfiles/utils";
+import { messages } from "./log-messages";
 import type {
   ICommandCompletionMeta,
   IGlobalProgram,
   IGlobalProgramOptions,
   IServices,
   IUpdateCommandSpecificOptions,
-} from './types';
+} from "./types";
 
 interface ILoadToolConfigSafelyResult {
   toolConfig: ToolConfig | null;
@@ -21,12 +21,12 @@ interface ILoadToolConfigSafelyResult {
  * Completion metadata for the update command.
  */
 export const UPDATE_COMMAND_COMPLETION: ICommandCompletionMeta = {
-  name: 'update',
-  description: 'Update an installed tool to latest version',
+  name: "update",
+  description: "Update an installed tool to latest version",
   hasPositionalArg: true,
-  positionalArgDescription: 'tool name to update',
-  positionalArgType: 'tool',
-  options: [{ flag: '--shim-mode', description: 'Optimized output for shim usage' }],
+  positionalArgDescription: "tool name to update",
+  positionalArgType: "tool",
+  options: [{ flag: "--shim-mode", description: "Optimized output for shim usage" }],
 };
 
 async function loadToolConfigSafely(
@@ -72,7 +72,7 @@ async function handleToolUpdate(
 ): Promise<void> {
   const { toolInstallationRegistry, installer, pluginRegistry } = services;
 
-  if (toolConfig.version !== 'latest') {
+  if (toolConfig.version !== "latest") {
     logger.info(messages.toolVersionPinned(toolName, toolConfig.version));
     return;
   }
@@ -84,7 +84,7 @@ async function handleToolUpdate(
   }
 
   const existingInstallation = await toolInstallationRegistry.getToolInstallation(toolName);
-  const oldVersion = existingInstallation?.version || 'unknown';
+  const oldVersion = existingInstallation?.version || "unknown";
 
   const installResult = await installer.install(toolName, toolConfig, { force: true, shimMode });
 
@@ -94,9 +94,8 @@ async function handleToolUpdate(
     return;
   }
 
-  const resolvedNewVersion: string = 'version' in installResult && typeof installResult.version === 'string'
-    ? installResult.version
-    : 'unknown';
+  const resolvedNewVersion: string =
+    "version" in installResult && typeof installResult.version === "string" ? installResult.version : "unknown";
   const isUpToDate = oldVersion === resolvedNewVersion;
 
   if (shimMode) {
@@ -116,11 +115,11 @@ export function registerUpdateCommand(
   program: IGlobalProgram,
   servicesFactory: () => Promise<IServices>,
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'registerUpdateCommand' });
+  const logger = parentLogger.getSubLogger({ name: "registerUpdateCommand" });
   program
-    .command('update <toolName>')
-    .description('Updates a specified tool to its latest version.')
-    .option('--shim-mode', 'Run in shim mode with minimal output', false)
+    .command("update <toolName>")
+    .description("Updates a specified tool to its latest version.")
+    .option("--shim-mode", "Run in shim mode with minimal output", false)
     .action(async (toolName: string, commandOptions: IUpdateCommandSpecificOptions) => {
       const combinedOptions: IUpdateCommandSpecificOptions & IGlobalProgramOptions = {
         ...commandOptions,
@@ -160,7 +159,7 @@ export function registerUpdateCommand(
 
         await handleToolUpdate(logger, services, toolName, toolConfig, combinedOptions.shimMode);
       } catch (error) {
-        logger.error(messages.commandExecutionFailed('update', ExitCode.ERROR), error);
+        logger.error(messages.commandExecutionFailed("update", ExitCode.ERROR), error);
         exitCli(ExitCode.ERROR);
       }
     });

@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { createMockToolConfigForTests, setupTestContext, type TestContext } from './test-setup';
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { createMockToolConfigForTests, setupTestContext, type TestContext } from "./test-setup";
 
-describe('updateTool', () => {
+describe("updateTool", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -12,23 +12,23 @@ describe('updateTool', () => {
     ctx.registryDatabase.close();
   });
 
-  test('returns error when tool not found', async () => {
-    const result = await ctx.api.updateTool('nonexistent');
+  test("returns error when tool not found", async () => {
+    const result = await ctx.api.updateTool("nonexistent");
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Tool "nonexistent" not found in configuration');
   });
 
-  test('returns not supported when tool version is pinned', async () => {
-    ctx.toolConfigs['fzf'] = createMockToolConfigForTests({
-      name: 'fzf',
-      version: '0.54.0',
-      installationMethod: 'github-release',
-      installParams: { repo: 'junegunn/fzf' },
-      binaries: ['fzf'],
+  test("returns not supported when tool version is pinned", async () => {
+    ctx.toolConfigs["fzf"] = createMockToolConfigForTests({
+      name: "fzf",
+      version: "0.54.0",
+      installationMethod: "github-release",
+      installParams: { repo: "junegunn/fzf" },
+      binaries: ["fzf"],
     });
 
-    const result = await ctx.api.updateTool('fzf');
+    const result = await ctx.api.updateTool("fzf");
 
     expect(result.success).toBe(true);
     expect(result.data?.updated).toBe(false);
@@ -38,13 +38,13 @@ describe('updateTool', () => {
     );
   });
 
-  test('updates tool with version latest successfully', async () => {
-    ctx.toolConfigs['fzf'] = createMockToolConfigForTests({
-      name: 'fzf',
-      version: 'latest',
-      installationMethod: 'github-release',
-      installParams: { repo: 'junegunn/fzf' },
-      binaries: ['fzf'],
+  test("updates tool with version latest successfully", async () => {
+    ctx.toolConfigs["fzf"] = createMockToolConfigForTests({
+      name: "fzf",
+      version: "latest",
+      installationMethod: "github-release",
+      installParams: { repo: "junegunn/fzf" },
+      binaries: ["fzf"],
     });
 
     ctx.mockPluginRegistry.get.mockReturnValue({
@@ -53,30 +53,26 @@ describe('updateTool', () => {
 
     ctx.mockInstaller.install.mockResolvedValueOnce({
       success: true,
-      version: '0.55.0',
-      installationMethod: 'github-release',
+      version: "0.55.0",
+      installationMethod: "github-release",
     });
 
-    const result = await ctx.api.updateTool('fzf');
+    const result = await ctx.api.updateTool("fzf");
 
     expect(result.success).toBe(true);
     expect(result.data?.updated).toBe(true);
-    expect(result.data?.newVersion).toBe('0.55.0');
+    expect(result.data?.newVersion).toBe("0.55.0");
     expect(result.data?.supported).toBe(true);
-    expect(ctx.mockInstaller.install).toHaveBeenCalledWith(
-      'fzf',
-      ctx.toolConfigs['fzf'],
-      { force: true },
-    );
+    expect(ctx.mockInstaller.install).toHaveBeenCalledWith("fzf", ctx.toolConfigs["fzf"], { force: true });
   });
 
-  test('warns but proceeds when plugin does not support update', async () => {
-    ctx.toolConfigs['fzf'] = createMockToolConfigForTests({
-      name: 'fzf',
-      version: 'latest',
-      installationMethod: 'curl-binary',
-      installParams: { url: 'https://example.com/fzf' },
-      binaries: ['fzf'],
+  test("warns but proceeds when plugin does not support update", async () => {
+    ctx.toolConfigs["fzf"] = createMockToolConfigForTests({
+      name: "fzf",
+      version: "latest",
+      installationMethod: "curl-binary",
+      installParams: { url: "https://example.com/fzf" },
+      binaries: ["fzf"],
     });
 
     ctx.mockPluginRegistry.get.mockReturnValue({
@@ -85,24 +81,24 @@ describe('updateTool', () => {
 
     ctx.mockInstaller.install.mockResolvedValueOnce({
       success: true,
-      version: '1.0.0',
-      installationMethod: 'curl-binary',
+      version: "1.0.0",
+      installationMethod: "curl-binary",
     });
 
-    const result = await ctx.api.updateTool('fzf');
+    const result = await ctx.api.updateTool("fzf");
 
     expect(result.success).toBe(true);
     expect(result.data?.updated).toBe(true);
     expect(result.data?.supported).toBe(true);
   });
 
-  test('returns error when installation fails', async () => {
-    ctx.toolConfigs['fzf'] = createMockToolConfigForTests({
-      name: 'fzf',
-      version: 'latest',
-      installationMethod: 'github-release',
-      installParams: { repo: 'junegunn/fzf' },
-      binaries: ['fzf'],
+  test("returns error when installation fails", async () => {
+    ctx.toolConfigs["fzf"] = createMockToolConfigForTests({
+      name: "fzf",
+      version: "latest",
+      installationMethod: "github-release",
+      installParams: { repo: "junegunn/fzf" },
+      binaries: ["fzf"],
     });
 
     ctx.mockPluginRegistry.get.mockReturnValue({
@@ -111,44 +107,44 @@ describe('updateTool', () => {
 
     ctx.mockInstaller.install.mockResolvedValueOnce({
       success: false,
-      error: 'Download failed: 404',
+      error: "Download failed: 404",
     });
 
-    const result = await ctx.api.updateTool('fzf');
+    const result = await ctx.api.updateTool("fzf");
 
     expect(result.success).toBe(true);
     expect(result.data?.updated).toBe(false);
-    expect(result.data?.error).toBe('Download failed: 404');
+    expect(result.data?.error).toBe("Download failed: 404");
   });
 
-  test('handles exception thrown by installer', async () => {
-    ctx.toolConfigs['fzf'] = createMockToolConfigForTests({
-      name: 'fzf',
-      version: 'latest',
-      installationMethod: 'github-release',
-      installParams: { repo: 'junegunn/fzf' },
-      binaries: ['fzf'],
+  test("handles exception thrown by installer", async () => {
+    ctx.toolConfigs["fzf"] = createMockToolConfigForTests({
+      name: "fzf",
+      version: "latest",
+      installationMethod: "github-release",
+      installParams: { repo: "junegunn/fzf" },
+      binaries: ["fzf"],
     });
 
     ctx.mockPluginRegistry.get.mockReturnValue({
       supportsUpdate: () => true,
     });
 
-    ctx.mockInstaller.install.mockRejectedValueOnce(new Error('Network timeout'));
+    ctx.mockInstaller.install.mockRejectedValueOnce(new Error("Network timeout"));
 
-    const result = await ctx.api.updateTool('fzf');
+    const result = await ctx.api.updateTool("fzf");
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Failed to update tool: Network timeout');
+    expect(result.error).toBe("Failed to update tool: Network timeout");
   });
 
-  test('includes old version from existing installation', async () => {
-    ctx.toolConfigs['fzf'] = createMockToolConfigForTests({
-      name: 'fzf',
-      version: 'latest',
-      installationMethod: 'github-release',
-      installParams: { repo: 'junegunn/fzf' },
-      binaries: ['fzf'],
+  test("includes old version from existing installation", async () => {
+    ctx.toolConfigs["fzf"] = createMockToolConfigForTests({
+      name: "fzf",
+      version: "latest",
+      installationMethod: "github-release",
+      installParams: { repo: "junegunn/fzf" },
+      binaries: ["fzf"],
     });
 
     ctx.mockPluginRegistry.get.mockReturnValue({
@@ -156,24 +152,24 @@ describe('updateTool', () => {
     });
 
     await ctx.toolInstallationRegistry.recordToolInstallation({
-      toolName: 'fzf',
-      version: '0.54.0',
-      installPath: '/home/user/.dotfiles/.generated/binaries/fzf/current',
-      binaryPaths: ['/home/user/.dotfiles/.generated/binaries/fzf/current/fzf'],
+      toolName: "fzf",
+      version: "0.54.0",
+      installPath: "/home/user/.dotfiles/.generated/binaries/fzf/current",
+      binaryPaths: ["/home/user/.dotfiles/.generated/binaries/fzf/current/fzf"],
       timestamp: new Date().toISOString(),
     });
 
     ctx.mockInstaller.install.mockResolvedValueOnce({
       success: true,
-      version: '0.55.0',
-      installationMethod: 'github-release',
+      version: "0.55.0",
+      installationMethod: "github-release",
     });
 
-    const result = await ctx.api.updateTool('fzf');
+    const result = await ctx.api.updateTool("fzf");
 
     expect(result.success).toBe(true);
     expect(result.data?.updated).toBe(true);
-    expect(result.data?.oldVersion).toBe('0.54.0');
-    expect(result.data?.newVersion).toBe('0.55.0');
+    expect(result.data?.oldVersion).toBe("0.54.0");
+    expect(result.data?.newVersion).toBe("0.55.0");
   });
 });

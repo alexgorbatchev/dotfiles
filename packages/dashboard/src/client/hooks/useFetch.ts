@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'preact/hooks';
-import { fetchApi } from '../api';
+import { useEffect, useState } from "preact/hooks";
+import { fetchApi } from "../api";
 
 interface UseFetchResult<T> {
   data: T | null;

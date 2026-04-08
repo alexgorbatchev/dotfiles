@@ -1,26 +1,26 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import { Architecture, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import type { TrackedFileSystem } from '@dotfiles/registry/file';
-import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
-import type { IShimGenerator } from '@dotfiles/shim-generator';
+import type { ProjectConfig } from "@dotfiles/config";
+import { Architecture, type ISystemInfo, Platform, type ToolConfig } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import type { TrackedFileSystem } from "@dotfiles/registry/file";
+import type { ICompletionGenerator, IShellInitGenerator } from "@dotfiles/shell-init-generator";
+import type { IShimGenerator } from "@dotfiles/shim-generator";
 import type {
   CopyOperationResult,
   ICopyGenerator,
   ISymlinkGenerator,
   SymlinkOperationResult,
-} from '@dotfiles/symlink-generator';
+} from "@dotfiles/symlink-generator";
 import {
   createMockFileRegistry,
   createMockProjectConfig,
   createTestDirectories,
   type ITestDirectories,
-} from '@dotfiles/testing-helpers';
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import path from 'node:path';
-import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
+} from "@dotfiles/testing-helpers";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import path from "node:path";
+import { GeneratorOrchestrator } from "../GeneratorOrchestrator";
 
 /**
  * Creates a mock TrackedFileSystem for testing.
@@ -35,7 +35,7 @@ function createMockTrackedFileSystem(fs: IFileSystem): TrackedFileSystem {
   return mockTrackedFs;
 }
 
-describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
+describe("GeneratorOrchestrator - Disabled Tool Cleanup", () => {
   let mockShimGenerator: IShimGenerator;
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
@@ -62,7 +62,7 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
         Promise.resolve({
           files: new Map(),
           primaryPath: null,
-        })
+        }),
       ),
     };
     mockSymlinkGenerator = {
@@ -75,39 +75,39 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
     mockCompletionGenerator = {
       generateCompletionFile: mock(async () =>
         Promise.resolve({
-          content: '# completion',
-          filename: '_tool',
-          targetPath: '/path/_tool',
-          generatedBy: 'command' as const,
-        })
+          content: "# completion",
+          filename: "_tool",
+          targetPath: "/path/_tool",
+          generatedBy: "command" as const,
+        }),
       ),
       generateAndWriteCompletionFile: mock(async () =>
         Promise.resolve({
-          content: '# completion',
-          filename: '_tool',
-          targetPath: '/path/_tool',
-          generatedBy: 'command' as const,
-        })
+          content: "# completion",
+          filename: "_tool",
+          targetPath: "/path/_tool",
+          generatedBy: "command" as const,
+        }),
       ),
     };
 
     const { fs } = await createMemFileSystem({});
     mockFileSystem = fs;
 
-    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'generator-orchestrator-cleanup' });
+    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: "generator-orchestrator-cleanup" });
 
     systemInfo = {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     };
 
     mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
       fileSystem: mockFileSystem,
       logger,
       systemInfo,
@@ -131,17 +131,17 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
     );
   });
 
-  describe('cleanup for disabled tools', () => {
-    it('should remove shims for disabled tools that were previously enabled', async () => {
+  describe("cleanup for disabled tools", () => {
+    it("should remove shims for disabled tools that were previously enabled", async () => {
       // Set up: Simulate shim was created on filesystem and tracked in registry
-      const shimPath = path.join(mockProjectConfig.paths.targetDir, 'my-bin');
+      const shimPath = path.join(mockProjectConfig.paths.targetDir, "my-bin");
       await mockFileSystem.ensureDir(mockProjectConfig.paths.targetDir);
-      await mockFileSystem.writeFile(shimPath, '#!/bin/bash\n# Generated by Dotfiles Management Tool\nexec my-tool');
+      await mockFileSystem.writeFile(shimPath, "#!/bin/bash\n# Generated by Dotfiles Management Tool\nexec my-tool");
 
       // Register the shim in the file registry as previously tracked
       fileRegistry.setFileState({
-        toolName: 'myTool',
-        fileType: 'shim',
+        toolName: "myTool",
+        fileType: "shim",
         filePath: shimPath,
       });
 
@@ -151,10 +151,10 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
 
       // Generate with tool disabled
       const disabledToolConfig: ToolConfig = {
-        name: 'myTool',
-        binaries: ['my-bin'],
-        version: '1.0',
-        installationMethod: 'manual',
+        name: "myTool",
+        binaries: ["my-bin"],
+        version: "1.0",
+        installationMethod: "manual",
         installParams: {},
         disabled: true,
       };
@@ -170,21 +170,21 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
       expect(shimExists).toBe(false);
     });
 
-    it('should remove symlinks for disabled tools that were previously enabled', async () => {
+    it("should remove symlinks for disabled tools that were previously enabled", async () => {
       // Set up: Simulate symlink was created on filesystem and tracked in registry
-      const symlinkTargetPath = path.join(testDirs.paths.homeDir, '.config.conf');
-      const symlinkSourcePath = path.join(testDirs.paths.dotfilesDir, 'config.conf');
+      const symlinkTargetPath = path.join(testDirs.paths.homeDir, ".config.conf");
+      const symlinkSourcePath = path.join(testDirs.paths.dotfilesDir, "config.conf");
 
       // Create source file and symlink
       await mockFileSystem.ensureDir(path.dirname(symlinkSourcePath));
-      await mockFileSystem.writeFile(symlinkSourcePath, 'config content');
+      await mockFileSystem.writeFile(symlinkSourcePath, "config content");
       await mockFileSystem.ensureDir(path.dirname(symlinkTargetPath));
       await mockFileSystem.symlink(symlinkSourcePath, symlinkTargetPath);
 
       // Register the symlink in the file registry as previously tracked
       fileRegistry.setFileState({
-        toolName: 'myTool',
-        fileType: 'symlink',
+        toolName: "myTool",
+        fileType: "symlink",
         filePath: symlinkTargetPath,
       });
 
@@ -194,11 +194,11 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
 
       // Generate with tool disabled
       const disabledToolConfig: ToolConfig = {
-        name: 'myTool',
-        binaries: ['my-bin'],
-        version: '1.0',
-        symlinks: [{ source: 'config.conf', target: '~/.config.conf' }],
-        installationMethod: 'manual',
+        name: "myTool",
+        binaries: ["my-bin"],
+        version: "1.0",
+        symlinks: [{ source: "config.conf", target: "~/.config.conf" }],
+        installationMethod: "manual",
         installParams: {},
         disabled: true,
       };
@@ -214,17 +214,17 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
       expect(symlinkExists).toBe(false);
     });
 
-    it('should remove completion files for disabled tools that were previously enabled', async () => {
+    it("should remove completion files for disabled tools that were previously enabled", async () => {
       // Set up: Simulate completion file was created on filesystem and tracked in registry
       // Completions are stored in shell-scripts/{shell}/completions/ directory
-      const completionPath = path.join(mockProjectConfig.paths.shellScriptsDir, 'zsh', 'completions', '_myTool');
+      const completionPath = path.join(mockProjectConfig.paths.shellScriptsDir, "zsh", "completions", "_myTool");
       await mockFileSystem.ensureDir(path.dirname(completionPath));
-      await mockFileSystem.writeFile(completionPath, '#compdef myTool\n# completion script');
+      await mockFileSystem.writeFile(completionPath, "#compdef myTool\n# completion script");
 
       // Register the completion in the file registry as previously tracked
       fileRegistry.setFileState({
-        toolName: 'myTool',
-        fileType: 'completion',
+        toolName: "myTool",
+        fileType: "completion",
         filePath: completionPath,
       });
 
@@ -234,10 +234,10 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
 
       // Generate with tool disabled
       const disabledToolConfig: ToolConfig = {
-        name: 'myTool',
-        binaries: ['my-bin'],
-        version: '1.0',
-        installationMethod: 'manual',
+        name: "myTool",
+        binaries: ["my-bin"],
+        version: "1.0",
+        installationMethod: "manual",
         installParams: {},
         disabled: true,
       };
@@ -253,17 +253,17 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
       expect(completionExists).toBe(false);
     });
 
-    it('should NOT remove downloaded binaries when tool is disabled', async () => {
+    it("should NOT remove downloaded binaries when tool is disabled", async () => {
       // Simulate binary was installed and tracked in registry
-      const binaryDir = path.join(mockProjectConfig.paths.binariesDir, 'myTool', 'current');
+      const binaryDir = path.join(mockProjectConfig.paths.binariesDir, "myTool", "current");
       await mockFileSystem.ensureDir(binaryDir);
-      const binaryPath = path.join(binaryDir, 'my-bin');
+      const binaryPath = path.join(binaryDir, "my-bin");
       await mockFileSystem.writeFile(binaryPath, '#!/bin/bash\necho "hello"');
 
       // Register the binary in the file registry (should NOT be cleaned up)
       fileRegistry.setFileState({
-        toolName: 'myTool',
-        fileType: 'binary',
+        toolName: "myTool",
+        fileType: "binary",
         filePath: binaryPath,
       });
 
@@ -273,10 +273,10 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
 
       // Generate with tool disabled
       const disabledToolConfig: ToolConfig = {
-        name: 'myTool',
-        binaries: ['my-bin'],
-        version: '1.0',
-        installationMethod: 'manual',
+        name: "myTool",
+        binaries: ["my-bin"],
+        version: "1.0",
+        installationMethod: "manual",
         installParams: {},
         disabled: true,
       };
@@ -292,54 +292,54 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
       expect(binaryExists).toBe(true);
     });
 
-    it('should remove multiple artifact types for disabled tool', async () => {
+    it("should remove multiple artifact types for disabled tool", async () => {
       // Set up: Simulate multiple artifacts were created and tracked
-      const shimPath = path.join(mockProjectConfig.paths.targetDir, 'my-bin');
-      const symlinkPath = path.join(testDirs.paths.homeDir, '.config.conf');
-      const completionPath = path.join(mockProjectConfig.paths.shellScriptsDir, 'zsh', 'completions', '_myTool');
-      const binaryPath = path.join(mockProjectConfig.paths.binariesDir, 'myTool', 'current', 'my-bin');
+      const shimPath = path.join(mockProjectConfig.paths.targetDir, "my-bin");
+      const symlinkPath = path.join(testDirs.paths.homeDir, ".config.conf");
+      const completionPath = path.join(mockProjectConfig.paths.shellScriptsDir, "zsh", "completions", "_myTool");
+      const binaryPath = path.join(mockProjectConfig.paths.binariesDir, "myTool", "current", "my-bin");
 
       // Create all files on filesystem
       await mockFileSystem.ensureDir(path.dirname(shimPath));
-      await mockFileSystem.writeFile(shimPath, '#!/bin/bash\nexec my-tool');
+      await mockFileSystem.writeFile(shimPath, "#!/bin/bash\nexec my-tool");
 
       await mockFileSystem.ensureDir(path.dirname(symlinkPath));
-      await mockFileSystem.writeFile(symlinkPath, 'config content');
+      await mockFileSystem.writeFile(symlinkPath, "config content");
 
       await mockFileSystem.ensureDir(path.dirname(completionPath));
-      await mockFileSystem.writeFile(completionPath, '#compdef myTool');
+      await mockFileSystem.writeFile(completionPath, "#compdef myTool");
 
       await mockFileSystem.ensureDir(path.dirname(binaryPath));
       await mockFileSystem.writeFile(binaryPath, '#!/bin/bash\necho "binary"');
 
       // Register all files in registry
       fileRegistry.setFileState({
-        toolName: 'myTool',
-        fileType: 'shim',
+        toolName: "myTool",
+        fileType: "shim",
         filePath: shimPath,
       });
       fileRegistry.setFileState({
-        toolName: 'myTool',
-        fileType: 'symlink',
+        toolName: "myTool",
+        fileType: "symlink",
         filePath: symlinkPath,
       });
       fileRegistry.setFileState({
-        toolName: 'myTool',
-        fileType: 'completion',
+        toolName: "myTool",
+        fileType: "completion",
         filePath: completionPath,
       });
       fileRegistry.setFileState({
-        toolName: 'myTool',
-        fileType: 'binary',
+        toolName: "myTool",
+        fileType: "binary",
         filePath: binaryPath,
       });
 
       // Generate with tool disabled
       const disabledToolConfig: ToolConfig = {
-        name: 'myTool',
-        binaries: ['my-bin'],
-        version: '1.0',
-        installationMethod: 'manual',
+        name: "myTool",
+        binaries: ["my-bin"],
+        version: "1.0",
+        installationMethod: "manual",
         installParams: {},
         disabled: true,
       };
@@ -355,24 +355,24 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
       expect(await mockFileSystem.exists(binaryPath)).toBe(true);
     });
 
-    it('should log cleanup operations', async () => {
+    it("should log cleanup operations", async () => {
       // Set up: Create a shim to clean up
-      const shimPath = path.join(mockProjectConfig.paths.targetDir, 'my-bin');
+      const shimPath = path.join(mockProjectConfig.paths.targetDir, "my-bin");
       await mockFileSystem.ensureDir(path.dirname(shimPath));
-      await mockFileSystem.writeFile(shimPath, '#!/bin/bash\nexec my-tool');
+      await mockFileSystem.writeFile(shimPath, "#!/bin/bash\nexec my-tool");
 
       fileRegistry.setFileState({
-        toolName: 'myTool',
-        fileType: 'shim',
+        toolName: "myTool",
+        fileType: "shim",
         filePath: shimPath,
       });
 
       // Generate with tool disabled
       const disabledToolConfig: ToolConfig = {
-        name: 'myTool',
-        binaries: ['my-bin'],
-        version: '1.0',
-        installationMethod: 'manual',
+        name: "myTool",
+        binaries: ["my-bin"],
+        version: "1.0",
+        installationMethod: "manual",
         installParams: {},
         disabled: true,
       };
@@ -381,22 +381,22 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
 
       // Verify cleanup was logged using the logger path to cleanupToolArtifacts
       logger.expect(
-        ['DEBUG', 'WARN'],
-        ['GeneratorOrchestrator', 'cleanupToolArtifacts'],
+        ["DEBUG", "WARN"],
+        ["GeneratorOrchestrator", "cleanupToolArtifacts"],
         [],
         [/cleaning up artifacts/i, /found.*artifact/i, /removed.*shim/i, /cleanup completed/i],
       );
     });
 
-    it('should handle cleanup when no files are tracked for disabled tool', async () => {
+    it("should handle cleanup when no files are tracked for disabled tool", async () => {
       // No files registered in registry for this tool
 
       // Generate with tool disabled
       const disabledToolConfig: ToolConfig = {
-        name: 'myTool',
-        binaries: ['my-bin'],
-        version: '1.0',
-        installationMethod: 'manual',
+        name: "myTool",
+        binaries: ["my-bin"],
+        version: "1.0",
+        installationMethod: "manual",
         installParams: {},
         disabled: true,
       };
@@ -405,8 +405,8 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
 
       // Should handle gracefully and log no files to cleanup
       logger.expect(
-        ['DEBUG'],
-        ['GeneratorOrchestrator', 'cleanupToolArtifacts'],
+        ["DEBUG"],
+        ["GeneratorOrchestrator", "cleanupToolArtifacts"],
         [],
         [/cleaning up artifacts/i, /no tracked artifacts/i],
       );

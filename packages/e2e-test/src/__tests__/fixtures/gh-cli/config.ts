@@ -1,4 +1,4 @@
-import { getE2eGeneratedDir } from '../../helpers/e2eGeneratedDir';
+import { getE2eGeneratedDir } from "../../helpers/e2eGeneratedDir";
 
 // oxlint-disable-next-line import/no-default-export
 const generatedDir = getE2eGeneratedDir(import.meta.dirname);
@@ -11,13 +11,13 @@ const generatedDir = getE2eGeneratedDir(import.meta.dirname);
 export default {
   paths: {
     generatedDir,
-    homeDir: '{paths.generatedDir}/user-home',
-    targetDir: '{paths.generatedDir}/user-bin',
-    toolConfigsDir: '{configFileDir}/tools',
+    homeDir: "{paths.generatedDir}/user-home",
+    targetDir: "{paths.generatedDir}/user-bin",
+    toolConfigsDir: "{configFileDir}/tools",
   },
   github: {
     // Standard GitHub - should NOT trigger --hostname flag
-    host: 'https://api.github.com',
+    host: "https://api.github.com",
     cache: {
       enabled: false,
     },

@@ -8,28 +8,28 @@
  *
  * This ensures log messages include the tool name for easier debugging.
  */
-import type { IInstallContext } from '@dotfiles/core';
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import path from 'node:path';
+import type { IInstallContext } from "@dotfiles/core";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import path from "node:path";
 import {
   createGithubReleaseToolConfig,
   createInstallerTestSetup,
   type IInstallerTestSetup,
   MOCK_TOOL_NAME,
-} from './installer-test-helpers';
+} from "./installer-test-helpers";
 
-describe('Installer - Logger Context Propagation', () => {
+describe("Installer - Logger Context Propagation", () => {
   let setup: IInstallerTestSetup;
 
   beforeEach(async () => {
     setup = await createInstallerTestSetup();
     // Create the mock binary file so symlink creation succeeds
     await setup.fs.ensureDir(path.dirname(setup.mockToolBinaryPath));
-    await setup.fs.writeFile(setup.mockToolBinaryPath, 'mock binary content');
+    await setup.fs.writeFile(setup.mockToolBinaryPath, "mock binary content");
     await setup.fs.chmod(setup.mockToolBinaryPath, 0o755);
   });
 
-  it('should propagate tool context through all installation phases (DEBUG level)', async () => {
+  it("should propagate tool context through all installation phases (DEBUG level)", async () => {
     let capturedContext: IInstallContext | undefined;
 
     const beforeInstallHook = mock((ctx: IInstallContext) => {
@@ -42,12 +42,12 @@ describe('Installer - Logger Context Propagation', () => {
 
     const toolConfig = createGithubReleaseToolConfig({
       installParams: {
-        repo: 'owner/repo',
+        repo: "owner/repo",
         hooks: {
-          'before-install': [beforeInstallHook],
-          'after-download': [afterDownloadHook],
-          'after-extract': [afterExtractHook],
-          'after-install': [afterInstallHook],
+          "before-install": [beforeInstallHook],
+          "after-download": [afterDownloadHook],
+          "after-extract": [afterExtractHook],
+          "after-install": [afterInstallHook],
         },
       },
     });
@@ -69,21 +69,21 @@ describe('Installer - Logger Context Propagation', () => {
 
     // Verify tool context [test-tool] prefix appears in logs from each service:
     // - Installer.install
-    setup.logger.expect(['DEBUG'], ['Installer', 'install'], [MOCK_TOOL_NAME], []);
+    setup.logger.expect(["DEBUG"], ["Installer", "install"], [MOCK_TOOL_NAME], []);
     // - HookExecutor
-    setup.logger.expect(['DEBUG'], ['HookExecutor', 'executeHooks'], [MOCK_TOOL_NAME], []);
+    setup.logger.expect(["DEBUG"], ["HookExecutor", "executeHooks"], [MOCK_TOOL_NAME], []);
     // - createBinaryEntrypoints
-    setup.logger.expect(['DEBUG'], ['Installer', 'install', 'createBinaryEntrypoints'], [MOCK_TOOL_NAME], []);
+    setup.logger.expect(["DEBUG"], ["Installer", "install", "createBinaryEntrypoints"], [MOCK_TOOL_NAME], []);
   });
 
-  it('should include tool context in ERROR level logs when hook fails', async () => {
-    const failingHook = mock(() => Promise.reject(new Error('Hook execution failed')));
+  it("should include tool context in ERROR level logs when hook fails", async () => {
+    const failingHook = mock(() => Promise.reject(new Error("Hook execution failed")));
 
     const toolConfig = createGithubReleaseToolConfig({
       installParams: {
-        repo: 'owner/repo',
+        repo: "owner/repo",
         hooks: {
-          'before-install': [failingHook],
+          "before-install": [failingHook],
         },
       },
     });
@@ -97,18 +97,18 @@ describe('Installer - Logger Context Propagation', () => {
     // Verify ERROR log includes tool context
     // Full path: Installer > install > createBaseInstallContext > install-{toolName} > executeBeforeInstallHook > HookExecutor > executeHook
     setup.logger.expect(
-      ['ERROR'],
+      ["ERROR"],
       [
-        'Installer',
-        'install',
-        'createBaseInstallContext',
+        "Installer",
+        "install",
+        "createBaseInstallContext",
         `install-${MOCK_TOOL_NAME}`,
-        'executeBeforeInstallHook',
-        'HookExecutor',
-        'executeHook',
+        "executeBeforeInstallHook",
+        "HookExecutor",
+        "executeHook",
       ],
       [MOCK_TOOL_NAME],
-      ['Hook failed'],
+      ["Hook failed"],
     );
   });
 

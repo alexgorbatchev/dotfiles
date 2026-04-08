@@ -1,28 +1,28 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
 import type {
   IInstallContext,
   IInstallerPlugin,
   IInstallOptions,
   InstallResult,
   UpdateCheckResult,
-} from '@dotfiles/core';
-import type { ICache, IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
-import { createToolFileSystem } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { stripVersionPrefix } from '@dotfiles/utils';
-import { GiteaApiClient } from './gitea-client';
-import type { IGiteaApiClient } from './gitea-client';
-import { fetchGiteaRelease, installFromGiteaRelease } from './installFromGiteaRelease';
-import { messages } from './log-messages';
+} from "@dotfiles/core";
+import type { ICache, IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor } from "@dotfiles/installer";
+import { createToolFileSystem } from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { stripVersionPrefix } from "@dotfiles/utils";
+import { GiteaApiClient } from "./gitea-client";
+import type { IGiteaApiClient } from "./gitea-client";
+import { fetchGiteaRelease, installFromGiteaRelease } from "./installFromGiteaRelease";
+import { messages } from "./log-messages";
 import {
   type GiteaReleaseInstallParams,
   giteaReleaseInstallParamsSchema,
   type GiteaReleaseToolConfig,
   giteaReleaseToolConfigSchema,
-} from './schemas';
-import type { IGiteaReleaseInstallMetadata } from './types';
+} from "./schemas";
+import type { IGiteaReleaseInstallMetadata } from "./types";
 
 /**
  * Installer plugin for tools distributed via Gitea/Forgejo releases.
@@ -40,17 +40,15 @@ import type { IGiteaReleaseInstallMetadata } from './types';
  * - Per-tool instance URL configuration
  * - Built-in API response caching
  */
-export class GiteaReleaseInstallerPlugin implements
-  IInstallerPlugin<
-    'gitea-release',
-    GiteaReleaseInstallParams,
-    GiteaReleaseToolConfig,
-    IGiteaReleaseInstallMetadata
-  >
-{
-  public readonly method = 'gitea-release' as const;
-  public readonly displayName = 'Gitea Release';
-  public readonly version = '1.0.0';
+export class GiteaReleaseInstallerPlugin implements IInstallerPlugin<
+  "gitea-release",
+  GiteaReleaseInstallParams,
+  GiteaReleaseToolConfig,
+  IGiteaReleaseInstallMetadata
+> {
+  public readonly method = "gitea-release" as const;
+  public readonly displayName = "Gitea Release";
+  public readonly version = "1.0.0";
 
   public readonly paramsSchema = giteaReleaseInstallParamsSchema;
   public readonly toolConfigSchema = giteaReleaseToolConfigSchema;
@@ -69,13 +67,7 @@ export class GiteaReleaseInstallerPlugin implements
    */
   private createApiClient(toolConfig: GiteaReleaseToolConfig, logger: TsLogger): IGiteaApiClient {
     const params = toolConfig.installParams as GiteaReleaseInstallParams;
-    return new GiteaApiClient(
-      logger,
-      params.instanceUrl,
-      this.downloader,
-      this.cache,
-      { token: params.token },
-    );
+    return new GiteaApiClient(logger, params.instanceUrl, this.downloader, this.cache, { token: params.token });
   }
 
   async install(
@@ -112,7 +104,7 @@ export class GiteaReleaseInstallerPlugin implements
   ): Promise<string | null> {
     try {
       const params = toolConfig.installParams as GiteaReleaseInstallParams;
-      const version: string = toolConfig.version || 'latest';
+      const version: string = toolConfig.version || "latest";
       const apiClient = this.createApiClient(toolConfig, logger);
 
       const releaseResult = await fetchGiteaRelease(
@@ -154,7 +146,7 @@ export class GiteaReleaseInstallerPlugin implements
     try {
       const params = toolConfig.installParams as GiteaReleaseInstallParams;
       const repo = params.repo;
-      const [owner, repoName] = repo.split('/');
+      const [owner, repoName] = repo.split("/");
 
       if (!owner || !repoName) {
         const result: UpdateCheckResult = {
@@ -174,10 +166,10 @@ export class GiteaReleaseInstallerPlugin implements
         return result;
       }
 
-      const configuredVersion = toolConfig.version || 'latest';
-      const latestVersion = latestRelease.tag_name.replace(/^v/, '');
+      const configuredVersion = toolConfig.version || "latest";
+      const latestVersion = latestRelease.tag_name.replace(/^v/, "");
 
-      if (configuredVersion === 'latest') {
+      if (configuredVersion === "latest") {
         const result: UpdateCheckResult = {
           success: true,
           hasUpdate: false,
@@ -198,7 +190,7 @@ export class GiteaReleaseInstallerPlugin implements
       logger.error(messages.updateCheckFailed(toolName), error);
       const result: UpdateCheckResult = {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
       return result;
     }
@@ -211,14 +203,14 @@ export class GiteaReleaseInstallerPlugin implements
   getReadmeUrl(_toolName: string, toolConfig: GiteaReleaseToolConfig): string | null {
     const params = toolConfig.installParams as GiteaReleaseInstallParams;
     const repo = params.repo;
-    const [owner, repoName] = repo.split('/');
+    const [owner, repoName] = repo.split("/");
 
     if (!owner || !repoName) {
       return null;
     }
 
-    const instanceUrl = params.instanceUrl.replace(/\/+$/, '');
-    const branch = toolConfig.version || 'main';
+    const instanceUrl = params.instanceUrl.replace(/\/+$/, "");
+    const branch = toolConfig.version || "main";
     return `${instanceUrl}/${owner}/${repoName}/raw/branch/${branch}/README.md`;
   }
 }

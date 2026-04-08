@@ -1,5 +1,5 @@
-import type { IGitHubRelease, IGitHubReleaseAsset } from '@dotfiles/core';
-import type { ICache } from '@dotfiles/downloader';
+import type { IGitHubRelease, IGitHubReleaseAsset } from "@dotfiles/core";
+import type { ICache } from "@dotfiles/downloader";
 import {
   ClientError,
   ForbiddenError,
@@ -9,14 +9,14 @@ import {
   NotFoundError,
   RateLimitError,
   ServerError,
-} from '@dotfiles/downloader';
-import type { TsLogger } from '@dotfiles/logger';
-import crypto from 'node:crypto';
-import { GiteaApiClientError } from './GiteaApiClientError';
-import type { IGiteaRelease } from './giteaApiTypes';
-import { mapGiteaAsset } from './giteaApiTypes';
-import type { IGiteaApiClient } from './IGiteaApiClient';
-import { messages } from './log-messages';
+} from "@dotfiles/downloader";
+import type { TsLogger } from "@dotfiles/logger";
+import crypto from "node:crypto";
+import { GiteaApiClientError } from "./GiteaApiClientError";
+import type { IGiteaRelease } from "./giteaApiTypes";
+import { mapGiteaAsset } from "./giteaApiTypes";
+import type { IGiteaApiClient } from "./IGiteaApiClient";
+import { messages } from "./log-messages";
 
 /**
  * Maps a raw Gitea release response to the shared IGitHubRelease format.
@@ -61,11 +61,11 @@ export class GiteaApiClient implements IGiteaApiClient {
     instanceUrl: string,
     downloader: IDownloader,
     cache?: ICache,
-    options?: { token?: string; cacheEnabled?: boolean; cacheTtlMs?: number; },
+    options?: { token?: string; cacheEnabled?: boolean; cacheTtlMs?: number },
   ) {
-    this.logger = parentLogger.getSubLogger({ name: 'GiteaApiClient' });
+    this.logger = parentLogger.getSubLogger({ name: "GiteaApiClient" });
     // Normalize the instance URL: strip trailing slash, add /api/v1
-    const normalized = instanceUrl.replace(/\/+$/, '');
+    const normalized = instanceUrl.replace(/\/+$/, "");
     this.baseUrl = `${normalized}/api/v1`;
     this.token = options?.token;
     this.downloader = downloader;
@@ -73,7 +73,7 @@ export class GiteaApiClient implements IGiteaApiClient {
     this.cacheEnabled = options?.cacheEnabled ?? true;
     this.cacheTtlMs = options?.cacheTtlMs ?? 300_000; // 5 minutes default
 
-    const logger = this.logger.getSubLogger({ name: 'constructor' });
+    const logger = this.logger.getSubLogger({ name: "constructor" });
     logger.debug(messages.constructor.initialized(this.baseUrl));
     if (this.token) {
       logger.debug(messages.constructor.authTokenPresent());
@@ -92,15 +92,15 @@ export class GiteaApiClient implements IGiteaApiClient {
 
   private generateCacheKey(endpoint: string, method: string): string {
     let key = `gitea:${method}:${endpoint}`;
-    if (this.token && typeof this.token === 'string' && this.token.length > 0) {
-      const tokenHash = crypto.createHash('sha256').update(this.token).digest('hex').substring(0, 8);
+    if (this.token && typeof this.token === "string" && this.token.length > 0) {
+      const tokenHash = crypto.createHash("sha256").update(this.token).digest("hex").substring(0, 8);
       key += `:${tokenHash}`;
     }
     return key;
   }
 
-  private async request<T>(endpoint: string, method: 'GET' = 'GET'): Promise<T> {
-    const logger = this.logger.getSubLogger({ name: 'request' });
+  private async request<T>(endpoint: string, method: "GET" = "GET"): Promise<T> {
+    const logger = this.logger.getSubLogger({ name: "request" });
     const url = `${this.baseUrl}${endpoint}`;
     const cacheKey = this.generateCacheKey(endpoint, method);
 
@@ -122,7 +122,7 @@ export class GiteaApiClient implements IGiteaApiClient {
   }
 
   private async tryGetFromCache<T>(cacheKey: string, method: string): Promise<T | null> {
-    if (!this.cache || !this.cacheEnabled || method !== 'GET') {
+    if (!this.cache || !this.cacheEnabled || method !== "GET") {
       return null;
     }
 
@@ -140,29 +140,29 @@ export class GiteaApiClient implements IGiteaApiClient {
 
   private buildRequestHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      Accept: 'application/json',
+      Accept: "application/json",
     };
 
     if (this.token) {
-      headers['Authorization'] = `token ${this.token}`;
+      headers["Authorization"] = `token ${this.token}`;
     }
 
     return headers;
   }
 
   private async performRequest<T>(url: string, headers: Record<string, string>): Promise<T> {
-    const logger = this.logger.getSubLogger({ name: 'performRequest' });
+    const logger = this.logger.getSubLogger({ name: "performRequest" });
     const responseBuffer = await this.downloader.download(logger, url, { headers });
     if (!responseBuffer || responseBuffer.length === 0) {
       logger.debug(messages.request.emptyResponse(url));
-      throw new NetworkError(this.logger, 'Empty response received from API', url);
+      throw new NetworkError(this.logger, "Empty response received from API", url);
     }
-    const responseText = responseBuffer.toString('utf-8');
+    const responseText = responseBuffer.toString("utf-8");
     return JSON.parse(responseText) as T;
   }
 
   private async tryCacheResponse<T>(cacheKey: string, data: T, method: string): Promise<void> {
-    if (!this.cache || !this.cacheEnabled || method !== 'GET') {
+    if (!this.cache || !this.cacheEnabled || method !== "GET") {
       return;
     }
 
@@ -174,7 +174,7 @@ export class GiteaApiClient implements IGiteaApiClient {
   }
 
   private handleRequestError(error: unknown, url: string): never {
-    const logger = this.logger.getSubLogger({ name: 'handleRequestError' });
+    const logger = this.logger.getSubLogger({ name: "handleRequestError" });
     logger.debug(messages.errors.requestFailure(url), error);
 
     if (error instanceof NotFoundError) {
@@ -238,13 +238,13 @@ export class GiteaApiClient implements IGiteaApiClient {
   }
 
   async getLatestRelease(owner: string, repo: string): Promise<IGitHubRelease | null> {
-    const logger = this.logger.getSubLogger({ name: 'getLatestRelease' });
+    const logger = this.logger.getSubLogger({ name: "getLatestRelease" });
     logger.debug(messages.releases.fetchingLatest(owner, repo));
     try {
       const raw = await this.request<IGiteaRelease>(`/repos/${owner}/${repo}/releases/latest`);
       return mapGiteaRelease(raw);
     } catch (error) {
-      if (error instanceof Error && error.message.includes('Gitea resource not found')) {
+      if (error instanceof Error && error.message.includes("Gitea resource not found")) {
         logger.debug(messages.releases.latestNotFound(owner, repo));
         return null;
       }
@@ -254,13 +254,13 @@ export class GiteaApiClient implements IGiteaApiClient {
   }
 
   async getReleaseByTag(owner: string, repo: string, tag: string): Promise<IGitHubRelease | null> {
-    const logger = this.logger.getSubLogger({ name: 'getReleaseByTag' });
+    const logger = this.logger.getSubLogger({ name: "getReleaseByTag" });
     logger.debug(messages.releases.fetchingByTag(tag, owner, repo));
     try {
       const raw = await this.request<IGiteaRelease>(`/repos/${owner}/${repo}/releases/tags/${tag}`);
       return mapGiteaRelease(raw);
     } catch (error) {
-      if (error instanceof Error && error.message.includes('Gitea resource not found')) {
+      if (error instanceof Error && error.message.includes("Gitea resource not found")) {
         logger.debug(messages.releases.tagNotFound(tag, owner, repo));
         return null;
       }
@@ -272,9 +272,9 @@ export class GiteaApiClient implements IGiteaApiClient {
   async getAllReleases(
     owner: string,
     repo: string,
-    options?: { limit?: number; includePrerelease?: boolean; maxResults?: number; },
+    options?: { limit?: number; includePrerelease?: boolean; maxResults?: number },
   ): Promise<IGitHubRelease[]> {
-    const logger = this.logger.getSubLogger({ name: 'getAllReleases' });
+    const logger = this.logger.getSubLogger({ name: "getAllReleases" });
     logger.debug(messages.releases.fetchingAll(owner, repo));
     const perPage = options?.limit || 30;
     const maxResults = options?.maxResults;
@@ -315,13 +315,11 @@ export class GiteaApiClient implements IGiteaApiClient {
   }
 
   async getLatestReleaseTags(owner: string, repo: string, count: number = 5): Promise<string[]> {
-    const logger = this.logger.getSubLogger({ name: 'getLatestReleaseTags' });
+    const logger = this.logger.getSubLogger({ name: "getLatestReleaseTags" });
     logger.debug(messages.releases.fetchingLatestTags(owner, repo, count));
 
     try {
-      const rawReleases = await this.request<IGiteaRelease[]>(
-        `/repos/${owner}/${repo}/releases?limit=${count}`,
-      );
+      const rawReleases = await this.request<IGiteaRelease[]>(`/repos/${owner}/${repo}/releases?limit=${count}`);
       const tags: string[] = rawReleases.map((release) => release.tag_name);
       logger.debug(messages.releases.fetchedTags(tags.length));
       return tags;

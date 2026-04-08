@@ -1,39 +1,39 @@
-import { TestLogger } from '@dotfiles/logger';
-import { describe, expect, it } from 'bun:test';
-import { GitHubApiClient } from '../GitHubApiClient';
+import { TestLogger } from "@dotfiles/logger";
+import { describe, expect, it } from "bun:test";
+import { GitHubApiClient } from "../GitHubApiClient";
 import {
   createGitHubConfigOverride,
   createMockDownloader,
   createMockGitHubApiCache,
   createMockProjectConfigForGitHubApi,
   setupMockGitHubApiClient,
-} from './helpers/sharedGitHubApiClientTestSetup';
+} from "./helpers/sharedGitHubApiClientTestSetup";
 
-describe('GitHubApiClient', () => {
-  it('should be defined', async () => {
+describe("GitHubApiClient", () => {
+  it("should be defined", async () => {
     const { apiClient } = await setupMockGitHubApiClient();
     expect(apiClient).toBeDefined();
   });
 
   // Constructor tests
-  describe('constructor', async () => {
-    it('should initialize correctly without a token', async () => {
+  describe("constructor", async () => {
+    it("should initialize correctly without a token", async () => {
       const mockProjectConfig = await createMockProjectConfigForGitHubApi();
       const mockDownloader = createMockDownloader();
       const client = new GitHubApiClient(new TestLogger(), mockProjectConfig, mockDownloader);
       expect(client).toBeInstanceOf(GitHubApiClient);
     });
 
-    it('should initialize correctly with a token', async () => {
+    it("should initialize correctly with a token", async () => {
       const mockProjectConfig = await createMockProjectConfigForGitHubApi(
-        createGitHubConfigOverride({ githubToken: 'test-token' }),
+        createGitHubConfigOverride({ githubToken: "test-token" }),
       );
       const mockDownloader = createMockDownloader();
       const client = new GitHubApiClient(new TestLogger(), mockProjectConfig, mockDownloader);
       expect(client).toBeInstanceOf(GitHubApiClient);
     });
 
-    it('should initialize correctly with a cache', async () => {
+    it("should initialize correctly with a cache", async () => {
       const mockProjectConfig = await createMockProjectConfigForGitHubApi();
       const mockDownloader = createMockDownloader();
       const mockCache = createMockGitHubApiCache();
@@ -41,7 +41,7 @@ describe('GitHubApiClient', () => {
       expect(client).toBeInstanceOf(GitHubApiClient);
     });
 
-    it('should respect cache configuration options', async () => {
+    it("should respect cache configuration options", async () => {
       const mockDownloader = createMockDownloader();
       const mockCache = createMockGitHubApiCache();
       const configWithCacheDisabled = await createMockProjectConfigForGitHubApi(

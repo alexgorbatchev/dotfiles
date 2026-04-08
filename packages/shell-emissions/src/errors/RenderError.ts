@@ -1,4 +1,4 @@
-import type { Emission } from '../types';
+import type { Emission } from "../types";
 
 /**
  * Error thrown when rendering fails.
@@ -11,6 +11,6 @@ export class RenderError extends Error {
     message: string,
   ) {
     super(`Render error for ${emission.kind}: ${message}`);
-    this.name = 'RenderError';
+    this.name = "RenderError";
   }
 }

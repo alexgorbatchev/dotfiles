@@ -1,4 +1,4 @@
-import type { ZodError } from 'zod';
+import type { ZodError } from "zod";
 
 /**
  * Formats Zod validation errors into an array of human-readable log messages.
@@ -45,7 +45,7 @@ export function formatZodErrors(error: ZodError): string[] {
   for (const issue of issues) {
     messages.push(`✖ ${issue.message}`);
     if (issue.path?.length) {
-      const dotPath = issue.path.map(String).join('.');
+      const dotPath = issue.path.map(String).join(".");
       messages.push(`  → at ${dotPath}`);
     }
   }

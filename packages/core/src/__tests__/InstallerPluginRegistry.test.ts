@@ -1,23 +1,23 @@
-import type { IInstallContext, ISystemInfo, ToolConfig } from '@dotfiles/core';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { createConfiguredShell } from '@dotfiles/installer';
-import { TestLogger } from '@dotfiles/logger';
-import { createMock$, createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
-import { replaceInFile } from '@dotfiles/utils';
-import { beforeEach, describe, expect, test } from 'bun:test';
-import assert from 'node:assert';
-import path from 'node:path';
-import { z } from 'zod';
-import { Architecture, Platform } from '../common';
-import { createToolLog } from '../context/createToolConfigContext';
-import { InstallerPluginRegistry } from '../InstallerPluginRegistry';
-import type { IInstallerPlugin, IInstallOptions, InstallResult, IValidationResult } from '../types';
+import type { IInstallContext, ISystemInfo, ToolConfig } from "@dotfiles/core";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { createConfiguredShell } from "@dotfiles/installer";
+import { TestLogger } from "@dotfiles/logger";
+import { createMock$, createMockProjectConfig, createTestDirectories } from "@dotfiles/testing-helpers";
+import { replaceInFile } from "@dotfiles/utils";
+import { beforeEach, describe, expect, test } from "bun:test";
+import assert from "node:assert";
+import path from "node:path";
+import { z } from "zod";
+import { Architecture, Platform } from "../common";
+import { createToolLog } from "../context/createToolConfigContext";
+import { InstallerPluginRegistry } from "../InstallerPluginRegistry";
+import type { IInstallerPlugin, IInstallOptions, InstallResult, IValidationResult } from "../types";
 
 const createMockPlugin = (method: string, options: Partial<IInstallerPlugin> = {}): IInstallerPlugin => {
   const plugin: IInstallerPlugin = {
     method,
     displayName: `${method} Plugin`,
-    version: '1.0.0',
+    version: "1.0.0",
     paramsSchema: z.object({ param: z.string() }),
     toolConfigSchema: z.object({
       installationMethod: z.literal(method),
@@ -37,18 +37,18 @@ const createMockPlugin = (method: string, options: Partial<IInstallerPlugin> = {
 
 const createMockContext = async (logger: TestLogger): Promise<IInstallContext> => {
   const { fs } = await createMemFileSystem({});
-  const testDirs = await createTestDirectories(logger, fs, { testName: 'InstallerPluginRegistry' });
+  const testDirs = await createTestDirectories(logger, fs, { testName: "InstallerPluginRegistry" });
 
   const systemInfo: ISystemInfo = {
     platform: Platform.Linux,
     arch: Architecture.X86_64,
     homeDir: testDirs.paths.homeDir,
-    hostname: 'test-host',
+    hostname: "test-host",
   };
 
   const projectConfig = await createMockProjectConfig({
     config: { paths: testDirs.paths },
-    filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+    filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
     fileSystem: fs,
     logger,
     systemInfo,
@@ -56,10 +56,10 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
   });
 
   const toolConfig: ToolConfig = {
-    name: 'test-tool',
-    version: 'latest',
-    installationMethod: 'manual',
-    installParams: { binaryPath: 'bin/test-tool' },
+    name: "test-tool",
+    version: "latest",
+    installationMethod: "manual",
+    installParams: { binaryPath: "bin/test-tool" },
   };
 
   const toolConfigFilePath = path.join(
@@ -70,7 +70,7 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
   toolConfig.configFilePath = toolConfigFilePath;
 
   const toolDir = path.dirname(toolConfigFilePath);
-  const currentDir = path.join(projectConfig.paths.binariesDir, toolConfig.name, 'current');
+  const currentDir = path.join(projectConfig.paths.binariesDir, toolConfig.name, "current");
 
   const context: IInstallContext = {
     toolName: toolConfig.name,
@@ -79,14 +79,14 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
     projectConfig,
     systemInfo,
     toolConfig,
-    stagingDir: path.join(projectConfig.paths.binariesDir, toolConfig.name, 'staging'),
-    timestamp: '2025-01-01-00-00-00',
+    stagingDir: path.join(projectConfig.paths.binariesDir, toolConfig.name, "staging"),
+    timestamp: "2025-01-01-00-00-00",
     $: createConfiguredShell(createMock$(), {}),
     fileSystem: fs,
     replaceInFile: (filePath, from, to, options) =>
       replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
     resolve: () => {
-      throw new Error('resolve not supported in test context');
+      throw new Error("resolve not supported in test context");
     },
     log: createToolLog(logger, toolConfig.name),
   };
@@ -94,7 +94,7 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
   return context;
 };
 
-describe('InstallerPluginRegistry', () => {
+describe("InstallerPluginRegistry", () => {
   let logger: TestLogger;
   let registry: InstallerPluginRegistry;
 
@@ -103,36 +103,36 @@ describe('InstallerPluginRegistry', () => {
     registry = new InstallerPluginRegistry(logger);
   });
 
-  describe('register', () => {
-    test('registers a plugin successfully', async () => {
-      const plugin = createMockPlugin('test-method');
+  describe("register", () => {
+    test("registers a plugin successfully", async () => {
+      const plugin = createMockPlugin("test-method");
 
       await registry.register(plugin);
 
-      expect(registry.has('test-method')).toBe(true);
-      expect(registry.get('test-method')).toBe(plugin);
+      expect(registry.has("test-method")).toBe(true);
+      expect(registry.get("test-method")).toBe(plugin);
     });
 
-    test('throws on invalid plugin with no method', async () => {
-      const plugin = createMockPlugin('');
+    test("throws on invalid plugin with no method", async () => {
+      const plugin = createMockPlugin("");
 
-      expect(registry.register(plugin)).rejects.toThrow('Plugin registration failed');
+      expect(registry.register(plugin)).rejects.toThrow("Plugin registration failed");
     });
 
-    test('warns when replacing existing plugin', async () => {
-      const plugin1 = createMockPlugin('test-method');
-      const plugin2 = createMockPlugin('test-method');
+    test("warns when replacing existing plugin", async () => {
+      const plugin1 = createMockPlugin("test-method");
+      const plugin2 = createMockPlugin("test-method");
 
       await registry.register(plugin1);
       await registry.register(plugin2);
 
-      logger.expect(['WARN'], ['InstallerPluginRegistry'], [], ['Plugin test-method is already registered']);
-      expect(registry.get('test-method')).toBe(plugin2);
+      logger.expect(["WARN"], ["InstallerPluginRegistry"], [], ["Plugin test-method is already registered"]);
+      expect(registry.get("test-method")).toBe(plugin2);
     });
 
-    test('calls plugin initialize if provided', async () => {
+    test("calls plugin initialize if provided", async () => {
       let initialized = false;
-      const plugin = createMockPlugin('test-method', {
+      const plugin = createMockPlugin("test-method", {
         async initialize() {
           initialized = true;
         },
@@ -143,55 +143,55 @@ describe('InstallerPluginRegistry', () => {
       expect(initialized).toBe(true);
     });
 
-    test('throws if schemas already composed', async () => {
-      const plugin1 = createMockPlugin('method1');
-      const plugin2 = createMockPlugin('method2');
+    test("throws if schemas already composed", async () => {
+      const plugin1 = createMockPlugin("method1");
+      const plugin2 = createMockPlugin("method2");
 
       await registry.register(plugin1);
       await registry.register(plugin2);
       registry.composeSchemas();
 
-      const plugin3 = createMockPlugin('method3');
-      expect(registry.register(plugin3)).rejects.toThrow('Plugin registration failed: method3');
+      const plugin3 = createMockPlugin("method3");
+      expect(registry.register(plugin3)).rejects.toThrow("Plugin registration failed: method3");
     });
 
-    test('fails fast on initialization error', async () => {
-      const plugin = createMockPlugin('test-method', {
+    test("fails fast on initialization error", async () => {
+      const plugin = createMockPlugin("test-method", {
         async initialize() {
-          throw new Error('Init failed');
+          throw new Error("Init failed");
         },
       });
 
-      expect(registry.register(plugin)).rejects.toThrow('Plugin registration failed: test-method');
+      expect(registry.register(plugin)).rejects.toThrow("Plugin registration failed: test-method");
     });
   });
 
-  describe('get, has, getAll, getMethods', () => {
-    test('get returns plugin if registered', async () => {
-      const plugin = createMockPlugin('test-method');
+  describe("get, has, getAll, getMethods", () => {
+    test("get returns plugin if registered", async () => {
+      const plugin = createMockPlugin("test-method");
       await registry.register(plugin);
 
-      expect(registry.get('test-method')).toBe(plugin);
+      expect(registry.get("test-method")).toBe(plugin);
     });
 
-    test('get returns undefined if not registered', () => {
-      expect(registry.get('nonexistent')).toBeUndefined();
+    test("get returns undefined if not registered", () => {
+      expect(registry.get("nonexistent")).toBeUndefined();
     });
 
-    test('has returns true if plugin registered', async () => {
-      const plugin = createMockPlugin('test-method');
+    test("has returns true if plugin registered", async () => {
+      const plugin = createMockPlugin("test-method");
       await registry.register(plugin);
 
-      expect(registry.has('test-method')).toBe(true);
+      expect(registry.has("test-method")).toBe(true);
     });
 
-    test('has returns false if plugin not registered', () => {
-      expect(registry.has('nonexistent')).toBe(false);
+    test("has returns false if plugin not registered", () => {
+      expect(registry.has("nonexistent")).toBe(false);
     });
 
-    test('getAll returns all registered plugins', async () => {
-      const plugin1 = createMockPlugin('method1');
-      const plugin2 = createMockPlugin('method2');
+    test("getAll returns all registered plugins", async () => {
+      const plugin1 = createMockPlugin("method1");
+      const plugin2 = createMockPlugin("method2");
 
       await registry.register(plugin1);
       await registry.register(plugin2);
@@ -202,79 +202,81 @@ describe('InstallerPluginRegistry', () => {
       expect(plugins).toContain(plugin2);
     });
 
-    test('getMethods returns all plugin methods', async () => {
-      await registry.register(createMockPlugin('method1'));
-      await registry.register(createMockPlugin('method2'));
-      await registry.register(createMockPlugin('method3'));
+    test("getMethods returns all plugin methods", async () => {
+      await registry.register(createMockPlugin("method1"));
+      await registry.register(createMockPlugin("method2"));
+      await registry.register(createMockPlugin("method3"));
 
       const methods = registry.getMethods();
-      expect(methods).toEqual(['method1', 'method2', 'method3']);
+      expect(methods).toEqual(["method1", "method2", "method3"]);
     });
   });
 
-  describe('getExternallyManagedMethods', () => {
-    test('returns empty set when no plugins are externally managed', async () => {
-      await registry.register(createMockPlugin('method1'));
-      await registry.register(createMockPlugin('method2'));
+  describe("getExternallyManagedMethods", () => {
+    test("returns empty set when no plugins are externally managed", async () => {
+      await registry.register(createMockPlugin("method1"));
+      await registry.register(createMockPlugin("method2"));
 
       const methods = registry.getExternallyManagedMethods();
       expect(methods.size).toBe(0);
     });
 
-    test('returns set with externally managed method names', async () => {
-      await registry.register(createMockPlugin('method1'));
-      await registry.register(createMockPlugin('brew', { externallyManaged: true }));
-      await registry.register(createMockPlugin('method3'));
+    test("returns set with externally managed method names", async () => {
+      await registry.register(createMockPlugin("method1"));
+      await registry.register(createMockPlugin("brew", { externallyManaged: true }));
+      await registry.register(createMockPlugin("method3"));
 
       const methods = registry.getExternallyManagedMethods();
       expect(methods.size).toBe(1);
-      expect(methods.has('brew')).toBe(true);
+      expect(methods.has("brew")).toBe(true);
     });
 
-    test('returns multiple externally managed methods', async () => {
-      await registry.register(createMockPlugin('brew', { externallyManaged: true }));
-      await registry.register(createMockPlugin('apt', { externallyManaged: true }));
-      await registry.register(createMockPlugin('github-release'));
+    test("returns multiple externally managed methods", async () => {
+      await registry.register(createMockPlugin("brew", { externallyManaged: true }));
+      await registry.register(createMockPlugin("apt", { externallyManaged: true }));
+      await registry.register(createMockPlugin("github-release"));
 
       const methods = registry.getExternallyManagedMethods();
       expect(methods.size).toBe(2);
-      expect(methods.has('brew')).toBe(true);
-      expect(methods.has('apt')).toBe(true);
-      expect(methods.has('github-release')).toBe(false);
+      expect(methods.has("brew")).toBe(true);
+      expect(methods.has("apt")).toBe(true);
+      expect(methods.has("github-release")).toBe(false);
     });
 
-    test('returns empty set when no plugins registered', () => {
+    test("returns empty set when no plugins registered", () => {
       const methods = registry.getExternallyManagedMethods();
       expect(methods.size).toBe(0);
     });
   });
 
-  describe('getMissingBinaryMessagesByMethod', () => {
-    test('returns empty map when no plugins provide custom messages', async () => {
-      await registry.register(createMockPlugin('method1'));
-      await registry.register(createMockPlugin('method2'));
+  describe("getMissingBinaryMessagesByMethod", () => {
+    test("returns empty map when no plugins provide custom messages", async () => {
+      await registry.register(createMockPlugin("method1"));
+      await registry.register(createMockPlugin("method2"));
 
       const messagesByMethod = registry.getMissingBinaryMessagesByMethod();
       expect(messagesByMethod.size).toBe(0);
     });
 
-    test('returns method-to-message map for plugins that provide custom messages', async () => {
-      await registry.register(createMockPlugin('dmg', {
-        missingBinaryMessage: 'Installed as app bundle in /Applications',
-      }));
-      await registry.register(createMockPlugin('brew'));
+    test("returns method-to-message map for plugins that provide custom messages", async () => {
+      await registry.register(
+        createMockPlugin("dmg", {
+          missingBinaryMessage: "Installed as app bundle in /Applications",
+        }),
+      );
+      await registry.register(createMockPlugin("brew"));
 
       const messagesByMethod = registry.getMissingBinaryMessagesByMethod();
       expect(messagesByMethod.size).toBe(1);
-      expect(messagesByMethod.get('dmg')).toBe('Installed as app bundle in /Applications');
-      expect(messagesByMethod.has('brew')).toBe(false);
+      expect(messagesByMethod.get("dmg")).toBe("Installed as app bundle in /Applications");
+      expect(messagesByMethod.has("brew")).toBe(false);
     });
   });
 
-  describe('composeSchemas', () => {
-    test('composes schemas from multiple plugins', async () => {
-      await registry.register(createMockPlugin('method1'));
-      await registry.register(createMockPlugin('method2'));
+  describe("composeSchemas", () => {
+    test("composes schemas from multiple plugins", async () => {
+      await registry.register(createMockPlugin("method1"));
+      await registry.register(createMockPlugin("method2"));
 
       registry.composeSchemas();
 
@@ -285,12 +287,12 @@ describe('InstallerPluginRegistry', () => {
       expect(paramsSchema).toBeDefined();
     });
 
-    test('throws if no plugins registered', () => {
-      expect(() => registry.composeSchemas()).toThrow('No plugins registered');
+    test("throws if no plugins registered", () => {
+      expect(() => registry.composeSchemas()).toThrow("No plugins registered");
     });
 
-    test('works with a single plugin', async () => {
-      await registry.register(createMockPlugin('method1'));
+    test("works with a single plugin", async () => {
+      await registry.register(createMockPlugin("method1"));
 
       registry.composeSchemas();
 
@@ -301,43 +303,43 @@ describe('InstallerPluginRegistry', () => {
       expect(paramsSchema).toBeDefined();
     });
 
-    test('logs composition message', async () => {
-      await registry.register(createMockPlugin('method1'));
-      await registry.register(createMockPlugin('method2'));
+    test("logs composition message", async () => {
+      await registry.register(createMockPlugin("method1"));
+      await registry.register(createMockPlugin("method2"));
 
       registry.composeSchemas();
 
-      logger.expect(['INFO'], ['InstallerPluginRegistry'], [], [/Composed schemas from 2 plugins: method1, method2/]);
+      logger.expect(["INFO"], ["InstallerPluginRegistry"], [], [/Composed schemas from 2 plugins: method1, method2/]);
     });
 
-    test('validates tool configs using composed schema', async () => {
-      await registry.register(createMockPlugin('method1'));
-      await registry.register(createMockPlugin('method2'));
+    test("validates tool configs using composed schema", async () => {
+      await registry.register(createMockPlugin("method1"));
+      await registry.register(createMockPlugin("method2"));
 
       registry.composeSchemas();
 
       const schema = registry.getToolConfigSchema();
 
       const validConfig = {
-        installationMethod: 'method1',
-        installParams: { param: 'value' },
+        installationMethod: "method1",
+        installParams: { param: "value" },
       };
 
       const result = schema.safeParse(validConfig);
       expect(result.success).toBe(true);
     });
 
-    test('rejects invalid tool configs', async () => {
-      await registry.register(createMockPlugin('method1'));
-      await registry.register(createMockPlugin('method2'));
+    test("rejects invalid tool configs", async () => {
+      await registry.register(createMockPlugin("method1"));
+      await registry.register(createMockPlugin("method2"));
 
       registry.composeSchemas();
 
       const schema = registry.getToolConfigSchema();
 
       const invalidConfig = {
-        installationMethod: 'unknown-method',
-        installParams: { param: 'value' },
+        installationMethod: "unknown-method",
+        installParams: { param: "value" },
       };
 
       const result = schema.safeParse(invalidConfig);
@@ -345,16 +347,16 @@ describe('InstallerPluginRegistry', () => {
     });
   });
 
-  describe('getToolConfigSchema', () => {
-    test('throws if schemas not composed', () => {
+  describe("getToolConfigSchema", () => {
+    test("throws if schemas not composed", () => {
       expect(() => registry.getToolConfigSchema()).toThrow(
-        'Schemas not composed. Call composeSchemas() after registering all plugins.',
+        "Schemas not composed. Call composeSchemas() after registering all plugins.",
       );
     });
 
-    test('returns schema after composition', async () => {
-      await registry.register(createMockPlugin('method1'));
-      await registry.register(createMockPlugin('method2'));
+    test("returns schema after composition", async () => {
+      await registry.register(createMockPlugin("method1"));
+      await registry.register(createMockPlugin("method2"));
 
       registry.composeSchemas();
 
@@ -363,16 +365,16 @@ describe('InstallerPluginRegistry', () => {
     });
   });
 
-  describe('getInstallParamsSchema', () => {
-    test('throws if schemas not composed', () => {
+  describe("getInstallParamsSchema", () => {
+    test("throws if schemas not composed", () => {
       expect(() => registry.getInstallParamsSchema()).toThrow(
-        'Schemas not composed. Call composeSchemas() after registering all plugins.',
+        "Schemas not composed. Call composeSchemas() after registering all plugins.",
       );
     });
 
-    test('returns schema after composition', async () => {
-      await registry.register(createMockPlugin('method1'));
-      await registry.register(createMockPlugin('method2'));
+    test("returns schema after composition", async () => {
+      await registry.register(createMockPlugin("method1"));
+      await registry.register(createMockPlugin("method2"));
 
       registry.composeSchemas();
 
@@ -381,13 +383,13 @@ describe('InstallerPluginRegistry', () => {
     });
   });
 
-  describe('install', () => {
-    test('delegates to appropriate plugin', async () => {
+  describe("install", () => {
+    test("delegates to appropriate plugin", async () => {
       let installCalled = false;
-      const plugin = createMockPlugin('test-method', {
+      const plugin = createMockPlugin("test-method", {
         async install(): Promise<InstallResult> {
           installCalled = true;
-          const result: InstallResult = { success: true, metadata: { method: 'test-method' } };
+          const result: InstallResult = { success: true, metadata: { method: "test-method" } };
           return result;
         },
       });
@@ -395,24 +397,24 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      const result = await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      const result = await registry.install(logger, "test-method", "test-tool", {}, context);
 
       expect(installCalled).toBe(true);
       expect(result.success).toBe(true);
     });
 
-    test('returns error if plugin not found', async () => {
+    test("returns error if plugin not found", async () => {
       const context = await createMockContext(logger);
-      const result = await registry.install(logger, 'nonexistent', 'test-tool', {}, context);
+      const result = await registry.install(logger, "nonexistent", "test-tool", {}, context);
 
       expect(result.success).toBe(false);
       assert(!result.success);
-      expect(result.error).toContain('No plugin registered for installation method: nonexistent');
+      expect(result.error).toContain("No plugin registered for installation method: nonexistent");
     });
 
-    test('validates plugin before installation if validate method provided', async () => {
+    test("validates plugin before installation if validate method provided", async () => {
       let validateCalled = false;
-      const plugin = createMockPlugin('test-method', {
+      const plugin = createMockPlugin("test-method", {
         async validate(): Promise<IValidationResult> {
           validateCalled = true;
           const validationResult: IValidationResult = { valid: true };
@@ -423,17 +425,17 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      await registry.install(logger, "test-method", "test-tool", {}, context);
 
       expect(validateCalled).toBe(true);
     });
 
-    test('returns error if validation fails', async () => {
-      const plugin = createMockPlugin('test-method', {
+    test("returns error if validation fails", async () => {
+      const plugin = createMockPlugin("test-method", {
         async validate(): Promise<IValidationResult> {
           const validationResult: IValidationResult = {
             valid: false,
-            errors: ['Validation error 1', 'Validation error 2'],
+            errors: ["Validation error 1", "Validation error 2"],
           };
           return validationResult;
         },
@@ -442,19 +444,19 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      const result = await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      const result = await registry.install(logger, "test-method", "test-tool", {}, context);
 
       expect(result.success).toBe(false);
       assert(!result.success);
-      expect(result.error).toContain('Validation error 1, Validation error 2');
+      expect(result.error).toContain("Validation error 1, Validation error 2");
     });
 
-    test('logs validation warnings', async () => {
-      const plugin = createMockPlugin('test-method', {
+    test("logs validation warnings", async () => {
+      const plugin = createMockPlugin("test-method", {
         async validate(): Promise<IValidationResult> {
           const validationResult: IValidationResult = {
             valid: true,
-            warnings: ['Warning 1', 'Warning 2'],
+            warnings: ["Warning 1", "Warning 2"],
           };
           return validationResult;
         },
@@ -463,19 +465,19 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      await registry.install(logger, "test-method", "test-tool", {}, context);
 
       logger.expect(
-        ['WARN'],
-        ['InstallerPluginRegistry', 'install'],
+        ["WARN"],
+        ["InstallerPluginRegistry", "install"],
         [],
-        ['Validation warning for test-method: Warning 1', 'Validation warning for test-method: Warning 2'],
+        ["Validation warning for test-method: Warning 1", "Validation warning for test-method: Warning 2"],
       );
     });
 
-    test('caches validation if staticValidation is true', async () => {
+    test("caches validation if staticValidation is true", async () => {
       let validateCallCount = 0;
-      const plugin = createMockPlugin('test-method', {
+      const plugin = createMockPlugin("test-method", {
         staticValidation: true,
         async validate(): Promise<IValidationResult> {
           validateCallCount++;
@@ -487,16 +489,16 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install(logger, 'test-method', 'test-tool', {}, context);
-      await registry.install(logger, 'test-method', 'test-tool', {}, context);
-      await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      await registry.install(logger, "test-method", "test-tool", {}, context);
+      await registry.install(logger, "test-method", "test-tool", {}, context);
+      await registry.install(logger, "test-method", "test-tool", {}, context);
 
       expect(validateCallCount).toBe(1);
     });
 
-    test('does not cache validation if staticValidation is false', async () => {
+    test("does not cache validation if staticValidation is false", async () => {
       let validateCallCount = 0;
-      const plugin = createMockPlugin('test-method', {
+      const plugin = createMockPlugin("test-method", {
         staticValidation: false,
         async validate(): Promise<IValidationResult> {
           validateCallCount++;
@@ -508,21 +510,21 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install(logger, 'test-method', 'test-tool', {}, context);
-      await registry.install(logger, 'test-method', 'test-tool', {}, context);
-      await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      await registry.install(logger, "test-method", "test-tool", {}, context);
+      await registry.install(logger, "test-method", "test-tool", {}, context);
+      await registry.install(logger, "test-method", "test-tool", {}, context);
 
       expect(validateCallCount).toBe(3);
     });
 
-    test('passes all parameters to plugin install', async () => {
+    test("passes all parameters to plugin install", async () => {
       const options: IInstallOptions = { force: true };
       let receivedParams: unknown[] = [];
 
-      const plugin = createMockPlugin('test-method', {
+      const plugin = createMockPlugin("test-method", {
         async install(toolName, toolConfig, context, opts, subLogger): Promise<InstallResult> {
           receivedParams = [toolName, toolConfig, context, opts, subLogger];
-          const result: InstallResult = { success: true, metadata: { method: 'test-method' } };
+          const result: InstallResult = { success: true, metadata: { method: "test-method" } };
           return result;
         },
       });
@@ -530,35 +532,35 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install(logger, 'test-method', 'test-tool', { config: 'value' }, context, options);
+      await registry.install(logger, "test-method", "test-tool", { config: "value" }, context, options);
 
-      expect(receivedParams[0]).toBe('test-tool');
-      expect(receivedParams[1]).toEqual({ config: 'value' });
+      expect(receivedParams[0]).toBe("test-tool");
+      expect(receivedParams[1]).toEqual({ config: "value" });
       expect(receivedParams[2]).toBe(context);
       expect(receivedParams[3]).toBe(options);
       expect(receivedParams[4]).toBeDefined();
     });
 
-    test('logs delegation message', async () => {
-      const plugin = createMockPlugin('test-method');
+    test("logs delegation message", async () => {
+      const plugin = createMockPlugin("test-method");
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      await registry.install(logger, "test-method", "test-tool", {}, context);
 
       logger.expect(
-        ['DEBUG'],
-        ['InstallerPluginRegistry', 'install'],
+        ["DEBUG"],
+        ["InstallerPluginRegistry", "install"],
         [],
-        ['Delegating installation to plugin: test-method'],
+        ["Delegating installation to plugin: test-method"],
       );
     });
   });
 
-  describe('clearValidationCache', () => {
-    test('clears validation cache', async () => {
+  describe("clearValidationCache", () => {
+    test("clears validation cache", async () => {
       let validateCallCount = 0;
-      const plugin = createMockPlugin('test-method', {
+      const plugin = createMockPlugin("test-method", {
         staticValidation: true,
         async validate(): Promise<IValidationResult> {
           validateCallCount++;
@@ -571,34 +573,34 @@ describe('InstallerPluginRegistry', () => {
 
       const context = await createMockContext(logger);
 
-      await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      await registry.install(logger, "test-method", "test-tool", {}, context);
       expect(validateCallCount).toBe(1);
 
       registry.clearValidationCache();
 
-      await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      await registry.install(logger, "test-method", "test-tool", {}, context);
       expect(validateCallCount).toBe(2);
     });
 
-    test('logs cache cleared message', () => {
+    test("logs cache cleared message", () => {
       registry.clearValidationCache();
 
-      logger.expect(['DEBUG'], ['InstallerPluginRegistry'], [], ['Validation cache cleared']);
+      logger.expect(["DEBUG"], ["InstallerPluginRegistry"], [], ["Validation cache cleared"]);
     });
   });
 
-  describe('cleanup', () => {
-    test('calls cleanup on all plugins that have cleanup method', async () => {
+  describe("cleanup", () => {
+    test("calls cleanup on all plugins that have cleanup method", async () => {
       let cleanup1Called = false;
       let cleanup2Called = false;
 
-      const plugin1 = createMockPlugin('method1', {
+      const plugin1 = createMockPlugin("method1", {
         async cleanup() {
           cleanup1Called = true;
         },
       });
 
-      const plugin2 = createMockPlugin('method2', {
+      const plugin2 = createMockPlugin("method2", {
         async cleanup() {
           cleanup2Called = true;
         },
@@ -613,9 +615,9 @@ describe('InstallerPluginRegistry', () => {
       expect(cleanup2Called).toBe(true);
     });
 
-    test('skips plugins without cleanup method', async () => {
-      const plugin1 = createMockPlugin('method1');
-      const plugin2 = createMockPlugin('method2', {
+    test("skips plugins without cleanup method", async () => {
+      const plugin1 = createMockPlugin("method1");
+      const plugin2 = createMockPlugin("method2", {
         async cleanup() {},
       });
 
@@ -627,8 +629,8 @@ describe('InstallerPluginRegistry', () => {
       expect(true).toBe(true);
     });
 
-    test('logs cleanup messages', async () => {
-      const plugin = createMockPlugin('test-method', {
+    test("logs cleanup messages", async () => {
+      const plugin = createMockPlugin("test-method", {
         async cleanup() {},
       });
 
@@ -637,23 +639,23 @@ describe('InstallerPluginRegistry', () => {
       await registry.cleanup();
 
       logger.expect(
-        ['INFO', 'DEBUG'],
-        ['InstallerPluginRegistry', 'cleanup'],
+        ["INFO", "DEBUG"],
+        ["InstallerPluginRegistry", "cleanup"],
         [],
-        ['Cleaning up plugins...', 'Cleaned up plugin: test-method', 'Plugin cleanup complete'],
+        ["Cleaning up plugins...", "Cleaned up plugin: test-method", "Plugin cleanup complete"],
       );
     });
 
-    test('continues cleanup even if one plugin fails', async () => {
+    test("continues cleanup even if one plugin fails", async () => {
       let cleanup2Called = false;
 
-      const plugin1 = createMockPlugin('method1', {
+      const plugin1 = createMockPlugin("method1", {
         async cleanup() {
-          throw new Error('Cleanup failed');
+          throw new Error("Cleanup failed");
         },
       });
 
-      const plugin2 = createMockPlugin('method2', {
+      const plugin2 = createMockPlugin("method2", {
         async cleanup() {
           cleanup2Called = true;
         },
@@ -665,7 +667,7 @@ describe('InstallerPluginRegistry', () => {
       await registry.cleanup();
 
       expect(cleanup2Called).toBe(true);
-      logger.expect(['ERROR'], ['InstallerPluginRegistry', 'cleanup'], [], ['Failed to cleanup plugin method1']);
+      logger.expect(["ERROR"], ["InstallerPluginRegistry", "cleanup"], [], ["Failed to cleanup plugin method1"]);
     });
   });
 });

@@ -1,19 +1,19 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { installFromCurlTar } from './installFromCurlTar';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor } from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { installFromCurlTar } from "./installFromCurlTar";
 import {
   type CurlTarInstallParams,
   curlTarInstallParamsSchema,
   type CurlTarToolConfig,
   curlTarToolConfigSchema,
-} from './schemas';
-import type { ICurlTarInstallMetadata } from './types';
+} from "./schemas";
+import type { ICurlTarInstallMetadata } from "./types";
 
-const PLUGIN_VERSION = '1.0.0';
+const PLUGIN_VERSION = "1.0.0";
 
 /**
  * Installer plugin for tools distributed as tarballs via direct URLs.
@@ -27,16 +27,14 @@ const PLUGIN_VERSION = '1.0.0';
  * after extraction). It does not support version checking or automatic updates since the URLs
  * are typically static.
  */
-export class CurlTarInstallerPlugin implements
-  IInstallerPlugin<
-    'curl-tar',
-    CurlTarInstallParams,
-    CurlTarToolConfig,
-    ICurlTarInstallMetadata
-  >
-{
-  readonly method = 'curl-tar';
-  readonly displayName = 'Curl Tar Installer';
+export class CurlTarInstallerPlugin implements IInstallerPlugin<
+  "curl-tar",
+  CurlTarInstallParams,
+  CurlTarToolConfig,
+  ICurlTarInstallMetadata
+> {
+  readonly method = "curl-tar";
+  readonly displayName = "Curl Tar Installer";
   readonly version = PLUGIN_VERSION;
   readonly paramsSchema = curlTarInstallParamsSchema;
   readonly toolConfigSchema = curlTarToolConfigSchema;

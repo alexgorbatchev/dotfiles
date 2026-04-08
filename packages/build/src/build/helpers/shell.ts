@@ -1,10 +1,10 @@
-import { $, type TemplateExpr } from 'dax-sh';
+import { $, type TemplateExpr } from "dax-sh";
 
 /**
  * Tagged template wrapper around dax-sh's `$` that logs the command before executing it.
  */
 export function shell(strings: TemplateStringsArray, ...exprs: TemplateExpr[]) {
-  let command = '';
+  let command = "";
 
   for (let i = 0; i < strings.length; i++) {
     command += strings[i];
@@ -14,6 +14,6 @@ export function shell(strings: TemplateStringsArray, ...exprs: TemplateExpr[]) {
     }
   }
 
-  console.log(`$ ${command.replace(/\s+/g, ' ').trim()}`);
+  console.log(`$ ${command.replace(/\s+/g, " ").trim()}`);
   return $(strings, ...exprs);
 }

@@ -5,9 +5,9 @@
  * with the installation method and params already configured.
  */
 
-import type { IInstallParamsRegistry, InstallFunction, InstallMethod, IToolConfigContext } from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
-import { IToolConfigBuilder } from './toolConfigBuilder';
+import type { IInstallParamsRegistry, InstallFunction, InstallMethod, IToolConfigContext } from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
+import { IToolConfigBuilder } from "./toolConfigBuilder";
 
 /**
  * Creates an InstallFunction bound to a specific logger and tool name.

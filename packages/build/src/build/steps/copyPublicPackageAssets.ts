@@ -1,9 +1,9 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
-import type { IBuildContext } from '../types';
+import type { IBuildContext } from "../types";
 
-const PUBLIC_ASSET_FILE_NAMES: string[] = ['README.md', 'LICENSE'];
+const PUBLIC_ASSET_FILE_NAMES: string[] = ["README.md", "LICENSE"];
 
 export async function copyPublicPackageAssets(context: IBuildContext): Promise<void> {
   for (const fileName of PUBLIC_ASSET_FILE_NAMES) {

@@ -1,7 +1,7 @@
-import { shell } from './shell';
+import { shell } from "./shell";
 
-import { BuildError } from '../handleBuildError';
-import { escapeRegExp } from './escapeRegExp';
+import { BuildError } from "../handleBuildError";
+import { escapeRegExp } from "./escapeRegExp";
 
 /**
  * Resolves installed package versions by parsing `bun pm ls --all` output.
@@ -15,7 +15,7 @@ export async function getInstalledPackageVersions(packageNames: string[]): Promi
 
   for (const packageName of uniquePackageNames) {
     const escapedPackageName: string = escapeRegExp(packageName);
-    const pattern: RegExp = new RegExp(`(?:^|\\s)${escapedPackageName}@([^\\s]+)`, 'm');
+    const pattern: RegExp = new RegExp(`(?:^|\\s)${escapedPackageName}@([^\\s]+)`, "m");
     const match: RegExpMatchArray | null = pmLsOutput.match(pattern);
     const version: string | undefined = match?.[1];
 

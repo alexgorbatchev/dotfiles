@@ -1,52 +1,52 @@
 // UI test setup - registers DOM and exports testing utilities
-import { render, screen, setupUITests } from '../../../testing/ui-setup';
+import { render, screen, setupUITests } from "../../../testing/ui-setup";
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from "bun:test";
 
 setupUITests();
 
-import { StatusBadge } from '../StatusBadge';
+import { StatusBadge } from "../StatusBadge";
 
-describe('StatusBadge', () => {
-  test('renders installed status with checkmark', () => {
-    render(<StatusBadge status='installed' />);
+describe("StatusBadge", () => {
+  test("renders installed status with checkmark", () => {
+    render(<StatusBadge status="installed" />);
 
-    expect(screen.getByText('✓ Installed')).toBeInTheDocument();
+    expect(screen.getByText("✓ Installed")).toBeInTheDocument();
   });
 
-  test('applies success variant for installed status', () => {
-    render(<StatusBadge status='installed' />);
+  test("applies success variant for installed status", () => {
+    render(<StatusBadge status="installed" />);
 
-    const badge = screen.getByText('✓ Installed');
-    expect(badge).toHaveClass('bg-green-500/20');
-    expect(badge).toHaveClass('text-green-500');
+    const badge = screen.getByText("✓ Installed");
+    expect(badge).toHaveClass("bg-green-500/20");
+    expect(badge).toHaveClass("text-green-500");
   });
 
-  test('renders not-installed status', () => {
-    render(<StatusBadge status='not-installed' />);
+  test("renders not-installed status", () => {
+    render(<StatusBadge status="not-installed" />);
 
-    expect(screen.getByText('Not Installed')).toBeInTheDocument();
+    expect(screen.getByText("Not Installed")).toBeInTheDocument();
   });
 
-  test('applies error variant for not-installed status', () => {
-    render(<StatusBadge status='not-installed' />);
+  test("applies error variant for not-installed status", () => {
+    render(<StatusBadge status="not-installed" />);
 
-    const badge = screen.getByText('Not Installed');
-    expect(badge).toHaveClass('bg-red-500');
-    expect(badge).toHaveClass('text-white');
+    const badge = screen.getByText("Not Installed");
+    expect(badge).toHaveClass("bg-red-500");
+    expect(badge).toHaveClass("text-white");
   });
 
-  test('renders error status', () => {
-    render(<StatusBadge status='error' />);
+  test("renders error status", () => {
+    render(<StatusBadge status="error" />);
 
-    expect(screen.getByText('Error')).toBeInTheDocument();
+    expect(screen.getByText("Error")).toBeInTheDocument();
   });
 
-  test('applies error variant for error status', () => {
-    render(<StatusBadge status='error' />);
+  test("applies error variant for error status", () => {
+    render(<StatusBadge status="error" />);
 
-    const badge = screen.getByText('Error');
-    expect(badge).toHaveClass('bg-red-500');
-    expect(badge).toHaveClass('text-white');
+    const badge = screen.getByText("Error");
+    expect(badge).toHaveClass("bg-red-500");
+    expect(badge).toHaveClass("text-white");
   });
 });

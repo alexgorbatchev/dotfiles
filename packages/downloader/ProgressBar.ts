@@ -1,5 +1,5 @@
-import * as cliProgress from 'cli-progress';
-import type { ProgressCallback } from './IDownloader';
+import * as cliProgress from "cli-progress";
+import type { ProgressCallback } from "./IDownloader";
 
 /**
  * Options for configuring the ProgressBar behavior.
@@ -58,10 +58,9 @@ export class ProgressBar {
           // Create determinate progress bar
           this.progressBar = new cliProgress.SingleBar(
             {
-              format:
-                `Downloading ${this.filename} |{bar}| {percentage}% | {value}/{total} | {speed} | ETA: {eta_formatted}`,
-              barCompleteChar: '█',
-              barIncompleteChar: '░',
+              format: `Downloading ${this.filename} |{bar}| {percentage}% | {value}/{total} | {speed} | ETA: {eta_formatted}`,
+              barCompleteChar: "█",
+              barIncompleteChar: "░",
               hideCursor: true,
               stream: process.stderr,
             },
@@ -69,15 +68,15 @@ export class ProgressBar {
           );
 
           this.progressBar.start(totalBytes, 0, {
-            speed: '0 B/s',
+            speed: "0 B/s",
           });
         } else {
           // Create indeterminate progress bar
           this.progressBar = new cliProgress.SingleBar(
             {
               format: `Downloading ${this.filename} |{bar}| {value} | {speed}`,
-              barCompleteChar: '█',
-              barIncompleteChar: '░',
+              barCompleteChar: "█",
+              barIncompleteChar: "░",
               hideCursor: true,
               stream: process.stderr,
             },
@@ -85,14 +84,14 @@ export class ProgressBar {
           );
 
           this.progressBar.start(100, 0, {
-            speed: '0 B/s',
+            speed: "0 B/s",
           });
         }
       }
 
       if (this.progressBar) {
         const elapsed = (Date.now() - this.startTime) / 1000;
-        const speed = elapsed > 0 ? `${this.formatBytes(bytesDownloaded / elapsed)}/s` : '0 B/s';
+        const speed = elapsed > 0 ? `${this.formatBytes(bytesDownloaded / elapsed)}/s` : "0 B/s";
 
         if (totalBytes) {
           // Update determinate progress bar
@@ -149,7 +148,7 @@ export class ProgressBar {
    * @returns A formatted string (e.g., "1.5 MB", "500 KB").
    */
   private formatBytes(bytes: number): string {
-    const units = ['B', 'KB', 'MB', 'GB'];
+    const units = ["B", "KB", "MB", "GB"];
     let size = bytes;
     let unitIndex = 0;
 
@@ -186,12 +185,12 @@ export function shouldShowProgress(quiet: boolean = false): boolean {
   }
 
   // Don't show progress in CI environments
-  if (process.env['CI'] === 'true' || process.env['CI'] === '1') {
+  if (process.env["CI"] === "true" || process.env["CI"] === "1") {
     return false;
   }
 
   // Don't show progress if NO_COLOR is set (often indicates non-interactive use)
-  if (process.env['NO_COLOR']) {
+  if (process.env["NO_COLOR"]) {
     return false;
   }
 

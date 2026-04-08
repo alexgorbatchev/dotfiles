@@ -1,16 +1,16 @@
-import type { IConfigService } from '@dotfiles/config';
-import type { ToolConfig } from '@dotfiles/core';
-import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
-import type { MockedInterface } from '@dotfiles/testing-helpers';
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { registerGenerateCommand } from '../generateCommand';
-import { createCliTestSetup } from './createCliTestSetup';
+import type { IConfigService } from "@dotfiles/config";
+import type { ToolConfig } from "@dotfiles/core";
+import type { IGeneratorOrchestrator } from "@dotfiles/generator-orchestrator";
+import type { MockedInterface } from "@dotfiles/testing-helpers";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { registerGenerateCommand } from "../generateCommand";
+import { createCliTestSetup } from "./createCliTestSetup";
 
 /**
  * Tests that shell-only tools (tools with no binaries, only shell configuration)
  * are properly passed to the generator orchestrator and do not create shims.
  */
-describe('generate command with shell-only tools', () => {
+describe("generate command with shell-only tools", () => {
   const createMockConfigService = (): MockedInterface<IConfigService> => ({
     loadSingleToolConfig: mock(async () => undefined),
     loadToolConfigs: mock(async () => ({})),
@@ -19,9 +19,9 @@ describe('generate command with shell-only tools', () => {
 
   // Shell-only tool: has aliases but no binaries
   const shellOnlyFooConfig: ToolConfig = {
-    name: 'shell-only--foo',
+    name: "shell-only--foo",
     binaries: [],
-    version: '1.0.0',
+    version: "1.0.0",
     shellConfigs: {
       zsh: {
         aliases: {
@@ -32,7 +32,7 @@ describe('generate command with shell-only tools', () => {
         },
       },
     },
-    installationMethod: 'manual',
+    installationMethod: "manual",
     installParams: {},
   };
 
@@ -40,7 +40,7 @@ describe('generate command with shell-only tools', () => {
   let mockGeneratorOrchestrator: MockedInterface<IGeneratorOrchestrator>;
 
   beforeEach(async () => {
-    process.env.DOTFILES_BUILT_PACKAGE_NAME = '@dotfiles/core';
+    process.env.DOTFILES_BUILT_PACKAGE_NAME = "@dotfiles/core";
   });
 
   afterEach(() => {
@@ -48,14 +48,14 @@ describe('generate command with shell-only tools', () => {
     mockConfigService.loadSingleToolConfig.mockReset();
   });
 
-  test('passes shell-only tool config to generator orchestrator', async () => {
+  test("passes shell-only tool config to generator orchestrator", async () => {
     const setup = await createCliTestSetup({
-      testName: 'shell-only-foo-generate',
+      testName: "shell-only-foo-generate",
     });
 
     mockConfigService = createMockConfigService();
     mockConfigService.loadToolConfigs.mockResolvedValue({
-      'shell-only--foo': shellOnlyFooConfig,
+      "shell-only--foo": shellOnlyFooConfig,
     });
 
     mockGeneratorOrchestrator = {
@@ -70,23 +70,23 @@ describe('generate command with shell-only tools', () => {
       generatorOrchestrator: mockGeneratorOrchestrator,
     }));
 
-    await setup.program.parseAsync(['generate'], { from: 'user' });
+    await setup.program.parseAsync(["generate"], { from: "user" });
 
     // Verify generateAll was called with the shell-only tool config
     expect(mockGeneratorOrchestrator.generateAll).toHaveBeenCalledWith(
-      { 'shell-only--foo': shellOnlyFooConfig },
+      { "shell-only--foo": shellOnlyFooConfig },
       expect.any(Object),
     );
   });
 
-  test('shell-only tool does not create shim in user-bin', async () => {
+  test("shell-only tool does not create shim in user-bin", async () => {
     const setup = await createCliTestSetup({
-      testName: 'shell-only-foo-no-shim',
+      testName: "shell-only-foo-no-shim",
     });
 
     mockConfigService = createMockConfigService();
     mockConfigService.loadToolConfigs.mockResolvedValue({
-      'shell-only--foo': shellOnlyFooConfig,
+      "shell-only--foo": shellOnlyFooConfig,
     });
 
     mockGeneratorOrchestrator = {
@@ -101,7 +101,7 @@ describe('generate command with shell-only tools', () => {
       generatorOrchestrator: mockGeneratorOrchestrator,
     }));
 
-    await setup.program.parseAsync(['generate'], { from: 'user' });
+    await setup.program.parseAsync(["generate"], { from: "user" });
 
     // Verify no shim was created for the shell-only tool
     const shimPath = `${setup.mockProjectConfig.paths.targetDir}/shell-only--foo`;

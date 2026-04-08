@@ -2,13 +2,13 @@ import {
   baseToolConfigWithPlatformsSchema,
   binaryConfigSchema,
   type InferToolConfigWithPlatforms,
-} from '@dotfiles/core';
-import { z } from 'zod';
-import { curlScriptInstallParamsSchema } from './curlScriptInstallParamsSchema';
+} from "@dotfiles/core";
+import { z } from "zod";
+import { curlScriptInstallParamsSchema } from "./curlScriptInstallParamsSchema";
 
 export const curlScriptToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
   /** Resolved tool configuration for the 'curl-script' installation method */
-  installationMethod: z.literal('curl-script'),
+  installationMethod: z.literal("curl-script"),
   /** Curl script installation parameters */
   installParams: curlScriptInstallParamsSchema,
   /** Binaries are typically required for this installation method */

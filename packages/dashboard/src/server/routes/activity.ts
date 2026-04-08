@@ -1,8 +1,8 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { IActivityFeed, IApiResponse } from '../../shared/types';
-import { formatRelativeTime, formatTimestamp } from '../../shared/types';
-import { messages } from '../log-messages';
-import type { IDashboardServices } from '../types';
+import type { TsLogger } from "@dotfiles/logger";
+import type { IActivityFeed, IApiResponse } from "../../shared/types";
+import { formatRelativeTime, formatTimestamp } from "../../shared/types";
+import { messages } from "../log-messages";
+import type { IDashboardServices } from "../types";
 
 /**
  * GET /api/activity - Get recent activity feed
@@ -39,7 +39,7 @@ export async function getActivity(
       },
     };
   } catch (error) {
-    logger.error(messages.apiError('getActivity'), error);
-    return { success: false, error: 'Failed to retrieve activity feed' };
+    logger.error(messages.apiError("getActivity"), error);
+    return { success: false, error: "Failed to retrieve activity feed" };
   }
 }

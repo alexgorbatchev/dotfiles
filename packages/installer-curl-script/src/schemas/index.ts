@@ -1,2 +1,2 @@
-export * from './curlScriptInstallParamsSchema';
-export * from './curlScriptToolConfigSchema';
+export * from "./curlScriptInstallParamsSchema";
+export * from "./curlScriptToolConfigSchema";

@@ -5,22 +5,22 @@ import type {
   IInstallContext,
   InstallEvent,
   ToolConfig,
-} from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { InstallResult } from '../types';
-import type { HookExecutor } from '../utils/HookExecutor';
-import { messages } from '../utils/log-messages';
+} from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import type { InstallResult } from "../types";
+import type { HookExecutor } from "../utils/HookExecutor";
+import { messages } from "../utils/log-messages";
 
 type UnknownRecord = Record<string, unknown>;
 type InstallHooks = Record<string, AsyncInstallHook<IInstallBaseContext>[]>;
 
 function isUnknownRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isAsyncInstallHookArray(value: unknown): value is AsyncInstallHook<IInstallBaseContext>[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'function');
+  return Array.isArray(value) && value.every((item) => typeof item === "function");
 }
 
 function isTsLogger(value: unknown): value is TsLogger {
@@ -28,7 +28,7 @@ function isTsLogger(value: unknown): value is TsLogger {
     return false;
   }
 
-  return typeof value['getSubLogger'] === 'function';
+  return typeof value["getSubLogger"] === "function";
 }
 
 function getInstallHooksFromToolConfig(toolConfig: unknown): InstallHooks | undefined {
@@ -36,12 +36,12 @@ function getInstallHooksFromToolConfig(toolConfig: unknown): InstallHooks | unde
     return undefined;
   }
 
-  const installParams: unknown = toolConfig['installParams'];
+  const installParams: unknown = toolConfig["installParams"];
   if (!isUnknownRecord(installParams)) {
     return undefined;
   }
 
-  const hooks: unknown = installParams['hooks'];
+  const hooks: unknown = installParams["hooks"];
   if (!isUnknownRecord(hooks)) {
     return undefined;
   }
@@ -89,7 +89,7 @@ export class HookLifecycle {
       return;
     }
 
-    const eventLoggerCandidate: unknown = event.context['logger'];
+    const eventLoggerCandidate: unknown = event.context["logger"];
     const eventLogger: TsLogger = isTsLogger(eventLoggerCandidate) ? eventLoggerCandidate : parentLogger;
 
     const toolFs = event.context.fileSystem;
@@ -111,19 +111,19 @@ export class HookLifecycle {
     toolFs: IFileSystem,
     parentLogger: TsLogger,
   ): Promise<InstallResult | null> {
-    const logger = parentLogger.getSubLogger({ name: 'executeBeforeInstallHook' });
+    const logger = parentLogger.getSubLogger({ name: "executeBeforeInstallHook" });
     const hooks = getInstallHooksFromToolConfig(resolvedToolConfig);
-    const beforeInstallHooks = hooks?.['before-install'];
+    const beforeInstallHooks = hooks?.["before-install"];
 
     if (!beforeInstallHooks) {
       return null;
     }
 
-    logger.debug(messages.lifecycle.hookExecution('before-install'));
+    logger.debug(messages.lifecycle.hookExecution("before-install"));
     const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs, logger);
 
     for (const hook of beforeInstallHooks) {
-      const result = await this.hookExecutor.executeHook(logger, 'before-install', hook, enhancedContext);
+      const result = await this.hookExecutor.executeHook(logger, "before-install", hook, enhancedContext);
 
       if (!result.success) {
         const failureResult: InstallResult = {
@@ -143,20 +143,20 @@ export class HookLifecycle {
     toolFs: IFileSystem,
     parentLogger: TsLogger,
   ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'executeAfterInstallHook' });
+    const logger = parentLogger.getSubLogger({ name: "executeAfterInstallHook" });
     const hooks = getInstallHooksFromToolConfig(resolvedToolConfig);
-    const afterInstallHooks = hooks?.['after-install'];
+    const afterInstallHooks = hooks?.["after-install"];
 
     if (!afterInstallHooks) {
       return;
     }
 
-    logger.debug(messages.lifecycle.hookExecution('after-install'));
+    logger.debug(messages.lifecycle.hookExecution("after-install"));
 
     const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs, logger);
 
     for (const hook of afterInstallHooks) {
-      await this.hookExecutor.executeHook(logger, 'after-install', hook, enhancedContext, { continueOnError: true });
+      await this.hookExecutor.executeHook(logger, "after-install", hook, enhancedContext, { continueOnError: true });
     }
   }
 }

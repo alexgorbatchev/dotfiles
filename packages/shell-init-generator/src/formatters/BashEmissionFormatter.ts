@@ -11,7 +11,7 @@ import type {
   SourceEmission,
   SourceFileEmission,
   SourceFunctionEmission,
-} from '@dotfiles/shell-emissions';
+} from "@dotfiles/shell-emissions";
 import {
   isAliasEmission,
   isCompletionEmission,
@@ -23,16 +23,16 @@ import {
   isSourceFileEmission,
   isSourceFunctionEmission,
   ONCE_SCRIPT_INDEX_PAD_LENGTH,
-} from '@dotfiles/shell-emissions';
-import { dedentString } from '@dotfiles/utils';
-import { BasePosixEmissionFormatter } from './BasePosixEmissionFormatter';
+} from "@dotfiles/shell-emissions";
+import { dedentString } from "@dotfiles/utils";
+import { BasePosixEmissionFormatter } from "./BasePosixEmissionFormatter";
 
 /**
  * Bash-specific emission formatter.
  * Converts shell-agnostic emissions to Bash syntax.
  */
 export class BashEmissionFormatter extends BasePosixEmissionFormatter implements IEmissionFormatter {
-  readonly fileExtension: string = '.bash';
+  readonly fileExtension: string = ".bash";
 
   formatEmission(emission: Emission): string {
     if (isEnvironmentEmission(emission)) {
@@ -67,10 +67,10 @@ export class BashEmissionFormatter extends BasePosixEmissionFormatter implements
 
   formatOnceScript(emission: ScriptEmission, index: number): OnceScriptContent {
     if (!this.onceScriptDir) {
-      throw new Error('onceScriptDir is required for once scripts');
+      throw new Error("onceScriptDir is required for once scripts");
     }
 
-    const paddedIndex = index.toString().padStart(ONCE_SCRIPT_INDEX_PAD_LENGTH, '0');
+    const paddedIndex = index.toString().padStart(ONCE_SCRIPT_INDEX_PAD_LENGTH, "0");
     const filename = `once-${paddedIndex}.bash`;
     const outputPath = `${this.onceScriptDir}/${filename}`;
     const scriptContent = dedentString(emission.content);
@@ -82,7 +82,7 @@ export class BashEmissionFormatter extends BasePosixEmissionFormatter implements
 
   formatOnceScriptInitializer(): string {
     if (!this.onceScriptDir) {
-      throw new Error('onceScriptDir is required for once script initializer');
+      throw new Error("onceScriptDir is required for once script initializer");
     }
 
     return dedentString(`
@@ -100,7 +100,7 @@ export class BashEmissionFormatter extends BasePosixEmissionFormatter implements
     for (const [key, value] of Object.entries(emission.variables)) {
       lines.push(`export ${key}=${JSON.stringify(value)}`);
     }
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   private formatAlias(emission: AliasEmission): string {
@@ -108,19 +108,18 @@ export class BashEmissionFormatter extends BasePosixEmissionFormatter implements
     for (const [name, command] of Object.entries(emission.aliases)) {
       lines.push(`alias ${name}='${command.replace(/'/g, "'\\''")}'`);
     }
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   private formatFunction(emission: FunctionEmission): string {
     const body = dedentString(emission.body);
-    const indent = ' '.repeat(this.indentSize);
+    const indent = " ".repeat(this.indentSize);
 
-    const indentedBody = body.split('\n').map((line) => `${indent}${line}`).join('\n');
-    return [
-      `${emission.name}() {`,
-      indentedBody,
-      `}`,
-    ].join('\n');
+    const indentedBody = body
+      .split("\n")
+      .map((line) => `${indent}${line}`)
+      .join("\n");
+    return [`${emission.name}() {`, indentedBody, `}`].join("\n");
   }
 
   private formatScript(emission: ScriptEmission): string {
@@ -139,16 +138,15 @@ export class BashEmissionFormatter extends BasePosixEmissionFormatter implements
   private formatSource(emission: SourceEmission): string {
     const content = dedentString(emission.content);
     const functionName = emission.functionName;
-    const indent = ' '.repeat(this.indentSize);
+    const indent = " ".repeat(this.indentSize);
 
-    const indentedContent = content.split('\n').map((line) => `${indent}${line}`).join('\n');
-    return [
-      `${functionName}() {`,
-      indentedContent,
-      `}`,
-      `source <(${functionName})`,
-      `unset -f ${functionName}`,
-    ].join('\n');
+    const indentedContent = content
+      .split("\n")
+      .map((line) => `${indent}${line}`)
+      .join("\n");
+    return [`${functionName}() {`, indentedContent, `}`, `source <(${functionName})`, `unset -f ${functionName}`].join(
+      "\n",
+    );
   }
 
   private formatSourceFunction(emission: SourceFunctionEmission): string {
@@ -165,28 +163,20 @@ export class BashEmissionFormatter extends BasePosixEmissionFormatter implements
       }
     }
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   private formatPath(emission: PathEmission): string {
     const dir = emission.directory;
 
     if (emission.deduplicate) {
-      if (emission.position === 'prepend') {
-        return [
-          `if [[ ":$PATH:" != *":${dir}:"* ]]; then`,
-          `  export PATH="${dir}:$PATH"`,
-          'fi',
-        ].join('\n');
+      if (emission.position === "prepend") {
+        return [`if [[ ":$PATH:" != *":${dir}:"* ]]; then`, `  export PATH="${dir}:$PATH"`, "fi"].join("\n");
       }
-      return [
-        `if [[ ":$PATH:" != *":${dir}:"* ]]; then`,
-        `  export PATH="$PATH:${dir}"`,
-        'fi',
-      ].join('\n');
+      return [`if [[ ":$PATH:" != *":${dir}:"* ]]; then`, `  export PATH="$PATH:${dir}"`, "fi"].join("\n");
     }
 
-    if (emission.position === 'prepend') {
+    if (emission.position === "prepend") {
       return `export PATH="${dir}:$PATH"`;
     }
     return `export PATH="$PATH:${dir}"`;

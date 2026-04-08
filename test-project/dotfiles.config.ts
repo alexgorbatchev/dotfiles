@@ -1,12 +1,12 @@
-import { defineConfig } from '@dotfiles/cli';
+import { defineConfig } from "@dotfiles/cli";
 
 export default defineConfig(({ configFileDir }) => ({
   paths: {
     generatedDir: `${configFileDir}/.generated`,
-    homeDir: '{paths.generatedDir}/user-home',
-    targetDir: '{paths.generatedDir}/user-bin',
+    homeDir: "{paths.generatedDir}/user-home",
+    targetDir: "{paths.generatedDir}/user-bin",
     toolConfigsDir: `${configFileDir}/tools`,
-    binariesDir: '{paths.generatedDir}/binaries',
+    binariesDir: "{paths.generatedDir}/binaries",
   },
   features: {
     catalog: {

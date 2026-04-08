@@ -1,8 +1,8 @@
-import type { ShellCompletionConfig, ShellType, ShellTypeConfig, ToolConfig } from '@dotfiles/core';
-import type { Emission } from '@dotfiles/shell-emissions';
-import { completion } from '@dotfiles/shell-emissions';
-import path from 'node:path';
-import { BaseShellGenerator } from './BaseShellGenerator';
+import type { ShellCompletionConfig, ShellType, ShellTypeConfig, ToolConfig } from "@dotfiles/core";
+import type { Emission } from "@dotfiles/shell-emissions";
+import { completion } from "@dotfiles/shell-emissions";
+import path from "node:path";
+import { BaseShellGenerator } from "./BaseShellGenerator";
 
 /**
  * Zsh-specific shell initialization generator.
@@ -10,8 +10,8 @@ import { BaseShellGenerator } from './BaseShellGenerator';
  * completions, and tool-specific initialization.
  */
 export class ZshGenerator extends BaseShellGenerator {
-  readonly shellType: ShellType = 'zsh';
-  readonly fileExtension: string = '.zsh';
+  readonly shellType: ShellType = "zsh";
+  readonly fileExtension: string = ".zsh";
 
   protected getShellConfig(toolConfig: ToolConfig): ShellTypeConfig | undefined {
     // ShellTypeConfig is manually typed; ToolConfig uses Zod inference with z.unknown() for completions
@@ -19,7 +19,7 @@ export class ZshGenerator extends BaseShellGenerator {
   }
 
   protected getCompletionDir(): string {
-    return path.join(this.projectConfig.paths.shellScriptsDir, 'zsh', 'completions');
+    return path.join(this.projectConfig.paths.shellScriptsDir, "zsh", "completions");
   }
 
   /**

@@ -6,23 +6,23 @@ import type {
   IPluginShellInit,
   Shell,
   ShellType,
-} from '@dotfiles/core';
-import { raw } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import path from 'node:path';
-import { installFromZshPlugin, resolvePluginName } from './installFromZshPlugin';
+} from "@dotfiles/core";
+import { raw } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import path from "node:path";
+import { installFromZshPlugin, resolvePluginName } from "./installFromZshPlugin";
 import {
   type ZshPluginInstallParams,
   zshPluginInstallParamsSchema,
   type ZshPluginToolConfig,
   zshPluginToolConfigSchema,
-} from './schemas';
+} from "./schemas";
 
-const PLUGIN_VERSION = '1.0.0';
+const PLUGIN_VERSION = "1.0.0";
 
 type ZshPluginPluginMetadata = {
-  method: 'zsh-plugin';
+  method: "zsh-plugin";
   pluginName: string;
   gitUrl: string;
   pluginPath: string;
@@ -38,16 +38,14 @@ type ZshPluginPluginMetadata = {
  * Plugins are typically loaded by adding them to the plugins array in .zshrc
  * or by sourcing them directly.
  */
-export class ZshPluginInstallerPlugin implements
-  IInstallerPlugin<
-    'zsh-plugin',
-    ZshPluginInstallParams,
-    ZshPluginToolConfig,
-    ZshPluginPluginMetadata
-  >
-{
-  readonly method = 'zsh-plugin';
-  readonly displayName = 'Zsh Plugin Installer';
+export class ZshPluginInstallerPlugin implements IInstallerPlugin<
+  "zsh-plugin",
+  ZshPluginInstallParams,
+  ZshPluginToolConfig,
+  ZshPluginPluginMetadata
+> {
+  readonly method = "zsh-plugin";
+  readonly displayName = "Zsh Plugin Installer";
   readonly version = PLUGIN_VERSION;
   readonly paramsSchema = zshPluginInstallParamsSchema;
   readonly toolConfigSchema = zshPluginToolConfigSchema;
@@ -81,14 +79,7 @@ export class ZshPluginInstallerPlugin implements
     _options: IInstallOptions | undefined,
     logger: TsLogger,
   ): Promise<InstallResult<ZshPluginPluginMetadata>> {
-    const result = await installFromZshPlugin(
-      toolName,
-      toolConfig,
-      context,
-      logger,
-      this.fs,
-      this.shell,
-    );
+    const result = await installFromZshPlugin(toolName, toolConfig, context, logger, this.fs, this.shell);
 
     if (!result.success) {
       return {

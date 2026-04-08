@@ -1,5 +1,5 @@
-import type { IBinaryConfig } from '@dotfiles/core';
-import { normalizeBinaries } from './normalizeBinaries';
+import type { IBinaryConfig } from "@dotfiles/core";
+import { normalizeBinaries } from "./normalizeBinaries";
 
 /**
  * Extracts binary names from a mixed binaries array without path information.

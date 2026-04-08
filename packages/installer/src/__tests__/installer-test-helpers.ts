@@ -1,5 +1,5 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { ProjectConfig } from '@dotfiles/config';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
+import type { ProjectConfig } from "@dotfiles/config";
 import {
   Architecture,
   createToolLog,
@@ -10,39 +10,39 @@ import {
   type ISystemInfo,
   Platform,
   type Shell,
-} from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import { createMemFileSystem, type IFileSystem, type MockedFileSystem } from '@dotfiles/file-system';
-import type { BrewToolConfig } from '@dotfiles/installer-brew';
-import type { CargoToolConfig, ICargoClient } from '@dotfiles/installer-cargo';
-import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
-import type { GithubReleaseToolConfig, IGitHubApiClient } from '@dotfiles/installer-github';
-import type { ManualToolConfig } from '@dotfiles/installer-manual';
-import { TestLogger, type TsLogger } from '@dotfiles/logger';
+} from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import { createMemFileSystem, type IFileSystem, type MockedFileSystem } from "@dotfiles/file-system";
+import type { BrewToolConfig } from "@dotfiles/installer-brew";
+import type { CargoToolConfig, ICargoClient } from "@dotfiles/installer-cargo";
+import type { CurlScriptToolConfig } from "@dotfiles/installer-curl-script";
+import type { GithubReleaseToolConfig, IGitHubApiClient } from "@dotfiles/installer-github";
+import type { ManualToolConfig } from "@dotfiles/installer-manual";
+import { TestLogger, type TsLogger } from "@dotfiles/logger";
 import type {
   IToolInstallationDetails,
   IToolInstallationRecord,
   IToolInstallationRegistry,
   IToolUsageRecord,
-} from '@dotfiles/registry';
-import { createMockFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
-import { CompletionGenerator } from '@dotfiles/shell-init-generator';
-import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
+} from "@dotfiles/registry";
+import { createMockFileRegistry, TrackedFileSystem } from "@dotfiles/registry/file";
+import { CompletionGenerator } from "@dotfiles/shell-init-generator";
+import type { ISymlinkGenerator } from "@dotfiles/symlink-generator";
 import {
   createMock$,
   createMockProjectConfig,
   createTestDirectories,
   type ITestDirectories,
-} from '@dotfiles/testing-helpers';
-import { replaceInFile } from '@dotfiles/utils';
-import { mock } from 'bun:test';
-import path from 'node:path';
-import type { ILogObj } from 'tslog';
-import { z } from 'zod';
-import type { Installer } from '../Installer';
-import type { InstallResult } from '../types';
-import { createConfiguredShell } from '../utils/createConfiguredShell';
-import { HookExecutor } from '../utils/HookExecutor';
+} from "@dotfiles/testing-helpers";
+import { replaceInFile } from "@dotfiles/utils";
+import { mock } from "bun:test";
+import path from "node:path";
+import type { ILogObj } from "tslog";
+import { z } from "zod";
+import type { Installer } from "../Installer";
+import type { InstallResult } from "../types";
+import { createConfiguredShell } from "../utils/createConfiguredShell";
+import { HookExecutor } from "../utils/HookExecutor";
 
 interface IInstallEventEmitter {
   emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void>;
@@ -93,8 +93,8 @@ export interface IToolInstallationRegistryMock extends IToolInstallationRegistry
 }
 
 // Common test data
-export const MOCK_TOOL_NAME = 'test-tool';
-export const MOCK_TOOL_REPO = 'owner/repo';
+export const MOCK_TOOL_NAME = "test-tool";
+export const MOCK_TOOL_REPO = "owner/repo";
 
 export function createMockSymlinkGenerator(fs: IFileSystem): ISymlinkGenerator {
   const result: ISymlinkGenerator = {
@@ -162,63 +162,63 @@ export function createMockToolInstallationRegistry(): IToolInstallationRegistryM
 
   return result;
 }
-export const MOCK_TOOL_VERSION = '1.0.0';
+export const MOCK_TOOL_VERSION = "1.0.0";
 
 export const MOCK_GITHUB_RELEASE: IGitHubRelease = {
   id: 123,
   tag_name: MOCK_TOOL_VERSION,
-  name: 'Test Release',
+  name: "Test Release",
   draft: false,
   prerelease: false,
-  created_at: '2023-01-01T00:00:00Z',
-  published_at: '2023-01-01T00:00:00Z',
+  created_at: "2023-01-01T00:00:00Z",
+  published_at: "2023-01-01T00:00:00Z",
   assets: [
     {
-      name: 'test-tool-linux-amd64',
-      browser_download_url: 'https://example.com/test-tool-linux-amd64',
+      name: "test-tool-linux-amd64",
+      browser_download_url: "https://example.com/test-tool-linux-amd64",
       size: 1000,
-      content_type: 'application/octet-stream',
-      state: 'uploaded',
+      content_type: "application/octet-stream",
+      state: "uploaded",
       download_count: 100,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
     },
   ],
-  html_url: 'https://github.com/owner/repo/releases/tag/1.0.0',
+  html_url: "https://github.com/owner/repo/releases/tag/1.0.0",
 };
 
 export const MOCK_GITHUB_RELEASE_WITH_MULTIPLE_ASSETS: IGitHubRelease = {
   ...MOCK_GITHUB_RELEASE,
   assets: [
     {
-      name: 'test-tool-linux-amd64',
-      browser_download_url: 'https://example.com/test-tool-linux-amd64',
+      name: "test-tool-linux-amd64",
+      browser_download_url: "https://example.com/test-tool-linux-amd64",
       size: 1000,
-      content_type: 'application/octet-stream',
-      state: 'uploaded',
+      content_type: "application/octet-stream",
+      state: "uploaded",
       download_count: 100,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
     },
     {
-      name: 'test-tool-darwin-arm64.zip',
-      browser_download_url: 'https://example.com/test-tool-darwin-arm64.zip',
+      name: "test-tool-darwin-arm64.zip",
+      browser_download_url: "https://example.com/test-tool-darwin-arm64.zip",
       size: 1200,
-      content_type: 'application/zip',
-      state: 'uploaded',
+      content_type: "application/zip",
+      state: "uploaded",
       download_count: 50,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
     },
     {
-      name: 'test-tool-windows-x64.exe',
-      browser_download_url: 'https://example.com/test-tool-windows-x64.exe',
+      name: "test-tool-windows-x64.exe",
+      browser_download_url: "https://example.com/test-tool-windows-x64.exe",
       size: 1500,
-      content_type: 'application/octet-stream',
-      state: 'uploaded',
+      content_type: "application/octet-stream",
+      state: "uploaded",
       download_count: 75,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
     },
   ],
 };
@@ -227,34 +227,34 @@ export const MOCK_GITHUB_RELEASE_WITH_VARIANTS: IGitHubRelease = {
   ...MOCK_GITHUB_RELEASE,
   assets: [
     {
-      name: 'test-tool-linux-x86_64-musl.tar.gz',
-      browser_download_url: 'https://example.com/test-tool-linux-x86_64-musl.tar.gz',
+      name: "test-tool-linux-x86_64-musl.tar.gz",
+      browser_download_url: "https://example.com/test-tool-linux-x86_64-musl.tar.gz",
       size: 1000,
-      content_type: 'application/gzip',
-      state: 'uploaded',
+      content_type: "application/gzip",
+      state: "uploaded",
       download_count: 100,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
     },
     {
-      name: 'test-tool-linux-x86_64-gnu.tar.gz',
-      browser_download_url: 'https://example.com/test-tool-linux-x86_64-gnu.tar.gz',
+      name: "test-tool-linux-x86_64-gnu.tar.gz",
+      browser_download_url: "https://example.com/test-tool-linux-x86_64-gnu.tar.gz",
       size: 1100,
-      content_type: 'application/gzip',
-      state: 'uploaded',
+      content_type: "application/gzip",
+      state: "uploaded",
       download_count: 150,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
     },
     {
-      name: 'test-tool-darwin-arm64.zip',
-      browser_download_url: 'https://example.com/test-tool-darwin-arm64.zip',
+      name: "test-tool-darwin-arm64.zip",
+      browser_download_url: "https://example.com/test-tool-darwin-arm64.zip",
       size: 1200,
-      content_type: 'application/zip',
-      state: 'uploaded',
+      content_type: "application/zip",
+      state: "uploaded",
       download_count: 50,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
     },
   ],
 };
@@ -272,7 +272,7 @@ export interface IInstallerTestSetup {
   mockToolInstallationRegistry: IToolInstallationRegistryMock;
   pluginRegistry: InstallerPluginRegistry;
   installer: Installer;
-  fileSystemMocks: Awaited<ReturnType<typeof createMemFileSystem>>['spies'];
+  fileSystemMocks: Awaited<ReturnType<typeof createMemFileSystem>>["spies"];
   testDirs: ITestDirectories;
   mockToolBinaryPath: string;
 
@@ -296,7 +296,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   const logger = new TestLogger();
   const hookExecutor = new HookExecutor((): void => {});
   const { fs, spies } = await createMemFileSystem();
-  const testDirs = await createTestDirectories(logger, fs, { testName: 'installer-tests' });
+  const testDirs = await createTestDirectories(logger, fs, { testName: "installer-tests" });
 
   const mockToolBinaryPath = path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_NAME);
 
@@ -305,14 +305,14 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     // Create the file in the mock filesystem if destinationPath is provided
     if (options?.destinationPath) {
       await fs.ensureDir(path.dirname(options.destinationPath));
-      await fs.writeFile(options.destinationPath, 'mock binary content');
+      await fs.writeFile(options.destinationPath, "mock binary content");
     }
-    return Promise.resolve(Buffer.from('mock data'));
+    return Promise.resolve(Buffer.from("mock data"));
   });
   const mockDownloadToFile = mock(
     async (_parentLogger: TsLogger, _url: string, filePath: string, _options?: IDownloadOptions) => {
       await fs.ensureDir(path.dirname(filePath));
-      await fs.writeFile(filePath, 'mock binary content');
+      await fs.writeFile(filePath, "mock binary content");
     },
   );
   const mockDownloader: IDownloader = {
@@ -329,7 +329,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     getReleaseByTag: mockGetReleaseByTag,
     getAllReleases: mock(() => Promise.resolve([MOCK_GITHUB_RELEASE])),
     getReleaseByConstraint: mock(() => Promise.resolve(MOCK_GITHUB_RELEASE)),
-    getRateLimit: mock(() => Promise.resolve({ limit: 5000, remaining: 4999, reset: 0, used: 1, resource: 'core' })),
+    getRateLimit: mock(() => Promise.resolve({ limit: 5000, remaining: 4999, reset: 0, used: 1, resource: "core" })),
     probeLatestTag: mock(() => Promise.resolve(null)),
     getLatestReleaseTags: mock(() => Promise.resolve([])),
   };
@@ -344,24 +344,24 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
       if (options?.targetDir) {
         await fs.ensureDir(options.targetDir);
         // Create both the specific tool name and a generic 'tool' file for hooks to use
-        await fs.writeFile(path.join(options.targetDir, MOCK_TOOL_NAME), 'mock-binary-content');
+        await fs.writeFile(path.join(options.targetDir, MOCK_TOOL_NAME), "mock-binary-content");
         await fs.chmod(path.join(options.targetDir, MOCK_TOOL_NAME), 0o755);
-        await fs.writeFile(path.join(options.targetDir, 'tool'), 'mock-binary-content');
-        await fs.chmod(path.join(options.targetDir, 'tool'), 0o755);
-        await fs.writeFile(path.join(options.targetDir, 'README.md'), 'mock-readme');
-        await fs.writeFile(path.join(options.targetDir, 'LICENSE'), 'mock-license');
-        await fs.writeFile(path.join(options.targetDir, 'Makefile'), 'CC=gcc\nall:\n\tgcc -o tool tool.c');
+        await fs.writeFile(path.join(options.targetDir, "tool"), "mock-binary-content");
+        await fs.chmod(path.join(options.targetDir, "tool"), 0o755);
+        await fs.writeFile(path.join(options.targetDir, "README.md"), "mock-readme");
+        await fs.writeFile(path.join(options.targetDir, "LICENSE"), "mock-license");
+        await fs.writeFile(path.join(options.targetDir, "Makefile"), "CC=gcc\nall:\n\tgcc -o tool tool.c");
       }
       return {
-        extractedFiles: [MOCK_TOOL_NAME, 'tool', 'README.md', 'LICENSE', 'Makefile'],
-        executables: [MOCK_TOOL_NAME, 'tool'],
+        extractedFiles: [MOCK_TOOL_NAME, "tool", "README.md", "LICENSE", "Makefile"],
+        executables: [MOCK_TOOL_NAME, "tool"],
       };
     },
   );
   const mockArchiveExtractor: IArchiveExtractor = {
     extract: mockExtract,
     detectFormat: mock(async () => {
-      return 'tar.gz' as const;
+      return "tar.gz" as const;
     }),
     isSupported: mock(() => true),
   };
@@ -371,14 +371,14 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     config: {
       paths: testDirs.paths,
     },
-    filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+    filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
     fileSystem: fs,
     logger,
     systemInfo: {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     },
     env: {},
   });
@@ -386,16 +386,16 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   // HookExecutor is real, but output is suppressed via injected writer.
 
   // Create real plugin registry and register a mock plugin
-  const { InstallerPluginRegistry } = await import('@dotfiles/core');
+  const { InstallerPluginRegistry } = await import("@dotfiles/core");
   const pluginRegistry = new InstallerPluginRegistry(logger);
 
   const emptySchema: z.ZodTypeAny = z.object({});
 
   // Register a mock plugin that emits events
   await pluginRegistry.register({
-    method: 'github-release',
-    displayName: 'GitHub Release (Mock)',
-    version: '1.0.0',
+    method: "github-release",
+    displayName: "GitHub Release (Mock)",
+    version: "1.0.0",
     toolConfigSchema: emptySchema,
     paramsSchema: emptySchema,
     supportsUpdate: () => true,
@@ -406,7 +406,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     ): Promise<InstallResult> => {
       // Simulate download event - this will throw if hook throws
       if (context.emitEvent) {
-        await context.emitEvent('after-download', {
+        await context.emitEvent("after-download", {
           downloadPath: `${context.stagingDir}/${toolName}-darwin-arm64.tar.gz`,
           fileSystem: fs,
         });
@@ -422,21 +422,21 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
       await fs.chmod(toolFile, 0o755);
 
       // Create mock documentation files
-      await fs.writeFile(`${extractDir}/README.md`, '# Mock Tool\nThis is a mock tool.');
-      await fs.writeFile(`${extractDir}/LICENSE`, 'MIT License');
+      await fs.writeFile(`${extractDir}/README.md`, "# Mock Tool\nThis is a mock tool.");
+      await fs.writeFile(`${extractDir}/LICENSE`, "MIT License");
 
       // For source-tool specifically, create a Makefile to simulate source distribution
-      if (toolName === 'source-tool') {
+      if (toolName === "source-tool") {
         await fs.writeFile(`${extractDir}/Makefile`, 'all:\n\t@echo "Building..."');
       }
 
       // Simulate extract event - this will throw if hook throws
       if (context.emitEvent) {
-        await context.emitEvent('after-extract', {
+        await context.emitEvent("after-extract", {
           extractDir,
           extractResult: {
-            extractedFiles: [toolName, 'tool', 'README.md', 'LICENSE'],
-            executables: [toolName, 'tool'],
+            extractedFiles: [toolName, "tool", "README.md", "LICENSE"],
+            executables: [toolName, "tool"],
             extractDir,
           },
           fileSystem: fs,
@@ -450,15 +450,15 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
       const result: InstallResult = {
         success: true,
         binaryPaths: [actualBinaryPath],
-        version: '1.0.0',
-        originalTag: 'v1.0.0',
+        version: "1.0.0",
+        originalTag: "v1.0.0",
         metadata: {
-          method: 'github-release',
-          releaseUrl: 'https://github.com/test/repo/releases/tag/v1.0.0',
-          publishedAt: '2024-01-01T00:00:00Z',
-          releaseName: 'Release v1.0.0',
-          downloadUrl: 'https://github.com/test/repo/releases/download/v1.0.0/asset.tar.gz',
-          assetName: 'test-asset.tar.gz',
+          method: "github-release",
+          releaseUrl: "https://github.com/test/repo/releases/tag/v1.0.0",
+          publishedAt: "2024-01-01T00:00:00Z",
+          releaseName: "Release v1.0.0",
+          downloadUrl: "https://github.com/test/repo/releases/download/v1.0.0/asset.tar.gz",
+          assetName: "test-asset.tar.gz",
         },
       };
 
@@ -467,20 +467,20 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   });
 
   // Register manual plugin for manual installation tests
-  const { ManualInstallerPlugin } = await import('@dotfiles/installer-manual');
+  const { ManualInstallerPlugin } = await import("@dotfiles/installer-manual");
   const manualPlugin = new ManualInstallerPlugin(fs);
   await pluginRegistry.register(manualPlugin);
 
   pluginRegistry.composeSchemas();
 
   // Create installer instance - import here to avoid circular dependency
-  const { Installer } = await import('../Installer.js');
+  const { Installer } = await import("../Installer.js");
   const mockToolInstallationRegistry = createMockToolInstallationRegistry();
   const mockSystemInfo: ISystemInfo = {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
     homeDir: testDirs.paths.homeDir,
-    hostname: 'test-host',
+    hostname: "test-host",
   };
   const mockSymlinkGenerator = createMockSymlinkGenerator(fs);
   const shell = createConfiguredShell(createMock$(), process.env);
@@ -491,14 +491,14 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     logger,
     fs.asIResolvedFileSystem,
     mockFileRegistry,
-    TrackedFileSystem.createContext('system', 'binary'),
+    TrackedFileSystem.createContext("system", "binary"),
     mockProjectConfig,
   );
   const completionTrackedFs = new TrackedFileSystem(
     logger,
     fs.asIResolvedFileSystem,
     mockFileRegistry,
-    TrackedFileSystem.createContext('system', 'completion'),
+    TrackedFileSystem.createContext("system", "completion"),
     mockProjectConfig,
   );
   const completionGenerator = new CompletionGenerator(logger, completionTrackedFs, shell, undefined, {
@@ -560,7 +560,7 @@ export function createGithubReleaseToolConfig(
     name: MOCK_TOOL_NAME,
     binaries: [MOCK_TOOL_NAME],
     version: MOCK_TOOL_VERSION,
-    installationMethod: 'github-release',
+    installationMethod: "github-release",
     installParams: {
       repo: MOCK_TOOL_REPO,
     },
@@ -578,7 +578,7 @@ export function createBrewToolConfig(overrides: Partial<BrewToolConfig> = {}): B
     name: MOCK_TOOL_NAME,
     binaries: [MOCK_TOOL_NAME],
     version: MOCK_TOOL_VERSION,
-    installationMethod: 'brew',
+    installationMethod: "brew",
     installParams: {
       formula: MOCK_TOOL_NAME,
     },
@@ -596,10 +596,10 @@ export function createCurlScriptToolConfig(overrides: Partial<CurlScriptToolConf
     name: MOCK_TOOL_NAME,
     binaries: [MOCK_TOOL_NAME],
     version: MOCK_TOOL_VERSION,
-    installationMethod: 'curl-script',
+    installationMethod: "curl-script",
     installParams: {
-      url: 'https://example.com/install.sh',
-      shell: 'bash',
+      url: "https://example.com/install.sh",
+      shell: "bash",
     },
     ...overrides,
   };
@@ -615,7 +615,7 @@ export function createManualToolConfig(overrides: Partial<ManualToolConfig> = {}
     name: MOCK_TOOL_NAME,
     binaries: [MOCK_TOOL_NAME],
     version: MOCK_TOOL_VERSION,
-    installationMethod: 'manual',
+    installationMethod: "manual",
     installParams: {
       binaryPath: `/usr/local/bin/${MOCK_TOOL_NAME}`,
     },
@@ -633,12 +633,12 @@ export function createCargoToolConfig(overrides: Partial<CargoToolConfig> = {}):
     name: MOCK_TOOL_NAME,
     binaries: [MOCK_TOOL_NAME],
     version: MOCK_TOOL_VERSION,
-    installationMethod: 'cargo',
+    installationMethod: "cargo",
     installParams: {
       crateName: MOCK_TOOL_NAME,
-      binarySource: 'cargo-quickinstall',
-      versionSource: 'cargo-toml',
-      githubRepo: 'mock/repo',
+      binarySource: "cargo-quickinstall",
+      versionSource: "cargo-toml",
+      githubRepo: "mock/repo",
     },
     ...overrides,
   };
@@ -656,19 +656,19 @@ export function createTestContext(
   const shell: Shell = createConfiguredShell(createMock$(), process.env);
   const toolDir = path.join(setup.mockProjectConfig.paths.toolConfigsDir, MOCK_TOOL_NAME);
 
-  const baseCurrentDir: string = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'current');
+  const baseCurrentDir: string = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, "current");
 
   const baseContext: IInstallContext = {
     toolName: MOCK_TOOL_NAME,
     toolDir,
     currentDir: baseCurrentDir,
-    stagingDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'staging'),
-    timestamp: '2024-08-13-16-45-23',
+    stagingDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, "staging"),
+    timestamp: "2024-08-13-16-45-23",
     systemInfo: {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: setup.testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     },
     toolConfig: createGithubReleaseToolConfig(),
     projectConfig: setup.mockProjectConfig,
@@ -677,7 +677,7 @@ export function createTestContext(
     replaceInFile: (filePath, from, to, options) =>
       replaceInFile(setup.fs.asIResolvedFileSystem, filePath, from, to, options),
     resolve: () => {
-      throw new Error('resolve not supported in test context');
+      throw new Error("resolve not supported in test context");
     },
     log: createToolLog(setup.logger, MOCK_TOOL_NAME),
   };

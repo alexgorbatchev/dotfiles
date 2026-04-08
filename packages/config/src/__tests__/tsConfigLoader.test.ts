@@ -1,17 +1,17 @@
-import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
-import { createMemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createTestDirectories } from '@dotfiles/testing-helpers';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import path from 'node:path';
-import { loadTsConfig } from '../tsConfigLoader';
+import { Architecture, type ISystemInfo, Platform } from "@dotfiles/core";
+import { createMemFileSystem, NodeFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { createTestDirectories } from "@dotfiles/testing-helpers";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import path from "node:path";
+import { loadTsConfig } from "../tsConfigLoader";
 
-describe('tsConfigLoader', () => {
+describe("tsConfigLoader", () => {
   const mockSystemInfo: ISystemInfo = {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
-    homeDir: '/Users/testuser',
-    hostname: 'test-host',
+    homeDir: "/Users/testuser",
+    hostname: "test-host",
   };
 
   let logger: TestLogger;
@@ -22,7 +22,7 @@ describe('tsConfigLoader', () => {
     logger = new TestLogger();
     const realFs = new NodeFileSystem();
     const testDirs = await createTestDirectories(logger, realFs, {
-      testName: 'tsConfigLoader',
+      testName: "tsConfigLoader",
     });
     tempDir = testDirs.paths.homeDir;
     cleanupFn = async () => {
@@ -36,9 +36,9 @@ describe('tsConfigLoader', () => {
     }
   });
 
-  describe('function export patterns', () => {
-    it('should load config from defineConfig', async () => {
-      const configPath = path.join(tempDir, 'config.ts');
+  describe("function export patterns", () => {
+    it("should load config from defineConfig", async () => {
+      const configPath = path.join(tempDir, "config.ts");
       const configContent = `
         export default {
           paths: {
@@ -56,13 +56,13 @@ describe('tsConfigLoader', () => {
       const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
-      expect(result.paths.dotfilesDir).toBe('/Users/testuser/.custom-dotfiles');
-      expect(result.paths.targetDir).toBe('/custom/bin');
-      expect(result.github.token).toBe('test-token');
+      expect(result.paths.dotfilesDir).toBe("/Users/testuser/.custom-dotfiles");
+      expect(result.paths.targetDir).toBe("/custom/bin");
+      expect(result.github.token).toBe("test-token");
     });
 
-    it('should load config from direct object export', async () => {
-      const configPath = path.join(tempDir, 'object-config.ts');
+    it("should load config from direct object export", async () => {
+      const configPath = path.join(tempDir, "object-config.ts");
       const configContent = `
         export default {
           paths: {
@@ -77,14 +77,14 @@ describe('tsConfigLoader', () => {
       const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
-      expect(result.paths.dotfilesDir).toBe('/Users/testuser/object-dotfiles');
-      expect(result.paths.targetDir).toBe('/obj/bin');
+      expect(result.paths.dotfilesDir).toBe("/Users/testuser/object-dotfiles");
+      expect(result.paths.targetDir).toBe("/obj/bin");
     });
   });
 
-  describe('configuration merging', () => {
-    it('should merge partial config with defaults', async () => {
-      const configPath = path.join(tempDir, 'partial-config.ts');
+  describe("configuration merging", () => {
+    it("should merge partial config with defaults", async () => {
+      const configPath = path.join(tempDir, "partial-config.ts");
       const configContent = `
         export default {
           paths: {
@@ -99,17 +99,17 @@ describe('tsConfigLoader', () => {
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
       // Custom value
-      expect(result.paths.targetDir).toBe('/custom/bin');
+      expect(result.paths.targetDir).toBe("/custom/bin");
 
       // Default values should still be present
       expect(result.paths.binariesDir).toBeDefined();
       expect(result.paths.shellScriptsDir).toBeDefined();
-      expect(result.github.host).toBe('https://api.github.com');
+      expect(result.github.host).toBe("https://api.github.com");
       expect(result.updates.checkOnRun).toBe(true);
     });
 
-    it('should deeply merge nested configuration objects', async () => {
-      const configPath = path.join(tempDir, 'nested-config.ts');
+    it("should deeply merge nested configuration objects", async () => {
+      const configPath = path.join(tempDir, "nested-config.ts");
       const configContent = `
         export default {
           github: {
@@ -127,20 +127,20 @@ describe('tsConfigLoader', () => {
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
       // Custom values
-      expect(result.github.token).toBe('custom-token');
+      expect(result.github.token).toBe("custom-token");
       expect(result.downloader.timeout).toBe(600000);
 
       // Default nested values should still be present
-      expect(result.github.host).toBe('https://api.github.com');
-      expect(result.github.userAgent).toBe('dotfiles-generator');
+      expect(result.github.host).toBe("https://api.github.com");
+      expect(result.github.userAgent).toBe("dotfiles-generator");
       expect(result.downloader.retryCount).toBe(3);
     });
   });
 
-  describe('dynamic values', () => {
-    it('should support dynamic values in config function', async () => {
-      const configPath = path.join(tempDir, 'dynamic-config.ts');
-      const testToken = 'dynamic-token';
+  describe("dynamic values", () => {
+    it("should support dynamic values in config function", async () => {
+      const configPath = path.join(tempDir, "dynamic-config.ts");
+      const testToken = "dynamic-token";
       const configContent = `
         export default {
           github: {
@@ -154,13 +154,13 @@ describe('tsConfigLoader', () => {
       const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
-      expect(result.github.token).toBe('dynamic-token');
+      expect(result.github.token).toBe("dynamic-token");
     });
   });
 
-  describe('config file context', () => {
-    it('should resolve configFileDir tokens using the actual config location', async () => {
-      const configPath = path.join(tempDir, 'dir-token-config.ts');
+  describe("config file context", () => {
+    it("should resolve configFileDir tokens using the actual config location", async () => {
+      const configPath = path.join(tempDir, "dir-token-config.ts");
       const configContent = `
         export default {
           paths: {
@@ -178,22 +178,22 @@ describe('tsConfigLoader', () => {
       const expectedConfigDir = path.dirname(configPath);
       expect(result.configFilePath).toBe(configPath);
       expect(result.configFileDir).toBe(expectedConfigDir);
-      expect(result.paths.generatedDir).toBe(path.join(expectedConfigDir, '.generated'));
-      expect(result.paths.toolConfigsDir).toBe(path.join(expectedConfigDir, 'tools'));
+      expect(result.paths.generatedDir).toBe(path.join(expectedConfigDir, ".generated"));
+      expect(result.paths.toolConfigsDir).toBe(path.join(expectedConfigDir, "tools"));
     });
   });
 
-  describe('error handling', () => {
-    it('should exit with error if config file does not exist', async () => {
+  describe("error handling", () => {
+    it("should exit with error if config file does not exist", async () => {
       const { fs } = await createMemFileSystem();
 
-      expect(loadTsConfig(logger, fs, '/nonexistent/config.ts', mockSystemInfo, {})).rejects.toThrow(
+      expect(loadTsConfig(logger, fs, "/nonexistent/config.ts", mockSystemInfo, {})).rejects.toThrow(
         /MOCK_EXIT_CLI_CALLED_WITH_1/,
       );
     });
 
-    it('should use the injected filesystem for existence checks', async () => {
-      const configPath = path.join(tempDir, 'exists-only-on-disk.ts');
+    it("should use the injected filesystem for existence checks", async () => {
+      const configPath = path.join(tempDir, "exists-only-on-disk.ts");
       const configContent = `
         export default {
           paths: {
@@ -209,8 +209,8 @@ describe('tsConfigLoader', () => {
       expect(loadTsConfig(logger, fs, configPath, mockSystemInfo, {})).rejects.toThrow(/MOCK_EXIT_CLI_CALLED_WITH_1/);
     });
 
-    it('should exit with error if no default export', async () => {
-      const configPath = path.join(tempDir, 'no-default.ts');
+    it("should exit with error if no default export", async () => {
+      const configPath = path.join(tempDir, "no-default.ts");
       const configContent = `
         export const config = { paths: {} };
       `;
@@ -222,8 +222,8 @@ describe('tsConfigLoader', () => {
       expect(loadTsConfig(logger, fs, configPath, mockSystemInfo, {})).rejects.toThrow(/MOCK_EXIT_CLI_CALLED_WITH_1/);
     });
 
-    it('should exit with error if default export is invalid type', async () => {
-      const configPath = path.join(tempDir, 'invalid-type.ts');
+    it("should exit with error if default export is invalid type", async () => {
+      const configPath = path.join(tempDir, "invalid-type.ts");
       const configContent = `
         export default 'invalid';
       `;
@@ -235,8 +235,8 @@ describe('tsConfigLoader', () => {
       expect(loadTsConfig(logger, fs, configPath, mockSystemInfo, {})).rejects.toThrow(/MOCK_EXIT_CLI_CALLED_WITH_1/);
     });
 
-    it('should handle syntax errors in config file', async () => {
-      const configPath = path.join(tempDir, 'syntax-error.ts');
+    it("should handle syntax errors in config file", async () => {
+      const configPath = path.join(tempDir, "syntax-error.ts");
       const configContent = `
         export default () => {
           return { invalid syntax
@@ -251,9 +251,9 @@ describe('tsConfigLoader', () => {
     });
   });
 
-  describe('validation', () => {
-    it('should validate configuration against schema', async () => {
-      const configPath = path.join(tempDir, 'valid-config.ts');
+  describe("validation", () => {
+    it("should validate configuration against schema", async () => {
+      const configPath = path.join(tempDir, "valid-config.ts");
       const configContent = `
         export default {
           paths: {

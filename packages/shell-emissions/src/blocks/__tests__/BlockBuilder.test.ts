@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
+import { describe, expect, it } from "bun:test";
+import assert from "node:assert";
 import {
   alias,
   completion,
@@ -9,16 +9,19 @@ import {
   sourceFunction,
   withPriority,
   withSource,
-} from '../../emissions/factories';
-import { BlockValidationError } from '../../errors';
-import { SectionPriority } from '../../renderer/constants';
-import { BlockBuilder } from '../BlockBuilder';
+} from "../../emissions/factories";
+import { BlockValidationError } from "../../errors";
+import { SectionPriority } from "../../renderer/constants";
+import { BlockBuilder } from "../BlockBuilder";
 
-describe('BlockBuilder', () => {
-  describe('addSection', () => {
-    it('adds a section with basic options', () => {
-      const builder = new BlockBuilder()
-        .addSection('env', { title: 'Environment', priority: SectionPriority.Path, hoistKinds: ['environment'] });
+describe("BlockBuilder", () => {
+  describe("addSection", () => {
+    it("adds a section with basic options", () => {
+      const builder = new BlockBuilder().addSection("env", {
+        title: "Environment",
+        priority: SectionPriority.Path,
+        hoistKinds: ["environment"],
+      });
 
       const blocks = builder.build();
 
@@ -38,29 +41,28 @@ describe('BlockBuilder', () => {
       `);
     });
 
-    it('throws when adding duplicate section', () => {
-      const builder = new BlockBuilder()
-        .addSection('env', { priority: SectionPriority.Path });
+    it("throws when adding duplicate section", () => {
+      const builder = new BlockBuilder().addSection("env", { priority: SectionPriority.Path });
 
-      expect(() => builder.addSection('env', { priority: SectionPriority.Environment })).toThrow(BlockValidationError);
+      expect(() => builder.addSection("env", { priority: SectionPriority.Environment })).toThrow(BlockValidationError);
     });
 
-    it('throws when priority is negative', () => {
-      expect(() => new BlockBuilder().addSection('invalid', { priority: -1 as SectionPriority })).toThrow(
+    it("throws when priority is negative", () => {
+      expect(() => new BlockBuilder().addSection("invalid", { priority: -1 as SectionPriority })).toThrow(
         BlockValidationError,
       );
     });
   });
 
-  describe('addEmission - hoisted emissions', () => {
-    it('routes environment emission to correct section', () => {
+  describe("addEmission - hoisted emissions", () => {
+    it("routes environment emission to correct section", () => {
       const builder = new BlockBuilder()
-        .addSection('env', {
-          title: 'Environment',
+        .addSection("env", {
+          title: "Environment",
           priority: SectionPriority.Environment,
-          hoistKinds: ['environment'],
+          hoistKinds: ["environment"],
         })
-        .addEmission(environment({ NODE_ENV: 'production' }));
+        .addEmission(environment({ NODE_ENV: "production" }));
 
       const blocks = builder.build();
 
@@ -87,10 +89,10 @@ describe('BlockBuilder', () => {
       `);
     });
 
-    it('routes path emission to correct section', () => {
+    it("routes path emission to correct section", () => {
       const builder = new BlockBuilder()
-        .addSection('path', { title: 'PATH', priority: SectionPriority.Path, hoistKinds: ['path'] })
-        .addEmission(path('/usr/local/bin'));
+        .addSection("path", { title: "PATH", priority: SectionPriority.Path, hoistKinds: ["path"] })
+        .addEmission(path("/usr/local/bin"));
 
       const blocks = builder.build();
 
@@ -117,14 +119,14 @@ describe('BlockBuilder', () => {
       `);
     });
 
-    it('routes completion emission to correct section', () => {
+    it("routes completion emission to correct section", () => {
       const builder = new BlockBuilder()
-        .addSection('completions', {
-          title: 'Completions',
+        .addSection("completions", {
+          title: "Completions",
           priority: SectionPriority.Completions,
-          hoistKinds: ['completion'],
+          hoistKinds: ["completion"],
         })
-        .addEmission(completion({ commands: ['node'] }));
+        .addEmission(completion({ commands: ["node"] }));
 
       const blocks = builder.build();
 
@@ -153,21 +155,18 @@ describe('BlockBuilder', () => {
       `);
     });
 
-    it('throws when no section accepts hoisted kind', () => {
-      const builder = new BlockBuilder()
-        .addSection('main', { priority: SectionPriority.Path, allowChildren: true });
+    it("throws when no section accepts hoisted kind", () => {
+      const builder = new BlockBuilder().addSection("main", { priority: SectionPriority.Path, allowChildren: true });
 
-      expect(() => builder.addEmission(environment({ VAR: 'value' }))).toThrow(
-        BlockValidationError,
-      );
+      expect(() => builder.addEmission(environment({ VAR: "value" }))).toThrow(BlockValidationError);
     });
   });
 
-  describe('addEmission - non-hoisted emissions', () => {
-    it('adds non-hoisted emission to section with allowChildren', () => {
+  describe("addEmission - non-hoisted emissions", () => {
+    it("adds non-hoisted emission to section with allowChildren", () => {
       const builder = new BlockBuilder()
-        .addSection('main', { title: 'Main', priority: SectionPriority.MainContent, allowChildren: true })
-        .addEmission(fn('greet', 'echo hello'));
+        .addSection("main", { title: "Main", priority: SectionPriority.MainContent, allowChildren: true })
+        .addEmission(fn("greet", "echo hello"));
 
       const blocks = builder.build();
 
@@ -193,11 +192,11 @@ describe('BlockBuilder', () => {
       `);
     });
 
-    it('creates child block when childBlockId provided', () => {
+    it("creates child block when childBlockId provided", () => {
       const builder = new BlockBuilder()
-        .addSection('main', { title: 'Main', priority: SectionPriority.MainContent, allowChildren: true })
-        .addEmission(fn('greet', 'echo hello'), 'my-tool')
-        .addEmission(alias({ ll: 'ls -la' }), 'my-tool');
+        .addSection("main", { title: "Main", priority: SectionPriority.MainContent, allowChildren: true })
+        .addEmission(fn("greet", "echo hello"), "my-tool")
+        .addEmission(alias({ ll: "ls -la" }), "my-tool");
 
       const blocks = builder.build();
 
@@ -237,12 +236,12 @@ describe('BlockBuilder', () => {
       `);
     });
 
-    it('groups emissions by childBlockId', () => {
+    it("groups emissions by childBlockId", () => {
       const builder = new BlockBuilder()
-        .addSection('main', { title: 'Main', priority: SectionPriority.MainContent, allowChildren: true })
-        .addEmission(fn('func1', 'echo 1'), 'tool-a')
-        .addEmission(fn('func2', 'echo 2'), 'tool-b')
-        .addEmission(fn('func3', 'echo 3'), 'tool-a');
+        .addSection("main", { title: "Main", priority: SectionPriority.MainContent, allowChildren: true })
+        .addEmission(fn("func1", "echo 1"), "tool-a")
+        .addEmission(fn("func2", "echo 2"), "tool-b")
+        .addEmission(fn("func3", "echo 3"), "tool-a");
 
       const blocks = builder.build();
 
@@ -294,73 +293,74 @@ describe('BlockBuilder', () => {
       `);
     });
 
-    it('throws when no section allows children', () => {
-      const builder = new BlockBuilder()
-        .addSection('env', { priority: SectionPriority.Path, hoistKinds: ['environment'] });
+    it("throws when no section allows children", () => {
+      const builder = new BlockBuilder().addSection("env", {
+        priority: SectionPriority.Path,
+        hoistKinds: ["environment"],
+      });
 
-      expect(() => builder.addEmission(fn('test', 'echo'))).toThrow(BlockValidationError);
+      expect(() => builder.addEmission(fn("test", "echo"))).toThrow(BlockValidationError);
     });
   });
 
-  describe('addEmissionToSection', () => {
-    it('adds emission directly to specified section', () => {
+  describe("addEmissionToSection", () => {
+    it("adds emission directly to specified section", () => {
       const builder = new BlockBuilder()
-        .addSection('cli', { priority: SectionPriority.Cli })
-        .addSection('env', { priority: SectionPriority.Environment, hoistKinds: ['environment'] })
-        .addEmissionToSection(fn('dotfiles', 'echo "cli"'), 'cli');
+        .addSection("cli", { priority: SectionPriority.Cli })
+        .addSection("env", { priority: SectionPriority.Environment, hoistKinds: ["environment"] })
+        .addEmissionToSection(fn("dotfiles", 'echo "cli"'), "cli");
 
       const blocks = builder.build();
-      const cliBlock = blocks.find((b) => b.id === 'cli');
+      const cliBlock = blocks.find((b) => b.id === "cli");
 
       expect(cliBlock?.emissions).toHaveLength(1);
       expect(cliBlock?.emissions[0]).toMatchObject({
-        kind: 'function',
-        name: 'dotfiles',
+        kind: "function",
+        name: "dotfiles",
         body: 'echo "cli"',
       });
     });
 
-    it('bypasses hoisting rules when adding to section', () => {
+    it("bypasses hoisting rules when adding to section", () => {
       const builder = new BlockBuilder()
-        .addSection('custom', { priority: SectionPriority.Path })
-        .addSection('env', { priority: SectionPriority.Environment, hoistKinds: ['environment'] })
-        .addEmissionToSection(environment({ MY_VAR: 'value' }), 'custom');
+        .addSection("custom", { priority: SectionPriority.Path })
+        .addSection("env", { priority: SectionPriority.Environment, hoistKinds: ["environment"] })
+        .addEmissionToSection(environment({ MY_VAR: "value" }), "custom");
 
       const blocks = builder.build();
-      const customBlock = blocks.find((b) => b.id === 'custom');
-      const envBlock = blocks.find((b) => b.id === 'env');
+      const customBlock = blocks.find((b) => b.id === "custom");
+      const envBlock = blocks.find((b) => b.id === "env");
 
       expect(customBlock?.emissions).toHaveLength(1);
       expect(envBlock?.emissions).toHaveLength(0);
     });
 
-    it('throws when section does not exist', () => {
-      const builder = new BlockBuilder()
-        .addSection('env', { priority: SectionPriority.Environment });
+    it("throws when section does not exist", () => {
+      const builder = new BlockBuilder().addSection("env", { priority: SectionPriority.Environment });
 
-      expect(() => builder.addEmissionToSection(fn('test', 'echo'), 'nonexistent')).toThrow(BlockValidationError);
+      expect(() => builder.addEmissionToSection(fn("test", "echo"), "nonexistent")).toThrow(BlockValidationError);
     });
 
-    it('supports method chaining', () => {
+    it("supports method chaining", () => {
       const builder = new BlockBuilder()
-        .addSection('cli', { priority: SectionPriority.Cli })
-        .addEmissionToSection(fn('func1', 'echo 1'), 'cli')
-        .addEmissionToSection(fn('func2', 'echo 2'), 'cli');
+        .addSection("cli", { priority: SectionPriority.Cli })
+        .addEmissionToSection(fn("func1", "echo 1"), "cli")
+        .addEmissionToSection(fn("func2", "echo 2"), "cli");
 
       const blocks = builder.build();
-      const cliBlock = blocks.find((b) => b.id === 'cli');
+      const cliBlock = blocks.find((b) => b.id === "cli");
 
       expect(cliBlock?.emissions).toHaveLength(2);
     });
   });
 
-  describe('build', () => {
-    it('sorts blocks by priority', () => {
+  describe("build", () => {
+    it("sorts blocks by priority", () => {
       const builder = new BlockBuilder()
-        .addSection('footer', { priority: SectionPriority.FileFooter })
-        .addSection('env', { priority: SectionPriority.Environment })
-        .addSection('path', { priority: SectionPriority.Path })
-        .addSection('header', { priority: SectionPriority.FileHeader });
+        .addSection("footer", { priority: SectionPriority.FileFooter })
+        .addSection("env", { priority: SectionPriority.Environment })
+        .addSection("path", { priority: SectionPriority.Path })
+        .addSection("header", { priority: SectionPriority.FileHeader });
 
       const blocks = builder.build();
 
@@ -374,20 +374,19 @@ describe('BlockBuilder', () => {
       `);
     });
 
-    it('sorts emissions by priority within block', () => {
+    it("sorts emissions by priority within block", () => {
       const builder = new BlockBuilder()
-        .addSection('env', { priority: SectionPriority.Path, hoistKinds: ['environment'] })
-        .addEmission(withPriority(environment({ LAST: 'value' }), 30))
-        .addEmission(withPriority(environment({ FIRST: 'value' }), 10))
-        .addEmission(withPriority(environment({ MIDDLE: 'value' }), 20));
+        .addSection("env", { priority: SectionPriority.Path, hoistKinds: ["environment"] })
+        .addEmission(withPriority(environment({ LAST: "value" }), 30))
+        .addEmission(withPriority(environment({ FIRST: "value" }), 10))
+        .addEmission(withPriority(environment({ MIDDLE: "value" }), 20));
 
       const blocks = builder.build();
       const firstBlock = blocks[0];
       assert(firstBlock);
       const emissions = firstBlock.emissions;
 
-      expect(emissions.map((e) => Object.keys(e.kind === 'environment' ? e.variables : {})[0]))
-        .toMatchInlineSnapshot(`
+      expect(emissions.map((e) => Object.keys(e.kind === "environment" ? e.variables : {})[0])).toMatchInlineSnapshot(`
         [
           "FIRST",
           "MIDDLE",
@@ -396,10 +395,10 @@ describe('BlockBuilder', () => {
       `);
     });
 
-    it('preserves source attribution in child block metadata', () => {
+    it("preserves source attribution in child block metadata", () => {
       const builder = new BlockBuilder()
-        .addSection('main', { priority: SectionPriority.MainContent, allowChildren: true })
-        .addEmission(withSource(fn('test', 'echo'), '/path/to/config.ts'), 'my-tool');
+        .addSection("main", { priority: SectionPriority.MainContent, allowChildren: true })
+        .addEmission(withSource(fn("test", "echo"), "/path/to/config.ts"), "my-tool");
 
       const blocks = builder.build();
       const firstBlock = blocks[0];
@@ -413,10 +412,10 @@ describe('BlockBuilder', () => {
       `);
     });
 
-    it('sets isFileHeader and isFileFooter flags', () => {
+    it("sets isFileHeader and isFileFooter flags", () => {
       const builder = new BlockBuilder()
-        .addSection('header', { priority: SectionPriority.FileHeader, isFileHeader: true })
-        .addSection('footer', { priority: SectionPriority.FileFooter, isFileFooter: true });
+        .addSection("header", { priority: SectionPriority.FileHeader, isFileHeader: true })
+        .addSection("footer", { priority: SectionPriority.FileFooter, isFileFooter: true });
 
       const blocks = builder.build();
 
@@ -447,33 +446,33 @@ describe('BlockBuilder', () => {
     });
   });
 
-  describe('complete workflow', () => {
-    it('builds a complete block structure', () => {
+  describe("complete workflow", () => {
+    it("builds a complete block structure", () => {
       const builder = new BlockBuilder()
-        .addSection('header', { priority: SectionPriority.FileHeader, isFileHeader: true })
-        .addSection('path', { title: 'PATH', priority: SectionPriority.Path, hoistKinds: ['path'] })
-        .addSection('env', {
-          title: 'Environment',
+        .addSection("header", { priority: SectionPriority.FileHeader, isFileHeader: true })
+        .addSection("path", { title: "PATH", priority: SectionPriority.Path, hoistKinds: ["path"] })
+        .addSection("env", {
+          title: "Environment",
           priority: SectionPriority.Environment,
-          hoistKinds: ['environment'],
+          hoistKinds: ["environment"],
         })
-        .addSection('main', { title: 'Initializations', priority: SectionPriority.MainContent, allowChildren: true })
-        .addSection('completions', {
-          title: 'Completions',
+        .addSection("main", { title: "Initializations", priority: SectionPriority.MainContent, allowChildren: true })
+        .addSection("completions", {
+          title: "Completions",
           priority: SectionPriority.Completions,
-          hoistKinds: ['completion'],
+          hoistKinds: ["completion"],
         })
-        .addSection('footer', { priority: SectionPriority.FileFooter, isFileFooter: true });
+        .addSection("footer", { priority: SectionPriority.FileFooter, isFileFooter: true });
 
       // Add emissions
       builder
-        .addEmission(path('/usr/local/bin'))
-        .addEmission(path('$HOME/.local/bin'))
-        .addEmission(environment({ NODE_ENV: 'production' }))
-        .addEmission(fn('initNode', 'eval "$(fnm env)"'), 'node')
-        .addEmission(sourceFunction('initNode'), 'node')
-        .addEmission(alias({ ll: 'ls -la' }), 'common')
-        .addEmission(completion({ commands: ['node', 'npm'] }));
+        .addEmission(path("/usr/local/bin"))
+        .addEmission(path("$HOME/.local/bin"))
+        .addEmission(environment({ NODE_ENV: "production" }))
+        .addEmission(fn("initNode", 'eval "$(fnm env)"'), "node")
+        .addEmission(sourceFunction("initNode"), "node")
+        .addEmission(alias({ ll: "ls -la" }), "common")
+        .addEmission(completion({ commands: ["node", "npm"] }));
 
       const blocks = builder.build();
 

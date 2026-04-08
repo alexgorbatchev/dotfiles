@@ -1,6 +1,6 @@
-import type { ISystemInfo } from '@dotfiles/core';
-import path from 'node:path';
-import { expandHomePath } from './expandHomePath';
+import type { ISystemInfo } from "@dotfiles/core";
+import path from "node:path";
+import { expandHomePath } from "./expandHomePath";
 
 /**
  * Config paths interface to avoid circular dependency with the config package.
@@ -61,12 +61,12 @@ export function expandToolConfigPath(
  */
 function expandVariables(inputPath: string, projectConfig: IConfigWithPaths): string {
   return inputPath.replace(/(?<!\$)\{([a-zA-Z0-9_.]+)\}/g, (match, varName) => {
-    if (varName.includes('.')) {
-      const parts = varName.split('.');
+    if (varName.includes(".")) {
+      const parts = varName.split(".");
       let value: unknown = projectConfig;
 
       for (const part of parts) {
-        if (value && typeof value === 'object' && part in (value as Record<string, unknown>)) {
+        if (value && typeof value === "object" && part in (value as Record<string, unknown>)) {
           value = (value as Record<string, unknown>)[part];
         } else {
           // Variable not found, return original match
@@ -74,7 +74,7 @@ function expandVariables(inputPath: string, projectConfig: IConfigWithPaths): st
         }
       }
 
-      return typeof value === 'string' ? value : match;
+      return typeof value === "string" ? value : match;
     }
 
     // Simple variable name - not supported in this context, return as-is

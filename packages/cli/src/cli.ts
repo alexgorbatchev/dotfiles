@@ -1,64 +1,61 @@
 #!/usr/bin/env bun
 
-import { ArchiveExtractor } from '@dotfiles/archive-extractor';
-import { ConfigService, type ProjectConfig } from '@dotfiles/config';
-import {
-  createShell,
-  InstallerPluginRegistry,
-} from '@dotfiles/core';
-import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
-import { ReadmeService } from '@dotfiles/features';
+import { ArchiveExtractor } from "@dotfiles/archive-extractor";
+import { ConfigService, type ProjectConfig } from "@dotfiles/config";
+import { createShell, InstallerPluginRegistry } from "@dotfiles/core";
+import { Downloader, FileCache, type ICache } from "@dotfiles/downloader";
+import { ReadmeService } from "@dotfiles/features";
 import {
   type IFileSystem,
   type IResolvedFileSystem,
   MemFileSystem,
   NodeFileSystem,
   ResolvedFileSystem,
-} from '@dotfiles/file-system';
-import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
-import { HookExecutor, Installer } from '@dotfiles/installer';
-import { BrewInstallerPlugin } from '@dotfiles/installer-brew';
-import { CargoClient, CargoInstallerPlugin } from '@dotfiles/installer-cargo';
-import { CurlBinaryInstallerPlugin } from '@dotfiles/installer-curl-binary';
-import { CurlScriptInstallerPlugin } from '@dotfiles/installer-curl-script';
-import { CurlTarInstallerPlugin } from '@dotfiles/installer-curl-tar';
-import { DmgInstallerPlugin } from '@dotfiles/installer-dmg';
-import { GiteaReleaseInstallerPlugin } from '@dotfiles/installer-gitea';
-import { GhCliApiClient, GitHubApiClient, GitHubReleaseInstallerPlugin } from '@dotfiles/installer-github';
-import { ManualInstallerPlugin } from '@dotfiles/installer-manual';
-import { NpmInstallerPlugin } from '@dotfiles/installer-npm';
-import { ZshPluginInstallerPlugin } from '@dotfiles/installer-zsh-plugin';
-import { createTsLogger, getLogLevelFromFlags, type LogLevelValue, type TsLogger } from '@dotfiles/logger';
-import { type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
-import { CompletionCommandExecutor, CompletionGenerator, ShellInitGenerator } from '@dotfiles/shell-init-generator';
-import { ShimGenerator } from '@dotfiles/shim-generator';
-import { CopyGenerator, SymlinkGenerator } from '@dotfiles/symlink-generator';
-import { VersionChecker } from '@dotfiles/version-checker';
-import net from 'node:net';
-import path from 'node:path';
+} from "@dotfiles/file-system";
+import { GeneratorOrchestrator } from "@dotfiles/generator-orchestrator";
+import { HookExecutor, Installer } from "@dotfiles/installer";
+import { BrewInstallerPlugin } from "@dotfiles/installer-brew";
+import { CargoClient, CargoInstallerPlugin } from "@dotfiles/installer-cargo";
+import { CurlBinaryInstallerPlugin } from "@dotfiles/installer-curl-binary";
+import { CurlScriptInstallerPlugin } from "@dotfiles/installer-curl-script";
+import { CurlTarInstallerPlugin } from "@dotfiles/installer-curl-tar";
+import { DmgInstallerPlugin } from "@dotfiles/installer-dmg";
+import { GiteaReleaseInstallerPlugin } from "@dotfiles/installer-gitea";
+import { GhCliApiClient, GitHubApiClient, GitHubReleaseInstallerPlugin } from "@dotfiles/installer-github";
+import { ManualInstallerPlugin } from "@dotfiles/installer-manual";
+import { NpmInstallerPlugin } from "@dotfiles/installer-npm";
+import { ZshPluginInstallerPlugin } from "@dotfiles/installer-zsh-plugin";
+import { createTsLogger, getLogLevelFromFlags, type LogLevelValue, type TsLogger } from "@dotfiles/logger";
+import { type IFileRegistry, TrackedFileSystem } from "@dotfiles/registry/file";
+import { CompletionCommandExecutor, CompletionGenerator, ShellInitGenerator } from "@dotfiles/shell-init-generator";
+import { ShimGenerator } from "@dotfiles/shim-generator";
+import { CopyGenerator, SymlinkGenerator } from "@dotfiles/symlink-generator";
+import { VersionChecker } from "@dotfiles/version-checker";
+import net from "node:net";
+import path from "node:path";
 
-import { registerBinCommand } from './binCommand';
-import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
-import { registerCleanupCommand } from './cleanupCommand';
-import { createProgram } from './createProgram';
-import { registerDashboardCommand } from './dashboardCommand';
-import { registerDetectConflictsCommand } from './detectConflictsCommand';
-import { registerEnvCommand } from './envCommand';
-import { registerFeaturesCommand } from './featuresCommand';
-import { registerFilesCommand } from './filesCommand';
-import { registerGenerateCommand } from './generateCommand';
-import { registerInstallCommand } from './installCommand';
-import { runTrackUsageCommand } from './light/runTrackUsageCommand';
-import { messages } from './log-messages';
-import { registerLogCommand } from './logCommand';
-import { populateMemFsForDryRun } from './populateMemFsForDryRun';
-import { createBaseRuntimeContext } from './runtime/createBaseRuntimeContext';
-import { registerSkillCommand } from './skillCommand';
-import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
-import { registerUpdateCommand } from './updateCommand';
+import { registerBinCommand } from "./binCommand";
+import { registerCheckUpdatesCommand } from "./checkUpdatesCommand";
+import { registerCleanupCommand } from "./cleanupCommand";
+import { createProgram } from "./createProgram";
+import { registerDashboardCommand } from "./dashboardCommand";
+import { registerDetectConflictsCommand } from "./detectConflictsCommand";
+import { registerEnvCommand } from "./envCommand";
+import { registerFeaturesCommand } from "./featuresCommand";
+import { registerFilesCommand } from "./filesCommand";
+import { registerGenerateCommand } from "./generateCommand";
+import { registerInstallCommand } from "./installCommand";
+import { runTrackUsageCommand } from "./light/runTrackUsageCommand";
+import { messages } from "./log-messages";
+import { registerLogCommand } from "./logCommand";
+import { populateMemFsForDryRun } from "./populateMemFsForDryRun";
+import { createBaseRuntimeContext } from "./runtime/createBaseRuntimeContext";
+import { registerSkillCommand } from "./skillCommand";
+import type { IGlobalProgram, IGlobalProgramOptions, IServices } from "./types";
+import { registerUpdateCommand } from "./updateCommand";
 
 // Re-export public API for library consumers
-export * from './schema-exports';
+export * from "./schema-exports";
 
 type SetupServicesOptions = IGlobalProgramOptions & {
   cwd: string;
@@ -80,22 +77,22 @@ async function isProxyAvailable(port: number, timeoutMs: number = 2000): Promise
 
     socket.setTimeout(timeoutMs);
 
-    socket.on('connect', () => {
+    socket.on("connect", () => {
       cleanup();
       resolve(true);
     });
 
-    socket.on('timeout', () => {
+    socket.on("timeout", () => {
       cleanup();
       resolve(false);
     });
 
-    socket.on('error', () => {
+    socket.on("error", () => {
       cleanup();
       resolve(false);
     });
 
-    socket.connect(port, 'localhost');
+    socket.connect(port, "localhost");
   });
 }
 
@@ -105,7 +102,7 @@ interface IDevProxyValidationResult {
 }
 
 function validateDevProxyPort(rawValue: string | undefined): IDevProxyValidationResult {
-  if (typeof rawValue === 'undefined') {
+  if (typeof rawValue === "undefined") {
     return {
       port: undefined,
       invalidValue: undefined,
@@ -146,7 +143,7 @@ function initializeFileSystem(logger: TsLogger, dryRun: boolean): IFileSystem {
   } else {
     fs = new NodeFileSystem();
   }
-  logger.trace(messages.componentInitialized('filesystem'), fs.constructor.name);
+  logger.trace(messages.componentInitialized("filesystem"), fs.constructor.name);
   return fs;
 }
 
@@ -160,12 +157,12 @@ function initializeDownloadCache(
     return undefined;
   }
 
-  const cacheDir = path.join(projectConfig.paths.generatedDir, 'cache', 'downloads');
+  const cacheDir = path.join(projectConfig.paths.generatedDir, "cache", "downloads");
   const downloadCache = new FileCache(parentLogger, fs, {
     enabled: true,
     defaultTtl: projectConfig.downloader.cache.ttl,
     cacheDir,
-    storageStrategy: 'binary',
+    storageStrategy: "binary",
   });
 
   return downloadCache;
@@ -189,7 +186,7 @@ function createTrackedFileSystems(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'shim'),
+    TrackedFileSystem.createContext("system", "shim"),
     projectConfig,
   );
 
@@ -197,7 +194,7 @@ function createTrackedFileSystems(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'init'),
+    TrackedFileSystem.createContext("system", "init"),
     projectConfig,
   );
 
@@ -205,7 +202,7 @@ function createTrackedFileSystems(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'symlink'),
+    TrackedFileSystem.createContext("system", "symlink"),
     projectConfig,
   );
 
@@ -213,7 +210,7 @@ function createTrackedFileSystems(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'copy'),
+    TrackedFileSystem.createContext("system", "copy"),
     projectConfig,
   );
 
@@ -221,7 +218,7 @@ function createTrackedFileSystems(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'binary'),
+    TrackedFileSystem.createContext("system", "binary"),
     projectConfig,
   );
 
@@ -229,7 +226,7 @@ function createTrackedFileSystems(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'catalog'),
+    TrackedFileSystem.createContext("system", "catalog"),
     projectConfig,
   );
 
@@ -237,7 +234,7 @@ function createTrackedFileSystems(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'completion'),
+    TrackedFileSystem.createContext("system", "completion"),
     projectConfig,
   );
 
@@ -253,14 +250,14 @@ function createTrackedFileSystems(
 }
 
 export async function setupServices(parentLogger: TsLogger, options: SetupServicesOptions): Promise<IServices> {
-  const logger = parentLogger.getSubLogger({ name: 'setupServices' });
+  const logger = parentLogger.getSubLogger({ name: "setupServices" });
   const { dryRun, env, config } = options;
 
   // Initialize filesystem first
   const fs = initializeFileSystem(logger, dryRun);
 
   // For config loading, use NodeFileSystem only in dry-run mode when running the CLI directly
-  const isRunningDirectly = process.env.NODE_ENV !== 'test' && !process.env['BUN_TEST'];
+  const isRunningDirectly = process.env.NODE_ENV !== "test" && !process.env["BUN_TEST"];
   const configFs = dryRun && isRunningDirectly ? new NodeFileSystem() : fs;
 
   const baseContext = await createBaseRuntimeContext(logger, {
@@ -279,26 +276,20 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     process.exit(1);
   }
 
-  const {
-    projectConfig,
-    systemInfo,
-    registryPath,
-    fileRegistry,
-    toolInstallationRegistry,
-  } = baseContext;
+  const { projectConfig, systemInfo, registryPath, fileRegistry, toolInstallationRegistry } = baseContext;
 
-  const devProxyRawValue = env['DEV_PROXY'];
+  const devProxyRawValue = env["DEV_PROXY"];
   const devProxyValidation = validateDevProxyPort(devProxyRawValue);
   const devProxyPort = devProxyValidation.port;
 
-  if (typeof devProxyValidation.invalidValue === 'string') {
+  if (typeof devProxyValidation.invalidValue === "string") {
     logger.error(
-      messages.configParameterInvalid('DEV_PROXY', devProxyValidation.invalidValue, 'an integer between 1 and 65535'),
+      messages.configParameterInvalid("DEV_PROXY", devProxyValidation.invalidValue, "an integer between 1 and 65535"),
     );
     process.exit(1);
   }
 
-  if (typeof devProxyPort === 'number') {
+  if (typeof devProxyPort === "number") {
     logger.debug(messages.proxyCheckingAvailability(devProxyPort));
     const proxyAvailable = await isProxyAvailable(devProxyPort);
     if (!proxyAvailable) {
@@ -329,7 +320,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // Initialize services with projectConfig
   // Pass proxy config to enable routing requests through HTTP caching proxy
-  const proxyConfig = typeof devProxyPort === 'number' ? { enabled: true, port: devProxyPort } : undefined;
+  const proxyConfig = typeof devProxyPort === "number" ? { enabled: true, port: devProxyPort } : undefined;
   const downloader = new Downloader(parentLogger, resolvedFs, undefined, downloadCache, proxyConfig);
 
   // Create shell instance for all components
@@ -339,8 +330,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const githubApiCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.github.cache.enabled,
     defaultTtl: projectConfig.github.cache.ttl,
-    cacheDir: path.join(projectConfig.paths.generatedDir, 'cache', 'github-api'),
-    storageStrategy: 'json',
+    cacheDir: path.join(projectConfig.paths.generatedDir, "cache", "github-api"),
+    storageStrategy: "json",
   });
   const githubApiClient = new GitHubApiClient(parentLogger, projectConfig, downloader, githubApiCache);
   const ghCliApiClient = new GhCliApiClient(parentLogger, projectConfig, shell, githubApiCache);
@@ -348,21 +339,21 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const giteaApiCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.github.cache.enabled,
     defaultTtl: projectConfig.github.cache.ttl,
-    cacheDir: path.join(projectConfig.paths.generatedDir, 'cache', 'gitea-api'),
-    storageStrategy: 'json',
+    cacheDir: path.join(projectConfig.paths.generatedDir, "cache", "gitea-api"),
+    storageStrategy: "json",
   });
 
   const cargoCratesIoCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.cargo.cratesIo.cache.enabled,
     defaultTtl: projectConfig.cargo.cratesIo.cache.ttl,
-    cacheDir: path.join(projectConfig.paths.generatedDir, 'cache', 'cargo', 'crates-io'),
-    storageStrategy: 'json',
+    cacheDir: path.join(projectConfig.paths.generatedDir, "cache", "cargo", "crates-io"),
+    storageStrategy: "json",
   });
   const cargoGithubRawCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.cargo.githubRaw.cache.enabled,
     defaultTtl: projectConfig.cargo.githubRaw.cache.ttl,
-    cacheDir: path.join(projectConfig.paths.generatedDir, 'cache', 'cargo', 'github-raw'),
-    storageStrategy: 'json',
+    cacheDir: path.join(projectConfig.paths.generatedDir, "cache", "cargo", "github-raw"),
+    storageStrategy: "json",
   });
   const cargoClient = new CargoClient(parentLogger, projectConfig, downloader, cargoCratesIoCache, cargoGithubRawCache);
 
@@ -378,7 +369,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   } = createTrackedFileSystems(parentLogger, resolvedFs, fileRegistry, projectConfig);
 
   // Create system-context logger for generators that operate at system level
-  const systemLogger = parentLogger.getSubLogger({ context: 'system' });
+  const systemLogger = parentLogger.getSubLogger({ context: "system" });
 
   const shellInitGenerator = new ShellInitGenerator(systemLogger, shellInitTrackedFs, projectConfig);
   const symlinkGenerator = new SymlinkGenerator(systemLogger, symlinkTrackedFs, projectConfig, systemInfo);
@@ -406,13 +397,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     ),
   );
   pluginRegistry.register(
-    new GiteaReleaseInstallerPlugin(
-      installerTrackedFs,
-      downloader,
-      archiveExtractor,
-      hookExecutor,
-      giteaApiCache,
-    ),
+    new GiteaReleaseInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor, giteaApiCache),
   );
   pluginRegistry.register(new BrewInstallerPlugin(shell));
   pluginRegistry.register(
@@ -505,7 +490,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     toolInstallationRegistry,
     resolvedFs,
     catalogTrackedFs,
-    path.join(projectConfig.paths.generatedDir, 'cache', 'readme'),
+    path.join(projectConfig.paths.generatedDir, "cache", "readme"),
     pluginRegistry,
   );
 
@@ -542,7 +527,7 @@ export function registerAllCommands(
   program: IGlobalProgram,
   servicesFactory: () => Promise<IServices>,
 ) {
-  const logger = parentLogger.getSubLogger({ name: 'registerAllCommands' });
+  const logger = parentLogger.getSubLogger({ name: "registerAllCommands" });
   registerBinCommand(logger, program, servicesFactory);
   registerInstallCommand(logger, program, servicesFactory);
   registerGenerateCommand(logger, program, servicesFactory);
@@ -562,7 +547,7 @@ function hasFlag(argv: string[], flag: string): boolean {
   return argv.includes(flag);
 }
 
-const COMMAND_FLAGS_WITH_VALUES = new Set(['--config', '--log', '--platform', '--arch']);
+const COMMAND_FLAGS_WITH_VALUES = new Set(["--config", "--log", "--platform", "--arch"]);
 
 function resolveCommand(argv: string[]): string | undefined {
   for (let i = 2; i < argv.length; i += 1) {
@@ -576,7 +561,7 @@ function resolveCommand(argv: string[]): string | undefined {
       continue;
     }
 
-    if (token.startsWith('-')) {
+    if (token.startsWith("-")) {
       continue;
     }
 
@@ -587,7 +572,7 @@ function resolveCommand(argv: string[]): string | undefined {
 }
 
 export function resolveLogLevel(argv: string[], options: IGlobalProgramOptions): LogLevelValue {
-  const isShimMode = hasFlag(argv, '--shim-mode');
+  const isShimMode = hasFlag(argv, "--shim-mode");
   const quiet = options.quiet || isShimMode;
   return getLogLevelFromFlags(options.log, quiet, options.verbose);
 }
@@ -601,8 +586,8 @@ export async function main(argv: string[]) {
 
   // Create logger with appropriate level based on CLI flags
   const logLevel = resolveLogLevel(argv, options);
-  const rootLogger = createTsLogger({ name: 'cli', level: logLevel, trace: options.trace });
-  const logger = rootLogger.getSubLogger({ name: 'main' });
+  const rootLogger = createTsLogger({ name: "cli", level: logLevel, trace: options.trace });
+  const logger = rootLogger.getSubLogger({ name: "main" });
 
   logger.trace(messages.cliStarted(), argv);
 
@@ -622,7 +607,7 @@ export async function main(argv: string[]) {
 export async function runCliEntrypoint(argv: string[]): Promise<void> {
   const command = resolveCommand(argv);
 
-  if (command === '@track-usage') {
+  if (command === "@track-usage") {
     await runTrackUsageCommand(argv);
     return;
   }
@@ -634,8 +619,8 @@ export async function runCliEntrypoint(argv: string[]): Promise<void> {
 if (import.meta.main) {
   runCliEntrypoint(process.argv).catch((error) => {
     // Create a basic logger for fatal errors only, since we don't have parsed options yet
-    const fatalLogger = createTsLogger({ name: 'cli' });
-    fatalLogger.fatal(messages.commandExecutionFailed('main', 1), error);
+    const fatalLogger = createTsLogger({ name: "cli" });
+    fatalLogger.fatal(messages.commandExecutionFailed("main", 1), error);
     process.exit(1);
   });
 }

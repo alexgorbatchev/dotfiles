@@ -1,8 +1,8 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { IApiResponse, IInstallToolRequest, IInstallToolResponse } from '../../shared/types';
-import { messages } from '../log-messages';
-import type { IDashboardServices } from '../types';
-import { getToolConfigs } from './helpers';
+import type { TsLogger } from "@dotfiles/logger";
+import type { IApiResponse, IInstallToolRequest, IInstallToolResponse } from "../../shared/types";
+import { messages } from "../log-messages";
+import type { IDashboardServices } from "../types";
+import { getToolConfigs } from "./helpers";
 
 /**
  * POST /api/tools/:name/install - Install or reinstall a tool
@@ -13,7 +13,7 @@ export async function installTool(
   toolName: string,
   request: IInstallToolRequest,
 ): Promise<IApiResponse<IInstallToolResponse>> {
-  const subLogger = logger.getSubLogger({ name: 'installTool', context: toolName });
+  const subLogger = logger.getSubLogger({ name: "installTool", context: toolName });
 
   try {
     // Load tool config
@@ -30,12 +30,12 @@ export async function installTool(
     });
 
     if (!result.success) {
-      subLogger.error(messages.installFailed(result.error ?? 'Unknown error'));
+      subLogger.error(messages.installFailed(result.error ?? "Unknown error"));
       return {
         success: true,
         data: {
           installed: false,
-          error: result.error ?? 'Installation failed',
+          error: result.error ?? "Installation failed",
         },
       };
     }
@@ -46,7 +46,7 @@ export async function installTool(
       data: {
         installed: true,
         version: result.version,
-        alreadyInstalled: result.installationMethod === 'already-installed',
+        alreadyInstalled: result.installationMethod === "already-installed",
       },
     };
   } catch (error) {

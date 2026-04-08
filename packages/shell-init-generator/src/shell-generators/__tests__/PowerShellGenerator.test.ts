@@ -1,45 +1,41 @@
-import type { ToolConfig } from '@dotfiles/core';
-import {
-  isAliasEmission,
-  isCompletionEmission,
-  isEnvironmentEmission,
-} from '@dotfiles/shell-emissions';
-import '@dotfiles/testing-helpers';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import { PowerShellGenerator } from '../PowerShellGenerator';
-import { createMockProjectConfigWithPathsOnly } from './createMockProjectConfigWithPathsOnly';
+import type { ToolConfig } from "@dotfiles/core";
+import { isAliasEmission, isCompletionEmission, isEnvironmentEmission } from "@dotfiles/shell-emissions";
+import "@dotfiles/testing-helpers";
+import { beforeEach, describe, expect, it } from "bun:test";
+import { PowerShellGenerator } from "../PowerShellGenerator";
+import { createMockProjectConfigWithPathsOnly } from "./createMockProjectConfigWithPathsOnly";
 
-describe('PowerShellGenerator', () => {
+describe("PowerShellGenerator", () => {
   let generator: PowerShellGenerator;
 
   beforeEach(() => {
     generator = new PowerShellGenerator(createMockProjectConfigWithPathsOnly());
   });
 
-  it('should have correct shell type and file extension', () => {
-    expect(generator.shellType).toBe('powershell');
-    expect(generator.fileExtension).toBe('.ps1');
+  it("should have correct shell type and file extension", () => {
+    expect(generator.shellType).toBe("powershell");
+    expect(generator.fileExtension).toBe(".ps1");
   });
 
-  it('should return correct default output path', () => {
+  it("should return correct default output path", () => {
     const outputPath = generator.getDefaultOutputPath();
-    expect(outputPath).toBe('/home/test/.dotfiles/.generated/shell-scripts/main.ps1');
+    expect(outputPath).toBe("/home/test/.dotfiles/.generated/shell-scripts/main.ps1");
   });
 
-  describe('extractEmissions', () => {
-    it('should extract environment variables as emissions', () => {
+  describe("extractEmissions", () => {
+    it("should extract environment variables as emissions", () => {
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
         shellConfigs: {
           powershell: {
             env: {
-              PS_VAR: 'ps_value',
+              PS_VAR: "ps_value",
             },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -47,22 +43,22 @@ describe('PowerShellGenerator', () => {
       const envEmissions = emissions.filter(isEnvironmentEmission);
 
       expect(envEmissions).toHaveLength(1);
-      expect(envEmissions[0]?.variables).toEqual({ PS_VAR: 'ps_value' });
+      expect(envEmissions[0]?.variables).toEqual({ PS_VAR: "ps_value" });
     });
 
-    it('should extract aliases as emissions', () => {
+    it("should extract aliases as emissions", () => {
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
         shellConfigs: {
           powershell: {
             aliases: {
-              gci: 'Get-ChildItem',
+              gci: "Get-ChildItem",
             },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -70,20 +66,20 @@ describe('PowerShellGenerator', () => {
       const aliasEmissions = emissions.filter(isAliasEmission);
 
       expect(aliasEmissions).toHaveLength(1);
-      expect(aliasEmissions[0]?.aliases).toEqual({ gci: 'Get-ChildItem' });
+      expect(aliasEmissions[0]?.aliases).toEqual({ gci: "Get-ChildItem" });
     });
 
-    it('should extract completions with files', () => {
+    it("should extract completions with files", () => {
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
         shellConfigs: {
           powershell: {
-            completions: { source: 'test-completion' },
+            completions: { source: "test-completion" },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -95,12 +91,12 @@ describe('PowerShellGenerator', () => {
       expect(completionEmissions[0]?.files).toBeDefined();
     });
 
-    it('should return empty array for tool with no powershell config', () => {
+    it("should return empty array for tool with no powershell config", () => {
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
-        installationMethod: 'manual',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -110,30 +106,30 @@ describe('PowerShellGenerator', () => {
     });
   });
 
-  describe('generateFileContent', () => {
-    it('should generate valid PowerShell file content', () => {
+  describe("generateFileContent", () => {
+    it("should generate valid PowerShell file content", () => {
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
         shellConfigs: {
           powershell: {
-            env: { PS_VAR: 'value' },
+            env: { PS_VAR: "value" },
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       };
 
       const emissions = generator.extractEmissions(toolConfig);
-      const toolEmissions = new Map([['test-tool', emissions]]);
+      const toolEmissions = new Map([["test-tool", emissions]]);
       const content = generator.generateFileContent(toolEmissions);
 
-      expect(content).toContain('# THIS FILE IS AUTOMATICALLY GENERATED');
+      expect(content).toContain("# THIS FILE IS AUTOMATICALLY GENERATED");
       expect(content).toContain('$env:PS_VAR = "value"');
     });
 
-    it('should include dotfiles CLI function in dedicated section', () => {
+    it("should include dotfiles CLI function in dedicated section", () => {
       const toolEmissions = new Map<string, never[]>();
       const content = generator.generateFileContent(toolEmissions);
 

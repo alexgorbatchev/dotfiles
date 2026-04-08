@@ -1,31 +1,31 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo, PlatformConfig, ToolConfig } from '@dotfiles/core';
-import { always, Architecture, architectureToString, Platform, platformToString } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import type { TrackedFileSystem } from '@dotfiles/registry/file';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { ISystemInfo, PlatformConfig, ToolConfig } from "@dotfiles/core";
+import { always, Architecture, architectureToString, Platform, platformToString } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import type { TrackedFileSystem } from "@dotfiles/registry/file";
 import type {
   ICompletionGenerator,
   IShellInitGenerationResult,
   IShellInitGenerator,
-} from '@dotfiles/shell-init-generator';
-import type { IShimGenerator } from '@dotfiles/shim-generator';
+} from "@dotfiles/shell-init-generator";
+import type { IShimGenerator } from "@dotfiles/shim-generator";
 import type {
   CopyOperationResult,
   ICopyGenerator,
   ISymlinkGenerator,
   SymlinkOperationResult,
-} from '@dotfiles/symlink-generator';
+} from "@dotfiles/symlink-generator";
 import {
   createMockFileRegistry,
   createMockProjectConfig,
   createTestDirectories,
   type ITestDirectories,
-} from '@dotfiles/testing-helpers';
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import path from 'node:path';
-import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
+} from "@dotfiles/testing-helpers";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import path from "node:path";
+import { GeneratorOrchestrator } from "../GeneratorOrchestrator";
 
 /**
  * Creates a mock TrackedFileSystem for testing.
@@ -41,19 +41,20 @@ function createMockTrackedFileSystem(fs: IFileSystem): TrackedFileSystem {
 
 // Helper function to generate platform-specific content
 function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, systemInfo: ISystemInfo): string {
-  let content = '';
+  let content = "";
 
   for (const [toolName, config] of Object.entries(toolConfigs)) {
     if (config.platformConfigs) {
       for (const platformConfig of config.platformConfigs) {
-        const isMatch = ((platformConfig.platforms & Platform.MacOS) !== 0 && systemInfo.platform === Platform.MacOS) ||
+        const isMatch =
+          ((platformConfig.platforms & Platform.MacOS) !== 0 && systemInfo.platform === Platform.MacOS) ||
           ((platformConfig.platforms & Platform.Linux) !== 0 && systemInfo.platform === Platform.Linux);
 
         const platformCfg = platformConfig.config as PlatformConfig;
         if (isMatch && platformCfg.shellConfigs?.zsh?.scripts) {
-          content += `# Platform-specific content for ${toolName}: ${
-            platformCfg.shellConfigs.zsh.scripts.map((s) => s.value).join(' ')
-          }\n`;
+          content += `# Platform-specific content for ${toolName}: ${platformCfg.shellConfigs.zsh.scripts
+            .map((s) => s.value)
+            .join(" ")}\n`;
         }
       }
     }
@@ -64,7 +65,7 @@ function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, system
 
 // Helper function to create mock shell content
 function createMockShellContent(toolConfigs: Record<string, ToolConfig>, systemInfo?: ISystemInfo): string {
-  let mockContent = '# Generated shell init\n';
+  let mockContent = "# Generated shell init\n";
 
   if (systemInfo) {
     mockContent += `# Platform: ${platformToString(systemInfo.platform)}\n`;
@@ -75,7 +76,7 @@ function createMockShellContent(toolConfigs: Record<string, ToolConfig>, systemI
   return mockContent;
 }
 
-describe('GeneratorOrchestrator - Platform Integration Tests', () => {
+describe("GeneratorOrchestrator - Platform Integration Tests", () => {
   let mockFileSystem: IFileSystem;
   let orchestrator: GeneratorOrchestrator;
   let logger: TestLogger;
@@ -94,40 +95,40 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
     mockFileSystem = fs;
     logger = new TestLogger();
 
-    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'orchestrator-platform-integration' });
+    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: "orchestrator-platform-integration" });
 
     macosSystemInfo = {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     };
 
     linuxSystemInfo = {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     };
 
     // Create mock generators
     mockShimGenerator = {
-      generate: async () => Promise.resolve(['/test/bin/shim1', '/test/bin/shim2']),
+      generate: async () => Promise.resolve(["/test/bin/shim1", "/test/bin/shim2"]),
       generateForTool: async () => Promise.resolve([]),
     };
 
     mockShellInitGenerator = {
       generate: async (toolConfigs, options) => {
-        const shellFilePath = path.join(testDirs.paths.shellScriptsDir, 'main.zsh');
+        const shellFilePath = path.join(testDirs.paths.shellScriptsDir, "main.zsh");
         const mockResult: IShellInitGenerationResult = {
-          files: new Map([['zsh', shellFilePath]]),
+          files: new Map([["zsh", shellFilePath]]),
           primaryPath: shellFilePath,
         };
 
         const mockContent = createMockShellContent(toolConfigs, options?.systemInfo);
 
         await mockFileSystem.ensureDir(testDirs.paths.shellScriptsDir);
-        await mockFileSystem.writeFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'), mockContent);
+        await mockFileSystem.writeFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"), mockContent);
         return mockResult;
       },
     };
@@ -136,10 +137,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       generate: async () => {
         const mockResult: SymlinkOperationResult = {
           success: true,
-          sourcePath: '/test/src',
+          sourcePath: "/test/src",
 
-          targetPath: '/test/target',
-          status: 'created',
+          targetPath: "/test/target",
+          status: "created",
         };
         return [mockResult];
       },
@@ -153,17 +154,17 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
     mockCompletionGenerator = {
       generateCompletionFile: async () =>
         Promise.resolve({
-          content: '# completion',
-          filename: '_tool',
-          targetPath: '/path/_tool',
-          generatedBy: 'command' as const,
+          content: "# completion",
+          filename: "_tool",
+          targetPath: "/path/_tool",
+          generatedBy: "command" as const,
         }),
       generateAndWriteCompletionFile: async () =>
         Promise.resolve({
-          content: '# completion',
-          filename: '_tool',
-          targetPath: '/path/_tool',
-          generatedBy: 'command' as const,
+          content: "# completion",
+          filename: "_tool",
+          targetPath: "/path/_tool",
+          generatedBy: "command" as const,
         }),
     };
 
@@ -171,7 +172,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
       fileSystem: mockFileSystem,
       logger,
       systemInfo: macosSystemInfo,
@@ -179,8 +180,8 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
     });
   });
 
-  describe('systemInfo integration', () => {
-    it('should pass systemInfo to shell generator for macOS platform-specific tools', async () => {
+  describe("systemInfo integration", () => {
+    it("should pass systemInfo to shell generator for macOS platform-specific tools", async () => {
       orchestrator = new GeneratorOrchestrator(
         logger,
         mockShimGenerator,
@@ -197,14 +198,14 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
 
       const toolConfigs: Record<string, ToolConfig> = {
         aerospace: {
-          name: 'aerospace',
-          version: 'latest',
-          installationMethod: 'manual',
+          name: "aerospace",
+          version: "latest",
+          installationMethod: "manual",
           platformConfigs: [
             {
               platforms: Platform.MacOS,
               config: {
-                binaries: ['aerospace'],
+                binaries: ["aerospace"],
                 shellConfigs: {
                   zsh: {
                     scripts: [always(`# macOS aerospace init`)],
@@ -214,12 +215,12 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
             },
           ],
         },
-        'regular-tool': {
-          name: 'regular-tool',
-          version: 'latest',
-          installationMethod: 'github-release',
-          installParams: { repo: 'test/regular' },
-          binaries: ['regular'],
+        "regular-tool": {
+          name: "regular-tool",
+          version: "latest",
+          installationMethod: "github-release",
+          installParams: { repo: "test/regular" },
+          binaries: ["regular"],
           shellConfigs: {
             zsh: {
               scripts: [always(`# Regular tool init`)],
@@ -231,13 +232,13 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       await orchestrator.generateAll(toolConfigs);
 
       // Verify the shell generator received systemInfo and processed platform configs
-      const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-      expect(shellContent).toContain('# Platform: macos');
-      expect(shellContent).toContain('# Arch: arm64');
-      expect(shellContent).toContain('# Platform-specific content for aerospace: # macOS aerospace init');
+      const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+      expect(shellContent).toContain("# Platform: macos");
+      expect(shellContent).toContain("# Arch: arm64");
+      expect(shellContent).toContain("# Platform-specific content for aerospace: # macOS aerospace init");
     });
 
-    it('should pass systemInfo to shell generator for Linux', async () => {
+    it("should pass systemInfo to shell generator for Linux", async () => {
       orchestrator = new GeneratorOrchestrator(
         logger,
         mockShimGenerator,
@@ -253,10 +254,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
-        'cross-platform-tool': {
-          name: 'cross-platform-tool',
-          version: 'latest',
-          installationMethod: 'manual',
+        "cross-platform-tool": {
+          name: "cross-platform-tool",
+          version: "latest",
+          installationMethod: "manual",
           shellConfigs: {
             zsh: {
               scripts: [always(`# Base init`)],
@@ -290,16 +291,16 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       await orchestrator.generateAll(toolConfigs);
 
       // Verify the shell generator received Linux systemInfo
-      const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-      expect(shellContent).toContain('# Platform: linux');
-      expect(shellContent).toContain('# Arch: x86_64');
+      const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+      expect(shellContent).toContain("# Platform: linux");
+      expect(shellContent).toContain("# Arch: x86_64");
       expect(shellContent).toContain(
-        '# Platform-specific content for cross-platform-tool: # Linux specific - should appear',
+        "# Platform-specific content for cross-platform-tool: # Linux specific - should appear",
       );
-      expect(shellContent).not.toContain('# macOS specific - should not appear');
+      expect(shellContent).not.toContain("# macOS specific - should not appear");
     });
 
-    it('should handle tools with no platform configs', async () => {
+    it("should handle tools with no platform configs", async () => {
       orchestrator = new GeneratorOrchestrator(
         logger,
         mockShimGenerator,
@@ -315,12 +316,12 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
-        'simple-tool': {
-          name: 'simple-tool',
-          version: 'latest',
-          installationMethod: 'github-release',
-          installParams: { repo: 'test/simple' },
-          binaries: ['simple'],
+        "simple-tool": {
+          name: "simple-tool",
+          version: "latest",
+          installationMethod: "github-release",
+          installParams: { repo: "test/simple" },
+          binaries: ["simple"],
           shellConfigs: {
             zsh: {
               scripts: [always(`# Simple tool init`)],
@@ -333,15 +334,15 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       await orchestrator.generateAll(toolConfigs);
 
       // Should still work even with no platform configs
-      const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-      expect(shellContent).toContain('# Platform: linux');
-      expect(shellContent).toContain('# Arch: x86_64');
+      const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+      expect(shellContent).toContain("# Platform: linux");
+      expect(shellContent).toContain("# Arch: x86_64");
       // No platform-specific content expected since there are no platform configs
     });
   });
 
-  describe('full integration with multiple generators', () => {
-    it('should coordinate all generators with platform-aware systemInfo', async () => {
+  describe("full integration with multiple generators", () => {
+    it("should coordinate all generators with platform-aware systemInfo", async () => {
       orchestrator = new GeneratorOrchestrator(
         logger,
         mockShimGenerator,
@@ -357,27 +358,27 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
-        'full-platform-tool': {
-          name: 'full-platform-tool',
-          version: 'latest',
-          installationMethod: 'manual',
+        "full-platform-tool": {
+          name: "full-platform-tool",
+          version: "latest",
+          installationMethod: "manual",
           shellConfigs: {
             zsh: {
               scripts: [always(`# Base shell init`)],
             },
           },
-          symlinks: [{ source: './base.conf', target: '~/.base.conf' }],
+          symlinks: [{ source: "./base.conf", target: "~/.base.conf" }],
           platformConfigs: [
             {
               platforms: Platform.MacOS,
               config: {
-                binaries: ['macos-binary'],
+                binaries: ["macos-binary"],
                 shellConfigs: {
                   zsh: {
                     scripts: [always(`# macOS shell init`)],
                   },
                 },
-                symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],
+                symlinks: [{ source: "./macos.conf", target: "~/.macos.conf" }],
               },
             },
           ],
@@ -387,9 +388,9 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       await orchestrator.generateAll(toolConfigs);
 
       // Verify shell content includes platform-aware information
-      const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-      expect(shellContent).toContain('# Platform: macos');
-      expect(shellContent).toContain('# Platform-specific content for full-platform-tool: # macOS shell init');
+      const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, "main.zsh"));
+      expect(shellContent).toContain("# Platform: macos");
+      expect(shellContent).toContain("# Platform-specific content for full-platform-tool: # macOS shell init");
     });
   });
 });

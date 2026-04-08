@@ -1,8 +1,8 @@
-import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
-import { architectureToString, platformToString } from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
-import { resolvePlatformConfig } from '@dotfiles/utils';
-import { messages } from './log-messages';
+import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
+import { architectureToString, platformToString } from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
+import { resolvePlatformConfig } from "@dotfiles/utils";
+import { messages } from "./log-messages";
 
 interface IToolDependencyMetadata {
   providedBinaries: string[];
@@ -25,7 +25,7 @@ function extractProvidedBinaries(toolName: string, toolConfig: ToolConfig): stri
 
   if (toolConfig.binaries && toolConfig.binaries.length > 0) {
     for (const binary of toolConfig.binaries) {
-      if (typeof binary === 'string') {
+      if (typeof binary === "string") {
         providedBinaryNames.add(binary);
       } else {
         providedBinaryNames.add(binary.name);
@@ -134,13 +134,13 @@ function resolveDependencyProvider(
         architectureToString(systemInfo.arch),
       ),
     );
-    throw new Error('Dependency validation failed');
+    throw new Error("Dependency validation failed");
   }
 
   if (providers.size > 1) {
     const providerList: string[] = [...providers];
-    logger.error(messages.generateAll.ambiguousDependency(dependencyName, providerList.join(', '), toolName));
-    throw new Error('Dependency validation failed');
+    logger.error(messages.generateAll.ambiguousDependency(dependencyName, providerList.join(", "), toolName));
+    throw new Error("Dependency validation failed");
   }
 
   const [providerToolName] = providers;
@@ -153,7 +153,7 @@ function resolveDependencyProvider(
         architectureToString(systemInfo.arch),
       ),
     );
-    throw new Error('Dependency validation failed');
+    throw new Error("Dependency validation failed");
   }
 
   return providerToolName;
@@ -249,7 +249,7 @@ export function orderToolConfigsByDependencies(
   toolConfigs: Record<string, ToolConfig>,
   systemInfo: ISystemInfo,
 ): Record<string, ToolConfig> {
-  const logger = parentLogger.getSubLogger({ name: 'orderToolConfigsByDependencies' });
+  const logger = parentLogger.getSubLogger({ name: "orderToolConfigsByDependencies" });
 
   const toolNames: string[] = Object.keys(toolConfigs);
   logger.debug(messages.generateAll.dependenciesValidationStarted(toolNames.length));
@@ -273,11 +273,11 @@ export function orderToolConfigsByDependencies(
   const orderedToolNames = performTopologicalSort(toolNames, dependencyGraph, toolOrderIndex);
   if (orderedToolNames.length !== toolNames.length) {
     const remainingTools = toolNames.filter((toolName) => (dependencyGraph.inDegree.get(toolName) ?? 0) > 0);
-    logger.error(messages.generateAll.circularDependency(remainingTools.join(', ')));
-    throw new Error('Dependency validation failed');
+    logger.error(messages.generateAll.circularDependency(remainingTools.join(", ")));
+    throw new Error("Dependency validation failed");
   }
 
-  logger.debug(messages.generateAll.dependenciesOrderResolved(orderedToolNames.join(' -> ')));
+  logger.debug(messages.generateAll.dependenciesOrderResolved(orderedToolNames.join(" -> ")));
 
   const orderedToolConfigs: Record<string, ToolConfig> = {};
   for (const toolName of orderedToolNames) {

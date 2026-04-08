@@ -1,20 +1,16 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { IPluginShellInit, ShellType, ToolConfig } from '@dotfiles/core';
-import { getScriptContent, isAlwaysScript, isOnceScript, isRawScript } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { Emission } from '@dotfiles/shell-emissions';
-import { alias, environment, fn, script, withSource } from '@dotfiles/shell-emissions';
-import { resolvePlatformConfig } from '@dotfiles/utils';
-import path from 'node:path';
-import type { IGenerateShellInitOptions, IShellInitGenerationResult, IShellInitGenerator } from './IShellInitGenerator';
-import { messages } from './log-messages';
-import { type IProfileUpdateConfig, ProfileUpdater } from './profile-updater';
-import {
-  createGenerator,
-  type IAdditionalShellFile,
-  type IShellGenerator,
-} from './shell-generators';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { IPluginShellInit, ShellType, ToolConfig } from "@dotfiles/core";
+import { getScriptContent, isAlwaysScript, isOnceScript, isRawScript } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import type { Emission } from "@dotfiles/shell-emissions";
+import { alias, environment, fn, script, withSource } from "@dotfiles/shell-emissions";
+import { resolvePlatformConfig } from "@dotfiles/utils";
+import path from "node:path";
+import type { IGenerateShellInitOptions, IShellInitGenerationResult, IShellInitGenerator } from "./IShellInitGenerator";
+import { messages } from "./log-messages";
+import { type IProfileUpdateConfig, ProfileUpdater } from "./profile-updater";
+import { createGenerator, type IAdditionalShellFile, type IShellGenerator } from "./shell-generators";
 
 /**
  * Service that generates shell initialization scripts for installed tools.
@@ -47,8 +43,8 @@ export class ShellInitGenerator implements IShellInitGenerator {
   private readonly logger: TsLogger;
 
   constructor(parentLogger: TsLogger, fileSystem: IFileSystem, projectConfig: ProjectConfig) {
-    this.logger = parentLogger.getSubLogger({ name: 'ShellInitGenerator' });
-    const logger = this.logger.getSubLogger({ name: 'constructor' });
+    this.logger = parentLogger.getSubLogger({ name: "ShellInitGenerator" });
+    const logger = this.logger.getSubLogger({ name: "constructor" });
     logger.debug(messages.constructor.initialized());
     this.fs = fileSystem;
     this.projectConfig = projectConfig;
@@ -58,8 +54,8 @@ export class ShellInitGenerator implements IShellInitGenerator {
     toolConfigs: Record<string, ToolConfig>,
     options?: IGenerateShellInitOptions,
   ): Promise<IShellInitGenerationResult | null> {
-    const logger = this.logger.getSubLogger({ name: 'generate' });
-    const shellTypes: ShellType[] = options?.shellTypes ?? ['zsh'];
+    const logger = this.logger.getSubLogger({ name: "generate" });
+    const shellTypes: ShellType[] = options?.shellTypes ?? ["zsh"];
     const generatedFiles = new Map<ShellType, string>();
     let primaryPath: string | null = null;
 
@@ -97,8 +93,8 @@ export class ShellInitGenerator implements IShellInitGenerator {
     shellType: ShellType,
     toolConfigs: Record<string, ToolConfig>,
     options?: IGenerateShellInitOptions,
-  ): Promise<{ outputPath: string; } | null> {
-    const logger = this.logger.getSubLogger({ name: 'generateForShellType' });
+  ): Promise<{ outputPath: string } | null> {
+    const logger = this.logger.getSubLogger({ name: "generateForShellType" });
     try {
       const generator = createGenerator(shellType, this.projectConfig);
       const outputPath = options?.outputPath ?? generator.getDefaultOutputPath();
@@ -178,11 +174,11 @@ export class ShellInitGenerator implements IShellInitGenerator {
         let emission: Emission | undefined;
 
         if (isOnceScript(shellScript)) {
-          emission = script(scriptContent, 'once');
+          emission = script(scriptContent, "once");
         } else if (isAlwaysScript(shellScript)) {
-          emission = script(scriptContent, 'always');
+          emission = script(scriptContent, "always");
         } else if (isRawScript(shellScript)) {
-          emission = script(scriptContent, 'raw');
+          emission = script(scriptContent, "raw");
         }
 
         if (emission) {
@@ -207,7 +203,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     fileContent: string,
     additionalFiles: IAdditionalShellFile[],
   ): Promise<boolean> {
-    const logger = this.logger.getSubLogger({ name: 'writeShellFiles' });
+    const logger = this.logger.getSubLogger({ name: "writeShellFiles" });
     try {
       await this.fs.ensureDir(path.dirname(outputPath));
       await this.fs.writeFile(outputPath, fileContent);
@@ -224,7 +220,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
   }
 
   private async writeAdditionalFile(additionalFile: IAdditionalShellFile): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'writeAdditionalFile' });
+    const logger = this.logger.getSubLogger({ name: "writeAdditionalFile" });
     try {
       await this.fs.ensureDir(path.dirname(additionalFile.outputPath));
       await this.fs.writeFile(additionalFile.outputPath, additionalFile.content);
@@ -239,12 +235,12 @@ export class ShellInitGenerator implements IShellInitGenerator {
    * @returns Promise resolving to array of profile update results
    */
   private async updateProfileFiles(generatedFiles: Map<ShellType, string>) {
-    const logger = this.logger.getSubLogger({ name: 'updateProfileFiles' });
+    const logger = this.logger.getSubLogger({ name: "updateProfileFiles" });
     const profileUpdater = new ProfileUpdater(this.fs, this.projectConfig.paths.homeDir);
     const shellInstallConfig = this.projectConfig.features.shellInstall;
 
     if (!shellInstallConfig) {
-      logger.debug(messages.profiles.skipped('all' as ShellType));
+      logger.debug(messages.profiles.skipped("all" as ShellType));
       return [];
     }
 
@@ -252,11 +248,11 @@ export class ShellInitGenerator implements IShellInitGenerator {
     for (const [shellType, scriptPath] of generatedFiles) {
       let profilePath: string | undefined;
 
-      if (shellType === 'zsh') {
+      if (shellType === "zsh") {
         profilePath = shellInstallConfig?.zsh;
-      } else if (shellType === 'bash') {
+      } else if (shellType === "bash") {
         profilePath = shellInstallConfig?.bash;
-      } else if (shellType === 'powershell') {
+      } else if (shellType === "powershell") {
         profilePath = shellInstallConfig?.powershell;
       }
 
@@ -265,9 +261,9 @@ export class ShellInitGenerator implements IShellInitGenerator {
         continue;
       }
 
-      if (profilePath?.startsWith('~/')) {
+      if (profilePath?.startsWith("~/")) {
         profilePath = path.join(this.projectConfig.paths.homeDir, profilePath.slice(2));
-      } else if (profilePath === '~') {
+      } else if (profilePath === "~") {
         profilePath = this.projectConfig.paths.homeDir;
       }
 
@@ -290,8 +286,8 @@ export class ShellInitGenerator implements IShellInitGenerator {
    * @param shellType - The shell type to clean up once scripts for
    */
   private async cleanupOnceScriptsDirectory(shellType: ShellType): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'cleanupOnceScriptsDirectory' });
-    const onceDir = path.join(this.projectConfig.paths.shellScriptsDir, '.once');
+    const logger = this.logger.getSubLogger({ name: "cleanupOnceScriptsDirectory" });
+    const onceDir = path.join(this.projectConfig.paths.shellScriptsDir, ".once");
 
     try {
       const onceDirExists = await this.fs.exists(onceDir);
@@ -323,12 +319,12 @@ export class ShellInitGenerator implements IShellInitGenerator {
    */
   private getShellExtension(shellType: ShellType): string {
     switch (shellType) {
-      case 'zsh':
-        return 'zsh';
-      case 'bash':
-        return 'bash';
-      case 'powershell':
-        return 'ps1';
+      case "zsh":
+        return "zsh";
+      case "bash":
+        return "bash";
+      case "powershell":
+        return "ps1";
       default:
         throw new Error(`Unsupported shell type: ${shellType}`);
     }

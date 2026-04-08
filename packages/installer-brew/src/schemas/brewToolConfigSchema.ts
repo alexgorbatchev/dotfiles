@@ -1,13 +1,10 @@
-import {
-  baseToolConfigWithPlatformsSchema,
-  type InferToolConfigWithPlatforms,
-} from '@dotfiles/core';
-import { z } from 'zod';
-import { brewInstallParamsSchema } from './brewInstallParamsSchema';
+import { baseToolConfigWithPlatformsSchema, type InferToolConfigWithPlatforms } from "@dotfiles/core";
+import { z } from "zod";
+import { brewInstallParamsSchema } from "./brewInstallParamsSchema";
 
 export const brewToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
   /** Resolved tool configuration for the 'brew' installation method */
-  installationMethod: z.literal('brew'),
+  installationMethod: z.literal("brew"),
   /** Homebrew installation parameters */
   installParams: brewInstallParamsSchema,
 });

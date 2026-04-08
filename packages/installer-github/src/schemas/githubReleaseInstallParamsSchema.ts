@@ -1,7 +1,7 @@
-import type { BaseInstallParams, IGitHubRelease, IGitHubReleaseAsset, IInstallContext } from '@dotfiles/core';
-import { baseInstallParamsSchema } from '@dotfiles/core';
-import { z } from 'zod';
-import { type AssetPattern, isValidAssetPatternString } from '../matchAssetPattern';
+import type { BaseInstallParams, IGitHubRelease, IGitHubReleaseAsset, IInstallContext } from "@dotfiles/core";
+import { baseInstallParamsSchema } from "@dotfiles/core";
+import { z } from "zod";
+import { type AssetPattern, isValidAssetPatternString } from "../matchAssetPattern";
 
 /**
  * Context object for asset selection functions.
@@ -66,7 +66,7 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
    */
   assetPattern: z
     .union([
-      z.string().refine(isValidAssetPatternString, 'assetPattern must be a valid glob or a regex string like /.../'),
+      z.string().refine(isValidAssetPatternString, "assetPattern must be a valid glob or a regex string like /.../"),
       z.instanceof(RegExp),
     ])
     .optional(),
@@ -89,7 +89,7 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
    *
    * Uses context-based signature: `(context: IAssetSelectionContext) => IGitHubReleaseAsset | undefined`
    */
-  assetSelector: z.custom<AssetSelector>((val) => typeof val === 'function', 'Must be a function').optional(),
+  assetSelector: z.custom<AssetSelector>((val) => typeof val === "function", "Must be a function").optional(),
   /**
    * When true, uses the `gh` CLI for GitHub API requests instead of direct fetch.
    * This is useful when:

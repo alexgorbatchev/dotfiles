@@ -23,8 +23,8 @@ export function normalizeVersion(version: string): string {
   // ? -> _
   // * -> _
   return version
-    .replace(/[/\\]/g, '-')
-    .replace(/[:]/g, '-')
-    .replace(/[<>"|?*]/g, '_')
+    .replace(/[/\\]/g, "-")
+    .replace(/[:]/g, "-")
+    .replace(/[<>"|?*]/g, "_")
     .trim();
 }

@@ -1,9 +1,9 @@
-import type { ToolConfig } from '@dotfiles/core';
-import { always, Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import { resolvePlatformConfig } from '../resolvePlatformConfig';
+import type { ToolConfig } from "@dotfiles/core";
+import { always, Architecture, type ISystemInfo, Platform } from "@dotfiles/core";
+import { beforeEach, describe, expect, it } from "bun:test";
+import { resolvePlatformConfig } from "../resolvePlatformConfig";
 
-describe('resolvePlatformConfig', () => {
+describe("resolvePlatformConfig", () => {
   let baseToolConfig: ToolConfig;
   let macosSystemInfo: ISystemInfo;
   let linuxSystemInfo: ISystemInfo;
@@ -11,11 +11,11 @@ describe('resolvePlatformConfig', () => {
 
   beforeEach(() => {
     baseToolConfig = {
-      name: 'test-tool',
-      version: 'latest',
-      installationMethod: 'github-release',
-      installParams: { repo: 'test/repo' },
-      binaries: ['test-tool'],
+      name: "test-tool",
+      version: "latest",
+      installationMethod: "github-release",
+      installParams: { repo: "test/repo" },
+      binaries: ["test-tool"],
       shellConfigs: {
         zsh: {
           scripts: [always(`# Base zsh init`)],
@@ -24,46 +24,46 @@ describe('resolvePlatformConfig', () => {
           scripts: [always(`# Base bash init`)],
         },
       },
-      symlinks: [{ source: './base.conf', target: '~/.base.conf' }],
+      symlinks: [{ source: "./base.conf", target: "~/.base.conf" }],
     };
 
     macosSystemInfo = {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
-      homeDir: '/Users/test',
-      hostname: 'test-host',
+      homeDir: "/Users/test",
+      hostname: "test-host",
     };
 
     linuxSystemInfo = {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
-      homeDir: '/home/test',
-      hostname: 'test-host',
+      homeDir: "/home/test",
+      hostname: "test-host",
     };
 
     windowsSystemInfo = {
       platform: Platform.Windows,
       arch: Architecture.X86_64,
-      homeDir: 'C:\\Users\\test',
-      hostname: 'test-host',
+      homeDir: "C:\\Users\\test",
+      hostname: "test-host",
     };
   });
 
-  describe('when no platform configs exist', () => {
-    it('should return the original config unchanged', () => {
+  describe("when no platform configs exist", () => {
+    it("should return the original config unchanged", () => {
       const result = resolvePlatformConfig(baseToolConfig, macosSystemInfo);
       expect(result).toEqual(baseToolConfig);
     });
 
-    it('should return the original config when platformConfigs is empty array', () => {
+    it("should return the original config when platformConfigs is empty array", () => {
       const configWithEmptyPlatforms = { ...baseToolConfig, platformConfigs: [] };
       const result = resolvePlatformConfig(configWithEmptyPlatforms, macosSystemInfo);
       expect(result).toEqual(configWithEmptyPlatforms);
     });
   });
 
-  describe('when platform configs exist but no matches', () => {
-    it('should return original config when no platform matches', () => {
+  describe("when platform configs exist but no matches", () => {
+    it("should return original config when no platform matches", () => {
       const configWithPlatforms: ToolConfig = {
         ...baseToolConfig,
         platformConfigs: [
@@ -71,7 +71,7 @@ describe('resolvePlatformConfig', () => {
             platforms: Platform.Linux,
             config: {
               shellConfigs: { zsh: { scripts: [always(`# Linux specific`)] } },
-              binaries: ['linux-tool'],
+              binaries: ["linux-tool"],
             },
           },
         ],
@@ -86,8 +86,8 @@ describe('resolvePlatformConfig', () => {
     });
   });
 
-  describe('when platform matches', () => {
-    it('should merge macOS platform config with base config', () => {
+  describe("when platform matches", () => {
+    it("should merge macOS platform config with base config", () => {
       const configWithPlatforms: ToolConfig = {
         ...baseToolConfig,
         platformConfigs: [
@@ -95,8 +95,8 @@ describe('resolvePlatformConfig', () => {
             platforms: Platform.MacOS,
             config: {
               shellConfigs: { zsh: { scripts: [always(`# macOS specific`), always(`export MACOS_VAR="true"`)] } },
-              binaries: ['macos-tool'],
-              symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],
+              binaries: ["macos-tool"],
+              symlinks: [{ source: "./macos.conf", target: "~/.macos.conf" }],
             },
           },
         ],
@@ -109,15 +109,15 @@ describe('resolvePlatformConfig', () => {
         always(`# macOS specific`),
         always(`export MACOS_VAR="true"`),
       ]);
-      expect(result.binaries).toEqual(['macos-tool']); // Platform overrides base
+      expect(result.binaries).toEqual(["macos-tool"]); // Platform overrides base
       expect(result.symlinks).toEqual([
-        { source: './base.conf', target: '~/.base.conf' },
-        { source: './macos.conf', target: '~/.macos.conf' },
+        { source: "./base.conf", target: "~/.base.conf" },
+        { source: "./macos.conf", target: "~/.macos.conf" },
       ]);
       expect(result.platformConfigs).toBeUndefined(); // Removed to avoid recursion
     });
 
-    it('should merge Linux platform config with base config', () => {
+    it("should merge Linux platform config with base config", () => {
       const configWithPlatforms: ToolConfig = {
         ...baseToolConfig,
         platformConfigs: [
@@ -137,12 +137,12 @@ describe('resolvePlatformConfig', () => {
 
       expect(result.shellConfigs?.zsh?.scripts).toEqual([always(`# Base zsh init`), always(`# Linux specific`)]);
       expect(result.shellConfigs?.bash?.scripts).toEqual([always(`# Base bash init`), always(`# Linux bash init`)]);
-      expect(result.binaries).toEqual(['test-tool']); // Unchanged from base
+      expect(result.binaries).toEqual(["test-tool"]); // Unchanged from base
     });
   });
 
-  describe('when multiple platform configs match', () => {
-    it('should apply all matching platform configs in order', () => {
+  describe("when multiple platform configs match", () => {
+    it("should apply all matching platform configs in order", () => {
       const configWithMultiplePlatforms: ToolConfig = {
         ...baseToolConfig,
         platformConfigs: [
@@ -156,7 +156,7 @@ describe('resolvePlatformConfig', () => {
             platforms: Platform.MacOS,
             config: {
               shellConfigs: { zsh: { scripts: [always(`# macOS specific`)] } },
-              binaries: ['macos-specific-tool'],
+              binaries: ["macos-specific-tool"],
             },
           },
         ],
@@ -169,12 +169,12 @@ describe('resolvePlatformConfig', () => {
         always(`# Unix common`),
         always(`# macOS specific`),
       ]);
-      expect(result.binaries).toEqual(['macos-specific-tool']); // Last override wins
+      expect(result.binaries).toEqual(["macos-specific-tool"]); // Last override wins
     });
   });
 
-  describe('architecture-specific matching', () => {
-    it('should match platform and architecture when both specified', () => {
+  describe("architecture-specific matching", () => {
+    it("should match platform and architecture when both specified", () => {
       const configWithArchitecture: ToolConfig = {
         ...baseToolConfig,
         platformConfigs: [
@@ -183,7 +183,7 @@ describe('resolvePlatformConfig', () => {
             architectures: Architecture.Arm64,
             config: {
               shellConfigs: { zsh: { scripts: [always(`# macOS ARM64 specific`)] } },
-              binaries: ['macos-arm64-tool'],
+              binaries: ["macos-arm64-tool"],
             },
           },
         ],
@@ -192,10 +192,10 @@ describe('resolvePlatformConfig', () => {
       const result = resolvePlatformConfig(configWithArchitecture, macosSystemInfo);
 
       expect(result.shellConfigs?.zsh?.scripts).toEqual([always(`# Base zsh init`), always(`# macOS ARM64 specific`)]);
-      expect(result.binaries).toEqual(['macos-arm64-tool']);
+      expect(result.binaries).toEqual(["macos-arm64-tool"]);
     });
 
-    it('should not match when architecture does not match', () => {
+    it("should not match when architecture does not match", () => {
       const configWithArchitecture: ToolConfig = {
         ...baseToolConfig,
         platformConfigs: [
@@ -215,7 +215,7 @@ describe('resolvePlatformConfig', () => {
       expect(result.shellConfigs?.zsh?.scripts).toEqual([always(`# Base zsh init`)]);
     });
 
-    it('should match platform when no architecture constraint specified', () => {
+    it("should match platform when no architecture constraint specified", () => {
       const configWithoutArchitecture: ToolConfig = {
         ...baseToolConfig,
         platformConfigs: [
@@ -238,8 +238,8 @@ describe('resolvePlatformConfig', () => {
     });
   });
 
-  describe('bitwise platform matching', () => {
-    it('should match combined platforms using bitwise OR', () => {
+  describe("bitwise platform matching", () => {
+    it("should match combined platforms using bitwise OR", () => {
       const configWithCombinedPlatforms: ToolConfig = {
         ...baseToolConfig,
         platformConfigs: [
@@ -263,13 +263,13 @@ describe('resolvePlatformConfig', () => {
     });
   });
 
-  describe('unknown platform/architecture handling', () => {
-    it('should not match when system platform is unknown', () => {
+  describe("unknown platform/architecture handling", () => {
+    it("should not match when system platform is unknown", () => {
       const unknownPlatformSystem: ISystemInfo = {
         platform: Platform.None,
         arch: Architecture.X86_64,
-        homeDir: '/home/test',
-        hostname: 'test-host',
+        homeDir: "/home/test",
+        hostname: "test-host",
       };
 
       const configWithPlatforms: ToolConfig = {
@@ -288,12 +288,12 @@ describe('resolvePlatformConfig', () => {
       expect(result.shellConfigs?.zsh?.scripts).toEqual([always(`# Base zsh init`)]); // No platform match
     });
 
-    it('should not match when system architecture is unknown but architecture is specified', () => {
+    it("should not match when system architecture is unknown but architecture is specified", () => {
       const unknownArchSystem: ISystemInfo = {
         platform: Platform.MacOS,
         arch: Architecture.None, // Unknown architecture
-        homeDir: '/Users/test',
-        hostname: 'test-host',
+        homeDir: "/Users/test",
+        hostname: "test-host",
       };
 
       const configWithArchitecture: ToolConfig = {
@@ -314,17 +314,17 @@ describe('resolvePlatformConfig', () => {
     });
   });
 
-  describe('property merging behavior', () => {
-    it('should override scalar properties from platform config', () => {
+  describe("property merging behavior", () => {
+    it("should override scalar properties from platform config", () => {
       const configWithOverrides: ToolConfig = {
         ...baseToolConfig,
-        version: '1.0.0',
+        version: "1.0.0",
         platformConfigs: [
           {
             platforms: Platform.MacOS,
             config: {
-              version: '2.0.0-macos',
-              binaries: ['test-tool-macos'],
+              version: "2.0.0-macos",
+              binaries: ["test-tool-macos"],
             },
           },
         ],
@@ -333,14 +333,14 @@ describe('resolvePlatformConfig', () => {
       const result = resolvePlatformConfig(configWithOverrides, macosSystemInfo);
 
       // Platform config overrides scalar properties
-      expect(result.version).toBe('2.0.0-macos');
-      expect(result.binaries).toEqual(['test-tool-macos']);
+      expect(result.version).toBe("2.0.0-macos");
+      expect(result.binaries).toEqual(["test-tool-macos"]);
       // Base config properties remain unchanged
-      expect(result.installationMethod).toBe('github-release');
-      expect(result.installParams).toEqual({ repo: 'test/repo' });
+      expect(result.installationMethod).toBe("github-release");
+      expect(result.installParams).toEqual({ repo: "test/repo" });
     });
 
-    it('should merge array properties (zshInit, bashInit, symlinks)', () => {
+    it("should merge array properties (zshInit, bashInit, symlinks)", () => {
       const configWithArrays: ToolConfig = {
         ...baseToolConfig,
         shellConfigs: {
@@ -357,8 +357,8 @@ describe('resolvePlatformConfig', () => {
                 powershell: { scripts: [always(`# Platform PowerShell`)] },
               },
               symlinks: [
-                { source: './platform1.conf', target: '~/.platform1.conf' },
-                { source: './platform2.conf', target: '~/.platform2.conf' },
+                { source: "./platform1.conf", target: "~/.platform1.conf" },
+                { source: "./platform2.conf", target: "~/.platform2.conf" },
               ],
             },
           },
@@ -378,17 +378,17 @@ describe('resolvePlatformConfig', () => {
         always(`# Platform PowerShell`),
       ]);
       expect(result.symlinks).toEqual([
-        { source: './base.conf', target: '~/.base.conf' },
-        { source: './platform1.conf', target: '~/.platform1.conf' },
-        { source: './platform2.conf', target: '~/.platform2.conf' },
+        { source: "./base.conf", target: "~/.base.conf" },
+        { source: "./platform1.conf", target: "~/.platform1.conf" },
+        { source: "./platform2.conf", target: "~/.platform2.conf" },
       ]);
     });
   });
 
-  describe('platform shell functions merging', () => {
-    it('should merge functions from platform shell config into base config', () => {
+  describe("platform shell functions merging", () => {
+    it("should merge functions from platform shell config into base config", () => {
       const functionBody =
-        'komorebic --help 2>&1 | awk \'/^  [a-z]/{cmd=$1} /^          /{gsub(/^ +/, ""); print cmd " — " $0}\' | fzf --preview \'komorebic {1} --help 2>&1\'';
+        "komorebic --help 2>&1 | awk '/^  [a-z]/{cmd=$1} /^          /{gsub(/^ +/, \"\"); print cmd \" — \" $0}' | fzf --preview 'komorebic {1} --help 2>&1'";
 
       const configWithPlatformFunctions: ToolConfig = {
         ...baseToolConfig,
@@ -399,7 +399,7 @@ describe('resolvePlatformConfig', () => {
               shellConfigs: {
                 zsh: {
                   functions: {
-                    'kc-help': functionBody,
+                    "kc-help": functionBody,
                   },
                 },
               },
@@ -411,11 +411,11 @@ describe('resolvePlatformConfig', () => {
       const result = resolvePlatformConfig(configWithPlatformFunctions, macosSystemInfo);
 
       expect(result.shellConfigs?.zsh?.functions).toEqual({
-        'kc-help': functionBody,
+        "kc-help": functionBody,
       });
     });
 
-    it('should merge functions from platform config with existing base functions', () => {
+    it("should merge functions from platform config with existing base functions", () => {
       const configWithBaseFunctions: ToolConfig = {
         ...baseToolConfig,
         shellConfigs: {
@@ -423,7 +423,7 @@ describe('resolvePlatformConfig', () => {
           zsh: {
             ...baseToolConfig.shellConfigs?.zsh,
             functions: {
-              'base-func': 'echo "base"',
+              "base-func": 'echo "base"',
             },
           },
         },
@@ -434,7 +434,7 @@ describe('resolvePlatformConfig', () => {
               shellConfigs: {
                 zsh: {
                   functions: {
-                    'platform-func': 'echo "platform"',
+                    "platform-func": 'echo "platform"',
                   },
                 },
               },
@@ -446,12 +446,12 @@ describe('resolvePlatformConfig', () => {
       const result = resolvePlatformConfig(configWithBaseFunctions, macosSystemInfo);
 
       expect(result.shellConfigs?.zsh?.functions).toEqual({
-        'base-func': 'echo "base"',
-        'platform-func': 'echo "platform"',
+        "base-func": 'echo "base"',
+        "platform-func": 'echo "platform"',
       });
     });
 
-    it('should merge paths from platform shell config into base config', () => {
+    it("should merge paths from platform shell config into base config", () => {
       const configWithPlatformPaths: ToolConfig = {
         ...baseToolConfig,
         platformConfigs: [
@@ -460,7 +460,7 @@ describe('resolvePlatformConfig', () => {
             config: {
               shellConfigs: {
                 zsh: {
-                  paths: ['$HOME/.local/bin'],
+                  paths: ["$HOME/.local/bin"],
                 },
               },
             },
@@ -470,56 +470,56 @@ describe('resolvePlatformConfig', () => {
 
       const result = resolvePlatformConfig(configWithPlatformPaths, macosSystemInfo);
 
-      expect(result.shellConfigs?.zsh?.paths).toEqual(['$HOME/.local/bin']);
+      expect(result.shellConfigs?.zsh?.paths).toEqual(["$HOME/.local/bin"]);
     });
   });
 
-  describe('when platform specifies different installation method', () => {
-    it('should override base installation method with platform-specific one', () => {
+  describe("when platform specifies different installation method", () => {
+    it("should override base installation method with platform-specific one", () => {
       const configWithPlatformInstallMethod: ToolConfig = {
-        name: 'eza',
-        version: 'latest',
-        installationMethod: 'manual',
+        name: "eza",
+        version: "latest",
+        installationMethod: "manual",
         installParams: {},
-        binaries: ['eza'],
+        binaries: ["eza"],
         platformConfigs: [
           {
             platforms: Platform.MacOS,
             config: {
-              installationMethod: 'cargo',
+              installationMethod: "cargo",
               installParams: {
-                crateName: 'eza',
-                binarySource: 'cargo-quickinstall',
-                githubRepo: 'eza-community/eza',
+                crateName: "eza",
+                binarySource: "cargo-quickinstall",
+                githubRepo: "eza-community/eza",
               },
-              binaries: ['eza'],
+              binaries: ["eza"],
             },
           },
           {
             platforms: Platform.Linux,
             config: {
-              installationMethod: 'github-release',
+              installationMethod: "github-release",
               installParams: {
-                repo: 'eza-community/eza',
+                repo: "eza-community/eza",
               },
-              binaries: ['eza'],
+              binaries: ["eza"],
             },
           },
         ],
       };
 
       const macosResult = resolvePlatformConfig(configWithPlatformInstallMethod, macosSystemInfo);
-      expect(macosResult.installationMethod).toBe('cargo');
+      expect(macosResult.installationMethod).toBe("cargo");
       expect(macosResult.installParams).toEqual({
-        crateName: 'eza',
-        binarySource: 'cargo-quickinstall',
-        githubRepo: 'eza-community/eza',
+        crateName: "eza",
+        binarySource: "cargo-quickinstall",
+        githubRepo: "eza-community/eza",
       });
 
       const linuxResult = resolvePlatformConfig(configWithPlatformInstallMethod, linuxSystemInfo);
-      expect(linuxResult.installationMethod).toBe('github-release');
+      expect(linuxResult.installationMethod).toBe("github-release");
       expect(linuxResult.installParams).toEqual({
-        repo: 'eza-community/eza',
+        repo: "eza-community/eza",
       });
     });
   });

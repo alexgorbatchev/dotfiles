@@ -1,10 +1,10 @@
-import { type Mock, mock } from 'bun:test';
-import type { DirectoryJSON } from 'memfs';
-import path from 'node:path';
-import type { IFileSystem } from '../IFileSystem';
-import type { IResolvedFileSystem } from '../IResolvedFileSystem';
-import { MemFileSystem } from '../MemFileSystem';
-import { ResolvedFileSystem } from '../ResolvedFileSystem';
+import { type Mock, mock } from "bun:test";
+import type { DirectoryJSON } from "memfs";
+import path from "node:path";
+import type { IFileSystem } from "../IFileSystem";
+import type { IResolvedFileSystem } from "../IResolvedFileSystem";
+import { MemFileSystem } from "../MemFileSystem";
+import { ResolvedFileSystem } from "../ResolvedFileSystem";
 
 /**
  * Options for creating a customizable in-memory file system.
@@ -15,45 +15,40 @@ export interface IMemFileSystemOptions {
   initialVolumeJson?: DirectoryJSON;
   initialSymlinks?: Record<string, string>;
 
-  ensureDir?: IFileSystem['ensureDir'];
-  chmod?: IFileSystem['chmod'];
-  exists?: IFileSystem['exists'];
-  copyFile?: IFileSystem['copyFile'];
-  symlink?: IFileSystem['symlink'];
-  rm?: IFileSystem['rm'];
-  readFile?: IFileSystem['readFile'];
-  readFileBuffer?: IFileSystem['readFileBuffer'];
-  writeFile?: IFileSystem['writeFile'];
-  mkdir?: IFileSystem['mkdir'];
-  readdir?: IFileSystem['readdir'];
-  stat?: IFileSystem['stat'];
-  lstat?: IFileSystem['lstat'];
-  readlink?: IFileSystem['readlink'];
-  rename?: IFileSystem['rename'];
-  rmdir?: IFileSystem['rmdir'];
+  ensureDir?: IFileSystem["ensureDir"];
+  chmod?: IFileSystem["chmod"];
+  exists?: IFileSystem["exists"];
+  copyFile?: IFileSystem["copyFile"];
+  symlink?: IFileSystem["symlink"];
+  rm?: IFileSystem["rm"];
+  readFile?: IFileSystem["readFile"];
+  readFileBuffer?: IFileSystem["readFileBuffer"];
+  writeFile?: IFileSystem["writeFile"];
+  mkdir?: IFileSystem["mkdir"];
+  readdir?: IFileSystem["readdir"];
+  stat?: IFileSystem["stat"];
+  lstat?: IFileSystem["lstat"];
+  readlink?: IFileSystem["readlink"];
+  rename?: IFileSystem["rename"];
+  rmdir?: IFileSystem["rmdir"];
 }
 
 /**
  * Type for the collection of spies/mocks on the file system methods.
  */
 export type FileSystemSpies = {
-  [K in keyof Omit<Required<IMemFileSystemOptions>, 'initialVolumeJson' | 'initialSymlinks'>]: Mock<IFileSystem[K]>;
+  [K in keyof Omit<Required<IMemFileSystemOptions>, "initialVolumeJson" | "initialSymlinks">]: Mock<IFileSystem[K]>;
 };
 
 /**
  * Type for the collection of spies/mocks on the file system methods.
  */
-export type MockedFileSystem =
-  & IFileSystem
-  & {
-    asIFileSystem: IFileSystem;
-    asIResolvedFileSystem: IResolvedFileSystem;
-  }
-  & {
-    [K in keyof IFileSystem as IFileSystem[K] extends (...args: unknown[]) => unknown ? K : never]: Mock<
-      IFileSystem[K]
-    >;
-  };
+export type MockedFileSystem = IFileSystem & {
+  asIFileSystem: IFileSystem;
+  asIResolvedFileSystem: IResolvedFileSystem;
+} & {
+  [K in keyof IFileSystem as IFileSystem[K] extends (...args: unknown[]) => unknown ? K : never]: Mock<IFileSystem[K]>;
+};
 
 /**
  * Defines the structure of the object returned by `createMemFileSystem`.
@@ -101,7 +96,7 @@ export async function createMemFileSystem(options: IMemFileSystemOptions = {}): 
   const memFs = new MemFileSystem(initialVolumeJson);
 
   const spies = createFileSystemSpies(memFs, mocks);
-  const resolvedFs = new ResolvedFileSystem(spies as IFileSystem, '/test-home');
+  const resolvedFs = new ResolvedFileSystem(spies as IFileSystem, "/test-home");
   const fs: MockedFileSystem = { ...spies, asIFileSystem: spies as IFileSystem, asIResolvedFileSystem: resolvedFs };
 
   const addSymlinks = createSymlinkAdder(spies);

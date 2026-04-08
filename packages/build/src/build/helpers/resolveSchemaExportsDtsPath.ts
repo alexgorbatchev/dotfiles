@@ -1,7 +1,7 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
-import { BuildError } from '../handleBuildError';
+import { BuildError } from "../handleBuildError";
 
 function findFilesByNameRecursive(startDir: string, fileName: string): string[] {
   const stack: string[] = [startDir];
@@ -37,29 +37,29 @@ function findFilesByNameRecursive(startDir: string, fileName: string): string[] 
  * Locates the generated schema-exports.d.ts file within the temporary schema build directory.
  */
 export function resolveSchemaExportsDtsPath(tempSchemasBuildDir: string): string {
-  const directPath: string = path.join(tempSchemasBuildDir, 'schema-exports.d.ts');
+  const directPath: string = path.join(tempSchemasBuildDir, "schema-exports.d.ts");
   if (fs.existsSync(directPath)) {
     return directPath;
   }
 
-  const nestedPath: string = path.join(tempSchemasBuildDir, 'packages', 'cli', 'src', 'schema-exports.d.ts');
+  const nestedPath: string = path.join(tempSchemasBuildDir, "packages", "cli", "src", "schema-exports.d.ts");
   if (fs.existsSync(nestedPath)) {
     return nestedPath;
   }
 
-  const matches: string[] = findFilesByNameRecursive(tempSchemasBuildDir, 'schema-exports.d.ts');
+  const matches: string[] = findFilesByNameRecursive(tempSchemasBuildDir, "schema-exports.d.ts");
 
   if (matches.length === 1) {
     const match: string | undefined = matches[0];
     if (!match) {
-      throw new BuildError('schema-exports.d.ts was found but could not be read');
+      throw new BuildError("schema-exports.d.ts was found but could not be read");
     }
     return match;
   }
 
   if (matches.length === 0) {
-    throw new BuildError('schema-exports.d.ts was not generated');
+    throw new BuildError("schema-exports.d.ts was not generated");
   }
 
-  throw new BuildError(`Multiple schema-exports.d.ts files found: ${matches.join(', ')}`);
+  throw new BuildError(`Multiple schema-exports.d.ts files found: ${matches.join(", ")}`);
 }

@@ -1,6 +1,6 @@
-import { type IDownloader, ProgressBar, shouldShowProgress } from '@dotfiles/downloader';
-import type { TsLogger } from '@dotfiles/logger';
-import type { IInstallOptions } from '../types';
+import { type IDownloader, ProgressBar, shouldShowProgress } from "@dotfiles/downloader";
+import type { TsLogger } from "@dotfiles/logger";
+import type { IInstallOptions } from "../types";
 
 /**
  * Downloads a file with progress tracking via progress bar display.

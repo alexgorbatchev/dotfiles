@@ -5,17 +5,17 @@
  * Plugin types are loaded via module augmentation from installer packages.
  */
 
-import type { Resolvable } from '@dotfiles/unwrap-value';
-import type { Architecture, IBaseToolContext, Platform } from '../common';
+import type { Resolvable } from "@dotfiles/unwrap-value";
+import type { Architecture, IBaseToolContext, Platform } from "../common";
 import type {
   AsyncInstallHook,
   IAfterInstallContext,
   IDownloadContext,
   IExtractContext,
   IInstallContext,
-} from '../installer';
-import type { IInstallParamsRegistry, ToolConfig } from '../types';
-import type { ICompletionContext } from './ICompletionContext';
+} from "../installer";
+import type { IInstallParamsRegistry, ToolConfig } from "../types";
+import type { ICompletionContext } from "./ICompletionContext";
 
 /**
  * Common options for all completion configurations.
@@ -186,7 +186,7 @@ export interface IShellConfigurator<KnownFunctions extends string = never> {
    * @param values - A record of environment variable names and values.
    */
   env<T extends Record<string, string>>(
-    values: 'PATH' extends keyof T ? ['ERROR: Use shell.path() to modify PATH'] : T,
+    values: "PATH" extends keyof T ? ["ERROR: Use shell.path() to modify PATH"] : T,
   ): IShellConfigurator<KnownFunctions>;
 
   /**
@@ -350,19 +350,19 @@ export interface IKnownBinNameRegistry {
   __placeholder__?: never;
 }
 
-type KnownBinNameKeys = Exclude<keyof IKnownBinNameRegistry, '__placeholder__'>;
+type KnownBinNameKeys = Exclude<keyof IKnownBinNameRegistry, "__placeholder__">;
 
 export type KnownBinName = [KnownBinNameKeys] extends [never] ? string : KnownBinNameKeys;
 
 /**
  * Hook event names that plugins can emit during installation.
  */
-export type PluginEmittedHookEvent = 'after-download' | 'after-extract';
+export type PluginEmittedHookEvent = "after-download" | "after-extract";
 
 /**
  * Hook event names used in the installation lifecycle.
  */
-export type HookEventName = 'before-install' | PluginEmittedHookEvent | 'after-install';
+export type HookEventName = "before-install" | PluginEmittedHookEvent | "after-install";
 
 /**
  * Fluent builder interface for configuring a tool.
@@ -401,10 +401,10 @@ export interface IToolConfigBuilder {
    * @param event - The lifecycle event name (kebab-case)
    * @param handler - The async hook function to execute
    */
-  hook(event: 'before-install', handler: AsyncInstallHook<IInstallContext>): this;
-  hook(event: 'after-download', handler: AsyncInstallHook<IDownloadContext>): this;
-  hook(event: 'after-extract', handler: AsyncInstallHook<IExtractContext>): this;
-  hook(event: 'after-install', handler: AsyncInstallHook<IAfterInstallContext>): this;
+  hook(event: "before-install", handler: AsyncInstallHook<IInstallContext>): this;
+  hook(event: "after-download", handler: AsyncInstallHook<IDownloadContext>): this;
+  hook(event: "after-extract", handler: AsyncInstallHook<IExtractContext>): this;
+  hook(event: "after-install", handler: AsyncInstallHook<IAfterInstallContext>): this;
   hook(event: HookEventName, handler: AsyncInstallHook<never>): this;
 
   /**
@@ -449,7 +449,7 @@ export interface IToolConfigBuilder {
    */
   platform(
     platforms: Platform,
-    configure: (install: IPlatformInstallFunction) => Omit<IPlatformConfigBuilder, 'bin'>,
+    configure: (install: IPlatformInstallFunction) => Omit<IPlatformConfigBuilder, "bin">,
   ): this;
 
   /**
@@ -461,7 +461,7 @@ export interface IToolConfigBuilder {
   platform(
     platforms: Platform,
     architectures: Architecture,
-    configure: (install: IPlatformInstallFunction) => Omit<IPlatformConfigBuilder, 'bin'>,
+    configure: (install: IPlatformInstallFunction) => Omit<IPlatformConfigBuilder, "bin">,
   ): this;
 
   /**
@@ -520,10 +520,10 @@ export interface IPlatformConfigBuilder {
    * @param event - The lifecycle event name (kebab-case)
    * @param handler - The async hook function to execute
    */
-  hook(event: 'before-install', handler: AsyncInstallHook<IInstallContext>): this;
-  hook(event: 'after-download', handler: AsyncInstallHook<IDownloadContext>): this;
-  hook(event: 'after-extract', handler: AsyncInstallHook<IExtractContext>): this;
-  hook(event: 'after-install', handler: AsyncInstallHook<IAfterInstallContext>): this;
+  hook(event: "before-install", handler: AsyncInstallHook<IInstallContext>): this;
+  hook(event: "after-download", handler: AsyncInstallHook<IDownloadContext>): this;
+  hook(event: "after-extract", handler: AsyncInstallHook<IExtractContext>): this;
+  hook(event: "after-install", handler: AsyncInstallHook<IAfterInstallContext>): this;
   hook(event: HookEventName, handler: AsyncInstallHook<never>): this;
 
   /**
@@ -576,7 +576,7 @@ export interface INoBinMethodRegistry {
   __placeholder__?: never;
 }
 
-type NoBinMethodKeys = Exclude<keyof INoBinMethodRegistry, '__placeholder__'>;
+type NoBinMethodKeys = Exclude<keyof INoBinMethodRegistry, "__placeholder__">;
 
 /**
  * Registry of installer methods that can be called without params.
@@ -586,17 +586,18 @@ export interface INoParamsMethodRegistry {
   __placeholder__?: never;
 }
 
-type NoParamsMethodKeys = Exclude<keyof INoParamsMethodRegistry, '__placeholder__'>;
+type NoParamsMethodKeys = Exclude<keyof INoParamsMethodRegistry, "__placeholder__">;
 
 /**
  * Resolves the builder type based on whether the method supports .bin().
  * Methods registered in INoBinMethodRegistry get a builder without .bin().
  */
-type ToolBuilderForMethod<M extends InstallMethod> = [M] extends [NoBinMethodKeys] ? Omit<IToolConfigBuilder, 'bin'>
+type ToolBuilderForMethod<M extends InstallMethod> = [M] extends [NoBinMethodKeys]
+  ? Omit<IToolConfigBuilder, "bin">
   : IToolConfigBuilder;
 
 type PlatformBuilderForMethod<M extends InstallMethod> = [M] extends [NoBinMethodKeys]
-  ? Omit<IPlatformConfigBuilder, 'bin'>
+  ? Omit<IPlatformConfigBuilder, "bin">
   : IPlatformConfigBuilder;
 
 /**
@@ -652,10 +653,10 @@ export type AsyncConfigureTool = (
   install: InstallFunction,
   ctx: IToolConfigContext,
 ) =>
-  | Promise<undefined | IToolConfigBuilder | Omit<IToolConfigBuilder, 'bin'> | ToolConfig>
+  | Promise<undefined | IToolConfigBuilder | Omit<IToolConfigBuilder, "bin"> | ToolConfig>
   | undefined
   | IToolConfigBuilder
-  | Omit<IToolConfigBuilder, 'bin'>
+  | Omit<IToolConfigBuilder, "bin">
   | ToolConfig;
 
 /**

@@ -1,4 +1,4 @@
-import type { EmissionKind } from '../types';
+import type { EmissionKind } from "../types";
 
 /**
  * Error thrown when emission validation fails.
@@ -10,6 +10,6 @@ export class EmissionValidationError extends Error {
     message: string,
   ) {
     super(`${emissionKind}.${field}: ${message}`);
-    this.name = 'EmissionValidationError';
+    this.name = "EmissionValidationError";
   }
 }

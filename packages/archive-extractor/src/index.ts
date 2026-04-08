@@ -1,3 +1,3 @@
-export * from './ArchiveExtractor';
-export * from './IArchiveExtractor';
-export * from './isSupportedArchiveFile';
+export * from "./ArchiveExtractor";
+export * from "./IArchiveExtractor";
+export * from "./isSupportedArchiveFile";

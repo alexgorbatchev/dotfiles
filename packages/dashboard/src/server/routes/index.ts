@@ -1,27 +1,27 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { IInstallToolRequest } from '../../shared/types';
-import type { IDashboardServices } from '../types';
-import { getActivity } from './activity';
-import { getConfig } from './config';
-import { getHealth } from './health';
-import { clearGitFirstCommitDatesCache, clearToolConfigsCache } from './helpers';
-import { getRecentTools } from './recent-tools';
-import { getShellIntegration } from './shell-integration';
-import { getStats } from './stats';
-import { checkToolUpdate } from './tool-check-update';
-import { getToolConfigsTree } from './tool-configs-tree';
-import { getToolHistory } from './tool-history';
-import { installTool } from './tool-install';
-import { getToolReadme } from './tool-readme';
-import { getToolSource } from './tool-source';
-import { updateTool } from './tool-update';
-import { getTools } from './tools';
+import type { TsLogger } from "@dotfiles/logger";
+import type { IInstallToolRequest } from "../../shared/types";
+import type { IDashboardServices } from "../types";
+import { getActivity } from "./activity";
+import { getConfig } from "./config";
+import { getHealth } from "./health";
+import { clearGitFirstCommitDatesCache, clearToolConfigsCache } from "./helpers";
+import { getRecentTools } from "./recent-tools";
+import { getShellIntegration } from "./shell-integration";
+import { getStats } from "./stats";
+import { checkToolUpdate } from "./tool-check-update";
+import { getToolConfigsTree } from "./tool-configs-tree";
+import { getToolHistory } from "./tool-history";
+import { installTool } from "./tool-install";
+import { getToolReadme } from "./tool-readme";
+import { getToolSource } from "./tool-source";
+import { updateTool } from "./tool-update";
+import { getTools } from "./tools";
 
 /**
  * Creates API route handlers for the dashboard.
  */
 export function createApiRoutes(parentLogger: TsLogger, services: IDashboardServices) {
-  const logger = parentLogger.getSubLogger({ name: 'api' });
+  const logger = parentLogger.getSubLogger({ name: "api" });
 
   return {
     getTools: () => getTools(logger, services),

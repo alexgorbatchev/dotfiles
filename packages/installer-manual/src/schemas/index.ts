@@ -1,2 +1,2 @@
-export * from './manualInstallParamsSchema';
-export * from './manualToolConfigSchema';
+export * from "./manualInstallParamsSchema";
+export * from "./manualToolConfigSchema";

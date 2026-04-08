@@ -1,11 +1,11 @@
-import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { IToolInstallationDetails } from '@dotfiles/registry';
+import type { InstallResultFailure, InstallResultSuccess } from "@dotfiles/core";
+import type { IToolInstallationDetails } from "@dotfiles/registry";
 
 /**
  * Metadata specific to Homebrew tool installation.
  */
 export interface IBrewInstallMetadata extends Partial<IToolInstallationDetails> {
-  method: 'brew';
+  method: "brew";
   formula: string;
   isCask: boolean;
   tap?: string | string[];

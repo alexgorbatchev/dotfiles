@@ -1,5 +1,5 @@
-import type { Block, BlockMetadata } from './blocks';
-import type { Emission, ScriptEmission } from './emissions';
+import type { Block, BlockMetadata } from "./blocks";
+import type { Emission, ScriptEmission } from "./emissions";
 
 /**
  * Configuration provided to formatters at construction.

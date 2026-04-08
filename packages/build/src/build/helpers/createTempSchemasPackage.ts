@@ -1,6 +1,6 @@
-import { getPackageJson } from '../../getPackageJson';
-import type { IBuildContext, IDependencyVersions } from '../types';
-import { copyFileIfExists } from './copyFileIfExists';
+import { getPackageJson } from "../../getPackageJson";
+import type { IBuildContext, IDependencyVersions } from "../types";
+import { copyFileIfExists } from "./copyFileIfExists";
 
 /**
  * Prepares a temporary workspace used by schema bundling.
@@ -18,31 +18,31 @@ export async function createTempSchemasPackage(
   dependencyVersions: IDependencyVersions,
 ): Promise<void> {
   const tempPackageJson: Record<string, unknown> = {
-    name: 'temp-schemas',
-    version: '0.0.0',
-    type: 'module',
+    name: "temp-schemas",
+    version: "0.0.0",
+    type: "module",
     dependencies: {
       zod: dependencyVersions.zod,
-      '@types/bun': dependencyVersions.bunTypes,
-      '@types/node': dependencyVersions.nodeTypes,
-      '@dotfiles/core': 'workspace:*',
-      '@dotfiles/config': 'workspace:*',
-      '@dotfiles/logger': 'workspace:*',
-      '@dotfiles/installer-brew': 'workspace:*',
-      '@dotfiles/installer-cargo': 'workspace:*',
-      '@dotfiles/installer-curl-binary': 'workspace:*',
-      '@dotfiles/installer-curl-script': 'workspace:*',
-      '@dotfiles/installer-curl-tar': 'workspace:*',
-      '@dotfiles/installer-github': 'workspace:*',
-      '@dotfiles/installer-manual': 'workspace:*',
-      '@dotfiles/tool-config-builder': 'workspace:*',
+      "@types/bun": dependencyVersions.bunTypes,
+      "@types/node": dependencyVersions.nodeTypes,
+      "@dotfiles/core": "workspace:*",
+      "@dotfiles/config": "workspace:*",
+      "@dotfiles/logger": "workspace:*",
+      "@dotfiles/installer-brew": "workspace:*",
+      "@dotfiles/installer-cargo": "workspace:*",
+      "@dotfiles/installer-curl-binary": "workspace:*",
+      "@dotfiles/installer-curl-script": "workspace:*",
+      "@dotfiles/installer-curl-tar": "workspace:*",
+      "@dotfiles/installer-github": "workspace:*",
+      "@dotfiles/installer-manual": "workspace:*",
+      "@dotfiles/tool-config-builder": "workspace:*",
     },
   };
 
   const rootPackageJson = getPackageJson();
 
   const tempRootPackageJson: Record<string, unknown> = {
-    name: 'temp-root',
+    name: "temp-root",
     private: true,
     workspaces: [context.paths.tempSchemasBuildDir, `${context.paths.outputPackagesDir}/*`],
     catalog: rootPackageJson.catalog,

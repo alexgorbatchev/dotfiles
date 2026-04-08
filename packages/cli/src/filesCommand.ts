@@ -1,25 +1,25 @@
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import { exitCli, ExitCode } from '@dotfiles/utils';
-import { messages } from './log-messages';
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import type { IToolInstallationRegistry } from "@dotfiles/registry/tool";
+import { exitCli, ExitCode } from "@dotfiles/utils";
+import { messages } from "./log-messages";
 import type {
   ICommandCompletionMeta,
   IFilesCommandSpecificOptions,
   IGlobalProgram,
   IGlobalProgramOptions,
   IServices,
-} from './types';
+} from "./types";
 
 /**
  * Completion metadata for the files command.
  */
 export const FILES_COMMAND_COMPLETION: ICommandCompletionMeta = {
-  name: 'files',
-  description: 'Show generated files structure',
+  name: "files",
+  description: "Show generated files structure",
   hasPositionalArg: true,
-  positionalArgDescription: 'tool name (optional)',
-  positionalArgType: 'tool',
+  positionalArgDescription: "tool name (optional)",
+  positionalArgType: "tool",
 };
 
 interface ITreeNode {
@@ -53,7 +53,7 @@ async function buildTreeFromDirectory(logger: TsLogger, fs: IFileSystem, dirPath
       nodes.push(node);
     }
   } catch (error) {
-    logger.error(messages.commandExecutionFailed('files', ExitCode.ERROR), error);
+    logger.error(messages.commandExecutionFailed("files", ExitCode.ERROR), error);
   }
 
   // Sort: directories first, then files, both alphabetically
@@ -65,7 +65,7 @@ async function buildTreeFromDirectory(logger: TsLogger, fs: IFileSystem, dirPath
   });
 }
 
-function formatTree(nodes: ITreeNode[], prefix: string = ''): string {
+function formatTree(nodes: ITreeNode[], prefix: string = ""): string {
   const lines: string[] = [];
 
   for (let i = 0; i < nodes.length; i++) {
@@ -75,19 +75,19 @@ function formatTree(nodes: ITreeNode[], prefix: string = ''): string {
     }
 
     const isLastNode: boolean = i === nodes.length - 1;
-    const connector: string = isLastNode ? '└─ ' : '├─ ';
+    const connector: string = isLastNode ? "└─ " : "├─ ";
     const displayName: string = node.name;
 
     lines.push(`${prefix}${connector}${displayName}`);
 
     if (node.isDirectory && node.children && node.children.length > 0) {
-      const childPrefix: string = prefix + (isLastNode ? '   ' : '│  ');
+      const childPrefix: string = prefix + (isLastNode ? "   " : "│  ");
       const childTree = formatTree(node.children, childPrefix);
       lines.push(childTree);
     }
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 async function displayTreeForTool(
@@ -119,7 +119,7 @@ async function displayTreeForTool(
   const tree = await buildTreeFromDirectory(logger, fs, installPath);
 
   if (tree.length === 0) {
-    print('(empty directory)');
+    print("(empty directory)");
     return ExitCode.SUCCESS;
   }
 
@@ -159,7 +159,7 @@ async function filesActionLogic(
       exitCli(exitCode);
     }
   } catch (error) {
-    logger.error(messages.commandExecutionFailed('files', ExitCode.ERROR), error);
+    logger.error(messages.commandExecutionFailed("files", ExitCode.ERROR), error);
     exitCli(ExitCode.ERROR);
   }
 }
@@ -171,11 +171,11 @@ export function registerFilesCommand(
   // oxlint-disable-next-line no-console: default print function
   print: PrintFunction = console.log,
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'registerFilesCommand' });
+  const logger = parentLogger.getSubLogger({ name: "registerFilesCommand" });
 
   program
-    .command('files <toolName>')
-    .description('Display a tree view of files in the tool installation directory')
+    .command("files <toolName>")
+    .description("Display a tree view of files in the tool installation directory")
     .action(async (toolName: string, commandOptions: IFilesCommandSpecificOptions) => {
       const combinedOptions: IFilesCommandSpecificOptions & IGlobalProgramOptions = {
         ...commandOptions,

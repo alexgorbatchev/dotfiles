@@ -2,13 +2,13 @@ import {
   baseToolConfigWithPlatformsSchema,
   binaryConfigSchema,
   type InferToolConfigWithPlatforms,
-} from '@dotfiles/core';
-import { z } from 'zod';
-import { npmInstallParamsSchema } from './npmInstallParamsSchema';
+} from "@dotfiles/core";
+import { z } from "zod";
+import { npmInstallParamsSchema } from "./npmInstallParamsSchema";
 
 export const npmToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
   /** Resolved tool configuration for the 'npm' installation method */
-  installationMethod: z.literal('npm'),
+  installationMethod: z.literal("npm"),
   /** npm installation parameters */
   installParams: npmInstallParamsSchema,
   /** Binaries are typically required for this installation method */

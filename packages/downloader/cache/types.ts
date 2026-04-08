@@ -17,7 +17,7 @@ interface IBaseCacheEntry {
  * Cache entry for JSON data (API responses, configuration, etc.)
  */
 export interface IJsonCacheEntry<T> extends IBaseCacheEntry {
-  type: 'json';
+  type: "json";
   /**
    * The actual cached data
    */
@@ -28,7 +28,7 @@ export interface IJsonCacheEntry<T> extends IBaseCacheEntry {
  * Cache entry for binary data (downloaded files, archives, etc.)
  */
 export interface IBinaryCacheEntry extends IBaseCacheEntry {
-  type: 'binary';
+  type: "binary";
   /**
    * Filename of the binary file (without path)
    */
@@ -84,7 +84,7 @@ export interface ICacheConfig {
   /**
    * Storage strategy for different data types
    */
-  storageStrategy: 'json' | 'binary';
+  storageStrategy: "json" | "binary";
 }
 
 /**

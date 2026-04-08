@@ -4,25 +4,25 @@
  * Verifies that tool name context flows through log messages during generation.
  * The GeneratorOrchestrator uses { context: toolName } to prefix logs with [toolName].
  */
-import type { ProjectConfig } from '@dotfiles/config';
-import { Architecture, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
-import { createMemFileSystem, type IResolvedFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createMockFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
-import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
-import type { IShimGenerator } from '@dotfiles/shim-generator';
+import type { ProjectConfig } from "@dotfiles/config";
+import { Architecture, type ISystemInfo, Platform, type ToolConfig } from "@dotfiles/core";
+import { createMemFileSystem, type IResolvedFileSystem, ResolvedFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { createMockFileRegistry, TrackedFileSystem } from "@dotfiles/registry/file";
+import type { ICompletionGenerator, IShellInitGenerator } from "@dotfiles/shell-init-generator";
+import type { IShimGenerator } from "@dotfiles/shim-generator";
 import type {
   CopyOperationResult,
   ICopyGenerator,
   ISymlinkGenerator,
   SymlinkOperationResult,
-} from '@dotfiles/symlink-generator';
-import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
-import { beforeEach, describe, it, mock } from 'bun:test';
-import path from 'node:path';
-import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
+} from "@dotfiles/symlink-generator";
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from "@dotfiles/testing-helpers";
+import { beforeEach, describe, it, mock } from "bun:test";
+import path from "node:path";
+import { GeneratorOrchestrator } from "../GeneratorOrchestrator";
 
-describe('GeneratorOrchestrator - Logger Context Propagation', () => {
+describe("GeneratorOrchestrator - Logger Context Propagation", () => {
   let mockShimGenerator: IShimGenerator;
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
@@ -35,7 +35,7 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
   let testDirs: ITestDirectories;
   let systemInfo: ISystemInfo;
 
-  const TOOL_NAME = 'test-tool';
+  const TOOL_NAME = "test-tool";
 
   beforeEach(async () => {
     mock.restore();
@@ -50,7 +50,7 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
         Promise.resolve({
           files: new Map(),
           primaryPath: null,
-        })
+        }),
       ),
     };
     mockSymlinkGenerator = {
@@ -63,39 +63,39 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
     mockCompletionGenerator = {
       generateCompletionFile: mock(async () =>
         Promise.resolve({
-          content: '# completion',
-          filename: '_test-tool',
-          targetPath: '/path/_test-tool',
-          generatedBy: 'command' as const,
-        })
+          content: "# completion",
+          filename: "_test-tool",
+          targetPath: "/path/_test-tool",
+          generatedBy: "command" as const,
+        }),
       ),
       generateAndWriteCompletionFile: mock(async () =>
         Promise.resolve({
-          content: '# completion',
-          filename: '_test-tool',
-          targetPath: '/path/_test-tool',
-          generatedBy: 'command' as const,
-        })
+          content: "# completion",
+          filename: "_test-tool",
+          targetPath: "/path/_test-tool",
+          generatedBy: "command" as const,
+        }),
       ),
     };
 
     const { fs } = await createMemFileSystem({});
-    mockFileSystem = new ResolvedFileSystem(fs, '/home/test');
+    mockFileSystem = new ResolvedFileSystem(fs, "/home/test");
 
-    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'generator-context' });
+    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: "generator-context" });
 
     systemInfo = {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     };
 
     mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
       fileSystem: mockFileSystem,
       logger,
       systemInfo,
@@ -107,7 +107,7 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
       logger,
       mockFileSystem,
       mockFileRegistry,
-      TrackedFileSystem.createContext('system', 'shim'),
+      TrackedFileSystem.createContext("system", "shim"),
       mockProjectConfig,
     );
 
@@ -126,13 +126,13 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
     );
   });
 
-  it('should include tool context in cleanup logging when tool is disabled', async () => {
+  it("should include tool context in cleanup logging when tool is disabled", async () => {
     const disabledToolConfig: ToolConfig = {
       name: TOOL_NAME,
-      version: '1.0.0',
-      installationMethod: 'github-release',
-      installParams: { repo: 'owner/test-tool' },
-      binaries: ['test-tool'],
+      version: "1.0.0",
+      installationMethod: "github-release",
+      installParams: { repo: "owner/test-tool" },
+      binaries: ["test-tool"],
       disabled: true,
     };
 
@@ -141,32 +141,32 @@ describe('GeneratorOrchestrator - Logger Context Propagation', () => {
     await orchestrator.generateAll(toolConfigs);
 
     // The cleanupToolArtifacts method uses { context: toolName }
-    logger.expect(['DEBUG'], ['GeneratorOrchestrator', 'cleanupToolArtifacts'], [TOOL_NAME], []);
+    logger.expect(["DEBUG"], ["GeneratorOrchestrator", "cleanupToolArtifacts"], [TOOL_NAME], []);
   });
 
-  it('should include tool context when generating completions', async () => {
+  it("should include tool context when generating completions", async () => {
     const toolConfig: ToolConfig = {
       name: TOOL_NAME,
-      version: '1.0.0',
-      installationMethod: 'github-release',
-      installParams: { repo: 'owner/test-tool' },
-      binaries: ['test-tool'],
+      version: "1.0.0",
+      installationMethod: "github-release",
+      installParams: { repo: "owner/test-tool" },
+      binaries: ["test-tool"],
       shellConfigs: {
         zsh: {
           completions: {
-            cmd: 'test-tool completions zsh',
+            cmd: "test-tool completions zsh",
           },
         },
       },
     };
 
     // Create current directory so completion generation can find it
-    const currentDir = path.join(mockProjectConfig.paths.binariesDir, TOOL_NAME, 'current');
+    const currentDir = path.join(mockProjectConfig.paths.binariesDir, TOOL_NAME, "current");
     await mockFileSystem.mkdir(currentDir, { recursive: true });
 
-    await orchestrator.generateCompletionsForTool(TOOL_NAME, toolConfig, '1.0.0');
+    await orchestrator.generateCompletionsForTool(TOOL_NAME, toolConfig, "1.0.0");
 
     // The generateCompletionsForTool method uses .setPrefix(toolName)
-    logger.expect(['INFO'], ['GeneratorOrchestrator', 'generateCompletionsForTool'], [TOOL_NAME], []);
+    logger.expect(["INFO"], ["GeneratorOrchestrator", "generateCompletionsForTool"], [TOOL_NAME], []);
   });
 });

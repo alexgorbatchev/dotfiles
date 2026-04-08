@@ -1,18 +1,11 @@
-import type { ArchiveFormat } from '@dotfiles/core';
+import type { ArchiveFormat } from "@dotfiles/core";
 
 /**
  * Array of supported archive formats that can be extracted.
  *
  * This list should stay in sync with the ArchiveExtractor.isSupported method.
  */
-export const SUPPORTED_ARCHIVE_FORMATS: ArchiveFormat[] = [
-  'tar.gz',
-  'tar.bz2',
-  'tar.xz',
-  'tar',
-  'zip',
-  'gzip',
-];
+export const SUPPORTED_ARCHIVE_FORMATS: ArchiveFormat[] = ["tar.gz", "tar.bz2", "tar.xz", "tar", "zip", "gzip"];
 
 /**
  * Maps file extensions to their corresponding archive formats.
@@ -24,21 +17,21 @@ function detectFormatByExtension(fileName: string): ArchiveFormat | null {
   const lowerFileName = fileName.toLowerCase();
 
   // Check multi-part extensions first (most specific)
-  if (lowerFileName.endsWith('.tar.gz') || lowerFileName.endsWith('.tgz')) return 'tar.gz';
-  if (lowerFileName.endsWith('.tar.bz2') || lowerFileName.endsWith('.tbz2') || lowerFileName.endsWith('.tbz'))
-    return 'tar.bz2';
-  if (lowerFileName.endsWith('.tar.xz') || lowerFileName.endsWith('.txz')) return 'tar.xz';
-  if (lowerFileName.endsWith('.tar.lzma')) return 'tar.lzma';
-  if (lowerFileName.endsWith('.tar')) return 'tar';
+  if (lowerFileName.endsWith(".tar.gz") || lowerFileName.endsWith(".tgz")) return "tar.gz";
+  if (lowerFileName.endsWith(".tar.bz2") || lowerFileName.endsWith(".tbz2") || lowerFileName.endsWith(".tbz"))
+    return "tar.bz2";
+  if (lowerFileName.endsWith(".tar.xz") || lowerFileName.endsWith(".txz")) return "tar.xz";
+  if (lowerFileName.endsWith(".tar.lzma")) return "tar.lzma";
+  if (lowerFileName.endsWith(".tar")) return "tar";
 
   // Check single-part extensions
-  if (lowerFileName.endsWith('.gz')) return 'gzip';
-  if (lowerFileName.endsWith('.zip')) return 'zip';
-  if (lowerFileName.endsWith('.rar')) return 'rar';
-  if (lowerFileName.endsWith('.7z')) return '7z';
-  if (lowerFileName.endsWith('.deb')) return 'deb';
-  if (lowerFileName.endsWith('.rpm')) return 'rpm';
-  if (lowerFileName.endsWith('.dmg')) return 'dmg';
+  if (lowerFileName.endsWith(".gz")) return "gzip";
+  if (lowerFileName.endsWith(".zip")) return "zip";
+  if (lowerFileName.endsWith(".rar")) return "rar";
+  if (lowerFileName.endsWith(".7z")) return "7z";
+  if (lowerFileName.endsWith(".deb")) return "deb";
+  if (lowerFileName.endsWith(".rpm")) return "rpm";
+  if (lowerFileName.endsWith(".dmg")) return "dmg";
 
   return null;
 }

@@ -1,6 +1,6 @@
-import type { ISystemInfo } from '@dotfiles/core';
-import { Architecture, Platform } from '@dotfiles/core';
-import type { IArchitecturePatterns } from './types';
+import type { ISystemInfo } from "@dotfiles/core";
+import { Architecture, Platform } from "@dotfiles/core";
+import type { IArchitecturePatterns } from "./types";
 
 /**
  * Generates a set of architecture-specific patterns based on the provided
@@ -38,8 +38,8 @@ export function getArchitecturePatterns(systemInfo: ISystemInfo): IArchitectureP
       // _sys='(apple|darwin|apple-darwin|dmg|mac((-|)os|)|os(-|64|)x)'
       // where mac((-|)os|) expands to: mac, mac-os, macos
       // and os(-|64|)x expands to: osx, os-x, os64x
-      patterns.system = ['apple', 'darwin', 'apple-darwin', 'dmg', 'mac', 'macos', 'mac-os', 'osx', 'os-x', 'os64x'];
-      patterns.variants = ['darwin'];
+      patterns.system = ["apple", "darwin", "apple-darwin", "dmg", "mac", "macos", "mac-os", "osx", "os-x", "os64x"];
+      patterns.variants = ["darwin"];
       break;
 
     case Platform.Linux:
@@ -50,8 +50,8 @@ export function getArchitecturePatterns(systemInfo: ISystemInfo): IArchitectureP
       // - BUT excludes patterns that don't contain 'unknown' or 'linux'
       // For simplicity and correctness, we just use 'linux' for system matching
       // and provide musl/gnu/unknown-linux as variants
-      patterns.system = ['linux'];
-      patterns.variants = ['musl', 'gnu', 'unknown-linux'];
+      patterns.system = ["linux"];
+      patterns.variants = ["musl", "gnu", "unknown-linux"];
       break;
 
     case Platform.Windows:
@@ -60,8 +60,8 @@ export function getArchitecturePatterns(systemInfo: ISystemInfo): IArchitectureP
       // _sys='pc-windows-gnu'
       //
       // We expand this to include common Windows platform identifiers
-      patterns.system = ['windows', 'win32', 'win64', 'pc-windows-gnu'];
-      patterns.variants = ['mingw', 'msys', 'cygwin', 'pc-windows'];
+      patterns.system = ["windows", "win32", "win64", "pc-windows-gnu"];
+      patterns.variants = ["mingw", "msys", "cygwin", "pc-windows"];
       break;
 
     default:
@@ -84,7 +84,7 @@ export function getArchitecturePatterns(systemInfo: ISystemInfo): IArchitectureP
       // BUG FIX: Zinit includes 'arm' which incorrectly matches armv5/v6/v7
       // These are completely different architectures. ARM64/aarch64 is 64-bit ARMv8.
       // We only match specific 64-bit ARM patterns.
-      patterns.cpu = ['arm64', 'aarch64', 'aarch'];
+      patterns.cpu = ["arm64", "aarch64", "aarch"];
       break;
 
     case Architecture.X86_64:
@@ -94,7 +94,7 @@ export function getArchitecturePatterns(systemInfo: ISystemInfo): IArchitectureP
       //
       // Note: Zinit's case statement mixes 32-bit and 64-bit x86 architectures
       // and outputs the same pattern. We separate them correctly.
-      patterns.cpu = ['amd64', 'x86_64', 'x64', 'x86-64'];
+      patterns.cpu = ["amd64", "x86_64", "x64", "x86-64"];
       break;
 
     default:

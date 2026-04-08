@@ -1,9 +1,9 @@
-import { loggingShellBrand } from './types';
+import { loggingShellBrand } from "./types";
 
 /**
  * Checks if a shell has logging capabilities attached.
  * Used to prevent double-wrapping with createLoggingShell.
  */
 export function hasLoggingShell($shell: unknown): boolean {
-  return typeof $shell === 'function' && loggingShellBrand in $shell;
+  return typeof $shell === "function" && loggingShellBrand in $shell;
 }

@@ -1,11 +1,11 @@
-import { createShell, type IInstallContext, type IInstallOptions, type Shell } from '@dotfiles/core';
-import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { detectVersionViaCli, normalizeVersion } from '@dotfiles/utils';
-import { z } from 'zod';
-import { messages } from './log-messages';
-import type { BrewToolConfig } from './schemas';
-import type { BrewInstallResult, IBrewInstallMetadata } from './types';
+import { createShell, type IInstallContext, type IInstallOptions, type Shell } from "@dotfiles/core";
+import { getBinaryPaths, withInstallErrorHandling } from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { detectVersionViaCli, normalizeVersion } from "@dotfiles/utils";
+import { z } from "zod";
+import { messages } from "./log-messages";
+import type { BrewToolConfig } from "./schemas";
+import type { BrewInstallResult, IBrewInstallMetadata } from "./types";
 
 const BrewInfoSchema = z.object({
   name: z.string(),
@@ -44,13 +44,13 @@ export async function installFromBrew(
   shellExecutor: Shell,
   installShell?: Shell,
 ): Promise<BrewInstallResult> {
-  const logger = parentLogger.getSubLogger({ name: 'installFromBrew' });
+  const logger = parentLogger.getSubLogger({ name: "installFromBrew" });
   logger.debug(messages.installing(toolName), toolConfig.installParams);
 
   if (!toolConfig.installParams) {
     return {
       success: false,
-      error: 'Install parameters not specified',
+      error: "Install parameters not specified",
     };
   }
 
@@ -81,7 +81,7 @@ export async function installFromBrew(
     }
 
     const metadata: IBrewInstallMetadata = {
-      method: 'brew',
+      method: "brew",
       formula,
       isCask,
       tap,
@@ -97,7 +97,7 @@ export async function installFromBrew(
     return result;
   };
 
-  return withInstallErrorHandling('brew', toolName, logger, operation);
+  return withInstallErrorHandling("brew", toolName, logger, operation);
 }
 
 /**
@@ -189,15 +189,15 @@ async function executeBrewInstall(
     }
   }
 
-  const installArgs = ['install'];
+  const installArgs = ["install"];
   if (isCask) {
-    installArgs.push('--cask');
+    installArgs.push("--cask");
   }
   if (force) {
-    installArgs.push('--force');
+    installArgs.push("--force");
   }
   installArgs.push(formula);
 
-  logger.info(messages.executingCommand(`brew ${installArgs.join(' ')}`));
+  logger.info(messages.executingCommand(`brew ${installArgs.join(" ")}`));
   await installShell`brew ${installArgs}`;
 }

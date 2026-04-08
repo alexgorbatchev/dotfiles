@@ -1,8 +1,8 @@
-import { type ComponentChildren, type JSX } from 'preact';
-import { useState } from 'preact/hooks';
-import { ChevronDown, ChevronRight } from '../../icons';
+import { type ComponentChildren, type JSX } from "preact";
+import { useState } from "preact/hooks";
+import { ChevronDown, ChevronRight } from "../../icons";
 
-import { cn } from '../../lib/utils';
+import { cn } from "../../lib/utils";
 
 interface TreeItemData<T = unknown> {
   id: string;
@@ -55,13 +55,15 @@ function TreeItem<T = unknown>({
 
   function renderChevron(): JSX.Element {
     if (!hasChildren) {
-      return <span class='w-4 mr-1' />;
+      return <span class="w-4 mr-1" />;
     }
     return (
-      <span class='w-4 mr-1 flex items-center justify-center'>
-        {isExpanded ?
-          <ChevronDown class='h-4 w-4 text-muted-foreground' /> :
-          <ChevronRight class='h-4 w-4 text-muted-foreground' />}
+      <span class="w-4 mr-1 flex items-center justify-center">
+        {isExpanded ? (
+          <ChevronDown class="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight class="h-4 w-4 text-muted-foreground" />
+        )}
       </span>
     );
   }
@@ -69,18 +71,18 @@ function TreeItem<T = unknown>({
   return (
     <div>
       <div
-        class='flex items-center py-1 hover:bg-accent rounded cursor-pointer text-sm group'
+        class="flex items-center py-1 hover:bg-accent rounded cursor-pointer text-sm group"
         style={{ paddingLeft: `${indent}px` }}
         onClick={handleClick}
       >
         {renderChevron()}
-        {item.iconDecorator && <span class='flex-shrink-0 mr-1'>{item.iconDecorator}</span>}
-        {item.icon && <span class={cn('flex-shrink-0', iconClassName)}>{item.icon}</span>}
-        <span class={cn('ml-2 flex-1 min-w-0', hasChildren && 'font-medium')}>
+        {item.iconDecorator && <span class="flex-shrink-0 mr-1">{item.iconDecorator}</span>}
+        {item.icon && <span class={cn("flex-shrink-0", iconClassName)}>{item.icon}</span>}
+        <span class={cn("ml-2 flex-1 min-w-0", hasChildren && "font-medium")}>
           {renderLabel ? renderLabel(item) : item.label}
         </span>
         {renderActions && (
-          <span class='ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity'>
+          <span class="ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
             {renderActions(item)}
           </span>
         )}
@@ -115,7 +117,7 @@ function Tree<T = unknown>({
   class: className,
 }: TreeProps<T>): JSX.Element {
   return (
-    <div class={cn('space-y-1', className)}>
+    <div class={cn("space-y-1", className)}>
       {items.map((item) => (
         <TreeItem
           key={item.id}

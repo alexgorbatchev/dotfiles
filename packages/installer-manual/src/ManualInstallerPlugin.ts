@@ -1,18 +1,18 @@
-import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { installManually } from './installManually';
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { installManually } from "./installManually";
 import {
   type ManualInstallParams,
   manualInstallParamsSchema,
   type ManualToolConfig,
   manualToolConfigSchema,
-} from './schemas';
+} from "./schemas";
 
-const PLUGIN_VERSION = '1.0.0';
+const PLUGIN_VERSION = "1.0.0";
 
 type ManualPluginMetadata = {
-  method: 'manual';
+  method: "manual";
 };
 
 /**
@@ -24,16 +24,14 @@ type ManualPluginMetadata = {
  * directory. Since manual tools are managed by the user, this plugin does not
  * support version checking or automatic updates.
  */
-export class ManualInstallerPlugin implements
-  IInstallerPlugin<
-    'manual',
-    ManualInstallParams,
-    ManualToolConfig,
-    ManualPluginMetadata
-  >
-{
-  readonly method = 'manual';
-  readonly displayName = 'Manual Installer';
+export class ManualInstallerPlugin implements IInstallerPlugin<
+  "manual",
+  ManualInstallParams,
+  ManualToolConfig,
+  ManualPluginMetadata
+> {
+  readonly method = "manual";
+  readonly displayName = "Manual Installer";
   readonly version = PLUGIN_VERSION;
   readonly paramsSchema = manualInstallParamsSchema;
   readonly toolConfigSchema = manualToolConfigSchema;

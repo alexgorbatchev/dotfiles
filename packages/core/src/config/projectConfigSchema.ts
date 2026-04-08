@@ -1,5 +1,5 @@
-import type { PartialDeep } from '@dotfiles/core';
-import { z } from 'zod';
+import type { PartialDeep } from "@dotfiles/core";
+import { z } from "zod";
 
 /**
  * Creates a Zod schema for cache configuration.
@@ -13,7 +13,7 @@ import { z } from 'zod';
  *
  * @internal
  */
-function createCacheSchema(defaults?: { enabled?: boolean; ttl?: number; }) {
+function createCacheSchema(defaults?: { enabled?: boolean; ttl?: number }) {
   const enabledDefault = defaults?.enabled ?? true;
   const ttlDefault = defaults?.ttl ?? 86400000; // 24 hours in milliseconds
 
@@ -69,8 +69,8 @@ function createHostSchema(options: {
     defaultHost,
     includeToken,
     includeUserAgent,
-    defaultUserAgent = 'dotfiles-generator',
-    tokenDefault = '',
+    defaultUserAgent = "dotfiles-generator",
+    tokenDefault = "",
   } = options;
 
   return z
@@ -80,9 +80,9 @@ function createHostSchema(options: {
       /** Caching configuration for this host. */
       cache: cacheConfigSchema.default(cacheConfigSchema.parse({})),
       /** An optional authentication token for accessing the host's API. */
-      token: z.string().default(includeToken ? tokenDefault : ''),
+      token: z.string().default(includeToken ? tokenDefault : ""),
       /** The User-Agent string to be sent with requests to this host. */
-      userAgent: z.string().default(includeUserAgent ? defaultUserAgent : 'dotfiles-generator'),
+      userAgent: z.string().default(includeUserAgent ? defaultUserAgent : "dotfiles-generator"),
     })
     .strict();
 }
@@ -173,7 +173,7 @@ const systemConfigSchema = z
      * A custom prompt message to display when `sudo` is required for a command.
      * @default 'Please enter your password to continue:'
      */
-    sudoPrompt: z.string().default('Please enter your password to continue:'),
+    sudoPrompt: z.string().default("Please enter your password to continue:"),
   })
   .strict();
 
@@ -187,7 +187,7 @@ const loggingConfigSchema = z
      * logs for specific modules.
      * @default ''
      */
-    debug: z.string().default(''),
+    debug: z.string().default(""),
   })
   .strict();
 
@@ -219,15 +219,15 @@ const updatesConfigSchema = z
  * @see {@link createHostSchema}
  */
 const gitHubConfigSchema = createHostSchema({
-  defaultHost: 'https://api.github.com',
+  defaultHost: "https://api.github.com",
   includeToken: true,
   includeUserAgent: true,
 });
 
 // Define individual host schemas for cargo with their own defaults so that cargoConfigSchema.parse({}) succeeds
-const cargoCratesIoHostSchema = createHostSchema({ defaultHost: 'https://crates.io' });
-const cargoGithubRawHostSchema = createHostSchema({ defaultHost: 'https://raw.githubusercontent.com' });
-const cargoGithubReleaseHostSchema = createHostSchema({ defaultHost: 'https://github.com' });
+const cargoCratesIoHostSchema = createHostSchema({ defaultHost: "https://crates.io" });
+const cargoGithubRawHostSchema = createHostSchema({ defaultHost: "https://raw.githubusercontent.com" });
+const cargoGithubReleaseHostSchema = createHostSchema({ defaultHost: "https://github.com" });
 
 /**
  * A Zod schema for Cargo (Rust package manager) related configurations.
@@ -255,7 +255,7 @@ const cargoConfigSchema = z
      * A custom User-Agent string for requests made by the Cargo client.
      * @default 'dotfiles-generator'
      */
-    userAgent: z.string().default('dotfiles-generator'),
+    userAgent: z.string().default("dotfiles-generator"),
   })
   .strict();
 
@@ -341,12 +341,12 @@ const featuresConfigSchema = z
 /**
  * An array of supported operating system identifiers.
  */
-export const OS_VALUES = ['macos', 'linux', 'windows'] as const;
+export const OS_VALUES = ["macos", "linux", "windows"] as const;
 
 /**
  * An array of supported CPU architecture identifiers.
  */
-export const ARCH_VALUES = ['x86_64', 'arm64'] as const;
+export const ARCH_VALUES = ["x86_64", "arm64"] as const;
 
 /**
  * A Zod schema for matching platform-specific criteria (OS and architecture).

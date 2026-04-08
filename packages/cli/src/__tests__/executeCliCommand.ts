@@ -1,4 +1,4 @@
-import * as path from 'node:path';
+import * as path from "node:path";
 
 /**
  * Options for executing a CLI command
@@ -40,12 +40,12 @@ export function executeCliCommand(options: ICliCommandOptions): ICliCommandResul
   // Prepare environment variables
   const execEnv: Record<string, string> = {
     ...env,
-    PATH: process.env['PATH'] || '',
+    PATH: process.env["PATH"] || "",
   };
 
   // Add HOME if provided
   if (homeDir) {
-    execEnv['HOME'] = homeDir;
+    execEnv["HOME"] = homeDir;
   }
 
   let cmd: string[];
@@ -57,9 +57,9 @@ export function executeCliCommand(options: ICliCommandOptions): ICliCommandResul
     execCwd = cwd || process.cwd();
   } else {
     // Find CLI entry point
-    const generatorProjectRootPath = path.resolve(__dirname, '../../../../');
-    const cliEntryPoint = path.join(generatorProjectRootPath, 'cli.ts');
-    cmd = ['bun', cliEntryPoint, ...command];
+    const generatorProjectRootPath = path.resolve(__dirname, "../../../../");
+    const cliEntryPoint = path.join(generatorProjectRootPath, "cli.ts");
+    cmd = ["bun", cliEntryPoint, ...command];
     execCwd = cwd || generatorProjectRootPath;
   }
 
@@ -68,8 +68,8 @@ export function executeCliCommand(options: ICliCommandOptions): ICliCommandResul
     cmd,
     cwd: execCwd,
     env: execEnv,
-    stdout: 'pipe',
-    stderr: 'pipe',
+    stdout: "pipe",
+    stderr: "pipe",
   });
 
   return {

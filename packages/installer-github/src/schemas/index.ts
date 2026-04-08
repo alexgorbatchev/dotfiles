@@ -1,2 +1,2 @@
-export * from './githubReleaseInstallParamsSchema';
-export * from './githubReleaseToolConfigSchema';
+export * from "./githubReleaseInstallParamsSchema";
+export * from "./githubReleaseToolConfigSchema";

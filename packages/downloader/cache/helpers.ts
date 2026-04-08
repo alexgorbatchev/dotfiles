@@ -1,5 +1,5 @@
-import crypto from 'node:crypto';
-import type { IDownloadOptions } from '../IDownloader';
+import crypto from "node:crypto";
+import type { IDownloadOptions } from "../IDownloader";
 
 /**
  * Creates a cache key for a download operation.
@@ -21,7 +21,7 @@ export function createCacheKey(url: string, options: IDownloadOptions = {}): str
   };
 
   // Create a hash of the key data to ensure consistent, filesystem-safe keys
-  const hash = crypto.createHash('sha256').update(JSON.stringify(keyData)).digest('hex');
+  const hash = crypto.createHash("sha256").update(JSON.stringify(keyData)).digest("hex");
   return `download:${hash}`;
 }
 
@@ -37,7 +37,7 @@ export function createApiCacheKey(url: string, headers?: Record<string, string>)
     headers: headers || {},
   };
 
-  const hash = crypto.createHash('sha256').update(JSON.stringify(keyData)).digest('hex');
+  const hash = crypto.createHash("sha256").update(JSON.stringify(keyData)).digest("hex");
   return `api:${hash}`;
 }
 
@@ -47,7 +47,7 @@ export function createApiCacheKey(url: string, headers?: Record<string, string>)
  * @returns True if the key is for a download operation
  */
 export function isDownloadKey(key: string): boolean {
-  return key.startsWith('download:');
+  return key.startsWith("download:");
 }
 
 /**
@@ -56,5 +56,5 @@ export function isDownloadKey(key: string): boolean {
  * @returns True if the key is for an API operation
  */
 export function isApiKey(key: string): boolean {
-  return key.startsWith('api:');
+  return key.startsWith("api:");
 }

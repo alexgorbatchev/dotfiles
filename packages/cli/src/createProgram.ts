@@ -1,23 +1,23 @@
-import { ARCH_VALUES, OS_VALUES } from '@dotfiles/config';
-import { LOG_LEVEL_NAMES } from '@dotfiles/logger';
-import { Command } from 'commander';
-import type { ICommandCompletionMeta, IGlobalProgram } from './types';
+import { ARCH_VALUES, OS_VALUES } from "@dotfiles/config";
+import { LOG_LEVEL_NAMES } from "@dotfiles/logger";
+import { Command } from "commander";
+import type { ICommandCompletionMeta, IGlobalProgram } from "./types";
 
 /**
  * Completion metadata for global CLI options.
  * These apply to all commands.
  */
 export const GLOBAL_OPTIONS_COMPLETION: ICommandCompletionMeta = {
-  name: 'dotfiles',
-  description: 'Dotfiles management CLI',
+  name: "dotfiles",
+  description: "Dotfiles management CLI",
   options: [
-    { flag: '--config', description: 'Path to configuration file', hasArg: true, argPlaceholder: '<path>' },
-    { flag: '--dry-run', description: 'Simulate operations without changes' },
-    { flag: '--log', description: 'Set log level', hasArg: true, argPlaceholder: '<level>' },
-    { flag: '--verbose', description: 'Enable detailed debug messages' },
-    { flag: '--quiet', description: 'Suppress informational output' },
-    { flag: '--platform', description: 'Override detected platform', hasArg: true, argPlaceholder: '<platform>' },
-    { flag: '--arch', description: 'Override detected architecture', hasArg: true, argPlaceholder: '<arch>' },
+    { flag: "--config", description: "Path to configuration file", hasArg: true, argPlaceholder: "<path>" },
+    { flag: "--dry-run", description: "Simulate operations without changes" },
+    { flag: "--log", description: "Set log level", hasArg: true, argPlaceholder: "<level>" },
+    { flag: "--verbose", description: "Enable detailed debug messages" },
+    { flag: "--quiet", description: "Suppress informational output" },
+    { flag: "--platform", description: "Override detected platform", hasArg: true, argPlaceholder: "<platform>" },
+    { flag: "--arch", description: "Override detected architecture", hasArg: true, argPlaceholder: "<arch>" },
   ],
 };
 
@@ -44,21 +44,21 @@ export const GLOBAL_OPTIONS_COMPLETION: ICommandCompletionMeta = {
  */
 export function createProgram(): IGlobalProgram {
   const program: IGlobalProgram = new Command()
-    .name('generator')
-    .description('CLI tool for managing dotfiles and tool configurations')
-    .version(process.env.DOTFILES_VERSION ?? '0.0.0')
-    .option('--config <path>', 'Path to a configuration file', '')
-    .option('--dry-run', 'Simulate all operations without making changes to the file system', false)
-    .option('--trace', 'Show file paths and line numbers in log output', false)
-    .option(`--log <level>`, `Set log level (${LOG_LEVEL_NAMES.join(', ')})`, 'default')
-    .option('--verbose', 'Enable detailed debug messages (alias for --log=verbose)', false)
+    .name("generator")
+    .description("CLI tool for managing dotfiles and tool configurations")
+    .version(process.env.DOTFILES_VERSION ?? "0.0.0")
+    .option("--config <path>", "Path to a configuration file", "")
+    .option("--dry-run", "Simulate all operations without making changes to the file system", false)
+    .option("--trace", "Show file paths and line numbers in log output", false)
+    .option(`--log <level>`, `Set log level (${LOG_LEVEL_NAMES.join(", ")})`, "default")
+    .option("--verbose", "Enable detailed debug messages (alias for --log=verbose)", false)
     .option(
-      '--quiet',
-      'Suppress all informational and debug output. Errors are still displayed (alias for --log=quiet)',
+      "--quiet",
+      "Suppress all informational and debug output. Errors are still displayed (alias for --log=quiet)",
       false,
     )
-    .option('--platform <platform>', `Override the detected platform (${OS_VALUES.join(', ')})`)
-    .option('--arch <arch>', `Override the detected architecture (${ARCH_VALUES.join(', ')})`);
+    .option("--platform <platform>", `Override the detected platform (${OS_VALUES.join(", ")})`)
+    .option("--arch <arch>", `Override the detected architecture (${ARCH_VALUES.join(", ")})`);
 
   return program;
 }

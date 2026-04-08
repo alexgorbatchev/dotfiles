@@ -1,18 +1,18 @@
-import type { IConfigService, ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { exitCli, ExitCode, resolvePlatformConfig } from '@dotfiles/utils';
-import { realpath } from 'node:fs/promises';
-import path from 'node:path';
-import type { ICommandCompletionMeta, IGlobalProgram, IServices } from './types';
+import type { IConfigService, ProjectConfig } from "@dotfiles/config";
+import type { ISystemInfo } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { exitCli, ExitCode, resolvePlatformConfig } from "@dotfiles/utils";
+import { realpath } from "node:fs/promises";
+import path from "node:path";
+import type { ICommandCompletionMeta, IGlobalProgram, IServices } from "./types";
 
 export const BIN_COMMAND_COMPLETION: ICommandCompletionMeta = {
-  name: 'bin',
-  description: 'Print the real path to a binary',
+  name: "bin",
+  description: "Print the real path to a binary",
   hasPositionalArg: true,
-  positionalArgDescription: 'binary name',
-  positionalArgType: 'tool',
+  positionalArgDescription: "binary name",
+  positionalArgType: "tool",
 };
 
 async function loadToolConfigByNameOrBinary(
@@ -23,7 +23,7 @@ async function loadToolConfigByNameOrBinary(
   projectConfig: ProjectConfig,
   configService: IConfigService,
   systemInfo: ISystemInfo,
-): Promise<{ toolName: string; binaryName: string; } | undefined> {
+): Promise<{ toolName: string; binaryName: string } | undefined> {
   const toolConfig = await configService.loadSingleToolConfig(
     logger,
     nameOrBinary,
@@ -37,9 +37,7 @@ async function loadToolConfigByNameOrBinary(
     const resolved = resolvePlatformConfig(toolConfig, systemInfo);
     const binaries = resolved.binaries ?? [];
     const firstBinary = binaries[0];
-    const binaryName = firstBinary
-      ? (typeof firstBinary === 'string' ? firstBinary : firstBinary.name)
-      : nameOrBinary;
+    const binaryName = firstBinary ? (typeof firstBinary === "string" ? firstBinary : firstBinary.name) : nameOrBinary;
     return { toolName: nameOrBinary, binaryName };
   }
 
@@ -52,18 +50,14 @@ async function loadToolConfigByNameOrBinary(
     systemInfo,
   );
 
-  if (binaryLookupResult && !('error' in binaryLookupResult)) {
+  if (binaryLookupResult && !("error" in binaryLookupResult)) {
     return { toolName: binaryLookupResult.name, binaryName: nameOrBinary };
   }
 
   return undefined;
 }
 
-async function executeBinCommandAction(
-  logger: TsLogger,
-  nameOrBinary: string,
-  services: IServices,
-): Promise<ExitCode> {
+async function executeBinCommandAction(logger: TsLogger, nameOrBinary: string, services: IServices): Promise<ExitCode> {
   const { projectConfig, fs, configService, systemInfo } = services;
 
   // Use a silent logger (minLevel above FATAL=6) to suppress all output
@@ -85,7 +79,7 @@ async function executeBinCommandAction(
   }
 
   const { toolName, binaryName } = result;
-  const binaryPath = path.join(projectConfig.paths.binariesDir, toolName, 'current', binaryName);
+  const binaryPath = path.join(projectConfig.paths.binariesDir, toolName, "current", binaryName);
 
   try {
     const resolvedPath = await realpath(binaryPath);
@@ -101,12 +95,12 @@ export function registerBinCommand(
   program: IGlobalProgram,
   servicesFactory: () => Promise<IServices>,
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'registerBinCommand' });
+  const logger = parentLogger.getSubLogger({ name: "registerBinCommand" });
 
   program
-    .command('bin <name>')
+    .command("bin <name>")
     .description(
-      'Print the absolute real path to a binary (resolving symlinks). Accepts tool name or binary name (from .bin()).',
+      "Print the absolute real path to a binary (resolving symlinks). Accepts tool name or binary name (from .bin()).",
     )
     .action(async (name: string) => {
       const services = await servicesFactory();

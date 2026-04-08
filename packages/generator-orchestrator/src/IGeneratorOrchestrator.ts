@@ -1,4 +1,4 @@
-import type { InstallResultSuccess, IPluginShellInit, ShellType, ToolConfig } from '@dotfiles/core';
+import type { InstallResultSuccess, IPluginShellInit, ShellType, ToolConfig } from "@dotfiles/core";
 
 /**
  * Result type for auto-install operations.
@@ -20,10 +20,7 @@ export interface IAutoInstaller {
   /**
    * Install a tool based on its configuration.
    */
-  install(
-    toolName: string,
-    toolConfig: ToolConfig,
-  ): Promise<InstallResultSuccess | { success: false; }>;
+  install(toolName: string, toolConfig: ToolConfig): Promise<InstallResultSuccess | { success: false }>;
 }
 
 /**

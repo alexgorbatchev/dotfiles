@@ -1,1 +1,1 @@
-export * from './InstallationStateWriter';
+export * from "./InstallationStateWriter";

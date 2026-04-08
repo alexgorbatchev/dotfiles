@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
 interface TmpDirHelper {
   TMP_DIR: string;
@@ -12,7 +12,7 @@ interface TmpDirHelper {
  * Provides utilities to create and cleanup test files in a local .tmp folder
  */
 export function setupTmpDir(testDirPath: string): TmpDirHelper {
-  const TMP_DIR = path.join(testDirPath, '.tmp');
+  const TMP_DIR = path.join(testDirPath, ".tmp");
 
   const ensureDir = (): void => {
     if (!fs.existsSync(TMP_DIR)) {

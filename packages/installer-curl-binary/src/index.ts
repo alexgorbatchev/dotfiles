@@ -1,19 +1,19 @@
-export * from './CurlBinaryInstallerPlugin';
-export * from './installFromCurlBinary';
-export * from './schemas';
-export * from './types';
+export * from "./CurlBinaryInstallerPlugin";
+export * from "./installFromCurlBinary";
+export * from "./schemas";
+export * from "./types";
 
 // Module augmentation for curl-binary plugin
-import type { RegisterPluginResult } from '@dotfiles/core';
-import type { CurlBinaryInstallParams, CurlBinaryToolConfig } from './schemas';
-import type { CurlBinaryInstallResult } from './types';
+import type { RegisterPluginResult } from "@dotfiles/core";
+import type { CurlBinaryInstallParams, CurlBinaryToolConfig } from "./schemas";
+import type { CurlBinaryInstallResult } from "./types";
 
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    'curl-binary': CurlBinaryInstallParams;
+    "curl-binary": CurlBinaryInstallParams;
   }
   interface IToolConfigRegistry {
-    'curl-binary': CurlBinaryToolConfig;
+    "curl-binary": CurlBinaryToolConfig;
   }
-  interface IPluginResultRegistry extends RegisterPluginResult<'curl-binary', CurlBinaryInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<"curl-binary", CurlBinaryInstallResult> {}
 }

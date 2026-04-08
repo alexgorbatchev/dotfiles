@@ -1,9 +1,9 @@
-import type { IGitHubApiClient } from '@dotfiles/installer-github';
-import type { TsLogger } from '@dotfiles/logger';
-import { eq, gt, valid } from 'semver';
-import type { IVersionChecker } from './IVersionChecker.ts';
-import { VersionComparisonStatus } from './IVersionChecker.ts';
-import { messages } from './log-messages';
+import type { IGitHubApiClient } from "@dotfiles/installer-github";
+import type { TsLogger } from "@dotfiles/logger";
+import { eq, gt, valid } from "semver";
+import type { IVersionChecker } from "./IVersionChecker.ts";
+import { VersionComparisonStatus } from "./IVersionChecker.ts";
+import { messages } from "./log-messages";
 
 /**
  * Service for checking and comparing tool versions from GitHub releases.
@@ -24,7 +24,7 @@ export class VersionChecker implements IVersionChecker {
    * @param githubClient - The GitHub API client for fetching release information.
    */
   constructor(parentLogger: TsLogger, githubClient: IGitHubApiClient) {
-    this.logger = parentLogger.getSubLogger({ name: 'VersionChecker' });
+    this.logger = parentLogger.getSubLogger({ name: "VersionChecker" });
     this.logger.debug(messages.initializing());
     this.githubClient = githubClient;
   }
@@ -33,13 +33,13 @@ export class VersionChecker implements IVersionChecker {
    * @inheritdoc IVersionChecker.getLatestToolVersion
    */
   async getLatestToolVersion(owner: string, repo: string): Promise<string | null> {
-    const logger = this.logger.getSubLogger({ name: 'getLatestToolVersion' });
+    const logger = this.logger.getSubLogger({ name: "getLatestToolVersion" });
     logger.debug(messages.fetchingLatestRelease(owner, repo));
     try {
       const release = await this.githubClient.getLatestRelease(owner, repo);
       if (release?.tag_name) {
         // Remove 'v' prefix if present, common in tags
-        const version = release.tag_name.replace(/^v/, '');
+        const version = release.tag_name.replace(/^v/, "");
         logger.debug(messages.latestReleaseFound(version));
         return version;
       }
@@ -55,11 +55,11 @@ export class VersionChecker implements IVersionChecker {
    * @inheritdoc IVersionChecker.checkVersionStatus
    */
   async checkVersionStatus(currentVersion: string, latestVersion: string): Promise<VersionComparisonStatus> {
-    const logger = this.logger.getSubLogger({ name: 'checkVersionStatus' });
+    const logger = this.logger.getSubLogger({ name: "checkVersionStatus" });
     logger.debug(messages.comparingVersions(currentVersion, latestVersion));
 
-    const cleanCurrentVersion = currentVersion.replace(/^v/, '');
-    const cleanLatestVersion = latestVersion.replace(/^v/, '');
+    const cleanCurrentVersion = currentVersion.replace(/^v/, "");
+    const cleanLatestVersion = latestVersion.replace(/^v/, "");
 
     if (!valid(cleanCurrentVersion)) {
       logger.debug(messages.invalidConfiguredVersion(cleanCurrentVersion));
@@ -71,15 +71,15 @@ export class VersionChecker implements IVersionChecker {
     }
 
     if (gt(cleanLatestVersion, cleanCurrentVersion)) {
-      logger.debug(messages.versionComparisonResult('NEWER_AVAILABLE'));
+      logger.debug(messages.versionComparisonResult("NEWER_AVAILABLE"));
       return VersionComparisonStatus.NEWER_AVAILABLE;
     }
     if (eq(cleanLatestVersion, cleanCurrentVersion)) {
-      logger.debug(messages.versionComparisonResult('UP_TO_DATE'));
+      logger.debug(messages.versionComparisonResult("UP_TO_DATE"));
       return VersionComparisonStatus.UP_TO_DATE;
     }
     // This implies lt(cleanLatestVersion, cleanCurrentVersion)
-    logger.debug(messages.versionComparisonResult('AHEAD_OF_LATEST'));
+    logger.debug(messages.versionComparisonResult("AHEAD_OF_LATEST"));
     return VersionComparisonStatus.AHEAD_OF_LATEST;
   }
 }

@@ -1,15 +1,15 @@
-import type { IFileSystem } from '@dotfiles/file-system';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { FetchMockHelper } from '@dotfiles/testing-helpers';
-import type { ProxyFetchConfig } from '@dotfiles/utils';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import type { IFileSystem } from "@dotfiles/file-system";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { FetchMockHelper } from "@dotfiles/testing-helpers";
+import type { ProxyFetchConfig } from "@dotfiles/utils";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
-import { FileCache } from '../cache/FileCache';
-import type { ICacheConfig } from '../cache/types';
-import { Downloader } from '../Downloader';
+import { FileCache } from "../cache/FileCache";
+import type { ICacheConfig } from "../cache/types";
+import { Downloader } from "../Downloader";
 
-describe('Downloader with Proxy', () => {
+describe("Downloader with Proxy", () => {
   let logger: TestLogger;
   let mockFileSystem: IFileSystem;
   let fetchMockHelper: FetchMockHelper;
@@ -27,45 +27,45 @@ describe('Downloader with Proxy', () => {
     fetchMockHelper.restore();
   });
 
-  describe('constructor with proxy config', () => {
-    it('should create NodeFetchStrategy with proxy when proxy enabled', () => {
+  describe("constructor with proxy config", () => {
+    it("should create NodeFetchStrategy with proxy when proxy enabled", () => {
       const proxyConfig: ProxyFetchConfig = { enabled: true, port: 3128 };
       const downloader = new Downloader(logger, mockFileSystem, undefined, undefined, proxyConfig);
 
       expect(downloader).toBeDefined();
 
       // Verify constructor log mentions NodeFetchStrategy with proxy port
-      logger.expect(['DEBUG'], ['Downloader'], [], ['Created NodeFetchStrategy (proxy port 3128)']);
+      logger.expect(["DEBUG"], ["Downloader"], [], ["Created NodeFetchStrategy (proxy port 3128)"]);
     });
 
-    it('should create NodeFetchStrategy without proxy when proxy disabled', () => {
+    it("should create NodeFetchStrategy without proxy when proxy disabled", () => {
       const proxyConfig: ProxyFetchConfig = { enabled: false, port: 3128 };
       const downloader = new Downloader(logger, mockFileSystem, undefined, undefined, proxyConfig);
 
       expect(downloader).toBeDefined();
 
       // Verify constructor log mentions NodeFetchStrategy (no cache)
-      logger.expect(['DEBUG'], ['Downloader'], [], ['Created NodeFetchStrategy (no cache)']);
+      logger.expect(["DEBUG"], ["Downloader"], [], ["Created NodeFetchStrategy (no cache)"]);
     });
 
-    it('should work without proxy config', () => {
+    it("should work without proxy config", () => {
       const downloader = new Downloader(logger, mockFileSystem);
       expect(downloader).toBeDefined();
     });
   });
 
-  describe('download with proxy enabled', () => {
-    const originalUrl = 'https://api.github.com/repos/owner/repo';
+  describe("download with proxy enabled", () => {
+    const originalUrl = "https://api.github.com/repos/owner/repo";
     const testData = '{"name": "repo"}';
 
-    it('should route requests through proxy', async () => {
+    it("should route requests through proxy", async () => {
       const proxyConfig: ProxyFetchConfig = { enabled: true, port: 3128 };
       const downloader = new Downloader(logger, mockFileSystem, undefined, undefined, proxyConfig);
 
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       });
 
       const result = await downloader.download(logger, originalUrl);
@@ -79,7 +79,7 @@ describe('Downloader with Proxy', () => {
       expect(calledUrl).toBe(`http://localhost:3128/${originalUrl}`);
     });
 
-    it('should use custom proxy port', async () => {
+    it("should use custom proxy port", async () => {
       const proxyConfig: ProxyFetchConfig = { enabled: true, port: 8080 };
       const downloader = new Downloader(logger, mockFileSystem, undefined, undefined, proxyConfig);
 
@@ -96,30 +96,33 @@ describe('Downloader with Proxy', () => {
     });
   });
 
-  describe('download with proxy and cache', () => {
-    const originalUrl = 'https://api.github.com/repos/owner/repo';
+  describe("download with proxy and cache", () => {
+    const originalUrl = "https://api.github.com/repos/owner/repo";
     const testData = '{"name": "repo"}';
 
-    it('should use both proxy and cache together', async () => {
+    it("should use both proxy and cache together", async () => {
       const proxyConfig: ProxyFetchConfig = { enabled: true, port: 3128 };
       const cacheConfig: ICacheConfig = {
         enabled: true,
         defaultTtl: 60000,
-        cacheDir: '/cache/downloads',
-        storageStrategy: 'binary',
+        cacheDir: "/cache/downloads",
+        storageStrategy: "binary",
       };
       const cache = new FileCache(logger, mockFileSystem, cacheConfig);
       const downloader = new Downloader(logger, mockFileSystem, undefined, cache, proxyConfig);
 
       // Verify logs show both cache and proxy
-      logger.expect(['DEBUG'], ['Downloader'], [], [
-        'CachedDownloadStrategy wrapping NodeFetchStrategy (proxy port 3128)',
-      ]);
+      logger.expect(
+        ["DEBUG"],
+        ["Downloader"],
+        [],
+        ["CachedDownloadStrategy wrapping NodeFetchStrategy (proxy port 3128)"],
+      );
 
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       });
 
       // First request - goes through proxy, gets cached
@@ -140,11 +143,11 @@ describe('Downloader with Proxy', () => {
     });
   });
 
-  describe('download with proxy disabled', () => {
-    const originalUrl = 'https://api.github.com/repos/owner/repo';
+  describe("download with proxy disabled", () => {
+    const originalUrl = "https://api.github.com/repos/owner/repo";
     const testData = '{"name": "repo"}';
 
-    it('should not route through proxy when disabled', async () => {
+    it("should not route through proxy when disabled", async () => {
       const proxyConfig: ProxyFetchConfig = { enabled: false, port: 3128 };
       const downloader = new Downloader(logger, mockFileSystem, undefined, undefined, proxyConfig);
 

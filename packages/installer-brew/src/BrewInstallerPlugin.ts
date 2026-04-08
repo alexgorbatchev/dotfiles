@@ -1,12 +1,12 @@
-import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
-import { installFromBrew } from './installFromBrew';
-import { type BrewInstallParams, brewInstallParamsSchema, type BrewToolConfig, brewToolConfigSchema } from './schemas';
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
+import { installFromBrew } from "./installFromBrew";
+import { type BrewInstallParams, brewInstallParamsSchema, type BrewToolConfig, brewToolConfigSchema } from "./schemas";
 
-const PLUGIN_VERSION = '1.0.0';
+const PLUGIN_VERSION = "1.0.0";
 
 type BrewPluginMetadata = {
-  method: 'brew';
+  method: "brew";
   formula: string;
   isCask: boolean;
   tap?: string | string[];
@@ -23,16 +23,14 @@ type BrewPluginMetadata = {
  * Note: Tools installed via Homebrew are externally managed, meaning Homebrew
  * handles the actual file placement and versioning.
  */
-export class BrewInstallerPlugin implements
-  IInstallerPlugin<
-    'brew',
-    BrewInstallParams,
-    BrewToolConfig,
-    BrewPluginMetadata
-  >
-{
-  readonly method = 'brew';
-  readonly displayName = 'Homebrew Installer';
+export class BrewInstallerPlugin implements IInstallerPlugin<
+  "brew",
+  BrewInstallParams,
+  BrewToolConfig,
+  BrewPluginMetadata
+> {
+  readonly method = "brew";
+  readonly displayName = "Homebrew Installer";
   readonly version = PLUGIN_VERSION;
   readonly paramsSchema = brewInstallParamsSchema;
   readonly toolConfigSchema = brewToolConfigSchema;

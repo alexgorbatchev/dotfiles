@@ -1,11 +1,11 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   constructor: {
     initialized: (baseUrl: string, userAgent: string) =>
       createSafeLogMessage(`GitHub API client initialized with base URL ${baseUrl} and User-Agent ${userAgent}`),
-    authTokenPresent: () => createSafeLogMessage('GitHub token authentication enabled'),
-    authTokenMissing: () => createSafeLogMessage('No GitHub token provided; requests will be unauthenticated'),
+    authTokenPresent: () => createSafeLogMessage("GitHub token authentication enabled"),
+    authTokenMissing: () => createSafeLogMessage("No GitHub token provided; requests will be unauthenticated"),
   } satisfies SafeLogMessageMap,
   ghCli: {
     initialized: (hostname: string) =>
@@ -15,7 +15,7 @@ export const messages = {
     cacheMiss: (endpoint: string) => createSafeLogMessage(`Cache miss for gh api ${endpoint}`),
     commandFailed: (exitCode: number) => createSafeLogMessage(`gh cli command failed with exit code ${exitCode}`),
     parseError: (endpoint: string) => createSafeLogMessage(`Failed to parse gh api response for ${endpoint}`),
-    notAvailable: () => createSafeLogMessage('gh cli is not available or not authenticated'),
+    notAvailable: () => createSafeLogMessage("gh cli is not available or not authenticated"),
     downloadingAsset: (assetName: string, repo: string, tag: string) =>
       createSafeLogMessage(`Downloading ${assetName} from ${repo}@${tag} via gh release download`),
     downloadComplete: (assetName: string) => createSafeLogMessage(`Downloaded ${assetName} via gh cli`),
@@ -24,8 +24,8 @@ export const messages = {
   } satisfies SafeLogMessageMap,
   cache: {
     enabled: (ttlMs: number) => createSafeLogMessage(`GitHub API cache enabled with TTL ${ttlMs} ms`),
-    disabled: () => createSafeLogMessage('GitHub API cache provided but disabled by configuration'),
-    missing: () => createSafeLogMessage('No GitHub API cache provided; responses will not be cached'),
+    disabled: () => createSafeLogMessage("GitHub API cache provided but disabled by configuration"),
+    missing: () => createSafeLogMessage("No GitHub API cache provided; responses will not be cached"),
   } satisfies SafeLogMessageMap,
   request: {
     performing: (method: string, url: string) => createSafeLogMessage(`GitHub API ${method} request to ${url}`),
@@ -90,7 +90,7 @@ export const messages = {
     resultMissing: (constraint: string) => createSafeLogMessage(`No GitHub release found for constraint ${constraint}`),
   } satisfies SafeLogMessageMap,
   rateLimit: {
-    fetching: () => createSafeLogMessage('Fetching GitHub API rate limit status'),
+    fetching: () => createSafeLogMessage("Fetching GitHub API rate limit status"),
   } satisfies SafeLogMessageMap,
   tagPattern: {
     probing: (owner: string, repo: string) => createSafeLogMessage(`Probing release tag pattern for ${owner}/${repo}`),

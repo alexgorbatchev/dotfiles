@@ -1,6 +1,6 @@
-import type { ShellType, ShellTypeConfig, ToolConfig } from '@dotfiles/core';
-import path from 'node:path';
-import { BaseShellGenerator } from './BaseShellGenerator';
+import type { ShellType, ShellTypeConfig, ToolConfig } from "@dotfiles/core";
+import path from "node:path";
+import { BaseShellGenerator } from "./BaseShellGenerator";
 
 /**
  * Bash-specific shell initialization generator.
@@ -8,8 +8,8 @@ import { BaseShellGenerator } from './BaseShellGenerator';
  * completions, and tool-specific initialization.
  */
 export class BashGenerator extends BaseShellGenerator {
-  readonly shellType: ShellType = 'bash';
-  readonly fileExtension: string = '.bash';
+  readonly shellType: ShellType = "bash";
+  readonly fileExtension: string = ".bash";
 
   protected getShellConfig(toolConfig: ToolConfig): ShellTypeConfig | undefined {
     // ShellTypeConfig is manually typed; ToolConfig uses Zod inference with z.unknown() for completions
@@ -17,6 +17,6 @@ export class BashGenerator extends BaseShellGenerator {
   }
 
   protected getCompletionDir(): string {
-    return path.join(this.projectConfig.paths.shellScriptsDir, 'bash', 'completions');
+    return path.join(this.projectConfig.paths.shellScriptsDir, "bash", "completions");
   }
 }

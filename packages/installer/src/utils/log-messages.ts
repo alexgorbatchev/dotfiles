@@ -1,4 +1,4 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 export const messages = {
   binarySetupService: {
     binaryNotFound: (binaryName: string, pattern: string) =>
@@ -21,11 +21,11 @@ export const messages = {
         `Direct download only provides one binary, but ${configuredCount} were configured. Only ${primaryBinary} will be available.`,
       ),
     patternDebug: (pattern: string, parts: string[], extractDir: string) =>
-      createSafeLogMessage(`Pattern: ${pattern}, Parts: [${parts.join(', ')}], ExtractDir: ${extractDir}`),
+      createSafeLogMessage(`Pattern: ${pattern}, Parts: [${parts.join(", ")}], ExtractDir: ${extractDir}`),
     processingPart: (part: string, currentDir: string) =>
       createSafeLogMessage(`Processing part: "${part}", currentDir: ${currentDir}`),
     wildcardMatchResult: (matchedDir: string | null) =>
-      createSafeLogMessage(`Wildcard match result: ${matchedDir ?? 'null'}`),
+      createSafeLogMessage(`Wildcard match result: ${matchedDir ?? "null"}`),
     directPath: (currentDir: string) => createSafeLogMessage(`Direct path: ${currentDir}`),
     finalResult: (currentDir: string) => createSafeLogMessage(`Final result: ${currentDir}`),
   } satisfies SafeLogMessageMap,
@@ -58,7 +58,7 @@ export const messages = {
       createSafeLogMessage(`install: Cleaning up failed installation directory: ${directoryPath}`),
     versionResolved: (version: string) => createSafeLogMessage(`install: Resolved version: ${version}`),
     versionFallbackToTimestamp: () =>
-      createSafeLogMessage('install: Version resolution returned null, using timestamp'),
+      createSafeLogMessage("install: Version resolution returned null, using timestamp"),
     versionResolutionFailed: (error: unknown) =>
       createSafeLogMessage(`install: Version resolution failed, using timestamp: ${String(error)}`),
     externalBinaryMissing: (toolName: string, binaryName: string, binaryPath: string) =>
@@ -86,7 +86,7 @@ export const messages = {
 
   archive: {
     extracting: (pathOrName: string) => createSafeLogMessage(`Extracting archive: ${pathOrName}`),
-    extracted: () => createSafeLogMessage('Archive extracted: %o'),
+    extracted: () => createSafeLogMessage("Archive extracted: %o"),
     cleaning: (resourcePath: string) => createSafeLogMessage(`Cleaning up downloaded archive: ${resourcePath}`),
   } satisfies SafeLogMessageMap,
 
@@ -96,7 +96,7 @@ export const messages = {
   } satisfies SafeLogMessageMap,
 
   completion: {
-    noCompletionsConfigured: () => createSafeLogMessage('install: no completions configured'),
+    noCompletionsConfigured: () => createSafeLogMessage("install: no completions configured"),
     generatingCompletions: (count: number) => createSafeLogMessage(`install: generating ${count} completion files`),
     generatedCompletion: (filename: string, targetPath: string) =>
       createSafeLogMessage(`install: generated completion: ${filename} -> ${targetPath}`),

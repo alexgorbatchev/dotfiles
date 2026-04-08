@@ -1,5 +1,5 @@
-import { selectBestMatch } from '@dotfiles/arch';
-import { type IArchiveExtractor, isSupportedArchiveFile } from '@dotfiles/archive-extractor';
+import { selectBestMatch } from "@dotfiles/arch";
+import { type IArchiveExtractor, isSupportedArchiveFile } from "@dotfiles/archive-extractor";
 import type {
   IDownloadContext,
   IExtractContext,
@@ -8,11 +8,11 @@ import type {
   IGitHubReleaseAsset,
   IInstallContext,
   ISystemInfo,
-} from '@dotfiles/core';
-import { architectureToString, platformToString } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
+} from "@dotfiles/core";
+import { architectureToString, platformToString } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor, IInstallOptions } from "@dotfiles/installer";
 import {
   downloadWithProgress,
   executeAfterDownloadHook as executeAfterDownloadHookUtil,
@@ -20,21 +20,17 @@ import {
   getBinaryPaths,
   setupBinariesFromArchive,
   setupBinariesFromDirectDownload,
-} from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { normalizeVersion } from '@dotfiles/utils';
-import path from 'node:path';
-import type { IGiteaApiClient } from './gitea-client';
-import { messages } from './log-messages';
-import { type AssetPattern, formatAssetPatternForLog, matchAssetPattern } from './matchAssetPattern';
-import type {
-  GiteaReleaseInstallParams,
-  GiteaReleaseToolConfig,
-  IGiteaAssetSelectionContext,
-} from './schemas';
-import type { GiteaReleaseInstallResult, IGiteaReleaseInstallMetadata } from './types';
+} from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { normalizeVersion } from "@dotfiles/utils";
+import path from "node:path";
+import type { IGiteaApiClient } from "./gitea-client";
+import { messages } from "./log-messages";
+import { type AssetPattern, formatAssetPatternForLog, matchAssetPattern } from "./matchAssetPattern";
+import type { GiteaReleaseInstallParams, GiteaReleaseToolConfig, IGiteaAssetSelectionContext } from "./schemas";
+import type { GiteaReleaseInstallResult, IGiteaReleaseInstallMetadata } from "./types";
 
-type OperationResult<T> = { success: true; data: T; } | { success: false; error: string; };
+type OperationResult<T> = { success: true; data: T } | { success: false; error: string };
 
 interface IDownloadAssetResultData {
   downloadPath: string;
@@ -54,22 +50,22 @@ export async function installFromGiteaRelease(
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
 ): Promise<GiteaReleaseInstallResult> {
-  const logger = parentLogger.getSubLogger({ name: 'installFromGiteaRelease' });
+  const logger = parentLogger.getSubLogger({ name: "installFromGiteaRelease" });
   logger.debug(messages.startingInstallation(toolName));
 
-  if (!toolConfig.installParams || !('repo' in toolConfig.installParams)) {
+  if (!toolConfig.installParams || !("repo" in toolConfig.installParams)) {
     const result: GiteaReleaseInstallResult = {
       success: false,
-      error: 'Repository not specified in installParams',
+      error: "Repository not specified in installParams",
     };
     return result;
   }
 
   const params = toolConfig.installParams;
   const repo = params.repo;
-  const version = params.version || 'latest';
+  const version = params.version || "latest";
 
-  const [owner, repoName] = repo.split('/');
+  const [owner, repoName] = repo.split("/");
   if (!owner || !repoName) {
     const result: GiteaReleaseInstallResult = {
       success: false,
@@ -94,14 +90,7 @@ export async function installFromGiteaRelease(
     const downloadUrl = asset.data.browser_download_url;
     const downloadPath = path.join(context.stagingDir, asset.data.name);
 
-    const downloadResult = await downloadAsset(
-      downloadUrl,
-      asset.data,
-      downloader,
-      downloadPath,
-      options,
-      logger,
-    );
+    const downloadResult = await downloadAsset(downloadUrl, asset.data, downloader, downloadPath, options, logger);
     if (!downloadResult.success) {
       const result: GiteaReleaseInstallResult = downloadResult;
       return result;
@@ -141,7 +130,7 @@ export async function installFromGiteaRelease(
     const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     const metadata: IGiteaReleaseInstallMetadata = {
-      method: 'gitea-release',
+      method: "gitea-release",
       releaseUrl: release.data.html_url,
       publishedAt: release.data.published_at,
       releaseName: release.data.name,
@@ -174,8 +163,8 @@ export async function fetchGiteaRelease(
   giteaApiClient: IGiteaApiClient,
   parentLogger: TsLogger,
 ): Promise<OperationResult<IGitHubRelease>> {
-  const logger = parentLogger.getSubLogger({ name: 'fetchGiteaRelease' });
-  const [owner, repoName] = repo.split('/');
+  const logger = parentLogger.getSubLogger({ name: "fetchGiteaRelease" });
+  const [owner, repoName] = repo.split("/");
   if (!owner || !repoName) {
     const result: OperationResult<IGitHubRelease> = {
       success: false,
@@ -184,7 +173,7 @@ export async function fetchGiteaRelease(
     return result;
   }
 
-  if (version === 'latest') {
+  if (version === "latest") {
     logger.debug(messages.fetchLatest(repo));
 
     if (includePrerelease) {
@@ -239,7 +228,7 @@ async function showAvailableReleaseTags(
   giteaApiClient: IGiteaApiClient,
   parentLogger: TsLogger,
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'showAvailableReleaseTags' });
+  const logger = parentLogger.getSubLogger({ name: "showAvailableReleaseTags" });
   const tags = await giteaApiClient.getLatestReleaseTags(owner, repoName, TAG_SUGGESTIONS_COUNT);
 
   if (tags.length === 0) {
@@ -319,7 +308,7 @@ function createAssetNotFoundError(
   const availableAssetNames = release.assets.map((a) => a.name);
   const platform = platformToString(context.systemInfo.platform);
   const arch = architectureToString(context.systemInfo.arch);
-  let searchedForMessage = '';
+  let searchedForMessage = "";
 
   if (params.assetSelector) {
     searchedForMessage = `using a custom assetSelector function for ${platform}/${arch}.`;
@@ -335,7 +324,7 @@ function createAssetNotFoundError(
     ...availableAssetNames.map((name) => `  - ${name}`),
   ];
 
-  return errorLines.join('\n');
+  return errorLines.join("\n");
 }
 
 async function downloadAsset(
@@ -374,7 +363,7 @@ async function executeAfterDownloadHook(
     return finalResult;
   }
 
-  const finalResult: OperationResult<void> = { success: false, error: result.error || 'Hook execution failed' };
+  const finalResult: OperationResult<void> = { success: false, error: result.error || "Hook execution failed" };
   return finalResult;
 }
 
@@ -467,6 +456,6 @@ async function executeAfterExtractHook(
     return finalResult;
   }
 
-  const finalResult: OperationResult<void> = { success: false, error: result.error || 'Hook execution failed' };
+  const finalResult: OperationResult<void> = { success: false, error: result.error || "Hook execution failed" };
   return finalResult;
 }

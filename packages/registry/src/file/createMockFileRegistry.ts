@@ -1,6 +1,6 @@
-import type { MockedInterface } from '@dotfiles/testing-helpers';
-import { mock } from 'bun:test';
-import type { IFileRegistry } from './IFileRegistry';
+import type { MockedInterface } from "@dotfiles/testing-helpers";
+import { mock } from "bun:test";
+import type { IFileRegistry } from "./IFileRegistry";
 
 export function createMockFileRegistry(): MockedInterface<IFileRegistry> {
   return {

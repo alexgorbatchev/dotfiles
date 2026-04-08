@@ -1,4 +1,4 @@
-import type { CargoTomlPackage, ICrateMetadata } from './CargoClient';
+import type { CargoTomlPackage, ICrateMetadata } from "./CargoClient";
 
 /**
  * Interface for a client that interacts with Cargo-related APIs.

@@ -1,5 +1,5 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { IDownloadStrategy } from './IDownloadStrategy';
+import type { TsLogger } from "@dotfiles/logger";
+import type { IDownloadStrategy } from "./IDownloadStrategy";
 
 export type ProgressCallback = (bytesDownloaded: number, totalBytes: number | null) => void;
 

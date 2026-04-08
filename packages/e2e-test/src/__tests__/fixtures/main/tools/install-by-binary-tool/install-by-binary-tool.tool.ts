@@ -1,4 +1,4 @@
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from "@dotfiles/cli";
 
 /**
  * Tool used to test installing by binary name.
@@ -6,9 +6,9 @@ import { defineTool } from '@dotfiles/cli';
  * This allows testing the `dotfiles install my-custom-binary` feature.
  */
 export default defineTool((install) =>
-  install('github-release', {
-    repo: 'repo/install-by-binary-tool',
+  install("github-release", {
+    repo: "repo/install-by-binary-tool",
   })
-    .bin('my-custom-binary')
-    .version('latest')
+    .bin("my-custom-binary")
+    .version("latest"),
 );

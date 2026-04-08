@@ -1,4 +1,4 @@
-import type { SafeLogMessage } from './types';
+import type { SafeLogMessage } from "./types";
 
 /**
  * Creates a `SafeLogMessage`, a branded type that represents a string that is

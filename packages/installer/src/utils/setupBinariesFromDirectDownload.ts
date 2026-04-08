@@ -1,10 +1,10 @@
-import type { IInstallContext, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import path from 'node:path';
-import { createBinaryEntrypoint } from './createBinaryEntrypoint';
-import { messages } from './log-messages';
-import { normalizeBinaries } from './normalizeBinaries';
+import type { IInstallContext, ToolConfig } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import path from "node:path";
+import { createBinaryEntrypoint } from "./createBinaryEntrypoint";
+import { messages } from "./log-messages";
+import { normalizeBinaries } from "./normalizeBinaries";
 
 /**
  * Setup binaries from direct download - handles all binaries in toolConfig.binaries[]
@@ -17,13 +17,13 @@ export async function setupBinariesFromDirectDownload(
   downloadPath: string,
   parentLogger: TsLogger,
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'setupBinariesFromDirectDownload' });
+  const logger = parentLogger.getSubLogger({ name: "setupBinariesFromDirectDownload" });
   const binaryConfigs = normalizeBinaries(toolConfig.binaries);
   const primaryBinary = binaryConfigs[0]?.name || toolName;
 
   await fs.chmod(downloadPath, 0o755);
 
-  const binariesDir = path.join(context.projectConfig.paths.generatedDir, 'binaries');
+  const binariesDir = path.join(context.projectConfig.paths.generatedDir, "binaries");
   const downloadFileName = path.basename(downloadPath);
 
   // Extract subdirectory name from context.stagingDir

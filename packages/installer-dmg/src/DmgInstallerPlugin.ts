@@ -1,4 +1,4 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
 import type {
   IInstallContext,
   IInstallerPlugin,
@@ -6,23 +6,18 @@ import type {
   InstallResult,
   IValidationResult,
   Shell,
-} from '@dotfiles/core';
-import { Platform } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
-import type { IGitHubApiClient } from '@dotfiles/installer-github';
-import type { TsLogger } from '@dotfiles/logger';
-import { installFromDmg } from './installFromDmg';
-import {
-  type DmgInstallParams,
-  dmgInstallParamsSchema,
-  type DmgToolConfig,
-  dmgToolConfigSchema,
-} from './schemas';
-import type { IDmgInstallMetadata } from './types';
+} from "@dotfiles/core";
+import { Platform } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor } from "@dotfiles/installer";
+import type { IGitHubApiClient } from "@dotfiles/installer-github";
+import type { TsLogger } from "@dotfiles/logger";
+import { installFromDmg } from "./installFromDmg";
+import { type DmgInstallParams, dmgInstallParamsSchema, type DmgToolConfig, dmgToolConfigSchema } from "./schemas";
+import type { IDmgInstallMetadata } from "./types";
 
-const PLUGIN_VERSION = '1.0.0';
+const PLUGIN_VERSION = "1.0.0";
 
 /**
  * Installer plugin for macOS applications distributed as DMG disk images.
@@ -33,18 +28,21 @@ const PLUGIN_VERSION = '1.0.0';
  *
  * On non-macOS platforms, installation is silently skipped with a success result.
  */
-export class DmgInstallerPlugin
-  implements IInstallerPlugin<'dmg', DmgInstallParams, DmgToolConfig, IDmgInstallMetadata>
-{
-  readonly method = 'dmg';
-  readonly displayName = 'DMG Installer';
+export class DmgInstallerPlugin implements IInstallerPlugin<
+  "dmg",
+  DmgInstallParams,
+  DmgToolConfig,
+  IDmgInstallMetadata
+> {
+  readonly method = "dmg";
+  readonly displayName = "DMG Installer";
   readonly version = PLUGIN_VERSION;
   readonly paramsSchema = dmgInstallParamsSchema;
   readonly toolConfigSchema = dmgToolConfigSchema;
   readonly staticValidation = true;
   readonly externallyManaged = true;
   readonly missingBinaryMessage =
-    'Installation completed. This tool was installed as a macOS app bundle in /Applications. Launch it from Spotlight, Launchpad, or the Applications folder.';
+    "Installation completed. This tool was installed as a macOS app bundle in /Applications. Launch it from Spotlight, Launchpad, or the Applications folder.";
 
   constructor(
     private readonly fs: IFileSystem,
@@ -59,7 +57,7 @@ export class DmgInstallerPlugin
   async validate(context: IInstallContext): Promise<IValidationResult> {
     // On non-macOS, return valid — the install() method handles the silent skip
     if (context.systemInfo.platform !== Platform.MacOS) {
-      return { valid: true, warnings: ['DMG installer only works on macOS'] };
+      return { valid: true, warnings: ["DMG installer only works on macOS"] };
     }
 
     // On macOS, verify hdiutil exists
@@ -67,7 +65,7 @@ export class DmgInstallerPlugin
       await this.shell`which hdiutil`.quiet();
       return { valid: true };
     } catch {
-      return { valid: false, errors: ['hdiutil not found — required for DMG installation'] };
+      return { valid: false, errors: ["hdiutil not found — required for DMG installation"] };
     }
   }
 

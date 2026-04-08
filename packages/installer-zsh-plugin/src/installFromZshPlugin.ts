@@ -1,12 +1,12 @@
-import { createShell, type IInstallContext, type Shell } from '@dotfiles/core';
-import { raw } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import { withInstallErrorHandling } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import path from 'node:path';
-import { messages } from './log-messages';
-import type { ZshPluginToolConfig } from './schemas';
-import type { IZshPluginInstallMetadata, ZshPluginInstallResult } from './types';
+import { createShell, type IInstallContext, type Shell } from "@dotfiles/core";
+import { raw } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import { withInstallErrorHandling } from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import path from "node:path";
+import { messages } from "./log-messages";
+import type { ZshPluginToolConfig } from "./schemas";
+import type { IZshPluginInstallMetadata, ZshPluginInstallResult } from "./types";
 
 /**
  * Installs a zsh plugin by cloning a git repository.
@@ -35,7 +35,7 @@ export async function installFromZshPlugin(
   shell: Shell,
   installShell?: Shell,
 ): Promise<ZshPluginInstallResult> {
-  const logger = parentLogger.getSubLogger({ name: 'installFromZshPlugin' });
+  const logger = parentLogger.getSubLogger({ name: "installFromZshPlugin" });
   logger.debug(messages.installing(toolName));
 
   const params = toolConfig.installParams;
@@ -43,14 +43,14 @@ export async function installFromZshPlugin(
   if (!params) {
     return {
       success: false,
-      error: 'No install parameters provided',
+      error: "No install parameters provided",
     };
   }
 
   if (!params.repo && !params.url) {
     return {
       success: false,
-      error: 'Either repo or url must be specified',
+      error: "Either repo or url must be specified",
     };
   }
 
@@ -94,7 +94,7 @@ export async function installFromZshPlugin(
     const sourceFilePath = path.join(context.currentDir, pluginName, sourceFile);
 
     const metadata: IZshPluginInstallMetadata = {
-      method: 'zsh-plugin',
+      method: "zsh-plugin",
       pluginName,
       gitUrl,
       pluginPath,
@@ -116,7 +116,7 @@ export async function installFromZshPlugin(
     };
   };
 
-  return withInstallErrorHandling('zsh-plugin', toolName, logger, operation);
+  return withInstallErrorHandling("zsh-plugin", toolName, logger, operation);
 }
 
 /**
@@ -133,17 +133,17 @@ export function resolvePluginName(
 
   if (repo) {
     // Extract repo name from user/repo
-    return repo.split('/')[1] ?? repo;
+    return repo.split("/")[1] ?? repo;
   }
 
   if (url) {
     // Extract from URL: https://github.com/user/repo.git -> repo
     const urlPath = new URL(url).pathname;
-    const basename = path.basename(urlPath, '.git');
+    const basename = path.basename(urlPath, ".git");
     return basename;
   }
 
-  throw new Error('Cannot determine plugin name');
+  throw new Error("Cannot determine plugin name");
 }
 
 /**
@@ -157,7 +157,7 @@ async function detectSourceFile(
   fs: IResolvedFileSystem,
   parentLogger: TsLogger,
 ): Promise<string | undefined> {
-  const logger = parentLogger.getSubLogger({ name: 'detectSourceFile' });
+  const logger = parentLogger.getSubLogger({ name: "detectSourceFile" });
 
   // If explicitly specified, validate it exists
   if (explicitSource) {
@@ -174,8 +174,8 @@ async function detectSourceFile(
   const candidates = [
     `${pluginName}.plugin.zsh`,
     `${pluginName}.zsh`,
-    'init.zsh',
-    'plugin.zsh',
+    "init.zsh",
+    "plugin.zsh",
     `${pluginName}.zsh-theme`,
   ];
 
@@ -208,7 +208,7 @@ async function updatePlugin(pluginPath: string, shell: Shell): Promise<void> {
  * Gets the git commit hash or tag as version.
  */
 async function getGitVersion(pluginPath: string, shell: Shell, parentLogger: TsLogger): Promise<string | undefined> {
-  const logger = parentLogger.getSubLogger({ name: 'getGitVersion' });
+  const logger = parentLogger.getSubLogger({ name: "getGitVersion" });
 
   try {
     // Try to get the latest tag first

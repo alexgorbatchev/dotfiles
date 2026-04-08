@@ -10,8 +10,8 @@
  *   bun run build
  */
 
-import { getPackageJson } from '../getPackageJson';
-import { shell } from './helpers';
+import { getPackageJson } from "../getPackageJson";
+import { shell } from "./helpers";
 
 async function main() {
   const results = await shell`bun run build.ts`
@@ -20,7 +20,7 @@ async function main() {
     .cwd(__dirname)
     .env({
       ...process.env,
-      DOTFILES_BUILT_PACKAGE_NAME: '@alexgorbatchev/dotfiles',
+      DOTFILES_BUILT_PACKAGE_NAME: "@alexgorbatchev/dotfiles",
       DOTFILES_VERSION: getPackageJson().version,
     });
 

@@ -1,11 +1,11 @@
-import type { IGitHubRelease } from '@dotfiles/core';
-import { NotFoundError } from '@dotfiles/downloader';
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import type { IGitHubRelease } from "@dotfiles/core";
+import { NotFoundError } from "@dotfiles/downloader";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import {
   createGitHubConfigOverride,
   type IMockSetup,
   setupMockGitHubApiClient,
-} from './helpers/sharedGitHubApiClientTestSetup';
+} from "./helpers/sharedGitHubApiClientTestSetup";
 
 // Helper function
 const createMockRelease = (id: number, tagName: string, prerelease = false): IGitHubRelease => ({
@@ -21,7 +21,7 @@ const createMockRelease = (id: number, tagName: string, prerelease = false): IGi
   html_url: `http://example.com/releases/${tagName}`,
 });
 
-describe('GitHubApiClient', () => {
+describe("GitHubApiClient", () => {
   let mocks: IMockSetup;
 
   beforeEach(async () => {
@@ -30,107 +30,106 @@ describe('GitHubApiClient', () => {
     mocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
   });
 
-  describe('getReleaseByConstraint', () => {
+  describe("getReleaseByConstraint", () => {
     it("should call getLatestRelease if constraint is 'latest'", async () => {
-      const mockLatestRelease = createMockRelease(10, 'v2.0.0');
+      const mockLatestRelease = createMockRelease(10, "v2.0.0");
       mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify(mockLatestRelease)));
 
-      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', 'latest');
+      const release = await mocks.apiClient.getReleaseByConstraint("test-owner", "test-repo", "latest");
       expect(release).toEqual(mockLatestRelease);
       expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
         expect.anything(),
-        'https://api.github.com/repos/test-owner/test-repo/releases/latest',
+        "https://api.github.com/repos/test-owner/test-repo/releases/latest",
         expect.anything(),
       );
 
       // Verify logger received request message
-      mocks.logger.expect(['DEBUG'], ['GitHubApiClient', 'request'], [], ['GitHub API GET request to']);
+      mocks.logger.expect(["DEBUG"], ["GitHubApiClient", "request"], [], ["GitHub API GET request to"]);
     });
 
     it("should return null if constraint is 'latest' and getLatestRelease fails with NotFoundError from downloader", async () => {
       mocks.mockDownloader.download.mockRejectedValue(
-        new NotFoundError(mocks.logger, 'https://api.github.com/repos/test-owner/test-repo/releases/latest'),
+        new NotFoundError(mocks.logger, "https://api.github.com/repos/test-owner/test-repo/releases/latest"),
       );
-      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', 'latest');
+      const release = await mocks.apiClient.getReleaseByConstraint("test-owner", "test-repo", "latest");
       expect(release).toBeNull();
     });
 
-    it('should return the latest satisfying release for a valid semver constraint', async () => {
+    it("should return the latest satisfying release for a valid semver constraint", async () => {
       const releasesList: IGitHubRelease[] = [
-        createMockRelease(1, 'v1.0.0'),
-        createMockRelease(2, 'v1.1.0'),
-        createMockRelease(3, 'v1.0.1-beta'),
-        createMockRelease(4, 'v1.2.0'),
-        createMockRelease(5, 'v0.9.0'),
-        createMockRelease(6, '2.0.0'),
+        createMockRelease(1, "v1.0.0"),
+        createMockRelease(2, "v1.1.0"),
+        createMockRelease(3, "v1.0.1-beta"),
+        createMockRelease(4, "v1.2.0"),
+        createMockRelease(5, "v0.9.0"),
+        createMockRelease(6, "2.0.0"),
       ];
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^1.1.0');
-      expect(release).toEqual(releasesList.find((r) => r.tag_name === 'v1.2.0')!);
+      const release = await mocks.apiClient.getReleaseByConstraint("test-owner", "test-repo", "^1.1.0");
+      expect(release).toEqual(releasesList.find((r) => r.tag_name === "v1.2.0")!);
       expect(mocks.mockDownloader.download).toHaveBeenCalledTimes(1);
     });
 
-    it('should include prereleases when matching if constraint allows', async () => {
+    it("should include prereleases when matching if constraint allows", async () => {
       const releasesList: IGitHubRelease[] = [
-        createMockRelease(1, 'v1.0.0'),
-        createMockRelease(2, 'v1.1.0-beta.1', true),
-        createMockRelease(3, 'v1.1.0-alpha', true),
-        createMockRelease(4, 'v1.0.1'),
+        createMockRelease(1, "v1.0.0"),
+        createMockRelease(2, "v1.1.0-beta.1", true),
+        createMockRelease(3, "v1.1.0-alpha", true),
+        createMockRelease(4, "v1.0.1"),
       ];
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '>=1.1.0-alpha');
-      expect(release).toEqual(releasesList.find((r) => r.tag_name === 'v1.1.0-beta.1')!);
+      const release = await mocks.apiClient.getReleaseByConstraint("test-owner", "test-repo", ">=1.1.0-alpha");
+      expect(release).toEqual(releasesList.find((r) => r.tag_name === "v1.1.0-beta.1")!);
     });
 
-    it('should return null if no releases satisfy the constraint', async () => {
-      const releasesList: IGitHubRelease[] = [createMockRelease(1, 'v1.0.0'), createMockRelease(2, 'v0.9.0')];
+    it("should return null if no releases satisfy the constraint", async () => {
+      const releasesList: IGitHubRelease[] = [createMockRelease(1, "v1.0.0"), createMockRelease(2, "v0.9.0")];
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^2.0.0');
+      const release = await mocks.apiClient.getReleaseByConstraint("test-owner", "test-repo", "^2.0.0");
       expect(release).toBeNull();
     });
 
-    it('should return null if getAllReleases returns an empty list', async () => {
+    it("should return null if getAllReleases returns an empty list", async () => {
       mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify([])));
-      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^1.0.0');
+      const release = await mocks.apiClient.getReleaseByConstraint("test-owner", "test-repo", "^1.0.0");
       expect(release).toBeNull();
     });
 
-    it('should handle tags that are not valid semver by ignoring them', async () => {
+    it("should handle tags that are not valid semver by ignoring them", async () => {
       const releasesList: IGitHubRelease[] = [
-        createMockRelease(1, 'not-a-version'),
-        createMockRelease(2, 'v1.0.0'),
-        createMockRelease(3, 'my-feature-branch'),
+        createMockRelease(1, "not-a-version"),
+        createMockRelease(2, "v1.0.0"),
+        createMockRelease(3, "my-feature-branch"),
       ];
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^1.0.0');
-      expect(release).toEqual(releasesList.find((r) => r.tag_name === 'v1.0.0')!);
+      const release = await mocks.apiClient.getReleaseByConstraint("test-owner", "test-repo", "^1.0.0");
+      expect(release).toEqual(releasesList.find((r) => r.tag_name === "v1.0.0")!);
     });
 
-    it('should correctly identify the latest satisfying release from multiple pages', async () => {
+    it("should correctly identify the latest satisfying release from multiple pages", async () => {
       const perPage = 30; // Align with GitHubApiClient's internal default
-      const page1Releases: IGitHubRelease[] = Array.from(
-        { length: perPage },
-        (_, i) => createMockRelease(i + 1, `v0.${i + 1}.0`),
+      const page1Releases: IGitHubRelease[] = Array.from({ length: perPage }, (_, i) =>
+        createMockRelease(i + 1, `v0.${i + 1}.0`),
       );
       // Ensure IDs are unique across pages for clarity, starting page 2 IDs after page 1
       const targetReleaseId = perPage + 2;
-      const targetRelease = createMockRelease(targetReleaseId, 'v1.2.4', false);
+      const targetRelease = createMockRelease(targetReleaseId, "v1.2.4", false);
       const page2Releases: IGitHubRelease[] = [
-        createMockRelease(perPage + 1, 'v1.1.0'),
+        createMockRelease(perPage + 1, "v1.1.0"),
         targetRelease,
-        createMockRelease(perPage + 3, 'v1.2.3'),
+        createMockRelease(perPage + 3, "v1.2.3"),
       ].toSorted((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()); // Simulate API sort
 
       mocks.mockDownloader.download
@@ -138,7 +137,7 @@ describe('GitHubApiClient', () => {
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(page2Releases))) // Page 2
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([]))); // Page 3 (empty, to stop pagination)
 
-      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^1.2.0');
+      const release = await mocks.apiClient.getReleaseByConstraint("test-owner", "test-repo", "^1.2.0");
       expect(release).toEqual(targetRelease);
       // Expect 2 calls: page 1, and page 2. The loop terminates after page 2 because releasesPage.length < perPage.
       expect(mocks.mockDownloader.download).toHaveBeenCalledTimes(2);

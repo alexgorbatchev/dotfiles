@@ -1,4 +1,4 @@
-import type { ProjectConfig } from '@dotfiles/config';
+import type { ProjectConfig } from "@dotfiles/config";
 import {
   Architecture,
   createShell,
@@ -6,21 +6,21 @@ import {
   type ISystemInfo,
   Platform,
   type ToolConfig,
-} from '@dotfiles/core';
-import { NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createMockFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
-import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import { SymlinkGenerator } from '@dotfiles/symlink-generator';
-import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
-import path from 'node:path';
-import { z } from 'zod';
-import { Installer } from '../Installer';
-import { HookExecutor } from '../utils/HookExecutor';
+} from "@dotfiles/core";
+import { NodeFileSystem, ResolvedFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { createMockFileRegistry, TrackedFileSystem } from "@dotfiles/registry/file";
+import type { IToolInstallationRegistry } from "@dotfiles/registry/tool";
+import { SymlinkGenerator } from "@dotfiles/symlink-generator";
+import { createTestDirectories, type ITestDirectories } from "@dotfiles/testing-helpers";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
+import path from "node:path";
+import { z } from "zod";
+import { Installer } from "../Installer";
+import { HookExecutor } from "../utils/HookExecutor";
 
-describe('Installer - Path Precedence (Real FS)', () => {
+describe("Installer - Path Precedence (Real FS)", () => {
   let logger: TestLogger;
   let fileSystem: NodeFileSystem;
   let testDirs: ITestDirectories;
@@ -29,7 +29,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
     logger = new TestLogger();
     fileSystem = new NodeFileSystem();
     testDirs = await createTestDirectories(logger, fileSystem, {
-      testName: 'installer-path-precedence',
+      testName: "installer-path-precedence",
     });
   });
 
@@ -37,12 +37,12 @@ describe('Installer - Path Precedence (Real FS)', () => {
     await fileSystem.rm(testDirs.paths.homeDir, { recursive: true, force: true });
   });
 
-  it('should execute the newly installed binary instead of the shim during installation', async () => {
+  it("should execute the newly installed binary instead of the shim during installation", async () => {
     // 1. Setup Real Temp Environment
     const binDir = testDirs.paths.targetDir; // Shim dir
 
     // 2. Create Shim
-    const toolName = 'real-fs-test-tool';
+    const toolName = "real-fs-test-tool";
     const shimPath = path.join(binDir, toolName);
     // Create a fake shim that echoes "SHIM"
     await fileSystem.writeFile(shimPath, `#!/bin/sh\necho "SHIM"`);
@@ -57,9 +57,9 @@ describe('Installer - Path Precedence (Real FS)', () => {
 
     // Mock the plugin
     registry.register({
-      method: 'mock',
-      displayName: 'Mock Plugin',
-      version: '1.0.0',
+      method: "mock",
+      displayName: "Mock Plugin",
+      version: "1.0.0",
       paramsSchema: z.object({}),
       toolConfigSchema: z.object({}),
       supportsUpdate: () => false,
@@ -81,7 +81,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
           return {
             success: true,
             binaryPaths: [binaryPath],
-            version: '1.0.0',
+            version: "1.0.0",
             metadata: { output: output.trim() },
           };
         } catch (error) {
@@ -117,7 +117,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
       platform: Platform.MacOS,
       arch: Architecture.Arm64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     };
     const symlinkGenerator = new SymlinkGenerator(logger, fileSystem, projectConfig, systemInfo);
     const hookExecutor = new HookExecutor((): void => {});
@@ -129,7 +129,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
       logger,
       resolvedFs,
       mockFileRegistry,
-      TrackedFileSystem.createContext('system', 'binary'),
+      TrackedFileSystem.createContext("system", "binary"),
       projectConfig,
     );
 
@@ -148,23 +148,23 @@ describe('Installer - Path Precedence (Real FS)', () => {
 
     // 4. Run Install with Modified PATH
     // We add the shim dir to the PATH to simulate the scenario where the shim exists in the system PATH
-    const originalPath = process.env['PATH'] || '';
-    process.env['PATH'] = `${binDir}${path.delimiter}${originalPath}`;
+    const originalPath = process.env["PATH"] || "";
+    process.env["PATH"] = `${binDir}${path.delimiter}${originalPath}`;
 
     try {
       const result = await installer.install(toolName, {
         name: toolName,
-        version: '1.0.0',
-        installationMethod: 'mock',
+        version: "1.0.0",
+        installationMethod: "mock",
         installParams: {},
       } as unknown as ToolConfig);
 
       assert.ok(result.success);
 
       // Verify that the output came from the real binary, not the shim
-      expect((result.metadata as { output?: string; }).output).toBe('REAL_BINARY');
+      expect((result.metadata as { output?: string }).output).toBe("REAL_BINARY");
     } finally {
-      process.env['PATH'] = originalPath;
+      process.env["PATH"] = originalPath;
     }
   });
 });

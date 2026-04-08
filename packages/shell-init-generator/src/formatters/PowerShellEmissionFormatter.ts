@@ -11,7 +11,7 @@ import type {
   SourceEmission,
   SourceFileEmission,
   SourceFunctionEmission,
-} from '@dotfiles/shell-emissions';
+} from "@dotfiles/shell-emissions";
 import {
   isAliasEmission,
   isCompletionEmission,
@@ -23,16 +23,16 @@ import {
   isSourceFileEmission,
   isSourceFunctionEmission,
   ONCE_SCRIPT_INDEX_PAD_LENGTH,
-} from '@dotfiles/shell-emissions';
-import { dedentString } from '@dotfiles/utils';
-import { BaseEmissionFormatter } from './BaseEmissionFormatter';
+} from "@dotfiles/shell-emissions";
+import { dedentString } from "@dotfiles/utils";
+import { BaseEmissionFormatter } from "./BaseEmissionFormatter";
 
 /**
  * PowerShell-specific emission formatter.
  * Converts shell-agnostic emissions to PowerShell syntax.
  */
 export class PowerShellEmissionFormatter extends BaseEmissionFormatter implements IEmissionFormatter {
-  readonly fileExtension: string = '.ps1';
+  readonly fileExtension: string = ".ps1";
 
   formatEmission(emission: Emission): string {
     if (isEnvironmentEmission(emission)) {
@@ -67,10 +67,10 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
 
   formatOnceScript(emission: ScriptEmission, index: number): OnceScriptContent {
     if (!this.onceScriptDir) {
-      throw new Error('onceScriptDir is required for once scripts');
+      throw new Error("onceScriptDir is required for once scripts");
     }
 
-    const paddedIndex = index.toString().padStart(ONCE_SCRIPT_INDEX_PAD_LENGTH, '0');
+    const paddedIndex = index.toString().padStart(ONCE_SCRIPT_INDEX_PAD_LENGTH, "0");
     const filename = `once-${paddedIndex}.ps1`;
     const outputPath = `${this.onceScriptDir}/${filename}`;
     const scriptContent = dedentString(emission.content);
@@ -82,7 +82,7 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
 
   formatOnceScriptInitializer(): string {
     if (!this.onceScriptDir) {
-      throw new Error('onceScriptDir is required for once script initializer');
+      throw new Error("onceScriptDir is required for once script initializer");
     }
 
     return dedentString(`
@@ -100,7 +100,7 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     for (const [key, value] of Object.entries(emission.variables)) {
       lines.push(`$env:${key} = ${JSON.stringify(value)}`);
     }
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   private formatAlias(emission: AliasEmission): string {
@@ -108,19 +108,18 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     for (const [name, command] of Object.entries(emission.aliases)) {
       lines.push(`Set-Alias -Name ${name} -Value '${command.replace(/'/g, "''")}'`);
     }
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   private formatFunction(emission: FunctionEmission): string {
     const body = dedentString(emission.body);
-    const indent = ' '.repeat(this.indentSize);
+    const indent = " ".repeat(this.indentSize);
 
-    const indentedBody = body.split('\n').map((line) => `${indent}${line}`).join('\n');
-    return [
-      `function ${emission.name} {`,
-      indentedBody,
-      `}`,
-    ].join('\n');
+    const indentedBody = body
+      .split("\n")
+      .map((line) => `${indent}${line}`)
+      .join("\n");
+    return [`function ${emission.name} {`, indentedBody, `}`].join("\n");
   }
 
   private formatScript(emission: ScriptEmission): string {
@@ -139,16 +138,19 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
   private formatSource(emission: SourceEmission): string {
     const content = dedentString(emission.content);
     const functionName = emission.functionName;
-    const indent = ' '.repeat(this.indentSize);
+    const indent = " ".repeat(this.indentSize);
 
-    const indentedContent = content.split('\n').map((line) => `${indent}${line}`).join('\n');
+    const indentedContent = content
+      .split("\n")
+      .map((line) => `${indent}${line}`)
+      .join("\n");
     return [
       `function ${functionName} {`,
       indentedContent,
       `}`,
       `Invoke-Expression (& ${functionName})`,
       `Remove-Item Function:\\${functionName} -ErrorAction SilentlyContinue`,
-    ].join('\n');
+    ].join("\n");
   }
 
   private formatSourceFunction(emission: SourceFunctionEmission): string {
@@ -169,32 +171,29 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     // PowerShell completions are handled differently - typically via modules
     // Directory-based completion loading is less common
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   private formatPath(emission: PathEmission): string {
     const dir = emission.directory;
 
     if (emission.deduplicate) {
-      if (emission.position === 'prepend') {
+      if (emission.position === "prepend") {
         return `if ($env:PATH -notlike "*${dir}*") { $env:PATH = "${dir};$env:PATH" }`;
       }
       return `if ($env:PATH -notlike "*${dir}*") { $env:PATH = "$env:PATH;${dir}" }`;
     }
 
-    if (emission.position === 'prepend') {
+    if (emission.position === "prepend") {
       return `$env:PATH = "${dir};$env:PATH"`;
     }
     return `$env:PATH = "$env:PATH;${dir}"`;
   }
 
-  private generateOnceScriptContent(
-    scriptContent: string,
-    outputPath: string,
-  ): string {
-    const lines = ['# Generated once script - will self-delete after execution'];
+  private generateOnceScriptContent(scriptContent: string, outputPath: string): string {
+    const lines = ["# Generated once script - will self-delete after execution"];
     lines.push(scriptContent);
     lines.push(`Remove-Item "${outputPath}"`);
-    return lines.join('\n');
+    return lines.join("\n");
   }
 }

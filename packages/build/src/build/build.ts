@@ -1,5 +1,5 @@
-import { handleBuildError } from './handleBuildError';
-import { createBuildContext, installDependenciesInOutputDir } from './helpers';
+import { handleBuildError } from "./handleBuildError";
+import { createBuildContext, installDependenciesInOutputDir } from "./helpers";
 import {
   buildCli,
   cleanPreviousBuild,
@@ -15,8 +15,8 @@ import {
   resolveRuntimeDependencies,
   runTypeTests,
   testPackedBuild,
-} from './steps';
-import type { IBuildContext, IResolvedRuntimeDependencies } from './types';
+} from "./steps";
+import type { IBuildContext, IResolvedRuntimeDependencies } from "./types";
 
 async function runBuild(context: IBuildContext): Promise<void> {
   await ensureWorkspaceDependencies(context);

@@ -8,13 +8,13 @@ import {
   type ProjectConfig,
   type ProjectConfigPartial,
   projectConfigSchema,
-} from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { expandHomePath } from '@dotfiles/utils';
-import path from 'node:path';
-import { z } from 'zod';
-import { messages } from './log-messages';
+} from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { expandHomePath } from "@dotfiles/utils";
+import path from "node:path";
+import { z } from "zod";
+import { messages } from "./log-messages";
 
 type EnvMap = Record<string, string | undefined>;
 
@@ -27,7 +27,7 @@ export interface ICreateProjectConfigFromObjectOptions {
 }
 
 function isRecord(value: unknown): value is RecordUnknown {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function toRecord(value: unknown): RecordUnknown {
@@ -64,34 +64,34 @@ function deepMerge(target: RecordUnknown, source: RecordUnknown): RecordUnknown 
 function detectOS(platform: Platform): string {
   switch (platform) {
     case Platform.MacOS:
-      return 'macos';
+      return "macos";
     case Platform.Linux:
-      return 'linux';
+      return "linux";
     case Platform.Windows:
-      return 'windows';
+      return "windows";
     default:
-      return 'unknown';
+      return "unknown";
   }
 }
 
 function detectArch(arch: Architecture): string {
   switch (arch) {
     case Architecture.X86_64:
-      return 'x86_64';
+      return "x86_64";
     case Architecture.Arm64:
-      return 'arm64';
+      return "arm64";
     default:
-      return 'unknown';
+      return "unknown";
   }
 }
 
 function applyPlatformOverrides(parentLogger: TsLogger, config: RecordUnknown, systemInfo: ISystemInfo): RecordUnknown {
-  const logger = parentLogger.getSubLogger({ name: 'applyPlatformOverrides' });
-  const platformOverridesValue: unknown = config['platform'];
+  const logger = parentLogger.getSubLogger({ name: "applyPlatformOverrides" });
+  const platformOverridesValue: unknown = config["platform"];
 
   if (!Array.isArray(platformOverridesValue)) {
     const result: RecordUnknown = { ...config };
-    delete result['platform'];
+    delete result["platform"];
     return result;
   }
 
@@ -100,20 +100,22 @@ function applyPlatformOverrides(parentLogger: TsLogger, config: RecordUnknown, s
 
   logger.debug(messages.platformOverrides(currentPlatform, currentArch));
 
-  const currentPlatformEnum: Platform = (
-    {
-      macos: Platform.MacOS,
-      linux: Platform.Linux,
-      windows: Platform.Windows,
-    } satisfies Record<string, Platform>
-  )[currentPlatform] ?? Platform.None;
+  const currentPlatformEnum: Platform =
+    (
+      {
+        macos: Platform.MacOS,
+        linux: Platform.Linux,
+        windows: Platform.Windows,
+      } satisfies Record<string, Platform>
+    )[currentPlatform] ?? Platform.None;
 
-  const currentArchEnum: Architecture = (
-    {
-      x86_64: Architecture.X86_64,
-      arm64: Architecture.Arm64,
-    } satisfies Record<string, Architecture>
-  )[currentArch] ?? Architecture.None;
+  const currentArchEnum: Architecture =
+    (
+      {
+        x86_64: Architecture.X86_64,
+        arm64: Architecture.Arm64,
+      } satisfies Record<string, Architecture>
+    )[currentArch] ?? Architecture.None;
 
   let result: RecordUnknown = deepMerge({}, config);
 
@@ -122,8 +124,8 @@ function applyPlatformOverrides(parentLogger: TsLogger, config: RecordUnknown, s
       continue;
     }
 
-    const matchValue: unknown = overrideValue['match'];
-    const overrideConfigValue: unknown = overrideValue['config'];
+    const matchValue: unknown = overrideValue["match"];
+    const overrideConfigValue: unknown = overrideValue["config"];
 
     if (!Array.isArray(matchValue) || !isRecord(overrideConfigValue)) {
       continue;
@@ -134,30 +136,32 @@ function applyPlatformOverrides(parentLogger: TsLogger, config: RecordUnknown, s
         return false;
       }
 
-      const matchOs: unknown = match['os'];
-      const matchArch: unknown = match['arch'];
+      const matchOs: unknown = match["os"];
+      const matchArch: unknown = match["arch"];
 
-      const targetPlatform: Platform = typeof matchOs === 'string'
-        ? ((
-          {
-            macos: Platform.MacOS,
-            linux: Platform.Linux,
-            windows: Platform.Windows,
-          } satisfies Record<string, Platform>
-        )[matchOs] ?? Platform.None)
-        : Platform.None;
+      const targetPlatform: Platform =
+        typeof matchOs === "string"
+          ? ((
+              {
+                macos: Platform.MacOS,
+                linux: Platform.Linux,
+                windows: Platform.Windows,
+              } satisfies Record<string, Platform>
+            )[matchOs] ?? Platform.None)
+          : Platform.None;
 
-      const targetArch: Architecture = typeof matchArch === 'string'
-        ? ((
-          {
-            x86_64: Architecture.X86_64,
-            arm64: Architecture.Arm64,
-          } satisfies Record<string, Architecture>
-        )[matchArch] ?? Architecture.None)
-        : Architecture.None;
+      const targetArch: Architecture =
+        typeof matchArch === "string"
+          ? ((
+              {
+                x86_64: Architecture.X86_64,
+                arm64: Architecture.Arm64,
+              } satisfies Record<string, Architecture>
+            )[matchArch] ?? Architecture.None)
+          : Architecture.None;
 
-      const osMatches: boolean = typeof matchOs !== 'string' || hasPlatform(targetPlatform, currentPlatformEnum);
-      const archMatches: boolean = typeof matchArch !== 'string' || hasArchitecture(targetArch, currentArchEnum);
+      const osMatches: boolean = typeof matchOs !== "string" || hasPlatform(targetPlatform, currentPlatformEnum);
+      const archMatches: boolean = typeof matchArch !== "string" || hasArchitecture(targetArch, currentArchEnum);
 
       return osMatches && archMatches;
     });
@@ -167,12 +171,12 @@ function applyPlatformOverrides(parentLogger: TsLogger, config: RecordUnknown, s
     }
   }
 
-  delete result['platform'];
+  delete result["platform"];
   return result;
 }
 
 function resolveNestedConfigValue(varName: string, fullConfig: RecordUnknown): string | undefined {
-  const parts: string[] = varName.split('.');
+  const parts: string[] = varName.split(".");
   let value: unknown = fullConfig;
 
   for (const part of parts) {
@@ -187,7 +191,7 @@ function resolveNestedConfigValue(varName: string, fullConfig: RecordUnknown): s
     value = value[part];
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return value;
   }
 
@@ -198,7 +202,7 @@ function replaceTokensOnce(configStr: string, env: EnvMap, fullConfig: RecordUnk
   const tokenRegex: RegExp = /(?<!\$)\{([a-zA-Z0-9_.]+)\}/g;
 
   const result: string = configStr.replace(tokenRegex, (match: string, varName: string) => {
-    if (varName.includes('.')) {
+    if (varName.includes(".")) {
       const nestedValue = resolveNestedConfigValue(varName, fullConfig);
       return nestedValue ?? match;
     }
@@ -216,7 +220,7 @@ function extractUnresolvedTokens(value: string): string[] {
 
   for (const match of value.matchAll(tokenRegex)) {
     const tokenName: string | undefined = match[1];
-    if (typeof tokenName !== 'string') {
+    if (typeof tokenName !== "string") {
       continue;
     }
 
@@ -241,9 +245,8 @@ function performFixedPointStringSubstitution(configStr: string, env: EnvMap, ful
 
     if (seenStates.has(next)) {
       const unresolvedTokens: string[] = extractUnresolvedTokens(next);
-      const unresolvedSection: string = unresolvedTokens.length > 0
-        ? ` Possible cyclic/unresolved tokens: ${unresolvedTokens.join(', ')}.`
-        : '';
+      const unresolvedSection: string =
+        unresolvedTokens.length > 0 ? ` Possible cyclic/unresolved tokens: ${unresolvedTokens.join(", ")}.` : "";
       throw new Error(`String token substitution did not converge due to a cycle.${unresolvedSection}`);
     }
 
@@ -252,14 +255,15 @@ function performFixedPointStringSubstitution(configStr: string, env: EnvMap, ful
   }
 
   const unresolvedTokens: string[] = extractUnresolvedTokens(current);
-  const unresolvedSection: string = unresolvedTokens.length > 0
-    ? ` Remaining tokens after ${maxIterations} iterations: ${unresolvedTokens.join(', ')}.`
-    : '';
+  const unresolvedSection: string =
+    unresolvedTokens.length > 0
+      ? ` Remaining tokens after ${maxIterations} iterations: ${unresolvedTokens.join(", ")}.`
+      : "";
   throw new Error(`String token substitution did not converge after ${maxIterations} iterations.${unresolvedSection}`);
 }
 
 function substituteTokensInValue(value: unknown, env: EnvMap, fullConfig: RecordUnknown): unknown {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const result: string = performFixedPointStringSubstitution(value, env, fullConfig);
     return result;
   }
@@ -284,7 +288,7 @@ function performFixedPointObjectSubstitution(config: RecordUnknown, env: EnvMap)
   const maxIterations: number = 20;
 
   let current: RecordUnknown = config;
-  let previousSerialized: string = '';
+  let previousSerialized: string = "";
 
   for (let i = 0; i < maxIterations; i++) {
     const currentSerialized: string = JSON.stringify(current);
@@ -303,12 +307,12 @@ function performFixedPointObjectSubstitution(config: RecordUnknown, env: EnvMap)
 }
 
 function expandTildeInPathsSubtree(config: RecordUnknown, configuredHomeDir: string): RecordUnknown {
-  const pathsValue: unknown = config['paths'];
+  const pathsValue: unknown = config["paths"];
   const pathsRecord: RecordUnknown = toRecord(pathsValue);
 
   const expandedPaths: RecordUnknown = {};
   for (const [key, value] of Object.entries(pathsRecord)) {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       expandedPaths[key] = expandHomePath(configuredHomeDir, value);
       continue;
     }
@@ -321,12 +325,12 @@ function expandTildeInPathsSubtree(config: RecordUnknown, configuredHomeDir: str
 }
 
 function resolveRelativePathsInPathsSubtree(config: RecordUnknown, configFileDir: string): RecordUnknown {
-  const pathsValue: unknown = config['paths'];
+  const pathsValue: unknown = config["paths"];
   const pathsRecord: RecordUnknown = toRecord(pathsValue);
 
   const resolvedPaths: RecordUnknown = {};
   for (const [key, value] of Object.entries(pathsRecord)) {
-    if (typeof value !== 'string') {
+    if (typeof value !== "string") {
       resolvedPaths[key] = value;
       continue;
     }
@@ -339,26 +343,26 @@ function resolveRelativePathsInPathsSubtree(config: RecordUnknown, configFileDir
 }
 
 function assertNoTildeInPaths(config: RecordUnknown): void {
-  const pathsValue: unknown = config['paths'];
+  const pathsValue: unknown = config["paths"];
   const pathsRecord: RecordUnknown = toRecord(pathsValue);
 
   for (const value of Object.values(pathsRecord)) {
-    if (typeof value !== 'string') {
+    if (typeof value !== "string") {
       continue;
     }
 
-    if (value.startsWith('~')) {
-      throw new Error('Configuration contains unsupported tilde path in paths.*');
+    if (value.startsWith("~")) {
+      throw new Error("Configuration contains unsupported tilde path in paths.*");
     }
   }
 }
 
 function resolveConfiguredHomeDir(config: RecordUnknown, bootstrapEnv: EnvMap, bootstrapHomeDir: string): string {
-  const pathsValue: unknown = config['paths'];
+  const pathsValue: unknown = config["paths"];
   const pathsRecord: RecordUnknown = toRecord(pathsValue);
 
-  const rawHomeDirValue: unknown = pathsRecord['homeDir'];
-  const rawHomeDir: string = typeof rawHomeDirValue === 'string' ? rawHomeDirValue : '{HOME}';
+  const rawHomeDirValue: unknown = pathsRecord["homeDir"];
+  const rawHomeDir: string = typeof rawHomeDirValue === "string" ? rawHomeDirValue : "{HOME}";
 
   const substitutedHomeDir: string = performFixedPointStringSubstitution(rawHomeDir, bootstrapEnv, config);
   const expandedHomeDir: string = expandHomePath(bootstrapHomeDir, substitutedHomeDir);
@@ -384,7 +388,7 @@ function processConfig(
   systemInfo: ISystemInfo,
   env: EnvMap,
 ): ProjectConfig {
-  const logger = parentLogger.getSubLogger({ name: 'processConfig' });
+  const logger = parentLogger.getSubLogger({ name: "processConfig" });
   logger.debug(messages.configurationProcessing(), userConfigPath);
 
   const mergedConfig: RecordUnknown = deepMerge(defaultConfig, userConfig);
@@ -402,7 +406,7 @@ function processConfig(
 
   const configuredHomeDir: string = resolveConfiguredHomeDir(injectedConfig, bootstrapEnv, systemInfo.homeDir);
 
-  const injectedPaths: RecordUnknown = { ...toRecord(injectedConfig['paths']), homeDir: configuredHomeDir };
+  const injectedPaths: RecordUnknown = { ...toRecord(injectedConfig["paths"]), homeDir: configuredHomeDir };
   const configWithResolvedHome: RecordUnknown = { ...injectedConfig, paths: injectedPaths };
 
   const finalEnv: EnvMap = createStringEnv(env, { HOME: configuredHomeDir, configFileDir });
@@ -440,14 +444,7 @@ export async function getDefaultConfig(
   userConfigPath: string,
 ): Promise<ProjectConfig> {
   const defaultConfig: RecordUnknown = await loadDefaultProjectConfigAsRecord(fileSystem);
-  const result: ProjectConfig = processConfig(
-    parentLogger,
-    userConfigPath,
-    defaultConfig,
-    {},
-    systemInfo,
-    env,
-  );
+  const result: ProjectConfig = processConfig(parentLogger, userConfigPath, defaultConfig, {}, systemInfo, env);
   return result;
 }
 
@@ -458,8 +455,8 @@ export async function createProjectConfigFromObject(
   systemInfo: ISystemInfo = {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
-    homeDir: '/Users/testuser',
-    hostname: 'test-host',
+    homeDir: "/Users/testuser",
+    hostname: "test-host",
   },
   env: EnvMap = {},
   options: ICreateProjectConfigFromObjectOptions,

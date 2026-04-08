@@ -1,7 +1,7 @@
-import { dedentString } from '@dotfiles/utils';
-import { expect } from 'bun:test';
+import { dedentString } from "@dotfiles/utils";
+import { expect } from "bun:test";
 
-declare module 'bun:test' {
+declare module "bun:test" {
   interface ILooseInlineSnapshotMatchers<T> {
     /**
      * Asserts that a string contains a pattern defined by a template literal.
@@ -42,18 +42,18 @@ declare module 'bun:test' {
 }
 
 function escapeRegexLiteral(value: unknown): string {
-  return String(value).replace(/[-/\\^$*+?.()|[\]{}]/gm, '\\$&');
+  return String(value).replace(/[-/\\^$*+?.()|[\]{}]/gm, "\\$&");
 }
 
 function makeWhitespaceFlexible(pattern: string): string {
   // Replace runs of whitespace with \s+ for loose matching
-  return pattern.replace(/\s+/g, '\\s+');
+  return pattern.replace(/\s+/g, "\\s+");
 }
 
 function validateInput(
   received: unknown,
-): { isValid: true; value: string; } | { isValid: false; result: { pass: false; message: () => string; }; } {
-  if (typeof received !== 'string') {
+): { isValid: true; value: string } | { isValid: false; result: { pass: false; message: () => string } } {
+  if (typeof received !== "string") {
     return {
       isValid: false,
       result: {
@@ -66,7 +66,7 @@ function validateInput(
 }
 
 function buildPattern(strings: TemplateStringsArray, matchers: unknown[]): string {
-  let pattern = '';
+  let pattern = "";
 
   for (let i = 0; i < strings.length; i++) {
     const str = strings[i];
@@ -84,20 +84,20 @@ function buildPattern(strings: TemplateStringsArray, matchers: unknown[]): strin
 
 function processMatcherAtIndex(matcher: unknown): string {
   if (matcher === expect.anything) {
-    return '.*?';
+    return ".*?";
   }
   if (matcher instanceof RegExp) {
     return matcher.source;
   }
-  if (typeof matcher === 'function') {
-    return '.*?';
+  if (typeof matcher === "function") {
+    return ".*?";
   }
   return escapeRegexLiteral(matcher);
 }
 
-function executeRegexMatch(fullRegex: string, received: string): { pass: boolean; message: () => string; } {
+function executeRegexMatch(fullRegex: string, received: string): { pass: boolean; message: () => string } {
   try {
-    const re = new RegExp(fullRegex, 'sm');
+    const re = new RegExp(fullRegex, "sm");
     const pass = re.test(received);
 
     return {

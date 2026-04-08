@@ -1,4 +1,4 @@
-import type { IGitHubRateLimit, IGitHubRelease } from '@dotfiles/core';
+import type { IGitHubRateLimit, IGitHubRelease } from "@dotfiles/core";
 
 /**
  * Interface for a client that interacts with the GitHub API.
@@ -38,7 +38,7 @@ export interface IGitHubApiClient {
   getAllReleases(
     owner: string,
     repo: string,
-    options?: { perPage?: number; includePrerelease?: boolean; limit?: number; },
+    options?: { perPage?: number; includePrerelease?: boolean; limit?: number },
   ): Promise<IGitHubRelease[]>;
 
   /**
@@ -88,11 +88,5 @@ export interface IGitHubApiClient {
    * @returns A promise that resolves when download is complete.
    * @throws Error if download fails.
    */
-  downloadAsset?(
-    owner: string,
-    repo: string,
-    tag: string,
-    assetName: string,
-    destinationPath: string,
-  ): Promise<void>;
+  downloadAsset?(owner: string, repo: string, tag: string, assetName: string, destinationPath: string): Promise<void>;
 }

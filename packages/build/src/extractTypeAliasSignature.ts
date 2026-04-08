@@ -1,7 +1,7 @@
-import path from 'node:path';
-import ts from 'typescript';
+import path from "node:path";
+import ts from "typescript";
 
-const LINE_BREAK = '\n';
+const LINE_BREAK = "\n";
 
 /**
  * Extracts and formats the complete type signature of a TypeScript type alias.
@@ -103,7 +103,8 @@ export function extractTypeAliasSignature(tsconfigPath: string, sourceFilePath: 
     throw new Error(`Type alias '${aliasName}' resolved to 'any'.`);
   }
 
-  const nodeBuilderFlags: ts.NodeBuilderFlags = ts.NodeBuilderFlags.NoTruncation |
+  const nodeBuilderFlags: ts.NodeBuilderFlags =
+    ts.NodeBuilderFlags.NoTruncation |
     ts.NodeBuilderFlags.MultilineObjectLiterals |
     ts.NodeBuilderFlags.WriteTypeArgumentsOfSignature |
     ts.NodeBuilderFlags.InTypeAlias |

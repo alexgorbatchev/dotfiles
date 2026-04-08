@@ -1,37 +1,31 @@
-import { NodeFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { exitCli } from '@dotfiles/utils';
-import {
-  CONFIG_FILE_NAME,
-  DEFAULT_ENV_NAME,
-  VirtualEnvManager,
-} from '@dotfiles/virtual-env';
-import path from 'node:path';
-import * as readline from 'node:readline';
-import { messages } from './log-messages';
-import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions } from './types';
+import { NodeFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { exitCli } from "@dotfiles/utils";
+import { CONFIG_FILE_NAME, DEFAULT_ENV_NAME, VirtualEnvManager } from "@dotfiles/virtual-env";
+import path from "node:path";
+import * as readline from "node:readline";
+import { messages } from "./log-messages";
+import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions } from "./types";
 
 /**
  * Completion metadata for the env command.
  */
 export const ENV_COMMAND_COMPLETION: ICommandCompletionMeta = {
-  name: 'env',
-  description: 'Manage virtual environments',
+  name: "env",
+  description: "Manage virtual environments",
   subcommands: [
     {
-      name: 'create',
-      description: 'Create a new virtual environment',
+      name: "create",
+      description: "Create a new virtual environment",
       hasPositionalArg: true,
-      positionalArgDescription: 'environment name (default: env)',
+      positionalArgDescription: "environment name (default: env)",
     },
     {
-      name: 'delete',
-      description: 'Delete a virtual environment',
+      name: "delete",
+      description: "Delete a virtual environment",
       hasPositionalArg: true,
-      positionalArgDescription: 'environment name (default: env)',
-      options: [
-        { flag: '--force', description: 'Skip confirmation prompt' },
-      ],
+      positionalArgDescription: "environment name (default: env)",
+      options: [{ flag: "--force", description: "Skip confirmation prompt" }],
     },
   ],
 };
@@ -62,7 +56,7 @@ async function confirmDeletion(envDir: string): Promise<boolean> {
   return new Promise((resolve) => {
     rl.question(`Delete environment at '${envDir}'? [y/N] `, (answer) => {
       rl.close();
-      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
+      resolve(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes");
     });
   });
 }
@@ -83,7 +77,7 @@ async function createActionLogic(
   });
 
   if (!result.success) {
-    logger.error(messages.envOperationFailed('create', result.error));
+    logger.error(messages.envOperationFailed("create", result.error));
     exitCli(1);
     return;
   }
@@ -123,7 +117,7 @@ async function deleteActionLogic(
   const result = await manager.delete(envDir);
 
   if (!result.success) {
-    logger.error(messages.envOperationFailed('delete', result.error));
+    logger.error(messages.envOperationFailed("delete", result.error));
     exitCli(1);
     return;
   }
@@ -131,20 +125,17 @@ async function deleteActionLogic(
   logger.info(messages.envDeleted(result.envDir));
 }
 
-export function registerEnvCommand(
-  parentLogger: TsLogger,
-  program: IGlobalProgram,
-): void {
-  const logger = parentLogger.getSubLogger({ name: 'registerEnvCommand' });
+export function registerEnvCommand(parentLogger: TsLogger, program: IGlobalProgram): void {
+  const logger = parentLogger.getSubLogger({ name: "registerEnvCommand" });
 
   const envCmd = program
-    .command('env')
-    .description('Manage virtual environments for isolated dotfiles configurations.');
+    .command("env")
+    .description("Manage virtual environments for isolated dotfiles configurations.");
 
   // Create subcommand
   envCmd
-    .command('create [name]')
-    .description('Create a new virtual environment')
+    .command("create [name]")
+    .description("Create a new virtual environment")
     .action(async (name?: string) => {
       const envName = name ?? DEFAULT_ENV_NAME;
       const combinedOptions: IEnvCreateOptions & IGlobalProgramOptions = program.opts();
@@ -153,9 +144,9 @@ export function registerEnvCommand(
 
   // Delete subcommand
   envCmd
-    .command('delete [name]')
-    .description('Delete a virtual environment')
-    .option('--force', 'Skip confirmation prompt', false)
+    .command("delete [name]")
+    .description("Delete a virtual environment")
+    .option("--force", "Skip confirmation prompt", false)
     .action(async (name: string | undefined, options: IEnvDeleteOptions) => {
       const envName = name ?? DEFAULT_ENV_NAME;
       const combinedOptions: IEnvDeleteOptions & IGlobalProgramOptions = { ...options, ...program.opts() };

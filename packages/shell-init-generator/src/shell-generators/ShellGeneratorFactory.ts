@@ -1,17 +1,17 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { ShellType } from '@dotfiles/core';
-import { BashGenerator } from './BashGenerator';
-import type { IShellGenerator } from './IShellGenerator';
-import { PowerShellGenerator } from './PowerShellGenerator';
-import { ZshGenerator } from './ZshGenerator';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { ShellType } from "@dotfiles/core";
+import { BashGenerator } from "./BashGenerator";
+import type { IShellGenerator } from "./IShellGenerator";
+import { PowerShellGenerator } from "./PowerShellGenerator";
+import { ZshGenerator } from "./ZshGenerator";
 
 /**
  * Map of shell types to their generator factory functions.
  */
 const generators = new Map<ShellType, (projectConfig: ProjectConfig) => IShellGenerator>([
-  ['zsh', (projectConfig: ProjectConfig) => new ZshGenerator(projectConfig)],
-  ['bash', (projectConfig: ProjectConfig) => new BashGenerator(projectConfig)],
-  ['powershell', (projectConfig: ProjectConfig) => new PowerShellGenerator(projectConfig)],
+  ["zsh", (projectConfig: ProjectConfig) => new ZshGenerator(projectConfig)],
+  ["bash", (projectConfig: ProjectConfig) => new BashGenerator(projectConfig)],
+  ["powershell", (projectConfig: ProjectConfig) => new PowerShellGenerator(projectConfig)],
 ]);
 
 /**

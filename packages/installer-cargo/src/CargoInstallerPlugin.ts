@@ -1,30 +1,30 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
 import type {
   IInstallContext,
   IInstallerPlugin,
   IInstallOptions,
   InstallResult,
   UpdateCheckResult,
-} from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { stripVersionPrefix } from '@dotfiles/utils';
-import type { ICargoClient } from './cargo-client';
-import { installFromCargo } from './installFromCargo';
-import { messages } from './log-messages';
+} from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor } from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { stripVersionPrefix } from "@dotfiles/utils";
+import type { ICargoClient } from "./cargo-client";
+import { installFromCargo } from "./installFromCargo";
+import { messages } from "./log-messages";
 import {
   type CargoInstallParams,
   cargoInstallParamsSchema,
   type CargoToolConfig,
   cargoToolConfigSchema,
-} from './schemas';
+} from "./schemas";
 
-const PLUGIN_VERSION = '1.0.0';
+const PLUGIN_VERSION = "1.0.0";
 
 type CargoPluginMetadata = {
-  method: 'cargo';
+  method: "cargo";
   crateName: string;
   binarySource: string;
   downloadUrl?: string;
@@ -55,16 +55,14 @@ type CargoPluginMetadata = {
  * - Can install specific versions or "latest"
  * - Tracks installed versions for update detection
  */
-export class CargoInstallerPlugin implements
-  IInstallerPlugin<
-    'cargo',
-    CargoInstallParams,
-    CargoToolConfig,
-    CargoPluginMetadata
-  >
-{
-  readonly method = 'cargo';
-  readonly displayName = 'Cargo Installer';
+export class CargoInstallerPlugin implements IInstallerPlugin<
+  "cargo",
+  CargoInstallParams,
+  CargoToolConfig,
+  CargoPluginMetadata
+> {
+  readonly method = "cargo";
+  readonly displayName = "Cargo Installer";
   readonly version = PLUGIN_VERSION;
   readonly paramsSchema = cargoInstallParamsSchema;
   readonly toolConfigSchema = cargoToolConfigSchema;
@@ -145,14 +143,14 @@ export class CargoInstallerPlugin implements
     _context: IInstallContext,
     logger: TsLogger,
   ): Promise<string | null> {
-    const subLogger: TsLogger = logger.getSubLogger({ name: 'resolveVersion' });
+    const subLogger: TsLogger = logger.getSubLogger({ name: "resolveVersion" });
 
     try {
       const cargoParams = toolConfig.installParams;
       const crateName: string | undefined = cargoParams?.crateName;
 
       if (!crateName) {
-        subLogger.debug(messages.versionResolutionFailed(toolName, 'Missing crateName in install params'));
+        subLogger.debug(messages.versionResolutionFailed(toolName, "Missing crateName in install params"));
         return null;
       }
 
@@ -195,7 +193,7 @@ export class CargoInstallerPlugin implements
       if (!crateName) {
         const result: UpdateCheckResult = {
           success: false,
-          error: 'Missing crateName in install params',
+          error: "Missing crateName in install params",
         };
         return result;
       }
@@ -209,9 +207,9 @@ export class CargoInstallerPlugin implements
         return result;
       }
 
-      const configuredVersion = toolConfig.version || 'latest';
+      const configuredVersion = toolConfig.version || "latest";
 
-      if (configuredVersion === 'latest') {
+      if (configuredVersion === "latest") {
         const result: UpdateCheckResult = {
           success: true,
           hasUpdate: false,
@@ -232,7 +230,7 @@ export class CargoInstallerPlugin implements
       logger.error(messages.updateCheckFailed(toolName), error);
       const result: UpdateCheckResult = {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
       return result;
     }

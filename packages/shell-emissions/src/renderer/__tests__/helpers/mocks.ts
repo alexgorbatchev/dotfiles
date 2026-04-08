@@ -5,45 +5,45 @@ import type {
   IEmissionFormatter,
   OnceScriptContent,
   ScriptEmission,
-} from '../../../types';
+} from "../../../types";
 
 /**
  * Mock formatter for testing that produces predictable output.
  */
 export class MockFormatter implements IEmissionFormatter {
-  readonly fileExtension = '.mock';
+  readonly fileExtension = ".mock";
 
   formatEmission(emission: Emission): string {
     switch (emission.kind) {
-      case 'environment': {
+      case "environment": {
         return Object.entries(emission.variables)
           .map(([key, value]) => `export ${key}="${value}"`)
-          .join('\n');
+          .join("\n");
       }
-      case 'alias': {
+      case "alias": {
         return Object.entries(emission.aliases)
           .map(([name, command]) => `alias ${name}="${command}"`)
-          .join('\n');
+          .join("\n");
       }
-      case 'function': {
+      case "function": {
         return `${emission.name}() {\n  ${emission.body}\n}`;
       }
-      case 'script': {
+      case "script": {
         return emission.content;
       }
-      case 'source': {
+      case "source": {
         return `${emission.functionName}() {\n  ${emission.content}\n}\nsource <(${emission.functionName})\nunset -f ${emission.functionName}`;
       }
-      case 'sourceFile': {
+      case "sourceFile": {
         return `source "${emission.path}"`;
       }
-      case 'sourceFunction': {
+      case "sourceFunction": {
         return `source <(${emission.functionName})`;
       }
-      case 'completion': {
+      case "completion": {
         const parts: string[] = [];
         if (emission.directories) {
-          parts.push(`fpath=(${emission.directories.join(' ')} $fpath)`);
+          parts.push(`fpath=(${emission.directories.join(" ")} $fpath)`);
         }
         if (emission.files) {
           parts.push(...emission.files.map((f) => `source "${f}"`));
@@ -51,17 +51,17 @@ export class MockFormatter implements IEmissionFormatter {
         if (emission.commands) {
           parts.push(`autoload -Uz compinit && compinit`);
         }
-        return parts.join('\n');
+        return parts.join("\n");
       }
-      case 'path': {
+      case "path": {
         const dir = emission.directory;
         if (emission.deduplicate) {
-          if (emission.position === 'prepend') {
+          if (emission.position === "prepend") {
             return `[[ ":$PATH:" != *":${dir}:"* ]] && export PATH="${dir}:$PATH"`;
           }
           return `[[ ":$PATH:" != *":${dir}:"* ]] && export PATH="$PATH:${dir}"`;
         }
-        if (emission.position === 'prepend') {
+        if (emission.position === "prepend") {
           return `export PATH="${dir}:$PATH"`;
         }
         return `export PATH="$PATH:${dir}"`;
@@ -71,8 +71,8 @@ export class MockFormatter implements IEmissionFormatter {
 
   formatOnceScript(emission: ScriptEmission, index: number): OnceScriptContent {
     const filename = emission.source
-      ? `${emission.source.replace(/[/\s]/g, '-')}-${String(index).padStart(3, '0')}.mock`
-      : `once-${String(index).padStart(3, '0')}.mock`;
+      ? `${emission.source.replace(/[/\s]/g, "-")}-${String(index).padStart(3, "0")}.mock`
+      : `once-${String(index).padStart(3, "0")}.mock`;
     const content = `#!/bin/mock\n${emission.content}\nrm -f "$0"`;
     return { filename, content };
   }
@@ -82,14 +82,14 @@ export class MockFormatter implements IEmissionFormatter {
   }
 
   formatFileHeader(metadata?: BlockMetadata): string {
-    const lines = ['# AUTO-GENERATED FILE - DO NOT EDIT'];
+    const lines = ["# AUTO-GENERATED FILE - DO NOT EDIT"];
     if (metadata?.description) {
       lines.push(`# ${metadata.description}`);
     }
     if (metadata?.generatedAt) {
       lines.push(`# Generated: ${metadata.generatedAt.toISOString()}`);
     }
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   formatSectionHeader(title: string): string {
@@ -101,7 +101,7 @@ export class MockFormatter implements IEmissionFormatter {
   }
 
   formatFileFooter(): string {
-    return '# END OF FILE';
+    return "# END OF FILE";
   }
 
   comment(text: string): string {
@@ -109,6 +109,6 @@ export class MockFormatter implements IEmissionFormatter {
   }
 
   commentBlock(lines: string[]): string {
-    return lines.map((line) => `# ${line}`).join('\n');
+    return lines.map((line) => `# ${line}`).join("\n");
   }
 }

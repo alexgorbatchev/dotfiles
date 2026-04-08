@@ -1,5 +1,5 @@
-import path from 'node:path';
-import type { IDashboardServices } from '../../types';
+import path from "node:path";
+import type { IDashboardServices } from "../../types";
 
 /**
  * Calculates the total size of a directory recursively.
@@ -35,7 +35,7 @@ export async function getDirectorySize(services: IDashboardServices, dirPath: st
  * Gets the binary disk size for a specific tool.
  */
 export async function getToolBinaryDiskSize(services: IDashboardServices, toolName: string): Promise<number> {
-  const binariesDir = path.join(services.projectConfig.paths.generatedDir, 'binaries');
+  const binariesDir = path.join(services.projectConfig.paths.generatedDir, "binaries");
   const toolBinaryDir = path.join(binariesDir, toolName);
   return getDirectorySize(services, toolBinaryDir);
 }

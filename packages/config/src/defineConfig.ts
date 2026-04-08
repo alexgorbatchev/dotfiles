@@ -1,4 +1,4 @@
-import type { ISystemInfo, ProjectConfigPartial } from '@dotfiles/core';
+import type { ISystemInfo, ProjectConfigPartial } from "@dotfiles/core";
 
 /**
  * Context passed to the configuration factory function.

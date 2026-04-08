@@ -30,7 +30,7 @@ export type LogLevelValue = (typeof LogLevel)[keyof typeof LogLevel];
  * Defines the valid string representations of log levels, typically used for
  * parsing command-line arguments or configuration values.
  */
-export const LOG_LEVEL_NAMES = ['verbose', 'default', 'quiet'] as const;
+export const LOG_LEVEL_NAMES = ["verbose", "default", "quiet"] as const;
 
 /**
  * A type representing the string name of a log level.
@@ -74,7 +74,7 @@ export function parseLogLevel(levelName: string): LogLevelValue {
   const normalizedName = levelName.toLowerCase() as LogLevelName;
 
   if (!(normalizedName in LOG_LEVEL_MAP)) {
-    throw new Error(`Invalid log level: ${levelName}. Valid levels are: ${LOG_LEVEL_NAMES.join(', ')}`);
+    throw new Error(`Invalid log level: ${levelName}. Valid levels are: ${LOG_LEVEL_NAMES.join(", ")}`);
   }
 
   return LOG_LEVEL_MAP[normalizedName];

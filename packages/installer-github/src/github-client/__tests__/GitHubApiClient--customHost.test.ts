@@ -1,35 +1,35 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
-import type { IMockSetup } from './helpers/sharedGitHubApiClientTestSetup';
-import { createGitHubConfigOverride, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
+import { beforeEach, describe, expect, it } from "bun:test";
+import type { IMockSetup } from "./helpers/sharedGitHubApiClientTestSetup";
+import { createGitHubConfigOverride, setupMockGitHubApiClient } from "./helpers/sharedGitHubApiClientTestSetup";
 
-describe('GitHubApiClient with custom host', () => {
+describe("GitHubApiClient with custom host", () => {
   let mocks: IMockSetup;
-  const customHost = 'https://github.example.com';
+  const customHost = "https://github.example.com";
 
   beforeEach(async () => {
     // Setup with custom GitHub host
     mocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubHost: customHost }));
   });
 
-  it('should use the custom host for API requests', async () => {
+  it("should use the custom host for API requests", async () => {
     // Mock a successful response
     mocks.mockDownloader.download.mockResolvedValue(
       Buffer.from(
         JSON.stringify({
           id: 123,
-          tag_name: 'v1.0.0',
-          name: 'Release 1.0.0',
+          tag_name: "v1.0.0",
+          name: "Release 1.0.0",
           draft: false,
           prerelease: false,
-          created_at: '2023-01-01T00:00:00Z',
-          published_at: '2023-01-01T00:00:00Z',
+          created_at: "2023-01-01T00:00:00Z",
+          published_at: "2023-01-01T00:00:00Z",
           assets: [],
-          html_url: 'https://github.com/test-owner/test-repo/releases/tag/v1.0.0',
+          html_url: "https://github.com/test-owner/test-repo/releases/tag/v1.0.0",
         }),
       ),
     );
 
-    await mocks.apiClient.getLatestRelease('test-owner', 'test-repo');
+    await mocks.apiClient.getLatestRelease("test-owner", "test-repo");
 
     // Verify the URL used in the request contains the custom host
     expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
@@ -39,28 +39,28 @@ describe('GitHubApiClient with custom host', () => {
     );
 
     // Verify logger received request message with custom host
-    mocks.logger.expect(['DEBUG'], ['GitHubApiClient', 'request'], [], ['GitHub API GET request to']);
+    mocks.logger.expect(["DEBUG"], ["GitHubApiClient", "request"], [], ["GitHub API GET request to"]);
   });
 
-  it('should use the custom host for getReleaseByTag', async () => {
+  it("should use the custom host for getReleaseByTag", async () => {
     // Mock a successful response
     mocks.mockDownloader.download.mockResolvedValue(
       Buffer.from(
         JSON.stringify({
           id: 123,
-          tag_name: 'v1.0.0',
-          name: 'Release 1.0.0',
+          tag_name: "v1.0.0",
+          name: "Release 1.0.0",
           draft: false,
           prerelease: false,
-          created_at: '2023-01-01T00:00:00Z',
-          published_at: '2023-01-01T00:00:00Z',
+          created_at: "2023-01-01T00:00:00Z",
+          published_at: "2023-01-01T00:00:00Z",
           assets: [],
-          html_url: 'https://github.com/test-owner/test-repo/releases/tag/v1.0.0',
+          html_url: "https://github.com/test-owner/test-repo/releases/tag/v1.0.0",
         }),
       ),
     );
 
-    await mocks.apiClient.getReleaseByTag('test-owner', 'test-repo', 'v1.0.0');
+    await mocks.apiClient.getReleaseByTag("test-owner", "test-repo", "v1.0.0");
 
     // Verify the URL used in the request contains the custom host
     expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
@@ -70,11 +70,11 @@ describe('GitHubApiClient with custom host', () => {
     );
   });
 
-  it('should use the custom host for getAllReleases', async () => {
+  it("should use the custom host for getAllReleases", async () => {
     // Mock a successful response
     mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify([])));
 
-    await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
+    await mocks.apiClient.getAllReleases("test-owner", "test-repo");
 
     // Verify the URL used in the request contains the custom host
     expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
@@ -84,7 +84,7 @@ describe('GitHubApiClient with custom host', () => {
     );
   });
 
-  it('should use the custom host for getRateLimit', async () => {
+  it("should use the custom host for getRateLimit", async () => {
     // Mock a successful response
     mocks.mockDownloader.download.mockResolvedValue(
       Buffer.from(
@@ -95,56 +95,56 @@ describe('GitHubApiClient with custom host', () => {
               remaining: 59,
               reset: Math.floor(Date.now() / 1000) + 3600,
               used: 1,
-              resource: 'core',
+              resource: "core",
             },
             search: {
               limit: 10,
               remaining: 10,
               reset: Math.floor(Date.now() / 1000) + 3600,
               used: 0,
-              resource: 'search',
+              resource: "search",
             },
             graphql: {
               limit: 0,
               remaining: 0,
               reset: Math.floor(Date.now() / 1000) + 3600,
               used: 0,
-              resource: 'graphql',
+              resource: "graphql",
             },
             integration_manifest: {
               limit: 0,
               remaining: 0,
               reset: Math.floor(Date.now() / 1000) + 3600,
               used: 0,
-              resource: 'integration_manifest',
+              resource: "integration_manifest",
             },
             source_import: {
               limit: 0,
               remaining: 0,
               reset: Math.floor(Date.now() / 1000) + 3600,
               used: 0,
-              resource: 'source_import',
+              resource: "source_import",
             },
             code_scanning_upload: {
               limit: 0,
               remaining: 0,
               reset: Math.floor(Date.now() / 1000) + 3600,
               used: 0,
-              resource: 'code_scanning_upload',
+              resource: "code_scanning_upload",
             },
             actions_runner_registration: {
               limit: 0,
               remaining: 0,
               reset: Math.floor(Date.now() / 1000) + 3600,
               used: 0,
-              resource: 'actions_runner_registration',
+              resource: "actions_runner_registration",
             },
             scim: {
               limit: 0,
               remaining: 0,
               reset: Math.floor(Date.now() / 1000) + 3600,
               used: 0,
-              resource: 'scim',
+              resource: "scim",
             },
           },
           rate: {
@@ -152,7 +152,7 @@ describe('GitHubApiClient with custom host', () => {
             remaining: 59,
             reset: Math.floor(Date.now() / 1000) + 3600,
             used: 1,
-            resource: 'core',
+            resource: "core",
           },
         }),
       ),

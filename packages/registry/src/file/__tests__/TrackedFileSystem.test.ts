@@ -1,16 +1,16 @@
-import type { ProjectConfig } from '@dotfiles/core';
-import { createMemFileSystem, type IResolvedFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { RegistryDatabase } from '@dotfiles/registry-database';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
-import { randomUUID } from 'node:crypto';
-import { unlink } from 'node:fs/promises';
-import path from 'node:path';
-import { FileRegistry } from '../FileRegistry';
-import { type ITrackingContext, TrackedFileSystem } from '../TrackedFileSystem';
+import type { ProjectConfig } from "@dotfiles/core";
+import { createMemFileSystem, type IResolvedFileSystem, ResolvedFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { RegistryDatabase } from "@dotfiles/registry-database";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
+import { randomUUID } from "node:crypto";
+import { unlink } from "node:fs/promises";
+import path from "node:path";
+import { FileRegistry } from "../FileRegistry";
+import { type ITrackingContext, TrackedFileSystem } from "../TrackedFileSystem";
 
-describe('TrackedFileSystem', () => {
+describe("TrackedFileSystem", () => {
   let logger: TestLogger;
   let fs: IResolvedFileSystem;
   let registry: FileRegistry;
@@ -23,25 +23,25 @@ describe('TrackedFileSystem', () => {
   beforeEach(async () => {
     logger = new TestLogger();
     const { fs: memFs } = await createMemFileSystem();
-    fs = new ResolvedFileSystem(memFs, '/home/test');
+    fs = new ResolvedFileSystem(memFs, "/home/test");
 
-    dbPath = path.join('/tmp', `test-tracked-fs-${randomUUID()}.db`);
+    dbPath = path.join("/tmp", `test-tracked-fs-${randomUUID()}.db`);
     registryDatabase = new RegistryDatabase(logger, dbPath);
     registry = new FileRegistry(logger, registryDatabase.getConnection());
 
     mockProjectConfig = {
       paths: {
-        homeDir: '/home/test',
-        dotfilesDir: '/home/test/.dotfiles',
-        targetDir: '/home/test',
-        generatedDir: '/home/test/.generated',
-        toolConfigsDir: '/home/test/.dotfiles/tools',
-        shellScriptsDir: '/home/test/.generated/shell-scripts',
-        binariesDir: '/home/test/.generated/binaries',
+        homeDir: "/home/test",
+        dotfilesDir: "/home/test/.dotfiles",
+        targetDir: "/home/test",
+        generatedDir: "/home/test/.generated",
+        toolConfigsDir: "/home/test/.dotfiles/tools",
+        shellScriptsDir: "/home/test/.generated/shell-scripts",
+        binariesDir: "/home/test/.generated/binaries",
       },
     } as ProjectConfig;
 
-    context = TrackedFileSystem.createContext('test-tool', 'shim');
+    context = TrackedFileSystem.createContext("test-tool", "shim");
     trackedFs = new TrackedFileSystem(logger, fs, registry, context, mockProjectConfig);
   });
 
@@ -55,41 +55,41 @@ describe('TrackedFileSystem', () => {
     }
   });
 
-  describe('createContext', () => {
-    it('should create tracking context with unique operation ID', () => {
-      const context1 = TrackedFileSystem.createContext('nodejs', 'shim');
-      const context2 = TrackedFileSystem.createContext('nodejs', 'shim');
+  describe("createContext", () => {
+    it("should create tracking context with unique operation ID", () => {
+      const context1 = TrackedFileSystem.createContext("nodejs", "shim");
+      const context2 = TrackedFileSystem.createContext("nodejs", "shim");
 
-      expect(context1.toolName).toBe('nodejs');
-      expect(context1.fileType).toBe('shim');
+      expect(context1.toolName).toBe("nodejs");
+      expect(context1.fileType).toBe("shim");
       expect(context1.operationId).toBeDefined();
       expect(context1.operationId).not.toBe(context2.operationId);
     });
 
-    it('should include metadata in context', () => {
-      const metadata = { version: '1.0.0' };
-      const metadataContext = TrackedFileSystem.createContext('nodejs', 'binary', metadata);
+    it("should include metadata in context", () => {
+      const metadata = { version: "1.0.0" };
+      const metadataContext = TrackedFileSystem.createContext("nodejs", "binary", metadata);
 
       expect(metadataContext.metadata).toEqual(metadata);
     });
   });
 
-  describe('withContext', () => {
-    it('should create new TrackedFileSystem with updated context', () => {
-      const newTrackedFs = trackedFs.withContext({ fileType: 'binary' });
+  describe("withContext", () => {
+    it("should create new TrackedFileSystem with updated context", () => {
+      const newTrackedFs = trackedFs.withContext({ fileType: "binary" });
 
       expect(newTrackedFs).toBeInstanceOf(TrackedFileSystem);
       expect(newTrackedFs).not.toBe(trackedFs);
     });
   });
 
-  describe('writeFile', () => {
-    it('should track file creation', async () => {
-      const filePath = '/test/file.txt';
-      const content = 'test content';
+  describe("writeFile", () => {
+    it("should track file creation", async () => {
+      const filePath = "/test/file.txt";
+      const content = "test content";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
       await trackedFs.writeFile(filePath, content);
 
       // Verify file was written
@@ -103,36 +103,36 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
-        toolName: 'test-tool',
-        operationType: 'writeFile',
+        toolName: "test-tool",
+        operationType: "writeFile",
         filePath: path.resolve(filePath),
-        fileType: 'shim',
+        fileType: "shim",
       });
     });
 
-    it('should track file update', async () => {
-      const filePath = '/test/file.txt';
+    it("should track file update", async () => {
+      const filePath = "/test/file.txt";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
       // Create file first
-      await fs.writeFile(filePath, 'original content');
+      await fs.writeFile(filePath, "original content");
 
       // Update through tracked filesystem
-      await trackedFs.writeFile(filePath, 'updated content');
+      await trackedFs.writeFile(filePath, "updated content");
 
       // Verify operation was tracked as update
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
-      expect(operations[0]?.operationType).toBe('writeFile');
+      expect(operations[0]?.operationType).toBe("writeFile");
     });
 
-    it('should track file stats', async () => {
-      const filePath = '/test/file.txt';
-      const content = 'test content';
+    it("should track file stats", async () => {
+      const filePath = "/test/file.txt";
+      const content = "test content";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
       await trackedFs.writeFile(filePath, content);
 
       const operations = await registry.getOperations();
@@ -140,12 +140,12 @@ describe('TrackedFileSystem', () => {
       expect(operations[0]?.permissions).toBeDefined();
     });
 
-    it('should skip write when content is identical', async () => {
-      const filePath = '/test/file.txt';
-      const content = 'identical content';
+    it("should skip write when content is identical", async () => {
+      const filePath = "/test/file.txt";
+      const content = "identical content";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
 
       // Create file first
       await fs.writeFile(filePath, content);
@@ -169,13 +169,13 @@ describe('TrackedFileSystem', () => {
       expect(fileContent).toBe(content);
     });
 
-    it('should write and track when content is different', async () => {
-      const filePath = '/test/file.txt';
-      const originalContent = 'original content';
-      const newContent = 'new content';
+    it("should write and track when content is different", async () => {
+      const filePath = "/test/file.txt";
+      const originalContent = "original content";
+      const newContent = "new content";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
 
       // Create file first
       await fs.writeFile(filePath, originalContent);
@@ -186,25 +186,25 @@ describe('TrackedFileSystem', () => {
       // Should track operation since content is different
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
-      expect(operations[0]?.operationType).toBe('writeFile');
+      expect(operations[0]?.operationType).toBe("writeFile");
 
       // File should have new content
       const fileContent = await fs.readFile(filePath);
       expect(fileContent).toBe(newContent);
     });
 
-    it('should write when file cannot be read', async () => {
-      const filePath = '/test/file.txt';
-      const content = 'test content';
+    it("should write when file cannot be read", async () => {
+      const filePath = "/test/file.txt";
+      const content = "test content";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
 
       // Create file but make readFile fail by mocking
-      await fs.writeFile(filePath, 'original');
+      await fs.writeFile(filePath, "original");
       const originalReadFile = fs.readFile;
       fs.readFile = async () => {
-        assert(false, 'Read failed');
+        assert(false, "Read failed");
       };
 
       // Write content through tracked filesystem
@@ -213,19 +213,19 @@ describe('TrackedFileSystem', () => {
       // Should track operation since read failed
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
-      expect(operations[0]?.operationType).toBe('writeFile');
+      expect(operations[0]?.operationType).toBe("writeFile");
 
       // Restore original readFile
       fs.readFile = originalReadFile;
     });
 
-    it('should handle ArrayBufferView content properly', async () => {
-      const filePath = '/test/file.txt';
-      const originalContent = 'original content';
-      const newBuffer = Buffer.from('buffer content');
+    it("should handle ArrayBufferView content properly", async () => {
+      const filePath = "/test/file.txt";
+      const originalContent = "original content";
+      const newBuffer = Buffer.from("buffer content");
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
 
       // Create file first
       await fs.writeFile(filePath, originalContent);
@@ -236,20 +236,20 @@ describe('TrackedFileSystem', () => {
       // Should track operation since content is different
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
-      expect(operations[0]?.operationType).toBe('writeFile');
+      expect(operations[0]?.operationType).toBe("writeFile");
 
       // File should have buffer content
       const fileContent = await fs.readFile(filePath);
-      expect(fileContent).toBe('buffer content');
+      expect(fileContent).toBe("buffer content");
     });
 
-    it('should skip write when ArrayBufferView content is identical', async () => {
-      const filePath = '/test/file.txt';
-      const content = 'buffer content';
+    it("should skip write when ArrayBufferView content is identical", async () => {
+      const filePath = "/test/file.txt";
+      const content = "buffer content";
       const buffer = Buffer.from(content);
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
 
       // Create file first
       await fs.writeFile(filePath, content);
@@ -270,14 +270,14 @@ describe('TrackedFileSystem', () => {
     });
   });
 
-  describe('copyFile', () => {
-    it('should track file copying', async () => {
-      const srcPath = '/test/source.txt';
-      const destPath = '/test/dest.txt';
-      const content = 'test content';
+  describe("copyFile", () => {
+    it("should track file copying", async () => {
+      const srcPath = "/test/source.txt";
+      const destPath = "/test/dest.txt";
+      const content = "test content";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
       // Create source file
       await fs.writeFile(srcPath, content);
 
@@ -288,21 +288,21 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
-        operationType: 'cp',
+        operationType: "cp",
         filePath: path.resolve(destPath),
       });
       expect(operations[0]?.targetPath).toBe(path.resolve(srcPath));
     });
   });
 
-  describe('rename', () => {
-    it('should track file renaming as single rename operation', async () => {
-      const oldPath = '/test/old.txt';
-      const newPath = '/test/new.txt';
-      const content = 'test content';
+  describe("rename", () => {
+    it("should track file renaming as single rename operation", async () => {
+      const oldPath = "/test/old.txt";
+      const newPath = "/test/new.txt";
+      const content = "test content";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
       // Create file
       await fs.writeFile(oldPath, content);
 
@@ -317,21 +317,21 @@ describe('TrackedFileSystem', () => {
       const renameOp = operations[0];
       expect(renameOp).toBeDefined();
       assert(renameOp);
-      expect(renameOp.operationType).toBe('rename');
+      expect(renameOp.operationType).toBe("rename");
       expect(renameOp.filePath).toBe(path.resolve(newPath));
       expect(renameOp.targetPath).toBe(path.resolve(oldPath));
     });
   });
 
-  describe('symlink', () => {
-    it('should track symlink creation', async () => {
-      const targetPath = '/test/target.txt';
-      const linkPath = '/test/link.txt';
+  describe("symlink", () => {
+    it("should track symlink creation", async () => {
+      const targetPath = "/test/target.txt";
+      const linkPath = "/test/link.txt";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
       // Create target file first
-      await fs.writeFile(targetPath, 'target content');
+      await fs.writeFile(targetPath, "target content");
 
       // Create symlink through tracked filesystem
       await trackedFs.symlink(targetPath, linkPath);
@@ -340,44 +340,44 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
-        operationType: 'symlink',
+        operationType: "symlink",
         filePath: path.resolve(linkPath),
         targetPath: path.resolve(targetPath),
-        fileType: 'shim', // Uses context.fileType (in this test, 'shim')
+        fileType: "shim", // Uses context.fileType (in this test, 'shim')
       });
     });
 
-    it('should track symlink with fileType=completion when using withFileType', async () => {
-      const targetPath = '/test/completion-source.zsh';
-      const linkPath = '/test/completions/_tool';
+    it("should track symlink with fileType=completion when using withFileType", async () => {
+      const targetPath = "/test/completion-source.zsh";
+      const linkPath = "/test/completions/_tool";
 
-      await fs.mkdir('/test', { recursive: true });
-      await fs.mkdir('/test/completions', { recursive: true });
-      await fs.writeFile(targetPath, '# completion');
+      await fs.mkdir("/test", { recursive: true });
+      await fs.mkdir("/test/completions", { recursive: true });
+      await fs.writeFile(targetPath, "# completion");
 
-      const completionFs = trackedFs.withFileType('completion');
+      const completionFs = trackedFs.withFileType("completion");
       await completionFs.symlink(targetPath, linkPath);
 
-      const operations = await registry.getOperations({ fileType: 'completion' });
+      const operations = await registry.getOperations({ fileType: "completion" });
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
-        toolName: 'test-tool',
-        operationType: 'symlink',
+        toolName: "test-tool",
+        operationType: "symlink",
         filePath: path.resolve(linkPath),
         targetPath: path.resolve(targetPath),
-        fileType: 'completion',
+        fileType: "completion",
       });
     });
   });
 
-  describe('rm', () => {
-    it('should track file deletion', async () => {
-      const filePath = '/test/file.txt';
+  describe("rm", () => {
+    it("should track file deletion", async () => {
+      const filePath = "/test/file.txt";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
       // Create file first
-      await fs.writeFile(filePath, 'content');
+      await fs.writeFile(filePath, "content");
 
       // Delete through tracked filesystem
       await trackedFs.rm(filePath);
@@ -386,20 +386,20 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
-        operationType: 'rm',
+        operationType: "rm",
         filePath: path.resolve(filePath),
       });
     });
 
-    it('should track recursive directory deletion', async () => {
-      const dirPath = '/test/dir';
-      const file1Path = '/test/dir/file1.txt';
-      const file2Path = '/test/dir/file2.txt';
+    it("should track recursive directory deletion", async () => {
+      const dirPath = "/test/dir";
+      const file1Path = "/test/dir/file1.txt";
+      const file2Path = "/test/dir/file2.txt";
 
       // Create directory with files
       await fs.mkdir(dirPath, { recursive: true });
-      await fs.writeFile(file1Path, 'content1');
-      await fs.writeFile(file2Path, 'content2');
+      await fs.writeFile(file1Path, "content1");
+      await fs.writeFile(file2Path, "content2");
 
       // Delete recursively through tracked filesystem
       await trackedFs.rm(dirPath, { recursive: true });
@@ -413,15 +413,15 @@ describe('TrackedFileSystem', () => {
     });
   });
 
-  describe('chmod', () => {
-    it('should track permission changes', async () => {
-      const filePath = '/test/file.txt';
+  describe("chmod", () => {
+    it("should track permission changes", async () => {
+      const filePath = "/test/file.txt";
       const newMode = 0o755;
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
       // Create file first
-      await fs.writeFile(filePath, 'content');
+      await fs.writeFile(filePath, "content");
 
       // Change permissions through tracked filesystem
       await trackedFs.chmod(filePath, newMode);
@@ -430,19 +430,19 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
-        operationType: 'chmod',
+        operationType: "chmod",
         filePath: path.resolve(filePath),
       });
       expect(operations[0]?.permissions).toBeDefined();
     });
 
-    it('should store and retrieve permissions as decimal numbers', async () => {
-      const filePath = '/test/file.txt';
+    it("should store and retrieve permissions as decimal numbers", async () => {
+      const filePath = "/test/file.txt";
       const mode755 = 0o755; // 493 decimal
       const mode644 = 0o644; // 420 decimal
 
-      await fs.mkdir('/test', { recursive: true });
-      await fs.writeFile(filePath, 'content');
+      await fs.mkdir("/test", { recursive: true });
+      await fs.writeFile(filePath, "content");
 
       // Test 0o755 (rwxr-xr-x)
       await trackedFs.chmod(filePath, mode755);
@@ -451,7 +451,7 @@ describe('TrackedFileSystem', () => {
       expect(operations[0]?.permissions).toBe(493); // Decimal value
 
       // Reset registry
-      await registry.removeToolOperations('test-tool');
+      await registry.removeToolOperations("test-tool");
 
       // Test 0o644 (rw-r--r--)
       await trackedFs.chmod(filePath, mode644);
@@ -461,9 +461,9 @@ describe('TrackedFileSystem', () => {
     });
   });
 
-  describe('ensureDir', () => {
-    it('should track directory creation', async () => {
-      const dirPath = '/test/newdir';
+  describe("ensureDir", () => {
+    it("should track directory creation", async () => {
+      const dirPath = "/test/newdir";
 
       // Create directory through tracked filesystem
       await trackedFs.ensureDir(dirPath);
@@ -472,17 +472,17 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
-        operationType: 'mkdir',
+        operationType: "mkdir",
         filePath: path.resolve(dirPath),
       });
       // Directory creation tracked with mkdir operation type
     });
 
-    it('should not track when directory already exists', async () => {
-      const dirPath = '/test/existingdir';
+    it("should not track when directory already exists", async () => {
+      const dirPath = "/test/existingdir";
 
       // Ensure parent directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
       // Create directory first
       await fs.mkdir(dirPath, { recursive: true });
 
@@ -495,13 +495,13 @@ describe('TrackedFileSystem', () => {
     });
   });
 
-  describe('non-modifying operations', () => {
-    it('should not track read operations', async () => {
-      const filePath = '/test/file.txt';
-      const content = 'test content';
+  describe("non-modifying operations", () => {
+    it("should not track read operations", async () => {
+      const filePath = "/test/file.txt";
+      const content = "test content";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
       // Create file first
       await fs.writeFile(filePath, content);
 
@@ -514,13 +514,13 @@ describe('TrackedFileSystem', () => {
       expect(operations).toHaveLength(0);
     });
 
-    it('should not track stat operations', async () => {
-      const filePath = '/test/file.txt';
+    it("should not track stat operations", async () => {
+      const filePath = "/test/file.txt";
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir("/test", { recursive: true });
       // Create file first
-      await fs.writeFile(filePath, 'content');
+      await fs.writeFile(filePath, "content");
 
       // Stat through tracked filesystem
       const stats = await trackedFs.stat(filePath);
@@ -531,8 +531,8 @@ describe('TrackedFileSystem', () => {
       expect(operations).toHaveLength(0);
     });
 
-    it('should not track exists operations', async () => {
-      const filePath = '/test/file.txt';
+    it("should not track exists operations", async () => {
+      const filePath = "/test/file.txt";
 
       // Check existence through tracked filesystem
       const exists = await trackedFs.exists(filePath);
@@ -544,15 +544,15 @@ describe('TrackedFileSystem', () => {
     });
   });
 
-  describe('operation grouping', () => {
-    it('should use same operation ID for related operations', async () => {
-      const groupContext = TrackedFileSystem.createContext('nodejs', 'shim', { version: '1.0' });
+  describe("operation grouping", () => {
+    it("should use same operation ID for related operations", async () => {
+      const groupContext = TrackedFileSystem.createContext("nodejs", "shim", { version: "1.0" });
       const groupTrackedFs = new TrackedFileSystem(logger, fs, registry, groupContext, mockProjectConfig);
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
-      await groupTrackedFs.writeFile('/test/file1.txt', 'content1');
-      await groupTrackedFs.writeFile('/test/file2.txt', 'content2');
+      await fs.mkdir("/test", { recursive: true });
+      await groupTrackedFs.writeFile("/test/file1.txt", "content1");
+      await groupTrackedFs.writeFile("/test/file2.txt", "content2");
 
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(2);
@@ -561,17 +561,17 @@ describe('TrackedFileSystem', () => {
       expect(operations[0].operationId).toBe(groupContext.operationId);
     });
 
-    it('should use different operation IDs for different contexts', async () => {
-      const context1 = TrackedFileSystem.createContext('nodejs', 'shim');
-      const context2 = TrackedFileSystem.createContext('python', 'binary');
+    it("should use different operation IDs for different contexts", async () => {
+      const context1 = TrackedFileSystem.createContext("nodejs", "shim");
+      const context2 = TrackedFileSystem.createContext("python", "binary");
 
       const trackedFs1 = new TrackedFileSystem(logger, fs, registry, context1, mockProjectConfig);
       const trackedFs2 = new TrackedFileSystem(logger, fs, registry, context2, mockProjectConfig);
 
       // Ensure directory exists first
-      await fs.mkdir('/test', { recursive: true });
-      await trackedFs1.writeFile('/test/file1.txt', 'content1');
-      await trackedFs2.writeFile('/test/file2.txt', 'content2');
+      await fs.mkdir("/test", { recursive: true });
+      await trackedFs1.writeFile("/test/file1.txt", "content1");
+      await trackedFs2.writeFile("/test/file2.txt", "content2");
 
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(2);

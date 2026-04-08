@@ -1,27 +1,27 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
-import { Architecture, Platform } from '@dotfiles/core';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
+import { Architecture, Platform } from "@dotfiles/core";
 import {
   createMemFileSystem,
   type FileSystemSpies,
   type IFileSystem,
   ResolvedFileSystem,
   type Stats,
-} from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { RegistryDatabase } from '@dotfiles/registry-database';
-import { FileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
-import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
-import { randomUUID } from 'node:crypto';
-import { unlink } from 'node:fs/promises';
-import path from 'node:path';
-import { ShimGenerator } from '../ShimGenerator';
+} from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { RegistryDatabase } from "@dotfiles/registry-database";
+import { FileRegistry, TrackedFileSystem } from "@dotfiles/registry/file";
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from "@dotfiles/testing-helpers";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { randomUUID } from "node:crypto";
+import { unlink } from "node:fs/promises";
+import path from "node:path";
+import { ShimGenerator } from "../ShimGenerator";
 
 // oxlint-disable-next-line import/no-unassigned-import
-import '@dotfiles/testing-helpers';
+import "@dotfiles/testing-helpers";
 
-describe('ShimGenerator', () => {
+describe("ShimGenerator", () => {
   let mockConfig: ProjectConfig;
   let shimGenerator: ShimGenerator;
   let fileSystem: IFileSystem;
@@ -36,20 +36,20 @@ describe('ShimGenerator', () => {
     fsMocks = spies;
     logger = new TestLogger();
 
-    testDirs = await createTestDirectories(logger, fs, { testName: 'shim-generator' });
+    testDirs = await createTestDirectories(logger, fs, { testName: "shim-generator" });
 
     systemInfo = {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     };
 
     mockConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
       fileSystem: fs,
       logger,
       systemInfo,
@@ -60,27 +60,27 @@ describe('ShimGenerator', () => {
 
     // Clear all mock calls from the setup phase (createMockProjectConfig writes config file)
     Object.values(fsMocks).forEach((mock) => {
-      if (typeof mock.mockClear === 'function') {
+      if (typeof mock.mockClear === "function") {
         mock.mockClear();
       }
     });
   });
 
-  describe('constructor', () => {
-    it('should initialize correctly', () => {
+  describe("constructor", () => {
+    it("should initialize correctly", () => {
       expect(shimGenerator).toBeInstanceOf(ShimGenerator);
     });
   });
 
-  describe('generateForTool', () => {
-    const toolName = 'my-tool';
+  describe("generateForTool", () => {
+    const toolName = "my-tool";
     const toolConfig: ToolConfig = {
       name: toolName,
-      binaries: ['my-tool-binary'],
-      version: '1.0.0',
-      installationMethod: 'manual',
+      binaries: ["my-tool-binary"],
+      version: "1.0.0",
+      installationMethod: "manual",
       installParams: {
-        binaryPath: '/usr/local/bin/my-tool',
+        binaryPath: "/usr/local/bin/my-tool",
       },
     };
     let expectedShimPath: string;
@@ -88,12 +88,12 @@ describe('ShimGenerator', () => {
 
     beforeEach(() => {
       const firstBinary = toolConfig.binaries![0]!;
-      const binaryName = typeof firstBinary === 'string' ? firstBinary : firstBinary.name;
+      const binaryName = typeof firstBinary === "string" ? firstBinary : firstBinary.name;
       expectedShimPath = path.join(mockConfig.paths.targetDir, binaryName);
-      expectedBinaryPath = path.join(mockConfig.paths.binariesDir, toolConfig.name, 'current', binaryName);
+      expectedBinaryPath = path.join(mockConfig.paths.binariesDir, toolConfig.name, "current", binaryName);
     });
 
-    it('should generate correct shim content, write file, and return shim path', async () => {
+    it("should generate correct shim content, write file, and return shim path", async () => {
       const result = await shimGenerator.generateForTool(toolName, toolConfig);
 
       expect(result).toEqual([expectedShimPath]);
@@ -168,7 +168,7 @@ describe('ShimGenerator', () => {
       `;
     });
 
-    it('should show app-launch guidance when DMG install has no executable binary', async () => {
+    it("should show app-launch guidance when DMG install has no executable binary", async () => {
       const generatorWithMessages = new ShimGenerator(
         logger,
         fileSystem,
@@ -177,40 +177,40 @@ describe('ShimGenerator', () => {
         undefined,
         new Map([
           [
-            'dmg',
-            'Installation completed. This tool was installed as a macOS app bundle in /Applications. Launch it from Spotlight, Launchpad, or the Applications folder.',
+            "dmg",
+            "Installation completed. This tool was installed as a macOS app bundle in /Applications. Launch it from Spotlight, Launchpad, or the Applications folder.",
           ],
         ]),
       );
 
       const dmgToolConfig: ToolConfig = {
-        name: 'telegram',
-        binaries: ['telegram'],
-        version: 'latest',
-        installationMethod: 'dmg',
+        name: "telegram",
+        binaries: ["telegram"],
+        version: "latest",
+        installationMethod: "dmg",
         installParams: {
           source: {
-            type: 'url',
-            url: 'https://example.com/telegram.dmg',
+            type: "url",
+            url: "https://example.com/telegram.dmg",
           },
         },
       };
 
-      await generatorWithMessages.generateForTool('telegram', dmgToolConfig);
+      await generatorWithMessages.generateForTool("telegram", dmgToolConfig);
 
-      const writtenContent = String(fsMocks.writeFile.mock.calls.at(-1)?.[1] ?? '');
+      const writtenContent = String(fsMocks.writeFile.mock.calls.at(-1)?.[1] ?? "");
       expect(writtenContent).toContain(
-        'This tool was installed as a macOS app bundle in /Applications. Launch it from Spotlight, Launchpad, or the Applications folder.',
+        "This tool was installed as a macOS app bundle in /Applications. Launch it from Spotlight, Launchpad, or the Applications folder.",
       );
-      expect(writtenContent).not.toContain('Installation completed but binary not found at: $TOOL_EXECUTABLE');
+      expect(writtenContent).not.toContain("Installation completed but binary not found at: $TOOL_EXECUTABLE");
     });
 
-    it('should skip shim generation for configuration-only tool configs', async () => {
+    it("should skip shim generation for configuration-only tool configs", async () => {
       const configOnly: ToolConfig = {
         name: toolName,
-        version: '1.0.0',
+        version: "1.0.0",
         binaries: [],
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -221,12 +221,12 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).not.toHaveBeenCalled();
     });
 
-    it('should skip shim generation and warn when manual tool has .bin() but no binaryPath', async () => {
+    it("should skip shim generation and warn when manual tool has .bin() but no binaryPath", async () => {
       const manualNoBinaryPath: ToolConfig = {
         name: toolName,
-        version: '1.0.0',
-        binaries: ['tokscale'],
-        installationMethod: 'manual',
+        version: "1.0.0",
+        binaries: ["tokscale"],
+        installationMethod: "manual",
         installParams: {},
       };
 
@@ -237,19 +237,19 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).not.toHaveBeenCalled();
 
       logger.expect(
-        ['WARN'],
-        ['ShimGenerator', 'generateForTool'],
+        ["WARN"],
+        ["ShimGenerator", "generateForTool"],
         [toolName],
         [/manual tool has \.bin\(\) but no binaryPath/],
       );
     });
 
-    it('should skip shim generation when toolConfig.binaries is empty and tool is not configuration-only', async () => {
+    it("should skip shim generation when toolConfig.binaries is empty and tool is not configuration-only", async () => {
       const configNoBinaries: ToolConfig = {
         name: toolName,
-        version: '1.0.0',
+        version: "1.0.0",
         binaries: [],
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {
           binaryPath: `/usr/local/bin/${toolName}`,
         },
@@ -261,12 +261,12 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).not.toHaveBeenCalled();
     });
 
-    it('should skip shim generation when toolConfig.binaries is undefined and tool is not configuration-only', async () => {
+    it("should skip shim generation when toolConfig.binaries is undefined and tool is not configuration-only", async () => {
       const configUndefinedBinaries: ToolConfig = {
         name: toolName,
-        version: '1.0.0',
+        version: "1.0.0",
         binaries: undefined,
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {
           binaryPath: `/usr/local/bin/${toolName}`,
         },
@@ -278,7 +278,7 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).not.toHaveBeenCalled();
     });
 
-    it('should attempt file operations and return path (simulating dry run with mock FS)', async () => {
+    it("should attempt file operations and return path (simulating dry run with mock FS)", async () => {
       const result = await shimGenerator.generateForTool(toolName, toolConfig, {});
 
       expect(result).toEqual([expectedShimPath]);
@@ -287,7 +287,7 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
     });
 
-    it('should skip if shim exists and overwrite is false, returning empty array', async () => {
+    it("should skip if shim exists and overwrite is false, returning empty array", async () => {
       fsMocks.exists.mockResolvedValue(true);
       const result = await shimGenerator.generateForTool(toolName, toolConfig, {
         overwrite: false,
@@ -298,10 +298,10 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).not.toHaveBeenCalled();
     });
 
-    it('should overwrite if shim exists and overwrite is true, returning path', async () => {
+    it("should overwrite if shim exists and overwrite is true, returning path", async () => {
       fsMocks.exists.mockResolvedValue(true);
       // Mock that the existing file is our shim with wrong permissions
-      fsMocks.readFile.mockResolvedValueOnce('#!/usr/bin/env bash\n# Generated by Dotfiles Management Tool');
+      fsMocks.readFile.mockResolvedValueOnce("#!/usr/bin/env bash\n# Generated by Dotfiles Management Tool");
       fsMocks.stat.mockResolvedValueOnce({ mode: 0o100644, isFile: () => true, isDirectory: () => false } as Stats);
 
       const result = await shimGenerator.generateForTool(toolName, toolConfig, { overwrite: true });
@@ -312,28 +312,28 @@ describe('ShimGenerator', () => {
     });
   });
 
-  describe('generate', () => {
-    it('should call generateForTool for each tool config and return all paths including generator shim', async () => {
+  describe("generate", () => {
+    it("should call generateForTool for each tool config and return all paths including generator shim", async () => {
       const configs: Record<string, ToolConfig> = {
-        'tool-a': {
-          name: 'tool-a',
-          binaries: ['tool-a-bin'],
-          version: '1.0',
-          installationMethod: 'manual',
+        "tool-a": {
+          name: "tool-a",
+          binaries: ["tool-a-bin"],
+          version: "1.0",
+          installationMethod: "manual",
           installParams: {},
         },
-        'tool-b': {
-          name: 'tool-b',
-          binaries: ['tool-b-bin'],
-          version: '2.0',
-          installationMethod: 'manual',
+        "tool-b": {
+          name: "tool-b",
+          binaries: ["tool-b-bin"],
+          version: "2.0",
+          installationMethod: "manual",
           installParams: {},
         },
       };
-      const expectedPathA = path.join(mockConfig.paths.targetDir, 'tool-a');
-      const expectedPathB = path.join(mockConfig.paths.targetDir, 'tool-b');
+      const expectedPathA = path.join(mockConfig.paths.targetDir, "tool-a");
+      const expectedPathB = path.join(mockConfig.paths.targetDir, "tool-b");
 
-      const generateForToolSpy = spyOn(shimGenerator, 'generateForTool')
+      const generateForToolSpy = spyOn(shimGenerator, "generateForTool")
         .mockResolvedValueOnce([expectedPathA])
         .mockResolvedValueOnce([expectedPathB]);
 
@@ -341,14 +341,14 @@ describe('ShimGenerator', () => {
 
       expect(result).toEqual([expectedPathA, expectedPathB]);
       expect(generateForToolSpy).toHaveBeenCalledTimes(2);
-      expect(generateForToolSpy).toHaveBeenCalledWith('tool-a', configs['tool-a'], undefined);
-      expect(generateForToolSpy).toHaveBeenCalledWith('tool-b', configs['tool-b'], undefined);
+      expect(generateForToolSpy).toHaveBeenCalledWith("tool-a", configs["tool-a"], undefined);
+      expect(generateForToolSpy).toHaveBeenCalledWith("tool-b", configs["tool-b"], undefined);
 
       generateForToolSpy.mockRestore();
     });
 
-    it('should handle empty toolConfigs object', async () => {
-      const generateForToolSpy = spyOn(shimGenerator, 'generateForTool');
+    it("should handle empty toolConfigs object", async () => {
+      const generateForToolSpy = spyOn(shimGenerator, "generateForTool");
 
       const result = await shimGenerator.generate({});
       expect(result).toEqual([]);
@@ -357,33 +357,33 @@ describe('ShimGenerator', () => {
       generateForToolSpy.mockRestore();
     });
 
-    it('should pass options (like overwrite) to generateForTool and generateShim, returning all paths', async () => {
+    it("should pass options (like overwrite) to generateForTool and generateShim, returning all paths", async () => {
       const configs: Record<string, ToolConfig> = {
-        'tool-a': {
-          name: 'tool-a',
-          binaries: ['tool-a-bin'],
-          version: '1.0',
-          installationMethod: 'manual',
+        "tool-a": {
+          name: "tool-a",
+          binaries: ["tool-a-bin"],
+          version: "1.0",
+          installationMethod: "manual",
           installParams: {},
         },
       };
       const options = { overwrite: true };
-      const expectedPathA = path.join(mockConfig.paths.targetDir, 'tool-a');
+      const expectedPathA = path.join(mockConfig.paths.targetDir, "tool-a");
 
-      const generateForToolSpy = spyOn(shimGenerator, 'generateForTool').mockResolvedValueOnce([expectedPathA]);
+      const generateForToolSpy = spyOn(shimGenerator, "generateForTool").mockResolvedValueOnce([expectedPathA]);
 
       const result = await shimGenerator.generate(configs, options);
 
       expect(result).toEqual([expectedPathA]);
-      expect(generateForToolSpy).toHaveBeenCalledWith('tool-a', configs['tool-a'], options);
+      expect(generateForToolSpy).toHaveBeenCalledWith("tool-a", configs["tool-a"], options);
 
       generateForToolSpy.mockRestore();
     });
   });
 
-  describe('chmod optimization', () => {
-    it('should skip chmod when file already has correct permissions', async () => {
-      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'test-tool');
+  describe("chmod optimization", () => {
+    it("should skip chmod when file already has correct permissions", async () => {
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, "test-tool");
 
       // Mock stat to return the desired permissions (755)
       fsMocks.stat.mockResolvedValueOnce({
@@ -393,16 +393,16 @@ describe('ShimGenerator', () => {
       } as Stats);
 
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
-        installationMethod: 'manual',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
+        installationMethod: "manual",
         installParams: {
-          binaryPath: '/usr/local/bin/test-tool',
+          binaryPath: "/usr/local/bin/test-tool",
         },
       };
 
-      await shimGenerator.generateForTool('test-tool', toolConfig);
+      await shimGenerator.generateForTool("test-tool", toolConfig);
 
       // Should write file but skip chmod since permissions are already correct
       expect(fsMocks.writeFile).toHaveBeenCalledWith(expectedShimPath, expect.any(String));
@@ -410,8 +410,8 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).not.toHaveBeenCalled();
     });
 
-    it('should call chmod when file has incorrect permissions', async () => {
-      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'test-tool');
+    it("should call chmod when file has incorrect permissions", async () => {
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, "test-tool");
 
       // Mock stat to return different permissions (644)
       fsMocks.stat.mockResolvedValueOnce({
@@ -419,16 +419,16 @@ describe('ShimGenerator', () => {
       } as Stats);
 
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
-        installationMethod: 'manual',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
+        installationMethod: "manual",
         installParams: {
-          binaryPath: '/usr/local/bin/test-tool',
+          binaryPath: "/usr/local/bin/test-tool",
         },
       };
 
-      await shimGenerator.generateForTool('test-tool', toolConfig);
+      await shimGenerator.generateForTool("test-tool", toolConfig);
 
       // Should write file and call chmod to fix permissions
       expect(fsMocks.writeFile).toHaveBeenCalledWith(expectedShimPath, expect.any(String));
@@ -436,23 +436,23 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
     });
 
-    it('should call chmod when stat fails', async () => {
-      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'test-tool');
+    it("should call chmod when stat fails", async () => {
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, "test-tool");
 
       // Mock stat to throw an error
-      fsMocks.stat.mockRejectedValueOnce(new Error('Stat failed'));
+      fsMocks.stat.mockRejectedValueOnce(new Error("Stat failed"));
 
       const toolConfig: ToolConfig = {
-        name: 'test-tool',
-        binaries: ['test-tool'],
-        version: '1.0.0',
-        installationMethod: 'manual',
+        name: "test-tool",
+        binaries: ["test-tool"],
+        version: "1.0.0",
+        installationMethod: "manual",
         installParams: {
-          binaryPath: '/usr/local/bin/test-tool',
+          binaryPath: "/usr/local/bin/test-tool",
         },
       };
 
-      await shimGenerator.generateForTool('test-tool', toolConfig);
+      await shimGenerator.generateForTool("test-tool", toolConfig);
 
       // Should write file and call chmod as fallback
       expect(fsMocks.writeFile).toHaveBeenCalledWith(expectedShimPath, expect.any(String));
@@ -461,22 +461,22 @@ describe('ShimGenerator', () => {
     });
   });
 
-  describe('conflicting files', () => {
-    const toolName = 'test-tool';
+  describe("conflicting files", () => {
+    const toolName = "test-tool";
     const toolConfig: ToolConfig = {
       name: toolName,
-      binaries: ['test-tool'],
-      version: '1.0.0',
-      installationMethod: 'manual',
+      binaries: ["test-tool"],
+      version: "1.0.0",
+      installationMethod: "manual",
       installParams: {
-        binaryPath: '/usr/local/bin/test-tool',
+        binaryPath: "/usr/local/bin/test-tool",
       },
     };
 
-    it('should skip and log error when non-shim file exists at target location', async () => {
+    it("should skip and log error when non-shim file exists at target location", async () => {
       // Mock file exists but is not our shim
       fsMocks.exists.mockResolvedValueOnce(true);
-      fsMocks.readFile.mockResolvedValueOnce('some other content');
+      fsMocks.readFile.mockResolvedValueOnce("some other content");
 
       const result = await shimGenerator.generateForTool(toolName, toolConfig);
 
@@ -486,17 +486,17 @@ describe('ShimGenerator', () => {
 
       // Should log error about conflicting file
       logger.expect(
-        ['ERROR'],
-        ['ShimGenerator', 'generateShimForBinary'],
+        ["ERROR"],
+        ["ShimGenerator", "generateShimForBinary"],
         [],
         [/Cannot create shim for "test-tool": conflicting file exists/],
       );
     });
 
-    it('should skip silently when our shim exists and overwrite is false', async () => {
+    it("should skip silently when our shim exists and overwrite is false", async () => {
       // Mock file exists and is our shim
       fsMocks.exists.mockResolvedValueOnce(true);
-      fsMocks.readFile.mockResolvedValueOnce('#!/usr/bin/env bash\n# Generated by Dotfiles Management Tool');
+      fsMocks.readFile.mockResolvedValueOnce("#!/usr/bin/env bash\n# Generated by Dotfiles Management Tool");
 
       const result = await shimGenerator.generateForTool(toolName, toolConfig, { overwrite: false });
 
@@ -507,12 +507,12 @@ describe('ShimGenerator', () => {
       // Should not log error - only check that no error was logged by not calling logger.expect with ERROR
     });
 
-    it('should overwrite when our shim exists and overwrite is true', async () => {
+    it("should overwrite when our shim exists and overwrite is true", async () => {
       const expectedShimPath = path.join(mockConfig.paths.targetDir, toolName);
 
       // Mock file exists and is our shim
       fsMocks.exists.mockResolvedValueOnce(true);
-      fsMocks.readFile.mockResolvedValueOnce('#!/usr/bin/env bash\n# Generated by Dotfiles Management Tool');
+      fsMocks.readFile.mockResolvedValueOnce("#!/usr/bin/env bash\n# Generated by Dotfiles Management Tool");
       fsMocks.stat.mockResolvedValueOnce({ mode: 0o100755, isFile: () => true, isDirectory: () => false } as Stats);
 
       const result = await shimGenerator.generateForTool(toolName, toolConfig, { overwrite: true });
@@ -523,10 +523,10 @@ describe('ShimGenerator', () => {
       // Should not log error - only check that no error was logged by not calling logger.expect with ERROR
     });
 
-    it('should log error and skip when non-shim file exists even with overwrite true', async () => {
+    it("should log error and skip when non-shim file exists even with overwrite true", async () => {
       // Mock file exists but is not our shim
       fsMocks.exists.mockResolvedValueOnce(true);
-      fsMocks.readFile.mockResolvedValueOnce('some other content');
+      fsMocks.readFile.mockResolvedValueOnce("some other content");
 
       const result = await shimGenerator.generateForTool(toolName, toolConfig, { overwrite: true });
 
@@ -536,19 +536,19 @@ describe('ShimGenerator', () => {
 
       // Should log error about conflicting file
       logger.expect(
-        ['ERROR'],
-        ['ShimGenerator', 'generateShimForBinary'],
+        ["ERROR"],
+        ["ShimGenerator", "generateShimForBinary"],
         [],
         [/Cannot create shim for "test-tool": conflicting file exists/],
       );
     });
 
-    it('should overwrite non-shim file when overwriteConflicts is true', async () => {
+    it("should overwrite non-shim file when overwriteConflicts is true", async () => {
       const expectedShimPath = path.join(mockConfig.paths.targetDir, toolName);
 
       // Mock file exists but is not our shim
       fsMocks.exists.mockResolvedValueOnce(true);
-      fsMocks.readFile.mockResolvedValueOnce('some other content');
+      fsMocks.readFile.mockResolvedValueOnce("some other content");
       fsMocks.stat.mockResolvedValueOnce({ mode: 0o100755, isFile: () => true, isDirectory: () => false } as Stats);
 
       const result = await shimGenerator.generateForTool(toolName, toolConfig, { overwriteConflicts: true });
@@ -558,12 +558,12 @@ describe('ShimGenerator', () => {
       // Behavior verified: shim was created despite conflicting file existing
     });
 
-    it('should overwrite non-shim file when both overwrite and overwriteConflicts are true', async () => {
+    it("should overwrite non-shim file when both overwrite and overwriteConflicts are true", async () => {
       const expectedShimPath = path.join(mockConfig.paths.targetDir, toolName);
 
       // Mock file exists but is not our shim
       fsMocks.exists.mockResolvedValueOnce(true);
-      fsMocks.readFile.mockResolvedValueOnce('some other content');
+      fsMocks.readFile.mockResolvedValueOnce("some other content");
       fsMocks.stat.mockResolvedValueOnce({ mode: 0o100755, isFile: () => true, isDirectory: () => false } as Stats);
 
       const result = await shimGenerator.generateForTool(toolName, toolConfig, {
@@ -575,10 +575,10 @@ describe('ShimGenerator', () => {
       expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
     });
 
-    it('should treat unreadable files as non-shims', async () => {
+    it("should treat unreadable files as non-shims", async () => {
       // Mock file exists but can't be read
       fsMocks.exists.mockResolvedValueOnce(true);
-      fsMocks.readFile.mockRejectedValueOnce(new Error('Permission denied'));
+      fsMocks.readFile.mockRejectedValueOnce(new Error("Permission denied"));
 
       const result = await shimGenerator.generateForTool(toolName, toolConfig);
 
@@ -587,25 +587,25 @@ describe('ShimGenerator', () => {
 
       // Should log error about conflicting file
       logger.expect(
-        ['ERROR'],
-        ['ShimGenerator', 'generateShimForBinary'],
+        ["ERROR"],
+        ["ShimGenerator", "generateShimForBinary"],
         [],
         [/Cannot create shim for "test-tool": conflicting file exists/],
       );
     });
   });
 
-  describe('@update functionality', () => {
-    const toolName = 'test-tool';
+  describe("@update functionality", () => {
+    const toolName = "test-tool";
     const toolConfig: ToolConfig = {
       name: toolName,
-      binaries: ['test-binary'],
-      version: '1.0.0',
-      installationMethod: 'github-release',
-      installParams: { repo: 'owner/repo' },
+      binaries: ["test-binary"],
+      version: "1.0.0",
+      installationMethod: "github-release",
+      installParams: { repo: "owner/repo" },
     };
 
-    it('should include @update detection logic in generated shim', async () => {
+    it("should include @update detection logic in generated shim", async () => {
       const result = await shimGenerator.generateForTool(toolName, toolConfig);
 
       expect(result).toHaveLength(1);
@@ -614,14 +614,14 @@ describe('ShimGenerator', () => {
       const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
 
       // Should contain the @update detection block
-      expect(writtenContent).toContain('# Check if the first argument is @update');
+      expect(writtenContent).toContain("# Check if the first argument is @update");
       expect(writtenContent).toContain('if [ $# -gt 0 ] && [ "$1" = "@update" ]; then');
       expect(writtenContent).toContain('echo "Updating $TOOL_NAME to latest version..."');
       expect(writtenContent).toContain('eval "$GENERATOR_CLI_EXECUTABLE" update --shim-mode --config');
-      expect(writtenContent).toContain('exit $?');
+      expect(writtenContent).toContain("exit $?");
     });
 
-    it('should include tool name and config path in update command', async () => {
+    it("should include tool name and config path in update command", async () => {
       const result = await shimGenerator.generateForTool(toolName, toolConfig);
 
       expect(result).toHaveLength(1);
@@ -630,10 +630,10 @@ describe('ShimGenerator', () => {
       // Should use the correct tool name and config path
       expect(writtenContent).toContain(`TOOL_NAME="${toolName}"`);
       expect(writtenContent).toContain(`CONFIG_PATH="${mockConfig.configFilePath}"`);
-      expect(writtenContent).toContain('\'"$CONFIG_PATH"\' \'"$TOOL_NAME"\'');
+      expect(writtenContent).toContain("'\"$CONFIG_PATH\"' '\"$TOOL_NAME\"'");
     });
 
-    it('should place @update check before normal execution logic', async () => {
+    it("should place @update check before normal execution logic", async () => {
       const result = await shimGenerator.generateForTool(toolName, toolConfig);
 
       expect(result).toHaveLength(1);
@@ -649,22 +649,22 @@ describe('ShimGenerator', () => {
       expect(updateCheckIndex).toBeLessThan(toolExecutionIndex);
     });
 
-    it('should use --shim-mode flag in update command', async () => {
+    it("should use --shim-mode flag in update command", async () => {
       const result = await shimGenerator.generateForTool(toolName, toolConfig);
 
       expect(result).toHaveLength(1);
       const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
 
       // Should include --shim-mode flag for suppressed logging
-      expect(writtenContent).toContain('update --shim-mode --config');
-      expect(writtenContent).toContain('install --shim-mode --config');
+      expect(writtenContent).toContain("update --shim-mode --config");
+      expect(writtenContent).toContain("install --shim-mode --config");
     });
   });
 
-  describe('platform-specific binaries', () => {
-    const toolName = 'skhd';
+  describe("platform-specific binaries", () => {
+    const toolName = "skhd";
 
-    it('should generate shims for binaries defined only in platform-specific config', async () => {
+    it("should generate shims for binaries defined only in platform-specific config", async () => {
       // This simulates the case where .bin() is called on the platform builder, not the root builder:
       // install().platform(Platform.MacOS, (install) =>
       //   install('brew', { formula: 'koekeishiya/formulae/skhd' }).bin('skhd')
@@ -672,23 +672,23 @@ describe('ShimGenerator', () => {
       // In this case, the base config has empty binaries, but the platform config has ['skhd']
       const toolConfigWithPlatformBinaries: ToolConfig = {
         name: toolName,
-        version: '1.0.0',
+        version: "1.0.0",
         binaries: [], // Empty at root level
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
         platformConfigs: [
           {
             platforms: Platform.Linux, // Matches the test's system platform
             config: {
-              binaries: ['skhd'], // Binary defined only in platform config
-              installationMethod: 'brew',
-              installParams: { formula: 'koekeishiya/formulae/skhd' },
+              binaries: ["skhd"], // Binary defined only in platform config
+              installationMethod: "brew",
+              installParams: { formula: "koekeishiya/formulae/skhd" },
             },
           },
         ],
       };
 
-      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'skhd');
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, "skhd");
       const result = await shimGenerator.generateForTool(toolName, toolConfigWithPlatformBinaries);
 
       // This test SHOULD pass but currently FAILS because ShimGenerator
@@ -698,27 +698,27 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
     });
 
-    it('should merge platform binaries with root binaries', async () => {
+    it("should merge platform binaries with root binaries", async () => {
       // This simulates the case where both root and platform have binaries
       const toolConfigWithMixedBinaries: ToolConfig = {
         name: toolName,
-        version: '1.0.0',
-        binaries: ['root-binary'], // Root level binary
-        installationMethod: 'manual',
+        version: "1.0.0",
+        binaries: ["root-binary"], // Root level binary
+        installationMethod: "manual",
         installParams: {
-          binaryPath: '/usr/local/bin/root-binary',
+          binaryPath: "/usr/local/bin/root-binary",
         },
         platformConfigs: [
           {
             platforms: Platform.Linux,
             config: {
-              binaries: ['platform-binary'], // Platform overrides binaries
+              binaries: ["platform-binary"], // Platform overrides binaries
             },
           },
         ],
       };
 
-      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'platform-binary');
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, "platform-binary");
       const result = await shimGenerator.generateForTool(toolName, toolConfigWithMixedBinaries);
 
       // Platform binaries should replace root binaries after resolution
@@ -727,9 +727,9 @@ describe('ShimGenerator', () => {
     });
   });
 
-  describe('externally managed tools', () => {
-    it('should skip shim generation for externally managed installation methods', async () => {
-      const externallyManagedMethods = new Set(['brew']);
+  describe("externally managed tools", () => {
+    it("should skip shim generation for externally managed installation methods", async () => {
+      const externallyManagedMethods = new Set(["brew"]);
       const externalShimGenerator = new ShimGenerator(
         logger,
         fileSystem,
@@ -739,21 +739,21 @@ describe('ShimGenerator', () => {
       );
 
       const toolConfig: ToolConfig = {
-        name: 'brew-tool',
-        binaries: ['brew-tool'],
-        version: '1.0.0',
-        installationMethod: 'brew',
-        installParams: { formula: 'brew-tool' },
+        name: "brew-tool",
+        binaries: ["brew-tool"],
+        version: "1.0.0",
+        installationMethod: "brew",
+        installParams: { formula: "brew-tool" },
       };
 
-      const result = await externalShimGenerator.generateForTool('brew-tool', toolConfig);
+      const result = await externalShimGenerator.generateForTool("brew-tool", toolConfig);
 
       expect(result).toEqual([]);
       expect(fsMocks.writeFile).not.toHaveBeenCalled();
     });
 
-    it('should generate shims for non-externally-managed tools', async () => {
-      const externallyManagedMethods = new Set(['brew']);
+    it("should generate shims for non-externally-managed tools", async () => {
+      const externallyManagedMethods = new Set(["brew"]);
       const externalShimGenerator = new ShimGenerator(
         logger,
         fileSystem,
@@ -763,22 +763,22 @@ describe('ShimGenerator', () => {
       );
 
       const toolConfig: ToolConfig = {
-        name: 'manual-tool',
-        binaries: ['manual-tool'],
-        version: '1.0.0',
-        installationMethod: 'manual',
-        installParams: { binaryPath: '/usr/local/bin/manual-tool' },
+        name: "manual-tool",
+        binaries: ["manual-tool"],
+        version: "1.0.0",
+        installationMethod: "manual",
+        installParams: { binaryPath: "/usr/local/bin/manual-tool" },
       };
 
-      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'manual-tool');
-      const result = await externalShimGenerator.generateForTool('manual-tool', toolConfig);
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, "manual-tool");
+      const result = await externalShimGenerator.generateForTool("manual-tool", toolConfig);
 
       expect(result).toEqual([expectedShimPath]);
       expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
     });
 
-    it('should skip externally managed tools after platform config resolution', async () => {
-      const externallyManagedMethods = new Set(['brew']);
+    it("should skip externally managed tools after platform config resolution", async () => {
+      const externallyManagedMethods = new Set(["brew"]);
       const externalShimGenerator = new ShimGenerator(
         logger,
         fileSystem,
@@ -788,37 +788,37 @@ describe('ShimGenerator', () => {
       );
 
       const toolConfig: ToolConfig = {
-        name: 'platform-brew-tool',
+        name: "platform-brew-tool",
         binaries: [],
-        version: '1.0.0',
-        installationMethod: 'manual',
+        version: "1.0.0",
+        installationMethod: "manual",
         installParams: {},
         platformConfigs: [
           {
             platforms: Platform.Linux,
             config: {
-              binaries: ['platform-brew-tool'],
-              installationMethod: 'brew',
-              installParams: { formula: 'platform-brew-tool' },
+              binaries: ["platform-brew-tool"],
+              installationMethod: "brew",
+              installParams: { formula: "platform-brew-tool" },
             },
           },
         ],
       };
 
-      const result = await externalShimGenerator.generateForTool('platform-brew-tool', toolConfig);
+      const result = await externalShimGenerator.generateForTool("platform-brew-tool", toolConfig);
 
       expect(result).toEqual([]);
       expect(fsMocks.writeFile).not.toHaveBeenCalled();
     });
   });
 
-  describe('tracking attribution', () => {
+  describe("tracking attribution", () => {
     let registry: FileRegistry;
     let registryDatabase: RegistryDatabase;
     let dbPath: string;
 
     beforeEach(async () => {
-      dbPath = path.join('/tmp', `test-shim-generator-${randomUUID()}.db`);
+      dbPath = path.join("/tmp", `test-shim-generator-${randomUUID()}.db`);
       registryDatabase = new RegistryDatabase(logger, dbPath);
       registry = new FileRegistry(logger, registryDatabase.getConnection());
     });
@@ -833,19 +833,19 @@ describe('ShimGenerator', () => {
       }
     });
 
-    it('should record targetDir creation under system, not tool', async () => {
-      const toolName = 'curl-script--fnm';
+    it("should record targetDir creation under system, not tool", async () => {
+      const toolName = "curl-script--fnm";
       const toolConfig: ToolConfig = {
         name: toolName,
-        binaries: ['fnm'],
-        version: '1.0.0',
-        installationMethod: 'manual',
+        binaries: ["fnm"],
+        version: "1.0.0",
+        installationMethod: "manual",
         installParams: {
-          binaryPath: '/usr/local/bin/fnm',
+          binaryPath: "/usr/local/bin/fnm",
         },
       };
 
-      const systemContext = TrackedFileSystem.createContext('system', 'shim');
+      const systemContext = TrackedFileSystem.createContext("system", "shim");
       const resolvedFs = new ResolvedFileSystem(fileSystem, mockConfig.paths.homeDir);
       const trackedFs = new TrackedFileSystem(logger, resolvedFs, registry, systemContext, mockConfig);
       const trackedGenerator = new ShimGenerator(logger, trackedFs, mockConfig, systemInfo);
@@ -859,11 +859,11 @@ describe('ShimGenerator', () => {
       const expectedTargetDirPath: string = path.resolve(mockConfig.paths.targetDir);
 
       const mkdirOperation = operations.find(
-        (operation) => operation.operationType === 'mkdir' && operation.filePath === expectedTargetDirPath,
+        (operation) => operation.operationType === "mkdir" && operation.filePath === expectedTargetDirPath,
       );
-      expect(mkdirOperation?.toolName).toBe('system');
+      expect(mkdirOperation?.toolName).toBe("system");
 
-      const writeOperation = operations.find((operation) => operation.operationType === 'writeFile');
+      const writeOperation = operations.find((operation) => operation.operationType === "writeFile");
       expect(writeOperation?.toolName).toBe(toolName);
     });
   });

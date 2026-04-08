@@ -38,7 +38,7 @@ function getIndentSize(line) {
  * @returns {number}
  */
 function getMinContentIndent(content) {
-  const lines = content.split('\n');
+  const lines = content.split("\n");
   let minIndent = Infinity;
 
   for (const line of lines) {
@@ -57,7 +57,7 @@ function getMinContentIndent(content) {
  * @returns {boolean}
  */
 function startsWithNewline(raw) {
-  return raw.startsWith('\n');
+  return raw.startsWith("\n");
 }
 
 /**
@@ -67,7 +67,7 @@ function startsWithNewline(raw) {
  */
 function hasNonEmptyContent(raw) {
   // Remove leading newline and check if there's actual content
-  const content = raw.replace(/^\n/, '');
+  const content = raw.replace(/^\n/, "");
   return content.trim().length > 0;
 }
 
@@ -77,20 +77,20 @@ function hasNonEmptyContent(raw) {
  * @returns {string}
  */
 function getTemplateContent(templateLiteral) {
-  return templateLiteral.quasis.map((quasi) => quasi.value.raw).join('${...}');
+  return templateLiteral.quasis.map((quasi) => quasi.value.raw).join("${...}");
 }
 
 /** @type {import('eslint').Rule.RuleModule} */
 export const requireTemplateIndentRule = {
   meta: {
-    type: 'suggestion',
+    type: "suggestion",
     docs: {
-      description: 'Require multiline template literals to be indented to match surrounding context',
+      description: "Require multiline template literals to be indented to match surrounding context",
       recommended: true,
     },
     schema: [],
     messages: {
-      badIndent: 'Template content should be indented. Use dedentString() if indentation is significant.',
+      badIndent: "Template content should be indented. Use dedentString() if indentation is significant.",
     },
   },
   create(context) {
@@ -123,7 +123,7 @@ export const requireTemplateIndentRule = {
 
         // Get the minimum indentation of content inside the template
         // Skip the first line (empty after the opening backtick)
-        const contentAfterFirstNewline = raw.replace(/^\n/, '');
+        const contentAfterFirstNewline = raw.replace(/^\n/, "");
         const contentIndent = getMinContentIndent(contentAfterFirstNewline);
 
         // Content should be indented at least as much as the line it's on
@@ -131,7 +131,7 @@ export const requireTemplateIndentRule = {
         if (contentIndent < lineIndent) {
           context.report({
             node,
-            messageId: 'badIndent',
+            messageId: "badIndent",
           });
         }
       },

@@ -1,4 +1,4 @@
-import { dedentString } from './dedentString';
+import { dedentString } from "./dedentString";
 
 /**
  * Processes a standalone placeholder line and returns the processed lines
@@ -13,8 +13,8 @@ function processStandalonePlaceholder(
   if (key && key in values) {
     const value = values[key];
     if (value !== undefined) {
-      const lineIndent = line.match(/^(\s*)/)?.[1] ?? '';
-      const valueLines = value.split('\n');
+      const lineIndent = line.match(/^(\s*)/)?.[1] ?? "";
+      const valueLines = value.split("\n");
       return valueLines.map((valueLine: string) => lineIndent + valueLine);
     }
   }
@@ -64,7 +64,7 @@ function processInlinePlaceholders(line: string, values: Record<string, string>)
  */
 export function dedentTemplate(template: string, values: Record<string, string>): string {
   const dedentedText = dedentString(template);
-  const dedentedLines = dedentedText.split('\n');
+  const dedentedLines = dedentedText.split("\n");
   const resultLines: string[] = [];
 
   for (const line of dedentedLines) {
@@ -80,5 +80,5 @@ export function dedentTemplate(template: string, values: Record<string, string>)
     }
   }
 
-  return resultLines.join('\n');
+  return resultLines.join("\n");
 }

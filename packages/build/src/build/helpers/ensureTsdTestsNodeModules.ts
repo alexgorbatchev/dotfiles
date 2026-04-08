@@ -1,14 +1,14 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
-import type { IBuildContext } from '../types';
-import { symlinkDirectory } from './symlinkDirectory';
+import type { IBuildContext } from "../types";
+import { symlinkDirectory } from "./symlinkDirectory";
 
 /**
  * Files from .dist that should be included in the dotfiles package.
  * Excludes tool-types.d.ts since end users receive it in .generated folder.
  */
-const PACKAGE_FILES: string[] = ['cli.js', 'cli.js.map', 'package.json', 'schemas.d.ts'];
+const PACKAGE_FILES: string[] = ["cli.js", "cli.js.map", "package.json", "schemas.d.ts"];
 
 /**
  * Prepares node_modules for the tsd tests project.
@@ -17,9 +17,9 @@ const PACKAGE_FILES: string[] = ['cli.js', 'cli.js.map', 'package.json', 'schema
 export function ensureTsdTestsNodeModules(context: IBuildContext): void {
   fs.mkdirSync(context.paths.tsdTestsNodeModulesPath, { recursive: true });
 
-  const tsdModuleSourcePath: string = path.join(context.paths.rootNodeModulesPath, 'tsd');
-  const tsdModuleDestinationPath: string = path.join(context.paths.tsdTestsNodeModulesPath, 'tsd');
-  symlinkDirectory(tsdModuleSourcePath, tsdModuleDestinationPath, 'tsd module');
+  const tsdModuleSourcePath: string = path.join(context.paths.rootNodeModulesPath, "tsd");
+  const tsdModuleDestinationPath: string = path.join(context.paths.tsdTestsNodeModulesPath, "tsd");
+  symlinkDirectory(tsdModuleSourcePath, tsdModuleDestinationPath, "tsd module");
 
   // Copy only package files (excluding tool-types.d.ts) to mimic npm package
   fs.mkdirSync(context.paths.tsdTestsScopedNamespacePath, { recursive: true });
@@ -35,8 +35,8 @@ export function ensureTsdTestsNodeModules(context: IBuildContext): void {
   }
 
   // Copy docs directory if it exists
-  const sourceDocsDir: string = path.join(context.paths.outputDir, 'docs');
-  const destDocsDir: string = path.join(context.paths.tsdTestsScopedPackagePath, 'docs');
+  const sourceDocsDir: string = path.join(context.paths.outputDir, "docs");
+  const destDocsDir: string = path.join(context.paths.tsdTestsScopedPackagePath, "docs");
 
   if (fs.existsSync(sourceDocsDir)) {
     fs.cpSync(sourceDocsDir, destDocsDir, { recursive: true });

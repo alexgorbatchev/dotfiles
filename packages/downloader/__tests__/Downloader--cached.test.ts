@@ -1,13 +1,13 @@
-import type { IFileSystem } from '@dotfiles/file-system';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { FetchMockHelper } from '@dotfiles/testing-helpers';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { FileCache } from '../cache/FileCache';
-import type { ICacheConfig } from '../cache/types';
-import { Downloader } from '../Downloader';
+import type { IFileSystem } from "@dotfiles/file-system";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { FetchMockHelper } from "@dotfiles/testing-helpers";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { FileCache } from "../cache/FileCache";
+import type { ICacheConfig } from "../cache/types";
+import { Downloader } from "../Downloader";
 
-describe('Downloader with Cache', () => {
+describe("Downloader with Cache", () => {
   let logger: TestLogger;
   let mockFileSystem: IFileSystem;
   let cache: FileCache;
@@ -22,8 +22,8 @@ describe('Downloader with Cache', () => {
     cacheConfig = {
       enabled: true,
       defaultTtl: 60000,
-      cacheDir: '/cache/downloads',
-      storageStrategy: 'binary',
+      cacheDir: "/cache/downloads",
+      storageStrategy: "binary",
     };
     cache = new FileCache(logger, mockFileSystem, cacheConfig);
     downloader = new Downloader(logger, mockFileSystem, undefined, cache);
@@ -36,30 +36,30 @@ describe('Downloader with Cache', () => {
     fetchMockHelper.restore();
   });
 
-  describe('constructor with cache', () => {
-    it('should create cached strategy when cache is provided', () => {
+  describe("constructor with cache", () => {
+    it("should create cached strategy when cache is provided", () => {
       expect(downloader).toBeDefined();
 
       // Verify constructor log
-      logger.expect(['DEBUG'], ['Downloader'], [], ['Created CachedDownloadStrategy wrapping NodeFetchStrategy']);
+      logger.expect(["DEBUG"], ["Downloader"], [], ["Created CachedDownloadStrategy wrapping NodeFetchStrategy"]);
     });
 
-    it('should work without cache when none provided', () => {
+    it("should work without cache when none provided", () => {
       const downloaderWithoutCache = new Downloader(logger, mockFileSystem);
       expect(downloaderWithoutCache).toBeDefined();
     });
   });
 
-  describe('download with caching functionality', () => {
-    const testUrl = 'https://example.com/test-file.zip';
-    const testData = 'test file content';
+  describe("download with caching functionality", () => {
+    const testUrl = "https://example.com/test-file.zip";
+    const testData = "test file content";
 
-    it('should cache downloads and retrieve from cache on second request', async () => {
+    it("should cache downloads and retrieve from cache on second request", async () => {
       // Mock the first fetch request
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/zip' },
+        headers: { "Content-Type": "application/zip" },
       });
 
       // First download - should hit the network
@@ -77,15 +77,15 @@ describe('Downloader with Cache', () => {
       expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(1);
 
       // Verify logger received download started message
-      logger.expect(['DEBUG'], ['Downloader', 'download'], [], ['Downloading URL']);
+      logger.expect(["DEBUG"], ["Downloader", "download"], [], ["Downloading URL"]);
     });
 
-    it('should use cache when progress callback is provided', async () => {
+    it("should use cache when progress callback is provided", async () => {
       // Mock one request; second call should hit cache
       fetchMockHelper.mockImplementation({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/zip' },
+        headers: { "Content-Type": "application/zip" },
       });
 
       let progressCallCount = 0;
@@ -108,11 +108,11 @@ describe('Downloader with Cache', () => {
       expect(progressCallCount).toBeGreaterThan(0);
     });
 
-    it('should report immediate 0->100 progress on cache hit', async () => {
+    it("should report immediate 0->100 progress on cache hit", async () => {
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/zip' },
+        headers: { "Content-Type": "application/zip" },
       });
 
       const firstProgress: Array<[number, number | null]> = [];
@@ -137,18 +137,18 @@ describe('Downloader with Cache', () => {
       ]);
     });
 
-    it('should create destination directory on cached file writes with progress callback', async () => {
+    it("should create destination directory on cached file writes with progress callback", async () => {
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/zip' },
+        headers: { "Content-Type": "application/zip" },
       });
 
       await downloader.download(logger, testUrl, {
         onProgress: () => {},
       });
 
-      const cachedFilePath = '/staging/nested/path/test-file.zip';
+      const cachedFilePath = "/staging/nested/path/test-file.zip";
       const progressEvents: Array<[number, number | null]> = [];
 
       await downloader.downloadToFile(logger, testUrl, cachedFilePath, {
@@ -166,7 +166,7 @@ describe('Downloader with Cache', () => {
       ]);
     });
 
-    it('should work with disabled cache', async () => {
+    it("should work with disabled cache", async () => {
       const disabledCacheConfig = { ...cacheConfig, enabled: false };
       const disabledCache = new FileCache(logger, mockFileSystem, disabledCacheConfig);
       const downloaderWithDisabledCache = new Downloader(logger, mockFileSystem, undefined, disabledCache);
@@ -175,7 +175,7 @@ describe('Downloader with Cache', () => {
       fetchMockHelper.mockImplementation({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/zip' },
+        headers: { "Content-Type": "application/zip" },
       });
 
       // First download - should hit network
@@ -190,21 +190,21 @@ describe('Downloader with Cache', () => {
       expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle different URLs separately in cache', async () => {
-      const testUrl1 = 'https://example.com/file1.zip';
-      const testUrl2 = 'https://example.com/file2.zip';
-      const testData1 = 'content for file 1';
-      const testData2 = 'content for file 2';
+    it("should handle different URLs separately in cache", async () => {
+      const testUrl1 = "https://example.com/file1.zip";
+      const testUrl2 = "https://example.com/file2.zip";
+      const testData1 = "content for file 1";
+      const testData2 = "content for file 2";
 
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData1,
-        headers: { 'Content-Type': 'application/zip' },
+        headers: { "Content-Type": "application/zip" },
       });
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData2,
-        headers: { 'Content-Type': 'application/zip' },
+        headers: { "Content-Type": "application/zip" },
       });
 
       // Download both URLs
@@ -225,13 +225,13 @@ describe('Downloader with Cache', () => {
       expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(2);
     });
 
-    it('should cache downloads to file without affecting functionality', async () => {
-      const filePath = '/downloaded-file.zip';
+    it("should cache downloads to file without affecting functionality", async () => {
+      const filePath = "/downloaded-file.zip";
 
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/zip' },
+        headers: { "Content-Type": "application/zip" },
       });
 
       // Download to file - should bypass cache but still work

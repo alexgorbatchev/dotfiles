@@ -13,16 +13,16 @@ import type {
   IToolConfigBuilder as ToolConfigBuilderContract,
   IToolConfigContext,
   ToolConfig,
-} from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
-import { IToolConfigBuilder } from '@dotfiles/tool-config-builder';
+} from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
+import { IToolConfigBuilder } from "@dotfiles/tool-config-builder";
 
 type ConfigureToolFnResult =
   | ToolConfig
   | ToolConfigBuilderContract
-  | Omit<ToolConfigBuilderContract, 'bin'>
+  | Omit<ToolConfigBuilderContract, "bin">
   | undefined
-  | Promise<ToolConfig | ToolConfigBuilderContract | Omit<ToolConfigBuilderContract, 'bin'> | undefined>;
+  | Promise<ToolConfig | ToolConfigBuilderContract | Omit<ToolConfigBuilderContract, "bin"> | undefined>;
 
 /**
  * Define a tool configuration with type-safe install method selection.
@@ -66,7 +66,7 @@ export function defineTool(
   return async (
     install: InstallFunction,
     ctx: IToolConfigContext,
-  ): Promise<ToolConfig | ToolConfigBuilderContract | Omit<ToolConfigBuilderContract, 'bin'> | undefined> => {
+  ): Promise<ToolConfig | ToolConfigBuilderContract | Omit<ToolConfigBuilderContract, "bin"> | undefined> => {
     const result = fn(install, ctx);
     if (result instanceof Promise) {
       return result;

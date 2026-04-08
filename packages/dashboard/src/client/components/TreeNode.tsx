@@ -1,4 +1,4 @@
-import { type JSX } from 'preact';
+import { type JSX } from "preact";
 import {
   File,
   FileCode,
@@ -11,15 +11,15 @@ import {
   Package,
   Settings,
   Zap,
-} from '../icons';
+} from "../icons";
 
-import { Badge } from './ui/Badge';
-import { Tree, type TreeItemData } from './ui/Tree';
+import { Badge } from "./ui/Badge";
+import { Tree, type TreeItemData } from "./ui/Tree";
 
 interface TreeNodeData {
   name: string;
   path: string;
-  type: 'file' | 'directory';
+  type: "file" | "directory";
   fileType?: string;
   lastOperation?: string;
   children?: TreeNodeData[];
@@ -30,43 +30,43 @@ interface TreeNodeProps {
 }
 
 const FILE_TYPE_COLORS: Record<string, string> = {
-  shim: 'text-blue-400',
-  binary: 'text-green-400',
-  'binary-path': 'text-cyan-400',
-  symlink: 'text-purple-400',
-  config: 'text-amber-400',
-  completion: 'text-cyan-400',
-  init: 'text-pink-400',
-  'hook-generated': 'text-orange-400',
-  catalog: 'text-muted-foreground',
-  install: 'text-green-400',
-  source: 'text-purple-400',
+  shim: "text-blue-400",
+  binary: "text-green-400",
+  "binary-path": "text-cyan-400",
+  symlink: "text-purple-400",
+  config: "text-amber-400",
+  completion: "text-cyan-400",
+  init: "text-pink-400",
+  "hook-generated": "text-orange-400",
+  catalog: "text-muted-foreground",
+  install: "text-green-400",
+  source: "text-purple-400",
 };
 
 function getFileIcon(fileType?: string): JSX.Element {
-  const iconClass = 'h-4 w-4';
+  const iconClass = "h-4 w-4";
   switch (fileType) {
-    case 'shim':
+    case "shim":
       return <FileCode class={iconClass} />;
-    case 'binary':
+    case "binary":
       return <FileTerminal class={iconClass} />;
-    case 'binary-path':
+    case "binary-path":
       return <Zap class={iconClass} />;
-    case 'symlink':
+    case "symlink":
       return <FileSymlink class={iconClass} />;
-    case 'config':
+    case "config":
       return <FileCog class={iconClass} />;
-    case 'completion':
+    case "completion":
       return <Settings class={iconClass} />;
-    case 'init':
+    case "init":
       return <FileCode class={iconClass} />;
-    case 'hook-generated':
+    case "hook-generated":
       return <FileCode class={iconClass} />;
-    case 'catalog':
+    case "catalog":
       return <Package class={iconClass} />;
-    case 'install':
+    case "install":
       return <Package class={iconClass} />;
-    case 'source':
+    case "source":
       return <Link class={iconClass} />;
     default:
       return <File class={iconClass} />;
@@ -74,18 +74,12 @@ function getFileIcon(fileType?: string): JSX.Element {
 }
 
 function getIcon(node: TreeNodeData): JSX.Element {
-  const isDirectory = node.type === 'directory';
+  const isDirectory = node.type === "directory";
   const hasChildren = node.children && node.children.length > 0;
-  const colorClass = isDirectory
-    ? 'text-amber-300'
-    : (FILE_TYPE_COLORS[node.fileType || ''] || 'text-muted-foreground');
+  const colorClass = isDirectory ? "text-amber-300" : FILE_TYPE_COLORS[node.fileType || ""] || "text-muted-foreground";
 
   if (isDirectory) {
-    return (
-      <span class={colorClass}>
-        {hasChildren ? <FolderOpen class='h-4 w-4' /> : <Folder class='h-4 w-4' />}
-      </span>
-    );
+    return <span class={colorClass}>{hasChildren ? <FolderOpen class="h-4 w-4" /> : <Folder class="h-4 w-4" />}</span>;
   }
   return <span class={colorClass}>{getFileIcon(node.fileType)}</span>;
 }
@@ -102,13 +96,13 @@ function convertToTreeItems(nodes: TreeNodeData[]): TreeItemData<TreeNodeData>[]
 
 function renderFileLabel(item: TreeItemData<TreeNodeData>): JSX.Element {
   const node = item.data;
-  const isDirectory = node?.type === 'directory';
+  const isDirectory = node?.type === "directory";
 
   return (
-    <span class='flex items-center'>
+    <span class="flex items-center">
       <span>{item.label}</span>
       {!isDirectory && node?.fileType && (
-        <Badge variant='outline' class='ml-2 text-xs'>
+        <Badge variant="outline" class="ml-2 text-xs">
           {node.fileType}
         </Badge>
       )}
@@ -122,5 +116,5 @@ export function FileTree({ nodes }: TreeNodeProps): JSX.Element {
 }
 
 // Re-export Tree for direct usage
-export { Tree } from './ui/Tree';
-export type { TreeItemData } from './ui/Tree';
+export { Tree } from "./ui/Tree";
+export type { TreeItemData } from "./ui/Tree";

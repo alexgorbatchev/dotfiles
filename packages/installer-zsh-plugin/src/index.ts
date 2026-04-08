@@ -1,19 +1,19 @@
-export * from './installFromZshPlugin';
-export * from './schemas';
-export * from './types';
-export * from './ZshPluginInstallerPlugin';
+export * from "./installFromZshPlugin";
+export * from "./schemas";
+export * from "./types";
+export * from "./ZshPluginInstallerPlugin";
 
 // Module augmentation for zsh-plugin plugin
-import type { RegisterPluginResult } from '@dotfiles/core';
-import type { ZshPluginInstallParams, ZshPluginToolConfig } from './schemas';
-import type { ZshPluginInstallResult } from './types';
+import type { RegisterPluginResult } from "@dotfiles/core";
+import type { ZshPluginInstallParams, ZshPluginToolConfig } from "./schemas";
+import type { ZshPluginInstallResult } from "./types";
 
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    'zsh-plugin': ZshPluginInstallParams;
+    "zsh-plugin": ZshPluginInstallParams;
   }
   interface IToolConfigRegistry {
-    'zsh-plugin': ZshPluginToolConfig;
+    "zsh-plugin": ZshPluginToolConfig;
   }
-  interface IPluginResultRegistry extends RegisterPluginResult<'zsh-plugin', ZshPluginInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<"zsh-plugin", ZshPluginInstallResult> {}
 }

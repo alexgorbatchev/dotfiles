@@ -1,8 +1,8 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import { createProjectConfigFromObject } from '@dotfiles/config';
-import type { ISystemInfo, PartialDeep } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
+import type { ProjectConfig } from "@dotfiles/config";
+import { createProjectConfigFromObject } from "@dotfiles/config";
+import type { ISystemInfo, PartialDeep } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
 
 /**
  * Represents a deep partial version of `ProjectConfig`, where all properties and sub-properties are optional.

@@ -1,8 +1,8 @@
-import type { BaseInstallParams } from '@dotfiles/core';
-import { baseInstallParamsSchema } from '@dotfiles/core';
-import type { GithubReleaseInstallParams } from '@dotfiles/installer-github';
-import { githubReleaseInstallParamsSchema } from '@dotfiles/installer-github';
-import { z } from 'zod';
+import type { BaseInstallParams } from "@dotfiles/core";
+import { baseInstallParamsSchema } from "@dotfiles/core";
+import type { GithubReleaseInstallParams } from "@dotfiles/installer-github";
+import { githubReleaseInstallParamsSchema } from "@dotfiles/installer-github";
+import { z } from "zod";
 
 const githubReleaseSourceParamsSchema = githubReleaseInstallParamsSchema.pick({
   repo: true,
@@ -14,19 +14,18 @@ const githubReleaseSourceParamsSchema = githubReleaseInstallParamsSchema.pick({
 });
 
 const dmgUrlSourceSchema = z.object({
-  type: z.literal('url'),
+  type: z.literal("url"),
   /** The URL of the DMG file to download. */
   url: z.string().url(),
 });
 
-const dmgGitHubReleaseSourceSchema = z.object({
-  type: z.literal('github-release'),
-}).extend(githubReleaseSourceParamsSchema.shape);
+const dmgGitHubReleaseSourceSchema = z
+  .object({
+    type: z.literal("github-release"),
+  })
+  .extend(githubReleaseSourceParamsSchema.shape);
 
-export const dmgSourceSchema = z.discriminatedUnion('type', [
-  dmgUrlSourceSchema,
-  dmgGitHubReleaseSourceSchema,
-]);
+export const dmgSourceSchema = z.discriminatedUnion("type", [dmgUrlSourceSchema, dmgGitHubReleaseSourceSchema]);
 
 export const dmgInstallParamsSchema = baseInstallParamsSchema.extend({
   /** Source definition for resolving the DMG file. */
@@ -68,17 +67,15 @@ export interface DmgInstallParams extends BaseInstallParams {
 }
 
 export interface DmgUrlSource {
-  type: 'url';
+  type: "url";
   url: string;
 }
 
-export interface DmgGitHubReleaseSource extends
-  Pick<
-    GithubReleaseInstallParams,
-    'repo' | 'version' | 'assetPattern' | 'assetSelector' | 'ghCli' | 'prerelease'
-  >
-{
-  type: 'github-release';
+export interface DmgGitHubReleaseSource extends Pick<
+  GithubReleaseInstallParams,
+  "repo" | "version" | "assetPattern" | "assetSelector" | "ghCli" | "prerelease"
+> {
+  type: "github-release";
 }
 
 export type DmgSource = DmgUrlSource | DmgGitHubReleaseSource;

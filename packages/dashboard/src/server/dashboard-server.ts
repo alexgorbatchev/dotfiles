@@ -1,13 +1,13 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
-import type { TsLogger } from '@dotfiles/logger';
-import { messages } from './log-messages';
-import { createApiRoutes } from './routes';
-import type { IDashboardServer, IDashboardServerOptions, IDashboardServices } from './types';
+import type { TsLogger } from "@dotfiles/logger";
+import { messages } from "./log-messages";
+import { createApiRoutes } from "./routes";
+import type { IDashboardServer, IDashboardServerOptions, IDashboardServices } from "./types";
 
 // Bun HTML import - handles bundling automatically
-import clientApp from '../client/dashboard.html';
+import clientApp from "../client/dashboard.html";
 
 /**
  * The directory containing this module (and the bundled chunk files).
@@ -16,8 +16,8 @@ import clientApp from '../client/dashboard.html';
  * directory where the chunks are located.
  */
 const PACKAGE_DIR = import.meta.dir;
-const IS_DEV = process.env.NODE_ENV === 'development';
-const IS_RELOAD = IS_DEV && process.env['DOTFILES_IS_RELOAD'] === '1';
+const IS_DEV = process.env.NODE_ENV === "development";
+const IS_RELOAD = IS_DEV && process.env["DOTFILES_IS_RELOAD"] === "1";
 
 /**
  * WORKAROUND: Bun HTMLBundle bug - certain JS chunks (especially those starting
@@ -35,11 +35,11 @@ function generateJsFileRoutes(dir: string): Record<string, () => Response> {
   try {
     const files = fs.readdirSync(dir);
     for (const file of files) {
-      if (file.endsWith('.js')) {
+      if (file.endsWith(".js")) {
         const filePath = path.join(dir, file);
         routes[`/${file}`] = () => {
           return new Response(Bun.file(filePath), {
-            headers: { 'Content-Type': 'text/javascript' },
+            headers: { "Content-Type": "text/javascript" },
           });
         };
       }
@@ -59,13 +59,13 @@ export function createDashboardServer(
   services: IDashboardServices,
   options: IDashboardServerOptions,
 ): IDashboardServer {
-  const logger = parentLogger.getSubLogger({ name: 'DashboardServer' });
+  const logger = parentLogger.getSubLogger({ name: "DashboardServer" });
   const api = createApiRoutes(logger, services);
   let server: ReturnType<typeof Bun.serve> | null = null;
 
   return {
     async start() {
-      process.env['DOTFILES_IS_RELOAD'] = '1';
+      process.env["DOTFILES_IS_RELOAD"] = "1";
 
       // IMPORTANT: Change to package directory before starting server.
       // Bun's HTML import generates chunk files (like dashboard-*.js, cli-*.js)
@@ -87,65 +87,65 @@ export function createDashboardServer(
           // JS file routes first (workaround for Bun HTMLBundle Content-Type bug)
           ...jsRoutes,
 
-          '/api/tools': async () => {
+          "/api/tools": async () => {
             const result = await api.getTools();
             return Response.json(result);
           },
 
-          '/api/stats': async () => {
+          "/api/stats": async () => {
             const result = await api.getStats();
             return Response.json(result);
           },
 
-          '/api/health': async () => {
+          "/api/health": async () => {
             const result = await api.getHealth();
             return Response.json(result);
           },
 
-          '/api/config': async () => {
+          "/api/config": async () => {
             const result = await api.getConfig();
             return Response.json(result);
           },
 
-          '/api/tool-configs-tree': async () => {
+          "/api/tool-configs-tree": async () => {
             const result = await api.getToolConfigsTree();
             return Response.json(result);
           },
 
-          '/api/shell': async () => {
+          "/api/shell": async () => {
             const result = await api.getShellIntegration();
             return Response.json(result);
           },
 
-          '/api/activity': async (req) => {
+          "/api/activity": async (req) => {
             const url = new URL(req.url);
-            const limitParam = url.searchParams.get('limit');
+            const limitParam = url.searchParams.get("limit");
             const limit = limitParam ? parseInt(limitParam, 10) : undefined;
             const result = await api.getActivity(limit);
             return Response.json(result);
           },
 
-          '/api/tools/:name/history': async (req: Request & { params: { name: string; }; }) => {
+          "/api/tools/:name/history": async (req: Request & { params: { name: string } }) => {
             const toolName = decodeURIComponent(req.params.name);
             const result = await api.getToolHistory(toolName);
             return Response.json(result);
           },
 
-          '/api/tools/:name/readme': async (req: Request & { params: { name: string; }; }) => {
+          "/api/tools/:name/readme": async (req: Request & { params: { name: string } }) => {
             const toolName = decodeURIComponent(req.params.name);
             const result = await api.getToolReadme(toolName);
             return Response.json(result);
           },
 
-          '/api/tools/:name/source': async (req: Request & { params: { name: string; }; }) => {
+          "/api/tools/:name/source": async (req: Request & { params: { name: string } }) => {
             const toolName = decodeURIComponent(req.params.name);
             const result = await api.getToolSource(toolName);
             return Response.json(result);
           },
 
-          '/api/tools/:name/install': async (req: Request & { params: { name: string; }; }) => {
-            if (req.method !== 'POST') {
-              return Response.json({ success: false, error: 'Method not allowed' }, { status: 405 });
+          "/api/tools/:name/install": async (req: Request & { params: { name: string } }) => {
+            if (req.method !== "POST") {
+              return Response.json({ success: false, error: "Method not allowed" }, { status: 405 });
             }
             const toolName = decodeURIComponent(req.params.name);
             const body = await req.json().catch(() => ({}));
@@ -153,50 +153,50 @@ export function createDashboardServer(
             return Response.json(result);
           },
 
-          '/api/tools/:name/check-update': async (req: Request & { params: { name: string; }; }) => {
-            if (req.method !== 'POST') {
-              return Response.json({ success: false, error: 'Method not allowed' }, { status: 405 });
+          "/api/tools/:name/check-update": async (req: Request & { params: { name: string } }) => {
+            if (req.method !== "POST") {
+              return Response.json({ success: false, error: "Method not allowed" }, { status: 405 });
             }
             const toolName = decodeURIComponent(req.params.name);
             const result = await api.checkToolUpdate(toolName);
             return Response.json(result);
           },
 
-          '/api/tools/:name/update': async (req: Request & { params: { name: string; }; }) => {
-            if (req.method !== 'POST') {
-              return Response.json({ success: false, error: 'Method not allowed' }, { status: 405 });
+          "/api/tools/:name/update": async (req: Request & { params: { name: string } }) => {
+            if (req.method !== "POST") {
+              return Response.json({ success: false, error: "Method not allowed" }, { status: 405 });
             }
             const toolName = decodeURIComponent(req.params.name);
             const result = await api.updateTool(toolName);
             return Response.json(result);
           },
 
-          '/api/recent-tools': async (req) => {
+          "/api/recent-tools": async (req) => {
             const url = new URL(req.url);
-            const limitParam = url.searchParams.get('limit');
+            const limitParam = url.searchParams.get("limit");
             const limit = limitParam ? parseInt(limitParam, 10) : undefined;
             const result = await api.getRecentTools(limit);
             return Response.json(result);
           },
 
-          '/api/*': Response.json({ success: false, error: 'Not found' }, { status: 404 }),
+          "/api/*": Response.json({ success: false, error: "Not found" }, { status: 404 }),
 
           // In development mode, Bun generates asset paths like "/../server/chunk-*.css"
           // due to HTML being imported from a different directory. This route redirects
           // those requests to the correct root-level paths where Bun actually serves them.
-          '/server/*': (req: Request) => {
+          "/server/*": (req: Request) => {
             const url = new URL(req.url);
-            const assetPath = url.pathname.replace(/^\/server\//, '/');
+            const assetPath = url.pathname.replace(/^\/server\//, "/");
             return Response.redirect(new URL(assetPath, url.origin).href, 302);
           },
 
           // Wildcard route for SPA - Bun handles HTMLBundle specially
-          '/*': clientApp,
+          "/*": clientApp,
         },
         fetch(request) {
           const url = new URL(request.url);
           logger.debug(messages.requestReceived(request.method, url.pathname));
-          return new Response('Not Found', { status: 404 });
+          return new Response("Not Found", { status: 404 });
         },
       });
 

@@ -24,30 +24,34 @@
  *   bun run release --dry-run    # Run everything except commit, tag, and publish
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { executeCommand } from '../git-utils';
-import { cdToRepoRoot } from '../path-utils';
+import fs from "node:fs";
+import path from "node:path";
+import { executeCommand } from "../git-utils";
+import { cdToRepoRoot } from "../path-utils";
 
 cdToRepoRoot();
 
 const rootDir = process.cwd();
-const packageJsonPath = path.join(rootDir, 'package.json');
-const distDir = path.join(rootDir, '.dist');
+const packageJsonPath = path.join(rootDir, "package.json");
+const distDir = path.join(rootDir, ".dist");
 
-type VersionBumpType = 'patch' | 'minor' | 'major' | string;
+type VersionBumpType = "patch" | "minor" | "major" | string;
 
 function isValidBumpType(value: string): value is VersionBumpType {
   // It's a bump type or a direct semantic version string (e.g., "1.2.3")
-  return value === 'patch' || value === 'minor' || value === 'major' ||
-    /^\d+\.\d+\.\d+(?:-[\w.]+)?(?:\+[\w.]+)?$/.test(value);
+  return (
+    value === "patch" ||
+    value === "minor" ||
+    value === "major" ||
+    /^\d+\.\d+\.\d+(?:-[\w.]+)?(?:\+[\w.]+)?$/.test(value)
+  );
 }
 
 /**
  * Reads the current version from package.json.
  */
 function readCurrentVersion(): string {
-  const content = fs.readFileSync(packageJsonPath, 'utf-8');
+  const content = fs.readFileSync(packageJsonPath, "utf-8");
   const packageJson = JSON.parse(content);
   const version: string = packageJson.version;
   return version;
@@ -67,7 +71,7 @@ async function bumpVersion(bumpType: VersionBumpType): Promise<string> {
     return previousVersion;
   }
 
-  await executeCommand(['bun', 'pm', 'version', bumpType, '--no-git-tag-version']);
+  await executeCommand(["bun", "pm", "version", bumpType, "--no-git-tag-version"]);
 
   const newVersion = readCurrentVersion();
   console.log(`✅ Version bumped: ${previousVersion} → ${newVersion}`);
@@ -78,17 +82,17 @@ async function bumpVersion(bumpType: VersionBumpType): Promise<string> {
  * Reverts the version change in package.json using git checkout.
  */
 async function revertVersionChange(): Promise<void> {
-  console.log('🔄 Reverting version change...');
-  await executeCommand(['git', 'checkout', 'package.json']);
-  console.log('✅ Version change reverted');
+  console.log("🔄 Reverting version change...");
+  await executeCommand(["git", "checkout", "package.json"]);
+  console.log("✅ Version change reverted");
 }
 
 /**
  * Runs the compile script.
  */
 async function runBuild(): Promise<void> {
-  console.log('🏗️  Running compile...');
-  await executeCommand(['bun', 'run', 'compile']);
+  console.log("🏗️  Running compile...");
+  await executeCommand(["bun", "run", "compile"]);
 }
 
 /**
@@ -96,13 +100,13 @@ async function runBuild(): Promise<void> {
  */
 async function commitAndTag(version: string, didBump: boolean): Promise<void> {
   if (didBump) {
-    console.log('📝 Committing version change...');
-    await executeCommand(['git', 'add', 'package.json']);
-    await executeCommand(['git', 'commit', '-m', `Version ${version}`]);
+    console.log("📝 Committing version change...");
+    await executeCommand(["git", "add", "package.json"]);
+    await executeCommand(["git", "commit", "-m", `Version ${version}`]);
   }
 
   console.log(`📝 Creating tag v${version}...`);
-  await executeCommand(['git', 'tag', `v${version}`]);
+  await executeCommand(["git", "tag", `v${version}`]);
   console.log(`✅ Created tag v${version}`);
 }
 
@@ -110,9 +114,9 @@ async function commitAndTag(version: string, didBump: boolean): Promise<void> {
  * Pushes the release commit and tag before publishing.
  */
 async function pushRelease(version: string): Promise<void> {
-  console.log('🚀 Pushing release commit and tag...');
-  await executeCommand(['git', 'push']);
-  await executeCommand(['git', 'push', 'origin', `v${version}`]);
+  console.log("🚀 Pushing release commit and tag...");
+  await executeCommand(["git", "push"]);
+  await executeCommand(["git", "push", "origin", `v${version}`]);
   console.log(`✅ Pushed release commit and tag v${version}`);
 }
 
@@ -126,15 +130,15 @@ async function hasUncommittedChanges(): Promise<boolean> {
 }
 
 function verifyPublicReadme(): void {
-  const releaseReadmePath = path.join(distDir, 'README.md');
+  const releaseReadmePath = path.join(distDir, "README.md");
   if (!fs.existsSync(releaseReadmePath)) {
     throw new Error(`Built README is missing: ${releaseReadmePath}`);
   }
 
-  const readmeContent = fs.readFileSync(releaseReadmePath, 'utf-8');
+  const readmeContent = fs.readFileSync(releaseReadmePath, "utf-8");
 
-  if (!readmeContent.includes('Bun runtime requirement')) {
-    throw new Error('Built README is missing the Bun runtime requirement section.');
+  if (!readmeContent.includes("Bun runtime requirement")) {
+    throw new Error("Built README is missing the Bun runtime requirement section.");
   }
 }
 
@@ -144,8 +148,8 @@ function verifyPublicReadme(): void {
 
 async function release(): Promise<void> {
   const args = process.argv.slice(2);
-  const dryRun = args.includes('--dry-run');
-  const bumpType = args.find((arg) => arg !== '--dry-run') ?? 'patch';
+  const dryRun = args.includes("--dry-run");
+  const bumpType = args.find((arg) => arg !== "--dry-run") ?? "patch";
 
   if (!isValidBumpType(bumpType)) {
     console.error(
@@ -155,11 +159,11 @@ async function release(): Promise<void> {
   }
 
   if (dryRun) {
-    console.log('🧪 Dry run mode — will skip commit, tag, and publish.');
+    console.log("🧪 Dry run mode — will skip commit, tag, and publish.");
   }
 
-  if (!dryRun && await hasUncommittedChanges()) {
-    throw new Error('Working directory is not clean. Release requires a clean git state.');
+  if (!dryRun && (await hasUncommittedChanges())) {
+    throw new Error("Working directory is not clean. Release requires a clean git state.");
   }
 
   let newVersion: string | undefined;
@@ -191,12 +195,10 @@ async function release(): Promise<void> {
     );
   } catch (error) {
     // Build or push failed - revert version change if it was not committed yet
-    console.error('\n❌ Release push failed:', error instanceof Error ? error.message : error);
+    console.error("\n❌ Release push failed:", error instanceof Error ? error.message : error);
 
     if (newVersion && !dryRun) {
-      console.error(
-        '⚠️  Git tagging/pushing may have failed mid-way. Inspect git commit/tag state manually.',
-      );
+      console.error("⚠️  Git tagging/pushing may have failed mid-way. Inspect git commit/tag state manually.");
       process.exit(1);
     }
 
@@ -205,7 +207,7 @@ async function release(): Promise<void> {
         await revertVersionChange();
       } catch (revertError) {
         console.error(
-          '⚠️  Failed to revert version change:',
+          "⚠️  Failed to revert version change:",
           revertError instanceof Error ? revertError.message : revertError,
         );
       }

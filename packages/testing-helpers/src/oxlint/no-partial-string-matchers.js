@@ -19,13 +19,13 @@
  */
 
 /** @type {string[]} */
-const PROHIBITED_MATCHERS = new Set(['toContain', 'toMatch']);
+const PROHIBITED_MATCHERS = new Set(["toContain", "toMatch"]);
 
 /** @type {Set<string>} */
-const BOOLEAN_MATCHERS_WITH_ARG = new Set(['toBe', 'toEqual', 'toStrictEqual']);
+const BOOLEAN_MATCHERS_WITH_ARG = new Set(["toBe", "toEqual", "toStrictEqual"]);
 
 /** @type {Set<string>} */
-const BOOLEAN_MATCHERS_NO_ARG = new Set(['toBeTrue', 'toBeTruthy', 'toBeFalse', 'toBeFalsy']);
+const BOOLEAN_MATCHERS_NO_ARG = new Set(["toBeTrue", "toBeTruthy", "toBeFalse", "toBeFalsy"]);
 
 /**
  * Check if a node is a regex literal
@@ -35,13 +35,9 @@ const BOOLEAN_MATCHERS_NO_ARG = new Set(['toBeTrue', 'toBeTruthy', 'toBeFalse', 
 function isRegexLiteral(node) {
   if (!node) return false;
   // RegExp literal: /pattern/
-  if (node.type === 'Literal' && node.regex) return true;
+  if (node.type === "Literal" && node.regex) return true;
   // new RegExp(...) call
-  if (
-    node.type === 'NewExpression' &&
-    node.callee.type === 'Identifier' &&
-    node.callee.name === 'RegExp'
-  ) {
+  if (node.type === "NewExpression" && node.callee.type === "Identifier" && node.callee.name === "RegExp") {
     return true;
   }
   return false;
@@ -53,7 +49,7 @@ function isRegexLiteral(node) {
  * @returns {boolean}
  */
 function isBooleanLiteral(node) {
-  return node?.type === 'Literal' && typeof node.value === 'boolean';
+  return node?.type === "Literal" && typeof node.value === "boolean";
 }
 
 /**
@@ -63,19 +59,19 @@ function isBooleanLiteral(node) {
  */
 function isIncludesCall(node) {
   return (
-    node?.type === 'CallExpression' &&
-    node.callee.type === 'MemberExpression' &&
-    node.callee.property.type === 'Identifier' &&
-    node.callee.property.name === 'includes'
+    node?.type === "CallExpression" &&
+    node.callee.type === "MemberExpression" &&
+    node.callee.property.type === "Identifier" &&
+    node.callee.property.name === "includes"
   );
 }
 
 /** @type {import('eslint').Rule.RuleModule} */
 export const noPartialStringMatchersRule = {
   meta: {
-    type: 'problem',
+    type: "problem",
     docs: {
-      description: 'Disallow partial string matchers (toContain, toMatch) that can cause false positives',
+      description: "Disallow partial string matchers (toContain, toMatch) that can cause false positives",
       recommended: true,
     },
     schema: [],
@@ -93,12 +89,10 @@ export const noPartialStringMatchersRule = {
         // Check for expect(x.includes(...)).toBe(true/false) pattern
         // Also catches toBeTrue(), toBeTruthy(), toBeFalse(), toBeFalsy()
         // This is a workaround for toContain that we also want to prohibit
-        if (
-          node.callee.type === 'MemberExpression' &&
-          node.callee.property.type === 'Identifier'
-        ) {
+        if (node.callee.type === "MemberExpression" && node.callee.property.type === "Identifier") {
           const matcherName = node.callee.property.name;
-          const isMatcherWithBoolArg = BOOLEAN_MATCHERS_WITH_ARG.has(matcherName) &&
+          const isMatcherWithBoolArg =
+            BOOLEAN_MATCHERS_WITH_ARG.has(matcherName) &&
             node.arguments?.length === 1 &&
             isBooleanLiteral(node.arguments[0]);
           const isMatcherNoArg = BOOLEAN_MATCHERS_NO_ARG.has(matcherName);
@@ -110,23 +104,23 @@ export const noPartialStringMatchersRule = {
 
             // Handle .not modifier
             if (
-              expectCall?.type === 'MemberExpression' &&
-              expectCall.property.type === 'Identifier' &&
-              expectCall.property.name === 'not'
+              expectCall?.type === "MemberExpression" &&
+              expectCall.property.type === "Identifier" &&
+              expectCall.property.name === "not"
             ) {
               expectCall = expectCall.object;
             }
 
             if (
-              expectCall?.type === 'CallExpression' &&
-              expectCall.callee.type === 'Identifier' &&
-              expectCall.callee.name === 'expect' &&
+              expectCall?.type === "CallExpression" &&
+              expectCall.callee.type === "Identifier" &&
+              expectCall.callee.name === "expect" &&
               expectCall.arguments.length > 0 &&
               isIncludesCall(expectCall.arguments[0])
             ) {
               context.report({
                 node: expectCall.arguments[0].callee.property,
-                messageId: 'noIncludesWorkaround',
+                messageId: "noIncludesWorkaround",
               });
               return;
             }
@@ -138,17 +132,17 @@ export const noPartialStringMatchersRule = {
         // where property is 'toContain' or 'toMatch'
         // NOTE: We allow .not.toContain() and .not.toMatch() as negative assertions are useful
         if (
-          node.callee.type === 'MemberExpression' &&
-          node.callee.property.type === 'Identifier' &&
+          node.callee.type === "MemberExpression" &&
+          node.callee.property.type === "Identifier" &&
           PROHIBITED_MATCHERS.has(node.callee.property.name)
         ) {
           const matcherName = node.callee.property.name;
-          let messageId = matcherName === 'toContain' ? 'noToContain' : 'noToMatch';
+          let messageId = matcherName === "toContain" ? "noToContain" : "noToMatch";
 
           // For toMatch(), check if the argument is a regex
-          if (matcherName === 'toMatch' && node.arguments.length > 0) {
+          if (matcherName === "toMatch" && node.arguments.length > 0) {
             if (isRegexLiteral(node.arguments[0])) {
-              messageId = 'noToMatchRegex';
+              messageId = "noToMatchRegex";
             }
           }
 
@@ -161,17 +155,18 @@ export const noPartialStringMatchersRule = {
           while (current) {
             // Check for .not modifier - if present, allow the assertion
             if (
-              current.type === 'MemberExpression' &&
-              current.property.type === 'Identifier' &&
-              current.property.name === 'not'
+              current.type === "MemberExpression" &&
+              current.property.type === "Identifier" &&
+              current.property.name === "not"
             ) {
               hasNotModifier = true;
               break;
             }
 
             if (
-              current.type === 'CallExpression' && current.callee.type === 'Identifier' &&
-              current.callee.name === 'expect'
+              current.type === "CallExpression" &&
+              current.callee.type === "Identifier" &&
+              current.callee.name === "expect"
             ) {
               // Found expect() - report the violation
               context.report({
@@ -182,9 +177,9 @@ export const noPartialStringMatchersRule = {
             }
 
             // Handle chained calls like expect(...).not.toContain()
-            if (current.type === 'MemberExpression') {
+            if (current.type === "MemberExpression") {
               current = current.object;
-            } else if (current.type === 'CallExpression') {
+            } else if (current.type === "CallExpression") {
               current = current.callee;
             } else {
               break;

@@ -1,8 +1,8 @@
-import type { Resolvable } from '@dotfiles/unwrap-value';
-import { z } from 'zod';
-import type { IEnvContext } from '../../installer/installHooks.types';
-import { installHookSchema } from '../hooks/installHookSchema';
-import type { InstallHook } from '../hooks/installHookSchema';
+import type { Resolvable } from "@dotfiles/unwrap-value";
+import { z } from "zod";
+import type { IEnvContext } from "../../installer/installHooks.types";
+import { installHookSchema } from "../hooks/installHookSchema";
+import type { InstallHook } from "../hooks/installHookSchema";
 
 /**
  * Environment variables type - can be static object or function returning object.
@@ -14,13 +14,13 @@ export type BaseEnv = Resolvable<IEnvContext, Record<string, string>>;
  */
 export interface InstallHooks {
   /** Runs before any other installation steps (download, extract, main install command) begin. */
-  'before-install'?: InstallHook[];
+  "before-install"?: InstallHook[];
   /** Runs after download but before extraction or execution. */
-  'after-download'?: InstallHook[];
+  "after-download"?: InstallHook[];
   /** Runs after extraction but before the main binary is finalized. */
-  'after-extract'?: InstallHook[];
+  "after-extract"?: InstallHook[];
   /** Runs after the main installation command completes. */
-  'after-install'?: InstallHook[];
+  "after-install"?: InstallHook[];
 }
 
 export const baseInstallParamsSchema = z
@@ -56,13 +56,13 @@ export const baseInstallParamsSchema = z
     hooks: z
       .object({
         /** Runs before any other installation steps (download, extract, main install command) begin. */
-        'before-install': z.array(installHookSchema).optional(),
+        "before-install": z.array(installHookSchema).optional(),
         /** Runs after download but before extraction or execution. */
-        'after-download': z.array(installHookSchema).optional(),
+        "after-download": z.array(installHookSchema).optional(),
         /** Runs after extraction but before the main binary is finalized. */
-        'after-extract': z.array(installHookSchema).optional(),
+        "after-extract": z.array(installHookSchema).optional(),
         /** Runs after the main installation command completes. */
-        'after-install': z.array(installHookSchema).optional(),
+        "after-install": z.array(installHookSchema).optional(),
       })
       .partial()
       .optional(),

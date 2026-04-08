@@ -1,11 +1,11 @@
-import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { IToolInstallationDetails } from '@dotfiles/registry';
+import type { InstallResultFailure, InstallResultSuccess } from "@dotfiles/core";
+import type { IToolInstallationDetails } from "@dotfiles/registry";
 
 /**
  * Metadata for GitHub Release installations
  */
 export interface IGitHubReleaseInstallMetadata extends Partial<IToolInstallationDetails> {
-  method: 'github-release';
+  method: "github-release";
   releaseUrl: string;
   publishedAt: string;
   releaseName: string;

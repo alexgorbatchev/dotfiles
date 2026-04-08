@@ -1,8 +1,8 @@
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import crypto from 'node:crypto';
-import path from 'node:path';
-import { messages } from './log-messages';
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import crypto from "node:crypto";
+import path from "node:path";
+import { messages } from "./log-messages";
 import type {
   CacheEntry,
   IBinaryCacheEntry,
@@ -10,7 +10,7 @@ import type {
   ICacheConfig,
   IDownloadCacheEntry,
   IJsonCacheEntry,
-} from './types';
+} from "./types";
 
 /**
  * File-based cache implementation that supports both JSON and binary storage strategies.
@@ -25,26 +25,26 @@ export class FileCache implements ICache {
   private readonly binariesDir?: string;
 
   constructor(parentLogger: TsLogger, fileSystem: IFileSystem, config: ICacheConfig) {
-    this.logger = parentLogger.getSubLogger({ name: 'FileCache' });
+    this.logger = parentLogger.getSubLogger({ name: "FileCache" });
     this.fileSystem = fileSystem;
     this.config = config;
 
-    if (config.storageStrategy === 'json') {
+    if (config.storageStrategy === "json") {
       // For JSON strategy, everything goes in the main cache directory
       this.metadataDir = config.cacheDir;
     } else {
       // For binary strategy, separate metadata and binaries
-      this.metadataDir = path.join(config.cacheDir, 'metadata');
-      this.binariesDir = path.join(config.cacheDir, 'binaries');
+      this.metadataDir = path.join(config.cacheDir, "metadata");
+      this.binariesDir = path.join(config.cacheDir, "binaries");
     }
 
     this.logger.debug(messages.initialized(config.cacheDir, config.defaultTtl, config.storageStrategy, config.enabled));
   }
 
   async get<T>(key: string): Promise<T | null> {
-    const logger = this.logger.getSubLogger({ name: 'get' });
+    const logger = this.logger.getSubLogger({ name: "get" });
     if (!this.config.enabled) {
-      logger.debug(messages.cachingDisabled('returning null', key));
+      logger.debug(messages.cachingDisabled("returning null", key));
       return null;
     }
 
@@ -56,7 +56,7 @@ export class FileCache implements ICache {
         return null;
       }
 
-      const metadataContent = await this.fileSystem.readFile(metadataPath, 'utf8');
+      const metadataContent = await this.fileSystem.readFile(metadataPath, "utf8");
       const entry: CacheEntry<T> = JSON.parse(metadataContent);
 
       // Check if entry is expired
@@ -66,9 +66,9 @@ export class FileCache implements ICache {
         return null;
       }
 
-      if (entry.type === 'json') {
+      if (entry.type === "json") {
         // For JSON entries, data is stored directly
-        logger.debug(messages.cacheHit(key, 'JSON'));
+        logger.debug(messages.cacheHit(key, "JSON"));
         return entry.data;
       } else {
         // For binary entries, data is in a separate file
@@ -87,7 +87,7 @@ export class FileCache implements ICache {
         const buffer = Buffer.isBuffer(binaryContent) ? binaryContent : Buffer.from(binaryContent);
 
         // Verify content integrity for binary data
-        const actualHash = crypto.createHash('sha256').update(buffer).digest('hex');
+        const actualHash = crypto.createHash("sha256").update(buffer).digest("hex");
         const expectedHash = entry.contentHash;
 
         if (actualHash !== expectedHash) {
@@ -96,7 +96,7 @@ export class FileCache implements ICache {
           return null;
         }
 
-        logger.debug(messages.cacheHit(key, 'binary', buffer.length));
+        logger.debug(messages.cacheHit(key, "binary", buffer.length));
         return buffer as T;
       }
     } catch (error) {
@@ -106,9 +106,9 @@ export class FileCache implements ICache {
   }
 
   async set<T>(key: string, data: T, ttlMs?: number): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'set' });
+    const logger = this.logger.getSubLogger({ name: "set" });
     if (!this.config.enabled) {
-      logger.debug(messages.cachingDisabled('skipping set', key));
+      logger.debug(messages.cachingDisabled("skipping set", key));
       return;
     }
 
@@ -118,19 +118,19 @@ export class FileCache implements ICache {
       const actualTtlMs = ttlMs ?? this.config.defaultTtl;
       const now = Date.now();
 
-      if (this.config.storageStrategy === 'json') {
+      if (this.config.storageStrategy === "json") {
         // For JSON strategy, store everything in one file
         const entry: IJsonCacheEntry<T> = {
-          type: 'json',
+          type: "json",
           data,
           timestamp: now,
           expiresAt: now + actualTtlMs,
         };
 
         const metadataPath = this.getMetadataFilePath(key);
-        await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), 'utf8');
+        await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), "utf8");
 
-        logger.debug(messages.cacheStored(key, 'JSON', new Date(entry.expiresAt).toISOString()));
+        logger.debug(messages.cacheStored(key, "JSON", new Date(entry.expiresAt).toISOString()));
       } else {
         // For binary strategy, store data and metadata separately
         if (!Buffer.isBuffer(data)) {
@@ -142,7 +142,7 @@ export class FileCache implements ICache {
         }
 
         const buffer = data;
-        const contentHash = crypto.createHash('sha256').update(buffer).digest('hex');
+        const contentHash = crypto.createHash("sha256").update(buffer).digest("hex");
         const binaryFileName = `${contentHash}.bin`;
         const binaryFilePath = path.join(this.binariesDir, binaryFileName);
 
@@ -151,7 +151,7 @@ export class FileCache implements ICache {
 
         // Store metadata with reference to binary file
         const entry: IBinaryCacheEntry = {
-          type: 'binary',
+          type: "binary",
           binaryFileName,
           contentHash,
           size: buffer.length,
@@ -160,9 +160,9 @@ export class FileCache implements ICache {
         };
 
         const metadataPath = this.getMetadataFilePath(key);
-        await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), 'utf8');
+        await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), "utf8");
 
-        logger.debug(messages.cacheStored(key, 'binary', new Date(entry.expiresAt).toISOString(), buffer.length));
+        logger.debug(messages.cacheStored(key, "binary", new Date(entry.expiresAt).toISOString(), buffer.length));
       }
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
@@ -178,9 +178,9 @@ export class FileCache implements ICache {
     url: string,
     contentType?: string,
   ): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'setDownload' });
+    const logger = this.logger.getSubLogger({ name: "setDownload" });
     if (!this.config.enabled) {
-      logger.debug(messages.cachingDisabled('skipping setDownload', key));
+      logger.debug(messages.cachingDisabled("skipping setDownload", key));
       return;
     }
 
@@ -190,15 +190,15 @@ export class FileCache implements ICache {
       const actualTtlMs = ttlMs ?? this.config.defaultTtl;
       const now = Date.now();
 
-      if (this.config.storageStrategy === 'json') {
-        throw new Error('Download caching requires binary storage strategy');
+      if (this.config.storageStrategy === "json") {
+        throw new Error("Download caching requires binary storage strategy");
       }
 
       if (!this.binariesDir) {
         throw new Error(messages.binaryDirectoryNotConfigured());
       }
 
-      const contentHash = crypto.createHash('sha256').update(data).digest('hex');
+      const contentHash = crypto.createHash("sha256").update(data).digest("hex");
       const binaryFileName = `${contentHash}.bin`;
       const binaryFilePath = path.join(this.binariesDir, binaryFileName);
 
@@ -207,7 +207,7 @@ export class FileCache implements ICache {
 
       // Store metadata with download information
       const entry: IDownloadCacheEntry = {
-        type: 'binary',
+        type: "binary",
         binaryFileName,
         contentHash,
         size: data.length,
@@ -218,9 +218,9 @@ export class FileCache implements ICache {
       };
 
       const metadataPath = this.getMetadataFilePath(key);
-      await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), 'utf8');
+      await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), "utf8");
 
-      logger.debug(messages.cacheStored(key, 'download', new Date(entry.expiresAt).toISOString(), data.length));
+      logger.debug(messages.cacheStored(key, "download", new Date(entry.expiresAt).toISOString(), data.length));
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
       logger.warn(messages.storageFailed(key, errorMessage));
@@ -229,9 +229,9 @@ export class FileCache implements ICache {
   }
 
   async has(key: string): Promise<boolean> {
-    const logger = this.logger.getSubLogger({ name: 'has' });
+    const logger = this.logger.getSubLogger({ name: "has" });
     if (!this.config.enabled) {
-      logger.debug(messages.cachingDisabled('returning false', key));
+      logger.debug(messages.cachingDisabled("returning false", key));
       return false;
     }
 
@@ -243,7 +243,7 @@ export class FileCache implements ICache {
         return false;
       }
 
-      const metadataContent = await this.fileSystem.readFile(metadataPath, 'utf8');
+      const metadataContent = await this.fileSystem.readFile(metadataPath, "utf8");
       const entry: CacheEntry = JSON.parse(metadataContent);
 
       if (this.isExpired(entry)) {
@@ -252,7 +252,7 @@ export class FileCache implements ICache {
       }
 
       // For binary entries, also check if binary file exists
-      if (entry.type === 'binary' && this.binariesDir) {
+      if (entry.type === "binary" && this.binariesDir) {
         const binaryPath = path.join(this.binariesDir, entry.binaryFileName);
         const binaryExists = await this.fileSystem.exists(binaryPath);
 
@@ -271,9 +271,9 @@ export class FileCache implements ICache {
   }
 
   async delete(key: string): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'delete' });
+    const logger = this.logger.getSubLogger({ name: "delete" });
     if (!this.config.enabled) {
-      logger.debug(messages.cachingDisabled('skipping delete', key));
+      logger.debug(messages.cachingDisabled("skipping delete", key));
       return;
     }
 
@@ -281,7 +281,7 @@ export class FileCache implements ICache {
       const metadataPath = this.getMetadataFilePath(key);
 
       if (await this.fileSystem.exists(metadataPath)) {
-        const metadataContent = await this.fileSystem.readFile(metadataPath, 'utf8');
+        const metadataContent = await this.fileSystem.readFile(metadataPath, "utf8");
         const entry: CacheEntry = JSON.parse(metadataContent);
         await this.deleteEntry(key, entry);
         logger.debug(messages.cacheEntryRemoved(key));
@@ -296,9 +296,9 @@ export class FileCache implements ICache {
   }
 
   async clearExpired(): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'clearExpired' });
+    const logger = this.logger.getSubLogger({ name: "clearExpired" });
     if (!this.config.enabled) {
-      logger.debug(messages.cachingDisabled('skipping clearExpired', 'N/A'));
+      logger.debug(messages.cachingDisabled("skipping clearExpired", "N/A"));
       return;
     }
 
@@ -312,18 +312,18 @@ export class FileCache implements ICache {
       let expiredCount = 0;
 
       for (const file of metadataFiles) {
-        if (!file.endsWith('.json')) {
+        if (!file.endsWith(".json")) {
           continue;
         }
 
         const metadataPath = path.join(this.metadataDir, file);
 
         try {
-          const metadataContent = await this.fileSystem.readFile(metadataPath, 'utf8');
+          const metadataContent = await this.fileSystem.readFile(metadataPath, "utf8");
           const entry: CacheEntry = JSON.parse(metadataContent);
 
           if (this.isExpired(entry)) {
-            const key = path.basename(file, '.json');
+            const key = path.basename(file, ".json");
             await this.deleteEntry(key, entry);
             expiredCount++;
           }
@@ -344,9 +344,9 @@ export class FileCache implements ICache {
   }
 
   async clear(): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'clear' });
+    const logger = this.logger.getSubLogger({ name: "clear" });
     if (!this.config.enabled) {
-      logger.debug(messages.cachingDisabled('skipping clear', 'N/A'));
+      logger.debug(messages.cachingDisabled("skipping clear", "N/A"));
       return;
     }
 
@@ -367,12 +367,12 @@ export class FileCache implements ICache {
   }
 
   private getMetadataFilePath(key: string): string {
-    const hashedKey = crypto.createHash('md5').update(key).digest('hex');
+    const hashedKey = crypto.createHash("md5").update(key).digest("hex");
     return path.join(this.metadataDir, `${hashedKey}.json`);
   }
 
   private async ensureCacheDirectories(): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'ensureCacheDirectories' });
+    const logger = this.logger.getSubLogger({ name: "ensureCacheDirectories" });
     try {
       await this.fileSystem.ensureDir(this.metadataDir);
       if (this.binariesDir) {
@@ -406,7 +406,7 @@ export class FileCache implements ICache {
     }
 
     // Remove binary file if it's a binary entry
-    if (entry.type === 'binary' && this.binariesDir) {
+    if (entry.type === "binary" && this.binariesDir) {
       const binaryPath = path.join(this.binariesDir, entry.binaryFileName);
       if (await this.fileSystem.exists(binaryPath)) {
         await this.fileSystem.rm(binaryPath);

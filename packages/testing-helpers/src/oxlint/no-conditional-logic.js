@@ -21,19 +21,15 @@
  * @returns {boolean}
  */
 function isMockCall(node) {
-  return (
-    node?.type === 'CallExpression' &&
-    node.callee?.type === 'Identifier' &&
-    node.callee.name === 'mock'
-  );
+  return node?.type === "CallExpression" && node.callee?.type === "Identifier" && node.callee.name === "mock";
 }
 
 /** @type {import('eslint').Rule.RuleModule} */
 export const noConditionalLogicRule = {
   meta: {
-    type: 'problem',
+    type: "problem",
     docs: {
-      description: 'Disallow if statements in test files',
+      description: "Disallow if statements in test files",
       recommended: true,
     },
     schema: [],
@@ -48,13 +44,13 @@ export const noConditionalLogicRule = {
 
     return {
       // Track entering mock() calls
-      'CallExpression'(node) {
+      CallExpression(node) {
         if (isMockCall(node)) {
           mockCallDepth++;
         }
       },
       // Track exiting mock() calls
-      'CallExpression:exit'(node) {
+      "CallExpression:exit"(node) {
         if (isMockCall(node)) {
           mockCallDepth--;
         }
@@ -66,7 +62,7 @@ export const noConditionalLogicRule = {
         }
         context.report({
           node,
-          messageId: 'noIfStatement',
+          messageId: "noIfStatement",
         });
       },
     };

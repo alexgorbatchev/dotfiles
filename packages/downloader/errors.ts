@@ -1,5 +1,5 @@
-import type { TsLogger } from '@dotfiles/logger';
-import { downloaderErrorLogMessages } from './log-messages';
+import type { TsLogger } from "@dotfiles/logger";
+import { downloaderErrorLogMessages } from "./log-messages";
 
 /**
  * Base error class for all downloader-related errors.
@@ -13,10 +13,10 @@ export class DownloaderError extends Error {
 
   constructor(parentLogger: TsLogger, message: string, url: string) {
     super(message);
-    const logger = parentLogger.getSubLogger({ name: 'DownloaderError' });
-    this.name = 'DownloaderError';
+    const logger = parentLogger.getSubLogger({ name: "DownloaderError" });
+    this.name = "DownloaderError";
     this.url = url;
-    logger.debug(downloaderErrorLogMessages.errorCreated('DownloaderError', message, url));
+    logger.debug(downloaderErrorLogMessages.errorCreated("DownloaderError", message, url));
   }
 }
 
@@ -32,8 +32,8 @@ export class NetworkError extends DownloaderError {
 
   constructor(parentLogger: TsLogger, message: string, url: string, originalError?: Error) {
     super(parentLogger, message, url);
-    const logger = parentLogger.getSubLogger({ name: 'NetworkError' });
-    this.name = 'NetworkError';
+    const logger = parentLogger.getSubLogger({ name: "NetworkError" });
+    this.name = "NetworkError";
     this.originalError = originalError;
     logger.debug(downloaderErrorLogMessages.networkErrorCreated(message, url, originalError), originalError);
   }
@@ -62,8 +62,8 @@ export class HttpError extends DownloaderError {
     responseHeaders?: Record<string, string | string[] | undefined>,
   ) {
     super(parentLogger, message, url);
-    const logger = parentLogger.getSubLogger({ name: 'HttpError' });
-    this.name = 'HttpError';
+    const logger = parentLogger.getSubLogger({ name: "HttpError" });
+    this.name = "HttpError";
     this.statusCode = statusCode;
     this.statusText = statusText;
     this.responseBody = responseBody;
@@ -94,9 +94,9 @@ export class NotFoundError extends HttpError {
     responseBody?: string | Buffer | object,
     responseHeaders?: Record<string, string | string[] | undefined>,
   ) {
-    super(parentLogger, 'Resource not found', url, 404, 'Not Found', responseBody, responseHeaders);
-    const logger = parentLogger.getSubLogger({ name: 'NotFoundError' });
-    this.name = 'NotFoundError';
+    super(parentLogger, "Resource not found", url, 404, "Not Found", responseBody, responseHeaders);
+    const logger = parentLogger.getSubLogger({ name: "NotFoundError" });
+    this.name = "NotFoundError";
     logger.debug(downloaderErrorLogMessages.notFoundErrorCreated(url, responseBody, responseHeaders), {
       url,
       responseBody,
@@ -119,9 +119,9 @@ export class ForbiddenError extends HttpError {
     responseBody?: string | Buffer | object,
     responseHeaders?: Record<string, string | string[] | undefined>,
   ) {
-    super(parentLogger, 'Access forbidden', url, 403, 'Forbidden', responseBody, responseHeaders);
-    const logger = parentLogger.getSubLogger({ name: 'ForbiddenError' });
-    this.name = 'ForbiddenError';
+    super(parentLogger, "Access forbidden", url, 403, "Forbidden", responseBody, responseHeaders);
+    const logger = parentLogger.getSubLogger({ name: "ForbiddenError" });
+    this.name = "ForbiddenError";
     logger.debug(downloaderErrorLogMessages.forbiddenErrorCreated(url, responseBody, responseHeaders), {
       url,
       responseBody,
@@ -152,8 +152,8 @@ export class RateLimitError extends HttpError {
     resetTimestamp?: number,
   ) {
     super(parentLogger, message, url, statusCode, statusText, responseBody, responseHeaders);
-    const logger = parentLogger.getSubLogger({ name: 'RateLimitError' });
-    this.name = 'RateLimitError';
+    const logger = parentLogger.getSubLogger({ name: "RateLimitError" });
+    this.name = "RateLimitError";
     this.resetTimestamp = resetTimestamp;
     logger.debug(
       downloaderErrorLogMessages.rateLimitErrorCreated(
@@ -194,8 +194,8 @@ export class ClientError extends HttpError {
     responseHeaders?: Record<string, string | string[] | undefined>,
   ) {
     super(parentLogger, `Client error: ${statusText}`, url, statusCode, statusText, responseBody, responseHeaders);
-    const logger = parentLogger.getSubLogger({ name: 'ClientError' });
-    this.name = 'ClientError';
+    const logger = parentLogger.getSubLogger({ name: "ClientError" });
+    this.name = "ClientError";
     logger.debug(
       downloaderErrorLogMessages.clientErrorCreated(url, statusCode, statusText, responseBody, responseHeaders),
       {
@@ -226,8 +226,8 @@ export class ServerError extends HttpError {
     responseHeaders?: Record<string, string | string[] | undefined>,
   ) {
     super(parentLogger, `Server error: ${statusText}`, url, statusCode, statusText, responseBody, responseHeaders);
-    const logger = parentLogger.getSubLogger({ name: 'ServerError' });
-    this.name = 'ServerError';
+    const logger = parentLogger.getSubLogger({ name: "ServerError" });
+    this.name = "ServerError";
     logger.debug(
       downloaderErrorLogMessages.serverErrorCreated(url, statusCode, statusText, responseBody, responseHeaders),
       {

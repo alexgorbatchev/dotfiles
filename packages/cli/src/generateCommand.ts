@@ -1,17 +1,17 @@
-import type { TsLogger } from '@dotfiles/logger';
-import { exitCli, generateToolTypes } from '@dotfiles/utils';
-import path from 'node:path';
-import { generateZshCompletion } from './generateZshCompletion';
-import { messages } from './log-messages';
-import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
+import type { TsLogger } from "@dotfiles/logger";
+import { exitCli, generateToolTypes } from "@dotfiles/utils";
+import path from "node:path";
+import { generateZshCompletion } from "./generateZshCompletion";
+import { messages } from "./log-messages";
+import type { IGlobalProgram, IGlobalProgramOptions, IServices } from "./types";
 
 // Re-export the completion metadata for external use
-export * from './generateCommandCompletion';
+export * from "./generateCommandCompletion";
 
 /**
  * The binary name for the dotfiles CLI.
  */
-const DOTFILES_CLI_BINARY_NAME = 'dotfiles';
+const DOTFILES_CLI_BINARY_NAME = "dotfiles";
 
 /**
  * Command-specific options for the generate command.
@@ -29,11 +29,11 @@ export interface IGenerateCommandOptions extends IGenerateCommandSpecificOptions
  * Generates the CLI completion file for zsh.
  */
 async function generateCliCompletions(logger: TsLogger, services: IServices, toolNames: string[]): Promise<void> {
-  const subLogger = logger.getSubLogger({ name: 'generateCliCompletions' });
+  const subLogger = logger.getSubLogger({ name: "generateCliCompletions" });
   const { projectConfig, fs } = services;
 
   const completionContent = generateZshCompletion(DOTFILES_CLI_BINARY_NAME, toolNames);
-  const completionDir = path.join(projectConfig.paths.shellScriptsDir, 'zsh', 'completions');
+  const completionDir = path.join(projectConfig.paths.shellScriptsDir, "zsh", "completions");
   const completionPath = path.join(completionDir, `_${DOTFILES_CLI_BINARY_NAME}`);
 
   await fs.ensureDir(completionDir);
@@ -46,11 +46,11 @@ export function registerGenerateCommand(
   program: IGlobalProgram,
   servicesFactory: () => Promise<IServices>,
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'registerGenerateCommand' });
+  const logger = parentLogger.getSubLogger({ name: "registerGenerateCommand" });
   program
-    .command('generate')
-    .description('Generates shims, shell init files, and symlinks based on tool configurations.')
-    .option('--overwrite', 'Overwrite conflicting files that were not created by the generator')
+    .command("generate")
+    .description("Generates shims, shell init files, and symlinks based on tool configurations.")
+    .option("--overwrite", "Overwrite conflicting files that were not created by the generator")
     .action(async (options: IGenerateCommandSpecificOptions) => {
       const combinedOptions: IGenerateCommandOptions = { ...options, ...program.opts() };
       const services = await servicesFactory();
@@ -67,7 +67,7 @@ export function registerGenerateCommand(
         );
         logger.debug(messages.toolConfigsLoaded(projectConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length));
 
-        const toolTypesPath: string = path.join(projectConfig.paths.generatedDir, 'tool-types.d.ts');
+        const toolTypesPath: string = path.join(projectConfig.paths.generatedDir, "tool-types.d.ts");
         await generateToolTypes(toolConfigs, toolTypesPath, fs);
         logger.debug(messages.toolTypesGenerated(toolTypesPath));
 
@@ -79,7 +79,7 @@ export function registerGenerateCommand(
 
         logger.info(messages.commandCompleted(Boolean(combinedOptions.dryRun)));
       } catch (_error) {
-        logger.error(messages.commandExecutionFailed('generate', 1));
+        logger.error(messages.commandExecutionFailed("generate", 1));
         exitCli(1);
       }
     });

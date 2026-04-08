@@ -1,2 +1,2 @@
-export * from './curlTarInstallParamsSchema';
-export * from './curlTarToolConfigSchema';
+export * from "./curlTarInstallParamsSchema";
+export * from "./curlTarToolConfigSchema";

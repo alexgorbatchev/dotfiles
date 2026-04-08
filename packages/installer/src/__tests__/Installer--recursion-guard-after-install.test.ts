@@ -1,7 +1,7 @@
-import type { IAfterInstallContext } from '@dotfiles/core';
-import type { ManualToolConfig } from '@dotfiles/installer-manual';
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import { createInstallerTestSetup, createManualToolConfig, type IInstallerTestSetup } from './installer-test-helpers';
+import type { IAfterInstallContext } from "@dotfiles/core";
+import type { ManualToolConfig } from "@dotfiles/installer-manual";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { createInstallerTestSetup, createManualToolConfig, type IInstallerTestSetup } from "./installer-test-helpers";
 
 /**
  * Tests that the recursion guard environment variable is set in the shell environment
@@ -20,16 +20,16 @@ import { createInstallerTestSetup, createManualToolConfig, type IInstallerTestSe
  * The fix: Configure the shell with the recursion guard env var so all spawned
  * processes inherit it. We avoid modifying process.env directly.
  */
-describe('Installer - Recursion Guard During After-Install Hook', () => {
+describe("Installer - Recursion Guard During After-Install Hook", () => {
   let setup: IInstallerTestSetup;
 
   beforeEach(async () => {
     setup = await createInstallerTestSetup();
   });
 
-  it('should have recursion guard env var set in shell during after-install hook execution', async () => {
-    const toolName = 'my-test-tool';
-    const envVarName = 'DOTFILES_INSTALLING_MY_TEST_TOOL';
+  it("should have recursion guard env var set in shell during after-install hook execution", async () => {
+    const toolName = "my-test-tool";
+    const envVarName = "DOTFILES_INSTALLING_MY_TEST_TOOL";
 
     let envVarSeenByShell: string | undefined;
 
@@ -45,7 +45,7 @@ describe('Installer - Recursion Guard During After-Install Hook', () => {
       binaries: [toolName],
       installParams: {
         hooks: {
-          'after-install': [afterInstallHook],
+          "after-install": [afterInstallHook],
         },
       },
     });
@@ -57,15 +57,15 @@ describe('Installer - Recursion Guard During After-Install Hook', () => {
 
     // CRITICAL: The recursion guard env var must be visible to shell commands.
     // This is what prevents the shim from triggering re-installation.
-    expect(envVarSeenByShell).toBe('true');
+    expect(envVarSeenByShell).toBe("true");
 
     // We no longer modify process.env, so no cleanup assertion needed.
     // The env var is scoped to the shell environment passed to hooks.
   });
 
-  it('should have recursion guard env var set during shell command in after-install hook', async () => {
-    const toolName = 'shell-test-tool';
-    const envVarName = 'DOTFILES_INSTALLING_SHELL_TEST_TOOL';
+  it("should have recursion guard env var set during shell command in after-install hook", async () => {
+    const toolName = "shell-test-tool";
+    const envVarName = "DOTFILES_INSTALLING_SHELL_TEST_TOOL";
 
     let envVarSeenByShell: string | undefined;
 
@@ -82,7 +82,7 @@ describe('Installer - Recursion Guard During After-Install Hook', () => {
       binaries: [toolName],
       installParams: {
         hooks: {
-          'after-install': [afterInstallHook],
+          "after-install": [afterInstallHook],
         },
       },
     });
@@ -95,14 +95,14 @@ describe('Installer - Recursion Guard During After-Install Hook', () => {
     // CRITICAL: Shell commands in after-install hooks must inherit the recursion guard.
     // This prevents infinite loops when running commands like `tool --generate-completions`
     // that might resolve to a shim.
-    expect(envVarSeenByShell).toBe('true');
+    expect(envVarSeenByShell).toBe("true");
 
     // We no longer modify process.env, so no cleanup assertion needed.
   });
 
-  it('should have recursion guard visible to shell even if after-install hook throws', async () => {
-    const toolName = 'failing-hook-tool';
-    const envVarName = 'DOTFILES_INSTALLING_FAILING_HOOK_TOOL';
+  it("should have recursion guard visible to shell even if after-install hook throws", async () => {
+    const toolName = "failing-hook-tool";
+    const envVarName = "DOTFILES_INSTALLING_FAILING_HOOK_TOOL";
 
     let envVarSeenByShell: string | undefined;
 
@@ -110,7 +110,7 @@ describe('Installer - Recursion Guard During After-Install Hook', () => {
       // Capture the env var via shell before throwing
       const result = await context.$`printenv ${envVarName} || true`.quiet();
       envVarSeenByShell = result.stdout.trim() || undefined;
-      throw new Error('Hook failed intentionally');
+      throw new Error("Hook failed intentionally");
     });
 
     const toolConfig: ManualToolConfig = createManualToolConfig({
@@ -118,7 +118,7 @@ describe('Installer - Recursion Guard During After-Install Hook', () => {
       binaries: [toolName],
       installParams: {
         hooks: {
-          'after-install': [afterInstallHook],
+          "after-install": [afterInstallHook],
         },
       },
     });
@@ -131,7 +131,7 @@ describe('Installer - Recursion Guard During After-Install Hook', () => {
     expect(afterInstallHook).toHaveBeenCalledTimes(1);
 
     // The env var must have been visible to shell during hook execution
-    expect(envVarSeenByShell).toBe('true');
+    expect(envVarSeenByShell).toBe("true");
 
     // We no longer modify process.env, so no cleanup assertion needed.
   });

@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
-import type { CacheEntry, CacheStats } from './types';
+import type { CacheEntry, CacheStats } from "./types";
 
 /**
  * Cache entry with body loaded from separate file.
@@ -36,7 +36,7 @@ export class ProxyCacheStore {
    */
   generateKey(method: string, url: string): string {
     const signature = `${method.toUpperCase()}:${url}`;
-    return createHash('sha256').update(signature).digest('hex');
+    return createHash("sha256").update(signature).digest("hex");
   }
 
   /**
@@ -77,7 +77,7 @@ export class ProxyCacheStore {
     }
 
     try {
-      const content = readFileSync(metaPath, 'utf-8');
+      const content = readFileSync(metaPath, "utf-8");
       const entry: CacheEntry = JSON.parse(content);
 
       // Check if expired
@@ -101,14 +101,7 @@ export class ProxyCacheStore {
   /**
    * Store a response in the cache.
    */
-  set(
-    method: string,
-    url: string,
-    status: number,
-    headers: Record<string, string>,
-    body: Buffer,
-    ttl?: number,
-  ): void {
+  set(method: string, url: string, status: number, headers: Record<string, string>, body: Buffer, ttl?: number): void {
     const key = this.generateKey(method, url);
     const metaPath = this.getMetaPath(key);
     const bodyPath = this.getBodyPath(key);
@@ -157,8 +150,8 @@ export class ProxyCacheStore {
   /**
    * Get all cache entry URLs (for glob matching).
    */
-  getAllEntries(): Array<{ key: string; url: string; method: string; metaPath: string; bodyPath: string; }> {
-    const entries: Array<{ key: string; url: string; method: string; metaPath: string; bodyPath: string; }> = [];
+  getAllEntries(): Array<{ key: string; url: string; method: string; metaPath: string; bodyPath: string }> {
+    const entries: Array<{ key: string; url: string; method: string; metaPath: string; bodyPath: string }> = [];
 
     if (!existsSync(this.cacheDir)) {
       return entries;
@@ -173,13 +166,13 @@ export class ProxyCacheStore {
       const files = readdirSync(subdirPath, { withFileTypes: true });
 
       for (const file of files) {
-        if (!file.isFile() || !file.name.endsWith('.meta.json')) continue;
+        if (!file.isFile() || !file.name.endsWith(".meta.json")) continue;
 
         const metaPath = join(subdirPath, file.name);
         try {
-          const content = readFileSync(metaPath, 'utf-8');
+          const content = readFileSync(metaPath, "utf-8");
           const entry: CacheEntry = JSON.parse(content);
-          const key = file.name.replace('.meta.json', '');
+          const key = file.name.replace(".meta.json", "");
           const bodyPath = join(subdirPath, `${key}.body`);
           entries.push({ key, url: entry.url, method: entry.method, metaPath, bodyPath });
         } catch {

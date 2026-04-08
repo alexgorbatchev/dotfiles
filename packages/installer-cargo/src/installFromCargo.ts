@@ -1,29 +1,29 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { IExtractResult, IInstallContext, IInstallOptions } from '@dotfiles/core';
-import { Architecture, Platform } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
+import type { IExtractResult, IInstallContext, IInstallOptions } from "@dotfiles/core";
+import { Architecture, Platform } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor } from "@dotfiles/installer";
 import {
   createToolFileSystem,
   downloadWithProgress,
   getBinaryPaths,
   setupBinariesFromArchive,
   withInstallErrorHandling,
-} from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { normalizeVersion } from '@dotfiles/utils';
-import path from 'node:path';
-import type { ICargoClient } from './cargo-client';
-import { messages } from './log-messages';
-import type { CargoInstallParams, CargoToolConfig } from './schemas';
+} from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { normalizeVersion } from "@dotfiles/utils";
+import path from "node:path";
+import type { ICargoClient } from "./cargo-client";
+import { messages } from "./log-messages";
+import type { CargoInstallParams, CargoToolConfig } from "./schemas";
 import type {
   CargoInstallResult,
   HookExecutionResult,
   ICargoHookContext,
   ICargoInstallMetadata,
   IVersionResult,
-} from './types';
+} from "./types";
 
 export async function installFromCargo(
   toolName: string,
@@ -38,17 +38,17 @@ export async function installFromCargo(
   parentLogger: TsLogger,
   githubHost: string,
 ): Promise<CargoInstallResult> {
-  const logger = parentLogger.getSubLogger({ name: 'installFromCargo' });
+  const logger = parentLogger.getSubLogger({ name: "installFromCargo" });
   logger.debug(messages.installing(toolName));
 
-  if (!toolConfig['installParams']) {
+  if (!toolConfig["installParams"]) {
     return {
       success: false,
-      error: 'Install parameters not specified',
+      error: "Install parameters not specified",
     };
   }
 
-  const params = toolConfig['installParams'];
+  const params = toolConfig["installParams"];
   const crateName = params.crateName || toolName;
 
   const operation = async (): Promise<CargoInstallResult> => {
@@ -105,9 +105,9 @@ export async function installFromCargo(
     const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     const metadata: ICargoInstallMetadata = {
-      method: 'cargo',
+      method: "cargo",
       crateName,
-      binarySource: params.binarySource || 'cargo-quickinstall',
+      binarySource: params.binarySource || "cargo-quickinstall",
       downloadUrl,
     };
 
@@ -120,7 +120,7 @@ export async function installFromCargo(
     };
   };
 
-  return withInstallErrorHandling('cargo', toolName, logger, operation);
+  return withInstallErrorHandling("cargo", toolName, logger, operation);
 }
 
 async function executeAfterDownloadHook(
@@ -131,7 +131,7 @@ async function executeAfterDownloadHook(
   toolFs: IFileSystem,
   logger: TsLogger,
 ): Promise<HookExecutionResult> {
-  const afterDownloadHooks = toolConfig['installParams']?.hooks?.['after-download'];
+  const afterDownloadHooks = toolConfig["installParams"]?.hooks?.["after-download"];
   if (!afterDownloadHooks) {
     return { success: true };
   }
@@ -139,7 +139,7 @@ async function executeAfterDownloadHook(
   const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, downloadPath }, toolFs);
 
   for (const hook of afterDownloadHooks) {
-    const hookResult = await hookExecutor.executeHook(logger, 'afterDownload', hook, enhancedContext);
+    const hookResult = await hookExecutor.executeHook(logger, "afterDownload", hook, enhancedContext);
     if (!hookResult.success) {
       return { success: false, error: hookResult.error };
     }
@@ -156,7 +156,7 @@ async function executeAfterInstallHook(
   toolFs: IFileSystem,
   logger: TsLogger,
 ): Promise<HookExecutionResult> {
-  const afterInstallHooks = toolConfig['installParams']?.hooks?.['after-install'];
+  const afterInstallHooks = toolConfig["installParams"]?.hooks?.["after-install"];
   if (!afterInstallHooks) {
     return { success: true };
   }
@@ -164,7 +164,7 @@ async function executeAfterInstallHook(
   const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, extractResult }, toolFs);
 
   for (const hook of afterInstallHooks) {
-    const finalHookResult = await hookExecutor.executeHook(logger, 'afterInstall', hook, enhancedContext);
+    const finalHookResult = await hookExecutor.executeHook(logger, "afterInstall", hook, enhancedContext);
     if (!finalHookResult.success) {
       return { success: false, error: finalHookResult.error };
     }
@@ -178,11 +178,12 @@ async function determineVersion(
   cargoClient: ICargoClient,
   logger: TsLogger,
 ): Promise<IVersionResult> {
-  const versionSource = params.versionSource || 'cargo-toml';
+  const versionSource = params.versionSource || "cargo-toml";
 
   switch (versionSource) {
-    case 'cargo-toml': {
-      const cargoTomlUrl = params.cargoTomlUrl ||
+    case "cargo-toml": {
+      const cargoTomlUrl =
+        params.cargoTomlUrl ||
         cargoClient.buildCargoTomlUrl(params.githubRepo || `${crateName}-community/${crateName}`);
 
       logger.debug(messages.parsingMetadata(cargoTomlUrl));
@@ -193,7 +194,7 @@ async function determineVersion(
       }
       return { version: normalizeVersion(packageInfo.version) };
     }
-    case 'crates-io': {
+    case "crates-io": {
       logger.debug(messages.queryingCratesIo(crateName));
 
       const version = await cargoClient.getLatestVersion(crateName);
@@ -202,9 +203,9 @@ async function determineVersion(
       }
       return { version: normalizeVersion(version) };
     }
-    case 'github-releases': {
+    case "github-releases": {
       if (!params.githubRepo) {
-        throw new Error('githubRepo is required when using github-releases version source');
+        throw new Error("githubRepo is required when using github-releases version source");
       }
       return getVersionFromGitHubReleases(params.githubRepo, logger);
     }
@@ -215,7 +216,7 @@ async function determineVersion(
 
 async function getVersionFromGitHubReleases(githubRepo: string, logger: TsLogger): Promise<IVersionResult> {
   logger.debug(messages.queryingGitHubReleases(githubRepo));
-  throw new Error('GitHub releases version source not yet implemented');
+  throw new Error("GitHub releases version source not yet implemented");
 }
 
 async function buildDownloadUrl(
@@ -225,27 +226,26 @@ async function buildDownloadUrl(
   context: IInstallContext,
   githubReleaseHost: string,
 ): Promise<string> {
-  const binarySource = params.binarySource || 'cargo-quickinstall';
+  const binarySource = params.binarySource || "cargo-quickinstall";
   const platform = getPlatformString(context.systemInfo.platform);
   const arch = getArchString(context.systemInfo.arch);
 
   switch (binarySource) {
-    case 'cargo-quickinstall': {
-      const url =
-        `${githubReleaseHost}/cargo-bins/cargo-quickinstall/releases/download/${crateName}-${version}/${crateName}-${version}-${arch}-${platform}.tar.gz`;
+    case "cargo-quickinstall": {
+      const url = `${githubReleaseHost}/cargo-bins/cargo-quickinstall/releases/download/${crateName}-${version}/${crateName}-${version}-${arch}-${platform}.tar.gz`;
       return url;
     }
 
-    case 'github-releases': {
+    case "github-releases": {
       if (!params.githubRepo) {
-        throw new Error('githubRepo is required when using github-releases binary source');
+        throw new Error("githubRepo is required when using github-releases binary source");
       }
-      const assetPattern = params.assetPattern || '{crateName}-{version}-{platform}-{arch}.tar.gz';
+      const assetPattern = params.assetPattern || "{crateName}-{version}-{platform}-{arch}.tar.gz";
       const assetName = assetPattern
-        .replace('{crateName}', crateName)
-        .replace('{version}', version)
-        .replace('{platform}', platform)
-        .replace('{arch}', arch);
+        .replace("{crateName}", crateName)
+        .replace("{version}", version)
+        .replace("{platform}", platform)
+        .replace("{arch}", arch);
 
       const url = `${githubReleaseHost}/${params.githubRepo}/releases/download/v${version}/${assetName}`;
       return url;
@@ -259,23 +259,23 @@ async function buildDownloadUrl(
 function getPlatformString(platform: Platform): string {
   switch (platform) {
     case Platform.MacOS:
-      return 'apple-darwin';
+      return "apple-darwin";
     case Platform.Linux:
-      return 'unknown-linux-gnu';
+      return "unknown-linux-gnu";
     case Platform.Windows:
-      return 'pc-windows-msvc';
+      return "pc-windows-msvc";
     default:
-      return 'unknown';
+      return "unknown";
   }
 }
 
 function getArchString(arch: Architecture): string {
   switch (arch) {
     case Architecture.Arm64:
-      return 'aarch64';
+      return "aarch64";
     case Architecture.X86_64:
-      return 'x86_64';
+      return "x86_64";
     default:
-      return 'unknown';
+      return "unknown";
   }
 }

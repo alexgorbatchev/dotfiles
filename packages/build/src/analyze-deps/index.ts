@@ -22,9 +22,9 @@
  *   bun run analyze-deps
  */
 
-import { readdir, stat } from 'node:fs/promises';
-import path from 'node:path';
-import { getRepoRoot } from '../path-utils';
+import { readdir, stat } from "node:fs/promises";
+import path from "node:path";
+import { getRepoRoot } from "../path-utils";
 
 /**
  * Metadata from a package.json file.
@@ -68,7 +68,7 @@ async function getDirectorySize(dirPath: string): Promise<number> {
     for (const file of files) {
       const fullPath = path.join(dirPath, file.name);
       if (file.isDirectory()) {
-        if (file.name !== '__tests__') {
+        if (file.name !== "__tests__") {
           totalSize += await getDirectorySize(fullPath);
         }
       } else {
@@ -92,7 +92,7 @@ async function getDirectorySize(dirPath: string): Promise<number> {
  * @returns Maps of package names to their metadata and paths.
  */
 async function loadPackages(projectRoot: string) {
-  const glob = new Bun.Glob('packages/*/package.json');
+  const glob = new Bun.Glob("packages/*/package.json");
   const packageJsonPaths = await Array.fromAsync(glob.scan({ cwd: projectRoot, absolute: true }));
 
   const packages = new Map<string, IPackageJson>();
@@ -140,8 +140,8 @@ async function analyzeDependencies(
     const internalDependencies = Object.keys(allDependencies).filter((depName) => packageNames.includes(depName));
 
     const packagePath = packagePaths.get(name);
-    const srcSize = packagePath ? await getDirectorySize(path.join(packagePath, 'src')) : 0;
-    const formattedSize = srcSize > 0 ? `(${(srcSize / 1024).toFixed(2)} KB)` : '(no src)';
+    const srcSize = packagePath ? await getDirectorySize(path.join(packagePath, "src")) : 0;
+    const formattedSize = srcSize > 0 ? `(${(srcSize / 1024).toFixed(2)} KB)` : "(no src)";
 
     packageInfos.push({
       name,
@@ -167,7 +167,7 @@ function printDependencyTree(packageInfos: IPackageInfo[]) {
       info.internalDependencies.forEach((_depName, index) => {
         const isLast = index === info.internalDependencies.length - 1;
         // Tree prefix for visualization (intentionally unused in current implementation)
-        void (isLast ? '└─' : '├─');
+        void (isLast ? "└─" : "├─");
       });
     }
   }

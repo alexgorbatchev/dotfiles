@@ -1,4 +1,4 @@
-import { minimatch } from 'minimatch';
+import { minimatch } from "minimatch";
 
 export type AssetPattern = string | RegExp;
 
@@ -7,11 +7,11 @@ function isValidRegexFlags(flags: string): boolean {
 }
 
 function isRegexPatternString(value: string): boolean {
-  if (!value.startsWith('/')) {
+  if (!value.startsWith("/")) {
     return false;
   }
 
-  const lastSlashIndex = value.lastIndexOf('/');
+  const lastSlashIndex = value.lastIndexOf("/");
   if (lastSlashIndex <= 0) {
     return false;
   }
@@ -20,7 +20,7 @@ function isRegexPatternString(value: string): boolean {
 }
 
 function parseRegexPatternString(value: string): RegExp {
-  const lastSlashIndex = value.lastIndexOf('/');
+  const lastSlashIndex = value.lastIndexOf("/");
   if (lastSlashIndex <= 0) {
     throw new Error('Invalid regex string: missing closing "/"');
   }
@@ -29,7 +29,7 @@ function parseRegexPatternString(value: string): RegExp {
   const flags = value.slice(lastSlashIndex + 1);
 
   if (!isValidRegexFlags(flags)) {
-    throw new Error('Invalid regex string: invalid flags');
+    throw new Error("Invalid regex string: invalid flags");
   }
 
   const regex = new RegExp(pattern, flags);
@@ -50,7 +50,7 @@ export function isValidAssetPatternString(value: string): boolean {
 }
 
 export function formatAssetPatternForLog(assetPattern: AssetPattern): string {
-  if (typeof assetPattern === 'string') {
+  if (typeof assetPattern === "string") {
     return assetPattern;
   }
 
@@ -58,7 +58,7 @@ export function formatAssetPatternForLog(assetPattern: AssetPattern): string {
 }
 
 export function matchAssetPattern(candidate: string, assetPattern: AssetPattern): boolean {
-  if (typeof assetPattern === 'string') {
+  if (typeof assetPattern === "string") {
     if (isRegexPatternString(assetPattern)) {
       const regex = parseRegexPatternString(assetPattern);
       return regex.test(candidate);

@@ -3,8 +3,8 @@
  */
 export type ShellType =
   /** Zsh (Z Shell) */
-  | 'zsh'
+  | "zsh"
   /** Bash (Bourne Again SHell) */
-  | 'bash'
+  | "bash"
   /** PowerShell (Windows PowerShell and PowerShell Core) */
-  | 'powershell';
+  | "powershell";

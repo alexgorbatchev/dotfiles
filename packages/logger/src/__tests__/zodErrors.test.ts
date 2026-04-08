@@ -1,18 +1,18 @@
-import { TestLogger } from '@dotfiles/logger';
-import { describe, expect, test } from 'bun:test';
-import { z } from 'zod';
+import { TestLogger } from "@dotfiles/logger";
+import { describe, expect, test } from "bun:test";
+import { z } from "zod";
 
 // Helper function to extract log messages from TestLogger logs
 function getLogMessages(logger: TestLogger): string[] {
   return logger.logs.map((log) => {
     const message = log[0];
-    return typeof message === 'string' ? message : String(message);
+    return typeof message === "string" ? message : String(message);
   });
 }
 
-describe('TsLogger.zodErrors', () => {
-  test('should log validation errors with proper formatting', () => {
-    const logger = new TestLogger({ name: 'test', minLevel: 0 });
+describe("TsLogger.zodErrors", () => {
+  test("should log validation errors with proper formatting", () => {
+    const logger = new TestLogger({ name: "test", minLevel: 0 });
 
     // Create a schema and validation error
     const schema = z.object({
@@ -25,7 +25,7 @@ describe('TsLogger.zodErrors', () => {
 
     const invalidData = {
       name: 123, // should be string
-      age: 'not-a-number', // should be number
+      age: "not-a-number", // should be number
       nested: {
         value: 456, // should be string
       },
@@ -43,20 +43,20 @@ describe('TsLogger.zodErrors', () => {
 
     // Check that error messages are logged
     const logMessages = getLogMessages(logger);
-    expect(logMessages.some((msg) => msg.includes('✖') && msg.includes('expected string'))).toBe(true);
-    expect(logMessages.some((msg) => msg.includes('✖') && msg.includes('expected number'))).toBe(true);
+    expect(logMessages.some((msg) => msg.includes("✖") && msg.includes("expected string"))).toBe(true);
+    expect(logMessages.some((msg) => msg.includes("✖") && msg.includes("expected number"))).toBe(true);
 
     // Check that paths are logged
-    expect(logMessages.some((msg) => msg.includes('→ at name'))).toBe(true);
-    expect(logMessages.some((msg) => msg.includes('→ at age'))).toBe(true);
-    expect(logMessages.some((msg) => msg.includes('→ at nested.value'))).toBe(true);
+    expect(logMessages.some((msg) => msg.includes("→ at name"))).toBe(true);
+    expect(logMessages.some((msg) => msg.includes("→ at age"))).toBe(true);
+    expect(logMessages.some((msg) => msg.includes("→ at nested.value"))).toBe(true);
   });
 
-  test('should handle errors without paths', () => {
-    const logger = new TestLogger({ name: 'test', minLevel: 0 });
+  test("should handle errors without paths", () => {
+    const logger = new TestLogger({ name: "test", minLevel: 0 });
 
     // Create a custom validation error without path
-    const customSchema = z.custom((val) => typeof val === 'string', 'Must be a string');
+    const customSchema = z.custom((val) => typeof val === "string", "Must be a string");
     const result = customSchema.safeParse(123);
 
     expect(result.success).toBe(false);
@@ -71,8 +71,8 @@ describe('TsLogger.zodErrors', () => {
     expect(logMessages[0]).toMatch(/✖.*Must be a string/);
   });
 
-  test('should sort errors by path length', () => {
-    const logger = new TestLogger({ name: 'test', minLevel: 0 });
+  test("should sort errors by path length", () => {
+    const logger = new TestLogger({ name: "test", minLevel: 0 });
 
     // Create a schema with nested validation that will produce errors at different path depths
     const schema = z.object({
@@ -104,12 +104,12 @@ describe('TsLogger.zodErrors', () => {
 
     // Find the path messages to verify ordering
     const logMessages = getLogMessages(logger);
-    const pathMessages = logMessages.filter((msg) => msg.includes('→ at'));
+    const pathMessages = logMessages.filter((msg) => msg.includes("→ at"));
     expect(pathMessages).toHaveLength(3);
 
     // Should be sorted by path length: 'a' < 'nested.b' < 'nested.deepNested.c'
-    expect(pathMessages[0]).toContain('→ at a');
-    expect(pathMessages[1]).toContain('→ at nested.b');
-    expect(pathMessages[2]).toContain('→ at nested.deepNested.c');
+    expect(pathMessages[0]).toContain("→ at a");
+    expect(pathMessages[1]).toContain("→ at nested.b");
+    expect(pathMessages[2]).toContain("→ at nested.deepNested.c");
   });
 });

@@ -1,6 +1,6 @@
-import fs from 'node:fs';
+import fs from "node:fs";
 
-import type { IBuildContext } from '../types';
+import type { IBuildContext } from "../types";
 
 /**
  * Deletes temporary build artifacts and generated intermediate files.

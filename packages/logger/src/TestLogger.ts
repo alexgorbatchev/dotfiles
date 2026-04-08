@@ -1,13 +1,13 @@
-import { expect as bunExpect } from 'bun:test';
-import * as util from 'node:util';
-import type { ILogObj, ILogObjMeta } from 'tslog';
-import { type ISafeLoggerSettings, SafeLogger } from './SafeLogger';
+import { expect as bunExpect } from "bun:test";
+import * as util from "node:util";
+import type { ILogObj, ILogObjMeta } from "tslog";
+import { type ISafeLoggerSettings, SafeLogger } from "./SafeLogger";
 
 /**
  * Defines the log levels available for filtering in `TestLogger`.
  * The `'*'` level can be used to match all log levels.
  */
-export type TestLogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+export type TestLogLevel = "*" | "SILLY" | "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR" | "FATAL";
 
 /**
  * An extended logger for testing purposes that captures log messages in memory.
@@ -86,7 +86,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
 
   private getLogs(levels: TestLogLevel[], path: string[], context: string[], matcher?: string | RegExp): ILogObjMeta[] {
     return this.logs.filter((log) => {
-      const meta = log['_meta'];
+      const meta = log["_meta"];
       if (!meta) {
         return false;
       }
@@ -107,12 +107,12 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     });
   }
 
-  private isLevelMatch(levels: TestLogLevel[], meta: ILogObjMeta['_meta']): boolean {
-    return levels.includes('*') || levels.includes(meta.logLevelName as TestLogLevel);
+  private isLevelMatch(levels: TestLogLevel[], meta: ILogObjMeta["_meta"]): boolean {
+    return levels.includes("*") || levels.includes(meta.logLevelName as TestLogLevel);
   }
 
-  private isPathMatch(path: string[], meta: ILogObjMeta['_meta']): boolean {
-    const logPath = [...(meta.parentNames ?? []), meta.name].filter((p) => typeof p === 'string' && p.length > 0);
+  private isPathMatch(path: string[], meta: ILogObjMeta["_meta"]): boolean {
+    const logPath = [...(meta.parentNames ?? []), meta.name].filter((p) => typeof p === "string" && p.length > 0);
 
     if (logPath.length !== path.length) {
       return false;
@@ -133,7 +133,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
 
     // Context appears as [context] prefix in the log message
     // Multiple contexts are chained: [ctx1][ctx2]
-    const expectedPrefix = context.map((c) => `[${c}]`).join('');
+    const expectedPrefix = context.map((c) => `[${c}]`).join("");
     return logMessage.startsWith(expectedPrefix);
   }
 
@@ -143,11 +143,11 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     }
 
     const firstArg = log[0] as unknown;
-    if (typeof firstArg !== 'string') {
+    if (typeof firstArg !== "string") {
       return false;
     }
 
-    if (typeof matcher === 'string') {
+    if (typeof matcher === "string") {
       return firstArg.includes(matcher);
     }
 
@@ -202,7 +202,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
   }
 
   private failExpectation(logs: ILogObjMeta[], matchers: (string | RegExp)[]): never {
-    const results: string[] = ['Expected logs:'];
+    const results: string[] = ["Expected logs:"];
     for (const matcher of matchers) {
       results.push(`  - ${matcher}`);
     }
@@ -211,8 +211,8 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
       results.push(`  - ${formatLogMessage(log)}`);
     }
 
-    bunExpect().fail(results.join('\n'));
-    throw new Error('Test failed'); // This line will never be reached but satisfies TypeScript
+    bunExpect().fail(results.join("\n"));
+    throw new Error("Test failed"); // This line will never be reached but satisfies TypeScript
   }
 
   private validateMatchers(logs: ILogObjMeta[], matchers: (string | RegExp)[]): void {
@@ -239,7 +239,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
   }
 
   private isMessageMatch(logMessage: string, matcher: string | RegExp): boolean {
-    if (typeof matcher === 'string') {
+    if (typeof matcher === "string") {
       return logMessage.includes(matcher);
     }
     if (matcher instanceof RegExp) {
@@ -260,7 +260,7 @@ function getIndexedProperties(obj: ILogObjMeta): unknown[] {
 
   while (true) {
     const property = obj[index];
-    if (typeof property === 'undefined') {
+    if (typeof property === "undefined") {
       break;
     }
     properties.push(property);

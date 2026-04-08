@@ -1,5 +1,5 @@
-import type { ShellType } from '@dotfiles/core';
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import type { ShellType } from "@dotfiles/core";
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   generationStarted: (toolName: string, shellType: ShellType) =>

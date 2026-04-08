@@ -1,12 +1,12 @@
-import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import type { IProfileUpdateConfig } from '../IProfileUpdater';
-import { ProfileUpdater } from '../ProfileUpdater';
+import { createMemFileSystem, type IFileSystem } from "@dotfiles/file-system";
+import { beforeEach, describe, expect, it } from "bun:test";
+import type { IProfileUpdateConfig } from "../IProfileUpdater";
+import { ProfileUpdater } from "../ProfileUpdater";
 
-describe('ProfileUpdater - Duplicate Entries', () => {
+describe("ProfileUpdater - Duplicate Entries", () => {
   let fs: IFileSystem;
   let updater: ProfileUpdater;
-  const homeDir = '/home/user';
+  const homeDir = "/home/user";
 
   beforeEach(async () => {
     const result = await createMemFileSystem({});
@@ -14,32 +14,32 @@ describe('ProfileUpdater - Duplicate Entries', () => {
     updater = new ProfileUpdater(fs, homeDir);
   });
 
-  it('should replace existing entry instead of appending when updating from a different project', async () => {
+  it("should replace existing entry instead of appending when updating from a different project", async () => {
     const zshrcPath = `${homeDir}/.zshrc`;
-    const oldConfigPath = '/old/project/config.ts';
-    const oldScriptPath = '/old/project/.generated/shell-init/main.zsh';
+    const oldConfigPath = "/old/project/config.ts";
+    const oldScriptPath = "/old/project/.generated/shell-init/main.zsh";
 
     // Simulate existing content from a previous run (or different project)
     const existingContent = [
-      '# Some user content',
-      'export FOO=bar',
-      '',
-      '# Generated via dotfiles generator - do not modify',
+      "# Some user content",
+      "export FOO=bar",
+      "",
+      "# Generated via dotfiles generator - do not modify",
       `# ${oldConfigPath}`,
-      '# ------------------------------------------------------------------------------',
+      "# ------------------------------------------------------------------------------",
       `source "${oldScriptPath}"`,
-      '',
-      '# More user content',
-    ].join('\n');
+      "",
+      "# More user content",
+    ].join("\n");
 
     await fs.ensureDir(homeDir);
     await fs.writeFile(zshrcPath, existingContent);
 
-    const newConfigPath = '/new/project/config.ts';
-    const newScriptPath = '/new/project/.generated/shell-init/main.zsh';
+    const newConfigPath = "/new/project/config.ts";
+    const newScriptPath = "/new/project/.generated/shell-init/main.zsh";
 
     const config: IProfileUpdateConfig = {
-      shellType: 'zsh',
+      shellType: "zsh",
       projectConfigPath: newConfigPath,
       generatedScriptPath: newScriptPath,
       onlyIfExists: false,

@@ -35,7 +35,7 @@ export function extractToolFileLocations(stack: string | undefined): string[] {
     return [];
   }
 
-  const lines = stack.split('\n');
+  const lines = stack.split("\n");
   const locations: string[] = [];
 
   for (const line of lines) {
@@ -58,14 +58,14 @@ export function extractToolFileLocations(stack: string | undefined): string[] {
  * Output format: `(flux.tool.ts:14)` or `(flux.tool.ts:14, navi.tool.ts:8)`
  */
 export function formatErrorForUser(error: Error): string | null {
-  const stack = typeof error.stack === 'string' ? error.stack : undefined;
+  const stack = typeof error.stack === "string" ? error.stack : undefined;
   const locations = extractToolFileLocations(stack);
 
   if (locations.length === 0) {
     return null;
   }
 
-  return `(${locations.join(', ')})`;
+  return `(${locations.join(", ")})`;
 }
 
 /**

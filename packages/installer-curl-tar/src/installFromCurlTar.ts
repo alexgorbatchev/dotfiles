@@ -1,14 +1,14 @@
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
 import {
   type IDownloadContext,
   type IExtractContext,
   type IExtractResult,
   type IInstallContext,
   type Shell,
-} from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
+} from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor, IInstallOptions } from "@dotfiles/installer";
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -17,13 +17,13 @@ import {
   getBinaryPaths,
   setupBinariesFromArchive,
   withInstallErrorHandling,
-} from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import { detectVersionViaCli } from '@dotfiles/utils';
-import path from 'node:path';
-import { messages } from './log-messages';
-import type { CurlTarToolConfig } from './schemas';
-import type { CurlTarInstallResult, ICurlTarInstallMetadata } from './types';
+} from "@dotfiles/installer";
+import type { TsLogger } from "@dotfiles/logger";
+import { detectVersionViaCli } from "@dotfiles/utils";
+import path from "node:path";
+import { messages } from "./log-messages";
+import type { CurlTarToolConfig } from "./schemas";
+import type { CurlTarInstallResult, ICurlTarInstallMetadata } from "./types";
 
 /**
  * Installs a tool from a tarball accessible via URL.
@@ -63,17 +63,17 @@ export async function installFromCurlTar(
   shellExecutor: Shell,
 ): Promise<CurlTarInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
-  const logger = parentLogger.getSubLogger({ name: 'installFromCurlTar' });
+  const logger = parentLogger.getSubLogger({ name: "installFromCurlTar" });
   logger.debug(messages.installing(toolName));
 
   // Context variables for lifecycle stages
   let postDownloadContext: IDownloadContext;
   let postExtractContext: IExtractContext | undefined;
 
-  if (!toolConfig.installParams || !('url' in toolConfig.installParams)) {
+  if (!toolConfig.installParams || !("url" in toolConfig.installParams)) {
     return {
       success: false,
-      error: 'URL not specified in installParams',
+      error: "URL not specified in installParams",
     };
   }
 
@@ -156,7 +156,7 @@ export async function installFromCurlTar(
     }
 
     const metadata: ICurlTarInstallMetadata = {
-      method: 'curl-tar',
+      method: "curl-tar",
       downloadUrl: url,
       tarballUrl: url,
     };
@@ -165,9 +165,9 @@ export async function installFromCurlTar(
       success: true,
       binaryPaths,
       metadata,
-      version: detectedVersion || (toolConfig.version !== 'latest' ? toolConfig.version : undefined),
+      version: detectedVersion || (toolConfig.version !== "latest" ? toolConfig.version : undefined),
     };
   };
 
-  return withInstallErrorHandling('curl-tar', toolName, logger, operation);
+  return withInstallErrorHandling("curl-tar", toolName, logger, operation);
 }

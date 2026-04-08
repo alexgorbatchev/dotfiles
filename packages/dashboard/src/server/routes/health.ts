@@ -1,8 +1,8 @@
-import type { TsLogger } from '@dotfiles/logger';
-import path from 'node:path';
-import type { IApiResponse, IHealthStatus } from '../../shared/types';
-import { messages } from '../log-messages';
-import type { IDashboardServices } from '../types';
+import type { TsLogger } from "@dotfiles/logger";
+import path from "node:path";
+import type { IApiResponse, IHealthStatus } from "../../shared/types";
+import { messages } from "../log-messages";
+import type { IDashboardServices } from "../types";
 
 /**
  * Finds unused binary version directories in the binaries directory.
@@ -40,10 +40,10 @@ async function findUnusedBinaries(services: IDashboardServices): Promise<string[
     const contents = await fs.readdir(toolDir);
 
     // Find the current symlink target
-    const currentPath = path.join(toolDir, 'current');
+    const currentPath = path.join(toolDir, "current");
     let currentTarget: string | null = null;
 
-    if (contents.includes('current')) {
+    if (contents.includes("current")) {
       const currentStat = await fs.lstat(currentPath).catch(() => null);
       if (currentStat?.isSymbolicLink()) {
         const linkTarget = await fs.readlink(currentPath).catch(() => null);
@@ -57,7 +57,7 @@ async function findUnusedBinaries(services: IDashboardServices): Promise<string[
     // Check each entry in the tool directory
     for (const entry of contents) {
       // Skip the 'current' symlink itself
-      if (entry === 'current') {
+      if (entry === "current") {
         continue;
       }
 
@@ -82,10 +82,7 @@ async function findUnusedBinaries(services: IDashboardServices): Promise<string[
 /**
  * GET /api/health - Get health status
  */
-export async function getHealth(
-  logger: TsLogger,
-  services: IDashboardServices,
-): Promise<IApiResponse<IHealthStatus>> {
+export async function getHealth(logger: TsLogger, services: IDashboardServices): Promise<IApiResponse<IHealthStatus>> {
   try {
     const checks = [];
 
@@ -94,9 +91,9 @@ export async function getHealth(
     const unusedCount = unusedBinaries.length;
     if (unusedCount > 0) {
       checks.push({
-        name: 'Unused Binaries',
-        status: 'warn' as const,
-        message: '',
+        name: "Unused Binaries",
+        status: "warn" as const,
+        message: "",
         details: unusedBinaries,
       });
     }
@@ -104,9 +101,9 @@ export async function getHealth(
     // Check registry health
     const validation = await services.fileRegistry.validate();
     checks.push({
-      name: 'Registry Integrity',
-      status: validation.valid ? 'pass' : 'warn',
-      message: validation.valid ? 'Registry is healthy' : `Found ${validation.issues.length} issues`,
+      name: "Registry Integrity",
+      status: validation.valid ? "pass" : "warn",
+      message: validation.valid ? "Registry is healthy" : `Found ${validation.issues.length} issues`,
       details: validation.issues,
     });
 
@@ -114,24 +111,24 @@ export async function getHealth(
     const installations = await services.toolInstallationRegistry.getAllToolInstallations();
     const toolCount = installations.length;
     checks.push({
-      name: 'Tool Installations',
-      status: toolCount > 0 ? 'pass' : 'warn',
-      message: `${toolCount} tool${toolCount === 1 ? '' : 's'} installed`,
+      name: "Tool Installations",
+      status: toolCount > 0 ? "pass" : "warn",
+      message: `${toolCount} tool${toolCount === 1 ? "" : "s"} installed`,
     });
 
     // Determine overall status
-    const hasFailure = checks.some((c) => c.status === 'fail');
-    const hasWarning = checks.some((c) => c.status === 'warn');
-    const overall = hasFailure ? 'unhealthy' : hasWarning ? 'warning' : 'healthy';
+    const hasFailure = checks.some((c) => c.status === "fail");
+    const hasWarning = checks.some((c) => c.status === "warn");
+    const overall = hasFailure ? "unhealthy" : hasWarning ? "warning" : "healthy";
 
     const status: IHealthStatus = {
       overall,
-      checks: checks as IHealthStatus['checks'],
+      checks: checks as IHealthStatus["checks"],
       lastCheck: new Date().toISOString(),
     };
     return { success: true, data: status };
   } catch (error) {
-    logger.error(messages.apiError('getHealth'), error);
-    return { success: false, error: 'Failed to retrieve health status' };
+    logger.error(messages.apiError("getHealth"), error);
+    return { success: false, error: "Failed to retrieve health status" };
   }
 }

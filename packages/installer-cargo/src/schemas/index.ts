@@ -1,2 +1,2 @@
-export * from './cargoInstallParamsSchema';
-export * from './cargoToolConfigSchema';
+export * from "./cargoInstallParamsSchema";
+export * from "./cargoToolConfigSchema";

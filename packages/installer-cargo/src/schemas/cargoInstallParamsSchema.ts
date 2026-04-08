@@ -1,5 +1,5 @@
-import { baseInstallParamsSchema } from '@dotfiles/core';
-import { z } from 'zod';
+import { baseInstallParamsSchema } from "@dotfiles/core";
+import { z } from "zod";
 
 /**
  * Zod schema for Cargo installation parameters
@@ -13,7 +13,7 @@ export const cargoInstallParamsSchema = baseInstallParamsSchema.extend({
   /**
    * Source for binaries - either cargo-quickinstall or GitHub releases
    */
-  binarySource: z.enum(['cargo-quickinstall', 'github-releases']).optional(),
+  binarySource: z.enum(["cargo-quickinstall", "github-releases"]).optional(),
 
   /**
    * GitHub repository for the crate (required for github-releases source)
@@ -30,7 +30,7 @@ export const cargoInstallParamsSchema = baseInstallParamsSchema.extend({
   /**
    * Version source - where to get the version information
    */
-  versionSource: z.enum(['cargo-toml', 'crates-io', 'github-releases']).optional(),
+  versionSource: z.enum(["cargo-toml", "crates-io", "github-releases"]).optional(),
 
   /**
    * Custom Cargo.toml URL if different from standard GitHub location

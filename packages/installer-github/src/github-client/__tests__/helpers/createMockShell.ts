@@ -1,5 +1,5 @@
-import type { Shell, ShellCommand, ShellResult } from '@dotfiles/core';
-import { mock } from 'bun:test';
+import type { Shell, ShellCommand, ShellResult } from "@dotfiles/core";
+import { mock } from "bun:test";
 
 /**
  * Mock response for a shell command.
@@ -62,7 +62,7 @@ export function createMockShell(): IMockShell {
 
     // Check for endpoint-specific responses
     for (const [pattern, response] of endpointResponses) {
-      if (typeof pattern === 'string') {
+      if (typeof pattern === "string") {
         if (command.includes(pattern)) {
           return response;
         }
@@ -73,8 +73,8 @@ export function createMockShell(): IMockShell {
 
     // Default: simulate not found
     return {
-      stdout: '',
-      stderr: 'gh: Not Found (HTTP 404)',
+      stdout: "",
+      stderr: "gh: Not Found (HTTP 404)",
       code: 1,
     };
   }
@@ -97,7 +97,7 @@ export function createMockShell(): IMockShell {
       },
       lines: async () => {
         const response = findResponse(command);
-        return response.stdout.split('\n');
+        return response.stdout.split("\n");
       },
       bytes: async () => {
         const response = findResponse(command);
@@ -123,13 +123,13 @@ export function createMockShell(): IMockShell {
 
   const shellFn = mock((commandOrStrings: string | TemplateStringsArray, ...values: unknown[]): ShellCommand => {
     let command: string;
-    if (typeof commandOrStrings === 'string') {
+    if (typeof commandOrStrings === "string") {
       command = commandOrStrings;
     } else {
       // Template literal: reconstruct the string
       command = commandOrStrings.reduce((acc, str, i) => {
-        return acc + str + (values[i] !== undefined ? String(values[i]) : '');
-      }, '');
+        return acc + str + (values[i] !== undefined ? String(values[i]) : "");
+      }, "");
     }
     return createMockShellCommand(command);
   }) as unknown as IMockShell;
@@ -159,7 +159,7 @@ export function createMockShell(): IMockShell {
 export function createSuccessResponse<T>(data: T): IMockShellResponse {
   return {
     stdout: JSON.stringify(data),
-    stderr: '',
+    stderr: "",
     code: 0,
   };
 }
@@ -169,7 +169,7 @@ export function createSuccessResponse<T>(data: T): IMockShellResponse {
  */
 export function createErrorResponse(message: string, code: number = 1): IMockShellResponse {
   return {
-    stdout: '',
+    stdout: "",
     stderr: message,
     code,
   };

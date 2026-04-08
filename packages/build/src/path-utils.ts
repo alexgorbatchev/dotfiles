@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * Locates the repository root by searching for a `package.json` file with workspaces.
@@ -16,9 +16,9 @@ export function getRepoRoot(): string {
 
   // Walk up the directory tree until we find package.json with workspaces
   while (currentDir !== path.parse(currentDir).root) {
-    const packageJsonPath = path.join(currentDir, 'package.json');
+    const packageJsonPath = path.join(currentDir, "package.json");
     if (fs.existsSync(packageJsonPath)) {
-      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
       if (packageJson.workspaces) {
         return currentDir;
       }
@@ -26,7 +26,7 @@ export function getRepoRoot(): string {
     currentDir = path.dirname(currentDir);
   }
 
-  throw new Error('Could not find repository root (no package.json with workspaces found)');
+  throw new Error("Could not find repository root (no package.json with workspaces found)");
 }
 
 /**

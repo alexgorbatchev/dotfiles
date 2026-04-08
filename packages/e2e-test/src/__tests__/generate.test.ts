@@ -8,13 +8,13 @@
  * - Aliases in shell scripts
  * - Always and once script blocks
  */
-import { beforeAll, describe, expect, it } from 'bun:test';
-import '@dotfiles/testing-helpers';
-import { Architecture, Platform } from '@dotfiles/core';
-import { CARGO_QUICKINSTALL_TOOL, GITHUB_RELEASE_TOOL, withMockServer } from './helpers/mock-server';
-import { TestHarness } from './helpers/TestHarness';
+import { beforeAll, describe, expect, it } from "bun:test";
+import "@dotfiles/testing-helpers";
+import { Architecture, Platform } from "@dotfiles/core";
+import { CARGO_QUICKINSTALL_TOOL, GITHUB_RELEASE_TOOL, withMockServer } from "./helpers/mock-server";
+import { TestHarness } from "./helpers/TestHarness";
 
-describe('E2E: generate command', () => {
+describe("E2E: generate command", () => {
   withMockServer((b) => b.withGitHubTool(GITHUB_RELEASE_TOOL).withCargoTool(CARGO_QUICKINSTALL_TOOL));
 
   const platformConfigs: ReadonlyArray<{
@@ -22,126 +22,126 @@ describe('E2E: generate command', () => {
     architecture: Architecture;
     name: string;
   }> = [
-    { platform: Platform.MacOS, architecture: Architecture.Arm64, name: 'macOS ARM64' },
-    { platform: Platform.Linux, architecture: Architecture.X86_64, name: 'Linux x86_64' },
+    { platform: Platform.MacOS, architecture: Architecture.Arm64, name: "macOS ARM64" },
+    { platform: Platform.Linux, architecture: Architecture.X86_64, name: "Linux x86_64" },
   ];
 
   for (const config of platformConfigs) {
     describe(`${config.name}`, () => {
       const harness: TestHarness = new TestHarness({
         testDir: import.meta.dir,
-        configPath: 'fixtures/main/config.ts',
+        configPath: "fixtures/main/config.ts",
         platform: config.platform,
         architecture: config.architecture,
       });
 
-      describe('generate command', () => {
+      describe("generate command", () => {
         beforeAll(async () => {
           await harness.clean();
           const result = await harness.generate();
           expect(result.code).toBe(0);
         });
 
-        it('should generate user-bin and shell-scripts directories', async () => {
+        it("should generate user-bin and shell-scripts directories", async () => {
           await harness.verifyDir(harness.userBinDir);
           await harness.verifyDir(harness.shellScriptsDir);
         });
 
-        describe('github-release-tool', () => {
-          it('should generate shims that are executable', async () => {
-            await harness.verifyShim('github-release-tool');
+        describe("github-release-tool", () => {
+          it("should generate shims that are executable", async () => {
+            await harness.verifyShim("github-release-tool");
           });
 
-          it('should generate shell init scripts for zsh, bash, and powershell', async () => {
-            await harness.verifyShellScript('zsh');
-            await harness.verifyShellScript('bash');
-            await harness.verifyShellScript('powershell');
+          it("should generate shell init scripts for zsh, bash, and powershell", async () => {
+            await harness.verifyShellScript("zsh");
+            await harness.verifyShellScript("bash");
+            await harness.verifyShellScript("powershell");
           });
 
-          it('should set GITHUB_RELEASE_TOOL environment variable in shell script', async () => {
+          it("should set GITHUB_RELEASE_TOOL environment variable in shell script", async () => {
             await harness.verifyEnvironmentVariable(
-              'github-release-tool',
-              'GITHUB_RELEASE_TOOL_DEFAULT_OPTS',
-              '--color=fg',
+              "github-release-tool",
+              "GITHUB_RELEASE_TOOL_DEFAULT_OPTS",
+              "--color=fg",
             );
-            await harness.verifyEnvironmentVariable('github-release-tool', 'GITHUB_RELEASE_TOOL_OTHER_OPTS', '--arg=1');
+            await harness.verifyEnvironmentVariable("github-release-tool", "GITHUB_RELEASE_TOOL_OTHER_OPTS", "--arg=1");
           });
 
-          it('should set github-release-tool alias in shell script', async () => {
-            await harness.verifyAlias('github-release-tool', 'grt', 'github-release-tool --preview "ps -f -p {+}"');
+          it("should set github-release-tool alias in shell script", async () => {
+            await harness.verifyAlias("github-release-tool", "grt", 'github-release-tool --preview "ps -f -p {+}"');
           });
 
-          it('should generate github-release-tool always script', async () => {
-            await harness.verifyAlwaysScript('github-release-tool', 'echo "always from github-release-tool"');
+          it("should generate github-release-tool always script", async () => {
+            await harness.verifyAlwaysScript("github-release-tool", 'echo "always from github-release-tool"');
           });
 
-          it('should generate github-release-tool once script', async () => {
-            await harness.verifyOnceScript('github-release-tool', 'echo "echo from github-release-tool"');
+          it("should generate github-release-tool once script", async () => {
+            await harness.verifyOnceScript("github-release-tool", 'echo "echo from github-release-tool"');
           });
 
-          it('should include github-release-tool completion directory in fpath', async () => {
-            const scriptPath = harness.getShellScriptPath('zsh');
+          it("should include github-release-tool completion directory in fpath", async () => {
+            const scriptPath = harness.getShellScriptPath("zsh");
             const content = await harness.readFile(scriptPath);
             expect(content).toMatch(/fpath=\(".*\/zsh\/completions" \$fpath\)/);
           });
 
-          it('should execute github-release-tool shim and download binary on first run', async () => {
-            await harness.verifyShim('github-release-tool', {
-              args: ['--version'],
+          it("should execute github-release-tool shim and download binary on first run", async () => {
+            await harness.verifyShim("github-release-tool", {
+              args: ["--version"],
               expectedExitCode: 0,
               stdoutMatcher: (stdout) => {
                 // Extract the version from the end of the output, handling logging output
-                const lines = stdout.split('\n');
-                const versionLine = lines[lines.length - 1] || lines[lines.length - 2] || '';
-                return versionLine.trim() === '1.0.0';
+                const lines = stdout.split("\n");
+                const versionLine = lines[lines.length - 1] || lines[lines.length - 2] || "";
+                return versionLine.trim() === "1.0.0";
               },
             });
           });
         });
 
-        describe('cargo-quickinstall-tool', () => {
-          it('should generate cargo-quickinstall-tool shim that is executable', async () => {
-            await harness.verifyShim('cargo-quickinstall-tool');
+        describe("cargo-quickinstall-tool", () => {
+          it("should generate cargo-quickinstall-tool shim that is executable", async () => {
+            await harness.verifyShim("cargo-quickinstall-tool");
           });
 
-          it('should set CARGO_QUICKINSTALL_TOOL environment variables in shell script', async () => {
+          it("should set CARGO_QUICKINSTALL_TOOL environment variables in shell script", async () => {
             await harness.verifyEnvironmentVariable(
-              'cargo-quickinstall-tool',
-              'CARGO_QUICKINSTALL_TOOL_DEFAULT_OPTS',
-              '--color=fg',
+              "cargo-quickinstall-tool",
+              "CARGO_QUICKINSTALL_TOOL_DEFAULT_OPTS",
+              "--color=fg",
             );
             await harness.verifyEnvironmentVariable(
-              'cargo-quickinstall-tool',
-              'CARGO_QUICKINSTALL_TOOL_OTHER_OPTS',
-              '--arg=1',
+              "cargo-quickinstall-tool",
+              "CARGO_QUICKINSTALL_TOOL_OTHER_OPTS",
+              "--arg=1",
             );
           });
 
-          it('should set cargo-quickinstall-tool alias in shell script', async () => {
+          it("should set cargo-quickinstall-tool alias in shell script", async () => {
             await harness.verifyAlias(
-              'cargo-quickinstall-tool',
-              'cqt',
+              "cargo-quickinstall-tool",
+              "cqt",
               'cargo-quickinstall-tool --preview "ps -f -p {+}"',
             );
           });
 
-          it('should generate cargo-quickinstall-tool always script', async () => {
-            await harness.verifyAlwaysScript('cargo-quickinstall-tool', 'echo "always from cargo-quickinstall-tool"');
+          it("should generate cargo-quickinstall-tool always script", async () => {
+            await harness.verifyAlwaysScript("cargo-quickinstall-tool", 'echo "always from cargo-quickinstall-tool"');
           });
 
-          it('should generate cargo-quickinstall-tool once script', async () => {
-            await harness.verifyOnceScript('cargo-quickinstall-tool', 'echo "once from cargo-quickinstall-tool"');
+          it("should generate cargo-quickinstall-tool once script", async () => {
+            await harness.verifyOnceScript("cargo-quickinstall-tool", 'echo "once from cargo-quickinstall-tool"');
           });
 
-          it('should execute cargo-quickinstall-tool shim and download binary on first run', async () => {
-            await harness.verifyShim('cargo-quickinstall-tool', {
-              args: ['--version'],
+          it("should execute cargo-quickinstall-tool shim and download binary on first run", async () => {
+            await harness.verifyShim("cargo-quickinstall-tool", {
+              args: ["--version"],
               expectedExitCode: 0,
               stdoutMatcher: (stdout) => {
                 // Extract the version from the end of the output, handling logging output
-                const lines = stdout.split('\n');
-                const versionLine = lines[lines.length - 1] || lines[lines.length - 2] || '';
-                return versionLine.trim() === '1.0.0';
+                const lines = stdout.split("\n");
+                const versionLine = lines[lines.length - 1] || lines[lines.length - 2] || "";
+                return versionLine.trim() === "1.0.0";
               },
             });
           });

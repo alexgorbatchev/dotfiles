@@ -1,10 +1,10 @@
-import { Architecture, hasArchitecture, hasPlatform, type ISystemInfo, Platform } from '@dotfiles/core';
-import { NotFoundError } from '@dotfiles/downloader';
-import type { TsLogger } from '@dotfiles/logger';
-import type { IApiResponse } from '../../shared/types';
-import { messages } from '../log-messages';
-import type { IDashboardServices } from '../types';
-import { getToolConfigs } from './helpers';
+import { Architecture, hasArchitecture, hasPlatform, type ISystemInfo, Platform } from "@dotfiles/core";
+import { NotFoundError } from "@dotfiles/downloader";
+import type { TsLogger } from "@dotfiles/logger";
+import type { IApiResponse } from "../../shared/types";
+import { messages } from "../log-messages";
+import type { IDashboardServices } from "../types";
+import { getToolConfigs } from "./helpers";
 
 interface IPlatformConfigLike {
   platforms: Platform;
@@ -24,8 +24,8 @@ function getRepoFromInstallParams(installParams: Record<string, unknown> | undef
     return null;
   }
 
-  const repo = installParams['repo'];
-  return typeof repo === 'string' ? repo : null;
+  const repo = installParams["repo"];
+  return typeof repo === "string" ? repo : null;
 }
 
 function matchesPlatformConfig(entry: IPlatformConfigLike, systemInfo: ISystemInfo): boolean {
@@ -77,25 +77,23 @@ export async function getToolReadme(
   logger: TsLogger,
   services: IDashboardServices,
   toolName: string,
-): Promise<IApiResponse<{ content: string; }>> {
+): Promise<IApiResponse<{ content: string }>> {
   try {
     const toolConfigs = await getToolConfigs(logger, services);
     const config = toolConfigs[toolName];
 
     if (!config) {
-      return { success: false, error: 'Tool not found' };
+      return { success: false, error: "Tool not found" };
     }
 
     const repo = getRepoFromToolConfig(config, services.systemInfo);
 
     if (!repo) {
-      return { success: false, error: 'Tool does not have a GitHub repository' };
+      return { success: false, error: "Tool does not have a GitHub repository" };
     }
 
     // Try version first if specified, then common default branches
-    const branchesToTry = config.version
-      ? [config.version, 'main', 'master']
-      : ['main', 'master'];
+    const branchesToTry = config.version ? [config.version, "main", "master"] : ["main", "master"];
 
     for (const branch of branchesToTry) {
       const url = `https://raw.githubusercontent.com/${repo}/${branch}/README.md`;
@@ -103,7 +101,7 @@ export async function getToolReadme(
         const response = await services.downloader.download(logger, url);
 
         if (response) {
-          const content = response.toString('utf-8');
+          const content = response.toString("utf-8");
           return { success: true, data: { content } };
         }
       } catch (error) {
@@ -115,9 +113,9 @@ export async function getToolReadme(
       }
     }
 
-    return { success: false, error: 'README not found' };
+    return { success: false, error: "README not found" };
   } catch (error) {
-    logger.error(messages.apiError('getToolReadme'), error);
-    return { success: false, error: 'Failed to retrieve README' };
+    logger.error(messages.apiError("getToolReadme"), error);
+    return { success: false, error: "Failed to retrieve README" };
   }
 }

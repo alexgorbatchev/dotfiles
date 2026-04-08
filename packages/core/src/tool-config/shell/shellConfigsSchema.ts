@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import type { ShellTypeConfig } from './shellTypeConfigSchema';
-import { shellTypeConfigSchema } from './shellTypeConfigSchema';
+import { z } from "zod";
+import type { ShellTypeConfig } from "./shellTypeConfigSchema";
+import { shellTypeConfigSchema } from "./shellTypeConfigSchema";
 
 export const shellConfigsSchema = z
   .object({

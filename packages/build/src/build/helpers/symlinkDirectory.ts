@@ -1,6 +1,6 @@
-import fs from 'node:fs';
+import fs from "node:fs";
 
-import { BuildError } from '../handleBuildError';
+import { BuildError } from "../handleBuildError";
 
 /**
  * Creates or replaces a directory symlink, validating the source path exists.
@@ -11,5 +11,5 @@ export function symlinkDirectory(sourcePath: string, destinationPath: string, de
   }
 
   fs.rmSync(destinationPath, { recursive: true, force: true });
-  fs.symlinkSync(sourcePath, destinationPath, 'dir');
+  fs.symlinkSync(sourcePath, destinationPath, "dir");
 }

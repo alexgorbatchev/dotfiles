@@ -123,10 +123,11 @@
 
 /* GitHub markdown overrides */
 .markdown-body {
-  *, code {
+  *,
+  code {
     font-size: 14px;
   }
-  
+
   br {
     display: inline;
   }

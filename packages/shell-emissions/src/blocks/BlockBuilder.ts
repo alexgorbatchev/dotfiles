@@ -1,6 +1,6 @@
-import { isCompletionEmission, isHoisted } from '../emissions/guards';
-import { BlockValidationError } from '../errors';
-import type { Block, CompletionEmission, Emission, EmissionKind, SectionOptions } from '../types';
+import { isCompletionEmission, isHoisted } from "../emissions/guards";
+import { BlockValidationError } from "../errors";
+import type { Block, CompletionEmission, Emission, EmissionKind, SectionOptions } from "../types";
 
 interface SectionDefinition {
   id: string;
@@ -29,10 +29,10 @@ export class BlockBuilder {
    */
   addSection(id: string, options: SectionOptions): BlockBuilder {
     if (this.sections.has(id)) {
-      throw new BlockValidationError(id, 'section already exists');
+      throw new BlockValidationError(id, "section already exists");
     }
     if (options.priority < 0) {
-      throw new BlockValidationError(id, 'priority must be non-negative');
+      throw new BlockValidationError(id, "priority must be non-negative");
     }
 
     this.sections.set(id, {
@@ -71,7 +71,7 @@ export class BlockBuilder {
   addEmissionToSection(emission: Emission, sectionId: string): BlockBuilder {
     const section = this.sections.get(sectionId);
     if (!section) {
-      throw new BlockValidationError(sectionId, 'section does not exist');
+      throw new BlockValidationError(sectionId, "section does not exist");
     }
     section.emissions.push(emission);
     return this;
@@ -100,10 +100,7 @@ export class BlockBuilder {
   private addHoistedEmission(emission: Emission): void {
     const targetSection = this.findHoistTarget(emission.kind);
     if (!targetSection) {
-      throw new BlockValidationError(
-        'unknown',
-        `no section accepts hoisted emission kind "${emission.kind}"`,
-      );
+      throw new BlockValidationError("unknown", `no section accepts hoisted emission kind "${emission.kind}"`);
     }
     targetSection.emissions.push(emission);
   }
@@ -111,10 +108,7 @@ export class BlockBuilder {
   private addNonHoistedEmission(emission: Emission, childBlockId?: string): void {
     const targetSection = this.findChildrenSection();
     if (!targetSection) {
-      throw new BlockValidationError(
-        'unknown',
-        'no section allows children for non-hoisted emissions',
-      );
+      throw new BlockValidationError("unknown", "no section allows children for non-hoisted emissions");
     }
 
     if (childBlockId) {
@@ -155,9 +149,7 @@ export class BlockBuilder {
   private buildBlock(section: SectionDefinition): Block {
     // Deduplicate completion emissions before building
     const deduplicatedEmissions = this.deduplicateCompletions(section.emissions);
-    const sortedEmissions = deduplicatedEmissions.toSorted(
-      (a, b) => (a.priority ?? 0) - (b.priority ?? 0),
-    );
+    const sortedEmissions = deduplicatedEmissions.toSorted((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
 
     const children: Block[] = [];
     for (const childId of section.childInsertionOrder) {
@@ -166,9 +158,7 @@ export class BlockBuilder {
         continue;
       }
 
-      const childEmissions = childDef.emissions.toSorted(
-        (a, b) => (a.priority ?? 0) - (b.priority ?? 0),
-      );
+      const childEmissions = childDef.emissions.toSorted((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
 
       children.push({
         id: childDef.id,
@@ -234,14 +224,12 @@ export class BlockBuilder {
         }
       }
       if (completion.priority !== undefined) {
-        minPriority = minPriority === undefined
-          ? completion.priority
-          : Math.min(minPriority, completion.priority);
+        minPriority = minPriority === undefined ? completion.priority : Math.min(minPriority, completion.priority);
       }
     }
 
     const mergedCompletion: CompletionEmission = {
-      kind: 'completion',
+      kind: "completion",
       directories: mergedDirectories.size > 0 ? [...mergedDirectories] : undefined,
       files: mergedFiles.size > 0 ? [...mergedFiles] : undefined,
       commands: mergedCommands.size > 0 ? [...mergedCommands] : undefined,

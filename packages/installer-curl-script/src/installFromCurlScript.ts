@@ -1,7 +1,7 @@
-import { createShell, type IInstallContext, type Shell } from '@dotfiles/core';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
+import { createShell, type IInstallContext, type Shell } from "@dotfiles/core";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { HookExecutor, IInstallOptions } from "@dotfiles/installer";
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -9,18 +9,14 @@ import {
   getBinaryNames,
   getBinaryPaths,
   withInstallErrorHandling,
-} from '@dotfiles/installer';
-import { createSafeLogMessage, type TsLogger } from '@dotfiles/logger';
-import { resolveValue } from '@dotfiles/unwrap-value';
-import { detectVersionViaCli } from '@dotfiles/utils';
-import path from 'node:path';
-import { messages } from './log-messages';
-import type { CurlScriptToolConfig } from './schemas';
-import type {
-  CurlScriptInstallResult,
-  ICurlScriptArgsContext,
-  ICurlScriptInstallMetadata,
-} from './types';
+} from "@dotfiles/installer";
+import { createSafeLogMessage, type TsLogger } from "@dotfiles/logger";
+import { resolveValue } from "@dotfiles/unwrap-value";
+import { detectVersionViaCli } from "@dotfiles/utils";
+import path from "node:path";
+import { messages } from "./log-messages";
+import type { CurlScriptToolConfig } from "./schemas";
+import type { CurlScriptInstallResult, ICurlScriptArgsContext, ICurlScriptInstallMetadata } from "./types";
 
 /**
  * Handles binary installation by copying from system directories to versioned directory
@@ -41,7 +37,7 @@ async function handleBinaryInstallation(
       continue;
     }
 
-    const searchDirs = ['/usr/local/bin', path.join(context.systemInfo.homeDir, '.local', 'bin'), '/usr/bin'];
+    const searchDirs = ["/usr/local/bin", path.join(context.systemInfo.homeDir, ".local", "bin"), "/usr/bin"];
     let found = false;
 
     for (const dir of searchDirs) {
@@ -56,7 +52,7 @@ async function handleBinaryInstallation(
     }
 
     if (!found) {
-      logger.warn(messages.binaryNotFound(binaryName, `${context.stagingDir}, ${searchDirs.join(', ')}`));
+      logger.warn(messages.binaryNotFound(binaryName, `${context.stagingDir}, ${searchDirs.join(", ")}`));
     }
   }
 }
@@ -92,13 +88,13 @@ export async function installFromCurlScript(
   installShell?: Shell,
 ): Promise<CurlScriptInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
-  const logger = parentLogger.getSubLogger({ name: 'installFromCurlScript' });
+  const logger = parentLogger.getSubLogger({ name: "installFromCurlScript" });
   logger.debug(messages.installing(toolName));
 
-  if (!toolConfig.installParams || !('url' in toolConfig.installParams) || !('shell' in toolConfig.installParams)) {
+  if (!toolConfig.installParams || !("url" in toolConfig.installParams) || !("shell" in toolConfig.installParams)) {
     return {
       success: false,
-      error: 'URL or shell not specified in installParams',
+      error: "URL or shell not specified in installParams",
     };
   }
 
@@ -151,13 +147,13 @@ export async function installFromCurlScript(
     };
 
     const loggingShell = installShell ?? createShell({ logger, skipCommandLog: true });
-    let scriptOutput = '';
-    if (shell === 'bash') {
+    let scriptOutput = "";
+    if (shell === "bash") {
       const result = await loggingShell`bash ${scriptPath} ${resolvedArgs}`.env(env);
-      scriptOutput = [result.stdout, result.stderr].filter(Boolean).join('\n');
+      scriptOutput = [result.stdout, result.stderr].filter(Boolean).join("\n");
     } else {
       const result = await loggingShell`sh ${scriptPath} ${resolvedArgs}`.env(env);
-      scriptOutput = [result.stdout, result.stderr].filter(Boolean).join('\n');
+      scriptOutput = [result.stdout, result.stderr].filter(Boolean).join("\n");
     }
 
     await handleBinaryInstallation(toolConfig, context, fs, logger);
@@ -174,12 +170,12 @@ export async function installFromCurlScript(
     }
 
     if (installedBinaries.length === 0) {
-      const expectedPaths = binaryPaths.join(', ');
+      const expectedPaths = binaryPaths.join(", ");
       logger.error(messages.noBinariesInstalled(expectedPaths));
       if (scriptOutput.trim()) {
         logger.error(messages.scriptOutput());
         // Print script output line by line for readability
-        for (const line of scriptOutput.trim().split('\n')) {
+        for (const line of scriptOutput.trim().split("\n")) {
           logger.error(createSafeLogMessage(line));
         }
       }
@@ -201,7 +197,7 @@ export async function installFromCurlScript(
     }
 
     const metadata: ICurlScriptInstallMetadata = {
-      method: 'curl-script',
+      method: "curl-script",
       scriptUrl: url,
       shell,
     };
@@ -210,9 +206,9 @@ export async function installFromCurlScript(
       success: true,
       binaryPaths,
       metadata,
-      version: detectedVersion || (toolConfig.version !== 'latest' ? toolConfig.version : undefined),
+      version: detectedVersion || (toolConfig.version !== "latest" ? toolConfig.version : undefined),
     };
   };
 
-  return withInstallErrorHandling('curl-script', toolName, logger, operation);
+  return withInstallErrorHandling("curl-script", toolName, logger, operation);
 }

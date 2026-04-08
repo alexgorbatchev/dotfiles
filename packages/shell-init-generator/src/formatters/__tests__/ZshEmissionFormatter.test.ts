@@ -8,31 +8,31 @@ import {
   source,
   sourceFile,
   sourceFunction,
-} from '@dotfiles/shell-emissions';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import { ZshEmissionFormatter } from '../ZshEmissionFormatter';
+} from "@dotfiles/shell-emissions";
+import { beforeEach, describe, expect, it } from "bun:test";
+import { ZshEmissionFormatter } from "../ZshEmissionFormatter";
 
 // oxlint-disable-next-line import/no-unassigned-import
-import '@dotfiles/testing-helpers';
+import "@dotfiles/testing-helpers";
 
-describe('ZshEmissionFormatter', () => {
-  const onceScriptDir = '/test/.once';
+describe("ZshEmissionFormatter", () => {
+  const onceScriptDir = "/test/.once";
   let formatter: ZshEmissionFormatter;
 
   beforeEach(() => {
     formatter = new ZshEmissionFormatter({ onceScriptDir });
   });
 
-  describe('formatEnvironment', () => {
-    it('should format environment variable', () => {
-      const emission = environment({ MY_VAR: 'my-value' });
+  describe("formatEnvironment", () => {
+    it("should format environment variable", () => {
+      const emission = environment({ MY_VAR: "my-value" });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"export MY_VAR="my-value""`);
     });
 
-    it('should format multiple environment variables', () => {
-      const emission = environment({ VAR1: 'value1', VAR2: 'value2' });
+    it("should format multiple environment variables", () => {
+      const emission = environment({ VAR1: "value1", VAR2: "value2" });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -42,16 +42,16 @@ describe('ZshEmissionFormatter', () => {
     });
   });
 
-  describe('formatAlias', () => {
-    it('should format single alias', () => {
-      const emission = alias({ ll: 'ls -la' });
+  describe("formatAlias", () => {
+    it("should format single alias", () => {
+      const emission = alias({ ll: "ls -la" });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"alias ll='ls -la'"`);
     });
 
-    it('should format multiple aliases', () => {
-      const emission = alias({ ll: 'ls -la', la: 'ls -la' });
+    it("should format multiple aliases", () => {
+      const emission = alias({ ll: "ls -la", la: "ls -la" });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -60,14 +60,14 @@ describe('ZshEmissionFormatter', () => {
       `);
     });
 
-    it('should not expand subshell expressions', () => {
-      const emission = alias({ today: 'echo $(date)' });
+    it("should not expand subshell expressions", () => {
+      const emission = alias({ today: "echo $(date)" });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"alias today='echo $(date)'"`);
     });
 
-    it('should escape single quotes in alias value', () => {
+    it("should escape single quotes in alias value", () => {
       const emission = alias({ greet: "echo 'hello'" });
       const result = formatter.formatEmission(emission);
 
@@ -75,9 +75,9 @@ describe('ZshEmissionFormatter', () => {
     });
   });
 
-  describe('formatFunction', () => {
-    it('should format function', () => {
-      const emission = fn('greet', 'echo "Hello, $1!"');
+  describe("formatFunction", () => {
+    it("should format function", () => {
+      const emission = fn("greet", 'echo "Hello, $1!"');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -87,8 +87,8 @@ describe('ZshEmissionFormatter', () => {
       `);
     });
 
-    it('should handle multi-line function body', () => {
-      const emission = fn('multi', 'echo "line1"\necho "line2"');
+    it("should handle multi-line function body", () => {
+      const emission = fn("multi", 'echo "line1"\necho "line2"');
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -100,25 +100,25 @@ describe('ZshEmissionFormatter', () => {
     });
   });
 
-  describe('formatScript', () => {
-    it('should format raw script without modification', () => {
-      const emission = script('echo "hello"', 'raw');
+  describe("formatScript", () => {
+    it("should format raw script without modification", () => {
+      const emission = script('echo "hello"', "raw");
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"echo "hello""`);
     });
 
-    it('should format always script', () => {
-      const emission = script('echo "hello"', 'always');
+    it("should format always script", () => {
+      const emission = script('echo "hello"', "always");
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"echo "hello""`);
     });
   });
 
-  describe('formatOnceScript', () => {
-    it('should format once script with correct filename and content', () => {
-      const emission = script('echo "setup"', 'once');
+  describe("formatOnceScript", () => {
+    it("should format once script with correct filename and content", () => {
+      const emission = script('echo "setup"', "once");
       const result = formatter.formatOnceScript(emission, 1);
 
       expect(result.filename).toMatchInlineSnapshot(`"once-001.zsh"`);
@@ -130,27 +130,27 @@ describe('ZshEmissionFormatter', () => {
     });
   });
 
-  describe('formatSourceFile', () => {
-    it('should format source file', () => {
-      const emission = sourceFile('$HOME/.toolrc');
+  describe("formatSourceFile", () => {
+    it("should format source file", () => {
+      const emission = sourceFile("$HOME/.toolrc");
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"source "$HOME/.toolrc""`);
     });
   });
 
-  describe('formatSourceFunction', () => {
-    it('should format source function', () => {
-      const emission = sourceFunction('myFunc');
+  describe("formatSourceFunction", () => {
+    it("should format source function", () => {
+      const emission = sourceFunction("myFunc");
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"source <(myFunc)"`);
     });
   });
 
-  describe('formatSource', () => {
-    it('should format source emission with inline content', () => {
-      const emission = source('echo "hello"', '__dotfiles_test_0');
+  describe("formatSource", () => {
+    it("should format source emission with inline content", () => {
+      const emission = source('echo "hello"', "__dotfiles_test_0");
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -162,8 +162,8 @@ describe('ZshEmissionFormatter', () => {
       `);
     });
 
-    it('should handle multi-line content', () => {
-      const emission = source('echo "line1"\necho "line2"', '__dotfiles_multi_0');
+    it("should handle multi-line content", () => {
+      const emission = source('echo "line1"\necho "line2"', "__dotfiles_multi_0");
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -177,9 +177,9 @@ describe('ZshEmissionFormatter', () => {
     });
   });
 
-  describe('formatCompletion', () => {
-    it('should format completion with directories', () => {
-      const emission = completion({ directories: ['$HOME/.completions'] });
+  describe("formatCompletion", () => {
+    it("should format completion with directories", () => {
+      const emission = completion({ directories: ["$HOME/.completions"] });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -188,8 +188,8 @@ describe('ZshEmissionFormatter', () => {
       `);
     });
 
-    it('should format completion with files', () => {
-      const emission = completion({ files: ['/path/to/completion'] });
+    it("should format completion with files", () => {
+      const emission = completion({ files: ["/path/to/completion"] });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -199,9 +199,9 @@ describe('ZshEmissionFormatter', () => {
     });
   });
 
-  describe('formatPath', () => {
-    it('should format path with prepend and deduplication', () => {
-      const emission = path('/usr/local/bin', { position: 'prepend', deduplicate: true });
+  describe("formatPath", () => {
+    it("should format path with prepend and deduplication", () => {
+      const emission = path("/usr/local/bin", { position: "prepend", deduplicate: true });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -211,8 +211,8 @@ describe('ZshEmissionFormatter', () => {
       `);
     });
 
-    it('should format path with append and deduplication', () => {
-      const emission = path('/usr/local/bin', { position: 'append', deduplicate: true });
+    it("should format path with append and deduplication", () => {
+      const emission = path("/usr/local/bin", { position: "append", deduplicate: true });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`
@@ -222,16 +222,16 @@ describe('ZshEmissionFormatter', () => {
       `);
     });
 
-    it('should format path without deduplication', () => {
-      const emission = path('/usr/local/bin', { deduplicate: false });
+    it("should format path without deduplication", () => {
+      const emission = path("/usr/local/bin", { deduplicate: false });
       const result = formatter.formatEmission(emission);
 
       expect(result).toMatchInlineSnapshot(`"export PATH="/usr/local/bin:$PATH""`);
     });
   });
 
-  describe('formatOnceScriptInitializer', () => {
-    it('should generate once script loop', () => {
+  describe("formatOnceScriptInitializer", () => {
+    it("should generate once script loop", () => {
       const result = formatter.formatOnceScriptInitializer();
 
       expect(result).toMatchInlineSnapshot(`
@@ -243,8 +243,8 @@ describe('ZshEmissionFormatter', () => {
     });
   });
 
-  describe('formatFileHeader', () => {
-    it('should generate file header', () => {
+  describe("formatFileHeader", () => {
+    it("should generate file header", () => {
       const result = formatter.formatFileHeader();
 
       expect(result).toMatchInlineSnapshot(`
@@ -256,8 +256,8 @@ describe('ZshEmissionFormatter', () => {
       `);
     });
 
-    it('should generate file header with metadata', () => {
-      const result = formatter.formatFileHeader({ sourceFile: '/path/to/dotfiles' });
+    it("should generate file header with metadata", () => {
+      const result = formatter.formatFileHeader({ sourceFile: "/path/to/dotfiles" });
 
       expect(result).toMatchInlineSnapshot(`
         "# ==============================================================================
@@ -271,9 +271,9 @@ describe('ZshEmissionFormatter', () => {
     });
   });
 
-  describe('formatSectionHeader', () => {
-    it('should generate section header', () => {
-      const result = formatter.formatSectionHeader('PATH Modifications');
+  describe("formatSectionHeader", () => {
+    it("should generate section header", () => {
+      const result = formatter.formatSectionHeader("PATH Modifications");
 
       expect(result).toMatchInlineSnapshot(
         `"# ============================= PATH Modifications =============================="`,
@@ -281,8 +281,8 @@ describe('ZshEmissionFormatter', () => {
     });
   });
 
-  describe('formatFileFooter', () => {
-    it('should generate file footer', () => {
+  describe("formatFileFooter", () => {
+    it("should generate file footer", () => {
       const result = formatter.formatFileFooter();
 
       expect(result).toMatchInlineSnapshot(
@@ -291,17 +291,17 @@ describe('ZshEmissionFormatter', () => {
     });
   });
 
-  describe('comment', () => {
-    it('should create single line comment', () => {
-      const result = formatter.comment('This is a comment');
+  describe("comment", () => {
+    it("should create single line comment", () => {
+      const result = formatter.comment("This is a comment");
 
       expect(result).toMatchInlineSnapshot(`"# This is a comment"`);
     });
   });
 
-  describe('commentBlock', () => {
-    it('should create multi-line comment block', () => {
-      const result = formatter.commentBlock(['Line 1', 'Line 2']);
+  describe("commentBlock", () => {
+    it("should create multi-line comment block", () => {
+      const result = formatter.commentBlock(["Line 1", "Line 2"]);
 
       expect(result).toMatchInlineSnapshot(`
         "# Line 1

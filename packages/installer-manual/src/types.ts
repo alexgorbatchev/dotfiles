@@ -1,11 +1,11 @@
-import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { IToolInstallationDetails } from '@dotfiles/registry';
+import type { InstallResultFailure, InstallResultSuccess } from "@dotfiles/core";
+import type { IToolInstallationDetails } from "@dotfiles/registry";
 
 /**
  * Metadata specific to manual tool installation.
  */
 export interface IManualInstallMetadata extends Partial<IToolInstallationDetails> {
-  method: 'manual';
+  method: "manual";
   manualInstall: boolean;
 }
 

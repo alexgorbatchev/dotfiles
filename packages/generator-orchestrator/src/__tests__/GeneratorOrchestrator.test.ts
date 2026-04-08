@@ -1,24 +1,24 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import { always, Architecture, type ISystemInfo, Platform, raw, type ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createMockFileRegistry, type TrackedFileSystem } from '@dotfiles/registry/file';
-import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
-import type { IShimGenerator } from '@dotfiles/shim-generator';
+import type { ProjectConfig } from "@dotfiles/config";
+import { always, Architecture, type ISystemInfo, Platform, raw, type ToolConfig } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { createMockFileRegistry, type TrackedFileSystem } from "@dotfiles/registry/file";
+import type { ICompletionGenerator, IShellInitGenerator } from "@dotfiles/shell-init-generator";
+import type { IShimGenerator } from "@dotfiles/shim-generator";
 import type {
   CopyOperationResult,
   ICopyGenerator,
   ISymlinkGenerator,
   SymlinkOperationResult,
-} from '@dotfiles/symlink-generator';
-import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
-import { beforeEach, describe, expect, it, mock, type spyOn } from 'bun:test';
-import assert from 'node:assert';
-import path from 'node:path';
-import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
+} from "@dotfiles/symlink-generator";
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from "@dotfiles/testing-helpers";
+import { beforeEach, describe, expect, it, mock, type spyOn } from "bun:test";
+import assert from "node:assert";
+import path from "node:path";
+import { GeneratorOrchestrator } from "../GeneratorOrchestrator";
 
-const testCompletionsCallback = (ctx: { version?: string; }): { url: string; } => ({
+const testCompletionsCallback = (ctx: { version?: string }): { url: string } => ({
   url: `https://example.com/completions/${ctx.version}/completion.zsh`,
 });
 
@@ -35,7 +35,7 @@ function createMockTrackedFileSystem(fs: IFileSystem): TrackedFileSystem {
   return mockTrackedFs;
 }
 
-describe('GeneratorOrchestrator', () => {
+describe("GeneratorOrchestrator", () => {
   let mockShimGenerator: IShimGenerator;
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
@@ -63,7 +63,7 @@ describe('GeneratorOrchestrator', () => {
         Promise.resolve({
           files: new Map(),
           primaryPath: null,
-        })
+        }),
       ),
     };
     mockSymlinkGenerator = {
@@ -76,19 +76,19 @@ describe('GeneratorOrchestrator', () => {
     mockCompletionGenerator = {
       generateCompletionFile: mock(async () =>
         Promise.resolve({
-          content: '# completion',
-          filename: '_tool',
-          targetPath: '/path/_tool',
-          generatedBy: 'command' as const,
-        })
+          content: "# completion",
+          filename: "_tool",
+          targetPath: "/path/_tool",
+          generatedBy: "command" as const,
+        }),
       ),
       generateAndWriteCompletionFile: mock(async () =>
         Promise.resolve({
-          content: '# completion',
-          filename: '_tool',
-          targetPath: '/path/_tool',
-          generatedBy: 'command' as const,
-        })
+          content: "# completion",
+          filename: "_tool",
+          targetPath: "/path/_tool",
+          generatedBy: "command" as const,
+        }),
       ),
     };
 
@@ -96,20 +96,20 @@ describe('GeneratorOrchestrator', () => {
     mockFileSystem = fs;
     mockFsExists = spies.exists;
 
-    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'generator-orchestrator' });
+    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: "generator-orchestrator" });
 
     systemInfo = {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
-      hostname: 'test-host',
+      hostname: "test-host",
     };
 
     mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+      filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
       fileSystem: mockFileSystem,
       logger,
       systemInfo,
@@ -131,35 +131,35 @@ describe('GeneratorOrchestrator', () => {
     );
   });
 
-  it('should initialize correctly', () => {
+  it("should initialize correctly", () => {
     expect(orchestrator).toBeInstanceOf(GeneratorOrchestrator);
   });
 
-  describe('generateAll', () => {
+  describe("generateAll", () => {
     const toolConfigs: Record<string, ToolConfig> = {
       toolA: {
-        name: 'toolA',
-        binaries: ['ta'],
-        version: '1.0',
-        symlinks: [{ source: 'a.conf', target: '~/.a.conf' }],
-        installationMethod: 'manual',
+        name: "toolA",
+        binaries: ["ta"],
+        version: "1.0",
+        symlinks: [{ source: "a.conf", target: "~/.a.conf" }],
+        installationMethod: "manual",
         installParams: {},
       },
       toolB: {
-        name: 'toolB',
-        binaries: ['tb'],
-        version: '2.0',
+        name: "toolB",
+        binaries: ["tb"],
+        version: "2.0",
         shellConfigs: {
           zsh: {
             scripts: [always(`export TB=1`)],
           },
         },
-        installationMethod: 'manual',
+        installationMethod: "manual",
         installParams: {},
       },
     };
 
-    it('should call sub-generators with correct options', async () => {
+    it("should call sub-generators with correct options", async () => {
       mockFsExists.mockResolvedValue(false); // No existing manifest for this path
 
       // The dryRun option is no longer passed to orchestrator.generateAll
@@ -171,7 +171,7 @@ describe('GeneratorOrchestrator', () => {
         overwrite: true,
       });
       expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
-        shellTypes: ['zsh', 'bash', 'powershell'],
+        shellTypes: ["zsh", "bash", "powershell"],
         systemInfo,
         pluginShellInit: {},
       });
@@ -182,14 +182,14 @@ describe('GeneratorOrchestrator', () => {
       });
     });
 
-    it('should call sub-generators correctly', async () => {
+    it("should call sub-generators correctly", async () => {
       await orchestrator.generateAll(toolConfigs);
 
       expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         overwrite: true,
       });
       expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
-        shellTypes: ['zsh', 'bash', 'powershell'],
+        shellTypes: ["zsh", "bash", "powershell"],
         systemInfo,
         pluginShellInit: {},
       });
@@ -199,7 +199,7 @@ describe('GeneratorOrchestrator', () => {
       });
     });
 
-    it('should handle empty toolConfigs gracefully', async () => {
+    it("should handle empty toolConfigs gracefully", async () => {
       await orchestrator.generateAll({});
 
       expect(mockShimGenerator.generate).toHaveBeenCalledWith(
@@ -211,7 +211,7 @@ describe('GeneratorOrchestrator', () => {
       expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(
         {},
         {
-          shellTypes: ['zsh', 'bash', 'powershell'],
+          shellTypes: ["zsh", "bash", "powershell"],
           systemInfo,
           pluginShellInit: {},
         },
@@ -225,7 +225,7 @@ describe('GeneratorOrchestrator', () => {
       );
     });
 
-    it('should call all generators in correct order', async () => {
+    it("should call all generators in correct order", async () => {
       const shimSpy = mockShimGenerator.generate as ReturnType<typeof mock>;
       const shellSpy = mockShellInitGenerator.generate as ReturnType<typeof mock>;
       const symlinkSpy = mockSymlinkGenerator.generate as ReturnType<typeof mock>;
@@ -237,25 +237,25 @@ describe('GeneratorOrchestrator', () => {
       expect(symlinkSpy).toHaveBeenCalled();
     });
 
-    it('should call generators with mocked results', async () => {
+    it("should call generators with mocked results", async () => {
       const mockShimPaths = [
-        path.join(mockProjectConfig.paths.targetDir, 'toolA'),
-        path.join(mockProjectConfig.paths.targetDir, 'toolB'),
+        path.join(mockProjectConfig.paths.targetDir, "toolA"),
+        path.join(mockProjectConfig.paths.targetDir, "toolB"),
       ];
-      const mockShellInitPath = path.join(mockProjectConfig.paths.shellScriptsDir, 'main.zsh');
+      const mockShellInitPath = path.join(mockProjectConfig.paths.shellScriptsDir, "main.zsh");
       const mockSymlinkResults: SymlinkOperationResult[] = [
         {
           success: true,
-          sourcePath: path.join(mockProjectConfig.paths.dotfilesDir, 'a.conf'),
+          sourcePath: path.join(mockProjectConfig.paths.dotfilesDir, "a.conf"),
 
-          targetPath: path.join('/test/home', '.a.conf'),
-          status: 'created',
+          targetPath: path.join("/test/home", ".a.conf"),
+          status: "created",
         },
       ];
 
       (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockShimPaths);
       (mockShellInitGenerator.generate as ReturnType<typeof mock>).mockResolvedValue({
-        files: new Map([['zsh', mockShellInitPath]]),
+        files: new Map([["zsh", mockShellInitPath]]),
         primaryPath: mockShellInitPath,
       });
       (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockSymlinkResults);
@@ -266,7 +266,7 @@ describe('GeneratorOrchestrator', () => {
         overwrite: true,
       });
       expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
-        shellTypes: ['zsh', 'bash', 'powershell'],
+        shellTypes: ["zsh", "bash", "powershell"],
         systemInfo,
         pluginShellInit: {},
       });
@@ -276,46 +276,46 @@ describe('GeneratorOrchestrator', () => {
       });
     });
 
-    it('should complete generation without errors', async () => {
-      const mockShimPaths = [path.join(mockProjectConfig.paths.targetDir, 'toolA-write')];
-      const mockShellInitPathWrite = path.join(mockProjectConfig.paths.shellScriptsDir, 'init-write.zsh');
+    it("should complete generation without errors", async () => {
+      const mockShimPaths = [path.join(mockProjectConfig.paths.targetDir, "toolA-write")];
+      const mockShellInitPathWrite = path.join(mockProjectConfig.paths.shellScriptsDir, "init-write.zsh");
       const mockSymlinkResultsWrite: SymlinkOperationResult[] = [
         {
           success: true,
-          sourcePath: path.join(mockProjectConfig.paths.dotfilesDir, 'b.conf'),
+          sourcePath: path.join(mockProjectConfig.paths.dotfilesDir, "b.conf"),
 
-          targetPath: path.join('/test/home', '.b.conf'),
-          status: 'updated_target',
+          targetPath: path.join("/test/home", ".b.conf"),
+          status: "updated_target",
         },
       ];
 
       (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockShimPaths);
       (mockShellInitGenerator.generate as ReturnType<typeof mock>).mockResolvedValue({
-        files: new Map([['zsh', mockShellInitPathWrite]]),
+        files: new Map([["zsh", mockShellInitPathWrite]]),
         primaryPath: mockShellInitPathWrite,
       });
       (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockSymlinkResultsWrite);
 
       await orchestrator.generateAll({
         toolX: {
-          name: 'toolX',
-          binaries: ['tx'],
-          version: '1',
-          installationMethod: 'manual',
+          name: "toolX",
+          binaries: ["tx"],
+          version: "1",
+          installationMethod: "manual",
           installParams: {},
         },
       });
     });
 
-    describe('generator behavior', () => {
-      it('should call sub-generators with correct options', async () => {
+    describe("generator behavior", () => {
+      it("should call sub-generators with correct options", async () => {
         await orchestrator.generateAll(toolConfigs);
 
         expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
           overwrite: true,
         });
         expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
-          shellTypes: ['zsh', 'bash', 'powershell'],
+          shellTypes: ["zsh", "bash", "powershell"],
           systemInfo,
           pluginShellInit: {},
         });
@@ -325,20 +325,20 @@ describe('GeneratorOrchestrator', () => {
         });
       });
 
-      it('should complete without errors when using MemFileSystem', async () => {
+      it("should complete without errors when using MemFileSystem", async () => {
         await orchestrator.generateAll(toolConfigs);
       });
 
-      it('should work with custom generator results', async () => {
-        const mockTestShimPaths = ['/memfs/shim1'];
-        const mockTestShellInitPath = '/memfs/init.sh';
+      it("should work with custom generator results", async () => {
+        const mockTestShimPaths = ["/memfs/shim1"];
+        const mockTestShellInitPath = "/memfs/init.sh";
         const mockTestSymlinkResults: SymlinkOperationResult[] = [
-          { success: true, sourcePath: 's', targetPath: 't', status: 'created' },
+          { success: true, sourcePath: "s", targetPath: "t", status: "created" },
         ];
 
         (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockTestShimPaths);
         (mockShellInitGenerator.generate as ReturnType<typeof mock>).mockResolvedValue({
-          files: new Map([['zsh', mockTestShellInitPath]]),
+          files: new Map([["zsh", mockTestShellInitPath]]),
           primaryPath: mockTestShellInitPath,
         });
         (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockTestSymlinkResults);
@@ -349,7 +349,7 @@ describe('GeneratorOrchestrator', () => {
           overwrite: true,
         });
         expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
-          shellTypes: ['zsh', 'bash', 'powershell'],
+          shellTypes: ["zsh", "bash", "powershell"],
           systemInfo,
           pluginShellInit: {},
         });
@@ -359,30 +359,30 @@ describe('GeneratorOrchestrator', () => {
         });
       });
 
-      describe('generateCompletionsForTool', () => {
-        it('should log an INFO message with the generated completion file path', async () => {
-          const toolName = 'curl-script--fnm';
-          const expectedCompletionPath = '/path/_tool';
+      describe("generateCompletionsForTool", () => {
+        it("should log an INFO message with the generated completion file path", async () => {
+          const toolName = "curl-script--fnm";
+          const expectedCompletionPath = "/path/_tool";
 
           (mockCompletionGenerator.generateAndWriteCompletionFile as ReturnType<typeof mock>).mockResolvedValue({
-            content: '# completion',
-            filename: '_tool',
+            content: "# completion",
+            filename: "_tool",
             targetPath: expectedCompletionPath,
-            generatedBy: 'command',
+            generatedBy: "command",
           });
 
           const toolConfig: ToolConfig = {
             name: toolName,
-            binaries: ['fnm'],
-            version: '1.0.0',
-            installationMethod: 'manual',
+            binaries: ["fnm"],
+            version: "1.0.0",
+            installationMethod: "manual",
             installParams: {},
             shellConfigs: {
               zsh: {
                 scripts: [always(`export FNM=1`)],
                 completions: {
-                  cmd: 'fnm completions --shell zsh',
-                  bin: 'fnm',
+                  cmd: "fnm completions --shell zsh",
+                  bin: "fnm",
                 },
               },
             },
@@ -391,29 +391,29 @@ describe('GeneratorOrchestrator', () => {
           await orchestrator.generateCompletionsForTool(toolName, toolConfig);
 
           logger.expect(
-            ['INFO'],
-            ['GeneratorOrchestrator', 'generateCompletionsForTool'],
+            ["INFO"],
+            ["GeneratorOrchestrator", "generateCompletionsForTool"],
             [],
             [expectedCompletionPath],
           );
         });
 
-        it('should resolve callback-based completions with context', async () => {
-          const toolName = 'test-tool';
-          const expectedCompletionPath = '/path/_test-tool';
+        it("should resolve callback-based completions with context", async () => {
+          const toolName = "test-tool";
+          const expectedCompletionPath = "/path/_test-tool";
 
           (mockCompletionGenerator.generateAndWriteCompletionFile as ReturnType<typeof mock>).mockResolvedValue({
-            content: '# completion',
-            filename: '_test-tool',
+            content: "# completion",
+            filename: "_test-tool",
             targetPath: expectedCompletionPath,
-            generatedBy: 'url',
+            generatedBy: "url",
           });
 
           const toolConfig: ToolConfig = {
             name: toolName,
-            binaries: ['test-tool'],
-            version: '2.5.0',
-            installationMethod: 'manual',
+            binaries: ["test-tool"],
+            version: "2.5.0",
+            installationMethod: "manual",
             installParams: {},
             shellConfigs: {
               zsh: {
@@ -431,28 +431,28 @@ describe('GeneratorOrchestrator', () => {
           const firstCall = calls[0];
           assert(firstCall);
           // First arg is the options object containing the completion config with resolved URL
-          const options = firstCall[0] as { config: { url?: string; }; };
-          expect(options.config.url).toBe('https://example.com/completions/2.5.0/completion.zsh');
+          const options = firstCall[0] as { config: { url?: string } };
+          expect(options.config.url).toBe("https://example.com/completions/2.5.0/completion.zsh");
         });
 
-        it('should log WARN when completion generation fails', async () => {
-          const toolName = 'failing-tool';
+        it("should log WARN when completion generation fails", async () => {
+          const toolName = "failing-tool";
 
           (mockCompletionGenerator.generateAndWriteCompletionFile as ReturnType<typeof mock>).mockRejectedValue(
-            new Error('Completion source file not found'),
+            new Error("Completion source file not found"),
           );
 
           const toolConfig: ToolConfig = {
             name: toolName,
-            binaries: ['failing-tool'],
-            version: '1.0.0',
-            installationMethod: 'manual',
+            binaries: ["failing-tool"],
+            version: "1.0.0",
+            installationMethod: "manual",
             installParams: {},
             shellConfigs: {
               zsh: {
                 scripts: [],
                 completions: {
-                  url: 'https://example.com/completions/missing.zsh',
+                  url: "https://example.com/completions/missing.zsh",
                 },
               },
             },
@@ -462,32 +462,32 @@ describe('GeneratorOrchestrator', () => {
 
           // Should log WARN with tool/shell info
           logger.expect(
-            ['WARN'],
-            ['GeneratorOrchestrator', 'generateCompletionsForTool'],
+            ["WARN"],
+            ["GeneratorOrchestrator", "generateCompletionsForTool"],
             [],
-            ['Failed to generate completion for failing-tool (zsh)'],
+            ["Failed to generate completion for failing-tool (zsh)"],
           );
         });
       });
 
-      describe('disabled tools', () => {
-        it('should skip disabled tools and log warning', async () => {
+      describe("disabled tools", () => {
+        it("should skip disabled tools and log warning", async () => {
           const enabledToolConfig: ToolConfig = {
-            name: 'enabledTool',
-            binaries: ['enabled-bin'],
-            version: '1.0',
-            installationMethod: 'manual',
+            name: "enabledTool",
+            binaries: ["enabled-bin"],
+            version: "1.0",
+            installationMethod: "manual",
             installParams: {},
           };
 
           const toolConfigsWithDisabled: Record<string, ToolConfig> = {
             enabledTool: enabledToolConfig,
             disabledTool: {
-              name: 'disabledTool',
-              binaries: ['disabled-bin'],
-              version: '1.0',
+              name: "disabledTool",
+              binaries: ["disabled-bin"],
+              version: "1.0",
               disabled: true,
-              installationMethod: 'manual',
+              installationMethod: "manual",
               installParams: {},
             },
           };
@@ -503,7 +503,7 @@ describe('GeneratorOrchestrator', () => {
             overwrite: true,
           });
           expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(expectedFilteredConfigs, {
-            shellTypes: ['zsh', 'bash', 'powershell'],
+            shellTypes: ["zsh", "bash", "powershell"],
             systemInfo,
             pluginShellInit: {},
           });
@@ -513,25 +513,25 @@ describe('GeneratorOrchestrator', () => {
           });
 
           // Verify warning was logged for disabled tool
-          logger.expect(['WARN'], ['GeneratorOrchestrator', 'generateAll'], [], ['disabledTool']);
+          logger.expect(["WARN"], ["GeneratorOrchestrator", "generateAll"], [], ["disabledTool"]);
         });
 
-        it('should handle all tools disabled', async () => {
+        it("should handle all tools disabled", async () => {
           const allDisabledConfigs: Record<string, ToolConfig> = {
             disabledTool1: {
-              name: 'disabledTool1',
-              binaries: ['bin1'],
-              version: '1.0',
+              name: "disabledTool1",
+              binaries: ["bin1"],
+              version: "1.0",
               disabled: true,
-              installationMethod: 'manual',
+              installationMethod: "manual",
               installParams: {},
             },
             disabledTool2: {
-              name: 'disabledTool2',
-              binaries: ['bin2'],
-              version: '1.0',
+              name: "disabledTool2",
+              binaries: ["bin2"],
+              version: "1.0",
               disabled: true,
-              installationMethod: 'manual',
+              installationMethod: "manual",
               installParams: {},
             },
           };
@@ -548,24 +548,24 @@ describe('GeneratorOrchestrator', () => {
         });
       });
 
-      describe('hostname filtering', () => {
-        it('should skip tools when hostname does not match exact pattern', async () => {
+      describe("hostname filtering", () => {
+        it("should skip tools when hostname does not match exact pattern", async () => {
           const enabledToolConfig: ToolConfig = {
-            name: 'enabledTool',
-            binaries: ['enabled-bin'],
-            version: '1.0',
-            installationMethod: 'manual',
+            name: "enabledTool",
+            binaries: ["enabled-bin"],
+            version: "1.0",
+            installationMethod: "manual",
             installParams: {},
           };
 
           const toolConfigsWithHostname: Record<string, ToolConfig> = {
             enabledTool: enabledToolConfig,
             hostnameRestrictedTool: {
-              name: 'hostnameRestrictedTool',
-              binaries: ['restricted-bin'],
-              version: '1.0',
-              hostname: 'different-hostname',
-              installationMethod: 'manual',
+              name: "hostnameRestrictedTool",
+              binaries: ["restricted-bin"],
+              version: "1.0",
+              hostname: "different-hostname",
+              installationMethod: "manual",
               installParams: {},
             },
           };
@@ -582,16 +582,16 @@ describe('GeneratorOrchestrator', () => {
           });
 
           // Verify warning was logged for hostname mismatch
-          logger.expect(['WARN'], ['GeneratorOrchestrator', 'generateAll'], [], [/hostnameRestrictedTool.*hostname/]);
+          logger.expect(["WARN"], ["GeneratorOrchestrator", "generateAll"], [], [/hostnameRestrictedTool.*hostname/]);
         });
 
-        it('should include tools when hostname matches exact pattern', async () => {
+        it("should include tools when hostname matches exact pattern", async () => {
           const matchingHostnameConfig: ToolConfig = {
-            name: 'matchingTool',
-            binaries: ['matching-bin'],
-            version: '1.0',
-            hostname: 'test-host', // Matches systemInfo.hostname
-            installationMethod: 'manual',
+            name: "matchingTool",
+            binaries: ["matching-bin"],
+            version: "1.0",
+            hostname: "test-host", // Matches systemInfo.hostname
+            installationMethod: "manual",
             installParams: {},
           };
 
@@ -607,13 +607,13 @@ describe('GeneratorOrchestrator', () => {
           });
         });
 
-        it('should include tools when hostname matches regex pattern', async () => {
+        it("should include tools when hostname matches regex pattern", async () => {
           const regexMatchingConfig: ToolConfig = {
-            name: 'regexTool',
-            binaries: ['regex-bin'],
-            version: '1.0',
-            hostname: '^test-.*$', // Regex pattern that matches 'test-host'
-            installationMethod: 'manual',
+            name: "regexTool",
+            binaries: ["regex-bin"],
+            version: "1.0",
+            hostname: "^test-.*$", // Regex pattern that matches 'test-host'
+            installationMethod: "manual",
             installParams: {},
           };
 
@@ -629,13 +629,13 @@ describe('GeneratorOrchestrator', () => {
           });
         });
 
-        it('should skip tools when hostname regex does not match', async () => {
+        it("should skip tools when hostname regex does not match", async () => {
           const nonMatchingRegexConfig: ToolConfig = {
-            name: 'noMatchTool',
-            binaries: ['nomatch-bin'],
-            version: '1.0',
-            hostname: '^other-.*$', // Regex pattern that does NOT match 'test-host'
-            installationMethod: 'manual',
+            name: "noMatchTool",
+            binaries: ["nomatch-bin"],
+            version: "1.0",
+            hostname: "^other-.*$", // Regex pattern that does NOT match 'test-host'
+            installationMethod: "manual",
             installParams: {},
           };
 
@@ -646,24 +646,27 @@ describe('GeneratorOrchestrator', () => {
           await orchestrator.generateAll(toolConfigsWithNonMatchingRegex);
 
           // Tool should be skipped since hostname regex doesn't match
-          expect(mockShimGenerator.generate).toHaveBeenCalledWith({}, {
-            overwrite: true,
-          });
+          expect(mockShimGenerator.generate).toHaveBeenCalledWith(
+            {},
+            {
+              overwrite: true,
+            },
+          );
 
           // Verify warning was logged
-          logger.expect(['WARN'], ['GeneratorOrchestrator', 'generateAll'], [], [/noMatchTool.*hostname/]);
+          logger.expect(["WARN"], ["GeneratorOrchestrator", "generateAll"], [], [/noMatchTool.*hostname/]);
         });
       });
     });
 
-    describe('auto-install', () => {
-      it('should pass shellInit from auto-installed tools to shell init generator', async () => {
+    describe("auto-install", () => {
+      it("should pass shellInit from auto-installed tools to shell init generator", async () => {
         const autoToolConfigs: Record<string, ToolConfig> = {
-          'zsh-plugin--vi-mode': {
-            name: 'zsh-plugin--vi-mode',
+          "zsh-plugin--vi-mode": {
+            name: "zsh-plugin--vi-mode",
             binaries: [],
-            version: '1.0.0',
-            installationMethod: 'zsh-plugin',
+            version: "1.0.0",
+            installationMethod: "zsh-plugin",
             installParams: { auto: true },
           },
         };
@@ -677,7 +680,7 @@ describe('GeneratorOrchestrator', () => {
         const mockInstaller = {
           install: mock(async () => ({
             success: true as const,
-            version: '1.0.0',
+            version: "1.0.0",
             binaryPaths: [],
             shellInit: expectedShellInit,
           })),
@@ -686,25 +689,25 @@ describe('GeneratorOrchestrator', () => {
         await orchestrator.generateAll(autoToolConfigs, { installer: mockInstaller });
 
         expect(mockInstaller.install).toHaveBeenCalledWith(
-          'zsh-plugin--vi-mode',
-          autoToolConfigs['zsh-plugin--vi-mode'],
+          "zsh-plugin--vi-mode",
+          autoToolConfigs["zsh-plugin--vi-mode"],
         );
         expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(autoToolConfigs, {
-          shellTypes: ['zsh', 'bash', 'powershell'],
+          shellTypes: ["zsh", "bash", "powershell"],
           systemInfo,
           pluginShellInit: {
-            'zsh-plugin--vi-mode': expectedShellInit,
+            "zsh-plugin--vi-mode": expectedShellInit,
           },
         });
       });
 
-      it('should not call installer when auto is false', async () => {
+      it("should not call installer when auto is false", async () => {
         const nonAutoToolConfigs: Record<string, ToolConfig> = {
-          'some-tool': {
-            name: 'some-tool',
-            binaries: ['tool'],
-            version: '1.0.0',
-            installationMethod: 'manual',
+          "some-tool": {
+            name: "some-tool",
+            binaries: ["tool"],
+            version: "1.0.0",
+            installationMethod: "manual",
             installParams: { auto: false },
           },
         };
@@ -712,7 +715,7 @@ describe('GeneratorOrchestrator', () => {
         const mockInstaller = {
           install: mock(async () => ({
             success: true as const,
-            version: '1.0.0',
+            version: "1.0.0",
             binaryPaths: [],
           })),
         };
@@ -721,7 +724,7 @@ describe('GeneratorOrchestrator', () => {
 
         expect(mockInstaller.install).not.toHaveBeenCalled();
         expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(nonAutoToolConfigs, {
-          shellTypes: ['zsh', 'bash', 'powershell'],
+          shellTypes: ["zsh", "bash", "powershell"],
           systemInfo,
           pluginShellInit: {},
         });

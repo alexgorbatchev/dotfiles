@@ -1,17 +1,17 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { IInstallContext, ToolConfig } from '@dotfiles/core';
-import type { TsLogger } from '@dotfiles/logger';
-import type { TrackedFileSystem } from '@dotfiles/registry/file';
-import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
-import path from 'node:path';
-import type { InstallResult } from '../types';
-import { messages } from '../utils';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { IInstallContext, ToolConfig } from "@dotfiles/core";
+import type { TsLogger } from "@dotfiles/logger";
+import type { TrackedFileSystem } from "@dotfiles/registry/file";
+import type { IToolInstallationRegistry } from "@dotfiles/registry/tool";
+import type { ISymlinkGenerator } from "@dotfiles/symlink-generator";
+import path from "node:path";
+import type { InstallResult } from "../types";
+import { messages } from "../utils";
 
 type UnknownRecord = Record<string, unknown>;
 
 function isUnknownRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function getPluginMetadataRecord(result: InstallResult): UnknownRecord {
@@ -21,7 +21,7 @@ function getPluginMetadataRecord(result: InstallResult): UnknownRecord {
     return emptyMetadata;
   }
 
-  if (!('metadata' in result)) {
+  if (!("metadata" in result)) {
     return emptyMetadata;
   }
 
@@ -31,7 +31,7 @@ function getPluginMetadataRecord(result: InstallResult): UnknownRecord {
   }
 
   const { method, ...rest } = metadata;
-  if (typeof method === 'string') {
+  if (typeof method === "string") {
     return { ...rest, installMethod: method };
   }
 
@@ -63,25 +63,25 @@ export class InstallationStateWriter {
     result: InstallResult,
     parentLogger: TsLogger,
   ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'recordInstallation' });
+    const logger = parentLogger.getSubLogger({ name: "recordInstallation" });
     if (!result.success) {
       return;
     }
 
     try {
-      const version: string = 'version' in result && result.version ? result.version : context.timestamp;
+      const version: string = "version" in result && result.version ? result.version : context.timestamp;
 
       const installParams: unknown = resolvedToolConfig.installParams;
-      const configuredVersion: string | undefined = installParams &&
-          typeof installParams === 'object' &&
-          'version' in installParams &&
-          typeof installParams.version === 'string'
-        ? installParams.version
-        : undefined;
+      const configuredVersion: string | undefined =
+        installParams &&
+        typeof installParams === "object" &&
+        "version" in installParams &&
+        typeof installParams.version === "string"
+          ? installParams.version
+          : undefined;
 
-      const originalTag: string | undefined = 'originalTag' in result && typeof result.originalTag === 'string'
-        ? result.originalTag
-        : undefined;
+      const originalTag: string | undefined =
+        "originalTag" in result && typeof result.originalTag === "string" ? result.originalTag : undefined;
 
       await this.toolInstallationRegistry.recordToolInstallation({
         toolName,
@@ -93,9 +93,9 @@ export class InstallationStateWriter {
         originalTag,
         ...getPluginMetadataRecord(result),
       });
-      logger.debug(messages.outcome.installSuccess(toolName, version, 'registry-recorded'));
+      logger.debug(messages.outcome.installSuccess(toolName, version, "registry-recorded"));
     } catch (error) {
-      logger.error(messages.outcome.installFailed('registry-record'), error);
+      logger.error(messages.outcome.installFailed("registry-record"), error);
     }
   }
 
@@ -107,13 +107,13 @@ export class InstallationStateWriter {
     installedDir: string,
     isExternallyManaged: boolean,
   ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'createBinaryEntrypoints' });
+    const logger = parentLogger.getSubLogger({ name: "createBinaryEntrypoints" });
     const toolDir = path.join(this.projectConfig.paths.binariesDir, toolName);
 
     await fs.ensureDir(toolDir);
 
     if (isExternallyManaged) {
-      const externalDir = path.join(toolDir, 'external');
+      const externalDir = path.join(toolDir, "external");
       await fs.ensureDir(externalDir);
 
       for (const binaryPath of binaryPaths) {
@@ -168,13 +168,13 @@ export class InstallationStateWriter {
     installedDir: string,
     isExternallyManaged: boolean,
   ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'updateCurrentSymlink' });
+    const logger = parentLogger.getSubLogger({ name: "updateCurrentSymlink" });
     const toolDir = path.join(this.projectConfig.paths.binariesDir, toolName);
-    const currentSymlinkPath = path.join(toolDir, 'current');
+    const currentSymlinkPath = path.join(toolDir, "current");
 
     await fs.ensureDir(toolDir);
 
-    const currentTarget: string = isExternallyManaged ? 'external' : path.basename(installedDir);
+    const currentTarget: string = isExternallyManaged ? "external" : path.basename(installedDir);
 
     try {
       if (await fs.exists(currentSymlinkPath)) {
@@ -186,8 +186,8 @@ export class InstallationStateWriter {
     }
 
     try {
-      const symlinkFs = fs.withFileType('symlink');
-      await symlinkFs.symlink(currentTarget, currentSymlinkPath, 'dir');
+      const symlinkFs = fs.withFileType("symlink");
+      await symlinkFs.symlink(currentTarget, currentSymlinkPath, "dir");
     } catch (error) {
       logger.error(messages.lifecycle.creatingExternalSymlink(currentSymlinkPath, currentTarget), error);
       throw error;

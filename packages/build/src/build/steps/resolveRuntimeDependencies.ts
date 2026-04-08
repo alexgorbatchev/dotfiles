@@ -1,8 +1,8 @@
-import { getExternalRuntimeDependenciesFromBundle } from '../bundle-helpers';
-import { getInstalledPackageVersions } from '../helpers/getInstalledPackageVersions';
-import { getRequiredPackageVersion } from '../helpers/getRequiredPackageVersion';
-import { pickPackageVersions } from '../helpers/pickPackageVersions';
-import type { IBuildContext, IDependencyVersions, IResolvedRuntimeDependencies } from '../types';
+import { getExternalRuntimeDependenciesFromBundle } from "../bundle-helpers";
+import { getInstalledPackageVersions } from "../helpers/getInstalledPackageVersions";
+import { getRequiredPackageVersion } from "../helpers/getRequiredPackageVersion";
+import { pickPackageVersions } from "../helpers/pickPackageVersions";
+import type { IBuildContext, IDependencyVersions, IResolvedRuntimeDependencies } from "../types";
 
 /**
  * Derives runtime dependencies from the built bundle and resolves their installed versions for packaging.
@@ -12,7 +12,7 @@ export async function resolveRuntimeDependencies(context: IBuildContext): Promis
     context.paths.cliOutputFile,
   );
 
-  const packageNamesToResolve: string[] = [...externalRuntimeDependencies, 'zod', '@types/bun', '@types/node'];
+  const packageNamesToResolve: string[] = [...externalRuntimeDependencies, "zod", "@types/bun", "@types/node"];
   const allResolvedVersions: Record<string, string> = await getInstalledPackageVersions(packageNamesToResolve);
 
   const runtimeDependencyVersions: Record<string, string> = pickPackageVersions(
@@ -21,9 +21,9 @@ export async function resolveRuntimeDependencies(context: IBuildContext): Promis
   );
 
   const dependencyVersions: IDependencyVersions = {
-    zod: getRequiredPackageVersion('zod', allResolvedVersions),
-    bunTypes: getRequiredPackageVersion('@types/bun', allResolvedVersions),
-    nodeTypes: getRequiredPackageVersion('@types/node', allResolvedVersions),
+    zod: getRequiredPackageVersion("zod", allResolvedVersions),
+    bunTypes: getRequiredPackageVersion("@types/bun", allResolvedVersions),
+    nodeTypes: getRequiredPackageVersion("@types/node", allResolvedVersions),
   };
 
   const result: IResolvedRuntimeDependencies = {

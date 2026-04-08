@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
-import { BlockBuilder } from '../../blocks/BlockBuilder';
+import { describe, expect, it } from "bun:test";
+import { BlockBuilder } from "../../blocks/BlockBuilder";
 import {
   alias,
   completion,
@@ -10,18 +10,18 @@ import {
   sourceFile,
   sourceFunction,
   withSource,
-} from '../../emissions/factories';
-import type { Block } from '../../types';
-import { BlockRenderer } from '../BlockRenderer';
-import { SectionPriority } from '../constants';
-import { MockFormatter } from './helpers/mocks';
+} from "../../emissions/factories";
+import type { Block } from "../../types";
+import { BlockRenderer } from "../BlockRenderer";
+import { SectionPriority } from "../constants";
+import { MockFormatter } from "./helpers/mocks";
 
-describe('BlockRenderer', () => {
+describe("BlockRenderer", () => {
   const renderer = new BlockRenderer();
   const formatter = new MockFormatter();
 
-  describe('render', () => {
-    it('renders empty blocks array', () => {
+  describe("render", () => {
+    it("renders empty blocks array", () => {
       const result = renderer.render([], formatter);
 
       expect(result).toMatchInlineSnapshot(`
@@ -33,10 +33,10 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('renders file header and footer', () => {
+    it("renders file header and footer", () => {
       const blocks: Block[] = [
-        { id: 'header', priority: SectionPriority.FileHeader, emissions: [], isFileHeader: true },
-        { id: 'footer', priority: SectionPriority.FileFooter, emissions: [], isFileFooter: true },
+        { id: "header", priority: SectionPriority.FileHeader, emissions: [], isFileHeader: true },
+        { id: "footer", priority: SectionPriority.FileFooter, emissions: [], isFileFooter: true },
       ];
 
       const result = renderer.render(blocks, formatter);
@@ -48,13 +48,13 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('renders section with emissions', () => {
+    it("renders section with emissions", () => {
       const blocks: Block[] = [
         {
-          id: 'env',
-          title: 'Environment',
+          id: "env",
+          title: "Environment",
           priority: SectionPriority.Path,
-          emissions: [environment({ NODE_ENV: 'production', DEBUG: 'false' })],
+          emissions: [environment({ NODE_ENV: "production", DEBUG: "false" })],
         },
       ];
 
@@ -67,19 +67,19 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('renders multiple sections sorted by priority', () => {
+    it("renders multiple sections sorted by priority", () => {
       const blocks: Block[] = [
         {
-          id: 'env',
-          title: 'Environment',
+          id: "env",
+          title: "Environment",
           priority: SectionPriority.Environment,
-          emissions: [environment({ NODE_ENV: 'production' })],
+          emissions: [environment({ NODE_ENV: "production" })],
         },
         {
-          id: 'path',
-          title: 'PATH',
+          id: "path",
+          title: "PATH",
           priority: SectionPriority.Path,
-          emissions: [path('/usr/local/bin')],
+          emissions: [path("/usr/local/bin")],
         },
       ];
 
@@ -94,22 +94,19 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('renders child blocks', () => {
+    it("renders child blocks", () => {
       const blocks: Block[] = [
         {
-          id: 'main',
-          title: 'Initializations',
+          id: "main",
+          title: "Initializations",
           priority: SectionPriority.MainContent,
           emissions: [],
           children: [
             {
-              id: 'node',
-              title: 'node',
+              id: "node",
+              title: "node",
               priority: SectionPriority.FileHeader,
-              emissions: [
-                fn('initNode', 'eval "$(fnm env)"'),
-                sourceFunction('initNode'),
-              ],
+              emissions: [fn("initNode", 'eval "$(fnm env)"'), sourceFunction("initNode")],
             },
           ],
         },
@@ -128,16 +125,16 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('renders source comments when source changes', () => {
+    it("renders source comments when source changes", () => {
       const blocks: Block[] = [
         {
-          id: 'env',
-          title: 'Environment',
+          id: "env",
+          title: "Environment",
           priority: SectionPriority.Path,
           emissions: [
-            withSource(environment({ VAR1: 'a' }), '/config/a.ts'),
-            withSource(environment({ VAR2: 'b' }), '/config/a.ts'),
-            withSource(environment({ VAR3: 'c' }), '/config/b.ts'),
+            withSource(environment({ VAR1: "a" }), "/config/a.ts"),
+            withSource(environment({ VAR2: "b" }), "/config/a.ts"),
+            withSource(environment({ VAR3: "c" }), "/config/b.ts"),
           ],
         },
       ];
@@ -154,14 +151,14 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('skips empty sections', () => {
+    it("skips empty sections", () => {
       const blocks: Block[] = [
-        { id: 'empty', title: 'Empty Section', priority: SectionPriority.Path, emissions: [] },
+        { id: "empty", title: "Empty Section", priority: SectionPriority.Path, emissions: [] },
         {
-          id: 'env',
-          title: 'Environment',
+          id: "env",
+          title: "Environment",
           priority: SectionPriority.Environment,
-          emissions: [environment({ VAR: 'value' })],
+          emissions: [environment({ VAR: "value" })],
         },
       ];
 
@@ -173,20 +170,20 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('skips empty child blocks', () => {
+    it("skips empty child blocks", () => {
       const blocks: Block[] = [
         {
-          id: 'main',
-          title: 'Main',
+          id: "main",
+          title: "Main",
           priority: SectionPriority.Path,
           emissions: [],
           children: [
-            { id: 'empty', title: 'empty', priority: SectionPriority.FileHeader, emissions: [] },
+            { id: "empty", title: "empty", priority: SectionPriority.FileHeader, emissions: [] },
             {
-              id: 'filled',
-              title: 'filled',
+              id: "filled",
+              title: "filled",
               priority: 1,
-              emissions: [fn('test', 'echo')],
+              emissions: [fn("test", "echo")],
             },
           ],
         },
@@ -204,22 +201,22 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('renders source comments in child blocks when source changes', () => {
+    it("renders source comments in child blocks when source changes", () => {
       const blocks: Block[] = [
         {
-          id: 'main',
-          title: 'Initializations',
+          id: "main",
+          title: "Initializations",
           priority: SectionPriority.MainContent,
           emissions: [],
           children: [
             {
-              id: 'tools',
-              title: 'tools',
+              id: "tools",
+              title: "tools",
               priority: SectionPriority.FileHeader,
               emissions: [
-                withSource(fn('initA', 'echo A'), '/config/a.ts'),
-                withSource(fn('initB', 'echo B'), '/config/a.ts'),
-                withSource(fn('initC', 'echo C'), '/config/b.ts'),
+                withSource(fn("initA", "echo A"), "/config/a.ts"),
+                withSource(fn("initB", "echo B"), "/config/a.ts"),
+                withSource(fn("initC", "echo C"), "/config/b.ts"),
               ],
             },
           ],
@@ -246,25 +243,23 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('handles once scripts in child blocks', () => {
+    it("handles once scripts in child blocks", () => {
       const blocks: Block[] = [
         {
-          id: 'main',
-          title: 'Main',
+          id: "main",
+          title: "Main",
           priority: SectionPriority.MainContent,
           emissions: [],
           children: [
             {
-              id: 'setup',
-              title: 'setup',
+              id: "setup",
+              title: "setup",
               priority: SectionPriority.FileHeader,
-              emissions: [
-                withSource(script('echo "child once"', 'once'), '/child-config.ts'),
-              ],
+              emissions: [withSource(script('echo "child once"', "once"), "/child-config.ts")],
             },
           ],
         },
-        { id: 'footer', priority: SectionPriority.FileFooter, emissions: [], isFileFooter: true },
+        { id: "footer", priority: SectionPriority.FileFooter, emissions: [], isFileFooter: true },
       ];
 
       const result = renderer.render(blocks, formatter);
@@ -298,25 +293,25 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('renders all emission types', () => {
+    it("renders all emission types", () => {
       const blocks: Block[] = [
         {
-          id: 'all-types',
-          title: 'All Types',
+          id: "all-types",
+          title: "All Types",
           priority: SectionPriority.Path,
           emissions: [
-            environment({ VAR: 'value' }),
-            alias({ ll: 'ls -la' }),
-            fn('greet', 'echo "Hello"'),
-            fn('setup', 'mkdir $HOME/.config'),
-            script('echo "startup"', 'always'),
-            script('echo "raw"', 'raw'),
-            sourceFile('$HOME/.rc'),
-            sourceFile('$HOME/.config/init'),
-            sourceFunction('initTool'),
-            completion({ directories: ['$HOME/.completions'], commands: ['node'] }),
-            path('/usr/local/bin'),
-            path('/opt/bin', { position: 'append', deduplicate: false }),
+            environment({ VAR: "value" }),
+            alias({ ll: "ls -la" }),
+            fn("greet", 'echo "Hello"'),
+            fn("setup", "mkdir $HOME/.config"),
+            script('echo "startup"', "always"),
+            script('echo "raw"', "raw"),
+            sourceFile("$HOME/.rc"),
+            sourceFile("$HOME/.config/init"),
+            sourceFunction("initTool"),
+            completion({ directories: ["$HOME/.completions"], commands: ["node"] }),
+            path("/usr/local/bin"),
+            path("/opt/bin", { position: "append", deduplicate: false }),
           ],
         },
       ];
@@ -346,23 +341,21 @@ describe('BlockRenderer', () => {
     });
   });
 
-  describe('once script handling', () => {
-    it('collects once scripts and inserts initializer', () => {
+  describe("once script handling", () => {
+    it("collects once scripts and inserts initializer", () => {
       const blocks: Block[] = [
-        { id: 'header', priority: SectionPriority.FileHeader, emissions: [], isFileHeader: true },
+        { id: "header", priority: SectionPriority.FileHeader, emissions: [], isFileHeader: true },
         {
-          id: 'main',
-          title: 'Main',
+          id: "main",
+          title: "Main",
           priority: SectionPriority.MainContent,
-          emissions: [
-            withSource(script('echo "one-time setup"', 'once'), '/config.ts'),
-          ],
+          emissions: [withSource(script('echo "one-time setup"', "once"), "/config.ts")],
         },
         {
-          id: 'completions',
-          title: 'Completions',
+          id: "completions",
+          title: "Completions",
           priority: SectionPriority.Completions,
-          emissions: [completion({ commands: ['node'] })],
+          emissions: [completion({ commands: ["node"] })],
         },
       ];
 
@@ -398,18 +391,15 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('handles multiple once scripts', () => {
+    it("handles multiple once scripts", () => {
       const blocks: Block[] = [
         {
-          id: 'main',
-          title: 'Main',
+          id: "main",
+          title: "Main",
           priority: SectionPriority.MainContent,
-          emissions: [
-            script('echo "first"', 'once'),
-            script('echo "second"', 'once'),
-          ],
+          emissions: [script('echo "first"', "once"), script('echo "second"', "once")],
         },
-        { id: 'footer', priority: SectionPriority.FileFooter, emissions: [], isFileFooter: true },
+        { id: "footer", priority: SectionPriority.FileFooter, emissions: [], isFileFooter: true },
       ];
 
       const result = renderer.render(blocks, formatter);
@@ -438,13 +428,13 @@ describe('BlockRenderer', () => {
       `);
     });
 
-    it('returns empty onceScripts when no once scripts exist', () => {
+    it("returns empty onceScripts when no once scripts exist", () => {
       const blocks: Block[] = [
         {
-          id: 'main',
-          title: 'Main',
+          id: "main",
+          title: "Main",
           priority: SectionPriority.MainContent,
-          emissions: [script('echo "always"', 'always')],
+          emissions: [script('echo "always"', "always")],
         },
       ];
 
@@ -454,30 +444,30 @@ describe('BlockRenderer', () => {
     });
   });
 
-  describe('integration with BlockBuilder', () => {
-    it('renders a complete configuration', () => {
+  describe("integration with BlockBuilder", () => {
+    it("renders a complete configuration", () => {
       const builder = new BlockBuilder()
-        .addSection('header', { priority: SectionPriority.FileHeader, isFileHeader: true })
-        .addSection('path', { title: 'PATH', priority: SectionPriority.Path, hoistKinds: ['path'] })
-        .addSection('env', {
-          title: 'Environment',
+        .addSection("header", { priority: SectionPriority.FileHeader, isFileHeader: true })
+        .addSection("path", { title: "PATH", priority: SectionPriority.Path, hoistKinds: ["path"] })
+        .addSection("env", {
+          title: "Environment",
           priority: SectionPriority.Environment,
-          hoistKinds: ['environment'],
+          hoistKinds: ["environment"],
         })
-        .addSection('main', { title: 'Initializations', priority: SectionPriority.MainContent, allowChildren: true })
-        .addSection('completions', {
-          title: 'Completions',
+        .addSection("main", { title: "Initializations", priority: SectionPriority.MainContent, allowChildren: true })
+        .addSection("completions", {
+          title: "Completions",
           priority: SectionPriority.Completions,
-          hoistKinds: ['completion'],
+          hoistKinds: ["completion"],
         })
-        .addSection('footer', { priority: SectionPriority.FileFooter, isFileFooter: true });
+        .addSection("footer", { priority: SectionPriority.FileFooter, isFileFooter: true });
 
       builder
-        .addEmission(path('/usr/local/bin'))
-        .addEmission(environment({ NODE_ENV: 'production' }))
-        .addEmission(fn('initNode', 'eval "$(fnm env)"'), 'node')
-        .addEmission(sourceFunction('initNode'), 'node')
-        .addEmission(completion({ commands: ['node'] }));
+        .addEmission(path("/usr/local/bin"))
+        .addEmission(environment({ NODE_ENV: "production" }))
+        .addEmission(fn("initNode", 'eval "$(fnm env)"'), "node")
+        .addEmission(sourceFunction("initNode"), "node")
+        .addEmission(completion({ commands: ["node"] }));
 
       const blocks = builder.build();
       const result = renderer.render(blocks, formatter);

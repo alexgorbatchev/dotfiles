@@ -5,7 +5,7 @@
  * @returns The path with the tilde expanded to the user's home directory.
  */
 export function expandHomePath(homeDir: string, path: string): string {
-  if (path === '~' || path.startsWith('~/') || path.startsWith('~\\')) {
+  if (path === "~" || path.startsWith("~/") || path.startsWith("~\\")) {
     return path.replace(/^~(?=$|\/|\\)/, homeDir);
   }
   return path;

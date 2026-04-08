@@ -1,4 +1,4 @@
-import type { ProjectConfig } from '@dotfiles/config';
+import type { ProjectConfig } from "@dotfiles/config";
 import type {
   BaseInstallParams,
   ICompletionContext,
@@ -8,18 +8,18 @@ import type {
   ShellCompletionConfigValue,
   ShellType,
   ToolConfig,
-} from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { IFileRegistry, IFileState, TrackedFileSystem } from '@dotfiles/registry/file';
+} from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import type { IFileRegistry, IFileState, TrackedFileSystem } from "@dotfiles/registry/file";
 import type {
   ICompletionGenerationContext,
   ICompletionGenerator,
   IGenerateShellInitOptions,
   IShellInitGenerator,
   PluginShellInitMap,
-} from '@dotfiles/shell-init-generator';
-import type { IGenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-generator';
+} from "@dotfiles/shell-init-generator";
+import type { IGenerateShimsOptions, IShimGenerator } from "@dotfiles/shim-generator";
 import type {
   CopyOperationResult,
   ICopyGenerator,
@@ -27,20 +27,20 @@ import type {
   IGenerateSymlinksOptions,
   ISymlinkGenerator,
   SymlinkOperationResult,
-} from '@dotfiles/symlink-generator';
-import { resolveValue } from '@dotfiles/unwrap-value';
-import { resolvePlatformConfig } from '@dotfiles/utils';
-import { randomUUID } from 'node:crypto';
-import path from 'node:path';
-import type { IAutoInstaller, IGenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
-import { messages } from './log-messages';
-import { orderToolConfigsByDependencies } from './orderToolConfigsByDependencies';
+} from "@dotfiles/symlink-generator";
+import { resolveValue } from "@dotfiles/unwrap-value";
+import { resolvePlatformConfig } from "@dotfiles/utils";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import type { IAutoInstaller, IGenerateAllOptions, IGeneratorOrchestrator } from "./IGeneratorOrchestrator";
+import { messages } from "./log-messages";
+import { orderToolConfigsByDependencies } from "./orderToolConfigsByDependencies";
 
 /**
  * File types that should be cleaned up when a tool is disabled.
  * Binary files are intentionally excluded to preserve downloaded tools.
  */
-const CLEANABLE_FILE_TYPES: Set<IFileState['fileType']> = new Set(['shim', 'symlink', 'copy', 'completion']);
+const CLEANABLE_FILE_TYPES: Set<IFileState["fileType"]> = new Set(["shim", "symlink", "copy", "completion"]);
 
 /**
  * Orchestrates the generation of all dotfiles artifacts.
@@ -90,8 +90,8 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     fs: IFileSystem,
     completionTrackedFs: TrackedFileSystem,
   ) {
-    this.logger = parentLogger.getSubLogger({ name: 'GeneratorOrchestrator' });
-    const logger = this.logger.getSubLogger({ name: 'constructor' });
+    this.logger = parentLogger.getSubLogger({ name: "GeneratorOrchestrator" });
+    const logger = this.logger.getSubLogger({ name: "constructor" });
     logger.debug(messages.constructor.initialized());
     this.shimGenerator = shimGenerator;
     this.shellInitGenerator = shellInitGenerator;
@@ -114,8 +114,8 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     const currentHostname = this.systemInfo.hostname;
 
     // Check if pattern is a regex (starts and ends with /)
-    if (pattern.startsWith('/') && pattern.lastIndexOf('/') > 0) {
-      const lastSlash = pattern.lastIndexOf('/');
+    if (pattern.startsWith("/") && pattern.lastIndexOf("/") > 0) {
+      const lastSlash = pattern.lastIndexOf("/");
       const regexBody = pattern.slice(1, lastSlash);
       const flags = pattern.slice(lastSlash + 1);
       try {
@@ -141,7 +141,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
    * @inheritdoc IGeneratorOrchestrator.generateAll
    */
   async generateAll(toolConfigs: Record<string, ToolConfig>, options?: IGenerateAllOptions): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'generateAll' });
+    const logger = this.logger.getSubLogger({ name: "generateAll" });
 
     // Filter out disabled tools and hostname mismatches, cleanup their artifacts
     const enabledToolConfigs: Record<string, ToolConfig> = {};
@@ -188,13 +188,13 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
     // 2. Generate Shell Init for all supported shells
     const shellInitOptions: IGenerateShellInitOptions = {
-      shellTypes: ['zsh', 'bash', 'powershell'],
+      shellTypes: ["zsh", "bash", "powershell"],
       systemInfo: this.systemInfo,
       pluginShellInit,
     };
     logger.debug(messages.generateAll.shellGenerate());
     const shellInitResult = await this.shellInitGenerator.generate(orderedToolConfigs, shellInitOptions);
-    const primaryPath = shellInitResult?.primaryPath ?? 'null';
+    const primaryPath = shellInitResult?.primaryPath ?? "null";
     logger.debug(messages.generateAll.shellInitComplete(primaryPath));
 
     // 3. Generate Symlinks
@@ -229,7 +229,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     toolConfigs: Record<string, ToolConfig>,
     installer?: IAutoInstaller,
   ): Promise<PluginShellInitMap> {
-    const logger = this.logger.getSubLogger({ name: 'runAutoInstalls' });
+    const logger = this.logger.getSubLogger({ name: "runAutoInstalls" });
     const pluginShellInit: PluginShellInitMap = {};
 
     if (!installer) {
@@ -252,7 +252,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       }
 
       // Only log when actually installed (not when already-installed)
-      if (result.installationMethod !== 'already-installed') {
+      if (result.installationMethod !== "already-installed") {
         logger.info(messages.autoInstall.completed(toolName));
       }
 
@@ -274,9 +274,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     version?: string,
     binaryPaths?: string[],
   ): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'generateCompletionsForTool' }).setPrefix(toolName);
+    const logger = this.logger.getSubLogger({ name: "generateCompletionsForTool" }).setPrefix(toolName);
     const resolvedConfig = resolvePlatformConfig(toolConfig, this.systemInfo);
-    const shellTypes: ShellType[] = ['zsh', 'bash', 'powershell'];
+    const shellTypes: ShellType[] = ["zsh", "bash", "powershell"];
     // Use provided version, or fall back to toolConfig.version
     const resolvedVersion = version ?? resolvedConfig.version;
 
@@ -290,7 +290,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       }
 
       try {
-        const currentDir = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
+        const currentDir = path.join(this.projectConfig.paths.binariesDir, toolName, "current");
 
         // Build context for resolving completions callback (only version is exposed to user)
         const completionContext: ICompletionContext = {
@@ -344,13 +344,13 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
    * Normalizes a resolved completion config value to the internal config format.
    */
   private normalizeCompletionConfig(value: ShellCompletionConfigValue): ShellCompletionConfig {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const result: ShellCompletionConfig = { source: value };
       return result;
     }
 
     // Determine which discriminated union variant we have
-    if ('cmd' in value) {
+    if ("cmd" in value) {
       // IShellCompletionCmdConfig
       const result: ShellCompletionConfig = {
         cmd: value.cmd,
@@ -359,7 +359,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       return result;
     }
 
-    if ('url' in value) {
+    if ("url" in value) {
       // IShellCompletionUrlConfig
       const result: ShellCompletionConfig = {
         url: value.url,
@@ -384,14 +384,14 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
    * @param toolConfigs - The current set of all tool configurations (including disabled ones).
    */
   private async cleanupOrphanedTools(toolConfigs: Record<string, ToolConfig>): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'cleanupOrphanedTools' });
+    const logger = this.logger.getSubLogger({ name: "cleanupOrphanedTools" });
 
     const registeredTools = await this.fileRegistry.getRegisteredTools();
     const configuredToolNames = new Set(Object.keys(toolConfigs));
     const orphanedToolsWithCleanableArtifacts: string[] = [];
 
     for (const toolName of registeredTools) {
-      if (toolName === 'system' || configuredToolNames.has(toolName)) {
+      if (toolName === "system" || configuredToolNames.has(toolName)) {
         continue;
       }
 
@@ -410,7 +410,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     logger.warn(messages.orphanCleanup.found(orphanedToolsWithCleanableArtifacts.length));
 
     for (const toolName of orphanedToolsWithCleanableArtifacts) {
-      const toolLogger: TsLogger = logger.getSubLogger({ name: 'cleanupOrphanedTools', context: toolName });
+      const toolLogger: TsLogger = logger.getSubLogger({ name: "cleanupOrphanedTools", context: toolName });
       toolLogger.warn(messages.orphanCleanup.cleaningUp());
       await this.cleanupToolArtifacts(toolName);
     }
@@ -426,7 +426,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
    * @param toolName - The name of the tool to clean up.
    */
   async cleanupToolArtifacts(toolName: string): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'cleanupToolArtifacts', context: toolName });
+    const logger = this.logger.getSubLogger({ name: "cleanupToolArtifacts", context: toolName });
     logger.debug(messages.cleanup.started(toolName));
 
     // Get all file states for this tool from the registry
@@ -447,15 +447,19 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     // Delete each file
     for (const fileState of sortedFilesToCleanup) {
       try {
-        const fileExists = fileState.fileType === 'symlink'
-          ? await this.fs.lstat(fileState.filePath).then(() => true, () => false)
-          : await this.fs.exists(fileState.filePath);
+        const fileExists =
+          fileState.fileType === "symlink"
+            ? await this.fs.lstat(fileState.filePath).then(
+                () => true,
+                () => false,
+              )
+            : await this.fs.exists(fileState.filePath);
 
         if (fileExists) {
-          if (fileState.lastOperation === 'mkdir') {
+          if (fileState.lastOperation === "mkdir") {
             await this.fs.rmdir(fileState.filePath);
           } else {
-            await this.fs.rm(fileState.filePath, { recursive: fileState.fileType === 'copy', force: true });
+            await this.fs.rm(fileState.filePath, { recursive: fileState.fileType === "copy", force: true });
           }
 
           logger.warn(messages.cleanup.fileDeleted(fileState.filePath, fileState.fileType));
@@ -463,7 +467,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
         await this.fileRegistry.recordOperation({
           toolName,
-          operationType: 'rm',
+          operationType: "rm",
           filePath: fileState.filePath,
           fileType: fileState.fileType,
           operationId: randomUUID(),
@@ -490,11 +494,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     toolConfigs: Record<string, ToolConfig>,
     symlinkResults: SymlinkOperationResult[],
   ): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'cleanupStaleSymlinks' });
+    const logger = this.logger.getSubLogger({ name: "cleanupStaleSymlinks" });
 
-    const generatedTargetPaths: Set<string> = new Set(
-      symlinkResults.filter((r) => r.success).map((r) => r.targetPath),
-    );
+    const generatedTargetPaths: Set<string> = new Set(symlinkResults.filter((r) => r.success).map((r) => r.targetPath));
 
     const binariesDir = this.projectConfig.paths.binariesDir;
 
@@ -502,9 +504,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       const fileStates = await this.fileRegistry.getFileStatesForTool(toolName);
       const trackedSymlinks = fileStates.filter(
         (state) =>
-          state.fileType === 'symlink' &&
-          state.lastOperation === 'symlink' &&
-          !state.filePath.startsWith(binariesDir),
+          state.fileType === "symlink" && state.lastOperation === "symlink" && !state.filePath.startsWith(binariesDir),
       );
 
       for (const trackedSymlink of trackedSymlinks) {
@@ -525,9 +525,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
           }
           await this.fileRegistry.recordOperation({
             toolName,
-            operationType: 'rm',
+            operationType: "rm",
             filePath: trackedSymlink.filePath,
-            fileType: 'symlink',
+            fileType: "symlink",
             operationId: randomUUID(),
           });
         } catch (error) {
@@ -551,17 +551,13 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     toolConfigs: Record<string, ToolConfig>,
     copyResults: CopyOperationResult[],
   ): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'cleanupStaleCopies' });
+    const logger = this.logger.getSubLogger({ name: "cleanupStaleCopies" });
 
-    const generatedTargetPaths: Set<string> = new Set(
-      copyResults.filter((r) => r.success).map((r) => r.targetPath),
-    );
+    const generatedTargetPaths: Set<string> = new Set(copyResults.filter((r) => r.success).map((r) => r.targetPath));
 
     for (const toolName of Object.keys(toolConfigs)) {
       const fileStates = await this.fileRegistry.getFileStatesForTool(toolName);
-      const trackedCopies = fileStates.filter(
-        (state) => state.fileType === 'copy' && state.lastOperation === 'cp',
-      );
+      const trackedCopies = fileStates.filter((state) => state.fileType === "copy" && state.lastOperation === "cp");
 
       for (const trackedCopy of trackedCopies) {
         if (generatedTargetPaths.has(trackedCopy.filePath)) {
@@ -577,9 +573,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
           }
           await this.fileRegistry.recordOperation({
             toolName,
-            operationType: 'rm',
+            operationType: "rm",
             filePath: trackedCopy.filePath,
-            fileType: 'copy',
+            fileType: "copy",
             operationId: randomUUID(),
           });
         } catch (error) {

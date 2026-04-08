@@ -1,91 +1,91 @@
 // UI test setup - registers DOM and exports testing utilities
-import { fireEvent, render, screen, setupUITests } from '../../../../testing/ui-setup';
+import { fireEvent, render, screen, setupUITests } from "../../../../testing/ui-setup";
 
-import { describe, expect, mock, test } from 'bun:test';
+import { describe, expect, mock, test } from "bun:test";
 
 setupUITests();
-import { File, Folder } from '../../../icons';
+import { File, Folder } from "../../../icons";
 
-import { Tree, type TreeItemData } from '../Tree';
+import { Tree, type TreeItemData } from "../Tree";
 
-describe('Tree', () => {
+describe("Tree", () => {
   const simpleItems: TreeItemData[] = [
-    { id: '1', label: 'Item 1' },
-    { id: '2', label: 'Item 2' },
+    { id: "1", label: "Item 1" },
+    { id: "2", label: "Item 2" },
   ];
 
   const nestedItems: TreeItemData[] = [
     {
-      id: 'folder',
-      label: 'Folder',
+      id: "folder",
+      label: "Folder",
       children: [
-        { id: 'file1', label: 'File 1' },
-        { id: 'file2', label: 'File 2' },
+        { id: "file1", label: "File 1" },
+        { id: "file2", label: "File 2" },
       ],
     },
   ];
 
-  test('renders flat list of items', () => {
+  test("renders flat list of items", () => {
     render(<Tree items={simpleItems} />);
 
-    expect(screen.getByText('Item 1')).toBeInTheDocument();
-    expect(screen.getByText('Item 2')).toBeInTheDocument();
+    expect(screen.getByText("Item 1")).toBeInTheDocument();
+    expect(screen.getByText("Item 2")).toBeInTheDocument();
   });
 
-  test('renders nested items with children expanded by default', () => {
+  test("renders nested items with children expanded by default", () => {
     render(<Tree items={nestedItems} />);
 
-    expect(screen.getByText('Folder')).toBeInTheDocument();
-    expect(screen.getByText('File 1')).toBeInTheDocument();
-    expect(screen.getByText('File 2')).toBeInTheDocument();
+    expect(screen.getByText("Folder")).toBeInTheDocument();
+    expect(screen.getByText("File 1")).toBeInTheDocument();
+    expect(screen.getByText("File 2")).toBeInTheDocument();
   });
 
-  test('renders items with icons', () => {
+  test("renders items with icons", () => {
     const itemsWithIcons: TreeItemData[] = [
-      { id: '1', label: 'Folder', icon: <Folder data-testid='folder-icon' /> },
-      { id: '2', label: 'File', icon: <File data-testid='file-icon' /> },
+      { id: "1", label: "Folder", icon: <Folder data-testid="folder-icon" /> },
+      { id: "2", label: "File", icon: <File data-testid="file-icon" /> },
     ];
 
     render(<Tree items={itemsWithIcons} />);
 
-    expect(screen.getByTestId('folder-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('file-icon')).toBeInTheDocument();
+    expect(screen.getByTestId("folder-icon")).toBeInTheDocument();
+    expect(screen.getByTestId("file-icon")).toBeInTheDocument();
   });
 
-  test('collapses and expands children on click', () => {
+  test("collapses and expands children on click", () => {
     render(<Tree items={nestedItems} />);
 
     // Children visible initially
-    expect(screen.getByText('File 1')).toBeInTheDocument();
+    expect(screen.getByText("File 1")).toBeInTheDocument();
 
     // Click to collapse
-    fireEvent.click(screen.getByText('Folder'));
-    expect(screen.queryByText('File 1')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Folder"));
+    expect(screen.queryByText("File 1")).not.toBeInTheDocument();
 
     // Click to expand
-    fireEvent.click(screen.getByText('Folder'));
-    expect(screen.getByText('File 1')).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Folder"));
+    expect(screen.getByText("File 1")).toBeInTheDocument();
   });
 
-  test('respects defaultExpanded=false', () => {
+  test("respects defaultExpanded=false", () => {
     render(<Tree items={nestedItems} defaultExpanded={false} />);
 
-    expect(screen.getByText('Folder')).toBeInTheDocument();
-    expect(screen.queryByText('File 1')).not.toBeInTheDocument();
+    expect(screen.getByText("Folder")).toBeInTheDocument();
+    expect(screen.queryByText("File 1")).not.toBeInTheDocument();
   });
 
-  test('calls onItemClick when item is clicked', () => {
+  test("calls onItemClick when item is clicked", () => {
     const handleClick = mock(() => {});
 
     render(<Tree items={simpleItems} onItemClick={handleClick} />);
 
-    fireEvent.click(screen.getByText('Item 1'));
+    fireEvent.click(screen.getByText("Item 1"));
 
     expect(handleClick).toHaveBeenCalledTimes(1);
     expect(handleClick).toHaveBeenCalledWith(simpleItems[0]);
   });
 
-  test('renders custom label via renderLabel', () => {
+  test("renders custom label via renderLabel", () => {
     render(
       <Tree
         items={simpleItems}
@@ -93,40 +93,35 @@ describe('Tree', () => {
       />,
     );
 
-    expect(screen.getByTestId('custom-1')).toHaveTextContent('ITEM 1');
-    expect(screen.getByTestId('custom-2')).toHaveTextContent('ITEM 2');
+    expect(screen.getByTestId("custom-1")).toHaveTextContent("ITEM 1");
+    expect(screen.getByTestId("custom-2")).toHaveTextContent("ITEM 2");
   });
 
-  test('renders actions slot via renderActions', () => {
+  test("renders actions slot via renderActions", () => {
     render(
-      <Tree
-        items={simpleItems}
-        renderActions={(item) => <button data-testid={`action-${item.id}`}>Action</button>}
-      />,
+      <Tree items={simpleItems} renderActions={(item) => <button data-testid={`action-${item.id}`}>Action</button>} />,
     );
 
-    expect(screen.getByTestId('action-1')).toBeInTheDocument();
-    expect(screen.getByTestId('action-2')).toBeInTheDocument();
+    expect(screen.getByTestId("action-1")).toBeInTheDocument();
+    expect(screen.getByTestId("action-2")).toBeInTheDocument();
   });
 
-  test('applies custom class to container', () => {
-    const { container } = render(<Tree items={simpleItems} class='custom-class' />);
+  test("applies custom class to container", () => {
+    const { container } = render(<Tree items={simpleItems} class="custom-class" />);
 
-    expect(container.firstChild).toHaveClass('custom-class');
+    expect(container.firstChild).toHaveClass("custom-class");
   });
 
-  test('renders deeply nested tree structure', () => {
+  test("renders deeply nested tree structure", () => {
     const deepItems: TreeItemData[] = [
       {
-        id: 'level1',
-        label: 'Level 1',
+        id: "level1",
+        label: "Level 1",
         children: [
           {
-            id: 'level2',
-            label: 'Level 2',
-            children: [
-              { id: 'level3', label: 'Level 3' },
-            ],
+            id: "level2",
+            label: "Level 2",
+            children: [{ id: "level3", label: "Level 3" }],
           },
         ],
       },
@@ -134,30 +129,30 @@ describe('Tree', () => {
 
     render(<Tree items={deepItems} />);
 
-    expect(screen.getByText('Level 1')).toBeInTheDocument();
-    expect(screen.getByText('Level 2')).toBeInTheDocument();
-    expect(screen.getByText('Level 3')).toBeInTheDocument();
+    expect(screen.getByText("Level 1")).toBeInTheDocument();
+    expect(screen.getByText("Level 2")).toBeInTheDocument();
+    expect(screen.getByText("Level 3")).toBeInTheDocument();
   });
 
-  test('supports generic data payload', () => {
+  test("supports generic data payload", () => {
     interface FileData {
       size: number;
       modified: string;
     }
 
     const itemsWithData: TreeItemData<FileData>[] = [
-      { id: '1', label: 'Document', data: { size: 1024, modified: '2024-01-01' } },
+      { id: "1", label: "Document", data: { size: 1024, modified: "2024-01-01" } },
     ];
 
     const handleClick = mock((_item: TreeItemData<FileData>) => {});
 
     render(<Tree items={itemsWithData} onItemClick={handleClick} />);
 
-    fireEvent.click(screen.getByText('Document'));
+    fireEvent.click(screen.getByText("Document"));
 
     expect(handleClick).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { size: 1024, modified: '2024-01-01' },
+        data: { size: 1024, modified: "2024-01-01" },
       }),
     );
   });

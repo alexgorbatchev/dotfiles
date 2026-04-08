@@ -1,11 +1,11 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { IInstallContext, ISystemInfo, PluginEmittedHookEvent, Shell, ToolConfig } from '@dotfiles/core';
-import { createToolConfigContext, type InstallEvent } from '@dotfiles/core';
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { TrackedFileSystem } from '@dotfiles/registry/file';
-import path from 'node:path';
-import { createConfiguredShell } from '../utils';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { IInstallContext, ISystemInfo, PluginEmittedHookEvent, Shell, ToolConfig } from "@dotfiles/core";
+import { createToolConfigContext, type InstallEvent } from "@dotfiles/core";
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import type { TrackedFileSystem } from "@dotfiles/registry/file";
+import path from "node:path";
+import { createConfiguredShell } from "../utils";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -65,7 +65,7 @@ export class InstallContextFactory {
 
   createMinimalContext(options: ICreateMinimalContextOptions): IInstallContext {
     const toolDir = this.getToolDirectory(options.toolConfig);
-    const contextLogger = options.parentLogger.getSubLogger({ name: 'minimalContext' });
+    const contextLogger = options.parentLogger.getSubLogger({ name: "minimalContext" });
 
     const baseContext = createToolConfigContext(
       this.projectConfig,
@@ -78,8 +78,8 @@ export class InstallContextFactory {
 
     const context: IInstallContext = {
       ...baseContext,
-      stagingDir: '',
-      timestamp: '',
+      stagingDir: "",
+      timestamp: "",
       toolConfig: options.toolConfig,
       $: options.$shell ?? createConfiguredShell(this.$shell, process.env),
       fileSystem: this.fileSystem,

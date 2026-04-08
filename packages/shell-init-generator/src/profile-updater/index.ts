@@ -1,2 +1,2 @@
-export * from './IProfileUpdater';
-export * from './ProfileUpdater';
+export * from "./IProfileUpdater";
+export * from "./ProfileUpdater";

@@ -1,9 +1,9 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { IApiResponse, IRecentTools } from '../../shared/types';
-import { formatRelativeTime, formatTimestamp } from '../../shared/types';
-import { messages } from '../log-messages';
-import type { IDashboardServices } from '../types';
-import { getGitFirstCommitDate } from './helpers';
+import type { TsLogger } from "@dotfiles/logger";
+import type { IApiResponse, IRecentTools } from "../../shared/types";
+import { formatRelativeTime, formatTimestamp } from "../../shared/types";
+import { messages } from "../log-messages";
+import type { IDashboardServices } from "../types";
+import { getGitFirstCommitDate } from "./helpers";
 
 /**
  * GET /api/recent-tools - Get recently added tool config files
@@ -19,7 +19,7 @@ export async function getRecentTools(
     const toolConfigsDir = services.projectConfig.paths.toolConfigsDir;
 
     // Collect all .tool.ts files
-    const toolFiles: Array<{ name: string; configFilePath: string; }> = [];
+    const toolFiles: Array<{ name: string; configFilePath: string }> = [];
 
     async function collectToolFiles(dirPath: string): Promise<void> {
       const itemNames = await services.fs.readdir(dirPath);
@@ -30,8 +30,8 @@ export async function getRecentTools(
 
         if (stat.isDirectory()) {
           await collectToolFiles(fullPath);
-        } else if (name.endsWith('.tool.ts')) {
-          const toolName = name.replace(/\.tool\.ts$/, '');
+        } else if (name.endsWith(".tool.ts")) {
+          const toolName = name.replace(/\.tool\.ts$/, "");
           toolFiles.push({
             name: toolName,
             configFilePath: fullPath,
@@ -51,7 +51,7 @@ export async function getRecentTools(
             name: file.name,
             configFilePath: file.configFilePath,
             timestamp: gitDate.getTime(),
-            source: 'git' as const,
+            source: "git" as const,
           };
         }
         const stat = await services.fs.stat(file.configFilePath);
@@ -59,15 +59,13 @@ export async function getRecentTools(
           name: file.name,
           configFilePath: file.configFilePath,
           timestamp: stat.mtimeMs,
-          source: 'mtime' as const,
+          source: "mtime" as const,
         };
       }),
     );
 
     // Sort by timestamp descending (most recent first) and take top N
-    const recentFiles = toolsWithTimestamps
-      .toSorted((a, b) => b.timestamp - a.timestamp)
-      .slice(0, limit);
+    const recentFiles = toolsWithTimestamps.toSorted((a, b) => b.timestamp - a.timestamp).slice(0, limit);
 
     const tools = recentFiles.map((file) => ({
       name: file.name,
@@ -82,7 +80,7 @@ export async function getRecentTools(
       data: { tools },
     };
   } catch (error) {
-    logger.error(messages.apiError('getRecentTools'), error);
-    return { success: false, error: 'Failed to retrieve recent tools' };
+    logger.error(messages.apiError("getRecentTools"), error);
+    return { success: false, error: "Failed to retrieve recent tools" };
   }
 }

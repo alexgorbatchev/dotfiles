@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 /**
  * Test file for no-throw-in-tests oxlint plugin rule.
@@ -10,48 +10,48 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
  */
 
 // Load the plugin (ESM default export)
-import plugin from '../plugin.js';
+import plugin from "../plugin.js";
 
 interface ASTVisitor {
   ThrowStatement: (node: unknown) => void;
 }
 
-describe('no-throw-in-tests plugin', () => {
-  describe('plugin structure', () => {
-    it('exports no-throw-in-tests rule', () => {
-      expect(plugin.rules['no-throw-in-tests']).toBeDefined();
+describe("no-throw-in-tests plugin", () => {
+  describe("plugin structure", () => {
+    it("exports no-throw-in-tests rule", () => {
+      expect(plugin.rules["no-throw-in-tests"]).toBeDefined();
     });
   });
 
-  describe('rule meta', () => {
-    const rule = plugin.rules['no-throw-in-tests'];
+  describe("rule meta", () => {
+    const rule = plugin.rules["no-throw-in-tests"];
 
-    it('has correct meta type', () => {
-      expect(rule.meta?.type).toBe('problem');
+    it("has correct meta type", () => {
+      expect(rule.meta?.type).toBe("problem");
     });
 
-    it('has description in docs', () => {
-      expect(rule.meta?.docs?.description).toBe('Disallow throw new Error in test files');
+    it("has description in docs", () => {
+      expect(rule.meta?.docs?.description).toBe("Disallow throw new Error in test files");
     });
 
-    it('has message for violation', () => {
-      expect(rule.meta?.messages?.['noThrowNewError']).toBe(
+    it("has message for violation", () => {
+      expect(rule.meta?.messages?.["noThrowNewError"]).toBe(
         "Don't use 'throw new Error' in tests. Use 'assert()' from 'node:assert' to fail with a condition.",
       );
     });
   });
 
-  describe('rule.create()', () => {
-    const rule = plugin.rules['no-throw-in-tests'];
+  describe("rule.create()", () => {
+    const rule = plugin.rules["no-throw-in-tests"];
 
-    it('returns visitor with ThrowStatement handler', () => {
+    it("returns visitor with ThrowStatement handler", () => {
       const mockContext = { report: mock(() => {}) };
       const visitor = rule.create(mockContext) as ASTVisitor;
 
       expect(visitor.ThrowStatement).toBeFunction();
     });
 
-    describe('ThrowStatement visitor', () => {
+    describe("ThrowStatement visitor", () => {
       let reportMock: ReturnType<typeof mock>;
       let visitor: ASTVisitor;
 
@@ -60,14 +60,14 @@ describe('no-throw-in-tests plugin', () => {
         visitor = rule.create({ report: reportMock }) as ASTVisitor;
       });
 
-      it('reports throw new Error()', () => {
+      it("reports throw new Error()", () => {
         // AST for: throw new Error('message')
         const node = {
-          type: 'ThrowStatement',
+          type: "ThrowStatement",
           argument: {
-            type: 'NewExpression',
-            callee: { type: 'Identifier', name: 'Error' },
-            arguments: [{ type: 'Literal', value: 'message' }],
+            type: "NewExpression",
+            callee: { type: "Identifier", name: "Error" },
+            arguments: [{ type: "Literal", value: "message" }],
           },
         };
 
@@ -76,17 +76,17 @@ describe('no-throw-in-tests plugin', () => {
         expect(reportMock).toHaveBeenCalledTimes(1);
         expect(reportMock).toHaveBeenCalledWith({
           node,
-          messageId: 'noThrowNewError',
+          messageId: "noThrowNewError",
         });
       });
 
-      it('reports throw new Error() with no arguments', () => {
+      it("reports throw new Error() with no arguments", () => {
         // AST for: throw new Error()
         const node = {
-          type: 'ThrowStatement',
+          type: "ThrowStatement",
           argument: {
-            type: 'NewExpression',
-            callee: { type: 'Identifier', name: 'Error' },
+            type: "NewExpression",
+            callee: { type: "Identifier", name: "Error" },
             arguments: [],
           },
         };
@@ -96,18 +96,18 @@ describe('no-throw-in-tests plugin', () => {
         expect(reportMock).toHaveBeenCalledTimes(1);
         expect(reportMock).toHaveBeenCalledWith({
           node,
-          messageId: 'noThrowNewError',
+          messageId: "noThrowNewError",
         });
       });
 
-      it('does not report throw with non-Error constructors', () => {
+      it("does not report throw with non-Error constructors", () => {
         // AST for: throw new CustomError('message')
         const node = {
-          type: 'ThrowStatement',
+          type: "ThrowStatement",
           argument: {
-            type: 'NewExpression',
-            callee: { type: 'Identifier', name: 'CustomError' },
-            arguments: [{ type: 'Literal', value: 'message' }],
+            type: "NewExpression",
+            callee: { type: "Identifier", name: "CustomError" },
+            arguments: [{ type: "Literal", value: "message" }],
           },
         };
 
@@ -116,11 +116,11 @@ describe('no-throw-in-tests plugin', () => {
         expect(reportMock).toHaveBeenCalledTimes(0);
       });
 
-      it('does not report throw with identifier (re-throwing)', () => {
+      it("does not report throw with identifier (re-throwing)", () => {
         // AST for: throw error
         const node = {
-          type: 'ThrowStatement',
-          argument: { type: 'Identifier', name: 'error' },
+          type: "ThrowStatement",
+          argument: { type: "Identifier", name: "error" },
         };
 
         visitor.ThrowStatement(node);
@@ -128,11 +128,11 @@ describe('no-throw-in-tests plugin', () => {
         expect(reportMock).toHaveBeenCalledTimes(0);
       });
 
-      it('does not report throw with literal', () => {
+      it("does not report throw with literal", () => {
         // AST for: throw 'error message'
         const node = {
-          type: 'ThrowStatement',
-          argument: { type: 'Literal', value: 'error message' },
+          type: "ThrowStatement",
+          argument: { type: "Literal", value: "error message" },
         };
 
         visitor.ThrowStatement(node);

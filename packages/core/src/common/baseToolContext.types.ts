@@ -1,6 +1,6 @@
-import type { ReplaceInFileMode, ReplaceInFilePattern, ReplaceInFileReplacer } from '@dotfiles/utils';
-import type { ProjectConfig } from '../config';
-import type { ISystemInfo } from './common.types';
+import type { ReplaceInFileMode, ReplaceInFilePattern, ReplaceInFileReplacer } from "@dotfiles/utils";
+import type { ProjectConfig } from "../config";
+import type { ISystemInfo } from "./common.types";
 
 /**
  * User-facing logging interface for tool configurations.

@@ -1,11 +1,11 @@
-import { type ArchiveFormat, type IExtractOptions, type IExtractResult, type Shell } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { getAllFilesRecursively } from '@dotfiles/utils';
-import { randomUUID } from 'node:crypto';
-import { basename, extname, join } from 'node:path';
-import type { IArchiveExtractor } from './IArchiveExtractor';
-import { messages } from './log-messages';
+import { type ArchiveFormat, type IExtractOptions, type IExtractResult, type Shell } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { getAllFilesRecursively } from "@dotfiles/utils";
+import { randomUUID } from "node:crypto";
+import { basename, extname, join } from "node:path";
+import type { IArchiveExtractor } from "./IArchiveExtractor";
+import { messages } from "./log-messages";
 
 /**
  * Implements archive extraction using system commands.
@@ -32,7 +32,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
    */
   constructor(parentLogger: TsLogger, fileSystem: IFileSystem, shell: Shell) {
     this.fs = fileSystem;
-    this.logger = parentLogger.getSubLogger({ name: 'ArchiveExtractor' });
+    this.logger = parentLogger.getSubLogger({ name: "ArchiveExtractor" });
     this.shell = shell;
   }
 
@@ -45,19 +45,19 @@ export class ArchiveExtractor implements IArchiveExtractor {
   private detectFormatByExtension(fileName: string): ArchiveFormat | null {
     const lowerFileName = fileName.toLowerCase();
 
-    if (lowerFileName.endsWith('.tar.gz') || lowerFileName.endsWith('.tgz')) return 'tar.gz';
-    if (lowerFileName.endsWith('.gz')) return 'gzip';
-    if (lowerFileName.endsWith('.tar.bz2') || lowerFileName.endsWith('.tbz2') || lowerFileName.endsWith('.tbz'))
-      return 'tar.bz2';
-    if (lowerFileName.endsWith('.tar.xz') || lowerFileName.endsWith('.txz')) return 'tar.xz';
-    if (lowerFileName.endsWith('.tar.lzma')) return 'tar.lzma';
-    if (lowerFileName.endsWith('.tar')) return 'tar';
-    if (lowerFileName.endsWith('.zip')) return 'zip';
-    if (lowerFileName.endsWith('.rar')) return 'rar';
-    if (lowerFileName.endsWith('.7z')) return '7z';
-    if (lowerFileName.endsWith('.deb')) return 'deb';
-    if (lowerFileName.endsWith('.rpm')) return 'rpm';
-    if (lowerFileName.endsWith('.dmg')) return 'dmg';
+    if (lowerFileName.endsWith(".tar.gz") || lowerFileName.endsWith(".tgz")) return "tar.gz";
+    if (lowerFileName.endsWith(".gz")) return "gzip";
+    if (lowerFileName.endsWith(".tar.bz2") || lowerFileName.endsWith(".tbz2") || lowerFileName.endsWith(".tbz"))
+      return "tar.bz2";
+    if (lowerFileName.endsWith(".tar.xz") || lowerFileName.endsWith(".txz")) return "tar.xz";
+    if (lowerFileName.endsWith(".tar.lzma")) return "tar.lzma";
+    if (lowerFileName.endsWith(".tar")) return "tar";
+    if (lowerFileName.endsWith(".zip")) return "zip";
+    if (lowerFileName.endsWith(".rar")) return "rar";
+    if (lowerFileName.endsWith(".7z")) return "7z";
+    if (lowerFileName.endsWith(".deb")) return "deb";
+    if (lowerFileName.endsWith(".rpm")) return "rpm";
+    if (lowerFileName.endsWith(".dmg")) return "dmg";
 
     return null;
   }
@@ -69,23 +69,23 @@ export class ArchiveExtractor implements IArchiveExtractor {
    * @returns The detected ArchiveFormat, or null if the format cannot be determined from MIME type.
    */
   private detectFormatByMimeType(mimeOutput: string): ArchiveFormat | null {
-    if (mimeOutput.includes('gzip')) return 'tar.gz';
-    if (mimeOutput.includes('zip')) return 'zip';
-    if (mimeOutput.includes('x-bzip2')) return 'tar.bz2';
-    if (mimeOutput.includes('x-xz')) return 'tar.xz';
-    if (mimeOutput.includes('x-tar')) return 'tar';
-    if (mimeOutput.includes('x-7z-compressed')) return '7z';
-    if (mimeOutput.includes('x-rar-compressed')) return 'rar';
-    if (mimeOutput.includes('x-debian-package')) return 'deb';
-    if (mimeOutput.includes('x-rpm')) return 'rpm';
-    if (mimeOutput.includes('x-apple-diskimage')) return 'dmg';
+    if (mimeOutput.includes("gzip")) return "tar.gz";
+    if (mimeOutput.includes("zip")) return "zip";
+    if (mimeOutput.includes("x-bzip2")) return "tar.bz2";
+    if (mimeOutput.includes("x-xz")) return "tar.xz";
+    if (mimeOutput.includes("x-tar")) return "tar";
+    if (mimeOutput.includes("x-7z-compressed")) return "7z";
+    if (mimeOutput.includes("x-rar-compressed")) return "rar";
+    if (mimeOutput.includes("x-debian-package")) return "deb";
+    if (mimeOutput.includes("x-rpm")) return "rpm";
+    if (mimeOutput.includes("x-apple-diskimage")) return "dmg";
 
     return null;
   }
 
   private async detectFormatUsingFileCommand(filePath: string, logger: TsLogger): Promise<ArchiveFormat | null> {
     try {
-      const commandName = 'file';
+      const commandName = "file";
       logger.debug(messages.shellCommandStarted(commandName));
       const result = await this.shell`file -b --mime-type ${filePath}`.quiet();
       const output = result.stdout.trim();
@@ -101,7 +101,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
    * @inheritdoc IArchiveExtractor.detectFormat
    */
   public async detectFormat(filePath: string): Promise<ArchiveFormat> {
-    const logger = this.logger.getSubLogger({ name: 'detectFormat' });
+    const logger = this.logger.getSubLogger({ name: "detectFormat" });
     const fileName = basename(filePath);
 
     // Try detection by file extension first
@@ -124,12 +124,12 @@ export class ArchiveExtractor implements IArchiveExtractor {
    */
   public isSupported(format: ArchiveFormat): boolean {
     const supportedFormats: ArchiveFormat[] = [
-      'tar.gz',
-      'tar.bz2',
-      'tar.xz',
-      'tar',
-      'zip',
-      'gzip',
+      "tar.gz",
+      "tar.bz2",
+      "tar.xz",
+      "tar",
+      "zip",
+      "gzip",
       // 'rar', '7z', 'deb', 'rpm', 'dmg' // Add as implemented
     ];
     return supportedFormats.includes(format);
@@ -137,14 +137,14 @@ export class ArchiveExtractor implements IArchiveExtractor {
 
   private getTarFlagForFormat(format: ArchiveFormat): string {
     switch (format) {
-      case 'tar.gz':
-        return '-xzf';
-      case 'tar.bz2':
-        return '-xjf';
-      case 'tar.xz':
-        return '-xJf';
-      case 'tar':
-        return '-xf';
+      case "tar.gz":
+        return "-xzf";
+      case "tar.bz2":
+        return "-xjf";
+      case "tar.xz":
+        return "-xJf";
+      case "tar":
+        return "-xf";
       default:
         throw new Error(`Unsupported tar format: ${format}`);
     }
@@ -165,30 +165,28 @@ export class ArchiveExtractor implements IArchiveExtractor {
     tempExtractDir: string,
   ): Promise<void> {
     switch (format) {
-      case 'tar.gz':
-      case 'tar.bz2':
-      case 'tar.xz':
-      case 'tar': {
+      case "tar.gz":
+      case "tar.bz2":
+      case "tar.xz":
+      case "tar": {
         const tarFlag = this.getTarFlagForFormat(format);
-        const commandName = 'tar';
+        const commandName = "tar";
         this.logger.debug(messages.shellCommandStarted(commandName));
         await this.shell`tar ${tarFlag} ${archivePath} -C ${tempExtractDir}`.quiet();
         break;
       }
-      case 'zip': {
-        const commandName = 'unzip';
+      case "zip": {
+        const commandName = "unzip";
         this.logger.debug(messages.shellCommandStarted(commandName));
         await this.shell`unzip -qo ${archivePath} -d ${tempExtractDir}`.quiet();
         break;
       }
-      case 'gzip': {
-        const commandName = 'gunzip';
+      case "gzip": {
+        const commandName = "gunzip";
         this.logger.debug(messages.shellCommandStarted(commandName));
         // For single-file gzip, output filename is the archive name without .gz extension
         const archiveBasename = basename(archivePath);
-        const outputName = archiveBasename.endsWith('.gz')
-          ? archiveBasename.slice(0, -3)
-          : archiveBasename;
+        const outputName = archiveBasename.endsWith(".gz") ? archiveBasename.slice(0, -3) : archiveBasename;
         const outputPath = join(tempExtractDir, outputName);
         await this.shell`gunzip -c ${archivePath} > ${outputPath}`.quiet();
         break;
@@ -206,10 +204,10 @@ export class ArchiveExtractor implements IArchiveExtractor {
     archivePath: string,
     options: IExtractOptions = {},
   ): Promise<IExtractResult> {
-    const logger = parentLogger.getSubLogger({ name: 'extract' });
+    const logger = parentLogger.getSubLogger({ name: "extract" });
     const {
       format: explicitFormat,
-      targetDir = '.', // Default to current directory if not specified
+      targetDir = ".", // Default to current directory if not specified
       detectExecutables = true,
     } = options;
 
@@ -240,7 +238,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       for (const filePath of extractedFiles) {
         const relativePath = filePath.substring(tempExtractDir.length + 1);
         const targetPath = join(targetDir, relativePath);
-        const targetDirPath = join(targetPath, '..');
+        const targetDirPath = join(targetPath, "..");
 
         await this.fs.ensureDir(targetDirPath);
         await this.fs.rename(filePath, targetPath);
@@ -288,7 +286,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
    * @returns Array of absolute file paths that were identified as executables.
    */
   private async detectAndSetExecutables(files: string[]): Promise<string[]> {
-    const logger = this.logger.getSubLogger({ name: 'detectAndSetExecutables' });
+    const logger = this.logger.getSubLogger({ name: "detectAndSetExecutables" });
     const executables: string[] = [];
     // This is a simplified check. `file` command is more robust.
     // For `zx`, we'd need to ensure `file` command is available or use Node.js based checks.
@@ -301,7 +299,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
           // Heuristic: files without extensions or common script extensions
           // This is very basic and platform-dependent.
           const ext = extname(filePath);
-          if (ext === '' || ['.sh', '.py', '.pl', '.rb'].includes(ext)) {
+          if (ext === "" || [".sh", ".py", ".pl", ".rb"].includes(ext)) {
             // Check if it's already executable (owner execute bit)
             if (!(stat.mode & 0o100)) {
               logger.debug(messages.executableFlagApplied(filePath));

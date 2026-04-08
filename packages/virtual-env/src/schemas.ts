@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Schema for validating create environment options.
@@ -7,7 +7,7 @@ export const createEnvOptionsSchema = z.object({
   /**
    * Name of the environment directory to create.
    */
-  name: z.string().min(1).default('env'),
+  name: z.string().min(1).default("env"),
 
   /**
    * Parent directory where the environment will be created (defaults to cwd).

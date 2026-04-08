@@ -1,11 +1,11 @@
-import type { ProjectConfigPaths } from '@dotfiles/config';
-import { getDefaultConfig } from '@dotfiles/config';
-import { Architecture, Platform } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import * as path from 'node:path';
+import type { ProjectConfigPaths } from "@dotfiles/config";
+import { getDefaultConfig } from "@dotfiles/config";
+import { Architecture, Platform } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import * as path from "node:path";
 
-type InternalProjectConfigPaths = Omit<ProjectConfigPaths, 'manifestPath'>;
+type InternalProjectConfigPaths = Omit<ProjectConfigPaths, "manifestPath">;
 
 /**
  * Options for creating test directories
@@ -14,7 +14,7 @@ export interface ITestDirectoryOptions {
   /** Name for the temporary directory */
   testName?: string;
   /** Optional map of additional directories to create (key: directory identifier, value: path relative to base directory) */
-  additionalDirs?: Record<string, { path: string; relativeTo?: keyof InternalProjectConfigPaths; }>;
+  additionalDirs?: Record<string, { path: string; relativeTo?: keyof InternalProjectConfigPaths }>;
   /** Optional array of tool-specific directories to create in binaries directory */
   toolDirs?: string[];
 
@@ -48,7 +48,7 @@ export interface ITestDirectories {
  */
 async function createTempDir(fs: IFileSystem, name: string) {
   const currentDir = path.dirname(new URL(import.meta.url).pathname);
-  const tempDir = path.join(currentDir, '../tmp', name);
+  const tempDir = path.join(currentDir, "../tmp", name);
   if (await fs.exists(tempDir)) {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
@@ -69,12 +69,12 @@ export async function createTestDirectories(
 ): Promise<ITestDirectories> {
   const homeDir = await createTempDir(
     fs,
-    `createTestDirectories${options.testName !== undefined ? `--${options.testName}` : ''}`,
+    `createTestDirectories${options.testName !== undefined ? `--${options.testName}` : ""}`,
   );
   const defaultConfig = await getDefaultConfig(
     logger,
     fs,
-    { homeDir, platform: Platform.Linux, arch: Architecture.X86_64, hostname: 'test-host' },
+    { homeDir, platform: Platform.Linux, arch: Architecture.X86_64, hostname: "test-host" },
     { HOME: homeDir },
     `${homeDir}/dotfiles.config.ts`,
   );
@@ -100,7 +100,7 @@ export async function createTestDirectories(
       const dir = this.additionalDirs[key];
       if (!dir) {
         throw new Error(
-          `Additional directory '${key}' not found. Available keys: ${Object.keys(this.additionalDirs).join(', ')}`,
+          `Additional directory '${key}' not found. Available keys: ${Object.keys(this.additionalDirs).join(", ")}`,
         );
       }
       return dir;

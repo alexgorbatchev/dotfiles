@@ -1,11 +1,11 @@
 // oxlint-disable-next-line import/no-unassigned-import
-import '@dotfiles/testing-helpers';
-import { describe, expect, it } from 'bun:test';
-import { generatePowerShellSourceScript } from '../generatePowerShellSourceScript';
+import "@dotfiles/testing-helpers";
+import { describe, expect, it } from "bun:test";
+import { generatePowerShellSourceScript } from "../generatePowerShellSourceScript";
 
-describe('generatePowerShellSourceScript', () => {
-  it('should generate complete PowerShell source script', () => {
-    const script = generatePowerShellSourceScript('/home/user/project/env', 'env');
+describe("generatePowerShellSourceScript", () => {
+  it("should generate complete PowerShell source script", () => {
+    const script = generatePowerShellSourceScript("/home/user/project/env", "env");
 
     expect(script).toMatchInlineSnapshot(`
       "# ==============================================================================
@@ -65,8 +65,8 @@ describe('generatePowerShellSourceScript', () => {
     `);
   });
 
-  it('should include usage instructions with environment name', () => {
-    const script = generatePowerShellSourceScript('/path/to/my-project', 'my-project');
+  it("should include usage instructions with environment name", () => {
+    const script = generatePowerShellSourceScript("/path/to/my-project", "my-project");
 
     expect(script).toMatchLooseInlineSnapshot`
       # Usage:
@@ -75,8 +75,8 @@ describe('generatePowerShellSourceScript', () => {
     `;
   });
 
-  it('should use fallback path in script when detection fails', () => {
-    const script = generatePowerShellSourceScript('/custom/fallback/path', 'custom-env');
+  it("should use fallback path in script when detection fails", () => {
+    const script = generatePowerShellSourceScript("/custom/fallback/path", "custom-env");
 
     expect(script).toMatchLooseInlineSnapshot`
       if (-not $scriptDir) {
@@ -86,8 +86,8 @@ describe('generatePowerShellSourceScript', () => {
     `;
   });
 
-  it('should export environment variables with correct values', () => {
-    const script = generatePowerShellSourceScript('/any/path', 'test-env');
+  it("should export environment variables with correct values", () => {
+    const script = generatePowerShellSourceScript("/any/path", "test-env");
 
     expect(script).toMatchLooseInlineSnapshot`
       # Export environment variables
@@ -97,8 +97,8 @@ describe('generatePowerShellSourceScript', () => {
     `;
   });
 
-  it('should display activation message with environment name', () => {
-    const script = generatePowerShellSourceScript('/any/path', 'dev-env');
+  it("should display activation message with environment name", () => {
+    const script = generatePowerShellSourceScript("/any/path", "dev-env");
 
     expect(script).toMatchLooseInlineSnapshot`
       Write-Host "Activated dotfiles environment: dev-env"

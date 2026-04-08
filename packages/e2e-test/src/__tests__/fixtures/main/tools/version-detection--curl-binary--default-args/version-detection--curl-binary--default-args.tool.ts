@@ -1,14 +1,14 @@
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from "@dotfiles/cli";
 
-const mockServerHost = process.env['MOCK_SERVER_PORT']
-  ? `http://127.0.0.1:${process.env['MOCK_SERVER_PORT']}`
-  : 'http://127.0.0.1:8765';
+const mockServerHost = process.env["MOCK_SERVER_PORT"]
+  ? `http://127.0.0.1:${process.env["MOCK_SERVER_PORT"]}`
+  : "http://127.0.0.1:8765";
 
 export default defineTool((install) => {
-  return install('curl-binary', {
+  return install("curl-binary", {
     url: `${mockServerHost}/mock-binary-version-detection-curl-binary-default-args`,
     env: {
-      INSTALL_DIR: '{stagingDir}',
+      INSTALL_DIR: "{stagingDir}",
     },
-  }).bin('version-detection--curl-binary--default-args');
+  }).bin("version-detection--curl-binary--default-args");
 });

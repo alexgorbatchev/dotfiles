@@ -8,7 +8,7 @@ export class CargoClientError extends Error {
 
   constructor(message: string, statusCode?: number, cause?: Error) {
     super(message);
-    this.name = 'CargoClientError';
+    this.name = "CargoClientError";
     this.statusCode = statusCode;
     this.cause = cause;
 

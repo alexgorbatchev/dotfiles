@@ -1,11 +1,11 @@
-import { VersionComparisonStatus } from '@dotfiles/version-checker';
-import { describe, expect, it, mock } from 'bun:test';
-import { createCliTestSetup } from './createCliTestSetup';
+import { VersionComparisonStatus } from "@dotfiles/version-checker";
+import { describe, expect, it, mock } from "bun:test";
+import { createCliTestSetup } from "./createCliTestSetup";
 
-describe('createCliTestSetup', () => {
-  it('should work with true for default mocks', async () => {
+describe("createCliTestSetup", () => {
+  it("should work with true for default mocks", async () => {
     const setup = await createCliTestSetup({
-      testName: 'default-test',
+      testName: "default-test",
       services: {
         installer: true,
         githubApiClient: true,
@@ -17,21 +17,21 @@ describe('createCliTestSetup', () => {
     expect(setup.mockServices.versionChecker).toBeUndefined();
   });
 
-  it('should work with custom mock objects', async () => {
+  it("should work with custom mock objects", async () => {
     const customInstaller = {
       install: mock(async () => ({
         success: false as const,
-        error: 'Custom mock',
+        error: "Custom mock",
       })),
     };
 
     const setup = await createCliTestSetup({
-      testName: 'object-test',
+      testName: "object-test",
       services: {
         installer: customInstaller,
         versionChecker: {
           checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
-          getLatestToolVersion: mock(async () => '1.0.0'),
+          getLatestToolVersion: mock(async () => "1.0.0"),
         },
       },
     });
@@ -41,16 +41,16 @@ describe('createCliTestSetup', () => {
     expect(setup.mockServices.githubApiClient).toBeUndefined();
   });
 
-  it('should work with mixed true and custom mocks', async () => {
+  it("should work with mixed true and custom mocks", async () => {
     const customInstaller = {
       install: mock(async () => ({
         success: false as const,
-        error: 'Custom mock',
+        error: "Custom mock",
       })),
     };
 
     const setup = await createCliTestSetup({
-      testName: 'mixed-test',
+      testName: "mixed-test",
       services: {
         installer: customInstaller, // custom mock
         githubApiClient: true, // default mock
@@ -62,9 +62,9 @@ describe('createCliTestSetup', () => {
     expect(setup.mockServices.versionChecker).toBeUndefined();
   });
 
-  it('should create proper IServices object', async () => {
+  it("should create proper IServices object", async () => {
     const setup = await createCliTestSetup({
-      testName: 'services-test',
+      testName: "services-test",
       services: {
         installer: true,
       },

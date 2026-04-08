@@ -1,4 +1,4 @@
-import { $ } from 'dax-sh';
+import { $ } from "dax-sh";
 
 /**
  * Options for configuring command execution.
@@ -32,7 +32,7 @@ function truncateCommandOutput(output: string, maxChars: number): string {
  */
 export async function executeCommand(args: string[], opts: IExecuteCommandOptions = {}): Promise<void> {
   const { cwd = process.cwd(), env } = opts;
-  const command = args.join(' ');
+  const command = args.join(" ");
 
   const mergedEnv = env ? { ...process.env, ...env } : process.env;
   const result = await $`${args}`.cwd(cwd).env(mergedEnv).quiet().noThrow();
@@ -52,7 +52,7 @@ export async function executeCommand(args: string[], opts: IExecuteCommandOption
       detailsParts.push(`stdout:\n${truncateCommandOutput(stdout, maxChars)}`);
     }
 
-    const details: string = detailsParts.length > 0 ? `\n\n${detailsParts.join('\n\n')}` : '';
+    const details: string = detailsParts.length > 0 ? `\n\n${detailsParts.join("\n\n")}` : "";
     throw new Error(`Command failed (exit code ${result.code}): ${command}${details}`);
   }
 }

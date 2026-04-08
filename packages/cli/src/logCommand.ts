@@ -1,56 +1,56 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { IFileOperation, IFileRegistry } from '@dotfiles/registry/file';
-import { contractHomePath, exitCli, ExitCode, formatPermissions } from '@dotfiles/utils';
-import { messages } from './log-messages';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import type { IFileOperation, IFileRegistry } from "@dotfiles/registry/file";
+import { contractHomePath, exitCli, ExitCode, formatPermissions } from "@dotfiles/utils";
+import { messages } from "./log-messages";
 import type {
   ICommandCompletionMeta,
   IGlobalProgram,
   IGlobalProgramOptions,
   ILogCommandSpecificOptions,
   IServices,
-} from './types';
+} from "./types";
 
 /**
  * Completion metadata for the log command.
  */
 export const LOG_COMMAND_COMPLETION: ICommandCompletionMeta = {
-  name: 'log',
-  description: 'Show file operation history',
+  name: "log",
+  description: "Show file operation history",
   hasPositionalArg: true,
-  positionalArgDescription: 'tool name (optional)',
-  positionalArgType: 'tool',
+  positionalArgDescription: "tool name (optional)",
+  positionalArgType: "tool",
   options: [
-    { flag: '--type', description: 'Filter by file type', hasArg: true, argPlaceholder: '<type>' },
-    { flag: '--status', description: 'Show current file states' },
-    { flag: '--since', description: 'Show operations since date', hasArg: true, argPlaceholder: '<date>' },
+    { flag: "--type", description: "Filter by file type", hasArg: true, argPlaceholder: "<type>" },
+    { flag: "--status", description: "Show current file states" },
+    { flag: "--since", description: "Show operations since date", hasArg: true, argPlaceholder: "<date>" },
   ],
 };
 
 function buildOperationsFilter(
   options: ILogCommandSpecificOptions & IGlobalProgramOptions,
   parentLogger: TsLogger,
-): { filter: Record<string, unknown>; exitCode: ExitCode; } {
-  const logger = parentLogger.getSubLogger({ name: 'buildOperationsFilter' });
+): { filter: Record<string, unknown>; exitCode: ExitCode } {
+  const logger = parentLogger.getSubLogger({ name: "buildOperationsFilter" });
   const { tool, type, since } = options;
   const filter: Record<string, unknown> = {};
 
   if (tool) {
-    filter['toolName'] = tool;
+    filter["toolName"] = tool;
   }
 
   if (type) {
-    filter['fileType'] = type;
+    filter["fileType"] = type;
   }
 
   if (since) {
     const sinceDate = new Date(since);
     if (Number.isNaN(sinceDate.getTime())) {
-      logger.error(messages.configParameterInvalid('date format for --since', since, 'ISO format like "2025-08-01"'));
+      logger.error(messages.configParameterInvalid("date format for --since", since, 'ISO format like "2025-08-01"'));
       return { filter: {}, exitCode: ExitCode.ERROR };
     }
-    filter['createdAfter'] = sinceDate.getTime();
+    filter["createdAfter"] = sinceDate.getTime();
   }
 
   return { filter, exitCode: ExitCode.SUCCESS };
@@ -62,7 +62,7 @@ async function showFileStates(
   fs: IFileSystem,
   tool?: string,
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'showFileStates' });
+  const logger = parentLogger.getSubLogger({ name: "showFileStates" });
   const allTools = await fileRegistry.getRegisteredTools();
   logger.info(messages.logCheckingFileStates());
 
@@ -83,19 +83,19 @@ async function showFileStates(
 async function logFileState(
   parentLogger: TsLogger,
   fs: IFileSystem,
-  state: { filePath: string; fileType: string; sizeBytes?: number; targetPath?: string; },
+  state: { filePath: string; fileType: string; sizeBytes?: number; targetPath?: string },
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'logFileState' });
+  const logger = parentLogger.getSubLogger({ name: "logFileState" });
   const exists = await fs.exists(state.filePath);
-  const statusIcon = exists ? '✓' : '✗';
-  const statusText = exists ? 'exists' : 'MISSING';
-  const sizeText = state.sizeBytes ? ` (${state.sizeBytes} bytes)` : '';
+  const statusIcon = exists ? "✓" : "✗";
+  const statusText = exists ? "exists" : "MISSING";
+  const sizeText = state.sizeBytes ? ` (${state.sizeBytes} bytes)` : "";
 
   logger.info(messages.logFileStatus(statusIcon, state.filePath, state.fileType, statusText, sizeText));
 
   if (state.targetPath) {
     const targetExists = await fs.exists(state.targetPath);
-    const targetIcon = targetExists ? '→' : '✗';
+    const targetIcon = targetExists ? "→" : "✗";
     logger.info(messages.logTargetStatus(targetIcon, state.targetPath));
   }
 }
@@ -110,7 +110,7 @@ function buildMetadataString(operation: {
   const metadataParts: string[] = [];
 
   // Only include size for write operations (not for chmod)
-  if (operation.sizeBytes && operation.operationType === 'writeFile') {
+  if (operation.sizeBytes && operation.operationType === "writeFile") {
     metadataParts.push(`size: ${operation.sizeBytes}`);
   }
 
@@ -120,7 +120,7 @@ function buildMetadataString(operation: {
   // Include custom metadata
   if (operation.metadata && Object.keys(operation.metadata).length > 0) {
     for (const [key, value] of Object.entries(operation.metadata)) {
-      if (key === 'newMode') {
+      if (key === "newMode") {
         metadataParts.push(`${key}: ${formatPermissions(value as string | number)}`);
       } else {
         metadataParts.push(`${key}: ${value}`);
@@ -128,21 +128,21 @@ function buildMetadataString(operation: {
     }
   }
 
-  return metadataParts.length > 0 ? `(${metadataParts.join(', ')})` : '';
+  return metadataParts.length > 0 ? `(${metadataParts.join(", ")})` : "";
 }
 
 function formatTimestamp(createdAt: number): string {
   return new Date(createdAt)
-    .toLocaleString('en-US', {
+    .toLocaleString("en-US", {
       hour12: false,
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
     })
-    .replace(',', '');
+    .replace(",", "");
 }
 
 function logOperationByType(
@@ -153,30 +153,30 @@ function logOperationByType(
   metadataString: string,
   projectConfig: ProjectConfig,
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'logOperationByType' });
+  const logger = parentLogger.getSubLogger({ name: "logOperationByType" });
   switch (operation.operationType) {
-    case 'writeFile': {
+    case "writeFile": {
       const writeMessage = `[${operation.toolName}] write ${contractedPath}`;
       logger.info(messages.logOperationHistory(timestamp, writeMessage, metadataString));
       break;
     }
-    case 'mkdir': {
+    case "mkdir": {
       const mkdirMessage = `[${operation.toolName}] mkdir ${contractedPath}`;
       logger.info(messages.logOperationHistory(timestamp, mkdirMessage, metadataString));
       break;
     }
-    case 'chmod': {
+    case "chmod": {
       const modeString = formatPermissions(operation.permissions || 0);
       const chmodMessage = `[${operation.toolName}] chmod ${modeString} ${contractedPath}`;
       logger.info(messages.logOperationHistory(timestamp, chmodMessage, metadataString));
       break;
     }
-    case 'rm': {
+    case "rm": {
       const removeMessage = `[${operation.toolName}] rm ${contractedPath}`;
       logger.info(messages.logOperationHistory(timestamp, removeMessage, metadataString));
       break;
     }
-    case 'rename': {
+    case "rename": {
       const targetPath = operation.targetPath
         ? contractHomePath(projectConfig.paths.homeDir, operation.targetPath)
         : contractedPath;
@@ -184,7 +184,7 @@ function logOperationByType(
       logger.info(messages.logOperationHistory(timestamp, renameMessage, metadataString));
       break;
     }
-    case 'cp': {
+    case "cp": {
       const sourcePath = operation.targetPath
         ? contractHomePath(projectConfig.paths.homeDir, operation.targetPath)
         : contractedPath;
@@ -192,7 +192,7 @@ function logOperationByType(
       logger.info(messages.logOperationHistory(timestamp, copyMessage, metadataString));
       break;
     }
-    case 'symlink': {
+    case "symlink": {
       const symlinkTargetPath = operation.targetPath
         ? contractHomePath(projectConfig.paths.homeDir, operation.targetPath)
         : contractedPath;
@@ -225,7 +225,7 @@ async function showOperations(
   operations: IFileOperation[],
   projectConfig: ProjectConfig,
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'showOperations' });
+  const logger = parentLogger.getSubLogger({ name: "showOperations" });
   if (operations.length === 0) {
     logger.info(messages.logNoOperationsFound());
     return;
@@ -249,7 +249,7 @@ async function logActionLogic(
   options: ILogCommandSpecificOptions & IGlobalProgramOptions,
   services: IServices,
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'logActionLogic' });
+  const logger = parentLogger.getSubLogger({ name: "logActionLogic" });
   const { fileRegistry, fs, projectConfig } = services;
 
   try {
@@ -266,7 +266,7 @@ async function logActionLogic(
     const operations = await fileRegistry.getOperations(filterResult.filter);
     await showOperations(logger, operations, projectConfig);
   } catch (error) {
-    logger.error(messages.commandExecutionFailed('log', ExitCode.ERROR), error);
+    logger.error(messages.commandExecutionFailed("log", ExitCode.ERROR), error);
     exitCli(ExitCode.ERROR);
   }
 }
@@ -276,14 +276,14 @@ export function registerLogCommand(
   program: IGlobalProgram,
   servicesFactory: () => Promise<IServices>,
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'registerLogCommand' });
+  const logger = parentLogger.getSubLogger({ name: "registerLogCommand" });
 
   program
-    .command('log [tool]')
-    .description('Inspect tracked files in the registry')
-    .option('--type <type>', 'Show files of specific type only (shim, binary, symlink, etc.)')
-    .option('--status', 'Check file status (missing, broken links, etc.)')
-    .option('--since <date>', 'Show files created since date (ISO format: 2025-08-01)')
+    .command("log [tool]")
+    .description("Inspect tracked files in the registry")
+    .option("--type <type>", "Show files of specific type only (shim, binary, symlink, etc.)")
+    .option("--status", "Check file status (missing, broken links, etc.)")
+    .option("--since <date>", "Show files created since date (ISO format: 2025-08-01)")
     .action(async (tool: string | undefined, commandOptions: ILogCommandSpecificOptions) => {
       const combinedOptions: ILogCommandSpecificOptions & IGlobalProgramOptions = {
         ...commandOptions,

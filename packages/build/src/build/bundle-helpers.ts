@@ -1,12 +1,12 @@
-import { init, parse } from 'es-module-lexer';
-import { readFile } from 'node:fs/promises';
-import { builtinModules } from 'node:module';
-import { BuildError } from './handleBuildError';
+import { init, parse } from "es-module-lexer";
+import { readFile } from "node:fs/promises";
+import { builtinModules } from "node:module";
+import { BuildError } from "./handleBuildError";
 
-const DOTFILES_PACKAGE_PREFIX = '@dotfiles/';
-const NODE_BUILTIN_PREFIX = 'node:';
-const BUN_BUILTIN_PREFIX = 'bun:';
-const BUN_MODULE_NAME = 'bun';
+const DOTFILES_PACKAGE_PREFIX = "@dotfiles/";
+const NODE_BUILTIN_PREFIX = "node:";
+const BUN_BUILTIN_PREFIX = "bun:";
+const BUN_MODULE_NAME = "bun";
 const NODE_BUILTIN_MODULES: Set<string> = new Set(builtinModules);
 
 /**
@@ -20,12 +20,12 @@ const NODE_BUILTIN_MODULES: Set<string> = new Set(builtinModules);
  */
 function isBareImportSpecifier(specifier: string): boolean {
   // Relative paths, absolute paths, and URLs are not bare imports
-  if (specifier.startsWith('.') || specifier.startsWith('/')) {
+  if (specifier.startsWith(".") || specifier.startsWith("/")) {
     return false;
   }
 
   // URLs are not bare imports (http://, https://, data:, etc.)
-  if (specifier.includes('://') || specifier.startsWith('data:')) {
+  if (specifier.includes("://") || specifier.startsWith("data:")) {
     return false;
   }
 
@@ -43,14 +43,14 @@ function isBareImportSpecifier(specifier: string): boolean {
  */
 function isDashboardClientImport(importer: string): boolean {
   // Direct imports from dashboard client source
-  if (importer.includes('/dashboard/') && importer.includes('/client/')) {
+  if (importer.includes("/dashboard/") && importer.includes("/client/")) {
     return true;
   }
 
   // Transitive dependencies - if the importer is in node_modules, it's a dependency
   // of something we're already bundling (either dashboard client or its deps).
   // Continue bundling to include the full dependency tree.
-  if (importer.includes('/node_modules/')) {
+  if (importer.includes("/node_modules/")) {
     return true;
   }
 
@@ -96,8 +96,8 @@ function isBuiltinImportSpecifier(specifier: string): boolean {
 }
 
 function getPackageNameFromImportSpecifier(specifier: string): string {
-  if (specifier.startsWith('@')) {
-    const parts: string[] = specifier.split('/');
+  if (specifier.startsWith("@")) {
+    const parts: string[] = specifier.split("/");
     const scope: string | undefined = parts[0];
     const name: string | undefined = parts[1];
 
@@ -108,12 +108,12 @@ function getPackageNameFromImportSpecifier(specifier: string): string {
     return `${scope}/${name}`;
   }
 
-  const [name]: string[] = specifier.split('/');
+  const [name]: string[] = specifier.split("/");
   return name ?? specifier;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object';
+  return value !== null && typeof value === "object";
 }
 
 function getStringArrayProperty(record: Record<string, unknown>, key: string): string[] {
@@ -124,7 +124,7 @@ function getStringArrayProperty(record: Record<string, unknown>, key: string): s
 
   const strings: string[] = [];
   for (const entry of value) {
-    if (typeof entry !== 'string') {
+    if (typeof entry !== "string") {
       throw new BuildError(`Invalid source map, ${key} contains non-string entries`);
     }
     strings.push(entry);
@@ -134,8 +134,8 @@ function getStringArrayProperty(record: Record<string, unknown>, key: string): s
 }
 
 function tryGetWorkspacePackageFolderFromSourcePath(sourcePath: string): string | undefined {
-  const parts: string[] = sourcePath.split('/');
-  const packagesIndex: number = parts.indexOf('packages');
+  const parts: string[] = sourcePath.split("/");
+  const packagesIndex: number = parts.indexOf("packages");
   const candidateIndex: number = packagesIndex + 1;
 
   if (packagesIndex === -1) {
@@ -151,8 +151,8 @@ function tryGetWorkspacePackageFolderFromSourcePath(sourcePath: string): string 
 }
 
 function tryGetNodeModulesPackageNameFromSourcePath(sourcePath: string): string | undefined {
-  const parts: string[] = sourcePath.split('/');
-  const nodeModulesIndex: number = parts.indexOf('node_modules');
+  const parts: string[] = sourcePath.split("/");
+  const nodeModulesIndex: number = parts.indexOf("node_modules");
   const candidateIndex: number = nodeModulesIndex + 1;
 
   if (nodeModulesIndex === -1) {
@@ -164,7 +164,7 @@ function tryGetNodeModulesPackageNameFromSourcePath(sourcePath: string): string 
     return undefined;
   }
 
-  if (first.startsWith('@')) {
+  if (first.startsWith("@")) {
     const second: string | undefined = parts[candidateIndex + 1];
     if (!second) {
       return undefined;
@@ -176,20 +176,20 @@ function tryGetNodeModulesPackageNameFromSourcePath(sourcePath: string): string 
 }
 
 export async function getBundledDependenciesFromSourceMap(sourceMapPath: string): Promise<string[]> {
-  const raw: string = await readFile(sourceMapPath, 'utf8');
+  const raw: string = await readFile(sourceMapPath, "utf8");
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
-    throw new BuildError('Failed to parse cli.js source map', error);
+    throw new BuildError("Failed to parse cli.js source map", error);
   }
 
   if (!isRecord(parsed)) {
-    throw new BuildError('Invalid cli.js source map');
+    throw new BuildError("Invalid cli.js source map");
   }
 
-  const sources: string[] = getStringArrayProperty(parsed, 'sources');
+  const sources: string[] = getStringArrayProperty(parsed, "sources");
 
   const bundledPackages: Set<string> = new Set();
 
@@ -212,7 +212,7 @@ export async function getBundledDependenciesFromSourceMap(sourceMapPath: string)
 
 export async function printBundledModuleAnalysis(sourceMapPath: string): Promise<void> {
   const bundledDependencies: string[] = await getBundledDependenciesFromSourceMap(sourceMapPath);
-  console.log('📦 Bundled dependencies found:');
+  console.log("📦 Bundled dependencies found:");
   for (const dependency of bundledDependencies) {
     console.log(`  - ${dependency}`);
   }
@@ -220,12 +220,12 @@ export async function printBundledModuleAnalysis(sourceMapPath: string): Promise
 
 export async function getExternalRuntimeDependenciesFromBundle(bundlePath: string): Promise<string[]> {
   await init;
-  const code: string = await readFile(bundlePath, 'utf8');
+  const code: string = await readFile(bundlePath, "utf8");
   const imports = parse(code)[0];
 
   const bareNonBuiltinImports: string[] = imports
     .map((entry) => entry.n)
-    .filter((name): name is string => typeof name === 'string')
+    .filter((name): name is string => typeof name === "string")
     .filter((name) => isBareImportSpecifier(name))
     .filter((name) => !isBuiltinImportSpecifier(name));
 
@@ -239,7 +239,7 @@ export async function getExternalRuntimeDependenciesFromBundle(bundlePath: strin
 
   if (dotfilesRuntimeImports.length > 0) {
     throw new BuildError(
-      `@dotfiles packages must be bundled, found external imports: ${dotfilesRuntimeImports.join(', ')}`,
+      `@dotfiles packages must be bundled, found external imports: ${dotfilesRuntimeImports.join(", ")}`,
     );
   }
 
@@ -257,7 +257,7 @@ export async function getExternalRuntimeDependenciesFromBundle(bundlePath: strin
 export async function printExternalModuleAnalysis(bundlePath: string): Promise<void> {
   const externalDependencies: string[] = await getExternalRuntimeDependenciesFromBundle(bundlePath);
 
-  console.log('📦 External dependencies found:');
+  console.log("📦 External dependencies found:");
   for (const dependency of externalDependencies) {
     console.log(`  - ${dependency}`);
   }

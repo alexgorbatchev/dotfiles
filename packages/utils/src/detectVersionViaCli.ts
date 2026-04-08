@@ -1,5 +1,5 @@
-import type { Shell } from '@dotfiles/core';
-import { normalizeVersion } from './normalizeVersion';
+import type { Shell } from "@dotfiles/core";
+import { normalizeVersion } from "./normalizeVersion";
 
 export interface DetectVersionOptions {
   /**
@@ -31,7 +31,7 @@ export interface DetectVersionOptions {
  * and parsing the output.
  */
 export async function detectVersionViaCli(options: DetectVersionOptions): Promise<string | undefined> {
-  const { binaryPath, args = ['--version'], regex, env, shellExecutor } = options;
+  const { binaryPath, args = ["--version"], regex, env, shellExecutor } = options;
 
   try {
     const result = await shellExecutor`${binaryPath} ${args}`
@@ -41,7 +41,7 @@ export async function detectVersionViaCli(options: DetectVersionOptions): Promis
     const output = (result.stdout.toString() + result.stderr.toString()).trim();
 
     if (regex) {
-      const re = typeof regex === 'string' ? new RegExp(regex) : regex;
+      const re = typeof regex === "string" ? new RegExp(regex) : regex;
       const match = output.match(re);
       if (match?.[1]) {
         return normalizeVersion(match[1]);
@@ -67,7 +67,7 @@ export async function detectVersionViaCli(options: DetectVersionOptions): Promis
 
     return undefined;
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Version detection failed')) {
+    if (error instanceof Error && error.message.startsWith("Version detection failed")) {
       throw error;
     }
     return undefined;

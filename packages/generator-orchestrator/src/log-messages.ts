@@ -1,8 +1,8 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   constructor: {
-    initialized: () => createSafeLogMessage('Initializing GeneratorOrchestrator'),
+    initialized: () => createSafeLogMessage("Initializing GeneratorOrchestrator"),
   } satisfies SafeLogMessageMap,
   autoInstall: {
     completed: (toolName: string) => createSafeLogMessage(`Auto-installed: ${toolName}`),
@@ -28,10 +28,10 @@ export const messages = {
         `Ambiguous dependency: binary "${dependencyName}" is provided by multiple tools (${providers}). Tool "${toolName}" cannot determine which to use.`,
       ),
     circularDependency: (tools: string) => createSafeLogMessage(`Circular dependency detected between tools: ${tools}`),
-    shimGenerate: () => createSafeLogMessage('Generating shims with resolved options'),
+    shimGenerate: () => createSafeLogMessage("Generating shims with resolved options"),
     shimGenerationComplete: (generatedCount: number) =>
       createSafeLogMessage(`Shim generation completed with ${generatedCount} paths recorded`),
-    shellGenerate: () => createSafeLogMessage('Generating shell initialization files with resolved options'),
+    shellGenerate: () => createSafeLogMessage("Generating shell initialization files with resolved options"),
     shellInitComplete: (primaryPath: string) =>
       createSafeLogMessage(`Shell initialization generation complete; primary path: ${primaryPath}`),
     completionGenerated: (filename: string, toolName: string, shellType: string) =>
@@ -60,8 +60,8 @@ export const messages = {
   } satisfies SafeLogMessageMap,
   orphanCleanup: {
     found: (count: number) =>
-      createSafeLogMessage(`Found ${count} orphaned tool${count === 1 ? '' : 's'} with no configuration`),
-    cleaningUp: () => createSafeLogMessage('Cleaning up orphaned tool'),
+      createSafeLogMessage(`Found ${count} orphaned tool${count === 1 ? "" : "s"} with no configuration`),
+    cleaningUp: () => createSafeLogMessage("Cleaning up orphaned tool"),
   } satisfies SafeLogMessageMap,
   staleSymlinkCleanup: {
     removing: (filePath: string, toolName: string) =>

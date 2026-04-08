@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
-import { EmissionValidationError } from '../../errors';
+import { describe, expect, it } from "bun:test";
+import { EmissionValidationError } from "../../errors";
 import {
   alias,
   completion,
@@ -12,11 +12,11 @@ import {
   sourceFunction,
   withPriority,
   withSource,
-} from '../factories';
+} from "../factories";
 
-describe('environment', () => {
-  it('creates environment emission with valid variables', () => {
-    const result = environment({ NODE_ENV: 'production', DEBUG: 'false' });
+describe("environment", () => {
+  it("creates environment emission with valid variables", () => {
+    const result = environment({ NODE_ENV: "production", DEBUG: "false" });
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -29,22 +29,22 @@ describe('environment', () => {
     `);
   });
 
-  it('throws on empty variables', () => {
+  it("throws on empty variables", () => {
     expect(() => environment({})).toThrow(EmissionValidationError);
   });
 
-  it('throws on invalid variable name', () => {
-    expect(() => environment({ '123invalid': 'value' })).toThrow(EmissionValidationError);
+  it("throws on invalid variable name", () => {
+    expect(() => environment({ "123invalid": "value" })).toThrow(EmissionValidationError);
   });
 
-  it('throws on variable name with hyphen', () => {
-    expect(() => environment({ 'my-var': 'value' })).toThrow(EmissionValidationError);
+  it("throws on variable name with hyphen", () => {
+    expect(() => environment({ "my-var": "value" })).toThrow(EmissionValidationError);
   });
 });
 
-describe('alias', () => {
-  it('creates alias emission with valid aliases', () => {
-    const result = alias({ ll: 'ls -la', g: 'git' });
+describe("alias", () => {
+  it("creates alias emission with valid aliases", () => {
+    const result = alias({ ll: "ls -la", g: "git" });
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -57,8 +57,8 @@ describe('alias', () => {
     `);
   });
 
-  it('allows hyphens in alias names', () => {
-    const result = alias({ 'my-alias': 'command' });
+  it("allows hyphens in alias names", () => {
+    const result = alias({ "my-alias": "command" });
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -70,18 +70,18 @@ describe('alias', () => {
     `);
   });
 
-  it('throws on empty aliases', () => {
+  it("throws on empty aliases", () => {
     expect(() => alias({})).toThrow(EmissionValidationError);
   });
 
-  it('throws on invalid alias name', () => {
-    expect(() => alias({ '123invalid': 'command' })).toThrow(EmissionValidationError);
+  it("throws on invalid alias name", () => {
+    expect(() => alias({ "123invalid": "command" })).toThrow(EmissionValidationError);
   });
 });
 
-describe('fn', () => {
-  it('creates function emission', () => {
-    const result = fn('greet', 'echo "Hello"');
+describe("fn", () => {
+  it("creates function emission", () => {
+    const result = fn("greet", 'echo "Hello"');
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -92,8 +92,8 @@ describe('fn', () => {
     `);
   });
 
-  it('allows hyphens in function names', () => {
-    const result = fn('my-func', 'echo test');
+  it("allows hyphens in function names", () => {
+    const result = fn("my-func", "echo test");
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -104,22 +104,22 @@ describe('fn', () => {
     `);
   });
 
-  it('throws on invalid function name', () => {
-    expect(() => fn('123func', 'body')).toThrow(EmissionValidationError);
+  it("throws on invalid function name", () => {
+    expect(() => fn("123func", "body")).toThrow(EmissionValidationError);
   });
 
-  it('throws on empty body', () => {
-    expect(() => fn('valid', '')).toThrow(EmissionValidationError);
+  it("throws on empty body", () => {
+    expect(() => fn("valid", "")).toThrow(EmissionValidationError);
   });
 
-  it('throws on whitespace-only body', () => {
-    expect(() => fn('valid', '   ')).toThrow(EmissionValidationError);
+  it("throws on whitespace-only body", () => {
+    expect(() => fn("valid", "   ")).toThrow(EmissionValidationError);
   });
 });
 
-describe('script', () => {
-  it('creates script emission with always timing', () => {
-    const result = script('echo "startup"', 'always');
+describe("script", () => {
+  it("creates script emission with always timing", () => {
+    const result = script('echo "startup"', "always");
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -130,8 +130,8 @@ describe('script', () => {
     `);
   });
 
-  it('creates script emission with once timing', () => {
-    const result = script('one-time-setup', 'once');
+  it("creates script emission with once timing", () => {
+    const result = script("one-time-setup", "once");
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -142,8 +142,8 @@ describe('script', () => {
     `);
   });
 
-  it('creates script emission with raw timing', () => {
-    const result = script('raw content', 'raw');
+  it("creates script emission with raw timing", () => {
+    const result = script("raw content", "raw");
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -154,14 +154,14 @@ describe('script', () => {
     `);
   });
 
-  it('throws on empty content', () => {
-    expect(() => script('', 'always')).toThrow(EmissionValidationError);
+  it("throws on empty content", () => {
+    expect(() => script("", "always")).toThrow(EmissionValidationError);
   });
 });
 
-describe('sourceFile', () => {
-  it('creates sourceFile emission', () => {
-    const result = sourceFile('$HOME/.toolrc');
+describe("sourceFile", () => {
+  it("creates sourceFile emission", () => {
+    const result = sourceFile("$HOME/.toolrc");
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -171,14 +171,14 @@ describe('sourceFile', () => {
     `);
   });
 
-  it('throws on empty path', () => {
-    expect(() => sourceFile('')).toThrow(EmissionValidationError);
+  it("throws on empty path", () => {
+    expect(() => sourceFile("")).toThrow(EmissionValidationError);
   });
 });
 
-describe('source', () => {
-  it('creates source emission with content and function name', () => {
-    const result = source('echo "hello"', '__dotfiles_source_test_0');
+describe("source", () => {
+  it("creates source emission with content and function name", () => {
+    const result = source('echo "hello"', "__dotfiles_source_test_0");
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -189,8 +189,8 @@ describe('source', () => {
     `);
   });
 
-  it('allows hyphens in function name', () => {
-    const result = source('echo test', 'my-source-fn');
+  it("allows hyphens in function name", () => {
+    const result = source("echo test", "my-source-fn");
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -201,22 +201,22 @@ describe('source', () => {
     `);
   });
 
-  it('throws on empty content', () => {
-    expect(() => source('', 'validFn')).toThrow(EmissionValidationError);
+  it("throws on empty content", () => {
+    expect(() => source("", "validFn")).toThrow(EmissionValidationError);
   });
 
-  it('throws on whitespace-only content', () => {
-    expect(() => source('   ', 'validFn')).toThrow(EmissionValidationError);
+  it("throws on whitespace-only content", () => {
+    expect(() => source("   ", "validFn")).toThrow(EmissionValidationError);
   });
 
-  it('throws on invalid function name', () => {
-    expect(() => source('echo test', '123invalid')).toThrow(EmissionValidationError);
+  it("throws on invalid function name", () => {
+    expect(() => source("echo test", "123invalid")).toThrow(EmissionValidationError);
   });
 });
 
-describe('sourceFunction', () => {
-  it('creates sourceFunction emission', () => {
-    const result = sourceFunction('initTool');
+describe("sourceFunction", () => {
+  it("creates sourceFunction emission", () => {
+    const result = sourceFunction("initTool");
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -226,8 +226,8 @@ describe('sourceFunction', () => {
     `);
   });
 
-  it('allows hyphens in function name', () => {
-    const result = sourceFunction('init-tool');
+  it("allows hyphens in function name", () => {
+    const result = sourceFunction("init-tool");
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -237,14 +237,14 @@ describe('sourceFunction', () => {
     `);
   });
 
-  it('throws on invalid function name', () => {
-    expect(() => sourceFunction('123invalid')).toThrow(EmissionValidationError);
+  it("throws on invalid function name", () => {
+    expect(() => sourceFunction("123invalid")).toThrow(EmissionValidationError);
   });
 });
 
-describe('completion', () => {
-  it('creates completion emission with directories', () => {
-    const result = completion({ directories: ['$HOME/.completions'] });
+describe("completion", () => {
+  it("creates completion emission with directories", () => {
+    const result = completion({ directories: ["$HOME/.completions"] });
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -258,8 +258,8 @@ describe('completion', () => {
     `);
   });
 
-  it('creates completion emission with files', () => {
-    const result = completion({ files: ['$HOME/.zsh/completions/_node'] });
+  it("creates completion emission with files", () => {
+    const result = completion({ files: ["$HOME/.zsh/completions/_node"] });
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -273,8 +273,8 @@ describe('completion', () => {
     `);
   });
 
-  it('creates completion emission with commands', () => {
-    const result = completion({ commands: ['node', 'npm', 'git'] });
+  it("creates completion emission with commands", () => {
+    const result = completion({ commands: ["node", "npm", "git"] });
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -290,11 +290,11 @@ describe('completion', () => {
     `);
   });
 
-  it('creates completion emission with all options', () => {
+  it("creates completion emission with all options", () => {
     const result = completion({
-      directories: ['$HOME/.completions'],
-      files: ['$HOME/.zsh/_custom'],
-      commands: ['node'],
+      directories: ["$HOME/.completions"],
+      files: ["$HOME/.zsh/_custom"],
+      commands: ["node"],
     });
 
     expect(result).toMatchInlineSnapshot(`
@@ -313,20 +313,18 @@ describe('completion', () => {
     `);
   });
 
-  it('throws when no options provided', () => {
+  it("throws when no options provided", () => {
     expect(() => completion({})).toThrow(EmissionValidationError);
   });
 
-  it('throws when all arrays are empty', () => {
-    expect(() => completion({ directories: [], files: [], commands: [] })).toThrow(
-      EmissionValidationError,
-    );
+  it("throws when all arrays are empty", () => {
+    expect(() => completion({ directories: [], files: [], commands: [] })).toThrow(EmissionValidationError);
   });
 });
 
-describe('path', () => {
-  it('creates path emission with defaults', () => {
-    const result = path('/usr/local/bin');
+describe("path", () => {
+  it("creates path emission with defaults", () => {
+    const result = path("/usr/local/bin");
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -338,8 +336,8 @@ describe('path', () => {
     `);
   });
 
-  it('creates path emission with append position', () => {
-    const result = path('$HOME/.local/bin', { position: 'append' });
+  it("creates path emission with append position", () => {
+    const result = path("$HOME/.local/bin", { position: "append" });
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -351,8 +349,8 @@ describe('path', () => {
     `);
   });
 
-  it('creates path emission without deduplication', () => {
-    const result = path('/opt/bin', { deduplicate: false });
+  it("creates path emission without deduplication", () => {
+    const result = path("/opt/bin", { deduplicate: false });
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -364,15 +362,15 @@ describe('path', () => {
     `);
   });
 
-  it('throws on empty directory', () => {
-    expect(() => path('')).toThrow(EmissionValidationError);
+  it("throws on empty directory", () => {
+    expect(() => path("")).toThrow(EmissionValidationError);
   });
 });
 
-describe('withSource', () => {
-  it('sets source on emission', () => {
-    const emission = fn('test', 'echo test');
-    const result = withSource(emission, '/path/to/config.ts');
+describe("withSource", () => {
+  it("sets source on emission", () => {
+    const emission = fn("test", "echo test");
+    const result = withSource(emission, "/path/to/config.ts");
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -385,9 +383,9 @@ describe('withSource', () => {
   });
 });
 
-describe('withPriority', () => {
-  it('sets priority on emission', () => {
-    const emission = environment({ VAR: 'value' });
+describe("withPriority", () => {
+  it("sets priority on emission", () => {
+    const emission = environment({ VAR: "value" });
     const result = withPriority(emission, 10);
 
     expect(result).toMatchInlineSnapshot(`

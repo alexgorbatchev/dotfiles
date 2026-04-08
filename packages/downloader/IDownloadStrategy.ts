@@ -1,4 +1,4 @@
-import type { IDownloadOptions } from './IDownloader';
+import type { IDownloadOptions } from "./IDownloader";
 
 /**
  * Interface for a download strategy.

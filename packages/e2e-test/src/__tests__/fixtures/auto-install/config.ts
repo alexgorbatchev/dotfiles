@@ -1,18 +1,18 @@
-import { getE2eGeneratedDir } from '../../helpers/e2eGeneratedDir';
+import { getE2eGeneratedDir } from "../../helpers/e2eGeneratedDir";
 
 // oxlint-disable-next-line import/no-default-export
-const mockServerHost = process.env['MOCK_SERVER_PORT']
-  ? `http://127.0.0.1:${process.env['MOCK_SERVER_PORT']}`
-  : 'http://127.0.0.1:8765';
+const mockServerHost = process.env["MOCK_SERVER_PORT"]
+  ? `http://127.0.0.1:${process.env["MOCK_SERVER_PORT"]}`
+  : "http://127.0.0.1:8765";
 
 const generatedDir = getE2eGeneratedDir(import.meta.dirname);
 
 export default {
   paths: {
     generatedDir,
-    homeDir: '{paths.generatedDir}/user-home',
-    targetDir: '{paths.generatedDir}/user-bin',
-    toolConfigsDir: '{configFileDir}/tools',
+    homeDir: "{paths.generatedDir}/user-home",
+    targetDir: "{paths.generatedDir}/user-bin",
+    toolConfigsDir: "{configFileDir}/tools",
   },
   github: {
     host: mockServerHost,

@@ -1,6 +1,6 @@
-import { createSafeLogMessage } from '@dotfiles/logger';
-import { ShellError } from './ShellError';
-import type { Shell, ShellCommand, ShellOptions, ShellResult } from './types';
+import { createSafeLogMessage } from "@dotfiles/logger";
+import { ShellError } from "./ShellError";
+import type { Shell, ShellCommand, ShellOptions, ShellResult } from "./types";
 
 /**
  * Creates a shell instance with optional default options.
@@ -14,7 +14,7 @@ import type { Shell, ShellCommand, ShellOptions, ShellResult } from './types';
  */
 export function createShell(defaultOptions: ShellOptions = {}): Shell {
   const shell: Shell = (first: TemplateStringsArray | string, ...values: unknown[]): ShellCommand => {
-    const command = typeof first === 'string' ? first : reconstructCommand(first, values);
+    const command = typeof first === "string" ? first : reconstructCommand(first, values);
     return createShellCommand(command, defaultOptions);
   };
   return shell;
@@ -38,13 +38,13 @@ function createShellCommand(command: string, options: ShellOptions): ShellComman
 
   const cmd: ShellCommand = {
     cwd(path: string): ShellCommand {
-      if (executed) throw new Error('Cannot modify command after execution');
+      if (executed) throw new Error("Cannot modify command after execution");
       currentOptions = { ...currentOptions, cwd: path };
       return cmd;
     },
 
     env(vars: Record<string, string | undefined>): ShellCommand {
-      if (executed) throw new Error('Cannot modify command after execution');
+      if (executed) throw new Error("Cannot modify command after execution");
       currentOptions = {
         ...currentOptions,
         env: { ...currentOptions.env, ...vars },
@@ -53,20 +53,20 @@ function createShellCommand(command: string, options: ShellOptions): ShellComman
     },
 
     quiet(): ShellCommand {
-      if (executed) throw new Error('Cannot modify command after execution');
+      if (executed) throw new Error("Cannot modify command after execution");
       currentOptions = { ...currentOptions, quiet: true };
       return cmd;
     },
 
     noThrow(): ShellCommand {
-      if (executed) throw new Error('Cannot modify command after execution');
+      if (executed) throw new Error("Cannot modify command after execution");
       currentOptions = { ...currentOptions, noThrow: true };
       return cmd;
     },
 
     async text(): Promise<string> {
       const result = await execute();
-      return result.stdout.replace(/\r?\n$/, '');
+      return result.stdout.replace(/\r?\n$/, "");
     },
 
     async json<T = unknown>(): Promise<T> {
@@ -76,7 +76,7 @@ function createShellCommand(command: string, options: ShellOptions): ShellComman
 
     async lines(): Promise<string[]> {
       const result = await execute();
-      return result.stdout.replace(/\r?\n$/, '').split('\n');
+      return result.stdout.replace(/\r?\n$/, "").split("\n");
     },
 
     async bytes(): Promise<Uint8Array> {
@@ -124,11 +124,11 @@ async function executeCommand(command: string, options: ShellOptions): Promise<S
     }
   }
 
-  const proc = Bun.spawn(['sh', '-c', command], {
+  const proc = Bun.spawn(["sh", "-c", command], {
     cwd,
     env: mergedEnv,
-    stdout: 'pipe',
-    stderr: 'pipe',
+    stdout: "pipe",
+    stderr: "pipe",
   });
 
   // Collect output while streaming to logger (always logs if logger provided)
@@ -149,14 +149,11 @@ async function executeCommand(command: string, options: ShellOptions): Promise<S
 /**
  * Collects a readable stream into a string, optionally logging each line in real-time.
  */
-async function collectStream(
-  stream: ReadableStream<Uint8Array>,
-  onLine?: (line: string) => void,
-): Promise<string> {
+async function collectStream(stream: ReadableStream<Uint8Array>, onLine?: (line: string) => void): Promise<string> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   const chunks: string[] = [];
-  let buffer = '';
+  let buffer = "";
 
   while (true) {
     const { done, value } = await reader.read();
@@ -167,8 +164,8 @@ async function collectStream(
 
     if (onLine) {
       buffer += text;
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
       for (const line of lines) {
         if (line) onLine(line);
       }
@@ -180,22 +177,22 @@ async function collectStream(
     onLine(buffer);
   }
 
-  return chunks.join('');
+  return chunks.join("");
 }
 
 /**
  * Reconstructs a command string from template literal parts.
  */
 function reconstructCommand(strings: TemplateStringsArray, values: unknown[]): string {
-  let command = strings[0] || '';
+  let command = strings[0] || "";
   for (let i = 0; i < values.length; i++) {
     const value = values[i];
     if (Array.isArray(value)) {
-      command += value.map(escapeArg).join(' ');
+      command += value.map(escapeArg).join(" ");
     } else {
       command += escapeArg(value);
     }
-    command += strings[i + 1] || '';
+    command += strings[i + 1] || "";
   }
   return command;
 }

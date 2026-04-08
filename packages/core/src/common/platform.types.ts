@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Represents operating system platforms using a bitwise enum, allowing for
@@ -67,7 +67,7 @@ export const platformSchema = z
     },
     {
       message:
-        'Must be a valid Platform value. Use `Platform.None`, `Platform.Linux`, `Platform.MacOS`, `Platform.Windows`, `Platform.Unix`, or `Platform.All`. You can combine values with a bitwise OR (e.g., `Platform.Linux | Platform.MacOS`).',
+        "Must be a valid Platform value. Use `Platform.None`, `Platform.Linux`, `Platform.MacOS`, `Platform.Windows`, `Platform.Unix`, or `Platform.All`. You can combine values with a bitwise OR (e.g., `Platform.Linux | Platform.MacOS`).",
     },
   );
 
@@ -89,7 +89,7 @@ export const architectureSchema = z
     },
     {
       message:
-        'Must be a valid Architecture value. Use `Architecture.None`, `Architecture.X86_64`, `Architecture.Arm64`, or `Architecture.All`. You can combine values with a bitwise OR (e.g., `Architecture.X86_64 | Architecture.Arm64`).',
+        "Must be a valid Architecture value. Use `Architecture.None`, `Architecture.X86_64`, `Architecture.Arm64`, or `Architecture.All`. You can combine values with a bitwise OR (e.g., `Architecture.X86_64 | Architecture.Arm64`).",
     },
   );
 
@@ -129,11 +129,11 @@ export function hasArchitecture(targetArchitectures: Architecture, architecture:
  */
 export function platformFromNodeJS(platform: NodeJS.Platform): Platform {
   switch (platform) {
-    case 'darwin':
+    case "darwin":
       return Platform.MacOS;
-    case 'linux':
+    case "linux":
       return Platform.Linux;
-    case 'win32':
+    case "win32":
       return Platform.Windows;
     default:
       return Platform.None;
@@ -148,9 +148,9 @@ export function platformFromNodeJS(platform: NodeJS.Platform): Platform {
  */
 export function architectureFromNodeJS(arch: NodeJS.Architecture): Architecture {
   switch (arch) {
-    case 'x64':
+    case "x64":
       return Architecture.X86_64;
-    case 'arm64':
+    case "arm64":
       return Architecture.Arm64;
     default:
       return Architecture.None;
@@ -166,15 +166,15 @@ export function architectureFromNodeJS(arch: NodeJS.Architecture): Architecture 
 export function platformToString(platform: Platform): string {
   switch (platform) {
     case Platform.MacOS:
-      return 'macos';
+      return "macos";
     case Platform.Linux:
-      return 'linux';
+      return "linux";
     case Platform.Windows:
-      return 'windows';
+      return "windows";
     case Platform.None:
-      return 'none';
+      return "none";
     default:
-      return 'unknown';
+      return "unknown";
   }
 }
 
@@ -187,12 +187,12 @@ export function platformToString(platform: Platform): string {
 export function architectureToString(arch: Architecture): string {
   switch (arch) {
     case Architecture.X86_64:
-      return 'x86_64';
+      return "x86_64";
     case Architecture.Arm64:
-      return 'arm64';
+      return "arm64";
     case Architecture.None:
-      return 'none';
+      return "none";
     default:
-      return 'unknown';
+      return "unknown";
   }
 }

@@ -1,6 +1,6 @@
-import type { ShellType, ShellTypeConfig, ToolConfig } from '@dotfiles/core';
-import path from 'node:path';
-import { BaseShellGenerator } from './BaseShellGenerator';
+import type { ShellType, ShellTypeConfig, ToolConfig } from "@dotfiles/core";
+import path from "node:path";
+import { BaseShellGenerator } from "./BaseShellGenerator";
 
 /**
  * PowerShell-specific shell initialization generator.
@@ -8,8 +8,8 @@ import { BaseShellGenerator } from './BaseShellGenerator';
  * completions, and tool-specific initialization.
  */
 export class PowerShellGenerator extends BaseShellGenerator {
-  readonly shellType: ShellType = 'powershell';
-  readonly fileExtension: string = '.ps1';
+  readonly shellType: ShellType = "powershell";
+  readonly fileExtension: string = ".ps1";
 
   protected getShellConfig(toolConfig: ToolConfig): ShellTypeConfig | undefined {
     // ShellTypeConfig is manually typed; ToolConfig uses Zod inference with z.unknown() for completions
@@ -17,6 +17,6 @@ export class PowerShellGenerator extends BaseShellGenerator {
   }
 
   protected getCompletionDir(): string {
-    return path.join(this.projectConfig.paths.shellScriptsDir, 'powershell', 'completions');
+    return path.join(this.projectConfig.paths.shellScriptsDir, "powershell", "completions");
   }
 }

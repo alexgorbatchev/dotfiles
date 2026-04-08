@@ -1,5 +1,5 @@
-import type { ISystemInfo, PlatformConfig, PlatformConfigEntry, ToolConfig } from '@dotfiles/core';
-import { Architecture, hasArchitecture, hasPlatform, Platform } from '@dotfiles/core';
+import type { ISystemInfo, PlatformConfig, PlatformConfigEntry, ToolConfig } from "@dotfiles/core";
+import { Architecture, hasArchitecture, hasPlatform, Platform } from "@dotfiles/core";
 
 /**
  * Checks if a platform config entry matches the given system info.
@@ -34,8 +34,8 @@ function matchesPlatform(entry: PlatformConfigEntry, systemInfo: ISystemInfo): b
 }
 
 function deepCopyShellTypeConfig(
-  config: NonNullable<NonNullable<ToolConfig['shellConfigs']>['zsh']>,
-): NonNullable<NonNullable<ToolConfig['shellConfigs']>['zsh']> {
+  config: NonNullable<NonNullable<ToolConfig["shellConfigs"]>["zsh"]>,
+): NonNullable<NonNullable<ToolConfig["shellConfigs"]>["zsh"]> {
   return {
     ...config,
     scripts: config.scripts ? [...config.scripts] : undefined,
@@ -44,7 +44,7 @@ function deepCopyShellTypeConfig(
   };
 }
 
-function deepCopyShellConfigs(shellConfigs: ToolConfig['shellConfigs']): ToolConfig['shellConfigs'] {
+function deepCopyShellConfigs(shellConfigs: ToolConfig["shellConfigs"]): ToolConfig["shellConfigs"] {
   if (!shellConfigs) return undefined;
 
   return {
@@ -65,9 +65,9 @@ function initializeShellConfigs(finalConfig: ToolConfig): void {
 }
 
 function mergeShellConfig(
-  shellConfigs: NonNullable<ToolConfig['shellConfigs']>,
-  shellType: 'zsh' | 'bash' | 'powershell',
-  platformShellConfig: NonNullable<ToolConfig['shellConfigs']>[typeof shellType],
+  shellConfigs: NonNullable<ToolConfig["shellConfigs"]>,
+  shellType: "zsh" | "bash" | "powershell",
+  platformShellConfig: NonNullable<ToolConfig["shellConfigs"]>[typeof shellType],
 ): void {
   if (!platformShellConfig) return;
 
@@ -106,7 +106,7 @@ function mergeShellConfig(
   }
 }
 
-function mergeShellConfigs(finalConfig: ToolConfig, platformShellConfigs: ToolConfig['shellConfigs']): void {
+function mergeShellConfigs(finalConfig: ToolConfig, platformShellConfigs: ToolConfig["shellConfigs"]): void {
   if (!platformShellConfigs) return;
 
   initializeShellConfigs(finalConfig);
@@ -114,9 +114,9 @@ function mergeShellConfigs(finalConfig: ToolConfig, platformShellConfigs: ToolCo
   // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion: shellConfigs is guaranteed to exist after initializeShellConfigs
   const shellConfigs = finalConfig.shellConfigs!;
 
-  mergeShellConfig(shellConfigs, 'zsh', platformShellConfigs.zsh);
-  mergeShellConfig(shellConfigs, 'bash', platformShellConfigs.bash);
-  mergeShellConfig(shellConfigs, 'powershell', platformShellConfigs.powershell);
+  mergeShellConfig(shellConfigs, "zsh", platformShellConfigs.zsh);
+  mergeShellConfig(shellConfigs, "bash", platformShellConfigs.bash);
+  mergeShellConfig(shellConfigs, "powershell", platformShellConfigs.powershell);
 }
 
 function applyPlatformOverrides(finalConfig: ToolConfig, platformConfig: PlatformConfig): void {

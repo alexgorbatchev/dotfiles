@@ -2,15 +2,15 @@
  * Union type of all emission discriminators.
  */
 export type EmissionKind =
-  | 'environment'
-  | 'alias'
-  | 'function'
-  | 'script'
-  | 'source'
-  | 'sourceFile'
-  | 'sourceFunction'
-  | 'completion'
-  | 'path';
+  | "environment"
+  | "alias"
+  | "function"
+  | "script"
+  | "source"
+  | "sourceFile"
+  | "sourceFunction"
+  | "completion"
+  | "path";
 
 /**
  * Script execution timing semantics.
@@ -18,7 +18,7 @@ export type EmissionKind =
  * - `once`: Generates separate file that self-deletes after execution
  * - `raw`: Direct emission exactly as provided (no modifications)
  */
-export type ScriptTiming = 'always' | 'once' | 'raw';
+export type ScriptTiming = "always" | "once" | "raw";
 
 /**
  * Base properties shared by all emissions.
@@ -36,7 +36,7 @@ export interface BaseEmission {
  * Sets environment variables.
  */
 export interface EnvironmentEmission extends BaseEmission {
-  readonly kind: 'environment';
+  readonly kind: "environment";
   /** Key-value pairs of environment variables */
   readonly variables: Record<string, string>;
 }
@@ -45,7 +45,7 @@ export interface EnvironmentEmission extends BaseEmission {
  * Defines command aliases.
  */
 export interface AliasEmission extends BaseEmission {
-  readonly kind: 'alias';
+  readonly kind: "alias";
   /** Name to command mapping */
   readonly aliases: Record<string, string>;
 }
@@ -54,7 +54,7 @@ export interface AliasEmission extends BaseEmission {
  * Defines a callable function.
  */
 export interface FunctionEmission extends BaseEmission {
-  readonly kind: 'function';
+  readonly kind: "function";
   /** Function name */
   readonly name: string;
   /** Raw function body (WITHOUT declaration wrapper) */
@@ -65,7 +65,7 @@ export interface FunctionEmission extends BaseEmission {
  * Inline script content.
  */
 export interface ScriptEmission extends BaseEmission {
-  readonly kind: 'script';
+  readonly kind: "script";
   /** Script content */
   readonly content: string;
   /** Execution timing */
@@ -76,7 +76,7 @@ export interface ScriptEmission extends BaseEmission {
  * Sources an external file.
  */
 export interface SourceFileEmission extends BaseEmission {
-  readonly kind: 'sourceFile';
+  readonly kind: "sourceFile";
   /** Path to source (may contain $HOME) */
   readonly path: string;
 }
@@ -89,7 +89,7 @@ export interface SourceFileEmission extends BaseEmission {
  *   unset -f tempFunctionName
  */
 export interface SourceEmission extends BaseEmission {
-  readonly kind: 'source';
+  readonly kind: "source";
   /** Inline content to source */
   readonly content: string;
   /** Generated unique function name for this source emission */
@@ -100,7 +100,7 @@ export interface SourceEmission extends BaseEmission {
  * Sources output of a previously defined function.
  */
 export interface SourceFunctionEmission extends BaseEmission {
-  readonly kind: 'sourceFunction';
+  readonly kind: "sourceFunction";
   /** Name of function to source */
   readonly functionName: string;
 }
@@ -121,7 +121,7 @@ export interface CompletionConfig {
  * Configures shell completion for CLI commands.
  */
 export interface CompletionEmission extends BaseEmission {
-  readonly kind: 'completion';
+  readonly kind: "completion";
   /** Directories containing completion files */
   readonly directories?: string[];
   /** Specific completion files to source */
@@ -135,7 +135,7 @@ export interface CompletionEmission extends BaseEmission {
  */
 export interface PathOptions {
   /** Where to add (default: prepend) */
-  position?: 'prepend' | 'append';
+  position?: "prepend" | "append";
   /** Emit runtime check to prevent duplicates (default: true) */
   deduplicate?: boolean;
 }
@@ -144,11 +144,11 @@ export interface PathOptions {
  * Modifies the PATH environment variable.
  */
 export interface PathEmission extends BaseEmission {
-  readonly kind: 'path';
+  readonly kind: "path";
   /** Directory to add (may contain $HOME) */
   readonly directory: string;
   /** Where to add (default: prepend) */
-  readonly position: 'prepend' | 'append';
+  readonly position: "prepend" | "append";
   /** Emit runtime check to prevent duplicates (default: true) */
   readonly deduplicate: boolean;
 }

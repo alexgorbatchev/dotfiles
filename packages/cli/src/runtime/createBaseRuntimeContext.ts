@@ -1,14 +1,14 @@
-import { loadConfig, type ProjectConfig } from '@dotfiles/config';
-import { architectureFromNodeJS, type ISystemInfo, platformFromNodeJS } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { RegistryDatabase } from '@dotfiles/registry-database';
-import { FileRegistry } from '@dotfiles/registry/file';
-import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
-import os from 'node:os';
-import path from 'node:path';
-import { messages } from '../log-messages';
-import { resolveConfigPath } from '../resolveConfigPath';
+import { loadConfig, type ProjectConfig } from "@dotfiles/config";
+import { architectureFromNodeJS, type ISystemInfo, platformFromNodeJS } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { RegistryDatabase } from "@dotfiles/registry-database";
+import { FileRegistry } from "@dotfiles/registry/file";
+import { ToolInstallationRegistry } from "@dotfiles/registry/tool";
+import os from "node:os";
+import path from "node:path";
+import { messages } from "../log-messages";
+import { resolveConfigPath } from "../resolveConfigPath";
 
 export interface IBaseRuntimeOptions {
   config: string;
@@ -36,10 +36,10 @@ function createSystemInfo(parentLogger: TsLogger, options: IBaseRuntimeOptions):
 
   if (options.warnOnPlatformArchOverride) {
     if (options.platform) {
-      parentLogger.warn(messages.configParameterOverridden('platform', options.platform));
+      parentLogger.warn(messages.configParameterOverridden("platform", options.platform));
     }
     if (options.arch) {
-      parentLogger.warn(messages.configParameterOverridden('arch', options.arch));
+      parentLogger.warn(messages.configParameterOverridden("arch", options.arch));
     }
   }
 
@@ -55,7 +55,7 @@ export async function createBaseRuntimeContext(
   parentLogger: TsLogger,
   options: IBaseRuntimeOptions,
 ): Promise<IBaseRuntimeContext | null> {
-  const logger = parentLogger.getSubLogger({ name: 'createBaseRuntimeContext' });
+  const logger = parentLogger.getSubLogger({ name: "createBaseRuntimeContext" });
   const systemInfo = createSystemInfo(parentLogger, options);
 
   const configPath = await resolveConfigPath(logger, options.config, {
@@ -75,10 +75,10 @@ export async function createBaseRuntimeContext(
     homeDir: projectConfig.paths.homeDir,
   };
 
-  const registryPath = path.join(projectConfig.paths.generatedDir, 'registry.db');
+  const registryPath = path.join(projectConfig.paths.generatedDir, "registry.db");
   const registryDatabase = new RegistryDatabase(parentLogger, registryPath);
   const db = registryDatabase.getConnection();
-  const registryLogger = parentLogger.getSubLogger({ context: 'system' });
+  const registryLogger = parentLogger.getSubLogger({ context: "system" });
   const fileRegistry = new FileRegistry(registryLogger, db);
   const toolInstallationRegistry = new ToolInstallationRegistry(registryLogger, db);
 

@@ -1,19 +1,19 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
-import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createMockFileRegistry } from '@dotfiles/registry/file';
+import type { ProjectConfig } from "@dotfiles/config";
+import { Architecture, type ISystemInfo, Platform } from "@dotfiles/core";
+import { createMemFileSystem, type IMemFileSystemReturn } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { createMockFileRegistry } from "@dotfiles/registry/file";
 import {
   createMockProjectConfig,
   createTestDirectories,
   type ITestDirectories,
   type MockedInterface,
-} from '@dotfiles/testing-helpers';
-import { VersionComparisonStatus } from '@dotfiles/version-checker';
-import { mock } from 'bun:test';
-import path from 'node:path';
-import { createProgram } from '../createProgram';
-import type { IGlobalProgram, IServices } from '../types';
+} from "@dotfiles/testing-helpers";
+import { VersionComparisonStatus } from "@dotfiles/version-checker";
+import { mock } from "bun:test";
+import path from "node:path";
+import { createProgram } from "../createProgram";
+import type { IGlobalProgram, IServices } from "../types";
 
 /**
  * Options for creating customizable service mocks.
@@ -94,18 +94,18 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
     platform: Platform.Linux,
     arch: Architecture.X86_64,
     homeDir: testDirs.paths.homeDir,
-    hostname: 'test-host',
+    hostname: "test-host",
   };
 
   // Create the CLI source directory structure for __dirname resolution
-  const cliSrcDir: string = path.join(__dirname, '..');
+  const cliSrcDir: string = path.join(__dirname, "..");
   await mockFs.fs.mkdir(cliSrcDir, { recursive: true });
 
   const mockProjectConfig = await createMockProjectConfig({
     config: {
       paths: testDirs.paths,
     },
-    filePath: path.join(testDirs.paths.dotfilesDir, 'dotfiles.config.ts'),
+    filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
     fileSystem: mockFs.fs,
     logger,
     systemInfo,
@@ -117,40 +117,40 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
       if (serviceConfig === true) {
         // Create default mock for this service
         switch (serviceName as keyof IServices) {
-          case 'configService':
+          case "configService":
             mockServices.configService = {
               loadSingleToolConfig: mock(async () => undefined),
               loadToolConfigs: mock(async () => ({})),
               loadToolConfigByBinary: mock(async () => undefined),
             };
             break;
-          case 'installer':
+          case "installer":
             mockServices.installer = {
               install: mock(async () => ({
                 success: true as const,
-                binaryPaths: ['/fake/bin/tool'],
-                version: '1.0.0',
+                binaryPaths: ["/fake/bin/tool"],
+                version: "1.0.0",
                 metadata: {
-                  method: 'brew' as const,
-                  formula: 'test',
+                  method: "brew" as const,
+                  formula: "test",
                   isCask: false,
                 },
               })),
             };
             break;
-          case 'githubApiClient':
+          case "githubApiClient":
             mockServices.githubApiClient = {
               getLatestRelease: mock(async () => ({
                 id: 1,
-                tag_name: 'v1.0.0',
-                name: 'Release v1.0.0',
+                tag_name: "v1.0.0",
+                name: "Release v1.0.0",
                 draft: false,
                 prerelease: false,
                 created_at: new Date().toISOString(),
                 published_at: new Date().toISOString(),
                 assets: [],
-                html_url: 'https://github.com/owner/repo/releases/tag/v1.0.0',
-                body: 'Release body',
+                html_url: "https://github.com/owner/repo/releases/tag/v1.0.0",
+                body: "Release body",
               })),
               getReleaseByTag: mock(async () => null),
               getAllReleases: mock(async () => []),
@@ -160,24 +160,24 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
                 limit: 5000,
                 reset: Date.now() + 3600000,
                 used: 0,
-                resource: 'core',
+                resource: "core",
               })),
               probeLatestTag: mock(async () => null),
               getLatestReleaseTags: mock(async () => []),
             };
             break;
-          case 'versionChecker':
+          case "versionChecker":
             mockServices.versionChecker = {
               checkVersionStatus: mock(
                 async (_currentVersion: string, _latestVersion: string) => VersionComparisonStatus.NEWER_AVAILABLE,
               ),
-              getLatestToolVersion: mock(async () => '1.0.0'),
+              getLatestToolVersion: mock(async () => "1.0.0"),
             };
             break;
-          case 'fileRegistry':
+          case "fileRegistry":
             mockServices.fileRegistry = createMockFileRegistry();
             break;
-          case 'toolInstallationRegistry':
+          case "toolInstallationRegistry":
             mockServices.toolInstallationRegistry = {
               recordToolInstallation: mock(async () => {}),
               getToolInstallation: mock(async () => null),
@@ -190,26 +190,26 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
               close: mock(async () => {}),
             };
             break;
-          case 'readmeService':
+          case "readmeService":
             mockServices.readmeService = {
               fetchReadmeForVersion: mock(async () => null),
               getCachedReadme: mock(async () => null),
-              generateCombinedReadme: mock(async () => 'Combined README'),
+              generateCombinedReadme: mock(async () => "Combined README"),
               getGitHubTools: mock(async () => []),
               clearExpiredCache: mock(async () => undefined),
               writeReadmeToPath: mock(async () => null),
-              generateCatalogFromConfigs: mock(async () => '/path/to/catalog'),
+              generateCatalogFromConfigs: mock(async () => "/path/to/catalog"),
             };
             break;
-          case 'cargoClient':
+          case "cargoClient":
             mockServices.cargoClient = {
               getCrateMetadata: mock(async () => null),
-              buildCargoTomlUrl: mock(() => 'https://example.com/Cargo.toml'),
+              buildCargoTomlUrl: mock(() => "https://example.com/Cargo.toml"),
               getCargoTomlPackage: mock(async () => null),
-              getLatestVersion: mock(async () => '1.0.0'),
+              getLatestVersion: mock(async () => "1.0.0"),
             };
             break;
-          case 'systemInfo':
+          case "systemInfo":
             mockServices.systemInfo = systemInfo;
             break;
         }
@@ -231,16 +231,16 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
       configService: {
         loadSingleToolConfig: mock(async () => undefined),
         // @ts-expect-error: Mock returns empty array for testing
-        loadToolConfigs: mock(async () => [] as IServices['configService']['loadToolConfigs']),
+        loadToolConfigs: mock(async () => [] as IServices["configService"]["loadToolConfigs"]),
       },
       readmeService: {
         fetchReadmeForVersion: mock(async () => null),
         getCachedReadme: mock(async () => null),
-        generateCombinedReadme: mock(async () => '# Combined README\n'),
+        generateCombinedReadme: mock(async () => "# Combined README\n"),
         getGitHubTools: mock(async () => []),
         clearExpiredCache: mock(async () => {}),
         writeReadmeToPath: mock(async () => null),
-        generateCatalogFromConfigs: mock(async () => '/path/to/catalog.md'),
+        generateCatalogFromConfigs: mock(async () => "/path/to/catalog.md"),
       },
       pluginRegistry: {
         get: mock(() => undefined),

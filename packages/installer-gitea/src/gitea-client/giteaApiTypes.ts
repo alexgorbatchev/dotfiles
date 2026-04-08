@@ -1,4 +1,4 @@
-import type { IGitHubReleaseAsset } from '@dotfiles/core';
+import type { IGitHubReleaseAsset } from "@dotfiles/core";
 
 /**
  * Gitea/Forgejo release asset as returned by the API.
@@ -48,8 +48,8 @@ export function mapGiteaAsset(asset: IGiteaReleaseAsset): IGitHubReleaseAsset {
     name: asset.name,
     browser_download_url: asset.browser_download_url,
     size: asset.size,
-    content_type: 'application/octet-stream',
-    state: 'uploaded',
+    content_type: "application/octet-stream",
+    state: "uploaded",
     download_count: asset.download_count,
     created_at: asset.created_at,
     updated_at: asset.created_at,

@@ -1,2 +1,2 @@
-export * from './curlBinaryInstallParamsSchema';
-export * from './curlBinaryToolConfigSchema';
+export * from "./curlBinaryInstallParamsSchema";
+export * from "./curlBinaryToolConfigSchema";

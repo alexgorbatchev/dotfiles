@@ -1,6 +1,6 @@
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import path from 'node:path';
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import path from "node:path";
 import {
   CONFIG_FILE_NAME,
   DEFAULT_ENV_NAME,
@@ -9,12 +9,12 @@ import {
   POWERSHELL_SOURCE_FILE_NAME,
   SOURCE_FILE_NAME,
   TOOLS_DIR_NAME,
-} from './constants';
-import { generateDefaultConfig } from './generateDefaultConfig';
-import { generatePowerShellSourceScript } from './generatePowerShellSourceScript';
-import { generateSourceScript } from './generateSourceScript';
-import { messages } from './log-messages';
-import type { ActiveEnvResult, CreateEnvOptions, DetectEnvResult, EnvInfo, VirtualEnvResult } from './types';
+} from "./constants";
+import { generateDefaultConfig } from "./generateDefaultConfig";
+import { generatePowerShellSourceScript } from "./generatePowerShellSourceScript";
+import { generateSourceScript } from "./generateSourceScript";
+import { messages } from "./log-messages";
+import type { ActiveEnvResult, CreateEnvOptions, DetectEnvResult, EnvInfo, VirtualEnvResult } from "./types";
 
 /**
  * Interface for the virtual environment manager.
@@ -65,7 +65,7 @@ export class VirtualEnvManager implements IVirtualEnvManager {
   ) {}
 
   private get logger(): TsLogger {
-    return this.parentLogger.getSubLogger({ name: 'VirtualEnvManager' });
+    return this.parentLogger.getSubLogger({ name: "VirtualEnvManager" });
   }
 
   /**
@@ -75,7 +75,7 @@ export class VirtualEnvManager implements IVirtualEnvManager {
    * @returns Result indicating success or failure
    */
   async create(options: CreateEnvOptions): Promise<VirtualEnvResult> {
-    const logger = this.logger.getSubLogger({ name: 'create' });
+    const logger = this.logger.getSubLogger({ name: "create" });
     const envName = options.name;
     const envDir = path.resolve(options.parentDir, envName);
 
@@ -131,7 +131,7 @@ export class VirtualEnvManager implements IVirtualEnvManager {
    * @returns Result indicating success or failure
    */
   async delete(envDir: string): Promise<VirtualEnvResult> {
-    const logger = this.logger.getSubLogger({ name: 'delete' });
+    const logger = this.logger.getSubLogger({ name: "delete" });
     const envName = path.basename(envDir);
 
     // Check if environment exists
@@ -186,10 +186,7 @@ export class VirtualEnvManager implements IVirtualEnvManager {
     const sourcePath = path.join(envDir, SOURCE_FILE_NAME);
     const configPath = path.join(envDir, CONFIG_FILE_NAME);
 
-    const [sourceExists, configExists] = await Promise.all([
-      this.fs.exists(sourcePath),
-      this.fs.exists(configPath),
-    ]);
+    const [sourceExists, configExists] = await Promise.all([this.fs.exists(sourcePath), this.fs.exists(configPath)]);
 
     return sourceExists && configExists;
   }
@@ -205,7 +202,7 @@ export class VirtualEnvManager implements IVirtualEnvManager {
    * @returns Detection result
    */
   async detectEnv(searchDir: string, envName?: string): Promise<DetectEnvResult> {
-    const logger = this.logger.getSubLogger({ name: 'detectEnv' });
+    const logger = this.logger.getSubLogger({ name: "detectEnv" });
     const targetName = envName ?? DEFAULT_ENV_NAME;
     const envDir = path.resolve(searchDir, targetName);
 

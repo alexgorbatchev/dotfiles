@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import { BuildError } from '../handleBuildError';
-import type { IBuildContext } from '../types';
+import fs from "node:fs";
+import { BuildError } from "../handleBuildError";
+import type { IBuildContext } from "../types";
 
 /**
  * Ensures the built CLI bundle stays under the configured size budget.
@@ -8,7 +8,7 @@ import type { IBuildContext } from '../types';
 export function enforceCliBundleSizeLimit(context: IBuildContext): void {
   const cliStats = fs.statSync(context.paths.cliOutputFile);
   if (!cliStats.isFile()) {
-    throw new BuildError('cli.js output is missing');
+    throw new BuildError("cli.js output is missing");
   }
 
   if (cliStats.size <= context.constants.maxCliBundleSizeBytes) {

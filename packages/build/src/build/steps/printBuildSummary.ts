@@ -1,15 +1,15 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { computeFileSizeKb } from '../helpers/computeFileSizeKb';
-import type { IBuildContext } from '../types';
+import fs from "node:fs";
+import path from "node:path";
+import { computeFileSizeKb } from "../helpers/computeFileSizeKb";
+import type { IBuildContext } from "../types";
 
 /**
  * Prints a human-friendly summary of build outputs, including generated file sizes.
  */
 export async function printBuildSummary(context: IBuildContext): Promise<void> {
-  console.log('✅ Build completed successfully!');
+  console.log("✅ Build completed successfully!");
   console.log(`📁 Output directory: ${context.paths.outputDir}`);
-  console.log('🗂️  Generated files:');
+  console.log("🗂️  Generated files:");
 
   const files: string[] = fs.readdirSync(context.paths.outputDir);
 

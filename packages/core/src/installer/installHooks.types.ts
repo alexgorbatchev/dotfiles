@@ -1,9 +1,9 @@
-import type { ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { IBaseToolContext } from '../common/baseToolContext.types';
-import type { ProjectConfig } from '../config';
-import type { Shell } from '../shell/types';
-import type { IExtractResult } from './archive.types';
+import type { ToolConfig } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { IBaseToolContext } from "../common/baseToolContext.types";
+import type { ProjectConfig } from "../config";
+import type { Shell } from "../shell/types";
+import type { IExtractResult } from "./archive.types";
 
 /**
  * Context provided to dynamic env functions for environment variable generation.
@@ -234,4 +234,4 @@ export interface IAfterInstallContext extends IInstallBaseContext {
  */
 export type AsyncInstallHook<T extends IInstallBaseContext = IInstallContext> = {
   bivarianceHack(context: T): Promise<void>;
-}['bivarianceHack'];
+}["bivarianceHack"];

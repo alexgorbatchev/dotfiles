@@ -1,4 +1,4 @@
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 export const messages = {
   installing: (toolName: string) => createSafeLogMessage(`Installing from dmg: toolName=${toolName}`),
@@ -11,8 +11,8 @@ export const messages = {
   symlinkingBinary: (from: string, to: string) => createSafeLogMessage(`Symlinking binary: ${from} -> ${to}`),
   unmountingDmg: (mountPoint: string) => createSafeLogMessage(`Unmounting DMG: ${mountPoint}`),
   appNotFound: (mountPoint: string) => createSafeLogMessage(`No .app bundle found in DMG at: ${mountPoint}`),
-  extractingArchive: () => createSafeLogMessage('Extracting archive to find DMG'),
+  extractingArchive: () => createSafeLogMessage("Extracting archive to find DMG"),
   archiveExtracted: (fileCount: number) => createSafeLogMessage(`Archive extracted: ${fileCount} files`),
   dmgFoundInArchive: (dmgFile: string) => createSafeLogMessage(`Found DMG in archive: ${dmgFile}`),
-  noDmgInArchive: () => createSafeLogMessage('No .dmg file found in archive'),
+  noDmgInArchive: () => createSafeLogMessage("No .dmg file found in archive"),
 } as const satisfies SafeLogMessageMap;

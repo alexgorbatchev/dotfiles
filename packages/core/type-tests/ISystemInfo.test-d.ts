@@ -1,5 +1,5 @@
-import { Architecture, Platform, type z_internal_ISystemInfo } from '@alexgorbatchev/dotfiles';
-import { expectType } from 'tsd';
+import { Architecture, Platform, type z_internal_ISystemInfo } from "@alexgorbatchev/dotfiles";
+import { expectType } from "tsd";
 
 type ISystemInfo = z_internal_ISystemInfo;
 
@@ -9,22 +9,22 @@ type ISystemInfo = z_internal_ISystemInfo;
 const macosSystem: ISystemInfo = {
   platform: Platform.MacOS,
   arch: Architecture.Arm64,
-  homeDir: '/Users/test',
-  hostname: 'test-host',
+  homeDir: "/Users/test",
+  hostname: "test-host",
 };
 
 const _linuxSystem: ISystemInfo = {
   platform: Platform.Linux,
   arch: Architecture.X86_64,
-  homeDir: '/home/test',
-  hostname: 'test-host',
+  homeDir: "/home/test",
+  hostname: "test-host",
 };
 
 const _windowsSystem: ISystemInfo = {
   platform: Platform.Windows,
   arch: Architecture.X86_64,
-  homeDir: 'C:\\Users\\test',
-  hostname: 'test-host',
+  homeDir: "C:\\Users\\test",
+  hostname: "test-host",
 };
 
 // Verify the types are correct

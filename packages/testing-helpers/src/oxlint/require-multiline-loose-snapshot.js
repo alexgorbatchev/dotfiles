@@ -19,7 +19,7 @@
  *   `
  */
 
-const MATCHER_NAME = 'toMatchLooseInlineSnapshot';
+const MATCHER_NAME = "toMatchLooseInlineSnapshot";
 const MIN_CONTENT_LINES = 2;
 
 /**
@@ -30,7 +30,7 @@ const MIN_CONTENT_LINES = 2;
 function countContentLines(str) {
   return str
     .trim()
-    .split('\n')
+    .split("\n")
     .filter((line) => line.trim().length > 0).length;
 }
 
@@ -40,7 +40,7 @@ function countContentLines(str) {
  * @returns {string}
  */
 function getTemplateContent(templateLiteral) {
-  return templateLiteral.quasis.map((quasi) => quasi.value.raw).join('');
+  return templateLiteral.quasis.map((quasi) => quasi.value.raw).join("");
 }
 
 /**
@@ -70,18 +70,14 @@ function isExpectChain(startNode) {
   let current = startNode;
 
   while (current) {
-    if (
-      current.type === 'CallExpression' &&
-      current.callee.type === 'Identifier' &&
-      current.callee.name === 'expect'
-    ) {
+    if (current.type === "CallExpression" && current.callee.type === "Identifier" && current.callee.name === "expect") {
       return true;
     }
 
     // Handle chained calls like expect(...).not.toMatchLooseInlineSnapshot()
-    if (current.type === 'MemberExpression') {
+    if (current.type === "MemberExpression") {
       current = current.object;
-    } else if (current.type === 'CallExpression') {
+    } else if (current.type === "CallExpression") {
       current = current.callee;
     } else {
       break;
@@ -93,9 +89,9 @@ function isExpectChain(startNode) {
 /** @type {import('eslint').Rule.RuleModule} */
 export const requireMultilineLooseSnapshotRule = {
   meta: {
-    type: 'problem',
+    type: "problem",
     docs: {
-      description: 'Require toMatchLooseInlineSnapshot to use multiline template literals for capturing context',
+      description: "Require toMatchLooseInlineSnapshot to use multiline template literals for capturing context",
       recommended: true,
     },
     schema: [],
@@ -108,8 +104,8 @@ export const requireMultilineLooseSnapshotRule = {
       // Handle tagged template expressions: expect().toMatchLooseInlineSnapshot`...`
       TaggedTemplateExpression(node) {
         if (
-          node.tag.type === 'MemberExpression' &&
-          node.tag.property.type === 'Identifier' &&
+          node.tag.type === "MemberExpression" &&
+          node.tag.property.type === "Identifier" &&
           node.tag.property.name === MATCHER_NAME
         ) {
           // Verify this is part of an expect chain
@@ -121,7 +117,7 @@ export const requireMultilineLooseSnapshotRule = {
           if (!hasEnoughLines(node.quasi)) {
             context.report({
               node: node.tag.property,
-              messageId: 'requireMultiline',
+              messageId: "requireMultiline",
             });
           }
         }
@@ -130,8 +126,8 @@ export const requireMultilineLooseSnapshotRule = {
       // Handle call expressions: expect().toMatchLooseInlineSnapshot(`...`)
       CallExpression(node) {
         if (
-          node.callee.type === 'MemberExpression' &&
-          node.callee.property.type === 'Identifier' &&
+          node.callee.type === "MemberExpression" &&
+          node.callee.property.type === "Identifier" &&
           node.callee.property.name === MATCHER_NAME
         ) {
           // Verify this is part of an expect chain
@@ -141,19 +137,19 @@ export const requireMultilineLooseSnapshotRule = {
 
           // Check if the first argument is a template literal
           const firstArg = node.arguments[0];
-          if (firstArg && firstArg.type === 'TemplateLiteral') {
+          if (firstArg && firstArg.type === "TemplateLiteral") {
             if (!hasEnoughLines(firstArg)) {
               context.report({
                 node: node.callee.property,
-                messageId: 'requireMultiline',
+                messageId: "requireMultiline",
               });
             }
-          } else if (firstArg && firstArg.type === 'Literal' && typeof firstArg.value === 'string') {
+          } else if (firstArg && firstArg.type === "Literal" && typeof firstArg.value === "string") {
             // String literal argument - check for enough lines
             if (!stringHasEnoughLines(firstArg.value)) {
               context.report({
                 node: node.callee.property,
-                messageId: 'requireMultiline',
+                messageId: "requireMultiline",
               });
             }
           }

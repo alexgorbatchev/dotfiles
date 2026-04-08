@@ -1,4 +1,4 @@
-import type { TsLogger } from '@dotfiles/logger';
+import type { TsLogger } from "@dotfiles/logger";
 
 /**
  * Result of a shell command execution.
@@ -61,4 +61,4 @@ export interface Shell {
   (command: string): ShellCommand;
 }
 
-export const loggingShellBrand: unique symbol = Symbol('loggingShellBrand');
+export const loggingShellBrand: unique symbol = Symbol("loggingShellBrand");

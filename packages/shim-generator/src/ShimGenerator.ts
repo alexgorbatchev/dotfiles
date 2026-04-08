@@ -1,13 +1,13 @@
-import type { ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { TrackedFileSystem } from '@dotfiles/registry/file';
-import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import { dedentString, getCliBinPath, resolvePlatformConfig } from '@dotfiles/utils';
-import path from 'node:path';
-import type { IGenerateShimsOptions, IShimGenerator } from './IShimGenerator';
-import { messages } from './log-messages';
+import type { ProjectConfig } from "@dotfiles/config";
+import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import { TrackedFileSystem } from "@dotfiles/registry/file";
+import type { IToolInstallationRegistry } from "@dotfiles/registry/tool";
+import { dedentString, getCliBinPath, resolvePlatformConfig } from "@dotfiles/utils";
+import path from "node:path";
+import type { IGenerateShimsOptions, IShimGenerator } from "./IShimGenerator";
+import { messages } from "./log-messages";
 
 /**
  * Generates executable shims for tools.
@@ -33,7 +33,7 @@ export class ShimGenerator implements IShimGenerator {
   private readonly toolInstallationRegistry?: IToolInstallationRegistry;
 
   private isConfigurationOnlyToolConfig(toolConfig: ToolConfig): boolean {
-    const isManual = toolConfig.installationMethod === 'manual';
+    const isManual = toolConfig.installationMethod === "manual";
     const hasNoInstallParams = !toolConfig.installParams || Object.keys(toolConfig.installParams).length === 0;
     const hasNoBinaries = !toolConfig.binaries || toolConfig.binaries.length === 0;
     const result: boolean = isManual && hasNoInstallParams && hasNoBinaries;
@@ -60,9 +60,9 @@ export class ShimGenerator implements IShimGenerator {
     missingBinaryMessagesByMethod?: Map<string, string>,
     toolInstallationRegistry?: IToolInstallationRegistry,
   ) {
-    const logger = parentLogger.getSubLogger({ name: 'ShimGenerator' });
+    const logger = parentLogger.getSubLogger({ name: "ShimGenerator" });
     this.logger = logger;
-    const constructorLogger = logger.getSubLogger({ name: 'constructor' });
+    const constructorLogger = logger.getSubLogger({ name: "constructor" });
     constructorLogger.debug(messages.constructor.initialized());
     this.fs = fileSystem;
     this.config = config;
@@ -76,7 +76,7 @@ export class ShimGenerator implements IShimGenerator {
    * @inheritdoc IShimGenerator.generate
    */
   async generate(toolConfigs: Record<string, ToolConfig>, options?: IGenerateShimsOptions): Promise<string[]> {
-    const logger = this.logger.getSubLogger({ name: 'generate' });
+    const logger = this.logger.getSubLogger({ name: "generate" });
     const generatedShimPaths: string[] = [];
 
     for (const toolName in toolConfigs) {
@@ -97,7 +97,7 @@ export class ShimGenerator implements IShimGenerator {
    * @inheritdoc IShimGenerator.generateForTool
    */
   async generateForTool(toolName: string, toolConfig: ToolConfig, options?: IGenerateShimsOptions): Promise<string[]> {
-    const logger = this.logger.getSubLogger({ name: 'generateForTool', context: toolName });
+    const logger = this.logger.getSubLogger({ name: "generateForTool", context: toolName });
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
     const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
 
@@ -117,7 +117,7 @@ export class ShimGenerator implements IShimGenerator {
 
     // Manual tools without binaryPath can't produce binaries in the staging dir.
     // The command should come from shell functions, not a shim.
-    if (resolvedConfig.installationMethod === 'manual' && !resolvedConfig.installParams?.binaryPath) {
+    if (resolvedConfig.installationMethod === "manual" && !resolvedConfig.installParams?.binaryPath) {
       logger.warn(messages.generateForTool.skippedManualNoBinaryPath());
       return generatedShimPaths;
     }
@@ -138,16 +138,14 @@ export class ShimGenerator implements IShimGenerator {
 
     // Get list of binaries to generate shims for
     // If no binaries are defined (i.e., .bin() was never called), skip shim generation entirely
-    const binaries = resolvedConfig.binaries && resolvedConfig.binaries.length > 0
-      ? resolvedConfig.binaries
-      : [];
+    const binaries = resolvedConfig.binaries && resolvedConfig.binaries.length > 0 ? resolvedConfig.binaries : [];
 
     if (binaries.length === 0) {
       logger.debug(messages.generateForTool.skippedNoBinaries(toolName));
       return generatedShimPaths;
     }
 
-    const binaryNames = binaries.map((binary) => (typeof binary === 'string' ? binary : binary.name));
+    const binaryNames = binaries.map((binary) => (typeof binary === "string" ? binary : binary.name));
 
     // Generate a shim for each binary
     for (const binaryName of binaryNames) {
@@ -186,7 +184,7 @@ export class ShimGenerator implements IShimGenerator {
     overwrite: boolean,
     overwriteConflicts: boolean,
   ): Promise<string | null> {
-    const logger = this.logger.getSubLogger({ name: 'generateShimForBinary' });
+    const logger = this.logger.getSubLogger({ name: "generateShimForBinary" });
     const shimDir = this.config.paths.targetDir;
     const shimFilePath = path.join(shimDir, binaryName);
 
@@ -214,11 +212,11 @@ export class ShimGenerator implements IShimGenerator {
     }
 
     // Use the stable current symlink folder for execution
-    const toolBinaryPath = path.join(this.config.paths.binariesDir, toolName, 'current', binaryName);
+    const toolBinaryPath = path.join(this.config.paths.binariesDir, toolName, "current", binaryName);
 
     logger.debug(messages.generateShim.resolvedBinaryPath(toolName, binaryName, toolBinaryPath));
 
-    const envVarSuffix = toolName.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+    const envVarSuffix = toolName.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
 
     const missingBinaryMessage = this.missingBinaryMessagesByMethod.get(toolConfig.installationMethod);
     const missingBinaryMessageCommand = missingBinaryMessage
@@ -330,9 +328,9 @@ export class ShimGenerator implements IShimGenerator {
         // lstat failed — fall through to content check
       }
 
-      const content = await fs.readFile(filePath, 'utf8');
+      const content = await fs.readFile(filePath, "utf8");
       // Check for our distinctive header comment
-      return content.includes('# Generated by Dotfiles Management Tool');
+      return content.includes("# Generated by Dotfiles Management Tool");
     } catch {
       // If we can't read the file, assume it's not our shim
       return false;

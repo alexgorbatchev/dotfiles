@@ -1,15 +1,15 @@
-import type { IGitHubRateLimit } from '@dotfiles/core';
-import { HttpError } from '@dotfiles/downloader';
-import { beforeEach, describe, expect, it } from 'bun:test';
-import assert from 'node:assert';
-import { GitHubApiClientError } from '../GitHubApiClientError';
+import type { IGitHubRateLimit } from "@dotfiles/core";
+import { HttpError } from "@dotfiles/downloader";
+import { beforeEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
+import { GitHubApiClientError } from "../GitHubApiClientError";
 import {
   createGitHubConfigOverride,
   type IMockSetup,
   setupMockGitHubApiClient,
-} from './helpers/sharedGitHubApiClientTestSetup';
+} from "./helpers/sharedGitHubApiClientTestSetup";
 
-describe('GitHubApiClient', () => {
+describe("GitHubApiClient", () => {
   let mocks: IMockSetup;
 
   beforeEach(async () => {
@@ -17,14 +17,14 @@ describe('GitHubApiClient', () => {
     mocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
   });
 
-  describe('getRateLimit', () => {
-    it('should fetch and return rate limit information', async () => {
+  describe("getRateLimit", () => {
+    it("should fetch and return rate limit information", async () => {
       const mockCoreRateLimitData: IGitHubRateLimit = {
         limit: 5000,
         remaining: 4999,
         reset: Math.floor(Date.now() / 1000) + 3600,
         used: 1,
-        resource: 'core',
+        resource: "core",
       };
       const mockApiResponse = {
         resources: {
@@ -34,14 +34,14 @@ describe('GitHubApiClient', () => {
             remaining: 18,
             reset: Math.floor(Date.now() / 1000) + 60,
             used: 12,
-            resource: 'search',
+            resource: "search",
           },
           graphql: {
             limit: 5000,
             remaining: 5000,
             reset: Math.floor(Date.now() / 1000) + 3600,
             used: 0,
-            resource: 'graphql',
+            resource: "graphql",
           },
         },
         rate: mockCoreRateLimitData,
@@ -52,23 +52,23 @@ describe('GitHubApiClient', () => {
       expect(rateLimit).toEqual(mockCoreRateLimitData);
       expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
         expect.anything(),
-        'https://api.github.com/rate_limit',
+        "https://api.github.com/rate_limit",
         expect.objectContaining({
           headers: expect.objectContaining({
-            Accept: 'application/vnd.github.v3+json',
-            'User-Agent': mocks.mockProjectConfig.github.userAgent,
+            Accept: "application/vnd.github.v3+json",
+            "User-Agent": mocks.mockProjectConfig.github.userAgent,
           }),
         }),
       );
 
       // Verify logger received request message
-      mocks.logger.expect(['DEBUG'], ['GitHubApiClient', 'request'], [], ['GitHub API GET request to']);
+      mocks.logger.expect(["DEBUG"], ["GitHubApiClient", "request"], [], ["GitHub API GET request to"]);
     });
 
-    it('should throw a GitHubApiClientError if fetching rate limit fails with HttpError', async () => {
-      const url = 'https://api.github.com/rate_limit';
+    it("should throw a GitHubApiClientError if fetching rate limit fails with HttpError", async () => {
+      const url = "https://api.github.com/rate_limit";
       mocks.mockDownloader.download.mockRejectedValue(
-        new HttpError(mocks.logger, 'API unavailable', url, 500, 'Internal Server Error'),
+        new HttpError(mocks.logger, "API unavailable", url, 500, "Internal Server Error"),
       );
 
       expect(mocks.apiClient.getRateLimit()).rejects.toThrow(GitHubApiClientError);

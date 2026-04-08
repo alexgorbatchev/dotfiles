@@ -1,8 +1,8 @@
-import type { Resolvable } from '@dotfiles/unwrap-value';
-import { z } from 'zod';
-import type { ShellCompletionConfigInput } from '../../builder';
-import type { ShellScript } from '../../shell';
-import { shellScriptSchema } from './shellScriptSchema';
+import type { Resolvable } from "@dotfiles/unwrap-value";
+import { z } from "zod";
+import type { ShellCompletionConfigInput } from "../../builder";
+import type { ShellScript } from "../../shell";
+import { shellScriptSchema } from "./shellScriptSchema";
 
 /**
  * Input type for path configuration - can be static or resolved via callback.
