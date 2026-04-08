@@ -23,7 +23,7 @@ const _linuxSystem: SystemInfo = {
 const _windowsSystem: SystemInfo = {
   platform: Platform.Windows,
   arch: Architecture.X86_64,
-  homeDir: "C:\Users\test",
+  homeDir: "C:\\Users\\test",
   hostname: "test-host",
 };
 

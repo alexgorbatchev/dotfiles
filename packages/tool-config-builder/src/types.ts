@@ -57,7 +57,7 @@ export interface IShellStorage {
  * Container for configuration storage of all supported shell types.
  * Used internally by the builder to track configurations for each shell.
  */
-export interface InternalShellConfigs {
+export interface IInternalShellConfigs {
   /**
    * Configuration storage for Zsh.
    */
@@ -73,6 +73,8 @@ export interface InternalShellConfigs {
    */
   powershell: IShellStorage;
 }
+
+export type InternalShellConfigs = IInternalShellConfigs;
 
 /**
  * Supported shell types as keys of the internal configuration storage.
