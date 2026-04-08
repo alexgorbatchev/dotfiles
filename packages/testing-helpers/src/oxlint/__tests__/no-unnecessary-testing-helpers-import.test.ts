@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 // Load the plugin (ESM default export)
 import plugin from "../plugin.js";
 
-interface ASTVisitor {
+interface IAstVisitor {
   // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- mock AST visitor for testing
   ImportDeclaration: (node: unknown) => void;
 }
@@ -45,18 +45,18 @@ describe("no-unnecessary-testing-helpers-import rule", () => {
 
     it("returns visitor with ImportDeclaration handler", () => {
       const mockContext = { report: mock(() => {}) };
-      const visitor = rule.create(mockContext) as ASTVisitor;
+      const visitor = rule.create(mockContext) as IAstVisitor;
 
       expect(visitor.ImportDeclaration).toBeFunction();
     });
 
     describe("ImportDeclaration visitor", () => {
       let reportMock: ReturnType<typeof mock>;
-      let visitor: ASTVisitor;
+      let visitor: IAstVisitor;
 
       beforeEach(() => {
         reportMock = mock(() => {});
-        visitor = rule.create({ report: reportMock }) as ASTVisitor;
+        visitor = rule.create({ report: reportMock }) as IAstVisitor;
       });
 
       it("reports bare import of @dotfiles/testing-helpers", () => {

@@ -3,7 +3,7 @@ import type { TsLogger } from "@dotfiles/logger";
 /**
  * Result of a shell command execution.
  */
-export interface ShellResult {
+export interface IShellResult {
   /** Exit code of the process */
   code: number;
   /** Stdout as string */
@@ -12,10 +12,12 @@ export interface ShellResult {
   stderr: string;
 }
 
+export type ShellResult = IShellResult;
+
 /**
  * Options for shell command execution.
  */
-export interface ShellOptions {
+export interface IShellOptions {
   /** Working directory for the command */
   cwd?: string;
   /** Environment variables to set */
@@ -30,8 +32,10 @@ export interface ShellOptions {
   skipCommandLog?: boolean;
 }
 
+export type ShellOptions = IShellOptions;
+
 export type ShellCommandInput = TemplateStringsArray | string;
-export type ShellCommandOnFulfilled<TResult> = ((value: ShellResult) => TResult | PromiseLike<TResult>) | null;
+export type ShellCommandOnFulfilled<TResult> = ((value: IShellResult) => TResult | PromiseLike<TResult>) | null;
 export type ShellCommandOnRejected<TResult> = ((reason: unknown) => TResult | PromiseLike<TResult>) | null;
 export type ShellCommandThenResult<TResult1, TResult2> = Promise<TResult1 | TResult2>;
 
@@ -39,15 +43,15 @@ export type ShellCommandThenResult<TResult1, TResult2> = Promise<TResult1 | TRes
  * A chainable shell command builder.
  * Supports fluent API: shell`cmd`.cwd('/tmp').env({FOO: 'bar'}).quiet().text()
  */
-export interface ShellCommand extends PromiseLike<ShellResult> {
+export interface IShellCommand extends PromiseLike<IShellResult> {
   /** Set working directory */
-  cwd(path: string): ShellCommand;
+  cwd(path: string): IShellCommand;
   /** Set/merge environment variables */
-  env(vars: Record<string, string | undefined>): ShellCommand;
+  env(vars: Record<string, string | undefined>): IShellCommand;
   /** Suppress output logging (command still logged) */
-  quiet(): ShellCommand;
+  quiet(): IShellCommand;
   /** Don't throw on non-zero exit code, return result with code instead */
-  noThrow(): ShellCommand;
+  noThrow(): IShellCommand;
   /** Get stdout as trimmed string */
   text(): Promise<string>;
   /** Parse stdout as JSON */
@@ -58,12 +62,14 @@ export interface ShellCommand extends PromiseLike<ShellResult> {
   bytes(): Promise<Uint8Array>;
 }
 
+export type ShellCommand = IShellCommand;
+
 /**
  * Shell factory function type - callable with template literals.
  */
-export interface Shell {
-  (strings: TemplateStringsArray, ...values: unknown[]): ShellCommand;
-  (command: string): ShellCommand;
+export interface IShell {
+  (strings: TemplateStringsArray, ...values: unknown[]): IShellCommand;
+  (command: string): IShellCommand;
 }
 
-export const loggingShellBrand: unique symbol = Symbol("loggingShellBrand");
+export type Shell = IShell;

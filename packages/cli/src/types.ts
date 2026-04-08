@@ -101,7 +101,7 @@ export interface IBaseCommandOptions extends IGlobalProgramOptions {}
 /**
  * Command-specific options for install command (excludes global options)
  */
-export interface InstallCommandSpecificOptions {
+export interface IInstallCommandSpecificOptions {
   force: boolean;
   shimMode: boolean;
 }
@@ -109,6 +109,8 @@ export interface InstallCommandSpecificOptions {
 /**
  * Command-specific options for update command (excludes global options)
  */
+export type InstallCommandSpecificOptions = IInstallCommandSpecificOptions;
+
 export interface IUpdateCommandSpecificOptions {
   shimMode: boolean;
 }
@@ -136,7 +138,7 @@ export interface ILogCommandSpecificOptions {
  * Command-specific options for files command (excludes global options)
  */
 // oxlint-disable-next-line @typescript-eslint/no-empty-object-type: No command-specific options for files command
-export type IFilesCommandSpecificOptions = {};
+export type FilesCommandSpecificOptions = {};
 
 export interface IGlobalProgram extends Omit<Command, "opts"> {
   /**

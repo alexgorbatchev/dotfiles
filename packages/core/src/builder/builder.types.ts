@@ -616,7 +616,7 @@ type PlatformBuilderForMethod<M extends InstallMethod> = [M] extends [NoBinMetho
  * // ❌ Clear error: "'repo' does not exist in type BrewInstallParams"
  * install('brew', { repo: 'test' })
  */
-export interface InstallFunction {
+export interface IInstallFunction {
   <M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): ToolBuilderForMethod<M>;
   <M extends NoParamsMethodKeys & InstallMethod>(method: M): ToolBuilderForMethod<M>;
   (): IToolConfigBuilder;
@@ -625,6 +625,8 @@ export interface InstallFunction {
 /**
  * Platform-specific install function with the same generic type inference.
  */
+export type InstallFunction = IInstallFunction;
+
 export interface IPlatformInstallFunction {
   <M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): PlatformBuilderForMethod<M>;
   <M extends NoParamsMethodKeys & InstallMethod>(method: M): PlatformBuilderForMethod<M>;

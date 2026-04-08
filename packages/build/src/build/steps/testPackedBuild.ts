@@ -9,18 +9,21 @@ const POLL_INTERVAL_MS = 100;
 
 type BunProcess = ReturnType<typeof Bun.spawn>;
 
-interface ProcessOutput {
+interface IProcessOutput {
   stdout: string;
   stderr: string;
 }
 
-interface EndpointVerification {
+type ProcessOutput = IProcessOutput;
+
+interface IEndpointVerification {
   url: string;
   expectedContentType: string;
   label: string;
   validateContent?: (content: string) => string | null;
 }
 
+type EndpointVerification = IEndpointVerification;
 type HealthResponseLike = { success?: boolean };
 
 /**

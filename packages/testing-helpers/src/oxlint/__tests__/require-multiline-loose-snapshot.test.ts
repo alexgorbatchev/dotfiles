@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 // Load the plugin (ESM default export)
 import plugin from "../plugin.js";
 
-interface ASTVisitor {
+interface IAstVisitor {
   // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- mock AST visitor for testing
   TaggedTemplateExpression: (node: unknown) => void;
   // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- mock AST visitor for testing
@@ -56,7 +56,7 @@ describe("require-multiline-loose-snapshot plugin", () => {
 
     it("returns visitor with TaggedTemplateExpression and CallExpression handlers", () => {
       const mockContext = { report: mock(() => {}) };
-      const visitor = rule.create(mockContext) as ASTVisitor;
+      const visitor = rule.create(mockContext) as IAstVisitor;
 
       expect(visitor.TaggedTemplateExpression).toBeFunction();
       expect(visitor.CallExpression).toBeFunction();
@@ -64,11 +64,11 @@ describe("require-multiline-loose-snapshot plugin", () => {
 
     describe("TaggedTemplateExpression visitor", () => {
       let reportMock: ReturnType<typeof mock>;
-      let visitor: ASTVisitor;
+      let visitor: IAstVisitor;
 
       beforeEach(() => {
         reportMock = mock(() => {});
-        visitor = rule.create({ report: reportMock }) as ASTVisitor;
+        visitor = rule.create({ report: reportMock }) as IAstVisitor;
       });
 
       it("reports single-line tagged template on expect chain", () => {
@@ -285,11 +285,11 @@ describe("require-multiline-loose-snapshot plugin", () => {
 
     describe("CallExpression visitor", () => {
       let reportMock: ReturnType<typeof mock>;
-      let visitor: ASTVisitor;
+      let visitor: IAstVisitor;
 
       beforeEach(() => {
         reportMock = mock(() => {});
-        visitor = rule.create({ report: reportMock }) as ASTVisitor;
+        visitor = rule.create({ report: reportMock }) as IAstVisitor;
       });
 
       it("reports single-line template literal argument", () => {

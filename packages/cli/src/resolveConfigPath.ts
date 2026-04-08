@@ -12,10 +12,12 @@ export const DEFAULT_CONFIG_FILES: string[] = ["dotfiles.config.ts"];
 
 const BOUNDARY_MARKERS: string[] = ["project.json", ".git"];
 
-export interface ProcessInfo {
+export interface IProcessInfo {
   cwd: string;
   homeDir: string;
 }
+
+export type ProcessInfo = IProcessInfo;
 
 /**
  * Resolves the configuration file path.

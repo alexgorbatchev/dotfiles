@@ -4,7 +4,7 @@ import { contractHomePath } from "@dotfiles/utils";
 import path from "node:path";
 import { messages } from "./log-messages";
 
-interface PopulateMemFsParams {
+interface IPopulateMemFsParams {
   /** Source filesystem to read from (typically NodeFileSystem) */
   sourceFs: IFileSystem;
   /** Target filesystem to write to (typically MemFileSystem) */
@@ -22,7 +22,7 @@ interface PopulateMemFsParams {
  * that tools may reference, including configuration files, keys, and other
  * supporting assets alongside .tool.ts files.
  */
-export async function populateMemFsForDryRun(parentLogger: TsLogger, params: PopulateMemFsParams): Promise<void> {
+export async function populateMemFsForDryRun(parentLogger: TsLogger, params: IPopulateMemFsParams): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: "populateMemFsForDryRun" });
   const { sourceFs, targetFs, toolConfigsDir, homeDir } = params;
 

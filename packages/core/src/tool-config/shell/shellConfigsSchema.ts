@@ -17,7 +17,7 @@ export const shellConfigsSchema = z
  * Shell configuration organized by shell type.
  * Manually typed to properly represent ShellCompletionConfigInput in completions.
  */
-export interface ShellConfigs {
+export interface IShellConfigs {
   /** Zsh shell configuration */
   zsh?: ShellTypeConfig;
   /** Bash shell configuration */
@@ -25,3 +25,5 @@ export interface ShellConfigs {
   /** PowerShell configuration */
   powershell?: ShellTypeConfig;
 }
+
+export type ShellConfigs = IShellConfigs;

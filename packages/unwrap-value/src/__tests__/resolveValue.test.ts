@@ -2,10 +2,12 @@ import { describe, expect, test } from "bun:test";
 import assert from "node:assert";
 import { resolveValue } from "../resolveValue";
 
-interface Ctx {
+interface ICtx {
   id: string;
   n: number;
 }
+
+type Ctx = ICtx;
 
 describe("resolveValue", () => {
   describe("static values", () => {

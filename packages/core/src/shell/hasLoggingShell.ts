@@ -1,4 +1,4 @@
-import { loggingShellBrand } from "./types";
+import { loggingShellBrand } from "./constants";
 
 /**
  * Checks if a shell has logging capabilities attached.

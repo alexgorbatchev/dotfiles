@@ -15,10 +15,12 @@ interface ICacheFileRecord {
 /**
  * Cache entry with body loaded from separate file.
  */
-export interface CacheEntryWithBody extends CacheEntry {
+export interface ICacheEntryWithBody extends CacheEntry {
   /** Response body as Buffer */
   body: Buffer;
 }
+
+export type CacheEntryWithBody = ICacheEntryWithBody;
 
 /**
  * File-based cache storage for the HTTP proxy.

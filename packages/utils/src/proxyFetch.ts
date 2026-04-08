@@ -1,12 +1,14 @@
 /**
  * Configuration for the proxy fetch function.
  */
-export interface ProxyFetchConfig {
+export interface IProxyFetchConfig {
   /** Whether the proxy is enabled */
   enabled: boolean;
   /** The port the proxy server is listening on */
   port: number;
 }
+
+export type ProxyFetchConfig = IProxyFetchConfig;
 
 type ProxyFetchInput = RequestInfo | URL;
 

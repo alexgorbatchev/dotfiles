@@ -11,13 +11,15 @@ import type {
   IValidationResult,
 } from "./types";
 
-type InstallEventHandler = (event: InstallEvent) => Promise<void>;
+type InstallEventHandler = (event: IInstallEvent) => Promise<void>;
 
-export interface InstallEvent {
+export interface IInstallEvent {
   type: PluginEmittedHookEvent;
   toolName: string;
   context: IInstallContext & Record<string, unknown>;
 }
+
+export type InstallEvent = IInstallEvent;
 
 /**
  * Central registry for installer plugins

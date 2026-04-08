@@ -1,29 +1,29 @@
 import { Architecture, Platform, type z_internal_ISystemInfo } from "@alexgorbatchev/dotfiles";
 import { expectType } from "tsd";
 
-type ISystemInfo = z_internal_ISystemInfo;
+type SystemInfo = z_internal_ISystemInfo;
 
 // This test verifies that ISystemInfo uses Platform and Architecture enum types
 
 // Valid: Using Platform and Architecture enum values
-const macosSystem: ISystemInfo = {
+const macosSystem: SystemInfo = {
   platform: Platform.MacOS,
   arch: Architecture.Arm64,
   homeDir: "/Users/test",
   hostname: "test-host",
 };
 
-const _linuxSystem: ISystemInfo = {
+const _linuxSystem: SystemInfo = {
   platform: Platform.Linux,
   arch: Architecture.X86_64,
   homeDir: "/home/test",
   hostname: "test-host",
 };
 
-const _windowsSystem: ISystemInfo = {
+const _windowsSystem: SystemInfo = {
   platform: Platform.Windows,
   arch: Architecture.X86_64,
-  homeDir: "C:\\Users\\test",
+  homeDir: "C:\Users\test",
   hostname: "test-host",
 };
 

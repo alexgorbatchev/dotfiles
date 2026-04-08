@@ -15,7 +15,7 @@ import type {
 /**
  * Extended config with optional fetch override for testing.
  */
-export interface ProxyServerOptions extends ProxyConfig {
+export interface IProxyServerOptions extends ProxyConfig {
   /** Custom fetch function for testing. Defaults to globalThis.fetch */
   fetchFn?: typeof fetch;
 }
@@ -23,7 +23,9 @@ export interface ProxyServerOptions extends ProxyConfig {
 /**
  * Result from creating a proxy server - provides listen/close interface compatible with tests.
  */
-export interface ProxyServer {
+export type ProxyServerOptions = IProxyServerOptions;
+
+export interface IProxyServer {
   /** Start listening on specified port. Callback receives server info. */
   listen(port: number, callback?: ProxyServerCallback): ProxyServer;
   /** Stop the server */
@@ -31,6 +33,8 @@ export interface ProxyServer {
   /** Get server address info */
   address(): ProxyServerAddress | null;
 }
+
+export type ProxyServer = IProxyServer;
 
 /**
  * Skipped headers that shouldn't be forwarded in responses.

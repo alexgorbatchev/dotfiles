@@ -12,7 +12,7 @@ import { describe, expect, it, mock } from "bun:test";
 // Load the plugin (ESM default export)
 import plugin from "../plugin.js";
 
-interface ASTVisitor {
+interface IAstVisitor {
   TemplateLiteral: (node: unknown) => void;
 }
 
@@ -58,14 +58,14 @@ describe("require-template-indent plugin", () => {
         report: mock(() => {}),
         getSourceCode: () => ({ getLines: () => [] }),
       };
-      const visitor = rule.create(mockContext) as ASTVisitor;
+      const visitor = rule.create(mockContext) as IAstVisitor;
 
       expect(visitor.TemplateLiteral).toBeFunction();
     });
 
     describe("TemplateLiteral visitor", () => {
       let reportMock: ReturnType<typeof mock>;
-      let visitor: ASTVisitor;
+      let visitor: IAstVisitor;
 
       /**
        * Creates a mock context with source code lines
@@ -78,7 +78,7 @@ describe("require-template-indent plugin", () => {
             getLines: () => lines,
           }),
         };
-        visitor = rule.create(mockContext) as ASTVisitor;
+        visitor = rule.create(mockContext) as IAstVisitor;
       }
 
       it("reports template with content at column 0 when line is indented", () => {

@@ -34,7 +34,7 @@ export const shellTypeConfigSchema = z
  * Configuration for a specific shell type (zsh, bash, powershell).
  * Manually typed to properly represent ShellCompletionConfigInput.
  */
-export interface ShellTypeConfig {
+export interface IShellTypeConfig {
   /** Shell initialization scripts */
   scripts?: ShellScript[];
   /** Shell aliases (alias name -> command) */
@@ -54,3 +54,5 @@ export interface ShellTypeConfig {
    */
   completions?: ShellCompletionConfigInput;
 }
+
+export type ShellTypeConfig = IShellTypeConfig;

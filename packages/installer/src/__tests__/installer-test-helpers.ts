@@ -48,7 +48,7 @@ interface IInstallEventEmitter {
   emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void>;
 }
 
-type IInstallContextWithEmitter = IInstallContext & IInstallEventEmitter;
+type InstallContextWithEmitter = IInstallContext & IInstallEventEmitter;
 
 interface IDownloadOptions {
   destinationPath?: string;
@@ -402,7 +402,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     install: async (
       toolName: string,
       _toolConfig: unknown,
-      context: IInstallContextWithEmitter,
+      context: InstallContextWithEmitter,
     ): Promise<InstallResult> => {
       // Simulate download event - this will throw if hook throws
       if (context.emitEvent) {

@@ -2,7 +2,7 @@ import { isCompletionEmission, isHoisted } from "../emissions/guards";
 import { BlockValidationError } from "../errors";
 import type { Block, CompletionEmission, Emission, EmissionKind, SectionOptions } from "../types";
 
-interface SectionDefinition {
+interface ISectionDefinition {
   id: string;
   options: SectionOptions;
   emissions: Emission[];
@@ -10,11 +10,15 @@ interface SectionDefinition {
   childInsertionOrder: string[];
 }
 
-interface ChildBlockDefinition {
+type SectionDefinition = ISectionDefinition;
+
+interface IChildBlockDefinition {
   id: string;
   emissions: Emission[];
   sourceFile?: string;
 }
+
+type ChildBlockDefinition = IChildBlockDefinition;
 
 /**
  * Fluent builder for constructing block structures.

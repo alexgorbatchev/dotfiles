@@ -5,7 +5,7 @@ import { exitCli, ExitCode } from "@dotfiles/utils";
 import { messages } from "./log-messages";
 import type {
   ICommandCompletionMeta,
-  IFilesCommandSpecificOptions,
+  FilesCommandSpecificOptions,
   IGlobalProgram,
   IGlobalProgramOptions,
   IServices,
@@ -29,7 +29,7 @@ interface ITreeNode {
   children?: ITreeNode[];
 }
 
-type FilesCommandOptions = IFilesCommandSpecificOptions & IGlobalProgramOptions;
+type FilesCommandOptions = FilesCommandSpecificOptions & IGlobalProgramOptions;
 type PrintFunction = (message: string) => void;
 
 async function buildTreeFromDirectory(logger: TsLogger, fs: IFileSystem, dirPath: string): Promise<ITreeNode[]> {
@@ -178,7 +178,7 @@ export function registerFilesCommand(
   program
     .command("files <toolName>")
     .description("Display a tree view of files in the tool installation directory")
-    .action(async (toolName: string, commandOptions: IFilesCommandSpecificOptions) => {
+    .action(async (toolName: string, commandOptions: FilesCommandSpecificOptions) => {
       const combinedOptions: FilesCommandOptions = {
         ...commandOptions,
         ...program.opts(),

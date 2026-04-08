@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-interface TmpDirHelper {
+interface ITmpDirHelper {
   TMP_DIR: string;
   ensureDir: () => void;
   cleanup: (filePath: string) => void;
@@ -11,6 +11,8 @@ interface TmpDirHelper {
  * Setup helper for managing temporary test directory
  * Provides utilities to create and cleanup test files in a local .tmp folder
  */
+type TmpDirHelper = ITmpDirHelper;
+
 export function setupTmpDir(testDirPath: string): TmpDirHelper {
   const TMP_DIR = path.join(testDirPath, ".tmp");
 

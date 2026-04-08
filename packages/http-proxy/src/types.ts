@@ -5,7 +5,7 @@ export type ProxyServerAddress = { port: number };
 /**
  * Configuration options for the HTTP caching proxy.
  */
-export interface ProxyConfig {
+export interface IProxyConfig {
   /** Directory for cache storage. Default: `.tmp/http-proxy-cache` */
   cacheDir: string;
   /** Proxy server port. Default: 3128 */
@@ -18,7 +18,7 @@ export interface ProxyConfig {
  * Cached response entry stored on disk.
  * Body is stored separately as raw binary file.
  */
-export interface CacheEntry {
+export interface ICacheEntry {
   /** Original request URL */
   url: string;
   /** HTTP method */
@@ -36,7 +36,7 @@ export interface CacheEntry {
 /**
  * Result from cache clearing operation.
  */
-export interface CacheClearResult {
+export interface ICacheClearResult {
   /** Number of entries cleared */
   cleared: number;
   /** Descriptive message */
@@ -46,7 +46,7 @@ export interface CacheClearResult {
 /**
  * Cache statistics.
  */
-export interface CacheStats {
+export interface ICacheStats {
   /** Number of cache entries */
   entries: number;
   /** Total cache size in bytes */
@@ -56,7 +56,7 @@ export interface CacheStats {
 /**
  * Request body for cache clear endpoint.
  */
-export interface CacheClearRequest {
+export interface ICacheClearRequest {
   /** Single glob pattern to match. Use "*" to clear all. */
   pattern?: string;
   /** Multiple glob patterns to match */
@@ -66,7 +66,7 @@ export interface CacheClearRequest {
 /**
  * Request body for cache populate endpoint.
  */
-export interface CachePopulateRequest {
+export interface ICachePopulateRequest {
   /** HTTP method (defaults to GET) */
   method?: string;
   /** URL to cache the response for */
@@ -86,7 +86,7 @@ export interface CachePopulateRequest {
 /**
  * Result from cache populate operation.
  */
-export interface CachePopulateResult {
+export interface ICachePopulateResult {
   /** Whether the entry was successfully added */
   success: boolean;
   /** Cache key for the entry */
@@ -96,3 +96,11 @@ export interface CachePopulateResult {
   /** Descriptive message */
   message: string;
 }
+
+export type ProxyConfig = IProxyConfig;
+export type CacheEntry = ICacheEntry;
+export type CacheClearResult = ICacheClearResult;
+export type CacheStats = ICacheStats;
+export type CacheClearRequest = ICacheClearRequest;
+export type CachePopulateRequest = ICachePopulateRequest;
+export type CachePopulateResult = ICachePopulateResult;

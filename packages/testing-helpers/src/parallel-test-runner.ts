@@ -81,13 +81,15 @@ const E2E_TIMEOUT_MS = 30000;
 const TEST_FILE_GLOB = "**/packages/**/src/**/*.test.ts";
 const E2E_PATH_MARKER = "packages/e2e-test/";
 
-interface Config {
+interface IConfig {
   isWorker: boolean;
   isSequential: boolean;
   isParallel: boolean;
   isBunExtension: boolean;
   workerCount: number;
 }
+
+type Config = IConfig;
 
 function getConfig(): Config {
   return {
@@ -107,13 +109,15 @@ const initialConfig = getConfig();
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface WorkerHandle {
+interface IWorkerHandle {
   proc: Subprocess;
   index: number;
   files: string[];
 }
 
-interface WorkerResult {
+type WorkerHandle = IWorkerHandle;
+
+interface IWorkerResult {
   index: number;
   exitCode: number;
   stdout: string;
@@ -121,10 +125,14 @@ interface WorkerResult {
   fileCount: number;
 }
 
-interface TestPartition {
+type WorkerResult = IWorkerResult;
+
+interface ITestPartition {
   e2eTests: string[];
   otherTests: string[];
 }
+
+type TestPartition = ITestPartition;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test File Discovery

@@ -18,7 +18,7 @@ export const DASHBOARD_COMMAND_COMPLETION: ICommandCompletionMeta = {
   ],
 };
 
-interface DashboardCommandOptions {
+interface IDashboardCommandOptions {
   port?: string;
   host?: string;
   open?: boolean;
@@ -27,7 +27,7 @@ interface DashboardCommandOptions {
 export type BrowserOpener = (url: string, platform: Platform) => Promise<void>;
 export type DashboardServerFactory = typeof createDashboardServer;
 
-interface DashboardCommandDependencies {
+interface IDashboardCommandDependencies {
   openBrowser?: BrowserOpener;
   createServer?: DashboardServerFactory;
 }
@@ -48,7 +48,7 @@ export function registerDashboardCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
   servicesFactory: ServicesFactory,
-  deps: DashboardCommandDependencies = {},
+  deps: IDashboardCommandDependencies = {},
 ) {
   const openBrowser = deps.openBrowser ?? defaultOpenBrowser;
   const createServer = deps.createServer ?? createDashboardServer;
@@ -60,7 +60,7 @@ export function registerDashboardCommand(
     .option("--port <port>", "Port to run the server on", "3000")
     .option("--host <host>", "Host to bind the server to", "localhost")
     .option("--no-open", "Do not open browser when server starts")
-    .action(async (options: DashboardCommandOptions) => {
+    .action(async (options: IDashboardCommandOptions) => {
       const port = parseInt(options.port ?? "3000", 10);
       const host = options.host ?? "localhost";
       const shouldOpen = options.open ?? true;

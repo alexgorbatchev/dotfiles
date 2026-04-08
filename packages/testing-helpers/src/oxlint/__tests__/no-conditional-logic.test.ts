@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 // Load the plugin (ESM default export)
 import plugin from "../plugin.js";
 
-interface ASTVisitor {
+interface IAstVisitor {
   CallExpression: (node: unknown) => void;
   "CallExpression:exit": (node: unknown) => void;
   IfStatement: (node: unknown) => void;
@@ -55,7 +55,7 @@ describe("no-conditional-logic plugin", () => {
 
     it("returns visitor with IfStatement and CallExpression handlers", () => {
       const mockContext = { report: mock(() => {}) };
-      const visitor = rule.create(mockContext) as ASTVisitor;
+      const visitor = rule.create(mockContext) as IAstVisitor;
 
       expect(visitor.IfStatement).toBeFunction();
       expect(visitor.CallExpression).toBeFunction();
@@ -64,13 +64,13 @@ describe("no-conditional-logic plugin", () => {
 
     describe("IfStatement visitor", () => {
       let reportMock: ReturnType<typeof mock>;
-      let visitor: ASTVisitor;
+      let visitor: IAstVisitor;
 
       beforeEach(() => {
         reportMock = mock(() => {});
         visitor = rule.create({
           report: reportMock,
-        }) as ASTVisitor;
+        }) as IAstVisitor;
       });
 
       it("reports simple if statement", () => {

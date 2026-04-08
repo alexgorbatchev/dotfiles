@@ -3,7 +3,7 @@ import type { ISystemInfo, ProjectConfigPartial } from "@dotfiles/core";
 /**
  * Context passed to the configuration factory function.
  */
-export interface ConfigContext {
+export interface IConfigContext {
   /**
    * The directory containing the configuration file.
    */
@@ -13,6 +13,8 @@ export interface ConfigContext {
    */
   systemInfo: ISystemInfo;
 }
+
+export type ConfigContext = IConfigContext;
 
 export type ConfigFactory = (ctx: ConfigContext) => Promise<ProjectConfigPartial> | ProjectConfigPartial;
 

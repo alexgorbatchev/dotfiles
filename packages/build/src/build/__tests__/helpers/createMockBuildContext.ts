@@ -4,10 +4,12 @@
 
 import type { IBuildConstants, IBuildContext, IBuildPaths } from "../../../build/types";
 
-interface MockBuildContextOverrides {
+interface IMockBuildContextOverrides {
   paths?: Partial<IBuildPaths>;
   constants?: Partial<IBuildConstants>;
 }
+
+type MockBuildContextOverrides = IMockBuildContextOverrides;
 
 export function createMockBuildContext(overrides?: MockBuildContextOverrides): IBuildContext {
   const defaultPaths: IBuildPaths = {

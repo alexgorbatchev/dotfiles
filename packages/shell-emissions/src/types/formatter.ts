@@ -4,7 +4,7 @@ import type { Emission, ScriptEmission } from "./emissions";
 /**
  * Configuration provided to formatters at construction.
  */
-export interface FormatterConfig {
+export interface IFormatterConfig {
   /** Comment line width (default: 80) */
   headerWidth?: number;
   /** Spaces per indent (default: 2) */
@@ -13,15 +13,19 @@ export interface FormatterConfig {
   onceScriptDir?: string;
 }
 
+export type FormatterConfig = IFormatterConfig;
+
 /**
  * Content generated for a once script.
  */
-export interface OnceScriptContent {
+export interface IOnceScriptContent {
   /** Script content including self-delete command */
   content: string;
   /** Generated filename for this script */
   filename: string;
 }
+
+export type OnceScriptContent = IOnceScriptContent;
 
 /**
  * Interface that consumers implement to convert emissions to shell syntax.
@@ -38,7 +42,7 @@ export interface IEmissionFormatter {
   /**
    * Renders a once script with self-delete logic.
    */
-  formatOnceScript(emission: ScriptEmission, index: number): OnceScriptContent;
+  formatOnceScript(emission: ScriptEmission, index: number): IOnceScriptContent;
 
   /**
    * Generates the loop that executes pending once scripts.
@@ -79,7 +83,7 @@ export interface IEmissionFormatter {
 /**
  * A once script to be written as a separate file.
  */
-export interface OnceScript {
+export interface IOnceScript {
   /** Generated filename (e.g., 'my-config-001.zsh') */
   filename: string;
   /** Script content including self-delete */
@@ -88,17 +92,21 @@ export interface OnceScript {
   executable: true;
 }
 
+export type OnceScript = IOnceScript;
+
 /**
  * Output from the renderer.
  */
-export interface RenderedOutput {
+export interface IRenderedOutput {
   /** The rendered shell content */
   content: string;
   /** From formatter (e.g., '.zsh') */
   fileExtension: string;
   /** Separate files to write (empty array if none) */
-  onceScripts: OnceScript[];
+  onceScripts: IOnceScript[];
 }
+
+export type RenderedOutput = IRenderedOutput;
 
 /**
  * Interface for the block renderer.
@@ -107,5 +115,5 @@ export interface IBlockRenderer {
   /**
    * Renders blocks using the provided formatter.
    */
-  render(blocks: Block[], formatter: IEmissionFormatter): RenderedOutput;
+  render(blocks: Block[], formatter: IEmissionFormatter): IRenderedOutput;
 }

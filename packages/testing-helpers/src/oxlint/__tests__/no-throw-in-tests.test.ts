@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 // Load the plugin (ESM default export)
 import plugin from "../plugin.js";
 
-interface ASTVisitor {
+interface IAstVisitor {
   ThrowStatement: (node: unknown) => void;
 }
 
@@ -46,18 +46,18 @@ describe("no-throw-in-tests plugin", () => {
 
     it("returns visitor with ThrowStatement handler", () => {
       const mockContext = { report: mock(() => {}) };
-      const visitor = rule.create(mockContext) as ASTVisitor;
+      const visitor = rule.create(mockContext) as IAstVisitor;
 
       expect(visitor.ThrowStatement).toBeFunction();
     });
 
     describe("ThrowStatement visitor", () => {
       let reportMock: ReturnType<typeof mock>;
-      let visitor: ASTVisitor;
+      let visitor: IAstVisitor;
 
       beforeEach(() => {
         reportMock = mock(() => {});
-        visitor = rule.create({ report: reportMock }) as ASTVisitor;
+        visitor = rule.create({ report: reportMock }) as IAstVisitor;
       });
 
       it("reports throw new Error()", () => {

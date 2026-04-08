@@ -1,5 +1,6 @@
 import { createSafeLogMessage, type TsLogger } from "@dotfiles/logger";
-import { loggingShellBrand, type Shell, type ShellCommand } from "./types";
+import { loggingShellBrand } from "./constants";
+import type { Shell, ShellCommand } from "./types";
 
 /**
  * Wraps an existing shell to add command logging.

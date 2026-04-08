@@ -23,7 +23,7 @@ export type ScriptTiming = "always" | "once" | "raw";
 /**
  * Base properties shared by all emissions.
  */
-export interface BaseEmission {
+export interface IBaseEmission {
   /** Type discriminator */
   readonly kind: EmissionKind;
   /** Optional attribution identifier (e.g., config file path) */
@@ -32,28 +32,34 @@ export interface BaseEmission {
   priority?: number;
 }
 
+export type BaseEmission = IBaseEmission;
+
 /**
  * Sets environment variables.
  */
-export interface EnvironmentEmission extends BaseEmission {
+export interface IEnvironmentEmission extends IBaseEmission {
   readonly kind: "environment";
   /** Key-value pairs of environment variables */
   readonly variables: Record<string, string>;
 }
 
+export type EnvironmentEmission = IEnvironmentEmission;
+
 /**
  * Defines command aliases.
  */
-export interface AliasEmission extends BaseEmission {
+export interface IAliasEmission extends IBaseEmission {
   readonly kind: "alias";
   /** Name to command mapping */
   readonly aliases: Record<string, string>;
 }
 
+export type AliasEmission = IAliasEmission;
+
 /**
  * Defines a callable function.
  */
-export interface FunctionEmission extends BaseEmission {
+export interface IFunctionEmission extends IBaseEmission {
   readonly kind: "function";
   /** Function name */
   readonly name: string;
@@ -61,10 +67,12 @@ export interface FunctionEmission extends BaseEmission {
   readonly body: string;
 }
 
+export type FunctionEmission = IFunctionEmission;
+
 /**
  * Inline script content.
  */
-export interface ScriptEmission extends BaseEmission {
+export interface IScriptEmission extends IBaseEmission {
   readonly kind: "script";
   /** Script content */
   readonly content: string;
@@ -72,14 +80,18 @@ export interface ScriptEmission extends BaseEmission {
   readonly timing: ScriptTiming;
 }
 
+export type ScriptEmission = IScriptEmission;
+
 /**
  * Sources an external file.
  */
-export interface SourceFileEmission extends BaseEmission {
+export interface ISourceFileEmission extends IBaseEmission {
   readonly kind: "sourceFile";
   /** Path to source (may contain $HOME) */
   readonly path: string;
 }
+
+export type SourceFileEmission = ISourceFileEmission;
 
 /**
  * Sources inline content via a temporary function.
@@ -88,7 +100,7 @@ export interface SourceFileEmission extends BaseEmission {
  *   source <(tempFunctionName)
  *   unset -f tempFunctionName
  */
-export interface SourceEmission extends BaseEmission {
+export interface ISourceEmission extends IBaseEmission {
   readonly kind: "source";
   /** Inline content to source */
   readonly content: string;
@@ -96,19 +108,23 @@ export interface SourceEmission extends BaseEmission {
   readonly functionName: string;
 }
 
+export type SourceEmission = ISourceEmission;
+
 /**
  * Sources output of a previously defined function.
  */
-export interface SourceFunctionEmission extends BaseEmission {
+export interface ISourceFunctionEmission extends IBaseEmission {
   readonly kind: "sourceFunction";
   /** Name of function to source */
   readonly functionName: string;
 }
 
+export type SourceFunctionEmission = ISourceFunctionEmission;
+
 /**
  * Configuration for completion emission.
  */
-export interface CompletionConfig {
+export interface ICompletionConfig {
   /** Directories containing completion files */
   directories?: string[];
   /** Specific completion files to source */
@@ -117,10 +133,12 @@ export interface CompletionConfig {
   commands?: string[];
 }
 
+export type CompletionConfig = ICompletionConfig;
+
 /**
  * Configures shell completion for CLI commands.
  */
-export interface CompletionEmission extends BaseEmission {
+export interface ICompletionEmission extends IBaseEmission {
   readonly kind: "completion";
   /** Directories containing completion files */
   readonly directories?: string[];
@@ -130,20 +148,24 @@ export interface CompletionEmission extends BaseEmission {
   readonly commands?: string[];
 }
 
+export type CompletionEmission = ICompletionEmission;
+
 /**
  * Options for path emission.
  */
-export interface PathOptions {
+export interface IPathOptions {
   /** Where to add (default: prepend) */
   position?: "prepend" | "append";
   /** Emit runtime check to prevent duplicates (default: true) */
   deduplicate?: boolean;
 }
 
+export type PathOptions = IPathOptions;
+
 /**
  * Modifies the PATH environment variable.
  */
-export interface PathEmission extends BaseEmission {
+export interface IPathEmission extends IBaseEmission {
   readonly kind: "path";
   /** Directory to add (may contain $HOME) */
   readonly directory: string;
@@ -152,6 +174,8 @@ export interface PathEmission extends BaseEmission {
   /** Emit runtime check to prevent duplicates (default: true) */
   readonly deduplicate: boolean;
 }
+
+export type PathEmission = IPathEmission;
 
 /**
  * Union type of all emission types.
