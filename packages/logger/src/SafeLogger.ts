@@ -27,6 +27,8 @@ function formatContext(context: string): string {
   return `[${context}]`;
 }
 
+type SafeLoggerMethodResult<TLogObj> = (TLogObj & ILogObjMeta) | undefined;
+
 /**
  * A type-safe logger that extends `tslog`'s `Logger` to enforce the use of
  * {@link SafeLogMessage} objects for all log messages.
@@ -86,35 +88,35 @@ export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
   }
 
   /** @inheritdoc */
-  override trace(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
+  override trace(message: SafeLogMessage, ...args: unknown[]): SafeLoggerMethodResult<LogObj> {
     return super.trace(message as string, ...args);
   }
 
   /** @inheritdoc */
-  override debug(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
+  override debug(message: SafeLogMessage, ...args: unknown[]): SafeLoggerMethodResult<LogObj> {
     return super.debug(message as string, ...args);
   }
 
   /** @inheritdoc */
-  override info(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
+  override info(message: SafeLogMessage, ...args: unknown[]): SafeLoggerMethodResult<LogObj> {
     const filteredArgs = this.filterErrorArgs(args);
     return super.info(message as string, ...filteredArgs);
   }
 
   /** @inheritdoc */
-  override warn(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
+  override warn(message: SafeLogMessage, ...args: unknown[]): SafeLoggerMethodResult<LogObj> {
     const filteredArgs = this.filterErrorArgs(args);
     return super.warn(message as string, ...filteredArgs);
   }
 
   /** @inheritdoc */
-  override error(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
+  override error(message: SafeLogMessage, ...args: unknown[]): SafeLoggerMethodResult<LogObj> {
     const filteredArgs = this.filterErrorArgs(args);
     return super.error(message as string, ...filteredArgs);
   }
 
   /** @inheritdoc */
-  override fatal(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
+  override fatal(message: SafeLogMessage, ...args: unknown[]): SafeLoggerMethodResult<LogObj> {
     const filteredArgs = this.filterErrorArgs(args);
     return super.fatal(message as string, ...filteredArgs);
   }

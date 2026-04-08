@@ -12,6 +12,10 @@ import { messages } from "./log-messages";
 import { type IProfileUpdateConfig, ProfileUpdater } from "./profile-updater";
 import { createGenerator, type IAdditionalShellFile, type IShellGenerator } from "./shell-generators";
 
+interface IGeneratedShellFile {
+  outputPath: string;
+}
+
 /**
  * Service that generates shell initialization scripts for installed tools.
  *
@@ -93,7 +97,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     shellType: ShellType,
     toolConfigs: Record<string, ToolConfig>,
     options?: IGenerateShellInitOptions,
-  ): Promise<{ outputPath: string } | null> {
+  ): Promise<IGeneratedShellFile | null> {
     const logger = this.logger.getSubLogger({ name: "generateForShellType" });
     try {
       const generator = createGenerator(shellType, this.projectConfig);

@@ -2,6 +2,8 @@ import { LogLevel } from "./LogLevel";
 import { SafeLogger } from "./SafeLogger";
 import type { ILoggerConfig, TsLogger } from "./types";
 
+type LoggerConfigInput = ILoggerConfig | string;
+
 /**
  * Creates a type-safe `tslog` logger instance with a configurable name and log level.
  *
@@ -42,14 +44,8 @@ export function createTsLogger(name: string): TsLogger;
  * ```
  */
 export function createTsLogger(config: ILoggerConfig): TsLogger;
-export function createTsLogger(configOrName: ILoggerConfig | string): TsLogger {
-  let config: ILoggerConfig = {} as ILoggerConfig;
-
-  if (typeof configOrName === "string") {
-    config.name = configOrName;
-  } else {
-    config = { ...configOrName };
-  }
+export function createTsLogger(configOrName: LoggerConfigInput): TsLogger {
+  const config: ILoggerConfig = typeof configOrName === "string" ? { name: configOrName } : { ...configOrName };
 
   config.level = config.level ?? LogLevel.DEFAULT;
 

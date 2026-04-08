@@ -2,6 +2,11 @@ import { isScriptEmission } from "../emissions/guards";
 import type { Block, IBlockRenderer, IEmissionFormatter, OnceScript, RenderedOutput, ScriptEmission } from "../types";
 import { ONCE_SCRIPT_STARTING_INDEX, SectionPriority } from "./constants";
 
+interface IOnceScriptEmissionRef {
+  emission: ScriptEmission;
+  blockPriority: number;
+}
+
 /**
  * Renders blocks using the provided formatter.
  */
@@ -16,7 +21,7 @@ export class BlockRenderer implements IBlockRenderer {
     let onceScriptIndex = ONCE_SCRIPT_STARTING_INDEX;
 
     // Track once scripts to determine where to insert initializer
-    const onceScriptEmissions: Array<{ emission: ScriptEmission; blockPriority: number }> = [];
+    const onceScriptEmissions: IOnceScriptEmissionRef[] = [];
 
     // First pass: collect once scripts
     for (const block of sortedBlocks) {
@@ -63,7 +68,7 @@ export class BlockRenderer implements IBlockRenderer {
     };
   }
 
-  private collectOnceScripts(block: Block, results: Array<{ emission: ScriptEmission; blockPriority: number }>): void {
+  private collectOnceScripts(block: Block, results: IOnceScriptEmissionRef[]): void {
     for (const emission of block.emissions) {
       if (isScriptEmission(emission) && emission.timing === "once") {
         results.push({ emission, blockPriority: block.priority });

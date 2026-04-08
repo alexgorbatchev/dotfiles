@@ -5,10 +5,12 @@ import type { IShellGenerator } from "./IShellGenerator";
 import { PowerShellGenerator } from "./PowerShellGenerator";
 import { ZshGenerator } from "./ZshGenerator";
 
+type ShellGeneratorFactory = (projectConfig: ProjectConfig) => IShellGenerator;
+
 /**
  * Map of shell types to their generator factory functions.
  */
-const generators = new Map<ShellType, (projectConfig: ProjectConfig) => IShellGenerator>([
+const generators = new Map<ShellType, ShellGeneratorFactory>([
   ["zsh", (projectConfig: ProjectConfig) => new ZshGenerator(projectConfig)],
   ["bash", (projectConfig: ProjectConfig) => new BashGenerator(projectConfig)],
   ["powershell", (projectConfig: ProjectConfig) => new PowerShellGenerator(projectConfig)],

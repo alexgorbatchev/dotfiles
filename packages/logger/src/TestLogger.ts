@@ -8,6 +8,7 @@ import { type ISafeLoggerSettings, SafeLogger } from "./SafeLogger";
  * The `'*'` level can be used to match all log levels.
  */
 export type TestLogLevel = "*" | "SILLY" | "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR" | "FATAL";
+type LogMatcher = string | RegExp;
 
 /**
  * An extended logger for testing purposes that captures log messages in memory.
@@ -84,7 +85,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     return subLogger;
   }
 
-  private getLogs(levels: TestLogLevel[], path: string[], context: string[], matcher?: string | RegExp): ILogObjMeta[] {
+  private getLogs(levels: TestLogLevel[], path: string[], context: string[], matcher?: LogMatcher): ILogObjMeta[] {
     return this.logs.filter((log) => {
       const meta = log["_meta"];
       if (!meta) {
@@ -137,7 +138,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     return logMessage.startsWith(expectedPrefix);
   }
 
-  private isMatcherMatch(log: ILogObjMeta, matcher?: string | RegExp): boolean {
+  private isMatcherMatch(log: ILogObjMeta, matcher?: LogMatcher): boolean {
     if (matcher === undefined) {
       return true;
     }
@@ -169,7 +170,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
    * @param context - An array of context strings to match against (appears as [context] prefix).
    * @param matcher - An optional string or regex to match against the log message.
    */
-  printLogs(levels: TestLogLevel[], path: string[], context: string[], matcher?: string | RegExp): void {
+  printLogs(levels: TestLogLevel[], path: string[], context: string[], matcher?: LogMatcher): void {
     const logs = this.getLogs(levels, path, context, matcher);
     for (const log of logs) {
       const { _meta, ...rest } = log;
@@ -191,7 +192,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
    * @param context - An array of context strings to match against (appears as [context] prefix).
    * @param matchers - An array of strings or regular expressions to match against the log messages.
    */
-  expect(levels: TestLogLevel[], path: string[], context: string[], matchers: (string | RegExp)[]): void {
+  expect(levels: TestLogLevel[], path: string[], context: string[], matchers: LogMatcher[]): void {
     const logs = this.getLogs(levels, path, context);
 
     if (logs.length < matchers.length) {
@@ -201,7 +202,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     this.validateMatchers(logs, matchers);
   }
 
-  private failExpectation(logs: ILogObjMeta[], matchers: (string | RegExp)[]): never {
+  private failExpectation(logs: ILogObjMeta[], matchers: LogMatcher[]): never {
     const results: string[] = ["Expected logs:"];
     for (const matcher of matchers) {
       results.push(`  - ${matcher}`);
@@ -215,7 +216,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     throw new Error("Test failed"); // This line will never be reached but satisfies TypeScript
   }
 
-  private validateMatchers(logs: ILogObjMeta[], matchers: (string | RegExp)[]): void {
+  private validateMatchers(logs: ILogObjMeta[], matchers: LogMatcher[]): void {
     for (let i = 0; i < matchers.length; i++) {
       const log = logs[i];
       const matcher = matchers[i];
@@ -238,7 +239,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     }
   }
 
-  private isMessageMatch(logMessage: string, matcher: string | RegExp): boolean {
+  private isMessageMatch(logMessage: string, matcher: LogMatcher): boolean {
     if (typeof matcher === "string") {
       return logMessage.includes(matcher);
     }

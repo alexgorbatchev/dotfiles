@@ -1,6 +1,26 @@
 import { describe, expect, it } from "bun:test";
+import assert from "node:assert";
 import { createTsLogger } from "../createTsLogger";
 import { LogLevel } from "../LogLevel";
+
+interface ITraceTemplateLog {
+  settings: {
+    prettyLogTemplate: string;
+  };
+}
+
+function assertTraceTemplateLog(logger: unknown): asserts logger is ITraceTemplateLog {
+  assert(typeof logger === "object" && logger !== null);
+  assert("settings" in logger);
+  assert(typeof logger.settings === "object" && logger.settings !== null);
+  assert("prettyLogTemplate" in logger.settings);
+  assert(typeof logger.settings.prettyLogTemplate === "string");
+}
+
+function getPrettyLogTemplate(logger: unknown): string {
+  assertTraceTemplateLog(logger);
+  return logger.settings.prettyLogTemplate;
+}
 
 describe("createTsLogger - trace flag", () => {
   it("should include file path with line when trace is enabled at DEFAULT log level", () => {
@@ -11,8 +31,8 @@ describe("createTsLogger - trace flag", () => {
     });
 
     // Access the internal settings to verify prettyLogTemplate includes file path
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
-    expect(settings.prettyLogTemplate).toContain("{{filePathWithLine}}");
+    const prettyLogTemplate = getPrettyLogTemplate(logger);
+    expect(prettyLogTemplate).toContain("{{filePathWithLine}}");
   });
 
   it("should NOT include file path with line when trace is disabled at DEFAULT log level", () => {
@@ -22,8 +42,8 @@ describe("createTsLogger - trace flag", () => {
       trace: false,
     });
 
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
-    expect(settings.prettyLogTemplate).not.toContain("{{filePathWithLine}}");
+    const prettyLogTemplate = getPrettyLogTemplate(logger);
+    expect(prettyLogTemplate).not.toContain("{{filePathWithLine}}");
   });
 
   it("should NOT include file path with line when trace is not specified at DEFAULT log level", () => {
@@ -32,8 +52,8 @@ describe("createTsLogger - trace flag", () => {
       level: LogLevel.DEFAULT,
     });
 
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
-    expect(settings.prettyLogTemplate).not.toContain("{{filePathWithLine}}");
+    const prettyLogTemplate = getPrettyLogTemplate(logger);
+    expect(prettyLogTemplate).not.toContain("{{filePathWithLine}}");
   });
 
   it("should include file path with line when trace is enabled at VERBOSE log level", () => {
@@ -43,8 +63,8 @@ describe("createTsLogger - trace flag", () => {
       trace: true,
     });
 
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
-    expect(settings.prettyLogTemplate).toContain("{{filePathWithLine}}");
+    const prettyLogTemplate = getPrettyLogTemplate(logger);
+    expect(prettyLogTemplate).toContain("{{filePathWithLine}}");
   });
 
   it("should include file path with line when trace is enabled at QUIET log level", () => {
@@ -55,8 +75,8 @@ describe("createTsLogger - trace flag", () => {
       trace: true,
     });
 
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
-    expect(settings.prettyLogTemplate).toContain("{{filePathWithLine}}");
+    const prettyLogTemplate = getPrettyLogTemplate(logger);
+    expect(prettyLogTemplate).toContain("{{filePathWithLine}}");
   });
 
   it("should NOT include file path with line at VERBOSE level without trace flag", () => {
@@ -65,7 +85,7 @@ describe("createTsLogger - trace flag", () => {
       level: LogLevel.VERBOSE,
     });
 
-    const settings = (logger as unknown as { settings: { prettyLogTemplate: string } }).settings;
-    expect(settings.prettyLogTemplate).not.toContain("{{filePathWithLine}}");
+    const prettyLogTemplate = getPrettyLogTemplate(logger);
+    expect(prettyLogTemplate).not.toContain("{{filePathWithLine}}");
   });
 });

@@ -1,5 +1,16 @@
 import type { Resolvable } from "./types";
 
+type ResolvableFunction<TParams, TReturn> =
+  | ((params: TParams) => TReturn)
+  | ((params: TParams) => Promise<TReturn>)
+  | (TReturn & ((params: TParams) => TReturn | Promise<TReturn>));
+
+function isResolvableFunction<TParams, TReturn>(
+  resolvable: Resolvable<TParams, TReturn>,
+): resolvable is ResolvableFunction<TParams, TReturn> {
+  return typeof resolvable === "function";
+}
+
 /**
  * Resolves a Resolvable value to its actual value.
  *
@@ -18,9 +29,8 @@ export async function resolveValue<TParams, TReturn>(
   params: TParams,
   resolvable: Resolvable<TParams, TReturn>,
 ): Promise<TReturn> {
-  if (typeof resolvable === "function") {
-    const fn = resolvable as (params: TParams) => TReturn | Promise<TReturn>;
-    return await fn(params);
+  if (isResolvableFunction(resolvable)) {
+    return await resolvable(params);
   }
   return resolvable;
 }
