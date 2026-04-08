@@ -8,6 +8,7 @@ import type {
   IPlatformInstallFunction,
   IToolConfigBuilder as ToolConfigBuilderInterface,
   IToolConfigContext,
+  IToolPathMapping,
   Platform,
   PlatformConfig,
   PlatformConfigEntry,
@@ -20,7 +21,15 @@ import type {
 import type { TsLogger } from "@dotfiles/logger";
 import { messages } from "./log-messages";
 import { ShellConfigurator } from "./ShellConfigurator";
-import type { InternalShellConfigs, IShellStorage, ShellTypeKey } from "./types";
+import type {
+  InternalShellConfigs,
+  IShellStorage,
+  MaybePromise,
+  PlatformConfigureCallback,
+  PlatformSelectorInput,
+  ShellConfiguratorHandler,
+  ShellTypeKey,
+} from "./types";
 
 export interface IBinaryConfig {
   name: string;
@@ -28,6 +37,9 @@ export interface IBinaryConfig {
 }
 
 type InstallParams = IInstallParamsRegistry[InstallMethod];
+type BuilderInstallParams = InstallParams | Record<string, unknown>;
+type PlatformInstallArguments = [InstallMethod, InstallParams] | [];
+type HostnamePattern = string | RegExp;
 
 /**
  * A fluent API for creating {@link @dotfiles/core#ToolConfig} objects.
@@ -58,7 +70,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   public binaries: IBinaryConfig[] = [];
   public versionNum: string = "latest";
   public currentInstallationMethod?: string;
-  public currentInstallParams?: InstallParams | Record<string, unknown>;
+  public currentInstallParams?: BuilderInstallParams;
   private dependencies: string[] = [];
   private isDisabled: boolean = false;
   private hostnamePattern?: string;
@@ -71,8 +83,8 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   };
   private context?: IToolConfigContext;
 
-  public symlinkPairs: { source: string; target: string }[] = [];
-  public copyPairs: { source: string; target: string }[] = [];
+  public symlinkPairs: IToolPathMapping[] = [];
+  public copyPairs: IToolPathMapping[] = [];
   private updateCheckConfig?: ToolConfigUpdateCheck;
   private platformConfigEntries: PlatformConfigEntry[] = [];
 
@@ -170,7 +182,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   zsh(callback: ShellConfiguratorCallback): this;
   zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
-  zsh(callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback): this | Promise<this> {
+  zsh(callback: ShellConfiguratorHandler): MaybePromise<this> {
     return this.configureShell("zsh", callback);
   }
 
@@ -186,7 +198,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   bash(callback: ShellConfiguratorCallback): this;
   bash(callback: ShellConfiguratorAsyncCallback): Promise<this>;
-  bash(callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback): this | Promise<this> {
+  bash(callback: ShellConfiguratorHandler): MaybePromise<this> {
     return this.configureShell("bash", callback);
   }
 
@@ -202,7 +214,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   powershell(callback: ShellConfiguratorCallback): this;
   powershell(callback: ShellConfiguratorAsyncCallback): Promise<this>;
-  powershell(callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback): this | Promise<this> {
+  powershell(callback: ShellConfiguratorHandler): MaybePromise<this> {
     return this.configureShell("powershell", callback);
   }
 
@@ -319,13 +331,11 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   platform(
     platforms: Platform,
-    architecturesOrConfigure:
-      | Architecture
-      | ((install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, "bin">),
-    configureCallback?: (install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, "bin">,
+    architecturesOrConfigure: PlatformSelectorInput,
+    configureCallback?: PlatformConfigureCallback,
   ): this {
     let targetArchitectures: Architecture | undefined;
-    let configureFn: (install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, "bin">;
+    let configureFn: PlatformConfigureCallback;
 
     if (typeof architecturesOrConfigure === "function") {
       configureFn = architecturesOrConfigure;
@@ -347,7 +357,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     platformBuilder.setContext(this.context);
 
     // Create platform install function that works like the main install function
-    const platformInstall: IPlatformInstallFunction = ((...args: [InstallMethod, InstallParams] | []) => {
+    const platformInstall: IPlatformInstallFunction = ((...args: PlatformInstallArguments) => {
       if (args.length === 0) {
         return platformBuilder as unknown as PlatformConfigBuilderInterface;
       }
@@ -403,7 +413,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    * install('github-release', { repo: 'tool/repo' })
    *   .hostname(/^work-.*$/)
    */
-  hostname(pattern: string | RegExp): this {
+  hostname(pattern: HostnamePattern): this {
     if (pattern instanceof RegExp) {
       this.hostnamePattern = pattern.source;
     } else {
@@ -615,10 +625,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     return this.internalShellConfigs;
   }
 
-  private configureShell(
-    shellType: ShellTypeKey,
-    callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback,
-  ): this | Promise<this> {
+  private configureShell(shellType: ShellTypeKey, callback: ShellConfiguratorHandler): MaybePromise<this> {
     const storage: IShellStorage = this.internalShellConfigs[shellType];
     const configurator = new ShellConfigurator(storage, shellType, this.context, this.logger, this.toolName);
 

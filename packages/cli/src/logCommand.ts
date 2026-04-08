@@ -1,7 +1,7 @@
 import type { ProjectConfig } from "@dotfiles/config";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
-import type { IFileOperation, IFileRegistry } from "@dotfiles/registry/file";
+import type { IFileOperation, IFileOperationFilter, IFileRegistry, IFileState } from "@dotfiles/registry/file";
 import { contractHomePath, exitCli, ExitCode, formatPermissions } from "@dotfiles/utils";
 import { messages } from "./log-messages";
 import type {
@@ -10,6 +10,7 @@ import type {
   IGlobalProgramOptions,
   ILogCommandSpecificOptions,
   IServices,
+  ServicesFactory,
 } from "./types";
 
 /**
@@ -28,13 +29,17 @@ export const LOG_COMMAND_COMPLETION: ICommandCompletionMeta = {
   ],
 };
 
-function buildOperationsFilter(
-  options: ILogCommandSpecificOptions & IGlobalProgramOptions,
-  parentLogger: TsLogger,
-): { filter: Record<string, unknown>; exitCode: ExitCode } {
+type LogCommandOptions = ILogCommandSpecificOptions & IGlobalProgramOptions;
+
+interface IOperationFilterResult {
+  filter: IFileOperationFilter;
+  exitCode: ExitCode;
+}
+
+function buildOperationsFilter(options: LogCommandOptions, parentLogger: TsLogger): IOperationFilterResult {
   const logger = parentLogger.getSubLogger({ name: "buildOperationsFilter" });
   const { tool, type, since } = options;
-  const filter: Record<string, unknown> = {};
+  const filter: IFileOperationFilter = {};
 
   if (tool) {
     filter["toolName"] = tool;
@@ -80,11 +85,7 @@ async function showFileStates(
   }
 }
 
-async function logFileState(
-  parentLogger: TsLogger,
-  fs: IFileSystem,
-  state: { filePath: string; fileType: string; sizeBytes?: number; targetPath?: string },
-): Promise<void> {
+async function logFileState(parentLogger: TsLogger, fs: IFileSystem, state: IFileState): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: "logFileState" });
   const exists = await fs.exists(state.filePath);
   const statusIcon = exists ? "✓" : "✗";
@@ -100,13 +101,7 @@ async function logFileState(
   }
 }
 
-function buildMetadataString(operation: {
-  operationType: string;
-  sizeBytes?: number;
-  permissions?: number;
-  targetPath?: string;
-  metadata?: Record<string, unknown>;
-}): string {
+function buildMetadataString(operation: IFileOperation): string {
   const metadataParts: string[] = [];
 
   // Only include size for write operations (not for chmod)
@@ -120,11 +115,12 @@ function buildMetadataString(operation: {
   // Include custom metadata
   if (operation.metadata && Object.keys(operation.metadata).length > 0) {
     for (const [key, value] of Object.entries(operation.metadata)) {
-      if (key === "newMode") {
-        metadataParts.push(`${key}: ${formatPermissions(value as string | number)}`);
-      } else {
-        metadataParts.push(`${key}: ${value}`);
+      if (key === "newMode" && (typeof value === "string" || typeof value === "number")) {
+        metadataParts.push(`${key}: ${formatPermissions(value)}`);
+        continue;
       }
+
+      metadataParts.push(`${key}: ${value}`);
     }
   }
 
@@ -244,11 +240,7 @@ async function showOperations(
   }
 }
 
-async function logActionLogic(
-  parentLogger: TsLogger,
-  options: ILogCommandSpecificOptions & IGlobalProgramOptions,
-  services: IServices,
-): Promise<void> {
+async function logActionLogic(parentLogger: TsLogger, options: LogCommandOptions, services: IServices): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: "logActionLogic" });
   const { fileRegistry, fs, projectConfig } = services;
 
@@ -274,7 +266,7 @@ async function logActionLogic(
 export function registerLogCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
 ): void {
   const logger = parentLogger.getSubLogger({ name: "registerLogCommand" });
 
@@ -285,7 +277,7 @@ export function registerLogCommand(
     .option("--status", "Check file status (missing, broken links, etc.)")
     .option("--since <date>", "Show files created since date (ISO format: 2025-08-01)")
     .action(async (tool: string | undefined, commandOptions: ILogCommandSpecificOptions) => {
-      const combinedOptions: ILogCommandSpecificOptions & IGlobalProgramOptions = {
+      const combinedOptions: LogCommandOptions = {
         ...commandOptions,
         tool,
         ...program.opts(),

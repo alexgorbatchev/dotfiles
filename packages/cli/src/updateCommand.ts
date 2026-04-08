@@ -10,12 +10,15 @@ import type {
   IGlobalProgramOptions,
   IServices,
   IUpdateCommandSpecificOptions,
+  ServicesFactory,
 } from "./types";
 
 interface ILoadToolConfigSafelyResult {
   toolConfig: ToolConfig | null;
   exitCode: ExitCode;
 }
+
+type UpdateCommandOptions = IUpdateCommandSpecificOptions & IGlobalProgramOptions;
 
 /**
  * Completion metadata for the update command.
@@ -113,7 +116,7 @@ async function handleToolUpdate(
 export function registerUpdateCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
 ): void {
   const logger = parentLogger.getSubLogger({ name: "registerUpdateCommand" });
   program
@@ -121,7 +124,7 @@ export function registerUpdateCommand(
     .description("Updates a specified tool to its latest version.")
     .option("--shim-mode", "Run in shim mode with minimal output", false)
     .action(async (toolName: string, commandOptions: IUpdateCommandSpecificOptions) => {
-      const combinedOptions: IUpdateCommandSpecificOptions & IGlobalProgramOptions = {
+      const combinedOptions: UpdateCommandOptions = {
         ...commandOptions,
         ...program.opts(),
       };

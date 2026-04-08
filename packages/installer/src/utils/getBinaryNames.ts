@@ -1,4 +1,4 @@
-import type { IBinaryConfig } from "@dotfiles/core";
+import type { ToolBinary } from "@dotfiles/core";
 import { normalizeBinaries } from "./normalizeBinaries";
 
 /**
@@ -13,7 +13,7 @@ import { normalizeBinaries } from "./normalizeBinaries";
  * @param binaries - Array of strings or IBinaryConfig objects, or undefined
  * @returns Array of binary names (e.g., ['rg', 'ripgrep'])
  */
-export function getBinaryNames(binaries: (string | IBinaryConfig)[] | undefined): string[] {
+export function getBinaryNames(binaries: ToolBinary[] | undefined): string[] {
   const normalizedBinaries = normalizeBinaries(binaries);
   return normalizedBinaries.map((config) => config.name);
 }

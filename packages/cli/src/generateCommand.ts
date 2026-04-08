@@ -3,7 +3,7 @@ import { exitCli, generateToolTypes } from "@dotfiles/utils";
 import path from "node:path";
 import { generateZshCompletion } from "./generateZshCompletion";
 import { messages } from "./log-messages";
-import type { IGlobalProgram, IGlobalProgramOptions, IServices } from "./types";
+import type { IGlobalProgram, IGlobalProgramOptions, IServices, ServicesFactory } from "./types";
 
 // Re-export the completion metadata for external use
 export * from "./generateCommandCompletion";
@@ -44,7 +44,7 @@ async function generateCliCompletions(logger: TsLogger, services: IServices, too
 export function registerGenerateCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
 ): void {
   const logger = parentLogger.getSubLogger({ name: "registerGenerateCommand" });
   program

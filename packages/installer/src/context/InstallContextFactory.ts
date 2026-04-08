@@ -37,13 +37,15 @@ interface ICreateBaseInstallContextOptions {
   installEnv?: Record<string, string | undefined>;
 }
 
+type InstallEventHandler = (event: InstallEvent) => Promise<void>;
+
 interface IInstallContextFactoryDependencies {
   projectConfig: ProjectConfig;
   systemInfo: ISystemInfo;
   resolvedFileSystem: IResolvedFileSystem;
   fileSystem: TrackedFileSystem;
   $shell: Shell;
-  emitInstallEvent: (event: InstallEvent) => Promise<void>;
+  emitInstallEvent: InstallEventHandler;
 }
 
 export class InstallContextFactory {
@@ -52,7 +54,7 @@ export class InstallContextFactory {
   private readonly resolvedFileSystem: IResolvedFileSystem;
   private readonly fileSystem: TrackedFileSystem;
   private readonly $shell: Shell;
-  private readonly emitInstallEvent: (event: InstallEvent) => Promise<void>;
+  private readonly emitInstallEvent: InstallEventHandler;
 
   constructor(dependencies: IInstallContextFactoryDependencies) {
     this.projectConfig = dependencies.projectConfig;

@@ -1,6 +1,15 @@
 import { createSafeLogMessage } from "@dotfiles/logger";
 import { ShellError } from "./ShellError";
-import type { Shell, ShellCommand, ShellOptions, ShellResult } from "./types";
+import type {
+  Shell,
+  ShellCommand,
+  ShellCommandInput,
+  ShellCommandOnFulfilled,
+  ShellCommandOnRejected,
+  ShellCommandThenResult,
+  ShellOptions,
+  ShellResult,
+} from "./types";
 
 /**
  * Creates a shell instance with optional default options.
@@ -12,8 +21,11 @@ import type { Shell, ShellCommand, ShellOptions, ShellResult } from "./types";
  * const text = await $`cat file.txt`.cwd('/tmp').text();
  * ```
  */
+type EnvironmentEntry = [string, string];
+type LineHandler = (line: string) => void;
+
 export function createShell(defaultOptions: ShellOptions = {}): Shell {
-  const shell: Shell = (first: TemplateStringsArray | string, ...values: unknown[]): ShellCommand => {
+  const shell: Shell = (first: ShellCommandInput, ...values: unknown[]): ShellCommand => {
     const command = typeof first === "string" ? first : reconstructCommand(first, values);
     return createShellCommand(command, defaultOptions);
   };
@@ -71,7 +83,7 @@ function createShellCommand(command: string, options: ShellOptions): ShellComman
 
     async json<T = unknown>(): Promise<T> {
       const result = await execute();
-      return JSON.parse(result.stdout) as T;
+      return JSON.parse(result.stdout);
     },
 
     async lines(): Promise<string[]> {
@@ -86,9 +98,9 @@ function createShellCommand(command: string, options: ShellOptions): ShellComman
 
     // oxlint-disable-next-line unicorn/no-thenable -- Required for PromiseLike interface to enable await syntax
     then<TResult1 = ShellResult, TResult2 = never>(
-      onfulfilled?: ((value: ShellResult) => TResult1 | PromiseLike<TResult1>) | null,
-      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
-    ): Promise<TResult1 | TResult2> {
+      onfulfilled?: ShellCommandOnFulfilled<TResult1>,
+      onrejected?: ShellCommandOnRejected<TResult2>,
+    ): ShellCommandThenResult<TResult1, TResult2> {
       return execute().then(onfulfilled, onrejected);
     },
   };
@@ -113,7 +125,9 @@ async function executeCommand(command: string, options: ShellOptions): Promise<S
   }
 
   // Build environment - merge with process.env
-  const mergedEnv: Record<string, string> = { ...process.env } as Record<string, string>;
+  const mergedEnv: Record<string, string> = Object.fromEntries(
+    Object.entries(process.env).filter((entry): entry is EnvironmentEntry => typeof entry[1] === "string"),
+  );
   if (env) {
     for (const [key, value] of Object.entries(env)) {
       if (value === undefined) {
@@ -149,7 +163,7 @@ async function executeCommand(command: string, options: ShellOptions): Promise<S
 /**
  * Collects a readable stream into a string, optionally logging each line in real-time.
  */
-async function collectStream(stream: ReadableStream<Uint8Array>, onLine?: (line: string) => void): Promise<string> {
+async function collectStream(stream: ReadableStream<Uint8Array>, onLine?: LineHandler): Promise<string> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   const chunks: string[] = [];

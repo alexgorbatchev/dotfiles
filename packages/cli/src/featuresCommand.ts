@@ -1,7 +1,7 @@
 import type { TsLogger } from "@dotfiles/logger";
 import { exitCli } from "@dotfiles/utils";
 import { messages } from "./log-messages";
-import type { IBaseCommandOptions, ICommandCompletionMeta, IGlobalProgram, IServices } from "./types";
+import type { IBaseCommandOptions, ICommandCompletionMeta, IGlobalProgram, IServices, ServicesFactory } from "./types";
 
 /**
  * Completion metadata for the features command.
@@ -47,7 +47,7 @@ async function catalogActionLogic(
 export function registerFeaturesCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
 ): void {
   const logger = parentLogger.getSubLogger({ name: "registerFeaturesCommand" });
 

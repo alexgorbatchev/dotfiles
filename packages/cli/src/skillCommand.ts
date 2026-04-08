@@ -4,7 +4,7 @@ import { exitCli, ExitCode, getCliBinPath } from "@dotfiles/utils";
 import { cp } from "node:fs/promises";
 import path from "node:path";
 import { messages } from "./log-messages";
-import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, IServices } from "./types";
+import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, ServicesFactory } from "./types";
 
 export const SKILL_COMMAND_COMPLETION: ICommandCompletionMeta = {
   name: "skill",
@@ -12,6 +12,8 @@ export const SKILL_COMMAND_COMPLETION: ICommandCompletionMeta = {
   hasPositionalArg: true,
   positionalArgDescription: "target directory for skill folder",
 };
+
+type SkillCommandOptions = { targetPath: string } & IGlobalProgramOptions;
 
 function getSkillPath(): string {
   const cliBinPath = getCliBinPath();
@@ -61,10 +63,7 @@ async function copySkill(parentLogger: TsLogger, targetPath: string, dryRun: boo
   }
 }
 
-async function skillActionLogic(
-  parentLogger: TsLogger,
-  options: { targetPath: string } & IGlobalProgramOptions,
-): Promise<void> {
+async function skillActionLogic(parentLogger: TsLogger, options: SkillCommandOptions): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: "skillActionLogic" });
   const { targetPath, dryRun } = options;
 
@@ -77,7 +76,7 @@ async function skillActionLogic(
 export function registerSkillCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  _servicesFactory: () => Promise<IServices>,
+  _servicesFactory: ServicesFactory,
 ): void {
   const logger = parentLogger.getSubLogger({ name: "registerSkillCommand" });
 
@@ -85,7 +84,7 @@ export function registerSkillCommand(
     .command("skill <path>")
     .description("Copy the dotfiles skill folder to the target directory")
     .action(async (targetPath: string) => {
-      const combinedOptions: { targetPath: string } & IGlobalProgramOptions = {
+      const combinedOptions: SkillCommandOptions = {
         targetPath: path.resolve(targetPath),
         ...program.opts(),
       };

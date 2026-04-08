@@ -26,6 +26,10 @@ const customNpmConfigSchema = z.object({
 type CustomNpmParams = z.infer<typeof customNpmParamsSchema>;
 type CustomNpmConfig = z.infer<typeof customNpmConfigSchema>;
 
+interface ICustomInstallMetadata {
+  npmVersion: string;
+}
+
 // Module augmentation using inferred types (as plugin packages would do)
 declare module "@dotfiles/core" {
   interface IToolConfigBuilder {
@@ -47,7 +51,7 @@ describe("InstallerPluginRegistry - TypeScript Integration", () => {
 
   test("IToolConfigBuilder with custom plugin method - TypeScript types work correctly", async () => {
     // Create a custom plugin using module-level schemas and types
-    const customPlugin: IInstallerPlugin<"custom-npm", CustomNpmParams, CustomNpmConfig, { npmVersion: string }> = {
+    const customPlugin: IInstallerPlugin<"custom-npm", CustomNpmParams, CustomNpmConfig, ICustomInstallMetadata> = {
       method: "custom-npm",
       displayName: "Custom NPM Installer",
       version: "1.0.0",
@@ -55,7 +59,7 @@ describe("InstallerPluginRegistry - TypeScript Integration", () => {
       toolConfigSchema: customNpmConfigSchema,
       supportsUpdate: () => true,
       install: async () => {
-        const result: InstallResult<{ npmVersion: string }> = {
+        const result: InstallResult<ICustomInstallMetadata> = {
           success: true,
           binaryPaths: ["/usr/local/bin/custom-tool"],
           metadata: { npmVersion: "1.0.0" },

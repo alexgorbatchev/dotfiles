@@ -9,6 +9,7 @@ import type {
   IGlobalProgram,
   IGlobalProgramOptions,
   IServices,
+  ServicesFactory,
 } from "./types";
 
 /**
@@ -23,6 +24,8 @@ export const CLEANUP_COMMAND_COMPLETION: ICommandCompletionMeta = {
     { flag: "--all", description: "Cleanup all tracked files" },
   ],
 };
+
+type CleanupCommandOptions = ICleanupCommandSpecificOptions & IGlobalProgramOptions;
 
 async function cleanupAllTrackedFiles(
   logger: TsLogger,
@@ -90,7 +93,7 @@ async function cleanupSpecificType(
 async function registryBasedCleanup(
   logger: TsLogger,
   services: IServices,
-  options: ICleanupCommandSpecificOptions & IGlobalProgramOptions,
+  options: CleanupCommandOptions,
 ): Promise<void> {
   const { fs, fileRegistry } = services;
   const { dryRun, tool, type, all } = options;
@@ -165,7 +168,7 @@ async function removeFile(
 
 async function cleanupActionLogic(
   logger: TsLogger,
-  options: ICleanupCommandSpecificOptions & IGlobalProgramOptions,
+  options: CleanupCommandOptions,
   services: IServices,
 ): Promise<void> {
   const { dryRun, tool, type, all } = options;
@@ -187,7 +190,7 @@ async function cleanupActionLogic(
 export function registerCleanupCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
 ): void {
   const logger = parentLogger.getSubLogger({ name: "registerCleanupCommand" });
   program
@@ -197,7 +200,7 @@ export function registerCleanupCommand(
     .option("--type <type>", "Remove files of specific type only (registry-based)")
     .option("--all", "Remove all tracked files (registry-based)")
     .action(async (options: ICleanupCommandSpecificOptions) => {
-      const combinedOptions: ICleanupCommandSpecificOptions & IGlobalProgramOptions = { ...options, ...program.opts() };
+      const combinedOptions: CleanupCommandOptions = { ...options, ...program.opts() };
       const services = await servicesFactory();
       await cleanupActionLogic(logger, combinedOptions, services);
     });

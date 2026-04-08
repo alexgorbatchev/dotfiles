@@ -1,4 +1,12 @@
-import type { ShellCompletionConfigInput, ShellScript } from "@dotfiles/core";
+import type {
+  Architecture,
+  IPlatformConfigBuilder as PlatformConfigBuilderInterface,
+  IPlatformInstallFunction,
+  ShellCompletionConfigInput,
+  ShellConfiguratorAsyncCallback,
+  ShellConfiguratorCallback,
+  ShellScript,
+} from "@dotfiles/core";
 import type { Resolvable } from "@dotfiles/unwrap-value";
 
 /**
@@ -70,3 +78,7 @@ export interface InternalShellConfigs {
  * Supported shell types as keys of the internal configuration storage.
  */
 export type ShellTypeKey = keyof InternalShellConfigs;
+export type MaybePromise<T> = T | Promise<T>;
+export type ShellConfiguratorHandler = ShellConfiguratorCallback | ShellConfiguratorAsyncCallback;
+export type PlatformConfigureCallback = (install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, "bin">;
+export type PlatformSelectorInput = Architecture | PlatformConfigureCallback;

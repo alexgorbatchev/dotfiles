@@ -2,6 +2,7 @@ import type { ISystemInfo, ProjectConfig, ToolConfig } from "@dotfiles/core";
 import type { IResolvedFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
 import type { IConfigService } from "./IConfigService";
+import type { LoadToolConfigByBinaryResult } from "./types";
 import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
   loadToolConfigByBinary as actualLoadToolConfigByBinary,
@@ -39,7 +40,7 @@ export class ConfigService implements IConfigService {
     fs: IResolvedFileSystem,
     projectConfig: ProjectConfig,
     systemInfo: ISystemInfo,
-  ): Promise<ToolConfig | undefined | { error: string }> {
+  ): Promise<LoadToolConfigByBinaryResult> {
     return actualLoadToolConfigByBinary(logger, binaryName, toolConfigsDir, fs, projectConfig, systemInfo);
   }
 

@@ -12,17 +12,9 @@ import type {
   InstallMethod,
   IToolConfigBuilder as ToolConfigBuilderContract,
   IToolConfigContext,
-  ToolConfig,
 } from "@dotfiles/core";
 import type { TsLogger } from "@dotfiles/logger";
 import { IToolConfigBuilder } from "@dotfiles/tool-config-builder";
-
-type ConfigureToolFnResult =
-  | ToolConfig
-  | ToolConfigBuilderContract
-  | Omit<ToolConfigBuilderContract, "bin">
-  | undefined
-  | Promise<ToolConfig | ToolConfigBuilderContract | Omit<ToolConfigBuilderContract, "bin"> | undefined>;
 
 /**
  * Define a tool configuration with type-safe install method selection.
@@ -46,30 +38,11 @@ type ConfigureToolFnResult =
  * );
  * ```
  */
-export function defineTool(
-  fn: (
-    /**
-     * Function to select the installation method and provide type-checked parameters.
-     * Call with a method name and params for installers, or call with no args for manual tools.
-     * Returns a fluent builder to configure binaries, versions, hooks, and shell settings.
-     *
-     * @inheritdoc
-     */
-    install: InstallFunction,
-    /**
-     * Context object providing access to paths, configuration, and system information.
-     * Use `ctx.projectConfig.paths.*` for configured directory paths.
-     */
-    ctx: IToolConfigContext,
-  ) => ConfigureToolFnResult,
-): AsyncConfigureTool {
-  return async (
-    install: InstallFunction,
-    ctx: IToolConfigContext,
-  ): Promise<ToolConfig | ToolConfigBuilderContract | Omit<ToolConfigBuilderContract, "bin"> | undefined> => {
+export function defineTool(fn: AsyncConfigureTool): AsyncConfigureTool {
+  return async (install: InstallFunction, ctx: IToolConfigContext) => {
     const result = fn(install, ctx);
     if (result instanceof Promise) {
-      return result;
+      return await result;
     }
     return result;
   };

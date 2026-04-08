@@ -44,6 +44,9 @@ export interface IEnvDeleteOptions {
   force?: boolean;
 }
 
+type EnvCreateCommandOptions = IEnvCreateOptions & IGlobalProgramOptions;
+type EnvDeleteCommandOptions = IEnvDeleteOptions & IGlobalProgramOptions;
+
 /**
  * Prompts the user for confirmation.
  */
@@ -61,11 +64,7 @@ async function confirmDeletion(envDir: string): Promise<boolean> {
   });
 }
 
-async function createActionLogic(
-  logger: TsLogger,
-  envName: string,
-  _options: IEnvCreateOptions & IGlobalProgramOptions,
-): Promise<void> {
+async function createActionLogic(logger: TsLogger, envName: string, _options: EnvCreateCommandOptions): Promise<void> {
   const fs = new NodeFileSystem();
   const manager = new VirtualEnvManager(logger, fs);
   const cwd = process.cwd();
@@ -88,11 +87,7 @@ async function createActionLogic(
   logger.info(messages.envConfigPath(configPath));
 }
 
-async function deleteActionLogic(
-  logger: TsLogger,
-  envName: string,
-  options: IEnvDeleteOptions & IGlobalProgramOptions,
-): Promise<void> {
+async function deleteActionLogic(logger: TsLogger, envName: string, options: EnvDeleteCommandOptions): Promise<void> {
   const fs = new NodeFileSystem();
   const manager = new VirtualEnvManager(logger, fs);
   const cwd = process.cwd();
@@ -138,7 +133,7 @@ export function registerEnvCommand(parentLogger: TsLogger, program: IGlobalProgr
     .description("Create a new virtual environment")
     .action(async (name?: string) => {
       const envName = name ?? DEFAULT_ENV_NAME;
-      const combinedOptions: IEnvCreateOptions & IGlobalProgramOptions = program.opts();
+      const combinedOptions: EnvCreateCommandOptions = program.opts();
       await createActionLogic(logger, envName, combinedOptions);
     });
 
@@ -149,7 +144,7 @@ export function registerEnvCommand(parentLogger: TsLogger, program: IGlobalProgr
     .option("--force", "Skip confirmation prompt", false)
     .action(async (name: string | undefined, options: IEnvDeleteOptions) => {
       const envName = name ?? DEFAULT_ENV_NAME;
-      const combinedOptions: IEnvDeleteOptions & IGlobalProgramOptions = { ...options, ...program.opts() };
+      const combinedOptions: EnvDeleteCommandOptions = { ...options, ...program.opts() };
       await deleteActionLogic(logger, envName, combinedOptions);
     });
 }

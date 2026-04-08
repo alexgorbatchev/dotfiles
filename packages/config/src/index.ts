@@ -6,3 +6,4 @@ export * from "./loadConfig";
 export * from "./loadToolConfigs";
 export * from "./stagedProjectConfigLoader";
 export * from "./tsConfigLoader";
+export * from "./types";

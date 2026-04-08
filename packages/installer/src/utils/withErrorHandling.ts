@@ -2,6 +2,8 @@ import type { TsLogger } from "@dotfiles/logger";
 import type { InstallResult } from "../types";
 import { messages } from "./log-messages";
 
+type ErrorHandledOperation<T extends InstallResult> = () => Promise<T>;
+
 /**
  * Wraps installation operations with consistent error handling and logging.
  * Catches any errors thrown by the operation and converts them to failed InstallResult.
@@ -22,7 +24,7 @@ export async function withInstallErrorHandling<T extends InstallResult>(
   methodName: string,
   _toolName: string,
   logger: TsLogger,
-  operation: () => Promise<T>,
+  operation: ErrorHandledOperation<T>,
 ): Promise<T> {
   try {
     return await operation();

@@ -23,6 +23,9 @@ function getRootCause(error: unknown): unknown {
   return current;
 }
 
+type BuildOperation = () => Promise<unknown>;
+type BuildFinallyCallback = () => Promise<unknown> | unknown;
+
 function logErrorDetails(error: unknown): void {
   if (isError(error)) {
     if (error.stack) {
@@ -37,8 +40,8 @@ function logErrorDetails(error: unknown): void {
 }
 
 export async function handleBuildError(
-  operation: () => Promise<unknown>,
-  finallyCallback?: () => Promise<unknown> | unknown,
+  operation: BuildOperation,
+  finallyCallback?: BuildFinallyCallback,
 ): Promise<void> {
   try {
     await operation();

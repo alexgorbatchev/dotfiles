@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import path from "node:path";
 import { loadTsConfig } from "../tsConfigLoader";
 
+type CleanupFn = () => Promise<void>;
+
 describe("tsConfigLoader context", () => {
   const mockSystemInfo: ISystemInfo = {
     platform: Platform.MacOS,
@@ -16,7 +18,7 @@ describe("tsConfigLoader context", () => {
 
   let logger: TestLogger;
   let tempDir: string;
-  let cleanupFn: (() => Promise<void>) | undefined;
+  let cleanupFn: CleanupFn | undefined;
 
   beforeEach(async () => {
     logger = new TestLogger();

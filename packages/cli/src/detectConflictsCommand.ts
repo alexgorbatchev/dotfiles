@@ -5,7 +5,7 @@ import type { TsLogger } from "@dotfiles/logger";
 import { exitCli, ExitCode } from "@dotfiles/utils";
 import path from "node:path";
 import { messages } from "./log-messages";
-import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, IServices } from "./types";
+import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, IServices, ServicesFactory } from "./types";
 
 /**
  * Completion metadata for the detect-conflicts command.
@@ -15,13 +15,18 @@ export const DETECT_CONFLICTS_COMMAND_COMPLETION: ICommandCompletionMeta = {
   description: "Detect file conflicts before generating",
 };
 
+interface IDetectConflictsResult {
+  toolConfigs: ToolConfig[];
+  exitCode: ExitCode;
+}
+
 async function loadToolConfigs(
   logger: TsLogger,
   projectConfig: ProjectConfig,
   fs: IResolvedFileSystem,
   configService: IConfigService,
   systemInfo: ISystemInfo,
-): Promise<{ toolConfigs: ToolConfig[]; exitCode: ExitCode }> {
+): Promise<IDetectConflictsResult> {
   try {
     const toolConfigsRecord = await configService.loadToolConfigs(
       logger,
@@ -154,7 +159,7 @@ export async function detectConflictsActionLogic(
 export function registerDetectConflictsCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
 ): void {
   const logger = parentLogger.getSubLogger({ name: "registerDetectConflictsCommand" });
   program

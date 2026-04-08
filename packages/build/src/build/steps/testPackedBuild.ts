@@ -21,6 +21,8 @@ interface EndpointVerification {
   validateContent?: (content: string) => string | null;
 }
 
+type HealthResponseLike = { success?: boolean };
+
 /**
  * Tests the built package by:
  * 1. Running `npm pack` on .dist to create a tarball
@@ -160,7 +162,7 @@ async function verifyApiEndpoint(port: number): Promise<void> {
     label: "Dashboard API",
   });
 
-  const data = JSON.parse(content) as { success?: boolean };
+  const data: HealthResponseLike = JSON.parse(content);
   if (!data.success) {
     throw new BuildError("Dashboard API health check failed");
   }

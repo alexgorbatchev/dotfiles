@@ -7,6 +7,7 @@ import { expandToolConfigPath, resolvePlatformConfig } from "@dotfiles/utils";
 import path from "node:path";
 import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from "./ISymlinkGenerator";
 import { messages } from "./log-messages";
+import type { ToolConfigWithSymlinks } from "./types";
 
 /** Configuration for a single symlink mapping from source to target */
 interface ISymlinkConfig {
@@ -209,7 +210,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolConfig: ToolConfig | undefined,
     toolName: string,
     logger: TsLogger,
-  ): toolConfig is ToolConfig & { symlinks: NonNullable<ToolConfig["symlinks"]> } {
+  ): toolConfig is ToolConfigWithSymlinks {
     const methodLogger = logger.getSubLogger({ name: "shouldProcessTool" });
     if (!toolConfig) {
       methodLogger.debug(messages.generate.missingToolConfig(toolName));

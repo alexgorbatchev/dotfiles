@@ -1,4 +1,4 @@
-import { hasLoggingShell, loggingShellBrand, type Shell } from "@dotfiles/core";
+import { hasLoggingShell, loggingShellBrand, type Shell, type ShellCommandInput } from "@dotfiles/core";
 
 /**
  * Creates a configured shell instance that automatically applies the provided environment variables
@@ -13,7 +13,7 @@ import { hasLoggingShell, loggingShellBrand, type Shell } from "@dotfiles/core";
  */
 export function createConfiguredShell($shell: Shell, env: Record<string, string | undefined>): Shell {
   // Create a wrapper function that applies the environment to every command
-  const configuredShell = (first: TemplateStringsArray | string, ...expressions: unknown[]) => {
+  const configuredShell = (first: ShellCommandInput, ...expressions: unknown[]) => {
     if (typeof first === "string") {
       return $shell(first).env(env);
     }

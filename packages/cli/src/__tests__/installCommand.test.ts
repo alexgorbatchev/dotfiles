@@ -12,6 +12,8 @@ import { messages } from "../log-messages";
 import type { IGlobalProgram, IServices } from "../types";
 import { createCliTestSetup } from "./createCliTestSetup";
 
+type StderrChunk = string | Uint8Array;
+
 const createMockConfigService = (): MockedInterface<IConfigService> => {
   const result: MockedInterface<IConfigService> = {
     loadSingleToolConfig: mock(async () => undefined),
@@ -167,7 +169,7 @@ describe("installCommand", () => {
   test("should output unhandled error to stderr in shim mode", async () => {
     mockConfigService.loadSingleToolConfig.mockRejectedValue(new Error("Config file corrupted"));
 
-    const mockStderrWrite = mock((_chunk: string | Uint8Array) => true);
+    const mockStderrWrite = mock((_chunk: StderrChunk) => true);
     const originalStderrWrite = process.stderr.write;
     process.stderr.write = mockStderrWrite as typeof process.stderr.write;
 

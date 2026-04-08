@@ -51,7 +51,7 @@ import { registerLogCommand } from "./logCommand";
 import { populateMemFsForDryRun } from "./populateMemFsForDryRun";
 import { createBaseRuntimeContext } from "./runtime/createBaseRuntimeContext";
 import { registerSkillCommand } from "./skillCommand";
-import type { IGlobalProgram, IGlobalProgramOptions, IServices } from "./types";
+import type { IGlobalProgram, IGlobalProgramOptions, IServices, ServicesFactory } from "./types";
 import { registerUpdateCommand } from "./updateCommand";
 
 // Re-export public API for library consumers
@@ -168,12 +168,7 @@ function initializeDownloadCache(
   return downloadCache;
 }
 
-function createTrackedFileSystems(
-  parentLogger: TsLogger,
-  fs: IResolvedFileSystem,
-  fileRegistry: IFileRegistry,
-  projectConfig: ProjectConfig,
-): {
+interface ITrackedFileSystems {
   shimTrackedFs: TrackedFileSystem;
   shellInitTrackedFs: TrackedFileSystem;
   symlinkTrackedFs: TrackedFileSystem;
@@ -181,7 +176,14 @@ function createTrackedFileSystems(
   installerTrackedFs: TrackedFileSystem;
   catalogTrackedFs: TrackedFileSystem;
   completionTrackedFs: TrackedFileSystem;
-} {
+}
+
+function createTrackedFileSystems(
+  parentLogger: TsLogger,
+  fs: IResolvedFileSystem,
+  fileRegistry: IFileRegistry,
+  projectConfig: ProjectConfig,
+): ITrackedFileSystems {
   const shimTrackedFs = new TrackedFileSystem(
     parentLogger,
     fs,
@@ -525,7 +527,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 export function registerAllCommands(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
 ) {
   const logger = parentLogger.getSubLogger({ name: "registerAllCommands" });
   registerBinCommand(logger, program, servicesFactory);

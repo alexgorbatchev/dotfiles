@@ -1,10 +1,12 @@
+type PermissionMode = string | number;
+
 /**
  * Convert numeric file permissions to human-readable format
  *
  * @param mode - The numeric mode (e.g., 493, '755', 0o755)
  * @returns Human-readable permission string (e.g., 'rwxr-xr-x')
  */
-export function formatPermissions(mode: string | number): string {
+export function formatPermissions(mode: PermissionMode): string {
   // Convert to number if string
   const numericMode = typeof mode === "string" ? parseInt(mode, 8) : mode;
 

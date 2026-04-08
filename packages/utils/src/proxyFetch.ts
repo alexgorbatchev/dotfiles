@@ -8,6 +8,8 @@ export interface ProxyFetchConfig {
   port: number;
 }
 
+type ProxyFetchInput = RequestInfo | URL;
+
 /**
  * Fetch function that routes requests through an HTTP proxy when enabled.
  *
@@ -31,7 +33,7 @@ export interface ProxyFetchConfig {
  * ```
  */
 export async function proxyFetch(
-  input: RequestInfo | URL,
+  input: ProxyFetchInput,
   init: RequestInit | undefined,
   proxyConfig: ProxyFetchConfig | undefined,
 ): Promise<Response> {

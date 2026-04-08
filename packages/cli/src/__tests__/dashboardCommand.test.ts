@@ -7,14 +7,23 @@ import { type BrowserOpener, type DashboardServerFactory, registerDashboardComma
 import type { IGlobalProgram, IServices } from "../types";
 import { createCliTestSetup } from "./createCliTestSetup";
 
+type ServicesGetter = () => IServices;
+type StartServer = () => Promise<boolean>;
+type StopServer = () => Promise<void>;
+
+interface IDashboardServerLocation {
+  port: number;
+  host: string;
+}
+
 describe("dashboardCommand", () => {
   let program: IGlobalProgram;
   let logger: TestLogger;
   let mockOpenBrowser: ReturnType<typeof mock<BrowserOpener>>;
-  let mockServerStart: ReturnType<typeof mock<() => Promise<boolean>>>;
-  let mockServerStop: ReturnType<typeof mock<() => Promise<void>>>;
+  let mockServerStart: ReturnType<typeof mock<StartServer>>;
+  let mockServerStop: ReturnType<typeof mock<StopServer>>;
   let mockCreateServer: ReturnType<typeof mock<DashboardServerFactory>>;
-  let createServicesMock: () => IServices;
+  let createServicesMock: ServicesGetter;
 
   const runCommand = (args: string[]) => program.parseAsync(["dashboard", ...args], { from: "user" });
 
@@ -32,7 +41,7 @@ describe("dashboardCommand", () => {
     };
 
     mockCreateServer = mock(
-      (_logger: TsLogger, _services: IDashboardServices, options: { port: number; host: string }) => {
+      (_logger: TsLogger, _services: IDashboardServices, options: IDashboardServerLocation) => {
         // Update getUrl to use actual options
         return {
           ...mockServer,

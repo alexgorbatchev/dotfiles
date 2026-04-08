@@ -7,6 +7,14 @@ import assert from "node:assert";
 import { messages } from "../log-messages";
 import { IToolConfigBuilder } from "../toolConfigBuilder";
 
+interface ITestCompletionsContext {
+  version: string;
+}
+
+interface ICompletionCommandResult {
+  cmd: string;
+}
+
 // Shared noop hooks for testing - defined at module scope to avoid lint warnings
 const noopHook: AsyncInstallHook = async () => {};
 const noopHook2: AsyncInstallHook = async () => {};
@@ -14,7 +22,7 @@ const noopHook3: AsyncInstallHook = async () => {};
 const noopHook4: AsyncInstallHook = async () => {};
 
 // Shared completions callback for testing
-const testCompletionsCallback = (ctx: { version: string }): { cmd: string } => ({
+const testCompletionsCallback = (ctx: ITestCompletionsContext): ICompletionCommandResult => ({
   cmd: `tool completions --version ${ctx.version}`,
 });
 

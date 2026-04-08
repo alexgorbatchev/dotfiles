@@ -8,6 +8,8 @@ import path from "node:path";
 import { messages } from "./log-messages";
 import type { IShellStorage, ShellTypeKey } from "./types";
 
+type ShellPathGuard<T extends Record<string, string>> = "PATH" extends keyof T ? never : T;
+
 /**
  * Implementation of the shell configurator interface.
  * Handles the accumulation of shell configuration settings for a specific shell type.
@@ -36,12 +38,10 @@ export class ShellConfigurator implements IShellConfigurator<string> {
   }
 
   /** @inheritdoc */
-  public env<T extends Record<string, string>>(
-    values: "PATH" extends keyof T ? ["ERROR: Use shell.path() to modify PATH"] : T,
-  ): IShellConfigurator<string> {
+  public env<T extends Record<string, string>>(values: ShellPathGuard<T>): IShellConfigurator<string> {
     this.storage.env = {
       ...this.storage.env,
-      ...(values as Record<string, string>),
+      ...values,
     };
     return this;
   }

@@ -16,6 +16,10 @@ import { createTestDirectories, type ITestDirectories } from "@dotfiles/testing-
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import assert from "node:assert";
 import path from "node:path";
+
+interface IInstallOutputLike {
+  output?: string;
+}
 import { z } from "zod";
 import { Installer } from "../Installer";
 import { HookExecutor } from "../utils/HookExecutor";
@@ -162,7 +166,7 @@ describe("Installer - Path Precedence (Real FS)", () => {
       assert.ok(result.success);
 
       // Verify that the output came from the real binary, not the shim
-      expect((result.metadata as { output?: string }).output).toBe("REAL_BINARY");
+      expect((result.metadata as IInstallOutputLike).output).toBe("REAL_BINARY");
     } finally {
       process.env["PATH"] = originalPath;
     }

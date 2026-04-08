@@ -1,5 +1,5 @@
 import type { ProjectConfig } from "@dotfiles/config";
-import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
+import type { ISystemInfo, IToolPathMapping, ToolConfig } from "@dotfiles/core";
 import { Architecture, Platform } from "@dotfiles/core";
 import { createMemFileSystem, type IMemFileSystemReturn } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
@@ -45,7 +45,7 @@ describe("CopyGenerator", () => {
     copyGenerator = new CopyGenerator(logger, mockFs.fs, projectConfig, systemInfo);
   });
 
-  const createToolConfig = (copies: Array<{ source: string; target: string }>): ToolConfig => ({
+  const createToolConfig = (copies: IToolPathMapping[]): ToolConfig => ({
     name: "test-tool",
     binaries: ["test-tool"],
     version: "1.0.0",

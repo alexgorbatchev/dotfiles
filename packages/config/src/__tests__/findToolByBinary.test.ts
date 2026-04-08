@@ -10,6 +10,8 @@ import assert from "node:assert";
 import path from "node:path";
 import { findToolByBinary, loadToolConfigByBinary } from "../loadToolConfigs";
 
+type CleanupFn = () => Promise<void>;
+
 describe("findToolByBinary", () => {
   let logger: TestLogger;
   let mockProjectConfig: ProjectConfig;
@@ -17,7 +19,7 @@ describe("findToolByBinary", () => {
   let realFs: NodeFileSystem;
   let resolvedFs: IResolvedFileSystem;
   let tempDir: string | undefined;
-  let cleanupFn: (() => Promise<void>) | undefined;
+  let cleanupFn: CleanupFn | undefined;
   let testCounter = 0;
 
   async function setupTest(): Promise<void> {
@@ -194,7 +196,7 @@ describe("loadToolConfigByBinary", () => {
   let realFs: NodeFileSystem;
   let resolvedFs: IResolvedFileSystem;
   let tempDir: string | undefined;
-  let cleanupFn: (() => Promise<void>) | undefined;
+  let cleanupFn: CleanupFn | undefined;
   let testCounter = 0;
 
   async function setupTest(): Promise<void> {

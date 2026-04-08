@@ -7,7 +7,7 @@ import { exitCli, ExitCode, replaceInFile } from "@dotfiles/utils";
 import { type IVersionChecker, VersionComparisonStatus } from "@dotfiles/version-checker";
 import path from "node:path";
 import { messages } from "./log-messages";
-import type { ICommandCompletionMeta, IGlobalProgram, IServices } from "./types";
+import type { ICommandCompletionMeta, IGlobalProgram, IServices, ServicesFactory } from "./types";
 
 /**
  * Completion metadata for the check-updates command.
@@ -208,7 +208,7 @@ export async function checkUpdatesActionLogic(
 export function registerCheckUpdatesCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
 ): void {
   const logger = parentLogger.getSubLogger({ name: "registerCheckUpdatesCommand" });
   program

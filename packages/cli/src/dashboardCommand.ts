@@ -3,7 +3,7 @@ import { createDashboardServer, type IDashboardServices } from "@dotfiles/dashbo
 import type { TsLogger } from "@dotfiles/logger";
 import { $ } from "bun";
 import { messages } from "./log-messages";
-import type { ICommandCompletionMeta, IGlobalProgram, IServices } from "./types";
+import type { ICommandCompletionMeta, IGlobalProgram, ServicesFactory } from "./types";
 
 /**
  * Completion metadata for the dashboard command.
@@ -47,7 +47,7 @@ const defaultOpenBrowser: BrowserOpener = async (url: string, platform: Platform
 export function registerDashboardCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
   deps: DashboardCommandDependencies = {},
 ) {
   const openBrowser = deps.openBrowser ?? defaultOpenBrowser;

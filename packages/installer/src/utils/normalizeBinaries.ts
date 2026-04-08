@@ -1,4 +1,4 @@
-import type { IBinaryConfig } from "@dotfiles/core";
+import type { IBinaryConfig, ToolBinary } from "@dotfiles/core";
 
 /**
  * Normalizes a mixed array of strings and IBinaryConfig objects to a consistent IBinaryConfig array.
@@ -16,7 +16,7 @@ import type { IBinaryConfig } from "@dotfiles/core";
  * @param binaries - Array of strings or IBinaryConfig objects, or undefined
  * @returns Array of IBinaryConfig objects with minimatch glob patterns for locating binaries
  */
-export function normalizeBinaries(binaries: (string | IBinaryConfig)[] | undefined): IBinaryConfig[] {
+export function normalizeBinaries(binaries: ToolBinary[] | undefined): IBinaryConfig[] {
   if (!binaries || binaries.length === 0) {
     return [];
   }

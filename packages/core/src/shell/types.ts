@@ -30,6 +30,11 @@ export interface ShellOptions {
   skipCommandLog?: boolean;
 }
 
+export type ShellCommandInput = TemplateStringsArray | string;
+export type ShellCommandOnFulfilled<TResult> = ((value: ShellResult) => TResult | PromiseLike<TResult>) | null;
+export type ShellCommandOnRejected<TResult> = ((reason: unknown) => TResult | PromiseLike<TResult>) | null;
+export type ShellCommandThenResult<TResult1, TResult2> = Promise<TResult1 | TResult2>;
+
 /**
  * A chainable shell command builder.
  * Supports fluent API: shell`cmd`.cwd('/tmp').env({FOO: 'bar'}).quiet().text()

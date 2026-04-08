@@ -1,5 +1,5 @@
 import type { ProjectConfig } from "@dotfiles/config";
-import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
+import type { ISystemInfo, IToolPathMapping, ToolConfig } from "@dotfiles/core";
 import { Architecture, Platform } from "@dotfiles/core";
 import { createMemFileSystem, type IMemFileSystemReturn, ResolvedFileSystem } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
@@ -49,7 +49,7 @@ describe("SymlinkGenerator", () => {
     symlinkGenerator = new SymlinkGenerator(logger, mockFs.fs, projectConfig, systemInfo);
   });
 
-  const createToolConfig = (symlinks: Array<{ source: string; target: string }>): ToolConfig => ({
+  const createToolConfig = (symlinks: IToolPathMapping[]): ToolConfig => ({
     name: "test-tool",
     binaries: ["test-tool"],
     version: "1.0.0",

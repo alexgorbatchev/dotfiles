@@ -9,6 +9,7 @@ import type {
   IGlobalProgram,
   IGlobalProgramOptions,
   IServices,
+  ServicesFactory,
 } from "./types";
 
 /**
@@ -28,6 +29,7 @@ interface ITreeNode {
   children?: ITreeNode[];
 }
 
+type FilesCommandOptions = IFilesCommandSpecificOptions & IGlobalProgramOptions;
 type PrintFunction = (message: string) => void;
 
 async function buildTreeFromDirectory(logger: TsLogger, fs: IFileSystem, dirPath: string): Promise<ITreeNode[]> {
@@ -132,7 +134,7 @@ async function displayTreeForTool(
 async function filesActionLogic(
   logger: TsLogger,
   toolName: string,
-  _options: IFilesCommandSpecificOptions & IGlobalProgramOptions,
+  _options: FilesCommandOptions,
   services: IServices,
   print: PrintFunction,
 ): Promise<void> {
@@ -167,7 +169,7 @@ async function filesActionLogic(
 export function registerFilesCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
   // oxlint-disable-next-line no-console: default print function
   print: PrintFunction = console.log,
 ): void {
@@ -177,7 +179,7 @@ export function registerFilesCommand(
     .command("files <toolName>")
     .description("Display a tree view of files in the tool installation directory")
     .action(async (toolName: string, commandOptions: IFilesCommandSpecificOptions) => {
-      const combinedOptions: IFilesCommandSpecificOptions & IGlobalProgramOptions = {
+      const combinedOptions: FilesCommandOptions = {
         ...commandOptions,
         ...program.opts(),
       };

@@ -1,4 +1,4 @@
-import type { ISystemInfo, PlatformConfig, PlatformConfigEntry, ToolConfig } from "@dotfiles/core";
+import type { ISystemInfo, PlatformConfig, PlatformConfigEntry, ShellType, ToolConfig } from "@dotfiles/core";
 import { Architecture, hasArchitecture, hasPlatform, Platform } from "@dotfiles/core";
 
 /**
@@ -66,8 +66,8 @@ function initializeShellConfigs(finalConfig: ToolConfig): void {
 
 function mergeShellConfig(
   shellConfigs: NonNullable<ToolConfig["shellConfigs"]>,
-  shellType: "zsh" | "bash" | "powershell",
-  platformShellConfig: NonNullable<ToolConfig["shellConfigs"]>[typeof shellType],
+  shellType: ShellType,
+  platformShellConfig: NonNullable<ToolConfig["shellConfigs"]>[ShellType],
 ): void {
   if (!platformShellConfig) return;
 

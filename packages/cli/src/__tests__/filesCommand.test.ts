@@ -9,6 +9,8 @@ import { messages } from "../log-messages";
 import type { IGlobalProgram, IServices } from "../types";
 import { createCliTestSetup } from "./createCliTestSetup";
 
+type PrintMessage = (message: string) => void;
+
 const createMockConfigService = (): MockedInterface<IConfigService> => ({
   loadSingleToolConfig: mock(async () => undefined),
   loadToolConfigs: mock(async () => ({})),
@@ -22,7 +24,7 @@ describe("filesCommand", () => {
   let mockServices: IServices;
   let mockConfigService: MockedInterface<IConfigService>;
   let printedOutput: string[];
-  let mockPrint: (message: string) => void;
+  let mockPrint: PrintMessage;
 
   const toolConfig: ToolConfig = {
     name: "test-tool",

@@ -7,6 +7,7 @@ import { expandToolConfigPath, resolvePlatformConfig } from "@dotfiles/utils";
 import path from "node:path";
 import type { CopyOperationResult, ICopyGenerator, IGenerateCopiesOptions } from "./ICopyGenerator";
 import { messages } from "./log-messages";
+import type { ToolConfigWithCopies } from "./types";
 
 /** Configuration for a single copy mapping from source to target */
 interface ICopyConfig {
@@ -16,6 +17,7 @@ interface ICopyConfig {
 
 /** Status values for successful copy creation operations */
 type CopyCreationStatus = "created" | "updated_target" | "backed_up";
+type CopyCreationResult = { failed: false; status: CopyCreationStatus } | { failed: true; error: string };
 
 /**
  * Service that copies files for dotfiles.
@@ -72,7 +74,7 @@ export class CopyGenerator implements ICopyGenerator {
     toolConfig: ToolConfig | undefined,
     toolName: string,
     logger: TsLogger,
-  ): toolConfig is ToolConfig & { copies: NonNullable<ToolConfig["copies"]> } {
+  ): toolConfig is ToolConfigWithCopies {
     const methodLogger = logger.getSubLogger({ name: "shouldProcessTool" });
     if (!toolConfig) {
       methodLogger.debug(messages.copy.missingToolConfig(toolName));
@@ -156,7 +158,7 @@ export class CopyGenerator implements ICopyGenerator {
     toolFs: IFileSystem,
     shouldBackup: boolean,
     logger: TsLogger,
-  ): Promise<{ failed: false; status: CopyCreationStatus } | { failed: true; error: string }> {
+  ): Promise<CopyCreationResult> {
     if (shouldBackup) {
       const backupPath = `${targetAbsPath}.bak`;
       try {

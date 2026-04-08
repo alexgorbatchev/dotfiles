@@ -80,6 +80,8 @@ export interface IServices {
   systemInfo: ISystemInfo;
 }
 
+export type ServicesFactory = () => Promise<IServices>;
+
 export interface IGlobalProgramOptions {
   config: string;
   dryRun: boolean;

@@ -1,4 +1,4 @@
-import type { IBinaryConfig } from "@dotfiles/core";
+import type { ToolBinary } from "@dotfiles/core";
 import { join } from "node:path";
 import { normalizeBinaries } from "./normalizeBinaries";
 
@@ -16,7 +16,7 @@ import { normalizeBinaries } from "./normalizeBinaries";
  * @param installedDir - Directory where binaries are installed
  * @returns Array of absolute paths to binaries (e.g., ['/path/to/install/rg', '/path/to/install/ripgrep'])
  */
-export function getBinaryPaths(binaries: (string | IBinaryConfig)[] | undefined, installedDir: string): string[] {
+export function getBinaryPaths(binaries: ToolBinary[] | undefined, installedDir: string): string[] {
   const normalizedBinaries = normalizeBinaries(binaries);
   return normalizedBinaries.map((binary) => join(installedDir, binary.name));
 }

@@ -1,11 +1,11 @@
 import type {
   AsyncConfigureTool,
   AsyncConfigureToolWithReturn,
-  IBinaryConfig,
   IOperationFailure,
   IOperationSuccess,
   ISystemInfo,
   ProjectConfig,
+  ToolBinary,
   ToolConfig,
 } from "@dotfiles/core";
 import { createToolConfigContext } from "@dotfiles/core";
@@ -14,9 +14,17 @@ import type { TsLogger } from "@dotfiles/logger";
 import { createInstallFunction } from "@dotfiles/tool-config-builder";
 import path from "node:path";
 import { messages } from "./log-messages";
+import type { ILoadToolConfigByBinaryError, LoadToolConfigByBinaryResult } from "./types";
 
 interface IToolConfigModule {
   default?: unknown;
+}
+
+type ToolConfigModuleExport = AsyncConfigureTool | AsyncConfigureToolWithReturn;
+
+interface IDiscoveredToolConfigFile {
+  filePath: string;
+  toolName: string;
 }
 
 function isToolConfig(config: unknown): config is ToolConfig {
@@ -27,9 +35,7 @@ function isToolConfig(config: unknown): config is ToolConfig {
   return "name" in config;
 }
 
-function isConfigureToolFunction(
-  exportedValue: unknown,
-): exportedValue is AsyncConfigureTool | AsyncConfigureToolWithReturn {
+function isConfigureToolFunction(exportedValue: unknown): exportedValue is ToolConfigModuleExport {
   return typeof exportedValue === "function";
 }
 
@@ -71,7 +77,7 @@ function validateToolConfig(config: unknown): ToolConfig | null {
  * @returns The validated tool configuration, or null if processing failed.
  */
 async function processFunctionExport(
-  configureToolFn: AsyncConfigureTool | AsyncConfigureToolWithReturn,
+  configureToolFn: ToolConfigModuleExport,
   logger: TsLogger,
   toolName: string,
   filePath: string,
@@ -215,8 +221,8 @@ async function scanDirectoryForToolFiles(
   fs: IResolvedFileSystem,
   dirPath: string,
   logger: TsLogger,
-): Promise<{ filePath: string; toolName: string }[]> {
-  const results: { filePath: string; toolName: string }[] = [];
+): Promise<IDiscoveredToolConfigFile[]> {
+  const results: IDiscoveredToolConfigFile[] = [];
 
   try {
     const entries = await fs.readdir(dirPath);
@@ -354,7 +360,7 @@ export async function loadSingleToolConfig(
  * @param binary - A binary entry that is either a string or an IBinaryConfig object.
  * @returns The binary name.
  */
-function getBinaryName(binary: string | IBinaryConfig): string {
+function getBinaryName(binary: ToolBinary): string {
   if (typeof binary === "string") {
     return binary;
   }
@@ -471,7 +477,7 @@ export async function loadToolConfigByBinary(
   fs: IResolvedFileSystem,
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
-): Promise<ToolConfig | undefined | { error: string }> {
+): Promise<LoadToolConfigByBinaryResult> {
   const logger = parentLogger.getSubLogger({ name: "loadToolConfigByBinary" });
   const findResult = await findToolByBinary(logger, binaryName, toolConfigsDir, fs, projectConfig, systemInfo);
 
@@ -479,7 +485,7 @@ export async function loadToolConfigByBinary(
     // Only return error if multiple tools provide the binary (matchingTools present)
     // Otherwise return undefined for "not found"
     if (findResult.matchingTools) {
-      const errorResult: { error: string } = { error: findResult.error };
+      const errorResult: ILoadToolConfigByBinaryError = { error: findResult.error };
       return errorResult;
     }
     return undefined;

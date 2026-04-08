@@ -1,4 +1,4 @@
-import type { IConfigService, ProjectConfig } from "@dotfiles/config";
+import type { IConfigService, ILoadToolConfigByBinaryError, ProjectConfig } from "@dotfiles/config";
 import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
 import type { IResolvedFileSystem } from "@dotfiles/file-system";
 import type { InstallResult } from "@dotfiles/installer";
@@ -12,6 +12,7 @@ import type {
   IGlobalProgramOptions,
   InstallCommandSpecificOptions,
   IServices,
+  ServicesFactory,
 } from "./types";
 
 /**
@@ -37,10 +38,12 @@ type LoadToolConfigResult =
   | { success: true; toolConfig: ToolConfig; toolName: string }
   | { success: false; error: string };
 
+type InstallCommandOptions = InstallCommandSpecificOptions & IGlobalProgramOptions;
+
 /**
  * Type guard to check if a result from loadToolConfigByBinary is an error object.
  */
-function isConfigByBinaryError(result: unknown): result is { error: string } {
+function isConfigByBinaryError(result: unknown): result is ILoadToolConfigByBinaryError {
   return typeof result === "object" && result !== null && "error" in result;
 }
 
@@ -197,7 +200,7 @@ function toError(value: unknown): Error {
 async function executeInstallCommandAction(
   logger: TsLogger,
   nameOrBinary: string,
-  combinedOptions: InstallCommandSpecificOptions & IGlobalProgramOptions,
+  combinedOptions: InstallCommandOptions,
   services: IServices,
 ): Promise<number | null> {
   const { projectConfig, fs, installer, configService, generatorOrchestrator, systemInfo } = services;
@@ -268,7 +271,7 @@ async function executeInstallCommandAction(
 export function registerInstallCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
 ): void {
   const logger = parentLogger.getSubLogger({ name: "registerInstallCommand" });
   program
@@ -279,7 +282,7 @@ export function registerInstallCommand(
     .option("--force", "Force installation even if the tool is already installed", false)
     .option("--shim-mode", "Optimized output for shim usage: shows progress bars but suppresses log messages", false)
     .action(async (nameOrBinary: string, commandOptions: InstallCommandSpecificOptions) => {
-      const combinedOptions: InstallCommandSpecificOptions & IGlobalProgramOptions = {
+      const combinedOptions: InstallCommandOptions = {
         ...commandOptions,
         ...program.opts(),
       };

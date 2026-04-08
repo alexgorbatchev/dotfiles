@@ -2,6 +2,7 @@ import type { IInstallContext } from "@dotfiles/core";
 import type { TsLogger } from "@dotfiles/logger";
 import type { z } from "zod";
 import type { ShellScript } from "./shell/shellScript.types";
+import type { IBinaryConfig } from "./tool-config/base/binaryConfigSchema";
 import type { ShellType } from "./tool-config/shell/shellType";
 
 type Primitive = string | number | bigint | boolean | symbol | undefined | null;
@@ -84,6 +85,19 @@ export interface IPluginShellInit {
 }
 
 /**
+ * A binary entry in a tool configuration.
+ */
+export type ToolBinary = string | IBinaryConfig;
+
+/**
+ * A source-to-target mapping for copies or symlinks.
+ */
+export interface IToolPathMapping {
+  source: string;
+  target: string;
+}
+
+/**
  * Result from plugin installation - success case
  */
 export type InstallResultSuccess<TMetadata = unknown> = IOperationSuccess & {
@@ -96,7 +110,7 @@ export type InstallResultSuccess<TMetadata = unknown> = IOperationSuccess & {
    * The source path should be relative to currentDir (e.g., 'pluginName' becomes '{currentDir}/pluginName').
    * The target path should be absolute.
    */
-  symlinks?: Array<{ source: string; target: string }>;
+  symlinks?: IToolPathMapping[];
   /**
    * Shell initialization content emitted by the plugin.
    * Keyed by shell type (zsh, bash, powershell).

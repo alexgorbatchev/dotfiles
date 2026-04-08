@@ -3,6 +3,10 @@ import { describe, expect, it } from "bun:test";
 import { createShell } from "../createShell";
 import { ShellError } from "../ShellError";
 
+interface IJsonPayload {
+  foo: string;
+}
+
 describe("createShell", () => {
   describe("basic execution", () => {
     it("should execute a simple command", async () => {
@@ -59,7 +63,7 @@ describe("createShell", () => {
   describe(".json()", () => {
     it("should parse stdout as JSON", async () => {
       const $ = createShell();
-      const data = await $`echo '{"foo": "bar"}'`.json<{ foo: string }>();
+      const data = await $`echo '{"foo": "bar"}'`.json<IJsonPayload>();
       expect(data).toEqual({ foo: "bar" });
     });
   });

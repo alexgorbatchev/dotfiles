@@ -5,7 +5,7 @@ import type { TsLogger } from "@dotfiles/logger";
 import { exitCli, ExitCode, resolvePlatformConfig } from "@dotfiles/utils";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
-import type { ICommandCompletionMeta, IGlobalProgram, IServices } from "./types";
+import type { ICommandCompletionMeta, IGlobalProgram, IServices, ServicesFactory } from "./types";
 
 export const BIN_COMMAND_COMPLETION: ICommandCompletionMeta = {
   name: "bin",
@@ -15,6 +15,11 @@ export const BIN_COMMAND_COMPLETION: ICommandCompletionMeta = {
   positionalArgType: "tool",
 };
 
+interface IBinCommandResolution {
+  toolName: string;
+  binaryName: string;
+}
+
 async function loadToolConfigByNameOrBinary(
   logger: TsLogger,
   nameOrBinary: string,
@@ -23,7 +28,7 @@ async function loadToolConfigByNameOrBinary(
   projectConfig: ProjectConfig,
   configService: IConfigService,
   systemInfo: ISystemInfo,
-): Promise<{ toolName: string; binaryName: string } | undefined> {
+): Promise<IBinCommandResolution | undefined> {
   const toolConfig = await configService.loadSingleToolConfig(
     logger,
     nameOrBinary,
@@ -93,7 +98,7 @@ async function executeBinCommandAction(logger: TsLogger, nameOrBinary: string, s
 export function registerBinCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
-  servicesFactory: () => Promise<IServices>,
+  servicesFactory: ServicesFactory,
 ): void {
   const logger = parentLogger.getSubLogger({ name: "registerBinCommand" });
 

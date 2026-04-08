@@ -7,6 +7,8 @@ import assert from "node:assert";
 import path from "node:path";
 import { loadConfig } from "../loadConfig";
 
+type CleanupFn = () => Promise<void>;
+
 describe("loadConfig", () => {
   const mockSystemInfo: ISystemInfo = {
     platform: Platform.MacOS,
@@ -17,7 +19,7 @@ describe("loadConfig", () => {
 
   let logger: TestLogger;
   let tempDir: string | undefined;
-  let cleanupFn: (() => Promise<void>) | undefined;
+  let cleanupFn: CleanupFn | undefined;
 
   beforeEach(async () => {
     logger = new TestLogger();

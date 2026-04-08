@@ -14,6 +14,7 @@ import { messages } from "../utils/log-messages";
 
 type UnknownRecord = Record<string, unknown>;
 type InstallHooks = Record<string, AsyncInstallHook<IInstallBaseContext>[]>;
+type HookEntry = [string, unknown];
 
 function isUnknownRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -46,7 +47,7 @@ function getInstallHooksFromToolConfig(toolConfig: unknown): InstallHooks | unde
     return undefined;
   }
 
-  const hookEntries: [string, unknown][] = Object.entries(hooks);
+  const hookEntries: HookEntry[] = Object.entries(hooks);
   if (hookEntries.length === 0) {
     return undefined;
   }

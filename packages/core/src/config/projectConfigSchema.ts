@@ -1,6 +1,19 @@
 import type { PartialDeep } from "@dotfiles/core";
 import { z } from "zod";
 
+interface ICacheSchemaDefaults {
+  enabled?: boolean;
+  ttl?: number;
+}
+
+interface IHostSchemaOptions {
+  defaultHost: string;
+  includeToken?: boolean;
+  includeUserAgent?: boolean;
+  defaultUserAgent?: string;
+  tokenDefault?: string;
+}
+
 /**
  * Creates a Zod schema for cache configuration.
  *
@@ -13,7 +26,7 @@ import { z } from "zod";
  *
  * @internal
  */
-function createCacheSchema(defaults?: { enabled?: boolean; ttl?: number }) {
+function createCacheSchema(defaults?: ICacheSchemaDefaults) {
   const enabledDefault = defaults?.enabled ?? true;
   const ttlDefault = defaults?.ttl ?? 86400000; // 24 hours in milliseconds
 
@@ -58,13 +71,7 @@ export const cacheConfigSchema = createCacheSchema();
  *
  * @internal
  */
-function createHostSchema(options: {
-  defaultHost: string;
-  includeToken?: boolean;
-  includeUserAgent?: boolean;
-  defaultUserAgent?: string;
-  tokenDefault?: string;
-}) {
+function createHostSchema(options: IHostSchemaOptions) {
   const {
     defaultHost,
     includeToken,
