@@ -2,7 +2,7 @@ import type { ToolConfig } from "@dotfiles/core";
 import { Architecture, Platform } from "@dotfiles/core";
 import { describe, expect, test } from "bun:test";
 
-import { architectureBitmaskToNames, platformBitmaskToNames, serializeToolConfig } from "../types";
+import { architectureBitmaskToNames, platformBitmaskToNames, serializeToolConfig } from "../dashboardUtils";
 
 describe("platformBitmaskToNames", () => {
   test("returns empty array for Platform.None", () => {

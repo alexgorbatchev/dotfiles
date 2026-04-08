@@ -1,4 +1,4 @@
-import { hydrate } from "preact";
+import { h, hydrate } from "preact";
 import { prerender as ssr } from "preact-iso";
 
 // eslint-disable-next-line import/no-unassigned-import
@@ -8,12 +8,12 @@ import { App } from "./App";
 if (typeof window !== "undefined") {
   const appElement = document.getElementById("app");
   if (appElement) {
-    hydrate(<App />, appElement);
+    hydrate(h(App, {}), appElement);
   }
 }
 
-export async function prerender() {
-  return await ssr(<App />);
+export async function prerender(): Promise<string> {
+  return await ssr(h(App, {}));
 }
 
 import.meta.hot.accept();

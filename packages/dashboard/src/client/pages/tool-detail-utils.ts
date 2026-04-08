@@ -1,11 +1,11 @@
 import type {
-  ISerializableBinary,
+  SerializableBinary,
   ISerializableInstallParams,
   ISerializableToolConfig,
   IToolDetail,
 } from "../../shared/types";
 
-export interface SourceInfo {
+export interface ISourceInfo {
   value: string;
   url?: string;
 }
@@ -36,7 +36,7 @@ function getInstallConfigCandidates(config: ISerializableToolConfig): IInstallCo
 function getSourceInfoForInstallConfig(
   installationMethod: string,
   installParams: ISerializableInstallParams,
-): SourceInfo | null {
+): ISourceInfo | null {
   switch (installationMethod) {
     case "github-release":
       if (installParams.repo) {
@@ -71,13 +71,6 @@ function getSourceInfoForInstallConfig(
       }
       break;
     case "curl-script":
-      if (installParams.url) {
-        return {
-          value: installParams.url,
-          url: installParams.url,
-        };
-      }
-      break;
     case "curl-tar":
       if (installParams.url) {
         return {
@@ -93,7 +86,7 @@ function getSourceInfoForInstallConfig(
   return null;
 }
 
-export function getBinaryName(binary: ISerializableBinary): string {
+export function getBinaryName(binary: SerializableBinary): string {
   return typeof binary === "string" ? binary : binary.name;
 }
 
@@ -112,8 +105,8 @@ export function buildBinaryToToolMap(tools: IToolDetail[]): Map<string, string> 
 export function findDependentTools(tools: IToolDetail[], currentToolBinaries: string[]): IToolDetail[] {
   const binarySet = new Set(currentToolBinaries);
   return tools.filter((tool) => {
-    const deps = tool.config.dependencies ?? [];
-    return deps.some((dep) => binarySet.has(dep));
+    const dependencies = tool.config.dependencies ?? [];
+    return dependencies.some((dependency) => binarySet.has(dependency));
   });
 }
 
@@ -131,7 +124,7 @@ export function getReadmeRepo(config: ISerializableToolConfig): string | null {
   return null;
 }
 
-export function getSourceInfo(config: ISerializableToolConfig): SourceInfo | null {
+export function getSourceInfo(config: ISerializableToolConfig): ISourceInfo | null {
   for (const installConfig of getInstallConfigCandidates(config)) {
     const sourceInfo = getSourceInfoForInstallConfig(installConfig.installationMethod, installConfig.installParams);
     if (sourceInfo) {

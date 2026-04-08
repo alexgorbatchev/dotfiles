@@ -80,17 +80,17 @@ function UsageListCard({ title, icon, items, secondary, emptyText }: UsageListCa
   return (
     <TitledCard title={title} icon={icon} class="h-full" contentClass="flex-1 overflow-auto">
       {items.length === 0 ? (
-        <div class="text-muted-foreground text-sm text-center py-4">{emptyText}</div>
+        <div class="text-muted-foreground py-4 text-center text-sm">{emptyText}</div>
       ) : (
         <div class="space-y-0">
           {items.map((item) => (
             <a
               key={item.name}
               href={`/tools/${encodeURIComponent(item.name)}`}
-              class="flex items-center gap-2 py-1 rounded hover:bg-accent cursor-pointer text-sm group"
+              class="group flex cursor-pointer items-center gap-2 rounded py-1 text-sm hover:bg-accent"
             >
-              <span class="font-medium truncate text-sm flex-1 min-w-0">{item.name}</span>
-              <span class="text-xs text-muted-foreground flex-shrink-0">{secondary(item)}</span>
+              <span class="min-w-0 flex-1 truncate text-sm font-medium">{item.name}</span>
+              <span class="flex-shrink-0 text-xs text-muted-foreground">{secondary(item)}</span>
             </a>
           ))}
         </div>
@@ -103,24 +103,23 @@ export function Tools(): JSX.Element {
   const { data: tools, loading } = useFetch<IToolDetail[]>("/tools");
 
   const toolsList = tools || [];
-  const totalFiles = toolsList.reduce((sum, t) => sum + (t.files?.length || 0), 0);
-  const installedCount = toolsList.filter((t) => t.runtime.status === "installed").length;
-  const binariesDiskSize = toolsList.reduce((sum, t) => sum + (t.binaryDiskSize || 0), 0);
+  const totalFiles = toolsList.reduce((sum, tool) => sum + (tool.files?.length || 0), 0);
+  const installedCount = toolsList.filter((tool) => tool.runtime.status === "installed").length;
+  const binariesDiskSize = toolsList.reduce((sum, tool) => sum + (tool.binaryDiskSize || 0), 0);
   const usageItems = buildUsageItems(toolsList);
-  const mostUsed = usageItems.toSorted((a, b) => b.count - a.count || b.lastUsedAt - a.lastUsedAt).slice(0, 10);
-  const mostRecentlyUsed = usageItems.toSorted((a, b) => b.lastUsedAt - a.lastUsedAt || b.count - a.count).slice(0, 10);
+  const mostUsed = usageItems.toSorted((leftItem, rightItem) => rightItem.count - leftItem.count || rightItem.lastUsedAt - leftItem.lastUsedAt).slice(0, 10);
+  const mostRecentlyUsed = usageItems.toSorted((leftItem, rightItem) => rightItem.lastUsedAt - leftItem.lastUsedAt || rightItem.count - leftItem.count).slice(0, 10);
 
   if (loading) {
     return (
-      <div class="flex items-center justify-center h-64">
+      <div data-testid="Tools" class="flex items-center justify-center h-64">
         <div class="text-muted-foreground">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div class="space-y-4">
-      {/* Stats row */}
+    <div data-testid="Tools" class="space-y-4">
       <div class="grid grid-cols-4 gap-4">
         <StatCard value={toolsList.length} label="Total Tools" color="text-blue-400" />
         <StatCard value={installedCount} label="Installed" color="text-green-400" />
@@ -128,7 +127,6 @@ export function Tools(): JSX.Element {
         <StatCard value={formatBytes(binariesDiskSize)} label="Binary Size" color="text-orange-400" />
       </div>
 
-      {/* Activity row */}
       <div class="grid gap-4 lg:grid-cols-3">
         <RecentTools />
         <UsageListCard
@@ -147,12 +145,11 @@ export function Tools(): JSX.Element {
         />
       </div>
 
-      {/* Tool files row */}
       <div>
         <ToolsTreeView tools={toolsList} />
       </div>
 
-      {toolsList.length === 0 && <div class="text-center text-muted-foreground py-8">No tools configured</div>}
+      {toolsList.length === 0 && <div class="py-8 text-center text-muted-foreground">No tools configured</div>}
     </div>
   );
 }

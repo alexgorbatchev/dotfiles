@@ -1,32 +1,32 @@
-interface FileData {
+interface IFileData {
   filePath: string;
   fileType?: string;
   lastOperation?: string;
 }
 
-interface TreeNodeData {
+interface ITreeNodeData {
   name: string;
   path: string;
   type: "file" | "directory";
   fileType?: string;
   lastOperation?: string;
-  children?: TreeNodeData[];
+  children?: ITreeNodeData[];
 }
 
-function sortTreeNode(n: TreeNodeData): void {
-  if (n.children) {
-    n.children.sort((a, b) => {
-      if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
-      return a.name.localeCompare(b.name);
+function sortTreeNode(node: ITreeNodeData): void {
+  if (node.children) {
+    node.children.sort((leftNode, rightNode) => {
+      if (leftNode.type !== rightNode.type) return leftNode.type === "directory" ? -1 : 1;
+      return leftNode.name.localeCompare(rightNode.name);
     });
-    n.children.forEach(sortTreeNode);
+    node.children.forEach(sortTreeNode);
   }
 }
 
-export function buildTreeForTool(files: FileData[]): TreeNodeData[] {
-  if (!files?.length) return [];
+export function buildTreeForTool(files: IFileData[]): ITreeNodeData[] {
+  if (!files.length) return [];
 
-  const paths = files.map((f) => f.filePath);
+  const paths = files.map((file) => file.filePath);
   let basePath = "";
 
   if (paths.length === 1) {
@@ -38,16 +38,19 @@ export function buildTreeForTool(files: FileData[]): TreeNodeData[] {
         if (basePath === "/") basePath = "";
       }
     }
-  } else if (paths.length > 1) {
-    const pathParts = paths.map((p) => p.split("/").filter(Boolean));
-    const minLen = Math.min(...pathParts.map((p) => p.length));
+  } else {
+    const pathParts = paths.map((path) => path.split("/").filter(Boolean));
+    const minLength = Math.min(...pathParts.map((path) => path.length));
     const common: string[] = [];
     const firstParts = pathParts[0];
     if (firstParts) {
-      for (let i = 0; i < minLen - 1; i++) {
-        const part = firstParts[i];
-        if (part && pathParts.every((p) => p[i] === part)) common.push(part);
-        else break;
+      for (let index = 0; index < minLength - 1; index += 1) {
+        const part = firstParts[index];
+        if (part && pathParts.every((path) => path[index] === part)) {
+          common.push(part);
+        } else {
+          break;
+        }
       }
     }
     if (common.length > 1) {
@@ -55,36 +58,41 @@ export function buildTreeForTool(files: FileData[]): TreeNodeData[] {
     }
   }
 
-  const tree = new Map<string, TreeNodeData>();
+  const tree = new Map<string, ITreeNodeData>();
 
   for (const file of files) {
-    let rel = file.filePath;
-    if (basePath && rel.startsWith(basePath)) rel = rel.substring(basePath.length);
-    if (!rel.startsWith("/")) rel = "/" + rel;
-    const fileParts = rel.split("/").filter(Boolean);
+    let relativePath = file.filePath;
+    if (basePath && relativePath.startsWith(basePath)) relativePath = relativePath.substring(basePath.length);
+    if (!relativePath.startsWith("/")) relativePath = "/" + relativePath;
+    const fileParts = relativePath.split("/").filter(Boolean);
     let currentPath = "";
 
-    for (let i = 0; i < fileParts.length - 1; i++) {
-      const part = fileParts[i];
+    for (let index = 0; index < fileParts.length - 1; index += 1) {
+      const part = fileParts[index];
       if (!part) continue;
       const parentPath = currentPath;
       currentPath = currentPath ? currentPath + "/" + part : "/" + part;
-      const existing = tree.get(currentPath);
-      if (!existing) {
-        const node: TreeNodeData = { name: part, path: basePath + currentPath, type: "directory", children: [] };
+      const existingNode = tree.get(currentPath);
+      if (!existingNode) {
+        const node: ITreeNodeData = {
+          name: part,
+          path: basePath + currentPath,
+          type: "directory",
+          children: [],
+        };
         tree.set(currentPath, node);
-        const parent = parentPath ? tree.get(parentPath) : undefined;
-        if (parent?.children) parent.children.push(node);
-      } else if (existing.type === "file") {
-        existing.type = "directory";
-        existing.children = [];
+        const parentNode = parentPath ? tree.get(parentPath) : undefined;
+        if (parentNode?.children) parentNode.children.push(node);
+      } else if (existingNode.type === "file") {
+        existingNode.type = "directory";
+        existingNode.children = [];
       }
     }
 
     const fileName = fileParts[fileParts.length - 1];
     if (fileName) {
       const filePath = currentPath ? currentPath + "/" + fileName : "/" + fileName;
-      const node: TreeNodeData = {
+      const node: ITreeNodeData = {
         name: fileName,
         path: basePath + filePath,
         type: "file",
@@ -92,21 +100,21 @@ export function buildTreeForTool(files: FileData[]): TreeNodeData[] {
         lastOperation: file.lastOperation,
       };
       tree.set(filePath, node);
-      const parent = currentPath ? tree.get(currentPath) : undefined;
-      if (parent?.children) parent.children.push(node);
+      const parentNode = currentPath ? tree.get(currentPath) : undefined;
+      if (parentNode?.children) parentNode.children.push(node);
     }
   }
 
-  const roots: TreeNodeData[] = [];
+  const roots: ITreeNodeData[] = [];
   for (const [path, node] of tree) {
     const parentPath = path.substring(0, path.lastIndexOf("/"));
     if (!parentPath || !tree.has(parentPath)) roots.push(node);
   }
 
   roots.forEach(sortTreeNode);
-  roots.sort((a, b) => {
-    if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
-    return a.name.localeCompare(b.name);
+  roots.sort((leftNode, rightNode) => {
+    if (leftNode.type !== rightNode.type) return leftNode.type === "directory" ? -1 : 1;
+    return leftNode.name.localeCompare(rightNode.name);
   });
 
   return roots;

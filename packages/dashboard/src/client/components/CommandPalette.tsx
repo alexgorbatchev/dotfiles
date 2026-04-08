@@ -6,7 +6,7 @@ import { Search } from "../icons";
 import type { IToolDetail } from "../../shared/types";
 import { useFetch } from "../hooks/useFetch";
 
-interface SearchResult {
+interface ISearchResult {
   tool: IToolDetail;
   matchType: "name" | "binary";
   matchedValue: string;
@@ -20,14 +20,13 @@ export function CommandPalette(): JSX.Element | null {
   const { route } = useLocation();
   const { data: tools } = useFetch<IToolDetail[]>("/tools");
 
-  // Handle keyboard shortcut
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setIsOpen((prev) => !prev);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+        event.preventDefault();
+        setIsOpen((previousValue) => !previousValue);
       }
-      if (e.key === "Escape" && isOpen) {
+      if (event.key === "Escape" && isOpen) {
         setIsOpen(false);
       }
     };
@@ -36,7 +35,6 @@ export function CommandPalette(): JSX.Element | null {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
-  // Focus input when opened
   useEffect(() => {
     if (isOpen) {
       setQuery("");
@@ -45,21 +43,18 @@ export function CommandPalette(): JSX.Element | null {
     }
   }, [isOpen]);
 
-  // Search results
-  const results = useMemo((): SearchResult[] => {
+  const results = useMemo((): ISearchResult[] => {
     if (!tools || !query.trim()) return [];
 
     const lowerQuery = query.toLowerCase();
-    const matches: SearchResult[] = [];
+    const matches: ISearchResult[] = [];
 
     for (const tool of tools) {
-      // Match by tool name
       if (tool.config.name.toLowerCase().includes(lowerQuery)) {
         matches.push({ tool, matchType: "name", matchedValue: tool.config.name });
         continue;
       }
 
-      // Match by binary names
       const binaries = tool.config.binaries || [];
       for (const binary of binaries) {
         const binaryName = typeof binary === "string" ? binary : binary.name;
@@ -73,26 +68,24 @@ export function CommandPalette(): JSX.Element | null {
     return matches.slice(0, 10);
   }, [tools, query]);
 
-  // Navigate to selected tool
   const navigateTo = useCallback(
-    (result: SearchResult) => {
+    (result: ISearchResult) => {
       setIsOpen(false);
       route(`/tools/${encodeURIComponent(result.tool.config.name)}`);
     },
     [route],
   );
 
-  // Handle keyboard navigation
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setSelectedIndex((i) => Math.max(i - 1, 0));
-      } else if (e.key === "Enter" && results[selectedIndex]) {
-        e.preventDefault();
+    (event: KeyboardEvent) => {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSelectedIndex((index) => Math.min(index + 1, results.length - 1));
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSelectedIndex((index) => Math.max(index - 1, 0));
+      } else if (event.key === "Enter" && results[selectedIndex]) {
+        event.preventDefault();
         navigateTo(results[selectedIndex]);
       }
     },
@@ -102,31 +95,27 @@ export function CommandPalette(): JSX.Element | null {
   if (!isOpen) return null;
 
   return (
-    <div class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]">
-      {/* Backdrop */}
+    <div data-testid="CommandPalette" class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]">
       <div class="fixed inset-0 bg-black/50" onClick={() => setIsOpen(false)} />
 
-      {/* Dialog */}
-      <div class="relative w-full max-w-lg bg-card border border-border rounded-lg shadow-lg overflow-hidden">
-        {/* Search input */}
+      <div class="relative w-full max-w-lg overflow-hidden rounded-lg border border-border bg-card shadow-lg">
         <div class="flex items-center border-b border-border px-3">
-          <Search class="w-4 h-4 text-muted-foreground" />
+          <Search class="h-4 w-4 text-muted-foreground" />
           <input
             ref={inputRef}
             type="text"
             value={query}
-            onInput={(e) => {
-              setQuery((e.target as HTMLInputElement).value);
+            onInput={(event) => {
+              setQuery((event.target as HTMLInputElement).value);
               setSelectedIndex(0);
             }}
             onKeyDown={handleKeyDown}
             placeholder="Search tools by name or binary..."
             class="flex-1 bg-transparent px-3 py-3 focus:outline-none"
           />
-          <kbd class="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">esc</kbd>
+          <kbd class="bg-muted px-1.5 py-0.5 text-xs text-muted-foreground rounded">esc</kbd>
         </div>
 
-        {/* Results */}
         {query.trim() && (
           <div class="max-h-80 overflow-y-auto">
             {results.length === 0 ? (
@@ -158,7 +147,6 @@ export function CommandPalette(): JSX.Element | null {
           </div>
         )}
 
-        {/* Footer hint */}
         {!query.trim() && (
           <div class="px-4 py-3 text-sm text-muted-foreground">Type to search tools by name or binary...</div>
         )}

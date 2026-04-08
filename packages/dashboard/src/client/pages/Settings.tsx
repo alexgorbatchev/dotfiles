@@ -10,7 +10,7 @@ export function Settings(): JSX.Element {
 
   if (loading) {
     return (
-      <div class="flex items-center justify-center h-64">
+      <div data-testid="Settings" class="flex items-center justify-center h-64">
         <div class="text-muted-foreground">Loading...</div>
       </div>
     );
@@ -25,15 +25,13 @@ export function Settings(): JSX.Element {
   ];
 
   return (
-    <div class="space-y-6">
+    <div data-testid="Settings" class="space-y-6">
       <TitledCard title="Project Paths" icon={<FolderCog class="h-4 w-4" />}>
         <div class="space-y-4">
-          {paths.map((p, i) => (
-            <div key={i}>
-              <div class="text-sm text-muted-foreground mb-1">{p.label}</div>
-              <code class="text-sm bg-muted px-3 py-2 rounded block overflow-x-auto">
-                {p.value || "Not configured"}
-              </code>
+          {paths.map((path, index) => (
+            <div key={index}>
+              <div class="mb-1 text-sm text-muted-foreground">{path.label}</div>
+              <code class="block overflow-x-auto rounded bg-muted px-3 py-2 text-sm">{path.value || "Not configured"}</code>
             </div>
           ))}
         </div>

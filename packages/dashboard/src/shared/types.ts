@@ -1,7 +1,5 @@
-import type { IBinaryConfig, ISystemInfo, ToolConfig } from "@dotfiles/core";
-import { Architecture, Platform } from "@dotfiles/core";
+import type { IBinaryConfig } from "@dotfiles/core";
 import type { IFileOperation, IFileState } from "@dotfiles/registry/file";
-import type { IToolInstallationRecord } from "@dotfiles/registry/tool";
 
 /**
  * Standard API response wrapper for all dashboard endpoints.
@@ -15,7 +13,7 @@ export interface IApiResponse<T> {
 /**
  * Serializable binary configuration for API response.
  */
-export type ISerializableBinary = string | IBinaryConfig;
+export type SerializableBinary = string | IBinaryConfig;
 
 /**
  * Serializable install params - common fields across all methods.
@@ -58,7 +56,7 @@ export interface ISerializablePlatformConfigEntry {
   /** Platform-specific install params override */
   installParams?: ISerializableInstallParams;
   /** Platform-specific binaries override */
-  binaries?: ISerializableBinary[];
+  binaries?: SerializableBinary[];
   /** Platform-specific symlinks override */
   symlinks?: ISerializableSymlink[];
 }
@@ -72,7 +70,7 @@ export interface ISerializableToolConfig {
   version: string;
   installationMethod: string;
   installParams: ISerializableInstallParams;
-  binaries?: ISerializableBinary[];
+  binaries?: SerializableBinary[];
   dependencies?: string[];
   symlinks?: ISerializableSymlink[];
   disabled?: boolean;
@@ -142,7 +140,7 @@ export interface IToolSummary {
   status: ToolRuntimeStatus;
   installedVersion: string | null;
   hasUpdate: boolean;
-  binaries?: ISerializableBinary[];
+  binaries?: SerializableBinary[];
 }
 
 /**
@@ -215,160 +213,6 @@ export interface IConfigSummary {
 }
 
 /**
- * Convert a Platform bitmask to an array of human-readable platform names.
- */
-export function platformBitmaskToNames(platforms: Platform): string[] {
-  const names: string[] = [];
-  if (platforms & Platform.Linux) names.push("Linux");
-  if (platforms & Platform.MacOS) names.push("macOS");
-  if (platforms & Platform.Windows) names.push("Windows");
-  return names;
-}
-
-/**
- * Convert an Architecture bitmask to an array of human-readable architecture names.
- */
-export function architectureBitmaskToNames(architectures: Architecture): string[] {
-  const names: string[] = [];
-  if (architectures & Architecture.X86_64) names.push("x86_64");
-  if (architectures & Architecture.Arm64) names.push("arm64");
-  return names;
-}
-
-/**
- * Extract serializable install params from a config object.
- */
-function extractInstallParams(params: Record<string, unknown>): ISerializableInstallParams {
-  const installParams: ISerializableInstallParams = {};
-  if (typeof params["repo"] === "string") installParams.repo = params["repo"];
-  if (typeof params["assetPattern"] === "string") installParams.assetPattern = params["assetPattern"];
-  if (typeof params["ghCli"] === "boolean") installParams.ghCli = params["ghCli"];
-  // Handle both 'crate' and 'crateName' (cargo uses crateName internally)
-  if (typeof params["crate"] === "string") installParams.crate = params["crate"];
-  if (typeof params["crateName"] === "string") installParams.crate = params["crateName"];
-  if (typeof params["formula"] === "string") installParams.formula = params["formula"];
-  if (typeof params["url"] === "string") installParams.url = params["url"];
-  return installParams;
-}
-
-/**
- * Serialize a ToolConfig to a JSON-safe structure.
- * Strips functions and non-serializable fields.
- */
-export function serializeToolConfig(config: ToolConfig): ISerializableToolConfig {
-  // Extract serializable install params (varies by method)
-  const installParams: ISerializableInstallParams = {};
-
-  if ("installParams" in config && config.installParams) {
-    const params = config.installParams as Record<string, unknown>;
-    Object.assign(installParams, extractInstallParams(params));
-  }
-
-  // Serialize platform configs if present
-  let platformConfigs: ISerializablePlatformConfigEntry[] | undefined;
-  if (config.platformConfigs && config.platformConfigs.length > 0) {
-    platformConfigs = config.platformConfigs.map((entry) => {
-      const serialized: ISerializablePlatformConfigEntry = {
-        platforms: platformBitmaskToNames(entry.platforms),
-      };
-
-      if (entry.architectures !== undefined) {
-        serialized.architectures = architectureBitmaskToNames(entry.architectures);
-      }
-
-      const platformConfig = entry.config;
-      if (platformConfig.installationMethod) {
-        serialized.installationMethod = platformConfig.installationMethod;
-      }
-      if (platformConfig.installParams) {
-        serialized.installParams = extractInstallParams(platformConfig.installParams as Record<string, unknown>);
-      }
-      if (platformConfig.binaries) {
-        serialized.binaries = platformConfig.binaries;
-      }
-      if (platformConfig.symlinks) {
-        serialized.symlinks = platformConfig.symlinks;
-      }
-
-      return serialized;
-    });
-  }
-
-  return {
-    name: config.name,
-    version: config.version,
-    installationMethod: config.installationMethod,
-    installParams,
-    binaries: config.binaries,
-    dependencies: config.dependencies,
-    symlinks: config.symlinks,
-    disabled: config.disabled,
-    hostname: config.hostname,
-    configFilePath: config.configFilePath,
-    platformConfigs,
-  };
-}
-
-/**
- * Get runtime state for a tool from the installation registry.
- */
-export function getToolRuntimeState(
-  toolName: string,
-  installations: Map<string, IToolInstallationRecord>,
-): IToolRuntimeState {
-  const record = installations.get(toolName);
-
-  if (!record) {
-    return {
-      status: "not-installed",
-      installedVersion: null,
-      installedAt: null,
-      installPath: null,
-      binaryPaths: [],
-      hasUpdate: false,
-    };
-  }
-
-  return {
-    status: "installed",
-    installedVersion: record.version,
-    installedAt: record.installedAt.toISOString(),
-    installPath: record.installPath,
-    binaryPaths: record.binaryPaths || [],
-    hasUpdate: false,
-  };
-}
-
-/**
- * Convert a ToolConfig and registry state to a full IToolDetail.
- * Serializes the original config (including platformConfigs) for visualization.
- */
-export function toToolDetail(
-  config: ToolConfig,
-  installations: Map<string, IToolInstallationRecord>,
-  files: IFileState[],
-  _systemInfo: ISystemInfo,
-  binaryDiskSize: number,
-  usage: IToolUsageSummary,
-): IToolDetail {
-  // Serialize the original config (not resolved) to preserve platformConfigs for visualization
-  return {
-    config: serializeToolConfig(config),
-    runtime: getToolRuntimeState(config.name, installations),
-    files,
-    binaryDiskSize,
-    usage,
-  };
-}
-
-/**
- * Format a Unix timestamp for display.
- */
-export function formatTimestamp(timestamp: number): string {
-  return new Date(timestamp).toISOString();
-}
-
-/**
  * Shell file info for shell integration view.
  */
 export interface IShellFile {
@@ -405,37 +249,6 @@ export interface IActivityItem {
 export interface IActivityFeed {
   activities: IActivityItem[];
   totalCount: number;
-}
-
-/**
- * Format a timestamp as relative time (e.g., "2 minutes ago").
- */
-export function formatRelativeTime(timestamp: number): string {
-  const now = Date.now();
-  const diff = now - timestamp;
-
-  const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) {
-    return "just now";
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) {
-    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  }
-
-  const days = Math.floor(hours / 24);
-  if (days < 30) {
-    return `${days} day${days === 1 ? "" : "s"} ago`;
-  }
-
-  const months = Math.floor(days / 30);
-  return `${months} month${months === 1 ? "" : "s"} ago`;
 }
 
 /**

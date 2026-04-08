@@ -1,23 +1,18 @@
 // UI test setup - registers DOM and exports testing utilities
 import { render, screen, setupUITests } from "../../../testing/ui-setup";
 
+import assert from "node:assert";
 import { describe, expect, test } from "bun:test";
 
 import type { ISerializablePlatformConfigEntry, ISerializableToolConfig } from "../../../shared/types";
-import { getSourceInfo, type SourceInfo } from "../tool-detail-utils";
+import { getBinaryName, getSourceInfo, type ISourceInfo } from "../tool-detail-utils";
 
 setupUITests();
 
-// Test helper that asserts sourceInfo is not null and returns it
-function assertSourceInfo(sourceInfo: SourceInfo | null): SourceInfo {
-  if (sourceInfo === null) {
-    throw new Error("Expected sourceInfo to be non-null");
-  }
+function assertSourceInfo(sourceInfo: ISourceInfo | null): ISourceInfo {
+  assert(sourceInfo !== null);
   return sourceInfo;
 }
-
-// Test the getSourceDisplay function indirectly by testing getSourceInfo
-// and testing that it renders properly as a link
 
 describe("ToolDetail getSourceDisplay rendering", () => {
   test("renders github-release source as link", () => {
@@ -30,7 +25,6 @@ describe("ToolDetail getSourceDisplay rendering", () => {
 
     const sourceInfo = assertSourceInfo(getSourceInfo(config));
 
-    // Render a simple test component to verify link rendering
     render(
       <div>
         <a
@@ -191,14 +185,10 @@ describe("ToolDetail platform config display", () => {
     };
 
     const platformLabel = entry.platforms.join(", ");
-    const archLabel = entry.architectures ? ` (${entry.architectures.join(", ")})` : "";
 
     render(
       <div>
-        <span>
-          {platformLabel}
-          {archLabel}
-        </span>
+        <span>{platformLabel}</span>
       </div>,
     );
 
@@ -211,15 +201,11 @@ describe("ToolDetail platform config display", () => {
       architectures: ["x86_64", "arm64"],
     };
 
-    const platformLabel = entry.platforms.join(", ");
-    const archLabel = entry.architectures ? ` (${entry.architectures.join(", ")})` : "";
+    const architectureLabel = entry.architectures?.join(", ") ?? "";
 
     render(
       <div>
-        <span>
-          {platformLabel}
-          {archLabel}
-        </span>
+        <span>{`Linux (${architectureLabel})`}</span>
       </div>,
     );
 
@@ -273,9 +259,9 @@ describe("ToolDetail platform config display", () => {
 
     render(
       <div>
-        {entry.symlinks?.map((s, i) => (
-          <div key={i}>
-            {s.source} → {s.target}
+        {entry.symlinks?.map((symlink, index) => (
+          <div key={index}>
+            {symlink.source} → {symlink.target}
           </div>
         ))}
       </div>,
@@ -291,7 +277,7 @@ describe("ToolDetail platform config display", () => {
       binaries: ["binary1", "binary2"],
     };
 
-    const binaryNames = entry.binaries?.map((b) => (typeof b === "string" ? b : b.name)).join(", ") ?? "";
+    const binaryNames = (entry.binaries ?? []).map(getBinaryName).join(", ");
 
     render(<span>{binaryNames}</span>);
 

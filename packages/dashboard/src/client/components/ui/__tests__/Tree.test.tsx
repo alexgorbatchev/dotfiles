@@ -6,15 +6,15 @@ import { describe, expect, mock, test } from "bun:test";
 setupUITests();
 import { File, Folder } from "../../../icons";
 
-import { Tree, type TreeItemData } from "../Tree";
+import { Tree, type ITreeItemData } from "../Tree";
 
 describe("Tree", () => {
-  const simpleItems: TreeItemData[] = [
+  const simpleItems: ITreeItemData[] = [
     { id: "1", label: "Item 1" },
     { id: "2", label: "Item 2" },
   ];
 
-  const nestedItems: TreeItemData[] = [
+  const nestedItems: ITreeItemData[] = [
     {
       id: "folder",
       label: "Folder",
@@ -41,7 +41,7 @@ describe("Tree", () => {
   });
 
   test("renders items with icons", () => {
-    const itemsWithIcons: TreeItemData[] = [
+    const itemsWithIcons: ITreeItemData[] = [
       { id: "1", label: "Folder", icon: <Folder data-testid="folder-icon" /> },
       { id: "2", label: "File", icon: <File data-testid="file-icon" /> },
     ];
@@ -55,14 +55,11 @@ describe("Tree", () => {
   test("collapses and expands children on click", () => {
     render(<Tree items={nestedItems} />);
 
-    // Children visible initially
     expect(screen.getByText("File 1")).toBeInTheDocument();
 
-    // Click to collapse
     fireEvent.click(screen.getByText("Folder"));
     expect(screen.queryByText("File 1")).not.toBeInTheDocument();
 
-    // Click to expand
     fireEvent.click(screen.getByText("Folder"));
     expect(screen.getByText("File 1")).toBeInTheDocument();
   });
@@ -113,7 +110,7 @@ describe("Tree", () => {
   });
 
   test("renders deeply nested tree structure", () => {
-    const deepItems: TreeItemData[] = [
+    const deepItems: ITreeItemData[] = [
       {
         id: "level1",
         label: "Level 1",
@@ -135,16 +132,16 @@ describe("Tree", () => {
   });
 
   test("supports generic data payload", () => {
-    interface FileData {
+    interface IFileData {
       size: number;
       modified: string;
     }
 
-    const itemsWithData: TreeItemData<FileData>[] = [
+    const itemsWithData: ITreeItemData<IFileData>[] = [
       { id: "1", label: "Document", data: { size: 1024, modified: "2024-01-01" } },
     ];
 
-    const handleClick = mock((_item: TreeItemData<FileData>) => {});
+    const handleClick = mock((_item: ITreeItemData<IFileData>) => {});
 
     render(<Tree items={itemsWithData} onItemClick={handleClick} />);
 

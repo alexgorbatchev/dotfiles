@@ -4,7 +4,7 @@ import type { TsLogger } from "@dotfiles/logger";
 import type { IFileState } from "@dotfiles/registry/file";
 import type { IToolInstallationRecord } from "@dotfiles/registry/tool";
 import type { IApiResponse, IToolBinaryUsage, IToolDetail, IToolUsageSummary } from "../../shared/types";
-import { toToolDetail } from "../../shared/types";
+import { toToolDetail } from "../../shared/dashboardUtils";
 import { messages } from "../log-messages";
 import type { IDashboardServices } from "../types";
 import { getToolBinaryDiskSize, getToolConfigs } from "./helpers";

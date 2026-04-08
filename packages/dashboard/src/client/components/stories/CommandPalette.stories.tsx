@@ -1,0 +1,22 @@
+import type { Meta, StoryObj } from "@storybook/preact";
+import { LocationProvider } from "preact-iso";
+
+import { CommandPalette } from "../CommandPalette";
+
+const meta: Meta<typeof CommandPalette> = {
+  title: "dashboard/components/CommandPalette",
+  component: CommandPalette,
+};
+
+type Story = StoryObj<typeof meta>;
+
+const Default: Story = {
+  render: () => (
+    <LocationProvider>
+      <CommandPalette />
+    </LocationProvider>
+  ),
+  play: async () => {},
+};
+
+export { meta as default, Default as CommandPalette };

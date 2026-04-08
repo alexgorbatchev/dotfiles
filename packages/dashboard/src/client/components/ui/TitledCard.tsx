@@ -2,7 +2,7 @@ import type { ComponentChildren, JSX } from "preact";
 
 import { Card, CardContent, CardHeader, CardTitle } from "./Card";
 
-interface TitledCardProps {
+interface ITitledCardProps {
   title: string;
   icon: JSX.Element;
   action?: JSX.Element;
@@ -18,7 +18,7 @@ export function TitledCard({
   children,
   class: className,
   contentClass,
-}: TitledCardProps): JSX.Element {
+}: ITitledCardProps): JSX.Element {
   return (
     <Card class={className}>
       <CardHeader class="pb-2">

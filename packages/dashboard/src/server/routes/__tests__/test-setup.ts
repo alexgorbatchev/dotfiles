@@ -22,7 +22,7 @@ type MockToolConfigInput = Partial<ToolConfig> & {
   name: string;
 };
 
-export interface TestContext {
+export interface ITestContext {
   logger: TestLogger;
   registryDatabase: RegistryDatabase;
   fileRegistry: FileRegistry;
@@ -36,7 +36,9 @@ export interface TestContext {
   mockPluginRegistry: { get: ReturnType<typeof mock> };
 }
 
-export async function setupTestContext(): Promise<TestContext> {
+export type TestContext = ITestContext;
+
+export async function setupTestContext(): Promise<ITestContext> {
   clearToolConfigsCache();
   const logger = new TestLogger();
   const registryDatabase = new RegistryDatabase(logger, ":memory:");
@@ -44,8 +46,8 @@ export async function setupTestContext(): Promise<TestContext> {
   const fileRegistry = new FileRegistry(logger, db);
   const toolInstallationRegistry = new ToolInstallationRegistry(logger, db);
 
-  const memFs = await createMemFileSystem();
-  const fs = memFs.fs.asIResolvedFileSystem;
+  const memFileSystem = await createMemFileSystem();
+  const fs = memFileSystem.fs.asIResolvedFileSystem;
 
   const toolConfigs: Record<string, ToolConfig> = {};
   const configService = createMockConfigService(toolConfigs);

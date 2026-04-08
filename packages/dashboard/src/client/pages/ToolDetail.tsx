@@ -18,7 +18,7 @@ import { ReadmeCard } from "../components/ReadmeCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { ToolHistory } from "../components/ToolHistory";
 import { ToolSourceCard } from "../components/ToolSourceCard";
-import { FileTree } from "../components/TreeNode";
+import { FileTree } from "../components/FileTree";
 import { Button } from "../components/ui/Button";
 import { TitledCard } from "../components/ui/TitledCard";
 import { useFetch } from "../hooks/useFetch";
@@ -188,8 +188,8 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
         } else {
           setInstallError(result.error ?? "Installation failed");
         }
-      } catch (err) {
-        setInstallError(err instanceof Error ? err.message : "Installation failed");
+      } catch (error) {
+        setInstallError(error instanceof Error ? error.message : "Installation failed");
       } finally {
         setInstalling(false);
       }
@@ -204,13 +204,13 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
     try {
       const result = await postApi<ICheckUpdateResponse>(`/tools/${encodeURIComponent(toolName)}/check-update`, {});
       setCheckUpdateResult(result);
-    } catch (err) {
+    } catch (error) {
       setCheckUpdateResult({
         hasUpdate: false,
         currentVersion: "unknown",
         latestVersion: "unknown",
         supported: false,
-        error: err instanceof Error ? err.message : "Check failed",
+        error: error instanceof Error ? error.message : "Check failed",
       });
     } finally {
       setCheckingUpdate(false);
@@ -227,11 +227,11 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       if (result.updated) {
         setTimeout(() => window.location.reload(), 1500);
       }
-    } catch (err) {
+    } catch (error) {
       setUpdateResult({
         updated: false,
         supported: false,
-        error: err instanceof Error ? err.message : "Update failed",
+        error: error instanceof Error ? error.message : "Update failed",
       });
     } finally {
       setUpdating(false);
@@ -240,7 +240,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
 
   if (loading) {
     return (
-      <div class="flex items-center justify-center h-64">
+      <div data-testid="ToolDetail" class="flex items-center justify-center h-64">
         <div class="text-muted-foreground">Loading...</div>
       </div>
     );
@@ -248,7 +248,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
 
   if (!tool) {
     return (
-      <div class="text-center py-8">
+      <div data-testid="ToolDetail" class="text-center py-8">
         <div class="text-muted-foreground mb-4">Tool not found</div>
         <Button variant="link" asChild>
           <a href="/">← Back to Home</a>
@@ -261,7 +261,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   const readmeRepo = getReadmeRepo(tool.config);
 
   return (
-    <div class="space-y-4">
+    <div data-testid="ToolDetail" class="space-y-4">
       {/* Header */}
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">

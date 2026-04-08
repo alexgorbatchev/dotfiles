@@ -19,7 +19,7 @@ export function Nav(): JSX.Element {
   const { url } = useLocation();
 
   return (
-    <nav class="bg-card border-b border-border">
+    <nav data-testid="Nav" class="bg-card border-b border-border">
       <div class="max-w-7xl mx-auto px-4">
         <div class="flex items-center justify-between h-14">
           <div class="flex items-center space-x-4">
@@ -40,11 +40,11 @@ export function Nav(): JSX.Element {
           <div class="flex items-center space-x-4">
             <button
               onClick={openCommandPalette}
-              class="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-input border border-border rounded-md hover:bg-accent transition-colors"
+              class="flex items-center gap-2 rounded-md border border-border bg-input px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
             >
-              <Search class="w-4 h-4" />
+              <Search class="h-4 w-4" />
               <span>Search...</span>
-              <kbd class="text-xs bg-muted px-1.5 py-0.5 rounded">⌘K</kbd>
+              <kbd class="bg-muted px-1.5 py-0.5 text-xs rounded">⌘K</kbd>
             </button>
           </div>
         </div>

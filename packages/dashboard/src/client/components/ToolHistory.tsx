@@ -3,7 +3,7 @@ import { Clock, Copy, File, FilePlus, FolderPlus, Link, Shield, Trash2 } from ".
 
 import type { IToolHistoryEntry } from "../../shared/types";
 
-interface ToolHistoryProps {
+interface IToolHistoryProps {
   entries: IToolHistoryEntry[];
   installedAt: string | null;
   dotfilesDir: string;
@@ -37,16 +37,20 @@ function getDisplayPath(filePath: string, dotfilesDir: string): string {
   return filePath;
 }
 
-export function ToolHistory({ entries, installedAt, dotfilesDir }: ToolHistoryProps): JSX.Element {
+export function ToolHistory({ entries, installedAt, dotfilesDir }: IToolHistoryProps): JSX.Element {
   if (entries.length === 0 && !installedAt) {
-    return <div class="text-muted-foreground text-center py-4">No history recorded</div>;
+    return (
+      <div data-testid="ToolHistory" class="text-muted-foreground py-4 text-center">
+        No history recorded
+      </div>
+    );
   }
 
   return (
-    <div class="space-y-4">
+    <div data-testid="ToolHistory" class="space-y-4">
       {installedAt && (
-        <div class="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-          <div class="flex items-center justify-center w-8 h-8 rounded-full bg-green-500/20 text-green-500">
+        <div class="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+          <div class="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20 text-green-500">
             <Clock class="h-4 w-4" />
           </div>
           <div>
@@ -62,18 +66,18 @@ export function ToolHistory({ entries, installedAt, dotfilesDir }: ToolHistoryPr
           <div class="space-y-3">
             {entries.map((entry) => (
               <div key={entry.id} class="relative flex items-start gap-3 pl-8">
-                <div class="absolute left-2 top-1 flex items-center justify-center w-4 h-4 rounded-full bg-background border border-border">
-                  <div class="w-2 h-2 rounded-full bg-muted-foreground" />
+                <div class="absolute left-2 top-1 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background">
+                  <div class="h-2 w-2 rounded-full bg-muted-foreground" />
                 </div>
-                <div class="flex-1 min-w-0">
+                <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2">
                     <span class="text-muted-foreground">
                       {operationIcons[entry.operationType] || <File class="h-4 w-4" />}
                     </span>
                     <span class="font-medium">{operationLabels[entry.operationType] || entry.operationType}</span>
-                    <span class="text-xs text-muted-foreground ml-auto">{entry.relativeTime}</span>
+                    <span class="ml-auto text-xs text-muted-foreground">{entry.relativeTime}</span>
                   </div>
-                  <div class="text-sm text-muted-foreground truncate mt-1" title={entry.filePath}>
+                  <div class="mt-1 truncate text-sm text-muted-foreground" title={entry.filePath}>
                     {getDisplayPath(entry.filePath, dotfilesDir)}
                   </div>
                 </div>

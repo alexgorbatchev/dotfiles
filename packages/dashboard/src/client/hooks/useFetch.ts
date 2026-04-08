@@ -1,13 +1,13 @@
 import { useEffect, useState } from "preact/hooks";
 import { fetchApi } from "../api";
 
-interface UseFetchResult<T> {
+interface IUseFetchResult<T> {
   data: T | null;
   loading: boolean;
   error: Error | null;
 }
 
-export function useFetch<T>(endpoint: string, deps: unknown[] = []): UseFetchResult<T> {
+export function useFetch<T>(endpoint: string, deps: unknown[] = []): IUseFetchResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -19,8 +19,8 @@ export function useFetch<T>(endpoint: string, deps: unknown[] = []): UseFetchRes
       try {
         const result = await fetchApi<T>(endpoint);
         setData(result);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error(String(err)));
+      } catch (error) {
+        setError(error instanceof Error ? error : new Error(String(error)));
       } finally {
         setLoading(false);
       }

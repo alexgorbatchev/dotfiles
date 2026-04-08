@@ -4,11 +4,11 @@ import { Badge } from "./ui/Badge";
 
 type ToolStatus = "installed" | "not-installed" | "error";
 
-interface StatusBadgeProps {
+interface IStatusBadgeProps {
   status: ToolStatus;
 }
 
-export function StatusBadge({ status }: StatusBadgeProps): JSX.Element {
+export function StatusBadge({ status }: IStatusBadgeProps): JSX.Element {
   switch (status) {
     case "installed":
       return <Badge variant="success">✓ Installed</Badge>;

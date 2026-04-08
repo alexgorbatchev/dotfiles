@@ -3,7 +3,7 @@ import { Box, Download, FileCode, GitBranch, Package, Terminal, Wrench } from ".
 
 import { Badge } from "./ui/Badge";
 
-interface InstallMethodBadgeProps {
+interface IInstallMethodBadgeProps {
   method: string;
   ghCli?: boolean;
 }
@@ -20,7 +20,7 @@ const methodIcons: Record<string, JSX.Element> = {
   manual: <Wrench class="h-3 w-3" />,
 };
 
-export function InstallMethodBadge({ method, ghCli }: InstallMethodBadgeProps): JSX.Element {
+export function InstallMethodBadge({ method, ghCli }: IInstallMethodBadgeProps): JSX.Element {
   const displayMethod = method === "github-release" && ghCli ? "github-release:cli" : method;
   const icon = methodIcons[displayMethod] || <Package class="h-3 w-3" />;
 

@@ -29,9 +29,7 @@ function HealthCheckCard({ check }: HealthCheckCardProps): JSX.Element {
       {check.message && <p class="text-sm font-bold text-foreground">{check.message}</p>}
       {(check.details?.length || 0) > 0 && (
         <ul class="text-xs text-muted-foreground/70 mt-2 ml-4 space-y-1 list-disc">
-          {check.details?.map((d, j) => (
-            <li key={j}>{d}</li>
-          ))}
+          {check.details?.map((detail, index) => <li key={index}>{detail}</li>)}
         </ul>
       )}
     </TitledCard>
@@ -43,7 +41,7 @@ export function Health(): JSX.Element {
 
   if (loading) {
     return (
-      <div class="flex items-center justify-center h-64">
+      <div data-testid="Health" class="flex items-center justify-center h-64">
         <div class="text-muted-foreground">Loading...</div>
       </div>
     );
@@ -56,14 +54,12 @@ export function Health(): JSX.Element {
   };
 
   return (
-    <div class="space-y-6">
-      {/* Page title */}
+    <div data-testid="Health" class="space-y-6">
       <div class="flex items-center space-x-2">
         <HeartPulse class="h-6 w-6" />
         <h1 class="text-2xl font-bold">Health Checks</h1>
       </div>
 
-      {/* Overall status */}
       <Card class="text-center">
         <CardContent class="pt-6">
           <div class={`w-4 h-4 rounded-full mx-auto mb-4 ${statusColors[health?.overall || "healthy"]}`} />
@@ -74,9 +70,8 @@ export function Health(): JSX.Element {
         </CardContent>
       </Card>
 
-      {/* Individual check cards - stacked vertically */}
       <div class="space-y-4">
-        {health?.checks?.map((check, i) => <HealthCheckCard key={i} check={check} />) || (
+        {health?.checks?.map((check, index) => <HealthCheckCard key={index} check={check} />) || (
           <div class="text-muted-foreground">No checks available</div>
         )}
       </div>

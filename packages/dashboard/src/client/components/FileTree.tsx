@@ -14,19 +14,19 @@ import {
 } from "../icons";
 
 import { Badge } from "./ui/Badge";
-import { Tree, type TreeItemData } from "./ui/Tree";
+import { Tree, type ITreeItemData } from "./ui/Tree";
 
-interface TreeNodeData {
+interface IFileTreeNodeData {
   name: string;
   path: string;
   type: "file" | "directory";
   fileType?: string;
   lastOperation?: string;
-  children?: TreeNodeData[];
+  children?: IFileTreeNodeData[];
 }
 
-interface TreeNodeProps {
-  nodes: TreeNodeData[];
+interface IFileTreeProps {
+  nodes: IFileTreeNodeData[];
 }
 
 const FILE_TYPE_COLORS: Record<string, string> = {
@@ -59,11 +59,9 @@ function getFileIcon(fileType?: string): JSX.Element {
     case "completion":
       return <Settings class={iconClass} />;
     case "init":
-      return <FileCode class={iconClass} />;
     case "hook-generated":
       return <FileCode class={iconClass} />;
     case "catalog":
-      return <Package class={iconClass} />;
     case "install":
       return <Package class={iconClass} />;
     case "source":
@@ -73,7 +71,7 @@ function getFileIcon(fileType?: string): JSX.Element {
   }
 }
 
-function getIcon(node: TreeNodeData): JSX.Element {
+function getIcon(node: IFileTreeNodeData): JSX.Element {
   const isDirectory = node.type === "directory";
   const hasChildren = node.children && node.children.length > 0;
   const colorClass = isDirectory ? "text-amber-300" : FILE_TYPE_COLORS[node.fileType || ""] || "text-muted-foreground";
@@ -84,7 +82,7 @@ function getIcon(node: TreeNodeData): JSX.Element {
   return <span class={colorClass}>{getFileIcon(node.fileType)}</span>;
 }
 
-function convertToTreeItems(nodes: TreeNodeData[]): TreeItemData<TreeNodeData>[] {
+function convertToTreeItems(nodes: IFileTreeNodeData[]): ITreeItemData<IFileTreeNodeData>[] {
   return nodes.map((node) => ({
     id: node.path,
     label: node.name,
@@ -94,7 +92,7 @@ function convertToTreeItems(nodes: TreeNodeData[]): TreeItemData<TreeNodeData>[]
   }));
 }
 
-function renderFileLabel(item: TreeItemData<TreeNodeData>): JSX.Element {
+function renderFileLabel(item: ITreeItemData<IFileTreeNodeData>): JSX.Element {
   const node = item.data;
   const isDirectory = node?.type === "directory";
 
@@ -110,11 +108,7 @@ function renderFileLabel(item: TreeItemData<TreeNodeData>): JSX.Element {
   );
 }
 
-export function FileTree({ nodes }: TreeNodeProps): JSX.Element {
+export function FileTree({ nodes }: IFileTreeProps): JSX.Element {
   const treeItems = convertToTreeItems(nodes);
   return <Tree items={treeItems} renderLabel={renderFileLabel} />;
 }
-
-// Re-export Tree for direct usage
-export { Tree } from "./ui/Tree";
-export type { TreeItemData } from "./ui/Tree";

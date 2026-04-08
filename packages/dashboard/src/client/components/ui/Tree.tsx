@@ -4,36 +4,40 @@ import { ChevronDown, ChevronRight } from "../../icons";
 
 import { cn } from "../../lib/utils";
 
-interface TreeItemData<T = unknown> {
+export interface ITreeItemData<T = unknown> {
   id: string;
   label: string;
   icon?: JSX.Element;
   iconDecorator?: JSX.Element;
-  children?: TreeItemData<T>[];
+  children?: ITreeItemData<T>[];
   data?: T;
 }
 
-interface TreeItemProps<T = unknown> {
-  item: TreeItemData<T>;
+export interface ITreeItemProps<T = unknown> {
+  item: ITreeItemData<T>;
   depth?: number;
   defaultExpanded?: boolean;
-  renderActions?: (item: TreeItemData<T>) => ComponentChildren;
-  renderLabel?: (item: TreeItemData<T>) => ComponentChildren;
-  onItemClick?: (item: TreeItemData<T>) => void;
+  renderActions?: (item: ITreeItemData<T>) => ComponentChildren;
+  renderLabel?: (item: ITreeItemData<T>) => ComponentChildren;
+  onItemClick?: (item: ITreeItemData<T>) => void;
   iconClassName?: string;
 }
 
-interface TreeProps<T = unknown> {
-  items: TreeItemData<T>[];
+export interface ITreeProps<T = unknown> {
+  items: ITreeItemData<T>[];
   defaultExpanded?: boolean;
-  renderActions?: (item: TreeItemData<T>) => ComponentChildren;
-  renderLabel?: (item: TreeItemData<T>) => ComponentChildren;
-  onItemClick?: (item: TreeItemData<T>) => void;
+  renderActions?: (item: ITreeItemData<T>) => ComponentChildren;
+  renderLabel?: (item: ITreeItemData<T>) => ComponentChildren;
+  onItemClick?: (item: ITreeItemData<T>) => void;
   iconClassName?: string;
   class?: string;
 }
 
-function TreeItem<T = unknown>({
+export type TreeItemData<T = unknown> = ITreeItemData<T>;
+export type TreeItemProps<T = unknown> = ITreeItemProps<T>;
+export type TreeProps<T = unknown> = ITreeProps<T>;
+
+export function TreeItem<T = unknown>({
   item,
   depth = 0,
   defaultExpanded = true,
@@ -41,7 +45,7 @@ function TreeItem<T = unknown>({
   renderLabel,
   onItemClick,
   iconClassName,
-}: TreeItemProps<T>): JSX.Element {
+}: ITreeItemProps<T>): JSX.Element {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const hasChildren = item.children && item.children.length > 0;
   const indent = depth * 16;
@@ -69,7 +73,7 @@ function TreeItem<T = unknown>({
   }
 
   return (
-    <div>
+    <div data-testid="TreeItem">
       <div
         class="flex items-center py-1 hover:bg-accent rounded cursor-pointer text-sm group"
         style={{ paddingLeft: `${indent}px` }}
@@ -107,7 +111,7 @@ function TreeItem<T = unknown>({
   );
 }
 
-function Tree<T = unknown>({
+export function Tree<T = unknown>({
   items,
   defaultExpanded = true,
   renderActions,
@@ -115,16 +119,16 @@ function Tree<T = unknown>({
   onItemClick,
   iconClassName,
   class: className,
-}: TreeProps<T>): JSX.Element {
+}: ITreeProps<T>): JSX.Element {
   return (
-    <div class={cn("space-y-1", className)}>
+    <div data-testid="Tree" class={cn("space-y-1", className)}>
       {items.map((item) => (
         <TreeItem
           key={item.id}
           item={item}
           defaultExpanded={defaultExpanded}
-          renderActions={renderActions}
           renderLabel={renderLabel}
+          renderActions={renderActions}
           onItemClick={onItemClick}
           iconClassName={iconClassName}
         />
@@ -132,6 +136,3 @@ function Tree<T = unknown>({
     </div>
   );
 }
-
-export { Tree, TreeItem };
-export type { TreeItemData, TreeItemProps, TreeProps };

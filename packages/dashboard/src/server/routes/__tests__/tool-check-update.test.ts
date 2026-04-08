@@ -1,8 +1,9 @@
+import assert from "node:assert";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { createMockToolConfigForTests, setupTestContext, type TestContext } from "./test-setup";
+import { createMockToolConfigForTests, setupTestContext, type ITestContext } from "./test-setup";
 
 describe("checkToolUpdate", () => {
-  let ctx: TestContext;
+  let ctx: ITestContext;
 
   beforeEach(async () => {
     ctx = await setupTestContext();
@@ -150,7 +151,7 @@ describe("checkToolUpdate", () => {
     ctx.mockPluginRegistry.get.mockReturnValue({
       supportsUpdateCheck: () => true,
       checkUpdate: async () => {
-        throw new Error("Network timeout");
+        assert.fail("Network timeout");
       },
     });
 

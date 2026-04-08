@@ -1,6 +1,6 @@
 import type { TsLogger } from "@dotfiles/logger";
 import type { IActivityFeed, IApiResponse } from "../../shared/types";
-import { formatRelativeTime, formatTimestamp } from "../../shared/types";
+import { formatRelativeTime, formatTimestamp } from "../../shared/dashboardUtils";
 import { messages } from "../log-messages";
 import type { IDashboardServices } from "../types";
 

@@ -3,12 +3,12 @@ import { ExternalLink } from "../../icons";
 
 import { Button } from "./Button";
 
-interface ExternalLinkButtonProps {
+interface IExternalLinkButtonProps {
   href: string;
   children: JSX.Element | string;
 }
 
-export function ExternalLinkButton({ href, children }: ExternalLinkButtonProps): JSX.Element {
+export function ExternalLinkButton({ href, children }: IExternalLinkButtonProps): JSX.Element {
   return (
     <Button variant="outline" size="sm" asChild>
       <a

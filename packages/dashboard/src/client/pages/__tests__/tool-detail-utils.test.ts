@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import { describe, expect, test } from "bun:test";
 
 import type { ISerializableToolConfig, IToolDetail } from "../../../shared/types";
@@ -14,18 +15,19 @@ type ToolDetailStub = Partial<ISerializableToolConfig> & {
 };
 
 function createMockToolDetail(overrides: ToolDetailStub): IToolDetail {
-  return {
-    config: {
+  const config = Object.assign(
+    {
       name: overrides.name,
-      version: overrides.version ?? "latest",
-      installationMethod: overrides.installationMethod ?? "github-release",
-      installParams: overrides.installParams ?? { repo: "test/repo" },
-      binaries: "binaries" in overrides ? overrides.binaries : [overrides.name],
-      dependencies: overrides.dependencies,
-      symlinks: overrides.symlinks,
-      disabled: overrides.disabled,
-      configFilePath: overrides.configFilePath,
+      version: "latest",
+      installationMethod: "github-release",
+      installParams: { repo: "test/repo" },
+      binaries: [overrides.name],
     },
+    overrides,
+  );
+
+  return {
+    config,
     runtime: {
       status: "installed",
       installedVersion: "1.0.0",
@@ -107,8 +109,8 @@ describe("findDependentTools", () => {
 
     expect(dependents).toHaveLength(1);
     const firstDependent = dependents[0];
-    expect(firstDependent).toBeDefined();
-    expect(firstDependent?.config.name).toBe("tool-a");
+    assert(firstDependent);
+    expect(firstDependent.config.name).toBe("tool-a");
   });
 
   test("returns empty array when no tools depend on binaries", () => {
@@ -140,7 +142,7 @@ describe("findDependentTools", () => {
     const dependents = findDependentTools(tools, ["fnm"]);
 
     expect(dependents).toHaveLength(2);
-    expect(dependents.map((t) => t.config.name).toSorted()).toEqual(["tool-a", "tool-b"]);
+    expect(dependents.map((tool) => tool.config.name).toSorted()).toEqual(["tool-a", "tool-b"]);
   });
 });
 

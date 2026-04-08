@@ -39,8 +39,13 @@ type ButtonProps = JSX.HTMLAttributes<HTMLButtonElement> &
     disabled?: boolean;
   };
 
-function Button({ class: className, variant, size, ...props }: ButtonProps): JSX.Element {
-  return <button data-slot="button" class={cn(buttonVariants({ variant, size, className }))} {...props} />;
+export function Button({ class: className, variant, size, ...props }: ButtonProps): JSX.Element {
+  return (
+    <button
+      data-testid="Button"
+      data-slot="button"
+      class={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  );
 }
-
-export { Button, buttonVariants };

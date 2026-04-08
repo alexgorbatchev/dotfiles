@@ -28,8 +28,6 @@ type BadgeProps = JSX.HTMLAttributes<HTMLDivElement> &
     children?: ComponentChildren;
   };
 
-function Badge({ class: className, variant, ...props }: BadgeProps): JSX.Element {
-  return <div class={cn(badgeVariants({ variant }), className)} {...props} />;
+export function Badge({ class: className, variant, ...props }: BadgeProps): JSX.Element {
+  return <div data-testid="Badge" class={cn(badgeVariants({ variant }), className)} {...props} />;
 }
-
-export { Badge, badgeVariants };
