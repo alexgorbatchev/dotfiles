@@ -2,6 +2,9 @@ import { Architecture, Platform } from "@dotfiles/core";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { createMockToolConfigForTests, setupTestContext, type TestContext } from "./test-setup";
 
+type DownloadFunction = TestContext["services"]["downloader"]["download"];
+type DownloadMock = ReturnType<typeof mock<DownloadFunction>>;
+
 describe("getToolReadme", () => {
   let ctx: TestContext;
 
@@ -30,7 +33,7 @@ describe("getToolReadme", () => {
       ],
     });
 
-    const download = mock(async () => Buffer.from("# Atuin README"));
+    const download: DownloadMock = mock<DownloadFunction>(async () => Buffer.from("# Atuin README"));
     ctx.services.downloader.download = download;
 
     const result = await ctx.api.getToolReadme("atuin");
@@ -38,8 +41,8 @@ describe("getToolReadme", () => {
     expect(result.success).toBe(true);
     expect(result.data?.content).toBe("# Atuin README");
     expect(download).toHaveBeenCalledTimes(1);
-    const firstDownloadCall = download.mock.calls[0];
-    expect(firstDownloadCall?.[1]).toBe("https://raw.githubusercontent.com/atuinsh/atuin/latest/README.md");
+    const [, firstDownloadUrl] = download.mock.calls[0]!;
+    expect(firstDownloadUrl).toBe("https://raw.githubusercontent.com/atuinsh/atuin/latest/README.md");
   });
 
   test("prefers active system platform repo when platform configs are in mismatched order", async () => {
@@ -66,15 +69,15 @@ describe("getToolReadme", () => {
       ],
     });
 
-    const download = mock(async () => Buffer.from("# Atuin README"));
+    const download: DownloadMock = mock<DownloadFunction>(async () => Buffer.from("# Atuin README"));
     ctx.services.downloader.download = download;
 
     const result = await ctx.api.getToolReadme("atuin");
 
     expect(result.success).toBe(true);
     expect(result.data?.content).toBe("# Atuin README");
-    const firstDownloadCall = download.mock.calls[0];
-    expect(firstDownloadCall?.[1]).toBe("https://raw.githubusercontent.com/macos/repo/latest/README.md");
+    const [, firstDownloadUrl] = download.mock.calls[0]!;
+    expect(firstDownloadUrl).toBe("https://raw.githubusercontent.com/macos/repo/latest/README.md");
   });
 
   test("prefers active system architecture repo when platform configs share same platform", async () => {
@@ -103,15 +106,15 @@ describe("getToolReadme", () => {
       ],
     });
 
-    const download = mock(async () => Buffer.from("# Atuin README"));
+    const download: DownloadMock = mock<DownloadFunction>(async () => Buffer.from("# Atuin README"));
     ctx.services.downloader.download = download;
 
     const result = await ctx.api.getToolReadme("atuin");
 
     expect(result.success).toBe(true);
     expect(result.data?.content).toBe("# Atuin README");
-    const firstDownloadCall = download.mock.calls[0];
-    expect(firstDownloadCall?.[1]).toBe("https://raw.githubusercontent.com/macos-arm64/repo/latest/README.md");
+    const [, firstDownloadUrl] = download.mock.calls[0]!;
+    expect(firstDownloadUrl).toBe("https://raw.githubusercontent.com/macos-arm64/repo/latest/README.md");
   });
 
   test("returns error when repo is missing from top-level and platform configs", async () => {
