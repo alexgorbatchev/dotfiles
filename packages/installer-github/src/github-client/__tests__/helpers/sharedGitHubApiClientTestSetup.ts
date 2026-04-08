@@ -4,7 +4,7 @@ import type { ICache, IDownloader } from "@dotfiles/downloader";
 import { createMemFileSystem } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
 import { createMockProjectConfig, createTestDirectories, type PartialProjectConfig } from "@dotfiles/testing-helpers";
-import { mock } from "bun:test";
+import { mock, type Mock } from "bun:test";
 import path from "node:path";
 import { GitHubApiClient } from "../../GitHubApiClient";
 
@@ -12,14 +12,27 @@ interface IMockDownloader extends IDownloader {
   download: ReturnType<typeof mock<IDownloader["download"]>>;
 }
 
-interface IMockCache extends ICache {
-  get: ReturnType<typeof mock<ICache["get"]>>;
-  set: ReturnType<typeof mock<ICache["set"]>>;
-  setDownload: ReturnType<typeof mock<ICache["setDownload"]>>;
-  has: ReturnType<typeof mock<ICache["has"]>>;
-  delete: ReturnType<typeof mock<ICache["delete"]>>;
-  clearExpired: ReturnType<typeof mock<ICache["clearExpired"]>>;
-  clear: ReturnType<typeof mock<ICache["clear"]>>;
+type CacheWithoutGenericMethods = Omit<ICache, "get" | "set">;
+type CacheGetImplementation = (key: string) => Promise<unknown | null>;
+type CacheSetImplementation = (key: string, data: unknown, ttlMs?: number) => Promise<void>;
+type CacheGetMockController = Mock<CacheGetImplementation>;
+type CacheSetMockController = Mock<CacheSetImplementation>;
+type CacheGetMock = ICache["get"] & CacheGetMockController;
+type CacheSetMock = ICache["set"] & CacheSetMockController;
+type CacheSetDownloadMock = ReturnType<typeof mock<ICache["setDownload"]>>;
+type CacheHasMock = ReturnType<typeof mock<ICache["has"]>>;
+type CacheDeleteMock = ReturnType<typeof mock<ICache["delete"]>>;
+type CacheClearExpiredMock = ReturnType<typeof mock<ICache["clearExpired"]>>;
+type CacheClearMock = ReturnType<typeof mock<ICache["clear"]>>;
+
+interface IMockCache extends CacheWithoutGenericMethods {
+  get: CacheGetMock;
+  set: CacheSetMock;
+  setDownload: CacheSetDownloadMock;
+  has: CacheHasMock;
+  delete: CacheDeleteMock;
+  clearExpired: CacheClearExpiredMock;
+  clear: CacheClearMock;
 }
 
 interface IGitHubConfigOverrideArgs {
@@ -39,6 +52,33 @@ interface IBasicGitHubConfigArgs {
 interface IGitHubCacheConfigArgs {
   githubApiCacheEnabled?: boolean;
   githubApiCacheTtl?: number;
+}
+
+function createCacheGetMock(): CacheGetMock {
+  const controller: CacheGetMockController = mock<CacheGetImplementation>(async (_key: string) => null);
+  const get = Object.assign(
+    async <T>(key: string): Promise<T | null> => {
+      const cachedValue = await controller(key);
+      return cachedValue as T | null;
+    },
+    controller,
+  );
+
+  return get as CacheGetMock;
+}
+
+function createCacheSetMock(): CacheSetMock {
+  const controller: CacheSetMockController = mock<CacheSetImplementation>(
+    async (_key: string, _data: unknown, _ttlMs?: number) => {},
+  );
+  const set = Object.assign(
+    async <T>(key: string, data: T, ttlMs?: number): Promise<void> => {
+      await controller(key, data, ttlMs);
+    },
+    controller,
+  );
+
+  return set as CacheSetMock;
 }
 
 export const createMockProjectConfigForGitHubApi = async (
@@ -79,13 +119,15 @@ export const createMockDownloader = (): IMockDownloader => {
 
 export const createMockGitHubApiCache = (): IMockCache => {
   return {
-    get: mock(async () => null), // Default to cache miss
-    set: mock(async () => {}), // Default no-op
-    setDownload: mock(async () => {}), // Default no-op
-    has: mock(async () => false),
-    delete: mock(async () => {}),
-    clearExpired: mock(async () => {}),
-    clear: mock(async () => {}),
+    get: createCacheGetMock(),
+    set: createCacheSetMock(),
+    setDownload: mock<ICache["setDownload"]>(
+      async (_key: string, _data: Buffer, _ttlMs: number | undefined, _url: string, _contentType?: string) => {},
+    ),
+    has: mock<ICache["has"]>(async (_key: string) => false),
+    delete: mock<ICache["delete"]>(async (_key: string) => {}),
+    clearExpired: mock<ICache["clearExpired"]>(async () => {}),
+    clear: mock<ICache["clear"]>(async () => {}),
   };
 };
 
