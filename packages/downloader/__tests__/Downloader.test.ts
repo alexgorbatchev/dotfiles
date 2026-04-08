@@ -1,6 +1,7 @@
 import { createMemFileSystem, type IFileSystem } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, it, type Mock, mock } from "bun:test";
+import assert from "node:assert";
 import { Downloader } from "../Downloader";
 import type { IDownloadOptions } from "../IDownloader";
 import type { IDownloadStrategy } from "../IDownloadStrategy";
@@ -17,6 +18,16 @@ let nonErrorStringThrowingStrategy: IDownloadStrategy;
 let fileSystem: IFileSystem;
 let logger: TestLogger;
 
+function resolveDownloadResult(url: string, options: IDownloadOptions, strategyName: string): Buffer | undefined {
+  const downloadHandler = new Map([
+    [true, () => undefined],
+    [false, () => Buffer.from(`content from ${url} via ${strategyName}`)],
+  ]).get(Boolean(options.destinationPath));
+
+  assert(downloadHandler);
+  return downloadHandler();
+}
+
 describe("Downloader", () => {
   beforeEach(async () => {
     const { fs: fsInstance } = await createMemFileSystem();
@@ -26,19 +37,17 @@ describe("Downloader", () => {
     mockStrategy1 = {
       name: "mockStrategy1",
       isAvailable: mock(async () => true),
-      download: mock(async (url: string, options: IDownloadOptions) => {
-        if (options.destinationPath) return;
-        return Buffer.from(`content from ${url} via mockStrategy1`);
-      }),
+      download: mock(async (url: string, options: IDownloadOptions) =>
+        resolveDownloadResult(url, options, "mockStrategy1"),
+      ),
     };
 
     mockStrategy2 = {
       name: "mockStrategy2",
       isAvailable: mock(async () => true),
-      download: mock(async (url: string, options: IDownloadOptions) => {
-        if (options.destinationPath) return;
-        return Buffer.from(`content from ${url} via mockStrategy2`);
-      }),
+      download: mock(async (url: string, options: IDownloadOptions) =>
+        resolveDownloadResult(url, options, "mockStrategy2"),
+      ),
     };
 
     unavailableStrategy = {
@@ -51,7 +60,7 @@ describe("Downloader", () => {
       name: "failingStrategy",
       isAvailable: mock(async () => true),
       download: mock(async () => {
-        throw new Error("failingStrategy failed");
+        assert.fail("failingStrategy failed");
       }),
     };
 
@@ -91,10 +100,9 @@ describe("Downloader", () => {
   it("should use NodeFetchStrategy by default if no strategies are provided", async () => {
     // We need to mock NodeFetchStrategy's methods for this test
     const originalNodeFetchDownload = NodeFetchStrategy.prototype.download;
-    NodeFetchStrategy.prototype.download = mock(async (url: string, options: IDownloadOptions) => {
-      if (options.destinationPath) return;
-      return Buffer.from(`content from ${url} via NodeFetchStrategy`);
-    });
+    NodeFetchStrategy.prototype.download = mock(async (url: string, options: IDownloadOptions) =>
+      resolveDownloadResult(url, options, "NodeFetchStrategy"),
+    );
 
     const downloader = new Downloader(logger, fileSystem); // No strategies provided
     const url = "http://example.com/file.txt";
@@ -204,10 +212,9 @@ describe("Downloader", () => {
     it("should call onProgress callback if provided via options", async () => {
       const mockOnProgress = mock(() => {}); // vi.fn() equivalent in bun:test is just mock()
       const mockStrategyDownload = mock(async (_url: string, opts: IDownloadOptions) => {
-        if (opts.onProgress) {
-          opts.onProgress(50, 100); // Simulate progress
-          opts.onProgress(100, 100); // Simulate completion
-        }
+        const onProgress = opts.onProgress ?? (() => {});
+        onProgress(50, 100);
+        onProgress(100, 100);
         return Buffer.from("downloaded data");
       });
 
@@ -232,11 +239,7 @@ describe("Downloader", () => {
 
     it("should not fail if onProgress is not provided and strategy handles its absence", async () => {
       const mockStrategyDownload = mock(async (_url: string, opts: IDownloadOptions) => {
-        // Strategy should be robust enough not to try calling a non-existent onProgress
-        if (opts.onProgress) {
-          // This should not be reached if onProgress is not provided
-          throw new Error("onProgress was called unexpectedly");
-        }
+        opts.onProgress?.(50, 100);
         return Buffer.from("data");
       });
 

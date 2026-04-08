@@ -370,7 +370,7 @@ describe("installFromGiteaRelease", () => {
 
   it("should catch and return unexpected exceptions", async () => {
     apiClient.getLatestRelease = mock(async () => {
-      throw new Error("Unexpected internal error");
+      assert.fail("Unexpected internal error");
     });
     const toolConfig = createToolConfig();
 

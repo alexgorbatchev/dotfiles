@@ -1,6 +1,7 @@
 import type { IInstallContext, ToolConfig } from "@dotfiles/core";
 import type { IManualInstallSuccess } from "@dotfiles/installer-manual";
 import { beforeEach, describe, expect, it, spyOn } from "bun:test";
+import assert from "node:assert";
 import { createInstallerTestSetup, type IInstallerTestSetup } from "./installer-test-helpers";
 
 describe("Installer - Recursion Guard", () => {
@@ -94,7 +95,7 @@ describe("Installer - Recursion Guard", () => {
     } as unknown as ToolConfig;
 
     spyOn(setup.pluginRegistry, "install").mockImplementation(async () => {
-      throw new Error("Installation failed");
+      assert.fail("Installation failed");
     });
 
     // Execute installation (which will fail)

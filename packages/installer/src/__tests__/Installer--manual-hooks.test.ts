@@ -51,7 +51,7 @@ describe("Installer - Manual Installation Hooks", () => {
     it("should fail installation if before-install hook fails", async () => {
       const errorMessage = "Pre-installation check failed";
       const beforeInstallHook = mock(async () => {
-        throw new Error(errorMessage);
+        assert.fail(errorMessage);
       });
 
       const toolConfig: ManualToolConfig = createManualToolConfig({
@@ -100,7 +100,7 @@ describe("Installer - Manual Installation Hooks", () => {
 
     it("should continue installation if after-install hook fails (continueOnError=true)", async () => {
       const afterInstallHook = mock(async () => {
-        throw new Error("Post-installation cleanup failed");
+        assert.fail("Post-installation cleanup failed");
       });
 
       const toolConfig: ManualToolConfig = createManualToolConfig({

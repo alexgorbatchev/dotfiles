@@ -32,42 +32,45 @@ describe("cleanupCommand", () => {
     mockFileRegistry = createMockFileRegistry();
 
     // Override getFileStatesForTool to return our test data
-    mockFileRegistry.getFileStatesForTool = mock(async (toolName: string) => {
-      if (toolName === "tool1") {
-        return [
-          {
-            filePath: mockShim1,
-            toolName: "tool1",
-            fileType: "shim" as const,
-            lastOperation: "writeFile" as const,
-            lastModified: Date.now(),
-          },
-          {
-            filePath: mockShim2,
-            toolName: "tool1",
-            fileType: "shim" as const,
-            lastOperation: "writeFile" as const,
-            lastModified: Date.now(),
-          },
-          {
-            filePath: mockShellInit,
-            toolName: "tool1",
-            fileType: "init" as const,
-            lastOperation: "writeFile" as const,
-            lastModified: Date.now(),
-          },
-          {
-            filePath: mockSymlinkSource,
-            toolName: "tool1",
-            fileType: "symlink" as const,
-            lastOperation: "symlink" as const,
-            targetPath: mockSymlinkTarget,
-            lastModified: Date.now(),
-          },
-        ];
-      }
-      return [];
-    });
+    mockFileRegistry.getFileStatesForTool = mock(
+      async (toolName: string) =>
+        new Map([
+          [
+            "tool1",
+            [
+              {
+                filePath: mockShim1,
+                toolName: "tool1",
+                fileType: "shim" as const,
+                lastOperation: "writeFile" as const,
+                lastModified: Date.now(),
+              },
+              {
+                filePath: mockShim2,
+                toolName: "tool1",
+                fileType: "shim" as const,
+                lastOperation: "writeFile" as const,
+                lastModified: Date.now(),
+              },
+              {
+                filePath: mockShellInit,
+                toolName: "tool1",
+                fileType: "init" as const,
+                lastOperation: "writeFile" as const,
+                lastModified: Date.now(),
+              },
+              {
+                filePath: mockSymlinkSource,
+                toolName: "tool1",
+                fileType: "symlink" as const,
+                lastOperation: "symlink" as const,
+                targetPath: mockSymlinkTarget,
+                lastModified: Date.now(),
+              },
+            ],
+          ],
+        ]).get(toolName) ?? [],
+    );
 
     // Override getRegisteredTools to return our test tool
     mockFileRegistry.getRegisteredTools = mock(async () => ["tool1"]);

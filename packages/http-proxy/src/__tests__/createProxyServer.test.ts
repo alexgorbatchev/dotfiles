@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import assert from "node:assert";
 
 import { createProxyServer, type ProxyServer, type ProxyServerOptions } from "../createProxyServer";
 import { ProxyCacheStore } from "../ProxyCacheStore";
@@ -20,10 +21,8 @@ describe("createProxyServer", () => {
 
   afterEach(async () => {
     rmSync(cacheDir, { recursive: true, force: true });
-    if (server) {
-      server.close();
-      server = null;
-    }
+    server?.close();
+    server = null;
   });
 
   function startServer(options: Partial<ProxyServerOptions> = {}): Promise<string> {
@@ -36,9 +35,10 @@ describe("createProxyServer", () => {
       };
       server = createProxyServer(config);
       server.listen(0, () => {
-        const addr = server!.address();
-        const port = addr ? addr.port : 0;
-        resolve(`http://localhost:${port}`);
+        const addr = server?.address();
+        assert(addr);
+        assert(typeof addr !== "string");
+        resolve(`http://localhost:${addr.port}`);
       });
     });
   }

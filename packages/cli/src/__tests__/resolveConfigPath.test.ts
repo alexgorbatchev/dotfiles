@@ -124,9 +124,8 @@ describe("resolveConfigPath", () => {
 
       it("stops walking at directory containing .git", async () => {
         existsSpy.mockImplementation(async (filePath: string) => {
-          if (filePath === "/home/user/project/.git") return true;
-          if (filePath === "/home/user/dotfiles.config.ts") return true;
-          return false;
+          const existingPaths = new Set(["/home/user/project/.git", "/home/user/dotfiles.config.ts"]);
+          return existingPaths.has(filePath);
         });
 
         const result = await resolveConfigPath(logger, "", processInfo("/home/user/project/subdir"));
@@ -136,9 +135,8 @@ describe("resolveConfigPath", () => {
 
       it("stops walking at directory containing project.json", async () => {
         existsSpy.mockImplementation(async (filePath: string) => {
-          if (filePath === "/home/user/project/project.json") return true;
-          if (filePath === "/home/user/dotfiles.config.ts") return true;
-          return false;
+          const existingPaths = new Set(["/home/user/project/project.json", "/home/user/dotfiles.config.ts"]);
+          return existingPaths.has(filePath);
         });
 
         const result = await resolveConfigPath(logger, "", processInfo("/home/user/project/subdir"));
@@ -148,8 +146,8 @@ describe("resolveConfigPath", () => {
 
       it("stops walking at $HOME", async () => {
         existsSpy.mockImplementation(async (filePath: string) => {
-          if (filePath === "/home/user/dotfiles.config.ts") return true;
-          return false;
+          const existingPaths = new Set(["/home/user/dotfiles.config.ts"]);
+          return existingPaths.has(filePath);
         });
 
         const result = await resolveConfigPath(logger, "", processInfo("/home/user/project/subdir"));
@@ -159,8 +157,8 @@ describe("resolveConfigPath", () => {
 
       it("does not walk above $HOME", async () => {
         existsSpy.mockImplementation(async (filePath: string) => {
-          if (filePath === "/home/dotfiles.config.ts") return true;
-          return false;
+          const existingPaths = new Set(["/home/dotfiles.config.ts"]);
+          return existingPaths.has(filePath);
         });
 
         const result = await resolveConfigPath(logger, "", processInfo("/home/user/project"));
@@ -170,9 +168,8 @@ describe("resolveConfigPath", () => {
 
       it("checks config before boundary markers in the same directory", async () => {
         existsSpy.mockImplementation(async (filePath: string) => {
-          if (filePath === "/home/user/project/dotfiles.config.ts") return true;
-          if (filePath === "/home/user/project/.git") return true;
-          return false;
+          const existingPaths = new Set(["/home/user/project/dotfiles.config.ts", "/home/user/project/.git"]);
+          return existingPaths.has(filePath);
         });
 
         const result = await resolveConfigPath(logger, "", processInfo("/home/user/project/subdir"));

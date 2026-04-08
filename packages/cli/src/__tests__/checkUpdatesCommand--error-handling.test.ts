@@ -37,7 +37,9 @@ describe("checkUpdatesCommand - Error Handling & Unsupported Methods", () => {
     };
 
     const mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>> = {
-      get: mock((method: string) => (method === "manual" ? (mockPlugin as IInstallerPlugin) : undefined)),
+      get: mock((method: string) =>
+        new Map<string, IInstallerPlugin>([["manual", mockPlugin as IInstallerPlugin]]).get(method),
+      ),
       register: mock(() => Promise.resolve()),
       getAll: mock(() => []),
     };

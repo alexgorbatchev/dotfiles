@@ -59,7 +59,9 @@ describe("checkUpdatesCommand - Brew Updates", () => {
       services: {
         configService: mockConfigService,
         pluginRegistry: {
-          get: mock((method: string) => (method === "brew" ? (mockPlugin as IInstallerPlugin) : undefined)),
+          get: mock((method: string) =>
+            new Map<string, IInstallerPlugin>([["brew", mockPlugin as IInstallerPlugin]]).get(method),
+          ),
           register: mock(() => Promise.resolve()),
           getAll: mock(() => []),
         } as unknown as MockedInterface<IServices["pluginRegistry"]>,

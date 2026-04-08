@@ -2,6 +2,7 @@ import { createMemFileSystem, type IFileSystem, type IMemFileSystemReturn } from
 import { TestLogger } from "@dotfiles/logger";
 import { FetchMockHelper } from "@dotfiles/testing-helpers";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import assert from "node:assert";
 import {
   ClientError,
   ForbiddenError,
@@ -56,11 +57,9 @@ describe("NodeFetchStrategy", () => {
       expect(result!.toString()).toBe(mockFileData);
       const spy = fetchMockHelper.getSpy();
       expect(spy.mock.calls.length).toBe(1);
-      if (spy.mock.calls[0]) {
-        expect(spy.mock.calls[0][0]).toBe(testUrl);
-      } else {
-        expect(spy.mock.calls.length).toBeGreaterThan(0); // Should not happen if length is 1
-      }
+      const firstCall = spy.mock.calls[0];
+      assert(firstCall);
+      expect(firstCall[0]).toBe(testUrl);
     });
 
     it("should handle response without content-length for buffer download", async () => {
@@ -71,11 +70,9 @@ describe("NodeFetchStrategy", () => {
       expect(result!.toString()).toBe(mockFileData);
       const spy = fetchMockHelper.getSpy();
       expect(spy.mock.calls.length).toBe(1);
-      if (spy.mock.calls[0]) {
-        expect(spy.mock.calls[0][0]).toBe(testUrl);
-      } else {
-        expect(spy.mock.calls.length).toBeGreaterThan(0);
-      }
+      const firstCall = spy.mock.calls[0];
+      assert(firstCall);
+      expect(firstCall[0]).toBe(testUrl);
     });
   });
 
@@ -93,11 +90,9 @@ describe("NodeFetchStrategy", () => {
       expect(result).toBeUndefined();
       const spy = fetchMockHelper.getSpy();
       expect(spy.mock.calls.length).toBe(1);
-      if (spy.mock.calls[0]) {
-        expect(spy.mock.calls[0][0]).toBe(testUrl);
-      } else {
-        expect(spy.mock.calls.length).toBeGreaterThan(0);
-      }
+      const firstCall = spy.mock.calls[0];
+      assert(firstCall);
+      expect(firstCall[0]).toBe(testUrl);
       expect(fileSystemMocks.writeFile).toHaveBeenCalledWith(destinationPath, mockFileBuffer);
     });
   });
@@ -482,7 +477,7 @@ describe("NodeFetchStrategy", () => {
         statusText: "Server Error",
         headers: new Headers(),
         text: mock(async () => {
-          throw new Error("Cannot read body");
+          assert.fail("Cannot read body");
         }),
         body: null, // ReadableStream or null
       };

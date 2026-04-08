@@ -39,41 +39,50 @@ function createMockTrackedFileSystem(fs: IFileSystem): TrackedFileSystem {
   return mockTrackedFs;
 }
 
+function isDefinedSystemInfo(value: ISystemInfo | undefined): value is ISystemInfo {
+  return value !== undefined;
+}
+
 // Helper function to generate platform-specific content
 function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, systemInfo: ISystemInfo): string {
-  let content = "";
-
-  for (const [toolName, config] of Object.entries(toolConfigs)) {
-    if (config.platformConfigs) {
-      for (const platformConfig of config.platformConfigs) {
-        const isMatch =
-          ((platformConfig.platforms & Platform.MacOS) !== 0 && systemInfo.platform === Platform.MacOS) ||
-          ((platformConfig.platforms & Platform.Linux) !== 0 && systemInfo.platform === Platform.Linux);
-
-        const platformCfg = platformConfig.config as PlatformConfig;
-        if (isMatch && platformCfg.shellConfigs?.zsh?.scripts) {
-          content += `# Platform-specific content for ${toolName}: ${platformCfg.shellConfigs.zsh.scripts
-            .map((s) => s.value)
-            .join(" ")}\n`;
-        }
-      }
-    }
-  }
-
-  return content;
+  return Object.entries(toolConfigs)
+    .flatMap(([toolName, config]) =>
+      (config.platformConfigs ?? [])
+        .filter((platformConfig) => {
+          const isMacosMatch =
+            (platformConfig.platforms & Platform.MacOS) !== 0 && systemInfo.platform === Platform.MacOS;
+          const isLinuxMatch =
+            (platformConfig.platforms & Platform.Linux) !== 0 && systemInfo.platform === Platform.Linux;
+          return isMacosMatch || isLinuxMatch;
+        })
+        .map((platformConfig) => {
+          const platformCfg = platformConfig.config as PlatformConfig;
+          return {
+            scripts: platformCfg.shellConfigs?.zsh?.scripts ?? [],
+            toolName,
+          };
+        })
+        .filter(({ scripts }) => scripts.length > 0)
+        .map(
+          ({ scripts, toolName }) =>
+            `# Platform-specific content for ${toolName}: ${scripts.map((scriptConfig) => scriptConfig.value).join(" ")}\n`,
+        ),
+    )
+    .join("");
 }
 
 // Helper function to create mock shell content
 function createMockShellContent(toolConfigs: Record<string, ToolConfig>, systemInfo?: ISystemInfo): string {
-  let mockContent = "# Generated shell init\n";
+  const systemInfoLines = [systemInfo]
+    .filter(isDefinedSystemInfo)
+    .flatMap((resolvedSystemInfo) => [
+      `# Platform: ${platformToString(resolvedSystemInfo.platform)}\n`,
+      `# Arch: ${architectureToString(resolvedSystemInfo.arch)}\n`,
+      generatePlatformContent(toolConfigs, resolvedSystemInfo),
+    ])
+    .join("");
 
-  if (systemInfo) {
-    mockContent += `# Platform: ${platformToString(systemInfo.platform)}\n`;
-    mockContent += `# Arch: ${architectureToString(systemInfo.arch)}\n`;
-    mockContent += generatePlatformContent(toolConfigs, systemInfo);
-  }
-
-  return mockContent;
+  return `# Generated shell init\n${systemInfoLines}`;
 }
 
 describe("GeneratorOrchestrator - Platform Integration Tests", () => {

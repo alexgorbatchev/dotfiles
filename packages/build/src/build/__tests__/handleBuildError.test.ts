@@ -24,7 +24,10 @@ describe("handleBuildError", () => {
   });
 
   afterAll(() => {
-    process.exitCode = typeof originalExitCode === "number" ? originalExitCode : undefined;
+    process.exitCode = new Map<boolean, number | undefined>([
+      [true, Number(originalExitCode)],
+      [false, undefined],
+    ]).get(typeof originalExitCode === "number");
   });
 
   test("logs build errors and sets exit code", async () => {

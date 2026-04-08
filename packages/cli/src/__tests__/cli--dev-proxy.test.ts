@@ -1,24 +1,36 @@
 import { TestLogger } from "@dotfiles/logger";
 import { afterEach, describe, expect, it, spyOn } from "bun:test";
+import assert from "node:assert";
 import { setupServices } from "../cli";
 
 describe("setupServices DEV_PROXY validation", () => {
   const originalDevProxy = process.env["DEV_PROXY"];
 
   afterEach(() => {
-    if (typeof originalDevProxy === "string") {
-      process.env["DEV_PROXY"] = originalDevProxy;
-      return;
-    }
+    const restoreDevProxy = new Map<boolean, VoidFunction>([
+      [
+        true,
+        () => {
+          process.env["DEV_PROXY"] = originalDevProxy ?? "";
+        },
+      ],
+      [
+        false,
+        () => {
+          delete process.env["DEV_PROXY"];
+        },
+      ],
+    ]).get(typeof originalDevProxy === "string");
 
-    delete process.env["DEV_PROXY"];
+    assert(restoreDevProxy);
+    restoreDevProxy();
   });
 
   it("fails fast when DEV_PROXY is invalid", async () => {
     process.env["DEV_PROXY"] = "abc";
 
     const exitSpy = spyOn(process, "exit").mockImplementation(((code?: number) => {
-      throw new Error(`EXIT:${code}`);
+      assert.fail(`EXIT:${code}`);
     }) as typeof process.exit);
 
     try {

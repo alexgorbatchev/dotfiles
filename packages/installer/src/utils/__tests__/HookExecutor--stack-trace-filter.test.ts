@@ -12,6 +12,7 @@ import { LogLevel, TestLogger } from "@dotfiles/logger";
 import { createMockProjectConfig, createTestDirectories } from "@dotfiles/testing-helpers";
 import { replaceInFile } from "@dotfiles/utils";
 import { describe, it } from "bun:test";
+import assert from "node:assert";
 import path from "node:path";
 import type { ILogObj } from "tslog";
 import { createConfiguredShell } from "../createConfiguredShell";
@@ -79,9 +80,7 @@ describe("HookExecutor - stack trace filtering", () => {
       fileSystem: fs,
       replaceInFile: (filePath, from, to, options) =>
         replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
-      resolve: () => {
-        throw new Error("resolve not supported in test context");
-      },
+      resolve: () => assert.fail("resolve not supported in test context"),
       log: createToolLog(logger, toolName),
     };
 
@@ -163,9 +162,7 @@ describe("HookExecutor - stack trace filtering", () => {
       fileSystem: fs,
       replaceInFile: (filePath, from, to, options) =>
         replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
-      resolve: () => {
-        throw new Error("resolve not supported in test context");
-      },
+      resolve: () => assert.fail("resolve not supported in test context"),
       log: createToolLog(logger, toolName),
     };
 

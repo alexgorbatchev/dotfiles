@@ -6,6 +6,36 @@ import { installFromNpm } from "../installFromNpm";
 import type { NpmToolConfig } from "../schemas";
 import { createFailingMockShell, createMockShell } from "./helpers/mocks";
 
+type MockShellResult = {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  code: number;
+  toString: () => string;
+};
+
+type MockShellCommandOutput = {
+  includes: string;
+  stdout: string;
+};
+
+function createMockShellResult(stdout: string): MockShellResult {
+  return {
+    stdout,
+    stderr: "",
+    exitCode: 0,
+    code: 0,
+    toString: () => stdout,
+  };
+}
+
+function createCommandShell(commandOutputs: MockShellCommandOutput[]): Shell {
+  return createMockShell((cmd: string) => {
+    const matchedOutput = commandOutputs.find((entry) => cmd.includes(entry.includes));
+    return createMockShellResult(matchedOutput?.stdout ?? "");
+  });
+}
+
 function createContext(toolConfig: NpmToolConfig, mockShell: Shell): IInstallContext {
   return {
     projectConfig: {
@@ -102,18 +132,11 @@ describe("installFromNpm", () => {
   });
 
   it("should use versionArgs and versionRegex for custom version detection", async () => {
-    const versionShell = createMockShell((cmd: string) => {
-      if (cmd.includes("npm install -g")) {
-        return { stdout: "", stderr: "", exitCode: 0, code: 0, toString: () => "" };
-      }
-      if (cmd.includes("npm prefix -g")) {
-        return { stdout: "/mock/global", stderr: "", exitCode: 0, code: 0, toString: () => "/mock/global" };
-      }
-      if (cmd.includes("--version")) {
-        return { stdout: "mytool v4.2.1", stderr: "", exitCode: 0, code: 0, toString: () => "mytool v4.2.1" };
-      }
-      return { stdout: "", stderr: "", exitCode: 0, code: 0, toString: () => "" };
-    });
+    const versionShell = createCommandShell([
+      { includes: "npm install -g", stdout: "" },
+      { includes: "npm prefix -g", stdout: "/mock/global" },
+      { includes: "--version", stdout: "mytool v4.2.1" },
+    ]);
 
     const toolConfig: NpmToolConfig = {
       name: "mytool",
@@ -182,13 +205,11 @@ describe("installFromNpm", () => {
     const commands: string[] = [];
     const capturingShell = createMockShell((cmd: string) => {
       commands.push(cmd);
-      if (cmd.includes("bun pm bin -g")) {
-        return { stdout: "/mock/global/bin", stderr: "", exitCode: 0, code: 0, toString: () => "/mock/global/bin" };
-      }
-      if (cmd.includes("--version")) {
-        return { stdout: "3.1.0", stderr: "", exitCode: 0, code: 0, toString: () => "3.1.0" };
-      }
-      return { stdout: "", stderr: "", exitCode: 0, code: 0, toString: () => "" };
+      const matchedOutput = [
+        { includes: "bun pm bin -g", stdout: "/mock/global/bin" },
+        { includes: "--version", stdout: "3.1.0" },
+      ].find((entry) => cmd.includes(entry.includes));
+      return createMockShellResult(matchedOutput?.stdout ?? "");
     });
 
     const toolConfig: NpmToolConfig = {
@@ -214,13 +235,11 @@ describe("installFromNpm", () => {
     const commands: string[] = [];
     const capturingShell = createMockShell((cmd: string) => {
       commands.push(cmd);
-      if (cmd.includes("npm prefix -g")) {
-        return { stdout: "/mock/global", stderr: "", exitCode: 0, code: 0, toString: () => "/mock/global" };
-      }
-      if (cmd.includes("npm view")) {
-        return { stdout: "3.1.0", stderr: "", exitCode: 0, code: 0, toString: () => "3.1.0" };
-      }
-      return { stdout: "", stderr: "", exitCode: 0, code: 0, toString: () => "" };
+      const matchedOutput = [
+        { includes: "npm prefix -g", stdout: "/mock/global" },
+        { includes: "npm view", stdout: "3.1.0" },
+      ].find((entry) => cmd.includes(entry.includes));
+      return createMockShellResult(matchedOutput?.stdout ?? "");
     });
 
     const toolConfig: NpmToolConfig = {

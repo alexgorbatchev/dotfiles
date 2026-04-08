@@ -27,20 +27,23 @@ describe("cleanupCommand - Logger Context Propagation", () => {
 
     mockFileRegistry = createMockFileRegistry();
 
-    mockFileRegistry.getFileStatesForTool = mock(async (toolName: string) => {
-      if (toolName === TOOL_NAME) {
-        return [
-          {
-            filePath: mockShimPath,
-            toolName: TOOL_NAME,
-            fileType: "shim" as const,
-            lastOperation: "writeFile" as const,
-            lastModified: Date.now(),
-          },
-        ];
-      }
-      return [];
-    });
+    mockFileRegistry.getFileStatesForTool = mock(
+      async (toolName: string) =>
+        new Map([
+          [
+            TOOL_NAME,
+            [
+              {
+                filePath: mockShimPath,
+                toolName: TOOL_NAME,
+                fileType: "shim" as const,
+                lastOperation: "writeFile" as const,
+                lastModified: Date.now(),
+              },
+            ],
+          ],
+        ]).get(toolName) ?? [],
+    );
 
     mockFileRegistry.getRegisteredTools = mock(async () => [TOOL_NAME]);
 

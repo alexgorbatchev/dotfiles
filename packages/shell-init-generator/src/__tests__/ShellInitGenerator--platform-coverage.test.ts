@@ -5,6 +5,7 @@ import { createMemFileSystem, type IFileSystem } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from "@dotfiles/testing-helpers";
 import { beforeEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
 import path from "node:path";
 import type { IGenerateShellInitOptions } from "../IShellInitGenerator";
 import { ShellInitGenerator } from "../ShellInitGenerator";
@@ -276,14 +277,10 @@ describe("ShellInitGenerator - Platform Coverage Tests", () => {
       };
 
       const linuxResult = await generator.generate(toolConfigs, linuxOptions);
-      // Should still generate a file but without aerospace content
-      if (linuxResult) {
-        const linuxContent = await mockFileSystem.readFile(linuxResult.files.get("zsh")!);
-        expect(linuxContent).not.toContain("# Aerospace window manager integration");
-      } else {
-        // Or might return null if no tools have any shell content for Linux
-        expect(linuxResult).toBeNull();
-      }
+      expect(linuxResult).not.toBeNull();
+      assert(linuxResult);
+      const linuxContent = await mockFileSystem.readFile(linuxResult.files.get("zsh")!);
+      expect(linuxContent).not.toContain("# Aerospace window manager integration");
     });
 
     it("should work with eza-like multi-platform tool with different install methods", async () => {

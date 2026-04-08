@@ -7,6 +7,7 @@ import { RegistryDatabase } from "@dotfiles/registry-database";
 import { FileRegistry, TrackedFileSystem } from "@dotfiles/registry/file";
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from "@dotfiles/testing-helpers";
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import assert from "node:assert";
 import { randomUUID } from "node:crypto";
 import { unlink } from "node:fs/promises";
 import path from "node:path";
@@ -524,7 +525,7 @@ describe("SymlinkGenerator", () => {
     await mockFs.addFiles({ [sourceFullPath]: "content" });
 
     mockFs.spies.symlink.mockImplementationOnce(() => {
-      throw new Error("Symlink failed");
+      assert.fail("Symlink failed");
     });
 
     const results = await symlinkGenerator.generate(toolConfigs);
@@ -713,9 +714,7 @@ describe("SymlinkGenerator", () => {
 
       // Verify symlink can be read and resolved correctly
       const linkTarget = await mockFs.fs.readlink(targetPath);
-      const resolvedTarget = path.isAbsolute(linkTarget)
-        ? linkTarget
-        : path.resolve(path.dirname(targetPath), linkTarget);
+      const resolvedTarget = path.resolve(path.dirname(targetPath), linkTarget);
 
       expect(await mockFs.fs.exists(resolvedTarget)).toBe(true);
 
@@ -736,13 +735,11 @@ describe("SymlinkGenerator", () => {
       // Mock readlink to return wrong target to simulate verification failure
       const originalReadlink = mockFs.fs.readlink.bind(mockFs.fs);
       let readlinkCallCount = 0;
+      const readlinkResponses = new Map([[2, async () => "/wrong/path"]]);
       mockFs.spies.readlink.mockImplementation(async (linkPath: string) => {
         readlinkCallCount++;
-        // Return wrong target on verification (second call)
-        if (readlinkCallCount === 2) {
-          return "/wrong/path";
-        }
-        return originalReadlink(linkPath);
+        const readlinkHandler = readlinkResponses.get(readlinkCallCount) ?? (() => originalReadlink(linkPath));
+        return readlinkHandler();
       });
 
       // Attempt to create symlink - should fail verification

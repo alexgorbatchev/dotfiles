@@ -85,9 +85,7 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
     fileSystem: fs,
     replaceInFile: (filePath, from, to, options) =>
       replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
-    resolve: () => {
-      throw new Error("resolve not supported in test context");
-    },
+    resolve: () => assert.fail("resolve not supported in test context"),
     log: createToolLog(logger, toolConfig.name),
   };
 
@@ -158,7 +156,7 @@ describe("InstallerPluginRegistry", () => {
     test("fails fast on initialization error", async () => {
       const plugin = createMockPlugin("test-method", {
         async initialize() {
-          throw new Error("Init failed");
+          assert.fail("Init failed");
         },
       });
 
@@ -651,7 +649,7 @@ describe("InstallerPluginRegistry", () => {
 
       const plugin1 = createMockPlugin("method1", {
         async cleanup() {
-          throw new Error("Cleanup failed");
+          assert.fail("Cleanup failed");
         },
       });
 

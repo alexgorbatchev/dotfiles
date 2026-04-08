@@ -8,6 +8,7 @@ import type { IToolInstallationRecord, IToolInstallationRegistry } from "@dotfil
 import { createMockFileRegistry, type IFileRegistry, TrackedFileSystem } from "@dotfiles/registry/file";
 import { FetchMockHelper } from "@dotfiles/testing-helpers";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import assert from "node:assert";
 import { ReadmeService } from "../ReadmeService";
 import type { IReadmeContent } from "../types";
 
@@ -367,7 +368,7 @@ describe("ReadmeService", () => {
       // Mock file system to throw error on writeFile
       const originalWriteFile = fileSystem.writeFile;
       fileSystem.writeFile = mock(async () => {
-        throw new Error("Write permission denied");
+        assert.fail("Write permission denied");
       });
 
       const result: string | null = await readmeService.writeReadmeToPath(

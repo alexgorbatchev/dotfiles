@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
 import { generateDefaultConfig } from "../generateDefaultConfig";
 
 describe("generateDefaultConfig", () => {
@@ -9,11 +10,23 @@ describe("generateDefaultConfig", () => {
   });
 
   afterEach(() => {
-    if (originalEnv === undefined) {
-      delete process.env.DOTFILES_BUILT_PACKAGE_NAME;
-    } else {
-      process.env.DOTFILES_BUILT_PACKAGE_NAME = originalEnv;
-    }
+    const restorePackageName = new Map<boolean, VoidFunction>([
+      [
+        true,
+        () => {
+          delete process.env.DOTFILES_BUILT_PACKAGE_NAME;
+        },
+      ],
+      [
+        false,
+        () => {
+          process.env.DOTFILES_BUILT_PACKAGE_NAME = originalEnv ?? "";
+        },
+      ],
+    ]).get(originalEnv === undefined);
+
+    assert(restorePackageName);
+    restorePackageName();
   });
 
   it("should generate valid TypeScript config", () => {

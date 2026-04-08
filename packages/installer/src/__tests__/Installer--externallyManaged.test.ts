@@ -1,6 +1,7 @@
 import type { AggregateInstallResult, IInstallerPlugin } from "@dotfiles/core";
 import type { GithubReleaseToolConfig, IGitHubReleaseInstallMetadata } from "@dotfiles/installer-github";
 import { beforeEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
 import { createInstallerTestSetup, type IInstallerTestSetup } from "./installer-test-helpers";
 
 describe("Installer - externally managed plugins", () => {
@@ -21,17 +22,15 @@ describe("Installer - externally managed plugins", () => {
 
     // Mock the registry.get to return a plugin with externallyManaged = true
     const originalGet = setup.pluginRegistry.get.bind(setup.pluginRegistry);
-    setup.pluginRegistry.get = ((method) => {
-      const plugin = originalGet(method);
-      if (method === "github-release" && plugin) {
-        const result: IInstallerPlugin = {
-          ...plugin,
-          externallyManaged: true,
-        };
-        return result;
-      }
-      return plugin;
-    }) as typeof setup.pluginRegistry.get;
+    const basePlugin = originalGet("github-release");
+    assert(basePlugin);
+    const externallyManagedPlugin: IInstallerPlugin = {
+      ...basePlugin,
+      externallyManaged: true,
+    };
+    setup.pluginRegistry.get = ((method) =>
+      new Map<string, IInstallerPlugin>([["github-release", externallyManagedPlugin]]).get(method) ??
+      originalGet(method)) as typeof setup.pluginRegistry.get;
 
     // Mock the install method to return external binary paths
     const originalInstall = setup.pluginRegistry.install.bind(setup.pluginRegistry);

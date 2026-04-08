@@ -18,8 +18,7 @@ describe("findToolByBinary", () => {
   let systemInfo: ISystemInfo;
   let realFs: NodeFileSystem;
   let resolvedFs: IResolvedFileSystem;
-  let tempDir: string | undefined;
-  let cleanupFn: CleanupFn | undefined;
+  let cleanupFn: CleanupFn;
   let testCounter = 0;
 
   async function setupTest(): Promise<void> {
@@ -30,11 +29,8 @@ describe("findToolByBinary", () => {
     const testDirs = await createTestDirectories(logger, realFs, {
       testName: `find-by-binary-test-${testCounter}-${Date.now()}`,
     });
-    tempDir = testDirs.paths.homeDir;
     cleanupFn = async () => {
-      if (tempDir) {
-        await realFs.rm(tempDir, { recursive: true, force: true });
-      }
+      await realFs.rm(testDirs.paths.homeDir, { recursive: true, force: true });
     };
 
     systemInfo = {
@@ -63,11 +59,7 @@ describe("findToolByBinary", () => {
   }
 
   afterEach(async () => {
-    if (cleanupFn) {
-      await cleanupFn();
-      cleanupFn = undefined;
-      tempDir = undefined;
-    }
+    await cleanupFn();
   });
 
   async function createToolFile(toolName: string, binaryNames: string[]): Promise<void> {
@@ -195,8 +187,7 @@ describe("loadToolConfigByBinary", () => {
   let systemInfo: ISystemInfo;
   let realFs: NodeFileSystem;
   let resolvedFs: IResolvedFileSystem;
-  let tempDir: string | undefined;
-  let cleanupFn: CleanupFn | undefined;
+  let cleanupFn: CleanupFn;
   let testCounter = 0;
 
   async function setupTest(): Promise<void> {
@@ -207,11 +198,8 @@ describe("loadToolConfigByBinary", () => {
     const testDirs = await createTestDirectories(logger, realFs, {
       testName: `load-by-binary-test-${testCounter}-${Date.now()}`,
     });
-    tempDir = testDirs.paths.homeDir;
     cleanupFn = async () => {
-      if (tempDir) {
-        await realFs.rm(tempDir, { recursive: true, force: true });
-      }
+      await realFs.rm(testDirs.paths.homeDir, { recursive: true, force: true });
     };
 
     systemInfo = {
@@ -240,11 +228,7 @@ describe("loadToolConfigByBinary", () => {
   }
 
   afterEach(async () => {
-    if (cleanupFn) {
-      await cleanupFn();
-      cleanupFn = undefined;
-      tempDir = undefined;
-    }
+    await cleanupFn();
   });
 
   async function createToolFile(toolName: string, binaryNames: string[]): Promise<void> {

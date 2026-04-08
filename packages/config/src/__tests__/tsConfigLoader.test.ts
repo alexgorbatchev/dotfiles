@@ -18,7 +18,7 @@ describe("tsConfigLoader", () => {
 
   let logger: TestLogger;
   let tempDir: string;
-  let cleanupFn: CleanupFn | undefined;
+  let cleanupFn: CleanupFn;
 
   beforeEach(async () => {
     logger = new TestLogger();
@@ -33,9 +33,7 @@ describe("tsConfigLoader", () => {
   });
 
   afterEach(async () => {
-    if (cleanupFn) {
-      await cleanupFn();
-    }
+    await cleanupFn();
   });
 
   describe("function export patterns", () => {

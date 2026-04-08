@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
 import { type IMockSetup, setupMockGitHubApiClient } from "./helpers/sharedGitHubApiClientTestSetup";
 
 describe("GitHubApiClient", () => {
@@ -55,7 +56,7 @@ describe("GitHubApiClient", () => {
 
     it("should return empty array on error", async () => {
       mocks.mockDownloader.download.mockImplementation(async () => {
-        throw new Error("API error");
+        assert.fail("API error");
       });
 
       const tags = await mocks.apiClient.getLatestReleaseTags("owner", "repo");

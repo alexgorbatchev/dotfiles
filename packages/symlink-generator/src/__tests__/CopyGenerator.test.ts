@@ -5,6 +5,7 @@ import { createMemFileSystem, type IMemFileSystemReturn } from "@dotfiles/file-s
 import { TestLogger } from "@dotfiles/logger";
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from "@dotfiles/testing-helpers";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import assert from "node:assert";
 import path from "node:path";
 import { CopyGenerator } from "../CopyGenerator";
 import type { IGenerateCopiesOptions } from "../ICopyGenerator";
@@ -311,7 +312,7 @@ describe("CopyGenerator", () => {
     await mockFs.addFiles({ [sourceFullPath]: "content" });
 
     mockFs.spies.copyFile.mockImplementationOnce(() => {
-      throw new Error("Copy failed");
+      assert.fail("Copy failed");
     });
 
     const results = await copyGenerator.generate(toolConfigs);

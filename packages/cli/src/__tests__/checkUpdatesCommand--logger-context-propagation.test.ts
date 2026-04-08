@@ -51,7 +51,9 @@ describe("checkUpdatesCommand - Logger Context Propagation", () => {
     };
 
     const mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>> = {
-      get: mock((method: string) => (method === "github-release" ? (mockPlugin as IInstallerPlugin) : undefined)),
+      get: mock((method: string) =>
+        new Map<string, IInstallerPlugin>([["github-release", mockPlugin as IInstallerPlugin]]).get(method),
+      ),
       register: mock(() => Promise.resolve()),
       getAll: mock(() => []),
     };

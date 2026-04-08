@@ -33,25 +33,28 @@ describe("installFromZshPlugin", () => {
     // Create a mock shell that returns success and simulates git clone by creating files
     mockShell = ((strings: TemplateStringsArray, ...values: unknown[]) => {
       const cmd = strings.reduce((acc, str, i) => acc + str + (values[i] || ""), "");
-      let stdout = "abc1234";
-      let fileCreationPromise: Promise<void> = Promise.resolve();
-
-      if (cmd.includes("describe --tags")) {
-        stdout = "v0.1.0";
-      } else if (cmd.includes("rev-parse --short")) {
-        stdout = "abc1234";
-      } else if (cmd.includes("git clone")) {
-        // Extract destination path from clone command and create plugin file
-        const destMatch = cmd.match(/git clone --depth 1 .+ (.+)$/);
-        if (destMatch?.[1]) {
-          const destPath = destMatch[1];
-          const pluginName = destPath.split("/").pop() ?? "plugin";
-          // Create the plugin source file in the cloned directory
-          fileCreationPromise = mockFs
-            .mkdir(destPath, { recursive: true })
-            .then(() => mockFs.writeFile(`${destPath}/${pluginName}.plugin.zsh`, "# plugin content"));
-        }
-      }
+      const commandHandlers = [
+        {
+          createFiles: () => Promise.resolve(),
+          matches: (command: string) => command.includes("describe --tags"),
+          stdout: "v0.1.0",
+        },
+        {
+          createFiles: () => {
+            const destPath = cmd.match(/git clone --depth 1 .+ (.+)$/)?.[1];
+            assert(destPath);
+            const pluginName = destPath.split("/").pop() ?? "plugin";
+            return mockFs
+              .mkdir(destPath, { recursive: true })
+              .then(() => mockFs.writeFile(`${destPath}/${pluginName}.plugin.zsh`, "# plugin content"));
+          },
+          matches: (command: string) => command.includes("git clone"),
+          stdout: "abc1234",
+        },
+      ];
+      const commandHandler = commandHandlers.find((handler) => handler.matches(cmd));
+      const stdout = commandHandler?.stdout ?? "abc1234";
+      const fileCreationPromise = (commandHandler?.createFiles ?? (() => Promise.resolve()))();
 
       const result = {
         stdout,

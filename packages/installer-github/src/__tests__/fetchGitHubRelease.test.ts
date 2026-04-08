@@ -111,12 +111,10 @@ describe("fetchGitHubRelease", () => {
       // First call (with user version "2.23.0") returns null
       // Second call (with corrected "v2.23.0") returns the release
       const mockRelease = createMockRelease("v2.23.0");
-      const getReleaseByTagMock = mock(async (_owner: string, _repo: string, tag: string) => {
-        if (tag === "v2.23.0") {
-          return mockRelease;
-        }
-        return null;
-      });
+      const releasesByTag = new Map([["v2.23.0", mockRelease]]);
+      const getReleaseByTagMock = mock(
+        async (_owner: string, _repo: string, tag: string) => releasesByTag.get(tag) ?? null,
+      );
       mockGitHubApiClient.getReleaseByTag = getReleaseByTagMock;
       mockGitHubApiClient.probeLatestTag = mock(async () => "v2.24.0");
 
@@ -137,12 +135,10 @@ describe("fetchGitHubRelease", () => {
     it("should detect tool-name prefix and correct tag", async () => {
       // User requests "1.7.0", repo uses "jq-1.8.1" pattern
       const mockRelease = createMockRelease("jq-1.7.0");
-      const getReleaseByTagMock = mock(async (_owner: string, _repo: string, tag: string) => {
-        if (tag === "jq-1.7.0") {
-          return mockRelease;
-        }
-        return null;
-      });
+      const releasesByTag = new Map([["jq-1.7.0", mockRelease]]);
+      const getReleaseByTagMock = mock(
+        async (_owner: string, _repo: string, tag: string) => releasesByTag.get(tag) ?? null,
+      );
       mockGitHubApiClient.getReleaseByTag = getReleaseByTagMock;
       mockGitHubApiClient.probeLatestTag = mock(async () => "jq-1.8.1");
 
@@ -156,12 +152,10 @@ describe("fetchGitHubRelease", () => {
     it("should strip user v prefix when repo uses no prefix", async () => {
       // User requests "v15.0.0", repo uses "15.1.0" pattern (no prefix)
       const mockRelease = createMockRelease("15.0.0");
-      const getReleaseByTagMock = mock(async (_owner: string, _repo: string, tag: string) => {
-        if (tag === "15.0.0") {
-          return mockRelease;
-        }
-        return null;
-      });
+      const releasesByTag = new Map([["15.0.0", mockRelease]]);
+      const getReleaseByTagMock = mock(
+        async (_owner: string, _repo: string, tag: string) => releasesByTag.get(tag) ?? null,
+      );
       mockGitHubApiClient.getReleaseByTag = getReleaseByTagMock;
       mockGitHubApiClient.probeLatestTag = mock(async () => "15.1.0");
 

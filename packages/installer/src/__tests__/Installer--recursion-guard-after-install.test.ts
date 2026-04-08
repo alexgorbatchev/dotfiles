@@ -1,6 +1,7 @@
 import type { IAfterInstallContext } from "@dotfiles/core";
 import type { ManualToolConfig } from "@dotfiles/installer-manual";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import assert from "node:assert";
 import { createInstallerTestSetup, createManualToolConfig, type IInstallerTestSetup } from "./installer-test-helpers";
 
 /**
@@ -107,10 +108,10 @@ describe("Installer - Recursion Guard During After-Install Hook", () => {
     let envVarSeenByShell: string | undefined;
 
     const afterInstallHook = mock(async (context: IAfterInstallContext) => {
-      // Capture the env var via shell before throwing
+      // Capture the env var via shell before failing
       const result = await context.$`printenv ${envVarName} || true`.quiet();
       envVarSeenByShell = result.stdout.trim() || undefined;
-      throw new Error("Hook failed intentionally");
+      assert.fail("Hook failed intentionally");
     });
 
     const toolConfig: ManualToolConfig = createManualToolConfig({

@@ -13,6 +13,7 @@ import { RegistryDatabase } from "@dotfiles/registry-database";
 import { FileRegistry, TrackedFileSystem } from "@dotfiles/registry/file";
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from "@dotfiles/testing-helpers";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import assert from "node:assert";
 import { randomUUID } from "node:crypto";
 import { unlink } from "node:fs/promises";
 import path from "node:path";
@@ -20,6 +21,14 @@ import { ShimGenerator } from "../ShimGenerator";
 
 // oxlint-disable-next-line import/no-unassigned-import
 import "@dotfiles/testing-helpers";
+
+type ClearableMock = {
+  mockClear?: () => void;
+};
+
+function hasMockClear(value: unknown): value is ClearableMock {
+  return typeof value === "object" && value !== null && "mockClear" in value;
+}
 
 describe("ShimGenerator", () => {
   let mockConfig: ProjectConfig;
@@ -59,11 +68,11 @@ describe("ShimGenerator", () => {
     shimGenerator = new ShimGenerator(logger, fs, mockConfig, systemInfo);
 
     // Clear all mock calls from the setup phase (createMockProjectConfig writes config file)
-    Object.values(fsMocks).forEach((mock) => {
-      if (typeof mock.mockClear === "function") {
-        mock.mockClear();
-      }
-    });
+    Object.values(fsMocks)
+      .filter(hasMockClear)
+      .forEach((fileSystemMock) => {
+        fileSystemMock.mockClear?.();
+      });
   });
 
   describe("constructor", () => {
@@ -88,9 +97,9 @@ describe("ShimGenerator", () => {
 
     beforeEach(() => {
       const firstBinary = toolConfig.binaries![0]!;
-      const binaryName = typeof firstBinary === "string" ? firstBinary : firstBinary.name;
-      expectedShimPath = path.join(mockConfig.paths.targetDir, binaryName);
-      expectedBinaryPath = path.join(mockConfig.paths.binariesDir, toolConfig.name, "current", binaryName);
+      assert(typeof firstBinary === "string");
+      expectedShimPath = path.join(mockConfig.paths.targetDir, firstBinary);
+      expectedBinaryPath = path.join(mockConfig.paths.binariesDir, toolConfig.name, "current", firstBinary);
     });
 
     it("should generate correct shim content, write file, and return shim path", async () => {

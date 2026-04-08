@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import assert from "node:assert";
 import { resolveValue } from "../resolveValue";
 
 interface Ctx {
@@ -50,13 +51,13 @@ describe("resolveValue", () => {
     test("sync error", () =>
       expect(
         resolveValue({}, () => {
-          throw new Error("sync");
+          assert.fail("sync");
         }),
       ).rejects.toThrow("sync"));
     test("async error", () =>
       expect(
         resolveValue({}, async () => {
-          throw new Error("async");
+          assert.fail("async");
         }),
       ).rejects.toThrow("async"));
   });

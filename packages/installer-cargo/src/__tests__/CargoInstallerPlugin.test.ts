@@ -6,6 +6,7 @@ import type { HookExecutor } from "@dotfiles/installer";
 import type { CargoToolConfig } from "@dotfiles/installer-cargo";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import assert from "node:assert";
 import type { ICargoClient } from "../cargo-client";
 import { CargoInstallerPlugin } from "../CargoInstallerPlugin";
 
@@ -128,7 +129,7 @@ describe("CargoInstallerPlugin", () => {
       };
 
       mockCargoClient.getLatestVersion = mock(async () => {
-        throw new Error("Network error");
+        assert.fail("Network error");
       });
 
       const version: string | null = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, logger);

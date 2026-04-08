@@ -1,6 +1,7 @@
 import { createMemFileSystem, type IFileSystem } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, it } from "bun:test";
+import assert from "node:assert";
 import { populateMemFsForDryRun } from "../populateMemFsForDryRun";
 
 describe("populateMemFsForDryRun", () => {
@@ -159,20 +160,17 @@ describe("populateMemFsForDryRun", () => {
     const { fs: targetFs } = await createMemFileSystem();
 
     const originalStat = baseSourceFs.stat.bind(baseSourceFs);
+    const statHandlers = new Map([["/tools/bad-file", async () => assert.fail("Permission denied")]]);
+    const readdirHandlers = new Map([["/tools", async () => [...(await baseSourceFs.readdir("/tools")), "bad-file"]]]);
     const sourceFs: IFileSystem = {
       ...baseSourceFs,
       stat: async (filePath: string) => {
-        if (filePath === "/tools/bad-file") {
-          throw new Error("Permission denied");
-        }
-        return originalStat(filePath);
+        const statHandler = statHandlers.get(filePath) ?? (() => originalStat(filePath));
+        return statHandler();
       },
       readdir: async (dirPath: string) => {
-        const entries = await baseSourceFs.readdir(dirPath);
-        if (dirPath === "/tools") {
-          return [...entries, "bad-file"];
-        }
-        return entries;
+        const readdirHandler = readdirHandlers.get(dirPath) ?? (() => baseSourceFs.readdir(dirPath));
+        return readdirHandler();
       },
     };
 

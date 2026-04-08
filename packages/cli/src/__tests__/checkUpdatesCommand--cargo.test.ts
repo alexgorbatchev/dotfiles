@@ -46,7 +46,9 @@ describe("checkUpdatesCommand - Cargo Updates", () => {
     };
 
     const mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>> = {
-      get: mock((method: string) => (method === "cargo" ? (mockPlugin as IInstallerPlugin) : undefined)),
+      get: mock((method: string) =>
+        new Map<string, IInstallerPlugin>([["cargo", mockPlugin as IInstallerPlugin]]).get(method),
+      ),
       register: mock(() => Promise.resolve()),
       getAll: mock(() => []),
     };

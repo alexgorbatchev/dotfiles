@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import assert from "node:assert";
 import { getBuiltPackageName, type IBuiltPackageEnvironment } from "../getBuiltPackageName";
 
 describe("getBuiltPackageName", () => {
@@ -12,9 +13,18 @@ describe("getBuiltPackageName", () => {
 
     expect(packageName).toBe("@alexgorbatchev/dotfiles");
 
-    if (prevEnv !== undefined) {
-      process.env.DOTFILES_BUILT_PACKAGE_NAME = prevEnv;
-    }
+    const restorePackageName = new Map<boolean, VoidFunction>([
+      [
+        true,
+        () => {
+          process.env.DOTFILES_BUILT_PACKAGE_NAME = prevEnv ?? "";
+        },
+      ],
+      [false, () => {}],
+    ]).get(prevEnv !== undefined);
+
+    assert(restorePackageName);
+    restorePackageName();
   });
 
   test("returns configured package name when environment variable is set", () => {
@@ -41,8 +51,17 @@ describe("getBuiltPackageName", () => {
 
     expect(packageName).toBe("@alexgorbatchev/dotfiles");
 
-    if (prevEnv !== undefined) {
-      process.env.DOTFILES_BUILT_PACKAGE_NAME = prevEnv;
-    }
+    const restorePackageName = new Map<boolean, VoidFunction>([
+      [
+        true,
+        () => {
+          process.env.DOTFILES_BUILT_PACKAGE_NAME = prevEnv ?? "";
+        },
+      ],
+      [false, () => {}],
+    ]).get(prevEnv !== undefined);
+
+    assert(restorePackageName);
+    restorePackageName();
   });
 });

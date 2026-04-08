@@ -1,13 +1,11 @@
 import { TestLogger } from "@dotfiles/logger";
 import { describe, expect, test } from "bun:test";
+import assert from "node:assert";
 import { z } from "zod";
 
 // Helper function to extract log messages from TestLogger logs
 function getLogMessages(logger: TestLogger): string[] {
-  return logger.logs.map((log) => {
-    const message = log[0];
-    return typeof message === "string" ? message : String(message);
-  });
+  return logger.logs.map((log) => String(log[0]));
 }
 
 describe("TsLogger.zodErrors", () => {
@@ -33,10 +31,8 @@ describe("TsLogger.zodErrors", () => {
 
     const result = schema.safeParse(invalidData);
     expect(result.success).toBe(false);
-
-    if (!result.success) {
-      logger.zodErrors(result.error);
-    }
+    assert(!result.success);
+    logger.zodErrors(result.error);
 
     // Verify the logged messages
     expect(logger.logs).toHaveLength(6); // 3 errors × 2 lines each (message + path)
@@ -60,10 +56,8 @@ describe("TsLogger.zodErrors", () => {
     const result = customSchema.safeParse(123);
 
     expect(result.success).toBe(false);
-
-    if (!result.success) {
-      logger.zodErrors(result.error);
-    }
+    assert(!result.success);
+    logger.zodErrors(result.error);
 
     // Should only log the error message, no path
     expect(logger.logs).toHaveLength(1);
@@ -97,10 +91,8 @@ describe("TsLogger.zodErrors", () => {
 
     const result = schema.safeParse(invalidData);
     expect(result.success).toBe(false);
-
-    if (!result.success) {
-      logger.zodErrors(result.error);
-    }
+    assert(!result.success);
+    logger.zodErrors(result.error);
 
     // Find the path messages to verify ordering
     const logMessages = getLogMessages(logger);

@@ -7,6 +7,7 @@ import type { HookExecutor } from "@dotfiles/installer";
 import type { GithubReleaseToolConfig } from "@dotfiles/installer-github";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import assert from "node:assert";
 import type { IGitHubApiClient } from "../github-client";
 import { GitHubReleaseInstallerPlugin } from "../GitHubReleaseInstallerPlugin";
 
@@ -164,7 +165,7 @@ describe("GitHubReleaseInstallerPlugin", () => {
       };
 
       mockGitHubClient.getLatestRelease = mock(async () => {
-        throw new Error("Network error");
+        assert.fail("Network error");
       });
 
       const version: string | null = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, testLogger);

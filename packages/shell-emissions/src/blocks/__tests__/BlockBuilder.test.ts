@@ -386,7 +386,12 @@ describe("BlockBuilder", () => {
       assert(firstBlock);
       const emissions = firstBlock.emissions;
 
-      expect(emissions.map((e) => Object.keys(e.kind === "environment" ? e.variables : {})[0])).toMatchInlineSnapshot(`
+      expect(
+        emissions.map((emission) => {
+          assert(emission.kind === "environment");
+          return Object.keys(emission.variables)[0];
+        }),
+      ).toMatchInlineSnapshot(`
         [
           "FIRST",
           "MIDDLE",
