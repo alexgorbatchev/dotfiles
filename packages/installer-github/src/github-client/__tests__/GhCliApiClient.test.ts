@@ -40,30 +40,11 @@ interface IGhCliCacheMock extends CacheWithoutGenericMethods {
 }
 
 function createCacheGetMock(): CacheGetMock {
-  const controller: CacheGetMockController = mock<CacheGetImplementation>(async (_key: string) => null);
-  const get = Object.assign(
-    async <T>(key: string): Promise<T | null> => {
-      const cachedValue = await controller(key);
-      return cachedValue as T | null;
-    },
-    controller,
-  );
-
-  return get as CacheGetMock;
+  return mock<CacheGetImplementation>(async (_key: string) => null) as CacheGetMock;
 }
 
 function createCacheSetMock(): CacheSetMock {
-  const controller: CacheSetMockController = mock<CacheSetImplementation>(
-    async (_key: string, _data: unknown, _ttlMs?: number) => {},
-  );
-  const set = Object.assign(
-    async <T>(key: string, data: T, ttlMs?: number): Promise<void> => {
-      await controller(key, data, ttlMs);
-    },
-    controller,
-  );
-
-  return set as CacheSetMock;
+  return mock<CacheSetImplementation>(async (_key: string, _data: unknown, _ttlMs?: number) => {}) as CacheSetMock;
 }
 
 async function createTestProjectConfig(overrides: PartialProjectConfig = {}) {
