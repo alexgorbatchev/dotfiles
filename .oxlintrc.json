@@ -57,7 +57,7 @@
       }
     },
     {
-      "files": ["**/*.tool.ts", "test-project/config.ts", "**/__tests__/**/config.ts"],
+      "files": ["**/*.tool.ts", "**/dotfiles.config.ts", "test-project/config.ts", "**/__tests__/**/config.ts"],
       "rules": {
         "import/no-default-export": "off",
         "no-shadow": "off"

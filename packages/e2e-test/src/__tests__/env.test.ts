@@ -2,7 +2,7 @@
  * End-to-End Tests for the env command.
  *
  * These tests verify that the env command correctly:
- * - Creates virtual environment directory with config.ts, source, source.ps1, tools/
+ * - Creates virtual environment directory with dotfiles.config.ts, source, source.ps1, tools/
  * - Deletes virtual environment with --force flag
  * - Produces correct activation scripts
  */
@@ -56,8 +56,8 @@ describe('E2E: env command', () => {
           });
         });
 
-        it('should create config.ts file with defineConfig import', async () => {
-          const configPath = path.join(testEnvDir, 'config.ts');
+        it('should create dotfiles.config.ts file with defineConfig import', async () => {
+          const configPath = path.join(testEnvDir, 'dotfiles.config.ts');
           const exists = await fs.promises.access(configPath).then(() => true).catch(() => false);
           expect(exists).toBe(true);
 

@@ -51,4 +51,4 @@ $env:XDG_CONFIG_HOME = "$scriptDir\.config"
 
 Write-Host "Activated dotfiles environment: activated-env"
 Write-Host "  Directory: $env:DOTFILES_ENV_DIR"
-Write-Host "  Config: $env:DOTFILES_ENV_DIR\config.ts"
+Write-Host "  Config: $env:DOTFILES_ENV_DIR\dotfiles.config.ts"

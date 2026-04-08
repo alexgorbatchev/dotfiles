@@ -70,7 +70,7 @@ describe('generateSourceScript', () => {
 
       echo "Activated dotfiles environment: env"
       echo "  Directory: \${DOTFILES_ENV_DIR}"
-      echo "  Config: \${DOTFILES_ENV_DIR}/config.ts""
+      echo "  Config: \${DOTFILES_ENV_DIR}/dotfiles.config.ts""
     `);
   });
 
@@ -112,7 +112,7 @@ describe('generateSourceScript', () => {
     expect(script).toMatchLooseInlineSnapshot`
       echo "Activated dotfiles environment: dev-env"
       echo "  Directory: \${DOTFILES_ENV_DIR}"
-      echo "  Config: \${DOTFILES_ENV_DIR}/config.ts"
+      echo "  Config: \${DOTFILES_ENV_DIR}/dotfiles.config.ts"
     `;
   });
 });

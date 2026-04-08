@@ -61,7 +61,7 @@ describe('generatePowerShellSourceScript', () => {
 
       Write-Host "Activated dotfiles environment: env"
       Write-Host "  Directory: $env:DOTFILES_ENV_DIR"
-      Write-Host "  Config: $env:DOTFILES_ENV_DIR\\config.ts""
+      Write-Host "  Config: $env:DOTFILES_ENV_DIR\\dotfiles.config.ts""
     `);
   });
 
@@ -103,7 +103,7 @@ describe('generatePowerShellSourceScript', () => {
     expect(script).toMatchLooseInlineSnapshot`
       Write-Host "Activated dotfiles environment: dev-env"
       Write-Host "  Directory: $env:DOTFILES_ENV_DIR"
-      Write-Host "  Config: $env:DOTFILES_ENV_DIR\\config.ts"
+      Write-Host "  Config: $env:DOTFILES_ENV_DIR\\dotfiles.config.ts"
     `;
   });
 });

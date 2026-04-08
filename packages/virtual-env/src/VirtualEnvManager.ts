@@ -177,7 +177,7 @@ export class VirtualEnvManager implements IVirtualEnvManager {
    *
    * A valid environment must have:
    * - A source file
-   * - A config.ts file
+   * - A dotfiles.config.ts file
    *
    * @param envDir - Path to check
    * @returns True if the directory is a valid environment

@@ -26,7 +26,7 @@ export const POWERSHELL_SOURCE_FILE_NAME = 'source.ps1';
 /**
  * Name of the configuration file.
  */
-export const CONFIG_FILE_NAME = 'config.ts';
+export const CONFIG_FILE_NAME = 'dotfiles.config.ts';
 
 /**
  * Name of the tools configuration directory.

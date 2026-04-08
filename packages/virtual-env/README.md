@@ -25,11 +25,11 @@ This creates a directory structure:
 
 ```
 env/
-├── source       # POSIX shell script to activate the environment
-├── source.ps1   # PowerShell script to activate the environment
-├── config.ts    # Dotfiles configuration file
-├── .config/     # XDG_CONFIG_HOME directory for tool configs
-└── tools/       # Tool configuration directory
+├── source               # POSIX shell script to activate the environment
+├── source.ps1           # PowerShell script to activate the environment
+├── dotfiles.config.ts   # Dotfiles configuration file
+├── .config/             # XDG_CONFIG_HOME directory for tool configs
+└── tools/               # Tool configuration directory
 ```
 
 ### Activating an Environment
@@ -53,7 +53,7 @@ When activated:
 - `DOTFILES_ENV_DIR` is set to the absolute path of the environment directory
 - `DOTFILES_ENV_NAME` is set to the environment name
 - `XDG_CONFIG_HOME` is set to `$DOTFILES_ENV_DIR/.config` for tool configuration isolation
-- All dotfiles commands automatically use `env/config.ts` as the configuration
+- All dotfiles commands automatically use `env/dotfiles.config.ts` as the configuration
 - The environment's `user-bin` directory is added to `PATH`
 
 ### Deactivating
@@ -93,7 +93,7 @@ dotfiles env delete --force
 
 ## CLI Integration
 
-When an environment is sourced (i.e., `DOTFILES_ENV_DIR` is set), all dotfiles commands that accept `--config` will automatically default to `$DOTFILES_ENV_DIR/config.ts` if no explicit `--config` is provided.
+When an environment is sourced (i.e., `DOTFILES_ENV_DIR` is set), all dotfiles commands that accept `--config` will automatically default to `$DOTFILES_ENV_DIR/dotfiles.config.ts` if no explicit `--config` is provided.
 
 ## Use Cases
 
@@ -127,7 +127,7 @@ Share tool configurations with your team via version control:
 # In your repo
 dotfiles env create .devenv
 echo ".devenv/.generated" >> .gitignore
-git add .devenv/config.ts .devenv/tools/ .devenv/source .devenv/source.ps1
+git add .devenv/dotfiles.config.ts .devenv/tools/ .devenv/source .devenv/source.ps1
 git commit -m "Add development environment"
 ```
 

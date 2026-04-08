@@ -60,4 +60,4 @@ unset _dotfiles_script_dir
 
 echo "Activated dotfiles environment: activated-env"
 echo "  Directory: ${DOTFILES_ENV_DIR}"
-echo "  Config: ${DOTFILES_ENV_DIR}/config.ts"
+echo "  Config: ${DOTFILES_ENV_DIR}/dotfiles.config.ts"

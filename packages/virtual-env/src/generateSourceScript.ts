@@ -1,5 +1,5 @@
 import { dedentString } from '@dotfiles/utils';
-import { ENV_DIR_VAR, ENV_NAME_VAR } from './constants';
+import { CONFIG_FILE_NAME, ENV_DIR_VAR, ENV_NAME_VAR } from './constants';
 
 /**
  * Generates the shell activation script content for a virtual environment.
@@ -79,6 +79,6 @@ export function generateSourceScript(envDir: string, envName: string): string {
 
     echo "Activated dotfiles environment: ${envName}"
     echo "  Directory: \${${ENV_DIR_VAR}}"
-    echo "  Config: \${${ENV_DIR_VAR}}/config.ts"
+    echo "  Config: \${${ENV_DIR_VAR}}/${CONFIG_FILE_NAME}"
   `);
 }
