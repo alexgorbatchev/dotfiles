@@ -7,6 +7,8 @@ import { FileCache } from "../cache/FileCache";
 import type { ICacheConfig } from "../cache/types";
 import { Downloader } from "../Downloader";
 
+type ProgressEventTuple = [number, number | null];
+
 describe("Downloader with Cache", () => {
   let logger: TestLogger;
   let mockFileSystem: IFileSystem;
@@ -115,14 +117,14 @@ describe("Downloader with Cache", () => {
         headers: { "Content-Type": "application/zip" },
       });
 
-      const firstProgress: Array<[number, number | null]> = [];
+      const firstProgress: ProgressEventTuple[] = [];
       await downloader.download(logger, testUrl, {
         onProgress: (bytesDownloaded, totalBytes) => {
           firstProgress.push([bytesDownloaded, totalBytes]);
         },
       });
 
-      const secondProgress: Array<[number, number | null]> = [];
+      const secondProgress: ProgressEventTuple[] = [];
       await downloader.download(logger, testUrl, {
         onProgress: (bytesDownloaded, totalBytes) => {
           secondProgress.push([bytesDownloaded, totalBytes]);
@@ -149,7 +151,7 @@ describe("Downloader with Cache", () => {
       });
 
       const cachedFilePath = "/staging/nested/path/test-file.zip";
-      const progressEvents: Array<[number, number | null]> = [];
+      const progressEvents: ProgressEventTuple[] = [];
 
       await downloader.downloadToFile(logger, testUrl, cachedFilePath, {
         onProgress: (bytesDownloaded, totalBytes) => {

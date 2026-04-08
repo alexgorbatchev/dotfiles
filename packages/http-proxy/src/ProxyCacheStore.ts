@@ -4,6 +4,14 @@ import { join } from "node:path";
 
 import type { CacheEntry, CacheStats } from "./types";
 
+interface ICacheFileRecord {
+  key: string;
+  url: string;
+  method: string;
+  metaPath: string;
+  bodyPath: string;
+}
+
 /**
  * Cache entry with body loaded from separate file.
  */
@@ -150,8 +158,8 @@ export class ProxyCacheStore {
   /**
    * Get all cache entry URLs (for glob matching).
    */
-  getAllEntries(): Array<{ key: string; url: string; method: string; metaPath: string; bodyPath: string }> {
-    const entries: Array<{ key: string; url: string; method: string; metaPath: string; bodyPath: string }> = [];
+  getAllEntries(): ICacheFileRecord[] {
+    const entries: ICacheFileRecord[] = [];
 
     if (!existsSync(this.cacheDir)) {
       return entries;

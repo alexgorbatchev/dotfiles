@@ -12,5 +12,8 @@ export type {
   CachePopulateRequest,
   CachePopulateResult,
   CacheStats,
+  ProxyCacheStatus,
   ProxyConfig,
+  ProxyServerAddress,
+  ProxyServerCallback,
 } from "./types";

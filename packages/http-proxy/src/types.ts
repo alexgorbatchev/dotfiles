@@ -1,3 +1,7 @@
+export type ProxyCacheStatus = "HIT" | "MISS";
+export type ProxyServerCallback = () => void;
+export type ProxyServerAddress = { port: number };
+
 /**
  * Configuration options for the HTTP caching proxy.
  */

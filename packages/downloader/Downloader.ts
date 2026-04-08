@@ -11,6 +11,8 @@ import { NodeFetchStrategy } from "./NodeFetchStrategy";
 
 type DownloadAttemptSuccess = IOperationSuccess & { buffer: Buffer | undefined };
 type DownloadAttemptFailure = IOperationFailure;
+type DownloadAttemptResult = DownloadAttemptSuccess | DownloadAttemptFailure;
+type DownloadToFileAttemptResult = IOperationSuccess | IOperationFailure;
 
 /**
  * Main downloader class that orchestrates file downloads using pluggable strategies.
@@ -83,7 +85,7 @@ export class Downloader implements IDownloader {
     strategy: IDownloadStrategy,
     url: string,
     options: IDownloadOptions,
-  ): Promise<DownloadAttemptSuccess | DownloadAttemptFailure> {
+  ): Promise<DownloadAttemptResult> {
     if (!(await strategy.isAvailable())) {
       return { success: false, error: "Strategy not available" };
     }
@@ -140,7 +142,7 @@ export class Downloader implements IDownloader {
     strategy: IDownloadStrategy,
     url: string,
     fileOptions: IDownloadOptions,
-  ): Promise<IOperationSuccess | IOperationFailure> {
+  ): Promise<DownloadToFileAttemptResult> {
     if (!(await strategy.isAvailable())) {
       return { success: false, error: "Strategy not available" };
     }
@@ -161,11 +163,13 @@ export class Downloader implements IDownloader {
   private normalizeError(error: unknown): Error {
     if (error instanceof Error) {
       return error;
-    } else if (typeof error === "string") {
-      return new Error(error);
-    } else {
-      return new Error(`An unknown error occurred during download: ${JSON.stringify(error)}`);
     }
+
+    if (typeof error === "string") {
+      return new Error(error);
+    }
+
+    return new Error(`An unknown error occurred during download: ${JSON.stringify(error)}`);
   }
 
   /**

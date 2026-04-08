@@ -8,3 +8,4 @@ export * from "./IDownloader";
 export * from "./IDownloadStrategy";
 export * from "./NodeFetchStrategy";
 export * from "./ProgressBar";
+export type * from "./types";

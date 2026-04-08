@@ -12,6 +12,11 @@ import {
   ServerError,
 } from "../errors";
 import { NodeFetchStrategy } from "../NodeFetchStrategy";
+import type { HttpHeadersMap } from "../types";
+
+type NodeFetchStrategyWithResponseHeaders = {
+  getResponseHeaders: (headers: Headers) => HttpHeadersMap;
+};
 
 describe("NodeFetchStrategy", () => {
   let mockFileSystem: IFileSystem;
@@ -501,9 +506,7 @@ describe("NodeFetchStrategy", () => {
       headers.append("Content-Type", "application/json");
       headers.append("X-Test", "TestValue");
       // Testing private method - legitimate use of type assertion for internal testing
-      const result = (
-        strategy as unknown as { getResponseHeaders: (headers: Headers) => Record<string, string> }
-      ).getResponseHeaders(headers);
+      const result = (strategy as unknown as NodeFetchStrategyWithResponseHeaders).getResponseHeaders(headers);
       expect(result).toEqual({
         "content-type": "application/json",
         "x-test": "TestValue",

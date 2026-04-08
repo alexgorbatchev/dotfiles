@@ -10,9 +10,15 @@ import {
   RateLimitError,
   ServerError,
 } from "./errors";
-import type { IDownloadOptions } from "./IDownloader";
+import type { IDownloadOptions, ProgressCallback } from "./IDownloader";
 import type { IDownloadStrategy } from "./IDownloadStrategy";
 import { nodeFetchStrategyLogMessages } from "./log-messages";
+import type { HttpHeadersMap } from "./types";
+
+interface ISetupDownloadRequestResult {
+  response: Response;
+  timeoutId?: NodeJS.Timeout;
+}
 
 export class NodeFetchStrategy implements IDownloadStrategy {
   public readonly name = "node-fetch";
@@ -33,8 +39,8 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     return typeof fetch === "function";
   }
 
-  private getResponseHeaders(headers: Headers): Record<string, string | string[] | undefined> {
-    const result: Record<string, string | string[] | undefined> = {};
+  private getResponseHeaders(headers: Headers): HttpHeadersMap {
+    const result: HttpHeadersMap = {};
     headers.forEach((value, key) => {
       // For simplicity, we're not handling multi-value headers explicitly here
       // as 'getSetCookie' is specific and 'getAll' is deprecated.
@@ -72,7 +78,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     url: string,
     headers: Record<string, string> | undefined,
     timeout: number | undefined,
-  ): Promise<{ response: Response; timeoutId?: NodeJS.Timeout }> {
+  ): Promise<ISetupDownloadRequestResult> {
     const controller = new AbortController();
     let timeoutId: NodeJS.Timeout | undefined;
 
@@ -99,8 +105,8 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     let responseBody: string | undefined;
     try {
       responseBody = await response.text();
-    } catch (e) {
-      this.logger.debug(nodeFetchStrategyLogMessages.responseBodyReadFailed(url, e));
+    } catch (error) {
+      this.logger.debug(nodeFetchStrategyLogMessages.responseBodyReadFailed(url, error));
     }
 
     const responseHeaders = this.getResponseHeaders(response.headers);
@@ -166,11 +172,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     );
   }
 
-  private async processResponseStream(
-    response: Response,
-    url: string,
-    onProgress?: (bytesDownloaded: number, totalBytes: number | null) => void,
-  ): Promise<Buffer> {
+  private async processResponseStream(response: Response, url: string, onProgress?: ProgressCallback): Promise<Buffer> {
     const contentLength = response.headers.get("content-length");
     let totalBytes: number | null = null;
     if (contentLength) {
@@ -234,9 +236,9 @@ export class NodeFetchStrategy implements IDownloadStrategy {
       await this.fileSystem.writeFile(destinationPath, resultBuffer);
       this.logger.debug(nodeFetchStrategyLogMessages.savedSuccessfully(destinationPath));
       return;
-    } else {
-      return resultBuffer;
     }
+
+    return resultBuffer;
   }
 
   private handleDownloadError(
@@ -244,7 +246,7 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     url: string,
     attempt: number,
     retryCount: number,
-    _onProgress?: (bytesDownloaded: number, totalBytes: number | null) => void,
+    _onProgress?: ProgressCallback,
   ): void {
     this.logger.debug(nodeFetchStrategyLogMessages.downloadAttemptError(attempt + 1, url, error));
 
@@ -268,11 +270,16 @@ export class NodeFetchStrategy implements IDownloadStrategy {
     attempt: number,
     retryCount: number,
     retryDelay: number,
-    onProgress?: (bytesDownloaded: number, totalBytes: number | null) => void,
+    onProgress?: ProgressCallback,
   ): Promise<void> {
     this.logger.debug(nodeFetchStrategyLogMessages.retryingDownload(url, attempt + 2, retryCount + 1, retryDelay));
     if (onProgress) {
-      // onProgress({ bytesDownloaded: 0, totalBytes: undefined, percentage: 0, status: `Retrying (${attempt}/${retryCount})...` });
+      // onProgress({
+      //   bytesDownloaded: 0,
+      //   totalBytes: undefined,
+      //   percentage: 0,
+      //   status: `Retrying (${attempt}/${retryCount})...`,
+      // });
     }
     await new Promise((resolve) => setTimeout(resolve, retryDelay));
   }

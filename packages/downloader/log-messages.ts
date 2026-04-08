@@ -1,4 +1,5 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
+import type { HttpHeadersMap, HttpResponseBody } from "./types";
 
 export const downloaderLogMessages = {
   strategyCreated: (strategyName: string, detail: string) => createSafeLogMessage(`Created ${strategyName}${detail}`),
@@ -77,29 +78,20 @@ export const downloaderErrorLogMessages = {
     url: string,
     statusCode: number,
     statusText: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
+    responseBody?: HttpResponseBody,
+    responseHeaders?: HttpHeadersMap,
   ) =>
     createSafeLogMessage(
-      `HttpError created: message=${message}, url=${url}, statusCode=${statusCode}, statusText=${statusText}, responseBody=${String(
-        responseBody,
-      )}, responseHeaders=${JSON.stringify(responseHeaders ?? {})}`,
+      `HttpError created: message=${message}, url=${url}, statusCode=${statusCode}, statusText=${statusText}, ` +
+        `responseBody=${String(responseBody)}, responseHeaders=${JSON.stringify(responseHeaders ?? {})}`,
     ),
-  notFoundErrorCreated: (
-    url: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
-  ) =>
+  notFoundErrorCreated: (url: string, responseBody?: HttpResponseBody, responseHeaders?: HttpHeadersMap) =>
     createSafeLogMessage(
       `NotFoundError created: url=${url}, responseBody=${String(responseBody)}, responseHeaders=${JSON.stringify(
         responseHeaders ?? {},
       )}`,
     ),
-  forbiddenErrorCreated: (
-    url: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
-  ) =>
+  forbiddenErrorCreated: (url: string, responseBody?: HttpResponseBody, responseHeaders?: HttpHeadersMap) =>
     createSafeLogMessage(
       `ForbiddenError created: url=${url}, responseBody=${String(responseBody)}, responseHeaders=${JSON.stringify(
         responseHeaders ?? {},
@@ -110,21 +102,21 @@ export const downloaderErrorLogMessages = {
     url: string,
     statusCode: number,
     statusText: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
+    responseBody?: HttpResponseBody,
+    responseHeaders?: HttpHeadersMap,
     resetTimestamp?: number,
   ) =>
     createSafeLogMessage(
-      `RateLimitError created: message=${message}, url=${url}, statusCode=${statusCode}, statusText=${statusText}, responseBody=${String(
-        responseBody,
-      )}, responseHeaders=${JSON.stringify(responseHeaders ?? {})}, resetTimestamp=${String(resetTimestamp)}`,
+      `RateLimitError created: message=${message}, url=${url}, statusCode=${statusCode}, statusText=${statusText}, ` +
+        `responseBody=${String(responseBody)}, responseHeaders=${JSON.stringify(responseHeaders ?? {})}, ` +
+        `resetTimestamp=${String(resetTimestamp)}`,
     ),
   clientErrorCreated: (
     url: string,
     statusCode: number,
     statusText: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
+    responseBody?: HttpResponseBody,
+    responseHeaders?: HttpHeadersMap,
   ) =>
     createSafeLogMessage(
       `ClientError created: url=${url}, statusCode=${statusCode}, statusText=${statusText}, responseBody=${String(
@@ -135,8 +127,8 @@ export const downloaderErrorLogMessages = {
     url: string,
     statusCode: number,
     statusText: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
+    responseBody?: HttpResponseBody,
+    responseHeaders?: HttpHeadersMap,
   ) =>
     createSafeLogMessage(
       `ServerError created: url=${url}, statusCode=${statusCode}, statusText=${statusText}, responseBody=${String(

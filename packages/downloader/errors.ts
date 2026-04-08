@@ -1,5 +1,6 @@
 import type { TsLogger } from "@dotfiles/logger";
 import { downloaderErrorLogMessages } from "./log-messages";
+import type { HttpHeadersMap, HttpResponseBody } from "./types";
 
 /**
  * Base error class for all downloader-related errors.
@@ -49,8 +50,8 @@ export class NetworkError extends DownloaderError {
 export class HttpError extends DownloaderError {
   public readonly statusCode: number;
   public readonly statusText: string;
-  public readonly responseBody?: string | Buffer | object;
-  public readonly responseHeaders?: Record<string, string | string[] | undefined>;
+  public readonly responseBody?: HttpResponseBody;
+  public readonly responseHeaders?: HttpHeadersMap;
 
   constructor(
     parentLogger: TsLogger,
@@ -58,8 +59,8 @@ export class HttpError extends DownloaderError {
     url: string,
     statusCode: number,
     statusText: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
+    responseBody?: HttpResponseBody,
+    responseHeaders?: HttpHeadersMap,
   ) {
     super(parentLogger, message, url);
     const logger = parentLogger.getSubLogger({ name: "HttpError" });
@@ -88,12 +89,7 @@ export class HttpError extends DownloaderError {
  * It's a specific case of HttpError for 404 status codes.
  */
 export class NotFoundError extends HttpError {
-  constructor(
-    parentLogger: TsLogger,
-    url: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
-  ) {
+  constructor(parentLogger: TsLogger, url: string, responseBody?: HttpResponseBody, responseHeaders?: HttpHeadersMap) {
     super(parentLogger, "Resource not found", url, 404, "Not Found", responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: "NotFoundError" });
     this.name = "NotFoundError";
@@ -113,12 +109,7 @@ export class NotFoundError extends HttpError {
  * or IP-based access restrictions. It's a specific case of HttpError for 403 status codes.
  */
 export class ForbiddenError extends HttpError {
-  constructor(
-    parentLogger: TsLogger,
-    url: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
-  ) {
+  constructor(parentLogger: TsLogger, url: string, responseBody?: HttpResponseBody, responseHeaders?: HttpHeadersMap) {
     super(parentLogger, "Access forbidden", url, 403, "Forbidden", responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: "ForbiddenError" });
     this.name = "ForbiddenError";
@@ -147,8 +138,8 @@ export class RateLimitError extends HttpError {
     url: string,
     statusCode: number,
     statusText: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
+    responseBody?: HttpResponseBody,
+    responseHeaders?: HttpHeadersMap,
     resetTimestamp?: number,
   ) {
     super(parentLogger, message, url, statusCode, statusText, responseBody, responseHeaders);
@@ -190,8 +181,8 @@ export class ClientError extends HttpError {
     url: string,
     statusCode: number,
     statusText: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
+    responseBody?: HttpResponseBody,
+    responseHeaders?: HttpHeadersMap,
   ) {
     super(parentLogger, `Client error: ${statusText}`, url, statusCode, statusText, responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: "ClientError" });
@@ -222,8 +213,8 @@ export class ServerError extends HttpError {
     url: string,
     statusCode: number,
     statusText: string,
-    responseBody?: string | Buffer | object,
-    responseHeaders?: Record<string, string | string[] | undefined>,
+    responseBody?: HttpResponseBody,
+    responseHeaders?: HttpHeadersMap,
   ) {
     super(parentLogger, `Server error: ${statusText}`, url, statusCode, statusText, responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: "ServerError" });

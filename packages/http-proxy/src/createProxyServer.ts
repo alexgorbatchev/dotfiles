@@ -2,7 +2,15 @@ import type { Server } from "bun";
 
 import { CacheInvalidator } from "./CacheInvalidator";
 import { ProxyCacheStore } from "./ProxyCacheStore";
-import type { CacheClearRequest, CachePopulateRequest, CachePopulateResult, ProxyConfig } from "./types";
+import type {
+  CacheClearRequest,
+  CachePopulateRequest,
+  CachePopulateResult,
+  ProxyCacheStatus,
+  ProxyConfig,
+  ProxyServerAddress,
+  ProxyServerCallback,
+} from "./types";
 
 /**
  * Extended config with optional fetch override for testing.
@@ -17,11 +25,11 @@ export interface ProxyServerOptions extends ProxyConfig {
  */
 export interface ProxyServer {
   /** Start listening on specified port. Callback receives server info. */
-  listen(port: number, callback?: () => void): ProxyServer;
+  listen(port: number, callback?: ProxyServerCallback): ProxyServer;
   /** Stop the server */
-  close(callback?: () => void): void;
+  close(callback?: ProxyServerCallback): void;
   /** Get server address info */
-  address(): { port: number } | null;
+  address(): ProxyServerAddress | null;
 }
 
 /**
@@ -110,7 +118,7 @@ export function createProxyServer(config: ProxyServerOptions): ProxyServer {
    */
   function buildResponseHeaders(
     headers: Record<string, string>,
-    cacheStatus: "HIT" | "MISS",
+    cacheStatus: ProxyCacheStatus,
     contentLength: number,
   ): Headers {
     const responseHeaders = new Headers();
@@ -233,7 +241,7 @@ export function createProxyServer(config: ProxyServerOptions): ProxyServer {
 
   // Return a server-like object that can be started/stopped
   const proxyServer: ProxyServer = {
-    listen(port: number, callback?: () => void): ProxyServer {
+    listen(port: number, callback?: ProxyServerCallback): ProxyServer {
       bunServer = Bun.serve({
         port,
         routes,
@@ -245,7 +253,7 @@ export function createProxyServer(config: ProxyServerOptions): ProxyServer {
       return proxyServer;
     },
 
-    close(callback?: () => void): void {
+    close(callback?: ProxyServerCallback): void {
       if (bunServer) {
         bunServer.stop();
         bunServer = null;
@@ -255,7 +263,7 @@ export function createProxyServer(config: ProxyServerOptions): ProxyServer {
       }
     },
 
-    address(): { port: number } | null {
+    address(): ProxyServerAddress | null {
       if (bunServer && bunServer.port !== undefined) {
         return { port: bunServer.port };
       }

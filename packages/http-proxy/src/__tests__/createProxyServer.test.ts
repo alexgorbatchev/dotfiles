@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { createProxyServer, type ProxyServer, type ProxyServerOptions } from "../createProxyServer";
 import { ProxyCacheStore } from "../ProxyCacheStore";
 
+type ProxyRequestInput = string | URL | Request;
+
 describe("createProxyServer", () => {
   let cacheDir: string;
   let server: ProxyServer | null = null;
@@ -321,7 +323,7 @@ describe("createProxyServer", () => {
   describe("proxy functionality", () => {
     test("proxies request and caches response", async () => {
       let fetchCallCount = 0;
-      const mockFetch = mock((_url: string | URL | Request) => {
+      const mockFetch = mock((_url: ProxyRequestInput) => {
         fetchCallCount++;
         return Promise.resolve(
           new Response('{"data":"test"}', {

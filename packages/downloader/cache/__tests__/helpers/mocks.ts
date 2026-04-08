@@ -2,9 +2,28 @@ import type { IDownloadOptions } from "../../../IDownloader";
 import type { IDownloadStrategy } from "../../../IDownloadStrategy";
 import type { ICache } from "../../types";
 
+interface IDownloadCall {
+  url: string;
+  options: IDownloadOptions;
+}
+
+interface ICacheSetCall {
+  key: string;
+  data: unknown;
+  ttl?: number;
+}
+
+interface ICacheSetDownloadCall {
+  key: string;
+  data: Buffer;
+  ttl?: number;
+  url: string;
+  contentType?: string;
+}
+
 export class MockDownloadStrategy implements IDownloadStrategy {
   public readonly name = "mock-strategy";
-  public downloadCalls: Array<{ url: string; options: IDownloadOptions }> = [];
+  public downloadCalls: IDownloadCall[] = [];
   public downloadResult: Buffer = Buffer.from("mock-download-result");
   public shouldFail = false;
   public isAvailableResult = true;
@@ -36,14 +55,8 @@ export class MockDownloadStrategy implements IDownloadStrategy {
 export class MockCache implements ICache {
   public storage = new Map<string, unknown>();
   public getCalls: string[] = [];
-  public setCalls: Array<{ key: string; data: unknown; ttl?: number }> = [];
-  public setDownloadCalls: Array<{
-    key: string;
-    data: Buffer;
-    ttl?: number;
-    url: string;
-    contentType?: string;
-  }> = [];
+  public setCalls: ICacheSetCall[] = [];
+  public setDownloadCalls: ICacheSetDownloadCall[] = [];
   public shouldFailGet = false;
   public shouldFailSet = false;
 

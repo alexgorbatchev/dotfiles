@@ -7,6 +7,11 @@ import { CachedDownloadStrategy } from "../../CachedDownloadStrategy";
 import type { IDownloadOptions } from "../../IDownloader";
 import { MockCache, MockDownloadStrategy } from "./helpers/mocks";
 
+interface IProgressCall {
+  loaded: number;
+  total: number | null;
+}
+
 describe("CachedDownloadStrategy", () => {
   let logger: TestLogger;
   let mockCache: MockCache;
@@ -56,7 +61,7 @@ describe("CachedDownloadStrategy", () => {
   describe("download", () => {
     it("should read from cache when progress callback is provided", async () => {
       const url = "https://example.com/file.txt";
-      const progressCalls: Array<{ loaded: number; total: number | null }> = [];
+      const progressCalls: IProgressCall[] = [];
       const options: IDownloadOptions = {
         onProgress: (loaded, total) => {
           progressCalls.push({ loaded, total });
