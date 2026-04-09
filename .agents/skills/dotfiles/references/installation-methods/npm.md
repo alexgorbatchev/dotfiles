@@ -5,9 +5,9 @@ Install tools published as npm packages. Supports both `npm` and `bun` as packag
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
-export default defineTool((install) => install('npm', { package: 'prettier' }).bin('prettier'));
+export default defineTool((install) => install("npm", { package: "prettier" }).bin("prettier"));
 ```
 
 ## Parameters
@@ -27,10 +27,10 @@ export default defineTool((install) => install('npm', { package: 'prettier' }).b
 
 ```typescript
 export default defineTool((install) =>
-  install('npm', {
-    package: 'prettier',
-    version: '3.0.0',
-  }).bin('prettier')
+  install("npm", {
+    package: "prettier",
+    version: "3.0.0",
+  }).bin("prettier"),
 );
 ```
 
@@ -38,10 +38,10 @@ export default defineTool((install) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('npm', {
-    package: 'prettier',
-    packageManager: 'bun',
-  }).bin('prettier')
+  install("npm", {
+    package: "prettier",
+    packageManager: "bun",
+  }).bin("prettier"),
 );
 ```
 
@@ -49,9 +49,9 @@ export default defineTool((install) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('npm', {
-    package: '@angular/cli',
-  }).bin('ng')
+  install("npm", {
+    package: "@angular/cli",
+  }).bin("ng"),
 );
 ```
 
@@ -59,11 +59,11 @@ export default defineTool((install) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('npm', {
-    package: 'typescript',
-    versionArgs: ['--version'],
+  install("npm", {
+    package: "typescript",
+    versionArgs: ["--version"],
     versionRegex: /(\d+\.\d+\.\d+)/,
-  }).bin('tsc')
+  }).bin("tsc"),
 );
 ```
 

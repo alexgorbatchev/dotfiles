@@ -1,6 +1,6 @@
 ---
 targets:
-  - '*'
+  - "*"
 description: Trace usage of identifiers in TypeScript code.
 copilot:
   agent: agent

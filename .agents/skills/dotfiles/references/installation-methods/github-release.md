@@ -5,9 +5,9 @@ Download and install tools from GitHub releases with automatic platform asset se
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
-export default defineTool((install) => install('github-release', { repo: 'junegunn/fzf' }).bin('fzf'));
+export default defineTool((install) => install("github-release", { repo: "junegunn/fzf" }).bin("fzf"));
 ```
 
 ## Parameters
@@ -28,31 +28,31 @@ export default defineTool((install) => install('github-release', { repo: 'junegu
 ### With Asset Pattern
 
 ```typescript
-install('github-release', {
-  repo: 'sharkdp/bat',
-  assetPattern: '*linux_amd64.tar.gz',
-}).bin('bat');
+install("github-release", {
+  repo: "sharkdp/bat",
+  assetPattern: "*linux_amd64.tar.gz",
+}).bin("bat");
 ```
 
 ### Custom Asset Selector
 
 ```typescript
-install('github-release', {
-  repo: 'example/tool',
+install("github-release", {
+  repo: "example/tool",
   assetSelector: ({ assets, systemInfo }) => {
-    const platform = systemInfo.platform === 'darwin' ? 'macos' : systemInfo.platform;
+    const platform = systemInfo.platform === "darwin" ? "macos" : systemInfo.platform;
     return assets.find((a) => a.name.includes(platform));
   },
-}).bin('tool');
+}).bin("tool");
 ```
 
 ### Specific Version
 
 ```typescript
-install('github-release', {
-  repo: 'owner/tool',
-  version: 'v2.1.0',
-}).bin('tool');
+install("github-release", {
+  repo: "owner/tool",
+  version: "v2.1.0",
+}).bin("tool");
 ```
 
 ### Using gh CLI
@@ -60,10 +60,10 @@ install('github-release', {
 Use the `gh` CLI for API requests instead of fetch. Useful when working behind proxies or leveraging existing `gh` authentication:
 
 ```typescript
-install('github-release', {
-  repo: 'owner/tool',
+install("github-release", {
+  repo: "owner/tool",
   ghCli: true,
-}).bin('tool');
+}).bin("tool");
 ```
 
 ### Including Prereleases
@@ -71,10 +71,10 @@ install('github-release', {
 By default, GitHub's "latest" excludes prereleases. Use `prerelease: true` for repos that only publish prerelease versions:
 
 ```typescript
-install('github-release', {
-  repo: 'owner/nightly-only-tool',
+install("github-release", {
+  repo: "owner/nightly-only-tool",
   prerelease: true,
-}).bin('tool');
+}).bin("tool");
 ```
 
 ## Asset Pattern Matching

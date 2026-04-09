@@ -47,4 +47,4 @@ CLAUDE.md
 /.opencode
 /AGENTS.md
 /opencode.jsonc
-/.agents
+/.agents/memories

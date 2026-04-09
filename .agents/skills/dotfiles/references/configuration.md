@@ -88,28 +88,28 @@ Files must be named `{tool-name}.tool.ts` and export a default using `defineTool
 ## Minimal Configuration
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'junegunn/fzf',
-  }).bin('fzf')
+  install("github-release", {
+    repo: "junegunn/fzf",
+  }).bin("fzf"),
 );
 ```
 
 ## Complete Example
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'BurntSushi/ripgrep',
+  install("github-release", {
+    repo: "BurntSushi/ripgrep",
   })
-    .bin('rg')
-    .dependsOn('pcre2')
-    .symlink('./ripgreprc', '~/.ripgreprc')
-    .zsh((shell) => shell.env({ RIPGREP_CONFIG_PATH: '~/.ripgreprc' }).aliases({ rgi: 'rg -i' }))
+    .bin("rg")
+    .dependsOn("pcre2")
+    .symlink("./ripgreprc", "~/.ripgreprc")
+    .zsh((shell) => shell.env({ RIPGREP_CONFIG_PATH: "~/.ripgreprc" }).aliases({ rgi: "rg -i" })),
 );
 ```
 
@@ -134,7 +134,7 @@ After calling `install()`, these methods are available:
 ### Imports
 
 ```typescript
-import { Architecture, defineTool, Platform } from '@alexgorbatchev/dotfiles';
+import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
 ```
 
 | Export         | Description                                    |
@@ -148,7 +148,7 @@ import { Architecture, defineTool, Platform } from '@alexgorbatchev/dotfiles';
 Tools that only contribute shell configuration (no binary installation):
 
 ```typescript
-export default defineTool((install) => install().zsh((shell) => shell.env({ FOO: 'bar' })));
+export default defineTool((install) => install().zsh((shell) => shell.env({ FOO: "bar" })));
 ```
 
 ### Orphaned Artifact Cleanup
@@ -189,14 +189,14 @@ The project configuration file defines paths, features, and API settings for you
 ## Basic Configuration
 
 ```typescript
-import { defineConfig } from '@alexgorbatchev/dotfiles';
+import { defineConfig } from "@alexgorbatchev/dotfiles";
 
 export default defineConfig(() => ({
   paths: {
-    dotfilesDir: '~/.dotfiles',
-    toolConfigsDir: '~/.dotfiles/tools',
-    generatedDir: '~/.dotfiles/.generated',
-    targetDir: '~/.local/bin',
+    dotfilesDir: "~/.dotfiles",
+    toolConfigsDir: "~/.dotfiles/tools",
+    generatedDir: "~/.dotfiles/.generated",
+    targetDir: "~/.local/bin",
   },
 }));
 ```
@@ -209,7 +209,7 @@ export default defineConfig(() => ({
 export default defineConfig(async () => {
   const token = await loadTokenFromVault();
   return {
-    paths: { dotfilesDir: '~/.dotfiles' },
+    paths: { dotfilesDir: "~/.dotfiles" },
     github: { token },
   };
 });
@@ -339,13 +339,13 @@ updates: {
 ```typescript
 export default defineConfig(() => ({
   paths: {
-    targetDir: '~/.local/bin',
+    targetDir: "~/.local/bin",
   },
   platform: [
     {
-      match: [{ platform: 'darwin', arch: 'arm64' }],
+      match: [{ platform: "darwin", arch: "arm64" }],
       config: {
-        paths: { targetDir: '/opt/homebrew/bin' },
+        paths: { targetDir: "/opt/homebrew/bin" },
       },
     },
   ],
@@ -381,7 +381,7 @@ Use `.platform()` for cross-platform tool configurations.
 ## Platform and Architecture Enums
 
 ```typescript
-import { Architecture, Platform } from '@alexgorbatchev/dotfiles';
+import { Architecture, Platform } from "@alexgorbatchev/dotfiles";
 
 // Platforms (bitwise flags)
 Platform.Linux; // 1
@@ -399,44 +399,48 @@ Architecture.All; // Both (3)
 ## Basic Usage
 
 ```typescript
-import { defineTool, Platform } from '@alexgorbatchev/dotfiles';
+import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
   install()
-    .bin('tool')
-    .platform(Platform.MacOS, (install) => install('brew', { formula: 'tool' }))
+    .bin("tool")
+    .platform(Platform.MacOS, (install) => install("brew", { formula: "tool" }))
     .platform(Platform.Linux, (install) =>
-      install('github-release', {
-        repo: 'owner/tool',
-        assetPattern: '*linux*.tar.gz',
-      }))
+      install("github-release", {
+        repo: "owner/tool",
+        assetPattern: "*linux*.tar.gz",
+      }),
+    )
     .platform(Platform.Windows, (install) =>
-      install('github-release', {
-        repo: 'owner/tool',
-        assetPattern: '*windows*.zip',
-      }))
+      install("github-release", {
+        repo: "owner/tool",
+        assetPattern: "*windows*.zip",
+      }),
+    ),
 );
 ```
 
 ## With Architecture
 
 ```typescript
-import { Architecture, defineTool, Platform } from '@alexgorbatchev/dotfiles';
+import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
   install()
-    .bin('tool')
+    .bin("tool")
     .platform(Platform.Linux, Architecture.X86_64, (install) =>
-      install('github-release', {
-        repo: 'owner/tool',
-        assetPattern: '*linux-amd64*.tar.gz',
-      }))
+      install("github-release", {
+        repo: "owner/tool",
+        assetPattern: "*linux-amd64*.tar.gz",
+      }),
+    )
     .platform(Platform.Linux, Architecture.Arm64, (install) =>
-      install('github-release', {
-        repo: 'owner/tool',
-        assetPattern: '*linux-arm64*.tar.gz',
-      }))
-    .platform(Platform.MacOS, Architecture.All, (install) => install('brew', { formula: 'tool' }))
+      install("github-release", {
+        repo: "owner/tool",
+        assetPattern: "*linux-arm64*.tar.gz",
+      }),
+    )
+    .platform(Platform.MacOS, Architecture.All, (install) => install("brew", { formula: "tool" })),
 );
 ```
 
@@ -447,17 +451,19 @@ Use `Platform.Unix` for shared Linux/macOS configuration:
 ```typescript
 export default defineTool((install) =>
   install()
-    .bin('tool')
+    .bin("tool")
     .platform(Platform.Unix, (install) =>
-      install('github-release', {
-        repo: 'owner/tool',
-        assetPattern: '*unix*.tar.gz',
-      }))
+      install("github-release", {
+        repo: "owner/tool",
+        assetPattern: "*unix*.tar.gz",
+      }),
+    )
     .platform(Platform.Windows, (install) =>
-      install('github-release', {
-        repo: 'owner/tool',
-        assetPattern: '*windows*.zip',
-      }))
+      install("github-release", {
+        repo: "owner/tool",
+        assetPattern: "*windows*.zip",
+      }),
+    ),
 );
 ```
 
@@ -465,20 +471,22 @@ export default defineTool((install) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
     .platform(Platform.Unix, (install) =>
       install().zsh((shell) =>
         shell.env({
-          TOOL_CONFIG: '~/.config/tool',
-        })
-      ))
+          TOOL_CONFIG: "~/.config/tool",
+        }),
+      ),
+    )
     .platform(Platform.Windows, (install) =>
       install().powershell((shell) =>
         shell.env({
-          TOOL_CONFIG: '~\\.config\\tool',
-        })
-      ))
+          TOOL_CONFIG: "~\\.config\\tool",
+        }),
+      ),
+    ),
 );
 ```
 
@@ -486,19 +494,19 @@ export default defineTool((install) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .hook('after-install', async ({ systemInfo, $ }) => {
-      if (systemInfo.platform === 'darwin') {
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .hook("after-install", async ({ systemInfo, $ }) => {
+      if (systemInfo.platform === "darwin") {
         await $`./setup-macos.sh`;
-      } else if (systemInfo.platform === 'linux') {
+      } else if (systemInfo.platform === "linux") {
         await $`./setup-linux.sh`;
       }
 
-      if (systemInfo.arch === 'arm64') {
+      if (systemInfo.arch === "arm64") {
         await $`./configure-arm64.sh`;
       }
-    })
+    }),
 );
 ```
 
@@ -748,13 +756,13 @@ Real-world examples for common tool configuration scenarios.
 ## GitHub Tool with Shell Integration
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'BurntSushi/ripgrep' })
-    .bin('rg')
-    .zsh((shell) => shell.completions('complete/_rg').aliases({ rg: 'ripgrep' }))
-    .bash((shell) => shell.completions('complete/rg.bash'))
+  install("github-release", { repo: "BurntSushi/ripgrep" })
+    .bin("rg")
+    .zsh((shell) => shell.completions("complete/_rg").aliases({ rg: "ripgrep" }))
+    .bash((shell) => shell.completions("complete/rg.bash")),
 );
 ```
 
@@ -764,29 +772,29 @@ Use `.dependsOn()` when a tool needs other binaries to exist first:
 
 ```typescript
 // provider.tool.ts
-export default defineTool((install) => install('manual', { binaryPath: './bin/provider' }).bin('provider'));
+export default defineTool((install) => install("manual", { binaryPath: "./bin/provider" }).bin("provider"));
 
 // consumer.tool.ts
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/consumer' }).bin('consumer').dependsOn('provider')
+  install("github-release", { repo: "owner/consumer" }).bin("consumer").dependsOn("provider"),
 );
 ```
 
 ## Complex Shell Integration
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'junegunn/fzf' })
-    .bin('fzf')
+  install("github-release", { repo: "junegunn/fzf" })
+    .bin("fzf")
     .zsh((shell) =>
-      shell.env({ FZF_DEFAULT_OPTS: '--color=fg+:cyan' }).completions('shell/completion.zsh').always(/* zsh */ `
+      shell.env({ FZF_DEFAULT_OPTS: "--color=fg+:cyan" }).completions("shell/completion.zsh").always(/* zsh */ `
           if [[ -f "${ctx.currentDir}/shell/key-bindings.zsh" ]]; then
             source "${ctx.currentDir}/shell/key-bindings.zsh"
           fi
-        `)
-    )
+        `),
+    ),
 );
 ```
 
@@ -794,51 +802,53 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
     .zsh((shell) =>
-      shell.completions('completions/_tool').env({ TOOL_CONFIG: '~/.config/tool' }).aliases({ t: 'tool' })
+      shell.completions("completions/_tool").env({ TOOL_CONFIG: "~/.config/tool" }).aliases({ t: "tool" }),
     )
     .bash((shell) =>
-      shell.completions('completions/tool.bash').env({ TOOL_CONFIG: '~/.config/tool' }).aliases({ t: 'tool' })
-    )
+      shell.completions("completions/tool.bash").env({ TOOL_CONFIG: "~/.config/tool" }).aliases({ t: "tool" }),
+    ),
 );
 ```
 
 ## With Hooks
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .symlink('./config.yml', '~/.config/tool/config.yml')
-    .hook('after-install', async ({ installedDir, fileSystem, $ }) => {
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .symlink("./config.yml", "~/.config/tool/config.yml")
+    .hook("after-install", async ({ installedDir, fileSystem, $ }) => {
       await $`${installedDir}/tool init`;
-    })
+    }),
 );
 ```
 
 ## Platform-Specific Installation
 
 ```typescript
-import { Architecture, defineTool, Platform } from '@alexgorbatchev/dotfiles';
+import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .platform(Platform.MacOS, (installMac) => installMac('brew', { formula: 'tool' }))
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .platform(Platform.MacOS, (installMac) => installMac("brew", { formula: "tool" }))
     .platform(Platform.Linux, (installLinux) =>
-      installLinux('github-release', {
-        repo: 'owner/tool',
-        assetPattern: '*linux*.tar.gz',
-      }))
+      installLinux("github-release", {
+        repo: "owner/tool",
+        assetPattern: "*linux*.tar.gz",
+      }),
+    )
     .platform(Platform.Windows, Architecture.Arm64, (installWin) =>
-      installWin('github-release', {
-        repo: 'owner/tool',
-        assetPattern: '*windows-arm64.zip',
-      }))
+      installWin("github-release", {
+        repo: "owner/tool",
+        assetPattern: "*windows-arm64.zip",
+      }),
+    ),
 );
 ```
 
@@ -846,12 +856,12 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('cargo', {
-    crateName: 'eza',
-    githubRepo: 'eza-community/eza',
+  install("cargo", {
+    crateName: "eza",
+    githubRepo: "eza-community/eza",
   })
-    .bin('eza')
-    .zsh((shell) => shell.completions('completions/eza.zsh').aliases({ ls: 'eza', ll: 'eza -l', la: 'eza -la' }))
+    .bin("eza")
+    .zsh((shell) => shell.completions("completions/eza.zsh").aliases({ ls: "eza", ll: "eza -l", la: "eza -la" })),
 );
 ```
 
@@ -859,15 +869,15 @@ export default defineTool((install) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('manual', { binaryPath: './scripts/deploy.sh' })
-    .bin('deploy')
-    .symlink('./deploy.config.yaml', '~/.config/deploy/config.yaml')
+  install("manual", { binaryPath: "./scripts/deploy.sh" })
+    .bin("deploy")
+    .symlink("./deploy.config.yaml", "~/.config/deploy/config.yaml")
     .zsh((shell) =>
       shell.aliases({
-        dp: 'deploy',
-        'deploy-prod': 'deploy --env production',
-      })
-    )
+        dp: "deploy",
+        "deploy-prod": "deploy --env production",
+      }),
+    ),
 );
 ```
 
@@ -876,8 +886,8 @@ export default defineTool((install) =>
 ```typescript
 export default defineTool((install) =>
   install()
-    .symlink('./gitconfig', '~/.gitconfig')
-    .zsh((shell) => shell.aliases({ g: 'git', gs: 'git status', ga: 'git add' }).env({ GIT_EDITOR: 'nvim' }))
+    .symlink("./gitconfig", "~/.gitconfig")
+    .zsh((shell) => shell.aliases({ g: "git", gs: "git status", ga: "git add" }).env({ GIT_EDITOR: "nvim" })),
 );
 ```
 
@@ -885,16 +895,16 @@ export default defineTool((install) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('github-release', {
-    repo: 'owner/tool',
+  install("github-release", {
+    repo: "owner/tool",
     assetSelector: ({ assets, systemInfo }) => {
-      const platformMap: Record<string, string> = { darwin: 'macos', linux: 'linux' };
-      const archMap: Record<string, string> = { x64: 'amd64', arm64: 'arm64' };
+      const platformMap: Record<string, string> = { darwin: "macos", linux: "linux" };
+      const archMap: Record<string, string> = { x64: "amd64", arm64: "arm64" };
       const platform = platformMap[systemInfo.platform];
       const arch = archMap[systemInfo.arch];
-      return assets.find((a) => a.name.includes(platform) && a.name.includes(arch) && a.name.endsWith('.tar.gz'));
+      return assets.find((a) => a.name.includes(platform) && a.name.includes(arch) && a.name.endsWith(".tar.gz"));
     },
-  }).bin('tool')
+  }).bin("tool"),
 );
 ```
 
@@ -924,20 +934,20 @@ For non-standard release naming, use `assetSelector`:
 
 ```typescript
 export default defineTool((install) =>
-  install('github-release', {
-    repo: 'owner/tool',
+  install("github-release", {
+    repo: "owner/tool",
     assetSelector: ({ assets, systemInfo, release, log }) => {
-      const osMap: Record<string, string> = { darwin: 'macos', linux: 'linux' };
-      const archMap: Record<string, string> = { x64: 'amd64', arm64: 'arm64' };
+      const osMap: Record<string, string> = { darwin: "macos", linux: "linux" };
+      const archMap: Record<string, string> = { x64: "amd64", arm64: "arm64" };
 
       return assets.find(
         (a) =>
           a.name.includes(osMap[systemInfo.platform]) &&
           a.name.includes(archMap[systemInfo.arch]) &&
-          a.name.endsWith('.tar.gz'),
+          a.name.endsWith(".tar.gz"),
       );
     },
-  }).bin('tool')
+  }).bin("tool"),
 );
 ```
 
@@ -946,13 +956,13 @@ export default defineTool((install) =>
 Use environment variables for runtime configuration:
 
 ```typescript
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = process.env.NODE_ENV === "development";
 
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .version(isDev ? 'latest' : 'v1.2.3')
-    .zsh((shell) => shell.env({ TOOL_LOG_LEVEL: isDev ? 'debug' : 'info' }))
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .version(isDev ? "latest" : "v1.2.3")
+    .zsh((shell) => shell.env({ TOOL_LOG_LEVEL: isDev ? "debug" : "info" })),
 );
 ```
 
@@ -962,10 +972,10 @@ Choose methods based on system capabilities:
 
 ```typescript
 export default defineTool((install) => {
-  if (process.platform === 'darwin' && process.env.HOMEBREW_PREFIX) {
-    return install('brew', { formula: 'tool' }).bin('tool');
+  if (process.platform === "darwin" && process.env.HOMEBREW_PREFIX) {
+    return install("brew", { formula: "tool" }).bin("tool");
   }
-  return install('github-release', { repo: 'owner/tool' }).bin('tool');
+  return install("github-release", { repo: "owner/tool" }).bin("tool");
 });
 ```
 
@@ -973,15 +983,15 @@ export default defineTool((install) => {
 
 ```typescript
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .hook('after-extract', async ({ extractDir, stagingDir, $ }) => {
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .hook("after-extract", async ({ extractDir, stagingDir, $ }) => {
       if (extractDir && stagingDir) {
         await $`cd ${extractDir} && ./configure --prefix=${stagingDir}`;
         await $`cd ${extractDir} && make -j$(nproc)`;
         await $`cd ${extractDir} && make install`;
       }
-    })
+    }),
 );
 ```
 
@@ -991,16 +1001,16 @@ Combine `.dependsOn()` with hooks for version checks:
 
 ```typescript
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .dependsOn('node')
-    .hook('before-install', async ({ log, $ }) => {
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .dependsOn("node")
+    .hook("before-install", async ({ log, $ }) => {
       const result = await $`node --version`.nothrow();
       if (result.exitCode !== 0) {
-        throw new Error('Node is required but not available');
+        throw new Error("Node is required but not available");
       }
       log.info(`Using Node ${result.stdout.toString().trim()}`);
-    })
+    }),
 );
 ```
 
@@ -1008,8 +1018,8 @@ export default defineTool((install) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
     .zsh((shell) =>
       shell.always(`
         function expensive-fn() {
@@ -1017,8 +1027,8 @@ export default defineTool((install, ctx) =>
           source "${ctx.currentDir}/expensive.zsh"
           expensive-fn "$@"
         }
-      `)
-    )
+      `),
+    ),
 );
 ```
 
@@ -1026,8 +1036,8 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
     .zsh((shell) =>
       shell
         .once(
@@ -1035,8 +1045,8 @@ export default defineTool((install, ctx) =>
           tool completion zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
         `,
         )
-        .completions(`${ctx.projectConfig.paths.generatedDir}/completions/_tool`)
-    )
+        .completions(`${ctx.projectConfig.paths.generatedDir}/completions/_tool`),
+    ),
 );
 ```
 
@@ -1044,12 +1054,12 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .hook('after-install', async ({ $, log }) => {
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .hook("after-install", async ({ $, log }) => {
       await Promise.all([$`tool setup-task-1`, $`tool setup-task-2`, $`tool setup-task-3`]);
-      log.info('All setup tasks completed');
-    })
+      log.info("All setup tasks completed");
+    }),
 );
 ```
 

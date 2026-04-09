@@ -96,13 +96,13 @@ To disable usage tracking globally, set `DOTFILES_USAGE_TRACKING=0` in your envi
 
 ```ts
 // Single binary with default pattern
-install('github-release', { repo: 'owner/tool' }).bin('tool');
+install("github-release", { repo: "owner/tool" }).bin("tool");
 
 // Multiple binaries - chain .bin() calls
-install('github-release', { repo: 'owner/tool' }).bin('tool').bin('tool-helper');
+install("github-release", { repo: "owner/tool" }).bin("tool").bin("tool-helper");
 
 // Custom pattern for binary location in archive
-install('github-release', { repo: 'owner/tool' }).bin('tool', '*/bin/tool'); // Pattern: {,*/}tool by default
+install("github-release", { repo: "owner/tool" }).bin("tool", "*/bin/tool"); // Pattern: {,*/}tool by default
 ```
 
 **Binary Pattern Matching (for archive-based installation methods only)**:
@@ -133,17 +133,17 @@ All installation methods support an `env` parameter for setting environment vari
 
 ```ts
 // Static environment variables
-install('github-release', {
-  repo: 'owner/tool',
-  env: { CUSTOM_FLAG: 'true' },
-}).bin('tool');
+install("github-release", {
+  repo: "owner/tool",
+  env: { CUSTOM_FLAG: "true" },
+}).bin("tool");
 
 // Dynamic environment variables (receives context with projectConfig, stagingDir)
-install('curl-script', {
-  url: 'https://example.com/install.sh',
-  shell: 'bash',
+install("curl-script", {
+  url: "https://example.com/install.sh",
+  shell: "bash",
   env: (ctx) => ({ INSTALL_DIR: ctx.stagingDir }),
-}).bin('tool');
+}).bin("tool");
 ```
 
 **Environment Context** (available in dynamic `env` functions):
@@ -158,8 +158,8 @@ install('curl-script', {
 Use the fluent shell configurator with `.zsh()`, `.bash()`, or `.powershell()` methods.
 
 ```ts
-install('github-release', { repo: 'owner/tool' })
-  .bin('tool')
+install("github-release", { repo: "owner/tool" })
+  .bin("tool")
   .zsh((shell) =>
     shell
       .env({
@@ -167,15 +167,15 @@ install('github-release', { repo: 'owner/tool' })
         TOOL_CONFIG_DIR: ctx.toolDir,
       })
       .aliases({
-        t: 'tool',
-        ts: 'tool status',
+        t: "tool",
+        ts: "tool status",
       })
-      .completions('_tool') // Relative path resolves to toolDir/_tool
-      .sourceFile('init.zsh') // Relative path resolves to toolDir/init.zsh (skips if missing)
+      .completions("_tool") // Relative path resolves to toolDir/_tool
+      .sourceFile("init.zsh") // Relative path resolves to toolDir/init.zsh (skips if missing)
       .always(/* zsh */ `
         # Fast runtime setup (runs every shell startup)
         ...
-      `)
+      `),
   );
 ```
 
@@ -307,10 +307,10 @@ Reference: [Shell Integration Guide](shell-and-hooks.md) and [Completions Guide]
 Relative symlink source paths resolve to `ctx.toolDir` (the directory containing the `.tool.ts` file). Leading `./` is optional.
 
 ```ts
-install('github-release', { repo: 'owner/tool' })
-  .bin('tool')
-  .symlink('config.toml', '~/.config/tool/config.toml') // Resolves to ctx.toolDir/config.toml
-  .symlink('./themes/', '~/.config/tool/themes'); // Leading ./ is optional
+install("github-release", { repo: "owner/tool" })
+  .bin("tool")
+  .symlink("config.toml", "~/.config/tool/config.toml") // Resolves to ctx.toolDir/config.toml
+  .symlink("./themes/", "~/.config/tool/themes"); // Leading ./ is optional
 ```
 
 Reference: [Shell Integration Guide](shell-and-hooks.md#symbolic-links)
@@ -322,23 +322,25 @@ Reference: [Shell Integration Guide](shell-and-hooks.md#symbolic-links)
 Use `.platform()` for platform- and architecture-specific overrides. The callback receives an `install` function for that specific platform.
 
 ```ts
-import { Architecture, defineTool, Platform } from '@alexgorbatchev/dotfiles';
+import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
   install()
-    .bin('tool')
+    .bin("tool")
     // macOS-specific installation (different method: brew)
-    .platform(Platform.MacOS, (install) => install('brew', { formula: 'tool' }))
+    .platform(Platform.MacOS, (install) => install("brew", { formula: "tool" }))
     // Linux-specific installation (different method: github-release)
     .platform(Platform.Linux, (install) =>
-      install('github-release', {
-        repo: 'owner/tool',
-      }))
+      install("github-release", {
+        repo: "owner/tool",
+      }),
+    )
     // Windows with Arm64
     .platform(Platform.Windows, Architecture.Arm64, (install) =>
-      install('github-release', {
-        repo: 'owner/tool',
-      }))
+      install("github-release", {
+        repo: "owner/tool",
+      }),
+    ),
 );
 ```
 
@@ -349,11 +351,11 @@ Reference: [Platform Support Guide](configuration.md#platform-support)
 Use hooks for custom installation logic when fluent configuration is insufficient.
 
 ```ts
-install('github-release', { repo: 'owner/tool' })
-  .bin('tool')
-  .hook('after-install', async ({ log, $, installedDir }) => {
+install("github-release", { repo: "owner/tool" })
+  .bin("tool")
+  .hook("after-install", async ({ log, $, installedDir }) => {
     await $`${installedDir}/tool init`;
-    log.info('Tool initialized');
+    log.info("Tool initialized");
   });
 ```
 
@@ -362,22 +364,22 @@ install('github-release', { repo: 'owner/tool' })
 **Executing Installed Binaries**: In `after-install` hooks, the shell's PATH is automatically enhanced to include directories containing installed binaries. You can execute freshly installed tools by name:
 
 ```ts
-install('github-release', { repo: 'owner/tool' })
-  .bin('tool')
-  .hook('after-install', async ({ $, log }) => {
+install("github-release", { repo: "owner/tool" })
+  .bin("tool")
+  .hook("after-install", async ({ $, log }) => {
     // Binary is automatically available by name - no full path needed
     await $`tool --version`;
     await $`tool init`;
-    log.info('Tool initialized');
+    log.info("Tool initialized");
   });
 ```
 
 **File Modifications in Hooks**: Use `ctx.replaceInFile()` for regex-based file modifications:
 
 ```ts
-install('github-release', { repo: 'owner/tool' })
-  .bin('tool')
-  .hook('after-install', async (ctx) => {
+install("github-release", { repo: "owner/tool" })
+  .bin("tool")
+  .hook("after-install", async (ctx) => {
     // Replace a value in a config file (returns true if replaced)
     const wasReplaced = await ctx.replaceInFile(
       `${ctx.installedDir}/config.toml`,
@@ -390,12 +392,12 @@ install('github-release', { repo: 'owner/tool' })
       `${ctx.installedDir}/settings.ini`,
       /version=(\d+)/,
       (match) => `version=${Number(match.captures[0]) + 1}`,
-      { mode: 'line' },
+      { mode: "line" },
     );
 
     // With error message - logs "message: filePath: pattern" if pattern not found
     await ctx.replaceInFile(`${ctx.installedDir}/config.toml`, /api_key = ".*"/, 'api_key = "secret"', {
-      errorMessage: 'Could not find api_key setting in config.toml',
+      errorMessage: "Could not find api_key setting in config.toml",
     });
   });
 ```
@@ -410,13 +412,13 @@ install('github-release', { repo: 'owner/tool' })
 **Resolving Glob Patterns**: Use `ctx.resolve()` to match a glob pattern to a single path:
 
 ```ts
-install('github-release', { repo: 'owner/tool' })
-  .bin('tool')
+install("github-release", { repo: "owner/tool" })
+  .bin("tool")
   .zsh((shell) =>
     shell.always(/* zsh */ `
       # Resolve versioned directory (e.g., tool-14.1.0-x86_64-linux)
-      source "${ctx.resolve('completions/*.zsh')}"
-    `)
+      source "${ctx.resolve("completions/*.zsh")}"
+    `),
   );
 ```
 
@@ -434,7 +436,7 @@ Reference: [Hooks Guide](shell-and-hooks.md#hooks) and [API Reference](api-refer
 Use `.disable()` to temporarily skip a tool during generation without removing its configuration. A warning will be logged when the tool is skipped.
 
 ```ts
-install('github-release', { repo: 'owner/tool' }).bin('tool').disable(); // Tool will be skipped with a warning
+install("github-release", { repo: "owner/tool" }).bin("tool").disable(); // Tool will be skipped with a warning
 ```
 
 This is useful for:
@@ -449,13 +451,11 @@ Use `.hostname(pattern)` to restrict a tool to specific machines. When a hostnam
 
 ```ts
 // Exact hostname match
-install('github-release', { repo: 'owner/work-tools' })
-  .bin('work-tool')
-  .hostname('my-work-laptop');
+install("github-release", { repo: "owner/work-tools" }).bin("work-tool").hostname("my-work-laptop");
 
 // Regex pattern match (any hostname starting with "work-")
-install('github-release', { repo: 'owner/work-tools' })
-  .bin('work-tool')
+install("github-release", { repo: "owner/work-tools" })
+  .bin("work-tool")
   .hostname(/^work-.*$/);
 ```
 
@@ -506,7 +506,7 @@ Do NOT include archive-structure narration in the comment (the code already show
 ### Example 1: Simple GitHub Release Tool
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * ripgrep - A line-oriented search tool that recursively searches your current
@@ -515,16 +515,16 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  * https://github.com/BurntSushi/ripgrep
  */
 export default defineTool((install) =>
-  install('github-release', {
-    repo: 'BurntSushi/ripgrep',
-  }).bin('rg')
+  install("github-release", {
+    repo: "BurntSushi/ripgrep",
+  }).bin("rg"),
 );
 ```
 
 ### Example 1b: GitHub Release with gh CLI
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * ripgrep - Using gh CLI for API access (GitHub Enterprise or auth via gh).
@@ -532,17 +532,17 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  * https://github.com/BurntSushi/ripgrep
  */
 export default defineTool((install) =>
-  install('github-release', {
-    repo: 'BurntSushi/ripgrep',
+  install("github-release", {
+    repo: "BurntSushi/ripgrep",
     ghCli: true, // Use `gh api` instead of direct fetch
-  }).bin('rg')
+  }).bin("rg"),
 );
 ```
 
 ### Example 2: Tool with Shell Integration
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * fzf - Command-line fuzzy finder.
@@ -550,26 +550,27 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  * https://github.com/junegunn/fzf
  */
 export default defineTool((install) =>
-  install('github-release', {
-    repo: 'junegunn/fzf',
+  install("github-release", {
+    repo: "junegunn/fzf",
   })
-    .bin('fzf')
-    .zsh((shell) =>
-      shell
-        .env({
-          FZF_DEFAULT_OPTS: '--color=fg+:cyan,bg+:black,hl+:yellow',
-        })
-        .aliases({ f: 'fzf' })
-        .completions('completion.zsh') // Resolves to ctx.toolDir/completion.zsh
-        .sourceFile('key-bindings.zsh') // Resolves to ctx.toolDir/key-bindings.zsh
-    )
+    .bin("fzf")
+    .zsh(
+      (shell) =>
+        shell
+          .env({
+            FZF_DEFAULT_OPTS: "--color=fg+:cyan,bg+:black,hl+:yellow",
+          })
+          .aliases({ f: "fzf" })
+          .completions("completion.zsh") // Resolves to ctx.toolDir/completion.zsh
+          .sourceFile("key-bindings.zsh"), // Resolves to ctx.toolDir/key-bindings.zsh
+    ),
 );
 ```
 
 ### Example 3: Manual Installation (Dotfiles Script)
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * deploy - Custom deployment script included with dotfiles.
@@ -577,18 +578,18 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  * https://example.com/deploy
  */
 export default defineTool((install) =>
-  install('manual', {
-    binaryPath: './scripts/deploy.sh',
+  install("manual", {
+    binaryPath: "./scripts/deploy.sh",
   })
-    .bin('deploy')
-    .symlink('./deploy.config.yaml', '~/.config/deploy/config.yaml')
+    .bin("deploy")
+    .symlink("./deploy.config.yaml", "~/.config/deploy/config.yaml"),
 );
 ```
 
 ### Example 3b: Manual Without Params
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * tokscale - Token scaling utility via bun.
@@ -596,21 +597,21 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  * https://example.com/tokscale
  */
 export default defineTool((install) =>
-  install('manual')
-    .bin('tokscale')
-    .dependsOn('bun')
+  install("manual")
+    .bin("tokscale")
+    .dependsOn("bun")
     .zsh((shell) =>
       shell.functions({
         tokscale: `bun x tokscale@latest`,
-      })
-    )
+      }),
+    ),
 );
 ```
 
 ### Example 4: Configuration-Only Tool
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * git - Git configuration and aliases.
@@ -619,22 +620,22 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  */
 export default defineTool((install) =>
   install() // Configuration-only: no install params, no .bin()
-    .symlink('./gitconfig', '~/.gitconfig')
+    .symlink("./gitconfig", "~/.gitconfig")
     .zsh((shell) =>
       shell.aliases({
-        g: 'git',
-        gs: 'git status',
-        ga: 'git add',
-        gc: 'git commit',
-      })
-    )
+        g: "git",
+        gs: "git status",
+        ga: "git add",
+        gc: "git commit",
+      }),
+    ),
 );
 ```
 
 ### Example 5: Rust Tool with Cargo
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * eza - A modern replacement for ls.
@@ -642,28 +643,29 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  * https://github.com/eza-community/eza
  */
 export default defineTool((install) =>
-  install('cargo', {
-    crateName: 'eza',
-    githubRepo: 'eza-community/eza',
+  install("cargo", {
+    crateName: "eza",
+    githubRepo: "eza-community/eza",
   })
-    .bin('eza')
-    .zsh((shell) =>
-      shell
-        .aliases({
-          ls: 'eza',
-          ll: 'eza -l',
-          la: 'eza -la',
-          tree: 'eza --tree',
-        })
-        .completions('_eza') // Resolves to ctx.toolDir/_eza
-    )
+    .bin("eza")
+    .zsh(
+      (shell) =>
+        shell
+          .aliases({
+            ls: "eza",
+            ll: "eza -l",
+            la: "eza -la",
+            tree: "eza --tree",
+          })
+          .completions("_eza"), // Resolves to ctx.toolDir/_eza
+    ),
 );
 ```
 
 ### Example 6: npm Tool
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * prettier - An opinionated code formatter.
@@ -671,16 +673,16 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  * https://prettier.io
  */
 export default defineTool((install) =>
-  install('npm', {
-    package: 'prettier',
-  }).bin('prettier')
+  install("npm", {
+    package: "prettier",
+  }).bin("prettier"),
 );
 ```
 
 ### Example 6b: Tool with Shell Functions
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * kubectl - Kubernetes command-line tool with custom wrappers.
@@ -688,20 +690,20 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  * https://kubernetes.io/docs/reference/kubectl/
  */
 export default defineTool((install) =>
-  install('github-release', {
-    repo: 'kubernetes/kubectl',
+  install("github-release", {
+    repo: "kubernetes/kubectl",
   })
-    .bin('kubectl')
+    .bin("kubectl")
     .zsh((shell) =>
       shell
         .env({
-          KUBECONFIG: '~/.kube/config',
+          KUBECONFIG: "~/.kube/config",
         })
         .aliases({
-          k: 'kubectl',
-          kgp: 'kubectl get pods',
+          k: "kubectl",
+          kgp: "kubectl get pods",
         })
-        .completions({ cmd: 'kubectl completion zsh' })
+        .completions({ cmd: "kubectl completion zsh" })
         .functions({
           kns: /* zsh */ `
             kubectl config set-context --current --namespace="$1"
@@ -709,15 +711,15 @@ export default defineTool((install) =>
           kctx: /* zsh */ `
             kubectl config use-context "$1"
           `,
-        })
-    )
+        }),
+    ),
 );
 ```
 
 ### Example 7: Tool with Dynamic Initialization
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * zoxide - A smarter cd command with frecency tracking.
@@ -725,27 +727,27 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  * https://github.com/ajeetdsouza/zoxide
  */
 export default defineTool((install) =>
-  install('github-release', {
-    repo: 'ajeetdsouza/zoxide',
+  install("github-release", {
+    repo: "ajeetdsouza/zoxide",
   })
-    .bin('zoxide')
+    .bin("zoxide")
     .zsh((shell) =>
       shell
         .env({
-          _ZO_DATA_DIR: '~/.local/share/zoxide',
+          _ZO_DATA_DIR: "~/.local/share/zoxide",
         })
-        .completions({ cmd: 'zoxide completions zsh' }).always(/* zsh */ `
+        .completions({ cmd: "zoxide completions zsh" }).always(/* zsh */ `
           # Initialize zoxide with cd replacement
           eval "$(zoxide init zsh --cmd cd)"
-        `)
-    )
+        `),
+    ),
 );
 ```
 
 ### Example 8: Zsh Plugin (Git Repository)
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * zsh-vi-mode - A better and friendly vi(vim) mode plugin for ZSH.
@@ -753,22 +755,21 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  * https://github.com/jeffreytse/zsh-vi-mode
  */
 export default defineTool((install) =>
-  install('zsh-plugin', {
-    repo: 'jeffreytse/zsh-vi-mode',
-  })
-    .zsh((shell) =>
-      shell.env({
-        ZVM_VI_INSERT_ESCAPE_BINDKEY: 'jj',
-        ZVM_CURSOR_STYLE_ENABLED: 'false',
-      })
-    )
+  install("zsh-plugin", {
+    repo: "jeffreytse/zsh-vi-mode",
+  }).zsh((shell) =>
+    shell.env({
+      ZVM_VI_INSERT_ESCAPE_BINDKEY: "jj",
+      ZVM_CURSOR_STYLE_ENABLED: "false",
+    }),
+  ),
 );
 ```
 
 ### Example 9: Gitea/Forgejo Release Tool
 
 ```ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * pages-server - Codeberg Pages static site server.
@@ -776,10 +777,10 @@ import { defineTool } from '@alexgorbatchev/dotfiles';
  * https://codeberg.org/Codeberg/pages-server
  */
 export default defineTool((install) =>
-  install('gitea-release', {
-    instanceUrl: 'https://codeberg.org',
-    repo: 'Codeberg/pages-server',
-  }).bin('pages-server')
+  install("gitea-release", {
+    instanceUrl: "https://codeberg.org",
+    repo: "Codeberg/pages-server",
+  }).bin("pages-server"),
 );
 ```
 

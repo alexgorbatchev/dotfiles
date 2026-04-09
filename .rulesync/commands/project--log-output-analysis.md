@@ -1,6 +1,6 @@
 ---
 targets:
-  - '*'
+  - "*"
 description: >-
   Guidelines for analyzing log output to identify redundancies, duplicates,
   clutter, and violations of logging best practices.

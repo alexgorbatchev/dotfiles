@@ -13,15 +13,15 @@ Shims are not supported for DMG-installed applications. The `.bin()` method shou
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('dmg', {
+  install("dmg", {
     source: {
-      type: 'url',
-      url: 'https://example.com/MyApp-1.0.0.dmg',
+      type: "url",
+      url: "https://example.com/MyApp-1.0.0.dmg",
     },
-  })
+  }),
 );
 ```
 
@@ -48,22 +48,22 @@ export default defineTool((install) =>
 ### Explicit App Name
 
 ```typescript
-install('dmg', {
+install("dmg", {
   source: {
-    type: 'url',
-    url: 'https://example.com/MyApp-1.0.0.dmg',
+    type: "url",
+    url: "https://example.com/MyApp-1.0.0.dmg",
   },
-  appName: 'MyApp.app',
-}).version('1.0.0');
+  appName: "MyApp.app",
+}).version("1.0.0");
 ```
 
 ### From Archive Containing DMG
 
 ```typescript
-install('dmg', {
+install("dmg", {
   source: {
-    type: 'url',
-    url: 'https://github.com/example/app/releases/download/v1.0.0/MyApp.dmg.zip',
+    type: "url",
+    url: "https://github.com/example/app/releases/download/v1.0.0/MyApp.dmg.zip",
   },
 });
 ```
@@ -71,25 +71,25 @@ install('dmg', {
 ### GitHub Release Source
 
 ```typescript
-install('dmg', {
+install("dmg", {
   source: {
-    type: 'github-release',
-    repo: 'manaflow-ai/cmux',
-    assetPattern: '*macos*.dmg',
+    type: "github-release",
+    repo: "manaflow-ai/cmux",
+    assetPattern: "*macos*.dmg",
   },
-  appName: 'cmux.app',
+  appName: "cmux.app",
 });
 ```
 
 ### With Version Detection
 
 ```typescript
-install('dmg', {
+install("dmg", {
   source: {
-    type: 'url',
-    url: 'https://example.com/MyApp-1.0.0.dmg',
+    type: "url",
+    url: "https://example.com/MyApp-1.0.0.dmg",
   },
-  versionArgs: ['--version'],
+  versionArgs: ["--version"],
   versionRegex: /v(\d+\.\d+\.\d+)/,
 });
 ```

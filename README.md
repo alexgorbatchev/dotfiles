@@ -69,7 +69,7 @@ dotfiles docs <path>
 - `dotfiles generate` writes a zsh completion script to `${generatedDir}/shell-scripts/zsh/completions/_dotfiles`.
 - Reload completions with `autoload -U compinit && compinit` (or restart your shell) after generating.
 - Commands that accept a tool argument (e.g., `install`, `update`, `check-updates`, `files`, `log`, `bin`) now suggest every configured tool name directly in completion menus, so you can pick a target without memorizing identifiers.
-- See [Shell & Hooks Reference](.rulesync/skills/dotfiles/references/shell-and-hooks.md) for shell-specific integration details.
+- See [Shell & Hooks Reference](.agents/skills/dotfiles/references/shell-and-hooks.md) for shell-specific integration details.
 
 ### Configure with TypeScript
 
@@ -77,12 +77,12 @@ Create `dotfiles.config.ts` to take advantage of TypeScript tooling:
 
 ```typescript
 // dotfiles.config.ts
-import { defineConfig } from '@alexgorbatchev/dotfiles';
+import { defineConfig } from "@alexgorbatchev/dotfiles";
 
 export default defineConfig(async () => ({
   paths: {
-    dotfilesDir: '~/.dotfiles',
-    targetDir: '~/.local/bin',
+    dotfilesDir: "~/.dotfiles",
+    targetDir: "~/.local/bin",
   },
   github: {
     token: process.env.GITHUB_TOKEN,
@@ -91,7 +91,7 @@ export default defineConfig(async () => ({
 
 export const syncExample = defineConfig(() => ({
   paths: {
-    generatedDir: '${configFileDir}/.generated',
+    generatedDir: "${configFileDir}/.generated",
   },
 }));
 ```
@@ -102,18 +102,18 @@ Define everything about a tool—installation, binary path, config file symlinks
 
 ```typescript
 // configs/tools/ripgrep.tool.ts
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'BurntSushi/ripgrep',
+  install("github-release", {
+    repo: "BurntSushi/ripgrep",
   })
     // 1. Define the binary name
-    .bin('rg')
+    .bin("rg")
     // 2. Declare required binaries that must exist before this tool runs
-    .dependsOn('pcre2')
+    .dependsOn("pcre2")
     // 3. Create symlinks for configuration files
-    .symlink('./ripgreprc', '~/.ripgreprc')
+    .symlink("./ripgreprc", "~/.ripgreprc")
     // 4. Configure shell-specific integration (aliases, functions, env vars, PATH)
     .zsh((shell) =>
       shell
@@ -121,12 +121,12 @@ export default defineTool((install, ctx) =>
         .path((ctx) => `${ctx.installDir}/bin`)
         // Set environment variables (PATH is prohibited here - use .path() instead)
         .env({
-          RIPGREP_CONFIG_PATH: '~/.ripgreprc',
+          RIPGREP_CONFIG_PATH: "~/.ripgreprc",
         })
         .aliases({
-          rgi: 'rg -i', // Case-insensitive search alias
-        })
-    )
+          rgi: "rg -i", // Case-insensitive search alias
+        }),
+    ),
 );
 ```
 
@@ -163,29 +163,29 @@ npm install -g @alexgorbatchev/dotfiles
 
 ### Getting Started
 
-- **[Tool Creation Guide](.rulesync/skills/dotfiles/references/make-tool.md)** - Complete guide to creating `.tool.ts` files
-- **[Configuration](.rulesync/skills/dotfiles/references/configuration.md)** - Project config, getting started, common patterns, platform support
+- **[Tool Creation Guide](.agents/skills/dotfiles/references/make-tool.md)** - Complete guide to creating `.tool.ts` files
+- **[Configuration](.agents/skills/dotfiles/references/configuration.md)** - Project config, getting started, common patterns, platform support
 
 ### Shell Integration
 
-- **[Shell & Hooks](.rulesync/skills/dotfiles/references/shell-and-hooks.md)** - Aliases, environment variables, shell functions, completions, lifecycle hooks
+- **[Shell & Hooks](.agents/skills/dotfiles/references/shell-and-hooks.md)** - Aliases, environment variables, shell functions, completions, lifecycle hooks
 
 ### Installation Methods & API
 
-- **[Installation Methods](.rulesync/skills/dotfiles/references/installation-methods/overview.md)** - All 11 methods: GitHub releases, Gitea, Homebrew, Cargo, npm, curl-script, curl-tar, curl-binary, manual, DMG, zsh-plugin
-- **[API Reference](.rulesync/skills/dotfiles/references/api-reference.md)** - Complete method reference and context API
+- **[Installation Methods](.agents/skills/dotfiles/references/installation-methods/overview.md)** - All 11 methods: GitHub releases, Gitea, Homebrew, Cargo, npm, curl-script, curl-tar, curl-binary, manual, DMG, zsh-plugin
+- **[API Reference](.agents/skills/dotfiles/references/api-reference.md)** - Complete method reference and context API
 
 ## Global Configuration (`dotfiles.config.ts`)
 
 The generator can be customized via a `dotfiles.config.ts` file located in your dotfiles directory (e.g., `~/.dotfiles/dotfiles.config.ts`). The following is a reference for all available options.
 
 ```typescript
-import { defineConfig } from '@alexgorbatchev/dotfiles';
+import { defineConfig } from "@alexgorbatchev/dotfiles";
 
 export default defineConfig(() => ({
   // Path to the user's config file.
   // (string, default: ~/.dotfiles/dotfiles.config.ts)
-  userConfigPath: '~/.dotfiles/dotfiles.config.ts',
+  userConfigPath: "~/.dotfiles/dotfiles.config.ts",
 
   // ---------------------------------------------------------------------------
   // File System Paths
@@ -193,25 +193,25 @@ export default defineConfig(() => ({
   paths: {
     // Root directory of the dotfiles repository. You SHOULD set this value.
     // (string, default: ~/.dotfiles)
-    dotfilesDir: '~/.dotfiles',
+    dotfilesDir: "~/.dotfiles",
     // Target directory for executable shims. This directory MUST be in your shell's $PATH.
     // (string, default: /usr/local/bin)
-    targetDir: '/usr/local/bin',
+    targetDir: "/usr/local/bin",
     // The user's home directory.
     // (string, default: value of $HOME)
-    homeDir: '~',
+    homeDir: "~",
     // Directory where all generated files will be stored.
     // (string, default: ~/.dotfiles/.generated)
-    generatedDir: '~/.dotfiles/.generated',
+    generatedDir: "~/.dotfiles/.generated",
     // Directory containing *.tool.ts tool configuration files.
     // (string, default: ~/.dotfiles/tools)
-    toolConfigsDir: '~/.dotfiles/tools',
+    toolConfigsDir: "~/.dotfiles/tools",
     // Directory where generated shell scripts are stored.
     // (string, default: ~/.dotfiles/.generated/shell-scripts)
-    shellScriptsDir: '~/.dotfiles/.generated/shell-scripts',
+    shellScriptsDir: "~/.dotfiles/.generated/shell-scripts",
     // Directory where downloaded tool binaries are stored.
     // (string, default: ~/.dotfiles/.generated/binaries)
-    binariesDir: '~/.dotfiles/.generated/binaries',
+    binariesDir: "~/.dotfiles/.generated/binaries",
   },
 
   // ---------------------------------------------------------------------------
@@ -220,7 +220,7 @@ export default defineConfig(() => ({
   system: {
     // Custom prompt message to display when sudo is required.
     // (string, default: "Please enter your password to continue:")
-    sudoPrompt: 'Please enter your password to continue:',
+    sudoPrompt: "Please enter your password to continue:",
   },
 
   // ---------------------------------------------------------------------------
@@ -229,7 +229,7 @@ export default defineConfig(() => ({
   logging: {
     // Controls debug logging output. Set to "*" to enable all debug logs.
     // (string, default: "")
-    debug: '',
+    debug: "",
   },
 
   // ---------------------------------------------------------------------------
@@ -255,7 +255,7 @@ export default defineConfig(() => ({
       generate: true,
       // Path where the catalog file will be generated.
       // (string, default: {paths.dotfilesDir}/CATALOG.md)
-      filePath: '{paths.dotfilesDir}/CATALOG.md',
+      filePath: "{paths.dotfilesDir}/CATALOG.md",
     },
 
     // Configuration for shell initialization.
@@ -263,13 +263,13 @@ export default defineConfig(() => ({
     shellInstall: {
       // Path to zsh configuration file (e.g., ~/.zshrc).
       // If not provided, zsh initialization will be skipped.
-      zsh: '~/.zshrc',
+      zsh: "~/.zshrc",
       // Path to bash configuration file (e.g., ~/.bashrc).
       // If not provided, bash initialization will be skipped.
-      bash: '~/.bashrc',
+      bash: "~/.bashrc",
       // Path to powershell configuration file (e.g., ~/.config/powershell/profile.ps1).
       // If not provided, powershell initialization will be skipped.
-      powershell: '~/.config/powershell/profile.ps1',
+      powershell: "~/.config/powershell/profile.ps1",
     },
   },
 
@@ -279,13 +279,13 @@ export default defineConfig(() => ({
   github: {
     // GitHub API host.
     // (string, default: "https://api.github.com")
-    host: 'https://api.github.com',
+    host: "https://api.github.com",
     // GitHub API token. Can be set via GITHUB_TOKEN environment variable.
     // (string, optional)
-    token: '',
+    token: "",
     // User-Agent for GitHub API requests.
     // (string, default: "dotfiles-generator")
-    userAgent: 'dotfiles-generator',
+    userAgent: "dotfiles-generator",
     // Caching for GitHub API requests.
     cache: {
       enabled: true,
@@ -295,10 +295,10 @@ export default defineConfig(() => ({
 
   cargo: {
     // User-Agent for Cargo-related requests.
-    userAgent: 'dotfiles-generator',
+    userAgent: "dotfiles-generator",
     // Configuration for the crates.io API.
     cratesIo: {
-      host: 'https://crates.io',
+      host: "https://crates.io",
       cache: {
         enabled: true,
         ttl: 86400000,
@@ -306,7 +306,7 @@ export default defineConfig(() => ({
     },
     // Configuration for accessing raw files on GitHub (e.g., Cargo.toml).
     githubRaw: {
-      host: 'https://raw.githubusercontent.com',
+      host: "https://raw.githubusercontent.com",
       cache: {
         enabled: true,
         ttl: 86400000,
@@ -314,7 +314,7 @@ export default defineConfig(() => ({
     },
     // Configuration for accessing GitHub releases.
     githubRelease: {
-      host: 'https://github.com',
+      host: "https://github.com",
       cache: {
         enabled: true,
         ttl: 86400000,
@@ -348,14 +348,12 @@ export default defineConfig(() => ({
   platform: [
     {
       // An array of platform/architecture matchers.
-      match: [
-        { os: 'macos', arch: 'arm64' },
-      ],
+      match: [{ os: "macos", arch: "arm64" }],
       // The configuration overrides for this platform/architecture combination.
       // You can override any of the settings defined above.
       config: {
         paths: {
-          dotfilesDir: '~/macos-dotfiles',
+          dotfilesDir: "~/macos-dotfiles",
         },
       },
     },

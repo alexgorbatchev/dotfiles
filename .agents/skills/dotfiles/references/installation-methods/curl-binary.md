@@ -5,12 +5,12 @@ Download standalone binary files directly from URLs. Unlike `curl-tar`, this met
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('curl-binary', {
-    url: 'https://example.com/tool-v1.0.0-linux-amd64',
-  }).bin('tool')
+  install("curl-binary", {
+    url: "https://example.com/tool-v1.0.0-linux-amd64",
+  }).bin("tool"),
 );
 ```
 
@@ -28,39 +28,41 @@ export default defineTool((install) =>
 ### With Version Detection
 
 ```typescript
-install('curl-binary', {
-  url: 'https://example.com/tool-v1.0.0-linux-amd64',
-  versionArgs: ['--version'],
+install("curl-binary", {
+  url: "https://example.com/tool-v1.0.0-linux-amd64",
+  versionArgs: ["--version"],
   versionRegex: /v(\d+\.\d+\.\d+)/,
-}).bin('tool');
+}).bin("tool");
 ```
 
 ### With Shell Configuration
 
 ```typescript
-install('curl-binary', {
-  url: 'https://example.com/tool-v1.0.0-linux-amd64',
+install("curl-binary", {
+  url: "https://example.com/tool-v1.0.0-linux-amd64",
 })
-  .bin('tool')
-  .zsh((shell) => shell.aliases({ t: 'tool' }));
+  .bin("tool")
+  .zsh((shell) => shell.aliases({ t: "tool" }));
 ```
 
 ### Platform-Specific URLs
 
 ```typescript
-import { Architecture, defineTool, Platform } from '@alexgorbatchev/dotfiles';
+import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
   install()
-    .bin('tool')
+    .bin("tool")
     .platform(Platform.MacOS, Architecture.Arm64, (install) =>
-      install('curl-binary', {
-        url: 'https://example.com/tool-darwin-arm64',
-      }))
+      install("curl-binary", {
+        url: "https://example.com/tool-darwin-arm64",
+      }),
+    )
     .platform(Platform.Linux, Architecture.X86_64, (install) =>
-      install('curl-binary', {
-        url: 'https://example.com/tool-linux-amd64',
-      }))
+      install("curl-binary", {
+        url: "https://example.com/tool-linux-amd64",
+      }),
+    ),
 );
 ```
 

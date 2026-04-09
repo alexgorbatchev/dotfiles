@@ -76,18 +76,18 @@ For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), u
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
     .zsh((shell) =>
       shell
         .env({ TOOL_HOME: ctx.currentDir })
         .path(`${ctx.currentDir}/bin`) // Add tool's bin directory to PATH
-        .aliases({ t: 'tool', ts: 'tool status' })
-        .completions('completions/_tool')
+        .aliases({ t: "tool", ts: "tool status" })
+        .completions("completions/_tool")
         .functions({
-          'tool-helper': 'tool --config "$TOOL_HOME/config.toml" "$@"',
-        })
-    )
+          "tool-helper": 'tool --config "$TOOL_HOME/config.toml" "$@"',
+        }),
+    ),
 );
 ```
 
@@ -259,13 +259,13 @@ For expensive operations:
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
     .zsh((shell) =>
       shell.once(`
         tool gen-completions --zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
-      `)
-    )
+      `),
+    ),
 );
 ```
 
@@ -275,9 +275,9 @@ Share configuration across shells using the outer `ctx` from `defineTool`:
 
 ```typescript
 export default defineTool((install, ctx) => {
-  const configureShell = (shell) => shell.env({ TOOL_HOME: ctx.currentDir }).aliases({ t: 'tool' });
+  const configureShell = (shell) => shell.env({ TOOL_HOME: ctx.currentDir }).aliases({ t: "tool" });
 
-  return install('github-release', { repo: 'owner/tool' }).bin('tool').zsh(configureShell).bash(configureShell);
+  return install("github-release", { repo: "owner/tool" }).bin("tool").zsh(configureShell).bash(configureShell);
 });
 ```
 
@@ -287,17 +287,17 @@ Always use context variables from the outer `ctx`:
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
     .zsh((shell) =>
       shell.env({
         TOOL_CONFIG: ctx.toolDir, // Tool config directory
-        TOOL_DATA: '~/.local/share/tool',
+        TOOL_DATA: "~/.local/share/tool",
       }).always(`
           FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
           [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
-        `)
-    )
+        `),
+    ),
 );
 ```
 
@@ -347,15 +347,15 @@ tools/my-tool/
 
 ```typescript
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/my-tool' })
-    .bin('my-tool')
-    .symlink('./config.toml', '~/.config/my-tool/config.toml')
-    .symlink('./themes/', '~/.config/my-tool/themes')
+  install("github-release", { repo: "owner/my-tool" })
+    .bin("my-tool")
+    .symlink("./config.toml", "~/.config/my-tool/config.toml")
+    .symlink("./themes/", "~/.config/my-tool/themes")
     .zsh((shell) =>
       shell.env({
-        MY_TOOL_CONFIG: '~/.config/my-tool/config.toml',
-      })
-    )
+        MY_TOOL_CONFIG: "~/.config/my-tool/config.toml",
+      }),
+    ),
 );
 ```
 
@@ -430,9 +430,9 @@ For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), u
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) => shell.completions('completions/_tool.zsh'))
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .zsh((shell) => shell.completions("completions/_tool.zsh")),
 );
 ```
 
@@ -541,16 +541,16 @@ Hooks allow custom logic at different stages of the installation process.
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .hook('after-install', async (context) => {
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .hook("after-install", async (context) => {
       const { $, log, fileSystem } = context;
       await $`./tool init`;
-      log.info('Tool initialized');
-    })
+      log.info("Tool initialized");
+    }),
 );
 ```
 
@@ -709,53 +709,53 @@ This logging happens regardless of whether `.quiet()` is used on the shell comma
 ### Custom Binary Processing
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
-import path from 'path';
+import { defineTool } from "@alexgorbatchev/dotfiles";
+import path from "path";
 
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/custom-tool' })
-    .bin('custom-tool')
-    .hook('after-extract', async ({ extractDir, stagingDir, fileSystem, log }) => {
+  install("github-release", { repo: "owner/custom-tool" })
+    .bin("custom-tool")
+    .hook("after-extract", async ({ extractDir, stagingDir, fileSystem, log }) => {
       if (extractDir) {
         // Custom binary selection and processing
-        const binaries = await fileSystem.readdir(path.join(extractDir, 'bin'));
-        const mainBinary = binaries.find((name) => name.startsWith('main-'));
+        const binaries = await fileSystem.readdir(path.join(extractDir, "bin"));
+        const mainBinary = binaries.find((name) => name.startsWith("main-"));
 
         if (mainBinary) {
-          const sourcePath = path.join(extractDir, 'bin', mainBinary);
-          const targetPath = path.join(stagingDir ?? '', 'tool');
+          const sourcePath = path.join(extractDir, "bin", mainBinary);
+          const targetPath = path.join(stagingDir ?? "", "tool");
           await fileSystem.copy(sourcePath, targetPath);
           log.info(`Selected binary: ${mainBinary}`);
         }
       }
-    })
+    }),
 );
 ```
 
 ### Environment-Specific Setup
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/custom-tool' })
-    .bin('custom-tool')
-    .hook('after-install', async ({ systemInfo, fileSystem, log, $ }) => {
+  install("github-release", { repo: "owner/custom-tool" })
+    .bin("custom-tool")
+    .hook("after-install", async ({ systemInfo, fileSystem, log, $ }) => {
       // Platform-specific setup
-      if (systemInfo.platform === 'darwin') {
+      if (systemInfo.platform === "darwin") {
         // macOS-specific setup
         await $`./setup-macos.sh`;
-      } else if (systemInfo.platform === 'linux') {
+      } else if (systemInfo.platform === "linux") {
         // Linux-specific setup
         await $`./setup-linux.sh`;
       }
 
       // Architecture-specific setup
-      if (systemInfo.arch === 'arm64') {
-        log.info('Configuring for ARM64 architecture');
+      if (systemInfo.arch === "arm64") {
+        log.info("Configuring for ARM64 architecture");
         await $`./configure-arm64.sh`;
       }
-    })
+    }),
 );
 ```
 
@@ -764,18 +764,18 @@ export default defineTool((install, ctx) =>
 Set environment variables during installation (for curl-script installs):
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('curl-script', {
-    url: 'https://example.com/install.sh',
-    shell: 'bash',
+  install("curl-script", {
+    url: "https://example.com/install.sh",
+    shell: "bash",
     env: {
-      INSTALL_DIR: '~/.local/bin',
-      ENABLE_FEATURE: 'true',
-      API_KEY: process.env.TOOL_API_KEY || 'default',
+      INSTALL_DIR: "~/.local/bin",
+      ENABLE_FEATURE: "true",
+      API_KEY: process.env.TOOL_API_KEY || "default",
     },
-  }).bin('my-tool')
+  }).bin("my-tool"),
 );
 ```
 
@@ -803,38 +803,39 @@ export default defineTool((install) =>
 ## Complete Example
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
-import path from 'path';
+import { defineTool } from "@alexgorbatchev/dotfiles";
+import path from "path";
 
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/custom-tool' })
-    .bin('custom-tool')
-    .symlink('./config.yml', '~/.config/custom-tool/config.yml')
-    .hook('before-install', async ({ log }) => {
-      log.info('Starting custom-tool installation...');
+  install("github-release", { repo: "owner/custom-tool" })
+    .bin("custom-tool")
+    .symlink("./config.yml", "~/.config/custom-tool/config.yml")
+    .hook("before-install", async ({ log }) => {
+      log.info("Starting custom-tool installation...");
     })
-    .hook('after-extract', async ({ extractDir, log, $ }) => {
+    .hook("after-extract", async ({ extractDir, log, $ }) => {
       if (extractDir) {
         // Build additional components
-        log.info('Building plugins...');
+        log.info("Building plugins...");
         await $`cd ${extractDir} && make plugins`;
       }
     })
-    .hook('after-install', async ({ toolName, installedDir, systemInfo, fileSystem, log, $ }) => {
+    .hook("after-install", async ({ toolName, installedDir, systemInfo, fileSystem, log, $ }) => {
       // Create data directory
-      const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
+      const dataDir = path.join(systemInfo.homeDir, ".local/share", toolName);
       await fileSystem.mkdir(dataDir, { recursive: true });
 
       // Initialize tool
-      await $`${path.join(installedDir ?? '', toolName)} init --data-dir ${dataDir}`;
+      await $`${path.join(installedDir ?? "", toolName)} init --data-dir ${dataDir}`;
 
       // Set up completion
-      await $`${
-        path.join(installedDir ?? '', toolName)
-      } completion zsh > ${ctx.projectConfig.paths.generatedDir}/completions/_${toolName}`;
+      await $`${path.join(
+        installedDir ?? "",
+        toolName,
+      )} completion zsh > ${ctx.projectConfig.paths.generatedDir}/completions/_${toolName}`;
 
       log.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
-    .zsh((shell) => shell.env({ CUSTOM_TOOL_DATA: '~/.local/share/custom-tool' }).aliases({ ct: 'custom-tool' }))
+    .zsh((shell) => shell.env({ CUSTOM_TOOL_DATA: "~/.local/share/custom-tool" }).aliases({ ct: "custom-tool" })),
 );
 ```

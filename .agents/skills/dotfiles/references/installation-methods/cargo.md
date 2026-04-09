@@ -5,12 +5,12 @@ Installs Rust tools from crates.io using pre-compiled binaries via cargo-quickin
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'ripgrep',
-  }).bin('rg')
+  install("cargo", {
+    crateName: "ripgrep",
+  }).bin("rg"),
 );
 ```
 
@@ -42,12 +42,12 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'bat',
-    binarySource: 'github-releases',
-    githubRepo: 'sharkdp/bat',
-    assetPattern: 'bat-v{version}-{arch}-{platform}.tar.gz',
-  }).bin('bat')
+  install("cargo", {
+    crateName: "bat",
+    binarySource: "github-releases",
+    githubRepo: "sharkdp/bat",
+    assetPattern: "bat-v{version}-{arch}-{platform}.tar.gz",
+  }).bin("bat"),
 );
 ```
 
@@ -55,10 +55,10 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'fd-find',
-    customBinaries: ['fd'],
-  }).bin('fd')
+  install("cargo", {
+    crateName: "fd-find",
+    customBinaries: ["fd"],
+  }).bin("fd"),
 );
 ```
 
@@ -66,13 +66,13 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'tool',
+  install("cargo", {
+    crateName: "tool",
   })
-    .bin('tool')
-    .hook('after-install', async (ctx) => {
+    .bin("tool")
+    .hook("after-install", async (ctx) => {
       // Post-installation setup
-    })
+    }),
 );
 ```
 

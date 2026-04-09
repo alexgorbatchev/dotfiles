@@ -7,9 +7,9 @@ Shims are not supported for Homebrew-installed tools. The `.bin()` method should
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
-export default defineTool((install) => install('brew', { formula: 'ripgrep' }));
+export default defineTool((install) => install("brew", { formula: "ripgrep" }));
 ```
 
 ## Parameters
@@ -28,8 +28,8 @@ export default defineTool((install) => install('brew', { formula: 'ripgrep' }));
 ### Homebrew Cask
 
 ```typescript
-install('brew', {
-  formula: 'visual-studio-code',
+install("brew", {
+  formula: "visual-studio-code",
   cask: true,
 });
 ```
@@ -37,19 +37,19 @@ install('brew', {
 ### With Custom Tap
 
 ```typescript
-install('brew', {
-  formula: 'aerospace',
+install("brew", {
+  formula: "aerospace",
   cask: true,
-  tap: 'nikitabobko/tap',
+  tap: "nikitabobko/tap",
 });
 ```
 
 ### Multiple Taps
 
 ```typescript
-install('brew', {
-  formula: 'custom-tool',
-  tap: ['custom/tap', 'another/tap'],
+install("brew", {
+  formula: "custom-tool",
+  tap: ["custom/tap", "another/tap"],
 });
 ```
 

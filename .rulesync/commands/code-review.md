@@ -1,6 +1,6 @@
 ---
 targets:
-  - '*'
+  - "*"
 description: >-
   Comprehensive code review prompt for large repositories, enforcing no sampling
   and detailed analysis.

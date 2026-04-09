@@ -42,7 +42,7 @@ import {
   defineConfig, // Create project configuration
   defineTool, // Create tool configurations
   Platform, // Platform enum for cross-platform configs
-} from '@alexgorbatchev/dotfiles';
+} from "@alexgorbatchev/dotfiles";
 ```
 
 ## defineTool
@@ -50,7 +50,7 @@ import {
 Creates a tool configuration.
 
 ```typescript
-export default defineTool((install, ctx) => install('github-release', { repo: 'owner/tool' }).bin('tool'));
+export default defineTool((install, ctx) => install("github-release", { repo: "owner/tool" }).bin("tool"));
 ```
 
 ### Parameters
@@ -102,16 +102,16 @@ The `env` parameter can be static or dynamic:
 
 ```typescript
 // Static environment variables
-install('github-release', {
-  repo: 'owner/tool',
-  env: { CUSTOM_FLAG: 'true' },
-}).bin('tool');
+install("github-release", {
+  repo: "owner/tool",
+  env: { CUSTOM_FLAG: "true" },
+}).bin("tool");
 
 // Dynamic environment variables (receives context with projectConfig, stagingDir)
-install('github-release', {
-  repo: 'owner/tool',
+install("github-release", {
+  repo: "owner/tool",
   env: (ctx) => ({ INSTALL_DIR: ctx.stagingDir }),
-}).bin('tool');
+}).bin("tool");
 ```
 
 ### Shell Configuration
@@ -157,7 +157,7 @@ Creates project configuration. See Project Configuration section.
 
 ```typescript
 export default defineConfig(() => ({
-  paths: { dotfilesDir: '~/.dotfiles' },
+  paths: { dotfilesDir: "~/.dotfiles" },
 }));
 ```
 
@@ -166,12 +166,12 @@ export default defineConfig(() => ({
 Enum for platform-specific configurations.
 
 ```typescript
-import { defineTool, Platform } from '@alexgorbatchev/dotfiles';
+import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .platform(Platform.MacOS, (install) => install('brew', { formula: 'tool' }))
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .platform(Platform.MacOS, (install) => install("brew", { formula: "tool" })),
 );
 ```
 
@@ -316,7 +316,7 @@ INFO    [my-tool] Configuring tool settings...
 Tagged template for removing indentation from multi-line strings.
 
 ```typescript
-import { dedentTemplate } from '@alexgorbatchev/dotfiles';
+import { dedentTemplate } from "@alexgorbatchev/dotfiles";
 
 const script = dedentTemplate`
   if [[ -n "$VAR" ]]; then
@@ -377,13 +377,13 @@ The `ctx` parameter in `defineTool` provides access to tool and project informat
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
     .zsh((shell) =>
       shell.always(/* zsh */ `
         source "${ctx.toolDir}/shell/key-bindings.zsh"
-      `)
-    )
+      `),
+    ),
 );
 ```
 
@@ -391,13 +391,13 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
     .zsh((shell) =>
       shell.env({
         TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`,
-      })
-    )
+      }),
+    ),
 );
 ```
 
@@ -405,13 +405,13 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
     .zsh((shell) =>
       shell.always(/* zsh */ `
         export TOOL_THEME="${ctx.currentDir}/share/themes/default.toml"
-      `)
-    )
+      `),
+    ),
 );
 ```
 
@@ -429,18 +429,18 @@ The `ctx.replaceInFile` method performs regex-based replacements within files.
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .hook('after-install', async () => {
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .hook("after-install", async () => {
       // Simple replacement (replaces all matches)
-      const wasReplaced = await ctx.replaceInFile(`${ctx.currentDir}/config.toml`, /placeholder_value/, 'actual_value');
+      const wasReplaced = await ctx.replaceInFile(`${ctx.currentDir}/config.toml`, /placeholder_value/, "actual_value");
 
       // Line-by-line replacement with callback
       await ctx.replaceInFile(
         `${ctx.currentDir}/settings.ini`,
         /version=(\d+)/,
         (match) => `version=${Number(match.captures[0]) + 1}`,
-        { mode: 'line' },
+        { mode: "line" },
       );
 
       // Async replacer function
@@ -451,9 +451,9 @@ export default defineTool((install, ctx) =>
 
       // With error message for debugging missing patterns
       await ctx.replaceInFile(`${ctx.currentDir}/config.toml`, /theme = ".*"/, 'theme = "dark"', {
-        errorMessage: 'Could not find theme setting in config.toml',
+        errorMessage: "Could not find theme setting in config.toml",
       });
-    })
+    }),
 );
 ```
 
@@ -482,20 +482,20 @@ The `ctx.log` provides a simple logging interface for user-facing messages:
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .hook('after-install', async () => {
-      ctx.log.info('Configuring tool settings...');
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .hook("after-install", async () => {
+      ctx.log.info("Configuring tool settings...");
 
       // Perform configuration
       const result = await configureSettings();
 
       if (result.warnings.length > 0) {
-        ctx.log.warn('Some settings could not be applied');
+        ctx.log.warn("Some settings could not be applied");
       }
 
-      ctx.log.debug('Configuration complete');
-    })
+      ctx.log.debug("Configuration complete");
+    }),
 );
 ```
 
@@ -526,13 +526,13 @@ The `ctx.resolve` method resolves a glob pattern to a single file or directory p
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'BurntSushi/ripgrep' })
-    .bin('rg')
+  install("github-release", { repo: "BurntSushi/ripgrep" })
+    .bin("rg")
     .zsh((shell) =>
       shell.always(/* zsh */ `
-        source "${ctx.resolve('completions/_rg.zsh')}"
-      `)
-    )
+        source "${ctx.resolve("completions/_rg.zsh")}"
+      `),
+    ),
 );
 ```
 
@@ -540,15 +540,15 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 // Versioned directory with wildcard
-const versionDir = ctx.resolve('ripgrep-*-x86_64-*');
+const versionDir = ctx.resolve("ripgrep-*-x86_64-*");
 // -> "/path/to/tools/rg/ripgrep-14.1.0-x86_64-linux"
 
 // Single completion file
-const completion = ctx.resolve('completions/*.zsh');
+const completion = ctx.resolve("completions/*.zsh");
 // -> "/path/to/tools/rg/completions/_rg.zsh"
 
 // Absolute path pattern
-const binary = ctx.resolve('/opt/myapp/bin/myapp-*');
+const binary = ctx.resolve("/opt/myapp/bin/myapp-*");
 // -> "/opt/myapp/bin/myapp-1.2.3"
 ```
 

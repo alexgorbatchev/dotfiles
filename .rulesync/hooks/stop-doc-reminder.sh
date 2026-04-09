@@ -14,11 +14,11 @@ cat <<'REMINDER'
 
 If you changed production code in this session, check whether these need updating:
 
-1. **make-tool reference** (PRIORITY) — `.rulesync/skills/dotfiles/references/make-tool.md`
+1. **make-tool reference** (PRIORITY) — `.agents/skills/dotfiles/references/make-tool.md`
    - New installation methods, config options, builder methods, or context variables
    - New examples or changed API surface
 
-2. **Dotfiles skill references** — `.rulesync/skills/dotfiles/references/`
+2. **Dotfiles skill references** — `.agents/skills/dotfiles/references/`
    - `api-reference.md` — exports, builder methods, utilities
    - `installation-methods/overview.md` and sibling files — installation method parameters
    - `shell-and-hooks.md` — shell integration, completions, hooks

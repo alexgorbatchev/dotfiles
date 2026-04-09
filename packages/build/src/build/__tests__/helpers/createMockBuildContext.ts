@@ -40,7 +40,7 @@ export function createMockBuildContext(overrides?: MockBuildContextOverrides): I
     tsdTestsScopedPackagePath: "/root/.tmp/tsd-tests/@alexgorbatchev/dotfiles",
     tsdTestsGeneratedDir: "/root/.tmp/tsd-tests/.generated",
     tsdTestsToolTypesPath: "/root/.tmp/tsd-tests/.generated/tool-types.d.ts",
-    skillDir: "/root/.rulesync/skills/dotfiles",
+    skillDir: "/root/.agents/skills/dotfiles",
     outputSkillDir: "/root/.dist/skill",
   };
 

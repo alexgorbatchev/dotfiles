@@ -15,12 +15,12 @@ Declarative, versioned dotfiles management. Define CLI tools in TypeScript `.too
 ## Quick Reference
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'BurntSushi/ripgrep' })
-    .bin('rg')
-    .zsh((shell) => shell.aliases({ rgi: 'rg -i' }).completions('complete/_rg'))
+  install("github-release", { repo: "BurntSushi/ripgrep" })
+    .bin("rg")
+    .zsh((shell) => shell.aliases({ rgi: "rg -i" }).completions("complete/_rg")),
 );
 ```
 

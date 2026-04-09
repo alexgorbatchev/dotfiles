@@ -5,13 +5,13 @@ Download and install tools from Gitea or Forgejo instance releases with automati
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('gitea-release', {
-    instanceUrl: 'https://codeberg.org',
-    repo: 'Codeberg/pages-server',
-  }).bin('pages-server')
+  install("gitea-release", {
+    instanceUrl: "https://codeberg.org",
+    repo: "Codeberg/pages-server",
+  }).bin("pages-server"),
 );
 ```
 
@@ -33,34 +33,34 @@ export default defineTool((install) =>
 ### With Asset Pattern
 
 ```typescript
-install('gitea-release', {
-  instanceUrl: 'https://codeberg.org',
-  repo: 'owner/tool',
-  assetPattern: '*linux_amd64.tar.gz',
-}).bin('tool');
+install("gitea-release", {
+  instanceUrl: "https://codeberg.org",
+  repo: "owner/tool",
+  assetPattern: "*linux_amd64.tar.gz",
+}).bin("tool");
 ```
 
 ### Custom Asset Selector
 
 ```typescript
-install('gitea-release', {
-  instanceUrl: 'https://codeberg.org',
-  repo: 'owner/tool',
+install("gitea-release", {
+  instanceUrl: "https://codeberg.org",
+  repo: "owner/tool",
   assetSelector: ({ assets, systemInfo }) => {
-    const platform = systemInfo.platform === 'darwin' ? 'macos' : systemInfo.platform;
+    const platform = systemInfo.platform === "darwin" ? "macos" : systemInfo.platform;
     return assets.find((a) => a.name.includes(platform));
   },
-}).bin('tool');
+}).bin("tool");
 ```
 
 ### Specific Version
 
 ```typescript
-install('gitea-release', {
-  instanceUrl: 'https://codeberg.org',
-  repo: 'owner/tool',
-  version: 'v2.1.0',
-}).bin('tool');
+install("gitea-release", {
+  instanceUrl: "https://codeberg.org",
+  repo: "owner/tool",
+  version: "v2.1.0",
+}).bin("tool");
 ```
 
 ### With Authentication Token
@@ -68,11 +68,11 @@ install('gitea-release', {
 For private repositories or to avoid rate limits:
 
 ```typescript
-install('gitea-release', {
-  instanceUrl: 'https://gitea.example.com',
-  repo: 'org/private-tool',
+install("gitea-release", {
+  instanceUrl: "https://gitea.example.com",
+  repo: "org/private-tool",
   token: process.env.GITEA_TOKEN,
-}).bin('tool');
+}).bin("tool");
 ```
 
 ## Asset Pattern Matching

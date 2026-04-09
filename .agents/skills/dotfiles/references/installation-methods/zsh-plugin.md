@@ -11,12 +11,12 @@ The `zsh-plugin` installation method clones Git repositories for zsh plugins and
 The simplest way to install a plugin from GitHub:
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('zsh-plugin', {
-    repo: 'jeffreytse/zsh-vi-mode',
-  })
+  install("zsh-plugin", {
+    repo: "jeffreytse/zsh-vi-mode",
+  }),
 );
 ```
 
@@ -27,12 +27,12 @@ The plugin is automatically sourced - no additional configuration needed!
 For plugins hosted elsewhere (GitLab, Bitbucket, private repos):
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('zsh-plugin', {
-    url: 'https://gitlab.com/user/custom-plugin.git',
-  })
+  install("zsh-plugin", {
+    url: "https://gitlab.com/user/custom-plugin.git",
+  }),
 );
 ```
 
@@ -59,13 +59,13 @@ By default (`auto: true`), zsh plugins are automatically installed during the `d
 To disable auto-installation and require explicit `dotfiles install`:
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('zsh-plugin', {
-    repo: 'jeffreytse/zsh-vi-mode',
+  install("zsh-plugin", {
+    repo: "jeffreytse/zsh-vi-mode",
     auto: false, // Requires explicit `dotfiles install`
-  })
+  }),
 );
 ```
 
@@ -74,13 +74,13 @@ export default defineTool((install) =>
 Use `pluginName` when you want the plugin directory name to differ from the repository name:
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('zsh-plugin', {
-    repo: 'jeffreytse/zsh-vi-mode',
-    pluginName: 'vi-mode', // Cloned to plugins/vi-mode instead of plugins/zsh-vi-mode
-  })
+  install("zsh-plugin", {
+    repo: "jeffreytse/zsh-vi-mode",
+    pluginName: "vi-mode", // Cloned to plugins/vi-mode instead of plugins/zsh-vi-mode
+  }),
 );
 ```
 
@@ -89,13 +89,13 @@ export default defineTool((install) =>
 If the plugin's source file doesn't follow standard naming conventions, specify it explicitly:
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('zsh-plugin', {
-    repo: 'some-org/some-plugin',
-    source: 'custom-init.zsh', // Use this file instead of auto-detection
-  })
+  install("zsh-plugin", {
+    repo: "some-org/some-plugin",
+    source: "custom-init.zsh", // Use this file instead of auto-detection
+  }),
 );
 ```
 
@@ -122,18 +122,17 @@ The installer checks for these files in order:
 Use `.zsh()` to add environment variables or other shell configuration:
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('zsh-plugin', {
-    repo: 'jeffreytse/zsh-vi-mode',
-  })
-    .zsh((shell) =>
-      shell.env({
-        ZVM_VI_INSERT_ESCAPE_BINDKEY: 'jj',
-        ZVM_CURSOR_STYLE_ENABLED: 'false',
-      })
-    )
+  install("zsh-plugin", {
+    repo: "jeffreytse/zsh-vi-mode",
+  }).zsh((shell) =>
+    shell.env({
+      ZVM_VI_INSERT_ESCAPE_BINDKEY: "jj",
+      ZVM_CURSOR_STYLE_ENABLED: "false",
+    }),
+  ),
 );
 ```
 

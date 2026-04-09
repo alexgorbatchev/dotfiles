@@ -1,6 +1,6 @@
 ---
 targets:
-  - '*'
+  - "*"
 description: Refresh JSDoc in projecty.
 copilot:
   agent: agent

@@ -5,13 +5,13 @@ Downloads and executes shell installation scripts.
 ## Basic Usage
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://bun.sh/install',
-    shell: 'bash',
-  }).bin('bun')
+  install("curl-script", {
+    url: "https://bun.sh/install",
+    shell: "bash",
+  }).bin("bun"),
 );
 ```
 
@@ -54,10 +54,10 @@ Then use `args` or `env` with the dynamic context to redirect:
 
 ```typescript
 // Using args (if script accepts command-line arguments)
-args: ((ctx) => ['--install-dir', ctx.stagingDir]);
+args: (ctx) => ["--install-dir", ctx.stagingDir];
 
 // Using env (if script reads environment variables)
-env: ((ctx) => ({ FLYCTL_INSTALL: ctx.stagingDir }));
+env: (ctx) => ({ FLYCTL_INSTALL: ctx.stagingDir });
 ```
 
 ## Examples
@@ -66,11 +66,11 @@ env: ((ctx) => ({ FLYCTL_INSTALL: ctx.stagingDir }));
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://fnm.vercel.app/install',
-    shell: 'bash',
-    args: ['--skip-shell', '--install-dir', '$LOCAL_BIN'],
-  }).bin('fnm')
+  install("curl-script", {
+    url: "https://fnm.vercel.app/install",
+    shell: "bash",
+    args: ["--skip-shell", "--install-dir", "$LOCAL_BIN"],
+  }).bin("fnm"),
 );
 ```
 
@@ -78,11 +78,11 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://fnm.vercel.app/install',
-    shell: 'bash',
-    args: (argsCtx) => ['--install-dir', argsCtx.stagingDir],
-  }).bin('fnm')
+  install("curl-script", {
+    url: "https://fnm.vercel.app/install",
+    shell: "bash",
+    args: (argsCtx) => ["--install-dir", argsCtx.stagingDir],
+  }).bin("fnm"),
 );
 ```
 
@@ -98,11 +98,11 @@ Use dynamic `env` to redirect installation to `stagingDir`:
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://fly.io/install.sh',
-    shell: 'sh',
+  install("curl-script", {
+    url: "https://fly.io/install.sh",
+    shell: "sh",
     env: (ctx) => ({ FLYCTL_INSTALL: ctx.stagingDir }),
-  }).bin('flyctl', 'fly')
+  }).bin("flyctl", "fly"),
 );
 ```
 
@@ -118,14 +118,14 @@ The `env` context provides:
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://example.com/install.sh',
-    shell: 'bash',
+  install("curl-script", {
+    url: "https://example.com/install.sh",
+    shell: "bash",
   })
-    .bin('tool')
-    .hook('after-download', async (ctx) => {
+    .bin("tool")
+    .hook("after-download", async (ctx) => {
       // Verify script before execution
-    })
+    }),
 );
 ```
 

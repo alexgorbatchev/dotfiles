@@ -1,6 +1,6 @@
 ---
 targets:
-  - '*'
+  - "*"
 description: >-
   Work on git-bug tickets end-to-end: implement in worktrees, review, fix
   issues, merge to main, update docs, and close tickets.
@@ -80,8 +80,8 @@ If any changes affect user-facing features (new installer types, new CLI options
 
 1. Review all changes merged in Phase 5 to identify user-facing impacts.
 2. The agent should:
-   - Read the dotfiles skill references in `.rulesync/skills/dotfiles/references/` to understand structure and style.
-   - Read `.rulesync/skills/dotfiles/references/make-tool.md` to check if it needs updates (e.g., new installation methods, new config options).
+   - Read the dotfiles skill references in `.agents/skills/dotfiles/references/` to understand structure and style.
+   - Read `.agents/skills/dotfiles/references/make-tool.md` to check if it needs updates (e.g., new installation methods, new config options).
    - Update relevant reference files to reflect the changes.
    - Follow existing documentation conventions exactly.
 3. Commit the doc changes to main.

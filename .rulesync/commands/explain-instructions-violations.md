@@ -1,7 +1,7 @@
 ---
 targets:
-  - '*'
-description: 'Agent explanation, no excuses.'
+  - "*"
+description: "Agent explanation, no excuses."
 copilot:
   agent: agent
 ---

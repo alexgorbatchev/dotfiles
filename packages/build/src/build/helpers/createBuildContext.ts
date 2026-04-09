@@ -47,7 +47,7 @@ export function createBuildContext(): IBuildContext {
   const tsdTestsScopedPackagePath: string = path.join(tsdTestsScopedNamespacePath, "dotfiles");
   const tsdTestsToolTypesPath: string = path.join(tsdTestsGeneratedDir, "tool-types.d.ts");
 
-  const skillDir: string = path.join(rootDir, ".rulesync", "skills", "dotfiles");
+  const skillDir: string = path.join(rootDir, ".agents", "skills", "dotfiles");
   const outputSkillDir: string = path.join(outputDir, "skill");
 
   const paths: IBuildPaths = {

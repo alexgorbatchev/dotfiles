@@ -1,6 +1,6 @@
 ---
 targets:
-  - '*'
+  - "*"
 description: >-
   Fully refresh project documentation based on README.md files in source
   directories.
