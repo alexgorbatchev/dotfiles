@@ -8,7 +8,7 @@ import {
   isPathEmission,
   isScriptEmission,
 } from "@dotfiles/shell-emissions";
-import "@dotfiles/testing-helpers";
+
 import { beforeEach, describe, expect, it } from "bun:test";
 import { ZshGenerator } from "../ZshGenerator";
 import { createMockProjectConfigWithPathsOnly } from "./createMockProjectConfigWithPathsOnly";

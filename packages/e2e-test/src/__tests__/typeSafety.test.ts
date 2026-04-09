@@ -8,8 +8,7 @@
  * - Platform-specific configurations are type-safe
  */
 import { describe, expect, it } from "bun:test";
-// oxlint-disable-next-line import/no-unassigned-import
-import "@dotfiles/testing-helpers";
+
 import { Architecture, defineTool, Platform } from "@dotfiles/cli";
 
 describe("E2E: type safety", () => {

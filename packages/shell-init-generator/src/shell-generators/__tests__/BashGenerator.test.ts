@@ -1,6 +1,6 @@
 import type { ToolConfig } from "@dotfiles/core";
 import { isAliasEmission, isCompletionEmission, isEnvironmentEmission } from "@dotfiles/shell-emissions";
-import "@dotfiles/testing-helpers";
+
 import { beforeEach, describe, expect, it } from "bun:test";
 import { BashGenerator } from "../BashGenerator";
 import { createMockProjectConfigWithPathsOnly } from "./createMockProjectConfigWithPathsOnly";

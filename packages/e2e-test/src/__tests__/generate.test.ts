@@ -9,7 +9,7 @@
  * - Always and once script blocks
  */
 import { beforeAll, describe, expect, it } from "bun:test";
-import "@dotfiles/testing-helpers";
+
 import { Architecture, Platform } from "@dotfiles/core";
 import { CARGO_QUICKINSTALL_TOOL, GITHUB_RELEASE_TOOL, withMockServer } from "./helpers/mock-server";
 import { TestHarness } from "./helpers/TestHarness";

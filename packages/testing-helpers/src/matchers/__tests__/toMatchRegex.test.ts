@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-// oxlint-disable-next-line import/no-unassigned-import
+
 import "../toMatchRegex";
 
 describe("toMatchRegex", () => {

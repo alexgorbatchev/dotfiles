@@ -8,8 +8,6 @@
  */
 import { Database } from "bun:sqlite";
 import { beforeAll, describe, expect, it } from "bun:test";
-// oxlint-disable-next-line import/no-unassigned-import
-import "@dotfiles/testing-helpers";
 import { Architecture, Platform } from "@dotfiles/core";
 import assert from "node:assert";
 import path from "node:path";

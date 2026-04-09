@@ -12,9 +12,6 @@ import {
 import { beforeEach, describe, expect, it } from "bun:test";
 import { BashEmissionFormatter } from "../BashEmissionFormatter";
 
-// oxlint-disable-next-line import/no-unassigned-import
-import "@dotfiles/testing-helpers";
-
 describe("BashEmissionFormatter", () => {
   const onceScriptDir = "/test/.once";
   let formatter: BashEmissionFormatter;

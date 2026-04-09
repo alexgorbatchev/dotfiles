@@ -9,7 +9,7 @@
  * - The remaining symlink is not affected by the cleanup
  */
 import { Architecture, Platform } from "@dotfiles/core";
-import "@dotfiles/testing-helpers";
+
 import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";

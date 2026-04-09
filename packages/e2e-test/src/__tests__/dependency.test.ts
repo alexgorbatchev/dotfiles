@@ -9,8 +9,7 @@
  * - Handles platform-specific dependency availability
  */
 import { describe, expect, it } from "bun:test";
-// oxlint-disable-next-line import/no-unassigned-import
-import "@dotfiles/testing-helpers";
+
 import { Architecture, Platform } from "@dotfiles/core";
 import { withMockServer } from "./helpers/mock-server";
 import { TestHarness } from "./helpers/TestHarness";

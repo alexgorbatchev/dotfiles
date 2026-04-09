@@ -12,9 +12,6 @@ import {
 import { beforeEach, describe, expect, it } from "bun:test";
 import { PowerShellEmissionFormatter } from "../PowerShellEmissionFormatter";
 
-// oxlint-disable-next-line import/no-unassigned-import
-import "@dotfiles/testing-helpers";
-
 describe("PowerShellEmissionFormatter", () => {
   const onceScriptDir = "/test/.once";
   let formatter: PowerShellEmissionFormatter;

@@ -7,8 +7,7 @@
  * - Can be executed via shims after generate
  */
 import { beforeAll, describe, expect, it } from "bun:test";
-// oxlint-disable-next-line import/no-unassigned-import
-import "@dotfiles/testing-helpers";
+
 import { Architecture, Platform } from "@dotfiles/core";
 import path from "node:path";
 import { AUTO_INSTALL_TOOL, MockServerBuilder, withMockServer } from "./helpers/mock-server";

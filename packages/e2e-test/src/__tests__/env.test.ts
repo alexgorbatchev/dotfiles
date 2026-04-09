@@ -7,8 +7,7 @@
  * - Produces correct activation scripts
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-// oxlint-disable-next-line import/no-unassigned-import
-import "@dotfiles/testing-helpers";
+
 import { dedentString } from "@dotfiles/cli";
 import { Architecture, Platform } from "@dotfiles/core";
 import fs from "node:fs";

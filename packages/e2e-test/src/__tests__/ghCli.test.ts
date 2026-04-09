@@ -10,8 +10,7 @@
  * Uses a mock `gh` shell script that logs all invocations to verify arguments.
  */
 import { beforeAll, describe, expect, it } from "bun:test";
-// oxlint-disable-next-line import/no-unassigned-import
-import "@dotfiles/testing-helpers";
+
 import { Architecture, Platform } from "@dotfiles/core";
 import fs from "node:fs";
 import path from "node:path";

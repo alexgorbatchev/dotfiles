@@ -8,8 +8,7 @@
  * - Handles the --overwrite flag
  */
 import { beforeAll, describe, expect, it } from "bun:test";
-// oxlint-disable-next-line import/no-unassigned-import
-import "@dotfiles/testing-helpers";
+
 import { Architecture, Platform } from "@dotfiles/core";
 import fs from "node:fs";
 import path from "node:path";

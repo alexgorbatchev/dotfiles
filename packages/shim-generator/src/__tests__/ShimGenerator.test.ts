@@ -19,9 +19,6 @@ import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { ShimGenerator } from "../ShimGenerator";
 
-// oxlint-disable-next-line import/no-unassigned-import
-import "@dotfiles/testing-helpers";
-
 type ClearableMock = {
   mockClear?: () => void;
 };

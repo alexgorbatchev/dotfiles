@@ -13,9 +13,6 @@ import { HOOK_TEST_TOOL, withMockServer } from "./helpers/mock-server";
 import { TestHarness } from "./helpers/TestHarness";
 import type { ITestTarget } from "./helpers/types";
 
-// oxlint-disable-next-line import/no-unassigned-import
-import "@dotfiles/testing-helpers";
-
 describe("E2E: after-install hooks", () => {
   withMockServer((b) => b.withGitHubTool(HOOK_TEST_TOOL));
 
