@@ -136,7 +136,16 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   install(method: string, params: Record<string, unknown>): this;
   install(method: string, params: Record<string, unknown>): this {
     this.currentInstallationMethod = method;
-    this.currentInstallParams = params;
+    const existingHooks = this.currentInstallParams?.hooks;
+
+    this.currentInstallParams = {
+      ...params,
+    };
+
+    if (existingHooks) {
+      this.currentInstallParams.hooks = existingHooks;
+    }
+
     return this;
   }
 
@@ -152,13 +161,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   hook(event: HookEventName, handler: AsyncInstallHook<never>): this {
     if (!this.currentInstallParams) {
-      this.logger.warn(
-        messages.configurationFieldIgnored(
-          "hook",
-          `hook() called for tool "${this.toolName}" before install(). Hook will not be set as install() was not called first.`,
-        ),
-      );
-      return this;
+      this.currentInstallParams = {};
     }
 
     const hooksObj = (this.currentInstallParams["hooks"] as Record<string, AsyncInstallHook<never>[]>) || {};

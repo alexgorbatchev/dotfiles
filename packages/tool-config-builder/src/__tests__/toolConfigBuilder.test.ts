@@ -137,24 +137,13 @@ describe("IToolConfigBuilder", () => {
     });
   });
 
-  test("hook method does not set hooks and warns if install was not called first", () => {
+  test("hook method sets hooks even if install was not called first", () => {
     const testLogger = new TestLogger();
     const builder = new IToolConfigBuilder(testLogger, "test-tool");
     builder.hook("before-install", noopHook);
 
-    expect(builder.currentInstallParams?.["hooks"]).toBeUndefined();
-
-    testLogger.expect(
-      ["WARN"],
-      ["IToolConfigBuilder"],
-      [],
-      [
-        messages.configurationFieldIgnored(
-          "hook",
-          'hook() called for tool "test-tool" before install(). Hook will not be set as install() was not called first.',
-        ),
-      ],
-    );
+    expect(builder.currentInstallParams?.["hooks"]).toEqual({ "before-install": [noopHook] });
+    testLogger.expect([], [], [], []);
   });
 
   test("zsh method adds zsh code correctly to zshInit", () => {

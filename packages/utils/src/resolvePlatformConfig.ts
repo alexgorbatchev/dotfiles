@@ -136,7 +136,30 @@ function applyPlatformOverrides(finalConfig: ToolConfig, platformConfig: Platfor
     finalConfig.installationMethod = platformConfig.installationMethod;
   }
   if (platformConfig.installParams !== undefined) {
-    finalConfig.installParams = platformConfig.installParams;
+    const baseHooks = finalConfig.installParams?.hooks;
+    const platformHooks = platformConfig.installParams.hooks;
+
+    finalConfig.installParams = {
+      ...finalConfig.installParams,
+      ...platformConfig.installParams,
+    };
+
+    if (baseHooks || platformHooks) {
+      finalConfig.installParams.hooks = {
+        ...baseHooks,
+        ...platformHooks,
+      };
+
+      // Merge arrays within hooks
+      if (baseHooks && platformHooks) {
+        for (const key of Object.keys(baseHooks)) {
+          if (key in platformHooks) {
+            // @ts-expect-error - we know it's an array of hooks
+            finalConfig.installParams.hooks[key] = [...baseHooks[key], ...platformHooks[key]];
+          }
+        }
+      }
+    }
   }
 }
 
