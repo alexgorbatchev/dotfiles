@@ -222,16 +222,16 @@ source "/path/to/.generated/shell-scripts/main.zsh"
 ```typescript
 const configs: ProfileUpdateConfig[] = [
   {
-    shellType: 'zsh',
-    generatedScriptPath: '/path/to/.generated/shell-scripts/main.zsh',
+    shellType: "zsh",
+    generatedScriptPath: "/path/to/.generated/shell-scripts/main.zsh",
     onlyIfExists: true, // Only update if .zshrc already exists
-    projectConfigPath: '/path/to/dotfiles.yml',
+    projectConfigPath: "/path/to/dotfiles.yml",
   },
   {
-    shellType: 'bash',
-    generatedScriptPath: '/path/to/.generated/shell-scripts/main.bash',
+    shellType: "bash",
+    generatedScriptPath: "/path/to/.generated/shell-scripts/main.bash",
     onlyIfExists: false, // Create .bashrc if it doesn't exist
-    projectConfigPath: '/path/to/dotfiles.yml',
+    projectConfigPath: "/path/to/dotfiles.yml",
   },
 ];
 ```

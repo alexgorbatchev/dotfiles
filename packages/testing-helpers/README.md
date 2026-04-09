@@ -21,12 +21,12 @@ The testing-helpers package centralizes common testing utilities used across the
 Creates temporary test directories with automatic cleanup.
 
 ```typescript
-import { createITestDirectories } from '@dotfiles/testing-helpers';
+import { createITestDirectories } from "@dotfiles/testing-helpers";
 
-const { workingDir, homeDir, cleanup } = await createITestDirectories('my-test');
+const { workingDir, homeDir, cleanup } = await createITestDirectories("my-test");
 
 // Use directories in test
-await fs.writeFile(path.join(workingDir, 'dotfiles.config.ts'), '...');
+await fs.writeFile(path.join(workingDir, "dotfiles.config.ts"), "...");
 
 // Cleanup automatically runs after test
 // Or call manually: await cleanup();
@@ -47,7 +47,7 @@ interface ITestDirectories {
 Helper class for mocking global fetch in tests.
 
 ```typescript
-import { FetchMockHelper } from '@dotfiles/testing-helpers';
+import { FetchMockHelper } from "@dotfiles/testing-helpers";
 
 const fetchMock = new FetchMockHelper();
 
@@ -55,15 +55,15 @@ beforeEach(() => {
   fetchMock.setup();
 
   // Mock successful response
-  fetchMock.mockResponse('https://api.example.com/data', {
+  fetchMock.mockResponse("https://api.example.com/data", {
     status: 200,
-    body: JSON.stringify({ key: 'value' }),
+    body: JSON.stringify({ key: "value" }),
   });
 
   // Mock error response
-  fetchMock.mockResponse('https://api.example.com/error', {
+  fetchMock.mockResponse("https://api.example.com/error", {
     status: 404,
-    body: 'Not Found',
+    body: "Not Found",
   });
 });
 
@@ -86,12 +86,12 @@ afterEach(() => {
 Creates a mock project configuration for testing.
 
 ```typescript
-import { createMockProjectConfig } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig } from "@dotfiles/testing-helpers";
 
 const config = createMockProjectConfig({
   paths: {
-    targetDir: '/test/target',
-    homeDir: '/test/home',
+    targetDir: "/test/target",
+    homeDir: "/test/home",
   },
 });
 ```
@@ -101,10 +101,10 @@ const config = createMockProjectConfig({
 Creates a mock file registry for testing.
 
 ```typescript
-import { createMockFileRegistry } from '@dotfiles/testing-helpers';
+import { createMockFileRegistry } from "@dotfiles/testing-helpers";
 
 const registry = createMockFileRegistry({
-  files: new Map([['tool.sh', { path: '/bin/tool.sh', hash: 'abc123' }]]),
+  files: new Map([["tool.sh", { path: "/bin/tool.sh", hash: "abc123" }]]),
 });
 ```
 
@@ -113,10 +113,10 @@ const registry = createMockFileRegistry({
 Creates a mock shell command executor.
 
 ```typescript
-import { createMock$ } from '@dotfiles/testing-helpers';
+import { createMock$ } from "@dotfiles/testing-helpers";
 
 const mock$ = createMock$();
-mock$.mockCommand('which brew', { stdout: '/opt/homebrew/bin/brew', exitCode: 0 });
+mock$.mockCommand("which brew", { stdout: "/opt/homebrew/bin/brew", exitCode: 0 });
 ```
 
 ### Custom Matchers
@@ -126,9 +126,9 @@ mock$.mockCommand('which brew', { stdout: '/opt/homebrew/bin/brew', exitCode: 0 
 Matches output with regex patterns and whitespace normalization.
 
 ```typescript
-import '@dotfiles/testing-helpers';
+import "@dotfiles/testing-helpers";
 
-test('loose snapshot matching', () => {
+test("loose snapshot matching", () => {
   const output = `
     Tool: fzf
     Version: 0.43.0
@@ -157,16 +157,16 @@ test('loose snapshot matching', () => {
 ### Complete Test Setup
 
 ```typescript
-import { createITestDirectories, createMockProjectConfig, FetchMockHelper } from '@dotfiles/testing-helpers';
+import { createITestDirectories, createMockProjectConfig, FetchMockHelper } from "@dotfiles/testing-helpers";
 
-describe('MyFeature', () => {
+describe("MyFeature", () => {
   let testDirs: ITestDirectories;
   let config: ProjectConfig;
   let fetchMock: FetchMockHelper;
 
   beforeEach(async () => {
     // Setup test directories
-    testDirs = await createITestDirectories('my-feature-test');
+    testDirs = await createITestDirectories("my-feature-test");
 
     // Create config
     config = createMockProjectConfig({
@@ -185,7 +185,7 @@ describe('MyFeature', () => {
     fetchMock.restore();
   });
 
-  test('my test', async () => {
+  test("my test", async () => {
     // Test implementation
   });
 });
@@ -194,24 +194,24 @@ describe('MyFeature', () => {
 ### Mocking HTTP Responses
 
 ```typescript
-import { FetchMockHelper } from '@dotfiles/testing-helpers';
+import { FetchMockHelper } from "@dotfiles/testing-helpers";
 
-test('fetches data from API', async () => {
+test("fetches data from API", async () => {
   const fetchMock = new FetchMockHelper();
   fetchMock.setup();
 
-  fetchMock.mockResponse('https://api.github.com/repos/owner/repo/releases/latest', {
+  fetchMock.mockResponse("https://api.github.com/repos/owner/repo/releases/latest", {
     status: 200,
     body: JSON.stringify({
-      tag_name: 'v1.0.0',
-      assets: [{ name: 'tool-linux-amd64.tar.gz', browser_download_url: 'https://example.com/download' }],
+      tag_name: "v1.0.0",
+      assets: [{ name: "tool-linux-amd64.tar.gz", browser_download_url: "https://example.com/download" }],
     }),
   });
 
-  const response = await fetch('https://api.github.com/repos/owner/repo/releases/latest');
+  const response = await fetch("https://api.github.com/repos/owner/repo/releases/latest");
   const data = await response.json();
 
-  expect(data.tag_name).toBe('v1.0.0');
+  expect(data.tag_name).toBe("v1.0.0");
 
   fetchMock.restore();
 });
@@ -222,9 +222,9 @@ test('fetches data from API', async () => {
 ### Arrange-Act-Assert
 
 ```typescript
-test('generates shims', async () => {
+test("generates shims", async () => {
   // Arrange
-  const testDirs = await createITestDirectories('shim-test');
+  const testDirs = await createITestDirectories("shim-test");
   const config = createMockProjectConfig({
     paths: { targetDir: testDirs.workingDir },
   });
@@ -235,7 +235,7 @@ test('generates shims', async () => {
 
   // Assert
   expect(shimPaths).toHaveLength(3);
-  expect(shimPaths[0]).toContain('fzf');
+  expect(shimPaths[0]).toContain("fzf");
 
   await testDirs.cleanup();
 });
@@ -244,7 +244,7 @@ test('generates shims', async () => {
 ### Setup/Teardown
 
 ```typescript
-describe('Feature', () => {
+describe("Feature", () => {
   let testContext: TestContext;
 
   beforeEach(async () => {
@@ -255,7 +255,7 @@ describe('Feature', () => {
     await teardownTestContext(testContext);
   });
 
-  test('test case', async () => {
+  test("test case", async () => {
     // Use testContext
   });
 });
@@ -312,9 +312,9 @@ afterEach(async () => {
 ### Use Descriptive Test Names
 
 ```typescript
-test('creates temporary directory with unique name', async () => {
-  const dirs1 = await createITestDirectories('test');
-  const dirs2 = await createITestDirectories('test');
+test("creates temporary directory with unique name", async () => {
+  const dirs1 = await createITestDirectories("test");
+  const dirs2 = await createITestDirectories("test");
 
   expect(dirs1.workingDir).not.toBe(dirs2.workingDir);
 });
@@ -324,14 +324,14 @@ test('creates temporary directory with unique name', async () => {
 
 ```typescript
 // Each test gets its own directories
-test('test 1', async () => {
-  const dirs = await createITestDirectories('test-1');
+test("test 1", async () => {
+  const dirs = await createITestDirectories("test-1");
   // Use dirs
   await dirs.cleanup();
 });
 
-test('test 2', async () => {
-  const dirs = await createITestDirectories('test-2');
+test("test 2", async () => {
+  const dirs = await createITestDirectories("test-2");
   // Use dirs
   await dirs.cleanup();
 });
@@ -342,14 +342,14 @@ test('test 2', async () => {
 ```typescript
 // Store complex test data in fixtures
 const FIXTURE_GITHUB_RELEASE = {
-  tag_name: 'v1.0.0',
+  tag_name: "v1.0.0",
   assets: [
     /* ... */
   ],
 };
 
-test('parses GitHub release', () => {
+test("parses GitHub release", () => {
   const release = parseRelease(FIXTURE_GITHUB_RELEASE);
-  expect(release.version).toBe('1.0.0');
+  expect(release.version).toBe("1.0.0");
 });
 ```

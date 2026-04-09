@@ -13,13 +13,13 @@ Shims are not supported for Homebrew-installed tools. The `.bin()` method should
 Tools are configured using `defineTool` with the `install()` function:
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from "@dotfiles/cli";
 
 export default defineTool((install, ctx) =>
-  install('brew', {
-    formula: 'ripgrep',
-    tap: 'homebrew/core',
-  })
+  install("brew", {
+    formula: "ripgrep",
+    tap: "homebrew/core",
+  }),
 );
 ```
 
@@ -39,9 +39,9 @@ The `install('brew', params)` function accepts the following parameters:
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('brew', {
-    formula: 'bat',
-  })
+  install("brew", {
+    formula: "bat",
+  }),
 );
 ```
 
@@ -49,10 +49,10 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('brew', {
-    formula: 'docker',
+  install("brew", {
+    formula: "docker",
     cask: true,
-  })
+  }),
 );
 ```
 
@@ -60,10 +60,10 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('brew', {
-    formula: 'my-tool',
-    tap: 'myorg/tap',
-  })
+  install("brew", {
+    formula: "my-tool",
+    tap: "myorg/tap",
+  }),
 );
 ```
 
@@ -71,10 +71,10 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('brew', {
-    formula: 'tool',
-    tap: ['user/tap1', 'user/tap2'],
-  })
+  install("brew", {
+    formula: "tool",
+    tap: ["user/tap1", "user/tap2"],
+  }),
 );
 ```
 
@@ -131,14 +131,14 @@ Implements `IInstallerPlugin` with:
 This package extends the core type system via module augmentation:
 
 ```typescript
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
     brew: BrewInstallParams;
   }
   interface IToolConfigRegistry {
     brew: BrewToolConfig;
   }
-  interface IPluginResultRegistry extends RegisterPluginResult<'brew', BrewInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<"brew", BrewInstallResult> {}
 }
 ```
 

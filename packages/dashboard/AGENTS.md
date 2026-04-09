@@ -45,27 +45,27 @@ UI tests use `@testing-library/preact` with `happy-dom` for DOM simulation. The 
 
 ```tsx
 // Import setup FIRST - registers DOM and exports testing utilities
-import { fireEvent, render, screen, setupUITests, userEvent } from '../../../../testing/ui-setup';
+import { fireEvent, render, screen, setupUITests, userEvent } from "../../../../testing/ui-setup";
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from "bun:test";
 
-import { MyComponent } from '../MyComponent';
+import { MyComponent } from "../MyComponent";
 
 // REQUIRED: Register cleanup hooks for this test file
 setupUITests();
 
-describe('MyComponent', () => {
-  test('renders correctly', () => {
-    render(<MyComponent label='Hello' />);
-    expect(screen.getByText('Hello')).toBeInTheDocument();
+describe("MyComponent", () => {
+  test("renders correctly", () => {
+    render(<MyComponent label="Hello" />);
+    expect(screen.getByText("Hello")).toBeInTheDocument();
   });
 
-  test('handles click events', async () => {
+  test("handles click events", async () => {
     const user = userEvent.setup();
     render(<MyComponent />);
 
-    await user.click(screen.getByRole('button'));
-    expect(screen.getByText('Clicked')).toBeInTheDocument();
+    await user.click(screen.getByRole("button"));
+    expect(screen.getByText("Clicked")).toBeInTheDocument();
   });
 });
 ```

@@ -11,15 +11,15 @@ Shims are not supported for DMG-installed applications. The `.bin()` method shou
 ## Usage
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from "@dotfiles/cli";
 
 export default defineTool((install) =>
-  install('dmg', {
+  install("dmg", {
     source: {
-      type: 'url',
-      url: 'https://example.com/releases/MyApp-1.0.0.dmg',
+      type: "url",
+      url: "https://example.com/releases/MyApp-1.0.0.dmg",
     },
-  })
+  }),
 );
 ```
 
@@ -41,13 +41,13 @@ The `install('dmg', params)` function accepts the following parameters:
 
 ```typescript
 export default defineTool((install) =>
-  install('dmg', {
+  install("dmg", {
     source: {
-      type: 'url',
-      url: 'https://example.com/MyApp-1.0.0.dmg',
+      type: "url",
+      url: "https://example.com/MyApp-1.0.0.dmg",
     },
-    appName: 'MyApp.app',
-  }).version('1.0.0')
+    appName: "MyApp.app",
+  }).version("1.0.0"),
 );
 ```
 
@@ -55,14 +55,14 @@ export default defineTool((install) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('dmg', {
+  install("dmg", {
     source: {
-      type: 'url',
-      url: 'https://example.com/MyApp-1.0.0.dmg',
+      type: "url",
+      url: "https://example.com/MyApp-1.0.0.dmg",
     },
-    versionArgs: ['--version'],
+    versionArgs: ["--version"],
     versionRegex: /v(\d+\.\d+\.\d+)/,
-  })
+  }),
 );
 ```
 
@@ -70,14 +70,14 @@ export default defineTool((install) =>
 
 ```typescript
 export default defineTool((install) =>
-  install('dmg', {
+  install("dmg", {
     source: {
-      type: 'github-release',
-      repo: 'manaflow-ai/cmux',
-      assetPattern: '*macos*.dmg',
+      type: "github-release",
+      repo: "manaflow-ai/cmux",
+      assetPattern: "*macos*.dmg",
     },
-    appName: 'cmux.app',
-  })
+    appName: "cmux.app",
+  }),
 );
 ```
 
@@ -128,14 +128,14 @@ Implements `IInstallerPlugin` with:
 This package extends the core type system via module augmentation:
 
 ```typescript
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
     dmg: DmgInstallParams;
   }
   interface IToolConfigRegistry {
     dmg: DmgToolConfig;
   }
-  interface IPluginResultRegistry extends RegisterPluginResult<'dmg', DmgInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<"dmg", DmgInstallResult> {}
 }
 ```
 

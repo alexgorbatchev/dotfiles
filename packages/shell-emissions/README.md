@@ -31,23 +31,23 @@ import {
   SectionPriority,
   withPriority,
   withSource,
-} from '@dotfiles/shell-emissions';
+} from "@dotfiles/shell-emissions";
 
 // 1. Create emissions (shell-agnostic data)
-const envVars = environment({ MY_VAR: 'my-value', OTHER_VAR: 'other' });
-const myAliases = alias({ ll: 'ls -la', la: 'ls -A' });
-const myFunc = fn('greet', 'echo "Hello, $1!"');
+const envVars = environment({ MY_VAR: "my-value", OTHER_VAR: "other" });
+const myAliases = alias({ ll: "ls -la", la: "ls -A" });
+const myFunc = fn("greet", 'echo "Hello, $1!"');
 
 // 2. Build blocks to organize emissions
 const builder = new BlockBuilder();
 
-builder.addSection('header', { priority: SectionPriority.FileHeader, isFileHeader: true });
-builder.addSection('environment', { priority: SectionPriority.Environment, hoistKinds: ['environment'] });
-builder.addSection('main', { priority: SectionPriority.MainContent, allowChildren: true });
+builder.addSection("header", { priority: SectionPriority.FileHeader, isFileHeader: true });
+builder.addSection("environment", { priority: SectionPriority.Environment, hoistKinds: ["environment"] });
+builder.addSection("main", { priority: SectionPriority.MainContent, allowChildren: true });
 
 builder.addEmission(envVars); // Auto-hoisted to 'environment' section
-builder.addEmission(myAliases, 'my-tool'); // Added to 'main' section under 'my-tool' child block
-builder.addEmission(myFunc, 'my-tool'); // Added to same child block
+builder.addEmission(myAliases, "my-tool"); // Added to 'main' section under 'my-tool' child block
+builder.addEmission(myFunc, "my-tool"); // Added to same child block
 
 const blocks = builder.build();
 
@@ -106,9 +106,9 @@ Non-hoisted emissions are grouped by `childBlockId` within their section.
 Track where emissions originated for debugging:
 
 ```typescript
-import { withSource } from '@dotfiles/shell-emissions';
+import { withSource } from "@dotfiles/shell-emissions";
 
-const emission = withSource(alias('ll', 'ls -la'), 'my-tool');
+const emission = withSource(alias("ll", "ls -la"), "my-tool");
 // Adds source: 'my-tool' to the emission
 ```
 
@@ -117,7 +117,7 @@ const emission = withSource(alias('ll', 'ls -la'), 'my-tool');
 Override default section priority for specific emissions:
 
 ```typescript
-import { withPriority } from '@dotfiles/shell-emissions';
+import { withPriority } from "@dotfiles/shell-emissions";
 
 const emission = withPriority(script('echo "first"'), 50);
 // This emission will render before others with higher priority
@@ -234,7 +234,7 @@ const output: RenderedOutput = renderer.render(
 ### Constants
 
 ```typescript
-import { ONCE_SCRIPT_INDEX_PAD_LENGTH, SectionPriority } from '@dotfiles/shell-emissions';
+import { ONCE_SCRIPT_INDEX_PAD_LENGTH, SectionPriority } from "@dotfiles/shell-emissions";
 
 SectionPriority.FileHeader; // 0
 SectionPriority.Path; // 100
@@ -250,15 +250,11 @@ ONCE_SCRIPT_INDEX_PAD_LENGTH; // 3 (for filename padding: 001, 002, etc.)
 ### Errors
 
 ```typescript
-import {
-  BlockValidationError,
-  EmissionValidationError,
-  RenderError,
-} from '@dotfiles/shell-emissions';
+import { BlockValidationError, EmissionValidationError, RenderError } from "@dotfiles/shell-emissions";
 
 // EmissionValidationError - thrown for invalid emission data
 try {
-  environment({ 'invalid-name': 'value' }); // Hyphens not allowed in variable names
+  environment({ "invalid-name": "value" }); // Hyphens not allowed in variable names
 } catch (e) {
   if (e instanceof EmissionValidationError) {
     console.log(e.kind); // 'environment'

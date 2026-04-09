@@ -32,26 +32,26 @@ Gracefully closes the database connection. This should be called during the appl
 ## Usage Example
 
 ```typescript
-import { createLogger } from '@dotfiles/logger';
-import { RegistryDatabase } from '@dotfiles/registry-database';
+import { createLogger } from "@dotfiles/logger";
+import { RegistryDatabase } from "@dotfiles/registry-database";
 
 // 1. Create a logger instance
 const logger = createLogger();
 
 // 2. Define the path for your database
-const dbPath = '/tmp/dotfiles-registry.db';
+const dbPath = "/tmp/dotfiles-registry.db";
 
 // 3. Instantiate the database
 // This automatically creates the directory and initializes the connection.
 const registryDb = new RegistryDatabase(logger, dbPath);
-console.log('Database connection initialized.');
+console.log("Database connection initialized.");
 
 // 4. Get the connection and use it
 const db = registryDb.getConnection();
-db.run('CREATE TABLE IF NOT EXISTS tools (id INTEGER PRIMARY KEY, name TEXT);');
-console.log('Table created or already exists.');
+db.run("CREATE TABLE IF NOT EXISTS tools (id INTEGER PRIMARY KEY, name TEXT);");
+console.log("Table created or already exists.");
 
 // 5. Close the connection when done
 registryDb.close();
-console.log('Database connection closed.');
+console.log("Database connection closed.");
 ```

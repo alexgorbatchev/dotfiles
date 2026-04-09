@@ -11,31 +11,31 @@ This plugin provides support for tools that cannot be automatically installed th
 Tools are configured using `defineTool` with the `install()` function:
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from "@dotfiles/cli";
 
 // For existing system tools
 export default defineTool((install, ctx) =>
   install() // Manual-style tool config (add .bin() if you want shims)
-    .bin('existing-tool')
+    .bin("existing-tool"),
 );
 
 // Explicit manual method without params
 export default defineTool((install) =>
-  install('manual')
-    .bin('tokscale')
-    .dependsOn('bun')
+  install("manual")
+    .bin("tokscale")
+    .dependsOn("bun")
     .zsh((shell) =>
       shell.functions({
         tokscale: `bun x tokscale@latest`,
-      })
-    )
+      }),
+    ),
 );
 
 // With binary path
 export default defineTool((install, ctx) =>
-  install('manual', {
-    binaryPath: '~/dotfiles/bin/custom-tool',
-  }).bin('custom-tool')
+  install("manual", {
+    binaryPath: "~/dotfiles/bin/custom-tool",
+  }).bin("custom-tool"),
 );
 ```
 
@@ -54,16 +54,16 @@ If `binaryPath` is not specified, the plugin only processes shell configurations
 #### Configuration-Only Tool
 
 ```typescript
-export default defineTool((install, ctx) => install().zsh((shell) => shell.aliases({ ll: 'ls -la' })));
+export default defineTool((install, ctx) => install().zsh((shell) => shell.aliases({ ll: "ls -la" })));
 ```
 
 #### With Binary Path
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('manual', {
-    binaryPath: '~/dotfiles/bin/tool',
-  }).bin('tool')
+  install("manual", {
+    binaryPath: "~/dotfiles/bin/tool",
+  }).bin("tool"),
 );
 ```
 
@@ -72,8 +72,8 @@ export default defineTool((install, ctx) =>
 ```typescript
 export default defineTool((install, ctx) =>
   install()
-    .bin('docker')
-    .zsh((shell) => shell.completions('_docker'))
+    .bin("docker")
+    .zsh((shell) => shell.completions("_docker")),
 );
 ```
 
@@ -129,7 +129,7 @@ Implements `IInstallerPlugin` with:
 This package extends the core type system via module augmentation:
 
 ```typescript
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
     manual: ManualInstallParams;
   }
@@ -139,7 +139,7 @@ declare module '@dotfiles/core' {
   interface IToolConfigRegistry {
     manual: ManualToolConfig;
   }
-  interface IPluginResultRegistry extends RegisterPluginResult<'manual', ManualInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<"manual", ManualInstallResult> {}
 }
 ```
 

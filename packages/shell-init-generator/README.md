@@ -30,7 +30,7 @@ The shell-init-generator creates shell-specific initialization scripts that conf
 Main class for generating shell initialization scripts.
 
 ```typescript
-import { ShellInitGenerator } from '@dotfiles/shell-init-generator';
+import { ShellInitGenerator } from "@dotfiles/shell-init-generator";
 
 const generator = new ShellInitGenerator(logger, fileSystem, config, toolRegistry);
 
@@ -52,14 +52,14 @@ interface IShellInitGenerator {
 ### Basic Generation
 
 ```typescript
-import { ShellInitGenerator } from '@dotfiles/shell-init-generator';
+import { ShellInitGenerator } from "@dotfiles/shell-init-generator";
 
 const generator = new ShellInitGenerator(logger, fileSystem, config, toolRegistry);
 
 // Generate initialization scripts for all configured shells
 const generatedFiles = await generator.generate();
 
-console.log('Generated files:', generatedFiles);
+console.log("Generated files:", generatedFiles);
 // [
 //   '~/.dotfiles/shell/init.zsh',
 //   '~/.dotfiles/shell/init.bash',
@@ -72,8 +72,8 @@ console.log('Generated files:', generatedFiles);
 ```typescript
 const config = {
   shellInit: {
-    targetDirectory: '~/.dotfiles/shell',
-    shells: ['zsh', 'bash'],
+    targetDirectory: "~/.dotfiles/shell",
+    shells: ["zsh", "bash"],
   },
   // ...
 };
@@ -112,7 +112,7 @@ Example completion discovery:
 
 ```typescript
 // Finds completions in tool directories
-const completions = ['~/.dotfiles/tools/fzf/completion.zsh', '~/.dotfiles/tools/gh/gh_completion.zsh'];
+const completions = ["~/.dotfiles/tools/fzf/completion.zsh", "~/.dotfiles/tools/gh/gh_completion.zsh"];
 ```
 
 ## Components
@@ -122,8 +122,8 @@ const completions = ['~/.dotfiles/tools/fzf/completion.zsh', '~/.dotfiles/tools/
 Discovers and generates completion loading scripts.
 
 ```typescript
-import { createShell } from '@dotfiles/core';
-import { CompletionGenerator } from '@dotfiles/shell-init-generator';
+import { createShell } from "@dotfiles/core";
+import { CompletionGenerator } from "@dotfiles/shell-init-generator";
 
 const shell = createShell();
 const completionGenerator = new CompletionGenerator(logger, fileSystem, shell);
@@ -143,11 +143,11 @@ const completions = await completionGenerator.discover();
 Updates shell profile files to source generated scripts.
 
 ```typescript
-import { ProfileUpdater } from '@dotfiles/shell-init-generator';
+import { ProfileUpdater } from "@dotfiles/shell-init-generator";
 
 const updater = new ProfileUpdater(logger, fileSystem);
 
-await updater.update('~/.zshrc', '~/.dotfiles/shell/init.zsh');
+await updater.update("~/.zshrc", "~/.dotfiles/shell/init.zsh");
 ```
 
 **Features:**
@@ -162,16 +162,16 @@ await updater.update('~/.zshrc', '~/.dotfiles/shell/init.zsh');
 Convert typed emissions to shell-specific syntax.
 
 ```typescript
-import type { FormatterConfig } from '@dotfiles/shell-emissions';
-import { createEmissionFormatter, ZshEmissionFormatter } from '@dotfiles/shell-init-generator';
+import type { FormatterConfig } from "@dotfiles/shell-emissions";
+import { createEmissionFormatter, ZshEmissionFormatter } from "@dotfiles/shell-init-generator";
 
 const config: FormatterConfig = {
-  homeDir: '/home/user',
-  onceScriptDir: '/home/user/.dotfiles/once',
+  homeDir: "/home/user",
+  onceScriptDir: "/home/user/.dotfiles/once",
 };
 
 // Get formatter for specific shell
-const formatter = createEmissionFormatter('zsh', config);
+const formatter = createEmissionFormatter("zsh", config);
 
 // Or instantiate directly
 const zshFormatter = new ZshEmissionFormatter(config);
@@ -216,17 +216,17 @@ class CustomShellGenerator extends BaseShellGenerator {
 Shell init configuration in `dotfiles.config.ts`:
 
 ```typescript
-import { defineConfig } from '@alexgorbatchev/dotfiles';
+import { defineConfig } from "@alexgorbatchev/dotfiles";
 
 export default defineConfig(() => ({
   features: {
     shellInstall: {
       // Path to zsh configuration file (optional)
-      zsh: '~/.zshrc',
+      zsh: "~/.zshrc",
       // Path to bash configuration file (optional)
-      bash: '~/.bashrc',
+      bash: "~/.bashrc",
       // Path to powershell configuration file (optional)
-      powershell: '~/.config/powershell/profile.ps1',
+      powershell: "~/.config/powershell/profile.ps1",
     },
   },
 }));

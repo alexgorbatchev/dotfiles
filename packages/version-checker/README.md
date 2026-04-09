@@ -11,14 +11,14 @@ Version checking utilities using semver for comparing and validating semantic ve
 ## Usage
 
 ```typescript
-import { VersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
+import { VersionChecker, VersionComparisonStatus } from "@dotfiles/version-checker";
 
 const checker = new VersionChecker(logger, githubClient);
 
 // Check version status
-const status = await checker.checkVersionStatus('1.0.0', '1.1.0');
+const status = await checker.checkVersionStatus("1.0.0", "1.1.0");
 // Returns: VersionComparisonStatus.NEWER_AVAILABLE
 
 // Get latest version from GitHub
-const latestVersion = await checker.getLatestToolVersion('owner', 'repo');
+const latestVersion = await checker.getLatestToolVersion("owner", "repo");
 ```

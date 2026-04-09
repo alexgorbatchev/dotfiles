@@ -13,28 +13,28 @@ Installer plugin for zsh plugins via git clone. Clones git repositories into a c
 ## Usage
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 // GitHub shorthand
 export default defineTool((install) =>
-  install('zsh-plugin', {
-    repo: 'jeffreytse/zsh-vi-mode',
-  })
+  install("zsh-plugin", {
+    repo: "jeffreytse/zsh-vi-mode",
+  }),
 );
 
 // Full git URL
 export default defineTool((install) =>
-  install('zsh-plugin', {
-    url: 'https://github.com/jeffreytse/zsh-vi-mode.git',
-  })
+  install("zsh-plugin", {
+    url: "https://github.com/jeffreytse/zsh-vi-mode.git",
+  }),
 );
 
 // Custom plugin name
 export default defineTool((install) =>
-  install('zsh-plugin', {
-    repo: 'jeffreytse/zsh-vi-mode',
-    pluginName: 'vi-mode', // Clones to plugins/vi-mode instead of plugins/zsh-vi-mode
-  })
+  install("zsh-plugin", {
+    repo: "jeffreytse/zsh-vi-mode",
+    pluginName: "vi-mode", // Clones to plugins/vi-mode instead of plugins/zsh-vi-mode
+  }),
 );
 ```
 

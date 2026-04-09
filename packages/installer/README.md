@@ -138,15 +138,15 @@ Interfaces with the GitHub API for fetching releases and managing rate limits.
 **Example Usage:**
 
 ```typescript
-import { GitHubApiClient } from '@dotfiles/installer/clients/github';
+import { GitHubApiClient } from "@dotfiles/installer/clients/github";
 
 const client = new GitHubApiClient(logger, config, downloader, cache);
 
 // Get latest release
-const release = await client.getLatestRelease('owner', 'repo');
+const release = await client.getLatestRelease("owner", "repo");
 
 // Get release by semver constraint
-const matchingRelease = await client.getReleaseByConstraint('owner', 'repo', '^1.0.0');
+const matchingRelease = await client.getReleaseByConstraint("owner", "repo", "^1.0.0");
 
 // Check rate limits
 const rateLimit = await client.getRateLimit();
@@ -240,18 +240,18 @@ Downloads and installs tools from GitHub releases with flexible asset selection.
 **Example:**
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from "@dotfiles/cli";
 
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'junegunn/fzf',
-    assetPattern: '*linux*amd64*.tar.gz',
+  install("github-release", {
+    repo: "junegunn/fzf",
+    assetPattern: "*linux*amd64*.tar.gz",
   })
-    .bin('fzf')
-    .version('latest')
-    .hook('after-extract', async (context) => {
+    .bin("fzf")
+    .version("latest")
+    .hook("after-extract", async (context) => {
       // Custom post-extraction logic
-    })
+    }),
 );
 ```
 
@@ -271,12 +271,12 @@ Installs tools using the Homebrew package manager.
 
 ```typescript
 const toolConfig: BrewToolConfig = {
-  name: 'jq',
-  binaries: ['jq'],
-  installationMethod: 'brew',
+  name: "jq",
+  binaries: ["jq"],
+  installationMethod: "brew",
   installParams: {
-    formula: 'jq',
-    tap: 'homebrew/core',
+    formula: "jq",
+    tap: "homebrew/core",
   },
 };
 ```
@@ -295,12 +295,12 @@ Downloads and executes installation scripts.
 
 ```typescript
 const toolConfig: CurlScriptToolConfig = {
-  name: 'rustup',
-  binaries: ['rustup', 'cargo'],
-  installationMethod: 'curl-script',
+  name: "rustup",
+  binaries: ["rustup", "cargo"],
+  installationMethod: "curl-script",
   installParams: {
-    url: 'https://sh.rustup.rs',
-    shell: 'bash',
+    url: "https://sh.rustup.rs",
+    shell: "bash",
   },
 };
 ```
@@ -313,11 +313,11 @@ Downloads and extracts tar archives from URLs.
 
 ```typescript
 const toolConfig: CurlTarToolConfig = {
-  name: 'node',
-  binaries: ['node', 'npm'],
-  installationMethod: 'curl-tar',
+  name: "node",
+  binaries: ["node", "npm"],
+  installationMethod: "curl-tar",
   installParams: {
-    url: 'https://nodejs.org/dist/v18.17.0/node-v18.17.0-linux-x64.tar.xz',
+    url: "https://nodejs.org/dist/v18.17.0/node-v18.17.0-linux-x64.tar.xz",
   },
 };
 ```
@@ -337,15 +337,15 @@ Installs Rust tools using pre-compiled binaries from cargo-quickinstall or GitHu
 
 ```typescript
 const toolConfig: CargoToolConfig = {
-  name: 'eza',
-  binaries: ['eza'],
-  version: 'latest',
-  installationMethod: 'cargo',
+  name: "eza",
+  binaries: ["eza"],
+  version: "latest",
+  installationMethod: "cargo",
   installParams: {
-    crateName: 'eza',
-    binarySource: 'cargo-quickinstall',
-    versionSource: 'cargo-toml',
-    githubRepo: 'eza-community/eza',
+    crateName: "eza",
+    binarySource: "cargo-quickinstall",
+    versionSource: "cargo-toml",
+    githubRepo: "eza-community/eza",
   },
 };
 ```
@@ -358,11 +358,11 @@ Handles tools that require manual installation or are already installed.
 
 ```typescript
 const toolConfig: ManualToolConfig = {
-  name: 'custom-tool',
-  binaries: ['custom-tool'],
-  installationMethod: 'manual',
+  name: "custom-tool",
+  binaries: ["custom-tool"],
+  installationMethod: "manual",
   installParams: {
-    binaryPath: '/usr/local/bin/custom-tool',
+    binaryPath: "/usr/local/bin/custom-tool",
   },
 };
 ```
@@ -404,7 +404,7 @@ const hookExecutor = new HookExecutor(logger);
 
 const enhancedContext = hookExecutor.createEnhancedContext(baseContext, fileSystem);
 
-const result = await hookExecutor.executeHook('afterInstall', hook, enhancedContext, {
+const result = await hookExecutor.executeHook("afterInstall", hook, enhancedContext, {
   timeoutMs: 30000,
   continueOnError: false,
 });
@@ -452,22 +452,22 @@ interface InstallHookContext extends BaseToolContext {
 ### Example Hook Usage
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
-import path from 'node:path';
+import { defineTool } from "@dotfiles/cli";
+import path from "node:path";
 
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'sharkdp/bat',
+  install("github-release", {
+    repo: "sharkdp/bat",
   })
-    .bin('bat')
-    .version('latest')
-    .hook('after-install', async (context) => {
+    .bin("bat")
+    .version("latest")
+    .hook("after-install", async (context) => {
       // Create config directory
-      const configDir = path.join(context.currentDir, 'config');
+      const configDir = path.join(context.currentDir, "config");
       await context.fileSystem.ensureDir(configDir);
 
       // Create default config
-      const configPath = path.join(configDir, 'config');
+      const configPath = path.join(configDir, "config");
       await context.fileSystem.writeFile(configPath, `--theme="Monokai Extended"\n--style="numbers,changes,header"\n`);
 
       // Use the $ shell executor for running commands
@@ -475,7 +475,7 @@ export default defineTool((install, ctx) =>
       if (primaryBinaryPath) {
         await context.$`${primaryBinaryPath} --version`;
       }
-    })
+    }),
 );
 ```
 
@@ -499,12 +499,12 @@ The installer provides several shared utilities to eliminate code duplication:
 Handles file downloads with progress tracking and caching.
 
 ```typescript
-import { downloadWithProgress } from '@dotfiles/installer/utils';
+import { downloadWithProgress } from "@dotfiles/installer/utils";
 
 await downloadWithProgress(
-  'https://example.com/tool.tar.gz',
-  '/path/to/tool.tar.gz',
-  'tool.tar.gz',
+  "https://example.com/tool.tar.gz",
+  "/path/to/tool.tar.gz",
+  "tool.tar.gz",
   downloader,
   options,
 );
@@ -521,7 +521,7 @@ Executes afterDownload hook if configured.
 Executes afterExtract hook if configured.
 
 ```typescript
-import { executeAfterDownloadHook, executeAfterExtractHook } from '@dotfiles/installer/utils';
+import { executeAfterDownloadHook, executeAfterExtractHook } from "@dotfiles/installer/utils";
 
 const downloadResult = await executeAfterDownloadHook(
   toolConfig,
@@ -556,7 +556,7 @@ return withInstallErrorHandling('github-release', toolName, logger, async () => 
 Creates a tool-specific filesystem instance with proper tracking.
 
 ```typescript
-import { createToolFileSystem } from '@dotfiles/installer/utils';
+import { createToolFileSystem } from "@dotfiles/installer/utils";
 
 const toolFs = createToolFileSystem(baseFileSystem, toolName);
 ```
@@ -572,12 +572,12 @@ Generates full paths for all configured binaries.
 Extracts binary names from the binaries configuration.
 
 ```typescript
-import { getBinaryNames, getBinaryPaths } from '@dotfiles/installer/utils';
+import { getBinaryNames, getBinaryPaths } from "@dotfiles/installer/utils";
 
-const binaryPaths = getBinaryPaths(toolConfig.binaries, 'my-tool', '/path/to/install');
+const binaryPaths = getBinaryPaths(toolConfig.binaries, "my-tool", "/path/to/install");
 // ['/path/to/install/my-tool', '/path/to/install/helper']
 
-const binaryNames = getBinaryNames(toolConfig.binaries, 'my-tool');
+const binaryNames = getBinaryNames(toolConfig.binaries, "my-tool");
 // ['my-tool', 'helper']
 ```
 
@@ -615,15 +615,15 @@ import {
   createInstallerTestSetup,
   createTestContext,
   setupFileSystemMocks,
-} from './installer-test-helpers';
+} from "./installer-test-helpers";
 
 const setup = await createInstallerTestSetup();
 const context = createTestContext(setup);
 const toolConfig = createGithubReleaseToolConfig({
-  installParams: { repo: 'owner/repo' },
+  installParams: { repo: "owner/repo" },
 });
 
-const result = await setup.installer.install('tool-name', toolConfig);
+const result = await setup.installer.install("tool-name", toolConfig);
 ```
 
 ## Dependencies
@@ -695,9 +695,9 @@ To add a new installation method, you need to integrate it into multiple parts o
 
 ```typescript
 // src/types/tool-config/myCustomInstallParamsSchema.ts
-import { z } from 'zod';
-import { baseInstallParamsSchema } from './baseInstallParamsSchema';
-import { installHookSchema } from './installHookSchema';
+import { z } from "zod";
+import { baseInstallParamsSchema } from "./baseInstallParamsSchema";
+import { installHookSchema } from "./installHookSchema";
 
 export const myCustomInstallParamsSchema = baseInstallParamsSchema.extend({
   /**
@@ -715,7 +715,7 @@ export const myCustomInstallParamsSchema = baseInstallParamsSchema.extend({
    */
   hooks: z
     .object({
-      'before-install': z.array(installHookSchema).optional(),
+      "before-install": z.array(installHookSchema).optional(),
       afterDownload: installHookSchema.optional(),
       afterExtract: installHookSchema.optional(),
       afterInstall: installHookSchema.optional(),
@@ -730,12 +730,12 @@ export type MyCustomInstallParams = z.infer<typeof myCustomInstallParamsSchema>;
 
 ```typescript
 // src/types/tool-config/myCustomToolConfigSchema.ts
-import { z } from 'zod';
-import { baseToolConfigPropertiesSchema } from './baseToolConfigPropertiesSchema';
-import { myCustomInstallParamsSchema } from './myCustomInstallParamsSchema';
+import { z } from "zod";
+import { baseToolConfigPropertiesSchema } from "./baseToolConfigPropertiesSchema";
+import { myCustomInstallParamsSchema } from "./myCustomInstallParamsSchema";
 
 export const myCustomToolConfigSchema = baseToolConfigPropertiesSchema.extend({
-  installationMethod: z.literal('my-custom'),
+  installationMethod: z.literal("my-custom"),
   installParams: myCustomInstallParamsSchema,
 });
 
@@ -746,17 +746,17 @@ export type MyCustomToolConfig = z.infer<typeof myCustomToolConfigSchema>;
 
 ```typescript
 // src/types/tool-config/index.ts
-export * from './myCustomInstallParamsSchema';
-export * from './myCustomToolConfigSchema';
+export * from "./myCustomInstallParamsSchema";
+export * from "./myCustomToolConfigSchema";
 ```
 
 #### Step 1d: Add to Tool Config Schema Union
 
 ```typescript
 // src/types/tool-config/toolConfigSchema.ts
-import { myCustomToolConfigSchema } from './myCustomToolConfigSchema';
+import { myCustomToolConfigSchema } from "./myCustomToolConfigSchema";
 
-export const toolConfigSchema = z.discriminatedUnion('installationMethod', [
+export const toolConfigSchema = z.discriminatedUnion("installationMethod", [
   githubReleaseToolConfigSchema,
   brewToolConfigSchema,
   cargoToolConfigSchema,
@@ -771,12 +771,12 @@ export const toolConfigSchema = z.discriminatedUnion('installationMethod', [
 
 ```typescript
 // src/types/tool-config/platformConfigSchema.ts
-import { myCustomInstallParamsSchema } from './myCustomInstallParamsSchema';
+import { myCustomInstallParamsSchema } from "./myCustomInstallParamsSchema";
 
 export const platformConfigSchema = commonToolConfigPropertiesSchema
   .extend({
     installationMethod: z
-      .enum(['github-release', 'brew', 'curl-script', 'curl-tar', 'cargo', 'my-custom', 'manual'])
+      .enum(["github-release", "brew", "curl-script", "curl-tar", "cargo", "my-custom", "manual"])
       .optional(),
     installParams: z
       .union([
@@ -802,16 +802,16 @@ export const platformConfigSchema = commonToolConfigPropertiesSchema
 import type {
   // ... other imports
   MyCustomInstallParams,
-} from './tool-config';
+} from "./tool-config";
 
 export interface IPlatformConfigBuilder {
   // ... other methods
-  install(method: 'my-custom', params: MyCustomInstallParams): this;
+  install(method: "my-custom", params: MyCustomInstallParams): this;
 }
 
 export interface IToolConfigBuilder {
   // ... other methods
-  install(method: 'my-custom', params: MyCustomInstallParams): this;
+  install(method: "my-custom", params: MyCustomInstallParams): this;
 }
 ```
 
@@ -823,11 +823,11 @@ import type {
   // ... other imports
   MyCustomInstallParams,
   MyCustomToolConfig,
-} from '@types';
+} from "@types";
 
 export class ToolConfigBuilderImpl implements ToolConfigBuilderInterface {
   // Add to overloaded install method
-  install(method: 'my-custom', params: MyCustomInstallParams): this;
+  install(method: "my-custom", params: MyCustomInstallParams): this;
   install(method: ToolConfigInstallationMethod, params: ToolConfigInstallParams): this {
     this.currentInstallationMethod = method;
     this.currentInstallParams = params;
@@ -839,22 +839,22 @@ export class ToolConfigBuilderImpl implements ToolConfigBuilderInterface {
     // ... existing code
     switch (this.currentInstallationMethod) {
       // ... existing cases
-      case 'my-custom':
+      case "my-custom":
         return {
           ...installableBase,
-          installationMethod: 'my-custom',
+          installationMethod: "my-custom",
           installParams: this.currentInstallParams,
         } as MyCustomToolConfig;
-        // ... other cases
+      // ... other cases
     }
   }
 
   // Update error message
   private throwInvalidMethodError(): never {
     const invalidMethodMessage = toolConfigBuilderLogMessages.configurationFieldInvalid(
-      'installationMethod',
-      this.currentInstallationMethod ?? 'unknown',
-      'github-release | brew | curl-script | curl-tar | cargo | my-custom | manual',
+      "installationMethod",
+      this.currentInstallationMethod ?? "unknown",
+      "github-release | brew | curl-script | curl-tar | cargo | my-custom | manual",
     );
     this.logger.error(invalidMethodMessage);
     throw new Error(invalidMethodMessage);
@@ -866,16 +866,16 @@ export class ToolConfigBuilderImpl implements ToolConfigBuilderInterface {
 
 ```typescript
 // src/installers/my-custom/installFromMyCustom.ts
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, MyCustomToolConfig } from '@dotfiles/schemas';
-import path from 'node:path';
-import type { IInstallOptions, InstallResult } from '../../types';
-import type { HookExecutor } from '../../utils';
-import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../../utils';
-import { messages } from './log-messages';
+import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
+import type { IDownloader } from "@dotfiles/downloader";
+import type { IFileSystem } from "@dotfiles/file-system";
+import type { TsLogger } from "@dotfiles/logger";
+import type { BaseInstallContext, MyCustomToolConfig } from "@dotfiles/schemas";
+import path from "node:path";
+import type { IInstallOptions, InstallResult } from "../../types";
+import type { HookExecutor } from "../../utils";
+import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from "../../utils";
+import { messages } from "./log-messages";
 
 export async function installFromMyCustom(
   toolName: string,
@@ -888,13 +888,13 @@ export async function installFromMyCustom(
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
 ): Promise<InstallResult> {
-  const logger = parentLogger.getSubLogger({ name: 'installFromMyCustom' });
+  const logger = parentLogger.getSubLogger({ name: "installFromMyCustom" });
   logger.debug(installerLogMessages.lifecycle.methodStarted(toolName));
 
   if (!toolConfig.installParams) {
     return {
       success: false,
-      error: 'Install parameters not specified',
+      error: "Install parameters not specified",
     };
   }
 
@@ -943,7 +943,7 @@ export async function installFromMyCustom(
     if (!installedDir) {
       return {
         success: false,
-        error: 'Installed directory not available',
+        error: "Installed directory not available",
       };
     }
 
@@ -958,22 +958,22 @@ export async function installFromMyCustom(
     };
   };
 
-  return withInstallErrorHandling('my-custom', toolName, logger, operation);
+  return withInstallErrorHandling("my-custom", toolName, logger, operation);
 }
 
 // Helper functions (similar to cargo installer)
 async function executeAfterDownloadHook(
   toolConfig: MyCustomToolConfig,
   hookExecutor: HookExecutor,
-  hookContext: BaseInstallContext & { downloadPath: string; },
+  hookContext: BaseInstallContext & { downloadPath: string },
   downloadPath: string,
   toolFs: IFileSystem,
   logger: TsLogger,
-): Promise<InstallResult | { success: true; }> {
+): Promise<InstallResult | { success: true }> {
   if (toolConfig.installParams?.hooks?.afterDownload) {
     const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, downloadPath }, toolFs, logger);
     const hookResult = await hookExecutor.executeHook(
-      'afterDownload',
+      "afterDownload",
       toolConfig.installParams.hooks.afterDownload,
       enhancedContext,
     );
@@ -991,11 +991,11 @@ async function executeAfterInstallHook(
   installResult: any,
   toolFs: IFileSystem,
   logger: TsLogger,
-): Promise<InstallResult | { success: true; }> {
+): Promise<InstallResult | { success: true }> {
   if (toolConfig.installParams?.hooks?.afterInstall) {
     const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, installResult }, toolFs, logger);
     const finalHookResult = await hookExecutor.executeHook(
-      'afterInstall',
+      "afterInstall",
       toolConfig.installParams.hooks.afterInstall,
       enhancedContext,
     );
@@ -1011,7 +1011,7 @@ async function executeAfterInstallHook(
 
 ```typescript
 // In src/Installer.ts
-import { installFromMyCustom } from './installers';
+import { installFromMyCustom } from "./installers";
 
 export class Installer implements IInstaller {
   // Add to the switch statement in the install method
@@ -1020,10 +1020,10 @@ export class Installer implements IInstaller {
 
     switch (toolConfig.installationMethod) {
       // ... existing cases
-      case 'my-custom':
+      case "my-custom":
         result = await this.installFromMyCustom(toolName, toolConfig, context, options);
         break;
-        // ... other cases
+      // ... other cases
     }
   }
 
@@ -1055,9 +1055,9 @@ export class Installer implements IInstaller {
 // src/modules/logger/templates/installer/debug.ts
 export const installerDebugTemplates = {
   // ... existing templates
-  installingFromMyCustom: () => createSafeLogMessage('Installing from my-custom: toolName=%s, customConfig=%o'),
-  customProcessingStarted: () => createSafeLogMessage('Starting custom processing for %s'),
-  customProcessingCompleted: () => createSafeLogMessage('Custom processing completed for %s'),
+  installingFromMyCustom: () => createSafeLogMessage("Installing from my-custom: toolName=%s, customConfig=%o"),
+  customProcessingStarted: () => createSafeLogMessage("Starting custom processing for %s"),
+  customProcessingCompleted: () => createSafeLogMessage("Custom processing completed for %s"),
 } satisfies SafeLogMessageMap;
 ```
 
@@ -1065,12 +1065,12 @@ export const installerDebugTemplates = {
 
 ```typescript
 // src/__tests__/Installer--installFromMyCustom.test.ts
-import type { MyCustomToolConfig } from '@dotfiles/schemas';
-import { FetchMockHelper } from '@dotfiles/testing-helpers';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { createInstallerTestSetup } from './installer-test-helpers';
+import type { MyCustomToolConfig } from "@dotfiles/schemas";
+import { FetchMockHelper } from "@dotfiles/testing-helpers";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { createInstallerTestSetup } from "./installer-test-helpers";
 
-describe('Installer - installFromMyCustom', () => {
+describe("Installer - installFromMyCustom", () => {
   const fetchMockHelper = new FetchMockHelper();
 
   beforeEach(() => {
@@ -1081,27 +1081,27 @@ describe('Installer - installFromMyCustom', () => {
     fetchMockHelper.restore();
   });
 
-  it('should install tool using custom method', async () => {
+  it("should install tool using custom method", async () => {
     const setup = await createInstallerTestSetup();
 
     const toolConfig: MyCustomToolConfig = {
-      name: 'test-tool',
-      version: 'latest',
-      binaries: ['test-tool'],
-      installationMethod: 'my-custom',
+      name: "test-tool",
+      version: "latest",
+      binaries: ["test-tool"],
+      installationMethod: "my-custom",
       installParams: {
-        customUrl: 'https://example.com/tool',
-        customOptions: ['--feature', 'advanced'],
+        customUrl: "https://example.com/tool",
+        customOptions: ["--feature", "advanced"],
       },
     };
 
-    const result = await setup.installer.install('test-tool', toolConfig);
+    const result = await setup.installer.install("test-tool", toolConfig);
 
     expect(result.success).toBe(true);
     expect(result.binaryPaths).toHaveLength(1);
   });
 
-  it('should handle custom options correctly', async () => {
+  it("should handle custom options correctly", async () => {
     // ... additional test cases
   });
 });
@@ -1113,18 +1113,18 @@ Once your installer is integrated, you can use it in tool configuration files:
 
 ```typescript
 // configs-migrated/my-tool/my-tool.tool.ts
-import { Platform, type ToolConfigBuilder } from '../../src/types';
+import { Platform, type ToolConfigBuilder } from "../../src/types";
 
 export default async (c: ToolConfigBuilder): Promise<void> => {
-  c.bin('my-tool')
-    .version('latest')
-    .install('my-custom', {
-      customUrl: 'https://example.com/releases/my-tool-latest.tar.gz',
-      customOptions: ['--optimize'],
+  c.bin("my-tool")
+    .version("latest")
+    .install("my-custom", {
+      customUrl: "https://example.com/releases/my-tool-latest.tar.gz",
+      customOptions: ["--optimize"],
     })
     .platform(Platform.MacOS, async (c) => {
-      c.install('my-custom', {
-        customUrl: 'https://example.com/releases/my-tool-latest-macos.tar.gz',
+      c.install("my-custom", {
+        customUrl: "https://example.com/releases/my-tool-latest-macos.tar.gz",
       });
     });
 };
@@ -1210,11 +1210,11 @@ The cargo installer serves as a complete example of proper integration:
 This integration allows tools to be configured declaratively:
 
 ```typescript
-c.install('cargo', {
-  crateName: 'eza',
-  binarySource: 'cargo-quickinstall',
-  versionSource: 'cargo-toml',
-  githubRepo: 'eza-community/eza',
+c.install("cargo", {
+  crateName: "eza",
+  binarySource: "cargo-quickinstall",
+  versionSource: "cargo-toml",
+  githubRepo: "eza-community/eza",
 });
 ```
 
@@ -1226,7 +1226,7 @@ For more complex installation methods, consider using the step-based pipeline:
 
 ```typescript
 // src/installers/my-custom/installFromMyCustomPipeline.ts
-import { createBinarySetupStep, createDownloadStep } from '../../utils';
+import { createBinarySetupStep, createDownloadStep } from "../../utils";
 
 export async function installFromMyCustomPipeline(
   toolName: string,
@@ -1235,14 +1235,14 @@ export async function installFromMyCustomPipeline(
   options: IInstallOptions | undefined,
   parentLogger: TsLogger,
 ): Promise<InstallResult> {
-  const logger = parentLogger.getSubLogger({ name: 'installFromMyCustomPipeline' });
+  const logger = parentLogger.getSubLogger({ name: "installFromMyCustomPipeline" });
 
   // Create custom steps
   const steps = [
-    createDownloadStep(toolConfig.installParams.customUrl, 'custom-file', context.downloader),
+    createDownloadStep(toolConfig.installParams.customUrl, "custom-file", context.downloader),
     // Add custom step here
     new MyCustomProcessingStep({ customOptions: toolConfig.installParams.customOptions }),
-    createBinarySetupStep(toolName, 'direct'),
+    createBinarySetupStep(toolName, "direct"),
   ];
 
   // Execute pipeline
@@ -1265,7 +1265,7 @@ import {
   executeAfterExtractHook,
   getBinaryPaths,
   withInstallErrorHandling,
-} from '@dotfiles/installer/utils';
+} from "@dotfiles/installer/utils";
 ```
 
 ### 2. Proper Error Handling
@@ -1284,7 +1284,7 @@ return withInstallErrorHandling('method-name', toolName, logger, async () => {
 Use the structured logging templates from `log-messages.ts`:
 
 ```typescript
-import { installerLogMessages } from '@dotfiles/installer/utils/log-messages';
+import { installerLogMessages } from "@dotfiles/installer/utils/log-messages";
 
 logger.debug(installerLogMessages.gitHubRelease.downloadingAsset(url));
 logger.debug(installerLogMessages.cargo.installingTool(toolName));
@@ -1323,7 +1323,7 @@ const toolFs = createToolFileSystem(fileSystem, toolName);
 Create comprehensive tests using the shared test helpers:
 
 ```typescript
-import { createInstallerTestSetup, createTestContext, setupFileSystemMocks } from './installer-test-helpers';
+import { createInstallerTestSetup, createTestContext, setupFileSystemMocks } from "./installer-test-helpers";
 
 const setup = await createInstallerTestSetup();
 setupFileSystemMocks(setup);
@@ -1335,7 +1335,7 @@ const context = createTestContext(setup);
 Use the BinarySetupService for consistent binary installation:
 
 ```typescript
-import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from '@dotfiles/installer/utils';
+import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from "@dotfiles/installer/utils";
 
 // For archives
 await setupBinariesFromArchive(fileSystem, toolName, toolConfig, context, extractDir, logger);
@@ -1349,7 +1349,7 @@ await setupBinariesFromDirectDownload(fileSystem, toolName, toolConfig, context,
 Use `setupCompletions` to install shell completions from extracted archives:
 
 ```typescript
-import { setupCompletions } from '@dotfiles/installer/utils';
+import { setupCompletions } from "@dotfiles/installer/utils";
 
 // After extracting an archive
 await setupCompletions(fileSystem, toolName, toolConfig, context, extractDir, logger);

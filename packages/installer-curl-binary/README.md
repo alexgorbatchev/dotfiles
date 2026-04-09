@@ -9,12 +9,12 @@ the downloaded file is the binary itself.
 ## Usage
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install('curl-binary', {
-    url: 'https://example.com/tool-v1.0.0-linux-amd64',
-  }).bin('my-tool')
+  install("curl-binary", {
+    url: "https://example.com/tool-v1.0.0-linux-amd64",
+  }).bin("my-tool"),
 );
 ```
 

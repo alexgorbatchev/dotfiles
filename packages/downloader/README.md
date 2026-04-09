@@ -33,14 +33,14 @@ The downloader package handles all file download operations for the dotfiles sys
 Main class for downloading files.
 
 ```typescript
-import { Downloader } from '@dotfiles/downloader';
+import { Downloader } from "@dotfiles/downloader";
 
 const downloader = new Downloader(logger, fileSystem, strategy);
 
 await downloader.download({
-  url: 'https://example.com/file.tar.gz',
-  destination: '/path/to/file.tar.gz',
-  filename: 'file.tar.gz',
+  url: "https://example.com/file.tar.gz",
+  destination: "/path/to/file.tar.gz",
+  filename: "file.tar.gz",
   showProgress: true,
 });
 ```
@@ -79,9 +79,9 @@ interface IDownloadStrategy {
 ### Basic Download
 
 ```typescript
-import { Downloader, NodeFetchStrategy } from '@dotfiles/downloader';
-import { FileSystem } from '@dotfiles/file-system';
-import { createTsLogger } from '@dotfiles/logger';
+import { Downloader, NodeFetchStrategy } from "@dotfiles/downloader";
+import { FileSystem } from "@dotfiles/file-system";
+import { createTsLogger } from "@dotfiles/logger";
 
 const logger = createTsLogger();
 const fileSystem = new FileSystem(logger);
@@ -90,9 +90,9 @@ const downloader = new Downloader(logger, fileSystem, strategy);
 
 // Download a file
 await downloader.download({
-  url: 'https://example.com/tool-v1.0.0.tar.gz',
-  destination: '/tmp/tool.tar.gz',
-  filename: 'tool.tar.gz',
+  url: "https://example.com/tool-v1.0.0.tar.gz",
+  destination: "/tmp/tool.tar.gz",
+  filename: "tool.tar.gz",
   showProgress: true,
 });
 ```
@@ -100,12 +100,12 @@ await downloader.download({
 ### Download with Progress Tracking
 
 ```typescript
-import { Downloader } from '@dotfiles/downloader';
+import { Downloader } from "@dotfiles/downloader";
 
 await downloader.download({
-  url: 'https://example.com/large-file.zip',
-  destination: '/tmp/large-file.zip',
-  filename: 'large-file.zip',
+  url: "https://example.com/large-file.zip",
+  destination: "/tmp/large-file.zip",
+  filename: "large-file.zip",
   showProgress: true, // Shows progress bar
 });
 
@@ -117,8 +117,8 @@ await downloader.download({
 ### Download with Caching
 
 ```typescript
-import { CachedDownloadStrategy, Downloader, NodeFetchStrategy } from '@dotfiles/downloader';
-import { FileCache } from '@dotfiles/downloader/cache';
+import { CachedDownloadStrategy, Downloader, NodeFetchStrategy } from "@dotfiles/downloader";
+import { FileCache } from "@dotfiles/downloader/cache";
 
 // Create cache
 const cache = new FileCache(logger, fileSystem, cacheDir);
@@ -132,16 +132,16 @@ const downloader = new Downloader(logger, fileSystem, cachedStrategy);
 
 // First download - fetches from URL
 await downloader.download({
-  url: 'https://example.com/tool.tar.gz',
-  destination: '/tmp/tool.tar.gz',
-  filename: 'tool.tar.gz',
+  url: "https://example.com/tool.tar.gz",
+  destination: "/tmp/tool.tar.gz",
+  filename: "tool.tar.gz",
 });
 
 // Second download - serves from cache
 await downloader.download({
-  url: 'https://example.com/tool.tar.gz', // Same URL
-  destination: '/tmp/tool-copy.tar.gz',
-  filename: 'tool.tar.gz',
+  url: "https://example.com/tool.tar.gz", // Same URL
+  destination: "/tmp/tool-copy.tar.gz",
+  filename: "tool.tar.gz",
 });
 ```
 
@@ -149,11 +149,11 @@ await downloader.download({
 
 ```typescript
 await downloader.download({
-  url: 'https://api.github.com/repos/owner/repo/releases/assets/12345',
-  destination: '/tmp/asset.zip',
-  filename: 'asset.zip',
+  url: "https://api.github.com/repos/owner/repo/releases/assets/12345",
+  destination: "/tmp/asset.zip",
+  filename: "asset.zip",
   headers: {
-    Accept: 'application/octet-stream',
+    Accept: "application/octet-stream",
     Authorization: `Bearer ${githubToken}`,
   },
 });
@@ -163,9 +163,9 @@ await downloader.download({
 
 ```typescript
 await downloader.download({
-  url: 'https://slow-server.example.com/file.tar.gz',
-  destination: '/tmp/file.tar.gz',
-  filename: 'file.tar.gz',
+  url: "https://slow-server.example.com/file.tar.gz",
+  destination: "/tmp/file.tar.gz",
+  filename: "file.tar.gz",
   timeout: 30000, // 30 seconds
 });
 ```
@@ -173,13 +173,13 @@ await downloader.download({
 ### Error Handling
 
 ```typescript
-import { DownloadError } from '@dotfiles/downloader';
+import { DownloadError } from "@dotfiles/downloader";
 
 try {
   await downloader.download({
-    url: 'https://example.com/file.tar.gz',
-    destination: '/tmp/file.tar.gz',
-    filename: 'file.tar.gz',
+    url: "https://example.com/file.tar.gz",
+    destination: "/tmp/file.tar.gz",
+    filename: "file.tar.gz",
   });
 } catch (error) {
   if (error instanceof DownloadError) {
@@ -204,7 +204,7 @@ Default strategy using Node.js native fetch API.
 - Proper error handling
 
 ```typescript
-import { NodeFetchStrategy } from '@dotfiles/downloader';
+import { NodeFetchStrategy } from "@dotfiles/downloader";
 
 const strategy = new NodeFetchStrategy(logger, fileSystem);
 ```
@@ -221,7 +221,7 @@ Wrapper that adds caching to any download strategy.
 - Cache hit/miss logging
 
 ```typescript
-import { CachedDownloadStrategy } from '@dotfiles/downloader';
+import { CachedDownloadStrategy } from "@dotfiles/downloader";
 
 const cachedStrategy = new CachedDownloadStrategy(baseStrategy, cache);
 ```
@@ -231,7 +231,7 @@ const cachedStrategy = new CachedDownloadStrategy(baseStrategy, cache);
 Implement your own download strategy:
 
 ```typescript
-import type { DownloadOptions, DownloadStrategy } from '@dotfiles/downloader';
+import type { DownloadOptions, DownloadStrategy } from "@dotfiles/downloader";
 
 class CustomStrategy implements DownloadStrategy {
   async download(options: DownloadOptions): Promise<void> {
@@ -249,7 +249,7 @@ const downloader = new Downloader(logger, fileSystem, new CustomStrategy());
 Implements file-based caching for downloads.
 
 ```typescript
-import { FileCache } from '@dotfiles/downloader/cache';
+import { FileCache } from "@dotfiles/downloader/cache";
 
 const cache = new FileCache(logger, fileSystem, cacheDirectory, {
   ttl: 86400, // 24 hours
@@ -298,7 +298,7 @@ interface ICacheOptions {
 The progress bar provides visual feedback during downloads:
 
 ```typescript
-import { ProgressBar } from '@dotfiles/downloader';
+import { ProgressBar } from "@dotfiles/downloader";
 
 const progressBar = new ProgressBar(filename);
 
@@ -384,13 +384,13 @@ The downloader uses structured logging:
 
 ```typescript
 // Log messages defined in log-messages.ts
-logger.debug('Starting download', { url, destination });
-logger.info('Download completed', { url, size, duration });
-logger.error('Download failed', { url, error, statusCode });
+logger.debug("Starting download", { url, destination });
+logger.info("Download completed", { url, size, duration });
+logger.error("Download failed", { url, error, statusCode });
 
 // Cache logging
-logger.debug('Cache hit', { url, cachedPath });
-logger.debug('Cache miss', { url });
+logger.debug("Cache hit", { url, cachedPath });
+logger.debug("Cache miss", { url });
 ```
 
 ## Performance Considerations
@@ -409,9 +409,9 @@ await stream.pipeTo(fileStream);
 ```typescript
 // Download multiple files in parallel
 await Promise.all([
-  downloader.download({ url: url1, destination: dest1, filename: 'file1' }),
-  downloader.download({ url: url2, destination: dest2, filename: 'file2' }),
-  downloader.download({ url: url3, destination: dest3, filename: 'file3' }),
+  downloader.download({ url: url1, destination: dest1, filename: "file1" }),
+  downloader.download({ url: url2, destination: dest2, filename: "file2" }),
+  downloader.download({ url: url3, destination: dest3, filename: "file3" }),
 ]);
 ```
 

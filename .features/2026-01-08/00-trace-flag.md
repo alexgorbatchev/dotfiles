@@ -17,9 +17,10 @@ The current implementation ties source location tracing (file paths and line num
 1. **CLI**: `createProgram.ts` defines `--log <level>` with valid levels: `trace`, `verbose`, `default`, `quiet`
 2. **Logger Factory**: In `createTsLogger.ts`, the `prettyLogTemplate` is conditionally set:
    ```typescript
-   const prettyLogTemplate = config.level === LogLevel.TRACE
-     ? '{{logLevelName}}\t{{filePathWithLine}} - ' // shows file:line
-     : '{{logLevelName}}\t'; // no file:line
+   const prettyLogTemplate =
+     config.level === LogLevel.TRACE
+       ? "{{logLevelName}}\t{{filePathWithLine}} - " // shows file:line
+       : "{{logLevelName}}\t"; // no file:line
    ```
 3. **Main**: In `main.ts`, `resolveLogLevel()` converts CLI flags to a log level, which is passed to `createTsLogger()`
 
@@ -67,7 +68,7 @@ export interface ILoggerConfig {
 - Set `prettyLogTemplate` based on `trace` flag only
 
 ```typescript
-const prettyLogTemplate = config.trace ? '{{logLevelName}}\t{{filePathWithLine}} - ' : '{{logLevelName}}\t';
+const prettyLogTemplate = config.trace ? "{{logLevelName}}\t{{filePathWithLine}} - " : "{{logLevelName}}\t";
 ```
 
 ### 4. Add `--trace` CLI flag (packages/cli/src/createProgram.ts)
@@ -86,7 +87,7 @@ Pass `trace` flag to logger configuration:
 
 ```typescript
 const rootLogger = createTsLogger({
-  name: 'cli',
+  name: "cli",
   level: logLevel,
   trace: options.trace,
 });

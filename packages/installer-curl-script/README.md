@@ -11,13 +11,13 @@ This plugin provides installation capabilities for CLI tools that use shell scri
 Tools are configured using `defineTool` with the `install()` function:
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from "@dotfiles/cli";
 
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://example.com/install.sh',
-    shell: 'bash',
-  }).bin('tool')
+  install("curl-script", {
+    url: "https://example.com/install.sh",
+    shell: "bash",
+  }).bin("tool"),
 );
 ```
 
@@ -37,10 +37,10 @@ The `install('curl-script', params)` function accepts the following parameters:
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://example.com/install.sh',
-    shell: 'bash',
-  }).bin('tool')
+  install("curl-script", {
+    url: "https://example.com/install.sh",
+    shell: "bash",
+  }).bin("tool"),
 );
 ```
 
@@ -48,13 +48,13 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://fly.io/install.sh',
-    shell: 'sh',
+  install("curl-script", {
+    url: "https://fly.io/install.sh",
+    shell: "sh",
     env: {
-      INSTALL_DIR: '$HOME/.local/bin',
+      INSTALL_DIR: "$HOME/.local/bin",
     },
-  }).bin('fly')
+  }).bin("fly"),
 );
 ```
 
@@ -62,23 +62,23 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://example.com/install.sh',
-    shell: 'bash',
+  install("curl-script", {
+    url: "https://example.com/install.sh",
+    shell: "bash",
     // Static arguments
-    args: ['--verbose', '--install-dir', '/usr/local/bin'],
-  }).bin('tool')
+    args: ["--verbose", "--install-dir", "/usr/local/bin"],
+  }).bin("tool"),
 );
 ```
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://example.com/install.sh',
-    shell: 'bash',
+  install("curl-script", {
+    url: "https://example.com/install.sh",
+    shell: "bash",
     // Dynamic arguments with context
-    args: (context) => ['--install-dir', context.stagingDir, '--platform', context.projectConfig.platform],
-  }).bin('tool')
+    args: (context) => ["--install-dir", context.stagingDir, "--platform", context.projectConfig.platform],
+  }).bin("tool"),
 );
 ```
 
@@ -86,13 +86,13 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://fly.io/install.sh',
-    shell: 'sh',
+  install("curl-script", {
+    url: "https://fly.io/install.sh",
+    shell: "sh",
     env: {
-      INSTALL_DIR: '$HOME/.local/bin',
+      INSTALL_DIR: "$HOME/.local/bin",
     },
-  }).bin('fly')
+  }).bin("fly"),
 );
 ```
 
@@ -100,16 +100,16 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://example.com/install.sh',
-    shell: 'bash',
+  install("curl-script", {
+    url: "https://example.com/install.sh",
+    shell: "bash",
   })
-    .bin('tool')
+    .bin("tool")
     .hooks({
       afterDownload: async (ctx) => {
         // Verify script before execution
       },
-    })
+    }),
 );
 ```
 
@@ -158,14 +158,14 @@ Implements `IInstallerPlugin` with:
 This package extends the core type system via module augmentation:
 
 ```typescript
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    'curl-script': CurlScriptInstallParams;
+    "curl-script": CurlScriptInstallParams;
   }
   interface IToolConfigRegistry {
-    'curl-script': CurlScriptToolConfig;
+    "curl-script": CurlScriptToolConfig;
   }
-  interface IPluginResultRegistry extends RegisterPluginResult<'curl-script', CurlScriptInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<"curl-script", CurlScriptInstallResult> {}
 }
 ```
 

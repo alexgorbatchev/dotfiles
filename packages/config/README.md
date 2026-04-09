@@ -24,14 +24,14 @@ This package provides functionality to load, validate, and process configuration
 Loads and validates the main project configuration file from the filesystem.
 
 ```typescript
-import { loadProjectConfig } from '@dotfiles/config';
-import { createRealFileSystem } from '@dotfiles/file-system';
+import { loadProjectConfig } from "@dotfiles/config";
+import { createRealFileSystem } from "@dotfiles/file-system";
 
 const projectConfig = await loadProjectConfig(
   logger,
   createRealFileSystem(),
-  './dotfiles.config.ts',
-  { platform: 'darwin', arch: 'x64', homeDir: '/Users/username' },
+  "./dotfiles.config.ts",
+  { platform: "darwin", arch: "x64", homeDir: "/Users/username" },
   process.env,
 );
 
@@ -44,9 +44,9 @@ console.log(projectConfig.paths.targetDir);
 Recursively loads all `.tool.ts` configuration files from a directory.
 
 ```typescript
-import { loadToolConfigs } from '@dotfiles/config';
+import { loadToolConfigs } from "@dotfiles/config";
 
-const systemInfo = { platform: 'darwin', arch: 'x64', homeDir: projectConfig.paths.homeDir };
+const systemInfo = { platform: "darwin", arch: "x64", homeDir: projectConfig.paths.homeDir };
 
 const toolConfigs = await loadToolConfigs(
   logger,
@@ -57,7 +57,7 @@ const toolConfigs = await loadToolConfigs(
 );
 
 // Access specific tool config
-const fzfConfig = toolConfigs['fzf'];
+const fzfConfig = toolConfigs["fzf"];
 if (fzfConfig) {
   console.log(fzfConfig.version);
   console.log(fzfConfig.installationMethod);
@@ -69,13 +69,13 @@ if (fzfConfig) {
 Loads configuration for a single tool by name.
 
 ```typescript
-import { loadSingleToolConfig } from '@dotfiles/config';
+import { loadSingleToolConfig } from "@dotfiles/config";
 
-const systemInfo = { platform: 'darwin', arch: 'x64', homeDir: projectConfig.paths.homeDir };
+const systemInfo = { platform: "darwin", arch: "x64", homeDir: projectConfig.paths.homeDir };
 
 const fzfConfig = await loadSingleToolConfig(
   logger,
-  'fzf',
+  "fzf",
   projectConfig.paths.toolConfigsDir,
   fileSystem,
   projectConfig,
@@ -92,20 +92,20 @@ if (fzfConfig) {
 Loads configuration for a tool by searching for which tool provides a specific binary name.
 
 ```typescript
-import { loadToolConfigByBinary } from '@dotfiles/config';
+import { loadToolConfigByBinary } from "@dotfiles/config";
 
-const systemInfo = { platform: 'darwin', arch: 'x64', homeDir: projectConfig.paths.homeDir };
+const systemInfo = { platform: "darwin", arch: "x64", homeDir: projectConfig.paths.homeDir };
 
 const result = await loadToolConfigByBinary(
   logger,
-  'bat', // Binary name, not tool name
+  "bat", // Binary name, not tool name
   projectConfig.paths.toolConfigsDir,
   fileSystem,
   projectConfig,
   systemInfo,
 );
 
-if (result && 'error' in result) {
+if (result && "error" in result) {
   // Multiple tools provide this binary
   console.error(result.error);
 } else if (result) {
@@ -118,15 +118,15 @@ if (result && 'error' in result) {
 Default implementation of `IConfigService` for dependency injection.
 
 ```typescript
-import { ConfigService } from '@dotfiles/config';
+import { ConfigService } from "@dotfiles/config";
 
 const configService = new ConfigService();
 
-const systemInfo = { platform: 'darwin', arch: 'x64', homeDir: projectConfig.paths.homeDir };
+const systemInfo = { platform: "darwin", arch: "x64", homeDir: projectConfig.paths.homeDir };
 
 const toolConfig = await configService.loadSingleToolConfig(
   logger,
-  'fzf',
+  "fzf",
   toolConfigsDir,
   fileSystem,
   projectConfig,
@@ -140,12 +140,12 @@ Wraps a synchronous or asynchronous factory so `.config.ts` files stay fully typ
 
 ```typescript
 // dotfiles.config.ts
-import { defineConfig } from '@dotfiles/config';
+import { defineConfig } from "@dotfiles/config";
 
 export default defineConfig(async () => ({
   paths: {
-    dotfilesDir: '~/.dotfiles',
-    targetDir: '~/.local/bin',
+    dotfilesDir: "~/.dotfiles",
+    targetDir: "~/.local/bin",
   },
   github: {
     token: process.env.GITHUB_TOKEN,
@@ -155,7 +155,7 @@ export default defineConfig(async () => ({
 // ... synchronous factories are also supported
 export default defineConfig(() => ({
   paths: {
-    generatedDir: '${configFileDir}/.generated',
+    generatedDir: "${configFileDir}/.generated",
   },
 }));
 
@@ -172,34 +172,34 @@ export default defineConfig(({ configFileDir, systemInfo }) => ({
 ### Main Configuration (dotfiles.config.ts)
 
 ```typescript
-import { defineConfig } from '@dotfiles/config';
+import { defineConfig } from "@dotfiles/config";
 
 export default defineConfig(() => ({
   paths: {
-    homeDir: '~',
-    dotfilesDir: '~/.dotfiles',
-    binariesDir: '~/.dotfiles/binaries',
-    targetDir: '~/.local/bin',
-    toolConfigsDir: '~/.dotfiles/tools',
-    shellScriptsDir: '~/.dotfiles/shell-scripts',
-    generatedDir: '~/.dotfiles/generated',
+    homeDir: "~",
+    dotfilesDir: "~/.dotfiles",
+    binariesDir: "~/.dotfiles/binaries",
+    targetDir: "~/.local/bin",
+    toolConfigsDir: "~/.dotfiles/tools",
+    shellScriptsDir: "~/.dotfiles/shell-scripts",
+    generatedDir: "~/.dotfiles/generated",
   },
 
   // Platform-specific overrides
   platform: [
     {
-      match: [{ os: 'macos' }],
+      match: [{ os: "macos" }],
       config: {
         paths: {
-          targetDir: '~/bin',
+          targetDir: "~/bin",
         },
       },
     },
     {
-      match: [{ os: 'linux', arch: 'arm64' }],
+      match: [{ os: "linux", arch: "arm64" }],
       config: {
         paths: {
-          binariesDir: '~/.dotfiles/binaries-arm64',
+          binariesDir: "~/.dotfiles/binaries-arm64",
         },
       },
     },
@@ -213,19 +213,19 @@ Tool configuration files are TypeScript modules (`.tool.ts`) that export a confi
 
 ```typescript
 // tools/fzf.tool.ts
-import type { ToolConfigBuilder, ToolConfigContext } from '@dotfiles/schemas';
+import type { ToolConfigBuilder, ToolConfigContext } from "@dotfiles/schemas";
 
 export default (c: ToolConfigBuilder, ctx: ToolConfigContext) => {
-  c.bin('fzf')
-    .version('0.54.0')
-    .install('github-release', {
-      repo: 'junegunn/fzf',
-      assetPattern: 'fzf-*-linux_amd64.tar.gz',
+  c.bin("fzf")
+    .version("0.54.0")
+    .install("github-release", {
+      repo: "junegunn/fzf",
+      assetPattern: "fzf-*-linux_amd64.tar.gz",
     })
     .zsh((shell) =>
       shell.always(/* zsh */ `
         source <(fzf --zsh)
-      `)
+      `),
     );
 };
 ```
@@ -248,9 +248,9 @@ tools/
 ### Loading Configuration
 
 ```typescript
-import { loadProjectConfig, loadToolConfigs } from '@dotfiles/config';
-import { createRealFileSystem } from '@dotfiles/file-system';
-import { createTsLogger } from '@dotfiles/logger';
+import { loadProjectConfig, loadToolConfigs } from "@dotfiles/config";
+import { createRealFileSystem } from "@dotfiles/file-system";
+import { createTsLogger } from "@dotfiles/logger";
 
 const logger = createTsLogger();
 const fs = createRealFileSystem();
@@ -259,11 +259,11 @@ const fs = createRealFileSystem();
 const projectConfig = await loadProjectConfig(
   logger,
   fs,
-  './dotfiles.config.ts',
+  "./dotfiles.config.ts",
   {
     platform: process.platform,
     arch: process.arch,
-    homeDir: process.env.HOME || '~',
+    homeDir: process.env.HOME || "~",
   },
   process.env,
 );
@@ -277,11 +277,11 @@ console.log(`Loaded ${Object.keys(toolConfigs).length} tool configurations`);
 ### Loading a Single Tool Configuration
 
 ```typescript
-import { loadSingleToolConfig } from '@dotfiles/config';
+import { loadSingleToolConfig } from "@dotfiles/config";
 
 const ripgrepConfig = await loadSingleToolConfig(
   logger,
-  'ripgrep',
+  "ripgrep",
   projectConfig.paths.toolConfigsDir,
   fs,
   projectConfig,
@@ -295,7 +295,7 @@ if (ripgrepConfig) {
 ### Using Dependency Injection
 
 ```typescript
-import { ConfigService, type IConfigService } from '@dotfiles/config';
+import { ConfigService, type IConfigService } from "@dotfiles/config";
 
 class MyApp {
   constructor(
@@ -395,7 +395,7 @@ The `loadToolConfigs` function performs the following steps:
 
 ```typescript
 export default (c: ToolConfigBuilder, ctx: ToolConfigContext) => {
-  c.bin('tool').version('1.0.0').install('github-release', { repo: 'owner/tool' });
+  c.bin("tool").version("1.0.0").install("github-release", { repo: "owner/tool" });
 };
 ```
 
@@ -404,11 +404,11 @@ export default (c: ToolConfigBuilder, ctx: ToolConfigContext) => {
 ```typescript
 export default (c: ToolConfigBuilder, ctx: ToolConfigContext): ToolConfig => {
   return {
-    name: 'tool',
-    version: '1.0.0',
-    binaries: ['tool'],
-    installationMethod: 'github-release',
-    installParams: { repo: 'owner/tool' },
+    name: "tool",
+    version: "1.0.0",
+    binaries: ["tool"],
+    installationMethod: "github-release",
+    installParams: { repo: "owner/tool" },
   };
 };
 ```
@@ -417,10 +417,10 @@ export default (c: ToolConfigBuilder, ctx: ToolConfigContext): ToolConfig => {
 
 ```typescript
 export default {
-  name: 'tool',
-  version: '1.0.0',
-  binaries: ['tool'],
-  installationMethod: 'manual',
+  name: "tool",
+  version: "1.0.0",
+  binaries: ["tool"],
+  installationMethod: "manual",
   installParams: {},
 };
 ```
@@ -483,22 +483,22 @@ bun test packages/config
 ### Testing Helpers
 
 ```typescript
-import { createMemFileSystem, createMockProjectConfig } from '@dotfiles/testing-helpers';
+import { createMemFileSystem, createMockProjectConfig } from "@dotfiles/testing-helpers";
 
 // Create in-memory file system with config files
 const fs = createMemFileSystem({
-  '/tools/fzf.tool.ts': 'export default (c) => c.bin("fzf")',
+  "/tools/fzf.tool.ts": 'export default (c) => c.bin("fzf")',
 });
 
 // Create mock project config
 const projectConfig = createMockProjectConfig({
   paths: {
-    toolConfigsDir: '/custom/tools',
+    toolConfigsDir: "/custom/tools",
   },
 });
 
 // Load configuration in tests
-const config = await loadProjectConfig(logger, fs, '/dotfiles.config.ts', systemInfo, {});
+const config = await loadProjectConfig(logger, fs, "/dotfiles.config.ts", systemInfo, {});
 ```
 
 ## Type Safety
@@ -506,7 +506,7 @@ const config = await loadProjectConfig(logger, fs, '/dotfiles.config.ts', system
 All configurations are fully typed:
 
 ```typescript
-import type { ProjectConfig, ToolConfig } from '@dotfiles/schemas';
+import type { ProjectConfig, ToolConfig } from "@dotfiles/schemas";
 
 const projectConfig: ProjectConfig = await loadProjectConfig(/*...*/);
 const toolConfigs: Record<string, ToolConfig> = await loadToolConfigs(/*...*/);
@@ -514,7 +514,7 @@ const toolConfigs: Record<string, ToolConfig> = await loadToolConfigs(/*...*/);
 // TypeScript provides full autocomplete and type checking
 console.log(projectConfig.paths.binariesDir); // string
 console.log(projectConfig.configFilePath); // string (injected by loader)
-console.log(toolConfigs['fzf'].version); // string
+console.log(toolConfigs["fzf"].version); // string
 ```
 
 ## Design Philosophy

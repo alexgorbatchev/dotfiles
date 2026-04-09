@@ -11,12 +11,12 @@ This plugin provides installation capabilities for CLI tools distributed as tar 
 Tools are configured using `defineTool` with the `install()` function:
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from "@dotfiles/cli";
 
 export default defineTool((install, ctx) =>
-  install('curl-tar', {
-    url: 'https://example.com/releases/tool-1.0.0.tar.gz',
-  }).bin('tool')
+  install("curl-tar", {
+    url: "https://example.com/releases/tool-1.0.0.tar.gz",
+  }).bin("tool"),
 );
 ```
 
@@ -36,9 +36,9 @@ The `install('curl-tar', params)` function accepts the following parameters:
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-tar', {
-    url: 'https://example.com/tool.tar.gz',
-  }).bin('tool')
+  install("curl-tar", {
+    url: "https://example.com/tool.tar.gz",
+  }).bin("tool"),
 );
 ```
 
@@ -46,11 +46,11 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-tar', {
-    url: 'https://example.com/tool.tar.gz',
-    versionArgs: ['--version'],
+  install("curl-tar", {
+    url: "https://example.com/tool.tar.gz",
+    versionArgs: ["--version"],
     versionRegex: /tool (\d+\.\d+\.\d+)/,
-  }).bin('tool')
+  }).bin("tool"),
 );
 ```
 
@@ -58,15 +58,15 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('curl-tar', {
-    url: 'https://example.com/tool.tar.gz',
+  install("curl-tar", {
+    url: "https://example.com/tool.tar.gz",
   })
-    .bin('tool')
+    .bin("tool")
     .hooks({
       afterExtract: async (ctx) => {
         // Post-extraction setup
       },
-    })
+    }),
 );
 ```
 
@@ -75,9 +75,9 @@ export default defineTool((install, ctx) =>
 ```typescript
 export default defineTool(
   (install, ctx) =>
-    install('curl-tar', {
-      url: 'https://example.com/tool.tar.gz',
-    }).bin('tool', 'bin/tool'), // Pattern to find binary
+    install("curl-tar", {
+      url: "https://example.com/tool.tar.gz",
+    }).bin("tool", "bin/tool"), // Pattern to find binary
 );
 ```
 
@@ -136,14 +136,14 @@ Implements `IInstallerPlugin` with:
 This package extends the core type system via module augmentation:
 
 ```typescript
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    'curl-tar': CurlTarInstallParams;
+    "curl-tar": CurlTarInstallParams;
   }
   interface IToolConfigRegistry {
-    'curl-tar': CurlTarToolConfig;
+    "curl-tar": CurlTarToolConfig;
   }
-  interface IPluginResultRegistry extends RegisterPluginResult<'curl-tar', CurlTarInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<"curl-tar", CurlTarInstallResult> {}
 }
 ```
 

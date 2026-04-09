@@ -34,7 +34,7 @@ The shim-generator creates executable wrapper scripts (shims) for all installed 
 Main class for generating shims.
 
 ```typescript
-import { ShimGenerator } from '@dotfiles/shim-generator';
+import { ShimGenerator } from "@dotfiles/shim-generator";
 
 const generator = new ShimGenerator(logger, fileSystem, config, toolRegistry);
 
@@ -57,14 +57,14 @@ interface IShimGenerator {
 ### Generate All Shims
 
 ```typescript
-import { ShimGenerator } from '@dotfiles/shim-generator';
+import { ShimGenerator } from "@dotfiles/shim-generator";
 
 const generator = new ShimGenerator(logger, fileSystem, config, toolRegistry);
 
 // Generate shims for all installed tools
 const shimPaths = await generator.generate();
 
-console.log('Generated shims:', shimPaths);
+console.log("Generated shims:", shimPaths);
 // [
 //   '{config.paths.targetDir}/fzf',
 //   '{config.paths.targetDir}/rg',
@@ -76,24 +76,24 @@ console.log('Generated shims:', shimPaths);
 
 ```typescript
 // Generate shims only for a specific tool
-const shimPaths = await generator.generateForTool('fzf');
+const shimPaths = await generator.generateForTool("fzf");
 
-console.log('Generated shims for fzf:', shimPaths);
+console.log("Generated shims for fzf:", shimPaths);
 // ['{config.paths.targetDir}/fzf']
 ```
 
 ### Integration with Installation
 
 ```typescript
-import { Installer } from '@dotfiles/installer';
-import { ShimGenerator } from '@dotfiles/shim-generator';
+import { Installer } from "@dotfiles/installer";
+import { ShimGenerator } from "@dotfiles/shim-generator";
 
 // Install tool
-const installResult = await installer.install('fzf', toolConfig);
+const installResult = await installer.install("fzf", toolConfig);
 
 if (installResult.success) {
   // Generate shim for newly installed tool
-  await shimGenerator.generateForTool('fzf');
+  await shimGenerator.generateForTool("fzf");
 }
 ```
 
@@ -170,13 +170,13 @@ Some tools provide multiple binaries:
 ```typescript
 // Tool config with multiple binaries
 const toolConfig = {
-  name: 'node',
-  binaries: ['node', 'npm', 'npx'],
+  name: "node",
+  binaries: ["node", "npm", "npx"],
   // ...
 };
 
 // Generates multiple shims
-const shimPaths = await generator.generateForTool('node');
+const shimPaths = await generator.generateForTool("node");
 // [
 //   '{config.paths.targetDir}/node',
 //   '{config.paths.targetDir}/npm',
@@ -190,12 +190,12 @@ The generator integrates with the tool registry:
 
 ```typescript
 // Shims are tracked in the registry
-const toolInfo = await toolRegistry.get('fzf');
+const toolInfo = await toolRegistry.get("fzf");
 console.log(toolInfo.shims);
 // ['{config.paths.targetDir}/fzf']
 
 // Check if tool has shims
-const hasShims = await toolRegistry.hasShims('fzf');
+const hasShims = await toolRegistry.hasShims("fzf");
 ```
 
 ## Configuration
@@ -203,12 +203,12 @@ const hasShims = await toolRegistry.hasShims('fzf');
 Shim paths are configured in `dotfiles.config.ts`:
 
 ```typescript
-import { defineConfig } from '@alexgorbatchev/dotfiles';
+import { defineConfig } from "@alexgorbatchev/dotfiles";
 
 export default defineConfig(() => ({
   paths: {
-    targetDir: '~/.dotfiles/bin', // Where shims are created
-    binariesDir: '~/.local/binaries', // Where tool binaries are located
+    targetDir: "~/.dotfiles/bin", // Where shims are created
+    binariesDir: "~/.local/binaries", // Where tool binaries are located
   },
 }));
 ```
@@ -270,15 +270,15 @@ Ensure tool is installed before generating shims
 
 ```typescript
 // Always regenerate shims after tool installation
-await installer.install('fzf', toolConfig);
-await shimGenerator.generateForTool('fzf');
+await installer.install("fzf", toolConfig);
+await shimGenerator.generateForTool("fzf");
 ```
 
 ### Validate Binary Exists
 
 ```typescript
 // Check binary exists before creating shim
-const binaryPath = path.join(config.paths.binariesDir, toolName, 'current', binaryName);
+const binaryPath = path.join(config.paths.binariesDir, toolName, "current", binaryName);
 const exists = await fileSystem.exists(binaryPath);
 
 if (!exists) {

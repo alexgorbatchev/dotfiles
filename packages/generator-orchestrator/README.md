@@ -22,7 +22,7 @@ The generator orchestrator is the central coordinator for all generation tasks i
 Main class for coordinating generation tasks.
 
 ```typescript
-import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
+import { GeneratorOrchestrator } from "@dotfiles/generator-orchestrator";
 
 const orchestrator = new GeneratorOrchestrator(logger, shellInitGenerator, shimGenerator, symlinkGenerator);
 
@@ -65,16 +65,16 @@ interface IGeneratedArtifactsManifest {
 ### Basic Generation
 
 ```typescript
-import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
+import { GeneratorOrchestrator } from "@dotfiles/generator-orchestrator";
 
 const orchestrator = new GeneratorOrchestrator(logger, shellInitGenerator, shimGenerator, symlinkGenerator);
 
 const manifest = await orchestrator.generate(config, toolRegistry);
 
-console.log('Generated files:');
-console.log('  Shell init:', manifest.shellInit.files.length);
-console.log('  Shims:', manifest.shims.files.length);
-console.log('  Symlinks:', manifest.symlinks.files.length);
+console.log("Generated files:");
+console.log("  Shell init:", manifest.shellInit.files.length);
+console.log("  Shims:", manifest.shims.files.length);
+console.log("  Symlinks:", manifest.symlinks.files.length);
 ```
 
 ### With Error Handling
@@ -82,9 +82,9 @@ console.log('  Symlinks:', manifest.symlinks.files.length);
 ```typescript
 try {
   const manifest = await orchestrator.generate(config, toolRegistry);
-  logger.info('Generation completed successfully');
+  logger.info("Generation completed successfully");
 } catch (error) {
-  logger.error('Generation failed', error);
+  logger.error("Generation failed", error);
   // Cleanup partial artifacts if needed
 }
 ```

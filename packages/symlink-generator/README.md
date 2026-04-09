@@ -22,7 +22,7 @@ The symlink-generator automates the creation of symbolic links for configuration
 Main class for generating symlinks.
 
 ```typescript
-import { SymlinkGenerator } from '@dotfiles/symlink-generator';
+import { SymlinkGenerator } from "@dotfiles/symlink-generator";
 
 const generator = new SymlinkGenerator(logger, fileSystem, config, toolRegistry);
 
@@ -44,14 +44,14 @@ interface ISymlinkGenerator {
 ### Basic Generation
 
 ```typescript
-import { SymlinkGenerator } from '@dotfiles/symlink-generator';
+import { SymlinkGenerator } from "@dotfiles/symlink-generator";
 
 const generator = new SymlinkGenerator(logger, fileSystem, config, toolRegistry);
 
 // Generate all configured symlinks
 const symlinkPaths = await generator.generate();
 
-console.log('Created symlinks:', symlinkPaths);
+console.log("Created symlinks:", symlinkPaths);
 // [
 //   '~/.gitconfig',
 //   '~/.vimrc',
@@ -65,12 +65,12 @@ console.log('Created symlinks:', symlinkPaths);
 const config = {
   symlinks: [
     {
-      source: '~/.dotfiles/configs/git/.gitconfig',
-      target: '~/.gitconfig',
+      source: "~/.dotfiles/configs/git/.gitconfig",
+      target: "~/.gitconfig",
     },
     {
-      source: '~/.dotfiles/configs/vim/.vimrc',
-      target: '~/.vimrc',
+      source: "~/.dotfiles/configs/vim/.vimrc",
+      target: "~/.vimrc",
     },
   ],
   // ...
@@ -88,16 +88,16 @@ await generator.generate();
 Symlinks are typically configured in `.tool.ts` files using the `.symlink()` method:
 
 ```typescript
-import { defineTool } from '@alexgorbatchev/dotfiles';
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
   install()
     // Git configuration
-    .symlink('./.gitconfig', '~/.gitconfig')
+    .symlink("./.gitconfig", "~/.gitconfig")
     // Vim configuration
-    .symlink('./.vimrc', '~/.vimrc')
+    .symlink("./.vimrc", "~/.vimrc")
     // Zsh configuration
-    .symlink('./.zshrc', '~/.zshrc')
+    .symlink("./.zshrc", "~/.zshrc"),
 );
 ```
 
@@ -138,18 +138,18 @@ The generator tracks created symlinks in the registry:
 
 ```typescript
 // Symlinks are tracked per tool
-await toolRegistry.addSymlink('git', '~/.gitconfig');
+await toolRegistry.addSymlink("git", "~/.gitconfig");
 
 // Query symlinks
-const symlinks = await toolRegistry.getSymlinks('git');
+const symlinks = await toolRegistry.getSymlinks("git");
 console.log(symlinks);
 // ['~/.gitconfig']
 
 // Remove symlinks on cleanup
-const symlinks = await toolRegistry.getSymlinks('git');
+const symlinks = await toolRegistry.getSymlinks("git");
 for (const symlink of symlinks) {
   await fileSystem.remove(symlink);
-  await toolRegistry.removeSymlink('git', symlink);
+  await toolRegistry.removeSymlink("git", symlink);
 }
 ```
 
@@ -302,7 +302,7 @@ const backupPath = `${targetPath}.backup.${Date.now()}`;
 
 if (await fileSystem.exists(targetPath)) {
   await fileSystem.copy(targetPath, backupPath);
-  logger.info('Created backup', { original: targetPath, backup: backupPath });
+  logger.info("Created backup", { original: targetPath, backup: backupPath });
 }
 ```
 
@@ -360,7 +360,7 @@ if (isSymlink) {
   const targetExists = await fileSystem.exists(linkTarget);
 
   if (!targetExists) {
-    logger.warn('Broken symlink detected', {
+    logger.warn("Broken symlink detected", {
       symlink: targetPath,
       target: linkTarget,
     });
@@ -381,7 +381,7 @@ for (const symlink of symlinks) {
 
     if (!targetExists) {
       await fileSystem.remove(symlink);
-      logger.info('Removed broken symlink', { symlink, target });
+      logger.info("Removed broken symlink", { symlink, target });
     }
   }
 }
@@ -393,9 +393,9 @@ for (const symlink of symlinks) {
 
 ```typescript
 // Create symlinks based on conditions
-if (systemInfo.platform === 'darwin') {
+if (systemInfo.platform === "darwin") {
   // macOS-specific symlinks
-  await generator.createSymlink('~/.dotfiles/configs/macos/.skhdrc', '~/.skhdrc');
+  await generator.createSymlink("~/.dotfiles/configs/macos/.skhdrc", "~/.skhdrc");
 }
 ```
 
@@ -403,11 +403,11 @@ if (systemInfo.platform === 'darwin') {
 
 ```typescript
 // Generate symlinks for all config files
-const configFiles = await fileSystem.glob('~/.dotfiles/configs/**/*');
+const configFiles = await fileSystem.glob("~/.dotfiles/configs/**/*");
 
 for (const configFile of configFiles) {
-  const relativePath = path.relative('~/.dotfiles/configs', configFile);
-  const targetPath = path.join('~', relativePath);
+  const relativePath = path.relative("~/.dotfiles/configs", configFile);
+  const targetPath = path.join("~", relativePath);
 
   await generator.createSymlink(configFile, targetPath);
 }

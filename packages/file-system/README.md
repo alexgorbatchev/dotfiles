@@ -23,15 +23,15 @@ An in-memory implementation of `IFileSystem` using `memfs`. It's designed for te
 In your application's entry point, inject `NodeFileSystem` wherever `IFileSystem` is required.
 
 ```typescript
-import { type IFileSystem, NodeFileSystem } from '@dotfiles/file-system';
+import { type IFileSystem, NodeFileSystem } from "@dotfiles/file-system";
 
 const fs: IFileSystem = new NodeFileSystem();
 
 async function main() {
-  await fs.writeFile('example.txt', 'Hello, world!');
-  const content = await fs.readFile('example.txt');
+  await fs.writeFile("example.txt", "Hello, world!");
+  const content = await fs.readFile("example.txt");
   console.log(content); // 'Hello, world!'
-  await fs.rm('example.txt');
+  await fs.rm("example.txt");
 }
 
 main();
@@ -42,19 +42,19 @@ main();
 In tests, use `MemFileSystem` to create a sandboxed file system. You can initialize it with a predefined directory structure.
 
 ```typescript
-import { type IFileSystem, MemFileSystem } from '@dotfiles/file-system';
+import { type IFileSystem, MemFileSystem } from "@dotfiles/file-system";
 
 // Initialize with a file
 const fs: IFileSystem = new MemFileSystem({
-  '/home/user/data.txt': 'Initial data',
+  "/home/user/data.txt": "Initial data",
 });
 
 async function test() {
-  const content = await fs.readFile('/home/user/data.txt');
-  expect(content).toBe('Initial data');
+  const content = await fs.readFile("/home/user/data.txt");
+  expect(content).toBe("Initial data");
 
-  await fs.writeFile('/home/user/new-file.txt', 'New content');
-  const exists = await fs.exists('/home/user/new-file.txt');
+  await fs.writeFile("/home/user/new-file.txt", "New content");
+  const exists = await fs.exists("/home/user/new-file.txt");
   expect(exists).toBe(true);
 }
 

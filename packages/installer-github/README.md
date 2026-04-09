@@ -11,12 +11,12 @@ This package provides comprehensive installation capabilities for CLI tools dist
 Tools are configured using `defineTool` with the `install()` function:
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from "@dotfiles/cli";
 
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'BurntSushi/ripgrep',
-  }).bin('rg')
+  install("github-release", {
+    repo: "BurntSushi/ripgrep",
+  }).bin("rg"),
 );
 ```
 
@@ -42,9 +42,9 @@ The `install('github-release', params)` function accepts the following parameter
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'sharkdp/bat',
-  }).bin('bat')
+  install("github-release", {
+    repo: "sharkdp/bat",
+  }).bin("bat"),
 );
 ```
 
@@ -52,10 +52,10 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'junegunn/fzf',
-    version: 'v0.48.0',
-  }).bin('fzf')
+  install("github-release", {
+    repo: "junegunn/fzf",
+    version: "v0.48.0",
+  }).bin("fzf"),
 );
 ```
 
@@ -63,10 +63,10 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'caddyserver/caddy',
-    assetPattern: 'caddy_*.tar.gz',
-  }).bin('caddy')
+  install("github-release", {
+    repo: "caddyserver/caddy",
+    assetPattern: "caddy_*.tar.gz",
+  }).bin("caddy"),
 );
 ```
 
@@ -76,10 +76,10 @@ Use the `gh` CLI for API requests (requires `gh` to be installed and authenticat
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'junegunn/fzf',
+  install("github-release", {
+    repo: "junegunn/fzf",
     ghCli: true,
-  }).bin('fzf')
+  }).bin("fzf"),
 );
 ```
 
@@ -89,10 +89,10 @@ For repositories that only publish prerelease versions (e.g., nightly builds):
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'owner/nightly-tool',
+  install("github-release", {
+    repo: "owner/nightly-tool",
     prerelease: true,
-  }).bin('tool')
+  }).bin("tool"),
 );
 ```
 
@@ -100,13 +100,13 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'example/tool',
+  install("github-release", {
+    repo: "example/tool",
     assetSelector: (context) => {
       const { assets, systemInfo } = context;
-      return assets.find((asset) => asset.name.includes(systemInfo.platform) && asset.name.endsWith('.tar.gz'));
+      return assets.find((asset) => asset.name.includes(systemInfo.platform) && asset.name.endsWith(".tar.gz"));
     },
-  }).bin('tool')
+  }).bin("tool"),
 );
 ```
 
@@ -114,15 +114,15 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'example/tool',
+  install("github-release", {
+    repo: "example/tool",
   })
-    .bin('tool')
+    .bin("tool")
     .hooks({
       afterExtract: async (ctx) => {
         // Post-extraction setup
       },
-    })
+    }),
 );
 ```
 
@@ -218,14 +218,14 @@ Implements `IInstallerPlugin` with:
 This package extends the core type system via module augmentation:
 
 ```typescript
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    'github-release': GithubReleaseInstallParams;
+    "github-release": GithubReleaseInstallParams;
   }
   interface IToolConfigRegistry {
-    'github-release': GithubReleaseToolConfig;
+    "github-release": GithubReleaseToolConfig;
   }
-  interface IPluginResultRegistry extends RegisterPluginResult<'github-release', GitHubReleaseInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<"github-release", GitHubReleaseInstallResult> {}
 }
 ```
 

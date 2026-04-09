@@ -151,8 +151,8 @@ The concrete generators are now minimal - they simply extend the base class and 
 
 ```typescript
 export class ZshGenerator extends BaseShellGenerator {
-  readonly shellType: ShellType = 'zsh';
-  readonly fileExtension: string = '.zsh';
+  readonly shellType: ShellType = "zsh";
+  readonly fileExtension: string = ".zsh";
 
   constructor(projectConfig: ProjectConfig) {
     super(projectConfig, new ZshStringProducer(projectConfig));
@@ -212,8 +212,8 @@ export class FishStringProducer implements IShellStringProducer {
 ```typescript
 // FishGenerator.ts
 export class FishGenerator extends BaseShellGenerator {
-  readonly shellType: ShellType = 'fish';
-  readonly fileExtension: string = '.fish';
+  readonly shellType: ShellType = "fish";
+  readonly fileExtension: string = ".fish";
 
   constructor(projectConfig: ProjectConfig) {
     super(projectConfig, new FishStringProducer(projectConfig));

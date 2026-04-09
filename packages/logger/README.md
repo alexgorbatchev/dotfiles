@@ -17,16 +17,16 @@ SafeLogger supports a `context` option that prepends a `[context]` prefix to all
 ### Creating a Logger with Context
 
 ```typescript
-import { createTsLogger } from '@dotfiles/logger';
+import { createTsLogger } from "@dotfiles/logger";
 
-const logger = createTsLogger({ name: 'MyApp' });
+const logger = createTsLogger({ name: "MyApp" });
 
 // Create a sublogger with context - all logs will have [myTool] prefix
-const toolLogger = logger.getSubLogger({ context: 'myTool' });
+const toolLogger = logger.getSubLogger({ context: "myTool" });
 toolLogger.info(messages.installing()); // Output: [myTool] Installing tool...
 
 // Context can be combined with named subloggers
-const subLogger = toolLogger.getSubLogger({ name: 'download' });
+const subLogger = toolLogger.getSubLogger({ name: "download" });
 subLogger.debug(messages.downloading()); // Output: [myTool] Downloading...
 ```
 
@@ -75,7 +75,7 @@ packages/{package}/src/{feature}/
 
 ```typescript
 // packages/example/src/log-messages.ts
-import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
+import { createSafeLogMessage, type SafeLogMessageMap } from "@dotfiles/logger";
 
 // Group by semantic intent, not by log level.
 export const messages = {
@@ -89,14 +89,14 @@ export const messages = {
 ### Usage in a Package
 
 ```typescript
-import type { TsLogger } from '@dotfiles/logger';
-import { messages } from './log-messages';
+import type { TsLogger } from "@dotfiles/logger";
+import { messages } from "./log-messages";
 
 export function runExample(logger: TsLogger) {
-  const l = logger.getSubLogger({ name: 'runExample' });
-  l.debug(messages.resolvingConfig('/tmp/example.yaml'));
+  const l = logger.getSubLogger({ name: "runExample" });
+  l.debug(messages.resolvingConfig("/tmp/example.yaml"));
   // ...
-  l.error(messages.invalidState('orphaned'));
+  l.error(messages.invalidState("orphaned"));
 }
 ```
 
@@ -151,15 +151,15 @@ ERROR   Installation failed via cargo
 Use `TestLogger` to capture and assert on log messages in your tests.
 
 ```typescript
-import { TestLogger } from '@dotfiles/logger';
-import { messages } from '../log-messages';
+import { TestLogger } from "@dotfiles/logger";
+import { messages } from "../log-messages";
 
-test('should log an error when initialization fails', () => {
-  const logger = new TestLogger({ name: 'MyModule' });
-  const subLogger = logger.getSubLogger({ name: 'initialize' });
+test("should log an error when initialization fails", () => {
+  const logger = new TestLogger({ name: "MyModule" });
+  const subLogger = logger.getSubLogger({ name: "initialize" });
 
-  subLogger.error(messages.initializationFailed('Something went wrong'));
+  subLogger.error(messages.initializationFailed("Something went wrong"));
 
-  logger.expect(['ERROR'], ['MyModule', 'initialize'], ['Initialization failed: Something went wrong']);
+  logger.expect(["ERROR"], ["MyModule", "initialize"], ["Initialization failed: Something went wrong"]);
 });
 ```

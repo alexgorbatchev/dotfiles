@@ -284,14 +284,14 @@ bun run cli.ts <command>
 The CLI reads configuration from `dotfiles.config.ts` in the project root:
 
 ```typescript
-import { defineConfig } from '@alexgorbatchev/dotfiles';
+import { defineConfig } from "@alexgorbatchev/dotfiles";
 
 export default defineConfig(() => ({
   // Directory structure
   paths: {
-    toolConfigsDir: '~/.dotfiles/tools',
-    targetDir: '~/.dotfiles/bin',
-    generatedDir: '~/.dotfiles/.cache',
+    toolConfigsDir: "~/.dotfiles/tools",
+    targetDir: "~/.dotfiles/bin",
+    generatedDir: "~/.dotfiles/.cache",
   },
 
   // Update checking
@@ -404,7 +404,7 @@ dotfiles install <TAB>   # Shows configured tool names
 Creates the Commander.js program with all commands configured.
 
 ```typescript
-import { createProgram } from '@dotfiles/cli';
+import { createProgram } from "@dotfiles/cli";
 
 const program = createProgram({
   logger,
@@ -517,17 +517,17 @@ The package includes tests for:
 ## Command Testing
 
 ```typescript
-import { createProgram } from '@dotfiles/cli';
-import { createTestDirectories } from '@dotfiles/testing-helpers';
+import { createProgram } from "@dotfiles/cli";
+import { createTestDirectories } from "@dotfiles/testing-helpers";
 
-const { workingDir, homeDir } = await createTestDirectories('cli-test');
+const { workingDir, homeDir } = await createTestDirectories("cli-test");
 
 const program = createProgram({
   // Mock dependencies
 });
 
 // Test command
-await program.parseAsync(['node', 'cli', 'install', 'fzf']);
+await program.parseAsync(["node", "cli", "install", "fzf"]);
 ```
 
 ## Design Decisions
@@ -564,15 +564,15 @@ Injecting dependencies makes:
 ### Use Structured Logging
 
 ```typescript
-logger.info('Installing tool', { toolName, version });
-logger.error('Installation failed', { toolName, error });
+logger.info("Installing tool", { toolName, version });
+logger.error("Installation failed", { toolName, error });
 ```
 
 ### Validate Arguments
 
 ```typescript
 if (!toolName) {
-  logger.error('Tool name is required');
+  logger.error("Tool name is required");
   process.exit(1);
 }
 ```
@@ -580,16 +580,16 @@ if (!toolName) {
 ### Provide Progress Feedback
 
 ```typescript
-console.log('Installing tools...');
+console.log("Installing tools...");
 // Show progress
-console.log('Installation complete!');
+console.log("Installation complete!");
 ```
 
 ### Handle Interrupts
 
 ```typescript
-process.on('SIGINT', async () => {
-  logger.info('Interrupted, cleaning up...');
+process.on("SIGINT", async () => {
+  logger.info("Interrupted, cleaning up...");
   await cleanup();
   process.exit(130);
 });

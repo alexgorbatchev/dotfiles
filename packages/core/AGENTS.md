@@ -48,7 +48,7 @@ registry.composeSchemas();
 
 // Install using registered plugin
 const toolLogger = logger.getSubLogger({ context: toolName });
-const result = await registry.install(toolLogger, 'github-release', toolName, config, context);
+const result = await registry.install(toolLogger, "github-release", toolName, config, context);
 ```
 
 ## API
@@ -80,12 +80,12 @@ Main registry class for managing plugins.
 ### Creating a Plugin
 
 ```typescript
-import type { IInstallerPlugin, InstallResult } from '@dotfiles/installer-plugin-system';
+import type { IInstallerPlugin, InstallResult } from "@dotfiles/installer-plugin-system";
 
-export class MyInstallerPlugin implements IInstallerPlugin<'my-method', MyParams, MyConfig, MyMetadata> {
-  readonly method = 'my-method';
-  readonly displayName = 'My Installer';
-  readonly version = '1.0.0';
+export class MyInstallerPlugin implements IInstallerPlugin<"my-method", MyParams, MyConfig, MyMetadata> {
+  readonly method = "my-method";
+  readonly displayName = "My Installer";
+  readonly version = "1.0.0";
   readonly paramsSchema = myParamsSchema;
   readonly toolConfigSchema = myToolConfigSchema;
   readonly staticValidation = true;
@@ -107,9 +107,9 @@ export class MyInstallerPlugin implements IInstallerPlugin<'my-method', MyParams
     // Implement installation logic
     return {
       success: true,
-      version: '1.0.0',
-      binaryPaths: ['/path/to/binary'],
-      metadata: { method: 'my-method' },
+      version: "1.0.0",
+      binaryPaths: ["/path/to/binary"],
+      metadata: { method: "my-method" },
     };
   }
 }
@@ -119,8 +119,8 @@ export class MyInstallerPlugin implements IInstallerPlugin<'my-method', MyParams
 
 ```typescript
 // In application startup (main.ts)
-import { InstallerPluginRegistry } from '@dotfiles/installer-plugin-system';
-import { MyInstallerPlugin } from '@mycompany/installer-plugin';
+import { InstallerPluginRegistry } from "@dotfiles/installer-plugin-system";
+import { MyInstallerPlugin } from "@mycompany/installer-plugin";
 
 const registry = new InstallerPluginRegistry(logger);
 
@@ -145,14 +145,14 @@ const installer = new Installer(logger, fs, registry /* ... */);
 The core package exports `createShell` for shell command execution with dependency injection:
 
 ```typescript
-import { createShell, type Shell } from '@dotfiles/core';
+import { createShell, type Shell } from "@dotfiles/core";
 
 // Create shell once at app startup
 const shell = createShell();
 
 // Execute commands
 const result = await shell`echo hello`;
-const output = await shell`ls`.cwd('/tmp').quiet().text();
+const output = await shell`ls`.cwd("/tmp").quiet().text();
 
 // Pass shell to components that need it
 const extractor = new ArchiveExtractor(logger, fs, shell);
@@ -173,16 +173,16 @@ const extractor = new ArchiveExtractor(logger, fs, shell);
 Plugins can be tested in isolation:
 
 ```typescript
-describe('MyInstallerPlugin', () => {
-  it('should install tool', async () => {
+describe("MyInstallerPlugin", () => {
+  it("should install tool", async () => {
     const registry = new InstallerPluginRegistry(logger);
     const plugin = new MyInstallerPlugin(mockService);
 
     registry.register(plugin);
     registry.composeSchemas();
 
-    const toolLogger = logger.getSubLogger({ context: 'tool' });
-    const result = await registry.install(toolLogger, 'my-method', 'tool', config, context);
+    const toolLogger = logger.getSubLogger({ context: "tool" });
+    const result = await registry.install(toolLogger, "my-method", "tool", config, context);
     expect(result.success).toBe(true);
   });
 });

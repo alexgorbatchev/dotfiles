@@ -11,12 +11,12 @@ This plugin enables installation of Rust-based tools by downloading pre-compiled
 Tools are configured using `defineTool` with the `install()` function:
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from "@dotfiles/cli";
 
 export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'ripgrep',
-  }).bin('rg')
+  install("cargo", {
+    crateName: "ripgrep",
+  }).bin("rg"),
 );
 ```
 
@@ -44,9 +44,9 @@ The `install('cargo', params)` function accepts the following parameters:
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'fd-find',
-  }).bin('fd')
+  install("cargo", {
+    crateName: "fd-find",
+  }).bin("fd"),
 );
 ```
 
@@ -54,12 +54,12 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'bat',
-    binarySource: 'github-releases',
-    githubRepo: 'sharkdp/bat',
-    assetPattern: '{crateName}-{version}-{arch}-{platform}.tar.gz',
-  }).bin('bat')
+  install("cargo", {
+    crateName: "bat",
+    binarySource: "github-releases",
+    githubRepo: "sharkdp/bat",
+    assetPattern: "{crateName}-{version}-{arch}-{platform}.tar.gz",
+  }).bin("bat"),
 );
 ```
 
@@ -67,10 +67,10 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'ripgrep',
-    versionSource: 'crates-io',
-  }).bin('rg')
+  install("cargo", {
+    crateName: "ripgrep",
+    versionSource: "crates-io",
+  }).bin("rg"),
 );
 ```
 
@@ -78,15 +78,15 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'tool',
+  install("cargo", {
+    crateName: "tool",
   })
-    .bin('tool')
+    .bin("tool")
     .hooks({
       afterInstall: async (ctx) => {
         // Post-installation setup
       },
-    })
+    }),
 );
 ```
 
@@ -150,14 +150,14 @@ Implements `IInstallerPlugin` with:
 This package extends the core type system via module augmentation:
 
 ```typescript
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
     cargo: CargoInstallParams;
   }
   interface IToolConfigRegistry {
     cargo: CargoToolConfig;
   }
-  interface IPluginResultRegistry extends RegisterPluginResult<'cargo', CargoInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<"cargo", CargoInstallResult> {}
 }
 ```
 

@@ -20,9 +20,9 @@ The primary goal of this package is to answer the question: "Which of these file
 Generates a set of string patterns for the given system information. This is the foundation of the architecture matching logic.
 
 ```typescript
-import { getArchitecturePatterns } from '@dotfiles/arch';
+import { getArchitecturePatterns } from "@dotfiles/arch";
 
-const patterns = getArchitecturePatterns({ platform: 'linux', arch: 'x64', homeDir: '~' });
+const patterns = getArchitecturePatterns({ platform: "linux", arch: "x64", homeDir: "~" });
 // patterns.system -> ['linux']
 // patterns.cpu -> ['amd64', 'x86_64', 'x64', 'x86-64']
 // patterns.variants -> ['musl', 'gnu', 'unknown-linux']
@@ -33,9 +33,9 @@ const patterns = getArchitecturePatterns({ platform: 'linux', arch: 'x64', homeD
 Compiles the string patterns into a set of regular expressions.
 
 ```typescript
-import { createArchitectureRegex, getArchitecturePatterns } from '@dotfiles/arch';
+import { createArchitectureRegex, getArchitecturePatterns } from "@dotfiles/arch";
 
-const patterns = getArchitecturePatterns({ platform: 'darwin', arch: 'arm64', homeDir: '~' });
+const patterns = getArchitecturePatterns({ platform: "darwin", arch: "arm64", homeDir: "~" });
 const regex = createArchitectureRegex(patterns);
 // regex.systemPattern -> '(apple|darwin|...|osx)'
 // regex.cpuPattern -> '(arm64|aarch64|aarch)'
@@ -50,11 +50,11 @@ A convenience function that combines `getArchitecturePatterns` and `createArchit
 Checks if a single asset name matches the primary system and CPU architecture patterns. This is useful for an initial, broad filtering of assets.
 
 ```typescript
-import { getArchitectureRegex, matchesArchitecture } from '@dotfiles/arch';
+import { getArchitectureRegex, matchesArchitecture } from "@dotfiles/arch";
 
-const regex = getArchitectureRegex({ platform: 'linux', arch: 'x64', homeDir: '~' });
-matchesArchitecture('my-tool-linux-amd64.zip', regex); // true
-matchesArchitecture('my-tool-darwin-arm64.zip', regex); // false
+const regex = getArchitectureRegex({ platform: "linux", arch: "x64", homeDir: "~" });
+matchesArchitecture("my-tool-linux-amd64.zip", regex); // true
+matchesArchitecture("my-tool-darwin-arm64.zip", regex); // false
 ```
 
 ### `selectBestMatch(assetNames: string[], systemInfo: SystemInfo): string | undefined`
@@ -62,12 +62,12 @@ matchesArchitecture('my-tool-darwin-arm64.zip', regex); // false
 This is the highest-level function, designed to select the single best asset from a list. It performs the initial filtering and then uses the ordered variants for tie-breaking if multiple matches are found.
 
 ```typescript
-import { selectBestMatch } from '@dotfiles/arch';
+import { selectBestMatch } from "@dotfiles/arch";
 
-const assets = ['ripgrep-13.0.0-x86_64-unknown-linux-musl.tar.gz', 'ripgrep-13.0.0-x86_64-unknown-linux-gnu.tar.gz'];
+const assets = ["ripgrep-13.0.0-x86_64-unknown-linux-musl.tar.gz", "ripgrep-13.0.0-x86_64-unknown-linux-gnu.tar.gz"];
 
 // On a standard glibc system, this would be the systemInfo
-const systemInfo = { platform: 'linux', arch: 'x64', homeDir: '~' };
+const systemInfo = { platform: "linux", arch: "x64", homeDir: "~" };
 
 // The 'gnu' variant is preferred over 'musl' by default in the generated patterns
 const best = selectBestMatch(assets, systemInfo);

@@ -92,14 +92,14 @@ interface IOperationFailure {
 
 type InstallResult<TMetadata> =
   | (OperationSuccess & {
-    version?: string;
-    binaryPaths?: string[];
-    metadata?: TMetadata;
-    installationMethod?: string;
-  })
+      version?: string;
+      binaryPaths?: string[];
+      metadata?: TMetadata;
+      installationMethod?: string;
+    })
   | (OperationFailure & {
-    installationMethod?: string;
-  });
+      installationMethod?: string;
+    });
 ```
 
 ### Context Types
@@ -177,9 +177,9 @@ const githubReleaseParamsSchema = z.object({
 ### Platform Types
 
 ```typescript
-type SystemType = 'darwin' | 'linux' | 'win32';
-type ArchType = 'x64' | 'arm64' | 'x86';
-type CpuType = 'intel' | 'arm' | 'amd';
+type SystemType = "darwin" | "linux" | "win32";
+type ArchType = "x64" | "arm64" | "x86";
+type CpuType = "intel" | "arm" | "amd";
 
 interface IPlatformInfo {
   system: SystemType;
@@ -242,7 +242,7 @@ interface ShellCommand extends PromiseLike<ShellResult> {
 Creates a shell instance for executing system commands.
 
 ```typescript
-import { createShell } from '@dotfiles/core';
+import { createShell } from "@dotfiles/core";
 
 // Create a shell instance
 const shell = createShell();
@@ -252,7 +252,7 @@ const result = await shell`echo hello`;
 console.log(result.stdout); // "hello\n"
 
 // Use fluent API for options
-const output = await shell`ls -la`.cwd('/tmp').quiet().text();
+const output = await shell`ls -la`.cwd("/tmp").quiet().text();
 
 // Parse JSON output
 const data = await shell`cat package.json`.json();
@@ -283,10 +283,10 @@ const completionGenerator = new CompletionGenerator(logger, fs, shell);
 ### ShellType
 
 ```typescript
-type ShellType = 'zsh' | 'bash' | 'fish';
+type ShellType = "zsh" | "bash" | "fish";
 
 interface IShellScript {
-  type: 'path' | 'env' | 'custom';
+  type: "path" | "env" | "custom";
   priority: number;
   content: string;
 }
@@ -325,22 +325,22 @@ Plugins use module augmentation to register their types:
 
 ```typescript
 // In your plugin package
-declare module '@dotfiles/core' {
+declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    'my-method': MyMethodParams;
+    "my-method": MyMethodParams;
   }
 
   // Optional: allow install('my-method') without params
   interface INoParamsMethodRegistry {
-    'my-method': true;
+    "my-method": true;
   }
 
   interface IToolConfigRegistry {
-    'my-method': MyMethodToolConfig;
+    "my-method": MyMethodToolConfig;
   }
 
   interface IPluginResultRegistry {
-    'my-method': MyMethodResult;
+    "my-method": MyMethodResult;
   }
 }
 ```
@@ -348,12 +348,12 @@ declare module '@dotfiles/core' {
 ### Creating a Plugin
 
 ```typescript
-import type { BaseInstallContext, IInstallerPlugin } from '@dotfiles/core';
+import type { BaseInstallContext, IInstallerPlugin } from "@dotfiles/core";
 
-export const myPlugin: IInstallerPlugin<'my-method', MyMethodParams, MyMethodToolConfig, MyMethodMetadata> = {
-  method: 'my-method',
-  displayName: 'My Method',
-  version: '1.0.0',
+export const myPlugin: IInstallerPlugin<"my-method", MyMethodParams, MyMethodToolConfig, MyMethodMetadata> = {
+  method: "my-method",
+  displayName: "My Method",
+  version: "1.0.0",
   paramsSchema: myMethodParamsSchema,
   toolConfigSchema: myMethodToolConfigSchema,
 
@@ -361,8 +361,8 @@ export const myPlugin: IInstallerPlugin<'my-method', MyMethodParams, MyMethodToo
     // Implementation
     return {
       success: true,
-      version: '1.0.0',
-      binaryPaths: ['/path/to/binary'],
+      version: "1.0.0",
+      binaryPaths: ["/path/to/binary"],
     };
   },
 };
@@ -425,8 +425,8 @@ interface InstallHooks {
 
 ```typescript
 type UpdateCheckResult =
-  | { success: true; hasUpdate: boolean; currentVersion?: string; latestVersion?: string; }
-  | { success: false; error: string; };
+  | { success: true; hasUpdate: boolean; currentVersion?: string; latestVersion?: string }
+  | { success: false; error: string };
 ```
 
 ## Usage
@@ -434,7 +434,7 @@ type UpdateCheckResult =
 ### In Application Code
 
 ```typescript
-import { type BaseInstallContext, type InstallResult } from '@dotfiles/core';
+import { type BaseInstallContext, type InstallResult } from "@dotfiles/core";
 
 async function installTool(context: BaseInstallContext): Promise<InstallResult> {
   // Use core types
@@ -458,11 +458,11 @@ export const myPlugin: IInstallerPlugin<> /* ... */ = {
 ### In Configuration
 
 ```typescript
-import type { ToolConfig } from '@dotfiles/core';
+import type { ToolConfig } from "@dotfiles/core";
 
 const toolConfig: ToolConfig = {
-  method: 'github-release',
-  version: '1.0.0',
+  method: "github-release",
+  version: "1.0.0",
   // ...
 };
 ```
@@ -497,14 +497,14 @@ The plugin registry system provides complete type safety:
 
 ```typescript
 // Type-safe plugin method
-const config: ToolConfigRegistry['github-release'] = {
-  method: 'github-release',
-  repo: 'owner/repo',
+const config: ToolConfigRegistry["github-release"] = {
+  method: "github-release",
+  repo: "owner/repo",
   // TypeScript knows the exact shape
 };
 
 // Type-safe result
-const result: PluginResultRegistry['github-release'] = await install(/* ... */);
+const result: PluginResultRegistry["github-release"] = await install(/* ... */);
 ```
 
 ## Best Practices

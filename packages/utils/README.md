@@ -27,9 +27,9 @@ This package is part of the `@dotfiles` monorepo and is typically not installed 
 Contracts an absolute path by replacing the home directory with `~`.
 
 ```typescript
-import { contractHomePath } from '@dotfiles/utils';
+import { contractHomePath } from "@dotfiles/utils";
 
-const shortPath = contractHomePath('/Users/john', '/Users/john/projects/dotfiles');
+const shortPath = contractHomePath("/Users/john", "/Users/john/projects/dotfiles");
 // Returns: '~/projects/dotfiles'
 ```
 
@@ -38,9 +38,9 @@ const shortPath = contractHomePath('/Users/john', '/Users/john/projects/dotfiles
 Expands a path containing `~` with the actual home directory.
 
 ```typescript
-import { expandHomePath } from '@dotfiles/utils';
+import { expandHomePath } from "@dotfiles/utils";
 
-const fullPath = expandHomePath('/Users/john', '~/projects/dotfiles');
+const fullPath = expandHomePath("/Users/john", "~/projects/dotfiles");
 // Returns: '/Users/john/projects/dotfiles'
 ```
 
@@ -49,9 +49,9 @@ const fullPath = expandHomePath('/Users/john', '~/projects/dotfiles');
 Expands a tool config path, supporting both `~` and `${dotfilesDir}` placeholders.
 
 ```typescript
-import { expandToolConfigPath } from '@dotfiles/utils';
+import { expandToolConfigPath } from "@dotfiles/utils";
 
-const configPath = expandToolConfigPath('/Users/john', '/Users/john/dotfiles', '${dotfilesDir}/tools/ripgrep.tool.ts');
+const configPath = expandToolConfigPath("/Users/john", "/Users/john/dotfiles", "${dotfilesDir}/tools/ripgrep.tool.ts");
 // Returns: '/Users/john/dotfiles/tools/ripgrep.tool.ts'
 ```
 
@@ -62,7 +62,7 @@ const configPath = expandToolConfigPath('/Users/john', '/Users/john/dotfiles', '
 Converts numeric file permissions to a readable string format (e.g., `rwxr-xr-x`).
 
 ```typescript
-import { formatPermissions } from '@dotfiles/utils';
+import { formatPermissions } from "@dotfiles/utils";
 
 const perms = formatPermissions(0o755);
 // Returns: 'rwxr-xr-x'
@@ -78,7 +78,7 @@ const readOnly = formatPermissions(0o644);
 Removes leading indentation from a multi-line string while preserving relative indentation.
 
 ```typescript
-import { dedentString } from '@dotfiles/utils';
+import { dedentString } from "@dotfiles/utils";
 
 const indented = `
   Line 1
@@ -98,7 +98,7 @@ const result = dedentString(indented);
 Template tag function for dedenting template literals.
 
 ```typescript
-import { dedentTemplate } from '@dotfiles/utils';
+import { dedentTemplate } from "@dotfiles/utils";
 
 const script = dedentTemplate`
   #!/bin/bash
@@ -123,27 +123,27 @@ Performs a regex-based replacement within a file.
 - Returns `true` if replacements were made, `false` if no matches found.
 
 ```typescript
-import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { IReplaceInFileMatch } from '@dotfiles/utils';
-import { replaceInFile } from '@dotfiles/utils';
+import type { IResolvedFileSystem } from "@dotfiles/file-system";
+import type { IReplaceInFileMatch } from "@dotfiles/utils";
+import { replaceInFile } from "@dotfiles/utils";
 
 declare const fileSystem: IResolvedFileSystem;
 
 // Simple string replacement (returns true if replaced)
-const wasReplaced = await replaceInFile(fileSystem, '/tmp/input.txt', 'foo', 'bar');
+const wasReplaced = await replaceInFile(fileSystem, "/tmp/input.txt", "foo", "bar");
 
 // Regex replacement with home path
-await replaceInFile(fileSystem, '~/config.txt', /foo/, 'bar');
+await replaceInFile(fileSystem, "~/config.txt", /foo/, "bar");
 
 // Line mode replacement
-await replaceInFile(fileSystem, '/tmp/input.txt', /foo/, 'bar', {
-  mode: 'line',
+await replaceInFile(fileSystem, "/tmp/input.txt", /foo/, "bar", {
+  mode: "line",
 });
 
 // Async callback replacement with match params
 await replaceInFile(
   fileSystem,
-  '/tmp/input.txt',
+  "/tmp/input.txt",
   /foo/,
   async ({ substring, captures, offset, input, groups }: IReplaceInFileMatch): Promise<string> => {
     return substring.toUpperCase();
@@ -158,11 +158,11 @@ await replaceInFile(
 Normalizes version strings by making them safe for file paths (replaces unsafe characters).
 
 ```typescript
-import { normalizeVersion } from '@dotfiles/utils';
+import { normalizeVersion } from "@dotfiles/utils";
 
-normalizeVersion('v1.2.3'); // Returns: 'v1.2.3'
-normalizeVersion('1.2.3'); // Returns: '1.2.3'
-normalizeVersion('1.2.3/beta'); // Returns: '1.2.3-beta'
+normalizeVersion("v1.2.3"); // Returns: 'v1.2.3'
+normalizeVersion("1.2.3"); // Returns: '1.2.3'
+normalizeVersion("1.2.3/beta"); // Returns: '1.2.3-beta'
 ```
 
 #### `stripVersionPrefix(version: string): string`
@@ -170,11 +170,11 @@ normalizeVersion('1.2.3/beta'); // Returns: '1.2.3-beta'
 Strips the `v` or `V` prefix from version strings.
 
 ```typescript
-import { stripVersionPrefix } from '@dotfiles/utils';
+import { stripVersionPrefix } from "@dotfiles/utils";
 
-stripVersionPrefix('v1.2.3'); // Returns: '1.2.3'
-stripVersionPrefix('V1.2.3'); // Returns: '1.2.3'
-stripVersionPrefix('1.2.3'); // Returns: '1.2.3'
+stripVersionPrefix("v1.2.3"); // Returns: '1.2.3'
+stripVersionPrefix("V1.2.3"); // Returns: '1.2.3'
+stripVersionPrefix("1.2.3"); // Returns: '1.2.3'
 ```
 
 #### `detectVersionViaCli(options: DetectVersionOptions): Promise<string | undefined>`
@@ -182,23 +182,23 @@ stripVersionPrefix('1.2.3'); // Returns: '1.2.3'
 Detects the version of a tool by running it with `--version` (or custom args) and parsing the output.
 
 ```typescript
-import { createShell } from '@dotfiles/core';
-import { detectVersionViaCli } from '@dotfiles/utils';
+import { createShell } from "@dotfiles/core";
+import { detectVersionViaCli } from "@dotfiles/utils";
 
 const shell = createShell();
 
 // Using default --version args and semver regex
 const version = await detectVersionViaCli({
   shellExecutor: shell,
-  binaryPath: '/usr/local/bin/rg',
+  binaryPath: "/usr/local/bin/rg",
 });
 // Returns: '14.1.0' (parsed from output)
 
 // Using custom args and regex
 const customVersion = await detectVersionViaCli({
   shellExecutor: shell,
-  binaryPath: '/usr/local/bin/mytool',
-  args: ['-v'],
+  binaryPath: "/usr/local/bin/mytool",
+  args: ["-v"],
   regex: /version[:\s]+(\d+\.\d+\.\d+)/i,
 });
 ```
@@ -218,22 +218,22 @@ const customVersion = await detectVersionViaCli({
 Resolves platform-specific configuration by merging base config with platform overrides.
 
 ```typescript
-import type { ToolConfig } from '@dotfiles/core';
-import { resolvePlatformConfig } from '@dotfiles/utils';
+import type { ToolConfig } from "@dotfiles/core";
+import { resolvePlatformConfig } from "@dotfiles/utils";
 
 const config: ToolConfig = {
-  method: 'github-release',
-  version: '1.0.0',
-  binaries: [{ name: 'rg' }],
+  method: "github-release",
+  version: "1.0.0",
+  binaries: [{ name: "rg" }],
   darwin: {
-    version: '2.0.0', // Override for macOS
+    version: "2.0.0", // Override for macOS
   },
 };
 
 const resolved = resolvePlatformConfig(config, {
-  system: 'darwin',
-  arch: 'arm64',
-  cpu: 'arm',
+  system: "darwin",
+  arch: "arm64",
+  cpu: "arm",
 });
 // Returns config with darwin overrides applied
 ```
@@ -245,7 +245,7 @@ const resolved = resolvePlatformConfig(config, {
 Gets the path to the current CLI binary executable.
 
 ```typescript
-import { getCliBinPath } from '@dotfiles/utils';
+import { getCliBinPath } from "@dotfiles/utils";
 
 const binPath = getCliBinPath();
 // Returns: '/path/to/cli/binary'
@@ -256,10 +256,10 @@ const binPath = getCliBinPath();
 Exits the CLI process with the specified exit code.
 
 ```typescript
-import { exitCli } from '@dotfiles/utils';
+import { exitCli } from "@dotfiles/utils";
 
 if (error) {
-  logger.error('Fatal error occurred');
+  logger.error("Fatal error occurred");
   exitCli(1);
 }
 ```
@@ -271,7 +271,7 @@ if (error) {
 Generates an ISO 8601 timestamp string for the current date/time.
 
 ```typescript
-import { generateTimestamp } from '@dotfiles/utils';
+import { generateTimestamp } from "@dotfiles/utils";
 
 const timestamp = generateTimestamp();
 // Returns: '2024-01-15T10:30:45.123Z'
@@ -282,10 +282,10 @@ const timestamp = generateTimestamp();
 ### Contract and Expand Paths
 
 ```typescript
-import { contractHomePath, expandHomePath } from '@dotfiles/utils';
+import { contractHomePath, expandHomePath } from "@dotfiles/utils";
 
-const homeDir = '/Users/john';
-const projectPath = '/Users/john/projects/dotfiles';
+const homeDir = "/Users/john";
+const projectPath = "/Users/john/projects/dotfiles";
 
 // Contract path to use tilde
 const shortPath = contractHomePath(homeDir, projectPath);
@@ -299,12 +299,12 @@ console.log(fullPath); // /Users/john/projects/dotfiles
 ### Format File Permissions
 
 ```typescript
-import { formatPermissions } from '@dotfiles/utils';
+import { formatPermissions } from "@dotfiles/utils";
 
 const permissions = [
-  { mode: 0o755, expected: 'rwxr-xr-x' },
-  { mode: 0o644, expected: 'rw-r--r--' },
-  { mode: 0o600, expected: 'rw-------' },
+  { mode: 0o755, expected: "rwxr-xr-x" },
+  { mode: 0o644, expected: "rw-r--r--" },
+  { mode: 0o600, expected: "rw-------" },
 ];
 
 permissions.forEach(({ mode, expected }) => {
@@ -315,7 +315,7 @@ permissions.forEach(({ mode, expected }) => {
 ### Dedent Multi-line Strings
 
 ```typescript
-import { dedentString, dedentTemplate } from '@dotfiles/utils';
+import { dedentString, dedentTemplate } from "@dotfiles/utils";
 
 // Using dedentString function
 const script1 = dedentString(`
@@ -335,25 +335,25 @@ const script2 = dedentTemplate`
 ### Resolve Platform-Specific Config
 
 ```typescript
-import type { PlatformInfo, ToolConfig } from '@dotfiles/core';
-import { resolvePlatformConfig } from '@dotfiles/utils';
+import type { PlatformInfo, ToolConfig } from "@dotfiles/core";
+import { resolvePlatformConfig } from "@dotfiles/utils";
 
 const toolConfig: ToolConfig = {
-  method: 'github-release',
-  repo: 'BurntSushi/ripgrep',
-  binaries: [{ name: 'rg' }],
+  method: "github-release",
+  repo: "BurntSushi/ripgrep",
+  binaries: [{ name: "rg" }],
   darwin: {
-    binaries: [{ name: 'rg', pattern: 'rg-*-apple-darwin/rg' }],
+    binaries: [{ name: "rg", pattern: "rg-*-apple-darwin/rg" }],
   },
   linux: {
-    binaries: [{ name: 'rg', pattern: 'rg-*-unknown-linux-musl/rg' }],
+    binaries: [{ name: "rg", pattern: "rg-*-unknown-linux-musl/rg" }],
   },
 };
 
 const darwinInfo: PlatformInfo = {
-  system: 'darwin',
-  arch: 'arm64',
-  cpu: 'arm',
+  system: "darwin",
+  arch: "arm64",
+  cpu: "arm",
 };
 
 const resolved = resolvePlatformConfig(toolConfig, darwinInfo);

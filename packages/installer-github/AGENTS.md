@@ -16,8 +16,8 @@ This package provides a plugin implementation for installing tools from GitHub r
 ## Usage
 
 ```typescript
-import { GitHubReleaseInstallerPlugin } from '@dotfiles/installer-github';
-import { InstallerPluginRegistry } from '@dotfiles/installer-plugin-system';
+import { GitHubReleaseInstallerPlugin } from "@dotfiles/installer-github";
+import { InstallerPluginRegistry } from "@dotfiles/installer-plugin-system";
 
 // Create plugin with dependencies
 const githubPlugin = new GitHubReleaseInstallerPlugin(

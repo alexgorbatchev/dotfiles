@@ -81,7 +81,7 @@ The CLI includes an embedded dashboard (a web UI for managing tools). The dashbo
 
 ```typescript
 // In dashboard-server.ts
-import clientApp from '../client/dashboard.html';
+import clientApp from "../client/dashboard.html";
 ```
 
 When Bun encounters this import at runtime, it automatically bundles the HTML file and its referenced scripts (Preact components). This is a runtime feature, not a build-time bundling step.

@@ -5,7 +5,7 @@ Gitea/Forgejo Release installer plugin for the dotfiles tool installer system. S
 ## Usage
 
 ```typescript
-import { GiteaReleaseInstallerPlugin } from '@dotfiles/installer-gitea';
+import { GiteaReleaseInstallerPlugin } from "@dotfiles/installer-gitea";
 
 const giteaPlugin = new GiteaReleaseInstallerPlugin(
   fileSystem,
@@ -21,30 +21,30 @@ pluginRegistry.register(giteaPlugin);
 ## Tool Configuration
 
 ```typescript
-install('gitea-release', {
-  instanceUrl: 'https://codeberg.org',
-  repo: 'Codeberg/pages-server',
-}).bin('pages-server');
+install("gitea-release", {
+  instanceUrl: "https://codeberg.org",
+  repo: "Codeberg/pages-server",
+}).bin("pages-server");
 ```
 
 ### With Asset Pattern
 
 ```typescript
-install('gitea-release', {
-  instanceUrl: 'https://codeberg.org',
-  repo: 'owner/tool',
-  assetPattern: '*x86_64.tar.gz',
-}).bin('tool');
+install("gitea-release", {
+  instanceUrl: "https://codeberg.org",
+  repo: "owner/tool",
+  assetPattern: "*x86_64.tar.gz",
+}).bin("tool");
 ```
 
 ### With Authentication
 
 ```typescript
-install('gitea-release', {
-  instanceUrl: 'https://gitea.example.com',
-  repo: 'org/private-tool',
+install("gitea-release", {
+  instanceUrl: "https://gitea.example.com",
+  repo: "org/private-tool",
   token: process.env.GITEA_TOKEN,
-}).bin('tool');
+}).bin("tool");
 ```
 
 ## Parameters

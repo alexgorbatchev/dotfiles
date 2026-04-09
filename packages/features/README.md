@@ -16,12 +16,12 @@ Service for fetching, caching, and generating tool README files from GitHub repo
 ### Usage
 
 ```typescript
-import { ReadmeService } from '@dotfiles/features';
+import { ReadmeService } from "@dotfiles/features";
 
 const readmeService = new ReadmeService(logger, downloader, registry);
 
 // Fetch README for specific version
-const readme = await readmeService.fetchReadmeForVersion('owner', 'repo', 'v1.2.3');
+const readme = await readmeService.fetchReadmeForVersion("owner", "repo", "v1.2.3");
 
 // Generate combined README
 const combinedReadme = await readmeService.generateCombinedReadme();
