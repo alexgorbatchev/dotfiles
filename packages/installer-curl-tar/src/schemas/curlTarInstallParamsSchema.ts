@@ -12,14 +12,16 @@ import { z } from "zod";
  * zinit light "user/tool-from-tarball"
  * ```
  */
-export const curlTarInstallParamsSchema = baseInstallParamsSchema.extend({
-  /** The URL of the tarball to download. */
-  url: z.string().url(),
-  /** Arguments to pass to the binary to check the version (e.g. ['--version']). */
-  versionArgs: z.array(z.string()).optional(),
-  /** Regex pattern or source string used to extract the version from output. */
-  versionRegex: z.union([z.string(), z.instanceof(RegExp)]).optional(),
-});
+export const curlTarInstallParamsSchema = baseInstallParamsSchema
+  .extend({
+    /** The URL of the tarball to download. */
+    url: z.string().url(),
+    /** Arguments to pass to the binary to check the version (e.g. ['--version']). */
+    versionArgs: z.array(z.string()).optional(),
+    /** Regex pattern or source string used to extract the version from output. */
+    versionRegex: z.union([z.string(), z.instanceof(RegExp)]).optional(),
+  })
+  .strict();
 
 /**
  * Parameters for installing a tool by downloading a tarball (`.tar`, `.tar.gz`, etc.) using `curl`,
