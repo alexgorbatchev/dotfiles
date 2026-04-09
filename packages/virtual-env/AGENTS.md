@@ -1,37 +1,30 @@
-# Virtual Environment Package
+# @dotfiles/virtual-env
 
-## Purpose
+Project-scoped virtual environments for dotfiles configs, activation scripts, and environment-local tool directories.
 
-Provides virtual environment management for dotfiles, allowing isolated configurations within project directories.
+## Commands
 
-## Key Components
+- Focused test: `bun test:native packages/virtual-env/src/__tests__/generateDefaultConfig.test.ts`
+- Full repo check before sign-off: `bun check`
 
-- `VirtualEnvManager` - Core class for creating, deleting, and managing environments
-- `generateSourceScript()` - Generates shell activation script
-- `generateDefaultConfig()` - Generates default dotfiles.config.ts template
-- `ENV_DIR_VAR`, `ENV_NAME_VAR` - Environment variable names
+## Local conventions
 
-## Environment Structure
+- Keep activation-script generation in `src/generateSourceScript.ts` / `src/generatePowerShellSourceScript.ts` and environment orchestration in `src/VirtualEnvManager.ts`.
+- Default config generation belongs in `src/generateDefaultConfig.ts`; keep the emitted structure aligned with CLI config-resolution behavior.
 
-```
-[env-name]/
-├── source       # Shell activation script (source this to activate)
-├── dotfiles.config.ts    # Dotfiles configuration
-└── tools/       # Tool configurations directory
-```
+## Local gotchas
 
-## Integration Points
+- Environment activation relies on `DOTFILES_ENV_DIR` and `DOTFILES_ENV_NAME`. If those names or defaults change, CLI resolution must change with them.
 
-- CLI config resolution checks `DOTFILES_ENV_DIR` and defaults `--config` to `$DOTFILES_ENV_DIR/dotfiles.config.ts`
-- When sourced, sets `DOTFILES_ENV_DIR` and `DOTFILES_ENV_NAME` env vars
-- Provides `dotfiles-deactivate` function to clean up environment
+## Boundaries
 
-## Testing
+- Ask first: changing environment layout, activation variable names, or default config content shape.
+- Never: make activation scripts mutate unrelated user shell state.
 
-Tests are located in `src/__tests__/` and cover:
+## References
 
-- Environment creation with default and custom names
-- Source script generation
-- Config template generation
-- Environment deletion
-- Environment detection by name in a directory
+- `README.md`
+- `src/VirtualEnvManager.ts`
+- `src/generateSourceScript.ts`
+- `src/generateDefaultConfig.ts`
+- `src/constants.ts`

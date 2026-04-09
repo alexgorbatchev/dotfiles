@@ -1,28 +1,29 @@
-# Features Package
+# @dotfiles/features
 
-Feature services for the dotfiles tool installer.
+Higher-level feature services layered on top of the core installer and registry packages.
 
-## Readme Service
+## Commands
 
-Service for fetching, caching, and generating tool README files from GitHub repositories.
+- Focused test: `bun test:native packages/features/src/readme-service/__tests__/ReadmeService.test.ts`
+- Full repo check before sign-off: `bun check`
 
-### Features
+## Local conventions
 
-- Fetches README.md files from GitHub using raw URLs
-- Version-specific README caching per tool
-- Combined README generation from installed tools
-- No GitHub API rate limits (uses raw.githubusercontent.com)
+- Keep each feature in its own subdirectory with its own `log-messages.ts`, types, and tests; `src/readme-service/` is the canonical pattern.
+- Use downloader and registry abstractions instead of ad-hoc network or storage calls inside feature services.
 
-### Usage
+## Local gotchas
 
-```typescript
-import { ReadmeService } from "@dotfiles/features";
+- Feature services are integration points. If you change caching or README assembly logic, cover both cache and service-level behavior.
 
-const readmeService = new ReadmeService(logger, downloader, registry);
+## Boundaries
 
-// Fetch README for specific version
-const readme = await readmeService.fetchReadmeForVersion("owner", "repo", "v1.2.3");
+- Ask first: adding a new externally visible feature service or expanding package exports.
+- Never: fetch remote content directly when the downloader already models the request path.
 
-// Generate combined README
-const combinedReadme = await readmeService.generateCombinedReadme();
-```
+## References
+
+- `README.md`
+- `src/readme-service/ReadmeService.ts`
+- `src/readme-service/ReadmeCache.ts`
+- `src/index.ts`

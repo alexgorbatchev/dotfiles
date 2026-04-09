@@ -1,23 +1,29 @@
 # @dotfiles/installer-gitea
 
-Gitea/Forgejo Release installer plugin for the dotfiles tool installer system.
+Gitea and Forgejo release installer plugin with per-tool instance URLs and Gitea API v1 support.
 
-## Purpose
+## Commands
 
-This package provides a plugin implementation for installing tools from Gitea/Forgejo releases. It implements the `IInstallerPlugin` interface from `@dotfiles/core` and supports any Gitea-compatible instance (Gitea, Forgejo, Codeberg, etc.).
+- Focused test: `bun test:native packages/installer-gitea/src/__tests__/GiteaReleaseInstallerPlugin.test.ts`
+- Full repo check before sign-off: `bun check`
 
-## Architecture
+## Local conventions
 
-- **GiteaReleaseInstallerPlugin**: Plugin class that implements `IInstallerPlugin` interface
-- **GiteaApiClient**: HTTP client for the Gitea/Forgejo REST API with caching support
-- **installFromGiteaRelease**: Core installation logic
-- Schemas defined using Zod for validation
-- Dependencies injected through constructor
+- Keep API-client behavior and release-asset selection explicit; this package cannot assume GitHub semantics or `gh` CLI support.
+- Per-instance behavior belongs in the Gitea client path, not in generic installer helpers.
 
-## Key Differences from GitHub Installer
+## Local gotchas
 
-- Each tool specifies its own `instanceUrl` (e.g., `https://codeberg.org`)
-- No gh CLI support (Gitea-specific)
-- API client is created per-tool based on the instance URL
-- Uses Gitea API v1 (`/api/v1/repos/...`)
-- Gitea uses `limit` instead of `per_page` for pagination
+- Each tool provides its own `instanceUrl`. If you try to centralize host assumptions here, you'll break Codeberg and self-hosted installations.
+
+## Boundaries
+
+- Ask first: changing pagination, caching, or instance URL handling.
+- Never: copy GitHub-specific API or auth behavior into the Gitea flow.
+
+## References
+
+- `README.md`
+- `src/GiteaReleaseInstallerPlugin.ts`
+- `src/installFromGiteaRelease.ts`
+- `src/matchAssetPattern.ts`

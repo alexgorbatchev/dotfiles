@@ -1,51 +1,30 @@
-# @dotfiles/http-proxy Package
+# @dotfiles/http-proxy
 
-## Purpose
+Standalone Bun HTTP cache proxy used during development to avoid upstream rate limits.
 
-Standalone HTTP caching proxy that ignores server cache headers to prevent rate limiting by production APIs.
+## Commands
 
-## Architecture
+- Focused test: `bun test:native packages/http-proxy/src/__tests__/createProxyServer.test.ts`
+- Proxy dev server: `bun proxy`
+- Full repo check before sign-off: `bun check`
 
-### Core Components
+## Local conventions
 
-- **ProxyCacheStore**: File-based cache storage with hash-based keys, stores metadata and binary body separately
-- **CacheInvalidator**: Glob-based cache clearing utility
-- **createProxyServer**: Bun.serve-based server factory with route handling
+- Keep cache storage concerns in `src/ProxyCacheStore.ts`, invalidation in `src/CacheInvalidator.ts`, and HTTP routing in `src/createProxyServer.ts`.
+- Mock upstream requests through the `fetchFn` option in tests instead of making live network calls.
 
-### Cache Key Strategy
+## Local gotchas
 
-- Keys are SHA-256 hashes of: `${method}:${url}`
-- Files stored as:
-  - `<cache-dir>/<first-2-chars>/<hash>.meta.json` - metadata (URL, headers, timestamps)
-  - `<cache-dir>/<first-2-chars>/<hash>.body` - raw binary response body
+- This proxy intentionally ignores origin cache headers. Do not 'fix' that behavior unless the development contract changes.
 
-### File Structure
+## Boundaries
 
-```
-src/
-  index.ts           # Public exports
-  server.ts          # CLI entry point
-  types.ts           # Type definitions
-  ProxyCacheStore.ts # Cache storage implementation
-  CacheInvalidator.ts # Glob-based cache clearing
-  createProxyServer.ts # Bun.serve server factory
-```
+- Ask first: changing cache key shape, persistence layout, or management endpoints.
+- Never: add production-only proxy semantics that fight the dev-cache use case.
 
-## API Routes
+## References
 
-- `POST /cache/clear` - Clear cache entries by glob pattern
-- `GET /cache/stats` - Get cache statistics
-- `POST /cache/populate` - Pre-populate cache with known responses
-- All other requests are proxied to target URL
-
-## Response Headers
-
-- `X-Dotfiles-Cache: HIT` - Response served from cache
-- `X-Dotfiles-Cache: MISS` - Response fetched from origin and cached
-
-## Testing Guidelines
-
-- Use `createTestDirectories` for temp directories
-- Mock `fetch` for upstream requests via `fetchFn` option
-- Test cache hit/miss scenarios
-- Test glob pattern matching for invalidation
+- `README.md`
+- `src/createProxyServer.ts`
+- `src/ProxyCacheStore.ts`
+- `src/CacheInvalidator.ts`

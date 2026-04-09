@@ -1,27 +1,29 @@
 # @dotfiles/unwrap-value
 
-## AGENTS.md
+Pure helper for resolving static, sync, and async values through a single `Resolvable` contract.
 
-This package provides a type and utility function for handling values that may be static, synchronous functions, or asynchronous functions.
+## Commands
 
-## Key Concepts
+- Focused test: `bun test:native packages/unwrap-value/src/__tests__/resolveValue.test.ts`
+- Full repo check before sign-off: `bun check`
 
-- **Resolvable<TParams, TReturn>**: A type representing a value that can be:
-  - A static value of type `TReturn`
-  - A synchronous function `(params: TParams) => TReturn`
-  - An asynchronous function `(params: TParams) => Promise<TReturn>`
+## Local conventions
 
-- **resolveValue**: A function that unwraps a `Resolvable` to get the actual value
+- Keep the package small and pure: `src/types.ts` defines the contract and `src/resolveValue.ts` implements it.
+- If you expand the value model, preserve the sync/async call signatures used by builder and config code.
 
-## File Structure
+## Local gotchas
 
-- `src/types.ts` - Type definitions
-- `src/resolveValue.ts` - Resolution function implementation
-- `src/index.ts` - Public exports
-- `src/__tests__/` - Test files
+- This utility looks trivial, but its generic types flow into author-facing APIs. Type regressions matter more than implementation size suggests.
 
-## Important Notes
+## Boundaries
 
-- This package has NO dependencies
-- This package has NO logging
-- All functions are pure
+- Ask first: changing `Resolvable` typing or promise-resolution semantics.
+- Never: add side effects, logging, or package-specific policy here.
+
+## References
+
+- `README.md`
+- `src/types.ts`
+- `src/resolveValue.ts`
+- `src/index.ts`
