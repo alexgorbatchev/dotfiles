@@ -7,6 +7,17 @@ import { createInstallerTestSetup, type IInstallerTestSetup, MOCK_TOOL_NAME } fr
 describe("Installer - getShellInit for already-installed tools", () => {
   let setup: IInstallerTestSetup;
 
+  async function createHealthyExistingInstall(version: string): Promise<void> {
+    const installPath = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, version);
+    const currentDir = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, "current");
+    const currentBinaryPath = path.join(currentDir, MOCK_TOOL_NAME);
+
+    await setup.fs.ensureDir(installPath);
+    await setup.fs.ensureDir(currentDir);
+    await setup.fs.writeFile(currentBinaryPath, "mock binary content");
+    await setup.fs.chmod(currentBinaryPath, 0o755);
+  }
+
   beforeEach(async () => {
     setup = await createInstallerTestSetup();
   });
@@ -21,6 +32,8 @@ describe("Installer - getShellInit for already-installed tools", () => {
         repo: "owner/repo",
       },
     };
+
+    await createHealthyExistingInstall("1.0.0");
 
     // Mock that tool is already installed
     setup.mockToolInstallationRegistry.getToolInstallation.mockResolvedValue({
@@ -73,6 +86,8 @@ describe("Installer - getShellInit for already-installed tools", () => {
       },
     };
 
+    await createHealthyExistingInstall("1.0.0");
+
     // Mock that tool is already installed
     setup.mockToolInstallationRegistry.getToolInstallation.mockResolvedValue({
       id: 1,
@@ -113,6 +128,8 @@ describe("Installer - getShellInit for already-installed tools", () => {
         repo: "owner/repo",
       },
     };
+
+    await createHealthyExistingInstall("2.0.0");
 
     // Mock that tool is already installed (any version counts for 'latest')
     setup.mockToolInstallationRegistry.getToolInstallation.mockResolvedValue({

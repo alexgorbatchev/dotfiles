@@ -30,6 +30,8 @@ Every tool that provides executables **must** have `.bin()` — it generates a s
 
 After any `.tool.ts` file change (create, delete, or modify), run `dotfiles generate` to sync generated artifacts.
 
+`dotfiles install <tool-or-binary>` is also a repair command: it verifies the on-disk install payload, reinstalls broken tools, regenerates missing shims for non-externally-managed tools, removes stale temporary shims for externally managed tools, and reconciles the tool's generated artifacts.
+
 ## Reference Files
 
 Read these based on the task at hand:

@@ -16,7 +16,7 @@ import { Platform } from "@dotfiles/core";
 import type { IResolvedFileSystem } from "@dotfiles/file-system";
 import { createSafeLogMessage, type TsLogger } from "@dotfiles/logger";
 import type { TrackedFileSystem } from "@dotfiles/registry/file";
-import type { IToolInstallationRegistry } from "@dotfiles/registry/tool";
+import type { IToolInstallationRecord, IToolInstallationRegistry } from "@dotfiles/registry/tool";
 import type { ICompletionGenerationContext, ICompletionGenerator } from "@dotfiles/shell-init-generator";
 import type { ISymlinkGenerator } from "@dotfiles/symlink-generator";
 import { resolveValue } from "@dotfiles/unwrap-value";
@@ -162,6 +162,47 @@ export class Installer implements IInstaller {
    * @param parentLogger - Logger for diagnostic messages
    * @returns True if installation should be skipped, false otherwise
    */
+  private async isExistingInstallationHealthy(
+    toolName: string,
+    existingInstallation: IToolInstallationRecord,
+    resolvedToolConfig: ToolConfig,
+    parentLogger: TsLogger,
+  ): Promise<boolean> {
+    const logger = parentLogger.getSubLogger({ name: "isExistingInstallationHealthy" });
+
+    const installPathExists = await this.resolvedFs.exists(existingInstallation.installPath);
+    if (!installPathExists) {
+      logger.warn(messages.lifecycle.existingInstallPathMissing(existingInstallation.installPath));
+      return false;
+    }
+
+    const expectedBinaryPaths = getBinaryPaths(
+      resolvedToolConfig.binaries,
+      path.join(this.projectConfig.paths.binariesDir, toolName, "current"),
+    );
+
+    if (expectedBinaryPaths.length === 0) {
+      return true;
+    }
+
+    const currentDir = path.join(this.projectConfig.paths.binariesDir, toolName, "current");
+    const currentDirExists = await this.resolvedFs.exists(currentDir);
+    if (!currentDirExists) {
+      logger.warn(messages.lifecycle.currentDirMissing(currentDir));
+      return false;
+    }
+
+    for (const binaryPath of expectedBinaryPaths) {
+      const binaryExists = await this.resolvedFs.exists(binaryPath);
+      if (!binaryExists) {
+        logger.warn(messages.lifecycle.currentBinaryMissing(binaryPath));
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   private async shouldSkipInstallation(
     toolName: string,
     resolvedToolConfig: ToolConfig,
@@ -175,6 +216,16 @@ export class Installer implements IInstaller {
 
     const existingInstallation = await this.toolInstallationRegistry.getToolInstallation(toolName);
     if (!existingInstallation) {
+      return null;
+    }
+
+    const isHealthy = await this.isExistingInstallationHealthy(
+      toolName,
+      existingInstallation,
+      resolvedToolConfig,
+      logger,
+    );
+    if (!isHealthy) {
       return null;
     }
 

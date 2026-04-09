@@ -71,13 +71,14 @@ describe("Installer - Reproduction of curl-script loop issue", () => {
     expect(currentSymlinkCall![0]).toMatch(/\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}/);
 
     setup.mockToolInstallationRegistry.getToolInstallation.mockImplementation(async () => {
+      const currentDir = path.join(toolDir, "current");
       const result: IToolInstallationRecord = {
         id: 1,
         toolName: MOCK_TOOL_NAME,
-        version: "latest", // or whatever was recorded
-        installPath: "/path/to/install",
+        version: "latest",
+        installPath: currentDir,
         timestamp: "2024-01-01",
-        binaryPaths: ["/path/to/install/test-tool"],
+        binaryPaths: [path.join(currentDir, MOCK_TOOL_NAME)],
         installedAt: new Date(),
       };
       return result;

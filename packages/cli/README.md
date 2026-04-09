@@ -19,25 +19,21 @@ The CLI package serves as the main entry point for all dotfiles operations. It o
 
 ## Commands
 
-### `install [toolOrBinary]`
+### `install <toolOrBinary>`
 
-Install a specific tool or all configured tools. You can specify either the tool name or any binary name that the tool provides.
+Install or repair a specific tool. You can specify either the tool name or any binary name that the tool provides.
+
+The command verifies the on-disk installation instead of trusting the registry alone. If the installed payload is broken, it reinstalls the tool. If generated artifacts for that tool are missing, it repairs them automatically.
 
 ```bash
-# Install all tools
-dotfiles install
-
 # Install specific tool by name
 dotfiles install fzf
 
-# Install tool by binary name (finds tool that provides 'bat' binary)
+# Install tool by binary name (finds the tool that provides 'bat')
 dotfiles install bat
 
-# Force reinstall
-dotfiles install --force
-
-# Skip tool installation, only generate configs
-dotfiles install --skip-tools
+# Force reinstall even if the tool is healthy
+dotfiles install fzf --force
 ```
 
 When installing by binary name:
@@ -46,10 +42,17 @@ When installing by binary name:
 - If not found, it searches all tool configurations for one that provides the specified binary
 - If multiple tools provide the same binary, an error is shown listing all matching tools
 
+**Repairs performed by `install`:**
+
+- Reinstalls the tool when the recorded installation payload is missing or broken
+- Regenerates tool shims for non-externally-managed tools
+- Removes stale temporary shims for externally managed tools
+- Reconciles tool-local completions, symlinks, and copies
+
 **Options:**
 
-- `--force` - Force reinstall even if tool is already installed
-- `--skip-tools` - Skip tool installation, only generate configurations
+- `--force` - Force reinstall even if the tool is already installed and healthy
+- `--shim-mode` - Minimal output for shim-triggered installs
 - `--verbose` - Enable verbose logging
 
 ### `generate`

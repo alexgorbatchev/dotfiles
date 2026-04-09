@@ -72,6 +72,12 @@ export const messages = {
       createSafeLogMessage(`Symlink verification failed: ${symlinkPath}`),
     externalSymlinkCreated: (symlinkPath: string, targetPath: string) =>
       createSafeLogMessage(`External symlink created: ${symlinkPath} -> ${targetPath}`),
+    existingInstallPathMissing: (installPath: string) =>
+      createSafeLogMessage(`install: existing install path missing: ${installPath}`),
+    currentDirMissing: (currentDir: string) =>
+      createSafeLogMessage(`install: current tool path missing: ${currentDir}`),
+    currentBinaryMissing: (binaryPath: string) =>
+      createSafeLogMessage(`install: current binary missing: ${binaryPath}`),
   } satisfies SafeLogMessageMap,
   outcome: {
     installSuccess: (toolName: string, version: string, method: string) =>

@@ -2,11 +2,14 @@ import type { IConfigService, ProjectConfig } from "@dotfiles/config";
 import type { ToolConfig } from "@dotfiles/core";
 import { Architecture, Platform } from "@dotfiles/core";
 import type { IGeneratorOrchestrator } from "@dotfiles/generator-orchestrator";
-import type { IInstaller, InstallResult } from "@dotfiles/installer";
+import { getBinaryNames, type IInstaller, type InstallResult } from "@dotfiles/installer";
 import type { TestLogger } from "@dotfiles/logger";
+import type { IShimGenerator } from "@dotfiles/shim-generator";
+import type { ICopyGenerator, ISymlinkGenerator } from "@dotfiles/symlink-generator";
 import type { MockedInterface } from "@dotfiles/testing-helpers";
 import { createInstallFunction } from "@dotfiles/tool-config-builder";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import path from "node:path";
 import { registerInstallCommand } from "../installCommand";
 import { messages } from "../log-messages";
 import type { IGlobalProgram, IServices } from "../types";
@@ -31,6 +34,10 @@ describe("installCommand", () => {
   let mockServices: IServices;
   let mockConfigService: MockedInterface<IConfigService>;
   let mockGeneratorOrchestrator: IGeneratorOrchestrator;
+  let mockShimGenerator: MockedInterface<IShimGenerator>;
+  let mockSymlinkGenerator: MockedInterface<ISymlinkGenerator>;
+  let mockCopyGenerator: MockedInterface<ICopyGenerator>;
+  let externallyManagedMethods: Set<string>;
 
   const toolAConfig: ToolConfig = {
     name: "toolA",
@@ -79,10 +86,44 @@ describe("installCommand", () => {
       cleanupToolArtifacts: mock(async () => {}),
     };
 
+    mockShimGenerator = {
+      generate: mock(async () => []),
+      generateForTool: mock(async (_toolName: string, toolConfig: ToolConfig) => {
+        const shimPaths: string[] = [];
+        const binaryNames = getBinaryNames(toolConfig.binaries);
+
+        for (const binaryName of binaryNames) {
+          const shimPath = path.join(mockProjectConfig.paths.targetDir, binaryName);
+          await setup.mockFs.fs.ensureDir(path.dirname(shimPath));
+          await setup.mockFs.fs.writeFile(shimPath, "#!/usr/bin/env bash\nexit 0\n");
+          shimPaths.push(shimPath);
+        }
+
+        return shimPaths;
+      }),
+    };
+
+    mockSymlinkGenerator = {
+      generate: mock(async () => []),
+      createBinarySymlink: mock(async () => {}),
+    };
+
+    mockCopyGenerator = {
+      generate: mock(async () => []),
+    };
+
+    externallyManagedMethods = new Set<string>();
+    const pluginRegistry = mockServices.pluginRegistry;
+    pluginRegistry.getExternallyManagedMethods = mock(() => externallyManagedMethods);
+
     registerInstallCommand(testLogger, program, async () => ({
       ...mockServices,
       configService: mockConfigService,
       generatorOrchestrator: mockGeneratorOrchestrator,
+      shimGenerator: mockShimGenerator,
+      symlinkGenerator: mockSymlinkGenerator,
+      copyGenerator: mockCopyGenerator,
+      pluginRegistry,
     }));
   });
 
@@ -115,7 +156,82 @@ describe("installCommand", () => {
       verbose: false,
       shimMode: false,
     });
+    expect(mockShimGenerator.generateForTool).toHaveBeenCalledWith("toolA", toolAConfig, {
+      overwrite: false,
+      overwriteConflicts: false,
+    });
+    expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(
+      { toolA: toolAConfig },
+      { overwrite: true, backup: true },
+    );
+    expect(mockCopyGenerator.generate).toHaveBeenCalledWith({ toolA: toolAConfig }, { overwrite: true, backup: true });
     testLogger.expect(["INFO"], ["registerInstallCommand"], [], [messages.toolInstalled("toolA", "1.0.0", "brew")]);
+  });
+
+  test("should repair missing shim for an already-installed tool", async () => {
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(toolAConfig);
+    const mockInstall = mockInstaller.install as ReturnType<typeof mock>;
+    mockInstall.mockResolvedValueOnce({
+      success: true,
+      binaryPaths: ["/fake/bin/toolA"],
+      version: "1.0.0",
+      installationMethod: "already-installed",
+    });
+
+    await program.parseAsync(["install", "toolA"], { from: "user" });
+
+    expect(mockShimGenerator.generateForTool).toHaveBeenCalledWith("toolA", toolAConfig, {
+      overwrite: false,
+      overwriteConflicts: false,
+    });
+    testLogger.expect(["INFO"], ["registerInstallCommand"], [], [messages.toolArtifactsRepaired("toolA")]);
+  });
+
+  test("should report healthy state for an already-installed tool with intact artifacts", async () => {
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(toolAConfig);
+    const shimPath = path.join(mockProjectConfig.paths.targetDir, "toolA");
+    await mockServices.fs.writeFile(shimPath, "#!/usr/bin/env bash\nexit 0\n");
+
+    const mockInstall = mockInstaller.install as ReturnType<typeof mock>;
+    mockInstall.mockResolvedValueOnce({
+      success: true,
+      binaryPaths: ["/fake/bin/toolA"],
+      version: "1.0.0",
+      installationMethod: "already-installed",
+    });
+
+    await program.parseAsync(["install", "toolA"], { from: "user" });
+
+    testLogger.expect(["INFO"], ["registerInstallCommand"], [], [messages.toolAlreadyInstalled("toolA", "1.0.0")]);
+  });
+
+  test("should delete stale shims for already-installed externally managed tools", async () => {
+    const brewToolConfig: ToolConfig = {
+      name: "toolA",
+      version: "1.0.0",
+      installationMethod: "brew",
+      installParams: { formula: "toolA" },
+      binaries: ["toolA"],
+    };
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(brewToolConfig);
+    externallyManagedMethods.add("brew");
+
+    const shimPath = path.join(mockProjectConfig.paths.targetDir, "toolA");
+    await mockServices.fs.writeFile(shimPath, "#!/usr/bin/env bash\nexit 0\n");
+
+    const mockInstall = mockInstaller.install as ReturnType<typeof mock>;
+    mockInstall.mockResolvedValueOnce({
+      success: true,
+      binaryPaths: ["/opt/homebrew/bin/toolA"],
+      version: "1.0.0",
+      installationMethod: "already-installed",
+    });
+
+    await program.parseAsync(["install", "toolA"], { from: "user" });
+
+    expect(mockShimGenerator.generateForTool).not.toHaveBeenCalled();
+    expect(await mockServices.fs.exists(shimPath)).toBe(false);
+    testLogger.expect(["INFO"], ["registerInstallCommand"], [], [messages.toolArtifactsRepaired("toolA")]);
   });
 
   test("should skip installation for configuration-only tool configs", async () => {
@@ -132,6 +248,8 @@ describe("installCommand", () => {
     expect(mockGeneratorOrchestrator.generateCompletionsForTool).toHaveBeenCalledWith(
       "config-tool",
       configOnlyToolConfig,
+      undefined,
+      undefined,
     );
   });
 

@@ -27,7 +27,9 @@ export const messages = {
   toolInstalled: (toolName: string, version: string, method: string) =>
     createSafeLogMessage(`Tool "${toolName}" \`${version}\` installed successfully using ${method}`),
   toolAlreadyInstalled: (toolName: string, version: string) =>
-    createSafeLogMessage(`Tool "${toolName}" \`${version}\` is already installed`),
+    createSafeLogMessage(`Tool "${toolName}" \`${version}\` is already installed and healthy`),
+  toolArtifactsRepaired: (toolName: string) =>
+    createSafeLogMessage(`Tool "${toolName}" is installed. Repaired generated artifacts`),
   toolInstallSkippedConfigurationOnly: (toolName: string) =>
     createSafeLogMessage(`Tool "${toolName}" has no installation steps`),
   shimDeleted: (binaryName: string, shimPath: string) =>

@@ -1,9 +1,9 @@
 import type { IConfigService, ILoadToolConfigByBinaryError, ProjectConfig } from "@dotfiles/config";
 import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
 import type { IResolvedFileSystem } from "@dotfiles/file-system";
-import type { InstallResult } from "@dotfiles/installer";
+import { getBinaryNames, type InstallResult } from "@dotfiles/installer";
 import type { TsLogger } from "@dotfiles/logger";
-import { exitCli, resolvePlatformConfig } from "@dotfiles/utils";
+import { expandToolConfigPath, exitCli, resolvePlatformConfig } from "@dotfiles/utils";
 import path from "node:path";
 import { messages } from "./log-messages";
 import type {
@@ -39,6 +39,21 @@ type LoadToolConfigResult =
   | { success: false; error: string };
 
 type InstallCommandOptions = IInstallCommandSpecificOptions & IGlobalProgramOptions;
+
+interface IArtifactValidationResult {
+  hasIssues: boolean;
+  issues: string[];
+}
+
+interface IArtifactReconciliationOptions {
+  version?: string;
+  binaryPaths?: string[];
+}
+
+interface IOperationResultSummary {
+  success: boolean;
+  error?: string;
+}
 
 /**
  * Type guard to check if a result from loadToolConfigByBinary is an error object.
@@ -120,11 +135,211 @@ async function loadToolConfigByNameOrBinary(
   return result;
 }
 
+async function pathExists(fs: IResolvedFileSystem, filePath: string, useLstat: boolean = false): Promise<boolean> {
+  if (useLstat) {
+    try {
+      await fs.lstat(filePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return fs.exists(filePath);
+}
+
+function getExternalShimPaths(toolConfig: ToolConfig, projectConfig: ProjectConfig): string[] {
+  return getBinaryNames(toolConfig.binaries).map((binaryName) => path.join(projectConfig.paths.targetDir, binaryName));
+}
+
+async function validateShimArtifacts(
+  toolConfig: ToolConfig,
+  projectConfig: ProjectConfig,
+  fs: IResolvedFileSystem,
+  isExternallyManaged: boolean,
+): Promise<string[]> {
+  const issues: string[] = [];
+  const shimPaths = getExternalShimPaths(toolConfig, projectConfig);
+
+  for (const shimPath of shimPaths) {
+    const shimExists = await pathExists(fs, shimPath, true);
+
+    if (isExternallyManaged) {
+      if (shimExists) {
+        issues.push(`stale shim at ${shimPath}`);
+      }
+      continue;
+    }
+
+    if (!shimExists) {
+      issues.push(`missing shim at ${shimPath}`);
+    }
+  }
+
+  return issues;
+}
+
+async function validateSymlinkArtifacts(
+  toolConfig: ToolConfig,
+  projectConfig: ProjectConfig,
+  systemInfo: ISystemInfo,
+  fs: IResolvedFileSystem,
+): Promise<string[]> {
+  const issues: string[] = [];
+
+  if (!toolConfig.symlinks || toolConfig.symlinks.length === 0) {
+    return issues;
+  }
+
+  for (const symlink of toolConfig.symlinks) {
+    const sourcePath = expandToolConfigPath(toolConfig.configFilePath, symlink.source, projectConfig, systemInfo);
+    const targetPath = expandToolConfigPath(toolConfig.configFilePath, symlink.target, projectConfig, systemInfo);
+
+    try {
+      const targetStats = await fs.lstat(targetPath);
+      if (!targetStats.isSymbolicLink()) {
+        issues.push(`expected symlink at ${targetPath}`);
+        continue;
+      }
+
+      const linkTarget = await fs.readlink(targetPath);
+      const resolvedLinkTarget = path.resolve(path.dirname(targetPath), linkTarget);
+      if (resolvedLinkTarget !== sourcePath) {
+        issues.push(`symlink target mismatch at ${targetPath}`);
+      }
+    } catch {
+      issues.push(`missing symlink at ${targetPath}`);
+    }
+  }
+
+  return issues;
+}
+
+async function validateCopyArtifacts(
+  toolConfig: ToolConfig,
+  projectConfig: ProjectConfig,
+  systemInfo: ISystemInfo,
+  fs: IResolvedFileSystem,
+): Promise<string[]> {
+  const issues: string[] = [];
+
+  if (!toolConfig.copies || toolConfig.copies.length === 0) {
+    return issues;
+  }
+
+  for (const copy of toolConfig.copies) {
+    const targetPath = expandToolConfigPath(toolConfig.configFilePath, copy.target, projectConfig, systemInfo);
+    const targetExists = await pathExists(fs, targetPath);
+
+    if (!targetExists) {
+      issues.push(`missing copy at ${targetPath}`);
+    }
+  }
+
+  return issues;
+}
+
+async function validateToolArtifacts(toolConfig: ToolConfig, services: IServices): Promise<IArtifactValidationResult> {
+  const resolvedToolConfig = resolvePlatformConfig(toolConfig, services.systemInfo);
+  const externallyManagedMethods = services.pluginRegistry.getExternallyManagedMethods();
+  const isExternallyManaged = externallyManagedMethods.has(resolvedToolConfig.installationMethod);
+
+  const shimIssues = await validateShimArtifacts(
+    resolvedToolConfig,
+    services.projectConfig,
+    services.fs,
+    isExternallyManaged,
+  );
+  const symlinkIssues = await validateSymlinkArtifacts(
+    resolvedToolConfig,
+    services.projectConfig,
+    services.systemInfo,
+    services.fs,
+  );
+  const copyIssues = await validateCopyArtifacts(
+    resolvedToolConfig,
+    services.projectConfig,
+    services.systemInfo,
+    services.fs,
+  );
+  const issues = [...shimIssues, ...symlinkIssues, ...copyIssues];
+
+  return {
+    hasIssues: issues.length > 0,
+    issues,
+  };
+}
+
+function getFirstFailureError(results: IOperationResultSummary[]): string | null {
+  for (const result of results) {
+    if (!result.success) {
+      return result.error ?? "Operation failed";
+    }
+  }
+
+  return null;
+}
+
+async function reconcileToolArtifacts(
+  logger: TsLogger,
+  toolName: string,
+  toolConfig: ToolConfig,
+  services: IServices,
+  options: IArtifactReconciliationOptions = {},
+): Promise<boolean> {
+  const validationBefore = await validateToolArtifacts(toolConfig, services);
+  const resolvedToolConfig = resolvePlatformConfig(toolConfig, services.systemInfo);
+  const externallyManagedMethods = services.pluginRegistry.getExternallyManagedMethods();
+  const isExternallyManaged = externallyManagedMethods.has(resolvedToolConfig.installationMethod);
+
+  if (isExternallyManaged) {
+    await deleteShimsForTool(resolvedToolConfig, services.projectConfig.paths.targetDir, services.fs, logger);
+  } else {
+    await services.shimGenerator.generateForTool(toolName, toolConfig, {
+      overwrite: false,
+      overwriteConflicts: false,
+    });
+  }
+
+  await services.generatorOrchestrator.generateCompletionsForTool(
+    toolName,
+    toolConfig,
+    options.version,
+    options.binaryPaths,
+  );
+
+  const symlinkResults = await services.symlinkGenerator.generate(
+    { [toolName]: toolConfig },
+    { overwrite: true, backup: true },
+  );
+  const symlinkError = getFirstFailureError(symlinkResults);
+  if (symlinkError) {
+    throw new Error(symlinkError);
+  }
+
+  const copyResults = await services.copyGenerator.generate(
+    { [toolName]: toolConfig },
+    { overwrite: true, backup: true },
+  );
+  const copyError = getFirstFailureError(copyResults);
+  if (copyError) {
+    throw new Error(copyError);
+  }
+
+  const validationAfter = await validateToolArtifacts(toolConfig, services);
+  if (validationAfter.hasIssues) {
+    throw new Error(`Failed to reconcile artifacts for "${toolName}": ${validationAfter.issues.join(", ")}`);
+  }
+
+  return validationBefore.hasIssues;
+}
+
 function handleInstallationResult(
   logger: TsLogger,
   result: InstallResult,
   toolName: string,
   shimMode: boolean,
+  artifactsWereBroken: boolean,
 ): number | null {
   if (result.success) {
     if (shimMode) {
@@ -135,7 +350,11 @@ function handleInstallationResult(
       const actualMethod = result.installationMethod ?? "unknown";
       const version = result.version ?? "unknown";
       if (actualMethod === "already-installed") {
-        logger.info(messages.toolAlreadyInstalled(toolName, version));
+        if (artifactsWereBroken) {
+          logger.info(messages.toolArtifactsRepaired(toolName));
+        } else {
+          logger.info(messages.toolAlreadyInstalled(toolName, version));
+        }
       } else {
         logger.info(messages.toolInstalled(toolName, version, actualMethod));
       }
@@ -203,7 +422,7 @@ async function executeInstallCommandAction(
   combinedOptions: InstallCommandOptions,
   services: IServices,
 ): Promise<number | null> {
-  const { projectConfig, fs, installer, configService, generatorOrchestrator, systemInfo } = services;
+  const { projectConfig, fs, installer, configService, systemInfo } = services;
 
   logger.debug(
     messages.commandActionStarted("install", nameOrBinary),
@@ -235,11 +454,14 @@ async function executeInstallCommandAction(
   const resolvedToolConfig = resolvePlatformConfig(toolConfig, systemInfo);
 
   if (isConfigurationOnlyToolConfig(resolvedToolConfig)) {
+    const artifactsWereBroken = await reconcileToolArtifacts(logger, toolName, toolConfig, services);
+
     if (!combinedOptions.shimMode) {
       logger.info(messages.toolInstallSkippedConfigurationOnly(toolName));
+      if (artifactsWereBroken) {
+        logger.info(messages.toolArtifactsRepaired(toolName));
+      }
     }
-
-    await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig);
 
     const result: number | null = combinedOptions.shimMode ? 0 : null;
     return result;
@@ -251,20 +473,16 @@ async function executeInstallCommandAction(
     shimMode: combinedOptions.shimMode,
   });
 
+  let artifactsWereBroken = false;
   if (result.success) {
-    // Extract binaryPaths from install result if available
     const binaryPaths = "binaryPaths" in result ? result.binaryPaths : undefined;
-    await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig, result.version, binaryPaths);
-
-    // Delete temporary shims for externally managed tools (brew, dmg).
-    // After install, the tool's binaries are in their own PATH location.
-    const externallyManagedMethods = services.pluginRegistry.getExternallyManagedMethods();
-    if (externallyManagedMethods.has(resolvedToolConfig.installationMethod)) {
-      await deleteShimsForTool(resolvedToolConfig, projectConfig.paths.targetDir, fs, logger);
-    }
+    artifactsWereBroken = await reconcileToolArtifacts(logger, toolName, toolConfig, services, {
+      version: result.version,
+      binaryPaths,
+    });
   }
 
-  const exitCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode);
+  const exitCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode, artifactsWereBroken);
   return exitCode;
 }
 
