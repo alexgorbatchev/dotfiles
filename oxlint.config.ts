@@ -24,7 +24,23 @@ export default createOxlintConfig(() => ({
         ignoreRestSiblings: true,
       },
     ],
-    "import/no-unassigned-import": ["error", { allow: ["@dotfiles/testing-helpers"] }],
+    "no-unused-expressions": ["error", { allowTaggedTemplates: true }],
+    "import/no-unassigned-import": [
+      "error",
+      {
+        allow: [
+          "@dotfiles/testing-helpers",
+          "@dotfiles/installer-*",
+          "**/*.css",
+          "./matchers/toMatchLooseInlineSnapshot",
+          "./matchers/toMatchRegex",
+          "../toMatchRegex",
+          "../plugins",
+          "./parallel-test-runner",
+          "./registerMatchers",
+        ],
+      },
+    ],
   },
   overrides: [
     {
