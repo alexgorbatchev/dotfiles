@@ -160,7 +160,7 @@ export function createProxyServer(config: IProxyServerOptions): IProxyServer {
     const cached = store.get(method, targetUrl);
     if (cached) {
       // Log cache hit - intentional console output for proxy visibility
-      // oxlint-disable-next-line no-console
+
       console.log(`🟢 [${getTimestamp()}] [${method}] ${targetUrl}`);
 
       const responseHeaders = buildResponseHeaders(cached.headers, "HIT", cached.body.length);
@@ -174,7 +174,7 @@ export function createProxyServer(config: IProxyServerOptions): IProxyServer {
     // Forward request to target
     try {
       // Log cache miss - intentional console output for proxy visibility
-      // oxlint-disable-next-line no-console
+
       console.log(`🔴 [${getTimestamp()}] [${method}] ${targetUrl}`);
 
       const headers: Record<string, string> = {};

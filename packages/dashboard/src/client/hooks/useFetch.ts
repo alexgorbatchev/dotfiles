@@ -12,6 +12,9 @@ export function useFetch<T>(endpoint: string, deps: unknown[] = []): IUseFetchRe
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // Create a stable dependency key from the array values
+  const depsKey = JSON.stringify(deps);
+
   useEffect(() => {
     const load = async (): Promise<void> => {
       setLoading(true);
@@ -26,8 +29,7 @@ export function useFetch<T>(endpoint: string, deps: unknown[] = []): IUseFetchRe
       }
     };
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endpoint, ...deps]);
+  }, [endpoint, depsKey]);
 
   return { data, loading, error };
 }

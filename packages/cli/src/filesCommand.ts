@@ -170,7 +170,7 @@ export function registerFilesCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
   servicesFactory: ServicesFactory,
-  // oxlint-disable-next-line no-console: default print function
+
   print: PrintFunction = console.log,
 ): void {
   const logger = parentLogger.getSubLogger({ name: "registerFilesCommand" });

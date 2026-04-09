@@ -26,8 +26,7 @@ export type SafeLogMessage = string & {
  * This is typically used to define a collection of log message templates.
  * The `any[]` is intentional to support message factories with varying parameter types.
  */
-// oxlint-disable-next-line no-explicit-any -- Generic message factory type requires flexible parameter signature
-export type SafeLogMessageMap = Record<string, (...args: any[]) => SafeLogMessage>;
+export type SafeLogMessageMap = Record<string, (...args: Parameters<typeof console.log>) => SafeLogMessage>;
 
 /**
  * A type alias for a {@link SafeLogger} instance with a default log object type.

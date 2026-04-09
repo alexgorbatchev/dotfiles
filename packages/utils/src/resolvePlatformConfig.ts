@@ -71,12 +71,11 @@ function mergeShellConfig(
 ): void {
   if (!platformShellConfig) return;
 
-  if (!shellConfigs[shellType]) {
-    shellConfigs[shellType] = {};
+  let targetShellConfig = shellConfigs[shellType];
+  if (!targetShellConfig) {
+    targetShellConfig = {};
+    shellConfigs[shellType] = targetShellConfig;
   }
-
-  // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion: shellConfigs[shellType] is guaranteed to exist after the check above
-  const targetShellConfig = shellConfigs[shellType]!;
 
   if (platformShellConfig.scripts) {
     targetShellConfig.scripts = [...(targetShellConfig.scripts || []), ...platformShellConfig.scripts];
@@ -110,9 +109,8 @@ function mergeShellConfigs(finalConfig: ToolConfig, platformShellConfigs: ToolCo
   if (!platformShellConfigs) return;
 
   initializeShellConfigs(finalConfig);
-  // shellConfigs is guaranteed to exist after initializeShellConfigs
-  // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion: shellConfigs is guaranteed to exist after initializeShellConfigs
-  const shellConfigs = finalConfig.shellConfigs!;
+  const shellConfigs = finalConfig.shellConfigs;
+  if (!shellConfigs) return;
 
   mergeShellConfig(shellConfigs, "zsh", platformShellConfigs.zsh);
   mergeShellConfig(shellConfigs, "bash", platformShellConfigs.bash);

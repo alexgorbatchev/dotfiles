@@ -1,6 +1,5 @@
 import { getE2eGeneratedDir } from "../../helpers/e2eGeneratedDir";
 
-// oxlint-disable-next-line import/no-default-export
 const generatedDir = getE2eGeneratedDir(import.meta.dirname);
 
 /**

@@ -25,6 +25,7 @@ export default createOxlintConfig(() => ({
       },
     ],
     "no-unused-expressions": ["error", { allowTaggedTemplates: true }],
+    "unicorn/no-thenable": "off",
     "import/no-unassigned-import": [
       "error",
       {
@@ -50,7 +51,14 @@ export default createOxlintConfig(() => ({
       },
     },
     {
-      files: ["packages/build/**/*.{ts,tsx,js,jsx,mts,cts}"],
+      files: [
+        "packages/build/**/*.{ts,tsx,js,jsx,mts,cts}",
+        "packages/cli/src/filesCommand.ts",
+        "packages/logger/src/TestLogger.ts",
+        "packages/http-proxy/src/createProxyServer.ts",
+        "packages/http-proxy/src/server.ts",
+        "packages/testing-helpers/src/parallel-test-runner.ts",
+      ],
       rules: {
         "no-console": "off",
       },

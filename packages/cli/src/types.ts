@@ -132,8 +132,7 @@ export interface ILogCommandSpecificOptions {
 /**
  * Command-specific options for files command (excludes global options)
  */
-// oxlint-disable-next-line @typescript-eslint/no-empty-object-type: No command-specific options for files command
-export type FilesCommandSpecificOptions = {};
+export type FilesCommandSpecificOptions = Record<never, never>;
 
 export interface IGlobalProgram extends Omit<Command, "opts"> {
   /**

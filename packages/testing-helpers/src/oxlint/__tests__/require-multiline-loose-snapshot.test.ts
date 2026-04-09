@@ -13,9 +13,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 import plugin from "../plugin.js";
 
 interface IAstVisitor {
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- mock AST visitor for testing
   TaggedTemplateExpression: (node: unknown) => void;
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- mock AST visitor for testing
   CallExpression: (node: unknown) => void;
 }
 

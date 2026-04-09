@@ -2,7 +2,6 @@ import { getE2eGeneratedDir } from "../../helpers/e2eGeneratedDir";
 
 const generatedDir = getE2eGeneratedDir(import.meta.dirname);
 
-// oxlint-disable-next-line import/no-default-export
 export default {
   paths: {
     generatedDir,

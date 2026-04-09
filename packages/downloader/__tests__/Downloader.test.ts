@@ -70,7 +70,6 @@ describe("Downloader", () => {
       name: "nonErrorObjectThrowingStrategy",
       isAvailable: mock(async () => true),
       download: mock(async () => {
-        // oxlint-disable-next-line no-throw-literal
         throw { message: "simulated non-error object", code: 123 };
       }),
     };
@@ -79,7 +78,6 @@ describe("Downloader", () => {
       name: "nonErrorStringThrowingStrategy",
       isAvailable: mock(async () => true),
       download: mock(async () => {
-        // oxlint-disable-next-line no-throw-literal
         throw "simulated string error";
       }),
     };

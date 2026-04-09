@@ -96,7 +96,6 @@ function createShellCommand(command: string, options: IShellOptions): IShellComm
       return new TextEncoder().encode(result.stdout);
     },
 
-    // oxlint-disable-next-line unicorn/no-thenable -- Required for PromiseLike interface to enable await syntax
     then<TResult1 = IShellResult, TResult2 = never>(
       onfulfilled?: ShellCommandOnFulfilled<TResult1>,
       onrejected?: ShellCommandOnRejected<TResult2>,

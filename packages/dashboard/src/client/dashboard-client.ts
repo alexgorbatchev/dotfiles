@@ -1,7 +1,6 @@
 import { h, hydrate } from "preact";
 import { prerender as ssr } from "preact-iso";
 
-// eslint-disable-next-line import/no-unassigned-import
 import "./styles/globals.css";
 import { App } from "./App";
 

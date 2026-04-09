@@ -1,4 +1,3 @@
-/* oxlint-disable no-console */
 import { join } from "node:path";
 
 import { dedentString } from "@dotfiles/utils";

@@ -1,6 +1,5 @@
 import { defineConfig } from "ts-unused";
 
-// oxlint-disable-next-line import/no-default-export
 export default defineConfig({
   // Custom patterns for identifying test files
   testFilePatterns: ["**/*.test-d.ts", "**/__tests__/**"],

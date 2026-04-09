@@ -174,7 +174,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     const logs = this.getLogs(levels, path, context, matcher);
     for (const log of logs) {
       const { _meta, ...rest } = log;
-      // oxlint-disable-next-line no-console -- Debug method for printing captured test logs to stdout
+
       console.log(JSON.stringify(rest));
     }
   }

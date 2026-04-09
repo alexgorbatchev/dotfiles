@@ -1,4 +1,3 @@
-// oxlint-disable no-console
 /**
  * Parallel Test Runner
  *

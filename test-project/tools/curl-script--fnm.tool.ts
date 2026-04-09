@@ -1,4 +1,3 @@
-/* oxlint-disable no-console */
 import { defineTool, type IToolConfigBuilder } from "@dotfiles/cli";
 
 async function chainTest(chain: IToolConfigBuilder) {

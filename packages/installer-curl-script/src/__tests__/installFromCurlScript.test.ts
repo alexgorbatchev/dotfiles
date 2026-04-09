@@ -19,14 +19,17 @@ interface ICurlScriptMockShell {
 type ShellTemplateInvocation = [TemplateStringsArray, string, string[]];
 type EnvInvocation = [Record<string, string>];
 
+type PromiseResolve = (value: unknown) => void;
+type PromiseReject = (reason: unknown) => void;
+
 function createMockShell(): ICurlScriptMockShell {
   const mockResult = mock(() => Promise.resolve({ stdout: "", stderr: "", code: 0 }));
-  const mockEnv = mock(() => ({
+  const mockCmd = {
     quiet: mockResult,
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any, unicorn/no-thenable -- test mock simulating ShellCommand PromiseLike
-    then: (resolve: any, reject?: any) => mockResult().then(resolve, reject),
-  }));
-  const mockFn = mock(() => ({ env: mockEnv }));
+    then: (resolve: PromiseResolve, reject?: PromiseReject) => mockResult().then(resolve, reject),
+  };
+  const mockEnv = mock(() => mockCmd);
+  const mockFn = mock(() => ({ env: mockEnv, ...mockCmd }));
   return { shell: mockFn as unknown as IShell, mockFn, mockEnv, mockResult };
 }
 

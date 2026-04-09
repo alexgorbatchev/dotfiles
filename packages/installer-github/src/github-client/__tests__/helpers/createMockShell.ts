@@ -109,7 +109,7 @@ export function createMockShell(): IMockShell {
         const response = findResponse(command);
         return new TextEncoder().encode(response.stdout);
       },
-      // oxlint-disable-next-line unicorn/no-thenable
+
       then: <TResult1, TResult2>(
         onfulfilled?: ShellCommandOnFulfilled<TResult1>,
         onrejected?: ShellCommandOnRejected<TResult2>,

@@ -189,5 +189,4 @@ async function main() {
   printDependencyTree(packageInfos);
 }
 
-// oxlint-disable-next-line no-console: build script
 main().catch(console.error);
