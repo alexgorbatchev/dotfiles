@@ -35,7 +35,7 @@ export async function setupBinariesFromArchive(
   context: IInstallContext,
   extractDir: string,
   parentLogger: TsLogger,
-): Promise<void> {
+): Promise<string[]> {
   const logger = parentLogger.getSubLogger({ name: "setupBinariesFromArchive" });
   const binariesDir = path.join(context.projectConfig.paths.generatedDir, "binaries");
   const binaryConfigs = normalizeBinaries(toolConfig.binaries);
@@ -44,12 +44,12 @@ export async function setupBinariesFromArchive(
   // This will be either a version (e.g., "1.0.0") or timestamp (e.g., "2025-11-04-20-53-47")
   const subdirName = path.basename(context.stagingDir);
 
-  await setupBinariesUsingPatterns(fs, toolName, binaryConfigs, subdirName, extractDir, binariesDir, logger);
+  return await setupBinariesUsingPatterns(fs, toolName, binaryConfigs, subdirName, extractDir, binariesDir, logger);
 }
 
 /**
  * Setup binaries using pattern-based location (new approach)
- * @returns true if at least one binary was found and set up, false otherwise
+ * @returns Array of absolute paths to the found binaries
  */
 async function setupBinariesUsingPatterns(
   fs: IFileSystem,
@@ -59,9 +59,9 @@ async function setupBinariesUsingPatterns(
   extractDir: string,
   binariesDir: string,
   parentLogger: TsLogger,
-): Promise<boolean> {
+): Promise<string[]> {
   const logger = parentLogger.getSubLogger({ name: "setupBinariesUsingPatterns" });
-  let foundAnyBinary = false;
+  const foundBinaries: string[] = [];
 
   for (const binaryConfig of binaryConfigs) {
     const { name: binaryName, pattern } = binaryConfig;
@@ -87,10 +87,10 @@ async function setupBinariesUsingPatterns(
     // Create stable entrypoint file for this binary
     const relativePath = path.relative(extractDir, binaryPath);
     await createBinaryEntrypoint(fs, toolName, binaryName, versionOrTimestamp, relativePath, binariesDir, logger);
-    foundAnyBinary = true;
+    foundBinaries.push(binaryPath);
   }
 
-  return foundAnyBinary;
+  return foundBinaries;
 }
 
 /**

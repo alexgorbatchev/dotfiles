@@ -133,7 +133,14 @@ export async function installFromCurlTar(
     }
 
     // Handle all binaries from extracted archive
-    await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.stagingDir, logger);
+    const resolvedBinaryPaths = await setupBinariesFromArchive(
+      toolFs,
+      toolName,
+      toolConfig,
+      context,
+      context.stagingDir,
+      logger,
+    );
 
     // Clean up downloaded tarball
     if (await toolFs.exists(tarballPath)) {
@@ -142,7 +149,8 @@ export async function installFromCurlTar(
     }
 
     // Return paths to all binaries
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
+    const binaryPaths =
+      resolvedBinaryPaths.length > 0 ? resolvedBinaryPaths : getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     let detectedVersion: string | undefined;
     const mainBinaryPath = binaryPaths[0];

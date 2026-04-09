@@ -83,7 +83,14 @@ export async function installFromCargo(
     });
     logger.debug(messages.archiveExtracted(), extractResult);
 
-    await setupBinariesFromArchive(fs, toolName, toolConfig, context, context.stagingDir, logger);
+    const resolvedBinaryPaths = await setupBinariesFromArchive(
+      fs,
+      toolName,
+      toolConfig,
+      context,
+      context.stagingDir,
+      logger,
+    );
 
     const afterInstallResult = await executeAfterInstallHook(
       toolConfig,
@@ -102,7 +109,8 @@ export async function installFromCargo(
       logger.debug(messages.cleaningArchive(downloadPath));
     }
 
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
+    const binaryPaths =
+      resolvedBinaryPaths.length > 0 ? resolvedBinaryPaths : getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     const metadata: ICargoInstallMetadata = {
       method: "cargo",

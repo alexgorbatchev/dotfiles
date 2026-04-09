@@ -127,7 +127,9 @@ export async function installFromGiteaRelease(
       return result;
     }
 
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
+    const resolvedBinaryPaths = installResult.data;
+    const binaryPaths =
+      resolvedBinaryPaths.length > 0 ? resolvedBinaryPaths : getBinaryPaths(toolConfig.binaries, context.stagingDir);
 
     const metadata: IGiteaReleaseInstallMetadata = {
       method: "gitea-release",
@@ -379,7 +381,7 @@ async function processAssetInstallation(
   hookExecutor: HookExecutor,
   fs: IFileSystem,
   logger: TsLogger,
-): Promise<OperationResult<void>> {
+): Promise<OperationResult<string[]>> {
   if (isSupportedArchiveFile(asset.name)) {
     return await processArchiveInstallation(
       asset,
@@ -397,7 +399,7 @@ async function processAssetInstallation(
   }
 
   await setupBinariesFromDirectDownload(toolFs, toolName, toolConfig, context, downloadPath, logger);
-  const result: OperationResult<void> = { success: true, data: undefined };
+  const result: OperationResult<string[]> = { success: true, data: [] };
   return result;
 }
 
@@ -413,7 +415,7 @@ async function processArchiveInstallation(
   hookExecutor: HookExecutor,
   fs: IFileSystem,
   logger: TsLogger,
-): Promise<OperationResult<void>> {
+): Promise<OperationResult<string[]>> {
   logger.debug(messages.extractingArchive(asset.name));
 
   const extractResult: IExtractResult = await archiveExtractor.extract(logger, downloadPath, {
@@ -429,17 +431,25 @@ async function processArchiveInstallation(
 
   const hookResult = await executeAfterExtractHook(toolConfig, postExtractContext, fs, hookExecutor, logger);
   if (!hookResult.success) {
-    return hookResult;
+    const errorResult: OperationResult<string[]> = { success: false, error: hookResult.error };
+    return errorResult;
   }
 
-  await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.stagingDir, logger);
+  const resolvedBinaryPaths = await setupBinariesFromArchive(
+    toolFs,
+    toolName,
+    toolConfig,
+    context,
+    context.stagingDir,
+    logger,
+  );
 
   if (await toolFs.exists(downloadPath)) {
     logger.debug(messages.cleaningArchive(downloadPath));
     await toolFs.rm(downloadPath);
   }
 
-  const result: OperationResult<void> = { success: true, data: undefined };
+  const result: OperationResult<string[]> = { success: true, data: resolvedBinaryPaths };
   return result;
 }
 
