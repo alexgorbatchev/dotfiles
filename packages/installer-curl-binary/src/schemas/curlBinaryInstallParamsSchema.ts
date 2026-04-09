@@ -20,8 +20,8 @@ export const curlBinaryInstallParamsSchema = baseInstallParamsSchema.extend({
   url: z.string().url(),
   /** Arguments to pass to the binary to check the version (e.g. ['--version']). */
   versionArgs: z.array(z.string()).optional(),
-  /** Regex to extract version from output. */
-  versionRegex: z.string().optional(),
+  /** Regex pattern or source string used to extract the version from output. */
+  versionRegex: z.union([z.string(), z.instanceof(RegExp)]).optional(),
 });
 
 /**
@@ -35,8 +35,8 @@ export interface ICurlBinaryInstallParams extends BaseInstallParams {
   url: string;
   /** Arguments to pass to the binary to check the version. */
   versionArgs?: string[];
-  /** Regex to extract version from output. */
-  versionRegex?: string;
+  /** Regex pattern or source string used to extract the version from output. */
+  versionRegex?: string | RegExp;
 }
 
 export type CurlBinaryInstallParams = ICurlBinaryInstallParams;

@@ -146,7 +146,7 @@ describe("installFromNpm", () => {
       installParams: {
         package: "mytool",
         versionArgs: ["--version"],
-        versionRegex: "v(\\d+\\.\\d+\\.\\d+)",
+        versionRegex: /v(\d+\.\d+\.\d+)/,
       },
     };
 

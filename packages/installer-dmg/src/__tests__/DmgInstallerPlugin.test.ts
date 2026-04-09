@@ -61,6 +61,20 @@ describe("DmgInstallerPlugin", () => {
     expect(result.success).toBe(true);
   });
 
+  it("should validate params with RegExp versionRegex", () => {
+    const validParams = {
+      source: {
+        type: "url",
+        url: "https://example.com/app.dmg",
+      },
+      versionArgs: ["--version"],
+      versionRegex: /v(\d+\.\d+\.\d+)/,
+    };
+
+    const result = plugin.paramsSchema.safeParse(validParams);
+    expect(result.success).toBe(true);
+  });
+
   it("should reject invalid URL in params", () => {
     const invalidParams = {
       source: {

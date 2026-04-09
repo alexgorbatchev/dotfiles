@@ -43,6 +43,18 @@ describe("CurlScriptInstallerPlugin", () => {
     expect(result.success).toBe(true);
   });
 
+  it("should validate params with RegExp versionRegex", () => {
+    const validParams = {
+      url: "https://example.com/install.sh",
+      shell: "bash",
+      versionArgs: ["--version"],
+      versionRegex: /tool (\d+\.\d+\.\d+)/,
+    };
+
+    const result = plugin.paramsSchema.safeParse(validParams);
+    expect(result.success).toBe(true);
+  });
+
   it("should validate correct tool config", () => {
     const validConfig: CurlScriptToolConfig = {
       name: "test-tool",

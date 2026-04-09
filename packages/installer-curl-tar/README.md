@@ -25,6 +25,8 @@ export default defineTool((install, ctx) =>
 The `install('curl-tar', params)` function accepts the following parameters:
 
 - **url** (required): The URL of the tarball to download (must be a valid HTTP/HTTPS URL)
+- **versionArgs** (optional): Arguments to pass to the binary to check the version
+- **versionRegex** (optional): Regex to extract version from output (`string` or `RegExp`)
 - **env** (optional): Environment variables for the installation process
 - **hooks** (optional): Lifecycle hooks (`beforeInstall`, `afterDownload`, `afterExtract`, `afterInstall`)
 
@@ -36,6 +38,18 @@ The `install('curl-tar', params)` function accepts the following parameters:
 export default defineTool((install, ctx) =>
   install('curl-tar', {
     url: 'https://example.com/tool.tar.gz',
+  }).bin('tool')
+);
+```
+
+#### With Version Detection
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('curl-tar', {
+    url: 'https://example.com/tool.tar.gz',
+    versionArgs: ['--version'],
+    versionRegex: /tool (\d+\.\d+\.\d+)/,
   }).bin('tool')
 );
 ```
@@ -151,6 +165,6 @@ Installation returns `CurlTarInstallResult`:
 
 ## Limitations
 
-- No version detection or update checking capabilities
+- No update checking capabilities
 - Requires explicit binary paths if binaries are not in standard locations
 - No automatic version extraction from URLs

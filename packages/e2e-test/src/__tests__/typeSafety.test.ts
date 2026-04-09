@@ -73,6 +73,8 @@ describe("E2E: type safety", () => {
       defineTool((install) =>
         install("curl-tar", {
           url: "https://nodejs.org/dist/v20.0.0/node-v20.0.0-darwin-arm64.tar.gz",
+          versionArgs: ["--version"],
+          versionRegex: /v(\d+\.\d+\.\d+)/,
         })
           .bin("node")
           .bin("npm"),

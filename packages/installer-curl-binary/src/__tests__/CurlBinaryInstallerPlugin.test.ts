@@ -49,7 +49,7 @@ describe("CurlBinaryInstallerPlugin", () => {
     const validParams = {
       url: "https://example.com/tool-binary",
       versionArgs: ["--version"],
-      versionRegex: "v(\\d+\\.\\d+\\.\\d+)",
+      versionRegex: /v(\d+\.\d+\.\d+)/,
     };
 
     const result = plugin.paramsSchema.safeParse(validParams);

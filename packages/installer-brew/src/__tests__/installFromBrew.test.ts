@@ -86,7 +86,7 @@ describe("installFromBrew", () => {
       installParams: {
         formula: "test-tool",
         versionArgs: ["--version"],
-        versionRegex: "version (\\d+\\.\\d+\\.\\d+)",
+        versionRegex: /version (\d+\.\d+\.\d+)/,
       },
     };
 

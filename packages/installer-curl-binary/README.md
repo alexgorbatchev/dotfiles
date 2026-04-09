@@ -20,8 +20,8 @@ export default defineTool((install) =>
 
 ## Parameters
 
-| Parameter      | Type       | Required | Description                                      |
-| -------------- | ---------- | -------- | ------------------------------------------------ |
-| `url`          | `string`   | Yes      | URL of the binary file to download               |
-| `versionArgs`  | `string[]` | No       | Arguments to pass to the binary to check version |
-| `versionRegex` | `string`   | No       | Regex to extract version from output             |
+| Parameter      | Type               | Required | Description                                      |
+| -------------- | ------------------ | -------- | ------------------------------------------------ |
+| `url`          | `string`           | Yes      | URL of the binary file to download               |
+| `versionArgs`  | `string[]`         | No       | Arguments to pass to the binary to check version |
+| `versionRegex` | `string \| RegExp` | No       | Regex to extract version from output             |

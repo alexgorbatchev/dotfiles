@@ -20,6 +20,8 @@ export type CurlTarSchemaMatchesParams = ExpectTrue<CurlTarInstallParams extends
 defineTool((install) =>
   install("curl-tar", {
     url: "https://example.com/tool.tar.gz",
+    versionArgs: ["--version"],
+    versionRegex: /tool (\d+\.\d+\.\d+)/,
   }).zsh((shell) =>
     shell.once(/* zsh */ `
         echo "once"

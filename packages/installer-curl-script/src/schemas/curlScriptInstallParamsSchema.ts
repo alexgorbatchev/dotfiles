@@ -25,8 +25,8 @@ export const curlScriptInstallParamsSchema = baseInstallParamsSchema.extend({
   env: z.custom<CurlScriptEnv>().optional(),
   /** Arguments to pass to the binary to check the version (e.g. ['--version']). */
   versionArgs: z.array(z.string()).optional(),
-  /** Regex to extract version from output. */
-  versionRegex: z.string().optional(),
+  /** Regex pattern or source string used to extract the version from output. */
+  versionRegex: z.union([z.string(), z.instanceof(RegExp)]).optional(),
 });
 
 /**
@@ -47,8 +47,8 @@ export interface ICurlScriptInstallParams extends Omit<BaseInstallParams, "env">
   env?: CurlScriptEnv;
   /** Arguments to pass to the binary to check the version. */
   versionArgs?: string[];
-  /** Regex to extract version from output. */
-  versionRegex?: string;
+  /** Regex pattern or source string used to extract the version from output. */
+  versionRegex?: string | RegExp;
 }
 
 export type CurlScriptInstallParams = ICurlScriptInstallParams;

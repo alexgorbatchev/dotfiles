@@ -24,7 +24,7 @@ export default defineTool((install, ctx) =>
 | `args`         | `string[] \| (ctx) => string[]`                  | No       | Arguments to pass to the script           |
 | `env`          | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables (static or dynamic) |
 | `versionArgs`  | `string[]`                                       | No       | Args to pass to binary for version check  |
-| `versionRegex` | `string`                                         | No       | Regex to extract version from output      |
+| `versionRegex` | `string \| RegExp`                               | No       | Regex to extract version from output      |
 
 > **Note:** The `env` and `args` parameters support both static values and dynamic functions. Dynamic functions receive a context with `projectConfig`, `scriptPath`, and `stagingDir`.
 

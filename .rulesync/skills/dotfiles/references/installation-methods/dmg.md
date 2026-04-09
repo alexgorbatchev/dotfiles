@@ -33,7 +33,7 @@ export default defineTool((install) =>
 | `appName`      | Name of the `.app` bundle (e.g., `'MyApp.app'`). Auto-detected if omitted      |
 | `binaryPath`   | Relative path to binary inside `.app`. Defaults to `Contents/MacOS/{bin name}` |
 | `versionArgs`  | Arguments for version check (e.g., `['--version']`)                            |
-| `versionRegex` | Regex to extract version from output                                           |
+| `versionRegex` | Regex to extract version from output (`string` or `RegExp`)                    |
 | `env`          | Environment variables (static or dynamic function)                             |
 
 ### Source Variants
@@ -90,7 +90,7 @@ install('dmg', {
     url: 'https://example.com/MyApp-1.0.0.dmg',
   },
   versionArgs: ['--version'],
-  versionRegex: 'v(\\d+\\.\\d+\\.\\d+)',
+  versionRegex: /v(\d+\.\d+\.\d+)/,
 });
 ```
 

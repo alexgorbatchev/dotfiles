@@ -45,6 +45,17 @@ describe("CurlTarInstallerPlugin", () => {
     expect(result.success).toBe(true);
   });
 
+  it("should validate params with RegExp versionRegex", () => {
+    const validParams = {
+      url: "https://example.com/tool.tar.gz",
+      versionArgs: ["--version"],
+      versionRegex: /go version go(\d+\.\d+\.\d+)/,
+    };
+
+    const result = plugin.paramsSchema.safeParse(validParams);
+    expect(result.success).toBe(true);
+  });
+
   it("should validate correct tool config", () => {
     const validConfig: CurlTarToolConfig = {
       name: "test-tool",

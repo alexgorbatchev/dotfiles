@@ -33,7 +33,7 @@ The `install('dmg', params)` function accepts the following parameters:
 - **appName** (optional): Name of the `.app` bundle inside the DMG (e.g., `'MyApp.app'`). Auto-detected if omitted.
 - **binaryPath** (optional): Relative path to the binary inside the `.app` bundle. Defaults to `Contents/MacOS/{binary name}`.
 - **versionArgs** (optional): Arguments to pass to the binary to check the version
-- **versionRegex** (optional): Regex to extract version from output
+- **versionRegex** (optional): Regex to extract version from output (`string` or `RegExp`)
 
 ### Examples
 
@@ -61,7 +61,7 @@ export default defineTool((install) =>
       url: 'https://example.com/MyApp-1.0.0.dmg',
     },
     versionArgs: ['--version'],
-    versionRegex: 'v(\\d+\\.\\d+\\.\\d+)',
+    versionRegex: /v(\d+\.\d+\.\d+)/,
   })
 );
 ```

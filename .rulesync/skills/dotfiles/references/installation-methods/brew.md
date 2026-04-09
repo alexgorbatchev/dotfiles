@@ -14,14 +14,14 @@ export default defineTool((install) => install('brew', { formula: 'ripgrep' }));
 
 ## Parameters
 
-| Parameter      | Description                                         |
-| -------------- | --------------------------------------------------- |
-| `formula`      | Formula or cask name (defaults to tool name)        |
-| `cask`         | Set `true` for cask installation                    |
-| `tap`          | Tap(s) to add before installing                     |
-| `versionArgs`  | Arguments for version check (e.g., `['--version']`) |
-| `versionRegex` | Regex to extract version from output                |
-| `env`          | Environment variables (static or dynamic function)  |
+| Parameter      | Description                                                 |
+| -------------- | ----------------------------------------------------------- |
+| `formula`      | Formula or cask name (defaults to tool name)                |
+| `cask`         | Set `true` for cask installation                            |
+| `tap`          | Tap(s) to add before installing                             |
+| `versionArgs`  | Arguments for version check (e.g., `['--version']`)         |
+| `versionRegex` | Regex to extract version from output (`string` or `RegExp`) |
+| `env`          | Environment variables (static or dynamic function)          |
 
 ## Examples
 

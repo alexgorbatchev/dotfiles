@@ -16,12 +16,12 @@ export default defineTool((install) =>
 
 ## Parameters
 
-| Parameter      | Description                                         |
-| -------------- | --------------------------------------------------- |
-| `url`          | **Required**. Direct URL to the binary file         |
-| `versionArgs`  | Arguments for version check (e.g., `['--version']`) |
-| `versionRegex` | Regex to extract version from output                |
-| `env`          | Environment variables (static or dynamic function)  |
+| Parameter      | Description                                                 |
+| -------------- | ----------------------------------------------------------- |
+| `url`          | **Required**. Direct URL to the binary file                 |
+| `versionArgs`  | Arguments for version check (e.g., `['--version']`)         |
+| `versionRegex` | Regex to extract version from output (`string` or `RegExp`) |
+| `env`          | Environment variables (static or dynamic function)          |
 
 ## Examples
 
@@ -31,7 +31,7 @@ export default defineTool((install) =>
 install('curl-binary', {
   url: 'https://example.com/tool-v1.0.0-linux-amd64',
   versionArgs: ['--version'],
-  versionRegex: 'v(\\d+\\.\\d+\\.\\d+)',
+  versionRegex: /v(\d+\.\d+\.\d+)/,
 }).bin('tool');
 ```
 
