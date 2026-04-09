@@ -150,9 +150,9 @@ function applyPlatformOverrides(finalConfig: ToolConfig, platformConfig: Platfor
 
       // Merge arrays within hooks
       if (baseHooks && platformHooks) {
-        for (const key of Object.keys(baseHooks)) {
+        for (const key of Object.keys(baseHooks) as Array<keyof typeof baseHooks>) {
           if (key in platformHooks) {
-            finalConfig.installParams.hooks[key] = [...baseHooks[key], ...platformHooks[key]];
+            finalConfig.installParams.hooks[key] = [...(baseHooks[key] ?? []), ...(platformHooks[key] ?? [])];
           }
         }
       }
