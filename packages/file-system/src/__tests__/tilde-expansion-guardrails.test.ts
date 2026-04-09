@@ -17,14 +17,27 @@ describe("tilde-expansion-guardrails", () => {
   });
 
   it("should verify canonical files implement tilde expansion logic", () => {
-    // Check that ResolvedFileSystem delegates home expansion to expandHomePath
-    const resolvedFsContent = fs.readFileSync("packages/file-system/src/ResolvedFileSystem.ts", "utf8");
-    expect(resolvedFsContent).toContain("from '@dotfiles/utils'");
-    expect(resolvedFsContent).toContain("expandHomePath");
+    const resolvedFsLines = fs
+      .readFileSync("packages/file-system/src/ResolvedFileSystem.ts", "utf8")
+      .split("\n")
+      .map((line) => line.trim());
 
-    // Check that expandHomePath handles tilde expansion
-    const expandHomeContent = fs.readFileSync("packages/utils/src/expandHomePath.ts", "utf8");
-    expect(expandHomeContent).toContain("export function expandHomePath");
-    expect(expandHomeContent).toContain("path.startsWith('~\\\\')");
+    expect(resolvedFsLines.includes('import { expandHomePath } from "@dotfiles/utils";')).toBe(true);
+    expect(
+      resolvedFsLines.includes("return this.inner.readFile(expandHomePath(this.homeDir, filePath), encoding);"),
+    ).toBe(true);
+
+    const expandHomeLines = fs
+      .readFileSync("packages/utils/src/expandHomePath.ts", "utf8")
+      .split("\n")
+      .map((line) => line.trim());
+
+    expect(expandHomeLines.includes("export function expandHomePath(homeDir: string, path: string): string {")).toBe(
+      true,
+    );
+    expect(expandHomeLines.includes('if (path === "~" || path.startsWith("~/") || path.startsWith("~\\\\")) {')).toBe(
+      true,
+    );
+    expect(expandHomeLines.includes("return path.replace(/^~(?=$|\\/|\\\\)/, homeDir);")).toBe(true);
   });
 });

@@ -93,11 +93,13 @@ describe("Dashboard HTTP Server", () => {
     test("returns HTML for root path", async () => {
       const response = await fetch(`${baseUrl}/`);
       const text = await response.text();
+      const firstLine = text.trimStart().split("\n")[0];
+      const contentType = response.headers.get("Content-Type");
 
       expect(response.status).toBe(200);
-      expect(response.headers.get("Content-Type")).toContain("text/html");
-      expect(text).toContain("<!DOCTYPE html>");
-      expect(text).toContain("Dotfiles Dashboard");
+      expect(contentType?.split(";")[0]).toBe("text/html");
+      expect(firstLine).toBe("<!doctype html>");
+      expect(text.includes("Dotfiles Dashboard")).toBe(true);
     });
 
     test("returns HTML for SPA routes", async () => {
@@ -105,8 +107,10 @@ describe("Dashboard HTTP Server", () => {
 
       for (const route of routes) {
         const response = await fetch(`${baseUrl}${route}`);
+        const contentType = response.headers.get("Content-Type");
+
         expect(response.status).toBe(200);
-        expect(response.headers.get("Content-Type")).toContain("text/html");
+        expect(contentType?.split(";")[0]).toBe("text/html");
       }
     });
   });

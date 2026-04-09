@@ -34,7 +34,14 @@ export interface ITestHarnessOptions {
    * Target architecture for the commands
    */
   architecture: Architecture;
+
+  /**
+   * Optional stable identifier to isolate generated files per harness instance.
+   */
+  generatedDirKey?: string;
 }
+
+let nextHarnessId = 1;
 
 /**
  * Result of executing a CLI command through the test harness.
@@ -78,6 +85,7 @@ export class TestHarness {
   readonly architecture: Architecture;
   private readonly dotfilesBin: string;
   private readonly cleanBeforeRun: boolean;
+  private readonly generatedDirKey: string;
 
   /**
    * Creates a new TestHarness instance.
@@ -90,9 +98,10 @@ export class TestHarness {
     this.cleanBeforeRun = options.cleanBeforeRun ?? false;
     this.platform = options.platform;
     this.architecture = options.architecture;
+    this.generatedDirKey = options.generatedDirKey ?? `harness-${nextHarnessId++}`;
     const resolvedConfigPath = path.join(this.testDir, this.configPath);
     this.configDir = path.dirname(resolvedConfigPath);
-    this.generatedDir = getE2eGeneratedDir(this.configDir);
+    this.generatedDir = getE2eGeneratedDir(this.configDir, this.generatedDirKey);
     this.userBinDir = path.join(this.generatedDir, "user-bin");
     this.shellScriptsDir = path.join(this.generatedDir, "shell-scripts");
     const projectRoot = findProjectRoot(this.testDir);
@@ -146,11 +155,20 @@ export class TestHarness {
     // Get mock server port if available
     const mockServerPort = tryGetServerPort();
     const mockServerEnv = mockServerPort ? { MOCK_SERVER_PORT: String(mockServerPort) } : {};
+    const e2eTestEnv = { DOTFILES_E2E_TEST_ID: this.generatedDirKey };
 
     const proc = Bun.spawn({
       cmd: ["bun", this.dotfilesBin, ...argsWithPlatform],
       cwd: this.testDir,
-      env: { ...process.env, NODE_ENV: "production", NO_COLOR: "1", TERM: "dumb", ...mockServerEnv, ...options?.env },
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        NO_COLOR: "1",
+        TERM: "dumb",
+        ...e2eTestEnv,
+        ...mockServerEnv,
+        ...options?.env,
+      },
       stdout: "pipe",
       stderr: "pipe",
     });
@@ -189,11 +207,19 @@ export class TestHarness {
     // Get mock server port if available
     const mockServerPort = tryGetServerPort();
     const mockServerEnv = mockServerPort ? { MOCK_SERVER_PORT: String(mockServerPort) } : {};
+    const e2eTestEnv = { DOTFILES_E2E_TEST_ID: this.generatedDirKey };
 
     const proc = Bun.spawn({
       cmd: ["bash", "-c", shellCommand],
       cwd: this.testDir,
-      env: { ...process.env, NODE_ENV: "production", NO_COLOR: "1", TERM: "dumb", ...mockServerEnv },
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        NO_COLOR: "1",
+        TERM: "dumb",
+        ...e2eTestEnv,
+        ...mockServerEnv,
+      },
       stdout: "pipe",
       stderr: "pipe",
     });
@@ -376,11 +402,19 @@ export class TestHarness {
       // Get mock server port if available
       const mockServerPort = tryGetServerPort();
       const mockServerEnv = mockServerPort ? { MOCK_SERVER_PORT: String(mockServerPort) } : {};
+      const e2eTestEnv = { DOTFILES_E2E_TEST_ID: this.generatedDirKey };
 
       const proc = Bun.spawn({
         cmd: [shimPath, ...args],
         cwd: this.testDir,
-        env: { ...process.env, NODE_ENV: "production", NO_COLOR: "1", TERM: "dumb", ...mockServerEnv },
+        env: {
+          ...process.env,
+          NODE_ENV: "production",
+          NO_COLOR: "1",
+          TERM: "dumb",
+          ...e2eTestEnv,
+          ...mockServerEnv,
+        },
         stdout: "pipe",
         stderr: "pipe",
       });
