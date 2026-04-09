@@ -20,9 +20,7 @@
     "proxy": "bun run packages/http-proxy/src/server.ts",
     "check": "bun lint && bun typecheck && bun test:all",
     "check:ci": "bun lint && bun typecheck && bun test:native",
-    "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/dotfiles.config.ts dashboard",
-    "ai": "rulesync generate --targets agentsmd,agentsskills --features '*'",
-    "postinstall": "bun ai"
+    "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/dotfiles.config.ts dashboard"
   },
   "devDependencies": {
     "@alexgorbatchev/typescript-ai-policy": "^1.0.5",
@@ -33,7 +31,6 @@
     "dprint": "^0.51.1",
     "oxfmt": "0.42.0",
     "oxlint": "^1.57.0",
-    "rulesync": "^6.4.0",
     "ts-unused": "^1.0.3",
     "tsd": "^0.33.0"
   },
