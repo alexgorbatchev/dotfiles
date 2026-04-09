@@ -40,15 +40,13 @@ describe("dashboardCommand", () => {
       getUrl: () => "http://localhost:3000",
     };
 
-    mockCreateServer = mock(
-      (_logger: TsLogger, _services: IDashboardServices, options: IDashboardServerLocation) => {
-        // Update getUrl to use actual options
-        return {
-          ...mockServer,
-          getUrl: () => `http://${options.host}:${options.port}`,
-        };
-      },
-    );
+    mockCreateServer = mock((_logger: TsLogger, _services: IDashboardServices, options: IDashboardServerLocation) => {
+      // Update getUrl to use actual options
+      return {
+        ...mockServer,
+        getUrl: () => `http://${options.host}:${options.port}`,
+      };
+    });
 
     const setup = await createCliTestSetup({
       testName: "dashboard-command",

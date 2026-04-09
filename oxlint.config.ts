@@ -6,7 +6,6 @@ export default createOxlintConfig(() => ({
   rules: {
     "no-console": "error",
     "no-await-in-loop": "off",
-    "import/no-default-export": "error",
     "import/no-named-as-default": "warn",
     "typescript/no-non-null-assertion": "warn",
     "typescript/consistent-type-imports": "error",
@@ -29,15 +28,8 @@ export default createOxlintConfig(() => ({
   },
   overrides: [
     {
-      files: ["**/*.stories.tsx"],
-      rules: {
-        "import/no-default-export": "off",
-      },
-    },
-    {
       files: ["**/*.test.ts", "**/*.test.tsx"],
       rules: {
-        "no-unused-expressions": "off",
         "typescript/no-non-null-assertion": "off",
       },
     },
@@ -59,11 +51,10 @@ export default createOxlintConfig(() => ({
         "oxlint.config.ts",
         "**/*.tool.ts",
         "**/dotfiles.config.ts",
-        "test-project/config.ts",
-        "**/__tests__/**/config.ts",
+        "test-project/dotfiles.config.ts",
+        "**/__tests__/**/dotfiles.config.ts",
       ],
       rules: {
-        "import/no-default-export": "off",
         "no-shadow": "off",
       },
     },

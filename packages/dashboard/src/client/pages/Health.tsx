@@ -29,7 +29,9 @@ function HealthCheckCard({ check }: HealthCheckCardProps): JSX.Element {
       {check.message && <p class="text-sm font-bold text-foreground">{check.message}</p>}
       {(check.details?.length || 0) > 0 && (
         <ul class="text-xs text-muted-foreground/70 mt-2 ml-4 space-y-1 list-disc">
-          {check.details?.map((detail, index) => <li key={index}>{detail}</li>)}
+          {check.details?.map((detail, index) => (
+            <li key={index}>{detail}</li>
+          ))}
         </ul>
       )}
     </TitledCard>

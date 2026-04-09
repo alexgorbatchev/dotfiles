@@ -5,7 +5,13 @@ import type { TsLogger } from "@dotfiles/logger";
 import { exitCli, ExitCode } from "@dotfiles/utils";
 import path from "node:path";
 import { messages } from "./log-messages";
-import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, IServices, ServicesFactory } from "./types";
+import type {
+  ICommandCompletionMeta,
+  IGlobalProgram,
+  IGlobalProgramOptions,
+  IServices,
+  ServicesFactory,
+} from "./types";
 
 /**
  * Completion metadata for the detect-conflicts command.

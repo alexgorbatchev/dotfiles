@@ -31,7 +31,9 @@ function getToolInstallation(generatedDir: string, toolName: string): IToolInsta
   const dbPath = path.join(generatedDir, "registry.db");
   const db = new Database(dbPath);
   const row = db
-    .query<IToolInstallationRow, ToolInstallationQueryParameters>("SELECT * FROM tool_installations WHERE tool_name = $toolName")
+    .query<IToolInstallationRow, ToolInstallationQueryParameters>(
+      "SELECT * FROM tool_installations WHERE tool_name = $toolName",
+    )
     .get({ $toolName: toolName });
   db.close();
   return row;

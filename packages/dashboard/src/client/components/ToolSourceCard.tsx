@@ -12,10 +12,9 @@ type ToolSourceCardProps = {
 };
 
 export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
-  const { data, loading, error } = useFetch<IToolSourcePayload>(
-    `/tools/${encodeURIComponent(toolName)}/source`,
-    [toolName],
-  );
+  const { data, loading, error } = useFetch<IToolSourcePayload>(`/tools/${encodeURIComponent(toolName)}/source`, [
+    toolName,
+  ]);
 
   if (loading) {
     return (

@@ -107,8 +107,12 @@ export function Tools(): JSX.Element {
   const installedCount = toolsList.filter((tool) => tool.runtime.status === "installed").length;
   const binariesDiskSize = toolsList.reduce((sum, tool) => sum + (tool.binaryDiskSize || 0), 0);
   const usageItems = buildUsageItems(toolsList);
-  const mostUsed = usageItems.toSorted((leftItem, rightItem) => rightItem.count - leftItem.count || rightItem.lastUsedAt - leftItem.lastUsedAt).slice(0, 10);
-  const mostRecentlyUsed = usageItems.toSorted((leftItem, rightItem) => rightItem.lastUsedAt - leftItem.lastUsedAt || rightItem.count - leftItem.count).slice(0, 10);
+  const mostUsed = usageItems
+    .toSorted((leftItem, rightItem) => rightItem.count - leftItem.count || rightItem.lastUsedAt - leftItem.lastUsedAt)
+    .slice(0, 10);
+  const mostRecentlyUsed = usageItems
+    .toSorted((leftItem, rightItem) => rightItem.lastUsedAt - leftItem.lastUsedAt || rightItem.count - leftItem.count)
+    .slice(0, 10);
 
   if (loading) {
     return (

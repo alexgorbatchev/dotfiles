@@ -524,11 +524,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   };
 }
 
-export function registerAllCommands(
-  parentLogger: TsLogger,
-  program: IGlobalProgram,
-  servicesFactory: ServicesFactory,
-) {
+export function registerAllCommands(parentLogger: TsLogger, program: IGlobalProgram, servicesFactory: ServicesFactory) {
   const logger = parentLogger.getSubLogger({ name: "registerAllCommands" });
   registerBinCommand(logger, program, servicesFactory);
   registerInstallCommand(logger, program, servicesFactory);

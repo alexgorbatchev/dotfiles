@@ -82,5 +82,7 @@ export type InternalShellConfigs = IInternalShellConfigs;
 export type ShellTypeKey = keyof InternalShellConfigs;
 export type MaybePromise<T> = T | Promise<T>;
 export type ShellConfiguratorHandler = ShellConfiguratorCallback | ShellConfiguratorAsyncCallback;
-export type PlatformConfigureCallback = (install: IPlatformInstallFunction) => Omit<PlatformConfigBuilderInterface, "bin">;
+export type PlatformConfigureCallback = (
+  install: IPlatformInstallFunction,
+) => Omit<PlatformConfigBuilderInterface, "bin">;
 export type PlatformSelectorInput = Architecture | PlatformConfigureCallback;

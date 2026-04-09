@@ -31,7 +31,9 @@ export function Settings(): JSX.Element {
           {paths.map((path, index) => (
             <div key={index}>
               <div class="mb-1 text-sm text-muted-foreground">{path.label}</div>
-              <code class="block overflow-x-auto rounded bg-muted px-3 py-2 text-sm">{path.value || "Not configured"}</code>
+              <code class="block overflow-x-auto rounded bg-muted px-3 py-2 text-sm">
+                {path.value || "Not configured"}
+              </code>
             </div>
           ))}
         </div>

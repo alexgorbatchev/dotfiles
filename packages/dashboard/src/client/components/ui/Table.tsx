@@ -11,11 +11,20 @@ export function Table({ class: className, ...props }: ComponentProps<"table">): 
 }
 
 export function TableHeader({ class: className, ...props }: ComponentProps<"thead">): JSX.Element {
-  return <thead data-testid="TableHeader" data-slot="table-header" class={cn("[&_tr]:border-b", className)} {...props} />;
+  return (
+    <thead data-testid="TableHeader" data-slot="table-header" class={cn("[&_tr]:border-b", className)} {...props} />
+  );
 }
 
 export function TableBody({ class: className, ...props }: ComponentProps<"tbody">): JSX.Element {
-  return <tbody data-testid="TableBody" data-slot="table-body" class={cn("[&_tr:last-child]:border-0", className)} {...props} />;
+  return (
+    <tbody
+      data-testid="TableBody"
+      data-slot="table-body"
+      class={cn("[&_tr:last-child]:border-0", className)}
+      {...props}
+    />
+  );
 }
 
 export function TableFooter({ class: className, ...props }: ComponentProps<"tfoot">): JSX.Element {

@@ -149,9 +149,7 @@ describe("ToolsTreeView", () => {
           name: "dev",
           path: "/home/user/tools/dev",
           type: "directory",
-          children: [
-            { name: "fzf.tool.ts", path: "/home/user/tools/dev/fzf.tool.ts", type: "file", toolName: "fzf" },
-          ],
+          children: [{ name: "fzf.tool.ts", path: "/home/user/tools/dev/fzf.tool.ts", type: "file", toolName: "fzf" }],
         },
         {
           name: "infra",
