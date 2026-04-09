@@ -6,5 +6,5 @@
   "json": {},
   "includes": ["**/*.{json,jsonc,md}"],
   "excludes": ["**/dist", "**/.generated", "**/node_modules", "**/tmp", "**/*.snap", "**/bun.lock"],
-  "plugins": ["./node_modules/@dprint/json/plugin.wasm", "./node_modules/@dprint/markdown/plugin.wasm"]
+  "plugins": ["../node_modules/@dprint/json/plugin.wasm", "../node_modules/@dprint/markdown/plugin.wasm"]
 }

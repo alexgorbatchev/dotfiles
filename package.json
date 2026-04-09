@@ -2,13 +2,16 @@
   "name": "@alexgorbatchev/dotfiles",
   "version": "0.0.6",
   "private": true,
-  "workspaces": ["packages/*", "test-project"],
+  "workspaces": [
+    "packages/*",
+    "test-project"
+  ],
   "type": "module",
   "module": "cli.ts",
   "scripts": {
     "typecheck": "tsgo -p tsconfig.json",
-    "lint": "dprint check && bun --bun oxfmt --check . && bun --bun oxlint . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
-    "fix": "dprint fmt && bun --bun oxfmt . && bun --bun oxlint --fix . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
+    "lint": "bun --bun oxfmt --check . && (cd test-project && ../node_modules/.bin/dprint check --config .dprint.json .) && bun --bun oxlint . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
+    "fix": "bun --bun oxfmt . && (cd test-project && ../node_modules/.bin/dprint fmt --config .dprint.json .) && bun --bun oxlint --fix . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
     "test:all": "BUN_TEST_ALL=1 bun test",
     "test:native": "BUN_TEST_SEQUENTIAL=1 bun test",
     "test:task": "bun test",
