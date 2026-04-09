@@ -152,7 +152,6 @@ function applyPlatformOverrides(finalConfig: ToolConfig, platformConfig: Platfor
       if (baseHooks && platformHooks) {
         for (const key of Object.keys(baseHooks)) {
           if (key in platformHooks) {
-            // @ts-expect-error - we know it's an array of hooks
             finalConfig.installParams.hooks[key] = [...baseHooks[key], ...platformHooks[key]];
           }
         }
