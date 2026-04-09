@@ -5,7 +5,7 @@ import {
   type IInstallContext,
   Platform,
 } from "@dotfiles/core";
-import type { GiteaReleaseInstallParams } from "@dotfiles/installer-gitea";
+import type { IGiteaReleaseInstallParams } from "@dotfiles/installer-gitea";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import assert from "node:assert";
@@ -193,7 +193,7 @@ describe("selectAsset", () => {
         createMockAsset("tool-macos-x86_64.tar.gz"),
       ]);
       const context = createMacOSArm64Context();
-      const params: GiteaReleaseInstallParams = {
+      const params: IGiteaReleaseInstallParams = {
         instanceUrl: "https://codeberg.org",
         repo: "owner/repo",
         assetPattern: "*.tar.gz",
@@ -212,7 +212,7 @@ describe("selectAsset", () => {
         createMockAsset("tool-macos-arm64.tar.gz"),
       ]);
       const context = createLinuxX64Context();
-      const params: GiteaReleaseInstallParams = {
+      const params: IGiteaReleaseInstallParams = {
         instanceUrl: "https://codeberg.org",
         repo: "owner/repo",
         assetPattern: "*.tar.gz",
@@ -232,7 +232,7 @@ describe("selectAsset", () => {
         createMockAsset("tool-source.tar.gz"),
       ]);
       const context = createMacOSArm64Context();
-      const params: GiteaReleaseInstallParams = {
+      const params: IGiteaReleaseInstallParams = {
         instanceUrl: "https://codeberg.org",
         repo: "owner/repo",
         assetPattern: "*.tar.gz",
@@ -252,7 +252,7 @@ describe("selectAsset", () => {
         createMockAsset("tool-macos-arm64.tar.gz"),
       ]);
       const context = createMacOSArm64Context();
-      const params: GiteaReleaseInstallParams = {
+      const params: IGiteaReleaseInstallParams = {
         instanceUrl: "https://codeberg.org",
         repo: "owner/repo",
       };
@@ -272,7 +272,7 @@ describe("selectAsset", () => {
       ]);
       const context = createMacOSArm64Context();
       const specialAsset = release.assets[1]!;
-      const params: GiteaReleaseInstallParams = {
+      const params: IGiteaReleaseInstallParams = {
         instanceUrl: "https://codeberg.org",
         repo: "owner/repo",
         assetSelector: (ctx) => ctx.assets.find((a) => a.name === "tool-special.tar.gz"),
@@ -287,7 +287,7 @@ describe("selectAsset", () => {
     it("should return error when custom assetSelector returns undefined", () => {
       const release = createMockRelease("v1.0.0", [createMockAsset("tool-linux-amd64.tar.gz")]);
       const context = createMacOSArm64Context();
-      const params: GiteaReleaseInstallParams = {
+      const params: IGiteaReleaseInstallParams = {
         instanceUrl: "https://codeberg.org",
         repo: "owner/repo",
         assetSelector: () => undefined,
@@ -311,7 +311,7 @@ describe("selectAsset", () => {
         createMockAsset("tool-windows-arm64.zip"),
       ]);
       const context = createMacOSArm64Context();
-      const params: GiteaReleaseInstallParams = {
+      const params: IGiteaReleaseInstallParams = {
         instanceUrl: "https://codeberg.org",
         repo: "owner/repo",
       };
@@ -330,7 +330,7 @@ describe("selectAsset", () => {
     it("should include pattern info in error when assetPattern is set", () => {
       const release = createMockRelease("v1.0.0", [createMockAsset("tool-windows.exe")]);
       const context = createMacOSArm64Context();
-      const params: GiteaReleaseInstallParams = {
+      const params: IGiteaReleaseInstallParams = {
         instanceUrl: "https://codeberg.org",
         repo: "owner/repo",
         assetPattern: "*.tar.gz",

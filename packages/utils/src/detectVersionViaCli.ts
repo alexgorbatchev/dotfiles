@@ -1,11 +1,11 @@
-import type { Shell } from "@dotfiles/core";
+import type { IShell } from "@dotfiles/core";
 import { normalizeVersion } from "./normalizeVersion";
 
 export interface IDetectVersionOptions {
   /**
    * The shell executor to use for running commands.
    */
-  shellExecutor: Shell;
+  shellExecutor: IShell;
   /**
    * The binary to run.
    */
@@ -26,13 +26,11 @@ export interface IDetectVersionOptions {
   env?: Record<string, string>;
 }
 
-export type DetectVersionOptions = IDetectVersionOptions;
-
 /**
  * Detects the version of a tool by running it with --version (or custom args)
  * and parsing the output.
  */
-export async function detectVersionViaCli(options: DetectVersionOptions): Promise<string | undefined> {
+export async function detectVersionViaCli(options: IDetectVersionOptions): Promise<string | undefined> {
   const { binaryPath, args = ["--version"], regex, env, shellExecutor } = options;
 
   try {

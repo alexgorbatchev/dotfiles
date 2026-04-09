@@ -5,7 +5,7 @@ import type {
   IInstallContext,
   InstallerPluginRegistry,
   ISystemInfo,
-  Shell,
+  IShell,
   ShellCompletionConfig,
   ShellCompletionConfigInput,
   ShellCompletionConfigValue,
@@ -92,7 +92,7 @@ export class Installer implements IInstaller {
   private readonly systemInfo: ISystemInfo;
   private readonly registry: InstallerPluginRegistry;
   private readonly installationStateWriter: InstallationStateWriter;
-  private readonly $: Shell;
+  private readonly $: IShell;
   private readonly completionGenerator?: ICompletionGenerator;
   private readonly installContextFactory: InstallContextFactory;
   private currentToolConfig?: ToolConfig;
@@ -106,7 +106,7 @@ export class Installer implements IInstaller {
     systemInfo: ISystemInfo,
     registry: InstallerPluginRegistry,
     symlinkGenerator: ISymlinkGenerator,
-    $shell: Shell,
+    $shell: IShell,
     hookExecutor: HookExecutor,
     completionGenerator?: ICompletionGenerator,
   ) {
@@ -693,7 +693,7 @@ export class Installer implements IInstaller {
     timestamp: string,
     toolConfig: ToolConfig,
     parentLogger: TsLogger,
-    $shell: Shell = createConfiguredShell(this.$, process.env),
+    $shell: IShell = createConfiguredShell(this.$, process.env),
     installEnv?: Record<string, string | undefined>,
   ): ICreateBaseInstallContextResult {
     const methodLogger = parentLogger.getSubLogger({ name: "createBaseInstallContext" });

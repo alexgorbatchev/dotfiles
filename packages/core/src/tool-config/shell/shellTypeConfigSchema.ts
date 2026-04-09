@@ -54,5 +54,3 @@ export interface IShellTypeConfig {
    */
   completions?: ShellCompletionConfigInput;
 }
-
-export type ShellTypeConfig = IShellTypeConfig;

@@ -1,12 +1,12 @@
 import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
-import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from "@dotfiles/core";
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, IShell } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { HookExecutor } from "@dotfiles/installer";
 import type { TsLogger } from "@dotfiles/logger";
 import { installFromCurlTar } from "./installFromCurlTar";
 import {
-  type CurlTarInstallParams,
+  type ICurlTarInstallParams,
   curlTarInstallParamsSchema,
   type CurlTarToolConfig,
   curlTarToolConfigSchema,
@@ -29,7 +29,7 @@ const PLUGIN_VERSION = "1.0.0";
  */
 export class CurlTarInstallerPlugin implements IInstallerPlugin<
   "curl-tar",
-  CurlTarInstallParams,
+  ICurlTarInstallParams,
   CurlTarToolConfig,
   ICurlTarInstallMetadata
 > {
@@ -53,7 +53,7 @@ export class CurlTarInstallerPlugin implements IInstallerPlugin<
     private readonly downloader: IDownloader,
     private readonly archiveExtractor: IArchiveExtractor,
     private readonly hookExecutor: HookExecutor,
-    private readonly shell: Shell,
+    private readonly shell: IShell,
   ) {}
 
   /**

@@ -1,5 +1,5 @@
 import type {
-  BaseInstallParams,
+  IBaseInstallParams,
   IDownloadContext,
   IExtractContext,
   IOperationFailure,
@@ -20,8 +20,8 @@ export type ExecuteHooksResult = IOperationSuccess | IOperationFailure;
  * Extracts hooks from tool configuration's install params.
  * Uses type assertion since all install params extend BaseInstallParams which has hooks.
  */
-function getHooksFromConfig(toolConfig: ToolConfig): BaseInstallParams["hooks"] | undefined {
-  const installParams = toolConfig.installParams as BaseInstallParams | undefined;
+function getHooksFromConfig(toolConfig: ToolConfig): IBaseInstallParams["hooks"] | undefined {
+  const installParams = toolConfig.installParams as IBaseInstallParams | undefined;
   return installParams?.hooks;
 }
 

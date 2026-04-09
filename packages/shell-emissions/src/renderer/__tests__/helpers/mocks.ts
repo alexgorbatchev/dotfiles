@@ -1,10 +1,10 @@
 import type {
-  Block,
-  BlockMetadata,
+  IBlock,
+  IBlockMetadata,
   Emission,
   IEmissionFormatter,
-  OnceScriptContent,
-  ScriptEmission,
+  IOnceScriptContent,
+  IScriptEmission,
 } from "../../../types";
 
 /**
@@ -69,7 +69,7 @@ export class MockFormatter implements IEmissionFormatter {
     }
   }
 
-  formatOnceScript(emission: ScriptEmission, index: number): OnceScriptContent {
+  formatOnceScript(emission: IScriptEmission, index: number): IOnceScriptContent {
     const filename = emission.source
       ? `${emission.source.replace(/[/\s]/g, "-")}-${String(index).padStart(3, "0")}.mock`
       : `once-${String(index).padStart(3, "0")}.mock`;
@@ -81,7 +81,7 @@ export class MockFormatter implements IEmissionFormatter {
     return `# Execute once scripts\nfor script in "$ONCE_DIR"/*.mock; do\n  [[ -x "$script" ]] && source "$script"\ndone`;
   }
 
-  formatFileHeader(metadata?: BlockMetadata): string {
+  formatFileHeader(metadata?: IBlockMetadata): string {
     const lines = ["# AUTO-GENERATED FILE - DO NOT EDIT"];
     if (metadata?.description) {
       lines.push(`# ${metadata.description}`);
@@ -96,7 +96,7 @@ export class MockFormatter implements IEmissionFormatter {
     return `# === ${title} ===`;
   }
 
-  formatChildBlockHeader(block: Block): string {
+  formatChildBlockHeader(block: IBlock): string {
     return `# --- ${block.title ?? block.id} ---`;
   }
 

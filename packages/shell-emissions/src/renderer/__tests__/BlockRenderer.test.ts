@@ -11,7 +11,7 @@ import {
   sourceFunction,
   withSource,
 } from "../../emissions/factories";
-import type { Block } from "../../types";
+import type { IBlock } from "../../types";
 import { BlockRenderer } from "../BlockRenderer";
 import { SectionPriority } from "../constants";
 import { MockFormatter } from "./helpers/mocks";
@@ -34,7 +34,7 @@ describe("BlockRenderer", () => {
     });
 
     it("renders file header and footer", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         { id: "header", priority: SectionPriority.FileHeader, emissions: [], isFileHeader: true },
         { id: "footer", priority: SectionPriority.FileFooter, emissions: [], isFileFooter: true },
       ];
@@ -49,7 +49,7 @@ describe("BlockRenderer", () => {
     });
 
     it("renders section with emissions", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         {
           id: "env",
           title: "Environment",
@@ -68,7 +68,7 @@ describe("BlockRenderer", () => {
     });
 
     it("renders multiple sections sorted by priority", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         {
           id: "env",
           title: "Environment",
@@ -95,7 +95,7 @@ describe("BlockRenderer", () => {
     });
 
     it("renders child blocks", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         {
           id: "main",
           title: "Initializations",
@@ -126,7 +126,7 @@ describe("BlockRenderer", () => {
     });
 
     it("renders source comments when source changes", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         {
           id: "env",
           title: "Environment",
@@ -152,7 +152,7 @@ describe("BlockRenderer", () => {
     });
 
     it("skips empty sections", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         { id: "empty", title: "Empty Section", priority: SectionPriority.Path, emissions: [] },
         {
           id: "env",
@@ -171,7 +171,7 @@ describe("BlockRenderer", () => {
     });
 
     it("skips empty child blocks", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         {
           id: "main",
           title: "Main",
@@ -202,7 +202,7 @@ describe("BlockRenderer", () => {
     });
 
     it("renders source comments in child blocks when source changes", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         {
           id: "main",
           title: "Initializations",
@@ -244,7 +244,7 @@ describe("BlockRenderer", () => {
     });
 
     it("handles once scripts in child blocks", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         {
           id: "main",
           title: "Main",
@@ -294,7 +294,7 @@ describe("BlockRenderer", () => {
     });
 
     it("renders all emission types", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         {
           id: "all-types",
           title: "All Types",
@@ -343,7 +343,7 @@ describe("BlockRenderer", () => {
 
   describe("once script handling", () => {
     it("collects once scripts and inserts initializer", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         { id: "header", priority: SectionPriority.FileHeader, emissions: [], isFileHeader: true },
         {
           id: "main",
@@ -392,7 +392,7 @@ describe("BlockRenderer", () => {
     });
 
     it("handles multiple once scripts", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         {
           id: "main",
           title: "Main",
@@ -429,7 +429,7 @@ describe("BlockRenderer", () => {
     });
 
     it("returns empty onceScripts when no once scripts exist", () => {
-      const blocks: Block[] = [
+      const blocks: IBlock[] = [
         {
           id: "main",
           title: "Main",

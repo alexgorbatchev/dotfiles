@@ -89,9 +89,7 @@ interface IConfig {
   workerCount: number;
 }
 
-type Config = IConfig;
-
-function getConfig(): Config {
+function getConfig(): IConfig {
   return {
     isWorker: process.env["BUN_TEST_WORKER"] === "1",
     isSequential: process.env["BUN_TEST_SEQUENTIAL"] === "1",
@@ -115,8 +113,6 @@ interface IWorkerHandle {
   files: string[];
 }
 
-type WorkerHandle = IWorkerHandle;
-
 interface IWorkerResult {
   index: number;
   exitCode: number;
@@ -125,14 +121,10 @@ interface IWorkerResult {
   fileCount: number;
 }
 
-type WorkerResult = IWorkerResult;
-
 interface ITestPartition {
   e2eTests: string[];
   otherTests: string[];
 }
-
-type TestPartition = ITestPartition;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test File Discovery
@@ -143,7 +135,7 @@ function discoverTestFiles(): string[] {
   return Array.from(glob.scanSync({ cwd: process.cwd() })).filter((f) => !f.includes("node_modules"));
 }
 
-function partitionTestFiles(files: string[]): TestPartition {
+function partitionTestFiles(files: string[]): ITestPartition {
   return {
     e2eTests: files.filter((f) => f.includes(E2E_PATH_MARKER)),
     otherTests: files.filter((f) => !f.includes(E2E_PATH_MARKER)),
@@ -166,7 +158,7 @@ function splitIntoChunks<T>(array: T[], chunkCount: number): T[][] {
   return result;
 }
 
-function createTestChunks(partition: TestPartition, workerCount: number): string[][] {
+function createTestChunks(partition: ITestPartition, workerCount: number): string[][] {
   // E2E tests need isolation - give each its own worker
   const e2eChunks = partition.e2eTests.map((f) => [f]);
 
@@ -181,7 +173,7 @@ function createTestChunks(partition: TestPartition, workerCount: number): string
 // Worker Management
 // ─────────────────────────────────────────────────────────────────────────────
 
-function spawnWorker(files: string[], index: number, baseArgs: string[]): WorkerHandle {
+function spawnWorker(files: string[], index: number, baseArgs: string[]): IWorkerHandle {
   const isE2eWorker = files.some((f) => f.includes(E2E_PATH_MARKER));
   const workerArgs = isE2eWorker ? ["--timeout", String(E2E_TIMEOUT_MS), ...baseArgs] : baseArgs;
 
@@ -193,7 +185,7 @@ function spawnWorker(files: string[], index: number, baseArgs: string[]): Worker
   return { proc, index, files };
 }
 
-async function collectWorkerResult(worker: WorkerHandle): Promise<WorkerResult> {
+async function collectWorkerResult(worker: IWorkerHandle): Promise<IWorkerResult> {
   const { proc, index, files } = worker;
 
   // With stdio: ['inherit', 'pipe', 'pipe'], stdout/stderr are ReadableStreams
@@ -210,7 +202,7 @@ async function collectWorkerResult(worker: WorkerHandle): Promise<WorkerResult> 
   };
 }
 
-function printWorkerOutput(result: WorkerResult): void {
+function printWorkerOutput(result: IWorkerResult): void {
   if (result.exitCode === 0) {
     return;
   }
@@ -280,7 +272,7 @@ async function main(): Promise<void> {
 
   // Spawn and collect results
   const workers = chunks.map((files, index) => spawnWorker(files, index, args));
-  const results: WorkerResult[] = [];
+  const results: IWorkerResult[] = [];
 
   for (const worker of workers) {
     const result = await collectWorkerResult(worker);

@@ -36,8 +36,6 @@ export interface ITestContext {
   mockPluginRegistry: { get: ReturnType<typeof mock> };
 }
 
-export type TestContext = ITestContext;
-
 export async function setupTestContext(): Promise<ITestContext> {
   clearToolConfigsCache();
   const logger = new TestLogger();

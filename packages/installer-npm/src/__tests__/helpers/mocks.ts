@@ -1,4 +1,4 @@
-import type { Shell } from "@dotfiles/core";
+import type { IShell } from "@dotfiles/core";
 
 interface IMockShellResult {
   stdout: string;
@@ -37,7 +37,7 @@ function createDefaultHandler(): CommandHandler {
   };
 }
 
-export function createMockShell(handler?: CommandHandler): Shell {
+export function createMockShell(handler?: CommandHandler): IShell {
   const resolveCommand = handler ?? createDefaultHandler();
 
   return ((strings: TemplateStringsArray, ...values: unknown[]) => {
@@ -51,10 +51,10 @@ export function createMockShell(handler?: CommandHandler): Shell {
     promise.env = () => promise;
 
     return promise;
-  }) as unknown as Shell;
+  }) as unknown as IShell;
 }
 
-export function createFailingMockShell(): Shell {
+export function createFailingMockShell(): IShell {
   return ((strings: TemplateStringsArray, ...values: unknown[]) => {
     const cmd = strings.reduce((acc, str, i) => acc + str + (values[i] || ""), "");
 
@@ -75,5 +75,5 @@ export function createFailingMockShell(): Shell {
     promise.noThrow = () => promise;
     promise.env = () => promise;
     return promise;
-  }) as unknown as Shell;
+  }) as unknown as IShell;
 }

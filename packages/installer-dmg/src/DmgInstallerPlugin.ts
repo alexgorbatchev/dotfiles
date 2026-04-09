@@ -5,7 +5,7 @@ import type {
   IInstallOptions,
   InstallResult,
   IValidationResult,
-  Shell,
+  IShell,
 } from "@dotfiles/core";
 import { Platform } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
@@ -14,7 +14,7 @@ import type { HookExecutor } from "@dotfiles/installer";
 import type { IGitHubApiClient } from "@dotfiles/installer-github";
 import type { TsLogger } from "@dotfiles/logger";
 import { installFromDmg } from "./installFromDmg";
-import { type DmgInstallParams, dmgInstallParamsSchema, type DmgToolConfig, dmgToolConfigSchema } from "./schemas";
+import { type IDmgInstallParams, dmgInstallParamsSchema, type DmgToolConfig, dmgToolConfigSchema } from "./schemas";
 import type { IDmgInstallMetadata } from "./types";
 
 const PLUGIN_VERSION = "1.0.0";
@@ -30,7 +30,7 @@ const PLUGIN_VERSION = "1.0.0";
  */
 export class DmgInstallerPlugin implements IInstallerPlugin<
   "dmg",
-  DmgInstallParams,
+  IDmgInstallParams,
   DmgToolConfig,
   IDmgInstallMetadata
 > {
@@ -49,7 +49,7 @@ export class DmgInstallerPlugin implements IInstallerPlugin<
     private readonly downloader: IDownloader,
     private readonly archiveExtractor: IArchiveExtractor,
     private readonly hookExecutor: HookExecutor,
-    private readonly shell: Shell,
+    private readonly shell: IShell,
     private readonly githubApiClient: IGitHubApiClient,
     private readonly ghCliApiClient: IGitHubApiClient | undefined,
   ) {}

@@ -139,16 +139,10 @@ export type UpdateCheckResultSuccess = IOperationSuccess & {
   currentVersion?: string;
   latestVersion?: string;
 };
-
-/**
- * Result from plugin update check - failure case
- */
-export type UpdateCheckResultFailure = IOperationFailure;
-
 /**
  * Result from plugin update check
  */
-export type UpdateCheckResult = UpdateCheckResultSuccess | UpdateCheckResultFailure;
+export type UpdateCheckResult = UpdateCheckResultSuccess | IOperationFailure;
 
 /**
  * Registry of plugin install parameter types - plugins extend this interface via module augmentation

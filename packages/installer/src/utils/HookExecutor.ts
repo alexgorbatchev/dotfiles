@@ -7,7 +7,7 @@ import {
   type IOperationFailure,
   type IOperationSuccess,
   Platform,
-  type Shell,
+  type IShell,
 } from "@dotfiles/core";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
@@ -27,8 +27,8 @@ function isShellError(error: unknown): boolean {
 
 export type HookHandler<TContext extends IInstallBaseContext = IInstallBaseContext> = AsyncInstallHook<TContext>;
 
-function createToolConfigCwdShell($shell: Shell, cwdPath: string): Shell {
-  const configuredShell: Shell = Object.assign((strings: TemplateStringsArray, ...expressions: unknown[]) => {
+function createToolConfigCwdShell($shell: IShell, cwdPath: string): IShell {
+  const configuredShell: IShell = Object.assign((strings: TemplateStringsArray, ...expressions: unknown[]) => {
     const shellPromise = $shell(strings, ...expressions).cwd(cwdPath);
     return shellPromise;
   }, $shell);
@@ -51,11 +51,11 @@ function createToolConfigCwdShell($shell: Shell, cwdPath: string): Shell {
  * @returns A new shell instance with enhanced PATH
  */
 function createShellWithEnhancedPath(
-  $shell: Shell,
+  $shell: IShell,
   additionalPaths: string[],
   platform: Platform,
   baseEnv: Record<string, string | undefined>,
-): Shell {
+): IShell {
   if (additionalPaths.length === 0) {
     return $shell;
   }
@@ -70,7 +70,7 @@ function createShellWithEnhancedPath(
     PATH: enhancedPath,
   };
 
-  const configuredShell: Shell = Object.assign((strings: TemplateStringsArray, ...expressions: unknown[]) => {
+  const configuredShell: IShell = Object.assign((strings: TemplateStringsArray, ...expressions: unknown[]) => {
     // Build the command string from the template literal
     // Bun shell escapes ${} expressions, so we reconstruct the intended command
     let command = strings[0] || "";
@@ -303,7 +303,7 @@ export class HookExecutor {
 
     // Create the base shell - if we have a logger and installEnv, create a streaming shell
     // that will log command output in real-time. Otherwise use the base context's shell.
-    let enhancedShell: Shell;
+    let enhancedShell: IShell;
     const needsLogging = logger && !hasLoggingShell(baseContext.$);
 
     if (needsLogging && baseContext.installEnv) {

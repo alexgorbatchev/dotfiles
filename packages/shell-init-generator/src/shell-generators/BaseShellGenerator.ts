@@ -5,11 +5,11 @@ import type {
   ShellCompletionConfigInput,
   ShellScript,
   ShellType,
-  ShellTypeConfig,
+  IShellTypeConfig,
   ToolConfig,
 } from "@dotfiles/core";
 import { getScriptContent, isAlwaysScript, isOnceScript, isRawScript } from "@dotfiles/core";
-import type { Emission, FormatterConfig, RenderedOutput } from "@dotfiles/shell-emissions";
+import type { Emission, IFormatterConfig, IRenderedOutput } from "@dotfiles/shell-emissions";
 import {
   alias,
   BlockBuilder,
@@ -47,7 +47,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
    * Extracts shell-specific configuration from a tool config.
    * Each shell generator implements this to return its shell's config section.
    */
-  protected abstract getShellConfig(toolConfig: ToolConfig): ShellTypeConfig | undefined;
+  protected abstract getShellConfig(toolConfig: ToolConfig): IShellTypeConfig | undefined;
 
   /**
    * Gets the completion directory path for this shell.
@@ -234,7 +234,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   /**
    * Creates the formatter configuration for this generator.
    */
-  private createFormatterConfig(): FormatterConfig {
+  private createFormatterConfig(): IFormatterConfig {
     return {
       onceScriptDir: path.join(this.projectConfig.paths.shellScriptsDir, ".once"),
     };
@@ -243,7 +243,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   /**
    * Renders tool emissions to shell output using the emissions system.
    */
-  private renderContent(toolEmissions: Map<string, Emission[]>): RenderedOutput {
+  private renderContent(toolEmissions: Map<string, Emission[]>): IRenderedOutput {
     const formatterConfig = this.createFormatterConfig();
     const formatter = createEmissionFormatter(this.shellType, formatterConfig);
     const renderer = new BlockRenderer();

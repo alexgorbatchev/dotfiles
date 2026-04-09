@@ -1,4 +1,4 @@
-import type { ShellType, ShellTypeConfig, ToolConfig } from "@dotfiles/core";
+import type { ShellType, IShellTypeConfig, ToolConfig } from "@dotfiles/core";
 import path from "node:path";
 import { BaseShellGenerator } from "./BaseShellGenerator";
 
@@ -11,9 +11,9 @@ export class BashGenerator extends BaseShellGenerator {
   readonly shellType: ShellType = "bash";
   readonly fileExtension: string = ".bash";
 
-  protected getShellConfig(toolConfig: ToolConfig): ShellTypeConfig | undefined {
+  protected getShellConfig(toolConfig: ToolConfig): IShellTypeConfig | undefined {
     // ShellTypeConfig is manually typed; ToolConfig uses Zod inference with z.unknown() for completions
-    return toolConfig.shellConfigs?.bash as ShellTypeConfig | undefined;
+    return toolConfig.shellConfigs?.bash as IShellTypeConfig | undefined;
   }
 
   protected getCompletionDir(): string {

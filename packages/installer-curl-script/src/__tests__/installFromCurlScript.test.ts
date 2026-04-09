@@ -1,4 +1,4 @@
-import type { IInstallContext, Shell } from "@dotfiles/core";
+import type { IInstallContext, IShell } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { HookExecutor } from "@dotfiles/installer";
@@ -10,7 +10,7 @@ import type { CurlScriptToolConfig } from "../schemas";
 import type { ICurlScriptArgsContext } from "../types";
 
 interface ICurlScriptMockShell {
-  shell: Shell;
+  shell: IShell;
   mockFn: ReturnType<typeof mock>;
   mockEnv: ReturnType<typeof mock>;
   mockResult: ReturnType<typeof mock>;
@@ -27,7 +27,7 @@ function createMockShell(): ICurlScriptMockShell {
     then: (resolve: any, reject?: any) => mockResult().then(resolve, reject),
   }));
   const mockFn = mock(() => ({ env: mockEnv }));
-  return { shell: mockFn as unknown as Shell, mockFn, mockEnv, mockResult };
+  return { shell: mockFn as unknown as IShell, mockFn, mockEnv, mockResult };
 }
 
 describe("installFromCurlScript", () => {

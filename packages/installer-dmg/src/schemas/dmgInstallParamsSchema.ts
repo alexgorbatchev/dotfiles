@@ -1,6 +1,6 @@
-import type { BaseInstallParams } from "@dotfiles/core";
+import type { IBaseInstallParams } from "@dotfiles/core";
 import { baseInstallParamsSchema } from "@dotfiles/core";
-import type { GithubReleaseInstallParams } from "@dotfiles/installer-github";
+import type { IGithubReleaseInstallParams } from "@dotfiles/installer-github";
 import { githubReleaseInstallParamsSchema } from "@dotfiles/installer-github";
 import { z } from "zod";
 
@@ -53,7 +53,7 @@ export const dmgInstallParamsSchema = baseInstallParamsSchema.extend({
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface IDmgInstallParams extends BaseInstallParams {
+export interface IDmgInstallParams extends IBaseInstallParams {
   /** Source definition for resolving the DMG file. */
   source: DmgSource;
   /** The name of the .app bundle inside the DMG. */
@@ -66,22 +66,16 @@ export interface IDmgInstallParams extends BaseInstallParams {
   versionRegex?: string | RegExp;
 }
 
-export type DmgInstallParams = IDmgInstallParams;
-
 export interface IDmgUrlSource {
   type: "url";
   url: string;
 }
 
-export type DmgUrlSource = IDmgUrlSource;
-
 export interface IDmgGitHubReleaseSource extends Pick<
-  GithubReleaseInstallParams,
+  IGithubReleaseInstallParams,
   "repo" | "version" | "assetPattern" | "assetSelector" | "ghCli" | "prerelease"
 > {
   type: "github-release";
 }
 
-export type DmgGitHubReleaseSource = IDmgGitHubReleaseSource;
-
-export type DmgSource = DmgUrlSource | DmgGitHubReleaseSource;
+export type DmgSource = IDmgUrlSource | IDmgGitHubReleaseSource;

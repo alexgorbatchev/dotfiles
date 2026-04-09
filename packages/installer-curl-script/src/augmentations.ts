@@ -1,10 +1,10 @@
 import type { RegisterPluginResult } from "@dotfiles/core";
-import type { CurlScriptInstallParams, CurlScriptToolConfig } from "./schemas";
+import type { ICurlScriptInstallParams, CurlScriptToolConfig } from "./schemas";
 import type { CurlScriptInstallResult } from "./types";
 
 declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    "curl-script": CurlScriptInstallParams;
+    "curl-script": ICurlScriptInstallParams;
   }
   interface IToolConfigRegistry {
     "curl-script": CurlScriptToolConfig;

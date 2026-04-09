@@ -16,7 +16,7 @@ import { normalizeVersion } from "@dotfiles/utils";
 import path from "node:path";
 import type { ICargoClient } from "./cargo-client";
 import { messages } from "./log-messages";
-import type { CargoInstallParams, CargoToolConfig } from "./schemas";
+import type { ICargoInstallParams, CargoToolConfig } from "./schemas";
 import type {
   CargoInstallResult,
   HookExecutionResult,
@@ -182,7 +182,7 @@ async function executeAfterInstallHook(
 
 async function determineVersion(
   crateName: string,
-  params: CargoInstallParams,
+  params: ICargoInstallParams,
   cargoClient: ICargoClient,
   logger: TsLogger,
 ): Promise<IVersionResult> {
@@ -230,7 +230,7 @@ async function getVersionFromGitHubReleases(githubRepo: string, logger: TsLogger
 async function buildDownloadUrl(
   crateName: string,
   version: string,
-  params: CargoInstallParams,
+  params: ICargoInstallParams,
   context: IInstallContext,
   githubReleaseHost: string,
 ): Promise<string> {

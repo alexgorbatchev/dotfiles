@@ -4,7 +4,7 @@ import type {
   IInstallOptions,
   InstallResult,
   IPluginShellInit,
-  Shell,
+  IShell,
   ShellType,
 } from "@dotfiles/core";
 import { raw } from "@dotfiles/core";
@@ -13,7 +13,7 @@ import type { TsLogger } from "@dotfiles/logger";
 import path from "node:path";
 import { installFromZshPlugin, resolvePluginName } from "./installFromZshPlugin";
 import {
-  type ZshPluginInstallParams,
+  type IZshPluginInstallParams,
   zshPluginInstallParamsSchema,
   type ZshPluginToolConfig,
   zshPluginToolConfigSchema,
@@ -40,7 +40,7 @@ type ZshPluginPluginMetadata = {
  */
 export class ZshPluginInstallerPlugin implements IInstallerPlugin<
   "zsh-plugin",
-  ZshPluginInstallParams,
+  IZshPluginInstallParams,
   ZshPluginToolConfig,
   ZshPluginPluginMetadata
 > {
@@ -59,7 +59,7 @@ export class ZshPluginInstallerPlugin implements IInstallerPlugin<
    */
   constructor(
     private readonly fs: IResolvedFileSystem,
-    private readonly shell: Shell,
+    private readonly shell: IShell,
   ) {}
 
   /**

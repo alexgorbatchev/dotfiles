@@ -1,4 +1,4 @@
-import { type Shell, type ShellType } from "@dotfiles/core";
+import { type IShell, type ShellType } from "@dotfiles/core";
 import type { TsLogger } from "@dotfiles/logger";
 import path from "node:path";
 import { messages } from "./log-messages";
@@ -6,9 +6,9 @@ import type { ICompletionCommandExecutor } from "./types";
 
 export class CompletionCommandExecutor implements ICompletionCommandExecutor {
   private readonly logger: TsLogger;
-  private readonly shell: Shell;
+  private readonly shell: IShell;
 
-  constructor(parentLogger: TsLogger, shell: Shell) {
+  constructor(parentLogger: TsLogger, shell: IShell) {
     this.logger = parentLogger.getSubLogger({ name: "CompletionCommandExecutor" });
     this.shell = shell;
   }

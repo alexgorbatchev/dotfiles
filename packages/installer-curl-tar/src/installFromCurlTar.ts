@@ -4,7 +4,7 @@ import {
   type IExtractContext,
   type IExtractResult,
   type IInstallContext,
-  type Shell,
+  type IShell,
 } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
@@ -60,7 +60,7 @@ export async function installFromCurlTar(
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
-  shellExecutor: Shell,
+  shellExecutor: IShell,
 ): Promise<CurlTarInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: "installFromCurlTar" });

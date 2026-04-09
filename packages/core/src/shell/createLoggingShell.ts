@@ -1,6 +1,6 @@
 import { createSafeLogMessage, type TsLogger } from "@dotfiles/logger";
 import { loggingShellBrand } from "./constants";
-import type { Shell, ShellCommand } from "./types";
+import type { IShell, IShellCommand } from "./types";
 
 /**
  * Wraps an existing shell to add command logging.
@@ -23,9 +23,9 @@ import type { Shell, ShellCommand } from "./types";
  * await loggingShell`echo hello`;
  * ```
  */
-export function createLoggingShell(baseShell: Shell, logger: TsLogger): Shell {
+export function createLoggingShell(baseShell: IShell, logger: TsLogger): IShell {
   // Create a wrapper that logs the command and delegates to the base shell
-  const loggingWrapper = (first: TemplateStringsArray, ...expressions: unknown[]): ShellCommand => {
+  const loggingWrapper = (first: TemplateStringsArray, ...expressions: unknown[]): IShellCommand => {
     // Build the command string for logging BEFORE any transformations
     let commandStr: string = first[0] || "";
     for (let i = 0; i < expressions.length; i++) {
@@ -49,7 +49,7 @@ export function createLoggingShell(baseShell: Shell, logger: TsLogger): Shell {
   Object.assign(loggingWrapper, baseShell);
   Object.defineProperty(loggingWrapper, loggingShellBrand, { value: true, enumerable: false });
 
-  return loggingWrapper as unknown as Shell;
+  return loggingWrapper as unknown as IShell;
 }
 
 // Simple argument escaping for logging display

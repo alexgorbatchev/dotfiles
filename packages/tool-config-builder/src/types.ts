@@ -74,12 +74,10 @@ export interface IInternalShellConfigs {
   powershell: IShellStorage;
 }
 
-export type InternalShellConfigs = IInternalShellConfigs;
-
 /**
  * Supported shell types as keys of the internal configuration storage.
  */
-export type ShellTypeKey = keyof InternalShellConfigs;
+export type ShellTypeKey = keyof IInternalShellConfigs;
 export type MaybePromise<T> = T | Promise<T>;
 export type ShellConfiguratorHandler = ShellConfiguratorCallback | ShellConfiguratorAsyncCallback;
 export type PlatformConfigureCallback = (

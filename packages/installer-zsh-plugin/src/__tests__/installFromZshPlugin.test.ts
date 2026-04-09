@@ -1,4 +1,4 @@
-import type { IInstallContext, Shell } from "@dotfiles/core";
+import type { IInstallContext, IShell } from "@dotfiles/core";
 import { createMemFileSystem, type IResolvedFileSystem, ResolvedFileSystem } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, it } from "bun:test";
@@ -22,7 +22,7 @@ interface IMockShellPromise extends Promise<{
 describe("installFromZshPlugin", () => {
   let mockFs: IResolvedFileSystem;
   let logger: TestLogger;
-  let mockShell: Shell;
+  let mockShell: IShell;
   let context: IInstallContext;
 
   beforeEach(async () => {
@@ -72,7 +72,7 @@ describe("installFromZshPlugin", () => {
       promise.env = () => promise;
 
       return promise;
-    }) as unknown as Shell;
+    }) as unknown as IShell;
 
     context = {
       projectConfig: {

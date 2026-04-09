@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { setupTestContext, type TestContext } from "./test-setup";
+import { setupTestContext, type ITestContext } from "./test-setup";
 
 describe("getHealth", () => {
-  let ctx: TestContext;
+  let ctx: ITestContext;
 
   beforeEach(async () => {
     ctx = await setupTestContext();

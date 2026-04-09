@@ -19,8 +19,6 @@ export interface IInstallEvent {
   context: IInstallContext & Record<string, unknown>;
 }
 
-export type InstallEvent = IInstallEvent;
-
 /**
  * Central registry for installer plugins
  */
@@ -47,7 +45,7 @@ export class InstallerPluginRegistry {
   /**
    * Emit an installation event to all registered handlers
    */
-  async emitEvent(event: InstallEvent): Promise<void> {
+  async emitEvent(event: IInstallEvent): Promise<void> {
     for (const handler of this.eventHandlers) {
       await handler(event);
     }

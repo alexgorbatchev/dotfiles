@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import type { CacheEntry, CacheStats } from "./types";
+import type { ICacheEntry, ICacheStats } from "./types";
 
 interface ICacheFileRecord {
   key: string;
@@ -15,12 +15,10 @@ interface ICacheFileRecord {
 /**
  * Cache entry with body loaded from separate file.
  */
-export interface ICacheEntryWithBody extends CacheEntry {
+export interface ICacheEntryWithBody extends ICacheEntry {
   /** Response body as Buffer */
   body: Buffer;
 }
-
-export type CacheEntryWithBody = ICacheEntryWithBody;
 
 /**
  * File-based cache storage for the HTTP proxy.
@@ -77,7 +75,7 @@ export class ProxyCacheStore {
   /**
    * Get a cached entry if it exists and is not expired.
    */
-  get(method: string, url: string): CacheEntryWithBody | undefined {
+  get(method: string, url: string): ICacheEntryWithBody | undefined {
     const key = this.generateKey(method, url);
     const metaPath = this.getMetaPath(key);
     const bodyPath = this.getBodyPath(key);
@@ -88,7 +86,7 @@ export class ProxyCacheStore {
 
     try {
       const content = readFileSync(metaPath, "utf-8");
-      const entry: CacheEntry = JSON.parse(content);
+      const entry: ICacheEntry = JSON.parse(content);
 
       // Check if expired
       const expiresAt = entry.cachedAt + entry.ttl;
@@ -121,7 +119,7 @@ export class ProxyCacheStore {
       mkdirSync(subdir, { recursive: true });
     }
 
-    const entry: CacheEntry = {
+    const entry: ICacheEntry = {
       url,
       method: method.toUpperCase(),
       status,
@@ -181,7 +179,7 @@ export class ProxyCacheStore {
         const metaPath = join(subdirPath, file.name);
         try {
           const content = readFileSync(metaPath, "utf-8");
-          const entry: CacheEntry = JSON.parse(content);
+          const entry: ICacheEntry = JSON.parse(content);
           const key = file.name.replace(".meta.json", "");
           const bodyPath = join(subdirPath, `${key}.body`);
           entries.push({ key, url: entry.url, method: entry.method, metaPath, bodyPath });
@@ -233,7 +231,7 @@ export class ProxyCacheStore {
   /**
    * Get cache statistics.
    */
-  getStats(): CacheStats {
+  getStats(): ICacheStats {
     const entries = this.getAllEntries();
     let totalSize = 0;
 

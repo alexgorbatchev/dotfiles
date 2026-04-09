@@ -1,25 +1,25 @@
 import { EmissionValidationError } from "../errors";
 import type {
-  AliasEmission,
-  CompletionConfig,
-  CompletionEmission,
+  IAliasEmission,
+  ICompletionConfig,
+  ICompletionEmission,
   Emission,
-  EnvironmentEmission,
-  FunctionEmission,
-  PathEmission,
-  PathOptions,
-  ScriptEmission,
+  IEnvironmentEmission,
+  IFunctionEmission,
+  IPathEmission,
+  IPathOptions,
+  IScriptEmission,
   ScriptTiming,
-  SourceEmission,
-  SourceFileEmission,
-  SourceFunctionEmission,
+  ISourceEmission,
+  ISourceFileEmission,
+  ISourceFunctionEmission,
 } from "../types";
 import { validateAliases, validateEnvironmentVariables, validateName, validateNonEmpty } from "./validation";
 
 /**
  * Creates an environment emission.
  */
-export function environment(variables: Record<string, string>): EnvironmentEmission {
+export function environment(variables: Record<string, string>): IEnvironmentEmission {
   validateEnvironmentVariables(variables);
   return {
     kind: "environment",
@@ -30,7 +30,7 @@ export function environment(variables: Record<string, string>): EnvironmentEmiss
 /**
  * Creates an alias emission.
  */
-export function alias(aliases: Record<string, string>): AliasEmission {
+export function alias(aliases: Record<string, string>): IAliasEmission {
   validateAliases(aliases);
   return {
     kind: "alias",
@@ -43,7 +43,7 @@ export function alias(aliases: Record<string, string>): AliasEmission {
  * @param name - Function name
  * @param body - Raw function body (without declaration wrapper)
  */
-export function fn(name: string, body: string): FunctionEmission {
+export function fn(name: string, body: string): IFunctionEmission {
   validateName("function", "name", name);
   validateNonEmpty("function", "body", body);
   return {
@@ -58,7 +58,7 @@ export function fn(name: string, body: string): FunctionEmission {
  * @param content - Script content
  * @param timing - Execution timing ('always' | 'once' | 'raw')
  */
-export function script(content: string, timing: ScriptTiming): ScriptEmission {
+export function script(content: string, timing: ScriptTiming): IScriptEmission {
   validateNonEmpty("script", "content", content);
   return {
     kind: "script",
@@ -71,7 +71,7 @@ export function script(content: string, timing: ScriptTiming): ScriptEmission {
  * Creates a source file emission.
  * @param filePath - Path to source (may contain $HOME)
  */
-export function sourceFile(filePath: string): SourceFileEmission {
+export function sourceFile(filePath: string): ISourceFileEmission {
   validateNonEmpty("sourceFile", "path", filePath);
   return {
     kind: "sourceFile",
@@ -91,7 +91,7 @@ export function sourceFile(filePath: string): SourceFileEmission {
  * @param content - Content to source (typically shell code that outputs shell code)
  * @param functionName - Unique function name for this source emission
  */
-export function source(content: string, functionName: string): SourceEmission {
+export function source(content: string, functionName: string): ISourceEmission {
   validateNonEmpty("source", "content", content);
   validateName("source", "functionName", functionName);
   return {
@@ -105,7 +105,7 @@ export function source(content: string, functionName: string): SourceEmission {
  * Creates a source function emission.
  * @param functionName - Name of function to source
  */
-export function sourceFunction(functionName: string): SourceFunctionEmission {
+export function sourceFunction(functionName: string): ISourceFunctionEmission {
   validateName("sourceFunction", "functionName", functionName);
   return {
     kind: "sourceFunction",
@@ -116,7 +116,7 @@ export function sourceFunction(functionName: string): SourceFunctionEmission {
 /**
  * Creates a completion emission.
  */
-export function completion(config: CompletionConfig): CompletionEmission {
+export function completion(config: ICompletionConfig): ICompletionEmission {
   const hasDirectories = config.directories && config.directories.length > 0;
   const hasFiles = config.files && config.files.length > 0;
   const hasCommands = config.commands && config.commands.length > 0;
@@ -142,7 +142,7 @@ export function completion(config: CompletionConfig): CompletionEmission {
  * @param directory - Directory to add (may contain $HOME)
  * @param options - Position and deduplication options
  */
-export function path(directory: string, options?: PathOptions): PathEmission {
+export function path(directory: string, options?: IPathOptions): IPathEmission {
   validateNonEmpty("path", "directory", directory);
   return {
     kind: "path",

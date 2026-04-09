@@ -9,9 +9,7 @@ interface IMockBuildContextOverrides {
   constants?: Partial<IBuildConstants>;
 }
 
-type MockBuildContextOverrides = IMockBuildContextOverrides;
-
-export function createMockBuildContext(overrides?: MockBuildContextOverrides): IBuildContext {
+export function createMockBuildContext(overrides?: IMockBuildContextOverrides): IBuildContext {
   const defaultPaths: IBuildPaths = {
     rootDir: "/root",
     packagesDir: "/root/packages",

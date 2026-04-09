@@ -1,5 +1,5 @@
 import type { ProjectConfig } from "@dotfiles/config";
-import type { IGitHubRateLimit, IGitHubRelease, Shell } from "@dotfiles/core";
+import type { IGitHubRateLimit, IGitHubRelease, IShell } from "@dotfiles/core";
 import type { ICache } from "@dotfiles/downloader";
 import type { TsLogger } from "@dotfiles/logger";
 import crypto from "node:crypto";
@@ -28,13 +28,13 @@ import type { IGitHubRateLimitResponse, IGitHubReleaseQueryOptions, IReleaseSele
  */
 export class GhCliApiClient implements IGitHubApiClient {
   private readonly hostname: string;
-  private readonly shell: Shell;
+  private readonly shell: IShell;
   private readonly cache?: ICache;
   private readonly cacheEnabled: boolean;
   private readonly cacheTtlMs: number;
   private readonly logger: TsLogger;
 
-  constructor(parentLogger: TsLogger, projectConfig: ProjectConfig, shell: Shell, cache?: ICache) {
+  constructor(parentLogger: TsLogger, projectConfig: ProjectConfig, shell: IShell, cache?: ICache) {
     this.logger = parentLogger.getSubLogger({ name: "GhCliApiClient" });
     // Extract hostname from project config (e.g., 'api.github.com' -> 'github.com')
     this.hostname = this.extractHostname(projectConfig.github.host);

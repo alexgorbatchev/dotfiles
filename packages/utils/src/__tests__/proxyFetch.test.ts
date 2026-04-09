@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 
-import { proxyFetch, type ProxyFetchConfig } from "../proxyFetch";
+import { proxyFetch, type IProxyFetchConfig } from "../proxyFetch";
 
 describe("proxyFetch", () => {
   let mockFetch: ReturnType<typeof spyOn>;
@@ -28,7 +28,7 @@ describe("proxyFetch", () => {
   });
 
   describe("when proxy is enabled", () => {
-    const proxyConfig: ProxyFetchConfig = { enabled: true, port: 3128 };
+    const proxyConfig: IProxyFetchConfig = { enabled: true, port: 3128 };
 
     test("rewrites HTTPS URL to go through proxy", async () => {
       await proxyFetch("https://api.github.com/repos/owner/repo", undefined, proxyConfig);

@@ -1,11 +1,11 @@
-import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from "@dotfiles/core";
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, IShell } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { HookExecutor } from "@dotfiles/installer";
 import type { TsLogger } from "@dotfiles/logger";
 import { installFromCurlBinary } from "./installFromCurlBinary";
 import {
-  type CurlBinaryInstallParams,
+  type ICurlBinaryInstallParams,
   curlBinaryInstallParamsSchema,
   type CurlBinaryToolConfig,
   curlBinaryToolConfigSchema,
@@ -28,7 +28,7 @@ const PLUGIN_VERSION = "1.0.0";
  */
 export class CurlBinaryInstallerPlugin implements IInstallerPlugin<
   "curl-binary",
-  CurlBinaryInstallParams,
+  ICurlBinaryInstallParams,
   CurlBinaryToolConfig,
   ICurlBinaryInstallMetadata
 > {
@@ -50,7 +50,7 @@ export class CurlBinaryInstallerPlugin implements IInstallerPlugin<
     private readonly fs: IFileSystem,
     private readonly downloader: IDownloader,
     private readonly hookExecutor: HookExecutor,
-    private readonly shell: Shell,
+    private readonly shell: IShell,
   ) {}
 
   /**

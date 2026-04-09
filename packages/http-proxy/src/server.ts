@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { dedentString } from "@dotfiles/utils";
 
 import { createProxyServer } from "./createProxyServer";
-import type { ProxyConfig } from "./types";
+import type { IProxyConfig } from "./types";
 
 const DEFAULT_PORT = 3128;
 const DEFAULT_TTL = 24 * 60 * 60 * 1000; // 24 hours
@@ -13,9 +13,9 @@ const DEFAULT_CACHE_DIR = ".tmp/http-proxy-cache";
 /**
  * Parse CLI arguments.
  */
-function parseArgs(): ProxyConfig {
+function parseArgs(): IProxyConfig {
   const args = process.argv.slice(2);
-  const config: ProxyConfig = {
+  const config: IProxyConfig = {
     cacheDir: join(process.cwd(), DEFAULT_CACHE_DIR),
     port: DEFAULT_PORT,
     ttl: DEFAULT_TTL,

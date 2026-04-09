@@ -1,16 +1,16 @@
 import type {
-  AliasEmission,
-  CompletionEmission,
+  IAliasEmission,
+  ICompletionEmission,
   Emission,
-  EnvironmentEmission,
-  FunctionEmission,
+  IEnvironmentEmission,
+  IFunctionEmission,
   IEmissionFormatter,
-  OnceScriptContent,
-  PathEmission,
-  ScriptEmission,
-  SourceEmission,
-  SourceFileEmission,
-  SourceFunctionEmission,
+  IOnceScriptContent,
+  IPathEmission,
+  IScriptEmission,
+  ISourceEmission,
+  ISourceFileEmission,
+  ISourceFunctionEmission,
 } from "@dotfiles/shell-emissions";
 import {
   isAliasEmission,
@@ -65,7 +65,7 @@ export class ZshEmissionFormatter extends BasePosixEmissionFormatter implements 
     throw new Error(`Unknown emission kind: ${(emission as Emission).kind}`);
   }
 
-  formatOnceScript(emission: ScriptEmission, index: number): OnceScriptContent {
+  formatOnceScript(emission: IScriptEmission, index: number): IOnceScriptContent {
     if (!this.onceScriptDir) {
       throw new Error("onceScriptDir is required for once scripts");
     }
@@ -93,7 +93,7 @@ export class ZshEmissionFormatter extends BasePosixEmissionFormatter implements 
     `);
   }
 
-  private formatEnvironment(emission: EnvironmentEmission): string {
+  private formatEnvironment(emission: IEnvironmentEmission): string {
     const lines: string[] = [];
     for (const [key, value] of Object.entries(emission.variables)) {
       lines.push(`export ${key}=${JSON.stringify(value)}`);
@@ -101,7 +101,7 @@ export class ZshEmissionFormatter extends BasePosixEmissionFormatter implements 
     return lines.join("\n");
   }
 
-  private formatAlias(emission: AliasEmission): string {
+  private formatAlias(emission: IAliasEmission): string {
     const lines: string[] = [];
     for (const [name, command] of Object.entries(emission.aliases)) {
       lines.push(`alias ${name}='${command.replace(/'/g, "'\\''")}'`);
@@ -109,7 +109,7 @@ export class ZshEmissionFormatter extends BasePosixEmissionFormatter implements 
     return lines.join("\n");
   }
 
-  private formatFunction(emission: FunctionEmission): string {
+  private formatFunction(emission: IFunctionEmission): string {
     const body = dedentString(emission.body);
     const indent = " ".repeat(this.indentSize);
 
@@ -120,12 +120,12 @@ export class ZshEmissionFormatter extends BasePosixEmissionFormatter implements 
     return [`${emission.name}() {`, indentedBody, `}`].join("\n");
   }
 
-  private formatScript(emission: ScriptEmission): string {
+  private formatScript(emission: IScriptEmission): string {
     const content = dedentString(emission.content);
     return content;
   }
 
-  private formatSourceFile(emission: SourceFileEmission): string {
+  private formatSourceFile(emission: ISourceFileEmission): string {
     return `source "${emission.path}"`;
   }
 
@@ -133,7 +133,7 @@ export class ZshEmissionFormatter extends BasePosixEmissionFormatter implements 
    * Formats a source emission with inline content.
    * Creates a temporary function, sources its output, and cleans up.
    */
-  private formatSource(emission: SourceEmission): string {
+  private formatSource(emission: ISourceEmission): string {
     const content = dedentString(emission.content);
     const functionName = emission.functionName;
     const indent = " ".repeat(this.indentSize);
@@ -147,11 +147,11 @@ export class ZshEmissionFormatter extends BasePosixEmissionFormatter implements 
     );
   }
 
-  private formatSourceFunction(emission: SourceFunctionEmission): string {
+  private formatSourceFunction(emission: ISourceFunctionEmission): string {
     return `source <(${emission.functionName})`;
   }
 
-  private formatCompletion(emission: CompletionEmission): string {
+  private formatCompletion(emission: ICompletionEmission): string {
     const lines: string[] = [];
 
     // Ensure fpath is deduplicated (zsh-specific)
@@ -174,7 +174,7 @@ export class ZshEmissionFormatter extends BasePosixEmissionFormatter implements 
     return lines.join("\n");
   }
 
-  private formatPath(emission: PathEmission): string {
+  private formatPath(emission: IPathEmission): string {
     const dir = emission.directory;
 
     if (emission.deduplicate) {

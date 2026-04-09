@@ -23,7 +23,7 @@ import {
   setupBinariesFromDirectDownload,
 } from "@dotfiles/installer";
 import type {
-  GithubReleaseInstallParams,
+  IGithubReleaseInstallParams,
   GithubReleaseToolConfig,
   IAssetSelectionContext,
 } from "@dotfiles/installer-github";
@@ -318,7 +318,7 @@ async function showAvailableReleaseTags(
 
 export async function selectAsset(
   release: IGitHubRelease,
-  params: GithubReleaseInstallParams,
+  params: IGithubReleaseInstallParams,
   context: IInstallContext,
   logger: TsLogger,
 ): Promise<OperationResult<IGitHubReleaseAsset>> {
@@ -378,7 +378,7 @@ function findPlatformAsset(assets: IGitHubReleaseAsset[], systemInfo: ISystemInf
 
 function createAssetNotFoundError(
   release: IGitHubRelease,
-  params: GithubReleaseInstallParams,
+  params: IGithubReleaseInstallParams,
   context: IInstallContext,
 ): string {
   const availableAssetNames = release.assets.map((a) => a.name);

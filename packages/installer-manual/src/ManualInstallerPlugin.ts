@@ -3,7 +3,7 @@ import type { IFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
 import { installManually } from "./installManually";
 import {
-  type ManualInstallParams,
+  type IManualInstallParams,
   manualInstallParamsSchema,
   type ManualToolConfig,
   manualToolConfigSchema,
@@ -26,7 +26,7 @@ type ManualPluginMetadata = {
  */
 export class ManualInstallerPlugin implements IInstallerPlugin<
   "manual",
-  ManualInstallParams,
+  IManualInstallParams,
   ManualToolConfig,
   ManualPluginMetadata
 > {

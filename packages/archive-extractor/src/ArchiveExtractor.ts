@@ -1,4 +1,4 @@
-import { type ArchiveFormat, type IExtractOptions, type IExtractResult, type Shell } from "@dotfiles/core";
+import { type ArchiveFormat, type IExtractOptions, type IExtractResult, type IShell } from "@dotfiles/core";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
 import { getAllFilesRecursively } from "@dotfiles/utils";
@@ -21,7 +21,7 @@ import { messages } from "./log-messages";
 export class ArchiveExtractor implements IArchiveExtractor {
   private readonly fs: IFileSystem;
   private readonly logger: TsLogger;
-  private readonly shell: Shell;
+  private readonly shell: IShell;
 
   /**
    * Creates a new ArchiveExtractor instance.
@@ -30,7 +30,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
    * @param fileSystem - The file system interface for file operations.
    * @param shell - The shell executor for running system commands.
    */
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, shell: Shell) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, shell: IShell) {
     this.fs = fileSystem;
     this.logger = parentLogger.getSubLogger({ name: "ArchiveExtractor" });
     this.shell = shell;

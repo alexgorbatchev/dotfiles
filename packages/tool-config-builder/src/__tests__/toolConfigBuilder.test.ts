@@ -1,5 +1,5 @@
 import { always, type AsyncInstallHook, raw } from "@dotfiles/core";
-import type { GithubReleaseInstallParams } from "@dotfiles/installer-github";
+import type { IGithubReleaseInstallParams } from "@dotfiles/installer-github";
 import { isGitHubReleaseToolConfig } from "@dotfiles/installer-github";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, test } from "bun:test";
@@ -67,7 +67,7 @@ describe("IToolConfigBuilder", () => {
   test("install method sets installation method and params correctly", () => {
     const builder = new IToolConfigBuilder(logger, "test-tool");
     builder.bin("test-bin"); // Add bin to make build valid
-    const installParams: GithubReleaseInstallParams = { repo: "owner/repo" };
+    const installParams: IGithubReleaseInstallParams = { repo: "owner/repo" };
     builder.install("github-release", installParams);
     const config = builder.build();
 
@@ -79,7 +79,7 @@ describe("IToolConfigBuilder", () => {
   test("hooks method sets hooks correctly on installParams", () => {
     const builder = new IToolConfigBuilder(logger, "test-tool");
     builder.bin("test-bin"); // Add bin to make build valid
-    const installParams: GithubReleaseInstallParams = { repo: "owner/repo" };
+    const installParams: IGithubReleaseInstallParams = { repo: "owner/repo" };
 
     builder.install("github-release", installParams);
     builder.hook("before-install", noopHook);
@@ -92,7 +92,7 @@ describe("IToolConfigBuilder", () => {
   test("hook method sets individual hook correctly on installParams", () => {
     const builder = new IToolConfigBuilder(logger, "test-tool");
     builder.bin("test-bin");
-    const installParams: GithubReleaseInstallParams = { repo: "owner/repo" };
+    const installParams: IGithubReleaseInstallParams = { repo: "owner/repo" };
 
     builder.install("github-release", installParams);
     builder.hook("before-install", noopHook);
@@ -105,7 +105,7 @@ describe("IToolConfigBuilder", () => {
   test("hook method appends multiple hooks for the same event", () => {
     const builder = new IToolConfigBuilder(logger, "test-tool");
     builder.bin("test-bin");
-    const installParams: GithubReleaseInstallParams = { repo: "owner/repo" };
+    const installParams: IGithubReleaseInstallParams = { repo: "owner/repo" };
 
     builder.install("github-release", installParams);
     builder.hook("after-install", noopHook);
@@ -119,7 +119,7 @@ describe("IToolConfigBuilder", () => {
   test("hook method supports all lifecycle events", () => {
     const builder = new IToolConfigBuilder(logger, "test-tool");
     builder.bin("test-bin");
-    const installParams: GithubReleaseInstallParams = { repo: "owner/repo" };
+    const installParams: IGithubReleaseInstallParams = { repo: "owner/repo" };
 
     builder.install("github-release", installParams);
     builder.hook("before-install", noopHook);
@@ -251,7 +251,7 @@ describe("IToolConfigBuilder", () => {
 
   test("build method returns correct ToolConfig object for github-release", () => {
     const builder = new IToolConfigBuilder(logger, "test-tool");
-    const installParams: GithubReleaseInstallParams = { repo: "owner/repo" };
+    const installParams: IGithubReleaseInstallParams = { repo: "owner/repo" };
 
     builder
       .bin("tool-bin")

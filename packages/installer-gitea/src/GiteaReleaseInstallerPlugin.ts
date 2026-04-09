@@ -17,7 +17,7 @@ import type { IGiteaApiClient } from "./gitea-client";
 import { fetchGiteaRelease, installFromGiteaRelease } from "./installFromGiteaRelease";
 import { messages } from "./log-messages";
 import {
-  type GiteaReleaseInstallParams,
+  type IGiteaReleaseInstallParams,
   giteaReleaseInstallParamsSchema,
   type GiteaReleaseToolConfig,
   giteaReleaseToolConfigSchema,
@@ -42,7 +42,7 @@ import type { IGiteaReleaseInstallMetadata } from "./types";
  */
 export class GiteaReleaseInstallerPlugin implements IInstallerPlugin<
   "gitea-release",
-  GiteaReleaseInstallParams,
+  IGiteaReleaseInstallParams,
   GiteaReleaseToolConfig,
   IGiteaReleaseInstallMetadata
 > {
@@ -66,7 +66,7 @@ export class GiteaReleaseInstallerPlugin implements IInstallerPlugin<
    * Each tool can point to a different Gitea instance.
    */
   private createApiClient(toolConfig: GiteaReleaseToolConfig, logger: TsLogger): IGiteaApiClient {
-    const params = toolConfig.installParams as GiteaReleaseInstallParams;
+    const params = toolConfig.installParams as IGiteaReleaseInstallParams;
     return new GiteaApiClient(logger, params.instanceUrl, this.downloader, this.cache, { token: params.token });
   }
 
@@ -103,7 +103,7 @@ export class GiteaReleaseInstallerPlugin implements IInstallerPlugin<
     logger: TsLogger,
   ): Promise<string | null> {
     try {
-      const params = toolConfig.installParams as GiteaReleaseInstallParams;
+      const params = toolConfig.installParams as IGiteaReleaseInstallParams;
       const version: string = toolConfig.version || "latest";
       const apiClient = this.createApiClient(toolConfig, logger);
 
@@ -144,7 +144,7 @@ export class GiteaReleaseInstallerPlugin implements IInstallerPlugin<
     logger: TsLogger,
   ): Promise<UpdateCheckResult> {
     try {
-      const params = toolConfig.installParams as GiteaReleaseInstallParams;
+      const params = toolConfig.installParams as IGiteaReleaseInstallParams;
       const repo = params.repo;
       const [owner, repoName] = repo.split("/");
 
@@ -201,7 +201,7 @@ export class GiteaReleaseInstallerPlugin implements IInstallerPlugin<
   }
 
   getReadmeUrl(_toolName: string, toolConfig: GiteaReleaseToolConfig): string | null {
-    const params = toolConfig.installParams as GiteaReleaseInstallParams;
+    const params = toolConfig.installParams as IGiteaReleaseInstallParams;
     const repo = params.repo;
     const [owner, repoName] = repo.split("/");
 

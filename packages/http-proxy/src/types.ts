@@ -96,11 +96,3 @@ export interface ICachePopulateResult {
   /** Descriptive message */
   message: string;
 }
-
-export type ProxyConfig = IProxyConfig;
-export type CacheEntry = ICacheEntry;
-export type CacheClearResult = ICacheClearResult;
-export type CacheStats = ICacheStats;
-export type CacheClearRequest = ICacheClearRequest;
-export type CachePopulateRequest = ICachePopulateRequest;
-export type CachePopulateResult = ICachePopulateResult;

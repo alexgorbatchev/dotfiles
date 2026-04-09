@@ -10,7 +10,7 @@ import type {
   ICommandCompletionMeta,
   IGlobalProgram,
   IGlobalProgramOptions,
-  InstallCommandSpecificOptions,
+  IInstallCommandSpecificOptions,
   IServices,
   ServicesFactory,
 } from "./types";
@@ -38,7 +38,7 @@ type LoadToolConfigResult =
   | { success: true; toolConfig: ToolConfig; toolName: string }
   | { success: false; error: string };
 
-type InstallCommandOptions = InstallCommandSpecificOptions & IGlobalProgramOptions;
+type InstallCommandOptions = IInstallCommandSpecificOptions & IGlobalProgramOptions;
 
 /**
  * Type guard to check if a result from loadToolConfigByBinary is an error object.
@@ -281,7 +281,7 @@ export function registerInstallCommand(
     )
     .option("--force", "Force installation even if the tool is already installed", false)
     .option("--shim-mode", "Optimized output for shim usage: shows progress bars but suppresses log messages", false)
-    .action(async (nameOrBinary: string, commandOptions: InstallCommandSpecificOptions) => {
+    .action(async (nameOrBinary: string, commandOptions: IInstallCommandSpecificOptions) => {
       const combinedOptions: InstallCommandOptions = {
         ...commandOptions,
         ...program.opts(),

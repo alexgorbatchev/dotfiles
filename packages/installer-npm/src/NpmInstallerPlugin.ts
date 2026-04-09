@@ -3,14 +3,14 @@ import type {
   IInstallerPlugin,
   IInstallOptions,
   InstallResult,
-  Shell,
+  IShell,
   UpdateCheckResult,
 } from "@dotfiles/core";
 import type { TsLogger } from "@dotfiles/logger";
 import { stripVersionPrefix } from "@dotfiles/utils";
 import { installFromNpm } from "./installFromNpm";
 import { messages } from "./log-messages";
-import { type NpmInstallParams, npmInstallParamsSchema, type NpmToolConfig, npmToolConfigSchema } from "./schemas";
+import { type INpmInstallParams, npmInstallParamsSchema, type NpmToolConfig, npmToolConfigSchema } from "./schemas";
 
 const PLUGIN_VERSION = "1.0.0";
 
@@ -27,7 +27,12 @@ type NpmPluginMetadata = {
  * making binaries available through the global bin directory.
  * The plugin is externally managed — the package manager controls binary placement.
  */
-export class NpmInstallerPlugin implements IInstallerPlugin<"npm", NpmInstallParams, NpmToolConfig, NpmPluginMetadata> {
+export class NpmInstallerPlugin implements IInstallerPlugin<
+  "npm",
+  INpmInstallParams,
+  NpmToolConfig,
+  NpmPluginMetadata
+> {
   readonly method = "npm";
   readonly displayName = "npm Installer";
   readonly version = PLUGIN_VERSION;
@@ -40,7 +45,7 @@ export class NpmInstallerPlugin implements IInstallerPlugin<"npm", NpmInstallPar
    *
    * @param shell - The shell executor for running commands.
    */
-  constructor(private readonly shell: Shell) {}
+  constructor(private readonly shell: IShell) {}
 
   /**
    * Installs a tool using npm.

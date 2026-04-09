@@ -1,4 +1,4 @@
-import type { BaseInstallParams } from "@dotfiles/core";
+import type { IBaseInstallParams } from "@dotfiles/core";
 import { baseInstallParamsSchema } from "@dotfiles/core";
 import { z } from "zod";
 
@@ -27,7 +27,7 @@ export const npmInstallParamsSchema = baseInstallParamsSchema.extend({
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface INpmInstallParams extends BaseInstallParams {
+export interface INpmInstallParams extends IBaseInstallParams {
   /** The npm package name to install. */
   package?: string;
   /** The version or version range to install. */
@@ -39,5 +39,3 @@ export interface INpmInstallParams extends BaseInstallParams {
   /** The package manager to use for installation. Defaults to `'npm'`. */
   packageManager?: "npm" | "bun";
 }
-
-export type NpmInstallParams = INpmInstallParams;

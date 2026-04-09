@@ -1,4 +1,4 @@
-import type { BaseInstallParams } from "@dotfiles/core";
+import type { IBaseInstallParams } from "@dotfiles/core";
 import { baseInstallParamsSchema } from "@dotfiles/core";
 import { z } from "zod";
 
@@ -30,7 +30,7 @@ export const curlTarInstallParamsSchema = baseInstallParamsSchema
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface ICurlTarInstallParams extends BaseInstallParams {
+export interface ICurlTarInstallParams extends IBaseInstallParams {
   /** The URL of the tarball to download. */
   url: string;
   /** Arguments to pass to the binary to check the version. */
@@ -38,5 +38,3 @@ export interface ICurlTarInstallParams extends BaseInstallParams {
   /** Regex pattern or source string used to extract the version from output. */
   versionRegex?: string | RegExp;
 }
-
-export type CurlTarInstallParams = ICurlTarInstallParams;

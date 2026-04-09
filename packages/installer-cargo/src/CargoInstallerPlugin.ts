@@ -15,7 +15,7 @@ import type { ICargoClient } from "./cargo-client";
 import { installFromCargo } from "./installFromCargo";
 import { messages } from "./log-messages";
 import {
-  type CargoInstallParams,
+  type ICargoInstallParams,
   cargoInstallParamsSchema,
   type CargoToolConfig,
   cargoToolConfigSchema,
@@ -57,7 +57,7 @@ type CargoPluginMetadata = {
  */
 export class CargoInstallerPlugin implements IInstallerPlugin<
   "cargo",
-  CargoInstallParams,
+  ICargoInstallParams,
   CargoToolConfig,
   CargoPluginMetadata
 > {

@@ -1,4 +1,4 @@
-import { createShell, type IInstallContext, type Shell } from "@dotfiles/core";
+import { createShell, type IInstallContext, type IShell } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { HookExecutor, IInstallOptions } from "@dotfiles/installer";
@@ -84,8 +84,8 @@ export async function installFromCurlScript(
   downloader: IDownloader,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
-  shellExecutor: Shell,
-  installShell?: Shell,
+  shellExecutor: IShell,
+  installShell?: IShell,
 ): Promise<CurlScriptInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: "installFromCurlScript" });

@@ -1,7 +1,7 @@
-import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, Shell } from "@dotfiles/core";
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult, IShell } from "@dotfiles/core";
 import type { TsLogger } from "@dotfiles/logger";
 import { installFromBrew } from "./installFromBrew";
-import { type BrewInstallParams, brewInstallParamsSchema, type BrewToolConfig, brewToolConfigSchema } from "./schemas";
+import { type IBrewInstallParams, brewInstallParamsSchema, type BrewToolConfig, brewToolConfigSchema } from "./schemas";
 
 const PLUGIN_VERSION = "1.0.0";
 
@@ -25,7 +25,7 @@ type BrewPluginMetadata = {
  */
 export class BrewInstallerPlugin implements IInstallerPlugin<
   "brew",
-  BrewInstallParams,
+  IBrewInstallParams,
   BrewToolConfig,
   BrewPluginMetadata
 > {
@@ -40,7 +40,7 @@ export class BrewInstallerPlugin implements IInstallerPlugin<
    *
    * @param shell - The shell executor for running commands.
    */
-  constructor(private readonly shell: Shell) {}
+  constructor(private readonly shell: IShell) {}
   readonly externallyManaged = true;
 
   /**

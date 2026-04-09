@@ -12,7 +12,7 @@ import type {
   Platform,
   PlatformConfig,
   PlatformConfigEntry,
-  ShellConfigs,
+  IShellConfigs,
   ShellConfiguratorAsyncCallback,
   ShellConfiguratorCallback,
   ToolConfig,
@@ -22,7 +22,7 @@ import type { TsLogger } from "@dotfiles/logger";
 import { messages } from "./log-messages";
 import { ShellConfigurator } from "./ShellConfigurator";
 import type {
-  InternalShellConfigs,
+  IInternalShellConfigs,
   IShellStorage,
   MaybePromise,
   PlatformConfigureCallback,
@@ -76,7 +76,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   private hostnamePattern?: string;
 
   // Organized shell storage matching final ToolConfig structure
-  private internalShellConfigs: InternalShellConfigs = {
+  private internalShellConfigs: IInternalShellConfigs = {
     zsh: { scripts: [], aliases: {}, env: {}, functions: {}, paths: [] },
     bash: { scripts: [], aliases: {}, env: {}, functions: {}, paths: [] },
     powershell: { scripts: [], aliases: {}, env: {}, functions: {}, paths: [] },
@@ -229,9 +229,9 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    *
    * @returns A ShellConfigs object if any shell has configuration, undefined otherwise.
    */
-  private buildShellConfigs(): ShellConfigs | undefined {
+  private buildShellConfigs(): IShellConfigs | undefined {
     const shellTypes = ["zsh", "bash", "powershell"] as const;
-    const result: ShellConfigs = {};
+    const result: IShellConfigs = {};
     let hasAnyConfig = false;
 
     for (const shellType of shellTypes) {
@@ -624,7 +624,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    *
    * @returns A read-only view of the internal shell configurations.
    */
-  get shellConfigs(): Readonly<InternalShellConfigs> {
+  get shellConfigs(): Readonly<IInternalShellConfigs> {
     return this.internalShellConfigs;
   }
 

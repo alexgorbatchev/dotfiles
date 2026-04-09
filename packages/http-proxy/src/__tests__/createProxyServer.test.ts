@@ -5,14 +5,14 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import assert from "node:assert";
 
-import { createProxyServer, type ProxyServer, type ProxyServerOptions } from "../createProxyServer";
+import { createProxyServer, type IProxyServer, type IProxyServerOptions } from "../createProxyServer";
 import { ProxyCacheStore } from "../ProxyCacheStore";
 
 type ProxyRequestInput = string | URL | Request;
 
 describe("createProxyServer", () => {
   let cacheDir: string;
-  let server: ProxyServer | null = null;
+  let server: IProxyServer | null = null;
 
   beforeEach(() => {
     cacheDir = join(tmpdir(), `http-proxy-server-test-${Date.now()}`);
@@ -25,9 +25,9 @@ describe("createProxyServer", () => {
     server = null;
   });
 
-  function startServer(options: Partial<ProxyServerOptions> = {}): Promise<string> {
+  function startServer(options: Partial<IProxyServerOptions> = {}): Promise<string> {
     return new Promise((resolve) => {
-      const config: ProxyServerOptions = {
+      const config: IProxyServerOptions = {
         cacheDir,
         port: 0,
         ttl: 60000,

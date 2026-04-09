@@ -13,8 +13,6 @@ export interface IBlockMetadata {
   generatedAt?: Date;
 }
 
-export type BlockMetadata = IBlockMetadata;
-
 /**
  * A container for organizing emissions hierarchically.
  * Top-level blocks use SectionPriority values, child blocks use sequential numbers.
@@ -38,8 +36,6 @@ export interface IBlock {
   isFileFooter?: boolean;
 }
 
-export type Block = IBlock;
-
 /**
  * Options for defining a section in the block builder.
  */
@@ -59,5 +55,3 @@ export interface ISectionOptions {
   /** Additional metadata for this section */
   metadata?: IBlockMetadata;
 }
-
-export type SectionOptions = ISectionOptions;

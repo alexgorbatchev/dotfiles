@@ -1,4 +1,4 @@
-import type { BaseInstallParams } from "@dotfiles/core";
+import type { IBaseInstallParams } from "@dotfiles/core";
 import { baseInstallParamsSchema } from "@dotfiles/core";
 import { z } from "zod";
 
@@ -22,12 +22,10 @@ export const manualInstallParamsSchema = baseInstallParamsSchema.extend({
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface IManualInstallParams extends BaseInstallParams {
+export interface IManualInstallParams extends IBaseInstallParams {
   /**
    * The path to the binary file relative to the tool configuration file location.
    * If not specified, only shell configurations and symlinks will be processed.
    */
   binaryPath?: string;
 }
-
-export type ManualInstallParams = IManualInstallParams;

@@ -1,4 +1,4 @@
-import type { Shell } from "@dotfiles/core";
+import type { IShell } from "@dotfiles/core";
 import type { IResolvedFileSystem } from "@dotfiles/file-system";
 import type { ZshPluginToolConfig } from "@dotfiles/installer-zsh-plugin";
 import { beforeEach, describe, expect, it } from "bun:test";
@@ -7,11 +7,11 @@ import { ZshPluginInstallerPlugin } from "../ZshPluginInstallerPlugin";
 describe("ZshPluginInstallerPlugin", () => {
   let plugin: ZshPluginInstallerPlugin;
   let mockFs: IResolvedFileSystem;
-  let mockShell: Shell;
+  let mockShell: IShell;
 
   beforeEach(() => {
     mockFs = {} as IResolvedFileSystem;
-    mockShell = (() => {}) as unknown as Shell;
+    mockShell = (() => {}) as unknown as IShell;
 
     plugin = new ZshPluginInstallerPlugin(mockFs, mockShell);
   });

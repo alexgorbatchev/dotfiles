@@ -2,11 +2,11 @@ import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, it } from "bun:test";
 import { createLoggingShell } from "../createLoggingShell";
 import { createShell } from "../createShell";
-import type { Shell } from "../types";
+import type { IShell } from "../types";
 
 describe("createLoggingShell (wrapping)", () => {
   let logger: TestLogger;
-  let baseShell: Shell;
+  let baseShell: IShell;
 
   beforeEach(() => {
     logger = new TestLogger({ name: "ShellTest" });

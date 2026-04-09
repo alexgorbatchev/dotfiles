@@ -17,7 +17,7 @@ import type { IGitHubApiClient } from "./github-client";
 import { fetchGitHubRelease, installFromGitHubRelease } from "./installFromGitHubRelease";
 import { messages } from "./log-messages";
 import {
-  type GithubReleaseInstallParams,
+  type IGithubReleaseInstallParams,
   githubReleaseInstallParamsSchema,
   type GithubReleaseToolConfig,
   githubReleaseToolConfigSchema,
@@ -54,7 +54,7 @@ import type { IGitHubReleaseInstallMetadata } from "./types";
  */
 export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
   "github-release",
-  GithubReleaseInstallParams,
+  IGithubReleaseInstallParams,
   GithubReleaseToolConfig,
   IGitHubReleaseInstallMetadata
 > {
@@ -93,7 +93,7 @@ export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
    * returns the gh CLI client. Otherwise returns the default fetch-based client.
    */
   private getApiClient(toolConfig: GithubReleaseToolConfig): IGitHubApiClient {
-    const params = toolConfig.installParams as GithubReleaseInstallParams;
+    const params = toolConfig.installParams as IGithubReleaseInstallParams;
     if (params.ghCli && this.ghCliApiClient) {
       return this.ghCliApiClient;
     }
@@ -145,7 +145,7 @@ export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
     logger: TsLogger,
   ): Promise<string | null> {
     try {
-      const params = toolConfig.installParams as GithubReleaseInstallParams;
+      const params = toolConfig.installParams as IGithubReleaseInstallParams;
       const version: string = toolConfig.version || "latest";
 
       // Fetch release information from GitHub API

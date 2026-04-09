@@ -30,58 +30,58 @@ export type { InstallMethod as z_internal_InstallMethod } from "@dotfiles/core";
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
-export type { BrewInstallParams as z_internal_BrewInstallParams } from "@dotfiles/installer-brew";
+export type { IBrewInstallParams as z_internal_BrewInstallParams } from "@dotfiles/installer-brew";
 /**
  * @internal
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
-export type { CargoInstallParams as z_internal_CargoInstallParams } from "@dotfiles/installer-cargo";
+export type { ICargoInstallParams as z_internal_CargoInstallParams } from "@dotfiles/installer-cargo";
 /**
  * @internal
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
-export type { CurlScriptInstallParams as z_internal_CurlScriptInstallParams } from "@dotfiles/installer-curl-script";
+export type { ICurlScriptInstallParams as z_internal_CurlScriptInstallParams } from "@dotfiles/installer-curl-script";
 /**
  * @internal
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
-export type { CurlTarInstallParams as z_internal_CurlTarInstallParams } from "@dotfiles/installer-curl-tar";
+export type { ICurlTarInstallParams as z_internal_CurlTarInstallParams } from "@dotfiles/installer-curl-tar";
 /**
  * @internal
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
-export type { CurlBinaryInstallParams as z_internal_CurlBinaryInstallParams } from "@dotfiles/installer-curl-binary";
+export type { ICurlBinaryInstallParams as z_internal_CurlBinaryInstallParams } from "@dotfiles/installer-curl-binary";
 /**
  * @internal
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
-export type { GithubReleaseInstallParams as z_internal_GithubReleaseInstallParams } from "@dotfiles/installer-github";
+export type { IGithubReleaseInstallParams as z_internal_GithubReleaseInstallParams } from "@dotfiles/installer-github";
 /**
  * @internal
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
-export type { GiteaReleaseInstallParams as z_internal_GiteaReleaseInstallParams } from "@dotfiles/installer-gitea";
+export type { IGiteaReleaseInstallParams as z_internal_GiteaReleaseInstallParams } from "@dotfiles/installer-gitea";
 /**
  * @internal
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
-export type { ManualInstallParams as z_internal_ManualInstallParams } from "@dotfiles/installer-manual";
+export type { IManualInstallParams as z_internal_ManualInstallParams } from "@dotfiles/installer-manual";
 /**
  * @internal
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
-export type { ZshPluginInstallParams as z_internal_ZshPluginInstallParams } from "@dotfiles/installer-zsh-plugin";
+export type { IZshPluginInstallParams as z_internal_ZshPluginInstallParams } from "@dotfiles/installer-zsh-plugin";
 /**
  * @internal
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
-export type { NpmInstallParams as z_internal_NpmInstallParams } from "@dotfiles/installer-npm";
+export type { INpmInstallParams as z_internal_NpmInstallParams } from "@dotfiles/installer-npm";

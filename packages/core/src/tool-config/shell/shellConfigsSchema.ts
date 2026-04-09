@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ShellTypeConfig } from "./shellTypeConfigSchema";
+import type { IShellTypeConfig } from "./shellTypeConfigSchema";
 import { shellTypeConfigSchema } from "./shellTypeConfigSchema";
 
 export const shellConfigsSchema = z
@@ -19,11 +19,9 @@ export const shellConfigsSchema = z
  */
 export interface IShellConfigs {
   /** Zsh shell configuration */
-  zsh?: ShellTypeConfig;
+  zsh?: IShellTypeConfig;
   /** Bash shell configuration */
-  bash?: ShellTypeConfig;
+  bash?: IShellTypeConfig;
   /** PowerShell configuration */
-  powershell?: ShellTypeConfig;
+  powershell?: IShellTypeConfig;
 }
-
-export type ShellConfigs = IShellConfigs;

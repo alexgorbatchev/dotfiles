@@ -1,12 +1,12 @@
 import { Architecture, Platform } from "@dotfiles/core";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { createMockToolConfigForTests, setupTestContext, type TestContext } from "./test-setup";
+import { createMockToolConfigForTests, setupTestContext, type ITestContext } from "./test-setup";
 
-type DownloadFunction = TestContext["services"]["downloader"]["download"];
+type DownloadFunction = ITestContext["services"]["downloader"]["download"];
 type DownloadMock = ReturnType<typeof mock<DownloadFunction>>;
 
 describe("getToolReadme", () => {
-  let ctx: TestContext;
+  let ctx: ITestContext;
 
   beforeEach(async () => {
     ctx = await setupTestContext();

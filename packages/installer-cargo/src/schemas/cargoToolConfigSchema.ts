@@ -1,4 +1,4 @@
-import type { BaseInstallParams } from "@dotfiles/core";
+import type { IBaseInstallParams } from "@dotfiles/core";
 import { baseToolConfigWithPlatformsSchema, type InferToolConfigWithPlatforms } from "@dotfiles/core";
 import { z } from "zod";
 import { cargoInstallParamsSchema } from "./cargoInstallParamsSchema";
@@ -17,7 +17,7 @@ export const cargoToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface ICargoInstallParams extends BaseInstallParams {
+export interface ICargoInstallParams extends IBaseInstallParams {
   /** The crate name */
   crateName: string;
   /** Source for binaries - either cargo-quickinstall or GitHub releases */
@@ -31,8 +31,6 @@ export interface ICargoInstallParams extends BaseInstallParams {
   /** Custom Cargo.toml URL if different from standard GitHub location */
   cargoTomlUrl?: string;
 }
-
-export type CargoInstallParams = ICargoInstallParams;
 
 /**
  * Tool configuration for Cargo-based installations

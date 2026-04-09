@@ -1,4 +1,4 @@
-import { createShell, type Shell } from "@dotfiles/core";
+import { createShell, type IShell } from "@dotfiles/core";
 import { describe, expect, it } from "bun:test";
 import { createConfiguredShell } from "../createConfiguredShell";
 
@@ -7,7 +7,7 @@ describe("createConfiguredShell", () => {
     const shell = createConfiguredShell(createShell(), {});
 
     // Type-level assertion: this line would fail to compile if shell is not Shell
-    const _typeCheck: Shell = shell;
+    const _typeCheck: IShell = shell;
     expect(_typeCheck).toBeDefined();
   });
 

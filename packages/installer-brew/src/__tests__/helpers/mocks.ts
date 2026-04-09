@@ -1,4 +1,4 @@
-import type { Shell } from "@dotfiles/core";
+import type { IShell } from "@dotfiles/core";
 
 interface IMockShellPromise extends Promise<{
   stdout: string;
@@ -13,7 +13,7 @@ interface IMockShellPromise extends Promise<{
   env: () => IMockShellPromise;
 }
 
-export function createMockShell(): Shell {
+export function createMockShell(): IShell {
   return ((strings: TemplateStringsArray, ...values: unknown[]) => {
     const cmd = strings.reduce((acc, str, i) => acc + str + (values[i] || ""), "");
     let stdout = "";
@@ -41,5 +41,5 @@ export function createMockShell(): Shell {
     promise.env = () => promise;
 
     return promise;
-  }) as unknown as Shell;
+  }) as unknown as IShell;
 }

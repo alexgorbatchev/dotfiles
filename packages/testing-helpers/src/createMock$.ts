@@ -1,4 +1,4 @@
-import { type Shell, type ShellCommand } from "@dotfiles/core";
+import { type IShell, type IShellCommand } from "@dotfiles/core";
 
 export interface IMockShellExtensions {
   reset(): void;
@@ -15,9 +15,9 @@ export interface IMockShellResponse {
 
 type ShellCommandInput = TemplateStringsArray | string;
 
-type MockShellCallable = (command: string) => ShellCommand;
+type MockShellCallable = (command: string) => IShellCommand;
 
-export type MockShell = Shell & IMockShellExtensions & MockShellCallable;
+export type MockShell = IShell & IMockShellExtensions & MockShellCallable;
 
 function reconstructCommand(pieces: ShellCommandInput, args: unknown[]): string {
   if (typeof pieces === "string") {
@@ -80,7 +80,7 @@ export function createMock$(): MockShell {
     command: string,
     shouldNothrow = false,
     currentEnv: Record<string, string | undefined> = {},
-  ): ShellCommand => {
+  ): IShellCommand => {
     // Check if we have a mocked response for this command
     const mockedResponse: IMockShellResponse | undefined = responses.get(command);
 
@@ -132,7 +132,7 @@ export function createMock$(): MockShell {
       bytes: () => Promise.resolve(new TextEncoder().encode(stdoutVal)),
     });
 
-    return chainable as unknown as ShellCommand;
+    return chainable as unknown as IShellCommand;
   };
 
   // Main shell function

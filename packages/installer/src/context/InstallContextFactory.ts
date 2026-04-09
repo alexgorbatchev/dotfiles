@@ -1,6 +1,6 @@
 import type { ProjectConfig } from "@dotfiles/config";
-import type { IInstallContext, ISystemInfo, PluginEmittedHookEvent, Shell, ToolConfig } from "@dotfiles/core";
-import { createToolConfigContext, type InstallEvent } from "@dotfiles/core";
+import type { IInstallContext, ISystemInfo, PluginEmittedHookEvent, IShell, ToolConfig } from "@dotfiles/core";
+import { createToolConfigContext, type IInstallEvent } from "@dotfiles/core";
 import type { IResolvedFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
 import type { TrackedFileSystem } from "@dotfiles/registry/file";
@@ -24,7 +24,7 @@ interface ICreateMinimalContextOptions {
   toolName: string;
   toolConfig: ToolConfig;
   parentLogger: TsLogger;
-  $shell?: Shell;
+  $shell?: IShell;
 }
 
 interface ICreateBaseInstallContextOptions {
@@ -33,18 +33,18 @@ interface ICreateBaseInstallContextOptions {
   timestamp: string;
   toolConfig: ToolConfig;
   parentLogger: TsLogger;
-  $shell?: Shell;
+  $shell?: IShell;
   installEnv?: Record<string, string | undefined>;
 }
 
-type InstallEventHandler = (event: InstallEvent) => Promise<void>;
+type InstallEventHandler = (event: IInstallEvent) => Promise<void>;
 
 interface IInstallContextFactoryDependencies {
   projectConfig: ProjectConfig;
   systemInfo: ISystemInfo;
   resolvedFileSystem: IResolvedFileSystem;
   fileSystem: TrackedFileSystem;
-  $shell: Shell;
+  $shell: IShell;
   emitInstallEvent: InstallEventHandler;
 }
 
@@ -53,7 +53,7 @@ export class InstallContextFactory {
   private readonly systemInfo: ISystemInfo;
   private readonly resolvedFileSystem: IResolvedFileSystem;
   private readonly fileSystem: TrackedFileSystem;
-  private readonly $shell: Shell;
+  private readonly $shell: IShell;
   private readonly emitInstallEvent: InstallEventHandler;
 
   constructor(dependencies: IInstallContextFactoryDependencies) {

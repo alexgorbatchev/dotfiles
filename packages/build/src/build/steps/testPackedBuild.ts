@@ -14,8 +14,6 @@ interface IProcessOutput {
   stderr: string;
 }
 
-type ProcessOutput = IProcessOutput;
-
 interface IEndpointVerification {
   url: string;
   expectedContentType: string;
@@ -23,7 +21,6 @@ interface IEndpointVerification {
   validateContent?: (content: string) => string | null;
 }
 
-type EndpointVerification = IEndpointVerification;
 type HealthResponseLike = { success?: boolean };
 
 /**
@@ -99,7 +96,7 @@ async function testDashboardFromPackedEnv(context: IBuildContext, packedEnv: IPa
   }
 }
 
-async function getProcessOutput(process: BunProcess): Promise<ProcessOutput> {
+async function getProcessOutput(process: BunProcess): Promise<IProcessOutput> {
   const stderr = process.stderr instanceof ReadableStream ? await new Response(process.stderr).text() : "";
   const stdout = process.stdout instanceof ReadableStream ? await new Response(process.stdout).text() : "";
   return { stdout, stderr };
@@ -134,7 +131,7 @@ async function waitForServerReady(port: number, serverProcess: BunProcess): Prom
   );
 }
 
-async function verifyEndpoint(config: EndpointVerification): Promise<string> {
+async function verifyEndpoint(config: IEndpointVerification): Promise<string> {
   const response = await fetch(config.url);
 
   if (!response.ok) {

@@ -1,4 +1,4 @@
-import type { BaseInstallParams } from "@dotfiles/core";
+import type { IBaseInstallParams } from "@dotfiles/core";
 import { baseInstallParamsSchema } from "@dotfiles/core";
 import { z } from "zod";
 import type { CurlScriptArgs, CurlScriptEnv } from "../types";
@@ -36,7 +36,7 @@ export const curlScriptInstallParamsSchema = baseInstallParamsSchema.extend({
  * the property names, which is required for proper `keyof` behavior in declaration files.
  * Uses Omit because `env` has a more specific type than BaseInstallParams.env.
  */
-export interface ICurlScriptInstallParams extends Omit<BaseInstallParams, "env"> {
+export interface ICurlScriptInstallParams extends Omit<IBaseInstallParams, "env"> {
   /** The URL of the installation script to download. */
   url: string;
   /** The shell to use for executing the downloaded script. */
@@ -50,5 +50,3 @@ export interface ICurlScriptInstallParams extends Omit<BaseInstallParams, "env">
   /** Regex pattern or source string used to extract the version from output. */
   versionRegex?: string | RegExp;
 }
-
-export type CurlScriptInstallParams = ICurlScriptInstallParams;

@@ -17,8 +17,6 @@ export interface IProcessInfo {
   homeDir: string;
 }
 
-export type ProcessInfo = IProcessInfo;
-
 /**
  * Resolves the configuration file path.
  *
@@ -34,7 +32,7 @@ export type ProcessInfo = IProcessInfo;
 export async function resolveConfigPath(
   parentLogger: TsLogger,
   configOption: string,
-  processInfo: ProcessInfo,
+  processInfo: IProcessInfo,
 ): Promise<string | undefined> {
   const logger = parentLogger.getSubLogger({ name: "resolveConfigPath" });
 

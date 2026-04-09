@@ -1,4 +1,4 @@
-import { createShell, type IInstallContext, type Shell } from "@dotfiles/core";
+import { createShell, type IInstallContext, type IShell } from "@dotfiles/core";
 import { raw } from "@dotfiles/core";
 import type { IResolvedFileSystem } from "@dotfiles/file-system";
 import { withInstallErrorHandling } from "@dotfiles/installer";
@@ -32,8 +32,8 @@ export async function installFromZshPlugin(
   context: IInstallContext,
   parentLogger: TsLogger,
   fs: IResolvedFileSystem,
-  shell: Shell,
-  installShell?: Shell,
+  shell: IShell,
+  installShell?: IShell,
 ): Promise<ZshPluginInstallResult> {
   const logger = parentLogger.getSubLogger({ name: "installFromZshPlugin" });
   logger.debug(messages.installing(toolName));
@@ -193,21 +193,21 @@ async function detectSourceFile(
 /**
  * Clones a git repository.
  */
-async function clonePlugin(gitUrl: string, destPath: string, shell: Shell): Promise<void> {
+async function clonePlugin(gitUrl: string, destPath: string, shell: IShell): Promise<void> {
   await shell`git clone --depth 1 ${gitUrl} ${destPath}`;
 }
 
 /**
  * Updates an existing git repository.
  */
-async function updatePlugin(pluginPath: string, shell: Shell): Promise<void> {
+async function updatePlugin(pluginPath: string, shell: IShell): Promise<void> {
   await shell`git -C ${pluginPath} pull --ff-only`;
 }
 
 /**
  * Gets the git commit hash or tag as version.
  */
-async function getGitVersion(pluginPath: string, shell: Shell, parentLogger: TsLogger): Promise<string | undefined> {
+async function getGitVersion(pluginPath: string, shell: IShell, parentLogger: TsLogger): Promise<string | undefined> {
   const logger = parentLogger.getSubLogger({ name: "getGitVersion" });
 
   try {

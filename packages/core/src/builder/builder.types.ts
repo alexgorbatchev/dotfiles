@@ -622,11 +622,6 @@ export interface IInstallFunction {
   (): IToolConfigBuilder;
 }
 
-/**
- * Platform-specific install function with the same generic type inference.
- */
-export type InstallFunction = IInstallFunction;
-
 export interface IPlatformInstallFunction {
   <M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): PlatformBuilderForMethod<M>;
   <M extends NoParamsMethodKeys & InstallMethod>(method: M): PlatformBuilderForMethod<M>;
@@ -652,7 +647,7 @@ export interface IToolConfigContext extends IBaseToolContext {}
  * );
  */
 export type AsyncConfigureTool = (
-  install: InstallFunction,
+  install: IInstallFunction,
   ctx: IToolConfigContext,
 ) =>
   | Promise<undefined | IToolConfigBuilder | Omit<IToolConfigBuilder, "bin"> | ToolConfig>
@@ -665,6 +660,6 @@ export type AsyncConfigureTool = (
  * Tool configuration function that returns a ToolConfig.
  */
 export type AsyncConfigureToolWithReturn = (
-  install: InstallFunction,
+  install: IInstallFunction,
   ctx: IToolConfigContext,
 ) => Promise<ToolConfig> | ToolConfig;

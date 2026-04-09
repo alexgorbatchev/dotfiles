@@ -7,7 +7,7 @@ import { useFetch } from "../hooks/useFetch";
 import { formatBytes } from "../utils/format";
 import { InstallMethodBadge } from "./InstallMethodBadge";
 import { TitledCard } from "./ui/TitledCard";
-import { Tree, type TreeItemData } from "./ui/Tree";
+import { Tree, type ITreeItemData } from "./ui/Tree";
 
 type ToolsTreeViewProps = {
   tools: IToolDetail[];
@@ -33,7 +33,7 @@ function fileTreeToTreeItems(
   toolGhCliMap: Map<string, boolean>,
   toolFileCountMap: Map<string, number>,
   toolBinarySizeMap: Map<string, number>,
-): TreeItemData<ToolTreeData>[] {
+): ITreeItemData<ToolTreeData>[] {
   return entries.map((entry) => {
     if (entry.type === "directory") {
       return {
@@ -95,7 +95,7 @@ function getStatusDotColor(status?: ToolRuntimeStatus): string {
  * Custom label renderer that shows .tool.ts extension in gray for files,
  * and adds install method badge with file count and binary size, right-aligned.
  */
-function renderLabel(item: TreeItemData<ToolTreeData>): ComponentChildren {
+function renderLabel(item: ITreeItemData<ToolTreeData>): ComponentChildren {
   if (item.data?.isFile && item.label.endsWith(".tool.ts")) {
     const baseName = item.label.replace(/\.tool\.ts$/, "");
     const fileCount = item.data.fileCount ?? 0;
@@ -117,7 +117,7 @@ function renderLabel(item: TreeItemData<ToolTreeData>): ComponentChildren {
   return item.label;
 }
 
-function handleItemClick(item: TreeItemData<ToolTreeData>): void {
+function handleItemClick(item: ITreeItemData<ToolTreeData>): void {
   if (item.data?.toolName) {
     window.location.href = `/tools/${encodeURIComponent(item.data.toolName)}`;
   }

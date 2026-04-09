@@ -1,10 +1,10 @@
 import type { RegisterPluginResult } from "@dotfiles/core";
-import type { NpmInstallParams, NpmToolConfig } from "./schemas";
+import type { INpmInstallParams, NpmToolConfig } from "./schemas";
 import type { NpmInstallResult } from "./types";
 
 declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    npm: NpmInstallParams;
+    npm: INpmInstallParams;
   }
   interface IToolConfigRegistry {
     npm: NpmToolConfig;

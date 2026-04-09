@@ -1,6 +1,6 @@
 import type { ProjectConfig } from "@dotfiles/config";
 import type {
-  BaseInstallParams,
+  IBaseInstallParams,
   ICompletionContext,
   ISystemInfo,
   ShellCompletionConfig,
@@ -237,7 +237,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     }
 
     for (const [toolName, toolConfig] of Object.entries(toolConfigs)) {
-      const installParams = toolConfig.installParams as BaseInstallParams | undefined;
+      const installParams = toolConfig.installParams as IBaseInstallParams | undefined;
       const shouldAutoInstall = installParams?.auto === true;
 
       if (!shouldAutoInstall) {

@@ -1,12 +1,12 @@
 import { NodeFileSystem } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
-import type { ProcessInfo } from "../resolveConfigPath";
+import type { IProcessInfo } from "../resolveConfigPath";
 import { DEFAULT_CONFIG_FILES, resolveConfigPath } from "../resolveConfigPath";
 
 const HOME_DIR = "/home/user";
 
-function processInfo(cwd: string, homeDir: string = HOME_DIR): ProcessInfo {
+function processInfo(cwd: string, homeDir: string = HOME_DIR): IProcessInfo {
   return { cwd, homeDir };
 }
 

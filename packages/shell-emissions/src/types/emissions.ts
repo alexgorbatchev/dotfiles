@@ -32,8 +32,6 @@ export interface IBaseEmission {
   priority?: number;
 }
 
-export type BaseEmission = IBaseEmission;
-
 /**
  * Sets environment variables.
  */
@@ -43,8 +41,6 @@ export interface IEnvironmentEmission extends IBaseEmission {
   readonly variables: Record<string, string>;
 }
 
-export type EnvironmentEmission = IEnvironmentEmission;
-
 /**
  * Defines command aliases.
  */
@@ -53,8 +49,6 @@ export interface IAliasEmission extends IBaseEmission {
   /** Name to command mapping */
   readonly aliases: Record<string, string>;
 }
-
-export type AliasEmission = IAliasEmission;
 
 /**
  * Defines a callable function.
@@ -67,8 +61,6 @@ export interface IFunctionEmission extends IBaseEmission {
   readonly body: string;
 }
 
-export type FunctionEmission = IFunctionEmission;
-
 /**
  * Inline script content.
  */
@@ -80,8 +72,6 @@ export interface IScriptEmission extends IBaseEmission {
   readonly timing: ScriptTiming;
 }
 
-export type ScriptEmission = IScriptEmission;
-
 /**
  * Sources an external file.
  */
@@ -90,8 +80,6 @@ export interface ISourceFileEmission extends IBaseEmission {
   /** Path to source (may contain $HOME) */
   readonly path: string;
 }
-
-export type SourceFileEmission = ISourceFileEmission;
 
 /**
  * Sources inline content via a temporary function.
@@ -108,8 +96,6 @@ export interface ISourceEmission extends IBaseEmission {
   readonly functionName: string;
 }
 
-export type SourceEmission = ISourceEmission;
-
 /**
  * Sources output of a previously defined function.
  */
@@ -118,8 +104,6 @@ export interface ISourceFunctionEmission extends IBaseEmission {
   /** Name of function to source */
   readonly functionName: string;
 }
-
-export type SourceFunctionEmission = ISourceFunctionEmission;
 
 /**
  * Configuration for completion emission.
@@ -132,8 +116,6 @@ export interface ICompletionConfig {
   /** Command names that have completions to load */
   commands?: string[];
 }
-
-export type CompletionConfig = ICompletionConfig;
 
 /**
  * Configures shell completion for CLI commands.
@@ -148,8 +130,6 @@ export interface ICompletionEmission extends IBaseEmission {
   readonly commands?: string[];
 }
 
-export type CompletionEmission = ICompletionEmission;
-
 /**
  * Options for path emission.
  */
@@ -159,8 +139,6 @@ export interface IPathOptions {
   /** Emit runtime check to prevent duplicates (default: true) */
   deduplicate?: boolean;
 }
-
-export type PathOptions = IPathOptions;
 
 /**
  * Modifies the PATH environment variable.
@@ -175,18 +153,16 @@ export interface IPathEmission extends IBaseEmission {
   readonly deduplicate: boolean;
 }
 
-export type PathEmission = IPathEmission;
-
 /**
  * Union type of all emission types.
  */
 export type Emission =
-  | EnvironmentEmission
-  | AliasEmission
-  | FunctionEmission
-  | ScriptEmission
-  | SourceEmission
-  | SourceFileEmission
-  | SourceFunctionEmission
-  | CompletionEmission
-  | PathEmission;
+  | IEnvironmentEmission
+  | IAliasEmission
+  | IFunctionEmission
+  | IScriptEmission
+  | ISourceEmission
+  | ISourceFileEmission
+  | ISourceFunctionEmission
+  | ICompletionEmission
+  | IPathEmission;

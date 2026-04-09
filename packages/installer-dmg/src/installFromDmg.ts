@@ -6,7 +6,7 @@ import {
   type IGitHubReleaseAsset,
   type IInstallContext,
   Platform,
-  type Shell,
+  type IShell,
 } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
@@ -24,7 +24,7 @@ import type { TsLogger } from "@dotfiles/logger";
 import { detectVersionViaCli } from "@dotfiles/utils";
 import path from "node:path";
 import { messages } from "./log-messages";
-import type { DmgGitHubReleaseSource, DmgInstallParams, DmgSource, DmgToolConfig, DmgUrlSource } from "./schemas";
+import type { IDmgGitHubReleaseSource, IDmgInstallParams, DmgSource, DmgToolConfig, IDmgUrlSource } from "./schemas";
 import type { DmgInstallResult, IDmgInstallMetadata } from "./types";
 
 type OperationResult<T> = { success: true; data: T } | { success: false; error: string };
@@ -45,7 +45,7 @@ export async function installFromDmg(
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
-  shellExecutor: Shell,
+  shellExecutor: IShell,
   githubApiClient?: IGitHubApiClient,
   ghCliApiClient?: IGitHubApiClient,
 ): Promise<DmgInstallResult> {
@@ -63,7 +63,7 @@ export async function installFromDmg(
     };
   }
 
-  const params: DmgInstallParams = toolConfig.installParams;
+  const params: IDmgInstallParams = toolConfig.installParams;
 
   const operation = async (): Promise<DmgInstallResult> => {
     // DMG installer is externally managed, so stagingDir is not pre-created by Installer.
@@ -214,7 +214,7 @@ function getSourceLabel(source: DmgSource): string {
 }
 
 function getGitHubApiClient(
-  source: DmgGitHubReleaseSource,
+  source: IDmgGitHubReleaseSource,
   githubApiClient: IGitHubApiClient,
   ghCliApiClient: IGitHubApiClient | undefined,
 ): IGitHubApiClient {
@@ -250,7 +250,7 @@ async function resolveDmgSource(
 }
 
 async function resolveFromUrlSource(
-  source: DmgUrlSource,
+  source: IDmgUrlSource,
   context: IInstallContext,
   options: IInstallOptions | undefined,
   downloader: IDownloader,
@@ -279,7 +279,7 @@ async function resolveFromUrlSource(
 }
 
 async function resolveFromGitHubReleaseSource(
-  source: DmgGitHubReleaseSource,
+  source: IDmgGitHubReleaseSource,
   context: IInstallContext,
   options: IInstallOptions | undefined,
   downloader: IDownloader,
@@ -352,7 +352,7 @@ async function resolveFromGitHubReleaseSource(
 }
 
 async function downloadGitHubAsset(
-  source: DmgGitHubReleaseSource,
+  source: IDmgGitHubReleaseSource,
   asset: IGitHubReleaseAsset,
   owner: string,
   repoName: string,

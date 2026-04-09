@@ -1,5 +1,5 @@
 import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
-import type { ArchiveFormat, Shell, ShellCompletionConfig, ShellType } from "@dotfiles/core";
+import type { ArchiveFormat, IShell, ShellCompletionConfig, ShellType } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
@@ -33,7 +33,7 @@ export class CompletionGenerator implements ICompletionGenerator {
   constructor(
     parentLogger: TsLogger,
     fs: IFileSystem,
-    shell: Shell,
+    shell: IShell,
     commandExecutor?: ICompletionCommandExecutor,
     deps?: ICompletionGeneratorDependencies,
   ) {

@@ -4,16 +4,16 @@ export { createProxyServer } from "./createProxyServer";
 export { ProxyCacheStore } from "./ProxyCacheStore";
 
 // Types
-export type { ProxyServerOptions } from "./createProxyServer";
+export type { IProxyServerOptions } from "./createProxyServer";
 export type {
-  CacheClearRequest,
-  CacheClearResult,
-  CacheEntry,
-  CachePopulateRequest,
-  CachePopulateResult,
-  CacheStats,
+  ICacheClearRequest,
+  ICacheClearResult,
+  ICacheEntry,
+  ICachePopulateRequest,
+  ICachePopulateResult,
+  ICacheStats,
   ProxyCacheStatus,
-  ProxyConfig,
+  IProxyConfig,
   ProxyServerAddress,
   ProxyServerCallback,
 } from "./types";

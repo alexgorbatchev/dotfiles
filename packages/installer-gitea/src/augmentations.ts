@@ -1,10 +1,10 @@
 import type { RegisterPluginResult } from "@dotfiles/core";
-import type { GiteaReleaseInstallParams, GiteaReleaseToolConfig } from "./schemas";
+import type { IGiteaReleaseInstallParams, GiteaReleaseToolConfig } from "./schemas";
 import type { GiteaReleaseInstallResult } from "./types";
 
 declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    "gitea-release": GiteaReleaseInstallParams;
+    "gitea-release": IGiteaReleaseInstallParams;
   }
   interface IToolConfigRegistry {
     "gitea-release": GiteaReleaseToolConfig;

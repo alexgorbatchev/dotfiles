@@ -1,9 +1,9 @@
-import type { Shell, ShellCommand, ShellResult } from "@dotfiles/core";
+import type { IShell, IShellCommand, IShellResult } from "@dotfiles/core";
 import { mock } from "bun:test";
 
 type ShellCommandInput = string | TemplateStringsArray;
 type ShellEndpointPattern = string | RegExp;
-type ShellCommandOnFulfilled<TResult1> = ((value: ShellResult) => TResult1 | PromiseLike<TResult1>) | null;
+type ShellCommandOnFulfilled<TResult1> = ((value: IShellResult) => TResult1 | PromiseLike<TResult1>) | null;
 type ShellCommandOnRejected<TResult2> = ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null;
 type ShellCommandThenResult<TResult1, TResult2> = Promise<TResult1 | TResult2>;
 
@@ -20,7 +20,7 @@ export interface IMockShellResponse {
  * Mock shell for testing.
  * Allows configuring responses for specific commands.
  */
-export interface IMockShell extends Shell {
+export interface IMockShell extends IShell {
   /** Configure response for next call */
   mockNextResponse: (response: IMockShellResponse) => void;
   /** Configure response for specific endpoint pattern */
@@ -85,10 +85,10 @@ export function createMockShell(): IMockShell {
     };
   }
 
-  function createMockShellCommand(command: string): ShellCommand {
+  function createMockShellCommand(command: string): IShellCommand {
     executedCommands.push(command);
 
-    const shellCommand: ShellCommand = {
+    const shellCommand: IShellCommand = {
       cwd: () => shellCommand,
       env: () => shellCommand,
       quiet: () => shellCommand,
@@ -115,7 +115,7 @@ export function createMockShell(): IMockShell {
         onrejected?: ShellCommandOnRejected<TResult2>,
       ): ShellCommandThenResult<TResult1, TResult2> => {
         const response = findResponse(command);
-        const result: ShellResult = {
+        const result: IShellResult = {
           code: response.code,
           stdout: response.stdout,
           stderr: response.stderr,
@@ -127,7 +127,7 @@ export function createMockShell(): IMockShell {
     return shellCommand;
   }
 
-  const shellFn = mock((commandOrStrings: ShellCommandInput, ...values: unknown[]): ShellCommand => {
+  const shellFn = mock((commandOrStrings: ShellCommandInput, ...values: unknown[]): IShellCommand => {
     let command: string;
     if (typeof commandOrStrings === "string") {
       command = commandOrStrings;

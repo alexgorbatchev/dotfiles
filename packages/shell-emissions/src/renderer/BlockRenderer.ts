@@ -1,9 +1,16 @@
 import { isScriptEmission } from "../emissions/guards";
-import type { Block, IBlockRenderer, IEmissionFormatter, OnceScript, RenderedOutput, ScriptEmission } from "../types";
+import type {
+  IBlock,
+  IBlockRenderer,
+  IEmissionFormatter,
+  IOnceScript,
+  IRenderedOutput,
+  IScriptEmission,
+} from "../types";
 import { ONCE_SCRIPT_STARTING_INDEX, SectionPriority } from "./constants";
 
 interface IOnceScriptEmissionRef {
-  emission: ScriptEmission;
+  emission: IScriptEmission;
   blockPriority: number;
 }
 
@@ -14,10 +21,10 @@ export class BlockRenderer implements IBlockRenderer {
   /**
    * Renders blocks to shell content.
    */
-  render(blocks: Block[], formatter: IEmissionFormatter): RenderedOutput {
+  render(blocks: IBlock[], formatter: IEmissionFormatter): IRenderedOutput {
     const sortedBlocks = blocks.toSorted((a, b) => a.priority - b.priority);
     const lines: string[] = [];
-    const onceScripts: OnceScript[] = [];
+    const onceScripts: IOnceScript[] = [];
     let onceScriptIndex = ONCE_SCRIPT_STARTING_INDEX;
 
     // Track once scripts to determine where to insert initializer
@@ -68,7 +75,7 @@ export class BlockRenderer implements IBlockRenderer {
     };
   }
 
-  private collectOnceScripts(block: Block, results: IOnceScriptEmissionRef[]): void {
+  private collectOnceScripts(block: IBlock, results: IOnceScriptEmissionRef[]): void {
     for (const emission of block.emissions) {
       if (isScriptEmission(emission) && emission.timing === "once") {
         results.push({ emission, blockPriority: block.priority });
@@ -80,9 +87,9 @@ export class BlockRenderer implements IBlockRenderer {
   }
 
   private renderBlock(
-    block: Block,
+    block: IBlock,
     formatter: IEmissionFormatter,
-    onceScripts: OnceScript[],
+    onceScripts: IOnceScript[],
     startIndex: number,
   ): string[] {
     const lines: string[] = [];

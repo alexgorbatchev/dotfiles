@@ -27,7 +27,7 @@ import path from "node:path";
 import type { IGiteaApiClient } from "./gitea-client";
 import { messages } from "./log-messages";
 import { type AssetPattern, formatAssetPatternForLog, matchAssetPattern } from "./matchAssetPattern";
-import type { GiteaReleaseInstallParams, GiteaReleaseToolConfig, IGiteaAssetSelectionContext } from "./schemas";
+import type { IGiteaReleaseInstallParams, GiteaReleaseToolConfig, IGiteaAssetSelectionContext } from "./schemas";
 import type { GiteaReleaseInstallResult, IGiteaReleaseInstallMetadata } from "./types";
 
 type OperationResult<T> = { success: true; data: T } | { success: false; error: string };
@@ -246,7 +246,7 @@ async function showAvailableReleaseTags(
 
 export function selectAsset(
   release: IGitHubRelease,
-  params: GiteaReleaseInstallParams,
+  params: IGiteaReleaseInstallParams,
   context: IInstallContext,
   logger: TsLogger,
 ): OperationResult<IGitHubReleaseAsset> {
@@ -304,7 +304,7 @@ function findPlatformAsset(assets: IGitHubReleaseAsset[], systemInfo: ISystemInf
 
 function createAssetNotFoundError(
   release: IGitHubRelease,
-  params: GiteaReleaseInstallParams,
+  params: IGiteaReleaseInstallParams,
   context: IInstallContext,
 ): string {
   const availableAssetNames = release.assets.map((a) => a.name);

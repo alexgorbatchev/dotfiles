@@ -1,4 +1,4 @@
-import { createShell, type IInstallContext, type IInstallOptions, type Shell } from "@dotfiles/core";
+import { createShell, type IInstallContext, type IInstallOptions, type IShell } from "@dotfiles/core";
 import { getBinaryPaths, withInstallErrorHandling } from "@dotfiles/installer";
 import type { TsLogger } from "@dotfiles/logger";
 import { detectVersionViaCli, normalizeVersion } from "@dotfiles/utils";
@@ -22,8 +22,8 @@ export async function installFromNpm(
   _context: IInstallContext,
   _options: IInstallOptions | undefined,
   parentLogger: TsLogger,
-  shellExecutor: Shell,
-  installShell?: Shell,
+  shellExecutor: IShell,
+  installShell?: IShell,
 ): Promise<NpmInstallResult> {
   const logger = parentLogger.getSubLogger({ name: "installFromNpm" });
 
@@ -105,7 +105,7 @@ export async function installFromNpm(
  * - bun: runs `bun pm bin -g` (e.g. `~/.bun/bin`)
  * - npm: runs `npm prefix -g` + `/bin` (e.g. `/usr/local/bin`)
  */
-async function getGlobalBinDir(isBun: boolean, shell: Shell): Promise<string> {
+async function getGlobalBinDir(isBun: boolean, shell: IShell): Promise<string> {
   if (isBun) {
     const result = await shell`bun pm bin -g`.quiet();
     return result.stdout.toString().trim();
@@ -118,7 +118,7 @@ async function getGlobalBinDir(isBun: boolean, shell: Shell): Promise<string> {
 /**
  * Executes `bun install -g` to install a package globally.
  */
-async function executeBunGlobalInstall(packageSpec: string, logger: TsLogger, shell: Shell): Promise<void> {
+async function executeBunGlobalInstall(packageSpec: string, logger: TsLogger, shell: IShell): Promise<void> {
   const command = `bun install -g ${packageSpec}`;
   logger.debug(messages.executingCommand(command));
   await shell`bun install -g ${packageSpec}`;
@@ -127,7 +127,7 @@ async function executeBunGlobalInstall(packageSpec: string, logger: TsLogger, sh
 /**
  * Executes `npm install -g` to install a package globally.
  */
-async function executeNpmGlobalInstall(packageSpec: string, logger: TsLogger, shell: Shell): Promise<void> {
+async function executeNpmGlobalInstall(packageSpec: string, logger: TsLogger, shell: IShell): Promise<void> {
   const command = `npm install -g ${packageSpec}`;
   logger.debug(messages.executingCommand(command));
   await shell`npm install -g ${packageSpec}`;
@@ -136,7 +136,7 @@ async function executeNpmGlobalInstall(packageSpec: string, logger: TsLogger, sh
 /**
  * Retrieves the version of an npm package via `npm view`.
  */
-async function getNpmViewVersion(packageName: string, shell: Shell): Promise<string | undefined> {
+async function getNpmViewVersion(packageName: string, shell: IShell): Promise<string | undefined> {
   try {
     const result = await shell`npm view ${packageName} version`.quiet().noThrow();
     const version: string = result.stdout.toString().trim();

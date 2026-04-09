@@ -1,4 +1,4 @@
-import type { BaseInstallParams } from "@dotfiles/core";
+import type { IBaseInstallParams } from "@dotfiles/core";
 import { baseInstallParamsSchema } from "@dotfiles/core";
 import { z } from "zod";
 
@@ -33,7 +33,7 @@ export const brewInstallParamsSchema = baseInstallParamsSchema.extend({
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface IBrewInstallParams extends BaseInstallParams {
+export interface IBrewInstallParams extends IBaseInstallParams {
   /** The name of the Homebrew formula to install (e.g., `ripgrep`). */
   formula?: string;
   /** If `true`, the `formula` property is treated as a Homebrew Cask name. */
@@ -45,5 +45,3 @@ export interface IBrewInstallParams extends BaseInstallParams {
   /** Regex pattern or source string used to extract the version from output. */
   versionRegex?: string | RegExp;
 }
-
-export type BrewInstallParams = IBrewInstallParams;

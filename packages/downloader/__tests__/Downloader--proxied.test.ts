@@ -2,7 +2,7 @@ import type { IFileSystem } from "@dotfiles/file-system";
 import { createMemFileSystem } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
 import { FetchMockHelper } from "@dotfiles/testing-helpers";
-import type { ProxyFetchConfig } from "@dotfiles/utils";
+import type { IProxyFetchConfig } from "@dotfiles/utils";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { FileCache } from "../cache/FileCache";
@@ -29,7 +29,7 @@ describe("Downloader with Proxy", () => {
 
   describe("constructor with proxy config", () => {
     it("should create NodeFetchStrategy with proxy when proxy enabled", () => {
-      const proxyConfig: ProxyFetchConfig = { enabled: true, port: 3128 };
+      const proxyConfig: IProxyFetchConfig = { enabled: true, port: 3128 };
       const downloader = new Downloader(logger, mockFileSystem, undefined, undefined, proxyConfig);
 
       expect(downloader).toBeDefined();
@@ -39,7 +39,7 @@ describe("Downloader with Proxy", () => {
     });
 
     it("should create NodeFetchStrategy without proxy when proxy disabled", () => {
-      const proxyConfig: ProxyFetchConfig = { enabled: false, port: 3128 };
+      const proxyConfig: IProxyFetchConfig = { enabled: false, port: 3128 };
       const downloader = new Downloader(logger, mockFileSystem, undefined, undefined, proxyConfig);
 
       expect(downloader).toBeDefined();
@@ -59,7 +59,7 @@ describe("Downloader with Proxy", () => {
     const testData = '{"name": "repo"}';
 
     it("should route requests through proxy", async () => {
-      const proxyConfig: ProxyFetchConfig = { enabled: true, port: 3128 };
+      const proxyConfig: IProxyFetchConfig = { enabled: true, port: 3128 };
       const downloader = new Downloader(logger, mockFileSystem, undefined, undefined, proxyConfig);
 
       fetchMockHelper.mockResponseOnce({
@@ -80,7 +80,7 @@ describe("Downloader with Proxy", () => {
     });
 
     it("should use custom proxy port", async () => {
-      const proxyConfig: ProxyFetchConfig = { enabled: true, port: 8080 };
+      const proxyConfig: IProxyFetchConfig = { enabled: true, port: 8080 };
       const downloader = new Downloader(logger, mockFileSystem, undefined, undefined, proxyConfig);
 
       fetchMockHelper.mockResponseOnce({
@@ -101,7 +101,7 @@ describe("Downloader with Proxy", () => {
     const testData = '{"name": "repo"}';
 
     it("should use both proxy and cache together", async () => {
-      const proxyConfig: ProxyFetchConfig = { enabled: true, port: 3128 };
+      const proxyConfig: IProxyFetchConfig = { enabled: true, port: 3128 };
       const cacheConfig: ICacheConfig = {
         enabled: true,
         defaultTtl: 60000,
@@ -148,7 +148,7 @@ describe("Downloader with Proxy", () => {
     const testData = '{"name": "repo"}';
 
     it("should not route through proxy when disabled", async () => {
-      const proxyConfig: ProxyFetchConfig = { enabled: false, port: 3128 };
+      const proxyConfig: IProxyFetchConfig = { enabled: false, port: 3128 };
       const downloader = new Downloader(logger, mockFileSystem, undefined, undefined, proxyConfig);
 
       fetchMockHelper.mockResponseOnce({

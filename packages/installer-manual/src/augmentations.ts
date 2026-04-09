@@ -1,10 +1,10 @@
 import type { RegisterPluginResult } from "@dotfiles/core";
-import type { ManualInstallParams, ManualToolConfig } from "./schemas";
+import type { IManualInstallParams, ManualToolConfig } from "./schemas";
 import type { ManualInstallResult } from "./types";
 
 declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    manual: ManualInstallParams;
+    manual: IManualInstallParams;
   }
   interface INoParamsMethodRegistry {
     manual: true;

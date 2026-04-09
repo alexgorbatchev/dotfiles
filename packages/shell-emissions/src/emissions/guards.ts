@@ -1,76 +1,76 @@
 import type {
-  AliasEmission,
-  CompletionEmission,
+  IAliasEmission,
+  ICompletionEmission,
   Emission,
-  EnvironmentEmission,
-  FunctionEmission,
-  PathEmission,
-  ScriptEmission,
-  SourceEmission,
-  SourceFileEmission,
-  SourceFunctionEmission,
+  IEnvironmentEmission,
+  IFunctionEmission,
+  IPathEmission,
+  IScriptEmission,
+  ISourceEmission,
+  ISourceFileEmission,
+  ISourceFunctionEmission,
 } from "../types";
 
 /**
  * Type guard for environment emission.
  */
-export function isEnvironmentEmission(e: Emission): e is EnvironmentEmission {
+export function isEnvironmentEmission(e: Emission): e is IEnvironmentEmission {
   return e.kind === "environment";
 }
 
 /**
  * Type guard for alias emission.
  */
-export function isAliasEmission(e: Emission): e is AliasEmission {
+export function isAliasEmission(e: Emission): e is IAliasEmission {
   return e.kind === "alias";
 }
 
 /**
  * Type guard for function emission.
  */
-export function isFunctionEmission(e: Emission): e is FunctionEmission {
+export function isFunctionEmission(e: Emission): e is IFunctionEmission {
   return e.kind === "function";
 }
 
 /**
  * Type guard for script emission.
  */
-export function isScriptEmission(e: Emission): e is ScriptEmission {
+export function isScriptEmission(e: Emission): e is IScriptEmission {
   return e.kind === "script";
 }
 
 /**
  * Type guard for source file emission.
  */
-export function isSourceFileEmission(e: Emission): e is SourceFileEmission {
+export function isSourceFileEmission(e: Emission): e is ISourceFileEmission {
   return e.kind === "sourceFile";
 }
 
 /**
  * Type guard for source emission (inline content).
  */
-export function isSourceEmission(e: Emission): e is SourceEmission {
+export function isSourceEmission(e: Emission): e is ISourceEmission {
   return e.kind === "source";
 }
 
 /**
  * Type guard for source function emission.
  */
-export function isSourceFunctionEmission(e: Emission): e is SourceFunctionEmission {
+export function isSourceFunctionEmission(e: Emission): e is ISourceFunctionEmission {
   return e.kind === "sourceFunction";
 }
 
 /**
  * Type guard for completion emission.
  */
-export function isCompletionEmission(e: Emission): e is CompletionEmission {
+export function isCompletionEmission(e: Emission): e is ICompletionEmission {
   return e.kind === "completion";
 }
 
 /**
  * Type guard for path emission.
  */
-export function isPathEmission(e: Emission): e is PathEmission {
+export function isPathEmission(e: Emission): e is IPathEmission {
   return e.kind === "path";
 }
 

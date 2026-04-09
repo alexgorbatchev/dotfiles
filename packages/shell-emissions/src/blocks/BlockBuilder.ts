@@ -1,16 +1,14 @@
 import { isCompletionEmission, isHoisted } from "../emissions/guards";
 import { BlockValidationError } from "../errors";
-import type { Block, CompletionEmission, Emission, EmissionKind, SectionOptions } from "../types";
+import type { IBlock, ICompletionEmission, Emission, EmissionKind, ISectionOptions } from "../types";
 
 interface ISectionDefinition {
   id: string;
-  options: SectionOptions;
+  options: ISectionOptions;
   emissions: Emission[];
-  children: Map<string, ChildBlockDefinition>;
+  children: Map<string, IChildBlockDefinition>;
   childInsertionOrder: string[];
 }
-
-type SectionDefinition = ISectionDefinition;
 
 interface IChildBlockDefinition {
   id: string;
@@ -18,20 +16,18 @@ interface IChildBlockDefinition {
   sourceFile?: string;
 }
 
-type ChildBlockDefinition = IChildBlockDefinition;
-
 /**
  * Fluent builder for constructing block structures.
  */
 export class BlockBuilder {
-  private sections: Map<string, SectionDefinition> = new Map();
+  private sections: Map<string, ISectionDefinition> = new Map();
   private sectionOrder: string[] = [];
 
   /**
    * Defines a section in the block structure.
    * Call in priority order for deterministic output.
    */
-  addSection(id: string, options: SectionOptions): BlockBuilder {
+  addSection(id: string, options: ISectionOptions): BlockBuilder {
     if (this.sections.has(id)) {
       throw new BlockValidationError(id, "section already exists");
     }
@@ -85,8 +81,8 @@ export class BlockBuilder {
    * Builds the final block structure.
    * Returns top-level blocks only; children are nested within.
    */
-  build(): Block[] {
-    const blocks: Block[] = [];
+  build(): IBlock[] {
+    const blocks: IBlock[] = [];
 
     for (const sectionId of this.sectionOrder) {
       const section = this.sections.get(sectionId);
@@ -132,7 +128,7 @@ export class BlockBuilder {
     }
   }
 
-  private findHoistTarget(kind: EmissionKind): SectionDefinition | undefined {
+  private findHoistTarget(kind: EmissionKind): ISectionDefinition | undefined {
     for (const section of this.sections.values()) {
       if (section.options.hoistKinds?.includes(kind)) {
         return section;
@@ -141,7 +137,7 @@ export class BlockBuilder {
     return undefined;
   }
 
-  private findChildrenSection(): SectionDefinition | undefined {
+  private findChildrenSection(): ISectionDefinition | undefined {
     for (const section of this.sections.values()) {
       if (section.options.allowChildren) {
         return section;
@@ -150,12 +146,12 @@ export class BlockBuilder {
     return undefined;
   }
 
-  private buildBlock(section: SectionDefinition): Block {
+  private buildBlock(section: ISectionDefinition): IBlock {
     // Deduplicate completion emissions before building
     const deduplicatedEmissions = this.deduplicateCompletions(section.emissions);
     const sortedEmissions = deduplicatedEmissions.toSorted((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
 
-    const children: Block[] = [];
+    const children: IBlock[] = [];
     for (const childId of section.childInsertionOrder) {
       const childDef = section.children.get(childId);
       if (!childDef) {
@@ -190,7 +186,7 @@ export class BlockBuilder {
    * Non-completion emissions pass through unchanged.
    */
   private deduplicateCompletions(emissions: Emission[]): Emission[] {
-    const completionEmissions: CompletionEmission[] = [];
+    const completionEmissions: ICompletionEmission[] = [];
     const otherEmissions: Emission[] = [];
 
     for (const emission of emissions) {
@@ -232,7 +228,7 @@ export class BlockBuilder {
       }
     }
 
-    const mergedCompletion: CompletionEmission = {
+    const mergedCompletion: ICompletionEmission = {
       kind: "completion",
       directories: mergedDirectories.size > 0 ? [...mergedDirectories] : undefined,
       files: mergedFiles.size > 0 ? [...mergedFiles] : undefined,

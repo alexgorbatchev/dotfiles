@@ -1,4 +1,4 @@
-import { type IDownloadContext, type IInstallContext, type Shell } from "@dotfiles/core";
+import { type IDownloadContext, type IInstallContext, type IShell } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { HookExecutor, IInstallOptions } from "@dotfiles/installer";
@@ -49,7 +49,7 @@ export async function installFromCurlBinary(
   downloader: IDownloader,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
-  shellExecutor: Shell,
+  shellExecutor: IShell,
 ): Promise<CurlBinaryInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: "installFromCurlBinary" });

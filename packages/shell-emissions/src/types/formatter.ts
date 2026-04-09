@@ -1,5 +1,5 @@
-import type { Block, BlockMetadata } from "./blocks";
-import type { Emission, ScriptEmission } from "./emissions";
+import type { IBlock, IBlockMetadata } from "./blocks";
+import type { Emission, IScriptEmission } from "./emissions";
 
 /**
  * Configuration provided to formatters at construction.
@@ -13,8 +13,6 @@ export interface IFormatterConfig {
   onceScriptDir?: string;
 }
 
-export type FormatterConfig = IFormatterConfig;
-
 /**
  * Content generated for a once script.
  */
@@ -24,8 +22,6 @@ export interface IOnceScriptContent {
   /** Generated filename for this script */
   filename: string;
 }
-
-export type OnceScriptContent = IOnceScriptContent;
 
 /**
  * Interface that consumers implement to convert emissions to shell syntax.
@@ -42,7 +38,7 @@ export interface IEmissionFormatter {
   /**
    * Renders a once script with self-delete logic.
    */
-  formatOnceScript(emission: ScriptEmission, index: number): IOnceScriptContent;
+  formatOnceScript(emission: IScriptEmission, index: number): IOnceScriptContent;
 
   /**
    * Generates the loop that executes pending once scripts.
@@ -52,7 +48,7 @@ export interface IEmissionFormatter {
   /**
    * Generates the file header ("DO NOT EDIT" warning).
    */
-  formatFileHeader(metadata?: BlockMetadata): string;
+  formatFileHeader(metadata?: IBlockMetadata): string;
 
   /**
    * Generates a major section divider.
@@ -62,7 +58,7 @@ export interface IEmissionFormatter {
   /**
    * Generates a child block header within a section.
    */
-  formatChildBlockHeader(block: Block): string;
+  formatChildBlockHeader(block: IBlock): string;
 
   /**
    * Generates the end of file marker.
@@ -92,8 +88,6 @@ export interface IOnceScript {
   executable: true;
 }
 
-export type OnceScript = IOnceScript;
-
 /**
  * Output from the renderer.
  */
@@ -106,8 +100,6 @@ export interface IRenderedOutput {
   onceScripts: IOnceScript[];
 }
 
-export type RenderedOutput = IRenderedOutput;
-
 /**
  * Interface for the block renderer.
  */
@@ -115,5 +107,5 @@ export interface IBlockRenderer {
   /**
    * Renders blocks using the provided formatter.
    */
-  render(blocks: Block[], formatter: IEmissionFormatter): IRenderedOutput;
+  render(blocks: IBlock[], formatter: IEmissionFormatter): IRenderedOutput;
 }

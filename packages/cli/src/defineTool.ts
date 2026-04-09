@@ -8,7 +8,7 @@
 import type {
   AsyncConfigureTool,
   IInstallParamsRegistry,
-  InstallFunction,
+  IInstallFunction,
   InstallMethod,
   IToolConfigBuilder as ToolConfigBuilderContract,
   IToolConfigContext,
@@ -39,7 +39,7 @@ import { IToolConfigBuilder } from "@dotfiles/tool-config-builder";
  * ```
  */
 export function defineTool(fn: AsyncConfigureTool): AsyncConfigureTool {
-  return async (install: InstallFunction, ctx: IToolConfigContext) => {
+  return async (install: IInstallFunction, ctx: IToolConfigContext) => {
     const result = fn(install, ctx);
     if (result instanceof Promise) {
       return await result;
@@ -60,7 +60,7 @@ export function createInstallFunction(
   logger: TsLogger,
   toolName: string,
   context?: IToolConfigContext,
-): InstallFunction {
+): IInstallFunction {
   let builderInstance: IToolConfigBuilder | null = null;
 
   const getOrCreateBuilder = (): IToolConfigBuilder => {
@@ -84,5 +84,5 @@ export function createInstallFunction(
     return builder;
   }
 
-  return install as InstallFunction;
+  return install as IInstallFunction;
 }

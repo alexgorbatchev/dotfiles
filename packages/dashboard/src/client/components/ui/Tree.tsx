@@ -33,10 +33,6 @@ export interface ITreeProps<T = unknown> {
   class?: string;
 }
 
-export type TreeItemData<T = unknown> = ITreeItemData<T>;
-export type TreeItemProps<T = unknown> = ITreeItemProps<T>;
-export type TreeProps<T = unknown> = ITreeProps<T>;
-
 export function TreeItem<T = unknown>({
   item,
   depth = 0,

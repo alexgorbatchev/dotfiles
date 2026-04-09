@@ -1,9 +1,9 @@
-import type { Shell } from "@dotfiles/core";
+import type { IShell } from "@dotfiles/core";
 import { describe, expect, it } from "bun:test";
 import { detectVersionViaCli } from "../detectVersionViaCli";
 
 // Helper to create a mock shell
-function createMockShell(stdout: string, stderr = "", exitCode = 0): Shell {
+function createMockShell(stdout: string, stderr = "", exitCode = 0): IShell {
   const mockShell = (_strings: TemplateStringsArray, ..._values: unknown[]) => {
     return {
       env: () => ({
@@ -17,7 +17,7 @@ function createMockShell(stdout: string, stderr = "", exitCode = 0): Shell {
       }),
     };
   };
-  return mockShell as unknown as Shell;
+  return mockShell as unknown as IShell;
 }
 
 describe("detectVersionViaCli", () => {

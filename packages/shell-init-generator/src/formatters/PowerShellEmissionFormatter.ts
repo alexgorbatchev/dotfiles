@@ -1,16 +1,16 @@
 import type {
-  AliasEmission,
-  CompletionEmission,
+  IAliasEmission,
+  ICompletionEmission,
   Emission,
-  EnvironmentEmission,
-  FunctionEmission,
+  IEnvironmentEmission,
+  IFunctionEmission,
   IEmissionFormatter,
-  OnceScriptContent,
-  PathEmission,
-  ScriptEmission,
-  SourceEmission,
-  SourceFileEmission,
-  SourceFunctionEmission,
+  IOnceScriptContent,
+  IPathEmission,
+  IScriptEmission,
+  ISourceEmission,
+  ISourceFileEmission,
+  ISourceFunctionEmission,
 } from "@dotfiles/shell-emissions";
 import {
   isAliasEmission,
@@ -65,7 +65,7 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     throw new Error(`Unknown emission kind: ${(emission as Emission).kind}`);
   }
 
-  formatOnceScript(emission: ScriptEmission, index: number): OnceScriptContent {
+  formatOnceScript(emission: IScriptEmission, index: number): IOnceScriptContent {
     if (!this.onceScriptDir) {
       throw new Error("onceScriptDir is required for once scripts");
     }
@@ -95,7 +95,7 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     `);
   }
 
-  private formatEnvironment(emission: EnvironmentEmission): string {
+  private formatEnvironment(emission: IEnvironmentEmission): string {
     const lines: string[] = [];
     for (const [key, value] of Object.entries(emission.variables)) {
       lines.push(`$env:${key} = ${JSON.stringify(value)}`);
@@ -103,7 +103,7 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     return lines.join("\n");
   }
 
-  private formatAlias(emission: AliasEmission): string {
+  private formatAlias(emission: IAliasEmission): string {
     const lines: string[] = [];
     for (const [name, command] of Object.entries(emission.aliases)) {
       lines.push(`Set-Alias -Name ${name} -Value '${command.replace(/'/g, "''")}'`);
@@ -111,7 +111,7 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     return lines.join("\n");
   }
 
-  private formatFunction(emission: FunctionEmission): string {
+  private formatFunction(emission: IFunctionEmission): string {
     const body = dedentString(emission.body);
     const indent = " ".repeat(this.indentSize);
 
@@ -122,12 +122,12 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     return [`function ${emission.name} {`, indentedBody, `}`].join("\n");
   }
 
-  private formatScript(emission: ScriptEmission): string {
+  private formatScript(emission: IScriptEmission): string {
     const content = dedentString(emission.content);
     return content;
   }
 
-  private formatSourceFile(emission: SourceFileEmission): string {
+  private formatSourceFile(emission: ISourceFileEmission): string {
     return `. "${emission.path}"`;
   }
 
@@ -135,7 +135,7 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
    * Formats a source emission with inline content.
    * Creates a temporary function, invokes its output, and cleans up.
    */
-  private formatSource(emission: SourceEmission): string {
+  private formatSource(emission: ISourceEmission): string {
     const content = dedentString(emission.content);
     const functionName = emission.functionName;
     const indent = " ".repeat(this.indentSize);
@@ -153,12 +153,12 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     ].join("\n");
   }
 
-  private formatSourceFunction(emission: SourceFunctionEmission): string {
+  private formatSourceFunction(emission: ISourceFunctionEmission): string {
     // In PowerShell, we invoke the function and evaluate the result
     return `Invoke-Expression (& ${emission.functionName})`;
   }
 
-  private formatCompletion(emission: CompletionEmission): string {
+  private formatCompletion(emission: ICompletionEmission): string {
     const lines: string[] = [];
 
     // Source specific completion files with existence check
@@ -174,7 +174,7 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     return lines.join("\n");
   }
 
-  private formatPath(emission: PathEmission): string {
+  private formatPath(emission: IPathEmission): string {
     const dir = emission.directory;
 
     if (emission.deduplicate) {

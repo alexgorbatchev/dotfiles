@@ -1,7 +1,7 @@
 import type { IOperationFailure, IOperationSuccess } from "@dotfiles/core";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
-import type { ProxyFetchConfig } from "@dotfiles/utils";
+import type { IProxyFetchConfig } from "@dotfiles/utils";
 import type { ICache } from "./cache/types";
 import { CachedDownloadStrategy } from "./CachedDownloadStrategy";
 import type { IDownloader, IDownloadOptions } from "./IDownloader";
@@ -10,8 +10,7 @@ import { downloaderLogMessages } from "./log-messages";
 import { NodeFetchStrategy } from "./NodeFetchStrategy";
 
 type DownloadAttemptSuccess = IOperationSuccess & { buffer: Buffer | undefined };
-type DownloadAttemptFailure = IOperationFailure;
-type DownloadAttemptResult = DownloadAttemptSuccess | DownloadAttemptFailure;
+type DownloadAttemptResult = DownloadAttemptSuccess | IOperationFailure;
 type DownloadToFileAttemptResult = IOperationSuccess | IOperationFailure;
 
 /**
@@ -41,7 +40,7 @@ export class Downloader implements IDownloader {
     fileSystem: IFileSystem,
     strategies?: IDownloadStrategy[],
     cache?: ICache,
-    proxyConfig?: ProxyFetchConfig,
+    proxyConfig?: IProxyFetchConfig,
   ) {
     this.logger = parentLogger.getSubLogger({ name: "Downloader" });
     this.fs = fileSystem;

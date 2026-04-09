@@ -1,7 +1,7 @@
 import { minimatch } from "minimatch";
 
 import type { ProxyCacheStore } from "./ProxyCacheStore";
-import type { CacheClearResult } from "./types";
+import type { ICacheClearResult } from "./types";
 
 /**
  * Utility for clearing cache entries using glob patterns.
@@ -73,7 +73,7 @@ export class CacheInvalidator {
    * @param patterns - Glob patterns to match (empty array or single "*" clears all)
    * @returns Result with count of cleared entries
    */
-  clear(patterns: string[]): CacheClearResult {
+  clear(patterns: string[]): ICacheClearResult {
     const entries = this.store.getAllEntries();
 
     // If no patterns provided or single "*" pattern, clear everything

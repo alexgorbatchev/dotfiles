@@ -12,8 +12,6 @@ export interface IShellResult {
   stderr: string;
 }
 
-export type ShellResult = IShellResult;
-
 /**
  * Options for shell command execution.
  */
@@ -31,8 +29,6 @@ export interface IShellOptions {
   /** If true, only log output, not the command itself (for wrapped shells) */
   skipCommandLog?: boolean;
 }
-
-export type ShellOptions = IShellOptions;
 
 export type ShellCommandInput = TemplateStringsArray | string;
 export type ShellCommandOnFulfilled<TResult> = ((value: IShellResult) => TResult | PromiseLike<TResult>) | null;
@@ -62,8 +58,6 @@ export interface IShellCommand extends PromiseLike<IShellResult> {
   bytes(): Promise<Uint8Array>;
 }
 
-export type ShellCommand = IShellCommand;
-
 /**
  * Shell factory function type - callable with template literals.
  */
@@ -71,5 +65,3 @@ export interface IShell {
   (strings: TemplateStringsArray, ...values: unknown[]): IShellCommand;
   (command: string): IShellCommand;
 }
-
-export type Shell = IShell;

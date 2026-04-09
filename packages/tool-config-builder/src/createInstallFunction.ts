@@ -5,7 +5,7 @@
  * with the installation method and params already configured.
  */
 
-import type { IInstallParamsRegistry, InstallFunction, InstallMethod, IToolConfigContext } from "@dotfiles/core";
+import type { IInstallParamsRegistry, IInstallFunction, InstallMethod, IToolConfigContext } from "@dotfiles/core";
 import type { TsLogger } from "@dotfiles/logger";
 import { IToolConfigBuilder } from "./toolConfigBuilder";
 
@@ -34,7 +34,7 @@ export function createInstallFunction(
   logger: TsLogger,
   toolName: string,
   context?: IToolConfigContext,
-): InstallFunction {
+): IInstallFunction {
   let builderInstance: IToolConfigBuilder | null = null;
 
   const getOrCreateBuilder = (): IToolConfigBuilder => {
@@ -58,5 +58,5 @@ export function createInstallFunction(
     return builder;
   }
 
-  return install as InstallFunction;
+  return install as IInstallFunction;
 }

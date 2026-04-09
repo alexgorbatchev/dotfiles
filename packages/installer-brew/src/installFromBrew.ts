@@ -1,4 +1,4 @@
-import { createShell, type IInstallContext, type IInstallOptions, type Shell } from "@dotfiles/core";
+import { createShell, type IInstallContext, type IInstallOptions, type IShell } from "@dotfiles/core";
 import { getBinaryPaths, withInstallErrorHandling } from "@dotfiles/installer";
 import type { TsLogger } from "@dotfiles/logger";
 import { detectVersionViaCli, normalizeVersion } from "@dotfiles/utils";
@@ -42,8 +42,8 @@ export async function installFromBrew(
   _context: IInstallContext,
   options: IInstallOptions | undefined,
   parentLogger: TsLogger,
-  shellExecutor: Shell,
-  installShell?: Shell,
+  shellExecutor: IShell,
+  installShell?: IShell,
 ): Promise<BrewInstallResult> {
   const logger = parentLogger.getSubLogger({ name: "installFromBrew" });
   logger.debug(messages.installing(toolName), toolConfig.installParams);
@@ -109,7 +109,7 @@ export async function installFromBrew(
  * @param shell - The shell executor.
  * @returns A promise that resolves to the version string, or null if not found.
  */
-async function getBrewVersion(formula: string, logger: TsLogger, shell: Shell): Promise<string | undefined> {
+async function getBrewVersion(formula: string, logger: TsLogger, shell: IShell): Promise<string | undefined> {
   try {
     logger.debug(messages.fetchingVersion(formula));
     const result = await shell`brew info --json ${formula}`.quiet().noThrow();
@@ -141,7 +141,7 @@ async function getBrewVersion(formula: string, logger: TsLogger, shell: Shell): 
  * @returns A promise that resolves to the prefix path.
  * @throws {Error} If the prefix cannot be determined.
  */
-async function getBrewPrefix(formula: string, logger: TsLogger, shell: Shell): Promise<string> {
+async function getBrewPrefix(formula: string, logger: TsLogger, shell: IShell): Promise<string> {
   try {
     const result = await shell`brew --prefix ${formula}`.quiet();
     const prefix: string = result.stdout.toString().trim();
@@ -179,8 +179,8 @@ async function executeBrewInstall(
   tap: BrewTapInput,
   force: boolean | undefined,
   logger: TsLogger,
-  shell: Shell,
-  installShell: Shell,
+  shell: IShell,
+  installShell: IShell,
 ): Promise<void> {
   if (tap) {
     const taps = Array.isArray(tap) ? tap : [tap];

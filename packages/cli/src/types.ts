@@ -106,11 +106,6 @@ export interface IInstallCommandSpecificOptions {
   shimMode: boolean;
 }
 
-/**
- * Command-specific options for update command (excludes global options)
- */
-export type InstallCommandSpecificOptions = IInstallCommandSpecificOptions;
-
 export interface IUpdateCommandSpecificOptions {
   shimMode: boolean;
 }

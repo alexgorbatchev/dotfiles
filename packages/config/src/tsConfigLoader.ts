@@ -3,7 +3,7 @@ import type { IFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
 import { exitCli } from "@dotfiles/utils";
 import path from "node:path";
-import type { ConfigContext } from "./defineConfig";
+import type { IConfigContext } from "./defineConfig";
 import { messages } from "./log-messages";
 import { createProjectConfigFromObject } from "./stagedProjectConfigLoader";
 
@@ -11,7 +11,7 @@ type ModuleWithDefaultExport = {
   default?: unknown;
 };
 
-type ConfigFactory = (ctx: ConfigContext) => unknown;
+type ConfigFactory = (ctx: IConfigContext) => unknown;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -77,7 +77,7 @@ export async function loadTsConfig(
     }
 
     const configFileDir = path.dirname(userConfigPath);
-    const ctx: ConfigContext = { configFileDir, systemInfo };
+    const ctx: IConfigContext = { configFileDir, systemInfo };
 
     const defaultExport: unknown = importedModule.default;
     const configValue: unknown = isConfigFactory(defaultExport) ? defaultExport(ctx) : defaultExport;

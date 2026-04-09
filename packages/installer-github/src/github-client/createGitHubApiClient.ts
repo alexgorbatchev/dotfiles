@@ -1,5 +1,5 @@
 import type { ProjectConfig } from "@dotfiles/config";
-import type { Shell } from "@dotfiles/core";
+import type { IShell } from "@dotfiles/core";
 import type { ICache, IDownloader } from "@dotfiles/downloader";
 import type { TsLogger } from "@dotfiles/logger";
 import { GhCliApiClient } from "./GhCliApiClient";
@@ -21,7 +21,7 @@ export interface ICreateGitHubApiClientOptions {
   /** Whether to use gh CLI instead of fetch */
   useGhCli?: boolean;
   /** Shell for executing gh CLI commands */
-  shell: Shell;
+  shell: IShell;
 }
 
 /**

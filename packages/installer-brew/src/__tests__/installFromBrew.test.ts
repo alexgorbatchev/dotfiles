@@ -1,4 +1,4 @@
-import type { IInstallContext, Shell } from "@dotfiles/core";
+import type { IInstallContext, IShell } from "@dotfiles/core";
 import type { IFileSystem } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
@@ -16,7 +16,7 @@ function createMockFileSystem(): IFileSystem {
   } as unknown as IFileSystem;
 }
 
-function createMockContext(toolConfig: BrewToolConfig, mockShell: Shell): IInstallContext {
+function createMockContext(toolConfig: BrewToolConfig, mockShell: IShell): IInstallContext {
   return {
     projectConfig: {
       paths: {
@@ -52,7 +52,7 @@ function createMockContext(toolConfig: BrewToolConfig, mockShell: Shell): IInsta
 
 describe("installFromBrew", () => {
   let logger: TestLogger;
-  let mockShell: Shell;
+  let mockShell: IShell;
 
   beforeEach(() => {
     logger = new TestLogger();

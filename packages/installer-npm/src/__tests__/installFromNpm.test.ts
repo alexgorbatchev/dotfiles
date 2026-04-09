@@ -1,4 +1,4 @@
-import type { IInstallContext, Shell } from "@dotfiles/core";
+import type { IInstallContext, IShell } from "@dotfiles/core";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, it } from "bun:test";
 import assert from "node:assert";
@@ -29,14 +29,14 @@ function createMockShellResult(stdout: string): MockShellResult {
   };
 }
 
-function createCommandShell(commandOutputs: MockShellCommandOutput[]): Shell {
+function createCommandShell(commandOutputs: MockShellCommandOutput[]): IShell {
   return createMockShell((cmd: string) => {
     const matchedOutput = commandOutputs.find((entry) => cmd.includes(entry.includes));
     return createMockShellResult(matchedOutput?.stdout ?? "");
   });
 }
 
-function createContext(toolConfig: NpmToolConfig, mockShell: Shell): IInstallContext {
+function createContext(toolConfig: NpmToolConfig, mockShell: IShell): IInstallContext {
   return {
     projectConfig: {
       paths: {
@@ -71,7 +71,7 @@ function createContext(toolConfig: NpmToolConfig, mockShell: Shell): IInstallCon
 
 describe("installFromNpm", () => {
   let logger: TestLogger;
-  let mockShell: Shell;
+  let mockShell: IShell;
 
   beforeEach(() => {
     logger = new TestLogger();

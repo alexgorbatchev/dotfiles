@@ -1,6 +1,6 @@
 import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
 import { Platform } from "@dotfiles/core";
-import type { IInstallContext, Shell } from "@dotfiles/core";
+import type { IInstallContext, IShell } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { HookExecutor } from "@dotfiles/installer";
@@ -34,7 +34,7 @@ function mockBunSpawn(): void {
 }
 
 interface IDmgShellMocks {
-  shell: Shell;
+  shell: IShell;
   mockQuiet: ReturnType<typeof mock>;
   mockNoThrow: ReturnType<typeof mock>;
 }
@@ -47,7 +47,7 @@ function createMockShell(): IDmgShellMocks {
     return result;
   });
   const mockFn = mock(() => ({ quiet: mockQuiet }));
-  return { shell: mockFn as unknown as Shell, mockQuiet, mockNoThrow };
+  return { shell: mockFn as unknown as IShell, mockQuiet, mockNoThrow };
 }
 
 describe("installFromDmg", () => {

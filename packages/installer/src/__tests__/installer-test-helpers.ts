@@ -9,7 +9,7 @@ import {
   type InstallerPluginRegistry,
   type ISystemInfo,
   Platform,
-  type Shell,
+  type IShell,
 } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import { createMemFileSystem, type IFileSystem, type MockedFileSystem } from "@dotfiles/file-system";
@@ -653,7 +653,7 @@ export function createTestContext(
   setup: IInstallerTestSetup,
   overrides: Partial<IInstallContext> = {},
 ): IInstallContext {
-  const shell: Shell = createConfiguredShell(createMock$(), process.env);
+  const shell: IShell = createConfiguredShell(createMock$(), process.env);
   const toolDir = path.join(setup.mockProjectConfig.paths.toolConfigsDir, MOCK_TOOL_NAME);
 
   const baseCurrentDir: string = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, "current");

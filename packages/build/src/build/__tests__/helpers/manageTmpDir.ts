@@ -7,13 +7,7 @@ interface ITmpDirHelper {
   cleanup: (filePath: string) => void;
 }
 
-/**
- * Setup helper for managing temporary test directory
- * Provides utilities to create and cleanup test files in a local .tmp folder
- */
-type TmpDirHelper = ITmpDirHelper;
-
-export function setupTmpDir(testDirPath: string): TmpDirHelper {
+export function setupTmpDir(testDirPath: string): ITmpDirHelper {
   const TMP_DIR = path.join(testDirPath, ".tmp");
 
   const ensureDir = (): void => {

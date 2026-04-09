@@ -5,7 +5,7 @@ import {
   type IInstallContext,
   Platform,
 } from "@dotfiles/core";
-import type { GithubReleaseInstallParams } from "@dotfiles/installer-github";
+import type { IGithubReleaseInstallParams } from "@dotfiles/installer-github";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, it } from "bun:test";
 import assert from "node:assert";
@@ -120,7 +120,7 @@ describe("selectAsset", () => {
     it("should select macos-arm64 asset when pattern is *.tar.gz and platform is macOS arm64", async () => {
       const release = createNeovimRelease();
       const context = createMacOSArm64Context();
-      const params: GithubReleaseInstallParams = {
+      const params: IGithubReleaseInstallParams = {
         repo: "neovim/neovim",
         assetPattern: "*.tar.gz",
       };
@@ -134,7 +134,7 @@ describe("selectAsset", () => {
     it("should select macos-x86_64 asset when pattern is *.tar.gz and platform is macOS x64", async () => {
       const release = createNeovimRelease();
       const context = createMacOSx64Context();
-      const params: GithubReleaseInstallParams = {
+      const params: IGithubReleaseInstallParams = {
         repo: "neovim/neovim",
         assetPattern: "*.tar.gz",
       };
@@ -148,7 +148,7 @@ describe("selectAsset", () => {
     it("should select linux-arm64 asset when pattern is *.tar.gz and platform is Linux arm64", async () => {
       const release = createNeovimRelease();
       const context = createLinuxArm64Context();
-      const params: GithubReleaseInstallParams = {
+      const params: IGithubReleaseInstallParams = {
         repo: "neovim/neovim",
         assetPattern: "*.tar.gz",
       };
@@ -162,7 +162,7 @@ describe("selectAsset", () => {
     it("should select linux-x86_64 asset when pattern is *.tar.gz and platform is Linux x64", async () => {
       const release = createNeovimRelease();
       const context = createLinuxx64Context();
-      const params: GithubReleaseInstallParams = {
+      const params: IGithubReleaseInstallParams = {
         repo: "neovim/neovim",
         assetPattern: "*.tar.gz",
       };
@@ -181,7 +181,7 @@ describe("selectAsset", () => {
         assets: [createMockAsset("tool-universal.tar.gz"), createMockAsset("tool-source.tar.gz")],
       };
       const context = createMacOSArm64Context();
-      const params: GithubReleaseInstallParams = {
+      const params: IGithubReleaseInstallParams = {
         repo: "owner/repo",
         assetPattern: "*.tar.gz",
       };
@@ -197,7 +197,7 @@ describe("selectAsset", () => {
     it("should select platform-specific asset without assetPattern", async () => {
       const release = createNeovimRelease();
       const context = createMacOSArm64Context();
-      const params: GithubReleaseInstallParams = {
+      const params: IGithubReleaseInstallParams = {
         repo: "neovim/neovim",
       };
 

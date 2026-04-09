@@ -1,4 +1,4 @@
-import type { BaseInstallParams, IGitHubRelease, IGitHubReleaseAsset, IInstallContext } from "@dotfiles/core";
+import type { IBaseInstallParams, IGitHubRelease, IGitHubReleaseAsset, IInstallContext } from "@dotfiles/core";
 import { baseInstallParamsSchema } from "@dotfiles/core";
 import { z } from "zod";
 import { type AssetPattern, isValidAssetPatternString } from "../matchAssetPattern";
@@ -133,7 +133,7 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
  * NOTE: This is an explicit interface (not z.infer) to ensure TypeScript fully resolves
  * the property names, which is required for proper `keyof` behavior in declaration files.
  */
-export interface IGithubReleaseInstallParams extends BaseInstallParams {
+export interface IGithubReleaseInstallParams extends IBaseInstallParams {
   /**
    * The GitHub repository in "owner/repo" format (e.g., `junegunn/fzf`).
    */
@@ -160,5 +160,3 @@ export interface IGithubReleaseInstallParams extends BaseInstallParams {
    */
   prerelease?: boolean;
 }
-
-export type GithubReleaseInstallParams = IGithubReleaseInstallParams;

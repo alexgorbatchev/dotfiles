@@ -3,7 +3,7 @@ import type {
   IAfterInstallContext,
   IInstallBaseContext,
   IInstallContext,
-  InstallEvent,
+  IInstallEvent,
   ToolConfig,
 } from "@dotfiles/core";
 import type { IFileSystem } from "@dotfiles/file-system";
@@ -72,7 +72,7 @@ export class HookLifecycle {
   }
 
   async handleInstallEvent(
-    event: InstallEvent,
+    event: IInstallEvent,
     currentToolConfig: ToolConfig | undefined,
     parentLogger: TsLogger,
   ): Promise<void> {

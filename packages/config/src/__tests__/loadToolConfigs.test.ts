@@ -1,6 +1,6 @@
 import type {
   AsyncConfigureTool,
-  InstallFunction,
+  IInstallFunction,
   ISystemInfo,
   IToolConfigContext,
   ProjectConfig,
@@ -17,7 +17,7 @@ import path from "node:path";
 
 const createCompletionToolConfig =
   (generatedDir: string): AsyncConfigureTool =>
-  async (install: InstallFunction) =>
+  async (install: IInstallFunction) =>
     install("manual", { binaryPath: "/usr/bin/completion-tool" })
       .bin("completion-tool")
       .version("latest")
@@ -98,7 +98,7 @@ describe("IToolConfigContext", () => {
       );
 
       // Test that context can be used in a tool configuration function
-      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
+      const configureToolFn: AsyncConfigureTool = async (install: IInstallFunction, ctx: IToolConfigContext) => {
         const toolBinariesDir = path.join(ctx.projectConfig.paths.binariesDir, ctx.toolName);
         return install("manual", { binaryPath: "/usr/bin/shell-tool" })
           .bin("shell-tool")
@@ -148,7 +148,7 @@ describe("IToolConfigContext", () => {
       );
 
       // Test a tool that references other tools
-      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
+      const configureToolFn: AsyncConfigureTool = async (install: IInstallFunction, ctx: IToolConfigContext) => {
         const dependentToolBinariesDir = path.join(ctx.projectConfig.paths.binariesDir, ctx.toolName);
         const fzfBinariesDir = path.join(ctx.projectConfig.paths.binariesDir, "fzf");
         return install("manual", { binaryPath: "/usr/bin/dependent-tool" })
@@ -282,7 +282,7 @@ describe("IToolConfigContext", () => {
       );
 
       // Test fzf-like pattern with context
-      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
+      const configureToolFn: AsyncConfigureTool = async (install: IInstallFunction, ctx: IToolConfigContext) => {
         const toolBinariesDir = path.join(ctx.projectConfig.paths.binariesDir, ctx.toolName);
         return install("github-release", { repo: "owner/fzf-like" })
           .bin("fzf-like")
@@ -325,7 +325,7 @@ describe("IToolConfigContext", () => {
       );
 
       // Test atuin-like pattern with context
-      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
+      const configureToolFn: AsyncConfigureTool = async (install: IInstallFunction, ctx: IToolConfigContext) => {
         const toolBinariesDir = path.join(ctx.projectConfig.paths.binariesDir, ctx.toolName);
         return install("github-release", { repo: "owner/atuin-like" })
           .bin("atuin-like")

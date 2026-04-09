@@ -1,4 +1,4 @@
-import type { BaseInstallParams, IGitHubRelease, IGitHubReleaseAsset, IInstallContext } from "@dotfiles/core";
+import type { IBaseInstallParams, IGitHubRelease, IGitHubReleaseAsset, IInstallContext } from "@dotfiles/core";
 import { baseInstallParamsSchema } from "@dotfiles/core";
 import { z } from "zod";
 import { type AssetPattern, isValidAssetPatternString } from "../matchAssetPattern";
@@ -57,7 +57,7 @@ export const giteaReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
 /**
  * Parameters for installing a tool from a Gitea/Forgejo release.
  */
-export interface IGiteaReleaseInstallParams extends BaseInstallParams {
+export interface IGiteaReleaseInstallParams extends IBaseInstallParams {
   instanceUrl: string;
   repo: string;
   assetPattern?: string | RegExp;
@@ -66,5 +66,3 @@ export interface IGiteaReleaseInstallParams extends BaseInstallParams {
   prerelease?: boolean;
   token?: string;
 }
-
-export type GiteaReleaseInstallParams = IGiteaReleaseInstallParams;

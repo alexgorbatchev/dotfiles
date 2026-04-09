@@ -1,10 +1,10 @@
 import type { RegisterPluginResult } from "@dotfiles/core";
-import type { BrewInstallParams, BrewToolConfig } from "./schemas";
+import type { IBrewInstallParams, BrewToolConfig } from "./schemas";
 import type { BrewInstallResult } from "./types";
 
 declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    brew: BrewInstallParams;
+    brew: IBrewInstallParams;
   }
   interface IToolConfigRegistry {
     brew: BrewToolConfig;

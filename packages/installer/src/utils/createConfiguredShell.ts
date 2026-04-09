@@ -1,4 +1,4 @@
-import { hasLoggingShell, loggingShellBrand, type Shell, type ShellCommandInput } from "@dotfiles/core";
+import { hasLoggingShell, loggingShellBrand, type IShell, type ShellCommandInput } from "@dotfiles/core";
 
 /**
  * Creates a configured shell instance that automatically applies the provided environment variables
@@ -11,7 +11,7 @@ import { hasLoggingShell, loggingShellBrand, type Shell, type ShellCommandInput 
  * @param env - The environment variables to apply to all commands
  * @returns A new shell instance that wraps the base shell with the provided environment
  */
-export function createConfiguredShell($shell: Shell, env: Record<string, string | undefined>): Shell {
+export function createConfiguredShell($shell: IShell, env: Record<string, string | undefined>): IShell {
   // Create a wrapper function that applies the environment to every command
   const configuredShell = (first: ShellCommandInput, ...expressions: unknown[]) => {
     if (typeof first === "string") {
@@ -29,5 +29,5 @@ export function createConfiguredShell($shell: Shell, env: Record<string, string 
     Object.defineProperty(configuredShell, loggingShellBrand, { value: true, enumerable: false });
   }
 
-  return configuredShell as unknown as Shell;
+  return configuredShell as unknown as IShell;
 }

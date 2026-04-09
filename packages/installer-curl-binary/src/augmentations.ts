@@ -1,10 +1,10 @@
 import type { RegisterPluginResult } from "@dotfiles/core";
-import type { CurlBinaryInstallParams, CurlBinaryToolConfig } from "./schemas";
+import type { ICurlBinaryInstallParams, CurlBinaryToolConfig } from "./schemas";
 import type { CurlBinaryInstallResult } from "./types";
 
 declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    "curl-binary": CurlBinaryInstallParams;
+    "curl-binary": ICurlBinaryInstallParams;
   }
   interface IToolConfigRegistry {
     "curl-binary": CurlBinaryToolConfig;

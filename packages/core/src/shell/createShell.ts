@@ -1,14 +1,14 @@
 import { createSafeLogMessage } from "@dotfiles/logger";
 import { ShellError } from "./ShellError";
 import type {
-  Shell,
-  ShellCommand,
+  IShell,
+  IShellCommand,
   ShellCommandInput,
   ShellCommandOnFulfilled,
   ShellCommandOnRejected,
   ShellCommandThenResult,
-  ShellOptions,
-  ShellResult,
+  IShellOptions,
+  IShellResult,
 } from "./types";
 
 /**
@@ -24,8 +24,8 @@ import type {
 type EnvironmentEntry = [string, string];
 type LineHandler = (line: string) => void;
 
-export function createShell(defaultOptions: ShellOptions = {}): Shell {
-  const shell: Shell = (first: ShellCommandInput, ...values: unknown[]): ShellCommand => {
+export function createShell(defaultOptions: IShellOptions = {}): IShell {
+  const shell: IShell = (first: ShellCommandInput, ...values: unknown[]): IShellCommand => {
     const command = typeof first === "string" ? first : reconstructCommand(first, values);
     return createShellCommand(command, defaultOptions);
   };
@@ -35,12 +35,12 @@ export function createShell(defaultOptions: ShellOptions = {}): Shell {
 /**
  * Creates a shell command with chainable options.
  */
-function createShellCommand(command: string, options: ShellOptions): ShellCommand {
+function createShellCommand(command: string, options: IShellOptions): IShellCommand {
   let currentOptions = { ...options };
   let executed = false;
-  let resultPromise: Promise<ShellResult> | null = null;
+  let resultPromise: Promise<IShellResult> | null = null;
 
-  const execute = async (): Promise<ShellResult> => {
+  const execute = async (): Promise<IShellResult> => {
     if (resultPromise) return resultPromise;
     executed = true;
 
@@ -48,14 +48,14 @@ function createShellCommand(command: string, options: ShellOptions): ShellComman
     return resultPromise;
   };
 
-  const cmd: ShellCommand = {
-    cwd(path: string): ShellCommand {
+  const cmd: IShellCommand = {
+    cwd(path: string): IShellCommand {
       if (executed) throw new Error("Cannot modify command after execution");
       currentOptions = { ...currentOptions, cwd: path };
       return cmd;
     },
 
-    env(vars: Record<string, string | undefined>): ShellCommand {
+    env(vars: Record<string, string | undefined>): IShellCommand {
       if (executed) throw new Error("Cannot modify command after execution");
       currentOptions = {
         ...currentOptions,
@@ -64,13 +64,13 @@ function createShellCommand(command: string, options: ShellOptions): ShellComman
       return cmd;
     },
 
-    quiet(): ShellCommand {
+    quiet(): IShellCommand {
       if (executed) throw new Error("Cannot modify command after execution");
       currentOptions = { ...currentOptions, quiet: true };
       return cmd;
     },
 
-    noThrow(): ShellCommand {
+    noThrow(): IShellCommand {
       if (executed) throw new Error("Cannot modify command after execution");
       currentOptions = { ...currentOptions, noThrow: true };
       return cmd;
@@ -97,7 +97,7 @@ function createShellCommand(command: string, options: ShellOptions): ShellComman
     },
 
     // oxlint-disable-next-line unicorn/no-thenable -- Required for PromiseLike interface to enable await syntax
-    then<TResult1 = ShellResult, TResult2 = never>(
+    then<TResult1 = IShellResult, TResult2 = never>(
       onfulfilled?: ShellCommandOnFulfilled<TResult1>,
       onrejected?: ShellCommandOnRejected<TResult2>,
     ): ShellCommandThenResult<TResult1, TResult2> {
@@ -116,7 +116,7 @@ function createShellCommand(command: string, options: ShellOptions): ShellComman
  * logger output. If a logger is provided, it will always log. The purpose of
  * a logging shell is to log - calling .quiet() shouldn't defeat that purpose.
  */
-async function executeCommand(command: string, options: ShellOptions): Promise<ShellResult> {
+async function executeCommand(command: string, options: IShellOptions): Promise<IShellResult> {
   const { cwd, env, logger, noThrow, skipCommandLog } = options;
 
   // Log the command (unless skipCommandLog is set - used when wrapper logs command)

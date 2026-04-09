@@ -3,11 +3,11 @@ import type { Server } from "bun";
 import { CacheInvalidator } from "./CacheInvalidator";
 import { ProxyCacheStore } from "./ProxyCacheStore";
 import type {
-  CacheClearRequest,
-  CachePopulateRequest,
-  CachePopulateResult,
+  ICacheClearRequest,
+  ICachePopulateRequest,
+  ICachePopulateResult,
   ProxyCacheStatus,
-  ProxyConfig,
+  IProxyConfig,
   ProxyServerAddress,
   ProxyServerCallback,
 } from "./types";
@@ -15,26 +15,19 @@ import type {
 /**
  * Extended config with optional fetch override for testing.
  */
-export interface IProxyServerOptions extends ProxyConfig {
+export interface IProxyServerOptions extends IProxyConfig {
   /** Custom fetch function for testing. Defaults to globalThis.fetch */
   fetchFn?: typeof fetch;
 }
 
-/**
- * Result from creating a proxy server - provides listen/close interface compatible with tests.
- */
-export type ProxyServerOptions = IProxyServerOptions;
-
 export interface IProxyServer {
   /** Start listening on specified port. Callback receives server info. */
-  listen(port: number, callback?: ProxyServerCallback): ProxyServer;
+  listen(port: number, callback?: ProxyServerCallback): IProxyServer;
   /** Stop the server */
   close(callback?: ProxyServerCallback): void;
   /** Get server address info */
   address(): ProxyServerAddress | null;
 }
-
-export type ProxyServer = IProxyServer;
 
 /**
  * Skipped headers that shouldn't be forwarded in responses.
@@ -56,7 +49,7 @@ function getTimestamp(): string {
  * Creates the HTTP caching proxy server using Bun.serve.
  * Proxies requests while caching responses, ignoring server cache headers.
  */
-export function createProxyServer(config: ProxyServerOptions): ProxyServer {
+export function createProxyServer(config: IProxyServerOptions): IProxyServer {
   const store = new ProxyCacheStore(config.cacheDir, config.ttl);
   const invalidator = new CacheInvalidator(store);
   const fetchFn = config.fetchFn ?? globalThis.fetch;
@@ -66,7 +59,7 @@ export function createProxyServer(config: ProxyServerOptions): ProxyServer {
   /**
    * Handle cache clear requests.
    */
-  function handleCacheClear(body: CacheClearRequest): Response {
+  function handleCacheClear(body: ICacheClearRequest): Response {
     const patterns: string[] = [];
 
     if (body.pattern) {
@@ -91,7 +84,7 @@ export function createProxyServer(config: ProxyServerOptions): ProxyServer {
   /**
    * Handle cache populate requests.
    */
-  function handleCachePopulate(body: CachePopulateRequest): Response {
+  function handleCachePopulate(body: ICachePopulateRequest): Response {
     if (!body.url) {
       return Response.json({ success: false, message: "Missing required field: url" }, { status: 400 });
     }
@@ -108,7 +101,7 @@ export function createProxyServer(config: ProxyServerOptions): ProxyServer {
     store.set(method, body.url, status, headers, bodyBuffer, body.ttl);
 
     const key = store.generateKey(method, body.url);
-    const result: CachePopulateResult = {
+    const result: ICachePopulateResult = {
       success: true,
       key,
       url: body.url,
@@ -228,7 +221,7 @@ export function createProxyServer(config: ProxyServerOptions): ProxyServer {
   const routes = {
     "/cache/clear": {
       POST: async (req: Request) => {
-        const body = (await req.json()) as CacheClearRequest;
+        const body = (await req.json()) as ICacheClearRequest;
         return handleCacheClear(body);
       },
     },
@@ -237,15 +230,15 @@ export function createProxyServer(config: ProxyServerOptions): ProxyServer {
     },
     "/cache/populate": {
       POST: async (req: Request) => {
-        const body = (await req.json()) as CachePopulateRequest;
+        const body = (await req.json()) as ICachePopulateRequest;
         return handleCachePopulate(body);
       },
     },
   } as const;
 
   // Return a server-like object that can be started/stopped
-  const proxyServer: ProxyServer = {
-    listen(port: number, callback?: ProxyServerCallback): ProxyServer {
+  const proxyServer: IProxyServer = {
+    listen(port: number, callback?: ProxyServerCallback): IProxyServer {
       bunServer = Bun.serve({
         port,
         routes,

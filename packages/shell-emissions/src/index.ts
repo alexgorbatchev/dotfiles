@@ -1,30 +1,30 @@
 // Types
 export type {
-  AliasEmission,
-  CompletionConfig,
-  CompletionEmission,
+  IAliasEmission,
+  ICompletionConfig,
+  ICompletionEmission,
   Emission,
   EmissionKind,
-  EnvironmentEmission,
-  FunctionEmission,
-  PathEmission,
-  PathOptions,
-  ScriptEmission,
+  IEnvironmentEmission,
+  IFunctionEmission,
+  IPathEmission,
+  IPathOptions,
+  IScriptEmission,
   ScriptTiming,
-  SourceEmission,
-  SourceFileEmission,
-  SourceFunctionEmission,
+  ISourceEmission,
+  ISourceFileEmission,
+  ISourceFunctionEmission,
 } from "./types/emissions";
 
-export type { Block, BlockMetadata, SectionOptions } from "./types/blocks";
+export type { IBlock, IBlockMetadata, ISectionOptions } from "./types/blocks";
 
 export type {
-  FormatterConfig,
+  IFormatterConfig,
   IBlockRenderer,
   IEmissionFormatter,
-  OnceScript,
-  OnceScriptContent,
-  RenderedOutput,
+  IOnceScript,
+  IOnceScriptContent,
+  IRenderedOutput,
 } from "./types/formatter";
 
 // Factory functions

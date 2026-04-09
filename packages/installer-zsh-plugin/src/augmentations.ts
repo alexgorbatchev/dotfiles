@@ -1,10 +1,10 @@
 import type { RegisterPluginResult } from "@dotfiles/core";
-import type { ZshPluginInstallParams, ZshPluginToolConfig } from "./schemas";
+import type { IZshPluginInstallParams, ZshPluginToolConfig } from "./schemas";
 import type { ZshPluginInstallResult } from "./types";
 
 declare module "@dotfiles/core" {
   interface IInstallParamsRegistry {
-    "zsh-plugin": ZshPluginInstallParams;
+    "zsh-plugin": IZshPluginInstallParams;
   }
   interface IToolConfigRegistry {
     "zsh-plugin": ZshPluginToolConfig;

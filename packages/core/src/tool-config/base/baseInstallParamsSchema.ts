@@ -23,8 +23,6 @@ export interface IInstallHooks {
   "after-install"?: InstallHook[];
 }
 
-export type InstallHooks = IInstallHooks;
-
 export const baseInstallParamsSchema = z
   .object({
     /**
@@ -96,5 +94,3 @@ export interface IBaseInstallParams {
    */
   hooks?: IInstallHooks;
 }
-
-export type BaseInstallParams = IBaseInstallParams;

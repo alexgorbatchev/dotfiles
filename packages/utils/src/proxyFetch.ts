@@ -8,8 +8,6 @@ export interface IProxyFetchConfig {
   port: number;
 }
 
-export type ProxyFetchConfig = IProxyFetchConfig;
-
 type ProxyFetchInput = RequestInfo | URL;
 
 /**
@@ -37,7 +35,7 @@ type ProxyFetchInput = RequestInfo | URL;
 export async function proxyFetch(
   input: ProxyFetchInput,
   init: RequestInit | undefined,
-  proxyConfig: ProxyFetchConfig | undefined,
+  proxyConfig: IProxyFetchConfig | undefined,
 ): Promise<Response> {
   const url = input instanceof Request ? input.url : input.toString();
   const targetUrl = proxyConfig?.enabled ? `http://localhost:${proxyConfig.port}/${url}` : url;

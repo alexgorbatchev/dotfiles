@@ -14,9 +14,7 @@ export interface IConfigContext {
   systemInfo: ISystemInfo;
 }
 
-export type ConfigContext = IConfigContext;
-
-export type ConfigFactory = (ctx: ConfigContext) => Promise<ProjectConfigPartial> | ProjectConfigPartial;
+export type ConfigFactory = (ctx: IConfigContext) => Promise<ProjectConfigPartial> | ProjectConfigPartial;
 
 /**
  * Wraps a configuration factory so `.ts` config files stay fully typed.

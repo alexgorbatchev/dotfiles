@@ -1,4 +1,4 @@
-import type { IInstallContext, Shell } from "@dotfiles/core";
+import type { IInstallContext, IShell } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { HookExecutor } from "@dotfiles/installer";
@@ -9,7 +9,7 @@ import { installFromCurlBinary } from "../installFromCurlBinary";
 import type { CurlBinaryToolConfig } from "../schemas";
 
 interface ICurlBinaryShellMocks {
-  shell: Shell;
+  shell: IShell;
   mockFn: ReturnType<typeof mock>;
   mockEnv: ReturnType<typeof mock>;
   mockQuiet: ReturnType<typeof mock>;
@@ -19,7 +19,7 @@ function createMockShell(): ICurlBinaryShellMocks {
   const mockQuiet = mock(() => Promise.resolve({ stdout: "", stderr: "" }));
   const mockEnv = mock(() => ({ quiet: mockQuiet }));
   const mockFn = mock(() => ({ env: mockEnv }));
-  return { shell: mockFn as unknown as Shell, mockFn, mockEnv, mockQuiet };
+  return { shell: mockFn as unknown as IShell, mockFn, mockEnv, mockQuiet };
 }
 
 describe("installFromCurlBinary", () => {
