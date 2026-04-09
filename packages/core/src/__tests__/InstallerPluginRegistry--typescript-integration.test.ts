@@ -5,7 +5,7 @@ import { z } from "zod";
 import { InstallerPluginRegistry } from "../InstallerPluginRegistry";
 import type { IInstallerPlugin, InstallResult } from "../types";
 // Import plugins to load type augmentations for this test
-// oxlint-disable-next-line import/no-unassigned-import
+
 import "../plugins";
 
 // Custom plugin schemas and types (simulating what a real plugin package would export)

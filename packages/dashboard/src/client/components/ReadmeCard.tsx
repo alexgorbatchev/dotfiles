@@ -1,4 +1,3 @@
-// oxlint-disable-next-line import/no-unassigned-import
 import "github-markdown-css/github-markdown-light.css";
 
 import { type JSX } from "preact";
