@@ -174,7 +174,7 @@ async function verifyHtmlEndpoint(port: number): Promise<void> {
     expectedContentType: "text/html",
     label: "Dashboard root",
     validateContent: (html) => {
-      if (!html.includes("<!DOCTYPE html>")) {
+      if (!html.toLowerCase().includes("<!doctype html>")) {
         return "Dashboard root did not return valid HTML";
       }
       if (!html.includes("Dotfiles Dashboard")) {
