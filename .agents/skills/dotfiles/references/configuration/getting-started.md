@@ -1,3 +1,9 @@
+---
+title: Getting Started
+sidebar:
+  order: 2
+---
+
 # Getting Started
 
 This guide covers how to create `.tool.ts` configuration files for your CLI tools.
@@ -15,6 +21,22 @@ curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
 ```
 
 The hosted installer adds `@alexgorbatchev/dotfiles` to the local `package.json`, creates a minimal `dotfiles.config.ts` when needed, installs managed Bun, and runs `dotfiles generate` for you.
+
+## Load Generated Config (Zsh)
+
+With the default project layout, the generated zsh config lives at `.generated/shell-scripts/main.zsh` inside your dotfiles directory.
+
+Add it to `~/.zshrc`:
+
+```bash
+source "/absolute/path/to/your/dotfiles/.generated/shell-scripts/main.zsh"
+```
+
+Then reload zsh:
+
+```bash
+source ~/.zshrc
+```
 
 ## File Structure
 

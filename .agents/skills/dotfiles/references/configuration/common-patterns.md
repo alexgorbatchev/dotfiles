@@ -1,3 +1,9 @@
+---
+title: Common Patterns
+sidebar:
+  order: 3
+---
+
 # Common Patterns
 
 Real-world examples for common tool configuration scenarios.
@@ -205,7 +211,7 @@ This project replaces that fragile, manual system with a declarative, programmat
 1. **Define**: You describe a tool's installation and configuration in a `.tool.ts` file.
 2. **Generate**: You run `dotfiles generate`. This creates lightweight executable **shims** for all your defined tools and generates a single shell file to source.
 3. **Run & Auto-Install**: The first time you execute a tool's command (e.g., `rg --version`), the shim intercepts the call, triggers the generator to download and install the tool, and then seamlessly executes your command. All subsequent calls are instantaneous. Each execution can also be tracked asynchronously for dashboard usage stats.
-4. **Source**: Your `.zshrc` or `.bash_profile` sources one line, and all your tools, aliases, and functions become available everywhere.
+4. **Source**: Your `.zshrc` sources one line, and all your tools, aliases, and functions become available everywhere.
 
 ## Quick Start
 
@@ -248,6 +254,18 @@ dotfiles bin <name>
 
 # Create docs symlink in a directory
 dotfiles docs <path>
+```
+
+If you are using the default project layout, add the generated zsh config to `~/.zshrc`:
+
+```bash
+source "/absolute/path/to/your/dotfiles/.generated/shell-scripts/main.zsh"
+```
+
+Then reload zsh:
+
+```bash
+source ~/.zshrc
 ```
 
 ### CLI Command Completions

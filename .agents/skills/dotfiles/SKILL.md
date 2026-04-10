@@ -26,6 +26,16 @@ export default defineTool((install, ctx) =>
 
 Every tool that provides executables **must** have `.bin()` — it generates a shim that makes the tool available system-wide and triggers installation on first use.
 
+## First Setup
+
+After the first `dotfiles generate`, source the generated zsh config from your dotfiles directory:
+
+```bash
+source "/absolute/path/to/your/dotfiles/.generated/shell-scripts/main.zsh"
+```
+
+Add that line to `~/.zshrc` so future zsh sessions load the generated config automatically.
+
 ## Syncing Changes
 
 After any `.tool.ts` file change (create, delete, or modify), run `dotfiles generate` to sync generated artifacts.

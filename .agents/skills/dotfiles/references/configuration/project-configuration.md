@@ -1,3 +1,9 @@
+---
+title: Project Configuration
+sidebar:
+  order: 1
+---
+
 # Project Configuration
 
 The project configuration file defines paths, features, and API settings for your dotfiles system.
@@ -44,6 +50,8 @@ export default defineConfig(({ configFileDir, systemInfo }) => ({
 ## Configuration Reference
 
 ### paths
+
+Default values shown.
 
 ```typescript
 paths: {
