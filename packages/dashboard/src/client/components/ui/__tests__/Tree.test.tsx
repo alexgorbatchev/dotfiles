@@ -71,6 +71,22 @@ describe("Tree", () => {
     expect(screen.queryByText("File 1")).not.toBeInTheDocument();
   });
 
+  test("supports controlled collapsed state", () => {
+    const handleToggle = mock(() => {});
+    const { rerender } = render(
+      <Tree items={nestedItems} collapsedIds={new Set(["folder"])} onItemToggle={handleToggle} />,
+    );
+
+    expect(screen.getByText("Folder")).toBeInTheDocument();
+    expect(screen.queryByText("File 1")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Folder"));
+    expect(handleToggle).toHaveBeenCalledWith(nestedItems[0], true);
+
+    rerender(<Tree items={nestedItems} collapsedIds={new Set()} onItemToggle={handleToggle} />);
+    expect(screen.getByText("File 1")).toBeInTheDocument();
+  });
+
   test("calls onItemClick when item is clicked", () => {
     const handleClick = mock(() => {});
 

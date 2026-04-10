@@ -1,6 +1,3 @@
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from "@dotfiles/cli";
 
-export default defineTool((install) =>
-  install()
-    .symlink('./my-config.yml', '~/.config/symlink-tool/config.yml')
-);
+export default defineTool((install) => install().symlink("./my-config.yml", "~/.config/symlink-tool/config.yml"));

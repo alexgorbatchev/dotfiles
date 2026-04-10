@@ -9,6 +9,8 @@ setupUITests();
 import type { IFileTreeEntry, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../../shared/types";
 import { ToolsTreeView } from "../ToolsTreeView";
 
+type HistoryReplaceState = typeof window.history.replaceState;
+
 const installedVersionByStatus: Record<ToolRuntimeStatus, string | null> = {
   installed: "1.0.0",
   "not-installed": null,
@@ -60,6 +62,7 @@ function createTreeResponse(entries: IFileTreeEntry[]): IToolConfigsTree {
 }
 
 const originalFetch = globalThis.fetch;
+const originalHistoryReplaceState = window.history.replaceState;
 
 function mockFetchWith(treeData: IToolConfigsTree | null): void {
   const mockFn = mock(async () => {
@@ -73,10 +76,12 @@ function mockFetchWith(treeData: IToolConfigsTree | null): void {
 describe("ToolsTreeView", () => {
   beforeEach(() => {
     globalThis.fetch = originalFetch;
+    window.history.replaceState = originalHistoryReplaceState;
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    window.history.replaceState = originalHistoryReplaceState;
   });
 
   test("renders loading state initially", () => {
@@ -176,7 +181,7 @@ describe("ToolsTreeView", () => {
   });
 
   test("navigates to tool detail on file click", async () => {
-    const originalLocation = window.location.href;
+    const originalLocation = window.location;
     mockFetchWith(
       createTreeResponse([
         { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
@@ -196,9 +201,77 @@ describe("ToolsTreeView", () => {
     expect(window.location.href).toBe("/tools/fzf");
 
     Object.defineProperty(window, "location", {
-      value: { href: originalLocation },
+      value: originalLocation,
       writable: true,
     });
+  });
+
+  test("hydrates collapsed folders from window.location.href", async () => {
+    const originalLocation = window.location;
+
+    Object.defineProperty(window, "location", {
+      value: { href: "http://localhost/?treeCollapsed=%2Fhome%2Fuser%2Ftools%2Fdev" },
+      writable: true,
+    });
+
+    mockFetchWith(
+      createTreeResponse([
+        {
+          name: "dev",
+          path: "/home/user/tools/dev",
+          type: "directory",
+          children: [{ name: "fzf.tool.ts", path: "/home/user/tools/dev/fzf.tool.ts", type: "file", toolName: "fzf" }],
+        },
+      ]),
+    );
+    render(<ToolsTreeView tools={[createTool("fzf")]} />);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(screen.getByText("dev")).toBeInTheDocument();
+    expect(screen.queryByText("fzf")).not.toBeInTheDocument();
+
+    Object.defineProperty(window, "location", {
+      value: originalLocation,
+      writable: true,
+    });
+  });
+
+  test("keeps collapsed folders in sync with the query string", async () => {
+    const originalReplaceState = window.history.replaceState;
+    const replaceStateSpy = mock((() => {}) as HistoryReplaceState);
+
+    window.history.replaceState = replaceStateSpy as HistoryReplaceState;
+
+    mockFetchWith(
+      createTreeResponse([
+        {
+          name: "dev",
+          path: "/home/user/tools/dev",
+          type: "directory",
+          children: [{ name: "fzf.tool.ts", path: "/home/user/tools/dev/fzf.tool.ts", type: "file", toolName: "fzf" }],
+        },
+      ]),
+    );
+    render(<ToolsTreeView tools={[createTool("fzf")]} />);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(screen.getByText("fzf")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("dev"));
+    expect(screen.queryByText("fzf")).not.toBeInTheDocument();
+    expect(String(replaceStateSpy.mock.calls.at(-1)?.[2] ?? "")).toContain(
+      "treeCollapsed=%2Fhome%2Fuser%2Ftools%2Fdev",
+    );
+
+    fireEvent.click(screen.getByText("dev"));
+    expect(screen.getByText("fzf")).toBeInTheDocument();
+
+    const latestUrl = String(replaceStateSpy.mock.calls.at(-1)?.[2] ?? "");
+    expect(latestUrl).not.toContain("treeCollapsed=");
+
+    window.history.replaceState = originalReplaceState;
   });
 
   test("colors installed tool files green", async () => {

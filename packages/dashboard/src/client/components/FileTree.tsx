@@ -27,6 +27,8 @@ interface IFileTreeNodeData {
 
 interface IFileTreeProps {
   nodes: IFileTreeNodeData[];
+  collapsedIds?: ReadonlySet<string>;
+  onItemToggle?: (item: ITreeItemData<IFileTreeNodeData>, nextExpanded: boolean) => void;
 }
 
 const FILE_TYPE_COLORS: Record<string, string> = {
@@ -108,7 +110,9 @@ function renderFileLabel(item: ITreeItemData<IFileTreeNodeData>): JSX.Element {
   );
 }
 
-export function FileTree({ nodes }: IFileTreeProps): JSX.Element {
+export function FileTree({ nodes, collapsedIds, onItemToggle }: IFileTreeProps): JSX.Element {
   const treeItems = convertToTreeItems(nodes);
-  return <Tree items={treeItems} renderLabel={renderFileLabel} />;
+  return (
+    <Tree items={treeItems} collapsedIds={collapsedIds} onItemToggle={onItemToggle} renderLabel={renderFileLabel} />
+  );
 }
