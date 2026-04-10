@@ -1,4 +1,4 @@
-# Command Completions
+# Shell Completions
 
 Tab completions are configured per-shell using `.completions()`:
 

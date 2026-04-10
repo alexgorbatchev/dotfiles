@@ -38,17 +38,13 @@ Read these based on the task at hand:
 
 - **[make-tool.md](references/make-tool.md)** — Complete guide for creating `.tool.ts` configurations. Read when creating a new tool config or modifying an existing one. Includes tool investigation steps, method selection, examples, and quality checklist.
 
-- **Shell Integration** — Shell integration (aliases, functions, env, path, completions, sourceFile, sourceFunction, source, symlinks), hook events and context, completions configuration.
-  - [shell-integration.md](references/shell-integration/shell-integration.md)
-  - [command-completions.md](references/shell-integration/command-completions.md)
-
-- **Hooks** — Lifecycle hooks configuration.
-  - [lifecycle-hooks.md](references/hooks/lifecycle-hooks.md)
-
 - **API Reference** — Public API reference: `defineTool`, `defineConfig`, builder methods, shell configurator methods, `Platform`/`Architecture` enums, utilities (`replaceInFile`, `resolve`, `log`).
   - [core-api.md](references/api-reference/core-api.md)
   - [utilities.md](references/api-reference/utilities.md)
   - [context-api.md](references/api-reference/context-api.md)
+  - [shell-integration.md](references/api-reference/shell-integration.md)
+  - [shell-completions.md](references/api-reference/shell-completions.md)
+  - [lifecycle-hooks.md](references/api-reference/lifecycle-hooks.md)
 
 - **Installation Methods** — Parameters and examples for each installation method:
   - [overview.md](references/installation-methods/overview.md) — Available methods, choosing the right method, manual installation guide, common parameters

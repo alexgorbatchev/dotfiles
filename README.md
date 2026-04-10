@@ -168,8 +168,8 @@ npm install -g @alexgorbatchev/dotfiles
 
 ### Shell Integration
 
-- **[Shell Integration](.agents/skills/dotfiles/references/shell-integration/shell-integration.md)** - Aliases, environment variables, shell functions, completions.
-- **[Hooks](.agents/skills/dotfiles/references/hooks/lifecycle-hooks.md)** - Lifecycle hooks.
+- **[Shell Integration](.agents/skills/dotfiles/references/api-reference/shell-integration.md)** - Aliases, environment variables, shell functions, completions.
+- **[Hooks](.agents/skills/dotfiles/references/api-reference/lifecycle-hooks.md)** - Lifecycle hooks.
 
 ### Installation Methods & API
 
