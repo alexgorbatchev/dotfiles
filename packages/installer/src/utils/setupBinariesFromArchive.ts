@@ -49,7 +49,7 @@ export async function setupBinariesFromArchive(
 
 /**
  * Setup binaries using pattern-based location (new approach)
- * @returns Array of absolute paths to the found binaries
+ * @returns Array of absolute paths to the created entrypoints
  */
 async function setupBinariesUsingPatterns(
   fs: IFileSystem,
@@ -61,7 +61,7 @@ async function setupBinariesUsingPatterns(
   parentLogger: TsLogger,
 ): Promise<string[]> {
   const logger = parentLogger.getSubLogger({ name: "setupBinariesUsingPatterns" });
-  const foundBinaries: string[] = [];
+  const entrypointPaths: string[] = [];
 
   for (const binaryConfig of binaryConfigs) {
     const { name: binaryName, pattern } = binaryConfig;
@@ -87,10 +87,13 @@ async function setupBinariesUsingPatterns(
     // Create stable entrypoint file for this binary
     const relativePath = path.relative(extractDir, binaryPath);
     await createBinaryEntrypoint(fs, toolName, binaryName, versionOrTimestamp, relativePath, binariesDir, logger);
-    foundBinaries.push(binaryPath);
+
+    // Return the stable entrypoint path so downstream install state does not try to
+    // flatten nested archive paths like go/bin/go back into the install root.
+    entrypointPaths.push(path.join(binariesDir, toolName, versionOrTimestamp, binaryName));
   }
 
-  return foundBinaries;
+  return entrypointPaths;
 }
 
 /**

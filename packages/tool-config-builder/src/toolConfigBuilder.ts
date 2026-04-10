@@ -594,7 +594,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       ...baseConfig,
       binaries: baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [],
       installationMethod: "manual",
-      installParams: {},
+      installParams: this.currentInstallParams ? { ...this.currentInstallParams } : {},
     } as unknown as ToolConfig;
   }
 

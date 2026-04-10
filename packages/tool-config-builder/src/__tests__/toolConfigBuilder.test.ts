@@ -1,4 +1,4 @@
-import { always, type AsyncInstallHook, raw } from "@dotfiles/core";
+import { always, type AsyncInstallHook, Platform, raw } from "@dotfiles/core";
 import type { IGithubReleaseInstallParams } from "@dotfiles/installer-github";
 import { isGitHubReleaseToolConfig } from "@dotfiles/installer-github";
 import { TestLogger } from "@dotfiles/logger";
@@ -144,6 +144,25 @@ describe("IToolConfigBuilder", () => {
 
     expect(builder.currentInstallParams?.["hooks"]).toEqual({ "before-install": [noopHook] });
     testLogger.expect([], [], [], []);
+  });
+
+  test("build preserves root hooks when only platform overrides provide the installer", () => {
+    const builder = new IToolConfigBuilder(logger, "test-tool");
+
+    builder
+      .bin("test-bin")
+      .hook("after-extract", noopHook)
+      .platform(Platform.MacOS, (install) => install("manual", { binaryPath: "platform-bin" }).bin("test-bin"));
+
+    const config = builder.build();
+
+    expect(config.installationMethod).toBe("manual");
+    expect(config.installParams).toEqual({
+      hooks: {
+        "after-extract": [noopHook],
+      },
+    });
+    expect(config.platformConfigs?.[0]?.config.installParams).toEqual({ binaryPath: "platform-bin" });
   });
 
   test("zsh method adds zsh code correctly to zshInit", () => {

@@ -116,6 +116,9 @@ export default defineTool((install) =>
 
 ## Platform Detection in Hooks
 
+Root-level hooks still apply when the actual installer is defined inside `.platform(...)`.
+Use that pattern for shared lifecycle logic, then put only the platform-specific install method inside each override.
+
 ```typescript
 export default defineTool((install) =>
   install("github-release", { repo: "owner/tool" })
