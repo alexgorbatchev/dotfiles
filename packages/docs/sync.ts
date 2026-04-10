@@ -8,6 +8,7 @@ const destDir = path.resolve(import.meta.dir, "src/content/docs");
 // Clean and recreate destination
 await $`rm -rf ${destDir} || true`.quiet();
 await $`mkdir -p ${destDir}`.quiet();
+await $`touch ${destDir}/.gitkeep`.quiet();
 
 // Copy all files from skills references
 await $`cp -R ${sourceDir}/references/ ${destDir}/`.quiet();
