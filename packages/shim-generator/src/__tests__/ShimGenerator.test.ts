@@ -132,7 +132,7 @@ describe("ShimGenerator", () => {
         fi
 
         # Record shim usage in the background (non-blocking)
-        if [ "\${DOTFILES_USAGE_TRACKING:-1}" != "0" ]; then
+        if [ "\${DOTFILES_LOCAL_USAGE_TRACKING:-1}" != "0" ]; then
           # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
           eval "$GENERATOR_CLI_EXECUTABLE" @track-usage '"$TOOL_NAME"' '"$BINARY_NAME"' --config '"$CONFIG_PATH"' >/dev/null 2>&1 &
         fi

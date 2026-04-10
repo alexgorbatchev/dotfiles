@@ -123,7 +123,7 @@ if [ -n "${!RECURSION_ENV_VAR:-}" ]; then
 fi
 
 # Record shim usage in the background (non-blocking)
-if [ "${DOTFILES_USAGE_TRACKING:-1}" != "0" ]; then
+if [ "${DOTFILES_LOCAL_USAGE_TRACKING:-1}" != "0" ]; then
   eval "$GENERATOR_CLI_EXECUTABLE" @track-usage '"$TOOL_NAME"' '"$BINARY_NAME"' --config '"$CONFIG_PATH"' >/dev/null 2>&1 &
 fi
 
@@ -161,7 +161,7 @@ fi
 - **Update Support**: Use `{tool} @update` to update tool to latest version
 - **Recursion Guard**: Prevents infinite loops if a tool calls itself during installation
 - **Background Usage Tracking**: Calls private `@track-usage` command without blocking execution
-- **Opt-Out Switch**: Set `DOTFILES_USAGE_TRACKING=0` to disable tracking
+- **Opt-Out Switch**: Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable tracking
 
 ## Tool with Multiple Binaries
 

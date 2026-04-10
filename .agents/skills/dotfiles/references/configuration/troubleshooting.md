@@ -31,9 +31,9 @@ The installer has built-in recursion guards. If you see this, check that your in
 Shim usage tracking is enabled by default and runs in the background.
 
 - Disable temporarily for a single command:
-  `DOTFILES_USAGE_TRACKING=0 rg --version`
+  `DOTFILES_LOCAL_USAGE_TRACKING=0 rg --version`
 - Disable for the current shell session:
-  `export DOTFILES_USAGE_TRACKING=0`
+  `export DOTFILES_LOCAL_USAGE_TRACKING=0`
 
 ### Dependency Errors
 

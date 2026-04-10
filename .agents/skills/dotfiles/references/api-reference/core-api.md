@@ -54,7 +54,7 @@ Declaring `.bin(name)` generates a shim for `name` in `paths.targetDir`.
 - Running `{binary} @update` triggers a shim-driven update flow
 - Shim executions are recorded for usage analytics via a private internal command
 
-Usage tracking is non-blocking and enabled by default. Set `DOTFILES_USAGE_TRACKING=0` to disable tracking.
+Usage tracking is non-blocking and enabled by default. Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable tracking.
 
 ### Base Install Parameters
 

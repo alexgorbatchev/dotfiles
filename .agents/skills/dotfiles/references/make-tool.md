@@ -15,6 +15,9 @@ You will receive:
 
 ## Required Analysis Steps
 
+> [!TIP]
+> Always start with the smallest possible configuration. Provide only the minimum `install()` method and `.bin()` declaration necessary to get the tool working. **Do not overbuild**. Only add `assetSelector`, `assetPattern`, `version`, `dependsOn`, or hooks if the minimal configuration fails to install correctly or lacks necessary context.
+
 ### 1) Tool Investigation
 
 Make best effort to find current README and installation instructions online for the tool to understand:
@@ -88,11 +91,9 @@ Select the most appropriate method based on your investigation. Prefer official,
 
 ### Step 2: Configure Binary Specification
 
-> **AI AGENT INSTRUCTION:** Always start with the smallest possible configuration. Provide only the minimum `install()` method and `.bin()` declaration necessary to get the tool working. **Do not overbuild**. Only add `assetSelector`, `assetPattern`, `version`, `dependsOn`, or hooks if the minimal configuration fails to install correctly or lacks necessary context.
-
 **Important**: `.bin(name, pattern?)` declares which executables the tool provides. It generates a shim for each binary name. The shim acts as a launcher — when a user runs the shim, it triggers installation if the tool isn't installed yet, making the tool available system-wide without manual setup. Shims also record usage asynchronously for dashboard analytics. Users can resolve the real path to a binary (bypassing shims) with `dotfiles bin <name>`.
 
-To disable usage tracking globally, set `DOTFILES_USAGE_TRACKING=0` in your environment.
+To disable usage tracking globally, set `DOTFILES_LOCAL_USAGE_TRACKING=0` in your environment.
 
 > **Every tool that provides a binary MUST have at least one `.bin()` declaration.** Without it, no shim is generated and the tool won't be accessible from the command line. Even if a tool is installed via brew or npm and is already on PATH, always declare `.bin()` so the dotfiles system manages it consistently.
 
