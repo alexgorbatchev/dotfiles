@@ -6,7 +6,7 @@ const sourceDir = path.resolve(import.meta.dir, "../../.agents/skills/dotfiles")
 const destDir = path.resolve(import.meta.dir, "src/content/docs");
 
 // Clean and recreate destination
-await $`rm -rf ${destDir}/*`.quiet();
+await $`rm -rf ${destDir} || true`.quiet();
 await $`mkdir -p ${destDir}`.quiet();
 
 // Copy all files from skills references
