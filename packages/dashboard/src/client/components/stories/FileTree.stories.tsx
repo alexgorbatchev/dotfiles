@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { FileTree } from "../FileTree";
 
 const meta: Meta<typeof FileTree> = {
-  title: "dashboard/components/FileTree",
+  title: "client/components/FileTree",
   component: FileTree,
 };
 

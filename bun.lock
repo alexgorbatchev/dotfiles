@@ -5,7 +5,7 @@
     "": {
       "name": "dotfiles",
       "devDependencies": {
-        "@alexgorbatchev/typescript-ai-policy": "^1.0.5",
+        "@alexgorbatchev/typescript-ai-policy": "^4.0.0",
         "@dprint/json": "^0.21.1",
         "@dprint/markdown": "^0.20.0",
         "@typescript/native-preview": "catalog:typescript",
@@ -843,7 +843,7 @@
   "packages": {
     "@adobe/css-tools": ["@adobe/css-tools@4.4.4", "", {}, "sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg=="],
 
-    "@alexgorbatchev/typescript-ai-policy": ["@alexgorbatchev/typescript-ai-policy@1.0.5", "", { "peerDependencies": { "@typescript/native-preview": "^7.0.0-dev.20260330.1", "oxfmt": "^0.42.0", "oxlint": "^1.57.0" }, "optionalPeers": ["@typescript/native-preview"], "bin": { "typescript-ai-policy-fix-semantic": "src/semantic-fixes/runApplySemanticFixes.ts" } }, "sha512-8VjCoEoq6E4s2UJbX82ADlcSpJGUpoB17AGmqo00zalS6wBulrximMX4L/4YPvx/0/Ek3fdamine7Mg3M/OCrQ=="],
+    "@alexgorbatchev/typescript-ai-policy": ["@alexgorbatchev/typescript-ai-policy@4.0.0", "", { "peerDependencies": { "@typescript/native-preview": "^7.0.0-dev.20260330.1", "oxfmt": "^0.42.0", "oxlint": "^1.57.0" }, "optionalPeers": ["@typescript/native-preview"], "bin": { "typescript-ai-policy-fix-semantic": "src/semantic-fixes/runApplySemanticFixes.ts" } }, "sha512-7y+OSjUNnzhlzPsyGeScUdWfU7KsO0nDa4b+1U7nLyq1dWW3Ppy5ue6ruSHOsLygv7HDj1vNqCDBL139Y4SBPg=="],
 
     "@astrojs/compiler": ["@astrojs/compiler@3.0.1", "", {}, "sha512-z97oYbdebO5aoWzuJ/8q5hLK232+17KcLZ7cJ8BCWk6+qNzVxn/gftC0KzMBUTD8WAaBkPpNSQK6PXLnNrZ0CA=="],
 

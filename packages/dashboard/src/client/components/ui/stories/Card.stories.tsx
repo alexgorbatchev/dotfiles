@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { Card, CardContent, CardHeader, CardTitle } from "../Card";
 
 const meta: Meta<typeof Card> = {
-  title: "dashboard/components/ui/Card",
+  title: "client/components/ui/Card",
   component: Card,
 };
 

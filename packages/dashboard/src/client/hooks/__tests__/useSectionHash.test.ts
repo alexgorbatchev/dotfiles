@@ -11,6 +11,7 @@ setupUITests();
 
 type CancelAnimationFrame = typeof window.cancelAnimationFrame;
 type HistoryReplaceState = typeof window.history.replaceState;
+type HistoryReplaceStateMock = ReturnType<typeof mock<HistoryReplaceState>>;
 type RequestAnimationFrame = typeof window.requestAnimationFrame;
 type ScrollIntoView = typeof HTMLElement.prototype.scrollIntoView;
 
@@ -20,8 +21,8 @@ const originalReplaceState = window.history.replaceState;
 const originalRequestAnimationFrame = window.requestAnimationFrame;
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 
-function createReplaceStateSpy(): HistoryReplaceState {
-  return mock(function replaceState() {}) as HistoryReplaceState;
+function createReplaceStateSpy(): HistoryReplaceStateMock {
+  return mock<HistoryReplaceState>(function replaceState() {});
 }
 
 function createScrollIntoViewSpy(): ScrollIntoView {
@@ -83,7 +84,7 @@ describe("useSectionHash", () => {
       value: { href: "http://localhost/tools/fzf", hash: "" },
       writable: true,
     });
-    window.history.replaceState = replaceStateSpy;
+    window.history.replaceState = replaceStateSpy as HistoryReplaceState;
 
     render(h(TestComponent, {}));
 

@@ -27,7 +27,7 @@
     "docs": "cd packages/docs && bun run dev"
   },
   "devDependencies": {
-    "@alexgorbatchev/typescript-ai-policy": "^1.0.5",
+    "@alexgorbatchev/typescript-ai-policy": "^4.0.0",
     "@dprint/json": "^0.21.1",
     "@dprint/markdown": "^0.20.0",
     "@typescript/native-preview": "catalog:typescript",

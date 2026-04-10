@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { Settings } from "../Settings";
 
 const meta: Meta<typeof Settings> = {
-  title: "dashboard/pages/Settings",
+  title: "client/pages/Settings",
   component: Settings,
 };
 

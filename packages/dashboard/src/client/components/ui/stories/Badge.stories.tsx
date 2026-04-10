@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { Badge } from "../Badge";
 
 const meta: Meta<typeof Badge> = {
-  title: "dashboard/components/ui/Badge",
+  title: "client/components/ui/Badge",
   component: Badge,
 };
 

@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { ExternalLinkButton } from "../ExternalLinkButton";
 
 const meta: Meta<typeof ExternalLinkButton> = {
-  title: "dashboard/components/ui/ExternalLinkButton",
+  title: "client/components/ui/ExternalLinkButton",
   component: ExternalLinkButton,
 };
 

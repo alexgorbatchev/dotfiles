@@ -4,7 +4,7 @@ import type { IToolDetail } from "../../../shared/types";
 import { ToolsTreeView } from "../ToolsTreeView";
 
 const meta: Meta<typeof ToolsTreeView> = {
-  title: "dashboard/components/ToolsTreeView",
+  title: "client/components/ToolsTreeView",
   component: ToolsTreeView,
 };
 

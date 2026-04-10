@@ -9,12 +9,13 @@ import { useRepeatedQueryParam } from "../useRepeatedQueryParam";
 setupUITests();
 
 type HistoryReplaceState = typeof window.history.replaceState;
+type HistoryReplaceStateMock = ReturnType<typeof mock<HistoryReplaceState>>;
 
 const originalLocation = window.location;
 const originalReplaceState = window.history.replaceState;
 
-function createReplaceStateSpy(): HistoryReplaceState {
-  return mock(function replaceState() {}) as HistoryReplaceState;
+function createReplaceStateSpy(): HistoryReplaceStateMock {
+  return mock<HistoryReplaceState>(function replaceState() {});
 }
 
 function TestComponent() {
@@ -75,7 +76,7 @@ describe("useRepeatedQueryParam", () => {
       value: { href: "http://localhost/" },
       writable: true,
     });
-    window.history.replaceState = replaceStateSpy;
+    window.history.replaceState = replaceStateSpy as HistoryReplaceState;
 
     render(h(TestComponent, {}));
 

@@ -4,7 +4,7 @@ import { LocationProvider } from "preact-iso";
 import { CommandPalette } from "../CommandPalette";
 
 const meta: Meta<typeof CommandPalette> = {
-  title: "dashboard/components/CommandPalette",
+  title: "client/components/CommandPalette",
   component: CommandPalette,
 };
 

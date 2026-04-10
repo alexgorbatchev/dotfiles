@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { NotFound } from "../NotFound";
 
 const meta: Meta<typeof NotFound> = {
-  title: "dashboard/pages/NotFound",
+  title: "client/pages/NotFound",
   component: NotFound,
 };
 

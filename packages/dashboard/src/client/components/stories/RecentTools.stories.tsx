@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { RecentTools } from "../RecentTools";
 
 const meta: Meta<typeof RecentTools> = {
-  title: "dashboard/components/RecentTools",
+  title: "client/components/RecentTools",
   component: RecentTools,
 };
 
