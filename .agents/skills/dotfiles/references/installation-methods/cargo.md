@@ -1,4 +1,4 @@
-# Cargo Installation
+# Cargo
 
 Installs Rust tools from crates.io using pre-compiled binaries via cargo-quickinstall or GitHub releases.
 

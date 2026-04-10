@@ -1,4 +1,4 @@
-# Installation Methods Overview
+# Overview
 
 The system supports multiple installation methods to accommodate different tool distribution patterns. Each method has its own parameters and use cases.
 

@@ -1,4 +1,4 @@
-# npm Installation
+# npm
 
 Install tools published as npm packages. Supports both `npm` and `bun` as package managers.
 

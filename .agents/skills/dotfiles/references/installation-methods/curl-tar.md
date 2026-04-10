@@ -1,4 +1,4 @@
-# Curl Tar Installation
+# Curl Tar
 
 Download and extract tarballs directly from URLs.
 

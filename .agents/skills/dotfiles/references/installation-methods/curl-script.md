@@ -1,4 +1,4 @@
-# Curl Script Installation
+# Curl Script
 
 Downloads and executes shell installation scripts.
 

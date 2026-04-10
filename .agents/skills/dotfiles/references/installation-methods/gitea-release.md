@@ -1,4 +1,4 @@
-# Gitea/Forgejo Release Installation
+# Gitea/Forgejo Release
 
 Download and install tools from Gitea or Forgejo instance releases with automatic platform asset selection. Supports any Gitea-compatible instance including Codeberg, Forgejo, and self-hosted Gitea.
 

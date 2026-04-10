@@ -1,4 +1,4 @@
-# Homebrew Installation
+# Homebrew
 
 Install tools using Homebrew package manager on macOS and Linux.
 
