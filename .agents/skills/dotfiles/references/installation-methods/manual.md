@@ -1,4 +1,4 @@
-# Manual
+# manual
 
 Installs files from your tool configuration directory (custom scripts, pre-built binaries) or registers configuration-only tools. The `manual` method can be called with or without params.
 

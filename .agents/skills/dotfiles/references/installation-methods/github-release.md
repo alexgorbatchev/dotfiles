@@ -1,4 +1,4 @@
-# GitHub Release
+# github-release
 
 Download and install tools from GitHub releases with automatic platform asset selection.
 

@@ -1,4 +1,4 @@
-# Curl Binary
+# curl-binary
 
 Download standalone binary files directly from URLs. Unlike `curl-tar`, this method does **not** extract an archive — the downloaded file is the binary itself.
 

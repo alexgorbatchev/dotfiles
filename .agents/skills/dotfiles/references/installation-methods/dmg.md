@@ -1,4 +1,4 @@
-# DMG
+# dmg
 
 Install macOS applications distributed as DMG disk images. The plugin mounts the DMG, copies the `.app` bundle to `/Applications`, and is silently skipped on non-macOS platforms.
 

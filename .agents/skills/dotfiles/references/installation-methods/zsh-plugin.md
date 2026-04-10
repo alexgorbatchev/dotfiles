@@ -1,4 +1,4 @@
-# Zsh Plugin
+# zsh-plugin
 
 The `zsh-plugin` installation method clones Git repositories for zsh plugins and automatically configures them to be sourced in your shell. This is useful for installing plugins that are not available via package managers.
 
