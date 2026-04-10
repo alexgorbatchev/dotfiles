@@ -1,51 +1,14 @@
+---
+title: Overview
+sidebar:
+  order: 1
+---
+
 # Overview
 
 The system supports multiple installation methods to accommodate different tool distribution patterns. Each method has its own parameters and use cases.
 
 ## Available Methods
-
-### GitHub Release
-
-Install tools from GitHub releases with automatic asset selection and extraction.
-
-```typescript
-import { defineTool } from "@alexgorbatchev/dotfiles";
-
-export default defineTool((install, ctx) =>
-  install("github-release", {
-    repo: "owner/repository",
-  }).bin("tool"),
-);
-```
-
-### Gitea/Forgejo Release
-
-Install tools from Gitea, Forgejo, or Codeberg releases with automatic asset selection.
-
-```typescript
-import { defineTool } from "@alexgorbatchev/dotfiles";
-
-export default defineTool((install, ctx) =>
-  install("gitea-release", {
-    instanceUrl: "https://codeberg.org",
-    repo: "owner/repository",
-  }).bin("tool"),
-);
-```
-
-### Homebrew
-
-Install tools using Homebrew package manager (macOS and Linux).
-
-```typescript
-import { defineTool } from "@alexgorbatchev/dotfiles";
-
-export default defineTool((install, ctx) =>
-  install("brew", {
-    formula: "ripgrep",
-  }).bin("rg"),
-);
-```
 
 ### Cargo
 
@@ -61,17 +24,17 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### npm
+### Curl Binary
 
-Install tools published as npm packages.
+Download standalone binary files directly from URLs (no archive extraction).
 
 ```typescript
 import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
-  install("npm", {
-    package: "prettier",
-  }).bin("prettier"),
+  install("curl-binary", {
+    url: "https://example.com/tool-v1.0.0-linux-amd64",
+  }).bin("tool"),
 );
 ```
 
@@ -100,20 +63,6 @@ import { defineTool } from "@alexgorbatchev/dotfiles";
 export default defineTool((install, ctx) =>
   install("curl-tar", {
     url: "https://releases.example.com/tool-v1.0.0.tar.gz",
-  }).bin("tool"),
-);
-```
-
-### Curl Binary
-
-Download standalone binary files directly from URLs (no archive extraction).
-
-```typescript
-import { defineTool } from "@alexgorbatchev/dotfiles";
-
-export default defineTool((install, ctx) =>
-  install("curl-binary", {
-    url: "https://example.com/tool-v1.0.0-linux-amd64",
   }).bin("tool"),
 );
 ```
@@ -147,6 +96,49 @@ install("dmg", {
 });
 ```
 
+### Gitea/Forgejo Release
+
+Install tools from Gitea, Forgejo, or Codeberg releases with automatic asset selection.
+
+```typescript
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install, ctx) =>
+  install("gitea-release", {
+    instanceUrl: "https://codeberg.org",
+    repo: "owner/repository",
+  }).bin("tool"),
+);
+```
+
+### GitHub Release
+
+Install tools from GitHub releases with automatic asset selection and extraction.
+
+```typescript
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install, ctx) =>
+  install("github-release", {
+    repo: "owner/repository",
+  }).bin("tool"),
+);
+```
+
+### Homebrew
+
+Install tools using Homebrew package manager (macOS and Linux).
+
+```typescript
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install, ctx) =>
+  install("brew", {
+    formula: "ripgrep",
+  }).bin("rg"),
+);
+```
+
 ### Manual
 
 Install files from your dotfiles directory (custom scripts, pre-built binaries) or configuration-only tools. Can be called without params: `install('manual')`.
@@ -175,6 +167,20 @@ export default defineTool((install) =>
 
 // Configuration-only
 export default defineTool((install, ctx) => install().zsh((shell) => shell.aliases({ ll: "ls -la" })));
+```
+
+### npm
+
+Install tools published as npm packages.
+
+```typescript
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install, ctx) =>
+  install("npm", {
+    package: "prettier",
+  }).bin("prettier"),
+);
 ```
 
 ### Zsh Plugin
