@@ -17,7 +17,7 @@ describe("ToolSourceCard", () => {
     globalThis.fetch = originalFetch;
   });
 
-  test("renders fetched source content in a code block", async () => {
+  test("renders fetched source content with syntax highlighting", async () => {
     const mockFn = mock(async () => {
       return new Response(
         JSON.stringify({
@@ -35,11 +35,10 @@ describe("ToolSourceCard", () => {
 
     globalThis.fetch = Object.assign(mockFn, { preconnect: () => {} }) as typeof fetch;
 
-    render(<ToolSourceCard toolName="test" />);
+    const { container } = render(<ToolSourceCard toolName="test" />);
 
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    expect(screen.getByText("export default defineTool(() => {});")).toBeInTheDocument();
+    await screen.findByTestId("ToolSourceCard--highlighted");
+    expect(container.querySelector(".shiki")?.textContent).toContain("export default defineTool(() => {});");
     const link = screen.getByText("Open in VSCode");
     expect(link).toHaveAttribute("href", "vscode://file//home/user/.dotfiles/tools/test.tool.ts");
   });
