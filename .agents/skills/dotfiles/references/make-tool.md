@@ -844,8 +844,9 @@ Without this step, the generated shims and shell configuration will be out of sy
 **Configuration Guides**
 
 - [Common Patterns](configuration/common-patterns.md) - Real-world examples
-- [Shell Integration](shell-and-hooks.md) - Shell configuration, symlinks
-- [Completions](shell-and-hooks.md#completions) - Command completion setup
+- [Shell Integration](shell-integration/shell-integration.md) - Shell configuration, symlinks
+- [Completions](shell-integration/command-completions.md) - Command completion setup
+- [Hooks](hooks/lifecycle-hooks.md) - Lifecycle hooks
 
 **Installation Methods**
 

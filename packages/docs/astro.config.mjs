@@ -16,8 +16,18 @@ export default defineConfig({
           label: "Configuration",
           autogenerate: { directory: "configuration" },
         },
-        { label: "Shell & Hooks", link: "/shell-and-hooks/" },
-        { label: "API Reference", link: "/api-reference/" },
+        {
+          label: "Shell Integration",
+          autogenerate: { directory: "shell-integration" },
+        },
+        {
+          label: "Hooks",
+          autogenerate: { directory: "hooks" },
+        },
+        {
+          label: "API Reference",
+          autogenerate: { directory: "api-reference" },
+        },
         {
           label: "Installation Methods",
           autogenerate: { directory: "installation-methods" },

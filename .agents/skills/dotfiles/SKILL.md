@@ -38,7 +38,17 @@ Read these based on the task at hand:
 
 - **[make-tool.md](references/make-tool.md)** — Complete guide for creating `.tool.ts` configurations. Read when creating a new tool config or modifying an existing one. Includes tool investigation steps, method selection, examples, and quality checklist.
 
-- **[api-reference.md](references/api-reference.md)** — Public API reference: `defineTool`, `defineConfig`, builder methods, shell configurator methods, `Platform`/`Architecture` enums, utilities (`replaceInFile`, `resolve`, `log`).
+- **Shell Integration** — Shell integration (aliases, functions, env, path, completions, sourceFile, sourceFunction, source, symlinks), hook events and context, completions configuration.
+  - [shell-integration.md](references/shell-integration/shell-integration.md)
+  - [command-completions.md](references/shell-integration/command-completions.md)
+
+- **Hooks** — Lifecycle hooks configuration.
+  - [lifecycle-hooks.md](references/hooks/lifecycle-hooks.md)
+
+- **API Reference** — Public API reference: `defineTool`, `defineConfig`, builder methods, shell configurator methods, `Platform`/`Architecture` enums, utilities (`replaceInFile`, `resolve`, `log`).
+  - [core-api.md](references/api-reference/core-api.md)
+  - [utilities.md](references/api-reference/utilities.md)
+  - [context-api.md](references/api-reference/context-api.md)
 
 - **Installation Methods** — Parameters and examples for each installation method:
   - [overview.md](references/installation-methods/overview.md) — Available methods, choosing the right method, manual installation guide, common parameters
@@ -53,8 +63,6 @@ Read these based on the task at hand:
   - [dmg.md](references/installation-methods/dmg.md) — macOS DMG disk image installation
   - [manual.md](references/installation-methods/manual.md) — Custom scripts, pre-built binaries, config-only tools
   - [zsh-plugin.md](references/installation-methods/zsh-plugin.md) — Zsh plugin Git repository cloning
-
-- **[shell-and-hooks.md](references/shell-and-hooks.md)** — Shell integration (aliases, functions, env, path, completions, sourceFile, sourceFunction, source, symlinks), hook events and context, completions configuration.
 
 - **Configuration Guide** — Project configuration (`defineConfig`), getting started, platform support, virtual environments, advanced topics, troubleshooting.
   - [getting-started.md](references/configuration/getting-started.md)

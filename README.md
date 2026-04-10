@@ -168,12 +168,13 @@ npm install -g @alexgorbatchev/dotfiles
 
 ### Shell Integration
 
-- **[Shell & Hooks](.agents/skills/dotfiles/references/shell-and-hooks.md)** - Aliases, environment variables, shell functions, completions, lifecycle hooks
+- **[Shell Integration](.agents/skills/dotfiles/references/shell-integration/shell-integration.md)** - Aliases, environment variables, shell functions, completions.
+- **[Hooks](.agents/skills/dotfiles/references/hooks/lifecycle-hooks.md)** - Lifecycle hooks.
 
 ### Installation Methods & API
 
 - **[Installation Methods](.agents/skills/dotfiles/references/installation-methods/overview.md)** - All 11 methods: GitHub releases, Gitea, Homebrew, Cargo, npm, curl-script, curl-tar, curl-binary, manual, DMG, zsh-plugin
-- **[API Reference](.agents/skills/dotfiles/references/api-reference.md)** - Complete method reference and context API
+- **[API Reference](.agents/skills/dotfiles/references/api-reference/core-api.md)** - Complete method reference and context API
 
 ## Global Configuration (`dotfiles.config.ts`)
 
