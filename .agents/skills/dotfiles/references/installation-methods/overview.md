@@ -10,6 +10,10 @@ The system supports multiple installation methods to accommodate different tool 
 
 ## Choosing the Right Method
 
+Direct download methods like `github-release`, `curl-tar`, or `curl-binary` are strongly recommended when available. Because they fetch isolated binaries directly into the dotfiles data directory, the dotfiles manager maintains full control over the runtime environment, version tracking, and execution shims.
+
+Using external package managers like `brew` or `npm` is fully supported and sometimes necessary, but introduces potential state drift. These package managers natively own their own placement, upgrades, and environment links. If you run `brew upgrade` externally, the binary may update out of sync with what the dotfiles manager recorded. While this won't break the system, it's best practice to drive all updates through the `dotfiles update` CLI directly to keep state consistent.
+
 | Method             | Best For                            | Pros                                   | Cons                                 |
 | ------------------ | ----------------------------------- | -------------------------------------- | ------------------------------------ |
 | **brew**           | macOS/Linux tools                   | Simple, well-maintained                | Platform-specific, requires Homebrew |
