@@ -8,6 +8,22 @@ sidebar:
 
 The system supports multiple installation methods to accommodate different tool distribution patterns. Each method has its own parameters and use cases.
 
+## Choosing the Right Method
+
+| Method             | Best For                            | Pros                                   | Cons                                 |
+| ------------------ | ----------------------------------- | -------------------------------------- | ------------------------------------ |
+| **brew**           | macOS/Linux tools                   | Simple, well-maintained                | Platform-specific, requires Homebrew |
+| **cargo**          | Rust tools                          | Fast pre-compiled binaries             | Rust tools only                      |
+| **curl-binary**    | Direct binary downloads             | Simplest, no extraction needed         | Manual URL management                |
+| **curl-script**    | Custom installers                   | Flexible, handles complex setups       | Less predictable, security concerns  |
+| **curl-tar**       | Archive downloads                   | Simple, no dependencies                | Manual URL management                |
+| **dmg**            | macOS .app bundles                  | Handles mount/unmount, archive extract | macOS only                           |
+| **gitea-release**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host     | Requires instance URL                |
+| **github-release** | Most open source tools              | Automatic updates, cross-platform      | Requires GitHub hosting              |
+| **manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible  | Manual file management               |
+| **npm**            | Node.js tools                       | Simple, version management             | Requires Node.js/npm                 |
+| **zsh-plugin**     | Zsh plugins from Git repos          | Simple, automatic updates              | Zsh plugins only                     |
+
 ## Available Methods
 
 ### brew
@@ -196,22 +212,6 @@ export default defineTool((install, ctx) =>
   }).zsh((shell) => shell.always(`source "${ctx.currentDir}/zsh-vi-mode.plugin.zsh"`)),
 );
 ```
-
-## Choosing the Right Method
-
-| Method             | Best For                            | Pros                                   | Cons                                 |
-| ------------------ | ----------------------------------- | -------------------------------------- | ------------------------------------ |
-| **brew**           | macOS/Linux tools                   | Simple, well-maintained                | Platform-specific, requires Homebrew |
-| **cargo**          | Rust tools                          | Fast pre-compiled binaries             | Rust tools only                      |
-| **curl-binary**    | Direct binary downloads             | Simplest, no extraction needed         | Manual URL management                |
-| **curl-script**    | Custom installers                   | Flexible, handles complex setups       | Less predictable, security concerns  |
-| **curl-tar**       | Archive downloads                   | Simple, no dependencies                | Manual URL management                |
-| **dmg**            | macOS .app bundles                  | Handles mount/unmount, archive extract | macOS only                           |
-| **gitea-release**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host     | Requires instance URL                |
-| **github-release** | Most open source tools              | Automatic updates, cross-platform      | Requires GitHub hosting              |
-| **manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible  | Manual file management               |
-| **npm**            | Node.js tools                       | Simple, version management             | Requires Node.js/npm                 |
-| **zsh-plugin**     | Zsh plugins from Git repos          | Simple, automatic updates              | Zsh plugins only                     |
 
 ## Manual Installation Guide
 
