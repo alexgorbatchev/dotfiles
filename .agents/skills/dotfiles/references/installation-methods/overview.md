@@ -10,7 +10,21 @@ The system supports multiple installation methods to accommodate different tool 
 
 ## Available Methods
 
-### Cargo
+### brew
+
+Install tools using Homebrew package manager (macOS and Linux).
+
+```typescript
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install, ctx) =>
+  install("brew", {
+    formula: "ripgrep",
+  }).bin("rg"),
+);
+```
+
+### cargo
 
 Install Rust tools from crates.io with cargo-quickinstall for faster downloads.
 
@@ -24,7 +38,7 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### Curl Binary
+### curl-binary
 
 Download standalone binary files directly from URLs (no archive extraction).
 
@@ -38,7 +52,7 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### Curl Script
+### curl-script
 
 Download and execute installation scripts.
 
@@ -53,7 +67,7 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### Curl Tar
+### curl-tar
 
 Download and extract tarballs directly from URLs.
 
@@ -67,7 +81,7 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### DMG
+### dmg
 
 Install macOS applications from DMG disk images into `/Applications` (silently skipped on other platforms).
 
@@ -96,7 +110,7 @@ install("dmg", {
 });
 ```
 
-### Gitea/Forgejo Release
+### gitea-release
 
 Install tools from Gitea, Forgejo, or Codeberg releases with automatic asset selection.
 
@@ -111,7 +125,7 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### GitHub Release
+### github-release
 
 Install tools from GitHub releases with automatic asset selection and extraction.
 
@@ -125,21 +139,7 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### Homebrew
-
-Install tools using Homebrew package manager (macOS and Linux).
-
-```typescript
-import { defineTool } from "@alexgorbatchev/dotfiles";
-
-export default defineTool((install, ctx) =>
-  install("brew", {
-    formula: "ripgrep",
-  }).bin("rg"),
-);
-```
-
-### Manual
+### manual
 
 Install files from your dotfiles directory (custom scripts, pre-built binaries) or configuration-only tools. Can be called without params: `install('manual')`.
 
@@ -183,7 +183,7 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### Zsh Plugin
+### zsh-plugin
 
 Clone Git repositories for zsh plugins.
 
@@ -201,17 +201,17 @@ export default defineTool((install, ctx) =>
 
 | Method             | Best For                            | Pros                                   | Cons                                 |
 | ------------------ | ----------------------------------- | -------------------------------------- | ------------------------------------ |
-| **GitHub Release** | Most open source tools              | Automatic updates, cross-platform      | Requires GitHub hosting              |
-| **Gitea/Forgejo**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host     | Requires instance URL                |
-| **Homebrew**       | macOS/Linux tools                   | Simple, well-maintained                | Platform-specific, requires Homebrew |
-| **Cargo**          | Rust tools                          | Fast pre-compiled binaries             | Rust tools only                      |
+| **brew**           | macOS/Linux tools                   | Simple, well-maintained                | Platform-specific, requires Homebrew |
+| **cargo**          | Rust tools                          | Fast pre-compiled binaries             | Rust tools only                      |
+| **curl-binary**    | Direct binary downloads             | Simplest, no extraction needed         | Manual URL management                |
+| **curl-script**    | Custom installers                   | Flexible, handles complex setups       | Less predictable, security concerns  |
+| **curl-tar**       | Archive downloads                   | Simple, no dependencies                | Manual URL management                |
+| **dmg**            | macOS .app bundles                  | Handles mount/unmount, archive extract | macOS only                           |
+| **gitea-release**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host     | Requires instance URL                |
+| **github-release** | Most open source tools              | Automatic updates, cross-platform      | Requires GitHub hosting              |
+| **manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible  | Manual file management               |
 | **npm**            | Node.js tools                       | Simple, version management             | Requires Node.js/npm                 |
-| **Curl Script**    | Custom installers                   | Flexible, handles complex setups       | Less predictable, security concerns  |
-| **Curl Tar**       | Archive downloads                   | Simple, no dependencies                | Manual URL management                |
-| **Curl Binary**    | Direct binary downloads             | Simplest, no extraction needed         | Manual URL management                |
-| **DMG**            | macOS .app bundles                  | Handles mount/unmount, archive extract | macOS only                           |
-| **Manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible  | Manual file management               |
-| **Zsh Plugin**     | Zsh plugins from Git repos          | Simple, automatic updates              | Zsh plugins only                     |
+| **zsh-plugin**     | Zsh plugins from Git repos          | Simple, automatic updates              | Zsh plugins only                     |
 
 ## Manual Installation Guide
 
