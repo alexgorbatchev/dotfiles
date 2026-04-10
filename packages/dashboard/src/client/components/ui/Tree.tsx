@@ -17,8 +17,10 @@ export interface ITreeItemProps<T = unknown> {
   item: ITreeItemData<T>;
   depth?: number;
   defaultExpanded?: boolean;
+  collapsedIds?: ReadonlySet<string>;
   renderActions?: (item: ITreeItemData<T>) => ComponentChildren;
   renderLabel?: (item: ITreeItemData<T>) => ComponentChildren;
+  onItemToggle?: (item: ITreeItemData<T>, nextExpanded: boolean) => void;
   onItemClick?: (item: ITreeItemData<T>) => void;
   iconClassName?: string;
 }
@@ -26,8 +28,10 @@ export interface ITreeItemProps<T = unknown> {
 export interface ITreeProps<T = unknown> {
   items: ITreeItemData<T>[];
   defaultExpanded?: boolean;
+  collapsedIds?: ReadonlySet<string>;
   renderActions?: (item: ITreeItemData<T>) => ComponentChildren;
   renderLabel?: (item: ITreeItemData<T>) => ComponentChildren;
+  onItemToggle?: (item: ITreeItemData<T>, nextExpanded: boolean) => void;
   onItemClick?: (item: ITreeItemData<T>) => void;
   iconClassName?: string;
   class?: string;
@@ -37,19 +41,31 @@ export function TreeItem<T = unknown>({
   item,
   depth = 0,
   defaultExpanded = true,
+  collapsedIds,
   renderActions,
   renderLabel,
+  onItemToggle,
   onItemClick,
   iconClassName,
 }: ITreeItemProps<T>): JSX.Element {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [isExpandedState, setIsExpandedState] = useState(defaultExpanded);
   const hasChildren = item.children && item.children.length > 0;
+  const isControlled = collapsedIds !== undefined;
+  const isExpanded = hasChildren ? (isControlled ? !collapsedIds.has(item.id) : isExpandedState) : false;
   const indent = depth * 16;
 
   function handleClick(): void {
     if (hasChildren) {
-      setIsExpanded(!isExpanded);
+      const nextExpanded = !isExpanded;
+
+      if (isControlled) {
+        onItemToggle?.(item, nextExpanded);
+      } else {
+        setIsExpandedState(nextExpanded);
+        onItemToggle?.(item, nextExpanded);
+      }
     }
+
     onItemClick?.(item);
   }
 
@@ -95,8 +111,10 @@ export function TreeItem<T = unknown>({
               item={child}
               depth={depth + 1}
               defaultExpanded={defaultExpanded}
+              collapsedIds={collapsedIds}
               renderActions={renderActions}
               renderLabel={renderLabel}
+              onItemToggle={onItemToggle}
               onItemClick={onItemClick}
               iconClassName={iconClassName}
             />
@@ -110,8 +128,10 @@ export function TreeItem<T = unknown>({
 export function Tree<T = unknown>({
   items,
   defaultExpanded = true,
+  collapsedIds,
   renderActions,
   renderLabel,
+  onItemToggle,
   onItemClick,
   iconClassName,
   class: className,
@@ -123,8 +143,10 @@ export function Tree<T = unknown>({
           key={item.id}
           item={item}
           defaultExpanded={defaultExpanded}
+          collapsedIds={collapsedIds}
           renderLabel={renderLabel}
           renderActions={renderActions}
+          onItemToggle={onItemToggle}
           onItemClick={onItemClick}
           iconClassName={iconClassName}
         />

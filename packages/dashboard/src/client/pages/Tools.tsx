@@ -6,8 +6,11 @@ import { StatCard } from "../components/StatCard";
 import { ToolsTreeView } from "../components/ToolsTreeView";
 import { TitledCard } from "../components/ui/TitledCard";
 import { useFetch } from "../hooks/useFetch";
+import { useSectionHash } from "../hooks/useSectionHash";
 import { History, Zap } from "../icons";
 import { formatBytes } from "../utils/format";
+
+const TOOLS_SECTION_IDS = ["overview", "activity", "tool-files"] as const;
 
 interface IUsageListItem {
   name: string;
@@ -102,6 +105,8 @@ function UsageListCard({ title, icon, items, secondary, emptyText }: UsageListCa
 export function Tools(): JSX.Element {
   const { data: tools, loading } = useFetch<IToolDetail[]>("/tools");
 
+  useSectionHash(TOOLS_SECTION_IDS, !loading);
+
   const toolsList = tools || [];
   const totalFiles = toolsList.reduce((sum, tool) => sum + (tool.files?.length || 0), 0);
   const installedCount = toolsList.filter((tool) => tool.runtime.status === "installed").length;
@@ -124,14 +129,14 @@ export function Tools(): JSX.Element {
 
   return (
     <div data-testid="Tools" class="space-y-4">
-      <div class="grid grid-cols-4 gap-4">
+      <section id="overview" class="grid grid-cols-4 gap-4">
         <StatCard value={toolsList.length} label="Total Tools" color="text-blue-400" />
         <StatCard value={installedCount} label="Installed" color="text-green-400" />
         <StatCard value={totalFiles} label="Files Tracked" color="text-purple-400" />
         <StatCard value={formatBytes(binariesDiskSize)} label="Binary Size" color="text-orange-400" />
-      </div>
+      </section>
 
-      <div class="grid gap-4 lg:grid-cols-3">
+      <section id="activity" class="grid gap-4 lg:grid-cols-3">
         <RecentTools />
         <UsageListCard
           title="Most Recently Used"
@@ -147,11 +152,11 @@ export function Tools(): JSX.Element {
           secondary={(item) => `${item.count.toLocaleString()} runs`}
           emptyText="No usage recorded yet"
         />
-      </div>
+      </section>
 
-      <div>
+      <section id="tool-files">
         <ToolsTreeView tools={toolsList} />
-      </div>
+      </section>
 
       {toolsList.length === 0 && <div class="py-8 text-center text-muted-foreground">No tools configured</div>}
     </div>

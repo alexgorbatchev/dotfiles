@@ -4,6 +4,7 @@ import { FileCode, FolderOpen, FolderTree } from "../icons";
 
 import type { IFileTreeEntry, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../shared/types";
 import { useFetch } from "../hooks/useFetch";
+import { useRepeatedQueryParam } from "../hooks/useRepeatedQueryParam";
 import { formatBytes } from "../utils/format";
 import { InstallMethodBadge } from "./InstallMethodBadge";
 import { TitledCard } from "./ui/TitledCard";
@@ -125,6 +126,7 @@ function handleItemClick(item: ITreeItemData<ToolTreeData>): void {
 
 export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
   const { data: treeData, loading } = useFetch<IToolConfigsTree>("/tool-configs-tree");
+  const [collapsedIds, setCollapsedIds] = useRepeatedQueryParam("treeCollapsed");
 
   // Build maps from tools
   const toolStatusMap = new Map<string, ToolRuntimeStatus>();
@@ -172,7 +174,21 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
       <Tree
         items={treeItems}
         defaultExpanded={true}
+        collapsedIds={collapsedIds}
         onItemClick={handleItemClick}
+        onItemToggle={(item, nextExpanded) => {
+          setCollapsedIds((previousIds) => {
+            const nextIds = new Set(previousIds);
+
+            if (nextExpanded) {
+              nextIds.delete(item.id);
+            } else {
+              nextIds.add(item.id);
+            }
+
+            return nextIds;
+          });
+        }}
         renderLabel={renderLabel}
         iconClassName="mr-1"
       />

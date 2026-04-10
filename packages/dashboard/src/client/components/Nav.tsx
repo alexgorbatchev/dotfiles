@@ -11,12 +11,17 @@ const links = [
   { path: "/settings", label: "⚙️ Settings" },
 ];
 
+function getPathname(url: string): string {
+  return new URL(url, "http://localhost").pathname;
+}
+
 function openCommandPalette(): void {
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
 }
 
 export function Nav(): JSX.Element {
   const { url } = useLocation();
+  const pathname = getPathname(url);
 
   return (
     <nav data-testid="Nav" class="bg-card border-b border-border">
@@ -26,7 +31,7 @@ export function Nav(): JSX.Element {
             <span class="text-xl font-bold text-primary">⚡ Dotfiles</span>
             <div class="flex space-x-1">
               {links.map((link) => {
-                const isActive = url === link.path || (link.path !== "/" && url.startsWith(link.path));
+                const isActive = pathname === link.path || (link.path !== "/" && pathname.startsWith(link.path));
                 return (
                   <Button key={link.path} variant={isActive ? "secondary" : "ghost"} size="sm" asChild>
                     <a href={link.path} class={cn(isActive && "pointer-events-none")}>
