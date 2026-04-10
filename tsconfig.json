@@ -35,5 +35,11 @@
     }
   },
   "include": ["packages", "test-project", "cli.ts", "review"],
-  "exclude": ["**/.tmp/**", "**/tmp/**", "packages/**/type-tests/**", "packages/**/__tests__/**/tool-types.d.ts"]
+  "exclude": [
+    "**/.tmp/**",
+    "**/tmp/**",
+    "packages/**/type-tests/**",
+    "packages/**/__tests__/**/tool-types.d.ts",
+    "packages/docs/**"
+  ]
 }

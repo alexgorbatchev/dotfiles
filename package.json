@@ -23,7 +23,8 @@
     "proxy": "bun run packages/http-proxy/src/server.ts",
     "check": "bun lint && bun typecheck && bun test:all",
     "check:ci": "bun lint && bun typecheck && bun test:native",
-    "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/dotfiles.config.ts dashboard"
+    "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/dotfiles.config.ts dashboard",
+    "docs": "cd packages/docs && bun run dev"
   },
   "devDependencies": {
     "@alexgorbatchev/typescript-ai-policy": "^1.0.5",
