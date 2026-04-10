@@ -11,6 +11,7 @@ export default defineConfig({
       title: "@dotfiles",
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/alexgorbatchev/dotfiles" }],
       sidebar: [
+        { label: "Overview", link: "/" },
         { label: "Tool Creation Guide", link: "/make-tool/" },
         {
           label: "Configuration",
