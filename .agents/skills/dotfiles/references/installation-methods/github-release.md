@@ -12,18 +12,24 @@ export default defineTool((install) => install("github-release", { repo: "junegu
 
 ## Parameters
 
-| Parameter       | Description                                               |
-| --------------- | --------------------------------------------------------- |
-| `repo`          | **Required**. GitHub repository in "owner/repo" format    |
-| `assetPattern`  | Glob pattern to match release assets                      |
-| `assetSelector` | Custom function to select the correct asset               |
-| `version`       | Specific version (e.g., `'v1.2.3'`)                       |
-| `prerelease`    | Include prereleases when fetching latest (default: false) |
-| `githubHost`    | Custom GitHub API host for Enterprise                     |
-| `ghCli`         | Use `gh` CLI for API requests instead of fetch            |
-| `env`           | Environment variables (static or dynamic function)        |
+| Parameter       | Description                                                                                               |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| `repo`          | **Required**. GitHub repository in "owner/repo" format                                                    |
+| `assetPattern`  | Glob pattern to match release assets. **Optional**. Use only if default automatic selection fails.        |
+| `assetSelector` | Custom function to select the correct asset. **Optional**. Use only if default automatic selection fails. |
+| `version`       | Specific version (e.g., `'v1.2.3'`)                                                                       |
+| `prerelease`    | Include prereleases when fetching latest (default: false)                                                 |
+| `githubHost`    | Custom GitHub API host for Enterprise                                                                     |
+| `ghCli`         | Use `gh` CLI for API requests instead of fetch                                                            |
+| `env`           | Environment variables (static or dynamic function)                                                        |
 
 ## Examples
+
+## Asset Selection (Optional)
+
+The installer uses built-in smart selection logic by default. It parses filenames and correctly matches combinations of OS and CPU architecture (e.g. `linux`/`darwin`/`macos` + `amd64`/`arm64`/`x86_64`).
+
+**You should ONLY provide an `assetPattern` or `assetSelector` if the default selection logic fails to find a file or downloads the wrong asset.**
 
 ### With Asset Pattern
 

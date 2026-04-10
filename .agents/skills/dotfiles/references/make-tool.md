@@ -317,7 +317,7 @@ Reference: [Shell Integration Guide](shell-and-hooks.md#symbolic-links)
 
 ### Step 5: Add Platform Support (only when needed)
 
-> **Important**: Only use `.platform()` when a single installer unable to provide necessary binaries. The `github-release` installer automatically selects the correct asset based on standard naming conventions (`darwin`/`linux`, `amd64`/`arm64`/`x86_64`). Do not use `.platform()` just to specify different asset patterns for the same installation method.
+> **Important**: Only use `.platform()` when a single installer unable to provide necessary binaries. The `github-release` installer automatically selects the correct asset based on standard naming conventions (`darwin`/`linux`/`macos`/`win`/`windows`, `amd64`/`arm64`/`aarch64`/`x86_64`). Only specify an `assetPattern` or `assetSelector` if the default built-in logic fails to find or resolves the wrong asset.
 
 Use `.platform()` for platform- and architecture-specific overrides. The callback receives an `install` function for that specific platform.
 
@@ -791,10 +791,6 @@ After any `.tool.ts` file change, you **must** run `dotfiles generate` to sync t
 - A new `.tool.ts` file is created
 - An existing `.tool.ts` file is deleted
 - An existing `.tool.ts` file is modified
-
-```bash
-bun cli --config=<path-to-dotfiles.config.ts> generate
-```
 
 Without this step, the generated shims and shell configuration will be out of sync with the tool definitions.
 
