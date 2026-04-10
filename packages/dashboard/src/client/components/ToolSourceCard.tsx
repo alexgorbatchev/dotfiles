@@ -1,5 +1,4 @@
 import { type JSX } from "preact";
-import { ShikiHighlighter } from "react-shiki";
 import type { IToolSourcePayload } from "../../shared/types";
 import { Code } from "../icons";
 
@@ -38,10 +37,10 @@ export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
       icon={<Code class="h-4 w-4" />}
       action={<ExternalLinkButton href={`vscode://file/${data.filePath}`}>Open in VSCode</ExternalLinkButton>}
     >
-      <div class="overflow-x-auto rounded-md border border-border [&_pre]:!bg-muted/25">
-        <ShikiHighlighter language="typescript" theme="github-light">
-          {data.content.trim()}
-        </ShikiHighlighter>
+      <div class="overflow-x-auto rounded-md border border-border bg-muted/25 p-4">
+        <pre class="text-sm leading-6">
+          <code>{data.content.trim()}</code>
+        </pre>
       </div>
     </TitledCard>
   );

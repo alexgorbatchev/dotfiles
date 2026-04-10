@@ -13,6 +13,17 @@ export async function getToolConfigsTree(
 ): Promise<IApiResponse<IToolConfigsTree>> {
   try {
     const toolConfigsDir = services.projectConfig.paths.toolConfigsDir;
+
+    if (!(await services.fs.exists(toolConfigsDir))) {
+      return {
+        success: true,
+        data: {
+          rootPath: toolConfigsDir,
+          entries: [],
+        },
+      };
+    }
+
     const toolConfigs = await getToolConfigs(logger, services);
 
     // Build a map from config file path to tool name
@@ -34,30 +45,41 @@ export async function getToolConfigsTree(
       }
 
       const entries: IFileTreeEntry[] = [];
-      const itemNames = await services.fs.readdir(dirPath);
+      let itemNames: string[];
+
+      try {
+        itemNames = await services.fs.readdir(dirPath);
+      } catch {
+        return entries;
+      }
 
       for (const name of itemNames) {
         const fullPath = `${dirPath}/${name}`;
-        const stat = await services.fs.stat(fullPath);
 
-        if (stat.isDirectory()) {
-          const children = await buildTree(fullPath);
-          // Only include non-empty directories
-          if (children.length > 0) {
+        try {
+          const stat = await services.fs.stat(fullPath);
+
+          if (stat.isDirectory()) {
+            const children = await buildTree(fullPath);
+            // Only include non-empty directories
+            if (children.length > 0) {
+              entries.push({
+                name,
+                path: fullPath,
+                type: "directory",
+                children,
+              });
+            }
+          } else if (name.endsWith(".tool.ts")) {
             entries.push({
               name,
               path: fullPath,
-              type: "directory",
-              children,
+              type: "file",
+              toolName: configPathToTool.get(fullPath),
             });
           }
-        } else if (name.endsWith(".tool.ts")) {
-          entries.push({
-            name,
-            path: fullPath,
-            type: "file",
-            toolName: configPathToTool.get(fullPath),
-          });
+        } catch {
+          continue;
         }
       }
 

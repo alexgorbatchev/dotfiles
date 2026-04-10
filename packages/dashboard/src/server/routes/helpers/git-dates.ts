@@ -1,11 +1,50 @@
 /** Cache for git first commit dates */
 let gitFirstCommitDatesCache: Map<string, Date> | null = null;
+let gitFirstCommitDatesCachePromise: Promise<Map<string, Date>> | null = null;
+let gitRepoRootCache: string | null | undefined;
+let gitRepoRootCachePromise: Promise<string | null> | null = null;
+
+function isPathInsideRepo(filePath: string, repoRoot: string): boolean {
+  return filePath === repoRoot || filePath.startsWith(`${repoRoot}/`);
+}
+
+async function getGitRepoRoot(): Promise<string | null> {
+  if (gitRepoRootCache !== undefined) {
+    return gitRepoRootCache;
+  }
+
+  gitRepoRootCachePromise ??= (async () => {
+    try {
+      const rootProc = Bun.spawn(["git", "rev-parse", "--show-toplevel"], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      const repoRoot = (await new Response(rootProc.stdout).text()).trim();
+      const rootExitCode = await rootProc.exited;
+
+      if (rootExitCode !== 0 || !repoRoot) {
+        return null;
+      }
+
+      return repoRoot;
+    } catch {
+      return null;
+    }
+  })();
+
+  gitRepoRootCache = await gitRepoRootCachePromise;
+  gitRepoRootCachePromise = null;
+  return gitRepoRootCache;
+}
 
 /**
  * Clear the git first commit dates cache. Used for testing.
  */
 export function clearGitFirstCommitDatesCache(): void {
   gitFirstCommitDatesCache = null;
+  gitFirstCommitDatesCachePromise = null;
+  gitRepoRootCache = undefined;
+  gitRepoRootCachePromise = null;
 }
 
 /**
@@ -16,15 +55,8 @@ async function loadGitFirstCommitDates(): Promise<Map<string, Date>> {
   const cache = new Map<string, Date>();
 
   try {
-    // Get the repository root to resolve relative paths
-    const rootProc = Bun.spawn(["git", "rev-parse", "--show-toplevel"], {
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    const repoRoot = (await new Response(rootProc.stdout).text()).trim();
-    const rootExitCode = await rootProc.exited;
-
-    if (rootExitCode !== 0 || !repoRoot) {
+    const repoRoot = await getGitRepoRoot();
+    if (!repoRoot) {
       return cache;
     }
 
@@ -33,6 +65,7 @@ async function loadGitFirstCommitDates(): Promise<Map<string, Date>> {
     const proc = Bun.spawn(["git", "log", "--diff-filter=A", "--name-only", "--format=%aI"], {
       stdout: "pipe",
       stderr: "pipe",
+      cwd: repoRoot,
     });
     const output = await new Response(proc.stdout).text();
     const exitCode = await proc.exited;
@@ -75,9 +108,16 @@ async function loadGitFirstCommitDates(): Promise<Map<string, Date>> {
  */
 async function querySingleFileGitDate(filePath: string): Promise<Date | null> {
   try {
-    const proc = Bun.spawn(["git", "log", "--diff-filter=A", "--format=%aI", "--", filePath], {
+    const repoRoot = await getGitRepoRoot();
+    if (!repoRoot || !isPathInsideRepo(filePath, repoRoot)) {
+      return null;
+    }
+
+    const repoRelativePath = filePath.slice(repoRoot.length + 1);
+    const proc = Bun.spawn(["git", "log", "--diff-filter=A", "--format=%aI", "--", repoRelativePath], {
       stdout: "pipe",
       stderr: "pipe",
+      cwd: repoRoot,
     });
     const output = await new Response(proc.stdout).text();
     const exitCode = await proc.exited;
@@ -104,7 +144,8 @@ async function querySingleFileGitDate(filePath: string): Promise<Date | null> {
  */
 export async function getGitFirstCommitDate(filePath: string): Promise<Date | null> {
   if (!gitFirstCommitDatesCache) {
-    gitFirstCommitDatesCache = await loadGitFirstCommitDates();
+    gitFirstCommitDatesCachePromise ??= loadGitFirstCommitDates();
+    gitFirstCommitDatesCache = await gitFirstCommitDatesCachePromise;
   }
 
   // Check cache first
