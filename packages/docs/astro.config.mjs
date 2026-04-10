@@ -12,7 +12,10 @@ export default defineConfig({
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/alexgorbatchev/dotfiles" }],
       sidebar: [
         { label: "Tool Creation Guide", link: "/make-tool/" },
-        { label: "Configuration", link: "/configuration/" },
+        {
+          label: "Configuration",
+          autogenerate: { directory: "configuration" },
+        },
         { label: "Shell & Hooks", link: "/shell-and-hooks/" },
         { label: "API Reference", link: "/api-reference/" },
         {

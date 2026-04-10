@@ -344,7 +344,7 @@ export default defineTool((install) =>
 );
 ```
 
-Reference: [Platform Support Guide](configuration.md#platform-support)
+Reference: [Platform Support Guide](configuration/platform-specific.md)
 
 ### Step 6: Add Installation Hooks (if needed)
 
@@ -838,12 +838,12 @@ Without this step, the generated shims and shell configuration will be out of sy
 **Core Documentation**
 
 - [API Reference](api-reference.md) - Complete API with all parameters
-- [Getting Started](configuration.md#getting-started) - Basic structure and anatomy
+- [Getting Started](configuration/getting-started.md) - Basic structure and anatomy
 - [Context API](api-reference.md#context-api) - Path resolution and context variables
 
 **Configuration Guides**
 
-- [Common Patterns](configuration.md#common-patterns) - Real-world examples
+- [Common Patterns](configuration/common-patterns.md) - Real-world examples
 - [Shell Integration](shell-and-hooks.md) - Shell configuration, symlinks
 - [Completions](shell-and-hooks.md#completions) - Command completion setup
 
@@ -862,6 +862,6 @@ Without this step, the generated shims and shell configuration will be out of sy
 
 **Other Resources**
 
-- [Platform Support](configuration.md#platform-support) - Platform-specific configurations
+- [Platform Support](configuration/platform-specific.md) - Platform-specific configurations
 - [Hooks](shell-and-hooks.md#hooks) - Installation lifecycle hooks
-- [Troubleshooting](configuration.md#troubleshooting) - Common issues and solutions
+- [Troubleshooting](configuration/troubleshooting.md) - Common issues and solutions

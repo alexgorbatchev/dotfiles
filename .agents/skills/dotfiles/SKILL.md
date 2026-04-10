@@ -56,7 +56,14 @@ Read these based on the task at hand:
 
 - **[shell-and-hooks.md](references/shell-and-hooks.md)** — Shell integration (aliases, functions, env, path, completions, sourceFile, sourceFunction, source, symlinks), hook events and context, completions configuration.
 
-- **[configuration.md](references/configuration.md)** — Project config (`defineConfig`), getting started, platform support, virtual environments, advanced topics, troubleshooting.
+- **Configuration Guide** — Project configuration (`defineConfig`), getting started, platform support, virtual environments, advanced topics, troubleshooting.
+  - [getting-started.md](references/configuration/getting-started.md)
+  - [project-configuration.md](references/configuration/project-configuration.md)
+  - [platform-specific.md](references/configuration/platform-specific.md)
+  - [virtual-environments.md](references/configuration/virtual-environments.md)
+  - [common-patterns.md](references/configuration/common-patterns.md)
+  - [advanced-topics.md](references/configuration/advanced-topics.md)
+  - [troubleshooting.md](references/configuration/troubleshooting.md)
 
 ## Method Selection Quick Reference
 

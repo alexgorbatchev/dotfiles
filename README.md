@@ -1,4 +1,4 @@
-# Dotfiles Generator: Declarative, Versioned, and Automated
+# @alexgorbatchev/dotfiles
 
 A modern command-line tool for automated management of developer dotfiles, tool installations, and shell configurations across different systems.
 
@@ -164,7 +164,7 @@ npm install -g @alexgorbatchev/dotfiles
 ### Getting Started
 
 - **[Tool Creation Guide](.agents/skills/dotfiles/references/make-tool.md)** - Complete guide to creating `.tool.ts` files
-- **[Configuration](.agents/skills/dotfiles/references/configuration.md)** - Project config, getting started, common patterns, platform support
+- **[Configuration](.agents/skills/dotfiles/references/configuration/project-configuration.md)** - Project config, getting started, common patterns, platform support
 
 ### Shell Integration
 
