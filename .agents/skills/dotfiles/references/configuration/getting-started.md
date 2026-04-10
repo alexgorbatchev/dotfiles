@@ -6,6 +6,16 @@ This guide covers how to create `.tool.ts` configuration files for your CLI tool
 
 Set up your project configuration first. See Project Configuration for instructions.
 
+## Bootstrap Install
+
+To bootstrap a dotfiles project in the current directory, run:
+
+```bash
+curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
+```
+
+The hosted installer adds `@alexgorbatchev/dotfiles` to the local `package.json`, creates a minimal `dotfiles.config.ts` when needed, installs managed Bun, and runs `dotfiles generate` for you.
+
 ## File Structure
 
 Tool configurations are placed in your `toolConfigsDir` (default: `~/.dotfiles/tools`):

@@ -34,9 +34,20 @@ This project replaces that fragile, manual system with a declarative, programmat
 
 ## Quick Start
 
+### Bootstrap Install
+
+Use the hosted installer to provision dotfiles in the current directory. It installs the package locally, provisions missing config, installs managed Bun, and runs `dotfiles generate` for you.
+
+```bash
+curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
+```
+
+### Manual Install
+
+If you do not want to use the hosted installer, install Bun first and then set up dotfiles manually:
+
 ```bash
 # Install Bun first: https://bun.sh
-# Then initialize configuration for the first time
 dotfiles init
 
 # Install a tool by name
