@@ -1,9 +1,11 @@
-import { $ } from "bun";
 import fs from "node:fs";
 import path from "node:path";
+import { $ } from "bun";
 
 const sourceDir = path.resolve(import.meta.dir, "../../.agents/skills/dotfiles");
 const destDir = path.resolve(import.meta.dir, "src/content/docs");
+const installerSourcePath = path.resolve(import.meta.dir, "../../scripts/managed-installer/install.sh");
+const installerDestPath = path.resolve(import.meta.dir, "public/install.sh");
 
 // Clean and recreate destination
 await $`rm -rf ${destDir} || true`.quiet();
@@ -11,7 +13,10 @@ await $`mkdir -p ${destDir}`.quiet();
 await $`touch ${destDir}/.gitkeep`.quiet();
 
 // Copy all files from skills references
-await $`cp -R ${sourceDir}/references/ ${destDir}/`.quiet();
+await $`cp -R ${sourceDir}/references/. ${destDir}/`.quiet();
+
+// Copy the installer
+await $`cp ${installerSourcePath} ${installerDestPath}`.quiet();
 
 // Copy the root README.md to be the index page
 const rootReadmePath = path.resolve(import.meta.dir, "../../README.md");
