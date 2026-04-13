@@ -1,9 +1,10 @@
 import "github-markdown-css/github-markdown-light.css";
 
 import { type JSX } from "preact";
-import Markdown, { type Components } from "react-markdown";
-import rehypeRaw from "rehype-raw";
-import remarkGfm from "remark-gfm";
+// Temporarily comment out react-markdown due to minification bug in bun
+// import Markdown, { type Components } from "react-markdown";
+// import rehypeRaw from "rehype-raw";
+// import remarkGfm from "remark-gfm";
 import type { IToolReadmePayload } from "../../shared/types";
 import { BookOpen, ExternalLink } from "../icons";
 
@@ -16,6 +17,7 @@ type ReadmeCardProps = {
   repo: string;
 };
 
+/*
 function resolveGitHubUrl(url: string | undefined, repo: string, forImage: boolean = false): string | undefined {
   if (!url) return url;
   // Already absolute URL
@@ -29,7 +31,7 @@ function resolveGitHubUrl(url: string | undefined, repo: string, forImage: boole
   // Relative URL - use raw for images, blob for other files (like .md)
   const cleanPath = url.startsWith("./") ? url.slice(2) : url;
   const urlType = forImage ? "raw" : "blob";
-  return `https://github.com/${repo}/${urlType}/HEAD/${cleanPath}`;
+  return \`https://github.com/\${repo}/\${urlType}/HEAD/\${cleanPath}\`;
 }
 
 function createMarkdownComponents(repo: string): Components {
@@ -55,6 +57,7 @@ function createMarkdownComponents(repo: string): Components {
     },
   };
 }
+*/
 
 export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
   const { data, loading, error } = useFetch<IToolReadmePayload>(`/tools/${encodeURIComponent(toolName)}/readme`, [
@@ -87,16 +90,15 @@ export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
     );
   }
 
+  // Workaround: return raw pre for readme
   return (
     <TitledCard
       title="README"
       icon={<BookOpen class="h-4 w-4" />}
       action={<ExternalLinkButton href={`https://github.com/${repo}#readme`}>View on GitHub</ExternalLinkButton>}
     >
-      <div class="markdown-body p-4 text-lg">
-        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createMarkdownComponents(repo)}>
-          {data.content}
-        </Markdown>
+      <div class="markdown-body p-4 text-sm bg-muted/25">
+        <pre class="whitespace-pre-wrap font-mono"><code>{data.content}</code></pre>
       </div>
     </TitledCard>
   );
