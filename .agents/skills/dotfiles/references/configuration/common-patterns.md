@@ -156,9 +156,7 @@ export default defineTool((install) =>
     repo: "owner/tool",
     assetSelector: ({ assets, systemInfo }) => {
       // Both 'x64-linux-gnu' and 'x64-linux-musl' exist, but we only want 'gnu'
-      return assets.find(
-        (a) => a.name.includes(systemInfo.platform) && a.name.includes('gnu')
-      );
+      return assets.find((a) => a.name.includes(systemInfo.platform) && a.name.includes("gnu"));
     },
   }).bin("tool"),
 );

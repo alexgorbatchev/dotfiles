@@ -15,20 +15,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { TestHarness } from "./helpers/TestHarness";
 
-const TOOL_CONFIG_ONE_SYMLINK = `import { defineTool } from '@dotfiles/cli';
+const TOOL_CONFIG_ONE_SYMLINK = `import { defineTool } from "@dotfiles/cli";
 
-export default defineTool((install) =>
-  install()
-    .symlink('./my-config.yml', '~/.config/symlink-tool/config.yml')
-);
+export default defineTool((install) => install().symlink("./my-config.yml", "~/.config/symlink-tool/config.yml"));
 `;
 
-const TOOL_CONFIG_TWO_SYMLINKS = `import { defineTool } from '@dotfiles/cli';
+const TOOL_CONFIG_TWO_SYMLINKS = `import { defineTool } from "@dotfiles/cli";
 
 export default defineTool((install) =>
   install()
-    .symlink('./my-config.yml', '~/.config/symlink-tool/config.yml')
-    .symlink('./extra-config.yml', '~/.config/symlink-tool/extra.yml')
+    .symlink("./my-config.yml", "~/.config/symlink-tool/config.yml")
+    .symlink("./extra-config.yml", "~/.config/symlink-tool/extra.yml"),
 );
 `;
 

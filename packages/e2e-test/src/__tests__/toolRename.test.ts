@@ -5,8 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { TestHarness } from "./helpers/TestHarness";
 
-const ORIGINAL_TOOL_CONFIG =
-  "import { defineTool } from '@dotfiles/cli';\n\nexport default defineTool((install) =>\n  install().symlink('./config.txt', '~/.config/renameable-tool/config.txt')\n);\n";
+const ORIGINAL_TOOL_CONFIG = `import { defineTool } from "@dotfiles/cli";\n\nexport default defineTool((install) => install().symlink("./config.txt", "~/.config/renameable-tool/config.txt"));\n`;
 
 describe("E2E: tool rename cleanup", () => {
   const harness = new TestHarness({
