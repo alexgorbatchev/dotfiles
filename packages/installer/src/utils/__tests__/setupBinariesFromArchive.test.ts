@@ -56,4 +56,45 @@ describe("setupBinariesFromArchive", () => {
     expect(binaryPaths).toEqual([entrypointPath]);
     expect(await setup.fs.readlink(entrypointPath)).toBe("go/bin/go");
   });
+
+  it("creates entrypoints that keep extracted payloads under a dedicated subdirectory", async () => {
+    const toolName = "go";
+    const version = "1.26.2";
+    const stagingDir = path.join(setup.testDirs.paths.binariesDir, toolName, version);
+    const extractDir = path.join(stagingDir, "extracted");
+    const nestedBinaryPath = path.join(extractDir, "go", "bin", "go");
+
+    await setup.fs.ensureDir(path.dirname(nestedBinaryPath));
+    await setup.fs.writeFile(nestedBinaryPath, "#!/bin/sh\nexit 0\n");
+    await setup.fs.chmod(nestedBinaryPath, 0o755);
+
+    const toolConfig: ToolConfig = {
+      name: toolName,
+      binaries: [{ name: "go", pattern: "go/bin/go" }],
+      version,
+      installationMethod: "curl-tar",
+      installParams: {
+        url: "https://example.com/go.tar.gz",
+      },
+    } as ToolConfig;
+
+    const context = {
+      projectConfig: setup.mockProjectConfig,
+      stagingDir,
+    } as IInstallContext;
+
+    const binaryPaths = await setupBinariesFromArchive(
+      setup.fs,
+      toolName,
+      toolConfig,
+      context,
+      extractDir,
+      setup.logger,
+    );
+
+    const entrypointPath = path.join(setup.mockProjectConfig.paths.generatedDir, "binaries", toolName, version, "go");
+
+    expect(binaryPaths).toEqual([entrypointPath]);
+    expect(await setup.fs.readlink(entrypointPath)).toBe(path.join("extracted", "go", "bin", "go"));
+  });
 });

@@ -62,6 +62,7 @@ async function setupBinariesUsingPatterns(
 ): Promise<string[]> {
   const logger = parentLogger.getSubLogger({ name: "setupBinariesUsingPatterns" });
   const entrypointPaths: string[] = [];
+  const installDir = path.join(binariesDir, toolName, versionOrTimestamp);
 
   for (const binaryConfig of binaryConfigs) {
     const { name: binaryName, pattern } = binaryConfig;
@@ -85,7 +86,7 @@ async function setupBinariesUsingPatterns(
     }
 
     // Create stable entrypoint file for this binary
-    const relativePath = path.relative(extractDir, binaryPath);
+    const relativePath = path.relative(installDir, binaryPath);
     await createBinaryEntrypoint(fs, toolName, binaryName, versionOrTimestamp, relativePath, binariesDir, logger);
 
     // Return the stable entrypoint path so downstream install state does not try to

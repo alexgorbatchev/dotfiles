@@ -46,6 +46,8 @@ All hooks receive a context object with:
 
 > **Note:** The `stagingDir` and `projectConfig` properties form the base environment context (`IEnvContext`) that is also available to dynamic `env` functions in install parameters.
 
+For archive-based installers, `extractDir` is a dedicated subdirectory under `stagingDir` so extracted payloads do not collide with generated binary entrypoints created at the staging root.
+
 ## Examples
 
 ### File Operations
