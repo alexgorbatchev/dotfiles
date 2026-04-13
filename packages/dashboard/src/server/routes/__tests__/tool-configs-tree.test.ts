@@ -33,7 +33,7 @@ describe("getToolConfigsTree", () => {
     const toolsDir = "/home/user/.dotfiles/tools";
     const brokenPath = "/home/user/.dotfiles/tools/broken";
 
-    ctx.toolConfigs.fzf = createMockToolConfigForTests({
+    ctx.toolConfigs["fzf"] = createMockToolConfigForTests({
       name: "fzf",
       configFilePath: "/home/user/.dotfiles/tools/fzf.tool.ts",
     });
