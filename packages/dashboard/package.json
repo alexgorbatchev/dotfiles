@@ -7,6 +7,9 @@
     ".": "./src/index.ts",
     "./server": "./src/server/index.ts"
   },
+  "scripts": {
+    "verify-dashboard": "bun run ./scripts/verify-dashboard.ts"
+  },
   "dependencies": {
     "@dotfiles/config": "workspace:*",
     "@dotfiles/core": "workspace:*",

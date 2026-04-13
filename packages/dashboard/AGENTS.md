@@ -18,6 +18,7 @@ Dashboard server and Preact client for browsing tool state, health, and usage da
 - Dashboard dependency changes can break Bun HTML bundling even when local tests pass. Always rerun `bun compile` after changing dashboard dependencies.
 - **WORKAROUND**: Heavy parsing libraries (`shiki`, `marked`, `dompurify`) are loaded via `<script>` tags in `dashboard.html` instead of NPM dependencies. Do NOT add heavy ESM libraries to `package.json` that are used in the client. This bypasses an active bug in Bun's HTML bundler where minifier variable name collisions occur in production chunks (e.g., `Ev is not defined` or `Ro is not defined`).
 - See `DIAGNOSTICS.md` for the current dashboard-specific failure modes and validation workflow.
+- You can run `bun verify-dashboard` in the `packages/dashboard` directory (or execute `packages/dashboard/scripts/verify-dashboard.ts` from root) to boot up the compiled CLI and assert against the actual production bundle in `agent-browser`.
 
 ## Boundaries
 
