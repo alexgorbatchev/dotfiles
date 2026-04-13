@@ -27,7 +27,7 @@ export default defineTool((install) => install("github-release", { repo: "junegu
 
 ## Asset Selection (Optional)
 
-The installer uses built-in smart selection logic by default. It parses filenames and correctly matches combinations of OS and CPU architecture (e.g. `linux`/`darwin`/`macos` + `amd64`/`arm64`/`x86_64`).
+The installer uses built-in smart selection logic by default. It parses filenames and correctly matches combinations of OS and CPU architecture (e.g. `linux`/`darwin`/`macos`/`win`/`windows` + `amd64`/`arm64`/`aarch64`/`x64`/`x86_64`).
 
 **You should ONLY provide an `assetPattern` or `assetSelector` if the default selection logic fails to find a file or downloads the wrong asset.**
 
@@ -42,12 +42,16 @@ install("github-release", {
 
 ### Custom Asset Selector
 
+Use `assetSelector` when the repository publishes multiple valid assets for your platform (e.g. `musl` vs `gnu` on Linux) and the default smart selector picks the wrong one:
+
 ```typescript
 install("github-release", {
   repo: "example/tool",
   assetSelector: ({ assets, systemInfo }) => {
-    const platform = systemInfo.platform === "darwin" ? "macos" : systemInfo.platform;
-    return assets.find((a) => a.name.includes(platform));
+    // Both 'x64-linux-gnu' and 'x64-linux-musl' exist, but we only want 'gnu'
+    return assets.find(
+      (a) => a.name.includes(systemInfo.platform) && a.name.includes('gnu')
+    );
   },
 }).bin("tool");
 ```
