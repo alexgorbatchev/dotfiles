@@ -321,6 +321,8 @@ Reference: [Shell Integration Guide](shell-and-hooks.md#symbolic-links)
 ### Step 5: Add Platform Support (only when needed)
 
 > **Important**: Only use `.platform()` when a single installer unable to provide necessary binaries. The `github-release` installer automatically selects the correct asset based on standard naming conventions (`darwin`/`linux`/`macos`/`win`/`windows`, `amd64`/`arm64`/`aarch64`/`x86_64`). Only specify an `assetPattern` or `assetSelector` if the default built-in logic fails to find or resolves the wrong asset.
+>
+> **Do not preemptively add `.platform()` overrides for missing architectures** (e.g. adding a `brew` fallback just because a macOS x64 build is missing from GitHub releases). The installer and OS (via Rosetta) may handle it gracefully. Assume the tool will work with a single method unless explicitly requested or verified to be broken.
 
 Use `.platform()` for platform- and architecture-specific overrides. The callback receives an `install` function for that specific platform.
 
