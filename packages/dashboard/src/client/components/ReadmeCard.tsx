@@ -81,10 +81,7 @@ export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
       icon={<BookOpen class="h-4 w-4" />}
       action={<ExternalLinkButton href={`https://github.com/${repo}#readme`}>View on GitHub</ExternalLinkButton>}
     >
-      <div 
-        class="markdown-body p-4 text-lg" 
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      <div class="markdown-body p-4 text-lg" dangerouslySetInnerHTML={{ __html: html }} />
     </TitledCard>
   );
 }

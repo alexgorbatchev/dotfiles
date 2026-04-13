@@ -7,7 +7,7 @@ declare global {
 export async function highlightToolSource(source: string): Promise<string> {
   // WORKAROUND: Temporarily load Shiki via CDN in dashboard.html to bypass Bun's HTML bundler minification bug
   // The bug causes "Ev is not defined" or similar minifier-variable collisions in production builds.
-  
+
   if (typeof window !== "undefined" && window.shiki) {
     try {
       return await window.shiki.codeToHtml(source, {

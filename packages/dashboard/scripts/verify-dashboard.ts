@@ -10,28 +10,31 @@ import { resolve } from "path";
  */
 async function main() {
   const rootDir = resolve(import.meta.dir, "../../..");
-  
+
   console.log("Starting dashboard...");
   const port = "13580";
-  
+
   // Start the actual CLI dashboard from the built package
-  const proc = Bun.spawn(["bun", ".dist/cli.js", "--config=test-project/dotfiles.config.ts", "dashboard", "--port", port, "--no-open"], {
-    cwd: rootDir,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const proc = Bun.spawn(
+    ["bun", ".dist/cli.js", "--config=test-project/dotfiles.config.ts", "dashboard", "--port", port, "--no-open"],
+    {
+      cwd: rootDir,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
 
   // Give the dashboard a few seconds to boot up
-  await new Promise(r => setTimeout(r, 4000));
+  await new Promise((r) => setTimeout(r, 4000));
 
   let failed = false;
   try {
     const url = `http://localhost:${port}/tools/github-release--bat`;
     console.log(`Running agent-browser on ${url}...`);
-    
+
     // Clear previous errors and load the page
     await $`agent-browser errors --clear && agent-browser open "${url}" && agent-browser wait 3000`.quiet();
-    
+
     // 1. Check for Console Errors
     const errs = await $`agent-browser errors --json`.text();
     const parsedErrs = JSON.parse(errs);
@@ -45,9 +48,9 @@ async function main() {
 
     // 2. Check that Shiki Highlighted the Code
     const shikiRendered = await $`agent-browser get html ".shiki"`.text().catch(() => "");
-    // If shiki fails to load, our fallback just wraps the text in `<pre class="shiki"><code>...` 
+    // If shiki fails to load, our fallback just wraps the text in `<pre class="shiki"><code>...`
     // without injecting all the individual `<span style="color: ...">` syntax tokens.
-    if (shikiRendered.includes("style=\"color:")) {
+    if (shikiRendered.includes('style="color:')) {
       console.log("✅ Shiki syntax highlighting is working.");
     } else {
       console.error("❌ Shiki highlighting failed or didn't render spans.");
@@ -64,7 +67,6 @@ async function main() {
       console.error("❌ Markdown rendering failed or only output raw text.");
       failed = true;
     }
-
   } finally {
     proc.kill();
   }
