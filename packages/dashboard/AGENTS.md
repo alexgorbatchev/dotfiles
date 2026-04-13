@@ -16,6 +16,7 @@ Dashboard server and Preact client for browsing tool state, health, and usage da
 ## Local gotchas
 
 - Dashboard dependency changes can break Bun HTML bundling even when local tests pass. Always rerun `bun compile` after changing dashboard dependencies.
+- See `DIAGNOSTICS.md` for the current dashboard-specific failure modes and validation workflow.
 
 ## Boundaries
 
@@ -25,6 +26,7 @@ Dashboard server and Preact client for browsing tool state, health, and usage da
 ## References
 
 - `README.md`
+- `DIAGNOSTICS.md`
 - `src/testing/ui-setup.ts`
 - `src/client/`
 - `src/server/`
