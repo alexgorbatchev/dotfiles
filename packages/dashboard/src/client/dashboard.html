@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <title>Dotfiles Dashboard</title>
+    <!-- WORKAROUND: Bun HTMLBundle bug - Do not bundle heavy libraries due to minifier name collisions (e.g. "Ev is not defined") -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-light.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.2/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script type="module">
+      import { codeToHtml } from "https://esm.sh/shiki@3.23.0";
+      window.shiki = { codeToHtml };
+    </script>
   </head>
   <body class="min-h-screen">
     <div id="app"></div>

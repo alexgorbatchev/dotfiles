@@ -1,9 +1,4 @@
-import "github-markdown-css/github-markdown-light.css";
-
 import { type JSX } from "preact";
-import Markdown, { type Components } from "react-markdown";
-import rehypeRaw from "rehype-raw";
-import remarkGfm from "remark-gfm";
 import type { IToolReadmePayload } from "../../shared/types";
 import { BookOpen, ExternalLink } from "../icons";
 
@@ -11,49 +6,33 @@ import { useFetch } from "../hooks/useFetch";
 import { ExternalLinkButton } from "./ui/ExternalLinkButton";
 import { TitledCard } from "./ui/TitledCard";
 
+// Using global marked and DOMPurify loaded via CDN in dashboard.html
+// to workaround Bun's HTMLBundle minifier issues with heavy dependencies
+declare global {
+  interface Window {
+    marked: any;
+    DOMPurify: any;
+  }
+}
+
 type ReadmeCardProps = {
   toolName: string;
   repo: string;
 };
 
-function resolveGitHubUrl(url: string | undefined, repo: string, forImage: boolean = false): string | undefined {
-  if (!url) return url;
-  // Already absolute URL
-  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("//")) {
-    return url;
-  }
-  // Anchor links
-  if (url.startsWith("#")) {
-    return url;
-  }
-  // Relative URL - use raw for images, blob for other files (like .md)
-  const cleanPath = url.startsWith("./") ? url.slice(2) : url;
-  const urlType = forImage ? "raw" : "blob";
-  return `https://github.com/${repo}/${urlType}/HEAD/${cleanPath}`;
-}
-
-function createMarkdownComponents(repo: string): Components {
-  return {
-    a: ({ href, children, ...props }) => {
-      const hrefStr = typeof href === "string" ? href : undefined;
-      const resolvedHref = resolveGitHubUrl(hrefStr, repo, false);
-      const isAnchor = hrefStr?.startsWith("#");
-      return (
-        <a
-          {...props}
-          href={resolvedHref}
-          target={isAnchor ? undefined : "_blank"}
-          rel={isAnchor ? undefined : "noopener noreferrer"}
-        >
-          {children}
-        </a>
-      );
-    },
-    img: ({ src, alt, ...props }) => {
-      const srcStr = typeof src === "string" ? src : undefined;
-      return <img {...props} src={resolveGitHubUrl(srcStr, repo, true)} alt={alt} />;
-    },
-  };
+// Simple relative link fixer for GitHub repos
+function resolveGitHubUrls(html: string, repo: string): string {
+  // A naive pass at fixing src="./" and href="./" to point to github raw/blob
+  // This is a minimal replacement for what remark/rehype was doing.
+  return html
+    .replace(/src=(["'])(?:\.\/)?([^"']+)\1/g, (match, quote, path) => {
+      if (path.startsWith("http") || path.startsWith("data:")) return match;
+      return `src=${quote}https://github.com/${repo}/raw/HEAD/${path}${quote}`;
+    })
+    .replace(/href=(["'])(?:\.\/)?([^"']+)\1/g, (match, quote, path) => {
+      if (path.startsWith("http") || path.startsWith("#") || path.startsWith("mailto:")) return match;
+      return `href=${quote}https://github.com/${repo}/blob/HEAD/${path}${quote}`;
+    });
 }
 
 export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
@@ -87,17 +66,25 @@ export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
     );
   }
 
+  let html = "";
+  if (typeof window !== "undefined" && window.marked && window.DOMPurify) {
+    html = window.DOMPurify.sanitize(window.marked.parse(data.content));
+    html = resolveGitHubUrls(html, repo);
+  } else {
+    // SSR fallback or if CDN failed
+    html = `<pre>${data.content}</pre>`;
+  }
+
   return (
     <TitledCard
       title="README"
       icon={<BookOpen class="h-4 w-4" />}
       action={<ExternalLinkButton href={`https://github.com/${repo}#readme`}>View on GitHub</ExternalLinkButton>}
     >
-      <div class="markdown-body p-4 text-lg">
-        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createMarkdownComponents(repo)}>
-          {data.content}
-        </Markdown>
-      </div>
+      <div 
+        class="markdown-body p-4 text-lg" 
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
     </TitledCard>
   );
 }
