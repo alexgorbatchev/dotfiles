@@ -1,6 +1,6 @@
 import { NodeFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
-import { exitCli, ExitCode, getCliBinPath } from "@dotfiles/utils";
+import { exitCli, ExitCode, getCliScriptPath } from "@dotfiles/utils";
 import { cp } from "node:fs/promises";
 import path from "node:path";
 import { messages } from "./log-messages";
@@ -16,7 +16,7 @@ export const SKILL_COMMAND_COMPLETION: ICommandCompletionMeta = {
 type SkillCommandOptions = { targetPath: string } & IGlobalProgramOptions;
 
 function getSkillPath(): string {
-  const scriptDir = path.dirname(getCliBinPath());
+  const scriptDir = path.dirname(getCliScriptPath());
   return path.join(scriptDir, "skill");
 }
 

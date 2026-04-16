@@ -1,6 +1,6 @@
 declare const CLI_BIN_PATH: string | undefined;
 
-import { getCliBinPath } from "./getCliBinPath";
+import { getCliScriptPath } from "./getCliScriptPath";
 
 /**
  * Gets the command string used to invoke the current CLI entrypoint.
@@ -13,5 +13,5 @@ export function getCliInvocationCommand(): string {
     return CLI_BIN_PATH;
   }
 
-  return `bun ${getCliBinPath()}`;
+  return `bun ${getCliScriptPath()}`;
 }

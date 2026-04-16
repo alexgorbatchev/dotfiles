@@ -10,7 +10,7 @@ export * from "./generateTimestamp";
 export * from "./generateToolTypes";
 export * from "./getAllFilesRecursively";
 export * from "./getBuiltPackageName";
-export * from "./getCliBinPath";
+export * from "./getCliScriptPath";
 export * from "./getCliInvocationCommand";
 export * from "./normalizeVersion";
 export * from "./proxyFetch";

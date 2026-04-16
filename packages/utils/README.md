@@ -240,15 +240,15 @@ const resolved = resolvePlatformConfig(config, {
 
 ### CLI Utilities
 
-#### `getCliBinPath(): string`
+#### `getCliScriptPath(): string`
 
-Gets the path to the current CLI binary executable.
+Gets the path to the current CLI script or executable.
 
 ```typescript
-import { getCliBinPath } from "@dotfiles/utils";
+import { getCliScriptPath } from "@dotfiles/utils";
 
-const binPath = getCliBinPath();
-// Returns: '/path/to/cli/binary'
+const scriptPath = getCliScriptPath();
+// Returns: '/path/to/cli.js'
 ```
 
 #### `exitCli(code: number): never`
