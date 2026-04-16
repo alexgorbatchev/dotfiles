@@ -9,6 +9,7 @@ Traditional dotfiles are often a collection of scattered shell scripts and manua
 - **Inconsistent Environments**: Your setup on your work machine drifts from your personal machine.
 - **Tedious Manual Setup**: Setting up a new machine takes hours of manual `brew install`, `git clone`, and `cp` commands.
 - **Shell-Only Tools**: Tools installed via shell scripts are often not available to GUI applications like VS Code or Raycast.
+- **No registry**: Most tool managers depend on external registries. While most popular tools are in those registries, majority of other tools are not.
 - **Fragile Scripts**: Shell scripts break easily and are hard to maintain and test.
 
 This project replaces that fragile, manual system with a declarative, programmatic, and automated solution.
