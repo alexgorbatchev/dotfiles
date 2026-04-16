@@ -49,3 +49,4 @@ CLAUDE.md
 /opencode.jsonc
 /.agents/memories
 /packages/docs/public/install.sh
+/.worktrees
