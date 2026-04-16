@@ -23,7 +23,7 @@ import {
   withPriority,
   withSource,
 } from "@dotfiles/shell-emissions";
-import { getCliBinPath } from "@dotfiles/utils";
+import { getCliInvocationCommand } from "@dotfiles/utils";
 import path from "node:path";
 import { createEmissionFormatter } from "../formatters";
 import type { IAdditionalShellFile, IShellGenerator } from "./IShellGenerator";
@@ -292,7 +292,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     blockBuilder.addEmission(defaultPathEmission);
 
     // Add CLI function
-    const cliPath = getCliBinPath();
+    const cliPath = getCliInvocationCommand();
     const escapedConfigPath = this.projectConfig.configFilePath?.replaceAll('"', '\\"');
     const configFlag = escapedConfigPath ? ` --config "${escapedConfigPath}"` : "";
     const cliFunctionBody = `${cliPath}${configFlag} "$@"`;

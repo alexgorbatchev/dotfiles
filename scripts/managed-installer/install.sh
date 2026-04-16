@@ -181,6 +181,7 @@ if [[ "${DOTFILES_SKIP_MANAGED_BUN_INSTALL}" != "1" ]]; then
 	MANAGED_BUN_PATH="$({ "${BUN_BIN}" "${DOTFILES_BIN}" --config "${CONFIG_PATH}" bin "${DOTFILES_BUN_TOOL}" 2>/dev/null || true; })"
 	if [[ -n "${MANAGED_BUN_PATH}" ]]; then
 		log "Managed Bun installed at ${MANAGED_BUN_PATH}"
+		BUN_BIN="${MANAGED_BUN_PATH}"
 	fi
 fi
 

@@ -16,9 +16,7 @@ export const SKILL_COMMAND_COMPLETION: ICommandCompletionMeta = {
 type SkillCommandOptions = { targetPath: string } & IGlobalProgramOptions;
 
 function getSkillPath(): string {
-  const cliBinPath = getCliBinPath();
-  const scriptPath = cliBinPath.split(" ").pop() ?? cliBinPath;
-  const scriptDir = path.dirname(scriptPath);
+  const scriptDir = path.dirname(getCliBinPath());
   return path.join(scriptDir, "skill");
 }
 

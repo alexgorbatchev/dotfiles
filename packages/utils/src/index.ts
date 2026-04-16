@@ -11,6 +11,7 @@ export * from "./generateToolTypes";
 export * from "./getAllFilesRecursively";
 export * from "./getBuiltPackageName";
 export * from "./getCliBinPath";
+export * from "./getCliInvocationCommand";
 export * from "./normalizeVersion";
 export * from "./proxyFetch";
 export * from "./replaceInFile";

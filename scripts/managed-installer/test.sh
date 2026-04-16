@@ -37,6 +37,7 @@ Scenarios:
 	 existing-package-only
 	 existing-config-only
 	 existing-project-full
+	 existing-project-full-temp-bun
 	 failing-package-postinstall
 	 missing-package-spec
 	 missing-unzip
@@ -49,6 +50,7 @@ list_scenarios() {
 		existing-package-only \
 		existing-config-only \
 		existing-project-full \
+		existing-project-full-temp-bun \
 		failing-package-postinstall \
 		missing-package-spec \
 		missing-unzip
@@ -179,7 +181,7 @@ assert_scenario() {
 		assert_contains "${output_log}" "Found dotfiles config"
 		assert_contains "${output_log}" "No package.json found"
 		;;
-	existing-project-full)
+	existing-project-full | existing-project-full-temp-bun)
 		assert_exists "${work_dir}/dotfiles.config.ts"
 		assert_exists "${work_dir}/tools/bun.tool.ts"
 		assert_exists "${work_dir}/bin/bun"
@@ -207,6 +209,11 @@ run_scenario() {
 
 	if [[ "${scenario}" = "missing-package-spec" ]]; then
 		run_missing_package_spec_scenario
+		return 0
+	fi
+
+	if [[ "${scenario}" = "existing-project-full-temp-bun" ]]; then
+		run_existing_project_full_temp_bun_scenario
 		return 0
 	fi
 
@@ -398,6 +405,63 @@ run_missing_package_spec_scenario() {
 	fi
 }
 
+run_existing_project_full_temp_bun_scenario() {
+	local scenario="existing-project-full-temp-bun"
+	local temp_root
+	temp_root="$(mktemp -d "${TMPDIR:-/tmp}/bootstrap-install-test.${scenario}.XXXXXX")"
+	local work_dir="${temp_root}/workspace"
+	local output_log="${temp_root}/install.log"
+	local path_stub_dir="${temp_root}/path"
+	local bun_binary
+	bun_binary="$(command -v bun)"
+	local exit_code=0
+	local preserved_temp_dirs=()
+	local temp_dir_candidate
+	local shell_init_path="${work_dir}/.generated/shell-scripts/main.zsh"
+
+	log "Preparing scenario '${scenario}' in ${work_dir}"
+	copy_fixture "existing-project-full" "${work_dir}"
+	replace_bun_placeholder "${work_dir}" "${bun_binary}"
+	load_scenario_env "existing-project-full"
+	mkdir -p "${path_stub_dir}"
+	write_fake_bun_install_stub "${path_stub_dir}/curl" "${bun_binary}"
+	write_command_stub "${path_stub_dir}/unzip"
+
+	set +e
+	(
+		cd "${work_dir}"
+		PATH="${path_stub_dir}:/bin:/usr/bin" \
+			TMPDIR="${temp_root}" \
+			DOTFILES_YES=1 \
+			DOTFILES_PACKAGE_SPEC="${DIST_PACKAGE_SPEC}" \
+			DOTFILES_SKIP_MANAGED_BUN_INSTALL="${DOTFILES_SKIP_MANAGED_BUN_INSTALL}" \
+			bash "${INSTALL_SCRIPT}"
+	) >"${output_log}" 2>&1
+	exit_code=$?
+	set -e
+
+	[[ "${exit_code}" -eq 0 ]] || fail "Expected installer to succeed with temp Bun and an existing managed Bun tool"
+	assert_scenario "${scenario}" "${work_dir}" "${output_log}"
+	assert_exists "${shell_init_path}"
+	assert_not_contains "${shell_init_path}" "dotfiles-install."
+	zsh -c 'source "$1" && dotfiles --version >/dev/null' _ "${shell_init_path}" || fail "Expected generated dotfiles shell function to run after temp Bun cleanup"
+
+	shopt -s nullglob
+	for temp_dir_candidate in "${temp_root}"/dotfiles-install.*; do
+		preserved_temp_dirs+=("${temp_dir_candidate}")
+	done
+	shopt -u nullglob
+
+	[[ "${#preserved_temp_dirs[@]}" -eq 0 ]] || fail "Expected temporary Bun directory to be cleaned up after successful bootstrap"
+	log "Scenario '${scenario}' passed"
+
+	if [[ "${KEEP_WORKDIRS}" = "1" ]]; then
+		log "Kept workdir: ${work_dir}"
+	else
+		rm -rf "${temp_root}"
+	fi
+}
+
 main() {
 	if [[ $# -eq 0 ]]; then
 		usage
@@ -418,7 +482,7 @@ main() {
 			list_scenarios
 			return 0
 			;;
-		all | fresh-empty | existing-package-only | existing-config-only | existing-project-full | failing-package-postinstall | missing-package-spec | missing-unzip)
+		all | fresh-empty | existing-package-only | existing-config-only | existing-project-full | existing-project-full-temp-bun | failing-package-postinstall | missing-package-spec | missing-unzip)
 			if [[ -n "${scenario}" ]]; then
 				fail "Only one scenario argument is allowed"
 			fi

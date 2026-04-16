@@ -4,7 +4,7 @@ import type { IFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
 import { TrackedFileSystem } from "@dotfiles/registry/file";
 import type { IToolInstallationRegistry } from "@dotfiles/registry/tool";
-import { dedentString, getCliBinPath, resolvePlatformConfig } from "@dotfiles/utils";
+import { dedentString, getCliInvocationCommand, resolvePlatformConfig } from "@dotfiles/utils";
 import path from "node:path";
 import type { IGenerateShimsOptions, IShimGenerator } from "./IShimGenerator";
 import { messages } from "./log-messages";
@@ -233,7 +233,7 @@ export class ShimGenerator implements IShimGenerator {
       TOOL_NAME="${toolName}"
       BINARY_NAME="${binaryName}"
       TOOL_EXECUTABLE="${toolBinaryPath}"
-      GENERATOR_CLI_EXECUTABLE="${getCliBinPath()}"
+      GENERATOR_CLI_EXECUTABLE="${getCliInvocationCommand()}"
       CONFIG_PATH="${this.config.configFilePath}"
 
       # Check for recursion
