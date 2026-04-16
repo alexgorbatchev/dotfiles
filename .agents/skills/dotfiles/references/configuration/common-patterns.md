@@ -148,15 +148,14 @@ export default defineTool((install) =>
 
 ## Custom Asset Selection
 
-Use `assetSelector` when the repository publishes multiple valid assets for your platform (e.g. `musl` vs `gnu` on Linux) and the default smart selector picks the wrong one:
+Use `assetSelector` when the repository uses non-standard asset names or when you intentionally want something other than the default smart selector. Standard Linux `gnu` vs `musl` release names are handled automatically.
 
 ```typescript
 export default defineTool((install) =>
   install("github-release", {
     repo: "owner/tool",
-    assetSelector: ({ assets, systemInfo }) => {
-      // Both 'x64-linux-gnu' and 'x64-linux-musl' exist, but we only want 'gnu'
-      return assets.find((a) => a.name.includes(systemInfo.platform) && a.name.includes("gnu"));
+    assetSelector: ({ assets }) => {
+      return assets.find((a) => a.name.endsWith("-portable.tar.gz"));
     },
   }).bin("tool"),
 );

@@ -1,4 +1,4 @@
-import { Architecture, type ISystemInfo, Platform } from "@dotfiles/core";
+import { Architecture, Libc, type ISystemInfo, Platform } from "@dotfiles/core";
 import { describe, expect, it } from "bun:test";
 import { getArchitecturePatterns } from "../getArchitecturePatterns";
 
@@ -60,6 +60,7 @@ describe("getArchitecturePatterns", () => {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: "/home/test",
+      libc: Libc.Gnu,
       hostname: "test-host",
     };
 
@@ -67,7 +68,7 @@ describe("getArchitecturePatterns", () => {
 
     expect(patterns.system).toEqual(["linux"]);
     expect(patterns.cpu).toEqual(["amd64", "x86_64", "x64", "x86-64"]);
-    expect(patterns.variants).toEqual(["musl", "gnu", "unknown-linux"]);
+    expect(patterns.variants).toEqual(["gnu", "musl", "unknown-linux"]);
   });
 
   it("should generate correct patterns for Linux ARM64", () => {
@@ -75,6 +76,7 @@ describe("getArchitecturePatterns", () => {
       platform: Platform.Linux,
       arch: Architecture.Arm64,
       homeDir: "/home/test",
+      libc: Libc.Musl,
       hostname: "test-host",
     };
 
@@ -132,6 +134,7 @@ describe("getArchitecturePatterns", () => {
       platform: Platform.Linux,
       arch: Architecture.None,
       homeDir: "/home/test",
+      libc: Libc.Unknown,
       hostname: "test-host",
     };
 
@@ -139,6 +142,6 @@ describe("getArchitecturePatterns", () => {
 
     expect(patterns.system).toEqual(["linux"]);
     expect(patterns.cpu).toEqual([]);
-    expect(patterns.variants).toEqual(["musl", "gnu", "unknown-linux"]);
+    expect(patterns.variants).toEqual(["unknown-linux", "gnu", "musl"]);
   });
 });

@@ -71,6 +71,7 @@ export function createToolConfigContext(
     platform: systemInfo.platform,
     arch: systemInfo.arch,
     homeDir: projectConfig.paths.homeDir,
+    libc: systemInfo.libc,
     hostname: systemInfo.hostname,
   };
 

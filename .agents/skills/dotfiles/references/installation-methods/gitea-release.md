@@ -48,15 +48,14 @@ install("gitea-release", {
 
 ### Custom Asset Selector
 
-Use `assetSelector` when the repository publishes multiple valid assets for your platform (e.g. `musl` vs `gnu` on Linux) and the default smart selector picks the wrong one:
+Use `assetSelector` when the repository uses non-standard asset names or when you intentionally want something other than the default smart selector. Standard Linux `gnu` vs `musl` release names are handled automatically.
 
 ```typescript
 install("gitea-release", {
   instanceUrl: "https://codeberg.org",
   repo: "owner/tool",
-  assetSelector: ({ assets, systemInfo }) => {
-    // Both 'x64-linux-gnu' and 'x64-linux-musl' exist, but we only want 'gnu'
-    return assets.find((a) => a.name.includes(systemInfo.platform) && a.name.includes("gnu"));
+  assetSelector: ({ assets }) => {
+    return assets.find((a) => a.name.endsWith("-portable.tar.gz"));
   },
 }).bin("tool");
 ```
@@ -103,6 +102,7 @@ Available in `assetSelector` as `systemInfo`:
 | ---------- | -------------------------- |
 | `platform` | `darwin`, `linux`, `win32` |
 | `arch`     | `x64`, `arm64`             |
+| `libc`     | `gnu`, `musl`, `unknown`   |
 
 ## Supported Instances
 

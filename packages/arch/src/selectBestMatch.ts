@@ -1,4 +1,4 @@
-import type { ISystemInfo } from "@dotfiles/core";
+import { Libc, Platform, type ISystemInfo } from "@dotfiles/core";
 import { getArchitecturePatterns } from "./getArchitecturePatterns";
 import { getArchitectureRegex } from "./getArchitectureRegex";
 
@@ -69,6 +69,72 @@ function applySoftFilter(candidates: string[], pattern: string): string[] {
   return filtered.length > 0 ? filtered : candidates;
 }
 
+const GNU_VARIANT_PATTERN = /(^|[^a-z0-9])(gnu|glibc)([^a-z0-9]|$)/i;
+const MUSL_VARIANT_PATTERN = /(^|[^a-z0-9])musl([^a-z0-9]|$)/i;
+
+type LinuxVariant = "generic" | "gnu" | "musl";
+
+function classifyLinuxVariant(assetName: string): LinuxVariant {
+  if (MUSL_VARIANT_PATTERN.test(assetName)) {
+    return "musl";
+  }
+
+  if (GNU_VARIANT_PATTERN.test(assetName)) {
+    return "gnu";
+  }
+
+  return "generic";
+}
+
+function rankLinuxVariant(variant: LinuxVariant, libc: Libc | undefined): number {
+  switch (libc ?? Libc.Unknown) {
+    case Libc.Gnu:
+      switch (variant) {
+        case "gnu":
+          return 0;
+        case "generic":
+          return 1;
+        default:
+          return 2;
+      }
+    case Libc.Musl:
+      switch (variant) {
+        case "musl":
+          return 0;
+        case "generic":
+          return 1;
+        default:
+          return 2;
+      }
+    default:
+      switch (variant) {
+        case "generic":
+          return 0;
+        case "gnu":
+          return 1;
+        default:
+          return 2;
+      }
+  }
+}
+
+function selectBestLinuxMatch(assetNames: string[], libc: Libc | undefined): string {
+  let bestAssetName = assetNames[0] ?? "";
+  let bestRank = Number.POSITIVE_INFINITY;
+
+  for (const assetName of assetNames) {
+    const variant = classifyLinuxVariant(assetName);
+    const rank = rankLinuxVariant(variant, libc);
+
+    if (rank < bestRank) {
+      bestAssetName = assetName;
+      bestRank = rank;
+    }
+  }
+
+  return bestAssetName;
+}
+
 /**
  * Selects the best matching asset from a list based on architecture patterns,
  * using zinit's iterative filtering approach.
@@ -117,17 +183,19 @@ export function selectBestMatch(assetNames: string[], systemInfo: ISystemInfo): 
     return undefined;
   }
 
-  // Soft filters: CPU then variants, applied iteratively (zinit behavior).
-  // Each filter only narrows when it yields results and >1 candidates remain.
-  const softFilters: string[] = [];
-
-  if (architectureRegex.cpuPattern) {
-    softFilters.push(architectureRegex.cpuPattern);
+  if (architectureRegex.cpuPattern && matches.length > 1) {
+    matches = applySoftFilter(matches, architectureRegex.cpuPattern);
   }
 
-  softFilters.push(...patterns.variants);
+  if (matches.length <= 1) {
+    return matches[0];
+  }
 
-  for (const filter of softFilters) {
+  if (systemInfo.platform === Platform.Linux) {
+    return selectBestLinuxMatch(matches, systemInfo.libc);
+  }
+
+  for (const filter of patterns.variants) {
     if (matches.length <= 1) {
       break;
     }

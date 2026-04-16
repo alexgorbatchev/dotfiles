@@ -1,4 +1,4 @@
-import { ARCH_VALUES, OS_VALUES } from "@dotfiles/config";
+import { ARCH_VALUES, LIBC_VALUES, OS_VALUES } from "@dotfiles/config";
 import { LOG_LEVEL_NAMES } from "@dotfiles/logger";
 import { Command } from "commander";
 import type { ICommandCompletionMeta, IGlobalProgram } from "./types";
@@ -18,6 +18,7 @@ export const GLOBAL_OPTIONS_COMPLETION: ICommandCompletionMeta = {
     { flag: "--quiet", description: "Suppress informational output" },
     { flag: "--platform", description: "Override detected platform", hasArg: true, argPlaceholder: "<platform>" },
     { flag: "--arch", description: "Override detected architecture", hasArg: true, argPlaceholder: "<arch>" },
+    { flag: "--libc", description: "Override detected Linux libc", hasArg: true, argPlaceholder: "<libc>" },
   ],
 };
 
@@ -58,7 +59,8 @@ export function createProgram(): IGlobalProgram {
       false,
     )
     .option("--platform <platform>", `Override the detected platform (${OS_VALUES.join(", ")})`)
-    .option("--arch <arch>", `Override the detected architecture (${ARCH_VALUES.join(", ")})`);
+    .option("--arch <arch>", `Override the detected architecture (${ARCH_VALUES.join(", ")})`)
+    .option("--libc <libc>", `Override the detected Linux libc (${LIBC_VALUES.join(", ")})`);
 
   return program;
 }

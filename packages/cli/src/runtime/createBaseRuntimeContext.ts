@@ -1,5 +1,12 @@
 import { loadConfig, type ProjectConfig } from "@dotfiles/config";
-import { architectureFromNodeJS, type ISystemInfo, platformFromNodeJS } from "@dotfiles/core";
+import {
+  architectureFromNodeJS,
+  libcFromString,
+  Libc,
+  Platform,
+  type ISystemInfo,
+  platformFromNodeJS,
+} from "@dotfiles/core";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
 import { RegistryDatabase } from "@dotfiles/registry-database";
@@ -9,6 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { messages } from "../log-messages";
 import { resolveConfigPath } from "../resolveConfigPath";
+import { detectLibc } from "./detectLibc";
 
 export interface IBaseRuntimeOptions {
   config: string;
@@ -16,9 +24,10 @@ export interface IBaseRuntimeOptions {
   env: NodeJS.ProcessEnv;
   platform?: string;
   arch?: string;
+  libc?: string;
   fileSystem: IFileSystem;
   configFileSystem?: IFileSystem;
-  warnOnPlatformArchOverride?: boolean;
+  warnOnSystemInfoOverride?: boolean;
 }
 
 export interface IBaseRuntimeContext {
@@ -30,23 +39,39 @@ export interface IBaseRuntimeContext {
   toolInstallationRegistry: ToolInstallationRegistry;
 }
 
-function createSystemInfo(parentLogger: TsLogger, options: IBaseRuntimeOptions): ISystemInfo {
+async function createSystemInfo(parentLogger: TsLogger, options: IBaseRuntimeOptions): Promise<ISystemInfo> {
   const platformString: NodeJS.Platform = (options.platform as NodeJS.Platform) || process.platform;
   const archString: NodeJS.Architecture = (options.arch as NodeJS.Architecture) || process.arch;
+  const platform = platformFromNodeJS(platformString);
+  const arch = architectureFromNodeJS(archString);
 
-  if (options.warnOnPlatformArchOverride) {
+  if (options.warnOnSystemInfoOverride) {
     if (options.platform) {
       parentLogger.warn(messages.configParameterOverridden("platform", options.platform));
     }
     if (options.arch) {
       parentLogger.warn(messages.configParameterOverridden("arch", options.arch));
     }
+    if (options.libc && platform === Platform.Linux) {
+      parentLogger.warn(messages.configParameterOverridden("libc", options.libc));
+    }
   }
 
+  const libc =
+    platform !== Platform.Linux
+      ? Libc.Unknown
+      : options.libc
+        ? libcFromString(options.libc)
+        : await detectLibc(platform, arch, {
+            fileSystem: options.fileSystem,
+            getProcessReport: () => process.report?.getReport?.(),
+          });
+
   return {
-    platform: platformFromNodeJS(platformString),
-    arch: architectureFromNodeJS(archString),
+    platform,
+    arch,
     homeDir: os.homedir(),
+    libc,
     hostname: os.hostname(),
   };
 }
@@ -56,7 +81,7 @@ export async function createBaseRuntimeContext(
   options: IBaseRuntimeOptions,
 ): Promise<IBaseRuntimeContext | null> {
   const logger = parentLogger.getSubLogger({ name: "createBaseRuntimeContext" });
-  const systemInfo = createSystemInfo(parentLogger, options);
+  const systemInfo = await createSystemInfo(parentLogger, options);
 
   const configPath = await resolveConfigPath(logger, options.config, {
     cwd: options.cwd,

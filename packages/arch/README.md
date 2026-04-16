@@ -11,7 +11,7 @@ The primary goal of this package is to answer the question: "Which of these file
 1. **Pattern Generation**: It takes system information (e.g., `platform: 'darwin'`, `arch: 'arm64'`) and generates a list of common string patterns used to describe that architecture (e.g., `system: ['apple', 'darwin', 'macos']`, `cpu: ['arm64', 'aarch64']`).
 2. **Regex Creation**: These string patterns are compiled into regular expressions for efficient matching.
 3. **Asset Matching**: It provides functions to filter a list of asset names to find those that match the current system's architecture.
-4. **Disambiguation**: If multiple assets match (e.g., `...-linux-gnu.tar.gz` vs. `...-linux-musl.tar.gz`), it uses an ordered list of "variants" to select the best fit, mimicking Zinit's tie-breaking logic.
+4. **Disambiguation**: If multiple assets match (e.g., `...-linux-gnu.tar.gz` vs. `...-linux-musl.tar.gz`), it uses libc-aware Linux tie-breaking plus ordered variants for other platforms.
 
 ## API
 
@@ -25,7 +25,7 @@ import { getArchitecturePatterns } from "@dotfiles/arch";
 const patterns = getArchitecturePatterns({ platform: "linux", arch: "x64", homeDir: "~" });
 // patterns.system -> ['linux']
 // patterns.cpu -> ['amd64', 'x86_64', 'x64', 'x86-64']
-// patterns.variants -> ['musl', 'gnu', 'unknown-linux']
+// patterns.variants -> ['gnu', 'musl', 'unknown-linux'] on glibc Linux
 ```
 
 ### `createArchitectureRegex(patterns: ArchitecturePatterns): ArchitectureRegex`
@@ -59,19 +59,19 @@ matchesArchitecture("my-tool-darwin-arm64.zip", regex); // false
 
 ### `selectBestMatch(assetNames: string[], systemInfo: SystemInfo): string | undefined`
 
-This is the highest-level function, designed to select the single best asset from a list. It performs the initial filtering and then uses the ordered variants for tie-breaking if multiple matches are found.
+This is the highest-level function, designed to select the single best asset from a list. It performs the initial filtering and then applies platform-specific tie-breaking if multiple matches remain. On Linux, it uses the detected libc to rank explicit `gnu`/`musl` assets against generic Linux assets.
 
 ```typescript
+import { Libc } from "@dotfiles/core";
 import { selectBestMatch } from "@dotfiles/arch";
 
-const assets = ["ripgrep-13.0.0-x86_64-unknown-linux-musl.tar.gz", "ripgrep-13.0.0-x86_64-unknown-linux-gnu.tar.gz"];
+const assets = ["bun-linux-x64-musl-baseline.zip", "bun-linux-x64-baseline.zip"];
 
-// On a standard glibc system, this would be the systemInfo
-const systemInfo = { platform: "linux", arch: "x64", homeDir: "~" };
+const systemInfo = { platform: "linux", arch: "x64", homeDir: "~", libc: Libc.Gnu };
 
-// The 'gnu' variant is preferred over 'musl' by default in the generated patterns
+// On glibc Linux, the generic asset wins over an incompatible musl-specific asset
 const best = selectBestMatch(assets, systemInfo);
-// best -> 'ripgrep-13.0.0-x86_64-unknown-linux-gnu.tar.gz'
+// best -> 'bun-linux-x64-baseline.zip'
 ```
 
 ## Dependencies

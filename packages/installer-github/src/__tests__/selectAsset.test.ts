@@ -3,6 +3,7 @@ import {
   type IGitHubRelease,
   type IGitHubReleaseAsset,
   type IInstallContext,
+  Libc,
   Platform,
 } from "@dotfiles/core";
 import type { IGithubReleaseInstallParams } from "@dotfiles/installer-github";
@@ -95,7 +96,7 @@ function createLinuxArm64Context(): IInstallContext {
   } as IInstallContext;
 }
 
-function createLinuxx64Context(): IInstallContext {
+function createLinuxx64Context(libc: Libc = Libc.Unknown): IInstallContext {
   return {
     toolName: "nvim",
     currentDir: "/path/to/tools/nvim",
@@ -104,6 +105,7 @@ function createLinuxx64Context(): IInstallContext {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: "/home/test",
+      libc,
       hostname: "test-host",
     },
   } as IInstallContext;
@@ -205,6 +207,33 @@ describe("selectAsset", () => {
 
       assert(result.success);
       expect(result.data.name).toBe("nvim-macos-arm64.tar.gz");
+    });
+
+    it("should prefer the generic Linux Bun asset over musl when libc is gnu", async () => {
+      const release: IGitHubRelease = {
+        id: 1,
+        tag_name: "bun-v1.3.12",
+        name: "Bun 1.3.12",
+        draft: false,
+        prerelease: false,
+        created_at: "2024-01-01T00:00:00Z",
+        published_at: "2024-01-01T00:00:00Z",
+        html_url: "https://github.com/oven-sh/bun/releases/tag/bun-v1.3.12",
+        assets: [
+          createMockAsset("bun-linux-x64-musl-baseline.zip"),
+          createMockAsset("bun-linux-x64-baseline.zip"),
+          createMockAsset("bun-darwin-aarch64.zip"),
+        ],
+      };
+      const context = createLinuxx64Context(Libc.Gnu);
+      const params: IGithubReleaseInstallParams = {
+        repo: "oven-sh/bun",
+      };
+
+      const result = await selectAsset(release, params, context, logger);
+
+      assert(result.success);
+      expect(result.data.name).toBe("bun-linux-x64-baseline.zip");
     });
   });
 });

@@ -91,6 +91,7 @@ export interface IGlobalProgramOptions {
   trace: boolean;
   platform?: string;
   arch?: string;
+  libc?: string;
 }
 
 /**

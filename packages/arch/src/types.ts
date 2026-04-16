@@ -31,7 +31,7 @@ export interface IArchitecturePatterns {
    * system and CPU patterns. The order of variants is important, as earlier
    * variants are preferred over later ones during selection.
    *
-   * @example For Linux, this could be `['musl', 'gnu']`, where `musl` is preferred.
+   * @example For Linux on glibc, this could be `['gnu', 'musl', 'unknown-linux']`.
    */
   variants: string[];
 }

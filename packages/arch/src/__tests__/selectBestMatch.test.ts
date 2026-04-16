@@ -1,4 +1,4 @@
-import { Architecture, type ISystemInfo, Platform } from "@dotfiles/core";
+import { Architecture, Libc, type ISystemInfo, Platform } from "@dotfiles/core";
 import { describe, expect, it } from "bun:test";
 import { selectBestMatch } from "../selectBestMatch";
 
@@ -32,25 +32,55 @@ describe("selectBestMatch", () => {
     expect(result).toBe("tool-darwin-arm64.tar.gz");
   });
 
-  it("should prefer musl variant when both musl and gnu are available for Linux", () => {
+  it("should prefer gnu variant when libc is gnu and both gnu and musl assets exist", () => {
     const systemInfo: ISystemInfo = {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: "/home/test",
+      libc: Libc.Gnu,
       hostname: "test-host",
     };
 
     const result = selectBestMatch(
-      [
-        "tool-linux-x86_64-gnu.tar.gz",
-        "tool-linux-x86_64-musl.tar.gz", // musl comes first in variant patterns
-        "tool-darwin-arm64.tar.gz",
-      ],
+      ["tool-linux-x86_64-gnu.tar.gz", "tool-linux-x86_64-musl.tar.gz", "tool-darwin-arm64.tar.gz"],
       systemInfo,
     );
 
-    // Should prefer musl (first in Linux variants: ['musl', 'gnu', 'unknown-linux'])
-    expect(result).toBe("tool-linux-x86_64-musl.tar.gz");
+    expect(result).toBe("tool-linux-x86_64-gnu.tar.gz");
+  });
+
+  it("should prefer a generic Linux asset over musl when libc is gnu", () => {
+    const systemInfo: ISystemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: "/home/test",
+      libc: Libc.Gnu,
+      hostname: "test-host",
+    };
+
+    const result = selectBestMatch(
+      ["bun-linux-x64-musl-baseline.zip", "bun-linux-x64-baseline.zip", "bun-darwin-aarch64.zip"],
+      systemInfo,
+    );
+
+    expect(result).toBe("bun-linux-x64-baseline.zip");
+  });
+
+  it("should prefer musl variant when libc is musl and both generic and musl assets exist", () => {
+    const systemInfo: ISystemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: "/home/test",
+      libc: Libc.Musl,
+      hostname: "test-host",
+    };
+
+    const result = selectBestMatch(
+      ["bun-linux-x64-baseline.zip", "bun-linux-x64-musl-baseline.zip", "bun-darwin-aarch64.zip"],
+      systemInfo,
+    );
+
+    expect(result).toBe("bun-linux-x64-musl-baseline.zip");
   });
 
   it("should accept gnu variant if musl is not available", () => {
@@ -58,6 +88,7 @@ describe("selectBestMatch", () => {
       platform: Platform.Linux,
       arch: Architecture.X86_64,
       homeDir: "/home/test",
+      libc: Libc.Gnu,
       hostname: "test-host",
     };
 

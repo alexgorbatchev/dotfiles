@@ -1,6 +1,17 @@
 import type { ISystemInfo } from "@dotfiles/core";
-import { Architecture, Platform } from "@dotfiles/core";
+import { Architecture, Libc, Platform } from "@dotfiles/core";
 import type { IArchitecturePatterns } from "./types";
+
+function getLinuxVariants(libc: Libc | undefined): string[] {
+  switch (libc ?? Libc.Unknown) {
+    case Libc.Gnu:
+      return ["gnu", "musl", "unknown-linux"];
+    case Libc.Musl:
+      return ["musl", "gnu", "unknown-linux"];
+    default:
+      return ["unknown-linux", "gnu", "musl"];
+  }
+}
 
 /**
  * Generates a set of architecture-specific patterns based on the provided
@@ -49,9 +60,9 @@ export function getArchitecturePatterns(systemInfo: ISystemInfo): IArchitectureP
       // - The pattern matches (musl|gnu) followed by anything
       // - BUT excludes patterns that don't contain 'unknown' or 'linux'
       // For simplicity and correctness, we just use 'linux' for system matching
-      // and provide musl/gnu/unknown-linux as variants
+      // and keep libc-related variants available for tie-breaking.
       patterns.system = ["linux"];
-      patterns.variants = ["musl", "gnu", "unknown-linux"];
+      patterns.variants = getLinuxVariants(systemInfo.libc);
       break;
 
     case Platform.Windows:

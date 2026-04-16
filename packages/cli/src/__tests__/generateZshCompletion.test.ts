@@ -52,6 +52,7 @@ describe("generateZshCompletion", () => {
       expect(flags).toContain("--quiet");
       expect(flags).toContain("--platform");
       expect(flags).toContain("--arch");
+      expect(flags).toContain("--libc");
     });
   });
 

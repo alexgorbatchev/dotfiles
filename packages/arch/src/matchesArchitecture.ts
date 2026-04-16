@@ -48,6 +48,7 @@ export function matchesArchitecture(assetName: string, architectureRegex: IArchi
   // - Rare: ripgrep-x.y.z-x86_64-unknown-linux-musl.tar.gz (has variant)
   //
   // We don't require variants here. If the caller needs to disambiguate
-  // multiple matches, they can apply variant filtering as a second pass.
+  // multiple matches, `selectBestMatch` applies a second pass, including
+  // libc-aware Linux tie-breaking for generic vs. gnu/musl assets.
   return systemMatch && cpuMatch;
 }

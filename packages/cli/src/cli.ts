@@ -267,9 +267,10 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     env,
     platform: options.platform,
     arch: options.arch,
+    libc: options.libc,
     fileSystem: fs,
     configFileSystem: configFs,
-    warnOnPlatformArchOverride: true,
+    warnOnSystemInfoOverride: true,
   });
 
   if (!baseContext) {

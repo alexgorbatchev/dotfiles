@@ -50,6 +50,20 @@ export enum Architecture {
 }
 
 /**
+ * Represents the Linux C library ABI used by the current system.
+ *
+ * Linux release assets often publish separate `gnu`/`glibc` and `musl` builds.
+ * Non-Linux systems and undetected Linux environments should use `Unknown`.
+ */
+export enum Libc {
+  Unknown = "unknown",
+  Gnu = "gnu",
+  Musl = "musl",
+}
+
+export const LIBC_VALUES = [Libc.Gnu, Libc.Musl, Libc.Unknown] as const;
+
+/**
  * A Zod schema for validating `Platform` enum values.
  *
  * Ensures that a given number is a valid bitmask composed of `Platform` enum members.
@@ -195,4 +209,26 @@ export function architectureToString(arch: Architecture): string {
     default:
       return "unknown";
   }
+}
+
+/**
+ * Converts a libc identifier string to a normalized Libc enum value.
+ */
+export function libcFromString(libc: string | undefined): Libc {
+  switch (libc?.toLowerCase()) {
+    case "glibc":
+    case Libc.Gnu:
+      return Libc.Gnu;
+    case Libc.Musl:
+      return Libc.Musl;
+    default:
+      return Libc.Unknown;
+  }
+}
+
+/**
+ * Converts a Libc enum value to a human-readable string.
+ */
+export function libcToString(libc: Libc | undefined): string {
+  return libc ?? Libc.Unknown;
 }

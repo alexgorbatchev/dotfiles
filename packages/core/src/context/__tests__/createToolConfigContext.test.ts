@@ -9,7 +9,7 @@ import * as fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
-import { Architecture, type ISystemInfo, Platform } from "../../common";
+import { Architecture, Libc, type ISystemInfo, Platform } from "../../common";
 import { createToolConfigContext, ResolveError } from "../createToolConfigContext";
 
 describe("createToolConfigContext", () => {
@@ -22,6 +22,7 @@ describe("createToolConfigContext", () => {
     platform: Platform.MacOS,
     arch: Architecture.Arm64,
     homeDir: "/Users/testuser",
+    libc: Libc.Gnu,
     hostname: "test-host",
   };
 
@@ -68,6 +69,15 @@ describe("createToolConfigContext", () => {
     const legacyShape: Record<string, z.ZodString> = { [legacyKey]: z.string() };
     const legacyParsed = z.object(legacyShape).safeParse(context);
     expect(legacyParsed.success).toBe(false);
+  });
+
+  it("should preserve libc information in the tool config context", () => {
+    const toolName = "test-tool";
+    const toolDir = "/tmp/tools/test-tool";
+
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+
+    expect(context.systemInfo.libc).toBe(Libc.Gnu);
   });
 
   it("should expose replaceInFile function that uses injected fileSystem", async () => {

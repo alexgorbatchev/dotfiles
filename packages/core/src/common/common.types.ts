@@ -1,4 +1,4 @@
-import type { Architecture, Platform } from "./platform.types";
+import type { Architecture, Libc, Platform } from "./platform.types";
 
 /**
  * Represents essential system information used for architecture detection and compatibility checks.
@@ -20,6 +20,11 @@ export interface ISystemInfo {
    * Used for expanding tilde (~) in file paths.
    */
   homeDir: string;
+  /**
+   * The Linux C library ABI used for libc-specific asset selection.
+   * Runtime contexts populate this when it can be detected.
+   */
+  libc?: Libc;
   /**
    * The machine hostname.
    * Corresponds to the value returned by `os.hostname()` in Node.js.
