@@ -28,7 +28,7 @@ The installer has built-in recursion guards. If you see this, check that your in
 
 ### Disable Shim Usage Tracking
 
-Shim usage tracking is enabled by default and runs in the background.
+Shim usage tracking is enabled by default and appends to a local usage log. The dashboard imports and compacts that log into SQLite on startup.
 
 - Disable temporarily for a single command:
   `DOTFILES_LOCAL_USAGE_TRACKING=0 rg --version`

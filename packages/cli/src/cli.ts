@@ -45,7 +45,6 @@ import { registerFeaturesCommand } from "./featuresCommand";
 import { registerFilesCommand } from "./filesCommand";
 import { registerGenerateCommand } from "./generateCommand";
 import { registerInstallCommand } from "./installCommand";
-import { runTrackUsageCommand } from "./light/runTrackUsageCommand";
 import { messages } from "./log-messages";
 import { registerLogCommand } from "./logCommand";
 import { populateMemFsForDryRun } from "./populateMemFsForDryRun";
@@ -545,30 +544,6 @@ function hasFlag(argv: string[], flag: string): boolean {
   return argv.includes(flag);
 }
 
-const COMMAND_FLAGS_WITH_VALUES = new Set(["--config", "--log", "--platform", "--arch"]);
-
-function resolveCommand(argv: string[]): string | undefined {
-  for (let i = 2; i < argv.length; i += 1) {
-    const token = argv[i];
-    if (!token) {
-      continue;
-    }
-
-    if (COMMAND_FLAGS_WITH_VALUES.has(token)) {
-      i += 1;
-      continue;
-    }
-
-    if (token.startsWith("-")) {
-      continue;
-    }
-
-    return token;
-  }
-
-  return undefined;
-}
-
 export function resolveLogLevel(argv: string[], options: IGlobalProgramOptions): LogLevelValue {
   const isShimMode = hasFlag(argv, "--shim-mode");
   const quiet = options.quiet || isShimMode;
@@ -603,13 +578,6 @@ export async function main(argv: string[]) {
 }
 
 export async function runCliEntrypoint(argv: string[]): Promise<void> {
-  const command = resolveCommand(argv);
-
-  if (command === "@track-usage") {
-    await runTrackUsageCommand(argv);
-    return;
-  }
-
   await main(argv);
 }
 

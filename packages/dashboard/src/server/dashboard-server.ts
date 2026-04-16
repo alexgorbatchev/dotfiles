@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { TsLogger } from "@dotfiles/logger";
+import { importToolUsageLogs } from "./importToolUsageLogs";
 import { messages } from "./log-messages";
 import { createApiRoutes } from "./routes";
 import type { IDashboardServer, IDashboardServerOptions, IDashboardServices, INamedToolRequest } from "./types";
@@ -69,6 +70,18 @@ export function createDashboardServer(
   return {
     async start() {
       process.env["DOTFILES_IS_RELOAD"] = "1";
+
+      try {
+        const importResult = await importToolUsageLogs(services);
+        logger.debug(
+          messages.usageLogImportCompleted(),
+          importResult.fileCount,
+          importResult.eventCount,
+          importResult.invalidLineCount,
+        );
+      } catch (error) {
+        logger.warn(messages.usageLogImportFailed(), error);
+      }
 
       // IMPORTANT: Change to package directory before starting server.
       // Bun's HTML import generates chunk files (like dashboard-*.js, cli-*.js)

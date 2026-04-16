@@ -58,7 +58,7 @@ export default defineTool((install, ctx) =>
 - **Zero-Overhead Shell Startup**: Your shell's startup time is unaffected. All tool loading is deferred until the moment you actually run a command, adding no latency to your shell's initialization.
 - **Powerful Shell Integration**: Centrally manage aliases, environment variables, shell functions, and completions for Zsh, Bash, and PowerShell.
 - **Global Tool Access**: Automatically generates executable shims, making every tool available system-wide to all applications, not just your interactive shell.
-- **Lightweight Usage Tracking**: Shim executions can be counted in SQLite for usage insights with near-zero user-visible overhead (100% local).
+- **Lightweight Usage Tracking**: Shim executions can be appended to a local usage log and compacted into SQLite for usage insights with near-zero user-visible overhead (100% local).
 - **Atomic, Versioned Installs**: Each installation is timestamped, and updates are atomic. Rollbacks are as simple as changing a symlink.
 - **Cross-Platform by Design**: Define platform-specific configurations for macOS, Linux, and Windows within the same file.
 
@@ -66,7 +66,7 @@ export default defineTool((install, ctx) =>
 
 1. **Define**: You describe a tool's installation and configuration in a `.tool.ts` file.
 2. **Generate**: You run `dotfiles generate`. This creates lightweight executable **shims** for all your defined tools and generates a single shell file to source.
-3. **Run & Auto-Install**: The first time you execute a tool's command (e.g., `rg --version`), the shim intercepts the call, triggers the generator to download and install the tool, and then seamlessly executes your command. All subsequent calls are instantaneous. Each execution can also be tracked asynchronously for dashboard usage stats.
+3. **Run & Auto-Install**: The first time you execute a tool's command (e.g., `rg --version`), the shim intercepts the call, triggers the generator to download and install the tool, and then seamlessly executes your command. All subsequent calls are instantaneous. Each execution can also be appended to a local usage log, which the dashboard compacts into SQLite on startup.
 4. **Source**: Your `.zshrc` sources one line, and all your tools, aliases, and functions become available everywhere.
 
 ## Quick Start

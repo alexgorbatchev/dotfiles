@@ -1,4 +1,9 @@
-import type { IToolInstallationDetails, IToolInstallationRecord, IToolUsageRecord } from "./types";
+import type {
+  IRecordToolUsageOptions,
+  IToolInstallationDetails,
+  IToolInstallationRecord,
+  IToolUsageRecord,
+} from "./types";
 
 /**
  * Registry interface for managing tool installation records in a persistent database.
@@ -122,9 +127,10 @@ export interface IToolInstallationRegistry {
    *
    * @param toolName - Name of the tool that owns the shim
    * @param binaryName - Name of the executed binary shim
+   * @param options - Optional count and timestamp overrides used by log import/compaction.
    * @returns Promise that resolves when usage has been recorded
    */
-  recordToolUsage(toolName: string, binaryName: string): Promise<void>;
+  recordToolUsage(toolName: string, binaryName: string, options?: IRecordToolUsageOptions): Promise<void>;
 
   /**
    * Retrieves usage stats for a specific `(toolName, binaryName)` pair.

@@ -113,6 +113,7 @@ BINARY_NAME="fzf"
 TOOL_EXECUTABLE="{config.paths.binariesDir}/fzf/current/fzf"
 GENERATOR_CLI_EXECUTABLE="path/to/cli"
 CONFIG_PATH="path/to/dotfiles.config.ts"
+USAGE_LOG_PATH="{config.paths.generatedDir}/usage/shim-usage.log"
 
 # Check for recursion
 RECURSION_ENV_VAR="DOTFILES_INSTALLING_FZF"
@@ -122,9 +123,12 @@ if [ -n "${!RECURSION_ENV_VAR:-}" ]; then
   exit 1
 fi
 
-# Record shim usage in the background (non-blocking)
+# Record shim usage to the local append-only log.
 if [ "${DOTFILES_LOCAL_USAGE_TRACKING:-1}" != "0" ]; then
-  eval "$GENERATOR_CLI_EXECUTABLE" @track-usage '"$TOOL_NAME"' '"$BINARY_NAME"' --config '"$CONFIG_PATH"' >/dev/null 2>&1 &
+  usage_timestamp="$(date +%s 2>/dev/null)" || true
+  if [ -n "${usage_timestamp:-}" ]; then
+    printf '1\t%s\t%s\t%s\n' "$usage_timestamp" "$TOOL_NAME" "$BINARY_NAME" >> "$USAGE_LOG_PATH" 2>/dev/null || true
+  fi
 fi
 
 # Check if the first argument is @update
@@ -160,7 +164,7 @@ fi
 - **Auto-Install**: Automatically installs tool if not found
 - **Update Support**: Use `{tool} @update` to update tool to latest version
 - **Recursion Guard**: Prevents infinite loops if a tool calls itself during installation
-- **Background Usage Tracking**: Calls private `@track-usage` command without blocking execution
+- **Append-Only Usage Tracking**: Appends local usage events and lets the dashboard compact them into SQLite on startup
 - **Opt-Out Switch**: Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable tracking
 
 ## Tool with Multiple Binaries

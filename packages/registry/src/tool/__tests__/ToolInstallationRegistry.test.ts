@@ -327,6 +327,28 @@ describe("ToolInstallationRegistry", () => {
       expect(npmUsage?.usageCount).toBe(2);
     });
 
+    test("should support importing aggregated counts with a preserved timestamp", async () => {
+      const importedAt = new Date("2026-04-16T12:34:56.000Z");
+
+      await registry.recordToolUsage("rg", "rg", { count: 5, lastUsedAt: importedAt });
+
+      const usage = await registry.getToolUsage("rg", "rg");
+      expect(usage?.usageCount).toBe(5);
+      expect(usage?.lastUsedAt.toISOString()).toBe(importedAt.toISOString());
+    });
+
+    test("should keep the latest last-used timestamp when older usage is imported later", async () => {
+      const latest = new Date("2026-04-16T12:34:56.000Z");
+      const older = new Date("2026-04-15T12:34:56.000Z");
+
+      await registry.recordToolUsage("rg", "rg", { count: 2, lastUsedAt: latest });
+      await registry.recordToolUsage("rg", "rg", { count: 3, lastUsedAt: older });
+
+      const usage = await registry.getToolUsage("rg", "rg");
+      expect(usage?.usageCount).toBe(5);
+      expect(usage?.lastUsedAt.toISOString()).toBe(latest.toISOString());
+    });
+
     test("should return null when usage row does not exist", async () => {
       const usage = await registry.getToolUsage("missing-tool", "missing-bin");
       expect(usage).toBeNull();

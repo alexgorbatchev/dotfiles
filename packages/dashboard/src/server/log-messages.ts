@@ -17,4 +17,6 @@ export const messages = {
   updateFailed: (error: string) => createSafeLogMessage(`Update failed: ${error}`),
   updateSucceeded: (oldVersion: string, newVersion: string) =>
     createSafeLogMessage(`Updated from ${oldVersion} to ${newVersion}`),
+  usageLogImportCompleted: () => createSafeLogMessage("Imported usage logs: files=%d events=%d invalid=%d"),
+  usageLogImportFailed: () => createSafeLogMessage("Failed to import usage logs"),
 };

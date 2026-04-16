@@ -40,3 +40,20 @@ export interface IToolUsageRecord {
   usageCount: number;
   readonly lastUsedAt: Date;
 }
+
+/**
+ * Optional values used when recording shim usage.
+ */
+export interface IRecordToolUsageOptions {
+  count?: number;
+  lastUsedAt?: Date;
+}
+
+/**
+ * A raw usage event parsed from the append-only shim usage log.
+ */
+export interface IToolUsageLogEntry {
+  toolName: string;
+  binaryName: string;
+  usedAt: Date;
+}

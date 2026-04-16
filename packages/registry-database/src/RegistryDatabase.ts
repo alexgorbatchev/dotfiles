@@ -28,7 +28,7 @@ export class RegistryDatabase {
   }
 
   private configureConnectionPragmas(): void {
-    // Improve multi-process write behavior for shim usage tracking + foreground commands.
+    // Improve multi-process write behavior for dashboard compaction + foreground commands.
     // busy_timeout prevents immediate SQLITE_BUSY failures when another process briefly holds a lock.
     // WAL allows concurrent readers with a single writer and reduces lock contention.
     // synchronous=NORMAL is a practical durability/performance balance for this metadata DB.

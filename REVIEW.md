@@ -140,7 +140,6 @@ reviewed_at: 2026-03-18T17:16:12Z
 - Target: 90%
 - Below-target areas:
   - `packages/installer-cargo/src/installFromCargo.ts` (2.16% lines)
-  - `packages/cli/src/light/runTrackUsageCommand.ts` (2.17% lines)
   - `packages/dashboard/src/server/routes/tool-configs-tree.ts` (2.63% lines)
   - `packages/dashboard/src/server/routes/tool-history.ts` (5.41% lines)
   - `packages/dashboard/src/server/routes/tool-readme.ts` (6.12% lines)

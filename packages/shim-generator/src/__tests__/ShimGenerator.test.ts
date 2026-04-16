@@ -122,6 +122,7 @@ describe("ShimGenerator", () => {
         TOOL_EXECUTABLE="${expectedBinaryPath}"
         GENERATOR_CLI_EXECUTABLE="${expect.anything}"
         CONFIG_PATH="${/.+\/dotfiles\.config\.ts/}"
+        USAGE_LOG_PATH="${/.+\/\.generated\/usage\/shim-usage\.log/}"
 
         # Check for recursion
         RECURSION_ENV_VAR="DOTFILES_INSTALLING_MY_TOOL"
@@ -131,10 +132,12 @@ describe("ShimGenerator", () => {
           exit 1
         fi
 
-        # Record shim usage in the background (non-blocking)
+        # Record shim usage to the local append-only log.
         if [ "\${DOTFILES_LOCAL_USAGE_TRACKING:-1}" != "0" ]; then
-          # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
-          eval "$GENERATOR_CLI_EXECUTABLE" @track-usage '"$TOOL_NAME"' '"$BINARY_NAME"' --config '"$CONFIG_PATH"' >/dev/null 2>&1 &
+          usage_timestamp="$(date +%s 2>/dev/null)" || true
+          if [ -n "\${usage_timestamp:-}" ]; then
+            printf '1\\t%s\\t%s\\t%s\\n' "$usage_timestamp" "$TOOL_NAME" "$BINARY_NAME" >> "$USAGE_LOG_PATH" 2>/dev/null || true
+          fi
         fi
 
         # Check if the first argument is @update

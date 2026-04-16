@@ -3,7 +3,7 @@ import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
 import { TrackedFileSystem } from "@dotfiles/registry/file";
-import type { IToolInstallationRegistry } from "@dotfiles/registry/tool";
+import { TOOL_USAGE_LOG_VERSION, getToolUsageLogPath, type IToolInstallationRegistry } from "@dotfiles/registry/tool";
 import { dedentString, getCliInvocationCommand, resolvePlatformConfig } from "@dotfiles/utils";
 import path from "node:path";
 import type { IGenerateShimsOptions, IShimGenerator } from "./IShimGenerator";
@@ -213,6 +213,7 @@ export class ShimGenerator implements IShimGenerator {
 
     // Use the stable current symlink folder for execution
     const toolBinaryPath = path.join(this.config.paths.binariesDir, toolName, "current", binaryName);
+    const usageLogPath = getToolUsageLogPath(this.config);
 
     logger.debug(messages.generateShim.resolvedBinaryPath(toolName, binaryName, toolBinaryPath));
 
@@ -235,6 +236,7 @@ export class ShimGenerator implements IShimGenerator {
       TOOL_EXECUTABLE="${toolBinaryPath}"
       GENERATOR_CLI_EXECUTABLE="${getCliInvocationCommand()}"
       CONFIG_PATH="${this.config.configFilePath}"
+      USAGE_LOG_PATH="${usageLogPath}"
 
       # Check for recursion
       RECURSION_ENV_VAR="DOTFILES_INSTALLING_${envVarSuffix}"
@@ -244,10 +246,12 @@ export class ShimGenerator implements IShimGenerator {
         exit 1
       fi
 
-      # Record shim usage in the background (non-blocking)
+      # Record shim usage to the local append-only log.
       if [ "\${DOTFILES_LOCAL_USAGE_TRACKING:-1}" != "0" ]; then
-        # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
-        eval "$GENERATOR_CLI_EXECUTABLE" @track-usage '"$TOOL_NAME"' '"$BINARY_NAME"' --config '"$CONFIG_PATH"' >/dev/null 2>&1 &
+        usage_timestamp="$(date +%s 2>/dev/null)" || true
+        if [ -n "\${usage_timestamp:-}" ]; then
+          printf '${TOOL_USAGE_LOG_VERSION}\\t%s\\t%s\\t%s\\n' "$usage_timestamp" "$TOOL_NAME" "$BINARY_NAME" >> "$USAGE_LOG_PATH" 2>/dev/null || true
+        fi
       fi
 
       # Check if the first argument is @update
@@ -290,6 +294,7 @@ export class ShimGenerator implements IShimGenerator {
 
     // Directory creation must be attributed to the system, not the tool.
     // This enables clean undo semantics (a future delete command can replay tool changes separately).
+    await this.fs.ensureDir(path.dirname(usageLogPath));
     await this.fs.ensureDir(path.dirname(shimFilePath));
     await toolFs.writeFile(shimFilePath, shimContent);
 

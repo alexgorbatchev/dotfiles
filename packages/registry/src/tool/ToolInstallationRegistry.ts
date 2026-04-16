@@ -2,7 +2,12 @@ import type { TsLogger } from "@dotfiles/logger";
 import type { Database } from "bun:sqlite";
 import type { IToolInstallationRegistry } from "./IToolInstallationRegistry";
 import { messages } from "./log-messages";
-import type { IToolInstallationDetails, IToolInstallationRecord, IToolUsageRecord } from "./types";
+import type {
+  IRecordToolUsageOptions,
+  IToolInstallationDetails,
+  IToolInstallationRecord,
+  IToolUsageRecord,
+} from "./types";
 
 interface IToolInstallationRow {
   id: number;
@@ -271,19 +276,27 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
     }
   }
 
-  async recordToolUsage(toolName: string, binaryName: string): Promise<void> {
-    const now = Date.now();
+  async recordToolUsage(toolName: string, binaryName: string, options: IRecordToolUsageOptions = {}): Promise<void> {
+    const usageCount = options.count ?? 1;
+    if (usageCount <= 0) {
+      return;
+    }
+
+    const now = (options.lastUsedAt ?? new Date()).getTime();
 
     const stmt = this.db.prepare(`
       INSERT INTO tool_usage (tool_name, binary_name, usage_count, last_used_at)
-      VALUES (?, ?, 1, ?)
+      VALUES (?, ?, ?, ?)
       ON CONFLICT(tool_name, binary_name)
       DO UPDATE SET
-        usage_count = usage_count + 1,
-        last_used_at = excluded.last_used_at
+        usage_count = tool_usage.usage_count + excluded.usage_count,
+        last_used_at = CASE
+          WHEN excluded.last_used_at > tool_usage.last_used_at THEN excluded.last_used_at
+          ELSE tool_usage.last_used_at
+        END
     `);
 
-    stmt.run(toolName, binaryName, now);
+    stmt.run(toolName, binaryName, usageCount, now);
   }
 
   async getToolUsage(toolName: string, binaryName: string): Promise<IToolUsageRecord | null> {

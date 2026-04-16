@@ -91,7 +91,7 @@ Select the most appropriate method based on your investigation. Prefer official,
 
 ### Step 2: Configure Binary Specification
 
-**Important**: `.bin(name, pattern?)` declares which executables the tool provides. It generates a shim for each binary name. The shim acts as a launcher — when a user runs the shim, it triggers installation if the tool isn't installed yet, making the tool available system-wide without manual setup. Shims also record usage asynchronously for dashboard analytics. Users can resolve the real path to a binary (bypassing shims) with `dotfiles bin <name>`.
+**Important**: `.bin(name, pattern?)` declares which executables the tool provides. It generates a shim for each binary name. The shim acts as a launcher — when a user runs the shim, it triggers installation if the tool isn't installed yet, making the tool available system-wide without manual setup. Shims also append usage events to a local log for dashboard analytics, and the dashboard compacts that log into SQLite on startup. Users can resolve the real path to a binary (bypassing shims) with `dotfiles bin <name>`.
 
 To disable usage tracking globally, set `DOTFILES_LOCAL_USAGE_TRACKING=0` in your environment.
 

@@ -52,9 +52,9 @@ Declaring `.bin(name)` generates a shim for `name` in `paths.targetDir`.
 
 - Running the shim auto-installs the tool on first use (if needed)
 - Running `{binary} @update` triggers a shim-driven update flow
-- Shim executions are recorded for usage analytics via a private internal command
+- Shim executions append usage events to a local log for dashboard analytics
 
-Usage tracking is non-blocking and enabled by default. Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable tracking.
+Usage tracking is enabled by default. The dashboard imports and compacts the local usage log into SQLite on startup. Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable tracking.
 
 ### Base Install Parameters
 

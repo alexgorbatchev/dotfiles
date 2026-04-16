@@ -18,7 +18,7 @@ Executable shim generation for installed tools, including auto-install and usage
 
 ## Boundaries
 
-- Ask first: changing shim invocation contract, background tracking behavior, or current-symlink assumptions.
+- Ask first: changing shim invocation contract, append-only usage-log behavior, or current-symlink assumptions.
 - Never: mix installer logic directly into generator orchestration when the shim template should own the behavior.
 
 ## References
