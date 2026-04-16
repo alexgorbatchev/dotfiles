@@ -82,7 +82,7 @@ curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
 
 ### Manual Install
 
-## Bun runtime requirement
+#### Bun runtime requirement
 
 The published npm package installs JavaScript files, but the `dotfiles` CLI entrypoint is executed with `#!/usr/bin/env bun`. Bun must be installed and available on `PATH` before you run the public package.
 
