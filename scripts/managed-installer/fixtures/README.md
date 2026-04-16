@@ -8,3 +8,4 @@ Scenarios:
 - `existing-package-only`: existing `package.json`, config missing
 - `existing-config-only`: existing `dotfiles.config.ts`, package missing
 - `existing-project-full`: existing package + config + local `bun` tool for the full managed-Bun handoff path
+- `failing-package-postinstall`: existing `package.json` with a failing `postinstall` to verify temporary Bun is preserved on bootstrap failure

@@ -1,0 +1,9 @@
+{
+  "name": "bootstrap-failing-package-postinstall",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "bun run fail-bootstrap",
+    "fail-bootstrap": "sh -c 'printf \"fixture postinstall failed\\n\" >&2; exit 1'"
+  }
+}

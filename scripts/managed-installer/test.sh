@@ -37,6 +37,7 @@ Scenarios:
 	 existing-package-only
 	 existing-config-only
 	 existing-project-full
+	 failing-package-postinstall
 	 missing-unzip
 EOF
 }
@@ -47,6 +48,7 @@ list_scenarios() {
 		existing-package-only \
 		existing-config-only \
 		existing-project-full \
+		failing-package-postinstall \
 		missing-unzip
 }
 
@@ -78,6 +80,26 @@ write_command_stub() {
 	local file_path="$1"
 	printf '#!/usr/bin/env bash\nexit 0\n' >"${file_path}"
 	chmod +x "${file_path}"
+}
+
+write_fake_bun_install_stub() {
+	local file_path="$1"
+	local bun_binary="$2"
+
+	cat >"${file_path}" <<'EOF'
+#!/usr/bin/env bash
+cat <<'INSTALL'
+#!/usr/bin/env bash
+set -euo pipefail
+
+mkdir -p "${BUN_INSTALL}/bin"
+cp "__REAL_BUN_BINARY__" "${BUN_INSTALL}/bin/bun"
+chmod +x "${BUN_INSTALL}/bin/bun"
+INSTALL
+EOF
+
+	chmod +x "${file_path}"
+	BUN_BINARY_VALUE="${bun_binary}" perl -0pi -e 's|__REAL_BUN_BINARY__|$ENV{BUN_BINARY_VALUE}|g' "${file_path}"
 }
 
 ensure_dist() {
@@ -175,6 +197,11 @@ run_scenario() {
 		return 0
 	fi
 
+	if [[ "${scenario}" = "failing-package-postinstall" ]]; then
+		run_failing_package_postinstall_scenario
+		return 0
+	fi
+
 	local temp_root
 	temp_root="$(mktemp -d "${TMPDIR:-/tmp}/bootstrap-install-test.${scenario}.XXXXXX")"
 	local work_dir="${temp_root}/workspace"
@@ -243,6 +270,67 @@ run_missing_unzip_scenario() {
 	fi
 }
 
+run_failing_package_postinstall_scenario() {
+	local scenario="failing-package-postinstall"
+	local temp_root
+	temp_root="$(mktemp -d "${TMPDIR:-/tmp}/bootstrap-install-test.${scenario}.XXXXXX")"
+	local work_dir="${temp_root}/workspace"
+	local output_log="${temp_root}/install.log"
+	local path_stub_dir="${temp_root}/path"
+	local bun_binary
+	bun_binary="$(command -v bun)"
+	local exit_code=0
+	local preserved_bun_temp_dir=""
+	local preserved_bun_bin=""
+	local preserved_temp_dirs=()
+	local temp_dir_candidate
+
+	log "Preparing scenario '${scenario}' in ${work_dir}"
+	copy_fixture "${scenario}" "${work_dir}"
+	load_scenario_env "${scenario}"
+	mkdir -p "${path_stub_dir}"
+	write_fake_bun_install_stub "${path_stub_dir}/curl" "${bun_binary}"
+	write_command_stub "${path_stub_dir}/unzip"
+
+	set +e
+	(
+		cd "${work_dir}"
+		PATH="${path_stub_dir}:/bin:/usr/bin" \
+			TMPDIR="${temp_root}" \
+			DOTFILES_YES=1 \
+			DOTFILES_PACKAGE_SPEC="${DIST_PACKAGE_SPEC}" \
+			DOTFILES_SKIP_MANAGED_BUN_INSTALL="${DOTFILES_SKIP_MANAGED_BUN_INSTALL}" \
+			bash "${INSTALL_SCRIPT}"
+	) >"${output_log}" 2>&1
+	exit_code=$?
+	set -e
+
+	[[ "${exit_code}" -ne 0 ]] || fail "Expected installer to fail when package postinstall fails"
+	assert_contains "${output_log}" "Installing temporary Bun into"
+	assert_contains "${output_log}" "fixture postinstall failed"
+
+	shopt -s nullglob
+	for temp_dir_candidate in "${temp_root}"/dotfiles-install.*; do
+		preserved_temp_dirs+=("${temp_dir_candidate}")
+	done
+	shopt -u nullglob
+
+	[[ "${#preserved_temp_dirs[@]}" -eq 1 ]] || fail "Expected exactly one preserved temporary Bun directory"
+	preserved_bun_temp_dir="${preserved_temp_dirs[0]}/bun"
+	preserved_bun_bin="${preserved_bun_temp_dir}/bin/bun"
+
+	assert_exists "${preserved_bun_bin}"
+	"${preserved_bun_bin}" --version >/dev/null || fail "Expected preserved temporary Bun to be executable"
+	assert_contains "${output_log}" "Bootstrap failed. Temporary Bun kept at ${preserved_bun_bin}"
+	log "Scenario '${scenario}' passed"
+
+	if [[ "${KEEP_WORKDIRS}" = "1" ]]; then
+		log "Kept workdir: ${work_dir}"
+	else
+		rm -rf "${temp_root}"
+	fi
+}
+
 main() {
 	if [[ $# -eq 0 ]]; then
 		usage
@@ -263,7 +351,7 @@ main() {
 			list_scenarios
 			return 0
 			;;
-		all | fresh-empty | existing-package-only | existing-config-only | existing-project-full | missing-unzip)
+		all | fresh-empty | existing-package-only | existing-config-only | existing-project-full | failing-package-postinstall | missing-unzip)
 			if [[ -n "${scenario}" ]]; then
 				fail "Only one scenario argument is allowed"
 			fi

@@ -27,9 +27,22 @@ fail() {
 }
 
 cleanup() {
-	if [[ -n "${TEMP_DIR}" && -d "${TEMP_DIR}" ]]; then
-		rm -rf "${TEMP_DIR}"
+	local exit_code="$1"
+	local temp_bun_bin=""
+
+	if [[ -n "${TEMP_BUN_INSTALL}" ]]; then
+		temp_bun_bin="${TEMP_BUN_INSTALL}/bin/bun"
 	fi
+
+	if [[ -n "${TEMP_DIR}" && -d "${TEMP_DIR}" ]]; then
+		if [[ "${exit_code}" -eq 0 ]]; then
+			rm -rf "${TEMP_DIR}"
+		elif [[ -n "${temp_bun_bin}" && -x "${temp_bun_bin}" ]]; then
+			printf '[dotfiles-install] Bootstrap failed. Temporary Bun kept at %s\n' "${temp_bun_bin}" >&2
+		fi
+	fi
+
+	return "${exit_code}"
 }
 
 ensure_bun_bootstrap_requirements() {
@@ -98,7 +111,7 @@ export default defineTool((install) =>
 EOF
 }
 
-trap cleanup EXIT
+trap 'cleanup $?' EXIT
 
 ensure_bun_bootstrap_requirements
 
