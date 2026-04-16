@@ -157,8 +157,8 @@ if [[ "${PACKAGE_JSON_EXISTS}" != "1" ]]; then
 	[[ -f "${PACKAGE_JSON_PATH}" ]] || fail "bun init did not create ${PACKAGE_JSON_PATH}"
 fi
 
-log "Installing ${DOTFILES_PACKAGE_SPEC} into ${PACKAGE_JSON_PATH}"
-"${BUN_BIN}" add "${DOTFILES_PACKAGE_SPEC}"
+log "Installing ${DOTFILES_PACKAGE_SPEC} into ${PACKAGE_JSON_PATH} without running project lifecycle scripts"
+"${BUN_BIN}" add --ignore-scripts "${DOTFILES_PACKAGE_SPEC}"
 
 if [[ "${CONFIG_EXISTS}" != "1" ]]; then
 	log "Creating ${CONFIG_PATH}"

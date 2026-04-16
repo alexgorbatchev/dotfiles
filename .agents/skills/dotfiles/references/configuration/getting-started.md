@@ -20,7 +20,7 @@ To bootstrap a dotfiles project in the current directory, run:
 curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
 ```
 
-The hosted installer uses Bun from `PATH` when available. Otherwise it checks for `curl` and `unzip` before prompting, bootstraps a temporary Bun, adds `@alexgorbatchev/dotfiles` to the local `package.json`, creates a minimal `dotfiles.config.ts` when needed, installs managed Bun, and runs `dotfiles generate` for you. If a later step fails, the installer keeps that temporary `bun` binary and prints its path so you can keep debugging.
+The hosted installer uses Bun from `PATH` when available. Otherwise it checks for `curl` and `unzip` before prompting, bootstraps a temporary Bun, adds `@alexgorbatchev/dotfiles` to the local `package.json` without running your project's lifecycle scripts, creates a minimal `dotfiles.config.ts` when needed, installs managed Bun, and runs `dotfiles generate` for you. If a later step fails, the installer keeps that temporary `bun` binary and prints its path so you can keep debugging.
 
 ## Load Generated Config (Zsh)
 
