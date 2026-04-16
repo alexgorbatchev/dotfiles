@@ -24,19 +24,20 @@ fail() {
 usage() {
 	cat <<'EOF'
 Usage:
-  bash scripts/managed-installer/test.sh list
-  bash scripts/managed-installer/test.sh <scenario>
-  bash scripts/managed-installer/test.sh all
+	 bash scripts/managed-installer/test.sh list
+	 bash scripts/managed-installer/test.sh <scenario>
+	 bash scripts/managed-installer/test.sh all
 
 Options:
   --keep          Keep temporary scenario workdirs
   --rebuild-dist  Rebuild .dist before running scenarios
 
 Scenarios:
-  fresh-empty
-  existing-package-only
-  existing-config-only
-  existing-project-full
+	 fresh-empty
+	 existing-package-only
+	 existing-config-only
+	 existing-project-full
+	 missing-unzip
 EOF
 }
 
@@ -45,7 +46,8 @@ list_scenarios() {
 		fresh-empty \
 		existing-package-only \
 		existing-config-only \
-		existing-project-full
+		existing-project-full \
+		missing-unzip
 }
 
 assert_exists() {
@@ -62,6 +64,20 @@ assert_contains() {
 	local file_path="$1"
 	local expected="$2"
 	grep -Fq "${expected}" "${file_path}" || fail "Expected '${expected}' in ${file_path}"
+}
+
+assert_not_contains() {
+	local file_path="$1"
+	local unexpected="$2"
+	if grep -Fq "${unexpected}" "${file_path}"; then
+		fail "Did not expect '${unexpected}' in ${file_path}"
+	fi
+}
+
+write_command_stub() {
+	local file_path="$1"
+	printf '#!/usr/bin/env bash\nexit 0\n' >"${file_path}"
+	chmod +x "${file_path}"
 }
 
 ensure_dist() {
@@ -153,6 +169,12 @@ assert_scenario() {
 
 run_scenario() {
 	local scenario="$1"
+
+	if [[ "${scenario}" = "missing-unzip" ]]; then
+		run_missing_unzip_scenario
+		return 0
+	fi
+
 	local temp_root
 	temp_root="$(mktemp -d "${TMPDIR:-/tmp}/bootstrap-install-test.${scenario}.XXXXXX")"
 	local work_dir="${temp_root}/workspace"
@@ -183,6 +205,44 @@ run_scenario() {
 	fi
 }
 
+run_missing_unzip_scenario() {
+	local temp_root
+	temp_root="$(mktemp -d "${TMPDIR:-/tmp}/bootstrap-install-test.missing-unzip.XXXXXX")"
+	local work_dir="${temp_root}/workspace"
+	local output_log="${temp_root}/install.log"
+	local path_stub_dir="${temp_root}/path"
+	local exit_code=0
+
+	log "Preparing scenario 'missing-unzip' in ${work_dir}"
+	mkdir -p "${work_dir}" "${path_stub_dir}"
+	write_command_stub "${path_stub_dir}/curl"
+
+	set +e
+	(
+		cd "${work_dir}"
+		PATH="${path_stub_dir}" \
+			DOTFILES_YES=1 \
+			/bin/bash "${INSTALL_SCRIPT}"
+	) >"${output_log}" 2>&1
+	exit_code=$?
+	set -e
+
+	[[ "${exit_code}" -ne 0 ]] || fail "Expected installer to fail when unzip is unavailable"
+	assert_contains "${output_log}" "unzip is required to bootstrap Bun"
+	assert_not_contains "${output_log}" "Found dotfiles config"
+	assert_not_contains "${output_log}" "No dotfiles config found"
+	assert_not_contains "${output_log}" "Found package.json"
+	assert_not_contains "${output_log}" "No package.json found"
+	assert_not_contains "${output_log}" "Skipping confirmation prompt because DOTFILES_YES=1"
+	log "Scenario 'missing-unzip' passed"
+
+	if [[ "${KEEP_WORKDIRS}" = "1" ]]; then
+		log "Kept workdir: ${work_dir}"
+	else
+		rm -rf "${temp_root}"
+	fi
+}
+
 main() {
 	if [[ $# -eq 0 ]]; then
 		usage
@@ -203,7 +263,7 @@ main() {
 			list_scenarios
 			return 0
 			;;
-		all | fresh-empty | existing-package-only | existing-config-only | existing-project-full)
+		all | fresh-empty | existing-package-only | existing-config-only | existing-project-full | missing-unzip)
 			if [[ -n "${scenario}" ]]; then
 				fail "Only one scenario argument is allowed"
 			fi
@@ -221,8 +281,10 @@ main() {
 	done
 
 	[[ -n "${scenario}" ]] || fail "Missing scenario argument"
-	command -v bun >/dev/null 2>&1 || fail "bun must be available on PATH to run the test harness"
-	ensure_dist
+	if [[ "${scenario}" != "missing-unzip" ]]; then
+		command -v bun >/dev/null 2>&1 || fail "bun must be available on PATH to run the test harness"
+		ensure_dist
+	fi
 
 	if [[ "${scenario}" = "all" ]]; then
 		while IFS= read -r scenario_name; do

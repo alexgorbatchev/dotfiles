@@ -32,6 +32,15 @@ cleanup() {
 	fi
 }
 
+ensure_bun_bootstrap_requirements() {
+	if command -v bun >/dev/null 2>&1; then
+		return 0
+	fi
+
+	command -v curl >/dev/null 2>&1 || fail "curl is required to bootstrap Bun"
+	command -v unzip >/dev/null 2>&1 || fail "unzip is required to bootstrap Bun"
+}
+
 confirm_installation() {
 	if [[ "${DOTFILES_YES}" = "1" ]]; then
 		log "Skipping confirmation prompt because DOTFILES_YES=1"
@@ -90,6 +99,8 @@ EOF
 }
 
 trap cleanup EXIT
+
+ensure_bun_bootstrap_requirements
 
 if [[ -f "${CONFIG_PATH}" ]]; then
 	CONFIG_EXISTS="1"
