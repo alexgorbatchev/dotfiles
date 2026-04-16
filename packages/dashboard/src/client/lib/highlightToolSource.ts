@@ -1,6 +1,15 @@
+type ShikiCodeToHtmlOptions = {
+  lang: string;
+  theme: string;
+};
+
+type ShikiApi = {
+  codeToHtml: (source: string, options: ShikiCodeToHtmlOptions) => Promise<string>;
+};
+
 declare global {
   interface Window {
-    shiki?: any;
+    shiki?: ShikiApi;
   }
 }
 
@@ -14,15 +23,15 @@ export async function highlightToolSource(source: string): Promise<string> {
         lang: "typescript",
         theme: "github-light",
       });
-    } catch (e) {
-      console.warn("Shiki failed to highlight", e);
+    } catch {
+      // Fall back to plain escaped HTML if the CDN-loaded highlighter is unavailable.
     }
   }
 
-  return Promise.resolve(`<pre class="shiki github-light"><code>${escapeHtml(source)}</code></pre>`);
+  return `<pre class="shiki github-light"><code>${escapeHtml(source)}</code></pre>`;
 }
 
-function escapeHtml(unsafe: string) {
+function escapeHtml(unsafe: string): string {
   return unsafe
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

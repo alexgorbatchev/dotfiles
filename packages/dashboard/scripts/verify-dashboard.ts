@@ -2,6 +2,28 @@
 import { $ } from "bun";
 import { resolve } from "path";
 
+type AgentBrowserErrorsPayload = {
+  data?: {
+    errors?: unknown[];
+  };
+};
+
+function writeStdout(message: string): void {
+  process.stdout.write(`${message}\n`);
+}
+
+function writeStderr(message: string): void {
+  process.stderr.write(`${message}\n`);
+}
+
+function formatError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.stack ?? error.message;
+  }
+
+  return String(error);
+}
+
 /**
  * This script verifies that the compiled production dashboard loads correctly
  * using agent-browser. It checks for JavaScript errors, minifier collisions,
@@ -11,7 +33,7 @@ import { resolve } from "path";
 async function main() {
   const rootDir = resolve(import.meta.dir, "../../..");
 
-  console.log("Starting dashboard...");
+  writeStdout("Starting dashboard...");
   const port = "13580";
 
   // Start the actual CLI dashboard from the built package
@@ -30,20 +52,20 @@ async function main() {
   let failed = false;
   try {
     const url = `http://localhost:${port}/tools/github-release--bat`;
-    console.log(`Running agent-browser on ${url}...`);
+    writeStdout(`Running agent-browser on ${url}...`);
 
     // Clear previous errors and load the page
     await $`agent-browser errors --clear && agent-browser open "${url}" && agent-browser wait 3000`.quiet();
 
     // 1. Check for Console Errors
     const errs = await $`agent-browser errors --json`.text();
-    const parsedErrs = JSON.parse(errs);
+    const parsedErrs: AgentBrowserErrorsPayload = JSON.parse(errs);
     if (parsedErrs.data && parsedErrs.data.errors && parsedErrs.data.errors.length > 0) {
-      console.error("❌ Found console errors:");
-      console.error(parsedErrs.data.errors);
+      writeStderr("Found console errors:");
+      writeStderr(JSON.stringify(parsedErrs.data.errors, null, 2));
       failed = true;
     } else {
-      console.log("✅ No console errors detected.");
+      writeStdout("No console errors detected.");
     }
 
     // 2. Check that Shiki Highlighted the Code
@@ -51,9 +73,9 @@ async function main() {
     // If shiki fails to load, our fallback just wraps the text in `<pre class="shiki"><code>...`
     // without injecting all the individual `<span style="color: ...">` syntax tokens.
     if (shikiRendered.includes('style="color:')) {
-      console.log("✅ Shiki syntax highlighting is working.");
+      writeStdout("Shiki syntax highlighting is working.");
     } else {
-      console.error("❌ Shiki highlighting failed or didn't render spans.");
+      writeStderr("Shiki highlighting failed or didn't render spans.");
       failed = true;
     }
 
@@ -62,9 +84,9 @@ async function main() {
     // If marked fails to load, our fallback is `<div class="markdown-body"><pre># README...</pre></div>`
     // If it works, it converts `# README` into actual `<h1>`, `<p>`, `<a>` tags etc.
     if (mdRendered.includes("<h") || mdRendered.includes("<p>")) {
-      console.log("✅ Markdown rendering is working.");
+      writeStdout("Markdown rendering is working.");
     } else {
-      console.error("❌ Markdown rendering failed or only output raw text.");
+      writeStderr("Markdown rendering failed or only output raw text.");
       failed = true;
     }
   } finally {
@@ -72,14 +94,16 @@ async function main() {
   }
 
   if (failed) {
-    console.error("\n❌ Dashboard verification failed.");
+    writeStderr("");
+    writeStderr("Dashboard verification failed.");
     process.exit(1);
   } else {
-    console.log("\n✅ Dashboard verified successfully!");
+    writeStdout("");
+    writeStdout("Dashboard verified successfully!");
   }
 }
 
-main().catch((err) => {
-  console.error("Script crashed:", err);
+main().catch((error) => {
+  writeStderr(`Script crashed: ${formatError(error)}`);
   process.exit(1);
 });

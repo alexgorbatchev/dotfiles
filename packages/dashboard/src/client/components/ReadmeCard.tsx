@@ -8,10 +8,18 @@ import { TitledCard } from "./ui/TitledCard";
 
 // Using global marked and DOMPurify loaded via CDN in dashboard.html
 // to workaround Bun's HTMLBundle minifier issues with heavy dependencies
+type MarkedApi = {
+  parse: (markdown: string) => string;
+};
+
+type DOMPurifyApi = {
+  sanitize: (html: string) => string;
+};
+
 declare global {
   interface Window {
-    marked: any;
-    DOMPurify: any;
+    marked?: MarkedApi;
+    DOMPurify?: DOMPurifyApi;
   }
 }
 
@@ -67,8 +75,11 @@ export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
   }
 
   let html = "";
-  if (typeof window !== "undefined" && window.marked && window.DOMPurify) {
-    html = window.DOMPurify.sanitize(window.marked.parse(data.content));
+  const marked = typeof window !== "undefined" ? window.marked : undefined;
+  const domPurify = typeof window !== "undefined" ? window.DOMPurify : undefined;
+
+  if (marked && domPurify) {
+    html = domPurify.sanitize(marked.parse(data.content));
     html = resolveGitHubUrls(html, repo);
   } else {
     // SSR fallback or if CDN failed

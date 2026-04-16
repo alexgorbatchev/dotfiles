@@ -17,6 +17,7 @@ export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
     toolName,
   ]);
   const sourceContent = data?.content.trim() ?? "";
+  const sourceFilePath = data?.filePath ?? "";
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,7 +55,7 @@ export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
     );
   }
 
-  if (error || !sourceContent) {
+  if (error || !sourceContent || !sourceFilePath) {
     return (
       <TitledCard title="Source" icon={<Code class="h-4 w-4" />}>
         <div class="text-muted-foreground text-center py-8">Source not available</div>
@@ -66,7 +67,7 @@ export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
     <TitledCard
       title="Source"
       icon={<Code class="h-4 w-4" />}
-      action={<ExternalLinkButton href={`vscode://file/${data.filePath}`}>Open in VSCode</ExternalLinkButton>}
+      action={<ExternalLinkButton href={`vscode://file/${sourceFilePath}`}>Open in VSCode</ExternalLinkButton>}
     >
       {highlightedHtml ? (
         <div
