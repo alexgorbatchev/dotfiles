@@ -295,8 +295,6 @@ run_failing_package_postinstall_scenario() {
 	local bun_binary
 	bun_binary="$(command -v bun)"
 	local exit_code=0
-	local preserved_bun_temp_dir=""
-	local preserved_bun_bin=""
 	local preserved_temp_dirs=()
 	local temp_dir_candidate
 
@@ -353,8 +351,6 @@ run_missing_package_spec_scenario() {
 	local bun_binary
 	bun_binary="$(command -v bun)"
 	local exit_code=0
-	local preserved_bun_temp_dir=""
-	local preserved_bun_bin=""
 	local preserved_temp_dirs=()
 	local temp_dir_candidate
 
@@ -389,13 +385,8 @@ run_missing_package_spec_scenario() {
 	done
 	shopt -u nullglob
 
-	[[ "${#preserved_temp_dirs[@]}" -eq 1 ]] || fail "Expected exactly one preserved temporary Bun directory"
-	preserved_bun_temp_dir="${preserved_temp_dirs[0]}/bun"
-	preserved_bun_bin="${preserved_bun_temp_dir}/bin/bun"
-
-	assert_exists "${preserved_bun_bin}"
-	"${preserved_bun_bin}" --version >/dev/null || fail "Expected preserved temporary Bun to be executable"
-	assert_contains "${output_log}" "Bootstrap failed. Temporary Bun kept at ${preserved_bun_bin}"
+	assert_not_contains "${output_log}" "Bootstrap failed. Temporary Bun kept at"
+	[[ "${#preserved_temp_dirs[@]}" -eq 0 ]] || fail "Expected temporary Bun directory to be cleaned up after failed bootstrap"
 	log "Scenario '${scenario}' passed"
 
 	if [[ "${KEEP_WORKDIRS}" = "1" ]]; then

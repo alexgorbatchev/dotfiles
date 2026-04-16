@@ -10,4 +10,4 @@ Scenarios:
 - `existing-project-full`: existing package + config + local `bun` tool for the full managed-Bun handoff path
 - `existing-project-full-temp-bun`: existing package + config + local `bun` tool with no Bun on `PATH` to verify generated `dotfiles` output does not pin the temporary bootstrap Bun path
 - `failing-package-postinstall`: existing `package.json` with a failing `postinstall` to verify bootstrap skips project lifecycle scripts and still succeeds
-- `missing-package-spec`: existing `package.json` with an invalid package spec to verify temporary Bun is preserved on real bootstrap failure
+- `missing-package-spec`: existing `package.json` with an invalid package spec to verify temporary Bun is cleaned up on bootstrap failure
