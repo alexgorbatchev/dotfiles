@@ -13,6 +13,7 @@ import type { IFileSystem } from "@dotfiles/file-system";
 import type { HookExecutor } from "@dotfiles/installer";
 import type { IGitHubApiClient } from "@dotfiles/installer-github";
 import type { TsLogger } from "@dotfiles/logger";
+import { getPkgInstallerPath, shouldAllowNonMacOSPkgInstall } from "./installerPath";
 import { installFromPkg } from "./installFromPkg";
 import { type IPkgInstallParams, pkgInstallParamsSchema, type PkgToolConfig, pkgToolConfigSchema } from "./schemas";
 import type { IPkgInstallMetadata } from "./types";
@@ -46,12 +47,13 @@ export class PkgInstallerPlugin implements IInstallerPlugin<
   ) {}
 
   async validate(context: IInstallContext): Promise<IValidationResult> {
-    if (context.systemInfo.platform !== Platform.MacOS) {
+    if (context.systemInfo.platform !== Platform.MacOS && !shouldAllowNonMacOSPkgInstall()) {
       return { valid: true, warnings: ["PKG installer only works on macOS"] };
     }
 
+    const installerPath = getPkgInstallerPath();
     try {
-      await this.shell`test -x /usr/sbin/installer`.quiet();
+      await this.shell`test -x ${installerPath}`.quiet();
       return { valid: true };
     } catch {
       return { valid: false, errors: ["installer not found — required for PKG installation"] };

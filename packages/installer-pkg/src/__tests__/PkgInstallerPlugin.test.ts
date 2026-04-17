@@ -5,8 +5,9 @@ import type { IFileSystem } from "@dotfiles/file-system";
 import type { HookExecutor } from "@dotfiles/installer";
 import type { IGitHubApiClient } from "@dotfiles/installer-github";
 import type { PkgToolConfig } from "@dotfiles/installer-pkg";
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { PkgInstallerPlugin } from "../PkgInstallerPlugin";
+import { ALLOW_NON_MACOS_ENV_VAR, INSTALLER_PATH_ENV_VAR } from "../installerPath";
 
 const shell = createShell();
 
@@ -19,6 +20,8 @@ describe("PkgInstallerPlugin", () => {
   let mockGitHubApiClient: IGitHubApiClient;
 
   beforeEach(() => {
+    delete process.env[ALLOW_NON_MACOS_ENV_VAR];
+    delete process.env[INSTALLER_PATH_ENV_VAR];
     mockFs = {} as IFileSystem;
     mockDownloader = {} as IDownloader;
     mockArchiveExtractor = {} as IArchiveExtractor;
@@ -34,6 +37,11 @@ describe("PkgInstallerPlugin", () => {
       mockGitHubApiClient,
       undefined,
     );
+  });
+
+  afterEach(() => {
+    delete process.env[ALLOW_NON_MACOS_ENV_VAR];
+    delete process.env[INSTALLER_PATH_ENV_VAR];
   });
 
   it("should have correct plugin metadata", () => {
@@ -84,6 +92,27 @@ describe("PkgInstallerPlugin", () => {
       expect(result.warnings).toEqual(["PKG installer only works on macOS"]);
     });
 
+    it("should validate on non-macOS when test override is enabled", async () => {
+      process.env[ALLOW_NON_MACOS_ENV_VAR] = "1";
+      const mockShell = mock(() => ({
+        quiet: mock(() => Promise.resolve()),
+      }));
+      const pluginWithOverride = new PkgInstallerPlugin(
+        mockFs,
+        mockDownloader,
+        mockArchiveExtractor,
+        mockHookExecutor,
+        mockShell as unknown as ReturnType<typeof createShell>,
+        mockGitHubApiClient,
+        undefined,
+      );
+
+      const result = await pluginWithOverride.validate({ systemInfo: { platform: Platform.Linux } } as never);
+      expect(result.valid).toBe(true);
+      expect(result.warnings).toBeUndefined();
+      expect(mockShell).toHaveBeenCalledTimes(1);
+    });
+
     it("should return valid on macOS when installer exists", async () => {
       const mockShell = mock(() => ({
         quiet: mock(() => Promise.resolve()),
@@ -100,6 +129,29 @@ describe("PkgInstallerPlugin", () => {
 
       const result = await macPlugin.validate({ systemInfo: { platform: Platform.MacOS } } as never);
       expect(result.valid).toBe(true);
+      expect(mockShell).toHaveBeenCalledTimes(1);
+    });
+
+    it("should use override installer path when configured", async () => {
+      process.env[INSTALLER_PATH_ENV_VAR] = "/tmp/fake-installer";
+      const mockShell = mock(() => ({
+        quiet: mock(() => Promise.resolve()),
+      }));
+      const macPlugin = new PkgInstallerPlugin(
+        mockFs,
+        mockDownloader,
+        mockArchiveExtractor,
+        mockHookExecutor,
+        mockShell as unknown as ReturnType<typeof createShell>,
+        mockGitHubApiClient,
+        undefined,
+      );
+
+      const result = await macPlugin.validate({ systemInfo: { platform: Platform.MacOS } } as never);
+      expect(result.valid).toBe(true);
+      const firstCall = mockShell.mock.calls[0] as unknown[] | undefined;
+      expect(firstCall).toBeDefined();
+      expect(firstCall?.[1]).toBe("/tmp/fake-installer");
     });
 
     it("should return invalid on macOS when installer is missing", async () => {

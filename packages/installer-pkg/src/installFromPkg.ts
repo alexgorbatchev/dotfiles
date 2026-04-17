@@ -25,6 +25,7 @@ import { fetchGitHubRelease, selectAsset } from "@dotfiles/installer-github";
 import type { TsLogger } from "@dotfiles/logger";
 import { detectVersionViaCli } from "@dotfiles/utils";
 import path from "node:path";
+import { getPkgInstallerPath, shouldAllowNonMacOSPkgInstall } from "./installerPath";
 import { messages } from "./log-messages";
 import type { IPkgGitHubReleaseSource, IPkgInstallParams, IPkgUrlSource, PkgSource, PkgToolConfig } from "./schemas";
 import type { IPkgInstallMetadata, PkgInstallResult } from "./types";
@@ -55,7 +56,7 @@ export async function installFromPkg(
   const logger = parentLogger.getSubLogger({ name: "installFromPkg" });
   logger.debug(messages.installing(toolName));
 
-  if (context.systemInfo.platform !== Platform.MacOS) {
+  if (context.systemInfo.platform !== Platform.MacOS && !shouldAllowNonMacOSPkgInstall()) {
     logger.info(messages.skippingNonMacOS(toolName));
     return {
       success: true,
@@ -136,8 +137,9 @@ export async function installFromPkg(
     }
 
     const target = params.target || "/";
+    const installerPath = getPkgInstallerPath();
     logger.debug(messages.runningInstaller(resolvedPkgPath, target));
-    await shellExecutor`/usr/sbin/installer -pkg ${resolvedPkgPath} -target ${target}`.quiet();
+    await shellExecutor`${installerPath} -pkg ${resolvedPkgPath} -target ${target}`.quiet();
 
     if (await toolFs.exists(resolvedPkgPath)) {
       await toolFs.rm(resolvedPkgPath);
