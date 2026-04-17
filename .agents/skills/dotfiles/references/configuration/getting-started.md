@@ -22,14 +22,31 @@ curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
 
 The hosted installer uses Bun from `PATH` when available. Otherwise it checks for `curl` and `unzip` before prompting, bootstraps a temporary Bun, adds `@alexgorbatchev/dotfiles` to the local `package.json` without running your project's lifecycle scripts, creates a minimal `dotfiles.config.ts` when needed, installs managed Bun, and runs `dotfiles generate` for you. Generated `dotfiles` shell output resolves Bun at runtime instead of pinning the temporary bootstrap Bun path, and the temporary bootstrap directory is cleaned up before exit even if a later step fails.
 
-## Load Generated Config (Zsh)
+## Load Generated Config
 
 With the default project layout, the generated zsh config lives at `.generated/shell-scripts/main.zsh` inside your dotfiles directory.
 
 Add it to `~/.zshrc`:
 
 ```bash
-source "/absolute/path/to/your/dotfiles/.generated/shell-scripts/main.zsh"
+source "$HOME/.dotfiles/.generated/shell-scripts/main.zsh"
+```
+
+> [!IMPORTANT]
+> Configure bash even if your interactive shell is zsh. AI harnesses and other automation often start bash and rely on `~/.bashrc` or `~/.profile` to load the same environment.
+
+```bash
+# ~/.bashrc
+
+if [ -f "$HOME/.dotfiles/.generated/shell-scripts/main.bash" ]; then
+  # shellcheck disable=SC1090
+  . "$HOME/.dotfiles/.generated/shell-scripts/main.bash"
+fi
+
+# ~/.profile
+if [ -n "${BASH_VERSION:-}" ] && [ -f "$HOME/.bashrc" ]; then
+  . "$HOME/.bashrc"
+fi
 ```
 
 Then reload zsh:
