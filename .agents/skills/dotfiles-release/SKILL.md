@@ -28,7 +28,12 @@ To trigger a release:
    - Commit the `package.json` changes
    - Create a `vX.Y.Z` git tag
    - Push the commit and the tag to `origin/main`
-4. The `.github/workflows/publish.yml` GitHub Action handles the rest (publishing to NPM).
+4. Immediately create or edit the GitHub release with curated release notes. Do not leave the release on bare auto-generated notes.
+   - Use `gh release create vX.Y.Z --title "Version X.Y.Z" --notes "..."` when creating the release manually.
+   - If a release already exists, use `gh release edit vX.Y.Z --notes "..."` to replace the placeholder notes.
+   - Write a short `## Summary` section and a `## Notable Commits Since vA.B.C` section covering the actual shipped changes in the `previous-tag...new-tag` range.
+   - Include the compare link as `**Full Changelog**: https://github.com/alexgorbatchev/dotfiles/compare/vA.B.C...vX.Y.Z`.
+5. The `.github/workflows/publish.yml` GitHub Action handles package publishing after the tag is pushed.
 
 ## Diagnostics & Dry Runs
 
@@ -39,6 +44,17 @@ bun run release --dry-run
 ```
 
 This runs the full pipeline (version bump, build `compile`, type tests) but **skips git commit and tagging**, reverting the version bump at the end.
+
+## Release Notes Standard
+
+Every GitHub release should ship with hand-written notes, even when `gh` can generate defaults.
+
+- Treat `--generate-notes` as a starting point at most, not the final output.
+- Summarize user-visible changes first, not internal mechanics.
+- Prefer 3-5 bullets in `## Summary`.
+- Include the most important commits under `## Notable Commits Since vA.B.C`.
+- Skip noise like pure release-version commits unless they matter operationally.
+- If docs-only or infra-only changes shipped, say so explicitly instead of padding the summary.
 
 ## Publishing & CI Workflows
 

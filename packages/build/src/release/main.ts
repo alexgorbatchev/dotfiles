@@ -8,8 +8,10 @@
  * This script:
  * 1. Bumps version in package.json (without committing)
  * 2. Runs the build
- * 3. On success: commits the version change, creates and pushes a git tag, then publishes to npm
- * 4. On failure before git finalization: reverts the version change in package.json
+ * 3. On success: commits the version change, creates and pushes a git tag
+ * 4. After the tag is pushed, create or update the GitHub release with curated release notes
+ * 5. GitHub Actions publishes to npm from the pushed tag
+ * 6. On failure before git finalization: reverts the version change in package.json
  *
  * Prerequisites:
  * - Must be authenticated with npm (npm login)
@@ -22,6 +24,10 @@
  *   bun run release minor        # Minor bump (1.0.0 -> 1.1.0)
  *   bun run release major        # Major bump (1.0.0 -> 2.0.0)
  *   bun run release --dry-run    # Run everything except commit, tag, and publish
+ *
+ * Post-release requirement:
+ *   Always add well-written GitHub release notes for vX.Y.Z.
+ *   Do not leave the release with only placeholder or bare auto-generated notes.
  */
 
 import fs from "node:fs";
@@ -111,7 +117,7 @@ async function commitAndTag(version: string, didBump: boolean): Promise<void> {
 }
 
 /**
- * Pushes the release commit and tag before publishing.
+ * Pushes the release commit and tag before GitHub release creation/publishing.
  */
 async function pushRelease(version: string): Promise<void> {
   console.log("🚀 Pushing release commit and tag...");
@@ -186,12 +192,13 @@ async function release(): Promise<void> {
       return;
     }
 
-    // Step 3: Finalize git state and trigger CI publish via tag push
+    // Step 3: Finalize git state and trigger CI publish via tag push.
+    // Release notes are created separately via gh after the tag exists.
     await commitAndTag(newVersion, didBumpVersion);
     await pushRelease(newVersion);
 
     console.log(
-      `\n🎉 Version updated, tagged, and pushed! GitHub Actions will now publish release ${newVersion} to npm.`,
+      `\n🎉 Version updated, tagged, and pushed! Create/update the GitHub release notes for ${newVersion}, then GitHub Actions will publish it to npm.`,
     );
   } catch (error) {
     // Build or push failed - revert version change if it was not committed yet
