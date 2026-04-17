@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { ToolHistory } from "../ToolHistory";
 
 const meta: Meta<typeof ToolHistory> = {
-  title: "client/components/ToolHistory",
+  title: "@dotfiles/dashboard/client/components/ToolHistory",
   component: ToolHistory,
 };
 

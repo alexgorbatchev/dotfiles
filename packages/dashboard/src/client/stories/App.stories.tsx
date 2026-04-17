@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { App } from "../App";
 
 const meta: Meta<typeof App> = {
-  title: "client/App",
+  title: "@dotfiles/dashboard/client/App",
   component: App,
 };
 

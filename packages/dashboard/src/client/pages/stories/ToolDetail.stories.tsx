@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { ToolDetail } from "../ToolDetail";
 
 const meta: Meta<typeof ToolDetail> = {
-  title: "client/pages/ToolDetail",
+  title: "@dotfiles/dashboard/client/pages/ToolDetail",
   component: ToolDetail,
 };
 

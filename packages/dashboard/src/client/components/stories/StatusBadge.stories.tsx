@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { StatusBadge } from "../StatusBadge";
 
 const meta: Meta<typeof StatusBadge> = {
-  title: "client/components/StatusBadge",
+  title: "@dotfiles/dashboard/client/components/StatusBadge",
   component: StatusBadge,
 };
 

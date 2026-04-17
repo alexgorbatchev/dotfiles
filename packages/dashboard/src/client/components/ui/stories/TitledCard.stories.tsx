@@ -4,7 +4,7 @@ import { Info } from "../../../icons";
 import { TitledCard } from "../TitledCard";
 
 const meta: Meta<typeof TitledCard> = {
-  title: "client/components/ui/TitledCard",
+  title: "@dotfiles/dashboard/client/components/ui/TitledCard",
   component: TitledCard,
 };
 

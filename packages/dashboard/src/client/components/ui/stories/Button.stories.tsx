@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { Button } from "../Button";
 
 const meta: Meta<typeof Button> = {
-  title: "client/components/ui/Button",
+  title: "@dotfiles/dashboard/client/components/ui/Button",
   component: Button,
 };
 

@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { InstallMethodBadge } from "../InstallMethodBadge";
 
 const meta: Meta<typeof InstallMethodBadge> = {
-  title: "client/components/InstallMethodBadge",
+  title: "@dotfiles/dashboard/client/components/InstallMethodBadge",
   component: InstallMethodBadge,
 };
 

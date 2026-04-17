@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { StatCard } from "../StatCard";
 
 const meta: Meta<typeof StatCard> = {
-  title: "client/components/StatCard",
+  title: "@dotfiles/dashboard/client/components/StatCard",
   component: StatCard,
 };
 

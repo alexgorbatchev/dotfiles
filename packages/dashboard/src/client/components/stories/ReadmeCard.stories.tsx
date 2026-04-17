@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { ReadmeCard } from "../ReadmeCard";
 
 const meta: Meta<typeof ReadmeCard> = {
-  title: "client/components/ReadmeCard",
+  title: "@dotfiles/dashboard/client/components/ReadmeCard",
   component: ReadmeCard,
 };
 

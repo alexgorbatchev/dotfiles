@@ -4,7 +4,7 @@ import { LocationProvider } from "preact-iso";
 import { Nav } from "../Nav";
 
 const meta: Meta<typeof Nav> = {
-  title: "client/components/Nav",
+  title: "@dotfiles/dashboard/client/components/Nav",
   component: Nav,
 };
 

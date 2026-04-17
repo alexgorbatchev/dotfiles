@@ -4,7 +4,7 @@ import type { ITreeItemData } from "../Tree";
 import { Tree } from "../Tree";
 
 const meta: Meta<typeof Tree> = {
-  title: "client/components/ui/Tree",
+  title: "@dotfiles/dashboard/client/components/ui/Tree",
   component: Tree,
 };
 

@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../Table";
 
 const meta: Meta<typeof Table> = {
-  title: "client/components/ui/Table",
+  title: "@dotfiles/dashboard/client/components/ui/Table",
   component: Table,
 };
 
