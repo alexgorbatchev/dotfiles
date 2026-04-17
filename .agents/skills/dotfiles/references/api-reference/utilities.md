@@ -145,5 +145,6 @@ See the Installation Methods reference for detailed parameters for each method:
 - `curl-script` - Curl Scripts
 - `curl-tar` - Curl Tar
 - `curl-binary` - Curl Binary
+- `pkg` - macOS PKG
 - `manual` - Manual
 - `zsh-plugin` - Zsh Plugin

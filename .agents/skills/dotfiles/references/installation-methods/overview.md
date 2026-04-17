@@ -22,6 +22,7 @@ Using external package managers like `brew` or `npm` is fully supported and some
 | **curl-script**    | Custom installers                   | Flexible, handles complex setups       | Less predictable, security concerns  |
 | **curl-tar**       | Archive downloads                   | Simple, no dependencies                | Manual URL management                |
 | **dmg**            | macOS .app bundles                  | Handles mount/unmount, archive extract | macOS only                           |
+| **pkg**            | macOS installer packages            | Uses native installer flow             | macOS only                           |
 | **gitea-release**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host     | Requires instance URL                |
 | **github-release** | Most open source tools              | Automatic updates, cross-platform      | Requires GitHub hosting              |
 | **manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible  | Manual file management               |
@@ -128,6 +129,24 @@ install("dmg", {
     assetPattern: "*macos*.dmg",
   },
 });
+```
+
+### pkg
+
+Install macOS `.pkg` packages with the native `installer` command (silently skipped on other platforms).
+
+```typescript
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install, ctx) =>
+  install("pkg", {
+    source: {
+      type: "url",
+      url: "https://example.com/MyTool.pkg",
+    },
+    binaryPath: "/usr/local/bin/my-tool",
+  }).bin("my-tool"),
+);
 ```
 
 ### gitea-release

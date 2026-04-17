@@ -20,6 +20,7 @@ import { CurlBinaryInstallerPlugin } from "@dotfiles/installer-curl-binary";
 import { CurlScriptInstallerPlugin } from "@dotfiles/installer-curl-script";
 import { CurlTarInstallerPlugin } from "@dotfiles/installer-curl-tar";
 import { DmgInstallerPlugin } from "@dotfiles/installer-dmg";
+import { PkgInstallerPlugin } from "@dotfiles/installer-pkg";
 import { GiteaReleaseInstallerPlugin } from "@dotfiles/installer-gitea";
 import { GhCliApiClient, GitHubApiClient, GitHubReleaseInstallerPlugin } from "@dotfiles/installer-github";
 import { ManualInstallerPlugin } from "@dotfiles/installer-manual";
@@ -419,6 +420,17 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   pluginRegistry.register(new CurlBinaryInstallerPlugin(installerTrackedFs, downloader, hookExecutor, shell));
   pluginRegistry.register(
     new DmgInstallerPlugin(
+      installerTrackedFs,
+      downloader,
+      archiveExtractor,
+      hookExecutor,
+      shell,
+      githubApiClient,
+      ghCliApiClient,
+    ),
+  );
+  pluginRegistry.register(
+    new PkgInstallerPlugin(
       installerTrackedFs,
       downloader,
       archiveExtractor,

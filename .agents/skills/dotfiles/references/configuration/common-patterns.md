@@ -174,6 +174,7 @@ export default defineTool((install) =>
 | Shell config only | `install()`      | aliases, env vars  |
 | Installer scripts | `curl-script`    | rustup, nvm        |
 | Direct binaries   | `curl-binary`    | single-file tools  |
+| macOS installer   | `pkg`            | signed macOS tools |
 
 ## Dependency Ordering
 

@@ -19,6 +19,7 @@
     "@dotfiles/installer-cargo": "workspace:*",
     "@dotfiles/installer-curl-script": "workspace:*",
     "@dotfiles/installer-curl-tar": "workspace:*",
+    "@dotfiles/installer-pkg": "workspace:*",
     "@dotfiles/installer-github": "workspace:*",
     "@dotfiles/installer-manual": "workspace:*",
     "@dotfiles/logger": "workspace:*",

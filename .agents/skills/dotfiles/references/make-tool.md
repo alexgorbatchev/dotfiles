@@ -83,6 +83,9 @@ Select the most appropriate method based on your investigation. Prefer official,
 - **`curl-binary`**: for direct binary file downloads (no archive extraction).
   - Guide: [Curl Binary Installation Guide](installation-methods/curl-binary.md)
 
+- **`pkg`**: for macOS tools distributed as `.pkg` installer packages.
+  - Guide: [PKG Installation Guide](installation-methods/pkg.md)
+
 - **`manual`**: for custom install logic or dotfiles-provided binaries/scripts. Can be called without params: `install('manual')`.
   - Guide: [Manual Installation Guide](installation-methods/manual.md)
 
@@ -859,6 +862,7 @@ Without this step, the generated shims and shell configuration will be out of sy
 - [Curl Script Installation](installation-methods/curl-script.md)
 - [Curl Tar Installation](installation-methods/curl-tar.md)
 - [Curl Binary Installation](installation-methods/curl-binary.md)
+- [PKG Installation](installation-methods/pkg.md)
 - [Manual Installation](installation-methods/manual.md)
 - [Zsh Plugin Installation](installation-methods/zsh-plugin.md)
 
