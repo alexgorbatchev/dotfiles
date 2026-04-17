@@ -68,7 +68,7 @@ export default defineTool((install, ctx) =>
 1. **Define**: You describe a tool's installation and configuration in a `.tool.ts` file.
 2. **Generate**: You run `dotfiles generate`. This creates lightweight executable **shims** for all your defined tools and generates a single shell file to source.
 3. **Run & Auto-Install**: The first time you execute a tool's command (e.g., `rg --version`), the shim intercepts the call, triggers the generator to download and install the tool, and then seamlessly executes your command. All subsequent calls are instantaneous. Each execution can also be appended to a local usage log, which the dashboard compacts into SQLite on startup.
-4. **Source**: Your `.zshrc` sources one line, and all your tools, aliases, and functions become available everywhere.
+4. **Source**: Your shell profile sources the generated init files, and all your tools, aliases, and functions become available everywhere.
 
 ## Quick Start
 
@@ -103,7 +103,7 @@ The fastest way to make `.tool.ts` files is to ask an agent. For example:
 
 > /skills:dotfiles https://github.com/junegunn/fzf
 
-This should produce `fzf.tool.ts`. After you generate and source the zsh config below, you should be able to run `fzf` from your current shell without restarting it.
+This should produce `fzf.tool.ts`. After you generate and source the shell config below, you should be able to run `fzf` from your current shell without restarting it.
 
 ```bash
 # Generate shims and shell configuration files
@@ -115,6 +115,28 @@ If you are using the default project layout, add the generated zsh config to `~/
 ```bash
 source "/absolute/path/to/your/dotfiles/.generated/shell-scripts/main.zsh"
 ```
+
+Bootstrap bash as well:
+
+`~/.bashrc`
+
+```bash
+if [ -f "$HOME/.dotfiles/.generated/shell-scripts/main.bash" ]; then
+  # shellcheck disable=SC1090
+  . "$HOME/.dotfiles/.generated/shell-scripts/main.bash"
+fi
+```
+
+`~/.profile`
+
+```bash
+if [ -n "${BASH_VERSION:-}" ] && [ -f "$HOME/.bashrc" ]; then
+  . "$HOME/.bashrc"
+fi
+```
+
+> [!IMPORTANT]
+> Configure bash even if your interactive shell is zsh. AI harnesses, CI helpers, and other non-interactive tooling often start bash and read `~/.bashrc` or `~/.profile`, so skipping bash setup leaves those tools without the same `dotfiles` environment.
 
 Then reload zsh:
 

@@ -2,7 +2,7 @@
 name: dotfiles
 description: >-
   .tool.ts configuration files, defineTool, install(), dotfiles.config.ts, defineConfig,
-  installation methods (github-release, gitea-release, brew, cargo, npm, curl-script, curl-tar, curl-binary, dmg, manual, zsh-plugin),
+  installation methods (github-release, gitea-release, brew, cargo, npm, curl-script, curl-tar, curl-binary, dmg, pkg, manual, zsh-plugin),
   shell integration (aliases, functions, completions, env, symlinks, sourceFile),
   hooks (before-install, after-download, after-extract, after-install),
   platform overrides, virtual environments, shim generation, dotfiles management.
@@ -31,10 +31,24 @@ Every tool that provides executables **must** have `.bin()` — it generates a s
 After the first `dotfiles generate`, source the generated zsh config from your dotfiles directory:
 
 ```bash
-source "/absolute/path/to/your/dotfiles/.generated/shell-scripts/main.zsh"
+source "$HOME/.dotfiles/.generated/shell-scripts/main.zsh"
 ```
 
-Add that line to `~/.zshrc` so future zsh sessions load the generated config automatically.
+**Configure bash even if your interactive shell is zsh. AI harnesses and other automation often start bash and rely on `~/.bashrc` or `~/.profile` to load the same environment.**
+
+```bash
+# ~/.bashrc
+
+if [ -f "$HOME/.dotfiles/.generated/shell-scripts/main.bash" ]; then
+  # shellcheck disable=SC1090
+  . "$HOME/.dotfiles/.generated/shell-scripts/main.bash"
+fi
+
+# ~/.profile
+if [ -n "${BASH_VERSION:-}" ] && [ -f "$HOME/.bashrc" ]; then
+  . "$HOME/.bashrc"
+fi
+```
 
 ## Syncing Changes
 
@@ -67,6 +81,7 @@ Read these based on the task at hand:
   - [curl-tar.md](references/installation-methods/curl-tar.md) — Tarball download and extraction
   - [curl-binary.md](references/installation-methods/curl-binary.md) — Direct binary file download
   - [dmg.md](references/installation-methods/dmg.md) — macOS DMG disk image installation
+  - [pkg.md](references/installation-methods/pkg.md) — macOS PKG installer package installation
   - [manual.md](references/installation-methods/manual.md) — Custom scripts, pre-built binaries, config-only tools
   - [zsh-plugin.md](references/installation-methods/zsh-plugin.md) — Zsh plugin Git repository cloning
 
@@ -92,6 +107,7 @@ Read these based on the task at hand:
 | Tarball URLs           | `curl-tar`       | direct archives    |
 | Direct binaries        | `curl-binary`    | single-file tools  |
 | macOS DMG              | `dmg`            | GUI apps           |
+| macOS PKG              | `pkg`            | installer packages |
 | Custom/scripts         | `manual`         | deployment scripts |
 | Zsh plugins            | `zsh-plugin`     | zsh-vi-mode        |
 | Config only            | `install()`      | aliases, env vars  |
