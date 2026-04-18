@@ -363,6 +363,11 @@ export default defineConfig(() => ({
     },
   },
 
+  // Interactive downloads render an inline progress line on stderr. On supported
+  // terminals, the CLI also emits native OSC 9;4 progress updates so the terminal
+  // can surface progress in its own UI. These updates are skipped when stderr is
+  // not a TTY, in CI, or when NO_COLOR is set.
+
   // ---------------------------------------------------------------------------
   // Platform-Specific Overrides
   // ---------------------------------------------------------------------------

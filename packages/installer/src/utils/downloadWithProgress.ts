@@ -35,7 +35,9 @@ export async function downloadWithProgress(
       destinationPath,
       onProgress: progressBar.createCallback(),
     });
-  } finally {
     progressBar.finish();
+  } catch (error) {
+    progressBar.fail();
+    throw error;
   }
 }

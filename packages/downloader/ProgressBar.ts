@@ -1,5 +1,6 @@
-import * as cliProgress from "cli-progress";
+import { createOscProgressController, type OscProgressReporter } from "osc-progress";
 import type { ProgressCallback } from "./IDownloader";
+import { renderProgressFrame } from "./renderProgressFrame";
 
 /**
  * Options for configuring the ProgressBar behavior.
@@ -7,20 +8,28 @@ import type { ProgressCallback } from "./IDownloader";
 export interface IProgressBarOptions {
   /** Whether progress bar should be shown at all */
   enabled?: boolean;
+  /** Output stream for the rendered progress line */
+  stream?: ProgressBarStream;
+  /** Environment passed to terminal-progress detection */
+  env?: NodeJS.ProcessEnv;
 }
+
+type ProgressBarStream = Pick<NodeJS.WriteStream, "write"> & Partial<Pick<NodeJS.WriteStream, "isTTY">>;
 
 /**
  * Progress bar for displaying download progress in the terminal.
  *
- * This class wraps cli-progress to provide visual feedback during file downloads.
- * It supports both determinate progress (when total size is known) and indeterminate
- * progress (when total size is unknown). The bar shows download speed, ETA, and
- * percentage complete.
+ * This class renders a single-line terminal progress display for downloads.
+ * It supports both determinate progress (when total size is known) and
+ * indeterminate progress (when total size is unknown).
  */
 export class ProgressBar {
-  private progressBar: cliProgress.SingleBar | null = null;
-  private enabled: boolean;
-  private startTime: number = 0;
+  private readonly enabled: boolean;
+  private readonly stream: ProgressBarStream;
+  private readonly terminalProgress: OscProgressReporter;
+  private startTime = 0;
+  private hasRendered = false;
+  private isCursorHidden = false;
 
   /**
    * Creates a new ProgressBar instance.
@@ -33,6 +42,16 @@ export class ProgressBar {
     options: IProgressBarOptions = {},
   ) {
     this.enabled = options.enabled ?? true;
+    this.stream = options.stream ?? process.stderr;
+    this.terminalProgress = createOscProgressController({
+      disabled: !this.enabled,
+      env: options.env ?? process.env,
+      isTty: this.stream.isTTY === true,
+      label: this.filename,
+      write: (chunk) => {
+        this.stream.write(chunk);
+      },
+    });
   }
 
   /**
@@ -50,68 +69,22 @@ export class ProgressBar {
     }
 
     return (bytesDownloaded: number, totalBytes: number | null) => {
-      // Initialize progress bar on first call
       if (this.startTime === 0) {
         this.startTime = Date.now();
-
-        if (totalBytes) {
-          // Create determinate progress bar
-          this.progressBar = new cliProgress.SingleBar(
-            {
-              format: `Downloading ${this.filename} |{bar}| {percentage}% | {value}/{total} | {speed} | ETA: {eta_formatted}`,
-              barCompleteChar: "█",
-              barIncompleteChar: "░",
-              hideCursor: true,
-              stream: process.stderr,
-            },
-            cliProgress.Presets.shades_classic,
-          );
-
-          this.progressBar.start(totalBytes, 0, {
-            speed: "0 B/s",
-          });
-        } else {
-          // Create indeterminate progress bar
-          this.progressBar = new cliProgress.SingleBar(
-            {
-              format: `Downloading ${this.filename} |{bar}| {value} | {speed}`,
-              barCompleteChar: "█",
-              barIncompleteChar: "░",
-              hideCursor: true,
-              stream: process.stderr,
-            },
-            cliProgress.Presets.shades_classic,
-          );
-
-          this.progressBar.start(100, 0, {
-            speed: "0 B/s",
-          });
-        }
+        this.hideCursor();
       }
 
-      if (this.progressBar) {
-        const elapsed = (Date.now() - this.startTime) / 1000;
-        const speed = elapsed > 0 ? `${this.formatBytes(bytesDownloaded / elapsed)}/s` : "0 B/s";
+      this.updateTerminalProgress(bytesDownloaded, totalBytes);
 
-        if (totalBytes) {
-          // Update determinate progress bar
-          this.progressBar.update(bytesDownloaded, {
-            speed,
-          });
+      const frame = renderProgressFrame({
+        filename: this.filename,
+        bytesDownloaded,
+        totalBytes,
+        elapsedMs: Date.now() - this.startTime,
+        useAnsi: !process.env["NO_COLOR"] && this.stream.isTTY === true,
+      });
 
-          // Complete the bar if done
-          if (bytesDownloaded >= totalBytes) {
-            this.progressBar.stop();
-          }
-        } else {
-          // Update indeterminate progress bar - show spinning effect
-          const progress = Math.floor(Date.now() / 100) % 100;
-          this.progressBar.update(progress, {
-            speed,
-            value: this.formatBytes(bytesDownloaded),
-          });
-        }
-      }
+      this.writeFrame(frame);
     };
   }
 
@@ -122,10 +95,16 @@ export class ProgressBar {
    * It should be called when the download is complete or has failed.
    */
   clear(): void {
-    if (this.progressBar) {
-      this.progressBar.stop();
-      this.progressBar = null;
+    if (this.hasRendered) {
+      this.stream.write("\r\u001b[2K");
+      this.hasRendered = false;
     }
+
+    if (this.startTime !== 0) {
+      this.terminalProgress.clear();
+    }
+
+    this.showCursor();
   }
 
   /**
@@ -135,29 +114,64 @@ export class ProgressBar {
    * completed successfully. It stops the progress bar and cleans up the display.
    */
   finish(): void {
-    if (this.progressBar) {
-      this.progressBar.stop();
-      this.progressBar = null;
+    if (this.startTime !== 0) {
+      this.terminalProgress.done(this.filename);
     }
+
+    if (this.hasRendered) {
+      this.stream.write("\n");
+      this.hasRendered = false;
+    }
+
+    this.showCursor();
   }
 
   /**
-   * Formats bytes into a human-readable string with appropriate units.
-   *
-   * @param bytes - The number of bytes to format.
-   * @returns A formatted string (e.g., "1.5 MB", "500 KB").
+   * Finishes the progress bar in an error state, ensuring cleanup still happens.
    */
-  private formatBytes(bytes: number): string {
-    const units = ["B", "KB", "MB", "GB"];
-    let size = bytes;
-    let unitIndex = 0;
-
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
+  fail(): void {
+    if (this.startTime !== 0) {
+      this.terminalProgress.fail(this.filename);
     }
 
-    return `${size.toFixed(size >= 10 ? 0 : 1)} ${units[unitIndex]}`;
+    if (this.hasRendered) {
+      this.stream.write("\n");
+      this.hasRendered = false;
+    }
+
+    this.showCursor();
+  }
+
+  private hideCursor(): void {
+    if (this.isCursorHidden || this.stream.isTTY !== true) {
+      return;
+    }
+
+    this.stream.write("\u001b[?25l");
+    this.isCursorHidden = true;
+  }
+
+  private showCursor(): void {
+    if (!this.isCursorHidden || this.stream.isTTY !== true) {
+      return;
+    }
+
+    this.stream.write("\u001b[?25h");
+    this.isCursorHidden = false;
+  }
+
+  private writeFrame(frame: string): void {
+    this.stream.write(`\r\u001b[2K${frame}`);
+    this.hasRendered = true;
+  }
+
+  private updateTerminalProgress(bytesDownloaded: number, totalBytes: number | null): void {
+    if (totalBytes === null) {
+      this.terminalProgress.setIndeterminate(this.filename);
+      return;
+    }
+
+    this.terminalProgress.setPercent(this.filename, (bytesDownloaded / totalBytes) * 100);
   }
 }
 

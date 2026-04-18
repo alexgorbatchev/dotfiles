@@ -11,13 +11,12 @@
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/utils": "workspace:*",
     "@dotfiles/core": "workspace:*",
-    "cli-progress": "^3.12.0"
+    "osc-progress": "^0.3.0"
   },
   "devDependencies": {
     "@dotfiles/testing-helpers": "workspace:*",
     "@rageltd/bun-test-utils": "catalog:testing",
     "@types/bun": "catalog:system",
-    "@types/cli-progress": "^3.11.6",
     "@types/node": "catalog:system",
     "@typescript/native-preview": "catalog:typescript",
     "typescript": "catalog:typescript"
