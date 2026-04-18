@@ -303,6 +303,9 @@ export interface IInstallerPlugin<
   /** Whether this plugin supports updating to latest version */
   supportsUpdate(): boolean;
 
+  /** Optional: Check if plugin supports tools configured with `sudo()` */
+  supportsSudo?(): boolean;
+
   /** Optional: Check if plugin supports update checking */
   supportsUpdateCheck?(): boolean;
 

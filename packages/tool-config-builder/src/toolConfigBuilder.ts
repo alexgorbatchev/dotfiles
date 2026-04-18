@@ -74,6 +74,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   private dependencies: string[] = [];
   private isDisabled: boolean = false;
   private hostnamePattern?: string;
+  private requiresSudo: boolean = false;
 
   // Organized shell storage matching final ToolConfig structure
   private internalShellConfigs: IInternalShellConfigs = {
@@ -118,6 +119,11 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   version(version: string): this {
     this.versionNum = version;
+    return this;
+  }
+
+  sudo(): this {
+    this.requiresSudo = true;
     return this;
   }
 
@@ -471,6 +477,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       binaries:
         this.binaries.length > 0 ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b)) : undefined,
       version: this.versionNum,
+      sudo: this.requiresSudo ? true : undefined,
       disabled: this.isDisabled ? true : undefined,
       hostname: this.hostnamePattern,
       shellConfigs: this.buildShellConfigs(),
@@ -500,6 +507,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       binaries:
         this.binaries.length > 0 ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b)) : undefined,
       version: this.versionNum !== "latest" ? this.versionNum : undefined,
+      sudo: this.requiresSudo ? true : undefined,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
       copies: this.copyPairs.length > 0 ? this.copyPairs : undefined,

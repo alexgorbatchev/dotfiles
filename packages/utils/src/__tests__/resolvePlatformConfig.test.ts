@@ -318,11 +318,13 @@ describe("resolvePlatformConfig", () => {
     it("should override scalar properties from platform config", () => {
       const configWithOverrides: ToolConfig = {
         ...baseToolConfig,
+        sudo: false,
         version: "1.0.0",
         platformConfigs: [
           {
             platforms: Platform.MacOS,
             config: {
+              sudo: true,
               version: "2.0.0-macos",
               binaries: ["test-tool-macos"],
             },
@@ -333,6 +335,7 @@ describe("resolvePlatformConfig", () => {
       const result = resolvePlatformConfig(configWithOverrides, macosSystemInfo);
 
       // Platform config overrides scalar properties
+      expect(result.sudo).toBe(true);
       expect(result.version).toBe("2.0.0-macos");
       expect(result.binaries).toEqual(["test-tool-macos"]);
       // Base config properties remain unchanged

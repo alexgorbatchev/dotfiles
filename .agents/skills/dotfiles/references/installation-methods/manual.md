@@ -67,8 +67,21 @@ export default defineTool((install, ctx) =>
 );
 ```
 
+### With Sudo Prompt
+
+```typescript
+export default defineTool((install) =>
+  install("manual", {
+    binaryPath: "/usr/bin/whoami",
+  })
+    .bin("sudo-prompt-test")
+    .sudo(),
+);
+```
+
 **Notes:**
 
 - Binary paths are relative to the tool configuration file location
 - Files are copied to the managed installation directory with executable permissions
+- `.sudo()` acquires sudo credentials interactively before Dotfiles registers the manual binary
 - Configuration-only tools use `install()` with no arguments and must not define `.bin()`

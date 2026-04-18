@@ -111,6 +111,7 @@ After calling `install()`, these methods are available:
 | `.hook(event, fn)`       | Lifecycle hooks                       |
 | `.zsh(fn)` / `.bash(fn)` | Shell-specific configuration          |
 | `.platform(p, fn)`       | Platform-specific overrides           |
+| `.sudo()`                | Require an interactive sudo step      |
 | `.disable()`             | Skip tool during generation           |
 | `.hostname(pattern)`     | Restrict tool to specific hostname(s) |
 

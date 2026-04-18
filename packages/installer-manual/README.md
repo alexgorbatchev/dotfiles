@@ -77,6 +77,18 @@ export default defineTool((install, ctx) =>
 );
 ```
 
+#### With Sudo Prompt
+
+```typescript
+export default defineTool((install) =>
+  install("manual", {
+    binaryPath: "/usr/bin/whoami",
+  })
+    .bin("sudo-prompt-test")
+    .sudo(),
+);
+```
+
 ## Features
 
 ### Binary Verification
@@ -113,6 +125,7 @@ Does not perform downloads, extractions, or complex setup procedures. Focuses on
 4. Returns the configured binary paths
 
 No download, extraction, or automated setup is performed.
+When `.sudo()` is set on the tool, Dotfiles acquires sudo credentials interactively before continuing the manual registration step.
 
 ## Plugin Interface
 

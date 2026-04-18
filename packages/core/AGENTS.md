@@ -15,6 +15,7 @@ Shared schemas, builder APIs, installer contracts, and plugin registries used th
 ## Local gotchas
 
 - This package is the type backbone for plugin packages. Contract drift here propagates widely, so update dependent tests in the same change.
+- Keep both `src/builder/builder.types.ts` `.sudo()` JSDoc blocks authoritative and identical: every installer method whose plugin returns `supportsSudo(): true` must be listed in both.
 
 ## Boundaries
 

@@ -50,6 +50,7 @@ describe("PkgInstallerPlugin", () => {
     expect(plugin.version).toBe("1.0.0");
     expect(plugin.externallyManaged).toBe(true);
     expect(plugin.missingBinaryMessage).toContain("macOS Installer");
+    expect(plugin.supportsSudo?.()).toBe(true);
   });
 
   it("should validate correct params", () => {
@@ -67,6 +68,7 @@ describe("PkgInstallerPlugin", () => {
     const validConfig: PkgToolConfig = {
       name: "test-tool",
       version: "1.0.0",
+      sudo: true,
       binaries: ["test-tool"],
       installationMethod: "pkg",
       installParams: {

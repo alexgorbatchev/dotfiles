@@ -234,6 +234,7 @@ export class ShimGenerator implements IShimGenerator {
       TOOL_NAME="${toolName}"
       BINARY_NAME="${binaryName}"
       TOOL_EXECUTABLE="${toolBinaryPath}"
+      TOOL_REQUIRES_SUDO="${toolConfig.sudo === true ? "1" : "0"}"
       GENERATOR_CLI_EXECUTABLE="${getCliInvocationCommand()}"
       CONFIG_PATH="${this.config.configFilePath}"
       USAGE_LOG_PATH="${usageLogPath}"
@@ -267,6 +268,11 @@ export class ShimGenerator implements IShimGenerator {
         exec "$TOOL_EXECUTABLE" "$@"
       else
         # Tool not found, try to install it
+        if [ "$TOOL_REQUIRES_SUDO" = "1" ] && { [ ! -t 0 ] || [ ! -t 2 ]; }; then
+          echo "$TOOL_NAME requires an interactive install with sudo. Run: dotfiles install $TOOL_NAME" >&2
+          exit 1
+        fi
+
         # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
         # Let stderr (progress bars) pass through to the user
         # Temporarily disable set -e to handle install failures gracefully

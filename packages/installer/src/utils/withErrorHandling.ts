@@ -1,5 +1,6 @@
 import type { TsLogger } from "@dotfiles/logger";
 import type { InstallResult } from "../types";
+import { extractErrorCause } from "./extractErrorCause";
 import { messages } from "./log-messages";
 
 type ErrorHandledOperation<T extends InstallResult> = () => Promise<T>;
@@ -32,7 +33,7 @@ export async function withInstallErrorHandling<T extends InstallResult>(
     logger.error(messages.outcome.installFailed(methodName), error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: extractErrorCause(error),
     } as T;
   }
 }

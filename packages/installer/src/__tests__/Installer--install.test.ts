@@ -71,6 +71,28 @@ describe("Installer - install (orchestrator)", () => {
     installSpy.mockRestore();
   });
 
+  it("should fail when sudo() is requested for an unsupported installer", async () => {
+    const toolConfig = createGithubReleaseToolConfig({ sudo: true });
+
+    const installSpy = spyOn(setup.pluginRegistry, "install");
+    const result = await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
+
+    expect(result).toEqual({
+      success: false,
+      error: "`github-release` doesn't support `sudo()`",
+      installationMethod: "github-release",
+    });
+    expect(installSpy).not.toHaveBeenCalled();
+    setup.logger.expect(
+      ["ERROR"],
+      ["Installer", "install"],
+      [MOCK_TOOL_NAME],
+      ["`github-release` doesn't support `sudo()`"],
+    );
+
+    installSpy.mockRestore();
+  });
+
   it("should handle errors during installation and log the error", async () => {
     const toolConfig = createGithubReleaseToolConfig();
 

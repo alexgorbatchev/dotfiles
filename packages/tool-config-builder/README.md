@@ -30,6 +30,7 @@ interface IToolConfigBuilder {
   zsh(callback: (shell: IShellConfigurator) => void): this;
   bash(callback: (shell: IShellConfigurator) => void): this;
   powershell(callback: (shell: IShellConfigurator) => void): this;
+  sudo(): this;
   disable(): this;
   hostname(pattern: string | RegExp): this;
   build(): ToolConfig;
@@ -175,6 +176,23 @@ c.bin("deprecated-tool")
     repo: "owner/deprecated-tool",
   })
   .disable(); // Tool will be skipped and its artifacts cleaned up
+```
+
+### Sudo-enabled Install
+
+Use `.sudo()` when installing the tool should require an interactive sudo step.
+Depending on the installer, Dotfiles either runs a privileged install command with sudo or validates sudo access before continuing.
+
+```typescript
+install("pkg", {
+  source: {
+    type: "github-release",
+    repo: "Yubico/yubikey-manager",
+    assetPattern: "*mac.pkg",
+  },
+})
+  .bin("ykman")
+  .sudo();
 ```
 
 ### Hostname Restriction

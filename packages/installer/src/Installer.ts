@@ -434,6 +434,16 @@ export class Installer implements IInstaller {
       const plugin = this.registry.get(resolvedToolConfig.installationMethod);
       const isExternallyManaged: boolean = plugin?.externallyManaged === true;
 
+      if (resolvedToolConfig.sudo && plugin && plugin.supportsSudo?.() !== true) {
+        const error = `\`${resolvedToolConfig.installationMethod}\` doesn't support \`sudo()\``;
+        logger.error(messages.outcome.sudoUnsupported(resolvedToolConfig.installationMethod));
+        return {
+          success: false,
+          error,
+          installationMethod: resolvedToolConfig.installationMethod,
+        };
+      }
+
       // Try to resolve version before creating installation directory
       // Fall back to timestamp if version cannot be resolved
       const binariesDir: string = this.projectConfig.paths.binariesDir;

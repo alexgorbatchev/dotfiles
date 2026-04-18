@@ -87,6 +87,10 @@ export class PkgInstallerPlugin implements IInstallerPlugin<
     return false;
   }
 
+  supportsSudo(): boolean {
+    return true;
+  }
+
   supportsUpdateCheck(): boolean {
     return false;
   }

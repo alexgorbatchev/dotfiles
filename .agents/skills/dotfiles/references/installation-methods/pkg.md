@@ -48,12 +48,15 @@ install("pkg", {
     repo: "owner/tool",
     assetPattern: "*macos*.pkg",
   },
-}).bin("tool");
+})
+  .bin("tool")
+  .sudo();
 ```
 
 ## Notes
 
 - macOS only. Non-macOS platforms skip this install method.
 - `.pkg` installers are externally managed after installation.
+- Packages that declare root authorization should opt into `.sudo()` so explicit `dotfiles install <tool>` runs execute the macOS installer via `sudo`.
 - GUI-only packages can omit `.bin()`.
 - If the binary is not on PATH after installation, set `binaryPath` explicitly.

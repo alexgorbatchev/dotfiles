@@ -17,6 +17,7 @@ describe("ManualInstallerPlugin", () => {
     expect(plugin.method).toBe("manual");
     expect(plugin.displayName).toBe("Manual Installer");
     expect(plugin.version).toBe("1.0.0");
+    expect(plugin.supportsSudo?.()).toBe(true);
   });
 
   it("should have valid schemas", () => {
@@ -35,6 +36,7 @@ describe("ManualInstallerPlugin", () => {
     const validConfig: ManualToolConfig = {
       name: "test-tool",
       version: "1.0.0",
+      sudo: true,
       binaries: ["test-tool"],
       installationMethod: "manual",
       installParams: {},

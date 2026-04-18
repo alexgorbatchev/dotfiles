@@ -127,6 +127,9 @@ function applyPlatformOverrides(finalConfig: ToolConfig, platformConfig: Platfor
   if (platformConfig.version !== undefined) {
     finalConfig.version = platformConfig.version;
   }
+  if (platformConfig.sudo !== undefined) {
+    finalConfig.sudo = platformConfig.sudo;
+  }
   if (platformConfig.updateCheck !== undefined) {
     finalConfig.updateCheck = platformConfig.updateCheck;
   }

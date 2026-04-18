@@ -43,6 +43,7 @@ export default defineTool((install, ctx) => install("github-release", { repo: "o
 | `.bash(fn)`           | Bash shell configuration                                |
 | `.powershell(fn)`     | PowerShell configuration                                |
 | `.platform(p, fn)`    | Platform-specific overrides                             |
+| `.sudo()`             | Require an interactive sudo step during install         |
 | `.disable()`          | Skip tool during generation (logs warning)              |
 | `.hostname(pattern)`  | Restrict tool to specific hostname(s) (string or regex) |
 

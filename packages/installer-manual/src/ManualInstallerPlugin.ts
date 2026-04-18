@@ -87,6 +87,10 @@ export class ManualInstallerPlugin implements IInstallerPlugin<
     return false;
   }
 
+  supportsSudo(): boolean {
+    return true;
+  }
+
   supportsUpdateCheck(): boolean {
     return false; // manual installation doesn't support version checking
   }

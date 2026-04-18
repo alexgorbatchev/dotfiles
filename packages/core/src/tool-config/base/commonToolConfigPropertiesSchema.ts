@@ -32,6 +32,12 @@ export const commonToolConfigPropertiesSchema = z
     hostname: z.string().optional(),
     /** The desired version of the tool, defined by `c.version()`. Defaults to 'latest'. */
     version: z.string().optional(),
+    /**
+     * When true, Dotfiles explains that the tool needs sudo, requires an interactive sudo step
+     * during installation, and fails fast for non-interactive shim installs. Installers may
+     * either run a privileged subprocess with sudo or validate sudo access before continuing.
+     */
+    sudo: z.boolean().optional(),
     /** Shell configurations organized by shell type, added via `c.zsh()`, `c.bash()`, `c.powershell()`. */
     shellConfigs: shellConfigsSchema.optional(),
     /**

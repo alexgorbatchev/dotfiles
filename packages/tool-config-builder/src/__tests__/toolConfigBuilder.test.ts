@@ -671,6 +671,25 @@ describe("IToolConfigBuilder", () => {
     expect(config.disabled).toBeUndefined();
   });
 
+  test("sudo method sets sudo to true", () => {
+    const builder = new IToolConfigBuilder(logger, "test-tool");
+
+    builder
+      .bin("test-bin")
+      .install("pkg", { source: { type: "url", url: "https://example.com/tool.pkg" } })
+      .sudo();
+
+    const config = builder.build();
+    expect(config.sudo).toBe(true);
+  });
+
+  test("sudo method returns builder for chaining", () => {
+    const builder = new IToolConfigBuilder(logger, "test-tool");
+
+    const result = builder.sudo();
+    expect(result).toBe(builder);
+  });
+
   test("hostname method sets hostname pattern as string", () => {
     const builder = new IToolConfigBuilder(logger, "test-tool");
 

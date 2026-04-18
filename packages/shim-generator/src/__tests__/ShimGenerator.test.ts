@@ -120,6 +120,7 @@ describe("ShimGenerator", () => {
         TOOL_NAME="my-tool"
         BINARY_NAME="my-tool-binary"
         TOOL_EXECUTABLE="${expectedBinaryPath}"
+        TOOL_REQUIRES_SUDO="0"
         GENERATOR_CLI_EXECUTABLE="${expect.anything}"
         CONFIG_PATH="${/.+\/dotfiles\.config\.ts/}"
         USAGE_LOG_PATH="${/.+\/\.generated\/usage\/shim-usage\.log/}"
@@ -153,6 +154,11 @@ describe("ShimGenerator", () => {
           exec "$TOOL_EXECUTABLE" "$@"
         else
           # Tool not found, try to install it
+          if [ "$TOOL_REQUIRES_SUDO" = "1" ] && { [ ! -t 0 ] || [ ! -t 2 ]; }; then
+            echo "$TOOL_NAME requires an interactive install with sudo. Run: dotfiles install $TOOL_NAME" >&2
+            exit 1
+          fi
+          
           # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
           # Let stderr (progress bars) pass through to the user
           # Temporarily disable set -e to handle install failures gracefully
@@ -667,6 +673,19 @@ describe("ShimGenerator", () => {
       // Should include --shim-mode flag for suppressed logging
       expect(writtenContent).toContain("update --shim-mode --config");
       expect(writtenContent).toContain("install --shim-mode --config");
+    });
+
+    it("should include interactive-only sudo bootstrap logic for sudo tools", async () => {
+      const result = await shimGenerator.generateForTool(toolName, { ...toolConfig, sudo: true });
+
+      expect(result).toHaveLength(1);
+      const writtenContent = String(fsMocks.writeFile.mock.calls[0]![1]);
+
+      expect(writtenContent).toContain('TOOL_REQUIRES_SUDO="1"');
+      expect(writtenContent).toContain('if [ "$TOOL_REQUIRES_SUDO" = "1" ] && { [ ! -t 0 ] || [ ! -t 2 ]; }; then');
+      expect(writtenContent).toContain(
+        'echo "$TOOL_NAME requires an interactive install with sudo. Run: dotfiles install $TOOL_NAME" >&2',
+      );
     });
   });
 

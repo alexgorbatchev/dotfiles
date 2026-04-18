@@ -1,5 +1,6 @@
 import { type IArchiveExtractor, isSupportedArchiveFile } from "@dotfiles/archive-extractor";
 import {
+  createShell,
   type IDownloadContext,
   type IExtractContext,
   type IExtractResult,
@@ -18,6 +19,7 @@ import {
   executeAfterDownloadHook,
   executeAfterExtractHook,
   normalizeBinaries,
+  runWithSudo,
   withInstallErrorHandling,
 } from "@dotfiles/installer";
 import type { IGitHubApiClient } from "@dotfiles/installer-github";
@@ -139,7 +141,16 @@ export async function installFromPkg(
     const target = params.target || "/";
     const installerPath = getPkgInstallerPath();
     logger.debug(messages.runningInstaller(resolvedPkgPath, target));
-    await shellExecutor`${installerPath} -pkg ${resolvedPkgPath} -target ${target}`.quiet();
+    if (toolConfig.sudo) {
+      await runWithSudo(toolName, context, {
+        command: [installerPath, "-pkg", resolvedPkgPath, "-target", target],
+        cwd: context.stagingDir,
+        failureLabel: "sudo installer",
+      });
+    } else {
+      const loggingShell = createShell({ logger, skipCommandLog: true });
+      await loggingShell`${installerPath} -pkg ${resolvedPkgPath} -target ${target}`;
+    }
 
     if (await toolFs.exists(resolvedPkgPath)) {
       await toolFs.rm(resolvedPkgPath);

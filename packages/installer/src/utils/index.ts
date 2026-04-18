@@ -9,6 +9,7 @@ export * from "./getBinaryPaths";
 export * from "./HookExecutor";
 export * from "./log-messages";
 export * from "./normalizeBinaries";
+export * from "./runWithSudo";
 export * from "./setupBinariesFromArchive";
 export * from "./setupBinariesFromDirectDownload";
 export * from "./withErrorHandling";

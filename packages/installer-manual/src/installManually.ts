@@ -1,7 +1,13 @@
 import type { IInstallContext } from "@dotfiles/core";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { IInstallOptions } from "@dotfiles/installer";
-import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from "@dotfiles/installer";
+import {
+  createToolFileSystem,
+  getBinaryNames,
+  getBinaryPaths,
+  runWithSudo,
+  withInstallErrorHandling,
+} from "@dotfiles/installer";
 import type { TsLogger } from "@dotfiles/logger";
 import { expandToolConfigPath } from "@dotfiles/utils";
 import path from "node:path";
@@ -57,8 +63,14 @@ export async function installManually(
         };
       }
 
+      if (toolConfig.sudo) {
+        await runWithSudo(toolName, context, { failureLabel: "sudo validation" });
+      }
+
       await installBinariesManually(toolConfig, toolName, context, toolFs, binaryPath, logger);
       binaryPaths = getBinaryPaths(toolConfig.binaries, context.stagingDir);
+    } else if (toolConfig.sudo) {
+      await runWithSudo(toolName, context, { failureLabel: "sudo validation" });
     }
 
     const metadata: IManualInstallMetadata = {

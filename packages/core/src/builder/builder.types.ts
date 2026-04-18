@@ -383,6 +383,15 @@ export interface IToolConfigBuilder {
   version(version: string): this;
 
   /**
+   * Require an interactive sudo prompt. The installation will be done with elevated
+   * privileges. The side effect is that tools can't be installed in non-interactive
+   * mode.
+   *
+   * **Supported installers:** `manual`, `pkg`
+   */
+  sudo(): this;
+
+  /**
    * Declare binary dependencies that must be installed before this tool.
    *
    * During generation, the system:
@@ -503,6 +512,15 @@ export interface IPlatformConfigBuilder {
    * @param version - The version string (e.g., "1.2.3", "latest")
    */
   version(version: string): this;
+
+  /**
+   * Require an interactive sudo prompt. The installation will be done with elevated
+   * privileges. The side effect is that tools can't be installed in non-interactive
+   * mode.
+   *
+   * **Supported installers:** `manual`, `pkg`
+   */
+  sudo(): this;
 
   /**
    * Declare binary dependencies for this platform.
