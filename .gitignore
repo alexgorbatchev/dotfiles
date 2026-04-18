@@ -45,7 +45,6 @@ tmp
 .mcp.json
 CLAUDE.md
 /.opencode
-/AGENTS.md
 /opencode.jsonc
 /.agents/memories
 /packages/docs/public/install.sh

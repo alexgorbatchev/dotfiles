@@ -16,6 +16,7 @@ Build and release tooling that produces the publishable `.dist/` package and val
 ## Local gotchas
 
 - `.dist/` is generated output. Change sources under `packages/build/src/**`, then rerun `bun compile` instead of editing emitted files.
+- Release work is not complete until the matching GitHub release has a filled title/body written with `gh release` from the actual git history since the previous tag.
 
 ## Boundaries
 
