@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { Architecture, Platform } from "@dotfiles/core";
 import fs from "node:fs";
+import assert from "node:assert";
 import path from "node:path";
 import { withMockServer } from "./helpers/mock-server";
 import { TestHarness } from "./helpers/TestHarness";
@@ -8,7 +9,12 @@ import { TestHarness } from "./helpers/TestHarness";
 const ALLOW_NON_MACOS_ENV_VAR = "DOTFILES_TEST_PKG_ALLOW_NON_MACOS";
 const INSTALLER_PATH_ENV_VAR = "DOTFILES_TEST_PKG_INSTALLER_PATH";
 const TEST_BINARY_PATH_ENV_VAR = "DOTFILES_TEST_PKG_BINARY_PATH";
-const hostArchitecture = process.arch === "x64" ? Architecture.X86_64 : Architecture.Arm64;
+const architectureByProcessArch: Partial<Record<NodeJS.Architecture, Architecture>> = {
+  arm64: Architecture.Arm64,
+  x64: Architecture.X86_64,
+};
+const hostArchitecture = architectureByProcessArch[process.arch];
+assert(hostArchitecture, `Unsupported test architecture: ${process.arch}`);
 const fixtureDir = path.join(import.meta.dir, "fixtures", "pkg");
 const pkgAssetPath = path.join(fixtureDir, "assets", "pkg-test-tool.pkg");
 const fakeInstallerPath = path.join(fixtureDir, "build", "fake-installer.sh");
@@ -57,30 +63,26 @@ describe("E2E: pkg installer", () => {
     });
     expect(installResult.code).toBe(0);
 
-    let fakeInstallerLog = "<missing>";
-    try {
-      fakeInstallerLog = await fs.promises.readFile(fakeInstallerLogPath, "utf8");
-    } catch {
-      throw new Error(
-        [
-          `Fake installer did not run: ${fakeInstallerLogPath}`,
-          `stdout: ${installResult.stdout}`,
-          `stderr: ${installResult.stderr}`,
-        ].join("\n"),
-      );
-    }
+    const fakeInstallerLog = await fs.promises.readFile(fakeInstallerLogPath, "utf8").catch(() => null);
+    assert(
+      fakeInstallerLog,
+      [
+        `Fake installer did not run: ${fakeInstallerLogPath}`,
+        `stdout: ${installResult.stdout}`,
+        `stderr: ${installResult.stderr}`,
+      ].join("\n"),
+    );
 
     const installedBinaryExists = await harness.fileExists(installedBinaryPath);
-    if (!installedBinaryExists) {
-      throw new Error(
-        [
-          `Missing installed binary at ${installedBinaryPath}`,
-          `stdout: ${installResult.stdout}`,
-          `stderr: ${installResult.stderr}`,
-          `installer log: ${fakeInstallerLog}`,
-        ].join("\n"),
-      );
-    }
+    assert(
+      installedBinaryExists,
+      [
+        `Missing installed binary at ${installedBinaryPath}`,
+        `stdout: ${installResult.stdout}`,
+        `stderr: ${installResult.stderr}`,
+        `installer log: ${fakeInstallerLog}`,
+      ].join("\n"),
+    );
 
     expect(installedBinaryExists).toBe(true);
     expect(await harness.isExecutable(installedBinaryPath)).toBe(true);
