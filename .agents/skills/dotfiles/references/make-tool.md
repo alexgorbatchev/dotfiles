@@ -16,7 +16,7 @@ You will receive:
 ## Required Analysis Steps
 
 > [!TIP]
-> Always start with the smallest possible configuration. Provide only the minimum `install()` method and `.bin()` declaration necessary to get the tool working. **Do not overbuild**. Only add `assetSelector`, `assetPattern`, `version`, `dependsOn`, or hooks if the minimal configuration fails to install correctly or lacks necessary context.
+> Always start with the smallest possible configuration. Provide only the minimum `install()` method and `.bin()` declaration necessary to get the tool working. **Do not overbuild**. Only add `assetPattern`, `assetSelector`, `version`, `dependsOn`, or hooks if the minimal configuration fails to install correctly or lacks necessary context. If GitHub release auto-selection downloads the wrong file, try the smallest `assetPattern` that fixes it before reaching for `assetSelector`.
 
 ### 1) Tool Investigation
 
@@ -38,6 +38,8 @@ If the tool uses GitHub or Gitea/Forgejo releases, examine the latest release to
 - **Archive structure** (`.tar.gz`, `.zip`).
 - **Binary locations** within the archive.
 - **Platform variants** (different archives/assets per OS/arch).
+
+For `github-release`, this investigation is meant to verify whether the built-in selector already handles the release naming. Do not turn a standard OS/arch matrix into a custom `assetSelector` unless the default selection or a simple `assetPattern` has already been proven insufficient.
 
 ### 3) Tool Behavior Analysis
 

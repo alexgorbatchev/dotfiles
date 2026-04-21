@@ -15,8 +15,8 @@ export default defineTool((install) => install("github-release", { repo: "junegu
 | Parameter       | Description                                                                                               |
 | --------------- | --------------------------------------------------------------------------------------------------------- |
 | `repo`          | **Required**. GitHub repository in "owner/repo" format                                                    |
-| `assetPattern`  | Glob pattern to match release assets. **Optional**. Use only if default automatic selection fails.        |
-| `assetSelector` | Custom function to select the correct asset. **Optional**. Use only if default automatic selection fails. |
+| `assetPattern`  | Glob pattern to match release assets. **Optional**. Prefer this when the default selector chooses the wrong filename. |
+| `assetSelector` | Custom function to select the correct asset. **Optional**. Use only when `assetPattern` is not expressive enough or you intentionally want a non-default variant. |
 | `version`       | Specific version (e.g., `'v1.2.3'`)                                                                       |
 | `prerelease`    | Include prereleases when fetching latest (default: false)                                                 |
 | `githubHost`    | Custom GitHub API host for Enterprise                                                                     |
@@ -31,6 +31,8 @@ The installer uses built-in smart selection logic by default. It parses filename
 
 **You should ONLY provide an `assetPattern` or `assetSelector` if the default selection logic fails to find a file or downloads the wrong asset.**
 
+When filename filtering is enough, prefer `assetPattern`. Reserve `assetSelector` for non-standard naming schemes or deliberate overrides that cannot be expressed as a simple pattern.
+
 ### With Asset Pattern
 
 ```typescript
@@ -42,7 +44,7 @@ install("github-release", {
 
 ### Custom Asset Selector
 
-Use `assetSelector` when the repository uses non-standard asset names or when you intentionally want something other than the default smart selector. Standard Linux `gnu` vs `musl` release names are handled automatically.
+Use `assetSelector` when the repository uses non-standard asset names or when you intentionally want something other than the default smart selector. Standard Linux `gnu` vs `musl` release names are handled automatically, so they should not require a custom selector in normal cases.
 
 ```typescript
 install("github-release", {
@@ -98,8 +100,10 @@ Glob syntax: `*` (any chars), `?` (single char), `[abc]` (char class), `{a,b}` (
 
 Available in `assetSelector` as `systemInfo`:
 
-| Property   | Values                     |
-| ---------- | -------------------------- |
-| `platform` | `darwin`, `linux`, `win32` |
-| `arch`     | `x64`, `arm64`             |
-| `libc`     | `gnu`, `musl`, `unknown`   |
+| Property   | Values                                                                  |
+| ---------- | ----------------------------------------------------------------------- |
+| `platform` | `Platform` enum such as `Platform.Linux`, `Platform.MacOS`, `Platform.Windows` |
+| `arch`     | `Architecture` enum such as `Architecture.X86_64`, `Architecture.Arm64` |
+| `libc`     | `Libc` enum such as `Libc.Gnu`, `Libc.Musl`, `Libc.Unknown` when detected |
+
+Import these enums from `@alexgorbatchev/dotfiles` when you need to branch on `systemInfo` values.
