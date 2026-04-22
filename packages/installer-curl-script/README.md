@@ -11,7 +11,7 @@ This plugin provides installation capabilities for CLI tools that use shell scri
 Tools are configured using `defineTool` with the `install()` function:
 
 ```typescript
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
   install("curl-script", {

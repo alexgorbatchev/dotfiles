@@ -11,7 +11,7 @@ Shims are not supported for DMG-installed applications. The `.bin()` method shou
 ## Usage
 
 ```typescript
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
   install("dmg", {

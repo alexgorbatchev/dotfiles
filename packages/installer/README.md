@@ -240,7 +240,7 @@ Downloads and installs tools from GitHub releases with flexible asset selection.
 **Example:**
 
 ```typescript
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
   install("github-release", {
@@ -452,7 +452,7 @@ interface InstallHookContext extends BaseToolContext {
 ### Example Hook Usage
 
 ```typescript
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 import path from "node:path";
 
 export default defineTool((install, ctx) =>
@@ -648,7 +648,7 @@ const result = await setup.installer.install("tool-name", toolConfig);
 
 ```typescript
 import { Installer } from '@dotfiles/installer';
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from '@alexgorbatchev/dotfiles';
 
 // Create installer instance
 const installer = new Installer(
