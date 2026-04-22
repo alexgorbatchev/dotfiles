@@ -18,6 +18,9 @@ dotfiles generate
 # Update all tools to their latest versions
 dotfiles update
 
+# Check available updates using installed-state data when available
+dotfiles check-updates
+
 # View logs of file operations
 dotfiles log
 

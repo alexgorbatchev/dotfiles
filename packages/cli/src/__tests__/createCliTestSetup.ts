@@ -248,6 +248,17 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
         getAll: mock(() => []),
         getExternallyManagedMethods: mock(() => new Set<string>()),
       },
+      toolInstallationRegistry: {
+        recordToolInstallation: mock(async () => {}),
+        getToolInstallation: mock(async () => null),
+        getAllToolInstallations: mock(async () => []),
+        updateToolInstallation: mock(async () => {}),
+        removeToolInstallation: mock(async () => {}),
+        isToolInstalled: mock(async () => false),
+        recordToolUsage: mock(async () => {}),
+        getToolUsage: mock(async () => null),
+        close: mock(async () => {}),
+      },
       ...mockServices,
     }) as unknown as MockedInterface<IServices>;
 

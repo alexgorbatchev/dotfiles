@@ -1,4 +1,4 @@
-import type { IInstallContext } from "@dotfiles/core";
+import type { IInstallContext, IUpdateCheckContext } from "./installer";
 import type { TsLogger } from "@dotfiles/logger";
 import type { z } from "zod";
 import type { ShellScript } from "./shell/shellScript.types";
@@ -313,7 +313,7 @@ export interface IInstallerPlugin<
   checkUpdate?(
     toolName: string,
     toolConfig: TConfig,
-    context: IInstallContext,
+    context: IUpdateCheckContext,
     logger: TsLogger,
   ): Promise<UpdateCheckResult>;
 

@@ -1,4 +1,5 @@
 import assert from "node:assert";
+import type { IUpdateCheckContext } from "@dotfiles/core";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createMockToolConfigForTests, setupTestContext, type ITestContext } from "./test-setup";
 
@@ -73,6 +74,42 @@ describe("checkToolUpdate", () => {
         success: true,
         hasUpdate: true,
         currentVersion: "0.54.0",
+        latestVersion: "0.55.0",
+      }),
+    });
+
+    const result = await ctx.api.checkToolUpdate("fzf");
+
+    expect(result.success).toBe(true);
+    expect(result.data?.supported).toBe(true);
+    expect(result.data?.hasUpdate).toBe(true);
+    expect(result.data?.currentVersion).toBe("0.54.0");
+    expect(result.data?.latestVersion).toBe("0.55.0");
+  });
+
+  test("returns installed stale version for latest-tracking tools", async () => {
+    ctx.toolConfigs["fzf"] = createMockToolConfigForTests({
+      name: "fzf",
+      version: "latest",
+      installationMethod: "github-release",
+      installParams: { repo: "junegunn/fzf" },
+      binaries: ["fzf"],
+    });
+
+    await ctx.toolInstallationRegistry.recordToolInstallation({
+      toolName: "fzf",
+      version: "0.54.0",
+      installPath: "/tools/fzf/0.54.0",
+      timestamp: "2026-04-22-00-00-00",
+      binaryPaths: ["/tools/fzf/current/fzf"],
+    });
+
+    ctx.mockPluginRegistry.get.mockReturnValue({
+      supportsUpdateCheck: () => true,
+      checkUpdate: async (_toolName: string, _toolConfig: unknown, context: IUpdateCheckContext) => ({
+        success: true,
+        hasUpdate: true,
+        currentVersion: context.installedVersion ?? "unknown",
         latestVersion: "0.55.0",
       }),
     });

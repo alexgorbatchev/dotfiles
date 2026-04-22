@@ -3,6 +3,7 @@ import type {
   IInstallContext,
   IInstallerPlugin,
   IInstallOptions,
+  IUpdateCheckContext,
   InstallResult,
   UpdateCheckResult,
 } from "@dotfiles/core";
@@ -183,7 +184,7 @@ export class CargoInstallerPlugin implements IInstallerPlugin<
   async checkUpdate(
     toolName: string,
     toolConfig: CargoToolConfig,
-    _context: IInstallContext,
+    context: IUpdateCheckContext,
     logger: TsLogger,
   ): Promise<UpdateCheckResult> {
     try {
@@ -208,12 +209,16 @@ export class CargoInstallerPlugin implements IInstallerPlugin<
       }
 
       const configuredVersion = toolConfig.version || "latest";
-      const currentVersion = configuredVersion === "latest" ? configuredVersion : stripVersionPrefix(configuredVersion);
+      const installedVersion = context.installedVersion ? stripVersionPrefix(context.installedVersion) : undefined;
+      const currentVersion =
+        configuredVersion === "latest"
+          ? (installedVersion ?? configuredVersion)
+          : stripVersionPrefix(configuredVersion);
 
       if (configuredVersion === "latest") {
         const result: UpdateCheckResult = {
           success: true,
-          hasUpdate: false,
+          hasUpdate: installedVersion !== undefined && installedVersion !== latestVersion,
           currentVersion,
           latestVersion,
         };

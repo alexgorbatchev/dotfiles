@@ -87,6 +87,23 @@ export interface IInstallContext extends IInstallBaseContext {
 }
 
 /**
+ * Context provided to plugin update checks.
+ *
+ * Update checks should operate on persisted installation state rather than installation-time paths,
+ * so this context intentionally carries only the data needed to compare the configured tool against
+ * what is actually installed on disk.
+ */
+export interface IUpdateCheckContext {
+  /**
+   * Normalized or raw version string currently recorded as installed for this tool.
+   *
+   * When undefined, the caller could not determine installed state and plugins should fall back to
+   * configuration-only behavior.
+   */
+  installedVersion?: string;
+}
+
+/**
  * Phase 2: After Download
  * We have a file on disk.
  * This context is available in the `after-download` hook.

@@ -1,11 +1,9 @@
 import type { IConfigService, ISystemInfo, ProjectConfig, ToolConfig } from "@dotfiles/config";
-import { createShell, createToolLog, type IInstallContext } from "@dotfiles/core";
+import type { IUpdateCheckContext } from "@dotfiles/core";
 import type { IResolvedFileSystem } from "@dotfiles/file-system";
-import { createConfiguredShell } from "@dotfiles/installer";
 import type { TsLogger } from "@dotfiles/logger";
-import { exitCli, ExitCode, replaceInFile } from "@dotfiles/utils";
+import { exitCli, ExitCode } from "@dotfiles/utils";
 import { type IVersionChecker, VersionComparisonStatus } from "@dotfiles/version-checker";
-import path from "node:path";
 import { messages } from "./log-messages";
 import type { ICommandCompletionMeta, IGlobalProgram, IServices, ServicesFactory } from "./types";
 
@@ -72,36 +70,10 @@ async function loadToolConfigs(
   return toolConfigs;
 }
 
-function createInstallContext(
-  config: ToolConfig,
-  projectConfig: ProjectConfig,
-  systemInfo: ISystemInfo,
-  fs: IResolvedFileSystem,
-  logger: TsLogger,
-): IInstallContext {
-  const timestamp = new Date().toISOString().replace(/:/g, "-").split(".")[0];
-  const toolDir: string = config.configFilePath
-    ? path.dirname(config.configFilePath)
-    : projectConfig.paths.toolConfigsDir;
-
-  const currentDir: string = path.join(projectConfig.paths.binariesDir, config.name, "current");
-
-  const context: IInstallContext = {
-    toolName: config.name,
-    toolDir,
-    currentDir,
-    stagingDir: "",
-    timestamp: timestamp || "",
-    systemInfo,
-    toolConfig: config,
-    projectConfig: projectConfig,
-    $: createConfiguredShell(createShell(), process.env),
-    fileSystem: fs,
-    replaceInFile: (filePath, from, to, options) => replaceInFile(fs, filePath, from, to, options),
-    resolve: () => {
-      throw new Error("resolve not supported in version check context");
-    },
-    log: createToolLog(logger, config.name),
+async function createUpdateCheckContext(toolName: string, services: IServices): Promise<IUpdateCheckContext> {
+  const installation = await services.toolInstallationRegistry.getToolInstallation(toolName);
+  const context: IUpdateCheckContext = {
+    installedVersion: installation?.version,
   };
 
   return context;
@@ -137,9 +109,9 @@ async function logVersionStatus(
 }
 
 async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: IServices): Promise<void> {
-  const { projectConfig, versionChecker, pluginRegistry, systemInfo, fs } = services;
+  const { versionChecker, pluginRegistry } = services;
 
-  const context = createInstallContext(config, projectConfig, systemInfo, fs, logger);
+  const context = await createUpdateCheckContext(config.name, services);
   const plugin = pluginRegistry.get(config.installationMethod);
 
   if (!plugin) {

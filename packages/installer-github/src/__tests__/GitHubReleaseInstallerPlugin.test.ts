@@ -1,6 +1,6 @@
 import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
 import type { ProjectConfig } from "@dotfiles/config";
-import type { IGitHubRelease, IInstallContext } from "@dotfiles/core";
+import type { IGitHubRelease, IInstallContext, IUpdateCheckContext } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
 import type { HookExecutor } from "@dotfiles/installer";
@@ -278,11 +278,11 @@ describe("GitHubReleaseInstallerPlugin", () => {
 
   describe("checkUpdate", () => {
     let testLogger: TestLogger;
-    let mockContext: IInstallContext;
+    let mockContext: IUpdateCheckContext;
 
     beforeEach(() => {
       testLogger = new TestLogger();
-      mockContext = {} as IInstallContext;
+      mockContext = {};
     });
 
     it("should report configured latest version for latest-tracking tools", async () => {
@@ -303,6 +303,28 @@ describe("GitHubReleaseInstallerPlugin", () => {
       assert(result.success);
       expect(result.hasUpdate).toBe(false);
       expect(result.currentVersion).toBe("latest");
+      expect(result.latestVersion).toBe("1.2.3");
+    });
+
+    it("should compare installed version for latest-tracking tools", async () => {
+      const mockToolConfig: GithubReleaseToolConfig = {
+        name: "test-tool",
+        version: "latest",
+        binaries: ["test-tool"],
+        installationMethod: "github-release",
+        installParams: {
+          repo: "owner/repo",
+        },
+      };
+
+      mockContext = { installedVersion: "v1.0.0" };
+      mockGitHubClient.getLatestRelease = mock(async () => createMockRelease("v1.2.3"));
+
+      const result = await plugin.checkUpdate("test-tool", mockToolConfig, mockContext, testLogger);
+
+      assert(result.success);
+      expect(result.hasUpdate).toBe(true);
+      expect(result.currentVersion).toBe("1.0.0");
       expect(result.latestVersion).toBe("1.2.3");
     });
 

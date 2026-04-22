@@ -4,6 +4,7 @@ import type {
   IInstallContext,
   IInstallerPlugin,
   IInstallOptions,
+  IUpdateCheckContext,
   InstallResult,
   UpdateCheckResult,
 } from "@dotfiles/core";
@@ -205,7 +206,7 @@ export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
   async checkUpdate(
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
-    _context: IInstallContext,
+    context: IUpdateCheckContext,
     logger: TsLogger,
   ): Promise<UpdateCheckResult> {
     try {
@@ -231,13 +232,17 @@ export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
       }
 
       const configuredVersion = this.getRequestedVersion(toolConfig);
-      const currentVersion = configuredVersion === "latest" ? configuredVersion : stripVersionPrefix(configuredVersion);
+      const installedVersion = context.installedVersion ? stripVersionPrefix(context.installedVersion) : undefined;
+      const currentVersion =
+        configuredVersion === "latest"
+          ? (installedVersion ?? configuredVersion)
+          : stripVersionPrefix(configuredVersion);
       const latestVersion = latestRelease.tag_name.replace(/^v/, "");
 
       if (configuredVersion === "latest") {
         const result: UpdateCheckResult = {
           success: true,
-          hasUpdate: false,
+          hasUpdate: installedVersion !== undefined && installedVersion !== latestVersion,
           currentVersion,
           latestVersion,
         };

@@ -1,3 +1,4 @@
+import type { IUpdateCheckContext } from "@dotfiles/core";
 import type { TsLogger } from "@dotfiles/logger";
 import type { IApiResponse, ICheckUpdateResponse } from "../../shared/types";
 import { messages } from "../log-messages";
@@ -37,12 +38,12 @@ export async function checkToolUpdate(
       };
     }
 
-    const updateCheckResult = await plugin.checkUpdate?.(
-      toolName,
-      toolConfig,
-      {} as Parameters<NonNullable<typeof plugin.checkUpdate>>[2],
-      subLogger,
-    );
+    const installation = await services.toolInstallationRegistry.getToolInstallation(toolName);
+    const context: IUpdateCheckContext = {
+      installedVersion: installation?.version,
+    };
+
+    const updateCheckResult = await plugin.checkUpdate?.(toolName, toolConfig, context, subLogger);
 
     if (!updateCheckResult) {
       return {

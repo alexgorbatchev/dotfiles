@@ -1,4 +1,4 @@
-import type { IInstallContext } from "@dotfiles/core";
+import type { IInstallContext, IUpdateCheckContext } from "@dotfiles/core";
 import type { NpmToolConfig } from "@dotfiles/installer-npm";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, it } from "bun:test";
@@ -194,7 +194,11 @@ describe("NpmInstallerPlugin", () => {
   });
 
   describe("checkUpdate", () => {
-    const mockContext = {} as IInstallContext;
+    let mockContext: IUpdateCheckContext;
+
+    beforeEach(() => {
+      mockContext = {};
+    });
 
     it("should return configured latest version when configured version is latest", async () => {
       const toolConfig: NpmToolConfig = {
@@ -212,6 +216,27 @@ describe("NpmInstallerPlugin", () => {
       assert(result.success);
       expect(result.hasUpdate).toBe(false);
       expect(result.currentVersion).toBe("latest");
+      expect(result.latestVersion).toBe("3.1.0");
+    });
+
+    it("should compare installed version for latest-tracking tools", async () => {
+      const toolConfig: NpmToolConfig = {
+        name: "prettier",
+        version: "latest",
+        binaries: ["prettier"],
+        installationMethod: "npm",
+        installParams: {
+          package: "prettier",
+        },
+      };
+
+      mockContext = { installedVersion: "v2.0.0" };
+
+      const result = await plugin.checkUpdate("prettier", toolConfig, mockContext, logger);
+
+      assert(result.success);
+      expect(result.hasUpdate).toBe(true);
+      expect(result.currentVersion).toBe("2.0.0");
       expect(result.latestVersion).toBe("3.1.0");
     });
 

@@ -90,6 +90,10 @@ dotfiles files tool-name             # List generated files
 dotfiles check-updates               # Check all for updates
 ```
 
+For tools configured with `version: "latest"`, `dotfiles check-updates` compares the newest available version against
+the installed version recorded on disk when installation state is available. If no installed version is recorded yet,
+the command falls back to reporting that the tool is configured to track `latest`.
+
 ### Verification Steps
 
 1. **Binary works**: `tool-name --version`

@@ -4,6 +4,7 @@ import type {
   IInstallOptions,
   InstallResult,
   IShell,
+  IUpdateCheckContext,
   UpdateCheckResult,
 } from "@dotfiles/core";
 import type { TsLogger } from "@dotfiles/logger";
@@ -149,7 +150,7 @@ export class NpmInstallerPlugin implements IInstallerPlugin<
   async checkUpdate(
     toolName: string,
     toolConfig: NpmToolConfig,
-    _context: IInstallContext,
+    context: IUpdateCheckContext,
     logger: TsLogger,
   ): Promise<UpdateCheckResult> {
     const subLogger: TsLogger = logger.getSubLogger({ name: "checkUpdate", context: toolName });
@@ -170,12 +171,16 @@ export class NpmInstallerPlugin implements IInstallerPlugin<
       }
 
       const configuredVersion: string = toolConfig.version || "latest";
-      const currentVersion = configuredVersion === "latest" ? configuredVersion : stripVersionPrefix(configuredVersion);
+      const installedVersion = context.installedVersion ? stripVersionPrefix(context.installedVersion) : undefined;
+      const currentVersion =
+        configuredVersion === "latest"
+          ? (installedVersion ?? configuredVersion)
+          : stripVersionPrefix(configuredVersion);
 
       if (configuredVersion === "latest") {
         const successResult: UpdateCheckResult = {
           success: true,
-          hasUpdate: false,
+          hasUpdate: installedVersion !== undefined && installedVersion !== latestVersion,
           currentVersion,
           latestVersion,
         };

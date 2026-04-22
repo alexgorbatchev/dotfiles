@@ -1,7 +1,8 @@
 import type { IConfigService } from "@dotfiles/config";
-import type { IInstallerPlugin, InstallerPluginRegistry, UpdateCheckResult } from "@dotfiles/core";
+import type { IInstallerPlugin, InstallerPluginRegistry, IUpdateCheckContext, UpdateCheckResult } from "@dotfiles/core";
 import type { GithubReleaseToolConfig } from "@dotfiles/installer-github";
 import type { TestLogger } from "@dotfiles/logger";
+import type { IToolInstallationRegistry } from "@dotfiles/registry/tool";
 import type { MockedInterface } from "@dotfiles/testing-helpers";
 import { VersionComparisonStatus } from "@dotfiles/version-checker";
 import { beforeEach, describe, mock, test } from "bun:test";
@@ -15,6 +16,7 @@ describe("checkUpdatesCommand - GitHub Release Updates", () => {
   let mockPlugin: Partial<IInstallerPlugin>;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
+  let mockToolInstallationRegistry: MockedInterface<IToolInstallationRegistry>;
 
   const fzfToolConfig: GithubReleaseToolConfig = {
     name: "fzf",
@@ -45,6 +47,18 @@ describe("checkUpdatesCommand - GitHub Release Updates", () => {
       ),
     };
 
+    mockToolInstallationRegistry = {
+      recordToolInstallation: mock(async () => {}),
+      getToolInstallation: mock(async () => null),
+      getAllToolInstallations: mock(async () => []),
+      updateToolInstallation: mock(async () => {}),
+      removeToolInstallation: mock(async () => {}),
+      isToolInstalled: mock(async () => false),
+      recordToolUsage: mock(async () => {}),
+      getToolUsage: mock(async () => null),
+      close: mock(async () => {}),
+    };
+
     const mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>> = {
       get: mock((method: string) =>
         new Map<string, IInstallerPlugin>([["github-release", mockPlugin as IInstallerPlugin]]).get(method),
@@ -59,6 +73,7 @@ describe("checkUpdatesCommand - GitHub Release Updates", () => {
       services: {
         configService: mockConfigService,
         pluginRegistry: mockPluginRegistry as MockedInterface<InstallerPluginRegistry>,
+        toolInstallationRegistry: mockToolInstallationRegistry,
         versionChecker: {
           checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
           getLatestToolVersion: mock(async () => "0.40.0"),
@@ -118,6 +133,39 @@ describe("checkUpdatesCommand - GitHub Release Updates", () => {
     await program.parseAsync(["check-updates", "fzf"], { from: "user" });
 
     logger.expect(["INFO"], ["registerCheckUpdatesCommand"], [], [messages.toolConfiguredToLatest("fzf", "0.42.0")]);
+  });
+
+  test('should compare installed version for tool configured with "latest" version', async () => {
+    const fzfLatestConfig: GithubReleaseToolConfig = { ...fzfToolConfig, version: "latest" };
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
+    mockToolInstallationRegistry.getToolInstallation.mockResolvedValue({
+      id: 1,
+      toolName: "fzf",
+      version: "0.40.0",
+      installPath: "/fake/install/fzf",
+      timestamp: "2026-04-22-00-00-00",
+      binaryPaths: ["/fake/bin/fzf"],
+      installedAt: new Date("2026-04-22T00:00:00.000Z"),
+    });
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockImplementation(
+      async (_toolName: string, _toolConfig: GithubReleaseToolConfig, context: IUpdateCheckContext) => {
+        return {
+          success: true,
+          hasUpdate: true,
+          currentVersion: context.installedVersion ?? "unknown",
+          latestVersion: "0.42.0",
+        };
+      },
+    );
+
+    await program.parseAsync(["check-updates", "fzf"], { from: "user" });
+
+    logger.expect(
+      ["INFO"],
+      ["registerCheckUpdatesCommand"],
+      [],
+      [messages.toolUpdateAvailable("fzf", "0.40.0", "0.42.0")],
+    );
   });
 
   test("should handle GitHub API error gracefully", async () => {

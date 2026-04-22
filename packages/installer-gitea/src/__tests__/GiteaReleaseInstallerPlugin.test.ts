@@ -1,5 +1,5 @@
 import type { IArchiveExtractor } from "@dotfiles/archive-extractor";
-import type { IGitHubRelease, IInstallContext } from "@dotfiles/core";
+import type { IGitHubRelease, IInstallContext, IUpdateCheckContext } from "@dotfiles/core";
 import type { IDownloader } from "@dotfiles/downloader";
 import { NotFoundError } from "@dotfiles/downloader";
 import type { IFileSystem } from "@dotfiles/file-system";
@@ -299,11 +299,11 @@ describe("GiteaReleaseInstallerPlugin", () => {
 
   describe("checkUpdate", () => {
     let testLogger: TestLogger;
-    let mockContext: IInstallContext;
+    let mockContext: IUpdateCheckContext;
 
     beforeEach(() => {
       testLogger = new TestLogger();
-      mockContext = {} as IInstallContext;
+      mockContext = {};
     });
 
     it('should report configured latest version when version is "latest"', async () => {
@@ -327,6 +327,31 @@ describe("GiteaReleaseInstallerPlugin", () => {
       assert(result.success);
       expect(result.hasUpdate).toBe(false);
       expect(result.currentVersion).toBe("latest");
+      expect(result.latestVersion).toBe("2.0.0");
+    });
+
+    it("should compare installed version for latest-tracking tools", async () => {
+      const toolConfig: GiteaReleaseToolConfig = {
+        name: "test-tool",
+        version: "latest",
+        binaries: ["test-tool"],
+        installationMethod: "gitea-release",
+        installParams: {
+          instanceUrl: "https://codeberg.org",
+          repo: "owner/repo",
+        },
+      };
+
+      mockContext = { installedVersion: "v1.0.0" };
+      (mockDownloader.download as ReturnType<typeof mock>).mockResolvedValue(
+        Buffer.from(JSON.stringify(createGiteaReleaseApiResponse("v2.0.0"))),
+      );
+
+      const result = await plugin.checkUpdate("test-tool", toolConfig, mockContext, testLogger);
+
+      assert(result.success);
+      expect(result.hasUpdate).toBe(true);
+      expect(result.currentVersion).toBe("1.0.0");
       expect(result.latestVersion).toBe("2.0.0");
     });
 
