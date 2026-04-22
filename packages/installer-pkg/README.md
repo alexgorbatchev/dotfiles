@@ -9,7 +9,7 @@ This plugin downloads a `.pkg` file, runs macOS `installer`, and then resolves d
 ## Usage
 
 ```typescript
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
   install("pkg", {

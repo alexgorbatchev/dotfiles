@@ -35,6 +35,8 @@ The installer uses built-in smart selection logic by default. It parses filename
 
 **You should ONLY provide an `assetPattern` or `assetSelector` if the default selection logic fails to find a file or downloads the wrong asset.**
 
+When filename filtering is enough, prefer `assetPattern`. Reserve `assetSelector` for non-standard naming schemes or deliberate overrides that cannot be expressed as a simple pattern.
+
 ### With Asset Pattern
 
 ```typescript
@@ -46,7 +48,7 @@ install("github-release", {
 
 ### Custom Asset Selector
 
-Use `assetSelector` when the repository uses non-standard asset names or when you intentionally want something other than the default smart selector. Standard Linux `gnu` vs `musl` release names are handled automatically.
+Use `assetSelector` when the repository uses non-standard asset names or when you intentionally want something other than the default smart selector. Standard Linux `gnu` vs `musl` release names are handled automatically, so they should not require a custom selector in normal cases.
 
 ```typescript
 install("github-release", {

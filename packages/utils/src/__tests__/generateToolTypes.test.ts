@@ -142,6 +142,7 @@ describe("generateToolTypes", () => {
       const content: string = generateToolTypesContent(toolConfigs);
 
       expect(content).toContain("declare module '@alexgorbatchev/dotfiles'");
+      expect(content).toContain("declare module '@dotfiles/cli'");
       expect(content).toContain("interface IKnownBinNameRegistry");
       expect(content).toContain("    'rg': never;");
       expect(content).toContain("export {};");
@@ -156,6 +157,7 @@ describe("generateToolTypes", () => {
       const content: string = generateToolTypesContent(toolConfigs);
 
       expect(content).toContain("declare module '@custom/package'");
+      expect(content).toContain("declare module '@dotfiles/cli'");
       expect(content).toContain("interface IKnownBinNameRegistry");
       expect(content).toContain("    'rg': never;");
       expect(content).toContain("export {};");
@@ -168,20 +170,34 @@ describe("generateToolTypes", () => {
       const content: string = generateToolTypesContent(toolConfigs);
 
       expect(content).toContain("declare module '@alexgorbatchev/dotfiles'");
+      expect(content).toContain("declare module '@dotfiles/cli'");
       expect(content).toContain("interface IKnownBinNameRegistry {}");
       expect(content).toContain("export {};");
     });
 
-    test("uses custom module name when provided (overrides env var)", () => {
+    test("uses custom module names when provided (overrides defaults)", () => {
       process.env.DOTFILES_BUILT_PACKAGE_NAME = "@alexgorbatchev/dotfiles";
       const toolConfigs: Record<string, ToolConfig> = {
         ripgrep: createMockToolConfig("ripgrep", ["rg"]),
       };
 
-      const content: string = generateToolTypesContent(toolConfigs, "@dotfiles/core");
+      const content: string = generateToolTypesContent(toolConfigs, { moduleNames: ["@dotfiles/core"] });
 
       expect(content).toContain("declare module '@dotfiles/core'");
       expect(content).not.toContain("declare module '@alexgorbatchev/dotfiles'");
+      expect(content).not.toContain("declare module '@dotfiles/cli'");
+    });
+
+    test("includes authoring types reference when provided", () => {
+      const toolConfigs: Record<string, ToolConfig> = {
+        ripgrep: createMockToolConfig("ripgrep", ["rg"]),
+      };
+
+      const content: string = generateToolTypesContent(toolConfigs, {
+        authoringTypesReferencePath: "./authoring-types.d.ts",
+      });
+
+      expect(content).toContain('/// <reference path="./authoring-types.d.ts" />');
     });
   });
 });

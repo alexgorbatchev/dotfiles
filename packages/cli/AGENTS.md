@@ -5,7 +5,7 @@ CLI entrypoints, command wiring, and user-facing command behavior for the dotfil
 ## Commands
 
 - Focused test: `bun test:native packages/cli/src/__tests__/generateCommand.test.ts`
-- CLI smoke test against fixture config: `bun cli --config=test-project/dotfiles.config.ts generate`
+- CLI smoke test against fixture config: `bun cli --config=test-project-npm/dotfiles.config.ts generate`
 - Full repo check before sign-off: `bun check`
 
 ## Local conventions
@@ -20,7 +20,7 @@ CLI entrypoints, command wiring, and user-facing command behavior for the dotfil
 ## Boundaries
 
 - Ask first: adding/removing commands, changing user-facing output contracts, or altering completion behavior.
-- Never: read `test-project/` from automated tests or add `console.*` in command implementations.
+- Never: read `test-project-npm/` or `test-project-compiled/` from automated tests or add `console.*` in command implementations.
 
 ## References
 

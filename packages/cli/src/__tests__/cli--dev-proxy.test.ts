@@ -38,7 +38,7 @@ describe("setupServices DEV_PROXY validation", () => {
 
       await expect(
         setupServices(logger, {
-          config: "test-project/dotfiles.config.ts",
+          config: "test-project-npm/dotfiles.config.ts",
           dryRun: false,
           log: "info",
           verbose: false,

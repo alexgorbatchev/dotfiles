@@ -3,6 +3,10 @@ import path from "node:path";
 
 import { BuildError } from "../handleBuildError";
 
+function resolveNestedDtsPath(tempSchemasBuildDir: string, fileName: string): string {
+  return path.join(tempSchemasBuildDir, "packages", "cli", "src", fileName);
+}
+
 function findFilesByNameRecursive(startDir: string, fileName: string): string[] {
   const stack: string[] = [startDir];
   const matches: string[] = [];
@@ -37,17 +41,25 @@ function findFilesByNameRecursive(startDir: string, fileName: string): string[] 
  * Locates the generated schema-exports.d.ts file within the temporary schema build directory.
  */
 export function resolveSchemaExportsDtsPath(tempSchemasBuildDir: string): string {
-  const directPath: string = path.join(tempSchemasBuildDir, "schema-exports.d.ts");
+  return resolveGeneratedDtsPath(tempSchemasBuildDir, "schema-exports.d.ts");
+}
+
+export function resolveAuthoringExportsDtsPath(tempSchemasBuildDir: string): string {
+  return resolveGeneratedDtsPath(tempSchemasBuildDir, "authoring-exports.d.ts");
+}
+
+function resolveGeneratedDtsPath(tempSchemasBuildDir: string, fileName: string): string {
+  const directPath: string = path.join(tempSchemasBuildDir, fileName);
   if (fs.existsSync(directPath)) {
     return directPath;
   }
 
-  const nestedPath: string = path.join(tempSchemasBuildDir, "packages", "cli", "src", "schema-exports.d.ts");
+  const nestedPath: string = resolveNestedDtsPath(tempSchemasBuildDir, fileName);
   if (fs.existsSync(nestedPath)) {
     return nestedPath;
   }
 
-  const matches: string[] = findFilesByNameRecursive(tempSchemasBuildDir, "schema-exports.d.ts");
+  const matches: string[] = findFilesByNameRecursive(tempSchemasBuildDir, fileName);
 
   if (matches.length === 1) {
     const match: string | undefined = matches[0];
@@ -58,8 +70,8 @@ export function resolveSchemaExportsDtsPath(tempSchemasBuildDir: string): string
   }
 
   if (matches.length === 0) {
-    throw new BuildError("schema-exports.d.ts was not generated");
+    throw new BuildError(`${fileName} was not generated`);
   }
 
-  throw new BuildError(`Multiple schema-exports.d.ts files found: ${matches.join(", ")}`);
+  throw new BuildError(`Multiple ${fileName} files found: ${matches.join(", ")}`);
 }

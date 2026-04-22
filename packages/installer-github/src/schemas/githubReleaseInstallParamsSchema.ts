@@ -26,15 +26,20 @@ export interface IAssetSelectionContext extends IInstallContext {
  *
  * @example
  * ```typescript
+ * import { Architecture, Platform } from "@dotfiles/core";
+ *
  * const assetSelector: AssetSelector = (context) => {
  *   context.log.debug('Selecting asset for ' + context.toolName);
  *
  *   const { assets, systemInfo } = context;
- *   const osMap = { 'darwin': 'macos', 'linux': 'linux', 'win32': 'windows' };
- *   const archMap = { 'x64': 'amd64', 'arm64': 'arm64' };
+ *   const osKey =
+ *     systemInfo.platform === Platform.MacOS
+ *       ? 'macos'
+ *       : systemInfo.platform === Platform.Windows
+ *         ? 'windows'
+ *         : 'linux';
  *
- *   const osKey = osMap[systemInfo.platform];
- *   const archKey = archMap[systemInfo.arch];
+ *   const archKey = systemInfo.arch === Architecture.X86_64 ? 'amd64' : 'arm64';
  *
  *   return assets.find(asset =>
  *     asset.name.toLowerCase().includes(osKey) &&

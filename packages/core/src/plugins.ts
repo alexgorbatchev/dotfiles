@@ -12,6 +12,7 @@
 // These side-effect imports register the plugin types with TypeScript
 import "@dotfiles/installer-brew";
 import "@dotfiles/installer-cargo";
+import "@dotfiles/installer-curl-binary";
 import "@dotfiles/installer-curl-script";
 import "@dotfiles/installer-curl-tar";
 import "@dotfiles/installer-dmg";
@@ -19,3 +20,5 @@ import "@dotfiles/installer-pkg";
 import "@dotfiles/installer-gitea";
 import "@dotfiles/installer-github";
 import "@dotfiles/installer-manual";
+import "@dotfiles/installer-npm";
+import "@dotfiles/installer-zsh-plugin";

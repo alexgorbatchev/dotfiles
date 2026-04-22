@@ -76,6 +76,7 @@ export async function buildCli(context: IBuildContext): Promise<Bun.BuildOutput>
         importSource: "preact",
       },
       define: {
+        DOTFILES_VERSION: JSON.stringify(process.env.DOTFILES_VERSION ?? "0.0.0"),
         "import.meta.main": "true",
         // Set NODE_ENV to production so IS_DEV is false in the dashboard server.
         // This ensures the production code path uses absolute paths for serving files.

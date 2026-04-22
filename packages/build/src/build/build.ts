@@ -1,6 +1,7 @@
 import { handleBuildError } from "./handleBuildError";
 import { createBuildContext, installDependenciesInOutputDir } from "./helpers";
 import {
+  buildCompiledBinary,
   buildCli,
   cleanPreviousBuild,
   cleanupTempFiles,
@@ -14,6 +15,7 @@ import {
   printBuildSummary,
   resolveRuntimeDependencies,
   runTypeTests,
+  testCompiledBinaryBuild,
   testPackedBuild,
 } from "./steps";
 import type { IBuildContext, IResolvedRuntimeDependencies } from "./types";
@@ -46,6 +48,8 @@ async function runBuild(context: IBuildContext): Promise<void> {
 
   // Test from packed npm package to catch missing files in `files` array
   await testPackedBuild(context);
+  await buildCompiledBinary(context);
+  await testCompiledBinaryBuild(context);
 
   await cleanupTempFiles(context);
 

@@ -62,7 +62,7 @@ async function testCliFromPackedEnv(packedEnv: IPackedTestEnvironment): Promise<
 async function testDashboardFromPackedEnv(context: IBuildContext, packedEnv: IPackedTestEnvironment): Promise<void> {
   console.log("🧪 Testing dashboard from packed environment...");
 
-  const testConfigPath = path.join(context.paths.rootDir, "test-project", "dotfiles.config.ts");
+  const testConfigPath = path.join(context.paths.rootDir, "test-project-npm", "dotfiles.config.ts");
 
   // Run from a directory outside the package to simulate real user behavior
   // The dashboard must resolve its chunks from import.meta.dir

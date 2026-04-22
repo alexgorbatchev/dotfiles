@@ -80,6 +80,49 @@ describe("tsConfigLoader", () => {
       expect(result.paths.dotfilesDir).toBe("/Users/testuser/object-dotfiles");
       expect(result.paths.targetDir).toBe("/obj/bin");
     });
+
+    it("should load config when public authoring imports are nested in helper modules", async () => {
+      const helpersDir = path.join(tempDir, "helpers");
+      const configPath = path.join(tempDir, "nested-helper-config.ts");
+      const configFactoryPath = path.join(helpersDir, "createConfig.ts");
+      const authoringHelperPath = path.join(helpersDir, "authoring.ts");
+
+      await Bun.write(
+        authoringHelperPath,
+        [
+          'import { defineConfig } from "@alexgorbatchev/dotfiles";',
+          "",
+          "export function createAuthoringConfig() {",
+          "  return defineConfig({",
+          "    paths: {",
+          '      targetDir: "/nested/helper/bin",',
+          "    },",
+          "  });",
+          "}",
+          "",
+        ].join("\n"),
+      );
+      await Bun.write(
+        configFactoryPath,
+        [
+          'import { createAuthoringConfig } from "./authoring";',
+          "",
+          "export function createConfig() {",
+          "  return createAuthoringConfig();",
+          "}",
+          "",
+        ].join("\n"),
+      );
+      await Bun.write(
+        configPath,
+        ['import { createConfig } from "./helpers/createConfig";', "", "export default createConfig();", ""].join("\n"),
+      );
+
+      const fs = new NodeFileSystem();
+      const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
+
+      expect(result.paths.targetDir).toBe("/nested/helper/bin");
+    });
   });
 
   describe("configuration merging", () => {

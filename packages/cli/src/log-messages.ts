@@ -126,6 +126,7 @@ export const messages = {
   configParameterInvalid: (field: string, value: string, expected: string) =>
     createSafeLogMessage(`Invalid ${field}: "${value}" (expected ${expected})`),
   updatesCommandCompleted: () => createSafeLogMessage("Check-updates command completed"),
+  authoringTypesGenerated: (path: string) => createSafeLogMessage(`Generated authoring types: ${path}`),
   toolTypesGenerated: (path: string) => createSafeLogMessage(`Generated tool types: ${path}`),
   toolNotInstalled: (toolName: string) => createSafeLogMessage(`Tool "${toolName}" is not installed`),
   installPathNotFound: (path: string) => createSafeLogMessage(`Installation path not found: ${path}`),

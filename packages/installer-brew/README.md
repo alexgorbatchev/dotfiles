@@ -13,7 +13,7 @@ Shims are not supported for Homebrew-installed tools. The `.bin()` method should
 Tools are configured using `defineTool` with the `install()` function:
 
 ```typescript
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
   install("brew", {

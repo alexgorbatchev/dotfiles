@@ -24,6 +24,7 @@ export interface IBuildPaths {
 
   cliOutputFile: string;
   cliOutputSourceMapFile: string;
+  compiledBinaryOutputFile: string;
   entryPoint: string;
 
   bunfigPath: string;
@@ -39,6 +40,7 @@ export interface IBuildPaths {
   outputBunLockPath: string;
 
   outputSchemasDtsPath: string;
+  outputAuthoringTypesDtsPath: string;
   schemaCheckTsconfigPath: string;
 
   rootNodeModulesPath: string;

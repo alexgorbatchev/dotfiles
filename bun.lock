@@ -144,13 +144,16 @@
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/installer-brew": "workspace:*",
         "@dotfiles/installer-cargo": "workspace:*",
+        "@dotfiles/installer-curl-binary": "workspace:*",
         "@dotfiles/installer-curl-script": "workspace:*",
         "@dotfiles/installer-curl-tar": "workspace:*",
         "@dotfiles/installer-dmg": "workspace:*",
         "@dotfiles/installer-gitea": "workspace:*",
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
+        "@dotfiles/installer-npm": "workspace:*",
         "@dotfiles/installer-pkg": "workspace:*",
+        "@dotfiles/installer-zsh-plugin": "workspace:*",
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/unwrap-value": "workspace:*",
         "@dotfiles/utils": "workspace:*",
@@ -837,8 +840,8 @@
         "typescript": "catalog:typescript",
       },
     },
-    "test-project": {
-      "name": "test-project",
+    "test-project-npm": {
+      "name": "test-project-npm",
       "version": "1.0.0",
       "devDependencies": {
         "@dotfiles/cli": "workspace:*",
@@ -2284,7 +2287,7 @@
 
     "tailwindcss": ["tailwindcss@4.2.1", "", {}, "sha512-/tBrSQ36vCleJkAOsy9kbNTgaxvGbyOamC30PRePTQe/o1MFwEKHQk4Cn7BNGaPtjp+PuUrByJehM1hgxfq4sw=="],
 
-    "test-project": ["test-project@workspace:test-project"],
+    "test-project-npm": ["test-project-npm@workspace:test-project-npm"],
 
     "thingies": ["thingies@2.5.0", "", { "peerDependencies": { "tslib": "^2" } }, "sha512-s+2Bwztg6PhWUD7XMfeYm5qliDdSiZm7M7n8KjTkIsm3l/2lgVRc2/Gx/v+ZX8lT4FMA+i8aQvhcWylldc+ZNw=="],
 

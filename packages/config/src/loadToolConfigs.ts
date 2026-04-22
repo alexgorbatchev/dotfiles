@@ -13,6 +13,7 @@ import type { IResolvedFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
 import { createInstallFunction } from "@dotfiles/tool-config-builder";
 import path from "node:path";
+import { importModuleWithRuntimeAliases } from "./importModuleWithRuntimeAliases";
 import { messages } from "./log-messages";
 import type { ILoadToolConfigByBinaryError, LoadToolConfigByBinaryResult } from "./types";
 
@@ -37,6 +38,10 @@ function isToolConfig(config: unknown): config is ToolConfig {
 
 function isConfigureToolFunction(exportedValue: unknown): exportedValue is ToolConfigModuleExport {
   return typeof exportedValue === "function";
+}
+
+function isToolConfigModule(value: unknown): value is IToolConfigModule {
+  return typeof value === "object" && value !== null;
 }
 
 /**
@@ -153,7 +158,13 @@ async function loadToolConfigFromModule(
   fileSystem: IResolvedFileSystem,
 ): Promise<ToolConfig | null> {
   try {
-    const moduleExports: IToolConfigModule = await import(filePath);
+    const moduleExportsValue: unknown = await importModuleWithRuntimeAliases(filePath);
+    if (!isToolConfigModule(moduleExportsValue)) {
+      logger.error(messages.configurationParseError(filePath, "ToolConfig", "invalid module export"));
+      return null;
+    }
+
+    const moduleExports: IToolConfigModule = moduleExportsValue;
     if (!moduleExports.default) {
       logger.error(messages.configurationParseError(filePath, "ToolConfig", "no default export"));
       return null;

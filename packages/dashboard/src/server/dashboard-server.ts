@@ -17,6 +17,7 @@ import clientApp from "../client/dashboard.html";
  * directory where the chunks are located.
  */
 const PACKAGE_DIR = import.meta.dir;
+const IS_COMPILED = PACKAGE_DIR.startsWith("/$bunfs/");
 const IS_DEV = process.env.NODE_ENV === "development";
 const IS_RELOAD = IS_DEV && process.env["DOTFILES_IS_RELOAD"] === "1";
 
@@ -88,12 +89,13 @@ export function createDashboardServer(
       // that are referenced with relative paths (e.g., "./dashboard-pks45b1c.js").
       // These paths are resolved from the CWD, so we must ensure we're in the
       // directory where the chunks are located.
-      if (!IS_DEV) {
+      if (!IS_DEV && !IS_COMPILED) {
         process.chdir(PACKAGE_DIR);
       }
 
-      // Generate JS file routes AFTER chdir (in production) so we scan the correct directory
-      const jsRoutes = IS_DEV ? {} : generateJsFileRoutes(process.cwd());
+      // Generate JS file routes AFTER chdir (in production) so we scan the correct directory.
+      // Compiled binaries embed the dashboard assets, so Bun serves them directly.
+      const jsRoutes = IS_DEV || IS_COMPILED ? {} : generateJsFileRoutes(process.cwd());
 
       server = Bun.serve({
         port: options.port,

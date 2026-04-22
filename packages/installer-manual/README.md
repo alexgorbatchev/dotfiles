@@ -11,7 +11,7 @@ This plugin provides support for tools that cannot be automatically installed th
 Tools are configured using `defineTool` with the `install()` function:
 
 ```typescript
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 // For existing system tools
 export default defineTool((install, ctx) =>

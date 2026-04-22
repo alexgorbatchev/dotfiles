@@ -38,7 +38,7 @@ async function main() {
 
   // Start the actual CLI dashboard from the built package
   const proc = Bun.spawn(
-    ["bun", ".dist/cli.js", "--config=test-project/dotfiles.config.ts", "dashboard", "--port", port, "--no-open"],
+    ["bun", ".dist/cli.js", "--config=test-project-npm/dotfiles.config.ts", "dashboard", "--port", port, "--no-open"],
     {
       cwd: rootDir,
       stdout: "pipe",

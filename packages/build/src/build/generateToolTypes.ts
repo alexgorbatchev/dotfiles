@@ -10,6 +10,6 @@ import fs from "node:fs";
  * @param outputPath - Path where the tool-types.d.ts file should be written
  */
 export function generateToolTypes(toolConfigs: Record<string, ToolConfig>, outputPath: string): void {
-  const content: string = generateToolTypesContent(toolConfigs, getBuiltPackageName());
+  const content: string = generateToolTypesContent(toolConfigs, { moduleNames: [getBuiltPackageName()] });
   fs.writeFileSync(outputPath, content, "utf8");
 }

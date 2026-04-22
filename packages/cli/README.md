@@ -1,6 +1,6 @@
-# @dotfiles/cli
+# CLI package internals
 
-Command-line interface for the dotfiles generator system. Provides commands for installing tools, generating configuration files, managing updates, and maintaining the dotfiles environment.
+Internal command-line implementation for the dotfiles generator system. Provides commands for installing tools, generating configuration files, managing updates, and maintaining the dotfiles environment.
 
 ## Overview
 
@@ -407,7 +407,7 @@ dotfiles install <TAB>   # Shows configured tool names
 Creates the Commander.js program with all commands configured.
 
 ```typescript
-import { createProgram } from "@dotfiles/cli";
+import { createProgram } from "./createProgram";
 
 const program = createProgram({
   logger,
@@ -520,7 +520,7 @@ The package includes tests for:
 ## Command Testing
 
 ```typescript
-import { createProgram } from "@dotfiles/cli";
+import { createProgram } from "./createProgram";
 import { createTestDirectories } from "@dotfiles/testing-helpers";
 
 const { workingDir, homeDir } = await createTestDirectories("cli-test");

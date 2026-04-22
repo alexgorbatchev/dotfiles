@@ -7,7 +7,7 @@ export default defineTool((install) =>
       // url downloads to toolInstallDir, source defaults to filename from URL
       shell.completions({
         url: "https://raw.githubusercontent.com/BurntSushi/ripgrep/master/crates/core/flags/complete/rg.zsh",
-        source: "rg.zsh", // relative to toolInstallDir
+        source: "rg.zsh",
         bin: "rg",
       }),
     ),

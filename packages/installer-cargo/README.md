@@ -11,7 +11,7 @@ This plugin enables installation of Rust-based tools by downloading pre-compiled
 Tools are configured using `defineTool` with the `install()` function:
 
 ```typescript
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
   install("cargo", {
