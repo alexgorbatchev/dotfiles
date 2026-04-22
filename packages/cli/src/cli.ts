@@ -337,7 +337,9 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     storageStrategy: "json",
   });
   const githubApiClient = new GitHubApiClient(parentLogger, projectConfig, downloader, githubApiCache);
+  const uncachedGitHubApiClient = new GitHubApiClient(parentLogger, projectConfig, downloader);
   const ghCliApiClient = new GhCliApiClient(parentLogger, projectConfig, shell, githubApiCache);
+  const uncachedGhCliApiClient = new GhCliApiClient(parentLogger, projectConfig, shell);
 
   const giteaApiCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.github.cache.enabled,
@@ -394,6 +396,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       downloader,
       githubApiClient,
       ghCliApiClient,
+      uncachedGitHubApiClient,
+      uncachedGhCliApiClient,
       archiveExtractor,
       projectConfig,
       hookExecutor,

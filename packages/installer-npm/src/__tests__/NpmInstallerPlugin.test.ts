@@ -196,7 +196,7 @@ describe("NpmInstallerPlugin", () => {
   describe("checkUpdate", () => {
     const mockContext = {} as IInstallContext;
 
-    it("should return no update when configured version is latest", async () => {
+    it("should return configured latest version when configured version is latest", async () => {
       const toolConfig: NpmToolConfig = {
         name: "prettier",
         version: "latest",
@@ -211,7 +211,7 @@ describe("NpmInstallerPlugin", () => {
 
       assert(result.success);
       expect(result.hasUpdate).toBe(false);
-      expect(result.currentVersion).toBe("3.1.0");
+      expect(result.currentVersion).toBe("latest");
       expect(result.latestVersion).toBe("3.1.0");
     });
 

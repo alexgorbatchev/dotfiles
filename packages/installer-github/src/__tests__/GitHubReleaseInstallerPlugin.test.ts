@@ -31,6 +31,9 @@ describe("GitHubReleaseInstallerPlugin", () => {
   let mockFs: IFileSystem;
   let mockDownloader: IDownloader;
   let mockGitHubClient: IGitHubApiClient;
+  let mockUncachedGitHubClient: IGitHubApiClient;
+  let mockGhCliApiClient: IGitHubApiClient;
+  let mockUncachedGhCliApiClient: IGitHubApiClient;
   let mockArchiveExtractor: IArchiveExtractor;
   let mockProjectConfig: ProjectConfig;
   let mockHookExecutor: HookExecutor;
@@ -39,6 +42,9 @@ describe("GitHubReleaseInstallerPlugin", () => {
     mockFs = {} as IFileSystem;
     mockDownloader = {} as IDownloader;
     mockGitHubClient = {} as IGitHubApiClient;
+    mockUncachedGitHubClient = {} as IGitHubApiClient;
+    mockGhCliApiClient = {} as IGitHubApiClient;
+    mockUncachedGhCliApiClient = {} as IGitHubApiClient;
     mockArchiveExtractor = {} as IArchiveExtractor;
     mockProjectConfig = {} as ProjectConfig;
     mockHookExecutor = {} as HookExecutor;
@@ -47,7 +53,9 @@ describe("GitHubReleaseInstallerPlugin", () => {
       mockFs,
       mockDownloader,
       mockGitHubClient,
-      undefined, // ghCliApiClient
+      mockGhCliApiClient,
+      mockUncachedGitHubClient,
+      mockUncachedGhCliApiClient,
       mockArchiveExtractor,
       mockProjectConfig,
       mockHookExecutor,
@@ -102,6 +110,61 @@ describe("GitHubReleaseInstallerPlugin", () => {
 
     const result = plugin.toolConfigSchema.safeParse(invalidConfig);
     expect(result.success).toBe(false);
+  });
+
+  describe("getApiClient", () => {
+    it("should use uncached fetch client for forced latest installs", () => {
+      const toolConfig: GithubReleaseToolConfig = {
+        name: "test-tool",
+        version: "latest",
+        binaries: ["test-tool"],
+        installationMethod: "github-release",
+        installParams: {
+          repo: "owner/repo",
+        },
+      };
+
+      const getApiClient = Reflect.get(plugin, "getApiClient");
+      const apiClient = getApiClient.call(plugin, toolConfig, { force: true });
+
+      expect(apiClient).toBe(mockUncachedGitHubClient);
+    });
+
+    it("should use uncached gh client for forced latest installs when ghCli is enabled", () => {
+      const toolConfig: GithubReleaseToolConfig = {
+        name: "test-tool",
+        version: "latest",
+        binaries: ["test-tool"],
+        installationMethod: "github-release",
+        installParams: {
+          repo: "owner/repo",
+          ghCli: true,
+        },
+      };
+
+      const getApiClient = Reflect.get(plugin, "getApiClient");
+      const apiClient = getApiClient.call(plugin, toolConfig, { force: true });
+
+      expect(apiClient).toBe(mockUncachedGhCliApiClient);
+    });
+
+    it("should keep using the cached client when a specific version is requested", () => {
+      const toolConfig: GithubReleaseToolConfig = {
+        name: "test-tool",
+        version: "latest",
+        binaries: ["test-tool"],
+        installationMethod: "github-release",
+        installParams: {
+          repo: "owner/repo",
+          version: "v1.2.3",
+        },
+      };
+
+      const getApiClient = Reflect.get(plugin, "getApiClient");
+      const apiClient = getApiClient.call(plugin, toolConfig, { force: true });
+
+      expect(apiClient).toBe(mockGitHubClient);
+    });
   });
 
   describe("resolveVersion", () => {
@@ -210,6 +273,59 @@ describe("GitHubReleaseInstallerPlugin", () => {
 
       expect(version).toBe("2.0.0");
       expect(mockGitHubClient.getReleaseByTag).toHaveBeenCalledWith("owner", "repo", "v2.0.0");
+    });
+  });
+
+  describe("checkUpdate", () => {
+    let testLogger: TestLogger;
+    let mockContext: IInstallContext;
+
+    beforeEach(() => {
+      testLogger = new TestLogger();
+      mockContext = {} as IInstallContext;
+    });
+
+    it("should report configured latest version for latest-tracking tools", async () => {
+      const mockToolConfig: GithubReleaseToolConfig = {
+        name: "test-tool",
+        version: "latest",
+        binaries: ["test-tool"],
+        installationMethod: "github-release",
+        installParams: {
+          repo: "owner/repo",
+        },
+      };
+
+      mockGitHubClient.getLatestRelease = mock(async () => createMockRelease("v1.2.3"));
+
+      const result = await plugin.checkUpdate("test-tool", mockToolConfig, mockContext, testLogger);
+
+      assert(result.success);
+      expect(result.hasUpdate).toBe(false);
+      expect(result.currentVersion).toBe("latest");
+      expect(result.latestVersion).toBe("1.2.3");
+    });
+
+    it("should use install params version when checking updates", async () => {
+      const mockToolConfig: GithubReleaseToolConfig = {
+        name: "test-tool",
+        version: "latest",
+        binaries: ["test-tool"],
+        installationMethod: "github-release",
+        installParams: {
+          repo: "owner/repo",
+          version: "v1.2.3",
+        },
+      };
+
+      mockGitHubClient.getLatestRelease = mock(async () => createMockRelease("v1.2.3"));
+
+      const result = await plugin.checkUpdate("test-tool", mockToolConfig, mockContext, testLogger);
+
+      assert(result.success);
+      expect(result.hasUpdate).toBe(false);
+      expect(result.currentVersion).toBe("1.2.3");
+      expect(result.latestVersion).toBe("1.2.3");
     });
   });
 });

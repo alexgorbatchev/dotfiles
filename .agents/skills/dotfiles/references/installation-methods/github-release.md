@@ -12,18 +12,22 @@ export default defineTool((install) => install("github-release", { repo: "junegu
 
 ## Parameters
 
-| Parameter       | Description                                                                                               |
-| --------------- | --------------------------------------------------------------------------------------------------------- |
-| `repo`          | **Required**. GitHub repository in "owner/repo" format                                                    |
-| `assetPattern`  | Glob pattern to match release assets. **Optional**. Use only if default automatic selection fails.        |
-| `assetSelector` | Custom function to select the correct asset. **Optional**. Use only if default automatic selection fails. |
-| `version`       | Specific version (e.g., `'v1.2.3'`)                                                                       |
-| `prerelease`    | Include prereleases when fetching latest (default: false)                                                 |
-| `githubHost`    | Custom GitHub API host for Enterprise                                                                     |
-| `ghCli`         | Use `gh` CLI for API requests instead of fetch                                                            |
-| `env`           | Environment variables (static or dynamic function)                                                        |
+| Parameter       | Description                                                                                                                                                       |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `repo`          | **Required**. GitHub repository in "owner/repo" format                                                                                                            |
+| `assetPattern`  | Glob pattern to match release assets. **Optional**. Prefer this when the default selector chooses the wrong filename.                                             |
+| `assetSelector` | Custom function to select the correct asset. **Optional**. Use only when `assetPattern` is not expressive enough or you intentionally want a non-default variant. |
+| `version`       | Specific version (e.g., `'v1.2.3'`)                                                                                                                               |
+| `prerelease`    | Include prereleases when fetching latest (default: false)                                                                                                         |
+| `githubHost`    | Custom GitHub API host for Enterprise                                                                                                                             |
+| `ghCli`         | Use `gh` CLI for API requests instead of fetch                                                                                                                    |
+| `env`           | Environment variables (static or dynamic function)                                                                                                                |
 
 ## Examples
+
+## Cache Refresh Behavior
+
+GitHub release metadata is cached for normal installs and update checks. When you run `dotfiles install --force <tool>` or `dotfiles update <tool>` for a `github-release` tool that tracks `latest`, dotfiles bypasses that metadata cache so the command rechecks GitHub before reinstalling.
 
 ## Asset Selection (Optional)
 
@@ -98,8 +102,10 @@ Glob syntax: `*` (any chars), `?` (single char), `[abc]` (char class), `{a,b}` (
 
 Available in `assetSelector` as `systemInfo`:
 
-| Property   | Values                     |
-| ---------- | -------------------------- |
-| `platform` | `darwin`, `linux`, `win32` |
-| `arch`     | `x64`, `arm64`             |
-| `libc`     | `gnu`, `musl`, `unknown`   |
+| Property   | Values                                                                         |
+| ---------- | ------------------------------------------------------------------------------ |
+| `platform` | `Platform` enum such as `Platform.Linux`, `Platform.MacOS`, `Platform.Windows` |
+| `arch`     | `Architecture` enum such as `Architecture.X86_64`, `Architecture.Arm64`        |
+| `libc`     | `Libc` enum such as `Libc.Gnu`, `Libc.Musl`, `Libc.Unknown` when detected      |
+
+Import these enums from `@alexgorbatchev/dotfiles` when you need to branch on `systemInfo` values.

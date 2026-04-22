@@ -538,10 +538,11 @@ export class Installer implements IInstaller {
         result.installationMethod = resolvedToolConfig.installationMethod;
 
         const detectedVersion: string | undefined = result.success && "version" in result ? result.version : undefined;
-        const finalVersionOrTimestamp: string =
-          versionOrTimestamp === timestamp && detectedVersion && detectedVersion !== timestamp
-            ? detectedVersion
-            : versionOrTimestamp;
+        const shouldUseDetectedVersion =
+          detectedVersion !== undefined &&
+          detectedVersion !== timestamp &&
+          (options?.force === true || versionOrTimestamp === timestamp);
+        const finalVersionOrTimestamp: string = shouldUseDetectedVersion ? detectedVersion : versionOrTimestamp;
 
         const installedDir: string = isExternallyManaged
           ? path.join(toolRootDir, "external")

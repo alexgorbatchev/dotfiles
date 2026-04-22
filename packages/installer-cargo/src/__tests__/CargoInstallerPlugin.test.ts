@@ -155,4 +155,54 @@ describe("CargoInstallerPlugin", () => {
       expect(version).toBe("15.1.0");
     });
   });
+
+  describe("checkUpdate", () => {
+    let mockContext: IInstallContext;
+
+    beforeEach(() => {
+      mockContext = {} as IInstallContext;
+    });
+
+    it('should report configured latest version when version is "latest"', async () => {
+      const mockToolConfig: CargoToolConfig = {
+        name: "test-tool",
+        version: "latest",
+        binaries: ["test-tool"],
+        installationMethod: "cargo",
+        installParams: {
+          crateName: "test-crate",
+        },
+      };
+
+      mockCargoClient.getLatestVersion = mock(async () => "1.2.3");
+
+      const result = await plugin.checkUpdate("test-tool", mockToolConfig, mockContext, logger);
+
+      assert(result.success);
+      expect(result.hasUpdate).toBe(false);
+      expect(result.currentVersion).toBe("latest");
+      expect(result.latestVersion).toBe("1.2.3");
+    });
+
+    it("should report update available when versions differ", async () => {
+      const mockToolConfig: CargoToolConfig = {
+        name: "test-tool",
+        version: "1.0.0",
+        binaries: ["test-tool"],
+        installationMethod: "cargo",
+        installParams: {
+          crateName: "test-crate",
+        },
+      };
+
+      mockCargoClient.getLatestVersion = mock(async () => "1.2.3");
+
+      const result = await plugin.checkUpdate("test-tool", mockToolConfig, mockContext, logger);
+
+      assert(result.success);
+      expect(result.hasUpdate).toBe(true);
+      expect(result.currentVersion).toBe("1.0.0");
+      expect(result.latestVersion).toBe("1.2.3");
+    });
+  });
 });

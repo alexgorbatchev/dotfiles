@@ -208,12 +208,13 @@ export class CargoInstallerPlugin implements IInstallerPlugin<
       }
 
       const configuredVersion = toolConfig.version || "latest";
+      const currentVersion = configuredVersion === "latest" ? configuredVersion : stripVersionPrefix(configuredVersion);
 
       if (configuredVersion === "latest") {
         const result: UpdateCheckResult = {
           success: true,
           hasUpdate: false,
-          currentVersion: latestVersion,
+          currentVersion,
           latestVersion,
         };
         return result;
@@ -221,8 +222,8 @@ export class CargoInstallerPlugin implements IInstallerPlugin<
 
       const result: UpdateCheckResult = {
         success: true,
-        hasUpdate: configuredVersion !== latestVersion,
-        currentVersion: configuredVersion,
+        hasUpdate: currentVersion !== latestVersion,
+        currentVersion,
         latestVersion,
       };
       return result;

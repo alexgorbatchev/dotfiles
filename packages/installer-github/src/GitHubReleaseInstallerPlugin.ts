@@ -82,21 +82,43 @@ export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
     private readonly downloader: IDownloader,
     private readonly githubApiClient: IGitHubApiClient,
     private readonly ghCliApiClient: IGitHubApiClient | undefined,
+    private readonly uncachedGitHubApiClient: IGitHubApiClient,
+    private readonly uncachedGhCliApiClient: IGitHubApiClient | undefined,
     private readonly archiveExtractor: IArchiveExtractor,
     private readonly projectConfig: ProjectConfig,
     private readonly hookExecutor: HookExecutor,
   ) {}
+
+  private getRequestedVersion(toolConfig: GithubReleaseToolConfig): string {
+    const params = toolConfig.installParams as IGithubReleaseInstallParams;
+    const requestedVersion = params.version ?? toolConfig.version ?? "latest";
+    return requestedVersion;
+  }
+
+  private shouldBypassApiCache(toolConfig: GithubReleaseToolConfig, options?: IInstallOptions): boolean {
+    return options?.force === true && this.getRequestedVersion(toolConfig) === "latest";
+  }
 
   /**
    * Returns the appropriate GitHub API client based on tool configuration.
    * If the tool has `ghCli: true` in installParams and a gh CLI client is available,
    * returns the gh CLI client. Otherwise returns the default fetch-based client.
    */
-  private getApiClient(toolConfig: GithubReleaseToolConfig): IGitHubApiClient {
+  private getApiClient(toolConfig: GithubReleaseToolConfig, options?: IInstallOptions): IGitHubApiClient {
     const params = toolConfig.installParams as IGithubReleaseInstallParams;
+
+    if (this.shouldBypassApiCache(toolConfig, options)) {
+      if (params.ghCli && this.uncachedGhCliApiClient) {
+        return this.uncachedGhCliApiClient;
+      }
+
+      return this.uncachedGitHubApiClient;
+    }
+
     if (params.ghCli && this.ghCliApiClient) {
       return this.ghCliApiClient;
     }
+
     return this.githubApiClient;
   }
 
@@ -118,7 +140,7 @@ export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
       options,
       toolFs,
       this.downloader,
-      this.getApiClient(toolConfig),
+      this.getApiClient(toolConfig, options),
       this.archiveExtractor,
       this.projectConfig,
       this.hookExecutor,
@@ -146,7 +168,7 @@ export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
   ): Promise<string | null> {
     try {
       const params = toolConfig.installParams as IGithubReleaseInstallParams;
-      const version: string = toolConfig.version || "latest";
+      const version = this.getRequestedVersion(toolConfig);
 
       // Fetch release information from GitHub API
       const releaseResult = await fetchGitHubRelease(
@@ -208,14 +230,15 @@ export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
         return result;
       }
 
-      const configuredVersion = toolConfig.version || "latest";
+      const configuredVersion = this.getRequestedVersion(toolConfig);
+      const currentVersion = configuredVersion === "latest" ? configuredVersion : stripVersionPrefix(configuredVersion);
       const latestVersion = latestRelease.tag_name.replace(/^v/, "");
 
       if (configuredVersion === "latest") {
         const result: UpdateCheckResult = {
           success: true,
           hasUpdate: false,
-          currentVersion: latestVersion,
+          currentVersion,
           latestVersion,
         };
         return result;
@@ -223,8 +246,8 @@ export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
 
       const result: UpdateCheckResult = {
         success: true,
-        hasUpdate: configuredVersion !== latestVersion,
-        currentVersion: configuredVersion,
+        hasUpdate: currentVersion !== latestVersion,
+        currentVersion,
         latestVersion,
       };
       return result;

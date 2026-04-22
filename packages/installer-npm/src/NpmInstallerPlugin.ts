@@ -170,12 +170,13 @@ export class NpmInstallerPlugin implements IInstallerPlugin<
       }
 
       const configuredVersion: string = toolConfig.version || "latest";
+      const currentVersion = configuredVersion === "latest" ? configuredVersion : stripVersionPrefix(configuredVersion);
 
       if (configuredVersion === "latest") {
         const successResult: UpdateCheckResult = {
           success: true,
           hasUpdate: false,
-          currentVersion: latestVersion,
+          currentVersion,
           latestVersion,
         };
         return successResult;
@@ -183,8 +184,8 @@ export class NpmInstallerPlugin implements IInstallerPlugin<
 
       const successResult: UpdateCheckResult = {
         success: true,
-        hasUpdate: configuredVersion !== latestVersion,
-        currentVersion: configuredVersion,
+        hasUpdate: currentVersion !== latestVersion,
+        currentVersion,
         latestVersion,
       };
       return successResult;

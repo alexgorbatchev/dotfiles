@@ -242,4 +242,43 @@ describe("Installer - install (orchestrator)", () => {
 
     installSpy.mockRestore();
   });
+
+  it("should prefer the installed version when force install resolves a newer version", async () => {
+    const toolConfig = createGithubReleaseToolConfig({ version: "latest" });
+    const plugin = setup.pluginRegistry.get("github-release");
+    assert(plugin);
+    plugin.resolveVersion = mock(async () => "1.0.0");
+
+    const installSpy = spyOn(setup.pluginRegistry, "install").mockImplementation(
+      async (_parentLogger, _method: string, _toolName: string, _toolConfig: unknown, context: IInstallContext) => {
+        const binaryPath = path.join(context.stagingDir, MOCK_TOOL_NAME);
+        await setup.fs.ensureDir(path.dirname(binaryPath));
+        await setup.fs.writeFile(binaryPath, "mock binary content");
+        await setup.fs.chmod(binaryPath, 0o755);
+
+        return {
+          success: true,
+          binaryPaths: [binaryPath],
+          version: "2.0.0",
+          originalTag: "v2.0.0",
+          metadata: {
+            method: "github-release",
+            releaseUrl: "https://github.com/test/repo/releases/tag/v2.0.0",
+            publishedAt: "2024-01-01T00:00:00Z",
+            releaseName: "Release v2.0.0",
+            downloadUrl: "https://github.com/test/repo/releases/download/v2.0.0/asset.tar.gz",
+            assetName: "test-asset.tar.gz",
+          },
+        };
+      },
+    );
+
+    const result = await setup.installer.install(MOCK_TOOL_NAME, toolConfig, { force: true });
+
+    expect(result.success).toBe(true);
+    expect(await setup.fs.exists(path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, "2.0.0"))).toBe(true);
+    expect(await setup.fs.exists(path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, "1.0.0"))).toBe(false);
+
+    installSpy.mockRestore();
+  });
 });

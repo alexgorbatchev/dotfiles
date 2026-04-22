@@ -61,6 +61,12 @@ export class GiteaReleaseInstallerPlugin implements IInstallerPlugin<
     private readonly cache?: ICache,
   ) {}
 
+  private getRequestedVersion(toolConfig: GiteaReleaseToolConfig): string {
+    const params = toolConfig.installParams as IGiteaReleaseInstallParams;
+    const requestedVersion = params.version ?? toolConfig.version ?? "latest";
+    return requestedVersion;
+  }
+
   /**
    * Creates a Gitea API client for the given tool configuration.
    * Each tool can point to a different Gitea instance.
@@ -104,7 +110,7 @@ export class GiteaReleaseInstallerPlugin implements IInstallerPlugin<
   ): Promise<string | null> {
     try {
       const params = toolConfig.installParams as IGiteaReleaseInstallParams;
-      const version: string = toolConfig.version || "latest";
+      const version = this.getRequestedVersion(toolConfig);
       const apiClient = this.createApiClient(toolConfig, logger);
 
       const releaseResult = await fetchGiteaRelease(
@@ -166,14 +172,15 @@ export class GiteaReleaseInstallerPlugin implements IInstallerPlugin<
         return result;
       }
 
-      const configuredVersion = toolConfig.version || "latest";
+      const configuredVersion = this.getRequestedVersion(toolConfig);
+      const currentVersion = configuredVersion === "latest" ? configuredVersion : stripVersionPrefix(configuredVersion);
       const latestVersion = latestRelease.tag_name.replace(/^v/, "");
 
       if (configuredVersion === "latest") {
         const result: UpdateCheckResult = {
           success: true,
           hasUpdate: false,
-          currentVersion: latestVersion,
+          currentVersion,
           latestVersion,
         };
         return result;
@@ -181,8 +188,8 @@ export class GiteaReleaseInstallerPlugin implements IInstallerPlugin<
 
       const result: UpdateCheckResult = {
         success: true,
-        hasUpdate: configuredVersion !== latestVersion,
-        currentVersion: configuredVersion,
+        hasUpdate: currentVersion !== latestVersion,
+        currentVersion,
         latestVersion,
       };
       return result;
