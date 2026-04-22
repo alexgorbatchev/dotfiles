@@ -93,7 +93,13 @@ describe("CargoInstallerPlugin", () => {
 
       mockCargoClient.getLatestVersion = mock(async () => "1.2.3");
 
-      const version: string | null = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, logger);
+      const version: string | null = await plugin.resolveVersion(
+        "test-tool",
+        mockToolConfig,
+        mockContext,
+        undefined,
+        logger,
+      );
 
       expect(version).toBe("1.2.3");
       expect(mockCargoClient.getLatestVersion).toHaveBeenCalledWith("test-crate");
@@ -112,7 +118,13 @@ describe("CargoInstallerPlugin", () => {
 
       mockCargoClient.getLatestVersion = mock(async () => null);
 
-      const version: string | null = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, logger);
+      const version: string | null = await plugin.resolveVersion(
+        "test-tool",
+        mockToolConfig,
+        mockContext,
+        undefined,
+        logger,
+      );
 
       expect(version).toBeNull();
     });
@@ -132,7 +144,13 @@ describe("CargoInstallerPlugin", () => {
         assert.fail("Network error");
       });
 
-      const version: string | null = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, logger);
+      const version: string | null = await plugin.resolveVersion(
+        "test-tool",
+        mockToolConfig,
+        mockContext,
+        undefined,
+        logger,
+      );
 
       expect(version).toBeNull();
     });
@@ -150,7 +168,13 @@ describe("CargoInstallerPlugin", () => {
 
       mockCargoClient.getLatestVersion = mock(async () => "v15.1.0");
 
-      const version: string | null = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, logger);
+      const version: string | null = await plugin.resolveVersion(
+        "test-tool",
+        mockToolConfig,
+        mockContext,
+        undefined,
+        logger,
+      );
 
       expect(version).toBe("15.1.0");
     });

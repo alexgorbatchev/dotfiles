@@ -142,6 +142,7 @@ export class CargoInstallerPlugin implements IInstallerPlugin<
     toolName: string,
     toolConfig: CargoToolConfig,
     _context: IInstallContext,
+    _options: IInstallOptions | undefined,
     logger: TsLogger,
   ): Promise<string | null> {
     const subLogger: TsLogger = logger.getSubLogger({ name: "resolveVersion" });

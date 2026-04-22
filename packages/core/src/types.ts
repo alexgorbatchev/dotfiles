@@ -331,6 +331,7 @@ export interface IInstallerPlugin<
    * @param toolName - Name of the tool being installed
    * @param toolConfig - Complete tool configuration
    * @param context - Installation context with system information
+   * @param options - Install options affecting version resolution
    * @param logger - Logger instance for debug output
    * @returns Normalized version string, or null if version cannot be resolved
    */
@@ -338,6 +339,7 @@ export interface IInstallerPlugin<
     toolName: string,
     toolConfig: TConfig,
     context: IInstallContext,
+    options: IInstallOptions | undefined,
     logger: TsLogger,
   ): Promise<string | null>;
 

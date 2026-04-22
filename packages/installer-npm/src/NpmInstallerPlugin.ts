@@ -100,6 +100,7 @@ export class NpmInstallerPlugin implements IInstallerPlugin<
     toolName: string,
     toolConfig: NpmToolConfig,
     _context: IInstallContext,
+    _options: IInstallOptions | undefined,
     logger: TsLogger,
   ): Promise<string | null> {
     const subLogger: TsLogger = logger.getSubLogger({ name: "resolveVersion" });

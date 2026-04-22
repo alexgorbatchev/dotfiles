@@ -189,7 +189,13 @@ describe("GitHubReleaseInstallerPlugin", () => {
 
       mockGitHubClient.getLatestRelease = mock(async () => createMockRelease("v1.2.3"));
 
-      const version: string | null = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, testLogger);
+      const version: string | null = await plugin.resolveVersion(
+        "test-tool",
+        mockToolConfig,
+        mockContext,
+        undefined,
+        testLogger,
+      );
 
       expect(version).toBe("1.2.3");
       expect(mockGitHubClient.getLatestRelease).toHaveBeenCalledWith("owner", "repo");
@@ -208,7 +214,13 @@ describe("GitHubReleaseInstallerPlugin", () => {
 
       mockGitHubClient.getLatestRelease = mock(async () => null);
 
-      const version: string | null = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, testLogger);
+      const version: string | null = await plugin.resolveVersion(
+        "test-tool",
+        mockToolConfig,
+        mockContext,
+        undefined,
+        testLogger,
+      );
 
       expect(version).toBeNull();
       // fetchGitHubRelease logs debug message, then resolveVersion logs failure
@@ -231,7 +243,13 @@ describe("GitHubReleaseInstallerPlugin", () => {
         assert.fail("Network error");
       });
 
-      const version: string | null = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, testLogger);
+      const version: string | null = await plugin.resolveVersion(
+        "test-tool",
+        mockToolConfig,
+        mockContext,
+        undefined,
+        testLogger,
+      );
 
       expect(version).toBeNull();
       // fetchGitHubRelease throws, then resolveVersion catches and logs exception
@@ -251,7 +269,13 @@ describe("GitHubReleaseInstallerPlugin", () => {
 
       mockGitHubClient.getLatestRelease = mock(async () => createMockRelease("v15.1.0"));
 
-      const version: string | null = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, testLogger);
+      const version: string | null = await plugin.resolveVersion(
+        "test-tool",
+        mockToolConfig,
+        mockContext,
+        undefined,
+        testLogger,
+      );
 
       expect(version).toBe("15.1.0");
     });
@@ -269,10 +293,42 @@ describe("GitHubReleaseInstallerPlugin", () => {
 
       mockGitHubClient.getReleaseByTag = mock(async () => createMockRelease("v2.0.0"));
 
-      const version: string | null = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, testLogger);
+      const version: string | null = await plugin.resolveVersion(
+        "test-tool",
+        mockToolConfig,
+        mockContext,
+        undefined,
+        testLogger,
+      );
 
       expect(version).toBe("2.0.0");
       expect(mockGitHubClient.getReleaseByTag).toHaveBeenCalledWith("owner", "repo", "v2.0.0");
+    });
+
+    it("should use uncached client when force resolving latest version", async () => {
+      const mockToolConfig: GithubReleaseToolConfig = {
+        name: "test-tool",
+        version: "latest",
+        binaries: ["test-tool"],
+        installationMethod: "github-release",
+        installParams: {
+          repo: "owner/repo",
+        },
+      };
+
+      mockUncachedGitHubClient.getLatestRelease = mock(async () => createMockRelease("v1.2.3"));
+
+      const version: string | null = await plugin.resolveVersion(
+        "test-tool",
+        mockToolConfig,
+        mockContext,
+        { force: true },
+        testLogger,
+      );
+
+      expect(version).toBe("1.2.3");
+      expect(mockUncachedGitHubClient.getLatestRelease).toHaveBeenCalledWith("owner", "repo");
+      expect(mockGitHubClient.getLatestRelease).toBeUndefined();
     });
   });
 

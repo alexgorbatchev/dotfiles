@@ -281,4 +281,38 @@ describe("Installer - install (orchestrator)", () => {
 
     installSpy.mockRestore();
   });
+
+  it("should pass force options to version resolution", async () => {
+    const toolConfig = createGithubReleaseToolConfig({ version: "latest" });
+    const plugin = setup.pluginRegistry.get("github-release");
+    assert(plugin);
+    plugin.resolveVersion = mock(async () => "1.0.0");
+
+    const installSpy = spyOn(setup.pluginRegistry, "install").mockResolvedValue({
+      success: true,
+      binaryPaths: [setup.mockToolBinaryPath],
+      version: "1.0.0",
+      originalTag: "v1.0.0",
+      metadata: {
+        method: "github-release",
+        releaseUrl: "https://github.com/test/repo/releases/tag/v1.0.0",
+        publishedAt: "2024-01-01T00:00:00Z",
+        releaseName: "Release v1.0.0",
+        downloadUrl: "https://github.com/test/repo/releases/download/v1.0.0/asset.tar.gz",
+        assetName: "test-asset.tar.gz",
+      },
+    });
+
+    await setup.installer.install(MOCK_TOOL_NAME, toolConfig, { force: true });
+
+    expect(plugin.resolveVersion).toHaveBeenCalledWith(
+      MOCK_TOOL_NAME,
+      toolConfig,
+      expect.anything(),
+      { force: true },
+      expect.anything(),
+    );
+
+    installSpy.mockRestore();
+  });
 });

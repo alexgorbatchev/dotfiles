@@ -165,6 +165,7 @@ export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
     _context: IInstallContext,
+    options: IInstallOptions | undefined,
     logger: TsLogger,
   ): Promise<string | null> {
     try {
@@ -176,7 +177,7 @@ export class GitHubReleaseInstallerPlugin implements IInstallerPlugin<
         params.repo,
         version,
         params.prerelease ?? false,
-        this.getApiClient(toolConfig),
+        this.getApiClient(toolConfig, options),
         logger,
       );
 

@@ -107,6 +107,7 @@ export class GiteaReleaseInstallerPlugin implements IInstallerPlugin<
     toolName: string,
     toolConfig: GiteaReleaseToolConfig,
     _context: IInstallContext,
+    _options: IInstallOptions | undefined,
     logger: TsLogger,
   ): Promise<string | null> {
     try {

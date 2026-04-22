@@ -123,7 +123,13 @@ describe("NpmInstallerPlugin", () => {
         },
       };
 
-      const version: string | null = await plugin.resolveVersion("prettier", toolConfig, mockContext, logger);
+      const version: string | null = await plugin.resolveVersion(
+        "prettier",
+        toolConfig,
+        mockContext,
+        undefined,
+        logger,
+      );
 
       expect(version).toBe("3.1.0");
     });
@@ -137,7 +143,13 @@ describe("NpmInstallerPlugin", () => {
         installParams: {},
       };
 
-      const version: string | null = await plugin.resolveVersion("prettier", toolConfig, mockContext, logger);
+      const version: string | null = await plugin.resolveVersion(
+        "prettier",
+        toolConfig,
+        mockContext,
+        undefined,
+        logger,
+      );
 
       expect(version).toBe("3.1.0");
     });
@@ -162,7 +174,13 @@ describe("NpmInstallerPlugin", () => {
         },
       };
 
-      const version: string | null = await emptyPlugin.resolveVersion("nonexistent", toolConfig, mockContext, logger);
+      const version: string | null = await emptyPlugin.resolveVersion(
+        "nonexistent",
+        toolConfig,
+        mockContext,
+        undefined,
+        logger,
+      );
 
       expect(version).toBeNull();
     });
@@ -187,7 +205,13 @@ describe("NpmInstallerPlugin", () => {
         },
       };
 
-      const version: string | null = await vPrefixPlugin.resolveVersion("some-tool", toolConfig, mockContext, logger);
+      const version: string | null = await vPrefixPlugin.resolveVersion(
+        "some-tool",
+        toolConfig,
+        mockContext,
+        undefined,
+        logger,
+      );
 
       expect(version).toBe("2.5.0");
     });

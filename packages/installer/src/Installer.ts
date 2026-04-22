@@ -466,6 +466,7 @@ export class Installer implements IInstaller {
             toolName,
             resolvedToolConfig,
             tempContext,
+            options,
             logger,
           );
 

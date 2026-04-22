@@ -172,7 +172,7 @@ describe("GiteaReleaseInstallerPlugin", () => {
         ),
       );
 
-      const version = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, testLogger);
+      const version = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, undefined, testLogger);
       expect(version).toBe("1.2.3");
     });
 
@@ -194,7 +194,7 @@ describe("GiteaReleaseInstallerPlugin", () => {
         ),
       );
 
-      const version = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, testLogger);
+      const version = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, undefined, testLogger);
       expect(version).toBeNull();
     });
 
@@ -224,7 +224,7 @@ describe("GiteaReleaseInstallerPlugin", () => {
         ),
       );
 
-      const version = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, testLogger);
+      const version = await plugin.resolveVersion("test-tool", mockToolConfig, mockContext, undefined, testLogger);
       expect(version).toBe("15.1.0");
     });
   });
