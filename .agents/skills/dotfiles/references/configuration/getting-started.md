@@ -143,7 +143,7 @@ When a `.tool.ts` configuration file is removed, `dotfiles generate` automatical
 
 ### Auto-Generated Types
 
-Running `dotfiles generate` creates `.generated/tool-types.d.ts` with type-safe `dependsOn()` autocomplete for all your tool binaries.
+Running `dotfiles generate` creates `.generated/tool-types.d.ts` with type-safe `dependsOn()` autocomplete for all your tool binaries. Standalone compiled-binary installs may also generate additional supporting declaration files in `.generated/`, but you should still include only `.generated/tool-types.d.ts` in `tsconfig.json`.
 
 Add to your `tsconfig.json`:
 

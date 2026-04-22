@@ -8,6 +8,8 @@ import type { IGlobalProgram, IGlobalProgramOptions, IServices, ServicesFactory 
 // Re-export the completion metadata for external use
 export * from "./generateCommandCompletion";
 
+const COMPILED_AUTHORING_TYPES_FILE_NAME = "authoring-types.d.ts";
+
 /**
  * The binary name for the dotfiles CLI.
  */
@@ -67,8 +69,18 @@ export function registerGenerateCommand(
         );
         logger.debug(messages.toolConfigsLoaded(projectConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length));
 
+        const compiledAuthoringTypes: string | undefined =
+          typeof DOTFILES_COMPILED_AUTHORING_TYPES === "string" ? DOTFILES_COMPILED_AUTHORING_TYPES : undefined;
+        if (compiledAuthoringTypes) {
+          const authoringTypesPath = path.join(projectConfig.paths.generatedDir, COMPILED_AUTHORING_TYPES_FILE_NAME);
+          await fs.writeFile(authoringTypesPath, compiledAuthoringTypes);
+          logger.debug(messages.authoringTypesGenerated(authoringTypesPath));
+        }
+
         const toolTypesPath: string = path.join(projectConfig.paths.generatedDir, "tool-types.d.ts");
-        await generateToolTypes(toolConfigs, toolTypesPath, fs);
+        await generateToolTypes(toolConfigs, toolTypesPath, fs, {
+          authoringTypesReferencePath: compiledAuthoringTypes ? `./${COMPILED_AUTHORING_TYPES_FILE_NAME}` : undefined,
+        });
         logger.debug(messages.toolTypesGenerated(toolTypesPath));
 
         await generatorOrchestrator.generateAll(toolConfigs, { overwrite: combinedOptions.overwrite, installer });

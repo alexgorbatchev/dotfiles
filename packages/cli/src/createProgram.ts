@@ -44,10 +44,12 @@ export const GLOBAL_OPTIONS_COMPLETION: ICommandCompletionMeta = {
  * ```
  */
 export function createProgram(): IGlobalProgram {
+  const version = typeof DOTFILES_VERSION === "string" ? DOTFILES_VERSION : (process.env.DOTFILES_VERSION ?? "0.0.0");
+
   const program: IGlobalProgram = new Command()
     .name("generator")
     .description("CLI tool for managing dotfiles and tool configurations")
-    .version(process.env.DOTFILES_VERSION ?? "0.0.0")
+    .version(version)
     .option("--config <path>", "Path to a configuration file", "")
     .option("--dry-run", "Simulate all operations without making changes to the file system", false)
     .option("--trace", "Show file paths and line numbers in log output", false)

@@ -4,18 +4,18 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "test-project"
+    "test-project-npm"
   ],
   "type": "module",
   "module": "cli.ts",
   "scripts": {
     "typecheck": "tsgo -p tsconfig.json",
-    "lint": "bun --bun oxfmt --check . && (cd test-project && ../node_modules/.bin/dprint check --config .dprint.json .) && bun --bun oxlint . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
-    "fix": "bun --bun oxfmt . && (cd test-project && ../node_modules/.bin/dprint fmt --config .dprint.json .) && bun --bun oxlint --fix . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
+    "lint": "bun --bun oxfmt --check . && (cd test-project-npm && ../node_modules/.bin/dprint check --config .dprint.json .) && bun --bun oxlint . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
+    "fix": "bun --bun oxfmt . && (cd test-project-npm && ../node_modules/.bin/dprint fmt --config .dprint.json .) && bun --bun oxlint --fix . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
     "test:all": "BUN_TEST_ALL=1 bun test",
     "test:native": "BUN_TEST_SEQUENTIAL=1 bun test",
     "test:task": "bun test",
-    "test-project": "DOTFILES_BUILT_PACKAGE_NAME='@dotfiles/core' bun run --silent cli.ts --config test-project/dotfiles.config.ts",
+    "test-project-npm": "DOTFILES_BUILT_PACKAGE_NAME='@dotfiles/core' bun run --silent cli.ts --config test-project-npm/dotfiles.config.ts",
     "compile": "bun packages/build/src/build/main.ts",
     "release": "bun packages/build/src/release/main.ts",
     "find-unused": "echo \"find-unused analyzer is not configured in this workspace.\"",
@@ -23,7 +23,7 @@
     "proxy": "bun run packages/http-proxy/src/server.ts",
     "check": "bun lint && bun typecheck && bun test:all",
     "check:ci": "bun lint && bun typecheck && bun test:native",
-    "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project/dotfiles.config.ts dashboard",
+    "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project-npm/dotfiles.config.ts dashboard",
     "docs": "cd packages/docs && bun run dev"
   },
   "devDependencies": {

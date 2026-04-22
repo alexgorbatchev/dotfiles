@@ -25,7 +25,10 @@ export async function createTempTsConfig(context: IBuildContext): Promise<void> 
         ],
       },
     },
-    include: [`${context.paths.rootDir}/packages/cli/src/schema-exports.ts`],
+    include: [
+      `${context.paths.rootDir}/packages/cli/src/schema-exports.ts`,
+      `${context.paths.rootDir}/packages/cli/src/authoring-exports.ts`,
+    ],
   };
 
   await Bun.write(context.paths.buildTsconfigPath, JSON.stringify(tempTsConfig, null, 2));

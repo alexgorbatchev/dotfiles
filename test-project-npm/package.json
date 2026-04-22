@@ -1,5 +1,5 @@
 {
-  "name": "test-project",
+  "name": "test-project-npm",
   "version": "1.0.0",
   "type": "module",
   "devDependencies": {

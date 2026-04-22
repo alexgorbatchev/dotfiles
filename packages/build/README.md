@@ -28,6 +28,7 @@ The build writes the following artifacts to `.dist/`:
 - `cli-*.js`: Preact runtime chunks used by the dashboard.
 - `schemas.d.ts`: bundled schema/config declaration output.
 - `tool-types.d.ts`: generated tool type declarations.
+- `authoring-types.d.ts`: bundled authoring declarations embedded into the standalone binary for generated `.generated/` type support.
 - `package.json`: a publishable/runtime package manifest for the `.dist` folder.
 - `docs/`: a copy of the user documentation shipped with the output.
 

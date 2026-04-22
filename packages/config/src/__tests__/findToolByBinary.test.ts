@@ -266,6 +266,53 @@ describe("loadToolConfigByBinary", () => {
     expect(toolConfig.binaries).toContain("my-binary");
   });
 
+  it("should load tool config when public authoring imports are nested in helper modules", async () => {
+    await setupTest();
+
+    const helperDir = path.join(mockProjectConfig.paths.toolConfigsDir, "helpers");
+    const helperFilePath = path.join(helperDir, "nested-tool-helper.ts");
+    const toolFilePath = path.join(mockProjectConfig.paths.toolConfigsDir, "nested-tool.tool.ts");
+
+    await realFs.mkdir(helperDir, { recursive: true });
+    await realFs.writeFile(
+      helperFilePath,
+      dedentString(`
+        import { defineTool, Platform } from "@dotfiles/cli";
+
+        export const createNestedTool = () =>
+          defineTool((install, ctx) =>
+            install("manual", {
+              binaryPath: ctx.systemInfo.platform === Platform.Linux ? "/usr/bin/nested-tool" : "/usr/bin/nested-tool",
+            })
+              .bin("nested-tool")
+              .version("latest"),
+          );
+      `),
+    );
+    await realFs.writeFile(
+      toolFilePath,
+      dedentString(`
+        import { createNestedTool } from "./helpers/nested-tool-helper";
+
+        export default createNestedTool();
+      `),
+    );
+
+    const result = await loadToolConfigByBinary(
+      logger,
+      "nested-tool",
+      mockProjectConfig.paths.toolConfigsDir,
+      resolvedFs,
+      mockProjectConfig,
+      systemInfo,
+    );
+
+    assert(result);
+    assert(!("error" in result));
+    expect(result.name).toBe("nested-tool");
+    expect(result.binaries).toContain("nested-tool");
+  });
+
   it("should return undefined when binary is not found", async () => {
     await setupTest();
     await createToolFile("tool-a", ["binary-a"]);

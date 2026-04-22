@@ -120,7 +120,7 @@ describe("loadConfig - TypeScript path substitution", () => {
     assert(tempDir);
 
     const configPath = path.join(tempDir, "config.ts");
-    // This mimics test-project/dotfiles.config.ts structure
+    // This mimics test-project-npm/dotfiles.config.ts structure
     const tsContent = `
       import { defineConfig } from '@dotfiles/config';
       

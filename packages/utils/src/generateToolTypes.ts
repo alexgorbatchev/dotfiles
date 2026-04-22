@@ -3,6 +3,13 @@ import type { IFileSystem } from "@dotfiles/file-system";
 import path from "node:path";
 import { getBuiltPackageName } from "./getBuiltPackageName";
 
+const DOTFILES_CLI_MODULE_NAME = "@dotfiles/cli";
+
+export interface IGenerateToolTypesOptions {
+  moduleNames?: string[];
+  authoringTypesReferencePath?: string;
+}
+
 /**
  * Header comment shared by all generated tool-types.d.ts files.
  */
@@ -58,7 +65,19 @@ export function generateUnionType(binaryNames: Set<string>): string {
   return quotedNames.join(" | ");
 }
 
-export function generateToolTypesContent(toolConfigs: Record<string, ToolConfig>, moduleName?: string): string {
+function resolveModuleNames(moduleNames?: string[]): string[] {
+  const resolvedNames: string[] = moduleNames ?? [getBuiltPackageName(), DOTFILES_CLI_MODULE_NAME];
+  return Array.from(new Set(resolvedNames));
+}
+
+function createModuleBlock(moduleName: string, registryBody: string): string {
+  return `declare module '${moduleName}' {\n${registryBody}\n}`;
+}
+
+export function generateToolTypesContent(
+  toolConfigs: Record<string, ToolConfig>,
+  options?: IGenerateToolTypesOptions,
+): string {
   const binaryNames: Set<string> = extractBinaryNames(toolConfigs);
   const unionType: string = generateUnionType(binaryNames);
   const sortedNames: string[] = unionType === "string" ? [] : Array.from(binaryNames).toSorted();
@@ -67,9 +86,18 @@ export function generateToolTypesContent(toolConfigs: Record<string, ToolConfig>
   const registryBody: string = hasEntries
     ? `  interface IKnownBinNameRegistry {\n${registryEntries}\n  }`
     : "  interface IKnownBinNameRegistry {}";
-  const resolvedModuleName: string = moduleName ?? getBuiltPackageName();
-  const moduleBlock: string = `declare module '${resolvedModuleName}' {\n${registryBody}\n}`;
-  const contentParts: string[] = [TOOL_TYPES_HEADER, moduleBlock, "export {};", ""];
+  const moduleBlocks: string = resolveModuleNames(options?.moduleNames)
+    .map((moduleName) => createModuleBlock(moduleName, registryBody))
+    .join("\n\n");
+  const contentParts: string[] = [
+    TOOL_TYPES_HEADER,
+    ...(options?.authoringTypesReferencePath
+      ? [`/// <reference path="${options.authoringTypesReferencePath}" />`]
+      : []),
+    moduleBlocks,
+    "export {};",
+    "",
+  ];
   const content: string = contentParts.join("\n\n");
   return content;
 }
@@ -86,9 +114,9 @@ export async function generateToolTypes(
   toolConfigs: Record<string, ToolConfig>,
   outputPath: string,
   fs: IFileSystem,
-  moduleName?: string,
+  options?: IGenerateToolTypesOptions,
 ): Promise<void> {
-  const content: string = generateToolTypesContent(toolConfigs, moduleName);
+  const content: string = generateToolTypesContent(toolConfigs, options);
   await fs.ensureDir(path.dirname(outputPath));
   await fs.writeFile(outputPath, content, "utf8");
 }

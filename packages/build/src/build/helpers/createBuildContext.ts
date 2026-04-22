@@ -14,6 +14,8 @@ export function createBuildContext(): IBuildContext {
 
   const cliOutputFile: string = path.join(outputDir, "cli.js");
   const cliOutputSourceMapFile: string = path.join(outputDir, "cli.js.map");
+  const compiledBinaryFileName: string = process.platform === "win32" ? "dotfiles.exe" : "dotfiles";
+  const compiledBinaryOutputFile: string = path.join(outputDir, compiledBinaryFileName);
 
   const entryPoint: string = path.resolve(packagesDir, "cli/src/cli.ts");
 
@@ -32,6 +34,7 @@ export function createBuildContext(): IBuildContext {
   const outputBunLockPath: string = path.join(outputDir, "bun.lock");
 
   const outputSchemasDtsPath: string = path.join(outputDir, "schemas.d.ts");
+  const outputAuthoringTypesDtsPath: string = path.join(outputDir, "authoring-types.d.ts");
   const schemaCheckTsconfigPath: string = path.join(outputDir, "tsconfig--schemas-check.json");
 
   const rootNodeModulesPath: string = path.join(rootDir, "node_modules");
@@ -58,6 +61,7 @@ export function createBuildContext(): IBuildContext {
 
     cliOutputFile,
     cliOutputSourceMapFile,
+    compiledBinaryOutputFile,
     entryPoint,
 
     bunfigPath,
@@ -73,6 +77,7 @@ export function createBuildContext(): IBuildContext {
     outputBunLockPath,
 
     outputSchemasDtsPath,
+    outputAuthoringTypesDtsPath,
     schemaCheckTsconfigPath,
 
     rootNodeModulesPath,

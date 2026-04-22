@@ -4,6 +4,7 @@ import type { TsLogger } from "@dotfiles/logger";
 import { exitCli } from "@dotfiles/utils";
 import path from "node:path";
 import type { IConfigContext } from "./defineConfig";
+import { importModuleWithRuntimeAliases } from "./importModuleWithRuntimeAliases";
 import { messages } from "./log-messages";
 import { createProjectConfigFromObject } from "./stagedProjectConfigLoader";
 
@@ -69,7 +70,7 @@ export async function loadTsConfig(
   let userConfig: ProjectConfigPartial = {};
 
   try {
-    const importedModule: unknown = await import(userConfigPath);
+    const importedModule: unknown = await importModuleWithRuntimeAliases(userConfigPath);
 
     if (!hasDefaultExport(importedModule) || !importedModule.default) {
       logger.error(messages.configurationParseError(userConfigPath, "TypeScript", "no default export"));

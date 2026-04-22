@@ -1,0 +1,19 @@
+import { defineConfig } from "@alexgorbatchev/dotfiles";
+
+export function createTestProjectConfig() {
+  return defineConfig(({ configFileDir }) => ({
+    paths: {
+      generatedDir: `${configFileDir}/.generated`,
+      homeDir: "{paths.generatedDir}/user-home",
+      targetDir: "{paths.generatedDir}/user-bin",
+      toolConfigsDir: `${configFileDir}/tools`,
+      binariesDir: "{paths.generatedDir}/binaries",
+    },
+    features: {
+      catalog: {
+        generate: true,
+        filePath: `${configFileDir}/CATALOG.md`,
+      },
+    },
+  }));
+}

@@ -10,8 +10,8 @@ copilot:
 
 # Log Output Analysis Prompt
 
-- Delete any existing generated artifacts by removing `test-project/.generated` before collecting fresh logs.
-- Run `bun test-project generate --trace --log=verbose` to capture the complete log stream that will be analyzed.
+- Delete any existing generated artifacts by removing `test-project-npm/.generated` before collecting fresh logs.
+- Run `bun test-project-npm generate --trace --log=verbose` to capture the complete log stream that will be analyzed.
 - If the command exits with a non-zero status, stop immediately and surface the failure instead of proceeding with analysis.
 - Focus only on messages emitted by `log-messages` modules or their runtime equivalents.
 - Flag redundancies:

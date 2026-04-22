@@ -125,6 +125,7 @@ describe("generateCommand", () => {
     const toolTypesContent: string = await mockFs.fs.readFile(expectedPath, "utf8");
     // Test sets DOTFILES_BUILT_PACKAGE_NAME to @dotfiles/core for local development
     expect(toolTypesContent).toContain("declare module '@dotfiles/core'");
+    expect(toolTypesContent).toContain("declare module '@dotfiles/cli'");
     expect(toolTypesContent).toContain("interface IKnownBinNameRegistry");
     expect(toolTypesContent).toContain("    'toolA-bin': never;");
     expect(toolTypesContent).toContain("export {};");

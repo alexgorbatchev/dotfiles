@@ -19,7 +19,7 @@ End-to-end fixture coverage for CLI workflows, generated artifacts, and cross-pa
 ## Boundaries
 
 - Ask first: changing fixture layout or mock-server protocols used by multiple tests.
-- Never: point automated tests at `test-project/` or remove worker isolation to make tests pass.
+- Never: point automated tests at `test-project-npm/` or `test-project-compiled/`, or remove worker isolation to make tests pass.
 
 ## References
 

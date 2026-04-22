@@ -1,3 +1,4 @@
+export * from "./buildCompiledBinary";
 export * from "./buildCli";
 export * from "./cleanPreviousBuild";
 export * from "./cleanupTempFiles";
@@ -11,4 +12,5 @@ export * from "./generateToolTypesFile";
 export * from "./printBuildSummary";
 export * from "./resolveRuntimeDependencies";
 export * from "./runTypeTests";
+export * from "./testCompiledBinaryBuild";
 export * from "./testPackedBuild";

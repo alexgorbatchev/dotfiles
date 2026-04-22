@@ -34,7 +34,7 @@
       "react-dom": ["./packages/dashboard/node_modules/preact/compat/"]
     }
   },
-  "include": ["packages", "test-project", "cli.ts", "review"],
+  "include": ["packages", "test-project-npm", "cli.ts", "review"],
   "exclude": [
     "**/.tmp/**",
     "**/tmp/**",

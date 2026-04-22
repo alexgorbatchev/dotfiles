@@ -7,6 +7,6 @@ export default createOxfmtConfig(() => ({
     "**/.tmp/**",
     "**/node_modules/**",
     "**/tmp/**",
-    "test-project/**/*.{json,jsonc,md}",
+    "test-project-npm/**/*.{json,jsonc,md}",
   ],
 }));

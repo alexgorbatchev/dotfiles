@@ -16,7 +16,7 @@ export default defineTool((install, ctx) =>
       shell.completions((ctx) => ({
         url: `https://raw.githubusercontent.com/sharkdp/fd/${ctx.version}/contrib/completion/_fd`,
         bin: "fd",
-        source: "_fd", // relative to toolInstallDir
+        source: "_fd",
       })),
     ),
 );
