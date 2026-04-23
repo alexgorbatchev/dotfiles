@@ -1,7 +1,7 @@
 import { createMemFileSystem, type IFileSystem, type IMemFileSystemReturn } from "@dotfiles/file-system";
 import { TestLogger } from "@dotfiles/logger";
 import { FetchMockHelper } from "@dotfiles/testing-helpers";
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import assert from "node:assert";
 import {
   ClientError,
@@ -40,6 +40,10 @@ describe("NodeFetchStrategy", () => {
     fileSystemMocks = fsMocks;
     logger = new TestLogger();
     strategy = new NodeFetchStrategy(logger, mockFileSystem);
+  });
+
+  afterEach(() => {
+    fetchMockHelper.restore();
   });
 
   it("isAvailable() should return true", async () => {

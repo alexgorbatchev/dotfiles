@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -15,8 +15,7 @@ describe("createProxyServer", () => {
   let server: IProxyServer | null = null;
 
   beforeEach(() => {
-    cacheDir = join(tmpdir(), `http-proxy-server-test-${Date.now()}`);
-    mkdirSync(cacheDir, { recursive: true });
+    cacheDir = mkdtempSync(join(tmpdir(), "http-proxy-server-test-"));
   });
 
   afterEach(async () => {
