@@ -155,6 +155,11 @@ export class CachedDownloadStrategy implements IDownloadStrategy {
   async download(url: string, options: IDownloadOptions = {}): Promise<Buffer | undefined> {
     const logger = this.logger.getSubLogger({ name: "download" });
 
+    if (options.skipCache) {
+      logger.trace(cachedDownloadStrategyLogMessages.downloadFromStrategy(this.underlyingStrategy.name), { url });
+      return await this.underlyingStrategy.download(url, options);
+    }
+
     const cacheKey = createCacheKey(url, options);
 
     try {

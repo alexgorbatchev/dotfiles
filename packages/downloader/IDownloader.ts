@@ -9,6 +9,8 @@ export type ProgressCallback = (bytesDownloaded: number, totalBytes: number | nu
 export interface IDownloadOptions {
   /** Optional HTTP headers to include in the download request. */
   headers?: Record<string, string>;
+  /** Optional flag to bypass downloader cache for this request. */
+  skipCache?: boolean;
   /** Optional timeout for the download request in milliseconds. */
   timeout?: number;
   /** Optional number of times to retry the download on failure. */

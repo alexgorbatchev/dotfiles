@@ -1,11 +1,18 @@
+import { FileCache } from "@dotfiles/downloader";
+import { createMemFileSystem } from "@dotfiles/file-system";
+import { TestLogger } from "@dotfiles/logger";
+import { FetchMockHelper } from "@dotfiles/testing-helpers";
 import type { IGitHubRateLimit } from "@dotfiles/core";
 import { beforeEach, describe, expect, it } from "bun:test";
 import { FIXTURE_RELEASE, FIXTURE_RELEASES_LIST } from "./fixtures/cacheTestFixtures";
+import { GitHubApiClient } from "../GitHubApiClient";
 import {
   createGitHubConfigOverride,
+  createMockProjectConfigForGitHubApi,
   type IMockSetup,
   setupMockGitHubApiClient,
 } from "./helpers/sharedGitHubApiClientTestSetup";
+import { Downloader } from "@dotfiles/downloader";
 
 describe("GitHubApiClient", () => {
   describe("caching", () => {
@@ -215,6 +222,50 @@ describe("GitHubApiClient", () => {
       expect(keyWithToken).not.toEqual(keyWithoutToken);
       expect(keyWithToken).toMatch(/^GET:\/repos\/test-owner\/test-repo\/releases\/latest:[a-f0-9]{8}$/);
       expect(keyWithoutToken).toBe("GET:/repos/test-owner/test-repo/releases/latest");
+    });
+
+    it("should not reuse downloader cache when the API client itself is uncached", async () => {
+      const logger = new TestLogger();
+      const { fs } = await createMemFileSystem();
+      const cache = new FileCache(logger, fs, {
+        enabled: true,
+        defaultTtl: 60000,
+        cacheDir: "/cache/downloads",
+        storageStrategy: "binary",
+      });
+      const downloader = new Downloader(logger, fs, undefined, cache);
+      const projectConfig = await createMockProjectConfigForGitHubApi(
+        createGitHubConfigOverride({ githubApiCacheEnabled: false, githubHost: "https://api.github.com" }),
+      );
+      const apiClient = new GitHubApiClient(logger, projectConfig, downloader);
+      const fetchMockHelper = new FetchMockHelper();
+
+      fetchMockHelper.setup();
+      fetchMockHelper.reset();
+
+      const staleRelease = { ...FIXTURE_RELEASE, tag_name: "v0.0.5", name: "v0.0.5" };
+      const latestRelease = { ...FIXTURE_RELEASE, tag_name: "v0.0.6", name: "v0.0.6" };
+
+      fetchMockHelper.mockResponseOnce({
+        status: 200,
+        body: JSON.stringify(staleRelease),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const firstRelease = await apiClient.getLatestRelease("test-owner", "test-repo");
+
+      fetchMockHelper.mockResponseOnce({
+        status: 200,
+        body: JSON.stringify(latestRelease),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const secondRelease = await apiClient.getLatestRelease("test-owner", "test-repo");
+
+      expect(firstRelease?.tag_name).toBe("v0.0.5");
+      expect(secondRelease?.tag_name).toBe("v0.0.6");
+
+      fetchMockHelper.restore();
     });
   });
 });

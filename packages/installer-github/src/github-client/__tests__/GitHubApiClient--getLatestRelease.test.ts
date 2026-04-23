@@ -45,6 +45,7 @@ describe("GitHubApiClient", () => {
             Accept: "application/vnd.github.v3+json",
             "User-Agent": mocks.mockProjectConfig.github.userAgent,
           },
+          skipCache: true,
         },
       );
 

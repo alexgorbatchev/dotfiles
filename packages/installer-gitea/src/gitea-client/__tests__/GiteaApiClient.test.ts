@@ -33,6 +33,7 @@ describe("GiteaApiClient", () => {
           headers: {
             Accept: "application/json",
           },
+          skipCache: true,
         },
       );
     });
@@ -235,6 +236,7 @@ describe("GiteaApiClient", () => {
           Accept: "application/json",
           Authorization: "token test-token-123",
         },
+        skipCache: true,
       });
     });
   });

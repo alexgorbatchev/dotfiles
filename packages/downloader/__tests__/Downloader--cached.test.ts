@@ -192,6 +192,26 @@ describe("Downloader with Cache", () => {
       expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(2);
     });
 
+    it("should bypass cache for requests with skipCache", async () => {
+      fetchMockHelper.mockResponseOnce({
+        status: 200,
+        body: "stale data",
+        headers: { "Content-Type": "application/json" },
+      });
+      fetchMockHelper.mockResponseOnce({
+        status: 200,
+        body: "fresh data",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const result1 = await downloader.download(logger, testUrl, { skipCache: true });
+      const result2 = await downloader.download(logger, testUrl, { skipCache: true });
+
+      expect(result1).toEqual(Buffer.from("stale data"));
+      expect(result2).toEqual(Buffer.from("fresh data"));
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(2);
+    });
+
     it("should handle different URLs separately in cache", async () => {
       const testUrl1 = "https://example.com/file1.zip";
       const testUrl2 = "https://example.com/file2.zip";
