@@ -49,3 +49,4 @@ CLAUDE.md
 /.agents/memories
 /packages/docs/public/install.sh
 /.worktrees
+/.workspaces
