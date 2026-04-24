@@ -1,4 +1,5 @@
 import type { IArchitectureRegex } from "./types";
+import { isNonBinaryAsset } from "./isNonBinaryAsset";
 
 /**
  * Checks if a given asset name matches the specified architecture patterns.
@@ -30,6 +31,10 @@ import type { IArchitectureRegex } from "./types";
  */
 export function matchesArchitecture(assetName: string, architectureRegex: IArchitectureRegex): boolean {
   const lowerAssetName = assetName.toLowerCase();
+
+  if (isNonBinaryAsset(lowerAssetName)) {
+    return false;
+  }
 
   // System and CPU patterns are the primary filters.
   // Both must match for an asset to be considered compatible.

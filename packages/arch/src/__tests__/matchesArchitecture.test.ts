@@ -33,6 +33,10 @@ describe("matchesArchitecture", () => {
     expect(matchesArchitecture("tool-linux-x64.tar.gz", linuxX64Regex)).toBe(true);
   });
 
+  it("should not match .flatpak package files even when platform and CPU match", () => {
+    expect(matchesArchitecture("goreleaser_2.15.4_linux_amd64.flatpak", linuxX64Regex)).toBe(false);
+  });
+
   it("should not match asset with wrong system", () => {
     expect(matchesArchitecture("myapp-windows-arm64.zip", macosArm64Regex)).toBe(false);
     expect(matchesArchitecture("myapp-linux-arm64.tar.gz", macosArm64Regex)).toBe(false);

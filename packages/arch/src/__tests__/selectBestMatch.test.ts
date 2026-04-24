@@ -213,6 +213,22 @@ describe("selectBestMatch", () => {
   });
 
   describe("non-binary pattern exclusion", () => {
+    it("should exclude .flatpak package files", () => {
+      const systemInfo: ISystemInfo = {
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
+        homeDir: "/home/test",
+        hostname: "test-host",
+      };
+
+      const result = selectBestMatch(
+        ["goreleaser_2.15.4_linux_amd64.flatpak", "goreleaser_Linux_x86_64.tar.gz"],
+        systemInfo,
+      );
+
+      expect(result).toBe("goreleaser_Linux_x86_64.tar.gz");
+    });
+
     it("should exclude .sha256sum checksum files", () => {
       const systemInfo: ISystemInfo = {
         platform: Platform.MacOS,

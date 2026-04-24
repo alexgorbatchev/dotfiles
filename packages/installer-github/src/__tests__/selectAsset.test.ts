@@ -209,6 +209,33 @@ describe("selectAsset", () => {
       expect(result.data.name).toBe("nvim-macos-arm64.tar.gz");
     });
 
+    it("should ignore flatpak assets when selecting a Linux x64 release asset", async () => {
+      const release: IGitHubRelease = {
+        id: 1,
+        tag_name: "v2.15.4",
+        name: "GoReleaser 2.15.4",
+        draft: false,
+        prerelease: false,
+        created_at: "2024-01-01T00:00:00Z",
+        published_at: "2024-01-01T00:00:00Z",
+        html_url: "https://github.com/goreleaser/goreleaser/releases/tag/v2.15.4",
+        assets: [
+          createMockAsset("goreleaser_2.15.4_linux_amd64.flatpak"),
+          createMockAsset("goreleaser_Linux_x86_64.tar.gz"),
+          createMockAsset("goreleaser_Windows_x86_64.zip"),
+        ],
+      };
+      const context = createLinuxx64Context();
+      const params: IGithubReleaseInstallParams = {
+        repo: "goreleaser/goreleaser",
+      };
+
+      const result = await selectAsset(release, params, context, logger);
+
+      assert(result.success);
+      expect(result.data.name).toBe("goreleaser_Linux_x86_64.tar.gz");
+    });
+
     it("should prefer the generic Linux Bun asset over musl when libc is gnu", async () => {
       const release: IGitHubRelease = {
         id: 1,

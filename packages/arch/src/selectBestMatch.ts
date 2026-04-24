@@ -1,56 +1,14 @@
 import { Libc, Platform, type ISystemInfo } from "@dotfiles/core";
 import { getArchitecturePatterns } from "./getArchitecturePatterns";
 import { getArchitectureRegex } from "./getArchitectureRegex";
-
-/**
- * Patterns for non-binary files that should be excluded from asset selection.
- * Based on zinit's junk filtering logic:
- * ```zsh
- * local junk='*((s(ha256|ig|um)|386|asc|md5|txt|vsix)*|(apk|b3|deb|json|pkg|rpm|sh|zst)(#e))';
- * filtered=( ${(m@)list:#(#i)${~junk}} )
- * ```
- *
- * Categories:
- * - Checksum files: .sha256, .sha256sum, .sha512, .sha1, .md5, .sum, SHASUMS*
- * - Signature files: .sig, .asc, .pem
- * - Metadata files: .json, .txt, .sbom
- * - Package formats: .deb, .rpm, .apk, .pkg
- * - Build artifacts: buildable-artifact, .vsix
- * - Other: .b3 (BLAKE3), .zst (zstd)
- */
-const NON_BINARY_PATTERNS: RegExp[] = [
-  // Checksum files
-  /\.sha\d+(sum)?$/i,
-  /\.md5(sum)?$/i,
-  /\.sum$/i,
-  /^shasums/i,
-  // Signature files
-  /\.sig$/i,
-  /\.asc$/i,
-  /\.pem$/i,
-  // Metadata files
-  /\.json$/i,
-  /\.txt$/i,
-  /\.sbom$/i,
-  // Package formats (not portable binaries)
-  /\.deb$/i,
-  /\.rpm$/i,
-  /\.apk$/i,
-  /\.pkg$/i,
-  // Build artifacts
-  /buildable-artifact/i,
-  /\.vsix$/i,
-  // Other non-binary formats
-  /\.b3$/i,
-  /\.zst$/i,
-];
+import { isNonBinaryAsset } from "./isNonBinaryAsset";
 
 /**
  * Filters out non-binary files from asset names.
  * Only applies filter if it results in non-empty list (preserves candidates if all would be filtered).
  */
 function filterNonBinaryAssets(assetNames: string[]): string[] {
-  const filtered = assetNames.filter((name) => !NON_BINARY_PATTERNS.some((pattern) => pattern.test(name)));
+  const filtered = assetNames.filter((name) => !isNonBinaryAsset(name));
   // Only apply filter if it yields results (zinit behavior)
   return filtered.length > 0 ? filtered : assetNames;
 }
