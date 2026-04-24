@@ -131,11 +131,23 @@ describe("installFromNpm", () => {
     expect(result.error).toBe("Install parameters not specified");
   });
 
-  it("should use versionArgs and versionRegex for custom version detection", async () => {
+  it("should detect installed npm package version via npm ls", async () => {
     const versionShell = createCommandShell([
       { includes: "npm install -g", stdout: "" },
       { includes: "npm prefix -g", stdout: "/mock/global" },
-      { includes: "--version", stdout: "mytool v4.2.1" },
+      {
+        includes: "npm ls -g --depth=0 --json mytool",
+        stdout: JSON.stringify({
+          name: "lib",
+          dependencies: {
+            mytool: {
+              version: "4.2.1",
+              overridden: false,
+            },
+          },
+        }),
+      },
+      { includes: "npm view", stdout: "9.9.9" },
     ]);
 
     const toolConfig: NpmToolConfig = {
@@ -145,8 +157,7 @@ describe("installFromNpm", () => {
       installationMethod: "npm",
       installParams: {
         package: "mytool",
-        versionArgs: ["--version"],
-        versionRegex: /v(\d+\.\d+\.\d+)/,
+        version: "4.2.1",
       },
     };
 
@@ -179,7 +190,14 @@ describe("installFromNpm", () => {
     expect(result.error).toBeDefined();
   });
 
-  it("should install with bun globally and detect version via CLI", async () => {
+  it("should install with bun globally and detect installed version via bun", async () => {
+    const versionShell = createCommandShell([
+      { includes: "bun install -g", stdout: "" },
+      { includes: "bun pm bin -g", stdout: "/mock/global/bin" },
+      { includes: "bun pm ls -g", stdout: "/home/test/.bun/install/global node_modules (1)\n└── prettier@3.1.0" },
+      { includes: "--version", stdout: "9.9.9" },
+    ]);
+
     const toolConfig: NpmToolConfig = {
       name: "prettier",
       version: "3.1.0",
@@ -191,14 +209,46 @@ describe("installFromNpm", () => {
       },
     };
 
-    const context = createContext(toolConfig, mockShell);
-    const result = await installFromNpm("prettier", toolConfig, context, undefined, logger, mockShell, mockShell);
+    const context = createContext(toolConfig, versionShell);
+    const result = await installFromNpm("prettier", toolConfig, context, undefined, logger, versionShell, versionShell);
 
     assert(result.success);
     expect(result.version).toBe("3.1.0");
     expect(result.metadata.packageName).toBe("prettier");
     expect(result.metadata.method).toBe("npm");
     expect(result.binaryPaths).toEqual(["/mock/global/bin/prettier"]);
+  });
+
+  it("should install requested version with bun package manager", async () => {
+    const commands: string[] = [];
+    const versionShell = createMockShell((cmd: string) => {
+      commands.push(cmd);
+      const matchedOutput = [
+        { includes: "bun pm bin -g", stdout: "/mock/global/bin" },
+        { includes: "bun pm ls -g", stdout: "/home/test/.bun/install/global node_modules (1)\n└── prettier@2.8.8" },
+      ].find((entry) => cmd.includes(entry.includes));
+
+      return createMockShellResult(matchedOutput?.stdout ?? "");
+    });
+
+    const toolConfig: NpmToolConfig = {
+      name: "prettier",
+      version: "2.8.8",
+      binaries: ["prettier"],
+      installationMethod: "npm",
+      installParams: {
+        package: "prettier",
+        version: "2.8.8",
+        packageManager: "bun",
+      },
+    };
+
+    const context = createContext(toolConfig, versionShell);
+    const result = await installFromNpm("prettier", toolConfig, context, undefined, logger, versionShell, versionShell);
+
+    assert(result.success);
+    expect(result.version).toBe("2.8.8");
+    expect(commands.some((cmd) => cmd === "bun install -g prettier@2.8.8")).toBe(true);
   });
 
   it("should use bun install -g command when packageManager is bun", async () => {

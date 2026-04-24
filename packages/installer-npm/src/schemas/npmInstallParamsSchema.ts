@@ -13,10 +13,6 @@ export const npmInstallParamsSchema = baseInstallParamsSchema.extend({
    * If not specified, the latest version is installed.
    */
   version: z.string().optional(),
-  /** Arguments to pass to the binary to check the version (e.g. ['--version']). */
-  versionArgs: z.array(z.string()).optional(),
-  /** Regex pattern or source string used to extract the version from output. */
-  versionRegex: z.union([z.string(), z.instanceof(RegExp)]).optional(),
   /** The package manager to use for installation. Defaults to `'npm'`. */
   packageManager: z.enum(["npm", "bun"]).optional(),
 });
@@ -32,10 +28,6 @@ export interface INpmInstallParams extends IBaseInstallParams {
   package?: string;
   /** The version or version range to install. */
   version?: string;
-  /** Arguments to pass to the binary to check the version. */
-  versionArgs?: string[];
-  /** Regex pattern or source string used to extract the version from output. */
-  versionRegex?: string | RegExp;
   /** The package manager to use for installation. Defaults to `'npm'`. */
   packageManager?: "npm" | "bun";
 }

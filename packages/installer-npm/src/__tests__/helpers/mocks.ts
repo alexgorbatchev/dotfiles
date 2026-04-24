@@ -23,8 +23,14 @@ function createDefaultHandler(): CommandHandler {
 
     if (cmd.includes("bun pm bin -g")) {
       stdout = "/mock/global/bin";
+    } else if (cmd.includes("bun pm ls -g")) {
+      stdout = "/home/test/.bun/install/global node_modules (1)\n└── prettier@3.1.0";
     } else if (cmd.includes("npm prefix -g")) {
       stdout = "/mock/global";
+    } else if (cmd.includes("npm ls -g --depth=0 --json")) {
+      stdout = '{"name":"lib","dependencies":{"prettier":{"version":"3.1.0","overridden":false}}}';
+    } else if (cmd.includes("bun info") && cmd.includes("version --json")) {
+      stdout = '"3.1.0"';
     } else if (cmd.includes("npm view")) {
       stdout = "3.1.0";
     } else if (cmd.includes("bun install -g") || cmd.includes("npm install -g")) {

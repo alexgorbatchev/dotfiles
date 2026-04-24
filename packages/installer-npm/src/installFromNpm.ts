@@ -1,11 +1,24 @@
 import { createShell, type IInstallContext, type IInstallOptions, type IShell } from "@dotfiles/core";
 import { getBinaryPaths, withInstallErrorHandling } from "@dotfiles/installer";
 import type { TsLogger } from "@dotfiles/logger";
-import { detectVersionViaCli, normalizeVersion } from "@dotfiles/utils";
+import { normalizeVersion } from "@dotfiles/utils";
 import path from "node:path";
+import { z } from "zod";
 import { messages } from "./log-messages";
 import type { NpmToolConfig } from "./schemas";
 import type { INpmInstallMetadata, NpmInstallResult } from "./types";
+
+const npmInstalledPackageSchema = z
+  .object({
+    version: z.string(),
+  })
+  .passthrough();
+
+const npmInstalledPackagesSchema = z
+  .object({
+    dependencies: z.record(z.string(), npmInstalledPackageSchema).optional(),
+  })
+  .passthrough();
 
 /**
  * Installs a tool using npm/bun globally.
@@ -13,7 +26,7 @@ import type { INpmInstallMetadata, NpmInstallResult } from "./types";
  * This function handles the complete installation process for npm tools:
  * 1. Installs the npm package globally using `npm install -g` or `bun install -g`
  * 2. Resolves the global bin directory to find where binaries land
- * 3. Retrieves version information from the installed package
+ * 3. Retrieves version information from the package manager
  * 4. Determines binary paths from the global bin directory
  */
 export async function installFromNpm(
@@ -54,32 +67,9 @@ export async function installFromNpm(
 
     const globalBinDir: string = await getGlobalBinDir(isBun, loggingShell);
     const binaryPaths: string[] = getBinaryPaths(toolConfig.binaries, globalBinDir);
-
-    let version: string | undefined;
-
-    if (params.versionArgs && params.versionRegex) {
-      const mainBinaryPath = binaryPaths[0];
-      if (mainBinaryPath) {
-        version = await detectVersionViaCli({
-          binaryPath: mainBinaryPath,
-          args: params.versionArgs,
-          regex: params.versionRegex,
-          shellExecutor,
-        });
-      }
-    } else if (isBun) {
-      const mainBinaryPath = binaryPaths[0];
-      if (mainBinaryPath) {
-        version = await detectVersionViaCli({
-          binaryPath: mainBinaryPath,
-          args: ["--version"],
-          regex: "(\\d+\\.\\d+\\.\\d+)",
-          shellExecutor,
-        });
-      }
-    } else {
-      version = await getNpmViewVersion(packageName, shellExecutor);
-    }
+    const version: string | undefined = isBun
+      ? await getBunInstalledVersion(packageName, shellExecutor)
+      : await getNpmInstalledVersion(packageName, shellExecutor);
 
     const metadata: INpmInstallMetadata = {
       method: "npm",
@@ -134,14 +124,66 @@ async function executeNpmGlobalInstall(packageSpec: string, logger: TsLogger, sh
 }
 
 /**
- * Retrieves the version of an npm package via `npm view`.
+ * Retrieves the installed version of an npm package via `npm ls`.
  */
-async function getNpmViewVersion(packageName: string, shell: IShell): Promise<string | undefined> {
+async function getNpmInstalledVersion(packageName: string, shell: IShell): Promise<string | undefined> {
   try {
-    const result = await shell`npm view ${packageName} version`.quiet().noThrow();
-    const version: string = result.stdout.toString().trim();
-    return version || undefined;
+    const result = await shell`npm ls -g --depth=0 --json ${packageName}`.quiet().noThrow();
+    const output: string = result.stdout.toString().trim();
+
+    if (!output) {
+      return undefined;
+    }
+
+    const parsedOutput: unknown = JSON.parse(output);
+    const parsedResult = npmInstalledPackagesSchema.safeParse(parsedOutput);
+
+    if (!parsedResult.success) {
+      return undefined;
+    }
+
+    return parsedResult.data.dependencies?.[packageName]?.version;
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Retrieves the installed version of a Bun global package via `bun pm ls -g`.
+ */
+async function getBunInstalledVersion(packageName: string, shell: IShell): Promise<string | undefined> {
+  try {
+    const result = await shell`bun pm ls -g`.quiet().noThrow();
+    const output: string = result.stdout.toString().trim();
+
+    return parseBunInstalledVersion(output, packageName);
+  } catch {
+    return undefined;
+  }
+}
+
+function parseBunInstalledVersion(output: string, packageName: string): string | undefined {
+  const lines: string[] = output.split(/\r?\n/u);
+
+  for (const line of lines) {
+    const packageEntry: string = line.replace(/^[\s│]*[├└]──\s+/u, "").trim();
+    const version: string | undefined = getPackageEntryVersion(packageEntry, packageName);
+
+    if (version) {
+      return version;
+    }
+  }
+
+  return undefined;
+}
+
+function getPackageEntryVersion(packageEntry: string, packageName: string): string | undefined {
+  const packagePrefix = `${packageName}@`;
+
+  if (!packageEntry.startsWith(packagePrefix)) {
+    return undefined;
+  }
+
+  const version: string = packageEntry.slice(packagePrefix.length).trim();
+  return version || undefined;
 }

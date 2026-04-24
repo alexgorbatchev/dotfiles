@@ -10,7 +10,7 @@ npm installer plugin for globally installing tool packages with `npm` or `bun` p
 ## Local conventions
 
 - Keep package-manager orchestration in `src/NpmInstallerPlugin.ts` and shell execution details in `src/installFromNpm.ts`.
-- Version resolution and update checks both use `npm view`; update those paths together so install, update, and check-updates stay aligned.
+- Version resolution and update checks must follow the selected package manager together: use `npm view` for `packageManager: 'npm'` and `bun info` for `packageManager: 'bun'`, so install, update, and check-updates stay aligned.
 
 ## Local gotchas
 

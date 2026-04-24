@@ -9,6 +9,7 @@ import type {
 } from "@dotfiles/core";
 import type { TsLogger } from "@dotfiles/logger";
 import { stripVersionPrefix } from "@dotfiles/utils";
+import { z } from "zod";
 import { installFromNpm } from "./installFromNpm";
 import { messages } from "./log-messages";
 import { type INpmInstallParams, npmInstallParamsSchema, type NpmToolConfig, npmToolConfigSchema } from "./schemas";
@@ -19,6 +20,9 @@ type NpmPluginMetadata = {
   method: "npm";
   packageName: string;
 };
+type NpmPackageManager = NonNullable<INpmInstallParams["packageManager"]>;
+
+const bunInfoVersionSchema = z.string();
 
 /**
  * Installer plugin for tools installed via npm.
@@ -108,9 +112,14 @@ export class NpmInstallerPlugin implements IInstallerPlugin<
     try {
       const params = toolConfig.installParams;
       const packageName: string = params?.package || toolName;
-
-      const result = await this.shell`npm view ${packageName} version`.quiet().noThrow();
-      const version: string = result.stdout.toString().trim();
+      const packageManager: NpmPackageManager = getPackageManager(params);
+      const requestedVersion: string | undefined = getRequestedVersion(toolConfig);
+      const version: string | undefined = await getRemotePackageVersion(
+        this.shell,
+        packageManager,
+        packageName,
+        requestedVersion,
+      );
 
       if (!version) {
         subLogger.debug(messages.versionFetchFailed(packageName));
@@ -159,9 +168,8 @@ export class NpmInstallerPlugin implements IInstallerPlugin<
     try {
       const params = toolConfig.installParams;
       const packageName: string = params?.package || toolName;
-
-      const result = await this.shell`npm view ${packageName} version`.quiet().noThrow();
-      const latestVersion: string = result.stdout.toString().trim();
+      const packageManager: NpmPackageManager = getPackageManager(params);
+      const latestVersion: string | undefined = await getRemotePackageVersion(this.shell, packageManager, packageName);
 
       if (!latestVersion) {
         const failResult: UpdateCheckResult = {
@@ -213,4 +221,62 @@ export class NpmInstallerPlugin implements IInstallerPlugin<
   supportsReadme(): boolean {
     return false;
   }
+}
+
+function getPackageManager(params: INpmInstallParams | undefined): NpmPackageManager {
+  return params?.packageManager === "bun" ? "bun" : "npm";
+}
+
+function getRequestedVersion(toolConfig: NpmToolConfig): string | undefined {
+  const configuredVersion: string | undefined = toolConfig.installParams.version ?? toolConfig.version;
+
+  if (!configuredVersion || configuredVersion === "latest") {
+    return undefined;
+  }
+
+  return configuredVersion;
+}
+
+function buildPackageSpec(packageName: string, version: string | undefined): string {
+  return version ? `${packageName}@${version}` : packageName;
+}
+
+async function getRemotePackageVersion(
+  shell: IShell,
+  packageManager: NpmPackageManager,
+  packageName: string,
+  version: string | undefined = undefined,
+): Promise<string | undefined> {
+  const packageSpec: string = buildPackageSpec(packageName, version);
+
+  if (packageManager === "bun") {
+    return getRemoteVersionViaBun(shell, packageSpec);
+  }
+
+  return getRemoteVersionViaNpm(shell, packageSpec);
+}
+
+async function getRemoteVersionViaNpm(shell: IShell, packageSpec: string): Promise<string | undefined> {
+  const result = await shell`npm view ${packageSpec} version`.quiet().noThrow();
+  const version: string = result.stdout.toString().trim();
+
+  return version || undefined;
+}
+
+async function getRemoteVersionViaBun(shell: IShell, packageSpec: string): Promise<string | undefined> {
+  const result = await shell`bun info ${packageSpec} version --json`.quiet().noThrow();
+  const output: string = result.stdout.toString().trim();
+
+  if (!output) {
+    return undefined;
+  }
+
+  const parsedOutput: unknown = JSON.parse(output);
+  const parsedVersion = bunInfoVersionSchema.safeParse(parsedOutput);
+
+  if (!parsedVersion.success) {
+    return undefined;
+  }
+
+  return parsedVersion.data;
 }

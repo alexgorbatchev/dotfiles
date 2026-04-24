@@ -67,6 +67,16 @@ describe("NpmInstallerPlugin", () => {
     expect(result.success).toBe(false);
   });
 
+  it("should reject version detection overrides", () => {
+    const result = plugin.paramsSchema.safeParse({
+      package: "prettier",
+      versionArgs: ["--version"],
+      versionRegex: /(\d+\.\d+\.\d+)/,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it("should validate correct tool config", () => {
     const validConfig: NpmToolConfig = {
       name: "prettier",
@@ -215,6 +225,52 @@ describe("NpmInstallerPlugin", () => {
 
       expect(version).toBe("2.5.0");
     });
+
+    it("should resolve bun-managed versions via bun info without npm", async () => {
+      const commands: string[] = [];
+      const bunShell = createMockShell((cmd: string) => {
+        commands.push(cmd);
+
+        const matchedOutput = [
+          { includes: "bun info prettier@2.8.8 version --json", stdout: '"2.8.8"' },
+          { includes: "", stdout: "" },
+        ].find((entry) => cmd.includes(entry.includes));
+
+        const stdout: string = matchedOutput?.stdout ?? "";
+        return {
+          stdout,
+          stderr: "",
+          exitCode: 0,
+          code: 0,
+          toString: () => stdout,
+        };
+      });
+      const bunPlugin = new NpmInstallerPlugin(bunShell);
+
+      const toolConfig: NpmToolConfig = {
+        name: "prettier",
+        version: "2.8.8",
+        binaries: ["prettier"],
+        installationMethod: "npm",
+        installParams: {
+          package: "prettier",
+          version: "2.8.8",
+          packageManager: "bun",
+        },
+      };
+
+      const version: string | null = await bunPlugin.resolveVersion(
+        "prettier",
+        toolConfig,
+        mockContext,
+        undefined,
+        logger,
+      );
+
+      expect(version).toBe("2.8.8");
+      expect(commands).toContain("bun info prettier@2.8.8 version --json");
+      expect(commands.some((cmd) => cmd.includes("npm view"))).toBe(false);
+    });
   });
 
   describe("checkUpdate", () => {
@@ -326,6 +382,48 @@ describe("NpmInstallerPlugin", () => {
 
       assert(!result.success);
       expect(result.error).toBe("Could not fetch latest version for npm package: nonexistent");
+    });
+
+    it("should check bun-managed updates via bun info without npm", async () => {
+      const commands: string[] = [];
+      const bunShell = createMockShell((cmd: string) => {
+        commands.push(cmd);
+
+        const matchedOutput = [
+          { includes: "bun info prettier version --json", stdout: '"3.1.0"' },
+          { includes: "", stdout: "" },
+        ].find((entry) => cmd.includes(entry.includes));
+
+        const stdout: string = matchedOutput?.stdout ?? "";
+        return {
+          stdout,
+          stderr: "",
+          exitCode: 0,
+          code: 0,
+          toString: () => stdout,
+        };
+      });
+      const bunPlugin = new NpmInstallerPlugin(bunShell);
+
+      const toolConfig: NpmToolConfig = {
+        name: "prettier",
+        version: "latest",
+        binaries: ["prettier"],
+        installationMethod: "npm",
+        installParams: {
+          package: "prettier",
+          packageManager: "bun",
+        },
+      };
+
+      const result = await bunPlugin.checkUpdate("prettier", toolConfig, { installedVersion: "2.0.0" }, logger);
+
+      assert(result.success);
+      expect(result.hasUpdate).toBe(true);
+      expect(result.currentVersion).toBe("2.0.0");
+      expect(result.latestVersion).toBe("3.1.0");
+      expect(commands).toContain("bun info prettier version --json");
+      expect(commands.some((cmd) => cmd.includes("npm view"))).toBe(false);
     });
   });
 });

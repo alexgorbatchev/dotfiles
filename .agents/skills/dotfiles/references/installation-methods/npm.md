@@ -17,8 +17,6 @@ export default defineTool((install) => install("npm", { package: "prettier" }).b
 | `package`        | `string`                                         | No       | npm package name (defaults to tool name)                      |
 | `version`        | `string`                                         | No       | Version or version range (e.g., `3.0.0`, defaults to latest)  |
 | `packageManager` | `'npm' \| 'bun'`                                 | No       | Package manager to use for installation (defaults to `'npm'`) |
-| `versionArgs`    | `string[]`                                       | No       | Arguments for version check (e.g., `['--version']`)           |
-| `versionRegex`   | `string \| RegExp`                               | No       | Regex to extract version from output                          |
 | `env`            | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables (static or dynamic function)            |
 
 ## Examples
@@ -55,21 +53,20 @@ export default defineTool((install) =>
 );
 ```
 
-### Custom Version Detection
+### Install Specific Version
 
 ```typescript
 export default defineTool((install) =>
   install("npm", {
     package: "typescript",
-    versionArgs: ["--version"],
-    versionRegex: /(\d+\.\d+\.\d+)/,
+    version: "5.8.3",
   }).bin("tsc"),
 );
 ```
 
 ## How It Works
 
-1. **Install**: Runs `npm install --prefix <stagingDir> <package>[@version]` (or `bun add --cwd <stagingDir> <package>[@version]` when `packageManager: 'bun'`)
-2. **Binaries**: Resolved from `node_modules/.bin/` in the install directory
-3. **Version**: Detected via `npm ls --json` (npm), `node_modules/<package>/package.json` (bun), or custom `versionArgs`/`versionRegex`
-4. **Updates**: Checked via `npm view <package> version` (regardless of package manager)
+1. **Install**: Runs `npm install -g <package>[@version]` (or `bun install -g <package>[@version]` when `packageManager: 'bun'`)
+2. **Binaries**: Resolved from the package manager's global bin directory (`npm prefix -g` + `/bin`, or `bun pm bin -g`)
+3. **Version**: Detected via `npm ls -g --depth=0 --json <package>` (npm) or `bun pm ls -g` (bun)
+4. **Remote version metadata**: Resolved via `npm view <package>[@version] version` (npm) or `bun info <package>[@version] version --json` (bun)
