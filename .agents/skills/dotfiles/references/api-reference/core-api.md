@@ -13,7 +13,27 @@ import {
   defineTool, // Create tool configurations
   Platform, // Platform enum for cross-platform configs
 } from "@alexgorbatchev/dotfiles";
+
+import type {
+  ConfigFactory,
+  IConfigContext,
+  IInstallFunction,
+  IPlatformConfigBuilder,
+  IPlatformInstallFunction,
+  IToolConfigBuilder,
+  IToolConfigContext,
+} from "@alexgorbatchev/dotfiles";
 ```
+
+Authoring helper types used by `defineTool` callbacks are also exported from the top-level package, including:
+
+- `ConfigFactory`
+- `IConfigContext`
+- `IInstallFunction`
+- `IPlatformInstallFunction`
+- `IToolConfigBuilder`
+- `IPlatformConfigBuilder`
+- `IToolConfigContext`
 
 ## defineTool
 
