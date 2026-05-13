@@ -186,12 +186,16 @@ describe("GeneratorOrchestrator - Orphaned Tool Cleanup", () => {
         filePath: shimPath,
       });
 
+      (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue([shimPath]);
+
       const activeToolConfig: ToolConfig = {
         name: "activeTool",
         binaries: ["active-bin"],
         version: "1.0",
         installationMethod: "manual",
-        installParams: {},
+        installParams: {
+          binaryPath: "./active-bin",
+        },
       };
 
       await orchestrator.generateAll({ activeTool: activeToolConfig });
@@ -261,12 +265,16 @@ describe("GeneratorOrchestrator - Orphaned Tool Cleanup", () => {
         filePath: activeShimPath,
       });
 
+      (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue([activeShimPath]);
+
       const activeToolConfig: ToolConfig = {
         name: "activeTool",
         binaries: ["active-bin"],
         version: "1.0",
         installationMethod: "manual",
-        installParams: {},
+        installParams: {
+          binaryPath: "./active-bin",
+        },
       };
 
       await orchestrator.generateAll({ activeTool: activeToolConfig });
@@ -299,19 +307,25 @@ describe("GeneratorOrchestrator - Orphaned Tool Cleanup", () => {
     });
 
     it("should not log when no orphaned tools exist", async () => {
+      const activeShimPath = path.join(mockProjectConfig.paths.targetDir, "active-bin");
+
       const activeToolConfig: ToolConfig = {
         name: "activeTool",
         binaries: ["active-bin"],
         version: "1.0",
         installationMethod: "manual",
-        installParams: {},
+        installParams: {
+          binaryPath: "./active-bin",
+        },
       };
 
       fileRegistry.setFileState({
         toolName: "activeTool",
         fileType: "shim",
-        filePath: path.join(mockProjectConfig.paths.targetDir, "active-bin"),
+        filePath: activeShimPath,
       });
+
+      (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue([activeShimPath]);
 
       await orchestrator.generateAll({ activeTool: activeToolConfig });
 

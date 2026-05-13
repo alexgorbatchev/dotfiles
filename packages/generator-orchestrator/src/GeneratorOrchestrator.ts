@@ -19,7 +19,7 @@ import type {
   IShellInitGenerator,
   PluginShellInitMap,
 } from "@dotfiles/shell-init-generator";
-import type { IGenerateShimsOptions, IShimGenerator } from "@dotfiles/shim-generator";
+import { isGeneratedShim, type IGenerateShimsOptions, type IShimGenerator } from "@dotfiles/shim-generator";
 import type {
   CopyOperationResult,
   ICopyGenerator,
@@ -185,6 +185,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     const generatedShimsPaths = await this.shimGenerator.generate(orderedToolConfigs, shimOptions);
     const shimCount = generatedShimsPaths?.length ?? 0;
     logger.debug(messages.generateAll.shimGenerationComplete(shimCount));
+    await this.cleanupStaleShims(orderedToolConfigs, generatedShimsPaths);
 
     // 2. Generate Shell Init for all supported shells
     const shellInitOptions: IGenerateShellInitOptions = {
@@ -478,6 +479,75 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     }
 
     logger.debug(messages.cleanup.completed(toolName, filesToCleanup.length));
+  }
+
+  /**
+   * Cleans up stale shims for enabled tools.
+   *
+   * After shims are generated, this method compares the set of currently declared
+   * shims against previously tracked shims in the FileRegistry. Any tracked
+   * shim that is no longer declared is removed from disk.
+   *
+   * @param toolConfigs - The enabled tool configurations that were just processed.
+   * @param generatedShimPaths - The paths returned from shim generation.
+   */
+  private async cleanupStaleShims(
+    toolConfigs: Record<string, ToolConfig>,
+    generatedShimPaths: string[],
+  ): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: "cleanupStaleShims" });
+
+    const generatedTargetPaths: Set<string> = new Set(generatedShimPaths);
+
+    for (const toolName of Object.keys(toolConfigs)) {
+      const fileStates = await this.fileRegistry.getFileStatesForTool(toolName);
+      const trackedShims = fileStates.filter((state) => state.fileType === "shim");
+
+      for (const trackedShim of trackedShims) {
+        if (generatedTargetPaths.has(trackedShim.filePath)) {
+          continue;
+        }
+
+        try {
+          let doesShimExist = true;
+
+          try {
+            await this.fs.lstat(trackedShim.filePath);
+          } catch {
+            doesShimExist = false;
+          }
+
+          if (doesShimExist) {
+            const expectedSymlinkTarget = path.join(
+              this.projectConfig.paths.binariesDir,
+              toolName,
+              "current",
+              path.basename(trackedShim.filePath),
+            );
+            const isManagedShim = await isGeneratedShim(this.fs, trackedShim.filePath, {
+              expectedSymlinkTarget,
+            });
+
+            if (!isManagedShim) {
+              continue;
+            }
+
+            await this.fs.rm(trackedShim.filePath);
+          }
+
+          logger.warn(messages.staleShimCleanup.removing(trackedShim.filePath, toolName));
+          await this.fileRegistry.recordOperation({
+            toolName,
+            operationType: "rm",
+            filePath: trackedShim.filePath,
+            fileType: "shim",
+            operationId: randomUUID(),
+          });
+        } catch (error) {
+          logger.debug(messages.cleanup.deleteError(trackedShim.filePath, error));
+        }
+      }
+    }
   }
 
   /**

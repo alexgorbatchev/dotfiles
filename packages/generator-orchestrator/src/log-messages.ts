@@ -63,6 +63,10 @@ export const messages = {
       createSafeLogMessage(`Found ${count} orphaned tool${count === 1 ? "" : "s"} with no configuration`),
     cleaningUp: () => createSafeLogMessage("Cleaning up orphaned tool"),
   } satisfies SafeLogMessageMap,
+  staleShimCleanup: {
+    removing: (filePath: string, toolName: string) =>
+      createSafeLogMessage(`Removing stale shim ${filePath} for tool: ${toolName}`),
+  } satisfies SafeLogMessageMap,
   staleSymlinkCleanup: {
     removing: (filePath: string, toolName: string) =>
       createSafeLogMessage(`Removing stale symlink ${filePath} for tool: ${toolName}`),

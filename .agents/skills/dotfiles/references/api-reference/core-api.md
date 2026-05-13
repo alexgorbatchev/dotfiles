@@ -74,6 +74,7 @@ Declaring `.bin(name)` generates a shim for `name` in `paths.targetDir`.
 - Running the shim auto-installs the tool on first use (if needed)
 - Running `{binary} @update` triggers a shim-driven update flow
 - Shim executions append usage events to a local log for dashboard analytics
+- Removing a `.bin(name)` declaration and rerunning `dotfiles generate` cleans up the stale shim automatically
 
 Usage tracking is enabled by default. The dashboard imports and compacts the local usage log into SQLite on startup. Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable tracking.
 
@@ -121,16 +122,16 @@ The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
 )
 ```
 
-| Shell Method                               | Description                                                                                   |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `.completions(path \| config \| callback)` | Completion file, config object, or callback with `ctx.version` (generated after install only) |
-| `.env(obj)`                                | Environment variables (PATH prohibited - use `.path()`)                                       |
-| `.path(dir)`                               | Add directory to PATH (deduplicated)                                                          |
-| `.aliases(obj)`                            | Shell aliases                                                                                 |
-| `.functions(obj)`                          | Shell functions                                                                               |
-| `.sourceFile(path)`                        | Source a file (skips if missing)                                                              |
-| `.sourceFunction(name)`                    | Source output of a function defined via `.functions()`                                        |
-| `.always(script)`                          | Script run on every shell init                                                                |
+| Shell Method                               | Description                                                                                                      |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `.completions(path \| config \| callback)` | Completion file, config object, or callback with `ctx.version` (generated after install only)                    |
+| `.env(obj)`                                | Environment variables (PATH prohibited - use `.path()`)                                                          |
+| `.path(dir)`                               | Add directory to PATH (deduplicated)                                                                             |
+| `.aliases(obj)`                            | Shell aliases                                                                                                    |
+| `.functions(obj)`                          | Shell functions                                                                                                  |
+| `.sourceFile(path)`                        | Source a file (skips if missing)                                                                                 |
+| `.sourceFunction(name)`                    | Source output of a function defined via `.functions()`                                                           |
+| `.always(script)`                          | Script run on every shell init                                                                                   |
 | `.once(script)`                            | Script written to a generated once-file, attributed to its `.tool.ts` source, then removed after first execution |
 
 **Completions examples:**

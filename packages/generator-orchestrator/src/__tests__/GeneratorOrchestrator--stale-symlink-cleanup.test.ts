@@ -313,6 +313,7 @@ describe("GeneratorOrchestrator - Stale Symlink Cleanup", () => {
         filePath: staleSymlinkPath,
       });
 
+      (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue([shimPath]);
       (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue([]);
 
       const toolConfig: ToolConfig = {
@@ -320,7 +321,9 @@ describe("GeneratorOrchestrator - Stale Symlink Cleanup", () => {
         binaries: ["my-bin"],
         version: "1.0",
         installationMethod: "manual",
-        installParams: {},
+        installParams: {
+          binaryPath: "./my-bin",
+        },
       };
 
       await orchestrator.generateAll({ myTool: toolConfig });

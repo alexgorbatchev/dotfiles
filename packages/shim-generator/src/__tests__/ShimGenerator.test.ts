@@ -590,6 +590,49 @@ describe("ShimGenerator", () => {
       expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
     });
 
+    it("should treat a symlink to the managed binary path as our shim", async () => {
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, toolName);
+      const expectedBinaryPath = path.join(mockConfig.paths.binariesDir, toolName, "current", toolName);
+
+      await fileSystem.ensureDir(path.dirname(expectedBinaryPath));
+      await fileSystem.writeFile(expectedBinaryPath, "binary content");
+      await fileSystem.ensureDir(path.dirname(expectedShimPath));
+      await fileSystem.symlink(expectedBinaryPath, expectedShimPath);
+      fsMocks.writeFile.mockClear();
+      fsMocks.chmod.mockClear();
+
+      const result = await shimGenerator.generateForTool(toolName, toolConfig, { overwrite: false });
+
+      expect(result).toEqual([]);
+      expect(fsMocks.writeFile).not.toHaveBeenCalled();
+      expect(fsMocks.chmod).not.toHaveBeenCalled();
+    });
+
+    it("should treat a symlink to a different target as a conflicting file", async () => {
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, toolName);
+      const userOwnedTargetPath = path.join(testDirs.paths.dotfilesDir, "user-tool");
+
+      await fileSystem.ensureDir(path.dirname(userOwnedTargetPath));
+      await fileSystem.writeFile(userOwnedTargetPath, "user-owned target");
+      await fileSystem.ensureDir(path.dirname(expectedShimPath));
+      await fileSystem.symlink(userOwnedTargetPath, expectedShimPath);
+      fsMocks.writeFile.mockClear();
+      fsMocks.chmod.mockClear();
+
+      const result = await shimGenerator.generateForTool(toolName, toolConfig);
+
+      expect(result).toEqual([]);
+      expect(fsMocks.writeFile).not.toHaveBeenCalled();
+      expect(fsMocks.chmod).not.toHaveBeenCalled();
+
+      logger.expect(
+        ["ERROR"],
+        ["ShimGenerator", "generateShimForBinary"],
+        [],
+        [/Cannot create shim for "test-tool": conflicting file exists/],
+      );
+    });
+
     it("should treat unreadable files as non-shims", async () => {
       // Mock file exists but can't be read
       fsMocks.exists.mockResolvedValueOnce(true);
