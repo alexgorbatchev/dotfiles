@@ -28,6 +28,12 @@ interface IDiscoveredToolConfigFile {
   toolName: string;
 }
 
+const RUNTIME_ALIAS_MIRROR_DIR_PREFIX = ".dotfiles-runtime-imports-";
+
+function isRuntimeAliasMirrorDir(entryName: string): boolean {
+  return entryName.startsWith(RUNTIME_ALIAS_MIRROR_DIR_PREFIX);
+}
+
 function isToolConfig(config: unknown): config is ToolConfig {
   if (typeof config !== "object" || config === null) {
     return false;
@@ -244,7 +250,7 @@ async function scanDirectoryForToolFiles(
       try {
         const stat = await fs.stat(entryPath);
 
-        if (stat.isDirectory()) {
+        if (stat.isDirectory() && !isRuntimeAliasMirrorDir(entry)) {
           // Recursively scan subdirectories
           const subResults = await scanDirectoryForToolFiles(fs, entryPath, logger);
           results.push(...subResults);

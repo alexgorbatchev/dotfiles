@@ -8,7 +8,7 @@ import { dedentString } from "@dotfiles/utils";
 import { afterEach, describe, expect, it } from "bun:test";
 import assert from "node:assert";
 import path from "node:path";
-import { findToolByBinary, loadToolConfigByBinary } from "../loadToolConfigs";
+import { findToolByBinary, loadToolConfigByBinary, loadToolConfigs } from "../loadToolConfigs";
 
 type CleanupFn = () => Promise<void>;
 
@@ -346,5 +346,90 @@ describe("loadToolConfigByBinary", () => {
     assert(result);
     assert("error" in result);
     expect(result.error).toContain("Multiple tools provide the binary 'duplicate-bin'");
+  });
+});
+
+describe("loadToolConfigs", () => {
+  let logger: TestLogger;
+  let mockProjectConfig: ProjectConfig;
+  let systemInfo: ISystemInfo;
+  let realFs: NodeFileSystem;
+  let resolvedFs: IResolvedFileSystem;
+  let cleanupFn: CleanupFn;
+  let testCounter = 0;
+
+  async function setupTest(): Promise<void> {
+    testCounter++;
+    logger = new TestLogger();
+    realFs = new NodeFileSystem();
+
+    const testDirs = await createTestDirectories(logger, realFs, {
+      testName: `load-tool-configs-test-${testCounter}-${Date.now()}`,
+    });
+    cleanupFn = async () => {
+      await realFs.rm(testDirs.paths.homeDir, { recursive: true, force: true });
+    };
+
+    systemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: testDirs.paths.homeDir,
+      hostname: "test-host",
+    };
+
+    resolvedFs = new ResolvedFileSystem(realFs, testDirs.paths.homeDir);
+
+    mockProjectConfig = await createMockProjectConfig({
+      config: {
+        paths: testDirs.paths,
+      },
+      filePath: path.join(testDirs.paths.dotfilesDir, "dotfiles.config.ts"),
+      fileSystem: realFs,
+      logger,
+      systemInfo,
+      env: {},
+    });
+
+    await realFs.mkdir(mockProjectConfig.paths.toolConfigsDir, { recursive: true });
+  }
+
+  afterEach(async () => {
+    await cleanupFn();
+  });
+
+  it("should ignore runtime alias mirror directories during recursive tool discovery", async () => {
+    await setupTest();
+
+    const toolDir = path.join(mockProjectConfig.paths.toolConfigsDir, "valid-tool");
+    const runtimeAliasDir = path.join(toolDir, ".dotfiles-runtime-imports-deadbeef");
+    const runtimeAliasToolPath = path.join(runtimeAliasDir, "invalid-tool.tool.ts");
+    const toolFilePath = path.join(toolDir, "valid-tool.tool.ts");
+
+    await realFs.mkdir(runtimeAliasDir, { recursive: true });
+    await realFs.writeFile(
+      toolFilePath,
+      dedentString(`
+        export default (install) =>
+          install('manual', { binaryPath: '/usr/bin/valid-tool' }).bin('valid-tool');
+      `),
+    );
+    await realFs.writeFile(
+      runtimeAliasToolPath,
+      dedentString(`
+        export default {};
+      `),
+    );
+
+    const result = await loadToolConfigs(
+      logger,
+      mockProjectConfig.paths.toolConfigsDir,
+      resolvedFs,
+      mockProjectConfig,
+      systemInfo,
+    );
+    const errorLogs = logger.logs.filter((log) => log["_meta"]?.logLevelName === "ERROR");
+
+    expect(Object.keys(result)).toEqual(["valid-tool"]);
+    expect(errorLogs).toHaveLength(0);
   });
 });
