@@ -94,6 +94,7 @@
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
         "@dotfiles/installer-npm": "workspace:*",
+        "@dotfiles/installer-pacman": "workspace:*",
         "@dotfiles/installer-pkg": "workspace:*",
         "@dotfiles/installer-zsh-plugin": "workspace:*",
         "@dotfiles/logger": "workspace:*",
@@ -156,6 +157,7 @@
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
         "@dotfiles/installer-npm": "workspace:*",
+        "@dotfiles/installer-pacman": "workspace:*",
         "@dotfiles/installer-pkg": "workspace:*",
         "@dotfiles/installer-zsh-plugin": "workspace:*",
         "@dotfiles/logger": "workspace:*",
@@ -371,6 +373,7 @@
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
         "@dotfiles/installer-npm": "workspace:*",
+        "@dotfiles/installer-pacman": "workspace:*",
         "@dotfiles/installer-pkg": "workspace:*",
         "@dotfiles/registry-database": "workspace:*",
         "@dotfiles/symlink-generator": "workspace:*",
@@ -600,6 +603,22 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@dotfiles/testing-helpers": "workspace:*",
+      },
+    },
+    "packages/installer-pacman": {
+      "name": "@dotfiles/installer-pacman",
+      "version": "0.0.0",
+      "dependencies": {
+        "@dotfiles/core": "workspace:*",
+        "@dotfiles/installer": "workspace:*",
+        "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@dotfiles/file-system": "workspace:*",
         "@dotfiles/testing-helpers": "workspace:*",
       },
     },
@@ -1007,6 +1026,8 @@
     "@dotfiles/installer-manual": ["@dotfiles/installer-manual@workspace:packages/installer-manual"],
 
     "@dotfiles/installer-npm": ["@dotfiles/installer-npm@workspace:packages/installer-npm"],
+
+    "@dotfiles/installer-pacman": ["@dotfiles/installer-pacman@workspace:packages/installer-pacman"],
 
     "@dotfiles/installer-pkg": ["@dotfiles/installer-pkg@workspace:packages/installer-pkg"],
 

@@ -22,6 +22,7 @@ import { CurlScriptInstallerPlugin } from "@dotfiles/installer-curl-script";
 import { CurlTarInstallerPlugin } from "@dotfiles/installer-curl-tar";
 import { DmgInstallerPlugin } from "@dotfiles/installer-dmg";
 import { DnfInstallerPlugin } from "@dotfiles/installer-dnf";
+import { PacmanInstallerPlugin } from "@dotfiles/installer-pacman";
 import { PkgInstallerPlugin } from "@dotfiles/installer-pkg";
 import { GiteaReleaseInstallerPlugin } from "@dotfiles/installer-gitea";
 import { GhCliApiClient, GitHubApiClient, GitHubReleaseInstallerPlugin } from "@dotfiles/installer-github";
@@ -411,6 +412,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   pluginRegistry.register(new BrewInstallerPlugin(shell));
   pluginRegistry.register(new AptInstallerPlugin(shell));
   pluginRegistry.register(new DnfInstallerPlugin(shell));
+  pluginRegistry.register(new PacmanInstallerPlugin(shell));
   pluginRegistry.register(
     new CargoInstallerPlugin(
       installerTrackedFs,

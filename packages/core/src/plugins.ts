@@ -18,6 +18,7 @@ import "@dotfiles/installer-curl-script";
 import "@dotfiles/installer-curl-tar";
 import "@dotfiles/installer-dmg";
 import "@dotfiles/installer-dnf";
+import "@dotfiles/installer-pacman";
 import "@dotfiles/installer-pkg";
 import "@dotfiles/installer-gitea";
 import "@dotfiles/installer-github";

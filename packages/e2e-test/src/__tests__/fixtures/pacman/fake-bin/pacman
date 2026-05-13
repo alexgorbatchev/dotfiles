@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'pacman %s\n' "$*" >> "${FAKE_PACMAN_LOG:?}"
+
+if [[ "${1:-}" == "-Q" ]]; then
+  printf '%s 13.0.0-1\n' "${2:?}"
+fi

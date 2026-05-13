@@ -30,7 +30,7 @@ import { InstallationStateWriter } from "./state";
 import type { IInstaller, IInstallOptions, InstallResult } from "./types";
 import { createConfiguredShell, getBinaryPaths, type HookExecutor, messages } from "./utils";
 
-const EXACT_INSTALL_PARAM_VERSION_METHODS = new Set<string>(["apt", "dnf"]);
+const EXACT_INSTALL_PARAM_VERSION_METHODS = new Set<string>(["apt", "dnf", "pacman"]);
 
 function isExactTopLevelVersion(version: string): boolean {
   if (semver.valid(version)) {

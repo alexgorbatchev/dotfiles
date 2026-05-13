@@ -4,6 +4,7 @@ import path from "node:path";
 import type { AptToolConfig } from "@dotfiles/installer-apt";
 import type { DnfToolConfig } from "@dotfiles/installer-dnf";
 import type { NpmToolConfig } from "@dotfiles/installer-npm";
+import type { PacmanToolConfig } from "@dotfiles/installer-pacman";
 import {
   createGithubReleaseToolConfig,
   createInstallerTestSetup,
@@ -314,6 +315,53 @@ describe("Installer - existing install health", () => {
     assert(result.success);
     expect(result.installationMethod).toBe("already-installed");
     expect(installSpy).not.toHaveBeenCalled();
+  });
+
+  it("should reinstall when pacman install params target a different exact version", async () => {
+    const toolConfig: PacmanToolConfig = {
+      name: MOCK_TOOL_NAME,
+      version: "latest",
+      binaries: [MOCK_TOOL_NAME],
+      installationMethod: "pacman",
+      installParams: {
+        package: MOCK_TOOL_NAME,
+        version: "2.0.0-1",
+      },
+    };
+    const installPath = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_VERSION);
+    const currentDir = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, "current");
+    const currentBinaryPath = path.join(currentDir, MOCK_TOOL_NAME);
+
+    await setup.fs.ensureDir(installPath);
+    await setup.fs.ensureDir(currentDir);
+    await setup.fs.writeFile(currentBinaryPath, "mock binary content");
+    await setup.fs.chmod(currentBinaryPath, 0o755);
+
+    setup.mockToolInstallationRegistry.getToolInstallation.mockResolvedValue({
+      id: 1,
+      installedAt: new Date("2025-01-01T00:00:00.000Z"),
+      toolName: MOCK_TOOL_NAME,
+      version: MOCK_TOOL_VERSION,
+      installPath,
+      timestamp: "2025-01-01-00-00-00",
+      binaryPaths: [currentBinaryPath],
+    });
+
+    const installSpy = spyOn(setup.pluginRegistry, "install").mockResolvedValue({
+      success: true,
+      binaryPaths: [currentBinaryPath],
+      version: "2.0.0-1",
+      metadata: {
+        method: "pacman",
+        packageName: MOCK_TOOL_NAME,
+      },
+    });
+
+    const result = await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
+
+    assert(result.success);
+    expect(result.installationMethod).toBe("pacman");
+    expect(installSpy).toHaveBeenCalled();
   });
 
   it("should not treat npm version ranges as exact installed versions", async () => {

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--version" ]]; then
+  printf 'ripgrep 13.0.0\n'
+else
+  printf 'fake ripgrep\n'
+fi

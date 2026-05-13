@@ -74,6 +74,7 @@ Read these based on the task at hand:
   - [overview.md](references/installation-methods/overview.md) — Available methods, choosing the right method, manual installation guide, common parameters
   - [apt.md](references/installation-methods/apt.md) — Debian-family Linux package installation
   - [dnf.md](references/installation-methods/dnf.md) — RPM-family Linux package installation
+  - [pacman.md](references/installation-methods/pacman.md) — Arch-family Linux package installation
   - [github-release.md](references/installation-methods/github-release.md) — GitHub release asset selection and platform detection
   - [gitea-release.md](references/installation-methods/gitea-release.md) — Gitea/Forgejo/Codeberg release installation
   - [brew.md](references/installation-methods/brew.md) — Homebrew formula and cask installation
@@ -103,6 +104,7 @@ Read these based on the task at hand:
 | GitHub releases        | `github-release` | fzf, ripgrep, bat  |
 | Debian packages        | `apt`            | ripgrep, jq        |
 | RPM packages           | `dnf`            | ripgrep, jq        |
+| Arch packages          | `pacman`         | ripgrep, jq        |
 | Gitea/Forgejo/Codeberg | `gitea-release`  | Codeberg tools     |
 | Homebrew               | `brew`           | git, jq            |
 | Rust crates            | `cargo`          | eza, fd            |

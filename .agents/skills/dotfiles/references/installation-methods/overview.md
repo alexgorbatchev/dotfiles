@@ -25,6 +25,7 @@ Using external package managers like `brew` or `npm` is fully supported and some
 | **curl-tar**       | Archive downloads                   | Simple, no dependencies                | Manual URL management                 |
 | **dmg**            | macOS .app bundles                  | Handles mount/unmount, archive extract | macOS only                            |
 | **pkg**            | macOS installer packages            | Uses native installer flow             | macOS only                            |
+| **pacman**         | Arch-family Linux packages          | Uses distro packages                   | Linux distro-specific, external state |
 | **gitea-release**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host     | Requires instance URL                 |
 | **github-release** | Most open source tools              | Automatic updates, cross-platform      | Requires GitHub hosting               |
 | **manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible  | Manual file management                |
@@ -72,6 +73,22 @@ import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
   install("dnf", {
+    package: "ripgrep",
+  })
+    .bin("rg")
+    .sudo(),
+);
+```
+
+### pacman
+
+Install Arch-family Linux packages using pacman.
+
+```typescript
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install, ctx) =>
+  install("pacman", {
     package: "ripgrep",
   })
     .bin("rg")
