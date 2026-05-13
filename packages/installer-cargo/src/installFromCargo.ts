@@ -53,6 +53,7 @@ export async function installFromCargo(
 
   const operation = async (): Promise<CargoInstallResult> => {
     const toolFs = createToolFileSystem(fs, toolName);
+    const extractDir = path.join(context.stagingDir, "extracted");
 
     const versionResult = await determineVersion(crateName, params, cargoClient, logger);
     logger.debug(messages.foundVersion(crateName, versionResult.version));
@@ -79,18 +80,11 @@ export async function installFromCargo(
     }
 
     const extractResult = await archiveExtractor.extract(logger, downloadPath, {
-      targetDir: context.stagingDir,
+      targetDir: extractDir,
     });
     logger.debug(messages.archiveExtracted(), extractResult);
 
-    const resolvedBinaryPaths = await setupBinariesFromArchive(
-      fs,
-      toolName,
-      toolConfig,
-      context,
-      context.stagingDir,
-      logger,
-    );
+    const resolvedBinaryPaths = await setupBinariesFromArchive(fs, toolName, toolConfig, context, extractDir, logger);
 
     const afterInstallResult = await executeAfterInstallHook(
       toolConfig,

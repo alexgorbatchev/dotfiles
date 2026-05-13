@@ -6,6 +6,7 @@ import type { HookExecutor } from "@dotfiles/installer";
 import { TestLogger } from "@dotfiles/logger";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import assert from "node:assert";
+import path from "node:path";
 import type { IGiteaApiClient } from "../gitea-client";
 import { installFromGiteaRelease } from "../installFromGiteaRelease";
 import type { GiteaReleaseToolConfig } from "../schemas";
@@ -328,10 +329,79 @@ describe("installFromGiteaRelease", () => {
       logger,
     );
 
+    const extractCall = (archiveExtractor.extract as ReturnType<typeof mock>).mock.calls[0];
+
     assert(result.success);
     expect(result.version).toBe("v2.0.0");
     expect(result.metadata.assetName).toBe("test-tool-macos-arm64.tar.gz");
-    expect(archiveExtractor.extract).toHaveBeenCalled();
+    assert(extractCall);
+    expect(extractCall[1]).toBe(path.join(context.stagingDir, asset.name));
+    expect(extractCall[2]).toEqual({ targetDir: path.join(context.stagingDir, "extracted") });
+  });
+
+  it("should pass the dedicated extract directory to after-extract hooks", async () => {
+    const asset = createMockAsset("test-tool-macos-arm64.tar.gz");
+    const extractResult = {
+      extractedFiles: ["test-tool/bin/test-tool"],
+      executables: ["test-tool/bin/test-tool"],
+    };
+
+    apiClient.getLatestRelease = mock(async () => ({
+      id: 1,
+      tag_name: "v2.0.0",
+      name: "v2.0.0",
+      draft: false,
+      prerelease: false,
+      created_at: "2024-01-01T00:00:00Z",
+      published_at: "2024-01-01T00:00:00Z",
+      assets: [asset],
+      html_url: "https://codeberg.org/owner/repo/releases/tag/v2.0.0",
+    }));
+    (downloader.download as ReturnType<typeof mock>).mockResolvedValue(Buffer.from("archive-content"));
+    archiveExtractor = {
+      extract: mock(async () => extractResult),
+    } as unknown as IArchiveExtractor;
+    hookExecutor = {
+      createEnhancedContext: mock((hookContext: unknown) => hookContext),
+      executeHook: mock(async () => ({ success: true })),
+    } as unknown as HookExecutor;
+
+    const toolConfig = createToolConfig({
+      installParams: {
+        instanceUrl: "https://codeberg.org",
+        repo: "owner/repo",
+        hooks: {
+          "after-extract": [async () => {}],
+        },
+      },
+    });
+
+    const result = await installFromGiteaRelease(
+      "test-tool",
+      toolConfig,
+      context,
+      undefined,
+      fs,
+      downloader,
+      apiClient,
+      archiveExtractor,
+      hookExecutor,
+      logger,
+    );
+
+    const downloadPath = path.join(context.stagingDir, asset.name);
+    const extractDir = path.join(context.stagingDir, "extracted");
+    const hookContextCall = (hookExecutor.createEnhancedContext as ReturnType<typeof mock>).mock.calls[0];
+
+    assert(result.success);
+    assert(hookContextCall);
+    expect(hookContextCall[0]).toEqual({
+      ...context,
+      downloadPath,
+      extractDir,
+      extractResult,
+    });
+    expect(hookContextCall[1]).toBe(fs);
   });
 
   it("should clean up archive file after extraction when it exists", async () => {

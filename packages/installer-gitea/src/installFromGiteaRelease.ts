@@ -417,15 +417,16 @@ async function processArchiveInstallation(
   logger: TsLogger,
 ): Promise<OperationResult<string[]>> {
   logger.debug(messages.extractingArchive(asset.name));
+  const extractDir = path.join(context.stagingDir, "extracted");
 
   const extractResult: IExtractResult = await archiveExtractor.extract(logger, downloadPath, {
-    targetDir: context.stagingDir,
+    targetDir: extractDir,
   });
   logger.debug(messages.archiveExtracted(extractResult.extractedFiles.length, extractResult.executables.length));
 
   const postExtractContext: IExtractContext = {
     ...postDownloadContext,
-    extractDir: context.stagingDir,
+    extractDir,
     extractResult,
   };
 
@@ -435,14 +436,7 @@ async function processArchiveInstallation(
     return errorResult;
   }
 
-  const resolvedBinaryPaths = await setupBinariesFromArchive(
-    toolFs,
-    toolName,
-    toolConfig,
-    context,
-    context.stagingDir,
-    logger,
-  );
+  const resolvedBinaryPaths = await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, extractDir, logger);
 
   if (await toolFs.exists(downloadPath)) {
     logger.debug(messages.cleaningArchive(downloadPath));
