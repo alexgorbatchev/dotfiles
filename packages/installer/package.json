@@ -26,6 +26,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@dotfiles/installer-apt": "workspace:*",
     "@dotfiles/installer-brew": "workspace:*",
     "@dotfiles/installer-cargo": "workspace:*",
     "@dotfiles/installer-curl-script": "workspace:*",
@@ -33,6 +34,7 @@
     "@dotfiles/installer-pkg": "workspace:*",
     "@dotfiles/installer-github": "workspace:*",
     "@dotfiles/installer-manual": "workspace:*",
+    "@dotfiles/installer-npm": "workspace:*",
     "@dotfiles/registry-database": "workspace:*",
     "@dotfiles/symlink-generator": "workspace:*",
     "@dotfiles/testing-helpers": "workspace:*",

@@ -14,22 +14,39 @@ Direct download methods like `github-release`, `curl-tar`, or `curl-binary` are 
 
 Using external package managers like `brew` or `npm` is fully supported and sometimes necessary, but introduces potential state drift. These package managers natively own their own placement, upgrades, and environment links. If you run `brew upgrade` externally, the binary may update out of sync with what the dotfiles manager recorded. While this won't break the system, it's best practice to drive all updates through the `dotfiles update` CLI directly to keep state consistent.
 
-| Method             | Best For                            | Pros                                   | Cons                                 |
-| ------------------ | ----------------------------------- | -------------------------------------- | ------------------------------------ |
-| **brew**           | macOS/Linux tools                   | Simple, well-maintained                | Platform-specific, requires Homebrew |
-| **cargo**          | Rust tools                          | Fast pre-compiled binaries             | Rust tools only                      |
-| **curl-binary**    | Direct binary downloads             | Simplest, no extraction needed         | Manual URL management                |
-| **curl-script**    | Custom installers                   | Flexible, handles complex setups       | Less predictable, security concerns  |
-| **curl-tar**       | Archive downloads                   | Simple, no dependencies                | Manual URL management                |
-| **dmg**            | macOS .app bundles                  | Handles mount/unmount, archive extract | macOS only                           |
-| **pkg**            | macOS installer packages            | Uses native installer flow             | macOS only                           |
-| **gitea-release**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host     | Requires instance URL                |
-| **github-release** | Most open source tools              | Automatic updates, cross-platform      | Requires GitHub hosting              |
-| **manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible  | Manual file management               |
-| **npm**            | Node.js tools                       | Simple, version management             | Requires Node.js/npm                 |
-| **zsh-plugin**     | Zsh plugins from Git repos          | Simple, automatic updates              | Zsh plugins only                     |
+| Method             | Best For                            | Pros                                   | Cons                                  |
+| ------------------ | ----------------------------------- | -------------------------------------- | ------------------------------------- |
+| **apt**            | Debian-family Linux packages        | Uses distro packages                   | Linux distro-specific, external state |
+| **brew**           | macOS/Linux tools                   | Simple, well-maintained                | Platform-specific, requires Homebrew  |
+| **cargo**          | Rust tools                          | Fast pre-compiled binaries             | Rust tools only                       |
+| **curl-binary**    | Direct binary downloads             | Simplest, no extraction needed         | Manual URL management                 |
+| **curl-script**    | Custom installers                   | Flexible, handles complex setups       | Less predictable, security concerns   |
+| **curl-tar**       | Archive downloads                   | Simple, no dependencies                | Manual URL management                 |
+| **dmg**            | macOS .app bundles                  | Handles mount/unmount, archive extract | macOS only                            |
+| **pkg**            | macOS installer packages            | Uses native installer flow             | macOS only                            |
+| **gitea-release**  | Codeberg / self-hosted Gitea tools  | Supports any Gitea-compatible host     | Requires instance URL                 |
+| **github-release** | Most open source tools              | Automatic updates, cross-platform      | Requires GitHub hosting               |
+| **manual**         | Custom scripts, configuration tools | Include files with dotfiles, flexible  | Manual file management                |
+| **npm**            | Node.js tools                       | Simple, version management             | Requires Node.js/npm                  |
+| **zsh-plugin**     | Zsh plugins from Git repos          | Simple, automatic updates              | Zsh plugins only                      |
 
 ## Available Methods
+
+### apt
+
+Install Debian-family Linux packages using APT.
+
+```typescript
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install, ctx) =>
+  install("apt", {
+    package: "ripgrep",
+  })
+    .bin("rg")
+    .sudo(),
+);
+```
 
 ### brew
 

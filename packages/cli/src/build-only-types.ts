@@ -30,6 +30,12 @@ export type { InstallMethod as z_internal_InstallMethod } from "@dotfiles/core";
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
+export type { IAptInstallParams as z_internal_AptInstallParams } from "@dotfiles/installer-apt";
+/**
+ * @internal
+ * @deprecated Internal type for testing only. NOT part of the public API.
+ * Do not use in production code. May change or be removed without notice.
+ */
 export type { IBrewInstallParams as z_internal_BrewInstallParams } from "@dotfiles/installer-brew";
 /**
  * @internal

@@ -18,6 +18,7 @@
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/generator-orchestrator": "workspace:*",
     "@dotfiles/installer": "workspace:*",
+    "@dotfiles/installer-apt": "workspace:*",
     "@dotfiles/installer-brew": "workspace:*",
     "@dotfiles/installer-cargo": "workspace:*",
     "@dotfiles/installer-curl-binary": "workspace:*",

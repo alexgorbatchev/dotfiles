@@ -11,6 +11,7 @@
 // Import all plugins to load their type augmentations
 // These side-effect imports register the plugin types with TypeScript
 import "@dotfiles/installer-brew";
+import "@dotfiles/installer-apt";
 import "@dotfiles/installer-cargo";
 import "@dotfiles/installer-curl-binary";
 import "@dotfiles/installer-curl-script";

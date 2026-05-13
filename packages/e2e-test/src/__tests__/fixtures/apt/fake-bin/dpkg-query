@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'dpkg-query %s\n' "$*" >> "${FAKE_APT_LOG:?}"
+printf '13.0.0-1'

@@ -322,5 +322,4 @@ export class ShimGenerator implements IShimGenerator {
     logger.debug(messages.generateShim.success(binaryName, shimFilePath, toolFs.constructor.name));
     return shimFilePath;
   }
-
 }

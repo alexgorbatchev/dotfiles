@@ -82,6 +82,7 @@
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/generator-orchestrator": "workspace:*",
         "@dotfiles/installer": "workspace:*",
+        "@dotfiles/installer-apt": "workspace:*",
         "@dotfiles/installer-brew": "workspace:*",
         "@dotfiles/installer-cargo": "workspace:*",
         "@dotfiles/installer-curl-binary": "workspace:*",
@@ -142,6 +143,7 @@
       "dependencies": {
         "@dotfiles/config": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
+        "@dotfiles/installer-apt": "workspace:*",
         "@dotfiles/installer-brew": "workspace:*",
         "@dotfiles/installer-cargo": "workspace:*",
         "@dotfiles/installer-curl-binary": "workspace:*",
@@ -358,12 +360,14 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@dotfiles/installer-apt": "workspace:*",
         "@dotfiles/installer-brew": "workspace:*",
         "@dotfiles/installer-cargo": "workspace:*",
         "@dotfiles/installer-curl-script": "workspace:*",
         "@dotfiles/installer-curl-tar": "workspace:*",
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
+        "@dotfiles/installer-npm": "workspace:*",
         "@dotfiles/installer-pkg": "workspace:*",
         "@dotfiles/registry-database": "workspace:*",
         "@dotfiles/symlink-generator": "workspace:*",
@@ -376,6 +380,22 @@
         "@typescript/native-preview": "catalog:typescript",
         "tslog": "catalog:",
         "typescript": "catalog:typescript",
+      },
+    },
+    "packages/installer-apt": {
+      "name": "@dotfiles/installer-apt",
+      "version": "0.0.0",
+      "dependencies": {
+        "@dotfiles/core": "workspace:*",
+        "@dotfiles/installer": "workspace:*",
+        "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@dotfiles/file-system": "workspace:*",
+        "@dotfiles/testing-helpers": "workspace:*",
       },
     },
     "packages/installer-brew": {
@@ -944,6 +964,8 @@
     "@dotfiles/http-proxy": ["@dotfiles/http-proxy@workspace:packages/http-proxy"],
 
     "@dotfiles/installer": ["@dotfiles/installer@workspace:packages/installer"],
+
+    "@dotfiles/installer-apt": ["@dotfiles/installer-apt@workspace:packages/installer-apt"],
 
     "@dotfiles/installer-brew": ["@dotfiles/installer-brew@workspace:packages/installer-brew"],
 

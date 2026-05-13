@@ -14,6 +14,7 @@ import {
 } from "@dotfiles/file-system";
 import { GeneratorOrchestrator } from "@dotfiles/generator-orchestrator";
 import { HookExecutor, Installer } from "@dotfiles/installer";
+import { AptInstallerPlugin } from "@dotfiles/installer-apt";
 import { BrewInstallerPlugin } from "@dotfiles/installer-brew";
 import { CargoClient, CargoInstallerPlugin } from "@dotfiles/installer-cargo";
 import { CurlBinaryInstallerPlugin } from "@dotfiles/installer-curl-binary";
@@ -407,6 +408,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     new GiteaReleaseInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor, giteaApiCache),
   );
   pluginRegistry.register(new BrewInstallerPlugin(shell));
+  pluginRegistry.register(new AptInstallerPlugin(shell));
   pluginRegistry.register(
     new CargoInstallerPlugin(
       installerTrackedFs,

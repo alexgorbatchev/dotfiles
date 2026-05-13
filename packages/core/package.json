@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@dotfiles/file-system": "workspace:*",
+    "@dotfiles/installer-apt": "workspace:*",
     "@dotfiles/installer-brew": "workspace:*",
     "@dotfiles/installer-cargo": "workspace:*",
     "@dotfiles/installer-curl-binary": "workspace:*",

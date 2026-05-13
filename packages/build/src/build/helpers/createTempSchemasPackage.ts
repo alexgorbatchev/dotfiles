@@ -28,6 +28,7 @@ export async function createTempSchemasPackage(
       "@dotfiles/core": "workspace:*",
       "@dotfiles/config": "workspace:*",
       "@dotfiles/logger": "workspace:*",
+      "@dotfiles/installer-apt": "workspace:*",
       "@dotfiles/installer-brew": "workspace:*",
       "@dotfiles/installer-cargo": "workspace:*",
       "@dotfiles/installer-curl-binary": "workspace:*",

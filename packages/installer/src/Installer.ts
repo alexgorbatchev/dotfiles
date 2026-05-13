@@ -23,11 +23,26 @@ import { resolveValue } from "@dotfiles/unwrap-value";
 import { generateTimestamp, resolvePlatformConfig } from "@dotfiles/utils";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import semver from "semver";
 import { type ICreateBaseInstallContextResult, InstallContextFactory } from "./context";
 import { HookLifecycle } from "./hooks/HookLifecycle";
 import { InstallationStateWriter } from "./state";
 import type { IInstaller, IInstallOptions, InstallResult } from "./types";
 import { createConfiguredShell, getBinaryPaths, type HookExecutor, messages } from "./utils";
+
+const EXACT_INSTALL_PARAM_VERSION_METHODS = new Set<string>(["apt"]);
+
+function isExactTopLevelVersion(version: string): boolean {
+  if (semver.valid(version)) {
+    return true;
+  }
+
+  if (semver.validRange(version)) {
+    return false;
+  }
+
+  return true;
+}
 
 /**
  * Orchestrates the tool installation process by delegating to plugin-based installation methods
@@ -712,10 +727,26 @@ export class Installer implements IInstaller {
    * @returns Target version string or null if cannot be determined without plugin execution
    */
   private async getTargetVersion(_toolName: string, toolConfig: ToolConfig): Promise<string | null> {
+    if (EXACT_INSTALL_PARAM_VERSION_METHODS.has(toolConfig.installationMethod)) {
+      const installParams = toolConfig.installParams;
+      if (
+        typeof installParams === "object" &&
+        installParams !== null &&
+        "version" in installParams &&
+        typeof installParams.version === "string" &&
+        installParams.version !== "latest"
+      ) {
+        return installParams.version;
+      }
+
+      return null;
+    }
+
     // If the version is explicitly set and not 'latest', return it
-    if (toolConfig.version && toolConfig.version !== "latest") {
+    if (toolConfig.version && toolConfig.version !== "latest" && isExactTopLevelVersion(toolConfig.version)) {
       return toolConfig.version;
     }
+
     // For 'latest' or unspecified versions, we can't determine the target version
     // without executing the plugin logic, so return null to skip the version check
     return null;

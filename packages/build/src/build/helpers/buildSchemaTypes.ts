@@ -12,6 +12,7 @@ const SCHEMA_EXTERNAL_IMPORTS: string[] = ["@dotfiles/core", "zod", "bun"];
 const SCHEMA_EXTERNAL_INLINES: string[] = [
   "@dotfiles/config",
   "@dotfiles/logger",
+  "@dotfiles/installer-apt",
   "@dotfiles/installer-brew",
   "@dotfiles/installer-cargo",
   "@dotfiles/installer-curl-script",
@@ -29,6 +30,7 @@ const AUTHORING_EXTERNAL_INLINES: string[] = [
   "@dotfiles/tool-config-builder",
   "@dotfiles/utils",
   "@dotfiles/unwrap-value",
+  "@dotfiles/installer-apt",
   "@dotfiles/installer-brew",
   "@dotfiles/installer-cargo",
   "@dotfiles/installer-curl-binary",

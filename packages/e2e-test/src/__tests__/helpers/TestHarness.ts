@@ -253,8 +253,12 @@ export class TestHarness {
    * @param additionalArgs - Optional additional command-line arguments.
    * @returns A Promise that resolves to the command result.
    */
-  async install(tools: string[] = [], additionalArgs: string[] = []): Promise<ICommandResult> {
-    return this.runCommand(["install", "--config", this.configPath, ...tools, ...additionalArgs]);
+  async install(
+    tools: string[] = [],
+    additionalArgs: string[] = [],
+    options?: IRunCommandOptions,
+  ): Promise<ICommandResult> {
+    return this.runCommand(["install", "--config", this.configPath, ...tools, ...additionalArgs], options);
   }
 
   /**
