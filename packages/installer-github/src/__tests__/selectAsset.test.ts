@@ -262,5 +262,32 @@ describe("selectAsset", () => {
       assert(result.success);
       expect(result.data.name).toBe("bun-linux-x64-baseline.zip");
     });
+
+    it("should ignore Android-targeted Bun assets when selecting for desktop Linux", async () => {
+      const release: IGitHubRelease = {
+        id: 1,
+        tag_name: "bun-v1.3.14",
+        name: "Bun 1.3.14",
+        draft: false,
+        prerelease: false,
+        created_at: "2024-01-01T00:00:00Z",
+        published_at: "2024-01-01T00:00:00Z",
+        html_url: "https://github.com/oven-sh/bun/releases/tag/bun-v1.3.14",
+        assets: [
+          createMockAsset("bun-linux-x64-android-baseline.zip"),
+          createMockAsset("bun-linux-x64-baseline.zip"),
+          createMockAsset("bun-darwin-aarch64.zip"),
+        ],
+      };
+      const context = createLinuxx64Context(Libc.Gnu);
+      const params: IGithubReleaseInstallParams = {
+        repo: "oven-sh/bun",
+      };
+
+      const result = await selectAsset(release, params, context, logger);
+
+      assert(result.success);
+      expect(result.data.name).toBe("bun-linux-x64-baseline.zip");
+    });
   });
 });

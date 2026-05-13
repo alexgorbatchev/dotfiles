@@ -37,6 +37,10 @@ describe("matchesArchitecture", () => {
     expect(matchesArchitecture("goreleaser_2.15.4_linux_amd64.flatpak", linuxX64Regex)).toBe(false);
   });
 
+  it("should not match Android-targeted Linux assets on desktop Linux", () => {
+    expect(matchesArchitecture("bun-linux-x64-android-baseline.zip", linuxX64Regex)).toBe(false);
+  });
+
   it("should not match asset with wrong system", () => {
     expect(matchesArchitecture("myapp-windows-arm64.zip", macosArm64Regex)).toBe(false);
     expect(matchesArchitecture("myapp-linux-arm64.tar.gz", macosArm64Regex)).toBe(false);

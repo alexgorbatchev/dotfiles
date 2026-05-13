@@ -1,4 +1,5 @@
 import type { IArchitectureRegex } from "./types";
+import { isAndroidTargetedLinuxAsset } from "./isAndroidTargetedLinuxAsset";
 import { isNonBinaryAsset } from "./isNonBinaryAsset";
 
 /**
@@ -33,6 +34,10 @@ export function matchesArchitecture(assetName: string, architectureRegex: IArchi
   const lowerAssetName = assetName.toLowerCase();
 
   if (isNonBinaryAsset(lowerAssetName)) {
+    return false;
+  }
+
+  if (/linux/i.test(architectureRegex.systemPattern) && isAndroidTargetedLinuxAsset(lowerAssetName)) {
     return false;
   }
 

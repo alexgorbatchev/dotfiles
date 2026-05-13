@@ -1,6 +1,7 @@
 import { Libc, Platform, type ISystemInfo } from "@dotfiles/core";
 import { getArchitecturePatterns } from "./getArchitecturePatterns";
 import { getArchitectureRegex } from "./getArchitectureRegex";
+import { isAndroidTargetedLinuxAsset } from "./isAndroidTargetedLinuxAsset";
 import { isNonBinaryAsset } from "./isNonBinaryAsset";
 
 /**
@@ -11,6 +12,14 @@ function filterNonBinaryAssets(assetNames: string[]): string[] {
   const filtered = assetNames.filter((name) => !isNonBinaryAsset(name));
   // Only apply filter if it yields results (zinit behavior)
   return filtered.length > 0 ? filtered : assetNames;
+}
+
+function filterLinuxIncompatibleAssets(assetNames: string[], systemInfo: ISystemInfo): string[] {
+  if (systemInfo.platform !== Platform.Linux) {
+    return assetNames;
+  }
+
+  return assetNames.filter((name) => !isAndroidTargetedLinuxAsset(name));
 }
 
 /**
@@ -126,15 +135,16 @@ export function selectBestMatch(assetNames: string[], systemInfo: ISystemInfo): 
 
   // First pass: filter out non-binary files (checksums, signatures, etc.)
   const binaryAssets = filterNonBinaryAssets(assetNames);
+  const compatibleAssets = filterLinuxIncompatibleAssets(binaryAssets, systemInfo);
 
   // Hard filter: system pattern is required — assets must match the OS.
   let matches: string[];
 
   if (architectureRegex.systemPattern) {
     const systemRegex = new RegExp(architectureRegex.systemPattern, "i");
-    matches = binaryAssets.filter((name) => systemRegex.test(name.toLowerCase()));
+    matches = compatibleAssets.filter((name) => systemRegex.test(name.toLowerCase()));
   } else {
-    matches = [...binaryAssets];
+    matches = [...compatibleAssets];
   }
 
   if (matches.length === 0) {

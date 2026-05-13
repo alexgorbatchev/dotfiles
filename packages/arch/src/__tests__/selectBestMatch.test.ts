@@ -66,6 +66,23 @@ describe("selectBestMatch", () => {
     expect(result).toBe("bun-linux-x64-baseline.zip");
   });
 
+  it("should ignore Android-targeted Linux assets when selecting for desktop Linux", () => {
+    const systemInfo: ISystemInfo = {
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
+      homeDir: "/home/test",
+      libc: Libc.Gnu,
+      hostname: "test-host",
+    };
+
+    const result = selectBestMatch(
+      ["bun-linux-x64-android-baseline.zip", "bun-linux-x64-baseline.zip", "bun-darwin-aarch64.zip"],
+      systemInfo,
+    );
+
+    expect(result).toBe("bun-linux-x64-baseline.zip");
+  });
+
   it("should prefer musl variant when libc is musl and both generic and musl assets exist", () => {
     const systemInfo: ISystemInfo = {
       platform: Platform.Linux,
