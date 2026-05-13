@@ -20,7 +20,7 @@ import type { IToolInstallationRecord, IToolInstallationRegistry } from "@dotfil
 import type { ICompletionGenerationContext, ICompletionGenerator } from "@dotfiles/shell-init-generator";
 import type { ISymlinkGenerator } from "@dotfiles/symlink-generator";
 import { resolveValue } from "@dotfiles/unwrap-value";
-import { generateTimestamp, resolvePlatformConfig } from "@dotfiles/utils";
+import { generateTimestamp, normalizeVersion, resolvePlatformConfig } from "@dotfiles/utils";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import semver from "semver";
@@ -30,7 +30,7 @@ import { InstallationStateWriter } from "./state";
 import type { IInstaller, IInstallOptions, InstallResult } from "./types";
 import { createConfiguredShell, getBinaryPaths, type HookExecutor, messages } from "./utils";
 
-const EXACT_INSTALL_PARAM_VERSION_METHODS = new Set<string>(["apt"]);
+const EXACT_INSTALL_PARAM_VERSION_METHODS = new Set<string>(["apt", "dnf"]);
 
 function isExactTopLevelVersion(version: string): boolean {
   if (semver.valid(version)) {
@@ -736,7 +736,7 @@ export class Installer implements IInstaller {
         typeof installParams.version === "string" &&
         installParams.version !== "latest"
       ) {
-        return installParams.version;
+        return normalizeVersion(installParams.version);
       }
 
       return null;
@@ -744,7 +744,7 @@ export class Installer implements IInstaller {
 
     // If the version is explicitly set and not 'latest', return it
     if (toolConfig.version && toolConfig.version !== "latest" && isExactTopLevelVersion(toolConfig.version)) {
-      return toolConfig.version;
+      return normalizeVersion(toolConfig.version);
     }
 
     // For 'latest' or unspecified versions, we can't determine the target version

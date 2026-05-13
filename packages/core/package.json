@@ -15,6 +15,7 @@
     "@dotfiles/installer-curl-script": "workspace:*",
     "@dotfiles/installer-curl-tar": "workspace:*",
     "@dotfiles/installer-dmg": "workspace:*",
+    "@dotfiles/installer-dnf": "workspace:*",
     "@dotfiles/installer-pkg": "workspace:*",
     "@dotfiles/installer-gitea": "workspace:*",
     "@dotfiles/installer-github": "workspace:*",

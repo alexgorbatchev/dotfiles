@@ -24,6 +24,7 @@
     "@dotfiles/installer-curl-binary": "workspace:*",
     "@dotfiles/installer-curl-script": "workspace:*",
     "@dotfiles/installer-dmg": "workspace:*",
+    "@dotfiles/installer-dnf": "workspace:*",
     "@dotfiles/installer-pkg": "workspace:*",
     "@dotfiles/installer-curl-tar": "workspace:*",
     "@dotfiles/installer-gitea": "workspace:*",

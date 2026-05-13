@@ -17,6 +17,7 @@ import "@dotfiles/installer-curl-binary";
 import "@dotfiles/installer-curl-script";
 import "@dotfiles/installer-curl-tar";
 import "@dotfiles/installer-dmg";
+import "@dotfiles/installer-dnf";
 import "@dotfiles/installer-pkg";
 import "@dotfiles/installer-gitea";
 import "@dotfiles/installer-github";

@@ -66,6 +66,12 @@ export type { ICurlBinaryInstallParams as z_internal_CurlBinaryInstallParams } f
  * @deprecated Internal type for testing only. NOT part of the public API.
  * Do not use in production code. May change or be removed without notice.
  */
+export type { IDnfInstallParams as z_internal_DnfInstallParams } from "@dotfiles/installer-dnf";
+/**
+ * @internal
+ * @deprecated Internal type for testing only. NOT part of the public API.
+ * Do not use in production code. May change or be removed without notice.
+ */
 export type { IGithubReleaseInstallParams as z_internal_GithubReleaseInstallParams } from "@dotfiles/installer-github";
 /**
  * @internal

@@ -387,7 +387,7 @@ export interface IToolConfigBuilder {
    * privileges. The side effect is that tools can't be installed in non-interactive
    * mode.
    *
-   * **Supported installers:** `apt`, `manual`, `pkg`
+   * **Supported installers:** `apt`, `dnf`, `manual`, `pkg`
    */
   sudo(): this;
 
@@ -518,7 +518,7 @@ export interface IPlatformConfigBuilder {
    * privileges. The side effect is that tools can't be installed in non-interactive
    * mode.
    *
-   * **Supported installers:** `apt`, `manual`, `pkg`
+   * **Supported installers:** `apt`, `dnf`, `manual`, `pkg`
    */
   sudo(): this;
 

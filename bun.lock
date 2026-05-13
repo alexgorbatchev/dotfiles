@@ -89,6 +89,7 @@
         "@dotfiles/installer-curl-script": "workspace:*",
         "@dotfiles/installer-curl-tar": "workspace:*",
         "@dotfiles/installer-dmg": "workspace:*",
+        "@dotfiles/installer-dnf": "workspace:*",
         "@dotfiles/installer-gitea": "workspace:*",
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
@@ -150,6 +151,7 @@
         "@dotfiles/installer-curl-script": "workspace:*",
         "@dotfiles/installer-curl-tar": "workspace:*",
         "@dotfiles/installer-dmg": "workspace:*",
+        "@dotfiles/installer-dnf": "workspace:*",
         "@dotfiles/installer-gitea": "workspace:*",
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
@@ -365,6 +367,7 @@
         "@dotfiles/installer-cargo": "workspace:*",
         "@dotfiles/installer-curl-script": "workspace:*",
         "@dotfiles/installer-curl-tar": "workspace:*",
+        "@dotfiles/installer-dnf": "workspace:*",
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
         "@dotfiles/installer-npm": "workspace:*",
@@ -505,6 +508,22 @@
       "devDependencies": {
         "@dotfiles/testing-helpers": "workspace:*",
         "@rageltd/bun-test-utils": "catalog:testing",
+      },
+    },
+    "packages/installer-dnf": {
+      "name": "@dotfiles/installer-dnf",
+      "version": "0.0.0",
+      "dependencies": {
+        "@dotfiles/core": "workspace:*",
+        "@dotfiles/installer": "workspace:*",
+        "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
+        "@dotfiles/utils": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@dotfiles/file-system": "workspace:*",
+        "@dotfiles/testing-helpers": "workspace:*",
       },
     },
     "packages/installer-gitea": {
@@ -978,6 +997,8 @@
     "@dotfiles/installer-curl-tar": ["@dotfiles/installer-curl-tar@workspace:packages/installer-curl-tar"],
 
     "@dotfiles/installer-dmg": ["@dotfiles/installer-dmg@workspace:packages/installer-dmg"],
+
+    "@dotfiles/installer-dnf": ["@dotfiles/installer-dnf@workspace:packages/installer-dnf"],
 
     "@dotfiles/installer-gitea": ["@dotfiles/installer-gitea@workspace:packages/installer-gitea"],
 

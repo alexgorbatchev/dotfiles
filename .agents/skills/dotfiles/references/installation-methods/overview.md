@@ -19,6 +19,7 @@ Using external package managers like `brew` or `npm` is fully supported and some
 | **apt**            | Debian-family Linux packages        | Uses distro packages                   | Linux distro-specific, external state |
 | **brew**           | macOS/Linux tools                   | Simple, well-maintained                | Platform-specific, requires Homebrew  |
 | **cargo**          | Rust tools                          | Fast pre-compiled binaries             | Rust tools only                       |
+| **dnf**            | RPM-family Linux packages           | Uses distro packages                   | Linux distro-specific, external state |
 | **curl-binary**    | Direct binary downloads             | Simplest, no extraction needed         | Manual URL management                 |
 | **curl-script**    | Custom installers                   | Flexible, handles complex setups       | Less predictable, security concerns   |
 | **curl-tar**       | Archive downloads                   | Simple, no dependencies                | Manual URL management                 |
@@ -59,6 +60,22 @@ export default defineTool((install, ctx) =>
   install("brew", {
     formula: "ripgrep",
   }).bin("rg"),
+);
+```
+
+### dnf
+
+Install RPM-family Linux packages using DNF.
+
+```typescript
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install, ctx) =>
+  install("dnf", {
+    package: "ripgrep",
+  })
+    .bin("rg")
+    .sudo(),
 );
 ```
 

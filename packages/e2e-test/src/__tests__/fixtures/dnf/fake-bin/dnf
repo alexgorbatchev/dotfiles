@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'dnf %s\n' "$*" >> "${FAKE_DNF_LOG:?}"

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'rpm %s\n' "$*" >> "${FAKE_DNF_LOG:?}"
+printf '13.0.0-1.fc40'

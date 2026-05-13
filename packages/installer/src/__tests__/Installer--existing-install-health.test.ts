@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, spyOn } from "bun:test";
 import assert from "node:assert";
 import path from "node:path";
 import type { AptToolConfig } from "@dotfiles/installer-apt";
+import type { DnfToolConfig } from "@dotfiles/installer-dnf";
 import type { NpmToolConfig } from "@dotfiles/installer-npm";
 import {
   createGithubReleaseToolConfig,
@@ -215,6 +216,92 @@ describe("Installer - existing install health", () => {
       installedAt: new Date("2025-01-01T00:00:00.000Z"),
       toolName: MOCK_TOOL_NAME,
       version: MOCK_TOOL_VERSION,
+      installPath,
+      timestamp: "2025-01-01-00-00-00",
+      binaryPaths: [currentBinaryPath],
+    });
+
+    const installSpy = spyOn(setup.pluginRegistry, "install");
+
+    const result = await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
+
+    assert(result.success);
+    expect(result.installationMethod).toBe("already-installed");
+    expect(installSpy).not.toHaveBeenCalled();
+  });
+
+  it("should reinstall when dnf install params target a different exact version", async () => {
+    const toolConfig: DnfToolConfig = {
+      name: MOCK_TOOL_NAME,
+      version: "latest",
+      binaries: [MOCK_TOOL_NAME],
+      installationMethod: "dnf",
+      installParams: {
+        package: MOCK_TOOL_NAME,
+        version: "2.0.0-1.fc40",
+      },
+    };
+    const installPath = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_VERSION);
+    const currentDir = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, "current");
+    const currentBinaryPath = path.join(currentDir, MOCK_TOOL_NAME);
+
+    await setup.fs.ensureDir(installPath);
+    await setup.fs.ensureDir(currentDir);
+    await setup.fs.writeFile(currentBinaryPath, "mock binary content");
+    await setup.fs.chmod(currentBinaryPath, 0o755);
+
+    setup.mockToolInstallationRegistry.getToolInstallation.mockResolvedValue({
+      id: 1,
+      installedAt: new Date("2025-01-01T00:00:00.000Z"),
+      toolName: MOCK_TOOL_NAME,
+      version: MOCK_TOOL_VERSION,
+      installPath,
+      timestamp: "2025-01-01-00-00-00",
+      binaryPaths: [currentBinaryPath],
+    });
+
+    const installSpy = spyOn(setup.pluginRegistry, "install").mockResolvedValue({
+      success: true,
+      binaryPaths: [currentBinaryPath],
+      version: "2.0.0-1.fc40",
+      metadata: {
+        method: "dnf",
+        packageName: MOCK_TOOL_NAME,
+      },
+    });
+
+    const result = await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
+
+    assert(result.success);
+    expect(result.installationMethod).toBe("dnf");
+    expect(installSpy).toHaveBeenCalled();
+  });
+
+  it("should compare normalized dnf epoch versions when checking existing installs", async () => {
+    const toolConfig: DnfToolConfig = {
+      name: MOCK_TOOL_NAME,
+      version: "latest",
+      binaries: [MOCK_TOOL_NAME],
+      installationMethod: "dnf",
+      installParams: {
+        package: MOCK_TOOL_NAME,
+        version: "1:13.0.0-1.fc40",
+      },
+    };
+    const installPath = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, "1-13.0.0-1.fc40");
+    const currentDir = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, "current");
+    const currentBinaryPath = path.join(currentDir, MOCK_TOOL_NAME);
+
+    await setup.fs.ensureDir(installPath);
+    await setup.fs.ensureDir(currentDir);
+    await setup.fs.writeFile(currentBinaryPath, "mock binary content");
+    await setup.fs.chmod(currentBinaryPath, 0o755);
+
+    setup.mockToolInstallationRegistry.getToolInstallation.mockResolvedValue({
+      id: 1,
+      installedAt: new Date("2025-01-01T00:00:00.000Z"),
+      toolName: MOCK_TOOL_NAME,
+      version: "1-13.0.0-1.fc40",
       installPath,
       timestamp: "2025-01-01-00-00-00",
       binaryPaths: [currentBinaryPath],
