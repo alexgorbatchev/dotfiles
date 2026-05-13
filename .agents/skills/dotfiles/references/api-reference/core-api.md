@@ -131,7 +131,7 @@ The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
 | `.sourceFile(path)`                        | Source a file (skips if missing)                                                              |
 | `.sourceFunction(name)`                    | Source output of a function defined via `.functions()`                                        |
 | `.always(script)`                          | Script run on every shell init                                                                |
-| `.once(script)`                            | Script run once after install                                                                 |
+| `.once(script)`                            | Script written to a generated once-file, attributed to its `.tool.ts` source, then removed after first execution |
 
 **Completions examples:**
 

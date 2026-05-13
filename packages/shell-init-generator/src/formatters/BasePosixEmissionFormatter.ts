@@ -12,8 +12,11 @@ export abstract class BasePosixEmissionFormatter extends BaseEmissionFormatter {
    * @param scriptContent - The script content to execute once
    * @param outputPath - Path to the script file (for self-deletion)
    */
-  protected generateOnceScriptContent(scriptContent: string, outputPath: string): string {
+  protected generateOnceScriptContent(scriptContent: string, outputPath: string, sourceAttribution?: string): string {
     const lines = ["# Generated once script - will self-delete after execution"];
+    if (sourceAttribution) {
+      lines.push(this.comment(sourceAttribution));
+    }
     lines.push(scriptContent);
     lines.push(`rm "${outputPath}"`);
     return lines.join("\n");

@@ -8,6 +8,7 @@ import {
   source,
   sourceFile,
   sourceFunction,
+  withSource,
 } from "@dotfiles/shell-emissions";
 import { beforeEach, describe, expect, it } from "bun:test";
 import { PowerShellEmissionFormatter } from "../PowerShellEmissionFormatter";
@@ -85,13 +86,14 @@ describe("PowerShellEmissionFormatter", () => {
   });
 
   describe("formatOnceScript", () => {
-    it("should format once script with correct filename", () => {
-      const emission = script('Write-Host "setup"', "once");
+    it("should include source attribution in once script content", () => {
+      const emission = withSource(script('Write-Host "setup"', "once"), "/tools/test.tool.ts");
       const result = formatter.formatOnceScript(emission, 1);
 
       expect(result.filename).toMatchInlineSnapshot(`"once-001.ps1"`);
       expect(result.content).toMatchInlineSnapshot(`
         "# Generated once script - will self-delete after execution
+        # /tools/test.tool.ts
         Write-Host "setup"
         Remove-Item "/test/.once/once-001.ps1""
       `);

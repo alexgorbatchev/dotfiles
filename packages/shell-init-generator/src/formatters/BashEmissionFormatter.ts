@@ -75,7 +75,7 @@ export class BashEmissionFormatter extends BasePosixEmissionFormatter implements
     const outputPath = `${this.onceScriptDir}/${filename}`;
     const scriptContent = dedentString(emission.content);
 
-    const content = this.generateOnceScriptContent(scriptContent, outputPath);
+    const content = this.generateOnceScriptContent(scriptContent, outputPath, emission.source);
 
     return { content, filename };
   }

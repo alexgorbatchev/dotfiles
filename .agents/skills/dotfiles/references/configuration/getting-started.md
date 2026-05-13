@@ -22,6 +22,8 @@ curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
 
 The hosted installer uses Bun from `PATH` when available. Otherwise it checks for `curl` and `unzip` before prompting, bootstraps a temporary Bun, adds `@alexgorbatchev/dotfiles` to the local `package.json` without running your project's lifecycle scripts, creates a minimal `dotfiles.config.ts` when needed, installs managed Bun, and runs `dotfiles generate` for you. Generated `dotfiles` shell output resolves Bun at runtime instead of pinning the temporary bootstrap Bun path, and the temporary bootstrap directory is cleaned up before exit even if a later step fails.
 
+
+Generated shell output includes `# /path/to/tool.tool.ts` attribution comments before emitted blocks, including generated `.once/*` helper scripts created from `.once(...)` shell configuration.
 ## Load Generated Config
 
 With the default project layout, the generated zsh config lives at `.generated/shell-scripts/main.zsh` inside your dotfiles directory.

@@ -75,7 +75,7 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     const outputPath = `${this.onceScriptDir}/${filename}`;
     const scriptContent = dedentString(emission.content);
 
-    const content = this.generateOnceScriptContent(scriptContent, outputPath);
+    const content = this.generateOnceScriptContent(scriptContent, outputPath, emission.source);
 
     return { content, filename };
   }
@@ -190,8 +190,11 @@ export class PowerShellEmissionFormatter extends BaseEmissionFormatter implement
     return `$env:PATH = "$env:PATH;${dir}"`;
   }
 
-  private generateOnceScriptContent(scriptContent: string, outputPath: string): string {
+  private generateOnceScriptContent(scriptContent: string, outputPath: string, sourceAttribution?: string): string {
     const lines = ["# Generated once script - will self-delete after execution"];
+    if (sourceAttribution) {
+      lines.push(this.comment(sourceAttribution));
+    }
     lines.push(scriptContent);
     lines.push(`Remove-Item "${outputPath}"`);
     return lines.join("\n");

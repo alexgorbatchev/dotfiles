@@ -8,6 +8,7 @@ import {
   source,
   sourceFile,
   sourceFunction,
+  withSource,
 } from "@dotfiles/shell-emissions";
 import { beforeEach, describe, expect, it } from "bun:test";
 import { ZshEmissionFormatter } from "../ZshEmissionFormatter";
@@ -114,13 +115,14 @@ describe("ZshEmissionFormatter", () => {
   });
 
   describe("formatOnceScript", () => {
-    it("should format once script with correct filename and content", () => {
-      const emission = script('echo "setup"', "once");
+    it("should include source attribution in once script content", () => {
+      const emission = withSource(script('echo "setup"', "once"), "/tools/test.tool.ts");
       const result = formatter.formatOnceScript(emission, 1);
 
       expect(result.filename).toMatchInlineSnapshot(`"once-001.zsh"`);
       expect(result.content).toMatchInlineSnapshot(`
         "# Generated once script - will self-delete after execution
+        # /tools/test.tool.ts
         echo "setup"
         rm "/test/.once/once-001.zsh""
       `);
