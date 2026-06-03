@@ -310,6 +310,65 @@ describe("installFromNpm", () => {
     expect(commands.some((cmd) => cmd.includes("bun install -g"))).toBe(false);
   });
 
+  it("should append --force to npm install when force option is true", async () => {
+    const commands: string[] = [];
+    const capturingShell = createMockShell((cmd: string) => {
+      commands.push(cmd);
+      const matchedOutput = [
+        { includes: "npm prefix -g", stdout: "/mock/global" },
+        { includes: "npm view", stdout: "3.1.0" },
+      ].find((entry) => cmd.includes(entry.includes));
+      return createMockShellResult(matchedOutput?.stdout ?? "");
+    });
+
+    const toolConfig: NpmToolConfig = {
+      name: "prettier",
+      version: "3.1.0",
+      binaries: ["prettier"],
+      installationMethod: "npm",
+      installParams: {
+        package: "prettier",
+      },
+    };
+
+    const context = createContext(toolConfig, capturingShell);
+    await installFromNpm("prettier", toolConfig, context, { force: true }, logger, capturingShell, capturingShell);
+
+    const installCommand = commands.find((cmd) => cmd.includes("npm install -g"));
+    expect(installCommand).toBeDefined();
+    expect(installCommand).toBe("npm install -g --force prettier");
+  });
+
+  it("should append --force to bun install when force option is true", async () => {
+    const commands: string[] = [];
+    const capturingShell = createMockShell((cmd: string) => {
+      commands.push(cmd);
+      const matchedOutput = [
+        { includes: "bun pm bin -g", stdout: "/mock/global/bin" },
+        { includes: "--version", stdout: "3.1.0" },
+      ].find((entry) => cmd.includes(entry.includes));
+      return createMockShellResult(matchedOutput?.stdout ?? "");
+    });
+
+    const toolConfig: NpmToolConfig = {
+      name: "prettier",
+      version: "3.1.0",
+      binaries: ["prettier"],
+      installationMethod: "npm",
+      installParams: {
+        package: "prettier",
+        packageManager: "bun",
+      },
+    };
+
+    const context = createContext(toolConfig, capturingShell);
+    await installFromNpm("prettier", toolConfig, context, { force: true }, logger, capturingShell, capturingShell);
+
+    const installCommand = commands.find((cmd) => cmd.includes("bun install -g"));
+    expect(installCommand).toBeDefined();
+    expect(installCommand).toBe("bun install -g --force prettier");
+  });
+
   it("should return failure when bun install -g command fails", async () => {
     const failShell = createFailingMockShell();
 

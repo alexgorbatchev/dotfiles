@@ -33,7 +33,7 @@ export async function installFromNpm(
   toolName: string,
   toolConfig: NpmToolConfig,
   _context: IInstallContext,
-  _options: IInstallOptions | undefined,
+  options: IInstallOptions | undefined,
   parentLogger: TsLogger,
   shellExecutor: IShell,
   installShell?: IShell,
@@ -60,9 +60,9 @@ export async function installFromNpm(
     const loggingShell = installShell ?? createShell({ logger, skipCommandLog: true });
 
     if (isBun) {
-      await executeBunGlobalInstall(packageSpec, logger, loggingShell);
+      await executeBunGlobalInstall(packageSpec, options?.force === true, logger, loggingShell);
     } else {
-      await executeNpmGlobalInstall(packageSpec, logger, loggingShell);
+      await executeNpmGlobalInstall(packageSpec, options?.force === true, logger, loggingShell);
     }
 
     const globalBinDir: string = await getGlobalBinDir(isBun, loggingShell);
@@ -108,19 +108,37 @@ async function getGlobalBinDir(isBun: boolean, shell: IShell): Promise<string> {
 /**
  * Executes `bun install -g` to install a package globally.
  */
-async function executeBunGlobalInstall(packageSpec: string, logger: TsLogger, shell: IShell): Promise<void> {
-  const command = `bun install -g ${packageSpec}`;
+async function executeBunGlobalInstall(
+  packageSpec: string,
+  force: boolean,
+  logger: TsLogger,
+  shell: IShell,
+): Promise<void> {
+  const command = force ? `bun install -g --force ${packageSpec}` : `bun install -g ${packageSpec}`;
   logger.debug(messages.executingCommand(command));
-  await shell`bun install -g ${packageSpec}`;
+  if (force) {
+    await shell`bun install -g --force ${packageSpec}`;
+  } else {
+    await shell`bun install -g ${packageSpec}`;
+  }
 }
 
 /**
  * Executes `npm install -g` to install a package globally.
  */
-async function executeNpmGlobalInstall(packageSpec: string, logger: TsLogger, shell: IShell): Promise<void> {
-  const command = `npm install -g ${packageSpec}`;
+async function executeNpmGlobalInstall(
+  packageSpec: string,
+  force: boolean,
+  logger: TsLogger,
+  shell: IShell,
+): Promise<void> {
+  const command = force ? `npm install -g --force ${packageSpec}` : `npm install -g ${packageSpec}`;
   logger.debug(messages.executingCommand(command));
-  await shell`npm install -g ${packageSpec}`;
+  if (force) {
+    await shell`npm install -g --force ${packageSpec}`;
+  } else {
+    await shell`npm install -g ${packageSpec}`;
+  }
 }
 
 /**
