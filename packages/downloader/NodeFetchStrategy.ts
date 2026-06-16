@@ -206,6 +206,14 @@ export class NodeFetchStrategy implements IDownloadStrategy {
       }
     }
 
+    if (totalBytes !== null && bytesDownloaded !== totalBytes) {
+      throw new NetworkError(
+        this.logger,
+        `Download incomplete: received ${bytesDownloaded} bytes, expected ${totalBytes} bytes.`,
+        url,
+      );
+    }
+
     return Buffer.concat(chunks);
   }
 

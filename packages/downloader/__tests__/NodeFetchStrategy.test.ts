@@ -460,6 +460,22 @@ describe("NodeFetchStrategy", () => {
       }
     });
 
+    it("should throw NetworkError if downloaded size does not match content-length", async () => {
+      fetchMockHelper.mockResponseOnce({
+        body: "short",
+        status: 200,
+        headers: { "Content-Length": "100" },
+      });
+      try {
+        await strategy.download(testUrl, {});
+        assert.fail("Should have thrown");
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(NetworkError);
+        const error = e as NetworkError;
+        expect(error.message).toContain("Download incomplete: received 5 bytes, expected 100 bytes.");
+      }
+    });
+
     it("should correctly parse headers into Record in error object", async () => {
       const headers = { "Content-Type": "application/json", "X-Custom-Header": "CustomValue" };
       fetchMockHelper.mockResponseOnce({ body: "Bad Request", status: 400, headers });
