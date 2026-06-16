@@ -1,6 +1,6 @@
 import type { IInstallContext, IShell } from "@dotfiles/core";
 import { TestLogger } from "@dotfiles/logger";
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import assert from "node:assert";
 import { installFromNpm } from "../installFromNpm";
 import type { NpmToolConfig } from "../schemas";
@@ -64,7 +64,10 @@ function createContext(toolConfig: NpmToolConfig, mockShell: IShell): IInstallCo
     stagingDir: "/staging/dir",
     timestamp: "2023-01-01",
     $: mockShell,
-    fileSystem: {} as IInstallContext["fileSystem"],
+    fileSystem: {
+      exists: async () => false,
+      rm: async () => {},
+    } as unknown as IInstallContext["fileSystem"],
     toolConfig: toolConfig,
   } as unknown as IInstallContext;
 }
@@ -389,5 +392,45 @@ describe("installFromNpm", () => {
     expect(result.success).toBe(false);
     assert(!result.success);
     expect(result.error).toBeDefined();
+  });
+
+  it("should remove pre-existing global binary file when force is true", async () => {
+    const commands: string[] = [];
+    const capturingShell = createMockShell((cmd: string) => {
+      commands.push(cmd);
+      const matchedOutput = [
+        { includes: "npm prefix -g", stdout: "/mock/global" },
+        { includes: "npm view", stdout: "3.1.0" },
+      ].find((entry) => cmd.includes(entry.includes));
+      return createMockShellResult(matchedOutput?.stdout ?? "");
+    });
+
+    const toolConfig: NpmToolConfig = {
+      name: "prettier",
+      version: "3.1.0",
+      binaries: ["prettier"],
+      installationMethod: "npm",
+      installParams: {
+        package: "prettier",
+      },
+    };
+
+    const existsSpy = mock(async (p: string) => p === "/mock/global/bin/prettier");
+    const rmSpy = mock(async () => {});
+
+    const context = createContext(toolConfig, capturingShell);
+    context.fileSystem = {
+      exists: existsSpy,
+      rm: rmSpy,
+    } as unknown as IInstallContext["fileSystem"];
+
+    await installFromNpm("prettier", toolConfig, context, { force: true }, logger, capturingShell, capturingShell);
+
+    expect(existsSpy).toHaveBeenCalled();
+    expect(rmSpy).toHaveBeenCalledWith("/mock/global/bin/prettier", { force: true });
+
+    const installCommand = commands.find((cmd) => cmd.includes("npm install -g"));
+    expect(installCommand).toBeDefined();
+    expect(installCommand).toBe("npm install -g --force prettier");
   });
 });

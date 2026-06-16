@@ -1,5 +1,5 @@
 import { createShell, type IInstallContext, type IInstallOptions, type IShell } from "@dotfiles/core";
-import { getBinaryPaths, withInstallErrorHandling } from "@dotfiles/installer";
+import { getBinaryNames, getBinaryPaths, withInstallErrorHandling } from "@dotfiles/installer";
 import type { TsLogger } from "@dotfiles/logger";
 import { normalizeVersion } from "@dotfiles/utils";
 import path from "node:path";
@@ -32,7 +32,7 @@ const npmInstalledPackagesSchema = z
 export async function installFromNpm(
   toolName: string,
   toolConfig: NpmToolConfig,
-  _context: IInstallContext,
+  context: IInstallContext,
   options: IInstallOptions | undefined,
   parentLogger: TsLogger,
   shellExecutor: IShell,
@@ -58,14 +58,38 @@ export async function installFromNpm(
 
   const operation = async (): Promise<NpmInstallResult> => {
     const loggingShell = installShell ?? createShell({ logger, skipCommandLog: true });
+    const globalBinDir: string = await getGlobalBinDir(isBun, loggingShell);
+
+    // When options.force is true, we proactively remove any conflicting binaries/scripts
+    // in the target global bin directory. This is necessary because modern npm (v7+) often
+    // ignores '--force' and throws EEXIST when attempting to link global binaries if:
+    // 1. The existing binary is owned/was written by a different package manager (or has corrupted state).
+    // 2. State desynchronization occurs inside Node version managers like fnm/nvm.
+    // 3. npm's internal symlink-creation library (gentle-fs) ignores the force config flag.
+    // Pre-emptively clearing these files ensures a deterministic, successful installation.
+    if (options?.force === true) {
+      const binNames = getBinaryNames(toolConfig.binaries);
+      for (const binName of binNames) {
+        const binPaths = [
+          path.join(globalBinDir, binName),
+          path.join(globalBinDir, `${binName}.cmd`),
+          path.join(globalBinDir, `${binName}.ps1`),
+          path.join(globalBinDir, `${binName}.bat`),
+        ];
+        for (const binPath of binPaths) {
+          if (await context.fileSystem.exists(binPath)) {
+            logger.debug(messages.removingExistingBinary(binPath));
+            await context.fileSystem.rm(binPath, { force: true });
+          }
+        }
+      }
+    }
 
     if (isBun) {
       await executeBunGlobalInstall(packageSpec, options?.force === true, logger, loggingShell);
     } else {
       await executeNpmGlobalInstall(packageSpec, options?.force === true, logger, loggingShell);
     }
-
-    const globalBinDir: string = await getGlobalBinDir(isBun, loggingShell);
     const binaryPaths: string[] = getBinaryPaths(toolConfig.binaries, globalBinDir);
     const version: string | undefined = isBun
       ? await getBunInstalledVersion(packageName, shellExecutor)
