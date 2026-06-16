@@ -83,8 +83,7 @@ export class FileCache implements ICache {
           return null;
         }
 
-        const binaryContent = await this.fileSystem.readFile(binaryPath);
-        const buffer = Buffer.isBuffer(binaryContent) ? binaryContent : Buffer.from(binaryContent);
+        const buffer = await this.fileSystem.readFileBuffer(binaryPath);
 
         // Verify content integrity for binary data
         const actualHash = crypto.createHash("sha256").update(buffer).digest("hex");

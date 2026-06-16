@@ -212,6 +212,30 @@ describe("Downloader with Cache", () => {
       expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(2);
     });
 
+    it("should correctly cache and retrieve binary data with non-UTF-8 bytes", async () => {
+      const binaryData = Buffer.from([0x80, 0x81, 0x82, 0xff, 0x00, 0x12, 0xab]);
+
+      fetchMockHelper.mockResponseOnce({
+        status: 200,
+        body: new Blob([binaryData]),
+        headers: { "Content-Type": "application/octet-stream" },
+      });
+
+      // First download - should hit the network and write to cache
+      const result1 = await downloader.download(logger, testUrl);
+      expect(result1).toEqual(binaryData);
+
+      // Verify fetch was called once
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(1);
+
+      // Second download - should hit cache
+      const result2 = await downloader.download(logger, testUrl);
+      expect(result2).toEqual(binaryData);
+
+      // Verify fetch was still only called once (cache hit)
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(1);
+    });
+
     it("should handle different URLs separately in cache", async () => {
       const testUrl1 = "https://example.com/file1.zip";
       const testUrl2 = "https://example.com/file2.zip";
