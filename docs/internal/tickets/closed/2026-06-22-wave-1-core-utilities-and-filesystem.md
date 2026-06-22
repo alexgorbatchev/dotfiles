@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-22 12:00
-last_modified: 2026-06-22 12:00
+last_modified: 2026-06-22 13:00
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 1: Core Utilities and File System Abstraction
@@ -34,15 +34,15 @@ A set of fully tested, zero-dependency core packages under `pkg/utils`, `pkg/log
 
 ## Acceptance criteria
 
-- [ ] `pkg/utils` must export helper functions for slices, platform string parsing, and path resolution.
-- [ ] `pkg/logger` must wrap Go's native `log/slog` and implement a tab-delimited user-facing format mapping the legacy TypeScript `tslog` output layout.
-- [ ] `pkg/logger` must not write logs directly to `os.Stdout` and instead will direct them to `os.Stderr`.
-- [ ] `pkg/logger/log_messages.go` must export a central `messages` definition of all logged events, ensuring no hardcoded strings in code.
-- [ ] `pkg/arch` must evaluate and export the host's operating system (darwin, linux), hardware CPU architecture (amd64, arm64), and Libc type (glibc, musl) using native runtime checks.
-- [ ] `pkg/fs` must define the unified `FS` interface supporting `ReadFile`, `WriteFile`, `Remove`, `Exists`, `MkdirAll`, `Create`, and `Open`.
-- [ ] `pkg/fs/os_fs.go` must implement the `FS` interface wrapping the standard library `os` package.
-- [ ] `pkg/fs/mem_fs.go` must implement the `FS` interface using an in-memory map protected by structured read-write locks (`sync.RWMutex`) to guarantee safe, concurrent execution.
-- [ ] Every function in these packages must be tested, achieving a minimum of 90% function-level test coverage.
-- [ ] All unit tests for file system actions must target `pkg/fs.MemFS` or `t.TempDir()` to guarantee that zero physical disk writes occur during tests.
-- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] `pkg/utils` must export helper functions for slices, platform string parsing, and path resolution.
+- [x] `pkg/logger` must wrap Go's native `log/slog` and implement a tab-delimited user-facing format mapping the legacy TypeScript `tslog` output layout.
+- [x] `pkg/logger` must not write logs directly to `os.Stdout` and instead will direct them to `os.Stderr`.
+- [x] `pkg/logger/log_messages.go` must export a central `messages` definition of all logged events, ensuring no hardcoded strings in code.
+- [x] `pkg/arch` must evaluate and export the host's operating system (darwin, linux), hardware CPU architecture (amd64, arm64), and Libc type (glibc, musl) using native runtime checks.
+- [x] `pkg/fs` must define the unified `FS` interface supporting `ReadFile`, `WriteFile`, `Remove`, `Exists`, `MkdirAll`, `Create`, and `Open`.
+- [x] `pkg/fs/os_fs.go` must implement the `FS` interface wrapping the standard library `os` package.
+- [x] `pkg/fs/mem_fs.go` must implement the `FS` interface using an in-memory map protected by structured read-write locks (`sync.RWMutex`) to guarantee safe, concurrent execution.
+- [x] Every function in these packages must be tested, achieving a minimum of 90% function-level test coverage.
+- [x] All unit tests for file system actions must target `pkg/fs.MemFS` or `t.TempDir()` to guarantee that zero physical disk writes occur during tests.
+- [x] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
