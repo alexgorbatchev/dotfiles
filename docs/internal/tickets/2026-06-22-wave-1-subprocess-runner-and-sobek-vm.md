@@ -45,4 +45,5 @@ An isolated execution layer that compiles `.tool.ts` files into Javascript durin
 - [ ] The generated JavaScript files in `pkg/vm/dist/` must be excluded in `.gitignore` to prevent pre-compiled bundles from being checked into the repository.
 - [ ] Every package in this ticket must be covered by unit tests, achieving a minimum of 90% function-level coverage.
 - [ ] All VM execution tests must run against static mock scripts embedded in testing tables rather than referencing external files.
+- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
 - [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

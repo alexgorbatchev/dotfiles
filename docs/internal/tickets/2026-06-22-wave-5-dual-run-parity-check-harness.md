@@ -38,4 +38,5 @@ An automated Go command script that compiles the Go executable, runs both implem
 - [ ] The harness must recursively traverse and assert exact equality between `.generated/ts/` and `.generated/go/`.
 - [ ] If any mismatch is encountered, the harness must write a detailed, descriptive diff to stderr and exit with non-zero exit code `1`.
 - [ ] The parity script must be integrated as the final gate in the CI script before accepting a migration as complete.
+- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
 - [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

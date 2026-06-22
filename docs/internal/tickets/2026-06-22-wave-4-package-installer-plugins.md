@@ -48,4 +48,5 @@ Complete, idiomatic, sequentially migrated Go modules for the 15 installer plugi
 - [ ] Each installer plugin must be covered by a separate unit test file (e.g., `pkg/installer/brew_test.go`).
 - [ ] Unit tests for all 15 plugins must achieve a minimum of 90% function-level coverage.
 - [ ] Tests must utilize `MockCommandRunner` to assert that correct command lines, environments, and directories are constructed for every plugin method.
+- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
 - [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

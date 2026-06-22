@@ -41,4 +41,5 @@ Clean, portable, concurrent Go engines that handle symlink paths, shell profile 
 - [ ] `pkg/features` must parse markdown files, extract metadata, and cache tool readmes.
 - [ ] All package utilities must achieve a minimum of 90% function-level test coverage.
 - [ ] All file system actions in tests must use the mock file system `pkg/fs.MemFS` or `t.TempDir()` rather than mutating active developer paths.
+- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
 - [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

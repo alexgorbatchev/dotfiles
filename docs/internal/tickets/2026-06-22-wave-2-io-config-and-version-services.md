@@ -42,4 +42,5 @@ High-performance, concurrent utilities that handle downloads, archive extraction
 - [ ] `pkg/version` must evaluate semantic version boundaries and parse local vs upstream remote versions.
 - [ ] All packages in this ticket must achieve a minimum of 90% function-level test coverage.
 - [ ] Downloader tests must not issue active network queries and must utilize local mock servers via `httptest.NewServer`.
+- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
 - [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

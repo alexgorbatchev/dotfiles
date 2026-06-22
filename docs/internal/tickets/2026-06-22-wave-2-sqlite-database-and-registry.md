@@ -36,4 +36,5 @@ A fully operational, high-performance database layer that configures CGO-free co
 - [ ] `pkg/registry` must execute database writes inside transactional blocks (`sql.Tx`) to guarantee ACID properties.
 - [ ] All database packages must achieve a minimum of 90% function-level test coverage.
 - [ ] Unit tests for database actions must run against in-memory SQLite connection pools (`file::memory:?cache=shared`) to avoid physical state pollution.
+- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
 - [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

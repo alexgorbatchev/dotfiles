@@ -46,4 +46,5 @@ A unified executable entry point that exposes clean, modular Cobra commands matc
 - [ ] `pkg/proxy` must implement a local HTTP asset caching proxy using `net/http`.
 - [ ] All CLI commands and package engines must achieve a minimum of 90% function-level test coverage.
 - [ ] Test suites for CLI subcommands must capture stdout/stderr and assert output structure.
+- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
 - [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

@@ -44,4 +44,5 @@ A set of fully tested, zero-dependency core packages under `pkg/utils`, `pkg/log
 - [ ] `pkg/fs/mem_fs.go` must implement the `FS` interface using an in-memory map protected by structured read-write locks (`sync.RWMutex`) to guarantee safe, concurrent execution.
 - [ ] Every function in these packages must be tested, achieving a minimum of 90% function-level test coverage.
 - [ ] All unit tests for file system actions must target `pkg/fs.MemFS` or `t.TempDir()` to guarantee that zero physical disk writes occur during tests.
+- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
 - [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
