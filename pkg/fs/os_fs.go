@@ -1,0 +1,48 @@
+package fs
+
+import (
+	"io"
+	"os"
+)
+
+// OSFS is an implementation of FS backed by the standard operating system filesystem.
+type OSFS struct{}
+
+func NewOSFS() *OSFS {
+	return &OSFS{}
+}
+
+func (o *OSFS) ReadFile(path string) ([]byte, error) {
+	return os.ReadFile(path)
+}
+
+func (o *OSFS) WriteFile(path string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(path, data, perm)
+}
+
+func (o *OSFS) Remove(path string) error {
+	return os.Remove(path)
+}
+
+func (o *OSFS) Exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+func (o *OSFS) MkdirAll(path string, perm os.FileMode) error {
+	return os.MkdirAll(path, perm)
+}
+
+func (o *OSFS) Create(path string) (io.WriteCloser, error) {
+	return os.Create(path)
+}
+
+func (o *OSFS) Open(path string) (io.ReadCloser, error) {
+	return os.Open(path)
+}
