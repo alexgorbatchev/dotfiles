@@ -5,6 +5,7 @@ go 1.26.2
 require (
 	github.com/grafana/sobek v0.0.0-20260619084854-f843f46048fd
 	github.com/tkrajina/typescriptify-golang-structs v0.2.0
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
 )
 
 require (
