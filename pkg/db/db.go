@@ -15,6 +15,8 @@ import (
 // NewConnection opens a database connection using modernc.org/sqlite,
 // configures a connection pool, runs WAL & busy timeout PRAGMAs,
 // and initializes the database schema. It respects context cancellation.
+// For dry-runs, swap the dsn to ":memory:" (Option A) to execute queries
+// natively in memory without mutating physical disk state.
 func NewConnection(ctx context.Context, dsn string) (*sql.DB, error) {
 	// If it's not an in-memory database, ensure the parent directory exists
 	if !strings.HasPrefix(dsn, "file:") && dsn != ":memory:" && dsn != "" {
