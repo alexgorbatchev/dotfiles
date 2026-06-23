@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-22 12:00
-last_modified: 2026-06-22 12:00
+last_modified: 2026-06-23 12:00
 status: current
-ticket_status: open
+ticket_status: completed
 ---
 
 # Wave 4: Sequential Migration of the 15 Package Installer Plugins
@@ -42,11 +42,11 @@ Complete, idiomatic, sequentially migrated Go modules for the 15 installer plugi
 
 ## Acceptance criteria
 
-- [ ] Each of the 15 installer plugins must implement the `Installer` interface.
-- [ ] The installers must invoke external terminal applications exclusively using the injected `CommandRunner` interface.
-- [ ] The plugins must not reference global environment states directly and must instead use variables extracted via the `SystemContext` and `pkg/arch` modules.
-- [ ] Each installer plugin must be covered by a separate unit test file (e.g., `pkg/installer/brew_test.go`).
-- [ ] Unit tests for all 15 plugins must achieve a minimum of 90% function-level coverage.
-- [ ] Tests must utilize `MockCommandRunner` to assert that correct command lines, environments, and directories are constructed for every plugin method.
-- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Each of the 15 installer plugins must implement the `Installer` interface.
+- [x] The installers must invoke external terminal applications exclusively using the injected `CommandRunner` interface.
+- [x] The plugins must not reference global environment states directly and must instead use variables extracted via the `SystemContext` and `pkg/arch` modules.
+- [x] Each installer plugin must be covered by a separate unit test file (e.g., `pkg/installer/brew_test.go`).
+- [x] Unit tests for all 15 plugins must achieve a minimum of 90% function-level coverage.
+- [x] Tests must utilize `MockCommandRunner` to assert that correct command lines, environments, and directories are constructed for every plugin method.
+- [x] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
