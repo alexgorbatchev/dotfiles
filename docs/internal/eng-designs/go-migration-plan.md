@@ -1,6 +1,6 @@
 ---
 created_on: 2026-06-22 12:00
-last_modified: 2026-06-22 12:00
+last_modified: 2026-06-23 12:00
 status: current
 ---
 
@@ -444,6 +444,7 @@ To mitigate integration risk, work must progress in sequential tiers from zero-d
 6. **Tier 6 (Orchestration & Drivers)**: `pkg/installer` (core registration drivers), `pkg/orchestrator` (execution and dependency solvers).
 7. **Tier 7 (Installer Plugins)**: Incrementally write individual installer files in `pkg/installer/` (such as `brew.go`, `cargo.go`, `github.go`, etc.) injecting the `CommandRunner` wrapper.
 8. **Tier 8 (CLI Command & Web Server)**: `cmd/dotfiles/` (Cobra commands mapping), `pkg/dashboard`, `pkg/proxy`.
+9. **Tier 9 (Go-Native E2E Test Suite)**: `tests/e2e/` (Migrated end-to-end test suite asserting shims, generators, envs, updates, conflicts, and install commands).
 
 ---
 
@@ -472,9 +473,78 @@ To guarantee full feature parity, we must implement an automated verification ha
    - **Line Endings**: Convert CRLF to LF on all generated shims and configs before running bytes-by-bytes matches.
    - **Absolute Paths**: Replace host-specific directory names (e.g. `/home/alex` or `C:\Users\alex`) dynamically with `{{HOME}}` in compared logs and shims.
    - **Database Schema Validation**: Open and query the generated SQLite databases on both sides, comparing entries semantically (matching installed tools, directories, and configuration strings) while masking variable auto-incrementing IDs and timestamps.
-5. Recursively traverse and compare `.generated/ts/` and `.generated/go/`.
+5. Concurrently traverse and compare `.generated/ts/` and `.generated/go/`.
 6. If there is any mismatch, the harness must write a detailed diff to standard output and exit with exit code `1`.
 7. This parity test harness must run as the final gate in the CI script before accepting a package migration as complete.
+
+### Go-Native E2E Test Suite Migration
+
+To replace the legacy `packages/e2e-test` Bun-based testing framework once the migration is complete, we must implement a native Go end-to-end testing suite in `tests/e2e/`.
+
+#### 1. Architecture of Go-Native E2E Test Suite
+
+The Go-native E2E suite must execute real compiled binary commands against test configurations and assert actual filesystem state and logs.
+
+- **Location**: Test files must reside in `tests/e2e/`.
+- **Pre-requisite Build**: All E2E tests must depend on a compiled Go executable at `.dist/dotfiles`. The tests must locate this executable or compile it dynamically under `t.TempDir()` during the suite initialization phase if it is missing.
+- **Strict Sandbox Isolation**:
+  - Each E2E test must create an isolated sandbox directory using `t.TempDir()`.
+  - The test must configure its environment variables specifically targeting this sandbox directory (e.g. setting custom mock `HOME`, `XDG_CONFIG_HOME` pointing inside `t.TempDir()`).
+  - This eliminates global state contamination and allows safe parallel test execution (`t.Parallel()`).
+- **In-Memory and Local Mock HTTP Server**:
+  - The E2E test suite must utilize `net/http/httptest` to spin up isolated local mock HTTP servers on a per-test/per-suite basis.
+  - The mock server must emulate GitHub API endpoints (`/repos/...`), Gitea releases, and static asset download requests (e.g., serving pre-compiled mock `.tar.gz` and `.zip` archives).
+
+#### 2. E2E Test Harness Contract
+
+To facilitate straightforward test authorship, we must implement a reusable `TestHarness` struct inside `tests/e2e/harness.go`. The harness must expose the following interface:
+
+```go
+package e2e
+
+import (
+	"testing"
+)
+
+type TestHarness struct {
+	T             *testing.T
+	TempDir       string
+	BinPath       string
+	ConfigPath    string
+	MockServerURL string
+}
+
+func NewTestHarness(t *testing.T, options HarnessOptions) *TestHarness
+
+// Command execution wrappers
+func (h *TestHarness) RunCommand(args ...string) (stdout, stderr string, exitCode int, err error)
+func (h *TestHarness) Generate(args ...string) (stdout, stderr string, exitCode int, err error)
+func (h *TestHarness) Install(tools []string, args ...string) (stdout, stderr string, exitCode int, err error)
+func (h *TestHarness) Update(toolName string, args ...string) (stdout, stderr string, exitCode int, err error)
+
+// Assertions on filesystem and files
+func (h *TestHarness) AssertFileExists(path string)
+func (h *TestHarness) AssertFileContentContains(path string, expected string)
+func (h *TestHarness) AssertShimExistsAndExecutable(shimName string)
+func (h *TestHarness) AssertShellInitContains(shellType string, expected string)
+func (h *TestHarness) AssertEnvironmentVariable(toolName, varName, expectedValue string)
+func (h *TestHarness) AssertAlias(toolName, aliasName, expectedCommand string)
+func (h *TestHarness) AssertOnceScriptContains(toolName, content string)
+func (h *TestHarness) AssertAlwaysScriptContains(toolName, content string)
+
+// Assertions on the persisted SQLite database state
+func (h *TestHarness) AssertDBOperationLogged(toolName, opType, filePath string)
+func (h *TestHarness) AssertDBToolInstalled(toolName, version string)
+```
+
+#### 3. Scope of Migrated Test Coverage
+
+The migrated suite must cover the following test cases identically to the legacy implementation:
+- **`generate` command**: Assert generation of shims, shell scripts, completions, and environment initializations.
+- **`install` command**: Run system and language package installer plugins, asserting `CommandRunner` invocations and successful database-tracking writes.
+- **`update` command**: Trigger updates for installed mock tools, asserting upstream version evaluation and execution.
+- **Dependency solver**: Assert correct sorting, error on ambiguous binary dependencies, and error on missing dependencies.
+- **Conflict detection**: Assert identifying conflicts when target directories contain pre-existing unmanaged configurations or binaries.
 
 ---
 
