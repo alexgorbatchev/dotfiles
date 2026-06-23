@@ -64,6 +64,9 @@ func (g *GitHubInstaller) SupportsSudo() bool {
 }
 
 func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if g.sysCtx == nil {
+		g.sysCtx = NewDefaultSystemContext()
+	}
 	repo := getStringParam(tool.InstallParams, "repo", "")
 	if repo == "" {
 		return nil, fmt.Errorf("repository 'repo' is required in installParams")
@@ -176,9 +179,13 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 }
 
 func (g *GitHubInstaller) matchAsset(assets []githubAsset) *githubAsset {
+	sysCtx := g.sysCtx
+	if sysCtx == nil {
+		sysCtx = NewDefaultSystemContext()
+	}
 	for _, asset := range assets {
 		name := strings.ToLower(asset.Name)
-		if strings.Contains(name, g.sysCtx.OS) && (strings.Contains(name, g.sysCtx.Arch) || (g.sysCtx.Arch == "amd64" && strings.Contains(name, "x86_64")) || (g.sysCtx.Arch == "arm64" && strings.Contains(name, "aarch64"))) {
+		if strings.Contains(name, sysCtx.OS) && (strings.Contains(name, sysCtx.Arch) || (sysCtx.Arch == "amd64" && strings.Contains(name, "x86_64")) || (sysCtx.Arch == "arm64" && strings.Contains(name, "aarch64"))) {
 			return &asset
 		}
 	}

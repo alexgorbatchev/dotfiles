@@ -63,6 +63,9 @@ func (g *GiteaInstaller) SupportsSudo() bool {
 }
 
 func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if g.sysCtx == nil {
+		g.sysCtx = NewDefaultSystemContext()
+	}
 	instanceURL := getStringParam(tool.InstallParams, "instanceUrl", "https://codeberg.org")
 	repo := getStringParam(tool.InstallParams, "repo", "")
 	if repo == "" {
