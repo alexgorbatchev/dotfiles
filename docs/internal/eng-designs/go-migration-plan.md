@@ -1,6 +1,6 @@
 ---
 created_on: 2026-06-22 12:00
-last_modified: 2026-06-23 12:00
+last_modified: 2026-06-23 23:30
 status: current
 ---
 
@@ -91,6 +91,9 @@ All dependencies are resolved via `bun.lockb` and run using the Bun runtime.
 
 ## 3. Non-Negotiable Constraints
 
+- **Absolute 100% Parity (Zero Tolerated Gaps)**: The rewritten Go codebase must behave 100% identically to the legacy TypeScript implementation under all command arguments, options, execution flags (especially `--dry-run`), stdout/stderr logs, folder outputs, and SQLite database tracking states. No deliberate simplifications, architectural deviations, or tracking trade-offs are permitted.
+- **Low-Level FS Tracking (`TrackedFileSystem`)**: The `pkg/fs` module must implement a transaction-safe database tracking file system wrapper that automatically intercepts file creation, modifications, permissions, and directory operations (such as `writeFile`, `chmod`, `mkdir`) and commits corresponding entries (`OperationType`, `SizeBytes`, `Permissions`) to `registry.db` matching TS's exact low-level tracking records.
+- **Cobra CLI Command Semantics Alignment**: Go CLI subcommands must mirror TypeScript's execution flow exactly. The `generate` command must only perform standalone file generations (shims, symlinks, completions, shell profile inits) and must strictly avoid invoking full installation pipelines unless `auto: true` is configured for the tool.
 - **Language Standard**: The rewritten codebase must use Go 1.26. It must utilize newer Go features such as generic type aliases, first-class module tool directives in `go.mod`, and Go 1.26-specific `new(expr)` inline pointer allocations for simplified initializations.
 - **No Heavy Third-Party Frameworks**: Standard library features must be prioritized.
   - **HTTP requests**: Must use native `net/http` with custom transport configurations.
@@ -124,7 +127,7 @@ The folder structure must be:
 | `utils`                        | `pkg/utils`        | Pure functional helpers (strings, lists, slices).                                                              |
 | `logger`                       | `pkg/logger`       | `log/slog` wrapper implementing tab-delimited user-facing log format.                                          |
 | `arch`                         | `pkg/arch`         | OS and CPU hardware mappings, Libc detection.                                                                  |
-| `file-system`                  | `pkg/fs`           | Interface `FS` with standard OS and Mock Memory implementations.                                               |
+| `file-system`                  | `pkg/fs`           | Interface `FS` with standard OS and MemFS, and the database-transactional low-level TrackedFS interceptor.     |
 | `downloader`                   | `pkg/downloader`   | HTTP client with resume-capability, SHA256 validation.                                                         |
 | `archive-extractor`            | `pkg/archive`      | Wrapper around `archive/tar`, `archive/zip` and external format invocation.                                    |
 | `unwrap-value`                 | `pkg/unwrap`       | Pattern replacer (e.g., `{{ .Version }}`, `{{ .Arch }}`).                                                      |
@@ -138,7 +141,7 @@ The folder structure must be:
 | `symlink-generator`            | `pkg/symlink`      | Evaluator and creator of system symbolic links.                                                                |
 | `shim-generator`               | `pkg/shim`         | Generates shell executable script shims.                                                                       |
 | `virtual-env`                  | `pkg/venv`         | Manages localized environment sandboxes.                                                                       |
-| `generator-orchestrator`       | `pkg/orchestrator` | Runs generators sequentially and updates shell profile configs.                                                |
+| `generator-orchestrator`       | `pkg/orchestrator` | Coordinates standalone generators, runs auto-installs, and manages file cleanups cleanly.                      |
 | `installer`                    | `pkg/installer`    | Core interfaces, execution state management, and the 15 installer plugins.                                     |
 | `features`                     | `pkg/features`     | Handles documentation rendering, README parsing, and caching.                                                  |
 | `dashboard`                    | `pkg/dashboard`    | Embedded static dashboard webassets running on a `net/http` backend.                                           |
@@ -390,8 +393,14 @@ Instead of a monolithic main file, subcommands must be split into dedicated modu
    - Configures and exposes system parameter bindings (OS, Architecture, paths) to the global JS space.
    - Executes the tool's bundled Javascript.
    - Queries the VM for the generated configuration object and unmarshals the dynamic values directly into the concrete Go `config.ToolConfig` struct.
-2. The orchestrator maps and runs generators and installers using the evaluated `ToolConfig`.
-3. Transactionally records all successfully created directories, shims, symlinks, and files to the SQLite database via `pkg/registry`.
+2. **`dotfiles generate` Workflow**:
+   - The CLI sorts configurations topologically and executes only the decoupled standalone generators (`pkg/shim`, `pkg/symlink`, `pkg/shellinit`, `pkg/venv`). 
+   - No installation logic is triggered on non-auto tools.
+   - Low-level file system calls (such as `WriteFile`, `Remove`, `MkdirAll`, `Chmod`) are dynamically intercepted by the `TrackedFileSystem` wrapper.
+   - For every written file, `TrackedFileSystem` transactionally logs detailed `writeFile` and `chmod` rows in `registry.db` via `pkg/registry`, including calculated `size_bytes` and octal Unix `permissions`, matching TS CLI's implicit database tracking exactly.
+3. **`dotfiles install` Workflow**:
+   - The CLI sorts configurations topologically and invokes the core installer plugins (`pkg/installer`) sequentially to fetch, compile, and configure tools.
+   - Upon successful installation, the orchestrator transactionally writes `ToolInstallationRecord` entries to `registry.db` via `pkg/registry`.
 
 ---
 
@@ -472,7 +481,7 @@ To guarantee full feature parity, we must implement an automated verification ha
 4. Normalize outputs to prevent false negatives across execution platforms:
    - **Line Endings**: Convert CRLF to LF on all generated shims and configs before running bytes-by-bytes matches.
    - **Absolute Paths**: Replace host-specific directory names (e.g. `/home/alex` or `C:\Users\alex`) dynamically with `{{HOME}}` in compared logs and shims.
-   - **Database Schema Validation**: Open and query the generated SQLite databases on both sides, comparing entries semantically (matching installed tools, directories, and configuration strings) while masking variable auto-incrementing IDs and timestamps.
+    - **Database Parity Validation**: Open and query the generated SQLite databases on both sides, asserting absolute semantic parity of all rows across `file_operations`, `tool_installations`, and `tool_usage` tables (including matching calculated file sizes, file types, operation types like `writeFile` vs `chmod`, permissions, and tool metadata records), while masking only auto-incrementing primary IDs and dynamic Unix timestamps.
 5. Concurrently traverse and compare `.generated/ts/` and `.generated/go/`.
 6. If there is any mismatch, the harness must write a detailed diff to standard output and exit with exit code `1`.
 7. This parity test harness must run as the final gate in the CI script before accepting a package migration as complete.
@@ -540,6 +549,7 @@ func (h *TestHarness) AssertDBToolInstalled(toolName, version string)
 #### 3. Scope of Migrated Test Coverage
 
 The migrated suite must cover the following test cases identically to the legacy implementation:
+
 - **`generate` command**: Assert generation of shims, shell scripts, completions, and environment initializations.
 - **`install` command**: Run system and language package installer plugins, asserting `CommandRunner` invocations and successful database-tracking writes.
 - **`update` command**: Trigger updates for installed mock tools, asserting upstream version evaluation and execution.
