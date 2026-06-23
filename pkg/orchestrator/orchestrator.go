@@ -63,18 +63,39 @@ func TopologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 		toolMap[tool.Name] = tool
 	}
 
+	binaryProviders := make(map[string]string)
+	for _, tool := range tools {
+		bins := getBinaryNames(tool.Binaries)
+		if len(bins) == 0 {
+			bins = []string{tool.Name}
+		}
+		for _, bin := range bins {
+			if existing, exists := binaryProviders[bin]; exists {
+				return nil, fmt.Errorf("ambiguous dependency: binary %q is provided by multiple tools: %q and %q", bin, existing, tool.Name)
+			}
+			binaryProviders[bin] = tool.Name
+		}
+	}
+
 	adj := make(map[string][]string)
 	inDegree := make(map[string]int)
 
 	for _, tool := range tools {
 		inDegree[tool.Name] = 0
+	}
+
+	for _, tool := range tools {
 		for _, dep := range tool.Dependencies {
-			if _, exists := toolMap[dep]; exists {
-				inDegree[tool.Name]++
-				adj[dep] = append(adj[dep], tool.Name)
-			} else {
-				return nil, fmt.Errorf("tool %q depends on unregistered tool %q", tool.Name, dep)
+			provider, exists := binaryProviders[dep]
+			if !exists {
+				if _, toolExists := toolMap[dep]; toolExists {
+					provider = dep
+				} else {
+					return nil, fmt.Errorf("tool %q depends on missing dependency %q", tool.Name, dep)
+				}
 			}
+			inDegree[tool.Name]++
+			adj[provider] = append(adj[provider], tool.Name)
 		}
 	}
 

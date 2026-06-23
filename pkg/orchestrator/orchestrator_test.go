@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -161,6 +162,110 @@ func TestTopologicalSort(t *testing.T) {
 	}
 }
 
+func TestTopologicalSort_BinaryDependencies(t *testing.T) {
+	tests := []struct {
+		name        string
+		tools       []*config.ToolConfig
+		wantOrder   []string
+		wantErrSub  string
+		expectError bool
+	}{
+		{
+			name: "successful binary dependency resolution",
+			tools: []*config.ToolConfig{
+				{
+					Name:         "rust-tool",
+					Binaries:     []interface{}{"cargo", "rustc"},
+					Dependencies: []string{},
+				},
+				{
+					Name:         "my-package",
+					Binaries:     []interface{}{"my-bin"},
+					Dependencies: []string{"cargo"},
+				},
+			},
+			wantOrder:   []string{"rust-tool", "my-package"},
+			expectError: false,
+		},
+		{
+			name: "successful fallback to direct tool dependency",
+			tools: []*config.ToolConfig{
+				{
+					Name:         "rust-tool",
+					Binaries:     []interface{}{"cargo", "rustc"},
+					Dependencies: []string{},
+				},
+				{
+					Name:         "my-package",
+					Binaries:     []interface{}{"my-bin"},
+					Dependencies: []string{"rust-tool"},
+				},
+			},
+			wantOrder:   []string{"rust-tool", "my-package"},
+			expectError: false,
+		},
+		{
+			name: "ambiguous dependency error (multiple binary providers)",
+			tools: []*config.ToolConfig{
+				{
+					Name:     "tool-one",
+					Binaries: []interface{}{"duplicate-bin"},
+				},
+				{
+					Name:     "tool-two",
+					Binaries: []interface{}{"duplicate-bin"},
+				},
+				{
+					Name:         "tool-three",
+					Dependencies: []string{"duplicate-bin"},
+				},
+			},
+			expectError: true,
+			wantErrSub:  "ambiguous dependency",
+		},
+		{
+			name: "missing dependency error (no binary providers)",
+			tools: []*config.ToolConfig{
+				{
+					Name:         "tool-A",
+					Dependencies: []string{"missing-bin"},
+				},
+			},
+			expectError: true,
+			wantErrSub:  "depends on missing dependency",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := TopologicalSort(tt.tools)
+			if tt.expectError {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", tt.wantErrSub)
+				}
+				if tt.wantErrSub != "" && !strings.Contains(err.Error(), tt.wantErrSub) {
+					t.Fatalf("expected error to contain %q, got: %v", tt.wantErrSub, err)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if len(got) != len(tt.wantOrder) {
+				t.Fatalf("expected %d sorted tools, got %d", len(tt.wantOrder), len(got))
+			}
+
+			for i, w := range tt.wantOrder {
+				if got[i].Name != w {
+					t.Errorf("at index %d: expected tool name %q, got %q", i, w, got[i].Name)
+				}
+			}
+		})
+	}
+}
+
 func TestMatchesHostname(t *testing.T) {
 	if !matchesHostname("") {
 		t.Error("expected empty hostname pattern to match")
@@ -256,8 +361,10 @@ func TestOrchestrator_Install(t *testing.T) {
 		},
 	}
 
+	versionStr := "1.2.3"
 	tool := &config.ToolConfig{
 		Name:               "test-tool",
+		Version:            &versionStr,
 		InstallationMethod: "custom-method",
 		Symlinks: []config.SymlinkConfig{
 			{Source: "/home/user/src", Target: "/home/user/dest"},
@@ -314,8 +421,8 @@ func TestOrchestrator_Install(t *testing.T) {
 	if instRec == nil {
 		t.Fatal("expected tool installation record to be created, got nil")
 	}
-	if instRec.Version != "latest" {
-		t.Errorf("expected version to be 'latest', got %s", instRec.Version)
+	if instRec.Version != "1.2.3" {
+		t.Errorf("expected version to be '1.2.3', got %s", instRec.Version)
 	}
 }
 
