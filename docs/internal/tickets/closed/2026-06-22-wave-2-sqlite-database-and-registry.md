@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-22 12:00
-last_modified: 2026-06-22 12:00
+last_modified: 2026-06-23 20:50
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 2: CGO-Free SQLite Database and Registry
@@ -29,12 +29,12 @@ A fully operational, high-performance database layer that configures CGO-free co
 
 ## Acceptance criteria
 
-- [ ] `pkg/db` must utilize a zero-dependency, CGO-free, pure-Go SQLite driver (`modernc.org/sqlite`) for database connections.
-- [ ] `pkg/db` must manage a connection pool with reasonable connection limits and handle schema generation on database initialization.
-- [ ] `pkg/registry` must model database operations mapping to `FileOperationRecord` and `ToolInstallationRecord` structs.
-- [ ] All database structs must feature correct `db` tags corresponding exactly with the columns defined in Section 5 of the design document.
-- [ ] `pkg/registry` must execute database writes inside transactional blocks (`sql.Tx`) to guarantee ACID properties.
-- [ ] All database packages must achieve a minimum of 90% function-level test coverage.
-- [ ] Unit tests for database actions must run against in-memory SQLite connection pools (`file::memory:?cache=shared`) to avoid physical state pollution.
-- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] `pkg/db` must utilize a zero-dependency, CGO-free, pure-Go SQLite driver (`modernc.org/sqlite`) for database connections.
+- [x] `pkg/db` must manage a connection pool with reasonable connection limits and handle schema generation on database initialization.
+- [x] `pkg/registry` must model database operations mapping to `FileOperationRecord` and `ToolInstallationRecord` structs.
+- [x] All database structs must feature correct `db` tags corresponding exactly with the columns defined in Section 5 of the design document.
+- [x] `pkg/registry` must execute database writes inside transactional blocks (`sql.Tx`) to guarantee ACID properties.
+- [x] All database packages must achieve a minimum of 90% function-level test coverage.
+- [x] Unit tests for database actions must run against in-memory SQLite connection pools (`file::memory:?cache=shared`) to avoid physical state pollution.
+- [x] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
