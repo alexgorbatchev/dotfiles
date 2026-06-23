@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-23 11:30
-last_modified: 2026-06-23 11:30
+last_modified: 2026-06-23 22:45
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 4: Orchestrator Binary-to-Tool Dependency Resolution Alignment
@@ -31,14 +31,14 @@ An enhanced, deterministic dependency sorting engine in `pkg/orchestrator` that 
 
 ## Acceptance criteria
 
-- [ ] `pkg/orchestrator` must dynamically build a `binaryProviders` map (`map[string]string`) linking each binary name to the tool configuration that provides it.
-- [ ] If a tool declares no binaries explicitly, it must be treated as providing a binary named after itself (i.e. tool name).
-- [ ] If a binary name is declared as provided by multiple tool configurations, `TopologicalSort` must return a clear, descriptive error indicating an ambiguous dependency.
-- [ ] If a tool declares a dependency on a binary name that is not provided by any configured tool, `TopologicalSort` must return an error indicating a missing dependency.
-- [ ] Kahn's algorithm or DFS must be used to resolve dependency order based on translated tool-level dependencies.
-- [ ] Unit tests in `pkg/orchestrator/orchestrator_test.go` must assert:
+- [x] `pkg/orchestrator` must dynamically build a `binaryProviders` map (`map[string]string`) linking each binary name to the tool configuration that provides it.
+- [x] If a tool declares no binaries explicitly, it must be treated as providing a binary named after itself (i.e. tool name).
+- [x] If a binary name is declared as provided by multiple tool configurations, `TopologicalSort` must return a clear, descriptive error indicating an ambiguous dependency.
+- [x] If a tool declares a dependency on a binary name that is not provided by any configured tool, `TopologicalSort` must return an error indicating a missing dependency.
+- [x] Kahn's algorithm or DFS must be used to resolve dependency order based on translated tool-level dependencies.
+- [x] Unit tests in `pkg/orchestrator/orchestrator_test.go` must assert:
   - Successful binary-to-tool resolution and sorting.
   - Error on ambiguous binary dependencies (multiple providers).
   - Error on missing binary dependencies (no providers).
-- [ ] Unit tests for `pkg/orchestrator` must maintain a minimum of 90% function-level coverage.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Unit tests for `pkg/orchestrator` must maintain a minimum of 90% function-level coverage.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
