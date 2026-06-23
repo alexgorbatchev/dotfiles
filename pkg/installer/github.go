@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -99,6 +100,9 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	}
 
 	token := getStringParam(tool.InstallParams, "token", "")
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+	}
 	if token != "" {
 		req.Header.Set("Authorization", "token "+token)
 	}
