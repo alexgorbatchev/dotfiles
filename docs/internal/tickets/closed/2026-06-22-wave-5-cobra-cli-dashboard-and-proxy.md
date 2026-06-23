@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-22 12:00
-last_modified: 2026-06-22 12:00
+last_modified: 2026-06-23 12:00
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 5: Modular Cobra CLI Subcommands, Caching Proxy Server, and Embedded Static Web Dashboard Server
@@ -39,12 +39,12 @@ A unified executable entry point that exposes clean, modular Cobra commands matc
 
 ## Acceptance criteria
 
-- [ ] The CLI entry point must utilize `github.com/spf13/cobra` to parse terminal options.
-- [ ] The CLI must define modular subcommands split into separate files under `cmd/dotfiles/` to ensure readability and maintainability.
-- [ ] All CLI options, commands, and subcommands must map exactly to the API surface defined in Section 10 of the design document.
-- [ ] `pkg/dashboard` must serve pre-compiled dashboard frontend assets using the `//go:embed` directive and standard library `http.FileServer`.
-- [ ] `pkg/proxy` must implement a local HTTP asset caching proxy using `net/http`.
-- [ ] All CLI commands and package engines must achieve a minimum of 90% function-level test coverage.
-- [ ] Test suites for CLI subcommands must capture stdout/stderr and assert output structure.
-- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] The CLI entry point must utilize `github.com/spf13/cobra` to parse terminal options.
+- [x] The CLI must define modular subcommands split into separate files under `cmd/dotfiles/` to ensure readability and maintainability.
+- [x] All CLI options, commands, and subcommands must map exactly to the API surface defined in Section 10 of the design document.
+- [x] `pkg/dashboard` must serve pre-compiled dashboard frontend assets using the `//go:embed` directive and standard library `http.FileServer`.
+- [x] `pkg/proxy` must implement a local HTTP asset caching proxy using `net/http`.
+- [x] All CLI commands and package engines must achieve a minimum of 90% function-level test coverage.
+- [x] Test suites for CLI subcommands must capture stdout/stderr and assert output structure.
+- [x] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
