@@ -120,6 +120,24 @@ func InitializeSchema(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("failed to migrate install_method column: %w", err)
 	}
 
+	// 3. Create tool_usage table
+	toolUsageSchema := `
+	CREATE TABLE IF NOT EXISTS tool_usage (
+		tool_name TEXT NOT NULL,
+		binary_name TEXT NOT NULL,
+		usage_count INTEGER NOT NULL DEFAULT 0,
+		last_used_at INTEGER NOT NULL,
+		PRIMARY KEY (tool_name, binary_name)
+	);`
+
+	if _, err := db.ExecContext(ctx, toolUsageSchema); err != nil {
+		return fmt.Errorf("failed to create tool_usage table: %w", err)
+	}
+
+	if _, err := db.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS idx_tool_usage_tool_name ON tool_usage(tool_name);"); err != nil {
+		return fmt.Errorf("failed to create index for tool_usage: %w", err)
+	}
+
 	return nil
 }
 

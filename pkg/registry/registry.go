@@ -39,6 +39,13 @@ type ToolInstallationRecord struct {
 	InstallMethod     *string `db:"install_method"`
 }
 
+type ToolUsageRecord struct {
+	ToolName   string `db:"tool_name" json:"toolName"`
+	BinaryName string `db:"binary_name" json:"binaryName"`
+	UsageCount int    `db:"usage_count" json:"usageCount"`
+	LastUsedAt int64  `db:"last_used_at" json:"lastUsedAt"`
+}
+
 type FileState struct {
 	FilePath      string  `json:"filePath"`
 	ToolName      string  `json:"toolName"`
@@ -466,6 +473,118 @@ func (r *Registry) GetAllToolInstallations(ctx context.Context) ([]*ToolInstalla
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning tool installation record list: %w", err)
+		}
+		records = append(records, &rec)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+// RecordToolUsage persists a tool usage record.
+func (r *Registry) RecordToolUsage(ctx context.Context, tx *sql.Tx, record *ToolUsageRecord) error {
+	if tx == nil {
+		return ErrTransactionRequired
+	}
+
+	query := `
+	INSERT OR REPLACE INTO tool_usage (
+		tool_name, binary_name, usage_count, last_used_at
+	) VALUES (?, ?, ?, ?);`
+
+	_, err := tx.ExecContext(ctx, query,
+		record.ToolName,
+		record.BinaryName,
+		record.UsageCount,
+		record.LastUsedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("recording tool usage: %w", err)
+	}
+
+	return nil
+}
+
+// GetToolUsage retrieves a tool usage record by name and binary.
+func (r *Registry) GetToolUsage(ctx context.Context, toolName, binaryName string) (*ToolUsageRecord, error) {
+	query := `
+	SELECT tool_name, binary_name, usage_count, last_used_at
+	FROM tool_usage WHERE tool_name = ? AND binary_name = ?;`
+
+	row := r.db.QueryRowContext(ctx, query, toolName, binaryName)
+
+	var rec ToolUsageRecord
+	err := row.Scan(
+		&rec.ToolName,
+		&rec.BinaryName,
+		&rec.UsageCount,
+		&rec.LastUsedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scanning tool usage record: %w", err)
+	}
+
+	return &rec, nil
+}
+
+// GetToolUsagesForTool retrieves all usage records for a specific tool.
+func (r *Registry) GetToolUsagesForTool(ctx context.Context, toolName string) ([]*ToolUsageRecord, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT tool_name, binary_name, usage_count, last_used_at 
+		FROM tool_usage 
+		WHERE tool_name = ? 
+		ORDER BY binary_name
+	`, toolName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []*ToolUsageRecord
+	for rows.Next() {
+		var u ToolUsageRecord
+		if err := rows.Scan(&u.ToolName, &u.BinaryName, &u.UsageCount, &u.LastUsedAt); err != nil {
+			return nil, err
+		}
+		results = append(results, &u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+// GetToolUsages retrieves all usage records in the database.
+func (r *Registry) GetToolUsages(ctx context.Context) ([]*ToolUsageRecord, error) {
+	query := `
+	SELECT tool_name, binary_name, usage_count, last_used_at
+	FROM tool_usage ORDER BY tool_name ASC, binary_name ASC;`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("querying tool usages: %w", err)
+	}
+	defer rows.Close()
+
+	var records []*ToolUsageRecord
+	for rows.Next() {
+		var rec ToolUsageRecord
+		err := rows.Scan(
+			&rec.ToolName,
+			&rec.BinaryName,
+			&rec.UsageCount,
+			&rec.LastUsedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scanning tool usage record list: %w", err)
 		}
 		records = append(records, &rec)
 	}
