@@ -33,9 +33,17 @@ var installCmd = &cobra.Command{
 					break
 				}
 				for _, b := range tc.Binaries {
-					if bStr, ok := b.(string); ok && bStr == toolName {
-						targetTool = tc
-						break
+					switch val := b.(type) {
+					case string:
+						if val == toolName {
+							targetTool = tc
+							break
+						}
+					case map[string]interface{}:
+						if bName, ok := val["name"].(string); ok && bName == toolName {
+							targetTool = tc
+							break
+						}
 					}
 				}
 				if targetTool != nil {

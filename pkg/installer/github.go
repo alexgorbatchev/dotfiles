@@ -201,6 +201,7 @@ func init() {
 		fsys:       &fs.OSFS{},
 		dl:         downloader.NewDownloader(&fs.OSFS{}, nil),
 		extractor:  archive.NewExtractor(&fs.OSFS{}, exec.NewOSRunner()),
+		sysCtx:     NewDefaultSystemContext(),
 		httpClient: http.DefaultClient,
 	})
 }

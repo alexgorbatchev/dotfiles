@@ -141,10 +141,19 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 					break
 				}
 				for _, b := range provider.Binaries {
-					if bStr, ok := b.(string); ok && bStr == dep {
-						tc.Dependencies[idx] = provider.Name
-						foundProvider = true
-						break
+					switch val := b.(type) {
+					case string:
+						if val == dep {
+							tc.Dependencies[idx] = provider.Name
+							foundProvider = true
+							break
+						}
+					case map[string]interface{}:
+						if bName, ok := val["name"].(string); ok && bName == dep {
+							tc.Dependencies[idx] = provider.Name
+							foundProvider = true
+							break
+						}
 					}
 				}
 				if foundProvider {
