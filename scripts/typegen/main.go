@@ -25,6 +25,15 @@ func main() {
 	t.Add(config.ShellInstallConfig{})
 	t.Add(config.FeaturesConfig{})
 	t.Add(config.ProjectConfig{})
+	t.Add(config.BinaryConfig{})
+	t.Add(config.SymlinkConfig{})
+	t.Add(config.CopyConfig{})
+	t.Add(config.ShellScript{})
+	t.Add(config.ShellTypeConfig{})
+	t.Add(config.ShellConfigs{})
+	t.Add(config.ToolConfigUpdateCheck{})
+	t.Add(config.PlatformConfigEntry{})
+	t.Add(config.ToolConfig{})
 
 	outputPath := "packages/core/src/types.gen.ts"
 	err := t.ConvertToFile(outputPath)
