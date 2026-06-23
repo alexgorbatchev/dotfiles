@@ -35,6 +35,11 @@ func (n *NpmInstaller) SupportsSudo() bool {
 }
 
 func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if IsDryRun() {
+		return &InstallResult{
+			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+		}, nil
+	}
 	pkgManager := getStringParam(tool.InstallParams, "packageManager", "npm")
 	pkgName := getStringParam(tool.InstallParams, "package", tool.Name)
 	force := getBoolParam(tool.InstallParams, "force", false)

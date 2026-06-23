@@ -36,6 +36,11 @@ func (d *DnfInstaller) SupportsSudo() bool {
 }
 
 func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if IsDryRun() {
+		return &InstallResult{
+			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+		}, nil
+	}
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
 	refresh := getBoolParam(tool.InstallParams, "refresh", false)
 	version := ""

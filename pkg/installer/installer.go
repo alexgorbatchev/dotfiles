@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
@@ -188,4 +189,33 @@ func getStringSliceParam(params map[string]interface{}, key string) []string {
 		return slice
 	}
 	return nil
+}
+
+// IsDryRun checks if the dry-run flag is present in the command-line arguments.
+func IsDryRun() bool {
+	for _, arg := range os.Args {
+		if arg == "--dry-run" || arg == "-d" {
+			return true
+		}
+	}
+	return false
+}
+
+// GetBinaryNames returns the binary names declared in a tool config's Binaries slice.
+func GetBinaryNames(toolName string, toolBinaries []interface{}) []string {
+	names := make([]string, 0, len(toolBinaries))
+	for _, b := range toolBinaries {
+		switch val := b.(type) {
+		case string:
+			names = append(names, val)
+		case map[string]interface{}:
+			if name, ok := val["name"].(string); ok {
+				names = append(names, name)
+			}
+		}
+	}
+	if len(names) == 0 {
+		names = []string{toolName}
+	}
+	return names
 }

@@ -40,6 +40,11 @@ func (c *CurlBinaryInstaller) SupportsSudo() bool {
 }
 
 func (c *CurlBinaryInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if IsDryRun() {
+		return &InstallResult{
+			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+		}, nil
+	}
 	url := getStringParam(tool.InstallParams, "url", "")
 	if url == "" {
 		return nil, fmt.Errorf("URL not specified in installParams")

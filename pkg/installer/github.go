@@ -65,6 +65,11 @@ func (g *GitHubInstaller) SupportsSudo() bool {
 }
 
 func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if IsDryRun() {
+		return &InstallResult{
+			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+		}, nil
+	}
 	if g.sysCtx == nil {
 		g.sysCtx = NewDefaultSystemContext()
 	}

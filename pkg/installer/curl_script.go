@@ -40,6 +40,11 @@ func (c *CurlScriptInstaller) SupportsSudo() bool {
 }
 
 func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if IsDryRun() {
+		return &InstallResult{
+			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+		}, nil
+	}
 	url := getStringParam(tool.InstallParams, "url", "")
 	shell := getStringParam(tool.InstallParams, "shell", "sh")
 	if url == "" {

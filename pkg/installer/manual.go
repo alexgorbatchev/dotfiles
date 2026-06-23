@@ -37,6 +37,11 @@ func (m *ManualInstaller) SupportsSudo() bool {
 }
 
 func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if IsDryRun() {
+		return &InstallResult{
+			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+		}, nil
+	}
 	binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")
 
 	if binaryPath != "" {

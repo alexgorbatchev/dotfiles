@@ -46,6 +46,11 @@ func (b *BrewInstaller) SupportsSudo() bool {
 }
 
 func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if IsDryRun() {
+		return &InstallResult{
+			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+		}, nil
+	}
 	formula := getStringParam(tool.InstallParams, "formula", tool.Name)
 	isCask := getBoolParam(tool.InstallParams, "cask", false)
 	taps := getStringSliceParam(tool.InstallParams, "tap")

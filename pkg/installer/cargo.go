@@ -36,6 +36,11 @@ func (c *CargoInstaller) SupportsSudo() bool {
 }
 
 func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if IsDryRun() {
+		return &InstallResult{
+			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+		}, nil
+	}
 	crateName := getStringParam(tool.InstallParams, "crateName", tool.Name)
 	version := ""
 	if tool.Version != nil {

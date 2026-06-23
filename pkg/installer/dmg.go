@@ -40,6 +40,11 @@ func (d *DmgInstaller) SupportsSudo() bool {
 }
 
 func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if IsDryRun() {
+		return &InstallResult{
+			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+		}, nil
+	}
 	// Silent skip on non-macOS platforms
 	if d.sysCtx.OS != "darwin" {
 		return &InstallResult{

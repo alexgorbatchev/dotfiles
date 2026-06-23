@@ -36,6 +36,11 @@ func (a *AptInstaller) SupportsSudo() bool {
 }
 
 func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if IsDryRun() {
+		return &InstallResult{
+			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+		}, nil
+	}
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
 	update := getBoolParam(tool.InstallParams, "update", false)
 	version := ""
