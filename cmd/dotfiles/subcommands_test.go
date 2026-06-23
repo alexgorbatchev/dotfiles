@@ -2,8 +2,12 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
 func executeCommand(args ...string) (string, error) {
@@ -115,5 +119,44 @@ func TestSubcommands(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBootstrapAndExecutionSideEffects(t *testing.T) {
+	ctx := context.Background()
+	// Force dryRun = true for in-memory DB and MemFS simulation
+	dryRun = true
+	services, err := BootstrapServices(ctx, "test-project-npm/dotfiles.config.ts")
+	if err != nil {
+		t.Fatalf("bootstrap failed: %v", err)
+	}
+	defer services.DB.Close()
+
+	if services.ProjectConfig.Paths.HomeDir == "" {
+		t.Errorf("expected loaded config, got empty HomeDir")
+	}
+
+	// Run install tools on orchestrator
+	err = services.Orchestrator.InstallTools(ctx, services.ToolConfigs, services.ProjectConfig)
+	if err != nil {
+		t.Fatalf("orchestrator install failed: %v", err)
+	}
+
+	// Assert database mutations occurred!
+	ops, err := services.Registry.GetFileOperations(ctx, registry.FileOperationFilter{})
+	if err != nil {
+		t.Fatalf("failed to query registry operations: %v", err)
+	}
+	if len(ops) == 0 {
+		t.Errorf("expected registry database mutations (file operations recorded), got 0")
+	}
+
+	// Assert filesystem side-effects in MemFS!
+	exists, err := services.FS.Exists(filepath.Join(services.ProjectConfig.Paths.TargetDir, "bat"))
+	if err != nil {
+		t.Fatalf("FS check failed: %v", err)
+	}
+	if !exists {
+		t.Errorf("expected target shim 'bat' to be created in MemFS, but it is missing")
 	}
 }

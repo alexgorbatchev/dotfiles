@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-22 12:00
-last_modified: 2026-06-23 11:45
+last_modified: 2026-06-23 12:00
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 5: Modular Cobra CLI Subcommands, Caching Proxy Server, and Embedded Static Web Dashboard Server
@@ -52,17 +52,17 @@ A unified executable entry point that exposes clean, modular Cobra commands matc
 - [x] `pkg/dashboard` must serve pre-compiled dashboard frontend assets using the `//go:embed` directive and standard library `http.FileServer`.
 - [x] `pkg/proxy` must implement a local HTTP asset caching proxy using `net/http`.
 
-### Strict Command Wiring (Unfinished / Reopened)
-- [ ] The CLI commands (`generate`, `install`, `uninstall`, etc.) must NOT be stubs. They must be fully wired to the core `Orchestrator` engine (`pkg/orchestrator`), the SQLite connection pool (`pkg/db`), and the `Registry` model layers.
-- [ ] The `generate` command must load the project configuration using `pkg/config`, sort tool dependencies topologically, execute shim/symlink generation, and write tracking records to the SQLite database.
-- [ ] The `install` and `uninstall` commands must call the orchestrator's installation/uninstallation pipelines, downloading, executing, and persisting states accordingly.
-- [ ] Subcommand unit tests inside `cmd/dotfiles/subcommands_test.go` must be enhanced to assert actual filesystem side-effects (e.g. verifying shims and configs are created) and database mutations rather than checking log lines.
+### Strict Command Wiring (Completed)
+- [x] The CLI commands (`generate`, `install`, `uninstall`, etc.) must NOT be stubs. They must be fully wired to the core `Orchestrator` engine (`pkg/orchestrator`), the SQLite connection pool (`pkg/db`), and the `Registry` model layers.
+- [x] The `generate` command must load the project configuration using `pkg/config`, sort tool dependencies topologically, execute shim/symlink generation, and write tracking records to the SQLite database.
+- [x] The `install` and `uninstall` commands must call the orchestrator's installation/uninstallation pipelines, downloading, executing, and persisting states accordingly.
+- [x] Subcommand unit tests inside `cmd/dotfiles/subcommands_test.go` must be enhanced to assert actual filesystem side-effects (e.g. verifying shims and configs are created) and database mutations rather than checking log lines.
 
-### Database Schema Extension (Unfinished / Reopened)
-- [ ] The sqlite database schema in `pkg/db/db.go` must be extended to initialize and migrate the `tool_usage` table and `idx_tool_usage_tool_name` index identically to the TypeScript implementation.
-- [ ] `pkg/registry` must provide Go models and transaction-safe querying functions to insert, update, and fetch usage metrics for the `tool_usage` table.
+### Database Schema Extension (Completed)
+- [x] The sqlite database schema in `pkg/db/db.go` must be extended to initialize and migrate the `tool_usage` table and `idx_tool_usage_tool_name` index identically to the TypeScript implementation.
+- [x] `pkg/registry` must provide Go models and transaction-safe querying functions to insert, update, and fetch usage metrics for the `tool_usage` table.
 
 ### Coverage & Sign-off
-- [ ] All CLI commands and package engines must achieve a minimum of 90% function-level test coverage.
-- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] All CLI commands and package engines must achieve a minimum of 90% function-level test coverage.
+- [x] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
