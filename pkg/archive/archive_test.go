@@ -62,9 +62,9 @@ func TestExtractorZip(t *testing.T) {
 	ext := NewExtractor(memFS, runner)
 
 	files := map[string]string{
-		"file1.txt":      "content1",
-		"sub/file2.txt":  "content2",
-		"dir/":           "", // Directory entry
+		"file1.txt":     "content1",
+		"sub/file2.txt": "content2",
+		"dir/":          "", // Directory entry
 	}
 
 	zipBytes, err := createZipBytes(files)

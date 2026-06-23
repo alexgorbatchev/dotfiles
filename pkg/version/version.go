@@ -79,15 +79,15 @@ func MatchesConstraint(versionStr string, constraint string) bool {
 		if semver.Compare(cleanVer, base) < 0 {
 			return false
 		}
-		
+
 		baseNoV := strings.TrimPrefix(base, "v")
 		if idx := strings.IndexAny(baseNoV, "-+"); idx != -1 {
 			baseNoV = baseNoV[:idx]
 		}
-		
+
 		var major, minor, patch int
 		_, _ = fmt.Sscanf(baseNoV, "%d.%d.%d", &major, &minor, &patch)
-		
+
 		var limit string
 		if major > 0 {
 			limit = fmt.Sprintf("v%d.0.0", major+1)
@@ -96,7 +96,7 @@ func MatchesConstraint(versionStr string, constraint string) bool {
 		} else {
 			limit = fmt.Sprintf("v0.0.%d", patch+1)
 		}
-		
+
 		return semver.Compare(cleanVer, limit) < 0
 	}
 

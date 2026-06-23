@@ -47,7 +47,7 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 		if err != nil {
 			return fmt.Errorf("opening file to check size: %w", err)
 		}
-		
+
 		if stater, ok := rc.(interface{ Stat() (os.FileInfo, error) }); ok {
 			info, err := stater.Stat()
 			if err != nil {
