@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-22 12:00
-last_modified: 2026-06-22 12:00
-status: current
-ticket_status: open
+last_modified: 2026-06-23 15:30
+status: archived
+ticket_status: closed
 ---
 
 # Wave 3: Profile Shell Script Injector, Symlink Evaluator, Shim Generator, Virtual Sandbox Environment, and Readme Cache Processor
@@ -33,13 +33,13 @@ Clean, portable, concurrent Go engines that handle symlink paths, shell profile 
 
 ## Acceptance criteria
 
-- [ ] `pkg/shell` must generate path extension directives, aliases, and export environments.
-- [ ] `pkg/shellinit` must support parsing and editing main shell profile configurations (`.zshrc`, `.bashrc`, `.profile`) to inject startup script wrappers.
-- [ ] `pkg/symlink` must evaluate and safely create symbolic links on the system, verifying target destinations.
-- [ ] `pkg/shim` must generate native shell executable wrapper script shims.
-- [ ] `pkg/venv` must configure localized path-isolated sandbox environments.
-- [ ] `pkg/features` must parse markdown files, extract metadata, and cache tool readmes.
-- [ ] All package utilities must achieve a minimum of 90% function-level test coverage.
-- [ ] All file system actions in tests must use the mock file system `pkg/fs.MemFS` or `t.TempDir()` rather than mutating active developer paths.
-- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] `pkg/shell` must generate path extension directives, aliases, and export environments.
+- [x] `pkg/shellinit` must support parsing and editing main shell profile configurations (`.zshrc`, `.bashrc`, `.profile`) to inject startup script wrappers.
+- [x] `pkg/symlink` must evaluate and safely create symbolic links on the system, verifying target destinations.
+- [x] `pkg/shim` must generate native shell executable wrapper script shims.
+- [x] `pkg/venv` must configure localized path-isolated sandbox environments.
+- [x] `pkg/features` must parse markdown files, extract metadata, and cache tool readmes.
+- [x] All package utilities must achieve a minimum of 90% function-level test coverage.
+- [x] All file system actions in tests must use the mock file system `pkg/fs.MemFS` or `t.TempDir()` rather than mutating active developer paths.
+- [x] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
