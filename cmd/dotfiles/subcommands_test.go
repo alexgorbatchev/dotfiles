@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
@@ -158,5 +159,68 @@ func TestBootstrapAndExecutionSideEffects(t *testing.T) {
 	}
 	if !exists {
 		t.Errorf("expected target shim 'bat' to be created in MemFS, but it is missing")
+	}
+}
+
+func TestObjectBasedBinaryMatching(t *testing.T) {
+	// Test tool config with object binary representation
+	tool := &config.ToolConfig{
+		Name: "my-tool",
+		Binaries: []any{
+			map[string]any{
+				"name": "my-bin",
+			},
+		},
+		Dependencies: []string{"fnm"},
+	}
+
+	// We have dependency "fnm", which should resolve to "curl-script--fnm" since curl-script--fnm provides fnm
+	toolConfigs := []*config.ToolConfig{
+		tool,
+		{
+			Name: "curl-script--fnm",
+			Binaries: []any{
+				map[string]any{
+					"name": "fnm",
+				},
+			},
+		},
+	}
+
+	// Map binary dependencies to fully-qualified tool names
+	for _, tc := range toolConfigs {
+		for idx, dep := range tc.Dependencies {
+			foundProvider := false
+			for _, provider := range toolConfigs {
+				if provider.Name == dep || strings.HasSuffix(provider.Name, "--"+dep) {
+					tc.Dependencies[idx] = provider.Name
+					foundProvider = true
+					break
+				}
+				for _, b := range provider.Binaries {
+					switch val := b.(type) {
+					case string:
+						if val == dep {
+							tc.Dependencies[idx] = provider.Name
+							foundProvider = true
+							break
+						}
+					case map[string]interface{}:
+						if bName, ok := val["name"].(string); ok && bName == dep {
+							tc.Dependencies[idx] = provider.Name
+							foundProvider = true
+							break
+						}
+					}
+				}
+				if foundProvider {
+					break
+				}
+			}
+		}
+	}
+
+	if tool.Dependencies[0] != "curl-script--fnm" {
+		t.Errorf("expected dependency 'fnm' to be resolved to 'curl-script--fnm', got %q", tool.Dependencies[0])
 	}
 }

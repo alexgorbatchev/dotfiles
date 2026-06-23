@@ -135,3 +135,30 @@ func TestGitHubInstaller(t *testing.T) {
 		}
 	})
 }
+
+func TestGitHubInstaller_ConcurrentAccess(t *testing.T) {
+	// Retrieve the registered global singleton
+	inst, err := Get("github-release")
+	if err != nil {
+		t.Fatalf("failed to find github-release installer: %v", err)
+	}
+
+	ghInst, ok := inst.(*GitHubInstaller)
+	if !ok {
+		t.Fatalf("registered installer is not *GitHubInstaller")
+	}
+
+	// Read and invoke matchAsset concurrently to check for data races
+	const goroutines = 20
+	done := make(chan bool)
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			_ = ghInst.matchAsset([]githubAsset{{Name: "test-linux-amd64"}})
+			done <- true
+		}()
+	}
+
+	for i := 0; i < goroutines; i++ {
+		<-done
+	}
+}
