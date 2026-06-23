@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-22 12:00
-last_modified: 2026-06-22 12:00
+last_modified: 2026-06-23 14:00
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 1: Subprocess Execution Driver, Sobek JavaScript VM Sandboxed Environment, and Type Generator
@@ -34,16 +34,16 @@ An isolated execution layer that compiles `.tool.ts` files into Javascript durin
 
 ## Acceptance criteria
 
-- [ ] `pkg/exec` must define the `CommandRunner` and `Cmd` interfaces to abstract terminal commands.
-- [ ] `pkg/exec/os_runner.go` must implement `CommandRunner` using the native `os/exec` package.
-- [ ] `pkg/exec/mock_runner.go` must implement `CommandRunner` to allow mocking of CLI command outputs and testing command arguments.
-- [ ] `pkg/vm` must initialize the pure-Go **Sobek** (`github.com/grafana/sobek`) JavaScript VM.
-- [ ] `pkg/vm` must export `EvaluateToolDefinition` to execute bundled JavaScript scripts in the Sobek VM and marshal output directly into Go config structures.
-- [ ] `pkg/vm/bindings.go` must register and expose essential Go utility functions (like platform indicators, OS paths, and helpers) directly inside the Sobek global context.
-- [ ] `pkg/vm/embed_gen.go` must utilize `//go:embed` directives to load pre-bundled `.tool.js` assets from `pkg/vm/dist/`.
-- [ ] `scripts/typegen` must compile a binary that executes `typescriptify-golang-structs` to convert `pkg/config/config.go` structs into equivalent TypeScript interfaces at `packages/core/src/types.gen.ts`.
-- [ ] The generated JavaScript files in `pkg/vm/dist/` must be excluded in `.gitignore` to prevent pre-compiled bundles from being checked into the repository.
-- [ ] Every package in this ticket must be covered by unit tests, achieving a minimum of 90% function-level coverage.
-- [ ] All VM execution tests must run against static mock scripts embedded in testing tables rather than referencing external files.
-- [ ] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] `pkg/exec` must define the `CommandRunner` and `Cmd` interfaces to abstract terminal commands.
+- [x] `pkg/exec/os_runner.go` must implement `CommandRunner` using the native `os/exec` package.
+- [x] `pkg/exec/mock_runner.go` must implement `CommandRunner` to allow mocking of CLI command outputs and testing command arguments.
+- [x] `pkg/vm` must initialize the pure-Go **Sobek** (`github.com/grafana/sobek`) JavaScript VM.
+- [x] `pkg/vm` must export `EvaluateToolDefinition` to execute bundled JavaScript scripts in the Sobek VM and marshal output directly into Go config structures.
+- [x] `pkg/vm/bindings.go` must register and expose essential Go utility functions (like platform indicators, OS paths, and helpers) directly inside the Sobek global context.
+- [x] `pkg/vm/embed_gen.go` must utilize `//go:embed` directives to load pre-bundled `.tool.js` assets from `pkg/vm/dist/`.
+- [x] `scripts/typegen` must compile a binary that executes `typescriptify-golang-structs` to convert `pkg/config/config.go` structs into equivalent TypeScript interfaces at `packages/core/src/types.gen.ts`.
+- [x] The generated JavaScript files in `pkg/vm/dist/` must be excluded in `.gitignore` to prevent pre-compiled bundles from being checked into the repository.
+- [x] Every package in this ticket must be covered by unit tests, achieving a minimum of 90% function-level coverage.
+- [x] All VM execution tests must run against static mock scripts embedded in testing tables rather than referencing external files.
+- [x] The work must be reviewed by a sub-agent, and all issues must be addressed until the sub-agent reviewing the code returns no further issues.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
