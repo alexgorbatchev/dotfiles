@@ -173,9 +173,12 @@ export class NodeFetchStrategy implements IDownloadStrategy {
   }
 
   private async processResponseStream(response: Response, url: string, onProgress?: ProgressCallback): Promise<Buffer> {
+    const contentEncoding = response.headers.get("content-encoding");
+    const isCompressed = contentEncoding && contentEncoding.toLowerCase() !== "identity";
+
     const contentLength = response.headers.get("content-length");
     let totalBytes: number | null = null;
-    if (contentLength) {
+    if (contentLength && !isCompressed) {
       const parsedTotal = parseInt(contentLength, 10);
       if (!Number.isNaN(parsedTotal)) {
         totalBytes = parsedTotal;

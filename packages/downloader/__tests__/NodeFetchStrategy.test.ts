@@ -476,6 +476,17 @@ describe("NodeFetchStrategy", () => {
       }
     });
 
+    it("should not throw NetworkError if downloaded size does not match content-length but content-encoding is present", async () => {
+      fetchMockHelper.mockResponseOnce({
+        body: "short",
+        status: 200,
+        headers: { "Content-Length": "100", "Content-Encoding": "gzip" },
+      });
+      const result = await strategy.download(testUrl, {});
+      assert(result);
+      expect(result.toString()).toBe("short");
+    });
+
     it("should correctly parse headers into Record in error object", async () => {
       const headers = { "Content-Type": "application/json", "X-Custom-Header": "CustomValue" };
       fetchMockHelper.mockResponseOnce({ body: "Bad Request", status: 400, headers });
