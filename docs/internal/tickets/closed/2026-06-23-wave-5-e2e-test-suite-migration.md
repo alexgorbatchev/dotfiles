@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-23 12:00
-last_modified: 2026-06-23 12:00
+last_modified: 2026-06-23 18:00
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 5: Go-Native End-to-End Test Suite Migration
@@ -36,17 +36,17 @@ A highly robust, parallelizable, and isolated Go E2E test suite located in `test
 
 ## Acceptance criteria
 
-- [ ] Implement `tests/e2e/harness.go` defining a reusable `TestHarness` struct conforming exactly to the structural interface and all 15 method signatures specified in Section 12, Subsection 2 of `docs/internal/eng-designs/go-migration-plan.md`.
-- [ ] Implement dynamic compiled binary discovery inside `tests/e2e/harness.go` that locates the executable at `.dist/dotfiles` or dynamically compiles it under `t.TempDir()` during initialization.
-- [ ] Each E2E test in the suite must utilize `t.TempDir()` to construct a guaranteed isolated sandbox workspace for config, binary, and shell files, and execute with parallel safety using `t.Parallel()`.
-- [ ] The harness must explicitly override environment variables, specifically including `HOME`, `XDG_CONFIG_HOME`, and any stateful environment variables, to point inside the `t.TempDir()` sandbox to prevent global user environment mutation.
-- [ ] Incorporate local mock HTTP servers inside E2E tests using `net/http/httptest` simulating GitHub API endpoints (`/repos/...`), Gitea releases, and serving mock binary test assets (`.tar.gz` and `.zip` archives) without external network access.
-- [ ] Migrate `generate` command tests in `tests/e2e/generate_test.go` asserting correct output for shims, exports, aliases, always scripts, once scripts, completions, and stale symlink removal.
-- [ ] Migrate `install` command and hook tests in `tests/e2e/install_test.go` asserting installer plugin execution, fake package managers (apt/dnf/pacman), state registry SQLite updates, and pre/post-install hook execution (validating stdout/stderr logging formatting and prefixes).
-- [ ] Migrate `trace` and logging configuration tests in `tests/e2e/trace_test.go` asserting that `--trace` displays correct `.go:line` locations in warning/info logs, default execution hides file locations, and `--quiet` fully suppresses output.
-- [ ] Migrate `update` command tests in `tests/e2e/update_test.go` asserting semver checks, local/remote version comparison, and upgrade triggers.
-- [ ] Migrate dependency sorting tests in `tests/e2e/dependency_test.go` asserting binary-to-tool topological sorting, ambiguous binary provider errors, and missing binary errors.
-- [ ] Migrate conflict detection tests in `tests/e2e/conflict_test.go` asserting accurate detection of pre-existing files, unmanaged shims, and bin name collisions.
-- [ ] All migrated E2E tests must execute and pass cleanly when running `go test ./tests/e2e/...`.
-- [ ] Integrate the Go E2E suite execution command (`go test ./tests/e2e/...`) into the root `package.json` scripts (`"test:all"`, `"test:native"`, `"check"`, `"check:ci"`) so they execute as part of local and CI checks.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Implement `tests/e2e/harness.go` defining a reusable `TestHarness` struct conforming exactly to the structural interface and all 15 method signatures specified in Section 12, Subsection 2 of `docs/internal/eng-designs/go-migration-plan.md`.
+- [x] Implement dynamic compiled binary discovery inside `tests/e2e/harness.go` that locates the executable at `.dist/dotfiles` or dynamically compiles it under `t.TempDir()` during initialization.
+- [x] Each E2E test in the suite must utilize `t.TempDir()` to construct a guaranteed isolated sandbox workspace for config, binary, and shell files, and execute with parallel safety using `t.Parallel()`.
+- [x] The harness must explicitly override environment variables, specifically including `HOME`, `XDG_CONFIG_HOME`, and any stateful environment variables, to point inside the `t.TempDir()` sandbox to prevent global user environment mutation.
+- [x] Incorporate local mock HTTP servers inside E2E tests using `net/http/httptest` simulating GitHub API endpoints (`/repos/...`), Gitea releases, and serving mock binary test assets (`.tar.gz` and `.zip` archives) without external network access.
+- [x] Migrate `generate` command tests in `tests/e2e/generate_test.go` asserting correct output for shims, exports, aliases, always scripts, once scripts, completions, and stale symlink removal.
+- [x] Migrate `install` command and hook tests in `tests/e2e/install_test.go` asserting installer plugin execution, fake package managers (apt/dnf/pacman), state registry SQLite updates, and pre/post-install hook execution (validating stdout/stderr logging formatting and prefixes).
+- [x] Migrate `trace` and logging configuration tests in `tests/e2e/trace_test.go` asserting that `--trace` displays correct `.go:line` locations in warning/info logs, default execution hides file locations, and `--quiet` fully suppresses output.
+- [x] Migrate `update` command tests in `tests/e2e/update_test.go` asserting semver checks, local/remote version comparison, and upgrade triggers.
+- [x] Migrate dependency sorting tests in `tests/e2e/dependency_test.go` asserting binary-to-tool topological sorting, ambiguous binary provider errors, and missing binary errors.
+- [x] Migrate conflict detection tests in `tests/e2e/conflict_test.go` asserting accurate detection of pre-existing files, unmanaged shims, and bin name collisions.
+- [x] All migrated E2E tests must execute and pass cleanly when running `go test ./tests/e2e/...`.
+- [x] Integrate the Go E2E suite execution command (`go test ./tests/e2e/...`) into the root `package.json` scripts (`"test:all"`, `"test:native"`, `"check"`, `"check:ci"`) so they execute as part of local and CI checks.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
