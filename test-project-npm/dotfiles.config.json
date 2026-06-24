@@ -1,0 +1,243 @@
+{
+  "projectConfig": {
+    "paths": {
+      "homeDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/user-home",
+      "dotfilesDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm",
+      "targetDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/user-bin",
+      "generatedDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated",
+      "toolConfigsDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools",
+      "shellScriptsDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/shell-scripts",
+      "binariesDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/binaries"
+    },
+    "system": { "sudoPrompt": "Please enter your password to continue:" },
+    "logging": { "debug": "" },
+    "updates": { "checkOnRun": true, "checkInterval": 86400 },
+    "github": {
+      "host": "https://api.github.com",
+      "cache": { "enabled": true, "ttl": 86400000 },
+      "token": "",
+      "userAgent": "dotfiles-generator"
+    },
+    "cargo": {
+      "cratesIo": {
+        "host": "https://crates.io",
+        "cache": { "enabled": true, "ttl": 86400000 },
+        "token": "",
+        "userAgent": "dotfiles-generator"
+      },
+      "githubRaw": {
+        "host": "https://raw.githubusercontent.com",
+        "cache": { "enabled": true, "ttl": 86400000 },
+        "token": "",
+        "userAgent": "dotfiles-generator"
+      },
+      "githubRelease": {
+        "host": "https://github.com",
+        "cache": { "enabled": true, "ttl": 86400000 },
+        "token": "",
+        "userAgent": "dotfiles-generator"
+      },
+      "userAgent": "dotfiles-generator"
+    },
+    "downloader": {
+      "timeout": 300000,
+      "retryCount": 3,
+      "retryDelay": 1000,
+      "cache": { "enabled": true, "ttl": 86400000 }
+    },
+    "features": {
+      "catalog": {
+        "generate": true,
+        "filePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/CATALOG.md"
+      }
+    },
+    "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/dotfiles.config.ts",
+    "configFileDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm"
+  },
+  "toolConfigs": {
+    "github-release--fd": {
+      "name": "github-release--fd",
+      "binaries": ["fd"],
+      "version": "latest",
+      "shellConfigs": { "zsh": {} },
+      "installationMethod": "github-release",
+      "installParams": { "repo": "sharkdp/fd", "hooks": { "after-install": [null] } },
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/github-release--fd.tool.ts"
+    },
+    "manual--sudo-prompt-test": {
+      "name": "manual--sudo-prompt-test",
+      "binaries": [],
+      "version": "latest",
+      "platformConfigs": [
+        {
+          "platforms": 3,
+          "config": {
+            "binaries": ["sudo-prompt-test"],
+            "sudo": true,
+            "installationMethod": "manual",
+            "installParams": { "binaryPath": "/usr/bin/whoami" }
+          }
+        }
+      ],
+      "installationMethod": "manual",
+      "installParams": {},
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/manual--sudo-prompt-test.tool.ts"
+    },
+    "shell-only--foo": {
+      "name": "shell-only--foo",
+      "binaries": [],
+      "version": "latest",
+      "shellConfigs": {
+        "zsh": {
+          "aliases": { "foo": "echo \"This is foo tool\"" },
+          "functions": { "foosetup": "echo \"Setting up foo with HOME=$HOME\"" }
+        }
+      },
+      "installationMethod": "manual",
+      "installParams": {},
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/shell-only--foo.tool.ts"
+    },
+    "brew--borders": {
+      "name": "brew--borders",
+      "binaries": [],
+      "version": "latest",
+      "platformConfigs": [
+        {
+          "platforms": 2,
+          "config": {
+            "binaries": ["borders"],
+            "shellConfigs": { "zsh": { "aliases": { "foo": "bar" } } },
+            "installationMethod": "brew",
+            "installParams": { "formula": "borders", "tap": "FelixKratz/formulae" }
+          }
+        }
+      ],
+      "installationMethod": "manual",
+      "installParams": {},
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/brew--borders.tool.ts"
+    },
+    "cargo--eza": {
+      "name": "cargo--eza",
+      "binaries": ["eza"],
+      "version": "latest",
+      "shellConfigs": {
+        "zsh": {
+          "aliases": { "el": "eza --all --long --header --icons --group-directories-first", "ll": "el", "l": "el" },
+          "completions": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/binaries/cargo--eza/current/completions/zsh/_eza"
+        }
+      },
+      "dependencies": ["fnm"],
+      "installationMethod": "cargo",
+      "installParams": { "crateName": "eza" },
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/subfolder/cargo--eza.tool.ts"
+    },
+    "github-release--rg": {
+      "name": "github-release--rg",
+      "binaries": ["rg"],
+      "version": "latest",
+      "shellConfigs": {
+        "zsh": {
+          "completions": {
+            "url": "https://raw.githubusercontent.com/BurntSushi/ripgrep/master/crates/core/flags/complete/rg.zsh",
+            "source": "rg.zsh",
+            "bin": "rg"
+          }
+        }
+      },
+      "installationMethod": "github-release",
+      "installParams": { "repo": "BurntSushi/ripgrep" },
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/github-release--rg.tool.ts"
+    },
+    "zsh-plugin--zsh-vi-mode": {
+      "name": "zsh-plugin--zsh-vi-mode",
+      "binaries": [],
+      "version": "latest",
+      "shellConfigs": {
+        "zsh": { "env": { "ZVM_VI_INSERT_ESCAPE_BINDKEY": "jj", "ZVM_CURSOR_STYLE_ENABLED": "false" } }
+      },
+      "installationMethod": "zsh-plugin",
+      "installParams": { "repo": "jeffreytse/zsh-vi-mode", "auto": true },
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/zsh-plugin--zsh-vi-mode.tool.ts"
+    },
+    "github-release--bat": {
+      "name": "github-release--bat",
+      "binaries": ["bat"],
+      "version": "latest",
+      "shellConfigs": { "zsh": { "completions": { "cmd": "bat --generate=completions zsh", "bin": "bat" } } },
+      "installationMethod": "github-release",
+      "installParams": { "repo": "sharkdp/bat", "hooks": { "after-install": [null] } },
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/github-release--bat.tool.ts"
+    },
+    "github-release--git-bug": {
+      "name": "github-release--git-bug",
+      "binaries": ["git-bug"],
+      "version": "latest",
+      "installationMethod": "github-release",
+      "installParams": { "repo": "git-bug/git-bug", "ghCli": true },
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/github-release--git-bug.tool.ts"
+    },
+    "curl-script--fnm": {
+      "name": "curl-script--fnm",
+      "binaries": ["fnm"],
+      "version": "latest",
+      "shellConfigs": {
+        "zsh": {
+          "scripts": [
+            { "kind": "raw", "value": "source <(__dotfiles_source_curl_script__fnm_0)" },
+            { "kind": "raw", "value": "unset -f __dotfiles_source_curl_script__fnm_0" },
+            { "kind": "raw", "value": "source <(__dotfiles_source_curl_script__fnm_1)" },
+            { "kind": "raw", "value": "unset -f __dotfiles_source_curl_script__fnm_1" },
+            { "kind": "raw", "value": "source <(__dotfiles_source_inline_curl_script__fnm_0)" },
+            { "kind": "raw", "value": "unset -f __dotfiles_source_inline_curl_script__fnm_0" },
+            { "kind": "raw", "value": "source <(fnm-func)" }
+          ],
+          "functions": {
+            "__dotfiles_source_curl_script__fnm_0": "[[ -f \"/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/binaries/curl-script--fnm/current/fnm-init.zsh\" ]] && cat \"/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/binaries/curl-script--fnm/current/fnm-init.zsh\"",
+            "__dotfiles_source_curl_script__fnm_1": "[[ -f \"/path/that/does/not/exist\" ]] && cat \"/path/that/does/not/exist\"",
+            "__dotfiles_source_inline_curl_script__fnm_0": "echo \"export FOO=bar\"",
+            "fnm-func": "\n            echo \"/foo/bar\"\n          "
+          },
+          "completions": { "cmd": "fnm completions --shell zsh", "bin": "fnm" }
+        }
+      },
+      "installationMethod": "curl-script",
+      "installParams": {
+        "url": "https://fnm.vercel.app/install",
+        "shell": "bash",
+        "hooks": { "after-install": [null] }
+      },
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/curl-script--fnm.tool.ts"
+    },
+    "curl-script--broot": {
+      "name": "curl-script--broot",
+      "binaries": ["broot"],
+      "version": "latest",
+      "disabled": true,
+      "dependencies": ["rg"],
+      "platformConfigs": [
+        {
+          "platforms": 2,
+          "config": {
+            "installationMethod": "curl-tar",
+            "installParams": { "url": "https://dystroy.org/broot/download/aarch64-apple-darwin/broot" }
+          }
+        }
+      ],
+      "installationMethod": "manual",
+      "installParams": {},
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/curl-script--broot.tool.ts"
+    },
+    "platform--foo": {
+      "name": "platform--foo",
+      "binaries": ["foo"],
+      "version": "latest",
+      "platformConfigs": [
+        { "platforms": 2, "config": { "binaries": ["foo"] } },
+        { "platforms": 1, "config": { "binaries": ["foo"] } }
+      ],
+      "installationMethod": "manual",
+      "installParams": {},
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/platform--foo.tool.ts"
+    }
+  }
+}
