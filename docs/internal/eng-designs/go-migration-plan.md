@@ -394,7 +394,7 @@ Instead of a monolithic main file, subcommands must be split into dedicated modu
    - Executes the tool's bundled Javascript.
    - Queries the VM for the generated configuration object and unmarshals the dynamic values directly into the concrete Go `config.ToolConfig` struct.
 2. **`dotfiles generate` Workflow**:
-   - The CLI sorts configurations topologically and executes only the decoupled standalone generators (`pkg/shim`, `pkg/symlink`, `pkg/shellinit`, `pkg/venv`). 
+   - The CLI sorts configurations topologically and executes only the decoupled standalone generators (`pkg/shim`, `pkg/symlink`, `pkg/shellinit`, `pkg/venv`).
    - No installation logic is triggered on non-auto tools.
    - Low-level file system calls (such as `WriteFile`, `Remove`, `MkdirAll`, `Chmod`) are dynamically intercepted by the `TrackedFileSystem` wrapper.
    - For every written file, `TrackedFileSystem` transactionally logs detailed `writeFile` and `chmod` rows in `registry.db` via `pkg/registry`, including calculated `size_bytes` and octal Unix `permissions`, matching TS CLI's implicit database tracking exactly.
@@ -481,7 +481,7 @@ To guarantee full feature parity, we must implement an automated verification ha
 4. Normalize outputs to prevent false negatives across execution platforms:
    - **Line Endings**: Convert CRLF to LF on all generated shims and configs before running bytes-by-bytes matches.
    - **Absolute Paths**: Replace host-specific directory names (e.g. `/home/alex` or `C:\Users\alex`) dynamically with `{{HOME}}` in compared logs and shims.
-    - **Database Parity Validation**: Open and query the generated SQLite databases on both sides, asserting absolute semantic parity of all rows across `file_operations`, `tool_installations`, and `tool_usage` tables (including matching calculated file sizes, file types, operation types like `writeFile` vs `chmod`, permissions, and tool metadata records), while masking only auto-incrementing primary IDs and dynamic Unix timestamps.
+   - **Database Parity Validation**: Open and query the generated SQLite databases on both sides, asserting absolute semantic parity of all rows across `file_operations`, `tool_installations`, and `tool_usage` tables (including matching calculated file sizes, file types, operation types like `writeFile` vs `chmod`, permissions, and tool metadata records), while masking only auto-incrementing primary IDs and dynamic Unix timestamps.
 5. Concurrently traverse and compare `.generated/ts/` and `.generated/go/`.
 6. If there is any mismatch, the harness must write a detailed diff to standard output and exit with exit code `1`.
 7. This parity test harness must run as the final gate in the CI script before accepting a package migration as complete.
