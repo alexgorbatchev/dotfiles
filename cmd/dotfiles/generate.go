@@ -19,8 +19,8 @@ var generateCmd = &cobra.Command{
 		log := GetLogger("generate", cmd.ErrOrStderr())
 		log.Info("Starting generation...")
 
-		// Execute installation of all tool configurations through the Orchestrator
-		err = services.Orchestrator.InstallTools(ctx, services.ToolConfigs, services.ProjectConfig)
+		// Execute standalone generation of all tool configurations through the Orchestrator
+		err = services.Orchestrator.GenerateTools(ctx, services.ToolConfigs, services.ProjectConfig)
 		if err != nil {
 			return err
 		}
@@ -30,6 +30,9 @@ var generateCmd = &cobra.Command{
 	},
 }
 
+var overwrite bool
+
 func init() {
+	generateCmd.Flags().BoolVar(&overwrite, "overwrite", false, "Overwrite conflicting files that were not created by the generator")
 	rootCmd.AddCommand(generateCmd)
 }

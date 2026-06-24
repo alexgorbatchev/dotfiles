@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	osExec "os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -32,8 +31,8 @@ type Services struct {
 
 // BootstrapServices parses config files and initializes core services.
 func BootstrapServices(ctx context.Context, configPath string) (*Services, error) {
-	repoRoot := ""
-	if isDevTest() {
+	repoRoot := os.Getenv("DOTFILES_REPO_ROOT")
+	if repoRoot == "" {
 		// Find repo root from working directory
 		dir, _ := os.Getwd()
 		for dir != "/" && dir != "." {
@@ -49,8 +48,8 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	}
 
 	if configPath == "" {
-		npmPath := filepath.Join(repoRoot, "test-project-npm/dotfiles.config.ts")
-		localPath := filepath.Join(repoRoot, "dotfiles.config.ts")
+		npmPath := filepath.Join(repoRoot, "test-project-npm/dotfiles.config.json")
+		localPath := filepath.Join(repoRoot, "dotfiles.config.json")
 		if exists, _ := fileExists(npmPath); exists {
 			configPath = npmPath
 		} else if exists, _ := fileExists(localPath); exists {
@@ -69,20 +68,50 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		return nil, fmt.Errorf("failed resolving absolute config path: %w", err)
 	}
 
-	cmd := osExec.CommandContext(ctx, "bun", "run", "scripts/load-configs.ts", absConfigPath)
-	cmd.Dir = repoRoot
+	// Support loading converted JSON configuration natively in Go (completely serverless and independent of Bun!)
+	if strings.HasSuffix(absConfigPath, ".ts") {
+		jsonPath := strings.TrimSuffix(absConfigPath, ".ts") + ".json"
+		if exists, _ := fileExists(jsonPath); exists {
+			absConfigPath = jsonPath
+		} else {
+			return nil, fmt.Errorf("configuration file must be .json format or have a converted JSON file: %s", absConfigPath)
+		}
+	}
 
-	outputBytes, err := cmd.CombinedOutput()
+	data, err := os.ReadFile(absConfigPath)
 	if err != nil {
-		return nil, fmt.Errorf("loading configuration failed: %w\noutput: %s", err, string(outputBytes))
+		return nil, fmt.Errorf("failed to read native JSON config: %w", err)
 	}
 
 	var bResult struct {
 		ProjectConfig config.ProjectConfig         `json:"projectConfig"`
 		ToolConfigs   map[string]config.ToolConfig `json:"toolConfigs"`
 	}
-	if err := json.Unmarshal(outputBytes, &bResult); err != nil {
-		return nil, fmt.Errorf("unmarshaling config loader result: %w", err)
+	if err := json.Unmarshal(data, &bResult); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal native JSON project config: %w", err)
+	}
+
+	projCfg := bResult.ProjectConfig
+
+	// If MOCK_SERVER_PORT is set, override public hosts to target mock server
+	mockPort := os.Getenv("MOCK_SERVER_PORT")
+	if mockPort != "" {
+		mockHost := "http://127.0.0.1:" + mockPort
+		projCfg.Github.Host = mockHost
+		projCfg.Cargo.CratesIo.Host = mockHost
+		projCfg.Cargo.GithubRaw.Host = mockHost
+		projCfg.Cargo.GithubRelease.Host = mockHost
+	}
+
+	// Resolve the generatedDir placeholders in paths
+	if strings.Contains(projCfg.Paths.HomeDir, "{paths.generatedDir}") {
+		projCfg.Paths.HomeDir = strings.ReplaceAll(projCfg.Paths.HomeDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
+	}
+	if strings.Contains(projCfg.Paths.TargetDir, "{paths.generatedDir}") {
+		projCfg.Paths.TargetDir = strings.ReplaceAll(projCfg.Paths.TargetDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
+	}
+	if strings.Contains(projCfg.Paths.BinariesDir, "{paths.generatedDir}") {
+		projCfg.Paths.BinariesDir = strings.ReplaceAll(projCfg.Paths.BinariesDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
 	}
 
 	var toolConfigs []*config.ToolConfig
@@ -96,7 +125,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	})
 
 	var fsys fs.FS
-	if dryRun || isDevTest() {
+	if (dryRun && os.Getenv("DOTFILES_E2E_TEST") != "true") || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
 		fsys = fs.NewMemFS()
 	} else {
 		fsys = fs.NewOSFS()
@@ -105,10 +134,10 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	// For dry-runs and tests, we still open a valid database.
 	// If in unit testing, use in-memory SQLite to prevent disk state pollution.
 	var dbPath string
-	if isDevTest() {
+	if isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true" {
 		dbPath = ":memory:"
 	} else {
-		dbPath = filepath.Join(bResult.ProjectConfig.Paths.GeneratedDir, "registry.db")
+		dbPath = filepath.Join(projCfg.Paths.GeneratedDir, "registry.db")
 	}
 
 	sqlDB, err := db.NewConnection(ctx, dbPath)
@@ -119,7 +148,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	reg := registry.NewRegistry(sqlDB)
 	runner := execRunner.NewOSRunner()
 	instReg := installer.DefaultRegistry()
-	if isDevTest() {
+	if isDevTest() && os.Getenv("DOTFILES_E2E_USE_REAL_INSTALLERS") != "true" {
 		instReg = installer.NewRegistry()
 		_ = instReg.Register(&mockInstaller{name: "github-release"})
 		_ = instReg.Register(&mockInstaller{name: "cargo"})
@@ -127,6 +156,15 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		_ = instReg.Register(&mockInstaller{name: "manual"})
 		_ = instReg.Register(&mockInstaller{name: "brew"})
 		_ = instReg.Register(&mockInstaller{name: "zsh-plugin"})
+		_ = instReg.Register(&mockInstaller{name: "gitea-release"})
+		_ = instReg.Register(&mockInstaller{name: "curl-tar"})
+		_ = instReg.Register(&mockInstaller{name: "curl-binary"})
+		_ = instReg.Register(&mockInstaller{name: "dmg"})
+		_ = instReg.Register(&mockInstaller{name: "npm"})
+		_ = instReg.Register(&mockInstaller{name: "apt"})
+		_ = instReg.Register(&mockInstaller{name: "pacman"})
+		_ = instReg.Register(&mockInstaller{name: "dnf"})
+		_ = instReg.Register(&mockInstaller{name: "pkg"})
 	}
 	orch := orchestrator.NewOrchestrator(fsys, runner, reg, instReg)
 
@@ -164,7 +202,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	}
 
 	return &Services{
-		ProjectConfig: &bResult.ProjectConfig,
+		ProjectConfig: &projCfg,
 		ToolConfigs:   toolConfigs,
 		FS:            fsys,
 		DB:            sqlDB,
@@ -185,7 +223,7 @@ func fileExists(path string) (bool, error) {
 }
 
 func isDevTest() bool {
-	return flag.Lookup("test.v") != nil
+	return flag.Lookup("test.v") != nil || os.Getenv("DOTFILES_E2E_TEST") == "true"
 }
 
 type mockInstaller struct {
@@ -201,8 +239,22 @@ func (m *mockInstaller) SupportsSudo() bool {
 }
 
 func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
+	var binaries []string
+	for _, b := range tool.Binaries {
+		switch val := b.(type) {
+		case string:
+			binaries = append(binaries, val)
+		case map[string]interface{}:
+			if name, ok := val["name"].(string); ok {
+				binaries = append(binaries, name)
+			}
+		}
+	}
+	if len(binaries) == 0 {
+		binaries = []string{tool.Name}
+	}
 	return &installer.InstallResult{
-		Binaries: nil,
+		Binaries: binaries,
 	}, nil
 }
 

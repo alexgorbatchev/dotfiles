@@ -33,6 +33,7 @@ var installCmd = &cobra.Command{
 					break
 				}
 				for _, b := range tc.Binaries {
+					log.Info(logger.Message(fmt.Sprintf("Checking binary: %v of type %T against %s", b, b, toolName)))
 					switch val := b.(type) {
 					case string:
 						if val == toolName {
@@ -54,6 +55,8 @@ var installCmd = &cobra.Command{
 			if targetTool == nil {
 				return fmt.Errorf("tool %q not found in configuration", toolName)
 			}
+
+			log.Info(logger.Message(fmt.Sprintf("Matched tool to install: %s", targetTool.Name)))
 
 			err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
 			if err != nil {

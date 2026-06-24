@@ -426,6 +426,108 @@ func TestOrchestrator_Install(t *testing.T) {
 	}
 }
 
+func TestOrchestrator_Generate(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	// Initialize sqlite connection and registry
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+
+	mockInst := &mockInstaller{
+		name:     "custom-method",
+		binaries: []string{"test-bin"},
+	}
+	_ = instReg.Register(mockInst)
+
+	orch := NewOrchestrator(fsys, runner, reg, instReg)
+	orch.SetSymlinkFS(&mockSymlinkFS{fsys: fsys})
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	versionStr := "1.2.3"
+	standardTool := &config.ToolConfig{
+		Name:               "standard-tool",
+		Version:            &versionStr,
+		InstallationMethod: "custom-method",
+		Binaries:           []interface{}{"standard-bin"},
+		Symlinks: []config.SymlinkConfig{
+			{Source: "/home/user/src", Target: "/home/user/dest"},
+		},
+	}
+
+	autoTool := &config.ToolConfig{
+		Name:               "auto-tool",
+		Version:            &versionStr,
+		InstallationMethod: "custom-method",
+		Binaries:           []interface{}{"auto-bin"},
+		InstallParams: map[string]interface{}{
+			"auto": true,
+		},
+	}
+
+	// Make sure directories exist in memfs
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+	_ = fsys.MkdirAll("/home/user/binaries", 0755)
+	_ = fsys.MkdirAll("/home/user/src", 0755)
+
+	// Run the generation pipeline!
+	err = orch.GenerateTools(ctx, []*config.ToolConfig{standardTool, autoTool}, projCfg)
+	if err != nil {
+		t.Fatalf("unexpected generation pipeline failure: %v", err)
+	}
+
+	// Verify standard tool shim was generated on filesystem
+	standardShimExists, err := fsys.Exists("/home/user/bin/standard-bin")
+	if err != nil || !standardShimExists {
+		t.Error("expected standard shim script to be generated")
+	}
+
+	// Verify standard symlink was created
+	symExists, err := fsys.Exists("/home/user/dest")
+	if err != nil || !symExists {
+		t.Error("expected standard symlink target to be created")
+	}
+
+	// Verify standard tool installation record does NOT exist in the database!
+	rec, err := reg.GetToolInstallation(ctx, "standard-tool")
+	if err != nil {
+		t.Fatalf("failed to query standard tool installation: %v", err)
+	}
+	if rec != nil {
+		t.Error("expected standard tool installation record to not exist in the database, but it does")
+	}
+
+	// Verify auto tool shim was generated
+	autoShimExists, err := fsys.Exists("/home/user/bin/test-bin")
+	if err != nil || !autoShimExists {
+		t.Error("expected auto shim script (test-bin) to be generated")
+	}
+
+	// Verify auto tool installation record DOES exist in the database!
+	autoRec, err := reg.GetToolInstallation(ctx, "auto-tool")
+	if err != nil || autoRec == nil {
+		t.Fatal("expected auto tool installation record to exist in the database, but it does not")
+	}
+	if autoRec.Version != "1.2.3" {
+		t.Errorf("expected auto tool version to be '1.2.3', got %s", autoRec.Version)
+	}
+}
+
 func TestOrchestrator_Errors(t *testing.T) {
 	ctx := context.Background()
 	fsys := fs.NewMemFS()

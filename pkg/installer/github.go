@@ -182,8 +182,34 @@ func (g *GitHubInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig
 }
 
 func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
+	repo := getStringParam(tool.InstallParams, "repo", "")
+	if repo == "" {
+		return &UpdateCheckResult{HasUpdate: false}, nil
+	}
+	baseURL := g.BaseURL
+	if baseURL == "" {
+		baseURL = "https://api.github.com"
+	}
+	apiURL := fmt.Sprintf("%s/repos/%s/releases/latest", baseURL, repo)
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := g.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API status %d", resp.StatusCode)
+	}
+	var release githubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return nil, err
+	}
 	return &UpdateCheckResult{
-		HasUpdate: false,
+		HasUpdate:     true,
+		LatestVersion: release.TagName,
 	}, nil
 }
 

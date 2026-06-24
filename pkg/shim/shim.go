@@ -94,6 +94,7 @@ func (g *Generator) Generate(shimPath string, cfg Config) error {
 		}
 	}
 
+	_ = g.fs.Remove(shimPath)
 	if err := g.fs.WriteFile(shimPath, buf.Bytes(), 0755); err != nil {
 		return fmt.Errorf("writing shim: %w", err)
 	}
