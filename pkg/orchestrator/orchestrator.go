@@ -814,6 +814,66 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 						}
 					}
 				}
+
+				// 5. Native Functions
+				for name, body := range stc.Functions {
+					if sh == "powershell" {
+						scriptLines = append(scriptLines, fmt.Sprintf("function %s {\n%s\n}", name, body))
+					} else {
+						scriptLines = append(scriptLines, fmt.Sprintf("%s() {\n%s\n}", name, body))
+					}
+				}
+
+				cleanToolName := strings.ReplaceAll(tool.Name, "-", "_")
+
+				// 6. Native SourceFiles
+				for i, relPath := range stc.SourceFiles {
+					var resolvedPath string
+					if filepath.IsAbs(relPath) {
+						resolvedPath = relPath
+					} else {
+						toolConfigDir := filepath.Dir(tool.ConfigFilePath)
+						resolvedPath = filepath.Join(toolConfigDir, relPath)
+					}
+					resolvedPath = filepath.ToSlash(resolvedPath)
+
+					funcName := fmt.Sprintf("__dotfiles_source_%s_%d", cleanToolName, i)
+					var body string
+					if sh == "powershell" {
+						body = fmt.Sprintf("if (Test-Path %q) { Get-Content %q -Raw }", resolvedPath, resolvedPath)
+						scriptLines = append(scriptLines, fmt.Sprintf("function %s {\n%s\n}", funcName, body))
+						scriptLines = append(scriptLines, fmt.Sprintf(". (%s)", funcName))
+						scriptLines = append(scriptLines, fmt.Sprintf("Remove-Item Function:\\%s -ErrorAction SilentlyContinue", funcName))
+					} else {
+						body = fmt.Sprintf("[[ -f %q ]] && cat %q", resolvedPath, resolvedPath)
+						scriptLines = append(scriptLines, fmt.Sprintf("%s() {\n%s\n}", funcName, body))
+						scriptLines = append(scriptLines, fmt.Sprintf("source <(%s)", funcName))
+						scriptLines = append(scriptLines, fmt.Sprintf("unset -f %s", funcName))
+					}
+				}
+
+				// 7. Native Sources (inline script blocks)
+				for i, content := range stc.Sources {
+					funcName := fmt.Sprintf("__dotfiles_source_inline_%s_%d", cleanToolName, i)
+					if sh == "powershell" {
+						scriptLines = append(scriptLines, fmt.Sprintf("function %s {\n%s\n}", funcName, content))
+						scriptLines = append(scriptLines, fmt.Sprintf(". (%s)", funcName))
+						scriptLines = append(scriptLines, fmt.Sprintf("Remove-Item Function:\\%s -ErrorAction SilentlyContinue", funcName))
+					} else {
+						scriptLines = append(scriptLines, fmt.Sprintf("%s() {\n%s\n}", funcName, content))
+						scriptLines = append(scriptLines, fmt.Sprintf("source <(%s)", funcName))
+						scriptLines = append(scriptLines, fmt.Sprintf("unset -f %s", funcName))
+					}
+				}
+
+				// 8. Native SourceFunctions
+				for _, funcName := range stc.SourceFunctions {
+					if sh == "powershell" {
+						scriptLines = append(scriptLines, fmt.Sprintf(". (%s)", funcName))
+					} else {
+						scriptLines = append(scriptLines, fmt.Sprintf("source <(%s)", funcName))
+					}
+				}
 			}
 
 			// Add dynamic once-scripts glob matching loop if any once scripts were created

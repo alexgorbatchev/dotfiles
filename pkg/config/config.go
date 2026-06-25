@@ -177,12 +177,15 @@ func (ss *ShellScript) Validate() error {
 
 // ShellTypeConfig structures scripts, aliases, environment fields, functions, PATH extensions, and completions.
 type ShellTypeConfig struct {
-	Scripts     []ShellScript     `json:"scripts,omitempty" yaml:"scripts,omitempty"`
-	Aliases     map[string]string `json:"aliases,omitempty" yaml:"aliases,omitempty"`
-	Env         map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
-	Functions   map[string]string `json:"functions,omitempty" yaml:"functions,omitempty"`
-	Paths       []interface{}     `json:"paths,omitempty" yaml:"paths,omitempty"`
-	Completions interface{}       `json:"completions,omitempty" yaml:"completions,omitempty"`
+	Scripts         []ShellScript     `json:"scripts,omitempty" yaml:"scripts,omitempty"`
+	Aliases         map[string]string `json:"aliases,omitempty" yaml:"aliases,omitempty"`
+	Env             map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
+	Functions       map[string]string `json:"functions,omitempty" yaml:"functions,omitempty"`
+	Paths           []interface{}     `json:"paths,omitempty" yaml:"paths,omitempty"`
+	Completions     interface{}       `json:"completions,omitempty" yaml:"completions,omitempty"`
+	SourceFiles     []string          `json:"sourceFiles,omitempty" yaml:"sourceFiles,omitempty"`
+	Sources         []string          `json:"sources,omitempty" yaml:"sources,omitempty"`
+	SourceFunctions []string          `json:"sourceFunctions,omitempty" yaml:"sourceFunctions,omitempty"`
 }
 
 // Validate asserts nested elements of ShellTypeConfig.
@@ -343,6 +346,15 @@ func (stc *ShellTypeConfig) Merge(override *ShellTypeConfig) {
 	}
 	if override.Completions != nil {
 		stc.Completions = override.Completions
+	}
+	if len(override.SourceFiles) > 0 {
+		stc.SourceFiles = append(stc.SourceFiles, override.SourceFiles...)
+	}
+	if len(override.Sources) > 0 {
+		stc.Sources = append(stc.Sources, override.Sources...)
+	}
+	if len(override.SourceFunctions) > 0 {
+		stc.SourceFunctions = append(stc.SourceFunctions, override.SourceFunctions...)
 	}
 }
 

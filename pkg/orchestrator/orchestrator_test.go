@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
@@ -826,5 +828,103 @@ func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 	exists, err := fsys.Exists(strayPath)
 	if err != nil || exists {
 		t.Errorf("expected stray once script to be pruned on consecutive generate, but it still exists")
+	}
+}
+
+func TestOrchestratorNativeShellGeneration(t *testing.T) {
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{
+		Name:   "test-logger",
+		Level:  logger.LogLevelVerbose,
+		Writer: &logBuf,
+	})
+
+	memFS := fs.NewMemFS()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	trackedFS := fs.NewTrackedFileSystem(memFS, reg, "system").WithFileType("init")
+	runner := exec.NewMockRunner()
+	instReg := installer.NewRegistry()
+
+	orch := NewOrchestrator(log, trackedFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			GeneratedDir:    "/home/user/.generated",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			TargetDir:       "/home/user/.generated/user-bin",
+		},
+	}
+
+	tools := []*config.ToolConfig{
+		{
+			Name: "test-tool",
+			ConfigFilePath: "/home/user/tools/test-tool.tool.ts",
+			ShellConfigs: &config.ShellConfigs{
+				Zsh: &config.ShellTypeConfig{
+					Env: map[string]string{
+						"MY_ENV": "value1",
+					},
+					Aliases: map[string]string{
+						"my-alias": "my-cmd",
+					},
+					Functions: map[string]string{
+						"my-func": "echo hello",
+					},
+					SourceFiles: []string{
+						"shell.zsh",
+					},
+					Sources: []string{
+						"echo inline-source",
+					},
+					SourceFunctions: []string{
+						"my-func",
+					},
+				},
+			},
+		},
+	}
+
+	// Create test source file inside sandbox
+	_ = memFS.MkdirAll("/home/user/tools", 0755)
+	_ = memFS.WriteFile("/home/user/tools/shell.zsh", []byte("echo sourced"), 0644)
+
+	err = orch.generateShellScripts(ctx, tools, projCfg)
+	if err != nil {
+		t.Fatalf("failed to generate shell scripts: %v", err)
+	}
+
+	mainZshPath := "/home/user/.generated/shell-scripts/main.zsh"
+	data, err := memFS.ReadFile(mainZshPath)
+	if err != nil {
+		t.Fatalf("failed to read main.zsh: %v", err)
+	}
+
+	scriptContent := string(data)
+	t.Logf("Generated scriptContent:\n%s", scriptContent)
+
+	if !strings.Contains(scriptContent, "export MY_ENV=\"value1\"") {
+		t.Errorf("expected script to contain MY_ENV variable")
+	}
+	if !strings.Contains(scriptContent, "alias my-alias='my-cmd'") {
+		t.Errorf("expected script to contain my-alias alias")
+	}
+	if !strings.Contains(scriptContent, "my_func() {") && !strings.Contains(scriptContent, "my-func() {") {
+		t.Errorf("expected script to contain function definition")
+	}
+	if !strings.Contains(scriptContent, "[[ -f \"/home/user/tools/shell.zsh\" ]] && cat \"/home/user/tools/shell.zsh\"") {
+		t.Errorf("expected script to contain sourceFile function body")
+	}
+	if !strings.Contains(scriptContent, "echo inline-source") {
+		t.Errorf("expected script to contain sources block")
+	}
+	if !strings.Contains(scriptContent, "source <(my-func)") {
+		t.Errorf("expected script to contain source <(my-func)")
 	}
 }
