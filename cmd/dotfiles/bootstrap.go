@@ -124,6 +124,8 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		return toolConfigs[i].Name < toolConfigs[j].Name
 	})
 
+	ResolvePlatformConfigs(toolConfigs, installer.NewDefaultSystemContext())
+
 	var fsys fs.FS
 	if (dryRun && os.Getenv("DOTFILES_E2E_TEST") != "true") || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
 		fsys = fs.NewMemFS()
@@ -146,6 +148,8 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	}
 
 	reg := registry.NewRegistry(sqlDB)
+	trackedFS := fs.NewTrackedFileSystem(fsys, reg, "system").WithFileType("shim")
+
 	runner := execRunner.NewOSRunner()
 	instReg := installer.DefaultRegistry()
 	if isDevTest() && os.Getenv("DOTFILES_E2E_USE_REAL_INSTALLERS") != "true" {
@@ -166,7 +170,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		_ = instReg.Register(&mockInstaller{name: "dnf"})
 		_ = instReg.Register(&mockInstaller{name: "pkg"})
 	}
-	orch := orchestrator.NewOrchestrator(fsys, runner, reg, instReg)
+	orch := orchestrator.NewOrchestrator(trackedFS, runner, reg, instReg)
 
 	// Map binary dependencies to fully-qualified tool names (e.g., fnm -> curl-script--fnm)
 	for _, tc := range toolConfigs {
@@ -204,7 +208,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	return &Services{
 		ProjectConfig: &projCfg,
 		ToolConfigs:   toolConfigs,
-		FS:            fsys,
+		FS:            trackedFS,
 		DB:            sqlDB,
 		Registry:      reg,
 		Orchestrator:  orch,
@@ -264,4 +268,58 @@ func (m *mockInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) 
 
 func (m *mockInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
 	return &installer.UpdateCheckResult{HasUpdate: false}, nil
+}
+
+func matchesPlatform(platforms int, osName string) bool {
+	if platforms == 7 { // All
+		return true
+	}
+	if platforms == 3 { // Unix (Linux | MacOS)
+		return osName == "linux" || osName == "darwin"
+	}
+	if platforms == 2 && osName == "darwin" {
+		return true
+	}
+	if platforms == 1 && osName == "linux" {
+		return true
+	}
+	return false
+}
+
+func matchesArch(architectures int, archName string) bool {
+	if architectures == 3 { // All
+		return true
+	}
+	if architectures == 2 && archName == "arm64" {
+		return true
+	}
+	if architectures == 1 && (archName == "amd64" || archName == "x86_64") {
+		return true
+	}
+	return false
+}
+
+func ResolvePlatformConfigs(toolConfigs []*config.ToolConfig, sysCtx *installer.SystemContext) {
+	for _, tc := range toolConfigs {
+		if len(tc.PlatformConfigs) == 0 {
+			continue
+		}
+
+		for _, entry := range tc.PlatformConfigs {
+			if matchesPlatform(entry.Platforms, sysCtx.OS) {
+				// Resolve match architecture if specified
+				if entry.Architectures != nil {
+					if !matchesArch(*entry.Architectures, sysCtx.Arch) {
+						continue
+					}
+				}
+
+				// Map entry.Config to a JSON string and unmarshal to tc
+				jsonBytes, err := json.Marshal(entry.Config)
+				if err == nil {
+					_ = json.Unmarshal(jsonBytes, tc)
+				}
+			}
+		}
+	}
 }

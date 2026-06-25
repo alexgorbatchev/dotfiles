@@ -41,13 +41,33 @@ func ResolvePlaceholders(val string, toolName string, projCfg *ProjectConfig) (s
 	maxIterations := 20
 
 	for i := 0; i < maxIterations; i++ {
-		next := tokenRegex.ReplaceAllStringFunc(current, func(match string) string {
-			varName := match[1 : len(match)-1]
-			if replacement, ok := vars[varName]; ok {
-				return replacement
+		matches := tokenRegex.FindAllStringSubmatchIndex(current, -1)
+		if len(matches) == 0 {
+			return current, nil
+		}
+
+		var sb strings.Builder
+		lastIndex := 0
+		for _, matchLoc := range matches {
+			start, end := matchLoc[0], matchLoc[1]
+			varStart, varEnd := matchLoc[2], matchLoc[3]
+
+			sb.WriteString(current[lastIndex:start])
+
+			if start > 0 && current[start-1] == '$' {
+				sb.WriteString(current[start:end])
+			} else {
+				varName := current[varStart:varEnd]
+				if replacement, ok := vars[varName]; ok {
+					sb.WriteString(replacement)
+				} else {
+					sb.WriteString(current[start:end])
+				}
 			}
-			return match
-		})
+			lastIndex = end
+		}
+		sb.WriteString(current[lastIndex:])
+		next := sb.String()
 
 		if next == current {
 			return current, nil
@@ -55,10 +75,14 @@ func ResolvePlaceholders(val string, toolName string, projCfg *ProjectConfig) (s
 
 		if seen[next] {
 			unresolved := []string{}
-			matches := tokenRegex.FindAllStringSubmatch(next, -1)
-			for _, m := range matches {
-				if len(m) > 1 {
-					unresolved = append(unresolved, "{"+m[1]+"}")
+			unresolvedMatches := tokenRegex.FindAllStringSubmatchIndex(next, -1)
+			for _, loc := range unresolvedMatches {
+				start := loc[0]
+				if start > 0 && next[start-1] == '$' {
+					continue
+				}
+				if len(loc) > 3 {
+					unresolved = append(unresolved, "{"+next[loc[2]:loc[3]]+"}")
 				}
 			}
 			return "", fmt.Errorf("string token substitution did not converge due to a cycle. Remaining tokens: %s", strings.Join(unresolved, ", "))
@@ -69,10 +93,14 @@ func ResolvePlaceholders(val string, toolName string, projCfg *ProjectConfig) (s
 	}
 
 	unresolved := []string{}
-	matches := tokenRegex.FindAllStringSubmatch(current, -1)
-	for _, m := range matches {
-		if len(m) > 1 {
-			unresolved = append(unresolved, "{"+m[1]+"}")
+	unresolvedMatches := tokenRegex.FindAllStringSubmatchIndex(current, -1)
+	for _, loc := range unresolvedMatches {
+		start := loc[0]
+		if start > 0 && current[start-1] == '$' {
+			continue
+		}
+		if len(loc) > 3 {
+			unresolved = append(unresolved, "{"+current[loc[2]:loc[3]]+"}")
 		}
 	}
 	return "", fmt.Errorf("string token substitution did not converge after 20 iterations. Remaining tokens: %s", strings.Join(unresolved, ", "))

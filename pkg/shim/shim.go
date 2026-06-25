@@ -87,6 +87,15 @@ func (g *Generator) Generate(shimPath string, cfg Config) error {
 		return fmt.Errorf("executing shim template: %w", err)
 	}
 
+	if cfg.UsageLogPath != "" {
+		usageLogDir := filepath.Dir(cfg.UsageLogPath)
+		if usageLogDir != "." && usageLogDir != "/" {
+			if err := g.fs.MkdirAll(usageLogDir, 0755); err != nil {
+				return fmt.Errorf("creating usage log directory: %w", err)
+			}
+		}
+	}
+
 	parentDir := filepath.Dir(shimPath)
 	if parentDir != "." && parentDir != "/" {
 		if err := g.fs.MkdirAll(parentDir, 0755); err != nil {
@@ -95,7 +104,7 @@ func (g *Generator) Generate(shimPath string, cfg Config) error {
 	}
 
 	_ = g.fs.Remove(shimPath)
-	if err := g.fs.WriteFile(shimPath, buf.Bytes(), 0644); err != nil {
+	if err := g.fs.WriteFile(shimPath, buf.Bytes(), 0666); err != nil {
 		return fmt.Errorf("writing shim: %w", err)
 	}
 	if err := g.fs.Chmod(shimPath, 0755); err != nil {

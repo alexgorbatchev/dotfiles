@@ -411,8 +411,8 @@ func TestOrchestrator_Install(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get operations: %v", err)
 	}
-	if len(ops) != 2 {
-		t.Fatalf("expected 2 operations (shim, symlink), got %d", len(ops))
+	if len(ops) != 3 {
+		t.Fatalf("expected 3 operations (shim, symlink, chmod), got %d", len(ops))
 	}
 
 	instRec, err := reg.GetToolInstallation(ctx, "test-tool")
@@ -855,8 +855,14 @@ func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 	// 2. Verify self-deletion statements inside once files
 	zshBytes, _ := fsys.ReadFile(zshOncePath)
 	zshContent := string(zshBytes)
-	if !strings.Contains(zshContent, `rm -f "$0"`) {
+	if !strings.Contains(zshContent, `rm -f "${(%):-%x}"`) {
 		t.Errorf("expected zsh once script to contain self-deletion command, got:\n%s", zshContent)
+	}
+
+	bashBytes, _ := fsys.ReadFile(bashOncePath)
+	bashContent := string(bashBytes)
+	if !strings.Contains(bashContent, `rm -f "${BASH_SOURCE[0]}"`) {
+		t.Errorf("expected bash once script to contain self-deletion command, got:\n%s", bashContent)
 	}
 
 	ps1Bytes, _ := fsys.ReadFile(ps1OncePath)

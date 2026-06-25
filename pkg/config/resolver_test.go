@@ -43,6 +43,27 @@ func TestResolvePlaceholders(t *testing.T) {
 			toolName: "mytool",
 			wantErr:  true,
 		},
+		{
+			name:     "bypass standard shell variables HOME",
+			input:    "${HOME}/test",
+			toolName: "mytool",
+			want:     "${HOME}/test",
+			wantErr:  false,
+		},
+		{
+			name:     "bypass standard shell variables PATH",
+			input:    "${PATH}:/some/path",
+			toolName: "mytool",
+			want:     "${PATH}:/some/path",
+			wantErr:  false,
+		},
+		{
+			name:     "mixed resolved and bypassed",
+			input:    "{paths.homeDir}/test and ${HOME}",
+			toolName: "mytool",
+			want:     "/home/user/test and ${HOME}",
+			wantErr:  false,
+		},
 	}
 
 	for _, tt := range tests {

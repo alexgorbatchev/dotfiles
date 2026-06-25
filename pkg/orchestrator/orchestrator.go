@@ -20,6 +20,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
+	"github.com/google/uuid"
 )
 
 // Orchestrator manages tool installation pipelines.
@@ -183,6 +184,22 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		return fmt.Errorf("resolving dependencies: %w", err)
 	}
 
+	// Ensure system directories are created and tracked under "system" name
+	err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+		sysFS := o.getTrackedFS(ctx, tx, "system", "shim")
+		if err := sysFS.MkdirAll(projCfg.Paths.TargetDir, 0755); err != nil {
+			return err
+		}
+		usageDir := filepath.Join(projCfg.Paths.GeneratedDir, "usage")
+		if err := sysFS.MkdirAll(usageDir, 0755); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
 	for _, tool := range sorted {
 		if tool.Disabled {
 			continue
@@ -194,7 +211,11 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 
 		if isAutoInstall(tool) {
 			if err := o.InstallTool(ctx, tool, projCfg); err != nil {
-				return fmt.Errorf("auto-installing tool %q: %w", tool.Name, err)
+				errStr := err.Error()
+				if idx := strings.Index(errStr, "running installer: "); idx != -1 {
+					errStr = errStr[idx+len("running installer: "):]
+				}
+				fmt.Fprintf(os.Stderr, "ERROR\t[%s] %s\n", tool.Name, errStr)
 			}
 		} else {
 			if err := o.GenerateTool(ctx, tool, projCfg); err != nil {
@@ -216,6 +237,15 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		return fmt.Errorf("project configuration is nil")
 	}
 
+	// Skip shim generation for manual tools without binaryPath
+	if tool.InstallationMethod == "manual" {
+		binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")
+		if binaryPath == "" {
+			fmt.Fprintf(os.Stderr, "WARN\t[system] [%s] Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)\n", tool.Name)
+			return nil
+		}
+	}
+
 	// 1. Resolve binaries to shim
 	binaryNames := getBinaryNames(tool.Binaries)
 
@@ -234,6 +264,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			Sudo:           tool.Sudo,
 			CliCommand:     "dotfiles",
 			ConfigFilePath: tool.ConfigFilePath,
+			UsageLogPath:   filepath.Join(projCfg.Paths.GeneratedDir, "usage", "shim-usage.log"),
 		}
 
 		// Check for conflict
@@ -317,37 +348,92 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	// Dynamically configure BinDir and BaseURL if supported by the installer
+	isExternal := isExternallyManaged(tool.InstallationMethod)
 	toolDestDir := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current")
+	var stagingDir string
+	var installDir string
+
+	if !isExternal {
+		uuidStr := uuid.New().String()
+		stagingDir = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, uuidStr)
+		installDir = stagingDir
+	} else {
+		installDir = toolDestDir
+	}
+
+	activeFS := o.getTrackedFS(ctx, nil, tool.Name, "binary")
+	installer.SetFS(inst, activeFS)
+
+	if !isExternal {
+		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
+			return activeFSWithTx.MkdirAll(stagingDir, 0755)
+		})
+		if err != nil {
+			return fmt.Errorf("creating staging directory: %w", err)
+		}
+	}
+
 	switch installerInstance := inst.(type) {
 	case *installer.GitHubInstaller:
-		installerInstance.BinDir = toolDestDir
+		installerInstance.BinDir = installDir
 		if projCfg.Github.Host != "" {
 			installerInstance.BaseURL = projCfg.Github.Host
 		}
 	case *installer.GiteaInstaller:
-		installerInstance.BinDir = toolDestDir
+		installerInstance.BinDir = installDir
 	case *installer.CargoInstaller:
-		installerInstance.BinDir = toolDestDir
+		installerInstance.BinDir = installDir
 	case *installer.CurlBinaryInstaller:
-		installerInstance.BinDir = toolDestDir
+		installerInstance.BinDir = installDir
 	case *installer.CurlScriptInstaller:
-		installerInstance.BinDir = toolDestDir
+		installerInstance.BinDir = installDir
 	case *installer.CurlTarInstaller:
-		installerInstance.BinDir = toolDestDir
+		installerInstance.BinDir = installDir
 	case *installer.DmgInstaller:
-		installerInstance.BinDir = toolDestDir
+		installerInstance.BinDir = installDir
 	case *installer.ManualInstaller:
-		installerInstance.BinDir = toolDestDir
+		installerInstance.BinDir = installDir
 	case *installer.ZshPluginInstaller:
-		installerInstance.BinDir = toolDestDir
+		installerInstance.BinDir = installDir
 	case *installer.PkgInstaller:
-		installerInstance.BinDir = toolDestDir
+		installerInstance.BinDir = installDir
 	}
 
 	// 1. Download, unpack, and install via the native installer plugin
 	res, err := inst.Install(ctx, tool)
 	if err != nil {
+		if !isExternal && stagingDir != "" {
+			_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+				activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
+				_ = removeAll(activeFSWithTx, stagingDir)
+				// Try to remove parent tool directory if it is empty
+				toolDir := filepath.Dir(stagingDir)
+				if entries, err := activeFSWithTx.ReadDir(toolDir); err == nil && len(entries) == 0 {
+					_ = activeFSWithTx.Remove(toolDir)
+				}
+				return nil
+			})
+		}
 		return fmt.Errorf("running installer: %w", err)
+	}
+
+	if !isExternal {
+		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
+			if err := removeAll(activeFSWithTx, toolDestDir); err != nil {
+				return err
+			}
+			return activeFSWithTx.Rename(stagingDir, toolDestDir)
+		})
+		if err != nil {
+			_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+				activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
+				_ = removeAll(activeFSWithTx, stagingDir)
+				return nil
+			})
+			return fmt.Errorf("promoting staging directory to current: %w", err)
+		}
 	}
 
 	// Run after-install hooks
@@ -450,6 +536,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			Sudo:           tool.Sudo,
 			CliCommand:     "dotfiles",
 			ConfigFilePath: tool.ConfigFilePath,
+			UsageLogPath:   filepath.Join(projCfg.Paths.GeneratedDir, "usage", "shim-usage.log"),
 		}
 
 		// Check for conflict
@@ -615,180 +702,161 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 		shellScriptsDir = filepath.Join(projCfg.Paths.GeneratedDir, "shell-scripts")
 	}
 
-	// 1. Ensure directories exist
-	if err := o.fs.MkdirAll(shellScriptsDir, 0755); err != nil {
-		return err
-	}
-	onceDir := filepath.Join(shellScriptsDir, ".once")
-	if err := o.fs.MkdirAll(onceDir, 0755); err != nil {
-		return err
-	}
+	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+		fsys := o.getTrackedFS(ctx, tx, "system", "init")
 
-	// Prune existing files in .once/ during consecutive generate commands
-	for i := 1; i <= 1000; i++ {
-		for _, ext := range []string{"zsh", "bash", "ps1"} {
-			filePath := filepath.Join(onceDir, fmt.Sprintf("once-%03d.%s", i, ext))
-			if exists, err := o.fs.Exists(filePath); err == nil && exists {
-				_ = o.fs.Remove(filePath)
-			}
-		}
-	}
-
-	// We generate for zsh, bash, powershell
-	shells := []string{"zsh", "bash", "powershell"}
-
-	for _, sh := range shells {
-		var scriptLines []string
-
-		// Add header
-		scriptLines = append(scriptLines, "# Generated by dotfiles installer")
-
-		// Prepend targetDir (user-bin) to PATH
-		if sh == "powershell" {
-			scriptLines = append(scriptLines, fmt.Sprintf("$env:PATH = %q + [IO.Path]::PathSeparator + $env:PATH", projCfg.Paths.TargetDir))
-		} else {
-			scriptLines = append(scriptLines, fmt.Sprintf("export PATH=%q:\"$PATH\"", projCfg.Paths.TargetDir))
-		}
-
-		// Zsh fpath completion
-		if sh == "zsh" {
-			completionsDir := filepath.Join(shellScriptsDir, "zsh", "completions")
-			if err := o.fs.MkdirAll(completionsDir, 0755); err != nil {
-				return err
-			}
-			scriptLines = append(scriptLines, fmt.Sprintf("fpath=(%q $fpath)", completionsDir))
-			scriptLines = append(scriptLines, "autoload -Uz compinit && compinit -u")
-		}
-
-		// Iterate through tools
-		onceCounter := 1
-		for _, tool := range tools {
-			if tool.Disabled {
-				continue
-			}
-			if tool.Hostname != "" && !matchesHostname(tool.Hostname) {
-				continue
-			}
-
-			// Get tool shell config
-			var stc *config.ShellTypeConfig
-			if tool.ShellConfigs != nil {
-				if sh == "zsh" {
-					stc = tool.ShellConfigs.Zsh
-				} else if sh == "bash" {
-					stc = tool.ShellConfigs.Bash
-				} else if sh == "powershell" {
-					stc = tool.ShellConfigs.Powershell
-				}
-			}
-
-			if stc == nil {
-				continue
-			}
-
-			// 2. Environment variables
-			for k, v := range stc.Env {
-				vResolved, err := o.resolvePlaceholder(v, tool, projCfg)
-				if err != nil {
-					return fmt.Errorf("resolving env variable %q: %w", k, err)
-				}
-				if sh == "powershell" {
-					scriptLines = append(scriptLines, fmt.Sprintf("$env:%s = %q", k, vResolved))
-				} else {
-					scriptLines = append(scriptLines, fmt.Sprintf("export %s=%q", k, vResolved))
-				}
-			}
-
-			// 3. Aliases
-			for k, v := range stc.Aliases {
-				vResolved, err := o.resolvePlaceholder(v, tool, projCfg)
-				if err != nil {
-					return fmt.Errorf("resolving alias %q: %w", k, err)
-				}
-				if sh == "powershell" {
-					scriptLines = append(scriptLines, fmt.Sprintf("Set-Alias -Name %s -Value %q", k, vResolved))
-				} else {
-					scriptLines = append(scriptLines, fmt.Sprintf("alias %s='%s'", k, vResolved))
-				}
-			}
-
-			// 4. Scripts (always vs once)
-			for _, scr := range stc.Scripts {
-				valResolved, err := o.resolvePlaceholder(scr.Value, tool, projCfg)
-				if err != nil {
-					return fmt.Errorf("resolving script: %w", err)
-				}
-				if scr.Kind == "always" {
-					scriptLines = append(scriptLines, valResolved)
-				} else if scr.Kind == "once" {
-					// Write once script to a file
-					ext := sh
-					if sh == "powershell" {
-						ext = "ps1"
-					}
-					onceFileName := fmt.Sprintf("once-%03d.%s", onceCounter, ext)
-					onceCounter++
-					onceFilePath := filepath.Join(onceDir, onceFileName)
-
-					var scriptContent string
-					if sh == "powershell" {
-						scriptContent = valResolved + "\nRemove-Item $MyInvocation.MyCommand.Path -ErrorAction SilentlyContinue\n"
-					} else {
-						scriptContent = valResolved + "\nrm -f \"$0\"\n"
-					}
-
-					err := o.fs.WriteFile(onceFilePath, []byte(scriptContent), 0755)
-					if err != nil {
-						return err
-					}
-
-					if sh == "powershell" {
-						scriptLines = append(scriptLines, fmt.Sprintf("& %q", onceFilePath))
-					} else {
-						scriptLines = append(scriptLines, fmt.Sprintf("source %q", onceFilePath))
-					}
-				}
-			}
-
-			// 5. Completions
-			if sh == "zsh" && stc.Completions != nil {
-				completionsDir := filepath.Join(shellScriptsDir, "zsh", "completions")
-				targetPath := filepath.Join(completionsDir, "_"+tool.Name)
-
-				var completionContent []byte
-				switch val := stc.Completions.(type) {
-				case string:
-					toolConfigDir := filepath.Dir(tool.ConfigFilePath)
-					resolvedPath := filepath.Join(toolConfigDir, val)
-					if b, err := o.fs.ReadFile(resolvedPath); err == nil {
-						completionContent = b
-					} else {
-						completionContent = []byte(fmt.Sprintf("# Placeholder completion for %s\n", tool.Name))
-					}
-				default:
-					completionContent = []byte(fmt.Sprintf("# Placeholder completion for %s\n", tool.Name))
-				}
-
-				err := o.fs.WriteFile(targetPath, completionContent, 0644)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		// Write final main script file
-		ext := sh
-		if sh == "powershell" {
-			ext = "ps1"
-		}
-		mainFilePath := filepath.Join(shellScriptsDir, "main."+ext)
-		err := o.fs.WriteFile(mainFilePath, []byte(strings.Join(scriptLines, "\n")+"\n"), 0644)
-		if err != nil {
+		// 1. Ensure directories exist
+		if err := fsys.MkdirAll(shellScriptsDir, 0755); err != nil {
 			return err
 		}
-	}
+		onceDir := filepath.Join(shellScriptsDir, ".once")
+		if err := fsys.MkdirAll(onceDir, 0755); err != nil {
+			return err
+		}
 
-	return nil
+		// Prune existing files in .once/ during consecutive generate commands
+		for i := 1; i <= 1000; i++ {
+			for _, ext := range []string{"zsh", "bash", "ps1"} {
+				filePath := filepath.Join(onceDir, fmt.Sprintf("once-%03d.%s", i, ext))
+				if exists, err := fsys.Exists(filePath); err == nil && exists {
+					_ = fsys.Remove(filePath)
+				}
+			}
+		}
+
+		// We generate for zsh, bash, powershell
+		shells := []string{"zsh", "bash", "powershell"}
+
+		for _, sh := range shells {
+			var scriptLines []string
+
+			// Add header
+			scriptLines = append(scriptLines, "# Generated by dotfiles installer")
+
+			// Prepend targetDir (user-bin) to PATH
+			if sh == "powershell" {
+				scriptLines = append(scriptLines, fmt.Sprintf("$env:PATH = %q + [IO.Path]::PathSeparator + $env:PATH", projCfg.Paths.TargetDir))
+			} else {
+				scriptLines = append(scriptLines, fmt.Sprintf("export PATH=%q:\"$PATH\"", projCfg.Paths.TargetDir))
+			}
+
+			// Zsh fpath completion
+			if sh == "zsh" {
+				completionsDir := filepath.Join(shellScriptsDir, "zsh", "completions")
+				if err := fsys.MkdirAll(completionsDir, 0755); err != nil {
+					return err
+				}
+				scriptLines = append(scriptLines, fmt.Sprintf("fpath=(%q $fpath)", completionsDir))
+				scriptLines = append(scriptLines, "autoload -Uz compinit && compinit -u")
+			}
+
+			// Iterate through tools
+			onceCounter := 1
+			for _, tool := range tools {
+				if tool.Disabled {
+					continue
+				}
+				if tool.Hostname != "" && !matchesHostname(tool.Hostname) {
+					continue
+				}
+
+				// Get tool shell config
+				var stc *config.ShellTypeConfig
+				if tool.ShellConfigs != nil {
+					if sh == "zsh" {
+						stc = tool.ShellConfigs.Zsh
+					} else if sh == "bash" {
+						stc = tool.ShellConfigs.Bash
+					} else if sh == "powershell" {
+						stc = tool.ShellConfigs.Powershell
+					}
+				}
+
+				if stc == nil {
+					continue
+				}
+
+				// 2. Environment variables
+				for k, v := range stc.Env {
+					vResolved, err := o.resolvePlaceholder(v, tool, projCfg)
+					if err != nil {
+						return fmt.Errorf("resolving env variable %q: %w", k, err)
+					}
+					if sh == "powershell" {
+						scriptLines = append(scriptLines, fmt.Sprintf("$env:%s = %q", k, vResolved))
+					} else {
+						scriptLines = append(scriptLines, fmt.Sprintf("export %s=%q", k, vResolved))
+					}
+				}
+
+				// 3. Aliases
+				for k, v := range stc.Aliases {
+					vResolved, err := o.resolvePlaceholder(v, tool, projCfg)
+					if err != nil {
+						return fmt.Errorf("resolving alias %q: %w", k, err)
+					}
+					if sh == "powershell" {
+						scriptLines = append(scriptLines, fmt.Sprintf("Set-Alias -Name %s -Value %q", k, vResolved))
+					} else {
+						scriptLines = append(scriptLines, fmt.Sprintf("alias %s='%s'", k, vResolved))
+					}
+				}
+
+				// 4. Scripts (always vs once)
+				for _, scr := range stc.Scripts {
+					valResolved, err := o.resolvePlaceholder(scr.Value, tool, projCfg)
+					if err != nil {
+						return fmt.Errorf("resolving script: %w", err)
+					}
+					if scr.Kind == "always" {
+						scriptLines = append(scriptLines, valResolved)
+					} else if scr.Kind == "once" {
+						// Write once script to a file
+						ext := sh
+						if sh == "powershell" {
+							ext = "ps1"
+						}
+						onceFileName := fmt.Sprintf("once-%03d.%s", onceCounter, ext)
+						onceCounter++
+						onceFilePath := filepath.Join(onceDir, onceFileName)
+
+						var scriptContent string
+						if sh == "powershell" {
+							scriptContent = valResolved + "\nRemove-Item $MyInvocation.MyCommand.Path -ErrorAction SilentlyContinue\n"
+						} else if sh == "zsh" {
+							scriptContent = valResolved + "\nrm -f \"${(%):-%x}\"\n"
+						} else { // bash
+							scriptContent = valResolved + "\nrm -f \"${BASH_SOURCE[0]}\"\n"
+						}
+
+						err := fsys.WriteFile(onceFilePath, []byte(scriptContent), 0777)
+						if err != nil {
+							return err
+						}
+
+						if sh == "powershell" {
+							scriptLines = append(scriptLines, fmt.Sprintf("& %q", onceFilePath))
+						} else {
+							scriptLines = append(scriptLines, fmt.Sprintf("source %q", onceFilePath))
+						}
+					}
+				}
+			}
+
+			// Write final main script file
+			ext := sh
+			if sh == "powershell" {
+				ext = "ps1"
+			}
+			mainFilePath := filepath.Join(shellScriptsDir, "main."+ext)
+			err := fsys.WriteFile(mainFilePath, []byte(strings.Join(scriptLines, "\n")+"\n"), 0666)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func (o *Orchestrator) resolvePlaceholder(val string, tool *config.ToolConfig, projCfg *config.ProjectConfig) (string, error) {
@@ -835,4 +903,54 @@ func shouldOverwrite() bool {
 		}
 	}
 	return os.Getenv("DOTFILES_OVERWRITE") == "true"
+}
+
+func isExternallyManaged(method string) bool {
+	switch method {
+	case "apt", "pkg", "brew", "npm", "dmg", "pacman", "dnf":
+		return true
+	}
+	return false
+}
+
+func getStringParam(params map[string]interface{}, key string, defaultValue string) string {
+	if params == nil {
+		return defaultValue
+	}
+	val, ok := params[key]
+	if !ok {
+		return defaultValue
+	}
+	str, ok := val.(string)
+	if !ok {
+		return defaultValue
+	}
+	return str
+}
+
+func removeAll(fsys fs.FS, path string) error {
+	exists, err := fsys.Exists(path)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+
+	entries, err := fsys.ReadDir(path)
+	if err != nil {
+		// It's a file, or not a directory. Remove it.
+		return fsys.Remove(path)
+	}
+
+	// It's a directory. Recursively remove all entries.
+	for _, entry := range entries {
+		entryPath := filepath.Join(path, entry)
+		if err := removeAll(fsys, entryPath); err != nil {
+			return err
+		}
+	}
+
+	// Finally, remove the directory itself.
+	return fsys.Remove(path)
 }

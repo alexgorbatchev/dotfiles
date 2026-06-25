@@ -21,7 +21,7 @@ if [ -n "${!RECURSION_ENV_VAR:-}" ]; then
 fi
 
 # Record shim usage to the local append-only log.
-if [ -n "$USAGE_LOG_PATH" ] && [ "${DOTFILES_LOCAL_USAGE_TRACKING:-1}" != "0" ]; then
+if [ "${DOTFILES_LOCAL_USAGE_TRACKING:-1}" != "0" ]; then
   usage_timestamp="$(date +%s 2>/dev/null)" || true
   if [ -n "${usage_timestamp:-}" ]; then
     printf 'v1\t%s\t%s\t%s\n' "$usage_timestamp" "$TOOL_NAME" "$BINARY_NAME" >> "$USAGE_LOG_PATH" 2>/dev/null || true
@@ -31,6 +31,7 @@ fi
 # Check if the first argument is @update
 if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
   echo "Updating $TOOL_NAME to latest version..."
+  # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
   eval "$GENERATOR_CLI_EXECUTABLE" update --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
   exit $?
 fi
@@ -45,19 +46,24 @@ else
     exit 1
   fi
 
+  # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+  # Let stderr (progress bars) pass through to the user
+  # Temporarily disable set -e to handle install failures gracefully
   set +e
   eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
   install_exit_code=$?
   set -e
 
-  if [ $install_exit_code -eq 0 ]; then
-    if [ -x "$TOOL_EXECUTABLE" ]; then
-      exec "$TOOL_EXECUTABLE" "$@"
+    if [ $install_exit_code -eq 0 ]; then
+      # Installation successful, try to execute binary again
+      if [ -x "$TOOL_EXECUTABLE" ]; then
+        exec "$TOOL_EXECUTABLE" "$@"
+      else
+        {{.MissingBinaryCmd}}
+        exit 1
+      fi
     else
-      {{.MissingBinaryCmd}}
-      exit 1
-    fi
-  else
+    # Installation failed, exit with the same code
     exit $install_exit_code
   fi
 fi
