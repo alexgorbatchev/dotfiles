@@ -1,9 +1,12 @@
 package installer
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -138,6 +141,101 @@ func TestDmgInstaller(t *testing.T) {
 		res, err := inst.CheckUpdate(context.Background(), tool)
 		if err != nil || res.HasUpdate {
 			t.Errorf("unexpected result: %v, %v", res, err)
+		}
+	})
+
+	t.Run("Install success with GitHub Release", func(t *testing.T) {
+		runner.Clear()
+		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
+		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
+		inst.BinDir = "/test/dmg-gh"
+
+		githubServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/releases/") {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{
+					"id": 12345,
+					"tag_name": "v1.2.3",
+					"name": "v1.2.3 Release",
+					"assets": [
+						{
+							"id": 101,
+							"name": "slack-darwin-arm64.dmg",
+							"browser_download_url": "http://` + r.Host + `/download/slack.dmg"
+						}
+					]
+				}`))
+			} else if strings.Contains(r.URL.Path, "/download/") {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte("mock-dmg-content"))
+			}
+		}))
+		defer githubServer.Close()
+
+		inst.BaseURL = githubServer.URL
+
+		tool := &config.ToolConfig{
+			Name: "slack",
+			InstallParams: map[string]interface{}{
+				"source": map[string]interface{}{
+					"type": "github-release",
+					"repo": "slack/slack",
+				},
+				"appName": "Slack.app",
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(res.Binaries) != 1 || res.Binaries[0] != "/Applications/Slack.app/Contents/MacOS/slack" {
+			t.Errorf("unexpected binary: %v", res.Binaries)
+		}
+	})
+
+	t.Run("Install success from zipped DMG", func(t *testing.T) {
+		runner.Clear()
+		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
+		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
+		inst.BinDir = "/test/dmg-zip"
+
+		// Create a mock zip containing slack.dmg
+		var zipBuf bytes.Buffer
+		zw := zip.NewWriter(&zipBuf)
+		f, err := zw.Create("slack.dmg")
+		if err != nil {
+			t.Fatalf("failed to create zip file entry: %v", err)
+		}
+		_, _ = f.Write([]byte("mock-dmg-inside-zip"))
+		_ = zw.Close()
+
+		zipServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(zipBuf.Bytes())
+		}))
+		defer zipServer.Close()
+
+		tool := &config.ToolConfig{
+			Name: "slack",
+			InstallParams: map[string]interface{}{
+				"source": map[string]interface{}{
+					"type": "url",
+					"url":  zipServer.URL + "/slack-arm64.zip",
+				},
+				"appName": "Slack.app",
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(res.Binaries) != 1 || res.Binaries[0] != "/Applications/Slack.app/Contents/MacOS/slack" {
+			t.Errorf("unexpected binary: %v", res.Binaries)
 		}
 	})
 }

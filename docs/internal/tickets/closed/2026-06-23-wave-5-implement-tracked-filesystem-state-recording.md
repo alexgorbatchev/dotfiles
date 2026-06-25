@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-23 23:35
-last_modified: 2026-06-23 23:35
+last_modified: 2026-06-24 18:50
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 5: Implement TrackedFileSystem State Recording
@@ -32,13 +32,13 @@ A Go-native `TrackedFileSystem` wrapper in `pkg/fs` that wraps any raw `FS` inte
 
 ## Acceptance criteria
 
-- [ ] Define the `TrackedFileSystem` struct in a new file `pkg/fs/tracked_fs.go` that implements the `fs.FS` (or custom `FS`) interface.
-- [ ] `TrackedFileSystem` must intercept low-level writes:
+- [x] Define the `TrackedFileSystem` struct in a new file `pkg/fs/tracked_fs.go` that implements the `fs.FS` (or custom `FS`) interface.
+- [x] `TrackedFileSystem` must intercept low-level writes:
   - `WriteFile` / `Create` must automatically log a `"writeFile"` operation to `registry.db` with the precise calculated byte-size of the written file.
   - `Chmod` / `Chmod` operations must automatically log a `"chmod"` operation with decimal Unix permission strings (e.g., `"493"` for `0o755` executable permissions, `"438"` for `0o644` read-write permissions).
   - `MkdirAll` must automatically log a `"mkdir"` operation.
   - `Remove` / `RemoveAll` must automatically log a `"rm"` operation.
-- [ ] Remove manual file operations database tracking in `pkg/orchestrator/orchestrator.go` and ensure file logging occurs implicitly through the `TrackedFileSystem` wrapper.
-- [ ] Write unit tests inside `pkg/fs/tracked_fs_test.go` asserting that writing and chmod'ing files through the `TrackedFileSystem` wrapper automatically records correct rows in the database registry.
-- [ ] Run `bun check` and `bun check:ci` to verify that Go registry database files (`db_file_operations.json`) match TS output precisely.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Remove manual file operations database tracking in `pkg/orchestrator/orchestrator.go` and ensure file logging occurs implicitly through the `TrackedFileSystem` wrapper.
+- [x] Write unit tests inside `pkg/fs/tracked_fs_test.go` asserting that writing and chmod'ing files through the `TrackedFileSystem` wrapper automatically records correct rows in the database registry.
+- [x] Run `bun check` and `bun check:ci` to verify that Go registry database files (`db_file_operations.json`) match TS output precisely.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

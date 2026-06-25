@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-24 18:20
-last_modified: 2026-06-24 18:20
+last_modified: 2026-06-24 18:50
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 5: Resolve Permission Octal-Decimal Mismatch in SQLite Registry
@@ -10,8 +10,9 @@ ticket_status: open
 ## Problem
 
 There is a critical data-representation mismatch between Go and TypeScript when writing to and reading from the `permissions` column in `registry.db`.
-* **TypeScript:** Saves and reads permissions as stringified base-10 (decimal) integers (e.g., `493` represents `0o755`, `420` represents `0o644`). When read back into memory, TS executes `parseInt(row.permissions, 10)`.
-* **Go:** Saves and reads permissions as standard octal strings (e.g., `"0755"`, `"0644"`).
+
+- **TypeScript:** Saves and reads permissions as stringified base-10 (decimal) integers (e.g., `493` represents `0o755`, `420` represents `0o644`). When read back into memory, TS executes `parseInt(row.permissions, 10)`.
+- **Go:** Saves and reads permissions as standard octal strings (e.g., `"0755"`, `"0644"`).
 
 If a SQLite database is shared or analyzed in dual-run parity mode, Go gets string `"493"` and parses it incorrectly, while TS executes `parseInt("0755", 10)` which results in decimal `755` (equivalent to octal `0o1363`), leading to corrupted file permissions or runtime panics.
 
@@ -32,8 +33,8 @@ Go and TypeScript represent permissions identically inside the SQLite database. 
 
 ## Acceptance criteria
 
-- [ ] Modify `pkg/registry/registry.go` to marshal/unmarshal permissions in base-10 (decimal) integers string format rather than octal strings.
-- [ ] Add converter helpers in Go (e.g., converting `os.FileMode` to decimal string and vice versa).
-- [ ] Write unit tests in `pkg/registry/registry_test.go` verifying that permissions are stored as base-10 stringified integers (e.g., `493` for `0o755`).
-- [ ] Run `bun check` and `bun check:ci` to verify that Go registry database files (`db_file_operations.json`) match TS output precisely on permissions.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Modify `pkg/registry/registry.go` to marshal/unmarshal permissions in base-10 (decimal) integers string format rather than octal strings.
+- [x] Add converter helpers in Go (e.g., converting `os.FileMode` to decimal string and vice versa).
+- [x] Write unit tests in `pkg/registry/registry_test.go` verifying that permissions are stored as base-10 stringified integers (e.g., `493` for `0o755`).
+- [x] Run `bun check` and `bun check:ci` to verify that Go registry database files (`db_file_operations.json`) match TS output precisely on permissions.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

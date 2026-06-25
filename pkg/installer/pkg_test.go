@@ -1,10 +1,13 @@
 package installer
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -134,6 +137,109 @@ func TestPkgInstaller(t *testing.T) {
 		_, err := inst.Install(context.Background(), tool)
 		if err == nil {
 			t.Error("expected error but got nil")
+		}
+	})
+
+	t.Run("Install success with GitHub Release", func(t *testing.T) {
+		runner.Clear()
+		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
+		inst := NewPkgInstaller(runner, fsys, dl, sysCtx)
+		inst.BinDir = "/test/pkg-gh"
+
+		githubServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/releases/") {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{
+					"id": 12345,
+					"tag_name": "v1.2.3",
+					"name": "v1.2.3 Release",
+					"assets": [
+						{
+							"id": 101,
+							"name": "mytool-darwin-arm64.pkg",
+							"browser_download_url": "http://` + r.Host + `/download/mytool.pkg"
+						}
+					]
+				}`))
+			} else if strings.Contains(r.URL.Path, "/download/") {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte("mock-pkg-content"))
+			}
+		}))
+		defer githubServer.Close()
+
+		inst.BaseURL = githubServer.URL
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"source": map[string]interface{}{
+					"type": "github-release",
+					"repo": "mytool/mytool",
+				},
+				"target": "/Volumes/Mac",
+			},
+		}
+
+		_, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(runner.History) == 0 {
+			t.Fatal("expected installer command to run")
+		}
+		cmd := runner.History[0]
+		if cmd.Name != "installer" || cmd.Args[1] != "/test/pkg-gh/mytool-darwin-arm64.pkg" || cmd.Args[3] != "/Volumes/Mac" {
+			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
+		}
+	})
+
+	t.Run("Install success from zipped PKG", func(t *testing.T) {
+		runner.Clear()
+		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
+		inst := NewPkgInstaller(runner, fsys, dl, sysCtx)
+		inst.BinDir = "/test/pkg-zip"
+
+		// Create a mock zip containing mytool.pkg
+		var zipBuf bytes.Buffer
+		zw := zip.NewWriter(&zipBuf)
+		f, err := zw.Create("mytool.pkg")
+		if err != nil {
+			t.Fatalf("failed to create zip file entry: %v", err)
+		}
+		_, _ = f.Write([]byte("mock-pkg-inside-zip"))
+		_ = zw.Close()
+
+		zipServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(zipBuf.Bytes())
+		}))
+		defer zipServer.Close()
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"source": map[string]interface{}{
+					"type": "url",
+					"url":  zipServer.URL + "/mytool-arm64.zip",
+				},
+				"target": "/Volumes/Mac",
+			},
+		}
+
+		_, err = inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(runner.History) == 0 {
+			t.Fatal("expected installer command to run")
+		}
+		cmd := runner.History[0]
+		if cmd.Name != "installer" || !strings.HasSuffix(cmd.Args[1], ".pkg") || cmd.Args[3] != "/Volumes/Mac" {
+			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
 		}
 	})
 }

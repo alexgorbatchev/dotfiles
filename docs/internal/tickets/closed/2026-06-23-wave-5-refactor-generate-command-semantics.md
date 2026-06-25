@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-23 23:35
-last_modified: 2026-06-23 23:35
+last_modified: 2026-06-24 18:50
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 5: Refactor Generate Command Semantics
@@ -31,10 +31,10 @@ A refactored `generate` subcommand in Go that topologically sorts tool configura
 
 ## Acceptance criteria
 
-- [ ] Refactor `cmd/dotfiles/generate.go` to avoid invoking `services.Orchestrator.InstallTools(...)` on all tools.
-- [ ] Implement standalone, decoupled generation coordination in `pkg/orchestrator` that executes only file generators (shims, symlinks, completions, shell-init, venv) on the list of topologically sorted tools.
-- [ ] The `generate` command must strictly skip running installation pipelines (`Install`) on standard tools, keeping the `db_tool_installations.json` output completely empty `[]` under dry-run validations.
-- [ ] Ensure that tools with `auto: true` in their install parameters (e.g., `zsh-plugin--zsh-vi-mode`) are still successfully auto-installed during generation, matching TS behavior.
-- [ ] Write unit tests verifying that running `generate` generates the correct shims and symlinks on disk without creating tool installation records in the SQLite database.
-- [ ] Run `bun check` and `bun check:ci` to verify that no compilation or TypeScript errors are introduced.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Refactor `cmd/dotfiles/generate.go` to avoid invoking `services.Orchestrator.InstallTools(...)` on all tools.
+- [x] Implement standalone, decoupled generation coordination in `pkg/orchestrator` that executes only file generators (shims, symlinks, completions, shell-init, venv) on the list of topologically sorted tools.
+- [x] The `generate` command must strictly skip running installation pipelines (`Install`) on standard tools, keeping the `db_tool_installations.json` output completely empty `[]` under dry-run validations.
+- [x] Ensure that tools with `auto: true` in their install parameters (e.g., `zsh-plugin--zsh-vi-mode`) are still successfully auto-installed during generation, matching TS behavior.
+- [x] Write unit tests verifying that running `generate` generates the correct shims and symlinks on disk without creating tool installation records in the SQLite database.
+- [x] Run `bun check` and `bun check:ci` to verify that no compilation or TypeScript errors are introduced.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
