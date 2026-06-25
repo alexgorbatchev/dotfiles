@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-25 14:00
 last_modified: 2026-06-25 14:00
-status: current
-ticket_status: open
+status: completed
+ticket_status: closed
 ---
 
 # Wave 6: Resolve Missing ctx VM Argument and Add Sandbox I/O Bindings
@@ -10,13 +10,15 @@ ticket_status: open
 ## Problem
 
 In the legacy TypeScript configuration engine, tool configuration callback functions registered via `defineTool` receive two parameters: `install` (the package installer builder) and `ctx` (the tool configuration context containing runtime identifiers and logging helpers):
+
 ```typescript
 export type AsyncConfigureTool = (install: IInstallFunction, ctx: IToolConfigContext) => any;
 ```
 
 In the compiled Go-native JS VM bootstrapper (`pkg/vm/vm.go` and `pkg/vm/bindings.go`), when the engine executes the transpiled `.tool.ts` configurations inside the embedded Sobek JS VM, **it completely omits the second argument (`ctx`)**:
+
 ```javascript
-if (typeof callback === 'function') {
+if (typeof callback === "function") {
   const res = callback(install); // CRITICAL BUG: Only passes install!
 }
 ```

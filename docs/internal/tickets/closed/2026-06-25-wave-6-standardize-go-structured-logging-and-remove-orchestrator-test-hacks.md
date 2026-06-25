@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-25 12:20
-last_modified: 2026-06-25 12:20
+last_modified: 2026-06-25 15:30
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Standardize Go Structured Logging and Remove Orchestrator Test Hacks
@@ -46,12 +46,12 @@ Using raw `fmt` prints in core modules bypasses global log levels (`--log=verbos
 
 ## Acceptance criteria
 
-- [ ] Standardize the Go orchestrator (`pkg/orchestrator/`) and all 15 installer plugins (`pkg/installer/`) to use `pkg/logger`:
-  - Pass the parent/context logger through constructors or method signatures.
-  - Create name-scoped sub-loggers using `logger.WithName()`.
-  - Pass error objects directly instead of extracting `.Error()`.
-  - Replace all raw `fmt.Printf`, `fmt.Println`, and `fmt.Fprintf(os.Stderr)` with appropriate logger calls (`Info`, `Debug`, `Warn`, `Error`).
-- [ ] Completely remove the hardcoded `"hook-test-tool"` block from `pkg/orchestrator/orchestrator.go`.
-- [ ] Implement a generic lifecycle hook parsing routine in the orchestrator that reads and executes `after-install` commands dynamically from the config file, ensuring `"hook-test-tool"` is executed via declarative config rather than hardcoded rules.
-- [ ] Verify that running `go test ./pkg/orchestrator/...` passes cleanly and captures all logged actions inside a structured `TestLogger`.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Standardize the Go orchestrator (`pkg/orchestrator/`) and all 15 installer plugins (`pkg/installer/`) to use `pkg/logger`:
+  - [x] Pass the parent/context logger through constructors or method signatures.
+  - [x] Create name-scoped sub-loggers using `logger.WithName()`.
+  - [x] Pass error objects directly instead of extracting `.Error()`.
+  - [x] Replace all raw `fmt.Printf`, `fmt.Println`, and `fmt.Fprintf(os.Stderr)` with appropriate logger calls (`Info`, `Debug`, `Warn`, `Error`).
+- [x] Completely remove the hardcoded `"hook-test-tool"` block from `pkg/orchestrator/orchestrator.go`.
+- [x] Implement a generic lifecycle hook parsing routine in the orchestrator that reads and executes `after-install` commands dynamically from the config file, ensuring `"hook-test-tool"` is executed via declarative config rather than hardcoded rules.
+- [x] Verify that running `go test ./pkg/orchestrator/...` passes cleanly and captures all logged actions inside a structured `TestLogger`.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

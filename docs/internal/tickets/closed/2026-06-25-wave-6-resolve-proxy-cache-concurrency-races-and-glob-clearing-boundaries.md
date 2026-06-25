@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-25 12:10
-last_modified: 2026-06-25 12:10
+last_modified: 2026-06-25 15:30
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Resolve Proxy Cache Concurrency Races and Glob Clearing Boundaries
@@ -54,15 +54,15 @@ The HTTP Proxy Cache operates as a 100% thread-safe and deterministic local cach
 
 ## Acceptance criteria
 
-- [ ] Fix the concurrency bug inside `Get()` in `pkg/proxy/proxy.go`. Do not mutate the filesystem or call `deleteByKey(key)` inside the read lock. Instead:
+- [x] Fix the concurrency bug inside `Get()` in `pkg/proxy/proxy.go`. Do not mutate the filesystem or call `deleteByKey(key)` inside the read lock. Instead:
   - Retrieve and check metadata under a Read Lock.
   - If the item is expired, release the Read Lock.
   - Acquire a full Write Lock (`Lock()`), re-verify expiration, delete the entry safely via `deleteByKey(key)`, and release the Write Lock.
-- [ ] Upgrade the glob matching compiler `matchGlob` in `pkg/proxy/proxy.go` to enforce word boundaries matching TS:
+- [x] Upgrade the glob matching compiler `matchGlob` in `pkg/proxy/proxy.go` to enforce word boundaries matching TS:
   ```go
   // Compile glob into regex that ensures word boundaries:
   // (^|://|\.|/)[escapedPart]($|\.|/|:||\?)
   ```
-- [ ] Write a parallelized, high-load concurrency unit test inside `pkg/proxy/proxy_test.go` that spans dozens of parallel goroutines simultaneously requesting expired keys, asserting that the proxy operates correctly without triggering panic states or deadlocks.
-- [ ] Write unit tests verifying that clearing a glob for `github.com` does not wipe cache records for `notgithub.com`.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Write a parallelized, high-load concurrency unit test inside `pkg/proxy/proxy_test.go` that spans dozens of parallel goroutines simultaneously requesting expired keys, asserting that the proxy operates correctly without triggering panic states or deadlocks.
+- [x] Write unit tests verifying that clearing a glob for `github.com` does not wipe cache records for `notgithub.com`.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

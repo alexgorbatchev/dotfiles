@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-25 10:15
-last_modified: 2026-06-25 10:15
+last_modified: 2026-06-25 15:30
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Modernize Binary Size Limit and Verification
@@ -29,11 +29,11 @@ The bundle size check is refactored into a Go binary size validator. It checks t
 
 ## Acceptance criteria
 
-- [ ] Rename the build step file `packages/build/src/build/steps/enforceCliBundleSizeLimit.ts` to `packages/build/src/build/steps/enforceGoBinarySizeLimit.ts`, and rename its exported function to `enforceGoBinarySizeLimit`.
-- [ ] Update `packages/build/src/build/build.ts` to import and invoke `enforceGoBinarySizeLimit` instead of the legacy `enforceCliBundleSizeLimit`.
-- [ ] Rename the config property `maxCliBundleSizeBytes` to `maxGoBinarySizeBytes` in `packages/build/src/build/types.ts` and set its exact value inside the build context to `26214400` bytes (representing exactly 25MB).
-- [ ] In `enforceGoBinarySizeLimit`, check if the file `.dist/dotfiles` exists; if it does not, throw `BuildError("dotfiles output is missing")`.
-- [ ] Compare the `.dist/dotfiles` file size with `maxGoBinarySizeBytes`. If it exceeds the threshold, throw a `BuildError` with the exact message template:
+- [x] Rename the build step file `packages/build/src/build/steps/enforceCliBundleSizeLimit.ts` to `packages/build/src/build/steps/enforceGoBinarySizeLimit.ts`, and rename its exported function to `enforceGoBinarySizeLimit`.
+- [x] Update `packages/build/src/build/build.ts` to import and invoke `enforceGoBinarySizeLimit` instead of the legacy `enforceCliBundleSizeLimit`.
+- [x] Rename the config property `maxCliBundleSizeBytes` to `maxGoBinarySizeBytes` in `packages/build/src/build/types.ts` and set its exact value inside the build context to `26214400` bytes (representing exactly 25MB).
+- [x] In `enforceGoBinarySizeLimit`, check if the file `.dist/dotfiles` exists; if it does not, throw `BuildError("dotfiles output is missing")`.
+- [x] Compare the `.dist/dotfiles` file size with `maxGoBinarySizeBytes`. If it exceeds the threshold, throw a `BuildError` with the exact message template:
       `dotfiles binary is too large (${sizeKb} kb), expected under 25600 kb`
-- [ ] Create unit tests inside `packages/build/src/build/__tests__/enforceGoBinarySizeLimit.test.ts` that verify both the passing case (mocking a file under 25MB) and the throwing case (mocking a file over 25MB, asserting the exact BuildError message structure).
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Create unit tests inside `packages/build/src/build/__tests__/enforceGoBinarySizeLimit.test.ts` that verify both the passing case (mocking a file under 25MB) and the throwing case (mocking a file over 25MB, asserting the exact BuildError message structure).
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

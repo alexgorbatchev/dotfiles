@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-25 12:00
-last_modified: 2026-06-25 12:00
+last_modified: 2026-06-25 15:30
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Modernize Downloader and Archive Extractor Capabilities
@@ -49,7 +49,7 @@ The Go downloader is a configurable, robust client supporting authorization and 
 
 ### 1. Downloader Upgrades
 
-- [ ] Refactor `pkg/downloader/downloader.go` to accept an options struct `DownloadOptions`:
+- [x] Refactor `pkg/downloader/downloader.go` to accept an options struct `DownloadOptions`:
   ```go
   type DownloadOptions struct {
       Headers    map[string]string
@@ -59,19 +59,19 @@ The Go downloader is a configurable, robust client supporting authorization and 
       OnProgress func(bytesDownloaded int64, totalBytes int64)
   }
   ```
-- [ ] Implement a retry-with-backoff loop inside `downloader.go` using the specified `RetryCount` and `RetryDelay`.
-- [ ] Inject custom headers (such as `Authorization: token <token>`) from the `DownloadOptions` struct directly into the outgoing `http.Request`.
-- [ ] Wire the options structure to the installer plugins (e.g., `pkg/installer/github.go`), ensuring private repo downloads propagate auth headers.
+- [x] Implement a retry-with-backoff loop inside `downloader.go` using the specified `RetryCount` and `RetryDelay`.
+- [x] Inject custom headers (such as `Authorization: token <token>`) from the `DownloadOptions` struct directly into the outgoing `http.Request`.
+- [x] Wire the options structure to the installer plugins (e.g., `pkg/installer/github.go`), ensuring private repo downloads propagate auth headers.
 
 ### 2. Extractor Upgrades (Symlinks and Stream Decompression)
 
-- [ ] Support Symlink extraction in Tar decompressor: update `extractTar` to handle `tar.TypeSymlink` and `tar.TypeLink`, executing proper `os.Symlink` calls.
-- [ ] Support Symlink extraction in Zip decompressor: update `extractZip` to parse symlink headers (`f.Mode() & os.ModeSymlink != 0`), read the symlink destination path, and construct native symbolic links.
-- [ ] **Stream Buffering**: Eliminate `io.ReadAll` inside `pkg/archive/archive.go`. Use streaming chunked copies like `io.Copy(destFile, tarReader)` to write files directly, limiting RAM usage to standard small buffers (e.g., 32KB) regardless of the file size.
-- [ ] Add native decompression support for `.tar.xz`, `.txz`, and single-file `.gz` structures using Go packages or lightweight wrappers.
-- [ ] Port the executable heuristics detection from TS (`detectAndSetExecutables`), scanning extracted files and restoring the executable bit (`chmod 0o755`) on files starting with shell shebangs (e.g., `#!/bin/sh`) or having common compiler outputs.
-- [ ] Create unit tests inside `pkg/archive/archive_test.go` and `pkg/downloader/downloader_test.go` asserting:
+- [x] Support Symlink extraction in Tar decompressor: update `extractTar` to handle `tar.TypeSymlink` and `tar.TypeLink`, executing proper `os.Symlink` calls.
+- [x] Support Symlink extraction in Zip decompressor: update `extractZip` to parse symlink headers (`f.Mode() & os.ModeSymlink != 0`), read the symlink destination path, and construct native symbolic links.
+- [x] **Stream Buffering**: Eliminate `io.ReadAll` inside `pkg/archive/archive.go`. Use streaming chunked copies like `io.Copy(destFile, tarReader)` to write files directly, limiting RAM usage to standard small buffers (e.g., 32KB) regardless of the file size.
+- [x] Add native decompression support for `.tar.xz`, `.txz`, and single-file `.gz` structures using Go packages or lightweight wrappers.
+- [x] Port the executable heuristics detection from TS (`detectAndSetExecutables`), scanning extracted files and restoring the executable bit (`chmod 0o755`) on files starting with shell shebangs (e.g., `#!/bin/sh`) or having common compiler outputs.
+- [x] Create unit tests inside `pkg/archive/archive_test.go` and `pkg/downloader/downloader_test.go` asserting:
   - Success on downloading and passing authenticating headers.
   - Correct extraction of a test Tarball/Zipball that contains nested symbolic links, verifying the links point to the right relative directories and remain executable.
   - Clean streaming of files without loading entire byte slices into memory.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

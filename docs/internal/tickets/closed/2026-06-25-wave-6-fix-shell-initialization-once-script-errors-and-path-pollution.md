@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-25 11:40
-last_modified: 2026-06-25 11:40
+last_modified: 2026-06-25 15:30
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Fix Shell Initialization Once-Script Errors and PATH/fpath Pollution
@@ -43,8 +43,8 @@ The Go shell profile emission generator implements dynamic once-script matching 
 
 ## Acceptance criteria
 
-- [ ] Refactor Go's shell profile generator in `pkg/orchestrator/orchestrator.go` to stop writing hardcoded absolute paths for once-scripts into the generated main shell config file.
-- [ ] Implement dynamic glob matching loops for each supported shell inside `pkg/shellinit/shellinit.go`:
+- [x] Refactor Go's shell profile generator in `pkg/orchestrator/orchestrator.go` to stop writing hardcoded absolute paths for once-scripts into the generated main shell config file.
+- [x] Implement dynamic glob matching loops for each supported shell inside `pkg/shellinit/shellinit.go`:
   - **Zsh**: Use a dynamic glob matching loop with the `(N)` null-glob flag:
     ```zsh
     for once_script in "/path/to/.once"/*.zsh(N); do
@@ -61,7 +61,7 @@ The Go shell profile emission generator implements dynamic once-script matching 
       Get-ChildItem -Path "/path/to/.once" -Filter "*.ps1" | ForEach-Object { & $_.FullName }
     }
     ```
-- [ ] Add conditional presence checks to Go's generated `PATH` appends, preventing duplicates on repeated sourcing:
+- [x] Add conditional presence checks to Go's generated `PATH` appends, preventing duplicates on repeated sourcing:
   - **POSIX (Zsh/Bash)**: Wrap the export in a substring comparison check:
     ```bash
     if [[ ":$PATH:" != *":/path/to/bin:"* ]]; then
@@ -72,6 +72,6 @@ The Go shell profile emission generator implements dynamic once-script matching 
     ```powershell
     if ($env:PATH -notlike "*/path/to/bin*") { $env:PATH = "/path/to/bin;$env:PATH" }
     ```
-- [ ] For Zsh, generate `typeset -U fpath` prior to appending custom completion directories to enforce native Zsh array uniqueness.
-- [ ] Write unit tests inside `pkg/shellinit/shellinit_test.go` confirming that generated shell emissions contain the correct glob loop syntaxes and path protection guards.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] For Zsh, generate `typeset -U fpath` prior to appending custom completion directories to enforce native Zsh array uniqueness.
+- [x] Write unit tests inside `pkg/shellinit/shellinit_test.go` confirming that generated shell emissions contain the correct glob loop syntaxes and path protection guards.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

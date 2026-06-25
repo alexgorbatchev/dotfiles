@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-25 10:00
-last_modified: 2026-06-25 10:00
+last_modified: 2026-06-25 15:30
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Implement Cross-Platform NPM Binary Wrapping and Distribution
@@ -31,17 +31,17 @@ A multi-platform packaging setup where:
 
 ## Acceptance criteria
 
-- [ ] Refactor the release compilation step in `packages/build` to cross-compile Go binaries for the following four target environments:
+- [x] Refactor the release compilation step in `packages/build` to cross-compile Go binaries for the following four target environments:
   - `GOOS=darwin GOARCH=amd64` (resulting in `bin/dotfiles-darwin-x64`)
   - `GOOS=darwin GOARCH=arm64` (resulting in `bin/dotfiles-darwin-arm64`)
   - `GOOS=linux GOARCH=amd64` (resulting in `bin/dotfiles-linux-x64`)
   - `GOOS=linux GOARCH=arm64` (resulting in `bin/dotfiles-linux-arm64`)
-- [ ] Implement the runtime launcher script `cli.js` inside the main package, performing precise mapping from NodeJS host values to sub-packages:
+- [x] Implement the runtime launcher script `cli.js` inside the main package, performing precise mapping from NodeJS host values to sub-packages:
   - `process.platform === 'darwin'` and `process.arch === 'x64'` -> `@alexgorbatchev/dotfiles-darwin-x64`
   - `process.platform === 'darwin'` and `process.arch === 'arm64'` -> `@alexgorbatchev/dotfiles-darwin-arm64`
   - `process.platform === 'linux'` and `process.arch === 'x64'` -> `@alexgorbatchev/dotfiles-linux-x64`
   - `process.platform === 'linux'` and `process.arch === 'arm64'` -> `@alexgorbatchev/dotfiles-linux-arm64`
-- [ ] Ensure `cli.js` executes the binary using native `node:child_process` `spawn` or `spawnSync`, setting options `{ stdio: 'inherit' }` to forward all stream inputs/outputs, forwards system OS signals (such as `SIGINT`, `SIGTERM`), and terminates calling `process.exit(code)` with the exact exit code of the spawned Go subprocess.
-- [ ] Define the exact optional package distribution schema in the root `.dist/package.json`, listing the 4 native platform packages inside the `optionalDependencies` block with matching semver versions.
-- [ ] Add unit tests inside `packages/build/src/build/__tests__/platformDetection.test.ts` that mock `process.platform` and `process.arch` to assert that all 4 target states resolve to their correct paths, and throws descriptive errors on unsupported platforms.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Ensure `cli.js` executes the binary using native `node:child_process` `spawn` or `spawnSync`, setting options `{ stdio: 'inherit' }` to forward all stream inputs/outputs, forwards system OS signals (such as `SIGINT`, `SIGTERM`), and terminates calling `process.exit(code)` with the exact exit code of the spawned Go subprocess.
+- [x] Define the exact optional package distribution schema in the root `.dist/package.json`, listing the 4 native platform packages inside the `optionalDependencies` block with matching semver versions.
+- [x] Add unit tests inside `packages/build/src/build/__tests__/platformDetection.test.ts` that mock `process.platform` and `process.arch` to assert that all 4 target states resolve to their correct paths, and throws descriptive errors on unsupported platforms.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
