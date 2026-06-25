@@ -49,7 +49,15 @@ func TestE2EInstall(t *testing.T) {
 		// Verify binary exists and is executable
 		info, err := os.Stat(binaryPath)
 		if err != nil {
-			t.Fatalf("expected binary to exist after install: %v", err)
+			var files []string
+			_ = filepath.Walk(h.TempDir, func(p string, info os.FileInfo, err error) error {
+				if err == nil && !info.IsDir() {
+					rel, _ := filepath.Rel(h.TempDir, p)
+					files = append(files, rel)
+				}
+				return nil
+			})
+			t.Fatalf("expected binary to exist after install: %v\nExisting files in sandbox:\n%s", err, strings.Join(files, "\n"))
 		}
 		if info.Mode()&0111 == 0 {
 			t.Fatalf("expected binary to be executable")

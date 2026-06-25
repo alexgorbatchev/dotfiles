@@ -30,7 +30,7 @@ The VM evaluation layer evaluates JavaScript configurations and maps optional fi
 ## Acceptance criteria
 
 - [ ] Write a dedicated, exhaustive Go unit test suite inside `pkg/vm/pointer_unmarshal_test.go` to validate pointer-field unmarshaling against `config.ToolConfig` and `config.ToolConfigUpdateCheck` structures.
-- [ ] **String Pointers Verification**: 
+- [ ] **String Pointers Verification**:
   - Assert that evaluating script `tool = { name: "test", version: "1.4.2" };` results in a non-nil `toolCfg.Version` where `*toolCfg.Version == "1.4.2"`.
   - Assert that evaluating script `tool = { name: "test" };` (omitted version) results in `toolCfg.Version == nil`.
   - Assert that evaluating script `tool = { name: "test", version: null };` or `tool = { name: "test", version: undefined };` results in `toolCfg.Version == nil` with zero exceptions thrown.

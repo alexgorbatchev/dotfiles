@@ -31,10 +31,13 @@
     "paths": {
       "react": ["./packages/dashboard/node_modules/preact/compat"],
       "react/jsx-runtime": ["./packages/dashboard/node_modules/preact/compat/jsx-runtime"],
-      "react-dom": ["./packages/dashboard/node_modules/preact/compat/"]
+      "react-dom": ["./packages/dashboard/node_modules/preact/compat/"],
+      "@alexgorbatchev/dotfiles": ["./.dist/cli"],
+      "@dotfiles/cli": ["./.dist/cli"],
+      "@dotfiles/core": ["./.dist/cli"]
     }
   },
-  "include": ["packages", "test-project-npm", "cli.ts", "review"],
+  "include": ["packages", "test-project-npm", "review"],
   "exclude": [
     "**/.tmp/**",
     "**/tmp/**",

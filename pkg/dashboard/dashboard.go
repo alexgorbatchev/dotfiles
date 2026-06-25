@@ -10,7 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
 //go:embed all:dist
@@ -18,18 +20,24 @@ var assets embed.FS
 
 // Server hosts the static visualization dashboard.
 type Server struct {
-	logger *logger.Logger
-	port   int
-	server *http.Server
-	ln     net.Listener
-	wg     sync.WaitGroup
+	logger        *logger.Logger
+	port          int
+	server        *http.Server
+	ln            net.Listener
+	wg            sync.WaitGroup
+	registry      *registry.Registry
+	projectConfig *config.ProjectConfig
+	toolConfigs   []*config.ToolConfig
 }
 
 // NewServer constructs a new dashboard server.
-func NewServer(log *logger.Logger, port int) *Server {
+func NewServer(log *logger.Logger, port int, reg *registry.Registry, projCfg *config.ProjectConfig, toolConfigs []*config.ToolConfig) *Server {
 	return &Server{
-		logger: log.GetSubLogger("DashboardServer"),
-		port:   port,
+		logger:        log.GetSubLogger("DashboardServer"),
+		port:          port,
+		registry:      reg,
+		projectConfig: projCfg,
+		toolConfigs:   toolConfigs,
 	}
 }
 
@@ -46,6 +54,7 @@ func (s *Server) Start() error {
 	}
 
 	mux := http.NewServeMux()
+	s.RegisterRoutes(mux)
 	mux.Handle("/", http.FileServer(http.FS(subFS)))
 
 	s.server = &http.Server{

@@ -1,0 +1,67 @@
+{
+  "projectConfig": {
+    "paths": {
+      "generatedDir": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/.tmp/e2e-test/worker-default/dependency-ambiguous",
+      "homeDir": "{paths.generatedDir}/user-home",
+      "targetDir": "{paths.generatedDir}/user-bin",
+      "toolConfigsDir": "{configFileDir}"
+    },
+    "github": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } },
+    "cargo": {
+      "cratesIo": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } },
+      "githubRaw": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } },
+      "githubRelease": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } }
+    },
+    "downloader": { "cache": { "enabled": false } }
+  },
+  "toolConfigs": {
+    "dependency-provider-b": {
+      "name": "dependency-provider-b",
+      "version": "2.0.0",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/dependency-ambiguous/dependency-provider-b.tool.ts",
+      "binaries": ["shared-dependency"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "manual",
+      "installParams": {}
+    },
+    "dependency-provider-a": {
+      "name": "dependency-provider-a",
+      "version": "1.0.0",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/dependency-ambiguous/dependency-provider-a.tool.ts",
+      "binaries": ["shared-dependency"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "manual",
+      "installParams": {}
+    },
+    "dependency-consumer-ambiguous": {
+      "name": "dependency-consumer-ambiguous",
+      "version": "1.0.0",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/dependency-ambiguous/dependency-consumer-ambiguous.tool.ts",
+      "binaries": ["dependency-consumer-ambiguous"],
+      "dependencies": ["shared-dependency"],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "manual",
+      "installParams": {}
+    }
+  }
+}

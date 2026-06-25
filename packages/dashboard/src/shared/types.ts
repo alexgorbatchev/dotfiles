@@ -1,5 +1,57 @@
-import type { IBinaryConfig } from "@dotfiles/core";
-import type { IFileOperation, IFileState } from "@dotfiles/registry/file";
+import type { Platform, Architecture } from "./platform.types";
+
+export interface IBinaryConfig {
+  name: string;
+  pattern: string;
+}
+
+export interface IFileOperation {
+  id: number;
+  toolName: string;
+  operationType: "writeFile" | "chmod" | "rm" | "mkdir" | "symlink" | "rename" | "cp";
+  filePath: string;
+  targetPath?: string;
+  fileType: "shim" | "binary" | "symlink" | "copy" | "config" | "completion" | "init" | "hook-generated" | "catalog";
+  metadata?: Record<string, unknown>;
+  sizeBytes?: number;
+  permissions?: number;
+  createdAt: number;
+  operationId: string;
+}
+
+export interface IFileState {
+  filePath: string;
+  toolName: string;
+  fileType: IFileOperation["fileType"];
+  lastOperation: IFileOperation["operationType"];
+  targetPath?: string;
+  lastModified: number;
+  metadata?: Record<string, unknown>;
+  sizeBytes?: number;
+  permissions?: number;
+}
+
+export interface IToolInstallationRecord {
+  id: number;
+  toolName: string;
+  version: string;
+  installPath: string;
+  timestamp: string;
+  installedAt: Date;
+  binaryPaths: string[];
+  downloadUrl?: string;
+  assetName?: string;
+  configuredVersion?: string;
+  originalTag?: string;
+  installMethod?: string;
+}
+
+export interface ISystemInfo {
+  platform: Platform;
+  arch: Architecture;
+  homeDir: string;
+  hostname: string;
+}
 
 /**
  * Standard API response wrapper for all dashboard endpoints.

@@ -4,11 +4,7 @@ import path from "node:path";
 import { getPackageJson } from "../../getPackageJson";
 import { generateDistPackageJson } from "../steps/generateDistPackageJson";
 import type { IBuildContext, IDependencyVersions } from "../types";
-import {
-  FIXTURE_REQUIRED_DEPENDENCY_FIELDS,
-  FIXTURE_SAMPLE_DEPENDENCY_VERSIONS,
-  FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES,
-} from "./fixtures/fixtures--dist-package-json";
+import { FIXTURE_SAMPLE_DEPENDENCY_VERSIONS } from "./fixtures/fixtures--dist-package-json";
 import { createMockBuildContext } from "./helpers/createMockBuildContext";
 import { setupTmpDir } from "./helpers/manageTmpDir";
 
@@ -34,18 +30,16 @@ describe("generateDistPackageJson", () => {
 
   test("generates valid package.json file", async () => {
     const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
-    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
 
-    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
+    await generateDistPackageJson(mockContext, dependencyVersions);
 
     expect(fs.existsSync(tempFile)).toBe(true);
   });
 
   test("generated package.json is valid JSON", async () => {
     const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
-    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
 
-    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
+    await generateDistPackageJson(mockContext, dependencyVersions);
 
     const content = fs.readFileSync(tempFile, "utf-8");
     const parsed = JSON.parse(content);
@@ -54,9 +48,8 @@ describe("generateDistPackageJson", () => {
 
   test("generated package.json has required fields", async () => {
     const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
-    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
 
-    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
+    await generateDistPackageJson(mockContext, dependencyVersions);
 
     const content = fs.readFileSync(tempFile, "utf-8");
     const packageJson = JSON.parse(content);
@@ -75,9 +68,8 @@ describe("generateDistPackageJson", () => {
 
   test("includes publish metadata for the public npm package", async () => {
     const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
-    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
 
-    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
+    await generateDistPackageJson(mockContext, dependencyVersions);
 
     const content = fs.readFileSync(tempFile, "utf-8");
     const packageJson = JSON.parse(content);
@@ -101,9 +93,8 @@ describe("generateDistPackageJson", () => {
 
   test("includes bin field with dotfiles executable", async () => {
     const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
-    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
 
-    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
+    await generateDistPackageJson(mockContext, dependencyVersions);
 
     const content = fs.readFileSync(tempFile, "utf-8");
     const packageJson = JSON.parse(content);
@@ -113,9 +104,8 @@ describe("generateDistPackageJson", () => {
 
   test("includes exports field with proper structure", async () => {
     const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
-    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
 
-    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
+    await generateDistPackageJson(mockContext, dependencyVersions);
 
     const content = fs.readFileSync(tempFile, "utf-8");
     const packageJson = JSON.parse(content);
@@ -124,39 +114,10 @@ describe("generateDistPackageJson", () => {
     expect(packageJson.exports["."].import.types).toBe("./schemas.d.ts");
   });
 
-  test("includes all required dependencies in dependencies field", async () => {
-    const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
-    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
-
-    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
-
-    const content = fs.readFileSync(tempFile, "utf-8");
-    const packageJson = JSON.parse(content);
-
-    for (const field of FIXTURE_REQUIRED_DEPENDENCY_FIELDS) {
-      expect(packageJson.dependencies).toHaveProperty(field);
-    }
-  });
-
-  test("includes runtime dependencies in dependencies field", async () => {
-    const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
-    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
-
-    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
-
-    const content = fs.readFileSync(tempFile, "utf-8");
-    const packageJson = JSON.parse(content);
-
-    for (const [depName, depVersion] of Object.entries(runtimeDependencies)) {
-      expect(packageJson.dependencies[depName]).toBe(depVersion);
-    }
-  });
-
   test("correctly sets type dependency versions", async () => {
     const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
-    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
 
-    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
+    await generateDistPackageJson(mockContext, dependencyVersions);
 
     const content = fs.readFileSync(tempFile, "utf-8");
     const packageJson = JSON.parse(content);
@@ -167,9 +128,8 @@ describe("generateDistPackageJson", () => {
 
   test("generated package.json is properly formatted with indentation", async () => {
     const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
-    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
 
-    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
+    await generateDistPackageJson(mockContext, dependencyVersions);
 
     const content = fs.readFileSync(tempFile, "utf-8");
 
@@ -180,18 +140,15 @@ describe("generateDistPackageJson", () => {
 
   test("generated package.json includes files array with all required patterns", async () => {
     const dependencyVersions: IDependencyVersions = FIXTURE_SAMPLE_DEPENDENCY_VERSIONS;
-    const runtimeDependencies: Record<string, string> = FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES;
 
-    await generateDistPackageJson(mockContext, dependencyVersions, runtimeDependencies);
+    await generateDistPackageJson(mockContext, dependencyVersions);
 
     const content = fs.readFileSync(tempFile, "utf-8");
     const packageJson = JSON.parse(content);
 
     expect(Array.isArray(packageJson.files)).toBe(true);
     expect(packageJson.files).toContain("*.js");
-    expect(packageJson.files).toContain("*.js.map");
     expect(packageJson.files).toContain("*.d.ts");
-    expect(packageJson.files).toContain("*.css");
     expect(packageJson.files).toContain("skill");
     expect(packageJson.files).toContain("README.md");
     expect(packageJson.files).toContain("LICENSE");

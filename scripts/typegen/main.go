@@ -35,7 +35,7 @@ func main() {
 	t.Add(config.PlatformConfigEntry{})
 	t.Add(config.ToolConfig{})
 
-	outputPath := "packages/core/src/types.gen.ts"
+	outputPath := "packages/dashboard/src/shared/types.gen.ts"
 	err := t.ConvertToFile(outputPath)
 	if err != nil {
 		fmt.Printf("Error converting Go structures to TypeScript: %v\n", err)

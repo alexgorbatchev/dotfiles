@@ -42,7 +42,7 @@ func NewMockServer(t *testing.T, fixtureDir string) *MockServer {
 		t.Fatalf("failed to find project root")
 	}
 
-	ms.FixtureDir = filepath.Join(ms.ProjectRoot, "packages", "e2e-test", "src", "__tests__", "fixtures", fixtureDir)
+	ms.FixtureDir = filepath.Join(ms.ProjectRoot, "tests", "e2e", "fixtures", fixtureDir)
 
 	// Set default versions
 	ms.versions["repo/github-release-tool"] = "1.0.0"

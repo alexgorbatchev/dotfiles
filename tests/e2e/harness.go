@@ -352,40 +352,34 @@ func (h *TestHarness) AssertDBToolInstalled(toolName, version string) {
 func (h *TestHarness) CopyFixture(fixtureName string) {
 	h.T.Helper()
 	projectRoot := h.findProjectRoot()
-	srcDir := filepath.Join(projectRoot, "packages", "e2e-test", "src", "__tests__", "fixtures", fixtureName)
+	srcDir := filepath.Join(projectRoot, "tests", "e2e", "fixtures", fixtureName)
 	err := h.copyDir(srcDir, h.TempDir)
 	if err != nil {
 		h.T.Fatalf("failed to copy fixture %q to sandbox: %v", fixtureName, err)
 	}
 
-	// Compile the ORIGINAL fixture config.ts to JSON using scripts/load-configs.ts
-	originalConfigPath := filepath.Join(srcDir, "config.ts")
-	if _, err := os.Stat(originalConfigPath); err == nil {
-		cmd := exec.Command("bun", "run", "scripts/load-configs.ts", originalConfigPath)
-		cmd.Dir = h.ProjectRoot
-		if h.MockServerURL != "" {
-			parts := strings.Split(h.MockServerURL, ":")
-			if len(parts) > 2 {
-				port := parts[len(parts)-1]
-				cmd.Env = append(os.Environ(), "MOCK_SERVER_PORT="+port)
-			}
-		}
-		output, err := cmd.CombinedOutput()
+	// Load the pre-compiled config.json from the fixture directory natively in Go
+	originalConfigJsonPath := filepath.Join(srcDir, "config.json")
+	if _, err := os.Stat(originalConfigJsonPath); err == nil {
+		configBytes, err := os.ReadFile(originalConfigJsonPath)
 		if err != nil {
-			h.T.Fatalf("failed to compile original config.ts in test harness: %v\noutput: %s", err, string(output))
+			h.T.Fatalf("failed to read original config.json in test harness: %v", err)
 		}
 
 		// Replace the original generatedDir path with sandbox generatedDir path in JSON string
 		originalGenDir := filepath.ToSlash(filepath.Join(projectRoot, ".tmp", "e2e-test", "worker-default", fixtureName))
 		sandboxGenDir := filepath.ToSlash(filepath.Join(h.TempDir, ".generated"))
 		
-		jsonStr := string(output)
+		jsonStr := string(configBytes)
 		jsonStr = strings.ReplaceAll(jsonStr, originalGenDir, sandboxGenDir)
-		
-		// Also replace original config file path and directory
-		originalConfigDir := filepath.ToSlash(filepath.Join(projectRoot, "packages", "e2e-test", "src", "__tests__", "fixtures", fixtureName))
+
+		originalConfigDir := filepath.ToSlash(filepath.Join(projectRoot, "packages/e2e-test/src/__tests__/fixtures", fixtureName))
+		// Also support the migrated fixtures path
+		originalConfigDirMigrated := filepath.ToSlash(filepath.Join(projectRoot, "tests/e2e/fixtures", fixtureName))
 		sandboxConfigDir := filepath.ToSlash(h.TempDir)
+
 		jsonStr = strings.ReplaceAll(jsonStr, originalConfigDir, sandboxConfigDir)
+		jsonStr = strings.ReplaceAll(jsonStr, originalConfigDirMigrated, sandboxConfigDir)
 
 		err = os.WriteFile(filepath.Join(h.TempDir, "config.json"), []byte(jsonStr), 0644)
 		if err != nil {

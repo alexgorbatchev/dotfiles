@@ -103,6 +103,13 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		projCfg.Cargo.GithubRelease.Host = mockHost
 	}
 
+	if projCfg.Paths.BinariesDir == "" {
+		projCfg.Paths.BinariesDir = filepath.Join(projCfg.Paths.GeneratedDir, "binaries")
+	}
+	if projCfg.Paths.ShellScriptsDir == "" {
+		projCfg.Paths.ShellScriptsDir = filepath.Join(projCfg.Paths.GeneratedDir, "shell-scripts")
+	}
+
 	// Resolve the generatedDir placeholders in paths
 	if strings.Contains(projCfg.Paths.HomeDir, "{paths.generatedDir}") {
 		projCfg.Paths.HomeDir = strings.ReplaceAll(projCfg.Paths.HomeDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)

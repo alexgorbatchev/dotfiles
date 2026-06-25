@@ -1,7 +1,6 @@
-import type { ISystemInfo, ToolConfig } from "@dotfiles/core";
-import { Architecture, Platform } from "@dotfiles/core";
-import type { IFileState } from "@dotfiles/registry/file";
-import type { IToolInstallationRecord } from "@dotfiles/registry/tool";
+import type { ToolConfig } from "./types.gen";
+import { Architecture, Platform } from "./platform.types";
+import type { IFileState, IToolInstallationRecord, ISystemInfo } from "./types";
 
 import type {
   ISerializableInstallParams,
@@ -79,8 +78,8 @@ export function serializeToolConfig(config: ToolConfig): ISerializableToolConfig
 
   return {
     name: config.name,
-    version: config.version,
-    installationMethod: config.installationMethod,
+    version: config.version || "latest",
+    installationMethod: config.installationMethod || "manual",
     installParams,
     binaries: config.binaries,
     dependencies: config.dependencies,

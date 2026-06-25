@@ -8,7 +8,7 @@ import { symlinkDirectory } from "./symlinkDirectory";
  * Files from .dist that should be included in the dotfiles package.
  * Excludes tool-types.d.ts since end users receive it in .generated folder.
  */
-const PACKAGE_FILES: string[] = ["cli.js", "cli.js.map", "package.json", "schemas.d.ts"];
+const PACKAGE_FILES: string[] = ["cli.js", "package.json", "schemas.d.ts", "authoring-types.d.ts"];
 
 /**
  * Prepares node_modules for the tsd tests project.

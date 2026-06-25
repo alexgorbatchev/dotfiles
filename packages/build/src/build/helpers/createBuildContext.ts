@@ -96,15 +96,15 @@ export function createBuildContext(): IBuildContext {
     outputSkillDir,
   };
 
-  const maxCliBundleSizeKb: number = 500;
-  const maxCliBundleSizeBytes: number = maxCliBundleSizeKb * 1024;
+  const maxGoBinarySizeKb: number = 25000;
+  const maxGoBinarySizeBytes: number = maxGoBinarySizeKb * 1024;
   const typeTestsDirName: string = "type-tests";
   const tsdTestFileExtension: string = ".test-d.ts";
   const excludedPackageCopyDirs: string[] = ["node_modules", "__tests__", "type-tests"];
 
   const constants: IBuildConstants = {
-    maxCliBundleSizeKb,
-    maxCliBundleSizeBytes,
+    maxGoBinarySizeKb,
+    maxGoBinarySizeBytes,
     typeTestsDirName,
     tsdTestFileExtension,
     excludedPackageCopyDirs,

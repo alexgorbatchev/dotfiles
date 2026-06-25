@@ -60,8 +60,8 @@ export interface IBuildPaths {
 }
 
 export interface IBuildConstants {
-  maxCliBundleSizeKb: number;
-  maxCliBundleSizeBytes: number;
+  maxGoBinarySizeKb: number;
+  maxGoBinarySizeBytes: number;
   typeTestsDirName: string;
   tsdTestFileExtension: string;
   excludedPackageCopyDirs: string[];

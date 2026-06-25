@@ -3,7 +3,8 @@
   "version": "1.0.2",
   "private": true,
   "workspaces": [
-    "packages/*",
+    "packages/dashboard",
+    "packages/build",
     "test-project-npm"
   ],
   "type": "module",
@@ -20,11 +21,9 @@
     "release": "bun packages/build/src/release/main.ts",
     "find-unused": "echo \"find-unused analyzer is not configured in this workspace.\"",
     "cli": "go run ./cmd/dotfiles",
-    "proxy": "bun run packages/http-proxy/src/server.ts",
     "check": "bun lint && bun typecheck && bun test:all",
-    "check:ci": "bun lint && bun typecheck && bun test:native && go test ./tests/e2e/... && go run scripts/parity-harness/main.go",
-    "dashboard": "go run ./cmd/dotfiles --config test-project-npm/dotfiles.config.ts dashboard",
-    "docs": "cd packages/docs && bun run dev"
+    "check:ci": "bun lint && bun typecheck && bun test:native && go test ./tests/e2e/...",
+    "dashboard": "go run ./cmd/dotfiles --config test-project-npm/dotfiles.config.ts dashboard"
   },
   "devDependencies": {
     "@alexgorbatchev/typescript-ai-policy": "5.0.2",

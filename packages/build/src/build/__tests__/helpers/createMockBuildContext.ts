@@ -45,8 +45,8 @@ export function createMockBuildContext(overrides?: IMockBuildContextOverrides): 
   };
 
   const defaultConstants: IBuildConstants = {
-    maxCliBundleSizeKb: 1024,
-    maxCliBundleSizeBytes: 1024 * 1024,
+    maxGoBinarySizeKb: 1024,
+    maxGoBinarySizeBytes: 1024 * 1024,
     typeTestsDirName: "__tests__",
     tsdTestFileExtension: ".test.ts",
     excludedPackageCopyDirs: [".git", "node_modules", "__tests__"],
