@@ -124,6 +124,7 @@ func TestSubcommands(t *testing.T) {
 }
 
 func TestBootstrapAndExecutionSideEffects(t *testing.T) {
+	t.Setenv("DOTFILES_DRY_RUN", "true")
 	ctx := context.Background()
 	// Force dryRun = true for in-memory DB and MemFS simulation
 	dryRun = true

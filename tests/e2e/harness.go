@@ -60,7 +60,7 @@ func NewTestHarness(t *testing.T, options HarnessOptions) *TestHarness {
 	h.ProjectRoot = h.findProjectRoot()
 
 	if h.ConfigPath == "" || h.ConfigPath == "dotfiles.config.ts" || h.ConfigPath == "config.ts" {
-		h.ConfigPath = "config.json"
+		h.ConfigPath = "config.ts"
 	}
 	if !filepath.IsAbs(h.ConfigPath) {
 		h.ConfigPath = filepath.Join(tempDir, h.ConfigPath)

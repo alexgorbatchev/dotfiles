@@ -9,9 +9,10 @@ ticket_status: open
 
 ## Problem
 
-To support safe `--dry-run` executions and comprehensive unit test verification, the monorepo utilizes an virtualized filesystem abstraction (`fs.FS` or `fsys`). 
+To support safe `--dry-run` executions and comprehensive unit test verification, the monorepo utilizes an virtualized filesystem abstraction (`fs.FS` or `fsys`).
 
 However, multiple Go packages currently bypass this abstraction, making direct OS-level writes or copies that bypass virtual `MemFS` boundaries:
+
 1. **Missing `CopyFile` in FS Interface**: Go's core `FS` interface (`pkg/fs/fs.go`) has no copy-file signature.
 2. **Hardcoded Command Spawning**: In `pkg/installer/dmg.go` (lines 258-260), the dmg installer copies `.app` bundles from mounted volumes to `/Applications` by spawning hardcoded OS-level shell commands (`cp -R appSource appDest`).
 3. **Hardcoded standard library File Operations**: In `pkg/archive/archive.go`'s `copyDir` helper (lines 509-525), the file copying logic walks physical directories on the host operating system using `filepath.Walk` and opens source files via Go's standard library `os.Open` instead of calling `fsys.Open`.

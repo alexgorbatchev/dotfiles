@@ -12,8 +12,9 @@ ticket_status: open
 The Go implementation stores local state data inside an SQLite database (`registry.db`). Since installations and tool operations run concurrently under Go goroutines, proper connection pooling and transaction safety are enforced inside `pkg/db/db.go`.
 
 However, the Go database client lacks critical SQLite performance optimizations compared to the legacy TypeScript implementation:
+
 - **Missing Synchronous Pragma**: The legacy TypeScript client configures the database connection with `PRAGMA synchronous = NORMAL` and `PRAGMA busy_timeout = 5000`. The Go database initialization completely omits the `PRAGMA synchronous = NORMAL` command.
-- **The Bug**: Without `PRAGMA synchronous = NORMAL`, SQLite defaults to `PRAGMA synchronous = FULL`. In `FULL` mode, SQLite must pause execution and wait for data to be physically, safely written to the storage drive platters on *every single* state transaction or insert. On slow host systems (such as older mechanical hard drives, network drives, or un-optimized virtual instances), this causes a massive performance bottleneck, slowing down tool installations and status inquiries significantly.
+- **The Bug**: Without `PRAGMA synchronous = NORMAL`, SQLite defaults to `PRAGMA synchronous = FULL`. In `FULL` mode, SQLite must pause execution and wait for data to be physically, safely written to the storage drive platters on _every single_ state transaction or insert. On slow host systems (such as older mechanical hard drives, network drives, or un-optimized virtual instances), this causes a massive performance bottleneck, slowing down tool installations and status inquiries significantly.
 
 ## Why this matters
 

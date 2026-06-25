@@ -492,7 +492,7 @@ func TestOrchestrator_Errors(t *testing.T) {
 	}
 
 	// Test missing installation method
-	tool := &config.ToolConfig{Name: "test-tool"}
+	tool := &config.ToolConfig{Name: "test-tool", Binaries: []interface{}{"test-bin"}}
 	err = orch.InstallTool(ctx, tool, projCfg)
 	if err == nil {
 		t.Fatal("expected error with missing installation method")

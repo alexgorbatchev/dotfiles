@@ -9,9 +9,10 @@ ticket_status: open
 
 ## Problem
 
-In automated setups (such as CI/CD runners, Docker builds, or headless remote triggers), execution environment streams (`stdin`) are non-interactive. 
+In automated setups (such as CI/CD runners, Docker builds, or headless remote triggers), execution environment streams (`stdin`) are non-interactive.
 
 When executing tool installations, if an installer requires root permissions (where `.sudo()` is configured), Go's command execution engine blindly spawns subprocess commands prepended with `sudo` (e.g., calling `sudo apt-get install -y bat`).
+
 - **The Bug**: Since the execution environment is non-interactive, the command runner has no stdin terminal attached. If the user does not have passwordless sudo configured on the host system, the spawned `sudo` command blocks and hangs indefinitely, waiting for a password prompt that can never be answered. This locks up the execution runner until a global script timeout is reached.
 - **TypeScript's Behavior**: TypeScript's command execution system checks if `process.stdout.isTTY` or `process.stdin.isTTY` is active, or performs a lightweight, non-interactive verification pre-flight check before spawning interactive prompts, raising a clean, non-blocking error if prompt entry is impossible.
 

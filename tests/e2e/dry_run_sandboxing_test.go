@@ -29,6 +29,8 @@ func TestE2EDryRunSandboxing(t *testing.T) {
 
 	// Run generate command with dry-run
 	stdout, stderr, exitCode, err := h.Generate("-d")
+	t.Logf("generate stdout:\n%s", stdout)
+	t.Logf("generate stderr:\n%s", stderr)
 	if err != nil {
 		t.Fatalf("generate failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
@@ -57,6 +59,15 @@ func TestE2EDryRunSandboxing(t *testing.T) {
 	// 3. Assert that physical registry.db was NOT created on the physical disk
 	dbPath := filepath.Join(h.TempDir, ".generated", "registry.db")
 	if _, err := os.Stat(dbPath); err == nil || !os.IsNotExist(err) {
+		var files []string
+		_ = filepath.Walk(h.TempDir, func(p string, info os.FileInfo, err error) error {
+			if err == nil {
+				rel, _ := filepath.Rel(h.TempDir, p)
+				files = append(files, rel)
+			}
+			return nil
+		})
+		t.Logf("FILES IN SANDBOX ON FAILURE:\n%s", strings.Join(files, "\n"))
 		t.Fatalf("expected physical registry.db database file NOT to be created or modified on disk, but it was found at %s", dbPath)
 	}
 }

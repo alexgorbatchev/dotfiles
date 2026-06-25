@@ -18,6 +18,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 type Services struct {
@@ -68,30 +69,46 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		return nil, fmt.Errorf("failed resolving absolute config path: %w", err)
 	}
 
-	// Support loading converted JSON configuration natively in Go (completely serverless and independent of Bun!)
+	var fsys fs.FS
+	if (dryRun && os.Getenv("DOTFILES_E2E_TEST") != "true") || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
+		fsys = fs.NewMemFS()
+	} else {
+		fsys = fs.NewOSFS()
+	}
+
+	var projCfg *config.ProjectConfig
+	var toolConfigs []*config.ToolConfig
+
 	if strings.HasSuffix(absConfigPath, ".ts") {
-		jsonPath := strings.TrimSuffix(absConfigPath, ".ts") + ".json"
-		if exists, _ := fileExists(jsonPath); exists {
-			absConfigPath = jsonPath
-		} else {
-			return nil, fmt.Errorf("configuration file must be .json format or have a converted JSON file: %s", absConfigPath)
+		var err error
+		var toolMap map[string]*config.ToolConfig
+		projCfg, toolMap, err = vm.LoadTypeScriptConfig(GetLogger("config", os.Stdout), fsys, absConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to dynamically load TypeScript config: %w", err)
+		}
+		for _, tc := range toolMap {
+			toolConfigs = append(toolConfigs, tc)
+		}
+	} else {
+		data, err := os.ReadFile(absConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read native JSON config: %w", err)
+		}
+
+		var bResult struct {
+			ProjectConfig config.ProjectConfig         `json:"projectConfig"`
+			ToolConfigs   map[string]config.ToolConfig `json:"toolConfigs"`
+		}
+		if err := json.Unmarshal(data, &bResult); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal native JSON project config: %w", err)
+		}
+
+		projCfg = &bResult.ProjectConfig
+		for _, tc := range bResult.ToolConfigs {
+			localTC := tc
+			toolConfigs = append(toolConfigs, &localTC)
 		}
 	}
-
-	data, err := os.ReadFile(absConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read native JSON config: %w", err)
-	}
-
-	var bResult struct {
-		ProjectConfig config.ProjectConfig         `json:"projectConfig"`
-		ToolConfigs   map[string]config.ToolConfig `json:"toolConfigs"`
-	}
-	if err := json.Unmarshal(data, &bResult); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal native JSON project config: %w", err)
-	}
-
-	projCfg := bResult.ProjectConfig
 
 	// If MOCK_SERVER_PORT is set, override public hosts to target mock server
 	mockPort := os.Getenv("MOCK_SERVER_PORT")
@@ -121,34 +138,22 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		projCfg.Paths.BinariesDir = strings.ReplaceAll(projCfg.Paths.BinariesDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
 	}
 
-	var toolConfigs []*config.ToolConfig
-	for _, tc := range bResult.ToolConfigs {
-		localTC := tc
-		toolConfigs = append(toolConfigs, &localTC)
-	}
-
 	sort.Slice(toolConfigs, func(i, j int) bool {
 		return toolConfigs[i].Name < toolConfigs[j].Name
 	})
 
 	ResolvePlatformConfigs(toolConfigs, installer.NewDefaultSystemContext())
 
-	var fsys fs.FS
-	if (dryRun && os.Getenv("DOTFILES_E2E_TEST") != "true") || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
-		fsys = fs.NewMemFS()
-	} else {
-		fsys = fs.NewOSFS()
-	}
-
 	// For dry-runs and tests, we still open a valid database.
-	// If in unit testing, use in-memory SQLite to prevent disk state pollution.
+	// If in unit testing or dry-run, use in-memory SQLite to prevent disk state pollution.
 	var dbPath string
-	if isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true" {
+	if (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") || (dryRun && os.Getenv("DOTFILES_E2E_TEST") != "true") {
 		dbPath = ":memory:"
 	} else {
 		dbPath = filepath.Join(projCfg.Paths.GeneratedDir, "registry.db")
 	}
 
+	fmt.Printf("DEBUG DBPATH: %s, dryRun: %v, e2e: %s\n", dbPath, dryRun, os.Getenv("DOTFILES_E2E_TEST"))
 	sqlDB, err := db.NewConnection(ctx, dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed connecting to SQLite database: %w", err)
@@ -161,23 +166,23 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	instReg := installer.DefaultRegistry()
 	if isDevTest() && os.Getenv("DOTFILES_E2E_USE_REAL_INSTALLERS") != "true" {
 		instReg = installer.NewRegistry()
-		_ = instReg.Register(&mockInstaller{name: "github-release"})
-		_ = instReg.Register(&mockInstaller{name: "cargo"})
-		_ = instReg.Register(&mockInstaller{name: "curl-script"})
-		_ = instReg.Register(&mockInstaller{name: "manual"})
-		_ = instReg.Register(&mockInstaller{name: "brew"})
-		_ = instReg.Register(&mockInstaller{name: "zsh-plugin"})
-		_ = instReg.Register(&mockInstaller{name: "gitea-release"})
-		_ = instReg.Register(&mockInstaller{name: "curl-tar"})
-		_ = instReg.Register(&mockInstaller{name: "curl-binary"})
-		_ = instReg.Register(&mockInstaller{name: "dmg"})
-		_ = instReg.Register(&mockInstaller{name: "npm"})
-		_ = instReg.Register(&mockInstaller{name: "apt"})
-		_ = instReg.Register(&mockInstaller{name: "pacman"})
-		_ = instReg.Register(&mockInstaller{name: "dnf"})
-		_ = instReg.Register(&mockInstaller{name: "pkg"})
+		_ = instReg.Register(&mockInstaller{name: "github-release", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "cargo", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "curl-script", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "manual", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "brew", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "zsh-plugin", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "gitea-release", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "curl-tar", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "curl-binary", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "dmg", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "npm", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "apt", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "pacman", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "dnf", fsys: fsys, projCfg: projCfg})
+		_ = instReg.Register(&mockInstaller{name: "pkg", fsys: fsys, projCfg: projCfg})
 	}
-	orch := orchestrator.NewOrchestrator(trackedFS, runner, reg, instReg)
+	orch := orchestrator.NewOrchestrator(GetLogger("orchestrator", os.Stdout), trackedFS, runner, reg, instReg)
 
 	// Map binary dependencies to fully-qualified tool names (e.g., fnm -> curl-script--fnm)
 	for _, tc := range toolConfigs {
@@ -213,7 +218,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	}
 
 	return &Services{
-		ProjectConfig: &projCfg,
+		ProjectConfig: projCfg,
 		ToolConfigs:   toolConfigs,
 		FS:            trackedFS,
 		DB:            sqlDB,
@@ -238,7 +243,9 @@ func isDevTest() bool {
 }
 
 type mockInstaller struct {
-	name string
+	name    string
+	fsys    fs.FS
+	projCfg *config.ProjectConfig
 }
 
 func (m *mockInstaller) Name() string {
@@ -246,7 +253,7 @@ func (m *mockInstaller) Name() string {
 }
 
 func (m *mockInstaller) SupportsSudo() bool {
-	return false
+	return m.name == "manual" || m.name == "apt" || m.name == "dnf" || m.name == "pacman" || m.name == "pkg"
 }
 
 func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
@@ -264,6 +271,24 @@ func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	if len(binaries) == 0 {
 		binaries = []string{tool.Name}
 	}
+
+	// Write mock binaries to the active staging directory
+	fmt.Printf("DEBUG MOCK: name: %q, fsys: %v, projCfg: %v\n", m.name, m.fsys != nil, m.projCfg != nil)
+	if m.fsys != nil && m.projCfg != nil {
+		toolDir := filepath.Join(m.projCfg.Paths.BinariesDir, tool.Name)
+		entries, err := m.fsys.ReadDir(toolDir)
+		fmt.Printf("DEBUG MOCK INSTALL: toolDir: %q, err: %v, entries: %v\n", toolDir, err, entries)
+		if err == nil {
+			for _, entry := range entries {
+				subDir := filepath.Join(toolDir, entry)
+				for _, binName := range binaries {
+					binPath := filepath.Join(subDir, binName)
+					_ = m.fsys.WriteFile(binPath, []byte("mock binary content"), 0755)
+				}
+			}
+		}
+	}
+
 	return &installer.InstallResult{
 		Binaries: binaries,
 	}, nil

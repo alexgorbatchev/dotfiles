@@ -11,7 +11,7 @@ The codebase is currently in a transitional, highly asymmetric state and is comp
 2. **Runtime VM Evaluation and Context Crashes**: Go's embedded Sobek JS VM cannot parse or run TypeScript syntax on-the-fly. It relies on a fragile, line-by-line string-replacement regex wrapper in `pkg/vm/vm.go` to strip ES imports, which fails catastrophically on multi-line imports. Crucially, the VM execution loader **completely omits the `ctx` argument** when invoking `defineTool` callbacks. Any `.tool.ts` config attempting to read platform info (`ctx.systemInfo`) or write logs (`ctx.log`) will crash immediately with `TypeError: Cannot read property 'systemInfo' of undefined`.
 3. **Broken and Mocked Dashboard Endpoints**: Go's native dashboard server (`pkg/dashboard/dashboard.go`) is currently just a static file server with embedded placeholder assets. Out of the 14 interactive REST API endpoints, critical mutation routes (like `/api/tools/:name/install`, `/api/tools/:name/update`, and `/api/tools/:name/check-update`) are complete stubs that instantly return mock JSON files. Deleting the TS server renders the visual dashboard completely non-functional for executing installations.
 4. **Dangerous Dry-Run Sandboxing Leaks**: Go's orchestrator fails to sandbox symbolic links during `--dry-run` executions. Because `o.symlinkFS` is never initialized by the CLI bootstrap sequence, the orchestrator defaults to a standard host-level evaluator, which **performs real, active symbolic link operations directly on the user's home directory during dry-runs**, violating sandboxing guarantees. Additionally, both Go and TS write state logs directly to the physical SQLite database (`registry.db`) during dry-runs, polluting audit records.
-5. **No Independent TypeScript Compiler**: Go cannot transpile `.ts` files to `.js` natively. At runtime, the Go bootstrap sequence checks for `.ts` files and silently searches for a pre-converted `.json` file (`dotfiles.config.json`) pre-compiled by a legacy Node/Bun process. The Go-native convert command (`cmd/dotfiles/convert.go`) is a complete stub that does nothing, meaning users *must* retain Node/Bun to run the Go executable.
+5. **No Independent TypeScript Compiler**: Go cannot transpile `.ts` files to `.js` natively. At runtime, the Go bootstrap sequence checks for `.ts` files and silently searches for a pre-converted `.json` file (`dotfiles.config.json`) pre-compiled by a legacy Node/Bun process. The Go-native convert command (`cmd/dotfiles/convert.go`) is a complete stub that does nothing, meaning users _must_ retain Node/Bun to run the Go executable.
 6. **Shell Initialization Startup Noise and fpath Pollution**: Go once-script execution generates hardcoded `source` statements inside shell profile initializers. Once these scripts execute and delete themselves, **every subsequent terminal opening prints noisy "file not found" errors** to standard output/error, breaking startup silence. Additionally, Go unconditionally prepends directories to the `$PATH` and Zsh `$fpath` variables on every load, leading to massive environment pollution on nested shells.
 
 ---
@@ -26,7 +26,8 @@ The monorepo operates in a fragile transitional hybrid phase. While Go successfu
 
 **4.5 / 10**
 
-*Technical Justifications:*
+_Technical Justifications:_
+
 - **Core Installers and Shim Generation (7.5 / 10):** The Go implementation successfully replicates shim generation, directory mapping, and basic installations, but suffers from severe platform-override merging bugs, lacks structured validation schemas, and compiles Rust crates entirely from source.
 - **Orchestration & Shell Emissions (5 / 10):** Sorter Kahn's dependency resolution is present but unstable. Severe performance bottlenecks and pollution bugs exist in "once-script" self-deletion tracking and PATH modifications.
 - **Dynamic JS/TS Configuration Evaluation (1 / 10):** High-severity gaps in Sobek VM bindings. Programmatic TS/JS lifecycle hooks are completely ignored, and the lack of a native TS transpiler prevents true Node-free executions.
@@ -37,7 +38,7 @@ The monorepo operates in a fragile transitional hybrid phase. While Go successfu
 
 ### Current Dual-Run Parity Status
 
-The dual-run verification harness (`scripts/parity-harness/main.go`) is currently **non-existent on disk**, as its files were deleted or moved, yet its existence is still conceptually referenced across closed Wave 5 tickets. The automated E2E test harness (`tests/e2e/harness.go:62-64`) passes, but this provides a **false sense of security**. The harness operates by feeding the Go binary a pre-converted static JSON file (`dotfiles.config.json`) pre-compiled by TypeScript. It confirms that Go can generate identical final file structures and registry logs *given static JSON inputs*, but it completely masks the dynamic gaps in runtime type-safety, dynamic execution of `.tool.ts` files, interactive JS hooks, and the web dashboard backend.
+The dual-run verification harness (`scripts/parity-harness/main.go`) is currently **non-existent on disk**, as its files were deleted or moved, yet its existence is still conceptually referenced across closed Wave 5 tickets. The automated E2E test harness (`tests/e2e/harness.go:62-64`) passes, but this provides a **false sense of security**. The harness operates by feeding the Go binary a pre-converted static JSON file (`dotfiles.config.json`) pre-compiled by TypeScript. It confirms that Go can generate identical final file structures and registry logs _given static JSON inputs_, but it completely masks the dynamic gaps in runtime type-safety, dynamic execution of `.tool.ts` files, interactive JS hooks, and the web dashboard backend.
 
 ---
 
@@ -63,7 +64,7 @@ Go's JS engine (`pkg/vm/`) is powered by Sobek, an ECMAScript 5.1/6 interpreter.
   ```
   However, the Go-native bootstrap script inside Sobek VM is implemented as:
   ```javascript
-  if (typeof callback === 'function') {
+  if (typeof callback === "function") {
     const res = callback(install); // ONLY passes install!
   }
   ```
@@ -157,8 +158,8 @@ Both implementations utilize Kahn's algorithm for topological sorting, but their
 
 ### D. Over-Aggressive Ambiguous Dependency Failures
 
-- **Go Sorter**: builds a flat `binaryProviders := make(map[string]string)`. If *any* two tools declare the same binary name (e.g., both Tool A and Tool B define a binary named `helper` in their `.bin()` outputs), Go immediately crashes the entire execution with an ambiguous dependency error, even if no other tool in the entire project depends on `helper`.
-- **TypeScript Sorter**: tracks providers inside a Set (`Set<string>`) in its `binaryProviders` map. TS allows overlapping binary definitions in configurations and only throws an ambiguous dependency validation error if some Tool C *actually* lists `helper` in its `dependencies` array.
+- **Go Sorter**: builds a flat `binaryProviders := make(map[string]string)`. If _any_ two tools declare the same binary name (e.g., both Tool A and Tool B define a binary named `helper` in their `.bin()` outputs), Go immediately crashes the entire execution with an ambiguous dependency error, even if no other tool in the entire project depends on `helper`.
+- **TypeScript Sorter**: tracks providers inside a Set (`Set<string>`) in its `binaryProviders` map. TS allows overlapping binary definitions in configurations and only throws an ambiguous dependency validation error if some Tool C _actually_ lists `helper` in its `dependencies` array.
 
 ---
 
@@ -181,15 +182,15 @@ Because `json.Unmarshal` onto existing structs overwrites arrays/slices instead 
 
 ### B. Incomplete Installer Pipeline Features
 
-| Installer Method | Go File | TS Package | Status & Key Architectural Gaps |
-| :--- | :--- | :--- | :--- |
-| **`cargo`** | `cargo.go` | `installer-cargo` | **Heavy Performance Divergence:** TS fetches pre-compiled binaries via quickinstall or GitHub releases, enabling instant installs. Go executes a heavy from-source local compile via `cargo install`, requiring a local Rust toolchain and causing long build times. |
-| **`github-release`** | `github.go` | `installer-github` | **Functional Gaps:** Go's `matchAsset` function simply checks for standard substring matches for OS/Arch and, if none match, **returns the first asset in the release (`assets[0]`)**. This is highly dangerous and can download deb/rpm packages or invalid architectures on unsupported machines. It also lacks client caching (triggering rate-limiting) and the ability to fall back to the authenticated local `gh` CLI. |
-| **`curl-script`** | `curl_script.go` | `installer-curl-script` | **Critical parameter gaps**: Ignores `args` (script params), `env` (environment variables passed to script execution), `versionArgs` (arguments to detect version from CLI), and `versionRegex` (regex parser). Does not copy binaries from global paths like `/usr/local/bin` (TS does). |
-| **`curl-binary`** | `curl_binary.go` | `installer-curl-binary` | **Parameter gaps**: Ignores `versionArgs` and `versionRegex`. Cannot auto-detect CLI versions. |
-| **`curl-tar`** | `curl_tar.go` | `installer-curl-tar` | **Parameter gaps**: Ignores `versionArgs` and `versionRegex`. Cannot extract and automatically find/rename the correct binary if it doesn't match the tool name. |
-| **`zsh-plugin`** | `zsh_plugin.go` | `installer-zsh-plugin` | **Functional Gaps:** Missing `getShellInit` method to generate sourcing commands for already-installed plugins on startup. |
-| **`apt`, `dnf`, `pacman`** | `pkg/installer/*.go` | `installer-*` | `CheckUpdate` is a complete stub (`return &UpdateCheckResult{HasUpdate: false}, nil`) across all system package managers in Go. |
+| Installer Method           | Go File              | TS Package              | Status & Key Architectural Gaps                                                                                                                                                                                                                                                                                                                                                                                               |
+| :------------------------- | :------------------- | :---------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`cargo`**                | `cargo.go`           | `installer-cargo`       | **Heavy Performance Divergence:** TS fetches pre-compiled binaries via quickinstall or GitHub releases, enabling instant installs. Go executes a heavy from-source local compile via `cargo install`, requiring a local Rust toolchain and causing long build times.                                                                                                                                                          |
+| **`github-release`**       | `github.go`          | `installer-github`      | **Functional Gaps:** Go's `matchAsset` function simply checks for standard substring matches for OS/Arch and, if none match, **returns the first asset in the release (`assets[0]`)**. This is highly dangerous and can download deb/rpm packages or invalid architectures on unsupported machines. It also lacks client caching (triggering rate-limiting) and the ability to fall back to the authenticated local `gh` CLI. |
+| **`curl-script`**          | `curl_script.go`     | `installer-curl-script` | **Critical parameter gaps**: Ignores `args` (script params), `env` (environment variables passed to script execution), `versionArgs` (arguments to detect version from CLI), and `versionRegex` (regex parser). Does not copy binaries from global paths like `/usr/local/bin` (TS does).                                                                                                                                     |
+| **`curl-binary`**          | `curl_binary.go`     | `installer-curl-binary` | **Parameter gaps**: Ignores `versionArgs` and `versionRegex`. Cannot auto-detect CLI versions.                                                                                                                                                                                                                                                                                                                                |
+| **`curl-tar`**             | `curl_tar.go`        | `installer-curl-tar`    | **Parameter gaps**: Ignores `versionArgs` and `versionRegex`. Cannot extract and automatically find/rename the correct binary if it doesn't match the tool name.                                                                                                                                                                                                                                                              |
+| **`zsh-plugin`**           | `zsh_plugin.go`      | `installer-zsh-plugin`  | **Functional Gaps:** Missing `getShellInit` method to generate sourcing commands for already-installed plugins on startup.                                                                                                                                                                                                                                                                                                    |
+| **`apt`, `dnf`, `pacman`** | `pkg/installer/*.go` | `installer-*`           | `CheckUpdate` is a complete stub (`return &UpdateCheckResult{HasUpdate: false}, nil`) across all system package managers in Go.                                                                                                                                                                                                                                                                                               |
 
 ---
 
@@ -197,15 +198,15 @@ Because `json.Unmarshal` onto existing structs overwrites arrays/slices instead 
 
 ### Active Test Files Comparison
 
-| Test Objective | TS Test Path (`packages/e2e-test/src/__tests__/`) | Go Test Path (`tests/e2e/`) | State / Coverage |
-| :--- | :--- | :--- | :--- |
-| **Conflicts Detection** | `conflict.test.ts` | `conflict_test.go` | Functional Parity |
-| **Dependencies Resolution** | `dependency.test.ts` | `dependency_test.go` | Functional Parity |
-| **Basic Installations** | `install.test.ts` | `install_test.go` | Functional Parity |
-| **Stale Symlinks Cleanup** | `symlink-stale.test.ts` | _Missing_ | **Critical Go Gap** |
-| **Auto-Install Lifecycle** | `auto-install.test.ts` | _Missing_ | **Critical Go Gap** |
-| **Enterprise GitHub Config** | `gh-cli-enterprise.test.ts` | _Missing_ | **Critical Go Gap** |
-| **Tool Renaming State** | `tool-rename.test.ts` | _Missing_ | **Critical Go Gap** |
+| Test Objective               | TS Test Path (`packages/e2e-test/src/__tests__/`) | Go Test Path (`tests/e2e/`) | State / Coverage    |
+| :--------------------------- | :------------------------------------------------ | :-------------------------- | :------------------ |
+| **Conflicts Detection**      | `conflict.test.ts`                                | `conflict_test.go`          | Functional Parity   |
+| **Dependencies Resolution**  | `dependency.test.ts`                              | `dependency_test.go`        | Functional Parity   |
+| **Basic Installations**      | `install.test.ts`                                 | `install_test.go`           | Functional Parity   |
+| **Stale Symlinks Cleanup**   | `symlink-stale.test.ts`                           | _Missing_                   | **Critical Go Gap** |
+| **Auto-Install Lifecycle**   | `auto-install.test.ts`                            | _Missing_                   | **Critical Go Gap** |
+| **Enterprise GitHub Config** | `gh-cli-enterprise.test.ts`                       | _Missing_                   | **Critical Go Gap** |
+| **Tool Renaming State**      | `tool-rename.test.ts`                             | _Missing_                   | **Critical Go Gap** |
 
 ### Risks of Premature TypeScript Demolition:
 

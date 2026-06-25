@@ -347,7 +347,11 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	if tool.InstallationMethod == "" {
-		return fmt.Errorf("installation method not specified")
+		if len(tool.Binaries) > 0 {
+			return fmt.Errorf("installation method not specified")
+		}
+		// For shell-only tools (which have no installation method), proceed directly to generate shims, copies, and symlinks.
+		return o.GenerateTool(ctx, tool, projCfg)
 	}
 
 	inst, err := o.instRegistry.Get(tool.InstallationMethod)

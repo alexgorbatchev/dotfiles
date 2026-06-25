@@ -194,8 +194,11 @@ func getStringSliceParam(params map[string]interface{}, key string) []string {
 	return nil
 }
 
-// IsDryRun checks if the dry-run flag is present in the command-line arguments.
+// IsDryRun checks if the dry-run flag is present in the command-line arguments or set via environment.
 func IsDryRun() bool {
+	if os.Getenv("DOTFILES_DRY_RUN") == "true" {
+		return true
+	}
 	for _, arg := range os.Args {
 		if arg == "--dry-run" || arg == "-d" {
 			return true

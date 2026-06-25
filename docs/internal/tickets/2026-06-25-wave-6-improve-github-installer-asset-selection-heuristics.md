@@ -9,9 +9,10 @@ ticket_status: open
 
 ## Problem
 
-When using the `github-release` installer plugin in Go (`pkg/installer/github.go`), the installer queries the target GitHub repository's release API to fetch available download assets. 
+When using the `github-release` installer plugin in Go (`pkg/installer/github.go`), the installer queries the target GitHub repository's release API to fetch available download assets.
 
 However, the asset matching heuristics inside Go are extremely primitive compared to the legacy TypeScript implementation:
+
 - **Blind Fallback Bug**: Go's `matchAsset` function simply checks for OS and Architecture substring matches (e.g. searching for "darwin" or "linux" and "amd64" or "arm64"). If none of the assets matches the search query perfectly, Go **blindly falls back to returning the first asset in the payload (`assets[0]`)**:
   ```go
   // pkg/installer/github.go:236
