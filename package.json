@@ -15,15 +15,15 @@
     "test:all": "BUN_TEST_ALL=1 bun test && go test ./tests/e2e/...",
     "test:native": "BUN_TEST_SEQUENTIAL=1 bun test && go test ./tests/e2e/...",
     "test:task": "bun test",
-    "test-project-npm": "DOTFILES_BUILT_PACKAGE_NAME='@dotfiles/core' bun run --silent cli.ts --config test-project-npm/dotfiles.config.ts",
+    "test-project-npm": "go run ./cmd/dotfiles --config test-project-npm/dotfiles.config.ts",
     "compile": "bun packages/build/src/build/main.ts",
     "release": "bun packages/build/src/release/main.ts",
     "find-unused": "echo \"find-unused analyzer is not configured in this workspace.\"",
-    "cli": "bun run ./cli.ts",
+    "cli": "go run ./cmd/dotfiles",
     "proxy": "bun run packages/http-proxy/src/server.ts",
     "check": "bun lint && bun typecheck && bun test:all",
     "check:ci": "bun lint && bun typecheck && bun test:native && go test ./tests/e2e/... && go run scripts/parity-harness/main.go",
-    "dashboard": "NODE_ENV=development bun --hot cli.ts --config $PWD/test-project-npm/dotfiles.config.ts dashboard",
+    "dashboard": "go run ./cmd/dotfiles --config test-project-npm/dotfiles.config.ts dashboard",
     "docs": "cd packages/docs && bun run dev"
   },
   "devDependencies": {
