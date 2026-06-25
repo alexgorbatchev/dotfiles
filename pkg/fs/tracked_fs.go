@@ -199,3 +199,11 @@ func (t *TrackedFileSystem) Chmod(path string, perm os.FileMode) error {
 	permStr := fmt.Sprintf("0%o", perm&os.ModePerm)
 	return t.recordOperation("chmod", path, nil, nil, &permStr)
 }
+
+func (t *TrackedFileSystem) Rename(oldname, newname string) error {
+	err := t.fs.Rename(oldname, newname)
+	if err != nil {
+		return err
+	}
+	return t.recordOperation("rename", newname, &oldname, nil, nil)
+}

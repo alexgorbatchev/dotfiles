@@ -62,3 +62,7 @@ func (o *OSFS) ReadDir(path string) ([]string, error) {
 func (o *OSFS) Chmod(path string, perm os.FileMode) error {
 	return os.Chmod(path, perm)
 }
+
+func (o *OSFS) Rename(oldname, newname string) error {
+	return os.Rename(oldname, newname)
+}

@@ -17,4 +17,5 @@ type FS interface {
 	Open(path string) (io.ReadCloser, error)
 	ReadDir(path string) ([]string, error)
 	Chmod(path string, perm os.FileMode) error
+	Rename(oldname, newname string) error
 }

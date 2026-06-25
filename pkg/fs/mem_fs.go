@@ -282,3 +282,46 @@ func (m *MemFS) Chmod(path string, perm os.FileMode) error {
 	node.perm = perm
 	return nil
 }
+
+func (m *MemFS) Rename(oldname, newname string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cleanOld := filepath.Clean(oldname)
+	cleanNew := filepath.Clean(newname)
+
+	oldNode, ok := m.files[cleanOld]
+	if !ok {
+		return &os.PathError{Op: "rename", Path: oldname, Err: os.ErrNotExist}
+	}
+
+	if oldNode.isDir {
+		separator := string(filepath.Separator)
+		prefix := cleanOld
+		if !strings.HasSuffix(prefix, separator) && prefix != "/" && prefix != "." && prefix != "" {
+			prefix += separator
+		}
+
+		// Gather all keys that need renaming
+		toRename := make(map[string]string)
+		for k := range m.files {
+			if k == cleanOld {
+				toRename[k] = cleanNew
+			} else if strings.HasPrefix(k, prefix) {
+				rel := k[len(cleanOld):]
+				toRename[k] = cleanNew + rel
+			}
+		}
+
+		for o, n := range toRename {
+			node := m.files[o]
+			delete(m.files, o)
+			m.files[n] = node
+		}
+	} else {
+		delete(m.files, cleanOld)
+		m.files[cleanNew] = oldNode
+	}
+
+	return nil
+}
