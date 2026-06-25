@@ -231,3 +231,54 @@ func (m *MemFS) Open(path string) (io.ReadCloser, error) {
 
 	return &memFileReader{bytes.NewReader(node.data)}, nil
 }
+
+func (m *MemFS) ReadDir(path string) ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	cleanPath := filepath.Clean(path)
+	node, ok := m.files[cleanPath]
+	if ok && !node.isDir {
+		return nil, &os.PathError{Op: "readdir", Path: path, Err: os.ErrInvalid}
+	}
+
+	separator := string(filepath.Separator)
+	prefix := cleanPath
+	if !strings.HasSuffix(prefix, separator) && prefix != "/" && prefix != "." && prefix != "" {
+		prefix += separator
+	}
+
+	var names []string
+	seen := make(map[string]bool)
+	for k := range m.files {
+		if k == cleanPath {
+			continue
+		}
+		if strings.HasPrefix(k, prefix) {
+			rel, err := filepath.Rel(cleanPath, k)
+			if err == nil {
+				parts := strings.Split(rel, separator)
+				if len(parts) > 0 && parts[0] != "" {
+					if !seen[parts[0]] {
+						seen[parts[0]] = true
+						names = append(names, parts[0])
+					}
+				}
+			}
+		}
+	}
+	return names, nil
+}
+
+func (m *MemFS) Chmod(path string, perm os.FileMode) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cleanPath := filepath.Clean(path)
+	node, ok := m.files[cleanPath]
+	if !ok {
+		return &os.PathError{Op: "chmod", Path: path, Err: os.ErrNotExist}
+	}
+	node.perm = perm
+	return nil
+}

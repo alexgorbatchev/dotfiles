@@ -46,3 +46,19 @@ func (o *OSFS) Create(path string) (io.WriteCloser, error) {
 func (o *OSFS) Open(path string) (io.ReadCloser, error) {
 	return os.Open(path)
 }
+
+func (o *OSFS) ReadDir(path string) ([]string, error) {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, entry := range entries {
+		names = append(names, entry.Name())
+	}
+	return names, nil
+}
+
+func (o *OSFS) Chmod(path string, perm os.FileMode) error {
+	return os.Chmod(path, perm)
+}

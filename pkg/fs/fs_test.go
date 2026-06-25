@@ -50,6 +50,12 @@ func runCommonFSTests(t *testing.T, filesystem FS, baseDir string) {
 		t.Errorf("ReadFile returned %q, want %q", string(data), "hello sub")
 	}
 
+	// Chmod test
+	err = filesystem.Chmod(subFile, 0755)
+	if err != nil {
+		t.Fatalf("Chmod failed: %v", err)
+	}
+
 	// 5. Create & Open
 	file2 := filepath.Join(dir1, "file2.txt")
 	writer, err := filesystem.Create(file2)

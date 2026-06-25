@@ -57,7 +57,7 @@ func TestE2EInstall(t *testing.T) {
 
 		// Verify SQLite database update
 		h.AssertDBToolInstalled("github-release-tool", "latest")
-		h.AssertDBOperationLogged("github-release-tool", "shim", "github-release-tool")
+		h.AssertDBOperationLogged("github-release-tool", "writeFile", "github-release-tool")
 	})
 
 	t.Run("should install by binary name my-custom-binary", func(t *testing.T) {

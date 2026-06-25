@@ -31,6 +31,7 @@ func setupTestDB(t *testing.T) (*sql.DB, *Registry) {
 	// Clear tables between runs if necessary, since in-memory is shared
 	_, _ = database.ExecContext(ctx, "DELETE FROM file_operations;")
 	_, _ = database.ExecContext(ctx, "DELETE FROM tool_installations;")
+	_, _ = database.ExecContext(ctx, "DELETE FROM tool_usage;")
 
 	return database, NewRegistry(database)
 }
@@ -466,5 +467,116 @@ func TestErrorPathways(t *testing.T) {
 
 	if _, err := reg.GetAllToolInstallations(ctx); err == nil {
 		t.Error("Expected error from GetAllToolInstallations with closed DB")
+	}
+}
+
+func TestToolUsageUpsert(t *testing.T) {
+	_, reg := setupTestDB(t)
+	ctx := context.Background()
+
+	err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		u1 := &ToolUsageRecord{
+			ToolName:   "fzf",
+			BinaryName: "fzf",
+			UsageCount: 1,
+			LastUsedAt: 1000,
+		}
+		return reg.RecordToolUsage(ctx, tx, u1)
+	})
+	if err != nil {
+		t.Fatalf("Failed to record first tool usage: %v", err)
+	}
+
+	u, err := reg.GetToolUsage(ctx, "fzf", "fzf")
+	if err != nil {
+		t.Fatalf("Failed to get tool usage: %v", err)
+	}
+	if u == nil {
+		t.Fatal("Expected tool usage record, got nil")
+	}
+	if u.UsageCount != 1 || u.LastUsedAt != 1000 {
+		t.Errorf("Unexpected usage record state: %+v", u)
+	}
+
+	// Increment with a second record
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		u2 := &ToolUsageRecord{
+			ToolName:   "fzf",
+			BinaryName: "fzf",
+			UsageCount: 2,
+			LastUsedAt: 2000,
+		}
+		return reg.RecordToolUsage(ctx, tx, u2)
+	})
+	if err != nil {
+		t.Fatalf("Failed to record second tool usage: %v", err)
+	}
+
+	u, err = reg.GetToolUsage(ctx, "fzf", "fzf")
+	if err != nil {
+		t.Fatalf("Failed to get tool usage: %v", err)
+	}
+	if u == nil {
+		t.Fatal("Expected tool usage record, got nil")
+	}
+	if u.UsageCount != 3 || u.LastUsedAt != 2000 {
+		t.Errorf("Unexpected usage record state after increment: %+v", u)
+	}
+}
+
+func TestPermissionsSerializationDecimalMismatch(t *testing.T) {
+	database, reg := setupTestDB(t)
+	ctx := context.Background()
+
+	err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		r := &FileOperationRecord{
+			ToolName:      "test-permissions",
+			OperationType: "write",
+			FilePath:      "/test/permissions.txt",
+			FileType:      "file",
+			Permissions:   ptr("0755"),
+			CreatedAt:     1000,
+			OperationID:   "op-perm-1",
+		}
+		return reg.RecordFileOperation(ctx, tx, r)
+	})
+	if err != nil {
+		t.Fatalf("Failed to record operation: %v", err)
+	}
+
+	// 1. Direct query checking the DB storage contains decimal "493"
+	var dbPerm string
+	err = database.QueryRowContext(ctx, "SELECT permissions FROM file_operations WHERE tool_name = ?", "test-permissions").Scan(&dbPerm)
+	if err != nil {
+		t.Fatalf("Failed to query raw db permissions: %v", err)
+	}
+	if dbPerm != "493" {
+		t.Errorf("Expected database permissions column to be '493', got '%s'", dbPerm)
+	}
+
+	// 2. Querying back using the registry, verifying it got converted back to "0755"
+	ops, err := reg.GetFileOperations(ctx, FileOperationFilter{ToolName: "test-permissions"})
+	if err != nil {
+		t.Fatalf("Failed to query file operations: %v", err)
+	}
+	if len(ops) != 1 {
+		t.Fatalf("Expected 1 operation, got %d", len(ops))
+	}
+	if ops[0].Permissions == nil || *ops[0].Permissions != "0755" {
+		t.Errorf("Expected retrieved permissions to be '0755', got '%v'", ops[0].Permissions)
+	}
+
+	// 3. Test helpers: FileModeToDecimalString and DecimalStringToMode
+	importMode, err := DecimalStringToMode("420")
+	if err != nil {
+		t.Fatalf("Failed to convert decimal string to FileMode: %v", err)
+	}
+	if importMode != 0644 {
+		t.Errorf("Expected FileMode to be 0644, got %o", importMode)
+	}
+
+	exportStr := FileModeToDecimalString(0755)
+	if exportStr != "493" {
+		t.Errorf("Expected decimal string to be '493', got '%s'", exportStr)
 	}
 }

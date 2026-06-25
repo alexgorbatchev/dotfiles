@@ -15,4 +15,6 @@ type FS interface {
 	MkdirAll(path string, perm os.FileMode) error
 	Create(path string) (io.WriteCloser, error)
 	Open(path string) (io.ReadCloser, error)
+	ReadDir(path string) ([]string, error)
+	Chmod(path string, perm os.FileMode) error
 }

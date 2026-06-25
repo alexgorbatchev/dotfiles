@@ -4,7 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 // ErrTransactionRequired is returned when a write operation is attempted without a transaction.
@@ -167,6 +170,10 @@ func (r *Registry) GetFileOperations(ctx context.Context, filter FileOperationFi
 		if err != nil {
 			return nil, fmt.Errorf("scanning file operation record: %w", err)
 		}
+		if rec.Permissions != nil {
+			octalStr := DecimalToOctalPerm(*rec.Permissions)
+			rec.Permissions = &octalStr
+		}
 		records = append(records, &rec)
 	}
 
@@ -319,6 +326,12 @@ func (r *Registry) RecordFileOperation(ctx context.Context, tx *sql.Tx, record *
 		tool_name, operation_type, file_path, target_path, file_type, metadata, size_bytes, permissions, created_at, operation_id
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
 
+	var dbPerm *string
+	if record.Permissions != nil {
+		dbPermStr := OctalToDecimalPerm(*record.Permissions)
+		dbPerm = &dbPermStr
+	}
+
 	res, err := tx.ExecContext(ctx, query,
 		record.ToolName,
 		record.OperationType,
@@ -327,7 +340,7 @@ func (r *Registry) RecordFileOperation(ctx context.Context, tx *sql.Tx, record *
 		record.FileType,
 		record.Metadata,
 		record.SizeBytes,
-		record.Permissions,
+		dbPerm,
 		record.CreatedAt,
 		record.OperationID,
 	)
@@ -491,9 +504,12 @@ func (r *Registry) RecordToolUsage(ctx context.Context, tx *sql.Tx, record *Tool
 	}
 
 	query := `
-	INSERT OR REPLACE INTO tool_usage (
+	INSERT INTO tool_usage (
 		tool_name, binary_name, usage_count, last_used_at
-	) VALUES (?, ?, ?, ?);`
+	) VALUES (?, ?, ?, ?)
+	ON CONFLICT(tool_name, binary_name) DO UPDATE SET
+		usage_count = tool_usage.usage_count + excluded.usage_count,
+		last_used_at = excluded.last_used_at;`
 
 	_, err := tx.ExecContext(ctx, query,
 		record.ToolName,
@@ -594,4 +610,64 @@ func (r *Registry) GetToolUsages(ctx context.Context) ([]*ToolUsageRecord, error
 	}
 
 	return records, nil
+}
+
+// OctalToDecimalPerm converts an octal permission string (e.g., "0755", "755", "0644")
+// to a decimal string (e.g., "493", "420").
+func OctalToDecimalPerm(s string) string {
+	if s == "" {
+		return ""
+	}
+	sClean := s
+	if strings.HasPrefix(sClean, "0o") || strings.HasPrefix(sClean, "0O") {
+		sClean = sClean[2:]
+	}
+	// Parse as octal
+	val, err := strconv.ParseUint(sClean, 8, 32)
+	if err != nil {
+		// If it fails to parse as octal, maybe it's already decimal
+		_, errDec := strconv.ParseUint(sClean, 10, 32)
+		if errDec == nil {
+			return sClean
+		}
+		return s
+	}
+	return strconv.FormatUint(val, 10)
+}
+
+// DecimalToOctalPerm converts a decimal permission string (e.g., "493", "420")
+// to an octal string with leading zero (e.g., "0755", "0644").
+func DecimalToOctalPerm(s string) string {
+	if s == "" {
+		return ""
+	}
+	// Parse as decimal
+	val, err := strconv.ParseUint(s, 10, 32)
+	if err != nil {
+		// If it fails to parse as decimal, maybe it is already octal
+		_, errOct := strconv.ParseUint(s, 8, 32)
+		if errOct == nil {
+			if !strings.HasPrefix(s, "0") {
+				return "0" + s
+			}
+			return s
+		}
+		return s
+	}
+	return fmt.Sprintf("0%o", val)
+}
+
+// FileModeToDecimalString converts an os.FileMode to its decimal base-10 string representation.
+func FileModeToDecimalString(mode os.FileMode) string {
+	perm := uint32(mode & os.ModePerm)
+	return strconv.FormatUint(uint64(perm), 10)
+}
+
+// DecimalStringToMode converts a decimal base-10 string representation back to os.FileMode.
+func DecimalStringToMode(s string) (os.FileMode, error) {
+	val, err := strconv.ParseUint(s, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	return os.FileMode(val), nil
 }
