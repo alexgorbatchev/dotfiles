@@ -1,78 +1,74 @@
-# Instructions for Generating the Go CLI Migration Gap Report
+# Directive for Conducting a Holistic Migration and Parity Audit
 
-You are tasked with producing a comprehensive, technical, and fact-backed gap report that documents the exact migration status of our Go CLI codebase and its parity with the legacy TypeScript (TS) implementation. 
+You are tasked with conducting a rigorous, open-ended, and highly skeptical audit of the entire repository to uncover any and all gaps, architectural drift, performance bottlenecks, or hidden technical debt between the legacy TypeScript implementation (`packages/*`) and the new Go implementation (`pkg/*`, `cmd/*`).
 
-You must write the final compiled report directly to `./gaps-report.md` in the project root.
-
----
-
-## 🎯 Task Objective
-
-Evaluate the monorepo to list completed features, identify unmigrated test suites, and outline the remaining backlog of Wave 6 tickets. This report is the source of truth that will guide developers to safely delete the TypeScript implementation (`packages/`) and transition to a pure statically-linked Go binary distribution.
+Write your final findings as a comprehensive **Migration and Parity Gap Report** directly to `./gaps-report.md`.
 
 ---
 
-## 📋 Step-by-Step Execution Plan
+## 🎯 Audit Philosophy: No Blinders, No Compromises
 
-Follow these exact steps to compile the required facts and draft the report:
+Previous agents have repeatedly suffered from **local-scope bias**—they looked only at individual tickets or passing unit tests and over-confidently declared "100% parity." You must avoid this failure mode. A green test suite does not guarantee structural or behavioral equivalence. 
 
-### Step 1: Verify Core Command & Database Parity
-1. Run `bun check:ci` to execute the dual-run verification harness (`scripts/parity-harness/main.go`).
-2. Verify that the harness returns a successful matching state:
-   `🎉 PARITY SUCCESS! Legacy TS and compiled Go outputs are identical.`
-3. Verify that the following Wave 5 core features are fully implemented, merged, and passing:
-   - **Refactored Generate Semantics:** Standalone generation of shims/symlinks for standard tools, keeping `db_tool_installations.json` completely empty (`[]`) on dry-runs.
-   - **TrackedFileSystem (`pkg/fs/tracked_fs.go`):** Implicit sqlite recording of writes, permissions, and directory creations during installer sessions.
-   - **Decimal Permission Representation:** Storage of file permissions as stringified base-10 integers (e.g. `"493"` / `"420"`) to prevent database representation mismatches between Go and TS.
-   - **Once-Script Self-Deletion:** Shell-appropriate self-cleanup tokens appended to once-scripts (e.g., `${BASH_SOURCE[0]}` for bash, `${(%):-%x}` for zsh, and `Remove-Item` for PowerShell).
-   - **SupportsSudo Validation:** Orchestrator-level privilege check aborting fast if a user attempts to run a non-sudo installer (e.g., `npm`, `cargo`) under sudo.
-   - **Dynamic fsys Injection:** Passing of context-aware tracked file systems (`activeFS`) to installer plugins prior to execution.
-   - **Atomic UUID Staging Promotion:** Creating temporary, uniquely-named staging subdirectories (e.g. `binaries/<tool>/<uuid>`) for all non-external tool installations and atomically promoting them to `/current` via directory renames upon completion.
-
-### Step 2: Audit the E2E Integration Test Suite Gaps
-Compare the legacy TypeScript E2E test files with the newly written Go-native test files:
-1. Scan the legacy TS tests under:
-   `packages/e2e-test/src/__tests__/`
-2. Scan the Go E2E tests under:
-   `tests/e2e/`
-3. Map and list every single TS E2E test file that has **not** yet been migrated to a Go test file (e.g., `ghCli.test.ts`, `env.test.ts`, `completion.test.ts`, `pkg.test.ts`, `giteaRelease.test.ts`, `files.test.ts`, `autoInstall.test.ts`, `dnf.test.ts`, `pacman.test.ts`, etc.).
-4. Describe the **consequences** of this test gap: if TS packages are demolished, we will delete these TS files and have **zero test coverage** for those critical features in the Go engine.
-
-### Step 3: Audit the Remaining Backlog (Wave 6)
-Review the active, open Wave 6 tickets inside `docs/internal/tickets/` to list what work remains:
-- **`2026-06-25-wave-6-complete-remaining-e2e-integration-test-suite-migration.md`** (translating the remaining 14 E2E integration test files to Go).
-- **`2026-06-25-wave-6-pure-go-binary-distribution-and-ts-demolition.md`** (separating types, implementing the Go-native dashboard REST server, build pipeline restructuring, and deleting the legacy TS `packages/` directory).
+You are a severe skeptic:
+1.  **Do not limit your search** to a pre-defined list of files. You must explore the *entire* codebase.
+2.  **See something, say something.** If an implementation looks like a shallow "cat-and-mouse" linter/compiler satisfaction bypass, or trade away correctness, call it out.
+3.  **Audit the silent gaps.** Look for dead code, unreferenced Go packages, platform-specific behavior omissions, silent error swallowing, resource leaks, or discrepancies in data serialization.
 
 ---
 
-## ✍️ Report Output Format
+## 🔍 Investigation Directives
 
-Write your finalized findings directly to `./gaps-report.md` using the following exact structure:
+Your audit must cover, but is not limited to, the following domains:
+
+### 1. Unified State and Database Parity
+*   Execute and inspect the dual-run verification harness (`scripts/parity-harness/main.go`). Do Go and TS produce identical outputs, or are we masking differences (such as ignoring file sizes, timestamps, or execution logs)?
+*   Examine how data is represented across language boundaries in the SQLite database (`registry.db`). Look for discrepancies in data types, serialization formats (like octal vs. decimal representations of file permissions), and raw query structures.
+*   Audit transaction boundaries and connection pooling configurations. Does Go enforce atomic database transactions where TypeScript fails silently?
+
+### 2. File System Abstractions & Sandboxing
+*   Examine both the in-memory (`MemFS`) and physical (`OSFS`) implementations. Are there methods present in TS's filesystem interfaces (like directory scanning, stat queries, symlinking) that are missing, stubbed, or bypassed in Go?
+*   Audit sandboxing policies. Does `generate --dry-run` or test runs leak modifications (like writing real symlinks or creating directories) to the global host system, violating the local `.tmp` workspace boundary?
+
+### 3. CLI Orchestration & Shell Initializations
+*   Compare the topological dependency sorters. Are there edge cases where Go and TS resolve ambiguous or missing dependencies differently?
+*   Verify the lifecycle of "once-scripts". Do they actually delete themselves after execution, or do they leak on disk and execute on every terminal startup?
+*   Check path and environment integrations. Look for shell path duplication, `$PATH` or `$fpath` pollution, and the injection of CLI wrapper functions.
+*   Verify profile injection. How does Go update shell profiles compared to TS, and do their block markers conflict?
+
+### 4. Installer Plugins and Dynamic Behaviors
+*   Audit the 15 installer methods (brew, cargo, npm, manual, Curl-based, system packages, etc.). Are there custom parameters, platform overrides (`platformConfigs`), or package uninstallation pipelines implemented in one language but completely missing or stubbed in the other?
+*   Examine privilege escalation. Does Go strictly validate that an installer plugin supports sudo before running elevated configurations?
+
+### 5. Test Suite Parity
+*   Compare the active test coverage of Go (`tests/e2e/`) with TS (`packages/e2e-test/src/__tests__/`). 
+*   Identify which TS integration tests are missing from Go. Document the exact risk of deleting the TypeScript packages before these tests are natively translated.
+
+---
+
+## ✍️ Expected Report Output Format
+
+Compile your findings and write them directly to `./gaps-report.md`. Your report must be structured, factual, and copy-pasteable, formatted as follows:
 
 ```markdown
-# Go CLI Migration: Comprehensive Parity and Gap Report
+# Go CLI Migration: Holistic Parity and Architectural Audit Report
 
 ## 1. Executive Summary
-- Current Monorepo State (Hybrid TS-Go implementation)
-- Factual Overall Parity Score (out of 10)
-- Parity Harness Verification Status (`bun check:ci` result)
+- Current Monorepo State (factual summary of the transitional hybrid state)
+- Overall Migration Parity Score (out of 10, with hard technical justifications)
+- Current Dual-Run Parity Status (`bun check:ci` analysis)
 
-## 2. Completed Milestones (Closed Wave 5 Tickets)
-- Summarize the completion of generate semantics, tracked filesystem, permission format, once-script self-deletion, supports-sudo checks, fsys injection, and UUID staging.
+## 2. Structural & Architectural Gaps
+- Detail any discrepancies in interfaces, package boundaries, data representation, sandboxing leaks, or serialization formats.
 
-## 3. The Test Coverage Gap (Unmigrated E2E Tests)
-- List the **14 legacy TypeScript integration test files** that remain unmigrated.
-- Document why this gap represents a blocker to TS demolition (loss of test coverage for virtual environments, package managers, and completion scripts on host systems).
-- Map each legacy TS test file to its target Go E2E test counterpart.
+## 3. Installer & Package Manager Gaps
+- Document all differences in installer features, uninstallation support, sudo validations, and system package management.
 
-## 4. Remaining Backlog (Open Wave 6 Tickets)
-- **Complete Migration of All Remaining E2E Integration Tests to Go**
-- **Transition to Pure Go Binary Distribution and TS Packages Demolition**
-  - Subtask: Types separation and public autocomplete completeness.
-  - Subtask: Go-native dashboard REST server implementation.
-  - Subtask: Build pipeline restructuring.
-  - Subtask: Legacy TS packages demolition.
+## 4. Test Coverage Gaps (TS vs. Go E2E)
+- Provide a side-by-side comparison of active TS test files vs. Go test files.
+- Detail the exact risk of deleting TypeScript before the remaining integration tests are translated.
 
-## 5. Absolute Parity Roadmap
-- Provide a step-by-step execution roadmap to safely complete the test migration, demolish TypeScript, and ship the statically compiled Go binary.
+## 5. Completed vs. Remaining Backlog
+- Summarize what has been successfully merged (Wave 5).
+- List the active, open Wave 6 tickets and map out a bulletproof, sequential roadmap to safely demolish TypeScript and transition to a pure statically-linked Go binary distribution.
 ```
