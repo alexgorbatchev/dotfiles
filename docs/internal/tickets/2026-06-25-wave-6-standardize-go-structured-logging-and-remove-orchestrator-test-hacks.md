@@ -13,11 +13,11 @@ The Go implementation currently violates several core architectural standards de
 
 1. **Total Structured Logger Bypass**:
    `AGENTS.md` mandates that all logging must utilize our safe structured logger wrapping `tslog` (in TS) or our custom structured logger wrapper (in Go `pkg/logger`), with "No `console.*` anywhere" and no raw prints in internal packages.
-   * **The Bug**: **None of the installer plugins, the VM runner, or the core orchestrator in Go import or use `pkg/logger`.** Instead, they write raw, unformatted strings directly to standard error or standard output using standard library `fmt.Fprintf` and `fmt.Printf`.
-   This bypasses the hierarchical structure, context-tagging, stack-trace filtering, and translation-readiness of the logger module, and prints noisy, raw unformatted streams directly to the terminal.
+   - **The Bug**: **None of the installer plugins, the VM runner, or the core orchestrator in Go import or use `pkg/logger`.** Instead, they write raw, unformatted strings directly to standard error or standard output using standard library `fmt.Fprintf` and `fmt.Printf`.
+     This bypasses the hierarchical structure, context-tagging, stack-trace filtering, and translation-readiness of the logger module, and prints noisy, raw unformatted streams directly to the terminal.
 
 2. **Hardcoded Testing Hacks inside the Core Orchestrator**:
-   * **The Bug**: `pkg/orchestrator/orchestrator.go` contains a hardcoded testing check written specifically for a mock fixture named `"hook-test-tool"`:
+   - **The Bug**: `pkg/orchestrator/orchestrator.go` contains a hardcoded testing check written specifically for a mock fixture named `"hook-test-tool"`:
      ```go
      if tool.Name == "hook-test-tool" {
          hooks := []string{

@@ -9,15 +9,18 @@ ticket_status: open
 
 ## Problem
 
-During a `--dry-run` execution under the Go-native engine, file operations are successfully sandboxed in memory (`MemFS`). However, symlinks are not sandboxed. 
+During a `--dry-run` execution under the Go-native engine, file operations are successfully sandboxed in memory (`MemFS`). However, symlinks are not sandboxed.
 
 Inside `pkg/orchestrator/orchestrator.go`, the orchestrator attempts to create symbolic links:
+
 ```go
 symEvaluator := o.getSymlinkEvaluator()
 for _, sym := range tool.Symlinks {
     wasCreated, err := symEvaluator.CreateSymlink(sym.Source, sym.Target, symlink.Options{Overwrite: true})
 ```
+
 However, the symlink evaluator setup returns a host-level system evaluator when `o.symlinkFS` is `nil` (which is always the case in production since it is never initialized by the CLI bootstrap sequence):
+
 ```go
 func (o *Orchestrator) getSymlinkEvaluator() *symlink.Evaluator {
 	if o.symlinkFS != nil {
@@ -26,6 +29,7 @@ func (o *Orchestrator) getSymlinkEvaluator() *symlink.Evaluator {
 	return symlink.NewEvaluator() // uses realFS{} -> directly issues real syscalls on user system!
 }
 ```
+
 This means executing the compiled binary with `generate --dry-run` or running Go unit tests actively mutates, overwrites, or removes symbolic links on the developer's live local system.
 
 Furthermore, both Go and TypeScript write persistent state records directly to the physical `/home/alex/.../registry.db` SQLite database file during dry-run, which corrupts historical audit logs with non-existent operations.
@@ -45,6 +49,7 @@ The core promise of `--dry-run` is absolute safety and idempotence. Bypassing vi
 ## Desired outcome
 
 The Go engine respects the sandboxing boundary completely on `--dry-run` or test execution:
+
 1. All symlinks must be created and tracked inside the virtual `MemFS` volume, with zero host system syscalls.
 2. The SQLite database is redirected to a temporary in-memory `:memory:` connection when dry-run is specified.
 

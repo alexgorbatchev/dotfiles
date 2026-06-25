@@ -11,18 +11,20 @@ ticket_status: open
 
 The networking downloader and decompression archive extractors in Go are missing critical capabilities that cause silent runtime failures:
 
-1. **Downloader Lack of Authorization and Retries**: 
+1. **Downloader Lack of Authorization and Retries**:
    Go's `Download` function has a rigid, unconfigurable signature that lacks a custom options struct. It cannot accept custom headers, which means it **cannot propagate GitHub authorization tokens**. This causes downloads of release assets from private repositories to fail with 401/404 errors. Additionally, it lacks download retries with backoff, making it brittle to minor network glitches, and lacks progress callbacks.
 
 2. **Total Loss of Symlinks during Archive Extraction**:
-   TS delegates extraction to system utilities (`tar`/`unzip`), which preserve symlinks natively. 
+   TS delegates extraction to system utilities (`tar`/`unzip`), which preserve symlinks natively.
    Go's manual extractor in `pkg/archive/archive.go` completely ignores symbolic link headers in Tar archives (`tar.TypeSymlink` or `tar.TypeLink`), and extracts Zip symlinks as raw plain text files containing target paths. This causes unpacked toolchains (like Node.js or Bun) to lose their executable links, completely breaking the tools.
 
 3. **In-Memory Buffering OOM Vulnerability**:
    Go's archive parser reads the entire payload of each file entry into RAM using `io.ReadAll` before writing it to disk:
+
    ```go
    entryBytes, err := io.ReadAll(tarReader)
    ```
+
    If a tool's archive contains large binary assets (e.g., a 500MB compiler toolchain), Go buffers the entire file in RAM, risking Out-of-Memory (OOM) crashes on low-resource virtual machines.
 
 4. **Missing Executable Detection & Decompressors**:
@@ -46,6 +48,7 @@ The Go downloader is a configurable, robust client supporting authorization and 
 ## Acceptance criteria
 
 ### 1. Downloader Upgrades
+
 - [ ] Refactor `pkg/downloader/downloader.go` to accept an options struct `DownloadOptions`:
   ```go
   type DownloadOptions struct {
@@ -61,6 +64,7 @@ The Go downloader is a configurable, robust client supporting authorization and 
 - [ ] Wire the options structure to the installer plugins (e.g., `pkg/installer/github.go`), ensuring private repo downloads propagate auth headers.
 
 ### 2. Extractor Upgrades (Symlinks and Stream Decompression)
+
 - [ ] Support Symlink extraction in Tar decompressor: update `extractTar` to handle `tar.TypeSymlink` and `tar.TypeLink`, executing proper `os.Symlink` calls.
 - [ ] Support Symlink extraction in Zip decompressor: update `extractZip` to parse symlink headers (`f.Mode() & os.ModeSymlink != 0`), read the symlink destination path, and construct native symbolic links.
 - [ ] **Stream Buffering**: Eliminate `io.ReadAll` inside `pkg/archive/archive.go`. Use streaming chunked copies like `io.Copy(destFile, tarReader)` to write files directly, limiting RAM usage to standard small buffers (e.g., 32KB) regardless of the file size.

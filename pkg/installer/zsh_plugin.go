@@ -41,6 +41,12 @@ func (z *ZshPluginInstaller) SupportsSudo() bool {
 }
 
 func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if IsDryRun() {
+		return &InstallResult{
+			Binaries: []string{},
+		}, nil
+	}
+
 	repo := getStringParam(tool.InstallParams, "repo", "")
 	url := getStringParam(tool.InstallParams, "url", "")
 
@@ -83,12 +89,12 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 	}
 
 	pluginPath := filepath.Join(destDir, pluginName)
-	realExists := func(p string) bool {
-		_, err := os.Stat(p)
-		return err == nil
+	pluginExists := func(p string) bool {
+		ex, _ := z.fsys.Exists(p)
+		return ex
 	}
 
-	exists := realExists(pluginPath)
+	exists := pluginExists(pluginPath)
 
 	if exists {
 		// git pull
@@ -97,9 +103,9 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 			return nil, fmt.Errorf("updating plugin: %w", err)
 		}
 	} else {
-		// Ensure parent directory exists on real disk for git clone
-		if err := os.MkdirAll(filepath.Dir(pluginPath), 0755); err != nil {
-			return nil, fmt.Errorf("creating parent directory on disk: %w", err)
+		// Ensure parent directory exists for git clone
+		if err := z.fsys.MkdirAll(filepath.Dir(pluginPath), 0755); err != nil {
+			return nil, fmt.Errorf("creating parent directory: %w", err)
 		}
 		// git clone
 		cmd := z.runner.CommandContext(ctx, "git", "clone", "--depth", "1", gitURL, pluginPath)
@@ -124,7 +130,7 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 	} else {
 		for _, candidate := range candidates {
 			candidatePath := filepath.Join(pluginPath, candidate)
-			if realExists(candidatePath) {
+			if pluginExists(candidatePath) {
 				sourceFile = candidate
 				break
 			}

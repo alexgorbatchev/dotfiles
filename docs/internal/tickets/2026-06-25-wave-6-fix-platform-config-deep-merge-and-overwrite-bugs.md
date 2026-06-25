@@ -12,6 +12,7 @@ ticket_status: open
 In the legacy TypeScript configuration parser, multi-platform overrides are resolved by recursively deep-merging base configurations with matching `platformConfigs` elements. Crucially, arrays/slices (such as `symlinks`, `copies`, `binaries`, `dependencies`, and `scripts`) are appended, and maps (such as `env` and `aliases`) are recursively merged.
 
 In the Go implementation, the platform-override resolution is implemented in `cmd/dotfiles/bootstrap.go` using a flat unmarshaling shortcut:
+
 ```go
 // cmd/dotfiles/bootstrap.go
 jsonBytes, err := json.Marshal(entry.Config)
@@ -20,7 +21,7 @@ if err == nil {
 }
 ```
 
-* **The Bug**: In Go, `json.Unmarshal` onto an existing struct pointer **completely overwrites any slice/array fields** with the incoming values instead of appending or merging them.
+- **The Bug**: In Go, `json.Unmarshal` onto an existing struct pointer **completely overwrites any slice/array fields** with the incoming values instead of appending or merging them.
   For example, if a tool config defines global base `symlinks`, but then defines a platform-specific setting under `platformConfigs` (such as setting an `env` variable for macOS), Go's unmarshaler will **silently delete all of the tool's base symlinks and binaries**, since the platform-specific override does not repeat them. Only the platform-specific slice is preserved.
 
 ## Why this matters

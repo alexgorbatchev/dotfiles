@@ -353,8 +353,8 @@ func TestOrchestrator_Install(t *testing.T) {
 	for _, op := range ops {
 		t.Logf("OP: %s at %s target %v", op.OperationType, op.FilePath, op.TargetPath)
 	}
-	if len(ops) != 6 {
-		t.Fatalf("expected 6 operations (mkdir, rename, mkdir, shim write, shim chmod, symlink), got %d", len(ops))
+	if len(ops) != 3 {
+		t.Fatalf("expected 3 operations (shim write, shim chmod, symlink), got %d", len(ops))
 	}
 
 	instRec, err := reg.GetToolInstallation(ctx, "test-tool")

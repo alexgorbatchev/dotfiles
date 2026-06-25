@@ -13,7 +13,7 @@ The HTTP Proxy Cache server (`pkg/proxy/`) implemented in Go has two severe corr
 
 1. **Dangerous Concurrency Lock Violation in `CacheStore.Get()`**:
    Go's HTTP proxy manages cached responses using a file-backed storage directory. Since requests are processed concurrently across multiple goroutines, cache access is protected using a read-write mutex (`sync.RWMutex`).
-   * **The Bug**: Inside `Get()`, Go acquires a Read Lock (`RLock()`), but attempts to actively **delete files on disk** when it detects expired entries:
+   - **The Bug**: Inside `Get()`, Go acquires a Read Lock (`RLock()`), but attempts to actively **delete files on disk** when it detects expired entries:
      ```go
      // pkg/proxy/proxy.go
      func (s *CacheStore) Get(method, targetURL string) (*CacheEntry, []byte, error) {
@@ -30,7 +30,7 @@ The HTTP Proxy Cache server (`pkg/proxy/`) implemented in Go has two severe corr
 
 2. **Lacking Word Boundary Safety in Glob Invalidation**:
    In TS, clearing the cache for `github.com` compiles into a safe boundary-aware regex matching `github.com` exactly as a subdomain/domain, preventing accidental matches on similar strings (like `notgithub.com`).
-   * **The Bug**: Go uses a naive glob-to-regex replacement:
+   - **The Bug**: Go uses a naive glob-to-regex replacement:
      ```go
      regPat := pattern
      regPat = regexp.QuoteMeta(regPat)
