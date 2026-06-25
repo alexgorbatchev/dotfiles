@@ -46,30 +46,50 @@ func (e *Extractor) Extract(ctx context.Context, src string, dest string) error 
 		return fmt.Errorf("creating destination directory: %w", err)
 	}
 
+	var err error
 	if strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tgz") {
-		return e.extractTar(ctx, src, dest, "tar.gz")
-	}
-	if strings.HasSuffix(lower, ".tar.bz2") || strings.HasSuffix(lower, ".tbz2") || strings.HasSuffix(lower, ".tbz") {
-		return e.extractTar(ctx, src, dest, "tar.bz2")
-	}
-	if strings.HasSuffix(lower, ".zip") {
-		return e.extractZip(ctx, src, dest)
-	}
-	if strings.HasSuffix(lower, ".dmg") {
-		return e.extractDmg(ctx, src, dest)
-	}
-	if strings.HasSuffix(lower, ".pkg") {
-		return e.extractPkg(ctx, src, dest)
+		err = e.extractTar(ctx, src, dest, "tar.gz")
+	} else if strings.HasSuffix(lower, ".tar.bz2") || strings.HasSuffix(lower, ".tbz2") || strings.HasSuffix(lower, ".tbz") {
+		err = e.extractTar(ctx, src, dest, "tar.bz2")
+	} else if strings.HasSuffix(lower, ".tar.xz") || strings.HasSuffix(lower, ".txz") {
+		err = e.extractTarXz(ctx, src, dest)
+	} else if strings.HasSuffix(lower, ".zip") {
+		err = e.extractZip(ctx, src, dest)
+	} else if strings.HasSuffix(lower, ".dmg") {
+		err = e.extractDmg(ctx, src, dest)
+	} else if strings.HasSuffix(lower, ".pkg") {
+		err = e.extractPkg(ctx, src, dest)
+	} else if strings.HasSuffix(lower, ".gz") {
+		err = e.extractSingleGz(ctx, src, dest)
+	} else {
+		return fmt.Errorf("unsupported or unrecognized archive format for %q", src)
 	}
 
-	return fmt.Errorf("unsupported or unrecognized archive format for %q", src)
+	if err != nil {
+		return err
+	}
+
+	// Apply executable heuristics
+	return e.detectAndSetExecutables(dest)
 }
 
-// extractZip extracts standard zip files using Go's archive/zip library.
+// extractZip extracts standard zip files using Go's archive/zip library with stream buffering and symlink support.
 func (e *Extractor) extractZip(ctx context.Context, src string, dest string) error {
-	data, err := e.fsys.ReadFile(src)
+	// Open the file through e.fsys
+	rc, err := e.fsys.Open(src)
 	if err != nil {
-		return fmt.Errorf("reading zip archive: %w", err)
+		return fmt.Errorf("opening zip archive: %w", err)
+	}
+	defer rc.Close()
+
+	// Since archive/zip needs a ReaderAt, and the file might be virtual (MemFS) or OSFS,
+	// let's read the full data into memory if we must, or if it's an os.File, use it directly.
+	// But to avoid OOM for large zip files, let's read as bytes only.
+	// Note: zip.NewReader requires ReaderAt which we get by reading the bytes. Since zip files are randomly accessed,
+	// we do read all of it for the zip index, but we stream the file contents individually!
+	data, err := io.ReadAll(rc)
+	if err != nil {
+		return fmt.Errorf("reading zip archive bytes: %w", err)
 	}
 
 	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
@@ -104,26 +124,53 @@ func (e *Extractor) extractZip(ctx context.Context, src string, dest string) err
 			return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 		}
 
-		rc, err := f.Open()
+		// Handle symlinks inside zip files
+		if f.Mode()&os.ModeSymlink != 0 {
+			entryRc, err := f.Open()
+			if err != nil {
+				return fmt.Errorf("opening zip symlink entry %q: %w", f.Name, err)
+			}
+			linkBytes, err := io.ReadAll(entryRc)
+			entryRc.Close()
+			if err != nil {
+				return fmt.Errorf("reading zip symlink destination %q: %w", f.Name, err)
+			}
+			targetPath := string(linkBytes)
+			_ = e.fsys.Remove(cleanTarget)
+			if err := e.fsys.Symlink(targetPath, cleanTarget); err != nil {
+				return fmt.Errorf("creating zip symlink from %q to %q: %w", targetPath, cleanTarget, err)
+			}
+			continue
+		}
+
+		// Regular file: stream using chunked copy
+		destFile, err := e.fsys.Create(cleanTarget)
 		if err != nil {
+			return fmt.Errorf("creating extracted zip file %q: %w", cleanTarget, err)
+		}
+
+		entryRc, err := f.Open()
+		if err != nil {
+			destFile.Close()
 			return fmt.Errorf("opening zip file entry %q: %w", f.Name, err)
 		}
 
-		entryBytes, err := io.ReadAll(rc)
-		rc.Close()
-		if err != nil {
-			return fmt.Errorf("reading zip file entry %q: %w", f.Name, err)
+		_, copyErr := io.Copy(destFile, entryRc)
+		entryRc.Close()
+		destFile.Close()
+		if copyErr != nil {
+			return fmt.Errorf("writing zip entry data to %q: %w", cleanTarget, copyErr)
 		}
 
-		if err := e.fsys.WriteFile(cleanTarget, entryBytes, f.Mode()); err != nil {
-			return fmt.Errorf("writing extracted file %q: %w", cleanTarget, err)
+		if err := e.fsys.Chmod(cleanTarget, f.Mode()); err != nil {
+			return fmt.Errorf("setting zip file permissions on %q: %w", cleanTarget, err)
 		}
 	}
 
 	return nil
 }
 
-// extractTar extracts .tar.gz and .tar.bz2 archives using archive/tar and native compression readers.
+// extractTar extracts .tar.gz and .tar.bz2 archives using archive/tar, native compression readers, and stream buffering.
 func (e *Extractor) extractTar(ctx context.Context, src string, dest string, format string) error {
 	rc, err := e.fsys.Open(src)
 	if err != nil {
@@ -179,18 +226,230 @@ func (e *Extractor) extractTar(ctx context.Context, src string, dest string, for
 				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 			}
 
-			entryBytes, err := io.ReadAll(tarReader)
+			destFile, err := e.fsys.Create(cleanTarget)
 			if err != nil {
-				return fmt.Errorf("reading tar entry data: %w", err)
+				return fmt.Errorf("creating extracted file %q: %w", cleanTarget, err)
+			}
+			if _, err := io.Copy(destFile, tarReader); err != nil {
+				destFile.Close()
+				return fmt.Errorf("writing tar entry data to %q: %w", cleanTarget, err)
+			}
+			destFile.Close()
+			if err := e.fsys.Chmod(cleanTarget, header.FileInfo().Mode()); err != nil {
+				return fmt.Errorf("setting permissions on %q: %w", cleanTarget, err)
 			}
 
-			if err := e.fsys.WriteFile(cleanTarget, entryBytes, header.FileInfo().Mode()); err != nil {
-				return fmt.Errorf("writing extracted file %q: %w", cleanTarget, err)
+		case tar.TypeSymlink, tar.TypeLink:
+			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
+				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
+			}
+			_ = e.fsys.Remove(cleanTarget)
+			if err := e.fsys.Symlink(header.Linkname, cleanTarget); err != nil {
+				return fmt.Errorf("creating tar symlink from %q to %q: %w", header.Linkname, cleanTarget, err)
 			}
 		}
 	}
 
 	return nil
+}
+
+// extractTarXz extracts .tar.xz and .txz archives using system xz command as a lightweight stream decompressor.
+func (e *Extractor) extractTarXz(ctx context.Context, src string, dest string) error {
+	fileReader, err := e.fsys.Open(src)
+	if err != nil {
+		return fmt.Errorf("opening xz archive: %w", err)
+	}
+	defer fileReader.Close()
+
+	pr, pw := io.Pipe()
+	cmd := e.runner.CommandContext(ctx, "xz", "-d", "-c")
+	cmd.SetStdin(fileReader)
+	cmd.SetStdout(pw)
+
+	var stderr bytes.Buffer
+	cmd.SetStderr(&stderr)
+
+	go func() {
+		err := cmd.Run()
+		if err != nil {
+			pw.CloseWithError(fmt.Errorf("xz process error: %v, stderr: %s", err, stderr.String()))
+		} else {
+			pw.Close()
+		}
+	}()
+
+	tarReader := tar.NewReader(pr)
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("reading next xz tar entry: %w", err)
+		}
+
+		cleanDest := filepath.Clean(dest)
+		cleanTarget := filepath.Clean(filepath.Join(dest, header.Name))
+
+		// Guard against zip slip vulnerability
+		rel, err := filepath.Rel(cleanDest, cleanTarget)
+		if err != nil || strings.HasPrefix(rel, "..") {
+			continue
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := e.fsys.MkdirAll(cleanTarget, header.FileInfo().Mode()); err != nil {
+				return fmt.Errorf("creating directory %q: %w", cleanTarget, err)
+			}
+
+		case tar.TypeReg:
+			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
+				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
+			}
+
+			destFile, err := e.fsys.Create(cleanTarget)
+			if err != nil {
+				return fmt.Errorf("creating extracted file %q: %w", cleanTarget, err)
+			}
+			if _, err := io.Copy(destFile, tarReader); err != nil {
+				destFile.Close()
+				return fmt.Errorf("writing xz tar entry data to %q: %w", cleanTarget, err)
+			}
+			destFile.Close()
+			if err := e.fsys.Chmod(cleanTarget, header.FileInfo().Mode()); err != nil {
+				return fmt.Errorf("setting permissions on %q: %w", cleanTarget, err)
+			}
+
+		case tar.TypeSymlink, tar.TypeLink:
+			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
+				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
+			}
+			_ = e.fsys.Remove(cleanTarget)
+			if err := e.fsys.Symlink(header.Linkname, cleanTarget); err != nil {
+				return fmt.Errorf("creating tar symlink from %q to %q: %w", header.Linkname, cleanTarget, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// extractSingleGz extracts single-file .gz structures natively.
+func (e *Extractor) extractSingleGz(ctx context.Context, src string, dest string) error {
+	rc, err := e.fsys.Open(src)
+	if err != nil {
+		return fmt.Errorf("opening gz archive: %w", err)
+	}
+	defer rc.Close()
+
+	gz, err := gzip.NewReader(rc)
+	if err != nil {
+		return fmt.Errorf("initializing gzip reader: %w", err)
+	}
+	defer gz.Close()
+
+	base := filepath.Base(src)
+	outName := strings.TrimSuffix(base, ".gz")
+	cleanTarget := filepath.Clean(filepath.Join(dest, outName))
+
+	if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
+		return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
+	}
+
+	destFile, err := e.fsys.Create(cleanTarget)
+	if err != nil {
+		return fmt.Errorf("creating extracted file %q: %w", cleanTarget, err)
+	}
+
+	if _, err := io.Copy(destFile, gz); err != nil {
+		destFile.Close()
+		return fmt.Errorf("writing decompressed gz stream to %q: %w", cleanTarget, err)
+	}
+	destFile.Close()
+
+	return e.fsys.Chmod(cleanTarget, 0755)
+}
+
+// detectAndSetExecutables walks the dest directory and applies heuristics to find executables.
+func (e *Extractor) detectAndSetExecutables(dest string) error {
+	files, err := e.walkFiles(dest)
+	if err != nil {
+		return err
+	}
+
+	for _, path := range files {
+		info, err := e.fsys.Lstat(path)
+		if err != nil {
+			continue
+		}
+		if info.IsDir() || (info.Mode()&os.ModeSymlink != 0) {
+			continue
+		}
+
+		shouldBeExec := false
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext == "" || ext == ".sh" || ext == ".py" || ext == ".pl" || ext == ".rb" {
+			shouldBeExec = true
+		} else {
+			f, err := e.fsys.Open(path)
+			if err == nil {
+				buf := make([]byte, 4)
+				n, _ := f.Read(buf)
+				f.Close()
+				if n >= 2 && string(buf[:2]) == "#!" {
+					shouldBeExec = true
+				} else if n >= 4 {
+					if bytes.Equal(buf[:4], []byte{0x7f, 'E', 'L', 'F'}) {
+						shouldBeExec = true
+					} else if bytes.Equal(buf[:2], []byte{'M', 'Z'}) {
+						shouldBeExec = true
+					} else if bytes.Equal(buf[:4], []byte{0xfe, 0xed, 0xfa, 0xce}) ||
+						bytes.Equal(buf[:4], []byte{0xfe, 0xed, 0xfa, 0xcf}) ||
+						bytes.Equal(buf[:4], []byte{0xce, 0xfa, 0xed, 0xfe}) ||
+						bytes.Equal(buf[:4], []byte{0xcf, 0xfa, 0xed, 0xfe}) {
+						shouldBeExec = true
+					}
+				}
+			}
+		}
+
+		if shouldBeExec {
+			_ = e.fsys.Chmod(path, info.Mode()|0111)
+		}
+	}
+	return nil
+}
+
+// walkFiles is a helper to recursively find all files in a directory using e.fsys.
+func (e *Extractor) walkFiles(dir string) ([]string, error) {
+	var files []string
+	entries, err := e.fsys.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, entryName := range entries {
+		path := filepath.Join(dir, entryName)
+		info, err := e.fsys.Lstat(path)
+		if err != nil {
+			continue
+		}
+		if info.IsDir() {
+			subFiles, err := e.walkFiles(path)
+			if err == nil {
+				files = append(files, subFiles...)
+			}
+		} else {
+			files = append(files, path)
+		}
+	}
+	return files, nil
 }
 
 // extractDmg mounts a macOS DMG file and copies its contents to the destination folder using standard command tools.
@@ -200,7 +459,6 @@ func (e *Extractor) extractDmg(ctx context.Context, src string, dest string) err
 		return fmt.Errorf("creating temporary mount point: %w", err)
 	}
 
-	// Mount the DMG silently in macos
 	attachCmd := e.runner.CommandContext(ctx, "hdiutil", "attach", "-nobrowse", "-readonly", "-mountpoint", mountPoint, src)
 	err = attachCmd.Run()
 	if err != nil {
@@ -208,14 +466,12 @@ func (e *Extractor) extractDmg(ctx context.Context, src string, dest string) err
 		return fmt.Errorf("hdiutil attach failed: %w", err)
 	}
 
-	// Always detach DMG on return
 	defer func() {
 		detachCmd := e.runner.CommandContext(context.Background(), "hdiutil", "detach", mountPoint)
 		_ = detachCmd.Run()
 		_ = os.RemoveAll(mountPoint)
 	}()
 
-	// Copy all files from mount point to the destination
 	if err := e.copyDir(mountPoint, dest); err != nil {
 		return fmt.Errorf("copying DMG files: %w", err)
 	}
@@ -250,7 +506,6 @@ func (e *Extractor) copyDir(srcDir, destDir string) error {
 			return e.fsys.MkdirAll(destPath, info.Mode())
 		}
 
-		// Use helper closure to ensure files are closed immediately after copying
 		err = func() error {
 			srcFile, err := os.Open(path)
 			if err != nil {

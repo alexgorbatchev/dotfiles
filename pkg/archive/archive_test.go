@@ -240,3 +240,171 @@ func TestUnsupportedFormat(t *testing.T) {
 		t.Fatal("expected error for unsupported format, got nil")
 	}
 }
+
+func TestExtractorSymlinksAndHeuristics(t *testing.T) {
+	t.Run("Zip Symlink Extraction", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		// Create zip bytes with a file and a symlink
+		var buf bytes.Buffer
+		w := zip.NewWriter(&buf)
+
+		// Regular file
+		f1, err := w.Create("hello.txt")
+		if err != nil {
+			t.Fatalf("failed to create zip file: %v", err)
+		}
+		_, _ = f1.Write([]byte("hello content"))
+
+		// Symlink file
+		header := &zip.FileHeader{
+			Name: "link.txt",
+		}
+		header.SetMode(os.ModeSymlink | 0777)
+		f2, err := w.CreateHeader(header)
+		if err != nil {
+			t.Fatalf("failed to create zip header: %v", err)
+		}
+		_, _ = f2.Write([]byte("hello.txt")) // points to hello.txt
+
+		_ = w.Close()
+
+		err = memFS.WriteFile("/test.zip", buf.Bytes(), 0644)
+		if err != nil {
+			t.Fatalf("failed to write zip file: %v", err)
+		}
+
+		err = ext.Extract(context.Background(), "/test.zip", "/dest")
+		if err != nil {
+			t.Fatalf("extract failed: %v", err)
+		}
+
+		// Read link target
+		target, err := memFS.Readlink("/dest/link.txt")
+		if err != nil {
+			t.Fatalf("failed to read link: %v", err)
+		}
+		if target != "hello.txt" {
+			t.Errorf("expected link target hello.txt, got %q", target)
+		}
+	})
+
+	t.Run("Tar Symlink Extraction", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gw)
+
+		// Regular file
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeReg,
+			Name:     "hello.txt",
+			Mode:     0644,
+			Size:     5,
+		})
+		_, _ = tw.Write([]byte("hello"))
+
+		// Symlink
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeSymlink,
+			Name:     "link.txt",
+			Linkname: "hello.txt",
+			Mode:     0777,
+		})
+
+		_ = tw.Close()
+		_ = gw.Close()
+
+		err := memFS.WriteFile("/test.tar.gz", buf.Bytes(), 0644)
+		if err != nil {
+			t.Fatalf("failed to write tar file: %v", err)
+		}
+
+		err = ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+		if err != nil {
+			t.Fatalf("extract failed: %v", err)
+		}
+
+		target, err := memFS.Readlink("/dest/link.txt")
+		if err != nil {
+			t.Fatalf("failed to read link: %v", err)
+		}
+		if target != "hello.txt" {
+			t.Errorf("expected link target hello.txt, got %q", target)
+		}
+	})
+
+	t.Run("Executable Heuristics Check", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		// Create a file with shebang
+		_ = memFS.MkdirAll("/dest", 0755)
+		err := memFS.WriteFile("/dest/script", []byte("#!/bin/sh\necho ok"), 0644)
+		if err != nil {
+			t.Fatalf("failed to write file: %v", err)
+		}
+
+		// Create ELF binary file
+		err = memFS.WriteFile("/dest/binary", []byte{0x7f, 'E', 'L', 'F', 0, 0, 0, 0}, 0644)
+		if err != nil {
+			t.Fatalf("failed to write file: %v", err)
+		}
+
+		err = ext.detectAndSetExecutables("/dest")
+		if err != nil {
+			t.Fatalf("heuristics failed: %v", err)
+		}
+
+		info1, err := memFS.Stat("/dest/script")
+		if err != nil {
+			t.Fatalf("stat failed: %v", err)
+		}
+		if info1.Mode()&0111 == 0 {
+			t.Error("expected script to have executable bit set")
+		}
+
+		info2, err := memFS.Stat("/dest/binary")
+		if err != nil {
+			t.Fatalf("stat failed: %v", err)
+		}
+		if info2.Mode()&0111 == 0 {
+			t.Error("expected binary to have executable bit set")
+		}
+	})
+
+	t.Run("Single Gzip Extraction", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		_, _ = gw.Write([]byte("uncompressed text"))
+		_ = gw.Close()
+
+		err := memFS.WriteFile("/text.gz", buf.Bytes(), 0644)
+		if err != nil {
+			t.Fatalf("failed to write gz: %v", err)
+		}
+
+		err = ext.Extract(context.Background(), "/text.gz", "/dest")
+		if err != nil {
+			t.Fatalf("extract failed: %v", err)
+		}
+
+		data, err := memFS.ReadFile("/dest/text")
+		if err != nil {
+			t.Fatalf("failed to read decompressed file: %v", err)
+		}
+		if string(data) != "uncompressed text" {
+			t.Errorf("expected 'uncompressed text', got %q", string(data))
+		}
+	})
+}

@@ -141,8 +141,15 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		return nil, fmt.Errorf("creating destination directory: %w", err)
 	}
 
+	opts := downloader.DownloadOptions{}
+	if token != "" {
+		opts.Headers = map[string]string{
+			"Authorization": "token " + token,
+		}
+	}
+
 	assetPath := filepath.Join(destDir, matched.Name)
-	if err := g.dl.Download(ctx, matched.BrowserDownloadURL, assetPath, ""); err != nil {
+	if err := g.dl.Download(ctx, matched.BrowserDownloadURL, assetPath, "", opts); err != nil {
 		return nil, fmt.Errorf("downloading release asset %s: %w", matched.Name, err)
 	}
 

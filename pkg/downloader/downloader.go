@@ -8,11 +8,21 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"context"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
+
+// DownloadOptions configure the download process.
+type DownloadOptions struct {
+	Headers    map[string]string
+	Timeout    time.Duration
+	RetryCount int
+	RetryDelay time.Duration
+	OnProgress func(bytesDownloaded int64, totalBytes int64)
+}
 
 // Downloader manages file downloads with optional resumption support and SHA256 integrity checks.
 type Downloader struct {
@@ -37,10 +47,47 @@ func (d *Downloader) SetFS(fsys fs.FS) {
 	}
 }
 
-// Download fetches a file from url and saves it to destPath.
-// If the destination file already exists, it attempts to resume downloading using HTTP Range requests.
-// After the download completes, it optionally verifies the SHA256 signature if expectedSHA256 is provided.
-func (d *Downloader) Download(ctx context.Context, url string, destPath string, expectedSHA256 string) error {
+// Download fetches a file from url and saves it to destPath, supporting options and retries with backoff.
+func (d *Downloader) Download(ctx context.Context, url string, destPath string, expectedSHA256 string, opts ...DownloadOptions) error {
+	var lastErr error
+	retryCount := 0
+	retryDelay := time.Second
+	if len(opts) > 0 {
+		retryCount = opts[0].RetryCount
+		if opts[0].RetryDelay > 0 {
+			retryDelay = opts[0].RetryDelay
+		}
+	}
+
+	for i := 0; i <= retryCount; i++ {
+		if i > 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(retryDelay * time.Duration(i)): // Linear backoff: Delay * retry attempt
+			}
+		}
+
+		err := d.doDownload(ctx, url, destPath, expectedSHA256, opts...)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+	}
+	return fmt.Errorf("download failed after %d attempts: %w", retryCount+1, lastErr)
+}
+
+func (d *Downloader) doDownload(ctx context.Context, url string, destPath string, expectedSHA256 string, opts ...DownloadOptions) error {
+	var timeout time.Duration
+	if len(opts) > 0 {
+		timeout = opts[0].Timeout
+	}
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
 	// Check if file exists to compute offset for range requests
 	exists, err := d.fsys.Exists(destPath)
 	if err != nil {
@@ -85,6 +132,12 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 		return fmt.Errorf("creating http request: %w", err)
 	}
 
+	if len(opts) > 0 && opts[0].Headers != nil {
+		for k, v := range opts[0].Headers {
+			req.Header.Set(k, v)
+		}
+	}
+
 	if localSize > 0 {
 		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", localSize))
 	}
@@ -95,15 +148,32 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 	}
 	defer resp.Body.Close()
 
+	var totalBytes int64 = resp.ContentLength
+	var downloadedBytes int64 = 0
+
 	switch resp.StatusCode {
 	case http.StatusPartialContent: // 206
+		totalBytes += int64(localSize)
+		downloadedBytes = int64(localSize)
+
 		// If fsys is real OS filesystem, we can stream directly in append mode
 		if _, ok := d.fsys.(*fs.OSFS); ok {
 			f, err := os.OpenFile(destPath, os.O_WRONLY|os.O_APPEND, 0644)
 			if err != nil {
 				return fmt.Errorf("opening file for appending: %w", err)
 			}
-			if _, err := io.Copy(f, resp.Body); err != nil {
+
+			var writer io.Writer = f
+			if len(opts) > 0 && opts[0].OnProgress != nil {
+				writer = &progressWriter{
+					writer:     f,
+					onProgress: opts[0].OnProgress,
+					total:      totalBytes,
+					downloaded: downloadedBytes,
+				}
+			}
+
+			if _, err := io.Copy(writer, resp.Body); err != nil {
 				f.Close()
 				return fmt.Errorf("writing partial stream to file: %w", err)
 			}
@@ -122,6 +192,10 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 			if err := d.fsys.WriteFile(destPath, combined, 0644); err != nil {
 				return fmt.Errorf("writing fallback data: %w", err)
 			}
+
+			if len(opts) > 0 && opts[0].OnProgress != nil {
+				opts[0].OnProgress(int64(len(combined)), totalBytes)
+			}
 		}
 
 	case http.StatusOK: // 200
@@ -129,7 +203,18 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 		if err != nil {
 			return fmt.Errorf("creating download file: %w", err)
 		}
-		if _, err := io.Copy(f, resp.Body); err != nil {
+
+		var writer io.Writer = f
+		if len(opts) > 0 && opts[0].OnProgress != nil {
+			writer = &progressWriter{
+				writer:     f,
+				onProgress: opts[0].OnProgress,
+				total:      totalBytes,
+				downloaded: downloadedBytes,
+			}
+		}
+
+		if _, err := io.Copy(writer, resp.Body); err != nil {
 			f.Close()
 			return fmt.Errorf("writing full stream to file: %w", err)
 		}
@@ -137,7 +222,6 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 
 	case http.StatusRequestedRangeNotSatisfiable: // 416
 		// File on disk is equal to or larger than remote file, or range is invalid.
-		// If expectedSHA256 is set, let's verify if the existing file is correct.
 		if expectedSHA256 != "" {
 			ok, err := d.verifyHash(destPath, expectedSHA256)
 			if err == nil && ok {
@@ -149,6 +233,13 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 		if err != nil {
 			return fmt.Errorf("creating recovery request: %w", err)
 		}
+
+		if len(opts) > 0 && opts[0].Headers != nil {
+			for k, v := range opts[0].Headers {
+				cleanReq.Header.Set(k, v)
+			}
+		}
+
 		cleanResp, err := d.client.Do(cleanReq)
 		if err != nil {
 			return fmt.Errorf("executing recovery request: %w", err)
@@ -163,7 +254,18 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 		if err != nil {
 			return fmt.Errorf("creating recovery file: %w", err)
 		}
-		if _, err := io.Copy(f, cleanResp.Body); err != nil {
+
+		var writer io.Writer = f
+		if len(opts) > 0 && opts[0].OnProgress != nil {
+			writer = &progressWriter{
+				writer:     f,
+				onProgress: opts[0].OnProgress,
+				total:      cleanResp.ContentLength,
+				downloaded: 0,
+			}
+		}
+
+		if _, err := io.Copy(writer, cleanResp.Body); err != nil {
 			f.Close()
 			return fmt.Errorf("writing recovery stream to file: %w", err)
 		}
@@ -177,7 +279,6 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 	if expectedSHA256 != "" {
 		ok, err := d.verifyHash(destPath, expectedSHA256)
 		if err != nil || !ok {
-			// Clean up invalid files immediately to prevent broken cache/assets
 			_ = d.fsys.Remove(destPath)
 			if err != nil {
 				return fmt.Errorf("hash calculation failed: %w", err)
@@ -187,6 +288,22 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 	}
 
 	return nil
+}
+
+type progressWriter struct {
+	writer     io.Writer
+	onProgress func(bytesDownloaded int64, totalBytes int64)
+	total      int64
+	downloaded int64
+}
+
+func (pw *progressWriter) Write(p []byte) (n int, err error) {
+	n, err = pw.writer.Write(p)
+	if err == nil && pw.onProgress != nil {
+		pw.downloaded += int64(n)
+		pw.onProgress(pw.downloaded, pw.total)
+	}
+	return n, err
 }
 
 // verifyHash calculates SHA256 of the file content in a streaming fashion.
