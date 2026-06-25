@@ -31,10 +31,17 @@ A multi-platform packaging setup where:
 
 ## Acceptance criteria
 
-- [ ] Refactor the compilation step in `packages/build` to cross-compile the Go binary using standard `GOOS` and `GOARCH` environment variables during release.
-- [ ] Implement a lightweight platform detection script in `packages/build` / root package (`cli.js`) mapping `process.platform` and `process.arch` to the correct native target binary.
-- [ ] Define and generate corresponding package.json configurations for optional native platform dependencies.
-- [ ] Ensure that native sub-packages are listed under `optionalDependencies` inside the main `.dist/package.json` so package managers install the appropriate native package automatically.
-- [ ] Ensure the JavaScript launcher wraps standard execution, capturing CLI arguments (`process.argv`), handling process signal forwarding, and matching exit codes identically.
-- [ ] Write unit tests verifying that the platform detection and path-resolution logic maps accurately on all target OS and architecture combinations.
+- [ ] Refactor the release compilation step in `packages/build` to cross-compile Go binaries for the following four target environments:
+  - `GOOS=darwin GOARCH=amd64` (resulting in `bin/dotfiles-darwin-x64`)
+  - `GOOS=darwin GOARCH=arm64` (resulting in `bin/dotfiles-darwin-arm64`)
+  - `GOOS=linux GOARCH=amd64` (resulting in `bin/dotfiles-linux-x64`)
+  - `GOOS=linux GOARCH=arm64` (resulting in `bin/dotfiles-linux-arm64`)
+- [ ] Implement the runtime launcher script `cli.js` inside the main package, performing precise mapping from NodeJS host values to sub-packages:
+  - `process.platform === 'darwin'` and `process.arch === 'x64'` -> `@alexgorbatchev/dotfiles-darwin-x64`
+  - `process.platform === 'darwin'` and `process.arch === 'arm64'` -> `@alexgorbatchev/dotfiles-darwin-arm64`
+  - `process.platform === 'linux'` and `process.arch === 'x64'` -> `@alexgorbatchev/dotfiles-linux-x64`
+  - `process.platform === 'linux'` and `process.arch === 'arm64'` -> `@alexgorbatchev/dotfiles-linux-arm64`
+- [ ] Ensure `cli.js` executes the binary using native `node:child_process` `spawn` or `spawnSync`, setting options `{ stdio: 'inherit' }` to forward all stream inputs/outputs, forwards system OS signals (such as `SIGINT`, `SIGTERM`), and terminates calling `process.exit(code)` with the exact exit code of the spawned Go subprocess.
+- [ ] Define the exact optional package distribution schema in the root `.dist/package.json`, listing the 4 native platform packages inside the `optionalDependencies` block with matching semver versions.
+- [ ] Add unit tests inside `packages/build/src/build/__tests__/platformDetection.test.ts` that mock `process.platform` and `process.arch` to assert that all 4 target states resolve to their correct paths, and throws descriptive errors on unsupported platforms.
 - [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

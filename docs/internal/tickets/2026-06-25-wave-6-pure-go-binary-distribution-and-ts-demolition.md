@@ -64,11 +64,31 @@ At build time, `bun compile` compiles the dashboard client, embeds it inside the
 ### 3. Build Pipeline Restructuring
 
 - [ ] Refactor `packages/build/src/build/build.ts` and its helper files to orchestrate the new Go-native build pipeline.
-- [ ] **Dashboard Bundling**: Build the Preact client (`packages/dashboard/src/client/dashboard.html` and assets) using Bun into the output directory `pkg/dashboard/dist/`.
-- [ ] **Go Binary Compilation**: Execute `go build -ldflags="-s -w" -o .dist/dotfiles ./cmd/dotfiles` to compile the final statically-linked binary.
-- [ ] **Type Publishing**: Emit ambient type definitions (`schemas.d.ts`, `tool-types.d.ts`, and `authoring-types.d.ts`) directly into `.dist/` derived from `types.gen.ts` and simple typescript templates, entirely removing `dts-bundle-generator` step on legacy packages.
-- [ ] **Type Verification**: Verify the generated `.d.ts` definitions in `.dist/` using `tsd` type tests. 100% of all existing type tests (`*.test-d.ts` across all deleted packages) must be consolidated in `packages/build/type-tests/` and run successfully at build time. This guarantees a perfect, 100% drop-in swap with absolute backward compatibility for all existing customer `.tool.ts` configurations.
-- [ ] **Package Assembly**: Generate a clean `.dist/package.json` that refers to `./dotfiles` in its `bin` field and includes only minimal dependencies (such as `@types/bun` and `@types/node` required for `.tool.ts` compilation) and has zero legacy dependencies (e.g., removing `commander`, `memfs`, `tslog`, `minimatch`).
+- [ ] **Dashboard Bundling**: Build the Preact client (`packages/dashboard/src/client/dashboard.html` and assets) using `bun build` with settings `--outdir pkg/dashboard/dist/ --minify --target browser`, outputting the bundled `index.html` and chunk assets (`dashboard-*.js`, `dashboard-*.css`) with CSS and JS code minified.
+- [ ] **Go Binary Compilation**: Execute `go build -ldflags="-s -w -X main.version=${DOTFILES_VERSION}" -o .dist/dotfiles ./cmd/dotfiles` to compile the final statically-linked binary, ensuring the dashboard static assets from `pkg/dashboard/dist/` are embedded via `//go:embed`.
+- [ ] **Type Publishing**: Emit ambient type definitions (`schemas.d.ts`, `tool-types.d.ts`, and `authoring-types.d.ts`) directly into `.dist/` derived from `types.gen.ts` and public config APIs. The generated files must expose 100% of all public declarations (`defineTool`, `defineConfig`, `IFileSystem`, `Architecture`, `Platform`, `Libc`, etc.), entirely removing the legacy `dts-bundle-generator` step on TS packages.
+- [ ] **Type Verification**: Verify the generated `.d.ts` definitions inside `.dist/` by running:
+  `bun x tsd --typings .dist/schemas.d.ts --files 'packages/build/type-tests/**/*.test-d.ts'`
+  100% of the 17 legacy type test files (`*.test-d.ts`) must be migrated and consolidated into these exact file paths:
+  - `packages/build/type-tests/core/authoring-exports.test-d.ts`
+  - `packages/build/type-tests/core/ISystemInfo.test-d.ts`
+  - `packages/build/type-tests/core/dependsOn.test-d.ts`
+  - `packages/build/type-tests/core/environment-path.test-d.ts`
+  - `packages/build/type-tests/installers/zsh-plugin.test-d.ts`
+  - `packages/build/type-tests/installers/npm.test-d.ts`
+  - `packages/build/type-tests/installers/brew.test-d.ts`
+  - `packages/build/type-tests/installers/apt.test-d.ts`
+  - `packages/build/type-tests/installers/cargo.test-d.ts`
+  - `packages/build/type-tests/installers/pacman.test-d.ts`
+  - `packages/build/type-tests/installers/curl-binary.test-d.ts`
+  - `packages/build/type-tests/installers/github.test-d.ts`
+  - `packages/build/type-tests/installers/manual.test-d.ts`
+  - `packages/build/type-tests/installers/curl-tar.test-d.ts`
+  - `packages/build/type-tests/installers/dnf.test-d.ts`
+  - `packages/build/type-tests/installers/curl-script.test-d.ts`
+  - `packages/build/type-tests/installers/gitea.test-d.ts`
+  All 17 tests must compile and pass with zero type errors.
+- [ ] **Package Assembly**: Generate a clean `.dist/package.json` that refers to `./cli.js` (the cross-platform launcher) in its `bin` field and includes only minimal dependencies (such as `@types/bun` and `@types/node` required for `.tool.ts` compilation, plus optional native binary dependencies under `optionalDependencies`), and has zero legacy runtime/development dependencies (removing `commander`, `memfs`, `tslog`, `minimatch`, `zod`, etc.).
 
 ### 4. Legacy TS Packages Demolition
 

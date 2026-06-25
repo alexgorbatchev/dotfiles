@@ -29,10 +29,15 @@ The VM evaluation layer evaluates JavaScript configurations and maps optional fi
 
 ## Acceptance criteria
 
-- [ ] Write a dedicated unit test suite inside `pkg/vm/` (e.g. `vm_test.go`) to test Sobek unmarshaling behaviors on `pkg/config` structures.
-- [ ] **String Pointers**: Verify that a JS string maps to a valid Go `*string` pointing to the exact value (e.g., `version: "1.4.2"` -> non-nil `*string` pointing to `"1.4.2"`).
-- [ ] **Bool Pointers**: Verify that a JS boolean maps to a valid Go `*bool` (e.g., `enabled: true` -> non-nil `*bool` pointing to `true`).
-- [ ] **Omitted/Undefined Fields**: Verify that omitted or undefined JS properties resolve to a `nil` pointer in Go instead of allocating empty/zero values.
-- [ ] **Null Fields**: Verify that explicit JS `null` values resolve safely to a `nil` pointer in Go without throwing reflection exceptions.
-- [ ] If Sobek's default `ExportTo` reflection behavior has gaps or errors on pointer boundaries, implement a robust custom unmarshaling wrapper or intermediate map parsing step to normalize the properties before mapping.
+- [ ] Write a dedicated, exhaustive Go unit test suite inside `pkg/vm/pointer_unmarshal_test.go` to validate pointer-field unmarshaling against `config.ToolConfig` and `config.ToolConfigUpdateCheck` structures.
+- [ ] **String Pointers Verification**: 
+  - Assert that evaluating script `tool = { name: "test", version: "1.4.2" };` results in a non-nil `toolCfg.Version` where `*toolCfg.Version == "1.4.2"`.
+  - Assert that evaluating script `tool = { name: "test" };` (omitted version) results in `toolCfg.Version == nil`.
+  - Assert that evaluating script `tool = { name: "test", version: null };` or `tool = { name: "test", version: undefined };` results in `toolCfg.Version == nil` with zero exceptions thrown.
+- [ ] **Bool Pointers Verification**:
+  - Assert that evaluating script `tool = { name: "test", updateCheck: { enabled: true } };` results in a non-nil `toolCfg.UpdateCheck.Enabled` where `*toolCfg.UpdateCheck.Enabled == true`.
+  - Assert that evaluating script `tool = { name: "test", updateCheck: { enabled: false } };` results in a non-nil `toolCfg.UpdateCheck.Enabled` where `*toolCfg.UpdateCheck.Enabled == false`.
+  - Assert that evaluating script `tool = { name: "test", updateCheck: {} };` results in `toolCfg.UpdateCheck.Enabled == nil` and `toolCfg.UpdateCheck.Constraint == nil`.
+- [ ] **Custom Unmarshal Wrapper**: If Sobek's default `ExportTo` behaves inconsistently on pointers (e.g. failing to set `nil` or defaulting optional parameters incorrectly), implement a custom unmarshalling helper `ExportToWithPointers` inside `pkg/vm/vm.go` that resolves fields via JSON-unmarshaling or explicit JS-value key mapping to guarantee correct pointer assignment.
+- [ ] Ensure that running the command `go test ./pkg/vm -run TestPointerUnmarshal` executes successfully and returns a clean green pass on all pointer cases.
 - [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
