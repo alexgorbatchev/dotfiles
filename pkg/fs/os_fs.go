@@ -3,6 +3,7 @@ package fs
 import (
 	"io"
 	"os"
+	"path/filepath"
 )
 
 // OSFS is an implementation of FS backed by the standard operating system filesystem.
@@ -65,4 +66,28 @@ func (o *OSFS) Chmod(path string, perm os.FileMode) error {
 
 func (o *OSFS) Rename(oldname, newname string) error {
 	return os.Rename(oldname, newname)
+}
+
+func (o *OSFS) Symlink(oldname, newname string) error {
+	return os.Symlink(oldname, newname)
+}
+
+func (o *OSFS) Readlink(path string) (string, error) {
+	return os.Readlink(path)
+}
+
+func (o *OSFS) Lstat(path string) (os.FileInfo, error) {
+	return os.Lstat(path)
+}
+
+func (o *OSFS) Stat(path string) (os.FileInfo, error) {
+	return os.Stat(path)
+}
+
+func (o *OSFS) RemoveAll(path string) error {
+	return os.RemoveAll(path)
+}
+
+func (o *OSFS) Abs(path string) (string, error) {
+	return filepath.Abs(path)
 }

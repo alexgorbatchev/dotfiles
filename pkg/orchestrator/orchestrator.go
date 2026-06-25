@@ -29,7 +29,7 @@ type Orchestrator struct {
 	runner       exec.CommandRunner
 	reg          *registry.Registry
 	instRegistry *installer.Registry
-	symlinkFS    symlink.FileSystem
+	symlinkFS    fs.FS
 }
 
 // NewOrchestrator creates a new Orchestrator instance.
@@ -49,8 +49,8 @@ func (o *Orchestrator) getTrackedFS(ctx context.Context, tx *sql.Tx, toolName, f
 	return fs.NewTrackedFileSystem(o.fs, o.reg, toolName).WithTx(ctx, tx).WithFileType(fileType)
 }
 
-// SetSymlinkFS allows injecting a custom symlink.FileSystem (primarily for testing).
-func (o *Orchestrator) SetSymlinkFS(sfs symlink.FileSystem) {
+// SetSymlinkFS allows injecting a custom fs.FS (primarily for testing).
+func (o *Orchestrator) SetSymlinkFS(sfs fs.FS) {
 	o.symlinkFS = sfs
 }
 

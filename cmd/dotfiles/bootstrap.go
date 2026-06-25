@@ -136,7 +136,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	// For dry-runs and tests, we still open a valid database.
 	// If in unit testing, use in-memory SQLite to prevent disk state pollution.
 	var dbPath string
-	if isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true" {
+	if (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") || (dryRun && os.Getenv("DOTFILES_E2E_TEST") != "true") {
 		dbPath = ":memory:"
 	} else {
 		dbPath = filepath.Join(projCfg.Paths.GeneratedDir, "registry.db")
@@ -171,6 +171,9 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		_ = instReg.Register(&mockInstaller{name: "pkg"})
 	}
 	orch := orchestrator.NewOrchestrator(trackedFS, runner, reg, instReg)
+	if dryRun {
+		orch.SetSymlinkFS(fsys)
+	}
 
 	// Map binary dependencies to fully-qualified tool names (e.g., fnm -> curl-script--fnm)
 	for _, tc := range toolConfigs {
@@ -239,7 +242,7 @@ func (m *mockInstaller) Name() string {
 }
 
 func (m *mockInstaller) SupportsSudo() bool {
-	return false
+	return true
 }
 
 func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {

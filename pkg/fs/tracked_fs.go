@@ -207,3 +207,42 @@ func (t *TrackedFileSystem) Rename(oldname, newname string) error {
 	}
 	return t.recordOperation("rename", newname, &oldname, nil, nil)
 }
+
+func (t *TrackedFileSystem) Symlink(oldname, newname string) error {
+	err := t.fs.Symlink(oldname, newname)
+	if err != nil {
+		return err
+	}
+	return t.recordOperation("symlink", newname, &oldname, nil, nil)
+}
+
+func (t *TrackedFileSystem) Readlink(path string) (string, error) {
+	return t.fs.Readlink(path)
+}
+
+func (t *TrackedFileSystem) Lstat(path string) (os.FileInfo, error) {
+	return t.fs.Lstat(path)
+}
+
+func (t *TrackedFileSystem) Stat(path string) (os.FileInfo, error) {
+	return t.fs.Stat(path)
+}
+
+func (t *TrackedFileSystem) RemoveAll(path string) error {
+	existed, err := t.fs.Exists(path)
+	if err != nil {
+		existed = false
+	}
+	err = t.fs.RemoveAll(path)
+	if err != nil {
+		return err
+	}
+	if existed {
+		return t.recordOperation("rm", path, nil, nil, nil)
+	}
+	return nil
+}
+
+func (t *TrackedFileSystem) Abs(path string) (string, error) {
+	return t.fs.Abs(path)
+}
