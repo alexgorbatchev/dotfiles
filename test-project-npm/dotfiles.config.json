@@ -1,13 +1,13 @@
 {
   "projectConfig": {
     "paths": {
-      "homeDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/user-home",
-      "dotfilesDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm",
-      "targetDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/user-bin",
-      "generatedDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated",
-      "toolConfigsDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools",
-      "shellScriptsDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/shell-scripts",
-      "binariesDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/binaries"
+      "homeDir": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/.generated/user-home",
+      "dotfilesDir": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm",
+      "targetDir": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/.generated/user-bin",
+      "generatedDir": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/.generated",
+      "toolConfigsDir": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools",
+      "shellScriptsDir": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/.generated/shell-scripts",
+      "binariesDir": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/.generated/binaries"
     },
     "system": { "sudoPrompt": "Please enter your password to continue:" },
     "logging": { "debug": "" },
@@ -48,11 +48,11 @@
     "features": {
       "catalog": {
         "generate": true,
-        "filePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/CATALOG.md"
+        "filePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/CATALOG.md"
       }
     },
-    "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/dotfiles.config.ts",
-    "configFileDir": "/home/alex/development/projects/dotfiles-installer/test-project-npm"
+    "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/dotfiles.config.ts",
+    "configFileDir": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm"
   },
   "toolConfigs": {
     "github-release--fd": {
@@ -62,7 +62,7 @@
       "shellConfigs": { "zsh": {} },
       "installationMethod": "github-release",
       "installParams": { "repo": "sharkdp/fd", "hooks": { "after-install": [null] } },
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/github-release--fd.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/github-release--fd.tool.ts"
     },
     "manual--sudo-prompt-test": {
       "name": "manual--sudo-prompt-test",
@@ -81,7 +81,7 @@
       ],
       "installationMethod": "manual",
       "installParams": {},
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/manual--sudo-prompt-test.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/manual--sudo-prompt-test.tool.ts"
     },
     "shell-only--foo": {
       "name": "shell-only--foo",
@@ -95,7 +95,7 @@
       },
       "installationMethod": "manual",
       "installParams": {},
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/shell-only--foo.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/shell-only--foo.tool.ts"
     },
     "brew--borders": {
       "name": "brew--borders",
@@ -114,7 +114,7 @@
       ],
       "installationMethod": "manual",
       "installParams": {},
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/brew--borders.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/brew--borders.tool.ts"
     },
     "cargo--eza": {
       "name": "cargo--eza",
@@ -123,13 +123,13 @@
       "shellConfigs": {
         "zsh": {
           "aliases": { "el": "eza --all --long --header --icons --group-directories-first", "ll": "el", "l": "el" },
-          "completions": "/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/binaries/cargo--eza/current/completions/zsh/_eza"
+          "completions": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/.generated/binaries/cargo--eza/current/completions/zsh/_eza"
         }
       },
       "dependencies": ["fnm"],
       "installationMethod": "cargo",
       "installParams": { "crateName": "eza" },
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/subfolder/cargo--eza.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/subfolder/cargo--eza.tool.ts"
     },
     "github-release--rg": {
       "name": "github-release--rg",
@@ -146,7 +146,7 @@
       },
       "installationMethod": "github-release",
       "installParams": { "repo": "BurntSushi/ripgrep" },
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/github-release--rg.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/github-release--rg.tool.ts"
     },
     "zsh-plugin--zsh-vi-mode": {
       "name": "zsh-plugin--zsh-vi-mode",
@@ -157,7 +157,7 @@
       },
       "installationMethod": "zsh-plugin",
       "installParams": { "repo": "jeffreytse/zsh-vi-mode", "auto": true },
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/zsh-plugin--zsh-vi-mode.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/zsh-plugin--zsh-vi-mode.tool.ts"
     },
     "github-release--bat": {
       "name": "github-release--bat",
@@ -166,7 +166,7 @@
       "shellConfigs": { "zsh": { "completions": { "cmd": "bat --generate=completions zsh", "bin": "bat" } } },
       "installationMethod": "github-release",
       "installParams": { "repo": "sharkdp/bat", "hooks": { "after-install": [null] } },
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/github-release--bat.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/github-release--bat.tool.ts"
     },
     "github-release--git-bug": {
       "name": "github-release--git-bug",
@@ -174,7 +174,7 @@
       "version": "latest",
       "installationMethod": "github-release",
       "installParams": { "repo": "git-bug/git-bug", "ghCli": true },
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/github-release--git-bug.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/github-release--git-bug.tool.ts"
     },
     "curl-script--fnm": {
       "name": "curl-script--fnm",
@@ -192,7 +192,7 @@
             { "kind": "raw", "value": "source <(fnm-func)" }
           ],
           "functions": {
-            "__dotfiles_source_curl_script__fnm_0": "[[ -f \"/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/binaries/curl-script--fnm/current/fnm-init.zsh\" ]] && cat \"/home/alex/development/projects/dotfiles-installer/test-project-npm/.generated/binaries/curl-script--fnm/current/fnm-init.zsh\"",
+            "__dotfiles_source_curl_script__fnm_0": "[[ -f \"/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/.generated/binaries/curl-script--fnm/current/fnm-init.zsh\" ]] && cat \"/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/.generated/binaries/curl-script--fnm/current/fnm-init.zsh\"",
             "__dotfiles_source_curl_script__fnm_1": "[[ -f \"/path/that/does/not/exist\" ]] && cat \"/path/that/does/not/exist\"",
             "__dotfiles_source_inline_curl_script__fnm_0": "echo \"export FOO=bar\"",
             "fnm-func": "\n            echo \"/foo/bar\"\n          "
@@ -206,7 +206,7 @@
         "shell": "bash",
         "hooks": { "after-install": [null] }
       },
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/curl-script--fnm.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/curl-script--fnm.tool.ts"
     },
     "curl-script--broot": {
       "name": "curl-script--broot",
@@ -225,7 +225,7 @@
       ],
       "installationMethod": "manual",
       "installParams": {},
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/curl-script--broot.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/curl-script--broot.tool.ts"
     },
     "platform--foo": {
       "name": "platform--foo",
@@ -237,7 +237,7 @@
       ],
       "installationMethod": "manual",
       "installParams": {},
-      "configFilePath": "/home/alex/development/projects/dotfiles-installer/test-project-npm/tools/platform--foo.tool.ts"
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-shell-init/test-project-npm/tools/platform--foo.tool.ts"
     }
   }
 }

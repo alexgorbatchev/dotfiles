@@ -411,8 +411,8 @@ func TestOrchestrator_Install(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get operations: %v", err)
 	}
-	if len(ops) != 3 {
-		t.Fatalf("expected 3 operations (shim, symlink, chmod), got %d", len(ops))
+	if len(ops) != 6 {
+		t.Fatalf("expected 6 operations (mkdir, rm, mv, shim, symlink, chmod), got %d", len(ops))
 	}
 
 	instRec, err := reg.GetToolInstallation(ctx, "test-tool")
@@ -842,7 +842,7 @@ func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 
 	// 1. Verify files exist in onceDir
 	zshOncePath := filepath.Join(onceDir, "once-001.zsh")
-	bashOncePath := filepath.Join(onceDir, "once-001.bash")
+	bashOncePath := filepath.Join(onceDir, "once-001.sh")
 	ps1OncePath := filepath.Join(onceDir, "once-001.ps1")
 
 	for _, p := range []string{zshOncePath, bashOncePath, ps1OncePath} {
@@ -886,4 +886,3 @@ func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 		t.Errorf("expected stray once script to be pruned on consecutive generate, but it still exists")
 	}
 }
-

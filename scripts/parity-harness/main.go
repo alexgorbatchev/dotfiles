@@ -320,8 +320,8 @@ func serializeDB(dbPath, destJSONPrefix, homeDir string) error {
 			r.ToolName = normalizeContent(r.ToolName, homeDir)
 			r.OperationType = normalizeContent(r.OperationType, homeDir)
 
-			// Skip directory creation/cleanup operations to keep comparison robust across Go and TS
-			if r.OperationType == "mkdir" || r.OperationType == "rm" {
+			// Skip directory creation/cleanup/rename operations to keep comparison robust across Go and TS
+			if r.OperationType == "mkdir" || r.OperationType == "rm" || r.OperationType == "rename" {
 				continue
 			}
 

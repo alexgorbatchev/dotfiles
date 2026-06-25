@@ -239,7 +239,7 @@ func (m *mockInstaller) Name() string {
 }
 
 func (m *mockInstaller) SupportsSudo() bool {
-	return false
+	return m.name == "apt" || m.name == "pacman" || m.name == "dnf" || m.name == "manual" || m.name == "pkg"
 }
 
 func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {

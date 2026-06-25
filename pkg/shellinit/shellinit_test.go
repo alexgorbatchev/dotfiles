@@ -402,3 +402,100 @@ func TestInjector_Errors(t *testing.T) {
 		}
 	})
 }
+
+func TestFormatPath(t *testing.T) {
+	tests := []struct {
+		name      string
+		shell     string
+		targetDir string
+		want      string
+	}{
+		{
+			name:      "zsh path append",
+			shell:     "zsh",
+			targetDir: "/home/user/bin",
+			want: `if [[ ":$PATH:" != *":/home/user/bin:"* ]]; then
+  export PATH="/home/user/bin:$PATH"
+fi`,
+		},
+		{
+			name:      "bash path append",
+			shell:     "bash",
+			targetDir: "/home/user/bin",
+			want: `if [[ ":$PATH:" != *":/home/user/bin:"* ]]; then
+  export PATH="/home/user/bin:$PATH"
+fi`,
+		},
+		{
+			name:      "powershell path append",
+			shell:     "powershell",
+			targetDir: "/home/user/bin",
+			want:      `if ($env:PATH -notlike "*/home/user/bin*") { $env:PATH = "/home/user/bin;$env:PATH" }`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatPath(tt.shell, tt.targetDir)
+			if got != tt.want {
+				t.Errorf("FormatPath(%q, %q) =\n%q\nwant =\n%q", tt.shell, tt.targetDir, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatFpath(t *testing.T) {
+	completionsDir := "/home/user/.generated/shell-scripts/zsh/completions"
+	want := "typeset -U fpath\nfpath=(\"/home/user/.generated/shell-scripts/zsh/completions\" $fpath)\nautoload -Uz compinit && compinit -u"
+	got := FormatFpath(completionsDir)
+	if got != want {
+		t.Errorf("FormatFpath(%q) =\n%q\nwant =\n%q", completionsDir, got, want)
+	}
+}
+
+func TestFormatOnceLoop(t *testing.T) {
+	tests := []struct {
+		name    string
+		shell   string
+		onceDir string
+		want    string
+	}{
+		{
+			name:    "zsh once loop",
+			shell:   "zsh",
+			onceDir: "/home/user/.once",
+			want: `for once_script in "/home/user/.once"/*.zsh(N); do
+  [[ -f "$once_script" ]] && source "$once_script"
+done`,
+		},
+		{
+			name:    "bash once loop",
+			shell:   "bash",
+			onceDir: "/home/user/.once",
+			want:    `(shopt -s nullglob; for once_script in "/home/user/.once"/*.sh; do [[ -f "$once_script" ]] && source "$once_script"; done)`,
+		},
+		{
+			name:    "powershell once loop",
+			shell:   "powershell",
+			onceDir: "/home/user/.once",
+			want: `if (Test-Path "/home/user/.once") {
+  Get-ChildItem -Path "/home/user/.once" -Filter "*.ps1" | ForEach-Object { & $_.FullName }
+}`,
+		},
+		{
+			name:    "unsupported shell",
+			shell:   "fish",
+			onceDir: "/home/user/.once",
+			want:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatOnceLoop(tt.shell, tt.onceDir)
+			if got != tt.want {
+				t.Errorf("FormatOnceLoop(%q, %q) =\n%q\nwant =\n%q", tt.shell, tt.onceDir, got, tt.want)
+			}
+		})
+	}
+}
