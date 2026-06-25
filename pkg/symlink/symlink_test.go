@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
 func TestCreateSymlink(t *testing.T) {
@@ -357,7 +359,7 @@ func TestRemoveSymlink(t *testing.T) {
 }
 
 type mockFS struct {
-	realFS
+	fs.FS
 	errAbs       error
 	errStat      error
 	errLstat     error
@@ -369,67 +371,82 @@ type mockFS struct {
 	errRename    error
 }
 
+func (m *mockFS) init() {
+	if m.FS == nil {
+		m.FS = fs.NewOSFS()
+	}
+}
+
 func (m *mockFS) Abs(path string) (string, error) {
 	if m.errAbs != nil {
 		return "", m.errAbs
 	}
-	return m.realFS.Abs(path)
+	m.init()
+	return m.FS.Abs(path)
 }
 
 func (m *mockFS) Stat(path string) (os.FileInfo, error) {
 	if m.errStat != nil {
 		return nil, m.errStat
 	}
-	return m.realFS.Stat(path)
+	m.init()
+	return m.FS.Stat(path)
 }
 
 func (m *mockFS) Lstat(path string) (os.FileInfo, error) {
 	if m.errLstat != nil {
 		return nil, m.errLstat
 	}
-	return m.realFS.Lstat(path)
+	m.init()
+	return m.FS.Lstat(path)
 }
 
 func (m *mockFS) Readlink(path string) (string, error) {
 	if m.errReadlink != nil {
 		return "", m.errReadlink
 	}
-	return m.realFS.Readlink(path)
+	m.init()
+	return m.FS.Readlink(path)
 }
 
 func (m *mockFS) Remove(path string) error {
 	if m.errRemove != nil {
 		return m.errRemove
 	}
-	return m.realFS.Remove(path)
+	m.init()
+	return m.FS.Remove(path)
 }
 
 func (m *mockFS) RemoveAll(path string) error {
 	if m.errRemoveAll != nil {
 		return m.errRemoveAll
 	}
-	return m.realFS.RemoveAll(path)
+	m.init()
+	return m.FS.RemoveAll(path)
 }
 
 func (m *mockFS) MkdirAll(path string, perm os.FileMode) error {
 	if m.errMkdirAll != nil {
 		return m.errMkdirAll
 	}
-	return m.realFS.MkdirAll(path, perm)
+	m.init()
+	return m.FS.MkdirAll(path, perm)
 }
 
 func (m *mockFS) Symlink(oldname, newname string) error {
 	if m.errSymlink != nil {
 		return m.errSymlink
 	}
-	return m.realFS.Symlink(oldname, newname)
+	m.init()
+	return m.FS.Symlink(oldname, newname)
 }
 
 func (m *mockFS) Rename(oldname, newname string) error {
 	if m.errRename != nil {
 		return m.errRename
 	}
-	return m.realFS.Rename(oldname, newname)
+	m.init()
+	return m.FS.Rename(oldname, newname)
 }
 
 func TestCreateSymlinkMockErrors(t *testing.T) {
@@ -659,7 +676,8 @@ func (e *errorAbsOnTargetFS) Abs(path string) (string, error) {
 	if filepath.Base(path) == "b" {
 		return "", os.ErrPermission
 	}
-	return e.mockFS.realFS.Abs(path)
+	e.mockFS.init()
+	return e.mockFS.FS.Abs(path)
 }
 
 type errorAbsOnSpecificFS struct {
@@ -671,5 +689,6 @@ func (e *errorAbsOnSpecificFS) Abs(path string) (string, error) {
 	if filepath.Base(path) == e.failOn {
 		return "", os.ErrPermission
 	}
-	return e.mockFS.realFS.Abs(path)
+	e.mockFS.init()
+	return e.mockFS.FS.Abs(path)
 }

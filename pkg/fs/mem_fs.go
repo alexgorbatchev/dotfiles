@@ -2,17 +2,21 @@ package fs
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type fileNode struct {
-	data  []byte
-	perm  os.FileMode
-	isDir bool
+	data       []byte
+	perm       os.FileMode
+	isDir      bool
+	isSymlink  bool
+	linkTarget string
 }
 
 // MemFS implements the FS interface fully in memory, utilizing sync.RWMutex
@@ -324,4 +328,162 @@ func (m *MemFS) Rename(oldname, newname string) error {
 	}
 
 	return nil
+}
+
+type memFileInfo struct {
+	name    string
+	size    int64
+	mode    os.FileMode
+	modTime time.Time
+	isDir   bool
+}
+
+func (fi *memFileInfo) Name() string       { return fi.name }
+func (fi *memFileInfo) Size() int64        { return fi.size }
+func (fi *memFileInfo) Mode() os.FileMode  { return fi.mode }
+func (fi *memFileInfo) ModTime() time.Time { return fi.modTime }
+func (fi *memFileInfo) IsDir() bool        { return fi.isDir }
+func (fi *memFileInfo) Sys() any           { return nil }
+
+func (m *MemFS) Symlink(oldname, newname string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cleanNew := filepath.Clean(newname)
+
+	parent := filepath.Dir(cleanNew)
+	if filepath.Dir(parent) != parent {
+		parentNode, ok := m.files[parent]
+		if !ok || !parentNode.isDir {
+			return &os.PathError{Op: "symlink", Path: newname, Err: os.ErrNotExist}
+		}
+	}
+
+	_, ok := m.files[cleanNew]
+	if ok {
+		return &os.PathError{Op: "symlink", Path: newname, Err: os.ErrExist}
+	}
+
+	m.files[cleanNew] = &fileNode{
+		perm:       0777 | os.ModeSymlink,
+		isDir:      false,
+		isSymlink:  true,
+		linkTarget: oldname,
+	}
+	return nil
+}
+
+func (m *MemFS) Readlink(path string) (string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	cleanPath := filepath.Clean(path)
+	node, ok := m.files[cleanPath]
+	if !ok {
+		return "", &os.PathError{Op: "readlink", Path: path, Err: os.ErrNotExist}
+	}
+	if !node.isSymlink {
+		return "", &os.PathError{Op: "readlink", Path: path, Err: os.ErrInvalid}
+	}
+	return node.linkTarget, nil
+}
+
+func (m *MemFS) Lstat(path string) (os.FileInfo, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	cleanPath := filepath.Clean(path)
+	node, ok := m.files[cleanPath]
+	if !ok {
+		return nil, &os.PathError{Op: "lstat", Path: path, Err: os.ErrNotExist}
+	}
+
+	mode := node.perm
+	if node.isDir {
+		mode |= os.ModeDir
+	}
+	if node.isSymlink {
+		mode |= os.ModeSymlink
+	}
+
+	return &memFileInfo{
+		name:  filepath.Base(cleanPath),
+		size:  int64(len(node.data)),
+		mode:  mode,
+		isDir: node.isDir,
+	}, nil
+}
+
+func (m *MemFS) Stat(path string) (os.FileInfo, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	cleanPath := filepath.Clean(path)
+	node, ok := m.files[cleanPath]
+	if !ok {
+		return nil, &os.PathError{Op: "stat", Path: path, Err: os.ErrNotExist}
+	}
+
+	visited := make(map[string]bool)
+	currPath := cleanPath
+	currNode := node
+	for currNode.isSymlink {
+		if visited[currPath] {
+			return nil, &os.PathError{Op: "stat", Path: path, Err: fmt.Errorf("symlink loop detected")}
+		}
+		visited[currPath] = true
+
+		target := currNode.linkTarget
+		if !filepath.IsAbs(target) {
+			target = filepath.Join(filepath.Dir(currPath), target)
+		}
+		currPath = filepath.Clean(target)
+
+		nextNode, ok := m.files[currPath]
+		if !ok {
+			return nil, &os.PathError{Op: "stat", Path: path, Err: os.ErrNotExist}
+		}
+		currNode = nextNode
+	}
+
+	mode := currNode.perm
+	if currNode.isDir {
+		mode |= os.ModeDir
+	}
+
+	return &memFileInfo{
+		name:  filepath.Base(currPath),
+		size:  int64(len(currNode.data)),
+		mode:  mode,
+		isDir: currNode.isDir,
+	}, nil
+}
+
+func (m *MemFS) RemoveAll(path string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cleanPath := filepath.Clean(path)
+	_, ok := m.files[cleanPath]
+	if !ok {
+		return nil
+	}
+
+	separator := string(filepath.Separator)
+	prefix := cleanPath
+	if !strings.HasSuffix(prefix, separator) {
+		prefix += separator
+	}
+
+	for k := range m.files {
+		if k == cleanPath || strings.HasPrefix(k, prefix) {
+			delete(m.files, k)
+		}
+	}
+
+	return nil
+}
+
+func (m *MemFS) Abs(path string) (string, error) {
+	return filepath.Abs(path)
 }

@@ -48,6 +48,7 @@ At build time, `bun compile` compiles the dashboard client, embeds it inside the
 ## Acceptance criteria
 
 ### 1. Types Separation & Public Autocomplete 100% Completeness
+
 - [ ] Relocate and consolidate the TypeScript interfaces required by the dashboard client (specifically `Architecture`, `Platform`, `IBinaryConfig`, `IFileOperation`, and `IFileState`) directly inside `packages/dashboard/src/shared/types.ts` or a new standalone types file.
 - [ ] Maintain 100% completeness inside the public `.d.ts` definitions (e.g. `schemas.d.ts`, `tool-types.d.ts`, `authoring-types.d.ts`). All configuration properties, helper functions, and custom installer parameters must have identical Type signatures as the legacy TS implementation to ensure a perfect drop-in swap.
 - [ ] Ensure that `Platform` and `Architecture` bitwise enums and their basic string converters are implemented locally in the dashboard shared folder, removing all dependency on `@dotfiles/core`.
@@ -68,8 +69,8 @@ At build time, `bun compile` compiles the dashboard client, embeds it inside the
 - [ ] **Go Binary Compilation**: Execute `go build -ldflags="-s -w -X main.version=${DOTFILES_VERSION}" -o .dist/dotfiles ./cmd/dotfiles` to compile the final statically-linked binary, ensuring the dashboard static assets from `pkg/dashboard/dist/` are embedded via `//go:embed`.
 - [ ] **Type Publishing**: Emit ambient type definitions (`schemas.d.ts`, `tool-types.d.ts`, and `authoring-types.d.ts`) directly into `.dist/` derived from `types.gen.ts` and public config APIs. The generated files must expose 100% of all public declarations (`defineTool`, `defineConfig`, `IFileSystem`, `Architecture`, `Platform`, `Libc`, etc.), entirely removing the legacy `dts-bundle-generator` step on TS packages.
 - [ ] **Type Verification**: Verify the generated `.d.ts` definitions inside `.dist/` by running:
-  `bun x tsd --typings .dist/schemas.d.ts --files 'packages/build/type-tests/**/*.test-d.ts'`
-  100% of the 17 legacy type test files (`*.test-d.ts`) must be migrated and consolidated into these exact file paths:
+      `bun x tsd --typings .dist/schemas.d.ts --files 'packages/build/type-tests/**/*.test-d.ts'`
+      100% of the 17 legacy type test files (`*.test-d.ts`) must be migrated and consolidated into these exact file paths:
   - `packages/build/type-tests/core/authoring-exports.test-d.ts`
   - `packages/build/type-tests/core/ISystemInfo.test-d.ts`
   - `packages/build/type-tests/core/dependsOn.test-d.ts`
@@ -87,7 +88,7 @@ At build time, `bun compile` compiles the dashboard client, embeds it inside the
   - `packages/build/type-tests/installers/dnf.test-d.ts`
   - `packages/build/type-tests/installers/curl-script.test-d.ts`
   - `packages/build/type-tests/installers/gitea.test-d.ts`
-  All 17 tests must compile and pass with zero type errors.
+    All 17 tests must compile and pass with zero type errors.
 - [ ] **Package Assembly**: Generate a clean `.dist/package.json` that refers to `./cli.js` (the cross-platform launcher) in its `bin` field and includes only minimal dependencies (such as `@types/bun` and `@types/node` required for `.tool.ts` compilation, plus optional native binary dependencies under `optionalDependencies`), and has zero legacy runtime/development dependencies (removing `commander`, `memfs`, `tslog`, `minimatch`, `zod`, etc.).
 
 ### 4. Legacy TS Packages Demolition

@@ -4,32 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
-
-// FileSystem defines the filesystem operations needed by the symlink package.
-type FileSystem interface {
-	Abs(path string) (string, error)
-	Stat(path string) (os.FileInfo, error)
-	Lstat(path string) (os.FileInfo, error)
-	Readlink(path string) (string, error)
-	Remove(path string) error
-	RemoveAll(path string) error
-	MkdirAll(path string, perm os.FileMode) error
-	Symlink(oldname, newname string) error
-	Rename(oldname, newname string) error
-}
-
-type realFS struct{}
-
-func (realFS) Abs(path string) (string, error)              { return filepath.Abs(path) }
-func (realFS) Stat(path string) (os.FileInfo, error)        { return os.Stat(path) }
-func (realFS) Lstat(path string) (os.FileInfo, error)       { return os.Lstat(path) }
-func (realFS) Readlink(path string) (string, error)         { return os.Readlink(path) }
-func (realFS) Remove(path string) error                     { return os.Remove(path) }
-func (realFS) RemoveAll(path string) error                  { return os.RemoveAll(path) }
-func (realFS) MkdirAll(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
-func (realFS) Symlink(oldname, newname string) error        { return os.Symlink(oldname, newname) }
-func (realFS) Rename(oldname, newname string) error         { return os.Rename(oldname, newname) }
 
 // Options holds configuration for symlink operations.
 type Options struct {
@@ -39,17 +16,17 @@ type Options struct {
 
 // Evaluator manages symlink analysis, safety, and creation.
 type Evaluator struct {
-	fs FileSystem
+	fs fs.FS
 }
 
 // NewEvaluator creates a new Evaluator instance with standard os operations.
 func NewEvaluator() *Evaluator {
-	return &Evaluator{fs: realFS{}}
+	return &Evaluator{fs: fs.NewOSFS()}
 }
 
-// NewEvaluatorWithFS creates a new Evaluator instance with a custom FileSystem.
-func NewEvaluatorWithFS(fs FileSystem) *Evaluator {
-	return &Evaluator{fs: fs}
+// NewEvaluatorWithFS creates a new Evaluator instance with a custom fs.FS.
+func NewEvaluatorWithFS(fsys fs.FS) *Evaluator {
+	return &Evaluator{fs: fsys}
 }
 
 // CreateSymlink safely creates a symbolic link from source to target.

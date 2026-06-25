@@ -14,69 +14,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
-	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
 )
-
-// mockSymlinkFS bridges symlink.FileSystem to fs.FS
-type mockSymlinkFS struct {
-	fsys fs.FS
-}
-
-var _ symlink.FileSystem = (*mockSymlinkFS)(nil)
-
-func (m *mockSymlinkFS) Abs(path string) (string, error) {
-	return path, nil
-}
-
-func (m *mockSymlinkFS) Stat(path string) (os.FileInfo, error) {
-	exists, err := m.fsys.Exists(path)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, os.ErrNotExist
-	}
-	return nil, nil
-}
-
-func (m *mockSymlinkFS) Lstat(path string) (os.FileInfo, error) {
-	return m.Stat(path)
-}
-
-func (m *mockSymlinkFS) Readlink(path string) (string, error) {
-	data, err := m.fsys.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
-func (m *mockSymlinkFS) Remove(path string) error {
-	return m.fsys.Remove(path)
-}
-
-func (m *mockSymlinkFS) RemoveAll(path string) error {
-	return m.fsys.Remove(path)
-}
-
-func (m *mockSymlinkFS) MkdirAll(path string, perm os.FileMode) error {
-	return m.fsys.MkdirAll(path, perm)
-}
-
-func (m *mockSymlinkFS) Symlink(oldname, newname string) error {
-	return m.fsys.WriteFile(newname, []byte(oldname), 0777)
-}
-
-func (m *mockSymlinkFS) Rename(oldname, newname string) error {
-	data, err := m.fsys.ReadFile(oldname)
-	if err != nil {
-		return err
-	}
-	if err := m.fsys.WriteFile(newname, data, 0777); err != nil {
-		return err
-	}
-	return m.fsys.Remove(oldname)
-}
 
 // mockInstaller implements installer.Installer for testing
 type mockInstaller struct {
@@ -351,7 +289,7 @@ func TestOrchestrator_Install(t *testing.T) {
 	_ = instReg.Register(mockInst)
 
 	orch := NewOrchestrator(fsys, runner, reg, instReg)
-	orch.SetSymlinkFS(&mockSymlinkFS{fsys: fsys})
+	orch.SetSymlinkFS(fsys)
 
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
@@ -411,8 +349,11 @@ func TestOrchestrator_Install(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get operations: %v", err)
 	}
-	if len(ops) != 3 {
-		t.Fatalf("expected 3 operations (shim, symlink, chmod), got %d", len(ops))
+	for _, op := range ops {
+		t.Logf("OP: %s at %s target %v", op.OperationType, op.FilePath, op.TargetPath)
+	}
+	if len(ops) != 6 {
+		t.Fatalf("expected 6 operations (mkdir, rename, mkdir, shim write, shim chmod, symlink), got %d", len(ops))
 	}
 
 	instRec, err := reg.GetToolInstallation(ctx, "test-tool")
@@ -449,7 +390,7 @@ func TestOrchestrator_Generate(t *testing.T) {
 	_ = instReg.Register(mockInst)
 
 	orch := NewOrchestrator(fsys, runner, reg, instReg)
-	orch.SetSymlinkFS(&mockSymlinkFS{fsys: fsys})
+	orch.SetSymlinkFS(fsys)
 
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
@@ -806,7 +747,7 @@ func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 	instReg := installer.NewRegistry()
 
 	orch := NewOrchestrator(fsys, runner, reg, instReg)
-	orch.SetSymlinkFS(&mockSymlinkFS{fsys: fsys})
+	orch.SetSymlinkFS(fsys)
 
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
@@ -886,4 +827,3 @@ func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 		t.Errorf("expected stray once script to be pruned on consecutive generate, but it still exists")
 	}
 }
-
