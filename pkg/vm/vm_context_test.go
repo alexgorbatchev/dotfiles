@@ -93,4 +93,57 @@ func TestVMContextAndFSBindings(t *testing.T) {
 			t.Errorf("expected logs to contain 'content: hello virtual fs', got:\n%s", logs)
 		}
 	})
+
+	t.Run("should fail on invalid typescript syntax during compilation", func(t *testing.T) {
+		tempDir, err := os.MkdirTemp("", "vm-context-test-err")
+		if err != nil {
+			t.Fatalf("failed to create temp dir: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		configPath := filepath.Join(tempDir, "config.ts")
+		configContent := `export default { const a = ; };` // Syntax error!
+		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+			t.Fatalf("failed to write config.ts: %v", err)
+		}
+
+		_, _, err = LoadTypeScriptConfig(log, memFS, configPath)
+		if err == nil {
+			t.Fatal("expected LoadTypeScriptConfig to fail on compilation error, but got nil")
+		}
+		if !strings.Contains(err.Error(), "esbuild compile errors") {
+			t.Errorf("expected esbuild compile error message, got: %v", err)
+		}
+	})
+
+	t.Run("should successfully compile and bundle relative imports inside config", func(t *testing.T) {
+		tempDir, err := os.MkdirTemp("", "vm-context-test-import")
+		if err != nil {
+			t.Fatalf("failed to create temp dir: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		// Create a helper file that exports a path
+		helperPath := filepath.Join(tempDir, "helper.ts")
+		helperContent := `export const resolvedDir = "/home/user/my-custom-resolved-dir";`
+		if err := os.WriteFile(helperPath, []byte(helperContent), 0644); err != nil {
+			t.Fatalf("failed to write helper.ts: %v", err)
+		}
+
+		configPath := filepath.Join(tempDir, "config.ts")
+		configContent := `
+		import { resolvedDir } from "./helper";
+		export default { paths: { generatedDir: resolvedDir } };`
+		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+			t.Fatalf("failed to write config.ts: %v", err)
+		}
+
+		projCfg, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		if err != nil {
+			t.Fatalf("unexpected compilation failure with relative imports: %v", err)
+		}
+		if projCfg.Paths.GeneratedDir != "/home/user/my-custom-resolved-dir" {
+			t.Errorf("expected bundled relative import to resolve GeneratedDir to %q, but got %q", "/home/user/my-custom-resolved-dir", projCfg.Paths.GeneratedDir)
+		}
+	})
 }
