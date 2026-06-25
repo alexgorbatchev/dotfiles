@@ -37,7 +37,7 @@
       "@dotfiles/core": ["./.dist/cli"]
     }
   },
-  "include": ["packages", "test-project-npm", "review"],
+  "include": ["packages", "test-project-npm", "review", "pkg/vm"],
   "exclude": [
     "**/.tmp/**",
     "**/tmp/**",

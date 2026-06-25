@@ -12,6 +12,7 @@ import (
 
 // RegisterBindings registers native Go utility functions and helper constants inside the Sobek runtime.
 func RegisterBindings(vm *sobek.Runtime) error {
+	_ = vm.Set("globalThis", vm.GlobalObject())
 	bindings := map[string]any{
 		"getOS":      arch.GetOS,
 		"getArch":    arch.GetArch,

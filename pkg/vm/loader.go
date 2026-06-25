@@ -1,6 +1,7 @@
 package vm
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,400 +15,48 @@ import (
 	"github.com/grafana/sobek"
 )
 
-// loaderApiContents is the TypeScript-based implementation of the config-loader API.
-// It matches the defineConfig/defineTool helper DSL that was present in legacy TS packages.
-const loaderApiContents = `
-export const Platform = Object.freeze({ None: 0, Linux: 1, MacOS: 2, Windows: 4, Unix: 3, All: 7 });
-export const Architecture = Object.freeze({ None: 0, X86_64: 1, Arm64: 2, All: 3 });
+//go:embed loader-api.ts
+var loaderApiContentsRaw string
 
-export function defineConfig(callback) {
-  if (typeof callback === 'function') {
-    return callback({
-      configFileDir: globalThis.configFileDir || "",
-      systemInfo: {
-        os: getOS(),
-        arch: getArch(),
-        libc: detectLibc()
-      }
-    });
-  }
-  return callback;
+//go:embed polyfills.ts
+var LoaderPolyfillsRaw string
+
+var (
+	loaderApiContents string
+	LoaderPolyfills   string
+)
+
+func init() {
+	var err error
+	loaderApiContents, err = transpileTS(loaderApiContentsRaw)
+	if err != nil {
+		panic(fmt.Errorf("failed to transpile embedded loader-api.ts: %w", err))
+	}
+
+	LoaderPolyfills, err = transpileTS(LoaderPolyfillsRaw)
+	if err != nil {
+		panic(fmt.Errorf("failed to transpile embedded polyfills.ts: %w", err))
+	}
 }
 
-export function defineTool(callback) {
-  const builder = {
-    name: "",
-    installationMethod: "",
-    installParams: {},
-    binaries: [],
-    version: "latest",
-    dependencies: [],
-    symlinks: [],
-    copies: [],
-    shellConfigs: {},
-
-    bin(name, pattern) {
-      if (pattern !== undefined) {
-        this.binaries.push({ name: name, pattern: pattern });
-      } else if (Array.isArray(name)) {
-        this.binaries = name;
-      } else {
-        this.binaries = Array.prototype.slice.call(arguments);
-      }
-      return this;
-    },
-
-    version(v) {
-      this.version = v;
-      return this;
-    },
-
-    sudo() {
-      this.sudo = true;
-      return this;
-    },
-
-    disable() {
-      this.disabled = true;
-      return this;
-    },
-
-    hostname(pattern) {
-      this.hostname = pattern;
-      return this;
-    },
-
-    updateCheck(config) {
-      this.updateCheck = config;
-      return this;
-    },
-
-    copy(src, dst) {
-      this.copies = this.copies || [];
-      this.copies.push({ source: src, target: dst });
-      return this;
-    },
-
-    dependsOn(dep) {
-      if (Array.isArray(dep)) {
-        this.dependencies = this.dependencies.concat(dep);
-      } else {
-        this.dependencies.push(dep);
-      }
-      return this;
-    },
-
-    depends(dep) {
-      return this.dependsOn(dep);
-    },
-
-    symlink(src, dst) {
-      this.symlinks = this.symlinks || [];
-      this.symlinks.push({ source: src, target: dst });
-      return this;
-    },
-
-    hook(name, cb) {
-      if (typeof cb === 'function') {
-        const commands = [];
-        const mockShell = (strings, ...values) => {
-          let result = "";
-          if (Array.isArray(strings)) {
-            for (let i = 0; i < strings.length; i++) {
-              result += strings[i];
-              if (i < values.length) {
-                result += values[i];
-              }
-            }
-          } else {
-            result = strings;
-          }
-          commands.push(result);
-          return Promise.resolve("");
-        };
-        
-        const hookCtx = {
-          $: mockShell,
-          toolName: this.name || globalThis.currentToolName || ""
-        };
-        
-        cb(hookCtx);
-        
-        if (commands.length > 0) {
-          this.installParams = this.installParams || {};
-          this.installParams.hooks = this.installParams.hooks || {};
-          this.installParams.hooks[name] = commands;
-        }
-      }
-      return this;
-    },
-
-    zsh(cb) {
-      this.shellConfigs.zsh = this.shellConfigs.zsh || { env: {}, aliases: {}, scripts: [], completions: null, functions: {} };
-      cb(createShellBuilder(this.shellConfigs.zsh, "zsh"));
-      return this;
-    },
-
-    bash(cb) {
-      this.shellConfigs.bash = this.shellConfigs.bash || { env: {}, aliases: {}, scripts: [], completions: null, functions: {} };
-      cb(createShellBuilder(this.shellConfigs.bash, "bash"));
-      return this;
-    },
-
-    powershell(cb) {
-      this.shellConfigs.powershell = this.shellConfigs.powershell || { env: {}, aliases: {}, scripts: [], completions: null, functions: {} };
-      cb(createShellBuilder(this.shellConfigs.powershell, "powershell"));
-      return this;
-    },
-
-    platform(plat, cb) {
-      const currentOS = getOS();
-      let matches = false;
-      if (plat === Platform.All) matches = true;
-      else if (plat === Platform.MacOS && currentOS === "darwin") matches = true;
-      else if (plat === Platform.Linux && currentOS === "linux") matches = true;
-
-      if (matches) {
-        cb(install);
-      } else {
-        this.disabled = true;
-      }
-      return this;
-    },
-
-    arch(arc, cb) {
-      const currentArch = getArch();
-      let matches = false;
-      if (arc === Architecture.All) matches = true;
-      else if (arc === Architecture.Arm64 && currentArch === "arm64") matches = true;
-      else if (arc === Architecture.X86_64 && currentArch === "amd64") matches = true;
-
-      if (matches) {
-        cb(install);
-      } else {
-        this.disabled = true;
-      }
-      return this;
-    }
-  };
-
-  function createShellBuilder(shConfig, shellType) {
-    shConfig.functions = shConfig.functions || {};
-    let sourceFileCounter = 0;
-    let sourceCounter = 0;
-
-    const resolvePath = (relativePath) => {
-      if (path.isAbsolute(relativePath)) {
-        return relativePath;
-      }
-      return path.join(globalThis.configFileDir || "", relativePath);
-    };
-
-    const generateSourceFileFunctionName = () => {
-      const counter = sourceFileCounter++;
-      const toolName = (globalThis.currentToolName || "").replace(/[^a-zA-Z0-9]/g, "_");
-      return "__dotfiles_source_" + toolName + "_" + counter;
-    };
-
-    const generateSourceFunctionName = () => {
-      const counter = sourceCounter++;
-      const toolName = (globalThis.currentToolName || "").replace(/[^a-zA-Z0-9]/g, "_");
-      return "__dotfiles_source_inline_" + toolName + "_" + counter;
-    };
-
-    return {
-      env(map) {
-        Object.assign(shConfig.env, map);
-        return this;
-      },
-      alias(map) {
-        Object.assign(shConfig.aliases, map);
-        return this;
-      },
-      aliases(map) {
-        return this.alias(map);
-      },
-      script(type, val) {
-        if (arguments.length === 1) {
-          shConfig.scripts.push({ kind: "always", value: arguments[0] });
-        } else {
-          shConfig.scripts.push({ kind: type, value: val });
-        }
-        return this;
-      },
-      once(val) {
-        shConfig.scripts.push({ kind: "once", value: val });
-        return this;
-      },
-      always(val) {
-        shConfig.scripts.push({ kind: "always", value: val });
-        return this;
-      },
-      completions(val) {
-        shConfig.completions = val;
-        return this;
-      },
-      functions(values) {
-        Object.assign(shConfig.functions, values);
-        return this;
-      },
-      path(val) {
-        shConfig.paths = shConfig.paths || [];
-        shConfig.paths.push(val);
-        return this;
-      },
-      sourceFile(relativePath) {
-        const resolvedPath = resolvePath(relativePath);
-        const functionName = generateSourceFileFunctionName();
-
-        let body = "";
-        if (shellType === "powershell") {
-          body = "if (Test-Path \"" + resolvedPath + "\") { Get-Content \"" + resolvedPath + "\" -Raw }";
-        } else {
-          body = "[[ -f \"" + resolvedPath + "\" ]] && cat \"" + resolvedPath + "\"";
-        }
-        shConfig.functions[functionName] = body;
-
-        let sourceCmd = "";
-        let unsetCmd = "";
-        if (shellType === "powershell") {
-          sourceCmd = ". (" + functionName + ")";
-          unsetCmd = "Remove-Item Function:\\" + functionName + " -ErrorAction SilentlyContinue";
-        } else {
-          sourceCmd = "source <(" + functionName + ")";
-          unsetCmd = "unset -f " + functionName;
-        }
-
-        shConfig.scripts.push({ kind: "raw", value: sourceCmd });
-        shConfig.scripts.push({ kind: "raw", value: unsetCmd });
-        return this;
-      },
-      sourceFunction(functionName) {
-        let sourceCmd = "";
-        if (shellType === "powershell") {
-          sourceCmd = ". (" + functionName + ")";
-        } else {
-          sourceCmd = "source <(" + functionName + ")";
-        }
-        shConfig.scripts.push({ kind: "raw", value: sourceCmd });
-        return this;
-      },
-      source(content) {
-        const functionName = generateSourceFunctionName();
-        shConfig.functions[functionName] = content;
-
-        let sourceCmd = "";
-        let unsetCmd = "";
-        if (shellType === "powershell") {
-          sourceCmd = ". (" + functionName + ")";
-          unsetCmd = "Remove-Item Function:\\" + functionName + " -ErrorAction SilentlyContinue";
-        } else {
-          sourceCmd = "source <(" + functionName + ")";
-          unsetCmd = "unset -f " + functionName;
-        }
-
-        shConfig.scripts.push({ kind: "raw", value: sourceCmd });
-        shConfig.scripts.push({ kind: "raw", value: unsetCmd });
-        return this;
-      }
-    };
-  }
-
-  function install(method, params) {
-    if (method) {
-      builder.installationMethod = method;
-    }
-    if (params) {
-      builder.installParams = params;
-    }
-    return builder;
-  }
-
-  // Construct toolCtx parameter
-  const toolName = globalThis.currentToolName || "";
-  const toolPath = globalThis.currentToolPath || "";
-  const bDir = globalThis.binariesDir || "";
-  const currentDir = bDir ? (bDir + "/" + toolName + "/current") : path.dirname(toolPath);
-  const toolCtx = {
-    toolName: toolName,
-    configFileDir: globalThis.configFileDir || "",
-    currentDir: currentDir,
-    systemInfo: {
-      os: getOS(),
-      arch: getArch(),
-      libc: detectLibc()
-    },
-    log: {
-      info(msg) { logInfo(toolName, msg); },
-      warn(msg) { logWarn(toolName, msg); },
-      error(msg) { logError(toolName, msg); },
-      debug(msg) { logDebug(toolName, msg); }
-    },
-    fs: {
-      exists(p) { return fsExists(p); },
-      readDir(p) { return fsReadDir(p); },
-      readFile(p) { return fsReadFile(p); }
-    }
-  };
-
-  if (typeof callback === 'function') {
-    const res = callback(install, toolCtx);
-    if (res && res.installationMethod) {
-      return res;
-    }
-  }
-  return builder;
+func transpileTS(tsCode string) (string, error) {
+	result := api.Transform(tsCode, api.TransformOptions{
+		Loader: api.LoaderTS,
+		Target: api.ES2015,
+		Format: api.FormatCommonJS,
+	})
+	if len(result.Errors) > 0 {
+		var msgs []string
+		for _, e := range result.Errors {
+			msgs = append(msgs, e.Text)
+		}
+		return "", fmt.Errorf("transpilation errors: %s", strings.Join(msgs, "; "))
+	}
+	code := string(result.Code)
+	// Delete any CommonJS exports assignment to avoid disconnecting module.exports
+	code = strings.ReplaceAll(code, "module.exports = __toCommonJS(stdin_exports);", "")
+	return code, nil
 }
-`
-
-// LoaderPolyfills is a JavaScript polyfill suite that supplies standard node:fs and node:path
-// functionalities needed for the config loader.
-const LoaderPolyfills = `
-const fs = {
-  existsSync(p) {
-    return fileExists(p);
-  }
-};
-const path = {
-  isAbsolute(p) {
-    return p && (p.startsWith("/") || p.startsWith("\\") || /^[a-zA-Z]:/.test(p));
-  },
-  join() {
-    const args = Array.prototype.slice.call(arguments);
-    return args.join("/").replace(/\/+/g, "/");
-  },
-  dirname(p) {
-    if (!p) return "";
-    const parts = p.split("/");
-    if (parts.length <= 1) return ".";
-    parts.pop();
-    return parts.join("/") || "/";
-  },
-  basename(p) {
-    if (!p) return "";
-    const parts = p.split("/");
-    return parts[parts.length - 1];
-  }
-};
-
-const modules = {
-  "node:fs": fs,
-  "fs": fs,
-  "node:path": path,
-  "path": path
-};
-
-function require(name) {
-  if (modules[name]) {
-    return modules[name];
-  }
-  throw new Error("Module not found: " + name);
-}
-
-globalThis.fs = fs;
-globalThis.path = path;
-globalThis.require = require;
-`
 
 // unifiedLoaderResult holds the returned project config and tool configs from evaluating
 // the dynamically compiled TypeScript loader bundle.
@@ -503,9 +152,8 @@ func compileFile(entryPath string) (string, error) {
 				})
 			build.OnLoad(api.OnLoadOptions{Filter: `.*`, Namespace: "loader-api"},
 				func(args api.OnLoadArgs) (api.OnLoadResult, error) {
-					contents := loaderApiContents
 					return api.OnLoadResult{
-						Contents: &contents,
+						Contents: &loaderApiContentsRaw,
 						Loader:   api.LoaderTS,
 					}, nil
 				})
