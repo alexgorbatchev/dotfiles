@@ -280,3 +280,202 @@ func (tc *ToolConfig) Validate() error {
 
 	return nil
 }
+
+func hasKey(m map[string]interface{}, key string) bool {
+	keyLower := strings.ToLower(key)
+	for k := range m {
+		if strings.ToLower(k) == keyLower {
+			return true
+		}
+	}
+	return false
+}
+
+func getBinaryName(b interface{}) string {
+	switch val := b.(type) {
+	case string:
+		return val
+	case map[string]interface{}:
+		if name, ok := val["name"].(string); ok {
+			return name
+		}
+	case BinaryConfig:
+		return val.Name
+	case *BinaryConfig:
+		if val != nil {
+			return val.Name
+		}
+	}
+	return ""
+}
+
+// Merge deep-merges ShellTypeConfig override into this ShellTypeConfig.
+func (stc *ShellTypeConfig) Merge(override *ShellTypeConfig) {
+	if len(override.Scripts) > 0 {
+		stc.Scripts = append(stc.Scripts, override.Scripts...)
+	}
+	if len(override.Aliases) > 0 {
+		if stc.Aliases == nil {
+			stc.Aliases = make(map[string]string)
+		}
+		for k, v := range override.Aliases {
+			stc.Aliases[k] = v
+		}
+	}
+	if len(override.Env) > 0 {
+		if stc.Env == nil {
+			stc.Env = make(map[string]string)
+		}
+		for k, v := range override.Env {
+			stc.Env[k] = v
+		}
+	}
+	if len(override.Functions) > 0 {
+		if stc.Functions == nil {
+			stc.Functions = make(map[string]string)
+		}
+		for k, v := range override.Functions {
+			stc.Functions[k] = v
+		}
+	}
+	if len(override.Paths) > 0 {
+		stc.Paths = append(stc.Paths, override.Paths...)
+	}
+	if override.Completions != nil {
+		stc.Completions = override.Completions
+	}
+}
+
+// Merge deep-merges ShellConfigs override into this ShellConfigs.
+func (sc *ShellConfigs) Merge(override *ShellConfigs) {
+	if override.Zsh != nil {
+		if sc.Zsh == nil {
+			sc.Zsh = &ShellTypeConfig{}
+		}
+		sc.Zsh.Merge(override.Zsh)
+	}
+	if override.Bash != nil {
+		if sc.Bash == nil {
+			sc.Bash = &ShellTypeConfig{}
+		}
+		sc.Bash.Merge(override.Bash)
+	}
+	if override.Powershell != nil {
+		if sc.Powershell == nil {
+			sc.Powershell = &ShellTypeConfig{}
+		}
+		sc.Powershell.Merge(override.Powershell)
+	}
+}
+
+// Merge deep-merges another ToolConfig override into this ToolConfig,
+// using rawOverride map to check field presence of primitive fields.
+func (tc *ToolConfig) Merge(override *ToolConfig, rawOverride map[string]interface{}) {
+	if hasKey(rawOverride, "name") {
+		tc.Name = override.Name
+	}
+	if hasKey(rawOverride, "version") {
+		tc.Version = override.Version
+	}
+	if hasKey(rawOverride, "configFilePath") {
+		tc.ConfigFilePath = override.ConfigFilePath
+	}
+	if len(override.Binaries) > 0 {
+		for _, newBin := range override.Binaries {
+			newName := getBinaryName(newBin)
+			if newName == "" {
+				tc.Binaries = append(tc.Binaries, newBin)
+				continue
+			}
+			exists := false
+			for _, existing := range tc.Binaries {
+				if getBinaryName(existing) == newName {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				tc.Binaries = append(tc.Binaries, newBin)
+			}
+		}
+	}
+	if len(override.Dependencies) > 0 {
+		for _, dep := range override.Dependencies {
+			exists := false
+			for _, existing := range tc.Dependencies {
+				if existing == dep {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				tc.Dependencies = append(tc.Dependencies, dep)
+			}
+		}
+	}
+	if hasKey(rawOverride, "disabled") {
+		tc.Disabled = override.Disabled
+	}
+	if hasKey(rawOverride, "hostname") {
+		tc.Hostname = override.Hostname
+	}
+	if hasKey(rawOverride, "sudo") {
+		tc.Sudo = override.Sudo
+	}
+	if override.ShellConfigs != nil {
+		if tc.ShellConfigs == nil {
+			tc.ShellConfigs = &ShellConfigs{}
+		}
+		tc.ShellConfigs.Merge(override.ShellConfigs)
+	}
+	if len(override.Symlinks) > 0 {
+		for _, sym := range override.Symlinks {
+			exists := false
+			for _, existing := range tc.Symlinks {
+				if existing.Source == sym.Source && existing.Target == sym.Target {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				tc.Symlinks = append(tc.Symlinks, sym)
+			}
+		}
+	}
+	if len(override.Copies) > 0 {
+		for _, cp := range override.Copies {
+			exists := false
+			for _, existing := range tc.Copies {
+				if existing.Source == cp.Source && existing.Target == cp.Target {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				tc.Copies = append(tc.Copies, cp)
+			}
+		}
+	}
+	if override.UpdateCheck != nil {
+		if tc.UpdateCheck == nil {
+			tc.UpdateCheck = &ToolConfigUpdateCheck{}
+		}
+		if override.UpdateCheck.Enabled != nil {
+			tc.UpdateCheck.Enabled = override.UpdateCheck.Enabled
+		}
+		if override.UpdateCheck.Constraint != nil {
+			tc.UpdateCheck.Constraint = override.UpdateCheck.Constraint
+		}
+	}
+	if hasKey(rawOverride, "installationMethod") {
+		tc.InstallationMethod = override.InstallationMethod
+	}
+	if len(override.InstallParams) > 0 {
+		if tc.InstallParams == nil {
+			tc.InstallParams = make(map[string]interface{})
+		}
+		for k, v := range override.InstallParams {
+			tc.InstallParams[k] = v
+		}
+	}
+}

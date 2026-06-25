@@ -320,7 +320,13 @@ func ResolvePlatformConfigs(toolConfigs []*config.ToolConfig, sysCtx *installer.
 				// Map entry.Config to a JSON string and unmarshal to tc
 				jsonBytes, err := json.Marshal(entry.Config)
 				if err == nil {
-					_ = json.Unmarshal(jsonBytes, tc)
+					var rawOverride map[string]interface{}
+					var override config.ToolConfig
+					if err := json.Unmarshal(jsonBytes, &rawOverride); err == nil {
+						if err := json.Unmarshal(jsonBytes, &override); err == nil {
+							tc.Merge(&override, rawOverride)
+						}
+					}
 				}
 			}
 		}
