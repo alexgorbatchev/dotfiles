@@ -21,9 +21,40 @@ You are a severe skeptic:
 
 ---
 
+## 🤖 Multi-Agent Dispatching and Aggregation Protocol
+
+To maximize thoroughness, performance, and depth of analysis, you **must not** conduct this audit alone. You must act as the **Orchestration Agent** and delegate specialized package-level audits to parallel sub-agents, and then synthesize their findings into the final report.
+
+### Step 1: Divide the Codebase into Discrete Modules
+Segment the monorepo into the following five core functional modules:
+1.  **Core File System & Database State:** Go's `pkg/fs/`, `pkg/db/`, `pkg/registry/` vs TS's `packages/file-system/`, `packages/registry/`, `packages/registry-database/`.
+2.  **Orchestration, Shell Scripts & Sorters:** Go's `pkg/orchestrator/`, `pkg/shellinit/`, `cmd/dotfiles/generate.go` vs TS's `packages/generator-orchestrator/`, `packages/shell-init-generator/`, `packages/cli/src/generateCommand.ts`.
+3.  **Installer Registry & Package Managers:** Go's `pkg/installer/` vs TS's `packages/installer/`, `packages/installer-*/`.
+4.  **Networking, Extractors & Proxy:** Go's `pkg/downloader/`, `pkg/archive/`, `pkg/proxy/` vs TS's `packages/downloader/`, `packages/archive-extractor/`, `packages/http-proxy/`.
+5.  **Build Pipeline, Dashboard & Typings:** Go's `pkg/dashboard/`, `pkg/unwrap/`, `pkg/arch/` vs TS's `packages/build/`, `packages/dashboard/`, `packages/unwrap-value/`.
+
+### Step 2: Dispatch Parallel Sub-Agents
+Launch **five parallel sub-agents** concurrently (by making a single message containing five concurrent `task` tool calls of type `explore` or `general`). 
+
+For each sub-agent, provide a highly specific, customized version of this audit directive. Instruct them to:
+- Deeply inspect their assigned directory segment in both languages.
+- Uncover any discrepancies in method signatures, parameter schemas, performance, security, and state handling.
+- Return a detailed, markdown-formatted report of their findings.
+
+### Step 3: Collect and Synthesize Reports
+Once all five parallel sub-agents have completed their tasks and returned their findings:
+1.  Carefully read and analyze each sub-agent's report.
+2.  Identify any cross-component contract misalignments or hidden dependencies.
+3.  Synthesize and consolidate their findings into a single, cohesive, and comprehensive master report.
+
+### Step 4: Write the Final Master Report to `./gaps-report.md`
+Write the final aggregated and curated report directly to `./gaps-report.md` using the exact layout defined in the **Expected Report Output Format** section below.
+
+---
+
 ## 🔍 Investigation Directives
 
-Your audit must cover, but is not limited to, the following domains:
+Ensure your sub-agents audit, and you aggregate, findings across the following critical domains:
 
 ### 1. The Core Question: Safe Demolition Feasibility
 *   **The `.tool.ts` Authoring Experience (DX):** If we delete `packages/core` and `packages/cli` today, how do we compile and type-check the user-authored `.tool.ts` configuration files? Does Go’s typegen output (`types.gen.ts`) provide a 100% complete type boundary (e.g. `defineTool`, `defineConfig`, `IFileSystem`) for IDE autocomplete? Or are there missing type declarations, helper functions, or imports that will cause compiler and editor errors?
