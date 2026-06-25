@@ -66,33 +66,52 @@ func (s *CacheStore) getPaths(key string) (string, string) {
 // Get retrieves a cache entry.
 func (s *CacheStore) Get(method, targetURL string) (*CacheEntry, []byte, error) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
 
 	key := s.GenerateKey(method, targetURL)
 	metaPath, bodyPath := s.getPaths(key)
 
 	metaBytes, err := os.ReadFile(metaPath)
 	if err != nil {
+		s.mu.RUnlock()
 		return nil, nil, err
 	}
 
 	bodyBytes, err := os.ReadFile(bodyPath)
 	if err != nil {
+		s.mu.RUnlock()
 		return nil, nil, err
 	}
 
 	var entry CacheEntry
 	if err := json.Unmarshal(metaBytes, &entry); err != nil {
+		s.mu.RUnlock()
 		return nil, nil, fmt.Errorf("unmarshal metadata: %w", err)
 	}
 
 	expiresAt := entry.CachedAt + entry.TTL
 	nowMs := time.Now().UnixNano() / int64(time.Millisecond)
 	if nowMs > expiresAt {
-		s.deleteByKey(key)
+		s.mu.RUnlock()
+
+		s.mu.Lock()
+		defer s.mu.Unlock()
+
+		// Re-verify expiration
+		metaBytes2, err2 := os.ReadFile(metaPath)
+		if err2 == nil {
+			var entry2 CacheEntry
+			if err3 := json.Unmarshal(metaBytes2, &entry2); err3 == nil {
+				expiresAt2 := entry2.CachedAt + entry2.TTL
+				nowMs2 := time.Now().UnixNano() / int64(time.Millisecond)
+				if nowMs2 > expiresAt2 {
+					s.deleteByKey(key)
+				}
+			}
+		}
 		return nil, nil, fmt.Errorf("cache entry expired")
 	}
 
+	s.mu.RUnlock()
 	return &entry, bodyBytes, nil
 }
 
@@ -585,10 +604,30 @@ func matchGlob(urlStr, method, pattern string) bool {
 		return true
 	}
 
-	regPat := pattern
-	regPat = regexp.QuoteMeta(regPat)
-	regPat = strings.ReplaceAll(regPat, "\\*\\*", ".*")
-	regPat = strings.ReplaceAll(regPat, "\\*", ".*")
+	cleanPat := pattern
+	for len(cleanPat) > 0 && (cleanPat[0] == '*' || cleanPat[0] == '/') {
+		cleanPat = cleanPat[1:]
+	}
+	for len(cleanPat) > 0 && (cleanPat[len(cleanPat)-1] == '*' || cleanPat[len(cleanPat)-1] == '/') {
+		cleanPat = cleanPat[:len(cleanPat)-1]
+	}
+
+	if len(cleanPat) == 0 {
+		return true
+	}
+
+	escapedPart := regexp.QuoteMeta(cleanPat)
+	escapedPart = strings.ReplaceAll(escapedPart, "\\*\\*", ".*")
+	escapedPart = strings.ReplaceAll(escapedPart, "\\*", ".*")
+
+	var regPat string
+	if strings.Contains(cleanPat, ".") {
+		// Compile glob into regex that ensures word boundaries:
+		// (^|://|\.|/)[escapedPart]($|\.|/|:||\?)
+		regPat = fmt.Sprintf(`(^|://|\.|/)%s($|\.|/|:|\?)`, escapedPart)
+	} else {
+		regPat = escapedPart
+	}
 
 	re, err := regexp.Compile(regPat)
 	if err != nil {

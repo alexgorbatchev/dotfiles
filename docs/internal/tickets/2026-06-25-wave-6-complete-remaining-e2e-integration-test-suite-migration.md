@@ -10,7 +10,8 @@ ticket_status: open
 ## Problem
 
 The repository currently relies on a hybrid execution model where Go-native E2E tests (in `tests/e2e/`) run alongside legacy TypeScript E2E tests (in `packages/e2e-test/src/__tests__/`) via `bun test` in `package.json`'s `"test:all"` command.
-* **The Gap:** There are 14 legacy TS integration test files that have **not** yet been migrated to Go:
+
+- **The Gap:** There are 14 legacy TS integration test files that have **not** yet been migrated to Go:
   - `ghCli.test.ts` (GitHub client credentials, authentication, and enterprise testing)
   - `completion.test.ts` (completions generation, glob resolution, and shell completion tests)
   - `env.test.ts` (virtual environments and isolated activation profile tests)
@@ -25,7 +26,7 @@ The repository currently relies on a hybrid execution model where Go-native E2E 
   - `dnf.test.ts` (DNF package installation executions via fake dnf CLI)
   - `pacman.test.ts` (Pacman package installation executions via fake pacman CLI)
   - `hook.test.ts` (advanced install and generation hooks, including hook errors)
-* **The Consequences:** If the legacy TypeScript packages (including `packages/e2e-test/`) are demolished to ship a pure Go binary (as planned in the other Wave 6 ticket), these 14 test files will be **deleted**, leaving massive critical functionalities (like virtual environments, package managers, and completion scripts) completely untested and unverified under the Go engine.
+- **The Consequences:** If the legacy TypeScript packages (including `packages/e2e-test/`) are demolished to ship a pure Go binary (as planned in the other Wave 6 ticket), these 14 test files will be **deleted**, leaving massive critical functionalities (like virtual environments, package managers, and completion scripts) completely untested and unverified under the Go engine.
 
 ## Why this matters
 
@@ -58,5 +59,5 @@ providing 100% full-suite Go coverage.
 - [ ] Migrate `pacman.test.ts` to `tests/e2e/pacman_test.go`, verifying Pacman installations.
 - [ ] Migrate `ghCli.test.ts` and `hook.test.ts` to their corresponding Go tests, checking Advanced GitHub API auth and hook error cascades.
 - [ ] Clean up and delete `packages/e2e-test/` directory, and update `package.json` test scripts to invoke only Go E2E tests:
-  `"test:all": "go test -count=1 -p 1 ./tests/e2e/...`
+      `"test:all": "go test -count=1 -p 1 ./tests/e2e/...`
 - [ ] **Review Instructions:** Run an independent review pass of the changes using a dedicated review workflow or review subagent, and resolve all identified issues until a completely clean review is returned.
