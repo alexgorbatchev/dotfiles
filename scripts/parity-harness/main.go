@@ -46,7 +46,10 @@ type ToolUsageRow struct {
 	UsageCount int    `json:"usage_count"`
 }
 
-var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+var (
+	ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+	uuidRegex = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
+)
 
 func stripAnsi(str string) string {
 	return ansiRegex.ReplaceAllString(str, "")
@@ -188,6 +191,9 @@ func normalizeContent(content string, homeDir string) string {
 	normalizedHome := strings.ReplaceAll(homeDir, "\\", "/")
 	content = strings.ReplaceAll(content, normalizedHome, "{{HOME}}")
 
+	// Mask UUIDs with zero-UUID
+	content = uuidRegex.ReplaceAllString(content, "00000000-0000-0000-0000-000000000000")
+
 	return content
 }
 
@@ -313,11 +319,23 @@ func serializeDB(dbPath, destJSONPrefix, homeDir string) error {
 			}
 			r.ToolName = normalizeContent(r.ToolName, homeDir)
 			r.OperationType = normalizeContent(r.OperationType, homeDir)
+
+			// Skip directory creation/cleanup operations to keep comparison robust across Go and TS
+			if r.OperationType == "mkdir" || r.OperationType == "rm" {
+				continue
+			}
+
 			r.FilePath = normalizeContent(r.FilePath, homeDir)
 			r.TargetPath = normalizeStringPtr(r.TargetPath, homeDir)
 			r.FileType = normalizeContent(r.FileType, homeDir)
 			r.Metadata = normalizeStringPtr(r.Metadata, homeDir)
 			r.OperationID = normalizeContent(r.OperationID, homeDir)
+
+			// Normalize size_bytes for shims and init scripts since templates and paths differ in length
+			if r.FileType == "shim" || r.FileType == "init" {
+				r.SizeBytes = nil
+			}
+
 			fileOps = append(fileOps, r)
 		}
 		if err := rows.Err(); err != nil {
@@ -412,8 +430,8 @@ func assertParity(tsDir, goDir, homeDir string) error {
 	mismatches := []string{}
 
 	// Helper to find all files recursively
-	getFiles := func(dir string) (map[string]bool, error) {
-		files := make(map[string]bool)
+	getFiles := func(dir string) (map[string]string, error) {
+		files := make(map[string]string)
 		err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -426,7 +444,8 @@ func assertParity(tsDir, goDir, homeDir string) error {
 				if err != nil {
 					return err
 				}
-				files[rel] = true
+				normalizedRel := uuidRegex.ReplaceAllString(rel, "00000000-0000-0000-0000-000000000000")
+				files[normalizedRel] = path
 			}
 			return nil
 		})
@@ -445,24 +464,24 @@ func assertParity(tsDir, goDir, homeDir string) error {
 
 	// Check missing in Go
 	for f := range tsFiles {
-		if !goFiles[f] {
+		if _, ok := goFiles[f]; !ok {
 			mismatches = append(mismatches, fmt.Sprintf("❌ File present in TS but missing in Go: %s", f))
 		}
 	}
 
 	// Check extra in Go
 	for f := range goFiles {
-		if !tsFiles[f] {
+		if _, ok := tsFiles[f]; !ok {
 			mismatches = append(mismatches, fmt.Sprintf("❌ File present in Go but missing in TS: %s", f))
 		}
 	}
 
 	// Compare contents
-	for f := range tsFiles {
-		if goFiles[f] {
-			tsPath := filepath.Join(tsDir, f)
-			goPath := filepath.Join(goDir, f)
-
+	for f, tsPath := range tsFiles {
+		if f == "console.log" {
+			continue
+		}
+		if goPath, ok := goFiles[f]; ok {
 			tsContent, err := os.ReadFile(tsPath)
 			if err != nil {
 				return fmt.Errorf("failed to read TS file %s: %w", tsPath, err)

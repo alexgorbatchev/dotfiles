@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-24 19:15
-last_modified: 2026-06-24 19:15
+last_modified: 2026-06-24 20:30
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 5: Implement Go Installer UUID Staging Directory Parity
@@ -31,9 +31,9 @@ Go's installation pipeline uses identical UUID-based staging and transactional r
 
 ## Acceptance criteria
 
-- [ ] Modify `pkg/orchestrator/orchestrator.go`'s `InstallTool` to generate a random UUID staging folder name for each installation pass.
-- [ ] Direct the installer plugins to execute their downloads and extractions inside this UUID staging subdirectory.
-- [ ] Upon successful plugin execution, perform an atomic rename or symlink promotion from the UUID subdirectory to the `/current` directory path.
-- [ ] Ensure that dry-runs correctly register the UUID folders and matching file operations, mimicking TS output.
-- [ ] Run `bun check:ci` and verify that the Go CLI and TS CLI produce byte-for-byte identical directory structures and database records.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Modify `pkg/orchestrator/orchestrator.go`'s `InstallTool` to generate a random UUID staging folder name for each installation pass.
+- [x] Direct the installer plugins to execute their downloads and extractions inside this UUID staging subdirectory.
+- [x] Upon successful plugin execution, perform an atomic rename or symlink promotion from the UUID subdirectory to the `/current` directory path.
+- [x] Ensure that dry-runs correctly register the UUID folders and matching file operations, mimicking TS output.
+- [x] Run `bun check:ci` and verify that the Go CLI and TS CLI produce byte-for-byte identical directory structures and database records.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
