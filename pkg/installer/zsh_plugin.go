@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -72,7 +73,7 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 
 	destDir := z.BinDir
 	if destDir == "" {
-		destDir = "/tmp"
+		destDir = os.TempDir()
 	}
 
 	if err := z.fsys.MkdirAll(destDir, 0755); err != nil {

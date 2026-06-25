@@ -94,7 +94,7 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	destDir := d.BinDir
 	if destDir == "" {
-		destDir = "/tmp"
+		destDir = os.TempDir()
 	}
 
 	if err := d.fsys.MkdirAll(destDir, 0755); err != nil {

@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -53,7 +54,7 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 
 	destDir := c.BinDir
 	if destDir == "" {
-		destDir = "/tmp"
+		destDir = os.TempDir()
 	}
 
 	if err := c.fsys.MkdirAll(destDir, 0755); err != nil {

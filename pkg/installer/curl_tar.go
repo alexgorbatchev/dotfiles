@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
@@ -56,7 +57,7 @@ func (c *CurlTarInstaller) Install(ctx context.Context, tool *config.ToolConfig)
 
 	destDir := c.BinDir
 	if destDir == "" {
-		destDir = "/tmp"
+		destDir = os.TempDir()
 	}
 
 	if err := c.fsys.MkdirAll(destDir, 0755); err != nil {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -123,7 +124,7 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 
 	destDir := g.BinDir
 	if destDir == "" {
-		destDir = "/tmp"
+		destDir = os.TempDir()
 	}
 
 	if err := g.fsys.MkdirAll(destDir, 0755); err != nil {

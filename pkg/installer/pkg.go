@@ -93,7 +93,7 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	destDir := p.BinDir
 	if destDir == "" {
-		destDir = "/tmp"
+		destDir = os.TempDir()
 	}
 
 	if err := p.fsys.MkdirAll(destDir, 0755); err != nil {

@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -52,7 +53,7 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 
 		destDir := m.BinDir
 		if destDir == "" {
-			destDir = "/tmp"
+			destDir = os.TempDir()
 		}
 
 		if err := m.fsys.MkdirAll(destDir, 0755); err != nil {
