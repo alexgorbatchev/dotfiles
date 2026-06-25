@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
@@ -180,5 +182,152 @@ func TestMatchGlob(t *testing.T) {
 				t.Errorf("matchGlob(%q, %q, %q) = %v, want %v", tt.url, tt.method, tt.pattern, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestProxyGet_Concurrency(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "proxy-concurrency-test-")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	store := NewCacheStore(tempDir, 1000)
+
+	// Set an expired entry (TTL = 1ms, then sleep)
+	targetURL := "http://example.com/expired"
+	err = store.Set("GET", targetURL, 200, map[string]string{"Content-Type": "text/plain"}, []byte("expired-content"), 1)
+	if err != nil {
+		t.Fatalf("failed to set cache entry: %v", err)
+	}
+
+	time.Sleep(10 * time.Millisecond)
+
+	const numGoroutines = 100
+	var wg sync.WaitGroup
+	startCh := make(chan struct{})
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-startCh
+			_, _, _ = store.Get("GET", targetURL)
+		}()
+	}
+
+	// Release all goroutines at once to hit Get() simultaneously
+	close(startCh)
+	wg.Wait()
+
+	// Assert that we don't crash, deadlock, and that the item is deleted safely
+	stats := store.GetStats()
+	if stats.Entries != 0 {
+		t.Errorf("expected 0 cache entries after expiration sweep, got %d", stats.Entries)
+	}
+}
+
+func TestMatchGlob_WordBoundaries(t *testing.T) {
+	tests := []struct {
+		url     string
+		method  string
+		pattern string
+		want    bool
+	}{
+		{"http://github.com/foo", "GET", "github.com", true},
+		{"https://github.com/bar", "GET", "github.com", true},
+		{"http://notgithub.com/foo", "GET", "github.com", false},
+		{"http://mygithub.com/foo", "GET", "github.com", false},
+		{"http://sub.github.com/foo", "GET", "github.com", true},
+		{"http://github.com/foo", "GET", "**github.com**", true},
+		{"http://notgithub.com/foo", "GET", "**github.com**", false},
+		{"http://github.com/foo", "GET", "github.com/foo", true},
+		{"http://notgithub.com/foo", "GET", "github.com/foo", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%s-%s-%s", tt.url, tt.method, tt.pattern), func(t *testing.T) {
+			got := matchGlob(tt.url, tt.method, tt.pattern)
+			if got != tt.want {
+				t.Errorf("matchGlob(%q, %q, %q) = %v, want %v", tt.url, tt.method, tt.pattern, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestProxyServer_ClearGlob_WordBoundaries(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "proxy-clear-test-")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	log := logger.New(logger.Config{
+		Name:   "test-proxy-clear",
+		Level:  logger.LogLevelQuiet,
+		Writer: io.Discard,
+	})
+
+	proxy := NewServer(log, 0, tempDir, 5000)
+	if err := proxy.Start(); err != nil {
+		t.Fatalf("failed to start proxy: %v", err)
+	}
+	defer proxy.Stop()
+
+	proxyURL := fmt.Sprintf("http://127.0.0.1:%d", proxy.Port())
+
+	// Populate github.com
+	popPayload1, _ := json.Marshal(CachePopulateRequest{
+		URL:    "http://github.com/foo",
+		Method: "GET",
+		Body:   "github-content",
+	})
+	_, err = http.Post(proxyURL+"/cache/populate", "application/json", bytes.NewReader(popPayload1))
+	if err != nil {
+		t.Fatalf("failed to populate github: %v", err)
+	}
+
+	// Populate notgithub.com
+	popPayload2, _ := json.Marshal(CachePopulateRequest{
+		URL:    "http://notgithub.com/bar",
+		Method: "GET",
+		Body:   "notgithub-content",
+	})
+	_, err = http.Post(proxyURL+"/cache/populate", "application/json", bytes.NewReader(popPayload2))
+	if err != nil {
+		t.Fatalf("failed to populate notgithub: %v", err)
+	}
+
+	// Clear pattern "github.com"
+	clearPayload, _ := json.Marshal(CacheClearRequest{Pattern: "github.com"})
+	clearResp, err := http.Post(proxyURL+"/cache/clear", "application/json", bytes.NewReader(clearPayload))
+	if err != nil {
+		t.Fatalf("failed to clear cache: %v", err)
+	}
+	defer clearResp.Body.Close()
+
+	var clearRes CacheClearResult
+	_ = json.NewDecoder(clearResp.Body).Decode(&clearRes)
+	if clearRes.Cleared != 1 {
+		t.Errorf("expected 1 cleared entry, got %d", clearRes.Cleared)
+	}
+
+	// Verify stats
+	statsResp, _ := http.Get(proxyURL + "/cache/stats")
+	var stats Stats
+	_ = json.NewDecoder(statsResp.Body).Decode(&stats)
+	statsResp.Body.Close()
+	if stats.Entries != 1 {
+		t.Errorf("expected 1 entry left, got %d", stats.Entries)
+	}
+
+	// Verify notgithub.com is still a HIT
+	resp, err := http.Get(proxyURL + "/http://notgithub.com/bar")
+	if err != nil {
+		t.Fatalf("failed to check notgithub.com: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.Header.Get("X-Dotfiles-Cache") != "HIT" {
+		t.Errorf("expected notgithub.com to be a HIT, got %s", resp.Header.Get("X-Dotfiles-Cache"))
 	}
 }
