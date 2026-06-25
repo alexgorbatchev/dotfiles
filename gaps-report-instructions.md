@@ -1,8 +1,12 @@
 # Directive for Conducting a Holistic Migration and Parity Audit
 
-You are tasked with conducting a rigorous, open-ended, and highly skeptical audit of the entire repository to uncover any and all gaps, architectural drift, performance bottlenecks, or hidden technical debt between the legacy TypeScript implementation (`packages/*`) and the new Go implementation (`pkg/*`, `cmd/*`).
+You are tasked with conducting a rigorous, open-ended, and highly skeptical audit of the entire repository to answer the ultimate core question of this migration:
 
-Write your final findings as a comprehensive **Migration and Parity Gap Report** directly to `./gaps-report.md`.
+**"Can we delete the TypeScript implementation and ship the Go CLI to users today without breaking anything?"**
+
+We want to completely delete the TypeScript implementation (`packages/*`) and only leave the necessary components to work with `.tool.ts` files and the Golang CLI. Is the codebase ready for this demolition today? If not, what exact structural, compile-time, or runtime breakages would occur, and what must be completed to make this demolition safe?
+
+Write your final findings and analysis as a comprehensive **Migration and Parity Gap Report** directly to `./gaps-report.md`.
 
 ---
 
@@ -12,7 +16,7 @@ Previous agents have repeatedly suffered from **local-scope bias**—they looked
 
 You are a severe skeptic:
 1.  **Do not limit your search** to a pre-defined list of files. You must explore the *entire* codebase.
-2.  **See something, say something.** If an implementation looks like a shallow "cat-and-mouse" linter/compiler satisfaction bypass, or trade away correctness, call it out.
+2.  **See something, say something.** If an implementation looks like a shallow "cat-and-mouse" linter/compiler satisfaction bypass, or trades away correctness, call it out.
 3.  **Audit the silent gaps.** Look for dead code, unreferenced Go packages, platform-specific behavior omissions, silent error swallowing, resource leaks, or discrepancies in data serialization.
 
 ---
@@ -21,26 +25,31 @@ You are a severe skeptic:
 
 Your audit must cover, but is not limited to, the following domains:
 
-### 1. Unified State and Database Parity
+### 1. The Core Question: Safe Demolition Feasibility
+*   **The `.tool.ts` Authoring Experience (DX):** If we delete `packages/core` and `packages/cli` today, how do we compile and type-check the user-authored `.tool.ts` configuration files? Does Go’s typegen output (`types.gen.ts`) provide a 100% complete type boundary (e.g. `defineTool`, `defineConfig`, `IFileSystem`) for IDE autocomplete? Or are there missing type declarations, helper functions, or imports that will cause compiler and editor errors?
+*   **The Dashboard Client & Backend Server:** The React/Preact dashboard client (`packages/dashboard/src/client/`) currently connects to REST API endpoints. If we delete the TS packages, does the Go-native dashboard server (`pkg/dashboard/dashboard.go`) implement every single API endpoint correctly, or are we missing backend logic? Does Go statically serve the bundled React assets?
+*   **The Build and NPM Packaging Pipeline:** How is `.dist/` assembled today? If the TS implementation goes away, what must be refactored in the build process to build React assets, embed them in Go, compile the binary, generate types from Go structs, and package `.dist/` for npm with zero legacy Node dependencies?
+
+### 2. Unified State and Database Parity
 *   Execute and inspect the dual-run verification harness (`scripts/parity-harness/main.go`). Do Go and TS produce identical outputs, or are we masking differences (such as ignoring file sizes, timestamps, or execution logs)?
 *   Examine how data is represented across language boundaries in the SQLite database (`registry.db`). Look for discrepancies in data types, serialization formats (like octal vs. decimal representations of file permissions), and raw query structures.
 *   Audit transaction boundaries and connection pooling configurations. Does Go enforce atomic database transactions where TypeScript fails silently?
 
-### 2. File System Abstractions & Sandboxing
+### 3. File System Abstractions & Sandboxing
 *   Examine both the in-memory (`MemFS`) and physical (`OSFS`) implementations. Are there methods present in TS's filesystem interfaces (like directory scanning, stat queries, symlinking) that are missing, stubbed, or bypassed in Go?
 *   Audit sandboxing policies. Does `generate --dry-run` or test runs leak modifications (like writing real symlinks or creating directories) to the global host system, violating the local `.tmp` workspace boundary?
 
-### 3. CLI Orchestration & Shell Initializations
+### 4. CLI Orchestration & Shell Initializations
 *   Compare the topological dependency sorters. Are there edge cases where Go and TS resolve ambiguous or missing dependencies differently?
 *   Verify the lifecycle of "once-scripts". Do they actually delete themselves after execution, or do they leak on disk and execute on every terminal startup?
 *   Check path and environment integrations. Look for shell path duplication, `$PATH` or `$fpath` pollution, and the injection of CLI wrapper functions.
 *   Verify profile injection. How does Go update shell profiles compared to TS, and do their block markers conflict?
 
-### 4. Installer Plugins and Dynamic Behaviors
+### 5. Installer Plugins and Dynamic Behaviors
 *   Audit the 15 installer methods (brew, cargo, npm, manual, Curl-based, system packages, etc.). Are there custom parameters, platform overrides (`platformConfigs`), or package uninstallation pipelines implemented in one language but completely missing or stubbed in the other?
 *   Examine privilege escalation. Does Go strictly validate that an installer plugin supports sudo before running elevated configurations?
 
-### 5. Test Suite Parity
+### 6. Test Suite Parity
 *   Compare the active test coverage of Go (`tests/e2e/`) with TS (`packages/e2e-test/src/__tests__/`). 
 *   Identify which TS integration tests are missing from Go. Document the exact risk of deleting the TypeScript packages before these tests are natively translated.
 
@@ -54,21 +63,25 @@ Compile your findings and write them directly to `./gaps-report.md`. Your report
 # Go CLI Migration: Holistic Parity and Architectural Audit Report
 
 ## 1. Executive Summary
+- **feasibility check: Can we delete TS and ship Go today without breaking anything?** (Direct, uncompromising answer to the core question, listing exactly what will break and what must be done to make it safe)
 - Current Monorepo State (factual summary of the transitional hybrid state)
 - Overall Migration Parity Score (out of 10, with hard technical justifications)
 - Current Dual-Run Parity Status (`bun check:ci` analysis)
 
-## 2. Structural & Architectural Gaps
+## 2. Feasibility Analysis (What Breaks on Demolition)
+- Deep-dive analysis of the `.tool.ts` authoring experience, type boundary completeness, dashboard client/backend api gaps, and build pipeline requirements.
+
+## 3. Structural & Architectural Gaps
 - Detail any discrepancies in interfaces, package boundaries, data representation, sandboxing leaks, or serialization formats.
 
-## 3. Installer & Package Manager Gaps
+## 4. Installer & Package Manager Gaps
 - Document all differences in installer features, uninstallation support, sudo validations, and system package management.
 
-## 4. Test Coverage Gaps (TS vs. Go E2E)
+## 5. Test Coverage Gaps (TS vs. Go E2E)
 - Provide a side-by-side comparison of active TS test files vs. Go test files.
 - Detail the exact risk of deleting TypeScript before the remaining integration tests are translated.
 
-## 5. Completed vs. Remaining Backlog
+## 6. Completed vs. Remaining Backlog
 - Summarize what has been successfully merged (Wave 5).
 - List the active, open Wave 6 tickets and map out a bulletproof, sequential roadmap to safely demolish TypeScript and transition to a pure statically-linked Go binary distribution.
 ```
