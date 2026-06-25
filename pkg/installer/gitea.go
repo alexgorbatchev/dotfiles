@@ -14,6 +14,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 type giteaAsset struct {
@@ -31,6 +32,7 @@ type giteaRelease struct {
 }
 
 type GiteaInstaller struct {
+	log        *logger.Logger
 	runner     exec.CommandRunner
 	fsys       fs.FS
 	dl         *downloader.Downloader

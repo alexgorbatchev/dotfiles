@@ -170,7 +170,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		_ = instReg.Register(&mockInstaller{name: "dnf"})
 		_ = instReg.Register(&mockInstaller{name: "pkg"})
 	}
-	orch := orchestrator.NewOrchestrator(trackedFS, runner, reg, instReg)
+	orch := orchestrator.NewOrchestrator(nil, trackedFS, runner, reg, instReg)
 
 	// Map binary dependencies to fully-qualified tool names (e.g., fnm -> curl-script--fnm)
 	for _, tc := range toolConfigs {
@@ -239,6 +239,10 @@ func (m *mockInstaller) Name() string {
 }
 
 func (m *mockInstaller) SupportsSudo() bool {
+	switch m.name {
+	case "manual", "apt", "pacman", "dnf", "pkg", "dmg", "curl-script", "curl-tar":
+		return true
+	}
 	return false
 }
 

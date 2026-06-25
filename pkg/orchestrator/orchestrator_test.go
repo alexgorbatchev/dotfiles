@@ -345,12 +345,12 @@ func TestOrchestrator_Install(t *testing.T) {
 	instReg := installer.NewRegistry()
 
 	mockInst := &mockInstaller{
-		name:     "custom-method",
+		name:     "brew",
 		binaries: []string{"test-bin"},
 	}
 	_ = instReg.Register(mockInst)
 
-	orch := NewOrchestrator(fsys, runner, reg, instReg)
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
 	orch.SetSymlinkFS(&mockSymlinkFS{fsys: fsys})
 
 	projCfg := &config.ProjectConfig{
@@ -366,7 +366,7 @@ func TestOrchestrator_Install(t *testing.T) {
 	tool := &config.ToolConfig{
 		Name:               "test-tool",
 		Version:            &versionStr,
-		InstallationMethod: "custom-method",
+		InstallationMethod: "brew",
 		Symlinks: []config.SymlinkConfig{
 			{Source: "/home/user/src", Target: "/home/user/dest"},
 		},
@@ -376,6 +376,7 @@ func TestOrchestrator_Install(t *testing.T) {
 	_ = fsys.MkdirAll("/home/user/bin", 0755)
 	_ = fsys.MkdirAll("/home/user/binaries", 0755)
 	_ = fsys.MkdirAll("/home/user/src", 0755)
+	_ = fsys.MkdirAll("/home/user/.generated/usage", 0755)
 
 	// Run the installer pipeline!
 	err = orch.InstallTools(ctx, []*config.ToolConfig{tool}, projCfg)
@@ -448,7 +449,7 @@ func TestOrchestrator_Generate(t *testing.T) {
 	}
 	_ = instReg.Register(mockInst)
 
-	orch := NewOrchestrator(fsys, runner, reg, instReg)
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
 	orch.SetSymlinkFS(&mockSymlinkFS{fsys: fsys})
 
 	projCfg := &config.ProjectConfig{
@@ -539,7 +540,7 @@ func TestOrchestrator_Errors(t *testing.T) {
 	reg := registry.NewRegistry(sqlDB)
 	instReg := installer.NewRegistry()
 
-	orch := NewOrchestrator(fsys, runner, reg, instReg)
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
 
 	projCfg := &config.ProjectConfig{}
 
@@ -614,7 +615,7 @@ func TestOrchestrator_AdditionalBranches(t *testing.T) {
 	}
 	_ = instReg.Register(mockInst)
 
-	orch := NewOrchestrator(fsys, runner, reg, instReg)
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
 	// Do not set symlinkFS to cover the o.symlinkFS == nil path in getSymlinkEvaluator
 	eval := orch.getSymlinkEvaluator()
 	if eval == nil {
@@ -680,7 +681,7 @@ func TestOrchestrator_UninstallTool(t *testing.T) {
 	}
 	_ = instReg.Register(mockInst)
 
-	orch := NewOrchestrator(fsys, runner, reg, instReg)
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
 
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
@@ -766,7 +767,7 @@ func TestOrchestrator_InstallSudoMismatch(t *testing.T) {
 	}
 	_ = instReg.Register(mockInst)
 
-	orch := NewOrchestrator(fsys, runner, reg, instReg)
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
 
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
@@ -805,7 +806,7 @@ func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 	reg := registry.NewRegistry(sqlDB)
 	instReg := installer.NewRegistry()
 
-	orch := NewOrchestrator(fsys, runner, reg, instReg)
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
 	orch.SetSymlinkFS(&mockSymlinkFS{fsys: fsys})
 
 	projCfg := &config.ProjectConfig{
@@ -886,4 +887,3 @@ func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 		t.Errorf("expected stray once script to be pruned on consecutive generate, but it still exists")
 	}
 }
-

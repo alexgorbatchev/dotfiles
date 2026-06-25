@@ -22,6 +22,7 @@ var updateCmd = &cobra.Command{
 		defer services.DB.Close()
 
 		log := GetLogger("update", cmd.ErrOrStderr())
+		services.Orchestrator.SetLogger(log)
 		log.Info("Evaluating versions and checking for updates...")
 
 		if len(args) == 0 {
