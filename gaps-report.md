@@ -5,19 +5,20 @@
 ### Feasibility Check: Can we delete TS and ship Go today without breaking anything?
 
 **No, absolutely not.**
-The codebase is currently in a transitional, asymmetric state and is completely unready for the demolition of the TypeScript (TS) packages (`packages/*`). Attempting to delete the TS implementation today and ship the Go CLI as a standalone product would cause a total collapse of compile-time and runtime environments:
+The codebase is currently in a transitional, highly asymmetric state and is completely unready for the demolition of the TypeScript (TS) packages (`packages/*`). Attempting to delete the TS implementation today and ship the Go CLI as a standalone product would cause a total collapse of both compile-time and runtime environments:
 
-1. **Developer Experience (DX) and Types Collapse**: User-authored configurations (`.tool.ts` and `dotfiles.config.ts`) will lose all autocompletion, type-checking, and fluent API builder context (methods like `.bin()`, `.version()`, `.zsh()`, etc. do not exist on the raw data structures outputted by the Go type generator).
-2. **Runtime VM Evaluation & Dynamic Hooks Crash**: Go cannot execute TS configuration files on-the-fly. If Goja/Sobek is forced to run `.tool.ts` configurations dynamically, it fails immediately due to lack of standard transpilation, absence of Node.js/Bun globals/builtins (such as `console.log` or `fs`), and complete stubs for installation lifecycles (like `before-install`, `after-download`, and `after-extract` hooks).
-3. **Completely Dead Dashboard Server**: Go's native dashboard server (`pkg/dashboard/`) is merely a static file hosting server with **zero REST API endpoints implemented** (compared to 14 in TS). Any client-side action in the React client will yield standard `404 Not Found` errors.
-4. **Shell Configuration and Boot Errors**: Go's shell emission generator generates hardcoded `source` statements inside shell profile initializers for "once-scripts". Once these scripts execute and delete themselves, **every subsequent terminal startup prints noisy "file not found" errors** to standard output/error, breaking shell startup silence. Additionally, Go unconditionally prepends directories to the `$PATH` and `$fpath` variables, causing massive environment pollution on nested shell execution.
-5. **Critically Leaking Sandboxing**: Go's orchestrator lacks a sandboxed symbolic link evaluator during `--dry-run` executions, meaning **real symbolic link manipulations are performed on the user's live host system during dry-runs**.
+1. **Complete Developer Experience (DX) and Autocomplete Collapse**: User-authored configurations (`.tool.ts` and `dotfiles.config.ts`) will lose all autocompletion, type-checking, and fluent API builder context. The Go type generator only outputs raw, static data interfaces; it lacks the necessary fluent DSL wrappers (`defineTool`, `defineConfig`, `.bin()`, `.zsh()`, etc.). Furthermore, the types generated inside `.dist/` depend on `zod` types, which will trigger compile errors on user environments because `zod` is omitted from the distribution package dependencies.
+2. **Runtime VM Evaluation and Context Crashes**: Go's embedded Sobek JS VM cannot parse or run TypeScript syntax on-the-fly. It relies on a fragile, line-by-line string-replacement regex wrapper in `pkg/vm/vm.go` to strip ES imports, which fails catastrophically on multi-line imports. Crucially, the VM execution loader **completely omits the `ctx` argument** when invoking `defineTool` callbacks. Any `.tool.ts` config attempting to read platform info (`ctx.systemInfo`) or write logs (`ctx.log`) will crash immediately with `TypeError: Cannot read property 'systemInfo' of undefined`.
+3. **Broken and Mocked Dashboard Endpoints**: Go's native dashboard server (`pkg/dashboard/dashboard.go`) is currently just a static file server with embedded placeholder assets. Out of the 14 interactive REST API endpoints, critical mutation routes (like `/api/tools/:name/install`, `/api/tools/:name/update`, and `/api/tools/:name/check-update`) are complete stubs that instantly return mock JSON files. Deleting the TS server renders the visual dashboard completely non-functional for executing installations.
+4. **Dangerous Dry-Run Sandboxing Leaks**: Go's orchestrator fails to sandbox symbolic links during `--dry-run` executions. Because `o.symlinkFS` is never initialized by the CLI bootstrap sequence, the orchestrator defaults to a standard host-level evaluator, which **performs real, active symbolic link operations directly on the user's home directory during dry-runs**, violating sandboxing guarantees. Additionally, both Go and TS write state logs directly to the physical SQLite database (`registry.db`) during dry-runs, polluting audit records.
+5. **No Independent TypeScript Compiler**: Go cannot transpile `.ts` files to `.js` natively. At runtime, the Go bootstrap sequence checks for `.ts` files and silently searches for a pre-converted `.json` file (`dotfiles.config.json`) pre-compiled by a legacy Node/Bun process. The Go-native convert command (`cmd/dotfiles/convert.go`) is a complete stub that does nothing, meaning users *must* retain Node/Bun to run the Go executable.
+6. **Shell Initialization Startup Noise and fpath Pollution**: Go once-script execution generates hardcoded `source` statements inside shell profile initializers. Once these scripts execute and delete themselves, **every subsequent terminal opening prints noisy "file not found" errors** to standard output/error, breaking startup silence. Additionally, Go unconditionally prepends directories to the `$PATH` and Zsh `$fpath` variables on every load, leading to massive environment pollution on nested shells.
 
 ---
 
 ### Current Monorepo State
 
-The monorepo operates in a fragile transitional hybrid phase. While Go successfully mimics the declarative output of the TS engine when parsing pre-converted static JSON config files (`dotfiles.config.json`), it remains heavily anchored to Node.js/Bun and the legacy TypeScript packages for config evaluation, dynamic CLI subcommands, validation schemas, the dashboard API, and the release packaging workflow.
+The monorepo operates in a fragile transitional hybrid phase. While Go successfully compiles and mimics the basic directory layouts and installation executions of the TS engine when given static inputs, it remains heavily anchored to Node.js/Bun for configuration parsing, dynamic VM bindings, autocomplete file generations, and the release packaging workflow.
 
 ---
 
@@ -25,19 +26,18 @@ The monorepo operates in a fragile transitional hybrid phase. While Go successfu
 
 **4.5 / 10**
 
-_Technical Justifications:_
-
-- **Core Installers and Shim Generation (7.5 / 10):** Native Go implementation successfully mimics shim generation, directory mapping, and basic package installations, but suffers from deep configuration-merging bugs and lacks validation.
-- **Orchestration & Shell Emissions (5 / 10):** Kahn's dependency sorter is present but unstable. Severe error/pollution bugs exist in "once-script" self-deletion tracking and PATH modifications.
-- **Dynamic JS/TS Configuration Evaluation (1 / 10):** Bypassed at runtime. The Goja/Sobek VM is present but completely unequipped to handle modern TypeScript syntax, Node.js globals, and interactive callback hooks.
-- **Web Dashboard Backend (1 / 10):** Statically hosts UI assets, but has zero implementation for the 14 interactive REST API endpoints.
-- **Build & Packaging Pipeline (3 / 10):** Go compilation is automated, but UI asset bundling, type-checking interfaces, and npm package wrappers are completely reliant on TS.
+*Technical Justifications:*
+- **Core Installers and Shim Generation (7.5 / 10):** The Go implementation successfully replicates shim generation, directory mapping, and basic installations, but suffers from severe platform-override merging bugs, lacks structured validation schemas, and compiles Rust crates entirely from source.
+- **Orchestration & Shell Emissions (5 / 10):** Sorter Kahn's dependency resolution is present but unstable. Severe performance bottlenecks and pollution bugs exist in "once-script" self-deletion tracking and PATH modifications.
+- **Dynamic JS/TS Configuration Evaluation (1 / 10):** High-severity gaps in Sobek VM bindings. Programmatic TS/JS lifecycle hooks are completely ignored, and the lack of a native TS transpiler prevents true Node-free executions.
+- **Web Dashboard Backend (2 / 10):** Statically hosts assets, but lacks implementation for half of the REST API endpoints, faking installation and update mutations with static JSON stubs.
+- **Build & Packaging Pipeline (3 / 10):** Go compilation is automated, but UI asset bundling, type-checking validation, and npm packaging remain completely dependent on Bun/Node.
 
 ---
 
 ### Current Dual-Run Parity Status
 
-The dual-run verification harness (`scripts/parity-harness/main.go`) passes, but this provides a **false sense of security**. The harness operates by feeding the Go binary a pre-converted static JSON file (`dotfiles.config.json`) pre-compiled by TypeScript. It confirms that Go can generate identical final file structures and registry logs _given static JSON inputs_, but it completely masks the dynamic gaps in runtime type-safety, dynamic execution of `.tool.ts` files, interactive JS hooks, and the web dashboard backend.
+The dual-run verification harness (`scripts/parity-harness/main.go`) is currently **non-existent on disk**, as its files were deleted or moved, yet its existence is still conceptually referenced across closed Wave 5 tickets. The automated E2E test harness (`tests/e2e/harness.go:62-64`) passes, but this provides a **false sense of security**. The harness operates by feeding the Go binary a pre-converted static JSON file (`dotfiles.config.json`) pre-compiled by TypeScript. It confirms that Go can generate identical final file structures and registry logs *given static JSON inputs*, but it completely masks the dynamic gaps in runtime type-safety, dynamic execution of `.tool.ts` files, interactive JS hooks, and the web dashboard backend.
 
 ---
 
@@ -47,48 +47,59 @@ The dual-run verification harness (`scripts/parity-harness/main.go`) passes, but
 
 Deleting the legacy TS packages (`packages/core` and `packages/cli`) today will make it impossible for users to author config files with standard IDE assistance.
 
-- **Raw Data Interfaces vs. Fluent Builders**: Go's type-generation pipeline (`scripts/typegen/main.go`) leverages a basic struct-to-interface converter (`typescriptify-golang-structs`). While it successfully generates basic type boundaries (e.g., `interface ToolConfig`), these are raw, static, serialized JSON representations.
+- **Raw Data Interfaces vs. Fluent Builders**: Go's type-generation pipeline (`scripts/typegen/main.go`) leverages a basic struct-to-interface converter (`typescriptify-golang-structs`). While it successfully generates basic type boundaries (e.g., `interface ToolConfig` in `types.gen.ts`), these are raw, static, serialized JSON representations.
 - **Missing DSL Context**: The fluent helper builders (such as `defineTool()`, `defineConfig()`, `.bin()`, `.version()`, `.dependsOn()`, `.zsh()`, and `.hook()`) do not exist on the Go-generated types.
+- **Zod Dependency Leak**: The generated `schemas.d.ts` file prepends `import { ZodError, z } from 'zod';` into its declarations, but the build pipeline's generated `.dist/package.json` omits `zod` from package dependencies. This triggers immediate TypeScript compiler errors for users who check their configurations in environments without `zod` pre-installed.
 - **Loss of Module Augmentation**: In TS, installer-specific parameter autocomplete (e.g., providing type validation when calling `install('brew', { formula: '...' })`) is achieved using package-level TypeScript module augmentation (such as `packages/installer-brew/src/augmentations.ts`). Removing the TS packages permanently wipes out all installer-specific type completions in editors.
 
 ### B. JS Execution Engine (Sobek VM vs. Bun/Node)
 
 Go's JS engine (`pkg/vm/`) is powered by Sobek, an ECMAScript 5.1/6 interpreter. It is not currently ready to evaluate real-world user configurations.
 
-1. **Lack of TS Transpiler**: Sobek cannot parse TypeScript syntax. If a user's `.tool.ts` file contains a single type declaration or type assertion, Sobek will throw immediate syntax syntax errors.
-2. **No Node.js / Bun Polyfills**: The Go VM does not bind standard Node/Bun objects (like `console`, `fs`, `path`, `fetch`, `Buffer`, or `URL`). Calling `console.log()` or `fetch()` in any user-authored script will crash the VM with `ReferenceError`.
-3. **Ignored Configuration Hooks**: Go's bootstrap VM script stubs out dynamic lifecycle hooks:
-   ```javascript
-   hook(name, cb) {
-     return this; // Stubs out callbacks
-   }
-   ```
-   Because Goja/Sobek cannot natively convert JavaScript callback functions into Go executable logic, Go's orchestrator is blind to dynamic scripts. To bypass this in test fixtures, the Go orchestrator has a hardcoded, non-production hack inside `pkg/orchestrator/orchestrator.go`:
-   ```go
-   if tool.Name == "hook-test-tool" {
-       hooks := []string{
-           `echo "shell-output-for-hook-test-tool"`,
-           `./scripts/test-output.sh`,
-       }
-       ...
-   }
-   ```
-   Real dynamic configurations utilizing JS-based hooks are completely non-functional.
+- **Lack of TS Transpiler**: Sobek cannot parse TypeScript syntax. If a user's `.tool.ts` file contains a single type declaration or type assertion, Sobek will throw immediate syntax syntax errors.
+- **The Undefined `ctx` Runtime Crash**: In the public TS types (`generateSchemaTypes.ts`), `defineTool` is typed to receive a callback:
+  ```typescript
+  export type AsyncConfigureTool = (install: IInstallFunction, ctx: IToolConfigContext) => any;
+  ```
+  However, the Go-native bootstrap script inside Sobek VM is implemented as:
+  ```javascript
+  if (typeof callback === 'function') {
+    const res = callback(install); // ONLY passes install!
+  }
+  ```
+  The second argument `ctx` is completely ignored and left `undefined`. If any user-authored `.tool.ts` tries to evaluate platform details via `ctx.systemInfo` or log via `ctx.log` at runtime inside Sobek, the execution will crash with a `TypeError: Cannot read property 'systemInfo' of undefined`.
+- **Naive Import Parser**: Go strips imports using `strings.HasPrefix(trimmed, "import ")`. Multi-line ES imports fail to strip and cause syntax/parsing crashes.
+- **No Node.js / Bun Polyfills**: The Go VM does not bind standard Node/Bun objects (like `console`, `fs`, `path`, `fetch`, `Buffer`, or `URL`). Calling `console.log()` or `fetch()` in any user-authored script will crash the VM with `ReferenceError`.
+- **Ignored Configuration Hooks**: Go's bootstrap VM script stubs out dynamic lifecycle hooks:
+  ```javascript
+  hook(name, cb) {
+    return this; // Stubs out callbacks
+  }
+  ```
+  Because Go's VM cannot natively convert JavaScript callback functions into Go executable logic, Go's orchestrator is blind to dynamic scripts. To bypass this in test fixtures, the Go orchestrator has a hardcoded, non-production hack inside `pkg/orchestrator/orchestrator.go`:
+  ```go
+  if tool.Name == "hook-test-tool" {
+      hooks := []string{
+          `echo "shell-output-for-hook-test-tool"`,
+          `./scripts/test-output.sh`,
+      }
+      ...
+  }
+  ```
+  Real dynamic configurations utilizing JS-based hooks are completely non-functional.
 
 ### C. Dashboard Client & Backend API Gaps
 
-The Preact dashboard client (`packages/dashboard/src/client/`) connects to a REST API. Go's native server (`pkg/dashboard/dashboard.go`) only serves static embedded assets:
+The React/Preact dashboard client (`packages/dashboard/src/client/`) connects to a REST API. Go's native server (`pkg/dashboard/dashboard.go`) only serves static embedded assets and lacks functional endpoints for key mutations:
 
-```go
-subFS, err := fs.Sub(assets, "dist")
-if err != nil {
-    return fmt.Errorf("failed to locate embedded assets: %w", err)
-}
-mux := http.NewServeMux()
-mux.Handle("/", http.FileServer(http.FS(subFS)))
-```
+- **Serving Placeholders**: The currently checked-in `pkg/dashboard/dist/index.html` is just a 10-line HTML placeholder. The actual production-ready bundle assets must be compiled and output to this directory during the build phase (`packages/build/src/build/steps/buildDashboard.ts`) before compiling the Go binary.
+- **API Endpoints Status**:
+  - `/api/tools/:name/readme`: **STUB** (Always returns `# {name} README\nReadme loaded natively in Go`)
+  - `/api/tools/:name/install`: **STUB** (Always returns `{"installed": true}` immediately)
+  - `/api/tools/:name/check-update`: **STUB** (Always returns `{"hasUpdate": false}` immediately)
+  - `/api/tools/:name/update`: **STUB** (Always returns `{"updated": false}` immediately)
 
-None of the 14 endpoints implemented in the TS server (`packages/dashboard/src/server/dashboard-server.ts`)—such as `/api/tools`, `/api/stats`, `/api/health`, `/api/install`—exist in Go. Launching the dashboard under Go is entirely dead.
+Any action taken via the visual dashboard UI to trigger installations, updates, or check for updates is a complete fake, returning hardcoded mock payloads.
 
 ### D. Build and NPM Packaging Pipeline
 
@@ -103,7 +114,15 @@ The assembly of the `.dist/` build directory relies on Node-based bundling scrip
 
 ### A. Core File System Abstraction Asymmetry
 
-- **Interface Deficiencies**: TS's `IFileSystem` interface defines a rich, robust array of syscalls (such as symlinking, directory scanning, and permissions). Go's native `FS` interface (`pkg/fs/fs.go`) is heavily stripped down, lacking native support for symlinking, stat/lstat queries, and recursive removals.
+- **Interface Deficiencies (CopyFile Missing)**: Go's `FS` interface (`pkg/fs/fs.go`) is heavily stripped down, lacking native support for file copying, symlinking, and stat/lstat queries. Because of this, file-copying operations in the Go codebase completely bypass the `fs.FS` abstraction:
+  - In `pkg/installer/dmg.go` (lines 258-260), copying is done by spawning standard shell commands (`cp -R`):
+    ```go
+    copyCmd := d.runner.CommandContext(ctx, "cp", "-R", appSource, appDest)
+    ```
+  - In `pkg/archive/archive.go`'s `copyDir` helper (lines 509-525), the copy logic walks physical directories on the host operating system using `filepath.Walk` and opens source files via standard OS-level calls (`os.Open`), **completely bypassing the custom `fs.FS` virtual boundaries**:
+    ```go
+    srcFile, err := os.Open(path) // Hard bypasses fsys abstraction!
+    ```
 - **MemFS Deficiencies**: TS utilizes `memfs` which behaves as a high-fidelity virtual filesystem. Go's `MemFS` is a simple custom map of path strings to file node structures. It does not support symlinks, does not perform correct permission mapping, and lacks recursive delete behaviors (forcing callers to write custom walkers).
 
 ### B. Severe Symlink Dry-Run Leak
@@ -116,7 +135,7 @@ for _, sym := range tool.Symlinks {
     wasCreated, err := symEvaluator.CreateSymlink(sym.Source, sym.Target, symlink.Options{Overwrite: true})
 ```
 
-However, `getSymlinkEvaluator()` falls back to a real, host-level filesystem evaluator when `o.symlinkFS` is `nil` (which is always the case in CLI production boots):
+However, `getSymlinkEvaluator()` falls back to a real, host-level filesystem evaluator when `o.symlinkFS` is `nil` (which is always the case in CLI production boots because it is never initialized by the CLI bootstrap sequence):
 
 ```go
 func (o *Orchestrator) getSymlinkEvaluator() *symlink.Evaluator {
@@ -129,27 +148,17 @@ func (o *Orchestrator) getSymlinkEvaluator() *symlink.Evaluator {
 
 During a Go `--dry-run` execution, while file operations are correctly sandboxed inside `MemFS`, **symlinks are actively created and removed on the user's real host system**. This violates the local sandboxing boundary and can overwrite real user configuration files in `$HOME`.
 
-### C. Fragile Import Splicer in VM Loader
-
-Goja cannot execute ES modules (`import`/`export`). To run configs, Go uses a fragile regex/string splitter in `pkg/vm/vm.go` to strip imports:
-
-```go
-for _, line := range strings.Split(scriptContent, "\n") {
-	trimmed := strings.TrimSpace(line)
-	if strings.HasPrefix(trimmed, "import ") {
-		continue
-	}
-    ...
-```
-
-This fails catastrophically on multi-line ES imports (e.g., importing multiple modules across bracketed newlines), leaving syntax fragments (like `Platform } from "@alexgorbatchev/dotfiles"`) inside the executable buffer, causing Goja to crash on start.
-
-### D. Unstable Topological Sorter Order
+### C. Unstable Topological Sorter Order
 
 Both implementations utilize Kahn's algorithm for topological sorting, but their determinism diverges:
 
 - **TypeScript** implements a deterministic, index-ordered queue wrapper (`insertOrdered`) that preserves original configuration ordering for zero-in-degree nodes that share the same dependency depth.
-- **Go** uses a standard slice queue, appending nodes to the back of the queue as their in-degrees drop. This results in unstable, wave-like sorting that differs from TS.
+- **Go** uses a standard slice queue, appending nodes to the back of the queue as their in-degrees drop. This results in unstable, wave-like sorting that differs from TS and depends purely on internal map traversal orders.
+
+### D. Over-Aggressive Ambiguous Dependency Failures
+
+- **Go Sorter**: builds a flat `binaryProviders := make(map[string]string)`. If *any* two tools declare the same binary name (e.g., both Tool A and Tool B define a binary named `helper` in their `.bin()` outputs), Go immediately crashes the entire execution with an ambiguous dependency error, even if no other tool in the entire project depends on `helper`.
+- **TypeScript Sorter**: tracks providers inside a Set (`Set<string>`) in its `binaryProviders` map. TS allows overlapping binary definitions in configurations and only throws an ambiguous dependency validation error if some Tool C *actually* lists `helper` in its `dependencies` array.
 
 ---
 
@@ -161,27 +170,26 @@ In TS, platform-specific overrides are resolved by recursively deep-merging slic
 In Go, overrides are resolved inside `cmd/dotfiles/bootstrap.go` using a flat unmarshaling overwrite:
 
 ```go
+// cmd/dotfiles/bootstrap.go
 jsonBytes, err := json.Marshal(entry.Config)
 if err == nil {
     _ = json.Unmarshal(jsonBytes, tc) // Overwrites preexisting slices entirely!
 }
 ```
 
-Because `json.Unmarshal` onto existing structs overwrites arrays/slices instead of appending to them, **Go silently wipes out all base configuration fields** (like `symlinks` or `binaries`) whenever a platform-specific config is present.
+Because `json.Unmarshal` onto existing structs overwrites arrays/slices instead of appending or deep-merging them, **Go silently wipes out all base configuration fields** (like `symlinks`, `binaries`, and `dependencies`) whenever a platform-specific config is present. For example, if a tool config defines global base `symlinks`, but then defines a platform-specific setting under `platformConfigs` (such as setting an `env` variable for macOS), Go's unmarshaler will **silently delete all of the tool's base symlinks and binaries**, since the platform-specific override does not repeat them.
 
 ### B. Incomplete Installer Pipeline Features
 
-| Installer Method     | Go File         | TS Package             | Status & Key Architectural Gaps                                                                                                                                                                                                                                      |
-| :------------------- | :-------------- | :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`cargo`**          | `cargo.go`      | `installer-cargo`      | **Heavy Performance Divergence:** TS fetches pre-compiled binaries via quickinstall or GitHub releases, enabling instant installs. Go executes a heavy from-source local compile via `cargo install`, requiring a local Rust toolchain and causing long build times. |
-| **`github-release`** | `github.go`     | `installer-github`     | **Functional Gaps:** Go lacks client caching (triggering GitHub API rate-limiting), regex-based wildcard matching, and the ability to fall back to the authenticated local `gh` CLI.                                                                                 |
-| **`manual`**         | `manual.go`     | `installer-manual`     | **Functional Gaps:** Go does not expand configuration placeholders (like `{paths.dotfilesDir}`) in `binaryPath`, failing check validations.                                                                                                                          |
-| **`zsh-plugin`**     | `zsh_plugin.go` | `installer-zsh-plugin` | **Functional Gaps:** Missing `getShellInit` method to generate sourcing commands for already-installed plugins on startup.                                                                                                                                           |
-
-### C. Missing Parameter Schemas & Validation
-
-- **TypeScript**: Leverages **Zod** schema validations on all 15 installer parameters, catching type mismatches or incorrect parameters at config load time.
-- **Go**: Performs zero structured validation on configuration parameters, unmarshaling them into a raw `map[string]interface{}`. Permissive type-coercion helpers silently swallow type mismatches and return default values, masking configuration bugs.
+| Installer Method | Go File | TS Package | Status & Key Architectural Gaps |
+| :--- | :--- | :--- | :--- |
+| **`cargo`** | `cargo.go` | `installer-cargo` | **Heavy Performance Divergence:** TS fetches pre-compiled binaries via quickinstall or GitHub releases, enabling instant installs. Go executes a heavy from-source local compile via `cargo install`, requiring a local Rust toolchain and causing long build times. |
+| **`github-release`** | `github.go` | `installer-github` | **Functional Gaps:** Go's `matchAsset` function simply checks for standard substring matches for OS/Arch and, if none match, **returns the first asset in the release (`assets[0]`)**. This is highly dangerous and can download deb/rpm packages or invalid architectures on unsupported machines. It also lacks client caching (triggering rate-limiting) and the ability to fall back to the authenticated local `gh` CLI. |
+| **`curl-script`** | `curl_script.go` | `installer-curl-script` | **Critical parameter gaps**: Ignores `args` (script params), `env` (environment variables passed to script execution), `versionArgs` (arguments to detect version from CLI), and `versionRegex` (regex parser). Does not copy binaries from global paths like `/usr/local/bin` (TS does). |
+| **`curl-binary`** | `curl_binary.go` | `installer-curl-binary` | **Parameter gaps**: Ignores `versionArgs` and `versionRegex`. Cannot auto-detect CLI versions. |
+| **`curl-tar`** | `curl_tar.go` | `installer-curl-tar` | **Parameter gaps**: Ignores `versionArgs` and `versionRegex`. Cannot extract and automatically find/rename the correct binary if it doesn't match the tool name. |
+| **`zsh-plugin`** | `zsh_plugin.go` | `installer-zsh-plugin` | **Functional Gaps:** Missing `getShellInit` method to generate sourcing commands for already-installed plugins on startup. |
+| **`apt`, `dnf`, `pacman`** | `pkg/installer/*.go` | `installer-*` | `CheckUpdate` is a complete stub (`return &UpdateCheckResult{HasUpdate: false}, nil`) across all system package managers in Go. |
 
 ---
 
@@ -189,19 +197,19 @@ Because `json.Unmarshal` onto existing structs overwrites arrays/slices instead 
 
 ### Active Test Files Comparison
 
-| Test Objective               | TS Test Path (`packages/e2e-test/src/__tests__/`) | Go Test Path (`tests/e2e/`) | State / Coverage    |
-| :--------------------------- | :------------------------------------------------ | :-------------------------- | :------------------ |
-| **Conflicts Detection**      | `conflict.test.ts`                                | `conflict_test.go`          | Functional Parity   |
-| **Dependencies Resolution**  | `dependency.test.ts`                              | `dependency_test.go`        | Functional Parity   |
-| **Basic Installations**      | `install.test.ts`                                 | `install_test.go`           | Functional Parity   |
-| **Stale Symlinks Cleanup**   | `symlink-stale.test.ts`                           | _Missing_                   | **Critical Go Gap** |
-| **Auto-Install Lifecycle**   | `auto-install.test.ts`                            | _Missing_                   | **Critical Go Gap** |
-| **Enterprise GitHub Config** | `gh-cli-enterprise.test.ts`                       | _Missing_                   | **Critical Go Gap** |
-| **Tool Renaming State**      | `tool-rename.test.ts`                             | _Missing_                   | **Critical Go Gap** |
+| Test Objective | TS Test Path (`packages/e2e-test/src/__tests__/`) | Go Test Path (`tests/e2e/`) | State / Coverage |
+| :--- | :--- | :--- | :--- |
+| **Conflicts Detection** | `conflict.test.ts` | `conflict_test.go` | Functional Parity |
+| **Dependencies Resolution** | `dependency.test.ts` | `dependency_test.go` | Functional Parity |
+| **Basic Installations** | `install.test.ts` | `install_test.go` | Functional Parity |
+| **Stale Symlinks Cleanup** | `symlink-stale.test.ts` | _Missing_ | **Critical Go Gap** |
+| **Auto-Install Lifecycle** | `auto-install.test.ts` | _Missing_ | **Critical Go Gap** |
+| **Enterprise GitHub Config** | `gh-cli-enterprise.test.ts` | _Missing_ | **Critical Go Gap** |
+| **Tool Renaming State** | `tool-rename.test.ts` | _Missing_ | **Critical Go Gap** |
 
 ### Risks of Premature TypeScript Demolition:
 
-If TS packages are deleted today, critical features like stale symlink cleaning (preventing orphaned links on disk), auto-install lifecycles, and state tracking for renamed tools will have no coverage, risking silent regressions.
+If TS packages are deleted today, critical features like stale symlink cleaning (preventing orphaned links on disk), auto-install lifecycles, and state tracking for renamed tools will have no coverage, risking silent regressions. There are **14 core TypeScript E2E test files** that have not been migrated to Go.
 
 ---
 
@@ -221,33 +229,53 @@ If TS packages are deleted today, critical features like stale symlink cleaning 
 To safely transition to a pure statically-linked Go binary distribution, the following roadmap must be executed sequentially:
 
 ```
-[ Phase 1: Build & Pipeline ] ──> [ Phase 2: Complete Go Backend ] ──> [ Phase 3: Solve VM & DX ] ──> [ Phase 4: Port Tests & Demolish ]
+[ Phase 1: Sandboxing & Merges ] ──> [ Phase 2: Modernize Downloader ] ──> [ Phase 3: Dashboard & Logs ] ──> [ Phase 4: Port Tests & Demolish ]
 ```
 
-#### Phase 1: Build & Packaging Pipeline Refactoring
+#### Phase 1: Core Sandboxing and Correctness Bugs Resolution
 
-1. **Independent Preact Asset Bundler**: Create an independent build step (using a standalone Bun script or esbuild) to compile and bundle the React/Preact files in `packages/dashboard/src/client/` without referencing the legacy monorepo packages.
-2. **Asset Copier**: Move bundled dashboard static files to `pkg/dashboard/dist/` for Go embedding.
-3. **Automate Embed Generation**: Ensure `//go:embed` correctly captures files during Go binary compilation.
-4. **Cross-Platform npm Packager**: Automate the wrapper construction to bundle cross-platform Go binaries into an npm package.
+1. **Ticket: `2026-06-25-wave-6-resolve-dry-run-symlink-leaks-and-enforce-in-memory-sandboxing.md`**
+   - Redirect all SQLite connections to `:memory:` when `--dry-run` is requested.
+   - Force initialization of `symlinkFS` inside the CLI bootstrap sequence to prevent host-level symlink creation during dry-runs and unit tests.
+2. **Ticket: `2026-06-25-wave-6-fix-platform-config-deep-merge-and-overwrite-bugs.md`**
+   - Refactor `ResolvePlatformConfigs` in `cmd/dotfiles/bootstrap.go` to perform recursive, deep-field merging on `ToolConfig` structures instead of flat JSON unmarshaling. Append arrays/slices and merge maps.
+3. **Ticket: `2026-06-25-wave-6-resolve-pointer-unmarshaling-in-sobek-jsvm-configuration-exports.md`**
+   - Write a dedicated unit test suite in `pkg/vm/pointer_unmarshal_test.go` to validate pointer-field unmarshaling against `config.ToolConfig` structures, verifying omitted, `null`, and `undefined` JS property unmarshaling.
 
-#### Phase 2: Complete the Go Dashboard API Backend
+#### Phase 2: Downloader, Archive Extractor, and Shell Init Modernization
 
-1. **Implement Go Handlers**: Implement all 14 REST API handlers from the TypeScript dashboard server in Go (using Go's native `http.ServeMux` or a library like `chi`).
-2. **Expose DB Statistics**: Wire the handlers to read from Go's registry database (`pkg/db/` and `pkg/registry/`).
+1. **Ticket: `2026-06-25-wave-6-modernize-downloader-and-archive-extractor-capabilities.md`**
+   - Implement stream-based tar/zip symlink extractor capabilities.
+   - Support authorization headers inside `pkg/downloader/downloader.go` to pass GitHub token authorizations and download from private repositories.
+   - Fix Zip Extractor OOM issues by streaming chunked bytes using `io.Copy` instead of calling `io.ReadAll`.
+   - Restore file timestamps (`os.Chtimes`) during extraction.
+2. **Ticket: `2026-06-25-wave-6-fix-shell-initialization-once-script-errors-and-path-pollution.md`**
+   - Refactor once-script cleanup from a hardcoded loop to a native `ReadDir` directory scan to avoid 4,000 file-system existence checks.
+   - Replace hardcoded `source` statements inside shell profile initializers with dynamic glob loops that skip deleted scripts.
+   - Add conditional presence guards in `main.<shell>` to prevent redundant `$PATH` and `$fpath` env duplication.
+3. **Ticket: `2026-06-25-wave-6-resolve-proxy-cache-concurrency-races-and-glob-clearing-boundaries.md`**
+   - Implement read-write locking safety inside the HTTP Cache Proxy server (`pkg/proxy/`).
+   - Fix file-handle and connection leaks during test cycles.
 
-#### Phase 3: Solve the `.tool.ts` DX & JSVM Evaluation
+#### Phase 3: Web Dashboard Server & Build Pipeline
 
-1. **Consolidated Types Package**: Extract core types, helpers, and fluent builder DSL into a lightweight, standalone npm type package (e.g., `@alexgorbatchev/dotfiles`) that lives alongside the Go CLI, preserving autocomplete and type-checking.
-2. **Typegen Upgrade**: Expand the typegen script to output functional builder helpers and context types alongside raw interfaces.
-3. **Bun-Backed Runtime Evaluator**: Avoid fragile VM string manipulation by calling a fast Bun subprocess to transpile and evaluate `.tool.ts` files into a static JSON stream on-the-fly, bypassing Sobek's ES5 and glob limitations.
-4. **Interactive Lifecycle Hooks**: Connect Go's orchestrator to run dynamic JS callback hooks at runtime (such as `after-download` and `after-extract`).
+1. **Ticket: `2026-06-25-wave-6-standardize-go-structured-logging-and-remove-orchestrator-test-hacks.md`**
+   - Integrate structured logging `pkg/logger` across all Go installer plugins and Sobek VM runners.
+   - Remove hardcoded `"hook-test-tool"` conditions from production files.
+2. **Ticket: `2026-06-25-wave-6-modernize-binary-size-limit-and-verification.md`**
+   - Raise the bundle size check boundaries inside the CI/CD pipeline to accommodate the compiled Go binary size of 15MB to 25MB.
+3. **Ticket: `2026-06-25-wave-6-implement-cross-platform-npm-binary-wrapper.md`**
+   - Build a lightweight, cross-platform npm package wrapper for `dotfiles` that maps optional platform dependencies to native pre-compiled Go executables.
+4. **Ticket: `2026-06-25-wave-6-pure-go-binary-distribution-and-ts-demolition.md`**
+   - Complete the 14 REST API handlers inside the Go-native dashboard server (`pkg/dashboard/dashboard.go`).
+   - Copy minified Preact dashboard client bundles directly into `pkg/dashboard/dist/` for static `//go:embed` asset serving.
+   - Transition type-generation schemas to output complete fluent API builder dts-files.
 
-#### Phase 4: Port Remaining E2E Tests & Demolish TS
+#### Phase 4: Test Suite Porting and Demolition
 
-1. Translate all missing E2E integration tests (such as stale symlink cleanup and tool-renaming state tracking) to native Go tests.
-2. Verify all checks pass via `bun check:ci`.
-3. Perform the demolition: delete the legacy TS packages under `packages/` and distribute the statically-linked Go binary.
+1. **Ticket: `2026-06-25-wave-6-complete-remaining-e2e-integration-test-suite-migration.md`**
+   - Translate all 14 remaining E2E TypeScript integration tests to native Go E2E tests, verifying stale symlink cleaning and tool-renaming states.
+2. **Execute Demolition**: Safely remove all legacy TypeScript packages under `packages/*` (retaining only `dashboard` and `build`), update root `package.json` workspaces, and rely entirely on the statically-linked Go binary.
 
 ---
 
@@ -268,3 +296,5 @@ As per the prime directive ("See something, say something"), the following struc
 7. **Complete Loss of Symlinks during Go Extraction**: Go's manual archive extractor completely ignores symbolic link headers (`tar.TypeSymlink`), causing unpacked toolchains (such as Node or Bun) to lose their dependency links and break.
 8. **Primitive Asset Selection**: Go's `matchAsset` uses raw lowercase substring checks with a blind fallback to the first asset in the payload, which can result in downloading `.sha256` or text descriptors instead of the correct binary.
 9. **Fake Convert Command**: The `convert` command inside `cmd/dotfiles/convert.go` is a non-functional mock that only logs a completion message.
+10. **Bypassed File-System Sandboxing on Direct Copies**: Both the macOS `dmg` installer (`pkg/installer/dmg.go`) and the directory copy helper (`pkg/archive/archive.go`) execute hardcoded shell calls (`cp -R`) or direct system `os.Open` calls, bypassing the custom virtual `fs.FS` interface.
+11. **Pragma Performance Gap**: Go's SQLite connection pool lacks the `PRAGMA synchronous = NORMAL` initialization. This results in significantly slower, blocking disk sync operations on low-resource host environments compared to the legacy TS engine.
