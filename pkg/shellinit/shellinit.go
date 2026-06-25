@@ -164,3 +164,38 @@ func (inj *Injector) Remove(profilePath string) (bool, error) {
 
 	return false, nil
 }
+
+// FormatPath returns a conditional block appending the targetDir to PATH.
+func FormatPath(shell, targetDir string) string {
+	switch shell {
+	case "powershell":
+		return fmt.Sprintf(`if ($env:PATH -notlike "*%s*") { $env:PATH = "%s;$env:PATH" }`, targetDir, targetDir)
+	default: // zsh, bash, etc.
+		return fmt.Sprintf(`if [[ ":$PATH:" != *":%s:"* ]]; then
+  export PATH="%s:$PATH"
+fi`, targetDir, targetDir)
+	}
+}
+
+// FormatFpath returns Zsh code to unique and append the completionsDir to fpath.
+func FormatFpath(completionsDir string) string {
+	return fmt.Sprintf("typeset -U fpath\nfpath=(%q $fpath)\nautoload -Uz compinit && compinit -u", completionsDir)
+}
+
+// FormatOnceLoop returns the dynamic once-scripts glob matching loop for the given shell.
+func FormatOnceLoop(shell, onceDir string) string {
+	switch shell {
+	case "zsh":
+		return fmt.Sprintf(`for once_script in %q/*.zsh(N); do
+  [[ -f "$once_script" ]] && source "$once_script"
+done`, onceDir)
+	case "bash":
+		return fmt.Sprintf(`(shopt -s nullglob; for once_script in %q/*.sh; do [[ -f "$once_script" ]] && source "$once_script"; done)`, onceDir)
+	case "powershell":
+		return fmt.Sprintf(`if (Test-Path %q) {
+  Get-ChildItem -Path %q -Filter "*.ps1" | ForEach-Object { & $_.FullName }
+}`, onceDir, onceDir)
+	default:
+		return ""
+	}
+}

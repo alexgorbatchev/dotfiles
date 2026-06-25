@@ -783,7 +783,7 @@ func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 
 	// 1. Verify files exist in onceDir
 	zshOncePath := filepath.Join(onceDir, "once-001.zsh")
-	bashOncePath := filepath.Join(onceDir, "once-001.bash")
+	bashOncePath := filepath.Join(onceDir, "once-001.sh")
 	ps1OncePath := filepath.Join(onceDir, "once-001.ps1")
 
 	for _, p := range []string{zshOncePath, bashOncePath, ps1OncePath} {

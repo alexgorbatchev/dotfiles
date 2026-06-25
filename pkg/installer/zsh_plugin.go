@@ -81,10 +81,12 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 	}
 
 	pluginPath := filepath.Join(destDir, pluginName)
-	exists, err := z.fsys.Exists(pluginPath)
-	if err != nil {
-		return nil, fmt.Errorf("checking plugin existence: %w", err)
+	realExists := func(p string) bool {
+		_, err := os.Stat(p)
+		return err == nil
 	}
+
+	exists := realExists(pluginPath)
 
 	if exists {
 		// git pull
@@ -93,6 +95,10 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 			return nil, fmt.Errorf("updating plugin: %w", err)
 		}
 	} else {
+		// Ensure parent directory exists on real disk for git clone
+		if err := os.MkdirAll(filepath.Dir(pluginPath), 0755); err != nil {
+			return nil, fmt.Errorf("creating parent directory on disk: %w", err)
+		}
 		// git clone
 		cmd := z.runner.CommandContext(ctx, "git", "clone", "--depth", "1", gitURL, pluginPath)
 		if err := cmd.Run(); err != nil {
@@ -116,7 +122,7 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 	} else {
 		for _, candidate := range candidates {
 			candidatePath := filepath.Join(pluginPath, candidate)
-			if found, _ := z.fsys.Exists(candidatePath); found {
+			if realExists(candidatePath) {
 				sourceFile = candidate
 				break
 			}
