@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -73,11 +74,19 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 	_ = chmodCmd.Run()
 
 	// Execute script
+	args := getStringSliceParam(tool.InstallParams, "args")
+	for i, arg := range args {
+		if strings.Contains(arg, "{stagingDir}") {
+			args[i] = strings.ReplaceAll(arg, "{stagingDir}", destDir)
+		}
+	}
 	var runCmd exec.Cmd
 	if shell == "bash" {
-		runCmd = c.runner.CommandContext(ctx, "bash", scriptPath)
+		cmdArgs := append([]string{scriptPath}, args...)
+		runCmd = c.runner.CommandContext(ctx, "bash", cmdArgs...)
 	} else {
-		runCmd = c.runner.CommandContext(ctx, "sh", scriptPath)
+		cmdArgs := append([]string{scriptPath}, args...)
+		runCmd = c.runner.CommandContext(ctx, "sh", cmdArgs...)
 	}
 
 	if err := runCmd.Run(); err != nil {
