@@ -239,7 +239,7 @@ func (m *mockInstaller) Name() string {
 }
 
 func (m *mockInstaller) SupportsSudo() bool {
-	return false
+	return m.name == "manual" || m.name == "apt" || m.name == "dnf" || m.name == "pacman" || m.name == "pkg"
 }
 
 func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
@@ -317,7 +317,13 @@ func ResolvePlatformConfigs(toolConfigs []*config.ToolConfig, sysCtx *installer.
 				// Map entry.Config to a JSON string and unmarshal to tc
 				jsonBytes, err := json.Marshal(entry.Config)
 				if err == nil {
-					_ = json.Unmarshal(jsonBytes, tc)
+					var rawOverride map[string]interface{}
+					var override config.ToolConfig
+					if err := json.Unmarshal(jsonBytes, &rawOverride); err == nil {
+						if err := json.Unmarshal(jsonBytes, &override); err == nil {
+							tc.Merge(&override, rawOverride)
+						}
+					}
 				}
 			}
 		}
