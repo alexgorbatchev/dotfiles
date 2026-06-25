@@ -172,6 +172,17 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 
 	pkgPath := filepath.Join(destDir, downloadName)
+
+	var extractDir string
+	defer func() {
+		if extractDir != "" {
+			_ = removeAll(p.fsys, extractDir)
+		}
+		if pkgPath != "" {
+			_ = removeAll(p.fsys, pkgPath)
+		}
+	}()
+
 	if err := p.dl.Download(ctx, downloadURL, pkgPath, ""); err != nil {
 		return nil, fmt.Errorf("downloading PKG/Archive: %w", err)
 	}
@@ -180,22 +191,18 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	lowerName := strings.ToLower(downloadName)
 	isArchive := strings.HasSuffix(lowerName, ".zip") || strings.HasSuffix(lowerName, ".tar.gz") || strings.HasSuffix(lowerName, ".tgz")
 
-	var extractDir string
 	if isArchive {
 		extractDir = filepath.Join(destDir, tool.Name+"-extracted")
 		if err := p.fsys.MkdirAll(extractDir, 0755); err != nil {
-			_ = p.fsys.Remove(pkgPath)
 			return nil, fmt.Errorf("creating extraction directory: %w", err)
 		}
 
 		if err := p.extractor.Extract(ctx, pkgPath, extractDir); err != nil {
-			_ = p.fsys.Remove(pkgPath)
 			return nil, fmt.Errorf("extracting archive: %w", err)
 		}
 
 		foundPkg, err := findFileWithExtension(p.fsys, extractDir, ".pkg")
 		if err != nil || foundPkg == "" {
-			_ = p.fsys.Remove(pkgPath)
 			return nil, fmt.Errorf("no .pkg file found in extracted archive: %w", err)
 		}
 		resolvedPkgPath = foundPkg
@@ -213,11 +220,8 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 
 	if err := cmd.Run(); err != nil {
-		_ = p.fsys.Remove(pkgPath)
 		return nil, fmt.Errorf("running pkg installer: %w", err)
 	}
-
-	_ = p.fsys.Remove(pkgPath)
 
 	return &InstallResult{
 		Binaries: []string{}, // externally managed, files placed system-wide by PKG installer

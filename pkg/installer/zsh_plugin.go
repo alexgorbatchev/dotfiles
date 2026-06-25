@@ -123,8 +123,7 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 	}
 
 	if sourceFile == "" {
-		// Fallback/mocking default
-		sourceFile = pluginName + ".plugin.zsh"
+		return nil, fmt.Errorf("Could not detect plugin source file in %s. Specify 'source' parameter explicitly.", pluginPath)
 	}
 
 	return &InstallResult{

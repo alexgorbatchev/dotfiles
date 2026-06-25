@@ -31,6 +31,12 @@ func NewDownloader(fsys fs.FS, client *http.Client) *Downloader {
 	}
 }
 
+func (d *Downloader) SetFS(fsys fs.FS) {
+	if d != nil {
+		d.fsys = fsys
+	}
+}
+
 // Download fetches a file from url and saves it to destPath.
 // If the destination file already exists, it attempts to resume downloading using HTTP Range requests.
 // After the download completes, it optionally verifies the SHA256 signature if expectedSHA256 is provided.

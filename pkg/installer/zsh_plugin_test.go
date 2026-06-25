@@ -26,6 +26,19 @@ func TestZshPluginInstaller(t *testing.T) {
 
 	t.Run("Install clone success", func(t *testing.T) {
 		runner.Clear()
+		fsys = fs.NewMemFS()
+		inst = NewZshPluginInstaller(runner, fsys, nil)
+		inst.BinDir = "/test/plugins"
+
+		runner.RegisterFunc("git", func(c *exec.MockCmd) error {
+			if len(c.Args) > 0 && c.Args[0] == "clone" {
+				dest := c.Args[len(c.Args)-1]
+				_ = fsys.MkdirAll(dest, 0755)
+				_ = fsys.WriteFile(filepath.Join(dest, "zsh-autosuggestions.plugin.zsh"), []byte("echo hello"), 0644)
+			}
+			return nil
+		})
+
 		tool := &config.ToolConfig{
 			Name: "zsh-autosuggestions",
 			InstallParams: map[string]interface{}{
@@ -53,8 +66,13 @@ func TestZshPluginInstaller(t *testing.T) {
 
 	t.Run("Install pull/update success", func(t *testing.T) {
 		runner.Clear()
+		fsys = fs.NewMemFS()
+		inst = NewZshPluginInstaller(runner, fsys, nil)
+		inst.BinDir = "/test/plugins"
+
 		pluginPath := filepath.Join(inst.BinDir, "zsh-syntax-highlighting")
 		_ = fsys.MkdirAll(pluginPath, 0755)
+		_ = fsys.WriteFile(filepath.Join(pluginPath, "zsh-syntax-highlighting.plugin.zsh"), []byte("echo hello"), 0644)
 
 		tool := &config.ToolConfig{
 			Name: "zsh-syntax-highlighting",
@@ -79,6 +97,11 @@ func TestZshPluginInstaller(t *testing.T) {
 	})
 
 	t.Run("Uninstall success", func(t *testing.T) {
+		runner.Clear()
+		fsys = fs.NewMemFS()
+		inst = NewZshPluginInstaller(runner, fsys, nil)
+		inst.BinDir = "/test/plugins"
+
 		pluginPath := filepath.Join(inst.BinDir, "zsh-autosuggestions")
 		_ = fsys.MkdirAll(pluginPath, 0755)
 
@@ -101,6 +124,11 @@ func TestZshPluginInstaller(t *testing.T) {
 	})
 
 	t.Run("CheckUpdate success", func(t *testing.T) {
+		runner.Clear()
+		fsys = fs.NewMemFS()
+		inst = NewZshPluginInstaller(runner, fsys, nil)
+		inst.BinDir = "/test/plugins"
+
 		tool := &config.ToolConfig{Name: "zsh-autosuggestions"}
 		res, err := inst.CheckUpdate(context.Background(), tool)
 		if err != nil || res.HasUpdate {
@@ -109,6 +137,11 @@ func TestZshPluginInstaller(t *testing.T) {
 	})
 
 	t.Run("Install fails missing repo and url", func(t *testing.T) {
+		runner.Clear()
+		fsys = fs.NewMemFS()
+		inst = NewZshPluginInstaller(runner, fsys, nil)
+		inst.BinDir = "/test/plugins"
+
 		tool := &config.ToolConfig{
 			Name: "broken",
 		}

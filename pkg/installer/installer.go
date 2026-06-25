@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
 type InstallResult struct {
@@ -218,4 +220,104 @@ func GetBinaryNames(toolName string, toolBinaries []interface{}) []string {
 		names = []string{toolName}
 	}
 	return names
+}
+
+// removeAll recursively removes files and directories from the fsys.
+func removeAll(fsys fs.FS, path string) error {
+	exists, err := fsys.Exists(path)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+
+	entries, err := fsys.ReadDir(path)
+	if err != nil {
+		// It's a file, or not a directory. Remove it.
+		return fsys.Remove(path)
+	}
+
+	// It's a directory. Recursively remove all entries.
+	for _, entry := range entries {
+		entryPath := filepath.Join(path, entry)
+		if err := removeAll(fsys, entryPath); err != nil {
+			return err
+		}
+	}
+
+	// Finally, remove the directory itself.
+	return fsys.Remove(path)
+}
+
+// SetFS dynamically binds the orchestrator's context-aware TrackedFileSystem to installer plugins prior to execution.
+func SetFS(inst Installer, fsys fs.FS) {
+	switch v := inst.(type) {
+	case *AptInstaller:
+		v.fsys = fsys
+	case *BrewInstaller:
+		v.fsys = fsys
+	case *CargoInstaller:
+		v.fsys = fsys
+	case *CurlBinaryInstaller:
+		v.fsys = fsys
+		if v.dl != nil {
+			v.dl.SetFS(fsys)
+		}
+	case *CurlScriptInstaller:
+		v.fsys = fsys
+		if v.dl != nil {
+			v.dl.SetFS(fsys)
+		}
+	case *CurlTarInstaller:
+		v.fsys = fsys
+		if v.dl != nil {
+			v.dl.SetFS(fsys)
+		}
+		if v.extractor != nil {
+			v.extractor.SetFS(fsys)
+		}
+	case *DmgInstaller:
+		v.fsys = fsys
+		if v.dl != nil {
+			v.dl.SetFS(fsys)
+		}
+		if v.extractor != nil {
+			v.extractor.SetFS(fsys)
+		}
+	case *DnfInstaller:
+		v.fsys = fsys
+	case *GiteaInstaller:
+		v.fsys = fsys
+		if v.dl != nil {
+			v.dl.SetFS(fsys)
+		}
+		if v.extractor != nil {
+			v.extractor.SetFS(fsys)
+		}
+	case *GitHubInstaller:
+		v.fsys = fsys
+		if v.dl != nil {
+			v.dl.SetFS(fsys)
+		}
+		if v.extractor != nil {
+			v.extractor.SetFS(fsys)
+		}
+	case *ManualInstaller:
+		v.fsys = fsys
+	case *NpmInstaller:
+		v.fsys = fsys
+	case *PacmanInstaller:
+		v.fsys = fsys
+	case *PkgInstaller:
+		v.fsys = fsys
+		if v.dl != nil {
+			v.dl.SetFS(fsys)
+		}
+		if v.extractor != nil {
+			v.extractor.SetFS(fsys)
+		}
+	case *ZshPluginInstaller:
+		v.fsys = fsys
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -236,6 +237,55 @@ func TestDmgInstaller(t *testing.T) {
 
 		if len(res.Binaries) != 1 || res.Binaries[0] != "/Applications/Slack.app/Contents/MacOS/slack" {
 			t.Errorf("unexpected binary: %v", res.Binaries)
+		}
+	})
+
+	t.Run("Install failures ensure cleanup and unmounting on copy error", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("cp", nil, errors.New("copy failed"))
+
+		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
+		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
+		inst.BinDir = "/test/dmg-fail-copy"
+
+		tool := &config.ToolConfig{
+			Name: "failcopy",
+			InstallParams: map[string]interface{}{
+				"url":     server.URL,
+				"appName": "FailCopy.app",
+			},
+		}
+
+		_, err := inst.Install(context.Background(), tool)
+		if err == nil {
+			t.Fatal("expected error on copy failure, got nil")
+		}
+		if !strings.Contains(err.Error(), "copying App bundle") {
+			t.Errorf("expected error to contain copy failure message, got: %v", err)
+		}
+
+		// Verify hdiutil detach was executed even on copy failure
+		hasDetach := false
+		for _, cmd := range runner.History {
+			if cmd.Name == "hdiutil" && cmd.Args[0] == "detach" {
+				hasDetach = true
+			}
+		}
+		if !hasDetach {
+			t.Error("expected hdiutil detach to run even on copy error")
+		}
+
+		// Verify temporary directories were pruned
+		mountPoint := "/test/dmg-fail-copy/failcopy-mount"
+		exists, _ := fsys.Exists(mountPoint)
+		if exists {
+			t.Errorf("expected mount point %s to be cleaned up, but it exists", mountPoint)
+		}
+
+		downloadPath := "/test/dmg-fail-copy/failcopy.dmg"
+		exists, _ = fsys.Exists(downloadPath)
+		if exists {
+			t.Errorf("expected download path %s to be cleaned up, but it exists", downloadPath)
 		}
 	})
 }

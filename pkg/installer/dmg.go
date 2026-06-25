@@ -173,6 +173,29 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 
 	downloadPath := filepath.Join(destDir, downloadName)
+
+	var (
+		extractDir string
+		mountPoint string
+		mounted    bool
+	)
+
+	defer func() {
+		if mounted {
+			detachCmd := d.runner.CommandContext(ctx, "hdiutil", "detach", mountPoint)
+			_ = detachCmd.Run()
+		}
+		if extractDir != "" {
+			_ = removeAll(d.fsys, extractDir)
+		}
+		if mountPoint != "" {
+			_ = removeAll(d.fsys, mountPoint)
+		}
+		if downloadPath != "" {
+			_ = removeAll(d.fsys, downloadPath)
+		}
+	}()
+
 	if err := d.dl.Download(ctx, downloadURL, downloadPath, ""); err != nil {
 		return nil, fmt.Errorf("downloading DMG/Archive: %w", err)
 	}
@@ -181,40 +204,34 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	lowerName := strings.ToLower(downloadName)
 	isArchive := strings.HasSuffix(lowerName, ".zip") || strings.HasSuffix(lowerName, ".tar.gz") || strings.HasSuffix(lowerName, ".tgz")
 
-	var extractDir string
 	if isArchive {
 		extractDir = filepath.Join(destDir, tool.Name+"-extracted")
 		if err := d.fsys.MkdirAll(extractDir, 0755); err != nil {
-			_ = d.fsys.Remove(downloadPath)
 			return nil, fmt.Errorf("creating extraction directory: %w", err)
 		}
 
 		if err := d.extractor.Extract(ctx, downloadPath, extractDir); err != nil {
-			_ = d.fsys.Remove(downloadPath)
 			return nil, fmt.Errorf("extracting archive: %w", err)
 		}
 
 		foundDmg, err := findFileWithExtension(d.fsys, extractDir, ".dmg")
 		if err != nil || foundDmg == "" {
-			_ = d.fsys.Remove(downloadPath)
 			return nil, fmt.Errorf("no .dmg file found in extracted archive: %w", err)
 		}
 		resolvedDmgPath = foundDmg
 	}
 
-	mountPoint := filepath.Join(destDir, tool.Name+"-mount")
+	mountPoint = filepath.Join(destDir, tool.Name+"-mount")
 	if err := d.fsys.MkdirAll(mountPoint, 0755); err != nil {
-		_ = d.fsys.Remove(downloadPath)
 		return nil, fmt.Errorf("creating mountpoint directory: %w", err)
 	}
 
 	// Mount DMG
 	attachCmd := d.runner.CommandContext(ctx, "hdiutil", "attach", "-nobrowse", "-noautoopen", "-mountpoint", mountPoint, resolvedDmgPath)
 	if err := attachCmd.Run(); err != nil {
-		_ = d.fsys.Remove(downloadPath)
-		_ = d.fsys.Remove(mountPoint)
 		return nil, fmt.Errorf("mounting DMG: %w", err)
 	}
+	mounted = true
 
 	appName := getStringParam(tool.InstallParams, "appName", "")
 	if appName == "" {
@@ -237,15 +254,9 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	// Copy App bundle to /Applications
 	copyCmd := d.runner.CommandContext(ctx, "cp", "-R", appSource, appDest)
-	_ = copyCmd.Run() // Executed under mock run or system
-
-	// Detach DMG
-	detachCmd := d.runner.CommandContext(ctx, "hdiutil", "detach", mountPoint)
-	_ = detachCmd.Run()
-
-	// Clean up
-	_ = d.fsys.Remove(downloadPath)
-	_ = d.fsys.Remove(mountPoint)
+	if err := copyCmd.Run(); err != nil {
+		return nil, fmt.Errorf("copying App bundle to %s: %w", appDest, err)
+	}
 
 	binaryName := getStringParam(tool.InstallParams, "binaryName", tool.Name)
 	binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")

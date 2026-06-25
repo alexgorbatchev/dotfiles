@@ -31,6 +31,12 @@ func NewExtractor(fsys fs.FS, runner exec.CommandRunner) *Extractor {
 	}
 }
 
+func (e *Extractor) SetFS(fsys fs.FS) {
+	if e != nil {
+		e.fsys = fsys
+	}
+}
+
 // Extract detects format by filename extension and extracts src archive to dest directory.
 func (e *Extractor) Extract(ctx context.Context, src string, dest string) error {
 	lower := strings.ToLower(src)

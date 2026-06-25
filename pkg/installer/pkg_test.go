@@ -242,4 +242,57 @@ func TestPkgInstaller(t *testing.T) {
 			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
 		}
 	})
+
+	t.Run("Install and verify directory pruning of extracted archive", func(t *testing.T) {
+		runner.Clear()
+		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
+		inst := NewPkgInstaller(runner, fsys, dl, sysCtx)
+		inst.BinDir = "/test/pkg-pruning"
+
+		// Create a mock zip containing mytool.pkg
+		var zipBuf bytes.Buffer
+		zw := zip.NewWriter(&zipBuf)
+		f, err := zw.Create("mytool.pkg")
+		if err != nil {
+			t.Fatalf("failed to create zip file entry: %v", err)
+		}
+		_, _ = f.Write([]byte("mock-pkg-inside-zip"))
+		_ = zw.Close()
+
+		zipServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(zipBuf.Bytes())
+		}))
+		defer zipServer.Close()
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"source": map[string]interface{}{
+					"type": "url",
+					"url":  zipServer.URL + "/mytool-arm64.zip",
+				},
+				"target": "/Volumes/Mac",
+			},
+		}
+
+		_, err = inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// Verify extracted directory has been pruned/removed from fsys
+		extractDir := "/test/pkg-pruning/mytool-extracted"
+		exists, _ := fsys.Exists(extractDir)
+		if exists {
+			t.Errorf("expected extracted directory %s to be cleaned up/removed, but it exists", extractDir)
+		}
+
+		// Verify download PKG file has been pruned/removed from fsys
+		pkgPath := "/test/pkg-pruning/mytool-arm64.zip"
+		exists, _ = fsys.Exists(pkgPath)
+		if exists {
+			t.Errorf("expected downloaded zip %s to be cleaned up/removed, but it exists", pkgPath)
+		}
+	})
 }
