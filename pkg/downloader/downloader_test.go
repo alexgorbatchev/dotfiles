@@ -306,3 +306,98 @@ func TestDownloaderTimeoutCancellation(t *testing.T) {
 		t.Errorf("expected context deadline exceeded, got %v", err)
 	}
 }
+
+func TestDownloader_OptionsAndRetries(t *testing.T) {
+	t.Run("Headers Propagation", func(t *testing.T) {
+		headerValue := ""
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			headerValue = r.Header.Get("Authorization")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+		}))
+		defer server.Close()
+
+		memFS := fs.NewMemFS()
+		d := NewDownloader(memFS, nil)
+
+		opts := DownloadOptions{
+			Headers: map[string]string{
+				"Authorization": "Bearer supertoken",
+			},
+		}
+
+		err := d.Download(context.Background(), server.URL, "/test-auth", "", opts)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if headerValue != "Bearer supertoken" {
+			t.Errorf("expected header 'Bearer supertoken', got %q", headerValue)
+		}
+	})
+
+	t.Run("Progress Callback", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("1234567890"))
+		}))
+		defer server.Close()
+
+		memFS := fs.NewMemFS()
+		d := NewDownloader(memFS, nil)
+
+		var progressCalls int
+		var maxBytes int64
+		opts := DownloadOptions{
+			OnProgress: func(downloaded int64, total int64) {
+				progressCalls++
+				if downloaded > maxBytes {
+					maxBytes = downloaded
+				}
+			},
+		}
+
+		err := d.Download(context.Background(), server.URL, "/test-progress", "", opts)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if progressCalls == 0 {
+			t.Error("expected progress callback to be called")
+		}
+		if maxBytes != 10 {
+			t.Errorf("expected max progress bytes to be 10, got %d", maxBytes)
+		}
+	})
+
+	t.Run("Retry with Backoff", func(t *testing.T) {
+		attempts := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			attempts++
+			if attempts < 3 {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("recovered"))
+		}))
+		defer server.Close()
+
+		memFS := fs.NewMemFS()
+		d := NewDownloader(memFS, nil)
+
+		opts := DownloadOptions{
+			RetryCount: 3,
+			RetryDelay: 1 * time.Millisecond,
+		}
+
+		err := d.Download(context.Background(), server.URL, "/test-retry", "", opts)
+		if err != nil {
+			t.Fatalf("unexpected error after retry: %v", err)
+		}
+
+		if attempts != 3 {
+			t.Errorf("expected 3 attempts before success, got %d", attempts)
+		}
+	})
+}
