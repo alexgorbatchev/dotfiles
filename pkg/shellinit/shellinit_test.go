@@ -28,7 +28,7 @@ func TestInjector_Inject(t *testing.T) {
 				ScriptPath:  "/home/user/.dotfiles/init.sh",
 			},
 			wantUpdated: true,
-			wantContent: "# >>> dotfiles initialize >>>\nsource \"/home/user/.dotfiles/init.sh\"\n# <<< dotfiles initialize <<<\n",
+			wantContent: "# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
 		},
 		{
 			name: "inject into existing empty file",
@@ -44,7 +44,7 @@ func TestInjector_Inject(t *testing.T) {
 				ScriptPath:  "/home/user/.dotfiles/init.sh",
 			},
 			wantUpdated: true,
-			wantContent: "# >>> dotfiles initialize >>>\nsource \"/home/user/.dotfiles/init.sh\"\n# <<< dotfiles initialize <<<\n",
+			wantContent: "# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
 		},
 		{
 			name: "inject into file with existing content",
@@ -60,14 +60,14 @@ func TestInjector_Inject(t *testing.T) {
 				ScriptPath:  "/home/user/.dotfiles/init.sh",
 			},
 			wantUpdated: true,
-			wantContent: "export FOO=bar\n\n# >>> dotfiles initialize >>>\nsource \"/home/user/.dotfiles/init.sh\"\n# <<< dotfiles initialize <<<\n",
+			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
 		},
 		{
 			name: "update existing block in file",
 			setupFS: func() fs.FS {
 				mem := fs.NewMemFS()
 				_ = mem.MkdirAll("/home/user", 0755)
-				existing := "export FOO=bar\n\n# >>> dotfiles initialize >>>\nsource \"/home/user/.dotfiles/old_init.sh\"\n# <<< dotfiles initialize <<<\nsome other setting\n"
+				existing := "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/old_init.sh\"\nsome other setting\n"
 				_ = mem.WriteFile("/home/user/.zshrc", []byte(existing), 0644)
 				return mem
 			},
@@ -77,14 +77,14 @@ func TestInjector_Inject(t *testing.T) {
 				ScriptPath:  "/home/user/.dotfiles/new_init.sh",
 			},
 			wantUpdated: true,
-			wantContent: "export FOO=bar\n\n# >>> dotfiles initialize >>>\nsource \"/home/user/.dotfiles/new_init.sh\"\n# <<< dotfiles initialize <<<\nsome other setting\n",
+			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/new_init.sh\"\nsome other setting\n",
 		},
 		{
 			name: "no update needed if block matches exactly",
 			setupFS: func() fs.FS {
 				mem := fs.NewMemFS()
 				_ = mem.MkdirAll("/home/user", 0755)
-				existing := "export FOO=bar\n\n# >>> dotfiles initialize >>>\nsource \"/home/user/.dotfiles/init.sh\"\n# <<< dotfiles initialize <<<\n"
+				existing := "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n"
 				_ = mem.WriteFile("/home/user/.zshrc", []byte(existing), 0644)
 				return mem
 			},
@@ -94,7 +94,7 @@ func TestInjector_Inject(t *testing.T) {
 				ScriptPath:  "/home/user/.dotfiles/init.sh",
 			},
 			wantUpdated: false,
-			wantContent: "export FOO=bar\n\n# >>> dotfiles initialize >>>\nsource \"/home/user/.dotfiles/init.sh\"\n# <<< dotfiles initialize <<<\n",
+			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
 		},
 		{
 			name: "no update needed if raw source pattern exists elsewhere",
@@ -182,7 +182,7 @@ func TestInjector_Remove(t *testing.T) {
 			setupFS: func() fs.FS {
 				mem := fs.NewMemFS()
 				_ = mem.MkdirAll("/home/user", 0755)
-				content := "export FOO=bar\n\n# >>> dotfiles initialize >>>\nsource \"/home/user/.dotfiles/init.sh\"\n# <<< dotfiles initialize <<<\nsome other setting\n"
+				content := "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\nsome other setting\n"
 				_ = mem.WriteFile("/home/user/.zshrc", []byte(content), 0644)
 				return mem
 			},
@@ -327,7 +327,7 @@ func TestInjector_Errors(t *testing.T) {
 	t.Run("write error in Inject - existing block update", func(t *testing.T) {
 		mem := fs.NewMemFS()
 		_ = mem.MkdirAll("/home/user", 0755)
-		existing := "# >>> dotfiles initialize >>>\nsource \"/home/user/.dotfiles/old.sh\"\n# <<< dotfiles initialize <<<\n"
+		existing := "# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/old.sh\"\n"
 		_ = mem.WriteFile("/home/user/.zshrc", []byte(existing), 0644)
 
 		errFS := &ErroringFS{FS: mem, errOnWriteFile: true}
@@ -391,7 +391,7 @@ func TestInjector_Errors(t *testing.T) {
 	t.Run("write error in Remove", func(t *testing.T) {
 		mem := fs.NewMemFS()
 		_ = mem.MkdirAll("/home/user", 0755)
-		existing := "# >>> dotfiles initialize >>>\nsource \"/home/user/.dotfiles/old.sh\"\n# <<< dotfiles initialize <<<\n"
+		existing := "# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/old.sh\"\n"
 		_ = mem.WriteFile("/home/user/.zshrc", []byte(existing), 0644)
 
 		errFS := &ErroringFS{FS: mem, errOnWriteFile: true}

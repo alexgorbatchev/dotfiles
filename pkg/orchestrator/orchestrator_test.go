@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -741,6 +742,142 @@ func TestOrchestrator_UninstallTool(t *testing.T) {
 	// 3. Perform uninstall AGAIN (verifies no errors on non-existent files or records)
 	if err := orch.UninstallTool(ctx, tool, projCfg); err != nil {
 		t.Fatalf("unexpected error on second uninstall: %v", err)
+	}
+}
+
+func TestOrchestrator_InstallSudoMismatch(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+
+	// Register a mock installer that returns SupportsSudo() == false
+	mockInst := &mockInstaller{
+		name:         "npm",
+		supportsSudo: false,
+	}
+	_ = instReg.Register(mockInst)
+
+	orch := NewOrchestrator(fsys, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			BinariesDir: "/home/user/binaries",
+		},
+	}
+
+	tool := &config.ToolConfig{
+		Name:               "unsupported-sudo-tool",
+		InstallationMethod: "npm",
+		Sudo:               true, // Requires sudo
+	}
+
+	err = orch.InstallTool(ctx, tool, projCfg)
+	if err == nil {
+		t.Fatal("expected error when installing tool with sudo: true on installer that does not support sudo, but got nil")
+	}
+
+	expectedErr := `installer "npm" does not support sudo installations`
+	if !strings.Contains(err.Error(), expectedErr) {
+		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
+	}
+}
+
+func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+
+	orch := NewOrchestrator(fsys, runner, reg, instReg)
+	orch.SetSymlinkFS(&mockSymlinkFS{fsys: fsys})
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	stc := &config.ShellTypeConfig{
+		Scripts: []config.ShellScript{
+			{Kind: "once", Value: "echo 'hello once'"},
+		},
+	}
+	tool := &config.ToolConfig{
+		Name: "once-tool",
+		ShellConfigs: &config.ShellConfigs{
+			Zsh:        stc,
+			Bash:       stc,
+			Powershell: stc,
+		},
+	}
+
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+
+	// Generate shell scripts
+	err = orch.GenerateTools(ctx, []*config.ToolConfig{tool}, projCfg)
+	if err != nil {
+		t.Fatalf("unexpected failure generating tools: %v", err)
+	}
+
+	onceDir := "/home/user/.generated/shell-scripts/.once"
+
+	// 1. Verify files exist in onceDir
+	zshOncePath := filepath.Join(onceDir, "once-001.zsh")
+	bashOncePath := filepath.Join(onceDir, "once-001.bash")
+	ps1OncePath := filepath.Join(onceDir, "once-001.ps1")
+
+	for _, p := range []string{zshOncePath, bashOncePath, ps1OncePath} {
+		exists, err := fsys.Exists(p)
+		if err != nil || !exists {
+			t.Fatalf("expected once script %q to exist", p)
+		}
+	}
+
+	// 2. Verify self-deletion statements inside once files
+	zshBytes, _ := fsys.ReadFile(zshOncePath)
+	zshContent := string(zshBytes)
+	if !strings.Contains(zshContent, `rm -f "$0"`) {
+		t.Errorf("expected zsh once script to contain self-deletion command, got:\n%s", zshContent)
+	}
+
+	ps1Bytes, _ := fsys.ReadFile(ps1OncePath)
+	ps1Content := string(ps1Bytes)
+	if !strings.Contains(ps1Content, `Remove-Item $MyInvocation.MyCommand.Path`) {
+		t.Errorf("expected ps1 once script to contain self-deletion command, got:\n%s", ps1Content)
+	}
+
+	// 3. Verify consecutive generate prunes the once directory
+	// Let's write a stray file inside onceDir
+	strayPath := filepath.Join(onceDir, "once-002.zsh")
+	_ = fsys.WriteFile(strayPath, []byte("echo stray"), 0755)
+
+	err = orch.GenerateTools(ctx, []*config.ToolConfig{tool}, projCfg)
+	if err != nil {
+		t.Fatalf("unexpected failure on consecutive generate: %v", err)
+	}
+
+	exists, err := fsys.Exists(strayPath)
+	if err != nil || exists {
+		t.Errorf("expected stray once script to be pruned on consecutive generate, but it still exists")
 	}
 }
 

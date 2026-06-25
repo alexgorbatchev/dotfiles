@@ -38,11 +38,6 @@ func (z *ZshPluginInstaller) SupportsSudo() bool {
 }
 
 func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
-	if IsDryRun() {
-		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
-		}, nil
-	}
 	repo := getStringParam(tool.InstallParams, "repo", "")
 	url := getStringParam(tool.InstallParams, "url", "")
 

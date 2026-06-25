@@ -2,8 +2,12 @@ package exec
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"os"
 	"os/exec"
+
+	"github.com/mattn/go-isatty"
 )
 
 // osCmd wraps an *os/exec.Cmd to satisfy the Cmd interface.
@@ -11,13 +15,26 @@ type osCmd struct {
 	cmd *exec.Cmd
 }
 
+func (c *osCmd) checkSudo() {
+	if len(c.cmd.Args) > 0 && c.cmd.Args[0] == "sudo" {
+		isTTY := isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsTerminal(os.Stdout.Fd())
+		if !isTTY {
+			fmt.Fprintln(os.Stderr, "WARNING: Executing sudo command in non-interactive / non-TTY environment.")
+		} else {
+			fmt.Fprintln(os.Stderr, "WARNING: Executing elevated privilege (sudo) command.")
+		}
+	}
+}
+
 // Run starts the specified command and waits for it to complete.
 func (c *osCmd) Run() error {
+	c.checkSudo()
 	return c.cmd.Run()
 }
 
 // Start starts the specified command but does not wait for it to complete.
 func (c *osCmd) Start() error {
+	c.checkSudo()
 	return c.cmd.Start()
 }
 
@@ -28,11 +45,13 @@ func (c *osCmd) Wait() error {
 
 // Output runs the command and returns its standard output.
 func (c *osCmd) Output() ([]byte, error) {
+	c.checkSudo()
 	return c.cmd.Output()
 }
 
 // CombinedOutput runs the command and returns its combined standard output and standard error.
 func (c *osCmd) CombinedOutput() ([]byte, error) {
+	c.checkSudo()
 	return c.cmd.CombinedOutput()
 }
 

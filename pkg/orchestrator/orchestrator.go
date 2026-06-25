@@ -41,6 +41,13 @@ func NewOrchestrator(fsys fs.FS, runner exec.CommandRunner, reg *registry.Regist
 	}
 }
 
+func (o *Orchestrator) getTrackedFS(ctx context.Context, tx *sql.Tx, toolName, fileType string) *fs.TrackedFileSystem {
+	if tfs, ok := o.fs.(*fs.TrackedFileSystem); ok {
+		return tfs.WithTx(ctx, tx).WithToolName(toolName).WithFileType(fileType)
+	}
+	return fs.NewTrackedFileSystem(o.fs, o.reg, toolName).WithTx(ctx, tx).WithFileType(fileType)
+}
+
 // SetSymlinkFS allows injecting a custom symlink.FileSystem (primarily for testing).
 func (o *Orchestrator) SetSymlinkFS(sfs symlink.FileSystem) {
 	o.symlinkFS = sfs
@@ -241,24 +248,13 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			}
 		}
 
-		if err := shimGen.Generate(shimPath, shimCfg); err != nil {
-			return fmt.Errorf("generating shim for %q: %w", binName, err)
-		}
-
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-			now := time.Now().UnixMilli()
-			opRecord := &registry.FileOperationRecord{
-				ToolName:      tool.Name,
-				OperationType: "shim",
-				FilePath:      shimPath,
-				FileType:      "shim",
-				CreatedAt:     now,
-				OperationID:   fmt.Sprintf("op-shim-%d", now),
-			}
-			return o.reg.RecordFileOperation(ctx, tx, opRecord)
+			activeFS := o.getTrackedFS(ctx, tx, tool.Name, "shim")
+			shimGenWithTx := shim.NewGenerator(activeFS)
+			return shimGenWithTx.Generate(shimPath, shimCfg)
 		})
 		if err != nil {
-			return fmt.Errorf("recording shim operation for %q: %w", binName, err)
+			return fmt.Errorf("generating shim for %q: %w", binName, err)
 		}
 	}
 
@@ -272,18 +268,8 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 		if wasCreated {
 			err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-				now := time.Now().UnixMilli()
-				src := sym.Source
-				opRecord := &registry.FileOperationRecord{
-					ToolName:      tool.Name,
-					OperationType: "symlink",
-					FilePath:      sym.Target,
-					TargetPath:    &src,
-					FileType:      "symlink",
-					CreatedAt:     now,
-					OperationID:   fmt.Sprintf("op-symlink-%d", now),
-				}
-				return o.reg.RecordFileOperation(ctx, tx, opRecord)
+				activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
+				return activeFS.RecordExistingSymlink(sym.Source, sym.Target)
 			})
 			if err != nil {
 				return fmt.Errorf("recording symlink operation: %w", err)
@@ -324,6 +310,10 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	inst, err := o.instRegistry.Get(tool.InstallationMethod)
 	if err != nil {
 		return fmt.Errorf("getting installer: %w", err)
+	}
+
+	if tool.Sudo && !inst.SupportsSudo() {
+		return fmt.Errorf("installer %q does not support sudo installations", tool.InstallationMethod)
 	}
 
 	// Dynamically configure BinDir and BaseURL if supported by the installer
@@ -474,24 +464,13 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			}
 		}
 
-		if err := shimGen.Generate(shimPath, shimCfg); err != nil {
-			return fmt.Errorf("generating shim for %q: %w", binName, err)
-		}
-
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-			now := time.Now().UnixMilli()
-			opRecord := &registry.FileOperationRecord{
-				ToolName:      tool.Name,
-				OperationType: "shim",
-				FilePath:      shimPath,
-				FileType:      "shim",
-				CreatedAt:     now,
-				OperationID:   fmt.Sprintf("op-shim-%d", now),
-			}
-			return o.reg.RecordFileOperation(ctx, tx, opRecord)
+			activeFS := o.getTrackedFS(ctx, tx, tool.Name, "shim")
+			shimGenWithTx := shim.NewGenerator(activeFS)
+			return shimGenWithTx.Generate(shimPath, shimCfg)
 		})
 		if err != nil {
-			return fmt.Errorf("recording shim operation for %q: %w", binName, err)
+			return fmt.Errorf("generating shim for %q: %w", binName, err)
 		}
 	}
 
@@ -505,18 +484,8 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 		if wasCreated {
 			err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-				now := time.Now().UnixMilli()
-				src := sym.Source
-				opRecord := &registry.FileOperationRecord{
-					ToolName:      tool.Name,
-					OperationType: "symlink",
-					FilePath:      sym.Target,
-					TargetPath:    &src,
-					FileType:      "symlink",
-					CreatedAt:     now,
-					OperationID:   fmt.Sprintf("op-symlink-%d", now),
-				}
-				return o.reg.RecordFileOperation(ctx, tx, opRecord)
+				activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
+				return activeFS.RecordExistingSymlink(sym.Source, sym.Target)
 			})
 			if err != nil {
 				return fmt.Errorf("recording symlink operation: %w", err)
@@ -655,6 +624,16 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 		return err
 	}
 
+	// Prune existing files in .once/ during consecutive generate commands
+	for i := 1; i <= 1000; i++ {
+		for _, ext := range []string{"zsh", "bash", "ps1"} {
+			filePath := filepath.Join(onceDir, fmt.Sprintf("once-%03d.%s", i, ext))
+			if exists, err := o.fs.Exists(filePath); err == nil && exists {
+				_ = o.fs.Remove(filePath)
+			}
+		}
+	}
+
 	// We generate for zsh, bash, powershell
 	shells := []string{"zsh", "bash", "powershell"}
 
@@ -709,7 +688,10 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 			// 2. Environment variables
 			for k, v := range stc.Env {
-				vResolved := o.resolvePlaceholder(v, tool, projCfg)
+				vResolved, err := o.resolvePlaceholder(v, tool, projCfg)
+				if err != nil {
+					return fmt.Errorf("resolving env variable %q: %w", k, err)
+				}
 				if sh == "powershell" {
 					scriptLines = append(scriptLines, fmt.Sprintf("$env:%s = %q", k, vResolved))
 				} else {
@@ -719,7 +701,10 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 			// 3. Aliases
 			for k, v := range stc.Aliases {
-				vResolved := o.resolvePlaceholder(v, tool, projCfg)
+				vResolved, err := o.resolvePlaceholder(v, tool, projCfg)
+				if err != nil {
+					return fmt.Errorf("resolving alias %q: %w", k, err)
+				}
 				if sh == "powershell" {
 					scriptLines = append(scriptLines, fmt.Sprintf("Set-Alias -Name %s -Value %q", k, vResolved))
 				} else {
@@ -729,7 +714,10 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 			// 4. Scripts (always vs once)
 			for _, scr := range stc.Scripts {
-				valResolved := o.resolvePlaceholder(scr.Value, tool, projCfg)
+				valResolved, err := o.resolvePlaceholder(scr.Value, tool, projCfg)
+				if err != nil {
+					return fmt.Errorf("resolving script: %w", err)
+				}
 				if scr.Kind == "always" {
 					scriptLines = append(scriptLines, valResolved)
 				} else if scr.Kind == "once" {
@@ -742,7 +730,14 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					onceCounter++
 					onceFilePath := filepath.Join(onceDir, onceFileName)
 
-					err := o.fs.WriteFile(onceFilePath, []byte(valResolved), 0755)
+					var scriptContent string
+					if sh == "powershell" {
+						scriptContent = valResolved + "\nRemove-Item $MyInvocation.MyCommand.Path -ErrorAction SilentlyContinue\n"
+					} else {
+						scriptContent = valResolved + "\nrm -f \"$0\"\n"
+					}
+
+					err := o.fs.WriteFile(onceFilePath, []byte(scriptContent), 0755)
 					if err != nil {
 						return err
 					}
@@ -796,12 +791,8 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 	return nil
 }
 
-func (o *Orchestrator) resolvePlaceholder(val string, tool *config.ToolConfig, projCfg *config.ProjectConfig) string {
-	res := val
-	res = strings.ReplaceAll(res, "{stagingDir}", filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))
-	res = strings.ReplaceAll(res, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
-	res = strings.ReplaceAll(res, "{paths.targetDir}", projCfg.Paths.TargetDir)
-	return res
+func (o *Orchestrator) resolvePlaceholder(val string, tool *config.ToolConfig, projCfg *config.ProjectConfig) (string, error) {
+	return config.ResolvePlaceholders(val, tool.Name, projCfg)
 }
 
 type lineLogWriter struct {

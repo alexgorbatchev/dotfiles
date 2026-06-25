@@ -3,6 +3,7 @@ package shellinit
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -10,9 +11,7 @@ import (
 
 const (
 	// HeaderMarker is the header block marker for dotfiles initialization.
-	HeaderMarker = "# >>> dotfiles initialize >>>"
-	// FooterMarker is the footer block marker for dotfiles initialization.
-	FooterMarker = "# <<< dotfiles initialize <<<"
+	HeaderMarker = "# Generated via dotfiles generator - do not modify"
 )
 
 // Injector manages updating shell profile files to inject startup scripts.
@@ -56,27 +55,29 @@ func (inj *Injector) Inject(opts InjectOptions) (bool, error) {
 		content = string(bytes)
 	}
 
-	sourceLine := fmt.Sprintf("source %q", opts.ScriptPath)
-	newBlock := fmt.Sprintf("%s\n%s\n%s", HeaderMarker, sourceLine, FooterMarker)
+	var sourceLine string
+	if opts.Shell == "powershell" {
+		sourceLine = fmt.Sprintf(". %q", opts.ScriptPath)
+	} else {
+		sourceLine = fmt.Sprintf("source %q", opts.ScriptPath)
+	}
 
-	hasHeader := strings.Contains(content, HeaderMarker)
-	hasFooter := strings.Contains(content, FooterMarker)
+	newBlock := fmt.Sprintf("%s\n# ------------------------------------------------------------------------------\n%s", HeaderMarker, sourceLine)
 
-	if hasHeader && hasFooter {
-		startIndex := strings.Index(content, HeaderMarker)
-		endIndex := strings.Index(content, FooterMarker) + len(FooterMarker)
-
-		oldBlock := content[startIndex:endIndex]
-		if oldBlock == newBlock {
-			return false, nil
+	if strings.Contains(content, HeaderMarker) {
+		re := regexp.MustCompile(`(?m)# Generated via dotfiles generator - do not modify[\s\S]*?^\s*(?:source|\.)\s+["'].*?["'].*?$`)
+		if re.MatchString(content) {
+			oldBlock := re.FindString(content)
+			if oldBlock == newBlock {
+				return false, nil
+			}
+			newContent := re.ReplaceAllString(content, newBlock)
+			err = inj.fs.WriteFile(opts.ProfilePath, []byte(newContent), 0644)
+			if err != nil {
+				return false, fmt.Errorf("updating profile with block: %w", err)
+			}
+			return true, nil
 		}
-
-		newContent := content[:startIndex] + newBlock + content[endIndex:]
-		err = inj.fs.WriteFile(opts.ProfilePath, []byte(newContent), 0644)
-		if err != nil {
-			return false, fmt.Errorf("updating profile with block: %w", err)
-		}
-		return true, nil
 	}
 
 	sourcePatterns := []string{
@@ -141,30 +142,25 @@ func (inj *Injector) Remove(profilePath string) (bool, error) {
 	}
 	content := string(bytes)
 
-	hasHeader := strings.Contains(content, HeaderMarker)
-	hasFooter := strings.Contains(content, FooterMarker)
-
-	if !hasHeader || !hasFooter {
+	if !strings.Contains(content, HeaderMarker) {
 		return false, nil
 	}
 
-	startIndex := strings.Index(content, HeaderMarker)
-	endIndex := strings.Index(content, FooterMarker) + len(FooterMarker)
+	re := regexp.MustCompile(`(?m)# Generated via dotfiles generator - do not modify[\s\S]*?^\s*(?:source|\.)\s+["'].*?["'].*?$\n?`)
+	if re.MatchString(content) {
+		newContent := re.ReplaceAllString(content, "")
 
-	prefix := content[:startIndex]
-	suffix := content[endIndex:]
+		newContent = strings.TrimSpace(newContent)
+		if newContent != "" {
+			newContent += "\n"
+		}
 
-	if strings.HasSuffix(prefix, "\n\n") && strings.HasPrefix(suffix, "\n") {
-		prefix = strings.TrimSuffix(prefix, "\n")
-	} else if strings.HasSuffix(prefix, "\n") && strings.HasPrefix(suffix, "\n") {
-		suffix = strings.TrimPrefix(suffix, "\n")
+		err = inj.fs.WriteFile(profilePath, []byte(newContent), 0644)
+		if err != nil {
+			return false, fmt.Errorf("removing block from profile: %w", err)
+		}
+		return true, nil
 	}
 
-	newContent := prefix + suffix
-	err = inj.fs.WriteFile(profilePath, []byte(newContent), 0644)
-	if err != nil {
-		return false, fmt.Errorf("removing block from profile: %w", err)
-	}
-
-	return true, nil
+	return false, nil
 }
