@@ -9,6 +9,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 type brewInfoVersions struct {
@@ -21,6 +22,7 @@ type brewInfo struct {
 }
 
 type BrewInstaller struct {
+	log    *logger.Logger
 	runner exec.CommandRunner
 	fsys   fs.FS
 	sysCtx *SystemContext

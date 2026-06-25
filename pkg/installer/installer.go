@@ -10,6 +10,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 type InstallResult struct {
@@ -319,5 +320,41 @@ func SetFS(inst Installer, fsys fs.FS) {
 		}
 	case *ZshPluginInstaller:
 		v.fsys = fsys
+	}
+}
+
+// SetLogger dynamically binds the orchestrator's context-aware Logger to installer plugins prior to execution.
+func SetLogger(inst Installer, log *logger.Logger) {
+	switch v := inst.(type) {
+	case *AptInstaller:
+		v.log = log
+	case *BrewInstaller:
+		v.log = log
+	case *CargoInstaller:
+		v.log = log
+	case *CurlBinaryInstaller:
+		v.log = log
+	case *CurlScriptInstaller:
+		v.log = log
+	case *CurlTarInstaller:
+		v.log = log
+	case *DmgInstaller:
+		v.log = log
+	case *DnfInstaller:
+		v.log = log
+	case *GiteaInstaller:
+		v.log = log
+	case *GitHubInstaller:
+		v.log = log
+	case *ManualInstaller:
+		v.log = log
+	case *NpmInstaller:
+		v.log = log
+	case *PacmanInstaller:
+		v.log = log
+	case *PkgInstaller:
+		v.log = log
+	case *ZshPluginInstaller:
+		v.log = log
 	}
 }

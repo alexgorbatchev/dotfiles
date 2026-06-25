@@ -170,7 +170,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		_ = instReg.Register(&mockInstaller{name: "dnf"})
 		_ = instReg.Register(&mockInstaller{name: "pkg"})
 	}
-	orch := orchestrator.NewOrchestrator(trackedFS, runner, reg, instReg)
+	orch := orchestrator.NewOrchestrator(nil, trackedFS, runner, reg, instReg)
 	if dryRun {
 		orch.SetSymlinkFS(fsys)
 	}

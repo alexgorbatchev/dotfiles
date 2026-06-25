@@ -17,6 +17,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/shellinit"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
@@ -26,6 +27,7 @@ import (
 
 // Orchestrator manages tool installation pipelines.
 type Orchestrator struct {
+	logger       *logger.Logger
 	fs           fs.FS
 	runner       exec.CommandRunner
 	reg          *registry.Registry
@@ -34,12 +36,25 @@ type Orchestrator struct {
 }
 
 // NewOrchestrator creates a new Orchestrator instance.
-func NewOrchestrator(fsys fs.FS, runner exec.CommandRunner, reg *registry.Registry, instReg *installer.Registry) *Orchestrator {
+func NewOrchestrator(log *logger.Logger, fsys fs.FS, runner exec.CommandRunner, reg *registry.Registry, instReg *installer.Registry) *Orchestrator {
+	if log == nil {
+		log = logger.New(logger.Config{Name: "Orchestrator"})
+	} else {
+		log = log.WithName("Orchestrator")
+	}
 	return &Orchestrator{
+		logger:       log,
 		fs:           fsys,
 		runner:       runner,
 		reg:          reg,
 		instRegistry: instReg,
+	}
+}
+
+// SetLogger updates the Orchestrator's logger.
+func (o *Orchestrator) SetLogger(log *logger.Logger) {
+	if log != nil {
+		o.logger = log.WithName("Orchestrator")
 	}
 }
 
@@ -212,11 +227,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 
 		if isAutoInstall(tool) {
 			if err := o.InstallTool(ctx, tool, projCfg); err != nil {
-				errStr := err.Error()
-				if idx := strings.Index(errStr, "running installer: "); idx != -1 {
-					errStr = errStr[idx+len("running installer: "):]
-				}
-				fmt.Fprintf(os.Stderr, "ERROR\t[%s] %s\n", tool.Name, errStr)
+				o.logger.GetSubLogger("", tool.Name).Error("Auto-install failed", err)
 			}
 		} else {
 			if err := o.GenerateTool(ctx, tool, projCfg); err != nil {
@@ -242,7 +253,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	if tool.InstallationMethod == "manual" {
 		binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")
 		if binaryPath == "" {
-			fmt.Fprintf(os.Stderr, "WARN\t[system] [%s] Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)\n", tool.Name)
+			o.logger.GetSubLogger("", "system", tool.Name).Warn("Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)")
 			return nil
 		}
 	}
@@ -274,7 +285,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			isShim, err := shimGen.IsGeneratedShim(shimPath)
 			if err == nil && !isShim {
 				if !shouldOverwrite() {
-					fmt.Printf("Cannot create shim for %q: conflicting file exists at %s. Use --overwrite to replace it.\n", binName, shimPath)
+					o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Cannot create shim for %q: conflicting file exists at %s. Use --overwrite to replace it.", binName, shimPath)))
 					continue
 				}
 			}
@@ -364,6 +375,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 	activeFS := o.getTrackedFS(ctx, nil, tool.Name, "binary")
 	installer.SetFS(inst, activeFS)
+	installer.SetLogger(inst, o.logger.WithName(inst.Name()))
 
 	if !isExternal {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
@@ -439,42 +451,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 	// Run after-install hooks
 	if !installer.IsDryRun() {
-		if tool.Name == "hook-test-tool" {
-			hooks := []string{
-				`echo "shell-output-for-hook-test-tool"`,
-				`./scripts/test-output.sh`,
-			}
-			for _, hookCmd := range hooks {
-				toolConfigDir := filepath.Dir(tool.ConfigFilePath)
-				if hookCmd == `./scripts/test-output.sh` {
-					chmodCmd := o.runner.CommandContext(ctx, "chmod", "+x", filepath.Join(toolConfigDir, "scripts", "test-output.sh"))
-					_ = chmodCmd.Run()
-				}
-
-				fmt.Fprintf(os.Stderr, "INFO\t[%s] $ %s\n", tool.Name, hookCmd)
-
-				var runCmd exec.Cmd
-				if strings.HasPrefix(hookCmd, "./") {
-					toolConfigDir := filepath.Dir(tool.ConfigFilePath)
-					scriptPath := filepath.Join(toolConfigDir, hookCmd)
-					runCmd = o.runner.CommandContext(ctx, scriptPath)
-					runCmd.SetDir(toolConfigDir)
-				} else {
-					runCmd = o.runner.CommandContext(ctx, "bash", "-c", hookCmd)
-					runCmd.SetDir(filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))
-				}
-
-				writer := &lineLogWriter{toolName: tool.Name, prefix: "|"}
-				runCmd.SetStdout(writer)
-				runCmd.SetStderr(writer)
-
-				if err := runCmd.Run(); err != nil {
-					writer.Flush()
-					return fmt.Errorf("hook %q failed: %w", hookCmd, err)
-				}
-				writer.Flush()
-			}
-		} else if tool.InstallParams != nil {
+		if tool.InstallParams != nil {
 			if params, ok := tool.InstallParams["hooks"].(map[string]interface{}); ok {
 				if afterInstall, ok := params["after-install"].([]interface{}); ok {
 					for _, hook := range afterInstall {
@@ -483,7 +460,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 							continue
 						}
 
-						fmt.Fprintf(os.Stderr, "INFO\t[%s] $ %s\n", tool.Name, hookCmdStr)
+						o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ %s", hookCmdStr)))
 
 						var runCmd exec.Cmd
 						if strings.HasPrefix(hookCmdStr, "./") {
@@ -498,7 +475,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 							runCmd.SetDir(filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))
 						}
 
-						writer := &lineLogWriter{toolName: tool.Name, prefix: "|"}
+						writer := &lineLogWriter{logger: o.logger.GetSubLogger("", tool.Name), prefix: "|"}
 						runCmd.SetStdout(writer)
 						runCmd.SetStderr(writer)
 
@@ -546,7 +523,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			isShim, err := shimGen.IsGeneratedShim(shimPath)
 			if err == nil && !isShim {
 				if !shouldOverwrite() {
-					fmt.Printf("Cannot create shim for %q: conflicting file exists at %s. Use --overwrite to replace it.\n", binName, shimPath)
+					o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Cannot create shim for %q: conflicting file exists at %s. Use --overwrite to replace it.", binName, shimPath)))
 					continue
 				}
 			}
@@ -861,9 +838,9 @@ func (o *Orchestrator) resolvePlaceholder(val string, tool *config.ToolConfig, p
 }
 
 type lineLogWriter struct {
-	toolName string
-	prefix   string
-	buf      bytes.Buffer
+	logger *logger.Logger
+	prefix string
+	buf    bytes.Buffer
 }
 
 func (l *lineLogWriter) Write(p []byte) (n int, err error) {
@@ -877,7 +854,7 @@ func (l *lineLogWriter) Write(p []byte) (n int, err error) {
 		}
 		trimmed := strings.TrimSuffix(line, "\n")
 		trimmed = strings.TrimSuffix(trimmed, "\r")
-		fmt.Fprintf(os.Stderr, "%s\t[%s] %s %s\n", "INFO", l.toolName, l.prefix, trimmed)
+		l.logger.Info(logger.Message(fmt.Sprintf("%s %s", l.prefix, trimmed)))
 	}
 	return n, nil
 }
@@ -887,7 +864,7 @@ func (l *lineLogWriter) Flush() {
 		trimmed := strings.TrimSuffix(l.buf.String(), "\n")
 		trimmed = strings.TrimSuffix(trimmed, "\r")
 		if trimmed != "" {
-			fmt.Fprintf(os.Stderr, "%s\t[%s] %s %s\n", "INFO", l.toolName, l.prefix, trimmed)
+			l.logger.Info(logger.Message(fmt.Sprintf("%s %s", l.prefix, trimmed)))
 		}
 		l.buf.Reset()
 	}

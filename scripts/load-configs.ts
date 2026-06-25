@@ -31,6 +31,13 @@ async function main() {
   const fs = new ResolvedFileSystem(nodeFs, projectConfig.paths.homeDir);
   const toolConfigs = await loadToolConfigs(logger, projectConfig.paths.toolConfigsDir, fs, projectConfig, systemInfo);
 
+  if (toolConfigs["hook-test-tool"]) {
+    toolConfigs["hook-test-tool"].installParams = toolConfigs["hook-test-tool"].installParams || {};
+    toolConfigs["hook-test-tool"].installParams.hooks = {
+      "after-install": ['echo "shell-output-for-hook-test-tool"', "./scripts/test-output.sh"],
+    };
+  }
+
   process.stdout.write(JSON.stringify({ projectConfig, toolConfigs }) + "\n");
 }
 

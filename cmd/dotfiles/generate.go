@@ -22,6 +22,7 @@ var generateCmd = &cobra.Command{
 		defer services.DB.Close()
 
 		log := GetLogger("generate", cmd.ErrOrStderr())
+		services.Orchestrator.SetLogger(log)
 		log.Info("Starting generation...")
 
 		// Execute standalone generation of all tool configurations through the Orchestrator

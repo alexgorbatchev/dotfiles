@@ -211,6 +211,11 @@ func (l *Logger) SetPrefix(context string) *Logger {
 	return l
 }
 
+// WithName returns a new Logger with the given name appended to the logger's name path.
+func (l *Logger) WithName(name string) *Logger {
+	return l.GetSubLogger(name)
+}
+
 func (l *Logger) Trace(msg Message, args ...any) {
 	l.log(context.Background(), LevelTrace, msg, args)
 }
