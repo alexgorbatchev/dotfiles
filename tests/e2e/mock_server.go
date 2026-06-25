@@ -13,11 +13,11 @@ import (
 )
 
 type MockServer struct {
-	Server      *httptest.Server
-	FixtureDir  string
-	ProjectRoot string
-	versions    map[string]string
-	versionsMu  sync.Mutex
+	Server       *httptest.Server
+	FixtureDir   string
+	ProjectRoot  string
+	versions     map[string]string
+	versionsMu   sync.Mutex
 }
 
 func NewMockServer(t *testing.T, fixtureDir string) *MockServer {
@@ -42,7 +42,7 @@ func NewMockServer(t *testing.T, fixtureDir string) *MockServer {
 		t.Fatalf("failed to find project root")
 	}
 
-	ms.FixtureDir = filepath.Join(ms.ProjectRoot, "packages", "e2e-test", "src", "__tests__", "fixtures", fixtureDir)
+	ms.FixtureDir = filepath.Join(ms.ProjectRoot, "tests", "e2e", "fixtures", fixtureDir)
 
 	// Set default versions
 	ms.versions["repo/github-release-tool"] = "1.0.0"
@@ -313,12 +313,12 @@ func (ms *MockServer) serveGiteaRelease(w http.ResponseWriter, r *http.Request, 
 	}
 
 	res := map[string]any{
-		"id":          1,
-		"tag_name":    version,
-		"name":        "Release " + version,
-		"assets":      assets,
-		"tarball_url": fmt.Sprintf("%s/%s/archive/%s.tar.gz", ms.Server.URL, repo, version),
-		"zipball_url": fmt.Sprintf("%s/%s/archive/%s.zip", ms.Server.URL, repo, version),
+		"id":           1,
+		"tag_name":     version,
+		"name":         "Release " + version,
+		"assets":       assets,
+		"tarball_url":  fmt.Sprintf("%s/%s/archive/%s.tar.gz", ms.Server.URL, repo, version),
+		"zipball_url":  fmt.Sprintf("%s/%s/archive/%s.zip", ms.Server.URL, repo, version),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

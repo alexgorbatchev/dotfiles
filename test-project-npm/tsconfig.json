@@ -1,4 +1,11 @@
 {
   "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@alexgorbatchev/dotfiles": ["../.dist/cli"],
+      "@dotfiles/cli": ["../.dist/cli"],
+      "@dotfiles/core": ["../.dist/cli"]
+    }
+  },
   "include": ["./dotfiles.config.ts", "tools", ".generated/tool-types.d.ts"]
 }

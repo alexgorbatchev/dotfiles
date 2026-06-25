@@ -1,0 +1,35 @@
+{
+  "projectConfig": {
+    "paths": {
+      "generatedDir": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/.tmp/e2e-test/worker-default/dependency-missing",
+      "homeDir": "{paths.generatedDir}/user-home",
+      "targetDir": "{paths.generatedDir}/user-bin",
+      "toolConfigsDir": "{configFileDir}"
+    },
+    "github": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } },
+    "cargo": {
+      "cratesIo": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } },
+      "githubRaw": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } },
+      "githubRelease": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } }
+    },
+    "downloader": { "cache": { "enabled": false } }
+  },
+  "toolConfigs": {
+    "dependency-consumer-missing": {
+      "name": "dependency-consumer-missing",
+      "version": "1.0.0",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/dependency-missing/dependency-consumer-missing.tool.ts",
+      "binaries": ["dependency-consumer-missing"],
+      "dependencies": ["missing-provider"],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "manual",
+      "installParams": {}
+    }
+  }
+}

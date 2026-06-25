@@ -103,6 +103,13 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		projCfg.Cargo.GithubRelease.Host = mockHost
 	}
 
+	if projCfg.Paths.BinariesDir == "" {
+		projCfg.Paths.BinariesDir = filepath.Join(projCfg.Paths.GeneratedDir, "binaries")
+	}
+	if projCfg.Paths.ShellScriptsDir == "" {
+		projCfg.Paths.ShellScriptsDir = filepath.Join(projCfg.Paths.GeneratedDir, "shell-scripts")
+	}
+
 	// Resolve the generatedDir placeholders in paths
 	if strings.Contains(projCfg.Paths.HomeDir, "{paths.generatedDir}") {
 		projCfg.Paths.HomeDir = strings.ReplaceAll(projCfg.Paths.HomeDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
@@ -136,7 +143,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	// For dry-runs and tests, we still open a valid database.
 	// If in unit testing, use in-memory SQLite to prevent disk state pollution.
 	var dbPath string
-	if (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") || (dryRun && os.Getenv("DOTFILES_E2E_TEST") != "true") {
+	if isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true" {
 		dbPath = ":memory:"
 	} else {
 		dbPath = filepath.Join(projCfg.Paths.GeneratedDir, "registry.db")
@@ -170,10 +177,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		_ = instReg.Register(&mockInstaller{name: "dnf"})
 		_ = instReg.Register(&mockInstaller{name: "pkg"})
 	}
-	orch := orchestrator.NewOrchestrator(nil, trackedFS, runner, reg, instReg)
-	if dryRun {
-		orch.SetSymlinkFS(fsys)
-	}
+	orch := orchestrator.NewOrchestrator(trackedFS, runner, reg, instReg)
 
 	// Map binary dependencies to fully-qualified tool names (e.g., fnm -> curl-script--fnm)
 	for _, tc := range toolConfigs {
@@ -242,7 +246,7 @@ func (m *mockInstaller) Name() string {
 }
 
 func (m *mockInstaller) SupportsSudo() bool {
-	return true
+	return false
 }
 
 func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
@@ -320,13 +324,7 @@ func ResolvePlatformConfigs(toolConfigs []*config.ToolConfig, sysCtx *installer.
 				// Map entry.Config to a JSON string and unmarshal to tc
 				jsonBytes, err := json.Marshal(entry.Config)
 				if err == nil {
-					var rawOverride map[string]interface{}
-					var override config.ToolConfig
-					if err := json.Unmarshal(jsonBytes, &rawOverride); err == nil {
-						if err := json.Unmarshal(jsonBytes, &override); err == nil {
-							tc.Merge(&override, rawOverride)
-						}
-					}
+					_ = json.Unmarshal(jsonBytes, tc)
 				}
 			}
 		}

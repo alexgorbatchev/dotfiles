@@ -16,8 +16,15 @@ var dashboardCmd = &cobra.Command{
 	Use:   "dashboard",
 	Short: "Starts local HTTP web server and outputs the URL",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := cmd.Context()
+		services, err := BootstrapServices(ctx, cfgFile)
+		if err != nil {
+			return err
+		}
+		defer services.DB.Close()
+
 		log := GetLogger("dashboard", cmd.ErrOrStderr())
-		server := dashboard.NewServer(log, port)
+		server := dashboard.NewServer(log, port, services.Registry, services.ProjectConfig, services.ToolConfigs)
 		if err := server.Start(); err != nil {
 			return err
 		}

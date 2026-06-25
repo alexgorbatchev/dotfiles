@@ -1,5 +1,5 @@
-import type { ToolConfig } from "@dotfiles/core";
-import { Architecture, Platform } from "@dotfiles/core";
+import type { ToolConfig } from "../types.gen";
+import { Architecture, Platform } from "../platform.types";
 import { describe, expect, test } from "bun:test";
 
 import { architectureBitmaskToNames, platformBitmaskToNames, serializeToolConfig } from "../dashboardUtils";

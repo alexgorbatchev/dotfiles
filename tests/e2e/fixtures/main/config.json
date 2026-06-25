@@ -1,0 +1,307 @@
+{
+  "projectConfig": {
+    "paths": {
+      "generatedDir": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/.tmp/e2e-test/worker-default/main",
+      "homeDir": "{paths.generatedDir}/user-home",
+      "targetDir": "{paths.generatedDir}/user-bin",
+      "toolConfigsDir": "{configFileDir}/tools"
+    },
+    "github": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } },
+    "cargo": {
+      "cratesIo": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } },
+      "githubRaw": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } },
+      "githubRelease": { "host": "http://127.0.0.1:8765", "cache": { "enabled": false } }
+    },
+    "downloader": { "cache": { "enabled": false } }
+  },
+  "toolConfigs": {
+    "version-detection--curl-tar--default-args": {
+      "name": "version-detection--curl-tar--default-args",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/version-detection--curl-tar--default-args/version-detection--curl-tar--default-args.tool.ts",
+      "binaries": ["version-detection--curl-tar--default-args"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "curl-tar",
+      "installParams": {
+        "url": "http://127.0.0.1:8765/mock-install-version-detection-curl-tar-default-args.tar.gz",
+        "env": { "INSTALL_DIR": "{stagingDir}" }
+      }
+    },
+    "version-detection--curl-script--default-args": {
+      "name": "version-detection--curl-script--default-args",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/version-detection--curl-script--default-args/version-detection--curl-script--default-args.tool.ts",
+      "binaries": ["version-detection--curl-script--default-args"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "curl-script",
+      "installParams": {
+        "url": "http://127.0.0.1:8765/mock-install-version-detection-curl-script-default-args.sh",
+        "shell": "sh"
+      }
+    },
+    "cargo-quickinstall-tool": {
+      "name": "cargo-quickinstall-tool",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/cargo-quickinstall-tool/cargo-quickinstall-tool.tool.ts",
+      "binaries": ["cargo-quickinstall-tool"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {
+        "zsh": {
+          "env": {
+            "CARGO_QUICKINSTALL_TOOL_DEFAULT_OPTS": "--color=fg",
+            "CARGO_QUICKINSTALL_TOOL_OTHER_OPTS": "--arg=1"
+          },
+          "aliases": { "cqt": "cargo-quickinstall-tool --preview \"ps -f -p {+}\"" },
+          "scripts": [
+            { "kind": "once", "value": "\n          echo \"once from cargo-quickinstall-tool\"\n        " },
+            { "kind": "always", "value": "\n          echo \"always from cargo-quickinstall-tool\"\n        " }
+          ],
+          "completions": "shell/completion.zsh",
+          "functions": {},
+          "paths": []
+        }
+      },
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "cargo",
+      "installParams": { "crateName": "cargo-quickinstall-tool" }
+    },
+    "version-detection--curl-binary--default-args": {
+      "name": "version-detection--curl-binary--default-args",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/version-detection--curl-binary--default-args/version-detection--curl-binary--default-args.tool.ts",
+      "binaries": ["version-detection--curl-binary--default-args"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "curl-binary",
+      "installParams": {
+        "url": "http://127.0.0.1:8765/mock-binary-version-detection-curl-binary-default-args",
+        "env": { "INSTALL_DIR": "{stagingDir}" }
+      }
+    },
+    "github-release-tool": {
+      "name": "github-release-tool",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/github-release-tool/github-release-tool.tool.ts",
+      "binaries": ["github-release-tool"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {
+        "zsh": {
+          "env": { "GITHUB_RELEASE_TOOL_DEFAULT_OPTS": "--color=fg", "GITHUB_RELEASE_TOOL_OTHER_OPTS": "--arg=1" },
+          "aliases": { "grt": "github-release-tool --preview \"ps -f -p {+}\"" },
+          "scripts": [
+            { "kind": "once", "value": "\n          echo \"echo from github-release-tool\"\n        " },
+            { "kind": "always", "value": "\n          echo \"always from github-release-tool\"\n        " }
+          ],
+          "completions": "./github-release-tool.completion.sh",
+          "functions": {},
+          "paths": []
+        }
+      },
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "github-release",
+      "installParams": { "repo": "repo/github-release-tool" }
+    },
+    "curl-script--cmd-completion-test": {
+      "name": "curl-script--cmd-completion-test",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/curl-script--cmd-completion-test/curl-script--cmd-completion-test.tool.ts",
+      "binaries": ["curl-script--cmd-completion-test"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {
+        "zsh": {
+          "env": {},
+          "aliases": {},
+          "scripts": [],
+          "completions": { "cmd": "curl-script--cmd-completion-test completions zsh" },
+          "functions": {},
+          "paths": []
+        },
+        "bash": {
+          "env": {},
+          "aliases": {},
+          "scripts": [],
+          "completions": { "cmd": "curl-script--cmd-completion-test completions bash" },
+          "functions": {},
+          "paths": []
+        }
+      },
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "curl-script",
+      "installParams": { "url": "http://127.0.0.1:8765/mock-install-for-cmd-completion-test.sh", "shell": "bash" }
+    },
+    "hook-test-tool": {
+      "name": "hook-test-tool",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/hook-test-tool/hook-test-tool.tool.ts",
+      "binaries": ["hook-test-tool"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "github-release",
+      "installParams": { "repo": "repo/hook-test-tool", "hooks": { "after-install": [null] } }
+    },
+    "version-detection--curl-binary--with-args": {
+      "name": "version-detection--curl-binary--with-args",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/version-detection--curl-binary--with-args/version-detection--curl-binary--with-args.tool.ts",
+      "binaries": ["version-detection--curl-binary--with-args"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "curl-binary",
+      "installParams": {
+        "url": "http://127.0.0.1:8765/mock-binary-version-detection-curl-binary-with-args",
+        "versionArgs": ["--version"],
+        "versionRegex": "version-detection--curl-binary--with-args (\\d+\\.\\d+\\.\\d+)",
+        "env": { "INSTALL_DIR": "{stagingDir}" }
+      }
+    },
+    "gitea-release-tool": {
+      "name": "gitea-release-tool",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/gitea-release-tool/gitea-release-tool.tool.ts",
+      "binaries": ["gitea-release-tool"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {
+        "zsh": {
+          "env": { "GITEA_RELEASE_TOOL_OPTS": "--color=auto" },
+          "aliases": { "grt2": "gitea-release-tool --verbose" },
+          "scripts": [],
+          "completions": null,
+          "functions": {},
+          "paths": []
+        }
+      },
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "gitea-release",
+      "installParams": { "instanceUrl": "http://127.0.0.1:8765", "repo": "repo/gitea-release-tool" }
+    },
+    "version-detection--curl-script--no-version": {
+      "name": "version-detection--curl-script--no-version",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/version-detection--curl-script--no-version/version-detection--curl-script--no-version.tool.ts",
+      "binaries": ["version-detection--curl-script--no-version"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "curl-script",
+      "installParams": {
+        "url": "http://127.0.0.1:8765/mock-install-version-detection-curl-script-no-version.sh",
+        "shell": "sh"
+      }
+    },
+    "version-detection--curl-tar--with-args": {
+      "name": "version-detection--curl-tar--with-args",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/version-detection--curl-tar--with-args/version-detection--curl-tar--with-args.tool.ts",
+      "binaries": ["version-detection--curl-tar--with-args"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "curl-tar",
+      "installParams": {
+        "url": "http://127.0.0.1:8765/mock-install-version-detection-curl-tar-with-args.tar.gz",
+        "versionArgs": ["--version"],
+        "versionRegex": {},
+        "env": { "INSTALL_DIR": "{stagingDir}" }
+      }
+    },
+    "install-by-binary-tool": {
+      "name": "install-by-binary-tool",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/install-by-binary-tool/install-by-binary-tool.tool.ts",
+      "binaries": ["my-custom-binary"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "github-release",
+      "installParams": { "repo": "repo/install-by-binary-tool" }
+    },
+    "version-detection--curl-script--with-args": {
+      "name": "version-detection--curl-script--with-args",
+      "version": "latest",
+      "configFilePath": "/home/alex/development/projects/dotfiles-installer/.workspaces/wave-6-go-transition/tests/e2e/fixtures/main/tools/version-detection--curl-script--with-args/version-detection--curl-script--with-args.tool.ts",
+      "binaries": ["version-detection--curl-script--with-args"],
+      "dependencies": [],
+      "disabled": false,
+      "hostname": "",
+      "sudo": false,
+      "shellConfigs": {},
+      "symlinks": [],
+      "copies": [],
+      "updateCheck": null,
+      "installationMethod": "curl-script",
+      "installParams": {
+        "url": "http://127.0.0.1:8765/mock-install-version-detection-curl-script-with-args.sh",
+        "shell": "sh",
+        "versionArgs": ["--version"],
+        "versionRegex": "version-detection--curl-script--with-args (\\d+\\.\\d+\\.\\d+)"
+      }
+    }
+  }
+}

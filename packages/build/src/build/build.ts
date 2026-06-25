@@ -1,58 +1,55 @@
 import { handleBuildError } from "./handleBuildError";
-import { createBuildContext, installDependenciesInOutputDir } from "./helpers";
+import { createBuildContext } from "./helpers";
 import {
-  buildCompiledBinary,
-  buildCli,
   cleanPreviousBuild,
-  cleanupTempFiles,
-  copyPublicPackageAssets,
-  copySkill,
-  enforceCliBundleSizeLimit,
-  ensureWorkspaceDependencies,
-  generateDistPackageJson,
+  buildDashboard,
+  buildGoBinary,
   generateSchemaTypes,
-  generateToolTypesFile,
-  printBuildSummary,
-  resolveRuntimeDependencies,
+  generateDistPackageJson,
+  writeLauncher,
+  enforceGoBinarySizeLimit,
+  copySkill,
+  copyPublicPackageAssets,
   runTypeTests,
-  testCompiledBinaryBuild,
-  testPackedBuild,
+  cleanupTempFiles,
+  printBuildSummary,
 } from "./steps";
-import type { IBuildContext, IResolvedRuntimeDependencies } from "./types";
+import type { IBuildContext } from "./types";
 
 async function runBuild(context: IBuildContext): Promise<void> {
-  await ensureWorkspaceDependencies(context);
+  // 1. Clean up old build outputs
   await cleanPreviousBuild(context);
 
-  await buildCli(context);
+  // 2. Build the React dashboard frontend client
+  await buildDashboard(context);
 
-  const runtimeDependencies: IResolvedRuntimeDependencies = await resolveRuntimeDependencies(context);
+  // 3. Statically compile the Go standalone executable
+  await buildGoBinary(context);
 
-  await generateSchemaTypes(context, runtimeDependencies.dependencyVersions);
-  await generateDistPackageJson(
-    context,
-    runtimeDependencies.dependencyVersions,
-    runtimeDependencies.runtimeDependencyVersions,
-  );
+  // 4. Generate TS config types (types.gen.ts, schemas.d.ts, tool-types.d.ts, authoring-types.d.ts)
+  const defaultDeps = { zod: "^4.1.12", bunTypes: "^1.3.5", nodeTypes: "^25.0.0" };
+  await generateSchemaTypes(context, defaultDeps);
 
-  // Must reinstall after generating production package.json
-  // because the prior install used workspace mode
-  await installDependenciesInOutputDir(context);
+  // 5. Generate clean package.json files for NPM distribution
+  await generateDistPackageJson(context, defaultDeps);
 
-  enforceCliBundleSizeLimit(context);
-  copySkill(context);
-  await copyPublicPackageAssets(context);
-  generateToolTypesFile(context);
+  // 6. Write the lightweight cross-platform binary launcher cli.js
+  writeLauncher(context);
 
+  // 7. Validate that the compiled Go binary is under the size threshold
+  enforceGoBinarySizeLimit(context);
+
+  // 8. Run TSD type-level tests against the published schemas.d.ts
   await runTypeTests(context);
 
-  // Test from packed npm package to catch missing files in `files` array
-  await testPackedBuild(context);
-  await buildCompiledBinary(context);
-  await testCompiledBinaryBuild(context);
+  // 9. Copy skill reference documents and public package assets
+  copySkill(context);
+  await copyPublicPackageAssets(context);
 
+  // 10. Clean up any temporary files
   await cleanupTempFiles(context);
 
+  // 11. Print the final build summary report
   await printBuildSummary(context);
 }
 

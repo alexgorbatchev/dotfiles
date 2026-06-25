@@ -35,8 +35,10 @@ function defineTool(callback) {
     symlinks: [],
     shellConfigs: {},
 
-    bin(name) {
-      if (Array.isArray(name)) {
+    bin(name, pattern) {
+      if (pattern !== undefined) {
+        this.binaries.push({ name: name, pattern: pattern });
+      } else if (Array.isArray(name)) {
         this.binaries = name;
       } else {
         this.binaries = Array.prototype.slice.call(arguments);
@@ -46,6 +48,32 @@ function defineTool(callback) {
 
     version(v) {
       this.version = v;
+      return this;
+    },
+
+    sudo() {
+      this.sudo = true;
+      return this;
+    },
+
+    disable() {
+      this.disabled = true;
+      return this;
+    },
+
+    hostname(pattern) {
+      this.hostname = pattern;
+      return this;
+    },
+
+    updateCheck(config) {
+      this.updateCheck = config;
+      return this;
+    },
+
+    copy(src, dst) {
+      this.copies = this.copies || [];
+      this.copies.push({ source: src, target: dst });
       return this;
     },
 
