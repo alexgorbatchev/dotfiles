@@ -43,6 +43,10 @@ func NewConnection(ctx context.Context, dsn string) (*sql.DB, error) {
 		db.Close()
 		return nil, fmt.Errorf("failed to enable WAL mode: %w", err)
 	}
+	if _, err := db.ExecContext(ctx, "PRAGMA synchronous=NORMAL;"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to set synchronous mode: %w", err)
+	}
 	if _, err := db.ExecContext(ctx, "PRAGMA busy_timeout=5000;"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to set busy timeout: %w", err)

@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestNewConnectionInMemory(t *testing.T) {
@@ -142,5 +144,65 @@ func TestMigrateAddInstallMethod(t *testing.T) {
 	// Running migration again should be safe and do nothing
 	if err := migrateAddInstallMethod(ctx, db); err != nil {
 		t.Fatalf("Subsequent migration call failed: %v", err)
+	}
+}
+
+func TestNewConnectionPragmasAndConcurrency(t *testing.T) {
+	ctx := context.Background()
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	db, err := NewConnection(ctx, dsn)
+	if err != nil {
+		t.Fatalf("Failed to open connection: %v", err)
+	}
+	defer db.Close()
+
+	// 1. Verify synchronous pragma is NORMAL (1)
+	var syncMode int
+	err = db.QueryRowContext(ctx, "PRAGMA synchronous").Scan(&syncMode)
+	if err != nil {
+		t.Fatalf("failed to query synchronous pragma: %v", err)
+	}
+	if syncMode != 1 {
+		t.Errorf("expected synchronous mode to be 1 (NORMAL), got %d", syncMode)
+	}
+
+	// 2. Verify busy timeout is set (5000 milliseconds)
+	var busyTimeout int
+	err = db.QueryRowContext(ctx, "PRAGMA busy_timeout").Scan(&busyTimeout)
+	if err != nil {
+		t.Fatalf("failed to query busy_timeout pragma: %v", err)
+	}
+	if busyTimeout != 5000 {
+		t.Errorf("expected busy_timeout to be 5000, got %d", busyTimeout)
+	}
+
+	// 3. Verify concurrent writes succeed without locks/crashes
+	const goroutinesCount = 10
+	var wg sync.WaitGroup
+	wg.Add(goroutinesCount)
+
+	for i := 0; i < goroutinesCount; i++ {
+		go func(id int) {
+			defer wg.Done()
+			toolName := fmt.Sprintf("tool-%d", id)
+			_, err := db.ExecContext(ctx, `
+				INSERT OR REPLACE INTO tool_usage (tool_name, binary_name, usage_count, last_used_at)
+				VALUES (?, 'bin', 1, ?)`, toolName, time.Now().Unix())
+			if err != nil {
+				t.Errorf("concurrent insert failed: %v", err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify all records were written
+	var count int
+	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tool_usage").Scan(&count)
+	if err != nil {
+		t.Fatalf("failed to query tool_usage count: %v", err)
+	}
+	if count != goroutinesCount {
+		t.Errorf("expected %d tool_usage records, got %d", goroutinesCount, count)
 	}
 }
