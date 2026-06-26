@@ -15,26 +15,48 @@ type osCmd struct {
 	cmd *exec.Cmd
 }
 
-func (c *osCmd) checkSudo() {
+// SudoPreflightCommand defines the command used for non-blocking sudo verification.
+// Overridden in tests to avoid dependency on host sudo privileges.
+var SudoPreflightCommand = []string{"sudo", "-n", "true"}
+
+func isStdinTerminal(stdin io.Reader) bool {
+	if stdin == nil {
+		return isatty.IsTerminal(os.Stdin.Fd())
+	}
+	if f, ok := stdin.(*os.File); ok {
+		return isatty.IsTerminal(f.Fd())
+	}
+	return false
+}
+
+func (c *osCmd) checkSudo() error {
 	if len(c.cmd.Args) > 0 && c.cmd.Args[0] == "sudo" {
-		isTTY := isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsTerminal(os.Stdout.Fd())
+		isTTY := isStdinTerminal(c.cmd.Stdin) && isatty.IsTerminal(os.Stdout.Fd())
 		if !isTTY {
-			fmt.Fprintln(os.Stderr, "WARNING: Executing sudo command in non-interactive / non-TTY environment.")
+			cmdCheck := exec.Command(SudoPreflightCommand[0], SudoPreflightCommand[1:]...)
+			if err := cmdCheck.Run(); err != nil {
+				return fmt.Errorf("headless environment requires passwordless sudo access for elevated configurations: %w", err)
+			}
 		} else {
 			fmt.Fprintln(os.Stderr, "WARNING: Executing elevated privilege (sudo) command.")
 		}
 	}
+	return nil
 }
 
 // Run starts the specified command and waits for it to complete.
 func (c *osCmd) Run() error {
-	c.checkSudo()
+	if err := c.checkSudo(); err != nil {
+		return err
+	}
 	return c.cmd.Run()
 }
 
 // Start starts the specified command but does not wait for it to complete.
 func (c *osCmd) Start() error {
-	c.checkSudo()
+	if err := c.checkSudo(); err != nil {
+		return err
+	}
 	return c.cmd.Start()
 }
 
@@ -45,13 +67,17 @@ func (c *osCmd) Wait() error {
 
 // Output runs the command and returns its standard output.
 func (c *osCmd) Output() ([]byte, error) {
-	c.checkSudo()
+	if err := c.checkSudo(); err != nil {
+		return nil, err
+	}
 	return c.cmd.Output()
 }
 
 // CombinedOutput runs the command and returns its combined standard output and standard error.
 func (c *osCmd) CombinedOutput() ([]byte, error) {
-	c.checkSudo()
+	if err := c.checkSudo(); err != nil {
+		return nil, err
+	}
 	return c.cmd.CombinedOutput()
 }
 

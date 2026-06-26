@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -187,6 +189,68 @@ func TestMockRunner(t *testing.T) {
 		}
 		if err := cmd.Wait(); err != nil {
 			t.Errorf("unexpected Wait error: %v", err)
+		}
+	})
+}
+
+func TestSudoPreflightCheck(t *testing.T) {
+	// Save the original pre-flight command and restore after the test
+	origPreflight := SudoPreflightCommand
+	defer func() {
+		SudoPreflightCommand = origPreflight
+	}()
+
+	runner := NewOSRunner()
+
+	t.Run("headless missing passwordless sudo", func(t *testing.T) {
+		// Simulate headless environment (stdin is a buffer, not a terminal)
+		// and passwordless sudo missing (preflight command 'false' fails)
+		SudoPreflightCommand = []string{"false"}
+
+		cmd := runner.Command("sudo", "echo", "hello")
+		var stdinBuf bytes.Buffer
+		cmd.SetStdin(&stdinBuf)
+
+		err := cmd.Run()
+		if err == nil {
+			t.Fatal("expected error in headless env with failing sudo check, got nil")
+		}
+		if !strings.Contains(err.Error(), "headless environment requires passwordless sudo access") {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	})
+
+	t.Run("headless with active passwordless sudo", func(t *testing.T) {
+		// Create a temporary directory and write a mock "sudo" script
+		tmpDir := t.TempDir()
+		mockSudoPath := filepath.Join(tmpDir, "sudo")
+		
+		// The mock "sudo" script simply executes whatever arguments are passed to it
+		scriptContent := "#!/bin/sh\nexec \"$@\"\n"
+		if err := os.WriteFile(mockSudoPath, []byte(scriptContent), 0755); err != nil {
+			t.Fatalf("failed to write mock sudo: %v", err)
+		}
+
+		// Prepend the temp directory containing mock "sudo" to PATH
+		origPath := os.Getenv("PATH")
+		defer os.Setenv("PATH", origPath)
+		os.Setenv("PATH", tmpDir+string(filepath.ListSeparator)+origPath)
+
+		// Simulate headless environment but passwordless sudo is active
+		SudoPreflightCommand = []string{"true"}
+
+		// Run a simple echo command prepended with sudo
+		cmd := runner.Command("sudo", "echo", "hello-sudo")
+		var stdinBuf bytes.Buffer
+		cmd.SetStdin(&stdinBuf)
+
+		output, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		got := strings.TrimSpace(string(output))
+		if got != "hello-sudo" {
+			t.Errorf("expected 'hello-sudo', got %q", got)
 		}
 	})
 }
