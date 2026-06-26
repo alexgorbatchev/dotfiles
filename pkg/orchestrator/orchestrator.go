@@ -22,6 +22,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/shellinit"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
+	"github.com/alexgorbatchev/dotfiles/pkg/version"
 	"github.com/google/uuid"
 )
 
@@ -239,9 +240,19 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		}
 
 		if isAutoInstall(tool) {
-			o.logger.Info(logger.Message(fmt.Sprintf("Installing tool: %s", tool.Name)))
-			if err := o.InstallTool(ctx, tool, projCfg); err != nil {
-				o.logger.GetSubLogger("", tool.Name).Error("Auto-install failed", err)
+			skip, err := o.shouldSkipInstallation(ctx, tool, projCfg)
+			if err != nil {
+				return err
+			}
+			if !skip {
+				o.logger.Info(logger.Message(fmt.Sprintf("Installing tool: %s", tool.Name)))
+				if err := o.InstallTool(ctx, tool, projCfg); err != nil {
+					o.logger.GetSubLogger("", tool.Name).Error("Auto-install failed", err)
+				}
+			} else {
+				if err := o.GenerateTool(ctx, tool, projCfg); err != nil {
+					return fmt.Errorf("generating tool %q: %w", tool.Name, err)
+				}
 			}
 		} else {
 			if err := o.GenerateTool(ctx, tool, projCfg); err != nil {
@@ -358,6 +369,14 @@ func isAutoInstall(tool *config.ToolConfig) bool {
 func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	if projCfg == nil {
 		return fmt.Errorf("project configuration is nil")
+	}
+
+	skip, err := o.shouldSkipInstallation(ctx, tool, projCfg)
+	if err != nil {
+		return err
+	}
+	if skip {
+		return o.GenerateTool(ctx, tool, projCfg)
 	}
 
 	if tool.InstallationMethod == "" {
@@ -1111,4 +1130,94 @@ func (o *Orchestrator) getCliCommand() string {
 	}
 
 	return execPath
+}
+
+func (o *Orchestrator) isExistingInstallationHealthy(ctx context.Context, toolName string, existingInstallation *registry.ToolInstallationRecord, tool *config.ToolConfig, projCfg *config.ProjectConfig) bool {
+	// 1. Check if existingInstallation.InstallPath exists on disk
+	exists, err := o.fs.Exists(existingInstallation.InstallPath)
+	if err != nil || !exists {
+		o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Existing install path missing: %s", existingInstallation.InstallPath)))
+		return false
+	}
+
+	// 2. Check if the current symlink exists and target exists
+	expectedBinaryNames := getBinaryNames(tool.Binaries)
+	if len(expectedBinaryNames) == 0 {
+		return true
+	}
+
+	currentDir := filepath.Join(projCfg.Paths.BinariesDir, toolName, "current")
+	currentDirExists, err := o.fs.Exists(currentDir)
+	if err != nil || !currentDirExists {
+		o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current directory missing: %s", currentDir)))
+		return false
+	}
+
+	for _, binName := range expectedBinaryNames {
+		binaryPath := filepath.Join(currentDir, binName)
+		binExists, err := o.fs.Exists(binaryPath)
+		if err != nil || !binExists {
+			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current binary missing: %s", binaryPath)))
+			return false
+		}
+	}
+
+	return true
+}
+
+func isExactTopLevelVersion(v string) bool {
+	if strings.ContainsAny(v, "^~><=") {
+		return false
+	}
+	return true
+}
+
+func (o *Orchestrator) getTargetVersion(tool *config.ToolConfig) string {
+	switch tool.InstallationMethod {
+	case "apt", "dnf", "pacman":
+		if tool.InstallParams != nil {
+			if v, ok := tool.InstallParams["version"].(string); ok && v != "latest" {
+				return version.CleanVersion(v)
+			}
+		}
+		return ""
+	}
+
+	if tool.Version != nil && *tool.Version != "" && *tool.Version != "latest" && isExactTopLevelVersion(*tool.Version) {
+		return version.CleanVersion(*tool.Version)
+	}
+
+	return ""
+}
+
+func (o *Orchestrator) shouldSkipInstallation(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) (bool, error) {
+	if os.Getenv("DOTFILES_OVERWRITE") == "true" {
+		return false, nil
+	}
+
+	existing, err := o.reg.GetToolInstallation(ctx, tool.Name)
+	if err != nil {
+		return false, fmt.Errorf("checking existing installation: %w", err)
+	}
+	if existing == nil {
+		return false, nil
+	}
+
+	isHealthy := o.isExistingInstallationHealthy(ctx, tool.Name, existing, tool, projCfg)
+	if !isHealthy {
+		return false, nil
+	}
+
+	targetVersion := o.getTargetVersion(tool)
+	if targetVersion != "" {
+		if version.CleanVersion(existing.Version) == targetVersion {
+			o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Tool %s already installed at version %s", tool.Name, targetVersion)))
+			return true, nil
+		}
+		o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Tool %s has outdated version %s (target is %s)", tool.Name, existing.Version, targetVersion)))
+		return false, nil
+	}
+
+	o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Tool %s already installed (version: %s)", tool.Name, existing.Version)))
+	return true, nil
 }

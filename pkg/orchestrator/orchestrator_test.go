@@ -25,6 +25,7 @@ type mockInstaller struct {
 	lastTool     *config.ToolConfig
 	binaries     []string
 	err          error
+	installCount int
 }
 
 func (m *mockInstaller) Name() string {
@@ -36,6 +37,7 @@ func (m *mockInstaller) SupportsSudo() bool {
 }
 
 func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
+	m.installCount++
 	m.lastTool = tool
 	if m.err != nil {
 		return nil, m.err
@@ -470,6 +472,21 @@ func TestOrchestrator_Generate(t *testing.T) {
 	}
 	if autoRec.Version != "1.2.3" {
 		t.Errorf("expected auto tool version to be '1.2.3', got %s", autoRec.Version)
+	}
+
+	// Now write expected binaries to filesystem so that the installation is healthy
+	_ = fsys.MkdirAll("/home/user/binaries/auto-tool/current", 0755)
+	_ = fsys.WriteFile("/home/user/binaries/auto-tool/current/auto-bin", []byte("bin content"), 0755)
+
+	// Run GenerateTools a second time
+	err = orch.GenerateTools(ctx, []*config.ToolConfig{standardTool, autoTool}, projCfg)
+	if err != nil {
+		t.Fatalf("unexpected generation pipeline failure on second run: %v", err)
+	}
+
+	// Verify that mockInst.Install was NOT called again (installCount should remain 1)
+	if mockInst.installCount != 1 {
+		t.Errorf("expected mockInst.Install to only be called once, but was called %d times", mockInst.installCount)
 	}
 }
 
