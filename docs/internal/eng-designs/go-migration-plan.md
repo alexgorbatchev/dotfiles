@@ -122,30 +122,30 @@ The folder structure must be:
 
 ### Directory Mapping
 
-| TS Workspace Package           | Go Subpackage Path | Primary Responsibility                                                                                         |
-| ------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `utils`                        | `pkg/utils`        | Pure functional helpers (strings, lists, slices).                                                              |
-| `logger`                       | `pkg/logger`       | `log/slog` wrapper implementing tab-delimited user-facing log format.                                          |
-| `arch`                         | `pkg/arch`         | OS and CPU hardware mappings, Libc detection.                                                                  |
-| `file-system`                  | `pkg/fs`           | Interface `FS` with standard OS and MemFS, and the database-transactional low-level TrackedFS interceptor.     |
-| `downloader`                   | `pkg/downloader`   | HTTP client with resume-capability, SHA256 validation.                                                         |
-| `archive-extractor`            | `pkg/archive`      | Wrapper around `archive/tar`, `archive/zip` and external format invocation.                                    |
-| `unwrap-value`                 | `pkg/unwrap`       | Pattern replacer (e.g., `{{ .Version }}`, `{{ .Arch }}`).                                                      |
-| `version-checker`              | `pkg/version`      | Evaluator of semver boundaries and local/remote versions.                                                      |
-| `config`                       | `pkg/config`       | Struct schemas for configuration files, also hosting structs that generate TS types.                           |
+| TS Workspace Package           | Go Subpackage Path | Primary Responsibility                                                                                        |
+| ------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `utils`                        | `pkg/utils`        | Pure functional helpers (strings, lists, slices).                                                             |
+| `logger`                       | `pkg/logger`       | `log/slog` wrapper implementing tab-delimited user-facing log format.                                         |
+| `arch`                         | `pkg/arch`         | OS and CPU hardware mappings, Libc detection.                                                                 |
+| `file-system`                  | `pkg/fs`           | Interface `FS` with standard OS and MemFS, and the database-transactional low-level TrackedFS interceptor.    |
+| `downloader`                   | `pkg/downloader`   | HTTP client with resume-capability, SHA256 validation.                                                        |
+| `archive-extractor`            | `pkg/archive`      | Wrapper around `archive/tar`, `archive/zip` and external format invocation.                                   |
+| `unwrap-value`                 | `pkg/unwrap`       | Pattern replacer (e.g., `{{ .Version }}`, `{{ .Arch }}`).                                                     |
+| `version-checker`              | `pkg/version`      | Evaluator of semver boundaries and local/remote versions.                                                     |
+| `config`                       | `pkg/config`       | Struct schemas for configuration files, also hosting structs that generate TS types.                          |
 | `tool-config-builder` & `core` | `pkg/vm`           | Pure-Go **Goja** Javascript VM initializer, custom Go-to-JS bindings, and TypeScript bundle execution runner. |
-| `registry-database`            | `pkg/db`           | Pure-Go SQLite database connections, schema provisioning, and transactional engines.                           |
-| `registry`                     | `pkg/registry`     | DB access models for `file_operations` and `tool_installations`.                                               |
-| `shell-emissions`              | `pkg/shell`        | Generating alias, export, and path extension directives.                                                       |
-| `shell-init-generator`         | `pkg/shellinit`    | Injects dotfiles setup blocks and sources into Shell profile scripts (`.zshrc`, `.bashrc`).                    |
-| `symlink-generator`            | `pkg/symlink`      | Evaluator and creator of system symbolic links.                                                                |
-| `shim-generator`               | `pkg/shim`         | Generates shell executable script shims.                                                                       |
-| `virtual-env`                  | `pkg/venv`         | Manages localized environment sandboxes.                                                                       |
-| `generator-orchestrator`       | `pkg/orchestrator` | Coordinates standalone generators, runs auto-installs, and manages file cleanups cleanly.                      |
-| `installer`                    | `pkg/installer`    | Core interfaces, execution state management, and the 15 installer plugins.                                     |
-| `features`                     | `pkg/features`     | Handles documentation rendering, README parsing, and caching.                                                  |
-| `dashboard`                    | `pkg/dashboard`    | Embedded static dashboard webassets running on a `net/http` backend.                                           |
-| `http-proxy`                   | `pkg/proxy`        | Local asset caching proxy.                                                                                     |
+| `registry-database`            | `pkg/db`           | Pure-Go SQLite database connections, schema provisioning, and transactional engines.                          |
+| `registry`                     | `pkg/registry`     | DB access models for `file_operations` and `tool_installations`.                                              |
+| `shell-emissions`              | `pkg/shell`        | Generating alias, export, and path extension directives.                                                      |
+| `shell-init-generator`         | `pkg/shellinit`    | Injects dotfiles setup blocks and sources into Shell profile scripts (`.zshrc`, `.bashrc`).                   |
+| `symlink-generator`            | `pkg/symlink`      | Evaluator and creator of system symbolic links.                                                               |
+| `shim-generator`               | `pkg/shim`         | Generates shell executable script shims.                                                                      |
+| `virtual-env`                  | `pkg/venv`         | Manages localized environment sandboxes.                                                                      |
+| `generator-orchestrator`       | `pkg/orchestrator` | Coordinates standalone generators, runs auto-installs, and manages file cleanups cleanly.                     |
+| `installer`                    | `pkg/installer`    | Core interfaces, execution state management, and the 15 installer plugins.                                    |
+| `features`                     | `pkg/features`     | Handles documentation rendering, README parsing, and caching.                                                 |
+| `dashboard`                    | `pkg/dashboard`    | Embedded static dashboard webassets running on a `net/http` backend.                                          |
+| `http-proxy`                   | `pkg/proxy`        | Local asset caching proxy.                                                                                    |
 
 ---
 

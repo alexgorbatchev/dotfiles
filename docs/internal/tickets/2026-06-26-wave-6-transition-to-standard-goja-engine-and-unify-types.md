@@ -9,7 +9,7 @@ ticket_status: open
 
 ## Problem
 
-Currently, the configuration loading and evaluation pipeline relies on Grafana's specialized load-testing fork **Sobek** (`github.com/grafana/sobek`). Because of Sobek's divergent package paths and internal types, we are unable to leverage standard Goja-compatible ecosystem libraries such as **`github.com/dop251/goja_nodejs/require`**. 
+Currently, the configuration loading and evaluation pipeline relies on Grafana's specialized load-testing fork **Sobek** (`github.com/grafana/sobek`). Because of Sobek's divergent package paths and internal types, we are unable to leverage standard Goja-compatible ecosystem libraries such as **`github.com/dop251/goja_nodejs/require`**.
 
 Additionally, this packaging split forces our build pipeline to duplicate and hardcode public-facing TypeScript autocomplete type signatures as static, plain-string templates inside `packages/build/src/build/steps/generateSchemaTypes.ts`, which prevents `pkg/vm/loader-api.ts` from reusing them and introduces severe type-maintenance risks and contract-drift regressions.
 
