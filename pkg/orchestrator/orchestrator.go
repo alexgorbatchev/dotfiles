@@ -627,6 +627,11 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		}
 	}
 
+	// 6. Generate completions (matches TS reconcileToolArtifacts)
+	if err := o.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
+		o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Failed to generate completions: %v", err)))
+	}
+
 	return nil
 }
 
@@ -908,70 +913,6 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					}
 				}
 
-				// 9. Completions
-				if stc.Completions != nil && (sh == "zsh" || sh == "bash") {
-					var completionFileName string
-					if sh == "zsh" {
-						completionFileName = "_" + tool.Name
-					} else {
-						completionFileName = tool.Name
-					}
-
-					completionsDir := filepath.Join(shellScriptsDir, sh, "completions")
-					if err := fsys.MkdirAll(completionsDir, 0755); err != nil {
-						return err
-					}
-					completionFilePath := filepath.Join(completionsDir, completionFileName)
-
-					switch comp := stc.Completions.(type) {
-					case string:
-						var srcPath string
-						if filepath.IsAbs(comp) {
-							srcPath = comp
-						} else {
-							srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), comp)
-						}
-						srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
-						if err == nil {
-							_ = fsys.Symlink(srcPathResolved, completionFilePath)
-						}
-					case map[string]interface{}:
-						if cmdVal, ok := comp["cmd"].(string); ok && cmdVal != "" {
-							cmdValResolved, err := o.resolvePlaceholder(cmdVal, tool, projCfg)
-							if err == nil {
-								parts := strings.Fields(cmdValResolved)
-								if len(parts) > 0 {
-									cmdName := parts[0]
-									if !strings.Contains(cmdName, "/") && !strings.Contains(cmdName, "\\") {
-										targetPath := filepath.Join(projCfg.Paths.TargetDir, cmdName)
-										if exists, err := fsys.Exists(targetPath); err == nil && exists {
-											cmdName = targetPath
-										}
-									}
-									cmdExec := o.runner.CommandContext(ctx, cmdName, parts[1:]...)
-									pathEnv := os.Getenv("PATH")
-									newPathEnv := projCfg.Paths.TargetDir + string(filepath.ListSeparator) + pathEnv
-									cmdExec.SetEnv(append(os.Environ(), "PATH="+newPathEnv))
-									output, err := cmdExec.Output()
-									if err == nil {
-										_ = fsys.WriteFile(completionFilePath, output, 0644)
-									}
-								}
-							}
-						} else if srcVal, ok := comp["source"].(string); ok && srcVal != "" {
-							var srcPath string
-							if filepath.IsAbs(srcVal) {
-								srcPath = srcVal
-							} else {
-								srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), srcVal)
-							}
-							srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
-							if err == nil {
-								_ = fsys.Symlink(srcPathResolved, completionFilePath)
-							}
-						}
-					}
-				}
 			}
 
 			// Add dynamic once-scripts glob matching loop if any once scripts were created
@@ -1220,4 +1161,102 @@ func (o *Orchestrator) shouldSkipInstallation(ctx context.Context, tool *config.
 
 	o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Tool %s already installed (version: %s)", tool.Name, existing.Version)))
 	return true, nil
+}
+
+// GenerateCompletionsForTool generates shell completion files for a single tool.
+func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
+	if projCfg == nil {
+		return fmt.Errorf("project configuration is nil")
+	}
+
+	shellScriptsDir := projCfg.Paths.ShellScriptsDir
+	if shellScriptsDir == "" {
+		shellScriptsDir = filepath.Join(projCfg.Paths.GeneratedDir, "shell-scripts")
+	}
+
+	for _, sh := range []string{"zsh", "bash"} {
+		var stc *config.ShellTypeConfig
+		if tool.ShellConfigs != nil {
+			if sh == "zsh" {
+				stc = tool.ShellConfigs.Zsh
+			} else if sh == "bash" {
+				stc = tool.ShellConfigs.Bash
+			}
+		}
+
+		if stc == nil || stc.Completions == nil {
+			continue
+		}
+
+		var completionFileName string
+		if sh == "zsh" {
+			completionFileName = "_" + tool.Name
+		} else {
+			completionFileName = tool.Name
+		}
+
+		completionsDir := filepath.Join(shellScriptsDir, sh, "completions")
+		err := o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+			fsys := o.getTrackedFS(ctx, tx, tool.Name, "completion")
+			if err := fsys.MkdirAll(completionsDir, 0755); err != nil {
+				return err
+			}
+			completionFilePath := filepath.Join(completionsDir, completionFileName)
+
+			switch comp := stc.Completions.(type) {
+			case string:
+				var srcPath string
+				if filepath.IsAbs(comp) {
+					srcPath = comp
+				} else {
+					srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), comp)
+				}
+				srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
+				if err == nil {
+					_ = fsys.Symlink(srcPathResolved, completionFilePath)
+				}
+			case map[string]interface{}:
+				if cmdVal, ok := comp["cmd"].(string); ok && cmdVal != "" {
+					cmdValResolved, err := o.resolvePlaceholder(cmdVal, tool, projCfg)
+					if err == nil {
+						parts := strings.Fields(cmdValResolved)
+						if len(parts) > 0 {
+							cmdName := parts[0]
+							if !strings.Contains(cmdName, "/") && !strings.Contains(cmdName, "\\") {
+								targetPath := filepath.Join(projCfg.Paths.TargetDir, cmdName)
+								if exists, err := fsys.Exists(targetPath); err == nil && exists {
+									cmdName = targetPath
+								}
+							}
+							cmdExec := o.runner.CommandContext(ctx, cmdName, parts[1:]...)
+							pathEnv := os.Getenv("PATH")
+							newPathEnv := projCfg.Paths.TargetDir + string(filepath.ListSeparator) + pathEnv
+							cmdExec.SetEnv(append(os.Environ(), "PATH="+newPathEnv))
+							output, err := cmdExec.Output()
+							if err == nil {
+								_ = fsys.WriteFile(completionFilePath, output, 0644)
+							}
+						}
+					}
+				} else if srcVal, ok := comp["source"].(string); ok && srcVal != "" {
+					var srcPath string
+					if filepath.IsAbs(srcVal) {
+						srcPath = srcVal
+					} else {
+						srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), srcVal)
+					}
+					srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
+					if err == nil {
+						_ = fsys.Symlink(srcPathResolved, completionFilePath)
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("generating completion for %s: %w", sh, err)
+		}
+	}
+
+	return nil
 }
