@@ -35,6 +35,9 @@ func TestCargoInstaller(t *testing.T) {
 			},
 		}
 
+		_ = fsys.MkdirAll("/test/bin/bin", 0755)
+		_ = fsys.WriteFile("/test/bin/bin/exa", []byte("mock binary"), 0755)
+
 		res, err := inst.Install(context.Background(), tool)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)

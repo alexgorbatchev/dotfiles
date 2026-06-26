@@ -65,8 +65,13 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		return nil, fmt.Errorf("cargo install %s: %w", crateName, err)
 	}
 
+	promotedBinaries, err := PromoteBinaries(c.fsys, c.BinDir, tool.Name, tool.Binaries)
+	if err != nil {
+		return nil, err
+	}
+
 	return &InstallResult{
-		Binaries: []string{tool.Name},
+		Binaries: promotedBinaries,
 	}, nil
 }
 
