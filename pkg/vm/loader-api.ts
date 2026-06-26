@@ -1,3 +1,13 @@
+import type {
+  Platform as DslPlatform,
+  Architecture as DslArchitecture,
+  ConfigFactory,
+  AsyncConfigureTool,
+} from "./dsl-types";
+
+export type Platform = DslPlatform;
+export type Architecture = DslArchitecture;
+
 export const Platform = {
   None: 0,
   Linux: 1,
@@ -84,12 +94,6 @@ export interface IToolBuilder {
   arch(arc: unknown, cb: ArchCallback): IToolBuilder;
 }
 
-export type ConfigFactory = (context: IConfigContext) => unknown;
-export type ToolFactory = (
-  install: (method: string, params?: unknown) => IToolBuilder,
-  ctx: IToolConfigContext,
-) => unknown;
-
 export interface IPathModule {
   isAbsolute(p: string): boolean;
   join(...args: string[]): string;
@@ -121,11 +125,14 @@ declare global {
 export type PlatformCallback = (install: (method: string, params?: unknown) => IToolBuilder) => void;
 export type ArchCallback = (install: (method: string, params?: unknown) => IToolBuilder) => void;
 export type ShellCallback = (shell: Record<string, unknown>) => void;
-export type DefineConfigCallback = ConfigFactory | unknown;
 
-export function defineConfig(callback: DefineConfigCallback): unknown {
+type ConfigRunner = (ctx: unknown) => unknown;
+type ToolRunner = (install: unknown, ctx: unknown) => unknown;
+
+export function defineConfig(callback: ConfigFactory): unknown {
   if (typeof callback === "function") {
-    return callback({
+    const fn = callback as ConfigRunner;
+    return fn({
       configFileDir: globalThis.configFileDir || "",
       systemInfo: {
         os: getOS(),
@@ -137,7 +144,7 @@ export function defineConfig(callback: DefineConfigCallback): unknown {
   return callback;
 }
 
-export function defineTool(callback: ToolFactory): unknown {
+export function defineTool(callback: AsyncConfigureTool): unknown {
   const builder: IToolBuilder = {
     name: "",
     installationMethod: "",
@@ -445,7 +452,8 @@ export function defineTool(callback: ToolFactory): unknown {
   };
 
   if (typeof callback === "function") {
-    const res = callback(install, toolCtx);
+    const fn = callback as ToolRunner;
+    const res = fn(install, toolCtx);
     if (builder.installParams && typeof builder.installParams === "object") {
       if (typeof builder.installParams["args"] === "function") {
         builder.installParams["args"] = (builder.installParams["args"] as Function)(toolCtx);

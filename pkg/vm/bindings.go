@@ -7,11 +7,11 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
-	"github.com/grafana/sobek"
+	"github.com/dop251/goja"
 )
 
 // RegisterBindings registers native Go utility functions and helper constants inside the Sobek runtime.
-func RegisterBindings(vm *sobek.Runtime) error {
+func RegisterBindings(vm *goja.Runtime) error {
 	_ = vm.Set("globalThis", vm.GlobalObject())
 	bindings := map[string]any{
 		"getOS":      arch.GetOS,
@@ -34,7 +34,7 @@ func RegisterBindings(vm *sobek.Runtime) error {
 }
 
 // RegisterContextBindings registers logging and filesystem bindings associated with the active execution environment.
-func RegisterContextBindings(vm *sobek.Runtime, log *logger.Logger, fsys fs.FS) error {
+func RegisterContextBindings(vm *goja.Runtime, log *logger.Logger, fsys fs.FS) error {
 	_ = vm.Set("logInfo", func(toolName, msg string) {
 		if log != nil {
 			log.WithName(toolName).Info(logger.Message(msg))

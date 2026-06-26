@@ -12,7 +12,8 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/evanw/esbuild/pkg/api"
-	"github.com/grafana/sobek"
+	"github.com/dop251/goja"
+	"github.com/dop251/goja_nodejs/require"
 )
 
 //go:embed loader-api.ts
@@ -208,7 +209,10 @@ func compileFile(entryPath string) (string, error) {
 }
 
 func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string) (*config.ProjectConfig, error) {
-	vm := sobek.New()
+	vm := goja.New()
+	registry := require.NewRegistry()
+	registry.Enable(vm)
+
 	if err := RegisterBindings(vm); err != nil {
 		return nil, fmt.Errorf("registering Go bindings: %w", err)
 	}
@@ -266,7 +270,10 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 }
 
 func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string, generatedDir string, binariesDir string) (*unifiedLoaderResult, error) {
-	vm := sobek.New()
+	vm := goja.New()
+	registry := require.NewRegistry()
+	registry.Enable(vm)
+
 	if err := RegisterBindings(vm); err != nil {
 		return nil, fmt.Errorf("registering Go bindings: %w", err)
 	}
@@ -305,12 +312,12 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	_ = vm.Set("exports", exportsObj)
 
 	if _, err := vm.RunString(jsContent); err != nil {
-		return nil, fmt.Errorf("executing script in Sobek VM: %w", err)
+		return nil, fmt.Errorf("executing script in Goja VM: %w", err)
 	}
 
 	// Retrieve dynamic loader results
 	loaderResultVal := vm.Get("__loaderResult")
-	if loaderResultVal == nil || sobek.IsUndefined(loaderResultVal) || sobek.IsNull(loaderResultVal) {
+	if loaderResultVal == nil || goja.IsUndefined(loaderResultVal) || goja.IsNull(loaderResultVal) {
 		return nil, fmt.Errorf("loader result __loaderResult is missing or undefined")
 	}
 

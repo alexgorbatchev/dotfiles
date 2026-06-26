@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/grafana/sobek"
+	"github.com/dop251/goja"
 )
 
 // getBootstrapJS returns the transpiled loader API JavaScript code.
@@ -17,7 +17,7 @@ func getBootstrapJS() string {
 // EvaluateToolDefinition runs the provided JavaScript/TypeScript script content inside a new sandboxed Sobek VM
 // and marshals the resulting configuration directly into the provided Go out structure.
 func EvaluateToolDefinition(scriptContent string, out any) error {
-	vm := sobek.New()
+	vm := goja.New()
 
 	if err := RegisterBindings(vm); err != nil {
 		return fmt.Errorf("registering Go bindings: %w", err)
@@ -60,16 +60,16 @@ func EvaluateToolDefinition(scriptContent string, out any) error {
 
 	// Run bootstrap JS first
 	if _, err := vm.RunString(getBootstrapJS()); err != nil {
-		return fmt.Errorf("initializing Sobek bootstrap context: %w", err)
+		return fmt.Errorf("initializing Goja bootstrap context: %w", err)
 	}
 
-	var capturedVal sobek.Value
-	captureFn := func(call sobek.FunctionCall) sobek.Value {
+	var capturedVal goja.Value
+	captureFn := func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) > 0 {
 			capturedVal = call.Arguments[0]
 			return call.Arguments[0]
 		}
-		return sobek.Undefined()
+		return goja.Undefined()
 	}
 
 	_ = vm.Set("defineConfig", captureFn)
@@ -77,17 +77,17 @@ func EvaluateToolDefinition(scriptContent string, out any) error {
 
 	val, err := vm.RunString(cleanedScript)
 	if err != nil {
-		return fmt.Errorf("executing script in Sobek VM: %w", err)
+		return fmt.Errorf("executing script in Goja VM: %w", err)
 	}
 
-	var targetVal sobek.Value
+	var targetVal goja.Value
 	if capturedVal != nil {
 		targetVal = capturedVal
 	} else {
 		if exp := moduleObj.Get("exports"); exp != nil {
 			if obj := exp.ToObject(vm); obj != nil && len(obj.Keys()) > 0 {
 				targetVal = exp
-				if def := obj.Get("default"); def != nil && !sobek.IsUndefined(def) && !sobek.IsNull(def) {
+				if def := obj.Get("default"); def != nil && !goja.IsUndefined(def) && !goja.IsNull(def) {
 					targetVal = def
 				}
 			}
@@ -98,7 +98,7 @@ func EvaluateToolDefinition(scriptContent string, out any) error {
 		targetVal = val
 	}
 
-	if targetVal == nil || sobek.IsUndefined(targetVal) || sobek.IsNull(targetVal) {
+	if targetVal == nil || goja.IsUndefined(targetVal) || goja.IsNull(targetVal) {
 		return fmt.Errorf("failed to extract configuration: no value returned or exported")
 	}
 
@@ -137,7 +137,7 @@ type SystemContext struct {
 
 // EvaluateToolDefinitionWithContext evaluates a script with defined globals for configDir and system context.
 func EvaluateToolDefinitionWithContext(scriptContent string, configDir string, sysCtx *SystemContext, out any) error {
-	vm := sobek.New()
+	vm := goja.New()
 
 	if err := RegisterBindings(vm); err != nil {
 		return fmt.Errorf("registering Go bindings: %w", err)
@@ -180,16 +180,16 @@ func EvaluateToolDefinitionWithContext(scriptContent string, configDir string, s
 
 	// Run bootstrap JS
 	if _, err := vm.RunString(getBootstrapJS()); err != nil {
-		return fmt.Errorf("initializing Sobek bootstrap context: %w", err)
+		return fmt.Errorf("initializing Goja bootstrap context: %w", err)
 	}
 
-	var capturedVal sobek.Value
-	captureFn := func(call sobek.FunctionCall) sobek.Value {
+	var capturedVal goja.Value
+	captureFn := func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) > 0 {
 			capturedVal = call.Arguments[0]
 			return call.Arguments[0]
 		}
-		return sobek.Undefined()
+		return goja.Undefined()
 	}
 
 	_ = vm.Set("defineConfig", captureFn)
@@ -197,17 +197,17 @@ func EvaluateToolDefinitionWithContext(scriptContent string, configDir string, s
 
 	val, err := vm.RunString(cleanedScript)
 	if err != nil {
-		return fmt.Errorf("executing script in Sobek VM: %w", err)
+		return fmt.Errorf("executing script in Goja VM: %w", err)
 	}
 
-	var targetVal sobek.Value
+	var targetVal goja.Value
 	if capturedVal != nil {
 		targetVal = capturedVal
 	} else {
 		if exp := moduleObj.Get("exports"); exp != nil {
 			if obj := exp.ToObject(vm); obj != nil && len(obj.Keys()) > 0 {
 				targetVal = exp
-				if def := obj.Get("default"); def != nil && !sobek.IsUndefined(def) && !sobek.IsNull(def) {
+				if def := obj.Get("default"); def != nil && !goja.IsUndefined(def) && !goja.IsNull(def) {
 					targetVal = def
 				}
 			}
@@ -218,7 +218,7 @@ func EvaluateToolDefinitionWithContext(scriptContent string, configDir string, s
 		targetVal = val
 	}
 
-	if targetVal == nil || sobek.IsUndefined(targetVal) || sobek.IsNull(targetVal) {
+	if targetVal == nil || goja.IsUndefined(targetVal) || goja.IsNull(targetVal) {
 		return fmt.Errorf("failed to extract configuration: no value returned or exported")
 	}
 
