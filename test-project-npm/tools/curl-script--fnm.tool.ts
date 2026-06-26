@@ -1,6 +1,4 @@
-import { defineTool, type IToolConfigBuilder } from "@dotfiles/cli";
-
-type HookCtx = { $: Function };
+import { defineTool, type IToolConfigBuilder, type IToolConfigContext } from "@dotfiles/cli";
 
 async function chainTest(chain: IToolConfigBuilder) {
   return chain;
@@ -15,7 +13,7 @@ export default defineTool((install, ctx) => {
     args: (ctx) => ["--skip-shell", "--install-dir", ctx.stagingDir, "--force-no-brew"],
   })
     .bin("fnm")
-    .hook("after-install", async ({ $ }: HookCtx) => {
+    .hook("after-install", async ({ $ }: IToolConfigContext) => {
       await $`fnm env --use-on-cd > ${initFile}`;
     })
     .zsh((shell) =>

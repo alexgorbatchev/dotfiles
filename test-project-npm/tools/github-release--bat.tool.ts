@@ -1,11 +1,9 @@
-import { defineTool } from "@dotfiles/cli";
-
-type HookCtx = { $: Function };
+import { defineTool, type IToolConfigContext } from "@dotfiles/cli";
 
 export default defineTool((install, _ctx) =>
   install("github-release", { repo: "sharkdp/bat" })
     .bin("bat")
-    .hook("after-install", async ({ $ }: HookCtx) => {
+    .hook("after-install", async ({ $ }: IToolConfigContext) => {
       await $`bat --version`;
       await $`echo "bat installed successfully"`;
     })

@@ -53,7 +53,16 @@ export interface IToolConfigContext {
 	configFileDir: string;
 	systemInfo: z_internal_ISystemInfo;
 	currentDir: string;
-	log: any;
+	stagingDir: string;
+	log: {
+		trace: (msg: string) => void;
+		debug: (msg: string) => void;
+		info: (msg: string) => void;
+		warn: (msg: string) => void;
+		error: (msg: string) => void;
+	};
+	fs: IFileSystem;
+	$: (strings: TemplateStringsArray | string[], ...values: any[]) => Promise<string>;
 }
 
 export interface z_internal_ISystemInfo {
@@ -230,7 +239,16 @@ export interface IToolConfigContext {
 	configFileDir: string;
 	systemInfo: z_internal_ISystemInfo;
 	currentDir: string;
-	log: any;
+	stagingDir: string;
+	log: {
+		trace: (msg: string) => void;
+		debug: (msg: string) => void;
+		info: (msg: string) => void;
+		warn: (msg: string) => void;
+		error: (msg: string) => void;
+	};
+	fs: IFileSystem;
+	$: (strings: TemplateStringsArray | string[], ...values: any[]) => Promise<string>;
 }
 
 export declare function defineConfig(callback: ConfigFactory): ConfigFactory;
