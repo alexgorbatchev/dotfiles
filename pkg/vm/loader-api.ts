@@ -63,6 +63,7 @@ export interface IToolBuilder {
   copies: unknown[];
   shellConfigs: Record<string, unknown>;
   configFilePath?: string;
+  _version?: string;
   [key: string]: unknown;
 
   bin(name: unknown, pattern?: unknown): IToolBuilder;
