@@ -86,3 +86,9 @@ Monorepo for `@alexgorbatchev/dotfiles`. This root file carries shared rules; ev
 - Shared test helpers: `packages/testing-helpers/README.md`
 - Package docs: `README.md`, `packages/*/README.md`
 - Nested instructions: `packages/*/AGENTS.md`
+
+---
+
+we are in the process of rewriting typescript implementation to golang, you are on agorbatchev/golang branch and original typescript code is in packages/ folder. the golang implementation will fully replace typescript implementation and will be a 100% drop in replacement functionally and stdout wise to make sure if anyone is log parsing, it should keep working. if a decision needs to be made "how should this work" -- see typescript implementation for correct behavior.
+
+---
