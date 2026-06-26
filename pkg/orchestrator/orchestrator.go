@@ -226,6 +226,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		}
 
 		if isAutoInstall(tool) {
+			o.logger.Info(logger.Message(fmt.Sprintf("Installing tool: %s", tool.Name)))
 			if err := o.InstallTool(ctx, tool, projCfg); err != nil {
 				o.logger.GetSubLogger("", tool.Name).Error("Auto-install failed", err)
 			}
@@ -274,7 +275,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			BinaryName:     binName,
 			BinaryPath:     binaryPath,
 			Sudo:           tool.Sudo,
-			CliCommand:     "dotfiles",
+			CliCommand:     o.getCliCommand(),
 			ConfigFilePath: tool.ConfigFilePath,
 			UsageLogPath:   filepath.Join(projCfg.Paths.GeneratedDir, "usage", "shim-usage.log"),
 		}
@@ -516,7 +517,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			BinaryName:     binName,
 			BinaryPath:     binaryPath,
 			Sudo:           tool.Sudo,
-			CliCommand:     "dotfiles",
+			CliCommand:     o.getCliCommand(),
 			ConfigFilePath: tool.ConfigFilePath,
 			UsageLogPath:   filepath.Join(projCfg.Paths.GeneratedDir, "usage", "shim-usage.log"),
 		}
@@ -874,6 +875,71 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 						scriptLines = append(scriptLines, fmt.Sprintf("source <(%s)", funcName))
 					}
 				}
+
+				// 9. Completions
+				if stc.Completions != nil && (sh == "zsh" || sh == "bash") {
+					var completionFileName string
+					if sh == "zsh" {
+						completionFileName = "_" + tool.Name
+					} else {
+						completionFileName = tool.Name
+					}
+
+					completionsDir := filepath.Join(shellScriptsDir, sh, "completions")
+					if err := fsys.MkdirAll(completionsDir, 0755); err != nil {
+						return err
+					}
+					completionFilePath := filepath.Join(completionsDir, completionFileName)
+
+					switch comp := stc.Completions.(type) {
+					case string:
+						var srcPath string
+						if filepath.IsAbs(comp) {
+							srcPath = comp
+						} else {
+							srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), comp)
+						}
+						srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
+						if err == nil {
+							_ = fsys.Symlink(srcPathResolved, completionFilePath)
+						}
+					case map[string]interface{}:
+						if cmdVal, ok := comp["cmd"].(string); ok && cmdVal != "" {
+							cmdValResolved, err := o.resolvePlaceholder(cmdVal, tool, projCfg)
+							if err == nil {
+								parts := strings.Fields(cmdValResolved)
+								if len(parts) > 0 {
+									cmdName := parts[0]
+									if !strings.Contains(cmdName, "/") && !strings.Contains(cmdName, "\\") {
+										targetPath := filepath.Join(projCfg.Paths.TargetDir, cmdName)
+										if exists, err := fsys.Exists(targetPath); err == nil && exists {
+											cmdName = targetPath
+										}
+									}
+									cmdExec := o.runner.CommandContext(ctx, cmdName, parts[1:]...)
+									pathEnv := os.Getenv("PATH")
+									newPathEnv := projCfg.Paths.TargetDir + string(filepath.ListSeparator) + pathEnv
+									cmdExec.SetEnv(append(os.Environ(), "PATH="+newPathEnv))
+									output, err := cmdExec.Output()
+									if err == nil {
+										_ = fsys.WriteFile(completionFilePath, output, 0644)
+									}
+								}
+							}
+						} else if srcVal, ok := comp["source"].(string); ok && srcVal != "" {
+							var srcPath string
+							if filepath.IsAbs(srcVal) {
+								srcPath = srcVal
+							} else {
+								srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), srcVal)
+							}
+							srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
+							if err == nil {
+								_ = fsys.Symlink(srcPathResolved, completionFilePath)
+							}
+						}
+					}
+				}
 			}
 
 			// Add dynamic once-scripts glob matching loop if any once scripts were created
@@ -991,4 +1057,45 @@ func removeAll(fsys fs.FS, path string) error {
 
 	// Finally, remove the directory itself.
 	return fsys.Remove(path)
+}
+
+func (o *Orchestrator) getCliCommand() string {
+	if cmd := os.Getenv("DOTFILES_CLI_COMMAND"); cmd != "" {
+		return cmd
+	}
+
+	execPath, err := os.Executable()
+	if err != nil {
+		return "dotfiles"
+	}
+
+	tempDir := os.TempDir()
+	isTemp := strings.HasPrefix(execPath, tempDir) ||
+		strings.Contains(execPath, "go-build") ||
+		strings.Contains(execPath, "_test")
+
+	if isTemp {
+		if os.Getenv("DOTFILES_E2E_TEST") == "true" {
+			return execPath
+		}
+
+		repoRoot := os.Getenv("DOTFILES_REPO_ROOT")
+		if repoRoot == "" {
+			dir, _ := os.Getwd()
+			for dir != "/" && dir != "." {
+				if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+					repoRoot = dir
+					break
+				}
+				dir = filepath.Dir(dir)
+			}
+		}
+
+		if repoRoot != "" {
+			return fmt.Sprintf("go run %s", filepath.Join(repoRoot, "cmd", "dotfiles"))
+		}
+		return "dotfiles"
+	}
+
+	return execPath
 }

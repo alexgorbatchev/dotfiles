@@ -63,6 +63,12 @@ var installCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
+
+			// Regenerate shell scripts and completions after single tool install
+			err = services.Orchestrator.GenerateTools(ctx, services.ToolConfigs, services.ProjectConfig)
+			if err != nil {
+				return err
+			}
 		} else {
 			log.Info("Installing all configured tools")
 

@@ -177,8 +177,43 @@ func (g *GiteaInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig)
 }
 
 func (g *GiteaInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
+	instanceURL := getStringParam(tool.InstallParams, "instanceUrl", "https://codeberg.org")
+	repo := getStringParam(tool.InstallParams, "repo", "")
+	if repo == "" {
+		return &UpdateCheckResult{HasUpdate: false}, nil
+	}
+
+	normalizedURL := strings.TrimSuffix(instanceURL, "/")
+	apiURL := fmt.Sprintf("%s/api/v1/repos/%s/releases/latest", normalizedURL, repo)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating Gitea API request: %w", err)
+	}
+
+	token := getStringParam(tool.InstallParams, "token", "")
+	if token != "" {
+		req.Header.Set("Authorization", "token "+token)
+	}
+
+	resp, err := g.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("executing Gitea API request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Gitea API returned status %d", resp.StatusCode)
+	}
+
+	var release giteaRelease
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return nil, fmt.Errorf("decoding Gitea release response: %w", err)
+	}
+
 	return &UpdateCheckResult{
-		HasUpdate: false,
+		HasUpdate:     true,
+		LatestVersion: release.TagName,
 	}, nil
 }
 

@@ -49,6 +49,7 @@ func NewMockServer(t *testing.T, fixtureDir string) *MockServer {
 	ms.versions["repo/gitea-release-tool"] = "1.0.0"
 	ms.versions["repo/hook-test-tool"] = "1.0.0"
 	ms.versions["repo/install-by-binary-tool"] = "1.0.0"
+	ms.versions["enterprise-org/enterprise-tool"] = "2.0.0"
 
 	mux := http.NewServeMux()
 
@@ -199,10 +200,20 @@ version = "1.0.0"`)
 		var matchedFile string
 		if path == "/mock-install.sh" {
 			matchedFile = filepath.Join(ms.FixtureDir, "tools", "version-detection--curl-script--with-args", "mock-install.sh")
+		} else if path == "/mock-install-version-detection-curl-script-with-args.sh" {
+			matchedFile = filepath.Join(ms.FixtureDir, "tools", "version-detection--curl-script--with-args", "mock-install.sh")
+		} else if path == "/mock-install-version-detection-curl-script-default-args.sh" {
+			matchedFile = filepath.Join(ms.FixtureDir, "tools", "version-detection--curl-script--default-args", "mock-install.sh")
 		} else if path == "/mock-install-version-detection-curl-script-no-version.sh" {
 			matchedFile = filepath.Join(ms.FixtureDir, "tools", "version-detection--curl-script--no-version", "mock-install-version-detection-curl-script-no-version.sh")
 		} else if path == "/mock-install-version-detection-curl-tar-default-args.tar.gz" {
 			matchedFile = filepath.Join(ms.FixtureDir, "tools", "version-detection--curl-tar--default-args", "mock-install-version-detection-curl-tar-default-args.tar.gz")
+		} else if path == "/mock-install-version-detection-curl-tar-with-args.tar.gz" {
+			matchedFile = filepath.Join(ms.FixtureDir, "tools", "version-detection--curl-tar--with-args", "mock-install-version-detection-curl-tar-with-args.tar.gz")
+		} else if path == "/mock-binary-version-detection-curl-binary-with-args" {
+			matchedFile = filepath.Join(ms.FixtureDir, "tools", "version-detection--curl-binary--with-args", "version-detection--curl-binary--with-args")
+		} else if path == "/mock-binary-version-detection-curl-binary-default-args" {
+			matchedFile = filepath.Join(ms.FixtureDir, "tools", "version-detection--curl-binary--default-args", "version-detection--curl-binary--default-args")
 		} else if path == "/mock-install-for-cmd-completion-test.sh" {
 			matchedFile = filepath.Join(ms.FixtureDir, "tools", "curl-script--cmd-completion-test", "mock-install-for-cmd-completion-test.sh")
 		} else {

@@ -89,6 +89,24 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 		runCmd = c.runner.CommandContext(ctx, "sh", cmdArgs...)
 	}
 
+	if envMap, ok := tool.InstallParams["env"].(map[string]interface{}); ok {
+		var envSlice []string
+		for k, v := range envMap {
+			if vStr, ok := v.(string); ok {
+				if strings.Contains(vStr, "{stagingDir}") {
+					vStr = strings.ReplaceAll(vStr, "{stagingDir}", destDir)
+				}
+				envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, vStr))
+			}
+		}
+		if len(envSlice) > 0 {
+			runCmd.SetEnv(append(os.Environ(), envSlice...))
+		}
+	}
+
+	runCmd.SetStdout(os.Stdout)
+	runCmd.SetStderr(os.Stderr)
+
 	if err := runCmd.Run(); err != nil {
 		return nil, fmt.Errorf("running install script: %w", err)
 	}
