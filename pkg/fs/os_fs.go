@@ -91,3 +91,25 @@ func (o *OSFS) RemoveAll(path string) error {
 func (o *OSFS) Abs(path string) (string, error) {
 	return filepath.Abs(path)
 }
+
+func (o *OSFS) CopyFile(src, dest string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	destFile, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, srcFile)
+	return err
+}

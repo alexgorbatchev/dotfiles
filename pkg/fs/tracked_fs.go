@@ -246,3 +246,20 @@ func (t *TrackedFileSystem) RemoveAll(path string) error {
 func (t *TrackedFileSystem) Abs(path string) (string, error) {
 	return t.fs.Abs(path)
 }
+
+func (t *TrackedFileSystem) CopyFile(src, dest string) error {
+	err := t.fs.CopyFile(src, dest)
+	if err != nil {
+		return err
+	}
+	var sizeBytes *int64
+	var permStr *string
+	info, err := t.fs.Lstat(dest)
+	if err == nil {
+		sz := info.Size()
+		sizeBytes = &sz
+		pStr := fmt.Sprintf("0%o", info.Mode().Perm())
+		permStr = &pStr
+	}
+	return t.recordOperation("writeFile", dest, &src, sizeBytes, permStr)
+}

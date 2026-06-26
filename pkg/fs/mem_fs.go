@@ -487,3 +487,39 @@ func (m *MemFS) RemoveAll(path string) error {
 func (m *MemFS) Abs(path string) (string, error) {
 	return filepath.Abs(path)
 }
+
+func (m *MemFS) CopyFile(src, dest string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cleanSrc := filepath.Clean(src)
+	cleanDest := filepath.Clean(dest)
+
+	srcNode, ok := m.files[cleanSrc]
+	if !ok {
+		return &os.PathError{Op: "copyfile", Path: src, Err: os.ErrNotExist}
+	}
+	if srcNode.isDir {
+		return &os.PathError{Op: "copyfile", Path: src, Err: os.ErrInvalid}
+	}
+
+	parent := filepath.Dir(cleanDest)
+	if filepath.Dir(parent) != parent {
+		parentNode, ok := m.files[parent]
+		if !ok || !parentNode.isDir {
+			return &os.PathError{Op: "copyfile", Path: dest, Err: os.ErrNotExist}
+		}
+	}
+
+	dataCopy := make([]byte, len(srcNode.data))
+	copy(dataCopy, srcNode.data)
+
+	m.files[cleanDest] = &fileNode{
+		data:       dataCopy,
+		perm:       srcNode.perm,
+		isDir:      false,
+		isSymlink:  srcNode.isSymlink,
+		linkTarget: srcNode.linkTarget,
+	}
+	return nil
+}

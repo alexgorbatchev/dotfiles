@@ -255,8 +255,7 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	appDest := "/Applications/" + appName
 
 	// Copy App bundle to /Applications
-	copyCmd := d.runner.CommandContext(ctx, "cp", "-R", appSource, appDest)
-	if err := copyCmd.Run(); err != nil {
+	if err := copyDir(d.fsys, appSource, appDest); err != nil {
 		return nil, fmt.Errorf("copying App bundle to %s: %w", appDest, err)
 	}
 
@@ -438,6 +437,32 @@ func matchPattern(name, pattern string) bool {
 		}
 	}
 	return strings.Contains(strings.ToLower(name), strings.ToLower(pattern))
+}
+
+func copyDir(fsys fs.FS, src, dest string) error {
+	info, err := fsys.Lstat(src)
+	if err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		if err := fsys.MkdirAll(dest, info.Mode()); err != nil {
+			return err
+		}
+		entries, err := fsys.ReadDir(src)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			err = copyDir(fsys, filepath.Join(src, entry), filepath.Join(dest, entry))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	return fsys.CopyFile(src, dest)
 }
 
 func init() {

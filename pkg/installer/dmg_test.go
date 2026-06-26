@@ -4,9 +4,9 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -69,6 +69,11 @@ func TestDmgInstaller(t *testing.T) {
 			},
 		}
 
+		// Pre-populate mock .app bundle in MemFS
+		appSourceDir := "/test/dmg/slack-mount/Slack.app/Contents/MacOS"
+		_ = fsys.MkdirAll(appSourceDir, 0755)
+		_ = fsys.WriteFile(filepath.Join(appSourceDir, "slack"), []byte("mock-slack-bin"), 0755)
+
 		res, err := inst.Install(context.Background(), tool)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -78,10 +83,18 @@ func TestDmgInstaller(t *testing.T) {
 			t.Errorf("unexpected binary: %v", res.Binaries)
 		}
 
+		// Verify file copy updated MemFS correctly
+		copiedData, err := fsys.ReadFile("/Applications/Slack.app/Contents/MacOS/slack")
+		if err != nil {
+			t.Fatalf("expected copied file to exist in MemFS: %v", err)
+		}
+		if string(copiedData) != "mock-slack-bin" {
+			t.Errorf("expected copied content to be 'mock-slack-bin', got %q", string(copiedData))
+		}
+
 		// Verify hdiutil commands were executed
 		hasAttach := false
 		hasDetach := false
-		hasCopy := false
 		for _, cmd := range runner.History {
 			if cmd.Name == "hdiutil" && cmd.Args[0] == "attach" {
 				hasAttach = true
@@ -89,16 +102,10 @@ func TestDmgInstaller(t *testing.T) {
 			if cmd.Name == "hdiutil" && cmd.Args[0] == "detach" {
 				hasDetach = true
 			}
-			if cmd.Name == "cp" {
-				hasCopy = true
-			}
 		}
 
 		if !hasAttach {
 			t.Error("expected hdiutil attach to run")
-		}
-		if !hasCopy {
-			t.Error("expected cp command to run")
 		}
 		if !hasDetach {
 			t.Error("expected hdiutil detach to run")
@@ -175,6 +182,7 @@ func TestDmgInstaller(t *testing.T) {
 		defer githubServer.Close()
 
 		inst.BaseURL = githubServer.URL
+		inst.BinDir = "/test/dmg-github"
 
 		tool := &config.ToolConfig{
 			Name: "slack",
@@ -186,6 +194,11 @@ func TestDmgInstaller(t *testing.T) {
 				"appName": "Slack.app",
 			},
 		}
+
+		// Pre-populate mock .app bundle in MemFS
+		appSourceDir := "/test/dmg-github/slack-mount/Slack.app/Contents/MacOS"
+		_ = fsys.MkdirAll(appSourceDir, 0755)
+		_ = fsys.WriteFile(filepath.Join(appSourceDir, "slack"), []byte("mock-slack-bin-github"), 0755)
 
 		res, err := inst.Install(context.Background(), tool)
 		if err != nil {
@@ -230,6 +243,11 @@ func TestDmgInstaller(t *testing.T) {
 			},
 		}
 
+		// Pre-populate mock .app bundle in MemFS
+		appSourceDir := "/test/dmg-zip/slack-mount/Slack.app/Contents/MacOS"
+		_ = fsys.MkdirAll(appSourceDir, 0755)
+		_ = fsys.WriteFile(filepath.Join(appSourceDir, "slack"), []byte("mock-slack-bin-zip"), 0755)
+
 		res, err := inst.Install(context.Background(), tool)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -242,7 +260,6 @@ func TestDmgInstaller(t *testing.T) {
 
 	t.Run("Install failures ensure cleanup and unmounting on copy error", func(t *testing.T) {
 		runner.Clear()
-		runner.Register("cp", nil, errors.New("copy failed"))
 
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)

@@ -173,7 +173,10 @@ func TestExtractorDmg(t *testing.T) {
 	runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
 		if len(c.Args) > 4 && c.Args[0] == "attach" {
 			mountPoint := c.Args[4]
-			err := os.WriteFile(filepath.Join(mountPoint, "hello-dmg.txt"), []byte("hello from dmg"), 0644)
+			if err := memFS.MkdirAll(mountPoint, 0755); err != nil {
+				return err
+			}
+			err := memFS.WriteFile(filepath.Join(mountPoint, "hello-dmg.txt"), []byte("hello from dmg"), 0644)
 			return err
 		}
 		return nil

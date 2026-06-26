@@ -489,9 +489,9 @@ func (e *Extractor) extractPkg(ctx context.Context, src string, dest string) err
 	return nil
 }
 
-// copyDir recursively copies files from a physical source directory to the custom FS.
+// copyDir recursively copies files from a source directory (on e.fsys) to a destination directory (on e.fsys).
 func (e *Extractor) copyDir(srcDir, destDir string) error {
-	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+	return walkFS(e.fsys, srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -507,7 +507,7 @@ func (e *Extractor) copyDir(srcDir, destDir string) error {
 		}
 
 		err = func() error {
-			srcFile, err := os.Open(path)
+			srcFile, err := e.fsys.Open(path)
 			if err != nil {
 				return err
 			}
@@ -530,4 +530,38 @@ func (e *Extractor) copyDir(srcDir, destDir string) error {
 
 		return nil
 	})
+}
+
+func walkFS(fsys fs.FS, path string, walkFn func(path string, info os.FileInfo, err error) error) error {
+	info, err := fsys.Lstat(path)
+	if err != nil {
+		return walkFn(path, nil, err)
+	}
+
+	err = walkFn(path, info, nil)
+	if err != nil {
+		if info.IsDir() && err == filepath.SkipDir {
+			return nil
+		}
+		return err
+	}
+
+	if !info.IsDir() {
+		return nil
+	}
+
+	entries, err := fsys.ReadDir(path)
+	if err != nil {
+		return walkFn(path, info, err)
+	}
+
+	for _, entry := range entries {
+		subPath := filepath.Join(path, entry)
+		err = walkFS(fsys, subPath, walkFn)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
