@@ -139,6 +139,7 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		return nil, fmt.Errorf("downloading release asset %s: %w", matched.Name, err)
 	}
 
+	var promotedBinaries []string
 	// If it is an archive, extract it
 	lower := strings.ToLower(matched.Name)
 	if strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tgz") || strings.HasSuffix(lower, ".zip") {
@@ -147,6 +148,12 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 			return nil, fmt.Errorf("extracting asset archive: %w", err)
 		}
 		_ = g.fsys.Remove(assetPath)
+
+		var err error
+		promotedBinaries, err = PromoteBinaries(g.fsys, destDir, tool.Name, tool.Binaries)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		// Standalone binary: make it executable and rename it to tool.Name
 		finalBinPath := filepath.Join(destDir, tool.Name)
@@ -160,10 +167,11 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		}
 		chmodCmd := g.runner.CommandContext(ctx, "chmod", "+x", finalBinPath)
 		_ = chmodCmd.Run()
+		promotedBinaries = GetBinaryNames(tool.Name, tool.Binaries)
 	}
 
 	return &InstallResult{
-		Binaries: []string{tool.Name},
+		Binaries: promotedBinaries,
 	}, nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
@@ -218,6 +219,12 @@ func GetBinaryNames(toolName string, toolBinaries []interface{}) []string {
 			if name, ok := val["name"].(string); ok {
 				names = append(names, name)
 			}
+		case config.BinaryConfig:
+			names = append(names, val.Name)
+		case *config.BinaryConfig:
+			if val != nil {
+				names = append(names, val.Name)
+			}
 		}
 	}
 	if len(names) == 0 {
@@ -360,4 +367,116 @@ func SetLogger(inst Installer, log *logger.Logger) {
 	case *ZshPluginInstaller:
 		v.log = log
 	}
+}
+
+// PromoteBinaries searches recursively inside destDir for files matching the expected binary names
+// or their pattern definitions, and promotes (moves) them to the root of destDir.
+// It returns the list of promoted binary names, or an error.
+func PromoteBinaries(fsys fs.FS, destDir string, toolName string, toolBinaries []interface{}) ([]string, error) {
+	binaryNames := GetBinaryNames(toolName, toolBinaries)
+
+	for _, binName := range binaryNames {
+		targetPath := filepath.Join(destDir, binName)
+
+		// 1. If it already exists directly at the root, nothing to do.
+		exists, err := fsys.Exists(targetPath)
+		if err == nil && exists {
+			_ = fsys.Chmod(targetPath, 0755)
+			continue
+		}
+
+		// 2. Otherwise, find it recursively under destDir.
+		foundPath, err := findFileRecursively(fsys, destDir, binName)
+		if err != nil {
+			return nil, fmt.Errorf("searching for binary %q: %w", binName, err)
+		}
+
+		if foundPath == "" {
+			// Try with pattern matching from BinaryConfig if present
+			pattern := getPatternForBinary(toolBinaries, binName)
+			if pattern != "" {
+				foundPath, err = findFileByPattern(fsys, destDir, pattern)
+				if err != nil {
+					return nil, fmt.Errorf("searching for binary %q with pattern %q: %w", binName, pattern, err)
+				}
+			}
+		}
+
+		if foundPath != "" {
+			// Promote the found binary to the root of destDir!
+			if err := fsys.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+				return nil, fmt.Errorf("creating directory for promoted binary %q: %w", binName, err)
+			}
+			// If targetPath exists (e.g. as a directory by mistake), remove it first
+			_ = fsys.Remove(targetPath)
+			if err := fsys.Rename(foundPath, targetPath); err != nil {
+				return nil, fmt.Errorf("promoting binary from %q to %q: %w", foundPath, targetPath, err)
+			}
+			_ = fsys.Chmod(targetPath, 0755)
+		} else {
+			return nil, fmt.Errorf("binary %q not found in extracted archive under %q", binName, destDir)
+		}
+	}
+
+	return binaryNames, nil
+}
+
+func findFileRecursively(fsys fs.FS, dir string, name string) (string, error) {
+	entries, err := fsys.ReadDir(dir)
+	if err != nil {
+		return "", err
+	}
+
+	for _, entryName := range entries {
+		path := filepath.Join(dir, entryName)
+		info, err := fsys.Lstat(path)
+		if err != nil {
+			continue
+		}
+
+		if info.IsDir() {
+			found, err := findFileRecursively(fsys, path, name)
+			if err == nil && found != "" {
+				return found, nil
+			}
+		} else {
+			if info.Name() == name {
+				return path, nil
+			}
+		}
+	}
+
+	return "", nil
+}
+
+func findFileByPattern(fsys fs.FS, destDir string, pattern string) (string, error) {
+	normalizedPattern := filepath.Clean(strings.ReplaceAll(pattern, "/", string(filepath.Separator)))
+	path := filepath.Join(destDir, normalizedPattern)
+	exists, err := fsys.Exists(path)
+	if err == nil && exists {
+		return path, nil
+	}
+	return "", nil
+}
+
+func getPatternForBinary(toolBinaries []interface{}, binName string) string {
+	for _, b := range toolBinaries {
+		switch val := b.(type) {
+		case map[string]interface{}:
+			if name, ok := val["name"].(string); ok && name == binName {
+				if pattern, ok := val["pattern"].(string); ok {
+					return pattern
+				}
+			}
+		case config.BinaryConfig:
+			if val.Name == binName {
+				return val.Pattern
+			}
+		case *config.BinaryConfig:
+			if val != nil && val.Name == binName {
+				return val.Pattern
+			}
+		}
+	}
+	return ""
 }

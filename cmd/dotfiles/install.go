@@ -38,7 +38,7 @@ var installCmd = &cobra.Command{
 					break
 				}
 				for _, b := range tc.Binaries {
-					log.Info(logger.Message(fmt.Sprintf("Checking binary: %v of type %T against %s", b, b, toolName)))
+					log.Debug(logger.Message(fmt.Sprintf("Checking binary: %v of type %T against %s", b, b, toolName)))
 					switch val := b.(type) {
 					case string:
 						if val == toolName {
