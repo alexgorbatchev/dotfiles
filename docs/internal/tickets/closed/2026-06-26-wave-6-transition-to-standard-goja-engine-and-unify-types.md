@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-26 10:30
-last_modified: 2026-06-26 10:30
-status: current
-ticket_status: open
+last_modified: 2026-06-26 11:15
+status: completed
+ticket_status: closed
 ---
 
 # Wave 6: Transition to Standard Goja Engine and Unify TypeScript DSL Types
@@ -35,9 +35,9 @@ The monorepo's JS engine is fully migrated to standard Goja with `goja_nodejs/re
 
 ## Acceptance criteria
 
-- [ ] **Migrate Go Imports to Goja**: Replace all imports of `github.com/grafana/sobek` with `github.com/dop251/goja` in `go.mod`, `go.sum`, and all `pkg/vm/` files.
-- [ ] **Integrate `goja_nodejs/require`**: Wire up the official Node-compatible CommonJS `require` registry inside `pkg/vm/loader.go` to support runtime imports and module caching.
-- [ ] **Unify TypeScript DSL Types**: Keep `pkg/vm/dsl-types.ts` as the single, clean, JSDoc-annotated source of truth for public authoring types, and have both `generateSchemaTypes.ts` and `loader-api.ts` reuse them.
-- [ ] **Validate Parity**: Ensure `bun fix`, `bun typecheck`, and `bun check` pass successfully with zero type or lint warnings.
-- [ ] **Unit and E2E Tests**: Run `go test ./...` verifying that all package unit tests and 14 E2E test suites compile and pass with 100% success on the standard Goja engine.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Migrate Go Imports to Goja**: Replace all imports of `github.com/grafana/sobek` with `github.com/dop251/goja` in `go.mod`, `go.sum`, and all `pkg/vm/` files.
+- [x] **Integrate `goja_nodejs/require`**: Wire up the official Node-compatible CommonJS `require` registry inside `pkg/vm/loader.go` to support runtime imports and module caching.
+- [x] **Unify TypeScript DSL Types**: Keep `pkg/vm/dsl-types.ts` as the single, clean, JSDoc-annotated source of truth for public authoring types, and have both `generateSchemaTypes.ts` and `loader-api.ts` reuse them.
+- [x] **Validate Parity**: Ensure `bun fix`, `bun typecheck`, and `bun check` pass successfully with zero type or lint warnings.
+- [x] **Unit and E2E Tests**: Run `go test ./...` verifying that all package unit tests and 14 E2E test suites compile and pass with 100% success on the standard Goja engine.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

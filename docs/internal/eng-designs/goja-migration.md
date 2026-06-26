@@ -77,8 +77,8 @@ Both `packages/build/src/build/steps/generateSchemaTypes.ts` and `pkg/vm/loader-
 
 ## 9. Definition of done
 
-- [ ] All occurrences of Sobek are removed from the Go codebase.
-- [ ] `pkg/vm/dsl-types.ts` exists and acts as the single source of truth.
-- [ ] `bun typecheck` completes with zero errors.
-- [ ] `bun check` passes with 100% success.
-- [ ] A mandatory review pass on this design is performed, resolving all identified feedback.
+- [x] All occurrences of Sobek are removed from the Go codebase.
+- [x] `pkg/vm/dsl-types.ts` exists and acts as the single source of truth.
+- [x] `bun typecheck` completes with zero errors.
+- [x] `bun check` passes with 100% success.
+- [x] A mandatory review pass on this design is performed, resolving all identified feedback.
