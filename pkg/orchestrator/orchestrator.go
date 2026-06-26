@@ -27,12 +27,13 @@ import (
 
 // Orchestrator manages tool installation pipelines.
 type Orchestrator struct {
-	logger       *logger.Logger
-	fs           fs.FS
-	runner       exec.CommandRunner
-	reg          *registry.Registry
-	instRegistry *installer.Registry
-	symlinkFS    fs.FS
+	logger         *logger.Logger
+	fs             fs.FS
+	runner         exec.CommandRunner
+	reg            *registry.Registry
+	instRegistry   *installer.Registry
+	symlinkFS      fs.FS
+	configFilePath string
 }
 
 // NewOrchestrator creates a new Orchestrator instance.
@@ -68,6 +69,18 @@ func (o *Orchestrator) getTrackedFS(ctx context.Context, tx *sql.Tx, toolName, f
 // SetSymlinkFS allows injecting a custom fs.FS (primarily for testing).
 func (o *Orchestrator) SetSymlinkFS(sfs fs.FS) {
 	o.symlinkFS = sfs
+}
+
+// SetConfigFilePath updates the Orchestrator's main configuration file path.
+func (o *Orchestrator) SetConfigFilePath(path string) {
+	o.configFilePath = path
+}
+
+func (o *Orchestrator) getConfigFilePath() string {
+	if o.configFilePath != "" {
+		return o.configFilePath
+	}
+	return "dotfiles.config.ts"
 }
 
 func (o *Orchestrator) getSymlinkEvaluator() *symlink.Evaluator {
@@ -276,7 +289,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			BinaryPath:     binaryPath,
 			Sudo:           tool.Sudo,
 			CliCommand:     o.getCliCommand(),
-			ConfigFilePath: tool.ConfigFilePath,
+			ConfigFilePath: o.getConfigFilePath(),
 			UsageLogPath:   filepath.Join(projCfg.Paths.GeneratedDir, "usage", "shim-usage.log"),
 		}
 
@@ -518,7 +531,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			BinaryPath:     binaryPath,
 			Sudo:           tool.Sudo,
 			CliCommand:     o.getCliCommand(),
-			ConfigFilePath: tool.ConfigFilePath,
+			ConfigFilePath: o.getConfigFilePath(),
 			UsageLogPath:   filepath.Join(projCfg.Paths.GeneratedDir, "usage", "shim-usage.log"),
 		}
 
