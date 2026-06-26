@@ -160,7 +160,7 @@ export function defineTool(callback: ToolFactory): unknown {
     },
 
     version(v: unknown) {
-      (this as Record<string, unknown>)["version"] = v;
+      (this as Record<string, unknown>)["_version"] = v;
       return this;
     },
 
@@ -302,7 +302,7 @@ export function defineTool(callback: ToolFactory): unknown {
     },
   };
 
-  (builder as unknown as Record<string, string>)["version"] = "latest";
+  (builder as unknown as Record<string, string>)["_version"] = "latest";
 
   function createShellBuilder(shConfig: Record<string, unknown>, _shellType: string) {
     const shFunctions = (shConfig["functions"] || {}) as Record<string, string>;
@@ -445,13 +445,23 @@ export function defineTool(callback: ToolFactory): unknown {
 
   if (typeof callback === "function") {
     const res = callback(install, toolCtx);
-    if (builder.installParams && typeof builder.installParams["args"] === "function") {
-      builder.installParams["args"] = (builder.installParams["args"] as Function)(toolCtx);
+    if (builder.installParams && typeof builder.installParams === "object") {
+      if (typeof builder.installParams["args"] === "function") {
+        builder.installParams["args"] = (builder.installParams["args"] as Function)(toolCtx);
+      }
+      if (typeof builder.installParams["env"] === "function") {
+        builder.installParams["env"] = (builder.installParams["env"] as Function)(toolCtx);
+      }
     }
     if (res && (res as Record<string, unknown>)["installationMethod"]) {
+      (res as Record<string, unknown>)["version"] = (res as Record<string, unknown>)["_version"] || "latest";
+      delete (res as Record<string, unknown>)["_version"];
       return res as IToolBuilder;
     }
   }
+  (builder as unknown as Record<string, unknown>)["version"] =
+    (builder as unknown as Record<string, unknown>)["_version"] || "latest";
+  delete (builder as unknown as Record<string, unknown>)["_version"];
   return builder;
 }
 

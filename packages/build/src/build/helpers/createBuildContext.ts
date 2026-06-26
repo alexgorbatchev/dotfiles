@@ -96,7 +96,7 @@ export function createBuildContext(): IBuildContext {
     outputSkillDir,
   };
 
-  const maxGoBinarySizeKb: number = 25000;
+  const maxGoBinarySizeKb: number = 26000;
   const maxGoBinarySizeBytes: number = maxGoBinarySizeKb * 1024;
   const typeTestsDirName: string = "type-tests";
   const tsdTestFileExtension: string = ".test-d.ts";

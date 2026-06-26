@@ -1,5 +1,7 @@
 import { defineTool } from "@dotfiles/cli";
 
+type CompCtx = { version: string };
+
 export default defineTool((install, ctx) =>
   install("github-release", { repo: "sharkdp/fd" })
     .bin("fd")
@@ -13,7 +15,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       // Use callback-based completions to demonstrate version interpolation
       // url downloads to toolInstallDir, source defaults to filename from URL
-      shell.completions((ctx) => ({
+      shell.completions((ctx: CompCtx) => ({
         url: `https://raw.githubusercontent.com/sharkdp/fd/${ctx.version}/contrib/completion/_fd`,
         bin: "fd",
         source: "_fd",

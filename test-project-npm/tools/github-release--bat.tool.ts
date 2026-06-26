@@ -1,9 +1,11 @@
 import { defineTool } from "@dotfiles/cli";
 
+type HookCtx = { $: Function };
+
 export default defineTool((install, _ctx) =>
   install("github-release", { repo: "sharkdp/bat" })
     .bin("bat")
-    .hook("after-install", async ({ $ }) => {
+    .hook("after-install", async ({ $ }: HookCtx) => {
       await $`bat --version`;
       await $`echo "bat installed successfully"`;
     })
