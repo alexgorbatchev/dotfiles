@@ -2,7 +2,7 @@
 created_on: 2026-06-25 09:30
 last_modified: 2026-06-25 09:30
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Transition to Pure Go Binary Distribution and TS Packages Demolition
@@ -49,26 +49,26 @@ At build time, `bun compile` compiles the dashboard client, embeds it inside the
 
 ### 1. Types Separation & Public Autocomplete 100% Completeness
 
-- [ ] Relocate and consolidate the TypeScript interfaces required by the dashboard client (specifically `Architecture`, `Platform`, `IBinaryConfig`, `IFileOperation`, and `IFileState`) directly inside `packages/dashboard/src/shared/types.ts` or a new standalone types file.
-- [ ] Maintain 100% completeness inside the public `.d.ts` definitions (e.g. `schemas.d.ts`, `tool-types.d.ts`, `authoring-types.d.ts`). All configuration properties, helper functions, and custom installer parameters must have identical Type signatures as the legacy TS implementation to ensure a perfect drop-in swap.
-- [ ] Ensure that `Platform` and `Architecture` bitwise enums and their basic string converters are implemented locally in the dashboard shared folder, removing all dependency on `@dotfiles/core`.
-- [ ] Completely sever all imports pointing to `@dotfiles/core`, `@dotfiles/config`, `@dotfiles/registry`, and other deleted TS packages within `packages/dashboard/src/client/` and `packages/dashboard/src/shared/`.
-- [ ] Update `scripts/typegen/main.go` to output synchronized Go-to-TypeScript interfaces directly to `packages/dashboard/src/shared/types.gen.ts`.
+- [x] Relocate and consolidate the TypeScript interfaces required by the dashboard client (specifically `Architecture`, `Platform`, `IBinaryConfig`, `IFileOperation`, and `IFileState`) directly inside `packages/dashboard/src/shared/types.ts` or a new standalone types file.
+- [x] Maintain 100% completeness inside the public `.d.ts` definitions (e.g. `schemas.d.ts`, `tool-types.d.ts`, `authoring-types.d.ts`). All configuration properties, helper functions, and custom installer parameters must have identical Type signatures as the legacy TS implementation to ensure a perfect drop-in swap.
+- [x] Ensure that `Platform` and `Architecture` bitwise enums and their basic string converters are implemented locally in the dashboard shared folder, removing all dependency on `@dotfiles/core`.
+- [x] Completely sever all imports pointing to `@dotfiles/core`, `@dotfiles/config`, `@dotfiles/registry`, and other deleted TS packages within `packages/dashboard/src/client/` and `packages/dashboard/src/shared/`.
+- [x] Update `scripts/typegen/main.go` to output synchronized Go-to-TypeScript interfaces directly to `packages/dashboard/src/shared/types.gen.ts`.
 
 ### 2. Go-Native Dashboard REST Server & Backend Deletion
 
-- [ ] Completely delete the legacy Bun-based dashboard server source directory (`packages/dashboard/src/server/`).
-- [ ] Implement all dashboard REST API endpoints (served under `/api/*`) natively inside `pkg/dashboard/` in Go (including `/api/tools`, `/api/stats`, `/api/health`, `/api/config`, `/api/tool-configs-tree`, `/api/shell`, `/api/activity`, `/api/recent-tools`, `/api/tools/:name/*`).
-- [ ] Ensure the Go API routes query the live SQLite `registry.db` (utilizing the transactional bindings in `pkg/registry` and `pkg/db`) and parse local configs to construct identical JSON response structures as the legacy Bun server.
-- [ ] Serve the bundled, static dashboard assets out of the embedded `pkg/dashboard/dist` folder using the standard library `http.FileServer` in Go.
+- [x] Completely delete the legacy Bun-based dashboard server source directory (`packages/dashboard/src/server/`).
+- [x] Implement all dashboard REST API endpoints (served under `/api/*`) natively inside `pkg/dashboard/` in Go (including `/api/tools`, `/api/stats`, `/api/health`, `/api/config`, `/api/tool-configs-tree`, `/api/shell`, `/api/activity`, `/api/recent-tools`, `/api/tools/:name/*`).
+- [x] Ensure the Go API routes query the live SQLite `registry.db` (utilizing the transactional bindings in `pkg/registry` and `pkg/db`) and parse local configs to construct identical JSON response structures as the legacy Bun server.
+- [x] Serve the bundled, static dashboard assets out of the embedded `pkg/dashboard/dist` folder using the standard library `http.FileServer` in Go.
 
 ### 3. Build Pipeline Restructuring
 
-- [ ] Refactor `packages/build/src/build/build.ts` and its helper files to orchestrate the new Go-native build pipeline.
-- [ ] **Dashboard Bundling**: Build the Preact client (`packages/dashboard/src/client/dashboard.html` and assets) using `bun build` with settings `--outdir pkg/dashboard/dist/ --minify --target browser`, outputting the bundled `index.html` and chunk assets (`dashboard-*.js`, `dashboard-*.css`) with CSS and JS code minified.
-- [ ] **Go Binary Compilation**: Execute `go build -ldflags="-s -w -X main.version=${DOTFILES_VERSION}" -o .dist/dotfiles ./cmd/dotfiles` to compile the final statically-linked binary, ensuring the dashboard static assets from `pkg/dashboard/dist/` are embedded via `//go:embed`.
-- [ ] **Type Publishing**: Emit ambient type definitions (`schemas.d.ts`, `tool-types.d.ts`, and `authoring-types.d.ts`) directly into `.dist/` derived from `types.gen.ts` and public config APIs. The generated files must expose 100% of all public declarations (`defineTool`, `defineConfig`, `IFileSystem`, `Architecture`, `Platform`, `Libc`, etc.), entirely removing the legacy `dts-bundle-generator` step on TS packages.
-- [ ] **Type Verification**: Verify the generated `.d.ts` definitions inside `.dist/` by running:
+- [x] Refactor `packages/build/src/build/build.ts` and its helper files to orchestrate the new Go-native build pipeline.
+- [x] **Dashboard Bundling**: Build the Preact client (`packages/dashboard/src/client/dashboard.html` and assets) using `bun build` with settings `--outdir pkg/dashboard/dist/ --minify --target browser`, outputting the bundled `index.html` and chunk assets (`dashboard-*.js`, `dashboard-*.css`) with CSS and JS code minified.
+- [x] **Go Binary Compilation**: Execute `go build -ldflags="-s -w -X main.version=${DOTFILES_VERSION}" -o .dist/dotfiles ./cmd/dotfiles` to compile the final statically-linked binary, ensuring the dashboard static assets from `pkg/dashboard/dist/` are embedded via `//go:embed`.
+- [x] **Type Publishing**: Emit ambient type definitions (`schemas.d.ts`, `tool-types.d.ts`, and `authoring-types.d.ts`) directly into `.dist/` derived from `types.gen.ts` and public config APIs. The generated files must expose 100% of all public declarations (`defineTool`, `defineConfig`, `IFileSystem`, `Architecture`, `Platform`, `Libc`, etc.), entirely removing the legacy `dts-bundle-generator` step on TS packages.
+- [x] **Type Verification**: Verify the generated `.d.ts` definitions inside `.dist/` by running:
       `bun x tsd --typings .dist/schemas.d.ts --files 'packages/build/type-tests/**/*.test-d.ts'`
       100% of the 17 legacy type test files (`*.test-d.ts`) must be migrated and consolidated into these exact file paths:
   - `packages/build/type-tests/core/authoring-exports.test-d.ts`
@@ -89,19 +89,19 @@ At build time, `bun compile` compiles the dashboard client, embeds it inside the
   - `packages/build/type-tests/installers/curl-script.test-d.ts`
   - `packages/build/type-tests/installers/gitea.test-d.ts`
     All 17 tests must compile and pass with zero type errors.
-- [ ] **Package Assembly**: Generate a clean `.dist/package.json` that refers to `./cli.js` (the cross-platform launcher) in its `bin` field and includes only minimal dependencies (such as `@types/bun` and `@types/node` required for `.tool.ts` compilation, plus optional native binary dependencies under `optionalDependencies`), and has zero legacy runtime/development dependencies (removing `commander`, `memfs`, `tslog`, `minimatch`, `zod`, etc.).
+- [x] **Package Assembly**: Generate a clean `.dist/package.json` that refers to `./cli.js` (the cross-platform launcher) in its `bin` field and includes only minimal dependencies (such as `@types/bun` and `@types/node` required for `.tool.ts` compilation, plus optional native binary dependencies under `optionalDependencies`), and has zero legacy runtime/development dependencies (removing `commander`, `memfs`, `tslog`, `minimatch`, `zod`, etc.).
 
 ### 4. Legacy TS Packages Demolition
 
-- [ ] Safely remove all legacy packages under `packages/*` EXCEPT `dashboard` and `build` (e.g. `packages/core`, `packages/cli`, `packages/config`, `packages/file-system`, `packages/installer-*`, etc.).
-- [ ] Update the root `package.json` workspaces key to include only `"packages/dashboard"`, `"packages/build"`, and the test fixture project directories.
-- [ ] Remove all legacy TypeScript configuration files (`tsconfig.json`), build scripts, and unit tests belonging to the deleted packages.
-- [ ] Adjust formatting (`oxfmt`), linting (`oxlint`), and typechecking (`tsconfig.json`) config files to target only the active Go directory and the two remaining TypeScript packages.
-- [ ] Update `.github/workflows/ci.yml` and `.github/workflows/publish.yml` to reflect the removed packages and run only Go checks and dashboard checks.
+- [x] Safely remove all legacy packages under `packages/*` EXCEPT `dashboard` and `build` (e.g. `packages/core`, `packages/cli`, `packages/config`, `packages/file-system`, `packages/installer-*`, etc.).
+- [x] Update the root `package.json` workspaces key to include only `"packages/dashboard"`, `"packages/build"`, and the test fixture project directories.
+- [x] Remove all legacy TypeScript configuration files (`tsconfig.json`), build scripts, and unit tests belonging to the deleted packages.
+- [x] Adjust formatting (`oxfmt`), linting (`oxlint`), and typechecking (`tsconfig.json`) config files to target only the active Go directory and the two remaining TypeScript packages.
+- [x] Update `.github/workflows/ci.yml` and `.github/workflows/publish.yml` to reflect the removed packages and run only Go checks and dashboard checks.
 
 ### 5. Verification & Testing
 
-- [ ] Retire and delete the legacy Dual-Run Parity verification harness (`scripts/parity-harness/`), since the legacy TS codebase is fully removed.
-- [ ] Ensure that the Go-native E2E test suite in `tests/e2e/` passes cleanly with 100% success on local and CI environments.
-- [ ] Verify that running `bun run check` on the root workspace returns a clean pass for linting, formatting, typechecking, and package testing.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Retire and delete the legacy Dual-Run Parity verification harness (`scripts/parity-harness/`), since the legacy TS codebase is fully removed.
+- [x] Ensure that the Go-native E2E test suite in `tests/e2e/` passes cleanly with 100% success on local and CI environments.
+- [x] Verify that running `bun run check` on the root workspace returns a clean pass for linting, formatting, typechecking, and package testing.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

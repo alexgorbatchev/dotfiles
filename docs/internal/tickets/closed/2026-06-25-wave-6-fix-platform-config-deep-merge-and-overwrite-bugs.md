@@ -2,7 +2,7 @@
 created_on: 2026-06-25 11:50
 last_modified: 2026-06-25 11:50
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Fix Platform Config Deep-Merge and Overwrite Bugs
@@ -40,13 +40,13 @@ The `ResolvePlatformConfigs` function is refactored to perform recursive, deep-f
 
 ## Acceptance criteria
 
-- [ ] Rewrite `ResolvePlatformConfigs` in `cmd/dotfiles/bootstrap.go` to perform deep merging instead of flat JSON unmarshaling:
+- [x] Rewrite `ResolvePlatformConfigs` in `cmd/dotfiles/bootstrap.go` to perform deep merging instead of flat JSON unmarshaling:
   - Base fields (like `Version`, `Description`) are updated if set in the override.
   - Slices/Arrays (such as `Symlinks`, `Copies`, `Binaries`, `Dependencies`) are **appended and merged** (concatenated), preserving all base settings.
   - Maps (such as `Env`, `Aliases`, `Functions`) are **deep-merged** (keys combined, overriding base values only if keys conflict).
-- [ ] Create a comprehensive Go unit test suite inside `pkg/config/platform_merge_test.go` verifying:
+- [x] Create a comprehensive Go unit test suite inside `pkg/config/platform_merge_test.go` verifying:
   - Concatenation: Base `Symlinks` and platform-override `Symlinks` are both present in the final resolved configuration.
   - Concatenation: Base `Dependencies` and platform-override `Dependencies` are correctly merged.
   - Map Merging: Conflicting keys in `Env` map are correctly overridden by the platform config, while non-conflicting keys are preserved.
   - Base Fields: Non-collection primitive fields (like `Version`) are successfully overwritten if defined in the matching platform config.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

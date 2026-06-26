@@ -2,7 +2,7 @@
 created_on: 2026-06-25 14:10
 last_modified: 2026-06-25 14:10
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Resolve Sudo Interactive Hang Risk in Non-Interactive Environments
@@ -33,11 +33,11 @@ The Go command-execution engine is upgraded to detect non-interactive terminal s
 
 ## Acceptance criteria
 
-- [ ] **Sudo TTY Detection**: Implement terminal detection inside the command runner to check if `stdin` is a real interactive TTY or if the execution environment is running headlessly.
-- [ ] **Passwordless Sudo Pre-flight Check**: Before attempting to execute any command prepended with `sudo` in a headless environment, the command runner must perform a fast, non-blocking validation check (such as calling `sudo -n true` which fails with status 1 if a password is required).
-- [ ] **Fail Fast Execution**: If the passwordless sudo pre-flight check fails and stdin is non-interactive, abort the installation immediately and return a descriptive error (e.g., `headless environment requires passwordless sudo access for elevated configurations`).
-- [ ] **Unit and E2E Tests**: Write test cases in `pkg/runner/runner_test.go` or a dedicated test file asserting:
+- [x] **Sudo TTY Detection**: Implement terminal detection inside the command runner to check if `stdin` is a real interactive TTY or if the execution environment is running headlessly.
+- [x] **Passwordless Sudo Pre-flight Check**: Before attempting to execute any command prepended with `sudo` in a headless environment, the command runner must perform a fast, non-blocking validation check (such as calling `sudo -n true` which fails with status 1 if a password is required).
+- [x] **Fail Fast Execution**: If the passwordless sudo pre-flight check fails and stdin is non-interactive, abort the installation immediately and return a descriptive error (e.g., `headless environment requires passwordless sudo access for elevated configurations`).
+- [x] **Unit and E2E Tests**: Write test cases in `pkg/runner/runner_test.go` or a dedicated test file asserting:
   - Simulating a headless execution environment (using closed stdin) fails immediately when passwordless sudo is missing.
   - Success is returned cleanly if passwordless sudo is active (where `sudo -n true` returns exit code 0).
-- [ ] Ensure that running the command `go test ./pkg/runner/...` passes cleanly.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Ensure that running the command `go test ./pkg/runner/...` passes cleanly.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

@@ -2,7 +2,7 @@
 created_on: 2026-06-25 14:40
 last_modified: 2026-06-25 14:40
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Improve GitHub Release Asset Selection Heuristics
@@ -40,13 +40,13 @@ Go's `github-release` asset matching engine is refactored to implement intellige
 
 ## Acceptance criteria
 
-- [ ] **Eliminate Blind Fallback**: Completely remove the dangerous fallback assignment `matchedAsset = &assets[0]` from `pkg/installer/github.go`.
-- [ ] **Support Regex Filtering (`assetPattern`)**: Update the matching logic to accept and respect the `assetPattern` parameter if defined, filtering out assets that do not conform to the regex.
-- [ ] **Implement Asset Selector Priority**: Implement priority heuristics to filter out undesired extensions (such as `.sha256`, `.md`, `.txt`, `.deb`, `.rpm`) unless explicitly configured, prioritizing standalone binary executables and compatible archive structures (`.tar.gz`, `.zip`).
-- [ ] **Graceful Failure**: If no compatible asset matches the host OS, Arch, and pattern, return a clean, user-friendly error (e.g., `no compatible asset found for release "v1.0.2" matching darwin/arm64`) instead of attempting to download an incorrect format.
-- [ ] **Unit Tests**: Create test tables inside `pkg/installer/github_test.go` asserting:
+- [x] **Eliminate Blind Fallback**: Completely remove the dangerous fallback assignment `matchedAsset = &assets[0]` from `pkg/installer/github.go`.
+- [x] **Support Regex Filtering (`assetPattern`)**: Update the matching logic to accept and respect the `assetPattern` parameter if defined, filtering out assets that do not conform to the regex.
+- [x] **Implement Asset Selector Priority**: Implement priority heuristics to filter out undesired extensions (such as `.sha256`, `.md`, `.txt`, `.deb`, `.rpm`) unless explicitly configured, prioritizing standalone binary executables and compatible archive structures (`.tar.gz`, `.zip`).
+- [x] **Graceful Failure**: If no compatible asset matches the host OS, Arch, and pattern, return a clean, user-friendly error (e.g., `no compatible asset found for release "v1.0.2" matching darwin/arm64`) instead of attempting to download an incorrect format.
+- [x] **Unit Tests**: Create test tables inside `pkg/installer/github_test.go` asserting:
   - Matching succeeds on repositories with multiple mixed assets (source code, binaries, checksums).
   - Explicit `assetPattern` filters correctly.
   - Failures are raised cleanly if no matching OS/Arch can be found, preventing blind fallbacks.
-- [ ] Ensure that running the command `go test ./pkg/installer/...` passes cleanly with zero failures.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Ensure that running the command `go test ./pkg/installer/...` passes cleanly with zero failures.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

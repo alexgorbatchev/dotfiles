@@ -2,7 +2,7 @@
 created_on: 2026-06-25 10:15
 last_modified: 2026-06-25 10:15
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Complete Migration of All Remaining E2E Integration Tests to Go
@@ -46,18 +46,18 @@ providing 100% full-suite Go coverage.
 
 ## Acceptance criteria
 
-- [ ] Migrate `completion.test.ts` to `tests/e2e/completion_test.go`, verifying shell completions downloading, glob resolving, and copying.
-- [ ] Migrate `env.test.ts` to `tests/e2e/env_test.go`, asserting virtual environment creation and sourcing.
-- [ ] Migrate `symlinkStale.test.ts` to `tests/e2e/symlink_stale_test.go`, verifying stale/orphaned symlink cleanup.
-- [ ] Migrate `versionDetection.test.ts` to `tests/e2e/version_detection_test.go`, verifying dynamic version lookup command matches.
-- [ ] Migrate `toolRename.test.ts` to `tests/e2e/tool_rename_test.go`, verifying database migration path on renamed configurations.
-- [ ] Migrate `pkg.test.ts` to `tests/e2e/pkg_test.go`, verifying macOS PKG system installation path queries.
-- [ ] Migrate `giteaRelease.test.ts` to `tests/e2e/gitea_release_test.go`, asserting Gitea release attachments download.
-- [ ] Migrate `files.test.ts` to `tests/e2e/files_test.go`, asserting tracked file trees.
-- [ ] Migrate `autoInstall.test.ts` to `tests/e2e/auto_install_test.go`, asserting automatic generation installs.
-- [ ] Migrate `dnf.test.ts` to `tests/e2e/dnf_test.go`, verifying Dnf installations.
-- [ ] Migrate `pacman.test.ts` to `tests/e2e/pacman_test.go`, verifying Pacman installations.
-- [ ] Migrate `ghCli.test.ts` and `hook.test.ts` to their corresponding Go tests, checking Advanced GitHub API auth and hook error cascades.
-- [ ] Clean up and delete `packages/e2e-test/` directory, and update `package.json` test scripts to invoke only Go E2E tests:
+- [x] Migrate `completion.test.ts` to `tests/e2e/completion_test.go`, verifying shell completions downloading, glob resolving, and copying.
+- [x] Migrate `env.test.ts` to `tests/e2e/env_test.go`, asserting virtual environment creation and sourcing.
+- [x] Migrate `symlinkStale.test.ts` to `tests/e2e/symlink_stale_test.go`, verifying stale/orphaned symlink cleanup.
+- [x] Migrate `versionDetection.test.ts` to `tests/e2e/version_detection_test.go`, verifying dynamic version lookup command matches.
+- [x] Migrate `toolRename.test.ts` to `tests/e2e/tool_rename_test.go`, verifying database migration path on renamed configurations.
+- [x] Migrate `pkg.test.ts` to `tests/e2e/pkg_test.go`, verifying macOS PKG system installation path queries.
+- [x] Migrate `giteaRelease.test.ts` to `tests/e2e/gitea_release_test.go`, asserting Gitea release attachments download.
+- [x] Migrate `files.test.ts` to `tests/e2e/files_test.go`, asserting tracked file trees.
+- [x] Migrate `autoInstall.test.ts` to `tests/e2e/auto_install_test.go`, asserting automatic generation installs.
+- [x] Migrate `dnf.test.ts` to `tests/e2e/dnf_test.go`, verifying Dnf installations.
+- [x] Migrate `pacman.test.ts` to `tests/e2e/pacman_test.go`, verifying Pacman installations.
+- [x] Migrate `ghCli.test.ts` and `hook.test.ts` to their corresponding Go tests, checking Advanced GitHub API auth and hook error cascades.
+- [x] Clean up and delete `packages/e2e-test/` directory, and update `package.json` test scripts to invoke only Go E2E tests:
       `"test:all": "go test -count=1 -p 1 ./tests/e2e/...`
-- [ ] **Review Instructions:** Run an independent review pass of the changes using a dedicated review workflow or review subagent, and resolve all identified issues until a completely clean review is returned.
+- [x] **Review Instructions:** Run an independent review pass of the changes using a dedicated review workflow or review subagent, and resolve all identified issues until a completely clean review is returned.

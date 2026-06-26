@@ -2,7 +2,7 @@
 created_on: 2026-06-25 14:20
 last_modified: 2026-06-25 14:20
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 6: Integrate fsys CopyFile and Prevent Sandboxing Bypass on Direct Copies
@@ -39,12 +39,12 @@ Go's virtual filesystem interface is extended with copy methods, and all install
 
 ## Acceptance criteria
 
-- [ ] **Extend FS Interface**: Add `CopyFile(src, dest string) error` to Go's core `FS` interface in `pkg/fs/fs.go`:
+- [x] **Extend FS Interface**: Add `CopyFile(src, dest string) error` to Go's core `FS` interface in `pkg/fs/fs.go`:
   - Implement the method in `pkg/fs/os_fs.go` using standard stream copies (`io.Copy`).
   - Implement the method in `pkg/fs/mem_fs.go` by copying stored byte buffers between in-memory file nodes.
-- [ ] **Refactor Archive Copying**: Replace the standard library `os.Open` and `filepath.Walk` calls inside `pkg/archive/archive.go`'s directory-copy helper with sandboxed `fsys.Open` and virtualized walking helpers, ensuring nested copying runs entirely inside `MemFS` if injected.
-- [ ] **Refactor DMG Installer**: Refactor `pkg/installer/dmg.go`'s application bundler copies to utilize `fsys.CopyFile` (or virtual directory copies) instead of spawning standard shell `cp -R` subprocesses.
-- [ ] **Unit and E2E Tests**: Write test cases in `pkg/archive/archive_test.go` and `pkg/installer/dmg_test.go` asserting:
+- [x] **Refactor Archive Copying**: Replace the standard library `os.Open` and `filepath.Walk` calls inside `pkg/archive/archive.go`'s directory-copy helper with sandboxed `fsys.Open` and virtualized walking helpers, ensuring nested copying runs entirely inside `MemFS` if injected.
+- [x] **Refactor DMG Installer**: Refactor `pkg/installer/dmg.go`'s application bundler copies to utilize `fsys.CopyFile` (or virtual directory copies) instead of spawning standard shell `cp -R` subprocesses.
+- [x] **Unit and E2E Tests**: Write test cases in `pkg/archive/archive_test.go` and `pkg/installer/dmg_test.go` asserting:
   - Running copy operations on a mocked `MemFS` volume updates only the virtual in-memory map with zero physical disk changes.
   - Verification: `go test ./pkg/archive/...` and `go test ./pkg/installer/...` return clean successes.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
