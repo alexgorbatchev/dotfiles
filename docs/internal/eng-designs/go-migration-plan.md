@@ -1,6 +1,6 @@
 ---
 created_on: 2026-06-22 12:00
-last_modified: 2026-06-23 23:30
+last_modified: 2026-06-26 10:30
 status: current
 ---
 
@@ -24,7 +24,7 @@ This document defines the engineering specification and package-by-package migra
 - [12. Testing Plan](#12-testing-plan)
 - [13. Out-of-Scope / Rejection List](#13-out-of-scope--rejection-list)
 - [14. Definition of Done](#14-definition-of-done)
-- [15. Go 1.26 and Sobek VM Structural Snippets](#15-go-122-and-sobek-vm-structural-snippets)
+- [15. Go 1.26 and Goja VM Structural Snippets](#15-go-122-and-goja-vm-structural-snippets)
 
 ---
 
@@ -38,12 +38,12 @@ This document defines the engineering specification and package-by-package migra
 - Every Go package must achieve a minimum of 90% function-level testing coverage.
 - The migration process must include an automated Dual-Run Parity verification harness (the "Hard Check Gate") that asserts absolute feature and output parity against the legacy TypeScript implementation.
 - The system **must maintain support for TypeScript-based tool definitions (`.tool.ts`)**.
-- To run TypeScript-based tool definitions within a static Go binary without external execution dependencies, we **must use Sobek** (`github.com/grafana/sobek`), a high-performance pure-Go JavaScript VM.
+- To run TypeScript-based tool definitions within a static Go binary without external execution dependencies, we **must use Goja** (`github.com/grafana/goja`), a high-performance pure-Go JavaScript VM.
 - To prevent type contract drift and ensure 100% type-safety between Go configurations and TypeScript tool definitions, we **must use a type generation package** (specifically `github.com/tkrajina/typescriptify-golang-structs`) to automatically generate TypeScript interface definitions directly from Go structs during development.
 
 ### Non-Goals
 
-- We must not invoke external dynamic runtimes (such as spawning Node.js or Bun processes) at runtime to evaluate user configurations or tool definitions. All evaluation must happen natively within the embedded Sobek VM.
+- We must not invoke external dynamic runtimes (such as spawning Node.js or Bun processes) at runtime to evaluate user configurations or tool definitions. All evaluation must happen natively within the embedded Goja VM.
 - We must not support Go versions earlier than 1.26.
 - We must not modify or re-implement external package managers (e.g., `brew`, `pacman`, `apt`, `cargo`). The Go installers must invoke these commands as subprocesses identically to the TypeScript codebase.
 - We must not maintain backward-compatible workarounds for legacy APIs that were already marked as deprecated.
@@ -101,8 +101,8 @@ All dependencies are resolved via `bun.lockb` and run using the Bun runtime.
   - **JSON/YAML validation**: Validation of configuration files must use explicit `Validate() error` method receivers on parsed structs instead of massive validation libraries.
 - **Goroutine Ownership**: Every goroutine launched must be tracked by a `sync.WaitGroup` or managed context. Channels and Select blocks must include timeouts or cancellation listeners to prevent goroutine leaks.
 - **No Compiled Binaries in Git**: All compiled executables must be excluded via `.gitignore` and must never be checked into the source tree. This constraint must also apply to build-time generated artifacts; specifically, the transpiled JavaScript files generated in `pkg/vm/dist/` must be excluded in `.gitignore` to prevent pre-compiled bundles from contaminating the repository.
-- **TypeScript-Based Tool Execution (Sobek Engine)**: To support `.tool.ts` files, we must compile/bundle these TypeScript definitions into standard ES5/ES6 JavaScript during the compilation/packaging phase using Bun (`bun build`), embed the compiled JS using Go's standard `//go:embed` directive, and execute them natively inside the Go binary via **Sobek** (`github.com/grafana/sobek`). This guarantees 100% standalone execution without needing external JavaScript engines at runtime.
-- **Type Generation and Schema Parity**: We must eliminate structural drift between Go structs and TypeScript configs. We must use **`github.com/tkrajina/typescriptify-golang-structs`** in a dedicated code-generation script to convert core Go structs (e.g., `ToolConfig`, `ProjectConfig`) into their TypeScript equivalents during development. The generated TypeScript interfaces must serve as the foundation of the `.tool.ts` definitions. To guarantee seamless mapping during Sobek's VM reflection unmarshaling, all Go configuration structs in `pkg/config` must carry explicit `json` and `yaml` struct tags that map exactly to camelCase TypeScript properties (e.g. `json:"installMethod"`), preventing silent unmarshaling drops.
+- **TypeScript-Based Tool Execution (Goja Engine)**: To support `.tool.ts` files, we must compile/bundle these TypeScript definitions into standard ES5/ES6 JavaScript during the compilation/packaging phase using Bun (`bun build`), embed the compiled JS using Go's standard `//go:embed` directive, and execute them natively inside the Go binary via **Goja** (`github.com/grafana/goja`). This guarantees 100% standalone execution without needing external JavaScript engines at runtime.
+- **Type Generation and Schema Parity**: We must eliminate structural drift between Go structs and TypeScript configs. We must use **`github.com/tkrajina/typescriptify-golang-structs`** in a dedicated code-generation script to convert core Go structs (e.g., `ToolConfig`, `ProjectConfig`) into their TypeScript equivalents during development. The generated TypeScript interfaces must serve as the foundation of the `.tool.ts` definitions. To guarantee seamless mapping during Goja's VM reflection unmarshaling, all Go configuration structs in `pkg/config` must carry explicit `json` and `yaml` struct tags that map exactly to camelCase TypeScript properties (e.g. `json:"installMethod"`), preventing silent unmarshaling drops.
 - **Command-Line Parsing**: The CLI entrypoint must use the `github.com/spf13/cobra` package.
 - **State Registry Persistence**: We must maintain an SQLite-backed registry database identically to the TypeScript implementation. To avoid breaking user environments, maintaining full binary compile portability, and eliminating heavy platform dependencies, the Go application must use a zero-dependency, CGO-free, pure-Go SQLite driver (specifically `modernc.org/sqlite`).
 
@@ -133,7 +133,7 @@ The folder structure must be:
 | `unwrap-value`                 | `pkg/unwrap`       | Pattern replacer (e.g., `{{ .Version }}`, `{{ .Arch }}`).                                                      |
 | `version-checker`              | `pkg/version`      | Evaluator of semver boundaries and local/remote versions.                                                      |
 | `config`                       | `pkg/config`       | Struct schemas for configuration files, also hosting structs that generate TS types.                           |
-| `tool-config-builder` & `core` | `pkg/vm`           | Pure-Go **Sobek** Javascript VM initializer, custom Go-to-JS bindings, and TypeScript bundle execution runner. |
+| `tool-config-builder` & `core` | `pkg/vm`           | Pure-Go **Goja** Javascript VM initializer, custom Go-to-JS bindings, and TypeScript bundle execution runner. |
 | `registry-database`            | `pkg/db`           | Pure-Go SQLite database connections, schema provisioning, and transactional engines.                           |
 | `registry`                     | `pkg/registry`     | DB access models for `file_operations` and `tool_installations`.                                               |
 | `shell-emissions`              | `pkg/shell`        | Generating alias, export, and path extension directives.                                                       |
@@ -280,9 +280,9 @@ type FS interface {
 }
 ```
 
-### Sobek VM Tool Definition Execution Contract
+### Goja VM Tool Definition Execution Contract
 
-The Sobek VM package `pkg/vm` must expose a runner function with the following signature to execute TypeScript-compiled tool definitions and extract standard Go configurations:
+The Goja VM package `pkg/vm` must expose a runner function with the following signature to execute TypeScript-compiled tool definitions and extract standard Go configurations:
 
 ```go
 package vm
@@ -292,7 +292,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 )
 
-// EvaluateToolDefinition executes the JS-bundled tool definition script in the Sobek VM,
+// EvaluateToolDefinition executes the JS-bundled tool definition script in the Goja VM,
 // passing in environment context parameters, and marshals the evaluated JS result
 // directly into the strongly typed Go ToolConfig.
 func EvaluateToolDefinition(ctx context.Context, scriptContent []byte, sysCtx *config.SystemContext) (*config.ToolConfig, error)
@@ -304,7 +304,7 @@ func EvaluateToolDefinition(ctx context.Context, scriptContent []byte, sysCtx *c
 
 ### Root
 
-- `go.mod` - Declares module `github.com/alexgorbatchev/dotfiles` and lists dependencies (`spf13/cobra`, `modernc.org/sqlite`, `github.com/grafana/sobek`, `github.com/tkrajina/typescriptify-golang-structs`).
+- `go.mod` - Declares module `github.com/alexgorbatchev/dotfiles` and lists dependencies (`spf13/cobra`, `modernc.org/sqlite`, `github.com/grafana/goja`, `github.com/tkrajina/typescriptify-golang-structs`).
 - `go.sum` - Checksums for Go packages.
 - `Makefile` - Tasks for compile (`make build`), test (`make test`), and format check (`make lint`). Includes pre-compilation rules for compiling TypeScript tool-definitions with Bun and running type-generation.
 
@@ -339,7 +339,7 @@ Instead of a monolithic main file, subcommands must be split into dedicated modu
 - `pkg/archive/archive.go` - Integrates extraction for Zip, Tar, Gzip, and calls external dmg/pkg utilities.
 - `pkg/unwrap/unwrap.go` - Regex template unwrapper using Go's `text/template` engine.
 - `pkg/config/config.go` - Configuration structures matching the TS configurations. Serves as source for type generator.
-- `pkg/vm/vm.go` - Sobek VM context orchestrator, managing VM pools and execution.
+- `pkg/vm/vm.go` - Goja VM context orchestrator, managing VM pools and execution.
 - `pkg/vm/bindings.go` - Implements standard Go callback bindings exposed inside the JS engine (e.g., helper functions, platform detectors).
 - `pkg/vm/embed_gen.go` - Carries standard `//go:embed` references containing compiled and pre-bundled `.tool.js` script definitions.
 - `pkg/db/db.go` - Pure-Go SQLite connection pooling and structural migration runner.
@@ -385,11 +385,11 @@ Instead of a monolithic main file, subcommands must be split into dedicated modu
 5. The config model is validated.
 6. The `FS` and `CommandRunner` instances are injected.
 
-### Sobek VM Tool Evaluation Workflow
+### Goja VM Tool Evaluation Workflow
 
 1. For each target tool:
    - Resolves the embedded Javascript file matching the tool name.
-   - Instantiates a isolated **Sobek** VM context (`pkg/vm`).
+   - Instantiates a isolated **Goja** VM context (`pkg/vm`).
    - Configures and exposes system parameter bindings (OS, Architecture, paths) to the global JS space.
    - Executes the tool's bundled Javascript.
    - Queries the VM for the generated configuration object and unmarshals the dynamic values directly into the concrete Go `config.ToolConfig` struct.
@@ -446,7 +446,7 @@ The CLI compiled binary must support these subcommands and flags, configured dyn
 To mitigate integration risk, work must progress in sequential tiers from zero-dependency packages to high-dependency entrypoints:
 
 1. **Tier 1 (Core Utilities)**: `pkg/utils`, `pkg/logger` (slog-based tab format), `pkg/arch`, `pkg/fs` (core interfaces and memory fakes).
-2. **Tier 2 (Execution & Script VM)**: `pkg/exec` (command interfaces, runner patterns, testing mocks), `pkg/vm` (Sobek VM integrations, Go-to-JS bindings), `scripts/typegen` (Type generation scripting).
+2. **Tier 2 (Execution & Script VM)**: `pkg/exec` (command interfaces, runner patterns, testing mocks), `pkg/vm` (Goja VM integrations, Go-to-JS bindings), `scripts/typegen` (Type generation scripting).
 3. **Tier 3 (I/O & Storage Engines)**: `pkg/downloader`, `pkg/archive`, `pkg/unwrap`, `pkg/db` (SQLite connection manager), `pkg/registry` (database models and tables).
 4. **Tier 4 (Configuration Systems)**: `pkg/config` (shared models and validations), `pkg/version`.
 5. **Tier 5 (Generators & Documentation)**: `pkg/shell`, `pkg/shellinit`, `pkg/symlink`, `pkg/shim`, `pkg/venv`, `pkg/features`.
@@ -469,7 +469,7 @@ To mitigate integration risk, work must progress in sequential tiers from zero-d
 - No unit tests must issue active network queries. Instead, tests must configure custom HTTP clients targeting a local mock server instantiated via `httptest.NewServer`.
 - All disk reads and writes inside package tests must target the `pkg/fs.MemFS` in-memory structure or use `t.TempDir()`.
 - No installer test must call the system terminal directly. Instead, installer units must consume a `MockCommandRunner` which returns mock outputs and captures the calls for rigorous semantic assertion.
-- All Sobek VM tests must execute using statically mocked JS scripts inside testing tables, completely decoupled from local `.tool.ts` paths.
+- All Goja VM tests must execute using statically mocked JS scripts inside testing tables, completely decoupled from local `.tool.ts` paths.
 
 ### The Hard Check Gate (Dual-Run Parity Verification Harness)
 
@@ -560,7 +560,7 @@ The migrated suite must cover the following test cases identically to the legacy
 
 ## 13. Out-of-Scope / Rejection List
 
-- **No Heavyweight Dynamic JS Runtimes at Runtime**: We explicitly reject calling dynamic JS runtimes like spawning external Bun/Node.js subprocesses to compile or load configurations at runtime. All JS execution must happen natively within the embedded Sobek VM.
+- **No Heavyweight Dynamic JS Runtimes at Runtime**: We explicitly reject calling dynamic JS runtimes like spawning external Bun/Node.js subprocesses to compile or load configurations at runtime. All JS execution must happen natively within the embedded Goja VM.
 - **No Console Logging**: Packages under `pkg/` must never write directly to `os.Stdout` or `os.Stderr` via `fmt.Println` or `println`. They must log via slog using structural sublogger hierarchy matching standard patterns:
   ```go
   // Injected sublogger containing hierarchy info
@@ -586,7 +586,7 @@ A package migration task is defined as 100% complete only when it meets the foll
 
 ---
 
-## 15. Go 1.26 and Sobek VM Structural Snippets
+## 15. Go 1.26 and Goja VM Structural Snippets
 
 ### Go 1.26 `new(expr)` Allocations
 
@@ -610,7 +610,7 @@ func main() {
 }
 ```
 
-### Sobek VM JS Evaluation and Go-Struct Mapping
+### Goja VM JS Evaluation and Go-Struct Mapping
 
 Below is an illustrative implementation snippet demonstrating the execution of TypeScript-transpiled Javascript tool-definitions and mapping the resulting JS objects directly into Go configuration structs:
 
@@ -620,7 +620,7 @@ package vm
 import (
 	"context"
 	"fmt"
-	"github.com/grafana/sobek"
+	"github.com/dop251/goja"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 )
 
@@ -630,7 +630,7 @@ type SystemContext struct {
 }
 
 func EvaluateToolDefinition(ctx context.Context, scriptContent []byte, sysCtx *SystemContext) (*config.ToolConfig, error) {
-	vm := sobek.New()
+	vm := goja.New()
 
 	// 1. Inject OS and Architecture variables into the JavaScript global context
 	if err := vm.Set("HOST_OS", sysCtx.OS); err != nil {
@@ -647,7 +647,7 @@ func EvaluateToolDefinition(ctx context.Context, scriptContent []byte, sysCtx *S
 
 	// 3. Query the JavaScript VM for the defined 'tool' definition object
 	val := vm.Get("tool")
-	if val == nil || sobek.IsUndefined(val) {
+	if val == nil || goja.IsUndefined(val) {
 		return nil, fmt.Errorf("tool definition was not exported to global 'tool' variable")
 	}
 
