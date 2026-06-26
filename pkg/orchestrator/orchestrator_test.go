@@ -928,3 +928,25 @@ func TestOrchestratorNativeShellGeneration(t *testing.T) {
 		t.Errorf("expected script to contain source <(my-func)")
 	}
 }
+
+func TestOrchestrator_GetCliCommand(t *testing.T) {
+	fsys := fs.NewMemFS()
+	reg := registry.NewRegistry(nil)
+	orch := NewOrchestrator(nil, fsys, nil, reg, nil)
+
+	// Case 1: DOTFILES_CLI_COMMAND is set
+	t.Setenv("DOTFILES_CLI_COMMAND", "custom-cli-command")
+	cmd := orch.getCliCommand()
+	if cmd != "custom-cli-command" {
+		t.Errorf("expected custom-cli-command, got %q", cmd)
+	}
+
+	// Case 2: DOTFILES_CLI_COMMAND is not set, but DOTFILES_E2E_TEST is true
+	t.Setenv("DOTFILES_CLI_COMMAND", "")
+	t.Setenv("DOTFILES_E2E_TEST", "true")
+	cmd = orch.getCliCommand()
+	execPath, _ := os.Executable()
+	if cmd != execPath {
+		t.Errorf("expected %q, got %q", execPath, cmd)
+	}
+}
