@@ -153,7 +153,7 @@ func TestGitHubInstaller_ConcurrentAccess(t *testing.T) {
 	done := make(chan bool)
 	for i := 0; i < goroutines; i++ {
 		go func() {
-			_ = ghInst.matchAsset([]githubAsset{{Name: "test-linux-amd64"}})
+			_ = ghInst.matchAsset([]githubAsset{{Name: "test-linux-amd64"}}, "")
 			done <- true
 		}()
 	}
@@ -161,4 +161,72 @@ func TestGitHubInstaller_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < goroutines; i++ {
 		<-done
 	}
+}
+
+func TestGitHubInstaller_MatchAssetHeuristics(t *testing.T) {
+	inst := &GitHubInstaller{
+		sysCtx: &SystemContext{
+			OS:   "linux",
+			Arch: "amd64",
+		},
+	}
+
+	t.Run("Priority and Filtering Heuristics", func(t *testing.T) {
+		assets := []githubAsset{
+			{Name: "mytool-linux-amd64.sha256"}, // undesired extension (checksum)
+			{Name: "mytool-linux-amd64.deb"},    // package extension (low priority)
+			{Name: "mytool-linux-amd64.tar.gz"}, // archive extension (high priority)
+			{Name: "mytool-linux-amd64"},        // standalone binary (high priority)
+			{Name: "mytool-darwin-amd64"},       // incorrect OS
+		}
+
+		// Without a pattern, we expect to pick the tar.gz or standalone binary rather than the sha256 or deb
+		matched := inst.matchAsset(assets, "")
+		if matched == nil {
+			t.Fatalf("expected to match an asset, got nil")
+		}
+		if matched.Name != "mytool-linux-amd64.tar.gz" && matched.Name != "mytool-linux-amd64" {
+			t.Errorf("expected to match tar.gz or standalone binary, got %q", matched.Name)
+		}
+	})
+
+	t.Run("Explicit assetPattern", func(t *testing.T) {
+		assets := []githubAsset{
+			{Name: "mytool-linux-amd64.deb"},
+			{Name: "mytool-linux-amd64.tar.gz"},
+			{Name: "mytool-linux-amd64.sha256"},
+		}
+
+		// Match specifically the deb package using pattern
+		matched := inst.matchAsset(assets, `\.deb$`)
+		if matched == nil {
+			t.Fatalf("expected to match deb asset with pattern, got nil")
+		}
+		if matched.Name != "mytool-linux-amd64.deb" {
+			t.Errorf("expected mytool-linux-amd64.deb, got %q", matched.Name)
+		}
+
+		// Match the checksum with explicit pattern
+		matchedChecksum := inst.matchAsset(assets, `\.sha256$`)
+		if matchedChecksum == nil {
+			t.Fatalf("expected to match sha256 asset with pattern, got nil")
+		}
+		if matchedChecksum.Name != "mytool-linux-amd64.sha256" {
+			t.Errorf("expected mytool-linux-amd64.sha256, got %q", matchedChecksum.Name)
+		}
+	})
+
+	t.Run("Failures on mismatched OS/Arch", func(t *testing.T) {
+		assets := []githubAsset{
+			{Name: "mytool-darwin-amd64"},
+			{Name: "mytool-linux-arm64"},
+			{Name: "mytool-windows-amd64.exe"},
+		}
+
+		// None should match since the OS is linux and Arch is amd64, and we eliminated blind fallback
+		matched := inst.matchAsset(assets, "")
+		if matched != nil {
+			t.Errorf("expected no match, but matched %q", matched.Name)
+		}
+	})
 }

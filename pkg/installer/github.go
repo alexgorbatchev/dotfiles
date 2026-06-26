@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
@@ -129,9 +130,14 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		return nil, fmt.Errorf("decoding GitHub release response: %w", err)
 	}
 
-	matched := g.matchAsset(release.Assets)
+	assetPattern := getStringParam(tool.InstallParams, "assetPattern", "")
+	matched := g.matchAsset(release.Assets, assetPattern)
 	if matched == nil {
-		return nil, fmt.Errorf("no matching release asset found for OS %s and Arch %s", g.sysCtx.OS, g.sysCtx.Arch)
+		patternStr := ""
+		if assetPattern != "" {
+			patternStr = " and pattern " + assetPattern
+		}
+		return nil, fmt.Errorf("no compatible asset found for release %q matching %s/%s%s", release.TagName, g.sysCtx.OS, g.sysCtx.Arch, patternStr)
 	}
 
 	destDir := g.BinDir
@@ -222,21 +228,103 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 	}, nil
 }
 
-func (g *GitHubInstaller) matchAsset(assets []githubAsset) *githubAsset {
+func (g *GitHubInstaller) matchAsset(assets []githubAsset, assetPattern string) *githubAsset {
 	sysCtx := g.sysCtx
 	if sysCtx == nil {
 		sysCtx = NewDefaultSystemContext()
 	}
-	for _, asset := range assets {
-		name := strings.ToLower(asset.Name)
-		if strings.Contains(name, sysCtx.OS) && (strings.Contains(name, sysCtx.Arch) || (sysCtx.Arch == "amd64" && strings.Contains(name, "x86_64")) || (sysCtx.Arch == "arm64" && strings.Contains(name, "aarch64"))) {
-			return &asset
+
+	var re *regexp.Regexp
+	if assetPattern != "" {
+		var err error
+		re, err = regexp.Compile(assetPattern)
+		if err != nil {
+			return nil
 		}
 	}
-	if len(assets) > 0 {
-		return &assets[0]
+
+	var bestAsset *githubAsset
+	bestScore := -1
+
+	for _, asset := range assets {
+		name := strings.ToLower(asset.Name)
+
+		if re != nil {
+			if !re.MatchString(asset.Name) {
+				continue
+			}
+		}
+
+		if !strings.Contains(name, sysCtx.OS) {
+			continue
+		}
+
+		archMatch := false
+		if strings.Contains(name, sysCtx.Arch) {
+			archMatch = true
+		} else if sysCtx.Arch == "amd64" && (strings.Contains(name, "x86_64") || strings.Contains(name, "x64")) {
+			archMatch = true
+		} else if sysCtx.Arch == "arm64" && (strings.Contains(name, "aarch64") || strings.Contains(name, "armv8")) {
+			archMatch = true
+		}
+		if !archMatch {
+			continue
+		}
+
+		score := 5
+
+		isUndesiredSuffix := false
+		undesiredExtensions := []string{
+			".sha256", ".sha256sum", ".sha512", ".md5", ".sha1", ".sig", ".asc",
+			".txt", ".md", ".html", ".pdf", ".yaml", ".yml", ".json", ".xml", ".csv",
+		}
+		for _, ext := range undesiredExtensions {
+			if strings.HasSuffix(name, ext) {
+				isUndesiredSuffix = true
+				break
+			}
+		}
+
+		packageExtensions := []string{".deb", ".rpm", ".apk", ".msi"}
+		isPackage := false
+		for _, ext := range packageExtensions {
+			if strings.HasSuffix(name, ext) {
+				isPackage = true
+				break
+			}
+		}
+
+		archiveExtensions := []string{".tar.gz", ".tgz", ".zip", ".tar.xz", ".txz", ".tar.bz2", ".tbz2"}
+		isArchive := false
+		for _, ext := range archiveExtensions {
+			if strings.HasSuffix(name, ext) {
+				isArchive = true
+				break
+			}
+		}
+
+		if isUndesiredSuffix {
+			if assetPattern != "" {
+				score = 1
+			} else {
+				continue
+			}
+		} else if isPackage {
+			score = 2
+		} else if isArchive {
+			score = 10
+		} else {
+			score = 10
+		}
+
+		if score > bestScore {
+			bestScore = score
+			assetCopy := asset
+			bestAsset = &assetCopy
+		}
 	}
-	return nil
+
+	return bestAsset
 }
 
 func init() {
