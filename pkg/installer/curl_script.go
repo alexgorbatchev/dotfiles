@@ -114,18 +114,24 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 	// Clean up script
 	_ = c.fsys.Remove(scriptPath)
 
-	// Since the script runs and places binaries in destDir (or simulated paths),
-	// we assume the binary is now present. In mock tests, we will prepopulate it.
+	promotedBinaries, err := PromoteBinaries(c.fsys, destDir, tool.Name, tool.Binaries)
+	if err != nil {
+		return nil, err
+	}
+
 	return &InstallResult{
-		Binaries: []string{tool.Name},
+		Binaries: promotedBinaries,
 	}, nil
 }
 
 func (c *CurlScriptInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
 	destDir := c.BinDir
 	if destDir != "" {
-		destPath := filepath.Join(destDir, tool.Name)
-		return c.fsys.Remove(destPath)
+		binNames := GetBinaryNames(tool.Name, tool.Binaries)
+		for _, name := range binNames {
+			destPath := filepath.Join(destDir, name)
+			_ = c.fsys.Remove(destPath)
+		}
 	}
 	return nil
 }

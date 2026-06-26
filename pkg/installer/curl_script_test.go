@@ -39,6 +39,8 @@ func TestCurlScriptInstaller(t *testing.T) {
 
 	t.Run("Install success with sh", func(t *testing.T) {
 		runner.Clear()
+		_ = fsys.MkdirAll("/test/bin", 0755)
+		_ = fsys.WriteFile("/test/bin/mytool", []byte("bin"), 0755)
 		tool := &config.ToolConfig{
 			Name: "mytool",
 			InstallParams: map[string]interface{}{
@@ -70,6 +72,8 @@ func TestCurlScriptInstaller(t *testing.T) {
 
 	t.Run("Install success with bash", func(t *testing.T) {
 		runner.Clear()
+		_ = fsys.MkdirAll("/test/bin", 0755)
+		_ = fsys.WriteFile("/test/bin/mytool", []byte("bin"), 0755)
 		tool := &config.ToolConfig{
 			Name: "mytool",
 			InstallParams: map[string]interface{}{

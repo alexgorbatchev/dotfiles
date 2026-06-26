@@ -62,7 +62,8 @@ func (c *CurlBinaryInstaller) Install(ctx context.Context, tool *config.ToolConf
 		return nil, fmt.Errorf("creating directory %s: %w", destDir, err)
 	}
 
-	destPath := filepath.Join(destDir, tool.Name)
+	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	destPath := filepath.Join(destDir, binNames[0])
 	sha256 := getStringParam(tool.InstallParams, "sha256", "")
 
 	if err := c.dl.Download(ctx, url, destPath, sha256); err != nil {
@@ -78,14 +79,15 @@ func (c *CurlBinaryInstaller) Install(ctx context.Context, tool *config.ToolConf
 	_ = chmodCmd.Run() // best effort
 
 	return &InstallResult{
-		Binaries: []string{tool.Name},
+		Binaries: binNames,
 	}, nil
 }
 
 func (c *CurlBinaryInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
 	destDir := c.BinDir
 	if destDir != "" {
-		destPath := filepath.Join(destDir, tool.Name)
+		binNames := GetBinaryNames(tool.Name, tool.Binaries)
+		destPath := filepath.Join(destDir, binNames[0])
 		return c.fsys.Remove(destPath)
 	}
 	return nil
