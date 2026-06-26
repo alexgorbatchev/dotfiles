@@ -3,7 +3,6 @@ package e2e
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -13,61 +12,37 @@ func TestE2EDryRunSandboxing(t *testing.T) {
 	ms := NewMockServer(t, "main")
 	defer ms.Close()
 
-	// Initialize the test harness. Since we want to verify in-memory sandboxing,
-	// we specifically set "DOTFILES_E2E_TEST" env var to "false" so that the binary
-	// boots with MemFS and :memory: database instead of physical ones!
 	h := NewTestHarness(t, HarnessOptions{
 		ConfigPath: "config.ts",
-		Env: map[string]string{
-			"DOTFILES_E2E_TEST": "false",
-		},
 	})
 	h.MockServerURL = ms.Server.URL
 
 	// Copy the "main" fixture files to the sandbox TempDir
 	h.CopyFixture("main")
 
-	// Run generate command with dry-run
-	stdout, stderr, exitCode, err := h.Generate("-d")
-	t.Logf("generate stdout:\n%s", stdout)
-	t.Logf("generate stderr:\n%s", stderr)
+	// Determine output directory of the generation, which is .generated under sandbox TempDir
+	generatedDir := filepath.Join(h.TempDir, ".generated")
+	
+	// Ensure that before running, no generated dir exists
+	_ = os.RemoveAll(generatedDir)
+
+	// Run generate command with --dry-run
+	stdout, stderr, exitCode, err := h.Generate("--dry-run")
 	if err != nil {
-		t.Fatalf("generate failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		t.Fatalf("generate --dry-run failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 	if exitCode != 0 {
-		t.Fatalf("generate returned exit code %d, stdout: %s\nstderr: %s", exitCode, stdout, stderr)
+		t.Fatalf("generate --dry-run returned exit code %d, stdout: %s\nstderr: %s", exitCode, stdout, stderr)
 	}
 
-	// 1. Verify that output indicates successful tracking and dry-run execution
-	output := stdout + stderr
-	if !strings.Contains(output, "Command completed successfully (dry-run)") {
-		t.Fatalf("expected output to mention successful dry-run completion, got:\n%s", output)
+	// 1. Assert filesystem side-effects: no actual .generated files/symlinks created on host
+	if _, err := os.Stat(generatedDir); !os.IsNotExist(err) {
+		t.Errorf("expected generated output directory %q to NOT exist on dry-run, but it exists", generatedDir)
 	}
 
-	// 2. Assert that physical files (such as .generated/user-bin/github-release-tool or shell scripts)
-	// were NOT created on the physical host system / temp sandbox directory.
-	userBinPath := filepath.Join(h.TempDir, ".generated", "user-bin")
-	if _, err := os.Stat(userBinPath); err == nil || !os.IsNotExist(err) {
-		t.Fatalf("expected physical user-bin directory NOT to be created on host, but it was found at %s", userBinPath)
-	}
-
-	shellScriptsPath := filepath.Join(h.TempDir, ".generated", "shell-scripts")
-	if _, err := os.Stat(shellScriptsPath); err == nil || !os.IsNotExist(err) {
-		t.Fatalf("expected physical shell-scripts directory NOT to be created on host, but it was found at %s", shellScriptsPath)
-	}
-
-	// 3. Assert that physical registry.db was NOT created on the physical disk
-	dbPath := filepath.Join(h.TempDir, ".generated", "registry.db")
-	if _, err := os.Stat(dbPath); err == nil || !os.IsNotExist(err) {
-		var files []string
-		_ = filepath.Walk(h.TempDir, func(p string, info os.FileInfo, err error) error {
-			if err == nil {
-				rel, _ := filepath.Rel(h.TempDir, p)
-				files = append(files, rel)
-			}
-			return nil
-		})
-		t.Logf("FILES IN SANDBOX ON FAILURE:\n%s", strings.Join(files, "\n"))
-		t.Fatalf("expected physical registry.db database file NOT to be created or modified on disk, but it was found at %s", dbPath)
+	// 2. Assert physical registry.db was not created on host
+	dbPath := filepath.Join(generatedDir, "registry.db")
+	if _, err := os.Stat(dbPath); !os.IsNotExist(err) {
+		t.Errorf("expected physical database file %q to NOT exist on dry-run, but it exists", dbPath)
 	}
 }

@@ -57,7 +57,7 @@ func TestE2EConflict(t *testing.T) {
 
 	t.Run("should fail to generate when conflicting file exists", func(t *testing.T) {
 		// Run generate
-		stdout, stderr, exitCode, err := h.Generate("-d")
+		stdout, stderr, exitCode, err := h.Generate()
 		if err != nil || exitCode != 0 {
 			t.Fatalf("generate failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
@@ -85,7 +85,7 @@ func TestE2EConflict(t *testing.T) {
 
 	t.Run("should succeed with --overwrite flag when conflicting file exists", func(t *testing.T) {
 		// Run generate with --overwrite
-		stdout, stderr, exitCode, err := h.Generate("-d", "--overwrite")
+		stdout, stderr, exitCode, err := h.Generate("--overwrite")
 		if err != nil || exitCode != 0 {
 			t.Fatalf("generate with --overwrite failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}

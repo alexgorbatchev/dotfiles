@@ -70,7 +70,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	}
 
 	var fsys fs.FS
-	if (dryRun && os.Getenv("DOTFILES_E2E_TEST") != "true") || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
+	if dryRun || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
 		fsys = fs.NewMemFS()
 	} else {
 		fsys = fs.NewOSFS()
@@ -147,13 +147,12 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	// For dry-runs and tests, we still open a valid database.
 	// If in unit testing or dry-run, use in-memory SQLite to prevent disk state pollution.
 	var dbPath string
-	if (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") || (dryRun && os.Getenv("DOTFILES_E2E_TEST") != "true") {
+	if dryRun || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
 		dbPath = ":memory:"
 	} else {
 		dbPath = filepath.Join(projCfg.Paths.GeneratedDir, "registry.db")
 	}
 
-	fmt.Printf("DEBUG DBPATH: %s, dryRun: %v, e2e: %s\n", dbPath, dryRun, os.Getenv("DOTFILES_E2E_TEST"))
 	sqlDB, err := db.NewConnection(ctx, dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed connecting to SQLite database: %w", err)
@@ -183,6 +182,9 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		_ = instReg.Register(&mockInstaller{name: "pkg", fsys: fsys, projCfg: projCfg})
 	}
 	orch := orchestrator.NewOrchestrator(GetLogger("orchestrator", os.Stdout), trackedFS, runner, reg, instReg)
+	if dryRun {
+		orch.SetSymlinkFS(fsys)
+	}
 
 	// Map binary dependencies to fully-qualified tool names (e.g., fnm -> curl-script--fnm)
 	for _, tc := range toolConfigs {
@@ -273,11 +275,9 @@ func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	}
 
 	// Write mock binaries to the active staging directory
-	fmt.Printf("DEBUG MOCK: name: %q, fsys: %v, projCfg: %v\n", m.name, m.fsys != nil, m.projCfg != nil)
 	if m.fsys != nil && m.projCfg != nil {
 		toolDir := filepath.Join(m.projCfg.Paths.BinariesDir, tool.Name)
 		entries, err := m.fsys.ReadDir(toolDir)
-		fmt.Printf("DEBUG MOCK INSTALL: toolDir: %q, err: %v, entries: %v\n", toolDir, err, entries)
 		if err == nil {
 			for _, entry := range entries {
 				subDir := filepath.Join(toolDir, entry)
@@ -346,10 +346,15 @@ func ResolvePlatformConfigs(toolConfigs []*config.ToolConfig, sysCtx *installer.
 					}
 				}
 
-				// Map entry.Config to a JSON string and unmarshal to tc
 				jsonBytes, err := json.Marshal(entry.Config)
 				if err == nil {
-					_ = json.Unmarshal(jsonBytes, tc)
+					var rawOverride map[string]interface{}
+					var override config.ToolConfig
+					if err := json.Unmarshal(jsonBytes, &rawOverride); err == nil {
+						if err := json.Unmarshal(jsonBytes, &override); err == nil {
+							tc.Merge(&override, rawOverride)
+						}
+					}
 				}
 			}
 		}

@@ -19,7 +19,7 @@ func TestE2EGenerate(t *testing.T) {
 	h.CopyFixture("main")
 
 	// Run generate command
-	stdout, stderr, exitCode, err := h.Generate("-d")
+	stdout, stderr, exitCode, err := h.Generate()
 	if err != nil {
 		t.Fatalf("generate failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
