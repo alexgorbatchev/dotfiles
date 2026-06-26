@@ -14,6 +14,10 @@ var installCmd = &cobra.Command{
 	Short: "Installs either a single specified tool or all tools defined in the configuration",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
+		shimMode, _ := cmd.Flags().GetBool("shim-mode")
+		if shimMode {
+			logLevel = "quiet"
+		}
 		services, err := BootstrapServices(ctx, cfgFile)
 		if err != nil {
 			return err
@@ -84,5 +88,6 @@ var installCmd = &cobra.Command{
 }
 
 func init() {
+	installCmd.Flags().Bool("shim-mode", false, "Quiet installation mode for shims")
 	rootCmd.AddCommand(installCmd)
 }

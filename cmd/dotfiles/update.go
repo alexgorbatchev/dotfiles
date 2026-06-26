@@ -15,6 +15,10 @@ var updateCmd = &cobra.Command{
 	Short: "Evaluates versions and installs newer software packages if available",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
+		shimMode, _ := cmd.Flags().GetBool("shim-mode")
+		if shimMode {
+			logLevel = "quiet"
+		}
 		services, err := BootstrapServices(ctx, cfgFile)
 		if err != nil {
 			return err
@@ -119,5 +123,6 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
+	updateCmd.Flags().Bool("shim-mode", false, "Quiet update mode for shims")
 	rootCmd.AddCommand(updateCmd)
 }
