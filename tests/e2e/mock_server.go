@@ -13,11 +13,11 @@ import (
 )
 
 type MockServer struct {
-	Server       *httptest.Server
-	FixtureDir   string
-	ProjectRoot  string
-	versions     map[string]string
-	versionsMu   sync.Mutex
+	Server      *httptest.Server
+	FixtureDir  string
+	ProjectRoot string
+	versions    map[string]string
+	versionsMu  sync.Mutex
 }
 
 func NewMockServer(t *testing.T, fixtureDir string) *MockServer {
@@ -324,12 +324,12 @@ func (ms *MockServer) serveGiteaRelease(w http.ResponseWriter, r *http.Request, 
 	}
 
 	res := map[string]any{
-		"id":           1,
-		"tag_name":     version,
-		"name":         "Release " + version,
-		"assets":       assets,
-		"tarball_url":  fmt.Sprintf("%s/%s/archive/%s.tar.gz", ms.Server.URL, repo, version),
-		"zipball_url":  fmt.Sprintf("%s/%s/archive/%s.zip", ms.Server.URL, repo, version),
+		"id":          1,
+		"tag_name":    version,
+		"name":        "Release " + version,
+		"assets":      assets,
+		"tarball_url": fmt.Sprintf("%s/%s/archive/%s.tar.gz", ms.Server.URL, repo, version),
+		"zipball_url": fmt.Sprintf("%s/%s/archive/%s.zip", ms.Server.URL, repo, version),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

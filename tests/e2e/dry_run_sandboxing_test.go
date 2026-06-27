@@ -22,7 +22,7 @@ func TestE2EDryRunSandboxing(t *testing.T) {
 
 	// Determine output directory of the generation, which is .generated under sandbox TempDir
 	generatedDir := filepath.Join(h.TempDir, ".generated")
-	
+
 	// Ensure that before running, no generated dir exists
 	_ = os.RemoveAll(generatedDir)
 

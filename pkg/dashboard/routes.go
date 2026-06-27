@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -79,6 +80,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/activity", s.handleActivity)
 	mux.HandleFunc("/api/recent-tools", s.handleRecentTools)
 	mux.HandleFunc("/api/tools", s.handleToolsRouter)
+	mux.HandleFunc("/api/tools/", s.handleToolsRouter)
 	mux.HandleFunc("/api/tool-configs-tree", s.handleToolConfigsTree)
 	mux.HandleFunc("/api/shell", s.handleShellIntegration)
 }
@@ -434,6 +436,8 @@ func (s *Server) handleToolsRouter(w http.ResponseWriter, r *http.Request) {
 		s.handleToolHistory(w, r, toolName)
 	case "readme":
 		s.handleToolReadme(w, r, toolName)
+	case "logs", "stream":
+		s.handleToolLogsStream(w, r, toolName)
 	case "source":
 		s.handleToolSource(w, r, toolName)
 	case "install":
@@ -675,8 +679,98 @@ func (s *Server) handleToolHistory(w http.ResponseWriter, r *http.Request, toolN
 
 // GET /api/tools/:name/readme
 func (s *Server) handleToolReadme(w http.ResponseWriter, r *http.Request, toolName string) {
-	// Simple stub response for Tool README
-	writeJSON(w, true, map[string]string{"content": fmt.Sprintf("# %s README\nReadme loaded natively in Go", toolName)}, "")
+	var targetTool *config.ToolConfig
+	for _, tc := range s.toolConfigs {
+		if tc.Name == toolName {
+			targetTool = tc
+			break
+		}
+	}
+
+	if targetTool == nil {
+		writeJSON(w, false, nil, "Tool not found")
+		return
+	}
+
+	if targetTool.ConfigFilePath == "" {
+		writeJSON(w, false, nil, "Tool configuration file path not available")
+		return
+	}
+
+	dir := filepath.Dir(targetTool.ConfigFilePath)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		writeJSON(w, false, nil, "Failed to read tool directory: "+err.Error())
+		return
+	}
+
+	var readmePath string
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.ToLower(entry.Name()) == "readme.md" {
+			readmePath = filepath.Join(dir, entry.Name())
+			break
+		}
+	}
+
+	if readmePath == "" {
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
+				readmePath = filepath.Join(dir, entry.Name())
+				break
+			}
+		}
+	}
+
+	if readmePath == "" {
+		writeJSON(w, false, nil, fmt.Sprintf("No README.md or Markdown documentation found in %s", dir))
+		return
+	}
+
+	contentBytes, err := os.ReadFile(readmePath)
+	if err != nil {
+		writeJSON(w, false, nil, "Failed to read README: "+err.Error())
+		return
+	}
+
+	writeJSON(w, true, map[string]string{"content": string(contentBytes)}, "")
+}
+
+// handleToolLogsStream handles SSE connections for live logs stream of a tool.
+func (s *Server) handleToolLogsStream(w http.ResponseWriter, r *http.Request, toolName string) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	ch := make(chan string, 100)
+	s.broadcaster.Subscribe(toolName, ch)
+	defer s.broadcaster.Unsubscribe(toolName, ch)
+
+	flusher, ok := w.(http.Flusher)
+	if ok {
+		flusher.Flush()
+	}
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case msg, open := <-ch:
+			if !open {
+				return
+			}
+			lines := strings.Split(msg, "\n")
+			for _, line := range lines {
+				if line != "" {
+					_, _ = fmt.Fprintf(w, "data: %s\n", line)
+				}
+			}
+			_, _ = fmt.Fprint(w, "\n")
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+	}
 }
 
 // GET /api/tools/:name/source
@@ -713,7 +807,56 @@ func (s *Server) handleToolSource(w http.ResponseWriter, r *http.Request, toolNa
 
 // POST /api/tools/:name/install
 func (s *Server) handleToolInstall(w http.ResponseWriter, r *http.Request, toolName string) {
-	writeJSON(w, true, map[string]any{"installed": true, "version": "latest", "alreadyInstalled": false}, "")
+	var targetTool *config.ToolConfig
+	for _, tc := range s.toolConfigs {
+		if tc.Name == toolName {
+			targetTool = tc
+			break
+		}
+	}
+
+	if targetTool == nil {
+		writeJSON(w, false, nil, "Tool not found")
+		return
+	}
+
+	var req struct {
+		Force bool `json:"force"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	if s.orchestrator == nil {
+		writeJSON(w, false, nil, "Orchestrator not initialized")
+		return
+	}
+
+	go func() {
+		ctx := context.Background()
+		if req.Force {
+			os.Setenv("DOTFILES_OVERWRITE", "true")
+			defer os.Unsetenv("DOTFILES_OVERWRITE")
+		}
+		s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting installation...\n", toolName))
+		err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
+		if err != nil {
+			s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Installation failed: %v\n", toolName, err))
+		} else {
+			s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Installation completed successfully\n", toolName))
+		}
+	}()
+
+	var toolVer string
+	if targetTool.Version != nil {
+		toolVer = *targetTool.Version
+	} else {
+		toolVer = "latest"
+	}
+
+	writeJSON(w, true, map[string]any{
+		"installed":        true,
+		"version":          toolVer,
+		"alreadyInstalled": false,
+	}, "")
 }
 
 // POST /api/tools/:name/check-update
@@ -723,5 +866,37 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 
 // POST /api/tools/:name/update
 func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolName string) {
-	writeJSON(w, true, map[string]any{"updated": false, "supported": true}, "")
+	var targetTool *config.ToolConfig
+	for _, tc := range s.toolConfigs {
+		if tc.Name == toolName {
+			targetTool = tc
+			break
+		}
+	}
+
+	if targetTool == nil {
+		writeJSON(w, false, nil, "Tool not found")
+		return
+	}
+
+	if s.orchestrator == nil {
+		writeJSON(w, false, nil, "Orchestrator not initialized")
+		return
+	}
+
+	go func() {
+		ctx := context.Background()
+		s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting update...\n", toolName))
+		err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
+		if err != nil {
+			s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Update failed: %v\n", toolName, err))
+		} else {
+			s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Update completed successfully\n", toolName))
+		}
+	}()
+
+	writeJSON(w, true, map[string]any{
+		"updated":   true,
+		"supported": true,
+	}, "")
 }

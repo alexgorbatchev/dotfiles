@@ -44,6 +44,10 @@ func (o *OSFS) Create(path string) (io.WriteCloser, error) {
 	return os.Create(path)
 }
 
+func (o *OSFS) OpenFile(path string, flag int, perm os.FileMode) (io.WriteCloser, error) {
+	return os.OpenFile(path, flag, perm)
+}
+
 func (o *OSFS) Open(path string) (io.ReadCloser, error) {
 	return os.Open(path)
 }

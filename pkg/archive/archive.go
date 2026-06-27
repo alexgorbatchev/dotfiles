@@ -83,18 +83,28 @@ func (e *Extractor) extractZip(ctx context.Context, src string, dest string) err
 	defer rc.Close()
 
 	// Since archive/zip needs a ReaderAt, and the file might be virtual (MemFS) or OSFS,
-	// let's read the full data into memory if we must, or if it's an os.File, use it directly.
-	// But to avoid OOM for large zip files, let's read as bytes only.
-	// Note: zip.NewReader requires ReaderAt which we get by reading the bytes. Since zip files are randomly accessed,
-	// we do read all of it for the zip index, but we stream the file contents individually!
-	data, err := io.ReadAll(rc)
+	// check if the file reader supports ReaderAt natively to stream it without memory buffering.
+	info, err := e.fsys.Stat(src)
 	if err != nil {
-		return fmt.Errorf("reading zip archive bytes: %w", err)
+		return fmt.Errorf("stat zip archive: %w", err)
 	}
 
-	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
-	if err != nil {
-		return fmt.Errorf("parsing zip archive header: %w", err)
+	var reader *zip.Reader
+	if ra, ok := rc.(io.ReaderAt); ok {
+		reader, err = zip.NewReader(ra, info.Size())
+		if err != nil {
+			return fmt.Errorf("parsing zip archive from ReaderAt: %w", err)
+		}
+	} else {
+		// Fallback to memory buffering only if fsys is not a real disk (e.g. MemFS in tests)
+		data, err := io.ReadAll(rc)
+		if err != nil {
+			return fmt.Errorf("reading zip archive bytes: %w", err)
+		}
+		reader, err = zip.NewReader(bytes.NewReader(data), int64(len(data)))
+		if err != nil {
+			return fmt.Errorf("parsing zip archive header: %w", err)
+		}
 	}
 
 	for _, f := range reader.File {

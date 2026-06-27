@@ -369,7 +369,7 @@ func (h *TestHarness) CopyFixture(fixtureName string) {
 		// Replace the original generatedDir path with sandbox generatedDir path in JSON string
 		originalGenDir := filepath.ToSlash(filepath.Join(projectRoot, ".tmp", "e2e-test", "worker-default", fixtureName))
 		sandboxGenDir := filepath.ToSlash(filepath.Join(h.TempDir, ".generated"))
-		
+
 		jsonStr := string(configBytes)
 		jsonStr = strings.ReplaceAll(jsonStr, originalGenDir, sandboxGenDir)
 

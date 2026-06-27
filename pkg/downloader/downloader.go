@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,12 +23,16 @@ type DownloadOptions struct {
 	RetryCount int
 	RetryDelay time.Duration
 	OnProgress func(bytesDownloaded int64, totalBytes int64)
+	SkipCache  bool
 }
 
 // Downloader manages file downloads with optional resumption support and SHA256 integrity checks.
 type Downloader struct {
-	fsys   fs.FS
-	client *http.Client
+	fsys         fs.FS
+	client       *http.Client
+	CacheDir     string
+	CacheEnabled bool
+	CacheTTL     time.Duration
 }
 
 // NewDownloader creates a new Downloader using the provided filesystem and HTTP client.
@@ -49,6 +54,64 @@ func (d *Downloader) SetFS(fsys fs.FS) {
 
 // Download fetches a file from url and saves it to destPath, supporting options and retries with backoff.
 func (d *Downloader) Download(ctx context.Context, url string, destPath string, expectedSHA256 string, opts ...DownloadOptions) error {
+	var activeOpts []DownloadOptions
+	if len(opts) > 0 {
+		activeOpts = append(activeOpts, opts[0])
+	} else {
+		activeOpts = []DownloadOptions{{}}
+	}
+
+	// 1. Handle Caching Check (if enabled)
+	if d.CacheEnabled && !activeOpts[0].SkipCache {
+		if d.CacheDir == "" {
+			d.CacheDir = filepath.Join(".generated", "cache")
+		}
+		cacheKey := sha256.Sum256([]byte(url))
+		keyStr := hex.EncodeToString(cacheKey[:])
+		cachePath := filepath.Join(d.CacheDir, keyStr)
+
+		exists, err := d.fsys.Exists(cachePath)
+		if err == nil && exists {
+			info, err := d.fsys.Stat(cachePath)
+			if err == nil {
+				ttl := d.CacheTTL
+				if ttl <= 0 {
+					ttl = 24 * time.Hour
+				}
+				if time.Since(info.ModTime()) < ttl {
+					// Cache hit! Copy the cached file to destPath and trigger progress update
+					errCopy := d.fsys.CopyFile(cachePath, destPath)
+					if errCopy == nil {
+						if activeOpts[0].OnProgress != nil {
+							size := info.Size()
+							activeOpts[0].OnProgress(0, size)
+							activeOpts[0].OnProgress(size, size)
+						}
+						return nil
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Set up default progress bar if OnProgress is nil
+	var bar *ProgressBar
+	if activeOpts[0].OnProgress == nil {
+		filename := filepath.Base(destPath)
+		bar = NewProgressBar(0, filename)
+		bar.Start()
+		origOnProgress := activeOpts[0].OnProgress
+		activeOpts[0].OnProgress = func(downloaded int64, total int64) {
+			if bar.totalBytes <= 0 && total > 0 {
+				bar.totalBytes = total
+			}
+			bar.Update(downloaded)
+			if origOnProgress != nil {
+				origOnProgress(downloaded, total)
+			}
+		}
+	}
+
 	var lastErr error
 	retryCount := 0
 	retryDelay := time.Second
@@ -63,16 +126,33 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 		if i > 0 {
 			select {
 			case <-ctx.Done():
+				if bar != nil {
+					bar.Finish()
+				}
 				return ctx.Err()
 			case <-time.After(retryDelay * time.Duration(i)): // Linear backoff: Delay * retry attempt
 			}
 		}
 
-		err := d.doDownload(ctx, url, destPath, expectedSHA256, opts...)
+		err := d.doDownload(ctx, url, destPath, expectedSHA256, activeOpts...)
 		if err == nil {
+			if bar != nil {
+				bar.Finish()
+			}
+			// Save successful download to cache
+			if d.CacheEnabled && !activeOpts[0].SkipCache {
+				_ = d.fsys.MkdirAll(d.CacheDir, 0755)
+				cacheKey := sha256.Sum256([]byte(url))
+				keyStr := hex.EncodeToString(cacheKey[:])
+				cachePath := filepath.Join(d.CacheDir, keyStr)
+				_ = d.fsys.CopyFile(destPath, cachePath)
+			}
 			return nil
 		}
 		lastErr = err
+	}
+	if bar != nil {
+		bar.Finish()
 	}
 	return fmt.Errorf("download failed after %d attempts: %w", retryCount+1, lastErr)
 }
@@ -156,13 +236,9 @@ func (d *Downloader) doDownload(ctx context.Context, url string, destPath string
 		totalBytes += int64(localSize)
 		downloadedBytes = int64(localSize)
 
-		// If fsys is real OS filesystem, we can stream directly in append mode
-		if _, ok := d.fsys.(*fs.OSFS); ok {
-			f, err := os.OpenFile(destPath, os.O_WRONLY|os.O_APPEND, 0644)
-			if err != nil {
-				return fmt.Errorf("opening file for appending: %w", err)
-			}
-
+		// Stream directly using the filesystem's OpenFile implementation in append mode
+		f, err := d.fsys.OpenFile(destPath, os.O_WRONLY|os.O_APPEND, 0644)
+		if err == nil {
 			var writer io.Writer = f
 			if len(opts) > 0 && opts[0].OnProgress != nil {
 				writer = &progressWriter{

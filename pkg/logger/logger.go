@@ -203,6 +203,37 @@ func (l *Logger) GetSubLogger(name string, context ...string) *Logger {
 	}
 }
 
+// Name returns the logger's name.
+func (l *Logger) Name() string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.name
+}
+
+// Level returns the logger's level.
+func (l *Logger) Level() LogLevel {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.level
+}
+
+// TraceMode returns the logger's trace setting.
+func (l *Logger) TraceMode() bool {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.trace
+}
+
+// Writer returns the logger's underlying writer.
+func (l *Logger) Writer() io.Writer {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	if l.writer == nil {
+		return os.Stderr
+	}
+	return l.writer
+}
+
 // SetPrefix overrides/sets the prefix for this logger wrapped inside brackets [context].
 func (l *Logger) SetPrefix(context string) *Logger {
 	l.mu.Lock()

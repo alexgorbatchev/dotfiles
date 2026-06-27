@@ -212,6 +212,39 @@ func (m *MemFS) Create(path string) (io.WriteCloser, error) {
 	}, nil
 }
 
+func (m *MemFS) OpenFile(path string, flag int, perm os.FileMode) (io.WriteCloser, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cleanPath := filepath.Clean(path)
+
+	// Check if parent directory exists (mirroring actual OS behavior)
+	parent := filepath.Dir(cleanPath)
+	if filepath.Dir(parent) != parent {
+		parentNode, ok := m.files[parent]
+		if !ok || !parentNode.isDir {
+			return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+		}
+	}
+
+	node, ok := m.files[cleanPath]
+	if ok && node.isDir {
+		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrExist}
+	}
+
+	writer := &memFileWriter{
+		fs:   m,
+		path: cleanPath,
+	}
+
+	// If flag specifies O_APPEND and file exists, pre-populate writer's buffer with existing data!
+	if (flag&os.O_APPEND) != 0 && ok {
+		writer.buf.Write(node.data)
+	}
+
+	return writer, nil
+}
+
 type memFileReader struct {
 	*bytes.Reader
 }

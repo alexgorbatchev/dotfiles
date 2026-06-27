@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -274,6 +275,16 @@ func (e *errorFS) Create(path string) (io.WriteCloser, error) {
 	return e.FS.Create(path)
 }
 
+func (e *errorFS) OpenFile(path string, flag int, perm os.FileMode) (io.WriteCloser, error) {
+	if e.readFileErr != nil {
+		return nil, e.readFileErr
+	}
+	if e.writeFileErr != nil {
+		return nil, e.writeFileErr
+	}
+	return e.FS.OpenFile(path, flag, perm)
+}
+
 type errorRoundTripper struct {
 	err error
 }
@@ -400,4 +411,72 @@ func TestDownloader_OptionsAndRetries(t *testing.T) {
 			t.Errorf("expected 3 attempts before success, got %d", attempts)
 		}
 	})
+}
+
+func getCachePath(cacheDir string, url string) string {
+	hash := sha256.Sum256([]byte(url))
+	return filepath.Join(cacheDir, hex.EncodeToString(hash[:]))
+}
+
+func TestDownloaderCaching(t *testing.T) {
+	mem := fs.NewMemFS()
+	dl := NewDownloader(mem, nil)
+	dl.CacheEnabled = true
+	dl.CacheDir = "/test_cache"
+	dl.CacheTTL = time.Hour
+
+	// Mock server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("my-cached-data"))
+	}))
+	defer server.Close()
+
+	dest := "/test-file"
+	ctx := context.Background()
+
+	// First download (Cache Miss)
+	err := dl.Download(ctx, server.URL, dest, "")
+	if err != nil {
+		t.Fatalf("first download failed: %v", err)
+	}
+
+	// Check if cached file exists
+	cachePath := getCachePath(dl.CacheDir, server.URL)
+	exists, err := mem.Exists(cachePath)
+	if err != nil || !exists {
+		t.Fatalf("expected cache file to be created, exists=%v, err=%v", exists, err)
+	}
+
+	// Remove the downloaded file to force a cache hit test
+	_ = mem.Remove(dest)
+
+	// Second download (Cache Hit)
+	err = dl.Download(ctx, server.URL, dest, "")
+	if err != nil {
+		t.Fatalf("cached download failed: %v", err)
+	}
+
+	// Read dest file to verify it was copied from cache
+	destBytes, err := mem.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("reading destination file: %v", err)
+	}
+	if string(destBytes) != "my-cached-data" {
+		t.Errorf("expected my-cached-data, got %q", string(destBytes))
+	}
+}
+
+func TestProgressBar_RenderProgressFrame(t *testing.T) {
+	filename := "test-tool"
+	totalBytes := int64(1000000)
+
+	// Render with progress bar
+	bar := NewProgressBar(totalBytes, filename)
+	bar.bytesDownloaded = int64(500000)
+	bar.startTime = time.Now().Add(-time.Second)
+
+	frame := bar.RenderFrame()
+	if !strings.Contains(frame, "50.00%") {
+		t.Errorf("expected 50%% in progress frame, got %q", frame)
+	}
 }

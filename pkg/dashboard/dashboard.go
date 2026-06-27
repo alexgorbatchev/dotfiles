@@ -4,19 +4,86 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
 //go:embed all:dist
 var assets embed.FS
+
+// LogBroadcaster manages active log subscriptions.
+type LogBroadcaster struct {
+	mu          sync.RWMutex
+	subscribers map[string][]chan string
+}
+
+// NewLogBroadcaster creates a new LogBroadcaster instance.
+func NewLogBroadcaster() *LogBroadcaster {
+	return &LogBroadcaster{
+		subscribers: make(map[string][]chan string),
+	}
+}
+
+// Subscribe registers a channel for a specific tool.
+func (lb *LogBroadcaster) Subscribe(toolName string, ch chan string) {
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+	lb.subscribers[toolName] = append(lb.subscribers[toolName], ch)
+}
+
+// Unsubscribe removes a registered channel for a tool.
+func (lb *LogBroadcaster) Unsubscribe(toolName string, ch chan string) {
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+	subs := lb.subscribers[toolName]
+	for i, sub := range subs {
+		if sub == ch {
+			lb.subscribers[toolName] = append(subs[:i], subs[i+1:]...)
+			break
+		}
+	}
+}
+
+// Broadcast sends a message directly to any subscribers of a specific tool.
+func (lb *LogBroadcaster) Broadcast(toolName string, message string) {
+	lb.mu.RLock()
+	defer lb.mu.RUnlock()
+	for _, ch := range lb.subscribers[toolName] {
+		select {
+		case ch <- message:
+		default:
+		}
+	}
+}
+
+// Write broadcasts log bytes to any subscribers of the tool being logged.
+func (lb *LogBroadcaster) Write(p []byte) (n int, err error) {
+	msg := string(p)
+	lb.mu.RLock()
+	defer lb.mu.RUnlock()
+	for toolName, channels := range lb.subscribers {
+		hasToolTag := strings.Contains(strings.ToLower(msg), "["+strings.ToLower(toolName)+"]")
+		if hasToolTag {
+			for _, ch := range channels {
+				select {
+				case ch <- msg:
+				default:
+				}
+			}
+		}
+	}
+	return len(p), nil
+}
 
 // Server hosts the static visualization dashboard.
 type Server struct {
@@ -28,17 +95,34 @@ type Server struct {
 	registry      *registry.Registry
 	projectConfig *config.ProjectConfig
 	toolConfigs   []*config.ToolConfig
+	orchestrator  *orchestrator.Orchestrator
+	broadcaster   *LogBroadcaster
 }
 
 // NewServer constructs a new dashboard server.
-func NewServer(log *logger.Logger, port int, reg *registry.Registry, projCfg *config.ProjectConfig, toolConfigs []*config.ToolConfig) *Server {
-	return &Server{
+func NewServer(log *logger.Logger, port int, reg *registry.Registry, projCfg *config.ProjectConfig, toolConfigs []*config.ToolConfig, orch *orchestrator.Orchestrator) *Server {
+	s := &Server{
 		logger:        log.GetSubLogger("DashboardServer"),
 		port:          port,
 		registry:      reg,
 		projectConfig: projCfg,
 		toolConfigs:   toolConfigs,
+		orchestrator:  orch,
+		broadcaster:   NewLogBroadcaster(),
 	}
+
+	if orch != nil && log != nil {
+		mw := io.MultiWriter(log.Writer(), s.broadcaster)
+		orchLog := logger.New(logger.Config{
+			Name:   "orchestrator",
+			Level:  log.Level(),
+			Trace:  log.TraceMode(),
+			Writer: mw,
+		})
+		orch.SetLogger(orchLog)
+	}
+
+	return s
 }
 
 // Port returns the actual port the server is listening on.

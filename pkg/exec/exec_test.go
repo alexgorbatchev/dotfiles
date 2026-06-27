@@ -224,7 +224,7 @@ func TestSudoPreflightCheck(t *testing.T) {
 		// Create a temporary directory and write a mock "sudo" script
 		tmpDir := t.TempDir()
 		mockSudoPath := filepath.Join(tmpDir, "sudo")
-		
+
 		// The mock "sudo" script simply executes whatever arguments are passed to it
 		scriptContent := "#!/bin/sh\nexec \"$@\"\n"
 		if err := os.WriteFile(mockSudoPath, []byte(scriptContent), 0755); err != nil {

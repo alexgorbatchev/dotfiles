@@ -18,7 +18,7 @@ func TestE2EPkg(t *testing.T) {
 	h := NewTestHarness(t, HarnessOptions{
 		ConfigPath: "config.ts",
 		Env: map[string]string{
-			"DOTFILES_E2E_USE_REAL_INSTALLERS": "true",
+			"DOTFILES_E2E_USE_REAL_INSTALLERS":  "true",
 			"DOTFILES_TEST_PKG_ALLOW_NON_MACOS": "1",
 		},
 	})

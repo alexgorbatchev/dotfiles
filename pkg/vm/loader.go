@@ -11,9 +11,9 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
-	"github.com/evanw/esbuild/pkg/api"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
+	"github.com/evanw/esbuild/pkg/api"
 )
 
 //go:embed loader-api.ts

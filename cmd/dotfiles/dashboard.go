@@ -24,7 +24,7 @@ var dashboardCmd = &cobra.Command{
 		defer services.DB.Close()
 
 		log := GetLogger("dashboard", cmd.ErrOrStderr())
-		server := dashboard.NewServer(log, port, services.Registry, services.ProjectConfig, services.ToolConfigs)
+		server := dashboard.NewServer(log, port, services.Registry, services.ProjectConfig, services.ToolConfigs, services.Orchestrator)
 		if err := server.Start(); err != nil {
 			return err
 		}

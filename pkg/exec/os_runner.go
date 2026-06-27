@@ -32,7 +32,12 @@ func isStdinTerminal(stdin io.Reader) bool {
 func (c *osCmd) checkSudo() error {
 	if len(c.cmd.Args) > 0 && c.cmd.Args[0] == "sudo" {
 		isTTY := isStdinTerminal(c.cmd.Stdin) && isatty.IsTerminal(os.Stdout.Fd())
-		if !isTTY {
+		if os.Getenv("CI") != "" {
+			cmdCheck := exec.Command(SudoPreflightCommand[0], SudoPreflightCommand[1:]...)
+			if err := cmdCheck.Run(); err != nil {
+				return fmt.Errorf("non-interactive CI/CD environment requires passwordless sudo access for elevated configurations: %w", err)
+			}
+		} else if !isTTY {
 			cmdCheck := exec.Command(SudoPreflightCommand[0], SudoPreflightCommand[1:]...)
 			if err := cmdCheck.Run(); err != nil {
 				return fmt.Errorf("headless environment requires passwordless sudo access for elevated configurations: %w", err)
