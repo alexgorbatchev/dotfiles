@@ -115,8 +115,34 @@ func (a *AptInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) e
 }
 
 func (a *AptInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
+	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
+	cmd := a.runner.CommandContext(ctx, "apt-cache", "policy", packageName)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("running apt-cache policy: %w", err)
+	}
+
+	var installed, candidate string
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		lower := strings.ToLower(trimmed)
+		if strings.HasPrefix(lower, "installed:") {
+			installed = strings.TrimSpace(trimmed[10:])
+		} else if strings.HasPrefix(lower, "candidate:") {
+			candidate = strings.TrimSpace(trimmed[10:])
+		}
+	}
+
+	hasUpdate := false
+	if installed != "" && installed != "(none)" && candidate != "" && candidate != "(none)" && installed != candidate {
+		hasUpdate = true
+	}
+
 	return &UpdateCheckResult{
-		HasUpdate: false,
+		HasUpdate:     hasUpdate,
+		LocalVersion:  installed,
+		LatestVersion: candidate,
 	}, nil
 }
 

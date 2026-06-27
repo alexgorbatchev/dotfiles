@@ -190,32 +190,45 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	// Map binary dependencies to fully-qualified tool names (e.g., fnm -> curl-script--fnm)
 	for _, tc := range toolConfigs {
 		for idx, dep := range tc.Dependencies {
-			foundProvider := false
+			var matchingProviders []string
 			for _, provider := range toolConfigs {
+				isProvider := false
 				if provider.Name == dep || strings.HasSuffix(provider.Name, "--"+dep) {
-					tc.Dependencies[idx] = provider.Name
-					foundProvider = true
-					break
-				}
-				for _, b := range provider.Binaries {
-					switch val := b.(type) {
-					case string:
-						if val == dep {
-							tc.Dependencies[idx] = provider.Name
-							foundProvider = true
-							break
+					isProvider = true
+				} else {
+					for _, b := range provider.Binaries {
+						switch val := b.(type) {
+						case string:
+							if val == dep {
+								isProvider = true
+							}
+						case map[string]interface{}:
+							if bName, ok := val["name"].(string); ok && bName == dep {
+								isProvider = true
+							}
+						case config.BinaryConfig:
+							if val.Name == dep {
+								isProvider = true
+							}
+						case *config.BinaryConfig:
+							if val != nil && val.Name == dep {
+								isProvider = true
+							}
 						}
-					case map[string]interface{}:
-						if bName, ok := val["name"].(string); ok && bName == dep {
-							tc.Dependencies[idx] = provider.Name
-							foundProvider = true
+						if isProvider {
 							break
 						}
 					}
 				}
-				if foundProvider {
-					break
+				if isProvider {
+					matchingProviders = append(matchingProviders, provider.Name)
 				}
+			}
+			if len(matchingProviders) > 1 {
+				sort.Strings(matchingProviders)
+				return nil, fmt.Errorf("ambiguous dependency: binary %q is provided by multiple tools: %s", dep, strings.Join(matchingProviders, ", "))
+			} else if len(matchingProviders) == 1 {
+				tc.Dependencies[idx] = matchingProviders[0]
 			}
 		}
 	}

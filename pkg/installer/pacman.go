@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -105,6 +106,31 @@ func (p *PacmanInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig
 }
 
 func (p *PacmanInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
+	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
+	cmd := p.runner.CommandContext(ctx, "pacman", "-Qu", packageName)
+	out, err := cmd.Output()
+	if err != nil {
+		return &UpdateCheckResult{
+			HasUpdate: false,
+		}, nil
+	}
+
+	lines := strings.Split(string(out), "\n")
+	re := regexp.MustCompile(`^(\S+)\s+(\S+)\s+->\s+(\S+)`)
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		matches := re.FindStringSubmatch(trimmed)
+		if len(matches) >= 4 {
+			if strings.EqualFold(matches[1], packageName) {
+				return &UpdateCheckResult{
+					HasUpdate:     true,
+					LocalVersion:  matches[2],
+					LatestVersion: matches[3],
+				}, nil
+			}
+		}
+	}
+
 	return &UpdateCheckResult{
 		HasUpdate: false,
 	}, nil

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -136,9 +137,71 @@ func (c *CurlScriptInstaller) Uninstall(ctx context.Context, tool *config.ToolCo
 	return nil
 }
 
+func detectVersionViaCli(ctx context.Context, runner exec.CommandRunner, binaryPath string, args []string, regex string) (string, error) {
+	cmd := runner.CommandContext(ctx, binaryPath, args...)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("executing binary %s: %w", binaryPath, err)
+	}
+
+	outputStr := string(out)
+	if regex == "" {
+		return strings.TrimSpace(outputStr), nil
+	}
+
+	re, err := regexp.Compile(regex)
+	if err != nil {
+		return "", fmt.Errorf("compiling regex %q: %w", regex, err)
+	}
+
+	matches := re.FindStringSubmatch(outputStr)
+	if len(matches) > 1 {
+		return matches[1], nil
+	} else if len(matches) > 0 {
+		return matches[0], nil
+	}
+
+	return "", fmt.Errorf("no regex match found in output: %q", outputStr)
+}
+
 func (c *CurlScriptInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
+	versionArgs := getStringSliceParam(tool.InstallParams, "versionArgs")
+	versionRegex := getStringParam(tool.InstallParams, "versionRegex", "")
+
+	if len(versionArgs) == 0 {
+		return &UpdateCheckResult{
+			HasUpdate: false,
+		}, nil
+	}
+
+	destDir := c.BinDir
+	if destDir == "" {
+		destDir = os.TempDir()
+	}
+
+	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	if len(binNames) == 0 {
+		return &UpdateCheckResult{
+			HasUpdate: false,
+		}, nil
+	}
+
+	binaryPath := filepath.Join(destDir, binNames[0])
+	exists, err := c.fsys.Exists(binaryPath)
+	if err != nil || !exists {
+		return &UpdateCheckResult{
+			HasUpdate: false,
+		}, nil
+	}
+
+	localVersion, err := detectVersionViaCli(ctx, c.runner, binaryPath, versionArgs, versionRegex)
+	if err != nil {
+		return nil, fmt.Errorf("detecting version: %w", err)
+	}
+
 	return &UpdateCheckResult{
-		HasUpdate: false,
+		HasUpdate:    false,
+		LocalVersion: localVersion,
 	}, nil
 }
 

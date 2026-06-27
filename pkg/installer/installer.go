@@ -270,6 +270,12 @@ func SetFS(inst Installer, fsys fs.FS) {
 		v.fsys = fsys
 	case *CargoInstaller:
 		v.fsys = fsys
+		if v.dl != nil {
+			v.dl.SetFS(fsys)
+		}
+		if v.extractor != nil {
+			v.extractor.SetFS(fsys)
+		}
 	case *CurlBinaryInstaller:
 		v.fsys = fsys
 		if v.dl != nil {

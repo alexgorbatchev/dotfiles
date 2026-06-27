@@ -102,11 +102,35 @@ func TestDnfInstaller(t *testing.T) {
 		}
 	})
 
-	t.Run("CheckUpdate success", func(t *testing.T) {
-		tool := &config.ToolConfig{Name: "jq"}
+	t.Run("CheckUpdate success with update available", func(t *testing.T) {
+		runner.Clear()
+		output := []byte("Last metadata expiration check: 0:12:34 ago.\nUpgradable Packages\nripgrep.x86_64                     14.1.0-1.fc39                     updates\n")
+		runner.Register("dnf", output, nil)
+
+		tool := &config.ToolConfig{Name: "ripgrep"}
 		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.HasUpdate {
-			t.Errorf("unexpected checkUpdate result: %v, %v", res, err)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !res.HasUpdate {
+			t.Error("expected HasUpdate to be true")
+		}
+		if res.LatestVersion != "14.1.0-1.fc39" {
+			t.Errorf("expected LatestVersion '14.1.0-1.fc39', got %q", res.LatestVersion)
+		}
+	})
+
+	t.Run("CheckUpdate success with no update", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("dnf", []byte("Last metadata expiration check: 0:12:34 ago.\n"), nil)
+
+		tool := &config.ToolConfig{Name: "ripgrep"}
+		res, err := inst.CheckUpdate(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.HasUpdate {
+			t.Error("expected HasUpdate to be false")
 		}
 	})
 }

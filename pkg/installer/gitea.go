@@ -232,9 +232,6 @@ func matchAsset(assets []giteaAsset, osName, archName string) *giteaAsset {
 			return &asset
 		}
 	}
-	if len(assets) > 0 {
-		return &assets[0]
-	}
 	return nil
 }
 

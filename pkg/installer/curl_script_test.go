@@ -128,6 +128,31 @@ func TestCurlScriptInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("CheckUpdate with CLI version detection", func(t *testing.T) {
+		runner.Clear()
+		binPath := "/test/bin/mytool"
+		_ = fsys.WriteFile(binPath, []byte("dummy binary contents"), 0755)
+
+		runner.Register(binPath, []byte("mytool v2.1.4\n"), nil)
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"versionArgs":  []interface{}{"--version"},
+				"versionRegex": "v([0-9.]+)",
+			},
+		}
+
+		res, err := inst.CheckUpdate(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if res.LocalVersion != "2.1.4" {
+			t.Errorf("expected detected local version '2.1.4', got %q", res.LocalVersion)
+		}
+	})
+
 	t.Run("Install fails missing URL", func(t *testing.T) {
 		tool := &config.ToolConfig{
 			Name: "mytool",

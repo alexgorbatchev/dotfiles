@@ -115,8 +115,46 @@ func (d *DnfInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) e
 }
 
 func (d *DnfInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
+	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
+	cmd := d.runner.CommandContext(ctx, "dnf", "list", "--upgradable", packageName)
+	out, err := cmd.Output()
+	if err != nil {
+		return &UpdateCheckResult{
+			HasUpdate: false,
+		}, nil
+	}
+
+	lines := strings.Split(string(out), "\n")
+	isUpgradableSection := false
+	hasUpdate := false
+	var latestVersion string
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(strings.ToLower(trimmed), "upgradable packages") {
+			isUpgradableSection = true
+			continue
+		}
+		if isUpgradableSection && trimmed != "" {
+			fields := strings.Fields(trimmed)
+			if len(fields) >= 2 {
+				// Strip arch (e.g. .x86_64) if package name was queried without it
+				pkgPart := fields[0]
+				if idx := strings.Index(pkgPart, "."); idx != -1 {
+					pkgPart = pkgPart[:idx]
+				}
+				if strings.EqualFold(pkgPart, packageName) {
+					hasUpdate = true
+					latestVersion = fields[1]
+					break
+				}
+			}
+		}
+	}
+
 	return &UpdateCheckResult{
-		HasUpdate: false,
+		HasUpdate:     hasUpdate,
+		LatestVersion: latestVersion,
 	}, nil
 }
 

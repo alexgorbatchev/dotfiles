@@ -312,11 +312,21 @@ func (g *GitHubInstaller) matchAsset(assets []githubAsset, assetPattern string) 
 		}
 
 		if isUndesiredSuffix {
+			explicitlyMatched := false
 			if assetPattern != "" {
-				score = 1
-			} else {
+				normalizedPattern := strings.ReplaceAll(strings.ToLower(assetPattern), "\\", "")
+				for _, ext := range undesiredExtensions {
+					extNoDot := strings.TrimPrefix(ext, ".")
+					if strings.HasSuffix(name, ext) && (strings.Contains(normalizedPattern, ext) || strings.Contains(normalizedPattern, extNoDot)) {
+						explicitlyMatched = true
+						break
+					}
+				}
+			}
+			if !explicitlyMatched {
 				continue
 			}
+			score = 1
 		} else if isPackage {
 			score = 2
 		} else if isArchive {
