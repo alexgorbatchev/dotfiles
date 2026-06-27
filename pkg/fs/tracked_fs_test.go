@@ -199,3 +199,126 @@ func TestTrackedFileSystemWithCustomContexts(t *testing.T) {
 		t.Errorf("Expected WithFileType and WithToolName context overrides to be applied, got %+v", op)
 	}
 }
+
+func TestTrackedFileSystemWriteFileIdenticalContentGuard(t *testing.T) {
+	ctx := context.Background()
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	database, err := db.NewConnection(ctx, dsn)
+	if err != nil {
+		t.Fatalf("Failed to initialize test DB: %v", err)
+	}
+	defer database.Close()
+
+	reg := registry.NewRegistry(database)
+	mem := NewMemFS()
+	tfs := NewTrackedFileSystem(mem, reg, "guard-tool")
+
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		txTfs := tfs.WithTx(ctx, tx)
+
+		// First write (different/new file)
+		err := txTfs.WriteFile("/guard.txt", []byte("initial"), 0644)
+		if err != nil {
+			return err
+		}
+
+		// Second write with identical content
+		err = txTfs.WriteFile("/guard.txt", []byte("initial"), 0644)
+		if err != nil {
+			return err
+		}
+
+		// Third write with different content
+		err = txTfs.WriteFile("/guard.txt", []byte("updated"), 0644)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Failed during operations: %v", err)
+	}
+
+	ops, err := reg.GetFileOperations(ctx, registry.FileOperationFilter{ToolName: "guard-tool"})
+	if err != nil {
+		t.Fatalf("Failed to fetch file operations: %v", err)
+	}
+
+	// We expect exactly 2 operations recorded:
+	// 1. Initial write
+	// 2. Updated write
+	// The identical write should have been skipped.
+	if len(ops) != 2 {
+		t.Errorf("Expected exactly 2 operations recorded, got %d", len(ops))
+	}
+}
+
+func TestTrackedFileSystemRecursiveRemoveAll(t *testing.T) {
+	ctx := context.Background()
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	database, err := db.NewConnection(ctx, dsn)
+	if err != nil {
+		t.Fatalf("Failed to initialize test DB: %v", err)
+	}
+	defer database.Close()
+
+	reg := registry.NewRegistry(database)
+	mem := NewMemFS()
+	tfs := NewTrackedFileSystem(mem, reg, "rmall-tool")
+
+	// Set up nested files & directories
+	err = mem.MkdirAll("/dir/sub", 0755)
+	if err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+	err = mem.WriteFile("/dir/sub/file1.txt", []byte("one"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+	err = mem.WriteFile("/dir/file2.txt", []byte("two"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	// Now run RemoveAll within a transaction
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		txTfs := tfs.WithTx(ctx, tx)
+		return txTfs.RemoveAll("/dir")
+	})
+	if err != nil {
+		t.Fatalf("RemoveAll failed: %v", err)
+	}
+
+	// Query file operations
+	ops, err := reg.GetFileOperations(ctx, registry.FileOperationFilter{ToolName: "rmall-tool"})
+	if err != nil {
+		t.Fatalf("Failed to fetch operations: %v", err)
+	}
+
+	// We expect 4 "rm" operations:
+	// - /dir
+	// - /dir/sub
+	// - /dir/sub/file1.txt
+	// - /dir/file2.txt
+	expectedPaths := map[string]bool{
+		"/dir":               true,
+		"/dir/sub":           true,
+		"/dir/sub/file1.txt": true,
+		"/dir/file2.txt":     true,
+	}
+
+	for _, op := range ops {
+		if op.OperationType != "rm" {
+			t.Errorf("Expected only 'rm' operations, got %s", op.OperationType)
+		}
+		if !expectedPaths[op.FilePath] {
+			t.Errorf("Unexpected deleted path logged: %s", op.FilePath)
+		}
+		delete(expectedPaths, op.FilePath)
+	}
+
+	if len(expectedPaths) > 0 {
+		t.Errorf("Not all deleted paths were logged. Remaining: %v", expectedPaths)
+	}
+}

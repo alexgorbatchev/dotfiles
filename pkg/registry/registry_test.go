@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -159,7 +160,7 @@ func TestFileOperationsTracking(t *testing.T) {
 			FileType:      "file",
 			Metadata:      ptr(`{"checksum":"abc"}`),
 			SizeBytes:     ptr(int64(45)),
-			Permissions:   ptr("0644"),
+			Permissions:   ptr(Permission("0644")),
 			CreatedAt:     1000,
 			OperationID:   "op-1",
 		}
@@ -534,7 +535,7 @@ func TestPermissionsSerializationDecimalMismatch(t *testing.T) {
 			OperationType: "write",
 			FilePath:      "/test/permissions.txt",
 			FileType:      "file",
-			Permissions:   ptr("0755"),
+			Permissions:   ptr(Permission("0755")),
 			CreatedAt:     1000,
 			OperationID:   "op-perm-1",
 		}
@@ -562,7 +563,7 @@ func TestPermissionsSerializationDecimalMismatch(t *testing.T) {
 	if len(ops) != 1 {
 		t.Fatalf("Expected 1 operation, got %d", len(ops))
 	}
-	if ops[0].Permissions == nil || *ops[0].Permissions != "0755" {
+	if ops[0].Permissions == nil || *ops[0].Permissions != Permission("0755") {
 		t.Errorf("Expected retrieved permissions to be '0755', got '%v'", ops[0].Permissions)
 	}
 
@@ -578,5 +579,36 @@ func TestPermissionsSerializationDecimalMismatch(t *testing.T) {
 	exportStr := FileModeToDecimalString(0755)
 	if exportStr != "493" {
 		t.Errorf("Expected decimal string to be '493', got '%s'", exportStr)
+	}
+}
+
+func TestPermissionJSONSerialization(t *testing.T) {
+	record := &FileOperationRecord{
+		ToolName:      "test-json",
+		OperationType: "write",
+		FilePath:      "/test/json.txt",
+		FileType:      "file",
+		Permissions:   ptr(Permission("0755")),
+	}
+
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatalf("Failed to marshal record: %v", err)
+	}
+
+	// Verify that the JSON output contains `"permissions":493` or `"permissions": 493`
+	jsonStr := string(data)
+	if !strings.Contains(jsonStr, `"permissions":493`) && !strings.Contains(jsonStr, `"permissions": 493`) {
+		t.Errorf("Expected JSON to contain '\"permissions\":493' or '\"permissions\": 493', got: %s", jsonStr)
+	}
+
+	// Also test unmarshalling back
+	var decoded FileOperationRecord
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("Failed to unmarshal record: %v", err)
+	}
+
+	if decoded.Permissions == nil || *decoded.Permissions != Permission("0755") {
+		t.Errorf("Expected permissions to unmarshal back to '0755', got: %v", decoded.Permissions)
 	}
 }

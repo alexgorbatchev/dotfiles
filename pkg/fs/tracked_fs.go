@@ -1,11 +1,13 @@
 package fs
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
@@ -79,7 +81,7 @@ func (t *TrackedFileSystem) RecordExistingSymlink(target string, linkPath string
 	return t.recordOperation("symlink", linkPath, &target, nil, nil)
 }
 
-func (t *TrackedFileSystem) recordOperation(opType string, path string, targetPath *string, sizeBytes *int64, permissions *string) error {
+func (t *TrackedFileSystem) recordOperation(opType string, path string, targetPath *string, sizeBytes *int64, permissions *registry.Permission) error {
 	if t.tx == nil || t.reg == nil {
 		return nil
 	}
@@ -105,13 +107,34 @@ func (t *TrackedFileSystem) ReadFile(path string) ([]byte, error) {
 }
 
 func (t *TrackedFileSystem) WriteFile(path string, data []byte, perm os.FileMode) error {
-	err := t.fs.WriteFile(path, data, perm)
+	exists, err := t.fs.Exists(path)
+	if err == nil && exists {
+		info, errStat := t.fs.Stat(path)
+		if errStat == nil && info.Size() == int64(len(data)) {
+			existingData, errRead := t.fs.ReadFile(path)
+			if errRead == nil && bytes.Equal(existingData, data) {
+				return nil
+			}
+		}
+	}
+
+	err = t.fs.WriteFile(path, data, perm)
 	if err != nil {
 		return err
 	}
 	sizeBytes := int64(len(data))
-	permStr := fmt.Sprintf("0%o", perm&os.ModePerm)
-	return t.recordOperation("writeFile", path, nil, &sizeBytes, &permStr)
+	permVal := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
+	return t.recordOperation("writeFile", path, nil, &sizeBytes, &permVal)
+}
+
+func (t *TrackedFileSystem) OpenFile(path string, flag int, perm os.FileMode) (io.WriteCloser, error) {
+	writer, err := t.fs.OpenFile(path, flag, perm)
+	if err != nil {
+		return nil, err
+	}
+	permVal := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
+	_ = t.recordOperation("writeFile", path, nil, nil, &permVal)
+	return writer, nil
 }
 
 func (t *TrackedFileSystem) Remove(path string) error {
@@ -167,8 +190,8 @@ func (w *trackedFileWriter) Close() error {
 		return err
 	}
 	size := w.size
-	permStr := "0644"
-	return w.t.recordOperation("writeFile", w.path, nil, &size, &permStr)
+	permVal := registry.Permission("0644")
+	return w.t.recordOperation("writeFile", w.path, nil, &size, &permVal)
 }
 
 func (t *TrackedFileSystem) Create(path string) (io.WriteCloser, error) {
@@ -196,8 +219,8 @@ func (t *TrackedFileSystem) Chmod(path string, perm os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	permStr := fmt.Sprintf("0%o", perm&os.ModePerm)
-	return t.recordOperation("chmod", path, nil, nil, &permStr)
+	permVal := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
+	return t.recordOperation("chmod", path, nil, nil, &permVal)
 }
 
 func (t *TrackedFileSystem) Rename(oldname, newname string) error {
@@ -229,17 +252,53 @@ func (t *TrackedFileSystem) Stat(path string) (os.FileInfo, error) {
 }
 
 func (t *TrackedFileSystem) RemoveAll(path string) error {
+	var toDelete []string
+
 	existed, err := t.fs.Exists(path)
 	if err != nil {
 		existed = false
 	}
+
+	if existed {
+		toDelete = append(toDelete, path)
+
+		info, err := t.fs.Lstat(path)
+		if err == nil && info.IsDir() {
+			var walk func(string) error
+			walk = func(dir string) error {
+				names, err := t.fs.ReadDir(dir)
+				if err != nil {
+					return err
+				}
+				for _, name := range names {
+					subPath := filepath.Join(dir, name)
+					toDelete = append(toDelete, subPath)
+					subInfo, err := t.fs.Lstat(subPath)
+					if err == nil && subInfo.IsDir() {
+						if err := walk(subPath); err != nil {
+							return err
+						}
+					}
+				}
+				return nil
+			}
+			_ = walk(path)
+		}
+	}
+
 	err = t.fs.RemoveAll(path)
 	if err != nil {
 		return err
 	}
+
 	if existed {
-		return t.recordOperation("rm", path, nil, nil, nil)
+		for _, p := range toDelete {
+			if err := t.recordOperation("rm", p, nil, nil, nil); err != nil {
+				return err
+			}
+		}
 	}
+
 	return nil
 }
 
@@ -253,13 +312,13 @@ func (t *TrackedFileSystem) CopyFile(src, dest string) error {
 		return err
 	}
 	var sizeBytes *int64
-	var permStr *string
+	var permVal *registry.Permission
 	info, err := t.fs.Lstat(dest)
 	if err == nil {
 		sz := info.Size()
 		sizeBytes = &sz
-		pStr := fmt.Sprintf("0%o", info.Mode().Perm())
-		permStr = &pStr
+		p := registry.Permission(fmt.Sprintf("0%o", info.Mode().Perm()))
+		permVal = &p
 	}
-	return t.recordOperation("writeFile", dest, &src, sizeBytes, permStr)
+	return t.recordOperation("writeFile", dest, &src, sizeBytes, permVal)
 }

@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"os"
 	"sort"
@@ -13,18 +14,83 @@ import (
 // ErrTransactionRequired is returned when a write operation is attempted without a transaction.
 var ErrTransactionRequired = fmt.Errorf("transaction is required for database writes")
 
+// Permission represents a filesystem permission string, serialized to JSON as a base-10 decimal number.
+type Permission string
+
+func (p Permission) MarshalJSON() ([]byte, error) {
+	s := string(p)
+	if s == "" {
+		return []byte("0"), nil
+	}
+	sClean := s
+	if strings.HasPrefix(sClean, "0o") || strings.HasPrefix(sClean, "0O") {
+		sClean = sClean[2:]
+	}
+	val, err := strconv.ParseUint(sClean, 8, 32)
+	if err != nil {
+		// Try parsing as decimal if it fails
+		valDec, errDec := strconv.ParseUint(sClean, 10, 32)
+		if errDec == nil {
+			return []byte(strconv.FormatUint(valDec, 10)), nil
+		}
+		return nil, fmt.Errorf("invalid octal permission %q: %w", s, err)
+	}
+	return []byte(strconv.FormatUint(val, 10)), nil
+}
+
+func (p *Permission) UnmarshalJSON(b []byte) error {
+	s := string(b)
+	if s == "null" || s == "" {
+		*p = ""
+		return nil
+	}
+	// Trim quotes just in case the input is represented as a quoted string
+	sClean := strings.Trim(s, `"`)
+	val, err := strconv.ParseUint(sClean, 10, 32)
+	if err != nil {
+		return fmt.Errorf("invalid json number for permission %q: %w", s, err)
+	}
+	*p = Permission(fmt.Sprintf("0%o", val))
+	return nil
+}
+
+func (p *Permission) Scan(value interface{}) error {
+	if value == nil {
+		*p = ""
+		return nil
+	}
+	var s string
+	switch v := value.(type) {
+	case string:
+		s = v
+	case []byte:
+		s = string(v)
+	default:
+		return fmt.Errorf("unsupported type for Permission Scan: %T", value)
+	}
+	*p = Permission(DecimalToOctalPerm(s))
+	return nil
+}
+
+func (p Permission) Value() (driver.Value, error) {
+	if p == "" {
+		return nil, nil
+	}
+	return OctalToDecimalPerm(string(p)), nil
+}
+
 type FileOperationRecord struct {
-	ID            int64   `db:"id"`
-	ToolName      string  `db:"tool_name"`
-	OperationType string  `db:"operation_type"` // e.g., "symlink", "shim", "write"
-	FilePath      string  `db:"file_path"`
-	TargetPath    *string `db:"target_path"`
-	FileType      string  `db:"file_type"`
-	Metadata      *string `db:"metadata"`
-	SizeBytes     *int64  `db:"size_bytes"`
-	Permissions   *string `db:"permissions"`
-	CreatedAt     int64   `db:"created_at"` // Unix millisecond epoch
-	OperationID   string  `db:"operation_id"`
+	ID            int64       `db:"id"`
+	ToolName      string      `db:"tool_name"`
+	OperationType string      `db:"operation_type"` // e.g., "symlink", "shim", "write"
+	FilePath      string      `db:"file_path"`
+	TargetPath    *string     `db:"target_path"`
+	FileType      string      `db:"file_type"`
+	Metadata      *string     `db:"metadata"`
+	SizeBytes     *int64      `db:"size_bytes"`
+	Permissions   *Permission `db:"permissions" json:"permissions"`
+	CreatedAt     int64       `db:"created_at"` // Unix millisecond epoch
+	OperationID   string      `db:"operation_id"`
 }
 
 type ToolInstallationRecord struct {
@@ -50,15 +116,15 @@ type ToolUsageRecord struct {
 }
 
 type FileState struct {
-	FilePath      string  `json:"filePath"`
-	ToolName      string  `json:"toolName"`
-	FileType      string  `json:"fileType"`
-	LastOperation string  `json:"lastOperation"`
-	TargetPath    *string `json:"targetPath"`
-	LastModified  int64   `json:"lastModified"`
-	Metadata      *string `json:"metadata"`
-	SizeBytes     *int64  `json:"sizeBytes"`
-	Permissions   *string `json:"permissions"`
+	FilePath      string      `json:"filePath"`
+	ToolName      string      `json:"toolName"`
+	FileType      string      `json:"fileType"`
+	LastOperation string      `json:"lastOperation"`
+	TargetPath    *string     `json:"targetPath"`
+	LastModified  int64       `json:"lastModified"`
+	Metadata      *string     `json:"metadata"`
+	SizeBytes     *int64      `json:"sizeBytes"`
+	Permissions   *Permission `json:"permissions" db:"permissions"`
 }
 
 type Stats struct {
@@ -169,10 +235,6 @@ func (r *Registry) GetFileOperations(ctx context.Context, filter FileOperationFi
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning file operation record: %w", err)
-		}
-		if rec.Permissions != nil {
-			octalStr := DecimalToOctalPerm(*rec.Permissions)
-			rec.Permissions = &octalStr
 		}
 		records = append(records, &rec)
 	}
@@ -326,12 +388,6 @@ func (r *Registry) RecordFileOperation(ctx context.Context, tx *sql.Tx, record *
 		tool_name, operation_type, file_path, target_path, file_type, metadata, size_bytes, permissions, created_at, operation_id
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
 
-	var dbPerm *string
-	if record.Permissions != nil {
-		dbPermStr := OctalToDecimalPerm(*record.Permissions)
-		dbPerm = &dbPermStr
-	}
-
 	res, err := tx.ExecContext(ctx, query,
 		record.ToolName,
 		record.OperationType,
@@ -340,7 +396,7 @@ func (r *Registry) RecordFileOperation(ctx context.Context, tx *sql.Tx, record *
 		record.FileType,
 		record.Metadata,
 		record.SizeBytes,
-		dbPerm,
+		record.Permissions,
 		record.CreatedAt,
 		record.OperationID,
 	)
