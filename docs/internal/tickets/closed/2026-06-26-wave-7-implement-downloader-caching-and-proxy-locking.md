@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-26 17:00
-last_modified: 2026-06-26 17:00
+last_modified: 2026-06-27 09:31
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 7: Implement Downloader Caching and Proxy Locking
@@ -32,7 +32,7 @@ Go's downloader includes a high-fidelity local content-caching layer to avoid du
 
 ## Acceptance criteria
 
-- [ ] **Downloader Cache Decorator**: Implement local download caching in `pkg/downloader/` that stores downloaded artifacts based on content-hashed cache keys, matching TS `CachedDownloadStrategy`.
-- [ ] **Thread-Safe Proxy Purging**: Fix the concurrency data race in `pkg/proxy/proxy.go`. Acquire a secure Write Lock (`Lock()`) before deleting expired files on disk within `Get()`.
-- [ ] **Unit Testing**: Add tests in `pkg/downloader/downloader_test.go` and `pkg/proxy/proxy_test.go` asserting caching behavior and concurrent safety during request streams.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Downloader Cache Decorator**: Implement local download caching in `pkg/downloader/` that stores downloaded artifacts based on content-hashed cache keys, matching TS `CachedDownloadStrategy`.
+- [x] **Thread-Safe Proxy Purging**: Fix the concurrency data race in `pkg/proxy/proxy.go`. Acquire a secure Write Lock (`Lock()`) before deleting expired files on disk within `Get()`.
+- [x] **Unit Testing**: Add tests in `pkg/downloader/downloader_test.go` and `pkg/proxy/proxy_test.go` asserting caching behavior and concurrent safety during request streams.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

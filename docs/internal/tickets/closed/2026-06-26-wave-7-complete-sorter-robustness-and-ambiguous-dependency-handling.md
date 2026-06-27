@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-26 17:00
-last_modified: 2026-06-26 17:00
+last_modified: 2026-06-27 09:31
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 7: Complete Sorter Robustness and Ambiguous Dependency Handling
@@ -31,7 +31,7 @@ Go's dependency sorter matches the robust, lenient, and stable sorting behaviors
 
 ## Acceptance criteria
 
-- [ ] **Deferred Ambiguity Resolution**: Refactor `pkg/orchestrator/orchestrator.go` to register binary providers as a list of strings (`map[string][]string`) and only throw an ambiguous dependency error if a tool actually depends on that binary and there are multiple providers.
-- [ ] **Deterministic Sorting Queue**: Refactor the topological sort loop to prioritize zero-in-degree nodes based on their original configuration indices, guaranteeing 100% stable output orderings identical to TS.
-- [ ] **Unit Testing**: Add tests inside `pkg/orchestrator/orchestrator_test.go` asserting that overlapping binaries across unrelated tools do not crash sorting, and that parallel independent branches resolve deterministically.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Deferred Ambiguity Resolution**: Refactor `pkg/orchestrator/orchestrator.go` to register binary providers as a list of strings (`map[string][]string`) and only throw an ambiguous dependency error if a tool actually depends on that binary and there are multiple providers.
+- [x] **Deterministic Sorting Queue**: Refactor the topological sort loop to prioritize zero-in-degree nodes based on their original configuration indices, guaranteeing 100% stable output orderings identical to TS.
+- [x] **Unit Testing**: Add tests inside `pkg/orchestrator/orchestrator_test.go` asserting that overlapping binaries across unrelated tools do not crash sorting, and that parallel independent branches resolve deterministically.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

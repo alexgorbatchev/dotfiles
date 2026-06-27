@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-26 17:00
-last_modified: 2026-06-26 17:00
+last_modified: 2026-06-27 09:31
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 7: Implement Interactive Terminal Progress Bar for Go Downloader
@@ -31,9 +31,9 @@ Go's downloader implements a terminal-interactive progress bar drawing real-time
 
 ## Acceptance criteria
 
-- [ ] **Progress Bar UI**: Implement a terminal progress bar in Go (or leverage a robust standard library/package if preferred) that formats the percentage completion.
-- [ ] **Speed & ETA Formatters**: Compute and render the download transfer speed (e.g., `1.5 MB/s`) and estimated time of arrival (ETA) (e.g., `| 12s left`).
-- [ ] **ANSI Terminal Controls**: Hide the cursor during downloads and restore it on finish/abort. Use ANSI carriage return (`\r`) to overwrite the active line without scrolling.
-- [ ] **TTY & CI/CD Protection**: Only draw the progress bar if the output stream (stderr) is a real TTY and not running inside CI/CD pipelines or quiet mode.
-- [ ] **Unit Testing**: Add tests in `pkg/downloader/downloader_test.go` verifying the correct calculation of speeds and ETA strings under simulated progress.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Progress Bar UI**: Implement a terminal progress bar in Go (or leverage a robust standard library/package if preferred) that formats the percentage completion.
+- [x] **Speed & ETA Formatters**: Compute and render the download transfer speed (e.g., `1.5 MB/s`) and estimated time of arrival (ETA) (e.g., `| 12s left`).
+- [x] **ANSI Terminal Controls**: Hide the cursor during downloads and restore it on finish/abort. Use ANSI carriage return (`\r`) to overwrite the active line without scrolling.
+- [x] **TTY & CI/CD Protection**: Only draw the progress bar if the output stream (stderr) is a real TTY and not running inside CI/CD pipelines or quiet mode.
+- [x] **Unit Testing**: Add tests in `pkg/downloader/downloader_test.go` verifying the correct calculation of speeds and ETA strings under simulated progress.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

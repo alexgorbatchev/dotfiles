@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-26 17:00
-last_modified: 2026-06-26 17:00
+last_modified: 2026-06-27 09:31
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 7: Package and Distribute Fluent DSL Typings as NPM Package
@@ -31,8 +31,8 @@ A lightweight, dedicated NPM package (`@alexgorbatchev/dotfiles`) is built and p
 
 ## Acceptance criteria
 
-- [ ] **Ambient Types Extraction**: Extract and export the complete fluent TypeScript definitions (`defineTool`, `defineConfig`, `IToolBuilder`, etc.) from `pkg/vm/loader-api.ts` and `pkg/vm/dsl-types.ts`.
-- [ ] **Package Assembly**: Refactor `packages/build/` or write a script to package these typings into a lightweight NPM distribution directory under `.dist/` or similar.
-- [ ] **Zero Goja Runtime Dependency**: Ensure the published package does not bundle or depend on legacy TypeScript packages, serving only as an ambient types library.
-- [ ] **IDE Verification**: Verify that opening a local `dotfiles.config.ts` or `.tool.ts` resolves types from the generated package with full editor autocomplete.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Ambient Types Extraction**: Extract and export the complete fluent TypeScript definitions (`defineTool`, `defineConfig`, `IToolBuilder`, etc.) from `pkg/vm/loader-api.ts` and `pkg/vm/dsl-types.ts`.
+- [x] **Package Assembly**: Refactor `packages/build/` or write a script to package these typings into a lightweight NPM distribution directory under `.dist/` or similar.
+- [x] **Zero Goja Runtime Dependency**: Ensure the published package does not bundle or depend on legacy TypeScript packages, serving only as an ambient types library.
+- [x] **IDE Verification**: Verify that opening a local `dotfiles.config.ts` or `.tool.ts` resolves types from the generated package with full editor autocomplete.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

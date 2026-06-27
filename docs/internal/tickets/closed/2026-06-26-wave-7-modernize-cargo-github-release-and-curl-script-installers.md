@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-26 17:00
-last_modified: 2026-06-26 17:00
+last_modified: 2026-06-27 09:31
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 7: Modernize cargo, github-release and curl-script Installers
@@ -34,9 +34,9 @@ All core Go installer plugins achieve 100% parity with their TypeScript equivale
 
 ## Acceptance criteria
 
-- [ ] **Cargo Quickinstall**: Implement `cargo-quickinstall` or pre-compiled binary checks in `pkg/installer/cargo.go` before falling back to local compilation.
-- [ ] **GitHub Release Asset Selection Security**: Refactor `matchAsset` in `pkg/installer/github.go` to use stricter substring heuristics and reject non-binary files (like `.sha256`, `.txt`, `.md`, `.sig`) instead of executing a blind fallback to `assets[0]`.
-- [ ] **Curl-Script Parity**: Implement `args`, `env`, `versionArgs`, and `versionRegex` variables inside `pkg/installer/curl_script.go` to execute the downloaded scripts correctly and extract binary versions.
-- [ ] **Package Manager Updates**: Implement basic `CheckUpdate` parsing or execution checks for the native package managers (`apt`, `dnf`, `pacman`).
-- [ ] **Unit Testing**: Extend unit tests in `pkg/installer/*_test.go` and `tests/e2e/` verifying these capabilities.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Cargo Quickinstall**: Implement `cargo-quickinstall` or pre-compiled binary checks in `pkg/installer/cargo.go` before falling back to local compilation.
+- [x] **GitHub Release Asset Selection Security**: Refactor `matchAsset` in `pkg/installer/github.go` to use stricter substring heuristics and reject non-binary files (like `.sha256`, `.txt`, `.md`, `.sig`) instead of executing a blind fallback to `assets[0]`.
+- [x] **Curl-Script Parity**: Implement `args`, `env`, `versionArgs`, and `versionRegex` variables inside `pkg/installer/curl_script.go` to execute the downloaded scripts correctly and extract binary versions.
+- [x] **Package Manager Updates**: Implement basic `CheckUpdate` parsing or execution checks for the native package managers (`apt`, `dnf`, `pacman`).
+- [x] **Unit Testing**: Extend unit tests in `pkg/installer/*_test.go` and `tests/e2e/` verifying these capabilities.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

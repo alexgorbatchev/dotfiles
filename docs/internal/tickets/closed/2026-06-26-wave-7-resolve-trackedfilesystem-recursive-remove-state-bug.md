@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-26 17:00
-last_modified: 2026-06-26 17:00
+last_modified: 2026-06-27 09:31
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 7: Resolve TrackedFileSystem Recursive Remove State Bug
@@ -45,7 +45,7 @@ The Go `TrackedFileSystem.RemoveAll` recursively crawls the directories in-memor
 
 ## Acceptance criteria
 
-- [ ] **Recursive Crawl on Removal**: Update `RemoveAll` in `pkg/fs/tracked_fs.go` to recursively list all sub-entries before executing the deletion.
-- [ ] **Log Separate Ops**: Append an `"rm"` file operation record to the operations slice for every discovered nested file and directory, with paths relative to the volume root.
-- [ ] **Unit Testing**: Add a test in `pkg/fs/tracked_fs_test.go` asserting that removing a directory containing multiple sub-folders and files correctly appends discrete `"rm"` entries for every nested path to the operations buffer.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Recursive Crawl on Removal**: Update `RemoveAll` in `pkg/fs/tracked_fs.go` to recursively list all sub-entries before executing the deletion.
+- [x] **Log Separate Ops**: Append an `"rm"` file operation record to the operations slice for every discovered nested file and directory, with paths relative to the volume root.
+- [x] **Unit Testing**: Add a test in `pkg/fs/tracked_fs_test.go` asserting that removing a directory containing multiple sub-folders and files correctly appends discrete `"rm"` entries for every nested path to the operations buffer.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

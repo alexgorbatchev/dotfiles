@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-26 17:00
-last_modified: 2026-06-26 17:00
+last_modified: 2026-06-27 09:31
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 7: Complete Shell Completions Capability in Go
@@ -33,9 +33,9 @@ The Go completions generator matches the complete capability of the TypeScript e
 
 ## Acceptance criteria
 
-- [ ] **PowerShell Completions**: Implement PowerShell completion generation inside the completions pipeline.
-- [ ] **Remote Downloads Support**: Integrate `pkg/downloader/` inside the completions engine to support downloading completions from remote `url` strings and extracting them from `.zip` or `.tar.gz` archives.
-- [ ] **Globbing Support**: Add support for resolving completion source directories matching glob patterns.
-- [ ] **Bash Naming Parity**: Unify Bash completion file outputs to write as `toolName.bash`.
-- [ ] **Unit Testing**: Add tests in `pkg/orchestrator/orchestrator_test.go` and `tests/e2e/completion_test.go` asserting correct completions extraction, downloading, and formatting across Bash, Zsh, and PowerShell.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **PowerShell Completions**: Implement PowerShell completion generation inside the completions pipeline.
+- [x] **Remote Downloads Support**: Integrate `pkg/downloader/` inside the completions engine to support downloading completions from remote `url` strings and extracting them from `.zip` or `.tar.gz` archives.
+- [x] **Globbing Support**: Add support for resolving completion source directories matching glob patterns.
+- [x] **Bash Naming Parity**: Unify Bash completion file outputs to write as `toolName.bash`.
+- [x] **Unit Testing**: Add tests in `pkg/orchestrator/orchestrator_test.go` and `tests/e2e/completion_test.go` asserting correct completions extraction, downloading, and formatting across Bash, Zsh, and PowerShell.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

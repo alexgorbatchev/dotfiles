@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-26 17:00
-last_modified: 2026-06-26 17:00
+last_modified: 2026-06-27 09:31
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 7: Resolve Due Diligence Performance and Stability Issues
@@ -33,9 +33,9 @@ The Go-native engine's core extractors and command execution runners are fully h
 
 ## Acceptance criteria
 
-- [ ] **Fix Once-Script Errors**: Replace hardcoded `source` commands in shell profile initializers with dynamic glob checks or conditional presence wrappers to prevent "file not found" errors.
-- [ ] **Stream Archive Extraction**: Replace `io.ReadAll` with chunked buffer streams utilizing `io.Copy` inside `pkg/archive/archive.go` to eliminate high memory footprints during extraction.
-- [ ] **Restore Symlinks during Extraction**: Update the archive parser to correctly evaluate and recreate symbolic link headers (`tar.TypeSymlink`).
-- [ ] **CI/CD Sudo Guard**: Guard `sudo` execution paths; if a non-interactive CI/CD environment is detected, throw a prompt validation error instead of hanging on terminal inputs.
-- [ ] **Unit Testing**: Add tests inside `pkg/archive/archive_test.go` and `pkg/exec/exec_test.go` verifying streaming safety, symlink restoration, and interactive guards.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Fix Once-Script Errors**: Replace hardcoded `source` commands in shell profile initializers with dynamic glob checks or conditional presence wrappers to prevent "file not found" errors.
+- [x] **Stream Archive Extraction**: Replace `io.ReadAll` with chunked buffer streams utilizing `io.Copy` inside `pkg/archive/archive.go` to eliminate high memory footprints during extraction.
+- [x] **Restore Symlinks during Extraction**: Update the archive parser to correctly evaluate and recreate symbolic link headers (`tar.TypeSymlink`).
+- [x] **CI/CD Sudo Guard**: Guard `sudo` execution paths; if a non-interactive CI/CD environment is detected, throw a prompt validation error instead of hanging on terminal inputs.
+- [x] **Unit Testing**: Add tests inside `pkg/archive/archive_test.go` and `pkg/exec/exec_test.go` verifying streaming safety, symlink restoration, and interactive guards.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-26 17:00
-last_modified: 2026-06-26 17:00
+last_modified: 2026-06-27 09:31
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 7: Fix Zsh compinit Performance and Shell Wrapper Function
@@ -37,7 +37,7 @@ Go's shell initialization generator matches the fast completions configuration a
 
 ## Acceptance criteria
 
-- [ ] **Remove Unconditional `compinit`**: Update `pkg/shellinit/shellinit.go` to remove the unconditional `autoload -Uz compinit && compinit -u` command. Let it unique-prepend the completions directory to `fpath` silently, identical to TS.
-- [ ] **Implement CLI Wrapper Function**: Update `generateShellScripts` in `pkg/orchestrator/orchestrator.go` to generate a native shell wrapper function `dotfiles` that invokes the compiled binary and automatically binds the `--config` file flag.
-- [ ] **Unit Testing**: Add tests inside `pkg/shellinit/shellinit_test.go` and `pkg/orchestrator/orchestrator_test.go` asserting that the Zsh output matches the compinit omission and that the generated main script contains the `dotfiles` shell wrapper.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Remove Unconditional `compinit`**: Update `pkg/shellinit/shellinit.go` to remove the unconditional `autoload -Uz compinit && compinit -u` command. Let it unique-prepend the completions directory to `fpath` silently, identical to TS.
+- [x] **Implement CLI Wrapper Function**: Update `generateShellScripts` in `pkg/orchestrator/orchestrator.go` to generate a native shell wrapper function `dotfiles` that invokes the compiled binary and automatically binds the `--config` file flag.
+- [x] **Unit Testing**: Add tests inside `pkg/shellinit/shellinit_test.go` and `pkg/orchestrator/orchestrator_test.go` asserting that the Zsh output matches the compinit omission and that the generated main script contains the `dotfiles` shell wrapper.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

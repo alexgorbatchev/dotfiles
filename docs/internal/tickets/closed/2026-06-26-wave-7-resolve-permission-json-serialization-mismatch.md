@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-26 17:00
-last_modified: 2026-06-26 17:00
+last_modified: 2026-06-27 09:31
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 7: Unify Permission JSON Serialization Format
@@ -35,7 +35,7 @@ The Go JSON serialization matches the TypeScript JSON contract, outputting the `
 
 ## Acceptance criteria
 
-- [ ] **Standardize Struct Representation**: Refactor the Go structures (e.g., `FileOperationRecord` or `FileState`) to serialize permissions as decimal integers rather than octal strings in JSON output, or implement a custom `MarshalJSON` / `UnmarshalJSON` layer.
-- [ ] **Preserve DB Octal Conversion**: Retain the decimal-to-string SQLite storage strategy, but guarantee that memory models and serialized logs match the decimal number contract (`493` for `0755`).
-- [ ] **Unit Testing**: Add a test in `pkg/registry/registry_test.go` asserting that a serialized `FileOperationRecord` translates permissions as a decimal JSON number.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Standardize Struct Representation**: Refactor the Go structures (e.g., `FileOperationRecord` or `FileState`) to serialize permissions as decimal integers rather than octal strings in JSON output, or implement a custom `MarshalJSON` / `UnmarshalJSON` layer.
+- [x] **Preserve DB Octal Conversion**: Retain the decimal-to-string SQLite storage strategy, but guarantee that memory models and serialized logs match the decimal number contract (`493` for `0755`).
+- [x] **Unit Testing**: Add a test in `pkg/registry/registry_test.go` asserting that a serialized `FileOperationRecord` translates permissions as a decimal JSON number.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
