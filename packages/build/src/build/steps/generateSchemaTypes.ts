@@ -27,11 +27,31 @@ export async function generateSchemaTypes(
     const dslTypesPath = path.join(context.paths.rootDir, "pkg/vm/dsl-types.ts");
     const dslTypesContent = fs.readFileSync(dslTypesPath, "utf8");
 
+    // Extract fluent API interfaces from pkg/vm/loader-api.ts
+    const loaderApiPath = path.join(context.paths.rootDir, "pkg/vm/loader-api.ts");
+    const loaderApiContent = fs.readFileSync(loaderApiPath, "utf8");
+
+    const loaderApiDeclMap = [
+      "export type ShellStrings = TemplateStringsArray | string;",
+      "export type PlatformCallback = (install: (method: string, params?: unknown) => IToolBuilder) => void;",
+      "export type ArchCallback = (install: (method: string, params?: unknown) => IToolBuilder) => void;",
+      "export type ShellCallback = (shell: Record<string, unknown>) => void;",
+    ];
+
+    const interfacesToExtract = ["IToolBuilder", "IShellConfigs", "IPathModule"];
+    for (const iface of interfacesToExtract) {
+      const match = loaderApiContent.match(new RegExp(`export interface ${iface} \\{[\\s\\S]*?\\n\\}`));
+      if (match) {
+        loaderApiDeclMap.push(match[0]);
+      }
+    }
+
     const publicDeclarationsTemplate = [
       "import { ZodError, z } from 'zod';",
       "export declare function dedentString(str: string): string;",
       "export declare function dedentTemplate(template: string, values: Record<string, string>): string;",
       dslTypesContent,
+      loaderApiDeclMap.join("\n\n"),
       "export declare function defineConfig(callback: ConfigFactory): ConfigFactory;",
       "export declare function defineTool(callback: AsyncConfigureTool): AsyncConfigureTool;",
       "export type {",

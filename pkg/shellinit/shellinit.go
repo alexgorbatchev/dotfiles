@@ -179,7 +179,7 @@ fi`, targetDir, targetDir)
 
 // FormatFpath returns Zsh code to unique and append the completionsDir to fpath.
 func FormatFpath(completionsDir string) string {
-	return fmt.Sprintf("typeset -U fpath\nfpath=(%q $fpath)\nautoload -Uz compinit && compinit -u", completionsDir)
+	return fmt.Sprintf("typeset -U fpath\nfpath=(%q $fpath)", completionsDir)
 }
 
 // FormatOnceLoop returns the dynamic once-scripts glob matching loop for the given shell.

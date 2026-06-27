@@ -446,7 +446,7 @@ fi`,
 
 func TestFormatFpath(t *testing.T) {
 	completionsDir := "/home/user/.generated/shell-scripts/zsh/completions"
-	want := "typeset -U fpath\nfpath=(\"/home/user/.generated/shell-scripts/zsh/completions\" $fpath)\nautoload -Uz compinit && compinit -u"
+	want := "typeset -U fpath\nfpath=(\"/home/user/.generated/shell-scripts/zsh/completions\" $fpath)"
 	got := FormatFpath(completionsDir)
 	if got != want {
 		t.Errorf("FormatFpath(%q) =\n%q\nwant =\n%q", completionsDir, got, want)

@@ -881,7 +881,7 @@ func TestOrchestratorNativeShellGeneration(t *testing.T) {
 
 	tools := []*config.ToolConfig{
 		{
-			Name: "test-tool",
+			Name:           "test-tool",
 			ConfigFilePath: "/home/user/tools/test-tool.tool.ts",
 			ShellConfigs: &config.ShellConfigs{
 				Zsh: &config.ShellTypeConfig{
@@ -966,4 +966,110 @@ func TestOrchestrator_GetCliCommand(t *testing.T) {
 	if cmd != execPath {
 		t.Errorf("expected %q, got %q", execPath, cmd)
 	}
+}
+
+func TestTopologicalSort_RobustnessAndDeterminism(t *testing.T) {
+	t.Run("multiple providers without dependency", func(t *testing.T) {
+		tools := []*config.ToolConfig{
+			{
+				Name:     "tool-A",
+				Binaries: []interface{}{"shared-bin"},
+			},
+			{
+				Name:     "tool-B",
+				Binaries: []interface{}{"shared-bin"},
+			},
+		}
+		sorted, err := TopologicalSort(tools)
+		if err != nil {
+			t.Fatalf("unexpected error when multiple tools provide the same binary but no dependency is declared: %v", err)
+		}
+		if len(sorted) != 2 {
+			t.Fatalf("expected 2 tools, got %d", len(sorted))
+		}
+	})
+
+	t.Run("multiple providers with dependency causes ambiguous dependency error", func(t *testing.T) {
+		tools := []*config.ToolConfig{
+			{
+				Name:     "tool-A",
+				Binaries: []interface{}{"shared-bin"},
+			},
+			{
+				Name:     "tool-B",
+				Binaries: []interface{}{"shared-bin"},
+			},
+			{
+				Name:         "tool-C",
+				Dependencies: []string{"shared-bin"},
+			},
+		}
+		_, err := TopologicalSort(tools)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		expectedErrSub := `ambiguous dependency: binary "shared-bin" is provided by multiple tools: tool-A, tool-B`
+		if !strings.Contains(err.Error(), expectedErrSub) {
+			t.Errorf("expected error containing %q, got %q", expectedErrSub, err.Error())
+		}
+	})
+
+	t.Run("parallel branches are sorted deterministically based on original configuration indices", func(t *testing.T) {
+		// A and B have 0 in-degree and are completely independent.
+		// Since A comes before B in the slice, A should be sorted before B.
+		tools1 := []*config.ToolConfig{
+			{Name: "A"},
+			{Name: "B"},
+		}
+		sorted1, err := TopologicalSort(tools1)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if sorted1[0].Name != "A" || sorted1[1].Name != "B" {
+			t.Errorf("expected A, B; got %s, %s", sorted1[0].Name, sorted1[1].Name)
+		}
+
+		// Since B comes before A in the slice, B should be sorted before A.
+		tools2 := []*config.ToolConfig{
+			{Name: "B"},
+			{Name: "A"},
+		}
+		sorted2, err := TopologicalSort(tools2)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if sorted2[0].Name != "B" || sorted2[1].Name != "A" {
+			t.Errorf("expected B, A; got %s, %s", sorted2[0].Name, sorted2[1].Name)
+		}
+
+		// Complex tree with multiple branches
+		// C and D are independent, both depend on A.
+		// Order: A, C, D (if C is before D in tools)
+		tools3 := []*config.ToolConfig{
+			{Name: "A"},
+			{Name: "C", Dependencies: []string{"A"}},
+			{Name: "D", Dependencies: []string{"A"}},
+		}
+		sorted3, err := TopologicalSort(tools3)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if sorted3[0].Name != "A" || sorted3[1].Name != "C" || sorted3[2].Name != "D" {
+			t.Errorf("expected A, C, D; got %s, %s, %s", sorted3[0].Name, sorted3[1].Name, sorted3[2].Name)
+		}
+
+		// Order: A, D, C (if D is before C in tools)
+		tools4 := []*config.ToolConfig{
+			{Name: "A"},
+			{Name: "D", Dependencies: []string{"A"}},
+			{Name: "C", Dependencies: []string{"A"}},
+		}
+		sorted4, err := TopologicalSort(tools4)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if sorted4[0].Name != "A" || sorted4[1].Name != "D" || sorted4[2].Name != "C" {
+			t.Errorf("expected A, D, C; got %s, %s, %s", sorted4[0].Name, sorted4[1].Name, sorted4[2].Name)
+		}
+	})
 }

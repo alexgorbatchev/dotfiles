@@ -95,24 +95,23 @@ func (o *Orchestrator) getSymlinkEvaluator() *symlink.Evaluator {
 // It returns an error if a dependency cycle or an unregistered dependency is detected.
 func TopologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 	toolMap := make(map[string]*config.ToolConfig)
-	for _, tool := range tools {
+	originalIndex := make(map[string]int)
+	for i, tool := range tools {
 		if _, exists := toolMap[tool.Name]; exists {
 			return nil, fmt.Errorf("duplicate tool name %q in configuration", tool.Name)
 		}
 		toolMap[tool.Name] = tool
+		originalIndex[tool.Name] = i
 	}
 
-	binaryProviders := make(map[string]string)
+	binaryProviders := make(map[string][]string)
 	for _, tool := range tools {
 		bins := getBinaryNames(tool.Binaries)
 		if len(bins) == 0 {
 			bins = []string{tool.Name}
 		}
 		for _, bin := range bins {
-			if existing, exists := binaryProviders[bin]; exists {
-				return nil, fmt.Errorf("ambiguous dependency: binary %q is provided by multiple tools: %q and %q", bin, existing, tool.Name)
-			}
-			binaryProviders[bin] = tool.Name
+			binaryProviders[bin] = append(binaryProviders[bin], tool.Name)
 		}
 	}
 
@@ -125,13 +124,18 @@ func TopologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 
 	for _, tool := range tools {
 		for _, dep := range tool.Dependencies {
-			provider, exists := binaryProviders[dep]
+			var provider string
+			providers, exists := binaryProviders[dep]
 			if !exists {
 				if _, toolExists := toolMap[dep]; toolExists {
 					provider = dep
 				} else {
 					return nil, fmt.Errorf("tool %q depends on missing dependency %q", tool.Name, dep)
 				}
+			} else if len(providers) > 1 {
+				return nil, fmt.Errorf("ambiguous dependency: binary %q is provided by multiple tools: %s", dep, strings.Join(providers, ", "))
+			} else {
+				provider = providers[0]
 			}
 			inDegree[tool.Name]++
 			adj[provider] = append(adj[provider], tool.Name)
@@ -144,6 +148,9 @@ func TopologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 			queue = append(queue, tool.Name)
 		}
 	}
+	sort.Slice(queue, func(i, j int) bool {
+		return originalIndex[queue[i]] < originalIndex[queue[j]]
+	})
 
 	var sorted []string
 	for len(queue) > 0 {
@@ -157,6 +164,9 @@ func TopologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 				queue = append(queue, v)
 			}
 		}
+		sort.Slice(queue, func(i, j int) bool {
+			return originalIndex[queue[i]] < originalIndex[queue[j]]
+		})
 	}
 
 	if len(sorted) < len(tools) {
@@ -755,6 +765,24 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 			// Prepend targetDir (user-bin) to PATH with protection guard
 			scriptLines = append(scriptLines, shellinit.FormatPath(sh, projCfg.Paths.TargetDir))
+
+			// Generate dotfiles native wrapper function
+			dotfilesBin := filepath.ToSlash(filepath.Join(projCfg.Paths.TargetDir, "dotfiles"))
+			var wrapper string
+			if o.configFilePath != "" {
+				if sh == "powershell" {
+					wrapper = fmt.Sprintf("function dotfiles {\n  & %q --config %q $args\n}", dotfilesBin, o.configFilePath)
+				} else {
+					wrapper = fmt.Sprintf("dotfiles() {\n  %q --config %q \"$@\"\n}", dotfilesBin, o.configFilePath)
+				}
+			} else {
+				if sh == "powershell" {
+					wrapper = fmt.Sprintf("function dotfiles {\n  & %q $args\n}", dotfilesBin)
+				} else {
+					wrapper = fmt.Sprintf("dotfiles() {\n  %q \"$@\"\n}", dotfilesBin)
+				}
+			}
+			scriptLines = append(scriptLines, wrapper)
 
 			// Zsh fpath completion
 			if sh == "zsh" {
