@@ -17,7 +17,7 @@
     "test:native": "go test -count=1 -p 1 ./tests/e2e/...",
     "test:task": "go test -count=1 -p 1 ./tests/e2e/...",
     "test-project-npm": "go run ./cmd/dotfiles --config test-project-npm/dotfiles.config.ts",
-    "compile": "bun packages/build/src/build/main.ts",
+    "compile": "go run scripts/build/main.go",
     "release": "bun packages/build/src/release/main.ts",
     "find-unused": "echo \"find-unused analyzer is not configured in this workspace.\"",
     "cli": "go run ./cmd/dotfiles",
