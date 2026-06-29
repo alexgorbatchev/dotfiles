@@ -411,3 +411,157 @@ func TestExtractorSymlinksAndHeuristics(t *testing.T) {
 		}
 	})
 }
+
+func TestExtractorSymlinkTraversalPrevention(t *testing.T) {
+	t.Run("Zip Absolute Symlink Traversal Detection", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		var buf bytes.Buffer
+		w := zip.NewWriter(&buf)
+
+		header := &zip.FileHeader{
+			Name: "escaped_abs_link.txt",
+		}
+		header.SetMode(os.ModeSymlink | 0777)
+		f, err := w.CreateHeader(header)
+		if err != nil {
+			t.Fatalf("failed to create zip header: %v", err)
+		}
+		_, _ = f.Write([]byte("/tmp/escaped_test"))
+
+		_ = w.Close()
+
+		err = memFS.WriteFile("/test.zip", buf.Bytes(), 0644)
+		if err != nil {
+			t.Fatalf("failed to write zip file: %v", err)
+		}
+
+		err = ext.Extract(context.Background(), "/test.zip", "/dest")
+		if err == nil {
+			t.Error("expected error for absolute zip symlink traversal, got nil")
+		} else if err != ErrSymlinkTraversalDetected {
+			t.Errorf("expected error ErrSymlinkTraversalDetected, got %v", err)
+		}
+
+		// Ensure nothing is written outside the destination directory
+		_, err = memFS.Stat("/tmp/escaped_test")
+		if err == nil {
+			t.Error("expected no file to be created at /tmp/escaped_test")
+		}
+	})
+
+	t.Run("Zip Relative Symlink Traversal Detection", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		var buf bytes.Buffer
+		w := zip.NewWriter(&buf)
+
+		header := &zip.FileHeader{
+			Name: "escaped_rel_link.txt",
+		}
+		header.SetMode(os.ModeSymlink | 0777)
+		f, err := w.CreateHeader(header)
+		if err != nil {
+			t.Fatalf("failed to create zip header: %v", err)
+		}
+		_, _ = f.Write([]byte("../../escaped_relative"))
+
+		_ = w.Close()
+
+		err = memFS.WriteFile("/test.zip", buf.Bytes(), 0644)
+		if err != nil {
+			t.Fatalf("failed to write zip file: %v", err)
+		}
+
+		err = ext.Extract(context.Background(), "/test.zip", "/dest")
+		if err == nil {
+			t.Error("expected error for relative zip symlink traversal, got nil")
+		} else if err != ErrSymlinkTraversalDetected {
+			t.Errorf("expected error ErrSymlinkTraversalDetected, got %v", err)
+		}
+
+		// Ensure nothing is written outside the destination directory
+		_, err = memFS.Stat("/escaped_relative")
+		if err == nil {
+			t.Error("expected no file to be created at /escaped_relative")
+		}
+	})
+
+	t.Run("Tar Absolute Symlink Traversal Detection", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gw)
+
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeSymlink,
+			Name:     "escaped_abs_link.txt",
+			Linkname: "/tmp/escaped_test",
+			Mode:     0777,
+		})
+
+		_ = tw.Close()
+		_ = gw.Close()
+
+		err := memFS.WriteFile("/test.tar.gz", buf.Bytes(), 0644)
+		if err != nil {
+			t.Fatalf("failed to write tar file: %v", err)
+		}
+
+		err = ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+		if err == nil {
+			t.Error("expected error for absolute tar symlink traversal, got nil")
+		} else if err != ErrSymlinkTraversalDetected {
+			t.Errorf("expected error ErrSymlinkTraversalDetected, got %v", err)
+		}
+
+		_, err = memFS.Stat("/tmp/escaped_test")
+		if err == nil {
+			t.Error("expected no file to be created at /tmp/escaped_test")
+		}
+	})
+
+	t.Run("Tar Relative Symlink Traversal Detection", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gw)
+
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeSymlink,
+			Name:     "escaped_rel_link.txt",
+			Linkname: "../../escaped_relative",
+			Mode:     0777,
+		})
+
+		_ = tw.Close()
+		_ = gw.Close()
+
+		err := memFS.WriteFile("/test.tar.gz", buf.Bytes(), 0644)
+		if err != nil {
+			t.Fatalf("failed to write tar file: %v", err)
+		}
+
+		err = ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+		if err == nil {
+			t.Error("expected error for relative tar symlink traversal, got nil")
+		} else if err != ErrSymlinkTraversalDetected {
+			t.Errorf("expected error ErrSymlinkTraversalDetected, got %v", err)
+		}
+
+		_, err = memFS.Stat("/escaped_relative")
+		if err == nil {
+			t.Error("expected no file to be created at /escaped_relative")
+		}
+	})
+}

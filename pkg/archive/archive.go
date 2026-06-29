@@ -7,6 +7,7 @@ import (
 	"compress/bzip2"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,6 +17,9 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
+
+// ErrSymlinkTraversalDetected is returned when a symbolic link target escapes the destination directory.
+var ErrSymlinkTraversalDetected = errors.New("symbolic link traversal detected")
 
 // Extractor handles the extraction of various archive formats using either Go's standard library or system tools.
 type Extractor struct {
@@ -146,6 +150,9 @@ func (e *Extractor) extractZip(ctx context.Context, src string, dest string) err
 				return fmt.Errorf("reading zip symlink destination %q: %w", f.Name, err)
 			}
 			targetPath := string(linkBytes)
+			if err := validateSymlink(dest, cleanTarget, targetPath); err != nil {
+				return err
+			}
 			_ = e.fsys.Remove(cleanTarget)
 			if err := e.fsys.Symlink(targetPath, cleanTarget); err != nil {
 				return fmt.Errorf("creating zip symlink from %q to %q: %w", targetPath, cleanTarget, err)
@@ -250,6 +257,9 @@ func (e *Extractor) extractTar(ctx context.Context, src string, dest string, for
 			}
 
 		case tar.TypeSymlink, tar.TypeLink:
+			if err := validateSymlink(dest, cleanTarget, header.Linkname); err != nil {
+				return err
+			}
 			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
 				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 			}
@@ -338,6 +348,9 @@ func (e *Extractor) extractTarXz(ctx context.Context, src string, dest string) e
 			}
 
 		case tar.TypeSymlink, tar.TypeLink:
+			if err := validateSymlink(dest, cleanTarget, header.Linkname); err != nil {
+				return err
+			}
 			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
 				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 			}
@@ -571,6 +584,23 @@ func walkFS(fsys fs.FS, path string, walkFn func(path string, info os.FileInfo, 
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func validateSymlink(dest, cleanTarget, target string) error {
+	if filepath.IsAbs(target) {
+		return ErrSymlinkTraversalDetected
+	}
+
+	cleanDest := filepath.Clean(dest)
+	linkDir := filepath.Dir(cleanTarget)
+	resolvedTarget := filepath.Join(linkDir, target)
+
+	rel, err := filepath.Rel(cleanDest, filepath.Clean(resolvedTarget))
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return ErrSymlinkTraversalDetected
 	}
 
 	return nil
