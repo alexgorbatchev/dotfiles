@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
@@ -148,30 +149,138 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	checks := []map[string]any{}
 
 	toolCount := 0
-	if s.registry != nil {
-		installs, _ := s.registry.GetAllToolInstallations(ctx)
-		toolCount = len(installs)
+	unhealthyTools := []string{}
+	orphanedRecords := []string{}
+	unusedVersions := []string{}
+
+	binariesDir := ""
+	if s.projectConfig != nil {
+		binariesDir = s.projectConfig.Paths.BinariesDir
 	}
-	status := "warn"
-	if toolCount > 0 {
-		status = "pass"
+
+	installs, err := s.registry.GetAllToolInstallations(ctx)
+	if err == nil {
+		for _, inst := range installs {
+			_, err := os.Stat(inst.InstallPath)
+			if err != nil || os.IsNotExist(err) {
+				orphanedRecords = append(orphanedRecords, fmt.Sprintf("Tool %s: install path %s does not exist on disk", inst.ToolName, inst.InstallPath))
+			}
+		}
+	}
+
+	for _, tc := range s.toolConfigs {
+		inst, _ := s.registry.GetToolInstallation(ctx, tc.Name)
+		if inst != nil {
+			toolCount++
+			binNames := []string{}
+			for _, b := range tc.Binaries {
+				switch val := b.(type) {
+				case string:
+					binNames = append(binNames, val)
+				case map[string]any:
+					if name, ok := val["name"].(string); ok {
+						binNames = append(binNames, name)
+					}
+				}
+			}
+			if len(binNames) == 0 {
+				binNames = []string{tc.Name}
+			}
+
+			if binariesDir != "" {
+				currentDir := filepath.Join(binariesDir, tc.Name, "current")
+				for _, name := range binNames {
+					binPath := filepath.Join(currentDir, name)
+					if _, err := os.Stat(binPath); err != nil {
+						unhealthyTools = append(unhealthyTools, fmt.Sprintf("Tool %s: missing expected binary %s", tc.Name, binPath))
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if binariesDir != "" {
+		if toolDirs, err := os.ReadDir(binariesDir); err == nil {
+			for _, td := range toolDirs {
+				if !td.IsDir() {
+					continue
+				}
+				toolName := td.Name()
+				toolDirPath := filepath.Join(binariesDir, toolName)
+
+				var installedVer string
+				inst, _ := s.registry.GetToolInstallation(ctx, toolName)
+				if inst != nil {
+					installedVer = inst.Version
+				}
+
+				if versionDirs, err := os.ReadDir(toolDirPath); err == nil {
+					for _, vd := range versionDirs {
+						if !vd.IsDir() {
+							continue
+						}
+						vName := vd.Name()
+						if vName != "current" && (installedVer == "" || vName != installedVer) {
+							unusedVersions = append(unusedVersions, filepath.Join(toolDirPath, vName))
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 1. Tool Installations Check
+	toolInstallStatus := "pass"
+	toolInstallMsg := fmt.Sprintf("%d tool(s) installed", toolCount)
+	if len(unhealthyTools) > 0 {
+		toolInstallStatus = "warn"
+		toolInstallMsg = fmt.Sprintf("%d unhealthy tool(s) detected", len(unhealthyTools))
+	} else if toolCount == 0 {
+		toolInstallStatus = "warn"
+		toolInstallMsg = "No tools installed"
 	}
 	checks = append(checks, map[string]any{
 		"name":    "Tool Installations",
-		"status":  status,
-		"message": fmt.Sprintf("%d tool(s) installed", toolCount),
+		"status":  toolInstallStatus,
+		"message": toolInstallMsg,
+		"details": unhealthyTools,
 	})
 
+	// 2. Registry Integrity Check
+	registryStatus := "pass"
+	registryMsg := "Registry is healthy"
+	if len(orphanedRecords) > 0 {
+		registryStatus = "warn"
+		registryMsg = fmt.Sprintf("Registry contains %d orphaned record(s)", len(orphanedRecords))
+	}
 	checks = append(checks, map[string]any{
 		"name":    "Registry Integrity",
-		"status":  "pass",
-		"message": "Registry is healthy",
+		"status":  registryStatus,
+		"message": registryMsg,
+		"details": orphanedRecords,
+	})
+
+	// 3. Unused Binary Versions Check
+	unusedStatus := "pass"
+	unusedMsg := "No unused binary versions found"
+	if len(unusedVersions) > 0 {
+		unusedStatus = "warn"
+		unusedMsg = fmt.Sprintf("Found %d unused binary version(s)", len(unusedVersions))
+	}
+	checks = append(checks, map[string]any{
+		"name":    "Unused Binary Versions",
+		"status":  unusedStatus,
+		"message": unusedMsg,
+		"details": unusedVersions,
 	})
 
 	overall := "healthy"
 	for _, c := range checks {
-		if c["status"] == "warn" && overall == "healthy" {
+		if c["status"] == "warn" {
 			overall = "warning"
+		} else if c["status"] == "fail" {
+			overall = "unhealthy"
 		}
 	}
 
@@ -463,92 +572,13 @@ func (s *Server) handleToolsRouter(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET /api/tools
-func (s *Server) handleGetTools(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	if s.registry == nil {
-		writeJSON(w, false, nil, "Registry is not initialized")
-		return
+func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfig) (map[string]any, error) {
+	installRecord, _ := s.registry.GetToolInstallation(ctx, targetTool.Name)
+	files, _ := s.registry.GetFileStatesForTool(ctx, targetTool.Name)
+	if files == nil {
+		files = []*registry.FileState{}
 	}
-
-	type toolState struct {
-		Name               string   `json:"name"`
-		Version            string   `json:"version"`
-		InstallationMethod string   `json:"installationMethod"`
-		Status             string   `json:"status"` // "installed", "not-installed"
-		InstalledVersion   *string  `json:"installedVersion"`
-		HasUpdate          bool     `json:"hasUpdate"`
-		Binaries           []string `json:"binaries"`
-	}
-
-	tools := []toolState{}
-	for _, tc := range s.toolConfigs {
-		installRecord, _ := s.registry.GetToolInstallation(ctx, tc.Name)
-
-		status := "not-installed"
-		var instVer *string
-		if installRecord != nil {
-			status = "installed"
-			instVer = &installRecord.Version
-		}
-
-		var toolVer string
-		if tc.Version != nil {
-			toolVer = *tc.Version
-		} else {
-			toolVer = "latest"
-		}
-
-		binNames := []string{}
-		for _, b := range tc.Binaries {
-			switch val := b.(type) {
-			case string:
-				binNames = append(binNames, val)
-			case map[string]any:
-				if name, ok := val["name"].(string); ok {
-					binNames = append(binNames, name)
-				}
-			}
-		}
-
-		tools = append(tools, toolState{
-			Name:               tc.Name,
-			Version:            toolVer,
-			InstallationMethod: tc.InstallationMethod,
-			Status:             status,
-			InstalledVersion:   instVer,
-			HasUpdate:          false,
-			Binaries:           binNames,
-		})
-	}
-
-	writeJSON(w, true, tools, "")
-}
-
-// GET /api/tools/:name
-func (s *Server) handleGetToolDetail(w http.ResponseWriter, r *http.Request, toolName string) {
-	ctx := r.Context()
-	if s.registry == nil {
-		writeJSON(w, false, nil, "Registry is not initialized")
-		return
-	}
-
-	var targetTool *config.ToolConfig
-	for _, tc := range s.toolConfigs {
-		if tc.Name == toolName {
-			targetTool = tc
-			break
-		}
-	}
-
-	if targetTool == nil {
-		writeJSON(w, false, nil, "Tool not found")
-		return
-	}
-
-	installRecord, _ := s.registry.GetToolInstallation(ctx, toolName)
-	files, _ := s.registry.GetFileStatesForTool(ctx, toolName)
-	usages, _ := s.registry.GetToolUsagesForTool(ctx, toolName)
+	usages, _ := s.registry.GetToolUsagesForTool(ctx, targetTool.Name)
 
 	status := "not-installed"
 	var instVer *string
@@ -615,7 +645,7 @@ func (s *Server) handleGetToolDetail(w http.ResponseWriter, r *http.Request, too
 		"hasUpdate":        false,
 	}
 
-	data := map[string]any{
+	return map[string]any{
 		"config":         targetTool,
 		"runtime":        runtimeState,
 		"files":          files,
@@ -624,9 +654,49 @@ func (s *Server) handleGetToolDetail(w http.ResponseWriter, r *http.Request, too
 			"totalCount": totalUsage,
 			"binaries":   binUsages,
 		},
+	}, nil
+}
+
+// GET /api/tools
+func (s *Server) handleGetTools(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.registry == nil {
+		writeJSON(w, false, nil, "Registry is not initialized")
+		return
 	}
 
-	writeJSON(w, true, data, "")
+	tools := []map[string]any{}
+	for _, tc := range s.toolConfigs {
+		detail, _ := s.getToolDetail(ctx, tc)
+		tools = append(tools, detail)
+	}
+
+	writeJSON(w, true, tools, "")
+}
+
+// GET /api/tools/:name
+func (s *Server) handleGetToolDetail(w http.ResponseWriter, r *http.Request, toolName string) {
+	ctx := r.Context()
+	if s.registry == nil {
+		writeJSON(w, false, nil, "Registry is not initialized")
+		return
+	}
+
+	var targetTool *config.ToolConfig
+	for _, tc := range s.toolConfigs {
+		if tc.Name == toolName {
+			targetTool = tc
+			break
+		}
+	}
+
+	if targetTool == nil {
+		writeJSON(w, false, nil, "Tool not found")
+		return
+	}
+
+	detail, _ := s.getToolDetail(ctx, targetTool)
+	writeJSON(w, true, detail, "")
 }
 
 // GET /api/tools/:name/history
@@ -833,12 +903,12 @@ func (s *Server) handleToolInstall(w http.ResponseWriter, r *http.Request, toolN
 	go func() {
 		ctx := context.Background()
 		if req.Force {
-			os.Setenv("DOTFILES_OVERWRITE", "true")
-			defer os.Unsetenv("DOTFILES_OVERWRITE")
+			ctx = config.WithOverwrite(ctx, true)
 		}
 		s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting installation...\n", toolName))
 		err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
 		if err != nil {
+			s.logger.Error(logger.Message(fmt.Sprintf("Installation failed for %s: %v", toolName, err)))
 			s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Installation failed: %v\n", toolName, err))
 		} else {
 			s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Installation completed successfully\n", toolName))
@@ -889,6 +959,7 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 		s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting update...\n", toolName))
 		err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
 		if err != nil {
+			s.logger.Error(logger.Message(fmt.Sprintf("Update failed for %s: %v", toolName, err)))
 			s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Update failed: %v\n", toolName, err))
 		} else {
 			s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Update completed successfully\n", toolName))
