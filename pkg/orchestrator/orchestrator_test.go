@@ -865,7 +865,7 @@ func TestOrchestratorNativeShellGeneration(t *testing.T) {
 	defer sqlDB.Close()
 
 	reg := registry.NewRegistry(sqlDB)
-	trackedFS := fs.NewTrackedFileSystem(memFS, reg, "system").WithFileType("init")
+	trackedFS := fs.NewTrackedFileSystem(memFS, reg, log, "system").WithFileType("init")
 	runner := exec.NewMockRunner()
 	instReg := installer.NewRegistry()
 
@@ -935,8 +935,8 @@ func TestOrchestratorNativeShellGeneration(t *testing.T) {
 	if !strings.Contains(scriptContent, "my_func() {") && !strings.Contains(scriptContent, "my-func() {") {
 		t.Errorf("expected script to contain function definition")
 	}
-	if !strings.Contains(scriptContent, "[[ -f \"/home/user/tools/shell.zsh\" ]] && cat \"/home/user/tools/shell.zsh\"") {
-		t.Errorf("expected script to contain sourceFile function body")
+	if !strings.Contains(scriptContent, "[[ -f \"/home/user/tools/shell.zsh\" ]] && source \"/home/user/tools/shell.zsh\"") {
+		t.Errorf("expected script to contain sourceFile direct emission")
 	}
 	if !strings.Contains(scriptContent, "echo inline-source") {
 		t.Errorf("expected script to contain sources block")
@@ -965,6 +965,64 @@ func TestOrchestrator_GetCliCommand(t *testing.T) {
 	execPath, _ := os.Executable()
 	if cmd != execPath {
 		t.Errorf("expected %q, got %q", execPath, cmd)
+	}
+}
+
+func TestGenerateShellScripts_ZshPlugin(t *testing.T) {
+	log := logger.New(logger.Config{Name: "test"})
+	memFS := fs.NewMemFS()
+	trackedFS := fs.NewTrackedFileSystem(memFS, nil, log, "system")
+	runner := exec.NewMockRunner()
+	dbConn, err := db.NewConnection(context.Background(), ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open in-memory db: %v", err)
+	}
+	defer dbConn.Close()
+
+	reg := registry.NewRegistry(dbConn)
+	instReg := installer.NewRegistry()
+
+	orch := NewOrchestrator(log, trackedFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			GeneratedDir:    "/home/user/.generated",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			TargetDir:       "/home/user/.generated/user-bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+		},
+	}
+
+	tools := []*config.ToolConfig{
+		{
+			Name:               "my-plugin",
+			InstallationMethod: "zsh-plugin",
+			InstallParams: map[string]interface{}{
+				"repo": "user/my-plugin",
+			},
+		},
+	}
+
+	// Create dynamic plugin file inside sandbox
+	pluginPath := "/home/user/.generated/binaries/my-plugin/current"
+	_ = memFS.MkdirAll(pluginPath, 0755)
+	_ = memFS.WriteFile(filepath.Join(pluginPath, "my-plugin.plugin.zsh"), []byte("echo hello"), 0644)
+
+	err = orch.generateShellScripts(context.Background(), tools, projCfg)
+	if err != nil {
+		t.Fatalf("failed to generate shell scripts: %v", err)
+	}
+
+	mainZshPath := "/home/user/.generated/shell-scripts/main.zsh"
+	data, err := memFS.ReadFile(mainZshPath)
+	if err != nil {
+		t.Fatalf("failed to read main.zsh: %v", err)
+	}
+
+	scriptContent := string(data)
+	expectedSource := `source "/home/user/.generated/binaries/my-plugin/current/my-plugin.plugin.zsh"`
+	if !strings.Contains(scriptContent, expectedSource) {
+		t.Errorf("expected script to contain %q, got %q", expectedSource, scriptContent)
 	}
 }
 
@@ -1072,4 +1130,149 @@ func TestTopologicalSort_RobustnessAndDeterminism(t *testing.T) {
 			t.Errorf("expected A, D, C; got %s, %s, %s", sorted4[0].Name, sorted4[1].Name, sorted4[2].Name)
 		}
 	})
+
+	t.Run("self-dependency cycle is gracefully ignored", func(t *testing.T) {
+		tools := []*config.ToolConfig{
+			{
+				Name:         "self-dep-tool",
+				Dependencies: []string{"self-dep-tool"},
+			},
+		}
+		sorted, err := TopologicalSort(tools)
+		if err != nil {
+			t.Fatalf("unexpected error on self dependency: %v", err)
+		}
+		if len(sorted) != 1 || sorted[0].Name != "self-dep-tool" {
+			t.Errorf("expected sorted list to contain the self-dep-tool, got %v", sorted)
+		}
+	})
+
+	t.Run("disabled tool with circular dependency is pruned and does not crash", func(t *testing.T) {
+		tools := []*config.ToolConfig{
+			{
+				Name: "active-tool",
+			},
+			{
+				Name:         "disabled-tool",
+				Disabled:     true,
+				Dependencies: []string{"circular-dependency"},
+			},
+			{
+				Name:         "circular-dependency",
+				Disabled:     true,
+				Dependencies: []string{"disabled-tool"},
+			},
+		}
+		pruned := pruneTools(tools)
+		sorted, err := TopologicalSort(pruned)
+		if err != nil {
+			t.Fatalf("unexpected error on pruned tools: %v", err)
+		}
+		if len(sorted) != 1 || sorted[0].Name != "active-tool" {
+			t.Errorf("expected sorted list to contain active-tool only, got %v", sorted)
+		}
+	})
 }
+
+func TestSourceFilesDirectEmission(t *testing.T) {
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{
+		Name:   "test-logger",
+		Level:  logger.LogLevelVerbose,
+		Writer: &logBuf,
+	})
+
+	memFS := fs.NewMemFS()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	trackedFS := fs.NewTrackedFileSystem(memFS, reg, log, "system").WithFileType("init")
+	runner := exec.NewMockRunner()
+	instReg := installer.NewRegistry()
+
+	orch := NewOrchestrator(log, trackedFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			GeneratedDir:    "/home/user/.generated",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			TargetDir:       "/home/user/.generated/user-bin",
+		},
+	}
+
+	tools := []*config.ToolConfig{
+		{
+			Name:           "test-tool",
+			ConfigFilePath: "/home/user/tools/test-tool.tool.ts",
+			ShellConfigs: &config.ShellConfigs{
+				Zsh: &config.ShellTypeConfig{
+					SourceFiles: []string{
+						"shell.zsh",
+					},
+					Sources: []string{
+						"echo inline-source-zsh",
+					},
+				},
+				Bash: &config.ShellTypeConfig{
+					SourceFiles: []string{
+						"shell.sh",
+					},
+					Sources: []string{
+						"echo inline-source-bash",
+					},
+				},
+			},
+		},
+	}
+
+	_ = memFS.MkdirAll("/home/user/tools", 0755)
+	_ = memFS.WriteFile("/home/user/tools/shell.zsh", []byte("echo sourced-zsh"), 0644)
+	_ = memFS.WriteFile("/home/user/tools/shell.sh", []byte("echo sourced-sh"), 0644)
+
+	err = orch.generateShellScripts(ctx, tools, projCfg)
+	if err != nil {
+		t.Fatalf("failed to generate shell scripts: %v", err)
+	}
+
+	// 1. Verify main.zsh
+	mainZshPath := "/home/user/.generated/shell-scripts/main.zsh"
+	zshData, err := memFS.ReadFile(mainZshPath)
+	if err != nil {
+		t.Fatalf("failed to read main.zsh: %v", err)
+	}
+	zshContent := string(zshData)
+
+	if !strings.Contains(zshContent, `[[ -f "/home/user/tools/shell.zsh" ]] && source "/home/user/tools/shell.zsh"`) {
+		t.Errorf("expected main.zsh to contain direct source of shell.zsh, got:\n%s", zshContent)
+	}
+	if strings.Contains(zshContent, `source <(cat "/home/user/tools/shell.zsh")`) || strings.Contains(zshContent, `source <(cat /home/user/tools/shell.zsh)`) {
+		t.Errorf("unexpected process substitution on shell.zsh in main.zsh")
+	}
+	if !strings.Contains(zshContent, "source <(__dotfiles_source_inline_test_tool_0)") {
+		t.Errorf("expected main.zsh to contain process substitution for Sources block, got:\n%s", zshContent)
+	}
+
+	// 2. Verify main.bash
+	mainBashPath := "/home/user/.generated/shell-scripts/main.bash"
+	bashData, err := memFS.ReadFile(mainBashPath)
+	if err != nil {
+		t.Fatalf("failed to read main.bash: %v", err)
+	}
+	bashContent := string(bashData)
+
+	if !strings.Contains(bashContent, `[[ -f "/home/user/tools/shell.sh" ]] && source "/home/user/tools/shell.sh"`) {
+		t.Errorf("expected main.bash to contain direct source of shell.sh, got:\n%s", bashContent)
+	}
+	if strings.Contains(bashContent, `source <(cat "/home/user/tools/shell.sh")`) || strings.Contains(bashContent, `source <(cat /home/user/tools/shell.sh)`) {
+		t.Errorf("unexpected process substitution on shell.sh in main.bash")
+	}
+	if !strings.Contains(bashContent, "source <(__dotfiles_source_inline_test_tool_0)") {
+		t.Errorf("expected main.bash to contain process substitution for Sources block, got:\n%s", bashContent)
+	}
+}
+

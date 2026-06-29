@@ -64,7 +64,7 @@ func (o *Orchestrator) getTrackedFS(ctx context.Context, tx *sql.Tx, toolName, f
 	if tfs, ok := o.fs.(*fs.TrackedFileSystem); ok {
 		return tfs.WithTx(ctx, tx).WithToolName(toolName).WithFileType(fileType)
 	}
-	return fs.NewTrackedFileSystem(o.fs, o.reg, toolName).WithTx(ctx, tx).WithFileType(fileType)
+	return fs.NewTrackedFileSystem(o.fs, o.reg, o.logger, toolName).WithTx(ctx, tx).WithFileType(fileType)
 }
 
 // SetSymlinkFS allows injecting a custom fs.FS (primarily for testing).
@@ -88,7 +88,21 @@ func (o *Orchestrator) getSymlinkEvaluator() *symlink.Evaluator {
 	if o.symlinkFS != nil {
 		return symlink.NewEvaluatorWithFS(o.symlinkFS)
 	}
-	return symlink.NewEvaluator()
+	return symlink.NewEvaluatorWithFS(o.fs)
+}
+
+func pruneTools(tools []*config.ToolConfig) []*config.ToolConfig {
+	var pruned []*config.ToolConfig
+	for _, t := range tools {
+		if t.Disabled {
+			continue
+		}
+		if t.Hostname != "" && !matchesHostname(t.Hostname) {
+			continue
+		}
+		pruned = append(pruned, t)
+	}
+	return pruned
 }
 
 // TopologicalSort sorts a slice of ToolConfigs topologically based on their dependencies.
@@ -136,6 +150,9 @@ func TopologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 				return nil, fmt.Errorf("ambiguous dependency: binary %q is provided by multiple tools: %s", dep, strings.Join(providers, ", "))
 			} else {
 				provider = providers[0]
+			}
+			if provider == tool.Name {
+				continue
 			}
 			inDegree[tool.Name]++
 			adj[provider] = append(adj[provider], tool.Name)
@@ -190,7 +207,8 @@ func TopologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 
 // InstallTools executes the installation pipeline for all provided tools sequentially in topological order.
 func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
-	sorted, err := TopologicalSort(tools)
+	pruned := pruneTools(tools)
+	sorted, err := TopologicalSort(pruned)
 	if err != nil {
 		return fmt.Errorf("resolving dependencies: %w", err)
 	}
@@ -219,7 +237,8 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 // GenerateTools executes standalone shim, symlink, and shell script generation.
 // It skips the installation pipeline except for tools with "auto: true" in their install params.
 func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
-	sorted, err := TopologicalSort(tools)
+	pruned := pruneTools(tools)
+	sorted, err := TopologicalSort(pruned)
 	if err != nil {
 		return fmt.Errorf("resolving dependencies: %w", err)
 	}
@@ -319,7 +338,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		if err == nil && exists {
 			isShim, err := shimGen.IsGeneratedShim(shimPath)
 			if err == nil && !isShim {
-				if !shouldOverwrite() {
+				if !shouldOverwrite(ctx) {
 					o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Cannot create shim for %q: conflicting file exists at %s. Use --overwrite to replace it.", binName, shimPath)))
 					continue
 				}
@@ -461,6 +480,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	// 1. Download, unpack, and install via the native installer plugin
+	ctx = config.WithProjectConfig(ctx, projCfg)
 	res, err := inst.Install(ctx, tool)
 	if err != nil {
 		if !isExternal && stagingDir != "" {
@@ -569,7 +589,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		if err == nil && exists {
 			isShim, err := shimGen.IsGeneratedShim(shimPath)
 			if err == nil && !isShim {
-				if !shouldOverwrite() {
+				if !shouldOverwrite(ctx) {
 					o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Cannot create shim for %q: conflicting file exists at %s. Use --overwrite to replace it.", binName, shimPath)))
 					continue
 				}
@@ -803,6 +823,50 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					continue
 				}
 
+				if sh == "zsh" && tool.InstallationMethod == "zsh-plugin" {
+					pluginName := getStringParam(tool.InstallParams, "pluginName", "")
+					if pluginName == "" {
+						repo := getStringParam(tool.InstallParams, "repo", "")
+						if repo != "" {
+							parts := strings.Split(repo, "/")
+							if len(parts) == 2 {
+								pluginName = parts[1]
+							} else {
+								pluginName = repo
+							}
+						} else {
+							pluginName = tool.Name
+						}
+					}
+					pluginPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current")
+					exists, err := fsys.Exists(pluginPath)
+					if err == nil && exists {
+						candidates := []string{
+							pluginName + ".plugin.zsh",
+							pluginName + ".zsh",
+							"init.zsh",
+							"plugin.zsh",
+							pluginName + ".zsh-theme",
+						}
+						sourceFile := ""
+						explicitSource := getStringParam(tool.InstallParams, "source", "")
+						if explicitSource != "" {
+							sourceFile = explicitSource
+						} else {
+							for _, candidate := range candidates {
+								candidatePath := filepath.Join(pluginPath, candidate)
+								if ex, _ := fsys.Exists(candidatePath); ex {
+									sourceFile = candidate
+									break
+								}
+							}
+						}
+						if sourceFile != "" {
+							scriptLines = append(scriptLines, fmt.Sprintf("source %q", filepath.ToSlash(filepath.Join(pluginPath, sourceFile))))
+						}
+					}
+				}
+
 				// Get tool shell config
 				var stc *config.ShellTypeConfig
 				if tool.ShellConfigs != nil {
@@ -893,7 +957,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 				cleanToolName := strings.ReplaceAll(tool.Name, "-", "_")
 
 				// 6. Native SourceFiles
-				for i, relPath := range stc.SourceFiles {
+				for _, relPath := range stc.SourceFiles {
 					var resolvedPath string
 					if filepath.IsAbs(relPath) {
 						resolvedPath = relPath
@@ -903,18 +967,10 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					}
 					resolvedPath = filepath.ToSlash(resolvedPath)
 
-					funcName := fmt.Sprintf("__dotfiles_source_%s_%d", cleanToolName, i)
-					var body string
 					if sh == "powershell" {
-						body = fmt.Sprintf("if (Test-Path %q) { Get-Content %q -Raw }", resolvedPath, resolvedPath)
-						scriptLines = append(scriptLines, fmt.Sprintf("function %s {\n%s\n}", funcName, body))
-						scriptLines = append(scriptLines, fmt.Sprintf(". (%s)", funcName))
-						scriptLines = append(scriptLines, fmt.Sprintf("Remove-Item Function:\\%s -ErrorAction SilentlyContinue", funcName))
+						scriptLines = append(scriptLines, fmt.Sprintf("if (Test-Path %q) { . %q }", resolvedPath, resolvedPath))
 					} else {
-						body = fmt.Sprintf("[[ -f %q ]] && cat %q", resolvedPath, resolvedPath)
-						scriptLines = append(scriptLines, fmt.Sprintf("%s() {\n%s\n}", funcName, body))
-						scriptLines = append(scriptLines, fmt.Sprintf("source <(%s)", funcName))
-						scriptLines = append(scriptLines, fmt.Sprintf("unset -f %s", funcName))
+						scriptLines = append(scriptLines, fmt.Sprintf("[[ -f %q ]] && source %q", resolvedPath, resolvedPath))
 					}
 				}
 
@@ -1001,13 +1057,13 @@ func (l *lineLogWriter) Flush() {
 	}
 }
 
-func shouldOverwrite() bool {
+func shouldOverwrite(ctx context.Context) bool {
 	for _, arg := range os.Args {
 		if arg == "--overwrite" {
 			return true
 		}
 	}
-	return os.Getenv("DOTFILES_OVERWRITE") == "true"
+	return config.IsOverwriteEnabled(ctx)
 }
 
 func isExternallyManaged(method string) bool {
@@ -1160,7 +1216,7 @@ func (o *Orchestrator) getTargetVersion(tool *config.ToolConfig) string {
 }
 
 func (o *Orchestrator) shouldSkipInstallation(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) (bool, error) {
-	if os.Getenv("DOTFILES_OVERWRITE") == "true" {
+	if config.IsOverwriteEnabled(ctx) {
 		return false, nil
 	}
 
