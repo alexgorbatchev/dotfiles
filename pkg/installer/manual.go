@@ -35,6 +35,14 @@ func (m *ManualInstaller) Name() string {
 	return "manual"
 }
 
+func (m *ManualInstaller) SetFS(fsys fs.FS) {
+	m.fsys = fsys
+}
+
+func (m *ManualInstaller) SetLogger(log *logger.Logger) {
+	m.log = log
+}
+
 func (m *ManualInstaller) SupportsSudo() bool {
 	return true
 }
@@ -46,6 +54,13 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		}, nil
 	}
 	binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")
+	projCfg := config.GetProjectConfig(ctx)
+	if projCfg != nil && binaryPath != "" {
+		resolved, err := config.ResolvePlaceholders(binaryPath, tool.Name, projCfg)
+		if err == nil {
+			binaryPath = resolved
+		}
+	}
 
 	if binaryPath != "" {
 		exists, err := m.fsys.Exists(binaryPath)

@@ -49,6 +49,20 @@ func (d *DmgInstaller) Name() string {
 	return "dmg"
 }
 
+func (d *DmgInstaller) SetFS(fsys fs.FS) {
+	d.fsys = fsys
+	if d.dl != nil {
+		d.dl.SetFS(fsys)
+	}
+	if d.extractor != nil {
+		d.extractor.SetFS(fsys)
+	}
+}
+
+func (d *DmgInstaller) SetLogger(log *logger.Logger) {
+	d.log = log
+}
+
 func (d *DmgInstaller) SupportsSudo() bool {
 	return false
 }

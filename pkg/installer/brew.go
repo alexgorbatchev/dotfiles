@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -41,6 +42,14 @@ func NewBrewInstaller(runner exec.CommandRunner, fsys fs.FS, sysCtx *SystemConte
 
 func (b *BrewInstaller) Name() string {
 	return "brew"
+}
+
+func (b *BrewInstaller) SetFS(fsys fs.FS) {
+	b.fsys = fsys
+}
+
+func (b *BrewInstaller) SetLogger(log *logger.Logger) {
+	b.log = log
 }
 
 func (b *BrewInstaller) SupportsSudo() bool {
@@ -106,8 +115,28 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		}
 	}
 
+	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	var resolvedBinaries []string
+	prefix, _ := b.getBrewPrefix(ctx, formula)
+	for _, binName := range binNames {
+		whichCmd := b.runner.CommandContext(ctx, "which", binName)
+		out, err := whichCmd.Output()
+		if err == nil {
+			path := strings.TrimSpace(string(out))
+			if path != "" {
+				resolvedBinaries = append(resolvedBinaries, path)
+				continue
+			}
+		}
+		if prefix != "" {
+			resolvedBinaries = append(resolvedBinaries, filepath.Join(prefix, "bin", binName))
+		} else {
+			resolvedBinaries = append(resolvedBinaries, filepath.Join("/usr/local/bin", binName))
+		}
+	}
+
 	return &InstallResult{
-		Binaries: []string{}, // externally managed
+		Binaries: resolvedBinaries,
 	}, nil
 }
 

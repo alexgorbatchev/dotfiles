@@ -72,6 +72,43 @@ func TestManualInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("Install success with binaryPath containing placeholder", func(t *testing.T) {
+		runner.Clear()
+		_ = fsys.MkdirAll("/home/user/.binaries/mytool/current", 0755)
+		_ = fsys.WriteFile("/home/user/.binaries/mytool/current/mybinary", []byte("manual-payload-placeholder"), 0755)
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": "{stagingDir}/mybinary",
+			},
+		}
+
+		projCfg := &config.ProjectConfig{}
+		projCfg.Paths.BinariesDir = "/home/user/.binaries"
+		ctx := config.WithProjectConfig(context.Background(), projCfg)
+
+		res, err := inst.Install(ctx, tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
+			t.Errorf("expected mytool, got %v", res.Binaries)
+		}
+
+		destPath := filepath.Join(inst.BinDir, "mytool")
+		exists, err := fsys.Exists(destPath)
+		if err != nil || !exists {
+			t.Errorf("expected file to be copied to %s", destPath)
+		}
+
+		data, err := fsys.ReadFile(destPath)
+		if err != nil || string(data) != "manual-payload-placeholder" {
+			t.Errorf("unexpected content: %s", string(data))
+		}
+	})
+
 	t.Run("Install fails missing source binary", func(t *testing.T) {
 		tool := &config.ToolConfig{
 			Name: "mytool",

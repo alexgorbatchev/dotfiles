@@ -145,6 +145,21 @@ func TestCurlTarInstaller(t *testing.T) {
 			t.Error("expected error creating directory, got nil")
 		}
 	})
+
+	t.Run("detectArchiveExtension dynamic testing", func(t *testing.T) {
+		ext1 := detectArchiveExtension(context.Background(), "http://example.com/foo.zip", nil)
+		if ext1 != ".zip" {
+			t.Errorf("expected .zip, got %q", ext1)
+		}
+		ext2 := detectArchiveExtension(context.Background(), "http://example.com/foo.tar.xz?query=1", nil)
+		if ext2 != ".tar.xz" {
+			t.Errorf("expected .tar.xz, got %q", ext2)
+		}
+		ext3 := detectArchiveExtension(context.Background(), "http://example.com/foo.tgz#hash", nil)
+		if ext3 != ".tgz" {
+			t.Errorf("expected .tgz, got %q", ext3)
+		}
+	})
 }
 
 type mockTarErrorFS struct {

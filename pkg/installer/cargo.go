@@ -47,6 +47,20 @@ func (c *CargoInstaller) Name() string {
 	return "cargo"
 }
 
+func (c *CargoInstaller) SetFS(fsys fs.FS) {
+	c.fsys = fsys
+	if c.dl != nil {
+		c.dl.SetFS(fsys)
+	}
+	if c.extractor != nil {
+		c.extractor.SetFS(fsys)
+	}
+}
+
+func (c *CargoInstaller) SetLogger(log *logger.Logger) {
+	c.log = log
+}
+
 func (c *CargoInstaller) SupportsSudo() bool {
 	return false
 }

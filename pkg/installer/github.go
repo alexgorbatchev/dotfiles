@@ -63,6 +63,20 @@ func (g *GitHubInstaller) Name() string {
 	return "github-release"
 }
 
+func (g *GitHubInstaller) SetFS(fsys fs.FS) {
+	g.fsys = fsys
+	if g.dl != nil {
+		g.dl.SetFS(fsys)
+	}
+	if g.extractor != nil {
+		g.extractor.SetFS(fsys)
+	}
+}
+
+func (g *GitHubInstaller) SetLogger(log *logger.Logger) {
+	g.log = log
+}
+
 func (g *GitHubInstaller) SupportsSudo() bool {
 	return false
 }

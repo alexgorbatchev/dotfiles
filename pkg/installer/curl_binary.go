@@ -38,6 +38,17 @@ func (c *CurlBinaryInstaller) Name() string {
 	return "curl-binary"
 }
 
+func (c *CurlBinaryInstaller) SetFS(fsys fs.FS) {
+	c.fsys = fsys
+	if c.dl != nil {
+		c.dl.SetFS(fsys)
+	}
+}
+
+func (c *CurlBinaryInstaller) SetLogger(log *logger.Logger) {
+	c.log = log
+}
+
 func (c *CurlBinaryInstaller) SupportsSudo() bool {
 	return false
 }

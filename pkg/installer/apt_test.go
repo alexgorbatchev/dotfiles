@@ -41,8 +41,8 @@ func TestAptInstaller(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		if len(res.Binaries) != 0 {
-			t.Errorf("expected empty binaries list, got %v", res.Binaries)
+		if len(res.Binaries) != 1 || res.Binaries[0] != "/usr/bin/jq" {
+			t.Errorf("expected [/usr/bin/jq] binaries list, got %v", res.Binaries)
 		}
 
 		// Verify hdiutil / apt / sudo commands

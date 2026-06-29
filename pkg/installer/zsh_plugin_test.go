@@ -53,6 +53,10 @@ func TestZshPluginInstaller(t *testing.T) {
 		if len(res.Binaries) != 0 {
 			t.Errorf("expected 0 binaries for zsh plugin, got %v", res.Binaries)
 		}
+		expectedShellInit := `source "/test/plugins/zsh-autosuggestions/zsh-autosuggestions.plugin.zsh"`
+		if res.ShellInit != expectedShellInit {
+			t.Errorf("expected ShellInit %q, got %q", expectedShellInit, res.ShellInit)
+		}
 
 		// Verify git clone was run
 		if len(runner.History) == 0 {

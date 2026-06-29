@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -31,6 +32,14 @@ func NewDnfInstaller(runner exec.CommandRunner, fsys fs.FS, sysCtx *SystemContex
 
 func (d *DnfInstaller) Name() string {
 	return "dnf"
+}
+
+func (d *DnfInstaller) SetFS(fsys fs.FS) {
+	d.fsys = fsys
+}
+
+func (d *DnfInstaller) SetLogger(log *logger.Logger) {
+	d.log = log
 }
 
 func (d *DnfInstaller) SupportsSudo() bool {
@@ -95,8 +104,23 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		detectedVersion = strings.TrimSpace(string(out))
 	}
 
+	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	var resolvedBinaries []string
+	for _, binName := range binNames {
+		whichCmd := d.runner.CommandContext(ctx, "which", binName)
+		out, err := whichCmd.Output()
+		if err == nil {
+			path := strings.TrimSpace(string(out))
+			if path != "" {
+				resolvedBinaries = append(resolvedBinaries, path)
+				continue
+			}
+		}
+		resolvedBinaries = append(resolvedBinaries, filepath.Join("/usr/bin", binName))
+	}
+
 	return &InstallResult{
-		Binaries: []string{}, // externally managed
+		Binaries: resolvedBinaries,
 		ShellEnv: map[string]string{
 			"DNF_INSTALLED_VERSION": detectedVersion,
 		},

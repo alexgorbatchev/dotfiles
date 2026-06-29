@@ -40,8 +40,8 @@ func TestNpmInstaller(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(res.Binaries) != 0 {
-			t.Errorf("expected empty binaries for externally-managed npm, got %v", res.Binaries)
+		if len(res.Binaries) != 1 || res.Binaries[0] != "/usr/local/bin/prettier" {
+			t.Errorf("expected [/usr/local/bin/prettier] binaries for npm, got %v", res.Binaries)
 		}
 
 		if len(runner.History) == 0 {

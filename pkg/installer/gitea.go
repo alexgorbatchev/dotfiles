@@ -61,6 +61,20 @@ func (g *GiteaInstaller) Name() string {
 	return "gitea-release"
 }
 
+func (g *GiteaInstaller) SetFS(fsys fs.FS) {
+	g.fsys = fsys
+	if g.dl != nil {
+		g.dl.SetFS(fsys)
+	}
+	if g.extractor != nil {
+		g.extractor.SetFS(fsys)
+	}
+}
+
+func (g *GiteaInstaller) SetLogger(log *logger.Logger) {
+	g.log = log
+}
+
 func (g *GiteaInstaller) SupportsSudo() bool {
 	return false
 }

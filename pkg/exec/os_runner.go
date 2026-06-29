@@ -7,12 +7,14 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/mattn/go-isatty"
 )
 
 // osCmd wraps an *os/exec.Cmd to satisfy the Cmd interface.
 type osCmd struct {
 	cmd *exec.Cmd
+	ctx context.Context
 }
 
 // SudoPreflightCommand defines the command used for non-blocking sudo verification.
@@ -31,6 +33,23 @@ func isStdinTerminal(stdin io.Reader) bool {
 
 func (c *osCmd) checkSudo() error {
 	if len(c.cmd.Args) > 0 && c.cmd.Args[0] == "sudo" {
+		projCfg := config.GetProjectConfig(c.ctx)
+		if projCfg != nil && projCfg.System.SudoPrompt != "" {
+			hasP := false
+			for i, arg := range c.cmd.Args {
+				if arg == "-p" && i+1 < len(c.cmd.Args) {
+					hasP = true
+					break
+				}
+			}
+			if !hasP {
+				newArgs := make([]string, 0, len(c.cmd.Args)+2)
+				newArgs = append(newArgs, "sudo", "-p", projCfg.System.SudoPrompt)
+				newArgs = append(newArgs, c.cmd.Args[1:]...)
+				c.cmd.Args = newArgs
+			}
+		}
+
 		isTTY := isStdinTerminal(c.cmd.Stdin) && isatty.IsTerminal(os.Stdout.Fd())
 		if os.Getenv("CI") != "" {
 			cmdCheck := exec.Command(SudoPreflightCommand[0], SudoPreflightCommand[1:]...)
@@ -146,10 +165,10 @@ func NewOSRunner() CommandRunner {
 
 // Command returns a Cmd to execute the named program with the given arguments.
 func (r *osRunner) Command(name string, arg ...string) Cmd {
-	return &osCmd{cmd: exec.Command(name, arg...)}
+	return &osCmd{cmd: exec.Command(name, arg...), ctx: context.Background()}
 }
 
 // CommandContext returns a Cmd to execute the named program with a context.
 func (r *osRunner) CommandContext(ctx context.Context, name string, arg ...string) Cmd {
-	return &osCmd{cmd: exec.CommandContext(ctx, name, arg...)}
+	return &osCmd{cmd: exec.CommandContext(ctx, name, arg...), ctx: ctx}
 }

@@ -40,6 +40,17 @@ func (c *CurlScriptInstaller) Name() string {
 	return "curl-script"
 }
 
+func (c *CurlScriptInstaller) SetFS(fsys fs.FS) {
+	c.fsys = fsys
+	if c.dl != nil {
+		c.dl.SetFS(fsys)
+	}
+}
+
+func (c *CurlScriptInstaller) SetLogger(log *logger.Logger) {
+	c.log = log
+}
+
 func (c *CurlScriptInstaller) SupportsSudo() bool {
 	return false
 }

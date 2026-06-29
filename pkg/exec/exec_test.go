@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 )
 
 func TestOSRunner(t *testing.T) {
@@ -253,4 +255,22 @@ func TestSudoPreflightCheck(t *testing.T) {
 			t.Errorf("expected 'hello-sudo', got %q", got)
 		}
 	})
+}
+
+func TestSudoPromptMock(t *testing.T) {
+	runner := NewMockRunner()
+	projCfg := &config.ProjectConfig{}
+	projCfg.System.SudoPrompt = "Please authenticate: "
+	ctx := config.WithProjectConfig(context.Background(), projCfg)
+
+	cmd := runner.CommandContext(ctx, "sudo", "apt-get", "install", "curl")
+	_ = cmd.Run()
+
+	if len(runner.History) == 0 {
+		t.Fatal("expected 1 command executed")
+	}
+	historyCmd := runner.History[0]
+	if len(historyCmd.Args) < 3 || historyCmd.Args[0] != "-p" || historyCmd.Args[1] != "Please authenticate: " {
+		t.Errorf("expected sudo -p args, got %v", historyCmd.Args)
+	}
 }

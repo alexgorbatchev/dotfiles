@@ -48,6 +48,20 @@ func (p *PkgInstaller) Name() string {
 	return "pkg"
 }
 
+func (p *PkgInstaller) SetFS(fsys fs.FS) {
+	p.fsys = fsys
+	if p.dl != nil {
+		p.dl.SetFS(fsys)
+	}
+	if p.extractor != nil {
+		p.extractor.SetFS(fsys)
+	}
+}
+
+func (p *PkgInstaller) SetLogger(log *logger.Logger) {
+	p.log = log
+}
+
 func (p *PkgInstaller) SupportsSudo() bool {
 	return true
 }
@@ -225,8 +239,23 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		return nil, fmt.Errorf("running pkg installer: %w", err)
 	}
 
+	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	var resolvedBinaries []string
+	for _, binName := range binNames {
+		whichCmd := p.runner.CommandContext(ctx, "which", binName)
+		out, err := whichCmd.Output()
+		if err == nil {
+			path := strings.TrimSpace(string(out))
+			if path != "" {
+				resolvedBinaries = append(resolvedBinaries, path)
+				continue
+			}
+		}
+		resolvedBinaries = append(resolvedBinaries, filepath.Join("/usr/local/bin", binName))
+	}
+
 	return &InstallResult{
-		Binaries: []string{}, // externally managed, files placed system-wide by PKG installer
+		Binaries: resolvedBinaries,
 	}, nil
 }
 

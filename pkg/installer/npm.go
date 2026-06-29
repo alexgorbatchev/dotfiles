@@ -3,6 +3,8 @@ package installer
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -30,6 +32,14 @@ func NewNpmInstaller(runner exec.CommandRunner, fsys fs.FS, sysCtx *SystemContex
 
 func (n *NpmInstaller) Name() string {
 	return "npm"
+}
+
+func (n *NpmInstaller) SetFS(fsys fs.FS) {
+	n.fsys = fsys
+}
+
+func (n *NpmInstaller) SetLogger(log *logger.Logger) {
+	n.log = log
 }
 
 func (n *NpmInstaller) SupportsSudo() bool {
@@ -77,8 +87,48 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		return nil, fmt.Errorf("%s install failed: %w", pkgManager, err)
 	}
 
+	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	var resolvedBinaries []string
+
+	// Get npm/bun prefix
+	var prefix string
+	if pkgManager == "bun" {
+		cmd := n.runner.CommandContext(ctx, "bun", "pm", "bin", "-g")
+		out, err := cmd.Output()
+		if err == nil {
+			prefix = strings.TrimSpace(string(out))
+		}
+	} else {
+		cmd := n.runner.CommandContext(ctx, "npm", "config", "get", "prefix")
+		out, err := cmd.Output()
+		if err == nil {
+			prefix = strings.TrimSpace(string(out))
+		}
+	}
+
+	for _, binName := range binNames {
+		whichCmd := n.runner.CommandContext(ctx, "which", binName)
+		out, err := whichCmd.Output()
+		if err == nil {
+			path := strings.TrimSpace(string(out))
+			if path != "" {
+				resolvedBinaries = append(resolvedBinaries, path)
+				continue
+			}
+		}
+		if prefix != "" {
+			if pkgManager == "bun" {
+				resolvedBinaries = append(resolvedBinaries, filepath.Join(prefix, binName))
+			} else {
+				resolvedBinaries = append(resolvedBinaries, filepath.Join(prefix, "bin", binName))
+			}
+		} else {
+			resolvedBinaries = append(resolvedBinaries, filepath.Join("/usr/local/bin", binName))
+		}
+	}
+
 	return &InstallResult{
-		Binaries: []string{}, // externally managed
+		Binaries: resolvedBinaries,
 	}, nil
 }
 

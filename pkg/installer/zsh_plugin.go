@@ -36,6 +36,14 @@ func (z *ZshPluginInstaller) Name() string {
 	return "zsh-plugin"
 }
 
+func (z *ZshPluginInstaller) SetFS(fsys fs.FS) {
+	z.fsys = fsys
+}
+
+func (z *ZshPluginInstaller) SetLogger(log *logger.Logger) {
+	z.log = log
+}
+
 func (z *ZshPluginInstaller) SupportsSudo() bool {
 	return false
 }
@@ -142,7 +150,8 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 	}
 
 	return &InstallResult{
-		Binaries: []string{}, // No shims generated
+		Binaries:  []string{}, // No shims generated
+		ShellInit: fmt.Sprintf("source %q", filepath.ToSlash(filepath.Join(pluginPath, sourceFile))),
 	}, nil
 }
 

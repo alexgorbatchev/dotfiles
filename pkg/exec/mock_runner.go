@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"sync"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 )
 
 // MockCmd represents a mocked command that implements the Cmd interface.
@@ -24,8 +26,30 @@ type MockCmd struct {
 	err     error
 }
 
+func (c *MockCmd) checkSudo() {
+	if c.Name == "sudo" {
+		projCfg := config.GetProjectConfig(c.Ctx)
+		if projCfg != nil && projCfg.System.SudoPrompt != "" {
+			hasP := false
+			for i, arg := range c.Args {
+				if arg == "-p" && i+1 < len(c.Args) {
+					hasP = true
+					break
+				}
+			}
+			if !hasP {
+				newArgs := make([]string, 0, len(c.Args)+2)
+				newArgs = append(newArgs, "-p", projCfg.System.SudoPrompt)
+				newArgs = append(newArgs, c.Args...)
+				c.Args = newArgs
+			}
+		}
+	}
+}
+
 // Run executes the mock behavior configured for this command.
 func (c *MockCmd) Run() error {
+	c.checkSudo()
 	if c.runFunc != nil {
 		err := c.runFunc(c)
 		if err != nil {
@@ -40,6 +64,7 @@ func (c *MockCmd) Run() error {
 
 // Start simulates starting the command.
 func (c *MockCmd) Start() error {
+	c.checkSudo()
 	return nil
 }
 
@@ -50,6 +75,7 @@ func (c *MockCmd) Wait() error {
 
 // Output simulates running the command and returns the pre-configured standard output.
 func (c *MockCmd) Output() ([]byte, error) {
+	c.checkSudo()
 	if c.runFunc != nil {
 		err := c.runFunc(c)
 		return c.output, err
@@ -59,6 +85,7 @@ func (c *MockCmd) Output() ([]byte, error) {
 
 // CombinedOutput simulates running the command and returns pre-configured output.
 func (c *MockCmd) CombinedOutput() ([]byte, error) {
+	c.checkSudo()
 	if c.runFunc != nil {
 		err := c.runFunc(c)
 		return c.output, err

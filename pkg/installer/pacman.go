@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -32,6 +33,14 @@ func NewPacmanInstaller(runner exec.CommandRunner, fsys fs.FS, sysCtx *SystemCon
 
 func (p *PacmanInstaller) Name() string {
 	return "pacman"
+}
+
+func (p *PacmanInstaller) SetFS(fsys fs.FS) {
+	p.fsys = fsys
+}
+
+func (p *PacmanInstaller) SetLogger(log *logger.Logger) {
+	p.log = log
 }
 
 func (p *PacmanInstaller) SupportsSudo() bool {
@@ -86,8 +95,23 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		}
 	}
 
+	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	var resolvedBinaries []string
+	for _, binName := range binNames {
+		whichCmd := p.runner.CommandContext(ctx, "which", binName)
+		out, err := whichCmd.Output()
+		if err == nil {
+			path := strings.TrimSpace(string(out))
+			if path != "" {
+				resolvedBinaries = append(resolvedBinaries, path)
+				continue
+			}
+		}
+		resolvedBinaries = append(resolvedBinaries, filepath.Join("/usr/bin", binName))
+	}
+
 	return &InstallResult{
-		Binaries: []string{}, // externally managed
+		Binaries: resolvedBinaries,
 		ShellEnv: map[string]string{
 			"PACMAN_INSTALLED_VERSION": detectedVersion,
 		},

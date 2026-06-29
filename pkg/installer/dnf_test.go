@@ -40,8 +40,8 @@ func TestDnfInstaller(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(res.Binaries) != 0 {
-			t.Errorf("expected empty binaries list, got %v", res.Binaries)
+		if len(res.Binaries) != 1 || res.Binaries[0] != "/usr/bin/jq" {
+			t.Errorf("expected [/usr/bin/jq] binaries list, got %v", res.Binaries)
 		}
 
 		// Verify dnf / sudo commands

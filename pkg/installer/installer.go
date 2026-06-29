@@ -15,8 +15,9 @@ import (
 )
 
 type InstallResult struct {
-	Binaries []string
-	ShellEnv map[string]string
+	Binaries  []string
+	ShellEnv  map[string]string
+	ShellInit string
 }
 
 type UpdateCheckResult struct {
@@ -261,117 +262,25 @@ func removeAll(fsys fs.FS, path string) error {
 	return fsys.Remove(path)
 }
 
+type FSSetter interface {
+	SetFS(fs.FS)
+}
+
+type LoggerSetter interface {
+	SetLogger(*logger.Logger)
+}
+
 // SetFS dynamically binds the orchestrator's context-aware TrackedFileSystem to installer plugins prior to execution.
 func SetFS(inst Installer, fsys fs.FS) {
-	switch v := inst.(type) {
-	case *AptInstaller:
-		v.fsys = fsys
-	case *BrewInstaller:
-		v.fsys = fsys
-	case *CargoInstaller:
-		v.fsys = fsys
-		if v.dl != nil {
-			v.dl.SetFS(fsys)
-		}
-		if v.extractor != nil {
-			v.extractor.SetFS(fsys)
-		}
-	case *CurlBinaryInstaller:
-		v.fsys = fsys
-		if v.dl != nil {
-			v.dl.SetFS(fsys)
-		}
-	case *CurlScriptInstaller:
-		v.fsys = fsys
-		if v.dl != nil {
-			v.dl.SetFS(fsys)
-		}
-	case *CurlTarInstaller:
-		v.fsys = fsys
-		if v.dl != nil {
-			v.dl.SetFS(fsys)
-		}
-		if v.extractor != nil {
-			v.extractor.SetFS(fsys)
-		}
-	case *DmgInstaller:
-		v.fsys = fsys
-		if v.dl != nil {
-			v.dl.SetFS(fsys)
-		}
-		if v.extractor != nil {
-			v.extractor.SetFS(fsys)
-		}
-	case *DnfInstaller:
-		v.fsys = fsys
-	case *GiteaInstaller:
-		v.fsys = fsys
-		if v.dl != nil {
-			v.dl.SetFS(fsys)
-		}
-		if v.extractor != nil {
-			v.extractor.SetFS(fsys)
-		}
-	case *GitHubInstaller:
-		v.fsys = fsys
-		if v.dl != nil {
-			v.dl.SetFS(fsys)
-		}
-		if v.extractor != nil {
-			v.extractor.SetFS(fsys)
-		}
-	case *ManualInstaller:
-		v.fsys = fsys
-	case *NpmInstaller:
-		v.fsys = fsys
-	case *PacmanInstaller:
-		v.fsys = fsys
-	case *PkgInstaller:
-		v.fsys = fsys
-		if v.dl != nil {
-			v.dl.SetFS(fsys)
-		}
-		if v.extractor != nil {
-			v.extractor.SetFS(fsys)
-		}
-	case *ZshPluginInstaller:
-		v.fsys = fsys
+	if s, ok := inst.(FSSetter); ok {
+		s.SetFS(fsys)
 	}
 }
 
 // SetLogger dynamically binds the orchestrator's context-aware Logger to installer plugins prior to execution.
 func SetLogger(inst Installer, log *logger.Logger) {
-	switch v := inst.(type) {
-	case *AptInstaller:
-		v.log = log
-	case *BrewInstaller:
-		v.log = log
-	case *CargoInstaller:
-		v.log = log
-	case *CurlBinaryInstaller:
-		v.log = log
-	case *CurlScriptInstaller:
-		v.log = log
-	case *CurlTarInstaller:
-		v.log = log
-	case *DmgInstaller:
-		v.log = log
-	case *DnfInstaller:
-		v.log = log
-	case *GiteaInstaller:
-		v.log = log
-	case *GitHubInstaller:
-		v.log = log
-	case *ManualInstaller:
-		v.log = log
-	case *NpmInstaller:
-		v.log = log
-	case *PacmanInstaller:
-		v.log = log
-	case *PkgInstaller:
-		v.log = log
-	case *ZshPluginInstaller:
-		v.log = log
+	if s, ok := inst.(LoggerSetter); ok {
+		s.SetLogger(log)
 	}
 }
 
