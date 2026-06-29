@@ -1,13 +1,16 @@
 package fs
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
@@ -23,7 +26,7 @@ func TestTrackedFileSystemOperations(t *testing.T) {
 
 	reg := registry.NewRegistry(database)
 	mem := NewMemFS()
-	tfs := NewTrackedFileSystem(mem, reg, "my-tool")
+	tfs := NewTrackedFileSystem(mem, reg, nil, "my-tool")
 
 	// Verify operations within a transaction
 	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
@@ -171,7 +174,7 @@ func TestTrackedFileSystemWithCustomContexts(t *testing.T) {
 
 	reg := registry.NewRegistry(database)
 	mem := NewMemFS()
-	tfs := NewTrackedFileSystem(mem, reg, "my-tool")
+	tfs := NewTrackedFileSystem(mem, reg, nil, "my-tool")
 
 	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
 		// Create cloned instance with file type and custom tools
@@ -211,7 +214,7 @@ func TestTrackedFileSystemWriteFileIdenticalContentGuard(t *testing.T) {
 
 	reg := registry.NewRegistry(database)
 	mem := NewMemFS()
-	tfs := NewTrackedFileSystem(mem, reg, "guard-tool")
+	tfs := NewTrackedFileSystem(mem, reg, nil, "guard-tool")
 
 	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
 		txTfs := tfs.WithTx(ctx, tx)
@@ -265,7 +268,7 @@ func TestTrackedFileSystemRecursiveRemoveAll(t *testing.T) {
 
 	reg := registry.NewRegistry(database)
 	mem := NewMemFS()
-	tfs := NewTrackedFileSystem(mem, reg, "rmall-tool")
+	tfs := NewTrackedFileSystem(mem, reg, nil, "rmall-tool")
 
 	// Set up nested files & directories
 	err = mem.MkdirAll("/dir/sub", 0755)
@@ -320,5 +323,128 @@ func TestTrackedFileSystemRecursiveRemoveAll(t *testing.T) {
 
 	if len(expectedPaths) > 0 {
 		t.Errorf("Not all deleted paths were logged. Remaining: %v", expectedPaths)
+	}
+}
+
+func TestTrackedFS_Logging(t *testing.T) {
+	ctx := context.Background()
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	database, err := db.NewConnection(ctx, dsn)
+	if err != nil {
+		t.Fatalf("Failed to initialize test DB: %v", err)
+	}
+	defer database.Close()
+
+	reg := registry.NewRegistry(database)
+	
+	// Create MemFS and wrap in ResolvedFS so homeDir is set to /home/testuser
+	mem := NewMemFS()
+	rfs := NewResolvedFS(mem, "/home/testuser")
+	err = rfs.MkdirAll("/home/testuser", 0755)
+	if err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	testLog := logger.New(logger.Config{
+		Name:   "test",
+		Level:  logger.LogLevelDefault,
+		Writer: &buf,
+	})
+
+	tfs := NewTrackedFileSystem(rfs, reg, testLog, "log-tool")
+
+	// 1. WriteFile
+	err = tfs.WriteFile("/home/testuser/test.txt", []byte("hello"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	// 2. Symlink
+	err = tfs.Symlink("/home/testuser/test.txt", "/home/testuser/test_link.txt")
+	if err != nil {
+		t.Fatalf("Symlink failed: %v", err)
+	}
+
+	// 3. Remove
+	err = tfs.Remove("/home/testuser/test_link.txt")
+	if err != nil {
+		t.Fatalf("Remove failed: %v", err)
+	}
+
+	logOutput := buf.String()
+	
+	// Check log format:
+	// It should log:
+	// INFO	write ~/test.txt
+	// INFO	ln -s ~/test.txt ~/test_link.txt
+	// INFO	rm ~/test_link.txt
+	if !strings.Contains(logOutput, "write ~/test.txt") {
+		t.Errorf("Expected log containing 'write ~/test.txt', got:\n%s", logOutput)
+	}
+	if !strings.Contains(logOutput, "ln -s ~/test.txt ~/test_link.txt") {
+		t.Errorf("Expected log containing 'ln -s ~/test.txt ~/test_link.txt', got:\n%s", logOutput)
+	}
+	if !strings.Contains(logOutput, "rm ~/test_link.txt") {
+		t.Errorf("Expected log containing 'rm ~/test_link.txt', got:\n%s", logOutput)
+	}
+}
+
+func TestTrackedFS_ChunkedComparison(t *testing.T) {
+	ctx := context.Background()
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	database, err := db.NewConnection(ctx, dsn)
+	if err != nil {
+		t.Fatalf("Failed to initialize test DB: %v", err)
+	}
+	defer database.Close()
+
+	reg := registry.NewRegistry(database)
+	mem := NewMemFS()
+	tfs := NewTrackedFileSystem(mem, reg, nil, "compare-tool")
+
+	// Pre-populate parent directory in MemFS
+	_ = mem.MkdirAll("/workspace", 0755)
+
+	// Write initial file
+	err = tfs.WriteFile("/workspace/comp.txt", []byte("abcdefg"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	// 1. Identical file
+	identical, err := tfs.compareContentChunked("/workspace/comp.txt", []byte("abcdefg"))
+	if err != nil {
+		t.Fatalf("compareContentChunked failed: %v", err)
+	}
+	if !identical {
+		t.Errorf("Expected identical to be true for same content")
+	}
+
+	// 2. Different size (smaller)
+	identical, err = tfs.compareContentChunked("/workspace/comp.txt", []byte("abc"))
+	if err != nil {
+		t.Fatalf("compareContentChunked failed: %v", err)
+	}
+	if identical {
+		t.Errorf("Expected identical to be false for different size")
+	}
+
+	// 3. Different size (larger)
+	identical, err = tfs.compareContentChunked("/workspace/comp.txt", []byte("abcdefghijk"))
+	if err != nil {
+		t.Fatalf("compareContentChunked failed: %v", err)
+	}
+	if identical {
+		t.Errorf("Expected identical to be false for different size")
+	}
+
+	// 4. Same size but differing content
+	identical, err = tfs.compareContentChunked("/workspace/comp.txt", []byte("abcXefg"))
+	if err != nil {
+		t.Fatalf("compareContentChunked failed: %v", err)
+	}
+	if identical {
+		t.Errorf("Expected identical to be false for differing content of same size")
 	}
 }

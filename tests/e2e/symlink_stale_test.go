@@ -56,8 +56,8 @@ func TestE2ESymlinkStale(t *testing.T) {
 		t.Fatalf("failed to write tool config: %v", err)
 	}
 
-	// Symlink is created under dynamic "~" subdirectory due to literal tilde handling in Go port
-	symlinkDir := filepath.Join(h.TempDir, "~", ".config", "symlink-tool")
+	// Symlink is created under expanded homeDir: {generatedDir}/user-home
+	symlinkDir := filepath.Join(h.TempDir, ".generated", "user-home", ".config", "symlink-tool")
 	configPath := filepath.Join(symlinkDir, "config.yml")
 	extraPath := filepath.Join(symlinkDir, "extra.yml")
 

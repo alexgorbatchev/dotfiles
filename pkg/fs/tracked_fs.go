@@ -10,7 +10,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/google/uuid"
 )
 
@@ -23,10 +25,11 @@ type TrackedFileSystem struct {
 	toolName    string
 	fileType    string // e.g., "file", "shim", "symlink"
 	operationID string
+	log         *logger.Logger
 }
 
 // NewTrackedFileSystem instantiates a new TrackedFileSystem wrapper.
-func NewTrackedFileSystem(fsys FS, reg *registry.Registry, toolName string) *TrackedFileSystem {
+func NewTrackedFileSystem(fsys FS, reg *registry.Registry, log *logger.Logger, toolName string) *TrackedFileSystem {
 	return &TrackedFileSystem{
 		fs:          fsys,
 		reg:         reg,
@@ -34,6 +37,7 @@ func NewTrackedFileSystem(fsys FS, reg *registry.Registry, toolName string) *Tra
 		toolName:    toolName,
 		fileType:    "file",
 		operationID: uuid.New().String(),
+		log:         log,
 	}
 }
 
@@ -47,6 +51,7 @@ func (t *TrackedFileSystem) WithTx(ctx context.Context, tx *sql.Tx) *TrackedFile
 		toolName:    t.toolName,
 		fileType:    t.fileType,
 		operationID: t.operationID,
+		log:         t.log,
 	}
 }
 
@@ -60,6 +65,7 @@ func (t *TrackedFileSystem) WithFileType(fileType string) *TrackedFileSystem {
 		toolName:    t.toolName,
 		fileType:    fileType,
 		operationID: t.operationID,
+		log:         t.log,
 	}
 }
 
@@ -73,6 +79,7 @@ func (t *TrackedFileSystem) WithToolName(toolName string) *TrackedFileSystem {
 		toolName:    toolName,
 		fileType:    t.fileType,
 		operationID: t.operationID,
+		log:         t.log,
 	}
 }
 
@@ -111,8 +118,8 @@ func (t *TrackedFileSystem) WriteFile(path string, data []byte, perm os.FileMode
 	if err == nil && exists {
 		info, errStat := t.fs.Stat(path)
 		if errStat == nil && info.Size() == int64(len(data)) {
-			existingData, errRead := t.fs.ReadFile(path)
-			if errRead == nil && bytes.Equal(existingData, data) {
+			identical, errCompare := t.compareContentChunked(path, data)
+			if errCompare == nil && identical {
 				return nil
 			}
 		}
@@ -122,9 +129,60 @@ func (t *TrackedFileSystem) WriteFile(path string, data []byte, perm os.FileMode
 	if err != nil {
 		return err
 	}
+	if t.log != nil {
+		t.log.Info(logger.Message(fmt.Sprintf("write %s", t.ContractHomePath(path))))
+	}
 	sizeBytes := int64(len(data))
 	permVal := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
 	return t.recordOperation("writeFile", path, nil, &sizeBytes, &permVal)
+}
+
+func (t *TrackedFileSystem) homeDir() string {
+	type homeDirProvider interface {
+		HomeDir() string
+	}
+	if hdp, ok := t.fs.(homeDirProvider); ok {
+		return hdp.HomeDir()
+	}
+	h, err := os.UserHomeDir()
+	if err == nil {
+		return h
+	}
+	return ""
+}
+
+func (t *TrackedFileSystem) ContractHomePath(path string) string {
+	return utils.ContractHomePath(t.homeDir(), path)
+}
+
+func (t *TrackedFileSystem) compareContentChunked(path string, data []byte) (bool, error) {
+	rc, err := t.fs.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer rc.Close()
+
+	buf := make([]byte, 4096)
+	offset := 0
+	for {
+		n, err := rc.Read(buf)
+		if n > 0 {
+			if offset+n > len(data) {
+				return false, nil
+			}
+			if !bytes.Equal(buf[:n], data[offset:offset+n]) {
+				return false, nil
+			}
+			offset += n
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return false, err
+		}
+	}
+	return offset == len(data), nil
 }
 
 func (t *TrackedFileSystem) OpenFile(path string, flag int, perm os.FileMode) (io.WriteCloser, error) {
@@ -147,6 +205,9 @@ func (t *TrackedFileSystem) Remove(path string) error {
 		return err
 	}
 	if existed {
+		if t.log != nil {
+			t.log.Info(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(path))))
+		}
 		return t.recordOperation("rm", path, nil, nil, nil)
 	}
 	return nil
@@ -236,6 +297,9 @@ func (t *TrackedFileSystem) Symlink(oldname, newname string) error {
 	if err != nil {
 		return err
 	}
+	if t.log != nil {
+		t.log.Info(logger.Message(fmt.Sprintf("ln -s %s %s", t.ContractHomePath(oldname), t.ContractHomePath(newname))))
+	}
 	return t.recordOperation("symlink", newname, &oldname, nil, nil)
 }
 
@@ -293,6 +357,9 @@ func (t *TrackedFileSystem) RemoveAll(path string) error {
 
 	if existed {
 		for _, p := range toDelete {
+			if t.log != nil {
+				t.log.Info(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(p))))
+			}
 			if err := t.recordOperation("rm", p, nil, nil, nil); err != nil {
 				return err
 			}
