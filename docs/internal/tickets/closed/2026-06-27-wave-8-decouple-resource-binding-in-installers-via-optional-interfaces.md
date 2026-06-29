@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-27 11:00
-last_modified: 2026-06-27 11:00
+last_modified: 2026-06-28 12:00
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 8: Decouple Resource Binding in Installers via Optional Interfaces
@@ -26,8 +26,8 @@ Installers receive their filesystem and logger resources polymorphically. The or
 
 ## Acceptance criteria
 
-- [ ] **Define Optional Interfaces:** Define `interface { SetFS(fs.FS) }` and `interface { SetLogger(*logger.Logger) }` interfaces inside `pkg/installer/installer.go`.
-- [ ] **Polymorphic Injection:** Refactor `SetFS` and `SetLogger` in `installer.go` to perform type assertions on these interfaces instead of concrete type switches.
-- [ ] **Plugin Alignment:** Implement these interface methods on any installer structures that require them (e.g., `CargoInstaller`, `GitHubInstaller`, `AptInstaller`, etc.).
-- [ ] **Unit Testing:** Verify with existing installer tests that they still receive their loggers and filesystems correctly after the refactoring.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Define Optional Interfaces:** Define `interface { SetFS(fs.FS) }` and `interface { SetLogger(*logger.Logger) }` interfaces inside `pkg/installer/installer.go`.
+- [x] **Polymorphic Injection:** Refactor `SetFS` and `SetLogger` in `installer.go` to perform type assertions on these interfaces instead of concrete type switches.
+- [x] **Plugin Alignment:** Implement these interface methods on any installer structures that require them (e.g., `CargoInstaller`, `GitHubInstaller`, `AptInstaller`, etc.).
+- [x] **Unit Testing:** Verify with existing installer tests that they still receive their loggers and filesystems correctly after the refactoring.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

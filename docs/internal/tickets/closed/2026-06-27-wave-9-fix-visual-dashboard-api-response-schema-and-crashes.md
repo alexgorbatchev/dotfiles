@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-27 12:00
-last_modified: 2026-06-27 12:00
+last_modified: 2026-06-28 12:00
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 9: Fix Visual Dashboard API Response Schema and Crashes
@@ -39,12 +39,12 @@ The Go dashboard backend implements 100% contract parity with the legacy Preact 
 
 ## Acceptance criteria
 
-- [ ] **Align JSON Response Shape**: Refactor `handleGetTools` in `pkg/dashboard/routes.go` to output an array of detailed tool records. Each element must contain:
+- [x] **Align JSON Response Shape**: Refactor `handleGetTools` in `pkg/dashboard/routes.go` to output an array of detailed tool records. Each element must contain:
   - `runtime` object containing `status` ("installed" or "not-installed") and `installedVersion` (pointer to string).
   - `files` array of tracked files.
   - `binaryDiskSize` integer field representing disk footprint.
   - `usage` object mapping usage and execution statistics.
-- [ ] **Bind Real Orchestrator Tasks**: Connect the `/api/tools/:name/install` and `/api/tools/:name/update` HTTP POST handlers to invoke the actual Go orchestrator (`pkg/orchestrator/orchestrator.go`), streaming the execution output/logs to the client.
-- [ ] **Integrate Real Health Inspections**: Connect `/api/health` to perform real registry validations using Go's registry database validation logic and walk directories for unused binary versions, replacing hardcoded stubs.
-- [ ] **Integration Testing**: Add a dashboard integration test inside `pkg/dashboard/dashboard_test.go` asserting that GET `/api/tools` returns the correct nested `runtime` schema shape and that trigger requests successfully kick off background Go orchestrator installation jobs.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Bind Real Orchestrator Tasks**: Connect the `/api/tools/:name/install` and `/api/tools/:name/update` HTTP POST handlers to invoke the actual Go orchestrator (`pkg/orchestrator/orchestrator.go`), streaming the execution output/logs to the client.
+- [x] **Integrate Real Health Inspections**: Connect `/api/health` to perform real registry validations using Go's registry database validation logic and walk directories for unused binary versions, replacing hardcoded stubs.
+- [x] **Integration Testing**: Add a dashboard integration test inside `pkg/dashboard/dashboard_test.go` asserting that GET `/api/tools` returns the correct nested `runtime` schema shape and that trigger requests successfully kick off background Go orchestrator installation jobs.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-27 11:00
-last_modified: 2026-06-27 11:00
+last_modified: 2026-06-28 12:00
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 8: Propagate Overwrite Configuration Safely via Context instead of Env
@@ -27,8 +27,8 @@ The overwrite flag is propagated through the execution context safely, preventin
 
 ## Acceptance criteria
 
-- [ ] **Context-Based Flag Propagation:** Define a custom context key for the overwrite parameter and implement a helper `WithOverwrite(ctx context.Context, overwrite bool) context.Context`.
-- [ ] **Reader Alignment:** Implement `IsOverwriteEnabled(ctx context.Context)` that checks the custom context key as well as the fallback environment variable for backwards compatibility.
-- [ ] **Refactor Handler:** Remove `os.Setenv` from `pkg/dashboard/routes.go` and inject the context instead.
-- [ ] **Unit Testing:** Write a test inside `pkg/dashboard/dashboard_test.go` or `routes_test.go` asserting that concurrent installation requests do not bleed their force/overwrite flags to other threads.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Context-Based Flag Propagation:** Define a custom context key for the overwrite parameter and implement a helper `WithOverwrite(ctx context.Context, overwrite bool) context.Context`.
+- [x] **Reader Alignment:** Implement `IsOverwriteEnabled(ctx context.Context)` that checks the custom context key as well as the fallback environment variable for backwards compatibility.
+- [x] **Refactor Handler:** Remove `os.Setenv` from `pkg/dashboard/routes.go` and inject the context instead.
+- [x] **Unit Testing:** Write a test inside `pkg/dashboard/dashboard_test.go` or `routes_test.go` asserting that concurrent installation requests do not bleed their force/overwrite flags to other threads.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-27 12:00
-last_modified: 2026-06-27 12:00
+last_modified: 2026-06-28 12:00
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 9: Complete Installer Plugin Parity and Feature Gaps
@@ -38,12 +38,12 @@ Refactor all Go installers and pre-flight matchers to achieve 100% parameter, ho
 
 ## Acceptance criteria
 
-- [ ] **Dynamic Binary Tracking**: Refactor package manager installers (`brew`, `npm`, `apt`, `dnf`, `pacman`, `pkg`) to dynamically resolve the physical install paths of their target binaries and return them in `InstallResult.Binaries`.
-- [ ] **Incorporate `shellInit` Hook**: Add `ShellInit` (string) to `InstallResult` and support propagating sourcing commands dynamically to `main.zsh` (e.g. for `zsh-plugin`).
-- [ ] **Dynamic `curl-tar` Extensions**: Update `curl-tar` to detect download file formats dynamically from the URL or headers instead of hardcoding `.tar.gz`.
-- [ ] **Expand `manual` Paths**: Expand `{stagingDir}` and other placeholders inside the `manual` installer before execution.
-- [ ] **Sudo Prompt Support**: Pass `system.sudoPrompt` parameters to elevated executions via `sudo -p` inside command runners.
-- [ ] **Bitwise Platform Matching**: Implement correct bitwise masking inside `matchesPlatform` (`cmd/dotfiles/bootstrap.go`) matching the original TS specification:
+- [x] **Dynamic Binary Tracking**: Refactor package manager installers (`brew`, `npm`, `apt`, `dnf`, `pacman`, `pkg`) to dynamically resolve the physical install paths of their target binaries and return them in `InstallResult.Binaries`.
+- [x] **Incorporate `shellInit` Hook**: Add `ShellInit` (string) to `InstallResult` and support propagating sourcing commands dynamically to `main.zsh` (e.g. for `zsh-plugin`).
+- [x] **Dynamic `curl-tar` Extensions**: Update `curl-tar` to detect download file formats dynamically from the URL or headers instead of hardcoding `.tar.gz`.
+- [x] **Expand `manual` Paths**: Expand `{stagingDir}` and other placeholders inside the `manual` installer before execution.
+- [x] **Sudo Prompt Support**: Pass `system.sudoPrompt` parameters to elevated executions via `sudo -p` inside command runners.
+- [x] **Bitwise Platform Matching**: Implement correct bitwise masking inside `matchesPlatform` (`cmd/dotfiles/bootstrap.go`) matching the original TS specification:
   ```go
   func matchesPlatform(platforms int, osName string) bool {
       var mask int
@@ -60,6 +60,6 @@ Refactor all Go installers and pre-flight matchers to achieve 100% parameter, ho
       return (platforms & mask) == mask
   }
   ```
-- [ ] **Unit Testing**: Update the installer unit tests inside `pkg/installer/` verifying that package managers resolve binaries, `curl-tar` handles ZIP/TXZ paths, manual configs expand path wildcards, and bitwise platform masking evaluates combinations correctly.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
- mooring.
+- [x] **Unit Testing**: Update the installer unit tests inside `pkg/installer/` verifying that package managers resolve binaries, `curl-tar` handles ZIP/TXZ paths, manual configs expand path wildcards, and bitwise platform masking evaluates combinations correctly.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+      mooring.

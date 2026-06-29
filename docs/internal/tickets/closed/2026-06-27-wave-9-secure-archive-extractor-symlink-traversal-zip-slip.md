@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-27 12:00
-last_modified: 2026-06-27 12:00
+last_modified: 2026-06-28 09:20
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 9: Secure Archive Extractor Symlink Traversal (Zip-Slip Variant)
@@ -10,15 +10,18 @@ ticket_status: open
 ## Problem
 
 In `pkg/archive/archive.go`, the archive extractor implements a basic "Zip-Slip" check on directory paths of extracted regular files to prevent directory traversal:
+
 ```go
 rel, err := filepath.Rel(cleanDest, cleanTarget)
 if err != nil || strings.HasPrefix(rel, "..") {
     continue
 }
 ```
-However, the extractor **fails to perform any sanitization or validation on symbolic link targets** (`header.Linkname` in tar or the string payload in zip files). 
+
+However, the extractor **fails to perform any sanitization or validation on symbolic link targets** (`header.Linkname` in tar or the string payload in zip files).
 
 When extracting symlink entries:
+
 - In `extractTar` (lines 257-258):
   ```go
   _ = e.fsys.Remove(cleanTarget)
@@ -47,11 +50,11 @@ The archive extractor enforces strict symbolic link validation. Before writing a
 
 ## Acceptance criteria
 
-- [ ] **Sanitize Tar Symlink Targets**: In `extractTar` and `extractTarXz`, parse `header.Linkname` and verify that the target remains within the extraction directory. If the link target is absolute or escapes via relative directory traversing, reject the entry or overwrite the target to stay relative to the sandbox.
-- [ ] **Sanitize Zip Symlink Targets**: In `extractZip`, read and sanitize the symlink target string payload to ensure it is contained.
-- [ ] **Reject Out-of-Bounds**: Return a clear security error (e.g., `ErrSymlinkTraversalDetected`) and halt extraction if a malicious directory traversal attempt is detected.
-- [ ] **Unit Testing**: Add a security-focused test case inside `pkg/archive/archive_test.go` that generates a mock tar/zip archive carrying:
+- [x] **Sanitize Tar Symlink Targets**: In `extractTar` and `extractTarXz`, parse `header.Linkname` and verify that the target remains within the extraction directory. If the link target is absolute or escapes via relative directory traversing, reject the entry or overwrite the target to stay relative to the sandbox.
+- [x] **Sanitize Zip Symlink Targets**: In `extractZip`, read and sanitize the symlink target string payload to ensure it is contained.
+- [x] **Reject Out-of-Bounds**: Return a clear security error (e.g., `ErrSymlinkTraversalDetected`) and halt extraction if a malicious directory traversal attempt is detected.
+- [x] **Unit Testing**: Add a security-focused test case inside `pkg/archive/archive_test.go` that generates a mock tar/zip archive carrying:
   - A symlink pointing to `/tmp/escaped_test` (out-of-bounds absolute target).
   - A symlink pointing to `../../escaped_relative` (out-of-bounds relative target).
-  Assert that extracting this mock archive fails and rejects the out-of-bounds creation without creating any files outside the target directory.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+    Assert that extracting this mock archive fails and rejects the out-of-bounds creation without creating any files outside the target directory.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

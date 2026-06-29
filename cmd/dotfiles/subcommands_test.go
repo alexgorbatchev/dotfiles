@@ -229,3 +229,31 @@ func TestObjectBasedBinaryMatching(t *testing.T) {
 		t.Errorf("expected dependency 'fnm' to be resolved to 'curl-script--fnm', got %q", tool.Dependencies[0])
 	}
 }
+
+func TestMatchesPlatform(t *testing.T) {
+	tests := []struct {
+		platforms int
+		osName    string
+		want      bool
+	}{
+		{1, "linux", true},
+		{1, "darwin", false},
+		{2, "darwin", true},
+		{3, "linux", true},    // Linux | Darwin (1 | 2 = 3)
+		{3, "darwin", true},   // Linux | Darwin (1 | 2 = 3)
+		{3, "windows", false}, // Linux | Darwin (1 | 2 = 3)
+		{5, "linux", true},    // Linux | Windows (1 | 4 = 5)
+		{5, "windows", true},  // Linux | Windows (1 | 4 = 5)
+		{5, "darwin", false},  // Linux | Windows (1 | 4 = 5)
+		{7, "linux", true},    // All (1 | 2 | 4 = 7)
+		{7, "darwin", true},
+		{7, "windows", true},
+	}
+
+	for _, tt := range tests {
+		got := matchesPlatform(tt.platforms, tt.osName)
+		if got != tt.want {
+			t.Errorf("matchesPlatform(%d, %q) = %v; want %v", tt.platforms, tt.osName, got, tt.want)
+		}
+	}
+}

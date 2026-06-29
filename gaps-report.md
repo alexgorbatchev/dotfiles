@@ -4,10 +4,9 @@
 
 - **feasibility check: Can we delete TS and ship Go today without breaking anything?**
   **NO, absolutely not.** Demolishing the remaining TypeScript packages and distributing the compiled Go binary to users today will cause multiple severe, immediate, and silent breakages in the runtime environment, the visual user experience, and the developer workflow:
-  
   1. **Visual UI Dashboard Collapse**: The Preact-based visual dashboard will immediately crash with uncaught JavaScript errors (e.g., `TypeError: Cannot read properties of undefined (reading 'status')`) on startup because Go's `/api/tools` endpoint returns a flat list (`toolState` summary shape) instead of the fully realized `IToolDetail` nested structure that the frontend client expects.
   2. **Autocomplete and Editor DX Collapse**: Removing legacy TS packages without publishing a dedicated ambient types package (`@alexgorbatchev/dotfiles`) will cause autocomplete, type boundaries, and editor validations for user-authored `.tool.ts` and `dotfiles.config.ts` files to break entirely.
-  3. **Critical Dynamic Hook Failures**: Go's loader executes JavaScript hook closures immediately during the *parsing* stage, capturing shell-evaluated strings to execute via `bash -c` during installation. Any `.tool.ts` file employing dynamic logic (conditional checks, loop operations, or virtual filesystem calls like `ctx.fs.writeFile`) will silently fail or crash the parser.
+  3. **Critical Dynamic Hook Failures**: Go's loader executes JavaScript hook closures immediately during the _parsing_ stage, capturing shell-evaluated strings to execute via `bash -c` during installation. Any `.tool.ts` file employing dynamic logic (conditional checks, loop operations, or virtual filesystem calls like `ctx.fs.writeFile`) will silently fail or crash the parser.
   4. **Critical Symlink Directory Traversal (Zip-Slip Security Vulnerability)**: Go's archive extraction mechanism (`pkg/archive/archive.go`) does not sanitize or restrict symbolic link targets inside extracted tar/zip archives. A malicious archive can create a symlink escaping the target directory and write arbitrary files anywhere on the user's host system.
   5. **Broken Sourced Files (Process Substitution Bug)**: Sourced scripts (`SourceFiles` list) are wrapped in subshell process-substitution functions (`source <(cat "/path")`). This causes any location-aware script relying on `${BASH_SOURCE[0]}` or `${(%):-%x}` to instantly crash.
   6. **Host Directory Symlink Leaks during Tests**: Due to a preflight bypass in `bootstrap.go`, running unit tests with `dryRun = false` fails to initialize the virtual filesystem symlink evaluator. This causes test symlinks to bypass the `MemFS` memory sandbox and write physical symlinks directly to the developer's real host machine.
@@ -35,11 +34,13 @@
 ## 2. Feasibility Analysis (What Breaks on Demolition)
 
 ### A. The `.tool.ts` Authoring Experience (DX) & Type Boundary Completeness
+
 - **Ambient Types Package Requirement**: Users writing local configuration scripts require autocompletion and IDE compiler validation. Today, `packages/core` provides these typings. If we demolish the TS packages, the types must be compiled and distributed via an npm package named `@alexgorbatchev/dotfiles`.
 - **Typings Gaps**: The Go type-generator (`scripts/typegen/main.go`) only outputs raw JSON-serializable TS interfaces (`types.gen.ts`). It completely omits the fluent builder DSL (such as `defineTool`, `.bin()`, `.version()`, `.dependsOn()`, `.zsh()`). While `pkg/vm/dsl-types.ts` and `loader-api.ts` define these in the Go workspace, they are not packaged or linked into a stable user-facing type boundary.
 
 ### B. Dynamic Hook Callback Degradation (JS/TS Execution Engine)
-- **TypeScript Runtime Execution**: In TS, hooks are dynamic, live async JavaScript callbacks executed *during* installation stages. They receive a live context including a virtual file system to check, write, or modify extracted contents:
+
+- **TypeScript Runtime Execution**: In TS, hooks are dynamic, live async JavaScript callbacks executed _during_ installation stages. They receive a live context including a virtual file system to check, write, or modify extracted contents:
   ```typescript
   .hook('after-extract', async (ctx) => {
       if (await ctx.fs.exists(`${ctx.stagingDir}/config.json`)) {
@@ -48,11 +49,12 @@
   })
   ```
 - **Go Parser Capture**: Goja (`pkg/vm/`) cannot run dynamic JS callbacks on-the-fly during installation because the JS engine is isolated within the configuration loader layer. Instead, it evaluates hooks **at parse time**, mocking the shell command helper (`$`) to capture run statements as static strings.
-- **Behavioral Gaps**: 
+- **Behavioral Gaps**:
   1. Any conditional evaluation, looping, or dynamic context reading inside the JS hook block is entirely lost.
   2. Any virtual file system operations (like `ctx.fs.writeFile`) inside the hook will instantly crash the parser because the stubbed `fs` inside `loader-api.ts` lacks write implementation.
 
 ### C. Dashboard Client & Backend API Gaps (Preact UI Crash)
+
 - **The `/api/tools` Object Shape Mismatch**: The Preact UI `Tools.tsx` page fetches `/api/tools` expecting an array of `IToolDetail` objects. It processes them as follows:
   ```typescript
   const installedCount = toolsList.filter((tool) => tool.runtime.status === "installed").length;
@@ -63,6 +65,7 @@
 - **Tool Detail Page Collapse**: The tool detail visualizer (`ToolDetail.tsx`) queries the global `/api/tools` endpoint and client-side filters for detailed properties (like `files` list and `usage` logs). Under the Go server, these fields are missing, throwing further uncaught properties errors.
 
 ### D. Build and NPM Packaging Pipeline
+
 - **TypeScript Dependency**: The assembly of `.dist/` is orchestrated entirely by `packages/build/src/build/build.ts` using Bun.
 - **Demolition Redesign**: If we demolish TS, we must rewrite this build pipeline as a native Go script or Makefile. The pipeline must:
   1. Trigger `bun build` to compile the Preact dashboard into `pkg/dashboard/dist` before building Go (as Go embeds these assets at compile time).
@@ -74,6 +77,7 @@
 ## 3. Structural & Architectural Gaps
 
 ### A. File System Abstractions & State Gaps
+
 - **Tilde Home Path Expansion Collapse**: TS employs a `ResolvedFileSystem` wrapper to dynamically intercept and expand home shortcuts (`~` and `~/`) on all path arguments. In Go, `ExpandHomePath` exists as a utility but is **never invoked anywhere in the file system or installer pipeline**. Paths targeting `~` write literal folders named `~` in the current directory or fail on disk.
 - **Recursive Directory Deletion Tracking Bug**: When recursively deleting folders via `fsys.RemoveAll`, Go's `TrackedFileSystem` only logs a single record for the parent folder. TS scanned the directory and wrote distinct `rm` records for all nested contents. This leaves all deleted nested files recorded as "active" in Go's SQLite registry, resulting in persistent database state drift.
 - **Content Change Skip Optimization Gap**: TS's `TrackedFileSystem.writeFile` skips physical writes and database logging if the content has not changed. Go's `WriteFile` always overwrites and logs operations, resulting in redundant disk writes and duplicate SQLite tracking records.
@@ -81,6 +85,7 @@
 - **Silent De-tracking Risk**: If `TrackedFileSystem` is initialized without a transaction pointer, file mutations proceed on host but silently skip recording inside SQLite without raising any errors, leaving orphaned files on uninstallation.
 
 ### B. Orchestration & Shell Sorter Gaps
+
 - **Self-Dependency Cycle Crashes**: TS ignores self-dependencies (e.g. if a tool depends on its own binary). Go increments the dependency in-degree, leading to immediate false cycle crashes.
 - **Disabled Tools Sorter Crashes**: TS prunes disabled tools before topological sorting. Go sorts first. If a disabled tool contains a circular, missing, or ambiguous dependency, Go will crash the program even though the tool is disabled.
 - **Zsh compinit Performance Degradation**: Go unconditionally appends `autoload -Uz compinit && compinit -u` to shell initialization scripts. This triggers heavy, slow disk scans on every single shell startup. TS prepends to `fpath` but leaves the `compinit` call to the user's config.
@@ -93,6 +98,7 @@
 ## 4. Installer & Package Manager Gaps
 
 ### A. Individual Plugin Parity Gaps
+
 - **Missing Global Binary Tracking**: Package managers (`brew`, `npm`, `apt`, `dnf`, `pacman`, `pkg`) return empty binary lists (`[]string{}`). No shims are generated for package-managed tools, and they are not recorded in the SQLite registry.
 - **Absence of `shellInit` Hook**: The `shellInit` hook (which returns raw shell startup commands like `source "plugin.zsh"` for `zsh-plugin`) is completely missing in Go's installer contracts. Zsh plugins are cloned but never loaded in the user's shell.
 - **Staging Clutter (Extraction Pollution)**: TS extracts archives inside a separate temporary directory, promoting only matched files to staging. Go extracts archives directly inside the staging folder, leaving readmes, licenses, and non-promoted files polluting the `current` path.
@@ -101,6 +107,7 @@
 - **`curl-script` Lacks Binary Capture**: TS implements post-install binary capturing (moving binaries installed to global folders back to staging). Go lacks this, leaving physical binaries stranded on the system and un-promoted.
 
 ### B. Privilege Escalation & Sudo Gaps
+
 - **Sudo Prompt Ignored**: Custom prompts defined in `system.sudoPrompt` are parsed but never passed to `sudo` commands (which requires `sudo -p`).
 - **Interactive Hang risk**: Spawning `sudo` commands inside headless/non-interactive CI environments causes Go execution to hang indefinitely.
 
@@ -110,21 +117,22 @@
 
 ### Active Test Files Comparison
 
-| Test Objective | TS Test Path (`packages/e2e-test/src/__tests__/`) | Go Test Path (`tests/e2e/`) | State / Coverage |
-| :--- | :--- | :--- | :--- |
-| **Conflicts Detection** | `conflict.test.ts` | `conflict_test.go` | **Functional Parity (Go is Green)** |
-| **Dependencies Resolution** | `dependency.test.ts` | `dependency_test.go` | **Functional Parity (Go is Green)** |
-| **Basic Installations** | `install.test.ts` | `install_test.go` | **Functional Parity (Go is Green)** |
-| **Stale Symlinks Cleanup** | `symlinkStale.test.ts` | `symlink_stale_test.go` | **Functional Parity (Go is Green)** |
-| **Auto-Install Lifecycle** | `autoInstall.test.ts` | `auto_install_test.go` | **Functional Parity (Go is Green)** |
-| **Enterprise GitHub Config** | `ghCli.test.ts` | `gh_cli_test.go` | **Functional Parity (Go is Green)** |
-| **Tool Renaming State** | `toolRename.test.ts` | `tool_rename_test.go` | **Functional Parity (Go is Green)** |
-| **Environment Activation** | `env.test.ts` | `env_test.go` | **Functional Parity (Go is Green)** |
-| **Hooks Execution** | `hook.test.ts` | `hook_test.go` | **Functional Parity (Go is Green)** |
-| **Language Type Safety** | `typeSafety.test.ts` | _Missing_ | **Missing Coverage (TS Only)** |
-| **Package Managers (APT)** | `apt.test.ts` | _Missing_ | **Missing Coverage (TS Only)** |
+| Test Objective               | TS Test Path (`packages/e2e-test/src/__tests__/`) | Go Test Path (`tests/e2e/`) | State / Coverage                    |
+| :--------------------------- | :------------------------------------------------ | :-------------------------- | :---------------------------------- |
+| **Conflicts Detection**      | `conflict.test.ts`                                | `conflict_test.go`          | **Functional Parity (Go is Green)** |
+| **Dependencies Resolution**  | `dependency.test.ts`                              | `dependency_test.go`        | **Functional Parity (Go is Green)** |
+| **Basic Installations**      | `install.test.ts`                                 | `install_test.go`           | **Functional Parity (Go is Green)** |
+| **Stale Symlinks Cleanup**   | `symlinkStale.test.ts`                            | `symlink_stale_test.go`     | **Functional Parity (Go is Green)** |
+| **Auto-Install Lifecycle**   | `autoInstall.test.ts`                             | `auto_install_test.go`      | **Functional Parity (Go is Green)** |
+| **Enterprise GitHub Config** | `ghCli.test.ts`                                   | `gh_cli_test.go`            | **Functional Parity (Go is Green)** |
+| **Tool Renaming State**      | `toolRename.test.ts`                              | `tool_rename_test.go`       | **Functional Parity (Go is Green)** |
+| **Environment Activation**   | `env.test.ts`                                     | `env_test.go`               | **Functional Parity (Go is Green)** |
+| **Hooks Execution**          | `hook.test.ts`                                    | `hook_test.go`              | **Functional Parity (Go is Green)** |
+| **Language Type Safety**     | `typeSafety.test.ts`                              | _Missing_                   | **Missing Coverage (TS Only)**      |
+| **Package Managers (APT)**   | `apt.test.ts`                                     | _Missing_                   | **Missing Coverage (TS Only)**      |
 
 ### Risks of Premature Demolition:
+
 The risk of functional regressions in core installers is relatively low due to the extensive E2E integration test migrations. However, deleting TS before translating `typeSafety.test.ts` and `apt.test.ts` risks silent compiler and package manager breakages in user-authored configurations.
 
 ---
@@ -132,6 +140,7 @@ The risk of functional regressions in core installers is relatively low due to t
 ## 6. Completed vs. Remaining Backlog
 
 ### Completed Wave 7 Milestones
+
 - **Direct esbuild compilation integration**: Embedded esbuild into `pkg/vm/loader.go` for native dynamic TS compiling.
 - **Robust VM Context injection**: Passing complete context `ctx` (carrying `systemInfo`, `log`, sandboxed `fs`, and `$`) to `defineTool`.
 - **E2E Integration Test translation**: Successfully migrated and ran all E2E tests in Go.
@@ -139,6 +148,7 @@ The risk of functional regressions in core installers is relatively low due to t
 - **Deep-merge on Platform Configs**: Resolved flat unmarshaling overwrite bugs in `bootstrap.go`.
 
 ### Remaining Wave 8 Active Backlog & Roadmap
+
 To safely demolish TypeScript and transition to a pure statically-linked Go binary distribution:
 
 1. **Ticket: Resolve TrackedFileSystem Recursive Remove State Bug**

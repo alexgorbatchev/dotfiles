@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-27 12:00
-last_modified: 2026-06-27 12:00
+last_modified: 2026-06-28 12:00
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 9: Fix Symlink Sandbox Leakage in Orchestrator Unit Tests
@@ -10,6 +10,7 @@ ticket_status: open
 ## Problem
 
 Go configures sandboxing in `cmd/dotfiles/bootstrap.go` by swapping the root filesystem to `MemFS` during dry runs or testing:
+
 ```go
 var fsys fs.FS
 if dryRun || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
@@ -24,6 +25,7 @@ if dryRun {
 ```
 
 **The Severe Sandboxing Leak**:
+
 1. In unit-testing mode (`isDevTest() == true` but `dryRun == false`), `fsys` is correctly instantiated as a virtual `MemFS`.
 2. However, the condition `if dryRun` blocks `orch.SetSymlinkFS(fsys)` from executing.
 3. Therefore, `o.symlinkFS` remains `nil` in the Orchestrator.
@@ -55,8 +57,8 @@ Eliminate the physical symlink fallback risk. Ensure that the Orchestrator's Sym
 
 ## Acceptance criteria
 
-- [ ] **Synchronize FS and Symlinks**: In `cmd/dotfiles/bootstrap.go`, ensure that `orch.SetSymlinkFS(fsys)` is executed whenever `fsys` is a virtual `MemFS` (not just when `dryRun` is true).
-- [ ] **Dynamic FS Fallback**: In `pkg/orchestrator/orchestrator.go` (`getSymlinkEvaluator`), if `o.symlinkFS` is `nil`, fall back to the main bound filesystem `o.fsys` instead of defaulting to a physical, un-sandboxed `symlink.NewEvaluator()`.
-- [ ] **Remove Hardcoded Falling Back**: Eliminate any direct, un-sandboxed `os` or physical file system calls inside the symlink evaluator package.
-- [ ] **Verification**: Run the full E2E and unit test suites, asserting that zero physical files, folders, or symlinks are left behind in the host directory structure.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Synchronize FS and Symlinks**: In `cmd/dotfiles/bootstrap.go`, ensure that `orch.SetSymlinkFS(fsys)` is executed whenever `fsys` is a virtual `MemFS` (not just when `dryRun` is true).
+- [x] **Dynamic FS Fallback**: In `pkg/orchestrator/orchestrator.go` (`getSymlinkEvaluator`), if `o.symlinkFS` is `nil`, fall back to the main bound filesystem `o.fsys` instead of defaulting to a physical, un-sandboxed `symlink.NewEvaluator()`.
+- [x] **Remove Hardcoded Falling Back**: Eliminate any direct, un-sandboxed `os` or physical file system calls inside the symlink evaluator package.
+- [x] **Verification**: Run the full E2E and unit test suites, asserting that zero physical files, folders, or symlinks are left behind in the host directory structure.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

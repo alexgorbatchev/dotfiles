@@ -1,8 +1,8 @@
 ---
 created_on: 2026-06-27 12:00
-last_modified: 2026-06-27 12:00
+last_modified: 2026-06-28 12:00
 status: current
-ticket_status: open
+ticket_status: closed
 ---
 
 # Wave 9: Create Go-Native Release Packaging and Ambient Types Pipeline
@@ -10,6 +10,7 @@ ticket_status: open
 ## Problem
 
 Currently, the release compilation and packaging of `.dist/` is orchestrated entirely by `packages/build/src/build/build.ts` using Bun. This script is responsible for:
+
 1. Running Go-typegen (`scripts/typegen/main.go`) to generate `types.gen.ts`.
 2. Bundling visual dashboard Preact assets via Bun compiler and saving them to `pkg/dashboard/dist`.
 3. Generating and combining fluent DSL declaration files (`schemas.d.ts`, `cli.d.ts`).
@@ -37,10 +38,10 @@ Port the entire release compilation pipeline to a Go-native compiler script (e.g
 
 ## Acceptance criteria
 
-- [ ] **Create Go-Native Builder**: Implement `scripts/build/main.go` to coordinate all release assembly stages.
-- [ ] **Bundle Preact Assets**: Invoke `bun build` to bundle Preact dashboard files into `pkg/dashboard/dist` before invoking Go compilation (so Go's native embed directives can bundle the static frontend assets).
-- [ ] **Types Concatenation Pipeline**: Automatically execute the typegen script and concatenate `pkg/vm/dsl-types.ts` and `pkg/vm/loader-api.ts` into a single, clean ambient declaration file `schemas.d.ts` inside the release output.
-- [ ] **Cross-Platform Compilation**: Trigger multi-platform cross-compilations for Darwin (x64, arm64) and Linux (x64, arm64) statically, outputting them to their respective optional-dependency target folders under `.dist/packages/`.
-- [ ] **NPM Packaging Structure**: Automatically write the core `.dist/package.json` and the four subpackage `package.json` configs with correct dependencies, mirroring the configuration of legacy build scripts.
-- [ ] **Validation Run**: Run the new Go-native build script, verifying that the compiled binary executes cleanly with the visual dashboard active and that types compile without errors.
-- [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.
+- [x] **Create Go-Native Builder**: Implement `scripts/build/main.go` to coordinate all release assembly stages.
+- [x] **Bundle Preact Assets**: Invoke `bun build` to bundle Preact dashboard files into `pkg/dashboard/dist` before invoking Go compilation (so Go's native embed directives can bundle the static frontend assets).
+- [x] **Types Concatenation Pipeline**: Automatically execute the typegen script and concatenate `pkg/vm/dsl-types.ts` and `pkg/vm/loader-api.ts` into a single, clean ambient declaration file `schemas.d.ts` inside the release output.
+- [x] **Cross-Platform Compilation**: Trigger multi-platform cross-compilations for Darwin (x64, arm64) and Linux (x64, arm64) statically, outputting them to their respective optional-dependency target folders under `.dist/packages/`.
+- [x] **NPM Packaging Structure**: Automatically write the core `.dist/package.json` and the four subpackage `package.json` configs with correct dependencies, mirroring the configuration of legacy build scripts.
+- [x] **Validation Run**: Run the new Go-native build script, verifying that the compiled binary executes cleanly with the visual dashboard active and that types compile without errors.
+- [x] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

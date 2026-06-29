@@ -54,3 +54,6 @@ CLAUDE.md
 # compiled vm dist bundles
 pkg/vm/dist/
 /coverage.out
+
+# backups from typescriptify
+*.backup

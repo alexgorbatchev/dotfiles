@@ -75,6 +75,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	} else {
 		fsys = fs.NewOSFS()
 	}
+	fsys = fs.NewResolvedFS(fsys, "")
 
 	var projCfg *config.ProjectConfig
 	var toolConfigs []*config.ToolConfig
@@ -138,6 +139,10 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		projCfg.Paths.BinariesDir = strings.ReplaceAll(projCfg.Paths.BinariesDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
 	}
 
+	if rfs, ok := fsys.(*fs.ResolvedFS); ok {
+		rfs.SetHomeDir(projCfg.Paths.HomeDir)
+	}
+
 	sort.Slice(toolConfigs, func(i, j int) bool {
 		return toolConfigs[i].Name < toolConfigs[j].Name
 	})
@@ -159,7 +164,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	}
 
 	reg := registry.NewRegistry(sqlDB)
-	trackedFS := fs.NewTrackedFileSystem(fsys, reg, "system").WithFileType("shim")
+	trackedFS := fs.NewTrackedFileSystem(fsys, reg, nil, "system").WithFileType("shim")
 
 	runner := execRunner.NewOSRunner()
 	instReg := installer.DefaultRegistry()
@@ -183,7 +188,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	}
 	orch := orchestrator.NewOrchestrator(GetLogger("orchestrator", os.Stdout), trackedFS, runner, reg, instReg)
 	orch.SetConfigFilePath(absConfigPath)
-	if dryRun {
+	if dryRun || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
 		orch.SetSymlinkFS(fsys)
 	}
 
@@ -317,19 +322,18 @@ func (m *mockInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig
 }
 
 func matchesPlatform(platforms int, osName string) bool {
-	if platforms == 7 { // All
-		return true
+	var mask int
+	switch osName {
+	case "linux":
+		mask = 1
+	case "darwin":
+		mask = 2
+	case "windows":
+		mask = 4
+	default:
+		return false
 	}
-	if platforms == 3 { // Unix (Linux | MacOS)
-		return osName == "linux" || osName == "darwin"
-	}
-	if platforms == 2 && osName == "darwin" {
-		return true
-	}
-	if platforms == 1 && osName == "linux" {
-		return true
-	}
-	return false
+	return (platforms & mask) == mask
 }
 
 func matchesArch(architectures int, archName string) bool {
