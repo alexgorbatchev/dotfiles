@@ -1,24 +1,27 @@
 # Directive for Conducting a Holistic Migration and Parity Audit
 
-You are tasked with conducting a rigorous, open-ended, and highly skeptical audit of the entire repository to answer the ultimate core question of this migration:
+You are tasked with conducting an extremely rigorous, line-by-line, and highly skeptical audit of the entire repository to answer the ultimate core question of this migration:
 
 **"Can we delete the TypeScript implementation and ship the Go CLI to users today without breaking anything?"**
-
-We want to completely delete the TypeScript implementation (`packages/*`) and only leave the necessary components to work with `.tool.ts` files and the Golang CLI. Is the codebase ready for this demolition today? If not, what exact structural, compile-time, or runtime breakages would occur, and what must be completed to make this demolition safe?
 
 Write your final findings and analysis as a comprehensive **Migration and Parity Gap Report** directly to `./gaps-report.md`.
 
 ---
 
-## 🎯 Audit Philosophy: No Blinders, No Compromises
+## 🎯 Audit Philosophy: No Blinders, No Compromises (Zero-Tolerance for Satisficing)
 
-Previous agents have repeatedly suffered from **local-scope bias**—they looked only at individual tickets or passing unit tests and over-confidently declared "100% parity." You must avoid this failure mode. A green test suite does not guarantee structural or behavioral equivalence.
+Previous agents have repeatedly suffered from **local-scope bias**—they looked only at individual tickets, saw green unit tests, and over-confidently declared "100% parity." You must avoid this failure mode. A green test suite or compile-time interface match is a deceptive indicator of parity.
 
-You are a severe skeptic:
+You must act as a severe skeptic:
 
-1.  **Do not limit your search** to a pre-defined list of files. You must explore the _entire_ codebase.
-2.  **See something, say something.** If an implementation looks like a shallow "cat-and-mouse" linter/compiler satisfaction bypass, or trades away correctness, call it out.
-3.  **Audit the silent gaps.** Look for dead code, unreferenced Go packages, platform-specific behavior omissions, silent error swallowing, resource leaks, or discrepancies in data serialization.
+1. **Compulsory Side-by-Side Reading**: You and your sub-agents MUST physically call the Read tool on BOTH the Go source file and the corresponding TypeScript source file for every single component. Do not summarize, use grep keywords, or scan file headers as a shortcut. Read both files in full.
+2. **Audit the "Negative Space"**: Look for the silent, non-textual differences. Go and TypeScript runtimes have fundamentally different behaviors. You must audit the following specific semantic divergences:
+   - **Order Non-Determinism**: Go maps have randomized iteration order by design, whereas JS preserves insertion order. Audit how directories or maps are returned.
+   - **Standard Library Defaults**: Go's default `http.Client` has an infinite timeout, risking locked processes. Audit all request timeouts and user-agent setups.
+   - **Path Resolution**: Shells and Node/Bun automatically resolve tilde shortcuts (`~` and `~/`), while Go's `os` and `filepath` packages treat `~` as a literal directory name. Audit all path parameters.
+   - **Symlink and Link Handling**: Check if hard links, symlinks, or broken links are processed identically, particularly inside virtual filesystems (`MemFS`) and archive extractors.
+   - **Subprocess Stability**: Audit what happens on early error paths. Do subprocesses (e.g. `xz` decompression pipelines) leak or hang as zombies?
+3. **No Shortcuts on Multi-Installers**: If a module lists multiple plugins (e.g. 15 package installers), you must perform the side-by-side comparison for all of them. Never assume that since one installer works, the others share identical characteristics.
 
 ---
 
@@ -30,11 +33,11 @@ To maximize thoroughness, performance, and depth of analysis, you **must not** c
 
 Segment the monorepo into the following five core functional modules:
 
-1.  **Core File System & Database State:** Go's `pkg/fs/`, `pkg/db/`, `pkg/registry/` vs TS's `packages/file-system/`, `packages/registry/`, `packages/registry-database/`.
-2.  **Orchestration, Shell Scripts & Sorters:** Go's `pkg/orchestrator/`, `pkg/shellinit/`, `cmd/dotfiles/generate.go` vs TS's `packages/generator-orchestrator/`, `packages/shell-init-generator/`, `packages/cli/src/generateCommand.ts`.
-3.  **Installer Registry & Package Managers:** Go's `pkg/installer/` vs TS's `packages/installer/`, `packages/installer-*/`.
-4.  **Networking, Extractors & Proxy:** Go's `pkg/downloader/`, `pkg/archive/`, `pkg/proxy/` vs TS's `packages/downloader/`, `packages/archive-extractor/`, `packages/http-proxy/`.
-5.  **Build Pipeline, Dashboard & Typings:** Go's `pkg/dashboard/`, `pkg/unwrap/`, `pkg/arch/` vs TS's `packages/build/`, `packages/dashboard/`, `packages/unwrap-value/`.
+1. **Core File System & Database State:** Go's `pkg/fs/`, `pkg/db/`, `pkg/registry/` vs TS's `packages/file-system/`, `packages/registry/`, `packages/registry-database/`.
+2. **Orchestration, Shell Scripts & Sorters:** Go's `pkg/orchestrator/`, `pkg/shellinit/`, `cmd/dotfiles/generate.go` vs TS's `packages/generator-orchestrator/`, `packages/shell-init-generator/`, `packages/cli/src/generateCommand.ts`.
+3. **Installer Registry & Package Managers:** Go's `pkg/installer/` vs TS's `packages/installer/`, `packages/installer-*/`.
+4. **Networking, Extractors & Proxy:** Go's `pkg/downloader/`, `pkg/archive/`, `pkg/proxy/` vs TS's `packages/downloader/`, `packages/archive-extractor/`, `packages/http-proxy/`.
+5. **Build Pipeline, Dashboard & Typings:** Go's `pkg/dashboard/`, `pkg/unwrap/`, `pkg/arch/` vs TS's `packages/build/`, `packages/dashboard/`, `packages/unwrap-value/`.
 
 ### Step 2: Dispatch Parallel Sub-Agents
 
@@ -42,17 +45,18 @@ Launch **five parallel sub-agents** concurrently (by making a single message con
 
 For each sub-agent, provide a highly specific, customized version of this audit directive. Instruct them to:
 
-- Deeply inspect their assigned directory segment in both languages.
-- Uncover any discrepancies in method signatures, parameter schemas, performance, security, and state handling.
+- Open and read the Go and corresponding TS source files side-by-side for every single file in their assigned directories.
+- Construct an exhaustive method-by-method comparison matrix mapping TS function signatures to their exact Go counterparts.
+- Detail any discrepancies in return types, default parameters, error handling, state tracking, and runtime semantic differences.
 - Return a detailed, markdown-formatted report of their findings.
 
 ### Step 3: Collect and Synthesize Reports
 
 Once all five parallel sub-agents have completed their tasks and returned their findings:
 
-1.  Carefully read and analyze each sub-agent's report.
-2.  Identify any cross-component contract misalignments or hidden dependencies.
-3.  Synthesize and consolidate their findings into a single, cohesive, and comprehensive master report.
+1. Carefully read and analyze each sub-agent's report.
+2. Identify any cross-component contract misalignments or hidden dependencies.
+3. Synthesize and consolidate their findings into a single, cohesive, and comprehensive master report.
 
 ### Step 4: Write the Final Master Report to `./gaps-report.md`
 
@@ -72,26 +76,24 @@ Ensure your sub-agents audit, and you aggregate, findings across the following c
 
 ### 2. Unified State and Database Parity
 
-- Execute and inspect the dual-run verification harness (`scripts/parity-harness/main.go`). Do Go and TS produce identical outputs, or are we masking differences (such as ignoring file sizes, timestamps, or execution logs)?
-- Examine how data is represented across language boundaries in the SQLite database (`registry.db`). Look for discrepancies in data types, serialization formats (like octal vs. decimal representations of file permissions), and raw query structures.
-- Audit transaction boundaries and connection pooling configurations. Does Go enforce atomic database transactions where TypeScript fails silently?
+- **State Logs & Verification:** Examine how data is represented across language boundaries in the SQLite database (`registry.db`). Look for discrepancies in data types, serialization formats (like octal vs. decimal representations of file permissions), and raw query structures.
+- **Transaction Safety**: Audit transaction boundaries and connection pooling configurations. Does Go enforce atomic database transactions where TypeScript fails silently?
 
 ### 3. File System Abstractions & Sandboxing
 
-- Examine both the in-memory (`MemFS`) and physical (`OSFS`) implementations. Are there methods present in TS's filesystem interfaces (like directory scanning, stat queries, symlinking) that are missing, stubbed, or bypassed in Go?
-- Audit sandboxing policies. Does `generate --dry-run` or test runs leak modifications (like writing real symlinks or creating directories) to the global host system, violating the local `.tmp` workspace boundary?
+- **Virtual vs Physical**: Examine both the in-memory (`MemFS`) and physical (`OSFS`) implementations. Are there methods present in TS's filesystem interfaces (like directory scanning, stat queries, symlinking) that are missing, stubbed, or bypassed in Go?
+- **Sandboxing Leaks**: Audit sandboxing policies. Does `generate --dry-run` or test runs leak modifications (like writing real symlinks or creating directories) to the global host system, violating the local `.tmp` workspace boundary?
 
 ### 4. CLI Orchestration & Shell Initializations
 
-- Compare the topological dependency sorters. Are there edge cases where Go and TS resolve ambiguous or missing dependencies differently?
-- Verify the lifecycle of "once-scripts". Do they actually delete themselves after execution, or do they leak on disk and execute on every terminal startup?
-- Check path and environment integrations. Look for shell path duplication, `$PATH` or `$fpath` pollution, and the injection of CLI wrapper functions.
-- Verify profile injection. How does Go update shell profiles compared to TS, and do their block markers conflict?
+- **Topological Sorters**: Compare the topological dependency sorters. Are there edge cases where Go and TS resolve ambiguous or missing dependencies differently?
+- **Once-Scripts Lifecycle**: Verify the lifecycle of "once-scripts". Do they actually delete themselves after execution, or do they leak on disk and execute on every terminal startup?
+- **Path and environment integrations**: Look for shell path duplication, `$PATH` or `$fpath` pollution, and the injection of CLI wrapper functions.
 
 ### 5. Installer Plugins and Dynamic Behaviors
 
-- Audit the 15 installer methods (brew, cargo, npm, manual, Curl-based, system packages, etc.). Are there custom parameters, platform overrides (`platformConfigs`), or package uninstallation pipelines implemented in one language but completely missing or stubbed in the other?
-- Examine privilege escalation. Does Go strictly validate that an installer plugin supports sudo before running elevated configurations?
+- **15 Installer Methods**: Audit every single installer method (brew, cargo, npm, manual, Curl-based, system packages, etc.). Are there custom parameters, platform overrides (`platformConfigs`), or package uninstallation pipelines implemented in one language but completely missing or stubbed in the other?
+- **Sudo Elevation**: Does Go strictly validate that an installer plugin supports sudo before running elevated configurations?
 
 ### 6. Test Suite Parity
 
@@ -120,7 +122,7 @@ Compile your findings and write them directly to `./gaps-report.md`. Your report
 
 ## 3. Structural & Architectural Gaps
 
-- Detail any discrepancies in interfaces, package boundaries, data representation, sandboxing leaks, or serialization formats.
+- Detail any discrepancies in interfaces, package boundaries, data representation, sandboxing leaks, or serialization formats. Include a detailed comparison table mapping Go methods/functions to TS predecessors.
 
 ## 4. Installer & Package Manager Gaps
 
