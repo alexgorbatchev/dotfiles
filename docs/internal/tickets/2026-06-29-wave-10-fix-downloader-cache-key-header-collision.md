@@ -12,6 +12,7 @@ ticket_status: open
 In the original TypeScript implementation, cache keys are calculated by taking both the remote URL and the **request headers** (such as authorization tokens or custom accept headers) into account. It hashes a stringified representation of the combined payload: `JSON.stringify({ url, options: { headers } })` to produce a unique, isolated cache key.
 
 In Go's downloader (`pkg/downloader/downloader.go`), the cache key is generated strictly using the SHA-256 hash of the URL string:
+
 ```go
 cacheKey := sha256.Sum256([]byte(url))
 ```

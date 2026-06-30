@@ -21,6 +21,7 @@ if err != nil || strings.HasPrefix(rel, "..") {
 However, the extractor **completely fails to perform any sanitization or validation on symbolic link targets** (`header.Linkname` in tar or the string payload in zip files).
 
 When extracting symlink entries:
+
 - In `extractTar` (lines 257-258):
   ```go
   _ = e.fsys.Remove(cleanTarget)
@@ -34,7 +35,7 @@ When extracting symlink entries:
 
 **The Security Vulnerability:** A malicious tarball or zip archive can contain a symbolic link entry named `malicious_dir` pointing to an absolute path (e.g. `/etc`) or an out-of-bounds relative path (e.g. `../../../../etc`). Go's extractor will create this symlink. If a subsequent entry in the same archive is named `malicious_dir/passwd`, the filesystem traversal will follow the previously written symlink and overwrite `/etc/passwd`. Because Go extracts archives inside the host user's security domain, this is an arbitrary remote-code-execution or file-overwrite security vector.
 
-*(Note: Although a Wave 9 ticket was previously created and closed, our security audit proves that the vulnerability remains active and was bypassed in the implementation).*
+_(Note: Although a Wave 9 ticket was previously created and closed, our security audit proves that the vulnerability remains active and was bypassed in the implementation)._
 
 ## Why this matters
 
@@ -57,5 +58,5 @@ The archive extractor enforces strict symbolic link validation. Before writing a
 - [ ] **Unit Testing**: Add a security-focused test case inside `pkg/archive/archive_test.go` that generates a mock tar/zip archive carrying:
   - A symlink pointing to `/tmp/escaped_test` (out-of-bounds absolute target).
   - A symlink pointing to `../../escaped_relative` (out-of-bounds relative target).
-  Assert that extracting this mock archive fails and rejects the out-of-bounds creation without creating any files outside the target directory.
+    Assert that extracting this mock archive fails and rejects the out-of-bounds creation without creating any files outside the target directory.
 - [ ] Run a separate review pass on this ticket using an independent review workflow or review subagent, and resolve all identified feedback/issues until a completely clean review is returned.

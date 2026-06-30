@@ -12,6 +12,7 @@ ticket_status: open
 The assembly of the `.dist/` folder—which packages the compiled Go binaries for multiple architectures, builds the Preact dashboard client, generates types, and packages everything as an npm library—is currently coordinated by legacy TypeScript code inside `packages/build/` running via Bun.
 
 Although `scripts/build/main.go` exists and compiles binaries, it lacks several key verification and compilation sub-steps necessary to safely remove Node/TS dependencies during compilation:
+
 1. **No Binary Size Limits Enforcement**: The Go pipeline doesn't check compiled sizes, which was previously enforced in TS to prevent bloated distributions (checking that Go binaries remain within `26000 KB`).
 2. **No TSD Type-Level Verification**: It does not run type-level assertion checks (`tsd`) on generated declarations, risking broken typing releases.
 3. **Mismatched Frontend Compilation**: It lacks native coordination to trigger Preact's production bundler and dynamically write static assets to `pkg/dashboard/dist` before Go's embedding compiler is invoked.

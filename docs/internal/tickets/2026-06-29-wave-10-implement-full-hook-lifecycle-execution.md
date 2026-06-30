@@ -10,6 +10,7 @@ ticket_status: open
 ## Problem
 
 The TypeScript installer implements a robust, multi-stage lifecycle hook system that triggers custom commands or JS/TS scripts inside the virtual context at crucial points during download, extraction, and installation:
+
 1. `before-install`
 2. `after-download`
 3. `after-extract`

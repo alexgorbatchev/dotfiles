@@ -9,7 +9,7 @@ ticket_status: open
 
 ## Problem
 
-In TypeScript, `platformConfigs` are a core cross-platform feature allowing developers to define platform-specific or architecture-specific overrides (e.g., custom parameters, files, packages, or symlinks on macOS vs. Linux) for a tool. 
+In TypeScript, `platformConfigs` are a core cross-platform feature allowing developers to define platform-specific or architecture-specific overrides (e.g., custom parameters, files, packages, or symlinks on macOS vs. Linux) for a tool.
 
 The TS runtime dynamically resolves and merges these overrides using `resolvePlatformConfig` at every entry point (inside `Installer.ts`, `GeneratorOrchestrator.ts`, and `ShimGenerator.ts` / `SymlinkGenerator.ts`) before passing the tool config to installer plugins.
 

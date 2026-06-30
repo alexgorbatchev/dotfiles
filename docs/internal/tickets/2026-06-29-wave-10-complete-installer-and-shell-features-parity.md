@@ -37,7 +37,7 @@ Complete functional parity is restored to all individual installer plugins, arch
 
 - [ ] **Implement Binary Tracking**: Update Go package installers (`brew`, `npm`, `apt`, etc.) to return full list of binaries, enabling shim generation and registry tracking.
 - [ ] **Add Shell-Init Hooks**: Add `GetShellInit` or a similar capability to the Go `Installer` interface to fetch shell init configurations for active and bypassed installations.
-- [ ] **Fix Tar Extraction Gaps**: 
+- [ ] **Fix Tar Extraction Gaps**:
   - Add plain `.tar` support to the top-level `Extract()` router.
   - Fix hard link extraction, writing real hard links rather than converting them to symlinks.
   - Close pipe readers (`pr`) under deferred/cleanup paths inside `extractTarXz` to prevent zombie `xz` processes and goroutine leaks.

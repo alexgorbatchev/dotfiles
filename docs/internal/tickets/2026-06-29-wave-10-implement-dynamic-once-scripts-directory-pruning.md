@@ -14,6 +14,7 @@ During consecutive `dotfiles generate` executions, the orchestrator is responsib
 In TypeScript, this pruning is dynamic: it scans the `.once` directory using filesystem read operations and deletes any file ending in a shell extension (`.zsh`, `.bash`, `.ps1`, `.sh`).
 
 In Go (`pkg/orchestrator/orchestrator.go` lines 768-775), the pruning is implemented as a hardcoded, speculative loop from `1` to `1000`:
+
 ```go
 for i := 1; i <= 1000; i++ {
     for _, ext := range []string{"zsh", "bash", "sh", "ps1"} {
@@ -26,6 +27,7 @@ for i := 1; i <= 1000; i++ {
 ```
 
 **The Core Gaps:**
+
 1. **Performance Overhead**: This loop issues up to 4,000 physical or virtual filesystem checks on every generation run, regardless of how many scripts actually exist.
 2. **Robustness Vulnerability**: If once-scripts exceed index 1000, use custom filenames, or omit the zero-padding formatting (`once-%03d`), Go will fail to find and delete them, leaking stale scripts that execute endlessly on startup.
 

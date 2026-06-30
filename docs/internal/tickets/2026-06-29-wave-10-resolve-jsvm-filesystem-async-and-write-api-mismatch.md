@@ -10,6 +10,7 @@ ticket_status: open
 ## Problem
 
 In the public TypeScript DSL declaration files (`dsl-types.ts`), the virtual filesystem interface (`IFileSystem`) passed to tool configurations and hooks specifies asynchronous, promise-returning methods:
+
 ```typescript
 export interface IFileSystem {
   readFile(path: string, encoding?: string): Promise<string>;

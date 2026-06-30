@@ -9,7 +9,7 @@ ticket_status: open
 
 ## Problem
 
-During the execution of unit tests, the virtual filesystem sandbox (`MemFS`) is intended to isolate all filesystem operations, protecting the developer's host machine. 
+During the execution of unit tests, the virtual filesystem sandbox (`MemFS`) is intended to isolate all filesystem operations, protecting the developer's host machine.
 
 However, due to a preflight check bypass in `cmd/dotfiles/bootstrap.go` or orchestrator setup, when unit tests run with `dryRun = false`, the system fails to initialize the virtual filesystem symlink evaluator correctly. Consequently, symlink and file creation operations bypass the memory sandbox and write physical symbolic links directly to the developer's real host machine, polluting local workspaces and folders.
 

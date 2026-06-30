@@ -10,6 +10,7 @@ ticket_status: open
 ## Problem
 
 In the public TypeScript DSL (`dsl-types.ts`), the environment metadata inside `systemInfo` is specified using strict type enums:
+
 ```typescript
 export interface ISystemInfoInternal {
   platform: Platform; // Enum: None=0, Linux=1, MacOS=2...
@@ -18,6 +19,7 @@ export interface ISystemInfoInternal {
 ```
 
 However, Goja's VM runtime context (`pkg/vm/loader-api.ts` / `bindings.go`) injects the system info utilizing flat string values derived from OS and Arch names (e.g., `"darwin"`, `"linux"`, `"amd64"`):
+
 ```typescript
 export interface ISystemInfo {
   os: string;

@@ -9,9 +9,10 @@ ticket_status: open
 
 ## Problem
 
-The React/Preact visual dashboard client (`packages/dashboard/src/client/`) connects to several REST API endpoints on the backend server. The `Tools.tsx` and `ToolDetail.tsx` pages expect `/api/tools` to return an array of detailed tool configuration and status objects matching the `IToolDetail` shape. 
+The React/Preact visual dashboard client (`packages/dashboard/src/client/`) connects to several REST API endpoints on the backend server. The `Tools.tsx` and `ToolDetail.tsx` pages expect `/api/tools` to return an array of detailed tool configuration and status objects matching the `IToolDetail` shape.
 
 The frontend processes these records using nested properties:
+
 ```typescript
 const installedCount = toolsList.filter((tool) => tool.runtime.status === "installed").length;
 ```
