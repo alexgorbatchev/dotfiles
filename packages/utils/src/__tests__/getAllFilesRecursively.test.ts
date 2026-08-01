@@ -88,4 +88,23 @@ describe("getAllFilesRecursively", () => {
 
     expect(files).toHaveLength(0);
   });
+
+  it("should handle directory with symlinks without traversing them", async () => {
+    await memFs.fs.ensureDir("/test/dir");
+    await memFs.fs.ensureDir("/test/target-dir");
+    await memFs.fs.writeFile("/test/dir/file1.txt", "content1");
+    await memFs.fs.writeFile("/test/target-dir/file2.txt", "content2");
+
+    // Create a symlink in /test/dir pointing to /test/target-dir
+    await memFs.fs.symlink("/test/target-dir", "/test/dir/link-to-target");
+
+    const files = await getAllFilesRecursively(memFs.fs, "/test/dir");
+
+    // It should find file1.txt and the symlink 'link-to-target', but NOT file2.txt inside the target dir
+    expect(files).toHaveLength(2);
+    expect(files).toContain("/test/dir/file1.txt");
+    expect(files).toContain("/test/dir/link-to-target");
+    expect(files).not.toContain("/test/target-dir/file2.txt");
+    expect(files).not.toContain("/test/dir/link-to-target/file2.txt");
+  });
 });

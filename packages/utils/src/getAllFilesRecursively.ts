@@ -19,7 +19,7 @@ export async function getAllFilesRecursively(fs: IFileSystem, dirPath: string, b
 
   for (const entry of entries) {
     const fullPath = path.join(dirPath, entry);
-    const stats = await fs.stat(fullPath);
+    const stats = await fs.lstat(fullPath);
 
     if (stats.isDirectory()) {
       // Always pass base to recursive calls, but preserve the "wants relative" intent
