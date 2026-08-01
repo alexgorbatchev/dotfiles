@@ -163,7 +163,7 @@ async function formatDirectoryEntry(
   const lines: string[] = [];
 
   try {
-    const stat = await fs.stat(entryPath);
+    const stat = await fs.lstat(entryPath);
     const displayName = stat.isDirectory() ? `${entry}/` : entry;
     lines.push(`${prefix}${connector}${displayName}`);
 
@@ -183,9 +183,13 @@ async function formatDirectoryEntry(
  * Check if a file is executable
  */
 async function isExecutable(fs: IFileSystem, filePath: string): Promise<boolean> {
-  const stats = await fs.stat(filePath);
-  const mode = stats.mode;
-  return (mode & 0o111) !== 0;
+  try {
+    const stats = await fs.stat(filePath);
+    const mode = stats.mode;
+    return (mode & 0o111) !== 0;
+  } catch {
+    return false;
+  }
 }
 
 /**
