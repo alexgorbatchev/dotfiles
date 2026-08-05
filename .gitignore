@@ -50,3 +50,4 @@ CLAUDE.md
 /packages/docs/public/install.sh
 /.worktrees
 /.workspaces
+/.codegraph
