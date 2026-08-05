@@ -153,7 +153,7 @@ describe("updateCommand - Logger Context Propagation", () => {
       ["INFO"],
       ["registerUpdateCommand"],
       [],
-      [messages.commandCheckingUpdatesFor(TOOL_NAME), messages.toolUpdated(TOOL_NAME, "1.0.0", "1.0.0")],
+      [messages.commandCheckingUpdatesFor(TOOL_NAME), messages.toolShimUpToDate(TOOL_NAME, "1.0.0")],
     );
   });
 });

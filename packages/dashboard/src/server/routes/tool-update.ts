@@ -1,3 +1,4 @@
+import type { IUpdateCheckContext } from "@dotfiles/core";
 import type { TsLogger } from "@dotfiles/logger";
 import type { IApiResponse, IUpdateToolResponse } from "../../shared/types";
 import { messages } from "../log-messages";
@@ -42,6 +43,25 @@ export async function updateTool(
     const existingInstallation = await services.toolInstallationRegistry.getToolInstallation(toolName);
     const oldVersion = existingInstallation?.version ?? "unknown";
 
+    if (plugin && plugin.supportsUpdateCheck?.() && plugin.checkUpdate) {
+      const updateCheckContext: IUpdateCheckContext = {
+        installedVersion: existingInstallation?.version,
+      };
+      const checkResult = await plugin.checkUpdate(toolName, toolConfig, updateCheckContext, subLogger);
+      if (checkResult && checkResult.success && checkResult.hasUpdate === false) {
+        const currentVersion = checkResult.latestVersion || oldVersion;
+        return {
+          success: true,
+          data: {
+            updated: false,
+            oldVersion: currentVersion,
+            newVersion: currentVersion,
+            supported: true,
+          },
+        };
+      }
+    }
+
     const installResult = await services.installer.install(toolName, toolConfig, { force: true });
 
     if (!installResult.success) {
@@ -59,12 +79,13 @@ export async function updateTool(
     const newVersion =
       "version" in installResult && typeof installResult.version === "string" ? installResult.version : "unknown";
 
+    const isUpdated = oldVersion !== newVersion;
     subLogger.info(messages.updateSucceeded(oldVersion, newVersion));
 
     return {
       success: true,
       data: {
-        updated: true,
+        updated: isUpdated,
         oldVersion,
         newVersion,
         supported: true,

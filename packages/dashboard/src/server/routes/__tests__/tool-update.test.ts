@@ -172,4 +172,41 @@ describe("updateTool", () => {
     expect(result.data?.oldVersion).toBe("0.54.0");
     expect(result.data?.newVersion).toBe("0.55.0");
   });
+
+  test("skips installation when checkUpdate reports no update is available", async () => {
+    ctx.toolConfigs["fzf"] = createMockToolConfigForTests({
+      name: "fzf",
+      version: "latest",
+      installationMethod: "github-release",
+      installParams: { repo: "junegunn/fzf" },
+      binaries: ["fzf"],
+    });
+
+    ctx.mockPluginRegistry.get.mockReturnValue({
+      supportsUpdate: () => true,
+      supportsUpdateCheck: () => true,
+      checkUpdate: async () => ({
+        success: true,
+        hasUpdate: false,
+        currentVersion: "0.55.0",
+        latestVersion: "0.55.0",
+      }),
+    });
+
+    await ctx.toolInstallationRegistry.recordToolInstallation({
+      toolName: "fzf",
+      version: "0.55.0",
+      installPath: "/home/user/.dotfiles/.generated/binaries/fzf/current",
+      binaryPaths: ["/home/user/.dotfiles/.generated/binaries/fzf/current/fzf"],
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await ctx.api.updateTool("fzf");
+
+    expect(result.success).toBe(true);
+    expect(result.data?.updated).toBe(false);
+    expect(result.data?.oldVersion).toBe("0.55.0");
+    expect(result.data?.newVersion).toBe("0.55.0");
+    expect(ctx.mockInstaller.install).not.toHaveBeenCalled();
+  });
 });

@@ -1,5 +1,5 @@
 import type { IConfigService } from "@dotfiles/config";
-import type { ISystemInfo, ProjectConfig, ToolConfig } from "@dotfiles/core";
+import type { ISystemInfo, IUpdateCheckContext, ProjectConfig, ToolConfig } from "@dotfiles/core";
 import type { IResolvedFileSystem } from "@dotfiles/file-system";
 import type { TsLogger } from "@dotfiles/logger";
 import { exitCli, ExitCode } from "@dotfiles/utils";
@@ -89,6 +89,19 @@ async function handleToolUpdate(
   const existingInstallation = await toolInstallationRegistry.getToolInstallation(toolName);
   const oldVersion = existingInstallation?.version || "unknown";
 
+  if (plugin && plugin.supportsUpdateCheck?.() && plugin.checkUpdate) {
+    const updateCheckContext: IUpdateCheckContext = {
+      installedVersion: existingInstallation?.version,
+    };
+    const updateCheckResult = await plugin.checkUpdate(toolName, toolConfig, updateCheckContext, logger);
+
+    if (updateCheckResult && updateCheckResult.success && updateCheckResult.hasUpdate === false) {
+      const versionToReport = updateCheckResult.latestVersion || oldVersion;
+      logger.info(messages.toolShimUpToDate(toolName, versionToReport));
+      return;
+    }
+  }
+
   const installResult = await installer.install(toolName, toolConfig, { force: true, shimMode });
 
   if (!installResult.success) {
@@ -109,7 +122,11 @@ async function handleToolUpdate(
       logger.info(messages.toolShimUpdateSuccess(toolName, resolvedNewVersion));
     }
   } else {
-    logger.info(messages.toolUpdated(toolName, oldVersion, resolvedNewVersion));
+    if (isUpToDate) {
+      logger.info(messages.toolShimUpToDate(toolName, resolvedNewVersion));
+    } else {
+      logger.info(messages.toolUpdated(toolName, oldVersion, resolvedNewVersion));
+    }
   }
 }
 

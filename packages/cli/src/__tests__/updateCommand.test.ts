@@ -150,10 +150,47 @@ describe("updateCommand", () => {
       ["INFO"],
       ["registerUpdateCommand"],
       [],
-      [messages.commandCheckingUpdatesFor("fzf"), messages.toolUpdated("fzf", "0.40.0", "0.40.0")],
+      [messages.commandCheckingUpdatesFor("fzf"), messages.toolShimUpToDate("fzf", "0.40.0")],
     );
 
     expect(mockInstaller.install).toHaveBeenCalled();
+  });
+
+  test("tool is up-to-date according to checkUpdate (skips installation)", async () => {
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
+
+    const installationRecord: IToolInstallationRecord = {
+      id: 1,
+      toolName: "fzf",
+      version: "0.40.0",
+      installPath: "/fake/install",
+      timestamp: "2025-01-01-00-00-00",
+      binaryPaths: ["/fake/install/fzf"],
+      installedAt: new Date(),
+    };
+    mockToolInstallationRegistry.getToolInstallation.mockResolvedValue(installationRecord);
+
+    mockPluginRegistry.get!.mockReturnValue({
+      supportsUpdate: () => true,
+      supportsUpdateCheck: () => true,
+      checkUpdate: mock(async () => ({
+        success: true,
+        hasUpdate: false,
+        currentVersion: "0.40.0",
+        latestVersion: "0.40.0",
+      })),
+    } as unknown as IInstallerPlugin);
+
+    await program.parseAsync(["update", "fzf"], { from: "user" });
+
+    logger.expect(
+      ["INFO"],
+      ["registerUpdateCommand"],
+      [],
+      [messages.commandCheckingUpdatesFor("fzf"), messages.toolShimUpToDate("fzf", "0.40.0")],
+    );
+
+    expect(mockInstaller.install).not.toHaveBeenCalled();
   });
 
   test("update available, successful installation", async () => {
