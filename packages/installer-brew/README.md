@@ -30,6 +30,10 @@ The `install('brew', params)` function accepts the following parameters:
 - **formula** (optional): Homebrew formula name. Defaults to the tool name if not specified.
 - **cask** (optional): Set to `true` to install as a Homebrew Cask. Default: `false`
 - **tap** (optional): Tap or array of taps to add before installation (e.g., `'user/tap'` or `['tap1', 'tap2']`)
+- **trust** (optional): Tap(s) or formula(s) to explicitly trust before tapping/installing (`brew trust <target>`)
+- **args** (optional): Additional CLI flags passed to `brew install` (e.g. `['--HEAD']`, `['--build-from-source']`)
+- **service** (optional): Automatically start background daemon after install (`true`, `'start'`, or `'run'`)
+- **link** (optional): Force symlinking keg-only or conflicting formulas (`true` or `{ force?: boolean, overwrite?: boolean }`)
 - **env** (optional): Environment variables for the installation process
 - **hooks** (optional): Lifecycle hooks (`'before-install'`, `'after-install'`)
 

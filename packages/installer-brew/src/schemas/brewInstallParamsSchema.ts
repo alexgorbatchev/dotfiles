@@ -19,6 +19,32 @@ export const brewInstallParamsSchema = baseInstallParamsSchema.extend({
    * Example: `homebrew/core` or `['user/custom-tap', 'another/tap']`.
    */
   tap: z.union([z.string(), z.array(z.string())]).optional(),
+  /**
+   * Tap(s) or formula(s) to explicitly trust before tapping/installing (`brew trust <target>`).
+   * Required for Homebrew 6.0+ non-official third-party taps.
+   */
+  trust: z.union([z.string(), z.array(z.string())]).optional(),
+  /**
+   * Additional CLI flags to pass directly to `brew install`
+   * (e.g., `['--HEAD']`, `['--build-from-source']`, `['--no-quarantine']`).
+   */
+  args: z.array(z.string()).optional(),
+  /**
+   * Manage Homebrew background service after installation (`brew services start|run <formula>`).
+   */
+  service: z.union([z.boolean(), z.enum(["start", "run"])]).optional(),
+  /**
+   * Force symlinking keg-only or conflicting formulas (`brew link [--overwrite] [--force] <formula>`).
+   */
+  link: z
+    .union([
+      z.boolean(),
+      z.object({
+        force: z.boolean().optional(),
+        overwrite: z.boolean().optional(),
+      }),
+    ])
+    .optional(),
   /** Arguments to pass to the binary to check the version (e.g. ['--version']). */
   versionArgs: z.array(z.string()).optional(),
   /** Regex pattern or source string used to extract the version from output. */
@@ -40,6 +66,14 @@ export interface IBrewInstallParams extends IBaseInstallParams {
   cask?: boolean;
   /** An optional Homebrew tap or an array of taps. */
   tap?: string | string[];
+  /** Tap(s) or formula(s) to explicitly trust before tapping/installing (`brew trust <target>`). */
+  trust?: string | string[];
+  /** Additional CLI flags to pass directly to `brew install`. */
+  args?: string[];
+  /** Manage Homebrew background service after installation (`brew services start|run <formula>`). */
+  service?: boolean | "start" | "run";
+  /** Force symlinking keg-only or conflicting formulas (`brew link [--overwrite] [--force] <formula>`). */
+  link?: boolean | { force?: boolean; overwrite?: boolean };
   /** Arguments to pass to the binary to check the version. */
   versionArgs?: string[];
   /** Regex pattern or source string used to extract the version from output. */

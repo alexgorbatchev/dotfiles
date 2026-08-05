@@ -9,6 +9,10 @@ export interface IBrewInstallMetadata extends Partial<IToolInstallationDetails> 
   formula: string;
   isCask: boolean;
   tap?: string | string[];
+  trust?: string | string[];
+  args?: string[];
+  service?: boolean | "start" | "run";
+  link?: boolean | { force?: boolean; overwrite?: boolean };
 }
 
 /**

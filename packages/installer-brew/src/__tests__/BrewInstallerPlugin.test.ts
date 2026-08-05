@@ -23,10 +23,26 @@ describe("BrewInstallerPlugin", () => {
     expect(plugin.toolConfigSchema).toBeDefined();
   });
 
-  it("should validate correct params", () => {
+  it("should validate correct params with trust, args, service, and link", () => {
     const validParams = {
-      formula: "test-tool",
+      formula: "deepgram-cli",
       cask: false,
+      trust: ["deepgram/tap"],
+      args: ["--build-from-source"],
+      service: "start",
+      link: { overwrite: true, force: true },
+    };
+
+    const result = plugin.paramsSchema.safeParse(validParams);
+    expect(result.success).toBe(true);
+  });
+
+  it("should validate correct params with single string trust and boolean service/link", () => {
+    const validParams = {
+      formula: "redis",
+      trust: "redis/tap",
+      service: true,
+      link: true,
     };
 
     const result = plugin.paramsSchema.safeParse(validParams);

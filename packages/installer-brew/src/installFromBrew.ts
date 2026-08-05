@@ -1,4 +1,4 @@
-import { createShell, type IInstallContext, type IInstallOptions, type IShell } from "@dotfiles/core";
+import { createLoggingShell, type IInstallContext, type IInstallOptions, type IShell } from "@dotfiles/core";
 import { getBinaryPaths, withInstallErrorHandling } from "@dotfiles/installer";
 import type { TsLogger } from "@dotfiles/logger";
 import { detectVersionViaCli, normalizeVersion } from "@dotfiles/utils";
@@ -18,6 +18,8 @@ const BrewInfoSchema = z.object({
 
 type BrewInfo = z.infer<typeof BrewInfoSchema>;
 type BrewTapInput = string | string[] | undefined;
+type BrewLinkInput = boolean | { force?: boolean; overwrite?: boolean } | undefined;
+type BrewServiceInput = boolean | "start" | "run" | undefined;
 
 /**
  * Installs a tool using Homebrew.
@@ -59,10 +61,26 @@ export async function installFromBrew(
   const formula = params.formula || toolName;
   const isCask = params.cask || false;
   const tap = params.tap;
+  const trust = params.trust;
+  const args = params.args;
+  const link = params.link;
+  const service = params.service;
 
   const operation = async (): Promise<BrewInstallResult> => {
-    const loggingShell = installShell ?? createShell({ logger, skipCommandLog: true });
-    await executeBrewInstall(formula, isCask, tap, options?.force, logger, shellExecutor, loggingShell);
+    const loggingShell = installShell ?? createLoggingShell(shellExecutor, logger);
+    await executeBrewInstall(
+      formula,
+      isCask,
+      tap,
+      trust,
+      args,
+      link,
+      service,
+      options?.force,
+      logger,
+      shellExecutor,
+      loggingShell,
+    );
 
     const formulaPrefix: string = await getBrewPrefix(formula, logger, shellExecutor);
     const binaryPaths = getBinaryPaths(toolConfig.binaries, `${formulaPrefix}/bin`);
@@ -86,6 +104,10 @@ export async function installFromBrew(
       formula,
       isCask,
       tap,
+      trust,
+      args,
+      service,
+      link,
     };
 
     const result: BrewInstallResult = {
@@ -161,15 +183,21 @@ async function getBrewPrefix(formula: string, logger: TsLogger, shell: IShell): 
 /**
  * Executes the Homebrew install command for a formula or cask.
  *
- * This function handles tapping custom repositories if needed, then runs the
- * appropriate `brew install` command with optional --force flag.
+ * This function handles trusting repositories, tapping custom repositories,
+ * running `brew install` with custom args, symlinking keg-only formulas,
+ * and managing background services.
  *
  * @param formula - The name of the formula or cask to install.
  * @param isCask - Whether this is a cask installation.
  * @param tap - Optional tap repository or array of repositories to add.
+ * @param trust - Optional tap repository or array of repositories to trust.
+ * @param args - Optional CLI flags to pass to `brew install`.
+ * @param link - Optional symlinking instructions for keg-only formulas.
+ * @param service - Optional service action for Homebrew services (`start` or `run`).
  * @param force - Whether to force reinstallation.
  * @param logger - The logger instance for logging operations.
  * @param shell - The shell executor.
+ * @param installShell - The logging shell executor for install commands.
  * @returns A promise that resolves when installation is complete.
  * @throws {Error} If the installation fails.
  */
@@ -177,11 +205,23 @@ async function executeBrewInstall(
   formula: string,
   isCask: boolean,
   tap: BrewTapInput,
+  trust: BrewTapInput,
+  args: string[] | undefined,
+  link: BrewLinkInput,
+  service: BrewServiceInput,
   force: boolean | undefined,
   logger: TsLogger,
   shell: IShell,
   installShell: IShell,
 ): Promise<void> {
+  if (trust) {
+    const trustTargets = Array.isArray(trust) ? trust : [trust];
+    for (const t of trustTargets) {
+      logger.debug(messages.executingCommand(`brew trust ${t}`));
+      await shell`brew trust ${t}`.quiet();
+    }
+  }
+
   if (tap) {
     const taps = Array.isArray(tap) ? tap : [tap];
     for (const t of taps) {
@@ -197,8 +237,33 @@ async function executeBrewInstall(
   if (force) {
     installArgs.push("--force");
   }
+  if (args && args.length > 0) {
+    installArgs.push(...args);
+  }
   installArgs.push(formula);
 
   logger.info(messages.executingCommand(`brew ${installArgs.join(" ")}`));
   await installShell`brew ${installArgs}`;
+
+  if (link) {
+    const linkArgs = ["link"];
+    if (typeof link === "object") {
+      if (link.overwrite) {
+        linkArgs.push("--overwrite");
+      }
+      if (link.force) {
+        linkArgs.push("--force");
+      }
+    }
+    linkArgs.push(formula);
+    logger.info(messages.executingCommand(`brew ${linkArgs.join(" ")}`));
+    await installShell`brew ${linkArgs}`;
+  }
+
+  if (service) {
+    const action = typeof service === "string" ? service : "start";
+    const serviceArgs = ["services", action, formula];
+    logger.info(messages.executingCommand(`brew ${serviceArgs.join(" ")}`));
+    await installShell`brew ${serviceArgs}`;
+  }
 }
