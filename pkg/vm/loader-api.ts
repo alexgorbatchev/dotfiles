@@ -3,6 +3,7 @@ import type {
   Architecture as DslArchitecture,
   ConfigFactory,
   AsyncConfigureTool,
+  IFileSystem,
 } from "./dsl-types";
 
 export type Platform = DslPlatform;
@@ -49,11 +50,7 @@ export interface IToolConfigContext {
     error(msg: string): void;
     debug(msg: string): void;
   };
-  fs: {
-    exists(p: string): boolean;
-    readDir(p: string): string[];
-    readFile(p: string): string;
-  };
+  fs: IFileSystem;
   $: (strings: ShellStrings, ...values: unknown[]) => Promise<string>;
 }
 
@@ -120,6 +117,9 @@ declare global {
   function fsExists(path: string): boolean;
   function fsReadDir(path: string): string[];
   function fsReadFile(path: string): string;
+  function fsWriteFile(path: string, content: string): void;
+  function fsMkdir(path: string): void;
+  function fsRm(path: string): void;
 }
 
 export type PlatformCallback = (install: (method: string, params?: unknown) => IToolBuilder) => void;
@@ -426,13 +426,25 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     },
     fs: {
       exists(p: string) {
-        return fsExists(p);
+        return Promise.resolve(fsExists(p));
       },
-      readDir(p: string) {
-        return fsReadDir(p);
+      readdir(p: string) {
+        return Promise.resolve(fsReadDir(p));
       },
-      readFile(p: string) {
-        return fsReadFile(p);
+      readFile(p: string, _encoding?: string) {
+        return Promise.resolve(fsReadFile(p));
+      },
+      writeFile(p: string, content: string, _encoding?: string) {
+        fsWriteFile(p, content);
+        return Promise.resolve();
+      },
+      mkdir(p: string) {
+        fsMkdir(p);
+        return Promise.resolve();
+      },
+      rm(p: string) {
+        fsRm(p);
+        return Promise.resolve();
       },
     },
     $: (strings: ShellStrings, ...values: unknown[]) => {

@@ -77,6 +77,21 @@ func RegisterContextBindings(vm *goja.Runtime, log *logger.Logger, fsys fs.FS) e
 		}
 		return ""
 	})
+	_ = vm.Set("fsWriteFile", func(path string, content string) {
+		if fsys != nil {
+			_ = fsys.WriteFile(path, []byte(content), 0644)
+		}
+	})
+	_ = vm.Set("fsMkdir", func(path string) {
+		if fsys != nil {
+			_ = fsys.MkdirAll(path, 0755)
+		}
+	})
+	_ = vm.Set("fsRm", func(path string) {
+		if fsys != nil {
+			_ = fsys.RemoveAll(path)
+		}
+	})
 
 	return nil
 }

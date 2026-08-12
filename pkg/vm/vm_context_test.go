@@ -28,12 +28,12 @@ func TestVMContextAndFSBindings(t *testing.T) {
 		// Define a mock .tool.ts config that uses ctx.log, ctx.systemInfo, and ctx.fs
 		script := `
 		import { defineTool } from "@dotfiles/cli";
-		export default defineTool((install, ctx) => {
+		export default defineTool(async (install, ctx) => {
 			ctx.log.info("evaluated " + ctx.toolName);
 			ctx.log.warn("platform: " + ctx.systemInfo.os + "-" + ctx.systemInfo.arch);
 			
-			if (ctx.fs.exists("/sandbox/tools/test.txt")) {
-				ctx.log.debug("content: " + ctx.fs.readFile("/sandbox/tools/test.txt"));
+			if (await ctx.fs.exists("/sandbox/tools/test.txt")) {
+				ctx.log.debug("content: " + (await ctx.fs.readFile("/sandbox/tools/test.txt")));
 			}
 			
 			return install("manual");
