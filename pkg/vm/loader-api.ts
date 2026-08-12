@@ -3,11 +3,15 @@ import type {
   Architecture as DslArchitecture,
   ConfigFactory,
   AsyncConfigureTool,
-  IFileSystem,
+  IPathModule,
+  ISystemInfo,
+  ShellStrings,
 } from "./dsl-types";
 
 export type Platform = DslPlatform;
 export type Architecture = DslArchitecture;
+
+type DependsOnFn = (dep: unknown) => unknown;
 
 export const Platform = {
   None: 0,
@@ -24,79 +28,6 @@ export const Architecture = {
   Arm64: 2,
   All: 3,
 } as const;
-
-export interface ISystemInfo {
-  os: string;
-  arch: string;
-  libc: string;
-}
-
-export interface IConfigContext {
-  configFileDir: string;
-  systemInfo: ISystemInfo;
-}
-
-export type ShellStrings = TemplateStringsArray | string;
-
-export interface IToolConfigContext {
-  toolName: string;
-  configFileDir: string;
-  currentDir: string;
-  stagingDir: string;
-  systemInfo: ISystemInfo;
-  log: {
-    info(msg: string): void;
-    warn(msg: string): void;
-    error(msg: string): void;
-    debug(msg: string): void;
-  };
-  fs: IFileSystem;
-  $: (strings: ShellStrings, ...values: unknown[]) => Promise<string>;
-}
-
-export interface IShellConfigs {
-  zsh?: unknown;
-  bash?: unknown;
-  powershell?: unknown;
-}
-
-export interface IToolBuilder {
-  name: string;
-  installationMethod: string;
-  installParams: Record<string, unknown>;
-  binaries: unknown[];
-  dependencies: unknown[];
-  symlinks: unknown[];
-  copies: unknown[];
-  shellConfigs: Record<string, unknown>;
-  configFilePath?: string;
-  _version?: string;
-  [key: string]: unknown;
-
-  bin(name: unknown, pattern?: unknown): IToolBuilder;
-  version(v: unknown): IToolBuilder;
-  sudo(): IToolBuilder;
-  disable(): IToolBuilder;
-  hostname(pattern: unknown): IToolBuilder;
-  updateCheck(config: unknown): IToolBuilder;
-  copy(src: unknown, dst: unknown): IToolBuilder;
-  dependsOn(dep: unknown): IToolBuilder;
-  depends(dep: unknown): IToolBuilder;
-  symlink(src: unknown, dst: unknown): IToolBuilder;
-  hook(name: string, cb: unknown): IToolBuilder;
-  zsh(cb: ShellCallback): IToolBuilder;
-  bash(cb: ShellCallback): IToolBuilder;
-  powershell(cb: ShellCallback): IToolBuilder;
-  platform(plat: unknown, cb: PlatformCallback): IToolBuilder;
-  arch(arc: unknown, cb: ArchCallback): IToolBuilder;
-}
-
-export interface IPathModule {
-  isAbsolute(p: string): boolean;
-  join(...args: string[]): string;
-  dirname(p: string): string;
-  basename(p: string): string;
-}
 
 // Declare the Go-bound environment functions in global scope for TypeScript compilation
 declare global {
@@ -122,10 +53,6 @@ declare global {
   function fsRm(path: string): void;
 }
 
-export type PlatformCallback = (install: (method: string, params?: unknown) => IToolBuilder) => void;
-export type ArchCallback = (install: (method: string, params?: unknown) => IToolBuilder) => void;
-export type ShellCallback = (shell: Record<string, unknown>) => void;
-
 type ConfigRunner = (ctx: unknown) => unknown;
 type ToolRunner = (install: unknown, ctx: unknown) => unknown;
 
@@ -145,7 +72,7 @@ export function defineConfig(callback: ConfigFactory): unknown {
 }
 
 export function defineTool(callback: AsyncConfigureTool): unknown {
-  const builder: IToolBuilder = {
+  const builder: Record<string, unknown> = {
     name: "",
     installationMethod: "",
     installParams: {} as Record<string, unknown>,
@@ -156,68 +83,68 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     shellConfigs: {} as Record<string, unknown>,
 
     bin(name: unknown, pattern: unknown) {
-      const b = this.binaries as unknown[];
+      const b = (this["binaries"] || []) as unknown[];
       if (pattern !== undefined) {
         b.push({ name: name, pattern: pattern });
       } else if (Array.isArray(name)) {
-        this.binaries = name;
+        this["binaries"] = name;
       } else {
-        this.binaries = Array.prototype.slice.call(arguments);
+        this["binaries"] = Array.prototype.slice.call(arguments);
       }
       return this;
     },
 
     version(v: unknown) {
-      (this as Record<string, unknown>)["_version"] = v;
+      this["_version"] = v;
       return this;
     },
 
     sudo() {
-      (this as Record<string, unknown>)["sudo"] = true;
+      this["sudo"] = true;
       return this;
     },
 
     disable() {
-      (this as Record<string, unknown>)["disabled"] = true;
+      this["disabled"] = true;
       return this;
     },
 
     hostname(pattern: unknown) {
-      (this as Record<string, unknown>)["hostname"] = pattern;
+      this["hostname"] = pattern;
       return this;
     },
 
     updateCheck(config: unknown) {
-      (this as Record<string, unknown>)["updateCheck"] = config;
+      this["updateCheck"] = config;
       return this;
     },
 
     copy(src: unknown, dst: unknown) {
-      const c = this.copies as unknown[];
+      const c = (this["copies"] || []) as unknown[];
       c.push({ source: src, target: dst });
-      this.copies = c;
+      this["copies"] = c;
       return this;
     },
 
     dependsOn(dep: unknown) {
-      let d = this.dependencies as unknown[];
+      let d = (this["dependencies"] || []) as unknown[];
       if (Array.isArray(dep)) {
         d = d.concat(dep);
       } else {
         d.push(dep);
       }
-      this.dependencies = d;
+      this["dependencies"] = d;
       return this;
     },
 
     depends(dep: unknown) {
-      return this.dependsOn(dep);
+      return (this["dependsOn"] as DependsOnFn)(dep);
     },
 
     symlink(src: unknown, dst: unknown) {
-      const s = this.symlinks as unknown[];
+      const s = (this["symlinks"] || []) as unknown[];
       s.push({ source: src, target: dst });
-      this.symlinks = s;
+      this["symlinks"] = s;
       return this;
     },
 
@@ -242,44 +169,44 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
 
         const hookCtx = {
           $: mockShell,
-          toolName: (this.name as string) || globalThis.currentToolName || "",
+          toolName: (this["name"] as string) || globalThis.currentToolName || "",
         };
 
         cb(hookCtx);
 
         if (commands.length > 0) {
-          const ip = this.installParams as Record<string, unknown>;
+          const ip = (this["installParams"] || {}) as Record<string, unknown>;
           const hooks = (ip["hooks"] || {}) as Record<string, unknown>;
           hooks[name] = commands;
           ip["hooks"] = hooks;
-          this.installParams = ip;
+          this["installParams"] = ip;
         }
       }
       return this;
     },
 
-    zsh(cb: ShellCallback) {
-      const sc = this.shellConfigs as Record<string, unknown>;
+    zsh(cb: Function) {
+      const sc = (this["shellConfigs"] || {}) as Record<string, unknown>;
       sc["zsh"] ??= { env: {}, aliases: {}, scripts: [], completions: null, functions: {} };
       cb(createShellBuilder(sc["zsh"] as Record<string, unknown>, "zsh"));
       return this;
     },
 
-    bash(cb: ShellCallback) {
-      const sc = this.shellConfigs as Record<string, unknown>;
+    bash(cb: Function) {
+      const sc = (this["shellConfigs"] || {}) as Record<string, unknown>;
       sc["bash"] ??= { env: {}, aliases: {}, scripts: [], completions: null, functions: {} };
       cb(createShellBuilder(sc["bash"] as Record<string, unknown>, "bash"));
       return this;
     },
 
-    powershell(cb: ShellCallback) {
-      const sc = this.shellConfigs as Record<string, unknown>;
+    powershell(cb: Function) {
+      const sc = (this["shellConfigs"] || {}) as Record<string, unknown>;
       sc["powershell"] ??= { env: {}, aliases: {}, scripts: [], completions: null, functions: {} };
       cb(createShellBuilder(sc["powershell"] as Record<string, unknown>, "powershell"));
       return this;
     },
 
-    platform(plat: unknown, cb: PlatformCallback) {
+    platform(plat: unknown, cb: Function) {
       const currentOS = getOS();
       let matches = false;
       if (plat === Platform.All) matches = true;
@@ -294,7 +221,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       return this;
     },
 
-    arch(arc: unknown, cb: ArchCallback) {
+    arch(arc: unknown, cb: Function) {
       const currentArch = getArch();
       let matches = false;
       if (arc === Architecture.All) matches = true;
@@ -334,9 +261,9 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       aliases(map: Record<string, string>) {
         return this.alias(map);
       },
-      script(type: string, val: string) {
-        if (arguments.length === 1) {
-          shScripts.push({ kind: "always", value: arguments[0] });
+      script(type: string, val?: string) {
+        if (val === undefined) {
+          shScripts.push({ kind: "always", value: type });
         } else {
           shScripts.push({ kind: type, value: val });
         }
@@ -385,12 +312,12 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     };
   }
 
-  function install(method: string, params?: unknown): IToolBuilder {
+  function install(method: string, params?: unknown): unknown {
     if (method) {
-      builder.installationMethod = method;
+      builder["installationMethod"] = method;
     }
     if (params) {
-      builder.installParams = params as Record<string, unknown>;
+      builder["installParams"] = params as Record<string, unknown>;
     }
     return builder;
   }
@@ -400,7 +327,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
   const toolPath = globalThis.currentToolPath || "";
   const bDir = globalThis.binariesDir || "";
   const currentDir = bDir ? bDir + "/" + toolName + "/current" : globalThis.path.dirname(toolPath);
-  const toolCtx: IToolConfigContext = {
+  const toolCtx = {
     toolName: toolName,
     configFileDir: globalThis.configFileDir || "",
     currentDir: currentDir,
@@ -466,18 +393,19 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
   if (typeof callback === "function") {
     const fn = callback as ToolRunner;
     const res = fn(install, toolCtx);
-    if (builder.installParams && typeof builder.installParams === "object") {
-      if (typeof builder.installParams["args"] === "function") {
-        builder.installParams["args"] = (builder.installParams["args"] as Function)(toolCtx);
+    if (builder["installParams"] && typeof builder["installParams"] === "object") {
+      const ip = builder["installParams"] as Record<string, unknown>;
+      if (typeof ip["args"] === "function") {
+        ip["args"] = (ip["args"] as Function)(toolCtx);
       }
-      if (typeof builder.installParams["env"] === "function") {
-        builder.installParams["env"] = (builder.installParams["env"] as Function)(toolCtx);
+      if (typeof ip["env"] === "function") {
+        ip["env"] = (ip["env"] as Function)(toolCtx);
       }
     }
     if (res && (res as Record<string, unknown>)["installationMethod"]) {
       (res as Record<string, unknown>)["version"] = (res as Record<string, unknown>)["_version"] || "latest";
       delete (res as Record<string, unknown>)["_version"];
-      return res as IToolBuilder;
+      return res;
     }
   }
   (builder as unknown as Record<string, unknown>)["version"] =

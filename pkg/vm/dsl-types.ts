@@ -5,6 +5,9 @@ export type Resolvable<TParams, TReturn> =
 
 /**
  * Interface for sandboxed file system operations.
+ *
+ * All methods execute synchronously within the Goja VM runtime, but return
+ * Promises to preserve standard async/await compatibility in TypeScript.
  */
 export interface IFileSystem {
   /**
@@ -249,6 +252,25 @@ export type KnownBinName = [KnownBinNameKeys] extends [never] ? string : KnownBi
 
 export type ShellPathGuard<T> = "PATH" extends keyof T ? never : T;
 
+export type ShellStrings = TemplateStringsArray | string;
+
+export interface IPathModule {
+  isAbsolute(p: string): boolean;
+  join(...args: string[]): string;
+  dirname(p: string): string;
+  basename(p: string): string;
+}
+
+export interface ISystemInfo {
+  os: string;
+  arch: string;
+  libc: string;
+}
+
+export type ShellCallback = (shell: IShellConfigurator) => void;
+export type PlatformCallback = (install: IPlatformInstallFunction) => void;
+export type ArchCallback = (install: IPlatformInstallFunction) => void;
+
 /**
  * Fluent configurator used inside shell callbacks (zsh, bash, powershell) to specify environment scripts.
  */
@@ -366,23 +388,23 @@ export interface IToolConfigBuilder {
   /**
    * Configures zsh specific settings.
    */
-  zsh(cb: (shell: IShellConfigurator) => void): this;
+  zsh(cb: ShellCallback): this;
   /**
    * Configures bash specific settings.
    */
-  bash(cb: (shell: IShellConfigurator) => void): this;
+  bash(cb: ShellCallback): this;
   /**
    * Configures powershell specific settings.
    */
-  powershell(cb: (shell: IShellConfigurator) => void): this;
+  powershell(cb: ShellCallback): this;
   /**
    * Configures platform specific installer methods.
    */
-  platform(plat: Platform, cb: (install: IPlatformInstallFunction) => void): this;
+  platform(plat: Platform, cb: PlatformCallback): this;
   /**
    * Configures architecture specific installer methods.
    */
-  arch(arc: Architecture, cb: (install: IPlatformInstallFunction) => void): this;
+  arch(arc: Architecture, cb: ArchCallback): this;
   /**
    * Registers custom lifecycle hooks.
    */
@@ -440,15 +462,15 @@ export interface IPlatformConfigBuilder {
   /**
    * Configures Zsh shell initialization on this platform.
    */
-  zsh(cb: (shell: IShellConfigurator) => void): this;
+  zsh(cb: ShellCallback): this;
   /**
    * Configures Bash shell initialization on this platform.
    */
-  bash(cb: (shell: IShellConfigurator) => void): this;
+  bash(cb: ShellCallback): this;
   /**
    * Configures PowerShell initialization on this platform.
    */
-  powershell(cb: (shell: IShellConfigurator) => void): this;
+  powershell(cb: ShellCallback): this;
   /**
    * Registers an async hook handler on this platform.
    */
