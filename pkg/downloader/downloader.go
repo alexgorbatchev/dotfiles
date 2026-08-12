@@ -38,7 +38,9 @@ type Downloader struct {
 // NewDownloader creates a new Downloader using the provided filesystem and HTTP client.
 func NewDownloader(fsys fs.FS, client *http.Client) *Downloader {
 	if client == nil {
-		client = &http.Client{}
+		client = &http.Client{
+			Timeout: 30 * time.Second,
+		}
 	}
 	return &Downloader{
 		fsys:   fsys,

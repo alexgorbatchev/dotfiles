@@ -413,6 +413,19 @@ func TestDownloader_OptionsAndRetries(t *testing.T) {
 	})
 }
 
+func TestNewDownloader_DefaultTimeout(t *testing.T) {
+	memFS := fs.NewMemFS()
+	d := NewDownloader(memFS, nil)
+
+	if d.client == nil {
+		t.Fatal("expected non-nil HTTP client")
+	}
+	expectedTimeout := 30 * time.Second
+	if d.client.Timeout != expectedTimeout {
+		t.Errorf("expected default timeout %v, got %v", expectedTimeout, d.client.Timeout)
+	}
+}
+
 func getCachePath(cacheDir string, url string) string {
 	hash := sha256.Sum256([]byte(url))
 	return filepath.Join(cacheDir, hex.EncodeToString(hash[:]))
