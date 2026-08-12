@@ -57,3 +57,4 @@ pkg/vm/dist/
 
 # backups from typescriptify
 *.backup
+.codegraph
