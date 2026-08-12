@@ -13,6 +13,71 @@ import (
 
 var skillDir string
 
+func parseSkillDescription(content string) string {
+	lines := strings.Split(content, "\n")
+	if len(lines) == 0 {
+		return "No description"
+	}
+
+	var frontmatterLines []string
+	var bodyLines []string
+
+	trimmedFirst := strings.TrimSpace(lines[0])
+	if trimmedFirst == "---" {
+		for i := 1; i < len(lines); i++ {
+			line := lines[i]
+			if strings.TrimSpace(line) == "---" {
+				bodyLines = lines[i+1:]
+				break
+			}
+			frontmatterLines = append(frontmatterLines, line)
+		}
+	} else {
+		bodyLines = lines
+	}
+
+	if len(frontmatterLines) > 0 {
+		for i := 0; i < len(frontmatterLines); i++ {
+			line := frontmatterLines[i]
+			lineTrim := strings.TrimSpace(line)
+			if strings.HasPrefix(lineTrim, "description:") {
+				val := strings.TrimSpace(strings.TrimPrefix(lineTrim, "description:"))
+				// Check if val is a multiline scalar indicator (| or >)
+				if val == "|" || val == ">" || val == "|-" || val == ">-" || val == "|+" || val == ">+" || strings.HasPrefix(val, "|") || strings.HasPrefix(val, ">") {
+					var multi []string
+					for j := i + 1; j < len(frontmatterLines); j++ {
+						nextLine := frontmatterLines[j]
+						if strings.TrimSpace(nextLine) == "" {
+							continue
+						}
+						// Check if line is indented
+						if strings.HasPrefix(nextLine, " ") || strings.HasPrefix(nextLine, "\t") {
+							multi = append(multi, strings.TrimSpace(nextLine))
+						} else {
+							break
+						}
+					}
+					if len(multi) > 0 {
+						return strings.Join(multi, " ")
+					}
+				} else if val != "" {
+					val = strings.Trim(val, `"'`)
+					return val
+				}
+			}
+		}
+	}
+
+	for _, line := range bodyLines {
+		lineTrim := strings.TrimSpace(line)
+		if strings.HasPrefix(lineTrim, "# ") {
+			return strings.TrimPrefix(lineTrim, "# ")
+		}
+	}
+
+	return "No description"
+}
+
 var skillCmd = &cobra.Command{
 	Use:   "skill",
 	Short: "Manage AI skills",
@@ -59,18 +124,7 @@ var skillCmd = &cobra.Command{
 					data, err := os.ReadFile(skillFile)
 					desc := "No description"
 					if err == nil {
-						lines := strings.Split(string(data), "\n")
-						for _, line := range lines {
-							lineTrim := strings.TrimSpace(line)
-							if strings.HasPrefix(lineTrim, "description:") {
-								desc = strings.TrimSpace(strings.TrimPrefix(lineTrim, "description:"))
-								desc = strings.Trim(desc, `"'`)
-								break
-							} else if strings.HasPrefix(lineTrim, "# ") {
-								desc = strings.TrimPrefix(lineTrim, "# ")
-								break
-							}
-						}
+						desc = parseSkillDescription(string(data))
 					}
 					foundSkills = append(foundSkills, SkillInfo{
 						Name:        entry.Name(),
