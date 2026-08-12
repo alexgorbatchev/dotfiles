@@ -146,3 +146,80 @@ func TestDetectLibc(t *testing.T) {
 		})
 	}
 }
+
+func TestIsNonBinaryAsset(t *testing.T) {
+	nonBinaries := []string{
+		"tool-1.0.0.sha256",
+		"tool-1.0.0.sha256sum",
+		"tool-1.0.0.asc",
+		"README.md",
+		"LICENSE.txt",
+		"shasums.txt",
+		"package.deb",
+		"package.rpm",
+		"package.flatpak",
+	}
+	for _, name := range nonBinaries {
+		if !IsNonBinaryAsset(name) {
+			t.Errorf("IsNonBinaryAsset(%q) = false, want true", name)
+		}
+	}
+
+	binaries := []string{
+		"tool-linux-amd64.tar.gz",
+		"tool-darwin-arm64.zip",
+		"mytool",
+	}
+	for _, name := range binaries {
+		if IsNonBinaryAsset(name) {
+			t.Errorf("IsNonBinaryAsset(%q) = true, want false", name)
+		}
+	}
+}
+
+func TestSelectBestMatch(t *testing.T) {
+	t.Run("macOS universal binary vs specific", func(t *testing.T) {
+		sys := SystemInfo{OS: OSDarwin, Arch: ArchARM64}
+		assets := []string{
+			"onefetch-linux.tar.gz",
+			"onefetch-mac.tar.gz",
+			"onefetch-win.tar.gz",
+			"onefetch.sha256",
+		}
+		got := SelectBestMatch(assets, sys)
+		if got != "onefetch-mac.tar.gz" {
+			t.Errorf("SelectBestMatch = %q, want %q", got, "onefetch-mac.tar.gz")
+		}
+	})
+
+	t.Run("Linux glibc vs musl ranking", func(t *testing.T) {
+		sysGlibc := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc}
+		assets := []string{
+			"tool-linux-amd64-musl.tar.gz",
+			"tool-linux-amd64-gnu.tar.gz",
+			"tool-linux-amd64.tar.gz",
+		}
+		gotGlibc := SelectBestMatch(assets, sysGlibc)
+		if gotGlibc != "tool-linux-amd64-gnu.tar.gz" {
+			t.Errorf("SelectBestMatch for glibc = %q, want %q", gotGlibc, "tool-linux-amd64-gnu.tar.gz")
+		}
+
+		sysMusl := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcMusl}
+		gotMusl := SelectBestMatch(assets, sysMusl)
+		if gotMusl != "tool-linux-amd64-musl.tar.gz" {
+			t.Errorf("SelectBestMatch for musl = %q, want %q", gotMusl, "tool-linux-amd64-musl.tar.gz")
+		}
+	})
+
+	t.Run("Exclude non-binary assets", func(t *testing.T) {
+		sys := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc}
+		assets := []string{
+			"tool-linux-amd64.tar.gz.sha256",
+			"tool-linux-amd64.tar.gz",
+		}
+		got := SelectBestMatch(assets, sys)
+		if got != "tool-linux-amd64.tar.gz" {
+			t.Errorf("SelectBestMatch = %q, want %q", got, "tool-linux-amd64.tar.gz")
+		}
+	})
+}

@@ -40,6 +40,21 @@ func TestEvaluateToolDefinition(t *testing.T) {
 			},
 		},
 		{
+			name: "multi-line imports style",
+			script: `import {
+  defineConfig,
+  defineTool
+} from "@alexgorbatchev/dotfiles";
+import type { Config } from "./types";
+
+defineConfig({ name: "multiline", value: 500, enabled: true });`,
+			expected: TestConfig{
+				Name:    "multiline",
+				Value:   500,
+				Enabled: true,
+			},
+		},
+		{
 			name:   "defineTool style",
 			script: `defineTool({ name: "bar", value: 100, enabled: false });`,
 			expected: TestConfig{

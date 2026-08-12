@@ -12,6 +12,11 @@ var (
 	dryRun   bool
 	trace    bool
 	logLevel string
+	platform string
+	arch     string
+	libc     string
+	verbose  bool
+	quiet    bool
 )
 
 var rootCmd = &cobra.Command{
@@ -26,11 +31,22 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "d", false, "Simulate operations without committing disk changes")
 	rootCmd.PersistentFlags().BoolVar(&trace, "trace", false, "Enable source location tracing in logs")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log", "default", "Log level (verbose, default, quiet)")
+	rootCmd.PersistentFlags().StringVar(&platform, "platform", "", "Target platform (e.g., darwin, linux)")
+	rootCmd.PersistentFlags().StringVar(&arch, "arch", "", "Target architecture (e.g., amd64, arm64)")
+	rootCmd.PersistentFlags().StringVar(&libc, "libc", "", "Target libc implementation (e.g., glibc, musl)")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
+	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Enable quiet logging")
 }
 
 // GetLogger returns a new Logger instance configured by global flags and writing to the specified writer.
 func GetLogger(name string, w io.Writer) *logger.Logger {
-	lvl, err := logger.ParseLogLevel(logLevel)
+	levelStr := logLevel
+	if verbose {
+		levelStr = "verbose"
+	} else if quiet {
+		levelStr = "quiet"
+	}
+	lvl, err := logger.ParseLogLevel(levelStr)
 	if err != nil {
 		lvl = logger.LogLevelDefault
 	}

@@ -153,6 +153,39 @@ func TestCurlScriptInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("Install success with system binary directory search", func(t *testing.T) {
+		runner.Clear()
+		sysFsys := fs.NewMemFS()
+		sysDl := downloader.NewDownloader(sysFsys, nil)
+		sysInst := NewCurlScriptInstaller(runner, sysFsys, sysDl, nil)
+		sysInst.BinDir = "/test/bin"
+
+		_ = sysFsys.MkdirAll("/usr/local/bin", 0755)
+		_ = sysFsys.WriteFile("/usr/local/bin/mytool", []byte("bin-content"), 0755)
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"url":   server.URL,
+				"shell": "sh",
+			},
+		}
+
+		res, err := sysInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
+			t.Errorf("expected mytool, got %v", res.Binaries)
+		}
+
+		exists, _ := sysFsys.Exists("/test/bin/mytool")
+		if !exists {
+			t.Errorf("expected binary to be promoted to /test/bin/mytool")
+		}
+	})
+
 	t.Run("Install fails missing URL", func(t *testing.T) {
 		tool := &config.ToolConfig{
 			Name: "mytool",

@@ -751,6 +751,35 @@ func TestExtractTarXzProcessGroupAndCleanupOnCancel(t *testing.T) {
 }
 
 func TestZipSlipPrevention(t *testing.T) {
+	t.Run("IsSafeTargetPath Unit Verification", func(t *testing.T) {
+		tests := []struct {
+			name    string
+			dest    string
+			target  string
+			wantErr bool
+		}{
+			{"valid relative file", "/dest", "foo/bar.txt", false},
+			{"valid single file", "/dest", "file.txt", false},
+			{"traversal relative", "/dest", "../../etc/passwd", true},
+			{"absolute unix path", "/dest", "/etc/passwd", true},
+			{"absolute windows path", "/dest", "C:\\Windows\\System32", true},
+			{"empty target", "/dest", "", true},
+			{"nested traversal", "/dest", "sub/dir/../../../../etc/passwd", true},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				got, err := isSafeTargetPath(tt.dest, tt.target)
+				if (err != nil) != tt.wantErr {
+					t.Fatalf("isSafeTargetPath(%q, %q) error = %v, wantErr %v", tt.dest, tt.target, err, tt.wantErr)
+				}
+				if !tt.wantErr && got == "" {
+					t.Fatalf("isSafeTargetPath(%q, %q) returned empty path", tt.dest, tt.target)
+				}
+			})
+		}
+	})
+
 	t.Run("Zip File Zip-Slip Detection", func(t *testing.T) {
 		memFS := fs.NewMemFS()
 		runner := exec.NewMockRunner()

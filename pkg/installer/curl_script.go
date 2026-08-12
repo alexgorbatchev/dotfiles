@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -138,12 +137,62 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 
 	promotedBinaries, err := PromoteBinaries(c.fsys, destDir, tool.Name, tool.Binaries)
 	if err != nil {
-		return nil, err
+		// If PromoteBinaries failed in destDir, search system binary directories
+		sysDirs := getSystemBinaryDirs()
+		binNames := GetBinaryNames(tool.Name, tool.Binaries)
+		allFound := true
+		for _, binName := range binNames {
+			targetPath := filepath.Join(destDir, binName)
+			exists, existErr := c.fsys.Exists(targetPath)
+			if existErr == nil && exists {
+				continue
+			}
+
+			foundInSys := false
+			for _, sysDir := range sysDirs {
+				sysPath := filepath.Join(sysDir, binName)
+				sysExists, sysErr := c.fsys.Exists(sysPath)
+				if sysErr == nil && sysExists {
+					_ = c.fsys.MkdirAll(filepath.Dir(targetPath), 0755)
+					_ = c.fsys.Remove(targetPath)
+					renameErr := c.fsys.Rename(sysPath, targetPath)
+					if renameErr != nil {
+						if copyErr := c.fsys.CopyFile(sysPath, targetPath); copyErr == nil {
+							_ = c.fsys.Remove(sysPath)
+						} else {
+							continue
+						}
+					}
+					_ = c.fsys.Chmod(targetPath, 0755)
+					foundInSys = true
+					break
+				}
+			}
+			if !foundInSys {
+				allFound = false
+				break
+			}
+		}
+
+		if allFound {
+			promotedBinaries = binNames
+		} else {
+			return nil, err
+		}
 	}
 
 	return &InstallResult{
 		Binaries: promotedBinaries,
 	}, nil
+}
+
+func getSystemBinaryDirs() []string {
+	dirs := []string{"/usr/local/bin"}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		dirs = append(dirs, filepath.Join(home, ".local", "bin"))
+	}
+	dirs = append(dirs, "/usr/bin")
+	return dirs
 }
 
 func (c *CurlScriptInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
@@ -156,33 +205,6 @@ func (c *CurlScriptInstaller) Uninstall(ctx context.Context, tool *config.ToolCo
 		}
 	}
 	return nil
-}
-
-func detectVersionViaCli(ctx context.Context, runner exec.CommandRunner, binaryPath string, args []string, regex string) (string, error) {
-	cmd := runner.CommandContext(ctx, binaryPath, args...)
-	out, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("executing binary %s: %w", binaryPath, err)
-	}
-
-	outputStr := string(out)
-	if regex == "" {
-		return strings.TrimSpace(outputStr), nil
-	}
-
-	re, err := regexp.Compile(regex)
-	if err != nil {
-		return "", fmt.Errorf("compiling regex %q: %w", regex, err)
-	}
-
-	matches := re.FindStringSubmatch(outputStr)
-	if len(matches) > 1 {
-		return matches[1], nil
-	} else if len(matches) > 0 {
-		return matches[0], nil
-	}
-
-	return "", fmt.Errorf("no regex match found in output: %q", outputStr)
 }
 
 func (c *CurlScriptInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {

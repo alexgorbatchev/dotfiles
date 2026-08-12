@@ -126,13 +126,20 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 
 	// Service management if configured
 	if serviceVal, ok := tool.InstallParams["service"]; ok && serviceVal != nil {
-		action := "start"
-		if s, ok := serviceVal.(string); ok && s != "" {
-			action = s
+		action := ""
+		switch v := serviceVal.(type) {
+		case bool:
+			if v {
+				action = "start"
+			}
+		case string:
+			action = v
 		}
-		svcCmd := b.runner.CommandContext(ctx, "brew", "services", action, formula)
-		if err := svcCmd.Run(); err != nil {
-			return nil, fmt.Errorf("brew services %s %s: %w", action, formula, err)
+		if action != "" {
+			svcCmd := b.runner.CommandContext(ctx, "brew", "services", action, formula)
+			if err := svcCmd.Run(); err != nil {
+				return nil, fmt.Errorf("brew services %s %s: %w", action, formula, err)
+			}
 		}
 	}
 
@@ -141,16 +148,12 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	versionArgs := getStringSliceParam(tool.InstallParams, "versionArgs")
 	versionRegex := getStringParam(tool.InstallParams, "versionRegex", "")
 
-	if len(versionArgs) > 0 && versionRegex != "" {
-		// Run cli version detection (mocked or real)
-		// For simplicity, we can fetch prefix and run the binary or simulate it.
-		// Since we want to support tests easily, let's fall back to prefix bin
+	if len(versionArgs) > 0 {
 		prefix, _ := b.getBrewPrefix(ctx, formula)
-		binPath := prefix + "/bin/" + tool.Name
-		versionCmd := b.runner.CommandContext(ctx, binPath, versionArgs...)
-		out, err := versionCmd.Output()
-		if err == nil {
-			version = strings.TrimSpace(string(out)) // Or parse with regex
+		binPath := filepath.Join(prefix, "bin", tool.Name)
+		v, err := detectVersionViaCli(ctx, b.runner, binPath, versionArgs, versionRegex)
+		if err == nil && v != "" {
+			version = v
 		}
 	}
 

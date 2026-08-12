@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/dop251/goja"
@@ -12,6 +13,15 @@ import (
 // getBootstrapJS returns the transpiled loader API JavaScript code.
 func getBootstrapJS() string {
 	return loaderApiContents
+}
+
+var importRegex = regexp.MustCompile("(?s)\\bimport\\s+[\\s\\S]*?['\"`][^'\"`]+['\"`];?")
+
+func stripImports(scriptContent string) string {
+	cleaned := importRegex.ReplaceAllString(scriptContent, "")
+	cleaned = strings.ReplaceAll(cleaned, "export default", "module.exports =")
+	cleaned = strings.ReplaceAll(cleaned, "import.meta.dirname", "configFileDir")
+	return cleaned
 }
 
 // EvaluateToolDefinition runs the provided JavaScript/TypeScript script content inside a new sandboxed Sobek VM
@@ -23,18 +33,7 @@ func EvaluateToolDefinition(scriptContent string, out any) error {
 		return fmt.Errorf("registering Go bindings: %w", err)
 	}
 
-	// Clean up imports and export defaults in scriptContent
-	var cleanLines []string
-	for _, line := range strings.Split(scriptContent, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "import ") {
-			continue
-		}
-		cleanLines = append(cleanLines, line)
-	}
-	cleanedScript := strings.Join(cleanLines, "\n")
-	cleanedScript = strings.ReplaceAll(cleanedScript, "export default", "module.exports =")
-	cleanedScript = strings.ReplaceAll(cleanedScript, "import.meta.dirname", "configFileDir")
+	cleanedScript := stripImports(scriptContent)
 
 	// Set process.env
 	envObj := vm.NewObject()
@@ -143,18 +142,7 @@ func EvaluateToolDefinitionWithContext(scriptContent string, configDir string, s
 		return fmt.Errorf("registering Go bindings: %w", err)
 	}
 
-	// Clean up imports and export defaults in scriptContent
-	var cleanLines []string
-	for _, line := range strings.Split(scriptContent, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "import ") {
-			continue
-		}
-		cleanLines = append(cleanLines, line)
-	}
-	cleanedScript := strings.Join(cleanLines, "\n")
-	cleanedScript = strings.ReplaceAll(cleanedScript, "export default", "module.exports =")
-	cleanedScript = strings.ReplaceAll(cleanedScript, "import.meta.dirname", "configFileDir")
+	cleanedScript := stripImports(scriptContent)
 
 	// Set process.env
 	envObj := vm.NewObject()

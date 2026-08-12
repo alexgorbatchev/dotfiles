@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
@@ -406,4 +408,31 @@ func getPatternForBinary(toolBinaries []interface{}, binName string) string {
 		}
 	}
 	return ""
+}
+
+func detectVersionViaCli(ctx context.Context, runner exec.CommandRunner, binaryPath string, args []string, regex string) (string, error) {
+	cmd := runner.CommandContext(ctx, binaryPath, args...)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("executing binary %s: %w", binaryPath, err)
+	}
+
+	outputStr := string(out)
+	if regex == "" {
+		return strings.TrimSpace(outputStr), nil
+	}
+
+	re, err := regexp.Compile(regex)
+	if err != nil {
+		return "", fmt.Errorf("compiling regex %q: %w", regex, err)
+	}
+
+	matches := re.FindStringSubmatch(outputStr)
+	if len(matches) > 1 {
+		return matches[1], nil
+	} else if len(matches) > 0 {
+		return matches[0], nil
+	}
+
+	return "", fmt.Errorf("no regex match found in output: %q", outputStr)
 }

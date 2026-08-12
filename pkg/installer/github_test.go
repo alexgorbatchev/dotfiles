@@ -134,6 +134,49 @@ func TestGitHubInstaller(t *testing.T) {
 			t.Errorf("unexpected: %v, %v", res, err)
 		}
 	})
+
+	t.Run("Install HTTP 403 Rate Limit triggers gh CLI fallback", func(t *testing.T) {
+		rateLimitServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		}))
+		defer rateLimitServer.Close()
+
+		mockRunner := exec.NewMockRunner()
+		ghReleaseJson, _ := json.Marshal(githubRelease{
+			TagName: "v1.0.0",
+			Assets: []githubAsset{
+				{Name: "mytool-linux-amd64"},
+			},
+		})
+		mockRunner.Register("gh", ghReleaseJson, nil)
+
+		ghFsys := fs.NewMemFS()
+		ghDl := downloader.NewDownloader(ghFsys, nil)
+		ghInst := NewGitHubInstaller(mockRunner, ghFsys, ghDl, &SystemContext{OS: "linux", Arch: "amd64"})
+		ghInst.httpClient = rateLimitServer.Client()
+		ghInst.BaseURL = rateLimitServer.URL
+		ghInst.BinDir = "/test/bin"
+
+		// Pre-populate asset at destination as gh release download mock
+		_ = ghFsys.MkdirAll("/test/bin", 0755)
+		_ = ghFsys.WriteFile("/test/bin/mytool-linux-amd64", []byte("gh-binary-payload"), 0755)
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"repo": "myowner/mytool",
+			},
+		}
+
+		res, err := ghInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error on gh CLI fallback: %v", err)
+		}
+
+		if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
+			t.Errorf("expected mytool, got %v", res.Binaries)
+		}
+	})
 }
 
 func TestGitHubInstaller_ConcurrentAccess(t *testing.T) {

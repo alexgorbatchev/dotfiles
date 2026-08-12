@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -119,32 +120,49 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		apiURL = fmt.Sprintf("%s/repos/%s/releases/tags/%s", baseURL, repo, version)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating GitHub API request: %w", err)
+	ghCli := getBoolParam(tool.InstallParams, "ghCli", false)
+	var release *githubRelease
+	useGhCli := ghCli
+
+	if !useGhCli {
+		req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("creating GitHub API request: %w", err)
+		}
+
+		token := getStringParam(tool.InstallParams, "token", "")
+		if token == "" {
+			token = os.Getenv("GITHUB_TOKEN")
+		}
+		if token != "" {
+			req.Header.Set("Authorization", "token "+token)
+		}
+
+		resp, err := g.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("executing GitHub API request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusForbidden {
+			useGhCli = true
+		} else if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+		} else {
+			var rel githubRelease
+			if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+				return nil, fmt.Errorf("decoding GitHub release response: %w", err)
+			}
+			release = &rel
+		}
 	}
 
-	token := getStringParam(tool.InstallParams, "token", "")
-	if token == "" {
-		token = os.Getenv("GITHUB_TOKEN")
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "token "+token)
-	}
-
-	resp, err := g.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("executing GitHub API request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
-	}
-
-	var release githubRelease
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, fmt.Errorf("decoding GitHub release response: %w", err)
+	if useGhCli {
+		rel, err := g.fetchReleaseViaGhCli(ctx, repo, version, baseURL)
+		if err != nil {
+			return nil, fmt.Errorf("fetching release via gh CLI: %w", err)
+		}
+		release = rel
 	}
 
 	assetPattern := getStringParam(tool.InstallParams, "assetPattern", "")
@@ -166,16 +184,25 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		return nil, fmt.Errorf("creating destination directory: %w", err)
 	}
 
-	opts := downloader.DownloadOptions{}
-	if token != "" {
-		opts.Headers = map[string]string{
-			"Authorization": "token " + token,
-		}
-	}
-
 	assetPath := filepath.Join(destDir, matched.Name)
-	if err := g.dl.Download(ctx, matched.BrowserDownloadURL, assetPath, "", opts); err != nil {
-		return nil, fmt.Errorf("downloading release asset %s: %w", matched.Name, err)
+	if useGhCli {
+		if err := g.downloadAssetViaGhCli(ctx, repo, release.TagName, matched.Name, destDir); err != nil {
+			return nil, fmt.Errorf("downloading release asset via gh CLI: %w", err)
+		}
+	} else {
+		opts := downloader.DownloadOptions{}
+		token := getStringParam(tool.InstallParams, "token", "")
+		if token == "" {
+			token = os.Getenv("GITHUB_TOKEN")
+		}
+		if token != "" {
+			opts.Headers = map[string]string{
+				"Authorization": "token " + token,
+			}
+		}
+		if err := g.dl.Download(ctx, matched.BrowserDownloadURL, assetPath, "", opts); err != nil {
+			return nil, fmt.Errorf("downloading release asset %s: %w", matched.Name, err)
+		}
 	}
 
 	var promotedBinaries []string
@@ -230,27 +257,88 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 	if baseURL == "" {
 		baseURL = "https://api.github.com"
 	}
-	apiURL := fmt.Sprintf("%s/repos/%s/releases/latest", baseURL, repo)
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := g.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API status %d", resp.StatusCode)
-	}
-	var release githubRelease
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, err
+	ghCli := getBoolParam(tool.InstallParams, "ghCli", false)
+
+	var release *githubRelease
+	if ghCli {
+		rel, err := g.fetchReleaseViaGhCli(ctx, repo, "latest", baseURL)
+		if err != nil {
+			return nil, err
+		}
+		release = rel
+	} else {
+		apiURL := fmt.Sprintf("%s/repos/%s/releases/latest", baseURL, repo)
+		req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := g.httpClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusForbidden {
+			rel, err := g.fetchReleaseViaGhCli(ctx, repo, "latest", baseURL)
+			if err != nil {
+				return nil, err
+			}
+			release = rel
+		} else if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("GitHub API status %d", resp.StatusCode)
+		} else {
+			var rel githubRelease
+			if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+				return nil, err
+			}
+			release = &rel
+		}
 	}
 	return &UpdateCheckResult{
 		HasUpdate:     true,
 		LatestVersion: release.TagName,
 	}, nil
+}
+
+func (g *GitHubInstaller) fetchReleaseViaGhCli(ctx context.Context, repo, version, baseURL string) (*githubRelease, error) {
+	endpoint := fmt.Sprintf("repos/%s/releases/latest", repo)
+	if version != "" && version != "latest" {
+		endpoint = fmt.Sprintf("repos/%s/releases/tags/%s", repo, version)
+	}
+
+	args := []string{"api"}
+	if baseURL != "" && baseURL != "https://api.github.com" {
+		if u, err := url.Parse(baseURL); err == nil && u.Host != "" {
+			args = append(args, "--hostname", u.Host)
+		}
+	}
+	args = append(args, endpoint)
+
+	cmd := g.runner.CommandContext(ctx, "gh", args...)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("executing gh api %s: %w", endpoint, err)
+	}
+
+	var rel githubRelease
+	if err := json.Unmarshal(out, &rel); err != nil {
+		return nil, fmt.Errorf("parsing gh api response: %w", err)
+	}
+	return &rel, nil
+}
+
+func (g *GitHubInstaller) downloadAssetViaGhCli(ctx context.Context, repo, tag, pattern, destDir string) error {
+	args := []string{
+		"release", "download", tag,
+		"--repo", repo,
+		"--dir", destDir,
+		"--pattern", pattern,
+		"--clobber",
+	}
+	cmd := g.runner.CommandContext(ctx, "gh", args...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("executing gh release download: %w (output: %s)", err, string(out))
+	}
+	return nil
 }
 
 func (g *GitHubInstaller) matchAsset(assets []githubAsset, assetPattern string) *githubAsset {

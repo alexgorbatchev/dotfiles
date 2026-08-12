@@ -681,3 +681,156 @@ func TestDashboard_PlatformSerialization(t *testing.T) {
 		}
 	})
 }
+
+type mockCheckUpdateInstaller struct {
+	name          string
+	hasUpdate     bool
+	localVersion  string
+	latestVersion string
+	err           error
+}
+
+func (m *mockCheckUpdateInstaller) Name() string { return m.name }
+func (m *mockCheckUpdateInstaller) SupportsSudo() bool { return false }
+func (m *mockCheckUpdateInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
+	return &installer.InstallResult{}, nil
+}
+func (m *mockCheckUpdateInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+	return nil
+}
+func (m *mockCheckUpdateInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return &installer.UpdateCheckResult{
+		HasUpdate:     m.hasUpdate,
+		LocalVersion:  m.localVersion,
+		LatestVersion: m.latestVersion,
+	}, nil
+}
+
+func TestDashboard_CheckUpdateRoute(t *testing.T) {
+	log := logger.New(logger.Config{
+		Name:   "test",
+		Level:  logger.LogLevelQuiet,
+		Writer: io.Discard,
+	})
+
+	ctx := context.Background()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to connect to db: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	tempDir := t.TempDir()
+
+	mockInst := &mockCheckUpdateInstaller{
+		name:          "mock-checkupdate-inst",
+		hasUpdate:     true,
+		localVersion:  "1.0.0",
+		latestVersion: "1.1.0",
+	}
+	_ = installer.Register(mockInst)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    "/test/dotfiles",
+			GeneratedDir:   "/test/generated",
+			BinariesDir:    "/test/binaries",
+			TargetDir:      "/test/target",
+			ToolConfigsDir: tempDir,
+		},
+	}
+
+	ver := "1.0.0"
+	toolConfigs := []*config.ToolConfig{
+		{
+			Name:               "updatable-tool",
+			Version:            &ver,
+			InstallationMethod: "mock-checkupdate-inst",
+		},
+		{
+			Name:               "no-method-tool",
+			InstallationMethod: "",
+		},
+	}
+
+	server := NewServer(log, 0, reg, projCfg, toolConfigs, nil)
+	if err := server.Start(); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+	defer server.Stop()
+
+	t.Run("POST /api/tools/updatable-tool/check-update success", func(t *testing.T) {
+		url := fmt.Sprintf("http://127.0.0.1:%d/api/tools/updatable-tool/check-update", server.Port())
+		resp, err := http.Post(url, "application/json", nil)
+		if err != nil {
+			t.Fatalf("failed to POST check-update: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected status 200, got %d", resp.StatusCode)
+		}
+
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode JSON response: %v", err)
+		}
+
+		if body["success"] != true {
+			t.Fatalf("expected success: true, got: %v", body["success"])
+		}
+
+		data, ok := body["data"].(map[string]any)
+		if !ok {
+			t.Fatalf("expected data to be a map, got %T", body["data"])
+		}
+
+		if data["hasUpdate"] != true {
+			t.Errorf("expected hasUpdate to be true, got %v", data["hasUpdate"])
+		}
+		if data["currentVersion"] != "1.0.0" {
+			t.Errorf("expected currentVersion '1.0.0', got %v", data["currentVersion"])
+		}
+		if data["latestVersion"] != "1.1.0" {
+			t.Errorf("expected latestVersion '1.1.0', got %v", data["latestVersion"])
+		}
+		if data["supported"] != true {
+			t.Errorf("expected supported to be true, got %v", data["supported"])
+		}
+	})
+
+	t.Run("POST /api/tools/no-method-tool/check-update unsupported", func(t *testing.T) {
+		url := fmt.Sprintf("http://127.0.0.1:%d/api/tools/no-method-tool/check-update", server.Port())
+		resp, err := http.Post(url, "application/json", nil)
+		if err != nil {
+			t.Fatalf("failed to POST check-update: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected status 200, got %d", resp.StatusCode)
+		}
+
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode JSON response: %v", err)
+		}
+
+		if body["success"] != true {
+			t.Fatalf("expected success: true, got: %v", body["success"])
+		}
+
+		data, ok := body["data"].(map[string]any)
+		if !ok {
+			t.Fatalf("expected data to be a map, got %T", body["data"])
+		}
+
+		if data["supported"] != false {
+			t.Errorf("expected supported to be false, got %v", data["supported"])
+		}
+	})
+}

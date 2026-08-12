@@ -22,6 +22,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/shellinit"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 	"github.com/google/uuid"
 )
@@ -217,10 +218,15 @@ func TopologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 
 // InstallTools executes the installation pipeline for all provided tools sequentially in topological order.
 func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	config.ResolvePlatformConfigs(tools, "", "")
 	pruned := pruneTools(tools)
 	sorted, err := TopologicalSort(pruned)
 	if err != nil {
 		return fmt.Errorf("resolving dependencies: %w", err)
+	}
+
+	if err := o.CleanupStaleArtifacts(ctx, sorted, projCfg); err != nil {
+		o.logger.Warn(logger.Message(fmt.Sprintf("Cleanup during install warning: %v", err)))
 	}
 
 	for _, tool := range sorted {
@@ -247,10 +253,15 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 // GenerateTools executes standalone shim, symlink, and shell script generation.
 // It skips the installation pipeline except for tools with "auto: true" in their install params.
 func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	config.ResolvePlatformConfigs(tools, "", "")
 	pruned := pruneTools(tools)
 	sorted, err := TopologicalSort(pruned)
 	if err != nil {
 		return fmt.Errorf("resolving dependencies: %w", err)
+	}
+
+	if err := o.CleanupStaleArtifacts(ctx, sorted, projCfg); err != nil {
+		o.logger.Warn(logger.Message(fmt.Sprintf("Cleanup during generate warning: %v", err)))
 	}
 
 	// Ensure system directories are created and tracked under "system" name
@@ -681,10 +692,20 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 		return fmt.Errorf("project configuration is nil")
 	}
 
-	// 1. Resolve registered file states for the tool from the registry.
-	fileStates, err := o.reg.GetFileStatesForTool(ctx, tool.Name)
+	// 1. Invoke the native installer plugin's Uninstall method if it exists
+	if tool.InstallationMethod != "" && o.instRegistry != nil {
+		if inst, err := o.instRegistry.Get(tool.InstallationMethod); err == nil && inst != nil {
+			_ = inst.Uninstall(ctx, tool)
+		}
+	}
+
+	// 2. Purge file operations, shims, symlinks, binaries dir, and DB entries
+	return o.purgeToolState(ctx, tool.Name, projCfg)
+}
+
+func (o *Orchestrator) purgeToolState(ctx context.Context, toolName string, projCfg *config.ProjectConfig) error {
+	fileStates, err := o.reg.GetFileStatesForTool(ctx, toolName)
 	if err == nil {
-		// 2. Clean up each registered file/shim/symlink gracefully
 		for _, fileState := range fileStates {
 			if fileState.LastOperation != "rm" {
 				exists, err := o.fs.Exists(fileState.FilePath)
@@ -695,22 +716,295 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 		}
 	}
 
-	// 3. Invoke the native installer plugin's Uninstall method if it exists
-	if inst, err := o.instRegistry.Get(tool.InstallationMethod); err == nil {
-		_ = inst.Uninstall(ctx, tool)
+	if projCfg != nil && projCfg.Paths.BinariesDir != "" {
+		toolBinDir := filepath.Join(projCfg.Paths.BinariesDir, toolName)
+		_ = removeAll(o.fs, toolBinDir)
 	}
 
-	// 4. Transactionally remove all file operations and the tool installation from the database
-	err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-		if err := o.reg.RemoveFileOperationsByTool(ctx, tx, tool.Name); err != nil {
+	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+		if err := o.reg.RemoveFileOperationsByTool(ctx, tx, toolName); err != nil {
 			return err
 		}
-		return o.reg.RemoveToolInstallation(ctx, tx, tool.Name)
+		return o.reg.RemoveToolInstallation(ctx, tx, toolName)
 	})
-	if err != nil {
-		return fmt.Errorf("removing registry records: %w", err)
+}
+
+// CleanupOrphanedTools removes tools that are registered in the registry DB but no longer present in active tool configs.
+func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	if projCfg == nil || o.reg == nil {
+		return nil
 	}
 
+	activeTools := make(map[string]bool)
+	for _, tool := range tools {
+		if !tool.Disabled && (tool.Hostname == "" || matchesHostname(tool.Hostname)) {
+			activeTools[tool.Name] = true
+		}
+	}
+
+	registeredToolsMap := make(map[string]bool)
+
+	opsTools, err := o.reg.GetRegisteredTools(ctx)
+	if err == nil {
+		for _, name := range opsTools {
+			if name != "system" {
+				registeredToolsMap[name] = true
+			}
+		}
+	}
+
+	installations, err := o.reg.GetAllToolInstallations(ctx)
+	if err == nil {
+		for _, inst := range installations {
+			if inst.ToolName != "system" {
+				registeredToolsMap[inst.ToolName] = true
+			}
+		}
+	}
+
+	var orphanedTools []string
+	for name := range registeredToolsMap {
+		if !activeTools[name] {
+			orphanedTools = append(orphanedTools, name)
+		}
+	}
+	sort.Strings(orphanedTools)
+
+	for _, toolName := range orphanedTools {
+		o.logger.Info(logger.Message(fmt.Sprintf("Cleaning up orphaned tool: %s", toolName)))
+		if err := o.purgeToolState(ctx, toolName, projCfg); err != nil {
+			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Failed to purge orphaned tool %s: %v", toolName, err)))
+		}
+	}
+
+	return nil
+}
+
+// CleanupStaleShims removes shims recorded in the registry for active tools that are no longer declared in their binaries list.
+func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	if projCfg == nil || o.reg == nil {
+		return nil
+	}
+
+	shimDir := projCfg.Paths.TargetDir
+
+	for _, tool := range tools {
+		if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+			continue
+		}
+
+		expectedShimPaths := make(map[string]bool)
+		binNames := getBinaryNames(tool.Binaries)
+
+		isManualWithoutBinPath := false
+		if tool.InstallationMethod == "manual" {
+			binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")
+			if binaryPath == "" {
+				isManualWithoutBinPath = true
+			}
+		}
+
+		if !isManualWithoutBinPath {
+			for _, binName := range binNames {
+				shimPath := filepath.Join(shimDir, binName)
+				expectedShimPaths[shimPath] = true
+				if abs, err := o.fs.Abs(shimPath); err == nil {
+					expectedShimPaths[abs] = true
+				}
+			}
+		}
+
+		fileStates, err := o.reg.GetFileStatesForTool(ctx, tool.Name)
+		if err != nil {
+			continue
+		}
+
+		for _, state := range fileStates {
+			if state.FileType != "shim" || state.LastOperation == "rm" {
+				continue
+			}
+
+			absFilePath, err := o.fs.Abs(state.FilePath)
+			if err != nil {
+				absFilePath = state.FilePath
+			}
+
+			if !expectedShimPaths[absFilePath] && !expectedShimPaths[state.FilePath] {
+				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale shim: %s", state.FilePath)))
+
+				_ = o.fs.Remove(state.FilePath)
+				_ = o.fs.Remove(absFilePath)
+
+				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+					activeFS := o.getTrackedFS(ctx, tx, tool.Name, "shim")
+					return activeFS.Remove(state.FilePath)
+				})
+			}
+		}
+	}
+
+	return nil
+}
+
+// CleanupStaleSymlinks removes symlinks recorded in the registry for active tools that are no longer declared in their symlinks list.
+func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	if projCfg == nil || o.reg == nil {
+		return nil
+	}
+
+	symEvaluator := o.getSymlinkEvaluator()
+
+	for _, tool := range tools {
+		if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+			continue
+		}
+
+		expectedSymlinks := make(map[string]bool)
+		for _, sym := range tool.Symlinks {
+			expandedTarget := sym.Target
+			if strings.HasPrefix(expandedTarget, "~") {
+				expandedTarget = utils.ExpandHomePath(projCfg.Paths.HomeDir, expandedTarget)
+			}
+			expectedSymlinks[sym.Target] = true
+			expectedSymlinks[expandedTarget] = true
+			if absTarget, err := o.fs.Abs(expandedTarget); err == nil {
+				expectedSymlinks[absTarget] = true
+			}
+		}
+
+		fileStates, err := o.reg.GetFileStatesForTool(ctx, tool.Name)
+		if err != nil {
+			continue
+		}
+
+		for _, state := range fileStates {
+			if state.FileType != "symlink" || state.LastOperation == "rm" {
+				continue
+			}
+
+			absFilePath, err := o.fs.Abs(state.FilePath)
+			if err != nil {
+				absFilePath = state.FilePath
+			}
+
+			if !expectedSymlinks[absFilePath] && !expectedSymlinks[state.FilePath] {
+				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale symlink: %s", state.FilePath)))
+
+				_, _ = symEvaluator.RemoveSymlink(state.FilePath, "")
+				_ = o.fs.Remove(state.FilePath)
+				_ = o.fs.Remove(absFilePath)
+
+				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+					activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
+					return activeFS.Remove(state.FilePath)
+				})
+			}
+		}
+	}
+
+	return nil
+}
+
+// CleanupStaleCopies removes copies or completion files recorded in the registry for active tools that are no longer declared.
+func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	if projCfg == nil || o.reg == nil {
+		return nil
+	}
+
+	for _, tool := range tools {
+		if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+			continue
+		}
+
+		expectedFiles := make(map[string]bool)
+
+		for _, cp := range tool.Copies {
+			expandedTarget := cp.Target
+			if strings.HasPrefix(expandedTarget, "~") {
+				expandedTarget = utils.ExpandHomePath(projCfg.Paths.HomeDir, expandedTarget)
+			}
+			expectedFiles[cp.Target] = true
+			expectedFiles[expandedTarget] = true
+			if absTarget, err := o.fs.Abs(expandedTarget); err == nil {
+				expectedFiles[absTarget] = true
+			}
+		}
+
+		shellScriptsDir := projCfg.Paths.ShellScriptsDir
+		if shellScriptsDir == "" {
+			shellScriptsDir = filepath.Join(projCfg.Paths.GeneratedDir, "shell-scripts")
+		}
+
+		for _, sh := range []string{"zsh", "bash"} {
+			var stc *config.ShellTypeConfig
+			if tool.ShellConfigs != nil {
+				if sh == "zsh" {
+					stc = tool.ShellConfigs.Zsh
+				} else if sh == "bash" {
+					stc = tool.ShellConfigs.Bash
+				}
+			}
+			if stc != nil && stc.Completions != nil {
+				var completionFileName string
+				if sh == "zsh" {
+					completionFileName = "_" + tool.Name
+				} else {
+					completionFileName = tool.Name
+				}
+				compPath := filepath.Join(shellScriptsDir, sh, "completions", completionFileName)
+				expectedFiles[compPath] = true
+				if absCompPath, err := o.fs.Abs(compPath); err == nil {
+					expectedFiles[absCompPath] = true
+				}
+			}
+		}
+
+		fileStates, err := o.reg.GetFileStatesForTool(ctx, tool.Name)
+		if err != nil {
+			continue
+		}
+
+		for _, state := range fileStates {
+			if (state.FileType != "copy" && state.FileType != "written" && state.FileType != "completion") || state.LastOperation == "rm" {
+				continue
+			}
+
+			absFilePath, err := o.fs.Abs(state.FilePath)
+			if err != nil {
+				absFilePath = state.FilePath
+			}
+
+			if !expectedFiles[absFilePath] && !expectedFiles[state.FilePath] {
+				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale file: %s", state.FilePath)))
+
+				_ = o.fs.Remove(state.FilePath)
+				_ = o.fs.Remove(absFilePath)
+
+				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+					activeFS := o.getTrackedFS(ctx, tx, tool.Name, state.FileType)
+					return activeFS.Remove(state.FilePath)
+				})
+			}
+		}
+	}
+
+	return nil
+}
+
+// CleanupStaleArtifacts runs all orchestrator cleanup routines: orphaned tools, stale shims, stale symlinks, and stale copies.
+func (o *Orchestrator) CleanupStaleArtifacts(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	if err := o.CleanupOrphanedTools(ctx, tools, projCfg); err != nil {
+		return fmt.Errorf("cleaning up orphaned tools: %w", err)
+	}
+	if err := o.CleanupStaleShims(ctx, tools, projCfg); err != nil {
+		return fmt.Errorf("cleaning up stale shims: %w", err)
+	}
+	if err := o.CleanupStaleSymlinks(ctx, tools, projCfg); err != nil {
+		return fmt.Errorf("cleaning up stale symlinks: %w", err)
+	}
+	if err := o.CleanupStaleCopies(ctx, tools, projCfg); err != nil {
+		return fmt.Errorf("cleaning up stale copies: %w", err)
+	}
 	return nil
 }
 

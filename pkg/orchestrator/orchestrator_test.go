@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -1515,5 +1516,294 @@ func TestTopologicalSort_PlatformPreResolution(t *testing.T) {
 		}
 	})
 }
+
+func TestOrchestrator_CleanupOrphanedTools(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+	_ = fsys.MkdirAll("/home/user/.generated/usage", 0755)
+
+	toolA := &config.ToolConfig{Name: "tool-a", Binaries: []interface{}{"bin-a"}}
+	toolB := &config.ToolConfig{Name: "tool-b", Binaries: []interface{}{"bin-b"}}
+
+	// First generation: tool-a and tool-b
+	if err := orch.GenerateTools(ctx, []*config.ToolConfig{toolA, toolB}, projCfg); err != nil {
+		t.Fatalf("initial GenerateTools failed: %v", err)
+	}
+
+	// Verify shims for both exist
+	if exists, _ := fsys.Exists("/home/user/bin/bin-a"); !exists {
+		t.Error("expected bin-a shim to exist")
+	}
+	if exists, _ := fsys.Exists("/home/user/bin/bin-b"); !exists {
+		t.Error("expected bin-b shim to exist")
+	}
+
+	// Second generation: only tool-a
+	if err := orch.GenerateTools(ctx, []*config.ToolConfig{toolA}, projCfg); err != nil {
+		t.Fatalf("second GenerateTools failed: %v", err)
+	}
+
+	// Verify tool-b shim was cleaned up
+	if exists, _ := fsys.Exists("/home/user/bin/bin-b"); exists {
+		t.Error("expected bin-b shim to be removed as orphaned tool")
+	}
+	if exists, _ := fsys.Exists("/home/user/bin/bin-a"); !exists {
+		t.Error("expected bin-a shim to remain")
+	}
+}
+
+func TestOrchestrator_CleanupStaleShims(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+	_ = fsys.MkdirAll("/home/user/.generated/usage", 0755)
+
+	tool := &config.ToolConfig{
+		Name:     "my-tool",
+		Binaries: []interface{}{"bin1", "bin2"},
+	}
+
+	if err := orch.GenerateTools(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("initial GenerateTools failed: %v", err)
+	}
+
+	if exists, _ := fsys.Exists("/home/user/bin/bin1"); !exists {
+		t.Error("expected bin1 shim to exist")
+	}
+	if exists, _ := fsys.Exists("/home/user/bin/bin2"); !exists {
+		t.Error("expected bin2 shim to exist")
+	}
+
+	// Remove bin2 from tool config
+	toolUpdated := &config.ToolConfig{
+		Name:     "my-tool",
+		Binaries: []interface{}{"bin1"},
+	}
+
+	if err := orch.GenerateTools(ctx, []*config.ToolConfig{toolUpdated}, projCfg); err != nil {
+		t.Fatalf("second GenerateTools failed: %v", err)
+	}
+
+	if exists, _ := fsys.Exists("/home/user/bin/bin2"); exists {
+		t.Error("expected bin2 shim to be removed as stale")
+	}
+	if exists, _ := fsys.Exists("/home/user/bin/bin1"); !exists {
+		t.Error("expected bin1 shim to remain")
+	}
+}
+
+func TestOrchestrator_CleanupStaleSymlinks(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
+	orch.SetSymlinkFS(fsys)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+	_ = fsys.MkdirAll("/home/user/src1", 0755)
+	_ = fsys.MkdirAll("/home/user/src2", 0755)
+	_ = fsys.MkdirAll("/home/user/.generated/usage", 0755)
+
+	tool := &config.ToolConfig{
+		Name: "sym-tool",
+		Symlinks: []config.SymlinkConfig{
+			{Source: "/home/user/src1", Target: "/home/user/dest1"},
+			{Source: "/home/user/src2", Target: "/home/user/dest2"},
+		},
+	}
+
+	if err := orch.GenerateTools(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("initial GenerateTools failed: %v", err)
+	}
+
+	if exists, _ := fsys.Exists("/home/user/dest1"); !exists {
+		t.Error("expected dest1 symlink to exist")
+	}
+	if exists, _ := fsys.Exists("/home/user/dest2"); !exists {
+		t.Error("expected dest2 symlink to exist")
+	}
+
+	// Update tool to drop dest2
+	toolUpdated := &config.ToolConfig{
+		Name: "sym-tool",
+		Symlinks: []config.SymlinkConfig{
+			{Source: "/home/user/src1", Target: "/home/user/dest1"},
+		},
+	}
+
+	if err := orch.GenerateTools(ctx, []*config.ToolConfig{toolUpdated}, projCfg); err != nil {
+		t.Fatalf("second GenerateTools failed: %v", err)
+	}
+
+	if exists, _ := fsys.Exists("/home/user/dest2"); exists {
+		t.Error("expected dest2 symlink to be removed as stale")
+	}
+	if exists, _ := fsys.Exists("/home/user/dest1"); !exists {
+		t.Error("expected dest1 symlink to remain")
+	}
+}
+
+func TestOrchestrator_CleanupStaleCopies(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+	_ = fsys.MkdirAll("/home/user/.generated/usage", 0755)
+	_ = fsys.WriteFile("/home/user/copy1", []byte("data"), 0644)
+
+	// Record a copy file operation manually in registry
+	_ = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		now := int64(12345678)
+		return reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "copy-tool",
+			OperationType: "write",
+			FilePath:      "/home/user/copy1",
+			FileType:      "copy",
+			CreatedAt:     now,
+		})
+	})
+
+	tool := &config.ToolConfig{
+		Name: "copy-tool",
+	}
+
+	if err := orch.CleanupStaleCopies(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("CleanupStaleCopies failed: %v", err)
+	}
+
+	if exists, _ := fsys.Exists("/home/user/copy1"); exists {
+		t.Error("expected stale copy1 to be removed")
+	}
+}
+
+func TestOrchestrator_PlatformPreResolutionInPipeline(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+	_ = fsys.MkdirAll("/home/user/.generated/usage", 0755)
+
+	tool := &config.ToolConfig{
+		Name: "plat-tool",
+		PlatformConfigs: []config.PlatformConfigEntry{
+			{
+				Platforms: 0, // matches all platforms
+				Config: map[string]interface{}{
+					"disabled": true,
+				},
+			},
+		},
+	}
+
+	if err := orch.GenerateTools(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("GenerateTools failed: %v", err)
+	}
+
+	if !tool.Disabled {
+		t.Error("expected tool to be marked disabled by platform override pre-resolution")
+	}
+}
+
 
 

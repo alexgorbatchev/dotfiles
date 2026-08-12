@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
@@ -1002,7 +1003,63 @@ func (s *Server) handleToolInstall(w http.ResponseWriter, r *http.Request, toolN
 
 // POST /api/tools/:name/check-update
 func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, toolName string) {
-	writeJSON(w, true, map[string]any{"hasUpdate": false, "currentVersion": "latest", "latestVersion": "latest", "supported": true}, "")
+	ctx := r.Context()
+
+	var targetTool *config.ToolConfig
+	for _, tc := range s.toolConfigs {
+		if tc.Name == toolName {
+			targetTool = tc
+			break
+		}
+	}
+
+	if targetTool == nil {
+		writeJSON(w, false, nil, "Tool not found")
+		return
+	}
+
+	if targetTool.InstallationMethod == "" {
+		writeJSON(w, true, map[string]any{
+			"hasUpdate":      false,
+			"currentVersion": "unknown",
+			"latestVersion":  "unknown",
+			"supported":      false,
+		}, "")
+		return
+	}
+
+	inst, err := installer.Get(targetTool.InstallationMethod)
+	if err != nil {
+		writeJSON(w, false, nil, fmt.Sprintf("Installer %q not found: %v", targetTool.InstallationMethod, err))
+		return
+	}
+
+	res, err := inst.CheckUpdate(ctx, targetTool)
+	if err != nil {
+		writeJSON(w, false, nil, fmt.Sprintf("Failed to check update for %s: %v", toolName, err))
+		return
+	}
+
+	currentVer := res.LocalVersion
+	if currentVer == "" {
+		if targetTool.Version != nil && *targetTool.Version != "" {
+			currentVer = *targetTool.Version
+		} else {
+			currentVer = "unknown"
+		}
+	}
+
+	latestVer := res.LatestVersion
+	if latestVer == "" {
+		latestVer = "unknown"
+	}
+
+	writeJSON(w, true, map[string]any{
+		"hasUpdate":      res.HasUpdate,
+		"currentVersion": currentVer,
+		"latestVersion":  latestVer,
+		"supported":      true,
+	}, "")
 }
 
 // POST /api/tools/:name/update

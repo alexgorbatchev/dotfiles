@@ -18,11 +18,20 @@ func executeCommand(args ...string) (string, error) {
 	dryRun = false
 	trace = false
 	logLevel = "default"
+	platform = ""
+	arch = ""
+	libc = ""
+	verbose = false
+	quiet = false
 
 	// Reset subcommand flags
 	port = 8080
 	inputFile = "dotfiles.config.ts"
 	outputFile = "dotfiles.config.json"
+	listBins = false
+	generateReadme = false
+	logTailLines = 50
+	skillDir = ""
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -142,6 +151,66 @@ func TestSubcommands(t *testing.T) {
 			name:           "config convert custom values",
 			args:           []string{"config", "convert", "-i", "my.config.ts", "-o", "my.config.json"},
 			expectedOutput: []string{"Converting configuration", "my.config.ts", "my.config.json", "Configuration migration completed successfully"},
+			expectedErr:    false,
+		},
+		{
+			name:           "bin command target dir",
+			args:           []string{"bin"},
+			expectedOutput: []string{"/tmp/test-generated"},
+			expectedErr:    false,
+		},
+		{
+			name:           "bin command list flag",
+			args:           []string{"bin", "--list"},
+			expectedOutput: []string{"bat (bat)"},
+			expectedErr:    false,
+		},
+		{
+			name:           "features command default",
+			args:           []string{"features"},
+			expectedOutput: []string{"Catalog Generate:", "ShellInstall:"},
+			expectedErr:    false,
+		},
+		{
+			name:           "features command generate-readme",
+			args:           []string{"features", "--generate-readme"},
+			expectedOutput: []string{"# Configured Tools & Features", "| Tool | Method | Binaries | Description |", "bat"},
+			expectedErr:    false,
+		},
+		{
+			name:           "cleanup command",
+			args:           []string{"cleanup"},
+			expectedOutput: []string{"Starting cleanup of orphaned tools and stale artifacts", "Command completed successfully"},
+			expectedErr:    false,
+		},
+		{
+			name:           "check-updates command",
+			args:           []string{"check-updates"},
+			expectedOutput: []string{"Checking for updates across configured tools", "Command completed successfully"},
+			expectedErr:    false,
+		},
+		{
+			name:           "log command",
+			args:           []string{"log"},
+			expectedOutput: []string{"No log entries found."},
+			expectedErr:    false,
+		},
+		{
+			name:           "skill command",
+			args:           []string{"skill"},
+			expectedOutput: []string{"No AI skills found."},
+			expectedErr:    false,
+		},
+		{
+			name:           "global flags platform arch libc",
+			args:           []string{"--platform=linux", "--arch=amd64", "--libc=glibc", "env"},
+			expectedOutput: []string{"export PATH="},
+			expectedErr:    false,
+		},
+		{
+			name:           "global flags verbose and quiet",
+			args:           []string{"-v", "env"},
+			expectedOutput: []string{"export PATH="},
 			expectedErr:    false,
 		},
 	}

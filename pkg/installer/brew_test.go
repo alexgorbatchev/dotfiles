@@ -151,6 +151,38 @@ func TestBrewInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("Install success with boolean service parameter", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("brew", []byte(`[{"name":"redis","versions":{"stable":"7.0"}}]`), nil)
+
+		tool := &config.ToolConfig{
+			Name: "redis",
+			InstallParams: map[string]interface{}{
+				"formula": "redis",
+				"service": true,
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res == nil {
+			t.Fatal("expected non-nil result")
+		}
+
+		hasServiceStart := false
+		for _, cmd := range runner.History {
+			if len(cmd.Args) > 2 && cmd.Args[0] == "services" && cmd.Args[1] == "start" && cmd.Args[2] == "redis" {
+				hasServiceStart = true
+			}
+		}
+
+		if !hasServiceStart {
+			t.Error("expected brew services start to be called for boolean service: true")
+		}
+	})
+
 	t.Run("Uninstall success", func(t *testing.T) {
 		runner.Clear()
 		tool := &config.ToolConfig{

@@ -173,7 +173,14 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		return toolConfigs[i].Name < toolConfigs[j].Name
 	})
 
-	ResolvePlatformConfigs(toolConfigs, installer.NewDefaultSystemContext())
+	sysCtx := installer.NewDefaultSystemContext()
+	if platform != "" {
+		sysCtx.OS = platform
+	}
+	if arch != "" {
+		sysCtx.Arch = arch
+	}
+	ResolvePlatformConfigs(toolConfigs, sysCtx)
 
 	// For dry-runs and tests, we still open a valid database.
 	// If in unit testing or dry-run, use in-memory SQLite to prevent disk state pollution.

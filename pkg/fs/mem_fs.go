@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -304,6 +305,7 @@ func (m *MemFS) ReadDir(path string) ([]string, error) {
 			}
 		}
 	}
+	sort.Strings(names)
 	return names, nil
 }
 

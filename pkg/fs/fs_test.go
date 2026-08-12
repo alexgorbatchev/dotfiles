@@ -273,3 +273,38 @@ func TestMemFS_Concurrency(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestMemFS_ReadDirSorted(t *testing.T) {
+	fs := NewMemFS()
+	err := fs.MkdirAll("/dir", 0755)
+	if err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	// Create files in unsorted order
+	files := []string{"z_file.txt", "a_file.txt", "m_file.txt", "b_dir/sub.txt"}
+	for _, f := range files {
+		err := fs.WriteFile(filepath.Join("/dir", f), []byte("test"), 0644)
+		if err != nil && f == "b_dir/sub.txt" {
+			// Need to create parent dir first
+			_ = fs.MkdirAll("/dir/b_dir", 0755)
+			_ = fs.WriteFile(filepath.Join("/dir", f), []byte("test"), 0644)
+		}
+	}
+
+	names, err := fs.ReadDir("/dir")
+	if err != nil {
+		t.Fatalf("ReadDir failed: %v", err)
+	}
+
+	expected := []string{"a_file.txt", "b_dir", "m_file.txt", "z_file.txt"}
+	if len(names) != len(expected) {
+		t.Fatalf("expected %d entries, got %d: %v", len(expected), len(names), names)
+	}
+
+	for i, name := range names {
+		if name != expected[i] {
+			t.Errorf("at index %d: expected %q, got %q", i, expected[i], name)
+		}
+	}
+}

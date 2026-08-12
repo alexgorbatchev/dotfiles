@@ -40,7 +40,7 @@ func generateTypes(outputPath string) error {
 }
 
 func main() {
-	outFlag := flag.String("out", "packages/dashboard/src/shared/types.gen.ts", "Output file path")
+	outFlag := flag.String("out", "", "Output file path")
 	flag.Parse()
 
 	outputPath := *outFlag
@@ -48,12 +48,33 @@ func main() {
 		outputPath = flag.Arg(0)
 	}
 
-	err := generateTypes(outputPath)
-	if err != nil {
-		fmt.Printf("Error converting Go structures to TypeScript: %v\n", err)
+	if outputPath != "" {
+		if err := generateTypes(outputPath); err != nil {
+			fmt.Printf("Error converting Go structures to TypeScript: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Successfully generated TypeScript interfaces at %s\n", outputPath)
+		return
+	}
+
+	dashboardPath := "packages/dashboard/src/shared/types.gen.ts"
+	if err := generateTypes(dashboardPath); err != nil {
+		fmt.Printf("Error generating %s: %v\n", dashboardPath, err)
+		os.Exit(1)
+	}
+	fmt.Printf("Successfully generated TypeScript interfaces at %s\n", dashboardPath)
+
+	distDir := ".dist"
+	if err := os.MkdirAll(distDir, 0755); err != nil {
+		fmt.Printf("Error creating %s directory: %v\n", distDir, err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Successfully generated TypeScript interfaces at %s\n", outputPath)
+	distPath := ".dist/index.d.ts"
+	if err := generateTypes(distPath); err != nil {
+		fmt.Printf("Error generating %s: %v\n", distPath, err)
+		os.Exit(1)
+	}
+	fmt.Printf("Successfully generated TypeScript interfaces at %s\n", distPath)
 }
 

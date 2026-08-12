@@ -51,11 +51,12 @@ func isSafeTargetPath(dest, name string) (string, error) {
 		return "", ErrZipSlipDetected
 	}
 
-	cleanName := filepath.FromSlash(name)
-	if filepath.IsAbs(name) || filepath.IsAbs(cleanName) || strings.HasPrefix(cleanName, "/") || strings.HasPrefix(cleanName, "\\") {
+	normalized := strings.ReplaceAll(name, "\\", "/")
+	if strings.HasPrefix(normalized, "/") || (len(normalized) >= 2 && normalized[1] == ':') || filepath.IsAbs(name) {
 		return "", ErrZipSlipDetected
 	}
 
+	cleanName := filepath.FromSlash(normalized)
 	cleanTarget := filepath.Clean(filepath.Join(cleanDest, cleanName))
 
 	rel, err := filepath.Rel(cleanDest, cleanTarget)

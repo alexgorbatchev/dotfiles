@@ -3,6 +3,7 @@ package e2e
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -42,6 +43,12 @@ func TestE2EGhCli(t *testing.T) {
 };`
 		_ = os.WriteFile(configPath, []byte(configContent), 0644)
 
+		mockGhDir := filepath.Join(h.TempDir, "mock-gh")
+		_ = os.Chmod(filepath.Join(mockGhDir, "gh"), 0755)
+		h.Env["PATH"] = mockGhDir + string(filepath.ListSeparator) + os.Getenv("PATH")
+		parts := strings.Split(ms.Server.URL, ":")
+		h.Env["MOCK_SERVER_PORT"] = parts[len(parts)-1]
+
 		stdout, stderr, exitCode, err := h.Generate()
 		if err != nil || exitCode != 0 {
 			t.Fatalf("generate failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
@@ -70,6 +77,7 @@ func TestE2EGhCli(t *testing.T) {
 			},
 		})
 		h.MockServerURL = ms.Server.URL
+		h.CopyFixture("gh-cli")
 		h.CopyFixture("gh-cli-enterprise")
 
 		// Point host to mock server for enterprise in sandbox config.ts
@@ -90,6 +98,12 @@ func TestE2EGhCli(t *testing.T) {
   },
 };`
 		_ = os.WriteFile(configPath, []byte(configContent), 0644)
+
+		mockGhDir := filepath.Join(h.TempDir, "mock-gh")
+		_ = os.Chmod(filepath.Join(mockGhDir, "gh"), 0755)
+		h.Env["PATH"] = mockGhDir + string(filepath.ListSeparator) + os.Getenv("PATH")
+		parts := strings.Split(ms.Server.URL, ":")
+		h.Env["MOCK_SERVER_PORT"] = parts[len(parts)-1]
 
 		stdout, stderr, exitCode, err := h.Generate()
 		if err != nil || exitCode != 0 {

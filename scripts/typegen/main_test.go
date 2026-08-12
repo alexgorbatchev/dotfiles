@@ -36,3 +36,30 @@ func TestGenerateTypes(t *testing.T) {
 		}
 	}
 }
+
+func TestTypegenEmitIndexDts(t *testing.T) {
+	tmpDir := t.TempDir()
+	distDir := filepath.Join(tmpDir, ".dist")
+	if err := os.MkdirAll(distDir, 0755); err != nil {
+		t.Fatalf("failed to create .dist dir: %v", err)
+	}
+
+	distIndexPath := filepath.Join(distDir, "index.d.ts")
+	if err := generateTypes(distIndexPath); err != nil {
+		t.Fatalf("generateTypes to .dist/index.d.ts failed: %v", err)
+	}
+
+	content, err := os.ReadFile(distIndexPath)
+	if err != nil {
+		t.Fatalf("failed to read .dist/index.d.ts: %v", err)
+	}
+
+	if len(content) == 0 {
+		t.Errorf("expected .dist/index.d.ts to be non-empty")
+	}
+
+	strContent := string(content)
+	if !strings.Contains(strContent, "interface ToolConfig") {
+		t.Errorf("expected .dist/index.d.ts to contain interface ToolConfig")
+	}
+}
