@@ -58,3 +58,4 @@ pkg/vm/dist/
 # backups from typescriptify
 *.backup
 .codegraph
+/.pi/subagents
