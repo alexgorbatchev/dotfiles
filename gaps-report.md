@@ -2,214 +2,296 @@
 
 ## 1. Executive Summary
 
-### Feasibility Check: Can we delete TS and ship Go today without breaking anything?
+### Core Feasibility Check
+**Can we delete the TypeScript implementation and ship the Go CLI to users today without breaking anything?**
 
-**YES, WITH COMPLIANT MIGRATION OF REMAINING BUILD ARTIFACTS AND REMOVAL OF UNUSED TS PACKAGES.**
+**NO. We CANNOT delete the TypeScript implementation and ship the Go CLI today.** 
 
-A line-by-line, side-by-side audit of the entire monorepo confirms that all runtime features, installer plugins (15/15), database tracking, shell initialization generation, process execution, archive extraction, and CLI subcommands have reached **100% functional parity** with the TypeScript predecessor (`main` branch).
+While the Go implementation has achieved impressive core parity—passing 100% of the 20 migrated E2E integration test suites and executing `.tool.ts` configurations via an embedded Goja (Sobek) JS VM—deleting TypeScript today would introduce severe regressions:
 
-Previous critical migration risks have been fully addressed in the Go codebase:
-1. **Config Autocompletion & Type Resolution (DX)**: `.d.ts` generation in `scripts/build/main.go` (`generateSchemaTypes`) cleans and deduplicates exports between `pkg/vm/dsl-types.ts` and `types.gen.ts`, passing strict `tsd` type checking without duplicate symbol errors. `IFileSystem` methods in `dsl-types.ts` declare `Promise<T>` return types while Goja VM bindings in `pkg/vm/loader-api.ts` wrap synchronous returns in `Promise.resolve()`, supporting both `await` and synchronous callers seamlessly.
-2. **`dotfiles.config.ts` Default Fallback**: `cmd/dotfiles/bootstrap.go` includes `dotfiles.config.ts` as the primary default candidate in `candidateNames`, resolving config files when `--config` is omitted.
-3. **Platform Serialization in Dashboard**: `pkg/dashboard/routes.go` (`formatToolConfigForDashboard`) converts platform and architecture bitmasks into string arrays (e.g. `["Linux", "macOS"]`), maintaining full API compatibility with the Preact frontend client.
-4. **HTTP Client Timeout**: `pkg/downloader/downloader.go` initializes default HTTP clients with an explicit `30 * time.Second` timeout, preventing infinite hanging on unresponsive upstream servers.
-5. **Subprocess Pipe Cleanup in Archive Extractor**: `pkg/archive/archive.go` (`extractTarXz`) defers `pr.Close()` immediately after `io.Pipe()` creation, unblocking pipe writes and preventing zombie `xz` subprocesses on early extraction errors or Zip-Slip rejections.
-6. **Deterministic Shell Emissions**: `pkg/orchestrator/orchestrator.go` sorts environment variable, alias, and function map keys alphabetically (`sort.Strings()`) before emitting `main.zsh`, `main.bash`, and `main.ps1`, guaranteeing reproducible shell script output across executions.
-7. **Sudo Elevation Security Validation**: `pkg/installer/installer.go` enforces `ValidateSudo(inst, tool)` across both the orchestrator and installer plugins, rejecting tools requesting `sudo: true` when backed by non-sudo installers (e.g. `brew`, `npm`, `cargo`).
+1. **Dangling Orphaned and Stale Artifacts**: Go's orchestrator (`pkg/orchestrator/orchestrator.go`) lacks orphaned tool and stale artifact cleanup (`cleanupOrphanedTools`, `cleanupStaleShims`, `cleanupStaleSymlinks`). Modifying `.bin()` declarations or deleting `.tool.ts` files leaves broken shims, symlinks, and completion scripts permanently in `~/.dotfiles/.generated/target/bin`.
+2. **Incomplete CLI Surface**: Go's CLI (`cmd/dotfiles`) lacks essential global flags (`--platform`, `--arch`, `--libc`, `--verbose`, `--quiet`) and 6 subcommands (`bin`, `features`, `cleanup`, `check-updates`, `log`, `skill`).
+3. **`curl-script` System Binary Promotion Failure**: `pkg/installer/curl_script.go` searches only inside the tool's local `destDir`. Scripts installing binaries to standard system locations (`/usr/local/bin`, `~/.local/bin`, `/usr/bin`) fail binary promotion.
+4. **Multi-Line Import Parsing Bug**: `EvaluateToolDefinition` in `pkg/vm/vm.go` uses line-based prefix stripping (`strings.HasPrefix(trimmed, "import ")`), which corrupts multi-line TypeScript `import` blocks.
+5. **Stubbed Dashboard Features**: The `/api/tools/:name/check-update` endpoint in `pkg/dashboard/routes.go` is stubbed (`{"hasUpdate": false}`), breaking visual update checks in the web GUI.
+6. **Incomplete Asset Filtering (`pkg/arch`)**: Advanced zinit soft/hard regex filtering, non-binary asset exclusion (`.sha256`, `.asc`), and glibc vs. musl ranking from `packages/arch` are missing from Go's installer selection logic.
 
 ---
 
 ### Current Monorepo State
-
-The repository is in a transitional hybrid state on branch `agorbatchev/golang`. Core runtime logic, installers, SQLite database persistence, downloader, archive extractor, dashboard backend server, shell emissions, and CLI commands reside entirely in Go (`pkg/` and `cmd/dotfiles`). Go binaries are cross-compiled and bundled via a native Go build runner (`scripts/build/main.go`). The legacy TypeScript source packages under `packages/` have been deprecated or refactored, but type test fixtures (`packages/build/type-tests`) and Preact client sources (`packages/dashboard/src/client/`) are retained for build and verification workflows.
+The repository is currently in a **Wave 6-9 Transitional Hybrid State**:
+- The main CLI entry points (`bun check:ci`, package scripts) delegate execution directly to the Go CLI (`cmd/dotfiles`), the Go build orchestrator (`scripts/build/main.go`), and Go E2E tests (`tests/e2e/`).
+- TypeScript source packages (`packages/*`) remain in the tree as reference baselines, for ambient `.d.ts` type distribution (`.dist/schemas.d.ts`), and for running `tsd` type contract tests.
+- All 20 TypeScript E2E integration test suites (`packages/e2e-test/src/__tests__/`) have been fully translated to native Go tests (`tests/e2e/*.go`).
 
 ---
 
-### Overall Migration Parity Score: **9.7 / 10**
+### Overall Migration Parity Score: 8.5 / 10
 
-| Domain | Score | Hard Technical Justification |
+| Component / Subsystem | Parity Score | Hard Technical Justification |
 | :--- | :---: | :--- |
-| **Core File System & Database** | **9.8 / 10** | 100% SQLite schema, connection pooling, WAL mode, transaction enforcement, and permission serialization parity. Minor divergence in `MemFS.Exists` for broken symlinks vs `OSFS.Exists` target evaluation. |
-| **Orchestration & CLI Commands** | **10 / 10** | Complete parity across topological sorter (Kahn's algorithm with original index order preservation), once-scripts lifecycle, shell emissions output determinism, and CLI subcommands. |
-| **Installer Plugins (15/15)** | **9.5 / 10** | All 15 installers implemented with `Install`, `Uninstall`, `CheckUpdate`, and `SupportsSudo`. Deducted for minor system path fallback omission in `curl-script` and lack of `ghCli` delegation in `github`. |
-| **Networking, Archive & Proxy** | **10 / 10** | Downloader supports Range header resumption and 30s timeout; archive extractor includes native DMG/PKG extraction, Zip-Slip prevention, and deferred pipe cleanup. HTTP proxy features 100% cache route parity. |
-| **Dashboard, Build & Test Suite** | **9.5 / 10** | Native Go build runner cross-compiles binaries with zero Node runtime dependencies, enforces 26MB binary budget, runs `tsd` type assertion tests, and embeds Preact dashboard client. Deducted for static `check-update` API stub. |
+| **Core Storage, DB & FS** | **9.5 / 10** | Pure-Go SQLite (`modernc.org/sqlite`), WAL pragmas, thread-safe connection pooling, transaction enforcements, and permission serialization (octal string <-> base-10 integer) are 100% matched. Minor gap: `MemFS.ReadDir` map iteration order non-determinism. |
+| **JS VM & DSL Execution** | **9.0 / 10** | Goja (Sobek) + `esbuild` evaluates `.tool.ts` and `dotfiles.config.ts` accurately. Type generation (`scripts/typegen/main.go`) passes `tsd` type tests. Gap: line-prefix import stripping on multi-line imports. |
+| **Installer Plugins (15)** | **8.5 / 10** | All 15 installers functional with dry-run sandboxing, sudo validation, and platform detection. Gaps: `curl-script` system binary path resolution, missing `ExternallyManaged()` interface method, `brew` service boolean casting. |
+| **Orchestration & CLI** | **7.5 / 10** | Topological sorter (Kahn's algorithm with tie-breaking) matches TS. Critical gaps: missing orphaned/stale artifact cleanup, missing global CLI flags (`--platform`, `--arch`), and 6 missing CLI subcommands. |
+| **Dashboard & Web GUI** | **8.5 / 10** | Preact/Tailwind client embedded via `//go:embed`. 15 of 16 REST routes fully functional. Gap: `/api/tools/:name/check-update` returns a hardcoded stub. |
+| **Build & Release Pipeline**| **9.0 / 10** | `scripts/build/main.go` handles React compilation, typegen, `.dist/` packaging, `cli.js` launcher emission, and binary size verification (<26MB). |
 
 ---
 
 ### Current Dual-Run Parity Status (`bun check:ci` Analysis)
 
-`bun check:ci` executes formatting, linting, typechecking, and `bun test:all` (which runs `go test ./...` and `tests/e2e/`). Legacy dual-run parity scripts comparing TS CLI stdout directly against Go CLI stdout were removed when TS core packages were deprecated; CI now relies on Go native E2E integration tests in `tests/e2e/` and `tsd` type assertion tests in `scripts/build/main.go`.
+`bun check:ci` passes cleanly:
+1. `bun lint` (`oxfmt --check .`, `dprint check`, `oxlint .`) -> **PASS**
+2. `bun typecheck` (`tsgo -p tsconfig.json`) -> **PASS**
+3. `bun test:native` (`go test -count=1 -p 1 ./tests/e2e/...`) -> **PASS** (20/20 test suites pass in ~7.0s)
+4. `go test ./pkg/... ./cmd/... ./scripts/...` -> **PASS** (All Go unit tests pass)
 
 ---
 
-## 2. Technical Audit & Due Diligence Findings
+## 2. Feasibility Analysis (What Breaks on Demolition)
 
-The side-by-side audit confirmed that earlier divergence issues have been remediated, and identified two minor non-blocking behavioral gaps:
+### A. The `.tool.ts` Authoring Experience (DX) & Type Boundary
+- **Type Boundary Completeness**: All public DSL types (`defineTool`, `defineConfig`, `IFileSystem`, `ISystemInfo`, `Platform`, `Architecture`, installer parameters, shell configurators) are defined in `pkg/vm/dsl-types.ts` and exported into generated TypeScript declaration files (`.dist/schemas.d.ts`, `.dist/authoring-types.d.ts`, `.dist/tool-types.d.ts`).
+- **IDE Autocomplete & Design-Time Support**: User `.tool.ts` files importing `@alexgorbatchev/dotfiles` resolve type signatures cleanly against `.dist/schemas.d.ts`.
+- **Runtime Execution**: Goja VM in `pkg/vm/loader.go` executes user `.tool.ts` files natively during `dotfiles generate` and `install`. In addition, `.dist/cli.js` exports design-time JS stub implementations (`defineTool`, `defineConfig`) so Node/Bun tools can evaluate config files if required.
+- **Verification**: `scripts/build/main.go` includes an automated `runTypeTests()` step that runs `tsd` against `packages/build/type-tests/` to guarantee type boundary validity before compiling distributables.
 
-### Remediation Status of Previous Audit Findings
+### B. Dashboard Client & Backend Server
+- **Endpoint Parity**: 15 of 16 REST API endpoints required by the Preact/React client (`packages/dashboard/src/client/`) are fully implemented in Go (`pkg/dashboard/routes.go`):
+  - `GET /api/stats`
+  - `GET /api/config`
+  - `GET /api/health`
+  - `GET /api/activity`
+  - `GET /api/recent-tools`
+  - `GET /api/shell`
+  - `GET /api/tool-configs-tree`
+  - `GET /api/tools`
+  - `GET /api/tools/:name`
+  - `GET /api/tools/:name/history`
+  - `GET /api/tools/:name/readme`
+  - `GET /api/tools/:name/source`
+  - `POST /api/tools/:name/install`
+  - `POST /api/tools/:name/update`
+- **Gap**: `POST /api/tools/:name/check-update` is stubbed to return `{"hasUpdate": false}` instead of triggering a live update check against the installer plugin's `CheckUpdate()` method.
+- **Static Asset Embedding**: `pkg/dashboard/dashboard.go` uses `//go:embed all:dist` to embed compiled React client assets directly into the compiled Go binary. `scripts/build/main.go` invokes `bun build` on `packages/dashboard/src/client/dashboard.html` to populate `pkg/dashboard/dist/` prior to Go binary compilation.
 
-1. **Downloader HTTP Timeout**: Fixed in `pkg/downloader/downloader.go:34-39`. `NewDownloader` sets `http.Client{ Timeout: 30 * time.Second }` when passed a `nil` client.
-2. **Archive Pipe Cleanup**: Fixed in `pkg/archive/archive.go:274`. `extractTarXz` defers `pr.Close()` right after `io.Pipe()` creation, preventing pipe writer blocks on early returns.
-3. **Deterministic Shell Emissions**: Fixed in `pkg/orchestrator/orchestrator.go:855-895`. Map keys for `stc.Env`, `stc.Aliases`, and `stc.Functions` are sorted alphabetically with `sort.Strings()` before string formatting.
-4. **CLI Bootstrap Fallback**: Fixed in `cmd/dotfiles/bootstrap.go:50`. `candidateNames` checks `dotfiles.config.ts` first in default fallback resolution.
-5. **Sudo Elevation Security Validation**: Fixed in `pkg/installer/installer.go` (`ValidateSudo`). Enforces `inst.SupportsSudo()` check prior to running elevated installations.
-6. **Dashboard Platform Serialization**: Fixed in `pkg/dashboard/routes.go` (`formatToolConfigForDashboard`). Formats bitmask integers into string arrays before JSON responses.
-7. **Deduplicated `.d.ts` Declarations**: Fixed in `scripts/build/main.go` (`generateSchemaTypes`). Combines `dsl-types.ts` and `types.gen.ts` cleanly without duplicate symbol declarations.
-8. **Binary Size Budget & `tsd` Type Testing**: Integrated into `scripts/build/main.go` (`checkBinarySizeLimits` and `runTypeTests`). Enforces 26MB binary limit and validates TypeScript declarations using `tsd`.
-
-### Minor Non-Blocking Behavioral Gaps
-
-1. **`curl-script` System Path Fallback**:
-   - *TypeScript*: In `installFromCurlScript.ts`, if an installer script placed binaries outside `stagingDir` (e.g. `/usr/local/bin` or `~/.local/bin`), TypeScript searched system directories and copied found binaries into `stagingDir`.
-   - *Go*: Go's `PromoteBinaries` (`pkg/installer/curl_script.go`) searches recursively inside `destDir` (staging folder), but does not inspect `/usr/local/bin` or `~/.local/bin` if the script installed binaries directly to system paths.
-2. **`github` `ghCli` Delegation**:
-   - *TypeScript*: `GitHubReleaseInstallerPlugin` supported `ghCli: true` via `GhCliApiClient` for GitHub Enterprise / SSO authenticated environments.
-   - *Go*: `pkg/installer/github.go` executes direct HTTP API requests using `GITHUB_TOKEN` and does not invoke local `gh` CLI.
-3. **Dashboard `check-update` Endpoint**:
-   - *Location*: `pkg/dashboard/routes.go` (`handleToolCheckUpdate`).
-   - *Behavior*: Returns static JSON `{ "hasUpdate": false, "currentVersion": "latest", "latestVersion": "latest", "supported": true }` instead of querying upstream registries dynamically per tool.
-
----
-
-## 3. Feasibility Analysis (What Breaks on Demolition)
-
-### 3.1 The `.tool.ts` Authoring Experience (DX) & VM / Typings
-
-- **Typegen Generation (`scripts/typegen/main.go`)**: Converts Go structs in `pkg/config` directly into TypeScript interfaces at `packages/dashboard/src/shared/types.gen.ts`.
-- **DSL Typings (`pkg/vm/dsl-types.ts`)**: Defines builder interfaces (`IToolConfigBuilder`, `IShellConfigurator`, `IInstallFunction`, `Platform`, `Architecture`, `IFileSystem`, `IConfigContext`).
-- **Loader API (`pkg/vm/loader-api.ts`)**: Binds native Goja JavaScript globals (`defineConfig`, `defineTool`, `Platform`, `Architecture`).
-- **Status & Safety**:
-  - `scripts/build/main.go` (`generateSchemaTypes`) combines `dsl-types.ts` and `types.gen.ts` into `.dist/schemas.d.ts` and `.dist/authoring-types.d.ts`.
-  - `dsl-types.ts` declares `IFileSystem` methods (`readFile`, `writeFile`, `exists`, `mkdir`, `readdir`, `rm`) as returning `Promise<T>`. `pkg/vm/loader-api.ts` wraps synchronous Goja VM returns in `Promise.resolve()`, supporting async/await syntax in user `.tool.ts` configurations.
-  - `runTypeTests` in `scripts/build/main.go` runs `tsd` against emitted `.d.ts` bundles to ensure complete type safety and IDE autocompletion before release.
-
-### 3.2 The Dashboard Client & Backend Server
-
-- **Asset Embedding (`pkg/dashboard/dashboard.go`)**: Uses Go `//go:embed all:dist` to self-contain Preact/Tailwind client assets compiled by Bun (`build_dashboard.js`).
-- **REST API Endpoints Audit**:
-  - `GET /api/stats`, `GET /api/config`, `GET /api/health`, `GET /api/activity`, `GET /api/recent-tools`, `GET /api/tools/:name`, `GET /api/tools/:name/history`, `GET /api/tools/:name/readme`, `GET /api/tools/:name/source`, `GET /api/tool-configs-tree`, `GET /api/shell`, `GET /api/tools`: **100% Parity Achieved**.
-  - `POST /api/tools/:name/check-update`: **Static Stub Response**.
-
-### 3.3 The Build & NPM Packaging Pipeline
-
-- **Native Build Runner (`scripts/build/main.go`)**:
-  - Compiles Preact dashboard assets via Bun (`build_dashboard.js`).
-  - Runs Go typegen to produce `types.gen.ts`.
-  - Generates `.dist/schemas.d.ts`, `.dist/authoring-types.d.ts`, `.dist/cli.d.ts`, `.dist/tool-types.d.ts`.
-  - Generates root `.dist/package.json` and 4 target platform descriptors (`@alexgorbatchev/dotfiles-darwin-x64`, `darwin-arm64`, `linux-x64`, `linux-arm64`).
-  - Emits launcher script `.dist/cli.js` (uses `node:child_process` `spawnSync` to execute native binary with zero runtime dependencies).
-  - Cross-compiles statically linked Go binaries (`CGO_ENABLED=0 -ldflags="-s -w"`).
-  - Executes `tsd` type assertion tests against `packages/build/type-tests`.
-  - Enforces 26MB binary budget across all compiled executables.
+### C. The Build and NPM Packaging Pipeline
+- **Single Orchestrator**: `scripts/build/main.go` serves as the build pipeline orchestrator, eliminating dependence on legacy Node build packages (`packages/build`).
+- **Pipeline Workflow**:
+  1. Compiles React dashboard client (`bun build`).
+  2. Runs typegen (`go run scripts/typegen/main.go`) to output `packages/dashboard/src/shared/types.gen.ts`.
+  3. Assembles `.dist/schemas.d.ts`, `authoring-types.d.ts`, and `cli.d.ts`.
+  4. Emits cross-platform Node/Bun launcher `cli.js` (spawns native compiled Go binary or falls back to platform npm package).
+  5. Generates root `.dist/package.json` (`@alexgorbatchev/dotfiles`) and platform subpackages (`@alexgorbatchev/dotfiles-darwin-x64`, `darwin-arm64`, `linux-x64`, `linux-arm64`).
+  6. Compiles native Go binary and cross-compiles all 4 target binaries with `CGO_ENABLED=0` and `-ldflags="-s -w"`.
+  7. Runs `tsd` type tests and verifies binary size limits (<26MB per binary).
 
 ---
 
-## 4. Structural & Architectural Gaps
+## 3. Structural & Architectural Gaps
 
-### 4.1 Method-by-Method Comparison Matrix (Go vs. TypeScript Predecessors)
+### Comparison Table: Go Methods/Functions vs. TS Predecessors
 
-| Component | TypeScript Predecessor (`main`) | Go Implementation (`pkg/`) | Status & Parity Notes |
+| Domain | Go Implementation (`pkg/*`, `cmd/*`) | TS Predecessor (`packages/*`) | Discrepancy & Parity Status |
 | :--- | :--- | :--- | :--- |
-| **File System** | `PhysicalFileSystem.readFile` | `OSFS.ReadFile(path)` (`pkg/fs/os_fs.go`) | **100% Parity**: Reads raw bytes from disk. |
-| **File System** | `PhysicalFileSystem.writeFile` | `OSFS.WriteFile(path, data, perm)` | **100% Parity**: Writes bytes with Unix permissions. |
-| **File System** | `PhysicalFileSystem.exists` | `OSFS.Exists(path)` | **100% Parity**: Uses `os.Stat` (returns `false` on broken symlinks). |
-| **File System** | `MemoryFileSystem.exists` | `MemFS.Exists(path)` (`pkg/fs/mem_fs.go`) | **Divergence**: Checks map key existence; returns `true` on broken symlinks. |
-| **File System** | `TrackedFileSystem.ts` | `TrackedFS` (`pkg/fs/tracked_fs.go`) | **100% Parity**: Intercepts mutators and records ops in `registry.Registry`. |
-| **File System** | `ResolvedFileSystem.ts` | `ResolvedFS` (`pkg/fs/resolved_fs.go`) | **100% Parity**: Expands `~` and `~/` home directory paths. |
-| **Database** | `RegistryDatabase.ts` | `db.NewConnection` (`pkg/db/db.go`) | **100% Parity**: SQLite WAL mode, busy timeout 5000ms, connection pooling. |
-| **Registry** | `FileRegistry.recordOperation` | `Registry.RecordFileOperation` (`pkg/registry`) | **100% Parity**: Enforces non-nil `*sql.Tx` for atomic file logging. |
-| **Registry** | Permissions handling | `Permission("0644")` (`pkg/registry`) | **100% Wire Parity**: Octal string `"0644"` stored as decimal `"420"` in SQLite. |
-| **Orchestrator** | `GeneratorOrchestrator.generateAll` | `Orchestrator.GenerateTools` (`pkg/orchestrator`) | **100% Parity**: Topological sorting, staging, shims, symlinks, completions. |
-| **Orchestrator** | `orderToolConfigsByDependencies` | `orchestrator.TopologicalSort` | **100% Parity**: Kahn's algorithm preserving initial array index order. |
-| **Shell Init** | `ShellInitGenerator.generate` | `Orchestrator.generateShellScripts` | **100% Parity**: Map keys sorted alphabetically for deterministic shell output. |
-| **Shims** | `ShimGenerator.generateShim` | `shim.Generator.Generate` (`pkg/shim`) | **100% Parity**: Uses embedded `shim.tmpl` with recursion guard and auto-update. |
-| **Virtual Env** | `VirtualEnvGenerator.create` | `venv.Manager.Create` (`pkg/venv`) | **100% Parity**: Generates `source`, `source.ps1`, `dotfiles.config.ts`, `tools/`. |
-| **Downloader** | `Downloader.downloadToFile` | `Downloader.Download` (`pkg/downloader`) | **100% Parity**: 30s default timeout, Range header resumption, SHA256 integrity checks. |
-| **Archive** | `extractArchiveByFormat('zip')` | `Extractor.extractZip` (`pkg/archive`) | **100% Parity**: Zip-Slip protection and symlink validation. |
-| **Archive** | `extractArchiveByFormat('tar.xz')` | `Extractor.extractTarXz` (`pkg/archive`) | **100% Parity**: Deferred `pr.Close()` prevents pipe writer deadlocks. |
-| **Archive** | DMG & PKG extraction | `extractDmg` & `extractPkg` (`pkg/archive`) | **100% Parity**: macOS `hdiutil attach` and `pkgutil --expand-full`. |
-| **HTTP Proxy** | `createProxyServer.ts` | `Server` (`pkg/proxy/proxy.go`) | **100% Parity**: `/cache/clear`, `/cache/stats`, `/cache/populate`, `/` proxying. |
-| **Utils** | `expandHomePath` | `utils.ExpandHomePath` (`pkg/utils`) | **100% Parity**: Expands `~`, `~/`, and `~\`. |
+| **Virtual File System** | `MemFS` (`pkg/fs/mem_fs.go`) | `MemFileSystem` (`packages/file-system`) | **Order Non-Determinism**: Go `MemFS.ReadDir` iterates over `map[string]*fileNode` without sorting, returning entry slices in non-deterministic order. |
+| **Data Layer & DB** | `Registry` & `NewConnection` (`pkg/db`, `pkg/registry`) | `RegistryDatabase` & `FileRegistry` | **Match**: Both use SQLite WAL mode, 5000ms busy timeout, base-10/octal permission conversion, and explicit atomic transaction locks (`ErrTransactionRequired`). |
+| **HTTP Downloader** | `Downloader` (`pkg/downloader/downloader.go`) | `Downloader` (`packages/downloader`) | **Proxy Configuration Gap**: TS accepted `IProxyFetchConfig` struct directly. Go relies on HTTP transport environment settings (`HTTP_PROXY`/`HTTPS_PROXY`). |
+| **Archive Extraction** | `Extractor` (`pkg/archive/archive.go`) | `ArchiveExtractor` (`packages/archive-extractor`) | **Subprocess Safety**: Go uses stdlib streams for zip/tar/gzip/bzip2 and external processes for `.tar.xz`, `.dmg`, `.pkg`. `xz` pipeline requires explicit pipe cleanup on cancellation to prevent zombie process hangs. |
+| **Orchestrator** | `TopologicalSort` (`pkg/orchestrator/orchestrator.go`) | `orderToolConfigsByDependencies.ts` | **Missing Cleanup Logic**: Go lacks `cleanupOrphanedTools()`, `cleanupStaleShims()`, `cleanupStaleSymlinks()`, and `cleanupStaleCopies()`. |
+| **CLI Commands** | `cmd/dotfiles/*` | `packages/cli/*` | **Missing Commands & Flags**: Missing `--platform`, `--arch`, `--libc`, `--verbose`, `--quiet` flags and `bin`, `features`, `cleanup`, `check-updates`, `log`, `skill` subcommands. |
+| **Architecture Matcher** | `pkg/arch/arch.go` | `packages/arch/*` | **Incomplete Matching Logic**: Missing zinit soft/hard pattern filters, non-binary file filters, and glibc/musl asset ranking. |
+| **Features & Catalog** | `pkg/features/readme.go` | `packages/features/src/readme-service/*` | **Missing Catalog Generator**: Missing remote GitHub README fetching, `generateCatalogFromConfigs`, `generateCombinedReadme`, and `CATALOG.md` output. |
 
 ---
 
-## 5. Installer & Package Manager Gaps
+## 4. Installer & Package Manager Gaps
 
-### 5.1 15/15 Installer Plugins Parity Summary
+### Exhaustive 15-Installer Audit
 
-All 15 installer plugins (`apt`, `brew`, `cargo`, `curl-binary`, `curl-script`, `curl-tar`, `dmg`, `dnf`, `gitea`, `github`, `manual`, `npm`, `pacman`, `pkg`, `zsh-plugin`) are fully implemented in Go (`pkg/installer/`). In Go, every plugin implements `Install`, `Uninstall`, `CheckUpdate`, and `SupportsSudo`.
-
-### 5.2 Sudo Elevation Security & Validation
-
-- **`SupportsSudo()` Declarations**:
-  - `true` (5 installers): `apt`, `dnf`, `pacman`, `pkg`, `manual`.
-  - `false` (10 installers): `brew`, `cargo`, `curl-binary`, `curl-script`, `curl-tar`, `dmg`, `gitea`, `github`, `npm`, `zsh-plugin`.
-- **Pre-Execution Validation**:
-  `ValidateSudo(inst, tool)` in `pkg/installer/installer.go` enforces that `tool.Sudo` requires `inst.SupportsSudo() == true`. Attempting to use `sudo: true` with a non-sudo installer (e.g. `brew` or `npm`) returns an explicit validation error prior to execution.
-
----
-
-## 6. Test Coverage Gaps (TS vs. Go E2E)
-
-### 6.1 E2E Test Suite Comparison Matrix
-
-| TypeScript Test File (`packages/e2e-test/src/__tests__/*`) | Go E2E Test File (`tests/e2e/*`) | Parity Status & Notes |
-| :--- | :--- | :--- |
-| `apt.test.ts` | `apt_test.go` | **Parity Achieved**: Apt installer package tracking and shims. |
-| `autoInstall.test.ts` | `auto_install_test.go` | **Parity Achieved**: Auto-installation logic on missing binaries. |
-| `completion.test.ts` | `completion_test.go` | **Parity Achieved**: Shell completion script generation. |
-| `conflict.test.ts` | `conflict_test.go` | **Parity Achieved**: Conflict detection on duplicate binary names. |
-| `dependency.test.ts` | `dependency_test.go` | **Parity Achieved**: Topological dependency order and cycle checks. |
-| `dnf.test.ts` | `dnf_test.go` | **Parity Achieved**: Dnf installer mock execution. |
-| `env.test.ts` | `env_test.go` | **Parity Achieved**: Environment variable export generation. |
-| `files.test.ts` | `files_test.go` | **Parity Achieved**: File tracking in SQLite registry. |
-| `generate.test.ts` | `generate_test.go` | **Parity Achieved**: `generate` subcommand output. |
-| `ghCli.test.ts` | `gh_cli_test.go` | **Parity Achieved**: GitHub CLI download fallbacks. |
-| `giteaRelease.test.ts` | `gitea_release_test.go` | **Parity Achieved**: Gitea release asset downloads. |
-| `hook.test.ts` | `hook_test.go` | **Parity Achieved**: Tool installation hooks. |
-| `install.test.ts` | `install_test.go` | **Parity Achieved**: Full installation pipeline. |
-| `pacman.test.ts` | `pacman_test.go` | **Parity Achieved**: Pacman installer mock execution. |
-| `pkg.test.ts` | `pkg_test.go` | **Parity Achieved**: macOS `.pkg` installer handling. |
-| `symlinkStale.test.ts` | `symlink_stale_test.go` | **Parity Achieved**: Stale symlink cleanup. |
-| `toolRename.test.ts` | `tool_rename_test.go` | **Parity Achieved**: Tool rename migration handling. |
-| `trace.test.ts` | `trace_test.go` | **Parity Achieved**: `--trace` logging outputs. |
-| `typeSafety.test.ts` | `scripts/build/main.go` (`runTypeTests`) | **Parity Achieved**: Evaluates `packages/build/type-tests` via `tsd` during build. |
-| `update.test.ts` | `update_test.go` | **Parity Achieved**: Version update detection. |
-| `versionDetection.test.ts` | `version_detection_test.go` | **Parity Achieved**: Version binary regex detection. |
-| _N/A_ | `dry_run_sandboxing_test.go` | **Added in Go**: Verifies virtual filesystem isolation during dry runs. |
+| Installer Plugin | Sudo Support (`supportsSudo`) | Uninstallation Support | Custom Parameters & Features | Identified Parity Gaps & Edge Cases |
+| :--- | :---: | :---: | :--- | :--- |
+| **`apt`** | `true` | Implemented | `package`, `update`, `version` | Lacks pre-flight `command -v apt-get` / `dpkg-query` OS validation. Falls back to `/usr/bin/<binName>` if `which` fails. |
+| **`brew`** | `false` | Implemented | `formula`, `cask`, `tap`, `args`, `link`, `service` | `versionRegex` pattern filtering is not applied to `versionArgs` CLI output. Boolean `service: true` fails type cast. |
+| **`cargo`** | `false` | Implemented | `crateName`, `binarySource`, `sha256` | Falls back from `cargo-quickinstall` to local compilation cleanly. `CheckUpdate()` returns dummy `HasUpdate: false`. |
+| **`curl-binary`**| `false` | Implemented | `url`, `sha256` | `chmod +x` executed best-effort. Lacks Zod URL schema validation. |
+| **`curl-script`**| `false` | Implemented | `url`, `shell`, `args`, `env`, `versionArgs` | **CRITICAL GAP**: Go only searches inside `destDir`. Installers placing binaries in `/usr/local/bin` or `~/.local/bin` fail binary promotion. |
+| **`curl-tar`** | `false` | Implemented | `url`, `sha256` | Uses multi-stage extension detector (URL suffix, path, `Content-Disposition`, `Content-Type`). |
+| **`dmg`** | `false` | Implemented | `source`, `appName`, `binaryName`, `binaryPath` | macOS gate (`OS == "darwin"`). Uses `defer` for `hdiutil detach` and mount directory cleanup. |
+| **`dnf`** | `true` | Implemented | `package`, `refresh` | Queries installed RPM version via `rpm -q`. Parses `dnf list --upgradable` for updates. |
+| **`gitea`** | `false` | Implemented | `instanceUrl`, `repo`, `token` | Queries REST API `/api/v1/repos/{owner}/{repo}/releases/latest`. |
+| **`github`** | `false` | Implemented | `repo`, `assetPattern`, `token` | Uses scored asset selector. Lacks fallback to `gh release download` CLI when GitHub API rate limit is reached. |
+| **`manual`** | `true` | Implemented | `binaryPath` | Resolves `{homeDir}` placeholders. Supports config-only tools cleanly. |
+| **`npm`** | `false` | Implemented | `packageManager`, `package`, `force` | Resolves global install directory via `bun pm bin -g` or `npm config get prefix`. |
+| **`pacman`** | `true` | Implemented | `package`, `sysupgrade` | Parses `pacman -Qu` for updates and `pacman -Q` for installed version. |
+| **`pkg`** | `true` | No-Op | `source`, `target` | macOS gate (`OS == "darwin"`). Executes `sudo installer -pkg <path> -target <target>`. |
+| **`zsh-plugin`** | `false` | Implemented | `repo`, `url`, `pluginName` | Handles `git clone` and `git pull --ff-only`. Emits `source "<path>"` shell initialization. |
 
 ---
 
-## 7. Completed vs. Remaining Backlog
+## 5. Test Coverage Gaps (TS vs. Go E2E)
 
-### 7.1 Summary of Completed Migration Waves
+### E2E Test Mapping Matrix
 
-- **Wave 1–2**: SQLite database schema, registry operation tracking, permission conversions, and virtual filesystem abstractions (`OSFS`, `MemFS`, `TrackedFS`, `ResolvedFS`).
-- **Wave 3**: All 15 installer plugins, platform configuration resolvers, and installer registry.
-- **Wave 4**: Downloader with Range resumption and 30s timeout, archive extractor with native Zip-Slip protection and pipe cleanup, HTTP proxy server, and runner execution layer.
-- **Wave 5**: Orchestrator, Kahn's topological sorter, deterministic shell script generator (`main.zsh`, `main.bash`, `main.ps1`), shim generator, virtual env manager, embedded dashboard server, and all CLI subcommands.
-- **Wave 6**: Build runner (`scripts/build/main.go`), Go typegen (`scripts/typegen/main.go`), `.d.ts` declaration generation, 26MB binary budget enforcement, and `tsd` type assertion integration.
+100% of active TypeScript E2E integration test suites (`packages/e2e-test/src/__tests__/`) have been fully translated to Go (`tests/e2e/*.go`):
+
+| Legacy TypeScript Test File (`packages/e2e-test/src/__tests__/`) | Translated Go Native Test File (`tests/e2e/`) | Execution Status |
+| :--- | :--- | :---: |
+| `auto-install.test.ts` | `auto_install_test.go` | **PASS** |
+| `completion.test.ts` | `completion_test.go` | **PASS** |
+| `conflict.test.ts` | `conflict_test.go` | **PASS** |
+| `dependency.test.ts` | `dependency_test.go` | **PASS** |
+| `dnf.test.ts` | `dnf_test.go` | **PASS** |
+| `dry-run.test.ts` | `dry_run_sandboxing_test.go` | **PASS** |
+| `env.test.ts` | `env_test.go` | **PASS** |
+| `files.test.ts` | `files_test.go` | **PASS** |
+| `generate.test.ts` | `generate_test.go` | **PASS** |
+| `gh-cli.test.ts` | `gh_cli_test.go` | **PASS** |
+| `gitea-release.test.ts` | `gitea_release_test.go` | **PASS** |
+| `hook.test.ts` | `hook_test.go` | **PASS** |
+| `install.test.ts` | `install_test.go` | **PASS** |
+| `pacman.test.ts` | `pacman_test.go` | **PASS** |
+| `pkg.test.ts` | `pkg_test.go` | **PASS** |
+| `symlink-stale.test.ts` | `symlink_stale_test.go` | **PASS** |
+| `tool-rename.test.ts` | `tool_rename_test.go` | **PASS** |
+| `trace.test.ts` | `trace_test.go` | **PASS** |
+| `update.test.ts` | `update_test.go` | **PASS** |
+| `version-detection.test.ts` | `version_detection_test.go` | **PASS** |
+
+### Demolition Test Risks
+- **E2E Integration Test Risk**: **ZERO**. All 20 integration test suites run natively in Go in ~7.0s during `bun check:ci`.
+- **Unit Test Coverage Risk**: **LOW**. 47 Go unit test files cover `pkg/*`. However, edge-case unit tests for `curl-script` system binary locations, multi-line `import` blocks in `pkg/vm`, and map sorting in `MemFS` should be added before TypeScript source deletion.
 
 ---
 
-### 7.2 Final Demolition Roadmap to Pure Go Distribution
+## 6. Completed vs. Remaining Backlog
 
-To complete the transition and distribute a pure Go binary release:
+### Completed Waves (Waves 1–9 Summary)
+- **Wave 1–3**: Core file system abstractions (`OSFS`, `MemFS`), SQLite schema migrations and WAL pragmas, Sobek/Goja JS VM integration, and shell emissions.
+- **Wave 4–5**: 15 installer plugins, E2E test suite migration (20/20 tests), tracked filesystem state recording, permission octal/decimal translation, and Cobra CLI bootstrap.
+- **Wave 6–9**: Cross-platform Node launcher (`cli.js`), pure-Go binary compilation (`CGO_ENABLED=0`), `tsd` type contract tests, Web dashboard API routes (15/16 routes), archive symlink security checks, and process substitution fixes.
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                       FINAL DEMOLITION & RELEASE ROADMAP                │
-└─────────────────────────────────────────────────────────────────────────┘
-                                     │
-  1. CLEANUP LEGACY PACKAGES         │
-     ├── Safely delete deprecated TS packages in packages/ (except build/type-tests & dashboard client)
-     └── Update root package.json scripts to point exclusively to Go build runner
-                                     │
-  2. VERIFY LOCAL & CI BUILD         │
-     ├── Execute `go run scripts/build/main.go` to produce .dist/
-     └── Run full `bun check` and `bun check:ci` suite
-                                     │
-  3. CUT RELEASE                     │
-     └── Tag and publish pure Go distribution binary release vX.Y.Z
-```
+---
+
+### Remaining Wave 10 Open Tickets
+
+To safely demolish the TypeScript source tree and distribute the Go CLI as a pure, statically-linked binary, the following open Wave 10 tickets must be resolved sequentially:
+
+1. **`2026-06-29-wave-10-implement-stale-disabled-and-orphaned-tool-cleanups.md`**
+   - *Scope*: Implement `cleanupOrphanedTools`, `cleanupStaleShims`, `cleanupStaleSymlinks`, and `cleanupStaleCopies` in `pkg/orchestrator/orchestrator.go`.
+2. **`2026-06-29-wave-10-complete-installer-and-shell-features-parity.md`**
+   - *Scope*: Fix `curl-script` system binary search paths (`/usr/local/bin`, `~/.local/bin`), implement `ExternallyManaged()` on `Installer` interface, fix `brew` service boolean casting, and add missing CLI flags/subcommands to `cmd/dotfiles`.
+3. **`2026-06-29-wave-10-enforce-memfs-non-deterministic-ordering-and-symlink-semantics.md`**
+   - *Scope*: Add deterministic sorting (`sort.Strings`) to `MemFS.ReadDir()` in `pkg/fs/mem_fs.go`.
+4. **`2026-06-29-wave-10-repair-visual-dashboard-api-response-schema.md`**
+   - *Scope*: Connect `/api/tools/:name/check-update` in `pkg/dashboard/routes.go` to the installer `CheckUpdate()` engine.
+5. **`2026-06-29-wave-10-resolve-jsvm-filesystem-async-and-write-api-mismatch.md`**
+   - *Scope*: Fix multi-line import stripping in `EvaluateToolDefinition` in `pkg/vm/vm.go`.
+6. **`2026-06-29-wave-10-build-go-native-release-packaging-pipeline.md`**
+   - *Scope*: Finalize TypeScript source deletion (`rm -rf packages/*`), update root `package.json` to publish statically compiled binaries, and verify `bun check:ci` in a pure Go workspace.
+
+---
+
+## 7. Due Diligence Findings
+
+# DUE DILIGENCE
+
+During this holistic line-by-line audit across all Go packages (`pkg/*`, `cmd/*`, `scripts/*`) and TypeScript workspace packages (`packages/*`), 16 critical, high, and medium-severity due diligence issues were identified. These issues must be addressed during Wave 10 before TypeScript packages are demolished:
+
+### 1. `MemFS.ReadDir` Map Iteration Non-Determinism (`pkg/fs/mem_fs.go`)
+- **Severity / Category**: Medium / Core Correctness & Determinism
+- **Issue**: `MemFS.ReadDir` iterates over Go's internal `m.files map[string]*fileNode`. Because Go randomizes map iteration order by design, repeated calls to `ReadDir` return directory entries in non-deterministic order. In contrast, Node/Bun virtual filesystems maintain stable key insertion/alphabetical order.
+- **Impact**: Tests, CLI outputs, or directory tree walks operating against `MemFS` produce unstable, non-reproducible outputs across runs.
+- **Fix**: Add explicit sorting (`sort.Slice` by name) prior to returning entry slices in `pkg/fs/mem_fs.go`.
+
+### 2. Subprocess Pipe Leak & Zombie Risk in `extractTarXz` (`pkg/archive/archive.go`)
+- **Severity / Category**: High / Process Stability & Goroutine Leaks
+- **Issue**: `extractTarXz` spawns an `xz -d -c` decompressor subprocess feeding an `io.PipeWriter` inside a goroutine. If the outer context is canceled, `pr.Close()` is invoked, but if the `xz` process blocks on `pw.Write()`, the goroutine hangs indefinitely because `pw.CloseWithError(ctx.Err())` is not called.
+- **Impact**: Subprocess pipelines leak zombie processes and uncollected goroutines when archives are canceled or fail mid-extraction.
+- **Fix**: Ensure `pw.CloseWithError(ctx.Err())` is executed on context cancellation or error in `pkg/archive/archive.go`.
+
+### 3. Downloader Proxy Configuration Option Bypass (`pkg/downloader/downloader.go`)
+- **Severity / Category**: Low / Feature Parity
+- **Issue**: TypeScript's `Downloader` accepted an explicit `IProxyFetchConfig` struct to route download traffic directly through the local HTTP proxy (`packages/http-proxy`). Go's `Downloader` relies solely on standard `HTTP_PROXY`/`HTTPS_PROXY` environment variables or custom `http.Client` transport settings rather than supporting a dedicated proxy configuration option in `DownloadOptions`.
+- **Impact**: Code relying on programmatic proxy binding must set process environment variables rather than passing typed proxy options.
+- **Fix**: Add an explicit `ProxyURL string` field to `DownloadOptions` in `pkg/downloader/downloader.go`.
+
+### 4. Missing Stale & Orphaned Artifact Cleanup in Orchestrator (`pkg/orchestrator/orchestrator.go`)
+- **Severity / Category**: Critical / Core Orchestration & System State Safety
+- **Issue**: In TypeScript, running `dotfiles generate` automatically invoked `cleanupOrphanedTools()`, `cleanupStaleShims()`, `cleanupStaleSymlinks()`, and `cleanupStaleCopies()`. Go's orchestrator currently lacks all four cleanup methods.
+- **Impact**: Deleting a `.tool.ts` configuration or modifying its `.bin()` declarations leaves dangling, broken shims, symlinks, and completion scripts in `~/.dotfiles/.generated/target/bin` permanently.
+- **Fix**: Implement orphaned tool and stale artifact cleanup routines in `pkg/orchestrator/orchestrator.go` (tracked in Wave 10 ticket `2026-06-29-wave-10-implement-stale-disabled-and-orphaned-tool-cleanups.md`).
+
+### 5. Missing Global CLI Flags in Go Entrypoint (`cmd/dotfiles/root.go`)
+- **Severity / Category**: High / CLI Interface Parity
+- **Issue**: Cobra CLI definition in `cmd/dotfiles/root.go` lacks standard TypeScript global flags: `--platform`, `--arch`, `--libc`, `--verbose`, and `--quiet`.
+- **Impact**: Automation scripts and cross-platform test suites passing `--platform=darwin` or `--verbose` fail under the Go binary with unknown flag errors.
+- **Fix**: Bind missing flags to Cobra global persistent flags in `cmd/dotfiles/root.go`.
+
+### 6. Missing CLI Subcommands in Go Entrypoint (`cmd/dotfiles`)
+- **Severity / Category**: High / CLI Feature Completeness
+- **Issue**: The Go binary is missing 6 CLI subcommands present in TypeScript (`packages/cli/src/commands/`): `bin`, `features`, `cleanup`, `check-updates`, `log`, and `skill`.
+- **Impact**: Command-line callers attempting to inspect binaries (`dotfiles bin`), run standalone cleanup (`dotfiles cleanup`), check for updates (`dotfiles check-updates`), or manage AI skills (`dotfiles skill`) receive command not found errors.
+- **Fix**: Implement Cobra command handlers for all 6 missing subcommands under `cmd/dotfiles/`.
+
+### 7. `curl-script` System Binary Path Resolution Deficit (`pkg/installer/curl_script.go`)
+- **Severity / Category**: High / Installer Reliability & Binary Promotion
+- **Issue**: TypeScript's `handleBinaryInstallation` searched system installation directories (`/usr/local/bin`, `~/.local/bin`, `/usr/bin`) and promoted newly created binaries to `context.stagingDir`. Go's `CurlScriptInstaller` searches ONLY inside `c.BinDir` (`destDir`).
+- **Impact**: Installation scripts (such as `rustup`, `nvm`, or custom shell installers) that place binaries directly into `/usr/local/bin` or `~/.local/bin` succeed at execution but fail binary promotion in Go, leaving no generated shims.
+- **Fix**: Update `pkg/installer/curl_script.go` to search standard system binary locations when `destDir` search yields no binaries.
+
+### 8. Missing `ExternallyManaged()` Method on Go `Installer` Interface (`pkg/installer/installer.go`)
+- **Severity / Category**: Medium / System Contract & Lifecycle Parity
+- **Issue**: In TypeScript, package manager installers (`brew`, `apt`, `dnf`, `pacman`, `npm`) declare `externallyManaged: true` to prevent the generator from attempting to manage or delete system-managed binaries. In Go, the `Installer` interface lacks `ExternallyManaged() bool`.
+- **Impact**: System-managed tools could be subjected to incorrect shim reconciliation or invalid state tracking.
+- **Fix**: Add `ExternallyManaged() bool` to the `Installer` interface in `pkg/installer/installer.go`.
+
+### 9. `brew` Installer Version Regex & Service Boolean Handling (`pkg/installer/brew.go`)
+- **Severity / Category**: Low / Plugin Parity
+- **Issue**: `pkg/installer/brew.go` does not apply `versionRegex` pattern matching to `versionArgs` CLI output. Furthermore, passing a boolean `service: true` configuration fails a type cast to string rather than defaulting to `"start"`.
+- **Impact**: Homebrew formula update checks with custom version regex fail, and boolean service configs error during evaluation.
+- **Fix**: Update `pkg/installer/brew.go` to apply regex extraction and support boolean service parameter casting.
+
+### 10. `github` Installer CLI Fallback Deficit (`pkg/installer/github.go`)
+- **Severity / Category**: Medium / Fallback Resiliency
+- **Issue**: TypeScript's GitHub installer included `GhCliApiClient`, falling back to `gh release download` CLI when GitHub REST API rate limits were exhausted. Go's `github.go` relies strictly on direct HTTP requests to `api.github.com`.
+- **Impact**: Installations fail during CI or heavy usage when GitHub unauthenticated rate limits (60 req/hr) are reached and no token is provided.
+- **Fix**: Implement `gh` CLI fallback in `pkg/installer/github.go` when HTTP API returns 403 Rate Limit Exceeded.
+
+### 11. Multi-Line Import Stripping Bug in Single-Script Evaluation (`pkg/vm/vm.go`)
+- **Severity / Category**: High / JS VM Execution Correctness
+- **Issue**: `EvaluateToolDefinition` in `pkg/vm/vm.go` strips TypeScript imports using line-prefix checking (`strings.HasPrefix(trimmed, "import ")`). Multi-line import blocks (e.g., `import {\n  defineTool\n} from ...`) have only their first line stripped, leaving invalid syntax (`defineTool\n} from ...`) in the JS script passed to Goja.
+- **Impact**: Single-file `.tool.ts` evaluation fails with Goja JS syntax errors when multi-line import statements are used.
+- **Fix**: Replace line-prefix checking with AST-aware or block-based import removal regex in `pkg/vm/vm.go`.
+
+### 12. Incomplete Architecture Matching Logic in `pkg/arch/arch.go`
+- **Severity / Category**: Medium / Feature Parity
+- **Issue**: TypeScript's `packages/arch` provided zinit soft/hard regex pattern filters, non-binary asset exclusion (`.sha256`, `.asc`, `.md`), and glibc vs. musl binary ranking (`selectBestMatch`). Go's `pkg/arch/arch.go` provides only `GetOS()`, `GetArch()`, and `DetectLibc()`.
+- **Impact**: Complex release asset selection for GitHub/Gitea releases may select suboptimal or non-executable assets (e.g. selecting a `.sha256` checksum file instead of a release archive).
+- **Fix**: Port zinit soft/hard pattern matching and asset scoring algorithms to `pkg/arch/arch.go`.
+
+### 13. Missing Remote Catalog Generator in `pkg/features/readme.go`
+- **Severity / Category**: Medium / Feature Parity
+- **Issue**: TypeScript's `ReadmeService.ts` provided remote GitHub README downloads, `generateCatalogFromConfigs`, `generateCombinedReadme`, and `CATALOG.md` writing. Go's `pkg/features/readme.go` implements only local frontmatter parsing (`ParseReadme`) and local caching.
+- **Impact**: Feature catalog generation commands (`dotfiles features`) fail to build combined documentation or download remote tool documentation.
+- **Fix**: Port remote README fetching and catalog markdown aggregation to `pkg/features/readme.go`.
+
+### 14. Dashboard Update Check Endpoint Stub (`pkg/dashboard/routes.go`)
+- **Severity / Category**: Medium / GUI Parity
+- **Issue**: The `/api/tools/:name/check-update` endpoint in `pkg/dashboard/routes.go` returns a hardcoded response (`{"hasUpdate": false}`) rather than executing the tool's installer `CheckUpdate()` engine.
+- **Impact**: Clicking "Check for Updates" in the visual dashboard web UI silently reports all tools as up-to-date.
+- **Fix**: Wire `/api/tools/:name/check-update` to call `installer.CheckUpdate(ctx, tool)` in `pkg/dashboard/routes.go`.
+
+### 15. Dead Code in `pkg/unwrap` Package
+- **Severity / Category**: Low / Code Hygeine & Maintainability
+- **Issue**: `pkg/unwrap` was created to port TypeScript's `unwrap-value` package, but `pkg/vm` handles JS value evaluation directly through Goja native bindings. The `pkg/unwrap` package is unused across the entire Go codebase.
+- **Impact**: Unused dead code increases maintenance burden and confuses developers.
+- **Fix**: Remove `pkg/unwrap` during Wave 10 cleanup (tracked in ticket `2026-06-29-wave-10-cleanup-unused-unwrap-package.md`).
+
+### 16. Socket Timeout Guard in Downloader (`pkg/downloader/downloader.go`)
+- **Severity / Category**: Medium / Network Resiliency
+- **Issue**: While `NewDownloader()` configures a 30s timeout on default `http.Client` instances, passing custom `http.Client` options without explicit dial or TLS handshake timeouts risks hanging connections on unresponsive network mirrors or proxies.
+- **Impact**: Long-running download processes can freeze indefinitely on unresponsive HTTP endpoints.
+- **Fix**: Enforce fallback `net.Dialer` and `TLSHandshakeTimeout` settings on all custom HTTP transport configurations in `pkg/downloader/downloader.go`.
+
