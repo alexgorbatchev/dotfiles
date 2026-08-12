@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 )
@@ -122,38 +121,10 @@ func generateSchemaTypes(rootDir string) error {
 	}
 	dslTypesContent := string(dslBytes)
 
-	loaderApiPath := filepath.Join(rootDir, "pkg/vm/loader-api.ts")
-	loaderBytes, err := os.ReadFile(loaderApiPath)
-	if err != nil {
-		return fmt.Errorf("failed to read loader-api.ts: %w", err)
-	}
-	loaderApiContent := string(loaderBytes)
-
-	loaderApiDeclMap := []string{
-		"export type ShellStrings = TemplateStringsArray | string;",
-		"export type PlatformCallback = (install: (method: string, params?: unknown) => IToolBuilder) => void;",
-		"export type ArchCallback = (install: (method: string, params?: unknown) => IToolBuilder) => void;",
-		"export type ShellCallback = (shell: Record<string, unknown>) => void;",
-	}
-
-	interfacesToExtract := []string{"IToolBuilder", "IShellConfigs", "IPathModule"}
-	for _, iface := range interfacesToExtract {
-		pattern := fmt.Sprintf("export interface %s \\{[\\s\\S]*?\\n\\}", iface)
-		re := regexp.MustCompile(pattern)
-		match := re.FindString(loaderApiContent)
-		if match != "" {
-			loaderApiDeclMap = append(loaderApiDeclMap, match)
-		} else {
-			return fmt.Errorf("failed to extract interface %s from loader-api.ts", iface)
-		}
-	}
-
 	publicDeclarationsTemplate := strings.Join([]string{
-		"import { ZodError, z } from 'zod';",
 		"export declare function dedentString(str: string): string;",
 		"export declare function dedentTemplate(template: string, values: Record<string, string>): string;",
 		dslTypesContent,
-		strings.Join(loaderApiDeclMap, "\n\n"),
 		"export declare function defineConfig(callback: ConfigFactory): ConfigFactory;",
 		"export declare function defineTool(callback: AsyncConfigureTool): AsyncConfigureTool;",
 		"export type {",
@@ -208,7 +179,8 @@ func generateSchemaTypes(rootDir string) error {
 		return fmt.Errorf("failed to write tool-types.d.ts: %w", err)
 	}
 
-	combinedBody := strings.Join([]string{publicDeclarationsTemplate, cleanedGeneratedTypes}, "\n\n")
+	moduleBody := strings.ReplaceAll(publicDeclarationsTemplate, "export declare function", "export function")
+	combinedBody := strings.Join([]string{moduleBody, cleanedGeneratedTypes}, "\n\n")
 	lines := strings.Split(combinedBody, "\n")
 	for i, line := range lines {
 		if len(strings.TrimSpace(line)) > 0 {
@@ -467,6 +439,28 @@ func copyDirectoryRecursive(src, dst string) error {
 	})
 }
 
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	info, err := srcFile.Stat()
+	if err != nil {
+		return err
+	}
+
+	dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode())
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
+}
+
 func copyAssetsAndSkill(rootDir string) error {
 	fmt.Println("📚 Copying skill and public assets...")
 	distDir := filepath.Join(rootDir, ".dist")
@@ -476,17 +470,7 @@ func copyAssetsAndSkill(rootDir string) error {
 		src := filepath.Join(rootDir, asset)
 		dst := filepath.Join(distDir, asset)
 		if _, err := os.Stat(src); err == nil {
-			srcFile, err := os.Open(src)
-			if err != nil {
-				return fmt.Errorf("failed to open asset %s: %w", asset, err)
-			}
-			defer srcFile.Close()
-			dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-			if err != nil {
-				return fmt.Errorf("failed to create asset %s: %w", asset, err)
-			}
-			defer dstFile.Close()
-			if _, err := io.Copy(dstFile, srcFile); err != nil {
+			if err := copyFile(src, dst); err != nil {
 				return fmt.Errorf("failed to copy asset %s: %w", asset, err)
 			}
 		}
@@ -499,6 +483,150 @@ func copyAssetsAndSkill(rootDir string) error {
 			return fmt.Errorf("failed to copy skill directory: %w", err)
 		}
 	}
+	return nil
+}
+
+func runTypeTests(rootDir string) error {
+	fmt.Println("🔍 Running tsd type tests...")
+	tsdDir := filepath.Join(rootDir, ".tmp", "tsd-tests")
+	if err := os.RemoveAll(tsdDir); err != nil {
+		return fmt.Errorf("failed to clean tsd-tests directory: %w", err)
+	}
+
+	typeTestsDir := filepath.Join(rootDir, "packages/build/type-tests")
+	if err := copyDirectoryRecursive(typeTestsDir, tsdDir); err != nil {
+		return fmt.Errorf("failed to copy type-tests: %w", err)
+	}
+
+	distDir := filepath.Join(rootDir, ".dist")
+	genDir := filepath.Join(tsdDir, ".generated")
+	if err := os.MkdirAll(genDir, 0755); err != nil {
+		return fmt.Errorf("failed to create .generated directory: %w", err)
+	}
+	if err := copyFile(filepath.Join(distDir, "tool-types.d.ts"), filepath.Join(genDir, "tool-types.d.ts")); err != nil {
+		return fmt.Errorf("failed to copy tool-types.d.ts to .generated: %w", err)
+	}
+
+	pkgDir := filepath.Join(tsdDir, "node_modules", "@alexgorbatchev", "dotfiles")
+	if err := os.MkdirAll(pkgDir, 0755); err != nil {
+		return fmt.Errorf("failed to create node_modules/@alexgorbatchev/dotfiles: %w", err)
+	}
+
+	packageFiles := []string{"cli.js", "package.json", "schemas.d.ts", "authoring-types.d.ts", "cli.d.ts"}
+	for _, file := range packageFiles {
+		src := filepath.Join(distDir, file)
+		dst := filepath.Join(pkgDir, file)
+		if _, err := os.Stat(src); err == nil {
+			if err := copyFile(src, dst); err != nil {
+				return fmt.Errorf("failed to copy %s to node_modules: %w", file, err)
+			}
+		}
+	}
+
+	indexDts := "export * from '@alexgorbatchev/dotfiles';\n"
+	if err := os.WriteFile(filepath.Join(tsdDir, "index.d.ts"), []byte(indexDts), 0644); err != nil {
+		return fmt.Errorf("failed to write index.d.ts for tsd tests: %w", err)
+	}
+
+	pkgJson := map[string]interface{}{
+		"name":    "tsd-tests",
+		"private": true,
+		"type":    "module",
+		"types":   "./index.d.ts",
+		"dependencies": map[string]string{
+			"@alexgorbatchev/dotfiles": "file:../../.dist",
+			"@types/node":              "*",
+		},
+	}
+	pkgJsonBytes, err := json.MarshalIndent(pkgJson, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal package.json for tsd tests: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(tsdDir, "package.json"), pkgJsonBytes, 0644); err != nil {
+		return fmt.Errorf("failed to write package.json for tsd tests: %w", err)
+	}
+
+	tsConfig := map[string]interface{}{
+		"compilerOptions": map[string]interface{}{
+			"target":           "ES2022",
+			"module":           "ESNext",
+			"moduleResolution": "bundler",
+			"strict":           true,
+			"noEmit":           true,
+			"skipLibCheck":     true,
+			"lib":              []string{"ES2022"},
+		},
+		"include": []string{"./**/*.d.ts", ".generated/tool-types.d.ts"},
+	}
+	tsConfigBytes, err := json.MarshalIndent(tsConfig, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal tsconfig.json for tsd tests: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(tsdDir, "tsconfig.json"), tsConfigBytes, 0644); err != nil {
+		return fmt.Errorf("failed to write tsconfig.json for tsd tests: %w", err)
+	}
+
+	nodeModulesDir := filepath.Join(tsdDir, "node_modules")
+	rootNodeModules := filepath.Join(rootDir, "node_modules")
+	for _, mod := range []string{"tsd", "typescript"} {
+		src := filepath.Join(rootNodeModules, mod)
+		dst := filepath.Join(nodeModulesDir, mod)
+		if _, err := os.Stat(src); err == nil {
+			_ = os.Symlink(src, dst)
+		}
+	}
+
+	cmd := exec.Command("bun", "x", "tsd", "--typings", "./index.d.ts", "--files", "./**/*.test-d.ts")
+	cmd.Dir = tsdDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("tsd type tests failed: %w", err)
+	}
+
+	fmt.Println("✅ tsd type tests passed successfully!")
+	return nil
+}
+
+const maxBinarySizeBytes int64 = 26 * 1024 * 1024
+
+func checkBinarySizeLimits(rootDir string) error {
+	fmt.Println("📏 Checking binary size limits (26MB limit)...")
+	distDir := filepath.Join(rootDir, ".dist")
+
+	var binaryPaths []string
+
+	nativeBin := "dotfiles"
+	if runtime.GOOS == "windows" {
+		nativeBin = "dotfiles.exe"
+	}
+	binaryPaths = append(binaryPaths, filepath.Join(distDir, nativeBin))
+
+	targets := []string{
+		"alexgorbatchev/dotfiles-darwin-x64",
+		"alexgorbatchev/dotfiles-darwin-arm64",
+		"alexgorbatchev/dotfiles-linux-x64",
+		"alexgorbatchev/dotfiles-linux-arm64",
+	}
+
+	for _, target := range targets {
+		binaryPaths = append(binaryPaths, filepath.Join(distDir, "packages", target, "bin", "dotfiles"))
+	}
+
+	for _, binPath := range binaryPaths {
+		info, err := os.Stat(binPath)
+		if err != nil {
+			return fmt.Errorf("failed to stat binary %s: %w", binPath, err)
+		}
+		if info.Size() > maxBinarySizeBytes {
+			mb := float64(info.Size()) / (1024.0 * 1024.0)
+			return fmt.Errorf("binary %s size (%.2f MB) exceeds limit of 26 MB", binPath, mb)
+		}
+		mb := float64(info.Size()) / (1024.0 * 1024.0)
+		fmt.Printf("  - %s: %.2f MB (OK)\n", filepath.Base(binPath), mb)
+	}
+
+	fmt.Println("✅ All binaries are within the 26MB size budget!")
 	return nil
 }
 
@@ -637,8 +765,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := runTypeTests(rootDir); err != nil {
+		fmt.Printf("Error running tsd type tests: %v\n", err)
+		os.Exit(1)
+	}
+
 	if err := compileAllBinaries(rootDir); err != nil {
 		fmt.Printf("Error compiling binaries: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := checkBinarySizeLimits(rootDir); err != nil {
+		fmt.Printf("Error checking binary size limits: %v\n", err)
 		os.Exit(1)
 	}
 
