@@ -64,24 +64,24 @@ Map every Go package (`pkg/*`, `cmd/*`, `scripts/*`) directly to its correspondi
    - `pkg/vm/` vs `packages/core/` and `packages/tool-config-builder/`
    - `scripts/build/` and `scripts/typegen/` vs `packages/build/`
 
-### Step 2: Dispatch Parallel Sub-Agents by Package Groups
+### Step 2: Dispatch Parallel Sub-Agents per Individual Package (1 Agent = 1 Package)
 
-Launch **parallel sub-agents** concurrently (by making a single message containing concurrent `task` tool calls of type `explore` or `general`).
+Launch **parallel sub-agents** concurrently (by making a workflow script call using `runs.all(...)` or concurrent sub-agent executions).
 
-For each sub-agent, assign a specific package group and instruct them to audit every individual package in that group:
+Assign **exactly one sub-agent per individual package pair** (for example, one sub-agent dedicated solely to `pkg/fs/` vs `packages/file-system/`, one sub-agent dedicated solely to `pkg/installer/apt.go` vs `packages/installer-apt/`, one sub-agent dedicated solely to `pkg/orchestrator/` vs `packages/generator-orchestrator/`, etc.):
 
-- Open and read the Go source files in `pkg/<pkg>` and corresponding TS source files in `packages/<pkg>` side-by-side for every single package.
-- Construct an exhaustive method-by-method comparison matrix mapping TS function signatures to their exact Go counterparts package by package.
+- Open and read the Go source file(s) in `pkg/<pkg>` and corresponding TS source file(s) in `packages/<pkg>` side-by-side in full for that specific package.
+- Construct an exhaustive method-by-method comparison matrix mapping TS function signatures to their exact Go counterparts for that single package.
 - Detail any discrepancies in return types, default parameters, error handling, state tracking, and runtime semantic differences.
 - Return a detailed, markdown-formatted report of their package findings.
 
-### Step 3: Collect and Synthesize Reports
+### Step 3: Collect and Synthesize All Package Reports
 
-Once all five parallel sub-agents have completed their tasks and returned their findings:
+Once all individual package sub-agents have completed their tasks and returned their findings:
 
-1. Carefully read and analyze each sub-agent's report.
-2. Identify any cross-component contract misalignments or hidden dependencies.
-3. Synthesize and consolidate their findings into a single, cohesive, and comprehensive master report.
+1. Carefully read and analyze each sub-agent's package report.
+2. Identify any cross-component contract misalignments or hidden dependencies across packages.
+3. Synthesize and consolidate all individual package findings into a single, cohesive, and comprehensive master report.
 
 ### Step 4: Write the Final Master Report to `./gaps-report.md`
 
