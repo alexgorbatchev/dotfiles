@@ -746,7 +746,7 @@ func TestOrchestrator_InstallSudoMismatch(t *testing.T) {
 		t.Fatal("expected error when installing tool with sudo: true on installer that does not support sudo, but got nil")
 	}
 
-	expectedErr := `installer "npm" does not support sudo installations`
+	expectedErr := `installer "npm" does not support sudo elevation`
 	if !strings.Contains(err.Error(), expectedErr) {
 		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
 	}
@@ -1273,6 +1273,111 @@ func TestSourceFilesDirectEmission(t *testing.T) {
 	}
 	if !strings.Contains(bashContent, "source <(__dotfiles_source_inline_test_tool_0)") {
 		t.Errorf("expected main.bash to contain process substitution for Sources block, got:\n%s", bashContent)
+	}
+}
+
+func TestGenerateShellScripts_DeterministicOrder(t *testing.T) {
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{
+		Name:   "test-logger",
+		Level:  logger.LogLevelVerbose,
+		Writer: &logBuf,
+	})
+
+	memFS := fs.NewMemFS()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	trackedFS := fs.NewTrackedFileSystem(memFS, reg, log, "system").WithFileType("init")
+	runner := exec.NewMockRunner()
+	instReg := installer.NewRegistry()
+
+	orch := NewOrchestrator(log, trackedFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			GeneratedDir:    "/home/user/.generated",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			TargetDir:       "/home/user/.generated/user-bin",
+		},
+	}
+
+	tools := []*config.ToolConfig{
+		{
+			Name:           "test-tool",
+			ConfigFilePath: "/home/user/tools/test-tool.tool.ts",
+			ShellConfigs: &config.ShellConfigs{
+				Zsh: &config.ShellTypeConfig{
+					Env: map[string]string{
+						"ZEBRA": "z",
+						"ALPHA": "a",
+						"BETA":  "b",
+					},
+					Aliases: map[string]string{
+						"z_alias": "z_cmd",
+						"a_alias": "a_cmd",
+						"b_alias": "b_cmd",
+					},
+					Functions: map[string]string{
+						"z_func": "echo z",
+						"a_func": "echo a",
+						"b_func": "echo b",
+					},
+				},
+			},
+		},
+	}
+
+	var firstOutput string
+	for i := 0; i < 20; i++ {
+		err := orch.generateShellScripts(ctx, tools, projCfg)
+		if err != nil {
+			t.Fatalf("failed to generate shell scripts iteration %d: %v", i, err)
+		}
+
+		data, err := memFS.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
+		if err != nil {
+			t.Fatalf("failed to read main.zsh: %v", err)
+		}
+		content := string(data)
+
+		if i == 0 {
+			firstOutput = content
+
+			alphaIdx := strings.Index(content, "export ALPHA")
+			betaIdx := strings.Index(content, "export BETA")
+			zebraIdx := strings.Index(content, "export ZEBRA")
+
+			if alphaIdx == -1 || betaIdx == -1 || zebraIdx == -1 {
+				t.Fatalf("missing env vars in output:\n%s", content)
+			}
+			if !(alphaIdx < betaIdx && betaIdx < zebraIdx) {
+				t.Errorf("env vars not in alphabetical order: ALPHA(%d) BETA(%d) ZEBRA(%d)", alphaIdx, betaIdx, zebraIdx)
+			}
+
+			aAliasIdx := strings.Index(content, "alias a_alias")
+			bAliasIdx := strings.Index(content, "alias b_alias")
+			zAliasIdx := strings.Index(content, "alias z_alias")
+			if !(aAliasIdx < bAliasIdx && bAliasIdx < zAliasIdx) {
+				t.Errorf("aliases not in alphabetical order: a(%d) b(%d) z(%d)", aAliasIdx, bAliasIdx, zAliasIdx)
+			}
+
+			aFuncIdx := strings.Index(content, "a_func()")
+			bFuncIdx := strings.Index(content, "b_func()")
+			zFuncIdx := strings.Index(content, "z_func()")
+			if !(aFuncIdx < bFuncIdx && bFuncIdx < zFuncIdx) {
+				t.Errorf("functions not in alphabetical order: a(%d) b(%d) z(%d)", aFuncIdx, bFuncIdx, zFuncIdx)
+			}
+		} else {
+			if content != firstOutput {
+				t.Fatalf("non-deterministic output detected on iteration %d!\nFirst:\n%s\nCurrent:\n%s", i, firstOutput, content)
+			}
+		}
 	}
 }
 

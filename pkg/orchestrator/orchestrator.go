@@ -421,8 +421,8 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		return fmt.Errorf("getting installer: %w", err)
 	}
 
-	if tool.Sudo && !inst.SupportsSudo() {
-		return fmt.Errorf("installer %q does not support sudo installations", tool.InstallationMethod)
+	if err := installer.ValidateSudo(inst, tool); err != nil {
+		return err
 	}
 
 	// Dynamically configure BinDir and BaseURL if supported by the installer
@@ -884,28 +884,44 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 				}
 
 				// 2. Environment variables
-				for k, v := range stc.Env {
-					vResolved, err := o.resolvePlaceholder(v, tool, projCfg)
-					if err != nil {
-						return fmt.Errorf("resolving env variable %q: %w", k, err)
+				if len(stc.Env) > 0 {
+					envKeys := make([]string, 0, len(stc.Env))
+					for k := range stc.Env {
+						envKeys = append(envKeys, k)
 					}
-					if sh == "powershell" {
-						scriptLines = append(scriptLines, fmt.Sprintf("$env:%s = %q", k, vResolved))
-					} else {
-						scriptLines = append(scriptLines, fmt.Sprintf("export %s=%q", k, vResolved))
+					sort.Strings(envKeys)
+					for _, k := range envKeys {
+						v := stc.Env[k]
+						vResolved, err := o.resolvePlaceholder(v, tool, projCfg)
+						if err != nil {
+							return fmt.Errorf("resolving env variable %q: %w", k, err)
+						}
+						if sh == "powershell" {
+							scriptLines = append(scriptLines, fmt.Sprintf("$env:%s = %q", k, vResolved))
+						} else {
+							scriptLines = append(scriptLines, fmt.Sprintf("export %s=%q", k, vResolved))
+						}
 					}
 				}
 
 				// 3. Aliases
-				for k, v := range stc.Aliases {
-					vResolved, err := o.resolvePlaceholder(v, tool, projCfg)
-					if err != nil {
-						return fmt.Errorf("resolving alias %q: %w", k, err)
+				if len(stc.Aliases) > 0 {
+					aliasKeys := make([]string, 0, len(stc.Aliases))
+					for k := range stc.Aliases {
+						aliasKeys = append(aliasKeys, k)
 					}
-					if sh == "powershell" {
-						scriptLines = append(scriptLines, fmt.Sprintf("Set-Alias -Name %s -Value %q", k, vResolved))
-					} else {
-						scriptLines = append(scriptLines, fmt.Sprintf("alias %s='%s'", k, vResolved))
+					sort.Strings(aliasKeys)
+					for _, k := range aliasKeys {
+						v := stc.Aliases[k]
+						vResolved, err := o.resolvePlaceholder(v, tool, projCfg)
+						if err != nil {
+							return fmt.Errorf("resolving alias %q: %w", k, err)
+						}
+						if sh == "powershell" {
+							scriptLines = append(scriptLines, fmt.Sprintf("Set-Alias -Name %s -Value %q", k, vResolved))
+						} else {
+							scriptLines = append(scriptLines, fmt.Sprintf("alias %s='%s'", k, vResolved))
+						}
 					}
 				}
 
@@ -946,11 +962,19 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 				}
 
 				// 5. Native Functions
-				for name, body := range stc.Functions {
-					if sh == "powershell" {
-						scriptLines = append(scriptLines, fmt.Sprintf("function %s {\n%s\n}", name, body))
-					} else {
-						scriptLines = append(scriptLines, fmt.Sprintf("%s() {\n%s\n}", name, body))
+				if len(stc.Functions) > 0 {
+					funcKeys := make([]string, 0, len(stc.Functions))
+					for name := range stc.Functions {
+						funcKeys = append(funcKeys, name)
+					}
+					sort.Strings(funcKeys)
+					for _, name := range funcKeys {
+						body := stc.Functions[name]
+						if sh == "powershell" {
+							scriptLines = append(scriptLines, fmt.Sprintf("function %s {\n%s\n}", name, body))
+						} else {
+							scriptLines = append(scriptLines, fmt.Sprintf("%s() {\n%s\n}", name, body))
+						}
 					}
 				}
 
