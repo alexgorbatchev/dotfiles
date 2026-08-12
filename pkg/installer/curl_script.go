@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -105,8 +106,14 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 	}
 
 	if envMap, ok := tool.InstallParams["env"].(map[string]interface{}); ok {
+		keys := make([]string, 0, len(envMap))
+		for k := range envMap {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
 		var envSlice []string
-		for k, v := range envMap {
+		for _, k := range keys {
+			v := envMap[k]
 			if vStr, ok := v.(string); ok {
 				if strings.Contains(vStr, "{stagingDir}") {
 					vStr = strings.ReplaceAll(vStr, "{stagingDir}", destDir)
