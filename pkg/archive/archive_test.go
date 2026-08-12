@@ -564,4 +564,80 @@ func TestExtractorSymlinkTraversalPrevention(t *testing.T) {
 			t.Error("expected no file to be created at /escaped_relative")
 		}
 	})
+
+	t.Run("Zip Backslash Symlink Traversal Detection", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		var buf bytes.Buffer
+		w := zip.NewWriter(&buf)
+
+		header := &zip.FileHeader{
+			Name: "escaped_backslash_link.txt",
+		}
+		header.SetMode(os.ModeSymlink | 0777)
+		f, err := w.CreateHeader(header)
+		if err != nil {
+			t.Fatalf("failed to create zip header: %v", err)
+		}
+		_, _ = f.Write([]byte("subdir\\..\\..\\escaped_backslash"))
+
+		_ = w.Close()
+
+		err = memFS.WriteFile("/test.zip", buf.Bytes(), 0644)
+		if err != nil {
+			t.Fatalf("failed to write zip file: %v", err)
+		}
+
+		err = ext.Extract(context.Background(), "/test.zip", "/dest")
+		if err == nil {
+			t.Error("expected error for backslash zip symlink traversal, got nil")
+		} else if err != ErrSymlinkTraversalDetected {
+			t.Errorf("expected error ErrSymlinkTraversalDetected, got %v", err)
+		}
+
+		// Ensure nothing is written outside the destination directory
+		_, err = memFS.Stat("/escaped_backslash")
+		if err == nil {
+			t.Error("expected no file to be created at /escaped_backslash")
+		}
+	})
+
+	t.Run("Tar Backslash Symlink Traversal Detection", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gw)
+
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeSymlink,
+			Name:     "escaped_backslash_link.txt",
+			Linkname: "subdir\\..\\..\\escaped_backslash",
+			Mode:     0777,
+		})
+
+		_ = tw.Close()
+		_ = gw.Close()
+
+		err := memFS.WriteFile("/test.tar.gz", buf.Bytes(), 0644)
+		if err != nil {
+			t.Fatalf("failed to write tar file: %v", err)
+		}
+
+		err = ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+		if err == nil {
+			t.Error("expected error for backslash tar symlink traversal, got nil")
+		} else if err != ErrSymlinkTraversalDetected {
+			t.Errorf("expected error ErrSymlinkTraversalDetected, got %v", err)
+		}
+
+		_, err = memFS.Stat("/escaped_backslash")
+		if err == nil {
+			t.Error("expected no file to be created at /escaped_backslash")
+		}
+	})
 }

@@ -590,13 +590,16 @@ func walkFS(fsys fs.FS, path string, walkFn func(path string, info os.FileInfo, 
 }
 
 func validateSymlink(dest, cleanTarget, target string) error {
-	if filepath.IsAbs(target) {
+	// Normalize backslashes to forward slashes for cross-platform safety
+	normalizedTarget := strings.ReplaceAll(target, "\\", "/")
+
+	if filepath.IsAbs(target) || filepath.IsAbs(normalizedTarget) || strings.HasPrefix(normalizedTarget, "/") {
 		return ErrSymlinkTraversalDetected
 	}
 
 	cleanDest := filepath.Clean(dest)
 	linkDir := filepath.Dir(cleanTarget)
-	resolvedTarget := filepath.Join(linkDir, target)
+	resolvedTarget := filepath.Join(linkDir, filepath.FromSlash(normalizedTarget))
 
 	rel, err := filepath.Rel(cleanDest, filepath.Clean(resolvedTarget))
 	if err != nil || strings.HasPrefix(rel, "..") {
