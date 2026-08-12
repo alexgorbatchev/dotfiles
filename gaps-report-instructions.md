@@ -14,14 +14,15 @@ Previous agents have repeatedly suffered from **local-scope bias**—they looked
 
 You must act as a severe skeptic:
 
-1. **Compulsory Side-by-Side Reading**: You and your sub-agents MUST physically call the Read tool on BOTH the Go source file and the corresponding TypeScript source file for every single component. Do not summarize, use grep keywords, or scan file headers as a shortcut. Read both files in full.
-2. **Audit the "Negative Space"**: Look for the silent, non-textual differences. Go and TypeScript runtimes have fundamentally different behaviors. You must audit the following specific semantic divergences:
+1. **Monotonic Wave Numbering**: Every time a report or audit iteration is generated, the Wave number MUST strictly increment (e.g., Wave 5 → Wave 6 → Wave 7 → Wave 8, etc.). Never re-use or stay on a past Wave number across report iterations.
+2. **Compulsory Side-by-Side Reading**: You and your sub-agents MUST physically call the Read tool on BOTH the Go source file and the corresponding TypeScript source file for every single component. Do not summarize, use grep keywords, or scan file headers as a shortcut. Read both files in full.
+3. **Audit the "Negative Space"**: Look for the silent, non-textual differences. Go and TypeScript runtimes have fundamentally different behaviors. You must audit the following specific semantic divergences:
    - **Order Non-Determinism**: Go maps have randomized iteration order by design, whereas JS preserves insertion order. Audit how directories or maps are returned.
    - **Standard Library Defaults**: Go's default `http.Client` has an infinite timeout, risking locked processes. Audit all request timeouts and user-agent setups.
    - **Path Resolution**: Shells and Node/Bun automatically resolve tilde shortcuts (`~` and `~/`), while Go's `os` and `filepath` packages treat `~` as a literal directory name. Audit all path parameters.
    - **Symlink and Link Handling**: Check if hard links, symlinks, or broken links are processed identically, particularly inside virtual filesystems (`MemFS`) and archive extractors.
    - **Subprocess Stability**: Audit what happens on early error paths. Do subprocesses (e.g. `xz` decompression pipelines) leak or hang as zombies?
-3. **No Shortcuts on Multi-Installers**: If a package contains multiple installer plugins (e.g. 15 package installers in `pkg/installer`), you must perform the side-by-side comparison for all of them. Never assume that since one installer works, the others share identical characteristics.
+4. **No Shortcuts on Multi-Installers**: If a package contains multiple installer plugins (e.g. 15 package installers in `pkg/installer`), you must perform the side-by-side comparison for all of them. Never assume that since one installer works, the others share identical characteristics.
 
 ---
 
@@ -161,8 +162,8 @@ Compile your findings and write them directly to `./gaps-report.md`. Your report
 
 ## 6. Completed vs. Remaining Backlog
 
-- Summarize what has been successfully merged (Wave 5).
-- List the active, open Wave 6 tickets and map out a bulletproof, sequential roadmap to safely demolish TypeScript and transition to a pure statically-linked Go binary distribution.
+- Summarize what has been successfully merged in previous waves.
+- List the active, open tickets for the current Wave (incrementing the Wave number for each report iteration) and map out a bulletproof, sequential roadmap to safely demolish TypeScript and transition to a pure statically-linked Go binary distribution.
 
 ## 7. Due Diligence Findings
 
