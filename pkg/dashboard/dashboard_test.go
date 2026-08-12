@@ -547,3 +547,137 @@ func (m *mockInstallerWithCallback) Uninstall(ctx context.Context, tool *config.
 func (m *mockInstallerWithCallback) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
 	return &installer.UpdateCheckResult{HasUpdate: false}, nil
 }
+
+func TestDashboard_PlatformSerialization(t *testing.T) {
+	log := logger.New(logger.Config{
+		Name:   "test",
+		Level:  logger.LogLevelQuiet,
+		Writer: io.Discard,
+	})
+
+	ctx := context.Background()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to connect to db: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	tempDir := t.TempDir()
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    "/test/dotfiles",
+			GeneratedDir:   "/test/generated",
+			BinariesDir:    "/test/binaries",
+			TargetDir:      "/test/target",
+			ToolConfigsDir: tempDir,
+		},
+	}
+
+	archBoth := 3 // x86_64 | arm64
+	toolConfigs := []*config.ToolConfig{
+		{
+			Name:               "ripgrep",
+			Version:            new(string),
+			InstallationMethod: "github-release",
+			PlatformConfigs: []config.PlatformConfigEntry{
+				{
+					Platforms:     3, // Linux (1) | macOS (2)
+					Architectures: &archBoth,
+					Config: map[string]any{
+						"installationMethod": "brew",
+						"installParams": map[string]any{
+							"formula": "ripgrep",
+						},
+					},
+				},
+				{
+					Platforms: 4, // Windows
+					Config: map[string]any{
+						"installationMethod": "manual",
+					},
+				},
+			},
+		},
+	}
+	*toolConfigs[0].Version = "13.0.0"
+
+	server := NewServer(log, 0, reg, projCfg, toolConfigs, nil)
+	if err := server.Start(); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+	defer server.Stop()
+
+	t.Run("GET /api/tools platform bitmask serialization", func(t *testing.T) {
+		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools", server.Port()))
+		if err != nil {
+			t.Fatalf("failed to request GET /api/tools: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected status 200, got %d", resp.StatusCode)
+		}
+
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode JSON response: %v", err)
+		}
+
+		dataList, ok := body["data"].([]any)
+		if !ok || len(dataList) != 1 {
+			t.Fatalf("expected data array with 1 tool, got %v", body["data"])
+		}
+
+		toolMap := dataList[0].(map[string]any)
+		configMap := toolMap["config"].(map[string]any)
+
+		platformConfigs, ok := configMap["platformConfigs"].([]any)
+		if !ok || len(platformConfigs) != 2 {
+			t.Fatalf("expected platformConfigs array of length 2, got %v", configMap["platformConfigs"])
+		}
+
+		// Entry 1: Unix (Linux | macOS) -> ["Linux", "macOS"]
+		entry1 := platformConfigs[0].(map[string]any)
+		platforms1, ok := entry1["platforms"].([]any)
+		if !ok {
+			t.Fatalf("expected entry 1 platforms to be an array, got %T: %v", entry1["platforms"], entry1["platforms"])
+		}
+
+		expectedPlatforms1 := []string{"Linux", "macOS"}
+		if len(platforms1) != len(expectedPlatforms1) {
+			t.Fatalf("expected %d platforms in entry 1, got %d", len(expectedPlatforms1), len(platforms1))
+		}
+		for i, p := range platforms1 {
+			if pStr, ok := p.(string); !ok || pStr != expectedPlatforms1[i] {
+				t.Errorf("entry 1 platform[%d] = %v, want %s", i, p, expectedPlatforms1[i])
+			}
+		}
+
+		architectures1, ok := entry1["architectures"].([]any)
+		if !ok {
+			t.Fatalf("expected entry 1 architectures to be an array, got %T: %v", entry1["architectures"], entry1["architectures"])
+		}
+		expectedArch1 := []string{"x86_64", "arm64"}
+		for i, a := range architectures1 {
+			if aStr, ok := a.(string); !ok || aStr != expectedArch1[i] {
+				t.Errorf("entry 1 architecture[%d] = %v, want %s", i, a, expectedArch1[i])
+			}
+		}
+
+		if entry1["installationMethod"] != "brew" {
+			t.Errorf("expected entry 1 installationMethod 'brew', got %v", entry1["installationMethod"])
+		}
+
+		// Entry 2: Windows (4) -> ["Windows"]
+		entry2 := platformConfigs[1].(map[string]any)
+		platforms2, ok := entry2["platforms"].([]any)
+		if !ok {
+			t.Fatalf("expected entry 2 platforms to be an array, got %T: %v", entry2["platforms"], entry2["platforms"])
+		}
+		if len(platforms2) != 1 || platforms2[0] != "Windows" {
+			t.Errorf("expected entry 2 platforms ['Windows'], got %v", platforms2)
+		}
+	})
+}

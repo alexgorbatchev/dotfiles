@@ -572,6 +572,77 @@ func (s *Server) handleToolsRouter(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// platformBitmaskToNames converts a platform bitmask integer to a slice of platform display names.
+func platformBitmaskToNames(platforms int) []string {
+	names := []string{}
+	if platforms&1 != 0 {
+		names = append(names, "Linux")
+	}
+	if platforms&2 != 0 {
+		names = append(names, "macOS")
+	}
+	if platforms&4 != 0 {
+		names = append(names, "Windows")
+	}
+	return names
+}
+
+// architectureBitmaskToNames converts an architecture bitmask integer to a slice of architecture display names.
+func architectureBitmaskToNames(arch int) []string {
+	names := []string{}
+	if arch&1 != 0 {
+		names = append(names, "x86_64")
+	}
+	if arch&2 != 0 {
+		names = append(names, "arm64")
+	}
+	return names
+}
+
+// formatToolConfigForDashboard formats a ToolConfig into a map suitable for JSON serialization
+// in the dashboard API, converting platform/architecture bitmasks into string arrays.
+func formatToolConfigForDashboard(tc *config.ToolConfig) map[string]any {
+	if tc == nil {
+		return nil
+	}
+	data, err := json.Marshal(tc)
+	if err != nil {
+		return nil
+	}
+	var res map[string]any
+	if err := json.Unmarshal(data, &res); err != nil {
+		return nil
+	}
+
+	if len(tc.PlatformConfigs) > 0 {
+		platformConfigs := make([]map[string]any, 0, len(tc.PlatformConfigs))
+		for _, entry := range tc.PlatformConfigs {
+			serializedEntry := make(map[string]any)
+
+			if entry.Config != nil {
+				if cfgBytes, err := json.Marshal(entry.Config); err == nil {
+					var cfgMap map[string]any
+					if err := json.Unmarshal(cfgBytes, &cfgMap); err == nil {
+						for k, v := range cfgMap {
+							serializedEntry[k] = v
+						}
+					}
+				}
+			}
+
+			serializedEntry["platforms"] = platformBitmaskToNames(entry.Platforms)
+			if entry.Architectures != nil {
+				serializedEntry["architectures"] = architectureBitmaskToNames(*entry.Architectures)
+			}
+
+			platformConfigs = append(platformConfigs, serializedEntry)
+		}
+		res["platformConfigs"] = platformConfigs
+	}
+
+	return res
+}
+
 func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfig) (map[string]any, error) {
 	installRecord, _ := s.registry.GetToolInstallation(ctx, targetTool.Name)
 	files, _ := s.registry.GetFileStatesForTool(ctx, targetTool.Name)
@@ -646,7 +717,7 @@ func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfi
 	}
 
 	return map[string]any{
-		"config":         targetTool,
+		"config":         formatToolConfigForDashboard(targetTool),
 		"runtime":        runtimeState,
 		"files":          files,
 		"binaryDiskSize": diskSize,
