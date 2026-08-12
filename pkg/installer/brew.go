@@ -67,8 +67,18 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	}
 	formula := getStringParam(tool.InstallParams, "formula", tool.Name)
 	isCask := getBoolParam(tool.InstallParams, "cask", false)
+	trusts := getStringSliceParam(tool.InstallParams, "trust")
 	taps := getStringSliceParam(tool.InstallParams, "tap")
+	customArgs := getStringSliceParam(tool.InstallParams, "args")
 	force := getBoolParam(tool.InstallParams, "force", false)
+
+	// Trust targets if any
+	for _, trust := range trusts {
+		cmd := b.runner.CommandContext(ctx, "brew", "trust", trust)
+		if err := cmd.Run(); err != nil {
+			return nil, fmt.Errorf("brew trust %s: %w", trust, err)
+		}
+	}
 
 	// Tap custom repositories if any
 	for _, tap := range taps {
@@ -86,11 +96,44 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	if force {
 		args = append(args, "--force")
 	}
+	if len(customArgs) > 0 {
+		args = append(args, customArgs...)
+	}
 	args = append(args, formula)
 
 	cmd := b.runner.CommandContext(ctx, "brew", args...)
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("brew install %s: %w", formula, err)
+	}
+
+	// Link formula if configured
+	if linkVal, ok := tool.InstallParams["link"]; ok && linkVal != nil {
+		linkArgs := []string{"link"}
+		if m, ok := linkVal.(map[string]interface{}); ok {
+			if getBoolParam(m, "overwrite", false) {
+				linkArgs = append(linkArgs, "--overwrite")
+			}
+			if getBoolParam(m, "force", false) {
+				linkArgs = append(linkArgs, "--force")
+			}
+		}
+		linkArgs = append(linkArgs, formula)
+		linkCmd := b.runner.CommandContext(ctx, "brew", linkArgs...)
+		if err := linkCmd.Run(); err != nil {
+			return nil, fmt.Errorf("brew link %s: %w", formula, err)
+		}
+	}
+
+	// Service management if configured
+	if serviceVal, ok := tool.InstallParams["service"]; ok && serviceVal != nil {
+		action := "start"
+		if s, ok := serviceVal.(string); ok && s != "" {
+			action = s
+		}
+		svcCmd := b.runner.CommandContext(ctx, "brew", "services", action, formula)
+		if err := svcCmd.Run(); err != nil {
+			return nil, fmt.Errorf("brew services %s %s: %w", action, formula, err)
+		}
 	}
 
 	// Retrieve version

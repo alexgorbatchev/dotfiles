@@ -14,14 +14,18 @@ export default defineTool((install) => install("brew", { formula: "ripgrep" }));
 
 ## Parameters
 
-| Parameter      | Description                                                 |
-| -------------- | ----------------------------------------------------------- |
-| `formula`      | Formula or cask name (defaults to tool name)                |
-| `cask`         | Set `true` for cask installation                            |
-| `tap`          | Tap(s) to add before installing                             |
-| `versionArgs`  | Arguments for version check (e.g., `['--version']`)         |
-| `versionRegex` | Regex to extract version from output (`string` or `RegExp`) |
-| `env`          | Environment variables (static or dynamic function)          |
+| Parameter      | Description                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------- |
+| `formula`      | Formula or cask name (defaults to tool name)                                                             |
+| `cask`         | Set `true` for cask installation                                                                         |
+| `tap`          | Tap(s) to add before installing (`brew tap <target>`)                                                    |
+| `trust`        | Tap(s) or formula(s) to explicitly trust before tapping/installing (`brew trust <target>`)               |
+| `args`         | Additional CLI flags passed directly to `brew install` (e.g. `['--HEAD']`, `['--build-from-source']`)    |
+| `service`      | Automatically start background daemon after install (`true`, `'start'`, or `'run'`)                      |
+| `link`         | Force symlinking keg-only or conflicting formulas (`true` or `{ force?: boolean, overwrite?: boolean }`) |
+| `versionArgs`  | Arguments for version check (e.g., `['--version']`)                                                      |
+| `versionRegex` | Regex to extract version from output (`string` or `RegExp`)                                              |
+| `env`          | Environment variables (static or dynamic function)                                                       |
 
 ## Examples
 
@@ -34,22 +38,32 @@ install("brew", {
 });
 ```
 
-### With Custom Tap
+### With Tap Trust & Custom Tap
 
 ```typescript
 install("brew", {
-  formula: "aerospace",
-  cask: true,
-  tap: "nikitabobko/tap",
+  formula: "deepgram-cli",
+  trust: "deepgram/tap",
+  tap: "deepgram/tap",
 });
 ```
 
-### Multiple Taps
+### Background Service & Keg-Only Linking
+
+```typescript
+install("brew", {
+  formula: "redis",
+  service: "start",
+  link: { overwrite: true },
+});
+```
+
+### Build Flags
 
 ```typescript
 install("brew", {
   formula: "custom-tool",
-  tap: ["custom/tap", "another/tap"],
+  args: ["--build-from-source"],
 });
 ```
 

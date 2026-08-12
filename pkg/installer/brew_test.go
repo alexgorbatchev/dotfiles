@@ -91,6 +91,66 @@ func TestBrewInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("Install success with trust args link and service", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("brew", []byte(`[{"name":"redis","versions":{"stable":"7.0"}}]`), nil)
+
+		tool := &config.ToolConfig{
+			Name: "redis",
+			InstallParams: map[string]interface{}{
+				"formula": "redis",
+				"trust":   "redis/tap",
+				"args":    []string{"--build-from-source"},
+				"link": map[string]interface{}{
+					"overwrite": true,
+					"force":     true,
+				},
+				"service": "start",
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res == nil {
+			t.Fatal("expected non-nil result")
+		}
+
+		hasTrust := false
+		hasInstallArgs := false
+		hasLink := false
+		hasService := false
+
+		for _, cmd := range runner.History {
+			if len(cmd.Args) > 1 && cmd.Args[0] == "trust" && cmd.Args[1] == "redis/tap" {
+				hasTrust = true
+			}
+			if len(cmd.Args) > 2 && cmd.Args[0] == "install" && cmd.Args[1] == "--build-from-source" {
+				hasInstallArgs = true
+			}
+			if len(cmd.Args) > 3 && cmd.Args[0] == "link" && cmd.Args[1] == "--overwrite" && cmd.Args[2] == "--force" {
+				hasLink = true
+			}
+			if len(cmd.Args) > 2 && cmd.Args[0] == "services" && cmd.Args[1] == "start" && cmd.Args[2] == "redis" {
+				hasService = true
+			}
+		}
+
+		if !hasTrust {
+			t.Error("expected brew trust to be called")
+		}
+		if !hasInstallArgs {
+			t.Error("expected brew install with custom args to be called")
+		}
+		if !hasLink {
+			t.Error("expected brew link to be called")
+		}
+		if !hasService {
+			t.Error("expected brew services to be called")
+		}
+	})
+
 	t.Run("Uninstall success", func(t *testing.T) {
 		runner.Clear()
 		tool := &config.ToolConfig{
