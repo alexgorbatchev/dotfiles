@@ -1,4 +1,4 @@
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
   install("cargo", { crateName: "eza" })

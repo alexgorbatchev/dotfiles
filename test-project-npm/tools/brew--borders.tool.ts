@@ -1,4 +1,4 @@
-import { defineTool, Platform } from "@dotfiles/cli";
+import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, _ctx) =>
   install().platform(Platform.MacOS, (install) =>

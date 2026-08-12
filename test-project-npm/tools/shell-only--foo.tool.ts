@@ -1,4 +1,4 @@
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, _ctx) =>
   install().zsh((shell) =>

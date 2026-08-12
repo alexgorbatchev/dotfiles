@@ -32,9 +32,7 @@
       "react": ["./packages/dashboard/node_modules/preact/compat"],
       "react/jsx-runtime": ["./packages/dashboard/node_modules/preact/compat/jsx-runtime"],
       "react-dom": ["./packages/dashboard/node_modules/preact/compat/"],
-      "@alexgorbatchev/dotfiles": ["./.dist/cli"],
-      "@dotfiles/cli": ["./.dist/cli"],
-      "@dotfiles/core": ["./.dist/cli"]
+      "@alexgorbatchev/dotfiles": ["./.dist/index.d.ts"]
     }
   },
   "include": ["packages", "test-project-npm", "review", "pkg/vm"],

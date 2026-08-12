@@ -1,4 +1,4 @@
-import { defineTool, type IToolConfigContext } from "@dotfiles/cli";
+import { defineTool, type IToolConfigContext } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, _ctx) =>
   install("github-release", { repo: "sharkdp/bat" })

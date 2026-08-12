@@ -1,4 +1,4 @@
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * git-bug - Distributed bug tracker embedded in Git.

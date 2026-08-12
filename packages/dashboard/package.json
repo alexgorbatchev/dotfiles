@@ -11,15 +11,6 @@
     "verify-dashboard": "bun run ./scripts/verify-dashboard.ts"
   },
   "dependencies": {
-    "@dotfiles/config": "workspace:*",
-    "@dotfiles/core": "workspace:*",
-    "@dotfiles/downloader": "workspace:*",
-    "@dotfiles/file-system": "workspace:*",
-    "@dotfiles/installer": "workspace:*",
-    "@dotfiles/logger": "workspace:*",
-    "@dotfiles/registry": "workspace:*",
-    "@dotfiles/utils": "workspace:*",
-    "@dotfiles/version-checker": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-preact": "^0.545.0",
@@ -30,8 +21,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@dotfiles/registry-database": "workspace:*",
-    "@dotfiles/testing-helpers": "workspace:*",
     "@happy-dom/global-registrator": "^18.0.1",
     "@rageltd/bun-test-utils": "catalog:testing",
     "@testing-library/dom": "^10.4.1",

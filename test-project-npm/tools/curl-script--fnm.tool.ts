@@ -1,4 +1,4 @@
-import { defineTool, type IToolConfigBuilder, type IToolConfigContext } from "@dotfiles/cli";
+import { defineTool, type IToolConfigBuilder, type IToolConfigContext } from "@alexgorbatchev/dotfiles";
 
 async function chainTest(chain: IToolConfigBuilder) {
   return chain;

@@ -1,6 +1,6 @@
 # dotfiles-installer
 
-Monorepo for `@alexgorbatchev/dotfiles`. This root file carries shared rules; every workspace package under `packages/*` now has its own local `AGENTS.md` for package-specific guidance.
+Monorepo for `@alexgorbatchev/dotfiles`. Go implementation replaces legacy TypeScript CLI packages.
 
 ## Commands
 
@@ -9,22 +9,17 @@ Monorepo for `@alexgorbatchev/dotfiles`. This root file carries shared rules; ev
 - Lint: `bun lint`
 - Typecheck: `bun typecheck`
 - Full local check: `bun check`
-- CI parity: `bun check:ci`
-- All tests (parallel): `bun test:all`
-- One test file / package: `bun test:native packages/cli/src/__tests__/generateCommand.test.ts`
-- CLI against the package-managed fixture project: `bun cli --config=test-project-npm/dotfiles.config.ts generate`
-- Compiled binary against the binary-only fixture: `./.dist/dotfiles --config=test-project-compiled/dotfiles.config.ts generate`
-- Dashboard dev server: `bun dashboard`
-- HTTP cache proxy: `bun proxy`
-- Build distributable: `bun compile`
-- Release build: `bun release`
+- Go unit tests: `go test ./...`
+- Go E2E tests: `go test ./tests/e2e/...`
+- CLI against fixture project: `go run ./cmd/dotfiles --config test-project-npm/dotfiles.config.ts generate`
+- Compiled binary build: `go run scripts/build/main.go`
+- Dashboard server: `go run ./cmd/dotfiles --config test-project-npm/dotfiles.config.ts dashboard`
 
 ## Workspace map
 
-- Core runtime and config packages -> `packages/{arch,archive-extractor,config,core,downloader,file-system,generator-orchestrator,installer,registry,registry-database,tool-config-builder,unwrap-value,utils,version-checker}/AGENTS.md`
-- Entry points, UX, and generated-output packages -> `packages/{build,cli,dashboard,e2e-test,features,http-proxy,logger,shell-emissions,shell-init-generator,shim-generator,symlink-generator,testing-helpers,virtual-env}/AGENTS.md`
-- Installer plugins -> `packages/installer-{brew,cargo,curl-binary,curl-script,curl-tar,dmg,gitea,github,manual,npm,zsh-plugin}/AGENTS.md`
-- Always read the nearest package-level `AGENTS.md` before editing anything under `packages/`.
+- Go Implementation: `pkg/`, `cmd/dotfiles`, `scripts/`
+- Dashboard Client: `packages/dashboard/src/client/`
+- Fixtures: `test-project-npm/`
 
 ## Setup and gotchas
 

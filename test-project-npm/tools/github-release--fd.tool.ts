@@ -1,4 +1,4 @@
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 type CompCtx = { version: string };
 

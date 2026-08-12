@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "devDependencies": {
-    "@dotfiles/cli": "workspace:*"
+    "@alexgorbatchev/dotfiles": "file:.."
   }
 }

@@ -1,4 +1,4 @@
-import { defineTool } from "@dotfiles/cli";
+import { defineTool } from "@alexgorbatchev/dotfiles";
 
 /**
  * zsh-vi-mode - A better and friendly vi(vim) mode plugin for ZSH.

@@ -29,17 +29,7 @@ export default createOxlintConfig(() => ({
     "import/no-unassigned-import": [
       "error",
       {
-        allow: [
-          "@dotfiles/testing-helpers",
-          "@dotfiles/installer-*",
-          "**/*.css",
-          "./matchers/toMatchLooseInlineSnapshot",
-          "./matchers/toMatchRegex",
-          "../toMatchRegex",
-          "../plugins",
-          "./parallel-test-runner",
-          "./registerMatchers",
-        ],
+        allow: ["**/*.css"],
       },
     ],
   },
@@ -48,25 +38,6 @@ export default createOxlintConfig(() => ({
       files: ["**/*.test.ts", "**/*.test.tsx"],
       rules: {
         "typescript/no-non-null-assertion": "off",
-      },
-    },
-    {
-      files: [
-        "packages/build/**/*.{ts,tsx,js,jsx,mts,cts}",
-        "packages/cli/src/filesCommand.ts",
-        "packages/logger/src/TestLogger.ts",
-        "packages/http-proxy/src/createProxyServer.ts",
-        "packages/http-proxy/src/server.ts",
-        "packages/testing-helpers/src/parallel-test-runner.ts",
-      ],
-      rules: {
-        "no-console": "off",
-      },
-    },
-    {
-      files: ["packages/e2e-test/src/__tests__/**/*.ts"],
-      rules: {
-        "no-shadow": "off",
       },
     },
     {

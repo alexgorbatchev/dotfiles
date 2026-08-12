@@ -1,4 +1,4 @@
-import { defineConfig } from "@dotfiles/cli";
+import { defineConfig } from "@alexgorbatchev/dotfiles";
 
 export default defineConfig(({ configFileDir }) => ({
   paths: {
