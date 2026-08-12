@@ -21,6 +21,9 @@ import (
 // ErrSymlinkTraversalDetected is returned when a symbolic link target escapes the destination directory.
 var ErrSymlinkTraversalDetected = errors.New("symbolic link traversal detected")
 
+// ErrZipSlipDetected is returned when an archive entry path escapes the destination directory.
+var ErrZipSlipDetected = errors.New("zip slip traversal detected")
+
 // Extractor handles the extraction of various archive formats using either Go's standard library or system tools.
 type Extractor struct {
 	fsys   fs.FS
@@ -39,6 +42,28 @@ func (e *Extractor) SetFS(fsys fs.FS) {
 	if e != nil {
 		e.fsys = fsys
 	}
+}
+
+// isSafeTargetPath checks whether joining dest and entry name remains within dest directory boundaries.
+func isSafeTargetPath(dest, name string) (string, error) {
+	cleanDest := filepath.Clean(dest)
+	if name == "" {
+		return "", ErrZipSlipDetected
+	}
+
+	cleanName := filepath.FromSlash(name)
+	if filepath.IsAbs(name) || filepath.IsAbs(cleanName) || strings.HasPrefix(cleanName, "/") || strings.HasPrefix(cleanName, "\\") {
+		return "", ErrZipSlipDetected
+	}
+
+	cleanTarget := filepath.Clean(filepath.Join(cleanDest, cleanName))
+
+	rel, err := filepath.Rel(cleanDest, cleanTarget)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || strings.HasPrefix(rel, "../") || strings.HasPrefix(rel, "..\\") {
+		return "", ErrZipSlipDetected
+	}
+
+	return cleanTarget, nil
 }
 
 // Extract detects format by filename extension and extracts src archive to dest directory.
@@ -118,13 +143,9 @@ func (e *Extractor) extractZip(ctx context.Context, src string, dest string) err
 		default:
 		}
 
-		cleanDest := filepath.Clean(dest)
-		cleanTarget := filepath.Clean(filepath.Join(dest, f.Name))
-
-		// Guard against zip slip vulnerability
-		rel, err := filepath.Rel(cleanDest, cleanTarget)
-		if err != nil || strings.HasPrefix(rel, "..") {
-			continue
+		cleanTarget, err := isSafeTargetPath(dest, f.Name)
+		if err != nil {
+			return fmt.Errorf("extracting %q: %w", f.Name, err)
 		}
 
 		if f.FileInfo().IsDir() {
@@ -223,13 +244,9 @@ func (e *Extractor) extractTar(ctx context.Context, src string, dest string, for
 			return fmt.Errorf("reading next tar entry: %w", err)
 		}
 
-		cleanDest := filepath.Clean(dest)
-		cleanTarget := filepath.Clean(filepath.Join(dest, header.Name))
-
-		// Guard against zip slip vulnerability
-		rel, err := filepath.Rel(cleanDest, cleanTarget)
-		if err != nil || strings.HasPrefix(rel, "..") {
-			continue
+		cleanTarget, err := isSafeTargetPath(dest, header.Name)
+		if err != nil {
+			return fmt.Errorf("extracting %q: %w", header.Name, err)
 		}
 
 		switch header.Typeflag {
@@ -273,7 +290,7 @@ func (e *Extractor) extractTar(ctx context.Context, src string, dest string, for
 	return nil
 }
 
-// extractTarXz extracts .tar.xz and .txz archives using system xz command as a lightweight stream decompressor.
+// extractTarXz extracts .tar.xz and .txz archives using system xz command in its own process group with proper cleanup.
 func (e *Extractor) extractTarXz(ctx context.Context, src string, dest string) error {
 	fileReader, err := e.fsys.Open(src)
 	if err != nil {
@@ -282,28 +299,49 @@ func (e *Extractor) extractTarXz(ctx context.Context, src string, dest string) e
 	defer fileReader.Close()
 
 	pr, pw := io.Pipe()
-	defer pr.Close()
 	cmd := e.runner.CommandContext(ctx, "xz", "-d", "-c")
+	cmd.SetProcessGroup(true)
 	cmd.SetStdin(fileReader)
 	cmd.SetStdout(pw)
 
 	var stderr bytes.Buffer
 	cmd.SetStderr(&stderr)
 
+	if err := cmd.Start(); err != nil {
+		_ = pr.Close()
+		_ = pw.Close()
+		return fmt.Errorf("starting xz process: %w", err)
+	}
+
+	cmdErrCh := make(chan error, 1)
 	go func() {
-		err := cmd.Run()
+		err := cmd.Wait()
 		if err != nil {
-			pw.CloseWithError(fmt.Errorf("xz process error: %v, stderr: %s", err, stderr.String()))
+			_ = pw.CloseWithError(fmt.Errorf("xz process error: %w, stderr: %s", err, stderr.String()))
 		} else {
-			pw.Close()
+			_ = pw.Close()
 		}
+		cmdErrCh <- err
+	}()
+
+	var extractErr error
+	defer func() {
+		if extractErr != nil {
+			_ = cmd.Kill()
+			_ = pr.Close()
+			_ = pw.CloseWithError(extractErr)
+		} else {
+			_ = pr.Close()
+		}
+		<-cmdErrCh
 	}()
 
 	tarReader := tar.NewReader(pr)
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			extractErr = ctx.Err()
+			return extractErr
 		default:
 		}
 
@@ -312,52 +350,58 @@ func (e *Extractor) extractTarXz(ctx context.Context, src string, dest string) e
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("reading next xz tar entry: %w", err)
+			extractErr = fmt.Errorf("reading next xz tar entry: %w", err)
+			return extractErr
 		}
 
-		cleanDest := filepath.Clean(dest)
-		cleanTarget := filepath.Clean(filepath.Join(dest, header.Name))
-
-		// Guard against zip slip vulnerability
-		rel, err := filepath.Rel(cleanDest, cleanTarget)
-		if err != nil || strings.HasPrefix(rel, "..") {
-			continue
+		cleanTarget, err := isSafeTargetPath(dest, header.Name)
+		if err != nil {
+			extractErr = fmt.Errorf("extracting %q: %w", header.Name, err)
+			return extractErr
 		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if err := e.fsys.MkdirAll(cleanTarget, header.FileInfo().Mode()); err != nil {
-				return fmt.Errorf("creating directory %q: %w", cleanTarget, err)
+				extractErr = fmt.Errorf("creating directory %q: %w", cleanTarget, err)
+				return extractErr
 			}
 
 		case tar.TypeReg:
 			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
-				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
+				extractErr = fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
+				return extractErr
 			}
 
 			destFile, err := e.fsys.Create(cleanTarget)
 			if err != nil {
-				return fmt.Errorf("creating extracted file %q: %w", cleanTarget, err)
+				extractErr = fmt.Errorf("creating extracted file %q: %w", cleanTarget, err)
+				return extractErr
 			}
 			if _, err := io.Copy(destFile, tarReader); err != nil {
 				destFile.Close()
-				return fmt.Errorf("writing xz tar entry data to %q: %w", cleanTarget, err)
+				extractErr = fmt.Errorf("writing xz tar entry data to %q: %w", cleanTarget, err)
+				return extractErr
 			}
 			destFile.Close()
 			if err := e.fsys.Chmod(cleanTarget, header.FileInfo().Mode()); err != nil {
-				return fmt.Errorf("setting permissions on %q: %w", cleanTarget, err)
+				extractErr = fmt.Errorf("setting permissions on %q: %w", cleanTarget, err)
+				return extractErr
 			}
 
 		case tar.TypeSymlink, tar.TypeLink:
 			if err := validateSymlink(dest, cleanTarget, header.Linkname); err != nil {
-				return err
+				extractErr = err
+				return extractErr
 			}
 			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
-				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
+				extractErr = fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
+				return extractErr
 			}
 			_ = e.fsys.Remove(cleanTarget)
 			if err := e.fsys.Symlink(header.Linkname, cleanTarget); err != nil {
-				return fmt.Errorf("creating tar symlink from %q to %q: %w", header.Linkname, cleanTarget, err)
+				extractErr = fmt.Errorf("creating tar symlink from %q to %q: %w", header.Linkname, cleanTarget, err)
+				return extractErr
 			}
 		}
 	}
@@ -381,7 +425,10 @@ func (e *Extractor) extractSingleGz(ctx context.Context, src string, dest string
 
 	base := filepath.Base(src)
 	outName := strings.TrimSuffix(base, ".gz")
-	cleanTarget := filepath.Clean(filepath.Join(dest, outName))
+	cleanTarget, err := isSafeTargetPath(dest, outName)
+	if err != nil {
+		return fmt.Errorf("extracting gz %q: %w", outName, err)
+	}
 
 	if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
 		return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
@@ -603,7 +650,7 @@ func validateSymlink(dest, cleanTarget, target string) error {
 	resolvedTarget := filepath.Join(linkDir, filepath.FromSlash(normalizedTarget))
 
 	rel, err := filepath.Rel(cleanDest, filepath.Clean(resolvedTarget))
-	if err != nil || strings.HasPrefix(rel, "..") {
+	if err != nil || strings.HasPrefix(rel, "..") || rel == ".." {
 		return ErrSymlinkTraversalDetected
 	}
 

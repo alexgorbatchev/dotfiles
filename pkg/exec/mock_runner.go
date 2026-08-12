@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"sync/atomic"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 )
@@ -14,11 +15,15 @@ type MockCmd struct {
 	Args []string
 	Ctx  context.Context
 
-	dir    string
-	env    []string
-	stdin  io.Reader
-	stdout io.Writer
-	stderr io.Writer
+	dir          string
+	env          []string
+	stdin        io.Reader
+	stdout       io.Writer
+	stderr       io.Writer
+	processGroup bool
+	killed       atomic.Bool
+	pid          int
+	doneCh       chan error
 
 	// These define the mock behavior
 	runFunc func(c *MockCmd) error
@@ -49,28 +54,37 @@ func (c *MockCmd) checkSudo() {
 
 // Run executes the mock behavior configured for this command.
 func (c *MockCmd) Run() error {
-	c.checkSudo()
-	if c.runFunc != nil {
-		err := c.runFunc(c)
-		if err != nil {
-			return err
-		}
+	if err := c.Start(); err != nil {
+		return err
 	}
-	if c.stdout != nil && len(c.output) > 0 {
-		_, _ = c.stdout.Write(c.output)
-	}
-	return c.err
+	return c.Wait()
 }
 
-// Start simulates starting the command.
+// Start simulates starting the command in a background goroutine.
 func (c *MockCmd) Start() error {
 	c.checkSudo()
+	c.doneCh = make(chan error, 1)
+	go func() {
+		var err error
+		if c.runFunc != nil {
+			err = c.runFunc(c)
+		} else {
+			err = c.err
+		}
+		if c.stdout != nil && len(c.output) > 0 {
+			_, _ = c.stdout.Write(c.output)
+		}
+		c.doneCh <- err
+	}()
 	return nil
 }
 
-// Wait simulates waiting for the command.
+// Wait simulates waiting for the command to finish.
 func (c *MockCmd) Wait() error {
-	return nil
+	if c.doneCh == nil {
+		return nil
+	}
+	return <-c.doneCh
 }
 
 // Output simulates running the command and returns the pre-configured standard output.
@@ -122,6 +136,27 @@ func (c *MockCmd) Stdout() io.Writer { return c.stdout }
 
 // Stderr returns the standard error of the command.
 func (c *MockCmd) Stderr() io.Writer { return c.stderr }
+
+// SetProcessGroup configures whether the command runs in its own process group.
+func (c *MockCmd) SetProcessGroup(pgid bool) { c.processGroup = pgid }
+
+// ProcessGroup returns whether process group isolation is enabled.
+func (c *MockCmd) ProcessGroup() bool { return c.processGroup }
+
+// Kill simulates terminating the process with SIGKILL.
+func (c *MockCmd) Kill() error {
+	c.killed.Store(true)
+	return nil
+}
+
+// Killed returns whether Kill was called on this mock command.
+func (c *MockCmd) Killed() bool { return c.killed.Load() }
+
+// SetProcessPid sets a mock PID.
+func (c *MockCmd) SetProcessPid(pid int) { c.pid = pid }
+
+// ProcessPid returns the mock process ID.
+func (c *MockCmd) ProcessPid() int { return c.pid }
 
 // MockCommandResult holds the pre-configured mock behavior for a command.
 type MockCommandResult struct {

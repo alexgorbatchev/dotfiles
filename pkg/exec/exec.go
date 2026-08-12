@@ -39,6 +39,15 @@ type Cmd interface {
 	Stdout() io.Writer
 	// Stderr returns the standard error of the command.
 	Stderr() io.Writer
+
+	// SetProcessGroup configures whether the command runs in its own process group.
+	SetProcessGroup(pgid bool)
+	// ProcessGroup returns whether process group isolation is enabled.
+	ProcessGroup() bool
+	// Kill terminates the process (and its process group if enabled) with SIGKILL.
+	Kill() error
+	// ProcessPid returns the process ID if started, or 0.
+	ProcessPid() int
 }
 
 // CommandRunner abstracts the creation of executable commands.

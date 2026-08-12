@@ -13,8 +13,9 @@ import (
 
 // osCmd wraps an *os/exec.Cmd to satisfy the Cmd interface.
 type osCmd struct {
-	cmd *exec.Cmd
-	ctx context.Context
+	cmd          *exec.Cmd
+	ctx          context.Context
+	processGroup bool
 }
 
 // SudoPreflightCommand defines the command used for non-blocking sudo verification.
@@ -153,6 +154,38 @@ func (c *osCmd) Stdout() io.Writer {
 // Stderr returns the standard error of the command.
 func (c *osCmd) Stderr() io.Writer {
 	return c.cmd.Stderr
+}
+
+// SetProcessGroup configures whether the command runs in its own process group.
+func (c *osCmd) SetProcessGroup(pgid bool) {
+	c.processGroup = pgid
+	if pgid {
+		setProcessGroup(c.cmd)
+	}
+}
+
+// ProcessGroup returns whether process group isolation is enabled.
+func (c *osCmd) ProcessGroup() bool {
+	return c.processGroup
+}
+
+// Kill terminates the process (and its process group if enabled) with SIGKILL.
+func (c *osCmd) Kill() error {
+	if c.cmd == nil || c.cmd.Process == nil {
+		return nil
+	}
+	if c.processGroup {
+		return killProcessGroup(c.cmd)
+	}
+	return c.cmd.Process.Kill()
+}
+
+// ProcessPid returns the process ID if started, or 0.
+func (c *osCmd) ProcessPid() int {
+	if c.cmd == nil || c.cmd.Process == nil {
+		return 0
+	}
+	return c.cmd.Process.Pid
 }
 
 // osRunner implements CommandRunner using the system's native subprocess driver.

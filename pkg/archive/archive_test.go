@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/hex"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -676,6 +677,18 @@ func TestExtractTarXzPipeCleanupOnEarlyError(t *testing.T) {
 		t.Fatal("expected error extracting invalid xz tar stream, got nil")
 	}
 
+	// Verify process group was set on the mock command
+	if len(runner.History) == 0 {
+		t.Fatal("expected xz command in history")
+	}
+	xzCmd := runner.History[0]
+	if !xzCmd.ProcessGroup() {
+		t.Error("expected xz command to have ProcessGroup enabled")
+	}
+	if !xzCmd.Killed() {
+		t.Error("expected xz command to be Killed on early extraction error")
+	}
+
 	// Verify that the pipe reader was closed, causing stdout.Write to receive io.ErrClosedPipe
 	select {
 	case err := <-writeErrCh:
@@ -687,3 +700,130 @@ func TestExtractTarXzPipeCleanupOnEarlyError(t *testing.T) {
 	}
 }
 
+func TestExtractTarXzProcessGroupAndCleanupOnCancel(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	// Mock xz command to write bogus data endlessly unless killed
+	runner.RegisterFunc("xz", func(c *exec.MockCmd) error {
+		stdout := c.Stdout()
+		if stdout == nil {
+			return nil
+		}
+		for {
+			if c.Killed() {
+				return errors.New("killed")
+			}
+			_, err := stdout.Write([]byte("data block\n"))
+			if err != nil {
+				return err
+			}
+		}
+	})
+
+	err := memFS.WriteFile("/test.txz", []byte("xz data"), 0644)
+	if err != nil {
+		t.Fatalf("failed to write txz file: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Pre-cancelled context
+
+	ext := NewExtractor(memFS, runner)
+	err = ext.Extract(ctx, "/test.txz", "/dest")
+	if err == nil {
+		t.Fatal("expected error extracting with cancelled context, got nil")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected context.Canceled error, got %v", err)
+	}
+
+	if len(runner.History) == 0 {
+		t.Fatal("expected xz command in history")
+	}
+	xzCmd := runner.History[0]
+	if !xzCmd.ProcessGroup() {
+		t.Error("expected xz command to have ProcessGroup enabled")
+	}
+	if !xzCmd.Killed() {
+		t.Error("expected xz command to be Killed on cancelled context")
+	}
+}
+
+func TestZipSlipPrevention(t *testing.T) {
+	t.Run("Zip File Zip-Slip Detection", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		files := map[string]string{
+			"../../escaped_file.txt": "evil content",
+		}
+		zipBytes, err := createZipBytes(files)
+		if err != nil {
+			t.Fatalf("failed to create zip: %v", err)
+		}
+
+		_ = memFS.WriteFile("/evil.zip", zipBytes, 0644)
+		err = ext.Extract(context.Background(), "/evil.zip", "/dest")
+		if err == nil {
+			t.Error("expected error for zip slip in zip file, got nil")
+		} else if !errors.Is(err, ErrZipSlipDetected) {
+			t.Errorf("expected ErrZipSlipDetected, got %v", err)
+		}
+
+		_, err = memFS.Stat("/escaped_file.txt")
+		if err == nil {
+			t.Error("file was extracted outside dest dir")
+		}
+	})
+
+	t.Run("Tar File Zip-Slip Detection", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		files := map[string]string{
+			"../../escaped_file.txt": "evil content",
+		}
+		tarGzBytes, err := createTarGzBytes(files)
+		if err != nil {
+			t.Fatalf("failed to create tar.gz: %v", err)
+		}
+
+		_ = memFS.WriteFile("/evil.tar.gz", tarGzBytes, 0644)
+		err = ext.Extract(context.Background(), "/evil.tar.gz", "/dest")
+		if err == nil {
+			t.Error("expected error for zip slip in tar.gz file, got nil")
+		} else if !errors.Is(err, ErrZipSlipDetected) {
+			t.Errorf("expected ErrZipSlipDetected, got %v", err)
+		}
+
+		_, err = memFS.Stat("/escaped_file.txt")
+		if err == nil {
+			t.Error("file was extracted outside dest dir")
+		}
+	})
+
+	t.Run("Absolute Path Zip-Slip Detection", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		files := map[string]string{
+			"/etc/passwd": "evil content",
+		}
+		zipBytes, err := createZipBytes(files)
+		if err != nil {
+			t.Fatalf("failed to create zip: %v", err)
+		}
+
+		_ = memFS.WriteFile("/evil_abs.zip", zipBytes, 0644)
+		err = ext.Extract(context.Background(), "/evil_abs.zip", "/dest")
+		if err == nil {
+			t.Error("expected error for absolute path in zip file, got nil")
+		} else if !errors.Is(err, ErrZipSlipDetected) {
+			t.Errorf("expected ErrZipSlipDetected, got %v", err)
+		}
+	})
+}
