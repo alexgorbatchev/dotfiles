@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -32,7 +33,45 @@ func executeCommand(args ...string) (string, error) {
 	return buf.String(), err
 }
 
+func createTempConfigDir(t *testing.T) string {
+	t.Helper()
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed getting current dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(origDir)
+	})
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed changing dir: %v", err)
+	}
+
+	configContent := `{
+	"projectConfig": {
+		"paths": {
+			"homeDir": "/tmp/test-home",
+			"targetDir": "/tmp/test-target",
+			"generatedDir": "/tmp/test-generated"
+		}
+	},
+	"toolConfigs": {
+		"bat": {
+			"name": "bat",
+			"installer": "github-release"
+		}
+	}
+}`
+	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed writing test config: %v", err)
+	}
+	return tmpDir
+}
+
 func TestSubcommands(t *testing.T) {
+	createTempConfigDir(t)
+
 	tests := []struct {
 		name           string
 		args           []string
@@ -255,5 +294,88 @@ func TestMatchesPlatform(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("matchesPlatform(%d, %q) = %v; want %v", tt.platforms, tt.osName, got, tt.want)
 		}
+	}
+}
+
+func TestDefaultConfigResolution(t *testing.T) {
+	createTempConfigDir(t)
+
+	ctx := context.Background()
+	services, err := BootstrapServices(ctx, "")
+	if err != nil {
+		t.Fatalf("expected BootstrapServices with empty configPath to resolve default config, got error: %v", err)
+	}
+	defer services.DB.Close()
+
+	if services.ProjectConfig == nil {
+		t.Fatalf("expected non-nil ProjectConfig")
+	}
+}
+
+func TestCandidateFallbackSearch(t *testing.T) {
+	candidates := []string{
+		"dotfiles.config.ts",
+		".dotfiles.config.ts",
+		"dotfiles.config.js",
+		".dotfiles.config.js",
+		"dotfiles.config.json",
+		".dotfiles.config.json",
+	}
+
+	for _, candName := range candidates {
+		t.Run("finds "+candName, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			origDir, _ := os.Getwd()
+			_ = os.Chdir(tmpDir)
+			defer os.Chdir(origDir)
+
+			filePath := filepath.Join(tmpDir, candName)
+			content := `{
+	"projectConfig": {"paths": {"homeDir": "/tmp/h", "targetDir": "/tmp/t", "generatedDir": "/tmp/g"}},
+	"toolConfigs": {}
+}`
+			if strings.HasSuffix(candName, ".ts") || strings.HasSuffix(candName, ".js") {
+				content = `export default { projectConfig: { paths: { homeDir: "/tmp/h", targetDir: "/tmp/t", generatedDir: "/tmp/g" } }, toolConfigs: {} };`
+			}
+			_ = os.WriteFile(filePath, []byte(content), 0644)
+
+			ctx := context.Background()
+			services, err := BootstrapServices(ctx, "")
+			if err != nil {
+				t.Fatalf("failed resolving default config for %s: %v", candName, err)
+			}
+			services.DB.Close()
+			if services.ProjectConfig == nil {
+				t.Errorf("expected non-nil ProjectConfig for %s", candName)
+			}
+		})
+	}
+}
+
+func TestRelativeConfigPathResolution(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	_ = os.Chdir(tmpDir)
+	defer os.Chdir(origDir)
+
+	subDir := filepath.Join(tmpDir, "sub")
+	_ = os.MkdirAll(subDir, 0755)
+
+	cfgPath := filepath.Join(subDir, "custom.config.json")
+	content := `{
+	"projectConfig": {"paths": {"homeDir": "/tmp/h", "targetDir": "/tmp/t", "generatedDir": "/tmp/g"}},
+	"toolConfigs": {}
+}`
+	_ = os.WriteFile(cfgPath, []byte(content), 0644)
+
+	ctx := context.Background()
+	// Pass relative path "sub/custom.config.json"
+	services, err := BootstrapServices(ctx, "sub/custom.config.json")
+	if err != nil {
+		t.Fatalf("failed resolving relative path from cwd: %v", err)
+	}
+	services.DB.Close()
+	if services.ProjectConfig == nil {
+		t.Errorf("expected non-nil ProjectConfig")
 	}
 }

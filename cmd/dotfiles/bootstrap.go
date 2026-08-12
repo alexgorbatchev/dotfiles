@@ -48,20 +48,46 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		repoRoot, _ = os.Getwd()
 	}
 
+	cwd, _ := os.Getwd()
+
 	if configPath == "" {
-		npmPath := filepath.Join(repoRoot, "test-project-npm/dotfiles.config.json")
-		localPath := filepath.Join(repoRoot, "dotfiles.config.json")
-		if exists, _ := fileExists(npmPath); exists {
-			configPath = npmPath
-		} else if exists, _ := fileExists(localPath); exists {
-			configPath = localPath
-		} else {
+		candidateNames := []string{
+			"dotfiles.config.ts",
+			".dotfiles.config.ts",
+			"dotfiles.config.js",
+			".dotfiles.config.js",
+			"dotfiles.config.json",
+			".dotfiles.config.json",
+		}
+
+		var candidates []string
+		for _, name := range candidateNames {
+			candidates = append(candidates, filepath.Join(cwd, name))
+		}
+		if repoRoot != "" && repoRoot != cwd {
+			for _, name := range candidateNames {
+				candidates = append(candidates, filepath.Join(repoRoot, name))
+			}
+		}
+
+		found := false
+		for _, cand := range candidates {
+			if exists, _ := fileExists(cand); exists {
+				configPath = cand
+				found = true
+				break
+			}
+		}
+		if !found {
 			return nil, fmt.Errorf("configuration file not specified and defaults not found")
 		}
-	}
-
-	if !filepath.IsAbs(configPath) {
-		configPath = filepath.Join(repoRoot, configPath)
+	} else if !filepath.IsAbs(configPath) {
+		cwdRel := filepath.Join(cwd, configPath)
+		if exists, _ := fileExists(cwdRel); exists {
+			configPath = cwdRel
+		} else {
+			configPath = filepath.Join(repoRoot, configPath)
+		}
 	}
 
 	absConfigPath, err := filepath.Abs(configPath)
@@ -80,7 +106,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	var projCfg *config.ProjectConfig
 	var toolConfigs []*config.ToolConfig
 
-	if strings.HasSuffix(absConfigPath, ".ts") {
+	if strings.HasSuffix(absConfigPath, ".ts") || strings.HasSuffix(absConfigPath, ".js") {
 		var err error
 		var toolMap map[string]*config.ToolConfig
 		projCfg, toolMap, err = vm.LoadTypeScriptConfig(GetLogger("config", os.Stdout), fsys, absConfigPath)
