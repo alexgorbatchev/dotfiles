@@ -21,7 +21,7 @@ You must act as a severe skeptic:
    - **Path Resolution**: Shells and Node/Bun automatically resolve tilde shortcuts (`~` and `~/`), while Go's `os` and `filepath` packages treat `~` as a literal directory name. Audit all path parameters.
    - **Symlink and Link Handling**: Check if hard links, symlinks, or broken links are processed identically, particularly inside virtual filesystems (`MemFS`) and archive extractors.
    - **Subprocess Stability**: Audit what happens on early error paths. Do subprocesses (e.g. `xz` decompression pipelines) leak or hang as zombies?
-3. **No Shortcuts on Multi-Installers**: If a module lists multiple plugins (e.g. 15 package installers), you must perform the side-by-side comparison for all of them. Never assume that since one installer works, the others share identical characteristics.
+3. **No Shortcuts on Multi-Installers**: If a package contains multiple installer plugins (e.g. 15 package installers in `pkg/installer`), you must perform the side-by-side comparison for all of them. Never assume that since one installer works, the others share identical characteristics.
 
 ---
 
@@ -29,26 +29,51 @@ You must act as a severe skeptic:
 
 To maximize thoroughness, performance, and depth of analysis, you **must not** conduct this audit alone. You must act as the **Orchestration Agent** and delegate specialized package-level audits to parallel sub-agents, and then synthesize their findings into the final report.
 
-### Step 1: Divide the Codebase into Discrete Modules
+### Step 1: Map Every Individual Go Package to its TypeScript Predecessor
 
-Segment the monorepo into the following five core functional modules:
+Map every Go package (`pkg/*`, `cmd/*`, `scripts/*`) directly to its corresponding TypeScript workspace package (`packages/*`):
 
-1. **Core File System & Database State:** Go's `pkg/fs/`, `pkg/db/`, `pkg/registry/` vs TS's `packages/file-system/`, `packages/registry/`, `packages/registry-database/`.
-2. **Orchestration, Shell Scripts & Sorters:** Go's `pkg/orchestrator/`, `pkg/shellinit/`, `cmd/dotfiles/generate.go` vs TS's `packages/generator-orchestrator/`, `packages/shell-init-generator/`, `packages/cli/src/generateCommand.ts`.
-3. **Installer Registry & Package Managers:** Go's `pkg/installer/` vs TS's `packages/installer/`, `packages/installer-*/`.
-4. **Networking, Extractors & Proxy:** Go's `pkg/downloader/`, `pkg/archive/`, `pkg/proxy/` vs TS's `packages/downloader/`, `packages/archive-extractor/`, `packages/http-proxy/`.
-5. **Build Pipeline, Dashboard & Typings:** Go's `pkg/dashboard/`, `pkg/unwrap/`, `pkg/arch/` vs TS's `packages/build/`, `packages/dashboard/`, `packages/unwrap-value/`.
+1. **Core Storage & FS Packages:**
+   - `pkg/fs/` vs `packages/file-system/`
+   - `pkg/db/` vs `packages/registry-database/`
+   - `pkg/registry/` vs `packages/registry/`
+2. **Orchestration & Shell Packages:**
+   - `pkg/orchestrator/` vs `packages/generator-orchestrator/`
+   - `pkg/shellinit/` vs `packages/shell-init-generator/`
+   - `pkg/shell/` vs `packages/shell-emissions/`
+   - `pkg/shim/` vs `packages/shim-generator/`
+   - `pkg/symlink/` vs `packages/symlink-generator/`
+   - `pkg/venv/` vs `packages/virtual-env/`
+   - `cmd/dotfiles/` vs `packages/cli/`
+3. **Installer Packages (Individual Plugins):**
+   - `pkg/installer/` vs `packages/installer/` and all 15 individual installer packages (`packages/installer-apt/`, `packages/installer-brew/`, `packages/installer-cargo/`, `packages/installer-curl-binary/`, `packages/installer-curl-script/`, `packages/installer-curl-tar/`, `packages/installer-dmg/`, `packages/installer-dnf/`, `packages/installer-gitea/`, `packages/installer-github/`, `packages/installer-manual/`, `packages/installer-npm/`, `packages/installer-pacman/`, `packages/installer-pkg/`, `packages/installer-zsh-plugin/`)
+4. **Networking, Archive & Utility Packages:**
+   - `pkg/downloader/` vs `packages/downloader/`
+   - `pkg/archive/` vs `packages/archive-extractor/`
+   - `pkg/proxy/` vs `packages/http-proxy/`
+   - `pkg/exec/` vs `packages/cli/` (exec utilities)
+   - `pkg/utils/` vs `packages/utils/`
+   - `pkg/version/` vs `packages/version-checker/`
+5. **Build, Runtime, VM & Feature Packages:**
+   - `pkg/arch/` vs `packages/arch/`
+   - `pkg/config/` vs `packages/config/`
+   - `pkg/dashboard/` vs `packages/dashboard/`
+   - `pkg/features/` vs `packages/features/`
+   - `pkg/logger/` vs `packages/logger/`
+   - `pkg/unwrap/` vs `packages/unwrap-value/`
+   - `pkg/vm/` vs `packages/core/` and `packages/tool-config-builder/`
+   - `scripts/build/` and `scripts/typegen/` vs `packages/build/`
 
-### Step 2: Dispatch Parallel Sub-Agents
+### Step 2: Dispatch Parallel Sub-Agents by Package Groups
 
-Launch **five parallel sub-agents** concurrently (by making a single message containing five concurrent `task` tool calls of type `explore` or `general`).
+Launch **parallel sub-agents** concurrently (by making a single message containing concurrent `task` tool calls of type `explore` or `general`).
 
-For each sub-agent, provide a highly specific, customized version of this audit directive. Instruct them to:
+For each sub-agent, assign a specific package group and instruct them to audit every individual package in that group:
 
-- Open and read the Go and corresponding TS source files side-by-side for every single file in their assigned directories.
-- Construct an exhaustive method-by-method comparison matrix mapping TS function signatures to their exact Go counterparts.
+- Open and read the Go source files in `pkg/<pkg>` and corresponding TS source files in `packages/<pkg>` side-by-side for every single package.
+- Construct an exhaustive method-by-method comparison matrix mapping TS function signatures to their exact Go counterparts package by package.
 - Detail any discrepancies in return types, default parameters, error handling, state tracking, and runtime semantic differences.
-- Return a detailed, markdown-formatted report of their findings.
+- Return a detailed, markdown-formatted report of their package findings.
 
 ### Step 3: Collect and Synthesize Reports
 
