@@ -16,11 +16,11 @@
   The repository is in a transitional, hybrid state. All core TypeScript packages (such as `@dotfiles/core`, `@dotfiles/config`, `@dotfiles/cli`, and 15+ installer packages) have been successfully demolished on the `agorbatchev/golang` branch. Only two TypeScript packages remain: `packages/dashboard` (the Preact client source code) and `packages/build` (the TS/Node-based build runner). The Go-native CLI (`cmd/dotfiles/`) executes configurations and hosts a static web server embedding client assets, but suffers from severe architectural and contract-level gaps.
 - **Overall Migration Parity Score**
   **6.0 / 10** (Factual technical justification):
-  - *JS/TS Execution Engine (5.5/10)*: Native `esbuild` and standard `sobek` VM integrations are highly performant, but missing filesystem mutators, platform enum mismatches, and parsing-time hook evaluation limits degrade utility.
-  - *CLI Orchestration & Shell Scripts (5.0/10)*: Topological dependency sorters resolve Kahn's algorithm deterministically, but there is NO cleanup of disabled, stale, or orphaned tools (leaving obsolete shims/symlinks active). Once-script directory pruning relies on an expensive, fragile speculative 1-1000 loop, and Zsh compinit optimization is missing.
-  - *Installer Plugins & Package Managers (6.5/10)*: All 15 installers are compiled in Go, but package managers return empty binary lists (preventing registry tracking and shim generation), and `shellInit` hooks are absent.
-  - *Networking, Extractors & Proxy (5.5/10)*: Downloader caching lacks credential isolation, plain tar is unsupported, hard links are downgraded to symlinks, and subprocess leaks remain unresolved on error paths.
-  - *Build and Typings Pipeline (5.0/10)*: Completely dependent on the legacy TS runner, size limits are unenforced, and TSD tests are missing.
+  - _JS/TS Execution Engine (5.5/10)_: Native `esbuild` and standard `sobek` VM integrations are highly performant, but missing filesystem mutators, platform enum mismatches, and parsing-time hook evaluation limits degrade utility.
+  - _CLI Orchestration & Shell Scripts (5.0/10)_: Topological dependency sorters resolve Kahn's algorithm deterministically, but there is NO cleanup of disabled, stale, or orphaned tools (leaving obsolete shims/symlinks active). Once-script directory pruning relies on an expensive, fragile speculative 1-1000 loop, and Zsh compinit optimization is missing.
+  - _Installer Plugins & Package Managers (6.5/10)_: All 15 installers are compiled in Go, but package managers return empty binary lists (preventing registry tracking and shim generation), and `shellInit` hooks are absent.
+  - _Networking, Extractors & Proxy (5.5/10)_: Downloader caching lacks credential isolation, plain tar is unsupported, hard links are downgraded to symlinks, and subprocess leaks remain unresolved on error paths.
+  - _Build and Typings Pipeline (5.0/10)_: Completely dependent on the legacy TS runner, size limits are unenforced, and TSD tests are missing.
 - **Current Dual-Run Parity Status**
   The dual-run verification harness (`scripts/parity-harness/main.go`) was **retired and deleted** in Wave 6 because the core TS codebase was removed, so live dual-runs are no longer possible. While `bun check:ci` (typecheck/lint) and the Go E2E tests pass green, they are over-simplifying state validations, masking silent tracking failures, sandboxing bypasses, and visual console regressions.
 
@@ -29,6 +29,7 @@
 ## 2. Feasibility Analysis (What Breaks on Demolition)
 
 ### A. The `.tool.ts` Authoring Experience (DX) & Type Boundary Completeness
+
 - **Ambient Types Package Requirement**: Users writing local configuration scripts require autocompletion and IDE compiler validation. If we demolish the TS packages, the types must be compiled and distributed via an npm package named `@alexgorbatchev/dotfiles`.
 - **Typings Gaps**: The Go type-generator (`scripts/typegen/main.go`) only outputs raw JSON-serializable TS interfaces (`types.gen.ts`). It completely omits the fluent builder DSL (such as `defineTool`, `.bin()`, `.version()`, `.dependsOn()`, `.zsh()`). While `pkg/vm/dsl-types.ts` and `loader-api.ts` define these in the Go workspace, they are not packaged or linked into a stable user-facing type boundary.
 - **Async vs Sync Filesystem Mismatch**: The public `IFileSystem` interface declares asynchronous, promise-returning methods (e.g., `readFile(path: string): Promise<string>`). However, Goja's native binding pool registers `fsExists`, `fsReadDir`, and `fsReadFile` as purely synchronous functions.
@@ -38,6 +39,7 @@
 - **Stale Dependencies**: The dashboard client package (`packages/dashboard/package.json`) contains stale references to deleted TypeScript monorepo workspace modules (e.g., `"@dotfiles/config": "workspace:*"`), breaking clean `bun install` executions in fresh environments.
 
 ### B. Dynamic Hook Callback Degradation (JS/TS Execution Engine)
+
 - **TypeScript Runtime Execution**: In TS, hooks are dynamic, live async JavaScript callbacks executed _during_ installation stages. They receive a live context including a virtual file system to check, write, or modify extracted contents:
   ```typescript
   .hook('after-extract', async (ctx) => {
@@ -53,6 +55,7 @@
   3. Go's orchestrator only supports the `after-install` hook, entirely ignoring the `before-install`, `after-download`, and `after-extract` hooks.
 
 ### C. Dashboard Client & Backend API Gaps (Preact UI Crash)
+
 - **The `/api/tools` Object Shape Mismatch**: The Preact UI `Tools.tsx` page fetches `/api/tools` expecting an array of `IToolDetail` objects. It processes them as follows:
   ```typescript
   const installedCount = toolsList.filter((tool) => tool.runtime.status === "installed").length;
@@ -65,6 +68,7 @@
 - **Dead SSE Code**: A heavy Server-Sent Events (SSE) log broadcasting system exists in the Go server but remains entirely unused by the Preact client interface.
 
 ### D. Build and NPM Packaging Pipeline
+
 - **TypeScript Dependency**: The assembly of `.dist/` is orchestrated entirely by `packages/build/src/build/build.ts` using Bun.
 - **Demolition Redesign**: If we demolish TS, we must rewrite this build pipeline as a native Go script. The pipeline must:
   1. Trigger `bun build` to compile the Preact dashboard into `pkg/dashboard/dist` before building Go (as Go embeds these assets at compile time).
@@ -79,15 +83,15 @@
 
 ### A. Core File System & Database State
 
-| TypeScript Method Signature / Concept | Go Counterpart Method / Package | Semantic Divergence / Architectural Gaps |
-| :--- | :--- | :--- |
-| `readFile(path, encoding?): Promise<string>` | `ReadFile(path string) ([]byte, error)` | Go returns raw byte arrays. Caller handles conversions. Encoding is assumed UTF-8. |
-| `exists(path): Promise<boolean>` | `Exists(path string) (bool, error)` | TS returns a boolean (ignoring internal errors). Go returns `(bool, error)` to handle underlying system failures. |
-| `rm(path, options?): Promise<void>` | `RemoveAll(path string) error` | TS `rm` has optional recursive parameters. Go uses `RemoveAll` explicitly. |
-| `MemFileSystem.exists()` (Broken symlinks) | `MemFS.Exists()` (`pkg/fs/mem_fs.go`) | **Correctness Bug**: `MemFS.Exists` checks flat map key existence. If a broken symlink node exists, it returns `true`. Real OSFS and TS `MemFileSystem` follow links, returning `false` for broken symlinks. |
-| `getRegisteredTools()` | `GetRegisteredTools()` | **Semantic Divergence**: Go runs `SELECT DISTINCT tool_name` (returning tools that ever had operations, even if all files are currently deleted). TS replays states in-memory, excluding tools with zero active files. |
-| `Compact()` / `Validate()` | *None* | **Missing Features**: Go lacks the compaction and integrity-checking routines implemented in TS's `FileRegistry.ts`. |
-| `RecordOperation` permissions format | `Permission` type (`pkg/db/`) | **Parity Achieved**: Go uses a custom SQL scanner/valuer to map octal permissions (e.g. `"0755"`) to decimal (e.g. `"493"`) in SQLite, matching TS binary representation perfectly. |
+| TypeScript Method Signature / Concept        | Go Counterpart Method / Package         | Semantic Divergence / Architectural Gaps                                                                                                                                                                               |
+| :------------------------------------------- | :-------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `readFile(path, encoding?): Promise<string>` | `ReadFile(path string) ([]byte, error)` | Go returns raw byte arrays. Caller handles conversions. Encoding is assumed UTF-8.                                                                                                                                     |
+| `exists(path): Promise<boolean>`             | `Exists(path string) (bool, error)`     | TS returns a boolean (ignoring internal errors). Go returns `(bool, error)` to handle underlying system failures.                                                                                                      |
+| `rm(path, options?): Promise<void>`          | `RemoveAll(path string) error`          | TS `rm` has optional recursive parameters. Go uses `RemoveAll` explicitly.                                                                                                                                             |
+| `MemFileSystem.exists()` (Broken symlinks)   | `MemFS.Exists()` (`pkg/fs/mem_fs.go`)   | **Correctness Bug**: `MemFS.Exists` checks flat map key existence. If a broken symlink node exists, it returns `true`. Real OSFS and TS `MemFileSystem` follow links, returning `false` for broken symlinks.           |
+| `getRegisteredTools()`                       | `GetRegisteredTools()`                  | **Semantic Divergence**: Go runs `SELECT DISTINCT tool_name` (returning tools that ever had operations, even if all files are currently deleted). TS replays states in-memory, excluding tools with zero active files. |
+| `Compact()` / `Validate()`                   | _None_                                  | **Missing Features**: Go lacks the compaction and integrity-checking routines implemented in TS's `FileRegistry.ts`.                                                                                                   |
+| `RecordOperation` permissions format         | `Permission` type (`pkg/db/`)           | **Parity Achieved**: Go uses a custom SQL scanner/valuer to map octal permissions (e.g. `"0755"`) to decimal (e.g. `"493"`) in SQLite, matching TS binary representation perfectly.                                    |
 
 - **Tilde Home Path Expansion Collapse**: TS employs a `ResolvedFileSystem` wrapper to dynamically intercept and expand home shortcuts (`~` and `~/`) on all path arguments. In Go, `ExpandHomePath` exists as a utility but is **never invoked anywhere in the file system or installer pipeline**. Paths targeting `~` write literal folders named `~` in the current directory or fail on disk.
 - **Recursive Directory Deletion Tracking Bug**: When recursively deleting folders via `fsys.RemoveAll`, Go's `TrackedFileSystem` only logs a single record for the parent folder. TS scanned the directory and wrote distinct `rm` records for all nested contents. This leaves all deleted nested files recorded as "active" in Go's SQLite registry, resulting in persistent database state drift.
@@ -101,6 +105,7 @@
 - **SQLite Concurrency and Locking Risks**: Go establishes an SQL database pool with up to 10 connections. For SQLite, concurrent writes across different connections risk `SQLITE_BUSY` errors. TS uses single-threaded, single-connection synchronous queries to guarantee safety.
 
 ### B. Orchestration & Shell Sorter Gaps
+
 - **Bash once-script Initializer Subshell Bug**: Go generates the Bash once-script sourcing loop inside a subshell:
   ```bash
   (shopt -s nullglob; for once_script in "%q/*.sh"; do [[ -f "$once_script" ]] && source "$once_script"; done)
@@ -114,6 +119,7 @@
 - **Stale Tool State Drift (Lack of Cleanup)**: TS automatically runs cleanups (`cleanupToolArtifacts`, `cleanupStaleShims`, `cleanupStaleSymlinks`) during generation. Go lacks this pipeline; if a tool is disabled or its hostname no longer matches, Go simply continues past it, leaving all shims, symlinks, and files active on the user's disk.
 
 ### C. Networking, Extractors & Proxy Gaps
+
 - **Infinite Network Socket Timeouts in Downloader**: Go's standard `NewDownloader` initiates an unconfigured `http.Client` with `0` timeout. A hanging network connection will freeze the CLI process indefinitely, causing silent pipeline hang-ups in headless CI environments.
 - **Zombie Subprocess Leaks in `.tar.xz` Decompression**: In `extractTarXz`, if the `tarReader` loop returns an error or cancels early, the `io.PipeReader` is left open. The spawned `xz` background process will block indefinitely on a full buffer, leaking system resources.
 - **Cache Key Scope Collisions**: The Go caching downloader builds keys solely from the request URL, neglecting caller headers. This can result in cross-credential cache hits or authorization leaks.
@@ -126,6 +132,7 @@
 ## 4. Installer & Package Manager Gaps
 
 ### A. Individual Plugin Parity Gaps
+
 - **Missing Global Binary Tracking**: Package managers (`brew`, `npm`, `apt`, `dnf`, `pacman`, `pkg`) return empty binary lists (`[]string{}`). No shims are generated for package-managed tools, and they are not recorded in the SQLite registry.
 - **Absence of `shellInit` Hook**: Zsh plugins are cloned but never loaded in the user's shell because the `shellInit` hook is completely missing in Go's installer contracts.
 - **Staging Clutter (Extraction Pollution)**: TS extracts archives inside a separate temporary directory, promoting only matched files to staging. Go extracts archives directly inside the staging folder, leaving readmes, licenses, and non-promoted files polluting the `current` path.
@@ -138,6 +145,7 @@
 - **Gitea Asset Pattern Filter Gap**: Go's `matchAsset` inside `gitea.go` completely ignores `assetPattern`! It performs a naive substring check for OS and Architecture names. If a Gitea release includes multiple files matching OS and Arch (such as both a `.deb` package and a `.tar.gz` archive), Go will return whichever matches first, resulting in extraction failures.
 
 ### B. Privilege Escalation & Sudo Gaps
+
 - **Sudo Prompt Ignored**: Custom prompts defined in `system.sudoPrompt` are parsed but never passed to `sudo` commands (which requires `sudo -p`).
 - **Interactive Hang risk**: Spawning `sudo` commands inside headless/non-interactive CI environments causes Go execution to hang indefinitely. Go's physical executor (`os_runner.go`) contains smart preflight checks, but headless CI builds still risk hanging on un-configured sudoers prompts.
 - **Installer Sudo Support Validation**: Both Go and TS correctly enforce validation limits, ensuring only `apt`, `dnf`, `manual`, `pacman`, and `pkg` installers can request sudo permissions.
@@ -148,22 +156,23 @@
 
 ### Active Test Files Comparison
 
-| Test Objective | TS Test File Path (`packages/e2e-test/src/__tests__/`) | Go Test File Path (`tests/e2e/`) | State / Coverage |
-| :--- | :--- | :--- | :--- |
-| **Conflicts Detection** | `conflict.test.ts` | `conflict_test.go` | **Functional Parity (Go is Green)** |
-| **Dependencies Resolution** | `dependency.test.ts` | `dependency_test.go` | **Functional Parity (Go is Green)** |
-| **Basic Installations** | `install.test.ts` | `install_test.go` | **Functional Parity (Go is Green)** |
-| **Stale Symlinks Cleanup** | `symlinkStale.test.ts` | `symlink_stale_test.go` | **Functional Parity (Go is Green)** |
-| **Auto-Install Lifecycle** | `autoInstall.test.ts` | `auto_install_test.go` | **Functional Parity (Go is Green)** |
-| **Enterprise GitHub Config**| `ghCli.test.ts` | `gh_cli_test.go` | **Functional Parity (Go is Green)** |
-| **Tool Renaming State** | `toolRename.test.ts` | `tool_rename_test.go` | **Functional Parity (Go is Green)** |
-| **Environment Activation** | `env.test.ts` | `env_test.go` | **Functional Parity (Go is Green)** |
-| **Hooks Execution** | `hook.test.ts` | `hook_test.go` | **Functional Parity (Go is Green)** |
-| **Dry Run Sandboxing** | _Missing_ | `dry_run_sandboxing_test.go` | **Go Advantage (Go is Green)** |
-| **Language Type Safety** | `typeSafety.test.ts` | _Missing_ | **Missing Coverage (TS Only)** |
-| **Package Managers (APT)** | `apt.test.ts` | _Missing_ | **Missing Coverage (TS Only)** |
+| Test Objective               | TS Test File Path (`packages/e2e-test/src/__tests__/`) | Go Test File Path (`tests/e2e/`) | State / Coverage                    |
+| :--------------------------- | :----------------------------------------------------- | :------------------------------- | :---------------------------------- |
+| **Conflicts Detection**      | `conflict.test.ts`                                     | `conflict_test.go`               | **Functional Parity (Go is Green)** |
+| **Dependencies Resolution**  | `dependency.test.ts`                                   | `dependency_test.go`             | **Functional Parity (Go is Green)** |
+| **Basic Installations**      | `install.test.ts`                                      | `install_test.go`                | **Functional Parity (Go is Green)** |
+| **Stale Symlinks Cleanup**   | `symlinkStale.test.ts`                                 | `symlink_stale_test.go`          | **Functional Parity (Go is Green)** |
+| **Auto-Install Lifecycle**   | `autoInstall.test.ts`                                  | `auto_install_test.go`           | **Functional Parity (Go is Green)** |
+| **Enterprise GitHub Config** | `ghCli.test.ts`                                        | `gh_cli_test.go`                 | **Functional Parity (Go is Green)** |
+| **Tool Renaming State**      | `toolRename.test.ts`                                   | `tool_rename_test.go`            | **Functional Parity (Go is Green)** |
+| **Environment Activation**   | `env.test.ts`                                          | `env_test.go`                    | **Functional Parity (Go is Green)** |
+| **Hooks Execution**          | `hook.test.ts`                                         | `hook_test.go`                   | **Functional Parity (Go is Green)** |
+| **Dry Run Sandboxing**       | _Missing_                                              | `dry_run_sandboxing_test.go`     | **Go Advantage (Go is Green)**      |
+| **Language Type Safety**     | `typeSafety.test.ts`                                   | _Missing_                        | **Missing Coverage (TS Only)**      |
+| **Package Managers (APT)**   | `apt.test.ts`                                          | _Missing_                        | **Missing Coverage (TS Only)**      |
 
 ### Risks of Premature Demolition
+
 The risk of functional regressions in core installers is relatively low due to the extensive E2E integration test migrations. However, deleting TS before translating `typeSafety.test.ts` and `apt.test.ts` risks silent compiler and package manager breakages in user-authored configurations. Additionally, deleting `packages/build` immediately destroys the 17 installer TSD type assertion tests (which verify generated `.d.ts` declaration boundaries inside `.dist/`), exposing the repository to typing regressions in the distributed release.
 
 ---
@@ -171,12 +180,14 @@ The risk of functional regressions in core installers is relatively low due to t
 ## 6. Completed vs. Remaining Backlog
 
 ### Completed Wave 5 Milestones
+
 - **Core Package Removals**: Deletion of `@dotfiles/core`, `@dotfiles/config`, `@dotfiles/cli`, and 15+ TS package manager installer directories.
 - **CLI Compilation Integration**: Implemented Go CLI compile-time flags and configured static binary build scripting.
 - **DB Operations Alignment**: Validated SQLite schema queries, WAL pragmas, and basic column alignment with Go structs.
 - **First E2E Migrations**: Completed conversion of initial installation, dependency resolution, and basic config-parsing E2E tests.
 
 ### Active Open Wave 6 Tickets
+
 The following 12 open Wave 6 tickets represent the sequential roadmap to safely demolish the remaining TypeScript packages and transition to a pure statically-linked Go binary distribution:
 
 1. **Ticket 6.1 (FS & Sandboxing)**: Fix `MemFS.Exists` to follow symlinks correctly, returning `false` for broken symlinks, and resolve preflight test-sandboxing bypasses.
