@@ -282,6 +282,7 @@ func (e *Extractor) extractTarXz(ctx context.Context, src string, dest string) e
 	defer fileReader.Close()
 
 	pr, pw := io.Pipe()
+	defer pr.Close()
 	cmd := e.runner.CommandContext(ctx, "xz", "-d", "-c")
 	cmd.SetStdin(fileReader)
 	cmd.SetStdout(pw)

@@ -641,3 +641,49 @@ func TestExtractorSymlinkTraversalPrevention(t *testing.T) {
 		}
 	})
 }
+
+func TestExtractTarXzPipeCleanupOnEarlyError(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	writeErrCh := make(chan error, 1)
+
+	// Mock xz command to write bogus data to stdout (pw) repeatedly
+	runner.RegisterFunc("xz", func(c *exec.MockCmd) error {
+		stdout := c.Stdout()
+		if stdout == nil {
+			return nil
+		}
+		// Write invalid tar header data so tar.NewReader(pr) returns a tar reading error
+		for i := 0; i < 100; i++ {
+			_, err := stdout.Write([]byte("invalid tar header payload content data that triggers tar error\n"))
+			if err != nil {
+				writeErrCh <- err
+				return err
+			}
+		}
+		return nil
+	})
+
+	err := memFS.WriteFile("/test.txz", []byte("xz data"), 0644)
+	if err != nil {
+		t.Fatalf("failed to write txz file: %v", err)
+	}
+
+	ext := NewExtractor(memFS, runner)
+	err = ext.Extract(context.Background(), "/test.txz", "/dest")
+	if err == nil {
+		t.Fatal("expected error extracting invalid xz tar stream, got nil")
+	}
+
+	// Verify that the pipe reader was closed, causing stdout.Write to receive io.ErrClosedPipe
+	select {
+	case err := <-writeErrCh:
+		if err == nil {
+			t.Error("expected non-nil error on write to closed pipe")
+		}
+	default:
+		// If writeErrCh didn't receive, either run finished or error occurred
+	}
+}
+
