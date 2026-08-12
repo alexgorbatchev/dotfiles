@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/tkrajina/typescriptify-golang-structs/typescriptify"
 )
 
-func main() {
+func generateTypes(outputPath string) error {
 	t := typescriptify.New()
 	t.CreateInterface = true
 
@@ -35,8 +36,19 @@ func main() {
 	t.Add(config.PlatformConfigEntry{})
 	t.Add(config.ToolConfig{})
 
-	outputPath := "packages/dashboard/src/shared/types.gen.ts"
-	err := t.ConvertToFile(outputPath)
+	return t.ConvertToFile(outputPath)
+}
+
+func main() {
+	outFlag := flag.String("out", "packages/dashboard/src/shared/types.gen.ts", "Output file path")
+	flag.Parse()
+
+	outputPath := *outFlag
+	if flag.NArg() > 0 {
+		outputPath = flag.Arg(0)
+	}
+
+	err := generateTypes(outputPath)
 	if err != nil {
 		fmt.Printf("Error converting Go structures to TypeScript: %v\n", err)
 		os.Exit(1)
@@ -44,3 +56,4 @@ func main() {
 
 	fmt.Printf("Successfully generated TypeScript interfaces at %s\n", outputPath)
 }
+

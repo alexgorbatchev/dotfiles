@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -102,5 +103,51 @@ func TestCopyFile(t *testing.T) {
 
 	if string(got) != string(content) {
 		t.Fatalf("copyFile output mismatch: got %s, want %s", string(got), string(content))
+	}
+}
+
+func TestGenerateSchemaTypes(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	pkgVmDir := filepath.Join(tmpDir, "pkg", "vm")
+	if err := os.MkdirAll(pkgVmDir, 0755); err != nil {
+		t.Fatalf("failed to create pkg/vm dir: %v", err)
+	}
+	dslContent := "export interface AsyncConfigureTool { (install: any): void; }\nexport interface ConfigFactory { (): void; }"
+	if err := os.WriteFile(filepath.Join(pkgVmDir, "dsl-types.ts"), []byte(dslContent), 0644); err != nil {
+		t.Fatalf("failed to write dsl-types.ts: %v", err)
+	}
+
+	dashboardTypesDir := filepath.Join(tmpDir, "packages", "dashboard", "src", "shared")
+	if err := os.MkdirAll(dashboardTypesDir, 0755); err != nil {
+		t.Fatalf("failed to create dashboard types dir: %v", err)
+	}
+	genContent := "export interface ToolConfig {\n\tname: string;\n}"
+	if err := os.WriteFile(filepath.Join(dashboardTypesDir, "types.gen.ts"), []byte(genContent), 0644); err != nil {
+		t.Fatalf("failed to write types.gen.ts: %v", err)
+	}
+
+	if err := generateSchemaTypes(tmpDir); err != nil {
+		t.Fatalf("generateSchemaTypes failed: %v", err)
+	}
+
+	indexDtsPath := filepath.Join(tmpDir, ".dist", "index.d.ts")
+	content, err := os.ReadFile(indexDtsPath)
+	if err != nil {
+		t.Fatalf("failed to read .dist/index.d.ts: %v", err)
+	}
+
+	strContent := string(content)
+	expectedDeclarations := []string{
+		"defineConfig",
+		"defineTool",
+		"AsyncConfigureTool",
+		"ToolConfig",
+	}
+
+	for _, expected := range expectedDeclarations {
+		if !strings.Contains(strContent, expected) {
+			t.Errorf(".dist/index.d.ts missing expected declaration %q", expected)
+		}
 	}
 }

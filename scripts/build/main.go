@@ -171,6 +171,10 @@ func generateSchemaTypes(rootDir string) error {
 		cleanedGeneratedTypes,
 	}, "\n\n")
 
+	if err := os.WriteFile(filepath.Join(distDir, "index.d.ts"), []byte(schemasDtsContent), 0644); err != nil {
+		return fmt.Errorf("failed to write index.d.ts: %w", err)
+	}
+
 	if err := os.WriteFile(filepath.Join(distDir, "schemas.d.ts"), []byte(schemasDtsContent), 0644); err != nil {
 		return fmt.Errorf("failed to write schemas.d.ts: %w", err)
 	}
@@ -248,13 +252,12 @@ func generatePackageJsons(rootDir string) (string, error) {
 		"bin": map[string]string{
 			"dotfiles": "cli.js",
 		},
-		"types": "./schemas.d.ts",
+		"types": "./index.d.ts",
 		"exports": map[string]interface{}{
 			".": map[string]interface{}{
-				"import": map[string]string{
-					"types":   "./schemas.d.ts",
-					"default": "./cli.js",
-				},
+				"types":   "./index.d.ts",
+				"import":  "./cli.js",
+				"default": "./cli.js",
 			},
 		},
 		"files": []string{"*.js", "*.d.ts", "skill", "README.md", "LICENSE"},
@@ -493,7 +496,7 @@ func runTypeTests(rootDir string) error {
 		return fmt.Errorf("failed to clean tsd-tests directory: %w", err)
 	}
 
-	typeTestsDir := filepath.Join(rootDir, "packages/build/type-tests")
+	typeTestsDir := filepath.Join(rootDir, "tests/type-tests")
 	if err := copyDirectoryRecursive(typeTestsDir, tsdDir); err != nil {
 		return fmt.Errorf("failed to copy type-tests: %w", err)
 	}
@@ -512,7 +515,7 @@ func runTypeTests(rootDir string) error {
 		return fmt.Errorf("failed to create node_modules/@alexgorbatchev/dotfiles: %w", err)
 	}
 
-	packageFiles := []string{"cli.js", "package.json", "schemas.d.ts", "authoring-types.d.ts", "cli.d.ts"}
+	packageFiles := []string{"cli.js", "package.json", "index.d.ts", "schemas.d.ts", "authoring-types.d.ts", "cli.d.ts"}
 	for _, file := range packageFiles {
 		src := filepath.Join(distDir, file)
 		dst := filepath.Join(pkgDir, file)

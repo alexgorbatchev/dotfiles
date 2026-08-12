@@ -1,0 +1,53 @@
+import {
+  defineTool,
+  type z_internal_IInstallParamsRegistry,
+  type z_internal_InstallMethod,
+  type z_internal_ManualInstallParams,
+} from "@alexgorbatchev/dotfiles";
+import { expectError } from "tsd";
+
+type ManualInstallParams = z_internal_ManualInstallParams;
+type InstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallMethod = z_internal_InstallMethod;
+
+type ExpectTrue<T extends true> = T;
+
+type ManualParams = InstallParamsRegistry["manual"];
+export type InstallIncludesManual = ExpectTrue<"manual" extends InstallMethod ? true : false>;
+export type ManualParamsMatchSchema = ExpectTrue<ManualParams extends ManualInstallParams ? true : false>;
+export type ManualSchemaMatchesParams = ExpectTrue<ManualInstallParams extends ManualParams ? true : false>;
+
+defineTool((install) =>
+  install("manual", {}).zsh((shell) =>
+    shell.once(/* zsh */ `
+        echo "once"
+      `).always(/* zsh */ `
+        echo "always"
+      `),
+  ),
+);
+
+defineTool((install) =>
+  install("manual", {
+    binaryPath: "bin/tool",
+  }),
+);
+
+expectError(() =>
+  defineTool((install) =>
+    install("manual", {
+      binaryPath: "bin/tool",
+      unknown: "value",
+    }),
+  ),
+);
+
+defineTool((install) =>
+  install("manual")
+    .bin("tokscale")
+    .zsh((shell) =>
+      shell.functions({
+        tokscale: `bun x tokscale@latest`,
+      }),
+    ),
+);
