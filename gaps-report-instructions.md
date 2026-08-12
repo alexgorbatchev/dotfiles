@@ -77,15 +77,16 @@ Assign **exactly one sub-agent per individual package pair** (for example, one s
 
 ### Step 3: Collect and Synthesize All Package Reports
 
-Once all individual package sub-agents have completed their tasks and returned their findings:
+Once all individual package substantive sub-agents have completed their tasks and returned their findings:
 
 1. Carefully read and analyze each sub-agent's package report.
 2. Identify any cross-component contract misalignments or hidden dependencies across packages.
-3. Synthesize and consolidate all individual package findings into a single, cohesive, and comprehensive master report.
+3. Collate and systematically list ALL specific architectural, runtime, API, and semantic deficiencies identified across packages without omission.
+4. Synthesize and consolidate all individual package findings into a single, cohesive, and comprehensive master report.
 
 ### Step 4: Write the Final Master Report to `./gaps-report.md`
 
-Write the final aggregated and curated report directly to `./gaps-report.md` using the exact layout defined in the **Expected Report Output Format** section below.
+Write the final aggregated and curated report directly to `./gaps-report.md` using the exact layout defined in the **Expected Report Output Format** section below, ensuring Section 7 ("Due Diligence Findings") includes every identified gap with severity, impact, and fix.
 
 ---
 
@@ -162,4 +163,8 @@ Compile your findings and write them directly to `./gaps-report.md`. Your report
 
 - Summarize what has been successfully merged (Wave 5).
 - List the active, open Wave 6 tickets and map out a bulletproof, sequential roadmap to safely demolish TypeScript and transition to a pure statically-linked Go binary distribution.
+
+## 7. Due Diligence Findings
+
+- Systematically list ALL identified architectural gaps, runtime bugs, API deficiencies, and semantic divergences found during the audit across every package (with Severity/Category, Issue description, Impact, and Fix required for each item).
 ```

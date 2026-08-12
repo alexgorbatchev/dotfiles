@@ -4,19 +4,20 @@
 
 ### Feasibility Check: Can we delete TS and ship Go today without breaking anything?
 
-**NO.** We cannot delete the TypeScript packages and ship the Go CLI to users today without breaking key user workflows and developer experience (DX). While the Go implementation achieves high functional execution parity for existing configuration files, several critical gaps must be resolved before TypeScript demolition:
+**NO.** We cannot delete the TypeScript packages and ship the Go CLI to users today without breaking key user workflows, CLI commands, generated shell scripts, and developer experience (DX). While the Go implementation achieves high functional execution parity for existing configuration files, several critical gaps must be resolved before TypeScript demolition:
 
 1. **`.tool.ts` Type Boundary & Authoring DX**: User-authored `.tool.ts` configuration files rely on type definitions (`defineTool`, `defineConfig`, `IFileSystem`, tool config schemas). If `packages/core` and `packages/cli` are removed without properly outputting and packaging Go's auto-generated `types.gen.ts` into `@alexgorbatchev/dotfiles` npm package, IDE autocomplete, typechecking (`bun typecheck`), and config authoring will fail.
-2. **Shell Script Non-Determinism (`pkg/shell`)**: Shell initialization scripts emitted by `dotfiles generate` iterate over Go maps (`map[string]string`) for environment variables and aliases. Because Go map iteration order is randomized by design, running `dotfiles generate` produces non-deterministic, varying output order on consecutive runs, causing git churn and unnecessary shell re-sourcing.
-3. **Subprocess Leak Risk in Archive Extraction (`pkg/archive`)**: `tar.xz` extraction invokes an external `xz -d -c` subprocess piped directly into `tar.Reader`. On context cancellation or unexpected extraction errors, the Go runtime closes the pipe without sending an explicit `SIGTERM`/`SIGKILL` to the process group, creating zombie `xz` subprocesses.
-4. **Topological Sorter Platform Pre-Resolution Gap (`pkg/orchestrator`)**: TypeScript resolved OS/architecture platform overrides (`resolvePlatformConfig`) _prior_ to topological dependency sorting. In Go, `TopologicalSort` runs directly on unmerged `ToolConfig` instances, which can evaluate dependencies on inactive platform providers or miss platform-specific execution constraints.
-5. **Dashboard React Assets & NPM Packaging Pipeline (`scripts/build`)**: The Go dashboard server (`pkg/dashboard/dashboard.go`) serves pre-built React static assets embedded via `embed.FS`. The build script (`scripts/build/main.go`) must bundle these assets, run `scripts/typegen`, compile cross-platform Go binaries, and format the final npm package without runtime Node/Bun dependencies.
+2. **Missing CLI Commands & Global Flags (`cmd/dotfiles`)**: The Go Cobra CLI currently lacks 6 subcommands present in TypeScript (`bin`, `features`, `cleanup`, `check-updates`, `log`, `skill`) and missing global flags (`--platform`, `--arch`, `--libc`, `--verbose`, `--quiet`).
+3. **Orchestrator Cleanup & Platform Pre-Resolution Deficits (`pkg/orchestrator`)**: Go's `Orchestrator` lacks cleanup methods for orphaned tools (`cleanupOrphanedTools`), stale shims (`cleanupStaleShims`), stale symlinks (`cleanupStaleSymlinks`), and stale copies (`cleanupStaleCopies`). Additionally, platform overrides (`resolvePlatformConfig`) are not pre-resolved prior to topological dependency sorting.
+4. **Shell Script Non-Determinism (`pkg/shell`)**: Shell initialization scripts emitted by `dotfiles generate` iterate over Go maps (`map[string]string`) for environment variables and aliases. Because Go map iteration order is randomized by design, running `dotfiles generate` produces non-deterministic, varying output order on consecutive runs, causing git churn and unnecessary shell re-sourcing.
+5. **Subprocess Leak Risk in Archive Extraction (`pkg/archive`)**: `tar.xz` extraction invokes an external `xz -d -c` subprocess piped directly into `tar.Reader`. On context cancellation or unexpected extraction errors, the Go runtime closes the pipe without sending an explicit `SIGTERM`/`SIGKILL` to the process group, creating zombie `xz` subprocesses.
+6. **Installer & Utility Gaps**: `curl_script` installer lacks system binary search (`/usr/local/bin`, `~/.local/bin`); `github` installer lacks `gh` CLI fallback when hit by GitHub API rate limits; `brew` installer fails boolean `service: true` casting and lacks `versionRegex` pattern extraction; `arch` asset matcher lacks zinit soft/hard regex rules and non-binary file filter; `dashboard` check-update endpoint returns a hardcoded stub.
 
 ### Current Monorepo State
 
 The monorepo is in a transitional hybrid dual-run state:
 
-- **Go Implementation (`pkg/`, `cmd/dotfiles`, `scripts/`)**: Complete Go CLI binary supporting all subcommands (`generate`, `install`, `uninstall`, `update`, `env`, `files`, `detect-conflicts`, `bootstrap`, `dashboard`, `convert`). Fully integrated Goja JavaScript VM (`pkg/vm`) executes `.tool.ts` files natively. Pure Go SQLite database (`pkg/db`) tracks installed tool states and file ownership.
+- **Go Implementation (`pkg/`, `cmd/dotfiles`, `scripts/`)**: Complete Go CLI binary supporting core subcommands (`generate`, `install`, `uninstall`, `update`, `env`, `files`, `detect-conflicts`, `bootstrap`, `dashboard`, `convert`). Fully integrated Goja JavaScript VM (`pkg/vm`) executes `.tool.ts` files natively. Pure Go SQLite database (`pkg/db`) tracks installed tool states and file ownership.
 - **TypeScript Implementation (`packages/`)**: Retained as reference implementation, types provider for user configs, and source for React dashboard client.
 
 ### Overall Migration Parity Score
@@ -27,11 +28,12 @@ _Technical Justification:_
 
 - Core execution engine, CLI subcommands, installers, registry database, filesystem abstractions, and Goja VM loader reach 95%+ functional parity.
 - The remaining 1.5 score gap represents:
-  1. Map key sorting in shell emissions for 100% output determinism (0.3)
-  2. Orchestrator platform pre-resolution logic (0.3)
-  3. Archive process group cleanup & zip-slip path guards (0.3)
-  4. Typegen integration into npm package layout (0.3)
-  5. Translation of remaining edge-case TS integration tests to Go E2E (0.3)
+  1. Missing 6 CLI subcommands and global persistent flags in Cobra (0.3)
+  2. Orchestrator orphaned tool / stale artifact cleanup routines and platform pre-resolution (0.3)
+  3. Map key sorting in shell emissions for 100% output determinism (0.2)
+  4. Archive process group cleanup & zip-slip path guards (0.2)
+  5. Installer & asset matcher gaps (`curl_script`, `brew`, `github`, `arch`) (0.2)
+  6. Typegen integration into npm package layout & dashboard check-update wiring (0.3)
 
 ### Current Dual-Run Parity Status
 
@@ -65,7 +67,8 @@ When `packages/core` and `packages/cli` are deleted:
   - `POST /api/install`: Triggers tool installation.
   - `POST /api/uninstall`: Triggers tool uninstallation.
   - `GET /api/logs` & `GET /api/ws`: Streams live execution logs via WebSockets.
-- **Audit Finding**: The Go backend server covers 100% of the REST endpoints used by the dashboard client. Go uses `embed.FS` to serve static assets from `pkg/dashboard/dist/`. The client build step must run `bun build` inside `packages/dashboard` prior to `go build` so that updated frontend assets are embedded into the compiled binary.
+  - `POST /api/tools/:name/check-update`: **Gap**: Currently returns hardcoded `{"hasUpdate": false}` stub. Must be wired to `installer.CheckUpdate()`.
+- **Audit Finding**: The Go backend server covers 95%+ of the REST endpoints used by the dashboard client. Go uses `embed.FS` to serve static assets from `pkg/dashboard/dist/`. The client build step must run `bun build` inside `packages/dashboard` prior to `go build` so that updated frontend assets are embedded into the compiled binary.
 
 ### 2.3 Build and NPM Packaging Pipeline (`scripts/build/main.go`)
 
@@ -85,39 +88,40 @@ To ship `@alexgorbatchev/dotfiles` as an npm package containing statically compi
 
 ### 3.1 Side-by-Side Method & Package Comparison Matrix
 
-| Domain / Package    | TypeScript Predecessor                  | Go Implementation                  | Parity Status | Divergence / Architectural Note                                                                                                                          |
-| :------------------ | :-------------------------------------- | :--------------------------------- | :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **File System**     | `packages/file-system`                  | `pkg/fs`                           | 95%           | Go `MemFS` does not model symlinks as distinct in-memory nodes; treats them as files containing target string. `OSFS` and `TrackedFS` offer full parity. |
-| **Database**        | `packages/registry-database`            | `pkg/db`                           | 100%          | Go uses pure Go SQLite driver (`modernc.org/sqlite`). Wraps multi-row changes in explicit atomic transactions (`db.Begin()`).                            |
-| **Registry**        | `packages/registry`                     | `pkg/registry`                     | 98%           | Go normalizes tool installation records into structured SQLite tables rather than raw JSON blobs.                                                        |
-| **Downloader**      | `packages/downloader`                   | `pkg/downloader`                   | 95%           | Go uses `http.Client` with explicit timeouts. User-Agent sent as `dotfiles-installer/1.0`.                                                               |
-| **Archive**         | `packages/archive-extractor`            | `pkg/archive`                      | 90%           | Tar/Zip/Gzip extracted natively. `tar.xz` uses `xz` subprocess streaming; missing process group kill on context cancellation.                            |
-| **HTTP Proxy**      | `packages/http-proxy`                   | `pkg/proxy`                        | 100%          | Go HTTP server caching GET responses locally. Parity complete.                                                                                           |
-| **Orchestrator**    | `packages/generator-orchestrator`       | `pkg/orchestrator`                 | 90%           | Topological dependency sorter functional. **Gap**: Platform config pre-resolution missing before sorting.                                                |
-| **Shell Init**      | `packages/shell-init-generator`         | `pkg/shellinit`                    | 100%          | Generates zsh, bash, fish init scripts, once-script hooks, completions.                                                                                  |
-| **Shell Emissions** | `packages/shell-emissions`              | `pkg/shell`                        | 85%           | **Gap**: Map iteration in Go is randomized. Shell emissions must sort map keys to guarantee deterministic script generation.                             |
-| **Shim Gen**        | `packages/shim-generator`               | `pkg/shim`                         | 100%          | Executable shim script templates, PATH forwarding, chmod `0755`.                                                                                         |
-| **Symlink Gen**     | `packages/symlink-generator`            | `pkg/symlink`                      | 100%          | Absolute/relative symlinks, backup creation, dry-run tracking.                                                                                           |
-| **Virtual Env**     | `packages/virtual-env`                  | `pkg/venv`                         | 100%          | Python venv creation, activation script template generation.                                                                                             |
-| **CLI App**         | `packages/cli`                          | `cmd/dotfiles`                     | 100%          | Matches subcommands, flags, exit codes, tab-separated log formats.                                                                                       |
-| **Exec Runner**     | `packages/cli` (exec utils)             | `pkg/exec`                         | 100%          | Context-cancellation aware command runner, mock runner for tests.                                                                                        |
-| **Utils**           | `packages/utils`                        | `pkg/utils`                        | 100%          | String helpers, tilde expansion (`ExpandTilde`), platform checks.                                                                                        |
-| **Version**         | `packages/version-checker`              | `pkg/version`                      | 100%          | Semver parsing, update check caching in `~/.cache/dotfiles/version.json`.                                                                                |
-| **Architecture**    | `packages/arch`                         | `pkg/arch`                         | 90%           | Basic OS/Arch string normalizer. Complex Zinit asset matching engine integrated into `github.go` / `gitea.go`.                                           |
-| **Config Loader**   | `packages/config`                       | `pkg/config`                       | 100%          | Config resolution, default option merging, platform override merging.                                                                                    |
-| **Dashboard**       | `packages/dashboard`                    | `pkg/dashboard`                    | 95%           | REST API parity complete; static asset embedding via `embed.FS`.                                                                                         |
-| **Features**        | `packages/features`                     | `pkg/features`                     | 100%          | Feature flags, readme generator.                                                                                                                         |
-| **Logger**          | `packages/logger`                       | `pkg/logger`                       | 100%          | Safe `tslog` tab-separated output formatting (`\t`), context fields.                                                                                     |
-| **Unwrap**          | `packages/unwrap-value`                 | `pkg/unwrap`                       | 100%          | Dynamic value unwrapping (Goja functions vs primitives).                                                                                                 |
-| **VM / DSL**        | `packages/core` & `tool-config-builder` | `pkg/vm`                           | 95%           | Goja JS runtime executing `.tool.ts`. Polyfills for `console`, `fetch`, `setTimeout`, process env.                                                       |
-| **Build Scripts**   | `packages/build`                        | `scripts/build`, `scripts/typegen` | 90%           | Pure Go build and typegen scripts replacing Node/Bun build pipelines.                                                                                    |
+| Domain / Package    | TypeScript Predecessor                  | Go Implementation                  | Parity Status | Divergence / Architectural Note                                                                                                                                                                |
+| :------------------ | :-------------------------------------- | :--------------------------------- | :------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **File System**     | `packages/file-system`                  | `pkg/fs`                           | 95%           | Go `MemFS` does not model symlinks as distinct in-memory nodes; treats them as files containing target string. `OSFS` and `TrackedFS` offer full parity. `MemFS.ReadDir` requires key sorting. |
+| **Database**        | `packages/registry-database`            | `pkg/db`                           | 100%          | Go uses pure Go SQLite driver (`modernc.org/sqlite`). Wraps multi-row changes in explicit atomic transactions (`db.Begin()`).                                                                  |
+| **Registry**        | `packages/registry`                     | `pkg/registry`                     | 98%           | Go normalizes tool installation records into structured SQLite tables rather than raw JSON blobs.                                                                                              |
+| **Downloader**      | `packages/downloader`                   | `pkg/downloader`                   | 95%           | Go uses `http.Client` with explicit timeouts. User-Agent sent as `dotfiles-installer/1.0`. `DownloadOptions` missing explicit `ProxyURL` parameter.                                            |
+| **Archive**         | `packages/archive-extractor`            | `pkg/archive`                      | 90%           | Tar/Zip/Gzip extracted natively. `tar.xz` uses `xz` subprocess streaming; missing process group kill on context cancellation and Zip-Slip path guards.                                         |
+| **HTTP Proxy**      | `packages/http-proxy`                   | `pkg/proxy`                        | 100%          | Go HTTP server caching GET responses locally. Parity complete.                                                                                                                                 |
+| **Orchestrator**    | `packages/generator-orchestrator`       | `pkg/orchestrator`                 | 85%           | **Gaps**: Missing orphaned tool & stale artifact cleanup routines (`cleanupOrphanedTools`, `cleanupStaleShims`, etc.). Platform pre-resolution missing.                                        |
+| **Shell Init**      | `packages/shell-init-generator`         | `pkg/shellinit`                    | 100%          | Generates zsh, bash, fish init scripts, once-script hooks, completions.                                                                                                                        |
+| **Shell Emissions** | `packages/shell-emissions`              | `pkg/shell`                        | 85%           | **Gap**: Map iteration in Go is randomized. Shell emissions must sort map keys to guarantee deterministic script generation.                                                                   |
+| **Shim Gen**        | `packages/shim-generator`               | `pkg/shim`                         | 100%          | Executable shim script templates, PATH forwarding, chmod `0755`.                                                                                                                               |
+| **Symlink Gen**     | `packages/symlink-generator`            | `pkg/symlink`                      | 100%          | Absolute/relative symlinks, backup creation, dry-run tracking.                                                                                                                                 |
+| **Virtual Env**     | `packages/virtual-env`                  | `pkg/venv`                         | 100%          | Python venv creation, activation script template generation.                                                                                                                                   |
+| **CLI App**         | `packages/cli`                          | `cmd/dotfiles`                     | 80%           | **Gaps**: Missing 6 CLI subcommands (`bin`, `features`, `cleanup`, `check-updates`, `log`, `skill`) and global persistent flags (`--platform`, `--arch`, `--verbose`, `--quiet`).              |
+| **Exec Runner**     | `packages/cli` (exec utils)             | `pkg/exec`                         | 100%          | Context-cancellation aware command runner, mock runner for tests.                                                                                                                              |
+| **Utils**           | `packages/utils`                        | `pkg/utils`                        | 100%          | String helpers, tilde expansion (`ExpandTilde`), platform checks.                                                                                                                              |
+| **Version**         | `packages/version-checker`              | `pkg/version`                      | 100%          | Semver parsing, update check caching in `~/.cache/dotfiles/version.json`.                                                                                                                      |
+| **Architecture**    | `packages/arch`                         | `pkg/arch`                         | 80%           | **Gap**: Lacks zinit soft/hard regex filters, non-binary asset exclusion (`.sha256`, `.asc`), and glibc/musl asset ranking.                                                                    |
+| **Config Loader**   | `packages/config`                       | `pkg/config`                       | 100%          | Config resolution, default option merging, platform override merging.                                                                                                                          |
+| **Dashboard**       | `packages/dashboard`                    | `pkg/dashboard`                    | 90%           | REST API parity complete; static asset embedding via `embed.FS`. **Gap**: `/api/tools/:name/check-update` is a hardcoded stub.                                                                 |
+| **Features**        | `packages/features`                     | `pkg/features`                     | 100%          | Feature flags, readme generator.                                                                                                                                                               |
+| **Logger**          | `packages/logger`                       | `pkg/logger`                       | 100%          | Safe `tslog` tab-separated output formatting (`\t`), context fields.                                                                                                                           |
+| **Unwrap**          | `packages/unwrap-value`                 | `pkg/unwrap`                       | 100%          | Dynamic value unwrapping (Goja functions vs primitives).                                                                                                                                       |
+| **VM / DSL**        | `packages/core` & `tool-config-builder` | `pkg/vm`                           | 90%           | Goja JS runtime executing `.tool.ts`. Polyfills for `console`, `fetch`, `setTimeout`. **Gap**: Single-file import stripping regex bug on multi-line imports.                                   |
+| **Build Scripts**   | `packages/build`                        | `scripts/build`, `scripts/typegen` | 90%           | Pure Go build and typegen scripts replacing Node/Bun build pipelines.                                                                                                                          |
 
 ### 3.2 Audit of Semantic Divergences ("Negative Space")
 
 1. **Order Non-Determinism**:
    - In Go, map iteration order is deliberately randomized by the runtime.
    - `pkg/shell/shell.go` formats environment variables (`map[string]string`) and aliases (`map[string]string`) into shell code. Consecutive invocations of `dotfiles generate` produce different line orderings.
-   - **Fix Required**: Sort map keys alphabetically (`sort.Strings(keys)`) before building shell output strings in `pkg/shell/shell.go`.
+   - `pkg/fs/mem_fs.go` iterates over `m.files map[string]*fileNode` during `ReadDir`, returning unsorted directory entries.
+   - **Fix Required**: Sort map keys alphabetically (`sort.Strings(keys)`) before building shell output strings in `pkg/shell/shell.go` and in `pkg/fs/mem_fs.go`.
 
 2. **Standard Library Defaults & HTTP Timeouts**:
    - Go's default `http.Client{}` has no timeout (`0`), risking indefinitely hanging network requests.
@@ -132,6 +136,7 @@ To ship `@alexgorbatchev/dotfiles` as an npm package containing statically compi
 4. **Symlink and Link Handling**:
    - `pkg/fs/tracked_fs.go` records file modifications during `--dry-run` without touching the host filesystem.
    - Path confinement in `pkg/fs/resolved_fs.go` validates that paths cannot break out of configured root directories using `filepath.Rel` checks.
+   - `MemFS.Exists` currently returns `false` for broken symlinks pointing to non-existent targets, whereas `os.Lstat` returns `true`.
 
 5. **Subprocess Stability & Zombie Pipelines**:
    - `pkg/archive/archive.go` uses `exec.CommandContext` to spawn `xz -d -c` for `.tar.xz` archives.
@@ -144,23 +149,23 @@ To ship `@alexgorbatchev/dotfiles` as an npm package containing statically compi
 
 All 15 package installer plugins in `pkg/installer/` were audited side-by-side against their corresponding `packages/installer-*` TypeScript packages:
 
-| Installer Plugin | Source File                    | Sudo Handling                                   | Feature Parity Status | Divergence / Implementation Detail                                                                                                             |
-| :--------------- | :----------------------------- | :---------------------------------------------- | :-------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
-| **apt**          | `pkg/installer/apt.go`         | `supportsSudo(): true`                          | 100% Parity           | Invokes `apt-get install -y` / `apt-get remove -y`. Validates sudo requirement when non-root.                                                  |
-| **brew**         | `pkg/installer/brew.go`        | `supportsSudo(): false`                         | 100% Parity           | Handles formulas and casks (`--cask`), tap auto-installation. **Strictly forbids sudo** (`supportsSudo() => false`), matching Homebrew policy. |
-| **cargo**        | `pkg/installer/cargo.go`       | `supportsSudo(): false`                         | 100% Parity           | Supports `cargo install --locked`, `--git`, `--path`.                                                                                          |
-| **curl-binary**  | `pkg/installer/curl_binary.go` | Configurable                                    | 100% Parity           | Downloads standalone binary, `chmod +x`, target bin directory installation.                                                                    |
-| **curl-script**  | `pkg/installer/curl_script.go` | Configurable                                    | 100% Parity           | Downloads and executes install script via `sh`/`bash`/`zsh`. Env var forwarding supported.                                                     |
-| **curl-tar**     | `pkg/installer/curl_tar.go`    | Configurable                                    | 100% Parity           | Downloads archive, extracts target binary from nested path, handles strip components.                                                          |
-| **dmg**          | `pkg/installer/dmg.go`         | Configurable                                    | 100% Parity           | MacOS only. `hdiutil attach`, binary/app copy, `hdiutil detach` in `defer` cleanup block.                                                      |
-| **dnf**          | `pkg/installer/dnf.go`         | `supportsSudo(): true`                          | 100% Parity           | Fedora/RHEL `dnf install -y`, copr repository enablement.                                                                                      |
-| **gitea**        | `pkg/installer/gitea.go`       | Configurable                                    | 100% Parity           | Gitea API release fetching, authentication header handling, platform/arch regex asset selection.                                               |
-| **github**       | `pkg/installer/github.go`      | Configurable                                    | 100% Parity           | GitHub API release fetching, asset pattern matching (`assetPattern`), fallback matching.                                                       |
-| **manual**       | `pkg/installer/manual.go`      | Configurable                                    | 100% Parity           | Custom shell scripts, before/after hook execution.                                                                                             |
-| **npm**          | `pkg/installer/npm.go`         | Configurable                                    | 100% Parity           | `npm install -g`, registry flag forwarding.                                                                                                    |
-| **pacman**       | `pkg/installer/pacman.go`      | `supportsSudo(): true` (pacman) / `false` (AUR) | 100% Parity           | Supports system `pacman -S --noconfirm` (sudo) and AUR helpers (`yay`/`paru` without sudo).                                                    |
-| **pkg**          | `pkg/installer/pkg.go`         | `supportsSudo(): true`                          | 100% Parity           | MacOS `.pkg` package installation via `/usr/sbin/installer -pkg ... -target /`.                                                                |
-| **zsh-plugin**   | `pkg/installer/zsh_plugin.go`  | `supportsSudo(): false`                         | 100% Parity           | Clones zsh plugin repos to `~/.oh-my-zsh/custom/plugins` or custom path, git pull updates.                                                     |
+| Installer Plugin | Source File                    | Sudo Handling                                   | Feature Parity Status | Divergence / Implementation Detail                                                                                                                          |
+| :--------------- | :----------------------------- | :---------------------------------------------- | :-------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **apt**          | `pkg/installer/apt.go`         | `supportsSudo(): true`                          | 100% Parity           | Invokes `apt-get install -y` / `apt-get remove -y`. Validates sudo requirement when non-root.                                                               |
+| **brew**         | `pkg/installer/brew.go`        | `supportsSudo(): false`                         | 85% Parity            | **Gaps**: Fails boolean `service: true` casting (expects string); does not apply `versionRegex` to `versionArgs` output. Strictly forbids sudo.             |
+| **cargo**        | `pkg/installer/cargo.go`       | `supportsSudo(): false`                         | 100% Parity           | Supports `cargo install --locked`, `--git`, `--path`.                                                                                                       |
+| **curl-binary**  | `pkg/installer/curl_binary.go` | Configurable                                    | 100% Parity           | Downloads standalone binary, `chmod +x`, target bin directory installation.                                                                                 |
+| **curl-script**  | `pkg/installer/curl_script.go` | Configurable                                    | 80% Parity            | **Gap**: Searches only inside `c.BinDir`. Missing search in system binary dirs (`/usr/local/bin`, `~/.local/bin`, `/usr/bin`) for newly installed binaries. |
+| **curl-tar**     | `pkg/installer/curl_tar.go`    | Configurable                                    | 100% Parity           | Downloads archive, extracts target binary from nested path, handles strip components.                                                                       |
+| **dmg**          | `pkg/installer/dmg.go`         | Configurable                                    | 100% Parity           | MacOS only. `hdiutil attach`, binary/app copy, `hdiutil detach` in `defer` cleanup block.                                                                   |
+| **dnf**          | `pkg/installer/dnf.go`         | `supportsSudo(): true`                          | 100% Parity           | Fedora/RHEL `dnf install -y`, copr repository enablement.                                                                                                   |
+| **gitea**        | `pkg/installer/gitea.go`       | Configurable                                    | 100% Parity           | Gitea API release fetching, authentication header handling, platform/arch regex asset selection.                                                            |
+| **github**       | `pkg/installer/github.go`      | Configurable                                    | 85% Parity            | **Gap**: Lacks fallback to `gh release download` CLI when GitHub REST API rate limits (403 Rate Limit) are reached without token.                           |
+| **manual**       | `pkg/installer/manual.go`      | Configurable                                    | 100% Parity           | Custom shell scripts, before/after hook execution.                                                                                                          |
+| **npm**          | `pkg/installer/npm.go`         | Configurable                                    | 100% Parity           | `npm install -g`, registry flag forwarding.                                                                                                                 |
+| **pacman**       | `pkg/installer/pacman.go`      | `supportsSudo(): true` (pacman) / `false` (AUR) | 100% Parity           | Supports system `pacman -S --noconfirm` (sudo) and AUR helpers (`yay`/`paru` without sudo).                                                                 |
+| **pkg**          | `pkg/installer/pkg.go`         | `supportsSudo(): true`                          | 100% Parity           | MacOS `.pkg` package installation via `/usr/sbin/installer -pkg ... -target /`.                                                                             |
+| **zsh-plugin**   | `pkg/installer/zsh_plugin.go`  | `supportsSudo(): false`                         | 100% Parity           | Clones zsh plugin repos to `~/.oh-my-zsh/custom/plugins` or custom path, git pull updates.                                                                  |
 
 ### Sudo Elevation Validation
 
@@ -215,7 +220,7 @@ Deleting `packages/` before finalizing the Go test suite carries **LOW-TO-MEDIUM
 
 ### 6.1 Wave 5 Accomplishments (Merged & Verified)
 
-- **Pure Go CLI Binary (`cmd/dotfiles`)**: Full subcommand parity with flag parsing and tab-separated logging.
+- **Pure Go CLI Binary (`cmd/dotfiles`)**: Core subcommand parity with flag parsing and tab-separated logging.
 - **Embedded Goja JS Engine (`pkg/vm`)**: Native execution of user `.tool.ts` and `dotfiles.config.ts`.
 - **Pure Go SQLite Engine (`pkg/db`)**: State tracking and tool installation records without CGO dependencies.
 - **Complete Installer Suite (`pkg/installer`)**: All 15 installer plugins implemented, tested, and registered.
@@ -226,20 +231,27 @@ Deleting `packages/` before finalizing the Go test suite carries **LOW-TO-MEDIUM
 
 To safely demolish `packages/` and complete the Go migration, execute the following sequential roadmap:
 
-1. **Ticket W6-1: Sort Map Keys in Shell Emissions (`pkg/shell`)**
-   - Fix randomized map iteration order in `pkg/shell/shell.go` by sorting environment variable and alias keys alphabetically before string formatting.
+1. **Ticket W6-1: Sort Map Keys in Shell Emissions & MemFS (`pkg/shell` & `pkg/fs`)**
+   - Fix randomized map iteration order in `pkg/shell/shell.go` and `pkg/fs/mem_fs.go` by sorting keys alphabetically before output string construction.
 
-2. **Ticket W6-2: Platform Pre-Resolution in Topological Sorter (`pkg/orchestrator`)**
+2. **Ticket W6-2: Platform Pre-Resolution & Orphaned Tool Cleanup in Orchestrator (`pkg/orchestrator`)**
    - Update `pkg/orchestrator/orchestrator.go` to evaluate OS/architecture platform overrides on `ToolConfig` before constructing the topological dependency graph.
+   - Implement `cleanupOrphanedTools`, `cleanupStaleShims`, `cleanupStaleSymlinks`, and `cleanupStaleCopies` routines.
 
 3. **Ticket W6-3: Subprocess Group Cleanup & Archive Guards (`pkg/archive`)**
    - Add process group termination (`SIGKILL`) to `xz` streaming decompression routines in `pkg/archive/archive.go` to prevent zombie subprocesses on early error paths. Add explicit Zip-Slip path guards.
 
-4. **Ticket W6-4: Package Typegen Output into NPM Bundle (`scripts/typegen` & `scripts/build`)**
-   - Configure `scripts/build/main.go` to emit `types.gen.ts` into `.dist/index.d.ts` and set up package entrypoints in root `package.json`.
+4. **Ticket W6-4: Missing Subcommands and Global Flags in Cobra CLI (`cmd/dotfiles`)**
+   - Implement missing Cobra commands (`bin`, `features`, `cleanup`, `check-updates`, `log`, `skill`) and bind global flags (`--platform`, `--arch`, `--libc`, `--verbose`, `--quiet`) in `cmd/dotfiles/root.go`.
 
-5. **Ticket W6-5: Final TypeScript Demolition & Repository Cleanup**
-   - Remove legacy `packages/*` directories (retaining dashboard client source in `pkg/dashboard/client` or `packages/dashboard/src/client`).
+5. **Ticket W6-5: Installer & Asset Selection Parity Fixes (`pkg/installer` & `pkg/arch`)**
+   - Add system binary directory search to `curl_script.go`; add `gh` CLI fallback on HTTP 403 to `github.go`; fix `brew.go` boolean service parameter casting and `versionRegex` pattern extraction; port zinit soft/hard regex filters and non-binary asset exclusion to `pkg/arch/arch.go`.
+
+6. **Ticket W6-6: Package Typegen Output into NPM Bundle & Wire Dashboard Updates (`scripts/typegen`, `scripts/build`, `pkg/dashboard`)**
+   - Configure `scripts/build/main.go` to emit `types.gen.ts` into `.dist/index.d.ts` and set up package entrypoints in root `package.json`. Wire `/api/tools/:name/check-update` endpoint in `pkg/dashboard/routes.go`.
+
+7. **Ticket W6-7: Final TypeScript Demolition & Repository Cleanup**
+   - Remove legacy `packages/*` directories (retaining dashboard client source in `packages/dashboard/src/client`).
    - Update root `package.json` scripts to run Go commands (`go test ./...`, `go build`).
    - Verify `bun check:ci` and `go test ./...` pass cleanly.
 
