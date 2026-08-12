@@ -47,6 +47,9 @@ func (n *NpmInstaller) SupportsSudo() bool {
 }
 
 func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if err := ValidateSudo(n, tool); err != nil {
+		return nil, err
+	}
 	if IsDryRun() {
 		return &InstallResult{
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),

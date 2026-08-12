@@ -175,6 +175,9 @@ func (c *CargoInstaller) tryQuickinstall(ctx context.Context, tool *config.ToolC
 }
 
 func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if err := ValidateSudo(c, tool); err != nil {
+		return nil, err
+	}
 	if IsDryRun() {
 		return &InstallResult{
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),

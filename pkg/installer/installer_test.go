@@ -193,3 +193,95 @@ func TestPromoteBinaries(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateSudo(t *testing.T) {
+	tests := []struct {
+		name         string
+		inst         Installer
+		tool         *config.ToolConfig
+		wantErr      bool
+		errSubstring string
+	}{
+		{
+			name:    "nil installer",
+			inst:    nil,
+			tool:    &config.ToolConfig{Name: "test"},
+			wantErr: true,
+		},
+		{
+			name:    "nil tool",
+			inst:    &mockInstaller{name: "test", supportsSudo: false},
+			tool:    nil,
+			wantErr: false,
+		},
+		{
+			name:    "sudo not requested, installer supports sudo",
+			inst:    &mockInstaller{name: "apt", supportsSudo: true},
+			tool:    &config.ToolConfig{Name: "git", Sudo: false},
+			wantErr: false,
+		},
+		{
+			name:    "sudo requested, installer supports sudo",
+			inst:    &mockInstaller{name: "apt", supportsSudo: true},
+			tool:    &config.ToolConfig{Name: "git", Sudo: true},
+			wantErr: false,
+		},
+		{
+			name:         "sudo requested, installer does not support sudo",
+			inst:         &mockInstaller{name: "brew", supportsSudo: false},
+			tool:         &config.ToolConfig{Name: "git", Sudo: true},
+			wantErr:      true,
+			errSubstring: `installer "brew" does not support sudo elevation`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateSudo(tt.inst, tt.tool)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ValidateSudo() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr && tt.errSubstring != "" {
+				if err == nil || err.Error() != tt.errSubstring {
+					t.Errorf("ValidateSudo() error = %v, wantSubstring %q", err, tt.errSubstring)
+				}
+			}
+		})
+	}
+}
+
+func TestAllInstallers_SupportsSudo(t *testing.T) {
+	tests := []struct {
+		name         string
+		inst         Installer
+		supportsSudo bool
+	}{
+		{"apt", NewAptInstaller(nil, nil, nil), true},
+		{"dnf", NewDnfInstaller(nil, nil, nil), true},
+		{"pacman", NewPacmanInstaller(nil, nil, nil), true},
+		{"pkg", NewPkgInstaller(nil, nil, nil, nil), true},
+		{"manual", NewManualInstaller(nil, nil, nil), true},
+		{"brew", NewBrewInstaller(nil, nil, nil), false},
+		{"cargo", NewCargoInstaller(nil, nil, nil, nil), false},
+		{"curl-binary", NewCurlBinaryInstaller(nil, nil, nil, nil), false},
+		{"curl-script", NewCurlScriptInstaller(nil, nil, nil, nil), false},
+		{"curl-tar", NewCurlTarInstaller(nil, nil, nil, nil), false},
+		{"dmg", NewDmgInstaller(nil, nil, nil, nil), false},
+		{"gitea", NewGiteaInstaller(nil, nil, nil, nil), false},
+		{"github", NewGitHubInstaller(nil, nil, nil, nil), false},
+		{"npm", NewNpmInstaller(nil, nil, nil), false},
+		{"zsh-plugin", NewZshPluginInstaller(nil, nil, nil), false},
+	}
+
+	if len(tests) != 15 {
+		t.Fatalf("expected 15 installers, got %d", len(tests))
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.inst.SupportsSudo(); got != tt.supportsSudo {
+				t.Errorf("installer %s: SupportsSudo() = %v, want %v", tt.name, got, tt.supportsSudo)
+			}
+		})
+	}
+}

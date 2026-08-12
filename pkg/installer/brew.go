@@ -57,6 +57,9 @@ func (b *BrewInstaller) SupportsSudo() bool {
 }
 
 func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if err := ValidateSudo(b, tool); err != nil {
+		return nil, err
+	}
 	if IsDryRun() {
 		return &InstallResult{
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),

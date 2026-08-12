@@ -49,6 +49,9 @@ func (z *ZshPluginInstaller) SupportsSudo() bool {
 }
 
 func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if err := ValidateSudo(z, tool); err != nil {
+		return nil, err
+	}
 	if IsDryRun() {
 		return &InstallResult{
 			Binaries: []string{},

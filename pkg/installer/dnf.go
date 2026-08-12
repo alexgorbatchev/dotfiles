@@ -47,6 +47,9 @@ func (d *DnfInstaller) SupportsSudo() bool {
 }
 
 func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if err := ValidateSudo(d, tool); err != nil {
+		return nil, err
+	}
 	if IsDryRun() {
 		return &InstallResult{
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),

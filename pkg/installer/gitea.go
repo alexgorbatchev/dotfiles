@@ -80,6 +80,9 @@ func (g *GiteaInstaller) SupportsSudo() bool {
 }
 
 func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if err := ValidateSudo(g, tool); err != nil {
+		return nil, err
+	}
 	if g.sysCtx == nil {
 		g.sysCtx = NewDefaultSystemContext()
 	}

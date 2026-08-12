@@ -67,6 +67,9 @@ func (p *PkgInstaller) SupportsSudo() bool {
 }
 
 func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+	if err := ValidateSudo(p, tool); err != nil {
+		return nil, err
+	}
 	if IsDryRun() {
 		return &InstallResult{
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),

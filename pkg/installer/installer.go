@@ -284,6 +284,18 @@ func SetLogger(inst Installer, log *logger.Logger) {
 	}
 }
 
+// ValidateSudo checks if a tool requires sudo elevation and verifies whether the installer supports it.
+// Returns an error if tool.Sudo is true but the installer does not support sudo elevation.
+func ValidateSudo(inst Installer, tool *config.ToolConfig) error {
+	if inst == nil {
+		return fmt.Errorf("installer cannot be nil")
+	}
+	if tool != nil && tool.Sudo && !inst.SupportsSudo() {
+		return fmt.Errorf("installer %q does not support sudo elevation", inst.Name())
+	}
+	return nil
+}
+
 // PromoteBinaries searches recursively inside destDir for files matching the expected binary names
 // or their pattern definitions, and promotes (moves) them to the root of destDir.
 // It returns the list of promoted binary names, or an error.
