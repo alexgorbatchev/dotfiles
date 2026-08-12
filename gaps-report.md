@@ -242,3 +242,100 @@ To safely demolish `packages/` and complete the Go migration, execute the follow
    - Remove legacy `packages/*` directories (retaining dashboard client source in `pkg/dashboard/client` or `packages/dashboard/src/client`).
    - Update root `package.json` scripts to run Go commands (`go test ./...`, `go build`).
    - Verify `bun check:ci` and `go test ./...` pass cleanly.
+
+---
+
+## 7. Due Diligence Findings
+
+Below is a summary of all specific architectural, runtime, and API gaps identified during the side-by-side audit that must be addressed during Wave 6 before final TypeScript demolition:
+
+### 1. `MemFS.ReadDir` Map Iteration Non-Determinism (`pkg/fs/mem_fs.go`)
+
+- **Severity / Category**: Medium / Core Correctness & Determinism
+- **Issue**: `MemFS.ReadDir` iterates over Go's internal `m.files map[string]*fileNode`. Because Go randomizes map iteration order by design, repeated calls to `ReadDir` return directory entries in non-deterministic order.
+- **Impact**: In-memory filesystem tests or directory tree walks operating against `MemFS` produce unstable, non-reproducible outputs across runs.
+- **Fix**: Add explicit sorting (`sort.Slice` by name) prior to returning entry slices in `pkg/fs/mem_fs.go`.
+
+### 2. Shell Script Output Non-Determinism (`pkg/shell/shell.go`)
+
+- **Severity / Category**: High / Determinism & Git Churn
+- **Issue**: `pkg/shell/shell.go` iterates directly over `map[string]string` for environment variables and aliases when generating shell init scripts.
+- **Impact**: Consecutive invocations of `dotfiles generate` produce varying line orderings in generated `.zshrc` / `.bashrc` files, causing git churn and unnecessary shell re-sourcing.
+- **Fix**: Sort map keys alphabetically (`sort.Strings(keys)`) before emitting shell initialization lines.
+
+### 3. Subprocess Pipe Leak & Zombie Risk in `extractTarXz` (`pkg/archive/archive.go`)
+
+- **Severity / Category**: High / Process Stability & Goroutine Leaks
+- **Issue**: `extractTarXz` spawns an `xz -d -c` decompressor subprocess feeding an `io.PipeWriter` inside a goroutine. If the outer context is canceled or extraction fails mid-stream, `pr.Close()` is invoked, but if the `xz` process blocks on `pw.Write()`, the process hangs indefinitely because process group termination is not issued.
+- **Impact**: Subprocess pipelines leak zombie processes and uncollected goroutines when archives are canceled or fail mid-extraction.
+- **Fix**: Wrap subprocess execution with `SysProcAttr{Setsid: true}` and send `syscall.SIGKILL` to `-cmd.Process.Pid` on context cancellation/cleanup in `pkg/archive/archive.go`.
+
+### 4. Downloader Proxy Configuration Option Bypass (`pkg/downloader/downloader.go`)
+
+- **Severity / Category**: Low / Feature Parity
+- **Issue**: TypeScript's `Downloader` accepted an explicit `IProxyFetchConfig` struct to route download traffic directly through the local HTTP proxy (`packages/http-proxy`). Go's `Downloader` relies solely on standard `HTTP_PROXY`/`HTTPS_PROXY` environment variables or custom `http.Client` transport settings.
+- **Impact**: Code relying on programmatic proxy binding must set process environment variables rather than passing typed proxy options.
+- **Fix**: Add an explicit `ProxyURL string` field to `DownloadOptions` in `pkg/downloader/downloader.go`.
+
+### 5. Missing Stale & Orphaned Artifact Cleanup in Orchestrator (`pkg/orchestrator/orchestrator.go`)
+
+- **Severity / Category**: Critical / Core Orchestration & System State Safety
+- **Issue**: In TypeScript, running `dotfiles generate` automatically invoked `cleanupOrphanedTools()`, `cleanupStaleShims()`, `cleanupStaleSymlinks()`, and `cleanupStaleCopies()`. Go's orchestrator currently lacks these cleanup methods.
+- **Impact**: Deleting a `.tool.ts` configuration or modifying its `.bin()` declarations leaves dangling, broken shims, symlinks, and completion scripts in `~/.dotfiles/.generated/target/bin` permanently.
+- **Fix**: Implement orphaned tool and stale artifact cleanup routines in `pkg/orchestrator/orchestrator.go`.
+
+### 6. Missing Global CLI Flags in Go Entrypoint (`cmd/dotfiles/root.go`)
+
+- **Severity / Category**: High / CLI Interface Parity
+- **Issue**: Cobra CLI definition in `cmd/dotfiles/root.go` lacks standard TypeScript global flags: `--platform`, `--arch`, `--libc`, `--verbose`, and `--quiet`.
+- **Impact**: Automation scripts and cross-platform test suites passing `--platform=darwin` or `--verbose` fail under the Go binary with unknown flag errors.
+- **Fix**: Bind missing flags to Cobra global persistent flags in `cmd/dotfiles/root.go`.
+
+### 7. Missing CLI Subcommands in Go Entrypoint (`cmd/dotfiles`)
+
+- **Severity / Category**: High / CLI Feature Completeness
+- **Issue**: The Go binary is missing 6 CLI subcommands present in TypeScript (`packages/cli/src/commands/`): `bin`, `features`, `cleanup`, `check-updates`, `log`, and `skill`.
+- **Impact**: Command-line callers attempting to inspect binaries (`dotfiles bin`), run standalone cleanup (`dotfiles cleanup`), check for updates (`dotfiles check-updates`), or manage AI skills (`dotfiles skill`) receive command not found errors.
+- **Fix**: Implement Cobra command handlers for all 6 missing subcommands under `cmd/dotfiles/`.
+
+### 8. `curl-script` System Binary Path Resolution Deficit (`pkg/installer/curl_script.go`)
+
+- **Severity / Category**: High / Installer Reliability & Binary Promotion
+- **Issue**: TypeScript's `handleBinaryInstallation` searched system installation directories (`/usr/local/bin`, `~/.local/bin`, `/usr/bin`) and promoted newly created binaries to `context.stagingDir`. Go's `CurlScriptInstaller` searches ONLY inside `c.BinDir` (`destDir`).
+- **Impact**: Installation scripts (such as `rustup`, `nvm`, or custom shell installers) that place binaries directly into `/usr/local/bin` or `~/.local/bin` succeed at execution but fail binary promotion in Go, leaving no generated shims.
+- **Fix**: Update `pkg/installer/curl_script.go` to search standard system binary locations when `destDir` search yields no binaries.
+
+### 9. `brew` Installer Version Regex & Service Boolean Handling (`pkg/installer/brew.go`)
+
+- **Severity / Category**: Low / Plugin Parity
+- **Issue**: `pkg/installer/brew.go` does not apply `versionRegex` pattern matching to `versionArgs` CLI output. Furthermore, passing a boolean `service: true` configuration fails a type cast to string rather than defaulting to `"start"`.
+- **Impact**: Homebrew formula update checks with custom version regex fail, and boolean service configs error during evaluation.
+- **Fix**: Update `pkg/installer/brew.go` to apply regex extraction and support boolean service parameter casting.
+
+### 10. `github` Installer CLI Fallback Deficit (`pkg/installer/github.go`)
+
+- **Severity / Category**: Medium / Fallback Resiliency
+- **Issue**: TypeScript's GitHub installer included `GhCliApiClient`, falling back to `gh release download` CLI when GitHub REST API rate limits were exhausted. Go's `github.go` relies strictly on direct HTTP requests to `api.github.com`.
+- **Impact**: Installations fail during CI or heavy usage when GitHub unauthenticated rate limits (60 req/hr) are reached and no token is provided.
+- **Fix**: Implement `gh` CLI fallback in `pkg/installer/github.go` when HTTP API returns 403 Rate Limit Exceeded.
+
+### 11. Multi-Line Import Stripping Bug in Single-Script Evaluation (`pkg/vm/vm.go`)
+
+- **Severity / Category**: High / JS VM Execution Correctness
+- **Issue**: `EvaluateToolDefinition` in `pkg/vm/vm.go` strips TypeScript imports using line-prefix checking (`strings.HasPrefix(trimmed, "import ")`). Multi-line import blocks (e.g., `import {\n  defineTool\n} from ...`) have only their first line stripped, leaving invalid syntax (`defineTool\n} from ...`) in the JS script passed to Goja.
+- **Impact**: Single-file `.tool.ts` evaluation fails with Goja JS syntax errors when multi-line import statements are used.
+- **Fix**: Replace line-prefix checking with AST-aware or block-based import removal regex in `pkg/vm/vm.go`.
+
+### 12. Incomplete Architecture Matching Logic in `pkg/arch/arch.go`
+
+- **Severity / Category**: Medium / Feature Parity
+- **Issue**: TypeScript's `packages/arch` provided zinit soft/hard regex pattern filters, non-binary asset exclusion (`.sha256`, `.asc`, `.md`), and glibc vs. musl binary ranking (`selectBestMatch`). Go's `pkg/arch/arch.go` provides only `GetOS()`, `GetArch()`, and `DetectLibc()`.
+- **Impact**: Complex release asset selection for GitHub/Gitea releases may select suboptimal or non-executable assets (e.g. selecting a `.sha256` checksum file instead of a release archive).
+- **Fix**: Port zinit soft/hard pattern matching and asset scoring algorithms to `pkg/arch/arch.go`.
+
+### 13. Dashboard Update Check Endpoint Stub (`pkg/dashboard/routes.go`)
+
+- **Severity / Category**: Medium / GUI Parity
+- **Issue**: The `/api/tools/:name/check-update` endpoint in `pkg/dashboard/routes.go` returns a hardcoded response (`{"hasUpdate": false}`) rather than executing the tool's installer `CheckUpdate()` engine.
+- **Impact**: Clicking "Check for Updates" in the visual dashboard web UI silently reports all tools as up-to-date.
+- **Fix**: Wire `/api/tools/:name/check-update` to call `installer.CheckUpdate(ctx, tool)` in `pkg/dashboard/routes.go`.
