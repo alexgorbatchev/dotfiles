@@ -105,9 +105,19 @@ func pruneTools(tools []*config.ToolConfig) []*config.ToolConfig {
 	return pruned
 }
 
+// TopologicalSortForPlatform evaluates platform overrides on tools for the specified OS and architecture,
+// then topologically sorts the tools based on their resolved dependencies.
+func TopologicalSortForPlatform(tools []*config.ToolConfig, osName, archName string) ([]*config.ToolConfig, error) {
+	config.ResolvePlatformConfigs(tools, osName, archName)
+	return TopologicalSort(tools)
+}
+
 // TopologicalSort sorts a slice of ToolConfigs topologically based on their dependencies.
+// It evaluates platform overrides prior to constructing the dependency graph.
 // It returns an error if a dependency cycle or an unregistered dependency is detected.
 func TopologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
+	config.ResolvePlatformConfigs(tools, "", "")
+
 	toolMap := make(map[string]*config.ToolConfig)
 	originalIndex := make(map[string]int)
 	for i, tool := range tools {

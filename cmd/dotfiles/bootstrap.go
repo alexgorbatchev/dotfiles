@@ -376,31 +376,9 @@ func matchesArch(architectures int, archName string) bool {
 }
 
 func ResolvePlatformConfigs(toolConfigs []*config.ToolConfig, sysCtx *installer.SystemContext) {
-	for _, tc := range toolConfigs {
-		if len(tc.PlatformConfigs) == 0 {
-			continue
-		}
-
-		for _, entry := range tc.PlatformConfigs {
-			if matchesPlatform(entry.Platforms, sysCtx.OS) {
-				// Resolve match architecture if specified
-				if entry.Architectures != nil {
-					if !matchesArch(*entry.Architectures, sysCtx.Arch) {
-						continue
-					}
-				}
-
-				jsonBytes, err := json.Marshal(entry.Config)
-				if err == nil {
-					var rawOverride map[string]interface{}
-					var override config.ToolConfig
-					if err := json.Unmarshal(jsonBytes, &rawOverride); err == nil {
-						if err := json.Unmarshal(jsonBytes, &override); err == nil {
-							tc.Merge(&override, rawOverride)
-						}
-					}
-				}
-			}
-		}
+	if sysCtx == nil {
+		config.ResolvePlatformConfigs(toolConfigs, "", "")
+		return
 	}
+	config.ResolvePlatformConfigs(toolConfigs, sysCtx.OS, sysCtx.Arch)
 }

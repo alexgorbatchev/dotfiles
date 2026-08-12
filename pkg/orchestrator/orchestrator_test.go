@@ -1381,3 +1381,139 @@ func TestGenerateShellScripts_DeterministicOrder(t *testing.T) {
 	}
 }
 
+func TestTopologicalSort_PlatformPreResolution(t *testing.T) {
+	t.Run("platform specific dependencies", func(t *testing.T) {
+		toolsLinux := []*config.ToolConfig{
+			{
+				Name: "app",
+				PlatformConfigs: []config.PlatformConfigEntry{
+					{
+						Platforms: 1, // Linux
+						Config: map[string]interface{}{
+							"dependencies": []interface{}{"linux-dep"},
+						},
+					},
+					{
+						Platforms: 2, // Darwin
+						Config: map[string]interface{}{
+							"dependencies": []interface{}{"darwin-dep"},
+						},
+					},
+				},
+			},
+			{Name: "linux-dep"},
+			{Name: "darwin-dep"},
+		}
+
+		sortedLinux, err := TopologicalSortForPlatform(toolsLinux, "linux", "amd64")
+		if err != nil {
+			t.Fatalf("unexpected error on linux: %v", err)
+		}
+		if len(sortedLinux) != 3 {
+			t.Fatalf("expected 3 tools, got %d", len(sortedLinux))
+		}
+		// linux-dep must precede app
+		linuxDepIdx, appIdx := -1, -1
+		for i, tool := range sortedLinux {
+			if tool.Name == "linux-dep" {
+				linuxDepIdx = i
+			}
+			if tool.Name == "app" {
+				appIdx = i
+			}
+		}
+		if linuxDepIdx >= appIdx {
+			t.Errorf("expected linux-dep (%d) to precede app (%d)", linuxDepIdx, appIdx)
+		}
+
+		toolsDarwin := []*config.ToolConfig{
+			{
+				Name: "app",
+				PlatformConfigs: []config.PlatformConfigEntry{
+					{
+						Platforms: 1, // Linux
+						Config: map[string]interface{}{
+							"dependencies": []interface{}{"linux-dep"},
+						},
+					},
+					{
+						Platforms: 2, // Darwin
+						Config: map[string]interface{}{
+							"dependencies": []interface{}{"darwin-dep"},
+						},
+					},
+				},
+			},
+			{Name: "linux-dep"},
+			{Name: "darwin-dep"},
+		}
+
+		sortedDarwin, err := TopologicalSortForPlatform(toolsDarwin, "darwin", "arm64")
+		if err != nil {
+			t.Fatalf("unexpected error on darwin: %v", err)
+		}
+		darwinDepIdx, appIdxDarwin := -1, -1
+		for i, tool := range sortedDarwin {
+			if tool.Name == "darwin-dep" {
+				darwinDepIdx = i
+			}
+			if tool.Name == "app" {
+				appIdxDarwin = i
+			}
+		}
+		if darwinDepIdx >= appIdxDarwin {
+			t.Errorf("expected darwin-dep (%d) to precede app (%d)", darwinDepIdx, appIdxDarwin)
+		}
+	})
+
+	t.Run("platform specific binary providers", func(t *testing.T) {
+		tools := []*config.ToolConfig{
+			{
+				Name: "provider-linux",
+				PlatformConfigs: []config.PlatformConfigEntry{
+					{
+						Platforms: 1, // Linux
+						Config: map[string]interface{}{
+							"binaries": []interface{}{"shared-tool"},
+						},
+					},
+				},
+			},
+			{
+				Name: "provider-darwin",
+				PlatformConfigs: []config.PlatformConfigEntry{
+					{
+						Platforms: 2, // Darwin
+						Config: map[string]interface{}{
+							"binaries": []interface{}{"shared-tool"},
+						},
+					},
+				},
+			},
+			{
+				Name:         "consumer",
+				Dependencies: []string{"shared-tool"},
+			},
+		}
+
+		// On Linux, provider-linux should be selected without ambiguity
+		sortedLinux, err := TopologicalSortForPlatform(tools, "linux", "amd64")
+		if err != nil {
+			t.Fatalf("unexpected error sorting for linux: %v", err)
+		}
+		var providerLinuxIdx, consumerIdx int
+		for i, tool := range sortedLinux {
+			if tool.Name == "provider-linux" {
+				providerLinuxIdx = i
+			}
+			if tool.Name == "consumer" {
+				consumerIdx = i
+			}
+		}
+		if providerLinuxIdx >= consumerIdx {
+			t.Errorf("expected provider-linux (%d) before consumer (%d)", providerLinuxIdx, consumerIdx)
+		}
+	})
+}
+
+
