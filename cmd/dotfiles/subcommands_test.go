@@ -136,7 +136,13 @@ func TestSubcommands(t *testing.T) {
 			expectedErr:    false,
 		},
 		{
-			name:           "files command",
+			name:           "env create and delete flow",
+			args:           []string{"env", "create", "myenv"},
+			expectedOutput: []string{"Virtual environment created at:"},
+			expectedErr:    false,
+		},
+		{
+			name:           "files command default",
 			args:           []string{"files"},
 			expectedOutput: []string{"No files currently managed"},
 			expectedErr:    false,
@@ -418,6 +424,21 @@ func TestCandidateFallbackSearch(t *testing.T) {
 				t.Errorf("expected non-nil ProjectConfig for %s", candName)
 			}
 		})
+	}
+}
+
+func TestEnvCreateAndDelete(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_TEST", "true")
+	createTempConfigDir(t)
+
+	out1, err := executeCommand("env", "create", "testenv")
+	if err != nil || !strings.Contains(out1, "Virtual environment created at:") {
+		t.Fatalf("env create failed: %v, out: %s", err, out1)
+	}
+
+	out2, err := executeCommand("env", "delete", "testenv", "--force")
+	if err != nil || !strings.Contains(out2, "Deleted virtual environment at") {
+		t.Fatalf("env delete failed: %v, out: %s", err, out2)
 	}
 }
 

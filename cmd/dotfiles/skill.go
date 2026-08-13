@@ -79,10 +79,68 @@ func parseSkillDescription(content string) string {
 }
 
 var skillCmd = &cobra.Command{
-	Use:   "skill",
-	Short: "Manage AI skills",
+	Use:   "skill [path]",
+	Short: "Manage AI skills or copy dotfiles skill folder to target path",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		log := GetLogger("skill", cmd.ErrOrStderr())
+
+		if len(args) > 0 {
+			targetPath := args[0]
+			execPath, err := os.Executable()
+			var skillSourcePath string
+			if err == nil {
+				execDir := filepath.Dir(execPath)
+				cand := filepath.Join(execDir, "skill")
+				if exists, _ := fileExists(cand); exists {
+					skillSourcePath = cand
+				}
+			}
+			if skillSourcePath == "" {
+				cwd, _ := os.Getwd()
+				cand := filepath.Join(cwd, "skill")
+				if exists, _ := fileExists(cand); exists {
+					skillSourcePath = cand
+				}
+			}
+			if skillSourcePath == "" {
+				homeDir, _ := os.UserHomeDir()
+				cand := filepath.Join(homeDir, ".agents", "skills", "dotfiles")
+				if exists, _ := fileExists(cand); exists {
+					skillSourcePath = cand
+				}
+			}
+
+			if skillSourcePath == "" {
+				return fmt.Errorf("dotfiles skill folder source not found")
+			}
+
+			destPath := filepath.Join(targetPath, "dotfiles")
+			if err := os.MkdirAll(destPath, 0755); err != nil {
+				return fmt.Errorf("creating destination skill directory: %w", err)
+			}
+
+			entries, err := os.ReadDir(skillSourcePath)
+			if err != nil {
+				return fmt.Errorf("reading skill source: %w", err)
+			}
+
+			for _, entry := range entries {
+				srcFile := filepath.Join(skillSourcePath, entry.Name())
+				dstFile := filepath.Join(destPath, entry.Name())
+				if entry.IsDir() {
+					_ = os.MkdirAll(dstFile, 0755)
+				} else {
+					data, err := os.ReadFile(srcFile)
+					if err == nil {
+						_ = os.WriteFile(dstFile, data, 0644)
+					}
+				}
+			}
+
+			log.Info(logger.Message(fmt.Sprintf("Copied skill folder to %s", destPath)))
+			fmt.Fprintf(cmd.OutOrStdout(), "Copied skill folder to %s\n", destPath)
+			return nil
+		}
 
 		cwd, _ := os.Getwd()
 		homeDir, _ := os.UserHomeDir()

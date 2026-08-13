@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var installForce bool
+
 var installCmd = &cobra.Command{
 	Use:   "install [tool]",
 	Short: "Installs either a single specified tool or all tools defined in the configuration",
@@ -17,6 +19,9 @@ var installCmd = &cobra.Command{
 		shimMode, _ := cmd.Flags().GetBool("shim-mode")
 		if shimMode {
 			logLevel = "quiet"
+		}
+		if installForce {
+			ctx = config.WithOverwrite(ctx, true)
 		}
 		services, err := BootstrapServices(ctx, cfgFile)
 		if err != nil {
@@ -89,5 +94,6 @@ var installCmd = &cobra.Command{
 
 func init() {
 	installCmd.Flags().Bool("shim-mode", false, "Quiet installation mode for shims")
+	installCmd.Flags().BoolVarP(&installForce, "force", "f", false, "Force installation even if already installed")
 	rootCmd.AddCommand(installCmd)
 }

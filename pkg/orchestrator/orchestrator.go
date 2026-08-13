@@ -772,12 +772,32 @@ func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config
 
 	for _, toolName := range orphanedTools {
 		o.logger.Info(logger.Message(fmt.Sprintf("Cleaning up orphaned tool: %s", toolName)))
-		if err := o.purgeToolState(ctx, toolName, projCfg); err != nil {
-			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Failed to purge orphaned tool %s: %v", toolName, err)))
+		if err := o.cleanupToolArtifacts(ctx, toolName, projCfg); err != nil {
+			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Failed to cleanup orphaned tool %s: %v", toolName, err)))
 		}
 	}
 
 	return nil
+}
+
+func (o *Orchestrator) cleanupToolArtifacts(ctx context.Context, toolName string, projCfg *config.ProjectConfig) error {
+	fileStates, err := o.reg.GetFileStatesForTool(ctx, toolName)
+	if err == nil {
+		for _, fileState := range fileStates {
+			if fileState.FileType == "shim" || fileState.FileType == "symlink" || fileState.FileType == "copy" || fileState.FileType == "completion" {
+				if fileState.LastOperation != "rm" {
+					exists, err := o.fs.Exists(fileState.FilePath)
+					if err == nil && exists {
+						_ = o.fs.Remove(fileState.FilePath)
+					}
+				}
+			}
+		}
+	}
+
+	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return o.reg.RemoveFileOperationsByTool(ctx, tx, toolName)
+	})
 }
 
 // CleanupStaleShims removes shims recorded in the registry for active tools that are no longer declared in their binaries list.

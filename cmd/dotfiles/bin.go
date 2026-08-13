@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/spf13/cobra"
@@ -12,8 +14,8 @@ import (
 var listBins bool
 
 var binCmd = &cobra.Command{
-	Use:   "bin",
-	Short: "Outputs target bin directory or lists configured binaries",
+	Use:   "bin [name]",
+	Short: "Outputs target bin directory, lists configured binaries, or resolves a binary path",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		services, err := BootstrapServices(ctx, cfgFile)
@@ -37,6 +39,46 @@ var binCmd = &cobra.Command{
 				log.Info(logger.Message("  " + b))
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), strings.Join(allBins, "\n"))
+		} else if len(args) > 0 {
+			name := args[0]
+			var targetTool *config.ToolConfig
+			var targetBin string
+			for _, tc := range services.ToolConfigs {
+				if tc.Name == name {
+					targetTool = tc
+					bins := installer.GetBinaryNames(tc.Name, tc.Binaries)
+					if len(bins) > 0 {
+						targetBin = bins[0]
+					} else {
+						targetBin = tc.Name
+					}
+					break
+				}
+				bins := installer.GetBinaryNames(tc.Name, tc.Binaries)
+				for _, b := range bins {
+					if b == name {
+						targetTool = tc
+						targetBin = name
+						break
+					}
+				}
+				if targetTool != nil {
+					break
+				}
+			}
+			if targetTool == nil {
+				return fmt.Errorf("binary or tool not found: %s", name)
+			}
+			binPath := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current", targetBin)
+			realPath, err := filepath.EvalSymlinks(binPath)
+			if err != nil {
+				realPath = binPath
+			}
+			if exists, _ := fileExists(realPath); !exists {
+				return fmt.Errorf("binary path does not exist: %s", binPath)
+			}
+			fmt.Print(realPath)
+			return nil
 		} else {
 			binDir := services.ProjectConfig.Paths.BinariesDir
 			if binDir == "" {
