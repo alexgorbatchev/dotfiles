@@ -55,6 +55,47 @@ declare global {
 
 type ConfigRunner = (ctx: unknown) => unknown;
 type ToolRunner = (install: unknown, ctx: unknown) => unknown;
+type DedentInput = string | TemplateStringsArray;
+
+/**
+ * Strips leading indent from a multiline template string.
+ */
+export function dedentString(text: DedentInput, ...values: unknown[]): string {
+  let str = "";
+  if (typeof text === "string") {
+    str = text;
+  } else if (Array.isArray(text)) {
+    for (let i = 0; i < text.length; i++) {
+      str += text[i];
+      if (i < values.length) {
+        str += String(values[i]);
+      }
+    }
+  }
+
+  const lines = str.split("\n");
+  let minIndent: number | null = null;
+
+  for (const line of lines) {
+    if (line.trim().length === 0) continue;
+    const indent = line.search(/\S/);
+    if (indent !== -1) {
+      if (minIndent === null || indent < minIndent) {
+        minIndent = indent;
+      }
+    }
+  }
+
+  if (minIndent !== null && minIndent > 0) {
+    const minCut = minIndent;
+    return lines
+      .map((line) => (line.length >= minCut ? line.slice(minCut) : line))
+      .join("\n")
+      .trim();
+  }
+
+  return str.trim();
+}
 
 /**
  * Defines the main dotfiles project configuration.
@@ -64,7 +105,7 @@ type ToolRunner = (install: unknown, ctx: unknown) => unknown;
 export function defineConfig(callback: ConfigFactory): unknown {
   if (typeof callback === "function") {
     const fn = callback as ConfigRunner;
-    return fn({
+    const res = fn({
       configFileDir: globalThis.configFileDir || "",
       systemInfo: {
         os: getOS(),
@@ -72,6 +113,10 @@ export function defineConfig(callback: ConfigFactory): unknown {
         libc: detectLibc(),
       },
     });
+    const parsedObj = res as Record<string, unknown>;
+    const pCfg = parsedObj && parsedObj["projectConfig"] ? parsedObj["projectConfig"] : res;
+    (globalThis as unknown as Record<string, unknown>)["projectConfig"] = pCfg;
+    return res;
   }
   return callback;
 }
@@ -93,14 +138,18 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     shellConfigs: {} as Record<string, unknown>,
 
     bin(name: unknown, pattern: unknown) {
-      const b = (this["binaries"] || []) as unknown[];
+      let b = (this["binaries"] || []) as unknown[];
       if (pattern !== undefined) {
         b.push({ name: name, pattern: pattern });
       } else if (Array.isArray(name)) {
-        this["binaries"] = name;
+        b = b.concat(name);
       } else {
-        this["binaries"] = Array.prototype.slice.call(arguments);
+        const args = Array.prototype.slice.call(arguments);
+        for (const arg of args) {
+          b.push(arg);
+        }
       }
+      this["binaries"] = b;
       return this;
     },
 
@@ -216,16 +265,42 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       return this;
     },
 
-    platform(plat: unknown, cb: Function) {
-      const currentOS = getOS();
-      let matches = false;
-      if (plat === Platform.All) matches = true;
-      else if (plat === Platform.MacOS && currentOS === "darwin") matches = true;
-      else if (plat === Platform.Linux && currentOS === "linux") matches = true;
+    platform(plat: unknown, arg2: unknown, arg3?: unknown) {
+      let arch: unknown = undefined;
+      let cb: Function | undefined = undefined;
 
-      if (matches) {
-        cb(install);
+      if (typeof arg2 === "function") {
+        cb = arg2 as Function;
       } else {
+        arch = arg2;
+        if (typeof arg3 === "function") {
+          cb = arg3 as Function;
+        }
+      }
+
+      const currentOS = getOS();
+      let matchesOS = false;
+      if (plat === Platform.All) matchesOS = true;
+      else if (plat === Platform.MacOS && currentOS === "darwin") matchesOS = true;
+      else if (plat === Platform.Linux && currentOS === "linux") matchesOS = true;
+      else if (plat === Platform.Windows && currentOS === "windows") matchesOS = true;
+
+      let matchesArch = true;
+      if (arch !== undefined) {
+        const currentArch = getArch();
+        if (arch === Architecture.All) matchesArch = true;
+        else if (arch === Architecture.Arm64 && currentArch === "arm64") matchesArch = true;
+        else if (arch === Architecture.X86_64 && currentArch === "amd64") matchesArch = true;
+        else matchesArch = false;
+      }
+
+      this["_hasPlatformBlocks"] = true;
+
+      if (matchesOS && matchesArch) {
+        this["_hasMatchingPlatform"] = true;
+        delete this["disabled"];
+        if (cb) cb(install);
+      } else if (!this["_hasMatchingPlatform"]) {
         this["disabled"] = true;
       }
       return this;
@@ -238,9 +313,13 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       else if (arc === Architecture.Arm64 && currentArch === "arm64") matches = true;
       else if (arc === Architecture.X86_64 && currentArch === "amd64") matches = true;
 
+      this["_hasArchBlocks"] = true;
+
       if (matches) {
-        cb(install);
-      } else {
+        this["_hasMatchingArch"] = true;
+        delete this["disabled"];
+        if (typeof cb === "function") cb(install);
+      } else if (!this["_hasMatchingArch"]) {
         this["disabled"] = true;
       }
       return this;
@@ -337,9 +416,24 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
   const toolPath = globalThis.currentToolPath || "";
   const bDir = globalThis.binariesDir || "";
   const currentDir = bDir ? bDir + "/" + toolName + "/current" : globalThis.path.dirname(toolPath);
+  const defaultPaths = {
+    dotfilesDir: globalThis.configFileDir || "",
+    toolConfigsDir: (globalThis.configFileDir || "") + "/tools",
+    generatedDir: (globalThis.configFileDir || "") + "/.generated",
+    homeDir: (globalThis.configFileDir || "") + "/.generated/home",
+    targetDir: (globalThis.configFileDir || "") + "/.generated/bin",
+    shellScriptsDir: (globalThis.configFileDir || "") + "/.generated/shell-init",
+    binariesDir: (globalThis.configFileDir || "") + "/.generated/binaries",
+  };
+  const activeProjCfg = ((globalThis as unknown as Record<string, unknown>)["projectConfig"] || {}) as Record<
+    string,
+    unknown
+  >;
+
   const toolCtx = {
     toolName: toolName,
     configFileDir: globalThis.configFileDir || "",
+    projectConfig: activeProjCfg["paths"] ? activeProjCfg : { paths: defaultPaths },
     currentDir: currentDir,
     stagingDir: "{stagingDir}",
     systemInfo: {
@@ -412,20 +506,30 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         ip["env"] = (ip["env"] as Function)(toolCtx);
       }
     }
-    if (res && (res as Record<string, unknown>)["installationMethod"]) {
+    if (
+      res &&
+      typeof res === "object" &&
+      typeof (res as Record<string, unknown>)["then"] !== "function" &&
+      (res as Record<string, unknown>)["installationMethod"]
+    ) {
       (res as Record<string, unknown>)["version"] = (res as Record<string, unknown>)["_version"] || "latest";
       delete (res as Record<string, unknown>)["_version"];
+      if (!(res as Record<string, unknown>)["configFilePath"]) {
+        (res as Record<string, unknown>)["configFilePath"] = globalThis.currentToolPath || "";
+      }
       return res;
     }
   }
   (builder as unknown as Record<string, unknown>)["version"] =
     (builder as unknown as Record<string, unknown>)["_version"] || "latest";
   delete (builder as unknown as Record<string, unknown>)["_version"];
+  (builder as unknown as Record<string, unknown>)["configFilePath"] = globalThis.currentToolPath || "";
   return builder;
 }
 
 // Ensure global registration
 (globalThis as unknown as Record<string, unknown>)["defineConfig"] = defineConfig;
 (globalThis as unknown as Record<string, unknown>)["defineTool"] = defineTool;
+(globalThis as unknown as Record<string, unknown>)["dedentString"] = dedentString;
 (globalThis as unknown as Record<string, unknown>)["Platform"] = Platform;
 (globalThis as unknown as Record<string, unknown>)["Architecture"] = Architecture;

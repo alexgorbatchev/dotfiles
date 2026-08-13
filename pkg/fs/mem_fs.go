@@ -458,6 +458,9 @@ func (m *MemFS) Readlink(path string) (string, error) {
 	cleanPath := filepath.Clean(path)
 	node, ok := m.files[cleanPath]
 	if !ok {
+		if linkTarget, osErr := os.Readlink(path); osErr == nil {
+			return linkTarget, nil
+		}
 		return "", &os.PathError{Op: "readlink", Path: path, Err: os.ErrNotExist}
 	}
 	if !node.isSymlink {
@@ -473,6 +476,9 @@ func (m *MemFS) Lstat(path string) (os.FileInfo, error) {
 	cleanPath := filepath.Clean(path)
 	node, ok := m.files[cleanPath]
 	if !ok {
+		if osInfo, osErr := os.Lstat(path); osErr == nil {
+			return osInfo, nil
+		}
 		return nil, &os.PathError{Op: "lstat", Path: path, Err: os.ErrNotExist}
 	}
 
@@ -498,6 +504,9 @@ func (m *MemFS) Stat(path string) (os.FileInfo, error) {
 
 	currPath, currNode, err := m.resolveNodeLocked(path)
 	if err != nil {
+		if osInfo, osErr := os.Stat(path); osErr == nil {
+			return osInfo, nil
+		}
 		return nil, err
 	}
 

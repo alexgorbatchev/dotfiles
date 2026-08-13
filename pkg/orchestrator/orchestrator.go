@@ -381,7 +381,11 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	// 3. Create Symlinks
 	symEvaluator := o.getSymlinkEvaluator()
 	for _, sym := range tool.Symlinks {
-		wasCreated, err := symEvaluator.CreateSymlink(sym.Source, sym.Target, symlink.Options{Overwrite: true})
+		src := sym.Source
+		if !filepath.IsAbs(src) && tool.ConfigFilePath != "" {
+			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
+		}
+		wasCreated, err := symEvaluator.CreateSymlink(src, sym.Target, symlink.Options{Overwrite: true})
 		if err != nil {
 			return fmt.Errorf("creating symlink from %q to %q: %w", sym.Source, sym.Target, err)
 		}
@@ -389,7 +393,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		if wasCreated {
 			err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 				activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
-				return activeFS.RecordExistingSymlink(sym.Source, sym.Target)
+				return activeFS.RecordExistingSymlink(src, sym.Target)
 			})
 			if err != nil {
 				return fmt.Errorf("recording symlink operation: %w", err)
@@ -637,7 +641,11 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	// 4. Create Symlinks
 	symEvaluator := o.getSymlinkEvaluator()
 	for _, sym := range tool.Symlinks {
-		wasCreated, err := symEvaluator.CreateSymlink(sym.Source, sym.Target, symlink.Options{Overwrite: true})
+		src := sym.Source
+		if !filepath.IsAbs(src) && tool.ConfigFilePath != "" {
+			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
+		}
+		wasCreated, err := symEvaluator.CreateSymlink(src, sym.Target, symlink.Options{Overwrite: true})
 		if err != nil {
 			return fmt.Errorf("creating symlink from %q to %q: %w", sym.Source, sym.Target, err)
 		}
@@ -645,7 +653,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		if wasCreated {
 			err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 				activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
-				return activeFS.RecordExistingSymlink(sym.Source, sym.Target)
+				return activeFS.RecordExistingSymlink(src, sym.Target)
 			})
 			if err != nil {
 				return fmt.Errorf("recording symlink operation: %w", err)
@@ -1668,13 +1676,18 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 									cmdName = targetPath
 								}
 							}
-							cmdExec := o.runner.CommandContext(ctx, cmdName, parts[1:]...)
+							cmdCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+							cmdExec := o.runner.CommandContext(cmdCtx, cmdName, parts[1:]...)
+							cmdExec.SetProcessGroup(true)
 							pathEnv := os.Getenv("PATH")
 							newPathEnv := projCfg.Paths.TargetDir + string(filepath.ListSeparator) + pathEnv
 							cmdExec.SetEnv(append(os.Environ(), "PATH="+newPathEnv))
 							output, err := cmdExec.Output()
+							cancel()
 							if err == nil {
 								_ = fsys.WriteFile(completionFilePath, output, 0644)
+							} else {
+								o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Completion command %q failed or timed out: %v", cmdValResolved, err)))
 							}
 						}
 					}
