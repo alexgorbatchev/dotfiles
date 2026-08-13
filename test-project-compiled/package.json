@@ -1,8 +1,0 @@
-{
-  "name": "test-project-compiled",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "typecheck": "tsgo --noEmit -p tsconfig.json"
-  }
-}

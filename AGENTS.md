@@ -20,7 +20,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Go implementation: `pkg/`, `cmd/dotfiles/`, `scripts/`
 - Dashboard workspace: `packages/dashboard/` -> `packages/dashboard/AGENTS.md`
 - Go E2E test suite: `tests/e2e/`
-- Verification fixtures: `test-project/`, `test-project-compiled/`
+- Verification fixture: `test-project/`
 
 ## Shared gotchas
 
@@ -41,7 +41,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict).
 - Always: run `bun check` before declaring work complete.
 - Ask first: public API or CLI behavior changes, dependency additions or removals, `.github/workflows/*` changes, release or publish logic updates, package version bumps.
-- Never: hand-edit `.dist/`, `test-project/.generated/`, or `test-project-compiled/.generated/`; bypass Go abstractions with raw `node:fs` or `fetch`; commit compiled Go binaries; switch to `tsc`.
+- Never: hand-edit `.dist/` or `test-project/.generated/`; bypass Go abstractions with raw `node:fs` or `fetch`; commit compiled Go binaries; switch to `tsc`.
 
 ## References
 
