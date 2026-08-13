@@ -34,7 +34,6 @@ var installCmd = &cobra.Command{
 
 		if len(args) > 0 {
 			toolName := args[0]
-			log.Info(logger.Message(fmt.Sprintf("Installing tool: %s", toolName)))
 
 			var targetTool *config.ToolConfig
 			for _, tc := range services.ToolConfigs {
@@ -66,15 +65,9 @@ var installCmd = &cobra.Command{
 				return fmt.Errorf("tool %q not found in configuration", toolName)
 			}
 
-			log.Info(logger.Message(fmt.Sprintf("Matched tool to install: %s", targetTool.Name)))
+			log.Info(logger.Message(fmt.Sprintf("Installing tool: %s", targetTool.Name)))
 
 			err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
-			if err != nil {
-				return err
-			}
-
-			// Regenerate shell scripts and completions after single tool install
-			err = services.Orchestrator.GenerateTools(ctx, services.ToolConfigs, services.ProjectConfig)
 			if err != nil {
 				return err
 			}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/spf13/cobra"
 )
@@ -78,6 +79,9 @@ var filesCmd = &cobra.Command{
 		}
 		defer services.DB.Close()
 
+		log := GetLogger("files", cmd.ErrOrStderr())
+		log.Info("Inspecting managed files...")
+
 		if len(args) > 0 {
 			toolName := args[0]
 			inst, err := services.Registry.GetToolInstallation(ctx, toolName)
@@ -96,6 +100,7 @@ var filesCmd = &cobra.Command{
 				return nil
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), formatTree(nodes, ""))
+			log.Info(logger.Messages.CommandCompleted(dryRun))
 			return nil
 		}
 
@@ -112,6 +117,7 @@ var filesCmd = &cobra.Command{
 		for _, op := range ops {
 			fmt.Fprintf(cmd.OutOrStdout(), "- %s (%s): %s\n", op.ToolName, op.FileType, op.FilePath)
 		}
+		log.Info(logger.Messages.CommandCompleted(dryRun))
 		return nil
 	},
 }

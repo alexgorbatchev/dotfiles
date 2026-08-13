@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/dashboard"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
@@ -24,6 +25,7 @@ var dashboardCmd = &cobra.Command{
 		defer services.DB.Close()
 
 		log := GetLogger("dashboard", cmd.ErrOrStderr())
+		log.Info("Starting dashboard server...")
 		server := dashboard.NewServer(log, port, services.Registry, services.ProjectConfig, services.ToolConfigs, services.Orchestrator)
 		if err := server.Start(); err != nil {
 			return err
@@ -38,6 +40,7 @@ var dashboardCmd = &cobra.Command{
 		<-sigChan
 
 		log.Info("Shutting down dashboard server")
+		log.Info(logger.Messages.CommandCompleted(dryRun))
 		return server.Stop()
 	},
 }

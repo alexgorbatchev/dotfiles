@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +22,7 @@ var convertCmd = &cobra.Command{
 		log := GetLogger("config", cmd.ErrOrStderr())
 		log.Info("Converting configuration", "input", inputFile, "output", outputFile)
 		log.Info("Configuration migration completed successfully")
+		log.Info(logger.Messages.CommandCompleted(dryRun))
 		return nil
 	},
 }

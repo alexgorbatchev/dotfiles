@@ -31,13 +31,13 @@ var checkUpdatesCmd = &cobra.Command{
 
 			inst, err := instReg.Get(tool.InstallationMethod)
 			if err != nil {
-				log.Warn(logger.Message(fmt.Sprintf("%s: installer %q not found", tool.Name, tool.InstallationMethod)))
+				log.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Installer %q not found", tool.InstallationMethod)))
 				continue
 			}
 
 			res, err := inst.CheckUpdate(ctx, tool)
 			if err != nil {
-				log.Warn(logger.Message(fmt.Sprintf("%s: update check failed: %v", tool.Name, err)))
+				log.GetSubLogger("", tool.Name).Error("Update check failed", err)
 				continue
 			}
 

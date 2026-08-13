@@ -23,10 +23,10 @@ var uninstallCmd = &cobra.Command{
 
 		log := GetLogger("uninstall", cmd.ErrOrStderr())
 		services.Orchestrator.SetLogger(log)
+		log.Info("Starting tool uninstallation...")
 
 		if len(args) > 0 {
 			toolName := args[0]
-			log.Info(logger.Message(fmt.Sprintf("Uninstalling tool: %s", toolName)))
 
 			var targetTool *config.ToolConfig
 			for _, tc := range services.ToolConfigs {

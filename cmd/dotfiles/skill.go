@@ -83,6 +83,7 @@ var skillCmd = &cobra.Command{
 	Short: "Manage AI skills or copy dotfiles skill folder to target path",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		log := GetLogger("skill", cmd.ErrOrStderr())
+		log.Info("Managing AI skills...")
 
 		if len(args) > 0 {
 			targetPath := args[0]
@@ -138,6 +139,7 @@ var skillCmd = &cobra.Command{
 			}
 
 			log.Info(logger.Message(fmt.Sprintf("Copied skill folder to %s", destPath)))
+			log.Info(logger.Messages.CommandCompleted(dryRun))
 			fmt.Fprintf(cmd.OutOrStdout(), "Copied skill folder to %s\n", destPath)
 			return nil
 		}
@@ -195,6 +197,7 @@ var skillCmd = &cobra.Command{
 
 		if len(foundSkills) == 0 {
 			log.Info("No AI skills found.")
+			log.Info(logger.Messages.CommandCompleted(dryRun))
 			fmt.Fprintln(cmd.OutOrStdout(), "No AI skills found.")
 			return nil
 		}
@@ -204,6 +207,7 @@ var skillCmd = &cobra.Command{
 			fmt.Fprintf(cmd.OutOrStdout(), "- %s: %s (%s)\n", s.Name, s.Description, s.Path)
 		}
 
+		log.Info(logger.Messages.CommandCompleted(dryRun))
 		return nil
 	},
 }

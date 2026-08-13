@@ -32,6 +32,7 @@ var logCmd = &cobra.Command{
 		defer services.DB.Close()
 
 		log := GetLogger("log", cmd.ErrOrStderr())
+		log.Info("Reading operation history and logs...")
 
 		var toolFilter string
 		if len(args) > 0 {
@@ -78,6 +79,7 @@ var logCmd = &cobra.Command{
 					}
 				}
 			}
+			log.Info(logger.Messages.CommandCompleted(dryRun))
 			return nil
 		}
 
@@ -100,6 +102,7 @@ var logCmd = &cobra.Command{
 				tm := time.UnixMilli(op.CreatedAt).Format("2006-01-02 15:04:05")
 				fmt.Fprintf(cmd.OutOrStdout(), "[%s] [%s] %s %s (%s)\n", tm, op.ToolName, op.OperationType, contractedPath, op.FileType)
 			}
+			log.Info(logger.Messages.CommandCompleted(dryRun))
 			return nil
 		}
 
@@ -119,6 +122,7 @@ var logCmd = &cobra.Command{
 
 		if foundPath == "" {
 			log.Info("No log entries found.")
+			log.Info(logger.Messages.CommandCompleted(dryRun))
 			fmt.Fprintln(cmd.OutOrStdout(), "No log entries found.")
 			return nil
 		}
@@ -143,6 +147,7 @@ var logCmd = &cobra.Command{
 			fmt.Fprintln(cmd.OutOrStdout(), lines[i])
 		}
 
+		log.Info(logger.Messages.CommandCompleted(dryRun))
 		return nil
 	},
 }

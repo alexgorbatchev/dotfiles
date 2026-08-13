@@ -55,7 +55,7 @@ var featuresCmd = &cobra.Command{
 			}
 
 			fmt.Fprintln(cmd.OutOrStdout(), markdown)
-			log.Info("Readme generated successfully.")
+			log.Info(logger.Messages.CommandCompleted(dryRun))
 			return nil
 		}
 
@@ -64,6 +64,7 @@ var featuresCmd = &cobra.Command{
 		fmt.Fprintf(cmd.OutOrStdout(), "Catalog Generate: %v\n", feat.Catalog.Generate)
 		fmt.Fprintf(cmd.OutOrStdout(), "ShellInstall: %v\n", feat.ShellInstall != nil)
 
+		log.Info(logger.Messages.CommandCompleted(dryRun))
 		return nil
 	},
 }

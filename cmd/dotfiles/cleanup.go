@@ -27,7 +27,7 @@ var cleanupCmd = &cobra.Command{
 		// Query database for all recorded tool installations
 		installedTools, err := services.Registry.GetAllToolInstallations(ctx)
 		if err != nil {
-			log.Warn(logger.Message(fmt.Sprintf("Failed querying installed tools: %v", err)))
+			log.Error("Failed querying installed tools", err)
 		} else {
 			// Build map of configured tool names
 			activeMap := make(map[string]bool)
@@ -45,7 +45,7 @@ var cleanupCmd = &cobra.Command{
 						Name: instTool.ToolName,
 					}, services.ProjectConfig)
 					if err != nil {
-						log.Warn(logger.Message(fmt.Sprintf("Failed uninstalling orphaned tool %s: %v", instTool.ToolName, err)))
+						log.GetSubLogger("", instTool.ToolName).Error("Failed uninstalling orphaned tool", err)
 					}
 				}
 			}

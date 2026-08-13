@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +21,9 @@ var detectConflictsCmd = &cobra.Command{
 			return err
 		}
 		defer services.DB.Close()
+
+		log := GetLogger("detect-conflicts", cmd.ErrOrStderr())
+		log.Info("Detecting file conflicts...")
 
 		shimGen := shim.NewGenerator(services.FS)
 		var conflictMessages []string
@@ -65,6 +69,7 @@ var detectConflictsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		log.Info(logger.Messages.CommandCompleted(dryRun))
 		fmt.Fprintln(cmd.OutOrStdout(), "No conflicts detected")
 		return nil
 	},

@@ -226,7 +226,7 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 	}
 
 	if err := o.CleanupStaleArtifacts(ctx, sorted, projCfg); err != nil {
-		o.logger.Warn(logger.Message(fmt.Sprintf("Cleanup during install warning: %v", err)))
+		o.logger.Error("Cleanup during install warning", err)
 	}
 
 	for _, tool := range sorted {
@@ -261,7 +261,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 	}
 
 	if err := o.CleanupStaleArtifacts(ctx, sorted, projCfg); err != nil {
-		o.logger.Warn(logger.Message(fmt.Sprintf("Cleanup during generate warning: %v", err)))
+		o.logger.Error("Cleanup during generate warning", err)
 	}
 
 	// Ensure system directories are created and tracked under "system" name
@@ -295,6 +295,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 				return err
 			}
 			if !skip {
+				o.logger.Info(logger.Message(fmt.Sprintf("Installing tool: %s", tool.Name)))
 				if err := o.InstallTool(ctx, tool, projCfg); err != nil {
 					o.logger.GetSubLogger("", tool.Name).Error("Auto-install failed", err)
 				}
@@ -398,7 +399,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 	// 4. Generate completions
 	if err := o.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
-		o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Failed to generate completions: %v", err)))
+		o.logger.GetSubLogger("", tool.Name).Error("Failed to generate completions", err)
 	}
 
 	return nil
@@ -442,8 +443,6 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		// For shell-only tools (which have no installation method), proceed directly to generate shims, copies, and symlinks.
 		return o.GenerateTool(ctx, tool, projCfg)
 	}
-
-	o.logger.Info(logger.Message(fmt.Sprintf("Installing tool: %s", tool.Name)))
 
 	inst, err := o.instRegistry.Get(tool.InstallationMethod)
 	if err != nil {
@@ -688,7 +687,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 	// 6. Generate completions (matches TS reconcileToolArtifacts)
 	if err := o.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
-		o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Failed to generate completions: %v", err)))
+		o.logger.GetSubLogger("", tool.Name).Error("Failed to generate completions", err)
 	}
 
 	return nil
@@ -699,6 +698,8 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 	if projCfg == nil {
 		return fmt.Errorf("project configuration is nil")
 	}
+
+	o.logger.Info(logger.Message(fmt.Sprintf("Uninstalling tool: %s", tool.Name)))
 
 	// 1. Invoke the native installer plugin's Uninstall method if it exists
 	if tool.InstallationMethod != "" && o.instRegistry != nil {
@@ -781,7 +782,7 @@ func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config
 	for _, toolName := range orphanedTools {
 		o.logger.Info(logger.Message(fmt.Sprintf("Cleaning up orphaned tool: %s", toolName)))
 		if err := o.cleanupToolArtifacts(ctx, toolName, projCfg); err != nil {
-			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Failed to cleanup orphaned tool %s: %v", toolName, err)))
+			o.logger.GetSubLogger("", toolName).Error("Failed to cleanup orphaned tool", err)
 		}
 	}
 

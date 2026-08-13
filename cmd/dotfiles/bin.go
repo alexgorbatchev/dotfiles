@@ -25,6 +25,7 @@ var binCmd = &cobra.Command{
 		defer services.DB.Close()
 
 		log := GetLogger("bin", cmd.ErrOrStderr())
+		log.Info("Resolving binary path and configuration...")
 
 		if listBins {
 			var allBins []string
@@ -38,6 +39,7 @@ var binCmd = &cobra.Command{
 			for _, b := range allBins {
 				log.Info(logger.Message("  " + b))
 			}
+			log.Info(logger.Messages.CommandCompleted(dryRun))
 			fmt.Fprintln(cmd.OutOrStdout(), strings.Join(allBins, "\n"))
 		} else if len(args) > 0 {
 			name := args[0]
@@ -85,6 +87,7 @@ var binCmd = &cobra.Command{
 				binDir = services.ProjectConfig.Paths.TargetDir
 			}
 			log.Info(logger.Message(fmt.Sprintf("Target bin directory: %s", binDir)))
+			log.Info(logger.Messages.CommandCompleted(dryRun))
 			fmt.Fprintln(cmd.OutOrStdout(), binDir)
 		}
 

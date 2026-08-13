@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -64,7 +63,7 @@ var generateCmd = &cobra.Command{
 						ScriptPath:  scriptPath,
 					})
 					if err != nil {
-						log.Warn(logger.Message(fmt.Sprintf("failed to inject into %s: %v", pPath, err)))
+						log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
 					}
 				}
 			}
@@ -80,7 +79,7 @@ var generateCmd = &cobra.Command{
 						ScriptPath:  scriptPath,
 					})
 					if err != nil {
-						log.Warn(logger.Message(fmt.Sprintf("failed to inject into %s: %v", pPath, err)))
+						log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
 					}
 				}
 			}
@@ -96,7 +95,7 @@ var generateCmd = &cobra.Command{
 						ScriptPath:  scriptPath,
 					})
 					if err != nil {
-						log.Warn(logger.Message(fmt.Sprintf("failed to inject into %s: %v", pPath, err)))
+						log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
 					}
 				}
 			}
