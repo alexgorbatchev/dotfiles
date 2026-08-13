@@ -112,5 +112,5 @@ When Wave 4 achieves full `APPROVED` status across all top-level packages:
    go run scripts/build/main.go
    ```
 2. Run full verification suite: `bun check`.
-3. Confirm Go CLI binary builds and runs cleanly against fixture projects (`go run ./cmd/dotfiles --config test-project-npm/dotfiles.config.ts generate`).
+3. Confirm Go CLI binary builds and runs cleanly against fixture projects (`go run ./cmd/dotfiles --config test-project/dotfiles.config.ts generate`).
 4. Generate final completion summary.

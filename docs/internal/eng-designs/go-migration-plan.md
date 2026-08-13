@@ -476,7 +476,7 @@ To mitigate integration risk, work must progress in sequential tiers from zero-d
 To guarantee full feature parity, we must implement an automated verification harness in `scripts/parity-harness/main.go`. This tool must perform the following actions:
 
 1. Compile the newly created Go binary (`.dist/dotfiles`).
-2. Execute the legacy TypeScript CLI (`bun cli`) against the standard workspace fixture projects (`test-project-npm` and `test-project-compiled`) in `--dry-run` mode to prevent state mutation, capturing emitted shims, configurations, and console logs inside `.generated/ts/`.
+2. Execute the legacy TypeScript CLI (`bun cli`) against the standard workspace fixture projects (`test-project` and `test-project-compiled`) in `--dry-run` mode to prevent state mutation, capturing emitted shims, configurations, and console logs inside `.generated/ts/`.
 3. Execute the compiled Go CLI (`.dist/dotfiles`) against the exact same fixture projects in `--dry-run` mode, writing outputs to `.generated/go/`.
 4. Normalize outputs to prevent false negatives across execution platforms:
    - **Line Endings**: Convert CRLF to LF on all generated shims and configs before running bytes-by-bytes matches.

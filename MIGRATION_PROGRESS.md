@@ -76,4 +76,4 @@ This document tracks the topological wave-based parity audits, worker repairs, r
 3. **Full CI Check**:
    `bun check` (`oxfmt`, `dprint`, `oxlint`, `tsgo`, `go test -count=1 ./tests/e2e/...`) -> **PASSED**.
 4. **CLI Fixture Verification**:
-   `go run ./cmd/dotfiles --config test-project-npm/dotfiles.config.ts generate` -> **PASSED**.
+   `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts generate` -> **PASSED**.

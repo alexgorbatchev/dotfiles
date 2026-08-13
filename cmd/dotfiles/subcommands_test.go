@@ -242,7 +242,7 @@ func TestBootstrapAndExecutionSideEffects(t *testing.T) {
 	ctx := context.Background()
 	// Force dryRun = true for in-memory DB and MemFS simulation
 	dryRun = true
-	services, err := BootstrapServices(ctx, "test-project-npm/dotfiles.config.ts")
+	services, err := BootstrapServices(ctx, "test-project/dotfiles.config.ts")
 	if err != nil {
 		t.Fatalf("bootstrap failed: %v", err)
 	}

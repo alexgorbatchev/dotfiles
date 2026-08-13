@@ -46,7 +46,7 @@ export default createOxlintConfig(() => ({
         "oxlint.config.ts",
         "**/*.tool.ts",
         "**/dotfiles.config.ts",
-        "test-project-npm/dotfiles.config.ts",
+        "test-project/dotfiles.config.ts",
         "**/__tests__/**/dotfiles.config.ts",
       ],
       rules: {

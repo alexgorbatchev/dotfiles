@@ -30,7 +30,7 @@ An automated Go command script that compiles the Go executable, runs both implem
 
 - [x] `scripts/parity-harness` must be written in Go and execute the verification sequence.
 - [x] The harness must compile the Go executable dynamically and save it to `.dist/dotfiles`.
-- [x] The harness must invoke the legacy TypeScript CLI (`bun cli`) against target mock fixtures inside `test-project-npm` in `--dry-run` mode, writing outputs to `.generated/ts/`.
+- [x] The harness must invoke the legacy TypeScript CLI (`bun cli`) against target mock fixtures inside `test-project` in `--dry-run` mode, writing outputs to `.generated/ts/`.
 - [x] The harness must invoke the compiled Go binary (`.dist/dotfiles`) against the exact same targets in `--dry-run` mode, writing outputs to `.generated/go/`.
 - [x] The harness must normalize CRLF line endings to LF before comparing output bytes.
 - [x] The harness must replace developer-specific home directories with a normalized string placeholder (e.g., `{{HOME}}`) to prevent platform false negatives.

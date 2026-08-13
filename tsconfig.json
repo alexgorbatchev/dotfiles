@@ -35,7 +35,7 @@
       "@alexgorbatchev/dotfiles": ["./.dist/index.d.ts"]
     }
   },
-  "include": ["packages", "test-project-npm", "review", "pkg/vm"],
+  "include": ["packages", "test-project", "review", "pkg/vm"],
   "exclude": [
     "**/.tmp/**",
     "**/tmp/**",
