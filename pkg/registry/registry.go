@@ -261,16 +261,30 @@ func (r *Registry) GetFileStatesForTool(ctx context.Context, toolName string) ([
 		if op.OperationType == "rm" {
 			delete(fileStates, op.FilePath)
 		} else {
-			fileStates[op.FilePath] = &FileState{
-				FilePath:      op.FilePath,
-				ToolName:      op.ToolName,
-				FileType:      op.FileType,
-				LastOperation: op.OperationType,
-				TargetPath:    op.TargetPath,
-				LastModified:  op.CreatedAt,
-				Metadata:      op.Metadata,
-				SizeBytes:     op.SizeBytes,
-				Permissions:   op.Permissions,
+			state, exists := fileStates[op.FilePath]
+			if !exists {
+				state = &FileState{FilePath: op.FilePath}
+				fileStates[op.FilePath] = state
+			}
+			state.LastOperation = op.OperationType
+			state.LastModified = op.CreatedAt
+			if op.ToolName != "" {
+				state.ToolName = op.ToolName
+			}
+			if op.FileType != "" {
+				state.FileType = op.FileType
+			}
+			if op.TargetPath != nil {
+				state.TargetPath = op.TargetPath
+			}
+			if op.Metadata != nil {
+				state.Metadata = op.Metadata
+			}
+			if op.SizeBytes != nil {
+				state.SizeBytes = op.SizeBytes
+			}
+			if op.Permissions != nil {
+				state.Permissions = op.Permissions
 			}
 		}
 	}
@@ -299,22 +313,45 @@ func (r *Registry) GetFileState(ctx context.Context, filePath string) (*FileStat
 		return nil, nil
 	}
 
-	newest := ops[0]
-	if newest.OperationType == "rm" {
+	// If newest operation is "rm", file does not exist
+	if ops[0].OperationType == "rm" {
 		return nil, nil
 	}
 
-	return &FileState{
-		FilePath:      newest.FilePath,
-		ToolName:      newest.ToolName,
-		FileType:      newest.FileType,
-		LastOperation: newest.OperationType,
-		TargetPath:    newest.TargetPath,
-		LastModified:  newest.CreatedAt,
-		Metadata:      newest.Metadata,
-		SizeBytes:     newest.SizeBytes,
-		Permissions:   newest.Permissions,
-	}, nil
+	// Accumulate state chronologically from oldest operation to newest
+	var state *FileState
+	for i := len(ops) - 1; i >= 0; i-- {
+		op := ops[i]
+		if op.OperationType == "rm" {
+			state = nil
+		} else {
+			if state == nil {
+				state = &FileState{FilePath: filePath}
+			}
+			state.LastOperation = op.OperationType
+			state.LastModified = op.CreatedAt
+			if op.ToolName != "" {
+				state.ToolName = op.ToolName
+			}
+			if op.FileType != "" {
+				state.FileType = op.FileType
+			}
+			if op.TargetPath != nil {
+				state.TargetPath = op.TargetPath
+			}
+			if op.Metadata != nil {
+				state.Metadata = op.Metadata
+			}
+			if op.SizeBytes != nil {
+				state.SizeBytes = op.SizeBytes
+			}
+			if op.Permissions != nil {
+				state.Permissions = op.Permissions
+			}
+		}
+	}
+
+	return state, nil
 }
 
 // GetRegisteredTools queries distinct tool names registered in active (non-deleted) file operations.
@@ -854,21 +891,38 @@ func OctalToDecimalPerm(s string) string {
 	if s == "" {
 		return ""
 	}
-	sClean := s
+	sClean := strings.TrimSpace(s)
 	if strings.HasPrefix(sClean, "0o") || strings.HasPrefix(sClean, "0O") {
 		sClean = sClean[2:]
-	}
-	// Parse as octal
-	val, err := strconv.ParseUint(sClean, 8, 32)
-	if err != nil {
-		// If it fails to parse as octal, maybe it's already decimal
-		_, errDec := strconv.ParseUint(sClean, 10, 32)
-		if errDec == nil {
-			return sClean
+		val, err := strconv.ParseUint(sClean, 8, 32)
+		if err == nil {
+			return strconv.FormatUint(val, 10)
 		}
 		return s
 	}
-	return strconv.FormatUint(val, 10)
+	if strings.HasPrefix(sClean, "0") && len(sClean) > 1 {
+		val, err := strconv.ParseUint(sClean[1:], 8, 32)
+		if err == nil {
+			return strconv.FormatUint(val, 10)
+		}
+		return s
+	}
+	valDec, errDec := strconv.ParseUint(sClean, 10, 32)
+	if errDec != nil {
+		valOct, errOct := strconv.ParseUint(sClean, 8, 32)
+		if errOct == nil {
+			return strconv.FormatUint(valOct, 10)
+		}
+		return s
+	}
+	if valDec > 511 {
+		valOct, errOct := strconv.ParseUint(sClean, 8, 32)
+		if errOct == nil {
+			return strconv.FormatUint(valOct, 10)
+		}
+		return sClean
+	}
+	return sClean
 }
 
 // DecimalToOctalPerm converts a decimal permission string (e.g., "493", "420")
@@ -877,18 +931,23 @@ func DecimalToOctalPerm(s string) string {
 	if s == "" {
 		return ""
 	}
-	// Parse as decimal
-	val, err := strconv.ParseUint(s, 10, 32)
+	sClean := strings.TrimSpace(s)
+	if strings.HasPrefix(sClean, "0o") || strings.HasPrefix(sClean, "0O") {
+		return "0" + sClean[2:]
+	}
+	if strings.HasPrefix(sClean, "0") && len(sClean) > 1 {
+		return sClean
+	}
+	val, err := strconv.ParseUint(sClean, 10, 32)
 	if err != nil {
-		// If it fails to parse as decimal, maybe it is already octal
-		_, errOct := strconv.ParseUint(s, 8, 32)
+		_, errOct := strconv.ParseUint(sClean, 8, 32)
 		if errOct == nil {
-			if !strings.HasPrefix(s, "0") {
-				return "0" + s
-			}
-			return s
+			return "0" + sClean
 		}
 		return s
+	}
+	if val > 511 {
+		return "0" + sClean
 	}
 	return fmt.Sprintf("0%o", val)
 }

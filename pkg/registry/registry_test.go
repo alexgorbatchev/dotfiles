@@ -722,3 +722,134 @@ func TestPermissionJSONSerialization(t *testing.T) {
 		t.Errorf("Expected permissions to unmarshal back to '0755', got: %v", decoded.Permissions)
 	}
 }
+
+func TestOctalAndDecimalPermConversions(t *testing.T) {
+	testsOctalToDecimal := []struct {
+		input string
+		want  string
+	}{
+		{"0755", "493"},
+		{"755", "493"},
+		{"0644", "420"},
+		{"644", "420"},
+		{"420", "420"},
+		{"493", "493"},
+		{"0o755", "493"},
+		{"0O644", "420"},
+		{"", ""},
+	}
+
+	for _, tt := range testsOctalToDecimal {
+		got := OctalToDecimalPerm(tt.input)
+		if got != tt.want {
+			t.Errorf("OctalToDecimalPerm(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+
+	testsDecimalToOctal := []struct {
+		input string
+		want  string
+	}{
+		{"493", "0755"},
+		{"420", "0644"},
+		{"0755", "0755"},
+		{"0644", "0644"},
+		{"755", "0755"},
+		{"644", "0644"},
+		{"0o755", "0755"},
+		{"", ""},
+	}
+
+	for _, tt := range testsDecimalToOctal {
+		got := DecimalToOctalPerm(tt.input)
+		if got != tt.want {
+			t.Errorf("DecimalToOctalPerm(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestGetFileStateChmodAccumulation(t *testing.T) {
+	_, reg := setupTestDB(t)
+	ctx := context.Background()
+
+	// 1. Write file operation
+	err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		size := int64(1024)
+		target := "/some/target"
+		r := &FileOperationRecord{
+			ToolName:      "test-chmod",
+			OperationType: "writeFile",
+			FilePath:      "/test/chmod.txt",
+			FileType:      "file",
+			Permissions:   ptr(Permission("0644")),
+			SizeBytes:     &size,
+			TargetPath:    &target,
+			CreatedAt:     1000,
+			OperationID:   "op-1",
+		}
+		return reg.RecordFileOperation(ctx, tx, r)
+	})
+	if err != nil {
+		t.Fatalf("Failed to record write operation: %v", err)
+	}
+
+	// 2. Chmod operation on the same file
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		r := &FileOperationRecord{
+			ToolName:      "test-chmod",
+			OperationType: "chmod",
+			FilePath:      "/test/chmod.txt",
+			Permissions:   ptr(Permission("0755")),
+			CreatedAt:     2000,
+			OperationID:   "op-2",
+		}
+		return reg.RecordFileOperation(ctx, tx, r)
+	})
+	if err != nil {
+		t.Fatalf("Failed to record chmod operation: %v", err)
+	}
+
+	// 3. Verify GetFileState preserves FileType, SizeBytes, TargetPath, ToolName while updating Permissions and LastOperation
+	state, err := reg.GetFileState(ctx, "/test/chmod.txt")
+	if err != nil {
+		t.Fatalf("GetFileState failed: %v", err)
+	}
+	if state == nil {
+		t.Fatalf("Expected non-nil state")
+	}
+	if state.FileType != "file" {
+		t.Errorf("Expected FileType 'file', got %q", state.FileType)
+	}
+	if state.SizeBytes == nil || *state.SizeBytes != 1024 {
+		t.Errorf("Expected SizeBytes 1024, got %v", state.SizeBytes)
+	}
+	if state.TargetPath == nil || *state.TargetPath != "/some/target" {
+		t.Errorf("Expected TargetPath '/some/target', got %v", state.TargetPath)
+	}
+	if state.LastOperation != "chmod" {
+		t.Errorf("Expected LastOperation 'chmod', got %q", state.LastOperation)
+	}
+	if state.Permissions == nil || *state.Permissions != Permission("0755") {
+		t.Errorf("Expected Permissions '0755', got %v", state.Permissions)
+	}
+
+	// 4. Verify GetFileStatesForTool also preserves attributes
+	states, err := reg.GetFileStatesForTool(ctx, "test-chmod")
+	if err != nil {
+		t.Fatalf("GetFileStatesForTool failed: %v", err)
+	}
+	if len(states) != 1 {
+		t.Fatalf("Expected 1 state, got %d", len(states))
+	}
+	st := states[0]
+	if st.FileType != "file" {
+		t.Errorf("GetFileStatesForTool: Expected FileType 'file', got %q", st.FileType)
+	}
+	if st.SizeBytes == nil || *st.SizeBytes != 1024 {
+		t.Errorf("GetFileStatesForTool: Expected SizeBytes 1024, got %v", st.SizeBytes)
+	}
+	if st.Permissions == nil || *st.Permissions != Permission("0755") {
+		t.Errorf("GetFileStatesForTool: Expected Permissions '0755', got %v", st.Permissions)
+	}
+}
+
