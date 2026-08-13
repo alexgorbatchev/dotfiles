@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	osExec "os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -1670,12 +1671,25 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 						parts := strings.Fields(cmdValResolved)
 						if len(parts) > 0 {
 							cmdName := parts[0]
-							if !strings.Contains(cmdName, "/") && !strings.Contains(cmdName, "\\") {
+							var foundExec bool
+							if strings.Contains(cmdName, "/") || strings.Contains(cmdName, "\\") {
+								foundExec, _ = fsys.Exists(cmdName)
+							} else {
 								targetPath := filepath.Join(projCfg.Paths.TargetDir, cmdName)
 								if exists, err := fsys.Exists(targetPath); err == nil && exists {
 									cmdName = targetPath
+									foundExec = true
+								} else if _, err := osExec.LookPath(cmdName); err == nil {
+									foundExec = true
 								}
 							}
+
+							if !foundExec {
+								o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Skipping %s completion for %s: executable %q not found in target bin or PATH", sh, tool.Name, parts[0])))
+								return nil
+							}
+
+							o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Generating %s completion using: %s", sh, cmdValResolved)))
 							cmdCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 							cmdExec := o.runner.CommandContext(cmdCtx, cmdName, parts[1:]...)
 							cmdExec.SetProcessGroup(true)
@@ -1687,7 +1701,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 							if err == nil {
 								_ = fsys.WriteFile(completionFilePath, output, 0644)
 							} else {
-								o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Completion command %q failed or timed out: %v", cmdValResolved, err)))
+								o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Completion command %q failed or timed out: %v", cmdValResolved, err)))
 							}
 						}
 					}

@@ -103,6 +103,13 @@ func (g *GitHubInstaller) SupportsSudo() bool {
 	return false
 }
 
+func (g *GitHubInstaller) getToolLogger(toolName string) *logger.Logger {
+	if g.log != nil {
+		return g.log.GetSubLogger("", toolName)
+	}
+	return nil
+}
+
 func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
 	if err := ValidateSudo(g, tool); err != nil {
 		return nil, err
@@ -131,6 +138,11 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	}
 	if version == "" {
 		version = "latest"
+	}
+
+	toolLog := g.getToolLogger(tool.Name)
+	if toolLog != nil {
+		toolLog.Info(logger.Message(fmt.Sprintf("Fetching release info for %s (%s)...", repo, version)))
 	}
 
 	baseURL := g.BaseURL
@@ -217,6 +229,9 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	}
 
 	assetPath := filepath.Join(destDir, matched.Name)
+	if toolLog != nil {
+		toolLog.Info(logger.Message(fmt.Sprintf("Downloading release asset %s...", matched.Name)))
+	}
 	if useGhCli {
 		if err := g.downloadAssetViaGhCli(ctx, repo, release.TagName, matched.Name, destDir); err != nil {
 			return nil, fmt.Errorf("downloading release asset via gh CLI: %w", err)
@@ -240,6 +255,9 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	var promotedBinaries []string
 	lower := strings.ToLower(matched.Name)
 	if strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tgz") || strings.HasSuffix(lower, ".zip") {
+		if toolLog != nil {
+			toolLog.Info(logger.Message(fmt.Sprintf("Extracting %s...", matched.Name)))
+		}
 		if err := g.extractor.Extract(ctx, assetPath, destDir); err != nil {
 			_ = g.fsys.Remove(assetPath)
 			return nil, fmt.Errorf("extracting asset archive: %w", err)
