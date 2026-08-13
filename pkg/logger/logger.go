@@ -292,7 +292,10 @@ func (l *Logger) log(ctx context.Context, level slog.Level, msg Message, args []
 	var prefix string
 	if len(l.contexts) > 0 {
 		var sb strings.Builder
-		for _, c := range l.contexts {
+		for i, c := range l.contexts {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
 			sb.WriteString("[")
 			sb.WriteString(c)
 			sb.WriteString("]")

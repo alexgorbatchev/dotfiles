@@ -1874,9 +1874,9 @@ func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	runner.Register("mytool", []byte("# mytool zsh completion"), nil)
-	runner.Register("/home/user/bin/mytool", []byte("# mytool zsh completion"), nil)
+	runner.Register("/home/user/.generated/binaries/mytool/current/mytool", []byte("# mytool zsh completion"), nil)
 	runner.Register("slowtool", nil, fmt.Errorf("context deadline exceeded"))
-	runner.Register("/home/user/bin/slowtool", nil, fmt.Errorf("context deadline exceeded"))
+	runner.Register("/home/user/.generated/binaries/slowtool/current/slowtool", nil, fmt.Errorf("context deadline exceeded"))
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
 	if err != nil {
@@ -1897,9 +1897,10 @@ func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
 	}
 
 	// 1. Tool with successful completion command
-	_ = fsys.MkdirAll("/home/user/bin", 0755)
-	_ = fsys.WriteFile("/home/user/bin/mytool", []byte("dummy bin"), 0755)
-	_ = fsys.WriteFile("/home/user/bin/slowtool", []byte("dummy bin"), 0755)
+	_ = fsys.MkdirAll("/home/user/.generated/binaries/mytool/current", 0755)
+	_ = fsys.WriteFile("/home/user/.generated/binaries/mytool/current/mytool", []byte("dummy bin"), 0755)
+	_ = fsys.MkdirAll("/home/user/.generated/binaries/slowtool/current", 0755)
+	_ = fsys.WriteFile("/home/user/.generated/binaries/slowtool/current/slowtool", []byte("dummy bin"), 0755)
 
 	toolSuccess := &config.ToolConfig{
 		Name:               "mytool",

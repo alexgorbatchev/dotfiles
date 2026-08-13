@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -113,6 +114,16 @@ func (t *TrackedFileSystem) ReadFile(path string) ([]byte, error) {
 	return t.fs.ReadFile(path)
 }
 
+func (t *TrackedFileSystem) getLogger() *logger.Logger {
+	if t.log != nil {
+		if t.toolName != "" {
+			return t.log.GetSubLogger("", t.toolName)
+		}
+		return t.log
+	}
+	return nil
+}
+
 func (t *TrackedFileSystem) WriteFile(path string, data []byte, perm os.FileMode) error {
 	exists, err := t.fs.Exists(path)
 	if err == nil && exists {
@@ -129,8 +140,9 @@ func (t *TrackedFileSystem) WriteFile(path string, data []byte, perm os.FileMode
 	if err != nil {
 		return err
 	}
-	if t.log != nil {
-		t.log.Info(logger.Message(fmt.Sprintf("write %s", t.ContractHomePath(path))))
+	l := t.getLogger()
+	if l != nil {
+		l.Info(logger.Message(fmt.Sprintf("write %s", t.ContractHomePath(path))))
 	}
 	sizeBytes := int64(len(data))
 	permVal := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
@@ -205,8 +217,9 @@ func (t *TrackedFileSystem) Remove(path string) error {
 		return err
 	}
 	if existed {
-		if t.log != nil {
-			t.log.Info(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(path))))
+		l := t.getLogger()
+		if l != nil {
+			l.Info(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(path))))
 		}
 		return t.recordOperation("rm", path, nil, nil, nil)
 	}
@@ -280,6 +293,11 @@ func (t *TrackedFileSystem) Chmod(path string, perm os.FileMode) error {
 	if err != nil {
 		return err
 	}
+	l := t.getLogger()
+	if l != nil {
+		permStr := strings.TrimPrefix((perm & os.ModePerm).String(), "-")
+		l.Info(logger.Message(fmt.Sprintf("chmod %s %s", permStr, t.ContractHomePath(path))))
+	}
 	permVal := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
 	return t.recordOperation("chmod", path, nil, nil, &permVal)
 }
@@ -297,8 +315,9 @@ func (t *TrackedFileSystem) Symlink(oldname, newname string) error {
 	if err != nil {
 		return err
 	}
-	if t.log != nil {
-		t.log.Info(logger.Message(fmt.Sprintf("ln -s %s %s", t.ContractHomePath(oldname), t.ContractHomePath(newname))))
+	l := t.getLogger()
+	if l != nil {
+		l.Info(logger.Message(fmt.Sprintf("ln -s %s %s", t.ContractHomePath(oldname), t.ContractHomePath(newname))))
 	}
 	return t.recordOperation("symlink", newname, &oldname, nil, nil)
 }

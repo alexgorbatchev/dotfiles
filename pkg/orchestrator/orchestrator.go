@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	osExec "os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -251,11 +250,28 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 	return nil
 }
 
+func (o *Orchestrator) pruneToolsWithLogging(tools []*config.ToolConfig) []*config.ToolConfig {
+	var pruned []*config.ToolConfig
+	hostname, _ := os.Hostname()
+	for _, t := range tools {
+		if t.Hostname != "" && !matchesHostname(t.Hostname) {
+			o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping tool %q: hostname %q does not match pattern %q", t.Name, hostname, t.Hostname)))
+			continue
+		}
+		if t.Disabled {
+			o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping disabled tool: %s", t.Name)))
+			continue
+		}
+		pruned = append(pruned, t)
+	}
+	return pruned
+}
+
 // GenerateTools executes standalone shim, symlink, and shell script generation.
 // It skips the installation pipeline except for tools with "auto: true" in their install params.
 func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
 	config.ResolvePlatformConfigs(tools, "", "")
-	pruned := pruneTools(tools)
+	pruned := o.pruneToolsWithLogging(tools)
 	sorted, err := TopologicalSort(pruned)
 	if err != nil {
 		return fmt.Errorf("resolving dependencies: %w", err)
@@ -316,6 +332,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		return fmt.Errorf("generating shell scripts: %w", err)
 	}
 
+	o.logger.GetSubLogger("", "system").Info(logger.Message("DONE"))
 	return nil
 }
 
@@ -325,13 +342,11 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		return fmt.Errorf("project configuration is nil")
 	}
 
-	o.logger.Info(logger.Message(fmt.Sprintf("Generating tool: %s", tool.Name)))
-
 	// Skip shim generation for manual tools without binaryPath
 	if tool.InstallationMethod == "manual" {
 		binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")
 		if binaryPath == "" {
-			o.logger.GetSubLogger("", "system", tool.Name).Warn("Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)")
+			o.logger.GetSubLogger("", "system", tool.Name).Warn(logger.Message("Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)"))
 			return nil
 		}
 	}
@@ -1671,24 +1686,25 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 						parts := strings.Fields(cmdValResolved)
 						if len(parts) > 0 {
 							cmdName := parts[0]
-							var foundExec bool
+							var execPath string
 							if strings.Contains(cmdName, "/") || strings.Contains(cmdName, "\\") {
-								foundExec, _ = fsys.Exists(cmdName)
+								if exists, _ := fsys.Exists(cmdName); exists {
+									execPath = cmdName
+								}
 							} else {
-								targetPath := filepath.Join(projCfg.Paths.TargetDir, cmdName)
-								if exists, err := fsys.Exists(targetPath); err == nil && exists {
-									cmdName = targetPath
-									foundExec = true
-								} else if _, err := osExec.LookPath(cmdName); err == nil {
-									foundExec = true
+								// Check directly for actual tool binary in binariesDir to avoid executing the shim
+								toolBinPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", cmdName)
+								if exists, err := fsys.Exists(toolBinPath); err == nil && exists {
+									execPath = toolBinPath
 								}
 							}
 
-							if !foundExec {
-								o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Skipping %s completion for %s: executable %q not found in target bin or PATH", sh, tool.Name, parts[0])))
+							if execPath == "" {
+								o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Skipping %s completion for %s: binary %q not installed at %s", sh, tool.Name, parts[0], filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))))
 								return nil
 							}
 
+							cmdName = execPath
 							o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Generating %s completion using: %s", sh, cmdValResolved)))
 							cmdCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 							cmdExec := o.runner.CommandContext(cmdCtx, cmdName, parts[1:]...)
