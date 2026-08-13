@@ -974,12 +974,7 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 				}
 			}
 			if stc != nil && stc.Completions != nil {
-				var completionFileName string
-				if sh == "zsh" {
-					completionFileName = "_" + tool.Name
-				} else {
-					completionFileName = tool.Name
-				}
+				completionFileName := getCompletionFileName(tool, sh, stc)
 				compPath := filepath.Join(shellScriptsDir, sh, "completions", completionFileName)
 				expectedFiles[compPath] = true
 				if absCompPath, err := o.fs.Abs(compPath); err == nil {
@@ -1633,19 +1628,15 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 			continue
 		}
 
-		var completionFileName string
-		if sh == "zsh" {
-			completionFileName = "_" + tool.Name
-		} else {
-			completionFileName = tool.Name
-		}
+		completionFileName := getCompletionFileName(tool, sh, stc)
 
 		completionsDir := filepath.Join(shellScriptsDir, sh, "completions")
+		if err := o.fs.MkdirAll(completionsDir, 0755); err != nil {
+			return fmt.Errorf("creating completions directory: %w", err)
+		}
+
 		err := o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			fsys := o.getTrackedFS(ctx, tx, tool.Name, "completion")
-			if err := fsys.MkdirAll(completionsDir, 0755); err != nil {
-				return err
-			}
 			completionFilePath := filepath.Join(completionsDir, completionFileName)
 
 			switch comp := stc.Completions.(type) {
@@ -1658,8 +1649,11 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 				}
 				srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
 				if err == nil {
-					_ = fsys.Remove(completionFilePath)
-					_ = fsys.Symlink(srcPathResolved, completionFilePath)
+					exists, err := fsys.Exists(srcPathResolved)
+					if err == nil && exists {
+						_ = fsys.Remove(completionFilePath)
+						_ = fsys.Symlink(srcPathResolved, completionFilePath)
+					}
 				}
 			case map[string]interface{}:
 				if cmdVal, ok := comp["cmd"].(string); ok && cmdVal != "" {
@@ -1693,8 +1687,11 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 					}
 					srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
 					if err == nil {
-						_ = fsys.Remove(completionFilePath)
-						_ = fsys.Symlink(srcPathResolved, completionFilePath)
+						exists, err := fsys.Exists(srcPathResolved)
+						if err == nil && exists {
+							_ = fsys.Remove(completionFilePath)
+							_ = fsys.Symlink(srcPathResolved, completionFilePath)
+						}
 					}
 				}
 			}
@@ -1706,4 +1703,25 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 	}
 
 	return nil
+}
+
+func getCompletionFileName(tool *config.ToolConfig, sh string, stc *config.ShellTypeConfig) string {
+	baseName := tool.Name
+	if stc != nil && stc.Completions != nil {
+		if compMap, ok := stc.Completions.(map[string]interface{}); ok {
+			if binVal, ok := compMap["bin"].(string); ok && binVal != "" {
+				baseName = binVal
+			}
+		}
+	}
+	if baseName == tool.Name {
+		bins := getBinaryNames(tool.Binaries)
+		if len(bins) > 0 {
+			baseName = bins[0]
+		}
+	}
+	if sh == "zsh" {
+		return "_" + baseName
+	}
+	return baseName
 }

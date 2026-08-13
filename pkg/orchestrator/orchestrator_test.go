@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1804,6 +1805,69 @@ func TestOrchestrator_PlatformPreResolutionInPipeline(t *testing.T) {
 		t.Error("expected tool to be marked disabled by platform override pre-resolution")
 	}
 }
+
+func TestGenerateCompletionsForTool_SkipMissingSource(t *testing.T) {
+	ctx := context.Background()
+	log := logger.New(logger.Config{Name: "test-completions", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	fsys := fs.NewMemFS()
+	runner := exec.NewOSRunner()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	orch := NewOrchestrator(log, fsys, runner, reg, nil)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			GeneratedDir:    "/home/user/.generated",
+		},
+	}
+
+	tool := &config.ToolConfig{
+		Name:               "cargo--eza",
+		Binaries:           []interface{}{"eza"},
+		ConfigFilePath:     "/home/user/tools/eza.tool.ts",
+		InstallationMethod: "cargo",
+		ShellConfigs: &config.ShellConfigs{
+			Zsh: &config.ShellTypeConfig{
+				Completions: "/home/user/.generated/binaries/cargo--eza/current/completions/zsh/_eza",
+			},
+		},
+	}
+
+	// When source file does NOT exist, GenerateCompletionsForTool must skip creating a broken symlink
+	err = orch.GenerateCompletionsForTool(ctx, tool, projCfg)
+	if err != nil {
+		t.Fatalf("GenerateCompletionsForTool failed: %v", err)
+	}
+
+	compPath := "/home/user/.generated/shell-scripts/zsh/completions/_eza"
+	exists, _ := fsys.Exists(compPath)
+	if exists {
+		t.Errorf("Expected completion symlink NOT to exist when source file is missing")
+	}
+
+	// Now create source file and re-run: symlink should be created
+	_ = fsys.MkdirAll("/home/user/.generated/binaries/cargo--eza/current/completions/zsh", 0755)
+	_ = fsys.WriteFile("/home/user/.generated/binaries/cargo--eza/current/completions/zsh/_eza", []byte("# completion"), 0644)
+
+	err = orch.GenerateCompletionsForTool(ctx, tool, projCfg)
+	if err != nil {
+		t.Fatalf("GenerateCompletionsForTool failed on second run: %v", err)
+	}
+
+	exists, _ = fsys.Exists(compPath)
+	if !exists {
+		t.Errorf("Expected completion symlink to exist after source file was created")
+	}
+}
+
 
 
 
