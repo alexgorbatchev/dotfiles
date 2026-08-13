@@ -12,15 +12,15 @@
 # ==============================================================================
 
 function global:dotfiles-deactivate {
-  if ($env:_DOTFILES_ENV_DIR) {
+  if ($env:DOTFILES_ENV_DIR) {
     if ($env:_DOTFILES_OLD_XDG_CONFIG_HOME) {
       $env:XDG_CONFIG_HOME = $env:_DOTFILES_OLD_XDG_CONFIG_HOME
       Remove-Item Env:_DOTFILES_OLD_XDG_CONFIG_HOME -ErrorAction SilentlyContinue
     } else {
       Remove-Item Env:XDG_CONFIG_HOME -ErrorAction SilentlyContinue
     }
-    Remove-Item Env:_DOTFILES_ENV_DIR -ErrorAction SilentlyContinue
-    Remove-Item Env:_DOTFILES_ENV_NAME -ErrorAction SilentlyContinue
+    Remove-Item Env:DOTFILES_ENV_DIR -ErrorAction SilentlyContinue
+    Remove-Item Env:DOTFILES_ENV_NAME -ErrorAction SilentlyContinue
     Remove-Item function:dotfiles-deactivate -ErrorAction SilentlyContinue
   }
 }
@@ -33,7 +33,7 @@ if ($scriptPath) {
   $targetDir = "{{.EnvDir}}"
 }
 
-if ($env:_DOTFILES_ENV_DIR) {
+if ($env:DOTFILES_ENV_DIR) {
   dotfiles-deactivate
 }
 
@@ -41,10 +41,10 @@ if ($env:XDG_CONFIG_HOME) {
   $env:_DOTFILES_OLD_XDG_CONFIG_HOME = $env:XDG_CONFIG_HOME
 }
 
-$env:_DOTFILES_ENV_DIR = $targetDir
-$env:_DOTFILES_ENV_NAME = "{{.EnvName}}"
+$env:DOTFILES_ENV_DIR = $targetDir
+$env:DOTFILES_ENV_NAME = "{{.EnvName}}"
 $env:XDG_CONFIG_HOME = "$targetDir\.config"
 
 Write-Host "Activated dotfiles environment: {{.EnvName}}"
-Write-Host "  Directory: $env:_DOTFILES_ENV_DIR"
-Write-Host "  Config: $env:_DOTFILES_ENV_DIR\dotfiles.config.ts"
+Write-Host "  Directory: $env:DOTFILES_ENV_DIR"
+Write-Host "  Config: $env:DOTFILES_ENV_DIR\dotfiles.config.ts"

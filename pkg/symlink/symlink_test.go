@@ -118,7 +118,34 @@ func TestCreateSymlink(t *testing.T) {
 		// Try to symlink target to source with overwrite = false
 		_, err := eval.CreateSymlink(source, target, Options{Overwrite: false})
 		if err == nil {
-			t.Fatal("expected error when overwrite is false on existing symlink")
+			t.Fatal("expected error when overwrite is false on existing valid symlink")
+		}
+	})
+
+	t.Run("target is a broken symlink and overwrite is false", func(t *testing.T) {
+		tmp := t.TempDir()
+		source := filepath.Join(tmp, "source.txt")
+		brokenTarget := filepath.Join(tmp, "nonexistent_source.txt")
+		target := filepath.Join(tmp, "target.txt")
+
+		_ = os.WriteFile(source, []byte("hello"), 0644)
+		_ = os.Symlink(brokenTarget, target)
+
+		eval := NewEvaluator()
+		wasCreated, err := eval.CreateSymlink(source, target, Options{Overwrite: false})
+		if err != nil {
+			t.Fatalf("expected broken symlink to be removed and recreated, got error: %v", err)
+		}
+		if !wasCreated {
+			t.Errorf("expected new symlink to be created")
+		}
+
+		content, err := os.ReadFile(target)
+		if err != nil {
+			t.Fatalf("failed to read target content: %v", err)
+		}
+		if string(content) != "hello" {
+			t.Errorf("expected target content 'hello', got %q", string(content))
 		}
 	})
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"os"
 	"path/filepath"
 	"text/template"
 
@@ -26,6 +27,8 @@ const (
 	EnvDirVar = "DOTFILES_ENV_DIR"
 	// EnvNameVar is the environment variable for dotfiles virtual environment name.
 	EnvNameVar = "DOTFILES_ENV_NAME"
+	// DefaultEnvName is the default virtual environment name when none is specified.
+	DefaultEnvName = "env"
 	// SourceFile is the activation script filename for POSIX shells.
 	SourceFile = "source"
 	// PowerShellFile is the activation script filename for PowerShell.
@@ -46,8 +49,26 @@ func NewManager(f fs.FS) *Manager {
 	return &Manager{fs: f}
 }
 
-// EnvInfo holds information about a created virtual environment.
+// EnvInfo holds information about an existing virtual environment.
 type EnvInfo struct {
+	EnvDir     string
+	EnvName    string
+	ConfigPath string
+	SourcePath string
+	ToolsDir   string
+}
+
+// DetectEnvResult represents the outcome of detecting an environment.
+type DetectEnvResult struct {
+	Found      bool
+	EnvDir     string
+	EnvName    string
+	ConfigPath string
+}
+
+// ActiveEnvResult represents the outcome of checking for an active environment.
+type ActiveEnvResult struct {
+	Active  bool
 	EnvDir  string
 	EnvName string
 }
@@ -116,10 +137,19 @@ func (m *Manager) Create(parentDir, envName string, force bool) (*EnvInfo, error
 		return nil, fmt.Errorf("writing PowerShell activation script: %w", err)
 	}
 
-	configContent := `import { defineConfig } from "./dotfiles.config";
+	configContent := `import { defineConfig } from '@alexgorbatchev/dotfiles';
 
-export default defineConfig({
-  tools: []
+export default defineConfig(({ configFileDir }) => {
+  const generatedDir = ` + "`" + `${configFileDir}/.generated` + "`" + `;
+
+  return {
+    paths: {
+      generatedDir,
+      targetDir: ` + "`" + `${generatedDir}/user-bin` + "`" + `,
+      toolConfigsDir: ` + "`" + `${configFileDir}/tools` + "`" + `,
+      binariesDir: ` + "`" + `${generatedDir}/binaries` + "`" + `,
+    },
+  };
 });
 `
 	if err := m.fs.WriteFile(filepath.Join(envDir, ConfigFile), []byte(configContent), 0644); err != nil {
@@ -127,9 +157,79 @@ export default defineConfig({
 	}
 
 	return &EnvInfo{
-		EnvDir:  envDir,
-		EnvName: envName,
+		EnvDir:     envDir,
+		EnvName:    envName,
+		ConfigPath: filepath.Join(envDir, ConfigFile),
+		SourcePath: filepath.Join(envDir, SourceFile),
+		ToolsDir:   toolsDir,
 	}, nil
+}
+
+// GetEnvInfo retrieves detailed information about an existing environment.
+func (m *Manager) GetEnvInfo(envDir string) (*EnvInfo, error) {
+	if envDir == "" {
+		return nil, nil
+	}
+
+	valid, err := m.IsValidEnv(envDir)
+	if err != nil {
+		return nil, err
+	}
+	if !valid {
+		return nil, nil
+	}
+
+	cleanDir := filepath.Clean(envDir)
+	return &EnvInfo{
+		EnvDir:     cleanDir,
+		EnvName:    filepath.Base(cleanDir),
+		ConfigPath: filepath.Join(cleanDir, ConfigFile),
+		SourcePath: filepath.Join(cleanDir, SourceFile),
+		ToolsDir:   filepath.Join(cleanDir, ToolsDirName),
+	}, nil
+}
+
+// DetectEnv checks if a virtual environment exists at the specified search directory.
+func (m *Manager) DetectEnv(searchDir string, envName string) (*DetectEnvResult, error) {
+	targetName := envName
+	if targetName == "" {
+		targetName = DefaultEnvName
+	}
+	envDir := filepath.Join(searchDir, targetName)
+
+	valid, err := m.IsValidEnv(envDir)
+	if err != nil {
+		return nil, err
+	}
+	if valid {
+		return &DetectEnvResult{
+			Found:      true,
+			EnvDir:     envDir,
+			EnvName:    targetName,
+			ConfigPath: filepath.Join(envDir, ConfigFile),
+		}, nil
+	}
+
+	return &DetectEnvResult{Found: false}, nil
+}
+
+// GetActiveEnv inspects environment variables or an environment getter for an active virtual environment.
+func GetActiveEnv(envGetter func(string) string) *ActiveEnvResult {
+	if envGetter == nil {
+		envGetter = os.Getenv
+	}
+	envDir := envGetter(EnvDirVar)
+	envName := envGetter(EnvNameVar)
+
+	if envDir != "" && envName != "" {
+		return &ActiveEnvResult{
+			Active:  true,
+			EnvDir:  envDir,
+			EnvName: envName,
+		}
+	}
+
+	return &ActiveEnvResult{Active: false}
 }
 
 // IsValidEnv checks if the directory exists and contains our virtual environment files.

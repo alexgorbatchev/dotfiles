@@ -13,21 +13,21 @@
 # ==============================================================================
 
 dotfiles-deactivate() {
-  if [ -n "${_DOTFILES_ENV_DIR:-}" ]; then
+  if [ -n "${DOTFILES_ENV_DIR:-}" ]; then
     if [ -n "${_DOTFILES_OLD_XDG_CONFIG_HOME:-}" ]; then
       export XDG_CONFIG_HOME="${_DOTFILES_OLD_XDG_CONFIG_HOME}"
       unset _DOTFILES_OLD_XDG_CONFIG_HOME
     else
       unset XDG_CONFIG_HOME
     fi
-    unset _DOTFILES_ENV_DIR
-    unset _DOTFILES_ENV_NAME
+    unset DOTFILES_ENV_DIR
+    unset DOTFILES_ENV_NAME
     unset -f dotfiles-deactivate 2>/dev/null
     echo "Deactivated dotfiles environment"
   fi
 }
 
-if [ -n "${_DOTFILES_ENV_DIR:-}" ]; then
+if [ -n "${DOTFILES_ENV_DIR:-}" ]; then
   dotfiles-deactivate
 fi
 
@@ -43,12 +43,12 @@ if [ -n "${XDG_CONFIG_HOME:-}" ]; then
   export _DOTFILES_OLD_XDG_CONFIG_HOME="${XDG_CONFIG_HOME}"
 fi
 
-export _DOTFILES_ENV_DIR="${_dotfiles_script_dir}"
-export _DOTFILES_ENV_NAME="{{.EnvName}}"
+export DOTFILES_ENV_DIR="${_dotfiles_script_dir}"
+export DOTFILES_ENV_NAME="{{.EnvName}}"
 export XDG_CONFIG_HOME="${_dotfiles_script_dir}/.config"
 
 unset _dotfiles_script_dir
 
 echo "Activated dotfiles environment: {{.EnvName}}"
-echo "  Directory: ${_DOTFILES_ENV_DIR}"
-echo "  Config: ${_DOTFILES_ENV_DIR}/dotfiles.config.ts"
+echo "  Directory: ${DOTFILES_ENV_DIR}"
+echo "  Config: ${DOTFILES_ENV_DIR}/dotfiles.config.ts"

@@ -168,6 +168,34 @@ func TestGenerator_IsGeneratedShim(t *testing.T) {
 	if !isShim {
 		t.Errorf("expected generated shim to be classified as shim")
 	}
+
+	// Case 4: Symlink file without expected target
+	_ = mem.Symlink("/opt/mytool/bin/mytool", "/home/user/bin/symtool")
+	isShim, err = gen.IsGeneratedShim("/home/user/bin/symtool")
+	if err != nil {
+		t.Fatalf("IsGeneratedShim failed: %v", err)
+	}
+	if isShim {
+		t.Errorf("expected symlink without expected target to return false")
+	}
+
+	// Case 5: Symlink file with non-matching expected target
+	isShim, err = gen.IsGeneratedShim("/home/user/bin/symtool", "/other/path")
+	if err != nil {
+		t.Fatalf("IsGeneratedShim failed: %v", err)
+	}
+	if isShim {
+		t.Errorf("expected symlink with non-matching expected target to return false")
+	}
+
+	// Case 6: Symlink file with matching expected target
+	isShim, err = gen.IsGeneratedShim("/home/user/bin/symtool", "/opt/mytool/bin/mytool")
+	if err != nil {
+		t.Fatalf("IsGeneratedShim failed: %v", err)
+	}
+	if !isShim {
+		t.Errorf("expected symlink with matching expected target to return true")
+	}
 }
 
 type ErroringFS struct {
@@ -183,6 +211,13 @@ func (e *ErroringFS) Exists(path string) (bool, error) {
 		return false, fmt.Errorf("mock exists error")
 	}
 	return e.FS.Exists(path)
+}
+
+func (e *ErroringFS) Lstat(path string) (os.FileInfo, error) {
+	if e.errOnExists {
+		return nil, fmt.Errorf("mock lstat error")
+	}
+	return e.FS.Lstat(path)
 }
 
 func (e *ErroringFS) ReadFile(path string) ([]byte, error) {

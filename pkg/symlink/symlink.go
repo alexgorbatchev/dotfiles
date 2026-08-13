@@ -80,7 +80,9 @@ func (e *Evaluator) CreateSymlink(source, target string, opts Options) (bool, er
 				return false, nil
 			}
 
-			if opts.Overwrite {
+			// Check if target points to a non-existent file (broken symlink)
+			targetFileExists, _ := e.fs.Exists(absTarget)
+			if !targetFileExists || opts.Overwrite {
 				if err := e.fs.Remove(absTarget); err != nil {
 					return false, fmt.Errorf("removing old wrong symlink: %w", err)
 				}

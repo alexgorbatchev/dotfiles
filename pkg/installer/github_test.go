@@ -28,6 +28,10 @@ func TestGitHubInstaller(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if ua := r.Header.Get("User-Agent"); ua != "dotfiles-installer/1.0" {
+			t.Errorf("expected User-Agent header 'dotfiles-installer/1.0', got %q", ua)
+		}
+
 		if r.URL.Path == "/repos/myowner/mytool/releases/latest" {
 			mockRelease.Assets[0].BrowserDownloadURL = "http://" + r.Host + "/download/mytool"
 			w.Header().Set("Content-Type", "application/json")

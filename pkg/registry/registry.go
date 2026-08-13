@@ -317,29 +317,112 @@ func (r *Registry) GetFileState(ctx context.Context, filePath string) (*FileStat
 	}, nil
 }
 
-// GetRegisteredTools queries distinct tool names registered in the file operations.
+// GetRegisteredTools queries distinct tool names registered in active (non-deleted) file operations.
 func (r *Registry) GetRegisteredTools(ctx context.Context) ([]string, error) {
-	query := "SELECT DISTINCT tool_name FROM file_operations ORDER BY tool_name ASC"
-	rows, err := r.db.QueryContext(ctx, query)
+	ops, err := r.GetFileOperations(ctx, FileOperationFilter{})
 	if err != nil {
 		return nil, fmt.Errorf("getting registered tools: %w", err)
 	}
-	defer rows.Close()
+
+	latestOperationByFilePath := make(map[string]*FileOperationRecord)
+	for _, op := range ops {
+		if _, exists := latestOperationByFilePath[op.FilePath]; !exists {
+			latestOperationByFilePath[op.FilePath] = op
+		}
+	}
+
+	toolSet := make(map[string]bool)
+	for _, op := range latestOperationByFilePath {
+		if op.OperationType != "rm" {
+			toolSet[op.ToolName] = true
+		}
+	}
 
 	var tools []string
-	for rows.Next() {
-		var tool string
-		if err := rows.Scan(&tool); err != nil {
-			return nil, err
-		}
-		tools = append(tools, tool)
+	for t := range toolSet {
+		tools = append(tools, t)
 	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
+	sort.Strings(tools)
 	return tools, nil
+}
+
+type ValidationResult struct {
+	Valid    bool     `json:"valid"`
+	Issues   []string `json:"issues"`
+	Repaired []string `json:"repaired"`
+}
+
+// Compact removes redundant file operation records for files that were ultimately deleted.
+func (r *Registry) Compact(ctx context.Context, tx *sql.Tx) error {
+	if tx == nil {
+		return ErrTransactionRequired
+	}
+
+	deletedOps, err := r.GetFileOperations(ctx, FileOperationFilter{OperationType: "rm"})
+	if err != nil {
+		return fmt.Errorf("getting deleted operations for compact: %w", err)
+	}
+
+	for _, deleteOp := range deletedOps {
+		finalState, err := r.GetFileState(ctx, deleteOp.FilePath)
+		if err != nil {
+			return fmt.Errorf("checking file state for compact: %w", err)
+		}
+		if finalState == nil {
+			_, err := tx.ExecContext(ctx, "DELETE FROM file_operations WHERE file_path = ?", deleteOp.FilePath)
+			if err != nil {
+				return fmt.Errorf("deleting compacted file operations for path %s: %w", deleteOp.FilePath, err)
+			}
+		}
+	}
+	return nil
+}
+
+// Validate checks file operation registry integrity.
+func (r *Registry) Validate(ctx context.Context) (*ValidationResult, error) {
+	var issues []string
+	repaired := []string{}
+
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT operation_id, COUNT(*) as count 
+		FROM file_operations 
+		GROUP BY operation_id 
+		HAVING count > 1
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("querying duplicate operation IDs: %w", err)
+	}
+	defer rows.Close()
+
+	dupCount := 0
+	for rows.Next() {
+		dupCount++
+	}
+	if dupCount > 0 {
+		issues = append(issues, fmt.Sprintf("Found %d duplicate operation IDs", dupCount))
+	}
+
+	symlinks, err := r.GetFileOperations(ctx, FileOperationFilter{OperationType: "symlink"})
+	if err != nil {
+		return nil, fmt.Errorf("getting symlink operations: %w", err)
+	}
+	for _, symlink := range symlinks {
+		if symlink.TargetPath != nil && *symlink.TargetPath != "" {
+			targetState, err := r.GetFileState(ctx, *symlink.TargetPath)
+			if err != nil {
+				return nil, fmt.Errorf("getting target state for symlink %s: %w", symlink.FilePath, err)
+			}
+			if targetState == nil {
+				issues = append(issues, fmt.Sprintf("Symlink %s points to missing target %s", symlink.FilePath, *symlink.TargetPath))
+			}
+		}
+	}
+
+	return &ValidationResult{
+		Valid:    len(issues) == 0,
+		Issues:   issues,
+		Repaired: repaired,
+	}, nil
 }
 
 // GetStats returns summary database operation statistics.
@@ -458,6 +541,103 @@ func (r *Registry) RecordToolInstallation(ctx context.Context, tx *sql.Tx, recor
 	id, err := res.LastInsertId()
 	if err == nil {
 		record.ID = id
+	}
+
+	return nil
+}
+
+// IsToolInstalled checks if a tool (and optionally a specific version) is recorded as installed.
+func (r *Registry) IsToolInstalled(ctx context.Context, toolName string, version string) (bool, error) {
+	var query string
+	var args []interface{}
+	if version != "" {
+		query = "SELECT 1 FROM tool_installations WHERE tool_name = ? AND version = ?"
+		args = []interface{}{toolName, version}
+	} else {
+		query = "SELECT 1 FROM tool_installations WHERE tool_name = ?"
+		args = []interface{}{toolName}
+	}
+
+	var dummy int
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(&dummy)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("checking tool installation: %w", err)
+	}
+	return true, nil
+}
+
+// ToolInstallationUpdate specifies fields to update on an existing tool installation record.
+type ToolInstallationUpdate struct {
+	Version           *string
+	InstallPath       *string
+	Timestamp         *string
+	BinaryPaths       *string
+	DownloadURL       *string
+	AssetName         *string
+	ConfiguredVersion *string
+	OriginalTag       *string
+	InstallMethod     *string
+}
+
+// UpdateToolInstallation performs a partial update on a tool installation record.
+func (r *Registry) UpdateToolInstallation(ctx context.Context, tx *sql.Tx, toolName string, updates ToolInstallationUpdate) error {
+	if tx == nil {
+		return ErrTransactionRequired
+	}
+
+	var fields []string
+	var args []interface{}
+
+	if updates.Version != nil {
+		fields = append(fields, "version = ?")
+		args = append(args, *updates.Version)
+	}
+	if updates.InstallPath != nil {
+		fields = append(fields, "install_path = ?")
+		args = append(args, *updates.InstallPath)
+	}
+	if updates.Timestamp != nil {
+		fields = append(fields, "timestamp = ?")
+		args = append(args, *updates.Timestamp)
+	}
+	if updates.BinaryPaths != nil {
+		fields = append(fields, "binary_paths = ?")
+		args = append(args, *updates.BinaryPaths)
+	}
+	if updates.DownloadURL != nil {
+		fields = append(fields, "download_url = ?")
+		args = append(args, *updates.DownloadURL)
+	}
+	if updates.AssetName != nil {
+		fields = append(fields, "asset_name = ?")
+		args = append(args, *updates.AssetName)
+	}
+	if updates.ConfiguredVersion != nil {
+		fields = append(fields, "configured_version = ?")
+		args = append(args, *updates.ConfiguredVersion)
+	}
+	if updates.OriginalTag != nil {
+		fields = append(fields, "original_tag = ?")
+		args = append(args, *updates.OriginalTag)
+	}
+	if updates.InstallMethod != nil {
+		fields = append(fields, "install_method = ?")
+		args = append(args, *updates.InstallMethod)
+	}
+
+	if len(fields) == 0 {
+		return nil
+	}
+
+	args = append(args, toolName)
+	query := fmt.Sprintf("UPDATE tool_installations SET %s WHERE tool_name = ?", strings.Join(fields, ", "))
+
+	_, err := tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("updating tool installation for %s: %w", toolName, err)
 	}
 
 	return nil

@@ -129,6 +129,7 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		if err != nil {
 			return nil, fmt.Errorf("creating GitHub API request: %w", err)
 		}
+		req.Header.Set("User-Agent", "dotfiles-installer/1.0")
 
 		token := getStringParam(tool.InstallParams, "token", "")
 		if token == "" {
@@ -272,6 +273,7 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 		if err != nil {
 			return nil, err
 		}
+		req.Header.Set("User-Agent", "dotfiles-installer/1.0")
 		resp, err := g.httpClient.Do(req)
 		if err != nil {
 			return nil, err

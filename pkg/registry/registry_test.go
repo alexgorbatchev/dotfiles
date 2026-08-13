@@ -525,6 +525,116 @@ func TestToolUsageUpsert(t *testing.T) {
 	}
 }
 
+func TestCompactAndValidate(t *testing.T) {
+	_, reg := setupTestDB(t)
+	ctx := context.Background()
+
+	// 1. Record operations: write and then rm for a file
+	err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		if err := reg.RecordFileOperation(ctx, tx, &FileOperationRecord{
+			ToolName:      "tool-a",
+			OperationType: "write",
+			FilePath:      "/path/to/deleted.txt",
+			FileType:      "file",
+			CreatedAt:     100,
+			OperationID:   "op-del-1",
+		}); err != nil {
+			return err
+		}
+		return reg.RecordFileOperation(ctx, tx, &FileOperationRecord{
+			ToolName:      "tool-a",
+			OperationType: "rm",
+			FilePath:      "/path/to/deleted.txt",
+			FileType:      "file",
+			CreatedAt:     200,
+			OperationID:   "op-del-2",
+		})
+	})
+	if err != nil {
+		t.Fatalf("Setup operations failed: %v", err)
+	}
+
+	// Validate before compact
+	vRes, err := reg.Validate(ctx)
+	if err != nil {
+		t.Fatalf("Validate failed: %v", err)
+	}
+	if !vRes.Valid {
+		t.Errorf("Expected registry to be valid before compact, got issues: %v", vRes.Issues)
+	}
+
+	// Compact
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return reg.Compact(ctx, tx)
+	})
+	if err != nil {
+		t.Fatalf("Compact failed: %v", err)
+	}
+
+	ops, err := reg.GetFileOperations(ctx, FileOperationFilter{FilePath: "/path/to/deleted.txt"})
+	if err != nil {
+		t.Fatalf("GetFileOperations failed: %v", err)
+	}
+	if len(ops) != 0 {
+		t.Errorf("Expected 0 operations after compacting deleted file, got %d", len(ops))
+	}
+}
+
+func TestIsToolInstalledAndUpdate(t *testing.T) {
+	_, reg := setupTestDB(t)
+	ctx := context.Background()
+
+	// Record installation
+	err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return reg.RecordToolInstallation(ctx, tx, &ToolInstallationRecord{
+			ToolName:    "ripgrep",
+			Version:     "13.0.0",
+			InstallPath: "/usr/local/bin/rg",
+			Timestamp:   "2026-06-23",
+			InstalledAt: 1000,
+			BinaryPaths: `["/usr/local/bin/rg"]`,
+		})
+	})
+	if err != nil {
+		t.Fatalf("RecordToolInstallation failed: %v", err)
+	}
+
+	// Test IsToolInstalled
+	installed, err := reg.IsToolInstalled(ctx, "ripgrep", "")
+	if err != nil || !installed {
+		t.Errorf("Expected IsToolInstalled(ripgrep) to be true, got %v, err: %v", installed, err)
+	}
+
+	installedVersion, err := reg.IsToolInstalled(ctx, "ripgrep", "13.0.0")
+	if err != nil || !installedVersion {
+		t.Errorf("Expected IsToolInstalled(ripgrep, 13.0.0) to be true, got %v, err: %v", installedVersion, err)
+	}
+
+	installedWrongVersion, err := reg.IsToolInstalled(ctx, "ripgrep", "14.0.0")
+	if err != nil || installedWrongVersion {
+		t.Errorf("Expected IsToolInstalled(ripgrep, 14.0.0) to be false, got %v, err: %v", installedWrongVersion, err)
+	}
+
+	// Partial update
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		newVer := "14.0.0"
+		return reg.UpdateToolInstallation(ctx, tx, "ripgrep", ToolInstallationUpdate{
+			Version: &newVer,
+		})
+	})
+	if err != nil {
+		t.Fatalf("UpdateToolInstallation failed: %v", err)
+	}
+
+	inst, err := reg.GetToolInstallation(ctx, "ripgrep")
+	if err != nil || inst == nil {
+		t.Fatalf("GetToolInstallation failed: %v", err)
+	}
+	if inst.Version != "14.0.0" {
+		t.Errorf("Expected updated version 14.0.0, got %s", inst.Version)
+	}
+}
+
 func TestPermissionsSerializationDecimalMismatch(t *testing.T) {
 	database, reg := setupTestDB(t)
 	ctx := context.Background()

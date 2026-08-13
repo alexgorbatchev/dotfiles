@@ -316,3 +316,65 @@ func TestManager_Errors(t *testing.T) {
 		}
 	})
 }
+
+func TestManager_GetEnvInfo_DetectEnv_GetActiveEnv(t *testing.T) {
+	mem := fs.NewMemFS()
+	mgr := NewManager(mem)
+
+	// Case 1: GetEnvInfo on non-existent env
+	info, err := mgr.GetEnvInfo("/home/user/.dotfiles/nonexistent")
+	if err != nil {
+		t.Fatalf("GetEnvInfo failed: %v", err)
+	}
+	if info != nil {
+		t.Errorf("expected nil info for nonexistent env")
+	}
+
+	// Case 2: Create env and test GetEnvInfo and DetectEnv
+	created, err := mgr.Create("/home/user/.dotfiles", "myenv", false)
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	info, err = mgr.GetEnvInfo(created.EnvDir)
+	if err != nil {
+		t.Fatalf("GetEnvInfo failed: %v", err)
+	}
+	if info == nil || info.EnvName != "myenv" || info.ConfigPath == "" {
+		t.Errorf("GetEnvInfo returned unexpected info: %+v", info)
+	}
+
+	// DetectEnv with custom name
+	detect, err := mgr.DetectEnv("/home/user/.dotfiles", "myenv")
+	if err != nil {
+		t.Fatalf("DetectEnv failed: %v", err)
+	}
+	if !detect.Found || detect.EnvDir != created.EnvDir {
+		t.Errorf("DetectEnv failed: %+v", detect)
+	}
+
+	// DetectEnv with default name when env exists
+	_, _ = mgr.Create("/home/user/.dotfiles", DefaultEnvName, false)
+	detectDefault, err := mgr.DetectEnv("/home/user/.dotfiles", "")
+	if err != nil {
+		t.Fatalf("DetectEnv default failed: %v", err)
+	}
+	if !detectDefault.Found || detectDefault.EnvName != DefaultEnvName {
+		t.Errorf("DetectEnv default name failed: %+v", detectDefault)
+	}
+
+	// Case 3: GetActiveEnv
+	envMap := map[string]string{
+		EnvDirVar:  "/home/user/.dotfiles/myenv",
+		EnvNameVar: "myenv",
+	}
+	active := GetActiveEnv(func(k string) string { return envMap[k] })
+	if !active.Active || active.EnvDir != "/home/user/.dotfiles/myenv" || active.EnvName != "myenv" {
+		t.Errorf("GetActiveEnv failed: %+v", active)
+	}
+
+	inactive := GetActiveEnv(func(k string) string { return "" })
+	if inactive.Active {
+		t.Errorf("expected inactive environment when env vars are missing")
+	}
+}
