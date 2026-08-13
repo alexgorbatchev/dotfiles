@@ -294,7 +294,13 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/", s.handleProxy)
 
 	s.server = &http.Server{
-		Handler: mux,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodConnect {
+				s.handleProxy(w, r)
+				return
+			}
+			mux.ServeHTTP(w, r)
+		}),
 	}
 
 	// Synchronously bind the listener.
@@ -472,7 +478,52 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	targetURLStr := r.RequestURI
 
 	if r.Method == http.MethodConnect {
-		http.Error(w, "HTTPS tunneling not supported", http.StatusNotImplemented)
+		host := r.Host
+		if host == "" {
+			host = r.URL.Host
+		}
+		if host == "" {
+			host = r.RequestURI
+		}
+		if !strings.Contains(host, ":") {
+			host = net.JoinHostPort(host, "443")
+		}
+
+		destConn, err := net.DialTimeout("tcp", host, 10*time.Second)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to connect to %s: %v", host, err), http.StatusBadGateway)
+			return
+		}
+
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			_ = destConn.Close()
+			http.Error(w, "Hijacking not supported", http.StatusInternalServerError)
+			return
+		}
+
+		clientConn, _, err := hijacker.Hijack()
+		if err != nil {
+			_ = destConn.Close()
+			http.Error(w, fmt.Sprintf("Hijack failed: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		_, err = clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
+		if err != nil {
+			_ = clientConn.Close()
+			_ = destConn.Close()
+			return
+		}
+
+		go func() {
+			_, _ = io.Copy(destConn, clientConn)
+			_ = destConn.Close()
+		}()
+		go func() {
+			_, _ = io.Copy(clientConn, destConn)
+			_ = clientConn.Close()
+		}()
 		return
 	}
 

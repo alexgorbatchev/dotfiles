@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -329,5 +331,88 @@ func TestProxyServer_ClearGlob_WordBoundaries(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.Header.Get("X-Dotfiles-Cache") != "HIT" {
 		t.Errorf("expected notgithub.com to be a HIT, got %s", resp.Header.Get("X-Dotfiles-Cache"))
+	}
+}
+
+func TestProxyServer_ConnectTunneling(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "proxy-connect-test-")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	log := logger.New(logger.Config{
+		Name:   "test-proxy-connect",
+		Level:  logger.LogLevelQuiet,
+		Writer: io.Discard,
+	})
+
+	// Target TCP server that responds to raw messages
+	targetListener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start target listener: %v", err)
+	}
+	defer targetListener.Close()
+
+	go func() {
+		conn, err := targetListener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		buf := make([]byte, 1024)
+		n, err := conn.Read(buf)
+		if err != nil {
+			return
+		}
+		if string(buf[:n]) == "PING" {
+			_, _ = conn.Write([]byte("PONG"))
+		}
+	}()
+
+	proxy := NewServer(log, 0, tempDir, 5000)
+	if err := proxy.Start(); err != nil {
+		t.Fatalf("failed to start proxy: %v", err)
+	}
+	defer proxy.Stop()
+
+	// Dial proxy server
+	proxyConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", proxy.Port()))
+	if err != nil {
+		t.Fatalf("failed to dial proxy: %v", err)
+	}
+	defer proxyConn.Close()
+
+	// Send CONNECT request to proxy
+	targetAddr := targetListener.Addr().String()
+	reqStr := fmt.Sprintf("CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", targetAddr, targetAddr)
+	_, err = proxyConn.Write([]byte(reqStr))
+	if err != nil {
+		t.Fatalf("failed to write CONNECT request: %v", err)
+	}
+
+	// Read HTTP 200 response from proxy
+	respBuf := make([]byte, 1024)
+	n, err := proxyConn.Read(respBuf)
+	if err != nil {
+		t.Fatalf("failed to read CONNECT response: %v", err)
+	}
+	respStr := string(respBuf[:n])
+	if !strings.Contains(respStr, "200 Connection Established") {
+		t.Fatalf("expected 200 Connection Established, got %q", respStr)
+	}
+
+	// Send raw payload through tunnel
+	_, err = proxyConn.Write([]byte("PING"))
+	if err != nil {
+		t.Fatalf("failed to write PING: %v", err)
+	}
+
+	n, err = proxyConn.Read(respBuf)
+	if err != nil {
+		t.Fatalf("failed to read PONG: %v", err)
+	}
+	if string(respBuf[:n]) != "PONG" {
+		t.Fatalf("expected PONG, got %q", string(respBuf[:n]))
 	}
 }
