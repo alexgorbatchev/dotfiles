@@ -80,24 +80,25 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 			return nil, fmt.Errorf("creating directory %s: %w", destDir, err)
 		}
 
-		destPath := filepath.Join(destDir, tool.Name)
+		binNames := GetBinaryNames(tool.Name, tool.Binaries)
 
-		// Copy the binary file
+		// Copy the binary file for each expected binary name
 		data, err := m.fsys.ReadFile(binaryPath)
 		if err != nil {
 			return nil, fmt.Errorf("reading source binary: %w", err)
 		}
 
-		if err := m.fsys.WriteFile(destPath, data, 0755); err != nil {
-			return nil, fmt.Errorf("writing copied binary: %w", err)
+		for _, binName := range binNames {
+			destPath := filepath.Join(destDir, binName)
+			if err := m.fsys.WriteFile(destPath, data, 0755); err != nil {
+				return nil, fmt.Errorf("writing copied binary %s: %w", binName, err)
+			}
+			chmodCmd := m.runner.CommandContext(ctx, "chmod", "+x", destPath)
+			_ = chmodCmd.Run()
 		}
 
-		// Make executable
-		chmodCmd := m.runner.CommandContext(ctx, "chmod", "+x", destPath)
-		_ = chmodCmd.Run()
-
 		return &InstallResult{
-			Binaries: []string{tool.Name},
+			Binaries: binNames,
 		}, nil
 	}
 

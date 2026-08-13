@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -199,6 +200,14 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		if c.log != nil {
 			c.log.Warn("cargo-quickinstall failed, falling back to local compilation", "error", err)
 		}
+	} else if binarySource == "github-releases" && c.dl != nil && c.extractor != nil {
+		res, err := c.tryGithubReleases(ctx, tool, crateName, version)
+		if err == nil {
+			return res, nil
+		}
+		if c.log != nil {
+			c.log.Warn("github-releases download failed, falling back to local compilation", "error", err)
+		}
 	}
 
 	args := []string{"install"}
@@ -224,6 +233,93 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 
 	return &InstallResult{
 		Binaries: promotedBinaries,
+	}, nil
+}
+
+func (c *CargoInstaller) tryGithubReleases(ctx context.Context, tool *config.ToolConfig, crateName string, version string) (*InstallResult, error) {
+	githubRepo := getStringParam(tool.InstallParams, "githubRepo", "")
+	if githubRepo == "" {
+		return nil, fmt.Errorf("githubRepo is required for github-releases binarySource")
+	}
+
+	sysCtx := c.sysCtx
+	if sysCtx == nil {
+		sysCtx = NewDefaultSystemContext()
+	}
+
+	var platform string
+	switch sysCtx.OS {
+	case "darwin":
+		platform = "apple-darwin"
+	case "linux":
+		platform = "unknown-linux-gnu"
+	case "windows":
+		platform = "pc-windows-msvc"
+	default:
+		return nil, fmt.Errorf("unsupported OS for github-releases: %s", sysCtx.OS)
+	}
+
+	var arch string
+	switch sysCtx.Arch {
+	case "amd64":
+		arch = "x86_64"
+	case "arm64":
+		arch = "aarch64"
+	default:
+		return nil, fmt.Errorf("unsupported arch for github-releases: %s", sysCtx.Arch)
+	}
+
+	if version == "" {
+		version = "latest"
+	}
+
+	assetPattern := getStringParam(tool.InstallParams, "assetPattern", "{crateName}-{version}-{platform}-{arch}.tar.gz")
+	assetName := strings.ReplaceAll(assetPattern, "{crateName}", crateName)
+	assetName = strings.ReplaceAll(assetName, "{version}", version)
+	assetName = strings.ReplaceAll(assetName, "{platform}", platform)
+	assetName = strings.ReplaceAll(assetName, "{arch}", arch)
+
+	baseURL := "https://github.com"
+	if c.BaseURL != "" {
+		baseURL = c.BaseURL
+	}
+
+	tag := version
+	if version != "latest" && !strings.HasPrefix(version, "v") {
+		tag = "v" + version
+	}
+
+	url := fmt.Sprintf("%s/%s/releases/download/%s/%s", baseURL, githubRepo, tag, assetName)
+
+	destDir := c.BinDir
+	if destDir == "" {
+		destDir = os.TempDir()
+	}
+
+	if err := c.fsys.MkdirAll(destDir, 0755); err != nil {
+		return nil, fmt.Errorf("creating directory %s: %w", destDir, err)
+	}
+
+	archivePath := filepath.Join(destDir, tool.Name+"-gh-release.tar.gz")
+	if err := c.dl.Download(ctx, url, archivePath, ""); err != nil {
+		return nil, fmt.Errorf("downloading github release archive: %w", err)
+	}
+
+	if err := c.extractor.Extract(ctx, archivePath, destDir); err != nil {
+		_ = c.fsys.Remove(archivePath)
+		return nil, fmt.Errorf("extracting github release archive: %w", err)
+	}
+
+	_ = c.fsys.Remove(archivePath)
+
+	promotedBinaries, err := PromoteBinaries(c.fsys, destDir, tool.Name, tool.Binaries)
+	if err != nil {
+		return nil, fmt.Errorf("promoting binaries for github release: %w", err)
+	}
+
+	return &InstallResult{
+		Binaries: promotedBinaries,
+		Version:  version,
 	}, nil
 }
 

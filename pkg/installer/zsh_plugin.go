@@ -152,9 +152,15 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 		return nil, fmt.Errorf("Could not detect plugin source file in %s. Specify 'source' parameter explicitly.", pluginPath)
 	}
 
+	targetDir := destDir
+	if filepath.Base(destDir) != "current" && filepath.Base(filepath.Dir(destDir)) == tool.Name {
+		targetDir = filepath.Join(filepath.Dir(destDir), "current")
+	}
+	shellInitPath := filepath.Join(targetDir, pluginName, sourceFile)
+
 	return &InstallResult{
 		Binaries:  []string{}, // No shims generated
-		ShellInit: fmt.Sprintf("source %q", filepath.ToSlash(filepath.Join(pluginPath, sourceFile))),
+		ShellInit: fmt.Sprintf("source %q", filepath.ToSlash(shellInitPath)),
 	}, nil
 }
 

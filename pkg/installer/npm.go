@@ -59,8 +59,8 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	pkgName := getStringParam(tool.InstallParams, "package", tool.Name)
 	force := getBoolParam(tool.InstallParams, "force", false)
 
-	version := ""
-	if tool.Version != nil {
+	version := getStringParam(tool.InstallParams, "version", "")
+	if version == "" && tool.Version != nil {
 		version = *tool.Version
 	}
 

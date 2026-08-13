@@ -70,7 +70,7 @@ func TestE2EPacman(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to read exact pacman log: %v", err)
 		}
-		expectedLog := "pacman -Syu --needed --noconfirm ripgrep\npacman -Q ripgrep\n"
+		expectedLog := "pacman -Syu --needed --noconfirm ripgrep=13.0.0-1\npacman -Q ripgrep\n"
 		if string(logBytes) != expectedLog {
 			t.Errorf("expected log content %q, but got %q", expectedLog, string(logBytes))
 		}
@@ -99,7 +99,7 @@ func TestE2EPacman(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to read latest pacman log: %v", err)
 		}
-		expectedLog := "pacman -S --needed --noconfirm extra/ripgrep\npacman -Q extra/ripgrep\n"
+		expectedLog := "pacman -S --needed --noconfirm extra/ripgrep\npacman -Q ripgrep\n"
 		if string(logBytes) != expectedLog {
 			t.Errorf("expected log content %q, but got %q", expectedLog, string(logBytes))
 		}

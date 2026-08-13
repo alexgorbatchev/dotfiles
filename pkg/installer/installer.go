@@ -20,6 +20,7 @@ type InstallResult struct {
 	Binaries  []string
 	ShellEnv  map[string]string
 	ShellInit string
+	Version   string
 }
 
 type UpdateCheckResult struct {

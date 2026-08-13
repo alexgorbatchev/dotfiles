@@ -154,18 +154,11 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 				sysExists, sysErr := c.fsys.Exists(sysPath)
 				if sysErr == nil && sysExists {
 					_ = c.fsys.MkdirAll(filepath.Dir(targetPath), 0755)
-					_ = c.fsys.Remove(targetPath)
-					renameErr := c.fsys.Rename(sysPath, targetPath)
-					if renameErr != nil {
-						if copyErr := c.fsys.CopyFile(sysPath, targetPath); copyErr == nil {
-							_ = c.fsys.Remove(sysPath)
-						} else {
-							continue
-						}
+					if copyErr := c.fsys.CopyFile(sysPath, targetPath); copyErr == nil {
+						_ = c.fsys.Chmod(targetPath, 0755)
+						foundInSys = true
+						break
 					}
-					_ = c.fsys.Chmod(targetPath, 0755)
-					foundInSys = true
-					break
 				}
 			}
 			if !foundInSys {
@@ -181,8 +174,22 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 		}
 	}
 
+	var installedVersion string
+	versionArgs := getStringSliceParam(tool.InstallParams, "versionArgs")
+	versionRegex := getStringParam(tool.InstallParams, "versionRegex", "")
+	if len(versionArgs) > 0 && len(promotedBinaries) > 0 {
+		mainBinPath := filepath.Join(destDir, promotedBinaries[0])
+		if exists, err := c.fsys.Exists(mainBinPath); err == nil && exists {
+			v, err := detectVersionViaCli(ctx, c.runner, mainBinPath, versionArgs, versionRegex)
+			if err == nil && v != "" {
+				installedVersion = v
+			}
+		}
+	}
+
 	return &InstallResult{
 		Binaries: promotedBinaries,
+		Version:  installedVersion,
 	}, nil
 }
 

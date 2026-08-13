@@ -57,9 +57,14 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		}, nil
 	}
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
+	localPackageName := packageName
+	if idx := strings.LastIndex(packageName, "/"); idx >= 0 {
+		localPackageName = packageName[idx+1:]
+	}
+
 	sysupgrade := getBoolParam(tool.InstallParams, "sysupgrade", false)
-	version := ""
-	if tool.Version != nil {
+	version := getStringParam(tool.InstallParams, "version", "")
+	if version == "" && tool.Version != nil {
 		version = *tool.Version
 	}
 
@@ -88,11 +93,11 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 
 	// Fetch version via pacman -Q
 	var detectedVersion string
-	queryCmd := p.runner.CommandContext(ctx, "pacman", "-Q", packageName)
+	queryCmd := p.runner.CommandContext(ctx, "pacman", "-Q", localPackageName)
 	out, err := queryCmd.Output()
 	if err == nil {
 		output := strings.TrimSpace(string(out))
-		prefix := packageName + " "
+		prefix := localPackageName + " "
 		if strings.HasPrefix(output, prefix) {
 			detectedVersion = strings.TrimSpace(output[len(prefix):])
 		}
@@ -123,18 +128,26 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 
 func (p *PacmanInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
+	localPackageName := packageName
+	if idx := strings.LastIndex(packageName, "/"); idx >= 0 {
+		localPackageName = packageName[idx+1:]
+	}
 	var cmd exec.Cmd
 	if tool.Sudo {
-		cmd = p.runner.CommandContext(ctx, "sudo", "pacman", "-R", "--noconfirm", packageName)
+		cmd = p.runner.CommandContext(ctx, "sudo", "pacman", "-R", "--noconfirm", localPackageName)
 	} else {
-		cmd = p.runner.CommandContext(ctx, "pacman", "-R", "--noconfirm", packageName)
+		cmd = p.runner.CommandContext(ctx, "pacman", "-R", "--noconfirm", localPackageName)
 	}
 	return cmd.Run()
 }
 
 func (p *PacmanInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
-	cmd := p.runner.CommandContext(ctx, "pacman", "-Qu", packageName)
+	localPackageName := packageName
+	if idx := strings.LastIndex(packageName, "/"); idx >= 0 {
+		localPackageName = packageName[idx+1:]
+	}
+	cmd := p.runner.CommandContext(ctx, "pacman", "-Qu", localPackageName)
 	out, err := cmd.Output()
 	if err != nil {
 		return &UpdateCheckResult{
@@ -148,7 +161,7 @@ func (p *PacmanInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 		trimmed := strings.TrimSpace(line)
 		matches := re.FindStringSubmatch(trimmed)
 		if len(matches) >= 4 {
-			if strings.EqualFold(matches[1], packageName) {
+			if strings.EqualFold(matches[1], localPackageName) {
 				return &UpdateCheckResult{
 					HasUpdate:     true,
 					LocalVersion:  matches[2],

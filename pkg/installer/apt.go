@@ -57,8 +57,8 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
 	update := getBoolParam(tool.InstallParams, "update", false)
-	version := ""
-	if tool.Version != nil {
+	version := getStringParam(tool.InstallParams, "version", "")
+	if version == "" && tool.Version != nil {
 		version = *tool.Version
 	}
 

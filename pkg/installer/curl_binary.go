@@ -92,8 +92,19 @@ func (c *CurlBinaryInstaller) Install(ctx context.Context, tool *config.ToolConf
 	chmodCmd := c.runner.CommandContext(ctx, "chmod", "+x", destPath)
 	_ = chmodCmd.Run() // best effort
 
+	var detectedVersion string
+	versionArgs := getStringSliceParam(tool.InstallParams, "versionArgs")
+	versionRegex := getStringParam(tool.InstallParams, "versionRegex", "")
+	if len(versionArgs) > 0 {
+		v, err := detectVersionViaCli(ctx, c.runner, destPath, versionArgs, versionRegex)
+		if err == nil && v != "" {
+			detectedVersion = v
+		}
+	}
+
 	return &InstallResult{
 		Binaries: binNames,
+		Version:  detectedVersion,
 	}, nil
 }
 

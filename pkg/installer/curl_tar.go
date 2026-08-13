@@ -182,8 +182,22 @@ func (c *CurlTarInstaller) Install(ctx context.Context, tool *config.ToolConfig)
 		return nil, err
 	}
 
+	var detectedVersion string
+	versionArgs := getStringSliceParam(tool.InstallParams, "versionArgs")
+	versionRegex := getStringParam(tool.InstallParams, "versionRegex", "")
+	if len(versionArgs) > 0 && len(promotedBinaries) > 0 {
+		mainBinPath := filepath.Join(destDir, promotedBinaries[0])
+		if exists, err := c.fsys.Exists(mainBinPath); err == nil && exists {
+			v, err := detectVersionViaCli(ctx, c.runner, mainBinPath, versionArgs, versionRegex)
+			if err == nil && v != "" {
+				detectedVersion = v
+			}
+		}
+	}
+
 	return &InstallResult{
 		Binaries: promotedBinaries,
+		Version:  detectedVersion,
 	}, nil
 }
 

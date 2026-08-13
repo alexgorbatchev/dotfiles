@@ -155,4 +155,36 @@ func TestZshPluginInstaller(t *testing.T) {
 			t.Error("expected error for missing parameters, got nil")
 		}
 	})
+
+	t.Run("Install staging directory converted to current in ShellInit", func(t *testing.T) {
+		runner.Clear()
+		fsys = fs.NewMemFS()
+		inst = NewZshPluginInstaller(runner, fsys, nil)
+		inst.BinDir = "/home/user/.dotfiles/.generated/binaries/zsh-autosuggestions/uuid-1234"
+
+		runner.RegisterFunc("git", func(c *exec.MockCmd) error {
+			if len(c.Args) > 0 && c.Args[0] == "clone" {
+				dest := c.Args[len(c.Args)-1]
+				_ = fsys.MkdirAll(dest, 0755)
+				_ = fsys.WriteFile(filepath.Join(dest, "zsh-autosuggestions.plugin.zsh"), []byte("echo hello"), 0644)
+			}
+			return nil
+		})
+
+		tool := &config.ToolConfig{
+			Name: "zsh-autosuggestions",
+			InstallParams: map[string]interface{}{
+				"repo": "zsh-users/zsh-autosuggestions",
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expectedShellInit := `source "/home/user/.dotfiles/.generated/binaries/zsh-autosuggestions/current/zsh-autosuggestions/zsh-autosuggestions.plugin.zsh"`
+		if res.ShellInit != expectedShellInit {
+			t.Errorf("expected ShellInit %q, got %q", expectedShellInit, res.ShellInit)
+		}
+	})
 }

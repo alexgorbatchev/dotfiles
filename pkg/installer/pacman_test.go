@@ -128,4 +128,39 @@ func TestPacmanInstaller(t *testing.T) {
 			t.Error("expected HasUpdate to be false")
 		}
 	})
+
+	t.Run("Install success with repo prefix stripping and installParams version", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("pacman", []byte("ripgrep 14.1.0-1"), nil)
+
+		tool := &config.ToolConfig{
+			Name: "ripgrep",
+			InstallParams: map[string]interface{}{
+				"package": "extra/ripgrep",
+				"version": "14.1.0-1",
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		hasPacmanQ := false
+		for _, cmd := range runner.History {
+			if cmd.Name == "pacman" && len(cmd.Args) >= 2 && cmd.Args[0] == "-Q" {
+				if cmd.Args[1] == "ripgrep" {
+					hasPacmanQ = true
+				} else {
+					t.Errorf("expected pacman -Q ripgrep, got pacman -Q %s", cmd.Args[1])
+				}
+			}
+		}
+		if !hasPacmanQ {
+			t.Error("expected pacman -Q ripgrep to run")
+		}
+		if res.ShellEnv["PACMAN_INSTALLED_VERSION"] != "14.1.0-1" {
+			t.Errorf("unexpected version in env: %s", res.ShellEnv["PACMAN_INSTALLED_VERSION"])
+		}
+	})
 }
