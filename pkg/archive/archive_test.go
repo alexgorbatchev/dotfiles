@@ -33,6 +33,28 @@ func createZipBytes(files map[string]string) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
+func createTarBytes(files map[string]string) ([]byte, error) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+
+	for name, content := range files {
+		hdr := &tar.Header{
+			Name: name,
+			Mode: 0644,
+			Size: int64(len(content)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			return nil, err
+		}
+		if _, err := tw.Write([]byte(content)); err != nil {
+			return nil, err
+		}
+	}
+
+	_ = tw.Close()
+	return buf.Bytes(), nil
+}
+
 func createTarGzBytes(files map[string]string) ([]byte, error) {
 	var buf bytes.Buffer
 	gw := gzip.NewWriter(&buf)
@@ -131,6 +153,39 @@ func TestExtractorTarGz(t *testing.T) {
 	}
 	if string(data1) != "content1" {
 		t.Errorf("expected content1, got %q", string(data1))
+	}
+}
+
+func TestExtractorTar(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	ext := NewExtractor(memFS, runner)
+
+	files := map[string]string{
+		"uncompressed.txt": "plain tar content",
+	}
+
+	tarBytes, err := createTarBytes(files)
+	if err != nil {
+		t.Fatalf("failed to create tar bytes: %v", err)
+	}
+
+	err = memFS.WriteFile("/test.tar", tarBytes, 0644)
+	if err != nil {
+		t.Fatalf("failed to write tar file: %v", err)
+	}
+
+	err = ext.Extract(context.Background(), "/test.tar", "/dest")
+	if err != nil {
+		t.Fatalf("extract failed: %v", err)
+	}
+
+	data, err := memFS.ReadFile("/dest/uncompressed.txt")
+	if err != nil {
+		t.Fatalf("uncompressed.txt not found: %v", err)
+	}
+	if string(data) != "plain tar content" {
+		t.Errorf("expected plain tar content, got %q", string(data))
 	}
 }
 

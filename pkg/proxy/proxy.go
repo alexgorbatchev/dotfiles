@@ -501,21 +501,19 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 
 	method := r.Method
 
-	// Check Cache Store (only GET/HEAD are typically cacheable)
-	if method == http.MethodGet || method == http.MethodHead {
-		if entry, body, err := s.store.Get(method, targetURLStr); err == nil {
-			s.logger.Info(logger.Message(fmt.Sprintf("🟢 [HIT] [%s] %s", method, targetURLStr)))
-			for k, v := range entry.Headers {
-				if !isSkippedHeader(k) {
-					w.Header().Set(k, v)
-				}
+	// Check Cache Store
+	if entry, body, err := s.store.Get(method, targetURLStr); err == nil {
+		s.logger.Info(logger.Message(fmt.Sprintf("🟢 [HIT] [%s] %s", method, targetURLStr)))
+		for k, v := range entry.Headers {
+			if !isSkippedHeader(k) {
+				w.Header().Set(k, v)
 			}
-			w.Header().Set("X-Dotfiles-Cache", "HIT")
-			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(body)))
-			w.WriteHeader(entry.Status)
-			_, _ = w.Write(body)
-			return
 		}
+		w.Header().Set("X-Dotfiles-Cache", "HIT")
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(body)))
+		w.WriteHeader(entry.Status)
+		_, _ = w.Write(body)
+		return
 	}
 
 	s.logger.Info(logger.Message(fmt.Sprintf("🔴 [MISS] [%s] %s", method, targetURLStr)))

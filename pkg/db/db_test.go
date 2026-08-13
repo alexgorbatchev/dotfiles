@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -38,6 +40,23 @@ func TestNewConnectionInvalidDSN(t *testing.T) {
 	_, err := NewConnection(ctx, "/dev/null/db.sqlite")
 	if err == nil {
 		t.Error("Expected connection to fail on invalid file path, but it succeeded")
+	}
+}
+
+func TestNewConnectionFileDSNDirectoryCreation(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "subDir", "test.db")
+	dsn := "file:" + dbPath
+
+	db, err := NewConnection(ctx, dsn)
+	if err != nil {
+		t.Fatalf("Failed to open connection with file: prefix in non-existent directory: %v", err)
+	}
+	defer db.Close()
+
+	if _, err := os.Stat(filepath.Join(tmpDir, "subDir")); os.IsNotExist(err) {
+		t.Errorf("Expected subDir to be created, but it was not")
 	}
 }
 

@@ -420,15 +420,22 @@ func TestNewDownloader_DefaultTimeout(t *testing.T) {
 	if d.client == nil {
 		t.Fatal("expected non-nil HTTP client")
 	}
-	expectedTimeout := 30 * time.Second
-	if d.client.Timeout != expectedTimeout {
-		t.Errorf("expected default timeout %v, got %v", expectedTimeout, d.client.Timeout)
+	if d.client.Timeout != 0 {
+		t.Errorf("expected client.Timeout to be 0 (unbounded body streaming), got %v", d.client.Timeout)
+	}
+	tr, ok := d.client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("expected client.Transport to be *http.Transport")
+	}
+	expectedHeaderTimeout := 30 * time.Second
+	if tr.ResponseHeaderTimeout != expectedHeaderTimeout {
+		t.Errorf("expected ResponseHeaderTimeout %v, got %v", expectedHeaderTimeout, tr.ResponseHeaderTimeout)
 	}
 }
 
-func getCachePath(cacheDir string, url string) string {
-	hash := sha256.Sum256([]byte(url))
-	return filepath.Join(cacheDir, hex.EncodeToString(hash[:]))
+func getCachePath(cacheDir string, url string, headers map[string]string) string {
+	keyStr := getCacheKey(url, headers)
+	return filepath.Join(cacheDir, keyStr)
 }
 
 func TestDownloaderCaching(t *testing.T) {
@@ -440,7 +447,12 @@ func TestDownloaderCaching(t *testing.T) {
 
 	// Mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("my-cached-data"))
+		auth := r.Header.Get("Authorization")
+		if auth != "" {
+			_, _ = w.Write([]byte("my-cached-data-" + auth))
+		} else {
+			_, _ = w.Write([]byte("my-cached-data"))
+		}
 	}))
 	defer server.Close()
 
@@ -454,7 +466,7 @@ func TestDownloaderCaching(t *testing.T) {
 	}
 
 	// Check if cached file exists
-	cachePath := getCachePath(dl.CacheDir, server.URL)
+	cachePath := getCachePath(dl.CacheDir, server.URL, nil)
 	exists, err := mem.Exists(cachePath)
 	if err != nil || !exists {
 		t.Fatalf("expected cache file to be created, exists=%v, err=%v", exists, err)
@@ -477,6 +489,35 @@ func TestDownloaderCaching(t *testing.T) {
 	if string(destBytes) != "my-cached-data" {
 		t.Errorf("expected my-cached-data, got %q", string(destBytes))
 	}
+
+	// Third download with custom headers - should create a distinct cache entry
+	headersA := map[string]string{"Authorization": "TokenA"}
+	headersB := map[string]string{"Authorization": "TokenB"}
+
+	destA := "/test-file-a"
+	err = dl.Download(ctx, server.URL, destA, "", DownloadOptions{Headers: headersA})
+	if err != nil {
+		t.Fatalf("download with headersA failed: %v", err)
+	}
+
+	destB := "/test-file-b"
+	err = dl.Download(ctx, server.URL, destB, "", DownloadOptions{Headers: headersB})
+	if err != nil {
+		t.Fatalf("download with headersB failed: %v", err)
+	}
+
+	cachePathA := getCachePath(dl.CacheDir, server.URL, headersA)
+	cachePathB := getCachePath(dl.CacheDir, server.URL, headersB)
+
+	if cachePathA == cachePathB {
+		t.Errorf("expected distinct cache paths for headersA and headersB, got identical path %q", cachePathA)
+	}
+
+	existsA, errA := mem.Exists(cachePathA)
+	existsB, errB := mem.Exists(cachePathB)
+	if !existsA || errA != nil || !existsB || errB != nil {
+		t.Errorf("expected both distinct cache files to exist: existsA=%v, existsB=%v", existsA, existsB)
+	}
 }
 
 func TestProgressBar_RenderProgressFrame(t *testing.T) {
@@ -492,4 +533,47 @@ func TestProgressBar_RenderProgressFrame(t *testing.T) {
 	if !strings.Contains(frame, "50.00%") {
 		t.Errorf("expected 50%% in progress frame, got %q", frame)
 	}
+}
+
+func TestUserAgentHeader(t *testing.T) {
+	var capturedUserAgent string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedUserAgent = r.Header.Get("User-Agent")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	t.Run("Default User-Agent Header", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		d := NewDownloader(memFS, nil)
+		capturedUserAgent = ""
+
+		err := d.Download(context.Background(), server.URL, "/dest", "")
+		if err != nil {
+			t.Fatalf("unexpected download error: %v", err)
+		}
+
+		if capturedUserAgent != "dotfiles-installer/1.0" {
+			t.Errorf("expected default User-Agent %q, got %q", "dotfiles-installer/1.0", capturedUserAgent)
+		}
+	})
+
+	t.Run("Custom User-Agent Header Override", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		d := NewDownloader(memFS, nil)
+		capturedUserAgent = ""
+
+		customUA := "custom-agent/2.0"
+		err := d.Download(context.Background(), server.URL, "/dest", "", DownloadOptions{
+			Headers: map[string]string{"User-Agent": customUA},
+		})
+		if err != nil {
+			t.Fatalf("unexpected download error: %v", err)
+		}
+
+		if capturedUserAgent != customUA {
+			t.Errorf("expected custom User-Agent %q, got %q", customUA, capturedUserAgent)
+		}
+	})
 }

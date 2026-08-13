@@ -3,6 +3,7 @@ package downloader
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,6 +27,21 @@ type DownloadOptions struct {
 	SkipCache  bool
 }
 
+type cacheKeyPayload struct {
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
+func getCacheKey(url string, headers map[string]string) string {
+	payload := cacheKeyPayload{
+		URL:     url,
+		Headers: headers,
+	}
+	data, _ := json.Marshal(payload)
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
 // Downloader manages file downloads with optional resumption support and SHA256 integrity checks.
 type Downloader struct {
 	fsys         fs.FS
@@ -39,7 +55,19 @@ type Downloader struct {
 func NewDownloader(fsys fs.FS, client *http.Client) *Downloader {
 	if client == nil {
 		client = &http.Client{
-			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				ResponseHeaderTimeout: 30 * time.Second,
+			},
+			Timeout: 0,
+		}
+	} else {
+		client.Timeout = 0
+		if client.Transport == nil {
+			client.Transport = &http.Transport{
+				ResponseHeaderTimeout: 30 * time.Second,
+			}
+		} else if tr, ok := client.Transport.(*http.Transport); ok && tr.ResponseHeaderTimeout == 0 {
+			tr.ResponseHeaderTimeout = 30 * time.Second
 		}
 	}
 	return &Downloader{
@@ -68,8 +96,7 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 		if d.CacheDir == "" {
 			d.CacheDir = filepath.Join(".generated", "cache")
 		}
-		cacheKey := sha256.Sum256([]byte(url))
-		keyStr := hex.EncodeToString(cacheKey[:])
+		keyStr := getCacheKey(url, activeOpts[0].Headers)
 		cachePath := filepath.Join(d.CacheDir, keyStr)
 
 		exists, err := d.fsys.Exists(cachePath)
@@ -144,8 +171,7 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 			// Save successful download to cache
 			if d.CacheEnabled && !activeOpts[0].SkipCache {
 				_ = d.fsys.MkdirAll(d.CacheDir, 0755)
-				cacheKey := sha256.Sum256([]byte(url))
-				keyStr := hex.EncodeToString(cacheKey[:])
+				keyStr := getCacheKey(url, activeOpts[0].Headers)
 				cachePath := filepath.Join(d.CacheDir, keyStr)
 				_ = d.fsys.CopyFile(destPath, cachePath)
 			}
@@ -218,6 +244,9 @@ func (d *Downloader) doDownload(ctx context.Context, url string, destPath string
 		for k, v := range opts[0].Headers {
 			req.Header.Set(k, v)
 		}
+	}
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", "dotfiles-installer/1.0")
 	}
 
 	if localSize > 0 {
@@ -316,6 +345,9 @@ func (d *Downloader) doDownload(ctx context.Context, url string, destPath string
 			for k, v := range opts[0].Headers {
 				cleanReq.Header.Set(k, v)
 			}
+		}
+		if cleanReq.Header.Get("User-Agent") == "" {
+			cleanReq.Header.Set("User-Agent", "dotfiles-installer/1.0")
 		}
 
 		cleanResp, err := d.client.Do(cleanReq)

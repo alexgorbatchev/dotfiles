@@ -83,6 +83,8 @@ func (e *Extractor) Extract(ctx context.Context, src string, dest string) error 
 		err = e.extractTar(ctx, src, dest, "tar.bz2")
 	} else if strings.HasSuffix(lower, ".tar.xz") || strings.HasSuffix(lower, ".txz") {
 		err = e.extractTarXz(ctx, src, dest)
+	} else if strings.HasSuffix(lower, ".tar") {
+		err = e.extractTar(ctx, src, dest, "tar")
 	} else if strings.HasSuffix(lower, ".zip") {
 		err = e.extractZip(ctx, src, dest)
 	} else if strings.HasSuffix(lower, ".dmg") {

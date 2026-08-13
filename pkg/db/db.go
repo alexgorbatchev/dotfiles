@@ -18,10 +18,17 @@ import (
 // For dry-runs, swap the dsn to ":memory:" (Option A) to execute queries
 // natively in memory without mutating physical disk state.
 func NewConnection(ctx context.Context, dsn string) (*sql.DB, error) {
-	// If it's not an in-memory database, ensure the parent directory exists
-	if !strings.HasPrefix(dsn, "file:") && dsn != ":memory:" && dsn != "" {
-		dir := filepath.Dir(dsn)
-		if dir != "." && dir != "/" {
+	// Ensure the parent directory exists for file-backed databases
+	cleanPath := dsn
+	if strings.HasPrefix(cleanPath, "file:") {
+		cleanPath = strings.TrimPrefix(cleanPath, "file:")
+		if idx := strings.IndexByte(cleanPath, '?'); idx != -1 {
+			cleanPath = cleanPath[:idx]
+		}
+	}
+	if cleanPath != ":memory:" && cleanPath != "" && !strings.Contains(dsn, "mode=memory") {
+		dir := filepath.Dir(cleanPath)
+		if dir != "." && dir != "/" && dir != "" {
 			if err := os.MkdirAll(dir, 0755); err != nil {
 				return nil, fmt.Errorf("failed to create database directory: %w", err)
 			}
