@@ -178,3 +178,30 @@ func TestResolveToolRelativePath(t *testing.T) {
 		})
 	}
 }
+
+func TestDedentString(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"empty string", "", ""},
+		{
+			"indented template",
+			"\n  function hello() {\n    echo \"Hello World\"\n  }\n",
+			"function hello() {\n  echo \"Hello World\"\n}",
+		},
+		{
+			"no indentation",
+			"line1\nline2",
+			"line1\nline2",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := DedentString(tt.input); got != tt.want {
+				t.Errorf("DedentString() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

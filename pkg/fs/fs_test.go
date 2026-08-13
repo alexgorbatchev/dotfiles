@@ -235,6 +235,51 @@ func TestMemFS_ErrorsAndIsolation(t *testing.T) {
 	}
 }
 
+func TestMemFS_SymlinkResolutionAndBrokenLinks(t *testing.T) {
+	fs := NewMemFS()
+	_ = fs.MkdirAll("/workspace", 0755)
+	_ = fs.WriteFile("/workspace/target.txt", []byte("target data"), 0644)
+
+	// Valid symlink
+	err := fs.Symlink("/workspace/target.txt", "/workspace/link.txt")
+	if err != nil {
+		t.Fatalf("Symlink failed: %v", err)
+	}
+
+	// Exists via symlink
+	exists, err := fs.Exists("/workspace/link.txt")
+	if err != nil || !exists {
+		t.Errorf("Expected Exists on valid symlink to return true")
+	}
+
+	// ReadFile via symlink
+	data, err := fs.ReadFile("/workspace/link.txt")
+	if err != nil || string(data) != "target data" {
+		t.Errorf("Expected ReadFile via symlink to return 'target data', got %q, err: %v", string(data), err)
+	}
+
+	// Broken symlink
+	err = fs.Symlink("/workspace/missing.txt", "/workspace/broken.txt")
+	if err != nil {
+		t.Fatalf("Symlink failed: %v", err)
+	}
+
+	// Exists via broken symlink MUST return false
+	exists, err = fs.Exists("/workspace/broken.txt")
+	if err != nil {
+		t.Fatalf("Exists on broken symlink returned error: %v", err)
+	}
+	if exists {
+		t.Errorf("Expected Exists on broken symlink to return false")
+	}
+
+	// ReadFile via broken symlink MUST fail
+	_, err = fs.ReadFile("/workspace/broken.txt")
+	if err == nil {
+		t.Errorf("Expected ReadFile on broken symlink to return error")
+	}
+}
+
 func TestMemFS_Concurrency(t *testing.T) {
 	fs := NewMemFS()
 	err := fs.MkdirAll("/concurrency", 0755)

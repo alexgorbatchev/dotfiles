@@ -32,6 +32,35 @@ func TestParseLogLevel(t *testing.T) {
 	}
 }
 
+func TestGetLogLevelFromFlags(t *testing.T) {
+	tests := []struct {
+		name    string
+		log     string
+		quiet   bool
+		verbose bool
+		want    LogLevel
+		wantErr bool
+	}{
+		{"quiet flag wins", "verbose", true, false, LogLevelQuiet, false},
+		{"verbose flag wins", "quiet", false, true, LogLevelVerbose, false},
+		{"quiet over verbose", "default", true, true, LogLevelQuiet, false},
+		{"parse log flag", "verbose", false, false, LogLevelVerbose, false},
+		{"default log flag", "default", false, false, LogLevelDefault, false},
+		{"invalid log flag", "invalid", false, false, LogLevelDefault, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetLogLevelFromFlags(tt.log, tt.quiet, tt.verbose)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("GetLogLevelFromFlags() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Fatalf("GetLogLevelFromFlags() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestLoggerOutputAndLevels(t *testing.T) {
 	var buf bytes.Buffer
 	l := New(Config{
@@ -290,5 +319,39 @@ func TestCoverageFillers(t *testing.T) {
 	// 4. Test FormatErrorForUser with nil error
 	if got := FormatErrorForUser(nil); got != "" {
 		t.Errorf("FormatErrorForUser(nil) = %q, want empty string", got)
+	}
+}
+
+func TestLoggerGettersAndWithName(t *testing.T) {
+	var buf bytes.Buffer
+	l := New(Config{
+		Name:   "my-logger",
+		Level:  LogLevelVerbose,
+		Trace:  true,
+		Writer: &buf,
+	})
+
+	if l.Name() != "my-logger" {
+		t.Errorf("Name() = %q, want %q", l.Name(), "my-logger")
+	}
+	if l.Level() != LogLevelVerbose {
+		t.Errorf("Level() = %v, want %v", l.Level(), LogLevelVerbose)
+	}
+	if l.TraceMode() != true {
+		t.Errorf("TraceMode() = false, want true")
+	}
+	if l.Writer() != &buf {
+		t.Errorf("Writer() mismatch")
+	}
+
+	named := l.WithName("child")
+	if named.Name() != "child" {
+		t.Errorf("WithName().Name() = %q, want %q", named.Name(), "child")
+	}
+
+	// Nil writer check on Writer()
+	lNil := &Logger{}
+	if lNil.Writer() == nil {
+		t.Errorf("lNil.Writer() should default to os.Stderr, got nil")
 	}
 }

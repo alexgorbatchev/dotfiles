@@ -16,6 +16,7 @@ type osCmd struct {
 	cmd          *exec.Cmd
 	ctx          context.Context
 	processGroup bool
+	origCancel   func() error
 }
 
 // SudoPreflightCommand defines the command used for non-blocking sudo verification.
@@ -161,6 +162,11 @@ func (c *osCmd) SetProcessGroup(pgid bool) {
 	c.processGroup = pgid
 	if pgid {
 		setProcessGroup(c.cmd)
+		c.cmd.Cancel = func() error {
+			return c.Kill()
+		}
+	} else {
+		c.cmd.Cancel = c.origCancel
 	}
 }
 
@@ -191,6 +197,14 @@ func (c *osCmd) ProcessPid() int {
 // osRunner implements CommandRunner using the system's native subprocess driver.
 type osRunner struct{}
 
+func newOSCmd(cmd *exec.Cmd, ctx context.Context) *osCmd {
+	return &osCmd{
+		cmd:        cmd,
+		ctx:        ctx,
+		origCancel: cmd.Cancel,
+	}
+}
+
 // NewOSRunner returns a CommandRunner executing real subprocesses via os/exec.
 func NewOSRunner() CommandRunner {
 	return &osRunner{}
@@ -198,10 +212,10 @@ func NewOSRunner() CommandRunner {
 
 // Command returns a Cmd to execute the named program with the given arguments.
 func (r *osRunner) Command(name string, arg ...string) Cmd {
-	return &osCmd{cmd: exec.Command(name, arg...), ctx: context.Background()}
+	return newOSCmd(exec.Command(name, arg...), context.Background())
 }
 
 // CommandContext returns a Cmd to execute the named program with a context.
 func (r *osRunner) CommandContext(ctx context.Context, name string, arg ...string) Cmd {
-	return &osCmd{cmd: exec.CommandContext(ctx, name, arg...), ctx: ctx}
+	return newOSCmd(exec.CommandContext(ctx, name, arg...), ctx)
 }

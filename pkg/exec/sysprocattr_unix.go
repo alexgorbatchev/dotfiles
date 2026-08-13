@@ -14,7 +14,6 @@ func setProcessGroup(cmd *exec.Cmd) {
 	if cmd.SysProcAttr == nil {
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 	}
-	cmd.SysProcAttr.Setsid = true
 	cmd.SysProcAttr.Setpgid = true
 }
 

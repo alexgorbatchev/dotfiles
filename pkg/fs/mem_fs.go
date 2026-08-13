@@ -34,14 +34,45 @@ func NewMemFS() *MemFS {
 	}
 }
 
+func (m *MemFS) resolveNodeLocked(path string) (string, *fileNode, error) {
+	cleanPath := filepath.Clean(path)
+	node, ok := m.files[cleanPath]
+	if !ok {
+		return cleanPath, nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+	}
+
+	visited := make(map[string]bool)
+	currPath := cleanPath
+	currNode := node
+	for currNode.isSymlink {
+		if visited[currPath] {
+			return currPath, nil, &os.PathError{Op: "open", Path: path, Err: fmt.Errorf("symlink loop detected")}
+		}
+		visited[currPath] = true
+
+		target := currNode.linkTarget
+		if !filepath.IsAbs(target) {
+			target = filepath.Join(filepath.Dir(currPath), target)
+		}
+		currPath = filepath.Clean(target)
+
+		nextNode, ok := m.files[currPath]
+		if !ok {
+			return currPath, nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+		}
+		currNode = nextNode
+	}
+
+	return currPath, currNode, nil
+}
+
 func (m *MemFS) ReadFile(path string) ([]byte, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	cleanPath := filepath.Clean(path)
-	node, ok := m.files[cleanPath]
-	if !ok {
-		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+	_, node, err := m.resolveNodeLocked(path)
+	if err != nil {
+		return nil, err
 	}
 	if node.isDir {
 		return nil, &os.PathError{Op: "read", Path: path, Err: os.ErrInvalid}
@@ -116,9 +147,14 @@ func (m *MemFS) Exists(path string) (bool, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	cleanPath := filepath.Clean(path)
-	_, ok := m.files[cleanPath]
-	return ok, nil
+	_, _, err := m.resolveNodeLocked(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
 
 func (m *MemFS) MkdirAll(path string, perm os.FileMode) error {
@@ -258,10 +294,9 @@ func (m *MemFS) Open(path string) (io.ReadCloser, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	cleanPath := filepath.Clean(path)
-	node, ok := m.files[cleanPath]
-	if !ok {
-		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+	_, node, err := m.resolveNodeLocked(path)
+	if err != nil {
+		return nil, err
 	}
 	if node.isDir {
 		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrInvalid}
@@ -453,32 +488,9 @@ func (m *MemFS) Stat(path string) (os.FileInfo, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	cleanPath := filepath.Clean(path)
-	node, ok := m.files[cleanPath]
-	if !ok {
-		return nil, &os.PathError{Op: "stat", Path: path, Err: os.ErrNotExist}
-	}
-
-	visited := make(map[string]bool)
-	currPath := cleanPath
-	currNode := node
-	for currNode.isSymlink {
-		if visited[currPath] {
-			return nil, &os.PathError{Op: "stat", Path: path, Err: fmt.Errorf("symlink loop detected")}
-		}
-		visited[currPath] = true
-
-		target := currNode.linkTarget
-		if !filepath.IsAbs(target) {
-			target = filepath.Join(filepath.Dir(currPath), target)
-		}
-		currPath = filepath.Clean(target)
-
-		nextNode, ok := m.files[currPath]
-		if !ok {
-			return nil, &os.PathError{Op: "stat", Path: path, Err: os.ErrNotExist}
-		}
-		currNode = nextNode
+	currPath, currNode, err := m.resolveNodeLocked(path)
+	if err != nil {
+		return nil, err
 	}
 
 	mode := currNode.perm

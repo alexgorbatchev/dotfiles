@@ -128,3 +128,48 @@ func ResolveToolRelativePath(toolDir string, inputPath string) string {
 	}
 	return filepath.Clean(filepath.Join(toolDir, trimmed))
 }
+
+// DedentString strips common leading whitespace from all lines in a string.
+func DedentString(s string) string {
+	lines := strings.Split(s, "\n")
+	var nonEmptyLines []string
+	for _, line := range lines {
+		if strings.TrimSpace(line) != "" {
+			nonEmptyLines = append(nonEmptyLines, line)
+		}
+	}
+
+	if len(nonEmptyLines) == 0 {
+		return s
+	}
+
+	minIndent := -1
+	for _, line := range nonEmptyLines {
+		indent := 0
+		for _, ch := range line {
+			if ch == ' ' || ch == '\t' {
+				indent++
+			} else {
+				break
+			}
+		}
+		if minIndent == -1 || indent < minIndent {
+			minIndent = indent
+		}
+	}
+
+	if minIndent <= 0 {
+		return strings.TrimSpace(s)
+	}
+
+	resultLines := make([]string, len(lines))
+	for i, line := range lines {
+		if len(line) >= minIndent {
+			resultLines[i] = line[minIndent:]
+		} else {
+			resultLines[i] = ""
+		}
+	}
+
+	return strings.TrimSpace(strings.Join(resultLines, "\n"))
+}

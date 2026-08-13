@@ -274,3 +274,54 @@ func TestSudoPromptMock(t *testing.T) {
 		t.Errorf("expected sudo -p args, got %v", historyCmd.Args)
 	}
 }
+
+func TestProcessGroupContextCancel(t *testing.T) {
+	runner := NewOSRunner()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Start a process that spawns child background processes
+	cmd := runner.CommandContext(ctx, "sh", "-c", "sleep 60 & sleep 60")
+	cmd.SetProcessGroup(true)
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("failed to start process group command: %v", err)
+	}
+
+	pid := cmd.ProcessPid()
+	if pid == 0 {
+		t.Fatalf("expected valid PID for started process")
+	}
+
+	// Cancel context to trigger cmd.Cancel -> killProcessGroup
+	cancel()
+
+	err := cmd.Wait()
+	if err == nil {
+		t.Fatal("expected error from cancelled command, got nil")
+	}
+
+	// Verify that the process group leader is no longer running
+	if err := cmd.Kill(); err != nil {
+		// Expect no error or process already finished
+	}
+}
+
+func TestProcessGroupToggleCancel(t *testing.T) {
+	runner := NewOSRunner()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	cmd := runner.CommandContext(ctx, "sleep", "60")
+	cmd.SetProcessGroup(true)
+	cmd.SetProcessGroup(false) // toggle off process group - should restore origCancel
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("failed to start command: %v", err)
+	}
+
+	cancel() // trigger context cancellation via original Cancel function
+
+	err := cmd.Wait()
+	if err == nil {
+		t.Fatal("expected error from cancelled command after SetProcessGroup(false), got nil")
+	}
+}

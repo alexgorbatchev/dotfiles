@@ -175,13 +175,18 @@ func getLinuxVariants(libc string) []string {
 	}
 }
 
-func GetArchitectureRegex(sys SystemInfo) ArchitectureRegex {
-	patterns := GetArchitecturePatterns(sys)
+// CreateArchitectureRegex creates a set of combined regular expression patterns from architecture patterns.
+func CreateArchitectureRegex(patterns ArchitecturePatterns) ArchitectureRegex {
 	return ArchitectureRegex{
 		SystemPattern:  makePatternGroup(patterns.System),
 		CPUPattern:     makePatternGroup(patterns.CPU),
 		VariantPattern: makePatternGroup(patterns.Variants),
 	}
+}
+
+func GetArchitectureRegex(sys SystemInfo) ArchitectureRegex {
+	patterns := GetArchitecturePatterns(sys)
+	return CreateArchitectureRegex(patterns)
 }
 
 func makePatternGroup(patterns []string) string {
@@ -227,8 +232,43 @@ func IsNonBinaryAsset(assetName string) bool {
 	return false
 }
 
+var androidVariantPattern = regexp.MustCompile(`(?i)(^|[^a-z0-9])android([^a-z0-9]|$)`)
+
 func IsAndroidTargetedLinuxAsset(assetName string) bool {
-	return strings.Contains(strings.ToLower(assetName), "android")
+	return androidVariantPattern.MatchString(assetName)
+}
+
+var linuxPattern = regexp.MustCompile(`(?i)linux`)
+
+// MatchesArchitecture checks if a given asset name matches the specified architecture patterns.
+func MatchesArchitecture(assetName string, architectureRegex ArchitectureRegex) bool {
+	lowerAssetName := strings.ToLower(assetName)
+
+	if IsNonBinaryAsset(lowerAssetName) {
+		return false
+	}
+
+	if architectureRegex.SystemPattern != "" && linuxPattern.MatchString(architectureRegex.SystemPattern) && IsAndroidTargetedLinuxAsset(lowerAssetName) {
+		return false
+	}
+
+	systemMatch := true
+	if architectureRegex.SystemPattern != "" {
+		re, err := regexp.Compile("(?i)" + architectureRegex.SystemPattern)
+		if err == nil {
+			systemMatch = re.MatchString(lowerAssetName)
+		}
+	}
+
+	cpuMatch := true
+	if architectureRegex.CPUPattern != "" {
+		re, err := regexp.Compile("(?i)" + architectureRegex.CPUPattern)
+		if err == nil {
+			cpuMatch = re.MatchString(lowerAssetName)
+		}
+	}
+
+	return systemMatch && cpuMatch
 }
 
 func filterNonBinaryAssets(assetNames []string) []string {

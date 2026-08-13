@@ -30,6 +30,24 @@ func TestEvaluate(t *testing.T) {
 		}
 	})
 
+	t.Run("Valid Map Evaluation", func(t *testing.T) {
+		mapCtx := map[string]interface{}{
+			"Version": "2.0.0",
+			"Arch":    "arm64",
+			"OS":      "darwin",
+		}
+		pattern := "tool-{{.Version}}-{{.OS}}-{{.Arch}}"
+		expected := "tool-2.0.0-darwin-arm64"
+
+		res, err := Evaluate(pattern, mapCtx)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res != expected {
+			t.Errorf("expected %q, got %q", expected, res)
+		}
+	})
+
 	t.Run("Invalid Template Pattern Syntax", func(t *testing.T) {
 		pattern := "https://github.com/org/repo/releases/download/v{{.Version" // Missing closing braces
 

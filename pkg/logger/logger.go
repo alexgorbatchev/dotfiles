@@ -177,6 +177,17 @@ func ParseLogLevel(levelName string) (LogLevel, error) {
 	}
 }
 
+// GetLogLevelFromFlags determines the appropriate log level based on command-line flags.
+func GetLogLevelFromFlags(log string, quiet bool, verbose bool) (LogLevel, error) {
+	if quiet {
+		return LogLevelQuiet, nil
+	}
+	if verbose {
+		return LogLevelVerbose, nil
+	}
+	return ParseLogLevel(log)
+}
+
 // GetSubLogger creates a sublogger.
 // Only named subloggers create a new level in the logger hierarchy path.
 func (l *Logger) GetSubLogger(name string, context ...string) *Logger {
