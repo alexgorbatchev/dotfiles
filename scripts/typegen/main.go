@@ -13,6 +13,7 @@ import (
 func generateTypes(outputPath string) error {
 	t := typescriptify.New()
 	t.CreateInterface = true
+	t.BackupDir = "" // Do not create backup files (e.g. *.backup) when overwriting files
 
 	// Add all structs to be translated
 	t.Add(config.CacheConfig{})
