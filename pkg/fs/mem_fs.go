@@ -151,6 +151,9 @@ func (m *MemFS) Exists(path string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
+	if _, osErr := os.Stat(path); osErr == nil {
+		return true, nil
+	}
 	if os.IsNotExist(err) {
 		return false, nil
 	}

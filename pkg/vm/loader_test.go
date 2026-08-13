@@ -82,3 +82,76 @@ func TestLoaderFileSystemWriteOperations(t *testing.T) {
 		t.Errorf("expected test-to-delete.txt to be removed, but it still exists")
 	}
 }
+
+func TestLoaderAPIFeatures(t *testing.T) {
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{
+		Name:   "test-logger",
+		Level:  logger.LogLevelVerbose,
+		Writer: &logBuf,
+	})
+
+	memFS := fs.NewMemFS()
+
+	script := `
+	import { defineTool, dedentString, Platform, Architecture } from "@dotfiles/cli";
+
+	export default defineTool((install, ctx) => {
+		const formatted = dedentString` + "`" + `
+			first line
+			second line
+		` + "`" + `;
+
+		const genDir = ctx.projectConfig.paths.generatedDir;
+
+		return install("manual")
+			.bin("multi-plat", genDir)
+			.platform(Platform.MacOS, (install) => install("brew", { formula: "mac-pkg" }))
+			.platform(Platform.Linux, Architecture.Arm64, (install) => install("apt", { package: "linux-arm64-pkg" }))
+			.platform(Platform.Linux, Architecture.X86_64, (install) => install("apt", { package: "linux-x64-pkg" }));
+	});`
+
+	tempDir, err := os.MkdirTemp("", "loader-api-test")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	configPath := filepath.Join(tempDir, "config.ts")
+	configContent := `export default { paths: { generatedDir: "/custom/generated", toolConfigsDir: "./tools" } };`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config.ts: %v", err)
+	}
+
+	toolsDir := filepath.Join(tempDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("failed to create tools dir: %v", err)
+	}
+
+	toolPath := filepath.Join(toolsDir, "multi-plat.tool.ts")
+	if err := os.WriteFile(toolPath, []byte(script), 0644); err != nil {
+		t.Fatalf("failed to write multi-plat.tool.ts: %v", err)
+	}
+
+	projCfg, toolMap, err := LoadTypeScriptConfig(log, memFS, configPath)
+	if err != nil {
+		t.Fatalf("failed to load TS config: %v", err)
+	}
+
+	if projCfg == nil {
+		t.Fatal("expected non-nil projCfg")
+	}
+
+	tool, exists := toolMap["multi-plat"]
+	if !exists {
+		t.Fatalf("expected multi-plat tool to exist")
+	}
+
+	if tool.Disabled {
+		t.Errorf("expected tool multi-plat to be enabled for current platform, but got disabled")
+	}
+
+	if tool.InstallationMethod == "" {
+		t.Errorf("expected installationMethod to be set for current platform, got empty string")
+	}
+}

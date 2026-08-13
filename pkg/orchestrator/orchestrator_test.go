@@ -1868,6 +1868,82 @@ func TestGenerateCompletionsForTool_SkipMissingSource(t *testing.T) {
 	}
 }
 
+func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
+	ctx := context.Background()
+	log := logger.New(logger.Config{Name: "test-completions-cmd", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	runner.Register("mytool", []byte("# mytool zsh completion"), nil)
+	runner.Register("slowtool", nil, fmt.Errorf("context deadline exceeded"))
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	orch := NewOrchestrator(log, fsys, runner, reg, nil)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			GeneratedDir:    "/home/user/.generated",
+		},
+	}
+
+	// 1. Tool with successful completion command
+	toolSuccess := &config.ToolConfig{
+		Name:               "mytool",
+		Binaries:           []interface{}{"mytool"},
+		ConfigFilePath:     "/home/user/tools/mytool.tool.ts",
+		InstallationMethod: "github-release",
+		ShellConfigs: &config.ShellConfigs{
+			Zsh: &config.ShellTypeConfig{
+				Completions: map[string]interface{}{
+					"cmd": "mytool completion zsh",
+				},
+			},
+		},
+	}
+
+	err = orch.GenerateCompletionsForTool(ctx, toolSuccess, projCfg)
+	if err != nil {
+		t.Fatalf("GenerateCompletionsForTool failed on success tool: %v", err)
+	}
+
+	compPath := "/home/user/.generated/shell-scripts/zsh/completions/_mytool"
+	content, err := fsys.ReadFile(compPath)
+	if err != nil {
+		t.Fatalf("expected completion file to exist: %v", err)
+	}
+	if string(content) != "# mytool zsh completion" {
+		t.Errorf("expected completion content '# mytool zsh completion', got %q", string(content))
+	}
+
+	// 2. Tool with failing/timing-out completion command (should recover gracefully)
+	toolSlow := &config.ToolConfig{
+		Name:               "slowtool",
+		Binaries:           []interface{}{"slowtool"},
+		ConfigFilePath:     "/home/user/tools/slowtool.tool.ts",
+		InstallationMethod: "github-release",
+		ShellConfigs: &config.ShellConfigs{
+			Zsh: &config.ShellTypeConfig{
+				Completions: map[string]interface{}{
+					"cmd": "slowtool completion zsh",
+				},
+			},
+		},
+	}
+
+	err = orch.GenerateCompletionsForTool(ctx, toolSlow, projCfg)
+	if err != nil {
+		t.Fatalf("expected GenerateCompletionsForTool to recover gracefully from timeout, got error: %v", err)
+	}
+}
+
 
 
 

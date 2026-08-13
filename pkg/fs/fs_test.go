@@ -2,6 +2,7 @@ package fs
 
 import (
 	"io"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -397,5 +398,40 @@ func TestMemFS_CopyFileSymlinkDereference(t *testing.T) {
 	err = fs.CopyFile("/broken.txt", "/broken_copied.txt")
 	if err == nil {
 		t.Fatalf("Expected CopyFile on broken symlink to return error, got nil")
+	}
+}
+
+func TestMemFS_HostFallback(t *testing.T) {
+	memFS := NewMemFS()
+
+	// Create a real temporary file on the host OS
+	tempFile, err := os.CreateTemp("", "test-memfs-fallback-*.txt")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tempFile.Name())
+	_, _ = tempFile.WriteString("host content")
+	tempFile.Close()
+
+	// 1. Stat on host file from MemFS
+	info, err := memFS.Stat(tempFile.Name())
+	if err != nil {
+		t.Errorf("expected Stat fallback to host OS file to succeed: %v", err)
+	} else if info.Name() != filepath.Base(tempFile.Name()) {
+		t.Errorf("expected Stat name %q, got %q", filepath.Base(tempFile.Name()), info.Name())
+	}
+
+	// 2. Lstat on host file from MemFS
+	linfo, err := memFS.Lstat(tempFile.Name())
+	if err != nil {
+		t.Errorf("expected Lstat fallback to host OS file to succeed: %v", err)
+	} else if linfo.Name() != filepath.Base(tempFile.Name()) {
+		t.Errorf("expected Lstat name %q, got %q", filepath.Base(tempFile.Name()), linfo.Name())
+	}
+
+	// 3. Exists on host file from MemFS
+	exists, err := memFS.Exists(tempFile.Name())
+	if err != nil || !exists {
+		t.Errorf("expected Exists fallback to host OS file to return true, got exists=%v, err=%v", exists, err)
 	}
 }
