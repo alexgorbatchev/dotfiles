@@ -26,11 +26,13 @@ Act as a severe skeptic and adhere strictly to these principles:
 Audit your assigned package against each of the following semantic domains:
 
 ### 1. API Surface & Signature Completeness
+
 - Are all exported methods, helper functions, options, and types in TypeScript implemented in Go?
 - Are default parameter values in TypeScript explicitly handled in Go?
 - Are optional fields, nullability, and empty slice/map vs `nil` representations handled consistently?
 
 ### 2. Runtime & Language Divergences ("Negative Space")
+
 - **Map Iteration Order**: Go maps have randomized iteration order, whereas JavaScript preserves key insertion order. Check if directory lists, generated outputs, or config serialization rely on deterministic ordering.
 - **Network & I/O Defaults**:
   - Does Go use unbounded HTTP client timeouts? (Default `http.Client` has no timeout, risking process hangs).
@@ -54,6 +56,7 @@ Audit your assigned package against each of the following semantic domains:
   - Does platform override resolution (OS/Arch) match TypeScript's deep-merge / replacement heuristics?
 
 ### 3. Error Handling & Logging Parity
+
 - **Structured Logging Hierarchy**: Logging must use the `tslog`-based safe logger. Every method/function that logs must create a sublogger with `name` for structural hierarchy, using `context` only for runtime identifiers (e.g. tool name).
 - **No String Template Identifiers**: Do not embed runtime identifiers directly in log messages when `context` should provide them.
 - **Error Object Propagation**: Pass error objects directly to the logger. Never extract `error.message` into log template strings.
@@ -61,6 +64,7 @@ Audit your assigned package against each of the following semantic domains:
 - **Single Failure Logging**: Log failures once at the boundary. Do not duplicate logs at multiple layers.
 
 ### 4. Test Suite Parity
+
 - Compare Go `_test.go` unit tests against TypeScript `__tests__`.
 - Identify any TypeScript test scenarios, edge cases, fixtures, or assertions missing in the Go test suite.
 
@@ -75,19 +79,21 @@ Audit your assigned package against each of the following semantic domains:
 # Package Audit Report: `<package_path>` vs `<ts-package>`
 
 ## 1. Package Overview & Scope
+
 - **Go Files Audited**: `<package_path>/...`
 - **TS Files Audited**: `packages/<path>/...`
 - **Overall Parity Status**: (Complete Parity / Gaps Identified / Incomplete Migration)
 
 ## 2. API & Signature Comparison Matrix
 
-| TypeScript Export | Go Counterpart | Parity Status | Discrepancy / Notes |
-| :--- | :--- | :--- | :--- |
-| `function foo(x: string): void` | `func Foo(x string) error` | Pass / Gap | Details... |
+| TypeScript Export               | Go Counterpart             | Parity Status | Discrepancy / Notes |
+| :------------------------------ | :------------------------- | :------------ | :------------------ |
+| `function foo(x: string): void` | `func Foo(x string) error` | Pass / Gap    | Details...          |
 
 ## 3. Identified Gaps & Semantic Discrepancies
 
 ### Gap 1: [Short Title]
+
 - **Severity**: Critical / High / Medium / Low
 - **Category**: API Mismatch / Semantic Divergence / Error Handling / Sandboxing / Logging
 - **TypeScript Behavior**: Detailed description of TS behavior.
@@ -102,5 +108,6 @@ Audit your assigned package against each of the following semantic domains:
 - **Missing Test Scenarios**: List any specific tests present in TS but absent in Go.
 
 ## 5. Recommendation & Next Steps
+
 - Clear summary statement on package readiness and required fixes before TypeScript demolition.
 ```

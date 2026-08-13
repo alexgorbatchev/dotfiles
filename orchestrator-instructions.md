@@ -20,6 +20,7 @@ Wave 4: Top-Level Orchestration, CLI & Build Pipeline (Depends on Waves 1–3)
 ```
 
 ### Wave 1: Leaf Utilities
+
 - `pkg/utils` vs `packages/utils`
 - `pkg/exec` vs `packages/cli` (exec utilities)
 - `pkg/fs` vs `packages/file-system`
@@ -29,6 +30,7 @@ Wave 4: Top-Level Orchestration, CLI & Build Pipeline (Depends on Waves 1–3)
 - `pkg/unwrap` vs `packages/unwrap-value`
 
 ### Wave 2: Core I/O, Database & Services
+
 - `pkg/db` vs `packages/registry-database`
 - `pkg/downloader` vs `packages/downloader`
 - `pkg/archive` vs `packages/archive-extractor`
@@ -36,6 +38,7 @@ Wave 4: Top-Level Orchestration, CLI & Build Pipeline (Depends on Waves 1–3)
 - `pkg/config` vs `packages/config`
 
 ### Wave 3: Installers, Environment, Features & Shell Emissions
+
 - `pkg/installer/` (15 plugins: `apt`, `brew`, `cargo`, `curl-binary`, `curl-script`, `curl-tar`, `dmg`, `dnf`, `gitea`, `github`, `manual`, `npm`, `pacman`, `pkg`, `zsh-plugin`) vs `packages/installer-*`
 - `pkg/registry` vs `packages/registry`
 - `pkg/features` vs `packages/features`
@@ -45,6 +48,7 @@ Wave 4: Top-Level Orchestration, CLI & Build Pipeline (Depends on Waves 1–3)
 - `pkg/venv` vs `packages/virtual-env`
 
 ### Wave 4: Top-Level Orchestration, CLI & Build Pipeline
+
 - `pkg/orchestrator` vs `packages/generator-orchestrator`
 - `pkg/shellinit` vs `packages/shell-init-generator`
 - `pkg/vm` vs `packages/core` & `packages/tool-config-builder`
@@ -52,7 +56,7 @@ Wave 4: Top-Level Orchestration, CLI & Build Pipeline (Depends on Waves 1–3)
 - `cmd/dotfiles` vs `packages/cli`
 - `scripts/build`, `scripts/typegen`, `scripts/managed-installer` vs `packages/build`
 
-*Note on TypeScript workspace state*: Earlier waves may have already deleted or relocated legacy TypeScript packages in `packages/*`. For completed packages, inspect TypeScript reference code via git history/tags if needed. Active TypeScript reference code resides in `packages/dashboard` and git tags.
+_Note on TypeScript workspace state_: Earlier waves may have already deleted or relocated legacy TypeScript packages in `packages/*`. For completed packages, inspect TypeScript reference code via git history/tags if needed. Active TypeScript reference code resides in `packages/dashboard` and git tags.
 
 ---
 
@@ -63,7 +67,9 @@ Sub-agent communication is **parent-mediated**. The Worker agent completes its r
 For each Wave $N$ (starting at Wave 1):
 
 ### Step 1: Dispatch Worker Sub-Agent
+
 For each package target `<package_path>` in Wave $N$ (e.g. `pkg/fs`, `cmd/dotfiles`, `scripts/build`):
+
 1. Launch a **Worker Sub-Agent** instructed via `./worker-package-instructions.md`.
 2. Provide the Worker with:
    - Target package path: `<package_path>`
@@ -71,7 +77,9 @@ For each package target `<package_path>` in Wave $N$ (e.g. `pkg/fs`, `cmd/dotfil
    - Current Attempt Turn: `Turn 1 of 3`
 
 ### Step 2: Dispatch Reviewer Sub-Agent upon Worker Completion
+
 When the Worker completes its task and returns its parity report:
+
 1. Launch a **Reviewer Sub-Agent** instructed via `./reviewer-package-instructions.md`.
 2. Provide the Reviewer with:
    - Target package path: `<package_path>`
@@ -80,19 +88,24 @@ When the Worker completes its task and returns its parity report:
    - Current Attempt Turn: `Turn X of 3`
 
 ### Step 3: Handle Reviewer Verdict & Iteration Loop
+
 - If Reviewer returns **`APPROVED`**: Mark package as verified.
 - If Reviewer returns **`REJECTED`**:
   - If attempt turn $< 3$: Re-dispatch Worker with the Reviewer's feedback, incrementing turn count (`Turn X+1 of 3`).
   - If attempt turn $= 3$: Intervene as Orchestrator to resolve remaining gaps or adjust strategy.
 
 ### Step 4: Wave Gate & Global Verification
+
 Once ALL package targets in Wave $N$ receive `APPROVED` status from their Reviewers:
+
 1. Execute wave verification command: `go test -count=1 ./...`.
 2. Verify that all Wave $N$ packages pass unit and integration tests cleanly.
 3. Advance to Wave $N+1$.
 
 ### Step 5: Final Demolition Verification (After Wave 4)
+
 When Wave 4 achieves full `APPROVED` status across all top-level packages:
+
 1. Run binary builds and type generation:
    ```bash
    go run scripts/typegen/main.go

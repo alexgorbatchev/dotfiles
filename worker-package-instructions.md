@@ -19,19 +19,23 @@ Your core objective is:
 ## 🛠️ Execution Protocol
 
 ### Step 1: Side-by-Side Audit
+
 1. Open and read ALL Go source files in `<package_path>` and TypeScript source files in `packages/<name>` side-by-side in full.
 2. Follow the checklist in `./gap-check-instructions.md` to identify missing exports, parameter mismatches, logging discrepancies, error handling gaps, and negative-space runtime divergences.
 
 ### Step 2: Implement Parity Repairs
+
 1. Modify Go code in `<package_path>` to close all identified gaps.
 2. Ensure log messages follow repository logging standards from `AGENTS.md` (structured logger with `name` and `context` hierarchy, tab separators `\t`, no string interpolation in templates or raw `error.message` extraction).
 
 ### Step 3: Handle Upstream Contract Updates
+
 - Upstream packages in lower waves may have modified exported interfaces or struct fields to achieve parity.
 - If your package fails to compile or run due to a signature mismatch in an upstream package (`pkg/<upstream>`), **update the call sites in YOUR package (`<package_path>`)** to conform to the new upstream contract.
 - **DO NOT revert or modify upstream packages**.
 
 ### Step 4: Package-Isolated Verification
+
 - Test **ONLY** your assigned package target using package-isolated test commands with `-count=1` to bypass stale test caching:
   ```bash
   go test -count=1 ./<package_path>/...
@@ -39,7 +43,9 @@ Your core objective is:
 - **Do NOT run `go test ./...` across the entire repository**, as higher-wave un-migrated packages may fail until their respective waves run.
 
 ### Step 5: Return Parity Report to Orchestrator
+
 When repairs and local tests pass, return your completed findings to the **Orchestrator Agent** (which will dispatch the Reviewer). Your output must include:
+
 1. Summary of modified files in `<package_path>`.
 2. Signature and export comparison matrix (`packages/<name>` vs `<package_path>`).
 3. Summary of how negative-space checklist items were addressed.
