@@ -353,3 +353,49 @@ func TestMemFS_ReadDirSorted(t *testing.T) {
 		}
 	}
 }
+
+func TestMemFS_ReadDirNonExistentDir(t *testing.T) {
+	fs := NewMemFS()
+	_, err := fs.ReadDir("/nonexistent")
+	if err == nil {
+		t.Fatalf("Expected ReadDir('/nonexistent') to return error, got nil")
+	}
+}
+
+func TestMemFS_CopyFileSymlinkDereference(t *testing.T) {
+	fs := NewMemFS()
+	err := fs.WriteFile("/target.txt", []byte("target content"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	err = fs.Symlink("/target.txt", "/symlink.txt")
+	if err != nil {
+		t.Fatalf("Symlink failed: %v", err)
+	}
+
+	// Copy from symlink to destination
+	err = fs.CopyFile("/symlink.txt", "/copied.txt")
+	if err != nil {
+		t.Fatalf("CopyFile failed on symlink: %v", err)
+	}
+
+	// Verify /copied.txt exists and is a regular file with target content
+	content, err := fs.ReadFile("/copied.txt")
+	if err != nil {
+		t.Fatalf("ReadFile on copied.txt failed: %v", err)
+	}
+	if string(content) != "target content" {
+		t.Errorf("Expected copied file content 'target content', got %q", string(content))
+	}
+
+	// Verify CopyFile on broken symlink returns error
+	err = fs.Symlink("/nonexistent.txt", "/broken.txt")
+	if err != nil {
+		t.Fatalf("Symlink failed: %v", err)
+	}
+	err = fs.CopyFile("/broken.txt", "/broken_copied.txt")
+	if err == nil {
+		t.Fatalf("Expected CopyFile on broken symlink to return error, got nil")
+	}
+}

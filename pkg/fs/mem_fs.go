@@ -321,6 +321,8 @@ func (m *MemFS) ReadDir(path string) ([]string, error) {
 		prefix += separator
 	}
 
+	dirExists := ok || cleanPath == "." || cleanPath == "/" || cleanPath == ""
+
 	var names []string
 	seen := make(map[string]bool)
 	for k := range m.files {
@@ -328,6 +330,7 @@ func (m *MemFS) ReadDir(path string) ([]string, error) {
 			continue
 		}
 		if strings.HasPrefix(k, prefix) {
+			dirExists = true
 			rel, err := filepath.Rel(cleanPath, k)
 			if err == nil {
 				parts := strings.Split(rel, separator)
@@ -340,6 +343,11 @@ func (m *MemFS) ReadDir(path string) ([]string, error) {
 			}
 		}
 	}
+
+	if !dirExists {
+		return nil, &os.PathError{Op: "readdir", Path: path, Err: os.ErrNotExist}
+	}
+
 	sort.Strings(names)
 	return names, nil
 }
@@ -542,10 +550,30 @@ func (m *MemFS) CopyFile(src, dest string) error {
 	cleanSrc := filepath.Clean(src)
 	cleanDest := filepath.Clean(dest)
 
-	srcNode, ok := m.files[cleanSrc]
-	if !ok {
-		return &os.PathError{Op: "copyfile", Path: src, Err: os.ErrNotExist}
+	// Follow symlinks if cleanSrc is a symlink
+	curr := cleanSrc
+	depth := 0
+	var srcNode *fileNode
+	for {
+		node, ok := m.files[curr]
+		if !ok {
+			return &os.PathError{Op: "copyfile", Path: src, Err: os.ErrNotExist}
+		}
+		if !node.isSymlink {
+			srcNode = node
+			break
+		}
+		depth++
+		if depth > 10 {
+			return &os.PathError{Op: "copyfile", Path: src, Err: fmt.Errorf("too many symlinks")}
+		}
+		target := node.linkTarget
+		if !filepath.IsAbs(target) {
+			target = filepath.Join(filepath.Dir(curr), target)
+		}
+		curr = filepath.Clean(target)
 	}
+
 	if srcNode.isDir {
 		return &os.PathError{Op: "copyfile", Path: src, Err: os.ErrInvalid}
 	}
@@ -565,8 +593,8 @@ func (m *MemFS) CopyFile(src, dest string) error {
 		data:       dataCopy,
 		perm:       srcNode.perm,
 		isDir:      false,
-		isSymlink:  srcNode.isSymlink,
-		linkTarget: srcNode.linkTarget,
+		isSymlink:  false,
+		linkTarget: "",
 	}
 	return nil
 }
