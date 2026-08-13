@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/tkrajina/typescriptify-golang-structs/typescriptify"
@@ -36,7 +37,14 @@ func generateTypes(outputPath string) error {
 	t.Add(config.PlatformConfigEntry{})
 	t.Add(config.ToolConfig{})
 
-	return t.ConvertToFile(outputPath)
+	if err := t.ConvertToFile(outputPath); err != nil {
+		return err
+	}
+
+	// Format generated TypeScript file with oxfmt
+	cmd := exec.Command("bun", "--bun", "oxfmt", outputPath)
+	_ = cmd.Run()
+	return nil
 }
 
 func main() {
