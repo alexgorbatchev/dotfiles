@@ -129,79 +129,273 @@ export interface ISystemInfoInternal {
   hostname: string;
 }
 
+/**
+ * Parameters for manual installation method.
+ */
 export interface IManualInstallParams {
+  /**
+   * Absolute or relative path to a pre-existing binary executable on disk.
+   */
   binaryPath?: string;
 }
+
+/**
+ * Parameters for Cargo (Rust) crate installer.
+ */
 export interface ICargoInstallParams {
+  /**
+   * Name of the Cargo crate to install.
+   */
   crate?: string;
+  /**
+   * Alias for crate name.
+   */
   crateName?: string;
+  /**
+   * Specific crate version constraint to install.
+   */
   version?: string;
 }
+
+/**
+ * Parameters for Homebrew package manager installer (macOS & Linux).
+ */
 export interface IBrewInstallParams {
+  /**
+   * Homebrew formula name (e.g. "ripgrep" or "node").
+   */
   formula?: string;
+  /**
+   * Homebrew Cask name for macOS GUI/binary packages (e.g. "iterm2").
+   */
   cask?: string;
+  /**
+   * Optional custom Homebrew tap repository (e.g. "user/repo").
+   */
   tap?: string;
 }
+
+/**
+ * Parameters for APT package manager installer (Debian / Ubuntu).
+ */
 export interface IAptInstallParams {
+  /**
+   * APT package name.
+   */
   packageName?: string;
+  /**
+   * Alias for packageName.
+   */
   package?: string;
+  /**
+   * Target package version constraint.
+   */
   version?: string;
+  /**
+   * Whether to run `apt-get update` before installation.
+   */
   update?: boolean;
 }
+
+/**
+ * Parameters for Pacman package manager installer (Arch Linux).
+ */
 export interface IPacmanInstallParams {
+  /**
+   * Pacman package name (repository prefix like "extra/ripgrep" is automatically stripped).
+   */
   packageName?: string;
+  /**
+   * Alias for packageName.
+   */
   package?: string;
+  /**
+   * Target package version constraint.
+   */
   version?: string;
+  /**
+   * Whether to run `pacman -Syu` system upgrade before installation.
+   */
   sysupgrade?: boolean;
 }
+
+/**
+ * Parameters for DNF package manager installer (Fedora / RHEL / CentOS).
+ */
 export interface IDnfInstallParams {
+  /**
+   * DNF package name.
+   */
   packageName?: string;
+  /**
+   * Alias for packageName.
+   */
   package?: string;
+  /**
+   * Target package version constraint.
+   */
   version?: string;
+  /**
+   * Whether to run `dnf check-update` before installation.
+   */
   refresh?: boolean;
 }
+
+/**
+ * Parameters for macOS PKG package installer.
+ */
 export interface IPkgInstallParams {
+  /**
+   * Direct HTTP/HTTPS URL to the macOS `.pkg` package file.
+   */
   url: string;
 }
+
+/**
+ * Parameters for macOS DMG disk image installer.
+ */
 export interface IDmgInstallParams {
+  /**
+   * Direct HTTP/HTTPS URL to the macOS `.dmg` disk image.
+   */
   url: string;
+  /**
+   * Name of the `.app` bundle or binary inside the disk image to copy.
+   */
   appName: string;
 }
+
+/**
+ * Parameters for NPM global package installer.
+ */
 export interface INpmInstallParams {
+  /**
+   * NPM package name.
+   */
   packageName?: string;
+  /**
+   * Alias for packageName.
+   */
   package?: string;
+  /**
+   * Install package globally (`npm install -g`). Defaults to true.
+   */
   global?: boolean;
 }
+
+/**
+ * Parameters for Zsh plugin installer.
+ */
 export interface IZshPluginInstallParams {
+  /**
+   * GitHub or Gitea repository path (e.g. "zsh-users/zsh-autosuggestions").
+   */
   repo?: string;
+  /**
+   * Direct git repository URL.
+   */
   url?: string;
+  /**
+   * Name of the plugin directory/file.
+   */
   pluginName?: string;
+  /**
+   * Automatically clone and activate plugin during generation.
+   */
   auto?: boolean;
 }
+
+/**
+ * Parameters for Gitea release asset installer.
+ */
 export interface IGiteaReleaseInstallParams {
+  /**
+   * Gitea host or instance URL.
+   */
   host?: string;
+  /**
+   * Repository path (owner/repo).
+   */
   repo: string;
+  /**
+   * Glob or regex pattern to select release asset filename.
+   */
   assetPattern?: string;
+  /**
+   * Gitea instance base URL.
+   */
   instanceUrl: string;
 }
+
+/**
+ * Parameters for cURL tarball archive installer (.tar.gz, .tar.xz, .zip).
+ */
 export interface ICurlTarInstallParams {
+  /**
+   * Direct HTTP/HTTPS URL to the archive.
+   */
   url: string;
+  /**
+   * Subdirectory path inside the archive containing binaries.
+   */
   binDir?: string;
+  /**
+   * CLI flags passed to detect binary version (e.g. "--version").
+   */
   versionArgs?: string | string[];
+  /**
+   * Regular expression pattern to extract version from output.
+   */
   versionRegex?: string | RegExp;
 }
+
+/**
+ * Parameters for cURL shell script installer.
+ */
 export interface ICurlScriptInstallParams {
+  /**
+   * HTTP/HTTPS URL to the installation script.
+   */
   url: string;
+  /**
+   * Interpreter command to execute the script (e.g. "bash", "sh", "zsh").
+   */
   shell?: string;
+  /**
+   * Arguments passed to the installer script.
+   */
   args?: string[] | Resolvable<IToolConfigContext, string[]>;
 }
+
+/**
+ * Parameters for cURL binary file installer.
+ */
 export interface ICurlBinaryInstallParams {
+  /**
+   * Direct HTTP/HTTPS URL to the executable binary.
+   */
   url: string;
 }
+
+/**
+ * Parameters for GitHub release asset installer.
+ */
 export interface IGithubReleaseInstallParams {
+  /**
+   * GitHub repository path in "owner/repo" format (e.g. "BurntSushi/ripgrep").
+   */
   repo: string;
+  /**
+   * Glob or regex pattern to select the asset archive/binary.
+   */
   assetPattern?: string;
+  /**
+   * Enable `gh` CLI fallback on GitHub API rate limits.
+   */
   ghCli?: boolean;
+  /**
+   * Include prerelease versions when resolving latest release.
+   */
   prerelease?: boolean;
 }
 
@@ -355,6 +549,8 @@ export interface IToolConfigBuilder {
   version(v: string): this;
   /**
    * Requires elevated privileges (sudo) to execute installations.
+   *
+   * Supported installer methods: `manual`, `apt`, `dnf`, `pacman`, `pkg`.
    */
   sudo(): this;
   /**
@@ -429,6 +625,8 @@ export interface IPlatformConfigBuilder {
   version(v: string): this;
   /**
    * Requires elevated privileges (sudo) on this platform.
+   *
+   * Supported installer methods: `manual`, `apt`, `dnf`, `pacman`, `pkg`.
    */
   sudo(): this;
   /**
@@ -481,22 +679,73 @@ export interface IPlatformConfigBuilder {
  * Crystal-clear installer method loader with generic type-safety.
  */
 export interface IInstallFunction {
+  /**
+   * Dynamically loads an installer method by name.
+   */
   <M extends InstallMethod>(method: M, params?: IInstallParamsRegistry[M]): IToolConfigBuilder;
+  /**
+   * Configures a tool without a specific installer plugin.
+   */
   (): IToolConfigBuilder;
+  /**
+   * Manual binary installer for local system executables. Supported for sudo.
+   */
   manual(params?: IManualInstallParams): IToolConfigBuilder;
+  /**
+   * Cargo (Rust) crate installer.
+   */
   cargo(params?: ICargoInstallParams): IToolConfigBuilder;
+  /**
+   * cURL script installer executing remote shell setup scripts.
+   */
   "curl-script"(params?: ICurlScriptInstallParams): IToolConfigBuilder;
+  /**
+   * Homebrew package manager installer (macOS & Linux).
+   */
   brew(params?: IBrewInstallParams): IToolConfigBuilder;
+  /**
+   * Zsh plugin git repository installer.
+   */
   "zsh-plugin"(params?: IZshPluginInstallParams): IToolConfigBuilder;
+  /**
+   * Gitea release asset downloader.
+   */
   "gitea-release"(params?: IGiteaReleaseInstallParams): IToolConfigBuilder;
+  /**
+   * cURL tarball archive extractor (.tar.gz, .tar.xz, .zip).
+   */
   "curl-tar"(params?: ICurlTarInstallParams): IToolConfigBuilder;
+  /**
+   * cURL direct standalone binary downloader.
+   */
   "curl-binary"(params?: ICurlBinaryInstallParams): IToolConfigBuilder;
+  /**
+   * macOS DMG disk image installer.
+   */
   dmg(params?: IDmgInstallParams): IToolConfigBuilder;
+  /**
+   * NPM global package installer.
+   */
   npm(params?: INpmInstallParams): IToolConfigBuilder;
+  /**
+   * APT package manager installer (Debian / Ubuntu). Supported for sudo.
+   */
   apt(params?: IAptInstallParams): IToolConfigBuilder;
+  /**
+   * Pacman package manager installer (Arch Linux). Supported for sudo.
+   */
   pacman(params?: IPacmanInstallParams): IToolConfigBuilder;
+  /**
+   * DNF package manager installer (Fedora / RHEL / CentOS). Supported for sudo.
+   */
   dnf(params?: IDnfInstallParams): IToolConfigBuilder;
+  /**
+   * macOS PKG package installer. Supported for sudo.
+   */
   pkg(params?: IPkgInstallParams): IToolConfigBuilder;
+  /**
+   * GitHub release asset downloader with automatic architecture/platform matching.
+   */
   "github-release"(params?: IGithubReleaseInstallParams): IToolConfigBuilder;
 }
 
@@ -504,22 +753,73 @@ export interface IInstallFunction {
  * Platform-specific installer method loader.
  */
 export interface IPlatformInstallFunction {
+  /**
+   * Dynamically loads a platform installer method by name.
+   */
   <M extends InstallMethod>(method: M, params?: IInstallParamsRegistry[M]): IPlatformConfigBuilder;
+  /**
+   * Configures a tool on this platform without a specific installer plugin.
+   */
   (): IPlatformConfigBuilder;
+  /**
+   * Manual binary installer on this platform. Supported for sudo.
+   */
   manual(params?: IManualInstallParams): IPlatformConfigBuilder;
+  /**
+   * Cargo (Rust) crate installer on this platform.
+   */
   cargo(params?: ICargoInstallParams): IPlatformConfigBuilder;
+  /**
+   * cURL script installer on this platform.
+   */
   "curl-script"(params?: ICurlScriptInstallParams): IPlatformConfigBuilder;
+  /**
+   * Homebrew package manager installer on this platform.
+   */
   brew(params?: IBrewInstallParams): IPlatformConfigBuilder;
+  /**
+   * Zsh plugin git repository installer on this platform.
+   */
   "zsh-plugin"(params?: IZshPluginInstallParams): IPlatformConfigBuilder;
+  /**
+   * Gitea release asset downloader on this platform.
+   */
   "gitea-release"(params?: IGiteaReleaseInstallParams): IPlatformConfigBuilder;
+  /**
+   * cURL tarball archive extractor on this platform.
+   */
   "curl-tar"(params?: ICurlTarInstallParams): IPlatformConfigBuilder;
+  /**
+   * cURL direct standalone binary downloader on this platform.
+   */
   "curl-binary"(params?: ICurlBinaryInstallParams): IPlatformConfigBuilder;
+  /**
+   * macOS DMG disk image installer on this platform.
+   */
   dmg(params?: IDmgInstallParams): IPlatformConfigBuilder;
+  /**
+   * NPM global package installer on this platform.
+   */
   npm(params?: INpmInstallParams): IPlatformConfigBuilder;
+  /**
+   * APT package manager installer on this platform. Supported for sudo.
+   */
   apt(params?: IAptInstallParams): IPlatformConfigBuilder;
+  /**
+   * Pacman package manager installer on this platform. Supported for sudo.
+   */
   pacman(params?: IPacmanInstallParams): IPlatformConfigBuilder;
+  /**
+   * DNF package manager installer on this platform. Supported for sudo.
+   */
   dnf(params?: IDnfInstallParams): IPlatformConfigBuilder;
+  /**
+   * macOS PKG package installer on this platform. Supported for sudo.
+   */
   pkg(params?: IPkgInstallParams): IPlatformConfigBuilder;
+  /**
+   * GitHub release asset downloader on this platform.
+   */
   "github-release"(params?: IGithubReleaseInstallParams): IPlatformConfigBuilder;
 }
 

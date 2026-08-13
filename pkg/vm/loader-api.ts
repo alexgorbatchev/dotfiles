@@ -56,6 +56,11 @@ declare global {
 type ConfigRunner = (ctx: unknown) => unknown;
 type ToolRunner = (install: unknown, ctx: unknown) => unknown;
 
+/**
+ * Defines the main dotfiles project configuration.
+ *
+ * @param callback Factory function returning project configuration paths, features, and settings.
+ */
 export function defineConfig(callback: ConfigFactory): unknown {
   if (typeof callback === "function") {
     const fn = callback as ConfigRunner;
@@ -71,6 +76,11 @@ export function defineConfig(callback: ConfigFactory): unknown {
   return callback;
 }
 
+/**
+ * Defines a tool configuration for installation and shell integration.
+ *
+ * @param callback Builder function configuring installer, binaries, symlinks, and shell settings.
+ */
 export function defineTool(callback: AsyncConfigureTool): unknown {
   const builder: Record<string, unknown> = {
     name: "",
