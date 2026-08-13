@@ -131,7 +131,7 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 		binariesDir = strings.ReplaceAll(binariesDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
 	}
 
-	// Step 4: Run the unified bundle in Sobek and marshal the result
+	// Step 4: Run the unified bundle in Goja and marshal the result
 	fullConfig, err := evaluateUnifiedBundle(log, fsys, bundledJS, configFileDir, projCfg.Paths.GeneratedDir, binariesDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf("evaluating unified config bundle: %w", err)
@@ -250,7 +250,7 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 	_ = vm.Set("exports", exportsObj)
 
 	if _, err := vm.RunString(jsContent); err != nil {
-		return nil, fmt.Errorf("executing script in Sobek VM: %w", err)
+		return nil, fmt.Errorf("executing script in Goja VM: %w", err)
 	}
 
 	// Extract and stringify default export using JSON.stringify inside JS

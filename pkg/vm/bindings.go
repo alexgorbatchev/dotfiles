@@ -10,7 +10,7 @@ import (
 	"github.com/dop251/goja"
 )
 
-// RegisterBindings registers native Go utility functions and helper constants inside the Sobek runtime.
+// RegisterBindings registers native Go utility functions and helper constants inside the Goja runtime.
 func RegisterBindings(vm *goja.Runtime) error {
 	_ = vm.Set("globalThis", vm.GlobalObject())
 	bindings := map[string]any{

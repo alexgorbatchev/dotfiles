@@ -24,7 +24,7 @@ func stripImports(scriptContent string) string {
 	return cleaned
 }
 
-// EvaluateToolDefinition runs the provided JavaScript/TypeScript script content inside a new sandboxed Sobek VM
+// EvaluateToolDefinition runs the provided JavaScript/TypeScript script content inside a new sandboxed Goja VM
 // and marshals the resulting configuration directly into the provided Go out structure.
 func EvaluateToolDefinition(scriptContent string, out any) error {
 	vm := goja.New()
