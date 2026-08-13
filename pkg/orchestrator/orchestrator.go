@@ -295,7 +295,6 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 				return err
 			}
 			if !skip {
-				o.logger.Info(logger.Message(fmt.Sprintf("Installing tool: %s", tool.Name)))
 				if err := o.InstallTool(ctx, tool, projCfg); err != nil {
 					o.logger.GetSubLogger("", tool.Name).Error("Auto-install failed", err)
 				}
@@ -323,6 +322,8 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	if projCfg == nil {
 		return fmt.Errorf("project configuration is nil")
 	}
+
+	o.logger.Info(logger.Message(fmt.Sprintf("Generating tool: %s", tool.Name)))
 
 	// Skip shim generation for manual tools without binaryPath
 	if tool.InstallationMethod == "manual" {
@@ -395,6 +396,11 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		}
 	}
 
+	// 4. Generate completions
+	if err := o.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
+		o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Failed to generate completions: %v", err)))
+	}
+
 	return nil
 }
 
@@ -436,6 +442,8 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		// For shell-only tools (which have no installation method), proceed directly to generate shims, copies, and symlinks.
 		return o.GenerateTool(ctx, tool, projCfg)
 	}
+
+	o.logger.Info(logger.Message(fmt.Sprintf("Installing tool: %s", tool.Name)))
 
 	inst, err := o.instRegistry.Get(tool.InstallationMethod)
 	if err != nil {
@@ -519,7 +527,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		return fmt.Errorf("running installer: %w", err)
 	}
 
-	if !isExternal {
+	if !isExternal && !installer.IsDryRun() {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
 			if err := removeAll(activeFSWithTx, toolDestDir); err != nil {
@@ -1601,6 +1609,10 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 		return fmt.Errorf("project configuration is nil")
 	}
 
+	if installer.IsDryRun() {
+		return nil
+	}
+
 	shellScriptsDir := projCfg.Paths.ShellScriptsDir
 	if shellScriptsDir == "" {
 		shellScriptsDir = filepath.Join(projCfg.Paths.GeneratedDir, "shell-scripts")
@@ -1645,6 +1657,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 				}
 				srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
 				if err == nil {
+					_ = fsys.Remove(completionFilePath)
 					_ = fsys.Symlink(srcPathResolved, completionFilePath)
 				}
 			case map[string]interface{}:
@@ -1679,6 +1692,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 					}
 					srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
 					if err == nil {
+						_ = fsys.Remove(completionFilePath)
 						_ = fsys.Symlink(srcPathResolved, completionFilePath)
 					}
 				}
