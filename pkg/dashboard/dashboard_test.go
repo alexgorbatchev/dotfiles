@@ -59,6 +59,25 @@ func TestDashboardServer(t *testing.T) {
 		t.Errorf("expected body to contain dashboard title, got: %s", body)
 	}
 
+	// Test SPA fallback route
+	spaResp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/tools/bat", server.Port()))
+	if err != nil {
+		server.Stop()
+		t.Fatalf("failed to fetch SPA route: %v", err)
+	}
+	defer spaResp.Body.Close()
+
+	if spaResp.StatusCode != http.StatusOK {
+		server.Stop()
+		t.Fatalf("expected SPA route status 200, got %d", spaResp.StatusCode)
+	}
+
+	spaBytes, _ := io.ReadAll(spaResp.Body)
+	if !strings.Contains(string(spaBytes), "<title>Dotfiles Dashboard</title>") {
+		server.Stop()
+		t.Errorf("expected SPA fallback body to contain dashboard title, got: %s", string(spaBytes))
+	}
+
 	if err := server.Stop(); err != nil {
 		t.Errorf("expected no error stopping server, got %v", err)
 	}

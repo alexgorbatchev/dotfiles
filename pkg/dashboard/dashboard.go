@@ -139,7 +139,23 @@ func (s *Server) Start() error {
 
 	mux := http.NewServeMux()
 	s.RegisterRoutes(mux)
-	mux.Handle("/", http.FileServer(http.FS(subFS)))
+
+	fileServer := http.FileServer(http.FS(subFS))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		p := strings.TrimPrefix(r.URL.Path, "/")
+		if p == "" {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+		if f, err := subFS.Open(p); err == nil {
+			_ = f.Close()
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+		// Fallback to index.html for SPA client-side routing
+		r.URL.Path = "/"
+		fileServer.ServeHTTP(w, r)
+	})
 
 	s.server = &http.Server{
 		Handler: mux,
