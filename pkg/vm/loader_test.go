@@ -157,6 +157,23 @@ func TestLoaderAPIFeatures(t *testing.T) {
 	if tool.InstallationMethod == "" {
 		t.Errorf("expected installationMethod to be set for current platform, got empty string")
 	}
+
+	// Verify ctx.toolDir is correctly populated and not 'undefined'
+	if len(tool.Binaries) == 0 {
+		t.Fatalf("expected binaries list to not be empty")
+	}
+	binObj, ok := tool.Binaries[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected binary entry to be a map, got %T", tool.Binaries[0])
+	}
+	patternVal, _ := binObj["pattern"].(string)
+	if patternVal == "undefined" || patternVal == "" {
+		t.Errorf("expected ctx.toolDir to not be undefined, got %q", patternVal)
+	}
+	expectedToolDir := filepath.Join(tempDir, "tools")
+	if patternVal != expectedToolDir {
+		t.Errorf("expected ctx.toolDir to be %q, got %q", expectedToolDir, patternVal)
+	}
 }
 
 func TestTranspileTSError(t *testing.T) {

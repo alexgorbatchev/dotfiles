@@ -59,3 +59,4 @@ pkg/vm/dist/
 *.backup
 .codegraph
 /.pi/subagents
+/scripts/typegen/packages/dashboard/src/shared/types.gen.ts
