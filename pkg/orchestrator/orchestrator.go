@@ -1191,34 +1191,31 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 						}
 					}
 					pluginPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current")
-					exists, err := fsys.Exists(pluginPath)
-					if err == nil && exists {
-						candidates := []string{
-							pluginName + ".plugin.zsh",
-							pluginName + ".zsh",
-							"init.zsh",
-							"plugin.zsh",
-							pluginName + ".zsh-theme",
-						}
-						sourceFile := ""
-						explicitSource := getStringParam(tool.InstallParams, "source", "")
-						if explicitSource != "" {
-							sourceFile = explicitSource
-						} else {
-							for _, candidate := range candidates {
-								candidatePath := filepath.Join(pluginPath, candidate)
-								if ex, _ := fsys.Exists(candidatePath); ex {
-									sourceFile = candidate
-									break
-								}
+					candidates := []string{
+						pluginName + ".plugin.zsh",
+						pluginName + ".zsh",
+						"init.zsh",
+						"plugin.zsh",
+						pluginName + ".zsh-theme",
+					}
+					sourceFile := ""
+					explicitSource := getStringParam(tool.InstallParams, "source", "")
+					if explicitSource != "" {
+						sourceFile = explicitSource
+					} else {
+						for _, candidate := range candidates {
+							candidatePath := filepath.Join(pluginPath, candidate)
+							if ex, _ := fsys.Exists(candidatePath); ex {
+								sourceFile = candidate
+								break
 							}
 						}
 						if sourceFile == "" {
 							sourceFile = pluginName + ".plugin.zsh"
 						}
-						if sourceFile != "" {
-							scriptLines = append(scriptLines, fmt.Sprintf("source %q", filepath.ToSlash(filepath.Join(pluginPath, sourceFile))))
-						}
+					}
+					if sourceFile != "" {
+						scriptLines = append(scriptLines, fmt.Sprintf("source %q", filepath.ToSlash(filepath.Join(pluginPath, sourceFile))))
 					}
 				}
 
