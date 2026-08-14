@@ -1451,6 +1451,72 @@ func TestDashboardToolDetailAndConfigsTree(t *testing.T) {
 	resp2.Body.Close()
 }
 
+type mockFailingInstaller struct{}
+
+func (m *mockFailingInstaller) Name() string { return "failing-installer" }
+func (m *mockFailingInstaller) SupportsSudo() bool { return false }
+func (m *mockFailingInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
+	return nil, fmt.Errorf("mock download error")
+}
+func (m *mockFailingInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error { return nil }
+func (m *mockFailingInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
+	return &installer.UpdateCheckResult{HasUpdate: false}, nil
+}
+
+func TestDashboard_InstallErrorResponse(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	ctx := context.Background()
+
+	sqlDB, _ := db.NewConnection(ctx, ":memory:")
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	tempDir := t.TempDir()
+	toolConfigs := []*config.ToolConfig{
+		{
+			Name:               "fail-tool",
+			InstallationMethod: "failing-installer",
+		},
+	}
+
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	instReg := installer.NewRegistry()
+	_ = instReg.Register(&mockFailingInstaller{})
+	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    filepath.Join(tempDir, "binaries"),
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: tempDir,
+		},
+	}
+
+	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, orch)
+	if err := server.Start(); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+	defer server.Stop()
+
+	resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/fail-tool/install", server.Port()), "application/json", strings.NewReader(`{"force": false}`))
+	if err != nil {
+		t.Fatalf("POST /api/tools/fail-tool/install failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if body["success"] != false {
+		t.Errorf("expected success: false on failed install, got %v", body["success"])
+	}
+}
+
 func TestDashboardServer_CustomHost(t *testing.T) {
 	log := logger.New(logger.Config{
 		Name:   "test",

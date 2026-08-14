@@ -972,20 +972,19 @@ func (s *Server) handleToolInstall(w http.ResponseWriter, r *http.Request, toolN
 		return
 	}
 
-	go func() {
-		ctx := context.Background()
-		if req.Force {
-			ctx = config.WithOverwrite(ctx, true)
-		}
-		s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting installation...\n", toolName))
-		err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
-		if err != nil {
-			s.logger.Error(logger.Message(fmt.Sprintf("Installation failed for %s: %v", toolName, err)))
-			s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Installation failed: %v\n", toolName, err))
-		} else {
-			s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Installation completed successfully\n", toolName))
-		}
-	}()
+	ctx := context.Background()
+	if req.Force {
+		ctx = config.WithOverwrite(ctx, true)
+	}
+	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting installation...\n", toolName))
+	err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
+	if err != nil {
+		s.logger.Error(logger.Message(fmt.Sprintf("Installation failed for %s: %v", toolName, err)))
+		s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Installation failed: %v\n", toolName, err))
+		writeJSON(w, false, nil, fmt.Sprintf("Installation failed: %v", err))
+		return
+	}
+	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Installation completed successfully\n", toolName))
 
 	var toolVer string
 	if targetTool.Version != nil {
@@ -1082,17 +1081,16 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 		return
 	}
 
-	go func() {
-		ctx := context.Background()
-		s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting update...\n", toolName))
-		err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
-		if err != nil {
-			s.logger.Error(logger.Message(fmt.Sprintf("Update failed for %s: %v", toolName, err)))
-			s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Update failed: %v\n", toolName, err))
-		} else {
-			s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Update completed successfully\n", toolName))
-		}
-	}()
+	ctx := context.Background()
+	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting update...\n", toolName))
+	err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
+	if err != nil {
+		s.logger.Error(logger.Message(fmt.Sprintf("Update failed for %s: %v", toolName, err)))
+		s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Update failed: %v\n", toolName, err))
+		writeJSON(w, false, nil, fmt.Sprintf("Update failed: %v", err))
+		return
+	}
+	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Update completed successfully\n", toolName))
 
 	writeJSON(w, true, map[string]any{
 		"updated":   true,
