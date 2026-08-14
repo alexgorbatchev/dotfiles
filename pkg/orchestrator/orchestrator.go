@@ -1322,10 +1322,11 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					sort.Strings(funcKeys)
 					for _, name := range funcKeys {
 						body := stc.Functions[name]
+						formattedBody := formatFunctionBody(body)
 						if sh == "powershell" {
-							scriptLines = append(scriptLines, fmt.Sprintf("function %s {\n%s\n}", name, body))
+							scriptLines = append(scriptLines, fmt.Sprintf("function %s {\n%s\n}", name, formattedBody))
 						} else {
-							scriptLines = append(scriptLines, fmt.Sprintf("%s() {\n%s\n}", name, body))
+							scriptLines = append(scriptLines, fmt.Sprintf("%s() {\n%s\n}", name, formattedBody))
 						}
 					}
 				}
@@ -1353,12 +1354,13 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 				// 7. Native Sources (inline script blocks)
 				for i, content := range stc.Sources {
 					funcName := fmt.Sprintf("__dotfiles_source_inline_%s_%d", cleanToolName, i)
+					formattedContent := formatFunctionBody(content)
 					if sh == "powershell" {
-						scriptLines = append(scriptLines, fmt.Sprintf("function %s {\n%s\n}", funcName, content))
+						scriptLines = append(scriptLines, fmt.Sprintf("function %s {\n%s\n}", funcName, formattedContent))
 						scriptLines = append(scriptLines, fmt.Sprintf(". (%s)", funcName))
 						scriptLines = append(scriptLines, fmt.Sprintf("Remove-Item Function:\\%s -ErrorAction SilentlyContinue", funcName))
 					} else {
-						scriptLines = append(scriptLines, fmt.Sprintf("%s() {\n%s\n}", funcName, content))
+						scriptLines = append(scriptLines, fmt.Sprintf("%s() {\n%s\n}", funcName, formattedContent))
 						scriptLines = append(scriptLines, fmt.Sprintf("source <(%s)", funcName))
 						scriptLines = append(scriptLines, fmt.Sprintf("unset -f %s", funcName))
 					}
@@ -1394,6 +1396,36 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 		return nil
 	})
+}
+
+func formatFunctionBody(body string) string {
+	lines := strings.Split(body, "\n")
+	minIndent := -1
+	for _, l := range lines {
+		trimmed := strings.TrimSpace(l)
+		if trimmed == "" {
+			continue
+		}
+		indent := len(l) - len(strings.TrimLeft(l, " \t"))
+		if minIndent == -1 || indent < minIndent {
+			minIndent = indent
+		}
+	}
+	if minIndent == -1 || minIndent < 0 {
+		minIndent = 0
+	}
+	var formatted []string
+	for _, l := range lines {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		if len(l) >= minIndent {
+			formatted = append(formatted, "  "+l[minIndent:])
+		} else {
+			formatted = append(formatted, "  "+strings.TrimSpace(l))
+		}
+	}
+	return strings.Join(formatted, "\n")
 }
 
 func (o *Orchestrator) resolvePlaceholder(val string, tool *config.ToolConfig, projCfg *config.ProjectConfig) (string, error) {
