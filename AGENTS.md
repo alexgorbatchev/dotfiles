@@ -5,15 +5,15 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 ## Shared commands
 
 - Install deps: `bun install --frozen-lockfile`
-- Format & autofix: `bun fix`
-- Lint: `bun lint`
-- Typecheck: `bun typecheck`
-- Go unit tests: `go test ./...`
-- Go E2E tests: `go test ./tests/e2e/...`
-- Full check: `bun check`
-- Build / compile binaries: `bun compile`
+- Format & autofix: `just fix` (or `bun fix`)
+- Lint: `just lint` (or `bun lint`)
+- Typecheck: `just typecheck` (or `bun typecheck`)
+- Go unit tests: `go test ./pkg/... ./cmd/...`
+- Go E2E tests: `go test -count=1 -p 1 ./tests/e2e/...`
+- Full check: `just check` (or `bun check`)
+- Build / compile binaries: `just compile` (or `bun compile`)
 - CLI against fixture project: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts generate`
-- Dashboard server against fixture: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard`
+- Dashboard server against fixture: `just dashboard` (or `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard`)
 
 ## Workspace map
 

@@ -17,20 +17,19 @@
     }
   },
   "scripts": {
-    "typecheck": "tsgo -p tsconfig.json",
-    "lint": "bun --bun oxfmt --check . && (cd test-project && ../node_modules/.bin/dprint check --config .dprint.json .) && bun --bun oxlint . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
-    "fix": "bun --bun oxfmt . && (cd test-project && ../node_modules/.bin/dprint fmt --config .dprint.json .) && bun --bun oxlint --fix . $([ \"$AGENT\" = \"1\" ] && echo \"--format=unix\")",
-    "test:all": "go test -count=1 -p 1 ./tests/e2e/...",
-    "test:native": "go test -count=1 -p 1 ./tests/e2e/...",
-    "test:task": "go test -count=1 -p 1 ./tests/e2e/...",
+    "typecheck": "just typecheck",
+    "lint": "just lint",
+    "fix": "just fix",
+    "test:all": "just test",
+    "test:native": "just test",
+    "test:task": "just test",
     "test-project": "go run ./cmd/dotfiles --config test-project/dotfiles.config.ts",
-    "compile": "go run scripts/build/main.go",
-    "release": "bun scripts/release.ts",
-    "find-unused": "echo \"find-unused analyzer is not configured in this workspace.\"",
+    "compile": "just compile",
+    "release": "just release",
     "cli": "go run ./cmd/dotfiles",
-    "check": "bun lint && bun typecheck && bun test:all",
-    "check:ci": "bun lint && bun typecheck && bun test:native",
-    "dashboard": "go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard"
+    "check": "just check",
+    "check:ci": "just check",
+    "dashboard": "just dashboard"
   },
   "devDependencies": {
     "@alexgorbatchev/typescript-ai-policy": "5.0.2",
