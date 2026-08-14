@@ -121,7 +121,7 @@ export interface ISerializableToolConfig {
   name: string;
   version: string;
   installationMethod: string;
-  installParams: ISerializableInstallParams;
+  installParams?: ISerializableInstallParams;
   binaries?: SerializableBinary[];
   dependencies?: string[];
   symlinks?: ISerializableSymlink[];

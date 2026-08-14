@@ -78,8 +78,8 @@ describe("serializeToolConfig", () => {
     expect(result.name).toBe("test-tool");
     expect(result.version).toBe("latest");
     expect(result.installationMethod).toBe("github-release");
-    expect(result.installParams.repo).toBe("owner/repo");
-    expect(result.installParams.assetPattern).toBe("test-*");
+    expect(result.installParams?.repo).toBe("owner/repo");
+    expect(result.installParams?.assetPattern).toBe("test-*");
     expect(result.binaries).toEqual(["test-bin"]);
     expect(result.platformConfigs).toBeUndefined();
   });
@@ -209,7 +209,7 @@ describe("serializeToolConfig", () => {
 
     const result = serializeToolConfig(config);
 
-    expect(result.installParams.crate).toBe("test-crate");
+    expect(result.installParams?.crate).toBe("test-crate");
   });
 
   test("serializes brew install params", () => {
@@ -223,7 +223,7 @@ describe("serializeToolConfig", () => {
 
     const result = serializeToolConfig(config);
 
-    expect(result.installParams.formula).toBe("test-formula");
+    expect(result.installParams?.formula).toBe("test-formula");
   });
 
   test("serializes curl-tar install params", () => {
@@ -237,7 +237,7 @@ describe("serializeToolConfig", () => {
 
     const result = serializeToolConfig(config);
 
-    expect(result.installParams.url).toBe("https://example.com/tool.tar.gz");
+    expect(result.installParams?.url).toBe("https://example.com/tool.tar.gz");
   });
 
   test("serializes ghCli option", () => {
@@ -251,7 +251,7 @@ describe("serializeToolConfig", () => {
 
     const result = serializeToolConfig(config);
 
-    expect(result.installParams.ghCli).toBe(true);
+    expect(result.installParams?.ghCli).toBe(true);
   });
 
   test("handles empty platformConfigs array", () => {

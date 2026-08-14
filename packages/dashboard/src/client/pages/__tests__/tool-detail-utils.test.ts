@@ -180,7 +180,7 @@ describe("getReadmeRepo", () => {
     expect(result).toBe("owner/platform-repo");
   });
 
-  test("returns null when no repo is configured", () => {
+  test("returns null when no repo is configured or installParams is undefined", () => {
     const config: ISerializableToolConfig = {
       name: "test",
       version: "latest",
@@ -188,9 +188,16 @@ describe("getReadmeRepo", () => {
       installParams: {},
     };
 
-    const result = getReadmeRepo(config);
+    expect(getReadmeRepo(config)).toBeNull();
 
-    expect(result).toBeNull();
+    const configUndefinedParams: ISerializableToolConfig = {
+      name: "test",
+      version: "latest",
+      installationMethod: "manual",
+      installParams: undefined,
+    };
+
+    expect(getReadmeRepo(configUndefinedParams)).toBeNull();
   });
 });
 

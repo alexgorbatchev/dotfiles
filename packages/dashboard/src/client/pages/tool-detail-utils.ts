@@ -12,7 +12,7 @@ export interface ISourceInfo {
 
 interface IInstallConfigCandidate {
   installationMethod: string;
-  installParams: ISerializableInstallParams;
+  installParams?: ISerializableInstallParams;
 }
 
 function getInstallConfigCandidates(config: ISerializableToolConfig): IInstallConfigCandidate[] {
@@ -35,8 +35,11 @@ function getInstallConfigCandidates(config: ISerializableToolConfig): IInstallCo
 
 function getSourceInfoForInstallConfig(
   installationMethod: string,
-  installParams: ISerializableInstallParams,
+  installParams?: ISerializableInstallParams,
 ): ISourceInfo | null {
+  if (!installParams) {
+    return null;
+  }
   switch (installationMethod) {
     case "github-release":
       if (installParams.repo) {
@@ -111,7 +114,7 @@ export function findDependentTools(tools: IToolDetail[], currentToolBinaries: st
 }
 
 export function getReadmeRepo(config: ISerializableToolConfig): string | null {
-  if (config.installParams.repo) {
+  if (config.installParams?.repo) {
     return config.installParams.repo;
   }
 

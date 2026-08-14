@@ -301,4 +301,25 @@ describe("ToolsTreeView", () => {
     assert(icon);
     expect(icon).toBeInTheDocument();
   });
+
+  test("renders safely when tool installParams is undefined", async () => {
+    mockFetchWith(
+      createTreeResponse([
+        { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
+      ]),
+    );
+    const toolWithoutInstallParams: IToolDetail = {
+      ...createTool("fzf", "installed"),
+      config: {
+        name: "fzf",
+        version: "1.0.0",
+        installationMethod: "manual",
+        installParams: undefined,
+      },
+    };
+    render(<ToolsTreeView tools={[toolWithoutInstallParams]} />);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(screen.getByText("fzf")).toBeInTheDocument();
+  });
 });

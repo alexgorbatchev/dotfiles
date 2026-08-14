@@ -137,7 +137,7 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
   for (const tool of tools) {
     toolStatusMap.set(tool.config.name, tool.runtime.status);
     toolMethodMap.set(tool.config.name, tool.config.installationMethod);
-    toolGhCliMap.set(tool.config.name, tool.config.installParams.ghCli ?? false);
+    toolGhCliMap.set(tool.config.name, tool.config.installParams?.ghCli ?? false);
     toolFileCountMap.set(tool.config.name, tool.files.length);
     toolBinarySizeMap.set(tool.config.name, tool.binaryDiskSize);
   }
