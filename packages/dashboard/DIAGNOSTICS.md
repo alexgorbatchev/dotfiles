@@ -52,13 +52,12 @@ Useful repo commands:
 
 `/api/tool-configs-tree`
 
-- Uses dashboard-owned filesystem traversal in `packages/dashboard/src/server/routes/tool-configs-tree.ts`.
+- Uses dashboard-owned filesystem traversal in `pkg/dashboard/routes.go`.
 - Historically this failed on unreadable or broken entries and aborted the whole response.
 
 `/api/recent-tools`
 
-- Uses dashboard-owned traversal in `packages/dashboard/src/server/routes/recent-tools.ts`.
-- Also depends on `packages/dashboard/src/server/routes/helpers/git-dates.ts`.
+- Uses dashboard-owned traversal in `pkg/dashboard/routes.go`.
 - Historically this failed both on unreadable filesystem entries and on expensive or invalid git lookups.
 
 `/api/tools/<tool>/source`
@@ -87,8 +86,7 @@ Likely cause:
 
 Relevant files:
 
-- `packages/dashboard/src/server/routes/tool-configs-tree.ts`
-- `packages/dashboard/src/server/routes/recent-tools.ts`
+- `pkg/dashboard/routes.go`
 
 Expected behavior:
 
@@ -107,9 +105,9 @@ Likely causes:
 - The git date cache loads concurrently and races under `Promise.all`
 - Git is queried for files outside the current repo root
 
-Relevant file:
+Relevant files:
 
-- `packages/dashboard/src/server/routes/helpers/git-dates.ts`
+- `pkg/dashboard/routes.go`
 
 Expected behavior:
 
@@ -194,10 +192,9 @@ What to trust more:
 
 Relevant files:
 
-- `packages/dashboard/src/server/dashboard-server.ts`
-- `packages/build/src/build/steps/buildCli.ts`
-- `.dist/dashboard.js`
-- `.dist/dashboard-*.js`
+- `pkg/dashboard/server.go`
+- `pkg/dashboard/routes.go`
+- `scripts/build/main.go`
 
 ### Source-tree dev server caveat
 
@@ -250,14 +247,12 @@ Practical rule:
 
 ## Files To Inspect First
 
-- `packages/dashboard/src/server/routes/tool-configs-tree.ts`
-- `packages/dashboard/src/server/routes/recent-tools.ts`
-- `packages/dashboard/src/server/routes/helpers/git-dates.ts`
+- `pkg/dashboard/routes.go`
+- `pkg/dashboard/server.go`
 - `packages/dashboard/src/client/components/ToolSourceCard.tsx`
 - `packages/dashboard/src/client/components/ReadmeCard.tsx`
 - `packages/dashboard/src/client/pages/ToolDetail.tsx`
-- `packages/dashboard/src/server/dashboard-server.ts`
-- `packages/build/src/build/steps/buildCli.ts`
+- `scripts/build/main.go`
 
 ## Guardrails
 

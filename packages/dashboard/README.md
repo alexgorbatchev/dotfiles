@@ -12,7 +12,7 @@ Web-based visualization dashboard for the dotfiles-tool-installer system.
 
 ## Technology Stack
 
-- **Runtime**: Bun HTTP Server
+- **Backend**: Go HTTP Server (with embedded Preact client assets)
 - **Frontend**: Preact + Preact-ISO (URL-driven routing)
 - **Styling**: Tailwind CSS (via CDN for simplicity)
 - **Font**: Maple Mono Normal NF (monospace throughout)
@@ -23,13 +23,13 @@ The dashboard is started via the CLI:
 
 ```bash
 # Start dashboard server
-bun cli dashboard
+dotfiles dashboard
 
 # With custom port
-bun cli dashboard --port 3001
+dotfiles dashboard --port 3001
 
 # With specific config
-bun cli --config=./my-config.ts dashboard
+dotfiles --config=./my-config.ts dashboard
 ```
 
 ## UI Pages
