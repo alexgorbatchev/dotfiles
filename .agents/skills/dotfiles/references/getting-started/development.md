@@ -1,20 +1,23 @@
 # Development
 
 ```bash
-# Run all tests (fast parallel runner)
-bun test:all
+# Run Go unit tests
+go test ./...
 
-# Run tests with native bun test runner (accepts bun test arguments)
-bun test:native
+# Run Go E2E tests
+go test ./tests/e2e/...
 
-# Lint and format the codebase
+# Lint and format TypeScript client and scripts
 bun lint
 
-# Type-check
+# Type-check TypeScript client and scripts
 bun typecheck
 
-# Full check (lint + typecheck + test)
+# Full check (lint + typecheck + tests + compile)
 bun check
+
+# Build / compile binaries
+bun compile
 ```
 
 ### Development HTTP Proxy
@@ -22,11 +25,8 @@ bun check
 To avoid rate limiting during development, you can use the built-in HTTP caching proxy:
 
 ```bash
-# Start the proxy server (default port 3128)
-bun proxy
-
 # Run CLI commands through the proxy
-DEV_PROXY=3128 bun cli install bat
+DEV_PROXY=3128 go run ./cmd/dotfiles --config test-project/dotfiles.config.ts install bat
 ```
 
-The proxy caches all HTTP responses locally, ignoring server cache headers. This is useful when repeatedly testing installations against GitHub or other APIs. See [packages/http-proxy/README.md](packages/http-proxy/README.md) for full documentation.
+The proxy caches all HTTP responses locally. This is useful when repeatedly testing installations against GitHub or other APIs. See `pkg/proxy/AGENTS.md` for full documentation.

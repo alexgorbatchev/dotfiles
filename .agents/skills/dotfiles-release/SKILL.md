@@ -71,44 +71,37 @@ or the produced artifacts inside the compiled `.dist/` directory.
 
 ## Build Process Deep Dive
 
-The core compilation logic lives in `packages/build/src/build/build.ts`
+The core compilation logic lives in `scripts/build/main.go`
 (executed via `bun run compile`).
 
 Sequential build steps (failure at any step aborts the workflow):
 
-1. **Install deps**: `steps/ensureWorkspaceDependencies.ts`
-2. **Clean `.dist/`**: `steps/cleanPreviousBuild.ts`
-3. **Bundle CLI**: `steps/buildCli.ts`
-4. **Resolve runtime deps**: `steps/resolveRuntimeDependencies.ts`
-5. **Generate `schemas.d.ts`**: `steps/generateSchemaTypes.ts`
-6. **Generate `.dist/package.json`**: `steps/generateDistPackageJson.ts`
-7. **Install `.dist/node_modules`**: `helpers/installDependenciesInOutputDir.ts`
-8. **Check bundle size (<=500KB)**: `steps/enforceCliBundleSizeLimit.ts`
-9. **Copy skill to `.dist/skill/`**: `steps/copySkill.ts`
-10. **Generate `tool-types.d.ts`**: `steps/generateToolTypesFile.ts`
-11. **Run tsd type tests**: `steps/runTypeTests.ts`
-12. **Test packed build**: `steps/testPackedBuild.ts`
-13. **Cleanup temp files**: `steps/cleanupTempFiles.ts`
-14. **Print summary**: `steps/printBuildSummary.ts`
+1. **Clean `.dist/` and `pkg/dashboard/dist/`**: removes previous build outputs
+2. **Build Dashboard Client**: bundles Preact client with Bun into `pkg/dashboard/dist/`
+3. **Run Typegen**: executes `go run scripts/typegen/main.go` to synchronize TS types with Go structs
+4. **Generate schema types**: emits `.d.ts` declaration files into `.dist/`
+5. **Generate package.jsons**: creates `.dist/package.json` and platform-specific subpackages
+6. **Write launcher**: emits `cli.js` cross-platform Node launcher
+7. **Copy skill & assets**: copies README, LICENSE, and `.agents/skills/dotfiles` into `.dist/`
+8. **Run tsd type tests**: verifies type declarations with `tsd`
+9. **Compile Go binaries**: compiles native Go binaries for all supported OS/arch targets (`./cmd/dotfiles`)
+10. **Check binary size limit**: ensures binaries remain within the 26MB budget
+11. **Print summary**: outputs build summary
 
 ### Common Build Failures
 
-**Type Test Failures (Step 11)**
-The build runs `tsd` against the **bundled** `.dist/schemas.d.ts`, not the source types.
-_Debugging_: Inspect the failing `packages/*/type-tests/*.test-d.ts` test files and `.dist/schemas.d.ts` to see how the bundled types diverge.
+**Type Test Failures**
+The build runs `tsd` against the generated `.d.ts` files in `.dist/`.
+_Debugging_: Inspect failing `tests/type-tests/*.test-d.ts` test files and `.dist/index.d.ts` to see how declaration types diverge.
 
-**Bundle Size Exceeded (Step 8)**
-The total CLI bundle must be `<= 500KB`. Check for accidentally bundled thick dependencies that should have been marked external.
-
-**Packed Build Test (Step 12)**
-This executes the CLI using an `npm pack` tarball to simulate what the user downloads. A failure here indicates the `files` array or `main`/`bin` mappings in `.dist/package.json` are incorrect.
+**Binary Size Exceeded**
+Compiled Go binaries must remain within the 26MB budget per platform binary.
 
 ## Key Architecture Paths
 
-- `packages/build/src/release/index.ts`: Trigger script logic (`bun run release`)
-- `packages/build/src/build/build.ts`: Compilation orchestrator
-- `packages/build/src/build/steps/`: Individual build steps
-- `packages/build/src/build/helpers/`: Build pipeline utilities
-- `.dist/`: The resulting compiled output that is published to NPM
+- `scripts/release.ts`: Release trigger script (`bun run release`)
+- `scripts/build/main.go`: Compilation orchestrator
+- `scripts/typegen/main.go`: Go struct to TypeScript type generator
+- `.dist/`: The resulting compiled output published to NPM and GitHub Releases
 - `.github/workflows/publish.yml`: The remote CI publisher routine
 - `.github/workflows/ci.yml`: The standard PR and commit check routine

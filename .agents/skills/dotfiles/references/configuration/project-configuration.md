@@ -133,13 +133,9 @@ When enabled, the proxy ignores server cache headers, ensuring responses are alw
 - `POST /cache/populate` - Pre-populate cache entries
 - `GET /cache/stats` - Get cache statistics
 
-#### Standalone Usage
+#### Usage
 
-The proxy can also be run standalone without enabling it in the config:
-
-```bash
-bun run packages/http-proxy/src/server.ts --port=3128 --cache-dir=.tmp/cache
-```
+Enable the proxy in your `dotfiles.config.ts` configuration or pass `DEV_PROXY=3128` when running commands.
 
 ### system
 

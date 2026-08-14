@@ -20,7 +20,7 @@ Filesystem abstractions (`OSFS`, `MemFS`, `ResolvedFS`, `TrackedFileSystem`).
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict)
 - Always: write matching unit tests in `fs_test.go` for any filesystem modifications.
 - Ask first: modifying `TrackedFileSystem` registry recording behavior.
-- Never: bypass filesystem abstractions with raw `node:fs` or un-tracked direct file operations.
+- Never: bypass filesystem abstractions with raw `os` package calls or un-tracked direct file operations.
 
 ## References
 
