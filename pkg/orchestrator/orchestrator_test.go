@@ -1028,6 +1028,59 @@ func TestGenerateShellScripts_ZshPlugin(t *testing.T) {
 	}
 }
 
+func TestZshPlugin_UnclonedFallbackSource(t *testing.T) {
+	ctx := context.Background()
+	log := logger.New(logger.Config{Name: "test-zsh-plugin", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	orch := NewOrchestrator(log, memFS, runner, reg, nil)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			GeneratedDir:    "/home/user/.generated",
+		},
+	}
+
+	tools := []*config.ToolConfig{
+		{
+			Name:               "uncloned-plugin",
+			InstallationMethod: "zsh-plugin",
+			InstallParams: map[string]interface{}{
+				"repo": "user/uncloned-plugin",
+			},
+		},
+	}
+
+	// Do NOT create plugin file on memFS — test uncloned fallback!
+	err = orch.generateShellScripts(ctx, tools, projCfg)
+	if err != nil {
+		t.Fatalf("failed to generate shell scripts: %v", err)
+	}
+
+	mainZshPath := "/home/user/.generated/shell-scripts/main.zsh"
+	data, err := memFS.ReadFile(mainZshPath)
+	if err != nil {
+		t.Fatalf("failed to read main.zsh: %v", err)
+	}
+
+	scriptContent := string(data)
+	expectedSource := `source "/home/user/.generated/binaries/uncloned-plugin/current/uncloned-plugin.plugin.zsh"`
+	if !strings.Contains(scriptContent, expectedSource) {
+		t.Errorf("expected script to contain fallback source %q, got:\n%s", expectedSource, scriptContent)
+	}
+}
+
 func TestTopologicalSort_RobustnessAndDeterminism(t *testing.T) {
 	t.Run("multiple providers without dependency", func(t *testing.T) {
 		tools := []*config.ToolConfig{

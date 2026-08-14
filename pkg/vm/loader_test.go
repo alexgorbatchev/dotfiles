@@ -105,9 +105,10 @@ func TestLoaderAPIFeatures(t *testing.T) {
 		` + "`" + `;
 
 		const genDir = ctx.projectConfig.paths.generatedDir;
+		const toolDir = ctx.toolDir;
 
 		return install("manual")
-			.bin("multi-plat", genDir)
+			.bin("multi-plat", toolDir)
 			.platform(Platform.MacOS, (install) => install("brew", { formula: "mac-pkg" }))
 			.platform(Platform.Linux, Architecture.Arm64, (install) => install("apt", { package: "linux-arm64-pkg" }))
 			.platform(Platform.Linux, Architecture.X86_64, (install) => install("apt", { package: "linux-x64-pkg" }));
