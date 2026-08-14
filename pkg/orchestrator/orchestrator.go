@@ -1213,6 +1213,9 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 								}
 							}
 						}
+						if sourceFile == "" {
+							sourceFile = pluginName + ".plugin.zsh"
+						}
 						if sourceFile != "" {
 							scriptLines = append(scriptLines, fmt.Sprintf("source %q", filepath.ToSlash(filepath.Join(pluginPath, sourceFile))))
 						}

@@ -414,8 +414,11 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
   // Construct toolCtx parameter
   const toolName = globalThis.currentToolName || "";
   const toolPath = globalThis.currentToolPath || "";
+  const toolDir = toolPath
+    ? globalThis.path.dirname(toolPath)
+    : (globalThis.configFileDir || "") + "/tools/" + toolName;
   const bDir = globalThis.binariesDir || "";
-  const currentDir = bDir ? bDir + "/" + toolName + "/current" : globalThis.path.dirname(toolPath);
+  const currentDir = bDir ? bDir + "/" + toolName + "/current" : toolDir;
   const defaultPaths = {
     dotfilesDir: globalThis.configFileDir || "",
     toolConfigsDir: (globalThis.configFileDir || "") + "/tools",
@@ -433,6 +436,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
   const toolCtx = {
     toolName: toolName,
     configFileDir: globalThis.configFileDir || "",
+    toolDir: toolDir,
     projectConfig: activeProjCfg["paths"] ? activeProjCfg : { paths: defaultPaths },
     currentDir: currentDir,
     stagingDir: "{stagingDir}",
