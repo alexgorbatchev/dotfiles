@@ -74,7 +74,7 @@ export default defineTool((install, ctx) =>
 
 ### Bootstrap Install
 
-Use the hosted installer to provision dotfiles in the current directory. It installs the package locally, provisions missing config, installs managed Bun, and runs `dotfiles generate` for you.
+Use the hosted installer to provision dotfiles in the current directory. It provisions missing configuration and runs `dotfiles generate` for you.
 
 ```bash
 curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
@@ -82,18 +82,14 @@ curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
 
 ### Manual Install
 
-#### Bun runtime requirement
-
-The published npm package installs JavaScript files, but the `dotfiles` CLI entrypoint is executed with `#!/usr/bin/env bun`. Bun must be installed and available on `PATH` before you run the public package.
-
-If you do not want to use the hosted installer, install Bun first and then set up dotfiles manually:
+Run the provided install script directly, or use the `dotfiles` CLI binary:
 
 ```bash
-# Install Bun first: https://bun.sh
-$ bun install -D @alexgorbatchev/dotfiles
-$ bun run dotfiles init
+# Run the provided install script
+$ ./scripts/managed-installer/install.sh
 
-# Install `dotfiles` skill
+# Or initialize configuration and skills manually
+$ dotfiles init
 $ dotfiles skill .agents/skills/
 ```
 
