@@ -275,7 +275,13 @@ func NewServer(log *logger.Logger, port int, cacheDir string, ttl int64) *Server
 		port:   port,
 		store:  NewCacheStore(cacheDir, ttl),
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				DialContext: (&net.Dialer{
+					Timeout: 2 * time.Second,
+				}).DialContext,
+				ResponseHeaderTimeout: 5 * time.Second,
+			},
+			Timeout: 10 * time.Second,
 		},
 	}
 }
@@ -302,6 +308,7 @@ func (s *Server) Start() error {
 			mux.ServeHTTP(w, r)
 		}),
 	}
+	s.server.SetKeepAlivesEnabled(false)
 
 	// Synchronously bind the listener.
 	ln, err := net.Listen("tcp", "127.0.0.1:"+fmt.Sprintf("%d", s.port))
@@ -476,6 +483,9 @@ func (s *Server) handlePopulate(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	targetURLStr := r.RequestURI
+	if unescaped, err := url.PathUnescape(targetURLStr); err == nil {
+		targetURLStr = unescaped
+	}
 
 	if r.Method == http.MethodConnect {
 		host := r.Host
@@ -539,6 +549,9 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	} else if strings.HasPrefix(targetURLStr, "/") && !strings.HasPrefix(targetURLStr, "//") {
 		// Relative proxying
 		host := r.Header.Get("Host")
+		if host == "" {
+			host = r.Host
+		}
 		if host == "" {
 			http.Error(w, "Missing Host header", http.StatusBadRequest)
 			return

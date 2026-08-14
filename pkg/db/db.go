@@ -46,17 +46,16 @@ func NewConnection(ctx context.Context, dsn string) (*sql.DB, error) {
 	db.SetConnMaxLifetime(30 * time.Minute)
 
 	// Run performance PRAGMAs
-	if _, err := db.ExecContext(ctx, "PRAGMA journal_mode=WAL;"); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to enable WAL mode: %w", err)
+	pragmas := []string{
+		"PRAGMA journal_mode=WAL;",
+		"PRAGMA synchronous=NORMAL;",
+		"PRAGMA busy_timeout=5000;",
 	}
-	if _, err := db.ExecContext(ctx, "PRAGMA synchronous=NORMAL;"); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to set synchronous mode: %w", err)
-	}
-	if _, err := db.ExecContext(ctx, "PRAGMA busy_timeout=5000;"); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to set busy timeout: %w", err)
+	for _, pragma := range pragmas {
+		if _, err := db.ExecContext(ctx, pragma); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("failed to execute pragma %q: %w", pragma, err)
+		}
 	}
 
 	// Initialize database schemas

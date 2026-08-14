@@ -528,6 +528,11 @@ func (e *Extractor) walkFiles(dir string) ([]string, error) {
 
 // extractDmg mounts a macOS DMG file and copies its contents to the destination folder using standard command tools.
 func (e *Extractor) extractDmg(ctx context.Context, src string, dest string) error {
+	exists, err := e.fsys.Exists(src)
+	if err != nil || !exists {
+		return fmt.Errorf("dmg file does not exist: %s", src)
+	}
+
 	mountPoint, err := os.MkdirTemp("", "dotfiles-dmg-mount-*")
 	if err != nil {
 		return fmt.Errorf("creating temporary mount point: %w", err)
@@ -555,8 +560,13 @@ func (e *Extractor) extractDmg(ctx context.Context, src string, dest string) err
 
 // extractPkg expands a macOS PKG installer package to destination using standard system utilities.
 func (e *Extractor) extractPkg(ctx context.Context, src string, dest string) error {
+	exists, err := e.fsys.Exists(src)
+	if err != nil || !exists {
+		return fmt.Errorf("pkg file does not exist: %s", src)
+	}
+
 	expandCmd := e.runner.CommandContext(ctx, "pkgutil", "--expand-full", src, dest)
-	err := expandCmd.Run()
+	err = expandCmd.Run()
 	if err != nil {
 		return fmt.Errorf("pkgutil expand failed: %w", err)
 	}

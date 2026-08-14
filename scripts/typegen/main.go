@@ -5,12 +5,19 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/tkrajina/typescriptify-golang-structs/typescriptify"
 )
 
 func generateTypes(outputPath string) error {
+	if dir := filepath.Dir(outputPath); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+	}
+
 	t := typescriptify.New()
 	t.CreateInterface = true
 	t.BackupDir = "" // Do not create backup files (e.g. *.backup) when overwriting files
@@ -48,42 +55,49 @@ func generateTypes(outputPath string) error {
 	return nil
 }
 
-func main() {
-	outFlag := flag.String("out", "", "Output file path")
-	flag.Parse()
+func runMain(args []string) error {
+	fs := flag.NewFlagSet("typegen", flag.ContinueOnError)
+	outFlag := fs.String("out", "", "Output file path")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
 
 	outputPath := *outFlag
-	if flag.NArg() > 0 {
-		outputPath = flag.Arg(0)
+	if fs.NArg() > 0 {
+		outputPath = fs.Arg(0)
 	}
 
 	if outputPath != "" {
 		if err := generateTypes(outputPath); err != nil {
-			fmt.Printf("Error converting Go structures to TypeScript: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error converting Go structures to TypeScript: %w", err)
 		}
 		fmt.Printf("Successfully generated TypeScript interfaces at %s\n", outputPath)
-		return
+		return nil
 	}
 
 	dashboardPath := "packages/dashboard/src/shared/types.gen.ts"
 	if err := generateTypes(dashboardPath); err != nil {
-		fmt.Printf("Error generating %s: %v\n", dashboardPath, err)
-		os.Exit(1)
+		return fmt.Errorf("error generating %s: %w", dashboardPath, err)
 	}
 	fmt.Printf("Successfully generated TypeScript interfaces at %s\n", dashboardPath)
 
 	distDir := ".dist"
 	if err := os.MkdirAll(distDir, 0755); err != nil {
-		fmt.Printf("Error creating %s directory: %v\n", distDir, err)
-		os.Exit(1)
+		return fmt.Errorf("error creating %s directory: %w", distDir, err)
 	}
 
 	distPath := ".dist/index.d.ts"
 	if err := generateTypes(distPath); err != nil {
-		fmt.Printf("Error generating %s: %v\n", distPath, err)
-		os.Exit(1)
+		return fmt.Errorf("error generating %s: %w", distPath, err)
 	}
 	fmt.Printf("Successfully generated TypeScript interfaces at %s\n", distPath)
+	return nil
+}
+
+func main() {
+	if err := runMain(os.Args[1:]); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
 }
 

@@ -103,6 +103,10 @@ func (o *OSFS) CopyFile(src, dest string) error {
 	}
 	defer srcFile.Close()
 
+	if err := o.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+		return err
+	}
+
 	info, err := os.Stat(src)
 	if err != nil {
 		return err
