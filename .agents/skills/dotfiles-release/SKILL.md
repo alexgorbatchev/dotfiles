@@ -69,6 +69,24 @@ or the produced artifacts inside the compiled `.dist/` directory.
   cd .dist && npm publish --dry-run
   ```
 
+## Binary Distribution Architecture
+
+The CLI is distributed through two complementary channels:
+
+### 1. NPM / Bun Optional Platform Packages
+
+When compiled via `bun run compile` (`scripts/build/main.go`):
+
+- Native Go binaries (`./cmd/dotfiles`) are compiled for target OS/architecture combinations (`darwin-x64`, `darwin-arm64`, `linux-x64`, `linux-arm64`).
+- Each binary is packaged into a platform subpackage (e.g. `@alexgorbatchev/dotfiles-darwin-arm64`) specifying `os` and `cpu` constraints in its `package.json`.
+- The root `@alexgorbatchev/dotfiles` package lists all platform subpackages under `optionalDependencies`.
+- Package managers (`npm`, `bun`, `pnpm`) inspect `os`/`cpu` and download only the subpackage matching the host system into `node_modules`.
+- At runtime, `cli.js` resolves the subpackage binary via `import.meta.resolve` and spawns the native Go process with `spawnSync`.
+
+### 2. Standalone GitHub Releases
+
+The `.github/workflows/publish.yml` CI workflow attaches the compiled native Go binary directly to GitHub Releases (`vX.Y.Z`). The hosted installer (`curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash`) downloads this standalone binary directly without requiring Node.js or Bun.
+
 ## Build Process Deep Dive
 
 The core compilation logic lives in `scripts/build/main.go`
