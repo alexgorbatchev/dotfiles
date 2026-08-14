@@ -31,6 +31,38 @@ func init() {
 	}
 }
 
+func TestMain(m *testing.M) {
+	code := m.Run()
+	cleanTestTmp()
+	os.Exit(code)
+}
+
+func cleanTestTmp() {
+	dir, err := os.Getwd()
+	if err != nil {
+		return
+	}
+	for dir != "/" && dir != "." {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			tmpDir := filepath.Join(dir, ".tmp")
+			entries, err := os.ReadDir(tmpDir)
+			if err == nil {
+				for _, entry := range entries {
+					name := entry.Name()
+					if name == "sandbox" {
+						continue
+					}
+					if strings.HasPrefix(name, "Test") || strings.HasPrefix(name, "go-build") || name == "e2e-test" || name == "test-load" || name == "debug-config" {
+						_ = os.RemoveAll(filepath.Join(tmpDir, name))
+					}
+				}
+			}
+			break
+		}
+		dir = filepath.Dir(dir)
+	}
+}
+
 type TestHarness struct {
 	T             *testing.T
 	TempDir       string
@@ -68,7 +100,10 @@ func NewTestHarness(t *testing.T, options HarnessOptions) *TestHarness {
 
 	// Write config content if provided
 	if options.ConfigContent != "" {
-		fullConfigPath := filepath.Join(tempDir, h.ConfigPath)
+		fullConfigPath := h.ConfigPath
+		if !filepath.IsAbs(fullConfigPath) {
+			fullConfigPath = filepath.Join(tempDir, fullConfigPath)
+		}
 		// Ensure parent directory of the config exists
 		err := os.MkdirAll(filepath.Dir(fullConfigPath), 0755)
 		if err != nil {

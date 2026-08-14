@@ -21,8 +21,16 @@ func getRepoRoot() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := os.Stat(filepath.Join(cwd, "go.mod")); err == nil {
-		return cwd, nil
+	dir := cwd
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
 	}
 	return cwd, nil
 }
@@ -604,6 +612,7 @@ func runTypeTests(rootDir string) error {
 	}
 
 	fmt.Println("✅ tsd type tests passed successfully!")
+	_ = os.RemoveAll(tsdDir)
 	return nil
 }
 
@@ -742,65 +751,62 @@ func printBuildSummary(rootDir string) error {
 	return nil
 }
 
-func main() {
+func runBuild() error {
 	rootDir, err := getRepoRoot()
 	if err != nil {
-		fmt.Printf("Error resolving repo root: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("resolving repo root: %w", err)
 	}
 
 	if err := cleanPreviousBuild(rootDir); err != nil {
-		fmt.Printf("Error cleaning: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("cleaning: %w", err)
 	}
 
 	if err := buildDashboard(rootDir); err != nil {
-		fmt.Printf("Error building dashboard: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("building dashboard: %w", err)
 	}
 
 	if err := runTypegen(rootDir); err != nil {
-		fmt.Printf("Error running typegen: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("running typegen: %w", err)
 	}
 
 	if err := generateSchemaTypes(rootDir); err != nil {
-		fmt.Printf("Error generating schema types: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("generating schema types: %w", err)
 	}
 
 	if _, err := generatePackageJsons(rootDir); err != nil {
-		fmt.Printf("Error generating package.jsons: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("generating package.jsons: %w", err)
 	}
 
 	if err := writeLauncher(rootDir); err != nil {
-		fmt.Printf("Error writing launcher: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("writing launcher: %w", err)
 	}
 
 	if err := copyAssetsAndSkill(rootDir); err != nil {
-		fmt.Printf("Error copying assets and skill: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("copying assets and skill: %w", err)
 	}
 
 	if err := runTypeTests(rootDir); err != nil {
-		fmt.Printf("Error running tsd type tests: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("running tsd type tests: %w", err)
 	}
 
 	if err := compileAllBinaries(rootDir); err != nil {
-		fmt.Printf("Error compiling binaries: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("compiling binaries: %w", err)
 	}
 
 	if err := checkBinarySizeLimits(rootDir); err != nil {
-		fmt.Printf("Error checking binary size limits: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("checking binary size limits: %w", err)
 	}
 
 	if err := printBuildSummary(rootDir); err != nil {
-		fmt.Printf("Error printing build summary: %v\n", err)
+		return fmt.Errorf("printing build summary: %w", err)
+	}
+
+	return nil
+}
+
+func main() {
+	if err := runBuild(); err != nil {
+		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
 }

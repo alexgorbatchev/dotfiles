@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
@@ -852,4 +854,432 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 			t.Errorf("expected supported to be false, got %v", data["supported"])
 		}
 	})
+}
+
+func TestDashboardMoreRoutes(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	ctx := context.Background()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to connect to db: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	tempDir := t.TempDir()
+
+	toolPath := filepath.Join(tempDir, "bat.tool.ts")
+	_ = os.WriteFile(toolPath, []byte("// TS Tool Content"), 0644)
+
+	ver := "1.0.0"
+	toolConfigs := []*config.ToolConfig{
+		{
+			Name:               "bat",
+			Version:            &ver,
+			InstallationMethod: "github-release",
+			ConfigFilePath:     toolPath,
+		},
+	}
+
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	instReg := installer.NewRegistry()
+	_ = instReg.Register(&mockInstallerForTest{name: "github-release"})
+	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	server := NewServer(log, 0, reg, &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    filepath.Join(tempDir, "binaries"),
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: tempDir,
+		},
+	}, toolConfigs, orch)
+
+	if err := server.Start(); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+	defer server.Stop()
+
+	// 1. GET /api/tools/bat (handleGetToolDetail)
+	resp1, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bat", server.Port()))
+	if err != nil || resp1.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/tools/bat failed: %v, status %v", err, resp1.StatusCode)
+	}
+	resp1.Body.Close()
+
+	// 2. GET /api/tools/bat/history (handleToolHistory)
+	resp2, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bat/history", server.Port()))
+	if err != nil || resp2.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/tools/bat/history failed: %v, status %v", err, resp2.StatusCode)
+	}
+	resp2.Body.Close()
+
+	// 3. GET /api/tools/bat/source (handleToolSource)
+	resp3, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bat/source", server.Port()))
+	if err != nil || resp3.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/tools/bat/source failed: %v, status %v", err, resp3.StatusCode)
+	}
+	resp3.Body.Close()
+
+	// 4. POST /api/tools/bat/update (handleToolUpdate)
+	resp4, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bat/update", server.Port()), "application/json", nil)
+	if err != nil || resp4.StatusCode != http.StatusOK {
+		t.Fatalf("POST /api/tools/bat/update failed: %v, status %v", err, resp4.StatusCode)
+	}
+	resp4.Body.Close()
+}
+
+func TestFormatRelativeTimeAndLogBroadcasterWrite(t *testing.T) {
+	now := time.Now().UnixMilli()
+
+	if got := formatRelativeTime(now); got != "just now" {
+		t.Errorf("expected 'just now', got %q", got)
+	}
+	if got := formatRelativeTime(now - 65*1000); got != "1 minute ago" {
+		t.Errorf("expected '1 minute ago', got %q", got)
+	}
+	if got := formatRelativeTime(now - 120*1000); got != "2 minutes ago" {
+		t.Errorf("expected '2 minutes ago', got %q", got)
+	}
+	if got := formatRelativeTime(now - 3700*1000); got != "1 hour ago" {
+		t.Errorf("expected '1 hour ago', got %q", got)
+	}
+	if got := formatRelativeTime(now - 7200*1000); got != "2 hours ago" {
+		t.Errorf("expected '2 hours ago', got %q", got)
+	}
+	if got := formatRelativeTime(now - 86400*1000); got != "1 day ago" {
+		t.Errorf("expected '1 day ago', got %q", got)
+	}
+	if got := formatRelativeTime(now - 2*86400*1000); got != "2 days ago" {
+		t.Errorf("expected '2 days ago', got %q", got)
+	}
+	if got := formatRelativeTime(now - 35*86400*1000); got != "1 month ago" {
+		t.Errorf("expected '1 month ago', got %q", got)
+	}
+	if got := formatRelativeTime(now - 400*86400*1000); got != "13 months ago" {
+		t.Errorf("expected '13 months ago', got %q", got)
+	}
+
+	// LogBroadcaster.Write
+	lb := NewLogBroadcaster()
+	ch := make(chan string, 10)
+	lb.Subscribe("test", ch)
+	defer lb.Unsubscribe("test", ch)
+
+	n, err := lb.Write([]byte("[test] log message"))
+	if err != nil || n != 18 {
+		t.Errorf("LogBroadcaster.Write failed: %v, n=%d", err, n)
+	}
+
+	select {
+	case msg := <-ch:
+		if msg != "[test] log message" {
+			t.Errorf("expected '[test] log message', got %q", msg)
+		}
+	case <-time.After(time.Second):
+		t.Error("expected message on subscriber channel")
+	}
+}
+
+func TestDashboardAPIsWithOrchestratorAndDBData(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	ctx := context.Background()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to connect to db: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	tempDir := t.TempDir()
+
+	// Populate DB data
+	_ = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		_ = reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "bat",
+			OperationType: "write",
+			FilePath:      "/home/test/.config/bat/config",
+			FileType:      "file",
+			CreatedAt:     time.Now().UnixMilli() - 1000,
+			OperationID:   "op-1",
+		})
+		_ = reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+			ToolName:    "bat",
+			Version:     "1.0.0",
+			InstallPath: "/opt/bat",
+			Timestamp:   "now",
+			InstalledAt: time.Now().UnixMilli(),
+			BinaryPaths: `["/opt/bat/bat"]`,
+		})
+		return reg.RecordToolUsage(ctx, tx, &registry.ToolUsageRecord{
+			ToolName:   "bat",
+			BinaryName: "bat",
+			UsageCount: 5,
+			LastUsedAt: time.Now().UnixMilli(),
+		})
+	})
+
+	// Populate shell scripts for handleShellIntegration
+	shellDir := filepath.Join(tempDir, ".generated", "shell-scripts")
+	_ = os.MkdirAll(shellDir, 0755)
+	_ = os.WriteFile(filepath.Join(shellDir, "main.zsh"), []byte("# zsh init"), 0644)
+	_ = os.WriteFile(filepath.Join(shellDir, "main.bash"), []byte("# bash init"), 0644)
+	_ = os.WriteFile(filepath.Join(shellDir, "main.ps1"), []byte("# ps1 init"), 0644)
+
+	toolPath := filepath.Join(tempDir, "bat.tool.ts")
+	_ = os.WriteFile(toolPath, []byte("// TS Tool"), 0644)
+
+	ver := "1.0.0"
+	toolConfigs := []*config.ToolConfig{
+		{
+			Name:               "bat",
+			Version:            &ver,
+			InstallationMethod: "github-release",
+			ConfigFilePath:     toolPath,
+		},
+	}
+
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	instReg := installer.NewRegistry()
+	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    filepath.Join(tempDir, "binaries"),
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: tempDir,
+		},
+	}
+
+	server := NewServer(log, 0, reg, projCfg, toolConfigs, orch)
+	if err := server.Start(); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+	defer server.Stop()
+
+	endpoints := []string{
+		"/api/stats",
+		"/api/health",
+		"/api/activity",
+		"/api/recent-tools",
+		"/api/shell",
+		"/api/tool-configs-tree",
+		"/api/tools/bat",
+		"/api/tools/bat/history",
+		"/api/tools/bat/source",
+	}
+
+	for _, ep := range endpoints {
+		t.Run("FullData_"+ep, func(t *testing.T) {
+			resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d%s", server.Port(), ep))
+			if err != nil {
+				t.Fatalf("GET %s failed: %v", ep, err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				t.Errorf("expected status 200 for %s, got %d", ep, resp.StatusCode)
+			}
+		})
+	}
+}
+
+func TestDashboardEdgeCasesAndErrors(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	ctx := context.Background()
+
+	// 1. Server with nil registry, nil projectConfig, nil orchestrator
+	serverNil := NewServer(log, 0, nil, nil, nil, nil)
+	if err := serverNil.Start(); err != nil {
+		t.Fatalf("failed to start nil server: %v", err)
+	}
+	defer serverNil.Stop()
+
+	// Test endpoints with nil dependencies
+	endpoints := []string{
+		"/api/stats",
+		"/api/config",
+		"/api/health",
+		"/api/activity",
+		"/api/recent-tools",
+		"/api/shell",
+		"/api/tool-configs-tree",
+		"/api/tools",
+		"/api/tools/nonexistent",
+		"/api/tools/nonexistent/readme",
+		"/api/tools/nonexistent/source",
+		"/api/tools/nonexistent/history",
+	}
+
+	for _, ep := range endpoints {
+		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d%s", serverNil.Port(), ep))
+		if err == nil {
+			resp.Body.Close()
+		}
+	}
+
+	// Test mutation endpoints on nonexistent tool
+	resp, _ := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/nonexistent/install", serverNil.Port()), "application/json", nil)
+	if resp != nil {
+		resp.Body.Close()
+	}
+	resp, _ = http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/nonexistent/check-update", serverNil.Port()), "application/json", nil)
+	if resp != nil {
+		resp.Body.Close()
+	}
+	resp, _ = http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/nonexistent/update", serverNil.Port()), "application/json", nil)
+	if resp != nil {
+		resp.Body.Close()
+	}
+
+	// Test unknown subroute
+	resp, _ = http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bat/unknown_subroute", serverNil.Port()))
+	if resp != nil {
+		resp.Body.Close()
+	}
+
+	// 2. Server with tool without ConfigFilePath and without README
+	sqlDB, _ := db.NewConnection(ctx, ":memory:")
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	ver := "1.0.0"
+	toolNoFiles := []*config.ToolConfig{
+		{
+			Name:    "no-files",
+			Version: &ver,
+		},
+	}
+
+	tempDir := t.TempDir()
+	serverNoFiles := NewServer(log, 0, reg, &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    filepath.Join(tempDir, "binaries"),
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: tempDir,
+		},
+	}, toolNoFiles, nil)
+
+	if err := serverNoFiles.Start(); err != nil {
+		t.Fatalf("failed to start serverNoFiles: %v", err)
+	}
+	defer serverNoFiles.Stop()
+
+	// GET /api/tools/no-files/readme (no readme)
+	resp, _ = http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/no-files/readme", serverNoFiles.Port()))
+	if resp != nil {
+		resp.Body.Close()
+	}
+
+	// GET /api/tools/no-files/source (no config file path)
+	resp, _ = http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/no-files/source", serverNoFiles.Port()))
+	if resp != nil {
+		resp.Body.Close()
+	}
+
+	// POST /api/tools/no-files/install (nil orch)
+	resp, _ = http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/no-files/install", serverNoFiles.Port()), "application/json", nil)
+	if resp != nil {
+		resp.Body.Close()
+	}
+
+	// POST /api/tools/no-files/update (nil orch)
+	resp, _ = http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/no-files/update", serverNoFiles.Port()), "application/json", nil)
+	if resp != nil {
+		resp.Body.Close()
+	}
+}
+
+func TestDashboardFullHealthAndTools(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	ctx := context.Background()
+
+	sqlDB, _ := db.NewConnection(ctx, ":memory:")
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	tempDir := t.TempDir()
+	binariesDir := filepath.Join(tempDir, "binaries")
+	_ = os.MkdirAll(filepath.Join(binariesDir, "healthy-tool", "current"), 0755)
+	_ = os.WriteFile(filepath.Join(binariesDir, "healthy-tool", "current", "healthy-tool"), []byte("bin"), 0755)
+	_ = os.MkdirAll(filepath.Join(binariesDir, "healthy-tool", "v1.0.0"), 0755)
+	_ = os.MkdirAll(filepath.Join(binariesDir, "healthy-tool", "v0.9.0"), 0755)
+
+	_ = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		_ = reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+			ToolName:    "healthy-tool",
+			Version:     "1.0.0",
+			InstallPath: filepath.Join(binariesDir, "healthy-tool", "current", "healthy-tool"),
+			Timestamp:   "now",
+			InstalledAt: time.Now().UnixMilli(),
+			BinaryPaths: `["healthy-tool"]`,
+		})
+		return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+			ToolName:    "orphaned-tool",
+			Version:     "1.0.0",
+			InstallPath: "/nonexistent/path/bin",
+			Timestamp:   "now",
+			InstalledAt: time.Now().UnixMilli(),
+			BinaryPaths: `["orphaned-tool"]`,
+		})
+	})
+
+	ver := "1.0.0"
+	toolConfigs := []*config.ToolConfig{
+		{
+			Name:               "healthy-tool",
+			Version:            &ver,
+			InstallationMethod: "github-release",
+			Binaries:           []interface{}{map[string]any{"name": "healthy-tool"}},
+		},
+		{
+			Name:               "unhealthy-tool",
+			InstallationMethod: "github-release",
+		},
+	}
+
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	instReg := installer.NewRegistry()
+	_ = instReg.Register(&mockInstallerForTest{name: "github-release"})
+	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    binariesDir,
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: tempDir,
+		},
+	}
+
+	server := NewServer(log, 0, reg, projCfg, toolConfigs, orch)
+	if err := server.Start(); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+	defer server.Stop()
+
+	// GET /api/health
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/health", server.Port()))
+	if err != nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/health failed: %v, status %v", err, resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// POST /api/tools/healthy-tool/check-update with orch present
+	respCheck, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/healthy-tool/check-update", server.Port()), "application/json", nil)
+	if err != nil || respCheck.StatusCode != http.StatusOK {
+		t.Fatalf("POST check-update failed: %v, status %v", err, respCheck.StatusCode)
+	}
+	respCheck.Body.Close()
 }
