@@ -8,7 +8,7 @@ Goja JS VM, TypeScript config loader, and authoring DSL bindings.
 
 ## Local conventions
 
-- Keep `loader-api.ts` as lean as possible with close to zero logic—act purely as a proxy/builder that captures raw parameters and passes them through to Go. Move all string formatting, unindenting, and post-processing into Go (`pkg/orchestrator/`).
+- Keep `loader-api.ts` strictly as a thin proxy/shim layer with close to zero logic. Its sole purpose is to expose the TypeScript authoring DSL, capture raw parameters/callbacks, and pass structured data back to Go. All evaluation logic, dependency matching, platform checks, path resolutions, and text processing MUST be performed in Go (`pkg/vm/`, `pkg/orchestrator/`).
 - Export `dedentString`, handle multi-platform `.platform()` calls cleanly, and pass `projectConfig` in `toolCtx`.
 - Ensure async tool callbacks return the underlying `builder` rather than a raw JS `Promise` object.
 
@@ -19,7 +19,7 @@ Goja JS VM, TypeScript config loader, and authoring DSL bindings.
 ## Boundaries
 
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict)
-- Always: keep `loader-api.ts` lean with close to zero logic as a pure proxy/builder and perform all string transformations in Go.
+- Always: keep `loader-api.ts` as a thin proxy/shim with close to zero logic and perform all evaluation, path resolution, and processing logic in Go.
 - Always: write matching unit tests in `vm_test.go` / `loader_test.go` for any VM modifications.
 - Ask first: modifying global VM bindings or TypeScript DSL API contracts.
 - Never: break backwards compatibility with existing `.tool.ts` authoring files.
