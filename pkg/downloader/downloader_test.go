@@ -577,3 +577,345 @@ func TestUserAgentHeader(t *testing.T) {
 		}
 	})
 }
+
+type errorOpenFS struct {
+	fs.FS
+}
+
+type errorReader struct{}
+
+func (errorReader) Read(p []byte) (int, error) {
+	return 0, fmt.Errorf("read failure")
+}
+
+func (e errorOpenFS) Open(path string) (io.ReadCloser, error) {
+	return dummyReadCloser{Reader: errorReader{}}, nil
+}
+
+type dummyReadCloser struct {
+	io.Reader
+}
+
+func (dummyReadCloser) Close() error { return nil }
+
+func TestDownloaderVerifyHashReadError(t *testing.T) {
+	mem := fs.NewMemFS()
+	eFS := errorOpenFS{FS: mem}
+	d := NewDownloader(eFS, nil)
+
+	ok, err := d.verifyHash("/dummy", "abc12345")
+	if err == nil || ok {
+		t.Errorf("expected verifyHash to fail when Read returns error")
+	}
+}
+
+func TestDownloaderHashCalculationFailed(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("some-data"))
+	}))
+	defer server.Close()
+
+	mem := fs.NewMemFS()
+	eFS := errorOpenFS{FS: mem}
+	d := NewDownloader(eFS, nil)
+
+	err := d.Download(context.Background(), server.URL, "/dest-hash-err", "sha256hash")
+	if err == nil || !strings.Contains(err.Error(), "hash calculation failed") {
+		t.Fatalf("expected hash calculation failed error, got %v", err)
+	}
+}
+
+func TestSetFSAndHashes(t *testing.T) {
+	memFS := fs.NewMemFS()
+	d := NewDownloader(memFS, nil)
+
+	newMemFS := fs.NewMemFS()
+	d.SetFS(newMemFS)
+	if d.fsys != newMemFS {
+		t.Error("SetFS failed to update fsys")
+	}
+
+	// verifyHash with sha256
+	content := []byte("test content")
+	_ = newMemFS.WriteFile("/hash.txt", content, 0644)
+
+	h := sha256.Sum256(content)
+	sha256Hash := hex.EncodeToString(h[:])
+	ok, err := d.verifyHash("/hash.txt", sha256Hash)
+	if err != nil || !ok {
+		t.Errorf("verifyHash SHA256 failed: ok=%v, err=%v", ok, err)
+	}
+
+	ok, err = d.verifyHash("/hash.txt", strings.ToUpper(sha256Hash))
+	if err != nil || !ok {
+		t.Errorf("verifyHash Upper SHA256 failed: ok=%v, err=%v", ok, err)
+	}
+
+	ok, err = d.verifyHash("/hash.txt", "1234567890123456789012345678901234567890123456789012345678901234")
+	if err != nil || ok {
+		t.Errorf("expected false on hash mismatch, got ok=%v, err=%v", ok, err)
+	}
+}
+
+func TestDownloader416VerifiedHashAndTimeoutOpt(t *testing.T) {
+	fullContent := "Range 416 verified hash content test"
+	h := sha256.Sum256([]byte(fullContent))
+	hashStr := hex.EncodeToString(h[:])
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Range") != "" {
+			w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(fullContent))
+	}))
+	defer server.Close()
+
+	memFS := fs.NewMemFS()
+	_ = memFS.WriteFile("/range-file.txt", []byte(fullContent), 0644)
+
+	d := NewDownloader(memFS, nil)
+
+	// 1. 416 Range Not Satisfiable + hash verified
+	err := d.Download(context.Background(), server.URL, "/range-file.txt", hashStr)
+	if err != nil {
+		t.Fatalf("416 range verified download failed: %v", err)
+	}
+
+	// 2. Timeout option in DownloadOptions
+	opts := DownloadOptions{
+		Timeout: 5 * time.Second,
+	}
+	err = d.Download(context.Background(), server.URL, "/range-file-opt.txt", hashStr, opts)
+	if err != nil {
+		t.Fatalf("Download with Timeout option failed: %v", err)
+	}
+}
+
+func TestDownloaderCacheExpirationAndOpenFile(t *testing.T) {
+	mem := fs.NewMemFS()
+	dl := NewDownloader(mem, nil)
+	dl.CacheEnabled = true
+	dl.CacheDir = "/test_cache_exp"
+	dl.CacheTTL = 1 * time.Millisecond // Expire quickly
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("fresh-data"))
+	}))
+	defer server.Close()
+
+	ctx := context.Background()
+
+	// 1. First download writes cache
+	_ = dl.Download(ctx, server.URL, "/f1", "")
+
+	// Wait for TTL to expire
+	time.Sleep(10 * time.Millisecond)
+
+	// 2. Second download with expired cache -> fetches fresh data from server
+	_ = dl.Download(ctx, server.URL, "/f1", "")
+
+	// 3. OpenFile support on OSFS
+	tmpDir := t.TempDir()
+	osFS := fs.NewOSFS()
+	dlOS := NewDownloader(osFS, nil)
+
+	osFile := filepath.Join(tmpDir, "partial.txt")
+	_ = os.WriteFile(osFile, []byte("part1-"), 0644)
+
+	serverPartial := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Range") != "" {
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = w.Write([]byte("part2"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("full"))
+	}))
+	defer serverPartial.Close()
+
+	var partialProgressCalled bool
+	optsPartial := DownloadOptions{
+		OnProgress: func(downloaded, total int64) {
+			partialProgressCalled = true
+		},
+	}
+	err := dlOS.Download(ctx, serverPartial.URL, osFile, "", optsPartial)
+	if err != nil || !partialProgressCalled {
+		t.Fatalf("OSFS 206 Partial Content download with progress failed: %v, %v", err, partialProgressCalled)
+	}
+
+	data, err := os.ReadFile(osFile)
+	if err != nil || string(data) != "part1-part2" {
+		t.Errorf("expected 'part1-part2', got %q, err=%v", string(data), err)
+	}
+}
+
+func TestDownloaderCacheHitWithProgressAndSkipCache(t *testing.T) {
+	mem := fs.NewMemFS()
+	dl := NewDownloader(mem, nil)
+	dl.CacheEnabled = true
+	dl.CacheDir = "/cache"
+	dl.CacheTTL = time.Hour
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("data"))
+	}))
+	defer server.Close()
+
+	ctx := context.Background()
+
+	// 1. Download to populate cache
+	_ = dl.Download(ctx, server.URL, "/dest1", "")
+
+	// 2. Cache hit with OnProgress callback
+	var progressCalled bool
+	optsProg := DownloadOptions{
+		OnProgress: func(downloaded, total int64) {
+			progressCalled = true
+		},
+	}
+	_ = mem.Remove("/dest1")
+	err := dl.Download(ctx, server.URL, "/dest1", "", optsProg)
+	if err != nil || !progressCalled {
+		t.Errorf("expected cache hit with progress callback called, err=%v, progressCalled=%v", err, progressCalled)
+	}
+
+	// 3. SkipCache option bypasses cache
+	optsSkip := DownloadOptions{
+		SkipCache: true,
+	}
+	err = dl.Download(ctx, server.URL, "/dest2", "", optsSkip)
+	if err != nil {
+		t.Fatalf("download with SkipCache failed: %v", err)
+	}
+
+	// 4. Retry cancellation with cancelled context
+	canceledCtx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	optsRetry := DownloadOptions{
+		RetryCount: 2,
+		RetryDelay: 100 * time.Millisecond,
+	}
+	failingServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer failingServer.Close()
+
+	err = dl.Download(canceledCtx, failingServer.URL, "/dest-cancel", "", optsRetry)
+	if err == nil {
+		t.Error("expected error downloading with cancelled context during retries")
+	}
+}
+
+func TestDownloader416RecoveryAndError(t *testing.T) {
+	fullContent := "full content for recovery"
+	serverRecovery := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Range") != "" {
+			w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(fullContent))
+	}))
+	defer serverRecovery.Close()
+
+	memFS := fs.NewMemFS()
+	_ = memFS.WriteFile("/bad-range.txt", []byte("bad offset content"), 0644)
+	d := NewDownloader(memFS, nil)
+
+	// 1. 416 recovery download without hash
+	var recProgressCalled bool
+	optsRec := DownloadOptions{
+		OnProgress: func(downloaded, total int64) {
+			recProgressCalled = true
+		},
+	}
+	err := d.Download(context.Background(), serverRecovery.URL, "/bad-range.txt", "", optsRec)
+	if err != nil || !recProgressCalled {
+		t.Fatalf("416 recovery download failed: %v, %v", err, recProgressCalled)
+	}
+
+	data, err := memFS.ReadFile("/bad-range.txt")
+	if err != nil || string(data) != fullContent {
+		t.Errorf("expected %q, got %q, err=%v", fullContent, string(data), err)
+	}
+
+	// 2. 416 recovery download fails with non-200 status
+	serverRecoveryFail := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Range") != "" {
+			w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer serverRecoveryFail.Close()
+
+	_ = memFS.WriteFile("/bad-range-fail.txt", []byte("bad offset content"), 0644)
+	err = d.Download(context.Background(), serverRecoveryFail.URL, "/bad-range-fail.txt", "")
+	if err == nil || !strings.Contains(err.Error(), "recovery download failed") {
+		t.Errorf("expected recovery download failed error, got %v", err)
+	}
+}
+
+func TestNewDownloaderNilTransportAndVerifyHash(t *testing.T) {
+	memFS := fs.NewMemFS()
+
+	// NewDownloader with custom client that has nil Transport
+	customClient := &http.Client{}
+	dCustom := NewDownloader(memFS, customClient)
+	if dCustom == nil || dCustom.client == nil {
+		t.Fatal("expected non-nil Downloader and client")
+	}
+
+	// verifyHash on empty file
+	_ = memFS.WriteFile("/empty.txt", []byte(""), 0644)
+	e30 := "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	ok, err := dCustom.verifyHash("/empty.txt", e30)
+	if err != nil || !ok {
+		t.Errorf("verifyHash on empty file failed: ok=%v, err=%v", ok, err)
+	}
+
+	// verifyHash with whitespace around expected hash
+	ok, err = dCustom.verifyHash("/empty.txt", "  "+e30+"  \n")
+	if err != nil || !ok {
+		t.Errorf("verifyHash with trimmed whitespace failed: ok=%v, err=%v", ok, err)
+	}
+}
+
+func TestPartialContentFallbackBranch(t *testing.T) {
+	memFS := fs.NewMemFS()
+	_ = memFS.WriteFile("/partial.txt", []byte("part1-"), 0644)
+
+	serverPartial := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Range") != "" {
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = w.Write([]byte("part2"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("full"))
+	}))
+	defer serverPartial.Close()
+
+	d := NewDownloader(memFS, nil)
+	var progressCalled bool
+	opts := DownloadOptions{
+		OnProgress: func(downloaded, total int64) {
+			progressCalled = true
+		},
+	}
+
+	err := d.Download(context.Background(), serverPartial.URL, "/partial.txt", "", opts)
+	if err != nil || !progressCalled {
+		t.Fatalf("partial content fallback download failed: %v, progressCalled=%v", err, progressCalled)
+	}
+
+	data, err := memFS.ReadFile("/partial.txt")
+	if err != nil || string(data) != "part1-part2" {
+		t.Errorf("expected 'part1-part2', got %q, err=%v", string(data), err)
+	}
+}

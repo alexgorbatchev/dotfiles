@@ -204,6 +204,22 @@ type ErroringFS struct {
 	errOnReadFile  bool
 	errOnWriteFile bool
 	errOnMkdirAll  bool
+	errOnChmod     bool
+	errOnReadlink  bool
+}
+
+func (e *ErroringFS) Chmod(path string, perm os.FileMode) error {
+	if e.errOnChmod {
+		return fmt.Errorf("mock chmod error")
+	}
+	return e.FS.Chmod(path, perm)
+}
+
+func (e *ErroringFS) Readlink(path string) (string, error) {
+	if e.errOnReadlink {
+		return "", fmt.Errorf("mock readlink error")
+	}
+	return e.FS.Readlink(path)
 }
 
 func (e *ErroringFS) Exists(path string) (bool, error) {
@@ -249,12 +265,38 @@ func TestGenerator_Errors(t *testing.T) {
 		BinaryPath: "/opt/mytool/bin/mytool",
 	}
 
-	t.Run("MkdirAll error in Generate", func(t *testing.T) {
+	t.Run("UsageLogPath MkdirAll error in Generate", func(t *testing.T) {
 		errFS := &ErroringFS{FS: mem, errOnMkdirAll: true}
+		gen := NewGenerator(errFS)
+		cfgWithLog := cfg
+		cfgWithLog.UsageLogPath = "/home/user/logs/usage.log"
+		err := gen.Generate("/home/user/bin/mytool", cfgWithLog)
+		if err == nil {
+			t.Fatal("expected error on UsageLogPath MkdirAll")
+		}
+	})
+
+	t.Run("Chmod error in Generate", func(t *testing.T) {
+		errFS := &ErroringFS{FS: mem, errOnChmod: true}
 		gen := NewGenerator(errFS)
 		err := gen.Generate("/home/user/bin/mytool", cfg)
 		if err == nil {
-			t.Fatal("expected error on MkdirAll")
+			t.Fatal("expected error on Chmod")
+		}
+	})
+
+	t.Run("Readlink error in IsGeneratedShim", func(t *testing.T) {
+		_ = mem.MkdirAll("/home/user/bin", 0755)
+		_ = mem.Symlink("/opt/mytool/bin/mytool", "/home/user/bin/broken_symlink")
+
+		errFS := &ErroringFS{FS: mem, errOnReadlink: true}
+		gen := NewGenerator(errFS)
+		isShim, err := gen.IsGeneratedShim("/home/user/bin/broken_symlink", "/opt/mytool/bin/mytool")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if isShim {
+			t.Fatal("expected false on readlink error")
 		}
 	})
 

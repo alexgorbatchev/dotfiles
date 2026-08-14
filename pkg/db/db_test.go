@@ -225,3 +225,170 @@ func TestNewConnectionPragmasAndConcurrency(t *testing.T) {
 		t.Errorf("expected %d tool_usage records, got %d", goroutinesCount, count)
 	}
 }
+
+func TestNewConnectionContextCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	_, err := NewConnection(ctx, dsn)
+	if err == nil {
+		t.Error("expected error when context is cancelled, got nil")
+	}
+
+	// Context with past deadline
+	pastCtx, pastCancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Hour))
+	defer pastCancel()
+	_, err = NewConnection(pastCtx, dsn)
+	if err == nil {
+		t.Error("expected error when context is past deadline, got nil")
+	}
+}
+
+func TestInitializeSchemaContextCancelled(t *testing.T) {
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatalf("failed to open raw sqlite: %v", err)
+	}
+	defer db.Close()
+
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if err := InitializeSchema(canceledCtx, db); err == nil {
+		t.Error("expected InitializeSchema to fail on cancelled context")
+	}
+}
+
+func TestNewConnectionMkdirAllError(t *testing.T) {
+	ctx := context.Background()
+	// /dev/null is a character device file, so MkdirAll under /dev/null/subdir will fail
+	_, err := NewConnection(ctx, "file:/dev/null/subdir/test.db")
+	if err == nil {
+		t.Error("expected error when MkdirAll fails")
+	}
+}
+
+func TestMigrateAddInstallMethodErrors(t *testing.T) {
+	ctx := context.Background()
+
+	// 1. QueryContext fails on closed DB
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatalf("failed to open raw sqlite: %v", err)
+	}
+	db.Close() // Close immediately
+
+	if err := migrateAddInstallMethod(ctx, db); err == nil {
+		t.Error("expected migrateAddInstallMethod to fail on closed db")
+	}
+
+	// 2. ALTER TABLE fails on view
+	db2, err := sql.Open("sqlite", fmt.Sprintf("file:%s_view?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db2.Close()
+
+	_, err = db2.ExecContext(ctx, "CREATE TABLE base (id INT); CREATE VIEW tool_installations AS SELECT id FROM base;")
+	if err != nil {
+		t.Fatalf("failed to create view: %v", err)
+	}
+
+	if err := migrateAddInstallMethod(ctx, db2); err == nil {
+		t.Error("expected migrateAddInstallMethod to fail ALTER TABLE on view")
+	}
+}
+
+func TestInitializeSchemaErrors(t *testing.T) {
+	ctx := context.Background()
+
+	// 1. file_operations created as view without tool_name column -> index creation fails
+	db1, err := sql.Open("sqlite", fmt.Sprintf("file:%s_fo?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db1.Close()
+
+	_, err = db1.ExecContext(ctx, "CREATE TABLE file_operations (dummy INT);")
+	if err != nil {
+		t.Fatalf("failed to create dummy table: %v", err)
+	}
+
+	if err := InitializeSchema(ctx, db1); err == nil {
+		t.Error("expected InitializeSchema to fail index creation on file_operations")
+	}
+
+	// 2. tool_installations created as invalid schema
+	db2, err := sql.Open("sqlite", fmt.Sprintf("file:%s_ti?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db2.Close()
+
+	_, err = db2.ExecContext(ctx, "CREATE TABLE file_operations (id INT PRIMARY KEY, tool_name TEXT, operation_type TEXT, file_path TEXT, target_path TEXT, file_type TEXT, metadata TEXT, size_bytes INT, permissions TEXT, created_at INT, operation_id TEXT);")
+	if err != nil {
+		t.Fatalf("failed to create file_operations table: %v", err)
+	}
+	_, err = db2.ExecContext(ctx, "CREATE VIEW tool_installations AS SELECT 1;")
+	if err != nil {
+		t.Fatalf("failed to create tool_installations view: %v", err)
+	}
+
+	if err := InitializeSchema(ctx, db2); err == nil {
+		t.Error("expected InitializeSchema to fail migrateAddInstallMethod on view")
+	}
+
+	// 3. tool_usage created as invalid table
+	db3, err := sql.Open("sqlite", fmt.Sprintf("file:%s_tu?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db3.Close()
+
+	_, err = db3.ExecContext(ctx, "CREATE TABLE file_operations (id INT PRIMARY KEY, tool_name TEXT, operation_type TEXT, file_path TEXT, target_path TEXT, file_type TEXT, metadata TEXT, size_bytes INT, permissions TEXT, created_at INT, operation_id TEXT);")
+	if err != nil {
+		t.Fatalf("failed to create file_operations: %v", err)
+	}
+	_, err = db3.ExecContext(ctx, "CREATE TABLE tool_installations (id INT PRIMARY KEY, tool_name TEXT UNIQUE, version TEXT, install_path TEXT, timestamp TEXT, installed_at INT, binary_paths TEXT, install_method TEXT);")
+	if err != nil {
+		t.Fatalf("failed to create tool_installations: %v", err)
+	}
+	_, err = db3.ExecContext(ctx, "CREATE TABLE tool_usage (id INT);")
+	if err != nil {
+		t.Fatalf("failed to create dummy tool_usage: %v", err)
+	}
+
+	// 4. tool_installations table creation fails
+	db4, err := sql.Open("sqlite", fmt.Sprintf("file:%s_ti_fail?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db4.Close()
+
+	// Create file_operations validly
+	_, _ = db4.ExecContext(ctx, "CREATE TABLE file_operations (id INTEGER PRIMARY KEY, tool_name TEXT, operation_type TEXT, file_path TEXT, target_path TEXT, file_type TEXT, metadata TEXT, size_bytes INTEGER, permissions TEXT, created_at INTEGER, operation_id TEXT);")
+	// Create an index named tool_installations so CREATE TABLE tool_installations fails
+	_, _ = db4.ExecContext(ctx, "CREATE INDEX tool_installations ON file_operations(file_path);")
+
+	if err := InitializeSchema(ctx, db4); err == nil {
+		t.Error("expected InitializeSchema to fail on tool_installations table creation")
+	}
+
+	// 5. tool_usage table creation fails
+	db5, err := sql.Open("sqlite", fmt.Sprintf("file:%s_tu_fail?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db5.Close()
+
+	_, _ = db5.ExecContext(ctx, "CREATE TABLE file_operations (id INTEGER PRIMARY KEY, tool_name TEXT, operation_type TEXT, file_path TEXT, target_path TEXT, file_type TEXT, metadata TEXT, size_bytes INTEGER, permissions TEXT, created_at INTEGER, operation_id TEXT);")
+	_, _ = db5.ExecContext(ctx, "CREATE TABLE tool_installations (id INTEGER PRIMARY KEY, tool_name TEXT UNIQUE, version TEXT, install_path TEXT, timestamp TEXT, installed_at INTEGER, binary_paths TEXT, install_method TEXT);")
+	_, _ = db5.ExecContext(ctx, "CREATE INDEX tool_usage ON file_operations(file_path);")
+
+	if err := InitializeSchema(ctx, db5); err == nil {
+		t.Error("expected InitializeSchema to fail on tool_usage table creation")
+	}
+}

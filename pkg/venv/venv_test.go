@@ -321,13 +321,38 @@ func TestManager_GetEnvInfo_DetectEnv_GetActiveEnv(t *testing.T) {
 	mem := fs.NewMemFS()
 	mgr := NewManager(mem)
 
-	// Case 1: GetEnvInfo on non-existent env
+	// Case 1: GetEnvInfo on empty string and non-existent env
+	infoEmpty, err := mgr.GetEnvInfo("")
+	if err != nil || infoEmpty != nil {
+		t.Fatalf("GetEnvInfo(\"\") should return nil, nil, got info=%v, err=%v", infoEmpty, err)
+	}
+
 	info, err := mgr.GetEnvInfo("/home/user/.dotfiles/nonexistent")
 	if err != nil {
 		t.Fatalf("GetEnvInfo failed: %v", err)
 	}
 	if info != nil {
 		t.Errorf("expected nil info for nonexistent env")
+	}
+
+	// Case 1b: GetEnvInfo and DetectEnv with IsValidEnv error
+	errFS := &ErroringFS{FS: mem, errOnExists: true}
+	mgrErr := NewManager(errFS)
+	_, err = mgrErr.GetEnvInfo("/home/user/.dotfiles/someenv")
+	if err == nil {
+		t.Fatal("expected GetEnvInfo to return error when IsValidEnv fails")
+	}
+	_, err = mgrErr.DetectEnv("/home/user/.dotfiles", "someenv")
+	if err == nil {
+		t.Fatal("expected DetectEnv to return error when IsValidEnv fails")
+	}
+
+	// Case 1c: GetActiveEnv with nil getter
+	_ = os.Unsetenv(EnvDirVar)
+	_ = os.Unsetenv(EnvNameVar)
+	activeNil := GetActiveEnv(nil)
+	if activeNil.Active {
+		t.Errorf("expected GetActiveEnv(nil) to be inactive when env vars unset")
 	}
 
 	// Case 2: Create env and test GetEnvInfo and DetectEnv

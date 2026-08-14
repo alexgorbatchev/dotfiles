@@ -325,3 +325,117 @@ func TestProcessGroupToggleCancel(t *testing.T) {
 		t.Fatal("expected error from cancelled command after SetProcessGroup(false), got nil")
 	}
 }
+
+func TestMockCmdProcessGroupAndKill(t *testing.T) {
+	runner := NewMockRunner()
+	cmd := runner.Command("test").(*MockCmd)
+
+	cmd.SetProcessGroup(true)
+	if !cmd.ProcessGroup() {
+		t.Errorf("expected ProcessGroup() = true")
+	}
+
+	cmd.SetProcessPid(1234)
+	if cmd.ProcessPid() != 1234 {
+		t.Errorf("expected ProcessPid() = 1234, got %d", cmd.ProcessPid())
+	}
+
+	if cmd.Killed() {
+		t.Errorf("expected Killed() = false initially")
+	}
+
+	if err := cmd.Kill(); err != nil {
+		t.Errorf("unexpected error on Kill(): %v", err)
+	}
+
+	if !cmd.Killed() {
+		t.Errorf("expected Killed() = true after Kill()")
+	}
+}
+
+func TestOSCmdProcessGroupGettersAndKill(t *testing.T) {
+	runner := NewOSRunner()
+	ctx := context.Background()
+	cmd := runner.CommandContext(ctx, "sleep", "1")
+
+	if cmd.ProcessGroup() {
+		t.Errorf("expected initial ProcessGroup() = false")
+	}
+
+	cmd.SetProcessGroup(true)
+	if !cmd.ProcessGroup() {
+		t.Errorf("expected ProcessGroup() = true")
+	}
+
+	// ProcessPid before Start should be 0
+	if cmd.ProcessPid() != 0 {
+		t.Errorf("expected ProcessPid() = 0 before Start, got %d", cmd.ProcessPid())
+	}
+
+	// Kill before Start should return nil or error gracefully
+	_ = cmd.Kill()
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("failed to start process: %v", err)
+	}
+
+	if cmd.ProcessPid() <= 0 {
+		t.Errorf("expected valid PID after Start, got %d", cmd.ProcessPid())
+	}
+
+	// Kill running process
+	if err := cmd.Kill(); err != nil {
+		t.Errorf("unexpected error killing process: %v", err)
+	}
+
+	_ = cmd.Wait()
+}
+
+func TestIsStdinTerminalAndCheckSudo(t *testing.T) {
+	origPreflight := SudoPreflightCommand
+	defer func() { SudoPreflightCommand = origPreflight }()
+
+	runner := NewOSRunner()
+
+	// 1. Test isStdinTerminal with *os.File and non-*os.File
+	r, w, err := os.Pipe()
+	if err == nil {
+		defer r.Close()
+		defer w.Close()
+		_ = isStdinTerminal(r)
+	}
+	_ = isStdinTerminal(nil)
+	var buf bytes.Buffer
+	if isStdinTerminal(&buf) {
+		t.Errorf("expected isStdinTerminal(buf) = false")
+	}
+
+	// 2. Test CI env checkSudo
+	origCI := os.Getenv("CI")
+	defer os.Setenv("CI", origCI)
+	os.Setenv("CI", "true")
+
+	SudoPreflightCommand = []string{"false"}
+	cmdCI := runner.Command("sudo", "echo", "ci")
+	cmdCI.SetStdin(&buf)
+
+	if err := cmdCI.Start(); err == nil {
+		t.Error("expected Start to fail when sudo check fails in CI")
+	}
+	if _, err := cmdCI.Output(); err == nil {
+		t.Error("expected Output to fail when sudo check fails in CI")
+	}
+	if _, err := cmdCI.CombinedOutput(); err == nil {
+		t.Error("expected CombinedOutput to fail when sudo check fails in CI")
+	}
+
+	// 3. Test checkSudo when -p is already present in sudo args
+	projCfg := &config.ProjectConfig{}
+	projCfg.System.SudoPrompt = "Custom: "
+	ctx := config.WithProjectConfig(context.Background(), projCfg)
+
+	cmdWithP := runner.CommandContext(ctx, "sudo", "-p", "Custom: ", "echo", "hi")
+	cmdWithP.SetStdin(&buf)
+	SudoPreflightCommand = []string{"true"}
+	_ = cmdWithP.Run()
+}

@@ -355,3 +355,43 @@ func TestLoggerGettersAndWithName(t *testing.T) {
 		t.Errorf("lNil.Writer() should default to os.Stderr, got nil")
 	}
 }
+
+func TestMessages(t *testing.T) {
+	msgs := []Message{
+		Messages.PluginAlreadyRegistered("brew"),
+		Messages.PluginRegistered("brew", "Homebrew", "1.0.0"),
+		Messages.PluginRegistrationFailed("brew"),
+		Messages.SchemasComposed(2, "brew, cargo"),
+		Messages.NoPluginForMethod("apt", "brew, cargo"),
+		Messages.PluginValidationFailed("invalid spec"),
+		Messages.ValidationFailed("brew", "missing field"),
+		Messages.ValidationWarning("brew", "deprecated field"),
+		Messages.DelegatingToPlatform("darwin"),
+		Messages.ValidationCacheCleared(),
+		Messages.CleaningUpPlugins(),
+		Messages.PluginCleanedUp("brew"),
+		Messages.PluginCleanupFailed("brew"),
+		Messages.PluginCleanupComplete(),
+		Messages.ReplaceInFileNoMatch("foo", "file.txt"),
+		Messages.ResolveNoMatches("*.txt"),
+		Messages.ResolveMultipleMatches("*.txt", 3, "a, b, c"),
+		Messages.CommandCompleted(true),
+		Messages.CommandCompleted(false),
+		Messages.CommandExecutionFailed("git", 1),
+		Messages.ToolUpToDate("rg", "1.0", "1.0"),
+		Messages.ToolConfiguredToLatest("rg", "1.0"),
+		Messages.ToolUpdateFailed("rg", "network error"),
+		Messages.ToolShimUpToDate("rg", "1.0"),
+		Messages.ServiceGithubApiFailed("releases", 404),
+		Messages.ConfigLoadFailed("dotfiles.config.ts"),
+		Messages.ToolNotInstalled("rg"),
+		Messages.NoConflictsDetected(),
+		Messages.ConflictsDetected(2),
+	}
+
+	for _, m := range msgs {
+		if m.String() == "" {
+			t.Errorf("Expected non-empty Message string")
+		}
+	}
+}

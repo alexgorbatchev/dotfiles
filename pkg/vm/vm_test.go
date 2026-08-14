@@ -235,3 +235,167 @@ func TestBindings(t *testing.T) {
 		t.Errorf("fileExists() returned true for nonexistent file, expected false")
 	}
 }
+
+func TestEvaluateToolDefinitionWithContext(t *testing.T) {
+	sysCtx := &SystemContext{
+		OS:   "linux",
+		Arch: "amd64",
+	}
+	script := `
+		defineConfig({
+			name: "ctx-tool",
+			value: 42,
+			enabled: systemInfo.OS === "linux"
+		});
+	`
+	var cfg TestConfig
+	err := EvaluateToolDefinitionWithContext(script, "/home/user/config-dir", sysCtx, &cfg)
+	if err != nil {
+		t.Fatalf("EvaluateToolDefinitionWithContext failed: %v", err)
+	}
+	if cfg.Name != "ctx-tool" || cfg.Value != 42 || !cfg.Enabled {
+		t.Errorf("unexpected output: %+v", cfg)
+	}
+}
+
+func TestEvaluateToolDefinitionWithContextStyles(t *testing.T) {
+	sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
+
+	tests := []struct {
+		name      string
+		script    string
+		expectErr bool
+		expected  TestConfig
+	}{
+		{
+			name:   "defineTool style",
+			script: `defineTool({ name: "tool-ctx", value: 10, enabled: true });`,
+			expected: TestConfig{
+				Name:    "tool-ctx",
+				Value:   10,
+				Enabled: true,
+			},
+		},
+		{
+			name:   "CJS module.exports style",
+			script: `module.exports = { name: "cjs-ctx", value: 20, enabled: false };`,
+			expected: TestConfig{
+				Name:    "cjs-ctx",
+				Value:   20,
+				Enabled: false,
+			},
+		},
+		{
+			name:   "CJS exports.default style",
+			script: `exports.default = { name: "default-ctx", value: 30, enabled: true };`,
+			expected: TestConfig{
+				Name:    "default-ctx",
+				Value:   30,
+				Enabled: true,
+			},
+		},
+		{
+			name:   "Raw expression style",
+			script: `({ name: "raw-ctx", value: 40, enabled: true });`,
+			expected: TestConfig{
+				Name:    "raw-ctx",
+				Value:   40,
+				Enabled: true,
+			},
+		},
+		{
+			name:      "Syntax error in script",
+			script:    `const a = ;`,
+			expectErr: true,
+		},
+		{
+			name:      "No config extracted",
+			script:    `const unused = 123;`,
+			expectErr: true,
+		},
+		{
+			name:      "Type mismatch unmarshal error",
+			script:    `({ name: 123, value: "not-an-int" });`,
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg TestConfig
+			err := EvaluateToolDefinitionWithContext(tt.script, "/config/dir", sysCtx, &cfg)
+
+			if (err != nil) != tt.expectErr {
+				t.Fatalf("EvaluateToolDefinitionWithContext() error = %v, expectErr = %v", err, tt.expectErr)
+			}
+
+			if !tt.expectErr {
+				if cfg.Name != tt.expected.Name {
+					t.Errorf("expected Name %q, got %q", tt.expected.Name, cfg.Name)
+				}
+				if cfg.Value != tt.expected.Value {
+					t.Errorf("expected Value %d, got %d", tt.expected.Value, cfg.Value)
+				}
+				if cfg.Enabled != tt.expected.Enabled {
+					t.Errorf("expected Enabled %v, got %v", tt.expected.Enabled, cfg.Enabled)
+				}
+			}
+		})
+	}
+}
+
+func TestEvaluateToolDefinitionUndefinedStringify(t *testing.T) {
+	script := `(function fn() {})`
+	var out map[string]interface{}
+	_ = EvaluateToolDefinition(script, &out)
+
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+	_ = EvaluateToolDefinitionWithContext(script, "/cfg", sysCtx, &out)
+}
+
+func TestEvaluateToolDefinitionCJSWithoutDefault(t *testing.T) {
+	script := `module.exports = { name: "nodef", value: 77, enabled: true };`
+	var cfg TestConfig
+	err := EvaluateToolDefinition(script, &cfg)
+	if err != nil || cfg.Name != "nodef" {
+		t.Errorf("EvaluateToolDefinition CJS without default failed: %v, %+v", err, cfg)
+	}
+
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+	var cfg2 TestConfig
+	err = EvaluateToolDefinitionWithContext(script, "/cfg", sysCtx, &cfg2)
+	if err != nil || cfg2.Name != "nodef" {
+		t.Errorf("EvaluateToolDefinitionWithContext CJS without default failed: %v, %+v", err, cfg2)
+	}
+}
+
+func TestEvaluateToolDefinitionRawExprFallback(t *testing.T) {
+	script := `({ name: "raw-expr", value: 88, enabled: true })`
+	var cfg TestConfig
+	err := EvaluateToolDefinition(script, &cfg)
+	if err != nil || cfg.Name != "raw-expr" {
+		t.Errorf("EvaluateToolDefinition raw expr failed: %v, %+v", err, cfg)
+	}
+
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+	var cfg2 TestConfig
+	err = EvaluateToolDefinitionWithContext(script, "/cfg", sysCtx, &cfg2)
+	if err != nil || cfg2.Name != "raw-expr" {
+		t.Errorf("EvaluateToolDefinitionWithContext raw expr failed: %v, %+v", err, cfg2)
+	}
+}
+
+func TestEvaluateToolDefinitionZeroArgsCapture(t *testing.T) {
+	script := `defineConfig();`
+	var cfg TestConfig
+	err := EvaluateToolDefinition(script, &cfg)
+	if err == nil {
+		t.Error("expected error when defineConfig is called with 0 args")
+	}
+
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+	err = EvaluateToolDefinitionWithContext(script, "/cfg", sysCtx, &cfg)
+	if err == nil {
+		t.Error("expected error when defineConfig is called with 0 args in context")
+	}
+}

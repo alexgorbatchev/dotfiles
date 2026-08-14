@@ -8,87 +8,82 @@ import (
 func TestResolvePlaceholders(t *testing.T) {
 	projCfg := &ProjectConfig{
 		Paths: PathsConfig{
-			HomeDir:      "/home/user",
-			TargetDir:    "{paths.homeDir}/bin",
-			GeneratedDir: "{paths.homeDir}/.generated",
-			BinariesDir:  "{paths.generatedDir}/binaries",
+			HomeDir:        "/home/user",
+			DotfilesDir:    "/home/user/dotfiles",
+			TargetDir:      "/home/user/.bin",
+			BinariesDir:    "/home/user/.binaries",
+			GeneratedDir:   "/home/user/.generated",
+			ToolConfigsDir: "/home/user/tools",
 		},
 	}
 
-	tests := []struct {
-		name      string
-		input     string
-		toolName  string
-		want      string
-		wantErr   bool
-		errSubstr string
-	}{
-		{
-			name:     "simple resolve",
-			input:    "{paths.homeDir}/test",
-			toolName: "mytool",
-			want:     "/home/user/test",
-			wantErr:  false,
-		},
-		{
-			name:     "nested resolve",
-			input:    "{stagingDir}/config",
-			toolName: "mytool",
-			want:     "/home/user/.generated/binaries/mytool/current/config",
-			wantErr:  false,
-		},
-		{
-			name:     "cyclic reference direct",
-			input:    "{paths.targetDir}",
-			toolName: "mytool",
-			wantErr:  true,
-		},
-		{
-			name:     "bypass standard shell variables HOME",
-			input:    "${HOME}/test",
-			toolName: "mytool",
-			want:     "${HOME}/test",
-			wantErr:  false,
-		},
-		{
-			name:     "bypass standard shell variables PATH",
-			input:    "${PATH}:/some/path",
-			toolName: "mytool",
-			want:     "${PATH}:/some/path",
-			wantErr:  false,
-		},
-		{
-			name:     "mixed resolved and bypassed",
-			input:    "{paths.homeDir}/test and ${HOME}",
-			toolName: "mytool",
-			want:     "/home/user/test and ${HOME}",
-			wantErr:  false,
-		},
-	}
+	t.Run("nil ProjectConfig", func(t *testing.T) {
+		got, err := ResolvePlaceholders("{homeDir}/path", "fzf", nil)
+		if err != nil || got != "{homeDir}/path" {
+			t.Errorf("expected original string without error when projCfg is nil, got %q, err=%v", got, err)
+		}
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := projCfg
-			if tt.name == "cyclic reference direct" {
-				cfg = &ProjectConfig{
-					Paths: PathsConfig{
-						HomeDir:      "/home/user",
-						TargetDir:    "{paths.generatedDir}/bin",
-						GeneratedDir: "{paths.targetDir}/generated",
-					},
-				}
-			}
+	t.Run("basic replacements", func(t *testing.T) {
+		input := "{paths.homeDir}/.config/{tool.name}"
+		want := "/home/user/.config/fzf"
+		got, err := ResolvePlaceholders(input, "fzf", projCfg)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != want {
+			t.Errorf("ResolvePlaceholders(%q) = %q, want %q", input, got, want)
+		}
+	})
 
-			got, err := ResolvePlaceholders(tt.input, tt.toolName, cfg)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("ResolvePlaceholders() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if !tt.wantErr && got != tt.want {
-				t.Errorf("ResolvePlaceholders() = %q, want %q", got, tt.want)
-			}
-			if tt.wantErr && tt.errSubstr != "" && !strings.Contains(err.Error(), tt.errSubstr) {
-				t.Errorf("expected error containing %q, got %q", tt.errSubstr, err.Error())
-			}
-		})
-	}
+	t.Run("escaped dollar token", func(t *testing.T) {
+		input := "${HOME}/.bin/{toolName}"
+		want := "${HOME}/.bin/ripgrep"
+		got, err := ResolvePlaceholders(input, "ripgrep", projCfg)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != want {
+			t.Errorf("ResolvePlaceholders(%q) = %q, want %q", input, got, want)
+		}
+	})
+
+	t.Run("unresolved unknown token", func(t *testing.T) {
+		input := "/path/to/{unknownToken}"
+		want := "/path/to/{unknownToken}"
+		got, err := ResolvePlaceholders(input, "bat", projCfg)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != want {
+			t.Errorf("ResolvePlaceholders(%q) = %q, want %q", input, got, want)
+		}
+	})
+
+	t.Run("default shellScriptsDir fallback", func(t *testing.T) {
+		projNoScripts := *projCfg
+		projNoScripts.Paths.ShellScriptsDir = ""
+		got, err := ResolvePlaceholders("{paths.shellScriptsDir}/main.zsh", "bat", &projNoScripts)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := "/home/user/.generated/shell-scripts/main.zsh"
+		if got != want {
+			t.Errorf("ResolvePlaceholders() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("cycle detection error", func(t *testing.T) {
+		projCfgCycle := *projCfg
+		projCfgCycle.Paths.HomeDir = "{paths.dotfilesDir}/sub"
+		projCfgCycle.Paths.DotfilesDir = "{paths.homeDir}/dot"
+
+		_, err := ResolvePlaceholders("{paths.homeDir}", "bat", &projCfgCycle)
+		if err == nil {
+			t.Fatal("expected cycle detection error, got nil")
+		}
+		if !strings.Contains(err.Error(), "substitution did not converge") {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	})
 }

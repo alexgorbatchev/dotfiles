@@ -868,9 +868,12 @@ func TestDashboardMoreRoutes(t *testing.T) {
 
 	reg := registry.NewRegistry(sqlDB)
 	tempDir := t.TempDir()
+	toolDir := filepath.Join(tempDir, "bat")
+	_ = os.MkdirAll(toolDir, 0755)
 
-	toolPath := filepath.Join(tempDir, "bat.tool.ts")
+	toolPath := filepath.Join(toolDir, "bat.tool.ts")
 	_ = os.WriteFile(toolPath, []byte("// TS Tool Content"), 0644)
+	_ = os.WriteFile(filepath.Join(toolDir, "README.md"), []byte("# BAT Readme"), 0644)
 
 	ver := "1.0.0"
 	toolConfigs := []*config.ToolConfig{
@@ -879,8 +882,37 @@ func TestDashboardMoreRoutes(t *testing.T) {
 			Version:            &ver,
 			InstallationMethod: "github-release",
 			ConfigFilePath:     toolPath,
+			Binaries:           []interface{}{"bat"},
 		},
 	}
+
+	// Record installation, file states with size, and tool usage in DB
+	size := int64(1024)
+	_ = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		_ = reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+			ToolName:    "bat",
+			Version:     "1.0.0",
+			InstallPath: "/opt/bat",
+			Timestamp:   "now",
+			InstalledAt: time.Now().UnixMilli(),
+			BinaryPaths: `["/opt/bat/bat"]`,
+		})
+		_ = reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "bat",
+			OperationType: "write",
+			FilePath:      "/opt/bat/bat",
+			FileType:      "binary",
+			CreatedAt:     time.Now().UnixMilli(),
+			SizeBytes:     &size,
+			OperationID:   "op-bin",
+		})
+		return reg.RecordToolUsage(ctx, tx, &registry.ToolUsageRecord{
+			ToolName:   "bat",
+			BinaryName: "bat",
+			UsageCount: 10,
+			LastUsedAt: time.Now().UnixMilli(),
+		})
+	})
 
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -999,6 +1031,22 @@ func TestDashboardAPIsWithOrchestratorAndDBData(t *testing.T) {
 
 	// Populate DB data
 	_ = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		_ = reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "bat",
+			OperationType: "write",
+			FilePath:      "/home/test/.generated/shell-scripts/zsh/completions/_bat",
+			FileType:      "completion",
+			CreatedAt:     time.Now().UnixMilli() - 1000,
+			OperationID:   "op-comp",
+		})
+		_ = reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "bat",
+			OperationType: "write",
+			FilePath:      "/home/test/.generated/shell-scripts/main.zsh",
+			FileType:      "init",
+			CreatedAt:     time.Now().UnixMilli() - 500,
+			OperationID:   "op-init",
+		})
 		_ = reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
 			ToolName:      "bat",
 			OperationType: "write",
@@ -1153,8 +1201,10 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 	ver := "1.0.0"
 	toolNoFiles := []*config.ToolConfig{
 		{
-			Name:    "no-files",
-			Version: &ver,
+			Name:     "no-files",
+			Version:  &ver,
+			Disabled: true,
+			Sudo:     true,
 		},
 	}
 
@@ -1179,6 +1229,41 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 	if resp != nil {
 		resp.Body.Close()
 	}
+
+	// GET /api/tools/fallback-md/readme (fallback to .md file)
+	mdDir := filepath.Join(tempDir, "md_dir")
+	_ = os.MkdirAll(mdDir, 0755)
+	_ = os.WriteFile(filepath.Join(mdDir, "DOCS.md"), []byte("# Docs"), 0644)
+	_ = os.WriteFile(filepath.Join(mdDir, "tool.ts"), []byte("// ts"), 0644)
+
+	toolFallbackMd := []*config.ToolConfig{
+		{
+			Name:           "fallback-md",
+			ConfigFilePath: filepath.Join(mdDir, "tool.ts"),
+		},
+	}
+	serverFallback := NewServer(log, 0, reg, nil, toolFallbackMd, nil)
+	_ = serverFallback.Start()
+	respFallback, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/fallback-md/readme", serverFallback.Port()))
+	if err == nil && respFallback != nil {
+		respFallback.Body.Close()
+	}
+	serverFallback.Stop()
+
+	// GET /api/tools/bad-source/source (file path doesn't exist)
+	toolBadSource := []*config.ToolConfig{
+		{
+			Name:           "bad-source",
+			ConfigFilePath: "/nonexistent/path/tool.ts",
+		},
+	}
+	serverBadSource := NewServer(log, 0, reg, nil, toolBadSource, nil)
+	_ = serverBadSource.Start()
+	respBadSrc, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bad-source/source", serverBadSource.Port()))
+	if err == nil && respBadSrc != nil {
+		respBadSrc.Body.Close()
+	}
+	serverBadSource.Stop()
 
 	// GET /api/tools/no-files/source (no config file path)
 	resp, _ = http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/no-files/source", serverNoFiles.Port()))
@@ -1276,10 +1361,92 @@ func TestDashboardFullHealthAndTools(t *testing.T) {
 	}
 	resp.Body.Close()
 
+	// POST /api/tools/healthy-tool/install with force: false
+	respInst, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/healthy-tool/install", server.Port()), "application/json", strings.NewReader(`{"force": false}`))
+	if err == nil && respInst != nil {
+		respInst.Body.Close()
+	}
+
 	// POST /api/tools/healthy-tool/check-update with orch present
 	respCheck, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/healthy-tool/check-update", server.Port()), "application/json", nil)
 	if err != nil || respCheck.StatusCode != http.StatusOK {
 		t.Fatalf("POST check-update failed: %v, status %v", err, respCheck.StatusCode)
 	}
 	respCheck.Body.Close()
+}
+
+func TestDashboardToolDetailAndConfigsTree(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	ctx := context.Background()
+
+	sqlDB, _ := db.NewConnection(ctx, ":memory:")
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	tempDir := t.TempDir()
+	toolsDir := filepath.Join(tempDir, "tools")
+	_ = os.MkdirAll(filepath.Join(toolsDir, "sub"), 0755)
+	_ = os.WriteFile(filepath.Join(toolsDir, "tool1.tool.ts"), []byte("// tool1"), 0644)
+	_ = os.WriteFile(filepath.Join(toolsDir, "sub", "tool2.tool.ts"), []byte("// tool2"), 0644)
+
+	ver := "1.0.0"
+	updEnabled := true
+	updConstraint := "semver"
+	richTool := &config.ToolConfig{
+		Name:               "rich-tool",
+		Version:            &ver,
+		InstallationMethod: "github-release",
+		ConfigFilePath:     filepath.Join(toolsDir, "tool1.tool.ts"),
+		Sudo:               true,
+		Hostname:           "myhost",
+		UpdateCheck: &config.ToolConfigUpdateCheck{
+			Enabled:    &updEnabled,
+			Constraint: &updConstraint,
+		},
+		Copies: []config.CopyConfig{
+			{Source: "/src/c1", Target: "/dst/c1"},
+		},
+		Symlinks: []config.SymlinkConfig{
+			{Source: "/src/s1", Target: "/dst/s1"},
+		},
+		ShellConfigs: &config.ShellConfigs{
+			Zsh: &config.ShellTypeConfig{
+				Aliases:     map[string]string{"a": "b"},
+				Env:         map[string]string{"E": "V"},
+				Functions:   map[string]string{"f": "echo"},
+				Completions: "/comp/zsh",
+				Paths:       []interface{}{"/path/bin"},
+			},
+		},
+	}
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    filepath.Join(tempDir, "binaries"),
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: toolsDir,
+		},
+	}
+
+	server := NewServer(log, 0, reg, projCfg, []*config.ToolConfig{richTool}, nil)
+	if err := server.Start(); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+	defer server.Stop()
+
+	// GET /api/tools/rich-tool
+	resp1, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/rich-tool", server.Port()))
+	if err != nil || resp1.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/tools/rich-tool failed: %v", err)
+	}
+	resp1.Body.Close()
+
+	// GET /api/tool-configs-tree
+	resp2, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tool-configs-tree", server.Port()))
+	if err != nil || resp2.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/tool-configs-tree failed: %v", err)
+	}
+	resp2.Body.Close()
 }
