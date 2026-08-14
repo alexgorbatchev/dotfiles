@@ -346,7 +346,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	if tool.InstallationMethod == "manual" {
 		binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")
 		if binaryPath == "" {
-			o.logger.GetSubLogger("", "system", tool.Name).Warn(logger.Message("Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)"))
+			o.logger.GetSubLogger("", tool.Name).Warn(logger.Message("Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)"))
 			return nil
 		}
 	}
@@ -426,7 +426,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 }
 
 func isAutoInstall(tool *config.ToolConfig) bool {
-	if tool.InstallParams == nil {
+	if tool == nil || tool.InstallParams == nil {
 		return false
 	}
 	autoVal, ok := tool.InstallParams["auto"]
