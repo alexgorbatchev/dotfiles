@@ -17,8 +17,13 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 
 ## Workspace map
 
-- Go implementation: `pkg/`, `cmd/dotfiles/`, `scripts/`
+- CLI entrypoint: `cmd/dotfiles/` -> `cmd/dotfiles/AGENTS.md`
 - Dashboard workspace: `packages/dashboard/` -> `packages/dashboard/AGENTS.md`
+- Go logger package: `pkg/logger/` -> `pkg/logger/AGENTS.md`
+- Go orchestrator package: `pkg/orchestrator/` -> `pkg/orchestrator/AGENTS.md`
+- Go installer package: `pkg/installer/` -> `pkg/installer/AGENTS.md`
+- Go filesystem package: `pkg/fs/` -> `pkg/fs/AGENTS.md`
+- Go VM package: `pkg/vm/` -> `pkg/vm/AGENTS.md`
 - Go E2E test suite: `tests/e2e/`
 - Verification fixture: `test-project/`
 
