@@ -31,7 +31,7 @@ func TestDashboardServer(t *testing.T) {
 		Writer: io.Discard,
 	})
 
-	server := NewServer(log, 0, nil, nil, nil, nil) // 0 lets system select an ephemeral port
+	server := NewServer(log, "127.0.0.1", 0, nil, nil, nil, nil) // 0 lets system select an ephemeral port
 
 	if err := server.Start(); err != nil {
 		t.Fatalf("expected no error starting server, got %v", err)
@@ -121,7 +121,7 @@ func TestDashboardAPIs(t *testing.T) {
 	}
 	*toolConfigs[0].Version = "1.0.0"
 
-	server := NewServer(log, 0, reg, projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestDashboardMutationRoutes(t *testing.T) {
 
 	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
 
-	server := NewServer(log, 0, reg, projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, orch)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -414,7 +414,7 @@ func TestDashboard_ToolsSchemaAndConcurrency(t *testing.T) {
 
 	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
 
-	server := NewServer(log, 0, reg, projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, orch)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -624,7 +624,7 @@ func TestDashboard_PlatformSerialization(t *testing.T) {
 	}
 	*toolConfigs[0].Version = "13.0.0"
 
-	server := NewServer(log, 0, reg, projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -778,7 +778,7 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, 0, reg, projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -920,7 +920,7 @@ func TestDashboardMoreRoutes(t *testing.T) {
 	_ = instReg.Register(&mockInstallerForTest{name: "github-release"})
 	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
 
-	server := NewServer(log, 0, reg, &config.ProjectConfig{
+	server := NewServer(log, "127.0.0.1", 0, reg, &config.ProjectConfig{
 		Paths: config.PathsConfig{
 			DotfilesDir:    tempDir,
 			GeneratedDir:   filepath.Join(tempDir, ".generated"),
@@ -1106,7 +1106,7 @@ func TestDashboardAPIsWithOrchestratorAndDBData(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, 0, reg, projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, orch)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -1144,7 +1144,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Server with nil registry, nil projectConfig, nil orchestrator
-	serverNil := NewServer(log, 0, nil, nil, nil, nil)
+	serverNil := NewServer(log, "127.0.0.1", 0, nil, nil, nil, nil)
 	if err := serverNil.Start(); err != nil {
 		t.Fatalf("failed to start nil server: %v", err)
 	}
@@ -1209,7 +1209,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 	}
 
 	tempDir := t.TempDir()
-	serverNoFiles := NewServer(log, 0, reg, &config.ProjectConfig{
+	serverNoFiles := NewServer(log, "127.0.0.1", 0, reg, &config.ProjectConfig{
 		Paths: config.PathsConfig{
 			DotfilesDir:    tempDir,
 			GeneratedDir:   filepath.Join(tempDir, ".generated"),
@@ -1242,7 +1242,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 			ConfigFilePath: filepath.Join(mdDir, "tool.ts"),
 		},
 	}
-	serverFallback := NewServer(log, 0, reg, nil, toolFallbackMd, nil)
+	serverFallback := NewServer(log, "127.0.0.1", 0, reg, nil, toolFallbackMd, nil)
 	_ = serverFallback.Start()
 	respFallback, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/fallback-md/readme", serverFallback.Port()))
 	if err == nil && respFallback != nil {
@@ -1257,7 +1257,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 			ConfigFilePath: "/nonexistent/path/tool.ts",
 		},
 	}
-	serverBadSource := NewServer(log, 0, reg, nil, toolBadSource, nil)
+	serverBadSource := NewServer(log, "127.0.0.1", 0, reg, nil, toolBadSource, nil)
 	_ = serverBadSource.Start()
 	respBadSrc, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bad-source/source", serverBadSource.Port()))
 	if err == nil && respBadSrc != nil {
@@ -1348,7 +1348,7 @@ func TestDashboardFullHealthAndTools(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, 0, reg, projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, orch)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -1430,7 +1430,7 @@ func TestDashboardToolDetailAndConfigsTree(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, 0, reg, projCfg, []*config.ToolConfig{richTool}, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, []*config.ToolConfig{richTool}, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -1449,4 +1449,22 @@ func TestDashboardToolDetailAndConfigsTree(t *testing.T) {
 		t.Fatalf("GET /api/tool-configs-tree failed: %v", err)
 	}
 	resp2.Body.Close()
+}
+
+func TestDashboardServer_CustomHost(t *testing.T) {
+	log := logger.New(logger.Config{
+		Name:   "test",
+		Level:  logger.LogLevelQuiet,
+		Writer: io.Discard,
+	})
+
+	server := NewServer(log, "127.0.0.1", 0, nil, nil, nil, nil)
+	if server.Host() != "127.0.0.1" {
+		t.Errorf("expected host 127.0.0.1, got %s", server.Host())
+	}
+
+	serverDefault := NewServer(log, "", 0, nil, nil, nil, nil)
+	if serverDefault.Host() != "127.0.0.1" {
+		t.Errorf("expected default host 127.0.0.1 when empty, got %s", serverDefault.Host())
+	}
 }

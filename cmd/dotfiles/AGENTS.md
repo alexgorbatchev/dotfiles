@@ -5,6 +5,7 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 ## Commands
 
 - Dev CLI run: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts generate`
+- Dev dashboard run: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard --port 8080 --host 0.0.0.0`
 - Test subcommands: `go test ./cmd/dotfiles/...`
 
 ## Local conventions

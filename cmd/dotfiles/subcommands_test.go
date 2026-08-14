@@ -25,6 +25,7 @@ func executeCommand(args ...string) (string, error) {
 	quiet = false
 
 	// Reset subcommand flags
+	host = "127.0.0.1"
 	port = 8080
 	inputFile = "dotfiles.config.ts"
 	outputFile = "dotfiles.config.json"
@@ -467,5 +468,15 @@ func TestRelativeConfigPathResolution(t *testing.T) {
 	services.DB.Close()
 	if services.ProjectConfig == nil {
 		t.Errorf("expected non-nil ProjectConfig")
+	}
+}
+
+func TestDashboardCommandFlags(t *testing.T) {
+	out, err := executeCommand("dashboard", "--help")
+	if err != nil {
+		t.Fatalf("dashboard --help failed: %v", err)
+	}
+	if !strings.Contains(out, "--host") || !strings.Contains(out, "-H") {
+		t.Errorf("expected dashboard --help to show --host and -H flags, got:\n%s", out)
 	}
 }

@@ -11,7 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var port int
+var (
+	host string
+	port int
+)
 
 var dashboardCmd = &cobra.Command{
 	Use:   "dashboard",
@@ -26,12 +29,12 @@ var dashboardCmd = &cobra.Command{
 
 		log := GetLogger("dashboard", cmd.ErrOrStderr())
 		log.Info("Starting dashboard server...")
-		server := dashboard.NewServer(log, port, services.Registry, services.ProjectConfig, services.ToolConfigs, services.Orchestrator)
+		server := dashboard.NewServer(log, host, port, services.Registry, services.ProjectConfig, services.ToolConfigs, services.Orchestrator)
 		if err := server.Start(); err != nil {
 			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Dashboard available at: http://127.0.0.1:%d\n", server.Port())
+		fmt.Fprintf(cmd.OutOrStdout(), "Dashboard available at: http://%s:%d\n", server.Host(), server.Port())
 		fmt.Fprintln(cmd.OutOrStdout(), "Press Ctrl+C to stop the dashboard server")
 
 		// Graceful shutdown on signal
@@ -46,6 +49,7 @@ var dashboardCmd = &cobra.Command{
 }
 
 func init() {
+	dashboardCmd.Flags().StringVarP(&host, "host", "H", "127.0.0.1", "Host address to bind the dashboard server to")
 	dashboardCmd.Flags().IntVarP(&port, "port", "p", 8080, "Port to run the dashboard server on")
 	rootCmd.AddCommand(dashboardCmd)
 }

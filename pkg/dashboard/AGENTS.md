@@ -10,6 +10,7 @@ Go backend REST API routes and embedded dashboard client server.
 ## Local conventions
 
 - Embed compiled React/Preact client assets from `pkg/dashboard/dist/`.
+- `NewServer` accepts configurable `host` address (defaults to `127.0.0.1`, configurable via `--host` / `-H`).
 
 ## Local gotchas
 

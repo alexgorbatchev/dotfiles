@@ -88,6 +88,7 @@ func (lb *LogBroadcaster) Write(p []byte) (n int, err error) {
 // Server hosts the static visualization dashboard.
 type Server struct {
 	logger        *logger.Logger
+	host          string
 	port          int
 	server        *http.Server
 	ln            net.Listener
@@ -100,9 +101,13 @@ type Server struct {
 }
 
 // NewServer constructs a new dashboard server.
-func NewServer(log *logger.Logger, port int, reg *registry.Registry, projCfg *config.ProjectConfig, toolConfigs []*config.ToolConfig, orch *orchestrator.Orchestrator) *Server {
+func NewServer(log *logger.Logger, host string, port int, reg *registry.Registry, projCfg *config.ProjectConfig, toolConfigs []*config.ToolConfig, orch *orchestrator.Orchestrator) *Server {
+	if host == "" {
+		host = "127.0.0.1"
+	}
 	s := &Server{
 		logger:        log.GetSubLogger("DashboardServer"),
+		host:          host,
 		port:          port,
 		registry:      reg,
 		projectConfig: projCfg,
@@ -128,6 +133,11 @@ func NewServer(log *logger.Logger, port int, reg *registry.Registry, projCfg *co
 // Port returns the actual port the server is listening on.
 func (s *Server) Port() int {
 	return s.port
+}
+
+// Host returns the host address the server is bound to.
+func (s *Server) Host() string {
+	return s.host
 }
 
 // Start launches the HTTP server for serving the dashboard.
@@ -162,9 +172,9 @@ func (s *Server) Start() error {
 	}
 
 	// Synchronously bind the listener to guarantee the port is open and active before returning.
-	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", s.port))
+	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.host, s.port))
 	if err != nil {
-		return fmt.Errorf("failed to bind listener on port %d: %w", s.port, err)
+		return fmt.Errorf("failed to bind listener on %s:%d: %w", s.host, s.port, err)
 	}
 	s.ln = ln
 	s.port = ln.Addr().(*net.TCPAddr).Port
@@ -172,7 +182,7 @@ func (s *Server) Start() error {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		s.logger.Info(logger.Message(fmt.Sprintf("Starting dashboard server on http://127.0.0.1:%d", s.port)))
+		s.logger.Info(logger.Message(fmt.Sprintf("Starting dashboard server on http://%s:%d", s.host, s.port)))
 		if err := s.server.Serve(s.ln); err != nil && err != http.ErrServerClosed {
 			s.logger.Error(logger.Message(fmt.Sprintf("Dashboard server failed: %v", err)))
 		}
