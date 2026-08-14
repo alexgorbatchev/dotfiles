@@ -1951,6 +1951,50 @@ func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
 	}
 }
 
+func TestManualToolWithoutBinaryPath_Logging(t *testing.T) {
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Name: "test-manual", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	orch := NewOrchestrator(log, fsys, runner, reg, nil)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			GeneratedDir:    "/home/user/.generated",
+		},
+	}
+
+	toolManual := &config.ToolConfig{
+		Name:               "tmux-sessionx",
+		Binaries:           []interface{}{"tmux-sessionx"},
+		ConfigFilePath:     "/home/user/tools/tmux-sessionx.tool.ts",
+		InstallationMethod: "manual",
+	}
+
+	err = orch.GenerateTool(ctx, toolManual, projCfg)
+	if err != nil {
+		t.Fatalf("GenerateTool failed for manual tool: %v", err)
+	}
+
+	logOutput := logBuf.String()
+	expectedLog := "WARN\t[tmux-sessionx] Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)"
+	if !strings.Contains(logOutput, expectedLog) {
+		t.Errorf("expected log output to contain %q, but got:\n%s", expectedLog, logOutput)
+	}
+}
+
 
 
 

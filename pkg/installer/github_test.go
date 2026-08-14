@@ -1,17 +1,20 @@
 package installer
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 func TestGitHubInstaller(t *testing.T) {
@@ -276,4 +279,67 @@ func TestGitHubInstaller_MatchAssetHeuristics(t *testing.T) {
 			t.Errorf("expected no match, but matched %q", matched.Name)
 		}
 	})
+}
+
+func TestGitHubInstaller_ProgressLogging(t *testing.T) {
+	mockRelease := githubRelease{
+		ID:      1234,
+		TagName: "v1.0.0",
+		Name:    "v1.0.0 Release",
+		Assets: []githubAsset{
+			{
+				ID:   101,
+				Name: "tool-linux-amd64",
+			},
+		},
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/repos/owner/tool/releases/latest" {
+			mockRelease.Assets[0].BrowserDownloadURL = "http://" + r.Host + "/download/tool"
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(mockRelease)
+			return
+		}
+		if r.URL.Path == "/download/tool" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("tool-content"))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Name: "test-github-log", Level: logger.LogLevelVerbose, Writer: &logBuf})
+
+	runner := exec.NewMockRunner()
+	fsys := fs.NewMemFS()
+	dl := downloader.NewDownloader(fsys, nil)
+	inst := NewGitHubInstaller(runner, fsys, dl, &SystemContext{OS: "linux", Arch: "amd64"})
+	inst.httpClient = server.Client()
+	inst.BaseURL = server.URL
+	inst.BinDir = "/test/bin"
+	inst.SetLogger(log)
+
+	tool := &config.ToolConfig{
+		Name: "tool",
+		InstallParams: map[string]interface{}{
+			"repo": "owner/tool",
+		},
+	}
+
+	_, err := inst.Install(context.Background(), tool)
+	if err != nil {
+		t.Fatalf("unexpected error during install: %v", err)
+	}
+
+	logOutput := logBuf.String()
+	if !strings.Contains(logOutput, "Fetching release info for owner/tool (latest)...") {
+		t.Errorf("expected log to contain 'Fetching release info...', got:\n%s", logOutput)
+	}
+	if !strings.Contains(logOutput, "Downloading release asset tool-linux-amd64...") {
+		t.Errorf("expected log to contain 'Downloading release asset...', got:\n%s", logOutput)
+	}
 }
