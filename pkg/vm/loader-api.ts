@@ -74,27 +74,42 @@ export function dedentString(text: DedentInput, ...values: unknown[]): string {
   }
 
   const lines = str.split("\n");
-  let minIndent: number | null = null;
 
-  for (const line of lines) {
-    if (line.trim().length === 0) continue;
-    const indent = line.search(/\S/);
-    if (indent !== -1) {
-      if (minIndent === null || indent < minIndent) {
-        minIndent = indent;
-      }
+  while (lines.length > 0 && lines[0] && lines[0].trim().length === 0) {
+    lines.shift();
+  }
+  while (lines.length > 0) {
+    const last = lines[lines.length - 1];
+    if (last && last.trim().length === 0) {
+      lines.pop();
+    } else {
+      break;
+    }
+  }
+
+  if (lines.length === 0) {
+    return "";
+  }
+
+  let minIndent: number | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line || line.trim().length === 0) continue;
+    let indent = 0;
+    while (indent < line.length && (line.charAt(indent) === " " || line.charAt(indent) === "\t")) {
+      indent++;
+    }
+    if (minIndent === null || indent < minIndent) {
+      minIndent = indent;
     }
   }
 
   if (minIndent !== null && minIndent > 0) {
     const minCut = minIndent;
-    return lines
-      .map((line) => (line.length >= minCut ? line.slice(minCut) : line))
-      .join("\n")
-      .trim();
+    return lines.map((line) => (line && line.length >= minCut ? line.slice(minCut) : line || "")).join("\n");
   }
 
-  return str.trim();
+  return lines.join("\n");
 }
 
 /**
@@ -352,18 +367,18 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       },
       script(type: string, val?: string) {
         if (val === undefined) {
-          shScripts.push({ kind: "always", value: type });
+          shScripts.push({ kind: "always", value: dedentString(type) });
         } else {
-          shScripts.push({ kind: type, value: val });
+          shScripts.push({ kind: type, value: dedentString(val) });
         }
         return this;
       },
       once(val: string) {
-        shScripts.push({ kind: "once", value: val });
+        shScripts.push({ kind: "once", value: dedentString(val) });
         return this;
       },
       always(val: string) {
-        shScripts.push({ kind: "always", value: val });
+        shScripts.push({ kind: "always", value: dedentString(val) });
         return this;
       },
       completions(val: unknown) {
@@ -371,7 +386,16 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         return this;
       },
       functions(values: Record<string, string>) {
-        Object.assign(shFunctions, values);
+        if (values && typeof values === "object") {
+          for (const k in values) {
+            if (Object.prototype.hasOwnProperty.call(values, k)) {
+              const v = values[k];
+              if (typeof v === "string") {
+                shFunctions[k] = dedentString(v);
+              }
+            }
+          }
+        }
         return this;
       },
       path(val: string) {
@@ -394,7 +418,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       },
       source(content: string) {
         const sources = (shConfig["sources"] || []) as string[];
-        sources.push(content);
+        sources.push(dedentString(content));
         shConfig["sources"] = sources;
         return this;
       },

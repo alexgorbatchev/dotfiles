@@ -1435,30 +1435,32 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 func formatFunctionBody(body string) string {
 	lines := strings.Split(body, "\n")
-	minIndent := -1
-	for _, l := range lines {
-		trimmed := strings.TrimSpace(l)
-		if trimmed == "" {
-			continue
-		}
-		indent := len(l) - len(strings.TrimLeft(l, " \t"))
-		if minIndent == -1 || indent < minIndent {
-			minIndent = indent
-		}
+	for len(lines) > 0 && strings.TrimSpace(lines[0]) == "" {
+		lines = lines[1:]
 	}
-	if minIndent == -1 || minIndent < 0 {
-		minIndent = 0
+	for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
+		lines = lines[:len(lines)-1]
 	}
+	if len(lines) == 0 {
+		return ""
+	}
+
+	// Base indent is defined by the first non-empty line of the function body
+	firstLine := lines[0]
+	baseIndent := len(firstLine) - len(strings.TrimLeft(firstLine, " \t"))
+
 	var formatted []string
 	for _, l := range lines {
 		if strings.TrimSpace(l) == "" {
+			formatted = append(formatted, "")
 			continue
 		}
-		if len(l) >= minIndent {
-			formatted = append(formatted, "  "+l[minIndent:])
-		} else {
-			formatted = append(formatted, "  "+strings.TrimSpace(l))
+		indent := len(l) - len(strings.TrimLeft(l, " \t"))
+		cut := baseIndent
+		if indent < cut {
+			cut = indent
 		}
+		formatted = append(formatted, "  "+l[cut:])
 	}
 	return strings.Join(formatted, "\n")
 }

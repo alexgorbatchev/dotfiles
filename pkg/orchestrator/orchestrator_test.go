@@ -1083,12 +1083,16 @@ func TestZshPlugin_UnclonedFallbackSource(t *testing.T) {
 
 func TestFormatFunctionBody(t *testing.T) {
 	input := `
-            local file
-            file=$(fzf-typescript '*.ts' '*.tsx')
-            [ -n "$file" ] && br "$file"
+            if (( CURRENT == 2 )) && [[ "${words[CURRENT]}" != -* ]]; then
+              local -a recipes
+              recipes=(
+                ${(f)"$(command just --summary 2>/dev/null | tr ' ' '
+')"}
+              )
+            fi
           `
 	got := formatFunctionBody(input)
-	expected := "  local file\n  file=$(fzf-typescript '*.ts' '*.tsx')\n  [ -n \"$file\" ] && br \"$file\""
+	expected := "  if (( CURRENT == 2 )) && [[ \"${words[CURRENT]}\" != -* ]]; then\n    local -a recipes\n    recipes=(\n      ${(f)\"$(command just --summary 2>/dev/null | tr ' ' '\n  ')\"}\n    )\n  fi"
 	if got != expected {
 		t.Errorf("formatFunctionBody() =\n%q\nwant:\n%q", got, expected)
 	}
