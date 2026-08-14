@@ -1299,7 +1299,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 							return fmt.Errorf("resolving script: %w", err)
 						}
 						if scr.Kind == "always" {
-							toolBlockLines = append(toolBlockLines, valResolved)
+							toolBlockLines = append(toolBlockLines, unindentString(valResolved))
 						} else if scr.Kind == "once" {
 							ext := sh
 							if sh == "powershell" {
@@ -1431,6 +1431,37 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 		return nil
 	})
+}
+
+func unindentString(s string) string {
+	lines := strings.Split(s, "\n")
+	for len(lines) > 0 && strings.TrimSpace(lines[0]) == "" {
+		lines = lines[1:]
+	}
+	for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
+		lines = lines[:len(lines)-1]
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+
+	firstLine := lines[0]
+	baseIndent := len(firstLine) - len(strings.TrimLeft(firstLine, " \t"))
+
+	var formatted []string
+	for _, l := range lines {
+		if strings.TrimSpace(l) == "" {
+			formatted = append(formatted, "")
+			continue
+		}
+		indent := len(l) - len(strings.TrimLeft(l, " \t"))
+		cut := baseIndent
+		if indent < cut {
+			cut = indent
+		}
+		formatted = append(formatted, l[cut:])
+	}
+	return strings.Join(formatted, "\n")
 }
 
 func formatFunctionBody(body string) string {

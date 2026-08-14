@@ -1081,6 +1081,18 @@ func TestZshPlugin_UnclonedFallbackSource(t *testing.T) {
 	}
 }
 
+func TestUnindentString(t *testing.T) {
+	input := `
+          # Initialize Hermit shell hooks
+          eval "$(test -x $HERMIT_ROOT_BIN && $HERMIT_ROOT_BIN shell-hooks --print --zsh)"
+        `
+	got := unindentString(input)
+	expected := "# Initialize Hermit shell hooks\neval \"$(test -x $HERMIT_ROOT_BIN && $HERMIT_ROOT_BIN shell-hooks --print --zsh)\""
+	if got != expected {
+		t.Errorf("unindentString() =\n%q\nwant:\n%q", got, expected)
+	}
+}
+
 func TestFormatFunctionBody(t *testing.T) {
 	input := `
             if (( CURRENT == 2 )) && [[ "${words[CURRENT]}" != -* ]]; then

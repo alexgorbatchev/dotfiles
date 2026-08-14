@@ -367,18 +367,18 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       },
       script(type: string, val?: string) {
         if (val === undefined) {
-          shScripts.push({ kind: "always", value: dedentString(type) });
+          shScripts.push({ kind: "always", value: type });
         } else {
-          shScripts.push({ kind: type, value: dedentString(val) });
+          shScripts.push({ kind: type, value: val });
         }
         return this;
       },
       once(val: string) {
-        shScripts.push({ kind: "once", value: dedentString(val) });
+        shScripts.push({ kind: "once", value: val });
         return this;
       },
       always(val: string) {
-        shScripts.push({ kind: "always", value: dedentString(val) });
+        shScripts.push({ kind: "always", value: val });
         return this;
       },
       completions(val: unknown) {
@@ -386,16 +386,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         return this;
       },
       functions(values: Record<string, string>) {
-        if (values && typeof values === "object") {
-          for (const k in values) {
-            if (Object.prototype.hasOwnProperty.call(values, k)) {
-              const v = values[k];
-              if (typeof v === "string") {
-                shFunctions[k] = dedentString(v);
-              }
-            }
-          }
-        }
+        Object.assign(shFunctions, values);
         return this;
       },
       path(val: string) {
