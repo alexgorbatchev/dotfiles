@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1532,5 +1533,367 @@ func TestDashboardServer_CustomHost(t *testing.T) {
 	serverDefault := NewServer(log, "", 0, nil, nil, nil, nil)
 	if serverDefault.Host() != "127.0.0.1" {
 		t.Errorf("expected default host 127.0.0.1 when empty, got %s", serverDefault.Host())
+	}
+}
+
+func TestHandleToolReadme_RemoteAndLocal(t *testing.T) {
+	log := logger.New(logger.Config{
+		Name:   "test",
+		Level:  logger.LogLevelQuiet,
+		Writer: io.Discard,
+	})
+
+	// Setup a mock GitHub server for testing remote readme fetch
+	githubServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "remote-tool") {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("# Remote Tool README\nContent from remote"))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer githubServer.Close()
+
+	tempDir := t.TempDir()
+	toolsDir := filepath.Join(tempDir, "tools")
+	_ = os.MkdirAll(toolsDir, 0755)
+
+	// Local tool with tool-specific markdown
+	batConfigPath := filepath.Join(toolsDir, "github-release--bat.tool.ts")
+	_ = os.WriteFile(batConfigPath, []byte("// bat tool"), 0644)
+	_ = os.WriteFile(filepath.Join(toolsDir, "bat.md"), []byte("# Bat Local Readme"), 0644)
+
+	// Tool with remote repo
+	remoteConfigPath := filepath.Join(toolsDir, "github-release--remote.tool.ts")
+	_ = os.WriteFile(remoteConfigPath, []byte("// remote tool"), 0644)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    filepath.Join(tempDir, "binaries"),
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: toolsDir,
+		},
+	}
+
+	toolConfigs := []*config.ToolConfig{
+		{
+			Name:           "bat",
+			ConfigFilePath: batConfigPath,
+		},
+		{
+			Name:           "remote-tool",
+			ConfigFilePath: remoteConfigPath,
+			InstallParams: map[string]interface{}{
+				"repo": "owner/remote-tool",
+			},
+		},
+		{
+			Name:           "no-readme-tool",
+			ConfigFilePath: filepath.Join(toolsDir, "no-readme.tool.ts"),
+		},
+	}
+
+	server := NewServer(log, "127.0.0.1", 0, nil, projCfg, toolConfigs, nil)
+	server.githubBaseURL = githubServer.URL
+	server.githubRawBaseURL = githubServer.URL
+	if err := server.Start(); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+	defer server.Stop()
+
+	t.Run("Local tool-specific README", func(t *testing.T) {
+		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bat/readme", server.Port()))
+		if err != nil {
+			t.Fatalf("failed to request bat readme: %v", err)
+		}
+		defer resp.Body.Close()
+
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode json: %v", err)
+		}
+		if body["success"] != true {
+			t.Fatalf("expected success: true, got %v", body["success"])
+		}
+		data := body["data"].(map[string]any)
+		if data["content"] != "# Bat Local Readme" {
+			t.Errorf("expected '# Bat Local Readme', got %q", data["content"])
+		}
+	})
+
+	t.Run("Remote README fetch and cache hit", func(t *testing.T) {
+		// First call: cache miss, remote fetch
+		resp1, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/remote-tool/readme", server.Port()))
+		if err != nil {
+			t.Fatalf("failed to request remote-tool readme: %v", err)
+		}
+		defer resp1.Body.Close()
+
+		var body1 map[string]any
+		if err := json.NewDecoder(resp1.Body).Decode(&body1); err != nil {
+			t.Fatalf("failed to decode json: %v", err)
+		}
+		if body1["success"] != true {
+			t.Fatalf("expected success: true, got %v", body1["success"])
+		}
+		data1 := body1["data"].(map[string]any)
+		if !strings.Contains(data1["content"].(string), "Remote Tool README") {
+			t.Errorf("expected remote content, got %q", data1["content"])
+		}
+
+		// Second call: cache hit
+		resp2, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/remote-tool/readme", server.Port()))
+		if err != nil {
+			t.Fatalf("failed to request remote-tool readme second time: %v", err)
+		}
+		defer resp2.Body.Close()
+
+		var body2 map[string]any
+		if err := json.NewDecoder(resp2.Body).Decode(&body2); err != nil {
+			t.Fatalf("failed to decode json: %v", err)
+		}
+		if body2["success"] != true {
+			t.Fatalf("expected success: true on cache hit, got %v", body2["success"])
+		}
+	})
+
+	t.Run("No README found", func(t *testing.T) {
+		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/no-readme-tool/readme", server.Port()))
+		if err != nil {
+			t.Fatalf("failed to request no-readme-tool: %v", err)
+		}
+		defer resp.Body.Close()
+
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode json: %v", err)
+		}
+		if body["success"] != false {
+			t.Fatalf("expected success: false, got %v", body["success"])
+		}
+	})
+
+	t.Run("Tool not found", func(t *testing.T) {
+		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/nonexistent/readme", server.Port()))
+		if err != nil {
+			t.Fatalf("failed to request nonexistent: %v", err)
+		}
+		defer resp.Body.Close()
+
+		var body map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&body)
+		if body["success"] != false {
+			t.Fatalf("expected success: false, got %v", body["success"])
+		}
+	})
+}
+
+func TestGetRepoFromToolConfig(t *testing.T) {
+	if got := getRepoFromToolConfig(nil); got != "" {
+		t.Errorf("expected empty string for nil config, got %q", got)
+	}
+
+	tc1 := &config.ToolConfig{
+		Name: "test1",
+		InstallParams: map[string]interface{}{
+			"repo": "owner/repo1",
+		},
+	}
+	if got := getRepoFromToolConfig(tc1); got != "owner/repo1" {
+		t.Errorf("expected owner/repo1, got %q", got)
+	}
+
+	tc2 := &config.ToolConfig{
+		Name: "test2",
+		InstallParams: map[string]interface{}{
+			"githubRepo": "owner/repo2",
+		},
+	}
+	if got := getRepoFromToolConfig(tc2); got != "owner/repo2" {
+		t.Errorf("expected owner/repo2, got %q", got)
+	}
+
+	tc3 := &config.ToolConfig{
+		Name: "test3",
+		PlatformConfigs: []config.PlatformConfigEntry{
+			{
+				Platforms: 0, // all
+				Config: map[string]interface{}{
+					"installParams": map[string]interface{}{
+						"repo": "owner/repo3",
+					},
+				},
+			},
+		},
+	}
+	if got := getRepoFromToolConfig(tc3); got != "owner/repo3" {
+		t.Errorf("expected owner/repo3 from platform config, got %q", got)
+	}
+
+	tc4 := &config.ToolConfig{
+		Name: "test4",
+		PlatformConfigs: []config.PlatformConfigEntry{
+			{
+				Platforms: 0,
+				Config: &config.ToolConfig{
+					InstallParams: map[string]interface{}{
+						"githubRepo": "owner/repo4",
+					},
+				},
+			},
+		},
+	}
+	if got := getRepoFromToolConfig(tc4); got != "owner/repo4" {
+		t.Errorf("expected owner/repo4 from platform struct, got %q", got)
+	}
+
+	tc5 := &config.ToolConfig{
+		Name: "test5",
+		PlatformConfigs: []config.PlatformConfigEntry{
+			{
+				Platforms: 7, // matches linux, darwin, windows
+				Config: map[string]interface{}{
+					"installParams": map[string]interface{}{
+						"repo": "owner/repo5",
+					},
+				},
+			},
+		},
+	}
+	if got := getRepoFromToolConfig(tc5); got != "owner/repo5" {
+		t.Errorf("expected owner/repo5 from platform bitmask, got %q", got)
+	}
+
+	archVal := 1 // amd64
+	tc6 := &config.ToolConfig{
+		Name: "test6",
+		PlatformConfigs: []config.PlatformConfigEntry{
+			{
+				Platforms:     7,
+				Architectures: &archVal,
+				Config: map[string]interface{}{
+					"installParams": map[string]interface{}{
+						"githubRepo": "owner/repo6",
+					},
+				},
+			},
+		},
+	}
+	if got := getRepoFromToolConfig(tc6); got != "" && got != "owner/repo6" {
+		t.Errorf("unexpected repo for arch: %q", got)
+	}
+
+	// Fallback pass when no platform matched current OS/arch
+	tc7 := &config.ToolConfig{
+		Name: "test7",
+		PlatformConfigs: []config.PlatformConfigEntry{
+			{
+				Platforms: 0,
+				Config:    "invalid-config-type",
+			},
+			{
+				Platforms: 0,
+				Config: map[string]interface{}{
+					"installParams": map[string]interface{}{
+						"repo": "owner/fallback-repo",
+					},
+				},
+			},
+		},
+	}
+	if got := getRepoFromToolConfig(tc7); got != "owner/fallback-repo" {
+		t.Errorf("expected owner/fallback-repo, got %q", got)
+	}
+}
+
+func TestFindLocalReadme(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// 1. Dedicated dir matching tool name
+	dedicatedDir := filepath.Join(tempDir, "mytool")
+	_ = os.MkdirAll(dedicatedDir, 0755)
+	_ = os.WriteFile(filepath.Join(dedicatedDir, "mytool.tool.ts"), []byte("// ts"), 0644)
+	_ = os.WriteFile(filepath.Join(dedicatedDir, "README.md"), []byte("# Dedicated Readme"), 0644)
+
+	tcDedicated := &config.ToolConfig{
+		Name:           "mytool",
+		ConfigFilePath: filepath.Join(dedicatedDir, "mytool.tool.ts"),
+	}
+
+	content, err := findLocalReadme(tcDedicated)
+	if err != nil || content != "# Dedicated Readme" {
+		t.Errorf("expected '# Dedicated Readme', got %q, err: %v", content, err)
+	}
+
+	// 2. Nil config or empty path
+	if _, err := findLocalReadme(nil); err == nil {
+		t.Errorf("expected error for nil config")
+	}
+	if _, err := findLocalReadme(&config.ToolConfig{Name: "foo"}); err == nil {
+		t.Errorf("expected error for empty ConfigFilePath")
+	}
+
+	// 3. Nonexistent file directory
+	if _, err := findLocalReadme(&config.ToolConfig{Name: "foo", ConfigFilePath: "/nonexistent/dir/foo.tool.ts"}); err == nil {
+		t.Errorf("expected error for nonexistent directory")
+	}
+}
+
+func TestFetchRemoteReadme(t *testing.T) {
+	// 1. Successful fetch via GitHub API
+	tsAPI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "success-repo") {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("# API Success Readme"))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer tsAPI.Close()
+
+	sAPI := &Server{
+		githubBaseURL:    tsAPI.URL,
+		githubRawBaseURL: tsAPI.URL,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	content, err := sAPI.fetchRemoteReadme(ctx, "owner/success-repo")
+	if err != nil || content != "# API Success Readme" {
+		t.Errorf("expected '# API Success Readme', got %q, err: %v", content, err)
+	}
+
+	// 2. Fallback fetch via raw usercontent when API fails
+	tsRaw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "raw-repo/HEAD/README.md") {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("# Raw Success Readme"))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer tsRaw.Close()
+
+	sRaw := &Server{
+		githubBaseURL:    "http://127.0.0.1:1", // Invalid API URL to force raw fallback
+		githubRawBaseURL: tsRaw.URL,
+	}
+
+	contentRaw, err := sRaw.fetchRemoteReadme(ctx, "owner/raw-repo")
+	if err != nil || contentRaw != "# Raw Success Readme" {
+		t.Errorf("expected '# Raw Success Readme', got %q, err: %v", contentRaw, err)
+	}
+
+	// 3. Failure when both API and raw fail
+	sFail := &Server{
+		githubBaseURL:    "http://127.0.0.1:1",
+		githubRawBaseURL: "http://127.0.0.1:1",
+	}
+
+	if _, err := sFail.fetchRemoteReadme(ctx, "owner/fail-repo"); err == nil {
+		t.Errorf("expected error when both endpoints fail")
 	}
 }

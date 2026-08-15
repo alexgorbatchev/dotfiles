@@ -4,15 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/features"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
@@ -834,47 +838,278 @@ func (s *Server) handleToolReadme(w http.ResponseWriter, r *http.Request, toolNa
 		return
 	}
 
-	if targetTool.ConfigFilePath == "" {
-		writeJSON(w, false, nil, "Tool configuration file path not available")
+	// 1. Try local README lookup
+	if content, err := findLocalReadme(targetTool); err == nil && content != "" {
+		writeJSON(w, true, map[string]string{"content": content}, "")
 		return
 	}
 
-	dir := filepath.Dir(targetTool.ConfigFilePath)
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		writeJSON(w, false, nil, "Failed to read tool directory: "+err.Error())
-		return
-	}
+	// 2. Try remote repository README lookup
+	repo := getRepoFromToolConfig(targetTool)
+	if repo != "" {
+		var cacheDir string
+		if s.projectConfig != nil && s.projectConfig.Paths.GeneratedDir != "" {
+			cacheDir = filepath.Join(s.projectConfig.Paths.GeneratedDir, "cache", "readmes")
+		} else {
+			cacheDir = filepath.Join(os.TempDir(), "dotfiles-readmes")
+		}
 
-	var readmePath string
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.ToLower(entry.Name()) == "readme.md" {
-			readmePath = filepath.Join(dir, entry.Name())
-			break
+		cache := features.NewReadmeCache(fs.NewOSFS(), cacheDir)
+		if item, err := cache.Get(toolName, 24*time.Hour); err == nil && item != nil && item.Readme != "" {
+			writeJSON(w, true, map[string]string{"content": item.Readme}, "")
+			return
+		}
+
+		fetchedContent, fetchErr := s.fetchRemoteReadme(r.Context(), repo)
+		if fetchErr == nil && fetchedContent != "" {
+			meta, _ := features.ParseReadme(fetchedContent)
+			_ = cache.Put(toolName, &features.CacheItem{
+				ToolName:  toolName,
+				Readme:    fetchedContent,
+				Metadata:  meta,
+				Timestamp: time.Now().Unix(),
+			})
+			writeJSON(w, true, map[string]string{"content": fetchedContent}, "")
+			return
 		}
 	}
 
-	if readmePath == "" {
-		for _, entry := range entries {
-			if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
-				readmePath = filepath.Join(dir, entry.Name())
-				break
+	writeJSON(w, false, nil, fmt.Sprintf("No README.md or Markdown documentation found for tool %q", toolName))
+}
+
+func findLocalReadme(targetTool *config.ToolConfig) (string, error) {
+	if targetTool == nil || targetTool.ConfigFilePath == "" {
+		return "", fmt.Errorf("config file path not available")
+	}
+
+	dir := filepath.Dir(targetTool.ConfigFilePath)
+	toolName := targetTool.Name
+
+	candidates := []string{
+		filepath.Join(dir, toolName+".md"),
+		filepath.Join(dir, toolName+".README.md"),
+		filepath.Join(dir, toolName+"-README.md"),
+		filepath.Join(dir, "README-"+toolName+".md"),
+		filepath.Join(dir, "README."+toolName+".md"),
+		filepath.Join(dir, toolName, "README.md"),
+		filepath.Join(dir, toolName, "readme.md"),
+		filepath.Join(dir, toolName, toolName+".md"),
+	}
+
+	baseName := filepath.Base(targetTool.ConfigFilePath)
+	ext := filepath.Ext(baseName)
+	baseNoExt := strings.TrimSuffix(baseName, ext)
+	if baseNoExt != "" && baseNoExt != toolName {
+		candidates = append(candidates,
+			filepath.Join(dir, baseNoExt+".md"),
+			filepath.Join(dir, baseNoExt+".README.md"),
+			filepath.Join(dir, baseNoExt+"-README.md"),
+		)
+	}
+
+	for _, cand := range candidates {
+		if info, err := os.Stat(cand); err == nil && !info.IsDir() {
+			content, err := os.ReadFile(cand)
+			if err == nil {
+				return string(content), nil
 			}
 		}
 	}
 
-	if readmePath == "" {
-		writeJSON(w, false, nil, fmt.Sprintf("No README.md or Markdown documentation found in %s", dir))
-		return
-	}
-
-	contentBytes, err := os.ReadFile(readmePath)
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		writeJSON(w, false, nil, "Failed to read README: "+err.Error())
-		return
+		return "", fmt.Errorf("failed to read directory %s: %w", dir, err)
 	}
 
-	writeJSON(w, true, map[string]string{"content": string(contentBytes)}, "")
+	isDedicatedDir := strings.EqualFold(filepath.Base(dir), toolName)
+	if isDedicatedDir {
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
+				content, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+				if err == nil {
+					return string(content), nil
+				}
+			}
+		}
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		nameLower := strings.ToLower(entry.Name())
+		if strings.HasSuffix(nameLower, ".md") {
+			nameNoExt := strings.TrimSuffix(nameLower, ".md")
+			if nameNoExt == strings.ToLower(toolName) || nameNoExt == strings.ToLower(baseNoExt) {
+				content, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+				if err == nil {
+					return string(content), nil
+				}
+			}
+		}
+	}
+
+	var mdFiles []string
+	var toolConfigFiles []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		nameLower := strings.ToLower(entry.Name())
+		if strings.HasSuffix(nameLower, ".md") {
+			mdFiles = append(mdFiles, entry.Name())
+		}
+		if strings.HasSuffix(nameLower, ".tool.ts") || strings.HasSuffix(nameLower, ".ts") {
+			toolConfigFiles = append(toolConfigFiles, entry.Name())
+		}
+	}
+
+	if len(mdFiles) == 1 && len(toolConfigFiles) <= 1 {
+		content, err := os.ReadFile(filepath.Join(dir, mdFiles[0]))
+		if err == nil {
+			return string(content), nil
+		}
+	}
+
+	return "", fmt.Errorf("no local README found for tool %s in %s", toolName, dir)
+}
+
+func getRepoFromToolConfig(tc *config.ToolConfig) string {
+	if tc == nil {
+		return ""
+	}
+	if repo := getStringParam(tc.InstallParams, "repo", ""); repo != "" {
+		return repo
+	}
+	if repo := getStringParam(tc.InstallParams, "githubRepo", ""); repo != "" {
+		return repo
+	}
+
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+
+	for _, pc := range tc.PlatformConfigs {
+		if config.MatchesPlatform(pc.Platforms, goos) {
+			if pc.Architectures != nil && !config.MatchesArch(*pc.Architectures, goarch) {
+				continue
+			}
+			if repo := extractRepoFromPlatformConfig(pc); repo != "" {
+				return repo
+			}
+		}
+	}
+
+	for _, pc := range tc.PlatformConfigs {
+		if repo := extractRepoFromPlatformConfig(pc); repo != "" {
+			return repo
+		}
+	}
+
+	return ""
+}
+
+func extractRepoFromPlatformConfig(pc config.PlatformConfigEntry) string {
+	if cfgMap, ok := pc.Config.(map[string]interface{}); ok {
+		return getRepoFromConfigMap(cfgMap)
+	}
+	if pc.Config != nil {
+		jsonBytes, err := json.Marshal(pc.Config)
+		if err == nil {
+			var cfgMap map[string]interface{}
+			if err := json.Unmarshal(jsonBytes, &cfgMap); err == nil {
+				return getRepoFromConfigMap(cfgMap)
+			}
+		}
+	}
+	return ""
+}
+
+func getRepoFromConfigMap(cfgMap map[string]interface{}) string {
+	if cfgMap == nil {
+		return ""
+	}
+	if installParams, ok := cfgMap["installParams"].(map[string]interface{}); ok {
+		if r := getStringParam(installParams, "repo", ""); r != "" {
+			return r
+		}
+		if r := getStringParam(installParams, "githubRepo", ""); r != "" {
+			return r
+		}
+	}
+	return ""
+}
+
+func (s *Server) fetchRemoteReadme(ctx context.Context, repo string) (string, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	apiBase := s.githubBaseURL
+	if apiBase == "" {
+		apiBase = "https://api.github.com"
+	}
+
+	rawBase := s.githubRawBaseURL
+	if rawBase == "" {
+		rawBase = "https://raw.githubusercontent.com"
+	}
+
+	apiURL := fmt.Sprintf("%s/repos/%s/readme", apiBase, repo)
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+	if err == nil {
+		req.Header.Set("Accept", "application/vnd.github.raw+json")
+		req.Header.Set("User-Agent", "dotfiles-dashboard/1.0")
+		if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				bodyBytes, err := io.ReadAll(resp.Body)
+				if err == nil && len(bodyBytes) > 0 {
+					return string(bodyBytes), nil
+				}
+			}
+		}
+	}
+
+	rawURLs := []string{
+		fmt.Sprintf("%s/%s/HEAD/README.md", rawBase, repo),
+		fmt.Sprintf("%s/%s/main/README.md", rawBase, repo),
+		fmt.Sprintf("%s/%s/master/README.md", rawBase, repo),
+	}
+
+	for _, rawURL := range rawURLs {
+		req, err := http.NewRequestWithContext(ctx, "GET", rawURL, nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("User-Agent", "dotfiles-dashboard/1.0")
+		resp, err := client.Do(req)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err == nil && len(bodyBytes) > 0 {
+				return string(bodyBytes), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("failed to fetch README for repo %s from GitHub", repo)
+}
+
+func getStringParam(params map[string]interface{}, key string, defaultValue string) string {
+	if params == nil {
+		return defaultValue
+	}
+	if v, ok := params[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return defaultValue
 }
 
 // handleToolLogsStream handles SSE connections for live logs stream of a tool.

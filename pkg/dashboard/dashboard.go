@@ -87,17 +87,19 @@ func (lb *LogBroadcaster) Write(p []byte) (n int, err error) {
 
 // Server hosts the static visualization dashboard.
 type Server struct {
-	logger        *logger.Logger
-	host          string
-	port          int
-	server        *http.Server
-	ln            net.Listener
-	wg            sync.WaitGroup
-	registry      *registry.Registry
-	projectConfig *config.ProjectConfig
-	toolConfigs   []*config.ToolConfig
-	orchestrator  *orchestrator.Orchestrator
-	broadcaster   *LogBroadcaster
+	logger           *logger.Logger
+	host             string
+	port             int
+	server           *http.Server
+	ln               net.Listener
+	wg               sync.WaitGroup
+	registry         *registry.Registry
+	projectConfig    *config.ProjectConfig
+	toolConfigs      []*config.ToolConfig
+	orchestrator     *orchestrator.Orchestrator
+	broadcaster      *LogBroadcaster
+	githubBaseURL    string
+	githubRawBaseURL string
 }
 
 // NewServer constructs a new dashboard server.
