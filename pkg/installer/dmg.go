@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
@@ -437,26 +436,7 @@ func findFileWithExtension(fsys fs.FS, dir string, ext string) (string, error) {
 	return "", nil
 }
 
-func matchPattern(name, pattern string) bool {
-	if pattern == "" {
-		return true
-	}
-	if strings.HasPrefix(pattern, "/") {
-		lastSlash := strings.LastIndex(pattern, "/")
-		if lastSlash > 0 {
-			regexStr := pattern[1:lastSlash]
-			flags := pattern[lastSlash+1:]
-			if strings.Contains(flags, "i") {
-				regexStr = "(?i)" + regexStr
-			}
-			re, err := regexp.Compile(regexStr)
-			if err == nil {
-				return re.MatchString(name)
-			}
-		}
-	}
-	return strings.Contains(strings.ToLower(name), strings.ToLower(pattern))
-}
+
 
 func copyDir(fsys fs.FS, src, dest string) error {
 	info, err := fsys.Lstat(src)

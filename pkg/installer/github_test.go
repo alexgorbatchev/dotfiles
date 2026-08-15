@@ -266,6 +266,52 @@ func TestGitHubInstaller_MatchAssetHeuristics(t *testing.T) {
 		}
 	})
 
+	t.Run("Glob assetPattern yazi-*.zip", func(t *testing.T) {
+		assets := []githubAsset{
+			{Name: "yazi-x86_64-unknown-linux-gnu.deb"},
+			{Name: "yazi-x86_64-unknown-linux-gnu.zip"},
+			{Name: "yazi-aarch64-unknown-linux-gnu.zip"},
+		}
+
+		matched := inst.matchAsset(assets, "yazi-*.zip")
+		if matched == nil {
+			t.Fatalf("expected to match yazi asset with glob pattern yazi-*.zip, got nil")
+		}
+		if matched.Name != "yazi-x86_64-unknown-linux-gnu.zip" {
+			t.Errorf("expected yazi-x86_64-unknown-linux-gnu.zip, got %q", matched.Name)
+		}
+	})
+
+	t.Run("assetPattern with platform filtering", func(t *testing.T) {
+		assets := []githubAsset{
+			{Name: "nvim-linux-arm64.tar.gz"},
+			{Name: "nvim-linux-x86_64.tar.gz"},
+			{Name: "nvim-macos-arm64.tar.gz"},
+		}
+
+		matched := inst.matchAsset(assets, "*.tar.gz")
+		if matched == nil {
+			t.Fatalf("expected to match nvim asset with pattern *.tar.gz, got nil")
+		}
+		if matched.Name != "nvim-linux-x86_64.tar.gz" {
+			t.Errorf("expected nvim-linux-x86_64.tar.gz, got %q", matched.Name)
+		}
+	})
+
+	t.Run("assetPattern fallback when no platform keywords exist", func(t *testing.T) {
+		assets := []githubAsset{
+			{Name: "tool-universal.tar.gz"},
+		}
+
+		matched := inst.matchAsset(assets, "*.tar.gz")
+		if matched == nil {
+			t.Fatalf("expected fallback match for universal asset, got nil")
+		}
+		if matched.Name != "tool-universal.tar.gz" {
+			t.Errorf("expected tool-universal.tar.gz, got %q", matched.Name)
+		}
+	})
+
 	t.Run("Failures on mismatched OS/Arch", func(t *testing.T) {
 		assets := []githubAsset{
 			{Name: "mytool-darwin-amd64"},

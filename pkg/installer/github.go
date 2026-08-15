@@ -8,10 +8,10 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -398,107 +398,63 @@ func (g *GitHubInstaller) matchAsset(assets []githubAsset, assetPattern string) 
 		sysCtx = NewDefaultSystemContext()
 	}
 
-	var re *regexp.Regexp
+	// Filter assets by assetPattern if provided
+	var candidates []githubAsset
 	if assetPattern != "" {
-		var err error
-		re, err = regexp.Compile(assetPattern)
-		if err != nil {
-			return nil
+		for _, asset := range assets {
+			if MatchAssetPattern(asset.Name, assetPattern) {
+				candidates = append(candidates, asset)
+			}
+		}
+	} else {
+		candidates = assets
+	}
+
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	sysInfo := arch.SystemInfo{
+		OS:   sysCtx.OS,
+		Arch: sysCtx.Arch,
+		Libc: arch.DetectLibc(arch.FileExists),
+	}
+
+	archRegex := arch.GetArchitectureRegex(sysInfo)
+
+	// Find strict matches for both OS and CPU architecture
+	var strictMatches []githubAsset
+	for _, c := range candidates {
+		if arch.MatchesArchitecture(c.Name, archRegex) {
+			strictMatches = append(strictMatches, c)
 		}
 	}
 
-	var bestAsset *githubAsset
-	bestScore := -1
-
-	for _, asset := range assets {
-		name := strings.ToLower(asset.Name)
-
-		if re != nil {
-			if !re.MatchString(asset.Name) {
-				continue
-			}
+	if len(strictMatches) > 0 {
+		strictNames := make([]string, len(strictMatches))
+		for i, sm := range strictMatches {
+			strictNames[i] = sm.Name
 		}
-
-		if !strings.Contains(name, sysCtx.OS) {
-			continue
-		}
-
-		archMatch := false
-		if strings.Contains(name, sysCtx.Arch) {
-			archMatch = true
-		} else if sysCtx.Arch == "amd64" && (strings.Contains(name, "x86_64") || strings.Contains(name, "x64")) {
-			archMatch = true
-		} else if sysCtx.Arch == "arm64" && (strings.Contains(name, "aarch64") || strings.Contains(name, "armv8")) {
-			archMatch = true
-		}
-		if !archMatch {
-			continue
-		}
-
-		score := 5
-
-		isUndesiredSuffix := false
-		undesiredExtensions := []string{
-			".sha256", ".sha256sum", ".sha512", ".md5", ".sha1", ".sig", ".asc",
-			".txt", ".md", ".html", ".pdf", ".yaml", ".yml", ".json", ".xml", ".csv",
-		}
-		for _, ext := range undesiredExtensions {
-			if strings.HasSuffix(name, ext) {
-				isUndesiredSuffix = true
-				break
-			}
-		}
-
-		packageExtensions := []string{".deb", ".rpm", ".apk", ".msi"}
-		isPackage := false
-		for _, ext := range packageExtensions {
-			if strings.HasSuffix(name, ext) {
-				isPackage = true
-				break
-			}
-		}
-
-		archiveExtensions := []string{".tar.gz", ".tgz", ".zip", ".tar.xz", ".txz", ".tar.bz2", ".tbz2"}
-		isArchive := false
-		for _, ext := range archiveExtensions {
-			if strings.HasSuffix(name, ext) {
-				isArchive = true
-				break
-			}
-		}
-
-		if isUndesiredSuffix {
-			explicitlyMatched := false
-			if assetPattern != "" {
-				normalizedPattern := strings.ReplaceAll(strings.ToLower(assetPattern), "\\", "")
-				for _, ext := range undesiredExtensions {
-					extNoDot := strings.TrimPrefix(ext, ".")
-					if strings.HasSuffix(name, ext) && (strings.Contains(normalizedPattern, ext) || strings.Contains(normalizedPattern, extNoDot)) {
-						explicitlyMatched = true
-						break
-					}
+		bestName := arch.SelectBestMatch(strictNames, sysInfo)
+		if bestName != "" {
+			for _, asset := range strictMatches {
+				if asset.Name == bestName {
+					assetCopy := asset
+					return &assetCopy
 				}
 			}
-			if !explicitlyMatched {
-				continue
-			}
-			score = 1
-		} else if isPackage {
-			score = 2
-		} else if isArchive {
-			score = 10
-		} else {
-			score = 10
 		}
-
-		if score > bestScore {
-			bestScore = score
-			assetCopy := asset
-			bestAsset = &assetCopy
-		}
+		assetCopy := strictMatches[0]
+		return &assetCopy
 	}
 
-	return bestAsset
+	// Fallback if assetPattern was explicitly specified but no strict platform match was found
+	if assetPattern != "" && len(candidates) > 0 {
+		assetCopy := candidates[0]
+		return &assetCopy
+	}
+
+	return nil
 }
 
 func init() {

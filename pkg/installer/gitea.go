@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -136,8 +137,10 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		return nil, fmt.Errorf("decoding Gitea release response: %w", err)
 	}
 
+	assetPattern := getStringParam(tool.InstallParams, "assetPattern", "")
+
 	// Match appropriate asset
-	matched := matchAsset(release.Assets, g.sysCtx.OS, g.sysCtx.Arch)
+	matched := matchAsset(release.Assets, g.sysCtx.OS, g.sysCtx.Arch, assetPattern)
 	if matched == nil {
 		return nil, fmt.Errorf("no matching release asset found for OS %s and Arch %s", g.sysCtx.OS, g.sysCtx.Arch)
 	}
@@ -244,13 +247,59 @@ func (g *GiteaInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfi
 	}, nil
 }
 
-func matchAsset(assets []giteaAsset, osName, archName string) *giteaAsset {
-	for _, asset := range assets {
-		name := strings.ToLower(asset.Name)
-		if strings.Contains(name, osName) && (strings.Contains(name, archName) || (archName == "amd64" && strings.Contains(name, "x86_64")) || (archName == "arm64" && strings.Contains(name, "aarch64"))) {
-			return &asset
+func matchAsset(assets []giteaAsset, osName, archName, assetPattern string) *giteaAsset {
+	var candidates []giteaAsset
+	if assetPattern != "" {
+		for _, asset := range assets {
+			if MatchAssetPattern(asset.Name, assetPattern) {
+				candidates = append(candidates, asset)
+			}
+		}
+	} else {
+		candidates = assets
+	}
+
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	sysInfo := arch.SystemInfo{
+		OS:   osName,
+		Arch: archName,
+		Libc: arch.DetectLibc(arch.FileExists),
+	}
+	archRegex := arch.GetArchitectureRegex(sysInfo)
+
+	var strictMatches []giteaAsset
+	for _, c := range candidates {
+		if arch.MatchesArchitecture(c.Name, archRegex) {
+			strictMatches = append(strictMatches, c)
 		}
 	}
+
+	if len(strictMatches) > 0 {
+		strictNames := make([]string, len(strictMatches))
+		for i, sm := range strictMatches {
+			strictNames[i] = sm.Name
+		}
+		bestName := arch.SelectBestMatch(strictNames, sysInfo)
+		if bestName != "" {
+			for _, asset := range strictMatches {
+				if asset.Name == bestName {
+					assetCopy := asset
+					return &assetCopy
+				}
+			}
+		}
+		assetCopy := strictMatches[0]
+		return &assetCopy
+	}
+
+	if assetPattern != "" && len(candidates) > 0 {
+		assetCopy := candidates[0]
+		return &assetCopy
+	}
+
 	return nil
 }
 
