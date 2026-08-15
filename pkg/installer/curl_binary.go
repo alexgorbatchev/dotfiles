@@ -26,6 +26,9 @@ func NewCurlBinaryInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloade
 	if sysCtx == nil {
 		sysCtx = NewDefaultSystemContext()
 	}
+	if dl == nil {
+		dl = downloader.NewDownloader(fsys, nil)
+	}
 	return &CurlBinaryInstaller{
 		runner: runner,
 		fsys:   fsys,
@@ -47,6 +50,9 @@ func (c *CurlBinaryInstaller) SetFS(fsys fs.FS) {
 
 func (c *CurlBinaryInstaller) SetLogger(log *logger.Logger) {
 	c.log = log
+	if c.dl != nil && log != nil {
+		c.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+	}
 }
 
 func (c *CurlBinaryInstaller) SupportsSudo() bool {

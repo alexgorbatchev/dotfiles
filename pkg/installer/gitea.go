@@ -47,6 +47,9 @@ func NewGiteaInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Dow
 	if sysCtx == nil {
 		sysCtx = NewDefaultSystemContext()
 	}
+	if dl == nil {
+		dl = downloader.NewDownloader(fsys, nil)
+	}
 	extractor := archive.NewExtractor(fsys, runner)
 	return &GiteaInstaller{
 		runner:     runner,
@@ -74,6 +77,9 @@ func (g *GiteaInstaller) SetFS(fsys fs.FS) {
 
 func (g *GiteaInstaller) SetLogger(log *logger.Logger) {
 	g.log = log
+	if g.dl != nil && log != nil {
+		g.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+	}
 }
 
 func (g *GiteaInstaller) SupportsSudo() bool {

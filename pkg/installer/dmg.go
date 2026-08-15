@@ -33,6 +33,9 @@ func NewDmgInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downl
 	if sysCtx == nil {
 		sysCtx = NewDefaultSystemContext()
 	}
+	if dl == nil {
+		dl = downloader.NewDownloader(fsys, nil)
+	}
 	extractor := archive.NewExtractor(fsys, runner)
 	return &DmgInstaller{
 		runner:     runner,
@@ -60,6 +63,9 @@ func (d *DmgInstaller) SetFS(fsys fs.FS) {
 
 func (d *DmgInstaller) SetLogger(log *logger.Logger) {
 	d.log = log
+	if d.dl != nil && log != nil {
+		d.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+	}
 }
 
 func (d *DmgInstaller) SupportsSudo() bool {

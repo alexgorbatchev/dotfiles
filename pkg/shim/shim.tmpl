@@ -47,7 +47,7 @@ else
   fi
 
   # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
-  # Let stderr (progress bars) pass through to the user
+  # Suppress dotfiles output during transparent installation in shim mode
   # Temporarily disable set -e to handle install failures gracefully
   set +e
   eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'

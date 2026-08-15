@@ -25,6 +25,7 @@ type DownloadOptions struct {
 	RetryDelay time.Duration
 	OnProgress func(bytesDownloaded int64, totalBytes int64)
 	SkipCache  bool
+	Quiet      bool
 }
 
 type cacheKeyPayload struct {
@@ -49,6 +50,14 @@ type Downloader struct {
 	CacheDir     string
 	CacheEnabled bool
 	CacheTTL     time.Duration
+	Quiet        bool
+}
+
+// SetQuiet controls whether progress bar rendering is suppressed.
+func (d *Downloader) SetQuiet(quiet bool) {
+	if d != nil {
+		d.Quiet = quiet
+	}
 }
 
 // NewDownloader creates a new Downloader using the provided filesystem and HTTP client.
@@ -123,9 +132,10 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 		}
 	}
 
-	// 2. Set up default progress bar if OnProgress is nil
+	// 2. Set up default progress bar if OnProgress is nil and quiet mode is disabled
 	var bar *ProgressBar
-	if activeOpts[0].OnProgress == nil {
+	isQuiet := (d != nil && d.Quiet) || activeOpts[0].Quiet
+	if !isQuiet && activeOpts[0].OnProgress == nil {
 		filename := filepath.Base(destPath)
 		bar = NewProgressBar(0, filename)
 		bar.Start()

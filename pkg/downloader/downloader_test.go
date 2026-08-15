@@ -919,3 +919,30 @@ func TestPartialContentFallbackBranch(t *testing.T) {
 		t.Errorf("expected 'part1-part2', got %q, err=%v", string(data), err)
 	}
 }
+
+func TestDownloaderQuietMode(t *testing.T) {
+	memFS := fs.NewMemFS()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("content"))
+	}))
+	defer server.Close()
+
+	d := NewDownloader(memFS, nil)
+	d.SetQuiet(true)
+	if !d.Quiet {
+		t.Errorf("expected d.Quiet to be true")
+	}
+
+	optsQuiet := DownloadOptions{Quiet: true}
+	err := d.Download(context.Background(), server.URL, "/test.txt", "", optsQuiet)
+	if err != nil {
+		t.Fatalf("Download failed in quiet mode: %v", err)
+	}
+
+	data, err := memFS.ReadFile("/test.txt")
+	if err != nil || string(data) != "content" {
+		t.Errorf("expected 'content', got %q, err=%v", string(data), err)
+	}
+}
+

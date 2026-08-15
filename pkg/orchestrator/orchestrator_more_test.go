@@ -139,7 +139,7 @@ func TestLineLogWriter(t *testing.T) {
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Writer: &logBuf})
 
-	lw := &lineLogWriter{logger: log, prefix: "[prefix]"}
+	lw := logger.NewLineWriter(log, "[prefix]")
 	_, err := lw.Write([]byte("message line 1\nmessage line 2\nunfinished line"))
 	if err != nil {
 		t.Fatalf("lineLogWriter Write failed: %v", err)

@@ -226,6 +226,14 @@ func TestInstallerSettersAndBaseHelpers(t *testing.T) {
 	zp.SetFS(memFS)
 	zp.SetLogger(log)
 
+	// Test quiet logger propagation to downloader
+	quietLog := logger.New(logger.Config{Writer: io.Discard, Level: logger.LogLevelQuiet})
+	ghQuiet := NewGitHubInstaller(runner, memFS, nil, sys)
+	ghQuiet.SetLogger(quietLog)
+	if ghQuiet.dl == nil || !ghQuiet.dl.Quiet {
+		t.Errorf("expected GitHubInstaller downloader Quiet to be true with LogLevelQuiet")
+	}
+
 	// IsDryRun and GetBinaryNames
 	if IsDryRun() {
 		t.Error("expected IsDryRun false by default")

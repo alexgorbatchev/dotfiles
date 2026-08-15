@@ -52,6 +52,9 @@ func NewGitHubInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Do
 	if sysCtx == nil {
 		sysCtx = NewDefaultSystemContext()
 	}
+	if dl == nil {
+		dl = downloader.NewDownloader(fsys, nil)
+	}
 	extractor := archive.NewExtractor(fsys, runner)
 	return &GitHubInstaller{
 		runner:     runner,
@@ -97,6 +100,9 @@ func (g *GitHubInstaller) SetFS(fsys fs.FS) {
 
 func (g *GitHubInstaller) SetLogger(log *logger.Logger) {
 	g.log = log
+	if g.dl != nil && log != nil {
+		g.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+	}
 }
 
 func (g *GitHubInstaller) SupportsSudo() bool {

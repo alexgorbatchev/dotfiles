@@ -49,6 +49,9 @@ func NewProgressBar(totalBytes int64, filename string) *ProgressBar {
 
 // Start hides the terminal cursor if we are running in a TTY.
 func (p *ProgressBar) Start() {
+	if p == nil {
+		return
+	}
 	if p.isTTY {
 		fmt.Fprint(os.Stderr, "\x1b[?25l") // Hide cursor
 	}
@@ -56,6 +59,9 @@ func (p *ProgressBar) Start() {
 
 // Finish restores the cursor and writes a newline.
 func (p *ProgressBar) Finish() {
+	if p == nil {
+		return
+	}
 	if p.isTTY {
 		fmt.Fprint(os.Stderr, "\x1b[?25h\n") // Show cursor + newline
 	}
@@ -63,6 +69,9 @@ func (p *ProgressBar) Finish() {
 
 // Update updates the progress values and prints the progress frame to stderr.
 func (p *ProgressBar) Update(downloaded int64) {
+	if p == nil {
+		return
+	}
 	p.bytesDownloaded = downloaded
 	p.lastUpdate = time.Now()
 

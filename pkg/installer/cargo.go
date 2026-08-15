@@ -34,6 +34,9 @@ func NewCargoInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Dow
 	if sysCtx == nil {
 		sysCtx = NewDefaultSystemContext()
 	}
+	if dl == nil {
+		dl = downloader.NewDownloader(fsys, nil)
+	}
 	extractor := archive.NewExtractor(fsys, runner)
 	return &CargoInstaller{
 		runner:    runner,
@@ -60,6 +63,9 @@ func (c *CargoInstaller) SetFS(fsys fs.FS) {
 
 func (c *CargoInstaller) SetLogger(log *logger.Logger) {
 	c.log = log
+	if c.dl != nil && log != nil {
+		c.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+	}
 }
 
 func (c *CargoInstaller) SupportsSudo() bool {

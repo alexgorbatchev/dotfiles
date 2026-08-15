@@ -33,6 +33,9 @@ func NewPkgInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downl
 	if sysCtx == nil {
 		sysCtx = NewDefaultSystemContext()
 	}
+	if dl == nil {
+		dl = downloader.NewDownloader(fsys, nil)
+	}
 	extractor := archive.NewExtractor(fsys, runner)
 	return &PkgInstaller{
 		runner:     runner,
@@ -60,6 +63,9 @@ func (p *PkgInstaller) SetFS(fsys fs.FS) {
 
 func (p *PkgInstaller) SetLogger(log *logger.Logger) {
 	p.log = log
+	if p.dl != nil && log != nil {
+		p.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+	}
 }
 
 func (p *PkgInstaller) SupportsSudo() bool {

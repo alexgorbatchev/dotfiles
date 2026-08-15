@@ -480,3 +480,16 @@ func TestDashboardCommandFlags(t *testing.T) {
 		t.Errorf("expected dashboard --help to show --host and -H flags, got:\n%s", out)
 	}
 }
+
+func TestInstallCommand_ShimModeQuietOutput(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_TEST", "true")
+	createTempConfigDir(t)
+
+	out, err := executeCommand("install", "--shim-mode", "bat")
+	if err != nil {
+		t.Fatalf("install bat in shim mode failed: %v", err)
+	}
+	if out != "" {
+		t.Errorf("expected no output in shim mode, got: %q", out)
+	}
+}

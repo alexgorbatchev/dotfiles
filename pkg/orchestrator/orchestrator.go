@@ -1,11 +1,11 @@
 package orchestrator
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	iofs "io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/embedded"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
@@ -247,6 +248,10 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 		return fmt.Errorf("generating shell scripts: %w", err)
 	}
 
+	if err := o.syncTypeScriptTypes(ctx, sorted, projCfg); err != nil {
+		o.logger.Error("Syncing TypeScript types warning", err)
+	}
+
 	return nil
 }
 
@@ -330,6 +335,10 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 
 	if err := o.generateShellScripts(ctx, sorted, projCfg); err != nil {
 		return fmt.Errorf("generating shell scripts: %w", err)
+	}
+
+	if err := o.syncTypeScriptTypes(ctx, sorted, projCfg); err != nil {
+		o.logger.Error("Syncing TypeScript types warning", err)
 	}
 
 	o.logger.GetSubLogger("", "system").Info(logger.Message("DONE"))
@@ -590,7 +599,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 							runCmd.SetDir(filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))
 						}
 
-						writer := &lineLogWriter{logger: o.logger.GetSubLogger("", tool.Name), prefix: "|"}
+						writer := logger.NewLineWriter(o.logger.GetSubLogger("", tool.Name), "|")
 						runCmd.SetStdout(writer)
 						runCmd.SetStderr(writer)
 
@@ -1500,39 +1509,6 @@ func (o *Orchestrator) resolvePlaceholder(val string, tool *config.ToolConfig, p
 	return config.ResolvePlaceholders(val, tool.Name, projCfg)
 }
 
-type lineLogWriter struct {
-	logger *logger.Logger
-	prefix string
-	buf    bytes.Buffer
-}
-
-func (l *lineLogWriter) Write(p []byte) (n int, err error) {
-	n = len(p)
-	l.buf.Write(p)
-	for {
-		line, err := l.buf.ReadString('\n')
-		if err != nil {
-			l.buf.Write([]byte(line))
-			break
-		}
-		trimmed := strings.TrimSuffix(line, "\n")
-		trimmed = strings.TrimSuffix(trimmed, "\r")
-		l.logger.Info(logger.Message(fmt.Sprintf("%s %s", l.prefix, trimmed)))
-	}
-	return n, nil
-}
-
-func (l *lineLogWriter) Flush() {
-	if l.buf.Len() > 0 {
-		trimmed := strings.TrimSuffix(l.buf.String(), "\n")
-		trimmed = strings.TrimSuffix(trimmed, "\r")
-		if trimmed != "" {
-			l.logger.Info(logger.Message(fmt.Sprintf("%s %s", l.prefix, trimmed)))
-		}
-		l.buf.Reset()
-	}
-}
-
 func shouldOverwrite(ctx context.Context) bool {
 	for _, arg := range os.Args {
 		if arg == "--overwrite" {
@@ -1867,4 +1843,98 @@ func getCompletionFileName(tool *config.ToolConfig, sh string, stc *config.Shell
 		return "_" + baseName
 	}
 	return baseName
+}
+
+func (o *Orchestrator) syncTypeScriptTypes(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	if projCfg == nil || projCfg.Paths.GeneratedDir == "" {
+		return nil
+	}
+
+	pkgGenDir := filepath.Join(projCfg.Paths.GeneratedDir, "node_modules", "@alexgorbatchev", "dotfiles")
+	if err := o.fs.MkdirAll(pkgGenDir, 0755); err != nil {
+		return fmt.Errorf("creating generated node_modules directory %s: %w", pkgGenDir, err)
+	}
+
+	entries, err := iofs.ReadDir(embedded.TypesFS, "dist")
+	if err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() || entry.Name() == ".gitkeep" {
+				continue
+			}
+			data, err := iofs.ReadFile(embedded.TypesFS, filepath.Join("dist", entry.Name()))
+			if err == nil {
+				_ = o.fs.WriteFile(filepath.Join(pkgGenDir, entry.Name()), data, 0644)
+			}
+		}
+	}
+
+	if projCfg.Paths.DotfilesDir != "" {
+		projNodeModulesDir := filepath.Join(projCfg.Paths.DotfilesDir, "node_modules", "@alexgorbatchev")
+		_ = o.fs.MkdirAll(projNodeModulesDir, 0755)
+		projPkgDir := filepath.Join(projNodeModulesDir, "dotfiles")
+
+		relTarget := filepath.Join("..", "..", ".generated", "node_modules", "@alexgorbatchev", "dotfiles")
+		if rel, err := filepath.Rel(projNodeModulesDir, pkgGenDir); err == nil {
+			relTarget = rel
+		}
+
+		if exists, _ := o.fs.Exists(projPkgDir); !exists {
+			if err := o.fs.Symlink(relTarget, projPkgDir); err != nil {
+				_ = o.fs.MkdirAll(projPkgDir, 0755)
+				if entries, err := iofs.ReadDir(embedded.TypesFS, "dist"); err == nil {
+					for _, entry := range entries {
+						if entry.IsDir() || entry.Name() == ".gitkeep" {
+							continue
+						}
+						data, _ := iofs.ReadFile(embedded.TypesFS, filepath.Join("dist", entry.Name()))
+						_ = o.fs.WriteFile(filepath.Join(projPkgDir, entry.Name()), data, 0644)
+					}
+				}
+			}
+		}
+	}
+
+	var binNames []string
+	seen := make(map[string]bool)
+
+	for _, t := range tools {
+		if t.Name != "" && !seen[t.Name] {
+			seen[t.Name] = true
+			binNames = append(binNames, t.Name)
+		}
+		for _, b := range t.Binaries {
+			switch val := b.(type) {
+			case string:
+				if val != "" && !seen[val] {
+					seen[val] = true
+					binNames = append(binNames, val)
+				}
+			case map[string]interface{}:
+				if name, ok := val["name"].(string); ok && name != "" && !seen[name] {
+					seen[name] = true
+					binNames = append(binNames, name)
+				}
+			}
+		}
+	}
+
+	sort.Strings(binNames)
+
+	var registryLines []string
+	for _, name := range binNames {
+		registryLines = append(registryLines, fmt.Sprintf("    %q: never;", name))
+	}
+
+	toolTypesContent := fmt.Sprintf(`// Auto-generated by dotfiles CLI. Do not edit.
+declare module "@alexgorbatchev/dotfiles" {
+  export interface z_internal_IKnownBinNameRegistry {
+%s
+  }
+}
+`, strings.Join(registryLines, "\n"))
+
+	toolTypesPath := filepath.Join(projCfg.Paths.GeneratedDir, "tool-types.d.ts")
+	_ = o.fs.WriteFile(toolTypesPath, []byte(toolTypesContent), 0644)
+
+	return nil
 }

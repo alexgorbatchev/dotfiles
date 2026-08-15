@@ -28,6 +28,9 @@ func NewCurlScriptInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloade
 	if sysCtx == nil {
 		sysCtx = NewDefaultSystemContext()
 	}
+	if dl == nil {
+		dl = downloader.NewDownloader(fsys, nil)
+	}
 	return &CurlScriptInstaller{
 		runner: runner,
 		fsys:   fsys,
@@ -49,6 +52,9 @@ func (c *CurlScriptInstaller) SetFS(fsys fs.FS) {
 
 func (c *CurlScriptInstaller) SetLogger(log *logger.Logger) {
 	c.log = log
+	if c.dl != nil && log != nil {
+		c.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+	}
 }
 
 func (c *CurlScriptInstaller) SupportsSudo() bool {
@@ -125,11 +131,24 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 		}
 	}
 
-	runCmd.SetStdout(os.Stdout)
-	runCmd.SetStderr(os.Stderr)
+	var writer *logger.LineWriter
+	if c.log != nil {
+		writer = logger.NewLineWriter(c.log, "|")
+		runCmd.SetStdout(writer)
+		runCmd.SetStderr(writer)
+	} else {
+		runCmd.SetStdout(os.Stdout)
+		runCmd.SetStderr(os.Stderr)
+	}
 
 	if err := runCmd.Run(); err != nil {
+		if writer != nil {
+			writer.Flush()
+		}
 		return nil, fmt.Errorf("running install script: %w", err)
+	}
+	if writer != nil {
+		writer.Flush()
 	}
 
 	// Clean up script
