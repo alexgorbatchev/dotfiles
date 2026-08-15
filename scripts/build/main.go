@@ -189,22 +189,9 @@ func generateSchemaTypes(rootDir string) error {
 		return fmt.Errorf("failed to create .dist directory: %w", err)
 	}
 
-	schemasDtsContent := strings.Join([]string{
-		"// Generated types for @alexgorbatchev/dotfiles",
-		publicDeclarationsTemplate,
-		cleanedGeneratedTypes,
-	}, "\n\n")
-
-	if err := os.WriteFile(filepath.Join(distDir, "index.d.ts"), []byte(schemasDtsContent), 0644); err != nil {
-		return fmt.Errorf("failed to write index.d.ts: %w", err)
-	}
-
-	if err := os.WriteFile(filepath.Join(distDir, "schemas.d.ts"), []byte(schemasDtsContent), 0644); err != nil {
-		return fmt.Errorf("failed to write schemas.d.ts: %w", err)
-	}
-
-	if err := os.WriteFile(filepath.Join(distDir, "tool-types.d.ts"), []byte(schemasDtsContent), 0644); err != nil {
-		return fmt.Errorf("failed to write tool-types.d.ts: %w", err)
+	embeddedDistDir := filepath.Join(rootDir, "pkg/embedded/dist")
+	if err := os.MkdirAll(embeddedDistDir, 0755); err != nil {
+		return fmt.Errorf("failed to create pkg/embedded/dist directory: %w", err)
 	}
 
 	moduleBody := strings.ReplaceAll(publicDeclarationsTemplate, "export declare function", "export function")
@@ -227,12 +214,26 @@ func generateSchemaTypes(rootDir string) error {
 		`}`,
 	}, "\n")
 
-	if err := os.WriteFile(filepath.Join(distDir, "authoring-types.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
-		return fmt.Errorf("failed to write authoring-types.d.ts: %w", err)
-	}
+	for _, dir := range []string{distDir, embeddedDistDir} {
+		if err := os.WriteFile(filepath.Join(dir, "index.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
+			return fmt.Errorf("failed to write index.d.ts to %s: %w", dir, err)
+		}
 
-	if err := os.WriteFile(filepath.Join(distDir, "cli.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
-		return fmt.Errorf("failed to write cli.d.ts: %w", err)
+		if err := os.WriteFile(filepath.Join(dir, "schemas.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
+			return fmt.Errorf("failed to write schemas.d.ts to %s: %w", dir, err)
+		}
+
+		if err := os.WriteFile(filepath.Join(dir, "tool-types.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
+			return fmt.Errorf("failed to write tool-types.d.ts to %s: %w", dir, err)
+		}
+
+		if err := os.WriteFile(filepath.Join(dir, "authoring-types.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
+			return fmt.Errorf("failed to write authoring-types.d.ts to %s: %w", dir, err)
+		}
+
+		if err := os.WriteFile(filepath.Join(dir, "cli.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
+			return fmt.Errorf("failed to write cli.d.ts to %s: %w", dir, err)
+		}
 	}
 
 	fmt.Println("✅ Generated .d.ts files successfully!")
@@ -309,6 +310,30 @@ func generatePackageJsons(rootDir string) (string, error) {
 	distDir := filepath.Join(rootDir, ".dist")
 	if err := os.WriteFile(filepath.Join(distDir, "package.json"), distPkgBytes, 0644); err != nil {
 		return "", fmt.Errorf("failed to write .dist/package.json: %w", err)
+	}
+
+	embeddedPkg := map[string]interface{}{
+		"name":        "@alexgorbatchev/dotfiles",
+		"version":     version,
+		"description": "Declarative, versioned dotfiles management types.",
+		"license":     "MIT",
+		"type":        "module",
+		"types":       "./index.d.ts",
+		"exports": map[string]interface{}{
+			".": map[string]interface{}{
+				"types": "./index.d.ts",
+			},
+		},
+	}
+
+	embeddedPkgBytes, err := json.MarshalIndent(embeddedPkg, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal embedded package.json: %w", err)
+	}
+
+	embeddedDistDir := filepath.Join(rootDir, "pkg/embedded/dist")
+	if err := os.MkdirAll(embeddedDistDir, 0755); err == nil {
+		_ = os.WriteFile(filepath.Join(embeddedDistDir, "package.json"), embeddedPkgBytes, 0644)
 	}
 
 	platforms := []struct {

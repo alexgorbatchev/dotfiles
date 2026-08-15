@@ -2,20 +2,16 @@
 
 set -euo pipefail
 
-DOTFILES_PACKAGE_SPEC="${DOTFILES_PACKAGE_SPEC:-@alexgorbatchev/dotfiles}"
-DOTFILES_BUN_TOOL="${DOTFILES_BUN_TOOL:-bun}"
-DOTFILES_SKIP_MANAGED_BUN_INSTALL="${DOTFILES_SKIP_MANAGED_BUN_INSTALL:-0}"
+DOTFILES_VERSION="${DOTFILES_VERSION:-latest}"
+DOTFILES_TARGET_DIR="${DOTFILES_TARGET_DIR:-$HOME/.local/bin}"
+DOTFILES_BINARY_PATH="${DOTFILES_BINARY_PATH:-}"
 DOTFILES_YES="${DOTFILES_YES:-0}"
 
 TEMP_DIR=""
-TEMP_BUN_INSTALL=""
 INSTALL_DIR="${PWD}"
 CONFIG_PATH="${INSTALL_DIR}/dotfiles.config.ts"
-PACKAGE_JSON_PATH="${INSTALL_DIR}/package.json"
 TOOLS_DIR="${INSTALL_DIR}/tools"
-BUN_TOOL_PATH="${TOOLS_DIR}/bun.tool.ts"
 CONFIG_EXISTS="0"
-PACKAGE_JSON_EXISTS="0"
 
 log() {
 	printf '[dotfiles-install] %s\n' "$*"
@@ -36,14 +32,7 @@ cleanup() {
 	return "${exit_code}"
 }
 
-ensure_bun_bootstrap_requirements() {
-	if command -v bun >/dev/null 2>&1; then
-		return 0
-	fi
-
-	command -v curl >/dev/null 2>&1 || fail "curl is required to bootstrap Bun"
-	command -v unzip >/dev/null 2>&1 || fail "unzip is required to bootstrap Bun"
-}
+trap 'cleanup $?' EXIT
 
 confirm_installation() {
 	if [[ "${DOTFILES_YES}" = "1" ]]; then
@@ -88,23 +77,52 @@ export default defineConfig(({ configFileDir }) => ({
 EOF
 }
 
-write_default_bun_tool() {
-	mkdir -p "${TOOLS_DIR}"
+detect_os_arch() {
+	local os arch
+	os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+	arch="$(uname -m)"
 
-	cat >"${BUN_TOOL_PATH}" <<'EOF'
-import { defineTool } from "@alexgorbatchev/dotfiles";
+	case "${os}" in
+	darwin | linux) ;;
+	*) fail "Unsupported OS: ${os}" ;;
+	esac
 
-export default defineTool((install) =>
-  install("github-release", {
-    repo: "oven-sh/bun",
-  }).bin("bun"),
-);
-EOF
+	case "${arch}" in
+	x86_64 | amd64) arch="amd64" ;;
+	aarch64 | arm64) arch="arm64" ;;
+	*) fail "Unsupported architecture: ${arch}" ;;
+	esac
+
+	echo "${os}-${arch}"
 }
 
-trap 'cleanup $?' EXIT
+ensure_dotfiles_binary() {
+	if [[ -n "${DOTFILES_BINARY_PATH}" && -x "${DOTFILES_BINARY_PATH}" ]]; then
+		log "Using specified dotfiles binary: ${DOTFILES_BINARY_PATH}"
+		DOTFILES_BIN="${DOTFILES_BINARY_PATH}"
+		return 0
+	fi
 
-ensure_bun_bootstrap_requirements
+	local target_bin="${DOTFILES_TARGET_DIR}/dotfiles"
+	mkdir -p "${DOTFILES_TARGET_DIR}"
+
+	local target_plat
+	target_plat="$(detect_os_arch)"
+
+	local download_url
+	if [[ "${DOTFILES_VERSION}" = "latest" ]]; then
+		download_url="https://github.com/alexgorbatchev/dotfiles/releases/latest/download/dotfiles-${target_plat}"
+	else
+		download_url="https://github.com/alexgorbatchev/dotfiles/releases/download/v${DOTFILES_VERSION}/dotfiles-${target_plat}"
+	fi
+
+	log "Downloading dotfiles binary (${target_plat}) from ${download_url} to ${target_bin}"
+	command -v curl >/dev/null 2>&1 || fail "curl is required to download dotfiles binary"
+	curl -fsSL "${download_url}" -o "${target_bin}"
+	chmod +x "${target_bin}"
+
+	DOTFILES_BIN="${target_bin}"
+}
 
 if [[ -f "${CONFIG_PATH}" ]]; then
 	CONFIG_EXISTS="1"
@@ -113,74 +131,16 @@ else
 	log "No dotfiles config found in ${INSTALL_DIR}. A new dotfiles.config.ts will be created."
 fi
 
-if [[ -f "${PACKAGE_JSON_PATH}" ]]; then
-	PACKAGE_JSON_EXISTS="1"
-	log "Found package.json: ${PACKAGE_JSON_PATH}"
-else
-	log "No package.json found in ${INSTALL_DIR}. A new package.json will be initialized."
-fi
-
 confirm_installation
 
-if command -v bun >/dev/null 2>&1; then
-	BUN_BIN="$(command -v bun)"
-	log "Using Bun from PATH: ${BUN_BIN}"
-else
-	command -v curl >/dev/null 2>&1 || fail "curl is required to bootstrap Bun"
-	command -v unzip >/dev/null 2>&1 || fail "unzip is required to bootstrap Bun"
-
-	TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-install.XXXXXX")"
-	TEMP_BUN_INSTALL="${TEMP_DIR}/bun"
-
-	export BUN_INSTALL="${TEMP_BUN_INSTALL}"
-	export PATH="${TEMP_BUN_INSTALL}/bin:${PATH}"
-
-	log "Installing temporary Bun into ${TEMP_BUN_INSTALL}"
-	curl -fsSL https://bun.com/install | bash >/dev/null
-
-	BUN_BIN="${TEMP_BUN_INSTALL}/bin/bun"
-	[[ -x "${BUN_BIN}" ]] || fail "Temporary Bun installation failed"
-fi
-
-if [[ "${PACKAGE_JSON_EXISTS}" != "1" ]]; then
-	log "Initializing package.json with bun init --yes --minimal"
-	"${BUN_BIN}" init --yes --minimal "${INSTALL_DIR}"
-	[[ -f "${PACKAGE_JSON_PATH}" ]] || fail "bun init did not create ${PACKAGE_JSON_PATH}"
-fi
-
-log "Installing ${DOTFILES_PACKAGE_SPEC} into ${PACKAGE_JSON_PATH} without running project lifecycle scripts"
-"${BUN_BIN}" add --ignore-scripts "${DOTFILES_PACKAGE_SPEC}"
+ensure_dotfiles_binary
 
 if [[ "${CONFIG_EXISTS}" != "1" ]]; then
 	log "Creating ${CONFIG_PATH}"
 	write_default_config
-
-	if [[ ! -f "${BUN_TOOL_PATH}" ]]; then
-		log "Creating ${BUN_TOOL_PATH}"
-		write_default_bun_tool
-	fi
-fi
-
-DOTFILES_BIN="${INSTALL_DIR}/node_modules/.bin/dotfiles"
-
-[[ -x "${DOTFILES_BIN}" ]] || fail "dotfiles binary not found at ${DOTFILES_BIN}"
-
-if [[ "${DOTFILES_SKIP_MANAGED_BUN_INSTALL}" != "1" ]]; then
-	log "Installing managed Bun tool '${DOTFILES_BUN_TOOL}' using ${CONFIG_PATH}"
-	"${BUN_BIN}" "${DOTFILES_BIN}" --config "${CONFIG_PATH}" install "${DOTFILES_BUN_TOOL}"
-
-	MANAGED_BUN_PATH="$({ "${BUN_BIN}" "${DOTFILES_BIN}" --config "${CONFIG_PATH}" bin "${DOTFILES_BUN_TOOL}" 2>/dev/null || true; })"
-	if [[ -n "${MANAGED_BUN_PATH}" ]]; then
-		log "Managed Bun installed at ${MANAGED_BUN_PATH}"
-		BUN_BIN="${MANAGED_BUN_PATH}"
-	fi
 fi
 
 log "Generating shims and shell configuration"
-"${BUN_BIN}" "${DOTFILES_BIN}" --config "${CONFIG_PATH}" generate
-
-if [[ -n "${TEMP_DIR}" ]]; then
-	log "Removing temporary Bun from ${TEMP_BUN_INSTALL}"
-fi
+"${DOTFILES_BIN}" --config "${CONFIG_PATH}" generate
 
 log "dotfiles bootstrap complete"

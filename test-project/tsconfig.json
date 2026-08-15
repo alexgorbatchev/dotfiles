@@ -2,7 +2,7 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@alexgorbatchev/dotfiles": ["../.dist/index.d.ts"]
+      "@alexgorbatchev/dotfiles": ["./.generated/node_modules/@alexgorbatchev/dotfiles"]
     }
   },
   "include": ["./dotfiles.config.ts", "tools", ".generated/tool-types.d.ts"]
