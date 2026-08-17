@@ -5,6 +5,7 @@ set -euo pipefail
 DOTFILES_VERSION="${DOTFILES_VERSION:-latest}"
 DOTFILES_TARGET_DIR="${DOTFILES_TARGET_DIR:-$HOME/.local/bin}"
 DOTFILES_BINARY_PATH="${DOTFILES_BINARY_PATH:-}"
+DOTFILES_BASE_URL="${DOTFILES_BASE_URL:-https://github.com/alexgorbatchev/dotfiles}"
 DOTFILES_YES="${DOTFILES_YES:-0}"
 
 TEMP_DIR=""
@@ -111,9 +112,9 @@ ensure_dotfiles_binary() {
 
 	local download_url
 	if [[ "${DOTFILES_VERSION}" = "latest" ]]; then
-		download_url="https://github.com/alexgorbatchev/dotfiles/releases/latest/download/dotfiles-${target_plat}"
+		download_url="${DOTFILES_BASE_URL}/releases/latest/download/dotfiles-${target_plat}"
 	else
-		download_url="https://github.com/alexgorbatchev/dotfiles/releases/download/v${DOTFILES_VERSION}/dotfiles-${target_plat}"
+		download_url="${DOTFILES_BASE_URL}/releases/download/v${DOTFILES_VERSION}/dotfiles-${target_plat}"
 	fi
 
 	log "Downloading dotfiles binary (${target_plat}) from ${download_url} to ${target_bin}"
