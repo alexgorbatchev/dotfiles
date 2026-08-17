@@ -2,6 +2,10 @@
 
 Isolated workspace for testing `scripts/managed-installer/install.sh` and end-to-end bootstrap flows on a local machine without modifying global dotfiles or system directories.
 
+## Purpose
+
+Provides a clean, sandbox environment to test the end-to-end installer flow locally on your laptop and verify the exact results an end-user will experience, while ensuring your primary working dotfiles configuration and system environment remain 100% untouched and safe.
+
 ## Commands
 
 - Run isolated install test: `just` (or `just run` inside `test-install/`)
