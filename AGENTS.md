@@ -28,6 +28,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Go VM package: `pkg/vm/` -> `pkg/vm/AGENTS.md`
 - Go E2E test suite: `tests/e2e/`
 - Verification fixture: `test-project/`
+- Isolated installer test workspace: `test-install/` -> `test-install/AGENTS.md`
 
 ## Shared gotchas
 
