@@ -89,7 +89,7 @@ detect_os_arch() {
 	esac
 
 	case "${arch}" in
-	x86_64 | amd64) arch="amd64" ;;
+	x86_64 | amd64 | x64) arch="x64" ;;
 	aarch64 | arm64) arch="arm64" ;;
 	*) fail "Unsupported architecture: ${arch}" ;;
 	esac
