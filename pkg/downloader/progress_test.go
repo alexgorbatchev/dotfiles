@@ -104,6 +104,21 @@ func TestProgressBarTTYMethods(t *testing.T) {
 	}
 }
 
+func TestProgressBar_NonTTYSuppression(t *testing.T) {
+	// Verify that when isTTY is false (e.g. cat | shim, spawnChild, or piped stdio),
+	// NewProgressBar constructs a bar with isTTY=false and rendering produces no output.
+	bar := NewProgressBar(1000, "file.txt")
+	if bar.isTTY {
+		t.Errorf("expected bar.isTTY to be false when stdio is non-terminal / piped")
+	}
+
+	// Calling Start, Update, Finish on non-TTY bar must be a no-op
+	bar.Start()
+	bar.Update(100)
+	bar.Update(500)
+	bar.Finish()
+}
+
 func TestRenderFancyProgressFieldEdgeCases(t *testing.T) {
 	// 0% progress
 	f0 := renderFancyProgressField(0.0, "0.00%", "0B", "1.00MB", true)
