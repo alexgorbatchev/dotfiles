@@ -17,6 +17,26 @@ describe("ToolSourceCard", () => {
     globalThis.fetch = originalFetch;
   });
 
+  test("renders empty source card when fetch fails or returns error", async () => {
+    const mockFn = mock(async () => {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Failed to load",
+        }),
+        {
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    });
+
+    globalThis.fetch = Object.assign(mockFn, { preconnect: () => {} }) as typeof fetch;
+
+    render(<ToolSourceCard toolName="test" />);
+
+    await screen.findByText("Source not available");
+  });
+
   test("renders fetched source content with syntax highlighting", async () => {
     const mockFn = mock(async () => {
       return new Response(

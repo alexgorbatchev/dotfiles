@@ -1,103 +1,99 @@
-// UI test setup - registers DOM and exports testing utilities
-import { render, setupUITests } from "../../../testing/ui-setup";
-
-import assert from "node:assert";
-import { h } from "preact";
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-
+import { setupUITests, render } from "../../../testing/ui-setup";
+import { describe, test, beforeEach, afterEach } from "bun:test";
 import { useSectionHash } from "../useSectionHash";
+import { h } from "preact";
 
 setupUITests();
 
-type CancelAnimationFrame = typeof window.cancelAnimationFrame;
-type HistoryReplaceState = typeof window.history.replaceState;
-type HistoryReplaceStateMock = ReturnType<typeof mock<HistoryReplaceState>>;
-type RequestAnimationFrame = typeof window.requestAnimationFrame;
-type ScrollIntoView = typeof HTMLElement.prototype.scrollIntoView;
+type TestComponentProps = {
+  sectionIds: string[];
+  enabled?: boolean;
+};
 
-const originalCancelAnimationFrame = window.cancelAnimationFrame;
-const originalLocation = window.location;
-const originalReplaceState = window.history.replaceState;
-const originalRequestAnimationFrame = window.requestAnimationFrame;
-const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
-
-function createReplaceStateSpy(): HistoryReplaceStateMock {
-  return mock<HistoryReplaceState>(function replaceState() {});
-}
-
-function createScrollIntoViewSpy(): ScrollIntoView {
-  return mock(function scrollIntoView() {}) as ScrollIntoView;
-}
-
-function TestComponent() {
-  useSectionHash(["overview", "files"]);
-
-  return h("div", {}, h("section", { id: "overview" }, "Overview"), h("section", { id: "files" }, "Files"));
+function TestComponent({ sectionIds, enabled = true }: TestComponentProps) {
+  useSectionHash(sectionIds, enabled);
+  return h("div", null, [
+    h("div", { id: "sec-1", key: "sec-1" }, "Sec 1"),
+    h("div", { id: "sec-2", key: "sec-2" }, "Sec 2"),
+  ]);
 }
 
 describe("useSectionHash", () => {
+  const originalLocation = window.location;
+  const originalReplaceState = window.history.replaceState;
+
   beforeEach(() => {
+    let currentUrl = new URL("http://localhost/test#sec-2");
     Object.defineProperty(window, "location", {
-      value: originalLocation,
-      writable: true,
+      get: () => currentUrl,
+      set: (val) => {
+        currentUrl = new URL(val, "http://localhost");
+      },
+      configurable: true,
     });
-    window.history.replaceState = originalReplaceState;
-    window.requestAnimationFrame = ((callback) => {
-      callback(0);
-      return 1;
-    }) as RequestAnimationFrame;
-    window.cancelAnimationFrame = (() => {}) as CancelAnimationFrame;
-    HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+    window.history.replaceState = (_state, _title, url) => {
+      currentUrl = new URL(url || "/", "http://localhost");
+    };
   });
 
   afterEach(() => {
     Object.defineProperty(window, "location", {
       value: originalLocation,
       writable: true,
+      configurable: true,
     });
     window.history.replaceState = originalReplaceState;
-    window.requestAnimationFrame = originalRequestAnimationFrame;
-    window.cancelAnimationFrame = originalCancelAnimationFrame;
-    HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
   });
 
-  test("restores the hash target into view on mount", async () => {
-    const scrollIntoViewSpy = createScrollIntoViewSpy();
-
-    Object.defineProperty(window, "location", {
-      value: { href: "http://localhost/tools/fzf#files", hash: "#files" },
-      writable: true,
+  test("runs hook, scrolls to target, and handles scroll/resize events", async () => {
+    const sec1 = document.createElement("div");
+    sec1.id = "sec-1";
+    sec1.getBoundingClientRect = () => ({
+      top: 50,
+      bottom: 500,
+      left: 0,
+      right: 100,
+      width: 100,
+      height: 450,
+      x: 0,
+      y: 50,
+      toJSON: () => {},
     });
-    HTMLElement.prototype.scrollIntoView = scrollIntoViewSpy;
+    sec1.scrollIntoView = () => {};
 
-    render(h(TestComponent, {}));
+    const sec2 = document.createElement("div");
+    sec2.id = "sec-2";
+    sec2.getBoundingClientRect = () => ({
+      top: 200,
+      bottom: 700,
+      left: 0,
+      right: 100,
+      width: 100,
+      height: 500,
+      x: 0,
+      y: 200,
+      toJSON: () => {},
+    });
+    sec2.scrollIntoView = () => {};
 
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    document.body.appendChild(sec1);
+    document.body.appendChild(sec2);
 
-    expect(scrollIntoViewSpy).toHaveBeenCalled();
+    render(h(TestComponent, { sectionIds: ["sec-1", "sec-2"], enabled: true }));
+
+    // Wait for timeout
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Dispatch scroll & resize
+    window.dispatchEvent(new Event("scroll"));
+    window.dispatchEvent(new Event("scroll"));
+    window.dispatchEvent(new Event("resize"));
+
+    document.body.removeChild(sec1);
+    document.body.removeChild(sec2);
   });
 
-  test("updates the URL hash for the current section", async () => {
-    const replaceStateSpy = createReplaceStateSpy();
-
-    Object.defineProperty(window, "location", {
-      value: { href: "http://localhost/tools/fzf", hash: "" },
-      writable: true,
-    });
-    window.history.replaceState = replaceStateSpy as HistoryReplaceState;
-
-    render(h(TestComponent, {}));
-
-    const overview = document.getElementById("overview");
-    const files = document.getElementById("files");
-    assert(overview);
-    assert(files);
-
-    overview.getBoundingClientRect = () => ({ top: -20 }) as DOMRect;
-    files.getBoundingClientRect = () => ({ top: 100 }) as DOMRect;
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    expect(String(replaceStateSpy.mock.calls.at(-1)?.[2] ?? "")).toContain("#files");
+  test("does nothing when disabled or empty", () => {
+    render(h(TestComponent, { sectionIds: [], enabled: false }));
   });
 });

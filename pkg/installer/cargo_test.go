@@ -239,6 +239,43 @@ func TestCargoInstaller(t *testing.T) {
 	})
 }
 
+func TestCargoGithubReleases(t *testing.T) {
+	tarData, err := createTarGzBytes(map[string]string{"mycrate": "binary-content"})
+	if err != nil {
+		t.Fatalf("failed to create tar: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(tarData)
+	}))
+	defer server.Close()
+
+	runner := exec.NewMockRunner()
+	testFsys := fs.NewMemFS()
+	testDl := downloader.NewDownloader(testFsys, server.Client())
+	testInst := NewCargoInstaller(runner, testFsys, testDl, &SystemContext{OS: "linux", Arch: "amd64"})
+	testInst.httpClient = server.Client()
+	testInst.BaseURL = server.URL
+	testInst.BinDir = "/test/bin"
+
+	tool := &config.ToolConfig{
+		Name: "mycrate",
+		InstallParams: map[string]interface{}{
+			"binarySource": "github-releases",
+			"githubRepo":   "owner/mycrate",
+		},
+	}
+
+	res, err := testInst.Install(context.Background(), tool)
+	if err != nil {
+		t.Fatalf("unexpected error installing from github-releases: %v", err)
+	}
+	if len(res.Binaries) == 0 {
+		t.Errorf("expected binaries returned")
+	}
+}
+
 func createTarGzBytes(files map[string]string) ([]byte, error) {
 	var buf bytes.Buffer
 	gw := gzip.NewWriter(&buf)

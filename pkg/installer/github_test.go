@@ -298,6 +298,53 @@ func TestGitHubInstaller_MatchAssetHeuristics(t *testing.T) {
 		}
 	})
 
+	t.Run("ghCli integration for CheckUpdate and Install", func(t *testing.T) {
+		runnerGh := exec.NewMockRunner()
+		ghReleaseData := githubRelease{
+			ID:      5678,
+			TagName: "v2.0.0",
+			Name:    "v2.0.0 Release",
+			Assets: []githubAsset{
+				{
+					ID:   444,
+					Name: "mytool-linux-amd64",
+				},
+			},
+		}
+		mockRelJSON, _ := json.Marshal(ghReleaseData)
+		fsysGh := fs.NewMemFS()
+		dlGh := downloader.NewDownloader(fsysGh, nil)
+
+		runnerGh.RegisterFunc("gh", func(c *exec.MockCmd) error {
+			if len(c.Args) > 0 && c.Args[0] == "api" {
+				_ = fsysGh.WriteFile("/test/ghbin/mytool", []byte("bin"), 0755)
+			}
+			return nil
+		})
+		runnerGh.Register("gh", mockRelJSON, nil)
+
+		instGh := NewGitHubInstaller(runnerGh, fsysGh, dlGh, &SystemContext{OS: "linux", Arch: "amd64"})
+		instGh.BinDir = "/test/ghbin"
+
+		ghTool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"repo":  "myowner/mytool",
+				"ghCli": true,
+			},
+		}
+
+		chk, err := instGh.CheckUpdate(context.Background(), ghTool)
+		if err != nil || chk == nil || chk.LatestVersion != "v2.0.0" {
+			t.Fatalf("ghCli CheckUpdate failed: chk=%v, err=%v", chk, err)
+		}
+
+		res, err := instGh.Install(context.Background(), ghTool)
+		if err != nil || res == nil {
+			t.Fatalf("ghCli Install failed: err=%v", err)
+		}
+	})
+
 	t.Run("assetPattern fallback when no platform keywords exist", func(t *testing.T) {
 		assets := []githubAsset{
 			{Name: "tool-universal.tar.gz"},

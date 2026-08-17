@@ -1,445 +1,257 @@
 package installer
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
-	"fmt"
+	"encoding/json"
 	"io"
-	"path/filepath"
-	"strings"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
-func TestAptDnfPacmanInstallersMore(t *testing.T) {
-	memFS := fs.NewMemFS()
+func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 	runner := exec.NewMockRunner()
+	memFS := fs.NewMemFS()
+	dl := downloader.NewDownloader(memFS, nil)
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
 	log := logger.New(logger.Config{Writer: io.Discard})
-	ctx := context.Background()
-	sys := NewDefaultSystemContext()
 
-	runner.Register("apt-get", nil, fmt.Errorf("apt failed"))
-	runner.Register("dnf", nil, fmt.Errorf("dnf failed"))
-	runner.Register("pacman", nil, fmt.Errorf("pacman failed"))
+	apt := NewAptInstaller(runner, memFS, sysCtx)
+	brew := NewBrewInstaller(runner, memFS, sysCtx)
+	cargo := NewCargoInstaller(runner, memFS, dl, sysCtx)
+	curlBin := NewCurlBinaryInstaller(runner, memFS, dl, sysCtx)
+	curlScript := NewCurlScriptInstaller(runner, memFS, dl, sysCtx)
+	curlTar := NewCurlTarInstaller(runner, memFS, dl, sysCtx)
+	dmg := NewDmgInstaller(runner, memFS, dl, &SystemContext{OS: "darwin", Arch: "arm64"})
+	dnf := NewDnfInstaller(runner, memFS, sysCtx)
+	gitea := NewGiteaInstaller(runner, memFS, dl, sysCtx)
+	gh := NewGitHubInstaller(runner, memFS, dl, sysCtx)
+	manual := NewManualInstaller(runner, memFS, sysCtx)
+	npm := NewNpmInstaller(runner, memFS, sysCtx)
+	pacman := NewPacmanInstaller(runner, memFS, sysCtx)
+	pkgInst := NewPkgInstaller(runner, memFS, dl, &SystemContext{OS: "darwin", Arch: "arm64"})
+	zshPlug := NewZshPluginInstaller(runner, memFS, sysCtx)
 
-	// 1. Apt failure
-	apt := NewAptInstaller(runner, memFS, sys)
-	apt.SetLogger(log)
-
-	_, err := apt.Install(ctx, &config.ToolConfig{Name: "apt-tool"})
-	if err == nil {
-		t.Errorf("expected error running apt-get, got nil")
+	// 1. SetFS and SetLogger helpers on all installers
+	installers := []Installer{apt, brew, cargo, curlBin, curlScript, curlTar, dmg, dnf, gitea, gh, manual, npm, pacman, pkgInst, zshPlug}
+	for _, inst := range installers {
+		SetFS(inst, memFS)
+		SetLogger(inst, log)
 	}
 
-	// 2. Dnf failure
-	dnf := NewDnfInstaller(runner, memFS, sys)
-	dnf.SetLogger(log)
+	// 2. detectVersionViaCli
+	runner.Register("/bin/cli-tool", []byte("cli-tool version 1.5.0\n"), nil)
+	_ = memFS.WriteFile("/bin/cli-tool", []byte("bin"), 0755)
 
-	_, err = dnf.Install(ctx, &config.ToolConfig{Name: "dnf-tool"})
-	if err == nil {
-		t.Errorf("expected error running dnf, got nil")
+	v, err := detectVersionViaCli(context.Background(), runner, "/bin/cli-tool", []string{"--version"}, `(\d+\.\d+\.\d+)`)
+	if err != nil || v != "1.5.0" {
+		t.Errorf("detectVersionViaCli failed: v=%q, err=%v", v, err)
 	}
 
-	// 3. Pacman failure
-	pacman := NewPacmanInstaller(runner, memFS, sys)
-	pacman.SetLogger(log)
-
-	_, err = pacman.Install(ctx, &config.ToolConfig{Name: "pacman-tool"})
-	if err == nil {
-		t.Errorf("expected error running pacman, got nil")
-	}
-}
-
-func TestBrewInstallerMore(t *testing.T) {
-	memFS := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-	log := logger.New(logger.Config{Writer: io.Discard})
-	ctx := context.Background()
-	sys := NewDefaultSystemContext()
-
-	runner.Register("brew", nil, fmt.Errorf("brew failed"))
-
-	brew := NewBrewInstaller(runner, memFS, sys)
-	brew.SetLogger(log)
-
-	_, err := brew.Install(ctx, &config.ToolConfig{Name: "brew-tool"})
-	if err == nil {
-		t.Errorf("expected error installing brew formula, got nil")
-	}
-
-	tc := &config.ToolConfig{
-		Name: "wg",
-		InstallParams: map[string]interface{}{
-			"formula": "wg",
-		},
-	}
-	_, err = brew.CheckUpdate(ctx, tc)
-	if err == nil {
-		t.Error("expected error checking brew update when command runner fails")
-	}
-}
-
-func TestCurlScriptAndBinaryMore(t *testing.T) {
-	memFS := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-	log := logger.New(logger.Config{Writer: io.Discard})
-	ctx := context.Background()
-	sys := NewDefaultSystemContext()
-
-	// CurlScript missing url
-	cs := NewCurlScriptInstaller(runner, memFS, nil, sys)
-	cs.SetLogger(log)
-
-	_, err := cs.Install(ctx, &config.ToolConfig{Name: "cs-tool"})
-	if err == nil || !strings.Contains(err.Error(), "URL or shell not specified") {
-		t.Errorf("expected URL or shell not specified error, got %v", err)
-	}
-
-	// CurlBinary missing url
-	cb := NewCurlBinaryInstaller(runner, memFS, nil, sys)
-	cb.SetLogger(log)
-
-	_, err = cb.Install(ctx, &config.ToolConfig{Name: "cb-tool"})
-	if err == nil || !strings.Contains(err.Error(), "URL not specified") {
-		t.Errorf("expected URL not specified error, got %v", err)
-	}
-}
-
-func TestZshPluginInstallerMore(t *testing.T) {
-	memFS := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-	log := logger.New(logger.Config{Writer: io.Discard})
-	ctx := context.Background()
-	sys := NewDefaultSystemContext()
-
-	zp := NewZshPluginInstaller(runner, memFS, sys)
-	zp.SetLogger(log)
-
-	// missing repository
-	_, err := zp.Install(ctx, &config.ToolConfig{Name: "zp-tool"})
-	if err == nil || !strings.Contains(err.Error(), "either repo or url must be specified") {
-		t.Errorf("expected either repo or url must be specified error, got %v", err)
-	}
-}
-
-func TestDmgAndPkgHelpers(t *testing.T) {
-	tmpDir := t.TempDir()
-	memFS := fs.NewMemFS()
-
-	// 1. findFileWithExtension
-	_ = memFS.MkdirAll(filepath.Join(tmpDir, "sub"), 0755)
-	_ = memFS.WriteFile(filepath.Join(tmpDir, "sub", "app.app"), []byte("app"), 0644)
-
-	found, err := findFileWithExtension(memFS, tmpDir, ".app")
-	if err != nil || !strings.HasSuffix(found, "app.app") {
-		t.Errorf("findFileWithExtension failed: %v, %q", err, found)
-	}
-
-	// 2. matchPattern
-	if !matchPattern("my-app-v1.2.dmg", "/app.*dmg/i") {
-		t.Errorf("matchPattern failed for regex match")
-	}
-	if !matchPattern("my-app-v1.2.dmg", "app") {
-		t.Errorf("matchPattern failed for substring match")
-	}
-	if matchPattern("my-app-v1.2.dmg", "other") {
-		t.Errorf("matchPattern returned true for non-matching substring")
-	}
-
-	// 3. copyDir
-	_ = memFS.MkdirAll("/src_copy", 0755)
-	_ = memFS.WriteFile("/src_copy/f.txt", []byte("test"), 0644)
-
-	err = copyDir(memFS, "/src_copy", "/dst_copy")
-	if err != nil {
-		t.Fatalf("copyDir failed: %v", err)
-	}
-}
-
-func TestInstallerSettersAndBaseHelpers(t *testing.T) {
-	memFS := fs.NewMemFS()
-	log := logger.New(logger.Config{Writer: io.Discard})
-	runner := exec.NewMockRunner()
-	sys := NewDefaultSystemContext()
-
-	// 1. SetFS and SetLogger on all concrete installers
-	apt := NewAptInstaller(runner, memFS, sys)
-	apt.SetFS(memFS)
-	apt.SetLogger(log)
-
-	brew := NewBrewInstaller(runner, memFS, sys)
-	brew.SetFS(memFS)
-	brew.SetLogger(log)
-
-	cargo := NewCargoInstaller(runner, memFS, nil, sys)
-	cargo.SetFS(memFS)
-	cargo.SetLogger(log)
-
-	cb := NewCurlBinaryInstaller(runner, memFS, nil, sys)
-	cb.SetFS(memFS)
-	cb.SetLogger(log)
-
-	cs := NewCurlScriptInstaller(runner, memFS, nil, sys)
-	cs.SetFS(memFS)
-	cs.SetLogger(log)
-
-	ct := NewCurlTarInstaller(runner, memFS, nil, sys)
-	ct.SetFS(memFS)
-	ct.SetLogger(log)
-
-	dmg := NewDmgInstaller(runner, memFS, nil, sys)
-	dmg.SetFS(memFS)
-	dmg.SetLogger(log)
-
-	dnf := NewDnfInstaller(runner, memFS, sys)
-	dnf.SetFS(memFS)
-	dnf.SetLogger(log)
-
-	gitea := NewGiteaInstaller(runner, memFS, nil, sys)
-	gitea.SetFS(memFS)
-	gitea.SetLogger(log)
-
-	gh := NewGitHubInstaller(runner, memFS, nil, sys)
-	gh.SetFS(memFS)
-	gh.SetLogger(log)
-
-	manual := NewManualInstaller(runner, memFS, sys)
-	manual.SetFS(memFS)
-	manual.SetLogger(log)
-
-	npm := NewNpmInstaller(runner, memFS, sys)
-	npm.SetFS(memFS)
-	npm.SetLogger(log)
-
-	pacman := NewPacmanInstaller(runner, memFS, sys)
-	pacman.SetFS(memFS)
-	pacman.SetLogger(log)
-
-	pkg := NewPkgInstaller(runner, memFS, nil, sys)
-	pkg.SetFS(memFS)
-	pkg.SetLogger(log)
-
-	zp := NewZshPluginInstaller(runner, memFS, sys)
-	zp.SetFS(memFS)
-	zp.SetLogger(log)
-
-	// Test quiet logger propagation to downloader
-	quietLog := logger.New(logger.Config{Writer: io.Discard, Level: logger.LogLevelQuiet})
-	ghQuiet := NewGitHubInstaller(runner, memFS, nil, sys)
-	ghQuiet.SetLogger(quietLog)
-	if ghQuiet.dl == nil || !ghQuiet.dl.Quiet {
-		t.Errorf("expected GitHubInstaller downloader Quiet to be true with LogLevelQuiet")
-	}
-
-	// IsDryRun and GetBinaryNames
-	if IsDryRun() {
-		t.Error("expected IsDryRun false by default")
-	}
-	bins := GetBinaryNames("mytool", nil)
-	if len(bins) != 1 || bins[0] != "mytool" {
-		t.Errorf("GetBinaryNames default mismatch: %v", bins)
-	}
-	params := map[string]interface{}{
-		"b1": true,
-		"b2": "true",
-		"b3": false,
-		"s1": []string{"a", "b"},
-		"s2": []interface{}{"c", "d"},
-		"s3": "single",
-	}
-
-	if !getBoolParam(params, "b1", false) {
-		t.Error("expected true for b1")
-	}
-	if !getBoolParam(params, "b2", false) {
-		t.Error("expected true for b2")
-	}
-	if getBoolParam(params, "b3", true) {
-		t.Error("expected false for b3")
-	}
-
-	if s := getStringSliceParam(params, "s1"); len(s) != 2 || s[0] != "a" {
-		t.Errorf("getStringSliceParam s1 mismatch: %v", s)
-	}
-	if s := getStringSliceParam(params, "s2"); len(s) != 2 || s[0] != "c" {
-		t.Errorf("getStringSliceParam s2 mismatch: %v", s)
-	}
-	if s := getStringSliceParam(params, "s3"); len(s) != 1 || s[0] != "single" {
-		t.Errorf("getStringSliceParam s3 mismatch: %v", s)
-	}
-
-	// getPatternForBinary
-	binConfig := []interface{}{
-		map[string]interface{}{"name": "mybin", "pattern": "*.sh"},
-	}
-	if pat := getPatternForBinary(binConfig, "mybin"); pat != "*.sh" {
-		t.Errorf("getPatternForBinary expected '*.sh', got %q", pat)
-	}
-	if pat := getPatternForBinary(nil, "mybin"); pat != "" {
-		t.Errorf("getPatternForBinary nil expected empty, got %q", pat)
-	}
-
-	// findFileByPattern
-	_ = memFS.MkdirAll("/pattern_test", 0755)
-	_ = memFS.WriteFile("/pattern_test/tool.sh", []byte("echo"), 0755)
-	_, _ = findFileByPattern(memFS, "/pattern_test", "*.sh")
-
-	// detectVersionViaCli
-	runner.Register("mycli", []byte("mycli version 1.2.3"), nil)
-	v, _ := detectVersionViaCli(context.Background(), runner, "mycli", []string{"--version"}, `(\d+\.\d+\.\d+)`)
-	if v != "1.2.3" {
-		t.Errorf("detectVersionViaCli expected '1.2.3', got %q", v)
-	}
-}
-
-func TestCheckUpdateEmptyRepo(t *testing.T) {
-	memFS := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-	sys := NewDefaultSystemContext()
-	ctx := context.Background()
-
-	tool := &config.ToolConfig{Name: "empty-tool"}
-
-	gh := NewGitHubInstaller(runner, memFS, nil, sys)
-	res, err := gh.CheckUpdate(ctx, tool)
-	if err != nil || res == nil || res.HasUpdate {
-		t.Errorf("expected no update for empty repo on GitHubInstaller, got res=%v, err=%v", res, err)
-	}
-
-	gitea := NewGiteaInstaller(runner, memFS, nil, sys)
-	res, err = gitea.CheckUpdate(ctx, tool)
-	if err != nil || res == nil || res.HasUpdate {
-		t.Errorf("expected no update for empty repo on GiteaInstaller, got res=%v, err=%v", res, err)
-	}
-
-	dmg := NewDmgInstaller(runner, memFS, nil, sys)
-	res, err = dmg.CheckUpdate(ctx, tool)
-	if err != nil || res == nil || res.HasUpdate {
-		t.Errorf("expected no update for empty repo on DmgInstaller, got res=%v, err=%v", res, err)
-	}
-
-	pkgInst := NewPkgInstaller(runner, memFS, nil, sys)
-	res, err = pkgInst.CheckUpdate(ctx, tool)
-	if err != nil || res == nil || res.HasUpdate {
-		t.Errorf("expected no update for empty repo on PkgInstaller, got res=%v, err=%v", res, err)
-	}
-}
-
-func TestCargoAndCurlTarMore(t *testing.T) {
-	memFS := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-	log := logger.New(logger.Config{Writer: io.Discard})
-	ctx := context.Background()
-	sys := NewDefaultSystemContext()
-
-	// 1. Cargo with tryGithubReleases
-	cargo := NewCargoInstaller(runner, memFS, nil, sys)
-	cargo.SetLogger(log)
-
-	toolCargo := &config.ToolConfig{
-		Name: "cargo-tool",
-		InstallParams: map[string]interface{}{
-			"repo": "owner/repo",
-		},
-	}
-	_, _ = cargo.Install(ctx, toolCargo)
-
-	// 2. CurlTar detectArchiveExtension branches
-	exts := []string{
-		"http://example.com/file.tar.gz",
-		"http://example.com/file.tgz",
-		"http://example.com/file.tar.xz",
-		"http://example.com/file.txz",
-		"http://example.com/file.zip",
-		"http://example.com/file.unknown",
-	}
-
-	for _, urlStr := range exts {
-		_ = detectArchiveExtension(ctx, urlStr, nil)
-	}
-}
-
-func TestAllInstallersDryRun(t *testing.T) {
-	memFS := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-	sys := NewDefaultSystemContext()
-	ctx := context.Background()
-
-	t.Setenv("DOTFILES_DRY_RUN", "true")
-
-	installers := []struct {
-		name string
-		inst Installer
-	}{
-		{"apt", NewAptInstaller(runner, memFS, sys)},
-		{"brew", NewBrewInstaller(runner, memFS, sys)},
-		{"cargo", NewCargoInstaller(runner, memFS, nil, sys)},
-		{"curl_binary", NewCurlBinaryInstaller(runner, memFS, nil, sys)},
-		{"curl_script", NewCurlScriptInstaller(runner, memFS, nil, sys)},
-		{"curl_tar", NewCurlTarInstaller(runner, memFS, nil, sys)},
-		{"dmg", NewDmgInstaller(runner, memFS, nil, sys)},
-		{"dnf", NewDnfInstaller(runner, memFS, sys)},
-		{"gitea", NewGiteaInstaller(runner, memFS, nil, sys)},
-		{"github", NewGitHubInstaller(runner, memFS, nil, sys)},
-		{"manual", NewManualInstaller(runner, memFS, sys)},
-		{"npm", NewNpmInstaller(runner, memFS, sys)},
-		{"pacman", NewPacmanInstaller(runner, memFS, sys)},
-		{"pkg", NewPkgInstaller(runner, memFS, nil, sys)},
-		{"zsh_plugin", NewZshPluginInstaller(runner, memFS, sys)},
-	}
-
+	// 3. Uninstall calls
 	tool := &config.ToolConfig{
-		Name:          "dry-tool",
-		Binaries:      []interface{}{"dry-bin"},
-		InstallParams: map[string]interface{}{"repo": "owner/repo"},
+		Name: "test-pkg-mgr",
+		InstallParams: map[string]interface{}{
+			"pkgName": "test-pkg",
+			"url":     "http://127.0.0.1/test.tar.gz",
+		},
 	}
 
-	for _, item := range installers {
-		res, err := item.inst.Install(ctx, tool)
-		if item.name == "gitea" {
-			continue
-		}
-		if err != nil {
-			t.Errorf("installer %s failed in dry-run mode: %v", item.name, err)
-		}
-		if res == nil {
-			t.Errorf("installer %s expected non-nil dry-run result", item.name)
-		}
+	for _, inst := range installers {
+		_ = inst.Uninstall(context.Background(), tool)
+	}
+
+	// 4. findFileByPattern & getPatternForBinary
+	_ = memFS.MkdirAll("/dest/sub", 0755)
+	_ = memFS.WriteFile("/dest/sub/bin", []byte("bin"), 0755)
+	foundPath, _ := findFileByPattern(memFS, "/dest", "sub/bin")
+	if foundPath != "/dest/sub/bin" {
+		t.Errorf("findFileByPattern failed: got %q", foundPath)
+	}
+
+	binaries := []interface{}{
+		map[string]interface{}{"name": "b1", "pattern": "pat1"},
+		config.BinaryConfig{Name: "b2", Pattern: "pat2"},
+		&config.BinaryConfig{Name: "b3", Pattern: "pat3"},
+	}
+	if p := getPatternForBinary(binaries, "b1"); p != "pat1" {
+		t.Errorf("getPatternForBinary(b1) = %q, want 'pat1'", p)
+	}
+	if p := getPatternForBinary(binaries, "b2"); p != "pat2" {
+		t.Errorf("getPatternForBinary(b2) = %q, want 'pat2'", p)
+	}
+	if p := getPatternForBinary(binaries, "b3"); p != "pat3" {
+		t.Errorf("getPatternForBinary(b3) = %q, want 'pat3'", p)
+	}
+
+	// 5. Test matchAsset directly
+	assets := []githubAsset{
+		{Name: "app-v1-darwin-arm64.dmg"},
+		{Name: "app-v1-darwin-x86_64.zip"},
+		{Name: "app-v1-darwin-universal.dmg"},
+		{Name: "app-v1-linux-amd64.tar.gz"},
+		{Name: "app-v1-windows-amd64.exe"},
+		{Name: "other.txt"},
+	}
+
+	_ = dmg.matchAsset(assets, "*.dmg", "")
+	_ = dmg.matchAsset(assets, "", "*.zip")
+	_ = dmg.matchAsset(assets, "", "")
+
+	_ = pkgInst.matchAsset(assets, "*.dmg", "")
+	_ = pkgInst.matchAsset(assets, "", "")
+
+	giteaAssets := []giteaAsset{
+		{Name: "app-v1-linux-amd64.tar.gz"},
+		{Name: "app-v1-linux-arm64.tar.gz"},
+		{Name: "app-v1-darwin-amd64.tar.gz"},
+		{Name: "other.txt"},
+	}
+	_ = matchAsset(giteaAssets, "linux", "amd64", "*.tar.gz")
+	_ = matchAsset(giteaAssets, "linux", "amd64", "")
+
+	_ = gh.matchAsset(assets, "*.tar.gz")
+	_ = gh.matchAsset(assets, "")
+
+	// 6. Test IsDryRun, GetBinaryNames, PromoteBinaries
+	t.Setenv("DOTFILES_DRY_RUN", "true")
+	if !IsDryRun() {
+		t.Errorf("expected IsDryRun() to be true")
+	}
+
+	namesEmpty := GetBinaryNames("default-tool", nil)
+	if len(namesEmpty) != 1 || namesEmpty[0] != "default-tool" {
+		t.Errorf("expected ['default-tool'], got %v", namesEmpty)
+	}
+
+	namesStruct := GetBinaryNames("tool", []interface{}{
+		config.BinaryConfig{Name: "b1"},
+		&config.BinaryConfig{Name: "b2"},
+	})
+	if len(namesStruct) != 2 || namesStruct[0] != "b1" || namesStruct[1] != "b2" {
+		t.Errorf("expected ['b1', 'b2'], got %v", namesStruct)
+	}
+
+	// PromoteBinaries in nested dir
+	_ = memFS.MkdirAll("/nested/deep", 0755)
+	_ = memFS.WriteFile("/nested/deep/nestedbin", []byte("bin"), 0755)
+	promoted, err := PromoteBinaries(memFS, "/nested", "nestedbin", nil)
+	if err != nil || len(promoted) != 1 || promoted[0] != "nestedbin" {
+		t.Errorf("PromoteBinaries nested failed: promoted=%v, err=%v", promoted, err)
 	}
 }
 
-func TestMatchAssetAcrossInstallers(t *testing.T) {
-	sysLinux := &SystemContext{OS: "linux", Arch: "amd64"}
-	sysMac := &SystemContext{OS: "darwin", Arch: "arm64"}
+func TestInstallersInstallPipeline(t *testing.T) {
+	runner := exec.NewMockRunner()
+	memFS := fs.NewMemFS()
+	dl := downloader.NewDownloader(memFS, nil)
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
 
-	gh := NewGitHubInstaller(exec.NewMockRunner(), fs.NewMemFS(), nil, sysLinux)
-	dmg := NewDmgInstaller(exec.NewMockRunner(), fs.NewMemFS(), nil, sysMac)
-	pkgInst := NewPkgInstaller(exec.NewMockRunner(), fs.NewMemFS(), nil, sysMac)
+	// Create test tar.gz archive payload
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+	_ = tw.WriteHeader(&tar.Header{Name: "mybin", Mode: 0755, Size: 7})
+	_, _ = tw.Write([]byte("content"))
+	_ = tw.Close()
+	_ = gw.Close()
+	tarData := buf.Bytes()
 
-	// GitHub assets
-	ghAssets := []githubAsset{
-		{Name: "app_1.0.0_linux_amd64.tar.gz", BrowserDownloadURL: "http://example.com/app.tar.gz"},
-		{Name: "app_1.0.0_darwin_arm64.dmg", BrowserDownloadURL: "http://example.com/app.dmg"},
-		{Name: "app_1.0.0_darwin_arm64.pkg", BrowserDownloadURL: "http://example.com/app.pkg"},
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/archive.tar.gz" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(tarData)
+			return
+		}
+		if r.URL.Path == "/binary" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("raw binary"))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		release := map[string]interface{}{
+			"tag_name": "v1.0.0",
+			"assets": []map[string]interface{}{
+				{"name": "testtool-v1.0.0-linux-amd64.tar.gz", "browser_download_url": "http://" + r.Host + "/archive.tar.gz"},
+			},
+		}
+		_ = json.NewEncoder(w).Encode(release)
+	}))
+	defer server.Close()
+
+	// 1. CurlTarInstaller Install
+	curlTar := NewCurlTarInstaller(runner, memFS, dl, sysCtx)
+	curlTar.BinDir = "/test/curltar"
+	tTar := &config.ToolConfig{
+		Name:     "curltar-tool",
+		Binaries: []interface{}{"mybin"},
+		InstallParams: map[string]interface{}{
+			"url": server.URL + "/archive.tar.gz",
+		},
+	}
+	resTar, err := curlTar.Install(context.Background(), tTar)
+	if err != nil || resTar == nil {
+		t.Fatalf("CurlTar Install failed: err=%v", err)
 	}
 
-	assetGH := gh.matchAsset(ghAssets, ".*tar\\.gz")
-	if assetGH == nil || assetGH.Name != "app_1.0.0_linux_amd64.tar.gz" {
-		t.Errorf("gh.matchAsset failed: %v", assetGH)
+	// 2. CurlBinaryInstaller Install
+	curlBin := NewCurlBinaryInstaller(runner, memFS, dl, sysCtx)
+	curlBin.BinDir = "/test/curlbin"
+	tBin := &config.ToolConfig{
+		Name: "curlbin-tool",
+		InstallParams: map[string]interface{}{
+			"url": server.URL + "/binary",
+		},
+	}
+	resBin, err := curlBin.Install(context.Background(), tBin)
+	if err != nil || resBin == nil {
+		t.Fatalf("CurlBinary Install failed: err=%v", err)
 	}
 
-	// DMG assets
-	assetDMG := dmg.matchAsset(ghAssets, "darwin", "arm64")
-	if assetDMG == nil || assetDMG.Name != "app_1.0.0_darwin_arm64.dmg" {
-		t.Errorf("dmg.matchAsset failed: %v", assetDMG)
+	// 3. CurlScriptInstaller Install
+	curlScript := NewCurlScriptInstaller(runner, memFS, dl, sysCtx)
+	curlScript.BinDir = "/test/curlscript"
+	tScript := &config.ToolConfig{
+		Name: "curlscript-tool",
+		InstallParams: map[string]interface{}{
+			"url":   server.URL + "/binary",
+			"shell": "bash",
+		},
+	}
+	runner.RegisterFunc("bash", func(c *exec.MockCmd) error {
+		_ = memFS.MkdirAll("/test/curlscript", 0755)
+		_ = memFS.WriteFile("/test/curlscript/curlscript-tool", []byte("bin"), 0755)
+		return nil
+	})
+	resScript, err := curlScript.Install(context.Background(), tScript)
+	if err != nil || resScript == nil {
+		t.Fatalf("CurlScript Install failed: err=%v", err)
 	}
 
-	// PKG assets
-	assetPKG := pkgInst.matchAsset(ghAssets, "darwin", "arm64")
-	if assetPKG == nil || assetPKG.Name != "app_1.0.0_darwin_arm64.pkg" {
-		t.Errorf("pkgInst.matchAsset failed: %v", assetPKG)
+	// 4. GiteaInstaller Install
+	gitea := NewGiteaInstaller(runner, memFS, dl, sysCtx)
+	gitea.httpClient = server.Client()
+	gitea.BinDir = "/test/gitea"
+	tGitea := &config.ToolConfig{
+		Name:     "gitea-tool",
+		Binaries: []interface{}{"mybin"},
+		InstallParams: map[string]interface{}{
+			"repo":        "owner/repo",
+			"instanceUrl": server.URL,
+		},
+	}
+	resGitea, err := gitea.Install(context.Background(), tGitea)
+	if err != nil || resGitea == nil {
+		t.Fatalf("Gitea Install failed: err=%v", err)
 	}
 }

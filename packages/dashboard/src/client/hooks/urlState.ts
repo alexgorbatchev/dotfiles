@@ -3,7 +3,11 @@ function getCurrentUrl(): URL | null {
     return null;
   }
 
-  return new URL(window.location.href);
+  try {
+    return new URL(window.location.href);
+  } catch {
+    return null;
+  }
 }
 
 function replaceCurrentUrl(url: URL): void {
