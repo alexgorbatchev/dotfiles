@@ -1,7 +1,11 @@
 # Justfile for dotfiles-installer
 
 # Default task
-default: check
+default: test
+
+# Run CLI against test-project
+run *args="generate":
+	go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
 
 # Full validation check (lint + typecheck + tests)
 check: lint typecheck test
