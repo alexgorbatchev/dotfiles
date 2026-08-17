@@ -1,13 +1,12 @@
-name: Deploy Docs to GitHub Pages
+name: Deploy Docs and Hosted Installer to GitHub Pages
 
 on:
   push:
     branches:
       - main
     paths:
-      - "README.md"
-      - ".agents/skills/dotfiles/**"
-      - "packages/docs/**"
+      - "scripts/managed-installer/install.sh"
+      - ".github/workflows/docs.yml"
   workflow_dispatch:
 
 permissions:
@@ -26,27 +25,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build Docs
-        run: bun run build
-        working-directory: packages/docs
+      - name: Prepare Pages Artifacts
+        run: |
+          mkdir -p public
+          cp scripts/managed-installer/install.sh public/install.sh
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: "packages/docs/dist"
+          path: "public"
 
   deploy:
     environment:
