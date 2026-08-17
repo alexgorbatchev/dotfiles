@@ -1,6 +1,10 @@
 package main
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 )
 
@@ -643,36 +648,106 @@ func runTypeTests(rootDir string) error {
 
 const maxBinarySizeBytes int64 = 26 * 1024 * 1024
 
+func createTarGz(tarPath string, files map[string]string) error {
+	out, err := os.Create(tarPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	gw := gzip.NewWriter(out)
+	defer gw.Close()
+
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	for archiveName, srcPath := range files {
+		info, err := os.Stat(srcPath)
+		if err != nil {
+			return err
+		}
+
+		header, err := tar.FileInfoHeader(info, info.Name())
+		if err != nil {
+			return err
+		}
+
+		header.Name = archiveName
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+
+		file, err := os.Open(srcPath)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(tw, file)
+		file.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func generateChecksums(distDir string) error {
+	entries, err := os.ReadDir(distDir)
+	if err != nil {
+		return err
+	}
+
+	var lines []string
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tar.gz") {
+			continue
+		}
+		filePath := filepath.Join(distDir, entry.Name())
+		f, err := os.Open(filePath)
+		if err != nil {
+			return err
+		}
+		h := sha256.New()
+		if _, err := io.Copy(h, f); err != nil {
+			f.Close()
+			return err
+		}
+		f.Close()
+		sum := hex.EncodeToString(h.Sum(nil))
+		lines = append(lines, fmt.Sprintf("%s  %s", sum, entry.Name()))
+	}
+
+	sort.Strings(lines)
+	checksumPath := filepath.Join(distDir, "checksums.txt")
+	return os.WriteFile(checksumPath, []byte(strings.Join(lines, "\n")+"\n"), 0644)
+}
+
 func checkBinarySizeLimits(rootDir string) error {
 	fmt.Println("📏 Checking binary size limits (26MB limit)...")
 	distDir := filepath.Join(rootDir, ".dist")
 
-	targets := []string{
-		"dotfiles",
-		"dotfiles-darwin-x64",
-		"dotfiles-darwin-arm64",
-		"dotfiles-linux-x64",
-		"dotfiles-linux-arm64",
+	entries, err := os.ReadDir(distDir)
+	if err != nil {
+		return err
 	}
 
-	for _, target := range targets {
-		binPath := filepath.Join(distDir, target)
-		if runtime.GOOS == "windows" && target == "dotfiles" {
-			binPath = filepath.Join(distDir, "dotfiles.exe")
+	for _, entry := range entries {
+		if entry.IsDir() || (!strings.HasSuffix(entry.Name(), ".tar.gz") && entry.Name() != "dotfiles") {
+			continue
 		}
-		info, err := os.Stat(binPath)
+		filePath := filepath.Join(distDir, entry.Name())
+		info, err := os.Stat(filePath)
 		if err != nil {
-			return fmt.Errorf("failed to stat binary %s: %w", binPath, err)
+			return fmt.Errorf("failed to stat file %s: %w", entry.Name(), err)
 		}
 		if info.Size() > maxBinarySizeBytes {
 			mb := float64(info.Size()) / (1024.0 * 1024.0)
-			return fmt.Errorf("binary %s size (%.2f MB) exceeds limit of 26 MB", binPath, mb)
+			return fmt.Errorf("file %s size (%.2f MB) exceeds limit of 26 MB", entry.Name(), mb)
 		}
 		mb := float64(info.Size()) / (1024.0 * 1024.0)
-		fmt.Printf("  - %s: %.2f MB (OK)\n", target, mb)
+		fmt.Printf("  - %s: %.2f MB (OK)\n", entry.Name(), mb)
 	}
 
-	fmt.Println("✅ All binaries are within the 26MB size budget!")
+	fmt.Println("✅ All release archives are within the 26MB size budget!")
 	return nil
 }
 
@@ -718,23 +793,66 @@ func compileAllBinaries(rootDir string) error {
 		return err
 	}
 
+	rootPkgPath := filepath.Join(rootDir, "package.json")
+	rootBytes, err := os.ReadFile(rootPkgPath)
+	if err != nil {
+		return fmt.Errorf("failed to read root package.json: %w", err)
+	}
+
+	var rootPkg RootPackageJson
+	if err := json.Unmarshal(rootBytes, &rootPkg); err != nil {
+		return fmt.Errorf("failed to parse root package.json: %w", err)
+	}
+	version := rootPkg.Version
+
+	distDir := filepath.Join(rootDir, ".dist")
+	tmpBinDir := filepath.Join(rootDir, ".tmp", "release-bins")
+	_ = os.RemoveAll(tmpBinDir)
+	if err := os.MkdirAll(tmpBinDir, 0755); err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpBinDir)
+
 	targets := []struct {
 		goos   string
 		goarch string
-		name   string
 	}{
-		{goos: "darwin", goarch: "amd64", name: "dotfiles-darwin-x64"},
-		{goos: "darwin", goarch: "arm64", name: "dotfiles-darwin-arm64"},
-		{goos: "linux", goarch: "amd64", name: "dotfiles-linux-x64"},
-		{goos: "linux", goarch: "arm64", name: "dotfiles-linux-arm64"},
+		{goos: "darwin", goarch: "amd64"},
+		{goos: "darwin", goarch: "arm64"},
+		{goos: "linux", goarch: "amd64"},
+		{goos: "linux", goarch: "arm64"},
 	}
 
 	for _, target := range targets {
-		outputPath := filepath.Join(rootDir, ".dist", target.name)
-		if err := buildTarget(rootDir, target.goos, target.goarch, outputPath); err != nil {
+		binName := "dotfiles"
+		tmpBinPath := filepath.Join(tmpBinDir, fmt.Sprintf("dotfiles_%s_%s", target.goos, target.goarch))
+		if err := buildTarget(rootDir, target.goos, target.goarch, tmpBinPath); err != nil {
 			return err
 		}
+
+		tarName := fmt.Sprintf("dotfiles_%s_%s_%s.tar.gz", version, target.goos, target.goarch)
+		tarPath := filepath.Join(distDir, tarName)
+
+		archiveFiles := map[string]string{
+			binName: tmpBinPath,
+		}
+		if _, err := os.Stat(filepath.Join(rootDir, "README.md")); err == nil {
+			archiveFiles["README.md"] = filepath.Join(rootDir, "README.md")
+		}
+		if _, err := os.Stat(filepath.Join(rootDir, "LICENSE")); err == nil {
+			archiveFiles["LICENSE"] = filepath.Join(rootDir, "LICENSE")
+		}
+
+		fmt.Printf("📦 Packaging release archive -> %s\n", tarPath)
+		if err := createTarGz(tarPath, archiveFiles); err != nil {
+			return fmt.Errorf("failed to package archive %s: %w", tarName, err)
+		}
 	}
+
+	if err := generateChecksums(distDir); err != nil {
+		return fmt.Errorf("failed to generate checksums: %w", err)
+	}
+
 	return nil
 }
 

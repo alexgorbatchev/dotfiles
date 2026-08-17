@@ -89,12 +89,12 @@ detect_os_arch() {
 	esac
 
 	case "${arch}" in
-	x86_64 | amd64 | x64) arch="x64" ;;
+	x86_64 | amd64 | x64) arch="amd64" ;;
 	aarch64 | arm64) arch="arm64" ;;
 	*) fail "Unsupported architecture: ${arch}" ;;
 	esac
 
-	echo "${os}-${arch}"
+	echo "${os}_${arch}"
 }
 
 ensure_dotfiles_binary() {
@@ -110,17 +110,31 @@ ensure_dotfiles_binary() {
 	local target_plat
 	target_plat="$(detect_os_arch)"
 
-	local download_url
 	if [[ "${DOTFILES_VERSION}" = "latest" ]]; then
-		download_url="${DOTFILES_BASE_URL}/releases/latest/download/dotfiles-${target_plat}"
-	else
-		download_url="${DOTFILES_BASE_URL}/releases/download/v${DOTFILES_VERSION}/dotfiles-${target_plat}"
+		local latest_tag
+		latest_tag="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "${DOTFILES_BASE_URL}/releases/latest" 2>/dev/null | sed 's#.*/v##' | sed 's#.*/##')"
+		if [[ -n "${latest_tag}" && "${latest_tag}" != "latest" ]]; then
+			DOTFILES_VERSION="${latest_tag#v}"
+		else
+			fail "Failed to resolve latest release version from ${DOTFILES_BASE_URL}"
+		fi
 	fi
 
-	log "Downloading dotfiles binary (${target_plat}) from ${download_url} to ${target_bin}"
-	command -v curl >/dev/null 2>&1 || fail "curl is required to download dotfiles binary"
-	curl -fsSL "${download_url}" -o "${target_bin}"
+	local archive_name="dotfiles_${DOTFILES_VERSION}_${target_plat}.tar.gz"
+	local download_url="${DOTFILES_BASE_URL}/releases/download/v${DOTFILES_VERSION}/${archive_name}"
+
+	log "Downloading dotfiles release archive (${archive_name}) from ${download_url}"
+	command -v curl >/dev/null 2>&1 || fail "curl is required to download dotfiles release archive"
+	command -v tar >/dev/null 2>&1 || fail "tar is required to extract dotfiles release archive"
+
+	local temp_dir
+	temp_dir="$(mktemp -d)"
+	local temp_tar="${temp_dir}/${archive_name}"
+
+	curl -fsSL "${download_url}" -o "${temp_tar}"
+	tar -xzf "${temp_tar}" -C "${DOTFILES_TARGET_DIR}" dotfiles
 	chmod +x "${target_bin}"
+	rm -rf "${temp_dir}"
 
 	DOTFILES_BIN="${target_bin}"
 }
