@@ -9,7 +9,7 @@ DOTFILES_BASE_URL="${DOTFILES_BASE_URL:-https://github.com/alexgorbatchev/dotfil
 DOTFILES_YES="${DOTFILES_YES:-0}"
 
 TEMP_DIR=""
-INSTALL_DIR="${PWD}"
+INSTALL_DIR="${INSTALL_DIR:-$PWD}"
 CONFIG_PATH="${INSTALL_DIR}/dotfiles.config.ts"
 TOOLS_DIR="${INSTALL_DIR}/tools"
 CONFIG_EXISTS="0"

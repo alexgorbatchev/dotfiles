@@ -52,10 +52,7 @@ CLAUDE.md
 /.workspaces
 
 # test-install runtime artifacts
-/test-install/.installed/
-/test-install/.generated/
-/test-install/dotfiles.config.ts
-/test-install/tools/
+/test-install/.output/
 
 # compiled vm dist bundles
 pkg/vm/dist/
