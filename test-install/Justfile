@@ -6,8 +6,9 @@ default: run
 # Run installer script into .installed
 run:
 	@mkdir -p .installed
-	cd .. && just compile
-	DOTFILES_TARGET_DIR="$(pwd)/.installed/bin" \
+	@echo "Compiling..."
+	@if ! out=$(cd .. && just compile 2>&1); then printf '%s\n' "$out"; exit 1; fi
+	@DOTFILES_TARGET_DIR="$(pwd)/.installed/bin" \
 	DOTFILES_BINARY_PATH="$(pwd)/../.dist/dotfiles" \
 	DOTFILES_YES=1 \
 	bash ../scripts/managed-installer/install.sh
