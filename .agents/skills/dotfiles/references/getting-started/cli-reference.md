@@ -15,8 +15,11 @@ dotfiles install bat
 # Generate shims and shell configuration files
 dotfiles generate
 
-# Update all tools to their latest versions
+# Update all currently installed tools to their latest versions
 dotfiles update
+
+# Update a specific installed tool
+dotfiles update fzf
 
 # Check available updates using installed-state data when available
 dotfiles check-updates
