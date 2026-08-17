@@ -41,18 +41,19 @@ var installCmd = &cobra.Command{
 					targetTool = tc
 					break
 				}
+				binaryLoop:
 				for _, b := range tc.Binaries {
 					log.Debug(logger.Message(fmt.Sprintf("Checking binary: %v of type %T against %s", b, b, toolName)))
 					switch val := b.(type) {
 					case string:
 						if val == toolName {
 							targetTool = tc
-							break
+							break binaryLoop
 						}
 					case map[string]interface{}:
 						if bName, ok := val["name"].(string); ok && bName == toolName {
 							targetTool = tc
-							break
+							break binaryLoop
 						}
 					}
 				}

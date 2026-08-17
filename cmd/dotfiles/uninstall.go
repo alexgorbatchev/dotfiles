@@ -34,17 +34,18 @@ var uninstallCmd = &cobra.Command{
 					targetTool = tc
 					break
 				}
+				binaryLoop:
 				for _, b := range tc.Binaries {
 					switch val := b.(type) {
 					case string:
 						if val == toolName {
 							targetTool = tc
-							break
+							break binaryLoop
 						}
 					case map[string]interface{}:
 						if bName, ok := val["name"].(string); ok && bName == toolName {
 							targetTool = tc
-							break
+							break binaryLoop
 						}
 					}
 				}

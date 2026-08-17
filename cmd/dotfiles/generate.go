@@ -2,10 +2,11 @@ package main
 
 import (
 	"path/filepath"
-	"strings"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/shellinit"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -14,6 +15,9 @@ var generateCmd = &cobra.Command{
 	Short: "Orchestrates shim and symlink generation",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
+		if overwrite {
+			ctx = config.WithOverwrite(ctx, true)
+		}
 		services, err := BootstrapServices(ctx, cfgFile)
 		if err != nil {
 			return err
@@ -41,19 +45,8 @@ var generateCmd = &cobra.Command{
 				shellScriptsDir = filepath.Join(services.ProjectConfig.Paths.GeneratedDir, "shell-scripts")
 			}
 
-			// Define helper to resolve profile path
-			resolvePath := func(p string) string {
-				if p == "~" {
-					return services.ProjectConfig.Paths.HomeDir
-				}
-				if strings.HasPrefix(p, "~/") {
-					return filepath.Join(services.ProjectConfig.Paths.HomeDir, p[2:])
-				}
-				return p
-			}
-
 			if shellInstall.Zsh != "" {
-				pPath := resolvePath(shellInstall.Zsh)
+				pPath := utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, shellInstall.Zsh)
 				scriptPath := filepath.Join(shellScriptsDir, "main.zsh")
 				exists, err := services.FS.Exists(pPath)
 				if err == nil && exists {
@@ -69,7 +62,7 @@ var generateCmd = &cobra.Command{
 			}
 
 			if shellInstall.Bash != "" {
-				pPath := resolvePath(shellInstall.Bash)
+				pPath := utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, shellInstall.Bash)
 				scriptPath := filepath.Join(shellScriptsDir, "main.bash")
 				exists, err := services.FS.Exists(pPath)
 				if err == nil && exists {
@@ -85,7 +78,7 @@ var generateCmd = &cobra.Command{
 			}
 
 			if shellInstall.Powershell != "" {
-				pPath := resolvePath(shellInstall.Powershell)
+				pPath := utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, shellInstall.Powershell)
 				scriptPath := filepath.Join(shellScriptsDir, "main.ps1")
 				exists, err := services.FS.Exists(pPath)
 				if err == nil && exists {

@@ -54,6 +54,13 @@ var updateCmd = &cobra.Command{
 				res, err := inst.CheckUpdate(ctx, targetTool)
 				if err == nil && installed != nil && res != nil && res.LatestVersion != "" && res.LatestVersion != installed.Version {
 					log.Info(logger.Message(fmt.Sprintf("New version available for %s: %s (currently installed: %s)", targetTool.Name, res.LatestVersion, installed.Version)))
+					targetTool.Version = &res.LatestVersion
+					err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
+					if err != nil {
+						log.Error(logger.Message(fmt.Sprintf("Updating tool %q to version %s failed", targetTool.Name, res.LatestVersion)), err)
+						continue
+					}
+					log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, res.LatestVersion)))
 				}
 			}
 			log.Info(logger.Messages.CommandCompleted(dryRun))
