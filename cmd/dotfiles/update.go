@@ -13,6 +13,14 @@ import (
 var updateCmd = &cobra.Command{
 	Use:   "update [tool]",
 	Short: "Evaluates versions and installs newer software packages if available",
+	Long: `Evaluates tool versions and updates software packages if newer versions are available.
+
+When run without arguments, checks all installed tools for updates and installs newer versions if available. When a tool name is provided, checks and updates only that tool if it is currently installed. Uninstalled tools are skipped.`,
+	Example: `  # Update all installed tools
+  dotfiles update
+
+  # Update a specific installed tool
+  dotfiles update ripgrep`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		shimMode, _ := cmd.Flags().GetBool("shim-mode")
@@ -86,6 +94,9 @@ var updateCmd = &cobra.Command{
 		installed, err := services.Registry.GetToolInstallation(ctx, targetTool.Name)
 		if err != nil {
 			return fmt.Errorf("tool %q is not installed (no database record found): %w", toolName, err)
+		}
+		if installed == nil {
+			return fmt.Errorf("tool %q is not installed", toolName)
 		}
 
 		// 3. Get the installer

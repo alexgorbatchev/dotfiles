@@ -493,3 +493,20 @@ func TestInstallCommand_ShimModeQuietOutput(t *testing.T) {
 		t.Errorf("expected no output in shim mode, got: %q", out)
 	}
 }
+
+func TestUpdateCommand_HelpAndUninstalled(t *testing.T) {
+	tmpDir := createTempConfigDir(t)
+	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
+	_, err := executeCommand("-c", configPath, "update", "non-existent-tool")
+	if err == nil {
+		t.Errorf("expected update non-existent-tool to return an error")
+	}
+
+	out, err := executeCommand("update", "--help")
+	if err != nil {
+		t.Fatalf("update --help failed: %v", err)
+	}
+	if !strings.Contains(out, "When run without arguments, checks all installed tools") || !strings.Contains(out, "dotfiles update ripgrep") {
+		t.Errorf("expected update --help to contain usage details, got:\n%s", out)
+	}
+}
