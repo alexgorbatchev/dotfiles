@@ -63,47 +63,55 @@ func (s *CacheStore) getPaths(key string) (string, string) {
 	return filepath.Join(dir, key+".meta.json"), filepath.Join(dir, key+".body")
 }
 
-// Get retrieves a cache entry.
-func (s *CacheStore) Get(method, targetURL string) (*CacheEntry, []byte, error) {
+func (s *CacheStore) getLocked(key string) (*CacheEntry, []byte, bool, error) {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	key := s.GenerateKey(method, targetURL)
 	metaPath, bodyPath := s.getPaths(key)
 
 	metaBytes, err := os.ReadFile(metaPath)
 	if err != nil {
-		s.mu.RUnlock()
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	bodyBytes, err := os.ReadFile(bodyPath)
 	if err != nil {
-		s.mu.RUnlock()
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	var entry CacheEntry
 	if err := json.Unmarshal(metaBytes, &entry); err != nil {
-		s.mu.RUnlock()
-		return nil, nil, fmt.Errorf("unmarshal metadata: %w", err)
+		return nil, nil, false, fmt.Errorf("unmarshal metadata: %w", err)
 	}
 
 	expiresAt := entry.CachedAt + entry.TTL
 	nowMs := time.Now().UnixNano() / int64(time.Millisecond)
 	if nowMs > expiresAt {
-		s.mu.RUnlock()
+		return &entry, nil, true, nil
+	}
 
+	return &entry, bodyBytes, false, nil
+}
+
+// Get retrieves a cache entry.
+func (s *CacheStore) Get(method, targetURL string) (*CacheEntry, []byte, error) {
+	key := s.GenerateKey(method, targetURL)
+	entry, bodyBytes, isExpired, err := s.getLocked(key)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if isExpired {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 
-		// Re-verify expiration
-		metaBytes2, err2 := os.ReadFile(metaPath)
-		if err2 == nil {
+		metaPath, _ := s.getPaths(key)
+		if metaBytes, err2 := os.ReadFile(metaPath); err2 == nil {
 			var entry2 CacheEntry
-			if err3 := json.Unmarshal(metaBytes2, &entry2); err3 == nil {
-				expiresAt2 := entry2.CachedAt + entry2.TTL
-				nowMs2 := time.Now().UnixNano() / int64(time.Millisecond)
-				if nowMs2 > expiresAt2 {
+			if err3 := json.Unmarshal(metaBytes, &entry2); err3 == nil {
+				expiresAt := entry2.CachedAt + entry2.TTL
+				nowMs := time.Now().UnixNano() / int64(time.Millisecond)
+				if nowMs > expiresAt {
 					s.deleteByKey(key)
 				}
 			}
@@ -111,8 +119,7 @@ func (s *CacheStore) Get(method, targetURL string) (*CacheEntry, []byte, error) 
 		return nil, nil, fmt.Errorf("cache entry expired")
 	}
 
-	s.mu.RUnlock()
-	return &entry, bodyBytes, nil
+	return entry, bodyBytes, nil
 }
 
 // Set stores an item in the cache store.
@@ -526,13 +533,17 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		closeConns := func() {
+			_ = clientConn.Close()
+			_ = destConn.Close()
+		}
 		go func() {
 			_, _ = io.Copy(destConn, clientConn)
-			_ = destConn.Close()
+			closeConns()
 		}()
 		go func() {
 			_, _ = io.Copy(clientConn, destConn)
-			_ = clientConn.Close()
+			closeConns()
 		}()
 		return
 	}
