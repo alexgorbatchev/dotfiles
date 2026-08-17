@@ -64,6 +64,37 @@ confirm_installation() {
 write_default_config() {
 	mkdir -p "${TOOLS_DIR}"
 
+	if [[ ! -f "${INSTALL_DIR}/package.json" ]]; then
+		cat >"${INSTALL_DIR}/package.json" <<'EOF'
+{
+  "private": true,
+  "type": "module"
+}
+EOF
+	fi
+
+	if [[ ! -f "${INSTALL_DIR}/tsconfig.json" ]]; then
+		cat >"${INSTALL_DIR}/tsconfig.json" <<'EOF'
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "lib": [
+      "ESNext"
+    ]
+  },
+  "include": [
+    "dotfiles.config.ts",
+    "tools/**/*.ts"
+  ]
+}
+EOF
+	fi
+
 	cat >"${CONFIG_PATH}" <<EOF
 import { defineConfig } from "@alexgorbatchev/dotfiles";
 

@@ -335,6 +335,20 @@ func (o *Orchestrator) syncTypeScriptTypes(ctx context.Context, tools []*config.
 	}
 
 	if projCfg.Paths.DotfilesDir != "" {
+		// Ensure minimal package.json exists if not present
+		pkgJsonPath := filepath.Join(projCfg.Paths.DotfilesDir, "package.json")
+		if exists, _ := o.fs.Exists(pkgJsonPath); !exists {
+			defaultPkgJson := []byte("{\n  \"private\": true,\n  \"type\": \"module\"\n}\n")
+			_ = o.fs.WriteFile(pkgJsonPath, defaultPkgJson, 0644)
+		}
+
+		// Ensure proper tsconfig.json exists if not present
+		tsConfigPath := filepath.Join(projCfg.Paths.DotfilesDir, "tsconfig.json")
+		if exists, _ := o.fs.Exists(tsConfigPath); !exists {
+			defaultTsConfig := []byte("{\n  \"compilerOptions\": {\n    \"target\": \"ESNext\",\n    \"module\": \"ESNext\",\n    \"moduleResolution\": \"bundler\",\n    \"strict\": true,\n    \"noEmit\": true,\n    \"skipLibCheck\": true,\n    \"lib\": [\n      \"ESNext\"\n    ]\n  },\n  \"include\": [\n    \"dotfiles.config.ts\",\n    \"tools/**/*.ts\"\n  ]\n}\n")
+			_ = o.fs.WriteFile(tsConfigPath, defaultTsConfig, 0644)
+		}
+
 		projNodeModulesDir := filepath.Join(projCfg.Paths.DotfilesDir, "node_modules", "@alexgorbatchev")
 		_ = o.fs.MkdirAll(projNodeModulesDir, 0755)
 		projPkgDir := filepath.Join(projNodeModulesDir, "dotfiles")
