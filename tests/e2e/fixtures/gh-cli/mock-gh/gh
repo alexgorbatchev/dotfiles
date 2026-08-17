@@ -3,7 +3,8 @@
 # Records all invocations and returns expected JSON responses
 
 # Log file location (set by test via MOCK_GH_LOG_FILE env var)
-LOG_FILE="${MOCK_GH_LOG_FILE:-/tmp/mock-gh-invocations.log}"
+mkdir -p .tmp 2>/dev/null || true
+LOG_FILE="${MOCK_GH_LOG_FILE:-.tmp/mock-gh-invocations.log}"
 
 # Log invocation
 echo "$@" >> "$LOG_FILE"

@@ -178,8 +178,9 @@ assert_scenario() {
 run_scenario() {
 	local scenario="$1"
 
+	mkdir -p "${REPO_ROOT}/.tmp"
 	local temp_root
-	temp_root="$(mktemp -d "${TMPDIR:-/tmp}/bootstrap-install-test.${scenario}.XXXXXX")"
+	temp_root="$(mktemp -d "${REPO_ROOT}/.tmp/bootstrap-install-test.${scenario}.XXXXXX")"
 	local work_dir="${temp_root}/workspace"
 	local output_log="${temp_root}/install.log"
 	local bun_binary
