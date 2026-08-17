@@ -80,6 +80,16 @@ Use the hosted installer to provision dotfiles in the current directory. It prov
 curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
 ```
 
+### Upgrading or Migrating from v1.x (TypeScript)
+
+If you are upgrading from v1.x (or an existing TypeScript setup), simply run the installer in your dotfiles directory:
+
+```bash
+curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
+```
+
+This installs the standalone native Go binary to `~/.local/bin/dotfiles` and updates your shims. Your `dotfiles.config.ts`, `.tool.ts` files, and `~/.zshrc` / `~/.bashrc` initialization lines require **zero changes**. You can optionally remove the old global npm package: `npm uninstall -g @alexgorbatchev/dotfiles`.
+
 ### Manual Install
 
 Run the provided install script directly, or use the `dotfiles` CLI binary:
