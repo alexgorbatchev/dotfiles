@@ -9,7 +9,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { $ } from "dax-sh";
 
 function log(msg: string): void {
   process.stdout.write(`${msg}\n`);
@@ -66,13 +65,13 @@ async function executeCommand(args: string[], opts: IExecuteCommandOptions = {})
   const { cwd = process.cwd(), env } = opts;
   const command = args.join(" ");
   const mergedEnv = env ? { ...process.env, ...env } : process.env;
-  const result = await $`${args}`.cwd(cwd).env(mergedEnv).quiet().noThrow();
+  const result = await Bun.$`${args}`.cwd(cwd).env(mergedEnv).quiet().nothrow();
 
-  if (result.code !== 0) {
+  if (result.exitCode !== 0) {
     const stdout = result.stdout.toString().trim();
     const stderr = result.stderr.toString().trim();
     const details = [stderr && `stderr:\n${stderr}`, stdout && `stdout:\n${stdout}`].filter(Boolean).join("\n\n");
-    throw new Error(`Command failed (exit code ${result.code}): ${command}\n${details}`);
+    throw new Error(`Command failed (exit code ${result.exitCode}): ${command}\n${details}`);
   }
 }
 

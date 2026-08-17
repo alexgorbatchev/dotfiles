@@ -50,8 +50,8 @@
         "typescript": "catalog:typescript",
       },
     },
-    "test-project-npm": {
-      "name": "test-project-npm",
+    "test-project": {
+      "name": "test-project",
       "version": "1.0.0",
       "devDependencies": {
         "@alexgorbatchev/dotfiles": "file:..",
@@ -627,7 +627,7 @@
 
     "tailwindcss": ["tailwindcss@4.2.1", "", {}, "sha512-/tBrSQ36vCleJkAOsy9kbNTgaxvGbyOamC30PRePTQe/o1MFwEKHQk4Cn7BNGaPtjp+PuUrByJehM1hgxfq4sw=="],
 
-    "test-project-npm": ["test-project-npm@workspace:test-project-npm"],
+    "test-project": ["test-project@workspace:test-project"],
 
     "tinyglobby": ["tinyglobby@0.2.15", "", { "dependencies": { "fdir": "^6.5.0", "picomatch": "^4.0.3" } }, "sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ=="],
 
