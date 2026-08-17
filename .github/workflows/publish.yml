@@ -76,7 +76,7 @@ jobs:
             exit 1
           fi
 
-          binaries=(.dist/dotfiles*)
+          binaries=(.dist/dotfiles-*)
 
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${binaries[@]}" --clobber
