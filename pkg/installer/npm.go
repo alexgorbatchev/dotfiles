@@ -150,8 +150,29 @@ func (n *NpmInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) e
 }
 
 func (n *NpmInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
+	pkgName := getStringParam(tool.InstallParams, "package", tool.Name)
+	pkgManager := getStringParam(tool.InstallParams, "packageManager", "npm")
+
+	var cmd exec.Cmd
+	if pkgManager == "bun" {
+		cmd = n.runner.CommandContext(ctx, "bun", "pm", "view", pkgName, "version")
+	} else {
+		cmd = n.runner.CommandContext(ctx, "npm", "view", pkgName, "version")
+	}
+
+	out, err := cmd.Output()
+	if err != nil {
+		return &UpdateCheckResult{HasUpdate: false}, nil
+	}
+
+	latestVersion := strings.TrimSpace(string(out))
+	if latestVersion == "" {
+		return &UpdateCheckResult{HasUpdate: false}, nil
+	}
+
 	return &UpdateCheckResult{
-		HasUpdate: false,
+		HasUpdate:     true,
+		LatestVersion: latestVersion,
 	}, nil
 }
 
