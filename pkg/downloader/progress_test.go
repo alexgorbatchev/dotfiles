@@ -146,3 +146,16 @@ func TestFormatSpeedAndProgressFieldStyles(t *testing.T) {
 	// getProgressFieldStyle
 	_ = getProgressFieldStyle(3, 5, 1, 7, 9, 21)
 }
+
+func TestIsInteractiveTTY(t *testing.T) {
+	// In go test, standard streams are captured buffers (non-TTY)
+	if isInteractiveTTY() {
+		t.Errorf("expected isInteractiveTTY() to be false in go test runner environment")
+	}
+
+	// In CI environment, it should also be false
+	t.Setenv("CI", "true")
+	if isInteractiveTTY() {
+		t.Errorf("expected isInteractiveTTY() to be false when CI is set")
+	}
+}

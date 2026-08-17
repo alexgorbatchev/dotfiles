@@ -132,21 +132,22 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 		}
 	}
 
-	// 2. Set up default progress bar if OnProgress is nil and quiet mode is disabled
+	// 2. Set up default progress bar if OnProgress is nil
 	var bar *ProgressBar
-	isQuiet := (d != nil && d.Quiet) || activeOpts[0].Quiet
-	if !isQuiet && activeOpts[0].OnProgress == nil {
+	if activeOpts[0].OnProgress == nil {
 		filename := filepath.Base(destPath)
 		bar = NewProgressBar(0, filename)
-		bar.Start()
-		origOnProgress := activeOpts[0].OnProgress
-		activeOpts[0].OnProgress = func(downloaded int64, total int64) {
-			if bar.totalBytes <= 0 && total > 0 {
-				bar.totalBytes = total
-			}
-			bar.Update(downloaded)
-			if origOnProgress != nil {
-				origOnProgress(downloaded, total)
+		if bar.isTTY {
+			bar.Start()
+			origOnProgress := activeOpts[0].OnProgress
+			activeOpts[0].OnProgress = func(downloaded int64, total int64) {
+				if bar.totalBytes <= 0 && total > 0 {
+					bar.totalBytes = total
+				}
+				bar.Update(downloaded)
+				if origOnProgress != nil {
+					origOnProgress(downloaded, total)
+				}
 			}
 		}
 	}

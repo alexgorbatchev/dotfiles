@@ -35,10 +35,21 @@ type ProgressBar struct {
 	filename        string
 }
 
+// isInteractiveTTY checks whether stdin, stdout, and stderr are all attached to an interactive terminal TTY,
+// and CI environment is not set.
+func isInteractiveTTY() bool {
+	if os.Getenv("CI") != "" {
+		return false
+	}
+	return isatty.IsTerminal(os.Stderr.Fd()) &&
+		isatty.IsTerminal(os.Stdout.Fd()) &&
+		isatty.IsTerminal(os.Stdin.Fd())
+}
+
 // NewProgressBar constructs a new ProgressBar for a given file size and name.
 func NewProgressBar(totalBytes int64, filename string) *ProgressBar {
-	// Only render on real TTY, not in CI or quiet mode
-	isTTY := isatty.IsTerminal(os.Stderr.Fd()) && os.Getenv("CI") == ""
+	// Only render on real interactive TTY, not in CI or redirected/piped standard streams
+	isTTY := isInteractiveTTY()
 	return &ProgressBar{
 		totalBytes: totalBytes,
 		startTime:  time.Now(),
