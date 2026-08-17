@@ -64,15 +64,15 @@ confirm_installation() {
 write_default_config() {
 	mkdir -p "${TOOLS_DIR}"
 
-	cat >"${CONFIG_PATH}" <<'EOF'
+	cat >"${CONFIG_PATH}" <<EOF
 import { defineConfig } from "@alexgorbatchev/dotfiles";
 
 export default defineConfig(({ configFileDir }) => ({
   paths: {
     dotfilesDir: configFileDir,
-    toolConfigsDir: `${configFileDir}/tools`,
-    generatedDir: `${configFileDir}/.generated`,
-    targetDir: "~/.local/bin",
+    toolConfigsDir: \`\${configFileDir}/tools\`,
+    generatedDir: \`\${configFileDir}/.generated\`,
+    targetDir: "${DOTFILES_TARGET_DIR}",
   },
 }));
 EOF
