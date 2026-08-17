@@ -647,26 +647,19 @@ func checkBinarySizeLimits(rootDir string) error {
 	fmt.Println("📏 Checking binary size limits (26MB limit)...")
 	distDir := filepath.Join(rootDir, ".dist")
 
-	var binaryPaths []string
-
-	nativeBin := "dotfiles"
-	if runtime.GOOS == "windows" {
-		nativeBin = "dotfiles.exe"
-	}
-	binaryPaths = append(binaryPaths, filepath.Join(distDir, nativeBin))
-
 	targets := []string{
-		"alexgorbatchev/dotfiles-darwin-x64",
-		"alexgorbatchev/dotfiles-darwin-arm64",
-		"alexgorbatchev/dotfiles-linux-x64",
-		"alexgorbatchev/dotfiles-linux-arm64",
+		"dotfiles",
+		"dotfiles-darwin-x64",
+		"dotfiles-darwin-arm64",
+		"dotfiles-linux-x64",
+		"dotfiles-linux-arm64",
 	}
 
 	for _, target := range targets {
-		binaryPaths = append(binaryPaths, filepath.Join(distDir, "packages", target, "bin", "dotfiles"))
-	}
-
-	for _, binPath := range binaryPaths {
+		binPath := filepath.Join(distDir, target)
+		if runtime.GOOS == "windows" && target == "dotfiles" {
+			binPath = filepath.Join(distDir, "dotfiles.exe")
+		}
 		info, err := os.Stat(binPath)
 		if err != nil {
 			return fmt.Errorf("failed to stat binary %s: %w", binPath, err)
@@ -676,7 +669,7 @@ func checkBinarySizeLimits(rootDir string) error {
 			return fmt.Errorf("binary %s size (%.2f MB) exceeds limit of 26 MB", binPath, mb)
 		}
 		mb := float64(info.Size()) / (1024.0 * 1024.0)
-		fmt.Printf("  - %s: %.2f MB (OK)\n", filepath.Base(binPath), mb)
+		fmt.Printf("  - %s: %.2f MB (OK)\n", target, mb)
 	}
 
 	fmt.Println("✅ All binaries are within the 26MB size budget!")
@@ -728,16 +721,16 @@ func compileAllBinaries(rootDir string) error {
 	targets := []struct {
 		goos   string
 		goarch string
-		pkgDir string
+		name   string
 	}{
-		{goos: "darwin", goarch: "amd64", pkgDir: "alexgorbatchev/dotfiles-darwin-x64"},
-		{goos: "darwin", goarch: "arm64", pkgDir: "alexgorbatchev/dotfiles-darwin-arm64"},
-		{goos: "linux", goarch: "amd64", pkgDir: "alexgorbatchev/dotfiles-linux-x64"},
-		{goos: "linux", goarch: "arm64", pkgDir: "alexgorbatchev/dotfiles-linux-arm64"},
+		{goos: "darwin", goarch: "amd64", name: "dotfiles-darwin-x64"},
+		{goos: "darwin", goarch: "arm64", name: "dotfiles-darwin-arm64"},
+		{goos: "linux", goarch: "amd64", name: "dotfiles-linux-x64"},
+		{goos: "linux", goarch: "arm64", name: "dotfiles-linux-arm64"},
 	}
 
 	for _, target := range targets {
-		outputPath := filepath.Join(rootDir, ".dist", "packages", target.pkgDir, "bin", "dotfiles")
+		outputPath := filepath.Join(rootDir, ".dist", target.name)
 		if err := buildTarget(rootDir, target.goos, target.goarch, outputPath); err != nil {
 			return err
 		}
@@ -798,20 +791,8 @@ func runBuild() error {
 		return fmt.Errorf("generating schema types: %w", err)
 	}
 
-	if _, err := generatePackageJsons(rootDir); err != nil {
-		return fmt.Errorf("generating package.jsons: %w", err)
-	}
-
-	if err := writeLauncher(rootDir); err != nil {
-		return fmt.Errorf("writing launcher: %w", err)
-	}
-
 	if err := copyAssetsAndSkill(rootDir); err != nil {
 		return fmt.Errorf("copying assets and skill: %w", err)
-	}
-
-	if err := runTypeTests(rootDir); err != nil {
-		return fmt.Errorf("running tsd type tests: %w", err)
 	}
 
 	if err := compileAllBinaries(rootDir); err != nil {

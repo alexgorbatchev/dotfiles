@@ -62,23 +62,7 @@ jobs:
         run: |
           bun run compile
 
-      - name: Read package metadata
-        id: package
-        run: |
-          echo "name=@alexgorbatchev/dotfiles" >> "$GITHUB_OUTPUT"
-          echo "version=$(node -p 'require("./package.json").version')" >> "$GITHUB_OUTPUT"
-
-      - name: Check npm for existing package version
-        id: npm
-        run: |
-          if npm view "${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }}" version >/dev/null 2>&1; then
-            echo "alreadyPublished=true" >> "$GITHUB_OUTPUT"
-            echo "Package version already exists on npm; skipping publish."
-          else
-            echo "alreadyPublished=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create or update draft GitHub Release with binary
+      - name: Create or update draft GitHub Release with binaries
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -89,21 +73,17 @@ jobs:
             exit 1
           fi
 
+          binaries=(.dist/dotfiles*)
+
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" .dist/dotfiles --clobber
+            gh release upload "$GITHUB_REF_NAME" "${binaries[@]}" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" .dist/dotfiles \
+            gh release create "$GITHUB_REF_NAME" "${binaries[@]}" \
               --verify-tag \
               --draft \
               --generate-notes \
               --title "Version $RELEASE_VERSION"
           fi
-
-      - name: Publish package
-        if: steps.npm.outputs.alreadyPublished != 'true'
-        run: |
-          cd .dist
-          npm publish --provenance --access public
 
       - name: Publish GitHub Release
         env:
