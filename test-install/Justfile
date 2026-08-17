@@ -1,0 +1,17 @@
+# Test installer workflow in isolated directory
+
+# Default task: run installer
+default: run
+
+# Run installer script into .installed
+run:
+	@mkdir -p .installed
+	cd .. && just compile
+	DOTFILES_TARGET_DIR="$(pwd)/.installed/bin" \
+	DOTFILES_BINARY_PATH="$(pwd)/../.dist/dotfiles" \
+	DOTFILES_YES=1 \
+	bash ../scripts/managed-installer/install.sh
+
+# Clean test installation artifacts
+clean:
+	rm -rf .installed dotfiles.config.ts tools .generated
