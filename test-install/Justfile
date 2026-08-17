@@ -5,7 +5,8 @@ default: run
 
 # Run installer script into .output
 run:
-	@mkdir -p .output
+	@mkdir -p .output/tools
+	@cp -r tools/* .output/tools/ 2>/dev/null || true
 	@echo "Compiling..."
 	@if ! out=$(cd .. && just compile 2>&1); then printf '%s\n' "$out"; exit 1; fi
 	@INSTALL_DIR="$(pwd)/.output" \
