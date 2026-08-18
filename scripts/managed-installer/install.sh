@@ -36,6 +36,15 @@ log() {
 	printf '[dotfiles-install] %s\n' "$*"
 }
 
+format_path() {
+	local p="$1"
+	if [[ -n "${HOME:-}" && "${p}" == "${HOME}"* ]]; then
+		echo "~${p#"${HOME}"}"
+	else
+		echo "${p}"
+	fi
+}
+
 fail() {
 	printf '[dotfiles-install] %s\n' "$*" >&2
 	exit 1
@@ -64,7 +73,7 @@ confirm_installation() {
 	fi
 
 	printf '[dotfiles-install] Install dotfiles into the current directory?\n' >/dev/tty
-	printf '[dotfiles-install] Directory: %s\n' "${INSTALL_DIR}" >/dev/tty
+	printf '[dotfiles-install] Directory: %s\n' "$(format_path "${INSTALL_DIR}")" >/dev/tty
 	printf '[dotfiles-install] Proceed? [y/N] ' >/dev/tty
 
 	local response
@@ -159,7 +168,7 @@ detect_os_arch() {
 
 ensure_dotfiles_binary() {
 	if [[ -n "${DOTFILES_BINARY_PATH}" && -x "${DOTFILES_BINARY_PATH}" ]]; then
-		log "Using specified dotfiles binary: ${DOTFILES_BINARY_PATH}"
+		log "Using specified dotfiles binary: $(format_path "${DOTFILES_BINARY_PATH}")"
 		DOTFILES_BIN="${DOTFILES_BINARY_PATH}"
 		return 0
 	fi
@@ -183,7 +192,7 @@ ensure_dotfiles_binary() {
 	local archive_name="dotfiles_${DOTFILES_VERSION}_${target_plat}.tar.gz"
 	local download_url="${DOTFILES_BASE_URL}/releases/download/v${DOTFILES_VERSION}/${archive_name}"
 
-	log "Downloading temporary bootstrap binary (${archive_name}) from ${download_url}"
+	log "Downloading temporary bootstrap binary from ${download_url}"
 	command -v curl >/dev/null 2>&1 || fail "curl is required to download dotfiles release archive"
 	command -v tar >/dev/null 2>&1 || fail "tar is required to extract dotfiles release archive"
 
@@ -198,9 +207,9 @@ ensure_dotfiles_binary() {
 
 if [[ -f "${CONFIG_PATH}" ]]; then
 	CONFIG_EXISTS="1"
-	log "Found dotfiles config: ${CONFIG_PATH}"
+	log "Found dotfiles config: $(format_path "${CONFIG_PATH}")"
 else
-	log "No dotfiles config found in ${INSTALL_DIR}. A new dotfiles.config.ts will be created."
+	log "No dotfiles config found in $(format_path "${INSTALL_DIR}"). A new dotfiles.config.ts will be created."
 fi
 
 confirm_installation
@@ -208,7 +217,7 @@ confirm_installation
 ensure_dotfiles_binary
 
 if [[ "${CONFIG_EXISTS}" != "1" ]]; then
-	log "Creating ${CONFIG_PATH}"
+	log "Creating $(format_path "${CONFIG_PATH}")"
 	write_default_config
 fi
 
@@ -236,7 +245,7 @@ pwsh | powershell)
 	;;
 esac
 
-script_path="${INSTALL_DIR}/.generated/shell-scripts/main.${shell_ext}"
+script_path="$(format_path "${INSTALL_DIR}/.generated/shell-scripts/main.${shell_ext}")"
 
 printf '\n'
 print_rule
