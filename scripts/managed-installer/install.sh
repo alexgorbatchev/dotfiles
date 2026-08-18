@@ -2,14 +2,13 @@
 
 set -euo pipefail
 
+TEMP_DIR=""
+INSTALL_DIR="${INSTALL_DIR:-$PWD}"
 DOTFILES_VERSION="${DOTFILES_VERSION:-latest}"
-DOTFILES_TARGET_DIR="${DOTFILES_TARGET_DIR:-$HOME/.local/bin}"
+DOTFILES_TARGET_DIR="${DOTFILES_TARGET_DIR:-$INSTALL_DIR/.generated/bin}"
 DOTFILES_BINARY_PATH="${DOTFILES_BINARY_PATH:-}"
 DOTFILES_BASE_URL="${DOTFILES_BASE_URL:-https://github.com/alexgorbatchev/dotfiles}"
 DOTFILES_YES="${DOTFILES_YES:-0}"
-
-TEMP_DIR=""
-INSTALL_DIR="${INSTALL_DIR:-$PWD}"
 CONFIG_PATH="${INSTALL_DIR}/dotfiles.config.ts"
 TOOLS_DIR="${INSTALL_DIR}/tools"
 CONFIG_EXISTS="0"
@@ -95,6 +94,17 @@ EOF
 EOF
 	fi
 
+	if [[ ! -f "${TOOLS_DIR}/dotfiles.tool.ts" ]]; then
+		cat >"${TOOLS_DIR}/dotfiles.tool.ts" <<'EOF'
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install) =>
+  install("github-release", { repo: "alexgorbatchev/dotfiles" })
+    .bin("dotfiles")
+);
+EOF
+	fi
+
 	cat >"${CONFIG_PATH}" <<EOF
 import { defineConfig } from "@alexgorbatchev/dotfiles";
 
@@ -135,8 +145,8 @@ ensure_dotfiles_binary() {
 		return 0
 	fi
 
-	local target_bin="${DOTFILES_TARGET_DIR}/dotfiles"
-	mkdir -p "${DOTFILES_TARGET_DIR}"
+	TEMP_DIR="$(mktemp -d)"
+	local temp_bin="${TEMP_DIR}/dotfiles"
 
 	local target_plat
 	target_plat="$(detect_os_arch)"
@@ -154,20 +164,17 @@ ensure_dotfiles_binary() {
 	local archive_name="dotfiles_${DOTFILES_VERSION}_${target_plat}.tar.gz"
 	local download_url="${DOTFILES_BASE_URL}/releases/download/v${DOTFILES_VERSION}/${archive_name}"
 
-	log "Downloading dotfiles release archive (${archive_name}) from ${download_url}"
+	log "Downloading temporary bootstrap binary (${archive_name}) from ${download_url}"
 	command -v curl >/dev/null 2>&1 || fail "curl is required to download dotfiles release archive"
 	command -v tar >/dev/null 2>&1 || fail "tar is required to extract dotfiles release archive"
 
-	local temp_dir
-	temp_dir="$(mktemp -d)"
-	local temp_tar="${temp_dir}/${archive_name}"
+	local temp_tar="${TEMP_DIR}/${archive_name}"
 
 	curl -fsSL "${download_url}" -o "${temp_tar}"
-	tar -xzf "${temp_tar}" -C "${DOTFILES_TARGET_DIR}" dotfiles
-	chmod +x "${target_bin}"
-	rm -rf "${temp_dir}"
+	tar -xzf "${temp_tar}" -C "${TEMP_DIR}" dotfiles
+	chmod +x "${temp_bin}"
 
-	DOTFILES_BIN="${target_bin}"
+	DOTFILES_BIN="${temp_bin}"
 }
 
 if [[ -f "${CONFIG_PATH}" ]]; then
