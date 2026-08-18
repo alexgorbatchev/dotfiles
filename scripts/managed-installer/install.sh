@@ -14,10 +14,17 @@ TOOLS_DIR="${INSTALL_DIR}/tools"
 CONFIG_EXISTS="0"
 
 get_term_width() {
-	local cols=80
-	if command -v tput >/dev/null 2>&1; then
-		cols="$(tput cols 2>/dev/null || echo 80)"
-	elif [[ -n "${COLUMNS:-}" ]]; then
+	local cols=0
+	if [[ -e /dev/tty && -c /dev/tty ]]; then
+		cols="$((stty size 2>/dev/null </dev/tty) 2>/dev/null | awk '{print $2}')"
+		if [[ -z "${cols}" || "${cols}" -eq 0 ]]; then
+			cols="$((tput cols 2>/dev/null </dev/tty) 2>/dev/null || echo 0)"
+		fi
+	fi
+	if [[ -z "${cols}" || "${cols}" -eq 0 ]] && command -v tput >/dev/null 2>&1; then
+		cols="$(tput cols 2>/dev/null || echo 0)"
+	fi
+	if [[ -z "${cols}" || "${cols}" -eq 0 ]] && [[ -n "${COLUMNS:-}" ]]; then
 		cols="${COLUMNS}"
 	fi
 	if [[ ! "${cols}" =~ ^[0-9]+$ ]] || [[ "${cols}" -lt 20 ]]; then
