@@ -28,6 +28,7 @@ func TestCommandsExecution(t *testing.T) {
 		{"--config", cfgPath, "bin"},
 		{"--config", cfgPath, "convert"},
 		{"--config", cfgPath, "log"},
+		{"--config", cfgPath, "validate"},
 	}
 
 	for _, cmdArgs := range commands {

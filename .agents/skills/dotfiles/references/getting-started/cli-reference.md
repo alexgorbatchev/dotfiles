@@ -18,6 +18,9 @@ dotfiles why fz
 # Generate shims and shell configuration files
 dotfiles generate
 
+# Validate all tool configurations for schema issues or errors
+dotfiles validate
+
 # Update all currently installed tools to their latest versions
 dotfiles update
 
