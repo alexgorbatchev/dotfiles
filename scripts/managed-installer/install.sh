@@ -13,6 +13,25 @@ CONFIG_PATH="${INSTALL_DIR}/dotfiles.config.ts"
 TOOLS_DIR="${INSTALL_DIR}/tools"
 CONFIG_EXISTS="0"
 
+get_term_width() {
+	local cols=80
+	if command -v tput >/dev/null 2>&1; then
+		cols="$(tput cols 2>/dev/null || echo 80)"
+	elif [[ -n "${COLUMNS:-}" ]]; then
+		cols="${COLUMNS}"
+	fi
+	if [[ ! "${cols}" =~ ^[0-9]+$ ]] || [[ "${cols}" -lt 20 ]]; then
+		cols=80
+	fi
+	echo "${cols}"
+}
+
+print_rule() {
+	local width
+	width="$(get_term_width)"
+	printf '%*s\n' "${width}" '' | tr ' ' '='
+}
+
 log() {
 	printf '[dotfiles-install] %s\n' "$*"
 }
@@ -220,11 +239,13 @@ esac
 script_path="${INSTALL_DIR}/.generated/shell-scripts/main.${shell_ext}"
 
 printf '\n'
-printf '================================================================================\n'
+print_rule
 printf ' 🎉 Next Step: Connect dotfiles to your shell\n'
-printf '================================================================================\n\n'
+print_rule
+printf '\n'
 printf '  Add the following line to your %s:\n\n' "${shell_rc}"
 printf '    source "%s"\n\n' "${script_path}"
 printf '  Or load it directly into your current terminal session now:\n\n'
 printf '    source "%s"\n\n' "${script_path}"
-printf '================================================================================\n\n'
+print_rule
+printf '\n'
