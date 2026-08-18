@@ -510,3 +510,21 @@ func TestUpdateCommand_HelpAndUninstalled(t *testing.T) {
 		t.Errorf("expected update --help to contain usage details, got:\n%s", out)
 	}
 }
+
+func TestVersionCommand(t *testing.T) {
+	out, err := executeCommand("version")
+	if err != nil {
+		t.Fatalf("version command failed: %v", err)
+	}
+	if !strings.Contains(out, "dotfiles version") {
+		t.Errorf("expected version output to contain 'dotfiles version', got %q", out)
+	}
+
+	outFlag, err := executeCommand("--version")
+	if err != nil {
+		t.Fatalf("--version flag failed: %v", err)
+	}
+	if !strings.Contains(outFlag, "dotfiles version") {
+		t.Errorf("expected --version output to contain 'dotfiles version', got %q", outFlag)
+	}
+}

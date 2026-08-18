@@ -751,9 +751,10 @@ func checkBinarySizeLimits(rootDir string) error {
 	return nil
 }
 
-func buildTarget(rootDir, goos, goarch, outputPath string) error {
+func buildTarget(rootDir, version, goos, goarch, outputPath string) error {
 	fmt.Printf("🔨 Compiling Go binary for %s/%s -> %s\n", goos, goarch, outputPath)
-	cmd := exec.Command("go", "build", "-ldflags=-s -w", "-o", outputPath, "./cmd/dotfiles")
+	ldflags := fmt.Sprintf("-s -w -X main.Version=%s", version)
+	cmd := exec.Command("go", "build", "-ldflags="+ldflags, "-o", outputPath, "./cmd/dotfiles")
 	cmd.Dir = rootDir
 	cmd.Env = append(os.Environ(),
 		"GOOS="+goos,
@@ -768,7 +769,7 @@ func buildTarget(rootDir, goos, goarch, outputPath string) error {
 	return nil
 }
 
-func buildNative(rootDir string) error {
+func buildNative(rootDir, version string) error {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
 	binaryName := "dotfiles"
@@ -777,7 +778,8 @@ func buildNative(rootDir string) error {
 	}
 	outputPath := filepath.Join(rootDir, ".dist", binaryName)
 	fmt.Printf("🔨 Compiling native Go binary for current system (%s/%s) -> %s\n", goos, goarch, outputPath)
-	cmd := exec.Command("go", "build", "-ldflags=-s -w", "-o", outputPath, "./cmd/dotfiles")
+	ldflags := fmt.Sprintf("-s -w -X main.Version=%s", version)
+	cmd := exec.Command("go", "build", "-ldflags="+ldflags, "-o", outputPath, "./cmd/dotfiles")
 	cmd.Dir = rootDir
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 	cmd.Stdout = os.Stdout
@@ -789,10 +791,6 @@ func buildNative(rootDir string) error {
 }
 
 func compileAllBinaries(rootDir string) error {
-	if err := buildNative(rootDir); err != nil {
-		return err
-	}
-
 	rootPkgPath := filepath.Join(rootDir, "package.json")
 	rootBytes, err := os.ReadFile(rootPkgPath)
 	if err != nil {
@@ -804,6 +802,10 @@ func compileAllBinaries(rootDir string) error {
 		return fmt.Errorf("failed to parse root package.json: %w", err)
 	}
 	version := rootPkg.Version
+
+	if err := buildNative(rootDir, version); err != nil {
+		return err
+	}
 
 	distDir := filepath.Join(rootDir, ".dist")
 	tmpBinDir := filepath.Join(rootDir, ".tmp", "release-bins")
@@ -826,7 +828,7 @@ func compileAllBinaries(rootDir string) error {
 	for _, target := range targets {
 		binName := "dotfiles"
 		tmpBinPath := filepath.Join(tmpBinDir, fmt.Sprintf("dotfiles_%s_%s", target.goos, target.goarch))
-		if err := buildTarget(rootDir, target.goos, target.goarch, tmpBinPath); err != nil {
+		if err := buildTarget(rootDir, version, target.goos, target.goarch, tmpBinPath); err != nil {
 			return err
 		}
 

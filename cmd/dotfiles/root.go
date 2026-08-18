@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var Version = "2.0.0"
+
 var (
 	cfgFile  string
 	dryRun   bool
@@ -23,6 +25,7 @@ var rootCmd = &cobra.Command{
 	Use:          "dotfiles",
 	Short:        "Dotfiles management and installation toolchain",
 	Long:         `A high-performance dotfiles manager and installer compiled into a standalone Go binary.`,
+	Version:      Version,
 	SilenceUsage: true,
 }
 
