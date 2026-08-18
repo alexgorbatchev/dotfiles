@@ -86,6 +86,7 @@ dotfiles install tool-name           # Install by tool name
 dotfiles install binary-name         # Install by binary name
 dotfiles install tool-name --force   # Force reinstall
 dotfiles install tool-name --trace --log=verbose  # Debug logging
+dotfiles why tool-or-binary          # Print path to .tool.ts config file
 dotfiles files tool-name             # List generated files
 dotfiles check-updates               # Check all for updates
 ```

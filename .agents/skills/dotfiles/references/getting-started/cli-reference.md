@@ -12,6 +12,9 @@ dotfiles install fzf
 # Install a tool by binary name (finds tool that provides 'bat')
 dotfiles install bat
 
+# Print full path to the .tool.ts config file that installs a tool or binary
+dotfiles why fz
+
 # Generate shims and shell configuration files
 dotfiles generate
 
