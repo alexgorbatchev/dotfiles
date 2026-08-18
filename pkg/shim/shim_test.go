@@ -169,6 +169,16 @@ func TestGenerator_IsGeneratedShim(t *testing.T) {
 		t.Errorf("expected generated shim to be classified as shim")
 	}
 
+	// Case 3b: Empty 0-byte file is classified as safe-to-overwrite shim placeholder
+	_ = mem.WriteFile("/home/user/bin/emptytool", []byte(""), 0755)
+	isShim, err = gen.IsGeneratedShim("/home/user/bin/emptytool")
+	if err != nil {
+		t.Fatalf("IsGeneratedShim failed: %v", err)
+	}
+	if !isShim {
+		t.Errorf("expected 0-byte file to be classified as shim placeholder")
+	}
+
 	// Case 4: Symlink file without expected target
 	_ = mem.Symlink("/opt/mytool/bin/mytool", "/home/user/bin/symtool")
 	isShim, err = gen.IsGeneratedShim("/home/user/bin/symtool")

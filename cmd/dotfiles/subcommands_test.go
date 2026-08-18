@@ -267,8 +267,8 @@ func TestBootstrapAndExecutionSideEffects(t *testing.T) {
 		t.Errorf("expected loaded config, got empty HomeDir")
 	}
 
-	if len(services.ToolConfigs) != 12 {
-		t.Errorf("expected exactly 12 tool configurations to be successfully loaded natively, but got %d", len(services.ToolConfigs))
+	if len(services.ToolConfigs) != 13 {
+		t.Errorf("expected exactly 13 tool configurations to be successfully loaded natively, but got %d", len(services.ToolConfigs))
 	}
 
 	// Run install tools on orchestrator
