@@ -95,6 +95,21 @@ confirm_installation() {
 	esac
 }
 
+ensure_dotfiles_tool_config() {
+	mkdir -p "${TOOLS_DIR}"
+	if [[ ! -f "${TOOLS_DIR}/dotfiles.tool.ts" ]]; then
+		log "Creating $(format_path "${TOOLS_DIR}/dotfiles.tool.ts")"
+		cat >"${TOOLS_DIR}/dotfiles.tool.ts" <<'EOF'
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install) =>
+  install("github-release", { repo: "alexgorbatchev/dotfiles" })
+    .bin("dotfiles")
+);
+EOF
+	fi
+}
+
 write_default_config() {
 	mkdir -p "${TOOLS_DIR}"
 
@@ -226,6 +241,8 @@ ensure_dotfiles_binary
 if [[ "${CONFIG_EXISTS}" != "1" ]]; then
 	log "Creating $(format_path "${CONFIG_PATH}")"
 	write_default_config
+else
+	ensure_dotfiles_tool_config
 fi
 
 log "Installing dotfiles CLI tool into .generated"
