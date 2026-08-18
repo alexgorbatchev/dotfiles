@@ -516,15 +516,15 @@ func TestVersionCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("version command failed: %v", err)
 	}
-	if !strings.Contains(out, "dotfiles version") {
-		t.Errorf("expected version output to contain 'dotfiles version', got %q", out)
+	if strings.TrimSpace(out) != Version {
+		t.Errorf("expected version output to be %q, got %q", Version, out)
 	}
 
 	outFlag, err := executeCommand("--version")
 	if err != nil {
 		t.Fatalf("--version flag failed: %v", err)
 	}
-	if !strings.Contains(outFlag, "dotfiles version") {
-		t.Errorf("expected --version output to contain 'dotfiles version', got %q", outFlag)
+	if strings.TrimSpace(outFlag) != Version {
+		t.Errorf("expected --version output to be %q, got %q", Version, outFlag)
 	}
 }

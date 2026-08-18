@@ -10,7 +10,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the dotfiles CLI version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Fprintf(cmd.OutOrStdout(), "dotfiles version %s\n", Version)
+		fmt.Fprintln(cmd.OutOrStdout(), Version)
 	},
 }
 
