@@ -228,6 +228,14 @@ if [[ "${CONFIG_EXISTS}" != "1" ]]; then
 	write_default_config
 fi
 
+log "Installing dotfiles CLI tool into .generated"
+"${DOTFILES_BIN}" --config "${CONFIG_PATH}" install dotfiles
+
+permanent_bin="${INSTALL_DIR}/.generated/binaries/dotfiles/current/dotfiles"
+if [[ -x "${permanent_bin}" ]]; then
+	DOTFILES_BIN="${permanent_bin}"
+fi
+
 log "Generating shims and shell configuration"
 "${DOTFILES_BIN}" --config "${CONFIG_PATH}" generate
 
