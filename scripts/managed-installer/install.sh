@@ -196,4 +196,35 @@ fi
 log "Generating shims and shell configuration"
 "${DOTFILES_BIN}" --config "${CONFIG_PATH}" generate
 
-log "dotfiles bootstrap complete"
+log "dotfiles bootstrap complete!"
+
+user_shell="$(basename "${SHELL:-zsh}")"
+shell_ext="zsh"
+shell_rc="~/.zshrc"
+
+case "${user_shell}" in
+bash)
+	shell_ext="bash"
+	shell_rc="~/.bashrc"
+	;;
+pwsh | powershell)
+	shell_ext="ps1"
+	shell_rc="PowerShell profile"
+	;;
+*)
+	shell_ext="zsh"
+	shell_rc="~/.zshrc"
+	;;
+esac
+
+script_path="${INSTALL_DIR}/.generated/shell-scripts/main.${shell_ext}"
+
+printf '\n'
+printf '================================================================================\n'
+printf ' 🎉 Next Step: Connect dotfiles to your shell\n'
+printf '================================================================================\n\n'
+printf '  Add the following line to your %s:\n\n' "${shell_rc}"
+printf '    source "%s"\n\n' "${script_path}"
+printf '  Or load it directly into your current terminal session now:\n\n'
+printf '    source "%s"\n\n' "${script_path}"
+printf '================================================================================\n\n'
