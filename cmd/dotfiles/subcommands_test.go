@@ -10,7 +10,19 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
+
+func resetFlags(cmd *cobra.Command) {
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		_ = f.Value.Set(f.DefValue)
+		f.Changed = false
+	})
+	for _, sub := range cmd.Commands() {
+		resetFlags(sub)
+	}
+}
 
 func executeCommand(args ...string) (string, error) {
 	// Reset global persistent flags before each execution
@@ -33,6 +45,8 @@ func executeCommand(args ...string) (string, error) {
 	generateReadme = false
 	logTailLines = 50
 	skillDir = ""
+
+	resetFlags(rootCmd)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -527,4 +541,83 @@ func TestVersionCommand(t *testing.T) {
 	if strings.TrimSpace(outFlag) != Version {
 		t.Errorf("expected --version output to be %q, got %q", Version, outFlag)
 	}
+}
+
+func TestWhyCommand(t *testing.T) {
+	repoRoot := findRepoRoot()
+	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
+
+	t.Run("found tool by binary name bat", func(t *testing.T) {
+		out, err := executeCommand("-c", absConfig, "why", "bat")
+		if err != nil {
+			t.Fatalf("why bat failed: %v", err)
+		}
+		expectedPath := filepath.Join(repoRoot, "test-project/tools/github-release--bat.tool.ts")
+		if strings.TrimSpace(out) != expectedPath {
+			t.Errorf("expected output %q, got %q", expectedPath, strings.TrimSpace(out))
+		}
+	})
+
+	t.Run("found tool in subfolder by binary name eza", func(t *testing.T) {
+		out, err := executeCommand("-c", absConfig, "why", "eza")
+		if err != nil {
+			t.Fatalf("why eza failed: %v", err)
+		}
+		expectedPath := filepath.Join(repoRoot, "test-project/tools/subfolder/cargo--eza.tool.ts")
+		if strings.TrimSpace(out) != expectedPath {
+			t.Errorf("expected output %q, got %q", expectedPath, strings.TrimSpace(out))
+		}
+	})
+
+	t.Run("found tool by full name github-release--bat", func(t *testing.T) {
+		out, err := executeCommand("-c", absConfig, "why", "github-release--bat")
+		if err != nil {
+			t.Fatalf("why github-release--bat failed: %v", err)
+		}
+		expectedPath := filepath.Join(repoRoot, "test-project/tools/github-release--bat.tool.ts")
+		if strings.TrimSpace(out) != expectedPath {
+			t.Errorf("expected output %q, got %q", expectedPath, strings.TrimSpace(out))
+		}
+	})
+
+	t.Run("not found tool fz", func(t *testing.T) {
+		out, err := executeCommand("-c", absConfig, "why", "fz")
+		if err == nil {
+			t.Errorf("expected error when tool not found, got nil")
+		}
+		if out != "" {
+			t.Errorf("expected empty output on failure, got %q", out)
+		}
+	})
+
+	t.Run("no argument provided", func(t *testing.T) {
+		out, err := executeCommand("-c", absConfig, "why")
+		if err == nil {
+			t.Errorf("expected error when no arg provided, got nil")
+		}
+		if out != "" {
+			t.Errorf("expected empty output on failure, got %q", out)
+		}
+	})
+
+	t.Run("bootstrap error invalid config file", func(t *testing.T) {
+		out, err := executeCommand("-c", "/nonexistent/config.ts", "why", "bat")
+		if err == nil {
+			t.Errorf("expected error on bootstrap failure, got nil")
+		}
+		if out != "" {
+			t.Errorf("expected empty output on failure, got %q", out)
+		}
+	})
+}
+
+func findRepoRoot() string {
+	dir, _ := os.Getwd()
+	for dir != "/" && dir != "." {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		dir = filepath.Dir(dir)
+	}
+	return "."
 }

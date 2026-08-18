@@ -284,6 +284,43 @@ func (tc *ToolConfig) Validate() error {
 	return nil
 }
 
+// FindTool searches toolConfigs for a tool matching query by name, name suffix ("--"+query), binary name, or shell alias/function name.
+func FindTool(toolConfigs []*ToolConfig, query string) *ToolConfig {
+	if strings.TrimSpace(query) == "" {
+		return nil
+	}
+	for _, tc := range toolConfigs {
+		if tc.Name == query || strings.HasSuffix(tc.Name, "--"+query) {
+			return tc
+		}
+		for _, b := range tc.Binaries {
+			binName := getBinaryName(b)
+			if binName == query {
+				return tc
+			}
+		}
+		if tc.ShellConfigs != nil {
+			shells := []*ShellTypeConfig{
+				tc.ShellConfigs.Zsh,
+				tc.ShellConfigs.Bash,
+				tc.ShellConfigs.Powershell,
+			}
+			for _, sh := range shells {
+				if sh == nil {
+					continue
+				}
+				if _, ok := sh.Aliases[query]; ok {
+					return tc
+				}
+				if _, ok := sh.Functions[query]; ok {
+					return tc
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func hasKey(m map[string]interface{}, key string) bool {
 	keyLower := strings.ToLower(key)
 	for k := range m {

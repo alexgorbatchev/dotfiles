@@ -339,3 +339,64 @@ func TestValidateProjectAndShellConfigs(t *testing.T) {
 		t.Error("expected error for ToolConfig with invalid shell config")
 	}
 }
+
+func TestFindTool(t *testing.T) {
+	toolConfigs := []*ToolConfig{
+		{
+			Name: "github-release--bat",
+			Binaries: []interface{}{
+				"bat",
+				&BinaryConfig{Name: "batcat", Pattern: "batcat"},
+			},
+		},
+		{
+			Name: "cargo--eza",
+			Binaries: []interface{}{
+				map[string]interface{}{"name": "eza"},
+			},
+			ShellConfigs: &ShellConfigs{
+				Zsh: &ShellTypeConfig{
+					Aliases: map[string]string{"la": "eza -la"},
+				},
+				Bash: &ShellTypeConfig{
+					Functions: map[string]string{"ezafn": "eza $1"},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name      string
+		query     string
+		wantMatch string
+	}{
+		{"exact tool name", "github-release--bat", "github-release--bat"},
+		{"tool name suffix", "bat", "github-release--bat"},
+		{"binary string match", "batcat", "github-release--bat"},
+		{"binary map match", "eza", "cargo--eza"},
+		{"zsh alias match", "la", "cargo--eza"},
+		{"bash function match", "ezafn", "cargo--eza"},
+		{"empty query", "", ""},
+		{"whitespace query", "   ", ""},
+		{"not found query", "nonexistent", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FindTool(toolConfigs, tt.query)
+			if tt.wantMatch == "" {
+				if got != nil {
+					t.Errorf("FindTool(%q) = %v; want nil", tt.query, got)
+				}
+			} else {
+				if got == nil {
+					t.Fatalf("FindTool(%q) = nil; want %q", tt.query, tt.wantMatch)
+				}
+				if got.Name != tt.wantMatch {
+					t.Errorf("FindTool(%q).Name = %q; want %q", tt.query, got.Name, tt.wantMatch)
+				}
+			}
+		})
+	}
+}
+
