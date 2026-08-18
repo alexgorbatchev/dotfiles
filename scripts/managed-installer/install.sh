@@ -97,7 +97,7 @@ confirm_installation() {
 
 ensure_dotfiles_tool_config() {
 	mkdir -p "${TOOLS_DIR}"
-	if [[ ! -f "${TOOLS_DIR}/dotfiles.tool.ts" ]]; then
+	if ! find "${TOOLS_DIR}" -name "dotfiles.tool.ts" 2>/dev/null | grep -q .; then
 		log "Creating $(format_path "${TOOLS_DIR}/dotfiles.tool.ts")"
 		cat >"${TOOLS_DIR}/dotfiles.tool.ts" <<'EOF'
 import { defineTool } from "@alexgorbatchev/dotfiles";
@@ -144,16 +144,7 @@ EOF
 EOF
 	fi
 
-	if [[ ! -f "${TOOLS_DIR}/dotfiles.tool.ts" ]]; then
-		cat >"${TOOLS_DIR}/dotfiles.tool.ts" <<'EOF'
-import { defineTool } from "@alexgorbatchev/dotfiles";
-
-export default defineTool((install) =>
-  install("github-release", { repo: "alexgorbatchev/dotfiles" })
-    .bin("dotfiles")
-);
-EOF
-	fi
+	ensure_dotfiles_tool_config
 
 	cat >"${CONFIG_PATH}" <<EOF
 import { defineConfig } from "@alexgorbatchev/dotfiles";
