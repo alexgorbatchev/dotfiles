@@ -67,3 +67,28 @@ func TestValidateCommand_InvalidMethod(t *testing.T) {
 		t.Errorf("expected 'Unknown installation method' in output, got:\n%s", out)
 	}
 }
+
+func TestValidateCommand_AptWithoutSudoWarning(t *testing.T) {
+	tmpDir := t.TempDir()
+	configContent := `{
+	"projectConfig": {"paths": {"homeDir": "/tmp/h", "targetDir": "/tmp/t", "generatedDir": "/tmp/g"}},
+	"toolConfigs": {
+		"apttool": {
+			"name": "apttool",
+			"installationMethod": "apt"
+		}
+	}
+}`
+	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("writing config failed: %v", err)
+	}
+
+	out, err := executeCommand("-c", configPath, "validate")
+	if err != nil {
+		t.Fatalf("validate apt without sudo failed unexpectedly: %v", err)
+	}
+	if !strings.Contains(out, "usually requires .sudo() elevation") {
+		t.Errorf("expected warning about .sudo() elevation, got:\n%s", out)
+	}
+}

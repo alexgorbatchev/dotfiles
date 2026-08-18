@@ -145,6 +145,14 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 								Message:  "'zsh-plugin' installer requires a 'repo' or 'url' parameter",
 							})
 						}
+					case "apt", "dnf", "pacman":
+						if !tool.Sudo {
+							warnings = append(warnings, ValidationWarning{
+								ToolName: tool.Name,
+								Config:   tool.ConfigFilePath,
+								Message:  fmt.Sprintf("System package installer %q usually requires .sudo() elevation", tool.InstallationMethod),
+							})
+						}
 					}
 				}
 			}
