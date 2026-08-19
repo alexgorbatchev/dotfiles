@@ -1,9 +1,9 @@
 ---
 created_on: 2026-08-15 01:01
-last_modified: 2026-08-19 11:25
+last_modified: 2026-08-19 11:45
 status: current
-review_sha: d42872b84df1d80060ad9beda448dbc5972a74d8
-reviewed_at: 2026-08-19T11:25:00Z
+review_sha: 95cc813cb9e757a76b909ba0b65926e71a9d20a4
+reviewed_at: 2026-08-19T11:45:00Z
 ---
 
 # Review Summary
@@ -14,7 +14,7 @@ reviewed_at: 2026-08-19T11:25:00Z
 
 # Project Review Runbook
 
-- Last verified at: 2026-08-19T11:25:00Z (d42872b84df1d80060ad9beda448dbc5972a74d8)
+- Last verified at: 2026-08-19T11:45:00Z (95cc813cb9e757a76b909ba0b65926e71a9d20a4)
 - Setup/install commands:
   - `bun install --frozen-lockfile`
 - Test commands:
@@ -85,7 +85,7 @@ reviewed_at: 2026-08-19T11:25:00Z
 
 # Test Coverage
 
-- Overall Go statement coverage: **89.6%** across all 25 packages (`cmd/dotfiles`: 72.3%, `pkg/logger`: 98.9%, `pkg/shellinit`: 96.5%, `pkg/unwrap`: 100%, `pkg/utils`: 100%, `pkg/vm`: 90.7%)
+- Overall Go statement coverage: **90.6%** across all 25 packages (`cmd/dotfiles`: 80.0%, `pkg/downloader`: 90.6%, `pkg/installer`: 88.6%, `pkg/logger`: 98.9%, `pkg/shellinit`: 96.5%, `pkg/unwrap`: 100%, `pkg/utils`: 100%, `pkg/vm`: 90.7%)
 - Overall Dashboard JS/TS coverage: **98.9%** lines, **100%** functions
 - Target: **90.0%**
 
