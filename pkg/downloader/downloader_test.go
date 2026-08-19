@@ -1419,13 +1419,116 @@ func TestDownloaderEdgeCasesAndProgress(t *testing.T) {
 		t.Errorf("expected error on connection failure")
 	}
 
-	// 10. ProgressBar TTY methods
+	// 10. ProgressBar TTY methods and Download with TTY enabled
+	origTTYFunc := isInteractiveTTYFunc
+	isInteractiveTTYFunc = func() bool { return true }
+	defer func() { isInteractiveTTYFunc = origTTYFunc }()
+
 	bar := NewProgressBar(100, "testfile.tar.gz")
-	bar.isTTY = true
 	bar.Start()
 	bar.Update(50)
 	bar.Update(100)
 	bar.Finish()
+
+	// Test RenderFrame with 0 total bytes and short duration
+	bar0 := NewProgressBar(0, "unknown.tar.gz")
+	bar0.isTTY = true
+	bar0.bytesDownloaded = 500
+	bar0.startTime = time.Now().Add(-100 * time.Millisecond)
+	bar0.RenderFrame()
+
+	// Download with TTY bar enabled
+	err = cd.Download(context.Background(), okServer2.URL, "/dl-tty.txt", "", DownloadOptions{SkipCache: true})
+	if err != nil {
+		t.Errorf("expected TTY download to succeed: %v", err)
+	}
+
+	// 11. 416 Status Recovery Failure (returns 500 on recovery)
+	range416FailRecoveryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Range") != "" {
+			w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer range416FailRecoveryServer.Close()
+
+	_ = cacheFS.WriteFile("/dl-416fail.txt", []byte("bad data"), 0644)
+	err = cd.Download(context.Background(), range416FailRecoveryServer.URL, "/dl-416fail.txt", "somehash", DownloadOptions{SkipCache: true})
+	if err == nil {
+		t.Errorf("expected error when 416 recovery returns 500")
+	}
+
+	// 12. Retry with delay and eventual success
+	retryAttempts := 0
+	retryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		retryAttempts++
+		if retryAttempts < 2 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("eventual success"))
+	}))
+	defer retryServer.Close()
+
+	err = cd.Download(context.Background(), retryServer.URL, "/dl-retry.txt", "", DownloadOptions{
+		RetryCount: 2,
+		RetryDelay: 5 * time.Millisecond,
+		SkipCache:  true,
+	})
+	if err != nil {
+		t.Errorf("expected retry download to succeed, got %v", err)
+	}
+
+	// 13. Retry delay context cancellation
+	failServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer failServer.Close()
+
+	ctxRetryCancel, cancelRetry := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(10 * time.Millisecond)
+		cancelRetry()
+	}()
+	err = cd.Download(ctxRetryCancel, failServer.URL, "/dl-retry-cancel.txt", "", DownloadOptions{
+		RetryCount: 3,
+		RetryDelay: 50 * time.Millisecond,
+		SkipCache:  true,
+	})
+	if err == nil {
+		t.Errorf("expected context cancellation error during retry backoff")
+	}
+
+	// 14. Cache hit with OnProgress callback
+	cacheProgressFS := fs.NewMemFS()
+	cacheProgressDL := NewDownloader(cacheProgressFS, nil)
+	cacheProgressDL.CacheEnabled = true
+	cacheProgressDL.CacheDir = "/cache-prog"
+	_ = cacheProgressFS.MkdirAll("/cache-prog", 0755)
+
+	keyStrProg := getCacheKey(okServer2.URL, nil)
+	_ = cacheProgressFS.WriteFile(filepath.Join("/cache-prog", keyStrProg), []byte("cached content"), 0644)
+
+	var cacheProgCalled bool
+	err = cacheProgressDL.Download(context.Background(), okServer2.URL, "/dl-cached-prog.txt", "", DownloadOptions{
+		OnProgress: func(downloaded, total int64) {
+			cacheProgCalled = true
+		},
+	})
+	if err != nil || !cacheProgCalled {
+		t.Errorf("expected cache hit with OnProgress callback to succeed: %v, called: %v", err, cacheProgCalled)
+	}
+
+	// 15. Download timeout option
+	err = cd.Download(context.Background(), okServer2.URL, "/dl-timeout.txt", "", DownloadOptions{
+		Timeout:   10 * time.Second,
+		SkipCache: true,
+	})
+	if err != nil {
+		t.Errorf("expected download with timeout option to succeed, got %v", err)
+	}
 }
 
 

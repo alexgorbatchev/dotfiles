@@ -772,4 +772,175 @@ func TestMoreInstallerEdgeCases(t *testing.T) {
 	// 5. Manual Uninstall
 	manual := NewManualInstaller(runner, memFS, sysCtx)
 	_ = manual.Uninstall(ctx, &config.ToolConfig{Name: "manual-tool"})
+
+	// 6. DryRun returns for all package installers
+	dryParams := map[string]interface{}{
+		"dryRun": true,
+		"repo":   "owner/repo",
+		"crate":  "somecrate",
+		"url":    "http://example.com/tool",
+	}
+	tools := []*config.ToolConfig{
+		{Name: "t1", InstallParams: dryParams},
+	}
+
+	aptInst := NewAptInstaller(runner, memFS, sysCtx)
+	brewInst := NewBrewInstaller(runner, memFS, sysCtx)
+	cargoInst := NewCargoInstaller(runner, memFS, dl, sysCtx)
+	curlBinInst := NewCurlBinaryInstaller(runner, memFS, dl, sysCtx)
+	curlScriptInst := NewCurlScriptInstaller(runner, memFS, dl, sysCtx)
+	curlTarInst := NewCurlTarInstaller(runner, memFS, dl, sysCtx)
+	dmgInst := NewDmgInstaller(runner, memFS, dl, &SystemContext{OS: "darwin", Arch: "arm64"})
+	dnfInst := NewDnfInstaller(runner, memFS, sysCtx)
+	giteaInst := NewGiteaInstaller(runner, memFS, dl, sysCtx)
+	ghInst := NewGitHubInstaller(runner, memFS, dl, sysCtx)
+	manualInst := NewManualInstaller(runner, memFS, sysCtx)
+	npmInst := NewNpmInstaller(runner, memFS, sysCtx)
+	pacmanInst := NewPacmanInstaller(runner, memFS, sysCtx)
+	pkgInst := NewPkgInstaller(runner, memFS, dl, &SystemContext{OS: "darwin", Arch: "arm64"})
+	zshInst := NewZshPluginInstaller(runner, memFS, sysCtx)
+
+	for _, tc := range tools {
+		_, _ = aptInst.Install(ctx, tc)
+		_, _ = brewInst.Install(ctx, tc)
+		_, _ = cargoInst.Install(ctx, tc)
+		_, _ = curlBinInst.Install(ctx, tc)
+		_, _ = curlScriptInst.Install(ctx, tc)
+		_, _ = curlTarInst.Install(ctx, tc)
+		_, _ = dmgInst.Install(ctx, tc)
+		_, _ = dnfInst.Install(ctx, tc)
+		_, _ = giteaInst.Install(ctx, tc)
+		_, _ = ghInst.Install(ctx, tc)
+		_, _ = manualInst.Install(ctx, tc)
+		_, _ = npmInst.Install(ctx, tc)
+		_, _ = pacmanInst.Install(ctx, tc)
+		_, _ = pkgInst.Install(ctx, tc)
+		_, _ = zshInst.Install(ctx, tc)
+	}
+
+	// 7. ValidateSudo checks
+	_ = ValidateSudo(aptInst, &config.ToolConfig{Name: "t", InstallParams: map[string]interface{}{"sudo": true}})
+	_ = ValidateSudo(aptInst, &config.ToolConfig{Name: "t", InstallParams: map[string]interface{}{"sudo": false}})
+}
+
+func TestPackageInstallersExtraCoverage(t *testing.T) {
+	ctx := context.Background()
+	runner := exec.NewMockRunner()
+	memFS := fs.NewMemFS()
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+
+	// 1. Apt with update and sudo, and without sudo
+	apt := NewAptInstaller(runner, memFS, sysCtx)
+	runner.Register("dpkg-query", []byte("1.2.3\n"), nil)
+	runner.Register("which", []byte("/usr/bin/my-apt-pkg\n"), nil)
+
+	_, _ = apt.Install(ctx, &config.ToolConfig{
+		Name: "apt-pkg",
+		Sudo: true,
+		InstallParams: map[string]interface{}{
+			"package": "my-apt-pkg",
+			"update":  true,
+		},
+	})
+	_, _ = apt.Install(ctx, &config.ToolConfig{
+		Name: "apt-pkg2",
+		InstallParams: map[string]interface{}{
+			"package": "my-apt-pkg2",
+			"update":  true,
+		},
+	})
+
+	// 1b. Manual with binaryPath and context projectConfig, and empty path
+	_ = memFS.MkdirAll("/src", 0755)
+	_ = memFS.WriteFile("/src/mybin", []byte("binary payload"), 0755)
+	manual := NewManualInstaller(runner, memFS, sysCtx)
+	manual.BinDir = "/test/manual"
+
+	projCtx := config.WithProjectConfig(ctx, &config.ProjectConfig{
+		Paths: config.PathsConfig{DotfilesDir: "/src"},
+	})
+	_, errMan := manual.Install(projCtx, &config.ToolConfig{
+		Name: "mybin",
+		InstallParams: map[string]interface{}{
+			"binaryPath": "{paths.dotfilesDir}/mybin",
+		},
+	})
+	if errMan != nil {
+		t.Errorf("expected manual install with binaryPath to succeed: %v", errMan)
+	}
+
+	mEmpty := NewManualInstaller(runner, memFS, sysCtx)
+	_, _ = mEmpty.Install(ctx, &config.ToolConfig{Name: "no-path-manual"})
+	_, _ = mEmpty.Install(ctx, &config.ToolConfig{Name: "nonexist", InstallParams: map[string]interface{}{"binaryPath": "/nonexistent/path/bin"}})
+	_ = mEmpty.Uninstall(ctx, &config.ToolConfig{Name: "no-path-manual"})
+
+	// 2. Brew with cask
+	brew := NewBrewInstaller(runner, memFS, &SystemContext{OS: "darwin", Arch: "arm64"})
+	_, _ = brew.Install(ctx, &config.ToolConfig{
+		Name: "cask-pkg",
+		InstallParams: map[string]interface{}{
+			"cask": true,
+		},
+	})
+
+	// 3. Dnf with sudo and update
+	dnf := NewDnfInstaller(runner, memFS, sysCtx)
+	runner.Register("rpm", []byte("2.0.0\n"), nil)
+
+	_, _ = dnf.Install(ctx, &config.ToolConfig{
+		Name: "dnf-pkg",
+		Sudo: true,
+		InstallParams: map[string]interface{}{
+			"package": "my-dnf-pkg",
+			"update":  true,
+		},
+	})
+
+	// 4. Npm with global=false
+	npm := NewNpmInstaller(runner, memFS, sysCtx)
+	_, _ = npm.Install(ctx, &config.ToolConfig{
+		Name: "npm-pkg",
+		InstallParams: map[string]interface{}{
+			"package": "my-npm-pkg",
+			"global":  false,
+		},
+	})
+
+	// 5. ZshPlugin with custom url and pluginName, explicit source, and missing params
+	zsh := NewZshPluginInstaller(runner, memFS, sysCtx)
+	zsh.BinDir = "/zsh/plugins2"
+	_ = memFS.MkdirAll("/zsh/plugins2/custom-plugin", 0755)
+	_ = memFS.WriteFile("/zsh/plugins2/custom-plugin/custom-plugin.plugin.zsh", []byte("zsh plugin source"), 0644)
+
+	runner.RegisterFunc("git", func(c *exec.MockCmd) error {
+		return nil
+	})
+
+	_, err := zsh.Install(ctx, &config.ToolConfig{
+		Name: "zsh-tool",
+		InstallParams: map[string]interface{}{
+			"url":        "https://example.com/custom-repo.git",
+			"pluginName": "custom-plugin",
+		},
+	})
+	if err != nil {
+		t.Errorf("expected zsh plugin update to succeed: %v", err)
+	}
+
+	// Missing repo and url
+	_, errZshNoUrl := zsh.Install(ctx, &config.ToolConfig{Name: "no-url"})
+	if errZshNoUrl == nil {
+		t.Errorf("expected error on zsh plugin with missing repo and url")
+	}
+
+	// URL without repo
+	_ = memFS.MkdirAll("/zsh/plugins2/urlplug", 0755)
+	_ = memFS.WriteFile("/zsh/plugins2/urlplug/my-explicit-src.zsh", []byte("src"), 0644)
+	_, _ = zsh.Install(ctx, &config.ToolConfig{
+		Name: "urlplug",
+		InstallParams: map[string]interface{}{
+			"url":    "https://github.com/org/urlplug.git",
+			"source": "my-explicit-src.zsh",
+		},
+	})
 }

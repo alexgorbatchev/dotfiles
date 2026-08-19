@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -293,6 +294,57 @@ func TestPkgInstaller(t *testing.T) {
 		exists, _ = fsys.Exists(pkgPath)
 		if exists {
 			t.Errorf("expected downloaded zip %s to be cleaned up/removed, but it exists", pkgPath)
+		}
+	})
+
+	t.Run("Install success with zip containing pkg and which binary resolution", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("which", []byte("/usr/local/bin/zipbin\n"), nil)
+
+		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
+		inst := NewPkgInstaller(runner, fsys, dl, sysCtx)
+		inst.BinDir = "/test/pkg-zip"
+
+		var zipBuf bytes.Buffer
+		zw := zip.NewWriter(&zipBuf)
+		f, _ := zw.Create("inner.pkg")
+		_, _ = f.Write([]byte("mock-pkg"))
+		_ = zw.Close()
+
+		zipServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/releases/") {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(githubRelease{
+					TagName: "v1.0.0",
+					Assets: []githubAsset{
+						{Name: "zipbin-darwin-arm64.zip", BrowserDownloadURL: "http://" + r.Host + "/download/zipbin.zip"},
+					},
+				})
+			} else if strings.Contains(r.URL.Path, "/download/") {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(zipBuf.Bytes())
+			}
+		}))
+		defer zipServer.Close()
+
+		inst.BaseURL = zipServer.URL
+
+		tool := &config.ToolConfig{
+			Name: "zipbin",
+			InstallParams: map[string]interface{}{
+				"source": map[string]interface{}{
+					"type": "github-release",
+					"repo": "zipbin/zipbin",
+				},
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "/usr/local/bin/zipbin" {
+			t.Errorf("expected /usr/local/bin/zipbin, got %v", res.Binaries)
 		}
 	})
 }

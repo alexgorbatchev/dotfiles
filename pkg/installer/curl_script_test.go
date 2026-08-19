@@ -186,6 +186,65 @@ func TestCurlScriptInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("Install fallback to system binary dir and detect version", func(t *testing.T) {
+		runner.Clear()
+		sysFsys := fs.NewMemFS()
+		_ = sysFsys.MkdirAll("/usr/local/bin", 0755)
+		_ = sysFsys.WriteFile("/usr/local/bin/sysbin", []byte("system binary"), 0755)
+
+		sysInst := NewCurlScriptInstaller(runner, sysFsys, downloader.NewDownloader(sysFsys, nil), nil)
+		sysInst.BinDir = "/test/bin"
+
+		runner.Register("/test/bin/sysbin", []byte("sysbin version 2.4.0\n"), nil)
+
+		tool := &config.ToolConfig{
+			Name: "sysbin",
+			InstallParams: map[string]interface{}{
+				"url":         server.URL,
+				"versionArgs": []interface{}{"--version"},
+				"versionRegex": `(\d+\.\d+\.\d+)`,
+			},
+		}
+
+		res, err := sysInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "2.4.0" {
+			t.Errorf("expected version 2.4.0, got %q", res.Version)
+		}
+	})
+
+	t.Run("CheckUpdate with CLI version check", func(t *testing.T) {
+		runner.Clear()
+		cFS := fs.NewMemFS()
+		_ = cFS.MkdirAll("/test/bin", 0755)
+		_ = cFS.WriteFile("/test/bin/chktool", []byte("bin"), 0755)
+
+		cInst := NewCurlScriptInstaller(runner, cFS, downloader.NewDownloader(cFS, nil), nil)
+		cInst.BinDir = "/test/bin"
+
+		runner.Register("/test/bin/chktool", []byte("chktool v2.1.0\n"), nil)
+
+		currVer := "v1.0.0"
+		tool := &config.ToolConfig{
+			Name:    "chktool",
+			Version: &currVer,
+			InstallParams: map[string]interface{}{
+				"versionArgs":  []interface{}{"--version"},
+				"versionRegex": `(\d+\.\d+\.\d+)`,
+			},
+		}
+
+		res, err := cInst.CheckUpdate(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected CheckUpdate error: %v", err)
+		}
+		if res.LocalVersion != "2.1.0" {
+			t.Errorf("expected LocalVersion 2.1.0, got %q", res.LocalVersion)
+		}
+	})
+
 	t.Run("Install fails missing URL", func(t *testing.T) {
 		tool := &config.ToolConfig{
 			Name: "mytool",

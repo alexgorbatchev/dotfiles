@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -109,6 +110,32 @@ func TestDmgInstaller(t *testing.T) {
 		}
 		if !hasDetach {
 			t.Error("expected hdiutil detach to run")
+		}
+	})
+
+	t.Run("Install mount failure on macOS", func(t *testing.T) {
+		runner.Clear()
+		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
+		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
+		inst.BinDir = "/test/dmg-fail"
+
+		runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
+			if len(c.Args) > 0 && c.Args[0] == "attach" {
+				return errors.New("attach failed")
+			}
+			return nil
+		})
+
+		tool := &config.ToolConfig{
+			Name: "slack",
+			InstallParams: map[string]interface{}{
+				"url": server.URL,
+			},
+		}
+
+		_, err := inst.Install(context.Background(), tool)
+		if err == nil {
+			t.Errorf("expected error on mount failure")
 		}
 	})
 
@@ -303,6 +330,34 @@ func TestDmgInstaller(t *testing.T) {
 		exists, _ = fsys.Exists(downloadPath)
 		if exists {
 			t.Errorf("expected download path %s to be cleaned up, but it exists", downloadPath)
+		}
+	})
+
+	t.Run("Install auto-detect appName and custom binaryPath", func(t *testing.T) {
+		runner.Clear()
+		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
+		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
+		inst.BinDir = "/test/dmg-autodetect"
+
+		tool := &config.ToolConfig{
+			Name: "autotool",
+			InstallParams: map[string]interface{}{
+				"url":        server.URL,
+				"binaryPath": "Contents/MacOS/autobinary",
+			},
+		}
+
+		// Pre-populate mock .app bundle in MemFS without explicit appName in params
+		appSourceDir := "/test/dmg-autodetect/autotool-mount/AutoDetect.app/Contents/MacOS"
+		_ = fsys.MkdirAll(appSourceDir, 0755)
+		_ = fsys.WriteFile(filepath.Join(appSourceDir, "autobinary"), []byte("bin"), 0755)
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "/Applications/AutoDetect.app/Contents/MacOS/autobinary" {
+			t.Errorf("expected /Applications/AutoDetect.app/Contents/MacOS/autobinary, got %v", res.Binaries)
 		}
 	})
 }

@@ -436,3 +436,121 @@ func TestGitHubInstaller_ProgressLogging(t *testing.T) {
 		t.Errorf("expected log to contain 'Downloading release asset...', got:\n%s", logOutput)
 	}
 }
+
+func TestGitHubInstaller_GhCliAndToken(t *testing.T) {
+	runner := exec.NewMockRunner()
+	fsys := fs.NewMemFS()
+	dl := downloader.NewDownloader(fsys, nil)
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+
+	instGh := NewGitHubInstaller(runner, fsys, dl, sysCtx)
+	instGh.BinDir = "/test/ghcli"
+
+	// 1. GhCli success
+	runner.RegisterFunc("gh", func(c *exec.MockCmd) error {
+		if len(c.Args) > 0 && c.Args[0] == "api" {
+			resJSON := `{
+				"tag_name": "v1.1.0",
+				"assets": [{"name": "cli-linux-amd64.tar.gz", "browser_download_url": "http://gh/dl"}]
+			}`
+			c.SetOutput([]byte(resJSON))
+			return nil
+		}
+		if len(c.Args) > 0 && c.Args[0] == "release" && c.Args[1] == "download" {
+			tarBytes, _ := createTarGzBytes(map[string]string{"cli": "cli-binary"})
+			_ = fsys.MkdirAll("/test/ghcli", 0755)
+			_ = fsys.WriteFile("/test/ghcli/cli-linux-amd64.tar.gz", tarBytes, 0644)
+			return nil
+		}
+		return nil
+	})
+
+	toolGhCli := &config.ToolConfig{
+		Name: "cli",
+		InstallParams: map[string]interface{}{
+			"repo":  "owner/ghcli-unique-repo",
+			"ghCli": true,
+		},
+	}
+
+	res, err := instGh.Install(context.Background(), toolGhCli)
+	if err != nil {
+		t.Fatalf("Install with useGhCli failed: %v", err)
+	}
+	if len(res.Binaries) == 0 {
+		t.Errorf("expected promoted binaries from gh CLI install")
+	}
+
+	// 2. Token header verification
+	instTok := NewGitHubInstaller(runner, fsys, dl, sysCtx)
+	instTok.BinDir = "/test/ghtok"
+
+	var recHeader string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		recHeader = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(githubRelease{
+			TagName: "v1.0.0",
+			Assets: []githubAsset{
+				{Name: "tokentool-linux-amd64", BrowserDownloadURL: "http://" + r.Host + "/download"},
+			},
+		})
+	}))
+	defer server.Close()
+
+	instTok.httpClient = server.Client()
+	instTok.BaseURL = server.URL
+
+	toolToken := &config.ToolConfig{
+		Name: "tokentool",
+		InstallParams: map[string]interface{}{
+			"repo":  "owner/tokentool",
+			"token": "secret-gh-token",
+		},
+	}
+
+	_, err = instTok.Install(context.Background(), toolToken)
+	if err != nil {
+		t.Fatalf("Install with token failed: %v", err)
+	}
+	if recHeader != "token secret-gh-token" {
+		t.Errorf("expected Authorization header 'token secret-gh-token', got %q", recHeader)
+	}
+
+	// 3. CheckUpdate with ghCli and 403 fallback
+	currentVer := "v1.0.0"
+	toolGh := &config.ToolConfig{
+		Name:    "cli",
+		Version: &currentVer,
+		InstallParams: map[string]interface{}{
+			"repo":  "owner/ghcli-chk-repo",
+			"ghCli": true,
+		},
+	}
+
+	chkRes, chkErr := instGh.CheckUpdate(context.Background(), toolGh)
+	if chkErr != nil || !chkRes.HasUpdate || chkRes.LatestVersion != "v1.1.0" {
+		t.Errorf("expected CheckUpdate with ghCli to find v1.1.0, got chkRes=%v, chkErr=%v", chkRes, chkErr)
+	}
+
+	server403 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server403.Close()
+
+	instTok.httpClient = server403.Client()
+	instTok.BaseURL = server403.URL
+
+	tool403 := &config.ToolConfig{
+		Name:    "tool403",
+		Version: &currentVer,
+		InstallParams: map[string]interface{}{
+			"repo": "owner/tool403",
+		},
+	}
+
+	res403, err403 := instTok.CheckUpdate(context.Background(), tool403)
+	if err403 != nil || !res403.HasUpdate || res403.LatestVersion != "v1.1.0" {
+		t.Errorf("expected CheckUpdate 403 fallback to find v1.1.0, got res=%v, err=%v", res403, err403)
+	}
+}

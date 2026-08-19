@@ -46,10 +46,12 @@ func isInteractiveTTY() bool {
 		isatty.IsTerminal(os.Stdin.Fd())
 }
 
+var isInteractiveTTYFunc = isInteractiveTTY
+
 // NewProgressBar constructs a new ProgressBar for a given file size and name.
 func NewProgressBar(totalBytes int64, filename string) *ProgressBar {
 	// Only render on real interactive TTY, not in CI or redirected/piped standard streams
-	isTTY := isInteractiveTTY()
+	isTTY := isInteractiveTTYFunc()
 	return &ProgressBar{
 		totalBytes: totalBytes,
 		startTime:  time.Now(),

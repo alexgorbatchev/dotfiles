@@ -544,4 +544,129 @@ func TestInstallerEdgeCasesAndFallbacks(t *testing.T) {
 	if exists, _ := memFS.Exists("/dest/App.app/Contents/PkgInfo"); !exists {
 		t.Errorf("copyDir failed to copy file")
 	}
+
+	// 6. ZshPluginInstaller Install error & success branches
+	zsh := NewZshPluginInstaller(runner, memFS, sysCtx)
+	zsh.BinDir = "/zsh/plugins"
+	runner.RegisterFunc("git", func(c *exec.MockCmd) error {
+		if len(c.Args) > 0 && c.Args[0] == "clone" {
+			targetDir := c.Args[len(c.Args)-1]
+			_ = memFS.MkdirAll(targetDir, 0755)
+			_ = memFS.WriteFile(targetDir+"/plugin.zsh", []byte("zsh plugin"), 0644)
+			return nil
+		}
+		return errors.New("git command error")
+	})
+
+	_, err = zsh.Install(context.Background(), &config.ToolConfig{
+		Name: "zsh-plugin-test",
+		InstallParams: map[string]interface{}{
+			"repo": "owner/zsh-plugin-test",
+		},
+	})
+	if err != nil {
+		t.Errorf("ZshPlugin Install expected success, got %v", err)
+	}
+
+	// Git clone error
+	runner.RegisterFunc("git", func(c *exec.MockCmd) error {
+		return errors.New("clone failed")
+	})
+	_, err = zsh.Install(context.Background(), &config.ToolConfig{
+		Name: "zsh-plugin-fail",
+		InstallParams: map[string]interface{}{
+			"repo": "owner/zsh-plugin-fail",
+		},
+	})
+	if err == nil {
+		t.Errorf("ZshPlugin Install expected error on git clone failure")
+	}
+
+	// 7. CurlScriptInstaller execution error
+	curlScriptInst := NewCurlScriptInstaller(runner, memFS, downloader.NewDownloader(memFS, nil), sysCtx)
+	scriptServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("#!/bin/sh\nexit 1\n"))
+	}))
+	defer scriptServer.Close()
+
+	runner.RegisterFunc("sh", func(c *exec.MockCmd) error {
+		return errors.New("script failed")
+	})
+	_, err = curlScriptInst.Install(context.Background(), &config.ToolConfig{
+		Name: "curl-script-fail",
+		InstallParams: map[string]interface{}{
+			"url": scriptServer.URL,
+		},
+	})
+	if err == nil {
+		t.Errorf("CurlScript Install expected error when script execution fails")
+	}
+
+	// 9. Apt, Brew, Dnf, Npm, Pacman command error and CheckUpdate branches
+	runner.RegisterFunc("apt-get", func(c *exec.MockCmd) error {
+		return errors.New("apt-get error")
+	})
+	runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+		return errors.New("brew error")
+	})
+	runner.RegisterFunc("dnf", func(c *exec.MockCmd) error {
+		return errors.New("dnf error")
+	})
+	runner.RegisterFunc("npm", func(c *exec.MockCmd) error {
+		return errors.New("npm error")
+	})
+	runner.RegisterFunc("pacman", func(c *exec.MockCmd) error {
+		return errors.New("pacman error")
+	})
+
+	aptInst := NewAptInstaller(runner, memFS, sysCtx)
+	_, _ = aptInst.Install(context.Background(), &config.ToolConfig{
+		Name:          "apt-fail",
+		InstallParams: map[string]interface{}{"package": "pkg1"},
+	})
+	_, _ = aptInst.CheckUpdate(context.Background(), &config.ToolConfig{
+		Name:          "apt-fail-chk",
+		InstallParams: map[string]interface{}{"package": "pkg1"},
+	})
+
+	brewInst := NewBrewInstaller(runner, memFS, sysCtx)
+	_, _ = brewInst.Install(context.Background(), &config.ToolConfig{
+		Name:          "brew-fail",
+		InstallParams: map[string]interface{}{"formula": "form1"},
+	})
+	_, _ = brewInst.CheckUpdate(context.Background(), &config.ToolConfig{
+		Name:          "brew-fail-chk",
+		InstallParams: map[string]interface{}{"formula": "form1"},
+	})
+
+	dnfInst := NewDnfInstaller(runner, memFS, sysCtx)
+	_, _ = dnfInst.Install(context.Background(), &config.ToolConfig{
+		Name:          "dnf-fail",
+		InstallParams: map[string]interface{}{"package": "pkg1"},
+	})
+	_, _ = dnfInst.CheckUpdate(context.Background(), &config.ToolConfig{
+		Name:          "dnf-fail-chk",
+		InstallParams: map[string]interface{}{"package": "pkg1"},
+	})
+
+	npmInst := NewNpmInstaller(runner, memFS, sysCtx)
+	_, _ = npmInst.Install(context.Background(), &config.ToolConfig{
+		Name:          "npm-fail",
+		InstallParams: map[string]interface{}{"package": "pkg1"},
+	})
+	_, _ = npmInst.CheckUpdate(context.Background(), &config.ToolConfig{
+		Name:          "npm-fail-chk",
+		InstallParams: map[string]interface{}{"package": "pkg1"},
+	})
+
+	pacmanInst := NewPacmanInstaller(runner, memFS, sysCtx)
+	_, _ = pacmanInst.Install(context.Background(), &config.ToolConfig{
+		Name:          "pacman-fail",
+		InstallParams: map[string]interface{}{"package": "pkg1"},
+	})
+	_, _ = pacmanInst.CheckUpdate(context.Background(), &config.ToolConfig{
+		Name:          "pacman-fail-chk",
+		InstallParams: map[string]interface{}{"package": "pkg1"},
+	})
 }

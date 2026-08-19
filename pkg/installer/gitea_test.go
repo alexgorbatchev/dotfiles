@@ -94,6 +94,58 @@ func TestGiteaInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("Install success with tar.gz archive and token", func(t *testing.T) {
+		tarBytes, _ := createTarGzBytes(map[string]string{"giteatool": "archive-content"})
+		var authHeader string
+
+		giteaServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if h := r.Header.Get("Authorization"); h != "" {
+				authHeader = h
+			}
+			if r.URL.Path == "/api/v1/repos/myowner/giteatool/releases/latest" {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(giteaRelease{
+					TagName: "v1.0.0",
+					Assets: []giteaAsset{
+						{Name: "giteatool-linux-amd64.tar.gz", BrowserDownloadURL: "http://" + r.Host + "/download.tar.gz"},
+					},
+				})
+				return
+			}
+			if r.URL.Path == "/download.tar.gz" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(tarBytes)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer giteaServer.Close()
+
+		gInst := NewGiteaInstaller(runner, fsys, dl, &SystemContext{OS: "linux", Arch: "amd64"})
+		gInst.httpClient = giteaServer.Client()
+		gInst.BinDir = "/test/gitea-tar"
+
+		tool := &config.ToolConfig{
+			Name: "giteatool",
+			InstallParams: map[string]interface{}{
+				"instanceUrl": giteaServer.URL,
+				"repo":        "myowner/giteatool",
+				"token":       "gitea-sec-token",
+			},
+		}
+
+		res, err := gInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error installing gitea tar.gz: %v", err)
+		}
+		if len(res.Binaries) == 0 {
+			t.Errorf("expected promoted binaries from gitea tar.gz install")
+		}
+		if authHeader != "token gitea-sec-token" {
+			t.Errorf("expected token auth header 'token gitea-sec-token', got %q", authHeader)
+		}
+	})
+
 	t.Run("Install fails repo missing", func(t *testing.T) {
 		tool := &config.ToolConfig{
 			Name: "mytool",
@@ -128,10 +180,18 @@ func TestGiteaInstaller(t *testing.T) {
 	})
 
 	t.Run("CheckUpdate and basic details", func(t *testing.T) {
-		tool := &config.ToolConfig{Name: "mytool"}
+		currentVer := "v1.0.0"
+		tool := &config.ToolConfig{
+			Name:    "mytool",
+			Version: &currentVer,
+			InstallParams: map[string]interface{}{
+				"instanceUrl": server.URL,
+				"repo":        "myowner/mytool",
+			},
+		}
 		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.HasUpdate {
-			t.Errorf("unexpected: %v, %v", res, err)
+		if err != nil || !res.HasUpdate || res.LatestVersion != "v1.2.0" {
+			t.Errorf("unexpected CheckUpdate result: res=%v, err=%v", res, err)
 		}
 	})
 }
