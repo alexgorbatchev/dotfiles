@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
-	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/spf13/cobra"
@@ -29,23 +28,7 @@ var detectConflictsCmd = &cobra.Command{
 		var conflictMessages []string
 
 		for _, tool := range services.ToolConfigs {
-			for _, b := range tool.Binaries {
-				var binName string
-				switch val := b.(type) {
-				case string:
-					binName = val
-				case map[string]interface{}:
-					if name, ok := val["name"].(string); ok {
-						binName = name
-					}
-				case config.BinaryConfig:
-					binName = val.Name
-				case *config.BinaryConfig:
-					if val != nil {
-						binName = val.Name
-					}
-				}
-
+			for _, binName := range installer.GetBinaryNames(tool.Name, tool.Binaries) {
 				if binName == "" {
 					continue
 				}
@@ -66,7 +49,7 @@ var detectConflictsCmd = &cobra.Command{
 			for _, msg := range conflictMessages {
 				fmt.Fprintf(cmd.OutOrStdout(), "  - %s\n", msg)
 			}
-			os.Exit(1)
+			return fmt.Errorf("conflicts detected with files not owned by the generator")
 		}
 
 		log.Info(logger.Messages.CommandCompleted(dryRun))
