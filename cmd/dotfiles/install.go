@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -34,34 +33,7 @@ var installCmd = &cobra.Command{
 
 		if len(args) > 0 {
 			toolName := args[0]
-
-			var targetTool *config.ToolConfig
-			for _, tc := range services.ToolConfigs {
-				if tc.Name == toolName || strings.HasSuffix(tc.Name, "--"+toolName) {
-					targetTool = tc
-					break
-				}
-				binaryLoop:
-				for _, b := range tc.Binaries {
-					log.Debug(logger.Message(fmt.Sprintf("Checking binary: %v of type %T against %s", b, b, toolName)))
-					switch val := b.(type) {
-					case string:
-						if val == toolName {
-							targetTool = tc
-							break binaryLoop
-						}
-					case map[string]interface{}:
-						if bName, ok := val["name"].(string); ok && bName == toolName {
-							targetTool = tc
-							break binaryLoop
-						}
-					}
-				}
-				if targetTool != nil {
-					break
-				}
-			}
-
+			targetTool := config.FindTool(services.ToolConfigs, toolName)
 			if targetTool == nil {
 				return fmt.Errorf("tool %q not found in configuration", toolName)
 			}

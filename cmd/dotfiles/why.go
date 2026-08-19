@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/spf13/cobra"
@@ -15,10 +14,7 @@ var whyCmd = &cobra.Command{
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
-			if isDevTest() {
-				return fmt.Errorf("tool argument required")
-			}
-			os.Exit(1)
+			return fmt.Errorf("tool argument required")
 		}
 
 		query := args[0]
@@ -27,26 +23,17 @@ var whyCmd = &cobra.Command{
 		ctx := cmd.Context()
 		services, err := BootstrapServices(ctx, cfgFile)
 		if err != nil {
-			if isDevTest() {
-				return err
-			}
-			os.Exit(1)
+			return fmt.Errorf("bootstrap services: %w", err)
 		}
 		defer services.DB.Close()
 
 		targetTool := config.FindTool(services.ToolConfigs, query)
 		if targetTool == nil || targetTool.ConfigFilePath == "" {
-			if isDevTest() {
-				return fmt.Errorf("tool %q not found", query)
-			}
-			os.Exit(1)
+			return fmt.Errorf("tool %q not found", query)
 		}
 
 		if exists, _ := fileExists(targetTool.ConfigFilePath); !exists {
-			if isDevTest() {
-				return fmt.Errorf("config file for %q does not exist: %s", query, targetTool.ConfigFilePath)
-			}
-			os.Exit(1)
+			return fmt.Errorf("config file for %q does not exist: %s", query, targetTool.ConfigFilePath)
 		}
 
 		fmt.Fprintln(cmd.OutOrStdout(), targetTool.ConfigFilePath)

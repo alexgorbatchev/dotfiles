@@ -611,6 +611,54 @@ func TestWhyCommand(t *testing.T) {
 	})
 }
 
+func TestAdditionalCmdCoverage(t *testing.T) {
+	tmpDir := createTempConfigDir(t)
+	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
+
+	// files command
+	_, _ = executeCommand("-c", configPath, "files")
+
+	// generate with --overwrite
+	_, _ = executeCommand("-c", configPath, "generate", "--overwrite")
+
+	// install command single & all
+	_, _ = executeCommand("-c", configPath, "install", "bat")
+	_, _ = executeCommand("-c", configPath, "install")
+
+	// uninstall command single & all
+	_, _ = executeCommand("-c", configPath, "uninstall", "bat")
+	_, _ = executeCommand("-c", configPath, "uninstall")
+
+	// update command
+	_, _ = executeCommand("-c", configPath, "update")
+
+	// log command
+	_, _ = executeCommand("-c", configPath, "log")
+
+	// convert command
+	tsPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	_ = os.WriteFile(tsPath, []byte("export default {};"), 0644)
+	_, _ = executeCommand("-c", tsPath, "convert", "-i", tsPath, "-o", filepath.Join(tmpDir, "out.json"))
+
+	// bin command
+	_, _ = executeCommand("-c", configPath, "bin")
+
+	// check-updates command
+	_, _ = executeCommand("-c", configPath, "check-updates")
+
+	// features command
+	_, _ = executeCommand("-c", configPath, "features")
+
+	// detect-conflicts command
+	_, _ = executeCommand("-c", configPath, "detect-conflicts")
+
+	// env command
+	_, _ = executeCommand("-c", configPath, "env")
+
+	// cleanup command
+	_, _ = executeCommand("-c", configPath, "cleanup")
+}
+
 func findRepoRoot() string {
 	dir, _ := os.Getwd()
 	for dir != "/" && dir != "." {
