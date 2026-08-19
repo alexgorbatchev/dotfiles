@@ -72,10 +72,13 @@ async function executeCommand(args: string[], opts: IExecuteCommandOptions = {})
     stderr: "pipe",
   });
 
+  const stdoutPromise = new Response(proc.stdout).text();
+  const stderrPromise = new Response(proc.stderr).text();
   const exitCode = await proc.exited;
+
   if (exitCode !== 0) {
-    const stdout = (await new Response(proc.stdout).text()).trim();
-    const stderr = (await new Response(proc.stderr).text()).trim();
+    const stdout = (await stdoutPromise).trim();
+    const stderr = (await stderrPromise).trim();
     const details = [stderr && `stderr:\n${stderr}`, stdout && `stdout:\n${stdout}`].filter(Boolean).join("\n\n");
     throw new Error(`Command failed (exit code ${exitCode}): ${command}\n${details}`);
   }
