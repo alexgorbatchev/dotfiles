@@ -116,6 +116,9 @@ func (c *MockCmd) SetEnv(env []string) { c.env = env }
 // SetStdin sets the standard input of the command.
 func (c *MockCmd) SetStdin(r io.Reader) { c.stdin = r }
 
+// SetOutput sets the output returned by Output() or CombinedOutput().
+func (c *MockCmd) SetOutput(b []byte) { c.output = b }
+
 // SetStdout sets the standard output of the command.
 func (c *MockCmd) SetStdout(w io.Writer) { c.stdout = w }
 

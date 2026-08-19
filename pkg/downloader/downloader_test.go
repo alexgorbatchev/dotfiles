@@ -1349,6 +1349,83 @@ func TestDownloaderEdgeCasesAndProgress(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected 416 recovery download to succeed: %v", err)
 	}
+
+	// 7. Partial resume 206 Partial Content
+	range206Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Range") != "" {
+			w.Header().Set("Content-Range", "bytes 3-8/9")
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = w.Write([]byte(" resume"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("old resume"))
+	}))
+	defer range206Server.Close()
+
+	_ = cacheFS.WriteFile("/dl-206.txt", []byte("old"), 0644)
+	var prog206Called bool
+	err = cd.Download(context.Background(), range206Server.URL, "/dl-206.txt", "", DownloadOptions{
+		SkipCache: true,
+		OnProgress: func(d, t int64) {
+			prog206Called = true
+		},
+	})
+	if err != nil || !prog206Called {
+		t.Errorf("expected 206 partial content download to succeed with progress: %v", err)
+	}
+
+	// 416 status code with matching sha256
+	range416HashServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+	}))
+	defer range416HashServer.Close()
+
+	knownHashData := []byte("already complete data")
+	_ = cacheFS.WriteFile("/dl-416hash.txt", knownHashData, 0644)
+	knownHash := fmt.Sprintf("%x", sha256.Sum256(knownHashData))
+	err = cd.Download(context.Background(), range416HashServer.URL, "/dl-416hash.txt", knownHash, DownloadOptions{SkipCache: true})
+	if err != nil {
+		t.Errorf("expected 416 with valid hash to return nil, got %v", err)
+	}
+
+	// 8. Cache TTL expiration
+	expCacheFS := fs.NewMemFS()
+	expDL := NewDownloader(expCacheFS, nil)
+	expDL.CacheEnabled = true
+	expDL.CacheTTL = 1 * time.Nanosecond
+	expDL.CacheDir = "/cache"
+
+	_ = expCacheFS.MkdirAll("/cache", 0755)
+	keyStr := getCacheKey(okServer2.URL, nil)
+	_ = expCacheFS.WriteFile(filepath.Join("/cache", keyStr), []byte("stale cache"), 0644)
+	time.Sleep(10 * time.Millisecond)
+
+	err = expDL.Download(context.Background(), okServer2.URL, "/dl-exp.txt", "", DownloadOptions{})
+	if err != nil {
+		t.Fatalf("expected download to succeed after cache TTL expiration: %v", err)
+	}
+
+	// 9. Context cancellation and invalid URL
+	ctxCanceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	err = cd.Download(ctxCanceled, okServer2.URL, "/dl-cancel.txt", "", DownloadOptions{})
+	if err == nil {
+		t.Errorf("expected error on canceled context")
+	}
+
+	err = cd.Download(context.Background(), "http://127.0.0.1:1/invalid", "/dl-invalid.txt", "", DownloadOptions{})
+	if err == nil {
+		t.Errorf("expected error on connection failure")
+	}
+
+	// 10. ProgressBar TTY methods
+	bar := NewProgressBar(100, "testfile.tar.gz")
+	bar.isTTY = true
+	bar.Start()
+	bar.Update(50)
+	bar.Update(100)
+	bar.Finish()
 }
 
 

@@ -527,4 +527,16 @@ func TestHeaderFormatting(t *testing.T) {
 			t.Errorf("GenerateEndOfFile() = %q, want %q", got, expected)
 		}
 	})
+
+	t.Run("GenerateToolHeader", func(t *testing.T) {
+		gotWithConfig := GenerateToolHeader("/path/to/bat.tool.ts")
+		if !strings.Contains(gotWithConfig, "# /path/to/bat.tool.ts") {
+			t.Errorf("expected GenerateToolHeader to contain config path, got:\n%s", gotWithConfig)
+		}
+
+		gotEmpty := GenerateToolHeader("")
+		if strings.Contains(gotEmpty, "# /") {
+			t.Errorf("expected GenerateToolHeader without config path to omit file path comment, got:\n%s", gotEmpty)
+		}
+	})
 }

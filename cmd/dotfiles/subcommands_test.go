@@ -525,6 +525,13 @@ func TestUpdateCommand_HelpAndUninstalled(t *testing.T) {
 	}
 }
 
+func TestRunMain(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+	os.Args = []string{"dotfiles", "version"}
+	runMain()
+}
+
 func TestVersionCommand(t *testing.T) {
 	out, err := executeCommand("version")
 	if err != nil {
@@ -612,28 +619,37 @@ func TestWhyCommand(t *testing.T) {
 }
 
 func TestAdditionalCmdCoverage(t *testing.T) {
+	repoRoot := findRepoRoot()
+	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
 	tmpDir := createTempConfigDir(t)
 	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
 
 	// files command
+	_, _ = executeCommand("-c", absConfig, "files")
+	_, _ = executeCommand("-c", absConfig, "files", "--tree")
+	_, _ = executeCommand("-c", absConfig, "files", "--json")
 	_, _ = executeCommand("-c", configPath, "files")
 
 	// generate with --overwrite
-	_, _ = executeCommand("-c", configPath, "generate", "--overwrite")
+	_, _ = executeCommand("-c", absConfig, "generate", "--overwrite")
+	_, _ = executeCommand("-c", absConfig, "generate")
 
 	// install command single & all
-	_, _ = executeCommand("-c", configPath, "install", "bat")
-	_, _ = executeCommand("-c", configPath, "install")
+	_, _ = executeCommand("-c", absConfig, "install", "bat")
+	_, _ = executeCommand("-c", absConfig, "install")
 
 	// uninstall command single & all
-	_, _ = executeCommand("-c", configPath, "uninstall", "bat")
-	_, _ = executeCommand("-c", configPath, "uninstall")
+	_, _ = executeCommand("-c", absConfig, "uninstall", "bat")
+	_, _ = executeCommand("-c", absConfig, "uninstall")
 
 	// update command
-	_, _ = executeCommand("-c", configPath, "update")
+	_, _ = executeCommand("-c", absConfig, "update", "bat")
+	_, _ = executeCommand("-c", absConfig, "update")
 
 	// log command
-	_, _ = executeCommand("-c", configPath, "log")
+	_, _ = executeCommand("-c", absConfig, "log")
+	_, _ = executeCommand("-c", absConfig, "log", "--lines", "10")
+	_, _ = executeCommand("-c", absConfig, "log", "--json")
 
 	// convert command
 	tsPath := filepath.Join(tmpDir, "dotfiles.config.ts")
@@ -641,22 +657,32 @@ func TestAdditionalCmdCoverage(t *testing.T) {
 	_, _ = executeCommand("-c", tsPath, "convert", "-i", tsPath, "-o", filepath.Join(tmpDir, "out.json"))
 
 	// bin command
-	_, _ = executeCommand("-c", configPath, "bin")
+	_, _ = executeCommand("-c", absConfig, "bin")
+	_, _ = executeCommand("-c", absConfig, "bin", "--list")
 
 	// check-updates command
-	_, _ = executeCommand("-c", configPath, "check-updates")
+	_, _ = executeCommand("-c", absConfig, "check-updates")
 
 	// features command
-	_, _ = executeCommand("-c", configPath, "features")
+	_, _ = executeCommand("-c", absConfig, "features")
 
 	// detect-conflicts command
-	_, _ = executeCommand("-c", configPath, "detect-conflicts")
+	_, _ = executeCommand("-c", absConfig, "detect-conflicts")
 
 	// env command
-	_, _ = executeCommand("-c", configPath, "env")
+	_, _ = executeCommand("-c", absConfig, "env")
 
 	// cleanup command
-	_, _ = executeCommand("-c", configPath, "cleanup")
+	_, _ = executeCommand("-c", absConfig, "cleanup")
+
+	// validate command
+	_, _ = executeCommand("-c", absConfig, "validate")
+
+	// skill command
+	_, _ = executeCommand("-c", absConfig, "skill", "--dir", filepath.Join(repoRoot, ".agents/skills"))
+
+	// dashboard command help
+	_, _ = executeCommand("dashboard", "--help")
 }
 
 func findRepoRoot() string {

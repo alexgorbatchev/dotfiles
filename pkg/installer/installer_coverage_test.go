@@ -716,3 +716,60 @@ func TestCargoQuickinstallAndGithubReleasesSuccess(t *testing.T) {
 		t.Fatalf("tryGithubReleases success failed: %v", errGH)
 	}
 }
+
+func TestMoreInstallerEdgeCases(t *testing.T) {
+	ctx := context.Background()
+	runner := exec.NewMockRunner()
+	memFS := fs.NewMemFS()
+	dl := downloader.NewDownloader(memFS, nil)
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+
+	// 1. GitHub Uninstall & CheckUpdate edge cases
+	gh := NewGitHubInstaller(runner, memFS, dl, sysCtx)
+	_ = gh.Uninstall(ctx, &config.ToolConfig{Name: "gh-tool"})
+
+	errServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer errServer.Close()
+
+	gh.httpClient = errServer.Client()
+	gh.BaseURL = errServer.URL
+	_, err := gh.CheckUpdate(ctx, &config.ToolConfig{
+		Name:          "gh-404",
+		InstallParams: map[string]interface{}{"repo": "owner/repo"},
+	})
+	if err == nil {
+		t.Errorf("expected CheckUpdate error on 404 response")
+	}
+
+	// 2. Gitea Uninstall & CheckUpdate edge cases
+	gt := NewGiteaInstaller(runner, memFS, dl, sysCtx)
+	_ = gt.Uninstall(ctx, &config.ToolConfig{Name: "gt-tool"})
+	gt.httpClient = errServer.Client()
+	_, err = gt.CheckUpdate(ctx, &config.ToolConfig{
+		Name:          "gt-404",
+		InstallParams: map[string]interface{}{"repo": "owner/repo", "instanceUrl": errServer.URL},
+	})
+	if err == nil {
+		t.Errorf("expected Gitea CheckUpdate error on 404 response")
+	}
+
+	// 3. CurlTar Install extraction error
+	curlTar := NewCurlTarInstaller(runner, memFS, dl, sysCtx)
+	_, err = curlTar.Install(ctx, &config.ToolConfig{
+		Name:          "curltar-fail",
+		InstallParams: map[string]interface{}{"url": errServer.URL},
+	})
+	if err == nil {
+		t.Errorf("expected CurlTar install error on 404 download")
+	}
+
+	// 4. CurlBinary Uninstall & CheckUpdate
+	curlBin := NewCurlBinaryInstaller(runner, memFS, dl, sysCtx)
+	_ = curlBin.Uninstall(ctx, &config.ToolConfig{Name: "curlbin-tool"})
+
+	// 5. Manual Uninstall
+	manual := NewManualInstaller(runner, memFS, sysCtx)
+	_ = manual.Uninstall(ctx, &config.ToolConfig{Name: "manual-tool"})
+}

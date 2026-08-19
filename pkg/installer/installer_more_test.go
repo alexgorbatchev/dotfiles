@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -444,6 +445,30 @@ func TestInstallerEdgeCasesAndFallbacks(t *testing.T) {
 		t.Errorf("getBrewPrefix failed: prefix=%q, err=%v", prefix, err)
 	}
 
+	// Brew getBrewPrefix fallbacks
+	runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+		if len(c.Args) > 1 && c.Args[0] == "--prefix" && c.Args[1] == "testformula" {
+			return errors.New("formula not installed")
+		}
+		if len(c.Args) == 1 && c.Args[0] == "--prefix" {
+			c.SetOutput([]byte("/opt/homebrew"))
+			return nil
+		}
+		return errors.New("brew error")
+	})
+	fbPrefix, err := brew.getBrewPrefix(context.Background(), "testformula")
+	if err != nil || fbPrefix != "/opt/homebrew/opt/testformula" {
+		t.Errorf("getBrewPrefix fallback failed: prefix=%q, err=%v", fbPrefix, err)
+	}
+
+	runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+		return errors.New("all brew cmds fail")
+	})
+	fb2Prefix, err := brew.getBrewPrefix(context.Background(), "testformula")
+	if err != nil || fb2Prefix != "/usr/local/opt/testformula" {
+		t.Errorf("getBrewPrefix second fallback failed: prefix=%q, err=%v", fb2Prefix, err)
+	}
+
 	runner.Register("brew", []byte(`[{"versions":{"stable":"2.4.0"}}]`), nil)
 	ver, err := brew.getBrewVersion(context.Background(), "testformula")
 	if err != nil || ver != "2.4.0" {
@@ -501,6 +526,16 @@ func TestInstallerEdgeCasesAndFallbacks(t *testing.T) {
 	appPath, err := findFileWithExtension(memFS, "/dmg/vol", ".app")
 	if err != nil || appPath != "/dmg/vol/App.app" {
 		t.Errorf("findFileWithExtension failed: got %q, err=%v", appPath, err)
+	}
+
+	// Test findFileWithExtension miss and error paths
+	noAppPath, _ := findFileWithExtension(memFS, "/dmg/vol", ".nonexistent")
+	if noAppPath != "" {
+		t.Errorf("expected findFileWithExtension miss to return empty string, got %q", noAppPath)
+	}
+	_, errBadDir := findFileWithExtension(memFS, "/bad/directory/path", ".app")
+	if errBadDir == nil {
+		t.Errorf("expected findFileWithExtension on bad directory to return error")
 	}
 
 	if err := copyDir(memFS, "/dmg/vol/App.app", "/dest/App.app"); err != nil {
