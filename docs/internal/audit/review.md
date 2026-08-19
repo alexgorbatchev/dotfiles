@@ -1,9 +1,9 @@
 ---
-review_sha: c05f096b6cd7e14d6293ec8dbb1a71f9c13e6865
-reviewed_at: 2026-08-19T06:15:00Z
 created_on: 2026-08-15 01:01
-last_modified: 2026-08-19 06:15
+last_modified: 2026-08-19 11:25
 status: current
+review_sha: d42872b84df1d80060ad9beda448dbc5972a74d8
+reviewed_at: 2026-08-19T11:25:00Z
 ---
 
 # Review Summary
@@ -14,7 +14,7 @@ status: current
 
 # Project Review Runbook
 
-- Last verified at: 2026-08-19T06:15:00Z (c05f096b6cd7e14d6293ec8dbb1a71f9c13e6865)
+- Last verified at: 2026-08-19T11:25:00Z (d42872b84df1d80060ad9beda448dbc5972a74d8)
 - Setup/install commands:
   - `bun install --frozen-lockfile`
 - Test commands:
@@ -52,11 +52,23 @@ status: current
 
 - **Resolution**: Refactored `cmd/dotfiles/why.go` (`whyCmd`) to eliminate direct `os.Exit(1)` calls inside Cobra's `RunE` handler. Errors are returned via `fmt.Errorf(...)`, allowing `defer services.DB.Close()` to execute and Cobra's execution loop to handle process exit cleanly.
 
+### [REV-016] [RESOLVED] Direct `os.Exit(1)` inside Cobra `detectConflictsCmd` Bypasses Deferred Cleanup
+
+- **Resolution**: Refactored `cmd/dotfiles/detect_conflicts.go` (`detectConflictsCmd`) to eliminate direct `os.Exit(1)` calls inside Cobra's `RunE` handler. Errors are returned via `fmt.Errorf(...)`, allowing `defer services.DB.Close()` to execute cleanly. Updated conflict checking to use `installer.GetBinaryNames` and added unit test `TestDetectConflictsCommand_ErrorReturn`.
+
 ## Cross-Component Contract Misalignment
 
 ### [REV-014] [RESOLVED] Duplicate Tool Lookup Logic in `install` and `uninstall` Commands Omits `BinaryConfig` Types
 
 - **Resolution**: Updated `cmd/dotfiles/install.go` and `cmd/dotfiles/uninstall.go` to delegate tool lookup directly to `config.FindTool(services.ToolConfigs, toolName)`. This eliminates duplicate inline search loops and adds support for `BinaryConfig` / `*BinaryConfig` struct pointers and shell aliases/functions.
+
+### [REV-017] [RESOLVED] `update` and `validate` Commands Used Inline Search Loops Instead of `config.FindTool`
+
+- **Resolution**: Refactored `cmd/dotfiles/update.go` and `cmd/dotfiles/validate.go` to delegate query matching to `config.FindTool(services.ToolConfigs, query)`. This enables tool resolution by binary name, suffix (`--`), or shell alias/function across all CLI commands. Added test `TestUpdateAndValidateCommand_FindTool`.
+
+### [REV-018] [RESOLVED] Native JSON Configuration Unmarshaling Omitted Tool Name Defaulting
+
+- **Resolution**: Updated `BootstrapServices` in `cmd/dotfiles/bootstrap.go` to default `localTC.Name` from the JSON map key when unmarshaling `toolConfigs` if the `name` field is omitted inside the JSON object value. Added test `TestBootstrapServices_JSONToolNameDefaulting`.
 
 ## Overlapping Functionality and Responsibility Drift
 
@@ -73,16 +85,15 @@ status: current
 
 # Test Coverage
 
-- Overall Go function average coverage: **89.6%** across all 25 packages (`cmd/dotfiles`: 69.5%, `pkg/logger`: 98.9%, `pkg/shellinit`: 96.5%, `pkg/unwrap`: 100%, `pkg/utils`: 100%)
+- Overall Go statement coverage: **89.6%** across all 25 packages (`cmd/dotfiles`: 72.3%, `pkg/logger`: 98.9%, `pkg/shellinit`: 96.5%, `pkg/unwrap`: 100%, `pkg/utils`: 100%, `pkg/vm`: 90.7%)
 - Overall Dashboard JS/TS coverage: **98.9%** lines, **100%** functions
 - Target: **90.0%**
 
 # Issue Lifecycle (incremental reviews)
 
 - Fixed this round:
-  - [REV-012] Code coverage expanded across packages (`pkg/shellinit` to 96.5%, `cmd/dotfiles` to 71.0%, `pkg/installer` to 84.8%)
-  - [REV-013] `os.Exit(1)` calls in `whyCmd` replaced with clean error returns
-  - [REV-014] `install` and `uninstall` commands updated to use `config.FindTool`
-  - [REV-015] `scripts/release.ts` refactored to use `Bun.spawn`
+  - [REV-016] Eliminated `os.Exit(1)` in `detectConflictsCmd` in favor of error returns and used `installer.GetBinaryNames`.
+  - [REV-017] Refactored `update` and `validate` CLI commands to resolve tools via `config.FindTool`.
+  - [REV-018] Added tool name defaulting from map key in `BootstrapServices` when parsing native JSON project configurations.
 - Still open: None
 - Partially fixed: None
