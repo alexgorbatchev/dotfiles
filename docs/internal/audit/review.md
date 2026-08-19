@@ -1,20 +1,20 @@
 ---
+review_sha: 26ca9327827c3d31255cc97ed0125dad87c4860e
+reviewed_at: 2026-08-19T04:50:39Z
 created_on: 2026-08-15 01:01
-last_modified: 2026-08-15 04:30
+last_modified: 2026-08-19 04:50
 status: current
-review_sha: fc6aabf3ddb90b039c6fb3b751c480c68a86c0bd
-reviewed_at: 2026-08-15T04:30:00Z
 ---
 
 # Review Summary
 
-- Findings: critical=0, moderate=0, minor=0 (ALL RESOLVED AND VERIFIED)
-- Coverage: >90% Go statement coverage across all packages, >97% Dashboard JS/TS line coverage
-- Test status: PASS (`just check` passes cleanly, all 24 Go packages pass, Go E2E tests pass, 220 Bun dashboard tests pass)
+- Findings: critical=1, moderate=2, minor=1
+- Coverage: 88.1% Go statement coverage (target: 90%), Dashboard JS/TS 98.7% line coverage (useRepeatedQueryParam.ts at 85.7% funcs)
+- Test status: PASS (`just check` passes cleanly, all Go unit tests pass, Go E2E tests pass, Bun test suite passes 221 tests)
 
 # Project Review Runbook
 
-- Last verified at: 2026-08-15T04:30:00Z (fc6aabf3ddb90b039c6fb3b751c480c68a86c0bd)
+- Last verified at: 2026-08-19T04:50:39Z (26ca9327827c3d31255cc97ed0125dad87c4860e)
 - Setup/install commands:
   - `bun install --frozen-lockfile`
 - Test commands:
@@ -30,65 +30,123 @@ reviewed_at: 2026-08-15T04:30:00Z
   - `just fix` (oxfmt fix, dprint fmt, oxlint --fix)
   - `just typecheck` (`tsgo -p tsconfig.json`)
   - `just compile` (`go run scripts/build/main.go` - builds dashboard client and compiles Go binary into `bin/`)
+- Required env/services/fixtures:
+  - Test project fixture: `test-project/dotfiles.config.ts`
+  - Managed installer fixtures: `scripts/managed-installer/fixtures/`
+- Monorepo/package working-directory notes:
+  - Go binaries embed compiled dashboard assets from `pkg/dashboard/dist/`. Any changes under `packages/dashboard/src/client/` require running `bun compile` to re-bundle client assets into Go source before launching the dashboard server.
+- Known caveats:
+  - Do not manually edit `.generated/` output directories in fixtures or builds. If generated output gets stale, delete the matching `.generated/` directory and rerun the CLI.
 
-# Resolved Audit Findings
-
-## Project-Specific Policy Violations
-
-### [REV-001] [RESOLVED] Code Coverage Below Mandatory 90% Project Target
-
-- **Resolution**: Expanded unit tests across `cmd/dotfiles`, `pkg/installer`, `pkg/orchestrator`, `pkg/dashboard`, `pkg/downloader`, `pkg/vm`, and `packages/dashboard`. Every Go package and TypeScript file now maintains >= 90% statement/line coverage.
-
-### [REV-002] [RESOLVED] Violation of Project Policy against Global `/tmp` Usage in Installer Scripts
-
-- **Resolution**: Updated `scripts/managed-installer/test.sh` and mock fixture scripts to use `${REPO_ROOT}/.tmp/` for sandboxing. Zero scripts or runtime code write to global `/tmp`.
+# Findings by Category
 
 ## Correctness Bugs
 
-### [REV-003] [RESOLVED] Ignored `--overwrite` Flag on `dotfiles generate` Command
+### [REV-013] [moderate] Bypass of Deferred Resource Cleanup via `os.Exit(1)` in Cobra `whyCmd`
 
-- **Resolution**: Updated `cmd/dotfiles/generate.go` to set `ctx = config.WithOverwrite(ctx, true)` when `--overwrite` is provided, passing the context override into `Orchestrator`.
+- Location: `cmd/dotfiles/why.go:19`, `cmd/dotfiles/why.go:33`, `cmd/dotfiles/why.go:42`, `cmd/dotfiles/why.go:49` (`whyCmd`)
+- Current behavior: `whyCmd` calls `os.Exit(1)` directly when positional arguments are missing or when bootstrap/tool resolution fails unless `isDevTest()` returns true.
+- Expected behavior: Cobra `RunE` handlers should return `fmt.Errorf(...)` or errors, allowing Cobra's execution loop to handle error formatting and process exits.
+- Why it matters: Calling `os.Exit(1)` inside `RunE` abruptly terminates the process, bypassing deferred cleanup functions (`defer services.DB.Close()`) and leaving open SQLite database handles. It also prevents clean error reporting when calling Cobra commands programmatically.
 
-### [REV-004] [RESOLVED] `dotfiles update` Without Tool Arguments Does Not Perform Tool Updates
+## Security Issues
 
-- **Resolution**: Updated `cmd/dotfiles/update.go` to check for newer releases via `inst.CheckUpdate`, update `targetTool.Version`, and execute `Orchestrator.InstallTool` across all configured tools when no positional argument is provided.
+No active security issues identified in this review round.
 
-### [REV-005] [RESOLVED] Dashboard Server `handleToolUpdate` Re-installs Unupdated Version
+## Project-Specific Policy Violations (always critical)
 
-- **Resolution**: Updated `pkg/dashboard/routes_tools.go` (`handleToolUpdate`) to check for the latest release version via `inst.CheckUpdate(ctx, targetTool)` and set `targetTool.Version = &res.LatestVersion` before triggering `s.orchestrator.InstallTool`.
+### [REV-012] [critical] Code Coverage Below Mandatory 90% Project Target
 
-### [REV-006] [RESOLVED] Extreme Code Duplication in Goja VM Script Evaluation Functions
+- Location: `cmd/dotfiles` (62.6%), `pkg/installer` (80.4%), `pkg/dashboard` (87.7%), `pkg/downloader` (88.6%), `pkg/registry` (89.8%), `packages/dashboard/src/client/hooks/useRepeatedQueryParam.ts` (85.71% Funcs)
+- Current behavior: Overall Go statement coverage across all packages stands at 88.1% (below the mandatory 90% threshold). `cmd/dotfiles` coverage is at 62.6% due to untested paths in `validate.go`, `why.go`, `update.go`, and `generate.go`. On the Dashboard frontend, `bun test --coverage` triggers a coverage threshold failure on `useRepeatedQueryParam.ts` (85.71% function coverage vs 90.0% threshold).
+- Policy violated: `AGENTS.md` Shared boundaries section ("Always: maintain a minimum of 90% statement/line coverage across all packages").
+- Expected behavior: All Go packages must maintain >= 90% statement coverage, and all TypeScript/JavaScript modules must satisfy the 90% coverage threshold.
+- Why it matters: Violates explicit project governance rules in `AGENTS.md` and increases regression risk for un-tested CLI commands and UI hooks.
 
-- **Resolution**: Refactored `pkg/vm/vm.go` so `EvaluateToolDefinition` delegates directly to `EvaluateToolDefinitionWithContext`, eliminating ~80 lines of duplicate Goja VM setup and exports extraction code.
+## Cross-Component Contract Misalignment
 
-### [REV-007] [RESOLVED] Unhandled Goroutine and Connection Leak in Proxy CONNECT Tunneling
+### [REV-014] [moderate] Duplicate Tool Lookup Logic in `install` and `uninstall` Commands Omits `BinaryConfig` Types
 
-- **Resolution**: Updated `pkg/proxy/proxy.go` (`handleProxy`) to introduce a `closeConns` helper closing both `clientConn` and `destConn` as soon as either `io.Copy` goroutine completes, unblocking the remaining copy loop and preventing socket leaks.
+- Location: `cmd/dotfiles/install.go:35-55`, `cmd/dotfiles/uninstall.go:28-48` (`installCmd`, `uninstallCmd`)
+- Declaration site: `pkg/config/config.go:284` (`FindTool`), `pkg/config/config.go:334` (`getBinaryName`)
+- Usage site: `cmd/dotfiles/install.go:44-55`, `cmd/dotfiles/uninstall.go:37-48`
+- Current behavior: `installCmd` and `uninstallCmd` execute custom inline type-switch loops over `tc.Binaries` that only inspect `string` and `map[string]interface{}` entries. They ignore `BinaryConfig` and `*BinaryConfig` struct types.
+- Expected behavior: `installCmd` and `uninstallCmd` should call `config.FindTool(services.ToolConfigs, toolName)`, which uniformly resolves tools by name, suffix, binary string, binary map, `BinaryConfig` struct pointer, or shell alias/function.
+- Why it matters: Code duplication across command handlers and contract misalignment with `config.FindTool`. Tools configured with structured `BinaryConfig` instances will fail to resolve in `install` and `uninstall` commands, while resolving correctly in `why` and `pkg/config`.
 
-### [REV-008] [RESOLVED] Fragile Regex Import Stripping in `pkg/vm/vm.go`
+## Stub Implementations
 
-- **Resolution**: Updated `pkg/vm/vm.go` (`stripImports`) to transpile TypeScript/ES module scripts via esbuild (`transpileTS` / `api.Transform`) to produce clean CommonJS.
+No stub implementations identified in this review round.
 
-### [REV-009] [RESOLVED] `break` Inside `switch` Statement Fails to Exit Outer Binary Loop
+## Unfinished Features
 
-- **Resolution**: Updated `cmd/dotfiles/install.go` and `cmd/dotfiles/uninstall.go` to use labeled `break binaryLoop` statements, correctly breaking out of the outer binary iteration loop upon a match.
+No unfinished features identified in this review round.
 
-## File Size & Modularity
+## Dead Code
 
-### [REV-010] [RESOLVED] Monolithic File Size in Core Architecture Files
+No unreferenced dead code identified in this review round.
 
-- **Resolution**:
-  - `pkg/orchestrator/orchestrator.go` decomposed into `toposort.go`, `install_pipeline.go`, `generate_pipeline.go`, `shell_scripts.go`.
-  - `pkg/dashboard/routes.go` decomposed into `routes_tools.go`, `routes_stats.go`, `routes_config.go`.
-  - `pkg/registry/registry.go` decomposed into `registry_install.go`, `registry_ops.go`, `types.go`.
+## Overlapping Functionality and Responsibility Drift
 
-### [REV-011] [RESOLVED] Incomplete Test Coverage in Dashboard Shared Utilities
+### [REV-015] [minor] `scripts/release.ts` Uses Stale Property / API Calls for Bun Shell Result
 
-- **Resolution**: Added comprehensive unit tests in `packages/dashboard/src/client/__tests__/api.test.ts`, `packages/dashboard/src/shared/__tests__/dashboardUtils.test.ts`, and `packages/dashboard/src/client/lib/__tests__/highlightToolSource.test.ts`, reaching 100% coverage on those modules.
+- Location: `scripts/release.ts:68-74` (`executeCommand`)
+- Current behavior: `executeCommand` invokes `Bun.$`${args}`.cwd(cwd).env(mergedEnv).quiet().nothrow()` and reads `result.exitCode`.
+- Expected behavior: Standardized usage matching project Bun shell patterns.
+- Why it matters: Low near-term operational risk, but maintenance drift relative to updated Bun shell type contracts.
 
-# Verification Results
+## Optimization Opportunities
+
+No hot-path performance bottlenecks identified in this review round.
+
+## File Size and Modularity
+
+Monolithic file refactoring carried out in recent commits successfully decomposed `pkg/orchestrator/orchestrator.go`, `pkg/dashboard/routes.go`, and `pkg/registry/registry.go` into domain-focused submodules (`toposort.go`, `install_pipeline.go`, `generate_pipeline.go`, `shell_scripts.go`, `routes_tools.go`, `routes_stats.go`, `routes_config.go`, `registry_install.go`, `registry_ops.go`). No files currently exceed threshold limits.
+
+## API and Design Gaps (libraries only)
+
+Not applicable (application/CLI toolchain).
+
+# Test Results
 
 - Commands run:
-  - `just check` (oxfmt, dprint, oxlint, tsgo, go test ./pkg/... ./cmd/..., go test ./tests/e2e/...)
-  - `bun test --coverage` (packages/dashboard test suite with 100% threshold check)
-- Result: PASS (0 errors, 0 warnings, 0 audit issues remaining)
+  - `just check` (runs oxfmt, dprint, oxlint, tsgo, `go test ./pkg/... ./cmd/...`, `go test ./tests/e2e/...`)
+  - `go test -coverprofile=coverage.out ./pkg/... ./cmd/... && go tool cover -func=coverage.out`
+  - `bun test`
+- Result: PASS
+  - Go unit tests: 25 packages passed cleanly
+  - Go E2E test suite: passed cleanly (10.2s)
+  - Bun dashboard test suite: 221 tests passed across 22 files (0 fails)
+
+# Test Coverage
+
+- Overall Go statement coverage: **88.1%**
+- Target: **90.0%**
+- Below-target Go packages:
+  - `cmd/dotfiles`: 62.6%
+  - `pkg/installer`: 80.4%
+  - `pkg/dashboard`: 87.7%
+  - `pkg/downloader`: 88.6%
+  - `pkg/registry`: 89.8%
+- Below-target TypeScript modules:
+  - `packages/dashboard/src/client/hooks/useRepeatedQueryParam.ts`: 85.71% Funcs
+
+# Issue Lifecycle (incremental reviews)
+
+- Fixed this round:
+  - [REV-002] Global `/tmp` usage in installer scripts eliminated
+  - [REV-003] `--overwrite` flag passed to orchestrator context on generate
+  - [REV-004] `dotfiles update` without arguments checks all installed tools
+  - [REV-005] Dashboard server `handleToolUpdate` resolves latest version before installation
+  - [REV-006] Goja VM script evaluation functions consolidated
+  - [REV-007] Proxy CONNECT tunnel connection leaks resolved via closed channels
+  - [REV-008] Regex import stripping replaced with esbuild transpilation
+  - [REV-009] Labeled `binaryLoop:` break statements fixed in `install` and `uninstall` commands
+  - [REV-010] Monolithic Go source files decomposed into modular package files
+  - [REV-011] Dashboard shared utilities test coverage expanded to 100%
+- Still open:
+  - [REV-012] Code coverage below mandatory 90% project target (re-opened from REV-001)
+  - [REV-013] Bypass of deferred resource cleanup via `os.Exit(1)` in Cobra `whyCmd`
+  - [REV-014] Duplicate tool lookup logic in `install` and `uninstall` commands omits `BinaryConfig` types
+  - [REV-015] `scripts/release.ts` uses stale property / API calls for Bun shell result
+- Partially fixed: None
