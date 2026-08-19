@@ -255,3 +255,258 @@ func TestInstallersInstallPipeline(t *testing.T) {
 		t.Fatalf("Gitea Install failed: err=%v", err)
 	}
 }
+
+func TestInstallerParamsAndUtilities(t *testing.T) {
+	params := map[string]interface{}{
+		"str":   "hello",
+		"flag1": true,
+		"flag2": "true",
+		"flag3": "1",
+		"flag4": false,
+		"slice": []interface{}{"a", "b"},
+		"ss":    []string{"c", "d"},
+	}
+
+	if v := getStringParam(params, "str", "default"); v != "hello" {
+		t.Errorf("getStringParam = %q, want 'hello'", v)
+	}
+	if v := getStringParam(params, "missing", "def"); v != "def" {
+		t.Errorf("getStringParam missing = %q, want 'def'", v)
+	}
+
+	if !getBoolParam(params, "flag1", false) {
+		t.Errorf("getBoolParam flag1 failed")
+	}
+	if !getBoolParam(params, "flag2", false) {
+		t.Errorf("getBoolParam flag2 failed")
+	}
+	if !getBoolParam(params, "flag3", false) {
+		t.Errorf("getBoolParam flag3 failed")
+	}
+	if getBoolParam(params, "flag4", true) {
+		t.Errorf("getBoolParam flag4 failed")
+	}
+	if !getBoolParam(params, "missing", true) {
+		t.Errorf("getBoolParam missing failed")
+	}
+
+	s1 := getStringSliceParam(params, "slice")
+	if len(s1) != 2 || s1[0] != "a" || s1[1] != "b" {
+		t.Errorf("getStringSliceParam slice failed: %v", s1)
+	}
+	s2 := getStringSliceParam(params, "ss")
+	if len(s2) != 2 || s2[0] != "c" || s2[1] != "d" {
+		t.Errorf("getStringSliceParam ss failed: %v", s2)
+	}
+
+	if IsDryRun() {
+		t.Errorf("expected IsDryRun false by default")
+	}
+
+	tool := &config.ToolConfig{
+		Name:     "mytool",
+		Binaries: []interface{}{"bin1", map[string]interface{}{"name": "bin2"}},
+	}
+	bins := GetBinaryNames(tool.Name, tool.Binaries)
+	if len(bins) != 2 || bins[0] != "bin1" || bins[1] != "bin2" {
+		t.Errorf("GetBinaryNames failed: %v", bins)
+	}
+
+	defBins := GetBinaryNames("fallback", nil)
+	if len(defBins) != 1 || defBins[0] != "fallback" {
+		t.Errorf("GetBinaryNames empty failed: %v", defBins)
+	}
+
+	memFS := fs.NewMemFS()
+	_ = memFS.MkdirAll("/tmp/dir/sub", 0755)
+	_ = memFS.WriteFile("/tmp/dir/sub/file.txt", []byte("data"), 0644)
+	if err := removeAll(memFS, "/tmp/dir"); err != nil {
+		t.Fatalf("removeAll failed: %v", err)
+	}
+	if exists, _ := memFS.Exists("/tmp/dir"); exists {
+		t.Errorf("removeAll failed to delete directory")
+	}
+}
+
+func TestPackageManagerInstallers(t *testing.T) {
+	runner := exec.NewMockRunner()
+	memFS := fs.NewMemFS()
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+
+	// Apt
+	apt := NewAptInstaller(runner, memFS, sysCtx)
+	runner.RegisterFunc("apt-get", func(c *exec.MockCmd) error {
+		_ = memFS.WriteFile("/usr/bin/aptpkg", []byte("bin"), 0755)
+		return nil
+	})
+	runner.Register("/usr/bin/aptpkg", []byte("aptpkg 1.0.0"), nil)
+	tApt := &config.ToolConfig{
+		Name:          "aptpkg",
+		Sudo:          true,
+		InstallParams: map[string]interface{}{"pkgName": "aptpkg"},
+		Binaries:      []interface{}{"aptpkg"},
+	}
+	resApt, err := apt.Install(context.Background(), tApt)
+	if err != nil || resApt == nil {
+		t.Fatalf("Apt Install failed: %v", err)
+	}
+
+	// Dnf
+	dnf := NewDnfInstaller(runner, memFS, sysCtx)
+	runner.RegisterFunc("dnf", func(c *exec.MockCmd) error {
+		_ = memFS.WriteFile("/usr/bin/dnfpkg", []byte("bin"), 0755)
+		return nil
+	})
+	runner.Register("/usr/bin/dnfpkg", []byte("dnfpkg 1.0.0"), nil)
+	tDnf := &config.ToolConfig{
+		Name:          "dnfpkg",
+		Sudo:          true,
+		InstallParams: map[string]interface{}{"pkgName": "dnfpkg"},
+		Binaries:      []interface{}{"dnfpkg"},
+	}
+	resDnf, err := dnf.Install(context.Background(), tDnf)
+	if err != nil || resDnf == nil {
+		t.Fatalf("Dnf Install failed: %v", err)
+	}
+
+	// Pacman
+	pacman := NewPacmanInstaller(runner, memFS, sysCtx)
+	runner.RegisterFunc("pacman", func(c *exec.MockCmd) error {
+		_ = memFS.WriteFile("/usr/bin/pacpkg", []byte("bin"), 0755)
+		return nil
+	})
+	runner.Register("/usr/bin/pacpkg", []byte("pacpkg 1.0.0"), nil)
+	tPac := &config.ToolConfig{
+		Name:          "pacpkg",
+		Sudo:          true,
+		InstallParams: map[string]interface{}{"pkgName": "pacpkg"},
+		Binaries:      []interface{}{"pacpkg"},
+	}
+	resPac, err := pacman.Install(context.Background(), tPac)
+	if err != nil || resPac == nil {
+		t.Fatalf("Pacman Install failed: %v", err)
+	}
+
+	// Npm
+	npm := NewNpmInstaller(runner, memFS, sysCtx)
+	runner.RegisterFunc("npm", func(c *exec.MockCmd) error {
+		_ = memFS.WriteFile("/usr/bin/npmpkg", []byte("bin"), 0755)
+		return nil
+	})
+	tNpm := &config.ToolConfig{
+		Name:          "npmpkg",
+		InstallParams: map[string]interface{}{"package": "npmpkg"},
+		Binaries:      []interface{}{"npmpkg"},
+	}
+	resNpm, err := npm.Install(context.Background(), tNpm)
+	if err != nil || resNpm == nil {
+		t.Fatalf("Npm Install failed: %v", err)
+	}
+
+	// ZshPlugin
+	zsh := NewZshPluginInstaller(runner, memFS, sysCtx)
+	runner.RegisterFunc("git", func(c *exec.MockCmd) error {
+		_ = memFS.MkdirAll("/tmp/zsh-plugin", 0755)
+		_ = memFS.WriteFile("/tmp/zsh-plugin/plugin.zsh", []byte("plugin"), 0644)
+		return nil
+	})
+	tZsh := &config.ToolConfig{
+		Name:          "myplugin",
+		InstallParams: map[string]interface{}{"repo": "zsh-users/zsh-autosuggestions", "source": "plugin.zsh"},
+	}
+	resZsh, err := zsh.Install(context.Background(), tZsh)
+	if err != nil || resZsh == nil {
+		t.Fatalf("ZshPlugin Install failed: %v", err)
+	}
+
+	// Manual
+	manual := NewManualInstaller(runner, memFS, sysCtx)
+	tManual := &config.ToolConfig{
+		Name:          "manual-tool",
+		InstallParams: map[string]interface{}{"script": "echo manual"},
+	}
+	resManual, err := manual.Install(context.Background(), tManual)
+	if err != nil || resManual == nil {
+		t.Fatalf("Manual Install failed: %v", err)
+	}
+}
+
+func TestInstallerEdgeCasesAndFallbacks(t *testing.T) {
+	runner := exec.NewMockRunner()
+	memFS := fs.NewMemFS()
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+
+	// 1. Brew getBrewPrefix & getBrewVersion
+	brew := NewBrewInstaller(runner, memFS, &SystemContext{OS: "darwin", Arch: "arm64"})
+	runner.Register("brew", []byte("/opt/homebrew/opt/testformula\n"), nil)
+	prefix, err := brew.getBrewPrefix(context.Background(), "testformula")
+	if err != nil || prefix != "/opt/homebrew/opt/testformula" {
+		t.Errorf("getBrewPrefix failed: prefix=%q, err=%v", prefix, err)
+	}
+
+	runner.Register("brew", []byte(`[{"versions":{"stable":"2.4.0"}}]`), nil)
+	ver, err := brew.getBrewVersion(context.Background(), "testformula")
+	if err != nil || ver != "2.4.0" {
+		t.Errorf("getBrewVersion failed: ver=%q, err=%v", ver, err)
+	}
+
+	// 2. Npm CheckUpdate
+	npm := NewNpmInstaller(runner, memFS, sysCtx)
+	runner.Register("npm", []byte("3.1.2\n"), nil)
+	tNpm := &config.ToolConfig{
+		Name:          "mynpmpackage",
+		InstallParams: map[string]interface{}{"package": "mynpmpackage"},
+	}
+	upNpm, err := npm.CheckUpdate(context.Background(), tNpm)
+	if err != nil || upNpm == nil || upNpm.LatestVersion != "3.1.2" {
+		t.Errorf("Npm CheckUpdate failed: %v", upNpm)
+	}
+
+	// 3. detectArchiveExtension
+	exts := map[string]string{
+		"http://x.com/tool.tar.gz":  ".tar.gz",
+		"http://x.com/tool.tgz":     ".tgz",
+		"http://x.com/tool.tar.bz2": ".tar.bz2",
+		"http://x.com/tool.tar.xz":  ".tar.xz",
+		"http://x.com/tool.zip":     ".zip",
+	}
+	for u, expectedExt := range exts {
+		if ext := detectArchiveExtension(context.Background(), u, nil); ext != expectedExt {
+			t.Errorf("detectArchiveExtension(%q) = %q, want %q", u, ext, expectedExt)
+		}
+	}
+
+	// 4. GitHub fetchReleaseViaGhCli & downloadAssetViaGhCli
+	gh := NewGitHubInstaller(runner, memFS, downloader.NewDownloader(memFS, nil), sysCtx)
+	runner.Register("gh", []byte(`{
+		"tag_name": "v1.2.3",
+		"assets": [{"name": "cli-tool-linux-amd64", "browser_download_url": "http://gh/dl"}]
+	}`), nil)
+	rel, err := gh.fetchReleaseViaGhCli(context.Background(), "owner/cli-tool", "", "")
+	if err != nil || rel == nil || rel.TagName != "v1.2.3" {
+		t.Errorf("fetchReleaseViaGhCli failed: rel=%v, err=%v", rel, err)
+	}
+
+	runner.RegisterFunc("gh", func(c *exec.MockCmd) error {
+		_ = memFS.WriteFile("/tmp/asset.bin", []byte("asset-data"), 0644)
+		return nil
+	})
+	if err := gh.downloadAssetViaGhCli(context.Background(), "owner/cli-tool", "v1.2.3", "cli-tool-linux-amd64", "/tmp/asset.bin"); err != nil {
+		t.Errorf("downloadAssetViaGhCli failed: %v", err)
+	}
+
+	// 5. findFileWithExtension & copyDir
+	_ = memFS.MkdirAll("/dmg/vol/App.app/Contents", 0755)
+	_ = memFS.WriteFile("/dmg/vol/App.app/Contents/PkgInfo", []byte("APPL"), 0644)
+	appPath, err := findFileWithExtension(memFS, "/dmg/vol", ".app")
+	if err != nil || appPath != "/dmg/vol/App.app" {
+		t.Errorf("findFileWithExtension failed: got %q, err=%v", appPath, err)
+	}
+
+	if err := copyDir(memFS, "/dmg/vol/App.app", "/dest/App.app"); err != nil {
+		t.Fatalf("copyDir failed: %v", err)
+	}
+	if exists, _ := memFS.Exists("/dest/App.app/Contents/PkgInfo"); !exists {
+		t.Errorf("copyDir failed to copy file")
+	}
+}

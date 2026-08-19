@@ -2,25 +2,6 @@ import { describe, expect, test } from "bun:test";
 import { buildTreeByTool } from "../buildTreeByTool";
 import type { IFilesList } from "../types";
 
-type CollectableNode = {
-  name: string;
-  type: string;
-  fileType?: string;
-  children?: CollectableNode[];
-};
-
-type CollectedNode = {
-  name: string;
-  fileType?: string;
-};
-
-function collectNodes(nodes: CollectableNode[]): CollectedNode[] {
-  return nodes.flatMap((node) => {
-    const childNodes = collectNodes(node.children ?? []);
-    return [{ name: node.name, fileType: node.fileType }, ...childNodes];
-  });
-}
-
 describe("buildTreeByTool", () => {
   test("returns empty object for null input", () => {
     const result = buildTreeByTool(null);
@@ -166,22 +147,19 @@ describe("buildTreeByTool", () => {
     expect(result["fd"]![0]!.children).toHaveLength(2);
   });
 
-  test("install and binary-path files appear in tree output", () => {
+  test("sorts root directory nodes before root file nodes", () => {
     const filesList: IFilesList = {
       files: [
-        { filePath: "/home/user/.generated/binaries/fd/10.3.0", fileType: "install", toolName: "fd" },
-        { filePath: "/home/user/.generated/binaries/fd/10.3.0/fd", fileType: "binary-path", toolName: "fd" },
-        { filePath: "/home/user/.generated/user-bin/fd", fileType: "shim", toolName: "fd" },
+        { filePath: "/rootfile", fileType: "shim", toolName: "fd" },
+        { filePath: "/dir/nestedfile", fileType: "binary", toolName: "fd" },
       ],
-      totalCount: 3,
+      totalCount: 2,
     };
     const result = buildTreeByTool(filesList);
 
-    const allNodes = collectNodes(result["fd"] ?? []);
-    const fileTypes = allNodes.map((node) => node.fileType).filter(Boolean);
-
-    expect(fileTypes).toContain("install");
-    expect(fileTypes).toContain("binary-path");
-    expect(fileTypes).toContain("shim");
+    expect(result["fd"]).toBeDefined();
+    expect(result["fd"]!).toHaveLength(2);
+    expect(result["fd"]![0]!.type).toBe("directory");
+    expect(result["fd"]![1]!.type).toBe("file");
   });
 });

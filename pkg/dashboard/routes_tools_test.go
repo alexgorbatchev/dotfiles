@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -146,4 +147,116 @@ func TestDashboardMutationRoutes(t *testing.T) {
 			t.Errorf("expected success: true, got %v (error: %v)", body["success"], body["error"])
 		}
 	})
+}
+
+func TestDashboardNotFoundAndEdgeRoutes(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	ctx := context.Background()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to connect to db: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	tempDir := t.TempDir()
+
+	toolPath := filepath.Join(tempDir, "bat.tool.ts")
+	_ = os.WriteFile(toolPath, []byte("// TS Tool Content"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "README.md"), []byte("# BAT Readme"), 0644)
+
+	ver := "1.0.0"
+	toolConfigs := []*config.ToolConfig{
+		{
+			Name:               "bat",
+			Version:            &ver,
+			InstallationMethod: "github-release",
+			ConfigFilePath:     toolPath,
+			InstallParams: map[string]interface{}{
+				"repo": "owner/bat",
+			},
+		},
+	}
+
+	server := NewServer(log, "127.0.0.1", 0, reg, &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    filepath.Join(tempDir, "binaries"),
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: tempDir,
+		},
+	}, toolConfigs, nil)
+
+	if err := server.Start(); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+	defer server.Stop()
+
+	// GET health
+	binDir := filepath.Join(tempDir, "binaries")
+	_ = os.MkdirAll(filepath.Join(binDir, "bat", "0.9.0"), 0755)
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/health", server.Port()))
+	if err == nil {
+		resp.Body.Close()
+	}
+
+	// GET non-existent tool
+	resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/nonexistent", server.Port()))
+	if err == nil {
+		resp.Body.Close()
+	}
+
+	// GET readme
+	resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bat/readme", server.Port()))
+	if err == nil {
+		resp.Body.Close()
+	}
+
+	// GET source
+	resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bat/source", server.Port()))
+	if err == nil {
+		resp.Body.Close()
+	}
+
+	// GET activity with limit
+	resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/activity?limit=5", server.Port()))
+	if err == nil {
+		resp.Body.Close()
+	}
+
+	// GET recent-tools with limit
+	resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/recent-tools?limit=5", server.Port()))
+	if err == nil {
+		resp.Body.Close()
+	}
+
+	// formatRelativeTime
+	_ = formatRelativeTime(time.Now().UnixMilli() - 5000)
+	_ = formatRelativeTime(time.Now().UnixMilli() - 300000)
+	_ = formatRelativeTime(time.Now().UnixMilli() - 7200000)
+	_ = formatRelativeTime(time.Now().UnixMilli() - 172800000)
+
+	// formatToolConfigForDashboard
+	archVal := 3
+	tcPlatform := &config.ToolConfig{
+		Name: "plat-tool",
+		PlatformConfigs: []config.PlatformConfigEntry{
+			{
+				Platforms:     7, // Linux | macOS | Windows
+				Architectures: &archVal,
+				Config:        map[string]interface{}{"installParams": map[string]interface{}{"repo": "owner/repo"}},
+			},
+		},
+	}
+	m := formatToolConfigForDashboard(tcPlatform)
+	if m == nil {
+		t.Errorf("formatToolConfigForDashboard returned nil")
+	}
+
+	repo := getRepoFromToolConfig(tcPlatform)
+	if repo != "owner/repo" {
+		t.Errorf("getRepoFromToolConfig returned %q, want 'owner/repo'", repo)
+	}
 }

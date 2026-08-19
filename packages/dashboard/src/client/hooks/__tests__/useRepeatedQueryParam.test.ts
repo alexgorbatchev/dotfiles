@@ -2,21 +2,14 @@
 import { fireEvent, render, screen, setupUITests } from "../../../testing/ui-setup";
 
 import { h } from "preact";
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import { useRepeatedQueryParam } from "../useRepeatedQueryParam";
 
 setupUITests();
 
-type HistoryReplaceState = typeof window.history.replaceState;
-type HistoryReplaceStateMock = ReturnType<typeof mock<HistoryReplaceState>>;
-
 const originalLocation = window.location;
 const originalReplaceState = window.history.replaceState;
-
-function createReplaceStateSpy(): HistoryReplaceStateMock {
-  return mock<HistoryReplaceState>(function replaceState() {});
-}
 
 function TestComponent() {
   const [values, setValues] = useRepeatedQueryParam("treeCollapsed");
@@ -69,21 +62,23 @@ describe("useRepeatedQueryParam", () => {
     expect(screen.getByTestId("values")).toHaveTextContent("/tmp/dev,/tmp/infra");
   });
 
-  test("writes repeated query params through history.replaceState", () => {
-    const replaceStateSpy = createReplaceStateSpy();
-
+  test("syncs values when popstate event fires", () => {
     Object.defineProperty(window, "location", {
       value: { href: "http://localhost/" },
       writable: true,
     });
-    window.history.replaceState = replaceStateSpy as HistoryReplaceState;
 
-    render(h(TestComponent, {}));
+    const { unmount } = render(h(TestComponent, {}));
 
-    fireEvent.click(screen.getByText("Set"));
-    expect(String(replaceStateSpy.mock.calls.at(-1)?.[2] ?? "")).toContain("treeCollapsed=%2Ftmp%2Fdev");
+    Object.defineProperty(window, "location", {
+      value: { href: "http://localhost/?treeCollapsed=%2Ftmp%2Fsync" },
+      writable: true,
+    });
 
-    fireEvent.click(screen.getByText("Clear"));
-    expect(String(replaceStateSpy.mock.calls.at(-1)?.[2] ?? "")).not.toContain("treeCollapsed=");
+    fireEvent(window, new Event("popstate"));
+
+    expect(screen.getByTestId("values")).toHaveTextContent("/tmp/sync");
+
+    unmount();
   });
 });

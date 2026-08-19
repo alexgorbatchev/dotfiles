@@ -127,6 +127,20 @@ func TestRenderFancyProgressFieldEdgeCases(t *testing.T) {
 	}
 
 	// 100% progress
+
+	// Formatting styles helper
+	style := getProgressFieldStyle(5, 10, 0, 10, 0, 10)
+	if style == "" {
+		t.Errorf("getProgressFieldStyle returned empty style")
+	}
+
+	speed := formatSpeed(1000000, 1000)
+	if !strings.Contains(speed, "MB/s") && !strings.Contains(speed, "kB/s") {
+		t.Errorf("formatSpeed failed: %q", speed)
+	}
+	if zeroSpeed := formatSpeed(100, 0); zeroSpeed != "0B/s" {
+		t.Errorf("formatSpeed zero elapsed failed: %q", zeroSpeed)
+	}
 	f100 := renderFancyProgressField(100.0, "100.0%", "1.00MB", "1.00MB", false)
 	if f100 == "" {
 		t.Error("expected non-empty fancy field for 100%")

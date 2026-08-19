@@ -253,3 +253,97 @@ func TestToolUsageErrorsAndNotFound(t *testing.T) {
 		t.Error("expected error recording usage on rolled back tx")
 	}
 }
+
+func TestRegistryMethodsEdgeCases(t *testing.T) {
+	database, reg := setupTestDB(t)
+	ctx := context.Background()
+
+	// OctalToDecimalPerm & DecimalToOctalPerm
+	if d := OctalToDecimalPerm("0o755"); d != "493" {
+		t.Errorf("OctalToDecimalPerm(0o755) = %s, want '493'", d)
+	}
+	if d := OctalToDecimalPerm("0755"); d != "493" {
+		t.Errorf("OctalToDecimalPerm(0755) = %s, want '493'", d)
+	}
+	if d := OctalToDecimalPerm("755"); d != "493" {
+		t.Errorf("OctalToDecimalPerm(755) = %s, want '493'", d)
+	}
+	if d := OctalToDecimalPerm(""); d != "" {
+		t.Errorf("OctalToDecimalPerm('') = %s, want ''", d)
+	}
+	if o := DecimalToOctalPerm(""); o != "" {
+		t.Errorf("DecimalToOctalPerm('') = %s, want ''", o)
+	}
+	if o := DecimalToOctalPerm("0o755"); o != "0755" {
+		t.Errorf("DecimalToOctalPerm(0o755) = %s, want '0755'", o)
+	}
+
+	// WithTx error rollback
+	errTx := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return sql.ErrTxDone
+	})
+	if errTx == nil {
+		t.Errorf("expected error from WithTx")
+	}
+
+	// RemoveToolInstallation & RemoveFileOperationsByTool
+	_ = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		_ = reg.RecordToolInstallation(ctx, tx, &ToolInstallationRecord{
+			ToolName:    "removetool",
+			Version:     "1.0.0",
+			InstallPath: "/bin/removetool",
+			Timestamp:   "now",
+			InstalledAt: 1000,
+			BinaryPaths: "[]",
+		})
+		size := int64(100)
+		_ = reg.RecordFileOperation(ctx, tx, &FileOperationRecord{
+			ToolName:      "removetool",
+			OperationType: "write",
+			FilePath:      "/bin/removetool",
+			FileType:      "binary",
+			CreatedAt:     1000,
+			SizeBytes:     &size,
+		})
+		return nil
+	})
+
+	_ = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		_ = reg.RemoveToolInstallation(ctx, tx, "removetool")
+		_ = reg.Compact(ctx, tx)
+		return reg.RemoveFileOperationsByTool(ctx, tx, "removetool")
+	})
+
+	inst, _ := reg.GetToolInstallation(ctx, "removetool")
+	if inst != nil {
+		t.Errorf("expected removetool to be removed")
+	}
+
+	// Compact & Validate
+	_ = reg.Compact(ctx, nil)
+
+	// Validate with valid on-disk files
+	tmpInstallPath := t.TempDir()
+	_ = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return reg.RecordToolInstallation(ctx, tx, &ToolInstallationRecord{
+			ToolName:    "validtool",
+			Version:     "1.0.0",
+			InstallPath: tmpInstallPath,
+			Timestamp:   "now",
+			InstalledAt: 1000,
+			BinaryPaths: "[]",
+		})
+	})
+
+	res, err := reg.Validate(ctx)
+	if err != nil || res == nil {
+		t.Errorf("Validate failed: res=%v, err=%v", res, err)
+	}
+
+	// Close DB and test error paths
+	_ = database.Close()
+	_, errStats := reg.GetStats(ctx)
+	if errStats == nil {
+		t.Errorf("expected error from GetStats on closed DB")
+	}
+}

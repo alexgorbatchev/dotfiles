@@ -1257,4 +1257,98 @@ func TestDownloaderReadOnlyCloserFS(t *testing.T) {
 	}
 }
 
+func TestDownloaderEdgeCasesAndProgress(t *testing.T) {
+	memFS := fs.NewMemFS()
+	d := NewDownloader(memFS, nil)
+
+	// 1. Server returns 500 error
+	errServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer errServer.Close()
+
+	err := d.Download(context.Background(), errServer.URL, "/fail.txt", "")
+	if err == nil {
+		t.Errorf("expected error on HTTP 500 response")
+	}
+
+	// 2. Invalid checksum with retry exhaustion
+	okServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("some data"))
+	}))
+	defer okServer.Close()
+
+	err = d.Download(context.Background(), okServer.URL, "/badhash.txt", "deadbeefbadhash")
+	if err == nil {
+		t.Errorf("expected error on checksum mismatch")
+	}
+
+	// 4. Cache hit & cache write
+	cacheFS := fs.NewMemFS()
+	cd := NewDownloader(cacheFS, nil)
+	cd.CacheEnabled = true
+	cd.CacheDir = "/cache"
+
+	okServer2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("cached data"))
+	}))
+	defer okServer2.Close()
+
+	err = cd.Download(context.Background(), okServer2.URL, "/dl-cache1.txt", "", DownloadOptions{})
+	if err != nil {
+		t.Fatalf("unexpected cache download error: %v", err)
+	}
+
+	// Second download should hit cache
+	cd.SetQuiet(true)
+	cd.SetFS(cacheFS)
+	err = cd.Download(context.Background(), okServer2.URL, "/dl-cache2.txt", "", DownloadOptions{})
+	if err != nil {
+		t.Fatalf("unexpected cache hit error: %v", err)
+	}
+
+	// 6. Existing file when server returns 200 OK (no range support)
+	noRangeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("full replacement data"))
+	}))
+	defer noRangeServer.Close()
+
+	_ = cacheFS.WriteFile("/existing.txt", []byte("old"), 0644)
+	err = cd.Download(context.Background(), noRangeServer.URL, "/existing.txt", "", DownloadOptions{SkipCache: true})
+	if err != nil {
+		t.Fatalf("unexpected download error on existing file 200 OK: %v", err)
+	}
+	var progressCalled bool
+	err = cd.Download(context.Background(), okServer2.URL, "/dl-progress.txt", "", DownloadOptions{
+		SkipCache: true,
+		Headers:   map[string]string{"X-Test-Header": "1"},
+		OnProgress: func(downloaded, total int64) {
+			progressCalled = true
+		},
+	})
+	if err != nil || !progressCalled {
+		t.Errorf("expected OnProgress callback to be invoked")
+	}
+
+	// 416 status code with hash mismatch triggers recovery download
+	range416RecoveryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Range") != "" {
+			w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("fresh recovered data"))
+	}))
+	defer range416RecoveryServer.Close()
+
+	_ = cacheFS.WriteFile("/dl-416rec.txt", []byte("stale data"), 0644)
+	err = cd.Download(context.Background(), range416RecoveryServer.URL, "/dl-416rec.txt", fmt.Sprintf("%x", sha256.Sum256([]byte("fresh recovered data"))), DownloadOptions{SkipCache: true})
+	if err != nil {
+		t.Errorf("expected 416 recovery download to succeed: %v", err)
+	}
+}
+
 
