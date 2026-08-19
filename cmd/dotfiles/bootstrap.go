@@ -131,8 +131,11 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		}
 
 		projCfg = &bResult.ProjectConfig
-		for _, tc := range bResult.ToolConfigs {
+		for name, tc := range bResult.ToolConfigs {
 			localTC := tc
+			if localTC.Name == "" {
+				localTC.Name = name
+			}
 			toolConfigs = append(toolConfigs, &localTC)
 		}
 	}
