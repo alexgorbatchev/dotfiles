@@ -65,13 +65,19 @@ async function executeCommand(args: string[], opts: IExecuteCommandOptions = {})
   const { cwd = process.cwd(), env } = opts;
   const command = args.join(" ");
   const mergedEnv = env ? { ...process.env, ...env } : process.env;
-  const result = await Bun.$`${args}`.cwd(cwd).env(mergedEnv).quiet().nothrow();
+  const proc = Bun.spawn(args, {
+    cwd,
+    env: mergedEnv,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
 
-  if (result.exitCode !== 0) {
-    const stdout = result.stdout.toString().trim();
-    const stderr = result.stderr.toString().trim();
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) {
+    const stdout = (await new Response(proc.stdout).text()).trim();
+    const stderr = (await new Response(proc.stderr).text()).trim();
     const details = [stderr && `stderr:\n${stderr}`, stdout && `stdout:\n${stdout}`].filter(Boolean).join("\n\n");
-    throw new Error(`Command failed (exit code ${result.exitCode}): ${command}\n${details}`);
+    throw new Error(`Command failed (exit code ${exitCode}): ${command}\n${details}`);
   }
 }
 
