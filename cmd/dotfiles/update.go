@@ -78,13 +78,7 @@ When run without arguments, checks all installed tools for updates and installs 
 		toolName := args[0]
 
 		// 1. Find tool config
-		var targetTool *config.ToolConfig
-		for _, tc := range services.ToolConfigs {
-			if tc.Name == toolName {
-				targetTool = tc
-				break
-			}
-		}
+		targetTool := config.FindTool(services.ToolConfigs, toolName)
 
 		if targetTool == nil {
 			return fmt.Errorf("tool %q not found in configuration", toolName)

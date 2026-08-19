@@ -51,11 +51,9 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 
 		if len(args) > 0 {
 			targetName := args[0]
-			for _, tc := range services.ToolConfigs {
-				if tc.Name == targetName {
-					targetTools = append(targetTools, tc)
-					break
-				}
+			targetTool := config.FindTool(services.ToolConfigs, targetName)
+			if targetTool != nil {
+				targetTools = append(targetTools, targetTool)
 			}
 			if len(targetTools) == 0 {
 				return fmt.Errorf("tool %q not found in configuration", targetName)
