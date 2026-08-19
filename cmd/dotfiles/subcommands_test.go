@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -683,6 +684,98 @@ func TestAdditionalCmdCoverage(t *testing.T) {
 
 	// dashboard command help
 	_, _ = executeCommand("dashboard", "--help")
+}
+
+func TestDetectConflictsCommand_ErrorReturn(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_TEST", "true")
+	tmpDir := t.TempDir()
+	targetDir := filepath.Join(tmpDir, "target")
+	_ = os.MkdirAll(targetDir, 0755)
+
+	conflictFile := filepath.Join(targetDir, "bat")
+	if err := os.WriteFile(conflictFile, []byte("#!/bin/sh\necho not-a-shim"), 0755); err != nil {
+		t.Fatalf("failed creating conflict file: %v", err)
+	}
+
+	configContent := fmt.Sprintf(`{
+	"projectConfig": {
+		"paths": {
+			"homeDir": "%s",
+			"targetDir": "%s",
+			"generatedDir": "%s"
+		}
+	},
+	"toolConfigs": {
+		"github-release--bat": {
+			"name": "github-release--bat",
+			"installer": "github-release",
+			"binaries": ["bat"]
+		}
+	}
+}`, tmpDir, targetDir, tmpDir)
+
+	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed writing test config: %v", err)
+	}
+
+	_, err := executeCommand("-c", configPath, "detect-conflicts")
+	if err == nil {
+		t.Fatalf("expected detect-conflicts to return error when non-generator file exists")
+	}
+	if !strings.Contains(err.Error(), "conflicts detected") {
+		t.Errorf("expected conflict error message, got: %v", err)
+	}
+}
+
+func TestUpdateAndValidateCommand_FindTool(t *testing.T) {
+	repoRoot := findRepoRoot()
+	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
+
+	// Validate with suffix 'bat' should resolve 'github-release--bat'
+	out, err := executeCommand("-c", absConfig, "validate", "bat")
+	if err != nil {
+		t.Fatalf("validate bat by binary/suffix failed: %v", err)
+	}
+	if !strings.Contains(out, "Checked 1 tool configuration") {
+		t.Errorf("expected validation success for 'bat', got: %s", out)
+	}
+}
+
+func TestBootstrapServices_JSONToolNameDefaulting(t *testing.T) {
+	tmpDir := t.TempDir()
+	configContent := `{
+	"projectConfig": {
+		"paths": {
+			"homeDir": "/tmp/test-home",
+			"targetDir": "/tmp/test-target",
+			"generatedDir": "/tmp/test-generated"
+		}
+	},
+	"toolConfigs": {
+		"implicit-name-tool": {
+			"installer": "github-release"
+		}
+	}
+}`
+	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed writing test config: %v", err)
+	}
+
+	ctx := context.Background()
+	services, err := BootstrapServices(ctx, configPath)
+	if err != nil {
+		t.Fatalf("BootstrapServices failed: %v", err)
+	}
+	defer services.DB.Close()
+
+	if len(services.ToolConfigs) != 1 {
+		t.Fatalf("expected 1 tool config, got %d", len(services.ToolConfigs))
+	}
+	if services.ToolConfigs[0].Name != "implicit-name-tool" {
+		t.Errorf("expected tool name 'implicit-name-tool', got %q", services.ToolConfigs[0].Name)
+	}
 }
 
 func findRepoRoot() string {
