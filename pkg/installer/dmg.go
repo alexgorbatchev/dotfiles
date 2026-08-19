@@ -427,15 +427,14 @@ func findFileWithExtension(fsys fs.FS, dir string, ext string) (string, error) {
 	}
 	for _, entry := range entries {
 		fullPath := filepath.Join(dir, entry)
+		if strings.HasSuffix(strings.ToLower(entry), ext) {
+			return fullPath, nil
+		}
 		_, subErr := fsys.ReadDir(fullPath)
 		if subErr == nil {
 			found, _ := findFileWithExtension(fsys, fullPath, ext)
 			if found != "" {
 				return found, nil
-			}
-		} else {
-			if strings.HasSuffix(strings.ToLower(entry), ext) {
-				return fullPath, nil
 			}
 		}
 	}
