@@ -159,6 +159,58 @@ func TestCurlTarInstaller(t *testing.T) {
 		if ext3 != ".tgz" {
 			t.Errorf("expected .tgz, got %q", ext3)
 		}
+
+		// Content-Type HTTP HEAD checks
+		ctServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query().Get("type")
+			if q == "zip" {
+				w.Header().Set("Content-Type", "application/zip")
+			} else if q == "xz" {
+				w.Header().Set("Content-Type", "application/x-xz")
+			} else if q == "bz2" {
+				w.Header().Set("Content-Type", "application/x-bzip2")
+			} else {
+				w.Header().Set("Content-Type", "application/x-gzip")
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer ctServer.Close()
+
+		if e := detectArchiveExtension(context.Background(), ctServer.URL+"/download?type=zip", ctServer.Client()); e != ".zip" {
+			t.Errorf("expected .zip from Content-Type, got %q", e)
+		}
+		if e := detectArchiveExtension(context.Background(), ctServer.URL+"/download?type=xz", ctServer.Client()); e != ".tar.xz" {
+			t.Errorf("expected .tar.xz from Content-Type, got %q", e)
+		}
+		if e := detectArchiveExtension(context.Background(), ctServer.URL+"/download?type=bz2", ctServer.Client()); e != ".tar.bz2" {
+			t.Errorf("expected .tar.bz2 from Content-Type, got %q", e)
+		}
+	})
+
+	t.Run("Install success with version detection", func(t *testing.T) {
+		runner.Clear()
+		vFsys := fs.NewMemFS()
+		vInst := NewCurlTarInstaller(runner, vFsys, downloader.NewDownloader(vFsys, nil), nil)
+		vInst.BinDir = "/test/vbin"
+
+		runner.Register("/test/vbin/mytool", []byte("mytool 3.1.4\n"), nil)
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"url":         server.URL,
+				"versionArgs": []interface{}{"--version"},
+				"versionRegex": `(\d+\.\d+\.\d+)`,
+			},
+		}
+
+		res, err := vInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "3.1.4" {
+			t.Errorf("expected version 3.1.4, got %q", res.Version)
+		}
 	})
 }
 

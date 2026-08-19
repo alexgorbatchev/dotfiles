@@ -124,17 +124,17 @@ func detectArchiveExtension(ctx context.Context, url string, client *http.Client
 				}
 				// Check Content-Type
 				ct := strings.ToLower(resp.Header.Get("Content-Type"))
+				if strings.Contains(ct, "x-bzip2") || strings.Contains(ct, "bzip2") {
+					return ".tar.bz2"
+				}
+				if strings.Contains(ct, "x-xz") || strings.Contains(ct, "xz") {
+					return ".tar.xz"
+				}
 				if strings.Contains(ct, "x-gzip") || strings.Contains(ct, "gzip") {
 					return ".tar.gz"
 				}
 				if strings.Contains(ct, "zip") {
 					return ".zip"
-				}
-				if strings.Contains(ct, "x-xz") || strings.Contains(ct, "xz") {
-					return ".tar.xz"
-				}
-				if strings.Contains(ct, "x-bzip2") || strings.Contains(ct, "bzip2") {
-					return ".tar.bz2"
 				}
 			}
 		}
