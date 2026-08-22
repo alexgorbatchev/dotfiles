@@ -226,6 +226,10 @@ func (t *TrackedFileSystem) Remove(path string) error {
 	return nil
 }
 
+func (t *TrackedFileSystem) RecordRemoved(path string) error {
+	return t.recordOperation("rm", path, nil, nil, nil)
+}
+
 func (t *TrackedFileSystem) Exists(path string) (bool, error) {
 	return t.fs.Exists(path)
 }

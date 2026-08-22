@@ -235,7 +235,9 @@ func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.To
 
 				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 					activeFS := o.getTrackedFS(ctx, tx, tool.Name, "shim")
-					return activeFS.Remove(state.FilePath)
+					_ = activeFS.RecordRemoved(state.FilePath)
+					_ = activeFS.RecordRemoved(absFilePath)
+					return nil
 				})
 			}
 		}
@@ -289,21 +291,26 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 				continue
 			}
 
-			absFilePath, err := o.fs.Abs(state.FilePath)
+			resolvedFilePath, _ := config.ResolvePlaceholders(state.FilePath, tool.Name, projCfg)
+			absFilePath, err := o.fs.Abs(resolvedFilePath)
 			if err != nil {
-				absFilePath = state.FilePath
+				absFilePath = resolvedFilePath
 			}
 
-			if !expectedSymlinks[absFilePath] && !expectedSymlinks[state.FilePath] {
-				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale symlink: %s", o.formatPath(projCfg, state.FilePath))))
+			if !expectedSymlinks[absFilePath] && !expectedSymlinks[resolvedFilePath] && !expectedSymlinks[state.FilePath] {
+				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale symlink: %s", o.formatPath(projCfg, resolvedFilePath))))
 
 				_, _ = symEvaluator.RemoveSymlink(state.FilePath, "")
 				_ = o.fs.Remove(state.FilePath)
+				_ = o.fs.Remove(resolvedFilePath)
 				_ = o.fs.Remove(absFilePath)
 
 				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 					activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
-					return activeFS.Remove(state.FilePath)
+					_ = activeFS.RecordRemoved(state.FilePath)
+					_ = activeFS.RecordRemoved(resolvedFilePath)
+					_ = activeFS.RecordRemoved(absFilePath)
+					return nil
 				})
 			}
 		}
@@ -385,7 +392,10 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 
 				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 					activeFS := o.getTrackedFS(ctx, tx, tool.Name, state.FileType)
-					return activeFS.Remove(state.FilePath)
+					_ = activeFS.RecordRemoved(state.FilePath)
+					_ = activeFS.RecordRemoved(resolvedFilePath)
+					_ = activeFS.RecordRemoved(absFilePath)
+					return nil
 				})
 			}
 		}
