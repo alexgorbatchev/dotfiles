@@ -119,18 +119,24 @@ User-facing logger for tool operations. Messages are automatically prefixed with
 INFO    [my-tool] Configuring tool settings...
 ```
 
-### dedentTemplate
+### dedentString / dedentTemplate
 
-Tagged template for removing indentation from multi-line strings.
+Utility function and tagged template for removing common leading indentation from multi-line strings. `dedentTemplate` is provided as an alias of `dedentString`.
 
 ```typescript
-import { dedentTemplate } from "@alexgorbatchev/dotfiles";
+import { dedentString, dedentTemplate } from "@alexgorbatchev/dotfiles";
 
-const script = dedentTemplate`
+// As a tagged template (dedentString or dedentTemplate)
+const script = dedentString`
   if [[ -n "$VAR" ]]; then
     echo "Hello"
   fi
 `;
+
+// As a function
+const clean = dedentString("  line 1\n  line 2");
+```
+
 ```
 
 ## Installation Method Parameters
@@ -148,3 +154,4 @@ See the Installation Methods reference for detailed parameters for each method:
 - `pkg` - macOS PKG
 - `manual` - Manual
 - `zsh-plugin` - Zsh Plugin
+```

@@ -40,7 +40,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         // Add custom directories to PATH
-        .path((ctx) => `${ctx.installDir}/bin`)
+        .path(`${ctx.currentDir}/bin`)
         // Set environment variables (PATH is prohibited here - use .path() instead)
         .env({
           RIPGREP_CONFIG_PATH: "~/.ripgreprc",
@@ -107,14 +107,13 @@ $ dotfiles upgrade 2.2.0
 
 ### Manual Install
 
-Run the provided install script directly, or use the `dotfiles` CLI binary:
+Run the provided install script directly, or extract embedded AI skills with the `dotfiles` CLI binary:
 
 ```bash
 # Run the provided install script
 $ ./scripts/managed-installer/install.sh
 
-# Or initialize configuration and skills manually
-$ dotfiles init
+# Extract embedded AI skills to your project
 $ dotfiles skill .agents/skills/
 ```
 

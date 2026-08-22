@@ -1,60 +1,204 @@
 # CLI Reference
 
-The `dotfiles` CLI provides several commands to manage your tools:
+The `dotfiles` CLI provides several commands to manage your tools, generate shims, inspect installations, and launch the web dashboard:
 
 ```bash
-# Initialize configuration for the first time
-dotfiles init
-
-# Install a tool by name
+# Install a tool by name or binary name
 dotfiles install fzf
-
-# Install a tool by binary name (finds tool that provides 'bat')
-dotfiles install bat
-
-# Print full path to the .tool.ts config file that installs a tool or binary
-dotfiles why fz
+dotfiles install --force fzf
 
 # Generate shims and shell configuration files
 dotfiles generate
 
-# Validate all tool configurations for schema issues or errors
+# Print full path to the .tool.ts config file that installs a tool or binary
+dotfiles why fzf
+
+# Validate tool configurations for schema issues or errors
 dotfiles validate
+dotfiles validate fzf --strict
 
-# Update all currently installed tools to their latest versions
-dotfiles update
-
-# Update a specific installed tool
+# Update installed tools
 dotfiles update fzf
+dotfiles update --all
 
-# Upgrade dotfiles CLI binary itself to the latest stable release
-dotfiles upgrade
+# Check available updates using installed-state data
+dotfiles check-updates --json
 
-# Check if a dotfiles CLI upgrade is available without applying
+# Upgrade dotfiles CLI binary itself
 dotfiles upgrade --check
+dotfiles upgrade
+dotfiles upgrade 2.2.0
 
-# Upgrade or downgrade dotfiles CLI binary to a specific version
-dotfiles upgrade 2.0.1
+# Launch web dashboard
+dotfiles dashboard --port 8080
 
-# Check available updates using installed-state data when available
-dotfiles check-updates
-
-# View logs of file operations
-dotfiles log
+# View file operation logs
+dotfiles log fzf --lines 50 -f
 
 # Display tree of installed tool files
-dotfiles files <toolName>
+dotfiles files fzf
 
-# Print the real path to a binary (resolves symlinks)
-dotfiles bin <name>
+# Print path to binary (or resolve symlinks)
+dotfiles bin fzf --resolve
 
-# Create docs symlink in a directory
-dotfiles docs <path>
+# Clean up cached downloads and stale files
+dotfiles cleanup --all
+
+# Manage virtual environments
+dotfiles env create myenv --python python3 --pkg requests
+dotfiles env delete myenv
+
+# Inspect feature status or detect binary name conflicts
+dotfiles features --json
+dotfiles detect-conflicts --json
+
+# Manage AI skills or copy embedded skill directory
+dotfiles skill .agents/skills/
+
+# Uninstall a tool
+dotfiles uninstall fzf
+dotfiles uninstall --all
+
+# Print CLI version
+dotfiles version
 ```
 
-## Completions
+## Command Details
+
+### `dotfiles install [tool]`
+
+Installs a tool by tool name or binary name. If no tool is specified, installs all configured tools.
+
+- `--force`: Force reinstallation even if already installed.
+
+### `dotfiles generate`
+
+Generates executable shims, shell initialization scripts, and the catalog (`CATALOG.md`).
+
+### `dotfiles update [tool]`
+
+Updates a specific tool or all tools to their latest versions.
+
+- `--all`: Update all installed tools.
+
+### `dotfiles check-updates`
+
+Checks available updates using recorded installed-state data.
+
+- `--json`: Output update status in JSON format.
+
+### `dotfiles upgrade [version]`
+
+Upgrades or downgrades the `dotfiles` CLI binary from GitHub Releases.
+
+- `--check`: Check for available updates without applying them.
+
+### `dotfiles dashboard`
+
+Launches the web dashboard visualization client and server.
+
+- `-p, --port <port>`: Dashboard HTTP port (default: `8080`).
+- `--open`: Automatically open browser (`--open=true` or `--open=false`).
+
+### `dotfiles validate [tool]`
+
+Validates tool configuration files for syntax, schema, or structural errors.
+
+- `--strict`: Enable strict validation rules.
+- `--json`: Output validation results in JSON format.
+
+### `dotfiles why <tool>`
+
+Finds and prints the path to the `.tool.ts` file responsible for configuring a tool or binary name.
+
+- `--json`: Output details in JSON format.
+
+### `dotfiles files [toolName]`
+
+Lists on-disk files associated with an installed tool.
+
+- `--json`: Output file tree in JSON format.
+
+### `dotfiles log [tool]`
+
+Displays file operations and installation log entries.
+
+- `-n, --lines <N>`: Number of lines to show (default: `20`).
+- `-f, --follow`: Stream log output continuously.
+- `--json`: Output log entries in JSON format.
+
+### `dotfiles bin [name]`
+
+Prints the binary location for a tool or resolves its target path.
+
+- `-r, --resolve`: Resolve symlinks to final executable path.
+
+### `dotfiles cleanup`
+
+Cleans up cached download archives, temporary build files, and unreferenced artifacts.
+
+- `--all`: Clean up all cached downloads, unreferenced files, and broken symlinks.
+
+### `dotfiles env`
+
+Virtual environment management commands.
+
+- `dotfiles env create <name>`: Create a python virtual environment.
+  - `--python <path>`: Python executable path to use.
+  - `--pkg <package>`: Packages to pre-install into the virtual environment.
+- `dotfiles env delete <name>`: Remove a virtual environment.
+
+### `dotfiles features`
+
+Displays project features, paths, and status.
+
+- `--json`: Output feature details in JSON format.
+
+### `dotfiles detect-conflicts`
+
+Scans configured tools for conflicting binary names.
+
+- `--json`: Output conflict analysis in JSON format.
+
+### `dotfiles config convert`
+
+Converts a TypeScript configuration file (`dotfiles.config.ts`) to JSON format (`dotfiles.config.json`).
+
+- `-i, --input <file>`: Input TypeScript config file (default: `dotfiles.config.ts`).
+- `-o, --output <file>`: Output JSON config file (default: `dotfiles.config.json`).
+
+### `dotfiles skill [path]`
+
+Lists installed AI skills or extracts the embedded `dotfiles` skill folder into the target directory.
+
+- `--dir <path>`: Custom skills search directory path.
+
+### `dotfiles uninstall [tool]`
+
+Removes an installed tool and its associated binaries/symlinks.
+
+- `--all`: Uninstall all managed tools.
+
+### `dotfiles version`
+
+Prints the CLI version string.
+
+## Global Flags
+
+The following flags are available on all commands:
+
+- `-c, --config <path>`: Path to configuration file (default: `dotfiles.config.ts`).
+- `-d, --dry-run`: Simulate operations without modifying the filesystem.
+- `--trace`: Enable source location tracing in logs.
+- `--log <level>`: Set log level (`verbose`, `default`, `quiet`).
+- `--platform <os>`: Override target platform (`darwin`, `linux`, `windows`).
+- `--arch <arch>`: Override target architecture (`amd64`, `arm64`).
+- `--libc <libc>`: Override target C library implementation (`glibc`, `musl`).
+- `-v, --verbose`: Enable verbose logging.
+- `-q, --quiet`: Enable quiet logging.
+
+## Shell Completions
 
 - `dotfiles generate` writes a zsh completion script to `${generatedDir}/shell-scripts/zsh/completions/_dotfiles`.
 - Reload completions with `autoload -U compinit && compinit` (or restart your shell) after generating.
-- Commands that accept a tool argument (e.g., `install`, `update`, `check-updates`, `files`, `log`, `bin`) now suggest every configured tool name directly in completion menus, so you can pick a target without memorizing identifiers.
-- See [Shell & Hooks Reference](.agents/skills/dotfiles/references/shell-and-hooks.md) for shell-specific integration details.
+- Commands that accept a tool argument (e.g., `install`, `update`, `check-updates`, `files`, `log`, `bin`) suggest configured tool names directly in completion menus.

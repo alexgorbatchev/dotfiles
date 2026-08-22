@@ -7,8 +7,8 @@ Reference for the public API available in `@alexgorbatchev/dotfiles`.
 ```typescript
 import {
   Architecture, // Architecture enum
-  dedentString, // Utility for template strings
-  dedentTemplate, // Tagged template for dedenting
+  dedentString, // Utility function and tagged template for dedenting
+  dedentTemplate, // Alias of dedentString for tagged template dedenting
   defineConfig, // Create project configuration
   defineTool, // Create tool configurations
   Platform, // Platform enum for cross-platform configs
