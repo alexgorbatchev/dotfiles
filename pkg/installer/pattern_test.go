@@ -81,6 +81,18 @@ func TestMatchAssetPattern(t *testing.T) {
 			pattern:  "atuin-[!s]*.tar.gz",
 			expected: false,
 		},
+		{
+			name:     "JS negative lookahead pattern for bun",
+			fileName: "bun-linux-x64.zip",
+			pattern:  `/^(?!.*-profile).*\.zip$/`,
+			expected: true,
+		},
+		{
+			name:     "JS negative lookahead pattern rejecting profile asset",
+			fileName: "bun-linux-x64-baseline-profile.zip",
+			pattern:  `/^(?!.*-profile).*\.zip$/`,
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {

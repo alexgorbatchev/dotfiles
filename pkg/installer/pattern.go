@@ -15,15 +15,52 @@ func MatchAssetPattern(name, pattern string) bool {
 
 	// Case 1: Slash-delimited regex, e.g. "/pattern/i" or "/pattern/"
 	if strings.HasPrefix(pattern, "/") {
-		lastSlash := strings.LastIndex(pattern, "/")
+		lastSlash := -1
+		for i := len(pattern) - 1; i > 0; i-- {
+			if pattern[i] == '/' {
+				flags := pattern[i+1:]
+				isValidFlags := true
+				for _, ch := range flags {
+					if !strings.ContainsRune("igmsuy", ch) {
+						isValidFlags = false
+						break
+					}
+				}
+				if isValidFlags {
+					lastSlash = i
+					break
+				}
+			}
+		}
+
 		if lastSlash > 0 {
 			regexStr := pattern[1:lastSlash]
 			flags := pattern[lastSlash+1:]
-			if strings.Contains(flags, "i") {
-				regexStr = "(?i)" + regexStr
+
+			// Handle JS negative lookahead syntax (?!.*SUB) not natively supported by Go RE2
+			var excludeTerms []string
+			lookaheadRe := regexp.MustCompile(`\(\?!\.\*([^\)]+)\)`)
+			for _, m := range lookaheadRe.FindAllStringSubmatch(regexStr, -1) {
+				if len(m) > 1 {
+					excludeTerms = append(excludeTerms, m[1])
+				}
 			}
-			if re, err := regexp.Compile(regexStr); err == nil {
-				return re.MatchString(name)
+			regexStrClean := lookaheadRe.ReplaceAllString(regexStr, "")
+
+			if strings.Contains(flags, "i") {
+				regexStrClean = "(?i)" + regexStrClean
+			}
+
+			if re, err := regexp.Compile(regexStrClean); err == nil {
+				if re.MatchString(name) {
+					for _, exc := range excludeTerms {
+						if strings.Contains(strings.ToLower(name), strings.ToLower(exc)) {
+							return false
+						}
+					}
+					return true
+				}
+				return false
 			}
 		}
 	}
