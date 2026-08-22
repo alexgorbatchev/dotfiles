@@ -4,6 +4,7 @@
   "private": true,
   "workspaces": [
     "packages/dashboard",
+    "packages/docs",
     "test-project"
   ],
   "type": "module",
@@ -29,7 +30,8 @@
     "cli": "go run ./cmd/dotfiles",
     "check": "just check",
     "check:ci": "just check",
-    "dashboard": "just dashboard"
+    "dashboard": "just dashboard",
+    "docs": "bun --cwd packages/docs build"
   },
   "devDependencies": {
     "@alexgorbatchev/typescript-ai-policy": "5.0.2",

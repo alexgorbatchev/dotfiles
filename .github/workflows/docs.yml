@@ -5,9 +5,10 @@ on:
     branches:
       - main
     paths:
-      - "scripts/managed-installer/install.sh"
-      - "scripts/build-docs.ts"
       - "README.md"
+      - ".agents/skills/dotfiles/**"
+      - "packages/docs/**"
+      - "scripts/managed-installer/install.sh"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -32,13 +33,22 @@ jobs:
         with:
           bun-version: 1.3.13
 
-      - name: Prepare Pages Artifacts
-        run: bun scripts/build-docs.ts
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Docs
+        run: bun run build
+        working-directory: packages/docs
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: "public"
+          path: "packages/docs/dist"
 
   deploy:
     environment:
