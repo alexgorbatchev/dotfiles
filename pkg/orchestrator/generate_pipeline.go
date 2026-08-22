@@ -114,7 +114,18 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 	for _, binName := range binaryNames {
 		shimPath := filepath.Join(shimDir, binName)
-		binaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
+		subPath := binName
+		pattern := getPatternForBinary(tool.Binaries, binName)
+		if pattern != "" && (strings.Contains(pattern, "/") || strings.Contains(pattern, "\\")) {
+			subPath = pattern
+		}
+		binaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", subPath)
+
+		if exists, _ := o.fs.Exists(binaryPath); !exists {
+			if sysBin, err := findSystemBinary(binName); err == nil {
+				binaryPath = sysBin
+			}
+		}
 
 		shimCfg := shim.Config{
 			ToolName:       tool.Name,
@@ -556,4 +567,41 @@ func getCompletionFileName(tool *config.ToolConfig, sh string, stc *config.Shell
 		return "_" + baseName
 	}
 	return baseName
+}
+
+func getPatternForBinary(toolBinaries []interface{}, binName string) string {
+	for _, b := range toolBinaries {
+		switch val := b.(type) {
+		case map[string]interface{}:
+			if name, ok := val["name"].(string); ok && name == binName {
+				if pattern, ok := val["pattern"].(string); ok {
+					return pattern
+				}
+			}
+		case config.BinaryConfig:
+			if val.Name == binName {
+				return val.Pattern
+			}
+		case *config.BinaryConfig:
+			if val != nil && val.Name == binName {
+				return val.Pattern
+			}
+		}
+	}
+	return ""
+}
+
+func findSystemBinary(binName string) (string, error) {
+	candidates := []string{
+		filepath.Join("/usr/bin", binName),
+		filepath.Join("/usr/local/bin", binName),
+		filepath.Join("/bin", binName),
+		filepath.Join("/opt/homebrew/bin", binName),
+	}
+	for _, cand := range candidates {
+		if info, err := os.Stat(cand); err == nil && !info.IsDir() {
+			return cand, nil
+		}
+	}
+	return "", fmt.Errorf("system binary %q not found", binName)
 }
