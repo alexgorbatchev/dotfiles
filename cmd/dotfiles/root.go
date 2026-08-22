@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Version = "2.0.0"
+var Version = "2.2.0"
 
 var (
 	cfgFile  string
