@@ -4,7 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // GetFileOperations queries file operations filtering by provided parameters.
@@ -85,16 +88,24 @@ func (r *Registry) GetFileStatesForTool(ctx context.Context, toolName string) ([
 		return nil, err
 	}
 
+	uHome, _ := os.UserHomeDir()
+
 	fileStates := make(map[string]*FileState)
 	for i := len(ops) - 1; i >= 0; i-- {
 		op := ops[i]
+		keyPath := op.FilePath
+		if uHome != "" && strings.HasPrefix(keyPath, "~") {
+			keyPath = filepath.Join(uHome, keyPath[1:])
+		}
+
 		if op.OperationType == "rm" {
+			delete(fileStates, keyPath)
 			delete(fileStates, op.FilePath)
 		} else {
-			state, exists := fileStates[op.FilePath]
+			state, exists := fileStates[keyPath]
 			if !exists {
-				state = &FileState{FilePath: op.FilePath}
-				fileStates[op.FilePath] = state
+				state = &FileState{FilePath: keyPath}
+				fileStates[keyPath] = state
 			}
 			state.LastOperation = op.OperationType
 			state.LastModified = op.CreatedAt

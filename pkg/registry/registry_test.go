@@ -853,3 +853,41 @@ func TestGetFileStateChmodAccumulation(t *testing.T) {
 	}
 }
 
+func TestGetFileStatesForTool_TildeNormalizing(t *testing.T) {
+	memoryDB, err := db.NewConnection(context.Background(), ":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create memory DB: %v", err)
+	}
+	defer memoryDB.Close()
+
+	reg := NewRegistry(memoryDB)
+	ctx := context.Background()
+
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		_ = reg.RecordFileOperation(ctx, tx, &FileOperationRecord{
+			ToolName:      "test-tilde",
+			OperationType: "symlink",
+			FilePath:      "~/.config/test/config.toml",
+			CreatedAt:     1000,
+		})
+		_ = reg.RecordFileOperation(ctx, tx, &FileOperationRecord{
+			ToolName:      "test-tilde",
+			OperationType: "rm",
+			FilePath:      "~/.config/test/config.toml",
+			CreatedAt:     2000,
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("RecordFileOperation failed: %v", err)
+	}
+
+	states, err := reg.GetFileStatesForTool(ctx, "test-tilde")
+	if err != nil {
+		t.Fatalf("GetFileStatesForTool failed: %v", err)
+	}
+	if len(states) != 0 {
+		t.Errorf("Expected 0 states after rm, got %d", len(states))
+	}
+}
+
