@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/mattn/go-isatty"
 )
 
 type LogLevel int
@@ -80,8 +82,23 @@ func (h *TabHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return level >= h.level
 }
 
+func isColorSupported(w io.Writer) bool {
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+	if os.Getenv("TERM") == "dumb" {
+		return false
+	}
+	if f, ok := w.(*os.File); ok {
+		return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
+	}
+	return false
+}
+
 func (h *TabHandler) Handle(_ context.Context, r slog.Record) error {
 	var sb strings.Builder
+
+	useColor := isColorSupported(h.writer)
 
 	// Level name
 	levelName := r.Level.String()
@@ -91,7 +108,27 @@ func (h *TabHandler) Handle(_ context.Context, r slog.Record) error {
 	case LevelFatal:
 		levelName = "FATAL"
 	}
-	sb.WriteString(levelName)
+
+	if useColor {
+		switch r.Level {
+		case LevelTrace:
+			sb.WriteString("\033[1;90mTRACE\033[0m")
+		case LevelDebug:
+			sb.WriteString("\033[1;36mDEBUG\033[0m")
+		case LevelInfo:
+			sb.WriteString("\033[1;32mINFO\033[0m")
+		case LevelWarn:
+			sb.WriteString("\033[1;33mWARN\033[0m")
+		case LevelError:
+			sb.WriteString("\033[1;31mERROR\033[0m")
+		case LevelFatal:
+			sb.WriteString("\033[1;35mFATAL\033[0m")
+		default:
+			sb.WriteString("\033[1m" + levelName + "\033[0m")
+		}
+	} else {
+		sb.WriteString(levelName)
+	}
 	sb.WriteString("\t")
 
 	// If trace mode is enabled, print source file and line

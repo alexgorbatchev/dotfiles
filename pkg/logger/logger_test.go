@@ -2,10 +2,14 @@ package logger
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseLogLevel(t *testing.T) {
@@ -394,4 +398,32 @@ func TestMessages(t *testing.T) {
 			t.Errorf("Expected non-empty Message string")
 		}
 	}
+}
+
+func TestTabHandler_ColorSupport(t *testing.T) {
+	t.Run("no color on buffer writer", func(t *testing.T) {
+		var buf bytes.Buffer
+		h := NewTabHandler(&buf, false, LevelInfo)
+		r := slog.NewRecord(time.Now(), LevelInfo, "test info", 0)
+		if err := h.Handle(context.Background(), r); err != nil {
+			t.Fatalf("Handle error: %v", err)
+		}
+		if !strings.HasPrefix(buf.String(), "INFO\ttest info\n") {
+			t.Errorf("expected plain INFO on non-terminal writer, got: %q", buf.String())
+		}
+	})
+
+	t.Run("isColorSupported returns false when NO_COLOR is set", func(t *testing.T) {
+		t.Setenv("NO_COLOR", "1")
+		if isColorSupported(os.Stderr) {
+			t.Errorf("expected isColorSupported = false when NO_COLOR is set")
+		}
+	})
+
+	t.Run("isColorSupported returns false when TERM=dumb", func(t *testing.T) {
+		t.Setenv("TERM", "dumb")
+		if isColorSupported(os.Stderr) {
+			t.Errorf("expected isColorSupported = false when TERM=dumb")
+		}
+	})
 }
