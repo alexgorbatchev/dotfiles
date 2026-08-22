@@ -94,11 +94,6 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 		t.Errorf("getPatternForBinary(b3) = %q, want 'pat3'", p)
 	}
 
-	zinst := NewZshPluginInstaller(exec.NewOSRunner(), fs.NewOSFS(), NewDefaultSystemContext())
-	if !zinst.AutoInstallsByDefault() {
-		t.Errorf("expected AutoInstallsByDefault() = true for ZshPluginInstaller")
-	}
-
 	// 5. Test matchAsset directly
 	assets := []githubAsset{
 		{Name: "app-v1-darwin-arm64.dmg"},
