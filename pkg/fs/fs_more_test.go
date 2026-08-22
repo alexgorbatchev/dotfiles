@@ -258,10 +258,15 @@ func TestTrackedFileSystemMethods(t *testing.T) {
 		t.Errorf("TrackedFS Rename failed: %v", err)
 	}
 
-	// RecordExistingSymlink, RemoveAll, Remove
+	// RecordExistingSymlink, RecordRemoved, RemoveAll, Remove
 	err = tFS.RecordExistingSymlink("/workspace/link.txt", "/workspace/f1.txt")
 	if err != nil {
 		t.Errorf("RecordExistingSymlink failed: %v", err)
+	}
+
+	err = tFS.RecordRemoved("/workspace/stale.txt")
+	if err != nil {
+		t.Errorf("RecordRemoved failed: %v", err)
 	}
 
 	err = tFS.Remove("/workspace/f1_renamed.txt")

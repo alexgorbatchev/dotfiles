@@ -400,3 +400,42 @@ func TestFindTool(t *testing.T) {
 	}
 }
 
+func TestProjectConfig_ResolvePlaceholders(t *testing.T) {
+	t.Run("nil config", func(t *testing.T) {
+		var cfg *ProjectConfig
+		cfg.ResolvePlaceholders() // should not panic
+	})
+
+	t.Run("resolves placeholders across all path fields", func(t *testing.T) {
+		cfg := &ProjectConfig{
+			Paths: PathsConfig{
+				DotfilesDir:     "/home/user/.dotfiles",
+				GeneratedDir:    "/home/user/.dotfiles/.generated",
+				HomeDir:         "{paths.generatedDir}/home",
+				TargetDir:       "{paths.generatedDir}/bin",
+				BinariesDir:     "{paths.generatedDir}/binaries",
+				ShellScriptsDir: "{paths.generatedDir}/shell-scripts",
+				ToolConfigsDir:  "{paths.generatedDir}/tools",
+			},
+		}
+
+		cfg.ResolvePlaceholders()
+
+		if cfg.Paths.HomeDir != "/home/user/.dotfiles/.generated/home" {
+			t.Errorf("HomeDir = %q", cfg.Paths.HomeDir)
+		}
+		if cfg.Paths.TargetDir != "/home/user/.dotfiles/.generated/bin" {
+			t.Errorf("TargetDir = %q", cfg.Paths.TargetDir)
+		}
+		if cfg.Paths.BinariesDir != "/home/user/.dotfiles/.generated/binaries" {
+			t.Errorf("BinariesDir = %q", cfg.Paths.BinariesDir)
+		}
+		if cfg.Paths.ShellScriptsDir != "/home/user/.dotfiles/.generated/shell-scripts" {
+			t.Errorf("ShellScriptsDir = %q", cfg.Paths.ShellScriptsDir)
+		}
+		if cfg.Paths.ToolConfigsDir != "/home/user/.dotfiles/.generated/tools" {
+			t.Errorf("ToolConfigsDir = %q", cfg.Paths.ToolConfigsDir)
+		}
+	})
+}
+

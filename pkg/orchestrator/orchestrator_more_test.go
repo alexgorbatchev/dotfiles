@@ -1552,6 +1552,17 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 		t.Errorf("expected isAutoInstall(invalid) to be false")
 	}
 
+	t.Run("findSystemBinary test", func(t *testing.T) {
+		_, err := findSystemBinary("non-existent-binary-1234567")
+		if err == nil {
+			t.Errorf("expected error for non-existent binary")
+		}
+		path, err := findSystemBinary("sh")
+		if err != nil || path == "" {
+			t.Errorf("expected to find system binary sh")
+		}
+	})
+
 	origArgs := os.Args
 	os.Args = append(os.Args, "--overwrite")
 	if !shouldOverwrite(ctx) {
