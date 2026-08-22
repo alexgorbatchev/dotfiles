@@ -88,26 +88,32 @@ var skillCmd = &cobra.Command{
 		if len(args) > 0 {
 			targetPath := args[0]
 			execPath, err := os.Executable()
-			var skillSourcePath string
+			var execDir string
 			if err == nil {
-				execDir := filepath.Dir(execPath)
-				cand := filepath.Join(execDir, "skill")
-				if exists, _ := fileExists(cand); exists {
-					skillSourcePath = cand
-				}
+				execDir = filepath.Dir(execPath)
 			}
-			if skillSourcePath == "" {
-				cwd, _ := os.Getwd()
-				cand := filepath.Join(cwd, "skill")
-				if exists, _ := fileExists(cand); exists {
-					skillSourcePath = cand
-				}
+			cwd, _ := os.Getwd()
+			homeDir, _ := os.UserHomeDir()
+
+			candidates := []string{
+				filepath.Join(execDir, "skill"),
+				filepath.Join(cwd, "skill"),
+				filepath.Join(cwd, ".agents", "skills", "dotfiles"),
+				filepath.Join(homeDir, ".dotfiles", ".agents", "skills", "dotfiles"),
+				filepath.Join(homeDir, ".agents", "skills", "dotfiles"),
 			}
-			if skillSourcePath == "" {
-				homeDir, _ := os.UserHomeDir()
-				cand := filepath.Join(homeDir, ".agents", "skills", "dotfiles")
+			if repoRoot := os.Getenv("DOTFILES_REPO_ROOT"); repoRoot != "" {
+				candidates = append(candidates, filepath.Join(repoRoot, ".agents", "skills", "dotfiles"))
+			}
+
+			var skillSourcePath string
+			for _, cand := range candidates {
+				if cand == "" {
+					continue
+				}
 				if exists, _ := fileExists(cand); exists {
 					skillSourcePath = cand
+					break
 				}
 			}
 
