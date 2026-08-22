@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
@@ -27,17 +28,43 @@ func pruneTools(tools []*config.ToolConfig) []*config.ToolConfig {
 func (o *Orchestrator) pruneToolsWithLogging(tools []*config.ToolConfig) []*config.ToolConfig {
 	var pruned []*config.ToolConfig
 	hostname, _ := os.Hostname()
+
+	var platformUnsupported []string
+	var disabledTools []string
+	var hostnameMismatched []string
+
 	for _, t := range tools {
 		if t.Hostname != "" && !matchesHostname(t.Hostname) {
-			o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping tool %q: hostname %q does not match pattern %q", t.Name, hostname, t.Hostname)))
+			hostnameMismatched = append(hostnameMismatched, t.Name)
+			continue
+		}
+		if t.PlatformUnsupported {
+			platformUnsupported = append(platformUnsupported, t.Name)
 			continue
 		}
 		if t.Disabled {
-			o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping disabled tool: %s", t.Name)))
+			disabledTools = append(disabledTools, t.Name)
 			continue
 		}
 		pruned = append(pruned, t)
 	}
+
+	sysCtx := installer.NewDefaultSystemContext()
+	platTarget := fmt.Sprintf("%s/%s", sysCtx.OS, sysCtx.Arch)
+
+	if len(platformUnsupported) > 0 {
+		sort.Strings(platformUnsupported)
+		o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping platform-unsupported tools on %s: %s", platTarget, strings.Join(platformUnsupported, ", "))))
+	}
+	if len(disabledTools) > 0 {
+		sort.Strings(disabledTools)
+		o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping disabled tools: %s", strings.Join(disabledTools, ", "))))
+	}
+	if len(hostnameMismatched) > 0 {
+		sort.Strings(hostnameMismatched)
+		o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping hostname-mismatched tools on %s: %s", hostname, strings.Join(hostnameMismatched, ", "))))
+	}
+
 	return pruned
 }
 

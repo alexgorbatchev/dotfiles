@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -112,6 +113,11 @@ func (p *ProjectConfig) Validate() error {
 func (p *ProjectConfig) ResolvePlaceholders() {
 	if p == nil {
 		return
+	}
+	if p.Paths.HomeDir == "" {
+		if uHome, err := os.UserHomeDir(); err == nil {
+			p.Paths.HomeDir = uHome
+		}
 	}
 	genDir := p.Paths.GeneratedDir
 	if genDir == "" {
@@ -283,6 +289,7 @@ type ToolConfig struct {
 	Binaries           []interface{}          `json:"binaries,omitempty" yaml:"binaries,omitempty"` // Can be strings or BinaryConfigs
 	Dependencies       []string               `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	Disabled           bool                   `json:"disabled,omitempty" yaml:"disabled,omitempty"`
+	PlatformUnsupported bool                   `json:"platformUnsupported,omitempty" yaml:"platformUnsupported,omitempty"`
 	Hostname           string                 `json:"hostname,omitempty" yaml:"hostname,omitempty"`
 	Sudo               bool                   `json:"sudo,omitempty" yaml:"sudo,omitempty"`
 	ShellConfigs       *ShellConfigs          `json:"shellConfigs,omitempty" yaml:"shellConfigs,omitempty"`

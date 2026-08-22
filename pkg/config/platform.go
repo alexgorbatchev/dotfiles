@@ -52,6 +52,7 @@ func ResolvePlatformConfig(tc *ToolConfig, osName, archName string) {
 		archName = runtime.GOARCH
 	}
 
+	matched := false
 	for _, entry := range tc.PlatformConfigs {
 		if MatchesPlatform(entry.Platforms, osName) {
 			if entry.Architectures != nil {
@@ -60,6 +61,7 @@ func ResolvePlatformConfig(tc *ToolConfig, osName, archName string) {
 				}
 			}
 
+			matched = true
 			jsonBytes, err := json.Marshal(entry.Config)
 			if err == nil {
 				var rawOverride map[string]interface{}
@@ -73,6 +75,10 @@ func ResolvePlatformConfig(tc *ToolConfig, osName, archName string) {
 		}
 	}
 	tc.PlatformConfigs = nil
+
+	if !matched && (tc.InstallationMethod == "" || tc.Disabled) {
+		tc.PlatformUnsupported = true
+	}
 }
 
 // ResolvePlatformConfigs evaluates and merges platform overrides on a list of ToolConfigs
