@@ -27,6 +27,15 @@ dotfiles update
 # Update a specific installed tool
 dotfiles update fzf
 
+# Upgrade dotfiles CLI binary itself to the latest stable release
+dotfiles upgrade
+
+# Check if a dotfiles CLI upgrade is available without applying
+dotfiles upgrade --check
+
+# Upgrade or downgrade dotfiles CLI binary to a specific version
+dotfiles upgrade 2.0.1
+
 # Check available updates using installed-state data when available
 dotfiles check-updates
 
