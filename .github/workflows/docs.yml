@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "scripts/managed-installer/install.sh"
+      - "scripts/build-docs.ts"
+      - "README.md"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -25,10 +27,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+
       - name: Prepare Pages Artifacts
-        run: |
-          mkdir -p public
-          cp scripts/managed-installer/install.sh public/install.sh
+        run: bun scripts/build-docs.ts
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
