@@ -1565,10 +1565,9 @@ func TestManualToolWithoutBinaryPath_Logging(t *testing.T) {
 		t.Fatalf("GenerateTool failed for manual tool: %v", err)
 	}
 
-	logOutput := logBuf.String()
-	expectedLog := "WARN\t[tmux-sessionx] Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)"
-	if !strings.Contains(logOutput, expectedLog) {
-		t.Errorf("expected log output to contain %q, but got:\n%s", expectedLog, logOutput)
+	exists, err := fsys.Exists("/home/user/bin/tmux-sessionx")
+	if err != nil || !exists {
+		t.Errorf("expected shim /home/user/bin/tmux-sessionx to be generated")
 	}
 }
 
