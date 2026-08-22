@@ -30,7 +30,8 @@ func MatchAssetPattern(name, pattern string) bool {
 
 	// Case 2: Glob matching if pattern contains glob metacharacters (*, ?, [)
 	if strings.ContainsAny(pattern, "*?[") {
-		matched, err := filepath.Match(strings.ToLower(pattern), strings.ToLower(name))
+		globPattern := strings.ReplaceAll(pattern, "[!", "[^")
+		matched, err := filepath.Match(strings.ToLower(globPattern), strings.ToLower(name))
 		if err == nil && matched {
 			return true
 		}

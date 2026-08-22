@@ -70,9 +70,15 @@ func TestMatchAssetPattern(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "Non-matching substring",
-			fileName: "mytool-darwin-amd64.tar.gz",
-			pattern:  "linux",
+			name:     "Glob wildcard with negation [!s]",
+			fileName: "atuin-x86_64-unknown-linux-gnu.tar.gz",
+			pattern:  "atuin-[!s]*.tar.gz",
+			expected: true,
+		},
+		{
+			name:     "Glob wildcard with negation [!s] rejecting atuin-server",
+			fileName: "atuin-server-x86_64-unknown-linux-gnu.tar.gz",
+			pattern:  "atuin-[!s]*.tar.gz",
 			expected: false,
 		},
 	}
