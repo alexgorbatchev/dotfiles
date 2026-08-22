@@ -462,7 +462,10 @@ func (o *Orchestrator) cleanupToolArtifacts(ctx context.Context, toolName string
 	}
 
 	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-		return o.reg.RemoveFileOperationsByTool(ctx, tx, toolName)
+		if err := o.reg.RemoveFileOperationsByTool(ctx, tx, toolName); err != nil {
+			return err
+		}
+		return o.reg.RemoveToolInstallation(ctx, tx, toolName)
 	})
 }
 
