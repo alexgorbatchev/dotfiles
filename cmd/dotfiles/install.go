@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -32,17 +33,21 @@ var installCmd = &cobra.Command{
 		services.Orchestrator.SetLogger(log)
 
 		if len(args) > 0 {
-			toolName := args[0]
-			targetTool := config.FindTool(services.ToolConfigs, toolName)
-			if targetTool == nil {
-				return fmt.Errorf("tool %q not found in configuration", toolName)
-			}
+			for _, toolName := range args {
+				if strings.Contains(toolName, "=") {
+					continue
+				}
+				targetTool := config.FindTool(services.ToolConfigs, toolName)
+				if targetTool == nil {
+					return fmt.Errorf("tool %q not found in configuration", toolName)
+				}
 
-			log.Info(logger.Message(fmt.Sprintf("Installing tool: %s", targetTool.Name)))
+				log.Info(logger.Message(fmt.Sprintf("Installing tool: %s", targetTool.Name)))
 
-			err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
-			if err != nil {
-				return err
+				err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			log.Info("Installing all configured tools")

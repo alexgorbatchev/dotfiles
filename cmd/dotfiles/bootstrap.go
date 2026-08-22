@@ -167,6 +167,15 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	if strings.Contains(projCfg.Paths.BinariesDir, "{paths.generatedDir}") {
 		projCfg.Paths.BinariesDir = strings.ReplaceAll(projCfg.Paths.BinariesDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
 	}
+	if strings.Contains(projCfg.Paths.ShellScriptsDir, "{paths.generatedDir}") {
+		projCfg.Paths.ShellScriptsDir = strings.ReplaceAll(projCfg.Paths.ShellScriptsDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
+	}
+	if strings.Contains(projCfg.Paths.ToolConfigsDir, "{paths.generatedDir}") {
+		projCfg.Paths.ToolConfigsDir = strings.ReplaceAll(projCfg.Paths.ToolConfigsDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
+	}
+	if strings.Contains(projCfg.Paths.DotfilesDir, "{paths.generatedDir}") {
+		projCfg.Paths.DotfilesDir = strings.ReplaceAll(projCfg.Paths.DotfilesDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
+	}
 
 	if rfs, ok := fsys.(*fs.ResolvedFS); ok {
 		rfs.SetHomeDir(projCfg.Paths.HomeDir)
