@@ -507,6 +507,10 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 								return nil
 							}
 
+							if exists, _ := fsys.Exists(completionFilePath); exists && !shouldOverwrite(ctx) {
+								return nil
+							}
+
 							cmdName = execPath
 							o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Generating %s completion using: %s", sh, cmdValResolved)))
 							cmdCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
