@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	iofs "io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/embedded"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/spf13/cobra"
@@ -87,61 +89,32 @@ var skillCmd = &cobra.Command{
 
 		if len(args) > 0 {
 			targetPath := args[0]
-			execPath, err := os.Executable()
-			var execDir string
-			if err == nil {
-				execDir = filepath.Dir(execPath)
-			}
-			cwd, _ := os.Getwd()
-			homeDir, _ := os.UserHomeDir()
-
-			candidates := []string{
-				filepath.Join(execDir, "skill"),
-				filepath.Join(cwd, "skill"),
-				filepath.Join(cwd, ".agents", "skills", "dotfiles"),
-				filepath.Join(homeDir, ".dotfiles", ".agents", "skills", "dotfiles"),
-				filepath.Join(homeDir, ".agents", "skills", "dotfiles"),
-			}
-			if repoRoot := os.Getenv("DOTFILES_REPO_ROOT"); repoRoot != "" {
-				candidates = append(candidates, filepath.Join(repoRoot, ".agents", "skills", "dotfiles"))
-			}
-
-			var skillSourcePath string
-			for _, cand := range candidates {
-				if cand == "" {
-					continue
-				}
-				if exists, _ := fileExists(cand); exists {
-					skillSourcePath = cand
-					break
-				}
-			}
-
-			if skillSourcePath == "" {
-				return fmt.Errorf("dotfiles skill folder source not found")
-			}
-
 			destPath := filepath.Join(targetPath, "dotfiles")
 			if err := os.MkdirAll(destPath, 0755); err != nil {
 				return fmt.Errorf("creating destination skill directory: %w", err)
 			}
 
-			entries, err := os.ReadDir(skillSourcePath)
-			if err != nil {
-				return fmt.Errorf("reading skill source: %w", err)
-			}
-
-			for _, entry := range entries {
-				srcFile := filepath.Join(skillSourcePath, entry.Name())
-				dstFile := filepath.Join(destPath, entry.Name())
-				if entry.IsDir() {
-					_ = os.MkdirAll(dstFile, 0755)
-				} else {
-					data, err := os.ReadFile(srcFile)
-					if err == nil {
-						_ = os.WriteFile(dstFile, data, 0644)
-					}
+			err := iofs.WalkDir(embedded.SkillFS, "skill", func(path string, d iofs.DirEntry, err error) error {
+				if err != nil {
+					return err
 				}
+				rel, err := filepath.Rel("skill", path)
+				if err != nil || rel == "." {
+					return nil
+				}
+				dst := filepath.Join(destPath, rel)
+				if d.IsDir() {
+					return os.MkdirAll(dst, 0755)
+				}
+				data, err := iofs.ReadFile(embedded.SkillFS, path)
+				if err != nil {
+					return fmt.Errorf("reading embedded skill file %q: %w", path, err)
+				}
+				return os.WriteFile(dst, data, 0644)
+			})
+
+			if err != nil {
+				return fmt.Errorf("extracting embedded skill: %w", err)
 			}
 
 			log.Info(logger.Message(fmt.Sprintf("Copied skill folder to %s", destPath)))
