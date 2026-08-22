@@ -48,15 +48,6 @@ func (z *ZshPluginInstaller) SupportsSudo() bool {
 	return false
 }
 
-func getSystemGitPath() string {
-	for _, cand := range []string{"/usr/bin/git", "/usr/local/bin/git", "/opt/homebrew/bin/git"} {
-		if _, err := os.Stat(cand); err == nil {
-			return cand
-		}
-	}
-	return "git"
-}
-
 func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
 	if err := ValidateSudo(z, tool); err != nil {
 		return nil, err
@@ -115,11 +106,28 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 	}
 
 	exists := pluginExists(pluginPath)
-	gitBin := getSystemGitPath()
+
+	// Clean PATH to avoid invoking generated git shims during plugin clone/pull
+	var cleanEnv []string
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "PATH=") {
+			parts := strings.Split(env[5:], string(os.PathListSeparator))
+			var filtered []string
+			for _, p := range parts {
+				if !strings.Contains(p, ".generated") {
+					filtered = append(filtered, p)
+				}
+			}
+			cleanEnv = append(cleanEnv, "PATH="+strings.Join(filtered, string(os.PathListSeparator)))
+		} else {
+			cleanEnv = append(cleanEnv, env)
+		}
+	}
 
 	if exists {
 		// git pull
-		cmd := z.runner.CommandContext(ctx, gitBin, "-C", pluginPath, "pull", "--ff-only")
+		cmd := z.runner.CommandContext(ctx, "git", "-C", pluginPath, "pull", "--ff-only")
+		cmd.SetEnv(cleanEnv)
 		if err := cmd.Run(); err != nil {
 			return nil, fmt.Errorf("updating plugin: %w", err)
 		}
@@ -129,7 +137,8 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 			return nil, fmt.Errorf("creating parent directory: %w", err)
 		}
 		// git clone
-		cmd := z.runner.CommandContext(ctx, gitBin, "clone", "--depth", "1", gitURL, pluginPath)
+		cmd := z.runner.CommandContext(ctx, "git", "clone", "--depth", "1", gitURL, pluginPath)
+		cmd.SetEnv(cleanEnv)
 		if err := cmd.Run(); err != nil {
 			return nil, fmt.Errorf("cloning plugin: %w", err)
 		}

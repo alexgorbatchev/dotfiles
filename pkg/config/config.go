@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -105,6 +106,42 @@ func (p *ProjectConfig) Validate() error {
 		return fmt.Errorf("paths.targetDir is required")
 	}
 	return nil
+}
+
+// ResolvePlaceholders resolves path template variables in ProjectConfig path fields.
+func (p *ProjectConfig) ResolvePlaceholders() {
+	if p == nil {
+		return
+	}
+	genDir := p.Paths.GeneratedDir
+	if genDir == "" {
+		genDir = filepath.Join(p.Paths.DotfilesDir, ".generated")
+		p.Paths.GeneratedDir = genDir
+	}
+
+	replaceGenDir := func(s string) string {
+		if strings.Contains(s, "{paths.generatedDir}") {
+			return strings.ReplaceAll(s, "{paths.generatedDir}", genDir)
+		}
+		return s
+	}
+
+	p.Paths.HomeDir = replaceGenDir(p.Paths.HomeDir)
+	p.Paths.DotfilesDir = replaceGenDir(p.Paths.DotfilesDir)
+	p.Paths.TargetDir = replaceGenDir(p.Paths.TargetDir)
+	p.Paths.BinariesDir = replaceGenDir(p.Paths.BinariesDir)
+	p.Paths.ShellScriptsDir = replaceGenDir(p.Paths.ShellScriptsDir)
+	p.Paths.ToolConfigsDir = replaceGenDir(p.Paths.ToolConfigsDir)
+
+	if p.Paths.BinariesDir == "" {
+		p.Paths.BinariesDir = filepath.Join(p.Paths.GeneratedDir, "binaries")
+	}
+	if p.Paths.ShellScriptsDir == "" {
+		p.Paths.ShellScriptsDir = filepath.Join(p.Paths.GeneratedDir, "shell-scripts")
+	}
+	if p.Paths.TargetDir == "" {
+		p.Paths.TargetDir = filepath.Join(p.Paths.GeneratedDir, "bin")
+	}
 }
 
 // BinaryConfig defines settings for pattern-based binary execution detection.

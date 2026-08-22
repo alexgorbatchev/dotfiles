@@ -150,32 +150,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		projCfg.Cargo.GithubRelease.Host = mockHost
 	}
 
-	if projCfg.Paths.BinariesDir == "" {
-		projCfg.Paths.BinariesDir = filepath.Join(projCfg.Paths.GeneratedDir, "binaries")
-	}
-	if projCfg.Paths.ShellScriptsDir == "" {
-		projCfg.Paths.ShellScriptsDir = filepath.Join(projCfg.Paths.GeneratedDir, "shell-scripts")
-	}
-
-	// Resolve the generatedDir placeholders in paths
-	if strings.Contains(projCfg.Paths.HomeDir, "{paths.generatedDir}") {
-		projCfg.Paths.HomeDir = strings.ReplaceAll(projCfg.Paths.HomeDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
-	}
-	if strings.Contains(projCfg.Paths.TargetDir, "{paths.generatedDir}") {
-		projCfg.Paths.TargetDir = strings.ReplaceAll(projCfg.Paths.TargetDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
-	}
-	if strings.Contains(projCfg.Paths.BinariesDir, "{paths.generatedDir}") {
-		projCfg.Paths.BinariesDir = strings.ReplaceAll(projCfg.Paths.BinariesDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
-	}
-	if strings.Contains(projCfg.Paths.ShellScriptsDir, "{paths.generatedDir}") {
-		projCfg.Paths.ShellScriptsDir = strings.ReplaceAll(projCfg.Paths.ShellScriptsDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
-	}
-	if strings.Contains(projCfg.Paths.ToolConfigsDir, "{paths.generatedDir}") {
-		projCfg.Paths.ToolConfigsDir = strings.ReplaceAll(projCfg.Paths.ToolConfigsDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
-	}
-	if strings.Contains(projCfg.Paths.DotfilesDir, "{paths.generatedDir}") {
-		projCfg.Paths.DotfilesDir = strings.ReplaceAll(projCfg.Paths.DotfilesDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
-	}
+	projCfg.ResolvePlaceholders()
 
 	if rfs, ok := fsys.(*fs.ResolvedFS); ok {
 		rfs.SetHomeDir(projCfg.Paths.HomeDir)

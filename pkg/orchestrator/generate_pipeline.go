@@ -251,6 +251,10 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 	}
 
 	symEvaluator := o.getSymlinkEvaluator()
+	binariesDir := projCfg.Paths.BinariesDir
+	if binariesDir == "" {
+		binariesDir = filepath.Join(projCfg.Paths.GeneratedDir, "binaries")
+	}
 
 	for _, tool := range tools {
 		if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
@@ -277,6 +281,11 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 
 		for _, state := range fileStates {
 			if state.FileType != "symlink" || state.LastOperation == "rm" {
+				continue
+			}
+
+			// Do not treat internal installation 'current' symlinks in binariesDir as stale config symlinks
+			if strings.HasPrefix(state.FilePath, binariesDir) || strings.HasSuffix(state.FilePath, "/current") {
 				continue
 			}
 
@@ -362,15 +371,16 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 				continue
 			}
 
-			absFilePath, err := o.fs.Abs(state.FilePath)
+			resolvedFilePath, _ := config.ResolvePlaceholders(state.FilePath, tool.Name, projCfg)
+			absFilePath, err := o.fs.Abs(resolvedFilePath)
 			if err != nil {
-				absFilePath = state.FilePath
+				absFilePath = resolvedFilePath
 			}
 
-			if !expectedFiles[absFilePath] && !expectedFiles[state.FilePath] {
-				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale file: %s", state.FilePath)))
+			if !expectedFiles[absFilePath] && !expectedFiles[resolvedFilePath] && !expectedFiles[state.FilePath] {
+				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale file: %s", resolvedFilePath)))
 
-				_ = o.fs.Remove(state.FilePath)
+				_ = o.fs.Remove(resolvedFilePath)
 				_ = o.fs.Remove(absFilePath)
 
 				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {

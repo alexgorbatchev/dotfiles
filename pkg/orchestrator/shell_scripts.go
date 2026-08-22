@@ -170,7 +170,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 							}
 						}
 						if sourceFile == "" {
-							sourceFile = pluginName + ".plugin.zsh"
+							sourceFile = filepath.Join(pluginName, pluginName+".plugin.zsh")
 						}
 					}
 					if sourceFile != "" {
