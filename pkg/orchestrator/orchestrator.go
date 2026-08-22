@@ -237,11 +237,6 @@ func (o *Orchestrator) isExistingInstallationHealthy(ctx context.Context, toolNa
 		return false
 	}
 
-	expectedBinaryNames := getBinaryNames(tool.Binaries)
-	if len(expectedBinaryNames) == 0 {
-		return true
-	}
-
 	currentDir := filepath.Join(projCfg.Paths.BinariesDir, toolName, "current")
 	currentDirExists, err := o.fs.Exists(currentDir)
 	if err != nil || !currentDirExists {
@@ -249,6 +244,7 @@ func (o *Orchestrator) isExistingInstallationHealthy(ctx context.Context, toolNa
 		return false
 	}
 
+	expectedBinaryNames := getBinaryNames(tool.Binaries)
 	for _, binName := range expectedBinaryNames {
 		binaryPath := filepath.Join(currentDir, binName)
 		binExists, err := o.fs.Exists(binaryPath)
