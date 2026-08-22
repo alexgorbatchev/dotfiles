@@ -90,6 +90,21 @@ curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
 
 This installs the standalone native Go binary to `~/.local/bin/dotfiles` and updates your shims. Your `dotfiles.config.ts`, `.tool.ts` files, and `~/.zshrc` / `~/.bashrc` initialization lines require **zero changes**. You can optionally remove the old global npm package: `npm uninstall -g @alexgorbatchev/dotfiles`.
 
+### Upgrading the CLI Binary (`dotfiles upgrade`)
+
+Keep the `dotfiles` CLI binary updated to the latest release directly from GitHub Releases:
+
+```bash
+# Check for available updates
+$ dotfiles upgrade --check
+
+# Upgrade to latest stable release
+$ dotfiles upgrade
+
+# Upgrade or downgrade to a specific version
+$ dotfiles upgrade 2.2.0
+```
+
 ### Manual Install
 
 Run the provided install script directly, or use the `dotfiles` CLI binary:
