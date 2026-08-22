@@ -23,7 +23,6 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 ## Boundaries
 
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict)
-- Always: automatically compile and update `~/.dotfiles/.generated/binaries/dotfiles/current/dotfiles` whenever modifying Go CLI source code.
 - Always: write matching unit tests in `subcommands_test.go` for any subcommand modifications.
 - Ask first: adding new CLI subcommands or changing CLI flag names.
 - Never: use global `/tmp` or modify `~/.dotfiles` directly without sandbox overrides.
