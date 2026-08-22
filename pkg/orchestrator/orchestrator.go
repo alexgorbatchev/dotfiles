@@ -19,6 +19,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 )
 
@@ -230,17 +231,24 @@ func (o *Orchestrator) getCliCommand() string {
 	return execPath
 }
 
+func (o *Orchestrator) formatPath(projCfg *config.ProjectConfig, p string) string {
+	if projCfg == nil || projCfg.Paths.HomeDir == "" {
+		return p
+	}
+	return utils.ContractHomePath(projCfg.Paths.HomeDir, p)
+}
+
 func (o *Orchestrator) isExistingInstallationHealthy(ctx context.Context, toolName string, existingInstallation *registry.ToolInstallationRecord, tool *config.ToolConfig, projCfg *config.ProjectConfig) bool {
 	exists, err := o.fs.Exists(existingInstallation.InstallPath)
 	if err != nil || !exists {
-		o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Existing install path missing: %s", existingInstallation.InstallPath)))
+		o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Existing install path missing: %s", o.formatPath(projCfg, existingInstallation.InstallPath))))
 		return false
 	}
 
 	currentDir := filepath.Join(projCfg.Paths.BinariesDir, toolName, "current")
 	currentDirExists, err := o.fs.Exists(currentDir)
 	if err != nil || !currentDirExists {
-		o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current directory missing: %s", currentDir)))
+		o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current directory missing: %s", o.formatPath(projCfg, currentDir))))
 		return false
 	}
 
@@ -249,7 +257,7 @@ func (o *Orchestrator) isExistingInstallationHealthy(ctx context.Context, toolNa
 		binaryPath := filepath.Join(currentDir, binName)
 		binExists, err := o.fs.Exists(binaryPath)
 		if err != nil || !binExists {
-			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current binary missing: %s", binaryPath)))
+			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current binary missing: %s", o.formatPath(projCfg, binaryPath))))
 			return false
 		}
 	}

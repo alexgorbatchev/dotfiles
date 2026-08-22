@@ -228,7 +228,7 @@ func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.To
 			}
 
 			if !expectedShimPaths[absFilePath] && !expectedShimPaths[state.FilePath] {
-				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale shim: %s", state.FilePath)))
+				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale shim: %s", o.formatPath(projCfg, state.FilePath))))
 
 				_ = o.fs.Remove(state.FilePath)
 				_ = o.fs.Remove(absFilePath)
@@ -295,7 +295,7 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 			}
 
 			if !expectedSymlinks[absFilePath] && !expectedSymlinks[state.FilePath] {
-				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale symlink: %s", state.FilePath)))
+				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale symlink: %s", o.formatPath(projCfg, state.FilePath))))
 
 				_, _ = symEvaluator.RemoveSymlink(state.FilePath, "")
 				_ = o.fs.Remove(state.FilePath)
@@ -378,7 +378,7 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 			}
 
 			if !expectedFiles[absFilePath] && !expectedFiles[resolvedFilePath] && !expectedFiles[state.FilePath] {
-				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale file: %s", resolvedFilePath)))
+				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale file: %s", o.formatPath(projCfg, resolvedFilePath))))
 
 				_ = o.fs.Remove(resolvedFilePath)
 				_ = o.fs.Remove(absFilePath)
