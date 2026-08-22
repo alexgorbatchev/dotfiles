@@ -8,6 +8,10 @@ import type {
   ShellStrings,
 } from "./dsl-types";
 
+function getGlobals(): Record<string, unknown> {
+  return globalThis as unknown as Record<string, unknown>;
+}
+
 export type Platform = DslPlatform;
 export type Architecture = DslArchitecture;
 
@@ -130,7 +134,7 @@ export function defineConfig(callback: ConfigFactory): unknown {
     });
     const parsedObj = res as Record<string, unknown>;
     const pCfg = parsedObj && parsedObj["projectConfig"] ? parsedObj["projectConfig"] : res;
-    (globalThis as unknown as Record<string, unknown>)["projectConfig"] = pCfg;
+    getGlobals()["projectConfig"] = pCfg;
     return res;
   }
   return callback;
@@ -443,10 +447,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     shellScriptsDir: (globalThis.configFileDir || "") + "/.generated/shell-init",
     binariesDir: (globalThis.configFileDir || "") + "/.generated/binaries",
   };
-  const activeProjCfg = ((globalThis as unknown as Record<string, unknown>)["projectConfig"] || {}) as Record<
-    string,
-    unknown
-  >;
+  const activeProjCfg = (getGlobals()["projectConfig"] || {}) as Record<string, unknown>;
 
   const toolCtx = {
     toolName: toolName,
@@ -546,9 +547,12 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
   return builder;
 }
 
+export const dedentTemplate = dedentString;
+
 // Ensure global registration
-(globalThis as unknown as Record<string, unknown>)["defineConfig"] = defineConfig;
-(globalThis as unknown as Record<string, unknown>)["defineTool"] = defineTool;
-(globalThis as unknown as Record<string, unknown>)["dedentString"] = dedentString;
-(globalThis as unknown as Record<string, unknown>)["Platform"] = Platform;
-(globalThis as unknown as Record<string, unknown>)["Architecture"] = Architecture;
+getGlobals()["defineConfig"] = defineConfig;
+getGlobals()["defineTool"] = defineTool;
+getGlobals()["dedentString"] = dedentString;
+getGlobals()["dedentTemplate"] = dedentString;
+getGlobals()["Platform"] = Platform;
+getGlobals()["Architecture"] = Architecture;

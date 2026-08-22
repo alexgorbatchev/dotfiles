@@ -52,7 +52,11 @@ const requireFunc: RequireFunction = (name: string): unknown => {
   throw new Error("Module not found: " + name);
 };
 
+function getGlobals(): Record<string, unknown> {
+  return globalThis as unknown as Record<string, unknown>;
+}
+
 // Ensure typechecked assignment to globalThis
-(globalThis as unknown as Record<string, unknown>)["fs"] = fs;
-(globalThis as unknown as Record<string, unknown>)["path"] = path;
-(globalThis as unknown as Record<string, unknown>)["require"] = requireFunc;
+getGlobals()["fs"] = fs;
+getGlobals()["path"] = path;
+getGlobals()["require"] = requireFunc;
