@@ -112,6 +112,7 @@ export interface ToolConfig {
   binaries?: any[];
   dependencies?: string[];
   disabled?: boolean;
+  platformUnsupported?: boolean;
   hostname?: string;
   sudo?: boolean;
   shellConfigs?: ShellConfigs;
