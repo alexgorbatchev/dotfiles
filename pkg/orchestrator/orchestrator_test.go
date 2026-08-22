@@ -921,7 +921,11 @@ func TestZshPlugin_UnclonedFallbackSource(t *testing.T) {
 	}
 
 	scriptContent := string(data)
+	expectedGuard := `if [ ! -f "/home/user/.generated/binaries/uncloned-plugin/current/uncloned-plugin.plugin.zsh" ]; then`
 	expectedSource := `source "/home/user/.generated/binaries/uncloned-plugin/current/uncloned-plugin.plugin.zsh"`
+	if !strings.Contains(scriptContent, expectedGuard) {
+		t.Errorf("expected script to contain lazy install guard %q, got:\n%s", expectedGuard, scriptContent)
+	}
 	if !strings.Contains(scriptContent, expectedSource) {
 		t.Errorf("expected script to contain fallback source %q, got:\n%s", expectedSource, scriptContent)
 	}

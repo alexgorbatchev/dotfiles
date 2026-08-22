@@ -159,8 +159,12 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 						sourceFile = explicitSource
 					} else {
 						for _, candidate := range candidates {
-							candidatePath := filepath.Join(pluginPath, candidate)
-							if ex, _ := fsys.Exists(candidatePath); ex {
+							subCandidate := filepath.Join(pluginName, candidate)
+							if ex, _ := fsys.Exists(filepath.Join(pluginPath, subCandidate)); ex {
+								sourceFile = subCandidate
+								break
+							}
+							if ex, _ := fsys.Exists(filepath.Join(pluginPath, candidate)); ex {
 								sourceFile = candidate
 								break
 							}
@@ -170,7 +174,16 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 						}
 					}
 					if sourceFile != "" {
-						toolBlockLines = append(toolBlockLines, fmt.Sprintf("source %q", filepath.ToSlash(filepath.Join(pluginPath, sourceFile))))
+						fullSourcePath := filepath.ToSlash(filepath.Join(pluginPath, sourceFile))
+						cliCmd := o.getCliCommand()
+						cfgFile := o.getConfigFilePath()
+
+						toolBlockLines = append(toolBlockLines,
+							fmt.Sprintf("if [ ! -f %q ]; then", fullSourcePath),
+							fmt.Sprintf("  %s install --shim-mode --config %q %q", cliCmd, cfgFile, tool.Name),
+							"fi",
+							fmt.Sprintf("source %q", fullSourcePath),
+						)
 					}
 				}
 
