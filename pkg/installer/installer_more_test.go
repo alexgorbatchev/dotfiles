@@ -94,6 +94,11 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 		t.Errorf("getPatternForBinary(b3) = %q, want 'pat3'", p)
 	}
 
+	zinst := NewZshPluginInstaller(exec.NewOSRunner(), fs.NewOSFS(), NewDefaultSystemContext())
+	if !zinst.AutoInstallsByDefault() {
+		t.Errorf("expected AutoInstallsByDefault() = true for ZshPluginInstaller")
+	}
+
 	// 5. Test matchAsset directly
 	assets := []githubAsset{
 		{Name: "app-v1-darwin-arm64.dmg"},
@@ -669,4 +674,14 @@ func TestInstallerEdgeCasesAndFallbacks(t *testing.T) {
 		Name:          "pacman-fail-chk",
 		InstallParams: map[string]interface{}{"package": "pkg1"},
 	})
+}
+
+func TestPromoteBinaries_NotFound(t *testing.T) {
+	memFS := fs.NewMemFS()
+	_ = memFS.MkdirAll("/dest", 0755)
+
+	_, err := PromoteBinaries(memFS, "/dest", "missing-tool", []interface{}{"missing-bin"})
+	if err == nil {
+		t.Errorf("expected error when binary is not found in destDir")
+	}
 }
