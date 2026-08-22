@@ -239,11 +239,11 @@ func GetBinaryNames(toolName string, toolBinaries []interface{}) []string {
 
 // removeAll recursively removes files and directories from the fsys.
 func removeAll(fsys fs.FS, path string) error {
-	exists, err := fsys.Exists(path)
-	if err != nil {
-		return err
+	if r, ok := fsys.(interface{ RemoveAll(string) error }); ok {
+		return r.RemoveAll(path)
 	}
-	if !exists {
+	exists, err := fsys.Exists(path)
+	if err != nil || !exists {
 		return nil
 	}
 
@@ -308,9 +308,22 @@ func PromoteBinaries(fsys fs.FS, destDir string, toolName string, toolBinaries [
 	for _, binName := range binaryNames {
 		targetPath := filepath.Join(destDir, binName)
 
-		// 1. If it already exists directly at the root, nothing to do.
-		exists, err := fsys.Exists(targetPath)
-		if err == nil && exists {
+		// 1. If it already exists directly at targetPath as a regular file, nothing to do.
+		targetInfo, statErr := fsys.Stat(targetPath)
+		if statErr == nil && targetInfo.IsDir() {
+			subBin := filepath.Join(targetPath, "bin", binName)
+			if subInfo, subErr := fsys.Stat(subBin); subErr == nil && !subInfo.IsDir() {
+				rootDir := targetPath + "-root"
+				_ = fsys.RemoveAll(rootDir)
+				if err := fsys.Rename(targetPath, rootDir); err == nil {
+					relPath := filepath.Join(filepath.Base(rootDir), "bin", binName)
+					_ = fsys.Chmod(filepath.Join(rootDir, "bin", binName), 0755)
+					if errSym := fsys.Symlink(relPath, targetPath); errSym == nil {
+						continue
+					}
+				}
+			}
+		} else if statErr == nil {
 			_ = fsys.Chmod(targetPath, 0755)
 			continue
 		}
@@ -333,12 +346,31 @@ func PromoteBinaries(fsys fs.FS, destDir string, toolName string, toolBinaries [
 		}
 
 		if foundPath != "" {
-			// Promote the found binary to the root of destDir!
+			if foundPath == targetPath {
+				_ = fsys.Chmod(targetPath, 0755)
+				continue
+			}
+
+			// If the binary is nested in a subfolder (like go-root/bin/go or mytool-root/bin/mytool),
+			// create a relative symlink first so toolchain assets (src, pkg, lib) stay intact relative to binary.
+			relPath, errRel := filepath.Rel(destDir, foundPath)
+			if errRel == nil && (strings.Contains(relPath, "/") || strings.Contains(relPath, "\\")) {
+				_ = fsys.Chmod(foundPath, 0755)
+				if exists, _ := fsys.Exists(targetPath); exists {
+					_ = fsys.Remove(targetPath)
+				}
+				if errSym := fsys.Symlink(relPath, targetPath); errSym == nil {
+					continue
+				}
+			}
+
+			// Fallback: move binary directly to root of destDir
 			if err := fsys.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
 				return nil, fmt.Errorf("creating directory for promoted binary %q: %w", binName, err)
 			}
-			// If targetPath exists (e.g. as a directory by mistake), remove it first
-			_ = fsys.Remove(targetPath)
+			if exists, _ := fsys.Exists(targetPath); exists {
+				_ = fsys.Remove(targetPath)
+			}
 			if err := fsys.Rename(foundPath, targetPath); err != nil {
 				return nil, fmt.Errorf("promoting binary from %q to %q: %w", foundPath, targetPath, err)
 			}

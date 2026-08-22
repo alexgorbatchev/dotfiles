@@ -119,10 +119,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 		pattern := getPatternForBinary(tool.Binaries, binName)
 		if pattern != "" && (strings.Contains(pattern, "/") || strings.Contains(pattern, "\\")) && !strings.ContainsAny(pattern, "*?[") {
-			subPathCandidate := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", pattern)
-			if exists, _ := o.fs.Exists(subPathCandidate); exists {
-				binaryPath = subPathCandidate
-			}
+			binaryPath = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", pattern)
 		}
 
 		if exists, _ := o.fs.Exists(binaryPath); !exists {

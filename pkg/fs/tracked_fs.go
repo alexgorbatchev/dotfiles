@@ -311,6 +311,9 @@ func (t *TrackedFileSystem) Rename(oldname, newname string) error {
 	if err != nil {
 		return err
 	}
+	if t.tx != nil && t.reg != nil {
+		_ = t.reg.RenameFileOperationPrefix(t.ctx, t.tx, oldname, newname)
+	}
 	return t.recordOperation("rename", newname, &oldname, nil, nil)
 }
 

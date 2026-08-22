@@ -384,3 +384,18 @@ func (r *Registry) RemoveFileOperationsByTool(ctx context.Context, tx *sql.Tx, t
 
 	return nil
 }
+
+// RenameFileOperationPrefix updates file_path in file_operations when a directory is renamed.
+func (r *Registry) RenameFileOperationPrefix(ctx context.Context, tx *sql.Tx, oldPrefix, newPrefix string) error {
+	if tx == nil {
+		return ErrTransactionRequired
+	}
+
+	query := "UPDATE file_operations SET file_path = ? || SUBSTR(file_path, LENGTH(?) + 1) WHERE file_path = ? OR file_path LIKE ? || '/%';"
+	_, err := tx.ExecContext(ctx, query, newPrefix, oldPrefix, oldPrefix, oldPrefix)
+	if err != nil {
+		return fmt.Errorf("updating file operation paths: %w", err)
+	}
+
+	return nil
+}
