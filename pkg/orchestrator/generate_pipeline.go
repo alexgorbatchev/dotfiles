@@ -96,15 +96,6 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		return fmt.Errorf("project configuration is nil")
 	}
 
-	// Skip shim generation for manual tools without binaryPath
-	if tool.InstallationMethod == "manual" {
-		binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")
-		if binaryPath == "" {
-			o.logger.GetSubLogger("", tool.Name).Warn(logger.Message("Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)"))
-			return nil
-		}
-	}
-
 	// 1. Resolve binaries to shim
 	binaryNames := getBinaryNames(tool.Binaries)
 
@@ -116,17 +107,12 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		shimPath := filepath.Join(shimDir, binName)
 		binaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
 
-		pattern := getPatternForBinary(tool.Binaries, binName)
-		if pattern != "" && (strings.Contains(pattern, "/") || strings.Contains(pattern, "\\")) && !strings.ContainsAny(pattern, "*?[") {
-			subPathCandidate := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", pattern)
-			if exists, _ := o.fs.Exists(subPathCandidate); exists {
-				binaryPath = subPathCandidate
-			}
-		}
-
 		if exists, _ := o.fs.Exists(binaryPath); !exists {
 			if sysBin, err := findSystemBinary(binName); err == nil {
 				binaryPath = sysBin
+			} else if tool.InstallationMethod == "manual" {
+				o.logger.GetSubLogger("", tool.Name).Warn(logger.Message("Skipping shim generation (manual tool has .bin() but no binaryPath — use shell functions instead)"))
+				continue
 			}
 		}
 
