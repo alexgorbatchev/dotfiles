@@ -112,11 +112,11 @@ func (h *TabHandler) Handle(_ context.Context, r slog.Record) error {
 	if useColor {
 		switch r.Level {
 		case LevelTrace:
-			sb.WriteString("\033[1;90mTRACE\033[0m")
+			sb.WriteString("\033[2;90mTRACE\033[0m")
 		case LevelDebug:
-			sb.WriteString("\033[1;36mDEBUG\033[0m")
+			sb.WriteString("\033[1;90mDEBUG\033[0m")
 		case LevelInfo:
-			sb.WriteString("\033[1;32mINFO\033[0m")
+			sb.WriteString("\033[1;36mINFO\033[0m")
 		case LevelWarn:
 			sb.WriteString("\033[1;33mWARN\033[0m")
 		case LevelError:
