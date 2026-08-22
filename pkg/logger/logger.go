@@ -92,6 +92,9 @@ func isColorSupported(w io.Writer) bool {
 	if f, ok := w.(*os.File); ok {
 		return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
 	}
+	if w == os.Stderr || w == os.Stdout {
+		return isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsTerminal(os.Stdout.Fd())
+	}
 	return false
 }
 
