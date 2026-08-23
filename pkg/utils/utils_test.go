@@ -124,6 +124,13 @@ func TestExpandHomePath(t *testing.T) {
 		{"only tilde", "/home/user", "~", "/home/user"},
 		{"tilde with slash", "/home/user", "~/foo", filepath.Join("/home/user", "foo")},
 		{"tilde with backslash", "/home/user", "~\\foo", filepath.Join("/home/user", "foo")},
+		{"only dollar HOME", "/home/user", "$HOME", "/home/user"},
+		{"only dollar brace HOME", "/home/user", "${HOME}", "/home/user"},
+		{"dollar HOME with slash", "/home/user", "$HOME/foo", filepath.Join("/home/user", "foo")},
+		{"dollar HOME with backslash", "/home/user", "$HOME\\foo", filepath.Join("/home/user", "foo")},
+		{"dollar brace HOME with slash", "/home/user", "${HOME}/foo", filepath.Join("/home/user", "foo")},
+		{"dollar brace HOME with backslash", "/home/user", "${HOME}\\foo", filepath.Join("/home/user", "foo")},
+		{"empty homeDir with dollar HOME", "", "$HOME/foo", "$HOME/foo"},
 		{"no tilde", "/home/user", "/etc/foo", "/etc/foo"},
 		{"relative path", "/home/user", "./foo", "./foo"},
 	}

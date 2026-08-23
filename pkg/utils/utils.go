@@ -80,16 +80,22 @@ func NormalizeArch(s string) string {
 	}
 }
 
-// ExpandHomePath expands the tilde (~) prefix in file paths to the provided home directory.
+// ExpandHomePath expands the tilde (~) prefix, $HOME, or ${HOME} in file paths to the provided home directory.
 func ExpandHomePath(homeDir string, path string) string {
-	if path == "~" {
+	if homeDir == "" {
+		return path
+	}
+	if path == "~" || path == "$HOME" || path == "${HOME}" {
 		return homeDir
 	}
-	if strings.HasPrefix(path, "~/") {
+	if strings.HasPrefix(path, "~/") || strings.HasPrefix(path, "~\\") {
 		return filepath.Join(homeDir, path[2:])
 	}
-	if strings.HasPrefix(path, "~\\") {
-		return filepath.Join(homeDir, path[2:])
+	if strings.HasPrefix(path, "$HOME/") || strings.HasPrefix(path, "$HOME\\") {
+		return filepath.Join(homeDir, path[6:])
+	}
+	if strings.HasPrefix(path, "${HOME}/") || strings.HasPrefix(path, "${HOME}\\") {
+		return filepath.Join(homeDir, path[8:])
 	}
 	return path
 }

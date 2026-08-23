@@ -296,18 +296,21 @@ func TestGenerateShellScripts_PathResolutionAndNormalization(t *testing.T) {
 				Zsh: &config.ShellTypeConfig{
 					Paths: []interface{}{
 						"~/custom-bin",
+						"$HOME/.local/share/fnm/aliases/default/bin",
+						"${HOME}/.cargo/bin",
 						"./rel-bin",
 						"   /home/user/spaced/bin/   ",
 						"/home/user/spaced/bin", // Duplicate after trimming/cleaning
 						"",                      // Empty string - skipped
 						"   ",                   // Whitespace only - skipped
 						map[string]interface{}{"path": "~/map-bin"},
-						map[string]interface{}{"path": ""},      // Empty path key - skipped
-						map[string]interface{}{},                // Missing path key - skipped
-						map[string]interface{}{"other": "val"},  // Missing path key - skipped
-						12345,                                   // Invalid type - skipped
-						nil,                                     // Nil - skipped
-						"/home/user/.generated/user-bin",        // TargetDir duplicate - skipped
+						map[string]interface{}{"path": "$HOME/go/bin"},
+						map[string]interface{}{"path": ""},     // Empty path key - skipped
+						map[string]interface{}{},               // Missing path key - skipped
+						map[string]interface{}{"other": "val"}, // Missing path key - skipped
+						12345,                                  // Invalid type - skipped
+						nil,                                    // Nil - skipped
+						"/home/user/.generated/user-bin",       // TargetDir duplicate - skipped
 					},
 				},
 			},
@@ -328,6 +331,21 @@ func TestGenerateShellScripts_PathResolutionAndNormalization(t *testing.T) {
 	// Tilde expansion: ~/custom-bin -> /home/user/custom-bin
 	if !strings.Contains(zshContent, `export PATH="/home/user/custom-bin:$PATH"`) {
 		t.Errorf("expected tilde expansion for ~/custom-bin, got:\n%s", zshContent)
+	}
+
+	// $HOME expansion: $HOME/.local/share/fnm/aliases/default/bin -> /home/user/.local/share/fnm/aliases/default/bin
+	if !strings.Contains(zshContent, `export PATH="/home/user/.local/share/fnm/aliases/default/bin:$PATH"`) {
+		t.Errorf("expected $HOME expansion for fnm path, got:\n%s", zshContent)
+	}
+
+	// ${HOME} expansion: ${HOME}/.cargo/bin -> /home/user/.cargo/bin
+	if !strings.Contains(zshContent, `export PATH="/home/user/.cargo/bin:$PATH"`) {
+		t.Errorf("expected ${HOME} expansion for cargo path, got:\n%s", zshContent)
+	}
+
+	// Map path with $HOME: map[string]interface{}{"path": "$HOME/go/bin"} -> /home/user/go/bin
+	if !strings.Contains(zshContent, `export PATH="/home/user/go/bin:$PATH"`) {
+		t.Errorf("expected map path with $HOME to resolve to /home/user/go/bin, got:\n%s", zshContent)
 	}
 
 	// Relative path: ./rel-bin -> /home/user/tools/tool-a/rel-bin
