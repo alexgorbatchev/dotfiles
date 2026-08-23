@@ -48,6 +48,15 @@ GENERATOR_CLI_EXECUTABLE="dotfiles"
 CONFIG_PATH="dotfiles.config.ts"
 USAGE_LOG_PATH="usage.log"
 
+# Prevent self-referential infinite loops
+shim_self_path="${BASH_SOURCE[0]:-$0}"
+if [ -n "${TOOL_EXECUTABLE:-}" ]; then
+  if [ "$TOOL_EXECUTABLE" = "$shim_self_path" ] || [ "$(readlink -f "$TOOL_EXECUTABLE" 2>/dev/null)" = "$(readlink -f "$shim_self_path" 2>/dev/null)" ]; then
+    echo "Error: $TOOL_NAME shim is self-referential ($TOOL_EXECUTABLE). Aborting to prevent infinite loop." >&2
+    exit 1
+  fi
+fi
+
 # Check for recursion
 RECURSION_ENV_VAR="DOTFILES_INSTALLING_MYTOOL"`,
 		},
@@ -84,6 +93,19 @@ RECURSION_ENV_VAR="DOTFILES_INSTALLING_MYTOOL"`,
 				ToolName:   "mytool",
 				BinaryName: "",
 				BinaryPath: "/opt/mytool/bin/mytool",
+			},
+			setupFS: func() fs.FS {
+				return fs.NewMemFS()
+			},
+			wantErr: true,
+		},
+		{
+			name:     "self referential binary path error",
+			shimPath: "/home/user/bin/mytool",
+			cfg: Config{
+				ToolName:   "mytool",
+				BinaryName: "mytool",
+				BinaryPath: "/home/user/bin/mytool",
 			},
 			setupFS: func() fs.FS {
 				return fs.NewMemFS()

@@ -54,6 +54,18 @@ func (g *Generator) Generate(shimPath string, cfg Config) error {
 		return fmt.Errorf("binary path must not be empty")
 	}
 
+	cleanShimPath := filepath.Clean(shimPath)
+	cleanBinPath := filepath.Clean(cfg.BinaryPath)
+	if absShim, err := g.fs.Abs(cleanShimPath); err == nil {
+		cleanShimPath = absShim
+	}
+	if absBin, err := g.fs.Abs(cleanBinPath); err == nil {
+		cleanBinPath = absBin
+	}
+	if cleanShimPath == cleanBinPath {
+		return fmt.Errorf("cannot generate self-referential shim for %q: BinaryPath %q matches shimPath %q", cfg.ToolName, cfg.BinaryPath, shimPath)
+	}
+
 	envVarSuffix := strings.ToUpper(cfg.ToolName)
 	var cleanVar strings.Builder
 	for _, r := range envVarSuffix {
