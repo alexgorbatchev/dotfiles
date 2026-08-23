@@ -218,8 +218,8 @@ func (h *TestHarness) Install(tools []string, args ...string) (stdout, stderr st
 	return h.RunCommand(allArgs...)
 }
 
-func (h *TestHarness) Update(toolName string, args ...string) (stdout, stderr string, exitCode int, err error) {
-	allArgs := []string{"update", "--config", h.ConfigPath, toolName}
+func (h *TestHarness) Update(args ...string) (stdout, stderr string, exitCode int, err error) {
+	allArgs := []string{"update", "--config", h.ConfigPath}
 	allArgs = append(allArgs, args...)
 	return h.RunCommand(allArgs...)
 }

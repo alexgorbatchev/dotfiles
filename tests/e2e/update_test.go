@@ -31,8 +31,8 @@ func TestE2EUpdate(t *testing.T) {
 		t.Fatalf("generate failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
-	// 2. Install version 1.0.0 first
-	stdout, stderr, exitCode, err = h.Install([]string{"github-release-tool"})
+	// 2. Install tools first (initial version 1.0.0)
+	stdout, stderr, exitCode, err = h.Install([]string{"github-release-tool", "gitea-release-tool"})
 	if err != nil || exitCode != 0 {
 		t.Fatalf("initial install failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
@@ -64,8 +64,19 @@ func TestE2EUpdate(t *testing.T) {
 
 		// Verify database records the new version 2.0.0
 		h.AssertDBToolInstalled("github-release-tool", "2.0.0")
+	})
 
-		// Force update when already at 2.0.0
+	t.Run("should report already up to date when no newer version exists without force", func(t *testing.T) {
+		stdout, stderr, exitCode, err = h.Update("github-release-tool")
+		if err != nil || exitCode != 0 {
+			t.Fatalf("update failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		}
+		if !strings.Contains(stderr, "already up to date") {
+			t.Fatalf("expected 'already up to date' in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
+		}
+	})
+
+	t.Run("should force update even when already up to date", func(t *testing.T) {
 		stdout, stderr, exitCode, err = h.Update("github-release-tool", "-f")
 		if err != nil || exitCode != 0 {
 			t.Fatalf("force update failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
@@ -74,6 +85,26 @@ func TestE2EUpdate(t *testing.T) {
 			t.Fatalf("expected force update output in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
 		}
 		h.AssertDBToolInstalled("github-release-tool", "2.0.0")
+	})
+
+	t.Run("should batch update all installed outdated tools", func(t *testing.T) {
+		// Set gitea-release-tool version to 2.0.0 on mock server
+		url := fmt.Sprintf("%s/set-tool-version/repo/gitea-release-tool/2.0.0", ms.Server.URL)
+		resp, err := http.Get(url)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			t.Fatalf("failed to set gitea-release-tool version on mock server: %v", err)
+		}
+		resp.Body.Close()
+
+		// Run batch update without arguments
+		stdout, stderr, exitCode, err = h.Update()
+		if err != nil || exitCode != 0 {
+			t.Fatalf("batch update failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		}
+		if !strings.Contains(stderr, "Checking all configured tools for updates") {
+			t.Fatalf("expected batch checking message in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
+		}
+		h.AssertDBToolInstalled("gitea-release-tool", "2.0.0")
 	})
 
 	t.Run("should fail gracefully when updating non-existent tool", func(t *testing.T) {

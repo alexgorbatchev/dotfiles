@@ -431,7 +431,7 @@ fi`,
 			name:      "powershell path append",
 			shell:     "powershell",
 			targetDir: "/home/user/bin",
-			want:      `if ($env:PATH -notlike "*/home/user/bin*") { $env:PATH = "/home/user/bin;$env:PATH" }`,
+			want:      `if (";$env:PATH;" -notlike "*;/home/user/bin;*") { $env:PATH = "/home/user/bin;$env:PATH" }`,
 		},
 	}
 

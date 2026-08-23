@@ -11,8 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var updateForce bool
-
 var updateCmd = &cobra.Command{
 	Use:   "update [tool]",
 	Short: "Evaluates versions and installs newer software packages if available",
@@ -33,7 +31,8 @@ When run without arguments, checks all installed tools for updates and installs 
 		if shimMode {
 			logLevel = "quiet"
 		}
-		if updateForce {
+		force, _ := cmd.Flags().GetBool("force")
+		if force {
 			ctx = config.WithOverwrite(ctx, true)
 		}
 		services, err := BootstrapServices(ctx, cfgFile)
@@ -73,8 +72,17 @@ When run without arguments, checks all installed tools for updates and installs 
 					continue
 				}
 
-				hasUpdate := res != nil && res.LatestVersion != "" && version.CleanVersion(res.LatestVersion) != version.CleanVersion(installed.Version)
-				if hasUpdate || updateForce {
+				var hasUpdate bool
+				if res != nil && res.LatestVersion != "" {
+					status := version.CheckVersionStatus(installed.Version, res.LatestVersion)
+					if status == version.StatusNewerAvailable {
+						hasUpdate = true
+					} else if status == version.StatusInvalidCurrent || status == version.StatusInvalidLatest {
+						hasUpdate = version.CleanVersion(res.LatestVersion) != version.CleanVersion(installed.Version)
+					}
+				}
+
+				if hasUpdate || force {
 					targetVersion := installed.Version
 					if res != nil && res.LatestVersion != "" {
 						targetVersion = res.LatestVersion
@@ -85,6 +93,9 @@ When run without arguments, checks all installed tools for updates and installs 
 						log.Info(logger.Message(fmt.Sprintf("Force updating %s: reinstalling version %s", targetTool.Name, targetVersion)))
 					}
 					targetTool.Version = &targetVersion
+					if targetTool.InstallParams != nil {
+						targetTool.InstallParams["version"] = targetVersion
+					}
 					err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
 					if err != nil {
 						log.Error(logger.Message(fmt.Sprintf("Updating tool %q to version %s failed", targetTool.Name, targetVersion)), err)
@@ -138,8 +149,17 @@ When run without arguments, checks all installed tools for updates and installs 
 			return fmt.Errorf("checking update for %q: %w", targetTool.Name, err)
 		}
 
-		hasUpdate := res != nil && res.LatestVersion != "" && version.CleanVersion(res.LatestVersion) != version.CleanVersion(installed.Version)
-		if hasUpdate || updateForce {
+		var hasUpdate bool
+		if res != nil && res.LatestVersion != "" {
+			status := version.CheckVersionStatus(installed.Version, res.LatestVersion)
+			if status == version.StatusNewerAvailable {
+				hasUpdate = true
+			} else if status == version.StatusInvalidCurrent || status == version.StatusInvalidLatest {
+				hasUpdate = version.CleanVersion(res.LatestVersion) != version.CleanVersion(installed.Version)
+			}
+		}
+
+		if hasUpdate || force {
 			targetVersion := installed.Version
 			if res != nil && res.LatestVersion != "" {
 				targetVersion = res.LatestVersion
@@ -150,8 +170,11 @@ When run without arguments, checks all installed tools for updates and installs 
 				log.Info(logger.Message(fmt.Sprintf("Force updating %s: reinstalling version %s", targetTool.Name, targetVersion)))
 			}
 
-			// Update the target tool's version pointer to the new version and run installation
+			// Update the target tool's version pointer and install params to the new version and run installation
 			targetTool.Version = &targetVersion
+			if targetTool.InstallParams != nil {
+				targetTool.InstallParams["version"] = targetVersion
+			}
 			err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
 			if err != nil {
 				return fmt.Errorf("updating tool %q to version %s failed: %w", targetTool.Name, targetVersion, err)
@@ -168,6 +191,6 @@ When run without arguments, checks all installed tools for updates and installs 
 
 func init() {
 	updateCmd.Flags().Bool("shim-mode", false, "Quiet update mode for shims")
-	updateCmd.Flags().BoolVarP(&updateForce, "force", "f", false, "Force re-download and re-installation even if already up to date")
+	updateCmd.Flags().BoolP("force", "f", false, "Force re-download and re-installation even if already up to date")
 	rootCmd.AddCommand(updateCmd)
 }

@@ -169,7 +169,7 @@ func (inj *Injector) Remove(profilePath string) (bool, error) {
 func FormatPath(shell, targetDir string) string {
 	switch shell {
 	case "powershell":
-		return fmt.Sprintf(`if ($env:PATH -notlike "*%s*") { $env:PATH = "%s;$env:PATH" }`, targetDir, targetDir)
+		return fmt.Sprintf(`if (";$env:PATH;" -notlike "*;%s;*") { $env:PATH = "%s;$env:PATH" }`, targetDir, targetDir)
 	default: // zsh, bash, etc.
 		return fmt.Sprintf(`if [[ ":$PATH:" != *":%s:"* ]]; then
   export PATH="%s:$PATH"

@@ -269,7 +269,7 @@ func TestGenerateShellScripts_PathModifications(t *testing.T) {
 		t.Fatalf("reading main.ps1: %v", err)
 	}
 	ps1Content := string(ps1Data)
-	if !strings.Contains(ps1Content, `if ($env:PATH -notlike "*/home/user/.local/share/fnm/aliases/default/bin*") { $env:PATH = "/home/user/.local/share/fnm/aliases/default/bin;$env:PATH" }`) {
+	if !strings.Contains(ps1Content, `if (";$env:PATH;" -notlike "*;/home/user/.local/share/fnm/aliases/default/bin;*") { $env:PATH = "/home/user/.local/share/fnm/aliases/default/bin;$env:PATH" }`) {
 		t.Errorf("expected main.ps1 to format path, got:\n%s", ps1Content)
 	}
 }
