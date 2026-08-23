@@ -146,10 +146,12 @@ assert_scenario() {
 	local work_dir="$2"
 	local output_log="$3"
 
-	assert_exists "${work_dir}/.generated/node_modules/@alexgorbatchev/dotfiles/package.json"
 	assert_exists "${work_dir}/.generated/node_modules/@alexgorbatchev/dotfiles/index.d.ts"
 	assert_exists "${work_dir}/.generated/tool-types.d.ts"
 	assert_exists "${work_dir}/node_modules/@alexgorbatchev/dotfiles"
+	assert_exists "${work_dir}/dotfiles-init.sh"
+	assert_contains "${work_dir}/dotfiles-init.sh" "https://alexgorbatchev.github.io/dotfiles/install.sh"
+	[[ -x "${work_dir}/dotfiles-init.sh" ]] || fail "Expected dotfiles-init.sh to be executable: ${work_dir}/dotfiles-init.sh"
 	assert_contains "${output_log}" "dotfiles bootstrap complete"
 	assert_contains "${output_log}" "Generating shims and shell configuration"
 

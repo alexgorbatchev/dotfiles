@@ -13,9 +13,10 @@ Provides a clean, sandbox environment to test the end-to-end installer flow loca
 
 ## Local conventions
 
-- All runtime installation outputs (binary, generated shims, shell scripts, config, SQLite database) must be placed inside `test-install/.output/`.
+- All runtime installation outputs (binary, generated shims, shell scripts, config, SQLite database, and `dotfiles-init.sh`) must be placed inside `test-install/.output/`.
 - Never write runtime files outside `.output/` to ensure cleanup is as simple as `rm -rf .output`.
 - Keep tool test configurations under `test-install/tools/`.
+- `install.sh` generates `dotfiles-init.sh` in the target installation directory as its final setup step to allow bootstrapping on new machines.
 
 ## Local gotchas
 

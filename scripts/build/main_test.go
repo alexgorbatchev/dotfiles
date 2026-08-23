@@ -234,7 +234,7 @@ func TestBuildTarget(t *testing.T) {
 	tmpDir := t.TempDir()
 	outBin := filepath.Join(tmpDir, "test_dotfiles_bin")
 
-	err = buildTarget(root, runtime.GOOS, runtime.GOARCH, outBin)
+	err = buildTarget(root, "0.0.0-test", runtime.GOOS, runtime.GOARCH, outBin)
 	if err != nil {
 		t.Fatalf("buildTarget failed: %v", err)
 	}

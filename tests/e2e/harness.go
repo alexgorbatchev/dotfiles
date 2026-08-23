@@ -118,7 +118,7 @@ func NewTestHarness(t *testing.T, options HarnessOptions) *TestHarness {
 	// Dynamic compiled binary discovery
 	projectRoot := h.findProjectRoot()
 	binPath := filepath.Join(tempDir, "dotfiles")
-	cmd := exec.Command("go", "build", "-o", binPath, filepath.Join(projectRoot, "cmd", "dotfiles"))
+	cmd := exec.Command("go", "build", "-buildvcs=false", "-o", binPath, filepath.Join(projectRoot, "cmd", "dotfiles"))
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("failed to dynamically compile dotfiles: %v\noutput: %s", err, string(output))
 	}

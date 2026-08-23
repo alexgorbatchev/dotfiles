@@ -247,6 +247,11 @@ fi
 log "Generating shims and shell configuration"
 "${DOTFILES_BIN}" --config "${CONFIG_PATH}" generate
 
+# init_script="${INSTALL_DIR}/dotfiles-init.sh"
+# log "Creating $(format_path "${init_script}")"
+# printf '#!/usr/bin/env bash\n\nset -euo pipefail\n\ncurl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash\n' >"${init_script}"
+# chmod +x "${init_script}"
+
 log "dotfiles bootstrap complete!"
 
 user_shell="$(basename "${SHELL:-zsh}")"
