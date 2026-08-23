@@ -250,19 +250,9 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 
 	binNames := GetBinaryNames(tool.Name, tool.Binaries)
-	var resolvedBinaries []string
-	for _, binName := range binNames {
-		whichCmd := p.runner.CommandContext(ctx, "which", binName)
-		out, err := whichCmd.Output()
-		if err == nil {
-			path := strings.TrimSpace(string(out))
-			if path != "" {
-				resolvedBinaries = append(resolvedBinaries, path)
-				continue
-			}
-		}
-		resolvedBinaries = append(resolvedBinaries, filepath.Join("/usr/local/bin", binName))
-	}
+	resolvedBinaries := ResolveBinaryPaths(ctx, p.fsys, binNames, func(binName string) string {
+		return filepath.Join("/usr/local/bin", binName)
+	})
 
 	return &InstallResult{
 		Binaries: resolvedBinaries,

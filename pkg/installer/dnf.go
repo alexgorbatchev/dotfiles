@@ -108,19 +108,9 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 
 	binNames := GetBinaryNames(tool.Name, tool.Binaries)
-	var resolvedBinaries []string
-	for _, binName := range binNames {
-		whichCmd := d.runner.CommandContext(ctx, "which", binName)
-		out, err := whichCmd.Output()
-		if err == nil {
-			path := strings.TrimSpace(string(out))
-			if path != "" {
-				resolvedBinaries = append(resolvedBinaries, path)
-				continue
-			}
-		}
-		resolvedBinaries = append(resolvedBinaries, filepath.Join("/usr/bin", binName))
-	}
+	resolvedBinaries := ResolveBinaryPaths(ctx, d.fsys, binNames, func(binName string) string {
+		return filepath.Join("/usr/bin", binName)
+	})
 
 	return &InstallResult{
 		Binaries: resolvedBinaries,

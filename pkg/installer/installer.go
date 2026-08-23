@@ -14,6 +14,8 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/shim"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
 type InstallResult struct {
@@ -197,6 +199,119 @@ func getStringSliceParam(params map[string]interface{}, key string) []string {
 		return slice
 	}
 	return nil
+}
+
+// IsRealBinaryPath returns true if the path is a real binary executable and not dotfiles' own generated shim or targetDir shim.
+func IsRealBinaryPath(ctx context.Context, fsys fs.FS, path string) bool {
+	if path == "" {
+		return false
+	}
+
+	cleanPath := path
+	if absPath, err := fsys.Abs(cleanPath); err == nil {
+		cleanPath = absPath
+	}
+
+	projCfg := config.GetProjectConfig(ctx)
+	if projCfg != nil && projCfg.Paths.TargetDir != "" {
+		targetDir := projCfg.Paths.TargetDir
+		if strings.HasPrefix(targetDir, "~") {
+			targetDir = utils.ExpandHomePath(projCfg.Paths.HomeDir, targetDir)
+		}
+		if absTarget, err := fsys.Abs(targetDir); err == nil {
+			targetDir = absTarget
+		}
+		if filepath.Dir(cleanPath) == filepath.Clean(targetDir) {
+			return false
+		}
+	}
+
+	// Always reject paths inside .generated/bin even if projCfg is nil
+	slashPath := filepath.ToSlash(cleanPath)
+	if strings.Contains(slashPath, "/.generated/bin/") || strings.HasSuffix(slashPath, "/.generated/bin") || (filepath.Base(filepath.Dir(cleanPath)) == "bin" && filepath.Base(filepath.Dir(filepath.Dir(cleanPath))) == ".generated") {
+		return false
+	}
+
+	exists, err := fsys.Exists(path)
+	if err != nil || !exists {
+		return false
+	}
+
+	shimGen := shim.NewGenerator(fsys)
+	if isShim, err := shimGen.IsGeneratedShim(path); err == nil && isShim {
+		return false
+	}
+
+	return true
+}
+
+// ResolveBinaryPaths resolves system or prefix paths for declared binaries, skipping generated shims.
+func ResolveBinaryPaths(ctx context.Context, fsys fs.FS, binNames []string, fallbackFunc func(binName string) string) []string {
+	projCfg := config.GetProjectConfig(ctx)
+	targetDirClean := ""
+	if projCfg != nil && projCfg.Paths.TargetDir != "" {
+		targetDirClean = projCfg.Paths.TargetDir
+		if strings.HasPrefix(targetDirClean, "~") {
+			targetDirClean = utils.ExpandHomePath(projCfg.Paths.HomeDir, targetDirClean)
+		}
+		if abs, err := fsys.Abs(targetDirClean); err == nil {
+			targetDirClean = abs
+		}
+	}
+
+	pathEnv := os.Getenv("PATH")
+	var dirs []string
+	if pathEnv != "" {
+		dirs = filepath.SplitList(pathEnv)
+	}
+
+	var resolved []string
+	for _, binName := range binNames {
+		// 1. Try searching $PATH excluding targetDir and shims (Nix / custom PATH support)
+		foundInPath := ""
+		if len(dirs) > 0 {
+			for _, dir := range dirs {
+				if dir == "" {
+					continue
+				}
+				cleanDir := dir
+				if strings.HasPrefix(cleanDir, "~") && projCfg != nil {
+					cleanDir = utils.ExpandHomePath(projCfg.Paths.HomeDir, cleanDir)
+				}
+				if abs, err := fsys.Abs(cleanDir); err == nil {
+					cleanDir = abs
+				}
+				if targetDirClean != "" && cleanDir == targetDirClean {
+					continue
+				}
+				cand := filepath.Join(cleanDir, binName)
+				if exists, err := fsys.Exists(cand); err == nil && exists {
+					if IsRealBinaryPath(ctx, fsys, cand) {
+						foundInPath = cand
+						break
+					}
+				}
+			}
+		}
+
+		if foundInPath != "" {
+			resolved = append(resolved, foundInPath)
+			continue
+		}
+
+		// 2. Try installer-provided fallback function or raw binary name
+		var fbPath string
+		if fallbackFunc != nil {
+			fbPath = fallbackFunc(binName)
+		}
+
+		if fbPath != "" {
+			resolved = append(resolved, fbPath)
+		} else {
+			resolved = append(resolved, binName)
+		}
+	}
+	return resolved
 }
 
 // IsDryRun checks if the dry-run flag is present in the command-line arguments or set via environment.

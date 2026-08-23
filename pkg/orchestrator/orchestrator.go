@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	iofs "io/fs"
 	"os"
@@ -239,25 +240,58 @@ func (o *Orchestrator) formatPath(projCfg *config.ProjectConfig, p string) strin
 }
 
 func (o *Orchestrator) isExistingInstallationHealthy(ctx context.Context, toolName string, existingInstallation *registry.ToolInstallationRecord, tool *config.ToolConfig, projCfg *config.ProjectConfig) bool {
-	exists, err := o.fs.Exists(existingInstallation.InstallPath)
-	if err != nil || !exists {
-		o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Existing install path missing: %s", o.formatPath(projCfg, existingInstallation.InstallPath))))
-		return false
+	isExternal := isExternallyManaged(tool.InstallationMethod)
+
+	if !isExternal {
+		exists, err := o.fs.Exists(existingInstallation.InstallPath)
+		if err != nil || !exists {
+			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Existing install path missing: %s", o.formatPath(projCfg, existingInstallation.InstallPath))))
+			return false
+		}
+
+		currentDir := filepath.Join(projCfg.Paths.BinariesDir, toolName, "current")
+		currentDirExists, err := o.fs.Exists(currentDir)
+		if err != nil || !currentDirExists {
+			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current directory missing: %s", o.formatPath(projCfg, currentDir))))
+			return false
+		}
+
+		expectedBinaryNames := getBinaryNames(tool.Binaries)
+		for _, binName := range expectedBinaryNames {
+			binaryPath := filepath.Join(currentDir, binName)
+			binExists, err := o.fs.Exists(binaryPath)
+			if err != nil || !binExists {
+				o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current binary missing: %s", o.formatPath(projCfg, binaryPath))))
+				return false
+			}
+		}
+		return true
 	}
 
-	currentDir := filepath.Join(projCfg.Paths.BinariesDir, toolName, "current")
-	currentDirExists, err := o.fs.Exists(currentDir)
-	if err != nil || !currentDirExists {
-		o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current directory missing: %s", o.formatPath(projCfg, currentDir))))
-		return false
+	// For externally managed tools, verify expected binary executables exist
+	var recordedPaths []string
+	if existingInstallation != nil && existingInstallation.BinaryPaths != "" {
+		_ = json.Unmarshal([]byte(existingInstallation.BinaryPaths), &recordedPaths)
 	}
 
 	expectedBinaryNames := getBinaryNames(tool.Binaries)
 	for _, binName := range expectedBinaryNames {
-		binaryPath := filepath.Join(currentDir, binName)
-		binExists, err := o.fs.Exists(binaryPath)
-		if err != nil || !binExists {
-			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current binary missing: %s", o.formatPath(projCfg, binaryPath))))
+		found := false
+		for _, p := range recordedPaths {
+			if filepath.Base(p) == binName || p == binName {
+				if installer.IsRealBinaryPath(ctx, o.fs, p) {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil && sysBin != "" {
+				found = true
+			}
+		}
+		if !found {
+			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("External binary missing: %s", binName)))
 			return false
 		}
 	}

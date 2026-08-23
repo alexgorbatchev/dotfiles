@@ -165,24 +165,13 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	}
 
 	binNames := GetBinaryNames(tool.Name, tool.Binaries)
-	var resolvedBinaries []string
 	prefix, _ := b.getBrewPrefix(ctx, formula)
-	for _, binName := range binNames {
-		whichCmd := b.runner.CommandContext(ctx, "which", binName)
-		out, err := whichCmd.Output()
-		if err == nil {
-			path := strings.TrimSpace(string(out))
-			if path != "" {
-				resolvedBinaries = append(resolvedBinaries, path)
-				continue
-			}
-		}
+	resolvedBinaries := ResolveBinaryPaths(ctx, b.fsys, binNames, func(binName string) string {
 		if prefix != "" {
-			resolvedBinaries = append(resolvedBinaries, filepath.Join(prefix, "bin", binName))
-		} else {
-			resolvedBinaries = append(resolvedBinaries, filepath.Join("/usr/local/bin", binName))
+			return filepath.Join(prefix, "bin", binName)
 		}
-	}
+		return filepath.Join("/usr/local/bin", binName)
+	})
 
 	return &InstallResult{
 		Binaries: resolvedBinaries,

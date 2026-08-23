@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -99,6 +100,19 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	// 1. Resolve binaries to shim
 	binaryNames := getBinaryNames(tool.Binaries)
 
+	// Check DB registry for recorded binary paths
+	var recordedBinaryPaths map[string]string
+	if instRecord, err := o.reg.GetToolInstallation(ctx, tool.Name); err == nil && instRecord != nil && instRecord.BinaryPaths != "" {
+		var paths []string
+		if err := json.Unmarshal([]byte(instRecord.BinaryPaths), &paths); err == nil {
+			recordedBinaryPaths = make(map[string]string)
+			for _, p := range paths {
+				recordedBinaryPaths[filepath.Base(p)] = p
+				recordedBinaryPaths[p] = p
+			}
+		}
+	}
+
 	// 2. Generate Shims
 	shimGen := shim.NewGenerator(o.fs)
 	shimDir := projCfg.Paths.TargetDir
@@ -123,8 +137,24 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		}
 
 		if exists, _ := o.fs.Exists(binaryPath); !exists {
-			if sysBin, err := findSystemBinary(binName); err == nil {
+			if recPath, ok := recordedBinaryPaths[binName]; ok {
+				if installer.IsRealBinaryPath(ctx, o.fs, recPath) {
+					binaryPath = recPath
+				}
+			}
+		}
+
+		if exists, _ := o.fs.Exists(binaryPath); !exists {
+			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil {
 				binaryPath = sysBin
+			}
+		}
+
+		if binaryPath == shimPath || !installer.IsRealBinaryPath(ctx, o.fs, binaryPath) {
+			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil && sysBin != shimPath {
+				binaryPath = sysBin
+			} else if isExternallyManaged(tool.InstallationMethod) {
+				binaryPath = filepath.Join("/usr/bin", binName)
 			}
 		}
 
@@ -493,10 +523,22 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 									execPath = cmdName
 								}
 							} else {
-								// Check directly for actual tool binary in binariesDir to avoid executing the shim
+								// Check directly for actual tool binary in binariesDir or recorded DB paths to avoid executing shims or system PATH binaries
 								toolBinPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", cmdName)
 								if exists, err := fsys.Exists(toolBinPath); err == nil && exists {
 									execPath = toolBinPath
+								} else if instRecord, err := o.reg.GetToolInstallation(ctx, tool.Name); err == nil && instRecord != nil && instRecord.BinaryPaths != "" {
+									var paths []string
+									if err := json.Unmarshal([]byte(instRecord.BinaryPaths), &paths); err == nil {
+										for _, p := range paths {
+											if filepath.Base(p) == cmdName || p == cmdName {
+												if exists, _ := fsys.Exists(p); exists {
+													execPath = p
+													break
+												}
+											}
+										}
+									}
 								}
 							}
 
@@ -596,7 +638,73 @@ func getPatternForBinary(toolBinaries []interface{}, binName string) string {
 	return ""
 }
 
-func findSystemBinary(binName string) (string, error) {
+func (o *Orchestrator) findSystemBinary(binName string, projCfg *config.ProjectConfig) (string, error) {
+	shimGen := shim.NewGenerator(o.fs)
+
+	checkBinary := func(cand string) bool {
+		exists, err := o.fs.Exists(cand)
+		if err != nil || !exists {
+			return false
+		}
+		if projCfg != nil && projCfg.Paths.TargetDir != "" {
+			targetDirClean := projCfg.Paths.TargetDir
+			if strings.HasPrefix(targetDirClean, "~") {
+				targetDirClean = utils.ExpandHomePath(projCfg.Paths.HomeDir, targetDirClean)
+			}
+			if abs, err := o.fs.Abs(targetDirClean); err == nil {
+				targetDirClean = abs
+			}
+			if filepath.Dir(cand) == targetDirClean {
+				return false
+			}
+		}
+		if strings.Contains(cand, "/.generated/bin/") || strings.HasSuffix(cand, "/.generated/bin") {
+			return false
+		}
+		isShim, err := shimGen.IsGeneratedShim(cand)
+		if err == nil && isShim {
+			return false
+		}
+		return true
+	}
+
+	// 1. Check PATH environment variable first (respecting user PATH order: Nix, custom, Homebrew, FHS)
+	pathEnv := os.Getenv("PATH")
+	if pathEnv != "" {
+		targetDirClean := ""
+		if projCfg != nil && projCfg.Paths.TargetDir != "" {
+			targetDirClean = projCfg.Paths.TargetDir
+			if strings.HasPrefix(targetDirClean, "~") {
+				targetDirClean = utils.ExpandHomePath(projCfg.Paths.HomeDir, targetDirClean)
+			}
+			if abs, err := o.fs.Abs(targetDirClean); err == nil {
+				targetDirClean = abs
+			}
+		}
+
+		dirs := filepath.SplitList(pathEnv)
+		for _, dir := range dirs {
+			if dir == "" {
+				continue
+			}
+			cleanDir := dir
+			if strings.HasPrefix(cleanDir, "~") && projCfg != nil {
+				cleanDir = utils.ExpandHomePath(projCfg.Paths.HomeDir, cleanDir)
+			}
+			if abs, err := o.fs.Abs(cleanDir); err == nil {
+				cleanDir = abs
+			}
+			if targetDirClean != "" && cleanDir == targetDirClean {
+				continue
+			}
+			cand := filepath.Join(cleanDir, binName)
+			if checkBinary(cand) {
+				return cand, nil
+			}
+		}
+	}
+
+	// 2. Check standard system locations as fallback
 	candidates := []string{
 		filepath.Join("/usr/bin", binName),
 		filepath.Join("/usr/local/bin", binName),
@@ -604,9 +712,10 @@ func findSystemBinary(binName string) (string, error) {
 		filepath.Join("/opt/homebrew/bin", binName),
 	}
 	for _, cand := range candidates {
-		if info, err := os.Stat(cand); err == nil && !info.IsDir() {
+		if checkBinary(cand) {
 			return cand, nil
 		}
 	}
+
 	return "", fmt.Errorf("system binary %q not found", binName)
 }

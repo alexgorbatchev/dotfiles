@@ -251,9 +251,36 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	shimGen := shim.NewGenerator(o.fs)
 	shimDir := projCfg.Paths.TargetDir
 
-	for _, binName := range binaryNames {
+	var recordedBinaryPaths []string
+
+	for _, binItem := range binaryNames {
+		var binName string
+		var binaryPath string
+
+		if filepath.IsAbs(binItem) && installer.IsRealBinaryPath(ctx, o.fs, binItem) {
+			binName = filepath.Base(binItem)
+			binaryPath = binItem
+		} else {
+			binName = filepath.Base(binItem)
+			binaryPath = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
+			if isExternal {
+				if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil {
+					binaryPath = sysBin
+				}
+			}
+		}
+
 		shimPath := filepath.Join(shimDir, binName)
-		binaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
+
+		if binaryPath == shimPath || !installer.IsRealBinaryPath(ctx, o.fs, binaryPath) {
+			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil && sysBin != shimPath {
+				binaryPath = sysBin
+			} else if isExternal {
+				binaryPath = filepath.Join("/usr/bin", binName)
+			}
+		}
+
+		recordedBinaryPaths = append(recordedBinaryPaths, binaryPath)
 
 		shimCfg := shim.Config{
 			ToolName:       tool.Name,
@@ -314,7 +341,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	if !installer.IsDryRun() {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			now := time.Now().UnixMilli()
-			binariesJSON, _ := json.Marshal(binaryNames)
+			binariesJSON, _ := json.Marshal(recordedBinaryPaths)
 
 			var versionStr string
 			if tool.Version != nil {

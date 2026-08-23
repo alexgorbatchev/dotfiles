@@ -109,26 +109,15 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		}
 	}
 
-	for _, binName := range binNames {
-		whichCmd := n.runner.CommandContext(ctx, "which", binName)
-		out, err := whichCmd.Output()
-		if err == nil {
-			path := strings.TrimSpace(string(out))
-			if path != "" {
-				resolvedBinaries = append(resolvedBinaries, path)
-				continue
-			}
-		}
+	resolvedBinaries = ResolveBinaryPaths(ctx, n.fsys, binNames, func(binName string) string {
 		if prefix != "" {
 			if pkgManager == "bun" {
-				resolvedBinaries = append(resolvedBinaries, filepath.Join(prefix, binName))
-			} else {
-				resolvedBinaries = append(resolvedBinaries, filepath.Join(prefix, "bin", binName))
+				return filepath.Join(prefix, binName)
 			}
-		} else {
-			resolvedBinaries = append(resolvedBinaries, filepath.Join("/usr/local/bin", binName))
+			return filepath.Join(prefix, "bin", binName)
 		}
-	}
+		return filepath.Join("/usr/local/bin", binName)
+	})
 
 	return &InstallResult{
 		Binaries: resolvedBinaries,

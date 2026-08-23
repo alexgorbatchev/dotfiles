@@ -12,6 +12,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
+	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
@@ -1150,7 +1151,20 @@ func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 	}
 
 	// 7. Test InstallTool type switches for all installer types
-	allInstReg := installer.DefaultRegistry()
+	allInstReg := installer.NewRegistry()
+	dl := downloader.NewDownloader(memFS, nil)
+	_ = allInstReg.Register(installer.NewGitHubInstaller(runner, memFS, dl, nil))
+	_ = allInstReg.Register(installer.NewGiteaInstaller(runner, memFS, dl, nil))
+	_ = allInstReg.Register(installer.NewCargoInstaller(runner, memFS, dl, nil))
+	_ = allInstReg.Register(installer.NewCurlBinaryInstaller(runner, memFS, dl, nil))
+	_ = allInstReg.Register(installer.NewCurlScriptInstaller(runner, memFS, dl, nil))
+	_ = allInstReg.Register(installer.NewCurlTarInstaller(runner, memFS, dl, nil))
+	_ = allInstReg.Register(installer.NewDmgInstaller(runner, memFS, dl, nil))
+	_ = allInstReg.Register(installer.NewManualInstaller(runner, memFS, nil))
+	_ = allInstReg.Register(installer.NewZshPluginInstaller(runner, memFS, nil))
+	_ = allInstReg.Register(installer.NewPkgInstaller(runner, memFS, dl, nil))
+	_ = allInstReg.Register(installer.NewBrewInstaller(runner, memFS, nil))
+
 	orchAll := NewOrchestrator(log, memFS, runner, reg, allInstReg)
 
 	for _, method := range []string{
@@ -1553,11 +1567,12 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 	}
 
 	t.Run("findSystemBinary test", func(t *testing.T) {
-		_, err := findSystemBinary("non-existent-binary-1234567")
+		orch := NewOrchestrator(log, memFS, runner, reg, nil)
+		_, err := orch.findSystemBinary("non-existent-binary-1234567", projCfg)
 		if err == nil {
 			t.Errorf("expected error for non-existent binary")
 		}
-		path, err := findSystemBinary("sh")
+		path, err := orch.findSystemBinary("sh", projCfg)
 		if err != nil || path == "" {
 			t.Errorf("expected to find system binary sh")
 		}
@@ -1594,5 +1609,92 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 	}
 	if orch.getTargetVersion(constraintTool) != "" {
 		t.Errorf("expected empty target version for constraint ^1.0.0")
+	}
+}
+
+func TestInstallToolExternallyManaged(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	ctx := context.Background()
+
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open test db: %v", err)
+	}
+	defer database.Close()
+
+	reg := registry.NewRegistry(database)
+
+	log := logger.New(logger.Config{Writer: io.Discard})
+	instReg := installer.NewRegistry()
+
+	npmInst := &mockInstaller{
+		name:     "npm",
+		binaries: []string{"/home/test/.cache/.bun/bin/tokscale"},
+	}
+	_ = instReg.Register(npmInst)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/test",
+			DotfilesDir:     "/home/test/dotfiles",
+			TargetDir:       "/home/test/.bin",
+			BinariesDir:     "/home/test/.binaries",
+			GeneratedDir:    "/home/test/.generated",
+			ShellScriptsDir: "/home/test/.generated/shell-scripts",
+		},
+	}
+
+	orch := NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	tool := &config.ToolConfig{
+		Name:               "tokscale",
+		InstallationMethod: "npm",
+		Binaries:           []interface{}{"tokscale"},
+	}
+
+	// Create global binary in memFS
+	_ = memFS.MkdirAll("/home/test/.cache/.bun/bin", 0755)
+	_ = memFS.WriteFile("/home/test/.cache/.bun/bin/tokscale", []byte("binary-content"), 0755)
+
+	if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("InstallTool failed: %v", err)
+	}
+
+	shimPath := "/home/test/.bin/tokscale"
+	exists, err := memFS.Exists(shimPath)
+	if err != nil || !exists {
+		t.Fatalf("Expected shim at %s to exist", shimPath)
+	}
+
+	shimBytes, err := memFS.ReadFile(shimPath)
+	if err != nil {
+		t.Fatalf("Failed to read shim: %v", err)
+	}
+	if !strings.Contains(string(shimBytes), `TOOL_EXECUTABLE="/home/test/.cache/.bun/bin/tokscale"`) {
+		t.Errorf("Shim content missing correct TOOL_EXECUTABLE path:\n%s", string(shimBytes))
+	}
+
+	// Verify health check
+	instRecord, err := reg.GetToolInstallation(ctx, "tokscale")
+	if err != nil || instRecord == nil {
+		t.Fatalf("Expected installation record in DB")
+	}
+
+	if !orch.isExistingInstallationHealthy(ctx, "tokscale", instRecord, tool, projCfg) {
+		t.Errorf("Expected isExistingInstallationHealthy to return true for externally managed tool")
+	}
+
+	// Verify GenerateTool retains binary path from DB registry
+	if err := orch.GenerateTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("GenerateTool failed: %v", err)
+	}
+
+	shimBytesAfterGen, err := memFS.ReadFile(shimPath)
+	if err != nil {
+		t.Fatalf("Failed to read shim after GenerateTool: %v", err)
+	}
+	if !strings.Contains(string(shimBytesAfterGen), `TOOL_EXECUTABLE="/home/test/.cache/.bun/bin/tokscale"`) {
+		t.Errorf("GenerateTool broke TOOL_EXECUTABLE path in shim:\n%s", string(shimBytesAfterGen))
 	}
 }
