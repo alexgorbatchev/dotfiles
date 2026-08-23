@@ -10,6 +10,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/shellinit"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
 func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
@@ -72,6 +73,60 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 			// 3. PATH Modifications Section
 			scriptLines = append(scriptLines, shellinit.GenerateSectionHeader("PATH Modifications"))
 			scriptLines = append(scriptLines, shellinit.FormatPath(sh, projCfg.Paths.TargetDir))
+
+			// Collect and format all tool-defined path modifications
+			var pathEntries []string
+			cleanTarget := filepath.Clean(utils.ExpandHomePath(projCfg.Paths.HomeDir, projCfg.Paths.TargetDir))
+			seenPaths := map[string]bool{
+				projCfg.Paths.TargetDir: true,
+				cleanTarget:             true,
+			}
+
+			for _, tool := range tools {
+				if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+					continue
+				}
+				stc := getShellTypeConfig(tool, sh)
+				if stc == nil || len(stc.Paths) == 0 {
+					continue
+				}
+
+				for _, p := range stc.Paths {
+					var rawPath string
+					switch v := p.(type) {
+					case string:
+						rawPath = v
+					case map[string]interface{}:
+						if pStr, ok := v["path"].(string); ok {
+							rawPath = pStr
+						}
+					}
+					rawPath = strings.TrimSpace(rawPath)
+					if rawPath == "" {
+						continue
+					}
+
+					resolvedPath, err := o.resolvePlaceholder(rawPath, tool, projCfg)
+					if err != nil {
+						return fmt.Errorf("resolving path %q: %w", rawPath, err)
+					}
+
+					resolvedPath = utils.ExpandHomePath(projCfg.Paths.HomeDir, resolvedPath)
+					if !filepath.IsAbs(resolvedPath) && tool.ConfigFilePath != "" {
+						resolvedPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), resolvedPath)
+					}
+					cleanPath := filepath.Clean(resolvedPath)
+
+					if !seenPaths[cleanPath] {
+						seenPaths[cleanPath] = true
+						pathEntries = append(pathEntries, shellinit.FormatPath(sh, cleanPath))
+					}
+				}
+			}
+
+			if len(pathEntries) > 0 {
+				scriptLines = append(scriptLines, strings.Join(pathEntries, "\n"))
+			}
 			scriptLines = append(scriptLines, "")
 
 			// 4. Environment Variables Section (hoisted)
@@ -80,16 +135,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 				if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
 					continue
 				}
-				var stc *config.ShellTypeConfig
-				if tool.ShellConfigs != nil {
-					if sh == "zsh" {
-						stc = tool.ShellConfigs.Zsh
-					} else if sh == "bash" {
-						stc = tool.ShellConfigs.Bash
-					} else {
-						stc = tool.ShellConfigs.Powershell
-					}
-				}
+				stc := getShellTypeConfig(tool, sh)
 				if stc == nil || len(stc.Env) == 0 {
 					continue
 				}
@@ -98,13 +144,13 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					envKeys = append(envKeys, k)
 				}
 				sort.Strings(envKeys)
+				if tool.ConfigFilePath != "" {
+					envLines = append(envLines, fmt.Sprintf("# %s", tool.ConfigFilePath))
+				}
 				for _, k := range envKeys {
 					vResolved, err := o.resolvePlaceholder(stc.Env[k], tool, projCfg)
 					if err != nil {
 						return fmt.Errorf("resolving env variable %q: %w", k, err)
-					}
-					if tool.ConfigFilePath != "" {
-						envLines = append(envLines, fmt.Sprintf("# %s", tool.ConfigFilePath))
 					}
 					if sh == "powershell" {
 						envLines = append(envLines, fmt.Sprintf("$env:%s = %q", k, vResolved))
@@ -187,16 +233,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					}
 				}
 
-				var stc *config.ShellTypeConfig
-				if tool.ShellConfigs != nil {
-					if sh == "zsh" {
-						stc = tool.ShellConfigs.Zsh
-					} else if sh == "bash" {
-						stc = tool.ShellConfigs.Bash
-					} else if sh == "powershell" {
-						stc = tool.ShellConfigs.Powershell
-					}
-				}
+				stc := getShellTypeConfig(tool, sh)
 
 				if stc != nil {
 					// Aliases
@@ -358,6 +395,22 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 		return nil
 	})
+}
+
+func getShellTypeConfig(tool *config.ToolConfig, sh string) *config.ShellTypeConfig {
+	if tool == nil || tool.ShellConfigs == nil {
+		return nil
+	}
+	switch sh {
+	case "zsh":
+		return tool.ShellConfigs.Zsh
+	case "bash":
+		return tool.ShellConfigs.Bash
+	case "powershell":
+		return tool.ShellConfigs.Powershell
+	default:
+		return nil
+	}
 }
 
 func unindentString(s string) string {
