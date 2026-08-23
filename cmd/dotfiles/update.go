@@ -7,8 +7,11 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/version"
 	"github.com/spf13/cobra"
 )
+
+var updateForce bool
 
 var updateCmd = &cobra.Command{
 	Use:   "update [tool]",
@@ -20,12 +23,18 @@ When run without arguments, checks all installed tools for updates and installs 
   dotfiles update
 
   # Update a specific installed tool
-  dotfiles update ripgrep`,
+  dotfiles update ripgrep
+
+  # Force re-download and re-installation even if already up to date
+  dotfiles update --force ripgrep`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		shimMode, _ := cmd.Flags().GetBool("shim-mode")
 		if shimMode {
 			logLevel = "quiet"
+		}
+		if updateForce {
+			ctx = config.WithOverwrite(ctx, true)
 		}
 		services, err := BootstrapServices(ctx, cfgFile)
 		if err != nil {
@@ -41,7 +50,7 @@ When run without arguments, checks all installed tools for updates and installs 
 			log.Info(logger.Message("Checking all configured tools for updates..."))
 			for _, targetTool := range services.ToolConfigs {
 				installed, err := services.Registry.GetToolInstallation(ctx, targetTool.Name)
-				if err != nil {
+				if err != nil || installed == nil {
 					continue // skip uninstalled
 				}
 
@@ -60,15 +69,28 @@ When run without arguments, checks all installed tools for updates and installs 
 				}
 
 				res, err := inst.CheckUpdate(ctx, targetTool)
-				if err == nil && installed != nil && res != nil && res.LatestVersion != "" && res.LatestVersion != installed.Version {
-					log.Info(logger.Message(fmt.Sprintf("New version available for %s: %s (currently installed: %s)", targetTool.Name, res.LatestVersion, installed.Version)))
-					targetTool.Version = &res.LatestVersion
+				if err != nil {
+					continue
+				}
+
+				hasUpdate := res != nil && res.LatestVersion != "" && version.CleanVersion(res.LatestVersion) != version.CleanVersion(installed.Version)
+				if hasUpdate || updateForce {
+					targetVersion := installed.Version
+					if res != nil && res.LatestVersion != "" {
+						targetVersion = res.LatestVersion
+					}
+					if hasUpdate {
+						log.Info(logger.Message(fmt.Sprintf("New version available for %s: %s (currently installed: %s)", targetTool.Name, targetVersion, installed.Version)))
+					} else {
+						log.Info(logger.Message(fmt.Sprintf("Force updating %s: reinstalling version %s", targetTool.Name, targetVersion)))
+					}
+					targetTool.Version = &targetVersion
 					err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
 					if err != nil {
-						log.Error(logger.Message(fmt.Sprintf("Updating tool %q to version %s failed", targetTool.Name, res.LatestVersion)), err)
+						log.Error(logger.Message(fmt.Sprintf("Updating tool %q to version %s failed", targetTool.Name, targetVersion)), err)
 						continue
 					}
-					log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, res.LatestVersion)))
+					log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, targetVersion)))
 				}
 			}
 			log.Info(logger.Messages.CommandCompleted(dryRun))
@@ -110,21 +132,31 @@ When run without arguments, checks all installed tools for updates and installs 
 		}
 
 		// 4. Check for update
+		log.Info(logger.Message(fmt.Sprintf("Checking %q for updates...", targetTool.Name)))
 		res, err := inst.CheckUpdate(ctx, targetTool)
 		if err != nil {
 			return fmt.Errorf("checking update for %q: %w", targetTool.Name, err)
 		}
 
-		if res != nil && res.LatestVersion != "" && res.LatestVersion != installed.Version {
-			log.Info(logger.Message(fmt.Sprintf("New version available for %s: %s (currently installed: %s)", targetTool.Name, res.LatestVersion, installed.Version)))
+		hasUpdate := res != nil && res.LatestVersion != "" && version.CleanVersion(res.LatestVersion) != version.CleanVersion(installed.Version)
+		if hasUpdate || updateForce {
+			targetVersion := installed.Version
+			if res != nil && res.LatestVersion != "" {
+				targetVersion = res.LatestVersion
+			}
+			if hasUpdate {
+				log.Info(logger.Message(fmt.Sprintf("New version available for %s: %s (currently installed: %s)", targetTool.Name, targetVersion, installed.Version)))
+			} else {
+				log.Info(logger.Message(fmt.Sprintf("Force updating %s: reinstalling version %s", targetTool.Name, targetVersion)))
+			}
 
 			// Update the target tool's version pointer to the new version and run installation
-			targetTool.Version = &res.LatestVersion
+			targetTool.Version = &targetVersion
 			err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
 			if err != nil {
-				return fmt.Errorf("updating tool %q to version %s failed: %w", targetTool.Name, res.LatestVersion, err)
+				return fmt.Errorf("updating tool %q to version %s failed: %w", targetTool.Name, targetVersion, err)
 			}
-			log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, res.LatestVersion)))
+			log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, targetVersion)))
 		} else {
 			log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (%s)", targetTool.Name, installed.Version)))
 		}
@@ -136,5 +168,6 @@ When run without arguments, checks all installed tools for updates and installs 
 
 func init() {
 	updateCmd.Flags().Bool("shim-mode", false, "Quiet update mode for shims")
+	updateCmd.Flags().BoolVarP(&updateForce, "force", "f", false, "Force re-download and re-installation even if already up to date")
 	rootCmd.AddCommand(updateCmd)
 }

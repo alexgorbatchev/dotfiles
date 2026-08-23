@@ -524,6 +524,26 @@ func TestUpdateCommand_HelpAndUninstalled(t *testing.T) {
 	if !strings.Contains(out, "When run without arguments, checks all installed tools") || !strings.Contains(out, "dotfiles update ripgrep") {
 		t.Errorf("expected update --help to contain usage details, got:\n%s", out)
 	}
+	if !strings.Contains(out, "--force") || !strings.Contains(out, "-f") {
+		t.Errorf("expected update --help to contain --force / -f flag documentation, got:\n%s", out)
+	}
+}
+
+func TestUpdateCommand_ForceFlag(t *testing.T) {
+	repoRoot := findRepoRoot()
+	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
+
+	// Test update with --force for all tools
+	outForceAll, err := executeCommand("-c", absConfig, "update", "--force")
+	if err != nil {
+		t.Errorf("update --force failed: %v, out: %s", err, outForceAll)
+	}
+
+	// Test update with -f for a non-existent tool returns error
+	_, err = executeCommand("-c", absConfig, "update", "-f", "non-existent-tool")
+	if err == nil {
+		t.Errorf("expected update -f non-existent-tool to return an error")
+	}
 }
 
 func TestRunMain(t *testing.T) {

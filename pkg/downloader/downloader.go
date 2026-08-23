@@ -14,6 +14,7 @@ import (
 
 	"context"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
@@ -101,7 +102,8 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 	}
 
 	// 1. Handle Caching Check (if enabled)
-	if d.CacheEnabled && !activeOpts[0].SkipCache {
+	skipCache := activeOpts[0].SkipCache || config.IsOverwriteEnabled(ctx)
+	if d.CacheEnabled && !skipCache {
 		if d.CacheDir == "" {
 			d.CacheDir = filepath.Join(".generated", "cache")
 		}

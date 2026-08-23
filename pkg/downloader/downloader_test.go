@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
@@ -790,6 +791,13 @@ func TestDownloaderCacheHitWithProgressAndSkipCache(t *testing.T) {
 	err = dl.Download(ctx, server.URL, "/dest2", "", optsSkip)
 	if err != nil {
 		t.Fatalf("download with SkipCache failed: %v", err)
+	}
+
+	// 3b. Overwrite context bypasses cache
+	overwriteCtx := config.WithOverwrite(ctx, true)
+	err = dl.Download(overwriteCtx, server.URL, "/dest-overwrite", "")
+	if err != nil {
+		t.Fatalf("download with overwrite context failed: %v", err)
 	}
 
 	// 4. Retry cancellation with cancelled context

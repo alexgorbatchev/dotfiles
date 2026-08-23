@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -62,6 +63,16 @@ func TestE2EUpdate(t *testing.T) {
 		}
 
 		// Verify database records the new version 2.0.0
+		h.AssertDBToolInstalled("github-release-tool", "2.0.0")
+
+		// Force update when already at 2.0.0
+		stdout, stderr, exitCode, err = h.Update("github-release-tool", "-f")
+		if err != nil || exitCode != 0 {
+			t.Fatalf("force update failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		}
+		if !strings.Contains(stderr, "Force updating") {
+			t.Fatalf("expected force update output in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
+		}
 		h.AssertDBToolInstalled("github-release-tool", "2.0.0")
 	})
 

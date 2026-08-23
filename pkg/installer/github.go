@@ -167,9 +167,12 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	useGhCli := ghCli
 
 	cacheKey := repo + "@" + version
-	if cached := g.getCachedRelease(cacheKey); cached != nil {
-		release = cached
-	} else {
+	if !config.IsOverwriteEnabled(ctx) {
+		if cached := g.getCachedRelease(cacheKey); cached != nil {
+			release = cached
+		}
+	}
+	if release == nil {
 		if !useGhCli {
 			req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 			if err != nil {
