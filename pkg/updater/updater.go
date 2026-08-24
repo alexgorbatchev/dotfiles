@@ -133,6 +133,13 @@ func (u *Updater) fetchReleases(ctx context.Context, targetVersion string) ([]Gi
 		if err == nil {
 			req.Header.Set("Accept", "application/vnd.github.v3+json")
 			req.Header.Set("User-Agent", "dotfiles-updater")
+			token := os.Getenv("GITHUB_TOKEN")
+			if token == "" {
+				token = os.Getenv("GH_TOKEN")
+			}
+			if token != "" {
+				req.Header.Set("Authorization", "token "+token)
+			}
 
 			resp, err := u.client.Do(req)
 			if err == nil && resp.StatusCode == http.StatusOK {
@@ -162,6 +169,13 @@ func (u *Updater) fetchReleases(ctx context.Context, targetVersion string) ([]Gi
 
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("User-Agent", "dotfiles-updater")
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		token = os.Getenv("GH_TOKEN")
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "token "+token)
+	}
 
 	resp, err := u.client.Do(req)
 	if err != nil {
@@ -378,6 +392,14 @@ func (u *Updater) downloadBytes(ctx context.Context, url string) ([]byte, error)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
+	}
+	req.Header.Set("User-Agent", "dotfiles-updater")
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		token = os.Getenv("GH_TOKEN")
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "token "+token)
 	}
 	resp, err := u.client.Do(req)
 	if err != nil {
