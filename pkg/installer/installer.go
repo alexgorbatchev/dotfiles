@@ -29,6 +29,7 @@ type UpdateCheckResult struct {
 	HasUpdate     bool
 	LocalVersion  string
 	LatestVersion string
+	Cached        bool
 }
 
 type SystemContext struct {

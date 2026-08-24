@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -192,6 +193,75 @@ func TestGiteaInstaller(t *testing.T) {
 		res, err := inst.CheckUpdate(context.Background(), tool)
 		if err != nil || !res.HasUpdate || res.LatestVersion != "v1.2.0" {
 			t.Errorf("unexpected CheckUpdate result: res=%v, err=%v", res, err)
+		}
+	})
+
+	t.Run("CheckUpdate disk caching and force bypass", func(t *testing.T) {
+		gMem := fs.NewMemFS()
+		gDl := downloader.NewDownloader(gMem, nil)
+		gInst := NewGiteaInstaller(exec.NewMockRunner(), gMem, gDl, &SystemContext{OS: "linux", Arch: "amd64"})
+		gInst.CacheDir = "/cache/gitea-api"
+		gInst.CacheTTL = time.Hour
+
+		tool := &config.ToolConfig{
+			Name: "cache-gitea-tool",
+			InstallParams: map[string]interface{}{
+				"instanceUrl": server.URL,
+				"repo":        "myowner/mytool",
+			},
+		}
+
+		ctx := context.Background()
+
+		// 1. First call -> Cache Miss (live fetch)
+		res1, err := gInst.CheckUpdate(ctx, tool)
+		if err != nil {
+			t.Fatalf("first CheckUpdate failed: %v", err)
+		}
+		if res1.Cached {
+			t.Errorf("expected first call to be uncached, got Cached=true")
+		}
+
+		// 2. Second call -> Cache Hit
+		res2, err := gInst.CheckUpdate(ctx, tool)
+		if err != nil {
+			t.Fatalf("second CheckUpdate failed: %v", err)
+		}
+		if !res2.Cached {
+			t.Errorf("expected second call to be cached, got Cached=false")
+		}
+
+		// 3. Third call with force -> Cache Bypass
+		forceCtx := config.WithOverwrite(ctx, true)
+		res3, err := gInst.CheckUpdate(forceCtx, tool)
+		if err != nil {
+			t.Fatalf("forced CheckUpdate failed: %v", err)
+		}
+		if res3.Cached {
+			t.Errorf("expected forced call to be uncached, got Cached=true")
+		}
+
+		// 4. Install with cached release (fixed version)
+		toolFixed := &config.ToolConfig{
+			Name: "cache-gitea-tool",
+			InstallParams: map[string]interface{}{
+				"instanceUrl": server.URL,
+				"repo":        "myowner/mytool",
+				"version":     "v1.2.0",
+			},
+		}
+		resInst, err := gInst.Install(ctx, toolFixed)
+		if err != nil {
+			t.Fatalf("Install with fixed version failed: %v", err)
+		}
+		if len(resInst.Binaries) == 0 {
+			t.Errorf("expected binaries installed")
+		}
+
+		// Install again -> hits cache
+		_, err = gInst.Install(ctx, toolFixed)
+		if err != nil {
+			t.Fatalf("second Install failed: %v", err)
 		}
 	})
 }

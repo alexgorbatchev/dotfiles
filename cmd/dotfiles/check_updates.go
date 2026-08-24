@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -35,6 +36,12 @@ var checkUpdatesCmd = &cobra.Command{
 				continue
 			}
 
+			toolDestDir := ""
+			if services.ProjectConfig.Paths.BinariesDir != "" {
+				toolDestDir = filepath.Join(services.ProjectConfig.Paths.BinariesDir, tool.Name, "current")
+			}
+			configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
+
 			res, err := inst.CheckUpdate(ctx, tool)
 			if err != nil {
 				log.GetSubLogger("", tool.Name).Error("Update check failed", err)
@@ -46,8 +53,13 @@ var checkUpdatesCmd = &cobra.Command{
 					log.Info(logger.Message(fmt.Sprintf("%s: update available (%s -> %s)", tool.Name, res.LocalVersion, res.LatestVersion)))
 					fmt.Fprintf(cmd.OutOrStdout(), "%s: update available (%s -> %s)\n", tool.Name, res.LocalVersion, res.LatestVersion)
 				} else {
-					log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s)", tool.Name, res.LocalVersion)))
-					fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s)\n", tool.Name, res.LocalVersion)
+					if res.Cached {
+						log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s, cached)", tool.Name, res.LocalVersion)))
+						fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s, cached)\n", tool.Name, res.LocalVersion)
+					} else {
+						log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s)", tool.Name, res.LocalVersion)))
+						fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s)\n", tool.Name, res.LocalVersion)
+					}
 				}
 			}
 		}

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
@@ -10,6 +11,43 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 	"github.com/spf13/cobra"
 )
+
+func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, projCfg *config.ProjectConfig) {
+	switch instInstance := inst.(type) {
+	case *installer.GitHubInstaller:
+		instInstance.BinDir = toolDestDir
+		if projCfg.Github.Host != "" {
+			instInstance.BaseURL = projCfg.Github.Host
+		}
+		if projCfg.Paths.GeneratedDir != "" {
+			instInstance.CacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "github-api")
+		}
+		if projCfg.Github.Cache.TTL > 0 {
+			instInstance.CacheTTL = time.Duration(projCfg.Github.Cache.TTL) * time.Millisecond
+		}
+	case *installer.GiteaInstaller:
+		instInstance.BinDir = toolDestDir
+		if projCfg.Paths.GeneratedDir != "" {
+			instInstance.CacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "gitea-api")
+		}
+	case *installer.CargoInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.CurlBinaryInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.CurlScriptInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.CurlTarInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.DmgInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.ManualInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.ZshPluginInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.PkgInstaller:
+		instInstance.BinDir = toolDestDir
+	}
+}
 
 var updateCmd = &cobra.Command{
 	Use:   "update [tool]",
@@ -59,13 +97,7 @@ When run without arguments, checks all installed tools for updates and installs 
 				}
 
 				toolDestDir := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current")
-				switch instInstance := inst.(type) {
-				case *installer.GitHubInstaller:
-					instInstance.BinDir = toolDestDir
-					if services.ProjectConfig.Github.Host != "" {
-						instInstance.BaseURL = services.ProjectConfig.Github.Host
-					}
-				}
+				configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
 
 				res, err := inst.CheckUpdate(ctx, targetTool)
 				if err != nil {
@@ -132,15 +164,9 @@ When run without arguments, checks all installed tools for updates and installs 
 			return fmt.Errorf("getting installer for %q: %w", targetTool.Name, err)
 		}
 
-		// Configure BinDir and BaseURL if supported (just like in InstallTool!)
+		// Configure BinDir, BaseURL, and cache settings if supported
 		toolDestDir := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current")
-		switch instInstance := inst.(type) {
-		case *installer.GitHubInstaller:
-			instInstance.BinDir = toolDestDir
-			if services.ProjectConfig.Github.Host != "" {
-				instInstance.BaseURL = services.ProjectConfig.Github.Host
-			}
-		}
+		configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
 
 		// 4. Check for update
 		log.Info(logger.Message(fmt.Sprintf("Checking %q for updates...", targetTool.Name)))
@@ -181,7 +207,11 @@ When run without arguments, checks all installed tools for updates and installs 
 			}
 			log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, targetVersion)))
 		} else {
-			log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (%s)", targetTool.Name, installed.Version)))
+			if res != nil && res.Cached {
+				log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (%s, cached)", targetTool.Name, installed.Version)))
+			} else {
+				log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (%s)", targetTool.Name, installed.Version)))
+			}
 		}
 
 		log.Info(logger.Messages.CommandCompleted(dryRun))

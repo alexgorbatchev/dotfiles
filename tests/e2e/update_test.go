@@ -71,8 +71,8 @@ func TestE2EUpdate(t *testing.T) {
 		if err != nil || exitCode != 0 {
 			t.Fatalf("update failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
-		if !strings.Contains(stderr, "already up to date") {
-			t.Fatalf("expected 'already up to date' in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
+		if !strings.Contains(stderr, "already up to date (2.0.0, cached)") {
+			t.Fatalf("expected 'already up to date (2.0.0, cached)' in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
 		}
 	})
 

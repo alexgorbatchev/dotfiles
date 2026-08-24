@@ -140,8 +140,17 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		if projCfg.Github.Host != "" {
 			installerInstance.BaseURL = projCfg.Github.Host
 		}
+		if projCfg.Paths.GeneratedDir != "" {
+			installerInstance.CacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "github-api")
+		}
+		if projCfg.Github.Cache.TTL > 0 {
+			installerInstance.CacheTTL = time.Duration(projCfg.Github.Cache.TTL) * time.Millisecond
+		}
 	case *installer.GiteaInstaller:
 		installerInstance.BinDir = installDir
+		if projCfg.Paths.GeneratedDir != "" {
+			installerInstance.CacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "gitea-api")
+		}
 	case *installer.CargoInstaller:
 		installerInstance.BinDir = installDir
 	case *installer.CurlBinaryInstaller:

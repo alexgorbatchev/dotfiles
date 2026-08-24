@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -139,6 +140,77 @@ func TestGitHubInstaller(t *testing.T) {
 		res, err := inst.CheckUpdate(context.Background(), tool)
 		if err != nil || res.HasUpdate {
 			t.Errorf("unexpected: %v, %v", res, err)
+		}
+	})
+
+	t.Run("CheckUpdate disk caching and force bypass", func(t *testing.T) {
+		callCount := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			callCount++
+			rel := githubRelease{
+				TagName: "v2.0.0",
+				Assets: []githubAsset{
+					{Name: "cachetool-linux-amd64"},
+				},
+			}
+			_ = json.NewEncoder(w).Encode(rel)
+		}))
+		defer srv.Close()
+
+		cMem := fs.NewMemFS()
+		cDl := downloader.NewDownloader(cMem, nil)
+		cInst := NewGitHubInstaller(exec.NewMockRunner(), cMem, cDl, &SystemContext{OS: "linux", Arch: "amd64"})
+		cInst.BaseURL = srv.URL
+		cInst.CacheDir = "/cache/github-api"
+		cInst.CacheTTL = time.Hour
+
+		tool := &config.ToolConfig{
+			Name: "cachetool",
+			InstallParams: map[string]interface{}{
+				"repo": "owner/cachetool",
+			},
+		}
+
+		ctx := context.Background()
+
+		// 1. First call -> Cache Miss (live fetch)
+		res1, err := cInst.CheckUpdate(ctx, tool)
+		if err != nil {
+			t.Fatalf("first CheckUpdate failed: %v", err)
+		}
+		if res1.Cached {
+			t.Errorf("expected first call to be uncached, got Cached=true")
+		}
+		if res1.LatestVersion != "v2.0.0" {
+			t.Errorf("expected LatestVersion=v2.0.0, got %s", res1.LatestVersion)
+		}
+		if callCount != 1 {
+			t.Errorf("expected 1 HTTP call, got %d", callCount)
+		}
+
+		// 2. Second call -> Cache Hit (no new HTTP call)
+		res2, err := cInst.CheckUpdate(ctx, tool)
+		if err != nil {
+			t.Fatalf("second CheckUpdate failed: %v", err)
+		}
+		if !res2.Cached {
+			t.Errorf("expected second call to be cached, got Cached=false")
+		}
+		if callCount != 1 {
+			t.Errorf("expected still 1 HTTP call after cache hit, got %d", callCount)
+		}
+
+		// 3. Third call with force / overwrite -> Cache Bypass (triggers new HTTP call)
+		forceCtx := config.WithOverwrite(ctx, true)
+		res3, err := cInst.CheckUpdate(forceCtx, tool)
+		if err != nil {
+			t.Fatalf("forced CheckUpdate failed: %v", err)
+		}
+		if res3.Cached {
+			t.Errorf("expected forced call to be uncached, got Cached=true")
+		}
+		if callCount != 2 {
+			t.Errorf("expected 2 HTTP calls after forced update check, got %d", callCount)
 		}
 	})
 

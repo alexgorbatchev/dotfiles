@@ -2,12 +2,15 @@ package installer
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
@@ -33,14 +36,18 @@ type giteaRelease struct {
 }
 
 type GiteaInstaller struct {
-	log        *logger.Logger
-	runner     exec.CommandRunner
-	fsys       fs.FS
-	dl         *downloader.Downloader
-	extractor  *archive.Extractor
-	sysCtx     *SystemContext
-	httpClient *http.Client
-	BinDir     string // Destination folder
+	log          *logger.Logger
+	runner       exec.CommandRunner
+	fsys         fs.FS
+	dl           *downloader.Downloader
+	extractor    *archive.Extractor
+	sysCtx       *SystemContext
+	httpClient   *http.Client
+	cacheMu      sync.Mutex
+	releaseCache map[string]*giteaRelease
+	CacheDir     string        // Cache directory for release metadata
+	CacheTTL     time.Duration // Time-to-live for cached release metadata
+	BinDir       string        // Destination folder
 }
 
 func NewGiteaInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downloader, sysCtx *SystemContext) *GiteaInstaller {
@@ -58,6 +65,71 @@ func NewGiteaInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Dow
 		extractor:  extractor,
 		sysCtx:     sysCtx,
 		httpClient: http.DefaultClient,
+	}
+}
+
+func (g *GiteaInstaller) getCachedRelease(ctx context.Context, key string) (*giteaRelease, bool) {
+	if config.IsOverwriteEnabled(ctx) {
+		return nil, false
+	}
+
+	g.cacheMu.Lock()
+	if g.releaseCache != nil {
+		if rel, ok := g.releaseCache[key]; ok {
+			g.cacheMu.Unlock()
+			return rel, true
+		}
+	}
+	g.cacheMu.Unlock()
+
+	if g.fsys != nil && g.CacheDir != "" {
+		h := md5.Sum([]byte(key))
+		cacheFile := filepath.Join(g.CacheDir, fmt.Sprintf("%x.json", h))
+		if exists, err := g.fsys.Exists(cacheFile); err == nil && exists {
+			if info, err := g.fsys.Stat(cacheFile); err == nil {
+				ttl := g.CacheTTL
+				if ttl <= 0 {
+					ttl = time.Hour
+				}
+				if time.Since(info.ModTime()) < ttl {
+					if data, err := g.fsys.ReadFile(cacheFile); err == nil {
+						var rel giteaRelease
+						if err := json.Unmarshal(data, &rel); err == nil && rel.TagName != "" {
+							g.cacheMu.Lock()
+							if g.releaseCache == nil {
+								g.releaseCache = make(map[string]*giteaRelease)
+							}
+							g.releaseCache[key] = &rel
+							g.cacheMu.Unlock()
+							return &rel, true
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil, false
+}
+
+func (g *GiteaInstaller) setCachedRelease(key string, rel *giteaRelease) {
+	if rel == nil {
+		return
+	}
+	g.cacheMu.Lock()
+	if g.releaseCache == nil {
+		g.releaseCache = make(map[string]*giteaRelease)
+	}
+	g.releaseCache[key] = rel
+	g.cacheMu.Unlock()
+
+	if g.fsys != nil && g.CacheDir != "" {
+		h := md5.Sum([]byte(key))
+		cacheFile := filepath.Join(g.CacheDir, fmt.Sprintf("%x.json", h))
+		_ = g.fsys.MkdirAll(g.CacheDir, 0755)
+		if data, err := json.Marshal(rel); err == nil {
+			_ = g.fsys.WriteFile(cacheFile, data, 0644)
+		}
 	}
 }
 
@@ -116,31 +188,46 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		apiURL = fmt.Sprintf("%s/api/v1/repos/%s/releases/tags/%s", normalizedURL, repo, version)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating Gitea API request: %w", err)
-	}
-	req.Header.Set("User-Agent", "dotfiles-installer/1.0")
-
-	// Add auth token if specified
-	token := getStringParam(tool.InstallParams, "token", "")
-	if token != "" {
-		req.Header.Set("Authorization", "token "+token)
+	var release *giteaRelease
+	cacheKey := normalizedURL + "/" + repo + "@" + version
+	if version != "latest" {
+		if cached, ok := g.getCachedRelease(ctx, cacheKey); ok {
+			release = cached
+		}
 	}
 
-	resp, err := g.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("executing Gitea API request: %w", err)
-	}
-	defer resp.Body.Close()
+	if release == nil {
+		req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("creating Gitea API request: %w", err)
+		}
+		req.Header.Set("User-Agent", "dotfiles-installer/1.0")
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Gitea API returned status %d", resp.StatusCode)
-	}
+		// Add auth token if specified
+		token := getStringParam(tool.InstallParams, "token", "")
+		if token != "" {
+			req.Header.Set("Authorization", "token "+token)
+		}
 
-	var release giteaRelease
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, fmt.Errorf("decoding Gitea release response: %w", err)
+		resp, err := g.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("executing Gitea API request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("Gitea API returned status %d", resp.StatusCode)
+		}
+
+		var rel giteaRelease
+		if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+			return nil, fmt.Errorf("decoding Gitea release response: %w", err)
+		}
+		release = &rel
+		g.setCachedRelease(normalizedURL+"/"+repo+"@"+release.TagName, release)
+		if version != "latest" {
+			g.setCachedRelease(cacheKey, release)
+		}
 	}
 
 	assetPattern := getStringParam(tool.InstallParams, "assetPattern", "")
@@ -220,36 +307,50 @@ func (g *GiteaInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfi
 
 	normalizedURL := strings.TrimSuffix(instanceURL, "/")
 	apiURL := fmt.Sprintf("%s/api/v1/repos/%s/releases/latest", normalizedURL, repo)
+	cacheKey := normalizedURL + "/" + repo + "@latest"
 
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating Gitea API request: %w", err)
-	}
-	req.Header.Set("User-Agent", "dotfiles-installer/1.0")
+	var release *giteaRelease
+	var isCached bool
 
-	token := getStringParam(tool.InstallParams, "token", "")
-	if token != "" {
-		req.Header.Set("Authorization", "token "+token)
+	if cached, ok := g.getCachedRelease(ctx, cacheKey); ok {
+		release = cached
+		isCached = true
 	}
 
-	resp, err := g.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("executing Gitea API request: %w", err)
-	}
-	defer resp.Body.Close()
+	if release == nil {
+		req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("creating Gitea API request: %w", err)
+		}
+		req.Header.Set("User-Agent", "dotfiles-installer/1.0")
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Gitea API returned status %d", resp.StatusCode)
-	}
+		token := getStringParam(tool.InstallParams, "token", "")
+		if token != "" {
+			req.Header.Set("Authorization", "token "+token)
+		}
 
-	var release giteaRelease
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, fmt.Errorf("decoding Gitea release response: %w", err)
+		resp, err := g.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("executing Gitea API request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("Gitea API returned status %d", resp.StatusCode)
+		}
+
+		var rel giteaRelease
+		if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+			return nil, fmt.Errorf("decoding Gitea release response: %w", err)
+		}
+		release = &rel
+		g.setCachedRelease(cacheKey, release)
 	}
 
 	return &UpdateCheckResult{
 		HasUpdate:     true,
 		LatestVersion: release.TagName,
+		Cached:        isCached,
 	}, nil
 }
 
