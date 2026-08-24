@@ -207,10 +207,18 @@ When run without arguments, checks all installed tools for updates and installs 
 			}
 			log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, targetVersion)))
 		} else {
-			if res != nil && res.Cached {
-				log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (%s, cached)", targetTool.Name, installed.Version)))
+			if installed != nil && installed.Version != "" {
+				if res != nil && res.Cached {
+					log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (%s, cached)", targetTool.Name, installed.Version)))
+				} else {
+					log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (%s)", targetTool.Name, installed.Version)))
+				}
 			} else {
-				log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (%s)", targetTool.Name, installed.Version)))
+				if res != nil && res.Cached {
+					log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (cached)", targetTool.Name)))
+				} else {
+					log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date", targetTool.Name)))
+				}
 			}
 		}
 

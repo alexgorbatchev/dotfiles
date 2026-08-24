@@ -205,6 +205,7 @@ type memFileWriter struct {
 	fs   *MemFS
 	path string
 	buf  bytes.Buffer
+	perm os.FileMode
 }
 
 func (w *memFileWriter) Write(p []byte) (n int, err error) {
@@ -220,9 +221,14 @@ func (w *memFileWriter) Close() error {
 		return &os.PathError{Op: "write", Path: w.path, Err: os.ErrExist}
 	}
 
+	perm := w.perm
+	if perm == 0 {
+		perm = 0644
+	}
+
 	w.fs.files[w.path] = &fileNode{
 		data:    w.buf.Bytes(),
-		perm:    0644,
+		perm:    perm,
 		modTime: time.Now(),
 		isDir:   false,
 	}
@@ -249,10 +255,16 @@ func (m *MemFS) Create(path string) (io.WriteCloser, error) {
 		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrExist}
 	}
 
+	perm := os.FileMode(0644)
+	if ok && node != nil && node.perm != 0 {
+		perm = node.perm
+	}
+
 	// Return writer that saves on Close
 	return &memFileWriter{
 		fs:   m,
 		path: cleanPath,
+		perm: perm,
 	}, nil
 }
 
@@ -276,9 +288,18 @@ func (m *MemFS) OpenFile(path string, flag int, perm os.FileMode) (io.WriteClose
 		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrExist}
 	}
 
+	filePerm := perm
+	if filePerm == 0 {
+		filePerm = 0644
+	}
+	if ok && node != nil && node.perm != 0 {
+		filePerm = node.perm
+	}
+
 	writer := &memFileWriter{
 		fs:   m,
 		path: cleanPath,
+		perm: filePerm,
 	}
 
 	// If flag specifies O_APPEND and file exists, pre-populate writer's buffer with existing data!

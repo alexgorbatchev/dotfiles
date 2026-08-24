@@ -81,12 +81,22 @@ var checkUpdatesCmd = &cobra.Command{
 						fmt.Fprintf(cmd.OutOrStdout(), "%s: available (%s)\n", tool.Name, res.LatestVersion)
 					}
 				} else {
-					if res.Cached {
-						log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s, cached)", tool.Name, localVersion)))
-						fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s, cached)\n", tool.Name, localVersion)
+					if localVersion != "" {
+						if res.Cached {
+							log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s, cached)", tool.Name, localVersion)))
+							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s, cached)\n", tool.Name, localVersion)
+						} else {
+							log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s)", tool.Name, localVersion)))
+							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s)\n", tool.Name, localVersion)
+						}
 					} else {
-						log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s)", tool.Name, localVersion)))
-						fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s)\n", tool.Name, localVersion)
+						if res.Cached {
+							log.Info(logger.Message(fmt.Sprintf("%s: up to date (cached)", tool.Name)))
+							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (cached)\n", tool.Name)
+						} else {
+							log.Info(logger.Message(fmt.Sprintf("%s: up to date", tool.Name)))
+							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date\n", tool.Name)
+						}
 					}
 				}
 			}

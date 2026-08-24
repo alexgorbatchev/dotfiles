@@ -469,3 +469,26 @@ func TestMemFS_ModTime(t *testing.T) {
 		t.Fatalf("expected non-zero ModTime in Lstat for /test.txt")
 	}
 }
+
+func TestMemFS_OpenFile_PreservesPermission(t *testing.T) {
+	memFS := NewMemFS()
+
+	// OpenFile with 0755
+	w, err := memFS.OpenFile("/exec.sh", os.O_CREATE|os.O_WRONLY, 0755)
+	if err != nil {
+		t.Fatalf("OpenFile failed: %v", err)
+	}
+	_, _ = w.Write([]byte("#!/bin/sh\necho test\n"))
+	err = w.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	info, err := memFS.Stat("/exec.sh")
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+	if info.Mode().Perm() != 0755 {
+		t.Errorf("expected permissions 0755, got %#o", info.Mode().Perm())
+	}
+}
