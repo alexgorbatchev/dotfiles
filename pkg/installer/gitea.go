@@ -77,7 +77,8 @@ func (g *GiteaInstaller) getCachedRelease(ctx context.Context, key string) (*git
 	if g.releaseCache != nil {
 		if rel, ok := g.releaseCache[key]; ok {
 			g.cacheMu.Unlock()
-			return rel, true
+			relCopy := *rel
+			return &relCopy, true
 		}
 	}
 	g.cacheMu.Unlock()
@@ -101,7 +102,8 @@ func (g *GiteaInstaller) getCachedRelease(ctx context.Context, key string) (*git
 							}
 							g.releaseCache[key] = &rel
 							g.cacheMu.Unlock()
-							return &rel, true
+							relCopy := rel
+							return &relCopy, true
 						}
 					}
 				}
@@ -345,6 +347,7 @@ func (g *GiteaInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfi
 		}
 		release = &rel
 		g.setCachedRelease(cacheKey, release)
+		g.setCachedRelease(normalizedURL+"/"+repo+"@"+release.TagName, release)
 	}
 
 	return &UpdateCheckResult{

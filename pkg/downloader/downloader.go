@@ -94,6 +94,10 @@ func (d *Downloader) SetFS(fsys fs.FS) {
 
 // Download fetches a file from url and saves it to destPath, supporting options and retries with backoff.
 func (d *Downloader) Download(ctx context.Context, url string, destPath string, expectedSHA256 string, opts ...DownloadOptions) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	var activeOpts []DownloadOptions
 	if len(opts) > 0 {
 		activeOpts = append(activeOpts, opts[0])
@@ -103,12 +107,14 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 
 	// 1. Handle Caching Check (if enabled)
 	skipCache := activeOpts[0].SkipCache || config.IsOverwriteEnabled(ctx)
+	cacheDir := d.CacheDir
+	if cacheDir == "" {
+		cacheDir = filepath.Join(".generated", "cache")
+	}
+
 	if d.CacheEnabled && !skipCache {
-		if d.CacheDir == "" {
-			d.CacheDir = filepath.Join(".generated", "cache")
-		}
 		keyStr := getCacheKey(url, activeOpts[0].Headers)
-		cachePath := filepath.Join(d.CacheDir, keyStr)
+		cachePath := filepath.Join(cacheDir, keyStr)
 
 		exists, err := d.fsys.Exists(cachePath)
 		if err == nil && exists {
@@ -183,9 +189,9 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 			}
 			// Save successful download to cache
 			if d.CacheEnabled && !activeOpts[0].SkipCache {
-				_ = d.fsys.MkdirAll(d.CacheDir, 0755)
+				_ = d.fsys.MkdirAll(cacheDir, 0755)
 				keyStr := getCacheKey(url, activeOpts[0].Headers)
-				cachePath := filepath.Join(d.CacheDir, keyStr)
+				cachePath := filepath.Join(cacheDir, keyStr)
 				_ = d.fsys.CopyFile(destPath, cachePath)
 			}
 			return nil

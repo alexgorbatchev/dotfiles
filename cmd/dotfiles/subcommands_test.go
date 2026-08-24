@@ -546,6 +546,20 @@ func TestUpdateCommand_ForceFlag(t *testing.T) {
 	}
 }
 
+func TestCheckUpdatesCommand_Details(t *testing.T) {
+	repoRoot := findRepoRoot()
+	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
+
+	out, err := executeCommand("-c", absConfig, "check-updates")
+	if err != nil {
+		t.Fatalf("check-updates failed: %v, out: %s", err, out)
+	}
+
+	if !strings.Contains(out, "Checking for updates across configured tools") {
+		t.Errorf("expected check-updates output to mention checking tools, got:\n%s", out)
+	}
+}
+
 func TestRunMain(t *testing.T) {
 	origArgs := os.Args
 	defer func() { os.Args = origArgs }()

@@ -15,6 +15,7 @@ import (
 type fileNode struct {
 	data       []byte
 	perm       os.FileMode
+	modTime    time.Time
 	isDir      bool
 	isSymlink  bool
 	linkTarget string
@@ -108,9 +109,10 @@ func (m *MemFS) WriteFile(path string, data []byte, perm os.FileMode) error {
 	copy(dataCopy, data)
 
 	m.files[cleanPath] = &fileNode{
-		data:  dataCopy,
-		perm:  perm,
-		isDir: false,
+		data:    dataCopy,
+		perm:    perm,
+		modTime: time.Now(),
+		isDir:   false,
 	}
 	return nil
 }
@@ -192,8 +194,9 @@ func (m *MemFS) mkdirAllLocked(path string, perm os.FileMode) error {
 	}
 
 	m.files[path] = &fileNode{
-		isDir: true,
-		perm:  perm,
+		isDir:   true,
+		perm:    perm,
+		modTime: time.Now(),
 	}
 	return nil
 }
@@ -218,9 +221,10 @@ func (w *memFileWriter) Close() error {
 	}
 
 	w.fs.files[w.path] = &fileNode{
-		data:  w.buf.Bytes(),
-		perm:  0644,
-		isDir: false,
+		data:    w.buf.Bytes(),
+		perm:    0644,
+		modTime: time.Now(),
+		isDir:   false,
 	}
 	return nil
 }
@@ -365,6 +369,7 @@ func (m *MemFS) Chmod(path string, perm os.FileMode) error {
 		return &os.PathError{Op: "chmod", Path: path, Err: os.ErrNotExist}
 	}
 	node.perm = perm
+	node.modTime = time.Now()
 	return nil
 }
 
@@ -447,6 +452,7 @@ func (m *MemFS) Symlink(oldname, newname string) error {
 
 	m.files[cleanNew] = &fileNode{
 		perm:       0777 | os.ModeSymlink,
+		modTime:    time.Now(),
 		isDir:      false,
 		isSymlink:  true,
 		linkTarget: oldname,
@@ -494,10 +500,11 @@ func (m *MemFS) Lstat(path string) (os.FileInfo, error) {
 	}
 
 	return &memFileInfo{
-		name:  filepath.Base(cleanPath),
-		size:  int64(len(node.data)),
-		mode:  mode,
-		isDir: node.isDir,
+		name:    filepath.Base(cleanPath),
+		size:    int64(len(node.data)),
+		mode:    mode,
+		modTime: node.modTime,
+		isDir:   node.isDir,
 	}, nil
 }
 
@@ -519,10 +526,11 @@ func (m *MemFS) Stat(path string) (os.FileInfo, error) {
 	}
 
 	return &memFileInfo{
-		name:  filepath.Base(currPath),
-		size:  int64(len(currNode.data)),
-		mode:  mode,
-		isDir: currNode.isDir,
+		name:    filepath.Base(currPath),
+		size:    int64(len(currNode.data)),
+		mode:    mode,
+		modTime: currNode.modTime,
+		isDir:   currNode.isDir,
 	}, nil
 }
 
@@ -604,6 +612,7 @@ func (m *MemFS) CopyFile(src, dest string) error {
 	m.files[cleanDest] = &fileNode{
 		data:       dataCopy,
 		perm:       srcNode.perm,
+		modTime:    time.Now(),
 		isDir:      false,
 		isSymlink:  false,
 		linkTarget: "",

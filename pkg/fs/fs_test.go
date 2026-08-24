@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 )
 
 // runCommonFSTests executes a suite of standard operations against any FS implementation.
@@ -433,5 +434,38 @@ func TestMemFS_HostFallback(t *testing.T) {
 	exists, err := memFS.Exists(tempFile.Name())
 	if err != nil || !exists {
 		t.Errorf("expected Exists fallback to host OS file to return true, got exists=%v, err=%v", exists, err)
+	}
+}
+
+func TestMemFS_ModTime(t *testing.T) {
+	memFS := NewMemFS()
+
+	before := time.Now().Add(-time.Second)
+
+	err := memFS.WriteFile("/test.txt", []byte("hello"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	info, err := memFS.Stat("/test.txt")
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+
+	if info.ModTime().IsZero() {
+		t.Fatalf("expected non-zero ModTime for /test.txt")
+	}
+
+	if info.ModTime().Before(before) {
+		t.Errorf("expected ModTime to be after %v, got %v", before, info.ModTime())
+	}
+
+	linfo, err := memFS.Lstat("/test.txt")
+	if err != nil {
+		t.Fatalf("Lstat failed: %v", err)
+	}
+
+	if linfo.ModTime().IsZero() {
+		t.Fatalf("expected non-zero ModTime in Lstat for /test.txt")
 	}
 }

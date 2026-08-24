@@ -81,7 +81,8 @@ func (g *GitHubInstaller) getCachedRelease(ctx context.Context, repo, version st
 	if g.releaseCache != nil {
 		if rel, ok := g.releaseCache[cacheKey]; ok {
 			g.cacheMu.Unlock()
-			return rel, true
+			relCopy := *rel
+			return &relCopy, true
 		}
 	}
 	g.cacheMu.Unlock()
@@ -105,7 +106,8 @@ func (g *GitHubInstaller) getCachedRelease(ctx context.Context, repo, version st
 							}
 							g.releaseCache[cacheKey] = &rel
 							g.cacheMu.Unlock()
-							return &rel, true
+							relCopy := rel
+							return &relCopy, true
 						}
 					}
 				}
@@ -421,6 +423,7 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 			}
 		}
 		g.setCachedRelease(repo, "latest", release)
+		g.setCachedRelease(repo, release.TagName, release)
 	}
 	return &UpdateCheckResult{
 		HasUpdate:     true,

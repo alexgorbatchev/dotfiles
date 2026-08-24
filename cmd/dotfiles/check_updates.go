@@ -6,6 +6,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -49,16 +50,43 @@ var checkUpdatesCmd = &cobra.Command{
 			}
 
 			if res != nil {
-				if res.HasUpdate {
-					log.Info(logger.Message(fmt.Sprintf("%s: update available (%s -> %s)", tool.Name, res.LocalVersion, res.LatestVersion)))
-					fmt.Fprintf(cmd.OutOrStdout(), "%s: update available (%s -> %s)\n", tool.Name, res.LocalVersion, res.LatestVersion)
+				installed, _ := services.Registry.GetToolInstallation(ctx, tool.Name)
+				var localVersion string
+				if installed != nil && installed.Version != "" {
+					localVersion = installed.Version
+				} else if tool.Version != nil && *tool.Version != "" {
+					localVersion = *tool.Version
+				}
+
+				var hasUpdate bool
+				if res.LatestVersion != "" {
+					if localVersion != "" {
+						status := version.CheckVersionStatus(localVersion, res.LatestVersion)
+						if status == version.StatusNewerAvailable {
+							hasUpdate = true
+						} else if status == version.StatusInvalidCurrent || status == version.StatusInvalidLatest {
+							hasUpdate = version.CleanVersion(res.LatestVersion) != version.CleanVersion(localVersion)
+						}
+					} else {
+						hasUpdate = true
+					}
+				}
+
+				if hasUpdate {
+					if localVersion != "" {
+						log.Info(logger.Message(fmt.Sprintf("%s: update available (%s -> %s)", tool.Name, localVersion, res.LatestVersion)))
+						fmt.Fprintf(cmd.OutOrStdout(), "%s: update available (%s -> %s)\n", tool.Name, localVersion, res.LatestVersion)
+					} else {
+						log.Info(logger.Message(fmt.Sprintf("%s: available (%s)", tool.Name, res.LatestVersion)))
+						fmt.Fprintf(cmd.OutOrStdout(), "%s: available (%s)\n", tool.Name, res.LatestVersion)
+					}
 				} else {
 					if res.Cached {
-						log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s, cached)", tool.Name, res.LocalVersion)))
-						fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s, cached)\n", tool.Name, res.LocalVersion)
+						log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s, cached)", tool.Name, localVersion)))
+						fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s, cached)\n", tool.Name, localVersion)
 					} else {
-						log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s)", tool.Name, res.LocalVersion)))
-						fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s)\n", tool.Name, res.LocalVersion)
+						log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s)", tool.Name, localVersion)))
+						fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s)\n", tool.Name, localVersion)
 					}
 				}
 			}
