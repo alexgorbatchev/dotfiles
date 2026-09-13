@@ -7,7 +7,6 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
-	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
@@ -212,7 +211,6 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 			return fmt.Errorf("validation failed with %d error(s)", len(errors))
 		}
 
-		log.Info(logger.Messages.CommandCompleted(dryRun))
 		fmt.Fprintf(out, "✔ Checked %d tool configuration(s) — all valid!\n", len(targetTools))
 		return nil
 	},

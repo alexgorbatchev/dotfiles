@@ -173,7 +173,6 @@ var skillCmd = &cobra.Command{
 
 		if len(foundSkills) == 0 {
 			log.Info("No AI skills found.")
-			log.Info(logger.Messages.CommandCompleted(dryRun))
 			fmt.Fprintln(cmd.OutOrStdout(), "No AI skills found.")
 			return nil
 		}
@@ -183,7 +182,6 @@ var skillCmd = &cobra.Command{
 			fmt.Fprintf(cmd.OutOrStdout(), "- %s: %s (%s)\n", s.Name, s.Description, s.Path)
 		}
 
-		log.Info(logger.Messages.CommandCompleted(dryRun))
 		return nil
 	},
 }

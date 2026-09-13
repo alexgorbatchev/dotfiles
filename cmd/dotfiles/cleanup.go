@@ -51,7 +51,6 @@ var cleanupCmd = &cobra.Command{
 			}
 		}
 
-		log.Info(logger.Messages.CommandCompleted(dryRun))
 		return nil
 	},
 }

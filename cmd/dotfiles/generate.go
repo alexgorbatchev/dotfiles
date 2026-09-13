@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/shellinit"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/spf13/cobra"
@@ -94,7 +93,6 @@ var generateCmd = &cobra.Command{
 			}
 		}
 
-		log.Info(logger.Messages.CommandCompleted(dryRun))
 		return nil
 	},
 }

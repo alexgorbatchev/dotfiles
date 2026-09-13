@@ -106,43 +106,43 @@ func TestSubcommands(t *testing.T) {
 		{
 			name:           "generate command default",
 			args:           []string{"generate"},
-			expectedOutput: []string{"Starting generation", "Command completed successfully"},
+			expectedOutput: []string{"Starting generation", "DONE"},
 			expectedErr:    false,
 		},
 		{
 			name:           "generate command dry-run",
 			args:           []string{"generate", "--dry-run"},
-			expectedOutput: []string{"Starting generation", "Command completed successfully (dry-run)"},
+			expectedOutput: []string{"Starting generation", "DONE"},
 			expectedErr:    false,
 		},
 		{
 			name:           "install all tools",
 			args:           []string{"install"},
-			expectedOutput: []string{"Installing all configured tools", "Command completed successfully"},
+			expectedOutput: []string{"Installing all configured tools"},
 			expectedErr:    false,
 		},
 		{
 			name:           "install single tool",
 			args:           []string{"install", "bat"},
-			expectedOutput: []string{"Installing tool: bat", "Command completed successfully"},
+			expectedOutput: []string{"Installing tool: bat"},
 			expectedErr:    false,
 		},
 		{
 			name:           "uninstall all tools",
 			args:           []string{"uninstall"},
-			expectedOutput: []string{"Uninstalling all configured tools", "Command completed successfully"},
+			expectedOutput: []string{"Uninstalling all configured tools"},
 			expectedErr:    false,
 		},
 		{
 			name:           "uninstall single tool",
 			args:           []string{"uninstall", "bat"},
-			expectedOutput: []string{"Uninstalling tool: bat", "Command completed successfully"},
+			expectedOutput: []string{"Uninstalling tool: bat"},
 			expectedErr:    false,
 		},
 		{
 			name:           "update command",
 			args:           []string{"update"},
-			expectedOutput: []string{"Evaluating versions and checking for updates", "Command completed successfully"},
+			expectedOutput: []string{"Evaluating versions and checking for updates"},
 			expectedErr:    false,
 		},
 		{
@@ -202,13 +202,13 @@ func TestSubcommands(t *testing.T) {
 		{
 			name:           "cleanup command",
 			args:           []string{"cleanup"},
-			expectedOutput: []string{"Starting cleanup of orphaned tools and stale artifacts", "Command completed successfully"},
+			expectedOutput: []string{"Starting cleanup of orphaned tools and stale artifacts"},
 			expectedErr:    false,
 		},
 		{
 			name:           "check-updates command",
 			args:           []string{"check-updates"},
-			expectedOutput: []string{"Checking for updates across configured tools", "Command completed successfully"},
+			expectedOutput: []string{"Checking for updates across configured tools"},
 			expectedErr:    false,
 		},
 		{

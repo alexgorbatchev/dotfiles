@@ -62,7 +62,6 @@ var envCreateCmd = &cobra.Command{
 		}
 
 		log.Info(logger.Message(fmt.Sprintf("Created virtual environment at %s", info.EnvDir)))
-		log.Info(logger.Messages.CommandCompleted(dryRun))
 		fmt.Fprintf(cmd.OutOrStdout(), "Virtual environment created at: %s\nTo activate, run:\n  source %s\n", info.EnvDir, info.SourcePath)
 		return nil
 	},
@@ -105,7 +104,6 @@ var envDeleteCmd = &cobra.Command{
 		}
 
 		log.Info(logger.Message(fmt.Sprintf("Deleted virtual environment at %s", envDir)))
-		log.Info(logger.Messages.CommandCompleted(dryRun))
 		fmt.Fprintf(cmd.OutOrStdout(), "Deleted virtual environment at %s\n", envDir)
 		return nil
 	},

@@ -143,7 +143,6 @@ When run without arguments, checks all installed tools for updates and installs 
 					log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, targetVersion)))
 				}
 			}
-			log.Info(logger.Messages.CommandCompleted(dryRun))
 			return nil
 		}
 
@@ -235,7 +234,6 @@ When run without arguments, checks all installed tools for updates and installs 
 			}
 		}
 
-		log.Info(logger.Messages.CommandCompleted(dryRun))
 		return nil
 	},
 }

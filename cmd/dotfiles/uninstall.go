@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/spf13/cobra"
 )
@@ -53,7 +52,6 @@ var uninstallCmd = &cobra.Command{
 			}
 		}
 
-		log.Info(logger.Messages.CommandCompleted(dryRun))
 		return nil
 	},
 }
