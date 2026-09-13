@@ -19,7 +19,27 @@ type brewInfoVersions struct {
 
 type brewInfo struct {
 	Name     string           `json:"name"`
+	Outdated bool             `json:"outdated"`
 	Versions brewInfoVersions `json:"versions"`
+}
+
+type brewInfoV2 struct {
+	Formulae []struct {
+		Name     string `json:"name"`
+		Outdated bool   `json:"outdated"`
+		Versions struct {
+			Stable string `json:"stable"`
+		} `json:"versions"`
+		Installed []struct {
+			Version string `json:"version"`
+		} `json:"installed"`
+	} `json:"formulae"`
+	Casks []struct {
+		Token     string `json:"token"`
+		Version   string `json:"version"`
+		Installed string `json:"installed"`
+		Outdated  bool   `json:"outdated"`
+	} `json:"casks"`
 }
 
 type BrewInstaller struct {
@@ -228,7 +248,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	}
 
 	if version == "" {
-		v, err := b.getBrewVersion(ctx, formula)
+		v, _, _, err := b.getBrewInfo(ctx, formula, isCask)
 		if err == nil {
 			version = v
 		}
@@ -257,12 +277,17 @@ func (b *BrewInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) 
 
 func (b *BrewInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
 	formula := getStringParam(tool.InstallParams, "formula", tool.Name)
-	latest, err := b.getBrewVersion(ctx, formula)
+	isCask := getBoolParam(tool.InstallParams, "cask", false)
+	latest, installed, outdated, err := b.getBrewInfo(ctx, formula, isCask)
 	if err != nil {
-		return nil, err
+		return &UpdateCheckResult{
+			HasUpdate:     false,
+			LatestVersion: "",
+		}, nil
 	}
 	return &UpdateCheckResult{
-		HasUpdate:     false, // simplified fallback
+		HasUpdate:     outdated,
+		LocalVersion:  installed,
 		LatestVersion: latest,
 	}, nil
 }
@@ -282,23 +307,47 @@ func (b *BrewInstaller) getBrewPrefix(ctx context.Context, formula string) (stri
 	return "/usr/local/opt/" + formula, nil
 }
 
-func (b *BrewInstaller) getBrewVersion(ctx context.Context, formula string) (string, error) {
-	cmd := b.runner.CommandContext(ctx, "brew", "info", "--json", formula)
+func (b *BrewInstaller) getBrewInfo(ctx context.Context, formula string, isCask bool) (latestVersion string, installedVersion string, outdated bool, err error) {
+	args := []string{"info", "--json=v2"}
+	if isCask {
+		args = append(args, "--cask")
+	}
+	args = append(args, formula)
+
+	cmd := b.runner.CommandContext(ctx, "brew", args...)
 	out, err := cmd.Output()
 	if err != nil {
-		return "", err
+		if isCask {
+			cmd = b.runner.CommandContext(ctx, "brew", "info", "--json=v2", formula)
+			out, err = cmd.Output()
+		}
+		if err != nil {
+			return "", "", false, err
+		}
+	}
+
+	var v2 brewInfoV2
+	if err := json.Unmarshal(out, &v2); err == nil {
+		if len(v2.Casks) > 0 {
+			c := v2.Casks[0]
+			return c.Version, c.Installed, c.Outdated, nil
+		}
+		if len(v2.Formulae) > 0 {
+			f := v2.Formulae[0]
+			instVer := ""
+			if len(f.Installed) > 0 {
+				instVer = f.Installed[0].Version
+			}
+			return f.Versions.Stable, instVer, f.Outdated, nil
+		}
 	}
 
 	var list []brewInfo
-	if err := json.Unmarshal(out, &list); err != nil {
-		return "", err
+	if err := json.Unmarshal(out, &list); err == nil && len(list) > 0 {
+		return list[0].Versions.Stable, "", list[0].Outdated, nil
 	}
 
-	if len(list) > 0 && list[0].Versions.Stable != "" {
-		return list[0].Versions.Stable, nil
-	}
-
-	return "", fmt.Errorf("no version found")
+	return "", "", false, fmt.Errorf("no version found for brew package %s", formula)
 }
 
 func init() {

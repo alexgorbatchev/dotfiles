@@ -239,6 +239,49 @@ func TestBrewInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("CheckUpdate cask v2 success", func(t *testing.T) {
+		runner.Clear()
+		caskJSON := []byte(`{"formulae":[],"casks":[{"token":"signal","version":"8.27.0","installed":"8.27.0","outdated":false}]}`)
+		runner.Register("brew", caskJSON, nil)
+
+		tool := &config.ToolConfig{
+			Name: "signal",
+			InstallParams: map[string]interface{}{
+				"cask": true,
+			},
+		}
+
+		res, err := inst.CheckUpdate(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.LatestVersion != "8.27.0" {
+			t.Errorf("expected version 8.27.0, got %s", res.LatestVersion)
+		}
+		if res.HasUpdate {
+			t.Error("expected hasUpdate to be false")
+		}
+	})
+
+	t.Run("CheckUpdate error graceful fallback", func(t *testing.T) {
+		runner.Clear()
+		runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+			return errors.New("exit status 1")
+		})
+
+		tool := &config.ToolConfig{
+			Name: "unknown-pkg",
+		}
+
+		res, err := inst.CheckUpdate(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("expected graceful fallback on error, got error: %v", err)
+		}
+		if res.HasUpdate {
+			t.Error("expected hasUpdate to be false on error")
+		}
+	})
+
 	t.Run("Install error tap fails", func(t *testing.T) {
 		runner.Clear()
 		runner.RegisterFunc("brew", func(c *exec.MockCmd) error {

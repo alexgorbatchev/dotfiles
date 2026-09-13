@@ -470,9 +470,9 @@ func TestInstallerEdgeCasesAndFallbacks(t *testing.T) {
 	}
 
 	runner.Register("brew", []byte(`[{"versions":{"stable":"2.4.0"}}]`), nil)
-	ver, err := brew.getBrewVersion(context.Background(), "testformula")
+	ver, _, _, err := brew.getBrewInfo(context.Background(), "testformula", false)
 	if err != nil || ver != "2.4.0" {
-		t.Errorf("getBrewVersion failed: ver=%q, err=%v", ver, err)
+		t.Errorf("getBrewInfo failed: ver=%q, err=%v", ver, err)
 	}
 
 	// 2. Npm CheckUpdate
