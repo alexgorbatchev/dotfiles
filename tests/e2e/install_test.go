@@ -64,7 +64,7 @@ func TestE2EInstall(t *testing.T) {
 		}
 
 		// Verify SQLite database update
-		h.AssertDBToolInstalled("github-release-tool", "latest")
+		h.AssertDBToolInstalled("github-release-tool", "1.0.0")
 		h.AssertDBOperationLogged("github-release-tool", "writeFile", "github-release-tool")
 	})
 
@@ -88,7 +88,7 @@ func TestE2EInstall(t *testing.T) {
 			t.Fatalf("expected output to mention install-by-binary-tool, but got:\n%s", output)
 		}
 
-		h.AssertDBToolInstalled("install-by-binary-tool", "latest")
+		h.AssertDBToolInstalled("install-by-binary-tool", "1.0.0")
 	})
 
 	t.Run("should run after-install hooks and prefix logs", func(t *testing.T) {

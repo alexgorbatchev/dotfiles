@@ -286,8 +286,16 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		promotedBinaries = GetBinaryNames(tool.Name, tool.Binaries)
 	}
 
+	var versionResult string
+	if release != nil && release.TagName != "" {
+		versionResult = release.TagName
+	} else if version != "" && version != "latest" {
+		versionResult = version
+	}
+
 	return &InstallResult{
 		Binaries: promotedBinaries,
+		Version:  versionResult,
 	}, nil
 }
 

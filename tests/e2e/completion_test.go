@@ -11,12 +11,12 @@ func TestE2ECompletion(t *testing.T) {
 	defer ms.Close()
 
 	h := NewTestHarness(t, HarnessOptions{
-		ConfigPath: "config.ts",
+		ConfigPath:    "config.ts",
+		MockServerURL: ms.Server.URL,
 		Env: map[string]string{
 			"DOTFILES_E2E_USE_REAL_INSTALLERS": "true",
 		},
 	})
-	h.MockServerURL = ms.Server.URL
 
 	// Copy the "main" fixture files to the sandbox TempDir
 	h.CopyFixture("main")
@@ -31,10 +31,11 @@ func TestE2ECompletion(t *testing.T) {
 	h.AssertShimExistsAndExecutable("curl-script--cmd-completion-test")
 
 	// Install the tool explicitly
-	stdout, stderr, exitCode, err = h.Install([]string{"curl-script--cmd-completion-test"})
+	stdout, stderr, exitCode, err = h.Install([]string{"curl-script--cmd-completion-test"}, "--trace", "--log=verbose")
 	if err != nil || exitCode != 0 {
 		t.Fatalf("install failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
+	t.Logf("install stdout: %s\ninstall stderr: %s", stdout, stderr)
 
 	// Verify completion files were generated
 	zshCompletionPath := ".generated/shell-scripts/zsh/completions/_curl-script--cmd-completion-test"

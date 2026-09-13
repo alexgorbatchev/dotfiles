@@ -553,7 +553,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 
 							cmdName = execPath
 							o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Generating %s completion using: %s", sh, cmdValResolved)))
-							cmdCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+							cmdCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 							cmdExec := o.runner.CommandContext(cmdCtx, cmdName, parts[1:]...)
 							cmdExec.SetProcessGroup(true)
 							pathEnv := os.Getenv("PATH")

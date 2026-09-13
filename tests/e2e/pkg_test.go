@@ -150,10 +150,9 @@ chmod +x "$dest"
 		}
 
 		// Execute installer
-		stdout, stderr, exitCode, err = h.Install([]string{"pkg-test-tool"},
-			"DOTFILES_TEST_PKG_BINARY_PATH="+installedBinaryPath,
-			"DOTFILES_TEST_PKG_INSTALLER_PATH="+fakeInstallerPath,
-		)
+		h.Env["DOTFILES_TEST_PKG_BINARY_PATH"] = installedBinaryPath
+		h.Env["DOTFILES_TEST_PKG_INSTALLER_PATH"] = fakeInstallerPath
+		stdout, stderr, exitCode, err = h.Install([]string{"pkg-test-tool"})
 		if err != nil || exitCode != 0 {
 			t.Fatalf("install failed on macOS/allow_non_macos: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
@@ -191,9 +190,8 @@ chmod +x "$dest"
 
 	} else {
 		// On standard Linux without bypass, the installer skips installation without failure
-		stdout, stderr, exitCode, err = h.Install([]string{"pkg-test-tool"},
-			"DOTFILES_TEST_PKG_BINARY_PATH="+installedBinaryPath,
-		)
+		h.Env["DOTFILES_TEST_PKG_BINARY_PATH"] = installedBinaryPath
+		stdout, stderr, exitCode, err = h.Install([]string{"pkg-test-tool"})
 		if err != nil || exitCode != 0 {
 			t.Fatalf("install failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}

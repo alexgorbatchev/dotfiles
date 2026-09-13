@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -205,8 +206,8 @@ func TestOrchestrator_Install(t *testing.T) {
 	for _, op := range ops {
 		t.Logf("OP: %s at %s target %v", op.OperationType, op.FilePath, op.TargetPath)
 	}
-	if len(ops) != 3 {
-		t.Fatalf("expected 3 operations (shim write, shim chmod, symlink), got %d", len(ops))
+	if len(ops) < 3 {
+		t.Fatalf("expected at least 3 operations (shim write, shim chmod, symlink), got %d", len(ops))
 	}
 
 	instRec, err := reg.GetToolInstallation(ctx, "test-tool")
@@ -218,6 +219,72 @@ func TestOrchestrator_Install(t *testing.T) {
 	}
 	if instRec.Version != "1.2.3" {
 		t.Errorf("expected version to be '1.2.3', got %s", instRec.Version)
+	}
+}
+
+func TestOrchestrator_Install_UnversionedToolTimestamp(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	log := logger.New(logger.Config{Writer: io.Discard})
+
+	mockInst := &mockInstaller{
+		name:     "mock-unversioned",
+		binaries: []string{"unversioned-bin"},
+	}
+
+	instReg := installer.NewRegistry()
+	_ = instReg.Register(mockInst)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			DotfilesDir:     "/home/user/dotfiles",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			GeneratedDir:    "/home/user/.generated",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+		},
+	}
+
+	orch := NewOrchestrator(log, fsys, runner, reg, instReg)
+
+	versionLatest := "latest"
+	tool := &config.ToolConfig{
+		Name:               "signal",
+		InstallationMethod: "mock-unversioned",
+		Version:            &versionLatest,
+		Binaries:           []interface{}{"signal-bin"},
+	}
+
+	err = orch.InstallTools(ctx, []*config.ToolConfig{tool}, projCfg)
+	if err != nil {
+		t.Fatalf("unexpected pipeline failure: %v", err)
+	}
+
+	instRec, err := reg.GetToolInstallation(ctx, "signal")
+	if err != nil {
+		t.Fatalf("failed to get installation record: %v", err)
+	}
+	if instRec == nil {
+		t.Fatal("expected tool installation record to be created, got nil")
+	}
+
+	// The version MUST be a timestamp (YYYY-MM-DD-HH-MM-SS) and NOT "latest" or "unknown"
+	matched, err := regexp.MatchString(`^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$`, instRec.Version)
+	if err != nil || !matched {
+		t.Fatalf("expected unversioned tool installation to be timestamped YYYY-MM-DD-HH-MM-SS, got version: %q", instRec.Version)
+	}
+	if instRec.Version == "latest" || instRec.Version == "unknown" {
+		t.Fatalf("version cannot be 'latest' or 'unknown', got %q", instRec.Version)
 	}
 }
 

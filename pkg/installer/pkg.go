@@ -81,8 +81,8 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
 		}, nil
 	}
-	// Gated on macOS only
-	if p.sysCtx.OS != "darwin" {
+	// Gated on macOS only (unless testing override is enabled)
+	if p.sysCtx.OS != "darwin" && os.Getenv("DOTFILES_TEST_PKG_ALLOW_NON_MACOS") != "1" {
 		return &InstallResult{
 			Binaries: []string{},
 		}, nil
@@ -126,6 +126,7 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 
 	var downloadName string
+	var detectedVersion string
 
 	if repo != "" {
 		parts := strings.Split(repo, "/")
@@ -178,6 +179,9 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		var release githubRelease
 		if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
 			return nil, fmt.Errorf("decoding GitHub release response: %w", err)
+		}
+		if release.TagName != "" {
+			detectedVersion = release.TagName
 		}
 
 		matched := p.matchAsset(release.Assets, assetPattern, assetSelector)
@@ -236,13 +240,24 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	target := getStringParam(tool.InstallParams, "target", "/")
 
+	installerBinary := "installer"
+	if customInstaller := os.Getenv("DOTFILES_TEST_PKG_INSTALLER_PATH"); customInstaller != "" {
+		installerBinary = customInstaller
+	}
+
 	var cmd exec.Cmd
 	if tool.Sudo {
-		args := []string{"installer", "-pkg", resolvedPkgPath, "-target", target}
+		args := []string{installerBinary, "-pkg", resolvedPkgPath, "-target", target}
+		if p.log != nil {
+			p.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo %s %s", installerBinary, strings.Join(args[1:], " "))))
+		}
 		cmd = p.runner.CommandContext(ctx, "sudo", args...)
 	} else {
 		args := []string{"-pkg", resolvedPkgPath, "-target", target}
-		cmd = p.runner.CommandContext(ctx, "installer", args...)
+		if p.log != nil {
+			p.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ %s %s", installerBinary, strings.Join(args, " "))))
+		}
+		cmd = p.runner.CommandContext(ctx, installerBinary, args...)
 	}
 
 	if err := cmd.Run(); err != nil {
@@ -251,11 +266,22 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	binNames := GetBinaryNames(tool.Name, tool.Binaries)
 	resolvedBinaries := ResolveBinaryPaths(ctx, p.fsys, binNames, func(binName string) string {
+		if customBin := os.Getenv("DOTFILES_TEST_PKG_BINARY_PATH"); customBin != "" {
+			return customBin
+		}
 		return filepath.Join("/usr/local/bin", binName)
 	})
 
+	var versionResult string
+	if detectedVersion != "" {
+		versionResult = detectedVersion
+	} else if version != "" && version != "latest" {
+		versionResult = version
+	}
+
 	return &InstallResult{
 		Binaries: resolvedBinaries,
+		Version:  versionResult,
 	}, nil
 }
 

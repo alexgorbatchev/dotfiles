@@ -76,6 +76,7 @@ type TestHarness struct {
 type HarnessOptions struct {
 	ConfigPath    string
 	ConfigContent string
+	MockServerURL string
 	Env           map[string]string
 }
 
@@ -84,10 +85,11 @@ func NewTestHarness(t *testing.T, options HarnessOptions) *TestHarness {
 	tempDir := t.TempDir()
 
 	h := &TestHarness{
-		T:          t,
-		TempDir:    tempDir,
-		ConfigPath: options.ConfigPath,
-		Env:        options.Env,
+		T:             t,
+		TempDir:       tempDir,
+		ConfigPath:    options.ConfigPath,
+		MockServerURL: options.MockServerURL,
+		Env:           options.Env,
 	}
 	h.ProjectRoot = h.findProjectRoot()
 

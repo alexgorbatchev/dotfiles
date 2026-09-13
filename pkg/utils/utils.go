@@ -3,6 +3,7 @@ package utils
 import (
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Contains returns true if the slice contains the target value.
@@ -179,3 +180,14 @@ func DedentString(s string) string {
 
 	return strings.TrimSpace(strings.Join(resultLines, "\n"))
 }
+
+// GenerateTimestamp returns a formatted timestamp string (YYYY-MM-DD-HH-MM-SS)
+// suitable for versioning and directory names when explicit versions are unavailable.
+func GenerateTimestamp(times ...time.Time) string {
+	t := time.Now()
+	if len(times) > 0 {
+		t = times[0]
+	}
+	return t.Format("2006-01-02-15-04-05")
+}
+

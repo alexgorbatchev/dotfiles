@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -40,8 +41,8 @@ func TestE2EUpdate(t *testing.T) {
 	binaryPath := filepath.Join(h.TempDir, ".generated", "binaries", "github-release-tool", "current", "github-release-tool")
 
 	t.Run("should update github-release-tool to newer version", func(t *testing.T) {
-		// Verify currently installed version in DB is "latest"
-		h.AssertDBToolInstalled("github-release-tool", "latest")
+		// Verify currently installed version in DB is "1.0.0"
+		h.AssertDBToolInstalled("github-release-tool", "1.0.0")
 
 		// Verify we can execute the binary
 		if _, err := os.Stat(binaryPath); err != nil {
@@ -105,6 +106,32 @@ func TestE2EUpdate(t *testing.T) {
 			t.Fatalf("expected batch checking message in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
 		}
 		h.AssertDBToolInstalled("gitea-release-tool", "2.0.0")
+	})
+
+	t.Run("should update unversioned tool with timestamped version and never unknown", func(t *testing.T) {
+		unversionedTool := "version-detection--curl-script--no-version"
+		// Install initial unversioned tool
+		stdout, stderr, exitCode, err := h.Install([]string{unversionedTool})
+		if err != nil || exitCode != 0 {
+			t.Fatalf("installing %s failed: %v\nstdout: %s\nstderr: %s", unversionedTool, err, stdout, stderr)
+		}
+
+		// Force update the unversioned tool
+		stdout, stderr, exitCode, err = h.Update(unversionedTool, "-f")
+		if err != nil || exitCode != 0 {
+			t.Fatalf("updating %s failed: %v\nstdout: %s\nstderr: %s", unversionedTool, err, stdout, stderr)
+		}
+
+		// Verify output does NOT contain "unknown"
+		if strings.Contains(stderr, "to version unknown") || strings.Contains(stderr, "to unknown") {
+			t.Fatalf("update output must NEVER contain 'unknown', got stderr:\n%s", stderr)
+		}
+
+		// Verify output contains timestamped version (YYYY-MM-DD-HH-MM-SS)
+		matched, matchErr := regexp.MatchString(`successfully updated to version \d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}`, stderr)
+		if matchErr != nil || !matched {
+			t.Fatalf("expected stderr to log updated to timestamped version, got:\n%s", stderr)
+		}
 	})
 
 	t.Run("should fail gracefully when updating non-existent tool", func(t *testing.T) {

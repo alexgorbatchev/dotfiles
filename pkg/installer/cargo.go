@@ -178,6 +178,7 @@ func (c *CargoInstaller) tryQuickinstall(ctx context.Context, tool *config.ToolC
 
 	return &InstallResult{
 		Binaries: promotedBinaries,
+		Version:  version,
 	}, nil
 }
 
@@ -227,9 +228,24 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 
 	args = append(args, crateName)
 
+	var writer *logger.LineWriter
+	if c.log != nil {
+		writer = logger.NewLineWriter(c.log.GetSubLogger("", tool.Name), "|")
+		c.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ cargo %s", strings.Join(args, " "))))
+	}
 	cmd := c.runner.CommandContext(ctx, "cargo", args...)
+	if writer != nil {
+		cmd.SetStdout(writer)
+		cmd.SetStderr(writer)
+	}
 	if err := cmd.Run(); err != nil {
+		if writer != nil {
+			writer.Flush()
+		}
 		return nil, fmt.Errorf("cargo install %s: %w", crateName, err)
+	}
+	if writer != nil {
+		writer.Flush()
 	}
 
 	promotedBinaries, err := PromoteBinaries(c.fsys, c.BinDir, tool.Name, tool.Binaries)
@@ -237,8 +253,14 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		return nil, err
 	}
 
+	var versionResult string
+	if version != "" && version != "latest" {
+		versionResult = version
+	}
+
 	return &InstallResult{
 		Binaries: promotedBinaries,
+		Version:  versionResult,
 	}, nil
 }
 

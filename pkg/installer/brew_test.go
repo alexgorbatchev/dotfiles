@@ -1,19 +1,25 @@
 package installer
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 func TestBrewInstaller(t *testing.T) {
 	runner := exec.NewMockRunner()
 	fsys := fs.NewMemFS()
-	inst := NewBrewInstaller(runner, fsys, nil)
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Writer: &logBuf, Level: logger.LogLevelDefault})
+	inst := NewBrewInstaller(runner, fsys, NewDefaultSystemContext())
+	inst.SetLogger(log)
 
 	if inst.Name() != "brew" {
 		t.Errorf("expected name to be 'brew', got %s", inst.Name())
@@ -61,6 +67,19 @@ func TestBrewInstaller(t *testing.T) {
 		}
 		if !hasInstall {
 			t.Error("expected brew install with --force to be called")
+		}
+		if res.Version != "1.7" {
+			t.Errorf("expected brew install result version to be '1.7', got %q", res.Version)
+		}
+		logStr := logBuf.String()
+		if !strings.Contains(logStr, "$ brew tap homebrew/core") {
+			t.Errorf("expected log to contain '$ brew tap homebrew/core', got: %s", logStr)
+		}
+		if !strings.Contains(logStr, "$ brew install --force jq") {
+			t.Errorf("expected log to contain '$ brew install --force jq', got: %s", logStr)
+		}
+		if strings.Contains(logStr, "Executing command:") {
+			t.Errorf("expected log NOT to contain redundant 'Executing command:', got: %s", logStr)
 		}
 	})
 

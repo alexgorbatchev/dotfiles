@@ -78,6 +78,13 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 			}
 		} else {
 			args = []string{"makecache"}
+			if d.log != nil {
+				if tool.Sudo {
+					d.log.GetSubLogger("", tool.Name).Info(logger.Message("$ sudo dnf makecache"))
+				} else {
+					d.log.GetSubLogger("", tool.Name).Info(logger.Message("$ dnf makecache"))
+				}
+			}
 			cmd := d.runner.CommandContext(ctx, "dnf", args...)
 			if err := cmd.Run(); err != nil {
 				return nil, fmt.Errorf("dnf makecache failed: %w", err)
@@ -89,9 +96,15 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	var installCmd exec.Cmd
 	if tool.Sudo {
 		args := []string{"dnf", "install", "-y", packageSpec}
+		if d.log != nil {
+			d.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo dnf install -y %s", packageSpec)))
+		}
 		installCmd = d.runner.CommandContext(ctx, "sudo", args...)
 	} else {
 		args := []string{"install", "-y", packageSpec}
+		if d.log != nil {
+			d.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ dnf install -y %s", packageSpec)))
+		}
 		installCmd = d.runner.CommandContext(ctx, "dnf", args...)
 	}
 
@@ -114,6 +127,7 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	return &InstallResult{
 		Binaries: resolvedBinaries,
+		Version:  detectedVersion,
 		ShellEnv: map[string]string{
 			"DNF_INSTALLED_VERSION": detectedVersion,
 		},

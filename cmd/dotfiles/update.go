@@ -8,6 +8,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -116,8 +117,10 @@ When run without arguments, checks all installed tools for updates and installs 
 
 				if hasUpdate || force {
 					targetVersion := installed.Version
-					if res != nil && res.LatestVersion != "" {
+					if res != nil && res.LatestVersion != "" && res.LatestVersion != "unknown" && res.LatestVersion != "latest" {
 						targetVersion = res.LatestVersion
+					} else if targetVersion == "" || targetVersion == "unknown" || targetVersion == "latest" {
+						targetVersion = utils.GenerateTimestamp()
 					}
 					if hasUpdate {
 						log.Info(logger.Message(fmt.Sprintf("New version available for %s: %s (currently installed: %s)", targetTool.Name, targetVersion, installed.Version)))
@@ -132,6 +135,10 @@ When run without arguments, checks all installed tools for updates and installs 
 					if err != nil {
 						log.Error(logger.Message(fmt.Sprintf("Updating tool %q to version %s failed", targetTool.Name, targetVersion)), err)
 						continue
+					}
+					updatedRecord, errRec := services.Registry.GetToolInstallation(ctx, targetTool.Name)
+					if errRec == nil && updatedRecord != nil && updatedRecord.Version != "" && updatedRecord.Version != "unknown" {
+						targetVersion = updatedRecord.Version
 					}
 					log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, targetVersion)))
 				}
@@ -187,8 +194,10 @@ When run without arguments, checks all installed tools for updates and installs 
 
 		if hasUpdate || force {
 			targetVersion := installed.Version
-			if res != nil && res.LatestVersion != "" {
+			if res != nil && res.LatestVersion != "" && res.LatestVersion != "unknown" && res.LatestVersion != "latest" {
 				targetVersion = res.LatestVersion
+			} else if targetVersion == "" || targetVersion == "unknown" || targetVersion == "latest" {
+				targetVersion = utils.GenerateTimestamp()
 			}
 			if hasUpdate {
 				log.Info(logger.Message(fmt.Sprintf("New version available for %s: %s (currently installed: %s)", targetTool.Name, targetVersion, installed.Version)))
@@ -204,6 +213,10 @@ When run without arguments, checks all installed tools for updates and installs 
 			err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
 			if err != nil {
 				return fmt.Errorf("updating tool %q to version %s failed: %w", targetTool.Name, targetVersion, err)
+			}
+			updatedRecord, errRec := services.Registry.GetToolInstallation(ctx, targetTool.Name)
+			if errRec == nil && updatedRecord != nil && updatedRecord.Version != "" && updatedRecord.Version != "unknown" {
+				targetVersion = updatedRecord.Version
 			}
 			log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, targetVersion)))
 		} else {

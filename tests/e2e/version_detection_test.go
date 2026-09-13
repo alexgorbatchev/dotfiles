@@ -53,36 +53,38 @@ func TestE2EVersionDetection(t *testing.T) {
 			t.Fatalf("install for %s failed: %v\nstdout: %s\nstderr: %s", toolName, err, stdout, stderr)
 		}
 
-		// Since Go port does not support dynamic version detection for curl-script, curl-tar, and curl-binary yet,
-		// the version recorded is always "latest" (as specified in tool config fallback), which is correct for current state.
 		version := getInstalledToolVersion(t, h.TempDir, toolName)
-		if version != "latest" {
-			t.Errorf("expected tool %q version %q, got %q", toolName, "latest", version)
+		if expectedVersion != "" {
+			if version != expectedVersion {
+				t.Errorf("expected tool %q version %q, got %q", toolName, expectedVersion, version)
+			}
+		} else if version == "" || version == "latest" || version == "unknown" {
+			t.Errorf("expected tool %q to have a valid detected or timestamped version, got %q", toolName, version)
 		}
 	}
 
 	t.Run("should install curl-script with custom args successfully", func(t *testing.T) {
-		verifyVersionDetection(t, "version-detection--curl-script--with-args", "latest")
+		verifyVersionDetection(t, "version-detection--curl-script--with-args", "2.3.4")
 	})
 
 	t.Run("should install curl-script with default args successfully", func(t *testing.T) {
-		verifyVersionDetection(t, "version-detection--curl-script--default-args", "latest")
+		verifyVersionDetection(t, "version-detection--curl-script--default-args", "")
 	})
 
 	t.Run("should install curl-tar with custom args successfully", func(t *testing.T) {
-		verifyVersionDetection(t, "version-detection--curl-tar--with-args", "latest")
+		verifyVersionDetection(t, "version-detection--curl-tar--with-args", "version-detection--curl-tar--with-args 3.4.5")
 	})
 
 	t.Run("should install curl-tar with default args successfully", func(t *testing.T) {
-		verifyVersionDetection(t, "version-detection--curl-tar--default-args", "latest")
+		verifyVersionDetection(t, "version-detection--curl-tar--default-args", "")
 	})
 
 	t.Run("should install curl-binary with custom args successfully", func(t *testing.T) {
-		verifyVersionDetection(t, "version-detection--curl-binary--with-args", "latest")
+		verifyVersionDetection(t, "version-detection--curl-binary--with-args", "5.6.7")
 	})
 
 	t.Run("should install curl-binary with default args successfully", func(t *testing.T) {
-		verifyVersionDetection(t, "version-detection--curl-binary--default-args", "latest")
+		verifyVersionDetection(t, "version-detection--curl-binary--default-args", "")
 	})
 
 	t.Run("should fall back to fallback version when version detection fails", func(t *testing.T) {
@@ -98,8 +100,8 @@ func TestE2EVersionDetection(t *testing.T) {
 		}
 
 		version := getInstalledToolVersion(t, h.TempDir, toolName)
-		if version != "latest" {
-			t.Errorf("expected version %q, got %q", "latest", version)
+		if version == "" || version == "latest" || version == "unknown" {
+			t.Errorf("expected valid timestamp fallback version, got %q", version)
 		}
 	})
 }

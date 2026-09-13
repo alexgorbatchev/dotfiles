@@ -72,19 +72,50 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	customArgs := getStringSliceParam(tool.InstallParams, "args")
 	force := getBoolParam(tool.InstallParams, "force", false)
 
+	var writer *logger.LineWriter
+	if b.log != nil {
+		writer = logger.NewLineWriter(b.log.GetSubLogger("", tool.Name), "|")
+	}
+
 	// Trust targets if any
 	for _, trust := range trusts {
+		if b.log != nil {
+			b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew trust %s", trust)))
+		}
 		cmd := b.runner.CommandContext(ctx, "brew", "trust", trust)
+		if writer != nil {
+			cmd.SetStdout(writer)
+			cmd.SetStderr(writer)
+		}
 		if err := cmd.Run(); err != nil {
+			if writer != nil {
+				writer.Flush()
+			}
 			return nil, fmt.Errorf("brew trust %s: %w", trust, err)
+		}
+		if writer != nil {
+			writer.Flush()
 		}
 	}
 
 	// Tap custom repositories if any
 	for _, tap := range taps {
+		if b.log != nil {
+			b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew tap %s", tap)))
+		}
 		cmd := b.runner.CommandContext(ctx, "brew", "tap", tap)
+		if writer != nil {
+			cmd.SetStdout(writer)
+			cmd.SetStderr(writer)
+		}
 		if err := cmd.Run(); err != nil {
+			if writer != nil {
+				writer.Flush()
+			}
 			return nil, fmt.Errorf("brew tap %s: %w", tap, err)
+		}
+		if writer != nil {
+			writer.Flush()
 		}
 	}
 
@@ -101,9 +132,22 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	}
 	args = append(args, formula)
 
+	if b.log != nil {
+		b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew %s", strings.Join(args, " "))))
+	}
 	cmd := b.runner.CommandContext(ctx, "brew", args...)
+	if writer != nil {
+		cmd.SetStdout(writer)
+		cmd.SetStderr(writer)
+	}
 	if err := cmd.Run(); err != nil {
+		if writer != nil {
+			writer.Flush()
+		}
 		return nil, fmt.Errorf("brew install %s: %w", formula, err)
+	}
+	if writer != nil {
+		writer.Flush()
 	}
 
 	// Link formula if configured
@@ -118,9 +162,22 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 			}
 		}
 		linkArgs = append(linkArgs, formula)
+		if b.log != nil {
+			b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew %s", strings.Join(linkArgs, " "))))
+		}
 		linkCmd := b.runner.CommandContext(ctx, "brew", linkArgs...)
+		if writer != nil {
+			linkCmd.SetStdout(writer)
+			linkCmd.SetStderr(writer)
+		}
 		if err := linkCmd.Run(); err != nil {
+			if writer != nil {
+				writer.Flush()
+			}
 			return nil, fmt.Errorf("brew link %s: %w", formula, err)
+		}
+		if writer != nil {
+			writer.Flush()
 		}
 	}
 
@@ -136,9 +193,22 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 			action = v
 		}
 		if action != "" {
+			if b.log != nil {
+				b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew services %s %s", action, formula)))
+			}
 			svcCmd := b.runner.CommandContext(ctx, "brew", "services", action, formula)
+			if writer != nil {
+				svcCmd.SetStdout(writer)
+				svcCmd.SetStderr(writer)
+			}
 			if err := svcCmd.Run(); err != nil {
+				if writer != nil {
+					writer.Flush()
+				}
 				return nil, fmt.Errorf("brew services %s %s: %w", action, formula, err)
+			}
+			if writer != nil {
+				writer.Flush()
 			}
 		}
 	}
@@ -175,6 +245,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 
 	return &InstallResult{
 		Binaries: resolvedBinaries,
+		Version:  version,
 	}, nil
 }
 

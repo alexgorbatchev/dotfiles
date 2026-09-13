@@ -81,9 +81,15 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	var cmd exec.Cmd
 	if tool.Sudo {
 		args := []string{"pacman", syncArgs, "--needed", "--noconfirm", packageSpec}
+		if p.log != nil {
+			p.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo %s", strings.Join(args, " "))))
+		}
 		cmd = p.runner.CommandContext(ctx, "sudo", args...)
 	} else {
 		args := []string{syncArgs, "--needed", "--noconfirm", packageSpec}
+		if p.log != nil {
+			p.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ pacman %s", strings.Join(args, " "))))
+		}
 		cmd = p.runner.CommandContext(ctx, "pacman", args...)
 	}
 
@@ -110,6 +116,7 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 
 	return &InstallResult{
 		Binaries: resolvedBinaries,
+		Version:  detectedVersion,
 		ShellEnv: map[string]string{
 			"PACMAN_INSTALLED_VERSION": detectedVersion,
 		},

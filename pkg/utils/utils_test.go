@@ -3,7 +3,9 @@ package utils
 import (
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"testing"
+	"time"
 )
 
 func TestContains(t *testing.T) {
@@ -210,5 +212,20 @@ func TestDedentString(t *testing.T) {
 				t.Errorf("DedentString() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestGenerateTimestamp(t *testing.T) {
+	fixedTime := time.Date(2026, time.April, 6, 17, 8, 46, 0, time.UTC)
+	got := GenerateTimestamp(fixedTime)
+	want := "2026-04-06-17-08-46"
+	if got != want {
+		t.Errorf("GenerateTimestamp(fixedTime) = %q, want %q", got, want)
+	}
+
+	nowGot := GenerateTimestamp()
+	matched, err := regexp.MatchString(`^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$`, nowGot)
+	if err != nil || !matched {
+		t.Errorf("GenerateTimestamp() = %q does not match expected format YYYY-MM-DD-HH-MM-SS", nowGot)
 	}
 }

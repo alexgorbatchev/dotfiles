@@ -32,11 +32,10 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 		}
 
 		// Prune existing files in .once/ during consecutive generate commands
-		for i := 1; i <= 1000; i++ {
-			for _, ext := range []string{"zsh", "bash", "sh", "ps1"} {
-				filePath := filepath.Join(onceDir, fmt.Sprintf("once-%03d.%s", i, ext))
-				if exists, err := fsys.Exists(filePath); err == nil && exists {
-					_ = fsys.Remove(filePath)
+		if entries, err := fsys.ReadDir(onceDir); err == nil {
+			for _, entry := range entries {
+				if strings.HasPrefix(entry, "once-") {
+					_ = fsys.Remove(filepath.Join(onceDir, entry))
 				}
 			}
 		}

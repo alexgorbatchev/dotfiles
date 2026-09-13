@@ -17,6 +17,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/google/uuid"
 )
 
@@ -188,7 +189,30 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		return fmt.Errorf("running installer: %w", err)
 	}
 
-	if !isExternal && !installer.IsDryRun() {
+	if isExternal && !installer.IsDryRun() {
+		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
+			toolDir := filepath.Join(projCfg.Paths.BinariesDir, tool.Name)
+			externalDir := filepath.Join(toolDir, "external")
+			if err := activeFSWithTx.MkdirAll(externalDir, 0755); err != nil {
+				return err
+			}
+			for _, binPath := range res.Binaries {
+				if binPath != "" {
+					binName := filepath.Base(binPath)
+					destBinSymlink := filepath.Join(externalDir, binName)
+					_ = activeFSWithTx.Remove(destBinSymlink)
+					_ = activeFSWithTx.Symlink(binPath, destBinSymlink)
+				}
+			}
+			currentSymlink := filepath.Join(toolDir, "current")
+			_ = activeFSWithTx.Remove(currentSymlink)
+			return activeFSWithTx.Symlink("external", currentSymlink)
+		})
+		if err != nil {
+			return fmt.Errorf("creating external symlink: %w", err)
+		}
+	} else if !isExternal && !installer.IsDryRun() {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
 			if err := removeAll(activeFSWithTx, toolDestDir); err != nil {
@@ -353,10 +377,12 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			binariesJSON, _ := json.Marshal(recordedBinaryPaths)
 
 			var versionStr string
-			if tool.Version != nil {
+			if tool.Version != nil && *tool.Version != "" && *tool.Version != "latest" && *tool.Version != "unknown" {
 				versionStr = *tool.Version
+			} else if res != nil && res.Version != "" && res.Version != "latest" && res.Version != "unknown" {
+				versionStr = res.Version
 			} else {
-				versionStr = "latest"
+				versionStr = utils.GenerateTimestamp()
 			}
 
 			installPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name)
