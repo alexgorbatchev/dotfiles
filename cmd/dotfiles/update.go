@@ -115,6 +115,7 @@ When run without arguments, checks all installed tools for updates and installs 
 					}
 				}
 
+				toolLog := log.GetSubLogger("", targetTool.Name)
 				if hasUpdate || force {
 					targetVersion := installed.Version
 					if res != nil && res.LatestVersion != "" && res.LatestVersion != "unknown" && res.LatestVersion != "latest" {
@@ -123,9 +124,9 @@ When run without arguments, checks all installed tools for updates and installs 
 						targetVersion = utils.GenerateTimestamp()
 					}
 					if hasUpdate {
-						log.Info(logger.Message(fmt.Sprintf("New version available for %s: %s (currently installed: %s)", targetTool.Name, targetVersion, installed.Version)))
+						toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", installed.Version, targetVersion)))
 					} else {
-						log.Info(logger.Message(fmt.Sprintf("Force updating %s: reinstalling version %s", targetTool.Name, targetVersion)))
+						toolLog.Info(logger.Message(fmt.Sprintf("Force updating: reinstalling version %s", targetVersion)))
 					}
 					targetTool.Version = &targetVersion
 					if targetTool.InstallParams != nil {
@@ -133,14 +134,14 @@ When run without arguments, checks all installed tools for updates and installs 
 					}
 					err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
 					if err != nil {
-						log.Error(logger.Message(fmt.Sprintf("Updating tool %q to version %s failed", targetTool.Name, targetVersion)), err)
+						toolLog.Error(logger.Message(fmt.Sprintf("Updating to version %s failed", targetVersion)), err)
 						continue
 					}
 					updatedRecord, errRec := services.Registry.GetToolInstallation(ctx, targetTool.Name)
 					if errRec == nil && updatedRecord != nil && updatedRecord.Version != "" && updatedRecord.Version != "unknown" {
 						targetVersion = updatedRecord.Version
 					}
-					log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, targetVersion)))
+					toolLog.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", targetVersion)))
 				}
 			}
 			return nil
@@ -174,8 +175,10 @@ When run without arguments, checks all installed tools for updates and installs 
 		toolDestDir := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current")
 		configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
 
+		toolLog := log.GetSubLogger("", targetTool.Name)
+
 		// 4. Check for update
-		log.Info(logger.Message(fmt.Sprintf("Checking %q for updates...", targetTool.Name)))
+		toolLog.Info(logger.Message("Checking for updates..."))
 		res, err := inst.CheckUpdate(ctx, targetTool)
 		if err != nil {
 			return fmt.Errorf("checking update for %q: %w", targetTool.Name, err)
@@ -199,9 +202,9 @@ When run without arguments, checks all installed tools for updates and installs 
 				targetVersion = utils.GenerateTimestamp()
 			}
 			if hasUpdate {
-				log.Info(logger.Message(fmt.Sprintf("New version available for %s: %s (currently installed: %s)", targetTool.Name, targetVersion, installed.Version)))
+				toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", installed.Version, targetVersion)))
 			} else {
-				log.Info(logger.Message(fmt.Sprintf("Force updating %s: reinstalling version %s", targetTool.Name, targetVersion)))
+				toolLog.Info(logger.Message(fmt.Sprintf("Force updating: reinstalling version %s", targetVersion)))
 			}
 
 			// Update the target tool's version pointer and install params to the new version and run installation
@@ -217,19 +220,19 @@ When run without arguments, checks all installed tools for updates and installs 
 			if errRec == nil && updatedRecord != nil && updatedRecord.Version != "" && updatedRecord.Version != "unknown" {
 				targetVersion = updatedRecord.Version
 			}
-			log.Info(logger.Message(fmt.Sprintf("Tool %q successfully updated to version %s", targetTool.Name, targetVersion)))
+			toolLog.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", targetVersion)))
 		} else {
 			if installed != nil && installed.Version != "" {
 				if res != nil && res.Cached {
-					log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (%s, cached)", targetTool.Name, installed.Version)))
+					toolLog.Info(logger.Message(fmt.Sprintf("Already up to date (%s, cached)", installed.Version)))
 				} else {
-					log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (%s)", targetTool.Name, installed.Version)))
+					toolLog.Info(logger.Message(fmt.Sprintf("Already up to date (%s)", installed.Version)))
 				}
 			} else {
 				if res != nil && res.Cached {
-					log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date (cached)", targetTool.Name)))
+					toolLog.Info(logger.Message("Already up to date (cached)"))
 				} else {
-					log.Info(logger.Message(fmt.Sprintf("Tool %q is already up to date", targetTool.Name)))
+					toolLog.Info(logger.Message("Already up to date"))
 				}
 			}
 		}

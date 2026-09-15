@@ -387,7 +387,7 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 		return fmt.Errorf("project configuration is nil")
 	}
 
-	o.logger.Info(logger.Message(fmt.Sprintf("Uninstalling tool: %s", tool.Name)))
+	o.logger.GetSubLogger("", tool.Name).Info(logger.Message("Uninstalling..."))
 
 	// 1. Invoke the native installer plugin's Uninstall method if it exists
 	if tool.InstallationMethod != "" && o.instRegistry != nil {
@@ -468,7 +468,7 @@ func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config
 	sort.Strings(orphanedTools)
 
 	for _, toolName := range orphanedTools {
-		o.logger.Info(logger.Message(fmt.Sprintf("Cleaning up orphaned tool: %s", toolName)))
+		o.logger.GetSubLogger("", toolName).Info(logger.Message("Cleaning up orphaned tool..."))
 		if err := o.cleanupToolArtifacts(ctx, toolName, projCfg); err != nil {
 			o.logger.GetSubLogger("", toolName).Error("Failed to cleanup orphaned tool", err)
 		}

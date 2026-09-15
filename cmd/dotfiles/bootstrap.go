@@ -109,7 +109,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	if strings.HasSuffix(absConfigPath, ".ts") || strings.HasSuffix(absConfigPath, ".js") {
 		var err error
 		var toolMap map[string]*config.ToolConfig
-		projCfg, toolMap, err = vm.LoadTypeScriptConfig(GetLogger("config", os.Stdout), fsys, absConfigPath)
+		projCfg, toolMap, err = vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dynamically load TypeScript config: %w", err)
 		}
@@ -206,7 +206,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		_ = instReg.Register(&mockInstaller{name: "dnf", fsys: fsys, projCfg: projCfg})
 		_ = instReg.Register(&mockInstaller{name: "pkg", fsys: fsys, projCfg: projCfg})
 	}
-	orch := orchestrator.NewOrchestrator(GetLogger("orchestrator", os.Stdout), trackedFS, runner, reg, instReg)
+	orch := orchestrator.NewOrchestrator(GetLogger("orchestrator", os.Stderr), trackedFS, runner, reg, instReg)
 	orch.SetConfigFilePath(absConfigPath)
 	if dryRun || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
 		orch.SetSymlinkFS(fsys)

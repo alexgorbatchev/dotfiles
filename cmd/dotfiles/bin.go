@@ -78,7 +78,7 @@ var binCmd = &cobra.Command{
 			if exists, _ := fileExists(realPath); !exists {
 				return fmt.Errorf("binary path does not exist: %s", binPath)
 			}
-			fmt.Print(realPath)
+			fmt.Fprint(cmd.OutOrStdout(), realPath)
 			return nil
 		} else {
 			binDir := services.ProjectConfig.Paths.BinariesDir

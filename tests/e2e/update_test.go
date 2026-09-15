@@ -72,8 +72,8 @@ func TestE2EUpdate(t *testing.T) {
 		if err != nil || exitCode != 0 {
 			t.Fatalf("update failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
-		if !strings.Contains(stderr, "already up to date (2.0.0, cached)") {
-			t.Fatalf("expected 'already up to date (2.0.0, cached)' in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
+		if !strings.Contains(stderr, "Already up to date (2.0.0, cached)") {
+			t.Fatalf("expected 'Already up to date (2.0.0, cached)' in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
 		}
 	})
 
@@ -128,7 +128,7 @@ func TestE2EUpdate(t *testing.T) {
 		}
 
 		// Verify output contains timestamped version (YYYY-MM-DD-HH-MM-SS)
-		matched, matchErr := regexp.MatchString(`successfully updated to version \d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}`, stderr)
+		matched, matchErr := regexp.MatchString(`Successfully updated to version \d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}`, stderr)
 		if matchErr != nil || !matched {
 			t.Fatalf("expected stderr to log updated to timestamped version, got:\n%s", stderr)
 		}

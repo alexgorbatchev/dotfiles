@@ -72,29 +72,30 @@ var checkUpdatesCmd = &cobra.Command{
 					}
 				}
 
+				toolLog := log.GetSubLogger("", tool.Name)
 				if hasUpdate {
 					if localVersion != "" {
-						log.Info(logger.Message(fmt.Sprintf("%s: update available (%s -> %s)", tool.Name, localVersion, res.LatestVersion)))
+						toolLog.Info(logger.Message(fmt.Sprintf("Update available: %s -> %s", localVersion, res.LatestVersion)))
 						fmt.Fprintf(cmd.OutOrStdout(), "%s: update available (%s -> %s)\n", tool.Name, localVersion, res.LatestVersion)
 					} else {
-						log.Info(logger.Message(fmt.Sprintf("%s: available (%s)", tool.Name, res.LatestVersion)))
+						toolLog.Info(logger.Message(fmt.Sprintf("Available: %s", res.LatestVersion)))
 						fmt.Fprintf(cmd.OutOrStdout(), "%s: available (%s)\n", tool.Name, res.LatestVersion)
 					}
 				} else {
 					if localVersion != "" {
 						if res.Cached {
-							log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s, cached)", tool.Name, localVersion)))
+							toolLog.Info(logger.Message(fmt.Sprintf("Up to date (%s, cached)", localVersion)))
 							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s, cached)\n", tool.Name, localVersion)
 						} else {
-							log.Info(logger.Message(fmt.Sprintf("%s: up to date (%s)", tool.Name, localVersion)))
+							toolLog.Info(logger.Message(fmt.Sprintf("Up to date (%s)", localVersion)))
 							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s)\n", tool.Name, localVersion)
 						}
 					} else {
 						if res.Cached {
-							log.Info(logger.Message(fmt.Sprintf("%s: up to date (cached)", tool.Name)))
+							toolLog.Info(logger.Message("Up to date (cached)"))
 							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (cached)\n", tool.Name)
 						} else {
-							log.Info(logger.Message(fmt.Sprintf("%s: up to date", tool.Name)))
+							toolLog.Info(logger.Message("Up to date"))
 							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date\n", tool.Name)
 						}
 					}

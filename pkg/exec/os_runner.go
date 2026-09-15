@@ -8,6 +8,7 @@ import (
 	"os/exec"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/mattn/go-isatty"
 )
 
@@ -64,7 +65,7 @@ func (c *osCmd) checkSudo() error {
 				return fmt.Errorf("headless environment requires passwordless sudo access for elevated configurations: %w", err)
 			}
 		} else {
-			fmt.Fprintln(os.Stderr, "WARNING: Executing elevated privilege (sudo) command.")
+			logger.New(logger.Config{Name: "sudo", Writer: os.Stderr}).Warn("Executing elevated privilege (sudo) command.")
 		}
 	}
 	return nil

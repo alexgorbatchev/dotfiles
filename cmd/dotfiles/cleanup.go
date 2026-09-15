@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/spf13/cobra"
@@ -40,7 +38,7 @@ var cleanupCmd = &cobra.Command{
 			// Identify orphaned installed tools
 			for _, instTool := range installedTools {
 				if !activeMap[instTool.ToolName] {
-					log.Info(logger.Message(fmt.Sprintf("Removing orphaned tool: %s", instTool.ToolName)))
+					log.GetSubLogger("", instTool.ToolName).Info(logger.Message("Removing orphaned tool..."))
 					err := services.Orchestrator.UninstallTool(ctx, &config.ToolConfig{
 						Name: instTool.ToolName,
 					}, services.ProjectConfig)

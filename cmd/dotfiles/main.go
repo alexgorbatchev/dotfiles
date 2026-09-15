@@ -1,9 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"os"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
+
+var exitFunc = os.Exit
 
 func runMain() error {
 	return Execute()
@@ -11,7 +14,7 @@ func runMain() error {
 
 func main() {
 	if err := runMain(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		GetLogger("", rootCmd.ErrOrStderr()).Error(logger.Message(err.Error()))
+		exitFunc(1)
 	}
 }

@@ -124,7 +124,7 @@ func TestSubcommands(t *testing.T) {
 		{
 			name:           "install single tool",
 			args:           []string{"install", "bat"},
-			expectedOutput: []string{"Installing tool: bat"},
+			expectedOutput: []string{"[bat] Installing..."},
 			expectedErr:    false,
 		},
 		{
@@ -136,7 +136,7 @@ func TestSubcommands(t *testing.T) {
 		{
 			name:           "uninstall single tool",
 			args:           []string{"uninstall", "bat"},
-			expectedOutput: []string{"Uninstalling tool: bat"},
+			expectedOutput: []string{"[bat] Uninstalling..."},
 			expectedErr:    false,
 		},
 		{

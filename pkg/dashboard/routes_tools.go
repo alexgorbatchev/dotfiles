@@ -16,7 +16,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/features"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
-	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
@@ -701,7 +700,7 @@ func (s *Server) handleToolInstall(w http.ResponseWriter, r *http.Request, toolN
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting installation...\n", toolName))
 	err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
 	if err != nil {
-		s.logger.Error(logger.Message(fmt.Sprintf("Installation failed for %s: %v", toolName, err)))
+		s.logger.GetSubLogger("", toolName).Error("Installation failed", err)
 		s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Installation failed: %v\n", toolName, err))
 		writeJSON(w, false, nil, fmt.Sprintf("Installation failed: %v", err))
 		return
@@ -822,7 +821,7 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 
 	err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
 	if err != nil {
-		s.logger.Error(logger.Message(fmt.Sprintf("Update failed for %s: %v", toolName, err)))
+		s.logger.GetSubLogger("", toolName).Error("Update failed", err)
 		s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Update failed: %v\n", toolName, err))
 		writeJSON(w, false, nil, fmt.Sprintf("Update failed: %v", err))
 		return

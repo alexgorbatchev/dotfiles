@@ -22,11 +22,12 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:          "dotfiles",
-	Short:        "Dotfiles management and installation toolchain",
-	Long:         `A high-performance dotfiles manager and installer compiled into a standalone Go binary.`,
-	Version:      Version,
-	SilenceUsage: true,
+	Use:           "dotfiles",
+	Short:         "Dotfiles management and installation toolchain",
+	Long:          `A high-performance dotfiles manager and installer compiled into a standalone Go binary.`,
+	Version:       Version,
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
 func init() {

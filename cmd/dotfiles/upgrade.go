@@ -59,24 +59,26 @@ Use --check to inspect available updates without downloading or modifying the ex
 			DryRun:          dryRun,
 		}
 
+		toolLog := log.GetSubLogger("", "dotfiles")
+
 		if check {
-			log.Info("Checking for dotfiles CLI updates...")
+			toolLog.Info("Checking for updates...")
 			res, err := u.CheckForUpdate(ctx, opts)
 			if err != nil {
 				return fmt.Errorf("checking for update: %w", err)
 			}
 
 			if res.HasUpdate {
-				log.Info(logger.Message(fmt.Sprintf("New dotfiles version available: %s -> %s", res.CurrentVersion, res.LatestVersion)))
+				toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", res.CurrentVersion, res.LatestVersion)))
 				fmt.Fprintf(cmd.OutOrStdout(), "New version available: %s -> %s\n", res.CurrentVersion, res.LatestVersion)
 			} else {
-				log.Info(logger.Message(fmt.Sprintf("dotfiles is up to date (%s)", res.CurrentVersion)))
+				toolLog.Info(logger.Message(fmt.Sprintf("Up to date (%s)", res.CurrentVersion)))
 				fmt.Fprintf(cmd.OutOrStdout(), "dotfiles is up to date (%s)\n", res.CurrentVersion)
 			}
 			return nil
 		}
 
-		log.Info("Evaluating dotfiles CLI upgrade...")
+		toolLog.Info("Evaluating upgrade...")
 		res, err := u.Upgrade(ctx, opts)
 		if err != nil {
 			return fmt.Errorf("upgrading dotfiles: %w", err)
@@ -84,20 +86,20 @@ Use --check to inspect available updates without downloading or modifying the ex
 
 		if dryRun {
 			if res.HasUpdate {
-				log.Info(logger.Message(fmt.Sprintf("[dry-run] Would upgrade dotfiles from %s to %s", res.CurrentVersion, res.LatestVersion)))
+				toolLog.Info(logger.Message(fmt.Sprintf("[dry-run] Would upgrade from %s to %s", res.CurrentVersion, res.LatestVersion)))
 				fmt.Fprintf(cmd.OutOrStdout(), "[dry-run] Would upgrade dotfiles: %s -> %s\n", res.CurrentVersion, res.LatestVersion)
 			} else {
-				log.Info(logger.Message(fmt.Sprintf("[dry-run] dotfiles is up to date (%s)", res.CurrentVersion)))
+				toolLog.Info(logger.Message(fmt.Sprintf("[dry-run] Up to date (%s)", res.CurrentVersion)))
 				fmt.Fprintf(cmd.OutOrStdout(), "[dry-run] dotfiles is up to date (%s)\n", res.CurrentVersion)
 			}
 			return nil
 		}
 
 		if res.Updated {
-			log.Info(logger.Message(fmt.Sprintf("Successfully upgraded dotfiles from %s to %s", res.CurrentVersion, res.LatestVersion)))
+			toolLog.Info(logger.Message(fmt.Sprintf("Successfully upgraded from %s to %s", res.CurrentVersion, res.LatestVersion)))
 			fmt.Fprintf(cmd.OutOrStdout(), "Successfully upgraded dotfiles: %s -> %s\n", res.CurrentVersion, res.LatestVersion)
 		} else {
-			log.Info(logger.Message(fmt.Sprintf("dotfiles is already up to date (%s)", res.CurrentVersion)))
+			toolLog.Info(logger.Message(fmt.Sprintf("Already up to date (%s)", res.CurrentVersion)))
 			fmt.Fprintf(cmd.OutOrStdout(), "dotfiles is already up to date (%s)\n", res.CurrentVersion)
 		}
 

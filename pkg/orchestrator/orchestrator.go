@@ -338,14 +338,14 @@ func (o *Orchestrator) shouldSkipInstallation(ctx context.Context, tool *config.
 	targetVersion := o.getTargetVersion(tool)
 	if targetVersion != "" {
 		if version.CleanVersion(existing.Version) == targetVersion {
-			o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Tool %s already installed at version %s", tool.Name, targetVersion)))
+			o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Already installed at version %s", targetVersion)))
 			return true, nil
 		}
-		o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Tool %s has outdated version %s (target is %s)", tool.Name, existing.Version, targetVersion)))
+		o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Outdated version %s (target is %s)", existing.Version, targetVersion)))
 		return false, nil
 	}
 
-	o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Tool %s already installed (version: %s)", tool.Name, existing.Version)))
+	o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Already installed (version: %s)", existing.Version)))
 	return true, nil
 }
 

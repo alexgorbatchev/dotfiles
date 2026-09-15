@@ -15,6 +15,9 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 - Use `.tmp/` inside the project folder for temporary scripts and sandboxing. Never use global `/tmp`.
 - Set strict execution timeouts on subprocesses (max 1m for CLI generation runs).
 - Register all CLI subcommands on `rootCmd` in `cmd/dotfiles/`.
+- All CLI errors, diagnostics, and status messages must use `pkg/logger` (`GetLogger`). Never use raw `fmt.Print*` or `fmt.Fprint*` on `os.Stderr` for errors.
+- Keep `rootCmd.SilenceErrors: true` so Cobra does not emit duplicate unformatted errors.
+- Logger writers must default to `stderr` (`os.Stderr` / `cmd.ErrOrStderr()`), keeping `stdout` (`cmd.OutOrStdout()`) clean for pipeline data.
 
 ## Local gotchas
 

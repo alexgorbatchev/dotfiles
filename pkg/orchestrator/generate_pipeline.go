@@ -63,7 +63,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 				return err
 			}
 			if !skip {
-				o.logger.Info(logger.Message(fmt.Sprintf("Installing tool: %s", tool.Name)))
+				o.logger.GetSubLogger("", tool.Name).Info(logger.Message("Installing..."))
 				if err := o.InstallTool(ctx, tool, projCfg); err != nil {
 					o.logger.GetSubLogger("", tool.Name).Error("Auto-install failed", err)
 				}
@@ -543,7 +543,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 							}
 
 							if execPath == "" {
-								o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Skipping %s completion for %s: binary %q not installed at %s", sh, tool.Name, parts[0], filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))))
+								o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Skipping %s completion: binary %q not installed at %s", sh, parts[0], filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))))
 								return nil
 							}
 
