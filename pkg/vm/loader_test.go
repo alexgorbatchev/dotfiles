@@ -687,3 +687,38 @@ func TestLoaderBrewAutoDependency(t *testing.T) {
 		t.Errorf("expected borders tool to automatically depend on 'brew', got dependencies: %v", tool.Dependencies)
 	}
 }
+
+func TestLoaderEnsureDefaultToolFiles(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+	tmpDir := t.TempDir()
+
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	configContent := `export default {
+		paths: {
+			dotfilesDir: "` + tmpDir + `",
+		}
+	};`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config.ts: %v", err)
+	}
+
+	toolsDir := filepath.Join(tmpDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("failed to create tools dir: %v", err)
+	}
+
+	_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+
+	if _, exists := toolConfigs["dotfiles"]; !exists {
+		t.Errorf("expected dotfiles.tool.ts to be automatically ensured in tools directory")
+	}
+
+	dotfilesToolPath := filepath.Join(toolsDir, "dotfiles.tool.ts")
+	if _, err := os.Stat(dotfilesToolPath); err != nil {
+		t.Errorf("expected dotfiles.tool.ts file to exist on disk at %s: %v", dotfilesToolPath, err)
+	}
+}

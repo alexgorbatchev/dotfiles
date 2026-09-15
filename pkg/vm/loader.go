@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -66,6 +67,40 @@ type unifiedLoaderResult struct {
 	ToolConfigs   map[string]*config.ToolConfig `json:"toolConfigs"`
 }
 
+const defaultDotfilesToolContent = `import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install) =>
+  install("github-release", { repo: "alexgorbatchev/dotfiles" })
+    .bin("dotfiles"),
+);
+`
+
+const defaultBrewToolContent = `import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install) =>
+  install()
+    .platform(Platform.MacOS, (install) =>
+      install("curl-script", {
+        url: "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh",
+        shell: "bash",
+        env: {
+          NONINTERACTIVE: "1",
+        },
+      }).bin("brew"),
+    )
+    .platform(Platform.MacOS, Architecture.Arm64, (install) =>
+      install()
+        .zsh((shell) => shell.always('eval "$(/opt/homebrew/bin/brew shellenv)"'))
+        .bash((shell) => shell.always('eval "$(/opt/homebrew/bin/brew shellenv)"')),
+    )
+    .platform(Platform.MacOS, Architecture.X86_64, (install) =>
+      install()
+        .zsh((shell) => shell.always('eval "$(/usr/local/bin/brew shellenv)"'))
+        .bash((shell) => shell.always('eval "$(/usr/local/bin/brew shellenv)"')),
+    ),
+);
+`
+
 // LoadTypeScriptConfig loads and compiles a TypeScript config file and all tool configs
 // dynamically, returning the unmarshaled ProjectConfig and map of ToolConfigs.
 func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*config.ProjectConfig, map[string]*config.ToolConfig, error) {
@@ -102,6 +137,38 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 			if err != nil {
 				return nil, nil, fmt.Errorf("finding tool config files under %q: %w", resolvedDir, err)
 			}
+
+			// If tools directory is empty, provision starter dotfiles.tool.ts
+			if len(files) == 0 && filepath.Base(resolvedDir) == "tools" {
+				dotfilesPath := filepath.Join(resolvedDir, "dotfiles.tool.ts")
+				if err := os.WriteFile(dotfilesPath, []byte(defaultDotfilesToolContent), 0644); err == nil {
+					files = append(files, dotfilesPath)
+				}
+			}
+
+			// If any tool uses brew on macOS and brew.tool.ts is missing, automatically provision brew.tool.ts
+			if runtime.GOOS == "darwin" {
+				hasBrewTool := false
+				needsBrew := false
+				for _, f := range files {
+					if strings.HasSuffix(f, "brew.tool.ts") {
+						hasBrewTool = true
+					}
+					if data, err := os.ReadFile(f); err == nil {
+						content := string(data)
+						if strings.Contains(content, `"brew"`) || strings.Contains(content, `'brew'`) {
+							needsBrew = true
+						}
+					}
+				}
+				if needsBrew && !hasBrewTool {
+					brewPath := filepath.Join(resolvedDir, "brew.tool.ts")
+					if err := os.WriteFile(brewPath, []byte(defaultBrewToolContent), 0644); err == nil {
+						files = append(files, brewPath)
+					}
+				}
+			}
+
 			for _, f := range files {
 				if !seenFiles[f] {
 					seenFiles[f] = true
