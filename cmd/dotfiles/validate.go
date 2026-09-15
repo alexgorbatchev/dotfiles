@@ -71,8 +71,8 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 			}
 		}
 
-		var errors []ValidationError
-		var warnings []ValidationWarning
+		errors := []ValidationError{}
+		warnings := []ValidationWarning{}
 
 		for _, tool := range targetTools {
 			if tool.Name == "" {
@@ -193,12 +193,14 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 		out := cmd.OutOrStdout()
 
 		if validateJSON {
-			_ = cliout.RenderJSON(out, map[string]any{
+			if err := cliout.RenderJSON(out, map[string]any{
 				"valid":    len(errors) == 0,
 				"checked":  len(targetTools),
 				"errors":   errors,
 				"warnings": warnings,
-			})
+			}); err != nil {
+				return err
+			}
 			if len(errors) > 0 {
 				return fmt.Errorf("validation failed with %d error(s)", len(errors))
 			}

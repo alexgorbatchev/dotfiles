@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/mattn/go-isatty"
 )
 
@@ -82,13 +83,8 @@ func (h *TabHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return level >= h.level
 }
 
-func isAgentMode() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("AGENT")))
-	return v == "1" || v == "true" || v == "yes"
-}
-
 func isColorSupported(w io.Writer) bool {
-	if os.Getenv("NO_COLOR") != "" || isAgentMode() {
+	if os.Getenv("NO_COLOR") != "" || cliout.IsAgentMode() {
 		return false
 	}
 	if os.Getenv("TERM") == "dumb" {

@@ -33,7 +33,7 @@ var detectConflictsCmd = &cobra.Command{
 		log.Info("Detecting file conflicts...")
 
 		shimGen := shim.NewGenerator(services.FS)
-		var conflicts []ConflictItem
+		conflicts := []ConflictItem{}
 		var conflictMessages []string
 
 		for _, tool := range services.ToolConfigs {
@@ -59,10 +59,12 @@ var detectConflictsCmd = &cobra.Command{
 		}
 
 		if detectConflictsJSON {
-			_ = cliout.RenderJSON(cmd.OutOrStdout(), map[string]any{
+			if err := cliout.RenderJSON(cmd.OutOrStdout(), map[string]any{
 				"hasConflicts": len(conflicts) > 0,
 				"conflicts":    conflicts,
-			})
+			}); err != nil {
+				return err
+			}
 			if len(conflicts) > 0 {
 				return fmt.Errorf("conflicts detected with files not owned by the generator")
 			}

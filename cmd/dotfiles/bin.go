@@ -38,7 +38,7 @@ var binCmd = &cobra.Command{
 
 		if listBins {
 			var allBins []string
-			var binInfos []BinaryInfo
+			binInfos := []BinaryInfo{}
 			for _, tc := range services.ToolConfigs {
 				bins := installer.GetBinaryNames(tc.Name, tc.Binaries)
 				for _, b := range bins {

@@ -37,7 +37,7 @@ var checkUpdatesCmd = &cobra.Command{
 		log.Info("Checking for updates across configured tools...")
 
 		instReg := installer.DefaultRegistry()
-		var jsonResults []ToolUpdateResult
+		jsonResults := []ToolUpdateResult{}
 
 		for _, tool := range services.ToolConfigs {
 			if tool.Disabled || tool.InstallationMethod == "" {
