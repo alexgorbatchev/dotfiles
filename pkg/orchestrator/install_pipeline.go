@@ -648,7 +648,7 @@ func (o *Orchestrator) runHooks(ctx context.Context, hookName string, tool *conf
 		runCmd.SetStderr(writer)
 
 		if err := runCmd.Run(); err != nil {
-			writer.Flush()
+			writer.PrintError(err)
 			return fmt.Errorf("hook %q failed: %w", hookCmdStr, err)
 		}
 		writer.Flush()

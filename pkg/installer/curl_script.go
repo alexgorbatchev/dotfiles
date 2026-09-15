@@ -143,7 +143,7 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 
 	if err := runCmd.Run(); err != nil {
 		if writer != nil {
-			writer.Flush()
+			writer.PrintError(err)
 		}
 		return nil, fmt.Errorf("running install script: %w", err)
 	}

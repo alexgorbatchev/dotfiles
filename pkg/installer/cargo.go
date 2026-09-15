@@ -240,7 +240,7 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	}
 	if err := cmd.Run(); err != nil {
 		if writer != nil {
-			writer.Flush()
+			writer.PrintError(err)
 		}
 		return nil, fmt.Errorf("cargo install %s: %w", crateName, err)
 	}

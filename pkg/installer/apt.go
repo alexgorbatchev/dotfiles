@@ -67,32 +67,47 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		packageSpec = fmt.Sprintf("%s=%s", packageName, version)
 	}
 
+	var writer *logger.LineWriter
+	if a.log != nil {
+		writer = logger.NewLineWriter(a.log.GetSubLogger("", tool.Name), "|")
+	}
+
 	// Step 1: Optional apt-get update
 	if update {
 		var args []string
+		var cmd exec.Cmd
 		if tool.Sudo {
 			args = []string{"apt-get", "update"}
-			cmd := a.runner.CommandContext(ctx, "sudo", args...)
-			if err := cmd.Run(); err != nil {
-				return nil, fmt.Errorf("sudo apt-get update failed: %w", err)
+			if a.log != nil {
+				a.log.GetSubLogger("", tool.Name).Info(logger.Message("$ sudo apt-get update"))
 			}
+			cmd = a.runner.CommandContext(ctx, "sudo", args...)
 		} else {
 			args = []string{"update"}
 			if a.log != nil {
-				if tool.Sudo {
-					a.log.GetSubLogger("", tool.Name).Info(logger.Message("$ sudo apt-get update"))
-				} else {
-					a.log.GetSubLogger("", tool.Name).Info(logger.Message("$ apt-get update"))
-				}
+				a.log.GetSubLogger("", tool.Name).Info(logger.Message("$ apt-get update"))
 			}
-			cmd := a.runner.CommandContext(ctx, "apt-get", args...)
-			if err := cmd.Run(); err != nil {
-				return nil, fmt.Errorf("apt-get update failed: %w", err)
+			cmd = a.runner.CommandContext(ctx, "apt-get", args...)
+		}
+		if writer != nil {
+			cmd.SetStdout(writer)
+			cmd.SetStderr(writer)
+		}
+		if err := cmd.Run(); err != nil {
+			if writer != nil {
+				writer.PrintError(err)
 			}
+			return nil, fmt.Errorf("apt-get update failed: %w", err)
+		}
+		if writer != nil {
+			writer.Flush()
 		}
 	}
 
 	// Step 2: apt-get install
+	if writer != nil {
+		writer.Reset()
+	}
 	var installCmd exec.Cmd
 	if tool.Sudo {
 		args := []string{"apt-get", "install", "-y", packageSpec}
@@ -107,9 +122,19 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		}
 		installCmd = a.runner.CommandContext(ctx, "apt-get", args...)
 	}
+	if writer != nil {
+		installCmd.SetStdout(writer)
+		installCmd.SetStderr(writer)
+	}
 
 	if err := installCmd.Run(); err != nil {
+		if writer != nil {
+			writer.PrintError(err)
+		}
 		return nil, fmt.Errorf("apt-get install %s failed: %w", packageName, err)
+	}
+	if writer != nil {
+		writer.Flush()
 	}
 
 	// Step 3: Fetch version via dpkg-query

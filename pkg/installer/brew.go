@@ -147,7 +147,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		}
 		if err := cmd.Run(); err != nil {
 			if writer != nil {
-				writer.Flush()
+				writer.PrintError(err)
 			}
 			return nil, fmt.Errorf("brew trust %s: %w", trust, err)
 		}
@@ -168,7 +168,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		}
 		if err := cmd.Run(); err != nil {
 			if writer != nil {
-				writer.Flush()
+				writer.PrintError(err)
 			}
 			return nil, fmt.Errorf("brew tap %s: %w", tap, err)
 		}
@@ -200,7 +200,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	}
 	if err := cmd.Run(); err != nil {
 		if writer != nil {
-			writer.Flush()
+			writer.PrintError(err)
 		}
 		return nil, fmt.Errorf("brew install %s: %w", formula, err)
 	}
@@ -230,7 +230,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		}
 		if err := linkCmd.Run(); err != nil {
 			if writer != nil {
-				writer.Flush()
+				writer.PrintError(err)
 			}
 			return nil, fmt.Errorf("brew link %s: %w", formula, err)
 		}
@@ -261,7 +261,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 			}
 			if err := svcCmd.Run(); err != nil {
 				if writer != nil {
-					writer.Flush()
+					writer.PrintError(err)
 				}
 				return nil, fmt.Errorf("brew services %s %s: %w", action, formula, err)
 			}

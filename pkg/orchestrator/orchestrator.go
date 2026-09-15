@@ -168,6 +168,9 @@ func getStringParam(params map[string]interface{}, key string, defaultValue stri
 }
 
 func removeAll(fsys fs.FS, path string) error {
+	if r, ok := fsys.(interface{ RemoveAll(string) error }); ok {
+		return r.RemoveAll(path)
+	}
 	exists, err := fsys.Exists(path)
 	if err != nil {
 		return err

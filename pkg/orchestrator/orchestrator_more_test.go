@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -1937,6 +1938,28 @@ func TestBuildHookEnvAndRunHooksComprehensive(t *testing.T) {
 	t.Setenv("DOTFILES_DRY_RUN", "true")
 	if err := orch.runHooks(ctx, "after-install", toolWithHooks, projCfg, res); err != nil {
 		t.Fatalf("runHooks in dry run returned error: %v", err)
+	}
+}
+
+func TestRemoveAllNonEmptyDirectory(t *testing.T) {
+	memFS := fs.NewMemFS()
+	nestedDir := "/test/dir/sub/nested"
+	_ = memFS.MkdirAll(nestedDir, 0755)
+	_ = memFS.WriteFile(filepath.Join(nestedDir, "file.txt"), []byte("data"), 0644)
+
+	err := removeAll(memFS, "/test/dir")
+	if err != nil {
+		t.Fatalf("removeAll failed on non-empty nested directory: %v", err)
+	}
+
+	exists, _ := memFS.Exists("/test/dir")
+	if exists {
+		t.Errorf("expected /test/dir to be completely removed")
+	}
+
+	// Non-existent path returns nil
+	if err := removeAll(memFS, "/non/existent"); err != nil {
+		t.Errorf("expected nil for non-existent path, got: %v", err)
 	}
 }
 

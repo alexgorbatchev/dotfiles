@@ -245,6 +245,11 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		installerBinary = customInstaller
 	}
 
+	var writer *logger.LineWriter
+	if p.log != nil {
+		writer = logger.NewLineWriter(p.log.GetSubLogger("", tool.Name), "|")
+	}
+
 	var cmd exec.Cmd
 	if tool.Sudo {
 		args := []string{installerBinary, "-pkg", resolvedPkgPath, "-target", target}
@@ -259,9 +264,19 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		}
 		cmd = p.runner.CommandContext(ctx, installerBinary, args...)
 	}
+	if writer != nil {
+		cmd.SetStdout(writer)
+		cmd.SetStderr(writer)
+	}
 
 	if err := cmd.Run(); err != nil {
+		if writer != nil {
+			writer.PrintError(err)
+		}
 		return nil, fmt.Errorf("running pkg installer: %w", err)
+	}
+	if writer != nil {
+		writer.Flush()
 	}
 
 	binNames := GetBinaryNames(tool.Name, tool.Binaries)

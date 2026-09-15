@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -720,5 +721,53 @@ func TestLoaderEnsureDefaultToolFiles(t *testing.T) {
 	dotfilesToolPath := filepath.Join(toolsDir, "dotfiles.tool.ts")
 	if _, err := os.Stat(dotfilesToolPath); err != nil {
 		t.Errorf("expected dotfiles.tool.ts file to exist on disk at %s: %v", dotfilesToolPath, err)
+	}
+}
+
+func TestLoaderEnsureBrewToolWithBrewPrefixedFiles(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+	tmpDir := t.TempDir()
+
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	configContent := `export default {
+		paths: {
+			dotfilesDir: "` + tmpDir + `",
+		}
+	};`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config.ts: %v", err)
+	}
+
+	toolsDir := filepath.Join(tmpDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("failed to create tools dir: %v", err)
+	}
+
+	// Create brew--borders.tool.ts which references "brew"
+	toolScript := `
+	import { defineTool } from "@dotfiles/cli";
+	export default defineTool((install) => {
+		return install("brew", {
+			formula: "borders",
+		}).bin("borders");
+	});`
+	if err := os.WriteFile(filepath.Join(toolsDir, "brew--borders.tool.ts"), []byte(toolScript), 0644); err != nil {
+		t.Fatalf("failed to write tool: %v", err)
+	}
+
+	_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+
+	if _, exists := toolConfigs["brew--borders"]; !exists {
+		t.Errorf("expected brew--borders tool in toolConfigs, got: %+v", toolConfigs)
+	}
+
+	if runtime.GOOS == "darwin" {
+		if _, exists := toolConfigs["brew"]; !exists {
+			t.Errorf("expected brew.tool.ts to be generated alongside brew--borders.tool.ts on darwin")
+		}
 	}
 }

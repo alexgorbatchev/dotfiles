@@ -172,6 +172,7 @@ export default defineTool((install) =>
         env: {
           NONINTERACTIVE: "1",
         },
+        auto: true,
       }).bin("brew"),
     )
     .platform(Platform.MacOS, Architecture.Arm64, (install) =>

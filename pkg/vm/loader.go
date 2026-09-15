@@ -86,6 +86,7 @@ export default defineTool((install) =>
         env: {
           NONINTERACTIVE: "1",
         },
+        auto: true,
       }).bin("brew"),
     )
     .platform(Platform.MacOS, Architecture.Arm64, (install) =>
@@ -151,7 +152,7 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 				hasBrewTool := false
 				needsBrew := false
 				for _, f := range files {
-					if strings.HasSuffix(f, "brew.tool.ts") {
+					if filepath.Base(f) == "brew.tool.ts" {
 						hasBrewTool = true
 					}
 					if data, err := os.ReadFile(f); err == nil {

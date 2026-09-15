@@ -67,32 +67,47 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		packageSpec = fmt.Sprintf("%s-%s", packageName, version)
 	}
 
+	var writer *logger.LineWriter
+	if d.log != nil {
+		writer = logger.NewLineWriter(d.log.GetSubLogger("", tool.Name), "|")
+	}
+
 	// Step 1: Optional dnf makecache
 	if refresh {
 		var args []string
+		var cmd exec.Cmd
 		if tool.Sudo {
 			args = []string{"dnf", "makecache"}
-			cmd := d.runner.CommandContext(ctx, "sudo", args...)
-			if err := cmd.Run(); err != nil {
-				return nil, fmt.Errorf("sudo dnf makecache failed: %w", err)
+			if d.log != nil {
+				d.log.GetSubLogger("", tool.Name).Info(logger.Message("$ sudo dnf makecache"))
 			}
+			cmd = d.runner.CommandContext(ctx, "sudo", args...)
 		} else {
 			args = []string{"makecache"}
 			if d.log != nil {
-				if tool.Sudo {
-					d.log.GetSubLogger("", tool.Name).Info(logger.Message("$ sudo dnf makecache"))
-				} else {
-					d.log.GetSubLogger("", tool.Name).Info(logger.Message("$ dnf makecache"))
-				}
+				d.log.GetSubLogger("", tool.Name).Info(logger.Message("$ dnf makecache"))
 			}
-			cmd := d.runner.CommandContext(ctx, "dnf", args...)
-			if err := cmd.Run(); err != nil {
-				return nil, fmt.Errorf("dnf makecache failed: %w", err)
+			cmd = d.runner.CommandContext(ctx, "dnf", args...)
+		}
+		if writer != nil {
+			cmd.SetStdout(writer)
+			cmd.SetStderr(writer)
+		}
+		if err := cmd.Run(); err != nil {
+			if writer != nil {
+				writer.PrintError(err)
 			}
+			return nil, fmt.Errorf("dnf makecache failed: %w", err)
+		}
+		if writer != nil {
+			writer.Flush()
 		}
 	}
 
 	// Step 2: dnf install
+	if writer != nil {
+		writer.Reset()
+	}
 	var installCmd exec.Cmd
 	if tool.Sudo {
 		args := []string{"dnf", "install", "-y", packageSpec}
@@ -107,9 +122,19 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		}
 		installCmd = d.runner.CommandContext(ctx, "dnf", args...)
 	}
+	if writer != nil {
+		installCmd.SetStdout(writer)
+		installCmd.SetStderr(writer)
+	}
 
 	if err := installCmd.Run(); err != nil {
+		if writer != nil {
+			writer.PrintError(err)
+		}
 		return nil, fmt.Errorf("dnf install %s failed: %w", packageName, err)
+	}
+	if writer != nil {
+		writer.Flush()
 	}
 
 	// Step 3: Fetch version via rpm -q

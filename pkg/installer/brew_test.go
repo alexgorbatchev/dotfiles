@@ -365,4 +365,34 @@ func TestBrewInstaller(t *testing.T) {
 			t.Errorf("expected /opt/homebrew/bin to be in command PATH environment")
 		}
 	})
+
+	t.Run("Failed command pipes error output with | prefix", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("brew", nil, errors.New("exec: \"brew\": executable file not found in $PATH"))
+
+		var testLogBuf bytes.Buffer
+		testLog := logger.New(logger.Config{Writer: &testLogBuf, Level: logger.LogLevelDefault})
+		failInst := NewBrewInstaller(runner, fsys, NewDefaultSystemContext())
+		failInst.SetLogger(testLog)
+
+		tool := &config.ToolConfig{
+			Name: "borders",
+			InstallParams: map[string]interface{}{
+				"tap": "FelixKratz/formulae",
+			},
+		}
+
+		_, err := failInst.Install(context.Background(), tool)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		logStr := testLogBuf.String()
+		if !strings.Contains(logStr, "$ brew tap FelixKratz/formulae") {
+			t.Errorf("expected log to contain '$ brew tap FelixKratz/formulae', got:\n%s", logStr)
+		}
+		if !strings.Contains(logStr, "| exec: \"brew\": executable file not found in $PATH") {
+			t.Errorf("expected piped error '| exec: \"brew\": executable file not found in $PATH', got:\n%s", logStr)
+		}
+	})
 }

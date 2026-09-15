@@ -69,6 +69,11 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		packageSpec = fmt.Sprintf("%s@%s", pkgName, version)
 	}
 
+	var writer *logger.LineWriter
+	if n.log != nil {
+		writer = logger.NewLineWriter(n.log.GetSubLogger("", tool.Name), "|")
+	}
+
 	var cmd exec.Cmd
 	if pkgManager == "bun" {
 		args := []string{"install", "-g"}
@@ -76,6 +81,9 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 			args = append(args, "--force")
 		}
 		args = append(args, packageSpec)
+		if n.log != nil {
+			n.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ bun %s", strings.Join(args, " "))))
+		}
 		cmd = n.runner.CommandContext(ctx, "bun", args...)
 	} else {
 		args := []string{"install", "-g"}
@@ -83,11 +91,24 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 			args = append(args, "--force")
 		}
 		args = append(args, packageSpec)
+		if n.log != nil {
+			n.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ npm %s", strings.Join(args, " "))))
+		}
 		cmd = n.runner.CommandContext(ctx, "npm", args...)
+	}
+	if writer != nil {
+		cmd.SetStdout(writer)
+		cmd.SetStderr(writer)
 	}
 
 	if err := cmd.Run(); err != nil {
+		if writer != nil {
+			writer.PrintError(err)
+		}
 		return nil, fmt.Errorf("%s install failed: %w", pkgManager, err)
+	}
+	if writer != nil {
+		writer.Flush()
 	}
 
 	binNames := GetBinaryNames(tool.Name, tool.Binaries)

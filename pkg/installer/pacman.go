@@ -78,6 +78,11 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		syncArgs = "-Syu"
 	}
 
+	var writer *logger.LineWriter
+	if p.log != nil {
+		writer = logger.NewLineWriter(p.log.GetSubLogger("", tool.Name), "|")
+	}
+
 	var cmd exec.Cmd
 	if tool.Sudo {
 		args := []string{"pacman", syncArgs, "--needed", "--noconfirm", packageSpec}
@@ -92,9 +97,19 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		}
 		cmd = p.runner.CommandContext(ctx, "pacman", args...)
 	}
+	if writer != nil {
+		cmd.SetStdout(writer)
+		cmd.SetStderr(writer)
+	}
 
 	if err := cmd.Run(); err != nil {
+		if writer != nil {
+			writer.PrintError(err)
+		}
 		return nil, fmt.Errorf("pacman install %s failed: %w", packageName, err)
+	}
+	if writer != nil {
+		writer.Flush()
 	}
 
 	// Fetch version via pacman -Q
