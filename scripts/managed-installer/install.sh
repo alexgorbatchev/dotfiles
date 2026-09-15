@@ -153,6 +153,47 @@ EOF
 	fi
 }
 
+ensure_brew_tool_config() {
+	local os
+	os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+	if [[ "${os}" = "darwin" ]]; then
+		mkdir -p "${TOOLS_DIR}"
+		if ! find "${TOOLS_DIR}" -name "brew.tool.ts" 2>/dev/null | grep -q .; then
+			log "Creating $(format_path "${TOOLS_DIR}/brew.tool.ts")"
+			cat >"${TOOLS_DIR}/brew.tool.ts" <<'EOF'
+import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install) =>
+  install()
+    .platform(Platform.MacOS, (install) =>
+      install("curl-script", {
+        url: "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh",
+        shell: "bash",
+        env: {
+          NONINTERACTIVE: "1",
+        },
+      }).bin("brew"),
+    )
+    .platform(Platform.MacOS, Architecture.Arm64, (install) =>
+      install().zsh((shell) =>
+        shell.always('eval "$(/opt/homebrew/bin/brew shellenv)"'),
+      ).bash((shell) =>
+        shell.always('eval "$(/opt/homebrew/bin/brew shellenv)"'),
+      ),
+    )
+    .platform(Platform.MacOS, Architecture.X86_64, (install) =>
+      install().zsh((shell) =>
+        shell.always('eval "$(/usr/local/bin/brew shellenv)"'),
+      ).bash((shell) =>
+        shell.always('eval "$(/usr/local/bin/brew shellenv)"'),
+      ),
+    ),
+);
+EOF
+		fi
+	fi
+}
+
 write_default_config() {
 	mkdir -p "${TOOLS_DIR}"
 
@@ -188,6 +229,7 @@ EOF
 	fi
 
 	ensure_dotfiles_tool_config
+	ensure_brew_tool_config
 
 	cat >"${CONFIG_PATH}" <<EOF
 import { defineConfig } from "@alexgorbatchev/dotfiles";
@@ -277,6 +319,7 @@ if [[ "${CONFIG_EXISTS}" != "1" ]]; then
 	write_default_config
 else
 	ensure_dotfiles_tool_config
+	ensure_brew_tool_config
 fi
 
 log "Installing dotfiles CLI tool into .generated"

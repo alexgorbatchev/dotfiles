@@ -222,4 +222,46 @@ func TestTopologicalSort_RobustnessAndDeterminism(t *testing.T) {
 			t.Errorf("expected sorted list to contain the self-dep-tool, got %v", sorted)
 		}
 	})
+
+	t.Run("brew tool provider automatically sorted before brew-backed tools", func(t *testing.T) {
+		tools := []*config.ToolConfig{
+			{
+				Name:               "borders",
+				InstallationMethod: "brew",
+				Dependencies:       []string{"brew"},
+			},
+			{
+				Name:               "brew",
+				InstallationMethod: "curl-script",
+				Binaries:           []interface{}{"brew"},
+			},
+		}
+		sorted, err := TopologicalSort(tools)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(sorted) != 2 {
+			t.Fatalf("expected 2 tools, got %d", len(sorted))
+		}
+		if sorted[0].Name != "brew" || sorted[1].Name != "borders" {
+			t.Errorf("expected [brew, borders], got [%s, %s]", sorted[0].Name, sorted[1].Name)
+		}
+	})
+
+	t.Run("system binary dependency without tool provider succeeds", func(t *testing.T) {
+		// "sh" is guaranteed to be a system binary on Unix
+		tools := []*config.ToolConfig{
+			{
+				Name:         "tool-needing-sh",
+				Dependencies: []string{"sh"},
+			},
+		}
+		sorted, err := TopologicalSort(tools)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(sorted) != 1 || sorted[0].Name != "tool-needing-sh" {
+			t.Errorf("expected tool-needing-sh, got %v", sorted)
+		}
+	})
 }

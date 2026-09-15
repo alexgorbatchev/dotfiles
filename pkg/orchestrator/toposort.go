@@ -3,6 +3,8 @@ package orchestrator
 import (
 	"fmt"
 	"os"
+	osExec "os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -119,6 +121,8 @@ func topologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 			if !exists {
 				if _, toolExists := toolMap[dep]; toolExists {
 					provider = dep
+				} else if isSystemBinary(dep) {
+					continue
 				} else {
 					return nil, fmt.Errorf("tool %q depends on missing dependency %q", tool.Name, dep)
 				}
@@ -179,4 +183,27 @@ func topologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 	}
 
 	return result, nil
+}
+
+func isSystemBinary(name string) bool {
+	if _, err := osExec.LookPath(name); err == nil {
+		return true
+	}
+	fallbacks := []string{
+		filepath.Join("/opt/homebrew/bin", name),
+		filepath.Join("/opt/homebrew/sbin", name),
+		filepath.Join("/usr/local/bin", name),
+		filepath.Join("/usr/local/sbin", name),
+		filepath.Join("/usr/bin", name),
+		filepath.Join("/bin", name),
+		filepath.Join("/usr/sbin", name),
+		filepath.Join("/sbin", name),
+		filepath.Join("/home/linuxbrew/.linuxbrew/bin", name),
+	}
+	for _, fb := range fallbacks {
+		if fi, err := os.Stat(fb); err == nil && !fi.IsDir() {
+			return true
+		}
+	}
+	return false
 }

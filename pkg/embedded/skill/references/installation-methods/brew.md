@@ -2,6 +2,8 @@
 
 Install tools using Homebrew package manager on macOS and Linux.
 
+Tools using the `brew` installation method automatically declare a dependency on `brew`, ensuring that if a `tools/brew.tool.ts` is configured in the project, Homebrew is provisioned first on virgin machines before formula installation.
+
 Shims are not supported for Homebrew-installed tools. The `.bin()` method should not be used with this installer. Homebrew manages binary placement and PATH integration natively.
 
 ## Basic Usage

@@ -395,6 +395,10 @@ export interface ICurlScriptInstallParams {
    * Arguments passed to the installer script.
    */
   args?: string[] | Resolvable<IToolConfigContext, string[]>;
+  /**
+   * Environment variables passed to the installer script execution.
+   */
+  env?: Record<string, string>;
 }
 
 /**
@@ -627,6 +631,7 @@ export interface IToolConfigBuilder {
    * Configures platform specific installer methods.
    */
   platform(plat: Platform, cb: PlatformCallback): this;
+  platform(plat: Platform, arc: Architecture, cb: PlatformCallback): this;
   /**
    * Configures architecture specific installer methods.
    */

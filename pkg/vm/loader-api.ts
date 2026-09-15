@@ -423,6 +423,13 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
   function install(method: string, params?: unknown): unknown {
     if (method) {
       builder["installationMethod"] = method;
+      if (method === "brew") {
+        const deps = (builder["dependencies"] || []) as unknown[];
+        if (!deps.includes("brew")) {
+          deps.push("brew");
+        }
+        builder["dependencies"] = deps;
+      }
     }
     if (params) {
       builder["installParams"] = params as Record<string, unknown>;

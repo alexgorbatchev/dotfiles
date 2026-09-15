@@ -213,11 +213,19 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 }
 
 func getSystemBinaryDirs() []string {
-	dirs := []string{"/usr/local/bin"}
+	dirs := []string{
+		"/opt/homebrew/bin",
+		"/opt/homebrew/sbin",
+		"/usr/local/bin",
+		"/usr/local/sbin",
+		"/home/linuxbrew/.linuxbrew/bin",
+	}
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
 		dirs = append(dirs, filepath.Join(home, ".local", "bin"))
+		dirs = append(dirs, filepath.Join(home, ".cargo", "bin"))
+		dirs = append(dirs, filepath.Join(home, ".bun", "bin"))
 	}
-	dirs = append(dirs, "/usr/bin")
+	dirs = append(dirs, "/usr/bin", "/bin")
 	return dirs
 }
 

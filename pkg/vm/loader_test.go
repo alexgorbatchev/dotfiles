@@ -630,4 +630,62 @@ func TestLoaderDefaultPathsConsistency(t *testing.T) {
 	}
 }
 
->>>>>>> a2fa880b (fix(vm,scripts): align default shell scripts path and installer shell detection)
+func TestLoaderBrewAutoDependency(t *testing.T) {
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{
+		Name:   "test-brew-auto-dep",
+		Level:  logger.LogLevelVerbose,
+		Writer: &logBuf,
+	})
+	memFS := fs.NewMemFS()
+	tmpDir := t.TempDir()
+
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	configContent := `export default {
+		paths: {
+			dotfilesDir: "` + tmpDir + `",
+		}
+	};`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config.ts: %v", err)
+	}
+
+	toolsDir := filepath.Join(tmpDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("failed to create tools dir: %v", err)
+	}
+
+	toolScript := `
+	import { defineTool } from "@dotfiles/cli";
+	export default defineTool((install) => {
+		return install("brew", {
+			formula: "borders",
+		}).bin("borders");
+	});`
+	if err := os.WriteFile(filepath.Join(toolsDir, "borders.tool.ts"), []byte(toolScript), 0644); err != nil {
+		t.Fatalf("failed to write tool: %v", err)
+	}
+
+	_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+
+	tool := toolConfigs["borders"]
+	if tool == nil {
+		t.Fatal("expected borders tool in toolConfigs")
+	}
+
+	foundBrew := false
+	for _, dep := range tool.Dependencies {
+		if dep == "brew" {
+			foundBrew = true
+			break
+		}
+	}
+	if !foundBrew {
+		t.Errorf("expected borders tool to automatically depend on 'brew', got dependencies: %v", tool.Dependencies)
+	}
+}
+
+>>>>>>> ccaf7417 (feat(brew): auto-inject brew dependency and provision brew.tool.ts on macOS)
