@@ -322,4 +322,47 @@ func TestBrewInstaller(t *testing.T) {
 			t.Error("expected error but got nil")
 		}
 	})
+
+	t.Run("Brew executable resolution in /opt/homebrew/bin", func(t *testing.T) {
+		optFS := fs.NewMemFS()
+		_ = optFS.MkdirAll("/opt/homebrew/bin", 0755)
+		_ = optFS.WriteFile("/opt/homebrew/bin/brew", []byte("#!/bin/sh"), 0755)
+		_ = optFS.WriteFile("/opt/homebrew/bin/borders", []byte("#!/bin/sh"), 0755)
+
+		optRunner := exec.NewMockRunner()
+		var capturedEnv []string
+		optRunner.RegisterFunc("/opt/homebrew/bin/brew", func(c *exec.MockCmd) error {
+			capturedEnv = c.Env()
+			return nil
+		})
+
+		optInst := NewBrewInstaller(optRunner, optFS, nil)
+
+		tool := &config.ToolConfig{
+			Name: "borders",
+			Binaries: []interface{}{"borders"},
+			InstallParams: map[string]interface{}{
+				"tap": "FelixKratz/formulae",
+			},
+		}
+
+		res, err := optInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "/opt/homebrew/bin/borders" {
+			t.Errorf("expected binary at /opt/homebrew/bin/borders, got: %v", res.Binaries)
+		}
+
+		hasOptInEnv := false
+		for _, env := range capturedEnv {
+			if strings.HasPrefix(env, "PATH=") && strings.Contains(env, "/opt/homebrew/bin") {
+				hasOptInEnv = true
+				break
+			}
+		}
+		if !hasOptInEnv {
+			t.Errorf("expected /opt/homebrew/bin to be in command PATH environment")
+		}
+	})
 }

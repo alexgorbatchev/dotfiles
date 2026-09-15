@@ -556,9 +556,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 							cmdCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 							cmdExec := o.runner.CommandContext(cmdCtx, cmdName, parts[1:]...)
 							cmdExec.SetProcessGroup(true)
-							pathEnv := os.Getenv("PATH")
-							newPathEnv := projCfg.Paths.TargetDir + string(filepath.ListSeparator) + pathEnv
-							cmdExec.SetEnv(append(os.Environ(), "PATH="+newPathEnv))
+							cmdExec.SetEnv(o.buildHookEnv(tool, projCfg, nil))
 							output, err := cmdExec.Output()
 							cancel()
 							if err == nil {

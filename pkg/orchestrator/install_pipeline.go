@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -171,6 +172,10 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	// 1. Download, unpack, and install via the native installer plugin
+	if err := o.runHooks(ctx, "before-install", tool, projCfg, nil); err != nil {
+		return fmt.Errorf("running before-install hooks: %w", err)
+	}
+
 	ctx = config.WithProjectConfig(ctx, projCfg)
 	res, err := inst.Install(ctx, tool)
 	if err != nil {
@@ -231,44 +236,8 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	// Run after-install hooks
-	if !installer.IsDryRun() {
-		if tool.InstallParams != nil {
-			if params, ok := tool.InstallParams["hooks"].(map[string]interface{}); ok {
-				if afterInstall, ok := params["after-install"].([]interface{}); ok {
-					for _, hook := range afterInstall {
-						hookCmdStr, ok := hook.(string)
-						if !ok || hookCmdStr == "" {
-							continue
-						}
-
-						o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ %s", hookCmdStr)))
-
-						var runCmd exec.Cmd
-						if strings.HasPrefix(hookCmdStr, "./") {
-							toolConfigDir := filepath.Dir(tool.ConfigFilePath)
-							scriptPath := filepath.Join(toolConfigDir, hookCmdStr)
-							chmodCmd := o.runner.CommandContext(ctx, "chmod", "+x", scriptPath)
-							_ = chmodCmd.Run()
-							runCmd = o.runner.CommandContext(ctx, scriptPath)
-							runCmd.SetDir(toolConfigDir)
-						} else {
-							runCmd = o.runner.CommandContext(ctx, "bash", "-c", hookCmdStr)
-							runCmd.SetDir(filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))
-						}
-
-						writer := logger.NewLineWriter(o.logger.GetSubLogger("", tool.Name), "|")
-						runCmd.SetStdout(writer)
-						runCmd.SetStderr(writer)
-
-						if err := runCmd.Run(); err != nil {
-							writer.Flush()
-							return fmt.Errorf("hook %q failed: %w", hookCmdStr, err)
-						}
-						writer.Flush()
-					}
-				}
-			}
-		}
+	if err := o.runHooks(ctx, "after-install", tool, projCfg, res); err != nil {
+		return fmt.Errorf("running after-install hooks: %w", err)
 	}
 
 	// 2. Resolve binaries to shim
@@ -536,4 +505,154 @@ func isExactTopLevelVersion(v string) bool {
 		return false
 	}
 	return true
+}
+
+func (o *Orchestrator) buildHookEnv(tool *config.ToolConfig, projCfg *config.ProjectConfig, res *installer.InstallResult) []string {
+	var pathDirs []string
+
+	if projCfg != nil {
+		if tool != nil {
+			toolDestDir := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current")
+			pathDirs = append(pathDirs, toolDestDir)
+
+			if res != nil {
+				for _, b := range res.Binaries {
+					if filepath.IsAbs(b) {
+						pathDirs = append(pathDirs, filepath.Dir(b))
+					} else {
+						pathDirs = append(pathDirs, filepath.Join(toolDestDir, filepath.Dir(b)))
+					}
+				}
+			}
+		}
+
+		if projCfg.Paths.TargetDir != "" {
+			pathDirs = append(pathDirs, projCfg.Paths.TargetDir)
+		}
+	}
+
+	if currentPath := os.Getenv("PATH"); currentPath != "" {
+		pathDirs = append(pathDirs, filepath.SplitList(currentPath)...)
+	}
+
+	standardDirs := []string{
+		"/opt/homebrew/bin",
+		"/opt/homebrew/sbin",
+		"/usr/local/bin",
+		"/usr/local/sbin",
+		"/usr/bin",
+		"/bin",
+		"/usr/sbin",
+		"/sbin",
+	}
+	pathDirs = append(pathDirs, standardDirs...)
+
+	seen := make(map[string]bool)
+	var uniquePaths []string
+	for _, p := range pathDirs {
+		clean := filepath.Clean(p)
+		if clean == "" || seen[clean] {
+			continue
+		}
+		seen[clean] = true
+		uniquePaths = append(uniquePaths, clean)
+	}
+
+	joinedPath := strings.Join(uniquePaths, string(os.PathListSeparator))
+
+	envMap := make(map[string]string)
+	for _, kv := range os.Environ() {
+		parts := strings.SplitN(kv, "=", 2)
+		if len(parts) == 2 {
+			envMap[parts[0]] = parts[1]
+		}
+	}
+
+	envMap["PATH"] = joinedPath
+
+	if tool != nil && tool.ShellConfigs != nil {
+		if tool.ShellConfigs.Zsh != nil {
+			for k, v := range tool.ShellConfigs.Zsh.Env {
+				envMap[k] = v
+			}
+		}
+		if tool.ShellConfigs.Bash != nil {
+			for k, v := range tool.ShellConfigs.Bash.Env {
+				envMap[k] = v
+			}
+		}
+	}
+
+	envSlice := make([]string, 0, len(envMap))
+	for k, v := range envMap {
+		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	return envSlice
+}
+
+func (o *Orchestrator) runHooks(ctx context.Context, hookName string, tool *config.ToolConfig, projCfg *config.ProjectConfig, res *installer.InstallResult) error {
+	if installer.IsDryRun() || tool == nil || tool.InstallParams == nil {
+		return nil
+	}
+
+	params, ok := tool.InstallParams["hooks"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	hooksList, ok := params[hookName].([]interface{})
+	if !ok || len(hooksList) == 0 {
+		return nil
+	}
+
+	var toolDestDir string
+	if projCfg != nil {
+		toolDestDir = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current")
+	}
+	hookEnv := o.buildHookEnv(tool, projCfg, res)
+
+	for _, hook := range hooksList {
+		hookCmdStr, ok := hook.(string)
+		if !ok || hookCmdStr == "" {
+			continue
+		}
+
+		o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ %s", hookCmdStr)))
+
+		var runCmd exec.Cmd
+		if strings.HasPrefix(hookCmdStr, "./") {
+			toolConfigDir := filepath.Dir(tool.ConfigFilePath)
+			scriptPath := filepath.Join(toolConfigDir, hookCmdStr)
+			chmodCmd := o.runner.CommandContext(ctx, "chmod", "+x", scriptPath)
+			_ = chmodCmd.Run()
+			runCmd = o.runner.CommandContext(ctx, scriptPath)
+			runCmd.SetDir(toolConfigDir)
+		} else {
+			runCmd = o.runner.CommandContext(ctx, "bash", "-c", hookCmdStr)
+			runDir := toolDestDir
+			if exists, _ := o.fs.Exists(toolDestDir); !exists || runDir == "" {
+				if tool.ConfigFilePath != "" {
+					runDir = filepath.Dir(tool.ConfigFilePath)
+				} else if projCfg != nil {
+					runDir = projCfg.Paths.DotfilesDir
+				}
+			}
+			runCmd.SetDir(runDir)
+		}
+
+		runCmd.SetEnv(hookEnv)
+
+		writer := logger.NewLineWriter(o.logger.GetSubLogger("", tool.Name), "|")
+		runCmd.SetStdout(writer)
+		runCmd.SetStderr(writer)
+
+		if err := runCmd.Run(); err != nil {
+			writer.Flush()
+			return fmt.Errorf("hook %q failed: %w", hookCmdStr, err)
+		}
+		writer.Flush()
+	}
+
+	return nil
 }

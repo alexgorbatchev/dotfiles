@@ -1698,3 +1698,245 @@ func TestInstallToolExternallyManaged(t *testing.T) {
 		t.Errorf("GenerateTool broke TOOL_EXECUTABLE path in shim:\n%s", string(shimBytesAfterGen))
 	}
 }
+
+func TestBuildHookEnvAndRunHooksComprehensive(t *testing.T) {
+	ctx := context.Background()
+	log := logger.New(logger.Config{Name: "test-hooks", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+	defer database.Close()
+	reg := registry.NewRegistry(database)
+
+	instReg := installer.NewRegistry()
+	inst := &mockInstaller{
+		name:     "custom",
+		binaries: []string{"/home/test/.binaries/my-tool/current/my-tool", "nested/sub-bin"},
+	}
+	_ = instReg.Register(inst)
+
+	orch := NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/test",
+			DotfilesDir:     "/home/test/dotfiles",
+			TargetDir:       "/home/test/.bin",
+			BinariesDir:     "/home/test/.binaries",
+			GeneratedDir:    "/home/test/.generated",
+			ShellScriptsDir: "/home/test/.generated/shell-scripts",
+		},
+	}
+
+	tool := &config.ToolConfig{
+		Name:               "my-tool",
+		InstallationMethod: "custom",
+		ConfigFilePath:     "/home/test/dotfiles/tools/my-tool.tool.ts",
+		Binaries:           []interface{}{"my-tool"},
+		ShellConfigs: &config.ShellConfigs{
+			Zsh: &config.ShellTypeConfig{
+				Env: map[string]string{
+					"CUSTOM_TOOL_ENV": "active-zsh",
+				},
+			},
+			Bash: &config.ShellTypeConfig{
+				Env: map[string]string{
+					"CUSTOM_BASH_ENV": "active-bash",
+				},
+			},
+		},
+	}
+
+	// 1. Test buildHookEnv
+	res := &installer.InstallResult{
+		Binaries: []string{
+			"/home/test/.binaries/my-tool/current/my-tool",
+			"nested/sub-bin",
+		},
+	}
+
+	envSlice := orch.buildHookEnv(tool, projCfg, res)
+	envMap := make(map[string]string)
+	for _, kv := range envSlice {
+		parts := strings.SplitN(kv, "=", 2)
+		if len(parts) == 2 {
+			envMap[parts[0]] = parts[1]
+		}
+	}
+
+	// PATH verification
+	pathVal, hasPath := envMap["PATH"]
+	if !hasPath {
+		t.Fatalf("buildHookEnv output missing PATH")
+	}
+
+	toolDestDir := "/home/test/.binaries/my-tool/current"
+	targetDir := "/home/test/.bin"
+	nestedDir := "/home/test/.binaries/my-tool/current/nested"
+
+	if !strings.Contains(pathVal, toolDestDir) {
+		t.Errorf("expected PATH to contain toolDestDir %q, got: %s", toolDestDir, pathVal)
+	}
+	if !strings.Contains(pathVal, targetDir) {
+		t.Errorf("expected PATH to contain targetDir %q, got: %s", targetDir, pathVal)
+	}
+	if !strings.Contains(pathVal, nestedDir) {
+		t.Errorf("expected PATH to contain nestedDir %q, got: %s", nestedDir, pathVal)
+	}
+	if !strings.Contains(pathVal, "/opt/homebrew/bin") {
+		t.Errorf("expected PATH to contain /opt/homebrew/bin, got: %s", pathVal)
+	}
+
+	// Tool shell env vars verification
+	if envMap["CUSTOM_TOOL_ENV"] != "active-zsh" {
+		t.Errorf("expected CUSTOM_TOOL_ENV=active-zsh, got %q", envMap["CUSTOM_TOOL_ENV"])
+	}
+	if envMap["CUSTOM_BASH_ENV"] != "active-bash" {
+		t.Errorf("expected CUSTOM_BASH_ENV=active-bash, got %q", envMap["CUSTOM_BASH_ENV"])
+	}
+
+	// Nil safety checks
+	nilEnv := orch.buildHookEnv(nil, nil, nil)
+	if len(nilEnv) == 0 {
+		t.Errorf("expected non-empty env even with nil params")
+	}
+
+	// 2. Test runHooks execution with environment verification
+	var capturedEnv []string
+	var capturedDir string
+	runner.RegisterFunc("bash", func(c *exec.MockCmd) error {
+		capturedEnv = c.Env()
+		capturedDir = c.Dir()
+		return nil
+	})
+
+	toolWithHooks := &config.ToolConfig{
+		Name:               "my-tool",
+		InstallationMethod: "custom",
+		ConfigFilePath:     "/home/test/dotfiles/tools/my-tool.tool.ts",
+		InstallParams: map[string]interface{}{
+			"hooks": map[string]interface{}{
+				"before-install": []interface{}{
+					"echo pre-hook",
+				},
+				"after-install": []interface{}{
+					"my-tool init zsh > /home/test/.binaries/my-tool/current/init.zsh",
+				},
+			},
+		},
+	}
+
+	_ = memFS.MkdirAll("/home/test/.binaries/my-tool/current", 0755)
+
+	err = orch.runHooks(ctx, "after-install", toolWithHooks, projCfg, res)
+	if err != nil {
+		t.Fatalf("runHooks failed: %v", err)
+	}
+
+	if capturedDir != "/home/test/.binaries/my-tool/current" {
+		t.Errorf("expected runDir %q, got %q", "/home/test/.binaries/my-tool/current", capturedDir)
+	}
+
+	hasEnhancedPath := false
+	for _, kv := range capturedEnv {
+		if strings.HasPrefix(kv, "PATH=") && strings.Contains(kv, toolDestDir) {
+			hasEnhancedPath = true
+			break
+		}
+	}
+	if !hasEnhancedPath {
+		t.Errorf("captured command environment missing enhanced PATH with toolDestDir")
+	}
+
+	// 3. Test before-install and after-install in InstallTool flow
+	beforeRan := false
+	afterRan := false
+	runner.RegisterFunc("bash", func(c *exec.MockCmd) error {
+		if len(c.Args) > 1 {
+			if strings.Contains(c.Args[1], "pre-hook") {
+				beforeRan = true
+			}
+			if strings.Contains(c.Args[1], "init zsh") {
+				afterRan = true
+			}
+		}
+		return nil
+	})
+
+	err = orch.InstallTool(ctx, toolWithHooks, projCfg)
+	if err != nil {
+		t.Fatalf("InstallTool with hooks failed: %v", err)
+	}
+	if !beforeRan {
+		t.Errorf("expected before-install hook to run during InstallTool")
+	}
+	if !afterRan {
+		t.Errorf("expected after-install hook to run during InstallTool")
+	}
+
+	// 4. Test failing hook error handling
+	runner.RegisterFunc("bash", func(c *exec.MockCmd) error {
+		return fmt.Errorf("command exited with 127")
+	})
+
+	toolFailingHook := &config.ToolConfig{
+		Name:               "failing-tool",
+		InstallationMethod: "custom",
+		ConfigFilePath:     "/home/test/dotfiles/tools/failing-tool.tool.ts",
+		InstallParams: map[string]interface{}{
+			"hooks": map[string]interface{}{
+				"after-install": []interface{}{
+					"failing-command",
+				},
+			},
+		},
+	}
+
+	err = orch.InstallTool(ctx, toolFailingHook, projCfg)
+	if err == nil {
+		t.Errorf("expected InstallTool to fail when hook fails")
+	}
+
+	// 5. Test relative script hook and edge cases (dry-run, empty hook, non-string hook)
+	toolRelativeHook := &config.ToolConfig{
+		Name:               "rel-tool",
+		InstallationMethod: "custom",
+		ConfigFilePath:     "/home/test/dotfiles/tools/rel-tool.tool.ts",
+		InstallParams: map[string]interface{}{
+			"hooks": map[string]interface{}{
+				"after-install": []interface{}{
+					"./setup.sh",
+					"",
+					123,
+				},
+			},
+		},
+	}
+
+	relativeRan := false
+	runner.RegisterFunc("/home/test/dotfiles/tools/setup.sh", func(c *exec.MockCmd) error {
+		relativeRan = true
+		if c.Dir() != "/home/test/dotfiles/tools" {
+			t.Errorf("expected relative hook dir %q, got %q", "/home/test/dotfiles/tools", c.Dir())
+		}
+		return nil
+	})
+
+	err = orch.runHooks(ctx, "after-install", toolRelativeHook, projCfg, res)
+	if err != nil {
+		t.Fatalf("runHooks relative script failed: %v", err)
+	}
+	if !relativeRan {
+		t.Errorf("expected relative script hook to run")
+	}
+
+	// Dry run check
+	t.Setenv("DOTFILES_DRY_RUN", "true")
+	if err := orch.runHooks(ctx, "after-install", toolWithHooks, projCfg, res); err != nil {
+		t.Fatalf("runHooks in dry run returned error: %v", err)
+	}
+}
+

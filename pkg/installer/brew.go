@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -76,6 +77,43 @@ func (b *BrewInstaller) SupportsSudo() bool {
 	return false
 }
 
+func (b *BrewInstaller) getBrewExecutable() string {
+	candidates := []string{
+		"/opt/homebrew/bin/brew",
+		"/usr/local/bin/brew",
+		"/home/linuxbrew/.linuxbrew/bin/brew",
+	}
+	for _, c := range candidates {
+		if exists, _ := b.fsys.Exists(c); exists {
+			return c
+		}
+	}
+	return "brew"
+}
+
+func (b *BrewInstaller) brewCommand(ctx context.Context, args ...string) exec.Cmd {
+	brewExe := b.getBrewExecutable()
+	cmd := b.runner.CommandContext(ctx, brewExe, args...)
+	if filepath.IsAbs(brewExe) {
+		brewDir := filepath.Dir(brewExe)
+		pathEnv := ""
+		for _, env := range os.Environ() {
+			if strings.HasPrefix(env, "PATH=") {
+				pathEnv = env[5:]
+				break
+			}
+		}
+		if !strings.Contains(pathEnv, brewDir) {
+			newPath := brewDir
+			if pathEnv != "" {
+				newPath = brewDir + string(os.PathListSeparator) + pathEnv
+			}
+			cmd.SetEnv(append(os.Environ(), "PATH="+newPath))
+		}
+	}
+	return cmd
+}
+
 func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
 	if err := ValidateSudo(b, tool); err != nil {
 		return nil, err
@@ -102,7 +140,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		if b.log != nil {
 			b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew trust %s", trust)))
 		}
-		cmd := b.runner.CommandContext(ctx, "brew", "trust", trust)
+		cmd := b.brewCommand(ctx, "trust", trust)
 		if writer != nil {
 			cmd.SetStdout(writer)
 			cmd.SetStderr(writer)
@@ -123,7 +161,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		if b.log != nil {
 			b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew tap %s", tap)))
 		}
-		cmd := b.runner.CommandContext(ctx, "brew", "tap", tap)
+		cmd := b.brewCommand(ctx, "tap", tap)
 		if writer != nil {
 			cmd.SetStdout(writer)
 			cmd.SetStderr(writer)
@@ -155,7 +193,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	if b.log != nil {
 		b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew %s", strings.Join(args, " "))))
 	}
-	cmd := b.runner.CommandContext(ctx, "brew", args...)
+	cmd := b.brewCommand(ctx, args...)
 	if writer != nil {
 		cmd.SetStdout(writer)
 		cmd.SetStderr(writer)
@@ -185,7 +223,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		if b.log != nil {
 			b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew %s", strings.Join(linkArgs, " "))))
 		}
-		linkCmd := b.runner.CommandContext(ctx, "brew", linkArgs...)
+		linkCmd := b.brewCommand(ctx, linkArgs...)
 		if writer != nil {
 			linkCmd.SetStdout(writer)
 			linkCmd.SetStderr(writer)
@@ -216,7 +254,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 			if b.log != nil {
 				b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew services %s %s", action, formula)))
 			}
-			svcCmd := b.runner.CommandContext(ctx, "brew", "services", action, formula)
+			svcCmd := b.brewCommand(ctx, "services", action, formula)
 			if writer != nil {
 				svcCmd.SetStdout(writer)
 				svcCmd.SetStderr(writer)
@@ -260,6 +298,9 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		if prefix != "" {
 			return filepath.Join(prefix, "bin", binName)
 		}
+		if exists, _ := b.fsys.Exists(filepath.Join("/opt/homebrew/bin", binName)); exists {
+			return filepath.Join("/opt/homebrew/bin", binName)
+		}
 		return filepath.Join("/usr/local/bin", binName)
 	})
 
@@ -271,7 +312,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 
 func (b *BrewInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
 	formula := getStringParam(tool.InstallParams, "formula", tool.Name)
-	cmd := b.runner.CommandContext(ctx, "brew", "uninstall", formula)
+	cmd := b.brewCommand(ctx, "uninstall", formula)
 	return cmd.Run()
 }
 
@@ -293,13 +334,13 @@ func (b *BrewInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig
 }
 
 func (b *BrewInstaller) getBrewPrefix(ctx context.Context, formula string) (string, error) {
-	cmd := b.runner.CommandContext(ctx, "brew", "--prefix", formula)
+	cmd := b.brewCommand(ctx, "--prefix", formula)
 	out, err := cmd.Output()
 	if err == nil {
 		return strings.TrimSpace(string(out)), nil
 	}
 	// Fallback
-	cmdPrefix := b.runner.CommandContext(ctx, "brew", "--prefix")
+	cmdPrefix := b.brewCommand(ctx, "--prefix")
 	prefixOut, errPrefix := cmdPrefix.Output()
 	if errPrefix == nil {
 		return strings.TrimSpace(string(prefixOut)) + "/opt/" + formula, nil
@@ -314,11 +355,11 @@ func (b *BrewInstaller) getBrewInfo(ctx context.Context, formula string, isCask 
 	}
 	args = append(args, formula)
 
-	cmd := b.runner.CommandContext(ctx, "brew", args...)
+	cmd := b.brewCommand(ctx, args...)
 	out, err := cmd.Output()
 	if err != nil {
 		if isCask {
-			cmd = b.runner.CommandContext(ctx, "brew", "info", "--json=v2", formula)
+			cmd = b.brewCommand(ctx, "info", "--json=v2", formula)
 			out, err = cmd.Output()
 		}
 		if err != nil {
