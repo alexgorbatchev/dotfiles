@@ -687,5 +687,3 @@ func TestLoaderBrewAutoDependency(t *testing.T) {
 		t.Errorf("expected borders tool to automatically depend on 'brew', got dependencies: %v", tool.Dependencies)
 	}
 }
-
->>>>>>> ccaf7417 (feat(brew): auto-inject brew dependency and provision brew.tool.ts on macOS)
