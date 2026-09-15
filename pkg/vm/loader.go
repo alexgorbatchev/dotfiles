@@ -147,25 +147,21 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 				}
 			}
 
-			// If any tool uses brew on macOS and brew.tool.ts is missing, automatically provision brew.tool.ts
-			if runtime.GOOS == "darwin" {
+			// On macOS, always ensure tools/brew.tool.ts exists if missing
+			if runtime.GOOS == "darwin" && filepath.Base(resolvedDir) == "tools" {
 				hasBrewTool := false
-				needsBrew := false
 				for _, f := range files {
 					if filepath.Base(f) == "brew.tool.ts" {
 						hasBrewTool = true
-					}
-					if data, err := os.ReadFile(f); err == nil {
-						content := string(data)
-						if strings.Contains(content, `"brew"`) || strings.Contains(content, `'brew'`) {
-							needsBrew = true
-						}
+						break
 					}
 				}
-				if needsBrew && !hasBrewTool {
+				if !hasBrewTool {
 					brewPath := filepath.Join(resolvedDir, "brew.tool.ts")
-					if err := os.WriteFile(brewPath, []byte(defaultBrewToolContent), 0644); err == nil {
-						files = append(files, brewPath)
+					if _, err := os.Stat(brewPath); os.IsNotExist(err) {
+						if err := os.WriteFile(brewPath, []byte(defaultBrewToolContent), 0644); err == nil {
+							files = append(files, brewPath)
+						}
 					}
 				}
 			}
