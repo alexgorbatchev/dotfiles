@@ -129,9 +129,10 @@ Displays file operations and installation log entries.
 
 ### `dotfiles bin [name]`
 
-Prints the binary location for a tool or resolves its target path.
+Outputs target bin directory, lists configured binaries, or resolves a binary path.
 
-- `-r, --resolve`: Resolve symlinks to final executable path.
+- `-l, --list`: List all configured binaries and their associated tool names.
+- `--json`: Output binary mapping details in JSON format.
 
 ### `dotfiles cleanup`
 
@@ -172,6 +173,7 @@ Converts a TypeScript configuration file (`dotfiles.config.ts`) to JSON format (
 Lists installed AI skills or extracts the embedded `dotfiles` skill folder into the target directory.
 
 - `--dir <path>`: Custom skills search directory path.
+- `--json`: Output skill list in JSON format.
 
 ### `dotfiles uninstall [tool]`
 
@@ -196,6 +198,21 @@ The following flags are available on all commands:
 - `--libc <libc>`: Override target C library implementation (`glibc`, `musl`).
 - `-v, --verbose`: Enable verbose logging.
 - `-q, --quiet`: Enable quiet logging.
+
+## Dual-Mode Output (`AGENT=1`)
+
+The CLI automatically adapts its output stream based on the `AGENT` environment variable:
+
+- **Agent Mode (`AGENT=1`)**: Token-conservative output designed for LLMs and automated agents:
+  - JSON (`--json`) is minified onto a single line with zero extra whitespace.
+  - Directory trees (`dotfiles files`) render using compact indented bullets (`* file`).
+  - Terminal dividers and decorative whitespace are omitted.
+  - Query outputs emit flat key-value pairs (`tool:bat current:0.24.0 latest:0.25.0 update:true`).
+  - ANSI colors in diagnostic logs are suppressed.
+- **Human Mode (`AGENT=0` or unset)**: Visually polished interactive output:
+  - JSON (`--json`) is pretty-printed with 2-space indentation.
+  - Directory trees render with box-drawing glyphs (`├─`, `└─`, `│  `).
+  - Validation tags use structured tags (`[OK]`, `[WARN]`, `[ERROR]`).
 
 ## Shell Completions
 
