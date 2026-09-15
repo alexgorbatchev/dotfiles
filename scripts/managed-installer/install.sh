@@ -52,6 +52,49 @@ format_path() {
 	fi
 }
 
+format_shell_source_path() {
+	local p="$1"
+	if [[ -n "${HOME:-}" && "${p}" == "${HOME}"* ]]; then
+		echo "\$HOME${p#"${HOME}"}"
+	else
+		echo "${p}"
+	fi
+}
+
+detect_shell() {
+	local cur_pid="$PPID"
+	local depth=0
+	while [[ -n "${cur_pid}" && "${cur_pid}" -gt 1 && "${depth}" -lt 10 ]]; do
+		local comm=""
+		if [[ -f "/proc/${cur_pid}/comm" ]]; then
+			comm="$(cat "/proc/${cur_pid}/comm" 2>/dev/null || true)"
+		elif command -v ps >/dev/null 2>&1; then
+			comm="$(ps -p "${cur_pid}" -o comm= 2>/dev/null || true)"
+		fi
+		comm="$(basename "${comm#-}")"
+		case "${comm}" in
+		bash | zsh | pwsh | powershell)
+			echo "${comm}"
+			return 0
+			;;
+		esac
+		if [[ -f "/proc/${cur_pid}/stat" ]]; then
+			cur_pid="$(awk '{print $4}' "/proc/${cur_pid}/stat" 2>/dev/null || true)"
+		elif command -v ps >/dev/null 2>&1; then
+			cur_pid="$(ps -p "${cur_pid}" -o ppid= 2>/dev/null | tr -d ' ' || true)"
+		else
+			break
+		fi
+		depth=$((depth + 1))
+	done
+
+	if [[ -n "${SHELL:-}" ]]; then
+		basename "${SHELL}"
+	else
+		echo "zsh"
+	fi
+}
+
 fail() {
 	printf '[dotfiles-install] %s\n' "$*" >&2
 	exit 1
@@ -254,9 +297,15 @@ chmod +x "${init_script}"
 
 log "dotfiles bootstrap complete!"
 
-user_shell="$(basename "${SHELL:-zsh}")"
+shell_dir="shell-scripts"
+if [[ -d "${INSTALL_DIR}/.generated/shell-init" && ! -d "${INSTALL_DIR}/.generated/shell-scripts" ]]; then
+	shell_dir="shell-init"
+fi
+
+user_shell="$(detect_shell)"
 shell_ext="zsh"
 shell_rc="~/.zshrc"
+source_cmd="source"
 
 case "${user_shell}" in
 bash)
@@ -266,6 +315,7 @@ bash)
 pwsh | powershell)
 	shell_ext="ps1"
 	shell_rc="PowerShell profile"
+	source_cmd="."
 	;;
 *)
 	shell_ext="zsh"
@@ -273,16 +323,14 @@ pwsh | powershell)
 	;;
 esac
 
-script_path="$(format_path "${INSTALL_DIR}/.generated/shell-scripts/main.${shell_ext}")"
+script_path="$(format_shell_source_path "${INSTALL_DIR}/.generated/${shell_dir}/main.${shell_ext}")"
 
 printf '\n'
 print_rule
-printf ' 🎉 Next Step: Connect dotfiles to your shell\n'
+printf ' Next Step: Connect dotfiles to your shell\n'
 print_rule
 printf '\n'
-printf '  Add the following line to your %s:\n\n' "${shell_rc}"
-printf '    source "%s"\n\n' "${script_path}"
-printf '  Or load it directly into your current terminal session now:\n\n'
-printf '    source "%s"\n\n' "${script_path}"
+printf '  Add to your %s (or run now in your current session):\n\n' "${shell_rc}"
+printf '    %s "%s"\n\n' "${source_cmd}" "${script_path}"
 print_rule
 printf '\n'

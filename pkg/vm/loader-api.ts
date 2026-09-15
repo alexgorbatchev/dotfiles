@@ -444,7 +444,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     generatedDir: (globalThis.configFileDir || "") + "/.generated",
     homeDir: (globalThis.configFileDir || "") + "/.generated/home",
     targetDir: (globalThis.configFileDir || "") + "/.generated/bin",
-    shellScriptsDir: (globalThis.configFileDir || "") + "/.generated/shell-init",
+    shellScriptsDir: (globalThis.configFileDir || "") + "/.generated/shell-scripts",
     binariesDir: (globalThis.configFileDir || "") + "/.generated/binaries",
   };
   const activeProjCfg = (getGlobals()["projectConfig"] || {}) as Record<string, unknown>;

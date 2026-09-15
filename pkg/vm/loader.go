@@ -143,6 +143,10 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 		return nil, nil, fmt.Errorf("evaluating unified config bundle: %w", err)
 	}
 
+	if fullConfig.ProjectConfig != nil {
+		fullConfig.ProjectConfig.ResolvePlaceholders()
+	}
+
 	return fullConfig.ProjectConfig, fullConfig.ToolConfigs, nil
 }
 

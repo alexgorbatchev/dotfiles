@@ -154,6 +154,10 @@ assert_scenario() {
 	[[ -x "${work_dir}/dotfiles-init.sh" ]] || fail "Expected dotfiles-init.sh to be executable: ${work_dir}/dotfiles-init.sh"
 	assert_contains "${output_log}" "dotfiles bootstrap complete"
 	assert_contains "${output_log}" "Generating shims and shell configuration"
+	assert_contains "${output_log}" "Next Step: Connect dotfiles to your shell"
+	assert_not_contains "${output_log}" "Or load it directly into your current terminal session now"
+	assert_not_contains "${output_log}" '"~/'
+	assert_contains "${output_log}" '"$HOME/'
 
 	case "${scenario}" in
 	fresh-empty)

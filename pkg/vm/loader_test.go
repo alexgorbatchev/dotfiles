@@ -552,3 +552,82 @@ export default defineTool((install) => install("manual", {}).bin("tool-two").ver
 		t.Errorf("expected both tool-one and tool-two to be loaded, got tools: %+v", toolConfigs)
 	}
 }
+
+func TestLoaderDefaultPathsConsistency(t *testing.T) {
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{
+		Name:   "test-logger-paths",
+		Level:  logger.LogLevelVerbose,
+		Writer: &logBuf,
+	})
+	memFS := fs.NewMemFS()
+	tmpDir := t.TempDir()
+
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	configContent := `export default {
+		paths: {
+			dotfilesDir: "` + tmpDir + `",
+		}
+	};`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config.ts: %v", err)
+	}
+
+	toolsDir := filepath.Join(tmpDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("failed to create tools dir: %v", err)
+	}
+
+	toolScript := `
+	import { defineTool } from "@dotfiles/cli";
+	export default defineTool((install, ctx) => {
+		return install("manual", {
+			shellScriptsDir: ctx.projectConfig.paths.shellScriptsDir,
+			binariesDir: ctx.projectConfig.paths.binariesDir,
+			generatedDir: ctx.projectConfig.paths.generatedDir,
+			targetDir: ctx.projectConfig.paths.targetDir,
+		});
+	});`
+	if err := os.WriteFile(filepath.Join(toolsDir, "check-paths.tool.ts"), []byte(toolScript), 0644); err != nil {
+		t.Fatalf("failed to write tool: %v", err)
+	}
+
+	projCfg, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+	if len(toolConfigs) == 0 {
+		t.Fatal("expected toolConfigs to have check-paths")
+	}
+
+	tool := toolConfigs["check-paths"]
+	if tool == nil {
+		t.Fatal("expected tool check-paths in toolConfigs")
+	}
+	params := tool.InstallParams
+	if params == nil {
+		t.Fatal("expected InstallParams not to be nil")
+	}
+
+	expectedShellScriptsDir := projCfg.Paths.ShellScriptsDir
+	if got := params["shellScriptsDir"]; got != expectedShellScriptsDir {
+		t.Errorf("shellScriptsDir mismatch: TS context got %q, Go ProjectConfig has %q", got, expectedShellScriptsDir)
+	}
+
+	expectedBinariesDir := projCfg.Paths.BinariesDir
+	if got := params["binariesDir"]; got != expectedBinariesDir {
+		t.Errorf("binariesDir mismatch: TS context got %q, Go ProjectConfig has %q", got, expectedBinariesDir)
+	}
+
+	expectedGeneratedDir := projCfg.Paths.GeneratedDir
+	if got := params["generatedDir"]; got != expectedGeneratedDir {
+		t.Errorf("generatedDir mismatch: TS context got %q, Go ProjectConfig has %q", got, expectedGeneratedDir)
+	}
+
+	expectedTargetDir := projCfg.Paths.TargetDir
+	if got := params["targetDir"]; got != expectedTargetDir {
+		t.Errorf("targetDir mismatch: TS context got %q, Go ProjectConfig has %q", got, expectedTargetDir)
+	}
+}
+
+>>>>>>> a2fa880b (fix(vm,scripts): align default shell scripts path and installer shell detection)
