@@ -190,6 +190,8 @@ chmod +x "$dest"
 
 	} else {
 		// On standard Linux without bypass, the installer skips installation without failure
+		delete(h.Env, "DOTFILES_TEST_PKG_ALLOW_NON_MACOS")
+		delete(h.Env, "DOTFILES_TEST_PKG_INSTALLER_PATH")
 		h.Env["DOTFILES_TEST_PKG_BINARY_PATH"] = installedBinaryPath
 		stdout, stderr, exitCode, err = h.Install([]string{"pkg-test-tool"})
 		if err != nil || exitCode != 0 {
