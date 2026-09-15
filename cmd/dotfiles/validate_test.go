@@ -92,3 +92,46 @@ func TestValidateCommand_AptWithoutSudoWarning(t *testing.T) {
 		t.Errorf("expected warning about .sudo() elevation, got:\n%s", out)
 	}
 }
+
+func TestValidateCommand_JSON_HumanAndAgent(t *testing.T) {
+	tmpDir := createTempConfigDir(t)
+	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
+
+	t.Run("human mode json pretty", func(t *testing.T) {
+		t.Setenv("AGENT", "0")
+		out, err := executeCommand("-c", configPath, "validate", "--json")
+		if err != nil {
+			t.Fatalf("validate --json failed: %v", err)
+		}
+		if !strings.Contains(out, "  \"valid\": true") {
+			t.Errorf("expected pretty-printed JSON in human mode, got:\n%s", out)
+		}
+	})
+
+	t.Run("agent mode json minified", func(t *testing.T) {
+		t.Setenv("AGENT", "1")
+		out, err := executeCommand("-c", configPath, "validate", "--json")
+		if err != nil {
+			t.Fatalf("validate --json failed: %v", err)
+		}
+		trimmed := strings.TrimSpace(out)
+		if strings.Contains(trimmed, "  ") {
+			t.Errorf("expected minified JSON in agent mode, got:\n%s", out)
+		}
+		if !strings.Contains(trimmed, "{\"checked\":") {
+			t.Errorf("expected minified valid JSON output, got:\n%s", out)
+		}
+	})
+
+	t.Run("agent mode text output", func(t *testing.T) {
+		t.Setenv("AGENT", "1")
+		out, err := executeCommand("-c", configPath, "validate")
+		if err != nil {
+			t.Fatalf("validate in agent mode failed: %v", err)
+		}
+		if !strings.Contains(out, "OK: 1 tools valid") {
+			t.Errorf("expected 'OK: 1 tools valid' in agent mode, got:\n%s", out)
+		}
+	})
+}
+

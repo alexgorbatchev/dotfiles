@@ -3,9 +3,13 @@
 # Default task
 default: test
 
-# Run CLI against test-project
+# Run CLI against test-project in interactive human mode
 run *args="generate":
 	go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
+
+# Run CLI against test-project in agent mode (AGENT=1)
+run-ai *args="generate":
+	AGENT=1 go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
 
 # Full validation check (lint + typecheck + tests)
 check: lint typecheck test

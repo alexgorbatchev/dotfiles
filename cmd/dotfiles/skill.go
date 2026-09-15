@@ -7,13 +7,17 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/embedded"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
-var skillDir string
+var (
+	skillDir  string
+	skillJSON bool
+)
 
 func parseSkillDescription(content string) string {
 	lines := strings.Split(content, "\n")
@@ -173,13 +177,28 @@ var skillCmd = &cobra.Command{
 
 		if len(foundSkills) == 0 {
 			log.Info("No AI skills found.")
-			fmt.Fprintln(cmd.OutOrStdout(), "No AI skills found.")
+			if skillJSON {
+				return cliout.RenderJSON(cmd.OutOrStdout(), []any{})
+			}
+			if cliout.IsAgentMode() {
+				fmt.Fprintln(cmd.OutOrStdout(), "no skills found")
+			} else {
+				fmt.Fprintln(cmd.OutOrStdout(), "No AI skills found.")
+			}
 			return nil
+		}
+
+		if skillJSON {
+			return cliout.RenderJSON(cmd.OutOrStdout(), foundSkills)
 		}
 
 		log.Info(logger.Message(fmt.Sprintf("Installed AI skills (%d):", len(foundSkills))))
 		for _, s := range foundSkills {
-			fmt.Fprintf(cmd.OutOrStdout(), "- %s: %s (%s)\n", s.Name, s.Description, s.Path)
+			if cliout.IsAgentMode() {
+				fmt.Fprintf(cmd.OutOrStdout(), "name:%s desc:%s path:%s\n", s.Name, s.Description, s.Path)
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "- %s: %s (%s)\n", s.Name, s.Description, s.Path)
+			}
 		}
 
 		return nil
@@ -188,5 +207,6 @@ var skillCmd = &cobra.Command{
 
 func init() {
 	skillCmd.Flags().StringVar(&skillDir, "dir", "", "Custom skills directory path")
+	skillCmd.Flags().BoolVar(&skillJSON, "json", false, "Output results in JSON format")
 	rootCmd.AddCommand(skillCmd)
 }

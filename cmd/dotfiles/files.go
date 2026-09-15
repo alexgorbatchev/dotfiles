@@ -4,67 +4,43 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
-	"strings"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/spf13/cobra"
 )
 
-type treeNode struct {
-	name     string
-	isDir    bool
-	children []*treeNode
-}
+var filesJSON bool
 
-func buildDirTree(fsys fs.FS, dirPath string) ([]*treeNode, error) {
+func buildDirTree(fsys fs.FS, dirPath string) ([]*cliout.TreeNode, error) {
 	entries, err := fsys.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
 	}
-	var nodes []*treeNode
+	var nodes []*cliout.TreeNode
 	for _, entry := range entries {
 		fullPath := filepath.Join(dirPath, entry)
 		isDir := false
 		if st, err := fsys.Stat(fullPath); err == nil {
 			isDir = st.IsDir()
 		}
-		node := &treeNode{
-			name:  entry,
-			isDir: isDir,
+		node := &cliout.TreeNode{
+			Name:  entry,
+			IsDir: isDir,
 		}
 		if isDir {
-			node.children, _ = buildDirTree(fsys, fullPath)
+			node.Children, _ = buildDirTree(fsys, fullPath)
 		}
 		nodes = append(nodes, node)
 	}
 	sort.Slice(nodes, func(i, j int) bool {
-		if nodes[i].isDir == nodes[j].isDir {
-			return nodes[i].name < nodes[j].name
+		if nodes[i].IsDir == nodes[j].IsDir {
+			return nodes[i].Name < nodes[j].Name
 		}
-		return nodes[i].isDir
+		return nodes[i].IsDir
 	})
 	return nodes, nil
-}
-
-func formatTree(nodes []*treeNode, prefix string) string {
-	var lines []string
-	for i, node := range nodes {
-		isLast := i == len(nodes)-1
-		connector := "├─ "
-		if isLast {
-			connector = "└─ "
-		}
-		lines = append(lines, prefix+connector+node.name)
-		if node.isDir && len(node.children) > 0 {
-			childPrefix := prefix + "│  "
-			if isLast {
-				childPrefix = prefix + "   "
-			}
-			lines = append(lines, formatTree(node.children, childPrefix))
-		}
-	}
-	return strings.Join(lines, "\n")
 }
 
 var filesCmd = &cobra.Command{
@@ -92,13 +68,30 @@ var filesCmd = &cobra.Command{
 				return fmt.Errorf("install path not found: %s", inst.InstallPath)
 			}
 
-			fmt.Fprintln(cmd.OutOrStdout(), inst.InstallPath)
 			nodes, err := buildDirTree(services.FS, inst.InstallPath)
 			if err != nil || len(nodes) == 0 {
+				if filesJSON {
+					return cliout.RenderJSON(cmd.OutOrStdout(), map[string]any{
+						"tool":        toolName,
+						"installPath": inst.InstallPath,
+						"files":       []any{},
+					})
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), inst.InstallPath)
 				fmt.Fprintln(cmd.OutOrStdout(), "(empty directory)")
 				return nil
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), formatTree(nodes, ""))
+
+			if filesJSON {
+				return cliout.RenderJSON(cmd.OutOrStdout(), map[string]any{
+					"tool":        toolName,
+					"installPath": inst.InstallPath,
+					"files":       nodes,
+				})
+			}
+
+			fmt.Fprintln(cmd.OutOrStdout(), inst.InstallPath)
+			fmt.Fprintln(cmd.OutOrStdout(), cliout.FormatTree(nodes))
 			return nil
 		}
 
@@ -106,19 +99,35 @@ var filesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		if ops == nil {
+			ops = []*registry.FileOperationRecord{}
+		}
+
+		if filesJSON {
+			return cliout.RenderJSON(cmd.OutOrStdout(), ops)
+		}
 
 		if len(ops) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No files currently managed")
+			if cliout.IsAgentMode() {
+				fmt.Fprintln(cmd.OutOrStdout(), "no files managed")
+			} else {
+				fmt.Fprintln(cmd.OutOrStdout(), "No files currently managed")
+			}
 			return nil
 		}
 
 		for _, op := range ops {
-			fmt.Fprintf(cmd.OutOrStdout(), "- %s (%s): %s\n", op.ToolName, op.FileType, op.FilePath)
+			if cliout.IsAgentMode() {
+				fmt.Fprintf(cmd.OutOrStdout(), "tool:%s type:%s path:%s\n", op.ToolName, op.FileType, op.FilePath)
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "- %s (%s): %s\n", op.ToolName, op.FileType, op.FilePath)
+			}
 		}
 		return nil
 	},
 }
 
 func init() {
+	filesCmd.Flags().BoolVar(&filesJSON, "json", false, "Output results in JSON format")
 	rootCmd.AddCommand(filesCmd)
 }

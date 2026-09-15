@@ -93,6 +93,25 @@ func TestLoggerOutputAndLevels(t *testing.T) {
 	}
 }
 
+func TestLoggerAgentModeNoColor(t *testing.T) {
+	t.Setenv("AGENT", "1")
+	var buf bytes.Buffer
+	l := New(Config{
+		Name:   "test",
+		Level:  LogLevelDefault,
+		Writer: &buf,
+	})
+
+	l.Info("agent message")
+	out := buf.String()
+	if strings.Contains(out, "\033[") {
+		t.Errorf("expected no ANSI color sequences when AGENT=1, got: %q", out)
+	}
+	if !strings.Contains(out, "INFO\tagent message\n") {
+		t.Errorf("expected clean INFO tag when AGENT=1, got: %q", out)
+	}
+}
+
 func TestLoggerTraceModeCaller(t *testing.T) {
 	var buf bytes.Buffer
 	l := New(Config{

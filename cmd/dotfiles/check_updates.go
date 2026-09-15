@@ -4,11 +4,23 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 	"github.com/spf13/cobra"
 )
+
+var checkUpdatesJSON bool
+
+// ToolUpdateResult represents the update status of a tool.
+type ToolUpdateResult struct {
+	ToolName       string `json:"tool"`
+	CurrentVersion string `json:"currentVersion,omitempty"`
+	LatestVersion  string `json:"latestVersion,omitempty"`
+	HasUpdate      bool   `json:"hasUpdate"`
+	Cached         bool   `json:"cached"`
+}
 
 var checkUpdatesCmd = &cobra.Command{
 	Use:   "check-updates",
@@ -25,6 +37,7 @@ var checkUpdatesCmd = &cobra.Command{
 		log.Info("Checking for updates across configured tools...")
 
 		instReg := installer.DefaultRegistry()
+		var jsonResults []ToolUpdateResult
 
 		for _, tool := range services.ToolConfigs {
 			if tool.Disabled || tool.InstallationMethod == "" {
@@ -76,31 +89,63 @@ var checkUpdatesCmd = &cobra.Command{
 				if hasUpdate {
 					if localVersion != "" {
 						toolLog.Info(logger.Message(fmt.Sprintf("Update available: %s -> %s", localVersion, res.LatestVersion)))
-						fmt.Fprintf(cmd.OutOrStdout(), "%s: update available (%s -> %s)\n", tool.Name, localVersion, res.LatestVersion)
 					} else {
 						toolLog.Info(logger.Message(fmt.Sprintf("Available: %s", res.LatestVersion)))
-						fmt.Fprintf(cmd.OutOrStdout(), "%s: available (%s)\n", tool.Name, res.LatestVersion)
 					}
 				} else {
 					if localVersion != "" {
 						if res.Cached {
 							toolLog.Info(logger.Message(fmt.Sprintf("Up to date (%s, cached)", localVersion)))
-							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s, cached)\n", tool.Name, localVersion)
 						} else {
 							toolLog.Info(logger.Message(fmt.Sprintf("Up to date (%s)", localVersion)))
-							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s)\n", tool.Name, localVersion)
 						}
 					} else {
 						if res.Cached {
 							toolLog.Info(logger.Message("Up to date (cached)"))
-							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (cached)\n", tool.Name)
 						} else {
 							toolLog.Info(logger.Message("Up to date"))
-							fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date\n", tool.Name)
+						}
+					}
+				}
+
+				if checkUpdatesJSON {
+					jsonResults = append(jsonResults, ToolUpdateResult{
+						ToolName:       tool.Name,
+						CurrentVersion: localVersion,
+						LatestVersion:  res.LatestVersion,
+						HasUpdate:      hasUpdate,
+						Cached:         res.Cached,
+					})
+				} else if cliout.IsAgentMode() {
+					fmt.Fprintf(cmd.OutOrStdout(), "tool:%s current:%s latest:%s update:%t cached:%t\n", tool.Name, localVersion, res.LatestVersion, hasUpdate, res.Cached)
+				} else {
+					if hasUpdate {
+						if localVersion != "" {
+							fmt.Fprintf(cmd.OutOrStdout(), "%s: update available (%s -> %s)\n", tool.Name, localVersion, res.LatestVersion)
+						} else {
+							fmt.Fprintf(cmd.OutOrStdout(), "%s: available (%s)\n", tool.Name, res.LatestVersion)
+						}
+					} else {
+						if localVersion != "" {
+							if res.Cached {
+								fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s, cached)\n", tool.Name, localVersion)
+							} else {
+								fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (%s)\n", tool.Name, localVersion)
+							}
+						} else {
+							if res.Cached {
+								fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date (cached)\n", tool.Name)
+							} else {
+								fmt.Fprintf(cmd.OutOrStdout(), "%s: up to date\n", tool.Name)
+							}
 						}
 					}
 				}
 			}
+		}
+
+		if checkUpdatesJSON {
+			return cliout.RenderJSON(cmd.OutOrStdout(), jsonResults)
 		}
 
 		return nil
@@ -108,5 +153,6 @@ var checkUpdatesCmd = &cobra.Command{
 }
 
 func init() {
+	checkUpdatesCmd.Flags().BoolVar(&checkUpdatesJSON, "json", false, "Output results in JSON format")
 	rootCmd.AddCommand(checkUpdatesCmd)
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
@@ -25,9 +26,9 @@ func TestBuildDirTreeAndFormatTree(t *testing.T) {
 		t.Fatalf("expected 2 top-level nodes, got %d", len(nodes))
 	}
 
-	treeStr := formatTree(nodes, "")
+	treeStr := cliout.FormatTree(nodes)
 	if !strings.Contains(treeStr, "b_dir") || !strings.Contains(treeStr, "a_file.txt") {
-		t.Errorf("formatTree output missing expected nodes, got:\n%s", treeStr)
+		t.Errorf("FormatTree output missing expected nodes, got:\n%s", treeStr)
 	}
 
 	// buildDirTree on non-existent path

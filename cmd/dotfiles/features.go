@@ -3,11 +3,15 @@ package main
 import (
 	"fmt"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
-var generateReadme bool
+var (
+	generateReadme bool
+	featuresJSON   bool
+)
 
 var featuresCmd = &cobra.Command{
 	Use:   "features",
@@ -58,10 +62,18 @@ var featuresCmd = &cobra.Command{
 			return nil
 		}
 
-		log.Info(logger.Message("Configured feature flags:"))
 		feat := services.ProjectConfig.Features
-		fmt.Fprintf(cmd.OutOrStdout(), "Catalog Generate: %v\n", feat.Catalog.Generate)
-		fmt.Fprintf(cmd.OutOrStdout(), "ShellInstall: %v\n", feat.ShellInstall != nil)
+		if featuresJSON {
+			return cliout.RenderJSON(cmd.OutOrStdout(), feat)
+		}
+
+		log.Info(logger.Message("Configured feature flags:"))
+		if cliout.IsAgentMode() {
+			fmt.Fprintf(cmd.OutOrStdout(), "catalog.generate:%v shellInstall:%v\n", feat.Catalog.Generate, feat.ShellInstall != nil)
+		} else {
+			fmt.Fprintf(cmd.OutOrStdout(), "Catalog Generate: %v\n", feat.Catalog.Generate)
+			fmt.Fprintf(cmd.OutOrStdout(), "ShellInstall: %v\n", feat.ShellInstall != nil)
+		}
 
 		return nil
 	},
@@ -69,5 +81,6 @@ var featuresCmd = &cobra.Command{
 
 func init() {
 	featuresCmd.Flags().BoolVar(&generateReadme, "generate-readme", false, "Generate markdown documentation for tools and features")
+	featuresCmd.Flags().BoolVar(&featuresJSON, "json", false, "Output feature flags in JSON format")
 	rootCmd.AddCommand(featuresCmd)
 }

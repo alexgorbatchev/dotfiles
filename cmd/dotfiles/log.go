@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
@@ -18,7 +19,17 @@ var (
 	logType      string
 	logStatus    bool
 	logSince     string
+	logJSON      bool
 )
+
+type FileStateInfo struct {
+	ToolName   string `json:"tool"`
+	FilePath   string `json:"filePath"`
+	FileType   string `json:"fileType"`
+	Exists     bool   `json:"exists"`
+	SizeBytes  *int64 `json:"sizeBytes,omitempty"`
+	TargetPath string `json:"targetPath,omitempty"`
+}
 
 var logCmd = &cobra.Command{
 	Use:   "log [tool]",
@@ -50,33 +61,70 @@ var logCmd = &cobra.Command{
 				}
 			}
 
+			allStates := []FileStateInfo{}
+
 			for _, toolName := range tools {
 				fileStates, err := services.Registry.GetFileStatesForTool(ctx, toolName)
 				if err != nil || len(fileStates) == 0 {
 					continue
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "File states for %s:\n", toolName)
+
 				for _, state := range fileStates {
 					exists, _ := services.FS.Exists(state.FilePath)
-					statusIcon := "✓"
-					statusText := "exists"
-					if !exists {
-						statusIcon = "✗"
-						statusText = "MISSING"
+					targetPath := ""
+					if state.TargetPath != nil {
+						targetPath = *state.TargetPath
 					}
-					sizeText := ""
-					if state.SizeBytes != nil && *state.SizeBytes > 0 {
-						sizeText = fmt.Sprintf(" (%d bytes)", *state.SizeBytes)
+					info := FileStateInfo{
+						ToolName:   toolName,
+						FilePath:   state.FilePath,
+						FileType:   state.FileType,
+						Exists:     exists,
+						SizeBytes:  state.SizeBytes,
+						TargetPath: targetPath,
 					}
-					fmt.Fprintf(cmd.OutOrStdout(), "  %s %s [%s] - %s%s\n", statusIcon, state.FilePath, state.FileType, statusText, sizeText)
-					if state.TargetPath != nil && *state.TargetPath != "" {
-						targetExists, _ := services.FS.Exists(*state.TargetPath)
-						targetIcon := "→"
-						if !targetExists {
-							targetIcon = "✗"
-						}
-						fmt.Fprintf(cmd.OutOrStdout(), "    %s %s\n", targetIcon, *state.TargetPath)
+					allStates = append(allStates, info)
+				}
+			}
+
+			if logJSON {
+				return cliout.RenderJSON(cmd.OutOrStdout(), allStates)
+			}
+
+			if cliout.IsAgentMode() {
+				for _, state := range allStates {
+					sizeVal := int64(0)
+					if state.SizeBytes != nil {
+						sizeVal = *state.SizeBytes
 					}
+					fmt.Fprintf(cmd.OutOrStdout(), "tool:%s path:%s type:%s exists:%t size:%d target:%s\n", state.ToolName, state.FilePath, state.FileType, state.Exists, sizeVal, state.TargetPath)
+				}
+				return nil
+			}
+
+			currentTool := ""
+			for _, state := range allStates {
+				if state.ToolName != currentTool {
+					currentTool = state.ToolName
+					fmt.Fprintf(cmd.OutOrStdout(), "File states for %s:\n", currentTool)
+				}
+				statusTag := "[OK]"
+				statusText := "exists"
+				if !state.Exists {
+					statusTag = "[MISSING]"
+					statusText = "MISSING"
+				}
+				sizeText := ""
+				if state.SizeBytes != nil && *state.SizeBytes > 0 {
+					sizeText = fmt.Sprintf(" (%d bytes)", *state.SizeBytes)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "  %s %s [%s] - %s%s\n", statusTag, state.FilePath, state.FileType, statusText, sizeText)
+				if state.TargetPath != "" {
+					targetTag := "->"
+					if exists, _ := services.FS.Exists(state.TargetPath); !exists {
+						targetTag = "[MISSING ->]"
+					}
+					fmt.Fprintf(cmd.OutOrStdout(), "    %s %s\n", targetTag, state.TargetPath)
 				}
 			}
 			return nil
@@ -96,10 +144,17 @@ var logCmd = &cobra.Command{
 
 		ops, err := services.Registry.GetFileOperations(ctx, filter)
 		if err == nil && len(ops) > 0 {
+			if logJSON {
+				return cliout.RenderJSON(cmd.OutOrStdout(), ops)
+			}
 			for _, op := range ops {
 				contractedPath := utils.ContractHomePath(services.ProjectConfig.Paths.HomeDir, op.FilePath)
 				tm := time.UnixMilli(op.CreatedAt).Format("2006-01-02 15:04:05")
-				fmt.Fprintf(cmd.OutOrStdout(), "[%s] [%s] %s %s (%s)\n", tm, op.ToolName, op.OperationType, contractedPath, op.FileType)
+				if cliout.IsAgentMode() {
+					fmt.Fprintf(cmd.OutOrStdout(), "time:%s tool:%s op:%s path:%s type:%s\n", tm, op.ToolName, op.OperationType, contractedPath, op.FileType)
+				} else {
+					fmt.Fprintf(cmd.OutOrStdout(), "[%s] [%s] %s %s (%s)\n", tm, op.ToolName, op.OperationType, contractedPath, op.FileType)
+				}
 			}
 			return nil
 		}
@@ -120,6 +175,9 @@ var logCmd = &cobra.Command{
 
 		if foundPath == "" {
 			log.Info("No log entries found.")
+			if logJSON {
+				return cliout.RenderJSON(cmd.OutOrStdout(), []any{})
+			}
 			fmt.Fprintln(cmd.OutOrStdout(), "No log entries found.")
 			return nil
 		}
@@ -140,6 +198,10 @@ var logCmd = &cobra.Command{
 			start = len(lines) - logTailLines
 		}
 
+		if logJSON {
+			return cliout.RenderJSON(cmd.OutOrStdout(), lines[start:])
+		}
+
 		for i := start; i < len(lines); i++ {
 			fmt.Fprintln(cmd.OutOrStdout(), lines[i])
 		}
@@ -153,5 +215,6 @@ func init() {
 	logCmd.Flags().StringVar(&logType, "type", "", "Filter by file type (shim, binary, symlink, copy, config, completion, etc.)")
 	logCmd.Flags().BoolVar(&logStatus, "status", false, "Show current file states for tools")
 	logCmd.Flags().StringVar(&logSince, "since", "", "Show operations created since date (YYYY-MM-DD)")
+	logCmd.Flags().BoolVar(&logJSON, "json", false, "Output results in JSON format")
 	rootCmd.AddCommand(logCmd)
 }

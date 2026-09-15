@@ -5,13 +5,22 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
-var listBins bool
+var (
+	listBins bool
+	binJSON  bool
+)
+
+type BinaryInfo struct {
+	Binary string `json:"binary"`
+	Tool   string `json:"tool"`
+}
 
 var binCmd = &cobra.Command{
 	Use:   "bin [name]",
@@ -29,15 +38,23 @@ var binCmd = &cobra.Command{
 
 		if listBins {
 			var allBins []string
+			var binInfos []BinaryInfo
 			for _, tc := range services.ToolConfigs {
 				bins := installer.GetBinaryNames(tc.Name, tc.Binaries)
 				for _, b := range bins {
 					allBins = append(allBins, fmt.Sprintf("%s (%s)", b, tc.Name))
+					binInfos = append(binInfos, BinaryInfo{
+						Binary: b,
+						Tool:   tc.Name,
+					})
 				}
 			}
 			log.Info(logger.Message(fmt.Sprintf("Configured binaries (%d):", len(allBins))))
 			for _, b := range allBins {
 				log.Info(logger.Message("  " + b))
+			}
+			if binJSON {
+				return cliout.RenderJSON(cmd.OutOrStdout(), binInfos)
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), strings.Join(allBins, "\n"))
 		} else if len(args) > 0 {
@@ -78,6 +95,14 @@ var binCmd = &cobra.Command{
 			if exists, _ := fileExists(realPath); !exists {
 				return fmt.Errorf("binary path does not exist: %s", binPath)
 			}
+			if binJSON {
+				return cliout.RenderJSON(cmd.OutOrStdout(), map[string]string{
+					"name":   name,
+					"tool":   targetTool.Name,
+					"binary": targetBin,
+					"path":   realPath,
+				})
+			}
 			fmt.Fprint(cmd.OutOrStdout(), realPath)
 			return nil
 		} else {
@@ -86,6 +111,11 @@ var binCmd = &cobra.Command{
 				binDir = services.ProjectConfig.Paths.TargetDir
 			}
 			log.Info(logger.Message(fmt.Sprintf("Target bin directory: %s", binDir)))
+			if binJSON {
+				return cliout.RenderJSON(cmd.OutOrStdout(), map[string]string{
+					"binDir": binDir,
+				})
+			}
 			fmt.Fprintln(cmd.OutOrStdout(), binDir)
 		}
 
@@ -95,5 +125,6 @@ var binCmd = &cobra.Command{
 
 func init() {
 	binCmd.Flags().BoolVarP(&listBins, "list", "l", false, "List all configured binaries and their tool names")
+	binCmd.Flags().BoolVar(&binJSON, "json", false, "Output results in JSON format")
 	rootCmd.AddCommand(binCmd)
 }

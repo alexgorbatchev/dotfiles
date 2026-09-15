@@ -5,21 +5,24 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/spf13/cobra"
 )
 
+var validateJSON bool
+
 type ValidationError struct {
-	ToolName string
-	Config   string
-	Message  string
+	ToolName string `json:"tool"`
+	Config   string `json:"config"`
+	Message  string `json:"message"`
 }
 
 type ValidationWarning struct {
-	ToolName string
-	Config   string
-	Message  string
+	ToolName string `json:"tool"`
+	Config   string `json:"config"`
+	Message  string `json:"message"`
 }
 
 var validateCmd = &cobra.Command{
@@ -188,8 +191,44 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 		}
 
 		out := cmd.OutOrStdout()
+
+		if validateJSON {
+			_ = cliout.RenderJSON(out, map[string]any{
+				"valid":    len(errors) == 0,
+				"checked":  len(targetTools),
+				"errors":   errors,
+				"warnings": warnings,
+			})
+			if len(errors) > 0 {
+				return fmt.Errorf("validation failed with %d error(s)", len(errors))
+			}
+			return nil
+		}
+
+		if cliout.IsAgentMode() {
+			for _, w := range warnings {
+				relPath := w.Config
+				if rel, err := filepath.Rel(services.ProjectConfig.Paths.DotfilesDir, w.Config); err == nil && rel != "" {
+					relPath = rel
+				}
+				fmt.Fprintf(out, "WARN: [%s] %s: %s\n", relPath, w.ToolName, w.Message)
+			}
+			for _, e := range errors {
+				relPath := e.Config
+				if rel, err := filepath.Rel(services.ProjectConfig.Paths.DotfilesDir, e.Config); err == nil && rel != "" {
+					relPath = rel
+				}
+				fmt.Fprintf(out, "ERR: [%s] %s: %s\n", relPath, e.ToolName, e.Message)
+			}
+			if len(errors) > 0 {
+				return fmt.Errorf("validation failed with %d error(s)", len(errors))
+			}
+			fmt.Fprintf(out, "OK: %d tools valid\n", len(targetTools))
+			return nil
+		}
+
 		if len(warnings) > 0 {
-			fmt.Fprintf(out, "⚠️ %d warning(s) found:\n", len(warnings))
+			fmt.Fprintf(out, "[WARN] %d warning(s) found:\n", len(warnings))
 			for _, w := range warnings {
 				relPath := w.Config
 				if rel, err := filepath.Rel(services.ProjectConfig.Paths.DotfilesDir, w.Config); err == nil && rel != "" {
@@ -200,7 +239,7 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 		}
 
 		if len(errors) > 0 {
-			fmt.Fprintf(out, "✖ %d validation error(s) found:\n", len(errors))
+			fmt.Fprintf(out, "[ERROR] %d validation error(s) found:\n", len(errors))
 			for _, e := range errors {
 				relPath := e.Config
 				if rel, err := filepath.Rel(services.ProjectConfig.Paths.DotfilesDir, e.Config); err == nil && rel != "" {
@@ -211,11 +250,12 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 			return fmt.Errorf("validation failed with %d error(s)", len(errors))
 		}
 
-		fmt.Fprintf(out, "✔ Checked %d tool configuration(s) — all valid!\n", len(targetTools))
+		fmt.Fprintf(out, "[OK] Checked %d tool configuration(s) — all valid!\n", len(targetTools))
 		return nil
 	},
 }
 
 func init() {
+	validateCmd.Flags().BoolVar(&validateJSON, "json", false, "Output results in JSON format")
 	rootCmd.AddCommand(validateCmd)
 }

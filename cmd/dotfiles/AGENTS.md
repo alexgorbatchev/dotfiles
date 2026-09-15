@@ -18,6 +18,10 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 - All CLI errors, diagnostics, and status messages must use `pkg/logger` (`GetLogger`). Never use raw `fmt.Print*` or `fmt.Fprint*` on `os.Stderr` for errors.
 - Keep `rootCmd.SilenceErrors: true` so Cobra does not emit duplicate unformatted errors.
 - Logger writers must default to `stderr` (`os.Stderr` / `cmd.ErrOrStderr()`), keeping `stdout` (`cmd.OutOrStdout()`) clean for pipeline data.
+- Support dual-mode output via `pkg/cliout` (`AGENT=1`):
+  - When `AGENT=1`: suppress ANSI colors in logger, format JSON as minified single-line, render directory trees as indented bullets (`*`), omit decorative dividers, and emit compact key-value lines.
+  - When `AGENT=0` (or unset): render human-friendly output, pretty-printed JSON (`json.MarshalIndent`), box-drawing tree glyphs (`├─`/`└─`), and formatted lists.
+- Support `--json` flag on query commands (`check-updates`, `files`, `validate`, `detect-conflicts`, `log`, `bin`, `features`, `skill`). All JSON serialization must use `cliout.RenderJSON` so agent mode minifies automatically while human mode pretty-prints.
 
 ## Local gotchas
 
