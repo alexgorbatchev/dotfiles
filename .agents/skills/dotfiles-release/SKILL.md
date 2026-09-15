@@ -34,6 +34,11 @@ To trigger a release:
    - Write a short `## Summary` section and a `## Notable Commits Since vA.B.C` section covering the actual shipped changes in the `previous-tag...new-tag` range.
    - Include the compare link as `**Full Changelog**: https://github.com/alexgorbatchev/dotfiles/compare/vA.B.C...vX.Y.Z`.
 5. The `.github/workflows/publish.yml` GitHub Action handles package publishing after the tag is pushed.
+6. **MANDATORY**: Always check and verify that the release workflow has finished and actually produced and attached all compiled release binary assets and checksums:
+   ```bash
+   gh release view vX.Y.Z --json assets,name,tagName
+   ```
+   Confirm that all target platform archives (e.g. `darwin_amd64`, `darwin_arm64`, `linux_amd64`, `linux_arm64`) and `checksums.txt` are uploaded and valid.
 
 ## Diagnostics & Dry Runs
 
