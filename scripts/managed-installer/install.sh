@@ -64,7 +64,7 @@ format_shell_source_path() {
 detect_shell() {
 	local cur_pid="$PPID"
 	local depth=0
-	while [[ -n "${cur_pid}" && "${cur_pid}" -gt 1 && "${depth}" -lt 10 ]]; do
+	while [[ -n "${cur_pid}" && "${cur_pid}" =~ ^[0-9]+$ && "${cur_pid}" -gt 1 && "${depth}" -lt 10 ]]; do
 		local comm=""
 		if [[ -f "/proc/${cur_pid}/comm" ]]; then
 			comm="$(cat "/proc/${cur_pid}/comm" 2>/dev/null || true)"
