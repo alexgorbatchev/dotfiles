@@ -1963,3 +1963,81 @@ func TestRemoveAllNonEmptyDirectory(t *testing.T) {
 	}
 }
 
+func TestGenerateTools_PropagateAutoInstallToDependencies(t *testing.T) {
+	ctx := context.Background()
+	log := logger.New(logger.Config{Name: "test-propagate-autoinstall", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+	defer database.Close()
+	reg := registry.NewRegistry(database)
+
+	instReg := installer.NewRegistry()
+	installedOrder := []string{}
+	inst := &mockInstaller{
+		name:     "custom",
+		binaries: []string{"test-bin"},
+	}
+	_ = instReg.Register(inst)
+
+	// Mock installer recording execution order
+	runner.RegisterFunc("bash", func(c *exec.MockCmd) error {
+		return nil
+	})
+
+	orch := NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/test",
+			DotfilesDir:     "/home/test/dotfiles",
+			TargetDir:       "/home/test/.bin",
+			BinariesDir:     "/home/test/.binaries",
+			GeneratedDir:    "/home/test/.generated",
+			ShellScriptsDir: "/home/test/.generated/shell-scripts",
+		},
+	}
+
+	// Tool B is auto-installed and depends on Tool A (which has NO auto-install flag)
+	toolA := &config.ToolConfig{
+		Name:               "tool-a",
+		InstallationMethod: "custom",
+		Binaries:           []interface{}{"tool-a-bin"},
+		// auto flag NOT set
+	}
+
+	toolB := &config.ToolConfig{
+		Name:               "tool-b",
+		InstallationMethod: "custom",
+		Binaries:           []interface{}{"tool-b-bin"},
+		Dependencies:       []string{"tool-a-bin"},
+		InstallParams: map[string]interface{}{
+			"auto": true,
+		},
+	}
+
+	tools := []*config.ToolConfig{toolB, toolA}
+
+	err = orch.GenerateTools(ctx, tools, projCfg)
+	if err != nil {
+		t.Fatalf("GenerateTools failed: %v", err)
+	}
+
+	// Verify that Tool A was installed into the registry even though it did not have auto: true,
+	// because Tool B (which is auto-installed) depended on it.
+	toolAState, err := reg.GetToolInstallation(ctx, "tool-a")
+	if err != nil || toolAState == nil {
+		t.Fatalf("expected tool-a to be installed as a dependency of tool-b, but state is missing: %v", err)
+	}
+
+	toolBState, err := reg.GetToolInstallation(ctx, "tool-b")
+	if err != nil || toolBState == nil {
+		t.Fatalf("expected tool-b to be installed, but state is missing: %v", err)
+	}
+
+	_ = installedOrder
+}
+

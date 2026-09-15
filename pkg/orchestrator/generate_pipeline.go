@@ -48,6 +48,50 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		return err
 	}
 
+	// Build binaryProviders and toolMap to trace dependencies
+	toolMap := make(map[string]*config.ToolConfig)
+	binaryProviders := make(map[string]string)
+	for _, tool := range sorted {
+		toolMap[tool.Name] = tool
+		bins := getBinaryNames(tool.Binaries)
+		if len(bins) == 0 {
+			bins = []string{tool.Name}
+		}
+		for _, b := range bins {
+			binaryProviders[b] = tool.Name
+		}
+	}
+
+	// Determine which tools need installation (either explicit auto-install or required by an auto-install tool)
+	autoInstallTools := make(map[string]bool)
+	for _, tool := range sorted {
+		if isAutoInstall(tool) {
+			autoInstallTools[tool.Name] = true
+		}
+	}
+
+	// Propagate auto-install status backward to dependencies
+	changed := true
+	for changed {
+		changed = false
+		for _, tool := range sorted {
+			if autoInstallTools[tool.Name] {
+				for _, dep := range tool.Dependencies {
+					providerName := dep
+					if p, ok := binaryProviders[dep]; ok {
+						providerName = p
+					}
+					if depTool, ok := toolMap[providerName]; ok {
+						if !autoInstallTools[depTool.Name] {
+							autoInstallTools[depTool.Name] = true
+							changed = true
+						}
+					}
+				}
+			}
+		}
+	}
+
 	for _, tool := range sorted {
 		if tool.Disabled {
 			continue
@@ -57,7 +101,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 			continue
 		}
 
-		if isAutoInstall(tool) {
+		if autoInstallTools[tool.Name] {
 			skip, err := o.shouldSkipInstallation(ctx, tool, projCfg)
 			if err != nil {
 				return err
