@@ -258,20 +258,30 @@ func (s *Server) handleRecentTools(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	toolConfigsDir := s.projectConfig.Paths.ToolConfigsDir
+	toolConfigsDirs := s.projectConfig.Paths.GetToolConfigsDirs()
 	tools := []map[string]any{}
 
-	// Walk tool configs directory to find .tool.ts files
+	// Walk tool configs directories to find .tool.ts files
 	var toolFiles []string
-	_ = filepath.Walk(toolConfigsDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
+	seenFiles := make(map[string]bool)
+	for _, rawDir := range toolConfigsDirs {
+		resolvedDir := strings.ReplaceAll(rawDir, "{configFileDir}", s.projectConfig.Paths.DotfilesDir)
+		if s.projectConfig.Paths.DotfilesDir != "" && !filepath.IsAbs(resolvedDir) {
+			resolvedDir = filepath.Join(s.projectConfig.Paths.DotfilesDir, resolvedDir)
+		}
+		_ = filepath.Walk(resolvedDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return nil
+			}
+			if !info.IsDir() && strings.HasSuffix(path, ".tool.ts") {
+				if !seenFiles[path] {
+					seenFiles[path] = true
+					toolFiles = append(toolFiles, path)
+				}
+			}
 			return nil
-		}
-		if !info.IsDir() && strings.HasSuffix(path, ".tool.ts") {
-			toolFiles = append(toolFiles, path)
-		}
-		return nil
-	})
+		})
+	}
 
 	type recentItem struct {
 		name      string

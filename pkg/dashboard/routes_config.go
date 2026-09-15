@@ -18,7 +18,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	paths := s.projectConfig.Paths
-	data := map[string]string{
+	data := map[string]any{
 		"dotfilesDir":    paths.DotfilesDir,
 		"generatedDir":   paths.GeneratedDir,
 		"binariesDir":    paths.BinariesDir,
@@ -80,7 +80,8 @@ func (s *Server) handleToolConfigsTree(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, false, nil, "Project config is not initialized")
 		return
 	}
-	toolConfigsDir := s.projectConfig.Paths.ToolConfigsDir
+	toolConfigsDirs := s.projectConfig.Paths.GetToolConfigsDirs()
+	primaryDir := s.projectConfig.Paths.GetPrimaryToolConfigsDir()
 
 	type treeNode struct {
 		Name     string      `json:"name"`
@@ -128,13 +129,23 @@ func (s *Server) handleToolConfigsTree(w http.ResponseWriter, r *http.Request) {
 		return nodes, nil
 	}
 
-	nodes, _ := buildNode(toolConfigsDir)
-	if nodes == nil {
-		nodes = []*treeNode{}
+	var allNodes []*treeNode
+	for _, rawDir := range toolConfigsDirs {
+		resolvedDir := strings.ReplaceAll(rawDir, "{configFileDir}", s.projectConfig.Paths.DotfilesDir)
+		if s.projectConfig.Paths.DotfilesDir != "" && !filepath.IsAbs(resolvedDir) {
+			resolvedDir = filepath.Join(s.projectConfig.Paths.DotfilesDir, resolvedDir)
+		}
+		nodes, _ := buildNode(resolvedDir)
+		if nodes != nil {
+			allNodes = append(allNodes, nodes...)
+		}
+	}
+	if allNodes == nil {
+		allNodes = []*treeNode{}
 	}
 
 	writeJSON(w, true, map[string]any{
-		"rootPath": toolConfigsDir,
-		"entries":  nodes,
+		"rootPath": primaryDir,
+		"entries":  allNodes,
 	}, "")
 }

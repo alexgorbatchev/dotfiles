@@ -15,7 +15,7 @@ export interface PathsConfig {
   dotfilesDir: string;
   targetDir: string;
   generatedDir: string;
-  toolConfigsDir: string;
+  toolConfigsDir: string | string[];
   shellScriptsDir: string;
   binariesDir: string;
 }

@@ -68,6 +68,36 @@ export enum Libc {
 }
 
 /**
+ * Directory paths configuration for dotfiles projects.
+ */
+export interface IPathsConfig {
+  homeDir?: string;
+  dotfilesDir?: string;
+  targetDir?: string;
+  generatedDir?: string;
+  /**
+   * Directory or directories containing tool configuration (*.tool.ts) files.
+   */
+  toolConfigsDir?: string | string[];
+  shellScriptsDir?: string;
+  binariesDir?: string;
+}
+
+/**
+ * Main project configuration structure returned by defineConfig callbacks.
+ */
+export interface IProjectConfig {
+  paths?: IPathsConfig;
+  features?: Record<string, unknown>;
+  github?: Record<string, unknown>;
+  cargo?: Record<string, unknown>;
+  downloader?: Record<string, unknown>;
+  updates?: Record<string, unknown>;
+  system?: Record<string, unknown>;
+  logging?: Record<string, unknown>;
+}
+
+/**
  * Context object passed to defineConfig callbacks.
  */
 export interface IConfigContext {
@@ -823,5 +853,5 @@ export interface IPlatformInstallFunction {
   "github-release"(params?: IGithubReleaseInstallParams): IPlatformConfigBuilder;
 }
 
-export type ConfigFactory = (ctx: IConfigContext) => unknown;
+export type ConfigFactory = (ctx: IConfigContext) => IProjectConfig | Record<string, unknown>;
 export type AsyncConfigureTool = (install: IInstallFunction, ctx: IToolConfigContext) => unknown;

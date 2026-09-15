@@ -87,21 +87,27 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 		return nil, nil, fmt.Errorf("evaluating project config: %w", err)
 	}
 
-	// Step 2: Resolve the ToolConfigsDir and scan for *.tool.ts files
-	toolConfigsDir := projCfg.Paths.ToolConfigsDir
-	if toolConfigsDir == "" {
-		toolConfigsDir = "{configFileDir}/tools"
-	}
-	resolvedToolConfigsDir := strings.ReplaceAll(toolConfigsDir, "{configFileDir}", configFileDir)
-	if !filepath.IsAbs(resolvedToolConfigsDir) {
-		resolvedToolConfigsDir = filepath.Join(configFileDir, resolvedToolConfigsDir)
-	}
+	// Step 2: Resolve the ToolConfigsDir(s) and scan for *.tool.ts files
+	toolConfigsDirs := projCfg.Paths.GetToolConfigsDirs()
 
 	var toolFiles []string
-	if exists, _ := dirExists(resolvedToolConfigsDir); exists {
-		toolFiles, err = findToolConfigFiles(resolvedToolConfigsDir)
-		if err != nil {
-			return nil, nil, fmt.Errorf("finding tool config files under %q: %w", resolvedToolConfigsDir, err)
+	seenFiles := make(map[string]bool)
+	for _, rawDir := range toolConfigsDirs {
+		resolvedDir := strings.ReplaceAll(rawDir, "{configFileDir}", configFileDir)
+		if !filepath.IsAbs(resolvedDir) {
+			resolvedDir = filepath.Join(configFileDir, resolvedDir)
+		}
+		if exists, _ := dirExists(resolvedDir); exists {
+			files, err := findToolConfigFiles(resolvedDir)
+			if err != nil {
+				return nil, nil, fmt.Errorf("finding tool config files under %q: %w", resolvedDir, err)
+			}
+			for _, f := range files {
+				if !seenFiles[f] {
+					seenFiles[f] = true
+					toolFiles = append(toolFiles, f)
+				}
+			}
 		}
 	}
 

@@ -498,3 +498,57 @@ func TestLoadTypeScriptConfigToolConfigsDirAndBinariesDir(t *testing.T) {
 	}
 	_ = os.Chmod(roDir, 0755) // restore for cleanup
 }
+
+func TestLoadTypeScriptConfig_MultipleToolConfigsDirs(t *testing.T) {
+	tmpDir := t.TempDir()
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+
+	dir1 := filepath.Join(tmpDir, "tools-core")
+	dir2 := filepath.Join(tmpDir, "tools-extra")
+	_ = os.MkdirAll(dir1, 0755)
+	_ = os.MkdirAll(dir2, 0755)
+
+	tool1Content := `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) => install("manual", {}).bin("tool-one").version("1.0.0"));`
+	tool2Content := `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) => install("manual", {}).bin("tool-two").version("2.0.0"));`
+
+	_ = os.WriteFile(filepath.Join(dir1, "tool-one.tool.ts"), []byte(tool1Content), 0644)
+	_ = os.WriteFile(filepath.Join(dir2, "tool-two.tool.ts"), []byte(tool2Content), 0644)
+
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	configContent := `export default {
+		paths: {
+			generatedDir: "./.generated",
+			toolConfigsDir: ["./tools-core", "./tools-extra"]
+		}
+	};`
+	_ = os.WriteFile(configPath, []byte(configContent), 0644)
+
+	projCfg, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig with multiple toolConfigsDirs failed: %v", err)
+	}
+
+	if projCfg == nil {
+		t.Fatal("expected non-nil projCfg")
+	}
+	if len(toolConfigs) != 2 {
+		t.Fatalf("expected 2 tool configs from 2 directories, got %d", len(toolConfigs))
+	}
+
+	foundToolOne := false
+	foundToolTwo := false
+	for _, tc := range toolConfigs {
+		if tc.Name == "tool-one" {
+			foundToolOne = true
+		}
+		if tc.Name == "tool-two" {
+			foundToolTwo = true
+		}
+	}
+	if !foundToolOne || !foundToolTwo {
+		t.Errorf("expected both tool-one and tool-two to be loaded, got tools: %+v", toolConfigs)
+	}
+}

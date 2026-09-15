@@ -437,5 +437,44 @@ func TestProjectConfig_ResolvePlaceholders(t *testing.T) {
 			t.Errorf("ToolConfigsDir = %q", cfg.Paths.ToolConfigsDir)
 		}
 	})
+
+	t.Run("ResolvePlaceholders with toolConfigsDir array", func(t *testing.T) {
+		cfg := &ProjectConfig{
+			Paths: PathsConfig{
+				DotfilesDir:    "/home/user/.dotfiles",
+				GeneratedDir:   "/home/user/.dotfiles/.generated",
+				ToolConfigsDir: []string{"{paths.generatedDir}/tools-1", "{paths.generatedDir}/tools-2"},
+			},
+		}
+
+		cfg.ResolvePlaceholders()
+
+		dirs := cfg.Paths.GetToolConfigsDirs()
+		if len(dirs) != 2 || dirs[0] != "/home/user/.dotfiles/.generated/tools-1" || dirs[1] != "/home/user/.dotfiles/.generated/tools-2" {
+			t.Errorf("expected 2 resolved tool config dirs, got %v", dirs)
+		}
+	})
+
+	t.Run("GetToolConfigsDirs variants", func(t *testing.T) {
+		pNil := PathsConfig{}
+		if dirs := pNil.GetToolConfigsDirs(); len(dirs) != 1 || dirs[0] != "{configFileDir}/tools" {
+			t.Errorf("nil ToolConfigsDir = %v", dirs)
+		}
+
+		pStr := PathsConfig{ToolConfigsDir: "./custom-tools"}
+		if dirs := pStr.GetToolConfigsDirs(); len(dirs) != 1 || dirs[0] != "./custom-tools" {
+			t.Errorf("string ToolConfigsDir = %v", dirs)
+		}
+
+		pSlice := PathsConfig{ToolConfigsDir: []string{"./dir1", "./dir2"}}
+		if dirs := pSlice.GetToolConfigsDirs(); len(dirs) != 2 || dirs[0] != "./dir1" || dirs[1] != "./dir2" {
+			t.Errorf("[]string ToolConfigsDir = %v", dirs)
+		}
+
+		pInterface := PathsConfig{ToolConfigsDir: []interface{}{"./iface1", "./iface2"}}
+		if dirs := pInterface.GetToolConfigsDirs(); len(dirs) != 2 || dirs[0] != "./iface1" || dirs[1] != "./iface2" {
+			t.Errorf("[]interface{} ToolConfigsDir = %v", dirs)
+		}
+	})
 }
 

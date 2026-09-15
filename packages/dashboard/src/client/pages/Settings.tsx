@@ -1,9 +1,15 @@
 import { type JSX } from "preact";
 import { FolderCog } from "../icons";
 
-import type { IConfigSummary } from "../../shared/types";
+import type { ConfigPathValue, IConfigSummary } from "../../shared/types";
 import { TitledCard } from "../components/ui/TitledCard";
 import { useFetch } from "../hooks/useFetch";
+
+function formatPathValue(val: ConfigPathValue): string {
+  if (!val) return "Not configured";
+  if (Array.isArray(val)) return val.join(", ");
+  return val;
+}
 
 export function Settings(): JSX.Element {
   const { data: config, loading } = useFetch<IConfigSummary>("/config");
@@ -17,11 +23,11 @@ export function Settings(): JSX.Element {
   }
 
   const paths = [
-    { label: "Dotfiles Directory", value: config?.dotfilesDir },
-    { label: "Generated Directory", value: config?.generatedDir },
-    { label: "Binaries Directory", value: config?.binariesDir },
-    { label: "Target Directory", value: config?.targetDir },
-    { label: "Tool Configs Directory", value: config?.toolConfigsDir },
+    { label: "Dotfiles Directory", value: formatPathValue(config?.dotfilesDir) },
+    { label: "Generated Directory", value: formatPathValue(config?.generatedDir) },
+    { label: "Binaries Directory", value: formatPathValue(config?.binariesDir) },
+    { label: "Target Directory", value: formatPathValue(config?.targetDir) },
+    { label: "Tool Configs Directory", value: formatPathValue(config?.toolConfigsDir) },
   ];
 
   return (

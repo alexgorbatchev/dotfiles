@@ -26,7 +26,7 @@ func ResolvePlaceholders(val string, toolName string, projCfg *ProjectConfig) (s
 		"paths.targetDir":       projCfg.Paths.TargetDir,
 		"paths.binariesDir":     projCfg.Paths.BinariesDir,
 		"paths.generatedDir":    projCfg.Paths.GeneratedDir,
-		"paths.toolConfigsDir":  projCfg.Paths.ToolConfigsDir,
+		"paths.toolConfigsDir":  projCfg.Paths.GetPrimaryToolConfigsDir(),
 		"paths.shellScriptsDir": shellScriptsDir,
 		"tool.name":             toolName,
 		"toolName":              toolName,

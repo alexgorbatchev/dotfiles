@@ -57,7 +57,7 @@ Default values shown.
 paths: {
   homeDir: '~',                                    // User's home directory
   dotfilesDir: '~/.dotfiles',                      // Root dotfiles directory
-  toolConfigsDir: '~/.dotfiles/tools',             // Directory with *.tool.ts files
+  toolConfigsDir: '~/.dotfiles/tools',             // Directory with *.tool.ts files (string or string[] for multiple directories)
   generatedDir: '~/.dotfiles/.generated',          // Generated files directory
   targetDir: '/usr/local/bin',                     // Shim directory (must be in PATH)
   shellScriptsDir: '~/.dotfiles/.generated/shell-scripts',

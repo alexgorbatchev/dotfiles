@@ -23,13 +23,61 @@ type HostConfig struct {
 
 // PathsConfig defines directory paths for the orchestrator.
 type PathsConfig struct {
-	HomeDir         string `json:"homeDir" yaml:"homeDir"`
-	DotfilesDir     string `json:"dotfilesDir" yaml:"dotfilesDir"`
-	TargetDir       string `json:"targetDir" yaml:"targetDir"`
-	GeneratedDir    string `json:"generatedDir" yaml:"generatedDir"`
-	ToolConfigsDir  string `json:"toolConfigsDir" yaml:"toolConfigsDir"`
-	ShellScriptsDir string `json:"shellScriptsDir" yaml:"shellScriptsDir"`
-	BinariesDir     string `json:"binariesDir" yaml:"binariesDir"`
+	HomeDir         string      `json:"homeDir" yaml:"homeDir"`
+	DotfilesDir     string      `json:"dotfilesDir" yaml:"dotfilesDir"`
+	TargetDir       string      `json:"targetDir" yaml:"targetDir"`
+	GeneratedDir    string      `json:"generatedDir" yaml:"generatedDir"`
+	ToolConfigsDir  interface{} `json:"toolConfigsDir" yaml:"toolConfigsDir"`
+	ShellScriptsDir string      `json:"shellScriptsDir" yaml:"shellScriptsDir"`
+	BinariesDir     string      `json:"binariesDir" yaml:"binariesDir"`
+}
+
+// GetToolConfigsDirs returns all tool configuration directory paths.
+// Supports ToolConfigsDir configured as a string or []string / []interface{}.
+func (p PathsConfig) GetToolConfigsDirs() []string {
+	if p.ToolConfigsDir == nil {
+		return []string{"{configFileDir}/tools"}
+	}
+	switch v := p.ToolConfigsDir.(type) {
+	case string:
+		if v == "" {
+			return []string{"{configFileDir}/tools"}
+		}
+		return []string{v}
+	case []string:
+		var res []string
+		for _, s := range v {
+			if s != "" {
+				res = append(res, s)
+			}
+		}
+		if len(res) == 0 {
+			return []string{"{configFileDir}/tools"}
+		}
+		return res
+	case []interface{}:
+		var res []string
+		for _, item := range v {
+			if s, ok := item.(string); ok && s != "" {
+				res = append(res, s)
+			}
+		}
+		if len(res) == 0 {
+			return []string{"{configFileDir}/tools"}
+		}
+		return res
+	default:
+		return []string{"{configFileDir}/tools"}
+	}
+}
+
+// GetPrimaryToolConfigsDir returns the primary tool configuration directory path as a string.
+func (p PathsConfig) GetPrimaryToolConfigsDir() string {
+	dirs := p.GetToolConfigsDirs()
+	if len(dirs) > 0 {
+		return dirs[0]
+	}
+	return "{configFileDir}/tools"
 }
 
 // SystemConfig defines system elevation settings.
@@ -137,7 +185,27 @@ func (p *ProjectConfig) ResolvePlaceholders() {
 	p.Paths.TargetDir = replaceGenDir(p.Paths.TargetDir)
 	p.Paths.BinariesDir = replaceGenDir(p.Paths.BinariesDir)
 	p.Paths.ShellScriptsDir = replaceGenDir(p.Paths.ShellScriptsDir)
-	p.Paths.ToolConfigsDir = replaceGenDir(p.Paths.ToolConfigsDir)
+
+	switch v := p.Paths.ToolConfigsDir.(type) {
+	case string:
+		p.Paths.ToolConfigsDir = replaceGenDir(v)
+	case []string:
+		var norm []string
+		for _, s := range v {
+			norm = append(norm, replaceGenDir(s))
+		}
+		p.Paths.ToolConfigsDir = norm
+	case []interface{}:
+		var norm []interface{}
+		for _, s := range v {
+			if str, ok := s.(string); ok {
+				norm = append(norm, replaceGenDir(str))
+			} else {
+				norm = append(norm, s)
+			}
+		}
+		p.Paths.ToolConfigsDir = norm
+	}
 
 	if p.Paths.BinariesDir == "" {
 		p.Paths.BinariesDir = filepath.Join(p.Paths.GeneratedDir, "binaries")

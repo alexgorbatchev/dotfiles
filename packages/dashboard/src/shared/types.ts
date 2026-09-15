@@ -254,6 +254,11 @@ export interface IFileOperationDisplay extends IFileOperation {
 }
 
 /**
+ * Path configuration value which may be a single path string or an array of path strings.
+ */
+export type ConfigPathValue = string | string[] | undefined;
+
+/**
  * Project configuration summary for settings display.
  */
 export interface IConfigSummary {
@@ -261,7 +266,7 @@ export interface IConfigSummary {
   generatedDir: string;
   binariesDir: string;
   targetDir: string;
-  toolConfigsDir: string;
+  toolConfigsDir: string | string[];
 }
 
 /**

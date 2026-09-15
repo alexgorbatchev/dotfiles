@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/tkrajina/typescriptify-golang-structs/typescriptify"
@@ -47,6 +48,14 @@ func generateTypes(outputPath string) error {
 
 	if err := t.ConvertToFile(outputPath); err != nil {
 		return err
+	}
+
+	// Refine any types to unions where needed
+	content, err := os.ReadFile(outputPath)
+	if err == nil {
+		updated := strings.ReplaceAll(string(content), "toolConfigsDir?: any;", "toolConfigsDir?: string | string[];")
+		updated = strings.ReplaceAll(updated, "toolConfigsDir: any;", "toolConfigsDir: string | string[];")
+		_ = os.WriteFile(outputPath, []byte(updated), 0644)
 	}
 
 	// Format generated TypeScript file with oxfmt
