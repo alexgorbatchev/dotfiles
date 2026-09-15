@@ -75,30 +75,16 @@ export default defineTool((install) =>
 );
 `
 
-const defaultBrewToolContent = `import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
+const defaultBrewToolContent = `import { defineTool, type IToolConfigContext, Platform } from "@alexgorbatchev/dotfiles";
 
-export default defineTool((install) =>
-  install()
-    .platform(Platform.MacOS, (install) =>
-      install("curl-script", {
-        url: "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh",
-        shell: "bash",
-        env: {
-          NONINTERACTIVE: "1",
-        },
-        auto: true,
-      }).bin("brew"),
-    )
-    .platform(Platform.MacOS, Architecture.Arm64, (install) =>
-      install()
-        .zsh((shell) => shell.always('eval "$(/opt/homebrew/bin/brew shellenv)"'))
-        .bash((shell) => shell.always('eval "$(/opt/homebrew/bin/brew shellenv)"')),
-    )
-    .platform(Platform.MacOS, Architecture.X86_64, (install) =>
-      install()
-        .zsh((shell) => shell.always('eval "$(/usr/local/bin/brew shellenv)"'))
-        .bash((shell) => shell.always('eval "$(/usr/local/bin/brew shellenv)"')),
-    ),
+export default defineTool((install, _ctx) =>
+  install().platform(Platform.MacOS, (install) =>
+    install("manual", {
+      binaryPath: "/opt/homebrew/bin/brew",
+    }).hook("before-install", async ({ $ }: IToolConfigContext) => {
+      await $` + "`" + `NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` + "`" + `;
+    }),
+  ),
 );
 `
 
