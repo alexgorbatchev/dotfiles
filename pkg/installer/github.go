@@ -238,6 +238,9 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 			token := getStringParam(tool.InstallParams, "token", "")
 			if token == "" {
 				token = os.Getenv("GITHUB_TOKEN")
+				if token == "" {
+					token = os.Getenv("GH_TOKEN")
+				}
 			}
 			if token != "" {
 				req.Header.Set("Authorization", "token "+token)
@@ -272,9 +275,11 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 				return nil, fmt.Errorf("fetching release via gh CLI: %w", err)
 			}
 			release = rel
-			g.setCachedRelease(repo, release.TagName, release)
-			if version != "latest" {
-				g.setCachedRelease(repo, version, release)
+			if len(release.Assets) > 0 {
+				g.setCachedRelease(repo, release.TagName, release)
+				if version != "latest" {
+					g.setCachedRelease(repo, version, release)
+				}
 			}
 		}
 	}
@@ -409,6 +414,16 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 				return nil, err
 			}
 			req.Header.Set("User-Agent", "dotfiles-installer/1.0")
+			token := getStringParam(tool.InstallParams, "token", "")
+			if token == "" {
+				token = os.Getenv("GITHUB_TOKEN")
+				if token == "" {
+					token = os.Getenv("GH_TOKEN")
+				}
+			}
+			if token != "" {
+				req.Header.Set("Authorization", "token "+token)
+			}
 			resp, err := g.httpClient.Do(req)
 			if err != nil {
 				return nil, err
@@ -430,8 +445,10 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 				release = &rel
 			}
 		}
-		g.setCachedRelease(repo, "latest", release)
-		g.setCachedRelease(repo, release.TagName, release)
+		if len(release.Assets) > 0 {
+			g.setCachedRelease(repo, "latest", release)
+			g.setCachedRelease(repo, release.TagName, release)
+		}
 	}
 	return &UpdateCheckResult{
 		HasUpdate:     true,
