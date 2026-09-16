@@ -17,16 +17,16 @@ export default defineTool((install) =>
 
 ## Parameters
 
-| Parameter       | Description                                                                                                 |
-| --------------- | ----------------------------------------------------------------------------------------------------------- |
-| `instanceUrl`   | **Required**. Base URL of the Gitea/Forgejo instance                                                        |
-| `repo`          | **Required**. Repository in "owner/repo" format                                                             |
-| `assetPattern`  | Glob or regex pattern to match release assets. **Optional**. Use only if default automatic selection fails. |
-| `assetSelector` | Custom function to select the correct asset. **Optional**. Use only if default automatic selection fails.   |
-| `version`       | Specific version (e.g., `'v1.2.3'`)                                                                         |
-| `prerelease`    | Include prereleases when fetching latest (default: false)                                                   |
-| `token`         | API token for authentication with the instance                                                              |
-| `env`           | Environment variables (static or dynamic function)                                                          |
+| Parameter       | Description                                                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `instanceUrl`   | **Required**. Base URL of the Gitea/Forgejo instance                                                                               |
+| `repo`          | **Required**. Repository in "owner/repo" format                                                                                    |
+| `assetPattern`  | Glob or regex pattern (`string` or `RegExp`) to match release assets. **Optional**. Use only if default automatic selection fails. |
+| `assetSelector` | Custom function to select the correct asset. **Optional**. Use only if default automatic selection fails.                          |
+| `version`       | Specific version (e.g., `'v1.2.3'`)                                                                                                |
+| `prerelease`    | Include prereleases when fetching latest (default: false)                                                                          |
+| `token`         | API token for authentication with the instance                                                                                     |
+| `env`           | Environment variables (static or dynamic function)                                                                                 |
 
 ## Examples
 

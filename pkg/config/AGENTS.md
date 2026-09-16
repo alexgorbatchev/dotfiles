@@ -10,6 +10,7 @@ Project and tool configuration structures, platform resolution, and context help
 
 - Accept interfaces, return concrete structs in Go functions.
 - Wrap errors with context using `%w` (`fmt.Errorf("action: %w", err)`).
+- Ensure configuration JSON tags accurately reflect the expected project and tool config schema and reject unknown fields during decoding.
 
 ## Local gotchas
 

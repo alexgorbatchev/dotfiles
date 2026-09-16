@@ -521,6 +521,14 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     },
   };
 
+  function cleanInternalProps(obj: Record<string, unknown>) {
+    delete obj["_version"];
+    delete obj["_hasPlatformBlocks"];
+    delete obj["_hasMatchingPlatform"];
+    delete obj["_hasArchBlocks"];
+    delete obj["_hasMatchingArch"];
+  }
+
   if (typeof callback === "function") {
     const fn = callback as ToolRunner;
     const res = fn(install, toolCtx);
@@ -533,24 +541,27 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         ip["env"] = (ip["env"] as Function)(toolCtx);
       }
     }
+
     if (
       res &&
       typeof res === "object" &&
       typeof (res as Record<string, unknown>)["then"] !== "function" &&
       (res as Record<string, unknown>)["installationMethod"]
     ) {
-      (res as Record<string, unknown>)["version"] = (res as Record<string, unknown>)["_version"] || "latest";
-      delete (res as Record<string, unknown>)["_version"];
-      if (!(res as Record<string, unknown>)["configFilePath"]) {
-        (res as Record<string, unknown>)["configFilePath"] = globalThis.currentToolPath || "";
+      const resObj = res as Record<string, unknown>;
+      resObj["version"] = resObj["_version"] || "latest";
+      cleanInternalProps(resObj);
+      cleanInternalProps(builder as Record<string, unknown>);
+      if (!resObj["configFilePath"]) {
+        resObj["configFilePath"] = globalThis.currentToolPath || "";
       }
       return res;
     }
   }
-  (builder as unknown as Record<string, unknown>)["version"] =
-    (builder as unknown as Record<string, unknown>)["_version"] || "latest";
-  delete (builder as unknown as Record<string, unknown>)["_version"];
-  (builder as unknown as Record<string, unknown>)["configFilePath"] = globalThis.currentToolPath || "";
+  const builderObj = builder as unknown as Record<string, unknown>;
+  builderObj["version"] = builderObj["_version"] || "latest";
+  cleanInternalProps(builderObj);
+  builderObj["configFilePath"] = globalThis.currentToolPath || "";
   return builder;
 }
 

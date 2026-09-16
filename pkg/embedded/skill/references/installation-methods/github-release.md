@@ -15,7 +15,7 @@ export default defineTool((install) => install("github-release", { repo: "junegu
 | Parameter       | Description                                                                                                                                                       |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `repo`          | **Required**. GitHub repository in "owner/repo" format                                                                                                            |
-| `assetPattern`  | Glob pattern to match release assets. **Optional**. Prefer this when the default selector chooses the wrong filename.                                             |
+| `assetPattern`  | Glob or regex pattern (`string` or `RegExp`) to match release assets. **Optional**. Prefer this when the default selector chooses the wrong filename.             |
 | `assetSelector` | Custom function to select the correct asset. **Optional**. Use only when `assetPattern` is not expressive enough or you intentionally want a non-default variant. |
 | `version`       | Specific version (e.g., `'v1.2.3'`)                                                                                                                               |
 | `prerelease`    | Include prereleases when fetching latest (default: false)                                                                                                         |
@@ -40,10 +40,17 @@ When filename filtering is enough, prefer `assetPattern`. Reserve `assetSelector
 ### With Asset Pattern
 
 ```typescript
+// Glob pattern
 install("github-release", {
   repo: "sharkdp/bat",
   assetPattern: "*linux_amd64.tar.gz",
 }).bin("bat");
+
+// RegExp pattern (e.g. negative lookahead to exclude profile/debug variants)
+install("github-release", {
+  repo: "oven-sh/bun",
+  assetPattern: /^(?!.*-profile).*\.zip$/,
+}).bin("bun");
 ```
 
 ### Custom Asset Selector

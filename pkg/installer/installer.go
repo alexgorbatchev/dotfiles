@@ -559,6 +559,27 @@ func getPatternForBinary(toolBinaries []interface{}, binName string) string {
 	return ""
 }
 
+func compileRegex(pattern string) (*regexp.Regexp, error) {
+	if strings.HasPrefix(pattern, "/") {
+		lastSlash := strings.LastIndex(pattern, "/")
+		if lastSlash > 0 {
+			inner := pattern[1:lastSlash]
+			flags := pattern[lastSlash+1:]
+			if strings.Contains(flags, "i") {
+				inner = "(?i)" + inner
+			}
+			if strings.Contains(flags, "m") {
+				inner = "(?m)" + inner
+			}
+			if strings.Contains(flags, "s") {
+				inner = "(?s)" + inner
+			}
+			return regexp.Compile(inner)
+		}
+	}
+	return regexp.Compile(pattern)
+}
+
 func detectVersionViaCli(ctx context.Context, runner exec.CommandRunner, binaryPath string, args []string, regex string) (string, error) {
 	cmd := runner.CommandContext(ctx, binaryPath, args...)
 	out, err := cmd.Output()
@@ -571,7 +592,7 @@ func detectVersionViaCli(ctx context.Context, runner exec.CommandRunner, binaryP
 		return strings.TrimSpace(outputStr), nil
 	}
 
-	re, err := regexp.Compile(regex)
+	re, err := compileRegex(regex)
 	if err != nil {
 		return "", fmt.Errorf("compiling regex %q: %w", regex, err)
 	}

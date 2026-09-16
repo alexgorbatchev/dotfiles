@@ -399,3 +399,22 @@ func TestEvaluateToolDefinitionZeroArgsCapture(t *testing.T) {
 		t.Error("expected error when defineConfig is called with 0 args in context")
 	}
 }
+
+func TestEvaluateToolDefinitionRegExpReplacer(t *testing.T) {
+	type PatternConfig struct {
+		Name    string `json:"name"`
+		Pattern string `json:"pattern"`
+	}
+
+	script := `defineConfig({ name: "regex-test", pattern: /^(?!.*-profile).*\.zip$/ });`
+	var cfg PatternConfig
+	err := EvaluateToolDefinition(script, &cfg)
+	if err != nil {
+		t.Fatalf("EvaluateToolDefinition failed: %v", err)
+	}
+
+	if cfg.Pattern != "/^(?!.*-profile).*\\.zip$/" {
+		t.Errorf("expected Pattern %q, got %q", "/^(?!.*-profile).*\\.zip$/", cfg.Pattern)
+	}
+}
+

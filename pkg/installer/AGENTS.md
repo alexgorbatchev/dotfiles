@@ -8,6 +8,7 @@ Tool installer plugins (github-release, curl-script, cargo, brew, apt, dnf, pacm
 
 ## Local conventions
 
+- Support slash-delimited `/pattern/flags` syntax across `compileRegex` and `MatchAssetPattern` for JavaScript `RegExp` interoperability.
 - Log `INFO` progress messages when fetching API releases, downloading assets, and extracting archives.
 - Implement installer plugins by satisfying the `Installer` interface in `pkg/installer/installer.go`.
 

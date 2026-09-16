@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"bytes"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -317,8 +318,8 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, fmt.Errorf("executing script in Goja VM: %w", err)
 	}
 
-	// Extract and stringify default export using JSON.stringify inside JS
-	jsonVal, err := vm.RunString("JSON.stringify(module.exports.default || module.exports)")
+	// Extract and stringify default export using JSON.stringify inside JS with RegExp replacer
+	jsonVal, err := vm.RunString("JSON.stringify(module.exports.default || module.exports, function(k, v) { return v instanceof RegExp ? v.toString() : v; })")
 	if err != nil {
 		return nil, fmt.Errorf("stringifying project config inside JS VM: %w", err)
 	}
@@ -326,7 +327,9 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 	jsonBytes := []byte(jsonVal.String())
 
 	var projCfg config.ProjectConfig
-	if err := json.Unmarshal(jsonBytes, &projCfg); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(jsonBytes))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&projCfg); err != nil {
 		return nil, fmt.Errorf("unmarshaling JSON to ProjectConfig struct: %w", err)
 	}
 
@@ -385,7 +388,7 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, fmt.Errorf("loader result __loaderResult is missing or undefined")
 	}
 
-	jsonVal, err := vm.RunString("JSON.stringify(__loaderResult)")
+	jsonVal, err := vm.RunString("JSON.stringify(__loaderResult, function(k, v) { return v instanceof RegExp ? v.toString() : v; })")
 	if err != nil {
 		return nil, fmt.Errorf("stringifying loader result inside JS VM: %w", err)
 	}
@@ -393,7 +396,9 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	jsonBytes := []byte(jsonVal.String())
 
 	var res unifiedLoaderResult
-	if err := json.Unmarshal(jsonBytes, &res); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(jsonBytes))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&res); err != nil {
 		return nil, fmt.Errorf("unmarshaling loader result: %w", err)
 	}
 

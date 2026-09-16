@@ -115,7 +115,7 @@ func EvaluateToolDefinitionWithContext(scriptContent string, configDir string, s
 	}
 
 	_ = vm.GlobalObject().Set("__targetVal", targetVal)
-	jsonVal, err := vm.RunString("JSON.stringify(__targetVal)")
+	jsonVal, err := vm.RunString("JSON.stringify(__targetVal, function(k, v) { return v instanceof RegExp ? v.toString() : v; })")
 	if err != nil {
 		return fmt.Errorf("stringifying VM output inside JS VM: %w", err)
 	}

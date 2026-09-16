@@ -1,7 +1,32 @@
+import type {
+  CargoConfig,
+  CatalogConfig,
+  DownloaderConfig,
+  FeaturesConfig,
+  HostConfig,
+  LoggingConfig,
+  PathsConfig,
+  ProjectConfig,
+  ShellInstallConfig,
+  SystemConfig,
+  UpdatesConfig,
+} from "../../packages/dashboard/src/shared/types.gen.ts";
+
 export type Resolvable<TParams, TReturn> =
   | TReturn
   | ((params: TParams) => TReturn)
   | ((params: TParams) => Promise<TReturn>);
+
+/**
+ * Recursive partial type making all nested properties of T optional.
+ */
+export type DeepPartial<T> = T extends Function
+  ? T
+  : T extends Array<infer U>
+    ? DeepPartial<U>[]
+    : T extends object
+      ? { [P in keyof T]?: DeepPartial<T[P]> }
+      : T;
 
 /**
  * Interface for sandboxed file system operations.
@@ -70,32 +95,57 @@ export enum Libc {
 /**
  * Directory paths configuration for dotfiles projects.
  */
-export interface IPathsConfig {
-  homeDir?: string;
-  dotfilesDir?: string;
-  targetDir?: string;
-  generatedDir?: string;
-  /**
-   * Directory or directories containing tool configuration (*.tool.ts) files.
-   */
-  toolConfigsDir?: string | string[];
-  shellScriptsDir?: string;
-  binariesDir?: string;
-}
+export interface IPathsConfig extends DeepPartial<PathsConfig> {}
+
+/**
+ * Features configuration for dotfiles projects.
+ */
+export interface IFeaturesConfig extends DeepPartial<FeaturesConfig> {}
+
+/**
+ * Documentation catalog generator configuration.
+ */
+export interface ICatalogConfig extends DeepPartial<CatalogConfig> {}
+
+/**
+ * Shell profile injection configuration.
+ */
+export interface IShellInstallConfig extends DeepPartial<ShellInstallConfig> {}
+
+/**
+ * Remote host repository and token configuration.
+ */
+export interface IHostConfig extends DeepPartial<HostConfig> {}
+
+/**
+ * Cargo package manager host and user-agent configuration.
+ */
+export interface ICargoConfig extends DeepPartial<CargoConfig> {}
+
+/**
+ * Downloader timeout, retry, and caching configuration.
+ */
+export interface IDownloaderConfig extends DeepPartial<DownloaderConfig> {}
+
+/**
+ * System privilege elevation configuration.
+ */
+export interface ISystemConfig extends DeepPartial<SystemConfig> {}
+
+/**
+ * Logging and debug output configuration.
+ */
+export interface ILoggingConfig extends DeepPartial<LoggingConfig> {}
+
+/**
+ * Update check intervals and behaviors configuration.
+ */
+export interface IUpdatesConfig extends DeepPartial<UpdatesConfig> {}
 
 /**
  * Main project configuration structure returned by defineConfig callbacks.
  */
-export interface IProjectConfig {
-  paths?: IPathsConfig;
-  features?: Record<string, unknown>;
-  github?: Record<string, unknown>;
-  cargo?: Record<string, unknown>;
-  downloader?: Record<string, unknown>;
-  updates?: Record<string, unknown>;
-  system?: Record<string, unknown>;
-  logging?: Record<string, unknown>;
-}
+export interface IProjectConfig extends DeepPartial<ProjectConfig> {}
 
 /**
  * Context object passed to defineConfig callbacks.
@@ -362,7 +412,7 @@ export interface IGiteaReleaseInstallParams {
   /**
    * Glob or regex pattern to select release asset filename.
    */
-  assetPattern?: string;
+  assetPattern?: string | RegExp;
   /**
    * Gitea instance base URL.
    */
@@ -434,7 +484,7 @@ export interface IGithubReleaseInstallParams {
   /**
    * Glob or regex pattern to select the asset archive/binary.
    */
-  assetPattern?: string;
+  assetPattern?: string | RegExp;
   /**
    * Enable `gh` CLI fallback on GitHub API rate limits.
    */
@@ -635,7 +685,7 @@ export interface IToolConfigBuilder {
   /**
    * Defines a binary that this tool provides.
    */
-  bin(name: string, pattern?: string): this;
+  bin(name: string, pattern?: string | RegExp): this;
   /**
    * Sets the target binaries of the tool config.
    */
@@ -657,7 +707,7 @@ export interface IToolConfigBuilder {
   /**
    * Limits this tool execution to specific hostnames.
    */
-  hostname(pattern: string): this;
+  hostname(pattern: string | RegExp): this;
   /**
    * Configures automatic update verification parameters.
    */
@@ -712,7 +762,7 @@ export interface IPlatformConfigBuilder {
   /**
    * Defines a binary that this tool provides on this platform.
    */
-  bin(name: string, pattern?: string): this;
+  bin(name: string, pattern?: string | RegExp): this;
   /**
    * Sets target binaries on this platform.
    */
@@ -734,7 +784,7 @@ export interface IPlatformConfigBuilder {
   /**
    * Limits this tool execution to specific hostnames on this platform.
    */
-  hostname(pattern: string): this;
+  hostname(pattern: string | RegExp): this;
   /**
    * Configures automatic update parameters on this platform.
    */
@@ -921,5 +971,5 @@ export interface IPlatformInstallFunction {
   "github-release"(params?: IGithubReleaseInstallParams): IPlatformConfigBuilder;
 }
 
-export type ConfigFactory = (ctx: IConfigContext) => IProjectConfig | Record<string, unknown>;
+export type ConfigFactory = (ctx: IConfigContext) => IProjectConfig | Promise<IProjectConfig>;
 export type AsyncConfigureTool = (install: IInstallFunction, ctx: IToolConfigContext) => unknown;

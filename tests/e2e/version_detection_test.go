@@ -72,7 +72,7 @@ func TestE2EVersionDetection(t *testing.T) {
 	})
 
 	t.Run("should install curl-tar with custom args successfully", func(t *testing.T) {
-		verifyVersionDetection(t, "version-detection--curl-tar--with-args", "version-detection--curl-tar--with-args 3.4.5")
+		verifyVersionDetection(t, "version-detection--curl-tar--with-args", "3.4.5")
 	})
 
 	t.Run("should install curl-tar with default args successfully", func(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -133,6 +134,10 @@ func generateSchemaTypes(rootDir string) error {
 		return fmt.Errorf("failed to read dsl-types.ts: %w", err)
 	}
 	dslTypesContent := string(dslBytes)
+
+	// Strip import statements from dsl-types.ts as all types are declared in the same ambient module
+	importRegex := regexp.MustCompile(`(?s)import\s+(?:type\s+)?\{?[^};]*\}?\s+from\s+['"][^'"]+['"];?\n?`)
+	dslTypesContent = importRegex.ReplaceAllString(dslTypesContent, "")
 
 	publicDeclarationsTemplate := strings.Join([]string{
 		"/**",
@@ -655,6 +660,9 @@ func runTypeTests(rootDir string) error {
 const maxBinarySizeBytes int64 = 26 * 1024 * 1024
 
 func createTarGz(tarPath string, files map[string]string) error {
+	if err := os.MkdirAll(filepath.Dir(tarPath), 0755); err != nil {
+		return err
+	}
 	out, err := os.Create(tarPath)
 	if err != nil {
 		return err

@@ -52,20 +52,20 @@ export default defineTool((install, ctx) => install("github-release", { repo: "o
 
 ### Builder Methods
 
-| Method                | Description                                             |
-| --------------------- | ------------------------------------------------------- |
-| `.bin(name)`          | Define binary name(s) to expose                         |
-| `.version(v)`         | Set version (`'latest'` or specific)                    |
-| `.dependsOn(...bins)` | Declare binary dependencies                             |
-| `.symlink(src, dest)` | Create config file symlink                              |
-| `.hook(event, fn)`    | Lifecycle hooks (details in Hooks section)              |
-| `.zsh(fn)`            | Zsh shell configuration                                 |
-| `.bash(fn)`           | Bash shell configuration                                |
-| `.powershell(fn)`     | PowerShell configuration                                |
-| `.platform(p, fn)`    | Platform-specific overrides                             |
-| `.sudo()`             | Require an interactive sudo step during install         |
-| `.disable()`          | Skip tool during generation (logs warning)              |
-| `.hostname(pattern)`  | Restrict tool to specific hostname(s) (string or regex) |
+| Method                 | Description                                                           |
+| ---------------------- | --------------------------------------------------------------------- |
+| `.bin(name, pattern?)` | Define binary name(s) and optional match pattern (`string \| RegExp`) |
+| `.version(v)`          | Set version (`'latest'` or specific)                                  |
+| `.dependsOn(...bins)`  | Declare binary dependencies                                           |
+| `.symlink(src, dest)`  | Create config file symlink                                            |
+| `.hook(event, fn)`     | Lifecycle hooks (details in Hooks section)                            |
+| `.zsh(fn)`             | Zsh shell configuration                                               |
+| `.bash(fn)`            | Bash shell configuration                                              |
+| `.powershell(fn)`      | PowerShell configuration                                              |
+| `.platform(p, fn)`     | Platform-specific overrides                                           |
+| `.sudo()`              | Require an interactive sudo step during install                       |
+| `.disable()`           | Skip tool during generation (logs warning)                            |
+| `.hostname(pattern)`   | Restrict tool to specific hostname(s) (`string \| RegExp`)            |
 
 #### `.bin(name)` runtime behavior
 

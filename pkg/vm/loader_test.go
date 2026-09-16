@@ -775,3 +775,114 @@ func TestLoaderEnsureBrewToolWithBrewPrefixedFiles(t *testing.T) {
 		}
 	}
 }
+
+func TestLoaderRegExpSerialization(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+	tmpDir := t.TempDir()
+
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	configContent := `export default {
+		paths: {
+			dotfilesDir: "` + tmpDir + `",
+		}
+	};`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config.ts: %v", err)
+	}
+
+	toolsDir := filepath.Join(tmpDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("failed to create tools dir: %v", err)
+	}
+
+	toolScript := `
+	import { defineTool } from "@alexgorbatchev/dotfiles";
+	export default defineTool((install) => {
+		return install("github-release", {
+			repo: "oven-sh/bun",
+			assetPattern: /^(?!.*-profile).*\.zip$/,
+		})
+		.hostname(/^mbp-.*$/)
+		.bin("bun", /bun-dist/);
+	});`
+	if err := os.WriteFile(filepath.Join(toolsDir, "bun.tool.ts"), []byte(toolScript), 0644); err != nil {
+		t.Fatalf("failed to write bun.tool.ts: %v", err)
+	}
+
+	_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+
+	bunTool, exists := toolConfigs["bun"]
+	if !exists {
+		t.Fatalf("expected bun in toolConfigs, got: %+v", toolConfigs)
+	}
+
+	assetPattern, ok := bunTool.InstallParams["assetPattern"].(string)
+	if !ok || assetPattern != "/^(?!.*-profile).*\\.zip$/" {
+		t.Errorf("expected assetPattern to be serialized as string %q, got: %T (%v)", "/^(?!.*-profile).*\\.zip$/", bunTool.InstallParams["assetPattern"], bunTool.InstallParams["assetPattern"])
+	}
+
+	if bunTool.Hostname != "/^mbp-.*$/" {
+		t.Errorf("expected Hostname to be %q, got %q", "/^mbp-.*$/", bunTool.Hostname)
+	}
+}
+
+func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+
+	t.Run("nested unknown field under features", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		configContent := `export default {
+			paths: {
+				dotfilesDir: "` + tmpDir + `",
+			},
+			features: {
+				features: {
+					shellInstall: {
+						zsh: "~/.zshrc"
+					}
+				}
+			}
+		};`
+		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+			t.Fatalf("failed to write config.ts: %v", err)
+		}
+
+		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		if err == nil {
+			t.Fatal("expected error due to unknown field under features, got nil")
+		}
+		if !strings.Contains(err.Error(), "unknown field") || !strings.Contains(err.Error(), "features") {
+			t.Errorf("expected error to mention unknown field 'features', got: %v", err)
+		}
+	})
+
+	t.Run("top-level unknown field in config", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		configContent := `export default {
+			paths: {
+				dotfilesDir: "` + tmpDir + `",
+			},
+			nonExistentField: true
+		};`
+		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+			t.Fatalf("failed to write config.ts: %v", err)
+		}
+
+		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		if err == nil {
+			t.Fatal("expected error due to top-level unknown field, got nil")
+		}
+		if !strings.Contains(err.Error(), "unknown field") || !strings.Contains(err.Error(), "nonExistentField") {
+			t.Errorf("expected error to mention unknown field 'nonExistentField', got: %v", err)
+		}
+	})
+}
+
+

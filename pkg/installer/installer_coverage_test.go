@@ -56,6 +56,17 @@ func TestInstallerCoverageCases(t *testing.T) {
 		t.Errorf("detectVersionViaCli expected error when pattern doesn't match")
 	}
 
+	runner.Register("flagcli", []byte("v1.2.3\nsecond"), nil)
+	vFlag, err := detectVersionViaCli(ctx, runner, "flagcli", []string{"--version"}, `/^v(\d+\.\d+\.\d+)$/m`)
+	if err != nil || vFlag != "1.2.3" {
+		t.Errorf("detectVersionViaCli with /regex/m flag failed: got v=%q, err=%v", vFlag, err)
+	}
+
+	_, err = detectVersionViaCli(ctx, runner, "flagcli", []string{"--version"}, `/[invalid/`)
+	if err == nil {
+		t.Errorf("detectVersionViaCli expected error on invalid regex syntax")
+	}
+
 	// 3. GitHubInstaller error & edge cases
 	gh := NewGitHubInstaller(runner, memFS, dl, sysCtx)
 

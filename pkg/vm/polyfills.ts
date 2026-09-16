@@ -60,3 +60,9 @@ function getGlobals(): Record<string, unknown> {
 getGlobals()["fs"] = fs;
 getGlobals()["path"] = path;
 getGlobals()["require"] = requireFunc;
+
+if (typeof RegExp !== "undefined" && !(RegExp.prototype as unknown as Record<string, unknown>)["toJSON"]) {
+  (RegExp.prototype as unknown as Record<string, unknown>)["toJSON"] = function (): string {
+    return this.toString();
+  };
+}

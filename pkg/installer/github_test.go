@@ -370,6 +370,29 @@ func TestGitHubInstaller_MatchAssetHeuristics(t *testing.T) {
 		}
 	})
 
+	t.Run("assetPattern with negative lookahead regex for bun", func(t *testing.T) {
+		instDarwinArm64 := &GitHubInstaller{
+			sysCtx: &SystemContext{
+				OS:   "darwin",
+				Arch: "arm64",
+			},
+		}
+		bunAssets := []githubAsset{
+			{Name: "bun-darwin-aarch64-profile.zip"},
+			{Name: "bun-darwin-aarch64.zip"},
+			{Name: "bun-darwin-x64-profile.zip"},
+			{Name: "bun-darwin-x64.zip"},
+		}
+
+		matched := instDarwinArm64.matchAsset(bunAssets, "/^(?!.*-profile).*\\.zip$/")
+		if matched == nil {
+			t.Fatalf("expected to match non-profile bun asset, got nil")
+		}
+		if matched.Name != "bun-darwin-aarch64.zip" {
+			t.Errorf("expected bun-darwin-aarch64.zip, got %q", matched.Name)
+		}
+	})
+
 	t.Run("ghCli integration for CheckUpdate and Install", func(t *testing.T) {
 		runnerGh := exec.NewMockRunner()
 		ghReleaseData := githubRelease{
