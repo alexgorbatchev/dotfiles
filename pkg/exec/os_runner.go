@@ -71,8 +71,15 @@ func (c *osCmd) checkSudo() error {
 	return nil
 }
 
+func (c *osCmd) attachDefaultStdin() {
+	if c.cmd.Stdin == nil && isatty.IsTerminal(os.Stdin.Fd()) {
+		c.cmd.Stdin = os.Stdin
+	}
+}
+
 // Run starts the specified command and waits for it to complete.
 func (c *osCmd) Run() error {
+	c.attachDefaultStdin()
 	if err := c.checkSudo(); err != nil {
 		return err
 	}
@@ -81,6 +88,7 @@ func (c *osCmd) Run() error {
 
 // Start starts the specified command but does not wait for it to complete.
 func (c *osCmd) Start() error {
+	c.attachDefaultStdin()
 	if err := c.checkSudo(); err != nil {
 		return err
 	}
@@ -94,6 +102,7 @@ func (c *osCmd) Wait() error {
 
 // Output runs the command and returns its standard output.
 func (c *osCmd) Output() ([]byte, error) {
+	c.attachDefaultStdin()
 	if err := c.checkSudo(); err != nil {
 		return nil, err
 	}
@@ -102,6 +111,7 @@ func (c *osCmd) Output() ([]byte, error) {
 
 // CombinedOutput runs the command and returns its combined standard output and standard error.
 func (c *osCmd) CombinedOutput() ([]byte, error) {
+	c.attachDefaultStdin()
 	if err := c.checkSudo(); err != nil {
 		return nil, err
 	}

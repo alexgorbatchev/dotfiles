@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/mattn/go-isatty"
 )
 
 func TestOSRunner(t *testing.T) {
@@ -439,3 +440,37 @@ func TestIsStdinTerminalAndCheckSudo(t *testing.T) {
 	SudoPreflightCommand = []string{"true"}
 	_ = cmdWithP.Run()
 }
+
+func TestOSCmd_AttachDefaultStdin(t *testing.T) {
+	runner := NewOSRunner()
+	cmd := runner.Command("echo", "test")
+	osCmdInstance, ok := cmd.(*osCmd)
+	if !ok {
+		t.Fatalf("expected *osCmd instance")
+	}
+
+	// Stdin initially nil
+	if osCmdInstance.cmd.Stdin != nil {
+		t.Errorf("expected initial stdin to be nil, got: %v", osCmdInstance.cmd.Stdin)
+	}
+
+	osCmdInstance.attachDefaultStdin()
+	if isatty.IsTerminal(os.Stdin.Fd()) {
+		if osCmdInstance.cmd.Stdin != os.Stdin {
+			t.Errorf("expected Stdin to be attached to os.Stdin when terminal is active")
+		}
+	} else {
+		if osCmdInstance.cmd.Stdin != nil {
+			t.Errorf("expected Stdin to remain nil when not a terminal")
+		}
+	}
+
+	// When explicitly set, attachDefaultStdin should not override it
+	var customBuf bytes.Buffer
+	cmd.SetStdin(&customBuf)
+	osCmdInstance.attachDefaultStdin()
+	if cmd.Stdin() != &customBuf {
+		t.Errorf("expected custom stdin to be preserved")
+	}
+}
+

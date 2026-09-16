@@ -92,6 +92,8 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		}
 	}
 
+	failedAutoInstalls := make(map[string]bool)
+
 	for _, tool := range sorted {
 		if tool.Disabled {
 			continue
@@ -102,6 +104,30 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		}
 
 		if autoInstallTools[tool.Name] {
+			// Check if any required dependency failed auto-installation
+			hasFailedDep := false
+			var failedDepName string
+			for _, dep := range tool.Dependencies {
+				providerName := dep
+				if p, ok := binaryProviders[dep]; ok {
+					providerName = p
+				}
+				if failedAutoInstalls[providerName] {
+					hasFailedDep = true
+					failedDepName = providerName
+					break
+				}
+			}
+
+			if hasFailedDep {
+				failedAutoInstalls[tool.Name] = true
+				o.logger.GetSubLogger("", tool.Name).Error(logger.Message(fmt.Sprintf("Auto-install failed: dependency %q failed to install", failedDepName)))
+				if err := o.GenerateTool(ctx, tool, projCfg); err != nil {
+					return fmt.Errorf("generating tool %q: %w", tool.Name, err)
+				}
+				continue
+			}
+
 			skip, err := o.shouldSkipInstallation(ctx, tool, projCfg)
 			if err != nil {
 				return err
@@ -109,7 +135,11 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 			if !skip {
 				o.logger.GetSubLogger("", tool.Name).Info(logger.Message("Installing..."))
 				if err := o.InstallTool(ctx, tool, projCfg); err != nil {
-					o.logger.GetSubLogger("", tool.Name).Error(logger.Message("Auto-install failed"))
+					failedAutoInstalls[tool.Name] = true
+					o.logger.GetSubLogger("", tool.Name).Error(logger.Message(fmt.Sprintf("Auto-install failed: %v", err)))
+					if genErr := o.GenerateTool(ctx, tool, projCfg); genErr != nil {
+						return fmt.Errorf("generating tool %q fallback: %w", tool.Name, genErr)
+					}
 				}
 			} else {
 				if err := o.GenerateTool(ctx, tool, projCfg); err != nil {

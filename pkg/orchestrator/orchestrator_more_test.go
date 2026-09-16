@@ -2041,3 +2041,86 @@ func TestGenerateTools_PropagateAutoInstallToDependencies(t *testing.T) {
 	_ = installedOrder
 }
 
+func TestGenerateTools_DependencyAutoInstallFailureCascade(t *testing.T) {
+	ctx := context.Background()
+	log := logger.New(logger.Config{Name: "test-cascade-autoinstall", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+	defer database.Close()
+	reg := registry.NewRegistry(database)
+
+	instReg := installer.NewRegistry()
+	instFail := &mockInstaller{
+		name:     "failing-installer",
+		binaries: []string{"tool-a-bin"},
+		err:      fmt.Errorf("simulated network failure"),
+	}
+	_ = instReg.Register(instFail)
+
+	instToolB := &mockInstaller{
+		name:     "tool-b-installer",
+		binaries: []string{"tool-b-bin"},
+	}
+	runner.RegisterFunc("bash", func(c *exec.MockCmd) error {
+		return nil
+	})
+	_ = instReg.Register(instToolB)
+
+	orch := NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/test",
+			DotfilesDir:     "/home/test/dotfiles",
+			TargetDir:       "/home/test/.bin",
+			BinariesDir:     "/home/test/.binaries",
+			GeneratedDir:    "/home/test/.generated",
+			ShellScriptsDir: "/home/test/.generated/shell-scripts",
+		},
+	}
+
+	toolA := &config.ToolConfig{
+		Name:               "tool-a",
+		InstallationMethod: "failing-installer",
+		Binaries:           []interface{}{"tool-a-bin"},
+	}
+
+	toolB := &config.ToolConfig{
+		Name:               "tool-b",
+		InstallationMethod: "tool-b-installer",
+		Binaries:           []interface{}{"tool-b-bin"},
+		Dependencies:       []string{"tool-a-bin"},
+		InstallParams: map[string]interface{}{
+			"auto": true,
+		},
+	}
+
+	tools := []*config.ToolConfig{toolB, toolA}
+
+	err = orch.GenerateTools(ctx, tools, projCfg)
+	if err != nil {
+		t.Fatalf("GenerateTools should not return error on auto-install failures: %v", err)
+	}
+
+	// Tool B should not have attempted installation since Tool A failed
+	if instToolB.installCount > 0 {
+		t.Errorf("expected tool-b installation to be skipped due to tool-a failure, but Install() was called %d times", instToolB.installCount)
+	}
+
+	// Fallback shims for both tool-a and tool-b should still be generated
+	shimAExists, _ := memFS.Exists("/home/test/.bin/tool-a-bin")
+	if !shimAExists {
+		t.Errorf("expected fallback shim for tool-a-bin to exist")
+	}
+
+	shimBExists, _ := memFS.Exists("/home/test/.bin/tool-b-bin")
+	if !shimBExists {
+		t.Errorf("expected fallback shim for tool-b-bin to exist")
+	}
+}
+
+
