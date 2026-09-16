@@ -2132,11 +2132,10 @@ func TestGenerateTools_DependencyAutoInstallFailureCascade(t *testing.T) {
 }
 
 type cacheSpyInstaller struct {
-	name            string
-	cacheDir        string
-	cacheTTL        time.Duration
-	cacheEnabled    bool
-	capturedStaging string
+	name         string
+	cacheDir     string
+	cacheTTL     time.Duration
+	cacheEnabled bool
 }
 
 func (c *cacheSpyInstaller) Name() string { return c.name }

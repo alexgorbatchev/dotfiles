@@ -149,7 +149,8 @@ func (t *TrackedFileSystem) WriteFile(path string, data []byte, perm os.FileMode
 	return t.recordOperation("writeFile", path, nil, &sizeBytes, &permVal)
 }
 
-func (t *TrackedFileSystem) homeDir() string {
+// HomeDir returns the home directory path associated with the underlying filesystem, or from the OS.
+func (t *TrackedFileSystem) HomeDir() string {
 	type homeDirProvider interface {
 		HomeDir() string
 	}
@@ -164,7 +165,7 @@ func (t *TrackedFileSystem) homeDir() string {
 }
 
 func (t *TrackedFileSystem) ContractHomePath(path string) string {
-	return utils.ContractHomePath(t.homeDir(), path)
+	return utils.ContractHomePath(t.HomeDir(), path)
 }
 
 func (t *TrackedFileSystem) compareContentChunked(path string, data []byte) (bool, error) {
