@@ -138,7 +138,9 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	if !isExternal {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
-			_ = removeAll(activeFSWithTx, stagingDir)
+			if err := removeAll(activeFSWithTx, stagingDir); err != nil {
+				return fmt.Errorf("cleaning stale staging directory: %w", err)
+			}
 			return activeFSWithTx.MkdirAll(stagingDir, 0755)
 		})
 		if err != nil {

@@ -70,15 +70,7 @@ func (p *PkgInstaller) SetLogger(log *logger.Logger) {
 }
 
 func (p *PkgInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
-	if p.dl != nil {
-		if cacheDir != "" {
-			p.dl.CacheDir = cacheDir
-		}
-		if ttl > 0 {
-			p.dl.CacheTTL = ttl
-		}
-		p.dl.CacheEnabled = enabled
-	}
+	ApplyDownloadCacheSettings(p.dl, cacheDir, ttl, enabled)
 }
 
 func (p *PkgInstaller) SupportsSudo() bool {

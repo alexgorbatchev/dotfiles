@@ -57,16 +57,7 @@ func (c *CurlBinaryInstaller) SetLogger(log *logger.Logger) {
 }
 
 func (c *CurlBinaryInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
-	if c.dl != nil {
-		if cacheDir != "" {
-			c.dl.CacheDir = cacheDir
-		}
-		if ttl > 0 {
-			c.dl.CacheTTL = ttl
-		}
-		gEnabled := enabled
-		c.dl.CacheEnabled = gEnabled
-	}
+	ApplyDownloadCacheSettings(c.dl, cacheDir, ttl, enabled)
 }
 
 func (c *CurlBinaryInstaller) SupportsSudo() bool {

@@ -157,15 +157,7 @@ func (g *GiteaInstaller) SetLogger(log *logger.Logger) {
 }
 
 func (g *GiteaInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
-	if g.dl != nil {
-		if cacheDir != "" {
-			g.dl.CacheDir = cacheDir
-		}
-		if ttl > 0 {
-			g.dl.CacheTTL = ttl
-		}
-		g.dl.CacheEnabled = enabled
-	}
+	ApplyDownloadCacheSettings(g.dl, cacheDir, ttl, enabled)
 }
 
 func (g *GiteaInstaller) SupportsSudo() bool {

@@ -70,15 +70,7 @@ func (c *CargoInstaller) SetLogger(log *logger.Logger) {
 }
 
 func (c *CargoInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
-	if c.dl != nil {
-		if cacheDir != "" {
-			c.dl.CacheDir = cacheDir
-		}
-		if ttl > 0 {
-			c.dl.CacheTTL = ttl
-		}
-		c.dl.CacheEnabled = enabled
-	}
+	ApplyDownloadCacheSettings(c.dl, cacheDir, ttl, enabled)
 }
 
 func (c *CargoInstaller) SupportsSudo() bool {

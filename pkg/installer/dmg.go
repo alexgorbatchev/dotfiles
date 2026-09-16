@@ -70,15 +70,7 @@ func (d *DmgInstaller) SetLogger(log *logger.Logger) {
 }
 
 func (d *DmgInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
-	if d.dl != nil {
-		if cacheDir != "" {
-			d.dl.CacheDir = cacheDir
-		}
-		if ttl > 0 {
-			d.dl.CacheTTL = ttl
-		}
-		d.dl.CacheEnabled = enabled
-	}
+	ApplyDownloadCacheSettings(d.dl, cacheDir, ttl, enabled)
 }
 
 func (d *DmgInstaller) SupportsSudo() bool {

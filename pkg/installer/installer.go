@@ -12,6 +12,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -413,6 +414,20 @@ func SetDownloadCache(inst Installer, cacheDir string, ttl time.Duration, enable
 	if s, ok := inst.(DownloadCacheSetter); ok {
 		s.SetDownloadCache(cacheDir, ttl, enabled)
 	}
+}
+
+// ApplyDownloadCacheSettings updates downloader configuration with the provided cache directory, TTL, and enabled flag.
+func ApplyDownloadCacheSettings(dl *downloader.Downloader, cacheDir string, ttl time.Duration, enabled bool) {
+	if dl == nil {
+		return
+	}
+	if cacheDir != "" {
+		dl.CacheDir = cacheDir
+	}
+	if ttl > 0 {
+		dl.CacheTTL = ttl
+	}
+	dl.CacheEnabled = enabled
 }
 
 // ValidateSudo checks if a tool requires sudo elevation and verifies whether the installer supports it.
