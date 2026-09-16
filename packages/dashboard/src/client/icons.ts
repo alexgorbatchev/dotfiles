@@ -1,5 +1,6 @@
 export { default as BookOpen } from "lucide-preact/dist/esm/icons/book-open.js";
 export { default as Box } from "lucide-preact/dist/esm/icons/box.js";
+export { default as Check } from "lucide-preact/dist/esm/icons/check.js";
 export { default as ChevronDown } from "lucide-preact/dist/esm/icons/chevron-down.js";
 export { default as ChevronRight } from "lucide-preact/dist/esm/icons/chevron-right.js";
 export { default as ArrowUpCircle } from "lucide-preact/dist/esm/icons/circle-arrow-up.js";

@@ -1,6 +1,6 @@
 import { type JSX } from "preact";
 import { useCallback, useMemo, useState } from "preact/hooks";
-import { ArrowUpCircle, Download, File, History, Info, Layers, RefreshCw, Search, Zap } from "../icons";
+import { ArrowUpCircle, Download, File, History, Info, Layers, RefreshCw, Search, Zap, Copy, Check } from "../icons";
 
 import type {
   ICheckUpdateResponse,
@@ -26,6 +26,7 @@ import { useRepeatedQueryParam } from "../hooks/useRepeatedQueryParam";
 import { useSectionHash } from "../hooks/useSectionHash";
 import { formatBytes } from "../utils/format";
 import { buildTreeForTool } from "../utils/tree";
+import { formatError } from "../utils/formatError";
 import {
   buildBinaryToToolMap,
   findDependentTools,
@@ -151,6 +152,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   const [installing, setInstalling] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
   const [installSuccess, setInstallSuccess] = useState<string | null>(null);
+  const [copiedCommand, setCopiedCommand] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [checkUpdateResult, setCheckUpdateResult] = useState<ICheckUpdateResponse | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -192,6 +194,13 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   }, [readmeRepo, tool]);
 
   useSectionHash(sectionIds, !loading && tool !== null);
+
+  const handleCopyCommand = useCallback((command: string) => {
+    navigator.clipboard.writeText(command).then(() => {
+      setCopiedCommand(true);
+      setTimeout(() => setCopiedCommand(false), 2000);
+    });
+  }, []);
 
   const handleInstall = useCallback(
     async (force: boolean) => {
@@ -285,6 +294,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   }
 
   const fileRoots = buildTreeForTool(tool.files || []);
+  const { message: installErrorMessage, command: installTrustCommand } = formatError(installError ?? "");
 
   return (
     <div data-testid="ToolDetail" class="space-y-4">
@@ -335,8 +345,23 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
         </div>
 
         {installError && (
-          <div class="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded-md text-sm">
-            {installError}
+          <div class="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md text-sm space-y-2">
+            <div>{installErrorMessage}</div>
+            {installTrustCommand && (
+              <div class="space-y-2">
+                <div class="text-xs text-destructive/80">Run this command to trust the tap:</div>
+                <div class="flex items-center gap-2 bg-destructive/20 px-3 py-2 rounded font-mono text-xs break-all">
+                  <span class="flex-1">{installTrustCommand}</span>
+                  <button
+                    onClick={() => handleCopyCommand(installTrustCommand)}
+                    class="flex-shrink-0 p-1 hover:bg-destructive/30 rounded transition-colors"
+                    title="Copy command"
+                  >
+                    {copiedCommand ? <Check class="h-4 w-4" /> : <Copy class="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
         {installSuccess && (
