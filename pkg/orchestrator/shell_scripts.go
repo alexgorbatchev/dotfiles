@@ -113,6 +113,9 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					if !filepath.IsAbs(resolvedPath) && tool.ConfigFilePath != "" {
 						resolvedPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), resolvedPath)
 					}
+					if abs, err := o.fs.Abs(resolvedPath); err == nil {
+						resolvedPath = abs
+					}
 					cleanPath := filepath.Clean(resolvedPath)
 
 					if !seenPaths[cleanPath] {
@@ -313,11 +316,18 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					// SourceFiles
 					for _, relPath := range stc.SourceFiles {
 						var resolvedPath string
-						if filepath.IsAbs(relPath) {
-							resolvedPath = relPath
+						if utils.IsAbsOrHome(relPath) {
+							if abs, err := o.fs.Abs(relPath); err == nil {
+								resolvedPath = abs
+							} else {
+								resolvedPath = relPath
+							}
 						} else {
 							toolConfigDir := filepath.Dir(tool.ConfigFilePath)
 							resolvedPath = filepath.Join(toolConfigDir, relPath)
+							if abs, err := o.fs.Abs(resolvedPath); err == nil {
+								resolvedPath = abs
+							}
 						}
 						resolvedPath = filepath.ToSlash(resolvedPath)
 

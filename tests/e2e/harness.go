@@ -52,7 +52,7 @@ func cleanTestTmp() {
 					if name == "sandbox" {
 						continue
 					}
-					if strings.HasPrefix(name, "Test") || strings.HasPrefix(name, "go-build") || name == "e2e-test" || name == "test-load" || name == "debug-config" {
+					if strings.HasPrefix(name, "Test") || name == "e2e-test" || name == "test-load" || name == "debug-config" {
 						_ = os.RemoveAll(filepath.Join(tmpDir, name))
 					}
 				}

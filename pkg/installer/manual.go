@@ -10,6 +10,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
 type ManualInstaller struct {
@@ -66,6 +67,13 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	}
 
 	if binaryPath != "" {
+		if !utils.IsAbsOrHome(binaryPath) && tool.ConfigFilePath != "" {
+			binaryPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), binaryPath)
+		}
+		if abs, err := m.fsys.Abs(binaryPath); err == nil {
+			binaryPath = abs
+		}
+
 		exists, err := m.fsys.Exists(binaryPath)
 		if err != nil || !exists {
 			return nil, fmt.Errorf("binary not found at %s", binaryPath)

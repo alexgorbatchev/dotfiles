@@ -42,6 +42,9 @@ func NewOrchestrator(log *logger.Logger, fsys fs.FS, runner exec.CommandRunner, 
 	} else {
 		log = log.WithName("Orchestrator")
 	}
+	if instReg == nil {
+		instReg = installer.DefaultRegistry()
+	}
 	return &Orchestrator{
 		logger:       log,
 		fs:           fsys,

@@ -197,8 +197,24 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 		if tool.InstallationMethod == "manual" {
 			if manualPath := getStringParam(tool.InstallParams, "binaryPath", ""); manualPath != "" {
-				if filepath.IsAbs(manualPath) {
-					binaryPath = manualPath
+				if projCfg != nil {
+					if resolved, err := config.ResolvePlaceholders(manualPath, tool.Name, projCfg); err == nil {
+						manualPath = resolved
+					}
+				}
+				if utils.IsAbsOrHome(manualPath) {
+					if abs, err := o.fs.Abs(manualPath); err == nil {
+						binaryPath = abs
+					} else {
+						binaryPath = manualPath
+					}
+				} else if tool.ConfigFilePath != "" {
+					relPath := filepath.Join(filepath.Dir(tool.ConfigFilePath), manualPath)
+					if abs, err := o.fs.Abs(relPath); err == nil {
+						binaryPath = abs
+					} else {
+						binaryPath = relPath
+					}
 				} else {
 					binaryPath = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", manualPath)
 				}
@@ -268,7 +284,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	symEvaluator := o.getSymlinkEvaluator()
 	for _, sym := range tool.Symlinks {
 		src := sym.Source
-		if !filepath.IsAbs(src) && tool.ConfigFilePath != "" {
+		if !utils.IsAbsOrHome(src) && tool.ConfigFilePath != "" {
 			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
 		}
 		wasCreated, err := symEvaluator.CreateSymlink(src, sym.Target, symlink.Options{Overwrite: true})
@@ -571,7 +587,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 			switch comp := stc.Completions.(type) {
 			case string:
 				var srcPath string
-				if filepath.IsAbs(comp) {
+				if utils.IsAbsOrHome(comp) {
 					srcPath = comp
 				} else {
 					srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), comp)
@@ -642,7 +658,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 					}
 				} else if srcVal, ok := comp["source"].(string); ok && srcVal != "" {
 					var srcPath string
-					if filepath.IsAbs(srcVal) {
+					if utils.IsAbsOrHome(srcVal) {
 						srcPath = srcVal
 					} else {
 						srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), srcVal)

@@ -259,9 +259,16 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		var binName string
 		var binaryPath string
 
-		if filepath.IsAbs(binItem) && installer.IsRealBinaryPath(ctx, o.fs, binItem) {
-			binName = filepath.Base(binItem)
-			binaryPath = binItem
+		absBinItem := binItem
+		if utils.IsAbsOrHome(binItem) {
+			if abs, err := o.fs.Abs(binItem); err == nil {
+				absBinItem = abs
+			}
+		}
+
+		if filepath.IsAbs(absBinItem) && installer.IsRealBinaryPath(ctx, o.fs, absBinItem) {
+			binName = filepath.Base(absBinItem)
+			binaryPath = absBinItem
 		} else {
 			binName = filepath.Base(binItem)
 			binaryPath = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
@@ -274,8 +281,24 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 		if tool.InstallationMethod == "manual" {
 			if manualPath := getStringParam(tool.InstallParams, "binaryPath", ""); manualPath != "" {
-				if filepath.IsAbs(manualPath) {
-					binaryPath = manualPath
+				if projCfg != nil {
+					if resolved, err := config.ResolvePlaceholders(manualPath, tool.Name, projCfg); err == nil {
+						manualPath = resolved
+					}
+				}
+				if utils.IsAbsOrHome(manualPath) {
+					if abs, err := o.fs.Abs(manualPath); err == nil {
+						binaryPath = abs
+					} else {
+						binaryPath = manualPath
+					}
+				} else if tool.ConfigFilePath != "" {
+					relPath := filepath.Join(filepath.Dir(tool.ConfigFilePath), manualPath)
+					if abs, err := o.fs.Abs(relPath); err == nil {
+						binaryPath = abs
+					} else {
+						binaryPath = relPath
+					}
 				} else {
 					binaryPath = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", manualPath)
 				}
@@ -330,7 +353,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	symEvaluator := o.getSymlinkEvaluator()
 	for _, sym := range tool.Symlinks {
 		src := sym.Source
-		if !filepath.IsAbs(src) && tool.ConfigFilePath != "" {
+		if !utils.IsAbsOrHome(src) && tool.ConfigFilePath != "" {
 			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
 		}
 		wasCreated, err := symEvaluator.CreateSymlink(src, sym.Target, symlink.Options{Overwrite: true})

@@ -426,7 +426,7 @@ func TestCandidateFallbackSearch(t *testing.T) {
 	"toolConfigs": {}
 }`
 			if strings.HasSuffix(candName, ".ts") || strings.HasSuffix(candName, ".js") {
-				content = `export default { projectConfig: { paths: { homeDir: "/tmp/h", targetDir: "/tmp/t", generatedDir: "/tmp/g" } }, toolConfigs: {} };`
+				content = `export default { paths: { homeDir: "/tmp/h", targetDir: "/tmp/t", generatedDir: "/tmp/g" } };`
 			}
 			_ = os.WriteFile(filePath, []byte(content), 0644)
 

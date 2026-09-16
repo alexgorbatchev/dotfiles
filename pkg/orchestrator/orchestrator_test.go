@@ -1638,6 +1638,85 @@ func TestManualToolWithoutBinaryPath_Logging(t *testing.T) {
 	}
 }
 
+func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Name: "test-manual-tilde", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	rfs := fs.NewResolvedFS(fs.NewMemFS(), "/home/user")
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	instReg := installer.NewRegistry()
+	manualInst := installer.NewManualInstaller(runner, rfs, nil)
+	manualInst.BinDir = "/home/user/.generated/binaries/claude-code/current"
+	instReg.Register(manualInst)
+
+	orch := NewOrchestrator(log, rfs, runner, reg, instReg)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			GeneratedDir:    "/home/user/.generated",
+		},
+	}
+
+	_ = rfs.MkdirAll("/home/user/.local/bin", 0755)
+	_ = rfs.WriteFile("/home/user/.local/bin/claude", []byte("#!/bin/sh\necho claude"), 0755)
+
+	toolClaude := &config.ToolConfig{
+		Name:               "claude-code",
+		Binaries:           []interface{}{"claude"},
+		ConfigFilePath:     "/home/user/dotfiles/tools/claude.tool.ts",
+		InstallationMethod: "manual",
+		InstallParams: map[string]interface{}{
+			"binaryPath": "~/.local/bin/claude",
+			"symlink":    true,
+		},
+	}
+
+	err = orch.GenerateTool(ctx, toolClaude, projCfg)
+	if err != nil {
+		t.Fatalf("GenerateTool failed: %v", err)
+	}
+
+	shimContent, err := rfs.ReadFile("/home/user/bin/claude")
+	if err != nil {
+		t.Fatalf("expected shim to exist: %v", err)
+	}
+
+	// TOOL_EXECUTABLE in shim should NOT contain /current/~/.local/bin/claude
+	if strings.Contains(string(shimContent), "/current/~/.local/bin/claude") {
+		t.Errorf("shim contains unexpanded tilde path: %s", string(shimContent))
+	}
+	if !strings.Contains(string(shimContent), "TOOL_EXECUTABLE=\"/home/user/.local/bin/claude\"") {
+		t.Errorf("expected TOOL_EXECUTABLE to be /home/user/.local/bin/claude, got: %s", string(shimContent))
+	}
+
+	// Now run InstallTool
+	err = orch.InstallTool(ctx, toolClaude, projCfg)
+	if err != nil {
+		t.Fatalf("InstallTool failed: %v", err)
+	}
+
+	// Verify symlink was created under binariesDir
+	destLink := "/home/user/.generated/binaries/claude-code/current/claude"
+	linkTarget, err := rfs.Readlink(destLink)
+	if err != nil {
+		t.Fatalf("expected binary symlink at %s: %v", destLink, err)
+	}
+	if linkTarget != "/home/user/.local/bin/claude" {
+		t.Errorf("expected symlink target /home/user/.local/bin/claude, got %s", linkTarget)
+	}
+}
+
 
 
 

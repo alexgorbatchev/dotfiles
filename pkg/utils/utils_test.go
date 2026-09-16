@@ -168,6 +168,34 @@ func TestContractHomePath(t *testing.T) {
 	}
 }
 
+func TestIsAbsOrHome(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		want bool
+	}{
+		{"empty", "", false},
+		{"relative simple", "foo/bar", false},
+		{"relative dot slash", "./foo/bar", false},
+		{"relative parent", "../foo/bar", false},
+		{"absolute posix", "/usr/local/bin", true},
+		{"tilde root", "~", true},
+		{"tilde subpath", "~/.local/bin/claude", true},
+		{"tilde windows slash", "~\\.local\\bin", true},
+		{"dollar home", "$HOME", true},
+		{"dollar home subpath", "$HOME/.local/bin", true},
+		{"braced dollar home", "${HOME}", true},
+		{"braced dollar home subpath", "${HOME}/.local/bin", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsAbsOrHome(tt.path); got != tt.want {
+				t.Errorf("IsAbsOrHome(%q) = %v, want %v", tt.path, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestResolveToolRelativePath(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -176,6 +204,8 @@ func TestResolveToolRelativePath(t *testing.T) {
 		want      string
 	}{
 		{"absolute path", "/etc", "/foo/bar", "/foo/bar"},
+		{"tilde path", "/etc", "~/.local/bin/claude", filepath.Clean("~/.local/bin/claude")},
+		{"dollar home path", "/etc", "$HOME/.config", filepath.Clean("$HOME/.config")},
 		{"relative path", "/etc", "foo/bar", filepath.Clean("/etc/foo/bar")},
 		{"relative path with dot", "/etc", "./foo/bar", filepath.Clean("/etc/foo/bar")},
 	}

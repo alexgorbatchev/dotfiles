@@ -91,6 +91,47 @@ func TestManualInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("Install success with binaryPath containing tilde home path and symlink true", func(t *testing.T) {
+		runner.Clear()
+		homeFS := fs.NewResolvedFS(fs.NewMemFS(), "/home/user")
+		instHome := NewManualInstaller(runner, homeFS, nil)
+		instHome.BinDir = "/home/user/.generated/binaries/claude/current"
+
+		_ = homeFS.MkdirAll("/home/user/.local/bin", 0755)
+		_ = homeFS.WriteFile("/home/user/.local/bin/claude", []byte("claude-payload"), 0755)
+
+		tool := &config.ToolConfig{
+			Name: "claude",
+			InstallParams: map[string]interface{}{
+				"binaryPath": "~/.local/bin/claude",
+				"symlink":    true,
+			},
+		}
+
+		projCfg := &config.ProjectConfig{}
+		projCfg.Paths.HomeDir = "/home/user"
+		projCfg.Paths.BinariesDir = "/home/user/.generated/binaries"
+		ctx := config.WithProjectConfig(context.Background(), projCfg)
+
+		res, err := instHome.Install(ctx, tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(res.Binaries) != 1 || res.Binaries[0] != "claude" {
+			t.Errorf("expected claude, got %v", res.Binaries)
+		}
+
+		destPath := filepath.Join(instHome.BinDir, "claude")
+		target, err := homeFS.Readlink(destPath)
+		if err != nil {
+			t.Fatalf("expected destPath to be a symlink: %v", err)
+		}
+		if target != "/home/user/.local/bin/claude" {
+			t.Errorf("expected symlink target /home/user/.local/bin/claude, got %s", target)
+		}
+	})
+
 	t.Run("Install placeholder without binaryPath", func(t *testing.T) {
 		tool := &config.ToolConfig{
 			Name: "mytool",
