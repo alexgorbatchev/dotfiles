@@ -10,6 +10,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 ## Local conventions
 
 - Check binary existence ONLY in `targetDir` or `binariesDir` before executing completion commands (do NOT check or execute system `PATH` binaries).
+- Always use the injected `fs.FS` (`ResolvedFS`) and `utils.IsAbsOrHome` for resolving user/tool paths (such as `binaryPath`, symlinks, completion sources) instead of raw stdlib `filepath.IsAbs`.
 - Skip missing completion binaries instantly in 0ms without spawning subprocesses or wasting timeouts.
 - Apply strict process-group timeouts (max 3s) for running completion commands (`cmdExec.SetProcessGroup(true)`).
 - Log `INFO [system] DONE` at the end of generation workflows.
