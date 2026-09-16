@@ -8,6 +8,7 @@ import (
 type contextKey string
 
 const (
+	forceKey         contextKey = "DOTFILES_FORCE"
 	overwriteKey     contextKey = "DOTFILES_OVERWRITE"
 	projectConfigKey contextKey = "DOTFILES_PROJECT_CONFIG"
 )
@@ -25,6 +26,21 @@ func GetProjectConfig(ctx context.Context) *ProjectConfig {
 		}
 	}
 	return nil
+}
+
+// WithForce returns a new context with the force flag set.
+func WithForce(ctx context.Context, force bool) context.Context {
+	return context.WithValue(ctx, forceKey, force)
+}
+
+// IsForceEnabled checks if force is enabled in the context or fallback environment variable.
+func IsForceEnabled(ctx context.Context) bool {
+	if ctx != nil {
+		if val, ok := ctx.Value(forceKey).(bool); ok {
+			return val
+		}
+	}
+	return os.Getenv("DOTFILES_FORCE") == "true"
 }
 
 // WithOverwrite returns a new context with the overwrite flag set.

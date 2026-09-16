@@ -32,10 +32,11 @@ export default defineTool((install, ctx) => install().zsh((shell) => shell.alias
 
 ## Parameters
 
-| Parameter    | Type                                             | Required | Description                                        |
-| ------------ | ------------------------------------------------ | -------- | -------------------------------------------------- |
-| `binaryPath` | `string`                                         | No       | Path to binary relative to `.tool.ts` file         |
-| `env`        | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables (static or dynamic function) |
+| Parameter    | Type                                             | Required | Description                                                  |
+| ------------ | ------------------------------------------------ | -------- | ------------------------------------------------------------ |
+| `binaryPath` | `string`                                         | No       | Path to binary relative to `.tool.ts` file, or absolute path |
+| `symlink`    | `boolean`                                        | No       | If `true`, symlinks to `binaryPath` instead of copying files |
+| `env`        | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables (static or dynamic function)           |
 
 ## Examples
 

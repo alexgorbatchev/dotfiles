@@ -72,6 +72,7 @@ When run without arguments, checks all installed tools for updates and installs 
 		}
 		force, _ := cmd.Flags().GetBool("force")
 		if force {
+			ctx = config.WithForce(ctx, true)
 			ctx = config.WithOverwrite(ctx, true)
 		}
 		services, err := BootstrapServices(ctx, cfgFile)

@@ -321,7 +321,7 @@ func (o *Orchestrator) getTargetVersion(tool *config.ToolConfig) string {
 }
 
 func (o *Orchestrator) shouldSkipInstallation(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) (bool, error) {
-	if config.IsOverwriteEnabled(ctx) {
+	if config.IsForceEnabled(ctx) {
 		return false, nil
 	}
 

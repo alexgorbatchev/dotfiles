@@ -20,6 +20,7 @@ var installCmd = &cobra.Command{
 		}
 		force, _ := cmd.Flags().GetBool("force")
 		if force {
+			ctx = config.WithForce(ctx, true)
 			ctx = config.WithOverwrite(ctx, true)
 		}
 		services, err := BootstrapServices(ctx, cfgFile)

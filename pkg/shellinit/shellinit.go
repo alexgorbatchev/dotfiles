@@ -165,15 +165,15 @@ func (inj *Injector) Remove(profilePath string) (bool, error) {
 	return false, nil
 }
 
-// FormatPath returns a conditional block appending the targetDir to PATH.
+// FormatPath returns shell script commands ensuring targetDir is placed at the front of PATH,
+// removing any existing or lower-priority duplicate occurrences across *nix and Windows.
 func FormatPath(shell, targetDir string) string {
 	switch shell {
 	case "powershell":
-		return fmt.Sprintf(`if (";$env:PATH;" -notlike "*;%s;*") { $env:PATH = "%s;$env:PATH" }`, targetDir, targetDir)
-	default: // zsh, bash, etc.
-		return fmt.Sprintf(`if [[ ":$PATH:" != *":%s:"* ]]; then
-  export PATH="%s:$PATH"
-fi`, targetDir, targetDir)
+		return fmt.Sprintf(`$filtered = ($env:PATH -split [IO.Path]::PathSeparator | Where-Object { $_ -and $_ -ne "%s" }) -join [IO.Path]::PathSeparator
+$env:PATH = if ($filtered) { "%s" + [IO.Path]::PathSeparator + $filtered } else { "%s" }`, targetDir, targetDir, targetDir)
+	default: // zsh, bash, sh, etc.
+		return fmt.Sprintf(`export PATH="%s:$PATH"`, targetDir)
 	}
 }
 

@@ -228,11 +228,18 @@ func TestShouldSkipInstallationAndHealth(t *testing.T) {
 		t.Errorf("expected skip=false for version mismatch, got skip=%v, err=%v", skip, err)
 	}
 
-	// 5. Overwrite enabled -> shouldSkip = false
+	// 5. Force enabled -> shouldSkip = false
+	ctxForce := config.WithForce(ctx, true)
+	skip, err = orch.shouldSkipInstallation(ctxForce, tool, projCfg)
+	if err != nil || skip {
+		t.Errorf("expected skip=false when force enabled, got skip=%v, err=%v", skip, err)
+	}
+
+	// 6. Overwrite enabled without force -> shouldSkip = true
 	ctxOverwrite := config.WithOverwrite(ctx, true)
 	skip, err = orch.shouldSkipInstallation(ctxOverwrite, tool, projCfg)
-	if err != nil || skip {
-		t.Errorf("expected skip=false when overwrite enabled, got skip=%v, err=%v", skip, err)
+	if err != nil || !skip {
+		t.Errorf("expected skip=true when overwrite enabled without force, got skip=%v, err=%v", skip, err)
 	}
 }
 

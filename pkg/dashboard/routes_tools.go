@@ -695,6 +695,7 @@ func (s *Server) handleToolInstall(w http.ResponseWriter, r *http.Request, toolN
 
 	ctx := context.Background()
 	if req.Force {
+		ctx = config.WithForce(ctx, true)
 		ctx = config.WithOverwrite(ctx, true)
 	}
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting installation...\n", toolName))

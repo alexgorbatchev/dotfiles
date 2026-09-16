@@ -415,23 +415,20 @@ func TestFormatPath(t *testing.T) {
 			name:      "zsh path append",
 			shell:     "zsh",
 			targetDir: "/home/user/bin",
-			want: `if [[ ":$PATH:" != *":/home/user/bin:"* ]]; then
-  export PATH="/home/user/bin:$PATH"
-fi`,
+			want:      `export PATH="/home/user/bin:$PATH"`,
 		},
 		{
 			name:      "bash path append",
 			shell:     "bash",
 			targetDir: "/home/user/bin",
-			want: `if [[ ":$PATH:" != *":/home/user/bin:"* ]]; then
-  export PATH="/home/user/bin:$PATH"
-fi`,
+			want:      `export PATH="/home/user/bin:$PATH"`,
 		},
 		{
 			name:      "powershell path append",
 			shell:     "powershell",
 			targetDir: "/home/user/bin",
-			want:      `if (";$env:PATH;" -notlike "*;/home/user/bin;*") { $env:PATH = "/home/user/bin;$env:PATH" }`,
+			want: `$filtered = ($env:PATH -split [IO.Path]::PathSeparator | Where-Object { $_ -and $_ -ne "/home/user/bin" }) -join [IO.Path]::PathSeparator
+$env:PATH = if ($filtered) { "/home/user/bin" + [IO.Path]::PathSeparator + $filtered } else { "/home/user/bin" }`,
 		},
 	}
 

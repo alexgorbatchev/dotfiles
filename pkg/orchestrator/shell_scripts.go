@@ -71,7 +71,6 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 			// 3. PATH Modifications Section
 			scriptLines = append(scriptLines, shellinit.GenerateSectionHeader("PATH Modifications"))
-			scriptLines = append(scriptLines, shellinit.FormatPath(sh, projCfg.Paths.TargetDir))
 
 			// Collect and format all tool-defined path modifications
 			var pathEntries []string
@@ -126,6 +125,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 			if len(pathEntries) > 0 {
 				scriptLines = append(scriptLines, strings.Join(pathEntries, "\n"))
 			}
+			scriptLines = append(scriptLines, shellinit.FormatPath(sh, projCfg.Paths.TargetDir))
 			scriptLines = append(scriptLines, "")
 
 			// 4. Environment Variables Section (hoisted)

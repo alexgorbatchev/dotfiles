@@ -71,7 +71,7 @@ Add a directory to the PATH environment variable. Paths are deduplicated during 
 **Why use `.path()` instead of `.env({ PATH: ... })`?**
 
 - Paths are automatically deduplicated across all tools
-- Proper ordering is maintained (prepended to PATH by default)
+- Proper ordering is maintained (prepended to PATH; the dotfiles shim target directory is placed ahead of tool-defined paths)
 - TypeScript prevents using `PATH` in `.env()` with a clear error message
 
 **Note**: Setting `PATH` via `.env({ PATH: '...' })` is prohibited. Use `.path()` instead.
