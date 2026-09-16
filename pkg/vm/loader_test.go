@@ -280,8 +280,8 @@ func TestLoadTypeScriptConfigErrors(t *testing.T) {
 
 	// 5. Evaluate unified bundle with unmarshal error
 	_, err = evaluateUnifiedBundle(log, memFS, "var __loaderResult = 12345;", "/cfg", "/gen", "/bin")
-	if err == nil || !strings.Contains(err.Error(), "unmarshaling loader result") {
-		t.Errorf("expected unmarshaling loader result error, got %v", err)
+	if err == nil || (!strings.Contains(err.Error(), "unmarshaling") && !strings.Contains(err.Error(), "invalid JSON syntax") && !strings.Contains(err.Error(), "invalid configuration")) {
+		t.Errorf("expected unmarshaling or invalid JSON error, got %v", err)
 	}
 }
 
@@ -388,8 +388,8 @@ func TestEvaluateProjectConfigDirectErrors(t *testing.T) {
 
 	// 2. Unmarshal error
 	_, err = evaluateProjectConfig(log, memFS, "module.exports = 12345;", "/cfg")
-	if err == nil || !strings.Contains(err.Error(), "unmarshaling JSON") {
-		t.Errorf("expected unmarshaling error, got %v", err)
+	if err == nil || (!strings.Contains(err.Error(), "unmarshaling") && !strings.Contains(err.Error(), "invalid JSON syntax") && !strings.Contains(err.Error(), "invalid project configuration")) {
+		t.Errorf("expected unmarshaling or invalid JSON error, got %v", err)
 	}
 }
 
@@ -860,8 +860,9 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error due to unknown field under features, got nil")
 		}
-		if !strings.Contains(err.Error(), "unknown field") || !strings.Contains(err.Error(), "features") {
-			t.Errorf("expected error to mention unknown field 'features', got: %v", err)
+		expectedPart := `unknown property "features.features" (valid properties under 'features': catalog, shellInstall)`
+		if !strings.Contains(err.Error(), expectedPart) {
+			t.Errorf("expected error to contain %q, got: %v", expectedPart, err)
 		}
 	})
 
@@ -882,8 +883,9 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error due to top-level unknown field, got nil")
 		}
-		if !strings.Contains(err.Error(), "unknown field") || !strings.Contains(err.Error(), "nonExistentField") {
-			t.Errorf("expected error to mention unknown field 'nonExistentField', got: %v", err)
+		expectedPart := `unknown top-level property "nonExistentField"`
+		if !strings.Contains(err.Error(), expectedPart) {
+			t.Errorf("expected error to contain %q, got: %v", expectedPart, err)
 		}
 	})
 

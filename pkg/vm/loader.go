@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -152,7 +153,8 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 		return nil, nil, fmt.Errorf("generating entry loader content: %w", err)
 	}
 
-	tempEntryPath := filepath.Join(configFileDir, ".dotfiles-loader-entry.ts")
+	tempEntryName := fmt.Sprintf(".dotfiles-loader-entry-%d-%d.ts", os.Getpid(), time.Now().UnixNano())
+	tempEntryPath := filepath.Join(configFileDir, tempEntryName)
 	if err := os.WriteFile(tempEntryPath, []byte(entryFileContent), 0644); err != nil {
 		return nil, nil, fmt.Errorf("writing temporary loader entry: %w", err)
 	}
@@ -333,6 +335,10 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 
 	jsonBytes := []byte(jsonVal.String())
 
+	if err := config.ValidateProjectConfigRawJSON(jsonBytes); err != nil {
+		return nil, err
+	}
+
 	var projCfg config.ProjectConfig
 	dec := json.NewDecoder(bytes.NewReader(jsonBytes))
 	dec.DisallowUnknownFields()
@@ -401,6 +407,10 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	}
 
 	jsonBytes := []byte(jsonVal.String())
+
+	if err := config.ValidateLoaderResultRawJSON(jsonBytes); err != nil {
+		return nil, err
+	}
 
 	var res unifiedLoaderResult
 	dec := json.NewDecoder(bytes.NewReader(jsonBytes))

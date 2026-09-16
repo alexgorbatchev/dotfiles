@@ -111,7 +111,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		var toolMap map[string]*config.ToolConfig
 		projCfg, toolMap, err = vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to dynamically load TypeScript config: %w", err)
+			return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
 		}
 		for _, tc := range toolMap {
 			toolConfigs = append(toolConfigs, tc)
