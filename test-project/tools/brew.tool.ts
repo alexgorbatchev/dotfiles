@@ -5,7 +5,7 @@ export default defineTool((install, _ctx) =>
     install("manual", {
       binaryPath: "/opt/homebrew/bin/brew",
     }).hook("before-install", async ({ $ }: IToolConfigContext) => {
-      await $`NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`;
+      await $`INTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`;
     }),
   ),
 );

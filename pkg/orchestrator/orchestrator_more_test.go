@@ -19,6 +19,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/mattn/go-isatty"
 )
 
 func TestOrchestratorSettersAndHelpers(t *testing.T) {
@@ -1797,6 +1798,12 @@ func TestBuildHookEnvAndRunHooksComprehensive(t *testing.T) {
 	}
 	if envMap["CUSTOM_BASH_ENV"] != "active-bash" {
 		t.Errorf("expected CUSTOM_BASH_ENV=active-bash, got %q", envMap["CUSTOM_BASH_ENV"])
+	}
+
+	if isatty.IsTerminal(os.Stdin.Fd()) && os.Getenv("CI") == "" {
+		if envMap["INTERACTIVE"] != "1" {
+			t.Errorf("expected INTERACTIVE=1 in buildHookEnv when running in interactive terminal")
+		}
 	}
 
 	// Nil safety checks
