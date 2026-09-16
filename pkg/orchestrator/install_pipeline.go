@@ -20,7 +20,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/google/uuid"
-	"github.com/mattn/go-isatty"
 )
 
 // InstallTools executes the installation pipeline for all provided tools sequentially in topological order.
@@ -570,10 +569,6 @@ func (o *Orchestrator) buildHookEnv(tool *config.ToolConfig, projCfg *config.Pro
 	}
 
 	envMap["PATH"] = joinedPath
-
-	if isatty.IsTerminal(os.Stdin.Fd()) && os.Getenv("CI") == "" {
-		envMap["INTERACTIVE"] = "1"
-	}
 
 	if tool != nil && tool.ShellConfigs != nil {
 		if tool.ShellConfigs.Zsh != nil {
