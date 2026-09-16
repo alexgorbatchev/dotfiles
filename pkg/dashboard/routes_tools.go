@@ -139,6 +139,20 @@ func formatToolConfigForDashboard(tc *config.ToolConfig) map[string]any {
 	return res
 }
 
+func calculateDirSize(dir string) int64 {
+	var size int64
+	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size
+}
+
 func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfig) (map[string]any, error) {
 	installRecord, _ := s.registry.GetToolInstallation(ctx, targetTool.Name)
 	files, _ := s.registry.GetFileStatesForTool(ctx, targetTool.Name)
@@ -197,10 +211,9 @@ func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfi
 	}
 
 	var diskSize int64 = 0
-	for _, f := range files {
-		if f.SizeBytes != nil {
-			diskSize += *f.SizeBytes
-		}
+	if status == "installed" && s.projectConfig != nil {
+		toolBinDir := filepath.Join(s.projectConfig.Paths.BinariesDir, targetTool.Name)
+		diskSize = calculateDirSize(toolBinDir)
 	}
 
 	runtimeState := map[string]any{
