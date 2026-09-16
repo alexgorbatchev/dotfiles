@@ -24,6 +24,22 @@ export type BrewFormulaOptional = ExpectTrue<undefined extends FormulaType ? tru
 
 defineTool((install) =>
   install("brew", {
+    formula: "borders",
+    tap: "FelixKratz/formulae",
+    trust: true,
+  }),
+);
+
+defineTool((install) =>
+  install("brew", {
+    formula: "borders",
+    tap: ["FelixKratz/formulae"],
+    trust: "FelixKratz/formulae",
+  }),
+);
+
+defineTool((install) =>
+  install("brew", {
     formula: "ripgrep",
   }).zsh((shell) =>
     shell.once(/* zsh */ `

@@ -258,13 +258,42 @@ export interface IBrewInstallParams {
    */
   formula?: string;
   /**
-   * Homebrew Cask name for macOS GUI/binary packages (e.g. "iterm2").
+   * Homebrew Cask name for macOS GUI/binary packages (e.g. "iterm2"), or `true` if formula is a cask.
    */
-  cask?: string;
+  cask?: boolean | string;
   /**
-   * Optional custom Homebrew tap repository (e.g. "user/repo").
+   * Optional custom Homebrew tap repository or repositories (e.g. "user/repo" or ["user/repo1", "user/repo2"]).
    */
-  tap?: string;
+  tap?: string | string[];
+  /**
+   * Explicitly trust Homebrew tap(s) or formula(s) before tapping/installing (`brew trust <target>`).
+   * When set to `true`, automatically trusts all configured `tap` repositories. Defaults to `false`.
+   */
+  trust?: boolean | string | string[];
+  /**
+   * Additional CLI flags passed directly to `brew install` (e.g. `['--HEAD']`, `['--build-from-source']`).
+   */
+  args?: string[];
+  /**
+   * Force overwrite existing installations (`--force`).
+   */
+  force?: boolean;
+  /**
+   * Link formula into Homebrew prefix (`--force` or `--overwrite`).
+   */
+  link?: boolean | { overwrite?: boolean; force?: boolean };
+  /**
+   * Background service management action (`true`, `'start'`, `'stop'`, `'restart'`, etc.).
+   */
+  service?: boolean | string;
+  /**
+   * Arguments passed to the binary to detect its version (e.g. `['--version']`).
+   */
+  versionArgs?: string[];
+  /**
+   * Regular expression pattern used to extract the version from command output.
+   */
+  versionRegex?: string | RegExp;
 }
 
 /**

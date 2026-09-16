@@ -172,6 +172,101 @@ func TestBrewInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("Install success with boolean trust: true", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("brew", []byte(`[{"name":"borders","versions":{"stable":"1.0"}}]`), nil)
+
+		tool := &config.ToolConfig{
+			Name: "borders",
+			InstallParams: map[string]interface{}{
+				"formula": "borders",
+				"tap":     "FelixKratz/formulae",
+				"trust":   true,
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res == nil {
+			t.Fatal("expected non-nil result")
+		}
+
+		hasTrust := false
+		for _, cmd := range runner.History {
+			if len(cmd.Args) > 1 && cmd.Args[0] == "trust" && cmd.Args[1] == "FelixKratz/formulae" {
+				hasTrust = true
+			}
+		}
+
+		if !hasTrust {
+			t.Error("expected brew trust FelixKratz/formulae to be called when trust: true")
+		}
+	})
+
+	t.Run("Install success with boolean trust: true and multiple taps", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("brew", []byte(`[{"name":"borders","versions":{"stable":"1.0"}}]`), nil)
+
+		tool := &config.ToolConfig{
+			Name: "borders",
+			InstallParams: map[string]interface{}{
+				"formula": "borders",
+				"tap":     []interface{}{"tap1/formulae", "tap2/formulae"},
+				"trust":   true,
+			},
+		}
+
+		inst.SetFS(fsys)
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res == nil {
+			t.Fatal("expected non-nil result")
+		}
+
+		trustedTaps := map[string]bool{}
+		for _, cmd := range runner.History {
+			if len(cmd.Args) > 1 && cmd.Args[0] == "trust" {
+				trustedTaps[cmd.Args[1]] = true
+			}
+		}
+
+		if !trustedTaps["tap1/formulae"] || !trustedTaps["tap2/formulae"] {
+			t.Errorf("expected both taps to be trusted, got %v", trustedTaps)
+		}
+	})
+
+	t.Run("Install with boolean trust: false (default)", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("brew", []byte(`[{"name":"borders","versions":{"stable":"1.0"}}]`), nil)
+
+		tool := &config.ToolConfig{
+			Name: "borders",
+			InstallParams: map[string]interface{}{
+				"formula": "borders",
+				"tap":     "FelixKratz/formulae",
+				"trust":   false,
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res == nil {
+			t.Fatal("expected non-nil result")
+		}
+
+		for _, cmd := range runner.History {
+			if len(cmd.Args) > 0 && cmd.Args[0] == "trust" {
+				t.Errorf("expected no brew trust command when trust: false, got: %v", cmd.Args)
+			}
+		}
+	})
+
 	t.Run("Install success with boolean service parameter", func(t *testing.T) {
 		runner.Clear()
 		runner.Register("brew", []byte(`[{"name":"redis","versions":{"stable":"7.0"}}]`), nil)

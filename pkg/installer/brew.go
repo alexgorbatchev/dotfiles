@@ -132,6 +132,9 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	isCask := getBoolParam(tool.InstallParams, "cask", false)
 	trusts := getStringSliceParam(tool.InstallParams, "trust")
 	taps := getStringSliceParam(tool.InstallParams, "tap")
+	if len(trusts) == 0 && getBoolParam(tool.InstallParams, "trust", false) {
+		trusts = taps
+	}
 	customArgs := getStringSliceParam(tool.InstallParams, "args")
 	force := getBoolParam(tool.InstallParams, "force", false)
 
