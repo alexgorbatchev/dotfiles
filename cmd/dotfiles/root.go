@@ -1,11 +1,15 @@
 package main
 
 import (
+	"errors"
 	"io"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/spf13/cobra"
 )
+
+// ErrSilent indicates that an error has already been logged to the user with appropriate context.
+var ErrSilent = errors.New("silent error already logged")
 
 var Version = "2.2.0"
 

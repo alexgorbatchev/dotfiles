@@ -42,11 +42,13 @@ var installCmd = &cobra.Command{
 					return fmt.Errorf("tool %q not found in configuration", toolName)
 				}
 
-				log.GetSubLogger("", targetTool.Name).Info(logger.Message("Installing..."))
+				toolLog := log.GetSubLogger("", targetTool.Name)
+				toolLog.Info(logger.Message("Installing..."))
 
 				err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
 				if err != nil {
-					return err
+					toolLog.Error(logger.Message(err.Error()))
+					return ErrSilent
 				}
 			}
 		} else {

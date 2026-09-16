@@ -680,6 +680,18 @@ func TestPromoteBinaries_NotFound(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected error when binary is not found in destDir")
 	}
+
+	resolvedFS := fs.NewResolvedFS(memFS, "/home/user")
+	_ = resolvedFS.MkdirAll("/home/user/.dotfiles/.generated/binaries/bun/.staging", 0755)
+
+	_, err = PromoteBinaries(resolvedFS, "/home/user/.dotfiles/.generated/binaries/bun/.staging", "bun", nil)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	expectedMsg := `binary "bun" not found in extracted archive under "~/.dotfiles/.generated/binaries/bun/.staging"`
+	if err.Error() != expectedMsg {
+		t.Errorf("expected error %q, got %q", expectedMsg, err.Error())
+	}
 }
 
 func TestResolveBinaryPaths(t *testing.T) {

@@ -504,11 +504,28 @@ func PromoteBinaries(fsys fs.FS, destDir string, toolName string, toolBinaries [
 			}
 			_ = fsys.Chmod(targetPath, 0755)
 		} else {
-			return nil, fmt.Errorf("binary %q not found in extracted archive under %q", binName, destDir)
+			displayDir := formatDisplayPath(fsys, destDir)
+			return nil, fmt.Errorf("binary %q not found in extracted archive under %q", binName, displayDir)
 		}
 	}
 
 	return binaryNames, nil
+}
+
+func formatDisplayPath(fsys fs.FS, path string) string {
+	type homeDirProvider interface {
+		HomeDir() string
+	}
+	home := ""
+	if hdp, ok := fsys.(homeDirProvider); ok {
+		home = hdp.HomeDir()
+	}
+	if home == "" {
+		if uHome, err := os.UserHomeDir(); err == nil {
+			home = uHome
+		}
+	}
+	return utils.ContractHomePath(home, path)
 }
 
 func findFileRecursively(fsys fs.FS, dir string, name string) (string, error) {

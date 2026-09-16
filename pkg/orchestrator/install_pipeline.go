@@ -201,7 +201,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 				return nil
 			})
 		}
-		return fmt.Errorf("running installer: %w", err)
+		return err
 	}
 
 	if isExternal && !installer.IsDryRun() {

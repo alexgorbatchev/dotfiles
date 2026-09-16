@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -14,7 +15,9 @@ func runMain() error {
 
 func main() {
 	if err := runMain(); err != nil {
-		GetLogger("", rootCmd.ErrOrStderr()).Error(logger.Message(err.Error()))
+		if !errors.Is(err, ErrSilent) {
+			GetLogger("", rootCmd.ErrOrStderr()).Error(logger.Message(err.Error()))
+		}
 		exitFunc(1)
 	}
 }
