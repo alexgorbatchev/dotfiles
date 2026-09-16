@@ -82,6 +82,20 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 
 		binNames := GetBinaryNames(tool.Name, tool.Binaries)
 
+		symlink := getBoolParam(tool.InstallParams, "symlink", false)
+		if symlink {
+			for _, binName := range binNames {
+				destPath := filepath.Join(destDir, binName)
+				_ = m.fsys.Remove(destPath)
+				if err := m.fsys.Symlink(binaryPath, destPath); err != nil {
+					return nil, fmt.Errorf("creating symlink %s -> %s: %w", destPath, binaryPath, err)
+				}
+			}
+			return &InstallResult{
+				Binaries: binNames,
+			}, nil
+		}
+
 		// Copy the binary file for each expected binary name
 		data, err := m.fsys.ReadFile(binaryPath)
 		if err != nil {

@@ -7,6 +7,11 @@ import (
 	"testing"
 )
 
+func TestMain(m *testing.M) {
+	_ = os.Setenv("AGENT", "0")
+	os.Exit(m.Run())
+}
+
 func TestMainHelp(t *testing.T) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()

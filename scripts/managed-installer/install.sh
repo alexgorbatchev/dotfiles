@@ -188,7 +188,6 @@ EOF
 	fi
 
 	ensure_dotfiles_tool_config
-	ensure_brew_tool_config
 
 	cat >"${CONFIG_PATH}" <<EOF
 import { defineConfig } from "@alexgorbatchev/dotfiles";
@@ -280,8 +279,16 @@ else
 	ensure_dotfiles_tool_config
 fi
 
+run_dotfiles() {
+	if [[ -r /dev/tty ]]; then
+		"${DOTFILES_BIN}" "$@" </dev/tty
+	else
+		"${DOTFILES_BIN}" "$@"
+	fi
+}
+
 log "Installing dotfiles CLI tool into .generated"
-"${DOTFILES_BIN}" --config "${CONFIG_PATH}" install dotfiles
+run_dotfiles --config "${CONFIG_PATH}" install dotfiles
 
 permanent_bin="${INSTALL_DIR}/.generated/binaries/dotfiles/current/dotfiles"
 if [[ -x "${permanent_bin}" ]]; then
@@ -289,7 +296,7 @@ if [[ -x "${permanent_bin}" ]]; then
 fi
 
 log "Generating shims and shell configuration"
-"${DOTFILES_BIN}" --config "${CONFIG_PATH}" generate
+run_dotfiles --config "${CONFIG_PATH}" generate
 
 init_script="${INSTALL_DIR}/dotfiles-init.sh"
 log "Creating $(format_path "${init_script}")"

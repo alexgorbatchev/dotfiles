@@ -118,6 +118,14 @@ export interface IToolConfigContext {
    */
   configFileDir: string;
   /**
+   * Directory containing the tool's configuration file (alias for configFileDir).
+   */
+  toolDir?: string;
+  /**
+   * Active project configuration.
+   */
+  projectConfig?: IProjectConfig;
+  /**
    * System environment information.
    */
   systemInfo: ISystemInfoInternal;
@@ -167,6 +175,10 @@ export interface IManualInstallParams {
    * Absolute or relative path to a pre-existing binary executable on disk.
    */
   binaryPath?: string;
+  /**
+   * If true, creates a symlink to binaryPath instead of copying it.
+   */
+  symlink?: boolean;
 }
 
 /**
@@ -566,6 +578,57 @@ export interface IShellConfigurator<KnownFunctions extends string = never> {
 }
 
 /**
+ * Context provided to lifecycle hook handlers.
+ */
+export interface IHookContext extends IToolConfigContext {
+  /**
+   * Temporary installation directory.
+   */
+  stagingDir: string;
+  /**
+   * Installed tool directory (available in after-install).
+   */
+  installedDir?: string;
+  /**
+   * Directory where archives are extracted.
+   */
+  extractDir?: string;
+  /**
+   * Path to downloaded asset.
+   */
+  downloadPath?: string;
+  /**
+   * Resolved binary paths.
+   */
+  binaryPaths?: string[];
+  /**
+   * Installed tool version.
+   */
+  version?: string;
+  /**
+   * File operations alias for fs.
+   */
+  fileSystem?: IFileSystem;
+  /**
+   * Tool configuration.
+   */
+  toolConfig?: Record<string, unknown>;
+  /**
+   * Helper to replace text in files.
+   */
+  replaceInFile?: (path: string, search: string | RegExp, replace: string) => Promise<void>;
+  /**
+   * Additional properties depending on hook lifecycle phase.
+   */
+  [key: string]: unknown;
+}
+
+/**
+ * Handler function for lifecycle hooks.
+ */
+export type HookHandler = (context: IHookContext) => Promise<unknown> | unknown;
+
+/**
  * Fluent builder interface for configuring a tool installation and environment.
  */
 export interface IToolConfigBuilder {
@@ -639,7 +702,7 @@ export interface IToolConfigBuilder {
   /**
    * Registers custom lifecycle hooks.
    */
-  hook(event: string, handler: unknown): this;
+  hook(event: string, handler: HookHandler): this;
 }
 
 /**
@@ -707,7 +770,7 @@ export interface IPlatformConfigBuilder {
   /**
    * Registers an async hook handler on this platform.
    */
-  hook(event: string, handler: unknown): this;
+  hook(event: string, handler: HookHandler): this;
 }
 
 /**

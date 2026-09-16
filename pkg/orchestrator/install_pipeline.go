@@ -272,6 +272,16 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			}
 		}
 
+		if tool.InstallationMethod == "manual" {
+			if manualPath := getStringParam(tool.InstallParams, "binaryPath", ""); manualPath != "" {
+				if filepath.IsAbs(manualPath) {
+					binaryPath = manualPath
+				} else {
+					binaryPath = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", manualPath)
+				}
+			}
+		}
+
 		shimPath := filepath.Join(shimDir, binName)
 
 		if binaryPath == shimPath || !installer.IsRealBinaryPath(ctx, o.fs, binaryPath) {

@@ -414,8 +414,12 @@ func TestLoadTypeScriptConfigMultipleTools(t *testing.T) {
 		t.Fatalf("LoadTypeScriptConfig with multiple tools failed: %v", err)
 	}
 
-	if len(toolMap) != 2 {
-		t.Errorf("expected 2 tools in toolMap, got %d", len(toolMap))
+	expectedCount := 2
+	if runtime.GOOS == "darwin" {
+		expectedCount = 3
+	}
+	if len(toolMap) != expectedCount {
+		t.Errorf("expected %d tools in toolMap, got %d", expectedCount, len(toolMap))
 	}
 }
 

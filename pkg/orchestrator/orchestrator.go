@@ -399,7 +399,15 @@ func (o *Orchestrator) syncTypeScriptTypes(ctx context.Context, tools []*config.
 			relTarget = rel
 		}
 
-		if exists, _ := o.fs.Exists(projPkgDir); !exists {
+		needsSymlink := true
+		if fi, err := o.fs.Lstat(projPkgDir); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+			if target, err := o.fs.Readlink(projPkgDir); err == nil && target == relTarget {
+				needsSymlink = false
+			}
+		}
+
+		if needsSymlink {
+			_ = removeAll(o.fs, projPkgDir)
 			if err := o.fs.Symlink(relTarget, projPkgDir); err != nil {
 				_ = o.fs.MkdirAll(projPkgDir, 0755)
 				if entries, err := iofs.ReadDir(embedded.TypesFS, "dist"); err == nil {

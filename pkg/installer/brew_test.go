@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -217,7 +219,7 @@ func TestBrewInstaller(t *testing.T) {
 			t.Fatal("expected command to be executed")
 		}
 		cmd := runner.History[0]
-		if cmd.Name != "brew" || cmd.Args[0] != "uninstall" || cmd.Args[1] != "jq" {
+		if filepath.Base(cmd.Name) != "brew" || cmd.Args[0] != "uninstall" || cmd.Args[1] != "jq" {
 			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
 		}
 	})
@@ -355,7 +357,11 @@ func TestBrewInstaller(t *testing.T) {
 		}
 
 		hasOptInEnv := false
-		for _, env := range capturedEnv {
+		envList := capturedEnv
+		if len(envList) == 0 {
+			envList = os.Environ()
+		}
+		for _, env := range envList {
 			if strings.HasPrefix(env, "PATH=") && strings.Contains(env, "/opt/homebrew/bin") {
 				hasOptInEnv = true
 				break

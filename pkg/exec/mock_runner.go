@@ -3,6 +3,7 @@ package exec
 import (
 	"context"
 	"io"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 
@@ -215,6 +216,10 @@ func (r *MockRunner) Command(name string, arg ...string) Cmd {
 		cmd.output = res.Output
 		cmd.err = res.Err
 		cmd.runFunc = res.RunFunc
+	} else if res, exists := r.registry[filepath.Base(name)]; exists {
+		cmd.output = res.Output
+		cmd.err = res.Err
+		cmd.runFunc = res.RunFunc
 	}
 
 	r.History = append(r.History, cmd)
@@ -233,6 +238,10 @@ func (r *MockRunner) CommandContext(ctx context.Context, name string, arg ...str
 	}
 
 	if res, exists := r.registry[name]; exists {
+		cmd.output = res.Output
+		cmd.err = res.Err
+		cmd.runFunc = res.RunFunc
+	} else if res, exists := r.registry[filepath.Base(name)]; exists {
 		cmd.output = res.Output
 		cmd.err = res.Err
 		cmd.runFunc = res.RunFunc

@@ -164,6 +164,7 @@ func (h *TestHarness) RunCommand(args ...string) (stdout, stderr string, exitCod
 	envMap["TERM"] = "dumb"
 	envMap["DOTFILES_REPO_ROOT"] = h.ProjectRoot
 	envMap["DOTFILES_E2E_TEST"] = "true"
+	envMap["AGENT"] = "0"
 
 	// Setup mock server port environment variable if server URL is provided
 	if h.MockServerURL != "" {

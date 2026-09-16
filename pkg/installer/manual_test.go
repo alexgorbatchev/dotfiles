@@ -58,6 +58,39 @@ func TestManualInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("Install success with binaryPath and symlink true", func(t *testing.T) {
+		runner.Clear()
+		srcPath := "/src/symlinked-binary"
+		_ = fsys.MkdirAll("/src", 0755)
+		_ = fsys.WriteFile(srcPath, []byte("symlink-payload"), 0755)
+
+		tool := &config.ToolConfig{
+			Name: "symtool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": srcPath,
+				"symlink":    true,
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(res.Binaries) != 1 || res.Binaries[0] != "symtool" {
+			t.Errorf("expected symtool, got %v", res.Binaries)
+		}
+
+		destPath := filepath.Join(inst.BinDir, "symtool")
+		target, err := fsys.Readlink(destPath)
+		if err != nil {
+			t.Fatalf("expected destPath to be a symlink: %v", err)
+		}
+		if target != srcPath {
+			t.Errorf("expected symlink target %s, got %s", srcPath, target)
+		}
+	})
+
 	t.Run("Install placeholder without binaryPath", func(t *testing.T) {
 		tool := &config.ToolConfig{
 			Name: "mytool",
