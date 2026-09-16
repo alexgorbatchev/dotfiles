@@ -2,6 +2,7 @@ package shellinit
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -32,6 +33,8 @@ type InjectOptions struct {
 }
 
 // Inject adds or updates the dotfiles initialization block in the specified profile.
+// If the profile file does not exist, it creates a new read-only (0444) profile.
+// If the profile file exists, it updates it while preserving its file permissions.
 // Returns (wasUpdated, error).
 func (inj *Injector) Inject(opts InjectOptions) (bool, error) {
 	if opts.ProfilePath == "" {
@@ -47,12 +50,18 @@ func (inj *Injector) Inject(opts InjectOptions) (bool, error) {
 	}
 
 	var content string
+	var perm os.FileMode = 0444
 	if exists {
 		bytes, err := inj.fs.ReadFile(opts.ProfilePath)
 		if err != nil {
 			return false, fmt.Errorf("reading profile path: %w", err)
 		}
 		content = string(bytes)
+
+		perm = 0644
+		if info, statErr := inj.fs.Stat(opts.ProfilePath); statErr == nil && info != nil {
+			perm = info.Mode().Perm()
+		}
 	}
 
 	var sourceLine string
@@ -72,9 +81,15 @@ func (inj *Injector) Inject(opts InjectOptions) (bool, error) {
 				return false, nil
 			}
 			newContent := re.ReplaceAllString(content, newBlock)
-			err = inj.fs.WriteFile(opts.ProfilePath, []byte(newContent), 0644)
+			if (perm & 0222) == 0 {
+				_ = inj.fs.Chmod(opts.ProfilePath, 0644)
+			}
+			err = inj.fs.WriteFile(opts.ProfilePath, []byte(newContent), perm)
 			if err != nil {
 				return false, fmt.Errorf("updating profile with block: %w", err)
+			}
+			if (perm & 0222) == 0 {
+				_ = inj.fs.Chmod(opts.ProfilePath, perm)
 			}
 			return true, nil
 		}
@@ -113,9 +128,17 @@ func (inj *Injector) Inject(opts InjectOptions) (bool, error) {
 		}
 	}
 
-	err = inj.fs.WriteFile(opts.ProfilePath, []byte(sb.String()), 0644)
+	if exists && (perm&0222) == 0 {
+		_ = inj.fs.Chmod(opts.ProfilePath, 0644)
+	}
+
+	err = inj.fs.WriteFile(opts.ProfilePath, []byte(sb.String()), perm)
 	if err != nil {
 		return false, fmt.Errorf("writing updated profile: %w", err)
+	}
+
+	if (perm & 0222) == 0 {
+		_ = inj.fs.Chmod(opts.ProfilePath, perm)
 	}
 
 	return true, nil
@@ -155,10 +178,24 @@ func (inj *Injector) Remove(profilePath string) (bool, error) {
 			newContent += "\n"
 		}
 
-		err = inj.fs.WriteFile(profilePath, []byte(newContent), 0644)
+		perm := os.FileMode(0644)
+		if info, statErr := inj.fs.Stat(profilePath); statErr == nil && info != nil {
+			perm = info.Mode().Perm()
+		}
+
+		if (perm & 0222) == 0 {
+			_ = inj.fs.Chmod(profilePath, 0644)
+		}
+
+		err = inj.fs.WriteFile(profilePath, []byte(newContent), perm)
 		if err != nil {
 			return false, fmt.Errorf("removing block from profile: %w", err)
 		}
+
+		if (perm & 0222) == 0 {
+			_ = inj.fs.Chmod(profilePath, perm)
+		}
+
 		return true, nil
 	}
 

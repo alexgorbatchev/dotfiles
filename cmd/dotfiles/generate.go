@@ -47,48 +47,39 @@ var generateCmd = &cobra.Command{
 			if shellInstall.Zsh != "" {
 				pPath := utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, shellInstall.Zsh)
 				scriptPath := filepath.Join(shellScriptsDir, "main.zsh")
-				exists, err := services.FS.Exists(pPath)
-				if err == nil && exists {
-					_, err = inj.Inject(shellinit.InjectOptions{
-						ProfilePath: pPath,
-						Shell:       "zsh",
-						ScriptPath:  scriptPath,
-					})
-					if err != nil {
-						log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
-					}
+				_, err = inj.Inject(shellinit.InjectOptions{
+					ProfilePath: pPath,
+					Shell:       "zsh",
+					ScriptPath:  scriptPath,
+				})
+				if err != nil {
+					log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
 				}
 			}
 
 			if shellInstall.Bash != "" {
 				pPath := utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, shellInstall.Bash)
 				scriptPath := filepath.Join(shellScriptsDir, "main.bash")
-				exists, err := services.FS.Exists(pPath)
-				if err == nil && exists {
-					_, err = inj.Inject(shellinit.InjectOptions{
-						ProfilePath: pPath,
-						Shell:       "bash",
-						ScriptPath:  scriptPath,
-					})
-					if err != nil {
-						log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
-					}
+				_, err = inj.Inject(shellinit.InjectOptions{
+					ProfilePath: pPath,
+					Shell:       "bash",
+					ScriptPath:  scriptPath,
+				})
+				if err != nil {
+					log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
 				}
 			}
 
 			if shellInstall.Powershell != "" {
 				pPath := utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, shellInstall.Powershell)
 				scriptPath := filepath.Join(shellScriptsDir, "main.ps1")
-				exists, err := services.FS.Exists(pPath)
-				if err == nil && exists {
-					_, err = inj.Inject(shellinit.InjectOptions{
-						ProfilePath: pPath,
-						Shell:       "powershell",
-						ScriptPath:  scriptPath,
-					})
-					if err != nil {
-						log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
-					}
+				_, err = inj.Inject(shellinit.InjectOptions{
+					ProfilePath: pPath,
+					Shell:       "powershell",
+					ScriptPath:  scriptPath,
+				})
+				if err != nil {
+					log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
 				}
 			}
 		}

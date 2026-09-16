@@ -85,6 +85,49 @@ func TestCmdCoverageBoost_Subcommands(t *testing.T) {
 		}
 	})
 
+	t.Run("generateCmd creates new shell profiles as readonly when they do not exist", func(t *testing.T) {
+		t.Setenv("DOTFILES_E2E_TEST", "true")
+		emptyHome := filepath.Join(tmpDir, "empty-home")
+		cfgPath := filepath.Join(tmpDir, "shellinstall-empty.json")
+		newCfgContent := `{
+	"projectConfig": {
+		"paths": {
+			"homeDir": "` + emptyHome + `",
+			"targetDir": "` + filepath.Join(tmpDir, "target") + `",
+			"generatedDir": "` + filepath.Join(tmpDir, "generated") + `"
+		},
+		"features": {
+			"shellInstall": {
+				"zsh": "~/.zshrc",
+				"bash": "~/.bashrc",
+				"powershell": "~/.config/powershell/profile.ps1"
+			}
+		}
+	},
+	"toolConfigs": {}
+}`
+		_ = os.WriteFile(cfgPath, []byte(newCfgContent), 0644)
+
+		out, err := executeCommand("-c", cfgPath, "generate")
+		if err != nil {
+			t.Fatalf("generate command failed: %v, out: %s", err, out)
+		}
+
+		zshPath := filepath.Join(emptyHome, ".zshrc")
+		bashPath := filepath.Join(emptyHome, ".bashrc")
+		pwshPath := filepath.Join(emptyHome, ".config", "powershell", "profile.ps1")
+
+		for _, p := range []string{zshPath, bashPath, pwshPath} {
+			info, err := os.Stat(p)
+			if err != nil {
+				t.Fatalf("expected profile file %s to be created on disk, got err: %v", p, err)
+			}
+			if info.Mode().Perm() != 0444 {
+				t.Errorf("expected profile file %s to have permissions 0444, got %#o", p, info.Mode().Perm())
+			}
+		}
+	})
+
 	// 3. logCmd and filesCmd coverage with populated registry
 	t.Run("logCmd and filesCmd with installed tool in registry", func(t *testing.T) {
 		installPath := filepath.Join(tmpDir, "installed-bat")

@@ -16,6 +16,7 @@ func TestInjector_Inject(t *testing.T) {
 		opts        InjectOptions
 		wantUpdated bool
 		wantContent string
+		wantPerm    os.FileMode
 		wantErr     bool
 	}{
 		{
@@ -30,6 +31,7 @@ func TestInjector_Inject(t *testing.T) {
 			},
 			wantUpdated: true,
 			wantContent: "# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
+			wantPerm:    0444,
 		},
 		{
 			name: "inject into existing empty file",
@@ -46,6 +48,7 @@ func TestInjector_Inject(t *testing.T) {
 			},
 			wantUpdated: true,
 			wantContent: "# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
+			wantPerm:    0644,
 		},
 		{
 			name: "inject into file with existing content",
@@ -62,6 +65,7 @@ func TestInjector_Inject(t *testing.T) {
 			},
 			wantUpdated: true,
 			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
+			wantPerm:    0644,
 		},
 		{
 			name: "update existing block in file",
@@ -79,6 +83,25 @@ func TestInjector_Inject(t *testing.T) {
 			},
 			wantUpdated: true,
 			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/new_init.sh\"\nsome other setting\n",
+			wantPerm:    0644,
+		},
+		{
+			name: "update existing block in read-only file",
+			setupFS: func() fs.FS {
+				mem := fs.NewMemFS()
+				_ = mem.MkdirAll("/home/user", 0755)
+				existing := "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/old_init.sh\"\nsome other setting\n"
+				_ = mem.WriteFile("/home/user/.zshrc", []byte(existing), 0444)
+				return mem
+			},
+			opts: InjectOptions{
+				ProfilePath: "/home/user/.zshrc",
+				Shell:       "zsh",
+				ScriptPath:  "/home/user/.dotfiles/new_init.sh",
+			},
+			wantUpdated: true,
+			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/new_init.sh\"\nsome other setting\n",
+			wantPerm:    0444,
 		},
 		{
 			name: "no update needed if block matches exactly",
@@ -96,6 +119,7 @@ func TestInjector_Inject(t *testing.T) {
 			},
 			wantUpdated: false,
 			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
+			wantPerm:    0644,
 		},
 		{
 			name: "no update needed if raw source pattern exists elsewhere",
@@ -113,6 +137,7 @@ func TestInjector_Inject(t *testing.T) {
 			},
 			wantUpdated: false,
 			wantContent: "export FOO=bar\nsource \"/home/user/.dotfiles/init.sh\"\nsome setting\n",
+			wantPerm:    0644,
 		},
 		{
 			name: "empty profile path causes error",
@@ -164,6 +189,16 @@ func TestInjector_Inject(t *testing.T) {
 				if gotContent != tt.wantContent {
 					t.Errorf("Inject() file content =\n%q\nwant =\n%q", gotContent, tt.wantContent)
 				}
+
+				if tt.wantPerm != 0 {
+					info, err := memFS.Stat(tt.opts.ProfilePath)
+					if err != nil {
+						t.Fatalf("Failed to stat profile file: %v", err)
+					}
+					if info.Mode().Perm() != tt.wantPerm {
+						t.Errorf("Inject() file perm = %#o, want %#o", info.Mode().Perm(), tt.wantPerm)
+					}
+				}
 			}
 		})
 	}
@@ -185,6 +220,19 @@ func TestInjector_Remove(t *testing.T) {
 				_ = mem.MkdirAll("/home/user", 0755)
 				content := "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\nsome other setting\n"
 				_ = mem.WriteFile("/home/user/.zshrc", []byte(content), 0644)
+				return mem
+			},
+			profilePath: "/home/user/.zshrc",
+			wantUpdated: true,
+			wantContent: "export FOO=bar\n\nsome other setting\n",
+		},
+		{
+			name: "remove existing block from read-only file",
+			setupFS: func() fs.FS {
+				mem := fs.NewMemFS()
+				_ = mem.MkdirAll("/home/user", 0755)
+				content := "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\nsome other setting\n"
+				_ = mem.WriteFile("/home/user/.zshrc", []byte(content), 0444)
 				return mem
 			},
 			profilePath: "/home/user/.zshrc",
