@@ -116,6 +116,11 @@ func (r *ResolvedFS) Abs(path string) (string, error) {
 	return r.inner.Abs(r.expand(path))
 }
 
+func (r *ResolvedFS) IsAbs(path string) bool {
+	expanded := r.expand(path)
+	return filepath.IsAbs(expanded)
+}
+
 func (r *ResolvedFS) CopyFile(src, dest string) error {
 	return r.inner.CopyFile(r.expand(src), r.expand(dest))
 }

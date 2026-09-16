@@ -10,6 +10,7 @@ Filesystem abstractions (`OSFS`, `MemFS`, `ResolvedFS`, `TrackedFileSystem`).
 
 - Log `write`, `rm`, `chmod` file operations using `~`-contracted home paths.
 - Fall back to host OS filesystem during dry-runs when paths do not exist in `MemFS`.
+- Use `ResolvedFS` to expand user home aliases (`~`, `$HOME`, `${HOME}`) and verify absolute paths via `IsAbs()`.
 
 ## Local gotchas
 

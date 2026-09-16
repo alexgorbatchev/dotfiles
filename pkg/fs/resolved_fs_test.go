@@ -79,3 +79,51 @@ func TestResolvedFS_PathExpansion(t *testing.T) {
 		})
 	}
 }
+
+func TestResolvedFS_IsAbs(t *testing.T) {
+	homeDir := "/home/testuser"
+	mem := NewMemFS()
+	rfs := NewResolvedFS(mem, homeDir)
+	osfs := NewOSFS()
+
+	tests := []struct {
+		name string
+		path string
+		want bool
+	}{
+		{"empty", "", false},
+		{"relative simple", "foo/bar", false},
+		{"relative dot slash", "./foo/bar", false},
+		{"relative parent", "../foo/bar", false},
+		{"absolute posix", "/usr/local/bin", true},
+		{"tilde root", "~", true},
+		{"tilde subpath", "~/.local/bin/claude", true},
+		{"tilde windows slash", "~\\.local\\bin", true},
+		{"dollar home", "$HOME", true},
+		{"dollar home subpath", "$HOME/.local/bin", true},
+		{"braced dollar home", "${HOME}", true},
+		{"braced dollar home subpath", "${HOME}/.local/bin", true},
+	}
+
+	for _, tt := range tests {
+		t.Run("ResolvedFS_"+tt.name, func(t *testing.T) {
+			if got := rfs.IsAbs(tt.path); got != tt.want {
+				t.Errorf("rfs.IsAbs(%q) = %v, want %v", tt.path, got, tt.want)
+			}
+		})
+	}
+
+	// For standard OSFS/MemFS, tilde is not an absolute path unless expanded
+	if osfs.IsAbs("~/.local/bin") {
+		t.Errorf("osfs.IsAbs should be false for unexpanded tilde")
+	}
+	if !osfs.IsAbs("/usr/local/bin") {
+		t.Errorf("osfs.IsAbs should be true for absolute path")
+	}
+	if mem.IsAbs("foo/bar") {
+		t.Errorf("mem.IsAbs should be false for relative path")
+	}
+	if !mem.IsAbs("/usr/local/bin") {
+		t.Errorf("mem.IsAbs should be true for absolute path")
+	}
+}

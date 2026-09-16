@@ -32,7 +32,11 @@ func newTestOrchestrator(t *testing.T, memFS fs.FS, configFilePath string) *Orch
 	t.Cleanup(func() { _ = sqlDB.Close() })
 
 	reg := registry.NewRegistry(sqlDB)
-	trackedFS := fs.NewTrackedFileSystem(memFS, reg, log, "system").WithFileType("init")
+	var baseFS fs.FS = memFS
+	if _, isResolved := memFS.(*fs.ResolvedFS); !isResolved {
+		baseFS = fs.NewResolvedFS(memFS, "/home/user")
+	}
+	trackedFS := fs.NewTrackedFileSystem(baseFS, reg, log, "system").WithFileType("init")
 	runner := exec.NewMockRunner()
 	instReg := installer.NewRegistry()
 

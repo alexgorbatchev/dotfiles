@@ -202,7 +202,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 						manualPath = resolved
 					}
 				}
-				if utils.IsAbsOrHome(manualPath) {
+				if o.fs.IsAbs(manualPath) {
 					if abs, err := o.fs.Abs(manualPath); err == nil {
 						binaryPath = abs
 					} else {
@@ -284,7 +284,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	symEvaluator := o.getSymlinkEvaluator()
 	for _, sym := range tool.Symlinks {
 		src := sym.Source
-		if !utils.IsAbsOrHome(src) && tool.ConfigFilePath != "" {
+		if !o.fs.IsAbs(src) && tool.ConfigFilePath != "" {
 			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
 		}
 		wasCreated, err := symEvaluator.CreateSymlink(src, sym.Target, symlink.Options{Overwrite: true})
@@ -587,7 +587,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 			switch comp := stc.Completions.(type) {
 			case string:
 				var srcPath string
-				if utils.IsAbsOrHome(comp) {
+				if fsys.IsAbs(comp) {
 					srcPath = comp
 				} else {
 					srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), comp)
@@ -643,7 +643,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 
 							cmdName = execPath
 							o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Generating %s completion using: %s", sh, cmdValResolved)))
-							cmdCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+							cmdCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 							cmdExec := o.runner.CommandContext(cmdCtx, cmdName, parts[1:]...)
 							cmdExec.SetProcessGroup(true)
 							cmdExec.SetEnv(o.buildHookEnv(tool, projCfg, nil))
@@ -658,7 +658,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 					}
 				} else if srcVal, ok := comp["source"].(string); ok && srcVal != "" {
 					var srcPath string
-					if utils.IsAbsOrHome(srcVal) {
+					if fsys.IsAbs(srcVal) {
 						srcPath = srcVal
 					} else {
 						srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), srcVal)

@@ -399,6 +399,10 @@ func (t *TrackedFileSystem) Abs(path string) (string, error) {
 	return t.fs.Abs(path)
 }
 
+func (t *TrackedFileSystem) IsAbs(path string) bool {
+	return t.fs.IsAbs(path)
+}
+
 func (t *TrackedFileSystem) CopyFile(src, dest string) error {
 	err := t.fs.CopyFile(src, dest)
 	if err != nil {

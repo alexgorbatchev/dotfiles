@@ -955,3 +955,47 @@ func TestPackageInstallersExtraCoverage(t *testing.T) {
 		},
 	})
 }
+
+func TestParseSlashRegexAndCompileRegex(t *testing.T) {
+	// Valid slash-delimited regex with flags
+	inner, flags, ok := ParseSlashRegex("/hello.*world/i")
+	if !ok || inner != "hello.*world" || flags != "i" {
+		t.Errorf("expected ParseSlashRegex('/hello.*world/i') to return ('hello.*world', 'i', true), got (%q, %q, %v)", inner, flags, ok)
+	}
+
+	// File path that starts with / and contains slashes but not regex flags
+	inner, flags, ok = ParseSlashRegex("/usr/bin/tool")
+	if ok {
+		t.Errorf("expected ParseSlashRegex('/usr/bin/tool') to return false, got (%q, %q, true)", inner, flags)
+	}
+
+	// File path ending in letters that happen to be regex flags (e.g. gum)
+	inner, flags, ok = ParseSlashRegex("/usr/bin/gum")
+	if ok {
+		t.Errorf("expected ParseSlashRegex('/usr/bin/gum') to return false, got (%q, %q, true)", inner, flags)
+	}
+
+	// Valid regex with escaped slash
+	inner, flags, ok = ParseSlashRegex("/foo\\/bar/i")
+	if !ok || inner != "foo\\/bar" || flags != "i" {
+		t.Errorf("expected ParseSlashRegex('/foo\\/bar/i') to return ('foo\\/bar', 'i', true), got (%q, %q, %v)", inner, flags, ok)
+	}
+
+	// Single slash or empty
+	_, _, ok = ParseSlashRegex("/")
+	if ok {
+		t.Errorf("expected ParseSlashRegex('/') to return false")
+	}
+
+	// compileRegex with slash regex
+	re, err := compileRegex("/^v?\\d+\\.\\d+/i")
+	if err != nil || !re.MatchString("V1.2.3") {
+		t.Errorf("compileRegex('/^v?\\d+\\.\\d+/i') failed: %v", err)
+	}
+
+	// compileRegex with standard pattern
+	re2, err := compileRegex("^v1\\.0")
+	if err != nil || !re2.MatchString("v1.0") {
+		t.Errorf("compileRegex('^v1\\.0') failed: %v", err)
+	}
+}

@@ -93,6 +93,11 @@ func (b *BrewInstaller) getBrewExecutable() string {
 
 func (b *BrewInstaller) brewCommand(ctx context.Context, args ...string) exec.Cmd {
 	brewExe := b.getBrewExecutable()
+	if b.fsys.IsAbs(brewExe) {
+		if abs, err := b.fsys.Abs(brewExe); err == nil {
+			brewExe = abs
+		}
+	}
 	cmd := b.runner.CommandContext(ctx, brewExe, args...)
 	if filepath.IsAbs(brewExe) {
 		brewDir := filepath.Dir(brewExe)

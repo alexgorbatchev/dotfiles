@@ -126,37 +126,6 @@ func ContractHomePath(homeDir string, path string) string {
 	return path
 }
 
-// IsAbsOrHome returns true if the path is an absolute path or starts with a user home alias (~, $HOME, ${HOME}).
-func IsAbsOrHome(path string) bool {
-	trimmed := strings.TrimSpace(path)
-	if trimmed == "" {
-		return false
-	}
-	if filepath.IsAbs(trimmed) {
-		return true
-	}
-	if trimmed == "~" || strings.HasPrefix(trimmed, "~/") || strings.HasPrefix(trimmed, "~\\") {
-		return true
-	}
-	if trimmed == "$HOME" || strings.HasPrefix(trimmed, "$HOME/") || strings.HasPrefix(trimmed, "$HOME\\") {
-		return true
-	}
-	if trimmed == "${HOME}" || strings.HasPrefix(trimmed, "${HOME}/") || strings.HasPrefix(trimmed, "${HOME}\\") {
-		return true
-	}
-	return false
-}
-
-// ResolveToolRelativePath resolves relative paths against the tool configuration directory (toolDir).
-// Absolute paths and user-home paths are returned cleaned and as-is.
-func ResolveToolRelativePath(toolDir string, inputPath string) string {
-	trimmed := strings.TrimSpace(inputPath)
-	if IsAbsOrHome(trimmed) {
-		return filepath.Clean(trimmed)
-	}
-	return filepath.Clean(filepath.Join(toolDir, trimmed))
-}
-
 // DedentString strips common leading whitespace from all lines in a string.
 func DedentString(s string) string {
 	lines := strings.Split(s, "\n")

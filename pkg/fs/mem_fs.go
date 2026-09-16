@@ -584,6 +584,10 @@ func (m *MemFS) Abs(path string) (string, error) {
 	return filepath.Abs(path)
 }
 
+func (m *MemFS) IsAbs(path string) bool {
+	return filepath.IsAbs(path)
+}
+
 func (m *MemFS) CopyFile(src, dest string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

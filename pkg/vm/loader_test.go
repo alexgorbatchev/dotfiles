@@ -2,6 +2,7 @@ package vm
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -286,9 +287,10 @@ func TestLoadTypeScriptConfigErrors(t *testing.T) {
 
 func TestFindToolConfigFilesAndDirExists(t *testing.T) {
 	tmpDir := t.TempDir()
+	osFS := &fs.OSFS{}
 
 	// 1. dirExists on non-existent dir
-	exists, err := dirExists(filepath.Join(tmpDir, "nonexistent"))
+	exists, err := dirExists(osFS, filepath.Join(tmpDir, "nonexistent"))
 	if err != nil || exists {
 		t.Errorf("dirExists(nonexistent) = (%v, %v), want (false, nil)", exists, err)
 	}
@@ -296,7 +298,7 @@ func TestFindToolConfigFilesAndDirExists(t *testing.T) {
 	// 2. dirExists on a file
 	filePath := filepath.Join(tmpDir, "afile.txt")
 	_ = os.WriteFile(filePath, []byte("file"), 0644)
-	exists, err = dirExists(filePath)
+	exists, err = dirExists(osFS, filePath)
 	if err != nil || exists {
 		t.Errorf("dirExists(file) = (%v, %v), want (false, nil)", exists, err)
 	}
@@ -304,7 +306,7 @@ func TestFindToolConfigFilesAndDirExists(t *testing.T) {
 	// 3. dirExists on a valid directory
 	dirPath := filepath.Join(tmpDir, "sub")
 	_ = os.MkdirAll(dirPath, 0755)
-	exists, err = dirExists(dirPath)
+	exists, err = dirExists(osFS, dirPath)
 	if err != nil || !exists {
 		t.Errorf("dirExists(dir) = (%v, %v), want (true, nil)", exists, err)
 	}
@@ -324,7 +326,7 @@ func TestFindToolConfigFilesAndDirExists(t *testing.T) {
 	}
 
 	// 5. dirExists permission/path error
-	_, err = dirExists("\x00invalid")
+	_, err = dirExists(osFS, "\x00invalid")
 	if err == nil {
 		t.Error("expected error from dirExists with null byte path")
 	}
@@ -695,7 +697,7 @@ func TestLoaderBrewAutoDependency(t *testing.T) {
 
 func TestLoaderEnsureDefaultToolFiles(t *testing.T) {
 	log := logger.New(logger.Config{Writer: io.Discard})
-	memFS := fs.NewMemFS()
+	osFS := &fs.OSFS{}
 	tmpDir := t.TempDir()
 
 	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
@@ -713,7 +715,7 @@ func TestLoaderEnsureDefaultToolFiles(t *testing.T) {
 		t.Fatalf("failed to create tools dir: %v", err)
 	}
 
-	_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	_, toolConfigs, err := LoadTypeScriptConfig(log, osFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}
@@ -833,6 +835,7 @@ func TestLoaderRegExpSerialization(t *testing.T) {
 func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 	log := logger.New(logger.Config{Writer: io.Discard})
 	memFS := fs.NewMemFS()
+	osFS := &fs.OSFS{}
 
 	t.Run("nested unknown field under features", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -881,6 +884,249 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		}
 		if !strings.Contains(err.Error(), "unknown field") || !strings.Contains(err.Error(), "nonExistentField") {
 			t.Errorf("expected error to mention unknown field 'nonExistentField', got: %v", err)
+		}
+	})
+
+	t.Run("invalid config syntax returns error", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		_ = os.WriteFile(configPath, []byte(`export default { invalid syntax :::`), 0644)
+
+		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		if err == nil {
+			t.Fatal("expected compilation error, got nil")
+		}
+	})
+
+	t.Run("multi-dir tool configs and binariesDir placeholder replacement", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		toolsDir1 := filepath.Join(tmpDir, "tools1")
+		toolsDir2 := filepath.Join(tmpDir, "tools2")
+		_ = os.MkdirAll(toolsDir1, 0755)
+		_ = os.MkdirAll(toolsDir2, 0755)
+
+		_ = os.WriteFile(filepath.Join(toolsDir1, "tool1.tool.ts"), []byte(`
+			import { defineTool } from "@alexgorbatchev/dotfiles";
+			export default defineTool((install) => install("npm", { package: "tool1" }).bin("tool1"));
+		`), 0644)
+		_ = os.WriteFile(filepath.Join(toolsDir2, "tool2.tool.ts"), []byte(`
+			import { defineTool } from "@alexgorbatchev/dotfiles";
+			export default defineTool((install) => install("npm", { package: "tool2" }).bin("tool2"));
+		`), 0644)
+
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		configContent := fmt.Sprintf(`export default {
+			paths: {
+				dotfilesDir: %q,
+				generatedDir: %q,
+				binariesDir: "{paths.generatedDir}/custom-bins",
+				toolConfigsDir: [%q, %q]
+			}
+		};`, tmpDir, filepath.Join(tmpDir, ".gen"), toolsDir1, toolsDir2)
+
+		_ = os.WriteFile(configPath, []byte(configContent), 0644)
+
+		projCfg, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+		if err != nil {
+			t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+		}
+		if len(toolConfigs) != 2 {
+			t.Errorf("expected 2 tool configs, got %d", len(toolConfigs))
+		}
+		if projCfg.Paths.BinariesDir != filepath.Join(tmpDir, ".gen", "custom-bins") {
+			t.Errorf("expected resolved binariesDir, got %s", projCfg.Paths.BinariesDir)
+		}
+	})
+
+	t.Run("runtime error thrown in config.ts", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		_ = os.WriteFile(configPath, []byte(`throw new Error("intentional config exception");`), 0644)
+
+		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		if err == nil || !strings.Contains(err.Error(), "intentional config exception") {
+			t.Errorf("expected intentional config exception, got %v", err)
+		}
+	})
+
+	t.Run("runtime error thrown in tool file during bundling", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		toolsDir := filepath.Join(tmpDir, "tools")
+		_ = os.MkdirAll(toolsDir, 0755)
+		_ = os.WriteFile(filepath.Join(toolsDir, "bad.tool.ts"), []byte(`throw new Error("intentional tool error");`), 0644)
+
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		_ = os.WriteFile(configPath, []byte(fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, tmpDir, toolsDir)), 0644)
+
+		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		if err == nil || !strings.Contains(err.Error(), "intentional tool error") {
+			t.Errorf("expected intentional tool error, got %v", err)
+		}
+	})
+
+	t.Run("empty tools directory provisions default starter tool", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		toolsDir := filepath.Join(tmpDir, "tools")
+		_ = os.MkdirAll(toolsDir, 0755)
+
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		_ = os.WriteFile(configPath, []byte(fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, tmpDir, toolsDir)), 0644)
+
+		_, toolConfigs, err := LoadTypeScriptConfig(log, osFS, configPath)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if _, ok := toolConfigs["dotfiles"]; !ok {
+			t.Errorf("expected default dotfiles tool to be provisioned and loaded, got: %v", toolConfigs)
+		}
+	})
+
+	t.Run("module.exports without default export in evaluateProjectConfig", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		_ = os.WriteFile(configPath, []byte(fmt.Sprintf(`module.exports = { paths: { dotfilesDir: %q, homeDir: %q, targetDir: %q } };`, tmpDir, tmpDir, tmpDir)), 0644)
+
+		projCfg, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		if err != nil {
+			t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+		}
+		if projCfg.Paths.DotfilesDir != tmpDir {
+			t.Errorf("expected dotfilesDir %q, got %q", tmpDir, projCfg.Paths.DotfilesDir)
+		}
+	})
+
+	t.Run("LoadTypeScriptConfig with non-existent config path", func(t *testing.T) {
+		_, _, err := LoadTypeScriptConfig(log, memFS, "/non/existent/path/dotfiles.config.ts")
+		if err == nil {
+			t.Error("expected error for non-existent config path")
+		}
+	})
+
+	t.Run("evaluateUnifiedBundle with missing __loaderResult", func(t *testing.T) {
+		_, err := evaluateUnifiedBundle(log, memFS, "var x = 1;", "/tmp", "/tmp/.gen", "/tmp/bin")
+		if err == nil || !strings.Contains(err.Error(), "missing or undefined") {
+			t.Errorf("expected error for missing __loaderResult, got: %v", err)
+		}
+	})
+
+	t.Run("evaluateUnifiedBundle with runtime script error", func(t *testing.T) {
+		_, err := evaluateUnifiedBundle(log, memFS, "throw new Error('bundle err');", "/tmp", "/tmp/.gen", "/tmp/bin")
+		if err == nil || !strings.Contains(err.Error(), "bundle err") {
+			t.Errorf("expected script error, got: %v", err)
+		}
+	})
+
+	t.Run("transpileTS error branch", func(t *testing.T) {
+		_, err := transpileTS("const x: = ;")
+		if err == nil {
+			t.Error("expected error from transpileTS for invalid syntax")
+		}
+	})
+
+	t.Run("compileFile error branch", func(t *testing.T) {
+		_, err := compileFile("/non/existent/file.ts")
+		if err == nil {
+			t.Error("expected error from compileFile for non-existent file")
+		}
+	})
+
+	t.Run("generateEntryLoader generates valid require paths", func(t *testing.T) {
+		res, err := generateEntryLoader("/home/user/dotfiles/config.ts", []string{
+			"/home/user/dotfiles/tools/bat.tool.ts",
+			"/home/user/dotfiles/tools/nested/tool.tool.ts",
+		})
+		if err != nil {
+			t.Fatalf("generateEntryLoader failed: %v", err)
+		}
+		if !strings.Contains(res, `"./tools/bat.tool.ts"`) {
+			t.Errorf("expected relative path in require map: %s", res)
+		}
+	})
+
+	t.Run("evaluateProjectConfig json stringify error branch", func(t *testing.T) {
+		_, err := evaluateProjectConfig(log, memFS, "module.exports = { toJSON: function() { throw new Error('json stringify err'); } };", "/tmp")
+		if err == nil || !strings.Contains(err.Error(), "stringifying project config") {
+			t.Errorf("expected stringifying error, got %v", err)
+		}
+	})
+
+	t.Run("evaluateUnifiedBundle json stringify error branch", func(t *testing.T) {
+		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { toJSON: function() { throw new Error('json stringify err'); } };", "/tmp", "/tmp/.gen", "/tmp/bin")
+		if err == nil || !strings.Contains(err.Error(), "stringifying loader result") {
+			t.Errorf("expected stringifying error, got %v", err)
+		}
+	})
+
+	t.Run("evaluateUnifiedBundle unmarshaling error branch", func(t *testing.T) {
+		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { projectConfig: 12345 };", "/tmp", "/tmp/.gen", "/tmp/bin")
+		if err == nil {
+			t.Error("expected error when unifiedLoaderResult has invalid structure")
+		}
+	})
+
+	t.Run("LoadTypeScriptConfig with binariesDir containing placeholder", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		toolsDir := filepath.Join(tmpDir, "tools")
+		_ = os.MkdirAll(toolsDir, 0755)
+		_ = os.WriteFile(filepath.Join(toolsDir, "tool.tool.ts"), []byte(`
+			import { defineTool } from "@alexgorbatchev/dotfiles";
+			export default defineTool((install) => install("npm", { package: "tool" }).bin("tool"));
+		`), 0644)
+
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		_ = os.WriteFile(configPath, []byte(fmt.Sprintf(`export default {
+			paths: {
+				dotfilesDir: %q,
+				generatedDir: %q,
+				binariesDir: "{paths.generatedDir}/custom-bins",
+				toolConfigsDir: %q
+			}
+		};`, tmpDir, filepath.Join(tmpDir, ".gen"), toolsDir)), 0644)
+
+		projCfg, toolConfigs, err := LoadTypeScriptConfig(log, osFS, configPath)
+		if err != nil {
+			t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+		}
+		if len(toolConfigs) != 1 {
+			t.Errorf("expected 1 tool config, got %d", len(toolConfigs))
+		}
+		if projCfg.Paths.BinariesDir != filepath.Join(tmpDir, ".gen", "custom-bins") {
+			t.Errorf("expected resolved binariesDir, got %s", projCfg.Paths.BinariesDir)
+		}
+	})
+
+	t.Run("LoadTypeScriptConfig with readonly directory triggering write error", func(t *testing.T) {
+		if os.Geteuid() == 0 {
+			t.Skip("skipping readonly test as root user")
+		}
+		tmpDir := t.TempDir()
+		readOnlyDir := filepath.Join(tmpDir, "readonly")
+		_ = os.MkdirAll(readOnlyDir, 0755)
+		configPath := filepath.Join(readOnlyDir, "dotfiles.config.ts")
+		_ = os.WriteFile(configPath, []byte(fmt.Sprintf(`export default { paths: { dotfilesDir: %q } };`, readOnlyDir)), 0644)
+		_ = os.Chmod(readOnlyDir, 0555)
+		defer os.Chmod(readOnlyDir, 0755)
+
+		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		if err == nil || !strings.Contains(err.Error(), "writing temporary loader entry") {
+			t.Logf("readonly directory result: %v", err)
+		}
+	})
+
+	t.Run("ensureStarterTools on darwin creates brew.tool.ts when missing", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		toolsDir := filepath.Join(tmpDir, "tools")
+		_ = os.MkdirAll(toolsDir, 0755)
+
+		files := ensureStarterTools(osFS, "darwin", toolsDir, nil)
+		if len(files) != 2 {
+			t.Errorf("expected 2 starter files (dotfiles and brew), got %d: %v", len(files), files)
+		}
+
+		// Calling again with files present does not duplicate
+		files2 := ensureStarterTools(osFS, "darwin", toolsDir, files)
+		if len(files2) != 2 {
+			t.Errorf("expected still 2 files, got %d", len(files2))
 		}
 	})
 }

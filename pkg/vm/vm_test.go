@@ -3,6 +3,7 @@ package vm
 import (
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -417,4 +418,47 @@ func TestEvaluateToolDefinitionRegExpReplacer(t *testing.T) {
 		t.Errorf("expected Pattern %q, got %q", "/^(?!.*-profile).*\\.zip$/", cfg.Pattern)
 	}
 }
+
+func TestEvaluateToolDefinition_EmptyOrUndefined(t *testing.T) {
+	var cfg TestConfig
+	err := EvaluateToolDefinitionWithContext("", "/cfg", nil, &cfg)
+	if err == nil {
+		t.Error("expected error for empty script")
+	}
+
+	err = EvaluateToolDefinitionWithContext("undefined;", "/cfg", nil, &cfg)
+	if err == nil {
+		t.Error("expected error for undefined script output")
+	}
+
+	err = EvaluateToolDefinitionWithContext("throw new Error('vm script err');", "/cfg", nil, &cfg)
+	if err == nil || !strings.Contains(err.Error(), "vm script err") {
+		t.Errorf("expected script error, got %v", err)
+	}
+
+	// Module exports object with non-default export
+	err = EvaluateToolDefinitionWithContext("module.exports = { name: 'fallback', value: 99 };", "/cfg", nil, &cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Name != "fallback" || cfg.Value != 99 {
+		t.Errorf("expected fallback export, got %+v", cfg)
+	}
+
+	// Unmarshal error into incompatible struct
+	var incompatible struct {
+		Name int `json:"name"`
+	}
+	err = EvaluateToolDefinitionWithContext("export default { name: 'cannot-be-int' };", "/cfg", nil, &incompatible)
+	if err == nil {
+		t.Error("expected unmarshaling error for incompatible type")
+	}
+
+	// JSON stringify error
+	err = EvaluateToolDefinitionWithContext("export default { toJSON: function() { throw new Error('vm toJSON err'); } };", "/cfg", nil, &cfg)
+	if err == nil || !strings.Contains(err.Error(), "stringifying VM output") {
+		t.Errorf("expected stringifying VM output error, got %v", err)
+	}
+}
+
 

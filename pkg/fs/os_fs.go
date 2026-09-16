@@ -96,6 +96,10 @@ func (o *OSFS) Abs(path string) (string, error) {
 	return filepath.Abs(path)
 }
 
+func (o *OSFS) IsAbs(path string) bool {
+	return filepath.IsAbs(path)
+}
+
 func (o *OSFS) CopyFile(src, dest string) error {
 	srcFile, err := os.Open(src)
 	if err != nil {

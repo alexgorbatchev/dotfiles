@@ -26,5 +26,6 @@ type FS interface {
 	Stat(path string) (os.FileInfo, error)
 	RemoveAll(path string) error
 	Abs(path string) (string, error)
+	IsAbs(path string) bool
 	CopyFile(src, dest string) error
 }

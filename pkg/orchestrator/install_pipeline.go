@@ -260,7 +260,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		var binaryPath string
 
 		absBinItem := binItem
-		if utils.IsAbsOrHome(binItem) {
+		if o.fs.IsAbs(binItem) {
 			if abs, err := o.fs.Abs(binItem); err == nil {
 				absBinItem = abs
 			}
@@ -286,7 +286,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 						manualPath = resolved
 					}
 				}
-				if utils.IsAbsOrHome(manualPath) {
+				if o.fs.IsAbs(manualPath) {
 					if abs, err := o.fs.Abs(manualPath); err == nil {
 						binaryPath = abs
 					} else {
@@ -353,7 +353,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	symEvaluator := o.getSymlinkEvaluator()
 	for _, sym := range tool.Symlinks {
 		src := sym.Source
-		if !utils.IsAbsOrHome(src) && tool.ConfigFilePath != "" {
+		if !o.fs.IsAbs(src) && tool.ConfigFilePath != "" {
 			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
 		}
 		wasCreated, err := symEvaluator.CreateSymlink(src, sym.Target, symlink.Options{Overwrite: true})
@@ -550,8 +550,14 @@ func (o *Orchestrator) buildHookEnv(tool *config.ToolConfig, projCfg *config.Pro
 
 			if res != nil {
 				for _, b := range res.Binaries {
-					if filepath.IsAbs(b) {
-						pathDirs = append(pathDirs, filepath.Dir(b))
+					absB := b
+					if o.fs.IsAbs(b) {
+						if abs, err := o.fs.Abs(b); err == nil {
+							absB = abs
+						}
+					}
+					if filepath.IsAbs(absB) {
+						pathDirs = append(pathDirs, filepath.Dir(absB))
 					} else {
 						pathDirs = append(pathDirs, filepath.Join(toolDestDir, filepath.Dir(b)))
 					}

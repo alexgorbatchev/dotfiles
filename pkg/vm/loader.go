@@ -121,41 +121,20 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 	seenFiles := make(map[string]bool)
 	for _, rawDir := range toolConfigsDirs {
 		resolvedDir := strings.ReplaceAll(rawDir, "{configFileDir}", configFileDir)
-		if !filepath.IsAbs(resolvedDir) {
+		if fsys.IsAbs(resolvedDir) {
+			if abs, err := fsys.Abs(resolvedDir); err == nil {
+				resolvedDir = abs
+			}
+		} else {
 			resolvedDir = filepath.Join(configFileDir, resolvedDir)
 		}
-		if exists, _ := dirExists(resolvedDir); exists {
+		if exists, _ := dirExists(fsys, resolvedDir); exists {
 			files, err := findToolConfigFiles(resolvedDir)
 			if err != nil {
 				return nil, nil, fmt.Errorf("finding tool config files under %q: %w", resolvedDir, err)
 			}
 
-			// If tools directory is empty, provision starter dotfiles.tool.ts
-			if len(files) == 0 && filepath.Base(resolvedDir) == "tools" {
-				dotfilesPath := filepath.Join(resolvedDir, "dotfiles.tool.ts")
-				if err := os.WriteFile(dotfilesPath, []byte(defaultDotfilesToolContent), 0644); err == nil {
-					files = append(files, dotfilesPath)
-				}
-			}
-
-			// On macOS, always ensure tools/brew.tool.ts exists if missing
-			if runtime.GOOS == "darwin" && filepath.Base(resolvedDir) == "tools" {
-				hasBrewTool := false
-				for _, f := range files {
-					if filepath.Base(f) == "brew.tool.ts" {
-						hasBrewTool = true
-						break
-					}
-				}
-				if !hasBrewTool {
-					brewPath := filepath.Join(resolvedDir, "brew.tool.ts")
-					if _, err := os.Stat(brewPath); os.IsNotExist(err) {
-						if err := os.WriteFile(brewPath, []byte(defaultBrewToolContent), 0644); err == nil {
-							files = append(files, brewPath)
-						}
-					}
-				}
-			}
+			files = ensureStarterTools(fsys, runtime.GOOS, resolvedDir, files)
 
 			for _, f := range files {
 				if !seenFiles[f] {
@@ -203,6 +182,34 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 	}
 
 	return fullConfig.ProjectConfig, fullConfig.ToolConfigs, nil
+}
+
+func ensureStarterTools(fsys fs.FS, targetOS string, resolvedDir string, files []string) []string {
+	// If tools directory is empty, provision starter dotfiles.tool.ts
+	if len(files) == 0 && filepath.Base(resolvedDir) == "tools" {
+		dotfilesPath := filepath.Join(resolvedDir, "dotfiles.tool.ts")
+		_ = os.WriteFile(dotfilesPath, []byte(defaultDotfilesToolContent), 0644)
+		_ = fsys.WriteFile(dotfilesPath, []byte(defaultDotfilesToolContent), 0644)
+		files = append(files, dotfilesPath)
+	}
+
+	// On macOS, always ensure tools/brew.tool.ts exists if missing
+	if targetOS == "darwin" && filepath.Base(resolvedDir) == "tools" {
+		hasBrewTool := false
+		for _, f := range files {
+			if filepath.Base(f) == "brew.tool.ts" {
+				hasBrewTool = true
+				break
+			}
+		}
+		if !hasBrewTool {
+			brewPath := filepath.Join(resolvedDir, "brew.tool.ts")
+			_ = os.WriteFile(brewPath, []byte(defaultBrewToolContent), 0644)
+			_ = fsys.WriteFile(brewPath, []byte(defaultBrewToolContent), 0644)
+			files = append(files, brewPath)
+		}
+	}
+	return files
 }
 
 func compileFile(entryPath string) (string, error) {
@@ -464,7 +471,12 @@ globalThis.__loaderResult = {
 	return sb.String(), nil
 }
 
-func dirExists(path string) (bool, error) {
+func dirExists(fsys fs.FS, path string) (bool, error) {
+	if fsys != nil {
+		if info, err := fsys.Stat(path); err == nil {
+			return info.IsDir(), nil
+		}
+	}
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {

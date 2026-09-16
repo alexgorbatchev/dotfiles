@@ -109,8 +109,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 						return fmt.Errorf("resolving path %q: %w", rawPath, err)
 					}
 
-					resolvedPath = utils.ExpandHomePath(projCfg.Paths.HomeDir, resolvedPath)
-					if !filepath.IsAbs(resolvedPath) && tool.ConfigFilePath != "" {
+					if !o.fs.IsAbs(resolvedPath) && tool.ConfigFilePath != "" {
 						resolvedPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), resolvedPath)
 					}
 					if abs, err := o.fs.Abs(resolvedPath); err == nil {
@@ -316,7 +315,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					// SourceFiles
 					for _, relPath := range stc.SourceFiles {
 						var resolvedPath string
-						if utils.IsAbsOrHome(relPath) {
+						if o.fs.IsAbs(relPath) {
 							if abs, err := o.fs.Abs(relPath); err == nil {
 								resolvedPath = abs
 							} else {

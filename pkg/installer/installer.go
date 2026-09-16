@@ -560,22 +560,17 @@ func getPatternForBinary(toolBinaries []interface{}, binName string) string {
 }
 
 func compileRegex(pattern string) (*regexp.Regexp, error) {
-	if strings.HasPrefix(pattern, "/") {
-		lastSlash := strings.LastIndex(pattern, "/")
-		if lastSlash > 0 {
-			inner := pattern[1:lastSlash]
-			flags := pattern[lastSlash+1:]
-			if strings.Contains(flags, "i") {
-				inner = "(?i)" + inner
-			}
-			if strings.Contains(flags, "m") {
-				inner = "(?m)" + inner
-			}
-			if strings.Contains(flags, "s") {
-				inner = "(?s)" + inner
-			}
-			return regexp.Compile(inner)
+	if inner, flags, ok := ParseSlashRegex(pattern); ok {
+		if strings.Contains(flags, "i") {
+			inner = "(?i)" + inner
 		}
+		if strings.Contains(flags, "m") {
+			inner = "(?m)" + inner
+		}
+		if strings.Contains(flags, "s") {
+			inner = "(?s)" + inner
+		}
+		return regexp.Compile(inner)
 	}
 	return regexp.Compile(pattern)
 }
