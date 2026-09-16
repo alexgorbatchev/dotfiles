@@ -9,6 +9,7 @@ Shell initialization script generator (main.zsh, main.bash, main.ps1, .once/).
 ## Local conventions
 
 - Generate priority-sorted shell initialization files (`path` > `completion` > `script` > `env` > `command`).
+- Shell profile injection (`Inject`) must create new files with read-only permissions (`0444`). Existing profiles must be updated in-place preserving their permissions (temporarily unlocking read-only files if needed during update or removal).
 
 ## Local gotchas
 
