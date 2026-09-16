@@ -125,19 +125,19 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 			if err == nil {
 				ttl := d.CacheTTL
 				if ttl <= 0 {
-					ttl = 24 * time.Hour
+					ttl = 30 * 24 * time.Hour
 				}
 				if time.Since(info.ModTime()) < ttl {
-					// Cache hit! Copy the cached file to destPath and trigger progress update
-					errCopy := d.fsys.CopyFile(cachePath, destPath)
-					if errCopy == nil {
-						hashValid := true
-						if expectedSHA256 != "" {
-							if ok, errHash := d.verifyHash(destPath, expectedSHA256); errHash != nil || !ok {
-								hashValid = false
-							}
+					cacheValid := true
+					if expectedSHA256 != "" {
+						if ok, errHash := d.verifyHash(cachePath, expectedSHA256); errHash != nil || !ok {
+							cacheValid = false
+							_ = d.fsys.Remove(cachePath)
 						}
-						if hashValid {
+					}
+					if cacheValid {
+						errCopy := d.fsys.CopyFile(cachePath, destPath)
+						if errCopy == nil {
 							if activeOpts[0].OnProgress != nil {
 								size := info.Size()
 								activeOpts[0].OnProgress(0, size)
