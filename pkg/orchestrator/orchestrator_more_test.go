@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
@@ -2129,5 +2130,88 @@ func TestGenerateTools_DependencyAutoInstallFailureCascade(t *testing.T) {
 		t.Errorf("expected fallback shim for tool-b-bin to exist")
 	}
 }
+
+type cacheSpyInstaller struct {
+	name            string
+	cacheDir        string
+	cacheTTL        time.Duration
+	cacheEnabled    bool
+	capturedStaging string
+}
+
+func (c *cacheSpyInstaller) Name() string { return c.name }
+func (c *cacheSpyInstaller) SupportsSudo() bool { return false }
+func (c *cacheSpyInstaller) SetDownloadCache(dir string, ttl time.Duration, enabled bool) {
+	c.cacheDir = dir
+	c.cacheTTL = ttl
+	c.cacheEnabled = enabled
+}
+func (c *cacheSpyInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
+	return &installer.InstallResult{
+		Binaries: []string{"spybin"},
+	}, nil
+}
+func (c *cacheSpyInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error { return nil }
+func (c *cacheSpyInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
+	return &installer.UpdateCheckResult{}, nil
+}
+
+func TestInstallTool_StagingDirectoryAndPersistentDownloadCache(t *testing.T) {
+	ctx := context.Background()
+	log := logger.New(logger.Config{Name: "test-cache-spy", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+	defer database.Close()
+	reg := registry.NewRegistry(database)
+
+	instReg := installer.NewRegistry()
+	spy := &cacheSpyInstaller{name: "spy-installer"}
+	_ = instReg.Register(spy)
+
+	orch := NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/test",
+			DotfilesDir:     "/home/test/dotfiles",
+			TargetDir:       "/home/test/.bin",
+			BinariesDir:     "/home/test/.binaries",
+			GeneratedDir:    "/home/test/.generated",
+			ShellScriptsDir: "/home/test/.generated/shell-scripts",
+		},
+		Downloader: config.DownloaderConfig{
+			Cache: config.CacheConfig{
+				TTL: 86400000, // 1 day in ms
+			},
+		},
+	}
+
+	tool := &config.ToolConfig{
+		Name:               "spy-tool",
+		InstallationMethod: "spy-installer",
+		Binaries:           []interface{}{"spybin"},
+	}
+
+	err = orch.InstallTool(ctx, tool, projCfg)
+	if err != nil {
+		t.Fatalf("InstallTool failed: %v", err)
+	}
+
+	expectedCacheDir := "/home/test/.generated/cache/downloads"
+	if spy.cacheDir != expectedCacheDir {
+		t.Errorf("expected cacheDir %q, got %q", expectedCacheDir, spy.cacheDir)
+	}
+	if spy.cacheTTL != 24*time.Hour {
+		t.Errorf("expected cacheTTL 24h, got %v", spy.cacheTTL)
+	}
+	if !spy.cacheEnabled {
+		t.Errorf("expected cacheEnabled true, got %v", spy.cacheEnabled)
+	}
+}
+
 
 

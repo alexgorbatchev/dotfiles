@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -65,6 +66,18 @@ func (p *PkgInstaller) SetLogger(log *logger.Logger) {
 	p.log = log
 	if p.dl != nil && log != nil {
 		p.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+	}
+}
+
+func (p *PkgInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
+	if p.dl != nil {
+		if cacheDir != "" {
+			p.dl.CacheDir = cacheDir
+		}
+		if ttl > 0 {
+			p.dl.CacheTTL = ttl
+		}
+		p.dl.CacheEnabled = enabled
 	}
 }
 

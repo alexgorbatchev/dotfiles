@@ -161,6 +161,18 @@ func (g *GitHubInstaller) SetLogger(log *logger.Logger) {
 	}
 }
 
+func (g *GitHubInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
+	if g.dl != nil {
+		if cacheDir != "" {
+			g.dl.CacheDir = cacheDir
+		}
+		if ttl > 0 {
+			g.dl.CacheTTL = ttl
+		}
+		g.dl.CacheEnabled = enabled
+	}
+}
+
 func (g *GitHubInstaller) SupportsSudo() bool {
 	return false
 }

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -721,3 +722,42 @@ func TestResolveBinaryPaths(t *testing.T) {
 		t.Errorf("expected /usr/bin/uninstalled-tool, got %v", resFallback)
 	}
 }
+
+func TestSetDownloadCache_AllInstallers(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	dl := downloader.NewDownloader(memFS, nil)
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+
+	installers := []Installer{
+		NewGitHubInstaller(runner, memFS, dl, sysCtx),
+		NewGiteaInstaller(runner, memFS, dl, sysCtx),
+		NewCurlTarInstaller(runner, memFS, dl, sysCtx),
+		NewCurlBinaryInstaller(runner, memFS, dl, sysCtx),
+		NewCurlScriptInstaller(runner, memFS, dl, sysCtx),
+		NewCargoInstaller(runner, memFS, dl, sysCtx),
+		NewDmgInstaller(runner, memFS, dl, sysCtx),
+		NewPkgInstaller(runner, memFS, dl, sysCtx),
+		NewManualInstaller(runner, memFS, nil),
+		NewBrewInstaller(runner, memFS, nil),
+		NewAptInstaller(runner, memFS, nil),
+	}
+
+	for _, inst := range installers {
+		SetDownloadCache(inst, "/custom/cache/dir", 48*time.Hour, true)
+	}
+
+	// Verify GitHubInstaller's Downloader received the settings
+	gh := NewGitHubInstaller(runner, memFS, dl, sysCtx)
+	SetDownloadCache(gh, "/custom/gh/cache", 12*time.Hour, false)
+	if gh.dl.CacheDir != "/custom/gh/cache" {
+		t.Errorf("expected CacheDir /custom/gh/cache, got %s", gh.dl.CacheDir)
+	}
+	if gh.dl.CacheTTL != 12*time.Hour {
+		t.Errorf("expected CacheTTL 12h, got %v", gh.dl.CacheTTL)
+	}
+	if gh.dl.CacheEnabled != false {
+		t.Errorf("expected CacheEnabled false, got %v", gh.dl.CacheEnabled)
+	}
+}
+

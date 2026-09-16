@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -65,6 +66,18 @@ func (d *DmgInstaller) SetLogger(log *logger.Logger) {
 	d.log = log
 	if d.dl != nil && log != nil {
 		d.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+	}
+}
+
+func (d *DmgInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
+	if d.dl != nil {
+		if cacheDir != "" {
+			d.dl.CacheDir = cacheDir
+		}
+		if ttl > 0 {
+			d.dl.CacheTTL = ttl
+		}
+		d.dl.CacheEnabled = enabled
 	}
 }
 

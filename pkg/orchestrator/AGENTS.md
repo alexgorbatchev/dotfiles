@@ -14,6 +14,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 - Skip missing completion binaries instantly in 0ms without spawning subprocesses or wasting timeouts.
 - Apply strict process-group timeouts (max 3s) for running completion commands (`cmdExec.SetProcessGroup(true)`).
 - Log `INFO [system] DONE` at the end of generation workflows.
+- Use deterministic `.staging` directory during non-external tool installations and configure persistent download caching on all installer plugins.
 
 ## Local gotchas
 

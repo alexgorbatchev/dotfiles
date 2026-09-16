@@ -81,8 +81,11 @@ func NewDownloader(fsys fs.FS, client *http.Client) *Downloader {
 		}
 	}
 	return &Downloader{
-		fsys:   fsys,
-		client: client,
+		fsys:         fsys,
+		client:       client,
+		CacheEnabled: true,
+		CacheDir:     filepath.Join(".generated", "cache", "downloads"),
+		CacheTTL:     30 * 24 * time.Hour,
 	}
 }
 
@@ -128,12 +131,20 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 					// Cache hit! Copy the cached file to destPath and trigger progress update
 					errCopy := d.fsys.CopyFile(cachePath, destPath)
 					if errCopy == nil {
-						if activeOpts[0].OnProgress != nil {
-							size := info.Size()
-							activeOpts[0].OnProgress(0, size)
-							activeOpts[0].OnProgress(size, size)
+						hashValid := true
+						if expectedSHA256 != "" {
+							if ok, errHash := d.verifyHash(destPath, expectedSHA256); errHash != nil || !ok {
+								hashValid = false
+							}
 						}
-						return nil
+						if hashValid {
+							if activeOpts[0].OnProgress != nil {
+								size := info.Size()
+								activeOpts[0].OnProgress(0, size)
+								activeOpts[0].OnProgress(size, size)
+							}
+							return nil
+						}
 					}
 				}
 			}

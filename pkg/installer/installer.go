@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -389,6 +390,10 @@ type LoggerSetter interface {
 	SetLogger(*logger.Logger)
 }
 
+type DownloadCacheSetter interface {
+	SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool)
+}
+
 // SetFS dynamically binds the orchestrator's context-aware TrackedFileSystem to installer plugins prior to execution.
 func SetFS(inst Installer, fsys fs.FS) {
 	if s, ok := inst.(FSSetter); ok {
@@ -400,6 +405,13 @@ func SetFS(inst Installer, fsys fs.FS) {
 func SetLogger(inst Installer, log *logger.Logger) {
 	if s, ok := inst.(LoggerSetter); ok {
 		s.SetLogger(log)
+	}
+}
+
+// SetDownloadCache dynamically configures persistent download caching on installer plugins prior to execution.
+func SetDownloadCache(inst Installer, cacheDir string, ttl time.Duration, enabled bool) {
+	if s, ok := inst.(DownloadCacheSetter); ok {
+		s.SetDownloadCache(cacheDir, ttl, enabled)
 	}
 }
 

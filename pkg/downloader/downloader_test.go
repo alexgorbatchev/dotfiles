@@ -1539,4 +1539,61 @@ func TestDownloaderEdgeCasesAndProgress(t *testing.T) {
 	}
 }
 
+func TestDownloader_PersistentCacheDefaultsAndHashVerification(t *testing.T) {
+	memFS := fs.NewMemFS()
+	dl := NewDownloader(memFS, nil)
+
+	if !dl.CacheEnabled {
+		t.Errorf("expected CacheEnabled to be true by default, got %v", dl.CacheEnabled)
+	}
+	expectedDefaultDir := filepath.Join(".generated", "cache", "downloads")
+	if dl.CacheDir != expectedDefaultDir {
+		t.Errorf("expected default CacheDir %q, got %q", expectedDefaultDir, dl.CacheDir)
+	}
+	if dl.CacheTTL != 30*24*time.Hour {
+		t.Errorf("expected default CacheTTL 30 days, got %v", dl.CacheTTL)
+	}
+
+	serverHits := 0
+	serverContent := "actual-fresh-server-content"
+	serverHash := fmt.Sprintf("%x", sha256.Sum256([]byte(serverContent)))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverHits++
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(serverContent)))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(serverContent))
+	}))
+	defer ts.Close()
+
+	// 1. Initial download populates cache
+	err := dl.Download(context.Background(), ts.URL, "/dest.txt", serverHash)
+	if err != nil {
+		t.Fatalf("first download failed: %v", err)
+	}
+	if serverHits != 1 {
+		t.Fatalf("expected 1 server hit, got %d", serverHits)
+	}
+
+	// 2. Second download with matching SHA256 is a cache hit (0 extra server hits)
+	err = dl.Download(context.Background(), ts.URL, "/dest2.txt", serverHash)
+	if err != nil {
+		t.Fatalf("second download failed: %v", err)
+	}
+	if serverHits != 1 {
+		t.Errorf("expected still 1 server hit on cache hit, got %d", serverHits)
+	}
+
+	// 3. Corrupted cache item with mismatched SHA256 bypasses corrupted cache and re-downloads
+	keyStr := getCacheKey(ts.URL, nil)
+	_ = memFS.WriteFile(filepath.Join(dl.CacheDir, keyStr), []byte("corrupted-data"), 0644)
+	err = dl.Download(context.Background(), ts.URL, "/dest3.txt", serverHash)
+	if err != nil {
+		t.Fatalf("download with corrupted cache failed: %v", err)
+	}
+	if serverHits != 2 {
+		t.Errorf("expected 2 server hits after corrupted cache bypass, got %d", serverHits)
+	}
+}
+
+
 

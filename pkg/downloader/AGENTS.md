@@ -8,7 +8,7 @@ File downloader with retry, caching, and progress reporting.
 
 ## Local conventions
 
-- Support download resumption, SHA256 integrity verification, and HTTP retry logic.
+- Support download resumption, SHA256 integrity verification, HTTP retry logic, and persistent download caching under `.generated/cache/downloads/`.
 
 ## Local gotchas
 

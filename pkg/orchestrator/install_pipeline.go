@@ -19,7 +19,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
-	"github.com/google/uuid"
 )
 
 // InstallTools executes the installation pipeline for all provided tools sequentially in topological order.
@@ -115,8 +114,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	var installDir string
 
 	if !isExternal {
-		uuidStr := uuid.New().String()
-		stagingDir = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, uuidStr)
+		stagingDir = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, ".staging")
 		installDir = stagingDir
 	} else {
 		installDir = toolDestDir
@@ -126,9 +124,21 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	installer.SetFS(inst, activeFS)
 	installer.SetLogger(inst, o.logger.WithName(inst.Name()))
 
+	downloadCacheDir := filepath.Join(".generated", "cache", "downloads")
+	if projCfg.Paths.GeneratedDir != "" {
+		downloadCacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "downloads")
+	}
+	var downloadCacheTTL time.Duration = 30 * 24 * time.Hour
+	if projCfg.Downloader.Cache.TTL > 0 {
+		downloadCacheTTL = time.Duration(projCfg.Downloader.Cache.TTL) * time.Millisecond
+	}
+	downloadCacheEnabled := true
+	installer.SetDownloadCache(inst, downloadCacheDir, downloadCacheTTL, downloadCacheEnabled)
+
 	if !isExternal {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
+			_ = removeAll(activeFSWithTx, stagingDir)
 			return activeFSWithTx.MkdirAll(stagingDir, 0755)
 		})
 		if err != nil {
