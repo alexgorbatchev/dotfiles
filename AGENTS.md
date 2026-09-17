@@ -26,6 +26,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Go installer package: `pkg/installer/` -> `pkg/installer/AGENTS.md`
 - Go filesystem package: `pkg/fs/` -> `pkg/fs/AGENTS.md`
 - Go VM package: `pkg/vm/` -> `pkg/vm/AGENTS.md`
+- Go scaffold package: `pkg/scaffold/`
 - Go E2E test suite: `tests/e2e/`
 - Verification fixture: `test-project/`
 - Isolated installer test workspace: `test-install/` -> `test-install/AGENTS.md`
@@ -33,6 +34,9 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 ## Shared gotchas
 
 - **Dashboard client rebuild required:** The Go binary embeds compiled dashboard assets from `pkg/dashboard/dist/`. Any changes under `packages/dashboard/src/client/` require running `bun compile` to re-bundle client assets into Go source before launching the dashboard server.
+- **Starter tool configurations are never auto-created:** Loading a configuration does not write `.tool.ts` files. `dotfiles scaffold` is the only thing that provisions them, it never overwrites an existing file unless `--force` is passed, and `scripts/managed-installer/install.sh` calls it without `--force`.
+- **`--platform`/`--arch` must reach the loader:** `.platform()` blocks in tool files are evaluated while the configuration is being loaded, so the flags are passed through `vm.WithTarget`. Platform and architecture matching itself lives in Go (`vm.Target.matchesTarget`, `config.MatchesPlatform`), and a misspelled `Platform`/`Architecture` member is rejected at load time rather than silently widening or disabling a block.
+- **Skill docs are generated:** `.agents/skills/dotfiles/` is the source of truth. `scripts/build/main.go` copies it into `pkg/embedded/skill/` (embedded in the binary) and `.dist/skill/`, and `packages/docs` publishes it from `.agents/`. Edit `.agents/`; edits made directly in `pkg/embedded/skill/` are silently reverted by the next `just compile`.
 - **Stale generated output:** Do not manually edit `.generated/` output directories in fixtures or builds. If generated output gets stale, delete the matching `.generated/` directory and rerun the CLI.
 - **Release version match:** Tagged release `vX.Y.Z` must strictly match `version` in `package.json`. GitHub releases must be created/updated via `gh release` with release notes derived from actual git history.
 - **Verify release binaries:** Every release must be verified to ensure CI has completed and actually produced and uploaded all platform binary assets and checksums to the GitHub release.
@@ -41,6 +45,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 
 - Implement Go code in `pkg/` organized by responsibility (domain-oriented, e.g. `pkg/config/`, `pkg/installer/`, `pkg/logger/`).
 - Accept interfaces, return concrete structs in Go functions. Wrap errors with context using `%w` (`fmt.Errorf("action: %w", err)`).
+- Write platform-independent tests: never branch on `runtime.GOOS` to select a different expected value. Assert on identity and intent (that a specific tool config is present) rather than on aggregate counts that platform-specific behavior can change, and inject the target OS as a parameter (as `scaffold.Options.TargetOS` does) when the subject genuinely is platform-specific behavior.
 - Copy `defineConfig` patterns from `test-project/dotfiles.config.ts`.
 - Copy `.tool.ts` patterns from `test-project/tools/github-release--bat.tool.ts`.
 - Keep root `README.md` brief; point detailed documentation to the website or skills.

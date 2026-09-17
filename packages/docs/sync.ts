@@ -2,7 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { $ } from "bun";
 
-const sourceDir = path.resolve(import.meta.dir, "../../.agents/skills/dotfiles");
+// Publish the same copy the binary embeds, so the website and `dotfiles skill` can
+// never drift. `.agents/skills/dotfiles` is the source; scripts/build/main.go copies it
+// here, so this directory is always the built output of that source.
+const sourceDir = path.resolve(import.meta.dir, "../../pkg/embedded/skill");
 const destDir = path.resolve(import.meta.dir, "src/content/docs");
 const installerSourcePath = path.resolve(import.meta.dir, "../../scripts/managed-installer/install.sh");
 const installerDestPath = path.resolve(import.meta.dir, "public/install.sh");
