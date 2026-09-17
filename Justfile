@@ -12,7 +12,7 @@ run-ai *args="generate":
 	AGENT=1 go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
 
 # Full validation check (lint + typecheck + tests)
-check: lint typecheck test
+check: lint typecheck unused test
 
 # Run Go unit and E2E tests
 test:
@@ -41,6 +41,11 @@ fix:
     bun --bun oxfmt .
     cd test-project && ../node_modules/.bin/dprint fmt --config .dprint.json .
     bun --bun oxlint --fix .
+
+# Report unused TypeScript exports, properties and files
+# Run via bun: ts-unused ships ESM with extensionless relative imports, which Node cannot resolve.
+unused:
+    bun --bun ./packages/dashboard/node_modules/.bin/ts-unused check packages/dashboard/tsconfig.json
 
 # Typecheck TypeScript client and test-project
 typecheck:

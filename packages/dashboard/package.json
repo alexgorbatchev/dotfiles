@@ -36,6 +36,7 @@
     "dompurify": "^3.3.3",
     "marked": "^18.0.0",
     "tailwindcss": "^4.1.11",
+    "ts-unused": "^3.2.0",
     "tw-animate-css": "^1.4.0",
     "typescript": "catalog:typescript"
   }
