@@ -97,11 +97,7 @@ export function TreeItem<T = unknown>({
         <span class={cn("ml-2 flex-1 min-w-0", hasChildren && "font-medium")}>
           {renderLabel ? renderLabel(item) : item.label}
         </span>
-        {renderActions && (
-          <span class="ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            {renderActions(item)}
-          </span>
-        )}
+        {renderActions && <span class="ml-2 flex-shrink-0">{renderActions(item)}</span>}
       </div>
       {hasChildren && isExpanded && (
         <div>

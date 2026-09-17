@@ -64,7 +64,7 @@ func TestDashboardMutationRoutes(t *testing.T) {
 	_ = instReg.Register(&mockInstallerForTest{name: "github-release"})
 	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
 
-	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestDashboardNotFoundAndEdgeRoutes(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, &config.ProjectConfig{
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", &config.ProjectConfig{
 		Paths: config.PathsConfig{
 			DotfilesDir:    tempDir,
 			GeneratedDir:   filepath.Join(tempDir, ".generated"),

@@ -3,10 +3,12 @@ import { type JSX } from "preact";
 import type { IToolDetail } from "../../shared/types";
 import { RecentTools } from "../components/RecentTools";
 import { StatCard } from "../components/StatCard";
+import { ToolActionBanner } from "../components/ToolActionBanner";
 import { ToolsTreeView } from "../components/ToolsTreeView";
 import { TitledCard } from "../components/ui/TitledCard";
 import { useFetch } from "../hooks/useFetch";
 import { useSectionHash } from "../hooks/useSectionHash";
+import { useToolActions } from "../hooks/useToolActions";
 import { History, Zap } from "../icons";
 import { formatBytes } from "../utils/format";
 
@@ -104,6 +106,7 @@ function UsageListCard({ title, icon, items, secondary, emptyText }: UsageListCa
 
 export function Tools(): JSX.Element {
   const { data: tools, loading } = useFetch<IToolDetail[]>("/tools");
+  const actions = useToolActions();
 
   useSectionHash(TOOLS_SECTION_IDS, !loading);
 
@@ -129,6 +132,8 @@ export function Tools(): JSX.Element {
 
   return (
     <div data-testid="Tools" class="space-y-4">
+      <ToolActionBanner outcome={actions.outcome} class="tool-action-banner-page" />
+
       <section id="overview" class="grid grid-cols-4 gap-4">
         <StatCard value={toolsList.length} label="Total Tools" color="text-blue-400" />
         <StatCard value={installedCount} label="Installed" color="text-green-400" />
@@ -155,7 +160,7 @@ export function Tools(): JSX.Element {
       </section>
 
       <section id="tool-files">
-        <ToolsTreeView tools={toolsList} />
+        <ToolsTreeView tools={toolsList} actions={actions} />
       </section>
 
       {toolsList.length === 0 && <div class="py-8 text-center text-muted-foreground">No tools configured</div>}

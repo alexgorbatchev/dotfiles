@@ -1,117 +1,100 @@
 import type { ComponentChildren } from "preact";
 import { type JSX } from "preact";
-import { FileCode, FolderOpen, FolderTree } from "../icons";
+import { FileCode, FolderTree } from "../icons";
 
 import type { IFileTreeEntry, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../shared/types";
 import { useFetch } from "../hooks/useFetch";
-import { useRepeatedQueryParam } from "../hooks/useRepeatedQueryParam";
-import { formatBytes } from "../utils/format";
-import { InstallMethodBadge } from "./InstallMethodBadge";
+import type { IUseToolActions } from "../hooks/useToolActions";
+import { ToolActionButtons } from "./ToolActionButtons";
 import { TitledCard } from "./ui/TitledCard";
 import { Tree, type ITreeItemData } from "./ui/Tree";
 
 type ToolsTreeViewProps = {
   tools: IToolDetail[];
+  actions: IUseToolActions;
 };
 
 type ToolTreeData = {
   toolName?: string;
   isFile?: boolean;
-  installMethod?: string;
-  ghCli?: boolean;
-  fileCount?: number;
+  dirPath?: string;
   status?: ToolRuntimeStatus;
-  binaryDiskSize?: number;
+  installedVersion?: string;
 };
 
 /**
- * Convert API file tree entries to Tree component items.
+ * Flatten the API file tree into one row per tool file, carrying the directory
+ * path down as a prefix so each row can render as `dir/name`.
  */
-function fileTreeToTreeItems(
+function flattenToolFiles(
   entries: IFileTreeEntry[],
-  toolStatusMap: Map<string, ToolRuntimeStatus>,
-  toolMethodMap: Map<string, string>,
-  toolGhCliMap: Map<string, boolean>,
-  toolFileCountMap: Map<string, number>,
-  toolBinarySizeMap: Map<string, number>,
+  toolsByName: Map<string, IToolDetail>,
+  dirPath: string,
 ): ITreeItemData<ToolTreeData>[] {
-  return entries.map((entry) => {
+  return entries.flatMap((entry) => {
     if (entry.type === "directory") {
-      return {
-        id: entry.path,
-        label: entry.name,
-        icon: <FolderOpen class="h-4 w-4 text-amber-300" />,
-        children: entry.children
-          ? fileTreeToTreeItems(
-              entry.children,
-              toolStatusMap,
-              toolMethodMap,
-              toolGhCliMap,
-              toolFileCountMap,
-              toolBinarySizeMap,
-            )
-          : [],
-      };
+      return entry.children ? flattenToolFiles(entry.children, toolsByName, `${dirPath}${entry.name}/`) : [];
     }
 
-    // File entry
-    const status = entry.toolName ? toolStatusMap.get(entry.toolName) : undefined;
+    const tool = entry.toolName ? toolsByName.get(entry.toolName) : undefined;
+    const status = tool?.runtime.status;
     const statusColor =
       status === "installed" ? "text-green-400" : status === "error" ? "text-red-400" : "text-blue-400";
-    const dotColor = getStatusDotColor(status);
 
-    return {
-      id: entry.path,
-      label: entry.name,
-      icon: <FileCode class={`h-4 w-4 ${statusColor}`} />,
-      iconDecorator: <span class={`inline-block w-2 h-2 rounded-full ${dotColor}`} />,
-      data: {
-        toolName: entry.toolName,
-        isFile: true,
-        installMethod: entry.toolName ? toolMethodMap.get(entry.toolName) : undefined,
-        ghCli: entry.toolName ? toolGhCliMap.get(entry.toolName) : undefined,
-        fileCount: entry.toolName ? toolFileCountMap.get(entry.toolName) : undefined,
-        status,
-        binaryDiskSize: entry.toolName ? toolBinarySizeMap.get(entry.toolName) : undefined,
+    return [
+      {
+        id: entry.path,
+        label: entry.name,
+        icon: <FileCode class={`h-4 w-4 ${statusColor}`} />,
+        iconDecorator: <span class={`inline-block w-2 h-2 rounded-full ${getStatusDotClass(status)}`} />,
+        data: {
+          toolName: entry.toolName,
+          isFile: true,
+          dirPath,
+          status,
+          installedVersion: tool?.runtime.installedVersion ?? undefined,
+        },
       },
-    };
+    ];
   });
 }
 
 /**
- * Get the status dot color based on tool status.
+ * Get the status dot styling based on tool status. Uninstalled tools get an outline
+ * rather than a fill so installed ones read as the solid state at a glance.
  */
-function getStatusDotColor(status?: ToolRuntimeStatus): string {
+function getStatusDotClass(status?: ToolRuntimeStatus): string {
   switch (status) {
     case "installed":
       return "bg-green-500";
     case "error":
       return "bg-red-500";
     default:
-      return "bg-gray-300";
+      return "border border-gray-300";
   }
 }
 
 /**
- * Custom label renderer that shows .tool.ts extension in gray for files,
- * and adds install method badge with file count and binary size, right-aligned.
+ * Custom label renderer that dims the directory path and .tool.ts extension so
+ * the tool name stands out, and trails the installed version when there is one.
  */
 function renderLabel(item: ITreeItemData<ToolTreeData>): ComponentChildren {
   if (item.data?.isFile && item.label.endsWith(".tool.ts")) {
     const baseName = item.label.replace(/\.tool\.ts$/, "");
-    const fileCount = item.data.fileCount ?? 0;
-    const binarySize = item.data.binaryDiskSize ?? 0;
+    const dirPath = item.data.dirPath ?? "";
+    const isInstalled = item.data.status === "installed";
+    const installedVersion = item.data.installedVersion;
+
     return (
-      <span class="flex items-center justify-between flex-1">
-        <span>
+      <span class="flex flex-1 items-center justify-between gap-2">
+        <span class="min-w-0 truncate">
+          {dirPath && <span class="text-muted-foreground">{dirPath}</span>}
           {baseName}
-          <span class="text-gray-400">.tool.ts</span>
+          <span class="text-muted-foreground">.tool.ts</span>
         </span>
-        <span class="flex items-center gap-2">
-          {item.data.installMethod && <InstallMethodBadge method={item.data.installMethod} ghCli={item.data.ghCli} />}
-          <span class="text-xs text-muted-foreground">{fileCount} files</span>
-          {binarySize > 0 && <span class="text-xs font-bold text-orange-400">{formatBytes(binarySize)}</span>}
-        </span>
+        {isInstalled && installedVersion && (
+          <span class="flex-shrink-0 text-xs text-muted-foreground/70">{installedVersion}</span>
+        )}
       </span>
     );
   }
@@ -124,22 +107,28 @@ function handleItemClick(item: ITreeItemData<ToolTreeData>): void {
   }
 }
 
-export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
+export function ToolsTreeView({ tools, actions }: ToolsTreeViewProps): JSX.Element {
   const { data: treeData, loading } = useFetch<IToolConfigsTree>("/tool-configs-tree");
-  const [collapsedIds, setCollapsedIds] = useRepeatedQueryParam("treeCollapsed");
 
-  // Build maps from tools
-  const toolStatusMap = new Map<string, ToolRuntimeStatus>();
-  const toolMethodMap = new Map<string, string>();
-  const toolGhCliMap = new Map<string, boolean>();
-  const toolFileCountMap = new Map<string, number>();
-  const toolBinarySizeMap = new Map<string, number>();
-  for (const tool of tools) {
-    toolStatusMap.set(tool.config.name, tool.runtime.status);
-    toolMethodMap.set(tool.config.name, tool.config.installationMethod);
-    toolGhCliMap.set(tool.config.name, tool.config.installParams?.ghCli ?? false);
-    toolFileCountMap.set(tool.config.name, tool.files.length);
-    toolBinarySizeMap.set(tool.config.name, tool.binaryDiskSize);
+  const toolsByName = new Map(tools.map((tool) => [tool.config.name, tool]));
+
+  function renderActions(item: ITreeItemData<ToolTreeData>): ComponentChildren {
+    const toolName = item.data?.toolName;
+
+    if (!toolName) {
+      return null;
+    }
+
+    return (
+      <span onClick={(event) => event.stopPropagation()}>
+        <ToolActionButtons
+          toolName={toolName}
+          isInstalled={item.data?.status === "installed"}
+          actions={actions}
+          size="xs"
+        />
+      </span>
+    );
   }
 
   if (loading) {
@@ -150,18 +139,9 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
     );
   }
 
-  const treeItems = treeData
-    ? fileTreeToTreeItems(
-        treeData.entries,
-        toolStatusMap,
-        toolMethodMap,
-        toolGhCliMap,
-        toolFileCountMap,
-        toolBinarySizeMap,
-      )
-    : [];
+  const roots = treeData?.roots ?? [];
 
-  if (treeItems.length === 0) {
+  if (roots.length === 0) {
     return (
       <TitledCard title="Tool Files" icon={<FolderTree class="h-4 w-4" />}>
         <div class="text-muted-foreground text-sm">No tool files found</div>
@@ -170,28 +150,18 @@ export function ToolsTreeView({ tools }: ToolsTreeViewProps): JSX.Element {
   }
 
   return (
-    <TitledCard title="Tool Files" icon={<FolderTree class="h-4 w-4" />}>
-      <Tree
-        items={treeItems}
-        defaultExpanded={true}
-        collapsedIds={collapsedIds}
-        onItemClick={handleItemClick}
-        onItemToggle={(item, nextExpanded) => {
-          setCollapsedIds((previousIds) => {
-            const nextIds = new Set(previousIds);
-
-            if (nextExpanded) {
-              nextIds.delete(item.id);
-            } else {
-              nextIds.add(item.id);
-            }
-
-            return nextIds;
-          });
-        }}
-        renderLabel={renderLabel}
-        iconClassName="mr-1"
-      />
-    </TitledCard>
+    <div data-testid="ToolsTreeView" class="space-y-4">
+      {roots.map((root) => (
+        <TitledCard key={root.path} title={root.label} icon={<FolderTree class="h-4 w-4" />}>
+          <Tree
+            items={flattenToolFiles(root.entries, toolsByName, "")}
+            onItemClick={handleItemClick}
+            renderLabel={renderLabel}
+            renderActions={renderActions}
+            iconClassName="mr-1"
+          />
+        </TitledCard>
+      ))}
+    </div>
   );
 }

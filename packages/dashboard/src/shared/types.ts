@@ -208,11 +208,20 @@ export interface IFileTreeEntry {
 }
 
 /**
- * Tool configs file tree response.
+ * One configured tool-configs directory and the tool files found under it.
+ */
+export interface IToolConfigsRoot {
+  /** Absolute directory path with the home directory contracted to `~`. */
+  label: string;
+  path: string;
+  entries: IFileTreeEntry[];
+}
+
+/**
+ * Tool configs file tree response, grouped by configured tool-configs directory.
  */
 export interface IToolConfigsTree {
-  rootPath: string;
-  entries: IFileTreeEntry[];
+  roots: IToolConfigsRoot[];
 }
 
 /**

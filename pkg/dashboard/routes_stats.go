@@ -258,17 +258,12 @@ func (s *Server) handleRecentTools(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	toolConfigsDirs := s.projectConfig.Paths.GetToolConfigsDirs()
 	tools := []map[string]any{}
 
 	// Walk tool configs directories to find .tool.ts files
 	var toolFiles []string
 	seenFiles := make(map[string]bool)
-	for _, rawDir := range toolConfigsDirs {
-		resolvedDir := strings.ReplaceAll(rawDir, "{configFileDir}", s.projectConfig.Paths.DotfilesDir)
-		if s.projectConfig.Paths.DotfilesDir != "" && !filepath.IsAbs(resolvedDir) {
-			resolvedDir = filepath.Join(s.projectConfig.Paths.DotfilesDir, resolvedDir)
-		}
+	for _, resolvedDir := range s.toolConfigsDirs() {
 		_ = filepath.Walk(resolvedDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return nil

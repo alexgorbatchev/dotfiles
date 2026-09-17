@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
 // GET /api/config
@@ -80,8 +81,7 @@ func (s *Server) handleToolConfigsTree(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, false, nil, "Project config is not initialized")
 		return
 	}
-	toolConfigsDirs := s.projectConfig.Paths.GetToolConfigsDirs()
-	primaryDir := s.projectConfig.Paths.GetPrimaryToolConfigsDir()
+	toolConfigsDirs := s.toolConfigsDirs()
 
 	type treeNode struct {
 		Name     string      `json:"name"`
@@ -129,23 +129,28 @@ func (s *Server) handleToolConfigsTree(w http.ResponseWriter, r *http.Request) {
 		return nodes, nil
 	}
 
-	var allNodes []*treeNode
-	for _, rawDir := range toolConfigsDirs {
-		resolvedDir := strings.ReplaceAll(rawDir, "{configFileDir}", s.projectConfig.Paths.DotfilesDir)
-		if s.projectConfig.Paths.DotfilesDir != "" && !filepath.IsAbs(resolvedDir) {
-			resolvedDir = filepath.Join(s.projectConfig.Paths.DotfilesDir, resolvedDir)
-		}
-		nodes, _ := buildNode(resolvedDir)
-		if nodes != nil {
-			allNodes = append(allNodes, nodes...)
-		}
+	type toolConfigsRoot struct {
+		Label   string      `json:"label"`
+		Path    string      `json:"path"`
+		Entries []*treeNode `json:"entries"`
 	}
-	if allNodes == nil {
-		allNodes = []*treeNode{}
+
+	homeDir, _ := os.UserHomeDir()
+
+	roots := []toolConfigsRoot{}
+	for _, resolvedDir := range toolConfigsDirs {
+		nodes, _ := buildNode(resolvedDir)
+		if len(nodes) == 0 {
+			continue
+		}
+		roots = append(roots, toolConfigsRoot{
+			Label:   utils.ContractHomePath(homeDir, resolvedDir),
+			Path:    resolvedDir,
+			Entries: nodes,
+		})
 	}
 
 	writeJSON(w, true, map[string]any{
-		"rootPath": primaryDir,
-		"entries":  allNodes,
+		"roots": roots,
 	}, "")
 }

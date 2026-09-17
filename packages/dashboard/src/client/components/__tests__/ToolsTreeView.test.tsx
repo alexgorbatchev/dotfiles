@@ -7,9 +7,8 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 setupUITests();
 
 import type { IFileTreeEntry, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../../shared/types";
+import type { IUseToolActions } from "../../hooks/useToolActions";
 import { ToolsTreeView } from "../ToolsTreeView";
-
-type HistoryReplaceState = typeof window.history.replaceState;
 
 const installedVersionByStatus: Record<ToolRuntimeStatus, string | null> = {
   installed: "1.0.0",
@@ -56,13 +55,26 @@ function createTool(name: string, status: ToolRuntimeStatus = "installed"): IToo
 
 function createTreeResponse(entries: IFileTreeEntry[]): IToolConfigsTree {
   return {
-    rootPath: "/home/user/tools",
-    entries,
+    roots: [{ label: "~/tools", path: "/home/user/tools", entries }],
   };
 }
 
+// The server omits roots that contain no tool files, so an empty tree carries no roots at all.
+const EMPTY_TREE_RESPONSE: IToolConfigsTree = { roots: [] };
+
+const noopActions: IUseToolActions = {
+  pending: null,
+  outcome: null,
+  installTool: async () => {},
+  updateTool: async () => {},
+  checkTool: async () => {},
+};
+
+function renderTree(tools: IToolDetail[]): ReturnType<typeof render> {
+  return render(<ToolsTreeView tools={tools} actions={noopActions} />);
+}
+
 const originalFetch = globalThis.fetch;
-const originalHistoryReplaceState = window.history.replaceState;
 
 function mockFetchWith(treeData: IToolConfigsTree | null): void {
   const mockFn = mock(async () => {
@@ -76,40 +88,62 @@ function mockFetchWith(treeData: IToolConfigsTree | null): void {
 describe("ToolsTreeView", () => {
   beforeEach(() => {
     globalThis.fetch = originalFetch;
-    window.history.replaceState = originalHistoryReplaceState;
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    window.history.replaceState = originalHistoryReplaceState;
   });
 
   test("renders loading state initially", () => {
     const mockFn = mock(async () => new Promise<Response>(() => {}));
     globalThis.fetch = Object.assign(mockFn, { preconnect: () => {} }) as typeof fetch;
-    render(<ToolsTreeView tools={[]} />);
+    renderTree([]);
 
     expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
   test("renders empty state when no entries", async () => {
-    mockFetchWith(createTreeResponse([]));
-    render(<ToolsTreeView tools={[]} />);
+    mockFetchWith(EMPTY_TREE_RESPONSE);
+    renderTree([]);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(screen.getByText("No tool files found")).toBeInTheDocument();
   });
 
-  test("renders card with title", async () => {
+  test("titles the card with the contracted root path", async () => {
     mockFetchWith(
       createTreeResponse([
         { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
       ]),
     );
-    render(<ToolsTreeView tools={[createTool("fzf")]} />);
+    renderTree([createTool("fzf")]);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("Tool Files")).toBeInTheDocument();
+    expect(screen.getByText("~/tools")).toBeInTheDocument();
+  });
+
+  test("renders one card per configured tool-configs root", async () => {
+    mockFetchWith({
+      roots: [
+        {
+          label: "~/tools",
+          path: "/home/user/tools",
+          entries: [{ name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" }],
+        },
+        {
+          label: "~/extra-tools",
+          path: "/home/user/extra-tools",
+          entries: [{ name: "jq.tool.ts", path: "/home/user/extra-tools/jq.tool.ts", type: "file", toolName: "jq" }],
+        },
+      ],
+    });
+    renderTree([createTool("fzf"), createTool("jq")]);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(screen.getByText("~/tools")).toBeInTheDocument();
+    expect(screen.getByText("~/extra-tools")).toBeInTheDocument();
+    expect(screen.getByText("fzf")).toBeInTheDocument();
+    expect(screen.getByText("jq")).toBeInTheDocument();
   });
 
   test("renders tool file in tree", async () => {
@@ -118,14 +152,14 @@ describe("ToolsTreeView", () => {
         { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
       ]),
     );
-    render(<ToolsTreeView tools={[createTool("fzf")]} />);
+    renderTree([createTool("fzf")]);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(screen.getByText("fzf")).toBeInTheDocument();
     expect(screen.getByText(".tool.ts")).toBeInTheDocument();
   });
 
-  test("renders nested folder structure", async () => {
+  test("flattens nested folders into rows prefixed with the directory path", async () => {
     mockFetchWith(
       createTreeResponse([
         {
@@ -139,15 +173,17 @@ describe("ToolsTreeView", () => {
         },
       ]),
     );
-    render(<ToolsTreeView tools={[createTool("fzf"), createTool("bat")]} />);
+    renderTree([createTool("fzf"), createTool("bat")]);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("dev")).toBeInTheDocument();
     expect(screen.getByText("fzf")).toBeInTheDocument();
     expect(screen.getByText("bat")).toBeInTheDocument();
+    expect(screen.getAllByText("dev/")).toHaveLength(2);
+    // The folder itself is no longer a row of its own.
+    expect(screen.queryByText("dev")).not.toBeInTheDocument();
   });
 
-  test("renders multiple folders", async () => {
+  test("dims the directory path prefix", async () => {
     mockFetchWith(
       createTreeResponse([
         {
@@ -156,6 +192,45 @@ describe("ToolsTreeView", () => {
           type: "directory",
           children: [{ name: "fzf.tool.ts", path: "/home/user/tools/dev/fzf.tool.ts", type: "file", toolName: "fzf" }],
         },
+      ]),
+    );
+    renderTree([createTool("fzf")]);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(screen.getByText("dev/")).toHaveClass("text-muted-foreground");
+  });
+
+  test("joins deeply nested directories into a single prefix", async () => {
+    mockFetchWith(
+      createTreeResponse([
+        {
+          name: "dev",
+          path: "/home/user/tools/dev",
+          type: "directory",
+          children: [
+            {
+              name: "cli",
+              path: "/home/user/tools/dev/cli",
+              type: "directory",
+              children: [
+                { name: "fzf.tool.ts", path: "/home/user/tools/dev/cli/fzf.tool.ts", type: "file", toolName: "fzf" },
+              ],
+            },
+          ],
+        },
+      ]),
+    );
+    renderTree([createTool("fzf")]);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(screen.getByText("dev/cli/")).toBeInTheDocument();
+    expect(screen.getByText("fzf")).toBeInTheDocument();
+  });
+
+  test("renders root-level files without a path prefix", async () => {
+    mockFetchWith(
+      createTreeResponse([
+        { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
         {
           name: "infra",
           path: "/home/user/tools/infra",
@@ -171,13 +246,13 @@ describe("ToolsTreeView", () => {
         },
       ]),
     );
-    render(<ToolsTreeView tools={[createTool("fzf"), createTool("docker")]} />);
+    renderTree([createTool("fzf"), createTool("docker")]);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("dev")).toBeInTheDocument();
-    expect(screen.getByText("infra")).toBeInTheDocument();
     expect(screen.getByText("fzf")).toBeInTheDocument();
     expect(screen.getByText("docker")).toBeInTheDocument();
+    expect(screen.getByText("infra/")).toBeInTheDocument();
+    expect(screen.queryByText("/")).not.toBeInTheDocument();
   });
 
   test("navigates to tool detail on file click", async () => {
@@ -187,7 +262,7 @@ describe("ToolsTreeView", () => {
         { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
       ]),
     );
-    render(<ToolsTreeView tools={[createTool("fzf")]} />);
+    renderTree([createTool("fzf")]);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -206,81 +281,13 @@ describe("ToolsTreeView", () => {
     });
   });
 
-  test("hydrates collapsed folders from window.location.href", async () => {
-    const originalLocation = window.location;
-
-    Object.defineProperty(window, "location", {
-      value: { href: "http://localhost/?treeCollapsed=%2Fhome%2Fuser%2Ftools%2Fdev" },
-      writable: true,
-    });
-
-    mockFetchWith(
-      createTreeResponse([
-        {
-          name: "dev",
-          path: "/home/user/tools/dev",
-          type: "directory",
-          children: [{ name: "fzf.tool.ts", path: "/home/user/tools/dev/fzf.tool.ts", type: "file", toolName: "fzf" }],
-        },
-      ]),
-    );
-    render(<ToolsTreeView tools={[createTool("fzf")]} />);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    expect(screen.getByText("dev")).toBeInTheDocument();
-    expect(screen.queryByText("fzf")).not.toBeInTheDocument();
-
-    Object.defineProperty(window, "location", {
-      value: originalLocation,
-      writable: true,
-    });
-  });
-
-  test("keeps collapsed folders in sync with the query string", async () => {
-    const originalReplaceState = window.history.replaceState;
-    const replaceStateSpy = mock((() => {}) as HistoryReplaceState);
-
-    window.history.replaceState = replaceStateSpy as HistoryReplaceState;
-
-    mockFetchWith(
-      createTreeResponse([
-        {
-          name: "dev",
-          path: "/home/user/tools/dev",
-          type: "directory",
-          children: [{ name: "fzf.tool.ts", path: "/home/user/tools/dev/fzf.tool.ts", type: "file", toolName: "fzf" }],
-        },
-      ]),
-    );
-    render(<ToolsTreeView tools={[createTool("fzf")]} />);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    expect(screen.getByText("fzf")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText("dev"));
-    expect(screen.queryByText("fzf")).not.toBeInTheDocument();
-    expect(String(replaceStateSpy.mock.calls.at(-1)?.[2] ?? "")).toContain(
-      "treeCollapsed=%2Fhome%2Fuser%2Ftools%2Fdev",
-    );
-
-    fireEvent.click(screen.getByText("dev"));
-    expect(screen.getByText("fzf")).toBeInTheDocument();
-
-    const latestUrl = String(replaceStateSpy.mock.calls.at(-1)?.[2] ?? "");
-    expect(latestUrl).not.toContain("treeCollapsed=");
-
-    window.history.replaceState = originalReplaceState;
-  });
-
   test("colors installed tool files green", async () => {
     mockFetchWith(
       createTreeResponse([
         { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
       ]),
     );
-    const { container } = render(<ToolsTreeView tools={[createTool("fzf", "installed")]} />);
+    const { container } = renderTree([createTool("fzf", "installed")]);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
     const icon = container.querySelector("svg.lucide-file-code.text-green-400");
@@ -294,7 +301,7 @@ describe("ToolsTreeView", () => {
         { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
       ]),
     );
-    const { container } = render(<ToolsTreeView tools={[createTool("fzf", "not-installed")]} />);
+    const { container } = renderTree([createTool("fzf", "not-installed")]);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
     const icon = container.querySelector("svg.lucide-file-code.text-blue-400");
@@ -317,7 +324,7 @@ describe("ToolsTreeView", () => {
         installParams: undefined,
       },
     };
-    render(<ToolsTreeView tools={[toolWithoutInstallParams]} />);
+    renderTree([toolWithoutInstallParams]);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(screen.getByText("fzf")).toBeInTheDocument();

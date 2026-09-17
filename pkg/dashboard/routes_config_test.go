@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -57,7 +58,7 @@ func TestDashboardAPIs(t *testing.T) {
 	}
 	*toolConfigs[0].Version = "1.0.0"
 
-	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -161,7 +162,7 @@ func TestDashboardMoreRoutes(t *testing.T) {
 	_ = instReg.Register(&mockInstallerForTest{name: "github-release"})
 	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
 
-	server := NewServer(log, "127.0.0.1", 0, reg, &config.ProjectConfig{
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", &config.ProjectConfig{
 		Paths: config.PathsConfig{
 			DotfilesDir:    tempDir,
 			GeneratedDir:   filepath.Join(tempDir, ".generated"),
@@ -220,7 +221,7 @@ func TestDashboardFullHealthAndTools(t *testing.T) {
 		{Name: "bat", InstallationMethod: "github-release"},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -237,6 +238,180 @@ func TestDashboardFullHealthAndTools(t *testing.T) {
 		_ = json.NewDecoder(resp.Body).Decode(&body)
 		if body["success"] != true {
 			t.Errorf("expected health success: true, got %v", body["success"])
+		}
+	})
+}
+
+func TestHandleToolConfigsTree_MultipleRoots(t *testing.T) {
+	log := logger.New(logger.Config{
+		Name:   "test",
+		Level:  logger.LogLevelQuiet,
+		Writer: io.Discard,
+	})
+
+	type treeEntry struct {
+		Name     string      `json:"name"`
+		Type     string      `json:"type"`
+		Children []treeEntry `json:"children"`
+	}
+
+	writeTool := func(t *testing.T, dir, name string) {
+		t.Helper()
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", dir, err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("export default {}"), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	type treeRoot struct {
+		Label   string      `json:"label"`
+		Path    string      `json:"path"`
+		Entries []treeEntry `json:"entries"`
+	}
+
+	fetchRootsFrom := func(t *testing.T, configPath string, toolConfigsDir interface{}) []treeRoot {
+		t.Helper()
+		server := NewServer(log, "127.0.0.1", 0, nil, testFS(), configPath, &config.ProjectConfig{
+			Paths: config.PathsConfig{ToolConfigsDir: toolConfigsDir},
+		}, nil, nil)
+
+		recorder := httptest.NewRecorder()
+		server.handleToolConfigsTree(recorder, httptest.NewRequest("GET", "/api/tool-configs-tree", nil))
+
+		var payload struct {
+			Success bool `json:"success"`
+			Data    struct {
+				Roots []treeRoot `json:"roots"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		if !payload.Success {
+			t.Fatalf("expected success, got body %s", recorder.Body.String())
+		}
+		return payload.Data.Roots
+	}
+
+	fetchRoots := func(t *testing.T, toolConfigsDir interface{}) []treeRoot {
+		t.Helper()
+		return fetchRootsFrom(t, "", toolConfigsDir)
+	}
+
+	t.Run("single root reports its own path and flat entries", func(t *testing.T) {
+		dir := t.TempDir()
+		writeTool(t, dir, "bat.tool.ts")
+
+		roots := fetchRoots(t, dir)
+		if len(roots) != 1 {
+			t.Fatalf("expected one root, got %+v", roots)
+		}
+		if roots[0].Path != dir || roots[0].Label != dir {
+			t.Fatalf("root path/label = %q/%q, want %q", roots[0].Path, roots[0].Label, dir)
+		}
+		entries := roots[0].Entries
+		if len(entries) != 1 || entries[0].Name != "bat.tool.ts" || entries[0].Type != "file" {
+			t.Fatalf("expected a single un-nested file entry, got %+v", entries)
+		}
+	})
+
+	t.Run("each root is reported separately", func(t *testing.T) {
+		parent := t.TempDir()
+		first := filepath.Join(parent, "tools")
+		second := filepath.Join(parent, "extra-tools")
+		writeTool(t, first, "bat.tool.ts")
+		writeTool(t, second, "jq.tool.ts")
+		// Same-named subfolders in both roots must not collide.
+		writeTool(t, filepath.Join(first, "shared"), "fd.tool.ts")
+		writeTool(t, filepath.Join(second, "shared"), "rg.tool.ts")
+
+		roots := fetchRoots(t, []string{first, second})
+		if len(roots) != 2 {
+			t.Fatalf("expected one root per configured directory, got %+v", roots)
+		}
+
+		byPath := map[string]treeRoot{}
+		for _, root := range roots {
+			byPath[root.Path] = root
+		}
+
+		for rootPath, wantTool := range map[string]string{first: "bat.tool.ts", second: "jq.tool.ts"} {
+			root, ok := byPath[rootPath]
+			if !ok {
+				t.Fatalf("missing root %q in %+v", rootPath, roots)
+			}
+			var names []string
+			for _, entry := range root.Entries {
+				names = append(names, entry.Name)
+			}
+			if len(names) != 2 || names[0] != "shared" || names[1] != wantTool {
+				t.Fatalf("root %q entries = %v, want [shared %s]", rootPath, names, wantTool)
+			}
+		}
+	})
+
+	// Resolution goes through vm.ResolveToolConfigsDirs, the same helper the config loader uses,
+	// so these placeholder and tilde forms have to behave here exactly as they do in the CLI.
+	t.Run("resolves the configFileDir placeholder against the config file", func(t *testing.T) {
+		projectDir := t.TempDir()
+		writeTool(t, filepath.Join(projectDir, "tools"), "bat.tool.ts")
+		configPath := filepath.Join(projectDir, "dotfiles.config.ts")
+
+		roots := fetchRootsFrom(t, configPath, "{configFileDir}/tools")
+		if len(roots) != 1 {
+			t.Fatalf("expected one root, got %+v", roots)
+		}
+		if want := filepath.Join(projectDir, "tools"); roots[0].Path != want {
+			t.Fatalf("path = %q, want %q", roots[0].Path, want)
+		}
+	})
+
+	t.Run("resolves a directory given relative to the config file", func(t *testing.T) {
+		projectDir := t.TempDir()
+		writeTool(t, filepath.Join(projectDir, "tools"), "bat.tool.ts")
+		configPath := filepath.Join(projectDir, "dotfiles.config.ts")
+
+		roots := fetchRootsFrom(t, configPath, "tools")
+		if len(roots) != 1 {
+			t.Fatalf("expected one root, got %+v", roots)
+		}
+		if want := filepath.Join(projectDir, "tools"); roots[0].Path != want {
+			t.Fatalf("path = %q, want %q", roots[0].Path, want)
+		}
+	})
+
+	t.Run("expands a tilde directory against the home directory", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		writeTool(t, filepath.Join(home, ".dotfiles-tilde-tools"), "bat.tool.ts")
+
+		roots := fetchRootsFrom(t, filepath.Join(home, "dotfiles.config.ts"), "~/.dotfiles-tilde-tools")
+		if len(roots) != 1 {
+			t.Fatalf("expected one root, got %+v", roots)
+		}
+		if want := filepath.Join(home, ".dotfiles-tilde-tools"); roots[0].Path != want {
+			t.Fatalf("path = %q, want %q", roots[0].Path, want)
+		}
+	})
+
+	t.Run("label contracts the home directory to a tilde", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+
+		dir := filepath.Join(home, ".dotfiles-dashboard-test-tools")
+		writeTool(t, dir, "bat.tool.ts")
+
+		roots := fetchRoots(t, dir)
+		if len(roots) != 1 {
+			t.Fatalf("expected one root, got %+v", roots)
+		}
+		if want := "~/.dotfiles-dashboard-test-tools"; roots[0].Label != want {
+			t.Fatalf("label = %q, want %q", roots[0].Label, want)
+		}
+		if roots[0].Path != dir {
+			t.Fatalf("path = %q, want absolute %q", roots[0].Path, dir)
 		}
 	})
 }

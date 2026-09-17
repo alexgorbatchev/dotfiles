@@ -32,7 +32,7 @@ func TestDashboardServer(t *testing.T) {
 		Writer: io.Discard,
 	})
 
-	server := NewServer(log, "127.0.0.1", 0, nil, nil, nil, nil) // 0 lets system select an ephemeral port
+	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil) // 0 lets system select an ephemeral port
 
 	if err := server.Start(); err != nil {
 		t.Fatalf("expected no error starting server, got %v", err)
@@ -158,11 +158,11 @@ func TestDashboard_ToolsSchemaAndConcurrency(t *testing.T) {
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	instReg := installer.NewRegistry()
-	
+
 	// Create a concurrency-safe mock installer
 	var wg sync.WaitGroup
 	wg.Add(2)
-	
+
 	type record struct {
 		toolName string
 		force    bool
@@ -186,7 +186,7 @@ func TestDashboard_ToolsSchemaAndConcurrency(t *testing.T) {
 
 	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
 
-	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestDashboard_PlatformSerialization(t *testing.T) {
 	}
 	*toolConfigs[0].Version = "13.0.0"
 
-	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -483,7 +483,7 @@ type mockCheckUpdateInstaller struct {
 	err           error
 }
 
-func (m *mockCheckUpdateInstaller) Name() string { return m.name }
+func (m *mockCheckUpdateInstaller) Name() string       { return m.name }
 func (m *mockCheckUpdateInstaller) SupportsSudo() bool { return false }
 func (m *mockCheckUpdateInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
 	return &installer.InstallResult{}, nil
@@ -550,7 +550,7 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -770,7 +770,7 @@ func TestDashboardAPIsWithOrchestratorAndDBData(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -808,7 +808,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Server with nil registry, nil projectConfig, nil orchestrator
-	serverNil := NewServer(log, "127.0.0.1", 0, nil, nil, nil, nil)
+	serverNil := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil)
 	if err := serverNil.Start(); err != nil {
 		t.Fatalf("failed to start nil server: %v", err)
 	}
@@ -873,7 +873,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 	}
 
 	tempDir := t.TempDir()
-	serverNoFiles := NewServer(log, "127.0.0.1", 0, reg, &config.ProjectConfig{
+	serverNoFiles := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", &config.ProjectConfig{
 		Paths: config.PathsConfig{
 			DotfilesDir:    tempDir,
 			GeneratedDir:   filepath.Join(tempDir, ".generated"),
@@ -906,7 +906,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 			ConfigFilePath: filepath.Join(mdDir, "tool.ts"),
 		},
 	}
-	serverFallback := NewServer(log, "127.0.0.1", 0, reg, nil, toolFallbackMd, nil)
+	serverFallback := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", nil, toolFallbackMd, nil)
 	_ = serverFallback.Start()
 	respFallback, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/fallback-md/readme", serverFallback.Port()))
 	if err == nil && respFallback != nil {
@@ -921,7 +921,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 			ConfigFilePath: "/nonexistent/path/tool.ts",
 		},
 	}
-	serverBadSource := NewServer(log, "127.0.0.1", 0, reg, nil, toolBadSource, nil)
+	serverBadSource := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", nil, toolBadSource, nil)
 	_ = serverBadSource.Start()
 	respBadSrc, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bad-source/source", serverBadSource.Port()))
 	if err == nil && respBadSrc != nil {
@@ -1003,7 +1003,7 @@ func TestDashboardToolDetailAndConfigsTree(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, []*config.ToolConfig{richTool}, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, []*config.ToolConfig{richTool}, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -1026,12 +1026,14 @@ func TestDashboardToolDetailAndConfigsTree(t *testing.T) {
 
 type mockFailingInstaller struct{}
 
-func (m *mockFailingInstaller) Name() string { return "failing-installer" }
+func (m *mockFailingInstaller) Name() string       { return "failing-installer" }
 func (m *mockFailingInstaller) SupportsSudo() bool { return false }
 func (m *mockFailingInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
 	return nil, fmt.Errorf("mock download error")
 }
-func (m *mockFailingInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error { return nil }
+func (m *mockFailingInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+	return nil
+}
 func (m *mockFailingInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
 	return &installer.UpdateCheckResult{HasUpdate: false}, nil
 }
@@ -1068,7 +1070,7 @@ func TestDashboard_InstallErrorResponse(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -1097,12 +1099,12 @@ func TestDashboardServer_CustomHost(t *testing.T) {
 		Writer: io.Discard,
 	})
 
-	server := NewServer(log, "127.0.0.1", 0, nil, nil, nil, nil)
+	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil)
 	if server.Host() != "127.0.0.1" {
 		t.Errorf("expected host 127.0.0.1, got %s", server.Host())
 	}
 
-	serverDefault := NewServer(log, "", 0, nil, nil, nil, nil)
+	serverDefault := NewServer(log, "", 0, nil, testFS(), "", nil, nil, nil)
 	if serverDefault.Host() != "127.0.0.1" {
 		t.Errorf("expected default host 127.0.0.1 when empty, got %s", serverDefault.Host())
 	}
@@ -1167,7 +1169,7 @@ func TestHandleToolReadme_RemoteAndLocal(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, nil, projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", projCfg, toolConfigs, nil)
 	server.githubBaseURL = githubServer.URL
 	server.githubRawBaseURL = githubServer.URL
 	if err := server.Start(); err != nil {

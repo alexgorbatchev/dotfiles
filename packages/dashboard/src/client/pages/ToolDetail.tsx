@@ -1,19 +1,16 @@
 import { type JSX } from "preact";
-import { useCallback, useMemo, useState } from "preact/hooks";
-import { ArrowUpCircle, Download, File, History, Info, Layers, RefreshCw, Search, Zap, Copy, Check } from "../icons";
+import { useMemo } from "preact/hooks";
+import { File, History, Info, Layers, Zap } from "../icons";
 
 import type {
-  ICheckUpdateResponse,
-  IInstallToolRequest,
-  IInstallToolResponse,
   ISerializablePlatformConfigEntry,
   ISerializableToolConfig,
   IToolDetail,
   IToolHistory,
-  IUpdateToolResponse,
 } from "../../shared/types";
-import { postApi } from "../api";
 import { InstallMethodBadge } from "../components/InstallMethodBadge";
+import { ToolActionBanner } from "../components/ToolActionBanner";
+import { ToolActionButtons } from "../components/ToolActionButtons";
 import { ReadmeCard } from "../components/ReadmeCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { ToolHistory } from "../components/ToolHistory";
@@ -24,9 +21,9 @@ import { TitledCard } from "../components/ui/TitledCard";
 import { useFetch } from "../hooks/useFetch";
 import { useRepeatedQueryParam } from "../hooks/useRepeatedQueryParam";
 import { useSectionHash } from "../hooks/useSectionHash";
+import { useToolActions } from "../hooks/useToolActions";
 import { formatBytes } from "../utils/format";
 import { buildTreeForTool } from "../utils/tree";
-import { formatError } from "../utils/formatError";
 import {
   buildBinaryToToolMap,
   findDependentTools,
@@ -149,14 +146,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
     [toolName],
   );
 
-  const [installing, setInstalling] = useState(false);
-  const [installError, setInstallError] = useState<string | null>(null);
-  const [installSuccess, setInstallSuccess] = useState<string | null>(null);
-  const [copiedCommand, setCopiedCommand] = useState(false);
-  const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [checkUpdateResult, setCheckUpdateResult] = useState<ICheckUpdateResponse | null>(null);
-  const [updating, setUpdating] = useState(false);
-  const [updateResult, setUpdateResult] = useState<IUpdateToolResponse | null>(null);
+  const actions = useToolActions();
   const [collapsedFileIds, setCollapsedFileIds] = useRepeatedQueryParam("filesCollapsed");
 
   const tool = tools?.find((t) => t.config.name === toolName) || null;
@@ -195,85 +185,6 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
 
   useSectionHash(sectionIds, !loading && tool !== null);
 
-  const handleCopyCommand = useCallback((command: string) => {
-    navigator.clipboard.writeText(command).then(() => {
-      setCopiedCommand(true);
-      setTimeout(() => setCopiedCommand(false), 2000);
-    });
-  }, []);
-
-  const handleInstall = useCallback(
-    async (force: boolean) => {
-      setInstalling(true);
-      setInstallError(null);
-      setInstallSuccess(null);
-
-      try {
-        const result = await postApi<IInstallToolResponse, IInstallToolRequest>(
-          `/tools/${encodeURIComponent(toolName)}/install`,
-          { force },
-        );
-
-        if (result.installed) {
-          const message = result.alreadyInstalled
-            ? `Already installed (${result.version})`
-            : `Installed ${result.version}`;
-          setInstallSuccess(message);
-          // Reload the page to refresh tool status
-          setTimeout(() => window.location.reload(), 1500);
-        } else {
-          setInstallError(result.error ?? "Installation failed");
-        }
-      } catch (error) {
-        setInstallError(error instanceof Error ? error.message : "Installation failed");
-      } finally {
-        setInstalling(false);
-      }
-    },
-    [toolName],
-  );
-
-  const handleCheckUpdate = useCallback(async () => {
-    setCheckingUpdate(true);
-    setCheckUpdateResult(null);
-
-    try {
-      const result = await postApi<ICheckUpdateResponse>(`/tools/${encodeURIComponent(toolName)}/check-update`, {});
-      setCheckUpdateResult(result);
-    } catch (error) {
-      setCheckUpdateResult({
-        hasUpdate: false,
-        currentVersion: "unknown",
-        latestVersion: "unknown",
-        supported: false,
-        error: error instanceof Error ? error.message : "Check failed",
-      });
-    } finally {
-      setCheckingUpdate(false);
-    }
-  }, [toolName]);
-
-  const handleUpdate = useCallback(async () => {
-    setUpdating(true);
-    setUpdateResult(null);
-
-    try {
-      const result = await postApi<IUpdateToolResponse>(`/tools/${encodeURIComponent(toolName)}/update`, {});
-      setUpdateResult(result);
-      if (result.updated) {
-        setTimeout(() => window.location.reload(), 1500);
-      }
-    } catch (error) {
-      setUpdateResult({
-        updated: false,
-        supported: false,
-        error: error instanceof Error ? error.message : "Update failed",
-      });
-    } finally {
-      setUpdating(false);
-    }
-  }, [toolName]);
-
   if (loading) {
     return (
       <div data-testid="ToolDetail" class="flex items-center justify-center h-64">
@@ -294,7 +205,6 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   }
 
   const fileRoots = buildTreeForTool(tool.files || []);
-  const { message: installErrorMessage, command: installTrustCommand } = formatError(installError ?? "");
 
   return (
     <div data-testid="ToolDetail" class="space-y-4">
@@ -304,101 +214,15 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
             <h1 class="text-2xl font-bold">{tool.config.name}</h1>
             <StatusBadge status={tool.runtime.status} />
           </div>
-          <div class="flex items-center gap-2">
-            {tool.runtime.status === "installed" ? (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCheckUpdate}
-                  disabled={checkingUpdate || installing || updating}
-                >
-                  <Search class={`h-4 w-4 ${checkingUpdate ? "animate-spin" : ""}`} />
-                  {checkingUpdate ? "Checking..." : "Check for updates"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleUpdate}
-                  disabled={updating || installing || checkingUpdate}
-                >
-                  <ArrowUpCircle class={`h-4 w-4 ${updating ? "animate-spin" : ""}`} />
-                  {updating ? "Updating..." : "Update"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleInstall(true)}
-                  disabled={installing || updating || checkingUpdate}
-                >
-                  <RefreshCw class={`h-4 w-4 ${installing ? "animate-spin" : ""}`} />
-                  {installing ? "Installing..." : "Re-install"}
-                </Button>
-              </>
-            ) : (
-              <Button variant="default" size="sm" onClick={() => handleInstall(false)} disabled={installing}>
-                <Download class="h-4 w-4" />
-                {installing ? "Installing..." : "Install"}
-              </Button>
-            )}
-          </div>
+          <ToolActionButtons
+            toolName={toolName}
+            isInstalled={tool.runtime.status === "installed"}
+            actions={actions}
+            size="sm"
+          />
         </div>
 
-        {installError && (
-          <div class="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md text-sm space-y-2">
-            <div>{installErrorMessage}</div>
-            {installTrustCommand && (
-              <div class="space-y-2">
-                <div class="text-xs text-destructive/80">Run this command to trust the tap:</div>
-                <div class="flex items-center gap-2 bg-destructive/20 px-3 py-2 rounded font-mono text-xs break-all">
-                  <span class="flex-1">{installTrustCommand}</span>
-                  <button
-                    onClick={() => handleCopyCommand(installTrustCommand)}
-                    class="flex-shrink-0 p-1 hover:bg-destructive/30 rounded transition-colors"
-                    title="Copy command"
-                  >
-                    {copiedCommand ? <Check class="h-4 w-4" /> : <Copy class="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        {installSuccess && (
-          <div class="bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 px-4 py-2 rounded-md text-sm">
-            {installSuccess}
-          </div>
-        )}
-
-        {checkUpdateResult && !checkUpdateResult.error && (
-          <div
-            class={`px-4 py-2 rounded-md text-sm ${
-              checkUpdateResult.hasUpdate
-                ? "bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400"
-                : "bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400"
-            }`}
-          >
-            {checkUpdateResult.hasUpdate
-              ? `Update available: ${checkUpdateResult.currentVersion} → ${checkUpdateResult.latestVersion}`
-              : `Up to date (${checkUpdateResult.currentVersion})`}
-          </div>
-        )}
-        {checkUpdateResult?.error && (
-          <div class="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded-md text-sm">
-            {checkUpdateResult.error}
-          </div>
-        )}
-
-        {updateResult && !updateResult.error && updateResult.updated && (
-          <div class="bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 px-4 py-2 rounded-md text-sm">
-            {`Updated: ${updateResult.oldVersion} → ${updateResult.newVersion}`}
-          </div>
-        )}
-        {updateResult?.error && (
-          <div class="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded-md text-sm">
-            {updateResult.error}
-          </div>
-        )}
+        <ToolActionBanner outcome={actions.outcome} class="tool-action-banner-page" />
 
         <div class={`grid gap-4 ${tool.usage.totalCount > 0 ? "lg:grid-cols-2" : ""}`}>
           <TitledCard title="Overview" icon={<Info class="h-4 w-4" />}>

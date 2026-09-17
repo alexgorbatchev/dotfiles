@@ -5,21 +5,34 @@ import (
 	"embed"
 	"fmt"
 	"io"
-	"io/fs"
+	iofs "io/fs"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 //go:embed all:dist
 var assets embed.FS
+
+// toolConfigsDirs resolves the configured tool-config directories through the same helper the
+// config loader uses, so the dashboard agrees with the CLI on placeholders, tilde paths and
+// directories given relative to the config file.
+func (s *Server) toolConfigsDirs() []string {
+	if s.projectConfig == nil {
+		return nil
+	}
+	return vm.ResolveToolConfigsDirs(s.fsys, s.projectConfig, filepath.Dir(s.configPath))
+}
 
 // LogBroadcaster manages active log subscriptions.
 type LogBroadcaster struct {
@@ -94,6 +107,8 @@ type Server struct {
 	ln               net.Listener
 	wg               sync.WaitGroup
 	registry         *registry.Registry
+	fsys             fs.FS
+	configPath       string
 	projectConfig    *config.ProjectConfig
 	toolConfigs      []*config.ToolConfig
 	orchestrator     *orchestrator.Orchestrator
@@ -103,7 +118,7 @@ type Server struct {
 }
 
 // NewServer constructs a new dashboard server.
-func NewServer(log *logger.Logger, host string, port int, reg *registry.Registry, projCfg *config.ProjectConfig, toolConfigs []*config.ToolConfig, orch *orchestrator.Orchestrator) *Server {
+func NewServer(log *logger.Logger, host string, port int, reg *registry.Registry, fsys fs.FS, configPath string, projCfg *config.ProjectConfig, toolConfigs []*config.ToolConfig, orch *orchestrator.Orchestrator) *Server {
 	if host == "" {
 		host = "127.0.0.1"
 	}
@@ -112,6 +127,8 @@ func NewServer(log *logger.Logger, host string, port int, reg *registry.Registry
 		host:          host,
 		port:          port,
 		registry:      reg,
+		fsys:          fsys,
+		configPath:    configPath,
 		projectConfig: projCfg,
 		toolConfigs:   toolConfigs,
 		orchestrator:  orch,
@@ -144,7 +161,7 @@ func (s *Server) Host() string {
 
 // Start launches the HTTP server for serving the dashboard.
 func (s *Server) Start() error {
-	subFS, err := fs.Sub(assets, "dist")
+	subFS, err := iofs.Sub(assets, "dist")
 	if err != nil {
 		return fmt.Errorf("failed to locate embedded dashboard assets: %w", err)
 	}

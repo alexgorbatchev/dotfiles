@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/preact";
 
 import type { IToolDetail } from "../../../shared/types";
+import type { IUseToolActions } from "../../hooks/useToolActions";
 import { ToolsTreeView } from "../ToolsTreeView";
 
 const meta: Meta<typeof ToolsTreeView> = {
@@ -9,6 +10,14 @@ const meta: Meta<typeof ToolsTreeView> = {
 };
 
 type Story = StoryObj<typeof meta>;
+
+const noopActions: IUseToolActions = {
+  pending: null,
+  outcome: null,
+  installTool: async () => {},
+  updateTool: async () => {},
+  checkTool: async () => {},
+};
 
 const tools: IToolDetail[] = [
   {
@@ -37,7 +46,7 @@ const tools: IToolDetail[] = [
 ];
 
 const Default: Story = {
-  render: () => <ToolsTreeView tools={tools} />,
+  render: () => <ToolsTreeView tools={tools} actions={noopActions} />,
   play: async () => {},
 };
 
