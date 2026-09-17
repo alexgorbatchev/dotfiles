@@ -1412,6 +1412,63 @@ func TestOrchestrator_PlatformPreResolutionInPipeline(t *testing.T) {
 		t.Fatalf("failed to open DB: %v", err)
 	}
 	defer sqlDB.Close()
+// A completion command that exceeds completionCommandTimeout must be reported as a
+// timeout rather than as a generic failure, because the two call for different fixes:
+// a timeout means the binary was too slow to respond, not that the command is wrong.
+func TestGenerateCompletionsForTool_CmdTimeoutIsReportedAsTimeout(t *testing.T) {
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Name: "test-completions-timeout", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	runner.Register("/home/user/.generated/binaries/stalledtool/current/stalledtool", nil, context.DeadlineExceeded)
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	orch := NewOrchestrator(log, fsys, runner, registry.NewRegistry(sqlDB), nil)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			GeneratedDir:    "/home/user/.generated",
+		},
+	}
+
+	_ = fsys.MkdirAll("/home/user/.generated/binaries/stalledtool/current", 0755)
+	_ = fsys.WriteFile("/home/user/.generated/binaries/stalledtool/current/stalledtool", []byte("dummy bin"), 0755)
+
+	tool := &config.ToolConfig{
+		Name:               "stalledtool",
+		Binaries:           []interface{}{"stalledtool"},
+		ConfigFilePath:     "/home/user/tools/stalledtool.tool.ts",
+		InstallationMethod: "github-release",
+		ShellConfigs: &config.ShellConfigs{
+			Zsh: &config.ShellTypeConfig{
+				Completions: map[string]interface{}{
+					"cmd": "stalledtool completion zsh",
+				},
+			},
+		},
+	}
+
+	if err := orch.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("expected a completion timeout to be non-fatal, got error: %v", err)
+	}
+
+	if logged := logBuf.String(); !strings.Contains(logged, "timed out after") {
+		t.Errorf("expected a timeout to be reported as such, got log: %s", logged)
+	}
+	if exists, _ := fsys.Exists("/home/user/.generated/shell-scripts/zsh/completions/_stalledtool"); exists {
+		t.Error("expected no completion file to be written when the command times out")
+	}
+}
+
 
 	reg := registry.NewRegistry(sqlDB)
 	instReg := installer.NewRegistry()

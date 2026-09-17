@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,6 +18,12 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
+
+// completionCommandTimeout bounds a tool's own completion-generating subcommand.
+// Printing a completion script is near-instant, but this runs against a binary that
+// was installed moments ago and macOS verifies a newly written executable on its
+// first exec, which can take seconds when several tools are installed at once.
+const completionCommandTimeout = 30 * time.Second
 
 // GenerateTools executes standalone shim, symlink, and shell script generation.
 // It skips the installation pipeline except for tools with "auto: true" in their install params.
@@ -643,16 +650,26 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 
 							cmdName = execPath
 							o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Generating %s completion using: %s", sh, cmdValResolved)))
-							cmdCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+							cmdCtx, cancel := context.WithTimeout(ctx, completionCommandTimeout)
 							cmdExec := o.runner.CommandContext(cmdCtx, cmdName, parts[1:]...)
 							cmdExec.SetProcessGroup(true)
 							cmdExec.SetEnv(o.buildHookEnv(tool, projCfg, nil))
+							// The deadline shows up on the context when the runner kills the
+							// process, and on the error itself when a runner surfaces it directly.
+							timedOut := errors.Is(cmdCtx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded)
 							output, err := cmdExec.Output()
 							cancel()
-							if err == nil {
-								_ = fsys.WriteFile(completionFilePath, output, 0644)
-							} else {
-								o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Completion command %q failed or timed out: %v", cmdValResolved, err)))
+
+							toolLog := o.logger.GetSubLogger("", tool.Name)
+							switch {
+							case err != nil && timedOut:
+								toolLog.Warn(logger.Message(fmt.Sprintf("Completion command %q timed out after %s; no %s completion generated for %s", cmdValResolved, completionCommandTimeout, sh, tool.Name)))
+							case err != nil:
+								toolLog.Warn(logger.Message(fmt.Sprintf("Completion command %q failed: %v; no %s completion generated for %s", cmdValResolved, err, sh, tool.Name)))
+							default:
+								if err := fsys.WriteFile(completionFilePath, output, 0644); err != nil {
+									toolLog.Warn(logger.Message(fmt.Sprintf("Writing %s completion file %q for %s: %v", sh, completionFilePath, tool.Name, err)))
+								}
 							}
 						}
 					}
