@@ -772,4 +772,3 @@ func TestSetDownloadCache_AllInstallers(t *testing.T) {
 		t.Errorf("expected CacheEnabled false, got %v", gh.dl.CacheEnabled)
 	}
 }
-

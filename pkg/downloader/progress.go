@@ -11,18 +11,18 @@ import (
 )
 
 const (
-	progressFieldWidth      = 40
-	etaVisibilityDelay      = 2 * time.Second
-	activeIcon             = "⏵"
-	ansiReset              = "\u001b[0m"
-	ansiBlue               = "\u001b[34m"
-	ansiBold               = "\u001b[1m"
-	ansiDim                = "\u001b[2m"
-	ansiBlackOnWhite       = "\u001b[30;107m"
-	ansiGrayOnWhite        = "\u001b[90;107m"
-	ansiYellowOnGray       = "\u001b[33;100m"
-	ansiWhiteOnGray        = "\u001b[37;100m"
-	ansiGrayBackground     = "\u001b[100m"
+	progressFieldWidth = 40
+	etaVisibilityDelay = 2 * time.Second
+	activeIcon         = "⏵"
+	ansiReset          = "\u001b[0m"
+	ansiBlue           = "\u001b[34m"
+	ansiBold           = "\u001b[1m"
+	ansiDim            = "\u001b[2m"
+	ansiBlackOnWhite   = "\u001b[30;107m"
+	ansiGrayOnWhite    = "\u001b[90;107m"
+	ansiYellowOnGray   = "\u001b[33;100m"
+	ansiWhiteOnGray    = "\u001b[37;100m"
+	ansiGrayBackground = "\u001b[100m"
 )
 
 // ProgressBar manages terminal rendering of interactive download progress.

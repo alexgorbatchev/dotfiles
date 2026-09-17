@@ -74,7 +74,7 @@ func TestAliasAndEnvVar(t *testing.T) {
 
 func TestFromEnvMap(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
 		input map[string]string
 		want  []EnvVar
 	}{
@@ -117,7 +117,7 @@ func TestFromEnvMap(t *testing.T) {
 
 func TestFromAliasMap(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
 		input map[string]string
 		want  []Alias
 	}{
@@ -160,7 +160,7 @@ func TestFromAliasMap(t *testing.T) {
 
 func TestDirectivesFromMapsAndScriptGeneration(t *testing.T) {
 	envMap := map[string]string{
-		"EDITOR": "vim",
+		"EDITOR":     "vim",
 		"PATH_EXTRA": "/usr/local/bin",
 	}
 	aliasMap := map[string]string{

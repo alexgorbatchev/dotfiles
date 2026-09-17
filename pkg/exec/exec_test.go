@@ -473,4 +473,3 @@ func TestOSCmd_AttachDefaultStdin(t *testing.T) {
 		t.Errorf("expected custom stdin to be preserved")
 	}
 }
-

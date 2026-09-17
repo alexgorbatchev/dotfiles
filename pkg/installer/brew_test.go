@@ -436,7 +436,7 @@ func TestBrewInstaller(t *testing.T) {
 		optInst := NewBrewInstaller(optRunner, optFS, nil)
 
 		tool := &config.ToolConfig{
-			Name: "borders",
+			Name:     "borders",
 			Binaries: []interface{}{"borders"},
 			InstallParams: map[string]interface{}{
 				"tap": "FelixKratz/formulae",

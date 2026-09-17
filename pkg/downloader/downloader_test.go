@@ -1594,6 +1594,3 @@ func TestDownloader_PersistentCacheDefaultsAndHashVerification(t *testing.T) {
 		t.Errorf("expected 2 server hits after corrupted cache bypass, got %d", serverHits)
 	}
 }
-
-
-

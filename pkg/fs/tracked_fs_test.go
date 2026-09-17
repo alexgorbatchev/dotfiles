@@ -336,7 +336,7 @@ func TestTrackedFS_Logging(t *testing.T) {
 	defer database.Close()
 
 	reg := registry.NewRegistry(database)
-	
+
 	// Create MemFS and wrap in ResolvedFS so homeDir is set to /home/testuser
 	mem := NewMemFS()
 	rfs := NewResolvedFS(mem, "/home/testuser")
@@ -373,7 +373,7 @@ func TestTrackedFS_Logging(t *testing.T) {
 	}
 
 	logOutput := buf.String()
-	
+
 	// Check log format:
 	// It should log:
 	// INFO	write ~/test.txt

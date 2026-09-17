@@ -134,4 +134,3 @@ func TestValidateCommand_JSON_HumanAndAgent(t *testing.T) {
 		}
 	})
 }
-

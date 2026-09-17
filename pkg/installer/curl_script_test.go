@@ -200,8 +200,8 @@ func TestCurlScriptInstaller(t *testing.T) {
 		tool := &config.ToolConfig{
 			Name: "sysbin",
 			InstallParams: map[string]interface{}{
-				"url":         server.URL,
-				"versionArgs": []interface{}{"--version"},
+				"url":          server.URL,
+				"versionArgs":  []interface{}{"--version"},
 				"versionRegex": `(\d+\.\d+\.\d+)`,
 			},
 		}

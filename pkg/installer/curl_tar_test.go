@@ -198,8 +198,8 @@ func TestCurlTarInstaller(t *testing.T) {
 		tool := &config.ToolConfig{
 			Name: "mytool",
 			InstallParams: map[string]interface{}{
-				"url":         server.URL,
-				"versionArgs": []interface{}{"--version"},
+				"url":          server.URL,
+				"versionArgs":  []interface{}{"--version"},
 				"versionRegex": `(\d+\.\d+\.\d+)`,
 			},
 		}

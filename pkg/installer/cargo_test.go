@@ -375,7 +375,7 @@ func TestCargoGithubReleases(t *testing.T) {
 			cInst := NewCargoInstaller(runner, testFsys, testDl, sys)
 			_, _ = cInst.tryQuickinstall(context.Background(), &config.ToolConfig{Name: "crate"}, "crate", "1.0.0")
 			_, _ = cInst.tryGithubReleases(context.Background(), &config.ToolConfig{
-				Name: "crate",
+				Name:          "crate",
 				InstallParams: map[string]interface{}{"githubRepo": "owner/crate"},
 			}, "crate", "1.0.0")
 		}

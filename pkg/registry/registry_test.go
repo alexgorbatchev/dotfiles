@@ -890,4 +890,3 @@ func TestGetFileStatesForTool_TildeNormalizing(t *testing.T) {
 		t.Errorf("Expected 0 states after rm, got %d", len(states))
 	}
 }
-

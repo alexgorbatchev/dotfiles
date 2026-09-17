@@ -460,5 +460,3 @@ func TestEvaluateToolDefinition_EmptyOrUndefined(t *testing.T) {
 		t.Errorf("expected stringifying VM output error, got %v", err)
 	}
 }
-
-

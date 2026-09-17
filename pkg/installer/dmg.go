@@ -446,8 +446,6 @@ func findFileWithExtension(fsys fs.FS, dir string, ext string) (string, error) {
 	return "", nil
 }
 
-
-
 func copyDir(fsys fs.FS, src, dest string) error {
 	info, err := fsys.Lstat(src)
 	if err != nil {

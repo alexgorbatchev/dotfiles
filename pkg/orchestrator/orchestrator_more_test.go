@@ -2138,7 +2138,7 @@ type cacheSpyInstaller struct {
 	cacheEnabled bool
 }
 
-func (c *cacheSpyInstaller) Name() string { return c.name }
+func (c *cacheSpyInstaller) Name() string       { return c.name }
 func (c *cacheSpyInstaller) SupportsSudo() bool { return false }
 func (c *cacheSpyInstaller) SetDownloadCache(dir string, ttl time.Duration, enabled bool) {
 	c.cacheDir = dir
@@ -2211,6 +2211,3 @@ func TestInstallTool_StagingDirectoryAndPersistentDownloadCache(t *testing.T) {
 		t.Errorf("expected cacheEnabled true, got %v", spy.cacheEnabled)
 	}
 }
-
-
-

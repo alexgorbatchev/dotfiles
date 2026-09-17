@@ -477,4 +477,3 @@ func TestProjectConfig_ResolvePlaceholders(t *testing.T) {
 		}
 	})
 }
-
