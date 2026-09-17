@@ -22,6 +22,8 @@ import (
 )
 
 type Services struct {
+	// ConfigPath is the absolute path of the configuration file that was loaded.
+	ConfigPath    string
 	ProjectConfig *config.ProjectConfig
 	ToolConfigs   []*config.ToolConfig
 	FS            fs.FS
@@ -252,6 +254,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 			if len(matchingProviders) > 1 {
 				sort.Strings(matchingProviders)
 				return nil, fmt.Errorf("ambiguous dependency: binary %q is provided by multiple tools: %s", dep, strings.Join(matchingProviders, ", "))
+		ConfigPath:    absConfigPath,
 			} else if len(matchingProviders) == 1 {
 				tc.Dependencies[idx] = matchingProviders[0]
 			}

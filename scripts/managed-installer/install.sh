@@ -138,18 +138,11 @@ confirm_installation() {
 	esac
 }
 
-ensure_dotfiles_tool_config() {
-	mkdir -p "${TOOLS_DIR}"
-	if ! find "${TOOLS_DIR}" -name "dotfiles.tool.ts" 2>/dev/null | grep -q .; then
-		log "Creating $(format_path "${TOOLS_DIR}/dotfiles.tool.ts")"
-		cat >"${TOOLS_DIR}/dotfiles.tool.ts" <<'EOF'
-import { defineTool } from "@alexgorbatchev/dotfiles";
-
-export default defineTool((install) =>
-  install("github-release", { repo: "alexgorbatchev/dotfiles" })
-    .bin("dotfiles")
-);
-EOF
+run_dotfiles() {
+	if [[ -r /dev/tty ]]; then
+		"${DOTFILES_BIN}" "$@" </dev/tty
+	else
+		"${DOTFILES_BIN}" "$@"
 	fi
 }
 
@@ -186,8 +179,6 @@ EOF
 }
 EOF
 	fi
-
-	ensure_dotfiles_tool_config
 
 	cat >"${CONFIG_PATH}" <<EOF
 import { defineConfig } from "@alexgorbatchev/dotfiles";
@@ -275,17 +266,10 @@ ensure_dotfiles_binary
 if [[ "${CONFIG_EXISTS}" != "1" ]]; then
 	log "Creating $(format_path "${CONFIG_PATH}")"
 	write_default_config
-else
-	ensure_dotfiles_tool_config
 fi
 
-run_dotfiles() {
-	if [[ -r /dev/tty ]]; then
-		"${DOTFILES_BIN}" "$@" </dev/tty
-	else
-		"${DOTFILES_BIN}" "$@"
-	fi
-}
+log "Provisioning starter tool configurations"
+run_dotfiles --config "${CONFIG_PATH}" scaffold
 
 log "Installing dotfiles CLI tool into .generated"
 run_dotfiles --config "${CONFIG_PATH}" install dotfiles
