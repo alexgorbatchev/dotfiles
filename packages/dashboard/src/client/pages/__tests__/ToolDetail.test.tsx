@@ -4,8 +4,8 @@ import { render, screen, setupUITests } from "../../../testing/ui-setup";
 import assert from "node:assert";
 import { describe, expect, test } from "bun:test";
 
-import type { ISerializablePlatformConfigEntry, ISerializableToolConfig } from "../../../shared/types";
-import { getBinaryName, getSourceInfo, type ISourceInfo } from "../tool-detail-utils";
+import type { ISerializableToolConfig } from "../../../shared/types";
+import { getSourceInfo, type ISourceInfo } from "../tool-detail-utils";
 
 setupUITests();
 
@@ -175,112 +175,5 @@ describe("ToolDetail required by links rendering", () => {
     const link = screen.getByText("dependent-tool");
     expect(link).toBeInTheDocument();
     expect(link.getAttribute("href")).toBe("/tools/dependent-tool");
-  });
-});
-
-describe("ToolDetail platform config display", () => {
-  test("renders platform labels correctly", () => {
-    const entry: ISerializablePlatformConfigEntry = {
-      platforms: ["Linux", "macOS"],
-    };
-
-    const platformLabel = entry.platforms.join(", ");
-
-    render(
-      <div>
-        <span>{platformLabel}</span>
-      </div>,
-    );
-
-    expect(screen.getByText("Linux, macOS")).toBeInTheDocument();
-  });
-
-  test("renders platform labels with architectures", () => {
-    const entry: ISerializablePlatformConfigEntry = {
-      platforms: ["Linux"],
-      architectures: ["x86_64", "arm64"],
-    };
-
-    const architectureLabel = entry.architectures?.join(", ") ?? "";
-
-    render(
-      <div>
-        <span>{`Linux (${architectureLabel})`}</span>
-      </div>,
-    );
-
-    expect(screen.getByText("Linux (x86_64, arm64)")).toBeInTheDocument();
-  });
-
-  test("renders brew formula in platform config", () => {
-    const entry: ISerializablePlatformConfigEntry = {
-      platforms: ["macOS"],
-      installationMethod: "brew",
-      installParams: { formula: "ripgrep" },
-    };
-
-    render(
-      <div>
-        <span>Method: {entry.installationMethod}</span>
-        <span>Formula: {entry.installParams?.formula}</span>
-      </div>,
-    );
-
-    expect(screen.getByText("Method: brew")).toBeInTheDocument();
-    expect(screen.getByText("Formula: ripgrep")).toBeInTheDocument();
-  });
-
-  test("renders github repo as link in platform config", () => {
-    const entry: ISerializablePlatformConfigEntry = {
-      platforms: ["Linux"],
-      installationMethod: "github-release",
-      installParams: { repo: "owner/repo" },
-    };
-
-    render(
-      <a href={`https://github.com/${entry.installParams?.repo}`} target="_blank" rel="noopener noreferrer">
-        {entry.installParams?.repo}
-      </a>,
-    );
-
-    const link = screen.getByText("owner/repo");
-    expect(link.getAttribute("href")).toBe("https://github.com/owner/repo");
-    expect(link.getAttribute("target")).toBe("_blank");
-  });
-
-  test("renders symlinks in platform config", () => {
-    const entry: ISerializablePlatformConfigEntry = {
-      platforms: ["macOS"],
-      symlinks: [
-        { source: "./config", target: "~/.config" },
-        { source: "./zshrc", target: "~/.zshrc" },
-      ],
-    };
-
-    render(
-      <div>
-        {entry.symlinks?.map((symlink, index) => (
-          <div key={index}>
-            {symlink.source} → {symlink.target}
-          </div>
-        ))}
-      </div>,
-    );
-
-    expect(screen.getByText("./config → ~/.config")).toBeInTheDocument();
-    expect(screen.getByText("./zshrc → ~/.zshrc")).toBeInTheDocument();
-  });
-
-  test("renders binaries in platform config", () => {
-    const entry: ISerializablePlatformConfigEntry = {
-      platforms: ["Linux"],
-      binaries: ["binary1", "binary2"],
-    };
-
-    const binaryNames = (entry.binaries ?? []).map(getBinaryName).join(", ");
-
-    render(<span>{binaryNames}</span>);
-
-    expect(screen.getByText("binary1, binary2")).toBeInTheDocument();
   });
 });

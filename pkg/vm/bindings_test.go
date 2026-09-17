@@ -11,7 +11,7 @@ import (
 
 func TestBindingsDirect(t *testing.T) {
 	vm := goja.New()
-	err := RegisterBindings(vm)
+	err := RegisterBindings(vm, Target{})
 	if err != nil {
 		t.Fatalf("RegisterBindings failed: %v", err)
 	}

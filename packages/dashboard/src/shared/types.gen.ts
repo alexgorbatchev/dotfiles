@@ -100,11 +100,6 @@ export interface ToolConfigUpdateCheck {
   enabled?: boolean;
   constraint?: string;
 }
-export interface PlatformConfigEntry {
-  platforms: number;
-  architectures?: number;
-  config: any;
-}
 export interface ToolConfig {
   name: string;
   version?: string;
@@ -112,14 +107,12 @@ export interface ToolConfig {
   binaries?: any[];
   dependencies?: string[];
   disabled?: boolean;
-  platformUnsupported?: boolean;
   hostname?: string;
   sudo?: boolean;
   shellConfigs?: ShellConfigs;
   symlinks?: SymlinkConfig[];
   copies?: CopyConfig[];
   updateCheck?: ToolConfigUpdateCheck;
-  platformConfigs?: PlatformConfigEntry[];
   installationMethod?: string;
   installParams?: { [key: string]: any };
 }

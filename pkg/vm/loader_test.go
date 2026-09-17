@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
-	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -273,13 +274,13 @@ func TestLoadTypeScriptConfigErrors(t *testing.T) {
 	}
 
 	// 4. Evaluate unified bundle with missing __loaderResult
-	_, err = evaluateUnifiedBundle(log, memFS, "var x = 1;", "/cfg", "/gen", "/bin")
+	_, err = evaluateUnifiedBundle(log, memFS, "var x = 1;", "/cfg", "/gen", "/bin", Target{})
 	if err == nil || !strings.Contains(err.Error(), "missing or undefined") {
 		t.Errorf("expected missing __loaderResult error, got %v", err)
 	}
 
 	// 5. Evaluate unified bundle with unmarshal error
-	_, err = evaluateUnifiedBundle(log, memFS, "var __loaderResult = 12345;", "/cfg", "/gen", "/bin")
+	_, err = evaluateUnifiedBundle(log, memFS, "var __loaderResult = 12345;", "/cfg", "/gen", "/bin", Target{})
 	if err == nil || (!strings.Contains(err.Error(), "unmarshaling") && !strings.Contains(err.Error(), "invalid JSON syntax") && !strings.Contains(err.Error(), "invalid configuration")) {
 		t.Errorf("expected unmarshaling or invalid JSON error, got %v", err)
 	}
@@ -381,13 +382,13 @@ func TestEvaluateProjectConfigDirectErrors(t *testing.T) {
 	log := logger.New(logger.Config{Writer: io.Discard})
 
 	// 1. Script execution error
-	_, err := evaluateProjectConfig(log, memFS, "throw new Error('fail');", "/cfg")
+	_, err := evaluateProjectConfig(log, memFS, "throw new Error('fail');", "/cfg", Target{})
 	if err == nil || !strings.Contains(err.Error(), "executing script") {
 		t.Errorf("expected executing script error, got %v", err)
 	}
 
 	// 2. Unmarshal error
-	_, err = evaluateProjectConfig(log, memFS, "module.exports = 12345;", "/cfg")
+	_, err = evaluateProjectConfig(log, memFS, "module.exports = 12345;", "/cfg", Target{})
 	if err == nil || (!strings.Contains(err.Error(), "unmarshaling") && !strings.Contains(err.Error(), "invalid JSON syntax") && !strings.Contains(err.Error(), "invalid project configuration")) {
 		t.Errorf("expected unmarshaling or invalid JSON error, got %v", err)
 	}
@@ -416,12 +417,13 @@ func TestLoadTypeScriptConfigMultipleTools(t *testing.T) {
 		t.Fatalf("LoadTypeScriptConfig with multiple tools failed: %v", err)
 	}
 
-	expectedCount := 2
-	if runtime.GOOS == "darwin" {
-		expectedCount = 3
-	}
-	if len(toolMap) != expectedCount {
-		t.Errorf("expected %d tools in toolMap, got %d", expectedCount, len(toolMap))
+	// Assert the authored tools are discovered, including the one nested in a
+	// subdirectory, rather than the map size: ensureStarterTools provisions additional
+	// starter tools on some platforms and the subject here is recursive discovery.
+	for _, name := range []string{"tool1", "tool2"} {
+		if _, ok := toolMap[name]; !ok {
+			t.Errorf("expected tool %q in toolMap, got %v", name, slices.Sorted(maps.Keys(toolMap)))
+		}
 	}
 }
 
@@ -541,10 +543,9 @@ export default defineTool((install) => install("manual", {}).bin("tool-two").ver
 	if projCfg == nil {
 		t.Fatal("expected non-nil projCfg")
 	}
-	if len(toolConfigs) != 2 {
-		t.Fatalf("expected 2 tool configs from 2 directories, got %d", len(toolConfigs))
-	}
-
+	// The map size is deliberately not asserted: ensureStarterTools provisions
+	// additional starter tools on some platforms, and the subject here is that both
+	// configured directories contribute their tool.
 	foundToolOne := false
 	foundToolTwo := false
 	for _, tc := range toolConfigs {
@@ -695,42 +696,7 @@ func TestLoaderBrewAutoDependency(t *testing.T) {
 	}
 }
 
-func TestLoaderEnsureDefaultToolFiles(t *testing.T) {
-	log := logger.New(logger.Config{Writer: io.Discard})
-	osFS := &fs.OSFS{}
-	tmpDir := t.TempDir()
-
-	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-	configContent := `export default {
-		paths: {
-			dotfilesDir: "` + tmpDir + `",
-		}
-	};`
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-		t.Fatalf("failed to write config.ts: %v", err)
-	}
-
-	toolsDir := filepath.Join(tmpDir, "tools")
-	if err := os.MkdirAll(toolsDir, 0755); err != nil {
-		t.Fatalf("failed to create tools dir: %v", err)
-	}
-
-	_, toolConfigs, err := LoadTypeScriptConfig(log, osFS, configPath)
-	if err != nil {
-		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
-	}
-
-	if _, exists := toolConfigs["dotfiles"]; !exists {
-		t.Errorf("expected dotfiles.tool.ts to be automatically ensured in tools directory")
-	}
-
-	dotfilesToolPath := filepath.Join(toolsDir, "dotfiles.tool.ts")
-	if _, err := os.Stat(dotfilesToolPath); err != nil {
-		t.Errorf("expected dotfiles.tool.ts file to exist on disk at %s: %v", dotfilesToolPath, err)
-	}
-}
-
-func TestLoaderEnsureBrewToolWithBrewPrefixedFiles(t *testing.T) {
+func TestLoaderBrewPrefixedToolFile(t *testing.T) {
 	log := logger.New(logger.Config{Writer: io.Discard})
 	memFS := fs.NewMemFS()
 	tmpDir := t.TempDir()
@@ -769,12 +735,6 @@ func TestLoaderEnsureBrewToolWithBrewPrefixedFiles(t *testing.T) {
 
 	if _, exists := toolConfigs["brew--borders"]; !exists {
 		t.Errorf("expected brew--borders tool in toolConfigs, got: %+v", toolConfigs)
-	}
-
-	if runtime.GOOS == "darwin" {
-		if _, exists := toolConfigs["brew"]; !exists {
-			t.Errorf("expected brew.tool.ts to be generated alongside brew--borders.tool.ts on darwin")
-		}
 	}
 }
 
@@ -932,11 +892,46 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		if err != nil {
 			t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 		}
-		if len(toolConfigs) != 2 {
-			t.Errorf("expected 2 tool configs, got %d", len(toolConfigs))
+		// Assert both directories contributed their tool rather than the map size:
+		// ensureStarterTools provisions additional starter tools on some platforms.
+		for _, name := range []string{"tool1", "tool2"} {
+			if _, ok := toolConfigs[name]; !ok {
+				t.Errorf("expected tool %q in toolConfigs, got %v", name, slices.Sorted(maps.Keys(toolConfigs)))
+			}
 		}
 		if projCfg.Paths.BinariesDir != filepath.Join(tmpDir, ".gen", "custom-bins") {
 			t.Errorf("expected resolved binariesDir, got %s", projCfg.Paths.BinariesDir)
+		}
+	})
+
+	t.Run("toolConfigsDir containing a generatedDir placeholder is resolved", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		genDir := filepath.Join(tmpDir, ".gen")
+		toolsDir := filepath.Join(genDir, "managed-tools")
+		if err := os.MkdirAll(toolsDir, 0755); err != nil {
+			t.Fatalf("creating tools dir: %v", err)
+		}
+
+		_ = os.WriteFile(filepath.Join(toolsDir, "managed.tool.ts"), []byte(`
+			import { defineTool } from "@alexgorbatchev/dotfiles";
+			export default defineTool((install) => install("npm", { package: "managed" }).bin("managed"));
+		`), 0644)
+
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		_ = os.WriteFile(configPath, []byte(fmt.Sprintf(`export default {
+			paths: {
+				dotfilesDir: %q,
+				generatedDir: %q,
+				toolConfigsDir: "{paths.generatedDir}/managed-tools"
+			}
+		};`, tmpDir, genDir)), 0644)
+
+		_, toolConfigs, err := LoadTypeScriptConfig(log, osFS, configPath)
+		if err != nil {
+			t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+		}
+		if _, ok := toolConfigs["managed"]; !ok {
+			t.Errorf("expected tool %q from placeholder-resolved toolConfigsDir, got %v", "managed", slices.Sorted(maps.Keys(toolConfigs)))
 		}
 	})
 
@@ -966,23 +961,6 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		}
 	})
 
-	t.Run("empty tools directory provisions default starter tool", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		toolsDir := filepath.Join(tmpDir, "tools")
-		_ = os.MkdirAll(toolsDir, 0755)
-
-		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-		_ = os.WriteFile(configPath, []byte(fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, tmpDir, toolsDir)), 0644)
-
-		_, toolConfigs, err := LoadTypeScriptConfig(log, osFS, configPath)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if _, ok := toolConfigs["dotfiles"]; !ok {
-			t.Errorf("expected default dotfiles tool to be provisioned and loaded, got: %v", toolConfigs)
-		}
-	})
-
 	t.Run("module.exports without default export in evaluateProjectConfig", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
@@ -1005,14 +983,14 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 	})
 
 	t.Run("evaluateUnifiedBundle with missing __loaderResult", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "var x = 1;", "/tmp", "/tmp/.gen", "/tmp/bin")
+		_, err := evaluateUnifiedBundle(log, memFS, "var x = 1;", "/tmp", "/tmp/.gen", "/tmp/bin", Target{})
 		if err == nil || !strings.Contains(err.Error(), "missing or undefined") {
 			t.Errorf("expected error for missing __loaderResult, got: %v", err)
 		}
 	})
 
 	t.Run("evaluateUnifiedBundle with runtime script error", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "throw new Error('bundle err');", "/tmp", "/tmp/.gen", "/tmp/bin")
+		_, err := evaluateUnifiedBundle(log, memFS, "throw new Error('bundle err');", "/tmp", "/tmp/.gen", "/tmp/bin", Target{})
 		if err == nil || !strings.Contains(err.Error(), "bundle err") {
 			t.Errorf("expected script error, got: %v", err)
 		}
@@ -1046,21 +1024,21 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 	})
 
 	t.Run("evaluateProjectConfig json stringify error branch", func(t *testing.T) {
-		_, err := evaluateProjectConfig(log, memFS, "module.exports = { toJSON: function() { throw new Error('json stringify err'); } };", "/tmp")
+		_, err := evaluateProjectConfig(log, memFS, "module.exports = { toJSON: function() { throw new Error('json stringify err'); } };", "/tmp", Target{})
 		if err == nil || !strings.Contains(err.Error(), "stringifying project config") {
 			t.Errorf("expected stringifying error, got %v", err)
 		}
 	})
 
 	t.Run("evaluateUnifiedBundle json stringify error branch", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { toJSON: function() { throw new Error('json stringify err'); } };", "/tmp", "/tmp/.gen", "/tmp/bin")
+		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { toJSON: function() { throw new Error('json stringify err'); } };", "/tmp", "/tmp/.gen", "/tmp/bin", Target{})
 		if err == nil || !strings.Contains(err.Error(), "stringifying loader result") {
 			t.Errorf("expected stringifying error, got %v", err)
 		}
 	})
 
 	t.Run("evaluateUnifiedBundle unmarshaling error branch", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { projectConfig: 12345 };", "/tmp", "/tmp/.gen", "/tmp/bin")
+		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { projectConfig: 12345 };", "/tmp", "/tmp/.gen", "/tmp/bin", Target{})
 		if err == nil {
 			t.Error("expected error when unifiedLoaderResult has invalid structure")
 		}
@@ -1089,8 +1067,11 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		if err != nil {
 			t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 		}
-		if len(toolConfigs) != 1 {
-			t.Errorf("expected 1 tool config, got %d", len(toolConfigs))
+		// Assert the authored tool is discovered rather than asserting the map size:
+		// ensureStarterTools provisions additional starter tools on some platforms
+		// (brew.tool.ts on darwin), and the subject here is binariesDir resolution.
+		if _, ok := toolConfigs["tool"]; !ok {
+			t.Errorf("expected tool config %q, got %v", "tool", slices.Sorted(maps.Keys(toolConfigs)))
 		}
 		if projCfg.Paths.BinariesDir != filepath.Join(tmpDir, ".gen", "custom-bins") {
 			t.Errorf("expected resolved binariesDir, got %s", projCfg.Paths.BinariesDir)
@@ -1115,22 +1096,4 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		}
 	})
 
-	t.Run("ensureStarterTools on darwin creates brew.tool.ts when missing", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		toolsDir := filepath.Join(tmpDir, "tools")
-		_ = os.MkdirAll(toolsDir, 0755)
-
-		files := ensureStarterTools(osFS, "darwin", toolsDir, nil)
-		if len(files) != 2 {
-			t.Errorf("expected 2 starter files (dotfiles and brew), got %d: %v", len(files), files)
-		}
-
-		// Calling again with files present does not duplicate
-		files2 := ensureStarterTools(osFS, "darwin", toolsDir, files)
-		if len(files2) != 2 {
-			t.Errorf("expected still 2 files, got %d", len(files2))
-		}
-	})
 }
-
-

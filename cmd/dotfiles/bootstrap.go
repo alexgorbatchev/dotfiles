@@ -111,7 +111,9 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	if strings.HasSuffix(absConfigPath, ".ts") || strings.HasSuffix(absConfigPath, ".js") {
 		var err error
 		var toolMap map[string]*config.ToolConfig
-		projCfg, toolMap, err = vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath)
+		// --platform/--arch must reach the loader, because .platform() blocks in tool
+		// files are evaluated while the configuration is being loaded.
+		projCfg, toolMap, err = vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath, vm.WithTarget(platform, arch))
 		if err != nil {
 			return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
 		}
@@ -161,15 +163,6 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	sort.Slice(toolConfigs, func(i, j int) bool {
 		return toolConfigs[i].Name < toolConfigs[j].Name
 	})
-
-	sysCtx := installer.NewDefaultSystemContext()
-	if platform != "" {
-		sysCtx.OS = platform
-	}
-	if arch != "" {
-		sysCtx.Arch = arch
-	}
-	ResolvePlatformConfigs(toolConfigs, sysCtx)
 
 	// For dry-runs and tests, we still open a valid database.
 	// If in unit testing or dry-run, use in-memory SQLite to prevent disk state pollution.
@@ -254,7 +247,6 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 			if len(matchingProviders) > 1 {
 				sort.Strings(matchingProviders)
 				return nil, fmt.Errorf("ambiguous dependency: binary %q is provided by multiple tools: %s", dep, strings.Join(matchingProviders, ", "))
-		ConfigPath:    absConfigPath,
 			} else if len(matchingProviders) == 1 {
 				tc.Dependencies[idx] = matchingProviders[0]
 			}
@@ -262,6 +254,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 	}
 
 	return &Services{
+		ConfigPath:    absConfigPath,
 		ProjectConfig: projCfg,
 		ToolConfigs:   toolConfigs,
 		FS:            trackedFS,
@@ -342,40 +335,4 @@ func (m *mockInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) 
 
 func (m *mockInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
 	return &installer.UpdateCheckResult{HasUpdate: false}, nil
-}
-
-func matchesPlatform(platforms int, osName string) bool {
-	var mask int
-	switch osName {
-	case "linux":
-		mask = 1
-	case "darwin":
-		mask = 2
-	case "windows":
-		mask = 4
-	default:
-		return false
-	}
-	return (platforms & mask) == mask
-}
-
-func matchesArch(architectures int, archName string) bool {
-	if architectures == 3 { // All
-		return true
-	}
-	if architectures == 2 && archName == "arm64" {
-		return true
-	}
-	if architectures == 1 && (archName == "amd64" || archName == "x86_64") {
-		return true
-	}
-	return false
-}
-
-func ResolvePlatformConfigs(toolConfigs []*config.ToolConfig, sysCtx *installer.SystemContext) {
-	if sysCtx == nil {
-		config.ResolvePlatformConfigs(toolConfigs, "", "")
-		return
-	}
-	config.ResolvePlatformConfigs(toolConfigs, sysCtx.OS, sysCtx.Arch)
 }

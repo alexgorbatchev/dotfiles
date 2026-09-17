@@ -1,13 +1,8 @@
 import { type JSX } from "preact";
 import { useMemo } from "preact/hooks";
-import { File, History, Info, Layers, Zap } from "../icons";
+import { File, History, Info, Zap } from "../icons";
 
-import type {
-  ISerializablePlatformConfigEntry,
-  ISerializableToolConfig,
-  IToolDetail,
-  IToolHistory,
-} from "../../shared/types";
+import type { ISerializableToolConfig, IToolDetail, IToolHistory } from "../../shared/types";
 import { InstallMethodBadge } from "../components/InstallMethodBadge";
 import { ToolActionBanner } from "../components/ToolActionBanner";
 import { ToolActionButtons } from "../components/ToolActionButtons";
@@ -55,83 +50,6 @@ function getSourceDisplay(config: ISerializableToolConfig): JSX.Element | null {
   );
 }
 
-type PlatformConfigEntryProps = {
-  entry: ISerializablePlatformConfigEntry;
-};
-
-function PlatformConfigEntry({ entry }: PlatformConfigEntryProps): JSX.Element {
-  const platformLabel = entry.platforms.join(", ");
-  const archLabel = entry.architectures ? ` (${entry.architectures.join(", ")})` : "";
-
-  return (
-    <div class="border border-border rounded-md p-3 space-y-2">
-      <div class="flex items-center gap-2">
-        <span class="text-sm font-medium text-foreground">
-          {platformLabel}
-          {archLabel}
-        </span>
-      </div>
-      <div class="pl-2 space-y-1.5 text-sm">
-        {entry.installationMethod && (
-          <div class="flex items-center gap-2">
-            <span class="text-muted-foreground">Method:</span>
-            <InstallMethodBadge method={entry.installationMethod} ghCli={entry.installParams?.ghCli} />
-          </div>
-        )}
-        {entry.installParams?.repo && (
-          <div class="flex items-center gap-2">
-            <span class="text-muted-foreground">Repo:</span>
-            <a
-              href={`https://github.com/${entry.installParams.repo}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-blue-500 hover:underline"
-            >
-              {entry.installParams.repo}
-            </a>
-          </div>
-        )}
-        {entry.installParams?.formula && (
-          <div class="flex items-center gap-2">
-            <span class="text-muted-foreground">Formula:</span>
-            <span class="font-mono">{entry.installParams.formula}</span>
-          </div>
-        )}
-        {entry.installParams?.crate && (
-          <div class="flex items-center gap-2">
-            <span class="text-muted-foreground">Crate:</span>
-            <span class="font-mono">{entry.installParams.crate}</span>
-          </div>
-        )}
-        {entry.installParams?.url && (
-          <div class="flex items-center gap-2">
-            <span class="text-muted-foreground">URL:</span>
-            <span class="font-mono text-xs break-all">{entry.installParams.url}</span>
-          </div>
-        )}
-        {entry.binaries && entry.binaries.length > 0 && (
-          <div class="flex items-start gap-2">
-            <span class="text-muted-foreground">Binaries:</span>
-            <span class="font-mono">{entry.binaries.map((b) => (typeof b === "string" ? b : b.name)).join(", ")}</span>
-          </div>
-        )}
-        {entry.symlinks && entry.symlinks.length > 0 && (
-          <div class="flex flex-col gap-1">
-            <span class="text-muted-foreground">Symlinks:</span>
-            <div class="pl-2">
-              {entry.symlinks.map((s, i) => (
-                <div key={i} class="font-mono text-xs">
-                  {s.source} → {s.target}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 type ToolDetailProps = {
   params: {
     name: string;
@@ -167,10 +85,6 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
     }
 
     const ids = ["overview", "source"];
-
-    if ((tool.config.platformConfigs?.length ?? 0) > 0) {
-      ids.push("platform-configurations");
-    }
 
     if (tool.runtime.status === "installed") {
       ids.push("files", "history");
@@ -323,18 +237,6 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       <section id="source">
         <ToolSourceCard toolName={tool.config.name} />
       </section>
-
-      {tool.config.platformConfigs && tool.config.platformConfigs.length > 0 && (
-        <section id="platform-configurations">
-          <TitledCard title="Platform Configurations" icon={<Layers class="h-4 w-4" />}>
-            <div class="space-y-3">
-              {tool.config.platformConfigs.map((entry, i) => (
-                <PlatformConfigEntry key={i} entry={entry} />
-              ))}
-            </div>
-          </TitledCard>
-        </section>
-      )}
 
       {tool.runtime.status === "installed" && (
         <section id="files">

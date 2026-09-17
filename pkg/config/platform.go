@@ -1,96 +1,78 @@
 package config
 
-import (
-	"encoding/json"
-	"runtime"
+// Platform and architecture bits, mirroring the Platform and Architecture constants in
+// pkg/vm/loader-api.ts. They are the single definition of the wire values, so callers
+// never spell 1, 2 or 4 out themselves.
+const (
+	PlatformLinux   = 1
+	PlatformMacOS   = 2
+	PlatformWindows = 4
+	// PlatformAll is every platform bit set, and so the largest valid platform bitmask.
+	PlatformAll = PlatformLinux | PlatformMacOS | PlatformWindows
+
+	ArchX86_64 = 1
+	ArchArm64  = 2
+	// ArchAll is every architecture bit set, and so the largest valid bitmask.
+	ArchAll = ArchX86_64 | ArchArm64
 )
 
-// MatchesPlatform checks if a platform bitmask matches the given OS name ("linux", "darwin", "windows").
-func MatchesPlatform(platforms int, osName string) bool {
-	if platforms == 0 {
-		return true
+// PlatformNames renders a platform bitmask as display names, in bit order.
+func PlatformNames(platforms int) []string {
+	names := []string{}
+	if platforms&PlatformLinux != 0 {
+		names = append(names, "Linux")
 	}
+	if platforms&PlatformMacOS != 0 {
+		names = append(names, "macOS")
+	}
+	if platforms&PlatformWindows != 0 {
+		names = append(names, "Windows")
+	}
+	return names
+}
+
+// ArchitectureNames renders an architecture bitmask as display names, in bit order.
+func ArchitectureNames(architectures int) []string {
+	names := []string{}
+	if architectures&ArchX86_64 != 0 {
+		names = append(names, "x86_64")
+	}
+	if architectures&ArchArm64 != 0 {
+		names = append(names, "arm64")
+	}
+	return names
+}
+
+// MatchesPlatform reports whether a platform bitmask selects the given OS name
+// ("linux", "darwin", "windows"). An empty bitmask selects nothing; callers express
+// "unconstrained" with a nil *int rather than with zero.
+func MatchesPlatform(platforms int, osName string) bool {
 	var mask int
 	switch osName {
 	case "linux":
-		mask = 1
+		mask = PlatformLinux
 	case "darwin":
-		mask = 2
+		mask = PlatformMacOS
 	case "windows":
-		mask = 4
+		mask = PlatformWindows
 	default:
 		return false
 	}
-	return (platforms & mask) == mask
+	return platforms&mask != 0
 }
 
-// MatchesArch checks if an architecture bitmask matches the given arch name ("amd64", "x86_64", "arm64").
+// MatchesArch reports whether an architecture bitmask selects the given arch name
+// ("amd64", "x86_64", "arm64"). It mirrors MatchesPlatform: an empty bitmask selects
+// nothing, and "unconstrained" is expressed with a nil *int.
 func MatchesArch(architectures int, archName string) bool {
-	if architectures == 3 { // All
-		return true
+	var mask int
+	switch archName {
+	case "amd64", "x86_64":
+		mask = ArchX86_64
+	case "arm64":
+		mask = ArchArm64
+	default:
+		return false
 	}
-	if architectures == 2 && archName == "arm64" {
-		return true
-	}
-	if architectures == 1 && (archName == "amd64" || archName == "x86_64") {
-		return true
-	}
-	return false
-}
-
-// ResolvePlatformConfig merges platform-specific overrides into tc for the given OS and architecture.
-// Once resolved, tc.PlatformConfigs is cleared so that subsequent calls are idempotent.
-func ResolvePlatformConfig(tc *ToolConfig, osName, archName string) {
-	if tc == nil || len(tc.PlatformConfigs) == 0 {
-		return
-	}
-
-	if osName == "" {
-		osName = runtime.GOOS
-	}
-	if archName == "" {
-		archName = runtime.GOARCH
-	}
-
-	matched := false
-	for _, entry := range tc.PlatformConfigs {
-		if MatchesPlatform(entry.Platforms, osName) {
-			if entry.Architectures != nil {
-				if !MatchesArch(*entry.Architectures, archName) {
-					continue
-				}
-			}
-
-			matched = true
-			jsonBytes, err := json.Marshal(entry.Config)
-			if err == nil {
-				var rawOverride map[string]interface{}
-				var override ToolConfig
-				if err := json.Unmarshal(jsonBytes, &rawOverride); err == nil {
-					if err := json.Unmarshal(jsonBytes, &override); err == nil {
-						tc.Merge(&override, rawOverride)
-					}
-				}
-			}
-		}
-	}
-	tc.PlatformConfigs = nil
-
-	if !matched && (tc.InstallationMethod == "" || tc.Disabled) {
-		tc.PlatformUnsupported = true
-	}
-}
-
-// ResolvePlatformConfigs evaluates and merges platform overrides on a list of ToolConfigs
-// for the specified OS and architecture (defaulting to runtime.GOOS and runtime.GOARCH if empty).
-func ResolvePlatformConfigs(tools []*ToolConfig, osName, archName string) {
-	if osName == "" {
-		osName = runtime.GOOS
-	}
-	if archName == "" {
-		archName = runtime.GOARCH
-	}
-	for _, tc := range tools {
-		ResolvePlatformConfig(tc, osName, archName)
-	}
+	return architectures&mask != 0
 }

@@ -145,9 +145,9 @@ func validateProjectMap(prefix string, m map[string]interface{}) error {
 func validateToolMap(prefix string, m map[string]interface{}) error {
 	allowedToolKeys := []string{
 		"name", "version", "configFilePath", "binaries", "dependencies",
-		"disabled", "platformUnsupported", "hostname", "sudo",
+		"disabled", "hostname", "sudo",
 		"shellConfigs", "symlinks", "copies", "updateCheck",
-		"platformConfigs", "installationMethod", "installParams",
+		"installationMethod", "installParams",
 	}
 
 	for k, v := range m {

@@ -98,21 +98,6 @@ export interface ISerializableSymlink {
  * Serializable platform configuration entry.
  * Represents platform-specific overrides in a JSON-safe format.
  */
-export interface ISerializablePlatformConfigEntry {
-  /** Display names for target platforms (e.g., ["Linux", "macOS"]) */
-  platforms: string[];
-  /** Display names for target architectures (e.g., ["x86_64", "arm64"]) - undefined means all architectures */
-  architectures?: string[];
-  /** Platform-specific installation method override */
-  installationMethod?: string;
-  /** Platform-specific install params override */
-  installParams?: ISerializableInstallParams;
-  /** Platform-specific binaries override */
-  binaries?: SerializableBinary[];
-  /** Platform-specific symlinks override */
-  symlinks?: ISerializableSymlink[];
-}
-
 /**
  * JSON-serializable tool configuration from .tool.ts files.
  * Contains static configuration, not runtime state.
@@ -129,7 +114,6 @@ export interface ISerializableToolConfig {
   hostname?: string;
   configFilePath?: string;
   /** Platform-specific configuration overrides */
-  platformConfigs?: ISerializablePlatformConfigEntry[];
 }
 
 /**

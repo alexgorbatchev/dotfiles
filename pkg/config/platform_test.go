@@ -10,7 +10,7 @@ func TestMatchesPlatform(t *testing.T) {
 		osName    string
 		want      bool
 	}{
-		{0, "linux", true},       // 0 matches all
+		{0, "linux", false},      // an empty bitmask selects nothing; nil means unconstrained
 		{1, "linux", true},       // 1 = linux
 		{1, "darwin", false},     // 1 does not match darwin
 		{2, "darwin", true},      // 2 = darwin
@@ -50,70 +50,5 @@ func TestMatchesArch(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("MatchesArch(%d, %q) = %v, want %v", tt.architectures, tt.archName, got, tt.want)
 		}
-	}
-}
-
-func TestResolvePlatformConfig(t *testing.T) {
-	archArm64 := 2
-	archAmd64 := 1
-
-	v13 := "13.0.0"
-
-	tc := &ToolConfig{
-		Name:    "ripgrep",
-		Version: &v13,
-		PlatformConfigs: []PlatformConfigEntry{
-			{
-				Platforms:     1, // linux
-				Architectures: &archAmd64,
-				Config: map[string]interface{}{
-					"version": "14.0.0",
-				},
-			},
-			{
-				Platforms:     2, // darwin
-				Architectures: &archArm64,
-				Config: map[string]interface{}{
-					"version": "15.0.0",
-				},
-			},
-		},
-	}
-
-	// Resolve for darwin arm64
-	ResolvePlatformConfig(tc, "darwin", "arm64")
-
-	if tc.Version == nil || *tc.Version != "15.0.0" {
-		t.Errorf("expected version 15.0.0 after platform resolve, got %v", tc.Version)
-	}
-
-	if tc.PlatformConfigs != nil {
-		t.Errorf("expected PlatformConfigs to be nil after resolution")
-	}
-
-	// Idempotency: resolving again when PlatformConfigs is nil should do nothing
-	ResolvePlatformConfig(tc, "darwin", "arm64")
-	if tc.Version == nil || *tc.Version != "15.0.0" {
-		t.Errorf("expected version to stay 15.0.0, got %v", tc.Version)
-	}
-
-	// Nil check
-	ResolvePlatformConfig(nil, "linux", "amd64")
-
-	// Empty OS/Arch default check
-	tc2 := &ToolConfig{
-		Name: "bat",
-		PlatformConfigs: []PlatformConfigEntry{
-			{
-				Platforms: 7, // linux (1) | darwin (2) | windows (4)
-				Config: map[string]interface{}{
-					"version": "2.0.0",
-				},
-			},
-		},
-	}
-	ResolvePlatformConfigs([]*ToolConfig{tc2}, "", "")
-	if tc2.Version == nil || *tc2.Version != "2.0.0" {
-		t.Errorf("expected batch resolution to set version 2.0.0, got %v", tc2.Version)
 	}
 }

@@ -38,7 +38,14 @@ type SystemContext struct {
 func EvaluateToolDefinitionWithContext(scriptContent string, configDir string, sysCtx *SystemContext, out any) error {
 	vm := goja.New()
 
-	if err := RegisterBindings(vm); err != nil {
+	// The caller's system context also selects what platform-dependent configuration
+	// in the script is evaluated against, so that it agrees with systemInfo below.
+	var target Target
+	if sysCtx != nil {
+		target = Target{OS: sysCtx.OS, Arch: sysCtx.Arch}
+	}
+
+	if err := RegisterBindings(vm, target); err != nil {
 		return fmt.Errorf("registering Go bindings: %w", err)
 	}
 

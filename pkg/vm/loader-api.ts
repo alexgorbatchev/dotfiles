@@ -18,16 +18,13 @@ export type Architecture = DslArchitecture;
 type DependsOnFn = (dep: unknown) => unknown;
 
 export const Platform = {
-  None: 0,
   Linux: 1,
   MacOS: 2,
   Windows: 4,
-  Unix: 3,
   All: 7,
 } as const;
 
 export const Architecture = {
-  None: 0,
   X86_64: 1,
   Arm64: 2,
   All: 3,
@@ -43,6 +40,7 @@ declare global {
   var path: IPathModule;
   function getOS(): string;
   function getArch(): string;
+  function matchesTarget(platforms: unknown, architectures: unknown): boolean;
   function detectLibc(): string;
   function fileExists(path: string): boolean;
   function logInfo(toolName: string, msg: string): void;
@@ -297,25 +295,21 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         }
       }
 
-      const currentOS = getOS();
-      let matchesOS = false;
-      if (plat === Platform.All) matchesOS = true;
-      else if (plat === Platform.MacOS && currentOS === "darwin") matchesOS = true;
-      else if (plat === Platform.Linux && currentOS === "linux") matchesOS = true;
-      else if (plat === Platform.Windows && currentOS === "windows") matchesOS = true;
-
-      let matchesArch = true;
-      if (arch !== undefined) {
-        const currentArch = getArch();
-        if (arch === Architecture.All) matchesArch = true;
-        else if (arch === Architecture.Arm64 && currentArch === "arm64") matchesArch = true;
-        else if (arch === Architecture.X86_64 && currentArch === "amd64") matchesArch = true;
-        else matchesArch = false;
+      // An architecture argument that arrived as undefined is a misspelled member
+      // rather than the two-argument form, which Go cannot distinguish from "no
+      // architecture given" once the value is passed across.
+      const archGiven = typeof arg2 !== "function";
+      if (archGiven && arch === undefined) {
+        throw new Error(
+          "Unknown architecture value passed to .platform(): expected one of the Architecture constants (check for a misspelled member)",
+        );
       }
+
+      const matches = matchesTarget(plat, archGiven ? arch : null);
 
       this["_hasPlatformBlocks"] = true;
 
-      if (matchesOS && matchesArch) {
+      if (matches) {
         this["_hasMatchingPlatform"] = true;
         delete this["disabled"];
         if (cb) cb(install);
@@ -326,11 +320,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     },
 
     arch(arc: unknown, cb: Function) {
-      const currentArch = getArch();
-      let matches = false;
-      if (arc === Architecture.All) matches = true;
-      else if (arc === Architecture.Arm64 && currentArch === "arm64") matches = true;
-      else if (arc === Architecture.X86_64 && currentArch === "amd64") matches = true;
+      const matches = matchesTarget(Platform.All, arc);
 
       this["_hasArchBlocks"] = true;
 

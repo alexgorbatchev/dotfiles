@@ -239,16 +239,9 @@ func TestDashboardNotFoundAndEdgeRoutes(t *testing.T) {
 	_ = formatRelativeTime(time.Now().UnixMilli() - 172800000)
 
 	// formatToolConfigForDashboard
-	archVal := 3
 	tcPlatform := &config.ToolConfig{
-		Name: "plat-tool",
-		PlatformConfigs: []config.PlatformConfigEntry{
-			{
-				Platforms:     7, // Linux | macOS | Windows
-				Architectures: &archVal,
-				Config:        map[string]interface{}{"installParams": map[string]interface{}{"repo": "owner/repo"}},
-			},
-		},
+		Name:          "plat-tool",
+		InstallParams: map[string]interface{}{"repo": "owner/repo"},
 	}
 	m := formatToolConfigForDashboard(tcPlatform)
 	if m == nil {

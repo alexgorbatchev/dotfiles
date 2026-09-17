@@ -23,7 +23,6 @@ import (
 
 // InstallTools executes the installation pipeline for all provided tools sequentially in topological order.
 func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
-	config.ResolvePlatformConfigs(tools, "", "")
 	pruned := pruneTools(tools)
 	sorted, err := TopologicalSort(pruned)
 	if err != nil {

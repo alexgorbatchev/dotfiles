@@ -23,13 +23,6 @@ function getInstallConfigCandidates(config: ISerializableToolConfig): IInstallCo
     },
   ];
 
-  for (const platformConfig of config.platformConfigs ?? []) {
-    candidates.push({
-      installationMethod: platformConfig.installationMethod ?? config.installationMethod,
-      installParams: platformConfig.installParams ?? config.installParams,
-    });
-  }
-
   return candidates;
 }
 
@@ -116,12 +109,6 @@ export function findDependentTools(tools: IToolDetail[], currentToolBinaries: st
 export function getReadmeRepo(config: ISerializableToolConfig): string | null {
   if (config.installParams?.repo) {
     return config.installParams.repo;
-  }
-
-  for (const platformConfig of config.platformConfigs ?? []) {
-    if (platformConfig.installParams?.repo) {
-      return platformConfig.installParams.repo;
-    }
   }
 
   return null;

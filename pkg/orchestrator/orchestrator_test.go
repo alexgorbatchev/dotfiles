@@ -1027,141 +1027,6 @@ func TestFormatFunctionBody(t *testing.T) {
 	}
 }
 
-func TestTopologicalSort_PlatformPreResolution(t *testing.T) {
-	t.Run("platform specific dependencies", func(t *testing.T) {
-		toolsLinux := []*config.ToolConfig{
-			{
-				Name: "app",
-				PlatformConfigs: []config.PlatformConfigEntry{
-					{
-						Platforms: 1, // Linux
-						Config: map[string]interface{}{
-							"dependencies": []interface{}{"linux-dep"},
-						},
-					},
-					{
-						Platforms: 2, // Darwin
-						Config: map[string]interface{}{
-							"dependencies": []interface{}{"darwin-dep"},
-						},
-					},
-				},
-			},
-			{Name: "linux-dep"},
-			{Name: "darwin-dep"},
-		}
-
-		sortedLinux, err := TopologicalSortForPlatform(toolsLinux, "linux", "amd64")
-		if err != nil {
-			t.Fatalf("unexpected error on linux: %v", err)
-		}
-		if len(sortedLinux) != 3 {
-			t.Fatalf("expected 3 tools, got %d", len(sortedLinux))
-		}
-		// linux-dep must precede app
-		linuxDepIdx, appIdx := -1, -1
-		for i, tool := range sortedLinux {
-			if tool.Name == "linux-dep" {
-				linuxDepIdx = i
-			}
-			if tool.Name == "app" {
-				appIdx = i
-			}
-		}
-		if linuxDepIdx >= appIdx {
-			t.Errorf("expected linux-dep (%d) to precede app (%d)", linuxDepIdx, appIdx)
-		}
-
-		toolsDarwin := []*config.ToolConfig{
-			{
-				Name: "app",
-				PlatformConfigs: []config.PlatformConfigEntry{
-					{
-						Platforms: 1, // Linux
-						Config: map[string]interface{}{
-							"dependencies": []interface{}{"linux-dep"},
-						},
-					},
-					{
-						Platforms: 2, // Darwin
-						Config: map[string]interface{}{
-							"dependencies": []interface{}{"darwin-dep"},
-						},
-					},
-				},
-			},
-			{Name: "linux-dep"},
-			{Name: "darwin-dep"},
-		}
-
-		sortedDarwin, err := TopologicalSortForPlatform(toolsDarwin, "darwin", "arm64")
-		if err != nil {
-			t.Fatalf("unexpected error on darwin: %v", err)
-		}
-		darwinDepIdx, appIdxDarwin := -1, -1
-		for i, tool := range sortedDarwin {
-			if tool.Name == "darwin-dep" {
-				darwinDepIdx = i
-			}
-			if tool.Name == "app" {
-				appIdxDarwin = i
-			}
-		}
-		if darwinDepIdx >= appIdxDarwin {
-			t.Errorf("expected darwin-dep (%d) to precede app (%d)", darwinDepIdx, appIdxDarwin)
-		}
-	})
-
-	t.Run("platform specific binary providers", func(t *testing.T) {
-		tools := []*config.ToolConfig{
-			{
-				Name: "provider-linux",
-				PlatformConfigs: []config.PlatformConfigEntry{
-					{
-						Platforms: 1, // Linux
-						Config: map[string]interface{}{
-							"binaries": []interface{}{"shared-tool"},
-						},
-					},
-				},
-			},
-			{
-				Name: "provider-darwin",
-				PlatformConfigs: []config.PlatformConfigEntry{
-					{
-						Platforms: 2, // Darwin
-						Config: map[string]interface{}{
-							"binaries": []interface{}{"shared-tool"},
-						},
-					},
-				},
-			},
-			{
-				Name:         "consumer",
-				Dependencies: []string{"shared-tool"},
-			},
-		}
-
-		// On Linux, provider-linux should be selected without ambiguity
-		sortedLinux, err := TopologicalSortForPlatform(tools, "linux", "amd64")
-		if err != nil {
-			t.Fatalf("unexpected error sorting for linux: %v", err)
-		}
-		var providerLinuxIdx, consumerIdx int
-		for i, tool := range sortedLinux {
-			if tool.Name == "provider-linux" {
-				providerLinuxIdx = i
-			}
-			if tool.Name == "consumer" {
-				consumerIdx = i
-			}
-		}
-		if providerLinuxIdx >= consumerIdx {
-			t.Errorf("expected provider-linux (%d) before consumer (%d)", providerLinuxIdx, consumerIdx)
-		}
-	})
-}
-
 func TestOrchestrator_CleanupOrphanedTools(t *testing.T) {
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
@@ -1402,111 +1267,6 @@ func TestOrchestrator_CleanupStaleCopies(t *testing.T) {
 	}
 }
 
-func TestOrchestrator_PlatformPreResolutionInPipeline(t *testing.T) {
-	ctx := context.Background()
-	fsys := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-
-	sqlDB, err := db.NewConnection(ctx, ":memory:")
-	if err != nil {
-		t.Fatalf("failed to open DB: %v", err)
-	}
-	defer sqlDB.Close()
-// A completion command that exceeds completionCommandTimeout must be reported as a
-// timeout rather than as a generic failure, because the two call for different fixes:
-// a timeout means the binary was too slow to respond, not that the command is wrong.
-func TestGenerateCompletionsForTool_CmdTimeoutIsReportedAsTimeout(t *testing.T) {
-	ctx := context.Background()
-	var logBuf bytes.Buffer
-	log := logger.New(logger.Config{Name: "test-completions-timeout", Level: logger.LogLevelVerbose, Writer: &logBuf})
-	fsys := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-	runner.Register("/home/user/.generated/binaries/stalledtool/current/stalledtool", nil, context.DeadlineExceeded)
-
-	sqlDB, err := db.NewConnection(ctx, ":memory:")
-	if err != nil {
-		t.Fatalf("failed creating DB: %v", err)
-	}
-	defer sqlDB.Close()
-
-	orch := NewOrchestrator(log, fsys, runner, registry.NewRegistry(sqlDB), nil)
-	projCfg := &config.ProjectConfig{
-		Paths: config.PathsConfig{
-			HomeDir:         "/home/user",
-			TargetDir:       "/home/user/bin",
-			BinariesDir:     "/home/user/.generated/binaries",
-			ShellScriptsDir: "/home/user/.generated/shell-scripts",
-			GeneratedDir:    "/home/user/.generated",
-		},
-	}
-
-	_ = fsys.MkdirAll("/home/user/.generated/binaries/stalledtool/current", 0755)
-	_ = fsys.WriteFile("/home/user/.generated/binaries/stalledtool/current/stalledtool", []byte("dummy bin"), 0755)
-
-	tool := &config.ToolConfig{
-		Name:               "stalledtool",
-		Binaries:           []interface{}{"stalledtool"},
-		ConfigFilePath:     "/home/user/tools/stalledtool.tool.ts",
-		InstallationMethod: "github-release",
-		ShellConfigs: &config.ShellConfigs{
-			Zsh: &config.ShellTypeConfig{
-				Completions: map[string]interface{}{
-					"cmd": "stalledtool completion zsh",
-				},
-			},
-		},
-	}
-
-	if err := orch.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
-		t.Fatalf("expected a completion timeout to be non-fatal, got error: %v", err)
-	}
-
-	if logged := logBuf.String(); !strings.Contains(logged, "timed out after") {
-		t.Errorf("expected a timeout to be reported as such, got log: %s", logged)
-	}
-	if exists, _ := fsys.Exists("/home/user/.generated/shell-scripts/zsh/completions/_stalledtool"); exists {
-		t.Error("expected no completion file to be written when the command times out")
-	}
-}
-
-
-	reg := registry.NewRegistry(sqlDB)
-	instReg := installer.NewRegistry()
-	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
-
-	projCfg := &config.ProjectConfig{
-		Paths: config.PathsConfig{
-			HomeDir:      "/home/user",
-			TargetDir:    "/home/user/bin",
-			BinariesDir:  "/home/user/binaries",
-			GeneratedDir: "/home/user/.generated",
-		},
-	}
-
-	_ = fsys.MkdirAll("/home/user/bin", 0755)
-	_ = fsys.MkdirAll("/home/user/.generated/usage", 0755)
-
-	tool := &config.ToolConfig{
-		Name: "plat-tool",
-		PlatformConfigs: []config.PlatformConfigEntry{
-			{
-				Platforms: 0, // matches all platforms
-				Config: map[string]interface{}{
-					"disabled": true,
-				},
-			},
-		},
-	}
-
-	if err := orch.GenerateTools(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
-		t.Fatalf("GenerateTools failed: %v", err)
-	}
-
-	if !tool.Disabled {
-		t.Error("expected tool to be marked disabled by platform override pre-resolution")
-	}
-}
-
 func TestGenerateCompletionsForTool_SkipMissingSource(t *testing.T) {
 	ctx := context.Background()
 	log := logger.New(logger.Config{Name: "test-completions", Level: logger.LogLevelQuiet, Writer: io.Discard})
@@ -1652,6 +1412,63 @@ func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
 	}
 }
 
+// A completion command that exceeds completionCommandTimeout must be reported as a
+// timeout rather than as a generic failure, because the two call for different fixes:
+// a timeout means the binary was too slow to respond, not that the command is wrong.
+func TestGenerateCompletionsForTool_CmdTimeoutIsReportedAsTimeout(t *testing.T) {
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Name: "test-completions-timeout", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	runner.Register("/home/user/.generated/binaries/stalledtool/current/stalledtool", nil, context.DeadlineExceeded)
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	orch := NewOrchestrator(log, fsys, runner, registry.NewRegistry(sqlDB), nil)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			GeneratedDir:    "/home/user/.generated",
+		},
+	}
+
+	_ = fsys.MkdirAll("/home/user/.generated/binaries/stalledtool/current", 0755)
+	_ = fsys.WriteFile("/home/user/.generated/binaries/stalledtool/current/stalledtool", []byte("dummy bin"), 0755)
+
+	tool := &config.ToolConfig{
+		Name:               "stalledtool",
+		Binaries:           []interface{}{"stalledtool"},
+		ConfigFilePath:     "/home/user/tools/stalledtool.tool.ts",
+		InstallationMethod: "github-release",
+		ShellConfigs: &config.ShellConfigs{
+			Zsh: &config.ShellTypeConfig{
+				Completions: map[string]interface{}{
+					"cmd": "stalledtool completion zsh",
+				},
+			},
+		},
+	}
+
+	if err := orch.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("expected a completion timeout to be non-fatal, got error: %v", err)
+	}
+
+	if logged := logBuf.String(); !strings.Contains(logged, "timed out after") {
+		t.Errorf("expected a timeout to be reported as such, got log: %s", logged)
+	}
+	if exists, _ := fsys.Exists("/home/user/.generated/shell-scripts/zsh/completions/_stalledtool"); exists {
+		t.Error("expected no completion file to be written when the command times out")
+	}
+}
+
 func TestManualToolWithoutBinaryPath_Logging(t *testing.T) {
 	ctx := context.Background()
 	var logBuf bytes.Buffer
@@ -1773,7 +1590,3 @@ func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 		t.Errorf("expected symlink target /home/user/.local/bin/claude, got %s", linkTarget)
 	}
 }
-
-
-
-

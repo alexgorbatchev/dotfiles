@@ -25,7 +25,6 @@ func TestGenerateTypes(t *testing.T) {
 	expectedTypes := []string{
 		"interface ToolConfig",
 		"interface ProjectConfig",
-		"interface PlatformConfigEntry",
 		"interface BinaryConfig",
 		"interface SymlinkConfig",
 	}

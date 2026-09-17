@@ -28,7 +28,6 @@ const completionCommandTimeout = 30 * time.Second
 // GenerateTools executes standalone shim, symlink, and shell script generation.
 // It skips the installation pipeline except for tools with "auto: true" in their install params.
 func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
-	config.ResolvePlatformConfigs(tools, "", "")
 	pruned := o.pruneToolsWithLogging(tools)
 	sorted, err := TopologicalSort(pruned)
 	if err != nil {
@@ -654,10 +653,10 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 							cmdExec := o.runner.CommandContext(cmdCtx, cmdName, parts[1:]...)
 							cmdExec.SetProcessGroup(true)
 							cmdExec.SetEnv(o.buildHookEnv(tool, projCfg, nil))
+							output, err := cmdExec.Output()
 							// The deadline shows up on the context when the runner kills the
 							// process, and on the error itself when a runner surfaces it directly.
 							timedOut := errors.Is(cmdCtx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded)
-							output, err := cmdExec.Output()
 							cancel()
 
 							toolLog := o.logger.GetSubLogger("", tool.Name)

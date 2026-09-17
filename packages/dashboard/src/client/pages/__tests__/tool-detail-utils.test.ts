@@ -160,26 +160,6 @@ describe("getReadmeRepo", () => {
     expect(result).toBe("owner/repo");
   });
 
-  test("falls back to platform-specific repo when top-level repo is missing", () => {
-    const config: ISerializableToolConfig = {
-      name: "test",
-      version: "latest",
-      installationMethod: "manual",
-      installParams: {},
-      platformConfigs: [
-        {
-          platforms: ["Linux"],
-          installationMethod: "github-release",
-          installParams: { repo: "owner/platform-repo" },
-        },
-      ],
-    };
-
-    const result = getReadmeRepo(config);
-
-    expect(result).toBe("owner/platform-repo");
-  });
-
   test("returns null when no repo is configured or installParams is undefined", () => {
     const config: ISerializableToolConfig = {
       name: "test",
@@ -295,29 +275,6 @@ describe("getSourceInfo", () => {
     expect(result).toEqual({
       value: "https://example.com/archive.tar.gz",
       url: "https://example.com/archive.tar.gz",
-    });
-  });
-
-  test("returns source info from platform config when top-level config has no source", () => {
-    const config: ISerializableToolConfig = {
-      name: "test",
-      version: "latest",
-      installationMethod: "manual",
-      installParams: {},
-      platformConfigs: [
-        {
-          platforms: ["Linux"],
-          installationMethod: "github-release",
-          installParams: { repo: "owner/repo" },
-        },
-      ],
-    };
-
-    const result = getSourceInfo(config);
-
-    expect(result).toEqual({
-      value: "owner/repo",
-      url: "https://github.com/owner/repo",
     });
   });
 

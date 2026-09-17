@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -69,34 +68,35 @@ type unifiedLoaderResult struct {
 	ToolConfigs   map[string]*config.ToolConfig `json:"toolConfigs"`
 }
 
-const defaultDotfilesToolContent = `import { defineTool } from "@alexgorbatchev/dotfiles";
+// Option configures how a configuration is loaded.
+type Option func(*loadOptions)
 
-export default defineTool((install) =>
-  install("github-release", { repo: "alexgorbatchev/dotfiles" })
-    .bin("dotfiles"),
-);
-`
+type loadOptions struct {
+	target Target
+}
 
-const defaultBrewToolContent = `import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
+// WithTarget evaluates platform-dependent configuration in tool files against the
+// given OS and architecture rather than the host's. Empty values fall back to the
+// host. It backs the --platform and --arch flags.
+func WithTarget(os, arch string) Option {
+	return func(o *loadOptions) {
+		o.target = Target{OS: os, Arch: arch}
+	}
+}
 
-export default defineTool((install, _ctx) =>
-  install().platform(Platform.MacOS, (install) =>
-    install("manual", {
-      binaryPath: "/opt/homebrew/bin/brew",
-      symlink: true,
-    })
-      .hook("before-install", async ({ $ }) => {
-        await $` + "`" + `INTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` + "`" + `;
-      })
-      .zsh((shell) => shell.always('eval "$(/opt/homebrew/bin/brew shellenv)"'))
-      .bash((shell) => shell.always('eval "$(/opt/homebrew/bin/brew shellenv)"')),
-  ),
-);
-`
+func newLoadOptions(opts []Option) loadOptions {
+	var resolved loadOptions
+	for _, opt := range opts {
+		opt(&resolved)
+	}
+	return resolved
+}
 
 // LoadTypeScriptConfig loads and compiles a TypeScript config file and all tool configs
 // dynamically, returning the unmarshaled ProjectConfig and map of ToolConfigs.
-func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*config.ProjectConfig, map[string]*config.ToolConfig, error) {
+func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opts ...Option) (*config.ProjectConfig, map[string]*config.ToolConfig, error) {
+	target := newLoadOptions(opts).target
+
 	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolving absolute config path: %w", err)
@@ -110,38 +110,33 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 		return nil, nil, fmt.Errorf("compiling project config %q: %w", absConfigPath, err)
 	}
 
-	projCfg, err := evaluateProjectConfig(log, fsys, configJS, configFileDir)
+	projCfg, err := evaluateProjectConfig(log, fsys, configJS, configFileDir, target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("evaluating project config: %w", err)
 	}
 
+	// Resolve path placeholders and defaults once, here, so tool discovery, the values
+	// handed to the JS VM, and the config the caller receives all agree instead of each
+	// re-deriving them from the raw config.
+	projCfg.ResolvePlaceholders()
+
 	// Step 2: Resolve the ToolConfigsDir(s) and scan for *.tool.ts files
-	toolConfigsDirs := projCfg.Paths.GetToolConfigsDirs()
+	resolvedDirs := ResolveToolConfigsDirs(fsys, projCfg, configFileDir)
 
 	var toolFiles []string
 	seenFiles := make(map[string]bool)
-	for _, rawDir := range toolConfigsDirs {
-		resolvedDir := strings.ReplaceAll(rawDir, "{configFileDir}", configFileDir)
-		if fsys.IsAbs(resolvedDir) {
-			if abs, err := fsys.Abs(resolvedDir); err == nil {
-				resolvedDir = abs
-			}
-		} else {
-			resolvedDir = filepath.Join(configFileDir, resolvedDir)
+	for _, resolvedDir := range resolvedDirs {
+		if exists, _ := dirExists(fsys, resolvedDir); !exists {
+			continue
 		}
-		if exists, _ := dirExists(fsys, resolvedDir); exists {
-			files, err := findToolConfigFiles(resolvedDir)
-			if err != nil {
-				return nil, nil, fmt.Errorf("finding tool config files under %q: %w", resolvedDir, err)
-			}
-
-			files = ensureStarterTools(fsys, runtime.GOOS, resolvedDir, files)
-
-			for _, f := range files {
-				if !seenFiles[f] {
-					seenFiles[f] = true
-					toolFiles = append(toolFiles, f)
-				}
+		files, err := findToolConfigFiles(resolvedDir)
+		if err != nil {
+			return nil, nil, fmt.Errorf("finding tool config files under %q: %w", resolvedDir, err)
+		}
+		for _, f := range files {
+			if !seenFiles[f] {
+				seenFiles[f] = true
+				toolFiles = append(toolFiles, f)
 			}
 		}
 	}
@@ -165,16 +160,8 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 		return nil, nil, fmt.Errorf("bundling configuration: %w", err)
 	}
 
-	binariesDir := projCfg.Paths.BinariesDir
-	if binariesDir == "" {
-		binariesDir = filepath.Join(projCfg.Paths.GeneratedDir, "binaries")
-	}
-	if strings.Contains(binariesDir, "{paths.generatedDir}") {
-		binariesDir = strings.ReplaceAll(binariesDir, "{paths.generatedDir}", projCfg.Paths.GeneratedDir)
-	}
-
 	// Step 4: Run the unified bundle in Goja and marshal the result
-	fullConfig, err := evaluateUnifiedBundle(log, fsys, bundledJS, configFileDir, projCfg.Paths.GeneratedDir, binariesDir)
+	fullConfig, err := evaluateUnifiedBundle(log, fsys, bundledJS, configFileDir, projCfg.Paths.GeneratedDir, projCfg.Paths.BinariesDir, target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("evaluating unified config bundle: %w", err)
 	}
@@ -186,32 +173,26 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string) (*c
 	return fullConfig.ProjectConfig, fullConfig.ToolConfigs, nil
 }
 
-func ensureStarterTools(fsys fs.FS, targetOS string, resolvedDir string, files []string) []string {
-	// If tools directory is empty, provision starter dotfiles.tool.ts
-	if len(files) == 0 && filepath.Base(resolvedDir) == "tools" {
-		dotfilesPath := filepath.Join(resolvedDir, "dotfiles.tool.ts")
-		_ = os.WriteFile(dotfilesPath, []byte(defaultDotfilesToolContent), 0644)
-		_ = fsys.WriteFile(dotfilesPath, []byte(defaultDotfilesToolContent), 0644)
-		files = append(files, dotfilesPath)
-	}
-
-	// On macOS, always ensure tools/brew.tool.ts exists if missing
-	if targetOS == "darwin" && filepath.Base(resolvedDir) == "tools" {
-		hasBrewTool := false
-		for _, f := range files {
-			if filepath.Base(f) == "brew.tool.ts" {
-				hasBrewTool = true
-				break
+// ResolveToolConfigsDirs returns every configured tool configurations directory as an
+// absolute path, expanding {configFileDir} and anchoring relative entries to it. The
+// first entry is the primary directory. Callers that need to agree with the loader on
+// where tool configurations live must use this rather than reading Paths.ToolConfigsDir
+// directly, which may hold placeholders, relative paths, a string or a list.
+func ResolveToolConfigsDirs(fsys fs.FS, projCfg *config.ProjectConfig, configFileDir string) []string {
+	rawDirs := projCfg.Paths.GetToolConfigsDirs()
+	resolved := make([]string, 0, len(rawDirs))
+	for _, rawDir := range rawDirs {
+		dir := strings.ReplaceAll(rawDir, "{configFileDir}", configFileDir)
+		if fsys.IsAbs(dir) {
+			if abs, err := fsys.Abs(dir); err == nil {
+				dir = abs
 			}
+		} else {
+			dir = filepath.Join(configFileDir, dir)
 		}
-		if !hasBrewTool {
-			brewPath := filepath.Join(resolvedDir, "brew.tool.ts")
-			_ = os.WriteFile(brewPath, []byte(defaultBrewToolContent), 0644)
-			_ = fsys.WriteFile(brewPath, []byte(defaultBrewToolContent), 0644)
-			files = append(files, brewPath)
-		}
+		resolved = append(resolved, dir)
 	}
-	return files
+	return resolved
 }
 
 func compileFile(entryPath string) (string, error) {
@@ -282,12 +263,12 @@ func compileFile(entryPath string) (string, error) {
 	return code, nil
 }
 
-func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string) (*config.ProjectConfig, error) {
+func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string, target Target) (*config.ProjectConfig, error) {
 	vm := goja.New()
 	registry := require.NewRegistry()
 	registry.Enable(vm)
 
-	if err := RegisterBindings(vm); err != nil {
+	if err := RegisterBindings(vm, target); err != nil {
 		return nil, fmt.Errorf("registering Go bindings: %w", err)
 	}
 
@@ -349,12 +330,12 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 	return &projCfg, nil
 }
 
-func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string, generatedDir string, binariesDir string) (*unifiedLoaderResult, error) {
+func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string, generatedDir string, binariesDir string, target Target) (*unifiedLoaderResult, error) {
 	vm := goja.New()
 	registry := require.NewRegistry()
 	registry.Enable(vm)
 
-	if err := RegisterBindings(vm); err != nil {
+	if err := RegisterBindings(vm, target); err != nil {
 		return nil, fmt.Errorf("registering Go bindings: %w", err)
 	}
 
@@ -434,7 +415,11 @@ func generateEntryLoader(configPath string, toolFiles []string) (string, error) 
 			return "", fmt.Errorf("failed to get relative path for tool %q: %w", file, err)
 		}
 		relPath = filepath.ToSlash(relPath)
-		if !strings.HasPrefix(relPath, ".") && !strings.HasPrefix(relPath, "/") {
+		// esbuild treats a bare specifier as a package, so a relative path needs an
+		// explicit "./" prefix. Testing for a leading "." alone is not enough: a tool
+		// configs directory under a dotted directory such as ".generated" produces a
+		// path like ".generated/tools/bat.tool.ts", which is still a bare specifier.
+		if !strings.HasPrefix(relPath, "./") && !strings.HasPrefix(relPath, "../") && !strings.HasPrefix(relPath, "/") {
 			relPath = "./" + relPath
 		}
 		absFile, _ := filepath.Abs(file)

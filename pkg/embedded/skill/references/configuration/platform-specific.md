@@ -11,7 +11,6 @@ import { Architecture, Platform } from "@alexgorbatchev/dotfiles";
 Platform.Linux; // 1
 Platform.MacOS; // 2
 Platform.Windows; // 4
-Platform.Unix; // Linux | MacOS (3)
 Platform.All; // All platforms (7)
 
 // Architectures (bitwise flags)
@@ -70,16 +69,18 @@ export default defineTool((install) =>
 
 ## Platform Groups
 
-Use `Platform.Unix` for shared Linux/macOS configuration:
+There are three platforms: `Linux`, `MacOS` and `Windows`. Combine them with `|` to
+share configuration between several, rather than reaching for a named alias:
 
 ```typescript
 export default defineTool((install) =>
   install()
     .bin("tool")
-    .platform(Platform.Unix, (install) =>
-      install("github-release", {
-        repo: "owner/tool",
-        assetPattern: "*unix*.tar.gz",
+    // One POSIX install script serves both Linux and macOS.
+    .platform(Platform.Linux | Platform.MacOS, (install) =>
+      install("curl-script", {
+        url: "https://example.com/install.sh",
+        shell: "bash",
       }),
     )
     .platform(Platform.Windows, (install) =>
@@ -91,13 +92,18 @@ export default defineTool((install) =>
 );
 ```
 
+Only group platforms when the configuration is genuinely identical for each of them.
+Release assets are built per operating system, so `assetPattern` almost always belongs
+in a separate block per platform -- grouping Linux with macOS there would hand a Mac a
+Linux build. See the architecture example above for the per-platform form.
+
 ## Platform-Specific Shell Config
 
 ```typescript
 export default defineTool((install) =>
   install("github-release", { repo: "owner/tool" })
     .bin("tool")
-    .platform(Platform.Unix, (install) =>
+    .platform(Platform.Linux | Platform.MacOS, (install) =>
       install().zsh((shell) =>
         shell.env({
           TOOL_CONFIG: "~/.config/tool",

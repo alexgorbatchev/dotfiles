@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -89,31 +88,6 @@ func (s *Server) handleToolsRouter(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func platformBitmaskToNames(platforms int) []string {
-	names := []string{}
-	if platforms&1 != 0 {
-		names = append(names, "Linux")
-	}
-	if platforms&2 != 0 {
-		names = append(names, "macOS")
-	}
-	if platforms&4 != 0 {
-		names = append(names, "Windows")
-	}
-	return names
-}
-
-func architectureBitmaskToNames(arch int) []string {
-	names := []string{}
-	if arch&1 != 0 {
-		names = append(names, "x86_64")
-	}
-	if arch&2 != 0 {
-		names = append(names, "arm64")
-	}
-	return names
-}
-
 func formatToolConfigForDashboard(tc *config.ToolConfig) map[string]any {
 	if tc == nil {
 		return nil
@@ -125,32 +99,6 @@ func formatToolConfigForDashboard(tc *config.ToolConfig) map[string]any {
 	var res map[string]any
 	if err := json.Unmarshal(data, &res); err != nil {
 		return nil
-	}
-
-	if len(tc.PlatformConfigs) > 0 {
-		platformConfigs := make([]map[string]any, 0, len(tc.PlatformConfigs))
-		for _, entry := range tc.PlatformConfigs {
-			serializedEntry := make(map[string]any)
-
-			if entry.Config != nil {
-				if cfgBytes, err := json.Marshal(entry.Config); err == nil {
-					var cfgMap map[string]any
-					if err := json.Unmarshal(cfgBytes, &cfgMap); err == nil {
-						for k, v := range cfgMap {
-							serializedEntry[k] = v
-						}
-					}
-				}
-			}
-
-			serializedEntry["platforms"] = platformBitmaskToNames(entry.Platforms)
-			if entry.Architectures != nil {
-				serializedEntry["architectures"] = architectureBitmaskToNames(*entry.Architectures)
-			}
-
-			platformConfigs = append(platformConfigs, serializedEntry)
-		}
-		res["platformConfigs"] = platformConfigs
 	}
 
 	return res
@@ -504,57 +452,6 @@ func getRepoFromToolConfig(tc *config.ToolConfig) string {
 		return repo
 	}
 
-	goos := runtime.GOOS
-	goarch := runtime.GOARCH
-
-	for _, pc := range tc.PlatformConfigs {
-		if config.MatchesPlatform(pc.Platforms, goos) {
-			if pc.Architectures != nil && !config.MatchesArch(*pc.Architectures, goarch) {
-				continue
-			}
-			if repo := extractRepoFromPlatformConfig(pc); repo != "" {
-				return repo
-			}
-		}
-	}
-
-	for _, pc := range tc.PlatformConfigs {
-		if repo := extractRepoFromPlatformConfig(pc); repo != "" {
-			return repo
-		}
-	}
-
-	return ""
-}
-
-func extractRepoFromPlatformConfig(pc config.PlatformConfigEntry) string {
-	if cfgMap, ok := pc.Config.(map[string]interface{}); ok {
-		return getRepoFromConfigMap(cfgMap)
-	}
-	if pc.Config != nil {
-		jsonBytes, err := json.Marshal(pc.Config)
-		if err == nil {
-			var cfgMap map[string]interface{}
-			if err := json.Unmarshal(jsonBytes, &cfgMap); err == nil {
-				return getRepoFromConfigMap(cfgMap)
-			}
-		}
-	}
-	return ""
-}
-
-func getRepoFromConfigMap(cfgMap map[string]interface{}) string {
-	if cfgMap == nil {
-		return ""
-	}
-	if installParams, ok := cfgMap["installParams"].(map[string]interface{}); ok {
-		if r := getStringParam(installParams, "repo", ""); r != "" {
-			return r
-		}
-		if r := getStringParam(installParams, "githubRepo", ""); r != "" {
-			return r
-		}
-	}
 	return ""
 }
 

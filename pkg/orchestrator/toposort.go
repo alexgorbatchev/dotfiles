@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
@@ -31,17 +30,12 @@ func (o *Orchestrator) pruneToolsWithLogging(tools []*config.ToolConfig) []*conf
 	var pruned []*config.ToolConfig
 	hostname, _ := os.Hostname()
 
-	var platformUnsupported []string
 	var disabledTools []string
 	var hostnameMismatched []string
 
 	for _, t := range tools {
 		if t.Hostname != "" && !matchesHostname(t.Hostname) {
 			hostnameMismatched = append(hostnameMismatched, t.Name)
-			continue
-		}
-		if t.PlatformUnsupported {
-			platformUnsupported = append(platformUnsupported, t.Name)
 			continue
 		}
 		if t.Disabled {
@@ -51,13 +45,6 @@ func (o *Orchestrator) pruneToolsWithLogging(tools []*config.ToolConfig) []*conf
 		pruned = append(pruned, t)
 	}
 
-	sysCtx := installer.NewDefaultSystemContext()
-	platTarget := fmt.Sprintf("%s/%s", sysCtx.OS, sysCtx.Arch)
-
-	if len(platformUnsupported) > 0 {
-		sort.Strings(platformUnsupported)
-		o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping platform-unsupported tools on %s: %s", platTarget, strings.Join(platformUnsupported, ", "))))
-	}
 	if len(disabledTools) > 0 {
 		sort.Strings(disabledTools)
 		o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping disabled tools: %s", strings.Join(disabledTools, ", "))))
@@ -70,18 +57,9 @@ func (o *Orchestrator) pruneToolsWithLogging(tools []*config.ToolConfig) []*conf
 	return pruned
 }
 
-// TopologicalSortForPlatform evaluates platform overrides on tools for the specified OS and architecture,
-// then topologically sorts the tools based on their resolved dependencies.
-func TopologicalSortForPlatform(tools []*config.ToolConfig, osName, archName string) ([]*config.ToolConfig, error) {
-	config.ResolvePlatformConfigs(tools, osName, archName)
-	return topologicalSort(tools)
-}
-
 // TopologicalSort sorts a slice of ToolConfigs topologically based on their dependencies.
-// It evaluates platform overrides prior to constructing the dependency graph.
 // It returns an error if a dependency cycle or an unregistered dependency is detected.
 func TopologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
-	config.ResolvePlatformConfigs(tools, "", "")
 	return topologicalSort(tools)
 }
 

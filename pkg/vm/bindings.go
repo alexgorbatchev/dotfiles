@@ -1,27 +1,91 @@
 package vm
 
 import (
+	"fmt"
 	"os"
-	"runtime"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/dop251/goja"
 )
 
-// RegisterBindings registers native Go utility functions and helper constants inside the Goja runtime.
-func RegisterBindings(vm *goja.Runtime) error {
+// Target selects the OS and architecture that platform-dependent configuration is
+// evaluated against. Empty fields fall back to the host, so the zero Target means
+// "this machine". It backs the --platform and --arch flags.
+type Target struct {
+	OS   string
+	Arch string
+}
+
+// os returns the OS this target evaluates against.
+func (t Target) os() string {
+	if t.OS != "" {
+		return t.OS
+	}
+	return arch.GetOS()
+}
+
+// arch returns the architecture this target evaluates against.
+func (t Target) arch() string {
+	if t.Arch != "" {
+		return t.Arch
+	}
+	return arch.GetArch()
+}
+
+// matchesTarget reports whether a .platform() or .arch() block applies to this target.
+// A nil architectures means the block did not constrain the architecture.
+//
+// Unknown values are rejected rather than treated as "no constraint", because a
+// misspelled member such as Architecture.Arm65 evaluates to undefined in JavaScript.
+// Silently ignoring it would widen the block to every architecture and quietly apply
+// the wrong configuration, which is far harder to diagnose than an error at load time.
+func (t Target) matchesTarget(platforms goja.Value, architectures goja.Value) (bool, error) {
+	platformValue, err := bitmaskValue(platforms, "platform", config.PlatformAll)
+	if err != nil {
+		return false, err
+	}
+	if !config.MatchesPlatform(platformValue, t.os()) {
+		return false, nil
+	}
+
+	if architectures == nil || goja.IsUndefined(architectures) || goja.IsNull(architectures) {
+		return true, nil
+	}
+	architectureValue, err := bitmaskValue(architectures, "architecture", config.ArchAll)
+	if err != nil {
+		return false, err
+	}
+	return config.MatchesArch(architectureValue, t.arch()), nil
+}
+
+func bitmaskValue(value goja.Value, kind string, max int) (int, error) {
+	if value == nil || goja.IsUndefined(value) || goja.IsNull(value) {
+		return 0, fmt.Errorf("unknown %s value: expected one of the %s constants, got undefined (check for a misspelled member)", kind, kind)
+	}
+	number := value.ToInteger()
+	if number < 0 || number > int64(max) {
+		return 0, fmt.Errorf("unknown %s value %v: expected one of the %s constants", kind, value, kind)
+	}
+	return int(number), nil
+}
+
+// RegisterBindings registers native Go utility functions and helper constants inside the
+// Goja runtime, resolving platform-dependent values against target.
+func RegisterBindings(vm *goja.Runtime, target Target) error {
 	_ = vm.Set("globalThis", vm.GlobalObject())
 	bindings := map[string]any{
-		"getOS":      arch.GetOS,
-		"getArch":    arch.GetArch,
-		"getenv":     os.Getenv,
-		"fileExists": arch.FileExists,
-		"isMac":      func() bool { return arch.GetOS() == arch.OSDarwin },
-		"isLinux":    func() bool { return arch.GetOS() == arch.OSLinux },
-		"isWindows":  func() bool { return runtime.GOOS == "windows" },
-		"detectLibc": func() string { return arch.DetectLibc(arch.FileExists) },
+		"getOS":         target.os,
+		"getArch":       target.arch,
+		"matchesTarget": target.matchesTarget,
+		"getenv":        os.Getenv,
+		"fileExists":    arch.FileExists,
+		"isMac":         func() bool { return target.os() == arch.OSDarwin },
+		"isLinux":       func() bool { return target.os() == arch.OSLinux },
+		"isWindows":     func() bool { return target.os() == "windows" },
+		"detectLibc":    func() string { return arch.DetectLibc(arch.FileExists) },
 	}
 
 	for name, fn := range bindings {

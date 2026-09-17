@@ -342,13 +342,6 @@ type ToolConfigUpdateCheck struct {
 	Constraint *string `json:"constraint,omitempty" yaml:"constraint,omitempty"`
 }
 
-// PlatformConfigEntry specifies configurations targeted to certain operating systems or architectures.
-type PlatformConfigEntry struct {
-	Platforms     int         `json:"platforms" yaml:"platforms"`
-	Architectures *int        `json:"architectures,omitempty" yaml:"architectures,omitempty"`
-	Config        interface{} `json:"config" yaml:"config"`
-}
-
 // ToolConfig matches complete configurations of individual packages or tools.
 type ToolConfig struct {
 	Name               string                 `json:"name" yaml:"name"`
@@ -357,14 +350,12 @@ type ToolConfig struct {
 	Binaries           []interface{}          `json:"binaries,omitempty" yaml:"binaries,omitempty"` // Can be strings or BinaryConfigs
 	Dependencies       []string               `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	Disabled           bool                   `json:"disabled,omitempty" yaml:"disabled,omitempty"`
-	PlatformUnsupported bool                   `json:"platformUnsupported,omitempty" yaml:"platformUnsupported,omitempty"`
 	Hostname           string                 `json:"hostname,omitempty" yaml:"hostname,omitempty"`
 	Sudo               bool                   `json:"sudo,omitempty" yaml:"sudo,omitempty"`
 	ShellConfigs       *ShellConfigs          `json:"shellConfigs,omitempty" yaml:"shellConfigs,omitempty"`
 	Symlinks           []SymlinkConfig        `json:"symlinks,omitempty" yaml:"symlinks,omitempty"`
 	Copies             []CopyConfig           `json:"copies,omitempty" yaml:"copies,omitempty"`
 	UpdateCheck        *ToolConfigUpdateCheck `json:"updateCheck,omitempty" yaml:"updateCheck,omitempty"`
-	PlatformConfigs    []PlatformConfigEntry  `json:"platformConfigs,omitempty" yaml:"platformConfigs,omitempty"`
 	InstallationMethod string                 `json:"installationMethod,omitempty" yaml:"installationMethod,omitempty"`
 	InstallParams      map[string]interface{} `json:"installParams,omitempty" yaml:"installParams,omitempty"`
 }
