@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -451,8 +452,8 @@ export function defineTool(callback) { return callback; }
 export function dedentString(str) { return str; }
 export function dedentTemplate(template, values) { return template; }
 
-export const Platform = Object.freeze({ None: 0, Linux: 1, MacOS: 2, Windows: 4, Unix: 3, All: 7 });
-export const Architecture = Object.freeze({ None: 0, X86_64: 1, Arm64: 2, All: 3 });
+export const Platform = Object.freeze({ Linux: 1, MacOS: 2, Windows: 4, All: 7 });
+export const Architecture = Object.freeze({ X86_64: 1, Arm64: 2, All: 3 });
 `
 	distDir := filepath.Join(rootDir, ".dist")
 	cliJsPath := filepath.Join(distDir, "cli.js")
@@ -903,12 +904,10 @@ func printBuildSummary(rootDir string) error {
 	return nil
 }
 
-func runBuild() error {
-	rootDir, err := getRepoRoot()
-	if err != nil {
-		return fmt.Errorf("resolving repo root: %w", err)
-	}
-
+// generateEmbeddedAssets produces everything the Go packages embed: the dashboard
+// bundle, the generated TypeScript types, and the skill content. A checkout has none
+// of these, so they must exist before the Go toolchain can build, vet or test.
+func generateEmbeddedAssets(rootDir string) error {
 	if err := cleanPreviousBuild(rootDir); err != nil {
 		return fmt.Errorf("cleaning: %w", err)
 	}
@@ -929,6 +928,19 @@ func runBuild() error {
 		return fmt.Errorf("copying assets and skill: %w", err)
 	}
 
+	return nil
+}
+
+func runBuild() error {
+	rootDir, err := getRepoRoot()
+	if err != nil {
+		return fmt.Errorf("resolving repo root: %w", err)
+	}
+
+	if err := generateEmbeddedAssets(rootDir); err != nil {
+		return err
+	}
+
 	if err := compileAllBinaries(rootDir); err != nil {
 		return fmt.Errorf("compiling binaries: %w", err)
 	}
@@ -945,7 +957,23 @@ func runBuild() error {
 }
 
 func main() {
-	if err := runBuild(); err != nil {
+	// --assets-only stops after generating embedded assets, skipping the cross-platform
+	// binary build. It is what checks and tests need from a fresh checkout.
+	assetsOnly := flag.Bool("assets-only", false, "generate embedded assets without compiling binaries")
+	flag.Parse()
+
+	run := runBuild
+	if *assetsOnly {
+		run = func() error {
+			rootDir, err := getRepoRoot()
+			if err != nil {
+				return fmt.Errorf("resolving repo root: %w", err)
+			}
+			return generateEmbeddedAssets(rootDir)
+		}
+	}
+
+	if err := run(); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}

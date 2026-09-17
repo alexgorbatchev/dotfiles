@@ -51,6 +51,11 @@ unused:
 typecheck:
     tsgo -p tsconfig.json
 
+# Generate the assets the Go packages embed (dashboard bundle, generated types, skill).
+# Required before any Go build, vet or test in a fresh checkout.
+prepare:
+    go run scripts/build/main.go --assets-only
+
 # Compile native Go binaries and dashboard client assets
 compile:
     go run scripts/build/main.go
