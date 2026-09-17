@@ -29,12 +29,15 @@ test-e2e:
 
 # Format and lint check
 lint:
+    @unformatted="$(gofmt -l cmd pkg scripts tests)"; if [ -n "$unformatted" ]; then echo "gofmt needed:"; echo "$unformatted"; exit 1; fi
+    go vet ./...
     bun --bun oxfmt --check .
     cd test-project && ../node_modules/.bin/dprint check --config .dprint.json .
     bun --bun oxlint .
 
 # Auto-fix formatting and linting
 fix:
+    gofmt -w cmd pkg scripts tests
     bun --bun oxfmt .
     cd test-project && ../node_modules/.bin/dprint fmt --config .dprint.json .
     bun --bun oxlint --fix .
