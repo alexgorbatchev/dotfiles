@@ -52,7 +52,9 @@ Useful repo commands:
 
 `/api/tool-configs-tree`
 
-- Uses dashboard-owned filesystem traversal in `pkg/dashboard/routes.go`.
+- Uses dashboard-owned filesystem traversal in `pkg/dashboard/routes_config.go`.
+- Directory resolution is shared with the config loader via `vm.ResolveToolConfigsDirs`, so a wrong directory here usually means a wrong config path or placeholder rather than a dashboard bug.
+- Returns one `roots` entry per configured tool-configs directory, each with the absolute `path`, a `label` contracted to `~`, and its own `entries`. Roots containing no tool files are omitted.
 - Historically this failed on unreadable or broken entries and aborted the whole response.
 
 `/api/recent-tools`

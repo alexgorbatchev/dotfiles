@@ -14,6 +14,8 @@ Dashboard Preact client and asset bundler for dotfiles state, health, and usage 
 
 - Preact UI test files must import `src/testing/ui-setup.ts` first and call `setupUITests()` at top level.
 - Adopt UI primitives from `src/client/components/`; keep server-client types synchronized via `src/shared/types.gen.ts` generated during `bun compile`.
+- `types.gen.ts` is generated from Go config structs only. REST response shapes are hand-written in `src/shared/types.ts`.
+- Install, update and check-for-updates run through the `useToolActions` hook and render through `ToolActionButtons`. Views differ only by the `size` prop, so extend the shared component rather than adding per-view buttons, and keep one hook instance per page so the result banner sees every action.
 
 ## Local gotchas
 
