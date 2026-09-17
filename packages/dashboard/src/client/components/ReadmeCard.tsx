@@ -28,6 +28,13 @@ type ReadmeCardProps = {
   repo: string;
 };
 
+// Image hosts commonly used in READMEs (imgur among them) answer 403 when the Referer is not their
+// own site. GitHub hides this by proxying README images through camo; the dashboard has no proxy, so
+// it drops the referrer instead and the origin serves the image as it would to a bare request.
+function dropImageReferrer(html: string): string {
+  return html.replace(/<img\s/gi, '<img referrerpolicy="no-referrer" ');
+}
+
 // Simple relative link fixer for GitHub repos
 function resolveGitHubUrls(html: string, repo: string): string {
   // A naive pass at fixing src="./" and href="./" to point to github raw/blob
@@ -80,7 +87,7 @@ export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
 
   if (marked && domPurify) {
     html = domPurify.sanitize(marked.parse(data.content));
-    html = resolveGitHubUrls(html, repo);
+    html = dropImageReferrer(resolveGitHubUrls(html, repo));
   } else {
     // SSR fallback or if CDN failed
     html = `<pre>${data.content}</pre>`;
