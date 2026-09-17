@@ -17,7 +17,24 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/version"
 )
+
+// isNewerVersion reports whether latest supersedes current. Version schemes that semver cannot
+// parse (date stamps, commit shas) fall back to plain inequality.
+func isNewerVersion(current, latest string) bool {
+	if current == "" || latest == "" || current == "unknown" || latest == "unknown" {
+		return false
+	}
+	switch version.CheckVersionStatus(current, latest) {
+	case version.StatusNewerAvailable:
+		return true
+	case version.StatusUpToDate, version.StatusAheadOfLatest:
+		return false
+	default:
+		return version.ParseVersion(current) != version.ParseVersion(latest)
+	}
+}
 
 // handleToolsRouter dispatches GET /api/tools or GET /api/tools/:name/...
 func (s *Server) handleToolsRouter(w http.ResponseWriter, r *http.Request) {
@@ -773,13 +790,17 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 		return
 	}
 
+	// Only installers that query the system populate LocalVersion; for the rest the registry is
+	// the only record of what is actually on disk. The configured version is deliberately not a
+	// fallback, because "latest" is a resolution strategy rather than an installed version.
 	currentVer := res.LocalVersion
 	if currentVer == "" {
-		if targetTool.Version != nil && *targetTool.Version != "" {
-			currentVer = *targetTool.Version
-		} else {
-			currentVer = "unknown"
+		if installRecord, err := s.registry.GetToolInstallation(ctx, toolName); err == nil && installRecord != nil {
+			currentVer = installRecord.Version
 		}
+	}
+	if currentVer == "" {
+		currentVer = "unknown"
 	}
 
 	latestVer := res.LatestVersion
@@ -787,8 +808,16 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 		latestVer = "unknown"
 	}
 
+	// Installers that can only resolve the newest upstream release report HasUpdate
+	// unconditionally, so an affirmative answer is only trusted when the installed version really
+	// is behind. A negative answer is left alone: installers that do not check at all report false.
+	hasUpdate := res.HasUpdate
+	if hasUpdate && res.LocalVersion == "" {
+		hasUpdate = isNewerVersion(currentVer, latestVer)
+	}
+
 	writeJSON(w, true, map[string]any{
-		"hasUpdate":      res.HasUpdate,
+		"hasUpdate":      hasUpdate,
 		"currentVersion": currentVer,
 		"latestVersion":  latestVer,
 		"supported":      true,
