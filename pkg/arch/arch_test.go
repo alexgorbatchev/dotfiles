@@ -103,7 +103,7 @@ func TestDetectLibc(t *testing.T) {
 			"glibc system",
 			OSLinux,
 			map[string]bool{"/lib64/ld-linux-x86-64.so.2": true},
-			LibcGlibc,
+			LibcGnu,
 		},
 		{
 			"musl system",
@@ -234,7 +234,7 @@ func TestGetArchitecturePatterns(t *testing.T) {
 	})
 
 	t.Run("Linux x86_64 glibc", func(t *testing.T) {
-		sys := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc}
+		sys := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGnu}
 		patterns := GetArchitecturePatterns(sys)
 		if !reflect.DeepEqual(patterns.System, []string{"linux"}) {
 			t.Errorf("System = %v", patterns.System)
@@ -544,7 +544,7 @@ func TestSelectBestMatch(t *testing.T) {
 	})
 
 	t.Run("Linux glibc vs musl ranking", func(t *testing.T) {
-		sysGlibc := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc}
+		sysGlibc := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGnu}
 		assets := []string{
 			"tool-linux-amd64-musl.tar.gz",
 			"tool-linux-amd64-gnu.tar.gz",
@@ -563,7 +563,7 @@ func TestSelectBestMatch(t *testing.T) {
 	})
 
 	t.Run("prefer generic Linux asset over musl when libc is gnu", func(t *testing.T) {
-		sys := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc}
+		sys := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGnu}
 		assets := []string{"bun-linux-x64-musl-baseline.zip", "bun-linux-x64-baseline.zip", "bun-darwin-aarch64.zip"}
 		got := SelectBestMatch(assets, sys)
 		if got != "bun-linux-x64-baseline.zip" {
@@ -572,7 +572,7 @@ func TestSelectBestMatch(t *testing.T) {
 	})
 
 	t.Run("ignore Android-targeted Linux assets", func(t *testing.T) {
-		sys := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc}
+		sys := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGnu}
 		assets := []string{"bun-linux-x64-android-baseline.zip", "bun-linux-x64-baseline.zip", "bun-darwin-aarch64.zip"}
 		got := SelectBestMatch(assets, sys)
 		if got != "bun-linux-x64-baseline.zip" {
@@ -590,7 +590,7 @@ func TestSelectBestMatch(t *testing.T) {
 	})
 
 	t.Run("exclude non-binary files", func(t *testing.T) {
-		sys := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc}
+		sys := SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGnu}
 		assets := []string{
 			"tool-linux-amd64.tar.gz.sha256",
 			"tool-linux-amd64.tar.gz.sig",
@@ -622,13 +622,13 @@ func TestSelectBestMatch(t *testing.T) {
 			},
 			{
 				"Linux: raw binary listed first loses to the tarball of the same libc",
-				SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc},
+				SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGnu},
 				[]string{"tool-linux-amd64-gnu", "tool-linux-amd64-gnu.tar.gz"},
 				"tool-linux-amd64-gnu.tar.gz",
 			},
 			{
 				"Linux: libc fit outranks the archive preference",
-				SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc},
+				SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGnu},
 				[]string{"tool-linux-amd64-gnu", "tool-linux-amd64-musl.tar.gz"},
 				"tool-linux-amd64-gnu",
 			},
@@ -694,9 +694,9 @@ func TestSelectBestMatch(t *testing.T) {
 		}{
 			{SystemInfo{OS: OSDarwin, Arch: ArchARM64}, "md-tui-aarch64-apple-darwin.tar.xz"},
 			{SystemInfo{OS: OSDarwin, Arch: ArchAMD64}, "md-tui-x86_64-apple-darwin.tar.xz"},
-			{SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc}, "md-tui-x86_64-unknown-linux-gnu.tar.xz"},
+			{SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGnu}, "md-tui-x86_64-unknown-linux-gnu.tar.xz"},
 			{SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcMusl}, "md-tui-x86_64-unknown-linux-musl.tar.xz"},
-			{SystemInfo{OS: OSLinux, Arch: ArchARM64, Libc: LibcGlibc}, "md-tui-aarch64-unknown-linux-gnu.tar.xz"},
+			{SystemInfo{OS: OSLinux, Arch: ArchARM64, Libc: LibcGnu}, "md-tui-aarch64-unknown-linux-gnu.tar.xz"},
 		}
 		for _, tt := range tests {
 			t.Run(tt.sys.OS+"_"+tt.sys.Arch+"_"+tt.sys.Libc, func(t *testing.T) {

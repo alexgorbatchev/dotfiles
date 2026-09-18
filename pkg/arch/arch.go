@@ -24,7 +24,11 @@ const (
 	ArchARM64   = "arm64"
 	ArchUnknown = "unknown"
 
-	LibcGlibc   = "glibc"
+	// The GNU C library is spelled "gnu" rather than "glibc" because that is what
+	// release assets call it -- the Rust target triple x86_64-unknown-linux-gnu and the
+	// archives every widely used CLI publishes under it. It is also the value the
+	// authoring DSL exposes as Libc.Gnu, and detection and the enum have to agree.
+	LibcGnu     = "gnu"
 	LibcMusl    = "musl"
 	LibcUnknown = "unknown"
 )
@@ -78,7 +82,7 @@ func FileExists(path string) bool {
 	return !info.IsDir()
 }
 
-// DetectLibc evaluates the host's Linux C library (glibc or musl).
+// DetectLibc evaluates the host's Linux C library (LibcGnu or LibcMusl).
 // Allows injecting a custom existence checker for isolated unit testing.
 func DetectLibc(exists func(string) bool) string {
 	if GetOS() != OSLinux {
@@ -105,7 +109,7 @@ func DetectLibc(exists func(string) bool) string {
 		return LibcUnknown
 	}
 	if hasGnu {
-		return LibcGlibc
+		return LibcGnu
 	}
 	return LibcMusl
 }
@@ -168,7 +172,7 @@ func GetArchitecturePatterns(sys SystemInfo) ArchitecturePatterns {
 
 func getLinuxVariants(libc string) []string {
 	switch libc {
-	case LibcGlibc:
+	case LibcGnu:
 		return []string{"gnu", "musl", "unknown-linux"}
 	case LibcMusl:
 		return []string{"musl", "gnu", "unknown-linux"}
@@ -366,7 +370,7 @@ func classifyLinuxVariant(assetName string) linuxVariant {
 
 func rankLinuxVariant(variant linuxVariant, libc string) int {
 	switch libc {
-	case LibcGlibc:
+	case LibcGnu:
 		switch variant {
 		case variantGnu:
 			return 0

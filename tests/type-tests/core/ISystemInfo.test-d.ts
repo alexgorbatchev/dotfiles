@@ -24,6 +24,8 @@ expectType<string>(macosSystem.hostname);
 // libc values are the Libc enum's string values, so the enum compares directly.
 const isMusl: boolean = macosSystem.libc === Libc.Musl;
 expectType<boolean>(isMusl);
+const isGnu: boolean = macosSystem.libc === Libc.Gnu;
+expectType<boolean>(isGnu);
 
 // There is no `platform` member: in this DSL `Platform` is the bitmask `.platform()`
 // blocks take, so a string naming the operating system is `os` instead.

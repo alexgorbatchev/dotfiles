@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -76,6 +77,16 @@ func bitmaskValue(value goja.Value, kind string, max int) (int, error) {
 	return int(number), nil
 }
 
+// libcConstants is the Libc enum of the authoring DSL: the member names dsl-types.ts
+// declares, bound to the values pkg/arch detection reports. loader-api.ts installs it as
+// the Libc global, so the value an author compares against and the value the runtime
+// puts in systemInfo.libc are the same constant and cannot drift apart.
+var libcConstants = map[string]string{
+	"Unknown": arch.LibcUnknown,
+	"Gnu":     arch.LibcGnu,
+	"Musl":    arch.LibcMusl,
+}
+
 // RegisterBindings registers native Go utility functions and helper constants inside the
 // Goja runtime, resolving platform-dependent values against target.
 func RegisterBindings(vm *goja.Runtime, target Target) error {
@@ -90,6 +101,7 @@ func RegisterBindings(vm *goja.Runtime, target Target) error {
 		"isLinux":       func() bool { return target.os() == arch.OSLinux },
 		"isWindows":     func() bool { return target.os() == "windows" },
 		"detectLibc":    func() string { return arch.DetectLibc(arch.FileExists) },
+		"libcConstants": func() map[string]string { return maps.Clone(libcConstants) },
 		"getHostname":   hostname,
 	}
 

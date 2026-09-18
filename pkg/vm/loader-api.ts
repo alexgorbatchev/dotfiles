@@ -32,6 +32,14 @@ export const Architecture = {
   All: 3,
 } as const;
 
+/**
+ * Standard C library implementations. Unlike `Platform` and `Architecture`, whose values
+ * are bitmasks this module owns, the members are the strings `detectLibc()` reports, so
+ * they come from Go rather than being restated here: an author comparing
+ * `systemInfo.libc` against a member compares two halves of the same constant.
+ */
+export const Libc: Record<string, string> = libcConstants();
+
 // Declare the Go-bound environment functions in global scope for TypeScript compilation
 declare global {
   var configFileDir: string;
@@ -44,6 +52,7 @@ declare global {
   function getArch(): string;
   function matchesTarget(platforms: unknown, architectures: unknown): boolean;
   function detectLibc(): string;
+  function libcConstants(): Record<string, string>;
   function getHomeDir(): string;
   function getHostname(): string;
   function fileExists(path: string): boolean;
@@ -876,3 +885,4 @@ getGlobals()["dedentString"] = dedentString;
 getGlobals()["dedentTemplate"] = dedentString;
 getGlobals()["Platform"] = Platform;
 getGlobals()["Architecture"] = Architecture;
+getGlobals()["Libc"] = Libc;

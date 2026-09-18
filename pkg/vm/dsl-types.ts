@@ -150,7 +150,9 @@ export enum Architecture {
 }
 
 /**
- * Standard C library implementations.
+ * Standard C library implementations, spelled the way release assets spell them
+ * (`x86_64-unknown-linux-gnu`, `x86_64-unknown-linux-musl`). `systemInfo.libc` reports
+ * one of these values, so a member compares against it directly.
  */
 export enum Libc {
   Unknown = "unknown",
