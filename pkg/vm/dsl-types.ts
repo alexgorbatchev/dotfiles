@@ -215,9 +215,23 @@ export interface ISystemInfoInternal {
 }
 
 /**
+ * Parameters accepted by every installer. These are handled by the orchestrator
+ * rather than by an individual installer, so they apply regardless of the
+ * installation method chosen.
+ */
+export interface ICommonInstallParams {
+  /**
+   * Install this tool automatically during `dotfiles generate`, rather than only
+   * when it is installed explicitly. Tools that an auto-installed tool depends on
+   * are auto-installed with it.
+   */
+  auto?: boolean;
+}
+
+/**
  * Parameters for manual installation method.
  */
-export interface IManualInstallParams {
+export interface IManualInstallParams extends ICommonInstallParams {
   /**
    * Absolute or relative path to a pre-existing binary executable on disk.
    */
@@ -231,7 +245,7 @@ export interface IManualInstallParams {
 /**
  * Parameters for Cargo (Rust) crate installer.
  */
-export interface ICargoInstallParams {
+export interface ICargoInstallParams extends ICommonInstallParams {
   /**
    * Name of the Cargo crate to install.
    */
@@ -244,12 +258,30 @@ export interface ICargoInstallParams {
    * Specific crate version constraint to install.
    */
   version?: string;
+  /**
+   * Where the prebuilt binary is fetched from. Defaults to "cargo-quickinstall".
+   */
+  binarySource?: string;
+  /**
+   * GitHub repository to fetch a prebuilt release binary from, used when
+   * binarySource selects a GitHub release rather than cargo-quickinstall.
+   */
+  githubRepo?: string;
+  /**
+   * Glob or regex pattern selecting the release asset. Supports the placeholders
+   * {crateName}, {version}, {platform} and {arch}.
+   */
+  assetPattern?: string;
+  /**
+   * Expected SHA-256 checksum of the downloaded artifact.
+   */
+  sha256?: string;
 }
 
 /**
  * Parameters for Homebrew package manager installer (macOS & Linux).
  */
-export interface IBrewInstallParams {
+export interface IBrewInstallParams extends ICommonInstallParams {
   /**
    * Homebrew formula name (e.g. "ripgrep" or "node").
    */
@@ -296,7 +328,7 @@ export interface IBrewInstallParams {
 /**
  * Parameters for APT package manager installer (Debian / Ubuntu).
  */
-export interface IAptInstallParams {
+export interface IAptInstallParams extends ICommonInstallParams {
   /**
    * APT package name.
    */
@@ -318,7 +350,7 @@ export interface IAptInstallParams {
 /**
  * Parameters for Pacman package manager installer (Arch Linux).
  */
-export interface IPacmanInstallParams {
+export interface IPacmanInstallParams extends ICommonInstallParams {
   /**
    * Pacman package name (repository prefix like "extra/ripgrep" is automatically stripped).
    */
@@ -340,7 +372,7 @@ export interface IPacmanInstallParams {
 /**
  * Parameters for DNF package manager installer (Fedora / RHEL / CentOS).
  */
-export interface IDnfInstallParams {
+export interface IDnfInstallParams extends ICommonInstallParams {
   /**
    * DNF package name.
    */
@@ -360,23 +392,66 @@ export interface IDnfInstallParams {
 }
 
 /**
+ * Where the macOS `.dmg` / `.pkg` installers obtain their artifact. A "url" source
+ * downloads a fixed address; a "github-release" source resolves an asset from a
+ * repository release.
+ */
+export interface IMacInstallSource {
+  /**
+   * Selects how the artifact is located. Anything other than "github-release" is
+   * treated as a direct URL.
+   */
+  type?: "url" | "github-release";
+  /**
+   * Direct HTTP/HTTPS URL, for the "url" source type.
+   */
+  url?: string;
+  /**
+   * GitHub repository in "owner/repo" format, for the "github-release" source type.
+   */
+  repo?: string;
+  /**
+   * Release tag to install. Defaults to the latest release.
+   */
+  version?: string;
+  /**
+   * Glob or regex pattern selecting the release asset.
+   */
+  assetPattern?: string;
+  /**
+   * Pattern used to choose between assets when assetPattern matches several.
+   */
+  assetSelector?: string;
+}
+
+/**
  * Parameters for macOS PKG package installer.
  */
-export interface IPkgInstallParams {
+export interface IPkgInstallParams extends ICommonInstallParams {
   /**
-   * Direct HTTP/HTTPS URL to the macOS `.pkg` package file.
+   * Direct HTTP/HTTPS URL to the macOS `.pkg` package file. Provide this or
+   * `source`.
    */
-  url: string;
+  url?: string;
+  /**
+   * Where to obtain the package, when it is not a fixed URL.
+   */
+  source?: IMacInstallSource;
 }
 
 /**
  * Parameters for macOS DMG disk image installer.
  */
-export interface IDmgInstallParams {
+export interface IDmgInstallParams extends ICommonInstallParams {
   /**
-   * Direct HTTP/HTTPS URL to the macOS `.dmg` disk image.
+   * Direct HTTP/HTTPS URL to the macOS `.dmg` disk image. Provide this or
+   * `source`.
    */
-  url: string;
+  url?: string;
+  /**
+   * Where to obtain the disk image, when it is not a fixed URL.
+   */
+  source?: IMacInstallSource;
   /**
    * Name of the `.app` bundle or binary inside the disk image to copy.
    */
@@ -386,25 +461,30 @@ export interface IDmgInstallParams {
 /**
  * Parameters for NPM global package installer.
  */
-export interface INpmInstallParams {
+export interface INpmInstallParams extends ICommonInstallParams {
   /**
-   * NPM package name.
-   */
-  packageName?: string;
-  /**
-   * Alias for packageName.
+   * NPM package name. Defaults to the tool name.
    */
   package?: string;
   /**
-   * Install package globally (`npm install -g`). Defaults to true.
+   * Package manager used to perform the install (e.g. "npm", "bun", "pnpm").
+   * Defaults to "npm".
    */
-  global?: boolean;
+  packageManager?: string;
+  /**
+   * Target package version. Defaults to the latest published version.
+   */
+  version?: string;
+  /**
+   * Reinstall even when the package is already present.
+   */
+  force?: boolean;
 }
 
 /**
  * Parameters for Zsh plugin installer.
  */
-export interface IZshPluginInstallParams {
+export interface IZshPluginInstallParams extends ICommonInstallParams {
   /**
    * GitHub or Gitea repository path (e.g. "zsh-users/zsh-autosuggestions").
    */
@@ -426,7 +506,7 @@ export interface IZshPluginInstallParams {
 /**
  * Parameters for Gitea release asset installer.
  */
-export interface IGiteaReleaseInstallParams {
+export interface IGiteaReleaseInstallParams extends ICommonInstallParams {
   /**
    * Gitea host or instance URL.
    */
@@ -448,7 +528,7 @@ export interface IGiteaReleaseInstallParams {
 /**
  * Parameters for cURL tarball archive installer (.tar.gz, .tar.xz, .zip).
  */
-export interface ICurlTarInstallParams {
+export interface ICurlTarInstallParams extends ICommonInstallParams {
   /**
    * Direct HTTP/HTTPS URL to the archive.
    */
@@ -470,7 +550,7 @@ export interface ICurlTarInstallParams {
 /**
  * Parameters for cURL shell script installer.
  */
-export interface ICurlScriptInstallParams {
+export interface ICurlScriptInstallParams extends ICommonInstallParams {
   /**
    * HTTP/HTTPS URL to the installation script.
    */
@@ -492,7 +572,7 @@ export interface ICurlScriptInstallParams {
 /**
  * Parameters for cURL binary file installer.
  */
-export interface ICurlBinaryInstallParams {
+export interface ICurlBinaryInstallParams extends ICommonInstallParams {
   /**
    * Direct HTTP/HTTPS URL to the executable binary.
    */
@@ -502,11 +582,15 @@ export interface ICurlBinaryInstallParams {
 /**
  * Parameters for GitHub release asset installer.
  */
-export interface IGithubReleaseInstallParams {
+export interface IGithubReleaseInstallParams extends ICommonInstallParams {
   /**
    * GitHub repository path in "owner/repo" format (e.g. "BurntSushi/ripgrep").
    */
   repo: string;
+  /**
+   * Release tag to install. Defaults to the latest release.
+   */
+  version?: string;
   /**
    * Glob or regex pattern to select the asset archive/binary.
    */
@@ -516,7 +600,15 @@ export interface IGithubReleaseInstallParams {
    */
   ghCli?: boolean;
   /**
-   * Include prerelease versions when resolving latest release.
+   * GitHub API token used to authenticate release and asset requests.
+   */
+  token?: string;
+  /**
+   * Include prerelease versions when resolving the latest release.
+   *
+   * NOTE: not yet honoured by the installer, which resolves "latest" through the
+   * GitHub `releases/latest` endpoint. That endpoint excludes prereleases, so a
+   * repository publishing only prereleases currently cannot be resolved.
    */
   prerelease?: boolean;
 }
