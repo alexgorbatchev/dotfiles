@@ -12,37 +12,56 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
-func pruneTools(tools []*config.ToolConfig) []*config.ToolConfig {
-	var pruned []*config.ToolConfig
-	for _, t := range tools {
-		if t.Disabled {
-			continue
-		}
-		if t.Hostname != "" && !matchesHostname(t.Hostname) {
-			continue
-		}
-		pruned = append(pruned, t)
+// skipReason says why a tool takes no part in a run.
+type skipReason int
+
+const (
+	skipNone skipReason = iota
+	skipDisabled
+	skipHostname
+)
+
+// toolSkipReason classifies a tool for the current machine. The hostname restriction
+// is checked first: a tool scoped to another machine is that machine's business
+// whether or not it is also disabled here.
+func toolSkipReason(tool *config.ToolConfig) skipReason {
+	if tool.Hostname != "" && !matchesHostname(tool.Hostname) {
+		return skipHostname
 	}
-	return pruned
+	if tool.Disabled {
+		return skipDisabled
+	}
+	return skipNone
 }
 
-func (o *Orchestrator) pruneToolsWithLogging(tools []*config.ToolConfig) []*config.ToolConfig {
-	var pruned []*config.ToolConfig
+// partitionTools splits a configuration into the tools this run acts on and the tools
+// it skips. The skipped ones are not discarded: they still declare binaries that other
+// tools may legitimately dependsOn(), so dependency resolution needs to see them.
+func partitionTools(tools []*config.ToolConfig) (active, skipped []*config.ToolConfig) {
+	for _, t := range tools {
+		if toolSkipReason(t) == skipNone {
+			active = append(active, t)
+			continue
+		}
+		skipped = append(skipped, t)
+	}
+	return active, skipped
+}
+
+func (o *Orchestrator) pruneToolsWithLogging(tools []*config.ToolConfig) (active, skipped []*config.ToolConfig) {
+	active, skipped = partitionTools(tools)
 	hostname, _ := os.Hostname()
 
 	var disabledTools []string
 	var hostnameMismatched []string
 
-	for _, t := range tools {
-		if t.Hostname != "" && !matchesHostname(t.Hostname) {
+	for _, t := range skipped {
+		switch toolSkipReason(t) {
+		case skipHostname:
 			hostnameMismatched = append(hostnameMismatched, t.Name)
-			continue
-		}
-		if t.Disabled {
+		case skipDisabled:
 			disabledTools = append(disabledTools, t.Name)
-			continue
 		}
-		pruned = append(pruned, t)
 	}
 
 	if len(disabledTools) > 0 {
@@ -54,16 +73,35 @@ func (o *Orchestrator) pruneToolsWithLogging(tools []*config.ToolConfig) []*conf
 		o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping hostname-mismatched tools on %s: %s", hostname, strings.Join(hostnameMismatched, ", "))))
 	}
 
-	return pruned
+	return active, skipped
+}
+
+// sortActiveTools orders the tools a run acts on, resolving their dependencies against
+// the skipped tools as well so that depending on a skipped tool's binary orders
+// correctly instead of aborting the whole run.
+func (o *Orchestrator) sortActiveTools(active, skipped []*config.ToolConfig) ([]*config.ToolConfig, error) {
+	return topologicalSort(active, skipped, func(msg string) {
+		o.logger.GetSubLogger("", "system").Warn(logger.Message(msg))
+	})
 }
 
 // TopologicalSort sorts a slice of ToolConfigs topologically based on their dependencies.
 // It returns an error if a dependency cycle or an unregistered dependency is detected.
 func TopologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
-	return topologicalSort(tools)
+	return topologicalSort(tools, nil, nil)
 }
 
-func topologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
+// topologicalSort orders tools by their declared dependencies.
+//
+// skipped carries the tools the run leaves out (disabled, or scoped to another
+// hostname). They contribute no work and no ordering edge, but the binaries they
+// declare are still valid dependsOn() targets — the generated bin-name registry lists
+// them on purpose — so a dependency resolved to one of them is reported through warn
+// and dropped from the graph rather than failing the run. They are kept apart rather
+// than merged into the graph because merging them would read a pair of host-scoped
+// providers of the same binary — only one of which this machine runs — as an ambiguous
+// dependency.
+func topologicalSort(tools, skipped []*config.ToolConfig, warn func(string)) ([]*config.ToolConfig, error) {
 	toolMap := make(map[string]*config.ToolConfig)
 	originalIndex := make(map[string]int)
 	for i, tool := range tools {
@@ -85,6 +123,25 @@ func topologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 		}
 	}
 
+	skippedProviders := make(map[string]*config.ToolConfig)
+	claimSkipped := func(key string, tool *config.ToolConfig) {
+		if _, taken := skippedProviders[key]; !taken {
+			skippedProviders[key] = tool
+		}
+	}
+	for _, tool := range skipped {
+		bins := getBinaryNames(tool.Binaries)
+		if len(bins) == 0 {
+			bins = []string{tool.Name}
+		}
+		for _, bin := range bins {
+			claimSkipped(bin, tool)
+		}
+	}
+	for _, tool := range skipped {
+		claimSkipped(tool.Name, tool)
+	}
+
 	adj := make(map[string][]string)
 	inDegree := make(map[string]int)
 
@@ -100,6 +157,9 @@ func topologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 				if _, toolExists := toolMap[dep]; toolExists {
 					provider = dep
 				} else if isSystemBinary(dep) {
+					continue
+				} else if skippedProvider, isSkipped := skippedProviders[dep]; isSkipped {
+					warnSkippedDependency(warn, tool, dep, skippedProvider)
 					continue
 				} else {
 					return nil, fmt.Errorf("tool %q depends on missing dependency %q", tool.Name, dep)
@@ -161,6 +221,25 @@ func topologicalSort(tools []*config.ToolConfig) ([]*config.ToolConfig, error) {
 	}
 
 	return result, nil
+}
+
+// warnSkippedDependency names the tool that would have provided dep, so the report
+// says the provider is skipped rather than claiming the dependency does not exist.
+func warnSkippedDependency(warn func(string), tool *config.ToolConfig, dep string, provider *config.ToolConfig) {
+	if warn == nil {
+		return
+	}
+	if toolSkipReason(provider) == skipHostname {
+		warn(fmt.Sprintf(
+			"Tool %q depends on %q, provided by tool %q which is scoped to hostname %q: continuing without it",
+			tool.Name, dep, provider.Name, provider.Hostname,
+		))
+		return
+	}
+	warn(fmt.Sprintf(
+		"Tool %q depends on %q, provided by disabled tool %q: continuing without it",
+		tool.Name, dep, provider.Name,
+	))
 }
 
 func isSystemBinary(name string) bool {

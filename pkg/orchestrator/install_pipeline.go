@@ -25,8 +25,8 @@ import (
 
 // InstallTools executes the installation pipeline for all provided tools sequentially in topological order.
 func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
-	pruned := pruneTools(tools)
-	sorted, err := TopologicalSort(pruned)
+	active, skipped := partitionTools(tools)
+	sorted, err := o.sortActiveTools(active, skipped)
 	if err != nil {
 		return fmt.Errorf("resolving dependencies: %w", err)
 	}

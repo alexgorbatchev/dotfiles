@@ -32,8 +32,8 @@ const completionCommandTimeout = 30 * time.Second
 // GenerateTools executes standalone shim, symlink, and shell script generation.
 // It skips the installation pipeline except for tools with "auto: true" in their install params.
 func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
-	pruned := o.pruneToolsWithLogging(tools)
-	sorted, err := TopologicalSort(pruned)
+	active, skipped := o.pruneToolsWithLogging(tools)
+	sorted, err := o.sortActiveTools(active, skipped)
 	if err != nil {
 		return fmt.Errorf("resolving dependencies: %w", err)
 	}

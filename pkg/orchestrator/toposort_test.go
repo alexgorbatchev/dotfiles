@@ -265,3 +265,108 @@ func TestTopologicalSort_RobustnessAndDeterminism(t *testing.T) {
 		}
 	})
 }
+
+// The binary names below are deliberately nonsensical so that isSystemBinary cannot
+// find them on any platform and the skipped-provider path is the one under test.
+func TestTopologicalSort_SkippedProvider(t *testing.T) {
+	tests := []struct {
+		name        string
+		skipped     *config.ToolConfig
+		wantWarning string
+	}{
+		{
+			name: "disabled provider",
+			skipped: &config.ToolConfig{
+				Name:     "provider",
+				Binaries: []interface{}{"dotfilesnosuchbin"},
+				Disabled: true,
+			},
+			wantWarning: `Tool "consumer" depends on "dotfilesnosuchbin", provided by disabled tool "provider": continuing without it`,
+		},
+		{
+			name: "provider scoped to another hostname",
+			skipped: &config.ToolConfig{
+				Name:     "provider",
+				Binaries: []interface{}{"dotfilesnosuchbin"},
+				Hostname: "some-other-machine",
+			},
+			wantWarning: `Tool "consumer" depends on "dotfilesnosuchbin", provided by tool "provider" which is scoped to hostname "some-other-machine": continuing without it`,
+		},
+		{
+			name: "disabled provider declaring no binaries is named by its tool name",
+			skipped: &config.ToolConfig{
+				Name:     "dotfilesnosuchbin",
+				Disabled: true,
+			},
+			wantWarning: `Tool "consumer" depends on "dotfilesnosuchbin", provided by disabled tool "dotfilesnosuchbin": continuing without it`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			active := []*config.ToolConfig{
+				{Name: "consumer", Binaries: []interface{}{"consumerbin"}, Dependencies: []string{"dotfilesnosuchbin"}},
+				{Name: "unrelated", Binaries: []interface{}{"unrelatedbin"}},
+			}
+
+			var warnings []string
+			sorted, err := topologicalSort(active, []*config.ToolConfig{tt.skipped}, func(msg string) {
+				warnings = append(warnings, msg)
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			names := make([]string, 0, len(sorted))
+			for _, tool := range sorted {
+				names = append(names, tool.Name)
+			}
+			if len(names) != 2 || names[0] != "consumer" || names[1] != "unrelated" {
+				t.Fatalf("expected [consumer unrelated], got %v", names)
+			}
+
+			if len(warnings) != 1 || warnings[0] != tt.wantWarning {
+				t.Fatalf("expected warning %q, got %v", tt.wantWarning, warnings)
+			}
+		})
+	}
+
+	t.Run("two host-scoped providers of the same binary are not ambiguous", func(t *testing.T) {
+		active := []*config.ToolConfig{
+			{Name: "here", Binaries: []interface{}{"dotfilesnosuchbin"}},
+			{Name: "consumer", Dependencies: []string{"dotfilesnosuchbin"}},
+		}
+		skipped := []*config.ToolConfig{
+			{Name: "there", Binaries: []interface{}{"dotfilesnosuchbin"}, Hostname: "some-other-machine"},
+		}
+
+		var warnings []string
+		sorted, err := topologicalSort(active, skipped, func(msg string) { warnings = append(warnings, msg) })
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(sorted) != 2 || sorted[0].Name != "here" || sorted[1].Name != "consumer" {
+			t.Fatalf("expected [here consumer], got %v", sorted)
+		}
+		if len(warnings) != 0 {
+			t.Fatalf("expected no warning when an active tool provides the binary, got %v", warnings)
+		}
+	})
+
+	t.Run("a dependency no tool provides at all is still an error", func(t *testing.T) {
+		active := []*config.ToolConfig{
+			{Name: "consumer", Dependencies: []string{"dotfilesnosuchbin"}},
+		}
+		skipped := []*config.ToolConfig{
+			{Name: "provider", Binaries: []interface{}{"dotfilesotherbin"}, Disabled: true},
+		}
+
+		_, err := topologicalSort(active, skipped, func(string) {})
+		if err == nil {
+			t.Fatal("expected an error for a dependency nothing provides, got nil")
+		}
+		if !strings.Contains(err.Error(), `depends on missing dependency "dotfilesnosuchbin"`) {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+}

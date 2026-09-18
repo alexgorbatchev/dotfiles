@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -99,4 +101,46 @@ func TestE2EDependencyResolution(t *testing.T) {
 			t.Fatalf("expected output to mention missing dependency, but got:\n%s", output)
 		}
 	})
+}
+
+// A dependency on a disabled tool's binary is a reference the generated bin-name
+// registry accepts, so it must load: the run carries on without the disabled provider
+// and generates every other tool, including ones with no part in the dependency.
+func TestE2EDependencyOnDisabledProvider(t *testing.T) {
+	t.Parallel()
+
+	h := NewTestHarness(t, HarnessOptions{ConfigPath: "config.ts"})
+	h.CopyFixture("dependency-disabled-provider")
+
+	configContent := `export default {
+  paths: {
+    generatedDir: "` + filepath.ToSlash(filepath.Join(h.TempDir, ".generated")) + `",
+    homeDir: "{paths.generatedDir}/user-home",
+    targetDir: "{paths.generatedDir}/user-bin",
+    toolConfigsDir: "` + filepath.ToSlash(filepath.Join(h.TempDir, "tools")) + `",
+  },
+};`
+	if err := os.WriteFile(filepath.Join(h.TempDir, "config.ts"), []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config.ts: %v", err)
+	}
+
+	stdout, stderr, exitCode, err := h.Generate()
+	if err != nil || exitCode != 0 {
+		t.Fatalf("expected generate to succeed, got exit code %d, err %v\nstdout: %s\nstderr: %s", exitCode, err, stdout, stderr)
+	}
+
+	output := stdout + stderr
+	if !strings.Contains(output, `provided by disabled tool "provider"`) {
+		t.Errorf("expected the run to name the disabled provider, but got:\n%s", output)
+	}
+	if strings.Contains(output, "missing dependency") {
+		t.Errorf("expected the disabled provider not to be reported as missing, but got:\n%s", output)
+	}
+
+	h.AssertShimExistsAndExecutable("unrelated-bin")
+	h.AssertShimExistsAndExecutable("consumer-bin")
+
+	if _, err := os.Stat(filepath.Join(h.TempDir, ".generated", "user-bin", "provider-bin")); !os.IsNotExist(err) {
+		t.Errorf("expected no shim for the disabled provider's binary (err=%v)", err)
+	}
 }

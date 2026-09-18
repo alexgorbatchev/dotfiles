@@ -2411,3 +2411,61 @@ func TestSymlinkTargetIsBackedUpNotDeleted(t *testing.T) {
 		})
 	}
 }
+
+// A tool that dependsOn a disabled tool's binary must not take the rest of the
+// configuration down with it: the bin-name registry lists disabled tools on purpose,
+// so the reference type-checks and has to load. "dotfilesnosuchbin" is deliberately
+// nonsensical so no platform has it on PATH.
+func TestOrchestrator_GenerateTools_DependencyOnDisabledProvider(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Name: "test-logger", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	orch := NewOrchestrator(log, fsys, runner, registry.NewRegistry(sqlDB), installer.NewRegistry())
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+
+	tools := []*config.ToolConfig{
+		{Name: "provider", Binaries: []interface{}{"dotfilesnosuchbin"}, Disabled: true},
+		{Name: "consumer", Binaries: []interface{}{"consumerbin"}, Dependencies: []string{"dotfilesnosuchbin"}},
+		{Name: "unrelated", Binaries: []interface{}{"unrelatedbin"}},
+	}
+
+	if err := orch.GenerateTools(ctx, tools, projCfg); err != nil {
+		t.Fatalf("GenerateTools failed: %v", err)
+	}
+
+	for _, bin := range []string{"unrelatedbin", "consumerbin"} {
+		if exists, _ := fsys.Exists(filepath.Join("/home/user/bin", bin)); !exists {
+			t.Errorf("expected a shim for %q to be generated", bin)
+		}
+	}
+	if exists, _ := fsys.Exists("/home/user/bin/dotfilesnosuchbin"); exists {
+		t.Error("expected no shim for the disabled provider's binary")
+	}
+
+	output := logBuf.String()
+	want := `Tool "consumer" depends on "dotfilesnosuchbin", provided by disabled tool "provider": continuing without it`
+	if !strings.Contains(output, want) {
+		t.Errorf("expected the log to name the disabled provider with %q, got:\n%s", want, output)
+	}
+	if strings.Contains(output, "missing dependency") {
+		t.Errorf("expected the disabled provider not to be reported as missing, got:\n%s", output)
+	}
+}
