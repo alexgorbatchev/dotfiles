@@ -35,6 +35,21 @@ For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), u
 )
 ```
 
+Two further spellings exist for calls above, and record exactly the same thing:
+
+- `.alias(values)` is `.aliases(values)`.
+- `.script(content)` is `.always(content)`, and `.script('once' | 'always', content)`
+  names the timing as an argument instead of in the method name.
+
+Prefer `.aliases()`, `.always()` and `.once()`: they say the same thing and are what the
+rest of this documentation uses.
+
+`.always()`, `.once()`, `.sourceFile()`, `.sourceFunction()` and `.source()` share one
+ordered list, so the generated shell block runs them in the order they were called.
+Environment variables are hoisted into a section of their own above every tool block;
+inside the tool's block, aliases come first, then functions, then that list -- which is
+why a function declared with `.functions()` can be called from a script that follows it.
+
 ## Basic Example
 
 ```typescript

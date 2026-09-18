@@ -60,15 +60,26 @@ export default defineTool((install, ctx) => install("github-release", { repo: "o
 | `.bin(name, options)`  | Same, with `{ pattern?, shim? }`; `shim: false` installs the binary without a PATH shim |
 | `.version(v)`          | Set version (`'latest'` or specific)                                                    |
 | `.dependsOn(...bins)`  | Declare binary dependencies                                                             |
-| `.symlink(src, dest)`  | Create config file symlink                                                              |
-| `.hook(event, fn)`     | Lifecycle hooks (details in Hooks section)                                              |
+| `.symlink(src, dest)`  | Link a file or directory into place ([details](shell-integration.md#symbolic-links))    |
+| `.copy(src, dest)`     | Copy a file or directory into place instead of linking it (see below)                   |
+| `.updateCheck(config)` | Record update-check settings on the tool (see below)                                    |
+| `.hook(event, fn)`     | Lifecycle hooks ([details](lifecycle-hooks.md))                                         |
 | `.zsh(fn)`             | Zsh shell configuration                                                                 |
 | `.bash(fn)`            | Bash shell configuration                                                                |
 | `.powershell(fn)`      | PowerShell configuration                                                                |
 | `.platform(p, fn)`     | Platform-specific overrides                                                             |
+| `.platform(p, a, fn)`  | Overrides for one platform and architecture                                             |
+| `.arch(a, fn)`         | Architecture-specific overrides, on any platform                                        |
 | `.sudo()`              | Require an interactive sudo step during install                                         |
 | `.disable()`           | Skip tool during generation (logs warning)                                              |
 | `.hostname(pattern)`   | Restrict tool to specific hostname(s) (`string \| RegExp`)                              |
+
+Every method above is also available inside a `.platform()` or `.arch()` callback, on
+the `IPlatformConfigBuilder`, except `.platform()` and `.arch()` themselves: the blocks
+do not nest.
+
+`.depends()` is accepted as another spelling of `.dependsOn()`. Prefer `.dependsOn()`;
+the two record the same thing.
 
 #### `.bin(name)` runtime behavior
 
@@ -83,6 +94,34 @@ Externally-managed installers (`apt`, `brew`, `dnf`, `dmg`, `npm`, `pacman`, `pk
 - `.bin(name, { shim: false })` declares the binary without a shim: it is installed under the tool's `current` directory and remains a `dependsOn()` target, but nothing is written to `paths.targetDir` (this is how the scaffolded `typescript.tool.ts` keeps `tsc` off PATH)
 
 Usage tracking is enabled by default. The dashboard imports and compacts the local usage log into SQLite on startup. Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable tracking.
+
+#### `.copy(src, dest)`
+
+Copies a file, or a directory and everything under it, to `dest`. A relative `src`
+resolves against the directory holding the `.tool.ts`; `dest` is expanded like any other
+path, so `~/` reaches the configured home directory.
+
+```typescript builder
+.copy('./config.toml', '~/.config/tool/config.toml')
+```
+
+Copies are applied by `dotfiles generate` and again by `dotfiles install`, so a target
+that is edited afterwards is restored on the next run. Whatever already sits at the
+target is kept as `<dest>.bak`, replacing an older backup; a target that already matches
+the source is left alone, which is what keeps the first backup rather than displacing it
+on every run. Removing the declaration removes the copy on the next `dotfiles generate`.
+
+Use `.copy()` when the tool must own a real file -- something it rewrites in place, or a
+program that refuses to follow a symlink -- and [`.symlink()`](shell-integration.md#symbolic-links)
+otherwise, so edits stay in the dotfiles repository.
+
+#### `.updateCheck(config)`
+
+Records `{ enabled?: boolean, constraint?: string }` on the tool configuration, where
+`constraint` is a semver range. Platform overrides merge it field by field.
+
+The value is stored and nothing reads it: no command consults it when checking or
+applying updates. Pin a version with `.version()` instead.
 
 ### Base Install Parameters
 
