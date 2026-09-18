@@ -53,7 +53,7 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 		return fmt.Errorf("generating shell scripts: %w", err)
 	}
 
-	if err := o.syncTypeScriptTypes(ctx, tools, projCfg); err != nil {
+	if err := o.SyncTypeScriptTypes(ctx, tools, projCfg); err != nil {
 		o.logger.Error("Syncing TypeScript types warning", err)
 	}
 

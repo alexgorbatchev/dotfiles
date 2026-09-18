@@ -4,11 +4,40 @@
 package scaffold
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
+
+// legacyProjectTSConfig is the tsconfig.json this project wrote into a repository that
+// had none, before the CLI owned a tsconfig under the generated directory. A file
+// matching it byte for byte was never edited by the user, so replacing it loses nothing.
+const legacyProjectTSConfig = "{\n  \"compilerOptions\": {\n    \"target\": \"ESNext\",\n    \"module\": \"ESNext\",\n    \"moduleResolution\": \"bundler\",\n    \"strict\": true,\n    \"noEmit\": true,\n    \"skipLibCheck\": true,\n    \"lib\": [\n      \"ESNext\"\n    ]\n  },\n  \"include\": [\n    \"dotfiles.config.ts\",\n    \"tools/**/*.ts\"\n  ]\n}\n"
+
+type projectTSConfig struct {
+	Extends string `json:"extends"`
+}
+
+// ProjectTSConfig renders the tsconfig.json a project is given when it has none. It
+// only extends the tsconfig the CLI writes under the generated directory, so an editor
+// checks tool configurations with the same program `dotfiles validate` runs; the
+// argument is that file's path relative to the project's tsconfig.
+func ProjectTSConfig(generatedTSConfig string) ([]byte, error) {
+	out, err := json.MarshalIndent(projectTSConfig{Extends: filepath.ToSlash(generatedTSConfig)}, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encoding project tsconfig: %w", err)
+	}
+	return append(out, '\n'), nil
+}
+
+// IsLegacyProjectTSConfig reports whether content is exactly the tsconfig.json an
+// earlier version of this project generated, and so can be replaced without losing
+// anything the user wrote.
+func IsLegacyProjectTSConfig(content []byte) bool {
+	return string(content) == legacyProjectTSConfig
+}
 
 // Action describes what happened to a single starter tool configuration.
 type Action string

@@ -170,7 +170,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 	// The bin-name registry describes what the configuration declares, not what this
 	// machine installs, so it is built from every tool: a disabled or hostname-scoped
 	// tool's binaries are still legitimate dependsOn() targets.
-	if err := o.syncTypeScriptTypes(ctx, tools, projCfg); err != nil {
+	if err := o.SyncTypeScriptTypes(ctx, tools, projCfg); err != nil {
 		o.logger.Error("Syncing TypeScript types warning", err)
 	}
 

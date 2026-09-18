@@ -15,6 +15,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 - Apply strict process-group timeouts (max 3s) for running completion commands (`cmdExec.SetProcessGroup(true)`).
 - Log `INFO [system] DONE` at the end of generation workflows.
 - Use deterministic `.staging` directory during non-external tool installations and configure persistent download caching on all installer plugins.
+- `SyncTypeScriptTypes` receives every configured tool, not the pruned list: the bin-name registry it writes describes the configuration, so disabled and hostname-scoped tools stay in it. It also owns `.generated/tsconfig.json` (via `pkg/typecheck.Program`); the project's own `tsconfig.json` is only written when absent or byte-identical to the one an earlier version generated (`pkg/scaffold.IsLegacyProjectTSConfig`).
 
 ## Local gotchas
 

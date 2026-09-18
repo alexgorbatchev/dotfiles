@@ -1250,7 +1250,7 @@ func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 		t.Fatalf("GenerateTools with zsh-plugin tool failed: %v", err)
 	}
 
-	err = orchAll.syncTypeScriptTypes(ctx, []*config.ToolConfig{zshPluginTool}, projCfg)
+	err = orchAll.SyncTypeScriptTypes(ctx, []*config.ToolConfig{zshPluginTool}, projCfg)
 	if err != nil {
 		t.Fatalf("syncTypeScriptTypes failed: %v", err)
 	}
@@ -1506,14 +1506,14 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 			map[string]interface{}{"name": "obj-bin"},
 		},
 	}
-	err = orch.syncTypeScriptTypes(ctx, []*config.ToolConfig{tTypes}, projCfg)
+	err = orch.SyncTypeScriptTypes(ctx, []*config.ToolConfig{tTypes}, projCfg)
 	if err != nil {
 		t.Fatalf("syncTypeScriptTypes failed: %v", err)
 	}
 
 	// Early return checks for syncTypeScriptTypes
-	_ = orch.syncTypeScriptTypes(ctx, nil, nil)
-	_ = orch.syncTypeScriptTypes(ctx, nil, &config.ProjectConfig{})
+	_ = orch.SyncTypeScriptTypes(ctx, nil, nil)
+	_ = orch.SyncTypeScriptTypes(ctx, nil, &config.ProjectConfig{})
 
 	// 9. CleanupStaleSymlinks and CleanupStaleCopies with ~ target
 	symTool := &config.ToolConfig{

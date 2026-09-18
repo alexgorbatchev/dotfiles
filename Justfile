@@ -49,10 +49,12 @@ fix:
 unused:
     bun --bun ./packages/dashboard/node_modules/.bin/ts-unused check packages/dashboard/tsconfig.json
 
-# Typecheck TypeScript client, test-project and the docs site.
+# Typecheck TypeScript client, test-project and the docs site, and run the tsd tests
+# against the generated declarations in .dist (produced by `just prepare`).
 # The docs site has its own Astro tsconfig and needs the synced content and generated `.astro/` types first.
 typecheck:
     ./node_modules/.bin/tsc -p tsconfig.json
+    go run scripts/build/main.go --type-tests
     bun --cwd packages/docs sync
     cd packages/docs && ./node_modules/.bin/astro sync && ../../node_modules/.bin/tsc -p tsconfig.json
 

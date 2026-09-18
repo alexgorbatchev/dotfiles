@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -123,6 +124,34 @@ func TestRunReplacesExistingFilesWithForce(t *testing.T) {
 	}
 	if string(content) != dotfilesToolContent {
 		t.Errorf("expected the template content after --force, got %q", string(content))
+	}
+}
+
+func TestProjectTSConfigExtendsTheGeneratedOne(t *testing.T) {
+	content, err := ProjectTSConfig(filepath.Join(".", ".generated", "tsconfig.json"))
+	if err != nil {
+		t.Fatalf("ProjectTSConfig: %v", err)
+	}
+	want := "{\n  \"extends\": \".generated/tsconfig.json\"\n}\n"
+	if string(content) != want {
+		t.Errorf("ProjectTSConfig = %q, want %q", content, want)
+	}
+}
+
+func TestIsLegacyProjectTSConfig(t *testing.T) {
+	if !IsLegacyProjectTSConfig([]byte(legacyProjectTSConfig)) {
+		t.Error("the legacy template must be recognised")
+	}
+	edited := strings.Replace(legacyProjectTSConfig, "\"strict\": true", "\"strict\": false", 1)
+	if IsLegacyProjectTSConfig([]byte(edited)) {
+		t.Error("an edited file must not be treated as generated")
+	}
+	current, err := ProjectTSConfig("./.generated/tsconfig.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if IsLegacyProjectTSConfig(current) {
+		t.Error("the current template is not legacy")
 	}
 }
 

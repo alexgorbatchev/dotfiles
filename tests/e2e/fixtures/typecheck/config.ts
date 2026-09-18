@@ -1,0 +1,10 @@
+import { defineConfig } from "@alexgorbatchev/dotfiles";
+
+export default defineConfig(({ configFileDir }) => ({
+  paths: {
+    generatedDir: `${configFileDir}/.generated`,
+    homeDir: "{paths.generatedDir}/user-home",
+    targetDir: "{paths.generatedDir}/user-bin",
+    toolConfigsDir: "{configFileDir}/tools",
+  },
+}));

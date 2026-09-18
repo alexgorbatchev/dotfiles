@@ -145,21 +145,21 @@ When a `.tool.ts` configuration file is removed, `dotfiles generate` automatical
 
 ### Auto-Generated Types
 
-Running `dotfiles generate` creates `.generated/tool-types.d.ts` with type-safe `dependsOn()` autocomplete for all your tool binaries. Standalone compiled-binary installs may generate additional supporting declaration files in `.generated/`, but you should still include only `.generated/tool-types.d.ts` in `tsconfig.json`.
+Running `dotfiles generate` writes everything type-checking needs under `.generated/`:
 
-In standalone-binary projects, `dotfiles generate` writes the supporting authoring declaration file automatically and wires it in for you. That means:
+- `node_modules/@alexgorbatchev/dotfiles/` -- the authoring package's declarations, also reachable from the project root through a `node_modules` symlink the CLI creates
+- `tool-types.d.ts` -- the registry of every configured binary name, including those of disabled tools, which gives `dependsOn()` its autocomplete and rejects a name no tool declares
+- `tsconfig.json` -- the program the CLI type-checks with: `dotfiles.config.ts`, every tool configs directory, the registry and the runtime globals, with the compiler options the declarations are written for and no Node or Bun types
 
-- imports from the public authoring package typecheck without a local handwritten shim
-- nested helper modules that import those packages are supported too
-- your `tsconfig.json` still only needs `.generated/tool-types.d.ts`
-
-Add to your `tsconfig.json`:
+If the project has no `tsconfig.json`, `dotfiles generate` writes one that only extends the CLI's:
 
 ```json
 {
-  "include": ["tools/**/*.tool.ts", ".generated/tool-types.d.ts"]
+  "extends": "./.generated/tsconfig.json"
 }
 ```
+
+Nothing has to be added by hand: the include list lives in the CLI-owned file and follows the configured tool directories. A `tsconfig.json` the CLI wrote before it owned one is updated to this form; a file you edited is left alone.
 
 ### Common Type Errors
 
