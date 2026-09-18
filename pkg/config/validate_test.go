@@ -125,7 +125,7 @@ func TestValidateProjectConfigRawJSON(t *testing.T) {
 		if !strings.Contains(err.Error(), `unknown top-level property "completelyUnknownProperty"`) {
 			t.Errorf("unexpected error message: %v", err)
 		}
-		if !strings.Contains(err.Error(), "valid properties: cargo, downloader, features, github, logging, paths, system, updates") {
+		if !strings.Contains(err.Error(), "valid properties: cargo, downloader, features, github, logging, paths, platform, system, updates") {
 			t.Errorf("unexpected allowed list: %v", err)
 		}
 	})
@@ -215,6 +215,161 @@ func TestValidateProjectConfigRawJSON(t *testing.T) {
 		err := ValidateProjectConfigRawJSON([]byte(`{ invalid `))
 		if err == nil {
 			t.Fatal("expected JSON syntax error, got nil")
+		}
+	})
+}
+
+// The platform list mirrors the v1 schema: every override names at least one matcher,
+// a matcher names an os and/or an arch from the fixed vocabularies, and the override
+// config may set any of the base sections but not nest another platform list.
+func TestValidateProjectConfigPlatformOverrides(t *testing.T) {
+	t.Run("valid overrides pass", func(t *testing.T) {
+		validJSON := []byte(`{
+			"paths": { "targetDir": "/usr/local/bin" },
+			"platform": [
+				{
+					"match": [{ "os": "macos", "arch": "arm64" }],
+					"config": { "paths": { "targetDir": "/opt/homebrew/bin" } }
+				},
+				{
+					"match": [{ "os": "linux" }, { "arch": "x86_64" }],
+					"config": {
+						"paths": { "dotfilesDir": "/dots" },
+						"system": { "sudoPrompt": "sudo:" },
+						"logging": { "debug": "*" },
+						"updates": { "checkOnRun": false },
+						"github": { "cache": { "enabled": false } },
+						"cargo": { "cratesIo": { "host": "https://crates.io" } },
+						"downloader": { "cache": { "ttl": 1 } },
+						"features": { "shellInstall": { "bash": "~/.bashrc" } }
+					}
+				},
+				{
+					"match": [{ "os": "windows" }],
+					"config": {}
+				}
+			]
+		}`)
+		if err := ValidateProjectConfigRawJSON(validJSON); err != nil {
+			t.Fatalf("expected valid platform overrides to pass, got: %v", err)
+		}
+	})
+
+	tests := []struct {
+		name     string
+		json     string
+		expected string
+	}{
+		{
+			name:     "platform must be an array",
+			json:     `{ "platform": { "match": [{ "os": "macos" }], "config": {} } }`,
+			expected: `property "platform" must be an array of platform overrides`,
+		},
+		{
+			name:     "override must be an object",
+			json:     `{ "platform": ["macos"] }`,
+			expected: `property "platform[0]" must be an object with "match" and "config"`,
+		},
+		{
+			name:     "override unknown key",
+			json:     `{ "platform": [{ "match": [{ "os": "macos" }], "config": {}, "when": true }] }`,
+			expected: `unknown property "platform[0].when" (valid properties under 'platform[0]': config, match)`,
+		},
+		{
+			name:     "override misspelled key suggestion",
+			json:     `{ "platform": [{ "matches": [{ "os": "macos" }], "config": {} }] }`,
+			expected: `unknown property "platform[0].matches" (did you mean "platform[0].match"?)`,
+		},
+		{
+			name:     "match is required",
+			json:     `{ "platform": [{ "config": {} }] }`,
+			expected: `property "platform[0].match" must be a non-empty array of matchers`,
+		},
+		{
+			name:     "match must not be empty",
+			json:     `{ "platform": [{ "match": [], "config": {} }] }`,
+			expected: `property "platform[0].match" must be a non-empty array of matchers`,
+		},
+		{
+			name:     "matcher must be an object",
+			json:     `{ "platform": [{ "match": ["macos"], "config": {} }] }`,
+			expected: `property "platform[0].match[0]" must be an object with "os" and/or "arch"`,
+		},
+		{
+			name:     "matcher unknown key",
+			json:     `{ "platform": [{ "match": [{ "platform": "darwin", "arch": "arm64" }], "config": {} }] }`,
+			expected: `unknown property "platform[0].match[0].platform" (valid properties under 'platform[0].match[0]': arch, os)`,
+		},
+		{
+			name:     "matcher needs os or arch",
+			json:     `{ "platform": [{ "match": [{}], "config": {} }] }`,
+			expected: `property "platform[0].match[0]" must name at least one of "os" and "arch"`,
+		},
+		{
+			name:     "matcher os vocabulary",
+			json:     `{ "platform": [{ "match": [{ "os": "darwin" }], "config": {} }] }`,
+			expected: `property "platform[0].match[0].os" must be one of "linux", "macos", "windows", got "darwin"`,
+		},
+		{
+			name:     "matcher os must be a string",
+			json:     `{ "platform": [{ "match": [{ "os": 2 }], "config": {} }] }`,
+			expected: `property "platform[0].match[0].os" must be one of "linux", "macos", "windows", got 2`,
+		},
+		{
+			name:     "matcher arch vocabulary",
+			json:     `{ "platform": [{ "match": [{ "arch": "amd64" }], "config": {} }] }`,
+			expected: `property "platform[0].match[0].arch" must be one of "arm64", "x86_64", got "amd64"`,
+		},
+		{
+			name:     "config is required",
+			json:     `{ "platform": [{ "match": [{ "os": "macos" }] }] }`,
+			expected: `property "platform[0].config" must be an object of configuration sections`,
+		},
+		{
+			name:     "config must be an object",
+			json:     `{ "platform": [{ "match": [{ "os": "macos" }], "config": [] }] }`,
+			expected: `property "platform[0].config" must be an object of configuration sections`,
+		},
+		{
+			name:     "config sections are validated",
+			json:     `{ "platform": [{ "match": [{ "os": "macos" }], "config": { "paths": { "targetDire": "/x" } } }] }`,
+			expected: `unknown property "platform[0].config.paths.targetDire" (did you mean "platform[0].config.paths.targetDir"?)`,
+		},
+		{
+			name:     "config cannot nest another platform list",
+			json:     `{ "platform": [{ "match": [{ "os": "macos" }], "config": { "platform": [] } }] }`,
+			expected: `unknown property "platform[0].config.platform" (valid properties under 'platform[0].config': cargo, downloader, features, github, logging, paths, system, updates)`,
+		},
+		{
+			name:     "second override is reported with its index",
+			json:     `{ "platform": [{ "match": [{ "os": "macos" }], "config": {} }, { "match": [{ "os": "macos" }, { "arch": "arm65" }], "config": {} }] }`,
+			expected: `property "platform[1].match[1].arch" must be one of "arm64", "x86_64", got "arm65"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateProjectConfigRawJSON([]byte(tt.json))
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tt.name)
+			}
+			if err.Error() != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, err.Error())
+			}
+		})
+	}
+
+	t.Run("loader result validates the project platform list too", func(t *testing.T) {
+		err := ValidateLoaderResultRawJSON([]byte(`{
+			"projectConfig": { "platform": [{ "match": [{ "os": "darwin" }], "config": {} }] },
+			"toolConfigs": {}
+		}`))
+		if err == nil {
+			t.Fatal("expected the loader result validation to reject the matcher, got nil")
+		}
+		expected := `property "platform[0].match[0].os" must be one of "linux", "macos", "windows", got "darwin"`
+		if err.Error() != expected {
+			t.Errorf("expected %q, got %q", expected, err.Error())
 		}
 	})
 }

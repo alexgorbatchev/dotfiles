@@ -9,7 +9,7 @@ Goja JS VM, TypeScript config loader, and authoring DSL bindings.
 ## Local conventions
 
 - Keep `loader-api.ts` strictly as a thin proxy/shim layer with close to zero logic. Its sole purpose is to expose the TypeScript authoring DSL, capture raw parameters/callbacks, and pass structured data back to Go. All evaluation logic, dependency matching, platform checks, path resolutions, and text processing MUST be performed in Go (`pkg/vm/`, `pkg/orchestrator/`).
-- Export `dedentString`, handle multi-platform `.platform()` calls cleanly, and pass `projectConfig` in `toolCtx`.
+- Export `dedentString`, handle multi-platform `.platform()` calls cleanly, and pass `projectConfig` in `toolCtx`. The `projectConfig` global is set from Go (`setJSONGlobal`) with the resolved configuration, in both the unified bundle and hook VMs; `defineConfig` returns the raw value to Go and captures nothing.
 - Serialize `RegExp` objects to their string representation using a replacer callback in all `JSON.stringify` evaluation pipelines.
 - Ensure async tool callbacks return the underlying `builder` rather than a raw JS `Promise` object.
 - Clean internal evaluation flags (such as `_hasPlatformBlocks`, `_hasMatchingPlatform`, `_hasArchBlocks`, `_hasMatchingArch`, `_version`) from builder objects before returning to Go so they are not serialized into JSON.

@@ -59,6 +59,52 @@ expectError(
   })),
 );
 
+// Project-level platform overrides keep the v1 shape: os and/or arch from the fixed
+// vocabularies, at least one matcher, and a partial configuration to fold in.
+defineConfig(() => ({
+  paths: { targetDir: "/usr/local/bin" },
+  platform: [
+    {
+      match: [{ os: "macos", arch: "arm64" }],
+      config: { paths: { targetDir: "/opt/homebrew/bin" } },
+    },
+    {
+      match: [{ os: "linux" }, { arch: "x86_64" }],
+      config: { system: { sudoPrompt: "sudo:" }, features: { shellInstall: { bash: "~/.bashrc" } } },
+    },
+  ],
+}));
+
+// The os values are macos/linux/windows. An unknown matcher key such as `platform` is
+// not an error here: TypeScript does not report excess properties on a union-typed
+// literal in a callback's return position. The loader rejects it at load time instead.
+expectError(
+  defineConfig(() => ({
+    platform: [{ match: [{ os: "darwin" }], config: {} }],
+  })),
+);
+
+// A matcher must name at least one of os and arch.
+expectError(
+  defineConfig(() => ({
+    platform: [{ match: [{}], config: {} }],
+  })),
+);
+
+// An override must carry at least one matcher.
+expectError(
+  defineConfig(() => ({
+    platform: [{ match: [], config: {} }],
+  })),
+);
+
+// The override config is limited to the base configuration sections.
+expectError(
+  defineConfig(() => ({
+    platform: [{ match: [{ os: "macos" }], config: { platform: [] } }],
+  })),
+);
+
 defineTool((install, ctx) => {
   expectType<IInstallFunction>(install);
   expectType<IToolConfigContext>(ctx);

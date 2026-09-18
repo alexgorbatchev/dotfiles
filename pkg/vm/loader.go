@@ -61,11 +61,19 @@ func transpileTS(tsCode string) (string, error) {
 	return code, nil
 }
 
+// loaderResultEnvelope is the shape of __loaderResult as the bundle produced it. The
+// project configuration is kept raw so that its platform overrides can be resolved
+// against the target before it is decoded.
+type loaderResultEnvelope struct {
+	ProjectConfig json.RawMessage               `json:"projectConfig"`
+	ToolConfigs   map[string]*config.ToolConfig `json:"toolConfigs"`
+}
+
 // unifiedLoaderResult holds the returned project config and tool configs from evaluating
 // the dynamically compiled TypeScript loader bundle.
 type unifiedLoaderResult struct {
-	ProjectConfig *config.ProjectConfig         `json:"projectConfig"`
-	ToolConfigs   map[string]*config.ToolConfig `json:"toolConfigs"`
+	ProjectConfig *config.ProjectConfig
+	ToolConfigs   map[string]*config.ToolConfig
 }
 
 // Option configures how a configuration is loaded.
@@ -161,7 +169,7 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	}
 
 	// Step 4: Run the unified bundle in Goja and marshal the result
-	fullConfig, err := evaluateUnifiedBundle(log, fsys, bundledJS, configFileDir, projCfg.Paths.GeneratedDir, projCfg.Paths.BinariesDir, projCfg.Paths.HomeDir, target)
+	fullConfig, err := evaluateUnifiedBundle(log, fsys, bundledJS, configFileDir, projCfg, target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("evaluating unified config bundle: %w", err)
 	}
@@ -316,14 +324,25 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, fmt.Errorf("stringifying project config inside JS VM: %w", err)
 	}
 
-	jsonBytes := []byte(jsonVal.String())
+	return decodeProjectConfig([]byte(jsonVal.String()), target)
+}
 
+// decodeProjectConfig validates the JSON a configuration file evaluated to, folds the
+// project-level platform overrides that apply to target into it, and decodes the
+// result. The overrides are matched against the same target as tool-level .platform()
+// blocks, so --platform/--arch steer both.
+func decodeProjectConfig(jsonBytes []byte, target Target) (*config.ProjectConfig, error) {
 	if err := config.ValidateProjectConfigRawJSON(jsonBytes); err != nil {
 		return nil, err
 	}
 
+	resolved, err := config.ApplyPlatformOverrides(jsonBytes, target.os(), target.arch())
+	if err != nil {
+		return nil, fmt.Errorf("applying platform overrides: %w", err)
+	}
+
 	var projCfg config.ProjectConfig
-	dec := json.NewDecoder(bytes.NewReader(jsonBytes))
+	dec := json.NewDecoder(bytes.NewReader(resolved))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&projCfg); err != nil {
 		return nil, fmt.Errorf("unmarshaling JSON to ProjectConfig struct: %w", err)
@@ -332,7 +351,11 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 	return &projCfg, nil
 }
 
-func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string, generatedDir string, binariesDir string, homeDir string, target Target) (*unifiedLoaderResult, error) {
+// evaluateUnifiedBundle runs the bundle of the configuration file and every tool file.
+// projCfg is the project configuration already resolved from the configuration file,
+// which the bundle hands to tool files as ctx.projectConfig so that they observe the
+// same paths Go does rather than the raw value the file returned.
+func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string, projCfg *config.ProjectConfig, target Target) (*unifiedLoaderResult, error) {
 	vm := goja.New()
 	registry := require.NewRegistry()
 	registry.Enable(vm)
@@ -341,7 +364,7 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, fmt.Errorf("registering Go bindings: %w", err)
 	}
 
-	if err := RegisterContextBindings(vm, log, fsys, homeDir); err != nil {
+	if err := RegisterContextBindings(vm, log, fsys, projCfg.Paths.HomeDir); err != nil {
 		return nil, fmt.Errorf("registering context bindings: %w", err)
 	}
 
@@ -352,9 +375,12 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 
 	// Set globals
 	_ = vm.Set("configFileDir", configFileDir)
-	_ = vm.Set("generatedDir", generatedDir)
-	_ = vm.Set("binariesDir", binariesDir)
+	_ = vm.Set("generatedDir", projCfg.Paths.GeneratedDir)
+	_ = vm.Set("binariesDir", projCfg.Paths.BinariesDir)
 	_ = vm.Set("systemInfo", vm.NewObject())
+	if err := setJSONGlobal(vm, "projectConfig", projCfg); err != nil {
+		return nil, fmt.Errorf("providing project configuration to tool files: %w", err)
+	}
 
 	// Set process.env
 	envObj := vm.NewObject()
@@ -395,11 +421,21 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, err
 	}
 
-	var res unifiedLoaderResult
+	var envelope loaderResultEnvelope
 	dec := json.NewDecoder(bytes.NewReader(jsonBytes))
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(&res); err != nil {
+	if err := dec.Decode(&envelope); err != nil {
 		return nil, fmt.Errorf("unmarshaling loader result: %w", err)
+	}
+
+	res := unifiedLoaderResult{ToolConfigs: envelope.ToolConfigs}
+	// A bundle whose configuration file exports nothing has no project config to decode.
+	if len(envelope.ProjectConfig) > 0 && !bytes.Equal(envelope.ProjectConfig, []byte("null")) {
+		decoded, err := decodeProjectConfig(envelope.ProjectConfig, target)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling loader result: %w", err)
+		}
+		res.ProjectConfig = decoded
 	}
 
 	return &res, nil

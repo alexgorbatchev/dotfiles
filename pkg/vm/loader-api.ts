@@ -392,12 +392,16 @@ function invokeHook(toolName: string, event: string, eventContext: Record<string
 /**
  * Defines the main dotfiles project configuration.
  *
+ * The returned value is handed back to Go as-is. Go resolves it (platform overrides,
+ * placeholders, defaults) and provides the result to tool files through the
+ * `projectConfig` global, so nothing is captured here.
+ *
  * @param callback Factory function returning project configuration paths, features, and settings.
  */
 export function defineConfig(callback: ConfigFactory): unknown {
   if (typeof callback === "function") {
     const fn = callback as ConfigRunner;
-    const res = fn({
+    return fn({
       configFileDir: globalThis.configFileDir || "",
       systemInfo: {
         os: getOS(),
@@ -405,10 +409,6 @@ export function defineConfig(callback: ConfigFactory): unknown {
         libc: detectLibc(),
       },
     });
-    const parsedObj = res as Record<string, unknown>;
-    const pCfg = parsedObj && parsedObj["projectConfig"] ? parsedObj["projectConfig"] : res;
-    getGlobals()["projectConfig"] = pCfg;
-    return res;
   }
   return callback;
 }

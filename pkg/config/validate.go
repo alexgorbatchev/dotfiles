@@ -3,7 +3,9 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -50,91 +52,216 @@ func ValidateLoaderResultRawJSON(data []byte) error {
 	return nil
 }
 
+// projectSectionKeys are the sections of a project configuration. A platform override's
+// config may set any of them, which is why the "platform" list itself is not among them.
+var projectSectionKeys = []string{"paths", "system", "logging", "updates", "github", "cargo", "downloader", "features"}
+
+// platformOverrideKeys are the properties of one entry in the "platform" list.
+var platformOverrideKeys = []string{"match", "config"}
+
+// platformMatchKeys are the properties of one matcher in an override's "match" list.
+var platformMatchKeys = []string{"os", "arch"}
+
 func validateProjectMap(prefix string, m map[string]interface{}) error {
-	allowedProjectKeys := []string{"paths", "system", "logging", "updates", "github", "cargo", "downloader", "features"}
+	allowedProjectKeys := append(slices.Clone(projectSectionKeys), "platform")
 	for k, v := range m {
 		if !contains(allowedProjectKeys, k) {
 			return unknownPropertyError(prefix, k, allowedProjectKeys)
 		}
 		path := qualifyPath(prefix, k)
-		switch k {
-		case "paths":
-			if sub, ok := v.(map[string]interface{}); ok {
-				allowedPaths := []string{"homeDir", "dotfilesDir", "targetDir", "generatedDir", "toolConfigsDir", "shellScriptsDir", "binariesDir"}
-				if err := checkKeys(path, sub, allowedPaths); err != nil {
-					return err
-				}
+		if k == "platform" {
+			if err := validatePlatformOverrides(path, v); err != nil {
+				return err
 			}
-		case "system":
-			if sub, ok := v.(map[string]interface{}); ok {
-				allowedSystem := []string{"sudoPrompt"}
-				if err := checkKeys(path, sub, allowedSystem); err != nil {
-					return err
-				}
+			continue
+		}
+		if err := validateProjectSection(path, k, v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateProjectSections validates the config of a platform override, which may hold
+// any base section but not another platform list.
+func validateProjectSections(prefix string, m map[string]interface{}) error {
+	for k, v := range m {
+		if !contains(projectSectionKeys, k) {
+			return unknownPropertyError(prefix, k, projectSectionKeys)
+		}
+		if err := validateProjectSection(qualifyPath(prefix, k), k, v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validatePlatformOverrides checks the "platform" list against the v1 schema: each
+// entry is an object with a non-empty "match" list and a "config" of base sections.
+func validatePlatformOverrides(path string, v interface{}) error {
+	overrides, ok := v.([]interface{})
+	if !ok {
+		return fmt.Errorf("property %q must be an array of platform overrides", path)
+	}
+	for i, item := range overrides {
+		itemPath := fmt.Sprintf("%s[%d]", path, i)
+		override, ok := item.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("property %q must be an object with \"match\" and \"config\"", itemPath)
+		}
+		if err := checkKeys(itemPath, override, platformOverrideKeys); err != nil {
+			return err
+		}
+		if err := validatePlatformMatchers(qualifyPath(itemPath, "match"), override["match"]); err != nil {
+			return err
+		}
+		configPath := qualifyPath(itemPath, "config")
+		overrideConfig, ok := override["config"].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("property %q must be an object of configuration sections", configPath)
+		}
+		if err := validateProjectSections(configPath, overrideConfig); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validatePlatformMatchers checks an override's "match" list: at least one matcher,
+// each naming an os and/or an arch from the fixed vocabularies.
+func validatePlatformMatchers(path string, v interface{}) error {
+	matchers, ok := v.([]interface{})
+	if !ok || len(matchers) == 0 {
+		return fmt.Errorf("property %q must be a non-empty array of matchers", path)
+	}
+	for i, item := range matchers {
+		itemPath := fmt.Sprintf("%s[%d]", path, i)
+		matcher, ok := item.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("property %q must be an object with \"os\" and/or \"arch\"", itemPath)
+		}
+		if err := checkKeys(itemPath, matcher, platformMatchKeys); err != nil {
+			return err
+		}
+		osValue, hasOS := matcher["os"]
+		archValue, hasArch := matcher["arch"]
+		if !hasOS && !hasArch {
+			return fmt.Errorf("property %q must name at least one of \"os\" and \"arch\"", itemPath)
+		}
+		if hasOS {
+			if err := checkVocabulary(qualifyPath(itemPath, "os"), osValue, PlatformMatchOSNames()); err != nil {
+				return err
 			}
-		case "logging":
-			if sub, ok := v.(map[string]interface{}); ok {
-				allowedLogging := []string{"debug"}
-				if err := checkKeys(path, sub, allowedLogging); err != nil {
-					return err
-				}
+		}
+		if hasArch {
+			if err := checkVocabulary(qualifyPath(itemPath, "arch"), archValue, PlatformMatchArchNames()); err != nil {
+				return err
 			}
-		case "updates":
-			if sub, ok := v.(map[string]interface{}); ok {
-				allowedUpdates := []string{"checkOnRun", "checkInterval"}
-				if err := checkKeys(path, sub, allowedUpdates); err != nil {
-					return err
-				}
+		}
+	}
+	return nil
+}
+
+// checkVocabulary requires value to be one of the allowed strings.
+func checkVocabulary(path string, value interface{}, allowed []string) error {
+	if s, ok := value.(string); ok && contains(allowed, s) {
+		return nil
+	}
+	quoted := make([]string, len(allowed))
+	for i, name := range allowed {
+		quoted[i] = strconv.Quote(name)
+	}
+	return fmt.Errorf("property %q must be one of %s, got %s", path, strings.Join(quoted, ", "), formatJSONValue(value))
+}
+
+// formatJSONValue renders a decoded JSON value for an error message, quoting strings so
+// they read as the literal the author wrote.
+func formatJSONValue(value interface{}) string {
+	if s, ok := value.(string); ok {
+		return strconv.Quote(s)
+	}
+	return fmt.Sprintf("%v", value)
+}
+
+// validateProjectSection validates the value of one base configuration section.
+func validateProjectSection(path, key string, v interface{}) error {
+	switch key {
+	case "paths":
+		if sub, ok := v.(map[string]interface{}); ok {
+			allowedPaths := []string{"homeDir", "dotfilesDir", "targetDir", "generatedDir", "toolConfigsDir", "shellScriptsDir", "binariesDir"}
+			if err := checkKeys(path, sub, allowedPaths); err != nil {
+				return err
 			}
-		case "github":
-			if sub, ok := v.(map[string]interface{}); ok {
-				if err := validateHostMap(path, sub); err != nil {
-					return err
-				}
+		}
+	case "system":
+		if sub, ok := v.(map[string]interface{}); ok {
+			allowedSystem := []string{"sudoPrompt"}
+			if err := checkKeys(path, sub, allowedSystem); err != nil {
+				return err
 			}
-		case "cargo":
-			if sub, ok := v.(map[string]interface{}); ok {
-				allowedCargo := []string{"cratesIo", "githubRaw", "githubRelease", "userAgent"}
-				if err := checkKeys(path, sub, allowedCargo); err != nil {
-					return err
-				}
-				for _, subHost := range []string{"cratesIo", "githubRaw", "githubRelease"} {
-					if hostMap, ok := sub[subHost].(map[string]interface{}); ok {
-						if err := validateHostMap(qualifyPath(path, subHost), hostMap); err != nil {
-							return err
-						}
-					}
-				}
+		}
+	case "logging":
+		if sub, ok := v.(map[string]interface{}); ok {
+			allowedLogging := []string{"debug"}
+			if err := checkKeys(path, sub, allowedLogging); err != nil {
+				return err
 			}
-		case "downloader":
-			if sub, ok := v.(map[string]interface{}); ok {
-				allowedDownloader := []string{"timeout", "retryCount", "retryDelay", "cache"}
-				if err := checkKeys(path, sub, allowedDownloader); err != nil {
-					return err
-				}
-				if cacheMap, ok := sub["cache"].(map[string]interface{}); ok {
-					if err := validateCacheMap(qualifyPath(path, "cache"), cacheMap); err != nil {
+		}
+	case "updates":
+		if sub, ok := v.(map[string]interface{}); ok {
+			allowedUpdates := []string{"checkOnRun", "checkInterval"}
+			if err := checkKeys(path, sub, allowedUpdates); err != nil {
+				return err
+			}
+		}
+	case "github":
+		if sub, ok := v.(map[string]interface{}); ok {
+			if err := validateHostMap(path, sub); err != nil {
+				return err
+			}
+		}
+	case "cargo":
+		if sub, ok := v.(map[string]interface{}); ok {
+			allowedCargo := []string{"cratesIo", "githubRaw", "githubRelease", "userAgent"}
+			if err := checkKeys(path, sub, allowedCargo); err != nil {
+				return err
+			}
+			for _, subHost := range []string{"cratesIo", "githubRaw", "githubRelease"} {
+				if hostMap, ok := sub[subHost].(map[string]interface{}); ok {
+					if err := validateHostMap(qualifyPath(path, subHost), hostMap); err != nil {
 						return err
 					}
 				}
 			}
-		case "features":
-			if sub, ok := v.(map[string]interface{}); ok {
-				allowedFeatures := []string{"catalog", "shellInstall"}
-				if err := checkKeys(path, sub, allowedFeatures); err != nil {
+		}
+	case "downloader":
+		if sub, ok := v.(map[string]interface{}); ok {
+			allowedDownloader := []string{"timeout", "retryCount", "retryDelay", "cache"}
+			if err := checkKeys(path, sub, allowedDownloader); err != nil {
+				return err
+			}
+			if cacheMap, ok := sub["cache"].(map[string]interface{}); ok {
+				if err := validateCacheMap(qualifyPath(path, "cache"), cacheMap); err != nil {
 					return err
 				}
-				if catMap, ok := sub["catalog"].(map[string]interface{}); ok {
-					allowedCat := []string{"generate", "filePath"}
-					if err := checkKeys(qualifyPath(path, "catalog"), catMap, allowedCat); err != nil {
-						return err
-					}
+			}
+		}
+	case "features":
+		if sub, ok := v.(map[string]interface{}); ok {
+			allowedFeatures := []string{"catalog", "shellInstall"}
+			if err := checkKeys(path, sub, allowedFeatures); err != nil {
+				return err
+			}
+			if catMap, ok := sub["catalog"].(map[string]interface{}); ok {
+				allowedCat := []string{"generate", "filePath"}
+				if err := checkKeys(qualifyPath(path, "catalog"), catMap, allowedCat); err != nil {
+					return err
 				}
-				if shMap, ok := sub["shellInstall"].(map[string]interface{}); ok {
-					allowedShell := []string{"zsh", "bash", "powershell"}
-					if err := checkKeys(qualifyPath(path, "shellInstall"), shMap, allowedShell); err != nil {
-						return err
-					}
+			}
+			if shMap, ok := sub["shellInstall"].(map[string]interface{}); ok {
+				allowedShell := []string{"zsh", "bash", "powershell"}
+				if err := checkKeys(qualifyPath(path, "shellInstall"), shMap, allowedShell); err != nil {
+					return err
 				}
 			}
 		}
@@ -248,11 +375,13 @@ func unknownPropertyError(prefix, unknownKey string, allowed []string) error {
 		return fmt.Errorf("unknown property %q (did you mean %q?)", fullProp, suggested)
 	}
 
-	sort.Strings(allowed)
+	// Sort a copy: callers hand in shared slices such as projectSectionKeys.
+	valid := slices.Clone(allowed)
+	sort.Strings(valid)
 	if prefix == "" {
-		return fmt.Errorf("unknown top-level property %q (valid properties: %s)", fullProp, strings.Join(allowed, ", "))
+		return fmt.Errorf("unknown top-level property %q (valid properties: %s)", fullProp, strings.Join(valid, ", "))
 	}
-	return fmt.Errorf("unknown property %q (valid properties under '%s': %s)", fullProp, prefix, strings.Join(allowed, ", "))
+	return fmt.Errorf("unknown property %q (valid properties under '%s': %s)", fullProp, prefix, strings.Join(valid, ", "))
 }
 
 func qualifyPath(prefix, key string) string {

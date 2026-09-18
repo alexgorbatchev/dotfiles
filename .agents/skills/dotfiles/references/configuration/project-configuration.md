@@ -156,6 +156,9 @@ updates: {
 
 ## Platform Overrides
 
+The `platform` list applies partial configuration only on matching machines. Each entry
+names one or more matchers and the sections to override:
+
 ```typescript
 export default defineConfig(() => ({
   paths: {
@@ -163,7 +166,7 @@ export default defineConfig(() => ({
   },
   platform: [
     {
-      match: [{ platform: "darwin", arch: "arm64" }],
+      match: [{ os: "macos", arch: "arm64" }],
       config: {
         paths: { targetDir: "/opt/homebrew/bin" },
       },
@@ -171,6 +174,22 @@ export default defineConfig(() => ({
   ],
 }));
 ```
+
+- `match` is a non-empty array of matchers. A matcher sets `os` (`"macos"`, `"linux"`,
+  `"windows"`) and/or `arch` (`"x86_64"`, `"arm64"`); at least one is required, and a
+  field left out matches any value. An entry applies when any of its matchers matches.
+- `config` may set any of the sections above (`paths`, `system`, `logging`, `updates`,
+  `github`, `cargo`, `downloader`, `features`). Objects merge into the base
+  configuration recursively; every other value, including arrays such as
+  `toolConfigsDir`, replaces the base value.
+- Entries apply in order, so a later matching entry wins over an earlier one.
+- Matching uses the same target as tool-level `.platform()` blocks, so the
+  `--platform`/`--arch` flags (see the [CLI reference](../getting-started/cli-reference.md))
+  select project overrides too.
+
+Overrides are resolved before placeholders such as `{paths.generatedDir}` and before
+anything reads the paths, so shims, shell scripts and tool files all see the overridden
+values.
 
 ## CLI Usage
 
@@ -365,20 +384,7 @@ export default defineConfig(() => ({
   // not a TTY, in CI, or when NO_COLOR is set.
 
   // ---------------------------------------------------------------------------
-  // Platform-Specific Overrides
+  // Platform-Specific Overrides: see "Platform Overrides" above.
   // ---------------------------------------------------------------------------
-  platform: [
-    {
-      // An array of platform/architecture matchers.
-      match: [{ os: "macos", arch: "arm64" }],
-      // The configuration overrides for this platform/architecture combination.
-      // You can override any of the settings defined above.
-      config: {
-        paths: {
-          dotfilesDir: "~/macos-dotfiles",
-        },
-      },
-    },
-  ],
 }));
 ```

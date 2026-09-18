@@ -140,9 +140,49 @@ export interface ILoggingConfig extends DeepPartial<LoggingConfig> {}
 export interface IUpdatesConfig extends DeepPartial<UpdatesConfig> {}
 
 /**
+ * Operating systems a project-level platform override can target.
+ */
+export type PlatformMatchOS = "macos" | "linux" | "windows";
+
+/**
+ * CPU architectures a project-level platform override can target.
+ */
+export type PlatformMatchArch = "x86_64" | "arm64";
+
+/**
+ * Selects the machines a platform override applies to. At least one of os and arch is
+ * required; a field left out matches any value.
+ */
+export type PlatformMatch =
+  | { os: PlatformMatchOS; arch?: PlatformMatchArch }
+  | { os?: PlatformMatchOS; arch: PlatformMatchArch };
+
+/**
+ * A partial project configuration folded into the base configuration when any of its
+ * matchers matches the machine the CLI runs on (or the --platform/--arch target).
+ * Overrides apply in order, so a later matching entry wins over an earlier one.
+ */
+export interface IPlatformOverride {
+  /**
+   * Matchers, any one of which selects this override.
+   */
+  match: [PlatformMatch, ...PlatformMatch[]];
+  /**
+   * The configuration sections to override. Objects merge recursively; every other
+   * value replaces the base value.
+   */
+  config: DeepPartial<ProjectConfig>;
+}
+
+/**
  * Main project configuration structure returned by defineConfig callbacks.
  */
-export interface IProjectConfig extends DeepPartial<ProjectConfig> {}
+export interface IProjectConfig extends DeepPartial<ProjectConfig> {
+  /**
+   * Platform-specific overrides of the configuration sections above.
+   */
+  platform?: IPlatformOverride[];
+}
 
 /**
  * Context object passed to defineConfig callbacks.
