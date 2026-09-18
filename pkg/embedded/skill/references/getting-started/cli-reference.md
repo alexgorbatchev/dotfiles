@@ -147,7 +147,8 @@ Virtual environment management commands.
 - `dotfiles env create <name>`: Create a python virtual environment.
   - `--python <path>`: Python executable path to use.
   - `--pkg <package>`: Packages to pre-install into the virtual environment.
-- `dotfiles env delete <name>`: Remove a virtual environment.
+- `dotfiles env delete <name>`: Remove a virtual environment. On an interactive terminal it first asks `Delete environment at '<dir>'? [y/N]` and only `y` or `yes` deletes; anything else cancels. Without a terminal to ask on (pipes, CI, `AGENT=1`) it refuses and exits non-zero instead of deleting.
+  - `--force`: Skip the confirmation prompt. Required when there is no interactive terminal.
 
 ### `dotfiles features`
 

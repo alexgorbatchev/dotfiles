@@ -104,15 +104,17 @@ This restores the previous `PATH` and `XDG_CONFIG_HOME` values.
 ## Deleting an Environment
 
 ```bash
-# Delete default 'env' directory
+# Delete default 'env' directory (asks for confirmation first)
 dotfiles env delete
 
 # Delete specific environment
 dotfiles env delete my-env
 
-# Force delete without confirmation
+# Skip the confirmation prompt (required in scripts, CI, or AGENT=1)
 dotfiles env delete --force
 ```
+
+See [`dotfiles env delete`](../getting-started/cli-reference.md#dotfiles-env) for exactly when the prompt is shown and what `--force` skips.
 
 ## Use Cases
 
