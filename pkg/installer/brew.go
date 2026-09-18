@@ -217,16 +217,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	}
 
 	// Link formula if configured
-	if linkVal, ok := tool.InstallParams["link"]; ok && linkVal != nil {
-		linkArgs := []string{"link"}
-		if m, ok := linkVal.(map[string]interface{}); ok {
-			if getBoolParam(m, "overwrite", false) {
-				linkArgs = append(linkArgs, "--overwrite")
-			}
-			if getBoolParam(m, "force", false) {
-				linkArgs = append(linkArgs, "--force")
-			}
-		}
+	if linkArgs := brewLinkArgs(tool.InstallParams["link"]); linkArgs != nil {
 		linkArgs = append(linkArgs, formula)
 		if b.log != nil {
 			b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew %s", strings.Join(linkArgs, " "))))
@@ -316,6 +307,31 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		Binaries: resolvedBinaries,
 		Version:  version,
 	}, nil
+}
+
+// brewLinkArgs translates the `link` parameter into the leading arguments of a
+// `brew link` invocation, or nil when no link step should run. The parameter is
+// `true | false | { force?, overwrite? }`: only true and the object form opt in,
+// so an explicit false (or an omitted key) never links a keg-only formula the
+// author chose to leave unlinked.
+func brewLinkArgs(link interface{}) []string {
+	switch v := link.(type) {
+	case bool:
+		if !v {
+			return nil
+		}
+		return []string{"link"}
+	case map[string]interface{}:
+		args := []string{"link"}
+		if getBoolParam(v, "overwrite", false) {
+			args = append(args, "--overwrite")
+		}
+		if getBoolParam(v, "force", false) {
+			args = append(args, "--force")
+		}
+		return args
+	}
+	return nil
 }
 
 func (b *BrewInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {

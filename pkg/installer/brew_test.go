@@ -497,3 +497,62 @@ func TestBrewInstaller(t *testing.T) {
 		}
 	})
 }
+
+// TestBrewInstallerLinkParameter pins the v1 contract for `link`: a truthy
+// boolean or an options object runs `brew link`, while false or an omitted key
+// runs nothing (issue #34).
+func TestBrewInstallerLinkParameter(t *testing.T) {
+	tests := []struct {
+		name         string
+		params       map[string]interface{}
+		wantLinkArgs []string
+	}{
+		{
+			name:         "link true runs brew link",
+			params:       map[string]interface{}{"formula": "jq", "link": true},
+			wantLinkArgs: []string{"link", "jq"},
+		},
+		{
+			name: "link object adds overwrite and force flags",
+			params: map[string]interface{}{
+				"formula": "jq",
+				"link":    map[string]interface{}{"overwrite": true, "force": true},
+			},
+			wantLinkArgs: []string{"link", "--overwrite", "--force", "jq"},
+		},
+		{
+			name:         "link false does not run brew link",
+			params:       map[string]interface{}{"formula": "jq", "link": false},
+			wantLinkArgs: nil,
+		},
+		{
+			name:         "link omitted does not run brew link",
+			params:       map[string]interface{}{"formula": "jq"},
+			wantLinkArgs: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := exec.NewMockRunner()
+			runner.Register("brew", []byte(`[{"name":"jq","versions":{"stable":"1.7"}}]`), nil)
+			inst := NewBrewInstaller(runner, fs.NewMemFS(), NewDefaultSystemContext())
+
+			if _, err := inst.Install(context.Background(), &config.ToolConfig{Name: "jq", InstallParams: tt.params}); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			var gotLinkArgs []string
+			for _, cmd := range runner.History {
+				if len(cmd.Args) > 0 && cmd.Args[0] == "link" {
+					if gotLinkArgs != nil {
+						t.Fatalf("brew link ran more than once: %v", runner.History)
+					}
+					gotLinkArgs = cmd.Args
+				}
+			}
+			if strings.Join(gotLinkArgs, " ") != strings.Join(tt.wantLinkArgs, " ") {
+				t.Fatalf("brew link args = %v, want %v", gotLinkArgs, tt.wantLinkArgs)
+			}
+		})
+	}
+}
