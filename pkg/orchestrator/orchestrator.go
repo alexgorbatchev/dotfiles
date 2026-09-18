@@ -137,25 +137,69 @@ func getBinaryNames(toolBinaries []interface{}) []string {
 	return names
 }
 
-// shimBinaries returns the binaries a tool is expected to have shims for. Shim
-// generation and CleanupStaleShims both derive the set from here so they cannot
-// disagree and undo each other on every run.
+// declaredBinaries returns the binaries a tool declares with .bin() that its shape can
+// actually produce. The declared set is what the install pipeline installs and records
+// and what CleanupStaleShims reconciles the target directory against, so it is the
+// authority on which binaries a tool owns; what an installer happens to report is only
+// used to locate them.
 //
 // A manual tool without binaryPath has nothing a shim could point at unless a
-// before-install hook stages its files, so it gets none: as in v1, its command is
-// expected to come from shell functions. A binary declared with `shim: false` is
-// installed but deliberately kept off the target directory.
-func shimBinaries(tool *config.ToolConfig) []string {
+// before-install hook stages its files, so it produces none: as in v1, its command is
+// expected to come from shell functions.
+func declaredBinaries(tool *config.ToolConfig) []string {
 	if isManualWithoutPayload(tool) {
 		return nil
 	}
+	return getBinaryNames(tool.Binaries)
+}
+
+// shimBinaries narrows declaredBinaries to the binaries that also get a shim in the
+// target directory. Shim generation and CleanupStaleShims both derive the set from
+// here so they cannot disagree and undo each other on every run. A binary declared
+// with `shim: false` is installed and recorded but deliberately kept off the target
+// directory.
+func shimBinaries(tool *config.ToolConfig) []string {
 	var names []string
-	for _, name := range getBinaryNames(tool.Binaries) {
+	for _, name := range declaredBinaries(tool) {
 		if wantsShim(tool.Binaries, name) {
 			names = append(names, name)
 		}
 	}
 	return names
+}
+
+// warnUndeclaredBinaries reports binaries an installer produced that the tool never
+// declared with .bin(). They get no shim: CleanupStaleShims reconciles the target
+// directory against the declared set, so a shim written for one of them would be
+// removed as stale by the very next generate and recreated by the next install.
+func (o *Orchestrator) warnUndeclaredBinaries(tool *config.ToolConfig, reported []string) {
+	declared := make(map[string]struct{})
+	for _, name := range getBinaryNames(tool.Binaries) {
+		declared[name] = struct{}{}
+	}
+
+	seen := make(map[string]struct{})
+	var undeclared []string
+	for _, path := range reported {
+		name := filepath.Base(path)
+		if _, isDeclared := declared[name]; isDeclared {
+			continue
+		}
+		if _, isSeen := seen[name]; isSeen {
+			continue
+		}
+		seen[name] = struct{}{}
+		undeclared = append(undeclared, name)
+	}
+	if len(undeclared) == 0 {
+		return
+	}
+
+	sort.Strings(undeclared)
+	o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf(
+		"Installer reported binaries the tool does not declare with .bin(): %s (no shim generated; add .bin() for each one that should be on PATH)",
+		strings.Join(undeclared, ", "),
+	)))
 }
 
 // isManualWithoutPayload reports whether a manual tool has neither a binaryPath nor

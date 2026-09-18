@@ -158,6 +158,7 @@ func TestOrchestrator_Install(t *testing.T) {
 		Name:               "test-tool",
 		Version:            &versionStr,
 		InstallationMethod: "brew",
+		Binaries:           []interface{}{"test-bin"},
 		Symlinks: []config.SymlinkConfig{
 			{Source: "/home/user/src", Target: "/home/user/dest"},
 		},
@@ -374,10 +375,15 @@ func TestOrchestrator_Generate(t *testing.T) {
 		t.Error("expected standard tool installation record to not exist in the database, but it does")
 	}
 
-	// Verify auto tool shim was generated
-	autoShimExists, err := fsys.Exists("/home/user/bin/test-bin")
+	// Verify auto tool shim was generated for the binary it declares. The installer
+	// reports "test-bin", which auto-tool never declared with .bin(): shimming that
+	// would only be undone by the next generate's stale-shim cleanup.
+	autoShimExists, err := fsys.Exists("/home/user/bin/auto-bin")
 	if err != nil || !autoShimExists {
-		t.Error("expected auto shim script (test-bin) to be generated")
+		t.Error("expected auto shim script (auto-bin) to be generated")
+	}
+	if undeclaredShim, _ := fsys.Exists("/home/user/bin/test-bin"); undeclaredShim {
+		t.Error("expected no shim for the installer-reported binary auto-tool does not declare")
 	}
 
 	// Verify auto tool installation record DOES exist in the database!
@@ -2409,6 +2415,105 @@ func TestSymlinkTargetIsBackedUpNotDeleted(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Install and generate have to agree on the set of shims a tool owns. The declared
+// .bin() set is that set: an installer-reported binary the tool never declared used to
+// get a shim on install and lose it to the next generate's stale-shim cleanup, which
+// an install would then put back.
+func TestOrchestrator_InstallTool_ShimsOnlyDeclaredBinaries(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	// The installer reports a binary the tool declares, one it does not, and an
+	// absolute path for a declared binary it placed outside the tool's current dir.
+	_ = instReg.Register(&mockInstaller{
+		name:     "custom-method",
+		binaries: []string{"declared-bin", "extra-bin", "/opt/vendor/bin/elsewhere-bin"},
+	})
+
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Name: "test-logger", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	orch := NewOrchestrator(log, fsys, runner, reg, instReg)
+	orch.SetSymlinkFS(fsys)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+	_ = fsys.MkdirAll("/home/user/binaries/reporting-tool/current", 0755)
+	_ = fsys.WriteFile("/home/user/binaries/reporting-tool/current/declared-bin", []byte("bin"), 0755)
+	_ = fsys.MkdirAll("/opt/vendor/bin", 0755)
+	_ = fsys.WriteFile("/opt/vendor/bin/elsewhere-bin", []byte("bin"), 0755)
+
+	version := "1.2.3"
+	tool := &config.ToolConfig{
+		Name:               "reporting-tool",
+		Version:            &version,
+		InstallationMethod: "custom-method",
+		Binaries:           []interface{}{"declared-bin", "elsewhere-bin"},
+	}
+	tools := []*config.ToolConfig{tool}
+
+	if err := orch.InstallTools(ctx, tools, projCfg); err != nil {
+		t.Fatalf("InstallTools failed: %v", err)
+	}
+
+	for _, bin := range []string{"declared-bin", "elsewhere-bin"} {
+		if exists, _ := fsys.Exists(filepath.Join("/home/user/bin", bin)); !exists {
+			t.Errorf("expected a shim for the declared binary %q", bin)
+		}
+	}
+	if exists, _ := fsys.Exists("/home/user/bin/extra-bin"); exists {
+		t.Error("expected no shim for the installer-reported binary the tool does not declare")
+	}
+
+	warning := `Installer reported binaries the tool does not declare with .bin(): extra-bin`
+	if !strings.Contains(logBuf.String(), warning) {
+		t.Errorf("expected a warning naming the undeclared binary, got:\n%s", logBuf.String())
+	}
+
+	// A declared binary the installer placed elsewhere is shimmed at the path it
+	// reported, not at the tool's current directory.
+	shim, err := fsys.ReadFile("/home/user/bin/elsewhere-bin")
+	if err != nil {
+		t.Fatalf("reading the elsewhere-bin shim: %v", err)
+	}
+	if !strings.Contains(string(shim), "/opt/vendor/bin/elsewhere-bin") {
+		t.Errorf("expected the shim to target the installer-reported path, got:\n%s", shim)
+	}
+
+	logBuf.Reset()
+	if err := orch.GenerateTools(ctx, tools, projCfg); err != nil {
+		t.Fatalf("GenerateTools failed: %v", err)
+	}
+	for _, line := range strings.Split(logBuf.String(), "\n") {
+		if strings.Contains(line, "Removing stale shim") && strings.Contains(line, "~/bin/") {
+			t.Errorf("generate removed a shim install had just written: %s", strings.TrimSpace(line))
+		}
+	}
+	for _, bin := range []string{"declared-bin", "elsewhere-bin"} {
+		if exists, _ := fsys.Exists(filepath.Join("/home/user/bin", bin)); !exists {
+			t.Errorf("expected the shim for %q to survive generate", bin)
+		}
+	}
+	if exists, _ := fsys.Exists("/home/user/bin/extra-bin"); exists {
+		t.Error("expected generate not to produce a shim for the undeclared binary either")
 	}
 }
 

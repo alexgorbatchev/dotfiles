@@ -266,19 +266,23 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		return fmt.Errorf("running after-install hooks: %w", err)
 	}
 
-	// 2. Resolve binaries to shim. What the installer reported wins over the declared
-	// names, except for the shape shimBinaries rules out entirely: a shim written here
-	// for a manual tool without binaryPath would be removed as stale on the next run.
-	var binaryNames []string
-	if !isManualWithoutPayload(tool) {
-		if res != nil {
-			binaryNames = res.Binaries
-		}
-		if len(binaryNames) == 0 {
-			binaryNames = getBinaryNames(tool.Binaries)
-		}
-	}
+	// 2. Resolve binaries to shim. The declared .bin() set is what a tool owns: it is
+	// what CleanupStaleShims reconciles the target directory against, so a shim written
+	// here for a name the tool never declared would be removed as stale by the next
+	// generate and recreated by the next install.
+	binaryNames := declaredBinaries(tool)
 	o.warnUnshimmedBinaries(tool)
+
+	// What the installer reported still says where each binary ended up, keyed by the
+	// name it was installed under, so a declared binary the installer placed outside
+	// the tool's current directory is shimmed at the path it actually occupies.
+	reportedPaths := make(map[string]string)
+	if res != nil {
+		for _, reported := range res.Binaries {
+			reportedPaths[filepath.Base(reported)] = reported
+		}
+		o.warnUndeclaredBinaries(tool, res.Binaries)
+	}
 
 	// 3. Generate Shims
 	shimGen := shim.NewGenerator(o.fs)
@@ -286,27 +290,26 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 	var recordedBinaryPaths []string
 
-	for _, binItem := range binaryNames {
-		var binName string
-		var binaryPath string
+	for _, binName := range binaryNames {
+		binaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
+		locatedByInstaller := false
 
-		absBinItem := binItem
-		if o.fs.IsAbs(binItem) {
-			if abs, err := o.fs.Abs(binItem); err == nil {
-				absBinItem = abs
+		if reported, ok := reportedPaths[binName]; ok {
+			absReported := reported
+			if o.fs.IsAbs(reported) {
+				if abs, err := o.fs.Abs(reported); err == nil {
+					absReported = abs
+				}
+			}
+			if filepath.IsAbs(absReported) && installer.IsRealBinaryPath(ctx, o.fs, absReported) {
+				binaryPath = absReported
+				locatedByInstaller = true
 			}
 		}
 
-		if filepath.IsAbs(absBinItem) && installer.IsRealBinaryPath(ctx, o.fs, absBinItem) {
-			binName = filepath.Base(absBinItem)
-			binaryPath = absBinItem
-		} else {
-			binName = filepath.Base(binItem)
-			binaryPath = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
-			if isExternal {
-				if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil {
-					binaryPath = sysBin
-				}
+		if !locatedByInstaller && isExternal {
+			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil {
+				binaryPath = sysBin
 			}
 		}
 
