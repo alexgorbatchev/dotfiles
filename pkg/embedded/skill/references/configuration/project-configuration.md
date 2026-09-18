@@ -96,7 +96,7 @@ features: {
 }
 ```
 
-If a shell path is not provided, initialization for that shell is skipped.
+If a shell path is not provided, initialization for that shell is skipped. Only a profile that already exists is updated: `dotfiles generate` warns about a configured profile that is missing and leaves creating it to you.
 
 ### github
 

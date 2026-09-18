@@ -1,9 +1,9 @@
 package shellinit
 
 import (
+	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -14,6 +14,11 @@ const (
 	// HeaderMarker is the header block marker for dotfiles initialization.
 	HeaderMarker = "# Generated via dotfiles generator - do not modify"
 )
+
+// ErrProfileNotFound reports that the profile named in InjectOptions does not exist.
+// Inject never creates a profile: the file belongs to the user, so a missing one is
+// left for them to create, as v1's onlyIfExists profile update did.
+var ErrProfileNotFound = errors.New("shell profile does not exist")
 
 // Injector manages updating shell profile files to inject startup scripts.
 type Injector struct {
@@ -32,9 +37,10 @@ type InjectOptions struct {
 	ScriptPath  string
 }
 
-// Inject adds or updates the dotfiles initialization block in the specified profile.
-// If the profile file does not exist, it creates a new read-only (0444) profile.
-// If the profile file exists, it updates it while preserving its file permissions.
+// Inject adds or updates the dotfiles initialization block in an existing profile,
+// preserving the file's permissions (a read-only profile is unlocked for the write
+// and locked again). A profile that does not exist is reported with
+// ErrProfileNotFound and left untouched.
 // Returns (wasUpdated, error).
 func (inj *Injector) Inject(opts InjectOptions) (bool, error) {
 	if opts.ProfilePath == "" {
@@ -48,21 +54,16 @@ func (inj *Injector) Inject(opts InjectOptions) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("checking profile path: %w", err)
 	}
-
-	var content string
-	var perm os.FileMode = 0444
-	if exists {
-		bytes, err := inj.fs.ReadFile(opts.ProfilePath)
-		if err != nil {
-			return false, fmt.Errorf("reading profile path: %w", err)
-		}
-		content = string(bytes)
-
-		perm = 0644
-		if info, statErr := inj.fs.Stat(opts.ProfilePath); statErr == nil && info != nil {
-			perm = info.Mode().Perm()
-		}
+	if !exists {
+		return false, fmt.Errorf("%w: %s", ErrProfileNotFound, opts.ProfilePath)
 	}
+
+	bytes, err := inj.fs.ReadFile(opts.ProfilePath)
+	if err != nil {
+		return false, fmt.Errorf("reading profile path: %w", err)
+	}
+	content := string(bytes)
+	perm := inj.currentPerm(opts.ProfilePath)
 
 	var sourceLine string
 	if opts.Shell == "powershell" {
@@ -80,16 +81,8 @@ func (inj *Injector) Inject(opts InjectOptions) (bool, error) {
 			if oldBlock == newBlock {
 				return false, nil
 			}
-			newContent := re.ReplaceAllString(content, newBlock)
-			if (perm & 0222) == 0 {
-				_ = inj.fs.Chmod(opts.ProfilePath, 0644)
-			}
-			err = inj.fs.WriteFile(opts.ProfilePath, []byte(newContent), perm)
-			if err != nil {
+			if err := inj.writePreservingPerm(opts.ProfilePath, re.ReplaceAllString(content, newBlock), perm); err != nil {
 				return false, fmt.Errorf("updating profile with block: %w", err)
-			}
-			if (perm & 0222) == 0 {
-				_ = inj.fs.Chmod(opts.ProfilePath, perm)
 			}
 			return true, nil
 		}
@@ -121,27 +114,40 @@ func (inj *Injector) Inject(opts InjectOptions) (bool, error) {
 	sb.WriteString(newBlock)
 	sb.WriteString("\n")
 
-	parentDir := filepath.Dir(opts.ProfilePath)
-	if parentDir != "." && parentDir != "/" {
-		if err := inj.fs.MkdirAll(parentDir, 0755); err != nil {
-			return false, fmt.Errorf("creating parent directory: %w", err)
-		}
-	}
-
-	if exists && (perm&0222) == 0 {
-		_ = inj.fs.Chmod(opts.ProfilePath, 0644)
-	}
-
-	err = inj.fs.WriteFile(opts.ProfilePath, []byte(sb.String()), perm)
-	if err != nil {
+	if err := inj.writePreservingPerm(opts.ProfilePath, sb.String(), perm); err != nil {
 		return false, fmt.Errorf("writing updated profile: %w", err)
 	}
-
-	if (perm & 0222) == 0 {
-		_ = inj.fs.Chmod(opts.ProfilePath, perm)
-	}
-
 	return true, nil
+}
+
+// currentPerm returns the profile's permission bits, defaulting to 0644 when they
+// cannot be read.
+func (inj *Injector) currentPerm(profilePath string) os.FileMode {
+	perm := os.FileMode(0644)
+	if info, err := inj.fs.Stat(profilePath); err == nil && info != nil {
+		perm = info.Mode().Perm()
+	}
+	return perm
+}
+
+// writePreservingPerm rewrites an existing profile with content and leaves it with
+// perm. A profile without write bits is unlocked for the write and locked again.
+func (inj *Injector) writePreservingPerm(profilePath, content string, perm os.FileMode) error {
+	readOnly := perm&0222 == 0
+	if readOnly {
+		if err := inj.fs.Chmod(profilePath, 0644); err != nil {
+			return fmt.Errorf("unlocking read-only profile: %w", err)
+		}
+	}
+	if err := inj.fs.WriteFile(profilePath, []byte(content), perm); err != nil {
+		return err
+	}
+	if readOnly {
+		if err := inj.fs.Chmod(profilePath, perm); err != nil {
+			return fmt.Errorf("restoring profile permissions: %w", err)
+		}
+	}
+	return nil
 }
 
 // Remove deletes the dotfiles initialization block from the specified profile if present.
@@ -178,24 +184,9 @@ func (inj *Injector) Remove(profilePath string) (bool, error) {
 			newContent += "\n"
 		}
 
-		perm := os.FileMode(0644)
-		if info, statErr := inj.fs.Stat(profilePath); statErr == nil && info != nil {
-			perm = info.Mode().Perm()
-		}
-
-		if (perm & 0222) == 0 {
-			_ = inj.fs.Chmod(profilePath, 0644)
-		}
-
-		err = inj.fs.WriteFile(profilePath, []byte(newContent), perm)
-		if err != nil {
+		if err := inj.writePreservingPerm(profilePath, newContent, inj.currentPerm(profilePath)); err != nil {
 			return false, fmt.Errorf("removing block from profile: %w", err)
 		}
-
-		if (perm & 0222) == 0 {
-			_ = inj.fs.Chmod(profilePath, perm)
-		}
-
 		return true, nil
 	}
 

@@ -1,6 +1,7 @@
 package shellinit
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -19,20 +20,6 @@ func TestInjector_Inject(t *testing.T) {
 		wantPerm    os.FileMode
 		wantErr     bool
 	}{
-		{
-			name: "inject into new file",
-			setupFS: func() fs.FS {
-				return fs.NewMemFS()
-			},
-			opts: InjectOptions{
-				ProfilePath: "/home/user/.zshrc",
-				Shell:       "zsh",
-				ScriptPath:  "/home/user/.dotfiles/init.sh",
-			},
-			wantUpdated: true,
-			wantContent: "# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
-			wantPerm:    0444,
-		},
 		{
 			name: "inject into existing empty file",
 			setupFS: func() fs.FS {
@@ -204,6 +191,36 @@ func TestInjector_Inject(t *testing.T) {
 	}
 }
 
+// TestInjector_Inject_MissingProfile pins v1's onlyIfExists behaviour: a profile that
+// does not exist is reported, never created, so the user keeps ownership of the file.
+func TestInjector_Inject_MissingProfile(t *testing.T) {
+	memFS := fs.NewMemFS()
+	_ = memFS.MkdirAll("/home/user", 0755)
+	inj := NewInjector(memFS)
+
+	updated, err := inj.Inject(InjectOptions{
+		ProfilePath: "/home/user/.zshrc",
+		Shell:       "zsh",
+		ScriptPath:  "/home/user/.dotfiles/init.sh",
+	})
+	if !errors.Is(err, ErrProfileNotFound) {
+		t.Fatalf("Inject() error = %v, want ErrProfileNotFound", err)
+	}
+	if !strings.Contains(err.Error(), "/home/user/.zshrc") {
+		t.Errorf("Inject() error %q does not name the profile", err)
+	}
+	if updated {
+		t.Error("Inject() reported an update for a missing profile")
+	}
+	exists, statErr := memFS.Exists("/home/user/.zshrc")
+	if statErr != nil {
+		t.Fatalf("checking profile: %v", statErr)
+	}
+	if exists {
+		t.Error("Inject() created the missing profile; it must leave it to the user")
+	}
+}
+
 func TestInjector_Remove(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -307,7 +324,6 @@ type ErroringFS struct {
 	errOnExists    bool
 	errOnReadFile  bool
 	errOnWriteFile bool
-	errOnMkdirAll  bool
 }
 
 func (e *ErroringFS) Exists(path string) (bool, error) {
@@ -329,13 +345,6 @@ func (e *ErroringFS) WriteFile(path string, data []byte, perm os.FileMode) error
 		return javaError("writefile error")
 	}
 	return e.FS.WriteFile(path, data, perm)
-}
-
-func (e *ErroringFS) MkdirAll(path string, perm os.FileMode) error {
-	if e.errOnMkdirAll {
-		return javaError("mkdirall error")
-	}
-	return e.FS.MkdirAll(path, perm)
 }
 
 func javaError(msg string) error {
@@ -391,22 +400,10 @@ func TestInjector_Errors(t *testing.T) {
 		}
 	})
 
-	t.Run("mkdir error in Inject", func(t *testing.T) {
+	t.Run("write error in Inject - appending block", func(t *testing.T) {
 		mem := fs.NewMemFS()
-		errFS := &ErroringFS{FS: mem, errOnMkdirAll: true}
-		inj := NewInjector(errFS)
-		_, err := inj.Inject(InjectOptions{
-			ProfilePath: "/home/user/subdir/.zshrc",
-			Shell:       "zsh",
-			ScriptPath:  "/home/user/.dotfiles/new.sh",
-		})
-		if err == nil {
-			t.Fatal("expected error on MkdirAll")
-		}
-	})
-
-	t.Run("write error in Inject - new file", func(t *testing.T) {
-		mem := fs.NewMemFS()
+		_ = mem.MkdirAll("/home/user", 0755)
+		_ = mem.WriteFile("/home/user/.zshrc", []byte("export FOO=bar\n"), 0644)
 		errFS := &ErroringFS{FS: mem, errOnWriteFile: true}
 		inj := NewInjector(errFS)
 		_, err := inj.Inject(InjectOptions{

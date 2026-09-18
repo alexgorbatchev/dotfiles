@@ -2659,21 +2659,73 @@ func TestCleanupCommand_RemovesOrphans(t *testing.T) {
 	}
 }
 
-func TestGenerateCommand_PowershellProfile(t *testing.T) {
+// shellInstallFeature configures every shell's profile under the project HOME.
+const shellInstallFeature = `"features": {"shellInstall": {"zsh": "~/.zshrc", "bash": "~/.bashrc", "powershell": "~/.config/powershell/profile.ps1"}}`
+
+// shellInstallProfiles maps each configured profile (relative to HOME) to the
+// generated script it must source.
+var shellInstallProfiles = map[string]string{
+	".zshrc":                         "main.zsh",
+	".bashrc":                        "main.bash",
+	".config/powershell/profile.ps1": "main.ps1",
+}
+
+func TestGenerateCommand_UpdatesExistingProfiles(t *testing.T) {
 	p := newE2EProject(t, `"bat": {"name": "bat"}`)
-	p.writeConfig(t, `"bat": {"name": "bat"}`, "", `"features": {"shellInstall": {"powershell": "~/profile.ps1"}}`)
+	p.writeConfig(t, `"bat": {"name": "bat"}`, "", shellInstallFeature)
+	const userSettings = "# user settings\nexport EDITOR=vim\n"
+	for rel := range shellInstallProfiles {
+		profile := filepath.Join(p.HomeDir, rel)
+		if err := os.MkdirAll(filepath.Dir(profile), 0755); err != nil {
+			t.Fatalf("creating %s: %v", filepath.Dir(profile), err)
+		}
+		if err := os.WriteFile(profile, []byte(userSettings), 0644); err != nil {
+			t.Fatalf("writing %s: %v", profile, err)
+		}
+	}
 
 	out, err := p.run("generate")
 	if err != nil {
 		t.Fatalf("generate: %v\n%s", err, out.Combined)
 	}
 	mustContain(t, "stderr", out.Stderr, "Integrating generated shell scripts with profiles")
-	profile := filepath.Join(p.HomeDir, "profile.ps1")
-	data, err := os.ReadFile(profile)
-	if err != nil {
-		t.Fatalf("expected %s to be generated: %v", profile, err)
+	if strings.Contains(out.Stderr, "Profile not found") {
+		t.Fatalf("existing profiles were reported as missing:\n%s", out.Stderr)
 	}
-	mustContain(t, "profile", string(data), "main.ps1")
+
+	for rel, script := range shellInstallProfiles {
+		profile := filepath.Join(p.HomeDir, rel)
+		data, err := os.ReadFile(profile)
+		if err != nil {
+			t.Fatalf("reading %s: %v", profile, err)
+		}
+		mustContain(t, rel, string(data), userSettings, "# Generated via dotfiles generator - do not modify", script)
+		info, err := os.Stat(profile)
+		if err != nil {
+			t.Fatalf("stat %s: %v", profile, err)
+		}
+		if perm := info.Mode().Perm(); perm != 0644 {
+			t.Errorf("%s permissions = %#o after generate, want the original 0644", rel, perm)
+		}
+	}
+}
+
+func TestGenerateCommand_SkipsMissingProfiles(t *testing.T) {
+	p := newE2EProject(t, `"bat": {"name": "bat"}`)
+	p.writeConfig(t, `"bat": {"name": "bat"}`, "", shellInstallFeature)
+
+	out, err := p.run("generate")
+	if err != nil {
+		t.Fatalf("generate: %v\n%s", err, out.Combined)
+	}
+
+	for rel, script := range shellInstallProfiles {
+		profile := filepath.Join(p.HomeDir, rel)
+		if _, err := os.Stat(profile); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("%s must not be created by generate (stat error = %v)", profile, err)
+		}
+		mustContain(t, "stderr", out.Stderr, profile, "Profile not found, skipping", script)
+	}
 }
 
 func TestWhyCommand_MissingConfigFile(t *testing.T) {

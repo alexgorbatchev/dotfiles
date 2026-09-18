@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/shellinit"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/spf13/cobra"
@@ -43,59 +45,48 @@ var generateCmd = &cobra.Command{
 			log.Error("Failed to write CLI completion", err)
 		}
 
-		// Run shellinit profile updater if shellInstall features are configured
-		if services.ProjectConfig.Features.ShellInstall != nil {
+		// Source the generated scripts from the profiles named by features.shellInstall.
+		if shellInstall := services.ProjectConfig.Features.ShellInstall; shellInstall != nil {
 			log.Info("Integrating generated shell scripts with profiles...")
-			inj := shellinit.NewInjector(services.FS)
-			shellInstall := services.ProjectConfig.Features.ShellInstall
 
 			shellScriptsDir := services.ProjectConfig.Paths.ShellScriptsDir
 			if shellScriptsDir == "" {
 				shellScriptsDir = filepath.Join(services.ProjectConfig.Paths.GeneratedDir, "shell-scripts")
 			}
 
-			if shellInstall.Zsh != "" {
-				pPath := utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, shellInstall.Zsh)
-				scriptPath := filepath.Join(shellScriptsDir, "main.zsh")
-				_, err = inj.Inject(shellinit.InjectOptions{
-					ProfilePath: pPath,
-					Shell:       "zsh",
-					ScriptPath:  scriptPath,
-				})
-				if err != nil {
-					log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
+			inj := shellinit.NewInjector(services.FS)
+			for _, target := range []struct{ shell, profile, script string }{
+				{"zsh", shellInstall.Zsh, "main.zsh"},
+				{"bash", shellInstall.Bash, "main.bash"},
+				{"powershell", shellInstall.Powershell, "main.ps1"},
+			} {
+				if target.profile == "" {
+					continue
 				}
-			}
-
-			if shellInstall.Bash != "" {
-				pPath := utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, shellInstall.Bash)
-				scriptPath := filepath.Join(shellScriptsDir, "main.bash")
-				_, err = inj.Inject(shellinit.InjectOptions{
-					ProfilePath: pPath,
-					Shell:       "bash",
-					ScriptPath:  scriptPath,
+				injectProfile(log, inj, shellinit.InjectOptions{
+					ProfilePath: utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, target.profile),
+					Shell:       target.shell,
+					ScriptPath:  filepath.Join(shellScriptsDir, target.script),
 				})
-				if err != nil {
-					log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
-				}
-			}
-
-			if shellInstall.Powershell != "" {
-				pPath := utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, shellInstall.Powershell)
-				scriptPath := filepath.Join(shellScriptsDir, "main.ps1")
-				_, err = inj.Inject(shellinit.InjectOptions{
-					ProfilePath: pPath,
-					Shell:       "powershell",
-					ScriptPath:  scriptPath,
-				})
-				if err != nil {
-					log.GetSubLogger("", pPath).Error("Failed shell profile injection", err)
-				}
 			}
 		}
 
 		return nil
 	},
+}
+
+// injectProfile makes the profile source the generated script. Only an existing
+// profile is touched: v1 updated profiles with onlyIfExists, and the file belongs to
+// the user, so a missing one is reported with what to do rather than created.
+func injectProfile(log *logger.Logger, inj *shellinit.Injector, opts shellinit.InjectOptions) {
+	plog := log.GetSubLogger("", opts.ProfilePath)
+	_, err := inj.Inject(opts)
+	switch {
+	case errors.Is(err, shellinit.ErrProfileNotFound):
+		plog.Warn(logger.Message(fmt.Sprintf("Profile not found, skipping; create it and rerun \"dotfiles generate\" to have it source %s", opts.ScriptPath)))
+	case err != nil:
+		plog.Error("Failed shell profile injection", err)
+	}
 }
 
 var overwrite bool
