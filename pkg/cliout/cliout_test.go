@@ -2,8 +2,12 @@ package cliout
 
 import (
 	"bytes"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"testing/iotest"
 )
 
 func TestIsAgentMode(t *testing.T) {
@@ -142,4 +146,101 @@ func TestRenderDivider(t *testing.T) {
 			t.Errorf("expected empty buffer in agent mode, got %q", buf.String())
 		}
 	})
+}
+
+func TestConfirm(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		{"y", "y\n", true},
+		{"Y", "Y\n", true},
+		{"yes", "yes\n", true},
+		{"YES", "YES\n", true},
+		{"padded y", "  y  \n", true},
+		{"y without trailing newline", "y", true},
+		{"n", "n\n", false},
+		{"empty line takes the default", "\n", false},
+		{"end of input declines", "", false},
+		{"other text declines", "yeah\n", false},
+		{"only the first line counts", "n\ny\n", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out bytes.Buffer
+			got, err := Confirm(strings.NewReader(tt.input), &out, "Delete it?")
+			if err != nil {
+				t.Fatalf("Confirm error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("Confirm(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+			if out.String() != "Delete it? [y/N] " {
+				t.Fatalf("prompt = %q, want the question followed by the [y/N] hint", out.String())
+			}
+		})
+	}
+
+	t.Run("read failure is reported", func(t *testing.T) {
+		readErr := errors.New("boom")
+		var out bytes.Buffer
+		got, err := Confirm(iotest.ErrReader(readErr), &out, "Delete it?")
+		if !errors.Is(err, readErr) {
+			t.Fatalf("error = %v, want it to wrap %v", err, readErr)
+		}
+		if got {
+			t.Fatal("Confirm returned true after a read failure")
+		}
+	})
+
+	t.Run("prompt write failure is reported without reading", func(t *testing.T) {
+		writeErr := errors.New("closed")
+		got, err := Confirm(strings.NewReader("y\n"), failingWriter{err: writeErr}, "Delete it?")
+		if !errors.Is(err, writeErr) {
+			t.Fatalf("error = %v, want it to wrap %v", err, writeErr)
+		}
+		if got {
+			t.Fatal("Confirm returned true after the prompt could not be written")
+		}
+	})
+}
+
+// failingWriter fails every write with err.
+type failingWriter struct{ err error }
+
+func (w failingWriter) Write([]byte) (int, error) { return 0, w.err }
+
+func TestIsTerminal(t *testing.T) {
+	regular, err := os.Create(filepath.Join(t.TempDir(), "regular"))
+	if err != nil {
+		t.Fatalf("creating file: %v", err)
+	}
+	defer regular.Close()
+
+	pipeReader, pipeWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("creating pipe: %v", err)
+	}
+	defer pipeReader.Close()
+	defer pipeWriter.Close()
+
+	tests := []struct {
+		name string
+		v    any
+	}{
+		{"nil", nil},
+		{"in-memory reader", strings.NewReader("y\n")},
+		{"in-memory writer", &bytes.Buffer{}},
+		{"regular file", regular},
+		{"pipe read end", pipeReader},
+		{"pipe write end", pipeWriter},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if IsTerminal(tt.v) {
+				t.Fatalf("IsTerminal(%T) = true, want false", tt.v)
+			}
+		})
+	}
 }

@@ -1,12 +1,16 @@
 package cliout
 
 import (
+	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/mattn/go-isatty"
 )
 
 // TreeNode represents a node in a hierarchical directory or object tree.
@@ -79,6 +83,34 @@ func formatAgentTree(nodes []*TreeNode, indent string) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+// IsTerminal reports whether v is an *os.File attached to an interactive
+// terminal. Only files can be terminals: in-memory readers and writers, and
+// anything else that is not an *os.File, never are.
+func IsTerminal(v any) bool {
+	f, ok := v.(*os.File)
+	if !ok {
+		return false
+	}
+	return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
+}
+
+// Confirm writes question followed by " [y/N] " to out and reads one line from
+// in. It reports true only for an affirmative answer, "y" or "yes" in any case
+// with surrounding whitespace ignored; an empty line, any other text, or end of
+// input all decline. Callers decide whether in can be prompted at all (see
+// IsTerminal); Confirm reads whatever it is given.
+func Confirm(in io.Reader, out io.Writer, question string) (bool, error) {
+	if _, err := fmt.Fprintf(out, "%s [y/N] ", question); err != nil {
+		return false, fmt.Errorf("writing prompt: %w", err)
+	}
+	line, err := bufio.NewReader(in).ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return false, fmt.Errorf("reading answer: %w", err)
+	}
+	answer := strings.ToLower(strings.TrimSpace(line))
+	return answer == "y" || answer == "yes", nil
 }
 
 // RenderDivider writes a horizontal divider across terminal width in human mode.
