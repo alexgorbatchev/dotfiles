@@ -510,6 +510,65 @@ func TestLoadTypeScriptConfigToolWithoutName(t *testing.T) {
 	}
 }
 
+// A tool file that calls something the authoring DSL does not provide must be told
+// which file and which method are at fault. Goja reports only a line and column into
+// the bundle the loader generates, which exists on no disk and means nothing to the
+// author of a .tool.ts file.
+func TestLoadTypeScriptConfigNamesFailingToolFileAndMethod(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+
+	tests := []struct {
+		name       string
+		call       string
+		wantMethod string
+	}{
+		{
+			name:       "property that is not a method",
+			call:       `.binaries(["a", "b"])`,
+			wantMethod: ".binaries()",
+		},
+		{
+			name:       "member the builder does not have at all",
+			call:       `.notAMethod("a")`,
+			wantMethod: ".notAMethod()",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			toolsDir := filepath.Join(tmpDir, "tools")
+			if err := os.MkdirAll(toolsDir, 0755); err != nil {
+				t.Fatalf("creating tools dir: %v", err)
+			}
+
+			toolPath := filepath.Join(toolsDir, "probe.tool.ts")
+			toolContent := `import { defineTool } from "@alexgorbatchev/dotfiles";
+				export default defineTool((install) => install("manual", { binaryPath: "/usr/bin/true" })` + tt.call + `);`
+			if err := os.WriteFile(toolPath, []byte(toolContent), 0644); err != nil {
+				t.Fatalf("writing tool file: %v", err)
+			}
+
+			configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+			configContent := fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, tmpDir, toolsDir)
+			if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+				t.Fatalf("writing config file: %v", err)
+			}
+
+			_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+			if err == nil {
+				t.Fatal("expected loading to fail, got nil error")
+			}
+			for _, want := range []string{toolPath, tt.wantMethod} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("expected error to name %q, got: %v", want, err)
+				}
+			}
+		})
+	}
+}
+
 func TestGenerateEntryLoaderDirect(t *testing.T) {
 	content, err := generateEntryLoader("/home/user/config.ts", []string{"/home/user/tools/tool1.tool.ts"})
 	if err != nil {

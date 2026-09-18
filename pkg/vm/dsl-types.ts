@@ -1294,10 +1294,6 @@ export interface IToolConfigBuilder {
    */
   bin(name: string, options: IBinaryOptions): this;
   /**
-   * Sets the target binaries of the tool config.
-   */
-  binaries(binaries: string[]): this;
-  /**
    * Sets the version constraint of the tool (defaults to 'latest').
    */
   version(v: string): this;
@@ -1375,10 +1371,6 @@ export interface IPlatformConfigBuilder {
    * it is found and whether it gets a shim.
    */
   bin(name: string, options: IBinaryOptions): this;
-  /**
-   * Sets target binaries on this platform.
-   */
-  binaries(binaries: string[]): this;
   /**
    * Overrides the tool version constraint on this platform.
    */

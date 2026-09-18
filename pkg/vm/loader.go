@@ -4,9 +4,11 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -377,7 +379,7 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	_ = vm.Set("exports", exportsObj)
 
 	if _, err := vm.RunString(jsContent); err != nil {
-		return nil, fmt.Errorf("executing script in Goja VM: %w", err)
+		return nil, describeBundleFailure(vm, jsContent, err)
 	}
 
 	// Retrieve dynamic loader results
@@ -417,6 +419,67 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	return &res, nil
 }
 
+// memberCallCallee matches the property name a member call names, so that ".binaries"
+// can be recovered from the source text preceding the call's opening parenthesis.
+var memberCallCallee = regexp.MustCompile(`\.([\p{L}_$][\p{L}\p{N}_$]*)\s*$`)
+
+// describeBundleFailure turns a failure of the generated bundle into a message the
+// author of a tool file can act on. Goja reports a line and column into that bundle,
+// which exists on no disk, so the tool file being evaluated is read back from the VM
+// and the call that failed is recovered from the bundle source instead.
+func describeBundleFailure(vm *goja.Runtime, bundledJS string, err error) error {
+	toolPath := stringGlobal(vm, "currentToolPath")
+	if toolPath == "" {
+		return fmt.Errorf("executing script in Goja VM: %w", err)
+	}
+	if method := failingCallee(bundledJS, err); method != "" {
+		return fmt.Errorf("executing tool file %q at .%s(): %w", toolPath, method, err)
+	}
+	return fmt.Errorf("executing tool file %q: %w", toolPath, err)
+}
+
+// stringGlobal reads a global the bundle set, or returns "" when it holds no string.
+func stringGlobal(vm *goja.Runtime, name string) string {
+	value := vm.Get(name)
+	if value == nil || goja.IsUndefined(value) || goja.IsNull(value) {
+		return ""
+	}
+	return value.String()
+}
+
+// failingCallee names the method of the call the VM was making when it threw, for the
+// calls Goja reports at their opening parenthesis: calling a member that is not a
+// function, and calling a member the object does not have. Anything else, including a
+// position the bundle source does not line up with, yields "" so that the caller falls
+// back to naming only the tool file.
+func failingCallee(bundledJS string, err error) string {
+	var exception *goja.Exception
+	if !errors.As(err, &exception) {
+		return ""
+	}
+	frames := exception.Stack()
+	if len(frames) == 0 {
+		return ""
+	}
+
+	position := frames[0].Position()
+	lines := strings.Split(bundledJS, "\n")
+	if position.Line < 1 || position.Line > len(lines) {
+		return ""
+	}
+
+	line := lines[position.Line-1]
+	if position.Column < 2 || position.Column > len(line) || line[position.Column-1] != '(' {
+		return ""
+	}
+
+	callee := memberCallCallee.FindStringSubmatch(line[:position.Column-1])
+	if callee == nil {
+		return ""
+	}
+	return callee[1]
+}
+
 func generateEntryLoader(configPath string, toolFiles []string) (string, error) {
 	var sb strings.Builder
 
@@ -449,21 +512,19 @@ for (const [path, entry] of Object.entries(toolModules)) {
   const filename = parts[parts.length - 1];
   const fallbackName = filename.replace(/\.tool\.ts$/, "");
 
+  // Go reads these back off the VM to name the tool file in a failure, so they are set
+  // before the module is evaluated rather than after it has returned a configuration.
   globalThis.currentToolName = fallbackName;
   globalThis.currentToolPath = entry.absPath;
-  
-  try {
-    const mod = entry.load();
-    const t = mod.default || mod;
-    if (t) {
-      if (!t.name) {
-        t.name = fallbackName;
-      }
-      t.configFilePath = entry.absPath;
-      toolConfigs[t.name] = t;
+
+  const mod = entry.load();
+  const t = mod.default || mod;
+  if (t) {
+    if (!t.name) {
+      t.name = fallbackName;
     }
-  } catch (err) {
-    throw err;
+    t.configFilePath = entry.absPath;
+    toolConfigs[t.name] = t;
   }
 }
 `)

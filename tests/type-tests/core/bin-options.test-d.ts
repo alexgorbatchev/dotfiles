@@ -26,3 +26,10 @@ defineTool((install) =>
 // Only the two options exist.
 expectError(defineTool((install) => install("manual").bin("tool", { hidden: true })));
 expectError(defineTool((install) => install("manual").bin("tool", { shim: "no" })));
+
+// There is no bulk form: binaries are declared one .bin() call at a time, and the
+// runtime has no such method, so the declarations must not offer one.
+expectError(defineTool((install) => install("manual").binaries(["one", "two"])));
+expectError(
+  defineTool((install) => install().platform(Platform.Linux, (linux) => linux("manual").binaries(["one", "two"]))),
+);
