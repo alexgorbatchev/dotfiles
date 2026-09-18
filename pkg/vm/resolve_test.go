@@ -158,3 +158,49 @@ func TestHasResolver(t *testing.T) {
 		t.Errorf("HasResolver on a tool without install parameters = true, want false")
 	}
 }
+
+// Asking for a parameter the loader recorded no resolver for, or for a tool whose file
+// cannot be found, is a wiring mistake that must be reported rather than answered with
+// an empty value the installer would then act on.
+func TestResolveInstallParam_RejectsWhatItCannotAnswer(t *testing.T) {
+	withResolver := resolveTestTool(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) => install("curl-script", { url: "https://example.test/i.sh" }));
+	`, "args")
+
+	tests := []struct {
+		name string
+		tool *config.ToolConfig
+		want string
+	}{
+		{
+			name: "no resolver was recorded",
+			tool: withResolver,
+			want: "recorded no resolver",
+		},
+		{
+			name: "the tool has no configuration file",
+			tool: &config.ToolConfig{Name: "pathless", InstallParams: map[string]any{"resolvers": []any{"env"}}},
+			want: "no path to it",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ResolveInstallParam(context.Background(), ResolveRequest{
+				Log:     logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+				FS:      fs.NewMemFS(),
+				Runner:  exec.NewMockRunner(),
+				Tool:    tt.tool,
+				ProjCfg: hookTestProjectConfig(t),
+				Param:   "env",
+			})
+			if err == nil {
+				t.Fatalf("expected an error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("error = %v, want it to mention %q", err, tt.want)
+			}
+		})
+	}
+}

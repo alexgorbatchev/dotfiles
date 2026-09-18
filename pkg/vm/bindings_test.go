@@ -2,6 +2,7 @@ package vm
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 
@@ -54,19 +55,77 @@ func TestBindingsDirect(t *testing.T) {
 		t.Fatalf("executing context bindings with nil failed: %v", err)
 	}
 
-	// Writes do not. A mutation that cannot happen must say so rather than report
-	// success, which is how hook failures used to disappear.
-	for _, mutation := range []string{
+	// Writes do not, and neither does inspecting a path: an operation that cannot
+	// happen must say so rather than report success or a made-up answer, which is how
+	// hook failures used to disappear.
+	for _, operation := range []string{
 		`fsWriteFile("/p", "c");`,
 		`fsMkdir("/p");`,
 		`fsRm("/p");`,
 		`fsRename("/p", "/q");`,
 		`fsSymlink("/p", "/q");`,
+		`fsChmod("/p", 493);`,
+		`fsCopyFile("/p", "/q");`,
+		`fsRmdir("/p");`,
+		`fsReadlink("/p");`,
+		`fsStat("/p");`,
+		`fsLstat("/p");`,
 	} {
-		if _, err := vm.RunString(mutation); err == nil {
-			t.Errorf("%s silently succeeded without a file system", mutation)
+		if _, err := vm.RunString(operation); err == nil {
+			t.Errorf("%s silently succeeded without a file system", operation)
 		}
 	}
+}
+
+// getHostname and getHomeDir answer for the machine and for the project. An empty
+// configured home falls back to the invoking user's, which is what defineConfig sees
+// while it is still deciding where the project's home should be.
+func TestHomeDirAndHostnameBindings(t *testing.T) {
+	configuredHome := t.TempDir()
+
+	for _, tt := range []struct {
+		name       string
+		configured string
+		want       string
+	}{
+		{name: "the configured home wins", configured: configuredHome, want: configuredHome},
+		{name: "an unset home falls back to the user's", configured: "", want: userHomeDir(t)},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			vm := goja.New()
+			if err := RegisterBindings(vm, Target{}); err != nil {
+				t.Fatalf("RegisterBindings failed: %v", err)
+			}
+			if err := RegisterContextBindings(vm, nil, nil, tt.configured); err != nil {
+				t.Fatalf("RegisterContextBindings failed: %v", err)
+			}
+
+			got, err := vm.RunString(`getHomeDir()`)
+			if err != nil {
+				t.Fatalf("getHomeDir failed: %v", err)
+			}
+			if got.String() != tt.want {
+				t.Errorf("getHomeDir() = %q, want %q", got.String(), tt.want)
+			}
+
+			name, err := vm.RunString(`getHostname()`)
+			if err != nil {
+				t.Fatalf("getHostname failed: %v", err)
+			}
+			if name.String() != hostname() {
+				t.Errorf("getHostname() = %q, want %q", name.String(), hostname())
+			}
+		})
+	}
+}
+
+func userHomeDir(t *testing.T) string {
+	t.Helper()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("reading the user's home directory: %v", err)
+	}
+	return home
 }
 
 func TestRegisterContextBindingsWithLogger(t *testing.T) {
