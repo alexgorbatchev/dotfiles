@@ -3,7 +3,9 @@ package shim
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
@@ -361,4 +363,64 @@ func TestGenerator_Errors(t *testing.T) {
 			t.Fatal("expected error on ReadFile")
 		}
 	})
+}
+
+// Generating a shim that is already in place with the same content and mode is a
+// no-op: the file is neither rewritten nor re-chmodded, so a repeated generate
+// leaves its mtime alone. A changed configuration still rewrites it.
+func TestGenerator_GenerateLeavesIdenticalShimAlone(t *testing.T) {
+	dir := t.TempDir()
+	shimPath := filepath.Join(dir, "bin", "mytool")
+	gen := NewGenerator(fs.NewOSFS())
+	cfg := Config{
+		ToolName:       "mytool",
+		BinaryName:     "mytool",
+		BinaryPath:     filepath.Join(dir, "binaries", "mytool", "current", "mytool"),
+		CliCommand:     "dotfiles",
+		ConfigFilePath: filepath.Join(dir, "dotfiles.config.ts"),
+		UsageLogPath:   filepath.Join(dir, "usage", "shim-usage.log"),
+	}
+
+	if err := gen.Generate(shimPath, cfg); err != nil {
+		t.Fatalf("first Generate: %v", err)
+	}
+	first, err := os.ReadFile(shimPath)
+	if err != nil {
+		t.Fatalf("reading shim: %v", err)
+	}
+	past := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+	if err := os.Chtimes(shimPath, past, past); err != nil {
+		t.Fatalf("setting mtime: %v", err)
+	}
+
+	if err := gen.Generate(shimPath, cfg); err != nil {
+		t.Fatalf("second Generate: %v", err)
+	}
+	info, err := os.Stat(shimPath)
+	if err != nil {
+		t.Fatalf("stat shim: %v", err)
+	}
+	if !info.ModTime().Equal(past) {
+		t.Errorf("an identical shim was rewritten: mtime %s, want %s", info.ModTime(), past)
+	}
+	if info.Mode().Perm() != 0755 {
+		t.Errorf("shim mode = %v, want 0755", info.Mode().Perm())
+	}
+	second, _ := os.ReadFile(shimPath)
+	if string(second) != string(first) {
+		t.Errorf("shim content changed between identical generates")
+	}
+
+	cfg.BinaryPath = filepath.Join(dir, "elsewhere", "mytool")
+	if err := gen.Generate(shimPath, cfg); err != nil {
+		t.Fatalf("Generate with new binary path: %v", err)
+	}
+	info, _ = os.Stat(shimPath)
+	if info.ModTime().Equal(past) {
+		t.Errorf("a changed shim was not rewritten")
+	}
+	changed, _ := os.ReadFile(shimPath)
+	if string(changed) == string(first) {
+		t.Errorf("shim content did not follow the new binary path")
+	}
 }
