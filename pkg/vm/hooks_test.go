@@ -334,14 +334,14 @@ func TestRunHook_BeforeInstallReceivesAbsoluteStagingDir(t *testing.T) {
 	}
 }
 
-// `__dirname` and `import.meta.dirname` are rewritten to the configFileDir global, so
-// they have to name the directory of the configuration file in every evaluation of a
-// tool file. Setting that global from paths.dotfilesDir agreed with the load only while
-// dotfilesDir was left at its default, which is the configuration file's directory: a
-// tool file locating a neighbouring script found it while the configuration loaded and
-// then resolved against a different directory once its own hook ran.
-func TestRunHook_DirnameIsTheConfigurationFilesDirectory(t *testing.T) {
+// `__dirname` and `import.meta.dirname` in a tool file resolve to the tool file's own
+// directory in both evaluations -- at load time when the tool is defined, and at hook
+// time when a lifecycle hook fires.
+func TestRunHook_DirnameIsTheToolFilesDirectory(t *testing.T) {
 	root := t.TempDir()
+	if resolved, err := filepath.EvalSymlinks(root); err == nil {
+		root = resolved
+	}
 	elsewhere := filepath.Join(root, "elsewhere")
 	home := filepath.Join(root, "home")
 	toolsDir := filepath.Join(root, "tools")
@@ -351,8 +351,6 @@ func TestRunHook_DirnameIsTheConfigurationFilesDirectory(t *testing.T) {
 		}
 	}
 
-	// dotfilesDir deliberately points away from the configuration file, which is the
-	// only case in which the two readings of __dirname can be told apart.
 	configContent := "export default { paths: { dotfilesDir: " + strconv.Quote(filepath.ToSlash(elsewhere)) +
 		", homeDir: " + strconv.Quote(filepath.ToSlash(home)) + ", toolConfigsDir: \"{configFileDir}/tools\" } };"
 	configPath := filepath.Join(root, "dotfiles.config.ts")
@@ -368,7 +366,8 @@ func TestRunHook_DirnameIsTheConfigurationFilesDirectory(t *testing.T) {
 			}),
 		);
 	`
-	if err := os.WriteFile(filepath.Join(toolsDir, "sample.tool.ts"), []byte(toolContent), 0o644); err != nil {
+	toolFilePath := filepath.Join(toolsDir, "sample.tool.ts")
+	if err := os.WriteFile(toolFilePath, []byte(toolContent), 0o644); err != nil {
 		t.Fatalf("writing the tool file: %v", err)
 	}
 
@@ -382,17 +381,15 @@ func TestRunHook_DirnameIsTheConfigurationFilesDirectory(t *testing.T) {
 		t.Fatalf("the configuration loaded no tool named %q", "sample")
 	}
 
+	wantToolDir := filepath.ToSlash(toolsDir)
 	atLoadTime, _ := tool.InstallParams["binaryPath"].(string)
-	if atLoadTime != root {
-		t.Fatalf("__dirname at load time = %q, want the configuration file's directory %q", atLoadTime, root)
-	}
-	if projCfg.Paths.DotfilesDir == atLoadTime {
-		t.Fatalf("paths.dotfilesDir = %q, which is the configuration file's directory: the fixture cannot tell the two apart", projCfg.Paths.DotfilesDir)
+	if atLoadTime != wantToolDir {
+		t.Fatalf("__dirname at load time = %q, want the tool file's directory %q", atLoadTime, wantToolDir)
 	}
 
 	atHookTime := runHookCapturingFile(t, tool, projCfg, HookAfterInstall, HookContext{})
-	if atHookTime != atLoadTime {
-		t.Errorf("__dirname at hook time = %q, want the same directory the load saw, %q", atHookTime, atLoadTime)
+	if atHookTime != wantToolDir {
+		t.Errorf("__dirname at hook time = %q, want the tool file's directory %q", atHookTime, wantToolDir)
 	}
 }
 

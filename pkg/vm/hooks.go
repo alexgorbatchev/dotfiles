@@ -244,12 +244,6 @@ func evaluateToolFile(ctx context.Context, req toolFileVM) (*goja.Runtime, error
 	// The directories the tool context derives its paths from (currentDir among them)
 	// are resolved for the same reason the event context is: the hook's commands do
 	// not run from the directory these are relative to.
-	//
-	// configFileDir is what compileFile rewrites every `__dirname` and
-	// `import.meta.dirname` in the file to, so it has to be the directory the load set
-	// it from -- the configuration file's own -- and is taken from the configuration
-	// that records it rather than re-derived from paths.dotfilesDir, which is a setting
-	// a project is free to point somewhere else entirely.
 	configFileDir := ""
 	binariesDir := ""
 	generatedDir := ""

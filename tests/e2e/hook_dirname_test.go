@@ -7,13 +7,10 @@ import (
 	"testing"
 )
 
-// `__dirname` in a tool file names the directory of the configuration file, and a tool
+// `__dirname` in a tool file names the directory of the tool file itself, and a tool
 // file is evaluated twice -- once while the configuration loads, once again when a hook
-// fires -- so both readings have to be the same directory. The project here points
-// paths.dotfilesDir somewhere else, which is the case that tells them apart: a tool file
-// locating a neighbouring script used to find it while the configuration loaded and then
-// resolve against paths.dotfilesDir once its own hook ran.
-func TestE2EHookDirnameIsTheConfigurationFilesDirectory(t *testing.T) {
+// fires -- so both readings have to be the tool file's own directory.
+func TestE2EHookDirnameIsTheToolFilesDirectory(t *testing.T) {
 	t.Parallel()
 
 	h := NewTestHarness(t, HarnessOptions{
@@ -44,8 +41,7 @@ func TestE2EHookDirnameIsTheConfigurationFilesDirectory(t *testing.T) {
 		t.Fatalf("creating the tool directory: %v", err)
 	}
 	// The file's top level runs again on every re-evaluation, so both readings are taken
-	// during the installation: the point is that they name the configuration file's
-	// directory rather than the one paths.dotfilesDir was moved to.
+	// during the installation: both should evaluate to the tool file's own directory.
 	toolContent := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
 		"\n" +
 		"const atTopLevel = __dirname;\n" +
@@ -76,12 +72,12 @@ func TestE2EHookDirnameIsTheConfigurationFilesDirectory(t *testing.T) {
 	}
 
 	for _, where := range []string{"dirname in the handler: ", "dirname at the top level: "} {
-		want := where + h.TempDir
+		want := where + toolDir
 		if !strings.Contains(output, want) {
 			t.Errorf("expected output to contain %q, got:\n%s", want, output)
 		}
 	}
 	if strings.Contains(output, filepath.Join(h.TempDir, "elsewhere")) {
-		t.Errorf("__dirname resolved to paths.dotfilesDir instead of the configuration file's directory:\n%s", output)
+		t.Errorf("__dirname resolved to paths.dotfilesDir instead of the tool file's directory:\n%s", output)
 	}
 }

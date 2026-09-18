@@ -59,8 +59,8 @@ var pathDefaults = map[string]string{
 // left, so resolving it again changes nothing.
 //
 // configFileDir is also recorded on the configuration, because it outlives this call:
-// the tool files are evaluated again during an installation, and `__dirname` inside one
-// of them means this directory. Deriving it a second time from whichever setting
+// lifecycle hooks and install-parameter resolvers need the configuration file's directory
+// (`{configFileDir}`, `ctx.configFileDir`). Deriving it a second time from whichever setting
 // happens to be nearby is how the two evaluations came to disagree.
 func (p *ProjectConfig) ResolvePlaceholders(configFileDir string) error {
 	if p == nil {

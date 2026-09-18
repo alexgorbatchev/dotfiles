@@ -360,6 +360,9 @@ func TestFindToolConfigFilesAndDirExists(t *testing.T) {
 
 func TestCompileFilePluginsAndDirName(t *testing.T) {
 	tmpDir := t.TempDir()
+	if resolved, err := filepath.EvalSymlinks(tmpDir); err == nil {
+		tmpDir = resolved
+	}
 	tsPath := filepath.Join(tmpDir, "test_plugins.ts")
 	tsContent := `
 	import { getE2eGeneratedDir } from "./e2eGeneratedDir";
@@ -374,8 +377,119 @@ func TestCompileFilePluginsAndDirName(t *testing.T) {
 		t.Fatalf("compileFile with e2eGeneratedDir failed: %v", err)
 	}
 
-	if !strings.Contains(code, "configFileDir") {
-		t.Errorf("expected __dirname/import.meta.dirname to be replaced by configFileDir in compiled code")
+	expectedDir := filepath.ToSlash(tmpDir)
+	if !strings.Contains(code, expectedDir) {
+		t.Errorf("expected __dirname/import.meta.dirname to be replaced by %q in compiled code, got: %s", expectedDir, code)
+	}
+}
+
+func TestCompileFileLoadersForVariousExtensions(t *testing.T) {
+	tmpDir := t.TempDir()
+	if resolved, err := filepath.EvalSymlinks(tmpDir); err == nil {
+		tmpDir = resolved
+	}
+
+	exts := []struct {
+		ext     string
+		content string
+	}{
+		{".js", "module.exports = { dir: __dirname };"},
+		{".mjs", "export default { dir: __dirname };"},
+		{".cjs", "module.exports = { dir: __dirname };"},
+		{".tsx", "export const elem = <div>{__dirname}</div>;"},
+		{".jsx", "export const elem = <div>{__dirname}</div>;"},
+	}
+
+	for _, tc := range exts {
+		filePath := filepath.Join(tmpDir, "test"+tc.ext)
+		if err := os.WriteFile(filePath, []byte(tc.content), 0644); err != nil {
+			t.Fatalf("writing %s: %v", filePath, err)
+		}
+		code, err := compileFile(filePath)
+		if err != nil {
+			t.Errorf("compileFile(%s) failed: %v", filePath, err)
+			continue
+		}
+		expectedDir := filepath.ToSlash(tmpDir)
+		if !strings.Contains(code, expectedDir) {
+			t.Errorf("compileFile(%s) did not contain %q in output: %s", filePath, expectedDir, code)
+		}
+	}
+}
+
+// TestLoadTypeScriptConfigToolDirnameMatchesToolFileDirectory verifies that __dirname and
+// import.meta.dirname in a tool file resolve to the tool file's own directory, while in the
+// configuration file they resolve to the configuration file's directory.
+func TestLoadTypeScriptConfigToolDirnameMatchesToolFileDirectory(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+
+	tmpDir := t.TempDir()
+	if resolved, err := filepath.EvalSymlinks(tmpDir); err == nil {
+		tmpDir = resolved
+	}
+	configDir := tmpDir
+	toolsDir := filepath.Join(tmpDir, "tools", "bat")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("creating tools directory: %v", err)
+	}
+
+	configPath := filepath.Join(configDir, "dotfiles.config.ts")
+	configSource := `
+		import { defineConfig } from "@alexgorbatchev/dotfiles";
+		export default defineConfig(() => ({
+			paths: {
+				dotfilesDir: __dirname,
+				generatedDir: import.meta.dirname + "/.generated",
+				toolConfigsDir: "./tools",
+			},
+		}));
+	`
+	if err := os.WriteFile(configPath, []byte(configSource), 0644); err != nil {
+		t.Fatalf("writing config file: %v", err)
+	}
+
+	toolPath := filepath.Join(toolsDir, "bat.tool.ts")
+	toolSource := `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual", {
+				binaryPath: __dirname + "/bin/bat",
+				importMetaDir: import.meta.dirname,
+			}).bin("bat"),
+		);
+	`
+	if err := os.WriteFile(toolPath, []byte(toolSource), 0644); err != nil {
+		t.Fatalf("writing tool file: %v", err)
+	}
+
+	projCfg, toolCfgs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+
+	// In dotfiles.config.ts, __dirname and import.meta.dirname must resolve to configDir
+	if projCfg.Paths.DotfilesDir != configDir {
+		t.Errorf("dotfilesDir = %q, want configDir %q", projCfg.Paths.DotfilesDir, configDir)
+	}
+	if projCfg.Paths.GeneratedDir != filepath.Join(configDir, ".generated") {
+		t.Errorf("generatedDir = %q, want %q", projCfg.Paths.GeneratedDir, filepath.Join(configDir, ".generated"))
+	}
+
+	// In bat.tool.ts, __dirname and import.meta.dirname must resolve to toolsDir
+	tool, ok := toolCfgs["bat"]
+	if !ok {
+		t.Fatalf("expected tool 'bat' in toolCfgs, got: %v", toolCfgs)
+	}
+	gotBinaryPath, _ := tool.InstallParams["binaryPath"].(string)
+	wantBinaryPath := filepath.ToSlash(filepath.Join(toolsDir, "bin", "bat"))
+	if filepath.ToSlash(gotBinaryPath) != wantBinaryPath {
+		t.Errorf("tool binaryPath = %q, want %q", gotBinaryPath, wantBinaryPath)
+	}
+	gotImportMetaDir, _ := tool.InstallParams["importMetaDir"].(string)
+	wantImportMetaDir := filepath.ToSlash(toolsDir)
+	if filepath.ToSlash(gotImportMetaDir) != wantImportMetaDir {
+		t.Errorf("tool importMetaDir = %q, want %q", gotImportMetaDir, wantImportMetaDir)
 	}
 }
 

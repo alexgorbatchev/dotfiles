@@ -227,6 +227,37 @@ func compileFile(entryPath string) (string, error) {
 						Loader:   api.LoaderTS,
 					}, nil
 				})
+
+			build.OnLoad(api.OnLoadOptions{Filter: `\.[cm]?[jt]sx?$`},
+				func(args api.OnLoadArgs) (api.OnLoadResult, error) {
+					data, err := os.ReadFile(args.Path)
+					if err != nil {
+						return api.OnLoadResult{}, err
+					}
+
+					dirStr := strconv.Quote(filepath.ToSlash(filepath.Dir(args.Path)))
+					content := string(data)
+					content = strings.ReplaceAll(content, "import.meta.dirname", dirStr)
+					content = strings.ReplaceAll(content, "import_meta.dirname", dirStr)
+					content = strings.ReplaceAll(content, "__dirname", dirStr)
+
+					loader := api.LoaderDefault
+					switch filepath.Ext(args.Path) {
+					case ".ts":
+						loader = api.LoaderTS
+					case ".tsx":
+						loader = api.LoaderTSX
+					case ".js", ".mjs", ".cjs":
+						loader = api.LoaderJS
+					case ".jsx":
+						loader = api.LoaderJSX
+					}
+
+					return api.OnLoadResult{
+						Contents: &content,
+						Loader:   loader,
+					}, nil
+				})
 		},
 	}
 
@@ -253,11 +284,6 @@ func compileFile(entryPath string) (string, error) {
 	}
 
 	code := string(result.OutputFiles[0].Contents)
-	// Replace references to import.meta.dirname, import_meta.dirname, and __dirname with global configFileDir variable
-	code = strings.ReplaceAll(code, "import.meta.dirname", "configFileDir")
-	code = strings.ReplaceAll(code, "import_meta.dirname", "configFileDir")
-	code = strings.ReplaceAll(code, "__dirname", "configFileDir")
-
 	return code, nil
 }
 
