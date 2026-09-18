@@ -186,8 +186,9 @@ func TestGithubToken(t *testing.T) {
 	}{
 		{name: "parameter wins", params: map[string]interface{}{"token": "param"}, projectToken: "project", env: map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"}, want: "param"},
 		{name: "github.token before the environment", projectToken: "project", env: map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"}, want: "project"},
-		{name: "GITHUB_TOKEN before GH_TOKEN", env: map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"}, want: "gh"},
-		{name: "GH_TOKEN as last resort", env: map[string]string{"GH_TOKEN": "cli"}, want: "cli"},
+		// The environment sources and their order are pinned once, in pkg/github;
+		// what matters here is that a tool naming no token reaches them at all.
+		{name: "the environment when a tool names no token", env: map[string]string{"GH_TOKEN": "cli"}, want: "cli"},
 		{name: "nothing configured", want: ""},
 	}
 	for _, tt := range tests {

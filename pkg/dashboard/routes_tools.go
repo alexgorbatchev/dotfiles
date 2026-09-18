@@ -14,6 +14,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/features"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/github"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
@@ -470,12 +471,17 @@ func (s *Server) fetchRemoteReadme(ctx context.Context, repo string) (string, er
 		rawBase = "https://raw.githubusercontent.com"
 	}
 
+	var projectToken string
+	if s.projectConfig != nil {
+		projectToken = s.projectConfig.Github.Token
+	}
+
 	apiURL := fmt.Sprintf("%s/repos/%s/readme", apiBase, repo)
 	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 	if err == nil {
 		req.Header.Set("Accept", "application/vnd.github.raw+json")
 		req.Header.Set("User-Agent", "dotfiles-dashboard/1.0")
-		if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		if token := github.Token(projectToken); token != "" {
 			req.Header.Set("Authorization", "Bearer "+token)
 		}
 		resp, err := client.Do(req)

@@ -113,13 +113,13 @@ catalog file and `dotfiles features` does not report it; both keys default to em
 
 ### github
 
-| Key             | Default                     | Effect                                                        |
-| --------------- | --------------------------- | ------------------------------------------------------------- |
+| Key             | Default                     | Effect                                                         |
+| --------------- | --------------------------- | -------------------------------------------------------------- |
 | `host`          | `https://api.github.com`    | API root every release lookup addresses, for GitHub Enterprise |
-| `token`         | none                        | Authenticates API requests and asset downloads for every tool |
-| `userAgent`     | `dotfiles-installer/1.0`    | The `User-Agent` sent with GitHub API requests                |
-| `cache.enabled` | `true`                      | Whether a fetched release description is reused at all        |
-| `cache.ttl`     | `3600000` (one hour), in ms | How long a fetched release description is reused              |
+| `token`         | none                        | Authenticates API requests and asset downloads for every tool  |
+| `userAgent`     | `dotfiles-installer/1.0`    | The `User-Agent` sent with GitHub API requests                 |
+| `cache.enabled` | `true`                      | Whether a fetched release description is reused at all         |
+| `cache.ttl`     | `3600000` (one hour), in ms | How long a fetched release description is reused               |
 
 `host` applies to every method that resolves GitHub releases -- `github-release`,
 `cargo`, `dmg` and `pkg` -- and to the dashboard's README lookup. It is the API root
@@ -129,7 +129,12 @@ own settings.
 `token` is the project-wide default. A tool that sets the `token` parameter of its
 installation method overrides it, and when neither names one the `GITHUB_TOKEN` and
 then `GH_TOKEN` environment variables are consulted. It applies to every method that
-resolves GitHub releases: `github-release`, `cargo`, `dmg` and `pkg`.
+resolves GitHub releases -- `github-release`, `cargo`, `dmg` and `pkg` -- and to the
+dashboard's README lookup.
+
+`dotfiles upgrade` is the exception: it upgrades the CLI itself from the public API
+rather than from `host`, so it authenticates from `GITHUB_TOKEN` or `GH_TOKEN` alone
+and never sends a token written for your `host`.
 
 ### system
 

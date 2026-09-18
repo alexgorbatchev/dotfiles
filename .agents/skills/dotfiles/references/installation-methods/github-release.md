@@ -20,7 +20,7 @@ export default defineTool((install) => install("github-release", { repo: "junegu
 | `version`       | Specific version (e.g., `'v1.2.3'`)                                                                                                                                    |
 | `prerelease`    | Include prereleases when fetching latest (default: false)                                                                                                              |
 | `ghCli`         | Use `gh` CLI for API requests instead of fetch                                                                                                                         |
-| `token`         | GitHub API token; defaults to `GITHUB_TOKEN`, then `GH_TOKEN`, from the environment                                                                                    |
+| `token`         | GitHub API token; defaults to the project's [`github.token`](../configuration/project-configuration.md#github), then the environment                                   |
 
 The GitHub API host is a project setting (`github.host` in `dotfiles.config.ts`), not a per-tool parameter.
 

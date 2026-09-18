@@ -17,10 +17,17 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/github"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 )
 
-const maxBinaryDecompressedSize int64 = 100 * 1024 * 1024 // 100MB limit against zip bomb risks
+const (
+	maxBinaryDecompressedSize int64 = 100 * 1024 * 1024 // 100MB limit against zip bomb risks
+	// updaterUserAgent identifies the self-updater to the GitHub API.
+	updaterUserAgent = "dotfiles-updater"
+	// githubAPIAccept selects the REST API version the release payloads are read as.
+	githubAPIAccept = "application/vnd.github.v3+json"
+)
 
 var (
 	// ErrNoReleaseFound is returned when no matching GitHub release was found.
@@ -118,6 +125,22 @@ func New(cfg Config) *Updater {
 	}
 }
 
+// newRequest builds a GET request carrying the self-updater's identity and, when
+// one is set, its credentials. The project configuration's github.token is
+// deliberately not consulted: it authenticates the project's github.host, while a
+// self-update addresses the public API, so only the environment speaks for it.
+func (u *Updater) newRequest(ctx context.Context, url string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", updaterUserAgent)
+	if token := github.Token(); token != "" {
+		req.Header.Set("Authorization", "token "+token)
+	}
+	return req, nil
+}
+
 // fetchReleases retrieves releases from GitHub, optionally querying target tag directly.
 func (u *Updater) fetchReleases(ctx context.Context, targetVersion string) ([]GitHubRelease, error) {
 	if targetVersion != "" {
@@ -129,17 +152,9 @@ func (u *Updater) fetchReleases(ctx context.Context, targetVersion string) ([]Gi
 			tagURL = fmt.Sprintf("https://api.github.com/repos/%s/releases/tags/%s", u.githubRepo, tag)
 		}
 
-		req, err := http.NewRequestWithContext(ctx, "GET", tagURL, nil)
+		req, err := u.newRequest(ctx, tagURL)
 		if err == nil {
-			req.Header.Set("Accept", "application/vnd.github.v3+json")
-			req.Header.Set("User-Agent", "dotfiles-updater")
-			token := os.Getenv("GITHUB_TOKEN")
-			if token == "" {
-				token = os.Getenv("GH_TOKEN")
-			}
-			if token != "" {
-				req.Header.Set("Authorization", "token "+token)
-			}
+			req.Header.Set("Accept", githubAPIAccept)
 
 			resp, err := u.client.Do(req)
 			if err == nil && resp.StatusCode == http.StatusOK {
@@ -162,20 +177,11 @@ func (u *Updater) fetchReleases(ctx context.Context, targetVersion string) ([]Gi
 		apiURL = fmt.Sprintf("https://api.github.com/repos/%s/releases", u.githubRepo)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+	req, err := u.newRequest(ctx, apiURL)
 	if err != nil {
 		return nil, fmt.Errorf("creating releases request: %w", err)
 	}
-
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	req.Header.Set("User-Agent", "dotfiles-updater")
-	token := os.Getenv("GITHUB_TOKEN")
-	if token == "" {
-		token = os.Getenv("GH_TOKEN")
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "token "+token)
-	}
+	req.Header.Set("Accept", githubAPIAccept)
 
 	resp, err := u.client.Do(req)
 	if err != nil {
@@ -389,17 +395,9 @@ func (u *Updater) Upgrade(ctx context.Context, opts Options) (*UpdateResult, err
 }
 
 func (u *Updater) downloadBytes(ctx context.Context, url string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := u.newRequest(ctx, url)
 	if err != nil {
 		return nil, err
-	}
-	req.Header.Set("User-Agent", "dotfiles-updater")
-	token := os.Getenv("GITHUB_TOKEN")
-	if token == "" {
-		token = os.Getenv("GH_TOKEN")
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "token "+token)
 	}
 	resp, err := u.client.Do(req)
 	if err != nil {
