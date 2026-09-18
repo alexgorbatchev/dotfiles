@@ -37,10 +37,14 @@ export default defineTool((install) =>
 
 ### Source Variants
 
-| Source type      | Required fields | Optional fields                                  | Notes                                                    |
-| ---------------- | --------------- | ------------------------------------------------ | -------------------------------------------------------- |
-| `url`            | `url`           | —                                                | Direct DMG URL or archive URL containing a DMG           |
-| `github-release` | `repo`          | `version`, `assetPattern`, `ghCli`, `prerelease` | Resolves release asset first, then installs from the DMG |
+| Source type      | Required fields | Optional fields                                                   | Notes                                                    |
+| ---------------- | --------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
+| `url`            | `url`           | —                                                                 | Direct DMG URL or archive URL containing a DMG           |
+| `github-release` | `repo`          | `version`, `assetPattern`, `assetSelector`, `ghCli`, `prerelease` | Resolves release asset first, then installs from the DMG |
+
+`assetSelector` goes inside `source`, next to the repository it selects from, and behaves
+as it does for `github-release`: see
+[github-release › With an Asset Selector](github-release.md#with-an-asset-selector).
 
 ## Examples
 

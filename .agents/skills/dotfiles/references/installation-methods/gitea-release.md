@@ -17,14 +17,15 @@ export default defineTool((install) =>
 
 ## Parameters
 
-| Parameter      | Description                                                                                                                        |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `instanceUrl`  | **Required**. Base URL of the Gitea/Forgejo instance                                                                               |
-| `repo`         | **Required**. Repository in "owner/repo" format                                                                                    |
-| `version`      | Release tag to install. Takes precedence over `.version()`; without either, the latest release is used.                            |
-| `prerelease`   | Include prereleases when resolving the latest release. Defaults to `false`. Ignored when a tag is named.                           |
-| `assetPattern` | Glob or regex pattern (`string` or `RegExp`) to match release assets. **Optional**. Use only if default automatic selection fails. |
-| `token`        | API token for authentication with the instance                                                                                     |
+| Parameter       | Description                                                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `instanceUrl`   | **Required**. Base URL of the Gitea/Forgejo instance                                                                               |
+| `repo`          | **Required**. Repository in "owner/repo" format                                                                                    |
+| `version`       | Release tag to install. Takes precedence over `.version()`; without either, the latest release is used.                            |
+| `prerelease`    | Include prereleases when resolving the latest release. Defaults to `false`. Ignored when a tag is named.                           |
+| `assetPattern`  | Glob or regex pattern (`string` or `RegExp`) to match release assets. **Optional**. Use only if default automatic selection fails. |
+| `assetSelector` | Callback choosing the asset itself. **Optional**. Reach for it only when a pattern cannot express the choice.                      |
+| `token`         | API token for authentication with the instance                                                                                     |
 
 A release is chosen either by tag or by resolving the latest one. Naming a tag
 selects that release; otherwise the newest published release is used, and
@@ -39,6 +40,11 @@ using the same `prerelease` and `token` settings as an install.
 The installer uses built-in smart selection logic by default. It parses filenames and correctly matches combinations of OS and CPU architecture (e.g. `linux`/`darwin`/`macos`/`win`/`windows` + `amd64`/`arm64`/`aarch64`/`x64`/`x86_64`).
 
 **You should ONLY provide an `assetPattern` if the default selection logic fails to find a file or downloads the wrong asset.**
+
+`assetSelector` works here exactly as it does for `github-release`, with the same context
+and the same refusal to fall back when the selector chooses nothing; it is documented in
+[github-release › With an Asset Selector](github-release.md#with-an-asset-selector). The
+one difference is what the release object carries: Gitea does not report `draft`.
 
 ### With Asset Pattern
 

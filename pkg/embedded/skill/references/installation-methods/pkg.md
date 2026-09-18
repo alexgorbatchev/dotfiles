@@ -23,7 +23,10 @@ export default defineTool((install) =>
 
 - `source` (required)
   - `{ type: 'url', url }`
-  - `{ type: 'github-release', repo, version?, assetPattern?, ghCli?, prerelease? }`
+  - `{ type: 'github-release', repo, version?, assetPattern?, assetSelector?, ghCli?, prerelease? }`
+  - `assetSelector` goes inside `source`, next to the repository it selects from, and
+    behaves as it does for `github-release`: see
+    [github-release › With an Asset Selector](github-release.md#with-an-asset-selector).
 - `target` (optional): target volume for `installer -target`. Defaults to `'/'`.
 - `binaryPath` (optional): absolute path to the primary installed binary. If omitted, each declared `.bin()` name is resolved from `PATH` after install.
 - `versionArgs` (optional): args used for version detection.

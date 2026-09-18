@@ -12,14 +12,15 @@ export default defineTool((install) => install("github-release", { repo: "junegu
 
 ## Parameters
 
-| Parameter      | Description                                                                                                                                           |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `repo`         | **Required**. GitHub repository in "owner/repo" format                                                                                                |
-| `assetPattern` | Glob or regex pattern (`string` or `RegExp`) to match release assets. **Optional**. Prefer this when the default selector chooses the wrong filename. |
-| `version`      | Specific version (e.g., `'v1.2.3'`)                                                                                                                   |
-| `prerelease`   | Include prereleases when fetching latest (default: false)                                                                                             |
-| `ghCli`        | Use `gh` CLI for API requests instead of fetch                                                                                                        |
-| `token`        | GitHub API token; defaults to `GITHUB_TOKEN`, then `GH_TOKEN`, from the environment                                                                   |
+| Parameter       | Description                                                                                                                                                            |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `repo`          | **Required**. GitHub repository in "owner/repo" format                                                                                                                 |
+| `assetPattern`  | Glob or regex pattern (`string` or `RegExp`) to match release assets. **Optional**. Prefer this when the default selector chooses the wrong filename.                  |
+| `assetSelector` | Callback choosing the asset itself. **Optional**. Reach for it only when a pattern cannot express the choice -- see [With an Asset Selector](#with-an-asset-selector). |
+| `version`       | Specific version (e.g., `'v1.2.3'`)                                                                                                                                    |
+| `prerelease`    | Include prereleases when fetching latest (default: false)                                                                                                              |
+| `ghCli`         | Use `gh` CLI for API requests instead of fetch                                                                                                                         |
+| `token`         | GitHub API token; defaults to `GITHUB_TOKEN`, then `GH_TOKEN`, from the environment                                                                                    |
 
 The GitHub API host is a project setting (`github.host` in `dotfiles.config.ts`), not a per-tool parameter.
 
@@ -34,6 +35,10 @@ GitHub release metadata is cached for normal installs and update checks. When yo
 The installer uses built-in smart selection logic by default. It parses filenames and correctly matches combinations of OS and CPU architecture (e.g. `linux`/`darwin`/`macos`/`win`/`windows` + `amd64`/`arm64`/`aarch64`/`x64`/`x86_64`).
 
 **You should ONLY provide an `assetPattern` if the default selection logic fails to find a file or downloads the wrong asset.** A `RegExp` pattern covers naming schemes a glob cannot express; the platform and architecture are still matched automatically within the assets the pattern keeps.
+
+There are three levels, and each gives up more of what the installer does for you: the
+built-in selection, then `assetPattern`, then `assetSelector`. Only `assetSelector`
+switches the built-in matcher off entirely, so reach for it last.
 
 ### With Asset Pattern
 
@@ -50,6 +55,49 @@ install("github-release", {
   assetPattern: /^(?!.*-profile).*\.zip$/,
 }).bin("bun");
 ```
+
+### With an Asset Selector
+
+`assetSelector` is a callback that picks the asset itself. It is the last resort, for a
+choice a per-filename pattern cannot express: one that depends on the whole set of assets
+at once ("the static build, but the dynamic one when there is no static build"), or on the
+release rather than the filename ("the asset whose name carries the release's own tag").
+
+```typescript body
+install("github-release", {
+  repo: "owner/tool",
+  assetSelector: ({ assets, release }) =>
+    assets.find((asset) => asset.name === `tool-${release.tag_name}-static.tar.gz`) ??
+    assets.find((asset) => asset.name.endsWith(".tar.gz")),
+}).bin("tool");
+```
+
+The callback is invoked once, after the release has been resolved, and may be `async`. Its
+argument, `IAssetSelectionContext`, is the ordinary tool context (see
+[Context API](../api-reference/context-api.md) and
+[Utilities](../api-reference/utilities.md)) plus three members:
+
+| Property       | Type                  | Description                                                                                                |
+| -------------- | --------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `assets`       | `IReleaseAsset[]`     | Every asset of the release, to choose one of.                                                              |
+| `release`      | `IRelease`            | The release the assets belong to.                                                                          |
+| `assetPattern` | `string \| undefined` | The configured `assetPattern`, when the tool has one. A `RegExp` arrives in its `/source/flags` text form. |
+
+`IReleaseAsset` carries `name`, `browser_download_url` and `id`. `IRelease` carries `id`,
+`tag_name`, `name`, `prerelease`, `assets`, and `draft` -- which GitHub reports and Gitea
+does not.
+
+Two behaviours are worth knowing before you write one:
+
+**`assetPattern` is not applied for you.** Giving both a pattern and a selector hands the
+pattern to the selector in `context.assetPattern` and leaves the narrowing to it. The
+selector is the whole decision; nothing filters `assets` before it sees them.
+
+**Choosing nothing fails the install.** A selector that returns `undefined`, or that names
+an asset the release does not have, fails the tool with an error listing what the release
+offered -- `the assetSelector of "tool" chose no asset. The release offers: ...`. It does
+not quietly fall back to the built-in matcher: having asked for a specific asset, installing
+a different one is exactly what the parameter exists to prevent.
 
 ### Specific Version
 
