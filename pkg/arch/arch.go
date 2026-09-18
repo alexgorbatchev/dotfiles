@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 )
 
 // Package-level variables allowing tests to override GOOS and GOARCH for full coverage.
@@ -200,7 +202,11 @@ func makePatternGroup(patterns []string) string {
 	return "(" + strings.Join(escaped, "|") + ")"
 }
 
-var nonBinaryPatterns = []*regexp.Regexp{
+// dataAssetPatterns match release files that cannot be run at all: checksums, signatures,
+// metadata and distribution packages. They never win automatic selection, and an
+// installer refuses one even when a tool selected it explicitly, because marking it
+// executable would only defer the failure to the first run of the shim.
+var dataAssetPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\.sha\d+(sum)?$`),
 	regexp.MustCompile(`(?i)\.md5(sum)?$`),
 	regexp.MustCompile(`(?i)\.sum$`),
@@ -216,20 +222,41 @@ var nonBinaryPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\.apk$`),
 	regexp.MustCompile(`(?i)\.flatpak$`),
 	regexp.MustCompile(`(?i)\.pkg$`),
-	regexp.MustCompile(`(?i)buildable-artifact`),
 	regexp.MustCompile(`(?i)\.vsix$`),
 	regexp.MustCompile(`(?i)\.b3$`),
 	regexp.MustCompile(`(?i)\.zst$`),
 	regexp.MustCompile(`(?i)\.md$`),
 }
 
-func IsNonBinaryAsset(assetName string) bool {
-	for _, re := range nonBinaryPatterns {
+// auxiliaryAssetPatterns match runnable artifacts that are published beside the tool but
+// are not the tool, so they lose automatic selection while remaining installable when a
+// tool names one explicitly with assetPattern.
+var auxiliaryAssetPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)buildable-artifact`),
+	// cargo-dist publishes an axoupdater self-updater named <app>-<target>-update next to
+	// every archive (for example md-tui-aarch64-apple-darwin-update). It matches the OS
+	// and CPU exactly like the real asset but is not the tool.
+	regexp.MustCompile(`(?i)-update$`),
+}
+
+func matchesAny(patterns []*regexp.Regexp, assetName string) bool {
+	for _, re := range patterns {
 		if re.MatchString(assetName) {
 			return true
 		}
 	}
 	return false
+}
+
+// IsDataAsset reports whether assetName is a file that cannot be run (see dataAssetPatterns).
+func IsDataAsset(assetName string) bool {
+	return matchesAny(dataAssetPatterns, assetName)
+}
+
+// IsNonBinaryAsset reports whether assetName must be excluded from automatic asset
+// selection, either because it is a data file or an auxiliary artifact.
+func IsNonBinaryAsset(assetName string) bool {
+	return IsDataAsset(assetName) || matchesAny(auxiliaryAssetPatterns, assetName)
 }
 
 var androidVariantPattern = regexp.MustCompile(`(?i)(^|[^a-z0-9])android([^a-z0-9]|$)`)
@@ -369,22 +396,43 @@ func rankLinuxVariant(variant linuxVariant, libc string) int {
 	}
 }
 
+// selectBestLinuxMatch picks the candidate whose libc variant fits best; among equally
+// fitting candidates an extractable archive wins, otherwise the first listed.
 func selectBestLinuxMatch(assetNames []string, libc string) string {
 	if len(assetNames) == 0 {
 		return ""
 	}
-	bestAssetName := assetNames[0]
+	var best []string
 	bestRank := 999
 
 	for _, name := range assetNames {
-		v := classifyLinuxVariant(name)
-		rank := rankLinuxVariant(v, libc)
-		if rank < bestRank {
-			bestAssetName = name
+		rank := rankLinuxVariant(classifyLinuxVariant(name), libc)
+		switch {
+		case rank < bestRank:
+			best = []string{name}
 			bestRank = rank
+		case rank == bestRank:
+			best = append(best, name)
 		}
 	}
-	return bestAssetName
+	return preferExtractable(best)[0]
+}
+
+// preferExtractable narrows candidates to those pkg/archive can unpack, when any exist.
+// It is the last tiebreaker in SelectBestMatch, applied only after OS, CPU and libc have
+// had their say: a raw binary and a tarball for the same target are otherwise
+// indistinguishable, and the tarball is the one that holds the tool.
+func preferExtractable(candidates []string) []string {
+	var archives []string
+	for _, name := range candidates {
+		if archive.IsSupported(name) {
+			archives = append(archives, name)
+		}
+	}
+	if len(archives) > 0 {
+		return archives
+	}
+	return candidates
 }
 
 func SelectBestMatch(assetNames []string, sys SystemInfo) string {
@@ -433,5 +481,5 @@ func SelectBestMatch(assetNames []string, sys SystemInfo) string {
 		matches = applySoftFilter(matches, filter)
 	}
 
-	return matches[0]
+	return preferExtractable(matches)[0]
 }

@@ -9,6 +9,7 @@ Archive extraction utilities (.tar.gz, .zip, .dmg, .pkg, .tar.xz).
 ## Local conventions
 
 - Preserve file permissions and symlink targets during archive extraction.
+- `supportedExtensions` in `archive.go` is the only definition of what `Extract` can unpack; `Extension`, `IsSupported` and `SupportedExtensions` expose it to installers. Adding a format means adding its suffix there (compound suffix before the bare one it ends with) and a `case` in `Extract`; `TestSupportedExtensionsDispatch` fails when the two disagree. `unsupportedExtensions` names archive suffixes `Extract` recognises but cannot unpack so that callers can refuse them instead of treating them as raw binaries.
 
 ## Local gotchas
 

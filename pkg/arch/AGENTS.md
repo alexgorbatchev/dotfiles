@@ -9,6 +9,8 @@ Architecture detection and normalization.
 ## Local conventions
 
 - Normalize architecture strings (`x86_64` -> `amd64`, `aarch64` -> `arm64`).
+- `dataAssetPatterns` match files that can never run (checksums, signatures, metadata, packages); `auxiliaryAssetPatterns` match runnable artifacts that are not the tool (`buildable-artifact`, cargo-dist's `-update` self-updater). `IsNonBinaryAsset` is their union and drives selection; `IsDataAsset` is what installers refuse after download, so an explicitly selected auxiliary asset still installs.
+- `SelectBestMatch` prefers a candidate `archive.IsSupported` accepts only as the final tiebreaker, after OS, CPU and libc ranking.
 
 ## Local gotchas
 

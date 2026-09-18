@@ -1,11 +1,13 @@
 package installer
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,7 +15,83 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
+
+// TestGiteaInstaller_InstallExtractsTarXz mirrors the github-release case from issue #28:
+// a .tar.xz asset is extracted and its nested binary promoted, not copied out as the
+// binary.
+func TestGiteaInstaller_InstallExtractsTarXz(t *testing.T) {
+	runner := exec.NewMockRunner()
+	mockXz(runner, createTarBytes(t, map[string]string{"mytool-linux-amd64/mytool": "binary-payload"}))
+	server := newReleaseServer(t, "v1.0.0", []string{"mytool-linux-amd64-update", "mytool-linux-amd64.tar.xz"}, []byte("opaque xz stream"))
+
+	var logBuf bytes.Buffer
+	fsys := fs.NewMemFS()
+	inst := NewGiteaInstaller(runner, fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+	inst.httpClient = server.Client()
+	inst.BinDir = "/test/bin"
+	inst.SetLogger(logger.New(logger.Config{Name: "test", Level: logger.LogLevelVerbose, Writer: &logBuf}))
+
+	tool := &config.ToolConfig{
+		Name:          "mytool",
+		InstallParams: map[string]interface{}{"instanceUrl": server.URL, "repo": "owner/tool"},
+	}
+	res, err := inst.Install(context.Background(), tool)
+	if err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+	if downloads := server.downloads(); len(downloads) != 1 || downloads[0] != "mytool-linux-amd64.tar.xz" {
+		t.Errorf("downloaded %v, want only the .tar.xz archive", downloads)
+	}
+	if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
+		t.Errorf("Binaries = %v, want [mytool]", res.Binaries)
+	}
+	if got, err := fsys.ReadFile("/test/bin/mytool"); err != nil || string(got) != "binary-payload" {
+		t.Errorf("mytool = %q, %v; want the extracted binary", string(got), err)
+	}
+	if exists, _ := fsys.Exists("/test/bin/mytool-linux-amd64.tar.xz"); exists {
+		t.Error("downloaded archive was left behind")
+	}
+	if !strings.Contains(logBuf.String(), "Extracting mytool-linux-amd64.tar.xz...") {
+		t.Errorf("expected an 'Extracting ...' log line, got:\n%s", logBuf.String())
+	}
+}
+
+func TestGiteaInstaller_InstallRejectsUnusableAssets(t *testing.T) {
+	tests := []struct {
+		name    string
+		asset   string
+		pattern string
+	}{
+		{"rar archive", "mytool-linux-amd64.rar", ""},
+		{"debian package selected by pattern", "mytool-linux-amd64.deb", `\.deb$`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newReleaseServer(t, "v1.0.0", []string{tt.asset}, []byte("not a program"))
+			fsys := fs.NewMemFS()
+			inst := NewGiteaInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			inst.httpClient = server.Client()
+			inst.BinDir = "/test/bin"
+
+			params := map[string]interface{}{"instanceUrl": server.URL, "repo": "owner/tool"}
+			if tt.pattern != "" {
+				params["assetPattern"] = tt.pattern
+			}
+			_, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: params})
+			if err == nil {
+				t.Fatalf("Install(%s) succeeded, want an error", tt.asset)
+			}
+			if !strings.Contains(err.Error(), tt.asset) {
+				t.Errorf("error %q does not name the asset %s", err, tt.asset)
+			}
+			if exists, _ := fsys.Exists("/test/bin/mytool"); exists {
+				t.Errorf("%s was installed as the binary", tt.asset)
+			}
+		})
+	}
+}
 
 func TestGiteaInstaller(t *testing.T) {
 	// Create a mock Gitea server

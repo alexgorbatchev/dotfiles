@@ -79,13 +79,14 @@ func (c *CurlTarInstaller) SupportsSudo() bool {
 	return false
 }
 
+// detectArchiveExtension works out which archive suffix to give the download so that the
+// extractor dispatches on it. The suffix vocabulary is pkg/archive's, through
+// archive.Extension; only the places to look for it (URL, query-stripped URL,
+// Content-Disposition, Content-Type) are decided here.
 func detectArchiveExtension(ctx context.Context, url string, client *http.Client) string {
 	// 1. Try URL suffix first (fast & no network overhead)
-	lowerURL := strings.ToLower(url)
-	for _, suffix := range []string{".tar.gz", ".tar.xz", ".tar.bz2", ".tgz", ".txz", ".tbz2", ".zip", ".tar"} {
-		if strings.HasSuffix(lowerURL, suffix) {
-			return suffix
-		}
+	if ext := archive.Extension(url); ext != "" {
+		return ext
 	}
 
 	// Try checking for standard file extension at the end of path (before query params)
@@ -96,12 +97,10 @@ func detectArchiveExtension(ctx context.Context, url string, client *http.Client
 	if idx := strings.Index(cleanURL, "#"); idx != -1 {
 		cleanURL = cleanURL[:idx]
 	}
-	lowerClean := strings.ToLower(cleanURL)
-	for _, suffix := range []string{".tar.gz", ".tar.xz", ".tar.bz2", ".tgz", ".txz", ".tbz2", ".zip", ".tar"} {
-		if strings.HasSuffix(lowerClean, suffix) {
-			return suffix
-		}
+	if ext := archive.Extension(cleanURL); ext != "" {
+		return ext
 	}
+	lowerClean := strings.ToLower(cleanURL)
 	if idx := strings.LastIndex(lowerClean, "."); idx != -1 {
 		dotExt := lowerClean[idx:]
 		if !strings.Contains(dotExt, "/") && len(dotExt) <= 6 {
@@ -126,10 +125,8 @@ func detectArchiveExtension(ctx context.Context, url string, client *http.Client
 					if idx := strings.Index(strings.ToLower(cd), "filename="); idx != -1 {
 						filename := cd[idx+9:]
 						filename = strings.Trim(filename, `";`)
-						for _, suffix := range []string{".tar.gz", ".tar.xz", ".tar.bz2", ".tgz", ".txz", ".tbz2", ".zip", ".tar"} {
-							if strings.HasSuffix(strings.ToLower(filename), suffix) {
-								return suffix
-							}
+						if ext := archive.Extension(filename); ext != "" {
+							return ext
 						}
 					}
 				}

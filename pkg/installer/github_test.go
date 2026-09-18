@@ -410,13 +410,27 @@ func TestGitHubInstaller_MatchAssetHeuristics(t *testing.T) {
 		fsysGh := fs.NewMemFS()
 		dlGh := downloader.NewDownloader(fsysGh, nil)
 
+		// Emulate gh: `gh api ...` prints the release JSON, `gh release download <tag>
+		// --dir <dir> --pattern <asset>` writes the asset under its own name into <dir>.
 		runnerGh.RegisterFunc("gh", func(c *exec.MockCmd) error {
 			if len(c.Args) > 0 && c.Args[0] == "api" {
-				_ = fsysGh.WriteFile("/test/ghbin/mytool", []byte("bin"), 0755)
+				c.SetOutput(mockRelJSON)
+				return nil
 			}
-			return nil
+			var dir, pattern string
+			for i := 0; i+1 < len(c.Args); i++ {
+				switch c.Args[i] {
+				case "--dir":
+					dir = c.Args[i+1]
+				case "--pattern":
+					pattern = c.Args[i+1]
+				}
+			}
+			if dir == "" || pattern == "" {
+				t.Fatalf("unexpected gh invocation %v", c.Args)
+			}
+			return fsysGh.WriteFile(filepath.Join(dir, pattern), []byte("bin"), 0644)
 		})
-		runnerGh.Register("gh", mockRelJSON, nil)
 
 		instGh := NewGitHubInstaller(runnerGh, fsysGh, dlGh, &SystemContext{OS: "linux", Arch: "amd64"})
 		instGh.BinDir = "/test/ghbin"
@@ -467,6 +481,297 @@ func TestGitHubInstaller_MatchAssetHeuristics(t *testing.T) {
 			t.Errorf("expected no match, but matched %q", matched.Name)
 		}
 	})
+}
+
+// TestGitHubInstaller_MatchAssetCargoDist reproduces issue #28: cargo-dist publishes a
+// raw self-updater beside every tarball and the updater must never win by list order.
+func TestGitHubInstaller_MatchAssetCargoDist(t *testing.T) {
+	assets := make([]githubAsset, 0, len(mdTuiAssets))
+	for _, name := range mdTuiAssets {
+		assets = append(assets, githubAsset{Name: name})
+	}
+
+	tests := []struct {
+		name string
+		os   string
+		arch string
+		want string
+	}{
+		{"darwin arm64", "darwin", "arm64", "md-tui-aarch64-apple-darwin.tar.xz"},
+		{"darwin amd64", "darwin", "amd64", "md-tui-x86_64-apple-darwin.tar.xz"},
+		{"linux arm64", "linux", "arm64", "md-tui-aarch64-unknown-linux-gnu.tar.xz"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inst := &GitHubInstaller{sysCtx: &SystemContext{OS: tt.os, Arch: tt.arch}}
+			matched := inst.matchAsset(assets, "")
+			if matched == nil {
+				t.Fatalf("expected an asset for %s/%s, got nil", tt.os, tt.arch)
+			}
+			if matched.Name != tt.want {
+				t.Errorf("matchAsset = %q, want %q", matched.Name, tt.want)
+			}
+		})
+	}
+}
+
+// TestGitHubInstaller_InstallExtractsArchiveFormats checks that every archive format the
+// extractor dispatches is extracted by the release installer rather than copied to disk
+// as the binary. The archives nest the binary one level deep, as cargo-dist does.
+func TestGitHubInstaller_InstallExtractsArchiveFormats(t *testing.T) {
+	const binary = "mytool-linux-amd64/mytool"
+	const payload = "binary-payload"
+
+	tests := []struct {
+		asset   string
+		archive func(t *testing.T) []byte
+		viaXz   bool
+	}{
+		{asset: "mytool-linux-amd64.tar.gz", archive: func(t *testing.T) []byte {
+			b, err := createTarGzBytes(map[string]string{binary: payload})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return b
+		}},
+		{asset: "mytool-linux-amd64.tgz", archive: func(t *testing.T) []byte {
+			b, err := createTarGzBytes(map[string]string{binary: payload})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return b
+		}},
+		{asset: "mytool-linux-amd64.tar", archive: func(t *testing.T) []byte {
+			return createTarBytes(t, map[string]string{binary: payload})
+		}},
+		{asset: "mytool-linux-amd64.zip", archive: func(t *testing.T) []byte {
+			return createZipBytes(t, map[string]string{binary: payload})
+		}},
+		{asset: "mytool-linux-amd64.tar.xz", viaXz: true, archive: func(t *testing.T) []byte {
+			return createTarBytes(t, map[string]string{binary: payload})
+		}},
+		{asset: "mytool-linux-amd64.txz", viaXz: true, archive: func(t *testing.T) []byte {
+			return createTarBytes(t, map[string]string{binary: payload})
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.asset, func(t *testing.T) {
+			archiveBytes := tt.archive(t)
+			downloadBytes := archiveBytes
+			runner := exec.NewMockRunner()
+			if tt.viaXz {
+				// The extractor pipes the download through xz; what reaches the tar reader is
+				// whatever the mocked xz emits, so the download itself is opaque.
+				downloadBytes = []byte("opaque xz stream")
+				mockXz(runner, archiveBytes)
+			}
+			server := newReleaseServer(t, "v1.0.0", []string{tt.asset}, downloadBytes)
+
+			var logBuf bytes.Buffer
+			fsys := fs.NewMemFS()
+			inst := NewGitHubInstaller(runner, fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			inst.httpClient = server.Client()
+			inst.BaseURL = server.URL
+			inst.BinDir = "/test/bin"
+			inst.SetLogger(logger.New(logger.Config{Name: "test", Level: logger.LogLevelVerbose, Writer: &logBuf}))
+
+			tool := &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"repo": "owner/tool"}}
+			res, err := inst.Install(context.Background(), tool)
+			if err != nil {
+				t.Fatalf("Install(%s) failed: %v", tt.asset, err)
+			}
+			if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
+				t.Errorf("Binaries = %v, want [mytool]", res.Binaries)
+			}
+
+			got, err := fsys.ReadFile("/test/bin/mytool")
+			if err != nil {
+				t.Fatalf("promoted binary missing: %v", err)
+			}
+			if string(got) != payload {
+				t.Errorf("installed file holds %q, want the extracted binary %q", string(got), payload)
+			}
+			if exists, _ := fsys.Exists(filepath.Join("/test/bin", tt.asset)); exists {
+				t.Errorf("downloaded archive %s was left behind", tt.asset)
+			}
+			if !strings.Contains(logBuf.String(), "Extracting "+tt.asset+"...") {
+				t.Errorf("expected an 'Extracting %s...' log line, got:\n%s", tt.asset, logBuf.String())
+			}
+		})
+	}
+}
+
+// TestGitHubInstaller_InstallCargoDistTarXz is the end-to-end reproduction from issue #28
+// with the minimal md-tui configuration: no assetPattern, binary named differently from
+// the tool, .tar.xz-only unix assets.
+func TestGitHubInstaller_InstallCargoDistTarXz(t *testing.T) {
+	runner := exec.NewMockRunner()
+	mockXz(runner, createTarBytes(t, map[string]string{"md-tui-aarch64-apple-darwin/mdt": "mach-o bytes"}))
+	server := newReleaseServer(t, "v0.10.4", mdTuiAssets, []byte("opaque xz stream"))
+
+	fsys := fs.NewMemFS()
+	inst := NewGitHubInstaller(runner, fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "darwin", Arch: "arm64"})
+	inst.httpClient = server.Client()
+	inst.BaseURL = server.URL
+	inst.BinDir = "/test/bin"
+
+	tool := &config.ToolConfig{
+		Name:          "md-tui",
+		Binaries:      []interface{}{"mdt"},
+		InstallParams: map[string]interface{}{"repo": "owner/tool"},
+	}
+	res, err := inst.Install(context.Background(), tool)
+	if err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+	if downloads := server.downloads(); len(downloads) != 1 || downloads[0] != "md-tui-aarch64-apple-darwin.tar.xz" {
+		t.Errorf("downloaded %v, want only md-tui-aarch64-apple-darwin.tar.xz", downloads)
+	}
+	if res.Version != "v0.10.4" || len(res.Binaries) != 1 || res.Binaries[0] != "mdt" {
+		t.Errorf("result = %+v, want version v0.10.4 and binaries [mdt]", res)
+	}
+	if got, err := fsys.ReadFile("/test/bin/mdt"); err != nil || string(got) != "mach-o bytes" {
+		t.Errorf("mdt = %q, %v; want the extracted binary", string(got), err)
+	}
+	if exists, _ := fsys.Exists("/test/bin/md-tui"); exists {
+		t.Errorf("the archive must not be written to disk as a binary named after the tool")
+	}
+}
+
+// TestGitHubInstaller_InstallRawBinaryAssets keeps the raw-binary path for assets that
+// carry no archive extension, including a cargo-dist self-updater a tool asks for
+// explicitly: refusing runnable files would be as wrong as chmod-ing tarballs.
+func TestGitHubInstaller_InstallRawBinaryAssets(t *testing.T) {
+	tests := []struct {
+		name    string
+		asset   string
+		pattern string
+	}{
+		{"extensionless", "mytool-linux-amd64", ""},
+		{"versioned extensionless", "mytool-1.2.3-linux-amd64", ""},
+		{"self-updater selected by pattern", "mytool-linux-amd64-update", "-update$"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newReleaseServer(t, "v1.0.0", []string{tt.asset}, []byte("raw-binary"))
+			fsys := fs.NewMemFS()
+			inst := NewGitHubInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			inst.httpClient = server.Client()
+			inst.BaseURL = server.URL
+			inst.BinDir = "/test/bin"
+
+			params := map[string]interface{}{"repo": "owner/tool"}
+			if tt.pattern != "" {
+				params["assetPattern"] = tt.pattern
+			}
+			res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: params})
+			if err != nil {
+				t.Fatalf("Install(%s) failed: %v", tt.asset, err)
+			}
+			if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
+				t.Errorf("Binaries = %v, want [mytool]", res.Binaries)
+			}
+			if got, err := fsys.ReadFile("/test/bin/mytool"); err != nil || string(got) != "raw-binary" {
+				t.Errorf("mytool = %q, %v; want the downloaded binary", string(got), err)
+			}
+			info, err := fsys.Stat("/test/bin/mytool")
+			if err != nil || info.Mode()&0111 == 0 {
+				t.Errorf("mytool mode = %v, %v; want executable", info, err)
+			}
+			if exists, _ := fsys.Exists(filepath.Join("/test/bin", tt.asset)); exists && tt.asset != "mytool" {
+				t.Errorf("download %s was left beside the renamed binary", tt.asset)
+			}
+		})
+	}
+}
+
+// TestGitHubInstaller_InstallArchiveFailures covers the extraction path's own failures: a
+// corrupt archive and an archive that does not contain the declared binary both fail the
+// install and leave no download behind.
+func TestGitHubInstaller_InstallArchiveFailures(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload func(t *testing.T) []byte
+		wantErr string
+	}{
+		{"corrupt archive", func(*testing.T) []byte { return []byte("not gzip") }, "extracting asset archive"},
+		{"binary missing from archive", func(t *testing.T) []byte {
+			b, err := createTarGzBytes(map[string]string{"mytool-linux-amd64/README": "docs only"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return b
+		}, `binary "mytool" not found`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			const asset = "mytool-linux-amd64.tar.gz"
+			server := newReleaseServer(t, "v1.0.0", []string{asset}, tt.payload(t))
+			fsys := fs.NewMemFS()
+			inst := NewGitHubInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			inst.httpClient = server.Client()
+			inst.BaseURL = server.URL
+			inst.BinDir = "/test/bin"
+
+			_, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"repo": "owner/tool"}})
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("Install error = %v, want one containing %q", err, tt.wantErr)
+			}
+			if exists, _ := fsys.Exists("/test/bin/mytool"); exists {
+				t.Error("a binary was installed despite the failure")
+			}
+			if exists, _ := fsys.Exists(filepath.Join("/test/bin", asset)); exists {
+				t.Error("the downloaded archive was left behind")
+			}
+		})
+	}
+}
+
+// TestGitHubInstaller_InstallRejectsUnusableAssets checks that an asset which is neither
+// an extractable archive nor a raw executable fails the install instead of being made
+// executable and reported as installed.
+func TestGitHubInstaller_InstallRejectsUnusableAssets(t *testing.T) {
+	tests := []struct {
+		name    string
+		asset   string
+		pattern string
+	}{
+		{"rar archive", "mytool-linux-amd64.rar", ""},
+		{"7z archive", "mytool-linux-amd64.7z", ""},
+		{"bare xz stream", "mytool-linux-amd64.xz", ""},
+		{"zstd tarball selected by pattern", "mytool-linux-amd64.tar.zst", `\.zst$`},
+		{"debian package selected by pattern", "mytool-linux-amd64.deb", `\.deb$`},
+		{"checksum selected by pattern", "mytool-linux-amd64.sha256", `\.sha256$`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newReleaseServer(t, "v1.0.0", []string{tt.asset}, []byte("not a program"))
+			fsys := fs.NewMemFS()
+			inst := NewGitHubInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			inst.httpClient = server.Client()
+			inst.BaseURL = server.URL
+			inst.BinDir = "/test/bin"
+
+			params := map[string]interface{}{"repo": "owner/tool"}
+			if tt.pattern != "" {
+				params["assetPattern"] = tt.pattern
+			}
+			_, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: params})
+			if err == nil {
+				t.Fatalf("Install(%s) succeeded, want an error", tt.asset)
+			}
+			if !strings.Contains(err.Error(), tt.asset) {
+				t.Errorf("error %q does not name the asset %s", err, tt.asset)
+			}
+			if exists, _ := fsys.Exists("/test/bin/mytool"); exists {
+				t.Errorf("%s was installed as the binary", tt.asset)
+			}
+			if exists, _ := fsys.Exists(filepath.Join("/test/bin", tt.asset)); exists {
+				t.Errorf("rejected download %s was left behind", tt.asset)
+			}
+		})
+	}
 }
 
 func TestGitHubInstaller_ProgressLogging(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -24,6 +25,66 @@ var ErrSymlinkTraversalDetected = errors.New("symbolic link traversal detected")
 
 // ErrZipSlipDetected is returned when an archive entry path escapes the destination directory.
 var ErrZipSlipDetected = errors.New("zip slip traversal detected")
+
+// ErrUnsupportedFormat is returned by Extract when the file name carries no suffix it can dispatch on.
+var ErrUnsupportedFormat = errors.New("unsupported or unrecognized archive format")
+
+// supportedExtensions lists every filename suffix Extract dispatches on. It is the single
+// definition of "an archive this package can unpack": installers decide whether to extract
+// a download by consulting it through IsSupported, so an entry here without a matching
+// case in Extract, or the reverse, is a bug that TestSupportedExtensionsDispatch catches.
+//
+// Compound suffixes come before the bare compression suffix they end with (".tar.gz"
+// before ".gz") so that Extension reports the most specific one.
+var supportedExtensions = []string{
+	".tar.gz", ".tgz",
+	".tar.bz2", ".tbz2", ".tbz",
+	".tar.xz", ".txz",
+	".tar",
+	".zip",
+	".dmg",
+	".pkg",
+	".gz",
+}
+
+// unsupportedExtensions lists archive and compression suffixes Extract recognises but
+// cannot unpack. A file carrying one of these is an archive that needs a tool this package
+// does not drive; it is never a raw executable, and callers rely on Extension naming it so
+// they can refuse it instead of marking a compressed stream executable.
+var unsupportedExtensions = []string{
+	".tar.zst", ".tar.lz4", ".tar.lzma", ".tar.z", ".tzst",
+	".zst", ".lz4", ".lzma", ".xz", ".bz2", ".z", ".lz",
+	".rar", ".7z",
+}
+
+// SupportedExtensions returns the suffixes Extract can unpack, most specific first.
+func SupportedExtensions() []string {
+	return append([]string(nil), supportedExtensions...)
+}
+
+// Extension returns the archive or compression suffix of name, lower-cased, or "" when
+// name has none. The suffix may be one Extract cannot unpack; IsSupported tells the two
+// apart.
+func Extension(name string) string {
+	lower := strings.ToLower(name)
+	for _, suffix := range supportedExtensions {
+		if strings.HasSuffix(lower, suffix) {
+			return suffix
+		}
+	}
+	for _, suffix := range unsupportedExtensions {
+		if strings.HasSuffix(lower, suffix) {
+			return suffix
+		}
+	}
+	return ""
+}
+
+// IsSupported reports whether Extract can unpack a file called name.
+func IsSupported(name string) bool {
+	ext := Extension(name)
+	return ext != "" && slices.Contains(supportedExtensions, ext)
+}
 
 // Extractor handles the extraction of various archive formats using either Go's standard library or system tools.
 type Extractor struct {
@@ -68,34 +129,34 @@ func isSafeTargetPath(dest, name string) (string, error) {
 	return cleanTarget, nil
 }
 
-// Extract detects format by filename extension and extracts src archive to dest directory.
+// Extract detects the format from the suffix of src (see supportedExtensions) and extracts
+// the archive into dest. A src that IsSupported rejects fails with ErrUnsupportedFormat.
 func (e *Extractor) Extract(ctx context.Context, src string, dest string) error {
-	lower := strings.ToLower(src)
-
 	// Ensure destination directory exists before extracting
 	if err := e.fsys.MkdirAll(dest, 0755); err != nil {
 		return fmt.Errorf("creating destination directory: %w", err)
 	}
 
 	var err error
-	if strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tgz") {
+	switch Extension(src) {
+	case ".tar.gz", ".tgz":
 		err = e.extractTar(ctx, src, dest, "tar.gz")
-	} else if strings.HasSuffix(lower, ".tar.bz2") || strings.HasSuffix(lower, ".tbz2") || strings.HasSuffix(lower, ".tbz") {
+	case ".tar.bz2", ".tbz2", ".tbz":
 		err = e.extractTar(ctx, src, dest, "tar.bz2")
-	} else if strings.HasSuffix(lower, ".tar.xz") || strings.HasSuffix(lower, ".txz") {
+	case ".tar.xz", ".txz":
 		err = e.extractTarXz(ctx, src, dest)
-	} else if strings.HasSuffix(lower, ".tar") {
+	case ".tar":
 		err = e.extractTar(ctx, src, dest, "tar")
-	} else if strings.HasSuffix(lower, ".zip") {
+	case ".zip":
 		err = e.extractZip(ctx, src, dest)
-	} else if strings.HasSuffix(lower, ".dmg") {
+	case ".dmg":
 		err = e.extractDmg(ctx, src, dest)
-	} else if strings.HasSuffix(lower, ".pkg") {
+	case ".pkg":
 		err = e.extractPkg(ctx, src, dest)
-	} else if strings.HasSuffix(lower, ".gz") {
+	case ".gz":
 		err = e.extractSingleGz(ctx, src, dest)
-	} else {
-		return fmt.Errorf("unsupported or unrecognized archive format for %q", src)
+	default:
+		return fmt.Errorf("%w for %q", ErrUnsupportedFormat, src)
 	}
 
 	if err != nil {

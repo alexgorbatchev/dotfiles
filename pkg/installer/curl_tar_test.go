@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -184,6 +185,20 @@ func TestCurlTarInstaller(t *testing.T) {
 		}
 		if e := detectArchiveExtension(context.Background(), ctServer.URL+"/download?type=bz2", ctServer.Client()); e != ".tar.bz2" {
 			t.Errorf("expected .tar.bz2 from Content-Type, got %q", e)
+		}
+	})
+
+	t.Run("detectArchiveExtension recognises every extractable suffix in Content-Disposition", func(t *testing.T) {
+		cdServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Disposition", `attachment; filename="tool`+r.URL.Query().Get("ext")+`"`)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer cdServer.Close()
+
+		for _, ext := range archive.SupportedExtensions() {
+			if got := detectArchiveExtension(context.Background(), cdServer.URL+"/download?ext="+ext, cdServer.Client()); got != ext {
+				t.Errorf("detectArchiveExtension(Content-Disposition tool%s) = %q, want %q", ext, got, ext)
+			}
 		}
 	})
 

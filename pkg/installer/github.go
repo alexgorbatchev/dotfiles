@@ -177,13 +177,6 @@ func (g *GitHubInstaller) SupportsSudo() bool {
 	return false
 }
 
-func (g *GitHubInstaller) getToolLogger(toolName string) *logger.Logger {
-	if g.log != nil {
-		return g.log.GetSubLogger("", toolName)
-	}
-	return nil
-}
-
 // releaseListPageSize bounds the releases listing consulted when a tool opts into
 // prereleases. The listing is ordered newest first, so a small page still finds the
 // newest published release even when a few drafts sit at the top of it.
@@ -259,7 +252,7 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		version = "latest"
 	}
 
-	toolLog := g.getToolLogger(tool.Name)
+	toolLog := toolLogger(g.log, tool.Name)
 	if toolLog != nil {
 		toolLog.Info(logger.Message(fmt.Sprintf("Fetching release info for %s (%s)...", repo, version)))
 	}
@@ -383,36 +376,10 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		}
 	}
 
-	var promotedBinaries []string
-	lower := strings.ToLower(matched.Name)
-	if strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tgz") || strings.HasSuffix(lower, ".zip") {
-		if toolLog != nil {
-			toolLog.Info(logger.Message(fmt.Sprintf("Extracting %s...", matched.Name)))
-		}
-		if err := g.extractor.Extract(ctx, assetPath, destDir); err != nil {
-			_ = g.fsys.Remove(assetPath)
-			return nil, fmt.Errorf("extracting asset archive: %w", err)
-		}
-		_ = g.fsys.Remove(assetPath)
-
-		var err error
-		promotedBinaries, err = PromoteBinaries(g.fsys, destDir, tool.Name, tool.Binaries)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		finalBinPath := filepath.Join(destDir, tool.Name)
-		if assetPath != finalBinPath {
-			data, err := g.fsys.ReadFile(assetPath)
-			if err == nil {
-				if errWrite := g.fsys.WriteFile(finalBinPath, data, 0755); errWrite == nil {
-					_ = g.fsys.Remove(assetPath)
-				}
-			}
-		}
-		chmodCmd := g.runner.CommandContext(ctx, "chmod", "+x", finalBinPath)
-		_ = chmodCmd.Run()
-		promotedBinaries = GetBinaryNames(tool.Name, tool.Binaries)
+	placer := releaseAssetInstaller{fsys: g.fsys, extractor: g.extractor, log: toolLog}
+	promotedBinaries, err := placer.install(ctx, assetPath, destDir, tool)
+	if err != nil {
+		return nil, err
 	}
 
 	var versionResult string

@@ -298,6 +298,94 @@ func TestUnsupportedFormat(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for unsupported format, got nil")
 	}
+	if !errors.Is(err, ErrUnsupportedFormat) {
+		t.Fatalf("expected ErrUnsupportedFormat, got %v", err)
+	}
+}
+
+func TestExtension(t *testing.T) {
+	tests := []struct {
+		name          string
+		wantExtension string
+		wantSupported bool
+	}{
+		{"tool-v1.0.0.tar.gz", ".tar.gz", true},
+		{"tool-v1.0.0.tgz", ".tgz", true},
+		{"tool-v1.0.0.tar.bz2", ".tar.bz2", true},
+		{"tool-v1.0.0.tbz2", ".tbz2", true},
+		{"tool-v1.0.0.tbz", ".tbz", true},
+		{"tool-v1.0.0.tar.xz", ".tar.xz", true},
+		{"tool-v1.0.0.txz", ".txz", true},
+		{"tool-v1.0.0.tar", ".tar", true},
+		{"tool-v1.0.0.zip", ".zip", true},
+		{"hermit-darwin-arm64.gz", ".gz", true},
+		{"tool.dmg", ".dmg", true},
+		{"tool.pkg", ".pkg", true},
+		{"tool-v1.0.0.TAR.GZ", ".tar.gz", true},
+		{"tool-v1.0.0.TBz2", ".tbz2", true},
+		{"/downloads/tool-v1.0.0.tar.xz", ".tar.xz", true},
+		// Recognised as archives so callers can refuse them, but not extractable.
+		{"tool-v1.0.0.rar", ".rar", false},
+		{"tool-v1.0.0.7z", ".7z", false},
+		{"tool-v1.0.0.tar.zst", ".tar.zst", false},
+		{"tool-v1.0.0.tar.lzma", ".tar.lzma", false},
+		{"tool-linux-amd64.xz", ".xz", false},
+		{"tool-linux-amd64.bz2", ".bz2", false},
+		// Not archives at all.
+		{"tool.exe", "", false},
+		{"tool-linux-amd64", "", false},
+		{"tool-1.2.3-linux-amd64", "", false},
+		{"README.txt", "", false},
+		{"", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Extension(tt.name); got != tt.wantExtension {
+				t.Errorf("Extension(%q) = %q, want %q", tt.name, got, tt.wantExtension)
+			}
+			if got := IsSupported(tt.name); got != tt.wantSupported {
+				t.Errorf("IsSupported(%q) = %v, want %v", tt.name, got, tt.wantSupported)
+			}
+		})
+	}
+}
+
+// TestSupportedExtensionsDispatch ties the advertised list to Extract itself: every
+// listed suffix must reach a format handler (and so fail on the missing file, not on
+// format detection), and a suffix outside the list must be refused as unsupported.
+func TestSupportedExtensionsDispatch(t *testing.T) {
+	memFS := fs.NewMemFS()
+	ext := NewExtractor(memFS, exec.NewMockRunner())
+
+	supported := SupportedExtensions()
+	if len(supported) == 0 {
+		t.Fatal("SupportedExtensions() is empty")
+	}
+	for _, suffix := range supported {
+		t.Run(suffix, func(t *testing.T) {
+			err := ext.Extract(context.Background(), "/missing"+suffix, "/dest")
+			if err == nil {
+				t.Fatalf("Extract of a missing %s file succeeded", suffix)
+			}
+			if errors.Is(err, ErrUnsupportedFormat) {
+				t.Errorf("%s is listed as supported but Extract refused it: %v", suffix, err)
+			}
+		})
+	}
+
+	for _, suffix := range []string{".rar", ".7z", ".xz", ".tar.zst", ".exe", ""} {
+		t.Run("unsupported"+suffix, func(t *testing.T) {
+			err := ext.Extract(context.Background(), "/missing"+suffix, "/dest")
+			if !errors.Is(err, ErrUnsupportedFormat) {
+				t.Errorf("Extract(/missing%s) = %v, want ErrUnsupportedFormat", suffix, err)
+			}
+		})
+	}
+
+	supported[0] = "mutated"
+	if SupportedExtensions()[0] == "mutated" {
+		t.Error("SupportedExtensions() must return a copy")
+	}
 }
 
 func TestExtractorSymlinksAndHeuristics(t *testing.T) {

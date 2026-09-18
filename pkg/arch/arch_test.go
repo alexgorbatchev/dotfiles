@@ -321,6 +321,10 @@ func TestIsNonBinaryAsset(t *testing.T) {
 		"extension.vsix",
 		"hash.b3",
 		"archive.zst",
+		// cargo-dist ships an axoupdater self-updater named <app>-<target>-update beside
+		// every archive, for example md-tui-aarch64-apple-darwin-update.
+		"md-tui-aarch64-apple-darwin-update",
+		"tool-x86_64-unknown-linux-gnu-UPDATE",
 	}
 	for _, name := range nonBinaries {
 		if !IsNonBinaryAsset(name) {
@@ -332,11 +336,48 @@ func TestIsNonBinaryAsset(t *testing.T) {
 		"tool-linux-amd64.tar.gz",
 		"tool-darwin-arm64.zip",
 		"mytool",
+		"auto-update-linux-amd64.tar.gz",
+		"tool-update-linux-amd64",
 	}
 	for _, name := range binaries {
 		if IsNonBinaryAsset(name) {
 			t.Errorf("IsNonBinaryAsset(%q) = true, want false", name)
 		}
+	}
+}
+
+// TestIsDataAsset separates files that cannot be run from runnable artifacts that merely
+// lose automatic selection: an installer refuses the former after download but must still
+// install the latter when a tool picks one explicitly with assetPattern.
+func TestIsDataAsset(t *testing.T) {
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{"tool-linux-amd64.sha256", true},
+		{"SHASUMS256.txt", true},
+		{"tool-linux-amd64.sig", true},
+		{"dist-manifest.json", true},
+		{"tool-linux-amd64.deb", true},
+		{"tool-macos.pkg", true},
+		{"README.md", true},
+		{"md-tui-aarch64-apple-darwin-update", false},
+		{"caddy_2.9.1_buildable-artifact.tar.gz", false},
+		{"tool-linux-amd64.tar.gz", false},
+		{"tool-linux-amd64", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsDataAsset(tt.name); got != tt.want {
+				t.Errorf("IsDataAsset(%q) = %v, want %v", tt.name, got, tt.want)
+			}
+			if !tt.want {
+				return
+			}
+			if !IsNonBinaryAsset(tt.name) {
+				t.Errorf("IsNonBinaryAsset(%q) = false, but every data asset must also be excluded from selection", tt.name)
+			}
+		})
 	}
 }
 
@@ -563,6 +604,106 @@ func TestSelectBestMatch(t *testing.T) {
 		got := SelectBestMatch(assets, sys)
 		if got != "tool-linux-amd64.tar.gz" {
 			t.Errorf("SelectBestMatch = %q, want tool-linux-amd64.tar.gz", got)
+		}
+	})
+
+	t.Run("prefer an extractable archive over a raw sibling", func(t *testing.T) {
+		tests := []struct {
+			name   string
+			sys    SystemInfo
+			assets []string
+			want   string
+		}{
+			{
+				"macOS: raw binary listed first loses to the tarball",
+				SystemInfo{OS: OSDarwin, Arch: ArchARM64},
+				[]string{"tool-darwin-arm64", "tool-darwin-arm64.tar.xz"},
+				"tool-darwin-arm64.tar.xz",
+			},
+			{
+				"Linux: raw binary listed first loses to the tarball of the same libc",
+				SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc},
+				[]string{"tool-linux-amd64-gnu", "tool-linux-amd64-gnu.tar.gz"},
+				"tool-linux-amd64-gnu.tar.gz",
+			},
+			{
+				"Linux: libc fit outranks the archive preference",
+				SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc},
+				[]string{"tool-linux-amd64-gnu", "tool-linux-amd64-musl.tar.gz"},
+				"tool-linux-amd64-gnu",
+			},
+			{
+				"macOS: CPU fit outranks the archive preference",
+				SystemInfo{OS: OSDarwin, Arch: ArchARM64},
+				[]string{"tool-darwin-arm64", "tool-darwin-x86_64.zip"},
+				"tool-darwin-arm64",
+			},
+			{
+				"raw binary is still chosen when no archive exists",
+				SystemInfo{OS: OSDarwin, Arch: ArchARM64},
+				[]string{"tool-darwin-arm64", "tool-darwin-arm64.sha256"},
+				"tool-darwin-arm64",
+			},
+			{
+				"an archive the extractor cannot open is not preferred",
+				SystemInfo{OS: OSDarwin, Arch: ArchARM64},
+				[]string{"tool-darwin-arm64", "tool-darwin-arm64.7z"},
+				"tool-darwin-arm64",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				if got := SelectBestMatch(tt.assets, tt.sys); got != tt.want {
+					t.Errorf("SelectBestMatch(%v) = %q, want %q", tt.assets, got, tt.want)
+				}
+			})
+		}
+	})
+
+	t.Run("cargo-dist release with self-updater binaries", func(t *testing.T) {
+		// henriklovhaug/md-tui v0.10.4, recorded with gh release view --json assets.
+		assets := []string{
+			"dist-manifest.json",
+			"md-tui-aarch64-apple-darwin-update",
+			"md-tui-aarch64-apple-darwin.tar.xz",
+			"md-tui-aarch64-apple-darwin.tar.xz.sha256",
+			"md-tui-aarch64-unknown-linux-gnu-update",
+			"md-tui-aarch64-unknown-linux-gnu.tar.xz",
+			"md-tui-aarch64-unknown-linux-gnu.tar.xz.sha256",
+			"md-tui-installer.ps1",
+			"md-tui-installer.sh",
+			"md-tui-x86_64-apple-darwin-update",
+			"md-tui-x86_64-apple-darwin.tar.xz",
+			"md-tui-x86_64-apple-darwin.tar.xz.sha256",
+			"md-tui-x86_64-pc-windows-msvc-update",
+			"md-tui-x86_64-pc-windows-msvc.zip",
+			"md-tui-x86_64-pc-windows-msvc.zip.sha256",
+			"md-tui-x86_64-unknown-linux-gnu-update",
+			"md-tui-x86_64-unknown-linux-gnu.tar.xz",
+			"md-tui-x86_64-unknown-linux-gnu.tar.xz.sha256",
+			"md-tui-x86_64-unknown-linux-musl-update",
+			"md-tui-x86_64-unknown-linux-musl.tar.xz",
+			"md-tui-x86_64-unknown-linux-musl.tar.xz.sha256",
+			"sha256.sum",
+			"source.tar.gz",
+			"source.tar.gz.sha256",
+		}
+		tests := []struct {
+			sys  SystemInfo
+			want string
+		}{
+			{SystemInfo{OS: OSDarwin, Arch: ArchARM64}, "md-tui-aarch64-apple-darwin.tar.xz"},
+			{SystemInfo{OS: OSDarwin, Arch: ArchAMD64}, "md-tui-x86_64-apple-darwin.tar.xz"},
+			{SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcGlibc}, "md-tui-x86_64-unknown-linux-gnu.tar.xz"},
+			{SystemInfo{OS: OSLinux, Arch: ArchAMD64, Libc: LibcMusl}, "md-tui-x86_64-unknown-linux-musl.tar.xz"},
+			{SystemInfo{OS: OSLinux, Arch: ArchARM64, Libc: LibcGlibc}, "md-tui-aarch64-unknown-linux-gnu.tar.xz"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sys.OS+"_"+tt.sys.Arch+"_"+tt.sys.Libc, func(t *testing.T) {
+				if got := SelectBestMatch(assets, tt.sys); got != tt.want {
+					t.Errorf("SelectBestMatch = %q, want %q", got, tt.want)
+				}
+			})
 		}
 	})
 }

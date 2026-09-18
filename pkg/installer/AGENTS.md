@@ -12,6 +12,8 @@ Tool installer plugins (github-release, curl-script, cargo, brew, apt, dnf, pacm
 - Homebrew installer (`BrewInstaller`): `trust` defaults to `false`. When `trust: true`, automatically trust configured `tap`(s) before tapping/installing.
 - Always use the injected `fs.FS` (`ResolvedFS.IsAbs()` / `ResolvedFS.Abs()`) for resolving user/tool paths (such as `binaryPath` in manual installer) instead of raw stdlib `filepath.IsAbs`.
 - Log `INFO` progress messages when fetching API releases, downloading assets, and extracting archives.
+- Decide whether a download is an archive with `archive.IsSupported` / `archive.Extension`; never keep a local list of archive suffixes. Release installers (github-release, gitea-release) hand the downloaded asset to `releaseAssetInstaller` in `release_asset.go`, which extracts archives, installs extensionless assets as the binary, and fails on anything else (unextractable archive formats, checksums, packages) instead of chmod-ing them.
+- `MatchAssetPattern` globs support minimatch-style brace alternation (`*.{tar.xz,zip}`) via `expandBraces` over `path.Match`, matching the v1 matcher.
 - Implement installer plugins by satisfying the `Installer` interface in `pkg/installer/installer.go`.
 
 ## Local gotchas
