@@ -44,6 +44,11 @@ var checkUpdatesCmd = &cobra.Command{
 				continue
 			}
 
+			if !tool.UpdateCheckEnabled() {
+				log.GetSubLogger("", tool.Name).Debug(logger.Message("Update checks disabled by updateCheck.enabled"))
+				continue
+			}
+
 			inst, err := instReg.Get(tool.InstallationMethod)
 			if err != nil {
 				log.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Installer %q not found", tool.InstallationMethod)))
@@ -71,19 +76,11 @@ var checkUpdatesCmd = &cobra.Command{
 					localVersion = *tool.Version
 				}
 
-				var hasUpdate bool
-				if res.LatestVersion != "" {
-					if localVersion != "" {
-						status := version.CheckVersionStatus(localVersion, res.LatestVersion)
-						if status == version.StatusNewerAvailable {
-							hasUpdate = true
-						} else if status == version.StatusInvalidCurrent || status == version.StatusInvalidLatest {
-							hasUpdate = version.CleanVersion(res.LatestVersion) != version.CleanVersion(localVersion)
-						}
-					} else {
-						hasUpdate = true
-					}
-				}
+				hasUpdate := version.UpdateAvailable(version.UpdateQuery{
+					Installed:  localVersion,
+					Latest:     res.LatestVersion,
+					Constraint: tool.UpdateCheckConstraint(),
+				})
 
 				toolLog := log.GetSubLogger("", tool.Name)
 				if hasUpdate {

@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -350,6 +351,7 @@ type mockCheckUpdateInstaller struct {
 	localVersion  string
 	latestVersion string
 	err           error
+	calls         atomic.Int32
 }
 
 func (m *mockCheckUpdateInstaller) Name() string       { return m.name }
@@ -361,6 +363,7 @@ func (m *mockCheckUpdateInstaller) Uninstall(ctx context.Context, tool *config.T
 	return nil
 }
 func (m *mockCheckUpdateInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
+	m.calls.Add(1)
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -369,6 +372,104 @@ func (m *mockCheckUpdateInstaller) CheckUpdate(ctx context.Context, tool *config
 		LocalVersion:  m.localVersion,
 		LatestVersion: m.latestVersion,
 	}, nil
+}
+
+// TestDashboard_CheckUpdateRoute_UpdateCheckSettings pins the two things a tool's
+// .updateCheck() block does to the dashboard's answer: enabled:false keeps the
+// installer out of the request entirely, and a constraint bounds which upstream
+// release counts as an update.
+func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
+	log := logger.New(logger.Config{Name: "test", Level: logger.LogLevelQuiet, Writer: io.Discard})
+
+	ctx := context.Background()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("connecting to db: %v", err)
+	}
+	defer sqlDB.Close()
+
+	mockInst := &mockCheckUpdateInstaller{
+		name:          "mock-updatecheck-settings-inst",
+		hasUpdate:     true,
+		localVersion:  "1.2.3",
+		latestVersion: "2.0.0",
+	}
+	if err := installer.Register(mockInst); err != nil {
+		t.Fatalf("registering mock installer: %v", err)
+	}
+
+	projCfg := &config.ProjectConfig{Paths: config.PathsConfig{ToolConfigsDir: t.TempDir()}}
+	disabled, caret, wide := false, "^1.2.3", ">=1.0.0"
+	toolConfigs := []*config.ToolConfig{
+		{
+			Name:               "checks-off",
+			InstallationMethod: mockInst.name,
+			UpdateCheck:        &config.ToolConfigUpdateCheck{Enabled: &disabled},
+		},
+		{
+			Name:               "constrained-out",
+			InstallationMethod: mockInst.name,
+			UpdateCheck:        &config.ToolConfigUpdateCheck{Constraint: &caret},
+		},
+		{
+			Name:               "constrained-in",
+			InstallationMethod: mockInst.name,
+			UpdateCheck:        &config.ToolConfigUpdateCheck{Constraint: &wide},
+		},
+	}
+
+	server := NewServer(log, "127.0.0.1", 0, registry.NewRegistry(sqlDB), testFS(), "", projCfg, toolConfigs, nil)
+	if err := server.Start(); err != nil {
+		t.Fatalf("starting server: %v", err)
+	}
+	defer server.Stop()
+
+	checkUpdate := func(t *testing.T, tool string) map[string]any {
+		t.Helper()
+		url := fmt.Sprintf("http://127.0.0.1:%d/api/tools/%s/check-update", server.Port(), tool)
+		resp, err := http.Post(url, "application/json", nil)
+		if err != nil {
+			t.Fatalf("POST check-update for %s: %v", tool, err)
+		}
+		defer resp.Body.Close()
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding check-update response for %s: %v", tool, err)
+		}
+		data, ok := body["data"].(map[string]any)
+		if !ok {
+			t.Fatalf("check-update for %s returned no data object: %v", tool, body)
+		}
+		return data
+	}
+
+	t.Run("enabled false answers without asking the installer", func(t *testing.T) {
+		before := mockInst.calls.Load()
+		data := checkUpdate(t, "checks-off")
+		if data["hasUpdate"] != false {
+			t.Errorf("hasUpdate = %v, want false for a tool with update checks disabled", data["hasUpdate"])
+		}
+		if got := mockInst.calls.Load(); got != before {
+			t.Errorf("the installer was asked %d time(s); a disabled update check must not reach it", got-before)
+		}
+	})
+
+	t.Run("a constraint excludes an out-of-range release", func(t *testing.T) {
+		data := checkUpdate(t, "constrained-out")
+		if data["hasUpdate"] != false {
+			t.Errorf("hasUpdate = %v, want false: 2.0.0 is outside ^1.2.3", data["hasUpdate"])
+		}
+		if data["latestVersion"] != "2.0.0" {
+			t.Errorf("latestVersion = %v, want the release to still be reported", data["latestVersion"])
+		}
+	})
+
+	t.Run("a constraint that admits the release leaves the update alone", func(t *testing.T) {
+		data := checkUpdate(t, "constrained-in")
+		if data["hasUpdate"] != true {
+			t.Errorf("hasUpdate = %v, want true: 2.0.0 satisfies >=1.0.0", data["hasUpdate"])
+		}
+	})
 }
 
 func TestDashboard_CheckUpdateRoute(t *testing.T) {

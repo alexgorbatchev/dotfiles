@@ -57,6 +57,46 @@ func CheckVersionStatus(current, latest string) VersionComparisonStatus {
 	return StatusUpToDate
 }
 
+// UpdateQuery carries everything the question "is an update available?" depends on.
+// It exists so every caller asks that question the same way instead of reimplementing
+// the comparison next to whichever installer result it happens to hold.
+type UpdateQuery struct {
+	// Installed is the version currently on the machine, empty when nothing is recorded.
+	Installed string
+	// Latest is the newest version the installer resolved upstream, empty when it
+	// resolved none.
+	Latest string
+	// Constraint is the tool's updateCheck.constraint: a semver range bounding which
+	// versions count as an available update. Empty accepts any version.
+	Constraint string
+}
+
+// UpdateAvailable reports whether Latest counts as an available update over Installed.
+//
+// A constraint is a boundary the user asked for, so it is applied first: a version
+// outside it is not an update however new it is. Versions that semver cannot parse
+// (Debian revisions, dates, "nightly") are compared for inequality, which is the most
+// an unordered pair of labels supports.
+func UpdateAvailable(q UpdateQuery) bool {
+	if q.Constraint != "" && !MatchesConstraint(q.Latest, q.Constraint) {
+		return false
+	}
+	if q.Latest == "" {
+		return false
+	}
+	if q.Installed == "" {
+		return true
+	}
+	switch CheckVersionStatus(q.Installed, q.Latest) {
+	case StatusNewerAvailable:
+		return true
+	case StatusInvalidCurrent, StatusInvalidLatest:
+		return CleanVersion(q.Latest) != CleanVersion(q.Installed)
+	default:
+		return false
+	}
+}
+
 // MatchesConstraint parses and evaluates an NPM-style SemVer constraint expression (e.g. ^1.2.3, ~1.2.3, >=1.0.0, etc.)
 // returning true if the version satisfies the constraint boundary rules.
 func MatchesConstraint(versionStr string, constraint string) bool {

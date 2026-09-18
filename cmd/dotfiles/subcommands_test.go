@@ -1839,6 +1839,51 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 	})
 }
 
+// TestCheckUpdatesCommand_UpdateCheckSettings pins what a tool's .updateCheck() block
+// does to check-updates: enabled:false takes the tool out of the run, and a constraint
+// decides whether the newest release upstream counts as an update at all.
+func TestCheckUpdatesCommand_UpdateCheckSettings(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	const repoOff, repoPinned, repoAdmitted = "acme/uc-off", "acme/uc-pinned", "acme/uc-admitted"
+	newReleaseServer(t, map[string]mockRelease{
+		repoOff:      {Tag: "v9.9.9"},
+		repoPinned:   {Tag: "v2.0.0"},
+		repoAdmitted: {Tag: "v1.2.9"},
+	})
+
+	p := newE2EProject(t, fmt.Sprintf(`
+		"off": {"name": "off", "installationMethod": "github-release", "installParams": {"repo": %q}, "updateCheck": {"enabled": false}},
+		"pinned": {"name": "pinned", "installationMethod": "github-release", "installParams": {"repo": %q}, "updateCheck": {"constraint": "~1.2.0"}},
+		"admitted": {"name": "admitted", "installationMethod": "github-release", "installParams": {"repo": %q}, "updateCheck": {"constraint": "~1.2.0"}}
+	`, repoOff, repoPinned, repoAdmitted))
+	p.seedInstallation(t, "off", "v0.1.0", filepath.Join(p.Root, "installed", "off"))
+	p.seedInstallation(t, "pinned", "v1.2.3", filepath.Join(p.Root, "installed", "pinned"))
+	p.seedInstallation(t, "admitted", "v1.2.3", filepath.Join(p.Root, "installed", "admitted"))
+
+	out, err := p.run("check-updates", "--json")
+	if err != nil {
+		t.Fatalf("check-updates --json: %v\n%s", err, out.Combined)
+	}
+	var results []ToolUpdateResult
+	if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
+		t.Fatalf("stdout is not a JSON array of results: %v\n%s", err, out.Stdout)
+	}
+	byName := map[string]ToolUpdateResult{}
+	for _, r := range results {
+		byName[r.ToolName] = r
+	}
+
+	if r, ok := byName["off"]; ok {
+		t.Errorf(`"off" was checked despite updateCheck.enabled:false: %+v`, r)
+	}
+	if r := byName["pinned"]; r.HasUpdate {
+		t.Errorf("pinned result = %+v, want no update: v2.0.0 is outside ~1.2.0", r)
+	}
+	if r := byName["admitted"]; !r.HasUpdate || r.LatestVersion != "v1.2.9" {
+		t.Errorf("admitted result = %+v, want an update to v1.2.9, which ~1.2.0 admits", r)
+	}
+}
+
 func TestLogCommand_OperationsAndStatus(t *testing.T) {
 	p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
 

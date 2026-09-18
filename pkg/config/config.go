@@ -389,6 +389,21 @@ type ToolConfigUpdateCheck struct {
 	Constraint *string `json:"constraint,omitempty" yaml:"constraint,omitempty"`
 }
 
+// UpdateCheckEnabled reports whether update checks should consider this tool. A tool
+// that declares no updateCheck block, or leaves enabled unset, is checked.
+func (tc *ToolConfig) UpdateCheckEnabled() bool {
+	return tc.UpdateCheck == nil || tc.UpdateCheck.Enabled == nil || *tc.UpdateCheck.Enabled
+}
+
+// UpdateCheckConstraint returns the semver range bounding which versions count as an
+// available update for this tool, or "" when it declares none.
+func (tc *ToolConfig) UpdateCheckConstraint() string {
+	if tc.UpdateCheck == nil || tc.UpdateCheck.Constraint == nil {
+		return ""
+	}
+	return *tc.UpdateCheck.Constraint
+}
+
 // ToolConfig matches complete configurations of individual packages or tools.
 type ToolConfig struct {
 	Name               string                 `json:"name" yaml:"name"`

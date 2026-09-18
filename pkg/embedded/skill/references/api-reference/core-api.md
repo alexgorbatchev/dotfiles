@@ -142,11 +142,20 @@ otherwise, so edits stay in the dotfiles repository.
 
 #### `.updateCheck(config)`
 
-Records `{ enabled?: boolean, constraint?: string }` on the tool configuration, where
-`constraint` is a semver range. Platform overrides merge it field by field.
+Records `{ enabled?: boolean, constraint?: string }` on the tool configuration.
+Platform overrides merge it field by field.
 
-The value is stored and nothing reads it: no command consults it when checking or
-applying updates. Pin a version with `.version()` instead.
+`enabled: false` takes the tool out of update checks: `dotfiles check-updates` skips it,
+and the dashboard reports no update for it without asking the installer. Omitted, it is
+checked.
+
+`constraint` is a semver range (`^1.2.3`, `~1.2.0`, `>=1.0.0`, or an exact version) that
+bounds which releases count as an available update. A release outside the range is still
+reported as the latest version upstream, but not as an update: with `~1.2.0` installed at
+`1.2.3`, `1.2.9` is an update and `1.3.0` is not.
+
+Neither setting changes which version `dotfiles install` or `dotfiles update` installs;
+pin that with `.version()`.
 
 ### Base Install Parameters
 

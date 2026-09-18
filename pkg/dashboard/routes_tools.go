@@ -683,7 +683,10 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 		return
 	}
 
-	if targetTool.InstallationMethod == "" {
+	// A tool with no installation method has nothing upstream to compare against, and one
+	// that turned update checks off with .updateCheck({ enabled: false }) asked not to be
+	// asked. Neither reaches the installer.
+	if targetTool.InstallationMethod == "" || !targetTool.UpdateCheckEnabled() {
 		writeJSON(w, true, map[string]any{
 			"hasUpdate":      false,
 			"currentVersion": "unknown",
@@ -728,6 +731,11 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 	hasUpdate := res.HasUpdate
 	if hasUpdate && res.LocalVersion == "" {
 		hasUpdate = isNewerVersion(currentVer, latestVer)
+	}
+	// The tool's updateCheck.constraint bounds which versions count as an update, so a
+	// release outside it is not one however new it is.
+	if constraint := targetTool.UpdateCheckConstraint(); constraint != "" && !version.MatchesConstraint(res.LatestVersion, constraint) {
+		hasUpdate = false
 	}
 
 	writeJSON(w, true, map[string]any{
