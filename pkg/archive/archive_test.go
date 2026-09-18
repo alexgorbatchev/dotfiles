@@ -14,6 +14,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/lifecycle"
 )
 
 func createZipBytes(files map[string]string) ([]byte, error) {
@@ -31,6 +32,42 @@ func createZipBytes(files map[string]string) ([]byte, error) {
 	}
 	err := w.Close()
 	return buf.Bytes(), err
+}
+
+// An after-extract hook is told what came out of the archive, so it can place a binary
+// without walking the tree and repeating the executable heuristic.
+func TestExtract_ReportsExtractedFilesAndExecutables(t *testing.T) {
+	memFS := fs.NewMemFS()
+	data, err := createZipBytes(map[string]string{
+		"bin/tool":  "#!/bin/sh\necho hi",
+		"README.md": "docs",
+	})
+	if err != nil {
+		t.Fatalf("building the archive: %v", err)
+	}
+	if err := memFS.WriteFile("/src.zip", data, 0644); err != nil {
+		t.Fatalf("writing the archive: %v", err)
+	}
+
+	var got lifecycle.Details
+	ctx := lifecycle.WithEmitter(context.Background(), func(_ context.Context, event lifecycle.Event, details lifecycle.Details) error {
+		if event == lifecycle.AfterExtract {
+			got = details
+		}
+		return nil
+	})
+
+	ext := NewExtractor(memFS, exec.NewMockRunner())
+	if err := ext.Extract(ctx, "/src.zip", "/dest"); err != nil {
+		t.Fatalf("Extract failed: %v", err)
+	}
+
+	if len(got.ExtractedFiles) != 2 {
+		t.Errorf("ExtractedFiles = %v, want both archive members", got.ExtractedFiles)
+	}
+	if len(got.Executables) != 1 || filepath.Base(got.Executables[0]) != "tool" {
+		t.Errorf("Executables = %v, want only the shebang script", got.Executables)
+	}
 }
 
 func createTarBytes(files map[string]string) ([]byte, error) {
@@ -504,7 +541,7 @@ func TestExtractorSymlinksAndHeuristics(t *testing.T) {
 			t.Fatalf("failed to write file: %v", err)
 		}
 
-		err = ext.detectAndSetExecutables("/dest")
+		_, _, err = ext.detectAndSetExecutables("/dest")
 		if err != nil {
 			t.Fatalf("heuristics failed: %v", err)
 		}

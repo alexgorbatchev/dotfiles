@@ -1154,3 +1154,65 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 	})
 
 }
+
+// A tool factory branching on the machine reads systemInfo. homeDir is the project's
+// own home rather than the invoking user's, so a tool writing a dotfile lands where the
+// configuration says; hostname is what .hostname() matches against.
+func TestLoaderToolContextSystemInfo(t *testing.T) {
+	tmpDir := t.TempDir()
+	log := logger.New(logger.Config{Writer: io.Discard})
+
+	homeDir := filepath.Join(tmpDir, "sandboxed-home")
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	configContent := fmt.Sprintf(
+		`export default { paths: { generatedDir: "./.generated", toolConfigsDir: "./tools", homeDir: %q } };`,
+		homeDir,
+	)
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("writing the configuration: %v", err)
+	}
+
+	toolsDir := filepath.Join(tmpDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("creating the tools directory: %v", err)
+	}
+	toolContent := `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install, ctx) =>
+			install("manual", {
+				binaryPath: ctx.systemInfo.homeDir + "|" + ctx.systemInfo.hostname + "|" + ctx.systemInfo.os,
+			}).bin("probe"),
+		);
+	`
+	if err := os.WriteFile(filepath.Join(toolsDir, "probe.tool.ts"), []byte(toolContent), 0644); err != nil {
+		t.Fatalf("writing the tool file: %v", err)
+	}
+
+	_, toolConfigs, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+	probe, ok := toolConfigs["probe"]
+	if !ok {
+		t.Fatalf("tool %q was not loaded", "probe")
+	}
+	got, _ := probe.InstallParams["binaryPath"].(string)
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatalf("reading the hostname: %v", err)
+	}
+	parts := strings.Split(got, "|")
+	if len(parts) != 3 {
+		t.Fatalf("tool factory saw %q, want three systemInfo members", got)
+	}
+	if parts[0] != homeDir {
+		t.Errorf("systemInfo.homeDir = %q, want the configured home %q", parts[0], homeDir)
+	}
+	if parts[1] != hostname {
+		t.Errorf("systemInfo.hostname = %q, want %q", parts[1], hostname)
+	}
+	if parts[2] == "" {
+		t.Errorf("systemInfo.os = %q, want it to stay populated", parts[2])
+	}
+}

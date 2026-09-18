@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,7 +42,33 @@ func hookTestProjectConfig(t *testing.T) *config.ProjectConfig {
 	cfg.Paths.DotfilesDir = root
 	cfg.Paths.GeneratedDir = filepath.Join(root, ".generated")
 	cfg.Paths.BinariesDir = filepath.Join(root, ".generated", "binaries")
+	cfg.Paths.HomeDir = filepath.Join(root, ".generated", "home")
 	return cfg
+}
+
+// runHookCapturingFile runs a hook that writes what it saw to /captured and returns it.
+func runHookCapturingFile(t *testing.T, tool *config.ToolConfig, projCfg *config.ProjectConfig, event string, hookCtx HookContext) string {
+	t.Helper()
+	memFS := fs.NewMemFS()
+	err := RunHook(
+		context.Background(),
+		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		memFS,
+		exec.NewMockRunner(),
+		tool,
+		projCfg,
+		event,
+		hookCtx,
+		Target{},
+	)
+	if err != nil {
+		t.Fatalf("RunHook returned error: %v", err)
+	}
+	data, readErr := memFS.ReadFile("/captured")
+	if readErr != nil {
+		t.Fatalf("the hook wrote nothing: %v", readErr)
+	}
+	return string(data)
 }
 
 // The defining property of a lifecycle hook: it runs when the installation reaches the
@@ -239,5 +266,115 @@ func TestRunHook_BeforeInstallReceivesAbsoluteStagingDir(t *testing.T) {
 	got := runner.History[len(runner.History)-1].Args[len(runner.History[len(runner.History)-1].Args)-1]
 	if got != want {
 		t.Errorf("command = %q, want %q", got, want)
+	}
+}
+
+// systemInfo describes the machine the hook runs on. homeDir is the home directory the
+// project is configured with rather than the invoking user's, because a tool writing a
+// dotfile has to land where the configuration says.
+func TestRunHook_SystemInfoCarriesHomeDirAndHostname(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-install", async ({ fileSystem, systemInfo }) => {
+				await fileSystem.writeFile("/captured", JSON.stringify(systemInfo));
+			}),
+		);
+	`, HookAfterInstall)
+
+	projCfg := hookTestProjectConfig(t)
+	captured := runHookCapturingFile(t, tool, projCfg, HookAfterInstall, HookContext{})
+
+	var got map[string]string
+	if err := json.Unmarshal([]byte(captured), &got); err != nil {
+		t.Fatalf("hook wrote %q, which is not JSON: %v", captured, err)
+	}
+	if got["homeDir"] != projCfg.Paths.HomeDir {
+		t.Errorf("systemInfo.homeDir = %q, want the configured home %q", got["homeDir"], projCfg.Paths.HomeDir)
+	}
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatalf("reading the hostname: %v", err)
+	}
+	if got["hostname"] != hostname {
+		t.Errorf("systemInfo.hostname = %q, want %q", got["hostname"], hostname)
+	}
+	if got["os"] == "" || got["arch"] == "" {
+		t.Errorf("systemInfo = %v, want os and arch to stay populated", got)
+	}
+}
+
+// A hook that has to branch on how the tool is configured -- the installation method,
+// a parameter it was given -- reads it from the context rather than re-deriving it.
+func TestRunHook_ToolConfigIsAvailable(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("curl-script", { url: "https://example.test/install.sh" }).hook(
+				"after-install",
+				async ({ fileSystem, toolConfig }) => {
+					await fileSystem.writeFile(
+						"/captured",
+						toolConfig.name + " " + toolConfig.installationMethod + " " + toolConfig.installParams.url,
+					);
+				},
+			),
+		);
+	`, HookAfterInstall)
+	tool.InstallationMethod = "curl-script"
+	tool.InstallParams["url"] = "https://example.test/install.sh"
+
+	captured := runHookCapturingFile(t, tool, hookTestProjectConfig(t), HookAfterInstall, HookContext{})
+	want := "sample curl-script https://example.test/install.sh"
+	if captured != want {
+		t.Errorf("toolConfig fields = %q, want %q", captured, want)
+	}
+}
+
+// after-extract reports what came out of the archive, so a hook can place a binary
+// without walking the tree itself.
+func TestRunHook_AfterExtractCarriesExtractResult(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-extract", async ({ fileSystem, extractResult }) => {
+				await fileSystem.writeFile("/captured", JSON.stringify(extractResult));
+			}),
+		);
+	`, HookAfterExtract)
+
+	captured := runHookCapturingFile(t, tool, hookTestProjectConfig(t), HookAfterExtract, HookContext{
+		ExtractDir:     "/tmp/extracted",
+		ExtractedFiles: []string{"/tmp/extracted/bin/tool", "/tmp/extracted/README.md"},
+		Executables:    []string{"/tmp/extracted/bin/tool"},
+	})
+
+	var got map[string][]string
+	if err := json.Unmarshal([]byte(captured), &got); err != nil {
+		t.Fatalf("hook wrote %q, which is not JSON: %v", captured, err)
+	}
+	if len(got["extractedFiles"]) != 2 || got["extractedFiles"][0] != "/tmp/extracted/bin/tool" {
+		t.Errorf("extractResult.extractedFiles = %v", got["extractedFiles"])
+	}
+	if len(got["executables"]) != 1 || got["executables"][0] != "/tmp/extracted/bin/tool" {
+		t.Errorf("extractResult.executables = %v", got["executables"])
+	}
+}
+
+// An event that produced no extraction must not hand the hook an empty-looking result
+// that reads as "the archive contained nothing".
+func TestRunHook_ExtractResultAbsentWithoutExtraction(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-install", async ({ fileSystem, extractResult }) => {
+				await fileSystem.writeFile("/captured", typeof extractResult);
+			}),
+		);
+	`, HookAfterInstall)
+
+	captured := runHookCapturingFile(t, tool, hookTestProjectConfig(t), HookAfterInstall, HookContext{})
+	if captured != "undefined" {
+		t.Errorf("typeof extractResult = %q, want \"undefined\"", captured)
 	}
 }

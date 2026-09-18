@@ -90,6 +90,7 @@ func RegisterBindings(vm *goja.Runtime, target Target) error {
 		"isLinux":       func() bool { return target.os() == arch.OSLinux },
 		"isWindows":     func() bool { return target.os() == "windows" },
 		"detectLibc":    func() string { return arch.DetectLibc(arch.FileExists) },
+		"getHostname":   hostname,
 	}
 
 	for name, fn := range bindings {
@@ -101,6 +102,17 @@ func RegisterBindings(vm *goja.Runtime, target Target) error {
 	return nil
 }
 
+// hostname reports the machine name a configuration can filter on. A machine that
+// cannot name itself reports an empty string rather than failing the load: the name is
+// one input among many, and a configuration that never mentions it must still evaluate.
+func hostname() string {
+	name, err := os.Hostname()
+	if err != nil {
+		return ""
+	}
+	return name
+}
+
 // RegisterContextBindings registers logging and filesystem bindings associated with the
 // active execution environment.
 //
@@ -110,6 +122,21 @@ func RegisterBindings(vm *goja.Runtime, target Target) error {
 // against it, so they land where the configuration says rather than where the process
 // happens to be running. An empty homeDir leaves such paths untouched.
 func RegisterContextBindings(vm *goja.Runtime, log *logger.Logger, fsys fs.FS, homeDir string) error {
+	// The project configuration is what defines the home directory, so while that
+	// configuration is itself being evaluated there is nothing to report but the
+	// invoking user's own home -- which is the value a configuration typically derives
+	// its `paths.homeDir` from in the first place.
+	_ = vm.Set("getHomeDir", func() string {
+		if homeDir != "" {
+			return homeDir
+		}
+		userHome, err := os.UserHomeDir()
+		if err != nil {
+			return ""
+		}
+		return userHome
+	})
+
 	_ = vm.Set("logInfo", func(toolName, msg string) {
 		if log != nil {
 			log.WithName(toolName).Info(logger.Message(msg))

@@ -9,6 +9,7 @@ import type {
   ProjectConfig,
   ShellInstallConfig,
   SystemConfig,
+  ToolConfig,
   UpdatesConfig,
 } from "../../packages/dashboard/src/shared/types.gen.ts";
 
@@ -213,6 +214,18 @@ export interface ISystemInfo {
    * C library on Linux: `"gnu"`, `"musl"`, or `"unknown"` (compare against `Libc`).
    */
   libc: string;
+  /**
+   * Home directory paths written with `~` resolve against. It is the project's
+   * `paths.homeDir`, which a configuration may deliberately point somewhere other
+   * than the invoking user's own home; inside `defineConfig`, where that value is
+   * still being defined, it is the invoking user's home directory.
+   */
+  homeDir: string;
+  /**
+   * Name of the machine, as `.hostname()` matches against. Empty when the machine
+   * cannot report one.
+   */
+  hostname: string;
 }
 
 /**
@@ -999,6 +1012,20 @@ export type HookEvent = "before-install" | "after-download" | "after-extract" | 
 export type HookShell = (strings: ShellStrings, ...values: unknown[]) => IShellPromise;
 
 /**
+ * What an archive extraction produced.
+ */
+export interface IExtractResult {
+  /**
+   * Every file that was unpacked, as an absolute path.
+   */
+  extractedFiles: string[];
+  /**
+   * The unpacked files the extractor marked executable.
+   */
+  executables: string[];
+}
+
+/**
  * Context provided to lifecycle hook handlers. Every event receives the same type;
  * the members an event does not provide are `undefined`.
  */
@@ -1008,6 +1035,10 @@ export interface IHookContext extends IToolConfigContext {
    */
   stagingDir: string;
   /**
+   * The resolved configuration of the tool being installed, as the installer sees it.
+   */
+  toolConfig: ToolConfig;
+  /**
    * Path of the fetched asset. Only `after-download` provides it.
    */
   downloadPath?: string;
@@ -1015,6 +1046,10 @@ export interface IHookContext extends IToolConfigContext {
    * Directory the archive was unpacked into. Only `after-extract` provides it.
    */
   extractDir?: string;
+  /**
+   * What came out of the archive. Only `after-extract` provides it.
+   */
+  extractResult?: IExtractResult;
   /**
    * Stable directory the installed tool now occupies. Only `after-install` provides
    * it; before the install completes there is nothing installed to point at.

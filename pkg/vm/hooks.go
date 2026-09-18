@@ -36,6 +36,11 @@ type HookContext struct {
 	InstalledDir string
 	BinaryPaths  []string
 	Version      string
+	// ExtractedFiles and Executables are what the extractor produced: every file it
+	// unpacked, and the subset it marked executable. An after-extract hook placing a
+	// binary reads them instead of walking the tree and repeating the heuristic.
+	ExtractedFiles []string
+	Executables    []string
 	// Env is the environment commands run with. The orchestrator builds it so the
 	// binaries a tool just installed are on PATH, letting a hook call them by name.
 	Env []string
@@ -91,7 +96,24 @@ func (h HookContext) toMap() map[string]any {
 	if h.Version != "" {
 		out["version"] = h.Version
 	}
+	if h.ExtractDir != "" {
+		// Reported only alongside the directory it describes: an empty list handed to an
+		// event that never extracted anything reads as "the archive was empty".
+		out["extractResult"] = map[string]any{
+			"extractedFiles": nonNil(h.ExtractedFiles),
+			"executables":    nonNil(h.Executables),
+		}
+	}
 	return out
+}
+
+// nonNil keeps an absent list from reaching JavaScript as null, which a hook iterating
+// over it would trip on.
+func nonNil(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
 }
 
 // HasHook reports whether a tool registered any handler for an event. The loader
@@ -184,10 +206,14 @@ func RunHook(
 	_ = vm.Set("generatedDir", generatedDir)
 	_ = vm.Set("currentToolName", tool.Name)
 	_ = vm.Set("currentToolPath", tool.ConfigFilePath)
-	_ = vm.Set("systemInfo", vm.NewObject())
 
 	if err := setJSONGlobal(vm, "projectConfig", projCfg); err != nil {
 		return fmt.Errorf("providing project configuration to the %s hook: %w", event, err)
+	}
+	// The resolved configuration of the tool being installed, so a hook can branch on
+	// the method or on a parameter it was given without re-reading its own file.
+	if err := setJSONGlobal(vm, "currentToolConfig", tool); err != nil {
+		return fmt.Errorf("providing the tool configuration to the %s hook: %w", event, err)
 	}
 	hookCtx, err = hookCtx.absolute(fsys)
 	if err != nil {

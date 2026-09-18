@@ -293,7 +293,6 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 
 	// Set globals
 	_ = vm.Set("configFileDir", configFileDir)
-	_ = vm.Set("systemInfo", vm.NewObject())
 
 	// Set process.env
 	envObj := vm.NewObject()
@@ -377,7 +376,6 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	_ = vm.Set("configFileDir", configFileDir)
 	_ = vm.Set("generatedDir", projCfg.Paths.GeneratedDir)
 	_ = vm.Set("binariesDir", projCfg.Paths.BinariesDir)
-	_ = vm.Set("systemInfo", vm.NewObject())
 	if err := setJSONGlobal(vm, "projectConfig", projCfg); err != nil {
 		return nil, fmt.Errorf("providing project configuration to tool files: %w", err)
 	}

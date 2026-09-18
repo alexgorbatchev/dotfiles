@@ -7,6 +7,7 @@ import type {
   ISystemInfo,
   ShellStrings,
 } from "./dsl-types";
+import type { ToolConfig } from "../../packages/dashboard/src/shared/types.gen.ts";
 
 function getGlobals(): Record<string, unknown> {
   return globalThis as unknown as Record<string, unknown>;
@@ -34,14 +35,16 @@ export const Architecture = {
 declare global {
   var configFileDir: string;
   var binariesDir: string;
-  var systemInfo: ISystemInfo;
   var currentToolName: string;
   var currentToolPath: string;
+  var currentToolConfig: ToolConfig;
   var path: IPathModule;
   function getOS(): string;
   function getArch(): string;
   function matchesTarget(platforms: unknown, architectures: unknown): boolean;
   function detectLibc(): string;
+  function getHomeDir(): string;
+  function getHostname(): string;
   function fileExists(path: string): boolean;
   function logInfo(toolName: string, msg: string): void;
   function logWarn(toolName: string, msg: string): void;
@@ -157,6 +160,20 @@ export function dedentString(text: DedentInput, ...values: unknown[]): string {
 }
 
 export type HookHandlerFn = (context: Record<string, unknown>) => unknown;
+
+/**
+ * What the runtime reports about the machine, assembled from the Go bindings. Every
+ * context that carries a `systemInfo` gets this same object.
+ */
+function currentSystemInfo(): ISystemInfo {
+  return {
+    os: getOS(),
+    arch: getArch(),
+    libc: detectLibc(),
+    homeDir: getHomeDir(),
+    hostname: getHostname(),
+  };
+}
 
 /**
  * Continuations a caller passes when awaiting a command.
@@ -338,11 +355,7 @@ function createToolContext(toolName: string, eventContext: Record<string, unknow
     // context carries the placeholder Go resolves later. A hook runs during an
     // installation and receives the real path through eventContext instead.
     stagingDir: "{stagingDir}",
-    systemInfo: {
-      os: getOS(),
-      arch: getArch(),
-      libc: detectLibc(),
-    },
+    systemInfo: currentSystemInfo(),
     log: {
       info(msg: string) {
         logInfo(toolName, msg);
@@ -386,6 +399,9 @@ function invokeHook(toolName: string, event: string, eventContext: Record<string
   // Go decides where commands run, because it is the side that can tell whether the
   // installed tree exists yet.
   context["$"] = createHookShell(toolName, (getGlobals()["__hookCwd"] as string) || "");
+  // Only a hook gets the tool configuration: while the configuration is being built by
+  // defineTool it is not resolved yet, so there would be nothing truthful to hand over.
+  context["toolConfig"] = globalThis.currentToolConfig;
   return Promise.all(handlers.map((handler) => Promise.resolve(handler(context))));
 }
 
@@ -403,11 +419,7 @@ export function defineConfig(callback: ConfigFactory): unknown {
     const fn = callback as ConfigRunner;
     return fn({
       configFileDir: globalThis.configFileDir || "",
-      systemInfo: {
-        os: getOS(),
-        arch: getArch(),
-        libc: detectLibc(),
-      },
+      systemInfo: currentSystemInfo(),
     });
   }
   return callback;

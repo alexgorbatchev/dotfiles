@@ -23,6 +23,11 @@ const (
 type Details struct {
 	DownloadPath string
 	ExtractDir   string
+	// ExtractedFiles and Executables accompany ExtractDir: everything the extractor
+	// unpacked, and the subset it marked executable. A hook placing a binary reads
+	// them rather than walking the tree and repeating the executable heuristic.
+	ExtractedFiles []string
+	Executables    []string
 }
 
 // Emitter is notified when an installation reaches an event. An error fails the

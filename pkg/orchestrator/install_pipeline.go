@@ -195,10 +195,12 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	// through the context rather than the orchestrator guessing when they occurred.
 	ctx = lifecycle.WithEmitter(ctx, func(emitCtx context.Context, event lifecycle.Event, details lifecycle.Details) error {
 		return o.runHooks(emitCtx, string(event), tool, projCfg, vm.HookContext{
-			StagingDir:   stagingDir,
-			DownloadPath: details.DownloadPath,
-			ExtractDir:   details.ExtractDir,
-			Env:          o.buildHookEnv(tool, projCfg, nil),
+			StagingDir:     stagingDir,
+			DownloadPath:   details.DownloadPath,
+			ExtractDir:     details.ExtractDir,
+			ExtractedFiles: details.ExtractedFiles,
+			Executables:    details.Executables,
+			Env:            o.buildHookEnv(tool, projCfg, nil),
 		})
 	})
 	res, err := inst.Install(ctx, tool)

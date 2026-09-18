@@ -164,14 +164,19 @@ func (e *Extractor) Extract(ctx context.Context, src string, dest string) error 
 	}
 
 	// Apply executable heuristics
-	if err := e.detectAndSetExecutables(dest); err != nil {
+	extracted, executables, err := e.detectAndSetExecutables(dest)
+	if err != nil {
 		return err
 	}
 
 	// The tree is now complete, which is the point an after-extract hook expects to
 	// see. Reporting before the executable bits are set would hand the hook a tree it
 	// could not run anything from.
-	return lifecycle.Emit(ctx, lifecycle.AfterExtract, lifecycle.Details{ExtractDir: dest})
+	return lifecycle.Emit(ctx, lifecycle.AfterExtract, lifecycle.Details{
+		ExtractDir:     dest,
+		ExtractedFiles: extracted,
+		Executables:    executables,
+	})
 }
 
 // extractZip extracts standard zip files using Go's archive/zip library with stream buffering and symlink support.
@@ -520,12 +525,15 @@ func (e *Extractor) extractSingleGz(ctx context.Context, src string, dest string
 	return e.fsys.Chmod(cleanTarget, 0755)
 }
 
-// detectAndSetExecutables walks the dest directory and applies heuristics to find executables.
-func (e *Extractor) detectAndSetExecutables(dest string) error {
+// detectAndSetExecutables walks the dest directory and applies heuristics to find
+// executables. It reports every file it found and the ones it marked executable, which
+// is what an after-extract hook is told about the tree.
+func (e *Extractor) detectAndSetExecutables(dest string) ([]string, []string, error) {
 	files, err := e.walkFiles(dest)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
+	executables := []string{}
 
 	for _, path := range files {
 		info, err := e.fsys.Lstat(path)
@@ -565,9 +573,10 @@ func (e *Extractor) detectAndSetExecutables(dest string) error {
 
 		if shouldBeExec {
 			_ = e.fsys.Chmod(path, info.Mode()|0111)
+			executables = append(executables, path)
 		}
 	}
-	return nil
+	return files, executables, nil
 }
 
 // walkFiles is a helper to recursively find all files in a directory using e.fsys.

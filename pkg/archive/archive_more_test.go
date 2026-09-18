@@ -255,7 +255,7 @@ func TestDetectAndSetExecutablesMachO(t *testing.T) {
 	_ = memFS.WriteFile("/dest-macho/app_bin", []byte{0xcf, 0xfa, 0xed, 0xfe, 0, 0, 0, 0}, 0644)
 	_ = memFS.WriteFile("/dest-macho/app_bin_32", []byte{0xce, 0xfa, 0xed, 0xfe, 0, 0, 0, 0}, 0644)
 
-	err := ext.detectAndSetExecutables("/dest-macho")
+	_, _, err := ext.detectAndSetExecutables("/dest-macho")
 	if err != nil {
 		t.Fatalf("detectAndSetExecutables failed: %v", err)
 	}
@@ -835,7 +835,7 @@ func TestDetectAndSetExecutablesMagicBytes(t *testing.T) {
 	_ = memFS.WriteFile(filepath.Join(dir, "macho64.bin"), []byte{0xfe, 0xed, 0xfa, 0xcf}, 0644)
 	_ = memFS.WriteFile(filepath.Join(dir, "plain.txt"), []byte("plain text content"), 0644)
 
-	err := ext.detectAndSetExecutables(dir)
+	_, _, err := ext.detectAndSetExecutables(dir)
 	if err != nil {
 		t.Fatalf("detectAndSetExecutables failed: %v", err)
 	}
