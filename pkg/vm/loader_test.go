@@ -569,6 +569,61 @@ func TestLoadTypeScriptConfigNamesFailingToolFileAndMethod(t *testing.T) {
 	}
 }
 
+// Dependencies decide installation order, so every name a tool declares has to reach
+// the configuration. Both call forms the declarations allow are recorded in the order
+// they were written.
+func TestLoaderRecordsEveryDeclaredDependency(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+
+	tests := []struct {
+		name string
+		call string
+	}{
+		{name: "several arguments", call: `.dependsOn("ghost-one", "ghost-two")`},
+		{name: "an array argument", call: `.dependsOn(["ghost-one", "ghost-two"])`},
+		{name: "one call per dependency", call: `.dependsOn("ghost-one").dependsOn("ghost-two")`},
+		{name: "several arguments to depends", call: `.depends("ghost-one", "ghost-two")`},
+		{name: "an array argument to depends", call: `.depends(["ghost-one", "ghost-two"])`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			toolsDir := filepath.Join(tmpDir, "tools")
+			if err := os.MkdirAll(toolsDir, 0755); err != nil {
+				t.Fatalf("creating tools dir: %v", err)
+			}
+
+			toolContent := `import { defineTool } from "@alexgorbatchev/dotfiles";
+				export default defineTool((install) => install("manual", { binaryPath: "/usr/bin/true" })` + tt.call + `);`
+			if err := os.WriteFile(filepath.Join(toolsDir, "ghost.tool.ts"), []byte(toolContent), 0644); err != nil {
+				t.Fatalf("writing tool file: %v", err)
+			}
+
+			configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+			configContent := fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, tmpDir, toolsDir)
+			if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+				t.Fatalf("writing config file: %v", err)
+			}
+
+			_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+			if err != nil {
+				t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+			}
+
+			tool, ok := toolConfigs["ghost"]
+			if !ok {
+				t.Fatalf("expected tool %q, got %v", "ghost", slices.Sorted(maps.Keys(toolConfigs)))
+			}
+			want := []string{"ghost-one", "ghost-two"}
+			if !slices.Equal(tool.Dependencies, want) {
+				t.Errorf("expected dependencies %v, got %v", want, tool.Dependencies)
+			}
+		})
+	}
+}
+
 func TestGenerateEntryLoaderDirect(t *testing.T) {
 	content, err := generateEntryLoader("/home/user/config.ts", []string{"/home/user/tools/tool1.tool.ts"})
 	if err != nil {

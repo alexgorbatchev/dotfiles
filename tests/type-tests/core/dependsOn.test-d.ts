@@ -19,5 +19,11 @@ defineTool((install) => install().dependsOn("foo"));
 // Valid: 'bar' is in the registry
 defineTool((install) => install().dependsOn("bar"));
 
+// Valid: several dependencies in one call, all of them recorded
+defineTool((install) => install().dependsOn("foo", "bar"));
+
 // Invalid: 'invalid-dependency' is not in the registry
 expectError(defineTool((install) => install().dependsOn("invalid-dependency")));
+
+// Invalid: a later argument is checked against the registry like the first one
+expectError(defineTool((install) => install().dependsOn("foo", "invalid-dependency")));

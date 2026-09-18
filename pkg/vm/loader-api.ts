@@ -17,7 +17,7 @@ function getGlobals(): Record<string, unknown> {
 export type Platform = DslPlatform;
 export type Architecture = DslArchitecture;
 
-type DependsOnFn = (dep: unknown) => unknown;
+type DependsOnFn = (...deps: unknown[]) => unknown;
 
 export const Platform = {
   Linux: 1,
@@ -605,19 +605,21 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       return this;
     },
 
-    dependsOn(dep: unknown) {
+    dependsOn(...deps: unknown[]) {
       let d = (this["dependencies"] || []) as unknown[];
-      if (Array.isArray(dep)) {
-        d = d.concat(dep);
-      } else {
-        d.push(dep);
+      for (const dep of deps) {
+        if (Array.isArray(dep)) {
+          d = d.concat(dep);
+        } else {
+          d.push(dep);
+        }
       }
       this["dependencies"] = d;
       return this;
     },
 
-    depends(dep: unknown) {
-      return (this["dependsOn"] as DependsOnFn)(dep);
+    depends(...deps: unknown[]) {
+      return (this["dependsOn"] as DependsOnFn)(...deps);
     },
 
     symlink(src: unknown, dst: unknown) {
