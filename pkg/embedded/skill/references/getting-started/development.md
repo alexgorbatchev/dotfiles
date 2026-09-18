@@ -20,7 +20,7 @@ bun check
 bun compile
 ```
 
-### Development HTTP Proxy
+## Development HTTP Proxy
 
 Set `DEV_PROXY` to a port to run a command through the built-in HTTP caching proxy, so repeated installs against GitHub and other rate-limited APIs are answered locally:
 

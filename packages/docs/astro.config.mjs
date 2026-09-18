@@ -23,7 +23,10 @@ export default defineConfig({
       sidebar: [
         { label: "Overview", link: "/" },
         { label: "Tool Creation Guide", link: "/make-tool/" },
-        { label: "CLI Reference", link: "/getting-started/cli-reference/" },
+        {
+          label: "Getting Started",
+          autogenerate: { directory: "getting-started" },
+        },
         {
           label: "Configuration",
           autogenerate: { directory: "configuration" },
