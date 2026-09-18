@@ -27,20 +27,22 @@ export default defineTool((install) =>
 
 ## Parameters
 
-| Parameter    | Description                                                                             |
-| ------------ | --------------------------------------------------------------------------------------- |
-| `source`     | **Required**. DMG source definition (see source variants below)                         |
-| `appName`    | Name of the `.app` bundle (e.g., `'MyApp.app'`). Auto-detected if omitted               |
-| `binaryName` | Executable inside `Contents/MacOS` of the bundle. Defaults to the tool name             |
-| `binaryPath` | Relative path to the binary inside `.app`, when it is not `Contents/MacOS/{binaryName}` |
-| `token`      | GitHub API token for a `github-release` source                                          |
+| Parameter      | Description                                                                             |
+| -------------- | --------------------------------------------------------------------------------------- |
+| `source`       | **Required**. DMG source definition (see source variants below)                         |
+| `appName`      | Name of the `.app` bundle (e.g., `'MyApp.app'`). Auto-detected if omitted               |
+| `binaryName`   | Executable inside `Contents/MacOS` of the bundle. Defaults to the tool name             |
+| `binaryPath`   | Relative path to the binary inside `.app`, when it is not `Contents/MacOS/{binaryName}` |
+| `versionArgs`  | Arguments for version check (e.g., `['--version']`)                                     |
+| `versionRegex` | Regex to extract version from output (`string` or `RegExp`)                             |
+| `token`        | GitHub API token for a `github-release` source                                          |
 
 ### Source Variants
 
-| Source type      | Required fields | Optional fields           | Notes                                                    |
-| ---------------- | --------------- | ------------------------- | -------------------------------------------------------- |
-| `url`            | `url`           | —                         | Direct DMG URL or archive URL containing a DMG           |
-| `github-release` | `repo`          | `version`, `assetPattern` | Resolves release asset first, then installs from the DMG |
+| Source type      | Required fields | Optional fields                                  | Notes                                                    |
+| ---------------- | --------------- | ------------------------------------------------ | -------------------------------------------------------- |
+| `url`            | `url`           | —                                                | Direct DMG URL or archive URL containing a DMG           |
+| `github-release` | `repo`          | `version`, `assetPattern`, `ghCli`, `prerelease` | Resolves release asset first, then installs from the DMG |
 
 ## Examples
 
@@ -77,6 +79,19 @@ install("dmg", {
     assetPattern: "*macos*.dmg",
   },
   appName: "cmux.app",
+});
+```
+
+### With Version Detection
+
+```typescript body
+install("dmg", {
+  source: {
+    type: "url",
+    url: "https://example.com/MyApp-1.0.0.dmg",
+  },
+  versionArgs: ["--version"],
+  versionRegex: /v(\d+\.\d+\.\d+)/,
 });
 ```
 

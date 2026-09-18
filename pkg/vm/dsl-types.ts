@@ -414,6 +414,17 @@ export interface ICargoInstallParams extends ICommonInstallParams {
    */
   assetPattern?: string;
   /**
+   * Where the version to install is read from. Defaults to "cargo-toml" when
+   * cargoTomlUrl is set, to "github-releases" when binarySource is "github-releases",
+   * and to "crates-io" otherwise.
+   */
+  versionSource?: "cargo-toml" | "crates-io" | "github-releases";
+  /**
+   * Cargo.toml to read the version from with `versionSource: "cargo-toml"`. Defaults
+   * to the main branch of githubRepo on raw.githubusercontent.com.
+   */
+  cargoTomlUrl?: string;
+  /**
    * Expected SHA-256 checksum of the downloaded artifact.
    */
   sha256?: string;
@@ -550,6 +561,14 @@ export interface IMacGithubReleaseSource {
    * Glob or regex pattern selecting the release asset.
    */
   assetPattern?: string | RegExp;
+  /**
+   * Fetch release metadata through the `gh` CLI instead of the GitHub API.
+   */
+  ghCli?: boolean;
+  /**
+   * Include prerelease versions when resolving the latest release.
+   */
+  prerelease?: boolean;
 }
 
 /**
@@ -569,6 +588,19 @@ export interface IPkgInstallParams extends ICommonInstallParams {
    * Target volume for `installer -target`. Defaults to "/".
    */
   target?: string;
+  /**
+   * Absolute path of the primary installed binary, when it is not found on PATH after
+   * the package is installed.
+   */
+  binaryPath?: string;
+  /**
+   * Arguments passed to the installed binary to detect its version.
+   */
+  versionArgs?: VersionArgs;
+  /**
+   * Regular expression pattern used to extract the version from command output.
+   */
+  versionRegex?: VersionRegex;
   /**
    * GitHub API token used when the source is a GitHub release.
    */
@@ -597,6 +629,14 @@ export interface IDmgInstallParams extends ICommonInstallParams {
    * `Contents/MacOS/<binaryName>`.
    */
   binaryPath?: string;
+  /**
+   * Arguments passed to the installed binary to detect its version.
+   */
+  versionArgs?: VersionArgs;
+  /**
+   * Regular expression pattern used to extract the version from command output.
+   */
+  versionRegex?: VersionRegex;
   /**
    * GitHub API token used when the source is a GitHub release.
    */

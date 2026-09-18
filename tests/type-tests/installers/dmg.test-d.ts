@@ -36,10 +36,14 @@ defineTool((install) =>
       repo: "manaflow-ai/cmux",
       version: "v1.2.3",
       assetPattern: "*macos*.dmg",
+      ghCli: true,
+      prerelease: true,
     },
     appName: "cmux.app",
     binaryName: "cmux",
     binaryPath: "Contents/MacOS/cmux",
+    versionArgs: ["--version"],
+    versionRegex: /v(\d+\.\d+\.\d+)/,
     token: "ghp_example",
     auto: false,
   }),
@@ -62,12 +66,9 @@ expectError(() => defineTool((install) => install("dmg", { appName: "MyApp.app" 
 expectError(() => defineTool((install) => install("dmg", { source: { type: "url", repo: "owner/app" } })));
 expectError(() => defineTool((install) => install("dmg", { source: { type: "github-release" } })));
 
-// The runtime does not run the installed app to detect a version.
+// A GitHub-only option has no meaning on a url source.
 expectError(() =>
   defineTool((install) =>
-    install("dmg", {
-      source: { type: "url", url: "https://example.com/MyApp.dmg" },
-      versionArgs: ["--version"],
-    }),
+    install("dmg", { source: { type: "url", url: "https://example.com/MyApp.dmg", prerelease: true } }),
   ),
 );

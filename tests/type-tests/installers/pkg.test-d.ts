@@ -29,8 +29,11 @@ defineTool((install) =>
 // Every parameter the Go installer reads.
 defineTool((install) =>
   install("pkg", {
-    source: { type: "github-release", repo: "owner/tool", assetPattern: "*macos*.pkg" },
+    source: { type: "github-release", repo: "owner/tool", assetPattern: "*macos*.pkg", ghCli: true, prerelease: false },
     target: "/",
+    binaryPath: "/usr/local/bin/tool",
+    versionArgs: ["--version"],
+    versionRegex: "v(\\d+\\.\\d+\\.\\d+)",
     token: "ghp_example",
     auto: false,
   })
@@ -50,12 +53,13 @@ expectError(() =>
 // The artifact location is always described by `source`.
 expectError(() => defineTool((install) => install("pkg", { url: "https://example.com/my-tool.pkg" })));
 
-// Binaries of an installed package are resolved from PATH; there is no binaryPath.
+// Where the binary ends up is not something the installer can be told per bundle;
+// pkg has no appName.
 expectError(() =>
   defineTool((install) =>
     install("pkg", {
       source: { type: "url", url: "https://example.com/my-tool.pkg" },
-      binaryPath: "/usr/local/bin/my-tool",
+      appName: "MyTool.app",
     }),
   ),
 );

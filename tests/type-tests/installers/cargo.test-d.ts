@@ -42,6 +42,18 @@ defineTool((install) =>
 
 defineTool((install) => install("cargo", { crateName: "bat", binarySource: "cargo-quickinstall" }).bin("bat"));
 
+defineTool((install) =>
+  install("cargo", {
+    crateName: "bat",
+    githubRepo: "sharkdp/bat",
+    versionSource: "cargo-toml",
+    cargoTomlUrl: "https://raw.githubusercontent.com/sharkdp/bat/master/Cargo.toml",
+  }).bin("bat"),
+);
+
+// The three version sources are the only ones the runtime knows.
+expectError(() => defineTool((install) => install("cargo", { crateName: "bat", versionSource: "npm" })));
+
 expectError(() =>
   defineTool((install) =>
     install("cargo", {

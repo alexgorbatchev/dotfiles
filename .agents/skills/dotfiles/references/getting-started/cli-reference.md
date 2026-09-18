@@ -15,7 +15,7 @@ dotfiles why fzf
 
 # Validate tool configurations for schema issues or errors
 dotfiles validate
-dotfiles validate fzf --strict
+dotfiles validate fzf --json
 
 # Update installed tools
 dotfiles update fzf
