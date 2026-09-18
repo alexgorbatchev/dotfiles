@@ -282,8 +282,8 @@ func TestPromoteBinaries(t *testing.T) {
 			name:  "every declared binary is promoted",
 			files: map[string]os.FileMode{"flat-bin": 0644, "nested-dir/nested-bin": 0644, "go/bin/go-real": 0644},
 			binaries: []interface{}{
-				"flat-bin",
-				"nested-bin",
+				map[string]interface{}{"name": "flat-bin"},
+				map[string]interface{}{"name": "nested-bin"},
 				config.BinaryConfig{Name: "go-real", Pattern: "go/bin/go-real"},
 			},
 			tool: "test-tool",

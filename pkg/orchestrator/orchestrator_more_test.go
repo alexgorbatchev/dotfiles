@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -188,7 +189,7 @@ func TestShouldSkipInstallationAndHealth(t *testing.T) {
 		Name:               "ripgrep",
 		Version:            &ver,
 		InstallationMethod: "github-release",
-		Binaries:           []interface{}{"rg"},
+		Binaries:           testutil.DeclaredBinaries("rg"),
 	}
 
 	// 1. Not installed -> shouldSkip = false
@@ -317,7 +318,7 @@ func TestGenerateCompletionsForTool(t *testing.T) {
 
 	tool := &config.ToolConfig{
 		Name:     "ripgrep",
-		Binaries: []interface{}{"rg"},
+		Binaries: testutil.DeclaredBinaries("rg"),
 		ShellConfigs: &config.ShellConfigs{
 			Zsh: &config.ShellTypeConfig{
 				Completions: "/home/test/dotfiles/completions/_rg",
@@ -504,7 +505,7 @@ func TestGenerateToolFilteringAndCopies(t *testing.T) {
 	tSym := &config.ToolConfig{
 		Name:           "sym-tool",
 		ConfigFilePath: "/home/test/dotfiles/tools/sym.tool.ts",
-		Binaries:       []interface{}{"csbin"},
+		Binaries:       testutil.DeclaredBinaries("csbin"),
 		Symlinks: []config.SymlinkConfig{
 			{Source: "/home/test/dotfiles/src/sym.txt", Target: "/home/test/.config/sym.txt"},
 		},
@@ -557,7 +558,7 @@ func TestInstallToolErrorBranches(t *testing.T) {
 	// 2. Missing installation method with binaries
 	tMissingMethod := &config.ToolConfig{
 		Name:     "t-missing",
-		Binaries: []interface{}{"bin"},
+		Binaries: testutil.DeclaredBinaries("bin"),
 	}
 	err = orch.InstallTool(ctx, tMissingMethod, projCfg)
 	if err == nil || !strings.Contains(err.Error(), "installation method not specified") {
@@ -633,7 +634,7 @@ func TestRemoveAllAndHealthCheckEdgeCases(t *testing.T) {
 	// 3. isExistingInstallationHealthy with missing install path
 	tool := &config.ToolConfig{
 		Name:     "bat",
-		Binaries: []interface{}{"bat"},
+		Binaries: testutil.DeclaredBinaries("bat"),
 	}
 	instRecordMissingPath := &registry.ToolInstallationRecord{
 		ToolName:    "bat",
@@ -767,11 +768,11 @@ func TestGenerateToolsFullWorkflow(t *testing.T) {
 
 	t1 := &config.ToolConfig{
 		Name:     "tool1",
-		Binaries: []interface{}{"bin1"},
+		Binaries: testutil.DeclaredBinaries("bin1"),
 	}
 	t2 := &config.ToolConfig{
 		Name:         "tool2",
-		Binaries:     []interface{}{"bin2"},
+		Binaries:     testutil.DeclaredBinaries("bin2"),
 		Dependencies: []string{"tool1"},
 	}
 
@@ -828,7 +829,7 @@ func TestInstallToolsWorkflow(t *testing.T) {
 	tool := &config.ToolConfig{
 		Name:               "manual-tool",
 		InstallationMethod: "manual",
-		Binaries:           []interface{}{"mbin"},
+		Binaries:           testutil.DeclaredBinaries("mbin"),
 	}
 
 	err = orch.InstallTools(ctx, []*config.ToolConfig{tool}, projCfg)
@@ -878,7 +879,7 @@ func TestInstallToolNonExternalSuccessAndError(t *testing.T) {
 	tFail := &config.ToolConfig{
 		Name:               "fail-tool",
 		InstallationMethod: "failing-method",
-		Binaries:           []interface{}{"failbin"},
+		Binaries:           testutil.DeclaredBinaries("failbin"),
 	}
 
 	err = orch.InstallTool(ctx, tFail, projCfg)
@@ -897,7 +898,7 @@ func TestInstallToolNonExternalSuccessAndError(t *testing.T) {
 	tSucc := &config.ToolConfig{
 		Name:               "succ-tool",
 		InstallationMethod: "succeed-method",
-		Binaries:           []interface{}{"succbin"},
+		Binaries:           testutil.DeclaredBinaries("succbin"),
 	}
 
 	err = orch.InstallTool(ctx, tSucc, projCfg)
@@ -951,7 +952,7 @@ func TestInstallToolConflictingShimWarning(t *testing.T) {
 	tConflict := &config.ToolConfig{
 		Name:               "conflict-tool",
 		InstallationMethod: "manual",
-		Binaries:           []interface{}{"cbin"},
+		Binaries:           testutil.DeclaredBinaries("cbin"),
 		InstallParams:      map[string]interface{}{"binaryPath": "./cbin"},
 	}
 
@@ -996,7 +997,7 @@ func TestInstallToolsAndCleanupErrors(t *testing.T) {
 	tFail := &config.ToolConfig{
 		Name:               "fail-tool-2",
 		InstallationMethod: "failing-inst",
-		Binaries:           []interface{}{"failbin2"},
+		Binaries:           testutil.DeclaredBinaries("failbin2"),
 	}
 
 	err = orch.InstallTools(ctx, []*config.ToolConfig{tFail}, projCfg)
@@ -1052,7 +1053,7 @@ func TestGenerateToolsAutoInstallAndDisabled(t *testing.T) {
 	tAuto := &config.ToolConfig{
 		Name:               "auto-tool",
 		InstallationMethod: "manual",
-		Binaries:           []interface{}{"autobin"},
+		Binaries:           testutil.DeclaredBinaries("autobin"),
 		InstallParams: map[string]interface{}{
 			"auto": true,
 		},
@@ -1272,7 +1273,7 @@ func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 	skipToolSameVer := &config.ToolConfig{
 		Name:     "skip-tool",
 		Version:  strPtr("1.0.0"),
-		Binaries: []interface{}{"skipbin"},
+		Binaries: testutil.DeclaredBinaries("skipbin"),
 	}
 	skipped, err := orch.shouldSkipInstallation(ctx, skipToolSameVer, projCfg)
 	if err != nil || !skipped {
@@ -1282,7 +1283,7 @@ func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 	skipToolDiffVer := &config.ToolConfig{
 		Name:     "skip-tool",
 		Version:  strPtr("2.0.0"),
-		Binaries: []interface{}{"skipbin"},
+		Binaries: testutil.DeclaredBinaries("skipbin"),
 	}
 	skippedDiff, err := orch.shouldSkipInstallation(ctx, skipToolDiffVer, projCfg)
 	if err != nil || skippedDiff {
@@ -1337,13 +1338,13 @@ func TestGenerateToolsAndInstallToolsAllPaths(t *testing.T) {
 	tNormal := &config.ToolConfig{
 		Name:               "normal-tool",
 		InstallationMethod: "manual",
-		Binaries:           []interface{}{"normbin"},
+		Binaries:           testutil.DeclaredBinaries("normbin"),
 	}
 
 	tAutoNotSkipped := &config.ToolConfig{
 		Name:               "auto-install-me",
 		InstallationMethod: "manual",
-		Binaries:           []interface{}{"autobin"},
+		Binaries:           testutil.DeclaredBinaries("autobin"),
 		InstallParams: map[string]interface{}{
 			"auto": true,
 		},
@@ -1420,7 +1421,7 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 	tFailing := &config.ToolConfig{
 		Name:               "failing-tool",
 		InstallationMethod: "failing-inst",
-		Binaries:           []interface{}{"failbin"},
+		Binaries:           testutil.DeclaredBinaries("failbin"),
 	}
 	err = orch.InstallTool(ctx, tFailing, projCfg)
 	if err == nil {
@@ -1433,7 +1434,7 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 	tHook := &config.ToolConfig{
 		Name:               "hook-tool",
 		InstallationMethod: "manual",
-		Binaries:           []interface{}{"hookbin"},
+		Binaries:           testutil.DeclaredBinaries("hookbin"),
 		ConfigFilePath:     "/home/test/dotfiles/hook.tool.ts",
 		InstallParams: map[string]interface{}{
 			"hooks": map[string]interface{}{
@@ -1536,7 +1537,7 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 	manualNoBin := &config.ToolConfig{
 		Name:               "manual-no-bin",
 		InstallationMethod: "manual",
-		Binaries:           []interface{}{"manbin"},
+		Binaries:           testutil.DeclaredBinaries("manbin"),
 	}
 	err = orch.GenerateTool(ctx, manualNoBin, projCfg)
 	if err != nil {
@@ -1547,7 +1548,7 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 	_ = memFS.WriteFile("/home/test/.bin/conflictbin", []byte("user-file"), 0755)
 	conflictTool := &config.ToolConfig{
 		Name:     "conflict-tool",
-		Binaries: []interface{}{"conflictbin"},
+		Binaries: testutil.DeclaredBinaries("conflictbin"),
 	}
 	err = orch.GenerateTool(ctx, conflictTool, projCfg)
 	if err != nil {
@@ -1660,7 +1661,7 @@ func TestInstallToolExternallyManaged(t *testing.T) {
 	tool := &config.ToolConfig{
 		Name:               "tokscale",
 		InstallationMethod: "npm",
-		Binaries:           []interface{}{"tokscale"},
+		Binaries:           testutil.DeclaredBinaries("tokscale"),
 	}
 
 	// Create global binary in memFS
@@ -1745,7 +1746,7 @@ func TestBuildHookEnv(t *testing.T) {
 		Name:               "my-tool",
 		InstallationMethod: "custom",
 		ConfigFilePath:     "/home/test/dotfiles/tools/my-tool.tool.ts",
-		Binaries:           []interface{}{"my-tool"},
+		Binaries:           testutil.DeclaredBinaries("my-tool"),
 		ShellConfigs: &config.ShellConfigs{
 			Zsh: &config.ShellTypeConfig{
 				Env: map[string]string{
@@ -1879,14 +1880,14 @@ func TestGenerateTools_PropagateAutoInstallToDependencies(t *testing.T) {
 	toolA := &config.ToolConfig{
 		Name:               "tool-a",
 		InstallationMethod: "custom",
-		Binaries:           []interface{}{"tool-a-bin"},
+		Binaries:           testutil.DeclaredBinaries("tool-a-bin"),
 		// auto flag NOT set
 	}
 
 	toolB := &config.ToolConfig{
 		Name:               "tool-b",
 		InstallationMethod: "custom",
-		Binaries:           []interface{}{"tool-b-bin"},
+		Binaries:           testutil.DeclaredBinaries("tool-b-bin"),
 		Dependencies:       []string{"tool-a-bin"},
 		InstallParams: map[string]interface{}{
 			"auto": true,
@@ -1960,13 +1961,13 @@ func TestGenerateTools_DependencyAutoInstallFailureCascade(t *testing.T) {
 	toolA := &config.ToolConfig{
 		Name:               "tool-a",
 		InstallationMethod: "failing-installer",
-		Binaries:           []interface{}{"tool-a-bin"},
+		Binaries:           testutil.DeclaredBinaries("tool-a-bin"),
 	}
 
 	toolB := &config.ToolConfig{
 		Name:               "tool-b",
 		InstallationMethod: "tool-b-installer",
-		Binaries:           []interface{}{"tool-b-bin"},
+		Binaries:           testutil.DeclaredBinaries("tool-b-bin"),
 		Dependencies:       []string{"tool-a-bin"},
 		InstallParams: map[string]interface{}{
 			"auto": true,
@@ -2057,7 +2058,7 @@ func TestInstallTool_StagingDirectoryAndPersistentDownloadCache(t *testing.T) {
 	tool := &config.ToolConfig{
 		Name:               "spy-tool",
 		InstallationMethod: "spy-installer",
-		Binaries:           []interface{}{"spybin"},
+		Binaries:           testutil.DeclaredBinaries("spybin"),
 	}
 
 	err = orch.InstallTool(ctx, tool, projCfg)

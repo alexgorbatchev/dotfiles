@@ -12,7 +12,7 @@ func TestWantsShim(t *testing.T) {
 	no := false
 	yes := true
 	binaries := []interface{}{
-		"plain",
+		map[string]interface{}{"name": "plain"},
 		map[string]interface{}{"name": "hidden", "shim": false},
 		map[string]interface{}{"name": "shown", "shim": true},
 		map[string]interface{}{"name": "located", "pattern": "*/bin/located"},
@@ -58,7 +58,7 @@ func TestGenerateToolSkipsShimlessBinaries(t *testing.T) {
 		Name:               "typescript",
 		InstallationMethod: "github-release",
 		Binaries: []interface{}{
-			"tsserver",
+			map[string]interface{}{"name": "tsserver"},
 			map[string]interface{}{"name": "tsc", "shim": false},
 		},
 	}

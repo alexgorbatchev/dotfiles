@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -437,7 +438,7 @@ func TestBrewInstaller(t *testing.T) {
 
 		tool := &config.ToolConfig{
 			Name:     "borders",
-			Binaries: []interface{}{"borders"},
+			Binaries: testutil.DeclaredBinaries("borders"),
 			InstallParams: map[string]interface{}{
 				"tap": "FelixKratz/formulae",
 			},

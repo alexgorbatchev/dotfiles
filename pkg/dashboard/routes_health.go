@@ -39,10 +39,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 			toolCount++
 			binNames := []string{}
 			for _, b := range tc.Binaries {
-				switch val := b.(type) {
-				case string:
-					binNames = append(binNames, val)
-				case map[string]any:
+				if val, ok := b.(map[string]any); ok {
 					if name, ok := val["name"].(string); ok {
 						binNames = append(binNames, name)
 					}

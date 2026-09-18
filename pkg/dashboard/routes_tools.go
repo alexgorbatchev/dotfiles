@@ -146,10 +146,7 @@ func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfi
 
 	binNames := []string{}
 	for _, b := range targetTool.Binaries {
-		switch val := b.(type) {
-		case string:
-			binNames = append(binNames, val)
-		case map[string]any:
+		if val, ok := b.(map[string]any); ok {
 			if name, ok := val["name"].(string); ok {
 				binNames = append(binNames, name)
 			}

@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -1609,7 +1610,7 @@ func TestServerStart_ImportsShimUsageLog(t *testing.T) {
 		Name:               "bat",
 		InstallationMethod: "manual",
 		ConfigFilePath:     toolPath,
-		Binaries:           []interface{}{"bat"},
+		Binaries:           testutil.DeclaredBinaries("bat"),
 	}}
 	projCfg := &config.ProjectConfig{Paths: config.PathsConfig{
 		DotfilesDir:    root,

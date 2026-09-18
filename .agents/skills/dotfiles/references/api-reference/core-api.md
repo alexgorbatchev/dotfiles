@@ -56,7 +56,7 @@ export default defineTool((install, ctx) => install("github-release", { repo: "o
 
 | Method                 | Description                                                                             |
 | ---------------------- | --------------------------------------------------------------------------------------- |
-| `.bin(name, pattern?)` | Define binary name(s) and optional match pattern (`string \| RegExp`)                   |
+| `.bin(name, pattern?)` | Define one binary, with an optional match pattern (`string \| RegExp`)                  |
 | `.bin(name, options)`  | Same, with `{ pattern?, shim? }`; `shim: false` installs the binary without a PATH shim |
 | `.version(v)`          | Set version (`'latest'` or specific)                                                    |
 | `.dependsOn(...bins)`  | Declare binary dependencies                                                             |

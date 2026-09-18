@@ -117,12 +117,13 @@ func matchesHostname(pattern string) bool {
 	return current == pattern || strings.Contains(current, pattern)
 }
 
+// getBinaryNames returns the name of every binary a tool declares. `.bin()` records one
+// object per call (`{name, pattern?, shim?}`), so an entry is a map; the typed forms are
+// what Go code builds directly.
 func getBinaryNames(toolBinaries []interface{}) []string {
 	names := make([]string, 0, len(toolBinaries))
 	for _, b := range toolBinaries {
 		switch val := b.(type) {
-		case string:
-			names = append(names, val)
 		case map[string]interface{}:
 			if name, ok := val["name"].(string); ok {
 				names = append(names, name)
@@ -583,18 +584,10 @@ func (o *Orchestrator) SyncTypeScriptTypes(ctx context.Context, tools []*config.
 			seen[t.Name] = true
 			binNames = append(binNames, t.Name)
 		}
-		for _, b := range t.Binaries {
-			switch val := b.(type) {
-			case string:
-				if val != "" && !seen[val] {
-					seen[val] = true
-					binNames = append(binNames, val)
-				}
-			case map[string]interface{}:
-				if name, ok := val["name"].(string); ok && name != "" && !seen[name] {
-					seen[name] = true
-					binNames = append(binNames, name)
-				}
+		for _, name := range getBinaryNames(t.Binaries) {
+			if name != "" && !seen[name] {
+				seen[name] = true
+				binNames = append(binNames, name)
 			}
 		}
 	}

@@ -57,10 +57,7 @@ var featuresCmd = &cobra.Command{
 				if len(tc.Binaries) > 0 {
 					var bNames []string
 					for _, b := range tc.Binaries {
-						switch v := b.(type) {
-						case string:
-							bNames = append(bNames, v)
-						case map[string]interface{}:
+						if v, ok := b.(map[string]interface{}); ok {
 							if name, ok := v["name"].(string); ok {
 								bNames = append(bNames, name)
 							}

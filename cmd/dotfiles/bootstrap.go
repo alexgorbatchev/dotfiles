@@ -282,10 +282,6 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 				} else {
 					for _, b := range provider.Binaries {
 						switch val := b.(type) {
-						case string:
-							if val == dep {
-								isProvider = true
-							}
 						case map[string]interface{}:
 							if bName, ok := val["name"].(string); ok && bName == dep {
 								isProvider = true
@@ -365,10 +361,7 @@ func (m *mockInstaller) SupportsSudo() bool {
 func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
 	var binaries []string
 	for _, b := range tool.Binaries {
-		switch val := b.(type) {
-		case string:
-			binaries = append(binaries, val)
-		case map[string]interface{}:
+		if val, ok := b.(map[string]interface{}); ok {
 			if name, ok := val["name"].(string); ok {
 				binaries = append(binaries, name)
 			}

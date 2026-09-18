@@ -11,8 +11,11 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
-// .bin() accepts an options object; only the members given cross to Go, so a binary
-// declared without mentioning `shim` is indistinguishable from one declared by name.
+// Every .bin() form records the same shape: an object carrying the name, plus only the
+// members the call actually gave. A binary declared without mentioning `shim` is
+// therefore distinguishable from one declared with `shim: false`, and one declared
+// without a pattern carries none, leaving the default glob to Go
+// (installer.defaultBinaryPattern).
 func TestLoaderRecordsBinaryOptions(t *testing.T) {
 	log := logger.New(logger.Config{Writer: io.Discard})
 	memFS := fs.NewMemFS()
@@ -33,6 +36,7 @@ export default defineTool((install) =>
   install("manual")
     .bin("plain")
     .bin("located", "*/bin/located")
+    .bin("matched", /bin\/matched$/)
     .bin("hidden", { shim: false })
     .bin("both", { pattern: "*/lib/both", shim: true }),
 );`
@@ -50,8 +54,9 @@ export default defineTool((install) =>
 	}
 
 	want := []interface{}{
-		"plain",
+		map[string]interface{}{"name": "plain"},
 		map[string]interface{}{"name": "located", "pattern": "*/bin/located"},
+		map[string]interface{}{"name": "matched", "pattern": `/bin\/matched$/`},
 		map[string]interface{}{"name": "hidden", "shim": false},
 		map[string]interface{}{"name": "both", "pattern": "*/lib/both", "shim": true},
 	}

@@ -317,8 +317,9 @@ func strPtr(s string) *string { return &s }
 func boolPtr(b bool) *bool    { return &b }
 
 func TestGetBinaryName(t *testing.T) {
-	if got := getBinaryName("rg"); got != "rg" {
-		t.Errorf("getBinaryName(\"rg\") = %q, want \"rg\"", got)
+	// A bare string is not a shape .bin() can record any more, so it names no binary.
+	if got := getBinaryName("rg"); got != "" {
+		t.Errorf("getBinaryName(\"rg\") = %q, want empty", got)
 	}
 
 	if got := getBinaryName(map[string]interface{}{"name": "bat"}); got != "bat" {
@@ -349,7 +350,7 @@ func TestToolConfigMerge(t *testing.T) {
 		Name:    "ripgrep",
 		Version: strPtr("13.0.0"),
 		Binaries: []interface{}{
-			"rg",
+			map[string]interface{}{"name": "rg"},
 		},
 		ShellConfigs: &ShellConfigs{
 			Zsh: &ShellTypeConfig{
@@ -370,8 +371,8 @@ func TestToolConfigMerge(t *testing.T) {
 		InstallParams:      map[string]interface{}{"crate": "ripgrep"},
 		UpdateCheck:        &ToolConfigUpdateCheck{Enabled: boolPtr(true), Constraint: strPtr("latest")},
 		Binaries: []interface{}{
-			"rg",  // duplicate binary name, should be skipped
-			"rga", // new binary name, should be appended
+			map[string]interface{}{"name": "rg"},  // duplicate binary name, should be skipped
+			map[string]interface{}{"name": "rga"}, // new binary name, should be appended
 			map[string]interface{}{"invalid": "no_name"},
 		},
 		Dependencies: []string{"pcre"},
@@ -416,8 +417,8 @@ func TestToolConfigMerge(t *testing.T) {
 		"updateCheck":        map[string]interface{}{"enabled": true},
 		"installParams":      map[string]interface{}{"crate": "ripgrep"},
 		"binaries": []interface{}{
-			"rg",
-			"rga",
+			map[string]interface{}{"name": "rg"},
+			map[string]interface{}{"name": "rga"},
 			map[string]interface{}{"invalid": "no_name"},
 		},
 	}
@@ -511,7 +512,7 @@ func TestFindTool(t *testing.T) {
 		{
 			Name: "github-release--bat",
 			Binaries: []interface{}{
-				"bat",
+				map[string]interface{}{"name": "bat"},
 				&BinaryConfig{Name: "batcat", Pattern: "batcat"},
 			},
 		},

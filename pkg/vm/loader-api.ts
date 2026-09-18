@@ -582,29 +582,24 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     shellConfigs: {} as Record<string, unknown>,
 
     bin(name: unknown, pattern: unknown) {
-      let b = (this["binaries"] || []) as unknown[];
+      const b = (this["binaries"] || []) as unknown[];
+      // One recorded shape for both declared forms: { name, pattern?, shim? } carrying
+      // only the members the call gave, so Go can tell "shim not mentioned" from
+      // "shim: false" and "no pattern" from a pattern. A binary declared by name alone
+      // carries neither and Go supplies the default glob.
+      const entry: Record<string, unknown> = { name: name };
       if (pattern !== null && typeof pattern === "object" && !(pattern instanceof RegExp)) {
-        // An options object: { pattern?, shim? }. Only the members given are recorded,
-        // so Go can tell "shim not mentioned" from "shim: false".
         const options = pattern as Record<string, unknown>;
-        const entry: Record<string, unknown> = { name: name };
         if (options["pattern"] !== undefined) {
           entry["pattern"] = options["pattern"];
         }
         if (options["shim"] !== undefined) {
           entry["shim"] = options["shim"];
         }
-        b.push(entry);
       } else if (pattern !== undefined) {
-        b.push({ name: name, pattern: pattern });
-      } else if (Array.isArray(name)) {
-        b = b.concat(name);
-      } else {
-        const args = Array.prototype.slice.call(arguments);
-        for (const arg of args) {
-          b.push(arg);
-        }
+        entry["pattern"] = pattern;
       }
+      b.push(entry);
       this["binaries"] = b;
       return this;
     },

@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -122,7 +123,7 @@ func TestDashboardMoreRoutes(t *testing.T) {
 			Version:            &ver,
 			InstallationMethod: "github-release",
 			ConfigFilePath:     toolPath,
-			Binaries:           []interface{}{"bat"},
+			Binaries:           testutil.DeclaredBinaries("bat"),
 		},
 	}
 

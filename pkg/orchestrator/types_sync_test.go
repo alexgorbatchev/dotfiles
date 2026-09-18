@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/scaffold"
@@ -39,7 +40,7 @@ func TestSyncTypeScriptTypesWritesModuleRegistryWithEveryTool(t *testing.T) {
 	projCfg := typesProjectConfig()
 
 	tools := []*config.ToolConfig{
-		{Name: "bat", Binaries: []interface{}{"bat"}},
+		{Name: "bat", Binaries: testutil.DeclaredBinaries("bat")},
 		{Name: "helper", Binaries: []interface{}{map[string]interface{}{"name": "helper-bin"}}, Disabled: true},
 		{Name: "laptop-only", Hostname: "not-this-machine"},
 	}

@@ -33,3 +33,15 @@ expectError(defineTool((install) => install("manual").binaries(["one", "two"])))
 expectError(
   defineTool((install) => install().platform(Platform.Linux, (linux) => linux("manual").binaries(["one", "two"]))),
 );
+
+// .bin() itself has no bulk form either: it takes one name, so neither an array of
+// names nor a variadic list of them is accepted. The runtime records one entry per
+// call, and these declarations are the whole truth about what it accepts.
+expectError(defineTool((install) => install("manual").bin(["one", "two"])));
+expectError(defineTool((install) => install("manual").bin("one", "two", "three")));
+expectError(
+  defineTool((install) => install().platform(Platform.Linux, (linux) => linux("manual").bin(["one", "two"]))),
+);
+expectError(
+  defineTool((install) => install().platform(Platform.Linux, (linux) => linux("manual").bin("one", "two", "three"))),
+);

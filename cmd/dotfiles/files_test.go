@@ -220,8 +220,8 @@ func TestFilesCommand_ManagedFiles(t *testing.T) {
 // and a shim that generate removed as stale must disappear from the listing.
 func TestFilesCommand_ListsCurrentFiles(t *testing.T) {
 	const (
-		twoBinaries = `"alpha": {"name": "alpha", "installationMethod": "manual", "installParams": {"binaryPath": "alpha"}, "binaries": ["alpha", "alpha-extra"]}`
-		oneBinary   = `"alpha": {"name": "alpha", "installationMethod": "manual", "installParams": {"binaryPath": "alpha"}, "binaries": ["alpha"]}`
+		twoBinaries = `"alpha": {"name": "alpha", "installationMethod": "manual", "installParams": {"binaryPath": "alpha"}, "binaries": [{"name": "alpha"}, {"name": "alpha-extra"}]}`
+		oneBinary   = `"alpha": {"name": "alpha", "installationMethod": "manual", "installParams": {"binaryPath": "alpha"}, "binaries": [{"name": "alpha"}]}`
 	)
 	p := newE2EProject(t, twoBinaries)
 	alpha := filepath.Join(p.TargetDir, "alpha")

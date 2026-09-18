@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -944,7 +945,7 @@ func TestCompletionsAreWrittenAndLoadedPerShell(t *testing.T) {
 
 	tool := &config.ToolConfig{
 		Name:           "mytool",
-		Binaries:       []interface{}{"mytool"},
+		Binaries:       testutil.DeclaredBinaries("mytool"),
 		ConfigFilePath: "/home/user/tools/mytool.tool.ts",
 		ShellConfigs: &config.ShellConfigs{
 			Zsh:        &config.ShellTypeConfig{Completions: "completions/_mytool"},

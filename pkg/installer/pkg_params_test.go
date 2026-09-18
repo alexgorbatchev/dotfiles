@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -88,7 +89,7 @@ func TestPkgInstallerReleaseParameters(t *testing.T) {
 
 		res, err := inst.Install(context.Background(), &config.ToolConfig{
 			Name:     "app",
-			Binaries: []interface{}{"app", "helper"},
+			Binaries: testutil.DeclaredBinaries("app", "helper"),
 			InstallParams: map[string]interface{}{
 				"source":       urlSource(server),
 				"binaryPath":   installedBinary,

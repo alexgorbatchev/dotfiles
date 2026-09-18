@@ -766,7 +766,7 @@ func TestDetectConflictsCommand_ErrorReturn(t *testing.T) {
 		"github-release--bat": {
 			"name": "github-release--bat",
 			"installationMethod": "github-release",
-			"binaries": ["bat"]
+			"binaries": [{"name": "bat"}]
 		}
 	}
 }`, tmpDir, targetDir, tmpDir)
@@ -1124,12 +1124,12 @@ func createCompletionConfigDir(t *testing.T) {
 		"github-release--bat": {
 			"name": "github-release--bat",
 			"installationMethod": "github-release",
-			"binaries": ["bat"]
+			"binaries": [{"name": "bat"}]
 		},
 		"github-release--fd": {
 			"name": "github-release--fd",
 			"installationMethod": "github-release",
-			"binaries": ["fd"]
+			"binaries": [{"name": "fd"}]
 		}
 	}
 }`
@@ -1618,7 +1618,7 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 	}
 
 	p := newE2EProject(t, fmt.Sprintf(`
-		"newer": {"name": "newer", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[3]q}, "binaries": ["newer-bin"]},
+		"newer": {"name": "newer", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[3]q}, "binaries": [{"name": "newer-bin"}]},
 		"unknown-current": {"name": "unknown-current", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[3]q}},
 		"sudo-tool": {"name": "sudo-tool", "installationMethod": "github-release", "sudo": true, "installParams": {"repo": %[1]q, "assetPattern": %[3]q}},
 		"same": {"name": "same", "installationMethod": "github-release", "installParams": {"repo": %[2]q, "assetPattern": %[3]q}},
@@ -2198,7 +2198,7 @@ func TestBootstrapServices_DependencyResolution(t *testing.T) {
 
 	t.Run("a binary provided by two tools is ambiguous", func(t *testing.T) {
 		path := writeConfig(t, `
-			"alpha": {"name": "alpha", "binaries": ["shared"]},
+			"alpha": {"name": "alpha", "binaries": [{"name": "shared"}]},
 			"beta": {"name": "beta", "binaries": [{"name": "shared"}]},
 			"user": {"name": "user", "dependencies": ["shared"]}
 		`)
@@ -2325,7 +2325,7 @@ func TestMockInstaller_ObjectBinaries(t *testing.T) {
 
 func TestBinCommand_Resolution(t *testing.T) {
 	p := newE2EProject(t, `
-		"gh-tool": {"name": "gh-tool", "installationMethod": "manual", "binaries": ["ghb"]},
+		"gh-tool": {"name": "gh-tool", "installationMethod": "manual", "binaries": [{"name": "ghb"}]},
 		"plain": {"name": "plain", "installationMethod": "manual"}
 	`)
 	binariesDir := filepath.Join(p.GeneratedDir, "binaries")
@@ -2446,7 +2446,7 @@ func TestBinCommand_PrintsTargetDir(t *testing.T) {
 
 func TestFeaturesCommand_Output(t *testing.T) {
 	p := newE2EProject(t, `
-		"gh": {"name": "gh", "installationMethod": "manual", "binaries": ["ghb", {"name": "ghc"}, {"pattern": "unnamed"}]},
+		"gh": {"name": "gh", "installationMethod": "manual", "binaries": [{"name": "ghb"}, {"name": "ghc"}, {"pattern": "unnamed"}]},
 		"sh": {"name": "sh"}
 	`)
 
@@ -2685,7 +2685,7 @@ func TestEnvDeleteCommand_Confirmation(t *testing.T) {
 func TestInstallCommand_ArgumentHandling(t *testing.T) {
 	p := newE2EProject(t, `
 		"bat": {"name": "bat", "installationMethod": "manual"},
-		"broken": {"name": "broken", "binaries": ["brk"]}
+		"broken": {"name": "broken", "binaries": [{"name": "brk"}]}
 	`)
 
 	t.Run("KEY=VALUE words are not tool names", func(t *testing.T) {

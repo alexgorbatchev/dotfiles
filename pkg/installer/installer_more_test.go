@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -196,7 +197,7 @@ func TestInstallersInstallPipeline(t *testing.T) {
 	curlTar.BinDir = "/test/curltar"
 	tTar := &config.ToolConfig{
 		Name:     "curltar-tool",
-		Binaries: []interface{}{"mybin"},
+		Binaries: testutil.DeclaredBinaries("mybin"),
 		InstallParams: map[string]interface{}{
 			"url": server.URL + "/archive.tar.gz",
 		},
@@ -246,7 +247,7 @@ func TestInstallersInstallPipeline(t *testing.T) {
 	gitea.BinDir = "/test/gitea"
 	tGitea := &config.ToolConfig{
 		Name:     "gitea-tool",
-		Binaries: []interface{}{"mybin"},
+		Binaries: testutil.DeclaredBinaries("mybin"),
 		InstallParams: map[string]interface{}{
 			"repo":        "owner/repo",
 			"instanceUrl": server.URL,
@@ -306,8 +307,11 @@ func TestInstallerParamsAndUtilities(t *testing.T) {
 	}
 
 	tool := &config.ToolConfig{
-		Name:     "mytool",
-		Binaries: []interface{}{"bin1", map[string]interface{}{"name": "bin2"}},
+		Name: "mytool",
+		Binaries: []interface{}{
+			map[string]interface{}{"name": "bin1"},
+			map[string]interface{}{"name": "bin2", "pattern": "*/bin2"},
+		},
 	}
 	bins := GetBinaryNames(tool.Name, tool.Binaries)
 	if len(bins) != 2 || bins[0] != "bin1" || bins[1] != "bin2" {
@@ -346,7 +350,7 @@ func TestPackageManagerInstallers(t *testing.T) {
 		Name:          "aptpkg",
 		Sudo:          true,
 		InstallParams: map[string]interface{}{"pkgName": "aptpkg"},
-		Binaries:      []interface{}{"aptpkg"},
+		Binaries:      testutil.DeclaredBinaries("aptpkg"),
 	}
 	resApt, err := apt.Install(context.Background(), tApt)
 	if err != nil || resApt == nil {
@@ -364,7 +368,7 @@ func TestPackageManagerInstallers(t *testing.T) {
 		Name:          "dnfpkg",
 		Sudo:          true,
 		InstallParams: map[string]interface{}{"pkgName": "dnfpkg"},
-		Binaries:      []interface{}{"dnfpkg"},
+		Binaries:      testutil.DeclaredBinaries("dnfpkg"),
 	}
 	resDnf, err := dnf.Install(context.Background(), tDnf)
 	if err != nil || resDnf == nil {
@@ -382,7 +386,7 @@ func TestPackageManagerInstallers(t *testing.T) {
 		Name:          "pacpkg",
 		Sudo:          true,
 		InstallParams: map[string]interface{}{"pkgName": "pacpkg"},
-		Binaries:      []interface{}{"pacpkg"},
+		Binaries:      testutil.DeclaredBinaries("pacpkg"),
 	}
 	resPac, err := pacman.Install(context.Background(), tPac)
 	if err != nil || resPac == nil {
@@ -398,7 +402,7 @@ func TestPackageManagerInstallers(t *testing.T) {
 	tNpm := &config.ToolConfig{
 		Name:          "npmpkg",
 		InstallParams: map[string]interface{}{"package": "npmpkg"},
-		Binaries:      []interface{}{"npmpkg"},
+		Binaries:      testutil.DeclaredBinaries("npmpkg"),
 	}
 	resNpm, err := npm.Install(context.Background(), tNpm)
 	if err != nil || resNpm == nil {
@@ -676,7 +680,7 @@ func TestPromoteBinaries_NotFound(t *testing.T) {
 	memFS := fs.NewMemFS()
 	_ = memFS.MkdirAll("/dest", 0755)
 
-	_, err := PromoteBinaries(memFS, "/dest", "missing-tool", []interface{}{"missing-bin"})
+	_, err := PromoteBinaries(memFS, "/dest", "missing-tool", testutil.DeclaredBinaries("missing-bin"))
 	if err == nil {
 		t.Errorf("expected error when binary is not found in destDir")
 	}

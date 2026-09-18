@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -102,6 +103,8 @@ func TestMatchesHostname(t *testing.T) {
 }
 
 func TestGetBinaryNames(t *testing.T) {
+	// A bare string is not a shape .bin() records, so it names no binary; the map is
+	// what a loaded configuration holds and the typed forms are what Go code builds.
 	binaries := []interface{}{
 		"simple-bin",
 		config.BinaryConfig{Name: "struct-bin", Pattern: "pat"},
@@ -110,11 +113,11 @@ func TestGetBinaryNames(t *testing.T) {
 	}
 
 	names := getBinaryNames(binaries)
-	if len(names) != 4 {
-		t.Fatalf("expected 4 names, got %d", len(names))
+	if len(names) != 3 {
+		t.Fatalf("expected 3 names, got %d", len(names))
 	}
 
-	expected := []string{"simple-bin", "struct-bin", "pointer-bin", "map-bin"}
+	expected := []string{"struct-bin", "pointer-bin", "map-bin"}
 	for i, name := range names {
 		if name != expected[i] {
 			t.Errorf("expected %q, got %q", expected[i], name)
@@ -160,7 +163,7 @@ func TestOrchestrator_Install(t *testing.T) {
 		Name:               "test-tool",
 		Version:            &versionStr,
 		InstallationMethod: "brew",
-		Binaries:           []interface{}{"test-bin"},
+		Binaries:           testutil.DeclaredBinaries("test-bin"),
 		Symlinks: []config.SymlinkConfig{
 			{Source: "/home/user/src", Target: "/home/user/dest"},
 		},
@@ -265,7 +268,7 @@ func TestOrchestrator_Install_UnversionedToolTimestamp(t *testing.T) {
 		Name:               "signal",
 		InstallationMethod: "mock-unversioned",
 		Version:            &versionLatest,
-		Binaries:           []interface{}{"signal-bin"},
+		Binaries:           testutil.DeclaredBinaries("signal-bin"),
 	}
 
 	err = orch.InstallTools(ctx, []*config.ToolConfig{tool}, projCfg)
@@ -329,7 +332,7 @@ func TestOrchestrator_Generate(t *testing.T) {
 		Name:               "standard-tool",
 		Version:            &versionStr,
 		InstallationMethod: "custom-method",
-		Binaries:           []interface{}{"standard-bin"},
+		Binaries:           testutil.DeclaredBinaries("standard-bin"),
 		Symlinks: []config.SymlinkConfig{
 			{Source: "/home/user/src", Target: "/home/user/dest"},
 		},
@@ -339,7 +342,7 @@ func TestOrchestrator_Generate(t *testing.T) {
 		Name:               "auto-tool",
 		Version:            &versionStr,
 		InstallationMethod: "custom-method",
-		Binaries:           []interface{}{"auto-bin"},
+		Binaries:           testutil.DeclaredBinaries("auto-bin"),
 		InstallParams: map[string]interface{}{
 			"auto": true,
 		},
@@ -434,7 +437,7 @@ func TestOrchestrator_Errors(t *testing.T) {
 	}
 
 	// Test missing installation method
-	tool := &config.ToolConfig{Name: "test-tool", Binaries: []interface{}{"test-bin"}}
+	tool := &config.ToolConfig{Name: "test-tool", Binaries: testutil.DeclaredBinaries("test-bin")}
 	err = orch.InstallTool(ctx, tool, projCfg)
 	if err == nil {
 		t.Fatal("expected error with missing installation method")
@@ -577,7 +580,7 @@ func TestOrchestrator_UninstallTool(t *testing.T) {
 	tool := &config.ToolConfig{
 		Name:               "test-tool",
 		InstallationMethod: "custom-method",
-		Binaries:           []interface{}{"test-bin"},
+		Binaries:           testutil.DeclaredBinaries("test-bin"),
 	}
 
 	// Nil project config error
@@ -1058,8 +1061,8 @@ func TestOrchestrator_CleanupOrphanedTools(t *testing.T) {
 	_ = fsys.MkdirAll("/home/user/bin", 0755)
 	_ = fsys.MkdirAll("/home/user/.generated/usage", 0755)
 
-	toolA := &config.ToolConfig{Name: "tool-a", Binaries: []interface{}{"bin-a"}}
-	toolB := &config.ToolConfig{Name: "tool-b", Binaries: []interface{}{"bin-b"}}
+	toolA := &config.ToolConfig{Name: "tool-a", Binaries: testutil.DeclaredBinaries("bin-a")}
+	toolB := &config.ToolConfig{Name: "tool-b", Binaries: testutil.DeclaredBinaries("bin-b")}
 
 	// First generation: tool-a and tool-b
 	if err := orch.GenerateTools(ctx, []*config.ToolConfig{toolA, toolB}, projCfg); err != nil {
@@ -1117,7 +1120,7 @@ func TestOrchestrator_CleanupStaleShims(t *testing.T) {
 
 	tool := &config.ToolConfig{
 		Name:     "my-tool",
-		Binaries: []interface{}{"bin1", "bin2"},
+		Binaries: testutil.DeclaredBinaries("bin1", "bin2"),
 	}
 
 	if err := orch.GenerateTools(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
@@ -1134,7 +1137,7 @@ func TestOrchestrator_CleanupStaleShims(t *testing.T) {
 	// Remove bin2 from tool config
 	toolUpdated := &config.ToolConfig{
 		Name:     "my-tool",
-		Binaries: []interface{}{"bin1"},
+		Binaries: testutil.DeclaredBinaries("bin1"),
 	}
 
 	if err := orch.GenerateTools(ctx, []*config.ToolConfig{toolUpdated}, projCfg); err != nil {
@@ -1296,7 +1299,7 @@ func TestGenerateCompletionsForTool_SkipMissingSource(t *testing.T) {
 
 	tool := &config.ToolConfig{
 		Name:               "cargo--eza",
-		Binaries:           []interface{}{"eza"},
+		Binaries:           testutil.DeclaredBinaries("eza"),
 		ConfigFilePath:     "/home/user/tools/eza.tool.ts",
 		InstallationMethod: "cargo",
 		ShellConfigs: &config.ShellConfigs{
@@ -1369,7 +1372,7 @@ func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
 
 	toolSuccess := &config.ToolConfig{
 		Name:               "mytool",
-		Binaries:           []interface{}{"mytool"},
+		Binaries:           testutil.DeclaredBinaries("mytool"),
 		ConfigFilePath:     "/home/user/tools/mytool.tool.ts",
 		InstallationMethod: "github-release",
 		ShellConfigs: &config.ShellConfigs{
@@ -1398,7 +1401,7 @@ func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
 	// 2. Tool with failing/timing-out completion command (should recover gracefully)
 	toolSlow := &config.ToolConfig{
 		Name:               "slowtool",
-		Binaries:           []interface{}{"slowtool"},
+		Binaries:           testutil.DeclaredBinaries("slowtool"),
 		ConfigFilePath:     "/home/user/tools/slowtool.tool.ts",
 		InstallationMethod: "github-release",
 		ShellConfigs: &config.ShellConfigs{
@@ -1449,7 +1452,7 @@ func TestGenerateCompletionsForTool_CmdTimeoutIsReportedAsTimeout(t *testing.T) 
 
 	tool := &config.ToolConfig{
 		Name:               "stalledtool",
-		Binaries:           []interface{}{"stalledtool"},
+		Binaries:           testutil.DeclaredBinaries("stalledtool"),
 		ConfigFilePath:     "/home/user/tools/stalledtool.tool.ts",
 		InstallationMethod: "github-release",
 		ShellConfigs: &config.ShellConfigs{
@@ -1510,7 +1513,7 @@ func TestManualToolWithoutBinaryPath_NoShimAndWarning(t *testing.T) {
 
 	toolManual := &config.ToolConfig{
 		Name:               "tmux-sessionx",
-		Binaries:           []interface{}{"tmux-sessionx"},
+		Binaries:           testutil.DeclaredBinaries("tmux-sessionx"),
 		ConfigFilePath:     "/home/user/tools/tmux-sessionx.tool.ts",
 		InstallationMethod: "manual",
 	}
@@ -1543,7 +1546,7 @@ func TestManualToolWithoutBinaryPath_NoShimAndWarning(t *testing.T) {
 // shimBinaries is the one place that decides which binaries a tool gets shims for,
 // shared by generation and the stale cleanup.
 func TestShimBinaries(t *testing.T) {
-	bins := []interface{}{"foo", "bar"}
+	bins := testutil.DeclaredBinaries("foo", "bar")
 	tests := []struct {
 		name string
 		tool *config.ToolConfig
@@ -1622,7 +1625,7 @@ func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 
 	toolClaude := &config.ToolConfig{
 		Name:               "claude-code",
-		Binaries:           []interface{}{"claude"},
+		Binaries:           testutil.DeclaredBinaries("claude"),
 		ConfigFilePath:     "/home/user/dotfiles/tools/claude.tool.ts",
 		InstallationMethod: "manual",
 		InstallParams: map[string]interface{}{
@@ -1691,7 +1694,7 @@ func TestGenerateTool_ExternalToolBootstrapShimTargetsCurrentEntrypoint(t *testi
 			tool := &config.ToolConfig{
 				Name:               method + "--" + bootstrapTestBinName,
 				InstallationMethod: method,
-				Binaries:           []interface{}{bootstrapTestBinName},
+				Binaries:           testutil.DeclaredBinaries(bootstrapTestBinName),
 			}
 
 			if err := orch.GenerateTool(ctx, tool, projCfg); err != nil {
@@ -1765,7 +1768,7 @@ func TestInstallTool_ExternalToolShimTarget(t *testing.T) {
 			tool := &config.ToolConfig{
 				Name:               "brew--" + bootstrapTestBinName,
 				InstallationMethod: "brew",
-				Binaries:           []interface{}{bootstrapTestBinName},
+				Binaries:           testutil.DeclaredBinaries(bootstrapTestBinName),
 			}
 
 			if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
@@ -2468,7 +2471,7 @@ func TestOrchestrator_InstallTool_ShimsOnlyDeclaredBinaries(t *testing.T) {
 		Name:               "reporting-tool",
 		Version:            &version,
 		InstallationMethod: "custom-method",
-		Binaries:           []interface{}{"declared-bin", "elsewhere-bin"},
+		Binaries:           testutil.DeclaredBinaries("declared-bin", "elsewhere-bin"),
 	}
 	tools := []*config.ToolConfig{tool}
 
@@ -2549,9 +2552,9 @@ func TestOrchestrator_GenerateTools_DependencyOnDisabledProvider(t *testing.T) {
 	_ = fsys.MkdirAll("/home/user/bin", 0755)
 
 	tools := []*config.ToolConfig{
-		{Name: "provider", Binaries: []interface{}{"dotfilesnosuchbin"}, Disabled: true},
-		{Name: "consumer", Binaries: []interface{}{"consumerbin"}, Dependencies: []string{"dotfilesnosuchbin"}},
-		{Name: "unrelated", Binaries: []interface{}{"unrelatedbin"}},
+		{Name: "provider", Binaries: testutil.DeclaredBinaries("dotfilesnosuchbin"), Disabled: true},
+		{Name: "consumer", Binaries: testutil.DeclaredBinaries("consumerbin"), Dependencies: []string{"dotfilesnosuchbin"}},
+		{Name: "unrelated", Binaries: testutil.DeclaredBinaries("unrelatedbin")},
 	}
 
 	if err := orch.GenerateTools(ctx, tools, projCfg); err != nil {
@@ -2621,7 +2624,7 @@ func TestInstallThenGenerate_SystemDirectoriesAreNotToolOwnedShims(t *testing.T)
 
 	tool := &config.ToolConfig{
 		Name:               "probe",
-		Binaries:           []interface{}{"probe"},
+		Binaries:           testutil.DeclaredBinaries("probe"),
 		ConfigFilePath:     "/home/user/tools/probe.tool.ts",
 		InstallationMethod: "manual",
 		InstallParams:      map[string]interface{}{"binaryPath": "/opt/probe/probe"},
@@ -2719,7 +2722,7 @@ func TestCleanupStaleShims_DirectoriesAndRemoveFailures(t *testing.T) {
 			GeneratedDir:    "/home/user/.generated",
 		},
 	}
-	tool := &config.ToolConfig{Name: "probe", Binaries: []interface{}{"probe"}}
+	tool := &config.ToolConfig{Name: "probe", Binaries: testutil.DeclaredBinaries("probe")}
 	usageDir := usagelog.Dir(projCfg.Paths.GeneratedDir)
 	staleShim := filepath.Join(projCfg.Paths.TargetDir, "gone")
 

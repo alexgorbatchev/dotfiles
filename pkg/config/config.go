@@ -456,10 +456,11 @@ func hasKey(m map[string]interface{}, key string) bool {
 	return false
 }
 
+// getBinaryName returns the name an entry of ToolConfig.Binaries declares. `.bin()`
+// records one object per call (`{name, pattern?, shim?}`), so an entry is a map; the
+// typed forms are what Go code builds directly.
 func getBinaryName(b interface{}) string {
 	switch val := b.(type) {
-	case string:
-		return val
 	case map[string]interface{}:
 		if name, ok := val["name"].(string); ok {
 			return name

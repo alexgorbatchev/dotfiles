@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 )
 
@@ -70,12 +71,12 @@ func TestTopologicalSort_BinaryDependencies(t *testing.T) {
 			tools: []*config.ToolConfig{
 				{
 					Name:         "rust-tool",
-					Binaries:     []interface{}{"cargo", "rustc"},
+					Binaries:     testutil.DeclaredBinaries("cargo", "rustc"),
 					Dependencies: []string{},
 				},
 				{
 					Name:         "my-package",
-					Binaries:     []interface{}{"my-bin"},
+					Binaries:     testutil.DeclaredBinaries("my-bin"),
 					Dependencies: []string{"cargo"},
 				},
 			},
@@ -87,12 +88,12 @@ func TestTopologicalSort_BinaryDependencies(t *testing.T) {
 			tools: []*config.ToolConfig{
 				{
 					Name:         "rust-tool",
-					Binaries:     []interface{}{"cargo", "rustc"},
+					Binaries:     testutil.DeclaredBinaries("cargo", "rustc"),
 					Dependencies: []string{},
 				},
 				{
 					Name:         "my-package",
-					Binaries:     []interface{}{"my-bin"},
+					Binaries:     testutil.DeclaredBinaries("my-bin"),
 					Dependencies: []string{"rust-tool"},
 				},
 			},
@@ -104,11 +105,11 @@ func TestTopologicalSort_BinaryDependencies(t *testing.T) {
 			tools: []*config.ToolConfig{
 				{
 					Name:     "tool-one",
-					Binaries: []interface{}{"duplicate-bin"},
+					Binaries: testutil.DeclaredBinaries("duplicate-bin"),
 				},
 				{
 					Name:     "tool-two",
-					Binaries: []interface{}{"duplicate-bin"},
+					Binaries: testutil.DeclaredBinaries("duplicate-bin"),
 				},
 				{
 					Name:         "tool-three",
@@ -166,11 +167,11 @@ func TestTopologicalSort_RobustnessAndDeterminism(t *testing.T) {
 		tools := []*config.ToolConfig{
 			{
 				Name:     "tool-A",
-				Binaries: []interface{}{"shared-bin"},
+				Binaries: testutil.DeclaredBinaries("shared-bin"),
 			},
 			{
 				Name:     "tool-B",
-				Binaries: []interface{}{"shared-bin"},
+				Binaries: testutil.DeclaredBinaries("shared-bin"),
 			},
 		}
 		sorted, err := TopologicalSort(tools)
@@ -186,11 +187,11 @@ func TestTopologicalSort_RobustnessAndDeterminism(t *testing.T) {
 		tools := []*config.ToolConfig{
 			{
 				Name:     "tool-A",
-				Binaries: []interface{}{"shared-bin"},
+				Binaries: testutil.DeclaredBinaries("shared-bin"),
 			},
 			{
 				Name:     "tool-B",
-				Binaries: []interface{}{"shared-bin"},
+				Binaries: testutil.DeclaredBinaries("shared-bin"),
 			},
 			{
 				Name:         "tool-C",
@@ -233,7 +234,7 @@ func TestTopologicalSort_RobustnessAndDeterminism(t *testing.T) {
 			{
 				Name:               "brew",
 				InstallationMethod: "curl-script",
-				Binaries:           []interface{}{"brew"},
+				Binaries:           testutil.DeclaredBinaries("brew"),
 			},
 		}
 		sorted, err := TopologicalSort(tools)
@@ -278,7 +279,7 @@ func TestTopologicalSort_SkippedProvider(t *testing.T) {
 			name: "disabled provider",
 			skipped: &config.ToolConfig{
 				Name:     "provider",
-				Binaries: []interface{}{"dotfilesnosuchbin"},
+				Binaries: testutil.DeclaredBinaries("dotfilesnosuchbin"),
 				Disabled: true,
 			},
 			wantWarning: `Tool "consumer" depends on "dotfilesnosuchbin", provided by disabled tool "provider": continuing without it`,
@@ -287,7 +288,7 @@ func TestTopologicalSort_SkippedProvider(t *testing.T) {
 			name: "provider scoped to another hostname",
 			skipped: &config.ToolConfig{
 				Name:     "provider",
-				Binaries: []interface{}{"dotfilesnosuchbin"},
+				Binaries: testutil.DeclaredBinaries("dotfilesnosuchbin"),
 				Hostname: "some-other-machine",
 			},
 			wantWarning: `Tool "consumer" depends on "dotfilesnosuchbin", provided by tool "provider" which is scoped to hostname "some-other-machine": continuing without it`,
@@ -305,8 +306,8 @@ func TestTopologicalSort_SkippedProvider(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			active := []*config.ToolConfig{
-				{Name: "consumer", Binaries: []interface{}{"consumerbin"}, Dependencies: []string{"dotfilesnosuchbin"}},
-				{Name: "unrelated", Binaries: []interface{}{"unrelatedbin"}},
+				{Name: "consumer", Binaries: testutil.DeclaredBinaries("consumerbin"), Dependencies: []string{"dotfilesnosuchbin"}},
+				{Name: "unrelated", Binaries: testutil.DeclaredBinaries("unrelatedbin")},
 			}
 
 			var warnings []string
@@ -333,11 +334,11 @@ func TestTopologicalSort_SkippedProvider(t *testing.T) {
 
 	t.Run("two host-scoped providers of the same binary are not ambiguous", func(t *testing.T) {
 		active := []*config.ToolConfig{
-			{Name: "here", Binaries: []interface{}{"dotfilesnosuchbin"}},
+			{Name: "here", Binaries: testutil.DeclaredBinaries("dotfilesnosuchbin")},
 			{Name: "consumer", Dependencies: []string{"dotfilesnosuchbin"}},
 		}
 		skipped := []*config.ToolConfig{
-			{Name: "there", Binaries: []interface{}{"dotfilesnosuchbin"}, Hostname: "some-other-machine"},
+			{Name: "there", Binaries: testutil.DeclaredBinaries("dotfilesnosuchbin"), Hostname: "some-other-machine"},
 		}
 
 		var warnings []string
@@ -358,7 +359,7 @@ func TestTopologicalSort_SkippedProvider(t *testing.T) {
 			{Name: "consumer", Dependencies: []string{"dotfilesnosuchbin"}},
 		}
 		skipped := []*config.ToolConfig{
-			{Name: "provider", Binaries: []interface{}{"dotfilesotherbin"}, Disabled: true},
+			{Name: "provider", Binaries: testutil.DeclaredBinaries("dotfilesotherbin"), Disabled: true},
 		}
 
 		_, err := topologicalSort(active, skipped, func(string) {})

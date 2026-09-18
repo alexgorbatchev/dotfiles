@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -618,7 +619,7 @@ func TestGitHubInstaller_InstallCargoDistTarXz(t *testing.T) {
 
 	tool := &config.ToolConfig{
 		Name:          "md-tui",
-		Binaries:      []interface{}{"mdt"},
+		Binaries:      testutil.DeclaredBinaries("mdt"),
 		InstallParams: map[string]interface{}{"repo": "owner/tool"},
 	}
 	res, err := inst.Install(context.Background(), tool)

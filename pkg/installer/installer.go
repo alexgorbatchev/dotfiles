@@ -338,12 +338,12 @@ func IsDryRun() bool {
 }
 
 // GetBinaryNames returns the binary names declared in a tool config's Binaries slice.
+// `.bin()` records one object per call (`{name, pattern?, shim?}`), so an entry is a map;
+// the typed forms are what Go code builds directly.
 func GetBinaryNames(toolName string, toolBinaries []interface{}) []string {
 	names := make([]string, 0, len(toolBinaries))
 	for _, b := range toolBinaries {
 		switch val := b.(type) {
-		case string:
-			names = append(names, val)
 		case map[string]interface{}:
 			if name, ok := val["name"].(string); ok {
 				names = append(names, name)

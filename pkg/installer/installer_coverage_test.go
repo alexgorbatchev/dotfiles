@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -36,7 +37,7 @@ func TestInstallerCoverageCases(t *testing.T) {
 	// PromoteBinaries fallback
 	_ = memFS.MkdirAll("/src2/sub", 0755)
 	_ = memFS.WriteFile("/src2/sub/other", []byte("other"), 0755)
-	promoted2, err := PromoteBinaries(memFS, "/src2", "/dest2", []interface{}{"other"})
+	promoted2, err := PromoteBinaries(memFS, "/src2", "/dest2", testutil.DeclaredBinaries("other"))
 	if err != nil || len(promoted2) == 0 {
 		t.Errorf("PromoteBinaries fallback failed: %v", err)
 	}
@@ -305,7 +306,7 @@ func TestInstallersDryRunCoverage(t *testing.T) {
 
 	tool := &config.ToolConfig{
 		Name:     "testtool",
-		Binaries: []interface{}{"testbin"},
+		Binaries: testutil.DeclaredBinaries("testbin"),
 		InstallParams: map[string]interface{}{
 			"pkgName":     "testtool",
 			"formula":     "testtool",
@@ -375,7 +376,7 @@ func TestInstallerDetailedBranches(t *testing.T) {
 	tBrewCask := &config.ToolConfig{
 		Name:          "casktool",
 		InstallParams: map[string]interface{}{"cask": true, "caskName": "casktool"},
-		Binaries:      []interface{}{"caskbin"},
+		Binaries:      testutil.DeclaredBinaries("caskbin"),
 	}
 	resBrew, err := brew.Install(ctx, tBrewCask)
 	if err != nil || resBrew == nil {
@@ -628,7 +629,7 @@ func TestInstallerDeepCoverage(t *testing.T) {
 		InstallParams: map[string]interface{}{
 			"package": "npmcli",
 		},
-		Binaries: []interface{}{"npmcli"},
+		Binaries: testutil.DeclaredBinaries("npmcli"),
 	}
 	resNpm, err := npm.Install(ctx, tNpm)
 	if err != nil || resNpm == nil {
