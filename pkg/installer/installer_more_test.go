@@ -502,22 +502,22 @@ func TestInstallerEdgeCasesAndFallbacks(t *testing.T) {
 		}
 	}
 
-	// 4. GitHub fetchReleaseViaGhCli & downloadAssetViaGhCli
-	gh := NewGitHubInstaller(runner, memFS, downloader.NewDownloader(memFS, nil), sysCtx)
+	// 4. GitHub release client gh CLI paths
+	releaseClient := githubReleaseClient{runner: runner}
 	runner.Register("gh", []byte(`{
 		"tag_name": "v1.2.3",
 		"assets": [{"name": "cli-tool-linux-amd64", "browser_download_url": "http://gh/dl"}]
 	}`), nil)
-	rel, err := gh.fetchReleaseViaGhCli(context.Background(), "owner/cli-tool", "", "", false)
+	rel, err := releaseClient.fetchViaGhCli(context.Background(), "owner/cli-tool", "", false)
 	if err != nil || rel == nil || rel.TagName != "v1.2.3" {
-		t.Errorf("fetchReleaseViaGhCli failed: rel=%v, err=%v", rel, err)
+		t.Errorf("fetchViaGhCli failed: rel=%v, err=%v", rel, err)
 	}
 
 	runner.RegisterFunc("gh", func(c *exec.MockCmd) error {
 		_ = memFS.WriteFile("/tmp/asset.bin", []byte("asset-data"), 0644)
 		return nil
 	})
-	if err := gh.downloadAssetViaGhCli(context.Background(), "owner/cli-tool", "v1.2.3", "cli-tool-linux-amd64", "/tmp/asset.bin"); err != nil {
+	if err := releaseClient.downloadAssetViaGhCli(context.Background(), "owner/cli-tool", "v1.2.3", "cli-tool-linux-amd64", "/tmp/asset.bin"); err != nil {
 		t.Errorf("downloadAssetViaGhCli failed: %v", err)
 	}
 
