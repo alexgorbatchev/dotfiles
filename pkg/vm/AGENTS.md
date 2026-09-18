@@ -15,6 +15,8 @@ Goja JS VM, TypeScript config loader, and authoring DSL bindings.
 - Clean internal evaluation flags (such as `_hasPlatformBlocks`, `_hasMatchingPlatform`, `_hasArchBlocks`, `_hasMatchingArch`, `_version`) from builder objects before returning to Go so they are not serialized into JSON.
 - Strictly enforce `DisallowUnknownFields()` when decoding project and tool configurations in `loader.go`.
 - Strongly type `IProjectConfig` and `ConfigFactory` against `ProjectConfig` without loose `Record<string, unknown>` escape hatches.
+- `Libc` is the one DSL constant whose values Go owns: `libcConstants` in `bindings.go` binds the member names to the `pkg/arch` constants detection reports, `loader-api.ts` publishes it through the `libcConstants()` binding, and `TestLibcDeclarationMatchesConstants` pins the `dsl-types.ts` declaration to the same map. Never restate a libc string in TypeScript; detection and the enum have to stay one value.
+- Every `ctx.fs` / `fileSystem` binding reports failure through `throwOnFSError`, including the reads. `exists` is the only method for which an absent path is an answer (`false`) rather than a failure, and it still throws when the lookup itself cannot be made.
 
 ## Local gotchas
 
