@@ -193,7 +193,7 @@ func (f macPackageFetcher) fetch(ctx context.Context, tool *config.ToolConfig, s
 func (f macPackageFetcher) checkUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
 	src, err := parseMacPackageSource(tool.InstallParams)
 	if err != nil || src.repo == "" {
-		return &UpdateCheckResult{HasUpdate: false}, nil
+		return &UpdateCheckResult{}, nil
 	}
 	release, _, err := f.releaseClient().fetch(ctx, githubReleaseRequest{
 		repo:       src.repo,
@@ -206,7 +206,6 @@ func (f macPackageFetcher) checkUpdate(ctx context.Context, tool *config.ToolCon
 		return nil, err
 	}
 	return &UpdateCheckResult{
-		HasUpdate:     true,
 		LatestVersion: release.TagName,
 	}, nil
 }

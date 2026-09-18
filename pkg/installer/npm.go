@@ -172,16 +172,15 @@ func (n *NpmInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig)
 
 	out, err := cmd.Output()
 	if err != nil {
-		return &UpdateCheckResult{HasUpdate: false}, nil
+		return &UpdateCheckResult{}, nil
 	}
 
 	latestVersion := strings.TrimSpace(string(out))
 	if latestVersion == "" {
-		return &UpdateCheckResult{HasUpdate: false}, nil
+		return &UpdateCheckResult{}, nil
 	}
 
 	return &UpdateCheckResult{
-		HasUpdate:     true,
 		LatestVersion: latestVersion,
 	}, nil
 }

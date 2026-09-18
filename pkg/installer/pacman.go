@@ -162,11 +162,13 @@ func (p *PacmanInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 	cmd := p.runner.CommandContext(ctx, "pacman", "-Qu", localPackageName)
 	out, err := cmd.Output()
 	if err != nil {
-		return &UpdateCheckResult{
-			HasUpdate: false,
-		}, nil
+		// `pacman -Qu` exits non-zero both when the package is up to date and when the
+		// query itself fails, so a failure says nothing either way.
+		return &UpdateCheckResult{}, nil
 	}
 
+	// A package listed by `pacman -Qu` is out of date by pacman's own reckoning, and
+	// its `pkgver-pkgrel` strings are not semver.
 	lines := strings.Split(string(out), "\n")
 	re := regexp.MustCompile(`^(\S+)\s+(\S+)\s+->\s+(\S+)`)
 	for _, line := range lines {
@@ -175,7 +177,7 @@ func (p *PacmanInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 		if len(matches) >= 4 {
 			if strings.EqualFold(matches[1], localPackageName) {
 				return &UpdateCheckResult{
-					HasUpdate:     true,
+					Outdated:      new(true),
 					LocalVersion:  matches[2],
 					LatestVersion: matches[3],
 				}, nil
@@ -183,9 +185,7 @@ func (p *PacmanInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 		}
 	}
 
-	return &UpdateCheckResult{
-		HasUpdate: false,
-	}, nil
+	return &UpdateCheckResult{Outdated: new(false)}, nil
 }
 
 func init() {

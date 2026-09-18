@@ -345,13 +345,12 @@ func (b *BrewInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig
 	isCask := getBoolParam(tool.InstallParams, "cask", false)
 	latest, installed, outdated, err := b.getBrewInfo(ctx, formula, isCask)
 	if err != nil {
-		return &UpdateCheckResult{
-			HasUpdate:     false,
-			LatestVersion: "",
-		}, nil
+		return &UpdateCheckResult{}, nil
 	}
+	// Homebrew answers this itself, and its formula versions carry revision suffixes
+	// (1.2.3_1) that semver cannot order, so its verdict is the one that counts.
 	return &UpdateCheckResult{
-		HasUpdate:     outdated,
+		Outdated:      new(outdated),
 		LocalVersion:  installed,
 		LatestVersion: latest,
 	}, nil

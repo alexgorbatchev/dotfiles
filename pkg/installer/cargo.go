@@ -537,12 +537,11 @@ func (c *CargoInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig)
 }
 
 func (c *CargoInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	// For cargo we can simulate a basic update check or parse crates.io,
-	// but a clean default behaves beautifully
-	return &UpdateCheckResult{
-		HasUpdate:     false,
-		LatestVersion: "latest",
-	}, nil
+	// Nothing here queries crates.io, so cargo knows neither the installed nor the
+	// latest version and reports neither. It used to report "latest" as the latest
+	// version, which is a resolution strategy rather than a version and made every
+	// installed cargo tool look out of date.
+	return &UpdateCheckResult{}, nil
 }
 
 func init() {

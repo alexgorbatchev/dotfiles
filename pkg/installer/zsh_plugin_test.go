@@ -135,7 +135,7 @@ func TestZshPluginInstaller(t *testing.T) {
 
 		tool := &config.ToolConfig{Name: "zsh-autosuggestions"}
 		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.HasUpdate {
+		if err != nil || res.Outdated != nil || res.LatestVersion != "" {
 			t.Errorf("unexpected: %v, %v", res, err)
 		}
 	})

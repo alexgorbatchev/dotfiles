@@ -194,9 +194,7 @@ func (z *ZshPluginInstaller) Uninstall(ctx context.Context, tool *config.ToolCon
 }
 
 func (z *ZshPluginInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	return &UpdateCheckResult{
-		HasUpdate: false,
-	}, nil
+	return &UpdateCheckResult{}, nil
 }
 
 func init() {

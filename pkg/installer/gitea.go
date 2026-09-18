@@ -314,12 +314,12 @@ func (g *GiteaInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfi
 		return nil, err
 	}
 	if target.repo == "" {
-		return &UpdateCheckResult{HasUpdate: false}, nil
+		return &UpdateCheckResult{}, nil
 	}
 
 	latestKey := target.cacheKey("latest")
 	if cached, ok := g.getCachedRelease(ctx, latestKey); ok {
-		return &UpdateCheckResult{HasUpdate: true, LatestVersion: cached.TagName, Cached: true}, nil
+		return &UpdateCheckResult{LatestVersion: cached.TagName, Cached: true}, nil
 	}
 
 	client := giteaReleaseClient{httpClient: g.httpClient, instanceURL: target.instanceURL}
@@ -331,7 +331,6 @@ func (g *GiteaInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfi
 	g.setCachedRelease(target.cacheKey(release.TagName), release)
 
 	return &UpdateCheckResult{
-		HasUpdate:     true,
 		LatestVersion: release.TagName,
 	}, nil
 }

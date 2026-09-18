@@ -224,9 +224,7 @@ func (c *CurlTarInstaller) Uninstall(ctx context.Context, tool *config.ToolConfi
 }
 
 func (c *CurlTarInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	return &UpdateCheckResult{
-		HasUpdate: false,
-	}, nil
+	return &UpdateCheckResult{}, nil
 }
 
 func init() {

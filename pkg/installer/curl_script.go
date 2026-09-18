@@ -323,9 +323,7 @@ func (c *CurlScriptInstaller) CheckUpdate(ctx context.Context, tool *config.Tool
 	versionRegex := getStringParam(tool.InstallParams, "versionRegex", "")
 
 	if len(versionArgs) == 0 {
-		return &UpdateCheckResult{
-			HasUpdate: false,
-		}, nil
+		return &UpdateCheckResult{}, nil
 	}
 
 	destDir := c.BinDir
@@ -335,17 +333,13 @@ func (c *CurlScriptInstaller) CheckUpdate(ctx context.Context, tool *config.Tool
 
 	binNames := GetBinaryNames(tool.Name, tool.Binaries)
 	if len(binNames) == 0 {
-		return &UpdateCheckResult{
-			HasUpdate: false,
-		}, nil
+		return &UpdateCheckResult{}, nil
 	}
 
 	binaryPath := filepath.Join(destDir, binNames[0])
 	exists, err := c.fsys.Exists(binaryPath)
 	if err != nil || !exists {
-		return &UpdateCheckResult{
-			HasUpdate: false,
-		}, nil
+		return &UpdateCheckResult{}, nil
 	}
 
 	localVersion, err := detectVersionViaCli(ctx, c.runner, binaryPath, versionArgs, versionRegex)
@@ -354,7 +348,6 @@ func (c *CurlScriptInstaller) CheckUpdate(ctx context.Context, tool *config.Tool
 	}
 
 	return &UpdateCheckResult{
-		HasUpdate:    false,
 		LocalVersion: localVersion,
 	}, nil
 }

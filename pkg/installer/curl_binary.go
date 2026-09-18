@@ -134,9 +134,7 @@ func (c *CurlBinaryInstaller) Uninstall(ctx context.Context, tool *config.ToolCo
 }
 
 func (c *CurlBinaryInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	return &UpdateCheckResult{
-		HasUpdate: false,
-	}, nil
+	return &UpdateCheckResult{}, nil
 }
 
 func init() {

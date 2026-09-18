@@ -190,13 +190,12 @@ func (a *AptInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig)
 		}
 	}
 
-	hasUpdate := false
-	if installed != "" && installed != "(none)" && candidate != "" && candidate != "(none)" && installed != candidate {
-		hasUpdate = true
-	}
+	// Debian version strings (1:8.2.3995-1ubuntu2) are not semver, so apt-cache's own
+	// installed-versus-candidate answer is the one that counts.
+	outdated := installed != "" && installed != "(none)" && candidate != "" && candidate != "(none)" && installed != candidate
 
 	return &UpdateCheckResult{
-		HasUpdate:     hasUpdate,
+		Outdated:      new(outdated),
 		LocalVersion:  installed,
 		LatestVersion: candidate,
 	}, nil

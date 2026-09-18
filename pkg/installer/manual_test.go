@@ -220,7 +220,7 @@ func TestManualInstaller(t *testing.T) {
 	t.Run("CheckUpdate success", func(t *testing.T) {
 		tool := &config.ToolConfig{Name: "mytool"}
 		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.HasUpdate {
+		if err != nil || res.Outdated != nil || res.LatestVersion != "" {
 			t.Errorf("unexpected: %v, %v", res, err)
 		}
 	})

@@ -104,8 +104,8 @@ func TestPacmanInstaller(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !res.HasUpdate {
-			t.Error("expected HasUpdate to be true")
+		if res.Outdated == nil || !*res.Outdated {
+			t.Error("expected the package manager to report the package as outdated")
 		}
 		if res.LocalVersion != "13.0.0-1" {
 			t.Errorf("expected LocalVersion '13.0.0-1', got %q", res.LocalVersion)
@@ -124,8 +124,8 @@ func TestPacmanInstaller(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.HasUpdate {
-			t.Error("expected HasUpdate to be false")
+		if res.Outdated != nil {
+			t.Error("expected no verdict when the pacman query fails")
 		}
 	})
 

@@ -113,7 +113,7 @@ func (m *mockInstallerForTest) Uninstall(ctx context.Context, tool *config.ToolC
 }
 
 func (m *mockInstallerForTest) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
-	return &installer.UpdateCheckResult{HasUpdate: false}, nil
+	return &installer.UpdateCheckResult{}, nil
 }
 
 func TestDashboard_ToolsSchemaAndConcurrency(t *testing.T) {
@@ -342,14 +342,14 @@ func (m *mockInstallerWithCallback) Uninstall(ctx context.Context, tool *config.
 }
 
 func (m *mockInstallerWithCallback) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
-	return &installer.UpdateCheckResult{HasUpdate: false}, nil
+	return &installer.UpdateCheckResult{}, nil
 }
 
 type mockCheckUpdateInstaller struct {
 	name          string
-	hasUpdate     bool
 	localVersion  string
 	latestVersion string
+	outdated      *bool
 	err           error
 	calls         atomic.Int32
 }
@@ -368,9 +368,9 @@ func (m *mockCheckUpdateInstaller) CheckUpdate(ctx context.Context, tool *config
 		return nil, m.err
 	}
 	return &installer.UpdateCheckResult{
-		HasUpdate:     m.hasUpdate,
 		LocalVersion:  m.localVersion,
 		LatestVersion: m.latestVersion,
+		Outdated:      m.outdated,
 	}, nil
 }
 
@@ -390,7 +390,6 @@ func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
 
 	mockInst := &mockCheckUpdateInstaller{
 		name:          "mock-updatecheck-settings-inst",
-		hasUpdate:     true,
 		localVersion:  "1.2.3",
 		latestVersion: "2.0.0",
 	}
@@ -472,6 +471,66 @@ func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
 	})
 }
 
+// TestDashboard_CheckUpdateRoute_InstallerFacts pins how the endpoint reads an
+// installer result: a resolved upstream release is only an update when it is actually
+// newer than what is installed, and a package manager that answered the question itself
+// (brew's outdated flag, apt, dnf, pacman) overrides the version comparison.
+func TestDashboard_CheckUpdateRoute_InstallerFacts(t *testing.T) {
+	log := logger.New(logger.Config{Name: "test", Level: logger.LogLevelQuiet, Writer: io.Discard})
+
+	sqlDB, err := db.NewConnection(context.Background(), ":memory:")
+	if err != nil {
+		t.Fatalf("connecting to db: %v", err)
+	}
+	defer sqlDB.Close()
+
+	outdated := true
+	installers := map[string]*mockCheckUpdateInstaller{
+		// An installer that only resolves the newest release upstream, which happens to
+		// be the one already installed.
+		"upstream-only": {name: "mock-facts-upstream", localVersion: "1.2.3", latestVersion: "1.2.3"},
+		// A package manager whose own verdict disagrees with the version strings, which
+		// it can order and semver cannot.
+		"package-manager": {name: "mock-facts-pkgmgr", localVersion: "1.2.3_1", latestVersion: "1.2.3_1", outdated: &outdated},
+	}
+	toolConfigs := make([]*config.ToolConfig, 0, len(installers))
+	for tool, inst := range installers {
+		if err := installer.Register(inst); err != nil {
+			t.Fatalf("registering %s: %v", inst.name, err)
+		}
+		toolConfigs = append(toolConfigs, &config.ToolConfig{Name: tool, InstallationMethod: inst.name})
+	}
+
+	projCfg := &config.ProjectConfig{Paths: config.PathsConfig{ToolConfigsDir: t.TempDir()}}
+	server := NewServer(log, "127.0.0.1", 0, registry.NewRegistry(sqlDB), testFS(), "", projCfg, toolConfigs, nil)
+	if err := server.Start(); err != nil {
+		t.Fatalf("starting server: %v", err)
+	}
+	defer server.Stop()
+
+	for tool, want := range map[string]bool{"upstream-only": false, "package-manager": true} {
+		t.Run(tool, func(t *testing.T) {
+			url := fmt.Sprintf("http://127.0.0.1:%d/api/tools/%s/check-update", server.Port(), tool)
+			resp, err := http.Post(url, "application/json", nil)
+			if err != nil {
+				t.Fatalf("POST check-update: %v", err)
+			}
+			defer resp.Body.Close()
+			var body map[string]any
+			if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+				t.Fatalf("decoding response: %v", err)
+			}
+			data, ok := body["data"].(map[string]any)
+			if !ok {
+				t.Fatalf("no data object in %v", body)
+			}
+			if data["hasUpdate"] != want {
+				t.Errorf("hasUpdate = %v, want %v (installed and latest are both %v)", data["hasUpdate"], want, data["currentVersion"])
+			}
+		})
+	}
+}
+
 func TestDashboard_CheckUpdateRoute(t *testing.T) {
 	log := logger.New(logger.Config{
 		Name:   "test",
@@ -491,7 +550,6 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 
 	mockInst := &mockCheckUpdateInstaller{
 		name:          "mock-checkupdate-inst",
-		hasUpdate:     true,
 		localVersion:  "1.0.0",
 		latestVersion: "1.1.0",
 	}
@@ -989,7 +1047,7 @@ func (m *mockFailingInstaller) Uninstall(ctx context.Context, tool *config.ToolC
 	return nil
 }
 func (m *mockFailingInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
-	return &installer.UpdateCheckResult{HasUpdate: false}, nil
+	return &installer.UpdateCheckResult{}, nil
 }
 
 func TestDashboard_InstallErrorResponse(t *testing.T) {

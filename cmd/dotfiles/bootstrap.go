@@ -399,5 +399,5 @@ func (m *mockInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) 
 }
 
 func (m *mockInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
-	return &installer.UpdateCheckResult{HasUpdate: false}, nil
+	return &installer.UpdateCheckResult{}, nil
 }

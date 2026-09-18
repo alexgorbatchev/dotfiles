@@ -69,17 +69,25 @@ type UpdateQuery struct {
 	// Constraint is the tool's updateCheck.constraint: a semver range bounding which
 	// versions count as an available update. Empty accepts any version.
 	Constraint string
+	// Outdated is a package manager's own verdict where one exists (brew, apt, dnf,
+	// pacman). nil means no such verdict and the versions decide.
+	Outdated *bool
 }
 
 // UpdateAvailable reports whether Latest counts as an available update over Installed.
 //
 // A constraint is a boundary the user asked for, so it is applied first: a version
-// outside it is not an update however new it is. Versions that semver cannot parse
-// (Debian revisions, dates, "nightly") are compared for inequality, which is the most
-// an unordered pair of labels supports.
+// outside it is not an update however new it is. A package manager that answered the
+// question itself is believed next, because its version strings (Debian epochs, rpm
+// releases, brew revisions) are not semver and only it can order them. Otherwise the
+// versions decide, and a pair semver cannot parse is compared for inequality, which is
+// the most two unordered labels support.
 func UpdateAvailable(q UpdateQuery) bool {
 	if q.Constraint != "" && !MatchesConstraint(q.Latest, q.Constraint) {
 		return false
+	}
+	if q.Outdated != nil {
+		return *q.Outdated
 	}
 	if q.Latest == "" {
 		return false

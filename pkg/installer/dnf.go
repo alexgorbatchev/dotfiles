@@ -175,14 +175,12 @@ func (d *DnfInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig)
 	cmd := d.runner.CommandContext(ctx, "dnf", "list", "--upgradable", packageName)
 	out, err := cmd.Output()
 	if err != nil {
-		return &UpdateCheckResult{
-			HasUpdate: false,
-		}, nil
+		return &UpdateCheckResult{}, nil
 	}
 
 	lines := strings.Split(string(out), "\n")
 	isUpgradableSection := false
-	hasUpdate := false
+	outdated := false
 	var latestVersion string
 
 	for _, line := range lines {
@@ -200,7 +198,7 @@ func (d *DnfInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig)
 					pkgPart = pkgPart[:idx]
 				}
 				if strings.EqualFold(pkgPart, packageName) {
-					hasUpdate = true
+					outdated = true
 					latestVersion = fields[1]
 					break
 				}
@@ -208,8 +206,10 @@ func (d *DnfInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig)
 		}
 	}
 
+	// `dnf list --upgradable` answers the question directly: the package is listed or
+	// it is not, and rpm version strings (1.2.3-4.fc39) are not semver.
 	return &UpdateCheckResult{
-		HasUpdate:     hasUpdate,
+		Outdated:      new(outdated),
 		LatestVersion: latestVersion,
 	}, nil
 }

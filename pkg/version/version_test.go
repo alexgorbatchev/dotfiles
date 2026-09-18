@@ -145,6 +145,19 @@ func TestUpdateAvailable(t *testing.T) {
 		{"constraint with nothing installed", UpdateQuery{Latest: "2.0.0", Constraint: "^1.2.3"}, false},
 		{"constraint cannot admit an unparseable latest version", UpdateQuery{Installed: "1.2.3", Latest: "nightly", Constraint: "^1.2.3"}, false},
 		{"wildcard constraint admits anything", UpdateQuery{Installed: "1.2.3", Latest: "9.9.9", Constraint: "*"}, true},
+
+		// An installed v0.26.1 against an upstream tag of v0.26.1 was once reported as an
+		// update by the dashboard, and date-stamped versions as a permanent update.
+		{"identical tags", UpdateQuery{Installed: "v0.26.1", Latest: "v0.26.1"}, false},
+		{"v prefix only upstream", UpdateQuery{Installed: "0.26.1", Latest: "v0.26.1"}, false},
+		{"v prefix only local", UpdateQuery{Installed: "v0.26.1", Latest: "0.26.1"}, false},
+		{"identical date stamps", UpdateQuery{Installed: "2026-09-17-09-18-10", Latest: "2026-09-17-09-18-10"}, false},
+		{"differing date stamps", UpdateQuery{Installed: "2026-09-16-00-00-00", Latest: "2026-09-17-09-18-10"}, true},
+
+		{"outdated override wins over equal versions", UpdateQuery{Installed: "1.2.3_1", Latest: "1.2.3_1", Outdated: boolPtr(true)}, true},
+		{"outdated override wins over a newer latest", UpdateQuery{Installed: "1.2.3", Latest: "9.9.9", Outdated: boolPtr(false)}, false},
+		{"outdated override answers without a latest version", UpdateQuery{Installed: "1:8.2-1", Outdated: boolPtr(true)}, true},
+		{"constraint still bounds the outdated override", UpdateQuery{Installed: "1.2.3", Latest: "2.0.0", Constraint: "^1.2.3", Outdated: boolPtr(true)}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -154,3 +167,5 @@ func TestUpdateAvailable(t *testing.T) {
 		})
 	}
 }
+
+func boolPtr(b bool) *bool { return &b }

@@ -269,7 +269,7 @@ func TestGiteaInstaller(t *testing.T) {
 			},
 		}
 		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || !res.HasUpdate || res.LatestVersion != "v1.2.0" {
+		if err != nil || res.Outdated != nil || res.LatestVersion != "v1.2.0" {
 			t.Errorf("unexpected CheckUpdate result: res=%v, err=%v", res, err)
 		}
 	})

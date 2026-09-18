@@ -115,8 +115,8 @@ func TestAptInstaller(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !res.HasUpdate {
-			t.Error("expected HasUpdate to be true")
+		if res.Outdated == nil || !*res.Outdated {
+			t.Error("expected the package manager to report the package as outdated")
 		}
 		if res.LocalVersion != "13.0.0-1" {
 			t.Errorf("expected LocalVersion '13.0.0-1', got %q", res.LocalVersion)
@@ -136,8 +136,8 @@ func TestAptInstaller(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.HasUpdate {
-			t.Error("expected HasUpdate to be false")
+		if res.Outdated == nil || *res.Outdated {
+			t.Error("expected the package manager to report the package as up to date")
 		}
 		if res.LocalVersion != "14.1.0-1" {
 			t.Errorf("expected LocalVersion '14.1.0-1', got %q", res.LocalVersion)

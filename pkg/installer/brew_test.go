@@ -355,8 +355,8 @@ func TestBrewInstaller(t *testing.T) {
 		if res.LatestVersion != "8.27.0" {
 			t.Errorf("expected version 8.27.0, got %s", res.LatestVersion)
 		}
-		if res.HasUpdate {
-			t.Error("expected hasUpdate to be false")
+		if res.Outdated == nil || *res.Outdated {
+			t.Error("expected brew to report the formula as not outdated")
 		}
 	})
 
@@ -374,8 +374,8 @@ func TestBrewInstaller(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected graceful fallback on error, got error: %v", err)
 		}
-		if res.HasUpdate {
-			t.Error("expected hasUpdate to be false on error")
+		if res.Outdated != nil {
+			t.Error("expected no verdict when brew info fails")
 		}
 	})
 

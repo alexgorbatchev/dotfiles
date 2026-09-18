@@ -138,7 +138,7 @@ func TestGitHubInstaller(t *testing.T) {
 	t.Run("CheckUpdate and basic details", func(t *testing.T) {
 		tool := &config.ToolConfig{Name: "mytool"}
 		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.HasUpdate {
+		if err != nil || res.Outdated != nil || res.LatestVersion != "" {
 			t.Errorf("unexpected: %v, %v", res, err)
 		}
 	})
@@ -929,7 +929,7 @@ func TestGitHubInstaller_GhCliAndToken(t *testing.T) {
 	}
 
 	chkRes, chkErr := instGh.CheckUpdate(context.Background(), toolGh)
-	if chkErr != nil || !chkRes.HasUpdate || chkRes.LatestVersion != "v1.1.0" {
+	if chkErr != nil || chkRes.Outdated != nil || chkRes.LatestVersion != "v1.1.0" {
 		t.Errorf("expected CheckUpdate with ghCli to find v1.1.0, got chkRes=%v, chkErr=%v", chkRes, chkErr)
 	}
 
@@ -950,7 +950,7 @@ func TestGitHubInstaller_GhCliAndToken(t *testing.T) {
 	}
 
 	res403, err403 := instTok.CheckUpdate(context.Background(), tool403)
-	if err403 != nil || !res403.HasUpdate || res403.LatestVersion != "v1.1.0" {
+	if err403 != nil || res403.Outdated != nil || res403.LatestVersion != "v1.1.0" {
 		t.Errorf("expected CheckUpdate 403 fallback to find v1.1.0, got res=%v, err=%v", res403, err403)
 	}
 }

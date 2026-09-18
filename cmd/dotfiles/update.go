@@ -56,6 +56,38 @@ func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, p
 	}
 }
 
+// resolveUpdate answers whether an update is available for tool and which version an
+// update, or a forced reinstall, should install. res is nil when the installer answered
+// nothing. The availability decision is version.UpdateAvailable, the same one
+// check-updates and the dashboard make, so the three cannot disagree about a tool.
+func resolveUpdate(tool *config.ToolConfig, installedVersion string, res *installer.UpdateCheckResult) (hasUpdate bool, targetVersion string) {
+	var latest string
+	var outdated *bool
+	if res != nil {
+		latest, outdated = res.LatestVersion, res.Outdated
+	}
+	constraint := tool.UpdateCheckConstraint()
+
+	hasUpdate = version.UpdateAvailable(version.UpdateQuery{
+		Installed:  installedVersion,
+		Latest:     latest,
+		Constraint: constraint,
+		Outdated:   outdated,
+	})
+
+	// "unknown" and "latest" are placeholders rather than versions, and a release the
+	// tool's constraint excludes is not one this command may install onto the machine.
+	installable := latest != "" && latest != "unknown" && latest != "latest" && version.MatchesConstraint(latest, constraint)
+	switch {
+	case installable:
+		return hasUpdate, latest
+	case installedVersion == "" || installedVersion == "unknown" || installedVersion == "latest":
+		return hasUpdate, utils.GenerateTimestamp()
+	default:
+		return hasUpdate, installedVersion
+	}
+}
+
 var updateCmd = &cobra.Command{
 	Use:               "update [tool]",
 	Args:              cobra.MaximumNArgs(1),
@@ -114,24 +146,10 @@ When run without arguments, checks all installed tools for updates and installs 
 					continue
 				}
 
-				var hasUpdate bool
-				if res != nil && res.LatestVersion != "" {
-					status := version.CheckVersionStatus(installed.Version, res.LatestVersion)
-					if status == version.StatusNewerAvailable {
-						hasUpdate = true
-					} else if status == version.StatusInvalidCurrent || status == version.StatusInvalidLatest {
-						hasUpdate = version.CleanVersion(res.LatestVersion) != version.CleanVersion(installed.Version)
-					}
-				}
+				hasUpdate, targetVersion := resolveUpdate(targetTool, installed.Version, res)
 
 				toolLog := log.GetSubLogger("", targetTool.Name)
 				if hasUpdate || force {
-					targetVersion := installed.Version
-					if res != nil && res.LatestVersion != "" && res.LatestVersion != "unknown" && res.LatestVersion != "latest" {
-						targetVersion = res.LatestVersion
-					} else if targetVersion == "" || targetVersion == "unknown" || targetVersion == "latest" {
-						targetVersion = utils.GenerateTimestamp()
-					}
 					if hasUpdate {
 						toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", installed.Version, targetVersion)))
 					} else {
@@ -193,23 +211,9 @@ When run without arguments, checks all installed tools for updates and installs 
 			return fmt.Errorf("checking update for %q: %w", targetTool.Name, err)
 		}
 
-		var hasUpdate bool
-		if res != nil && res.LatestVersion != "" {
-			status := version.CheckVersionStatus(installed.Version, res.LatestVersion)
-			if status == version.StatusNewerAvailable {
-				hasUpdate = true
-			} else if status == version.StatusInvalidCurrent || status == version.StatusInvalidLatest {
-				hasUpdate = version.CleanVersion(res.LatestVersion) != version.CleanVersion(installed.Version)
-			}
-		}
+		hasUpdate, targetVersion := resolveUpdate(targetTool, installed.Version, res)
 
 		if hasUpdate || force {
-			targetVersion := installed.Version
-			if res != nil && res.LatestVersion != "" && res.LatestVersion != "unknown" && res.LatestVersion != "latest" {
-				targetVersion = res.LatestVersion
-			} else if targetVersion == "" || targetVersion == "unknown" || targetVersion == "latest" {
-				targetVersion = utils.GenerateTimestamp()
-			}
 			if hasUpdate {
 				toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", installed.Version, targetVersion)))
 			} else {

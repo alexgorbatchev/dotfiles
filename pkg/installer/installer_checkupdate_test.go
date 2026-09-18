@@ -102,7 +102,7 @@ func TestInstallersCheckUpdateAndMethods(t *testing.T) {
 		},
 	}
 	res, err = cargo.CheckUpdate(context.Background(), cargoTool)
-	if err != nil || res == nil || res.LatestVersion != "latest" {
+	if err != nil || res == nil || res.LatestVersion != "" || res.Outdated != nil {
 		t.Errorf("Cargo CheckUpdate failed: res=%v, err=%v", res, err)
 	}
 

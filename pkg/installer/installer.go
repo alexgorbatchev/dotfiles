@@ -28,8 +28,14 @@ type InstallResult struct {
 	Version   string
 }
 
+// UpdateCheckResult is what an installer observed, not what it concluded. Whether an
+// update is available is decided in one place, version.UpdateAvailable, so that every
+// consumer answers the question the same way.
 type UpdateCheckResult struct {
-	HasUpdate     bool
+	// Outdated is a package manager's own verdict, for the installers that have one
+	// (brew's `outdated` flag, apt's installed-versus-candidate, dnf's upgradable
+	// list, pacman -Qu). nil means the installer cannot tell, and the versions decide.
+	Outdated      *bool
 	LocalVersion  string
 	LatestVersion string
 	Cached        bool

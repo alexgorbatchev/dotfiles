@@ -174,7 +174,7 @@ func TestDmgInstaller(t *testing.T) {
 
 		tool := &config.ToolConfig{Name: "slack"}
 		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.HasUpdate {
+		if err != nil || res.Outdated != nil || res.LatestVersion != "" {
 			t.Errorf("unexpected result: %v, %v", res, err)
 		}
 	})

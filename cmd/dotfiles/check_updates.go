@@ -80,6 +80,7 @@ var checkUpdatesCmd = &cobra.Command{
 					Installed:  localVersion,
 					Latest:     res.LatestVersion,
 					Constraint: tool.UpdateCheckConstraint(),
+					Outdated:   res.Outdated,
 				})
 
 				toolLog := log.GetSubLogger("", tool.Name)

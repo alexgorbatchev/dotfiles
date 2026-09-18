@@ -138,9 +138,7 @@ func (m *ManualInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig
 }
 
 func (m *ManualInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	return &UpdateCheckResult{
-		HasUpdate: false,
-	}, nil
+	return &UpdateCheckResult{}, nil
 }
 
 func init() {

@@ -102,8 +102,8 @@ func TestCurlBinaryInstaller(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.HasUpdate {
-			t.Error("expected no updates supported")
+		if res.Outdated != nil || res.LatestVersion != "" {
+			t.Errorf("an installer that cannot check must report no verdict and no version, got %+v", res)
 		}
 	})
 

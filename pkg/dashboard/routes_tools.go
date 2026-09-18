@@ -19,22 +19,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 )
 
-// isNewerVersion reports whether latest supersedes current. Version schemes that semver cannot
-// parse (date stamps, commit shas) fall back to plain inequality.
-func isNewerVersion(current, latest string) bool {
-	if current == "" || latest == "" || current == "unknown" || latest == "unknown" {
-		return false
-	}
-	switch version.CheckVersionStatus(current, latest) {
-	case version.StatusNewerAvailable:
-		return true
-	case version.StatusUpToDate, version.StatusAheadOfLatest:
-		return false
-	default:
-		return version.ParseVersion(current) != version.ParseVersion(latest)
-	}
-}
-
 // handleToolsRouter dispatches GET /api/tools or GET /api/tools/:name/...
 func (s *Server) handleToolsRouter(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/tools")
@@ -716,33 +700,29 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 			currentVer = installRecord.Version
 		}
 	}
-	if currentVer == "" {
-		currentVer = "unknown"
-	}
 
-	latestVer := res.LatestVersion
-	if latestVer == "" {
-		latestVer = "unknown"
-	}
-
-	// Installers that can only resolve the newest upstream release report HasUpdate
-	// unconditionally, so an affirmative answer is only trusted when the installed version really
-	// is behind. A negative answer is left alone: installers that do not check at all report false.
-	hasUpdate := res.HasUpdate
-	if hasUpdate && res.LocalVersion == "" {
-		hasUpdate = isNewerVersion(currentVer, latestVer)
-	}
-	// The tool's updateCheck.constraint bounds which versions count as an update, so a
-	// release outside it is not one however new it is.
-	if constraint := targetTool.UpdateCheckConstraint(); constraint != "" && !version.MatchesConstraint(res.LatestVersion, constraint) {
-		hasUpdate = false
-	}
+	// The same comparison check-updates makes, so the two cannot disagree about a tool.
+	hasUpdate := version.UpdateAvailable(version.UpdateQuery{
+		Installed:  currentVer,
+		Latest:     res.LatestVersion,
+		Constraint: targetTool.UpdateCheckConstraint(),
+		Outdated:   res.Outdated,
+	})
 
 	writeJSON(w, true, map[string]any{
 		"hasUpdate":      hasUpdate,
-		"currentVersion": currentVer,
-		"latestVersion":  latestVer,
+		"currentVersion": orUnknown(currentVer),
+		"latestVersion":  orUnknown(res.LatestVersion),
 	}, "")
+}
+
+// orUnknown renders a version the dashboard could not determine as the client's
+// "unknown" placeholder. It is applied after the comparison, never before it.
+func orUnknown(v string) string {
+	if v == "" {
+		return "unknown"
+	}
+	return v
 }
 
 func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolName string) {
@@ -782,7 +762,10 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 					instInstance.BaseURL = s.projectConfig.Github.Host
 				}
 			}
-			if res, err := inst.CheckUpdate(ctx, targetTool); err == nil && res != nil && res.LatestVersion != "" {
+			// A release the tool's updateCheck.constraint excludes is not one this
+			// endpoint may install, however new it is.
+			if res, err := inst.CheckUpdate(ctx, targetTool); err == nil && res != nil && res.LatestVersion != "" &&
+				version.MatchesConstraint(res.LatestVersion, targetTool.UpdateCheckConstraint()) {
 				targetTool.Version = &res.LatestVersion
 			}
 		}

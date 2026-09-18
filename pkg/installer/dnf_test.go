@@ -112,8 +112,8 @@ func TestDnfInstaller(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !res.HasUpdate {
-			t.Error("expected HasUpdate to be true")
+		if res.Outdated == nil || !*res.Outdated {
+			t.Error("expected the package manager to report the package as outdated")
 		}
 		if res.LatestVersion != "14.1.0-1.fc39" {
 			t.Errorf("expected LatestVersion '14.1.0-1.fc39', got %q", res.LatestVersion)
@@ -129,8 +129,8 @@ func TestDnfInstaller(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.HasUpdate {
-			t.Error("expected HasUpdate to be false")
+		if res.Outdated == nil || *res.Outdated {
+			t.Error("expected the package manager to report the package as up to date")
 		}
 	})
 }

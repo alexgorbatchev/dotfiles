@@ -104,8 +104,8 @@ func TestCargoInstaller(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.LatestVersion != "latest" {
-			t.Errorf("expected version 'latest', got %s", res.LatestVersion)
+		if res.LatestVersion != "" || res.Outdated != nil {
+			t.Errorf("cargo does not query crates.io, so it must report nothing, got %+v", res)
 		}
 	})
 

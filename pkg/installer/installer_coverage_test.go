@@ -576,7 +576,7 @@ func TestInstallerDeepCoverage(t *testing.T) {
 	}
 
 	resCheck, err := gh.CheckUpdate(ctx, tGh)
-	if err != nil || resCheck == nil || !resCheck.HasUpdate {
+	if err != nil || resCheck == nil || resCheck.LatestVersion == "" {
 		t.Errorf("GitHub CheckUpdate failed: %v", resCheck)
 	}
 
@@ -591,7 +591,7 @@ func TestInstallerDeepCoverage(t *testing.T) {
 			"instanceUrl": ghServer.URL,
 		},
 	})
-	if err != nil || resGtCheck == nil || !resGtCheck.HasUpdate {
+	if err != nil || resGtCheck == nil || resGtCheck.LatestVersion == "" {
 		t.Errorf("Gitea CheckUpdate failed: %v", resGtCheck)
 	}
 
@@ -637,7 +637,7 @@ func TestInstallerDeepCoverage(t *testing.T) {
 
 	runner.Register("npm", []byte("2.0.0\n"), nil)
 	resNpmCheck, err := npm.CheckUpdate(ctx, tNpm)
-	if err != nil || resNpmCheck == nil || !resNpmCheck.HasUpdate {
+	if err != nil || resNpmCheck == nil || resNpmCheck.LatestVersion != "2.0.0" {
 		t.Errorf("Npm CheckUpdate failed: %v", resNpmCheck)
 	}
 

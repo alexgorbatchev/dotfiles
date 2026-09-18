@@ -376,7 +376,7 @@ func (g *GitHubInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig
 func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
 	repo := getStringParam(tool.InstallParams, "repo", "")
 	if repo == "" {
-		return &UpdateCheckResult{HasUpdate: false}, nil
+		return &UpdateCheckResult{}, nil
 	}
 	baseURL := g.BaseURL
 	if baseURL == "" {
@@ -412,7 +412,6 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 		}
 	}
 	return &UpdateCheckResult{
-		HasUpdate:     true,
 		LatestVersion: release.TagName,
 		Cached:        isCached,
 	}, nil
