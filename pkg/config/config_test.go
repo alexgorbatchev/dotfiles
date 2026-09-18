@@ -1,9 +1,80 @@
 package config
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
+
+// TestToolConfigUnmarshalJSONInstallParamDefaults asserts that decoding a tool
+// configuration fills in the installation method's parameter defaults exactly
+// the way the method's v1 schema did, without overriding explicit values.
+func TestToolConfigUnmarshalJSONInstallParamDefaults(t *testing.T) {
+	tests := []struct {
+		name     string
+		in       string
+		wantAuto interface{}
+		wantKey  bool
+	}{
+		{
+			name:     "zsh-plugin omitted auto defaults to true",
+			in:       `{"name":"zvm","installationMethod":"zsh-plugin","installParams":{"repo":"jeffreytse/zsh-vi-mode"}}`,
+			wantAuto: true,
+			wantKey:  true,
+		},
+		{
+			name:     "zsh-plugin explicit true is kept",
+			in:       `{"name":"zvm","installationMethod":"zsh-plugin","installParams":{"repo":"jeffreytse/zsh-vi-mode","auto":true}}`,
+			wantAuto: true,
+			wantKey:  true,
+		},
+		{
+			name:     "zsh-plugin explicit false is kept",
+			in:       `{"name":"zvm","installationMethod":"zsh-plugin","installParams":{"repo":"jeffreytse/zsh-vi-mode","auto":false}}`,
+			wantAuto: false,
+			wantKey:  true,
+		},
+		{
+			name:     "zsh-plugin without installParams still gets the default",
+			in:       `{"name":"zvm","installationMethod":"zsh-plugin"}`,
+			wantAuto: true,
+			wantKey:  true,
+		},
+		{
+			name:    "other methods get no auto default",
+			in:      `{"name":"rg","installationMethod":"github-release","installParams":{"repo":"BurntSushi/ripgrep"}}`,
+			wantKey: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var tc ToolConfig
+			if err := json.Unmarshal([]byte(tt.in), &tc); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			got, ok := tc.InstallParams["auto"]
+			if ok != tt.wantKey {
+				t.Fatalf("auto present = %v, want %v (params: %v)", ok, tt.wantKey, tc.InstallParams)
+			}
+			if tt.wantKey && got != tt.wantAuto {
+				t.Fatalf("auto = %v, want %v", got, tt.wantAuto)
+			}
+		})
+	}
+}
+
+// TestToolConfigUnmarshalJSONRejectsUnknownFields keeps the decoding contract
+// strict: a misspelled tool property is an error, not a silent no-op.
+func TestToolConfigUnmarshalJSONRejectsUnknownFields(t *testing.T) {
+	var tc ToolConfig
+	err := json.Unmarshal([]byte(`{"name":"rg","instalationMethod":"brew"}`), &tc)
+	if err == nil {
+		t.Fatal("expected unknown field error, got nil")
+	}
+	if !strings.Contains(err.Error(), "instalationMethod") {
+		t.Fatalf("expected error to name the unknown field, got: %v", err)
+	}
+}
 
 func TestProjectConfigInstantiationAndValidation(t *testing.T) {
 	pc := ProjectConfig{

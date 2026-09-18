@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -368,6 +370,48 @@ type ToolConfig struct {
 	UpdateCheck        *ToolConfigUpdateCheck `json:"updateCheck,omitempty" yaml:"updateCheck,omitempty"`
 	InstallationMethod string                 `json:"installationMethod,omitempty" yaml:"installationMethod,omitempty"`
 	InstallParams      map[string]interface{} `json:"installParams,omitempty" yaml:"installParams,omitempty"`
+}
+
+// installParamDefaults lists the install parameters an installation method fills
+// in when a tool configuration omits them. Each entry mirrors a default the
+// method's v1 schema applied at parse time, so a configuration written against
+// v1 keeps its meaning without repeating the value.
+var installParamDefaults = map[string]map[string]interface{}{
+	"zsh-plugin": {"auto": true},
+}
+
+// UnmarshalJSON decodes a tool configuration and materialises the installation
+// method's parameter defaults into InstallParams. Decoding is the one point every
+// loaded configuration passes through, which lets consumers such as the
+// auto-install check read InstallParams directly instead of knowing each
+// method's defaults. Unknown properties are rejected, matching the loader's
+// strictness for the rest of the document.
+func (tc *ToolConfig) UnmarshalJSON(data []byte) error {
+	type plain ToolConfig
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode((*plain)(tc)); err != nil {
+		return err
+	}
+	tc.applyInstallParamDefaults()
+	return nil
+}
+
+// applyInstallParamDefaults sets every default of tc.InstallationMethod whose key
+// the configuration did not spell out.
+func (tc *ToolConfig) applyInstallParamDefaults() {
+	defaults, ok := installParamDefaults[tc.InstallationMethod]
+	if !ok {
+		return
+	}
+	if tc.InstallParams == nil {
+		tc.InstallParams = make(map[string]interface{}, len(defaults))
+	}
+	for key, value := range defaults {
+		if _, set := tc.InstallParams[key]; !set {
+			tc.InstallParams[key] = value
+		}
+	}
 }
 
 // Validate asserts the tool configurations correctness.
