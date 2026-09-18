@@ -1,4 +1,4 @@
-import { defineTool, type IToolConfigContext } from "@alexgorbatchev/dotfiles";
+import { defineTool, type IHookContext } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, _ctx) =>
   install("github-release", {
@@ -6,7 +6,7 @@ export default defineTool((install, _ctx) =>
     assetPattern: /^bat-.*\.tar\.gz$/,
   })
     .bin("bat")
-    .hook("after-install", async ({ $ }: IToolConfigContext) => {
+    .hook("after-install", async ({ $ }: IHookContext) => {
       await $`bat --version`;
       await $`echo "bat installed successfully"`;
     })
