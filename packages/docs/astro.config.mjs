@@ -1,11 +1,21 @@
 // @ts-check
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import { rehypeMarkdownLinks } from "./rehypeMarkdownLinks";
+
+const base = "/dotfiles/";
+const contentDir = fileURLToPath(new URL("./src/content/docs/", import.meta.url));
 
 // https://astro.build/config
 export default defineConfig({
   site: "https://alexgorbatchev.github.io",
-  base: "/dotfiles/",
+  base,
+  markdown: {
+    // The source markdown links pages as `foo/bar.md`, which is right for `dotfiles skill` and the
+    // embedded copy; only the website needs the Starlight route, so it is rewritten here at build time.
+    rehypePlugins: [[rehypeMarkdownLinks, { base, contentDir }]],
+  },
   integrations: [
     starlight({
       title: "@dotfiles",
