@@ -1278,7 +1278,7 @@ func TestGenerateCompletionsForTool_SkipMissingSource(t *testing.T) {
 	ctx := context.Background()
 	log := logger.New(logger.Config{Name: "test-completions", Level: logger.LogLevelQuiet, Writer: io.Discard})
 	fsys := fs.NewMemFS()
-	runner := exec.NewOSRunner()
+	runner := exec.NewMockRunner()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
 	if err != nil {
 		t.Fatalf("failed creating DB: %v", err)

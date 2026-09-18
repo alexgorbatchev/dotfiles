@@ -454,15 +454,35 @@ func TestIsStdinTerminalAndCheckSudo(t *testing.T) {
 		t.Error("expected CombinedOutput to fail when sudo check fails in CI")
 	}
 
-	// 3. Test checkSudo when -p is already present in sudo args
+	// 3. Test checkSudo when -p is already present vs not present in sudo args
 	projCfg := &config.ProjectConfig{}
 	projCfg.System.SudoPrompt = "Custom: "
 	ctx := config.WithProjectConfig(context.Background(), projCfg)
 
-	cmdWithP := runner.CommandContext(ctx, "sudo", "-p", "Custom: ", "echo", "hi")
+	cmdWithP, ok := runner.CommandContext(ctx, "sudo", "-p", "Custom: ", "echo", "hi").(*osCmd)
+	if !ok {
+		t.Fatalf("expected *osCmd instance")
+	}
 	cmdWithP.SetStdin(&buf)
 	SudoPreflightCommand = []string{"true"}
-	_ = cmdWithP.Run()
+	if err := cmdWithP.checkSudo(); err != nil {
+		t.Fatalf("unexpected error from checkSudo: %v", err)
+	}
+	if len(cmdWithP.cmd.Args) != 5 || cmdWithP.cmd.Args[1] != "-p" || cmdWithP.cmd.Args[2] != "Custom: " {
+		t.Errorf("expected sudo -p args preserved without duplicate, got: %v", cmdWithP.cmd.Args)
+	}
+
+	cmdWithoutP, ok := runner.CommandContext(ctx, "sudo", "echo", "hi").(*osCmd)
+	if !ok {
+		t.Fatalf("expected *osCmd instance")
+	}
+	cmdWithoutP.SetStdin(&buf)
+	if err := cmdWithoutP.checkSudo(); err != nil {
+		t.Fatalf("unexpected error from checkSudo: %v", err)
+	}
+	if len(cmdWithoutP.cmd.Args) != 5 || cmdWithoutP.cmd.Args[1] != "-p" || cmdWithoutP.cmd.Args[2] != "Custom: " {
+		t.Errorf("expected sudo -p prompt prepended, got: %v", cmdWithoutP.cmd.Args)
+	}
 }
 
 func TestOSCmd_AttachDefaultStdin(t *testing.T) {
