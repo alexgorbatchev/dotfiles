@@ -11,6 +11,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/scaffold"
+	"github.com/alexgorbatchev/dotfiles/pkg/typecheck"
 )
 
 func typesProjectConfig() *config.ProjectConfig {
@@ -165,6 +166,58 @@ func TestSyncTypeScriptTypesProjectTSConfigOwnership(t *testing.T) {
 				t.Errorf("existing tsconfig was modified:\n%s", got)
 			}
 		})
+	}
+}
+
+// The synced package directory holds exactly what the embedded package contains. A
+// declaration an earlier release emitted under a name this one stopped using is
+// imported by nothing and goes stale unnoticed, and "tool-types.d.ts" in particular
+// would sit two directories away from the CLI's bin-name registry of that very name.
+func TestSyncTypeScriptTypesRemovesFilesTheEmbeddedPackageNoLongerHas(t *testing.T) {
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles/dotfiles.config.ts")
+	projCfg := typesProjectConfig()
+
+	pkgDir := filepath.Join(projCfg.Paths.GeneratedDir, "node_modules", "@alexgorbatchev", "dotfiles")
+	if err := memFS.MkdirAll(pkgDir, 0755); err != nil {
+		t.Fatalf("creating %s: %v", pkgDir, err)
+	}
+	obsolete := []string{"authoring-types.d.ts", "cli.d.ts", "schemas.d.ts", typecheck.RegistryFileName}
+	for _, name := range obsolete {
+		if err := memFS.WriteFile(filepath.Join(pkgDir, name), []byte("// emitted by an older release\n"), 0644); err != nil {
+			t.Fatalf("seeding %s: %v", name, err)
+		}
+	}
+
+	if err := orch.SyncTypeScriptTypes(context.Background(), nil, projCfg); err != nil {
+		t.Fatalf("SyncTypeScriptTypes: %v", err)
+	}
+
+	for _, name := range obsolete {
+		if exists, _ := memFS.Exists(filepath.Join(pkgDir, name)); exists {
+			t.Errorf("%s survived the sync although the embedded package no longer contains it", name)
+		}
+	}
+
+	embeddedNames, err := embeddedPackageFiles()
+	if err != nil {
+		t.Fatalf("reading the embedded package: %v", err)
+	}
+	for name := range embeddedNames {
+		if exists, _ := memFS.Exists(filepath.Join(pkgDir, name)); !exists {
+			t.Errorf("expected the sync to write %s", name)
+		}
+	}
+
+	// The registry and the CLI-owned tsconfig live in .generated, not in the package
+	// directory, and the prune must not reach them.
+	for _, path := range []string{
+		filepath.Join(projCfg.Paths.GeneratedDir, typecheck.RegistryFileName),
+		typecheck.TSConfigPath(projCfg.Paths.GeneratedDir),
+	} {
+		if exists, _ := memFS.Exists(path); !exists {
+			t.Errorf("expected %s to survive the sync", path)
+		}
 	}
 }
 

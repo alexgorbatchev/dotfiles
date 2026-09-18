@@ -7,6 +7,7 @@ import (
 	"fmt"
 	iofs "io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -467,6 +468,50 @@ func (o *Orchestrator) shouldSkipInstallation(ctx context.Context, tool *config.
 	return true, nil
 }
 
+// embeddedPackageFiles returns the files the embedded authoring package consists of,
+// keyed by the name each one is synced under. It is the whole package: whatever the
+// build emitted into pkg/embedded/dist and nothing else.
+func embeddedPackageFiles() (map[string][]byte, error) {
+	entries, err := iofs.ReadDir(embedded.TypesFS, "dist")
+	if err != nil {
+		return nil, fmt.Errorf("reading the embedded authoring package: %w", err)
+	}
+	files := make(map[string][]byte, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || entry.Name() == ".gitkeep" {
+			continue
+		}
+		// An embed.FS is always slash-separated, whatever the host separator is.
+		content, err := iofs.ReadFile(embedded.TypesFS, path.Join("dist", entry.Name()))
+		if err != nil {
+			return nil, fmt.Errorf("reading the embedded %s: %w", entry.Name(), err)
+		}
+		files[entry.Name()] = content
+	}
+	return files, nil
+}
+
+// pruneSyncedPackage removes everything in the synced package directory that the
+// current embedded package does not contain. A declaration an earlier release emitted
+// under a name this one stopped using is imported by nothing and goes stale unnoticed,
+// and the directory is the CLI's alone, so what is not in the embedded set is obsolete.
+func (o *Orchestrator) pruneSyncedPackage(pkgDir string, keep map[string][]byte) error {
+	entries, err := o.fs.ReadDir(pkgDir)
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", pkgDir, err)
+	}
+	for _, name := range entries {
+		if _, wanted := keep[name]; wanted {
+			continue
+		}
+		obsolete := filepath.Join(pkgDir, name)
+		if err := removeAll(o.fs, obsolete); err != nil {
+			return fmt.Errorf("removing obsolete %s: %w", obsolete, err)
+		}
+	}
+	return nil
+}
+
 // SyncTypeScriptTypes writes what type-checking the project's tool configurations
 // needs under the generated directory: the authoring package's declarations, the
 // bin-name registry (as a module, so it augments the package instead of declaring a
@@ -482,17 +527,15 @@ func (o *Orchestrator) SyncTypeScriptTypes(ctx context.Context, tools []*config.
 		return fmt.Errorf("creating generated node_modules directory %s: %w", pkgGenDir, err)
 	}
 
-	entries, err := iofs.ReadDir(embedded.TypesFS, "dist")
-	if err == nil {
-		for _, entry := range entries {
-			if entry.IsDir() || entry.Name() == ".gitkeep" {
-				continue
-			}
-			data, err := iofs.ReadFile(embedded.TypesFS, filepath.Join("dist", entry.Name()))
-			if err == nil {
-				_ = o.fs.WriteFile(filepath.Join(pkgGenDir, entry.Name()), data, 0644)
-			}
-		}
+	pkgFiles, err := embeddedPackageFiles()
+	if err != nil {
+		return err
+	}
+	for name, data := range pkgFiles {
+		_ = o.fs.WriteFile(filepath.Join(pkgGenDir, name), data, 0644)
+	}
+	if err := o.pruneSyncedPackage(pkgGenDir, pkgFiles); err != nil {
+		return err
 	}
 
 	if projCfg.Paths.DotfilesDir != "" {
@@ -522,15 +565,11 @@ func (o *Orchestrator) SyncTypeScriptTypes(ctx context.Context, tools []*config.
 		if needsSymlink {
 			_ = removeAll(o.fs, projPkgDir)
 			if err := o.fs.Symlink(relTarget, projPkgDir); err != nil {
+				// The directory was just removed, so a copy of the embedded package is
+				// all it holds and there is nothing left over to prune.
 				_ = o.fs.MkdirAll(projPkgDir, 0755)
-				if entries, err := iofs.ReadDir(embedded.TypesFS, "dist"); err == nil {
-					for _, entry := range entries {
-						if entry.IsDir() || entry.Name() == ".gitkeep" {
-							continue
-						}
-						data, _ := iofs.ReadFile(embedded.TypesFS, filepath.Join("dist", entry.Name()))
-						_ = o.fs.WriteFile(filepath.Join(projPkgDir, entry.Name()), data, 0644)
-					}
+				for name, data := range pkgFiles {
+					_ = o.fs.WriteFile(filepath.Join(projPkgDir, name), data, 0644)
 				}
 			}
 		}

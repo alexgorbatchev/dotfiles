@@ -152,6 +152,38 @@ func TestGenerateSchemaTypes(t *testing.T) {
 	}
 }
 
+// A build emits exactly the current set of outputs. Every directory it regenerates is
+// cleared first, so a declaration it has stopped emitting cannot survive in a checkout,
+// get embedded by //go:embed all:dist, and be synced into user projects from there.
+func TestCleanPreviousBuildClearsEveryGeneratedDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	generated := []string{
+		filepath.Join(tmpDir, ".dist"),
+		filepath.Join(tmpDir, "pkg", "dashboard", "dist"),
+		filepath.Join(tmpDir, "pkg", "embedded", "dist"),
+	}
+	const obsolete = "authoring-types.d.ts"
+	for _, dir := range generated {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("creating %s: %v", dir, err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, obsolete), []byte("// emitted by an older build\n"), 0644); err != nil {
+			t.Fatalf("seeding %s: %v", dir, err)
+		}
+	}
+
+	if err := cleanPreviousBuild(tmpDir); err != nil {
+		t.Fatalf("cleanPreviousBuild failed: %v", err)
+	}
+
+	for _, dir := range generated {
+		if _, err := os.Stat(filepath.Join(dir, obsolete)); !os.IsNotExist(err) {
+			t.Errorf("%s survived the clean in %s (stat error: %v)", obsolete, dir, err)
+		}
+	}
+}
+
 func TestBuildHelpers(t *testing.T) {
 	tmpDir := t.TempDir()
 

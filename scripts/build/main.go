@@ -52,6 +52,14 @@ func cleanPreviousBuild(rootDir string) error {
 	if err := os.RemoveAll(dashboardDistPath); err != nil {
 		return fmt.Errorf("failed to remove pkg/dashboard/dist: %w", err)
 	}
+	// The embedded declarations are regenerated from scratch below. Left in place, a
+	// file the build has stopped emitting survives in every existing checkout, is
+	// embedded by //go:embed all:dist into the binary built there, and is synced from
+	// there into every user project.
+	embeddedDistPath := filepath.Join(rootDir, "pkg/embedded/dist")
+	if err := os.RemoveAll(embeddedDistPath); err != nil {
+		return fmt.Errorf("failed to remove pkg/embedded/dist: %w", err)
+	}
 	return nil
 }
 
