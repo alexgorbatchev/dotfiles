@@ -6,9 +6,7 @@ The DMG source is configured via a required `source` object. Sources can be dire
 
 If the resolved source points to a supported archive (`.zip`, `.tar.gz`, etc.) containing a `.dmg` file, the archive is automatically extracted first. This is common for GitHub releases that compress DMGs into zip files.
 
-DMG is externally managed. Temporary files (download, mount point, optional archive extraction) use `stagingDir`, but the final `.app` is installed to `/Applications`.
-
-Shims are not supported for DMG-installed applications. The `.bin()` method should not be used with this installer.
+DMG-installed applications are externally managed: temporary files (download, mount point, optional archive extraction) use `stagingDir`, the final `.app` is installed to `/Applications`, and `.bin()` names the command-line executables inside the bundle so dotfiles can shim them (see [`.bin()` runtime behavior](../api-reference/core-api.md#binname-runtime-behavior)).
 
 ## Basic Usage
 

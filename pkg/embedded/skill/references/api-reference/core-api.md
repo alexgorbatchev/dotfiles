@@ -74,6 +74,8 @@ export default defineTool((install, ctx) => install("github-release", { repo: "o
 
 Declaring `.bin(name)` generates a shim for `name` in `paths.targetDir`. The one exception is a `manual` tool with neither `binaryPath` nor a `before-install` hook: nothing could ever place a binary where the shim would point, so no shim is written and `dotfiles generate` warns; such a command comes from shell functions instead (see [manual.md](../installation-methods/manual.md)).
 
+Externally-managed installers (`apt`, `brew`, `dnf`, `dmg`, `npm`, `pacman`, `pkg`) follow the same rule: declare `.bin()` for every executable the package provides, exactly as for any other method. The shim targets `<binariesDir>/<tool>/current/<name>`; after installation dotfiles records where the package manager placed each binary (for example `/opt/homebrew/bin/htop`) and links `current/<name>` to it, so a shim run before installation installs the tool and then executes the freshly installed binary. dotfiles never guesses a system path such as `/usr/bin/<name>`.
+
 - Running the shim auto-installs the tool on first use (if needed)
 - Running `{binary} @update` triggers a shim-driven update flow
 - Shim executions append usage events to a local log for dashboard analytics

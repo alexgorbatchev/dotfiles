@@ -2,7 +2,7 @@
 
 Install Debian-family Linux packages using APT.
 
-APT-installed tools are externally managed. The system package manager owns package files and binary placement. Use `.bin()` only to tell dotfiles which executable names should be resolved from `PATH` after installation.
+APT-installed tools are externally managed: APT owns the files, and `.bin()` names the executables the package provides so dotfiles can shim them (see [`.bin()` runtime behavior](../api-reference/core-api.md#binname-runtime-behavior)).
 
 ## Basic Usage
 

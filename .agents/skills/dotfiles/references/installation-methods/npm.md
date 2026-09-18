@@ -2,6 +2,8 @@
 
 Install tools published as npm packages. Supports both `npm` and `bun` as package managers.
 
+npm-installed tools are externally managed: the package manager owns the files, and `.bin()` names the executables the package provides so dotfiles can shim them (see [`.bin()` runtime behavior](../api-reference/core-api.md#binname-runtime-behavior)).
+
 ## Basic Usage
 
 ```typescript

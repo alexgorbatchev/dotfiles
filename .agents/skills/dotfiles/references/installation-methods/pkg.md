@@ -57,7 +57,7 @@ install("pkg", {
 ## Notes
 
 - macOS only. Non-macOS platforms skip this install method.
-- `.pkg` installers are externally managed after installation.
+- `.pkg`-installed tools are externally managed: the macOS installer owns the files, and `.bin()` names the executables the package provides so dotfiles can shim them (see [`.bin()` runtime behavior](../api-reference/core-api.md#binname-runtime-behavior)).
 - Packages that declare root authorization should opt into `.sudo()` so explicit `dotfiles install <tool>` runs execute the macOS installer via `sudo`.
 - GUI-only packages can omit `.bin()`.
 - If the binary is not on PATH after installation, set `binaryPath` explicitly.
