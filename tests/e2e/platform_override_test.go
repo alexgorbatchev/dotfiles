@@ -21,6 +21,7 @@ func TestE2EProjectPlatformOverrides(t *testing.T) {
 		wantDir    string
 	}{
 		{name: "apple silicon takes the override", targetOS: "darwin", targetArch: "arm64", wantDir: "homebrew-bin"},
+		{name: "the authoring spelling selects the same override", targetOS: "macos", targetArch: "arm64", wantDir: "homebrew-bin"},
 		{name: "intel mac keeps the base value", targetOS: "darwin", targetArch: "amd64", wantDir: "user-bin"},
 		{name: "linux keeps the base value", targetOS: "linux", targetArch: "arm64", wantDir: "user-bin"},
 	}

@@ -194,7 +194,7 @@ The following flags are available on all commands:
 - `-d, --dry-run`: Simulate operations without modifying the filesystem.
 - `--trace`: Enable source location tracing in logs.
 - `--log <level>`: Set log level (`verbose`, `default`, `quiet`).
-- `--platform <os>`: Override target platform (`darwin`, `linux`, `windows`).
+- `--platform <os>`: Override target platform (`macos`, `linux`, `windows`; `darwin` is accepted as a spelling of `macos`). Any other value is rejected.
 - `--arch <arch>`: Override target architecture (`amd64`, `arm64`).
 - `--libc <libc>`: Override target C library implementation (`glibc`, `musl`).
 - `-v, --verbose`: Enable verbose logging.
