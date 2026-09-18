@@ -51,7 +51,8 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
   anything still pending; fetch first and close over the result
 - `options` - Optional settings:
   - `mode` - `'file'` (default) or `'line'` (process each line separately)
-  - `errorMessage` - If provided and no matches found, logs error: `Could not find '<pattern>' in <filePath>`
+  - `errorMessage` - If provided and no matches found, logs at ERROR level (the call still returns `false` rather
+    than throwing): `Could not find '<pattern>' in <filePath>: <errorMessage>`
 
 **Returns:** `Promise<boolean>` - `true` if replacements were made, `false` if no matches found
 
@@ -61,11 +62,13 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
 - `captures` - Array of capture groups (may contain `undefined`)
 - `offset` - Match offset in the input, counted in characters
 - `input` - Original input string
-- `groups` - Named capture groups (if present)
+- `groups` - Named capture groups (an empty object when the pattern declares none)
 
 ### ctx.resolve
 
 Resolves a glob pattern to a single file or directory path. Useful for referencing files with variable names (versioned directories, platform-specific assets).
+
+A relative pattern is resolved against `ctx.toolDir`, the directory containing the `.tool.ts` file, so it reaches files shipped next to the configuration. To look inside the installed tree, build an absolute pattern from a context path such as `installedDir`.
 
 ```typescript
 .zsh((shell) =>
@@ -75,22 +78,23 @@ Resolves a glob pattern to a single file or directory path. Useful for referenci
 )
 
 // In hooks
-.hook('after-install', async (ctx) => {
-  const versionDir = ctx.resolve('tool-*-x86_64-linux');
-  await ctx.$`${versionDir}/bin/tool init`;
+.hook('after-install', async ({ installedDir, $ }) => {
+  const versionDir = ctx.resolve(`${installedDir}/tool-*-x86_64-linux`);
+  await $`${versionDir}/bin/tool init`;
 })
 ```
 
 **Parameters:**
 
-- `pattern` - Glob pattern to match (relative to `toolDir` or absolute)
+- `pattern` - Glob pattern to match (relative to `toolDir`, or absolute; a leading `~` expands to the project's `homeDir`)
 
-**Returns:** `string` - The resolved absolute path
+**Returns:** `string` - The matched path
 
-**Throws:** `ResolveError` if:
+**Throws** when the pattern does not identify exactly one path. The thrown value is the message itself, not an error class:
 
-- No matches are found (logs ERROR: `No matches found for pattern: <pattern>`)
-- Multiple matches are found (logs ERROR: `Pattern '<pattern>' matched N paths (expected exactly 1): ...`)
+- No matches are found: `No matches found for pattern: <pattern>`
+- Multiple matches are found: `Pattern "<pattern>" matched N paths (expected exactly 1): <path>, <path>`
+- The pattern is malformed: `invalid pattern "<pattern>": <reason>`
 
 ### ctx.log
 
@@ -110,18 +114,17 @@ User-facing logger for tool operations. Messages are automatically prefixed with
 })
 ```
 
-**Methods:**
+**Methods:** each takes a single `message` string.
 
-- `ctx.log.trace(message)` - Detailed debugging (hidden by default)
-- `ctx.log.debug(message)` - Debug information (hidden by default)
+- `ctx.log.debug(message)` - Debug information (shown with `--log=verbose`)
 - `ctx.log.info(message)` - Informational messages
 - `ctx.log.warn(message)` - Warning messages
-- `ctx.log.error(message, error?)` - Error messages (optionally with error object)
+- `ctx.log.error(message)` - Error messages
 
-**Output:** Messages include the tool name as context:
+**Output:** the level, a tab, then the tool name in brackets before the message:
 
 ```
-INFO    [my-tool] Configuring tool settings...
+INFO	[my-tool] Configuring tool settings...
 ```
 
 ### dedentString / dedentTemplate
@@ -142,21 +145,8 @@ const script = dedentString`
 const clean = dedentString("  line 1\n  line 2");
 ```
 
-```
+Leading and trailing blank lines are dropped, then the smallest indentation shared by the remaining non-blank lines (spaces or tabs) is removed from every line.
 
 ## Installation Method Parameters
 
-See the Installation Methods reference for detailed parameters for each method:
-
-- `github-release` - GitHub Releases
-- `gitea-release` - Gitea/Forgejo Releases
-- `brew` - Homebrew
-- `cargo` - Cargo
-- `npm` - npm
-- `curl-script` - Curl Scripts
-- `curl-tar` - Curl Tar
-- `curl-binary` - Curl Binary
-- `pkg` - macOS PKG
-- `manual` - Manual
-- `zsh-plugin` - Zsh Plugin
-```
+Every installation method and its parameters are documented in [Installation Methods](../installation-methods/overview.md).
