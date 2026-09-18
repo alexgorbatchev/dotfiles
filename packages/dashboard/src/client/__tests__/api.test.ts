@@ -37,6 +37,14 @@ describe("api client utilities", () => {
     expect(fetchApi("/test")).rejects.toThrow("API error");
   });
 
+  test("fetchApi throws when a successful envelope carries no data", async () => {
+    globalThis.fetch = mock(async () => {
+      return new Response(JSON.stringify({ success: true }));
+    }) as unknown as typeof fetch;
+
+    await expect(fetchApi("/test")).rejects.toThrow("API error");
+  });
+
   test("postApi sends body and returns data on success", async () => {
     let capturedMethod = "";
     let capturedBody = "";

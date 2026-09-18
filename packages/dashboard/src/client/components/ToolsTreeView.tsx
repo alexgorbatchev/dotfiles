@@ -1,4 +1,3 @@
-import type { ComponentChildren } from "preact";
 import { type JSX } from "preact";
 import { FileCode, FolderTree } from "../icons";
 
@@ -21,6 +20,9 @@ type ToolTreeData = {
   status?: ToolRuntimeStatus;
   installedVersion?: string;
 };
+
+/** Tool files get a decorated label; anything else falls back to the plain label text. */
+type ToolTreeLabel = JSX.Element | string;
 
 /**
  * Flatten the API file tree into one row per tool file, carrying the directory
@@ -78,7 +80,7 @@ function getStatusDotClass(status?: ToolRuntimeStatus): string {
  * Custom label renderer that dims the directory path and .tool.ts extension so
  * the tool name stands out, and trails the installed version when there is one.
  */
-function renderLabel(item: ITreeItemData<ToolTreeData>): ComponentChildren {
+function renderLabel(item: ITreeItemData<ToolTreeData>): ToolTreeLabel {
   if (item.data?.isFile && item.label.endsWith(".tool.ts")) {
     const baseName = item.label.replace(/\.tool\.ts$/, "");
     const dirPath = item.data.dirPath ?? "";
@@ -112,7 +114,7 @@ export function ToolsTreeView({ tools, actions }: ToolsTreeViewProps): JSX.Eleme
 
   const toolsByName = new Map(tools.map((tool) => [tool.config.name, tool]));
 
-  function renderActions(item: ITreeItemData<ToolTreeData>): ComponentChildren {
+  function renderActions(item: ITreeItemData<ToolTreeData>): JSX.Element | null {
     const toolName = item.data?.toolName;
 
     if (!toolName) {
