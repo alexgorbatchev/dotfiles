@@ -108,7 +108,7 @@ func TestGiteaInstaller(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/v1/repos/myowner/mytool/releases/latest" {
+		if r.URL.Path == "/api/v1/repos/myowner/mytool/releases/latest" || r.URL.Path == "/api/v1/repos/myowner/mytool/releases/tags/v1.2.0" {
 			mockRelease.Assets[0].BrowserDownloadURL = "http://" + r.Host + "/download/mytool"
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
@@ -342,4 +342,161 @@ func TestGiteaInstaller(t *testing.T) {
 			t.Fatalf("second Install failed: %v", err)
 		}
 	})
+}
+
+// newGiteaTestInstaller wires a GiteaInstaller to an in-memory filesystem and the given
+// API server, installing into /test/bin for linux/amd64.
+func newGiteaTestInstaller(t *testing.T, server *giteaAPIServer) (*GiteaInstaller, fs.FS) {
+	t.Helper()
+	fsys := fs.NewMemFS()
+	inst := NewGiteaInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+	if server != nil {
+		inst.httpClient = server.Client()
+	}
+	inst.BinDir = "/test/bin"
+	return inst, fsys
+}
+
+func giteaToolConfig(instanceURL string, params map[string]interface{}, toolVersion string) *config.ToolConfig {
+	installParams := map[string]interface{}{"repo": "owner/tool"}
+	if instanceURL != "" {
+		installParams["instanceUrl"] = instanceURL
+	}
+	for k, v := range params {
+		installParams[k] = v
+	}
+	tool := &config.ToolConfig{Name: "tool", InstallParams: installParams}
+	if toolVersion != "" {
+		tool.Version = &toolVersion
+	}
+	return tool
+}
+
+// TestGiteaInstaller_InstallVersionSelection covers issue #32: the `version` and
+// `prerelease` install parameters select which release endpoint is consulted, exactly
+// as they did in v1, and `.version()` is only the fallback for a missing `version`.
+func TestGiteaInstaller_InstallVersionSelection(t *testing.T) {
+	tests := []struct {
+		name        string
+		params      map[string]interface{}
+		toolVersion string
+		wantTag     string
+		wantPath    string
+	}{
+		{
+			name:     "no version resolves the latest stable release",
+			wantTag:  "v1.0.0",
+			wantPath: "/api/v1/repos/owner/tool/releases/latest",
+		},
+		{
+			name:     "installParams version pins the release by tag",
+			params:   map[string]interface{}{"version": "v0.9.0"},
+			wantTag:  "v0.9.0",
+			wantPath: "/api/v1/repos/owner/tool/releases/tags/v0.9.0",
+		},
+		{
+			name:        ".version() is the fallback when installParams has no version",
+			toolVersion: "v0.9.0",
+			wantTag:     "v0.9.0",
+			wantPath:    "/api/v1/repos/owner/tool/releases/tags/v0.9.0",
+		},
+		{
+			name:        "installParams version wins over .version()",
+			params:      map[string]interface{}{"version": "v0.9.0"},
+			toolVersion: "latest",
+			wantTag:     "v0.9.0",
+			wantPath:    "/api/v1/repos/owner/tool/releases/tags/v0.9.0",
+		},
+		{
+			name:     "prerelease resolves the newest published release from the listing",
+			params:   map[string]interface{}{"prerelease": true},
+			wantTag:  "v1.1.0-rc.1",
+			wantPath: "/api/v1/repos/owner/tool/releases?limit=10",
+		},
+		{
+			name:     "prerelease false keeps releases/latest",
+			params:   map[string]interface{}{"prerelease": false},
+			wantTag:  "v1.0.0",
+			wantPath: "/api/v1/repos/owner/tool/releases/latest",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newGiteaAPIServer(t, giteaClientFixture())
+			inst, fsys := newGiteaTestInstaller(t, server)
+
+			res, err := inst.Install(context.Background(), giteaToolConfig(server.URL, tt.params, tt.toolVersion))
+			if err != nil {
+				t.Fatalf("Install failed: %v", err)
+			}
+			if res.Version != tt.wantTag {
+				t.Errorf("Version = %q, want %q", res.Version, tt.wantTag)
+			}
+			if !server.requested(tt.wantPath) {
+				t.Errorf("requested %v, want %q", server.requestedPaths(), tt.wantPath)
+			}
+			if got, err := fsys.ReadFile("/test/bin/tool"); err != nil || string(got) != "gitea-binary-payload" {
+				t.Errorf("installed binary = %q, %v; want the downloaded asset", string(got), err)
+			}
+		})
+	}
+}
+
+func TestGiteaInstaller_InstallUnknownTag(t *testing.T) {
+	server := newGiteaAPIServer(t, giteaClientFixture())
+	inst, _ := newGiteaTestInstaller(t, server)
+
+	_, err := inst.Install(context.Background(), giteaToolConfig(server.URL, map[string]interface{}{"version": "v9.9.9"}, ""))
+	if err == nil || !strings.Contains(err.Error(), `release "v9.9.9" not found for owner/tool`) {
+		t.Fatalf("error = %v, want the unknown-tag error", err)
+	}
+}
+
+// TestGiteaInstaller_RequiresInstanceURL: v1 declared instanceUrl as a required URL and
+// rejected a config without it; the Go port silently defaulted to codeberg.org, which
+// sent a request for a repository that only exists on the user's own instance to a
+// public host.
+func TestGiteaInstaller_RequiresInstanceURL(t *testing.T) {
+	inst, _ := newGiteaTestInstaller(t, nil)
+	inst.httpClient = &http.Client{Transport: failingTransport{t}}
+	tool := giteaToolConfig("", nil, "")
+
+	if _, err := inst.Install(context.Background(), tool); err == nil || !strings.Contains(err.Error(), "'instanceUrl' is required in installParams") {
+		t.Fatalf("Install error = %v, want the missing instanceUrl error", err)
+	}
+	if _, err := inst.CheckUpdate(context.Background(), tool); err == nil || !strings.Contains(err.Error(), "'instanceUrl' is required in installParams") {
+		t.Fatalf("CheckUpdate error = %v, want the missing instanceUrl error", err)
+	}
+}
+
+// failingTransport fails the test on any request: the installer must reject a tool
+// before it talks to a host it was never told about.
+type failingTransport struct{ t *testing.T }
+
+func (f failingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	f.t.Errorf("unexpected request to %s", r.URL)
+	return nil, http.ErrNotSupported
+}
+
+func TestGiteaInstaller_CheckUpdateHonoursPrerelease(t *testing.T) {
+	server := newGiteaAPIServer(t, giteaClientFixture())
+	inst, _ := newGiteaTestInstaller(t, server)
+	ctx := context.Background()
+
+	stable, err := inst.CheckUpdate(ctx, giteaToolConfig(server.URL, nil, ""))
+	if err != nil || stable.LatestVersion != "v1.0.0" {
+		t.Fatalf("stable CheckUpdate = %+v, %v; want v1.0.0", stable, err)
+	}
+
+	// A cached stable answer must not be served to a tool that opted into prereleases.
+	pre, err := inst.CheckUpdate(ctx, giteaToolConfig(server.URL, map[string]interface{}{"prerelease": true}, ""))
+	if err != nil {
+		t.Fatalf("prerelease CheckUpdate failed: %v", err)
+	}
+	if pre.LatestVersion != "v1.1.0-rc.1" || pre.Cached {
+		t.Errorf("prerelease CheckUpdate = %+v, want v1.1.0-rc.1 fetched from the listing", pre)
+	}
+	if !server.requested("/api/v1/repos/owner/tool/releases?limit=10") {
+		t.Errorf("requested %v, want the releases listing", server.requestedPaths())
+	}
 }

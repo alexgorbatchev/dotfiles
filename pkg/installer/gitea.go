@@ -32,6 +32,7 @@ type giteaRelease struct {
 	TagName    string       `json:"tag_name"`
 	Name       string       `json:"name"`
 	Prerelease bool         `json:"prerelease"`
+	Draft      bool         `json:"draft"`
 	Assets     []giteaAsset `json:"assets"`
 }
 
@@ -66,6 +67,54 @@ func NewGiteaInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Dow
 		sysCtx:     sysCtx,
 		httpClient: http.DefaultClient,
 	}
+}
+
+// giteaReleaseTarget is what a tool's install parameters resolve to: the instance,
+// the repository and the release selection.
+type giteaReleaseTarget struct {
+	instanceURL string
+	repo        string
+	version     string
+	prerelease  bool
+	token       string
+}
+
+// giteaTarget reads the release-selection parameters of a gitea-release tool. The
+// `version` install parameter wins over `.version()`, which is the fallback, and a
+// missing version selects the latest release.
+func giteaTarget(tool *config.ToolConfig) (giteaReleaseTarget, error) {
+	instanceURL, err := giteaInstanceURL(tool.InstallParams)
+	if err != nil {
+		return giteaReleaseTarget{}, err
+	}
+	version := getStringParam(tool.InstallParams, "version", "")
+	if version == "" && tool.Version != nil {
+		version = *tool.Version
+	}
+	if version == "" {
+		version = "latest"
+	}
+	return giteaReleaseTarget{
+		instanceURL: instanceURL,
+		repo:        getStringParam(tool.InstallParams, "repo", ""),
+		version:     version,
+		prerelease:  getBoolParam(tool.InstallParams, "prerelease", false),
+		token:       getStringParam(tool.InstallParams, "token", ""),
+	}, nil
+}
+
+// cacheKey names the cache entry for a release of this target. "latest" means a
+// different release once prereleases are allowed, so the two are kept apart.
+func (t giteaReleaseTarget) cacheKey(version string) string {
+	key := t.instanceURL + "/" + t.repo + "@" + version
+	if version == "latest" && t.prerelease {
+		key += "?prerelease"
+	}
+	return key
+}
+
+func (t giteaReleaseTarget) request(version string) giteaReleaseRequest {
+	return giteaReleaseRequest{repo: t.repo, version: version, prerelease: t.prerelease, token: t.token}
 }
 
 func (g *GiteaInstaller) getCachedRelease(ctx context.Context, key string) (*giteaRelease, bool) {
@@ -176,74 +225,41 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	if g.sysCtx == nil {
 		g.sysCtx = NewDefaultSystemContext()
 	}
-	instanceURL := getStringParam(tool.InstallParams, "instanceUrl", "https://codeberg.org")
-	repo := getStringParam(tool.InstallParams, "repo", "")
-	if repo == "" {
+	target, err := giteaTarget(tool)
+	if err != nil {
+		return nil, err
+	}
+	if target.repo == "" {
 		return nil, fmt.Errorf("repository 'repo' is required in installParams")
 	}
-
-	parts := strings.Split(repo, "/")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid repository format %q. Expected 'owner/repo'", repo)
+	if parts := strings.Split(target.repo, "/"); len(parts) != 2 {
+		return nil, fmt.Errorf("invalid repository format %q. Expected 'owner/repo'", target.repo)
 	}
 
-	version := "latest"
-	if tool.Version != nil {
-		version = *tool.Version
-	}
-
-	// Fetch release info from Gitea API
-	normalizedURL := strings.TrimSuffix(instanceURL, "/")
-	apiURL := fmt.Sprintf("%s/api/v1/repos/%s/releases/latest", normalizedURL, repo)
-	if version != "latest" {
-		apiURL = fmt.Sprintf("%s/api/v1/repos/%s/releases/tags/%s", normalizedURL, repo, version)
+	toolLog := toolLogger(g.log, tool.Name)
+	if toolLog != nil {
+		toolLog.Info(logger.Message(fmt.Sprintf("Fetching release info for %s (%s) from %s...", target.repo, target.version, target.instanceURL)))
 	}
 
 	var release *giteaRelease
-	cacheKey := normalizedURL + "/" + repo + "@" + version
-	if version != "latest" {
-		if cached, ok := g.getCachedRelease(ctx, cacheKey); ok {
+	if target.version != "latest" {
+		if cached, ok := g.getCachedRelease(ctx, target.cacheKey(target.version)); ok {
 			release = cached
 		}
 	}
-
 	if release == nil {
-		req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+		client := giteaReleaseClient{httpClient: g.httpClient, instanceURL: target.instanceURL}
+		release, err = client.fetch(ctx, target.request(target.version))
 		if err != nil {
-			return nil, fmt.Errorf("creating Gitea API request: %w", err)
+			return nil, err
 		}
-		req.Header.Set("User-Agent", "dotfiles-installer/1.0")
-
-		// Add auth token if specified
-		token := getStringParam(tool.InstallParams, "token", "")
-		if token != "" {
-			req.Header.Set("Authorization", "token "+token)
-		}
-
-		resp, err := g.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("executing Gitea API request: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("Gitea API returned status %d", resp.StatusCode)
-		}
-
-		var rel giteaRelease
-		if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
-			return nil, fmt.Errorf("decoding Gitea release response: %w", err)
-		}
-		release = &rel
-		g.setCachedRelease(normalizedURL+"/"+repo+"@"+release.TagName, release)
-		if version != "latest" {
-			g.setCachedRelease(cacheKey, release)
+		g.setCachedRelease(target.cacheKey(release.TagName), release)
+		if target.version != "latest" {
+			g.setCachedRelease(target.cacheKey(target.version), release)
 		}
 	}
 
 	assetPattern := getStringParam(tool.InstallParams, "assetPattern", "")
-
-	// Match appropriate asset
 	matched := matchAsset(release.Assets, g.sysCtx.OS, g.sysCtx.Arch, assetPattern)
 	if matched == nil {
 		return nil, fmt.Errorf("no matching release asset found for OS %s and Arch %s", g.sysCtx.OS, g.sysCtx.Arch)
@@ -258,23 +274,23 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		return nil, fmt.Errorf("creating destination directory: %w", err)
 	}
 
-	// Download the asset
 	assetPath := filepath.Join(destDir, matched.Name)
+	if toolLog != nil {
+		toolLog.Info(logger.Message(fmt.Sprintf("Downloading release asset %s...", matched.Name)))
+	}
 	if err := g.dl.Download(ctx, matched.BrowserDownloadURL, assetPath, ""); err != nil {
 		return nil, fmt.Errorf("downloading release asset %s: %w", matched.Name, err)
 	}
 
-	placer := releaseAssetInstaller{fsys: g.fsys, extractor: g.extractor, log: toolLogger(g.log, tool.Name)}
+	placer := releaseAssetInstaller{fsys: g.fsys, extractor: g.extractor, log: toolLog}
 	promotedBinaries, err := placer.install(ctx, assetPath, destDir, tool)
 	if err != nil {
 		return nil, err
 	}
 
-	var versionResult string
-	if release != nil && release.TagName != "" {
-		versionResult = release.TagName
-	} else if version != "" && version != "latest" {
-		versionResult = version
+	versionResult := release.TagName
+	if versionResult == "" && target.version != "latest" {
+		versionResult = target.version
 	}
 
 	return &InstallResult{
@@ -293,59 +309,30 @@ func (g *GiteaInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig)
 }
 
 func (g *GiteaInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	instanceURL := getStringParam(tool.InstallParams, "instanceUrl", "https://codeberg.org")
-	repo := getStringParam(tool.InstallParams, "repo", "")
-	if repo == "" {
+	target, err := giteaTarget(tool)
+	if err != nil {
+		return nil, err
+	}
+	if target.repo == "" {
 		return &UpdateCheckResult{HasUpdate: false}, nil
 	}
 
-	normalizedURL := strings.TrimSuffix(instanceURL, "/")
-	apiURL := fmt.Sprintf("%s/api/v1/repos/%s/releases/latest", normalizedURL, repo)
-	cacheKey := normalizedURL + "/" + repo + "@latest"
-
-	var release *giteaRelease
-	var isCached bool
-
-	if cached, ok := g.getCachedRelease(ctx, cacheKey); ok {
-		release = cached
-		isCached = true
+	latestKey := target.cacheKey("latest")
+	if cached, ok := g.getCachedRelease(ctx, latestKey); ok {
+		return &UpdateCheckResult{HasUpdate: true, LatestVersion: cached.TagName, Cached: true}, nil
 	}
 
-	if release == nil {
-		req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("creating Gitea API request: %w", err)
-		}
-		req.Header.Set("User-Agent", "dotfiles-installer/1.0")
-
-		token := getStringParam(tool.InstallParams, "token", "")
-		if token != "" {
-			req.Header.Set("Authorization", "token "+token)
-		}
-
-		resp, err := g.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("executing Gitea API request: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("Gitea API returned status %d", resp.StatusCode)
-		}
-
-		var rel giteaRelease
-		if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
-			return nil, fmt.Errorf("decoding Gitea release response: %w", err)
-		}
-		release = &rel
-		g.setCachedRelease(cacheKey, release)
-		g.setCachedRelease(normalizedURL+"/"+repo+"@"+release.TagName, release)
+	client := giteaReleaseClient{httpClient: g.httpClient, instanceURL: target.instanceURL}
+	release, err := client.fetch(ctx, target.request("latest"))
+	if err != nil {
+		return nil, err
 	}
+	g.setCachedRelease(latestKey, release)
+	g.setCachedRelease(target.cacheKey(release.TagName), release)
 
 	return &UpdateCheckResult{
 		HasUpdate:     true,
 		LatestVersion: release.TagName,
-		Cached:        isCached,
 	}, nil
 }
 
