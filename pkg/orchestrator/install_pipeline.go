@@ -339,11 +339,12 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 		shimPath := filepath.Join(shimDir, binName)
 
+		// An externally-managed binary the installer could not locate keeps the
+		// current entrypoint as its target rather than a guessed system path; the
+		// entrypoint symlink created above is what the shim re-checks after installing.
 		if binaryPath == shimPath || !installer.IsRealBinaryPath(ctx, o.fs, binaryPath) {
 			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil && sysBin != shimPath {
 				binaryPath = sysBin
-			} else if isExternal {
-				binaryPath = filepath.Join("/usr/bin", binName)
 			}
 		}
 

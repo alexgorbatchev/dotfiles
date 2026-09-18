@@ -246,11 +246,13 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			}
 		}
 
+		// When nothing real is found the shim keeps targeting the dotfiles-managed
+		// current entrypoint: for externally-managed tools the install pipeline links
+		// it to wherever the package manager put the binary, so the bootstrap shim's
+		// post-install re-check succeeds without guessing a system path.
 		if binaryPath == shimPath || !installer.IsRealBinaryPath(ctx, o.fs, binaryPath) {
 			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil && sysBin != shimPath {
 				binaryPath = sysBin
-			} else if isExternallyManaged(tool.InstallationMethod) {
-				binaryPath = filepath.Join("/usr/bin", binName)
 			}
 		}
 

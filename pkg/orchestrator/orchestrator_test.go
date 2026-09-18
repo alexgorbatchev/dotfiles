@@ -1590,3 +1590,150 @@ func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 		t.Errorf("expected symlink target /home/user/.local/bin/claude, got %s", linkTarget)
 	}
 }
+
+// bootstrapTestBinName is deliberately unique: MemFS.Exists falls back to the
+// host filesystem, so a common name such as "htop" could be satisfied by a real
+// PATH entry on the machine running the tests and make the outcome host-dependent.
+const bootstrapTestBinName = "dotfiles-bootstrap-shim-bin-7c3e"
+
+func TestGenerateTool_ExternalToolBootstrapShimTargetsCurrentEntrypoint(t *testing.T) {
+	methods := []string{"brew", "apt", "dnf", "pacman", "npm", "pkg", "dmg"}
+
+	for _, method := range methods {
+		t.Run(method, func(t *testing.T) {
+			ctx := context.Background()
+			memFS := fs.NewMemFS()
+			orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles.config.ts")
+
+			projCfg := &config.ProjectConfig{
+				Paths: config.PathsConfig{
+					HomeDir:      "/home/user",
+					TargetDir:    "/home/user/bin",
+					BinariesDir:  "/home/user/binaries",
+					GeneratedDir: "/home/user/.generated",
+				},
+			}
+			tool := &config.ToolConfig{
+				Name:               method + "--" + bootstrapTestBinName,
+				InstallationMethod: method,
+				Binaries:           []interface{}{bootstrapTestBinName},
+			}
+
+			if err := orch.GenerateTool(ctx, tool, projCfg); err != nil {
+				t.Fatalf("GenerateTool failed: %v", err)
+			}
+
+			shimBytes, err := memFS.ReadFile(filepath.Join("/home/user/bin", bootstrapTestBinName))
+			if err != nil {
+				t.Fatalf("expected bootstrap shim to exist: %v", err)
+			}
+			shim := string(shimBytes)
+
+			// v1 pointed every shim at the dotfiles-managed entrypoint; the install
+			// pipeline materialises it as a symlink to the real binary on success.
+			wantExecutable := fmt.Sprintf("TOOL_EXECUTABLE=%q", filepath.Join("/home/user/binaries", tool.Name, "current", bootstrapTestBinName))
+			if !strings.Contains(shim, wantExecutable) {
+				t.Errorf("bootstrap shim must target the current entrypoint, want %s in:\n%s", wantExecutable, shim)
+			}
+			if strings.Contains(shim, "/usr/bin/"+bootstrapTestBinName) {
+				t.Errorf("bootstrap shim must never guess a system path:\n%s", shim)
+			}
+		})
+	}
+}
+
+func TestInstallTool_ExternalToolShimTarget(t *testing.T) {
+	tests := []struct {
+		name string
+		// binaryExists controls whether the path the installer reports is present
+		// on disk, as it is after a real install, or missing, as when an installer
+		// could only guess where the package manager put the binary.
+		binaryExists bool
+	}{
+		{name: "installer reports a real binary", binaryExists: true},
+		{name: "installer reports a missing binary", binaryExists: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			memFS := fs.NewMemFS()
+			runner := exec.NewMockRunner()
+			log := logger.New(logger.Config{Name: "test-external-shim", Level: logger.LogLevelQuiet, Writer: io.Discard})
+
+			sqlDB, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatalf("failed to open sqlite DB: %v", err)
+			}
+			defer sqlDB.Close()
+			reg := registry.NewRegistry(sqlDB)
+			instReg := installer.NewRegistry()
+
+			reportedBinary := filepath.Join("/home/user/external-prefix/bin", bootstrapTestBinName)
+			if tt.binaryExists {
+				_ = memFS.MkdirAll(filepath.Dir(reportedBinary), 0755)
+				_ = memFS.WriteFile(reportedBinary, []byte("binary-content"), 0755)
+			}
+			_ = instReg.Register(&mockInstaller{name: "brew", binaries: []string{reportedBinary}})
+
+			orch := NewOrchestrator(log, memFS, runner, reg, instReg)
+			orch.SetSymlinkFS(memFS)
+
+			projCfg := &config.ProjectConfig{
+				Paths: config.PathsConfig{
+					HomeDir:      "/home/user",
+					TargetDir:    "/home/user/bin",
+					BinariesDir:  "/home/user/binaries",
+					GeneratedDir: "/home/user/.generated",
+				},
+			}
+			tool := &config.ToolConfig{
+				Name:               "brew--" + bootstrapTestBinName,
+				InstallationMethod: "brew",
+				Binaries:           []interface{}{bootstrapTestBinName},
+			}
+
+			if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
+				t.Fatalf("InstallTool failed: %v", err)
+			}
+
+			shimBytes, err := memFS.ReadFile(filepath.Join("/home/user/bin", bootstrapTestBinName))
+			if err != nil {
+				t.Fatalf("expected shim to exist: %v", err)
+			}
+			shim := string(shimBytes)
+
+			toolDir := filepath.Join("/home/user/binaries", tool.Name)
+			currentEntrypoint := filepath.Join(toolDir, "current", bootstrapTestBinName)
+
+			wantExecutable := fmt.Sprintf("TOOL_EXECUTABLE=%q", currentEntrypoint)
+			if tt.binaryExists {
+				wantExecutable = fmt.Sprintf("TOOL_EXECUTABLE=%q", reportedBinary)
+			}
+			if !strings.Contains(shim, wantExecutable) {
+				t.Errorf("want %s in shim:\n%s", wantExecutable, shim)
+			}
+			if strings.Contains(shim, "/usr/bin/"+bootstrapTestBinName) {
+				t.Errorf("shim must never guess a system path:\n%s", shim)
+			}
+
+			// The bootstrap shim re-checks its baked-in current entrypoint after a
+			// successful install, so the install pipeline must have linked that
+			// entrypoint to the binary the installer reported.
+			currentTarget, err := memFS.Readlink(filepath.Join(toolDir, "current"))
+			if err != nil {
+				t.Fatalf("expected current symlink for external tool: %v", err)
+			}
+			if currentTarget != "external" {
+				t.Errorf("expected current -> external, got %q", currentTarget)
+			}
+			entrypointTarget, err := memFS.Readlink(filepath.Join(toolDir, "external", bootstrapTestBinName))
+			if err != nil {
+				t.Fatalf("expected external entrypoint symlink: %v", err)
+			}
+			if entrypointTarget != reportedBinary {
+				t.Errorf("expected entrypoint -> %s, got %q", reportedBinary, entrypointTarget)
+			}
+		})
+	}
+}
