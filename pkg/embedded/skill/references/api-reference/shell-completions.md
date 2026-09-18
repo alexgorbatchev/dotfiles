@@ -1,29 +1,55 @@
 # Shell Completions
 
-Tab completions are configured per-shell using `.completions()`:
+Tab completions are configured per shell with `.completions()`, which takes either a
+path to a completion file or a configuration object:
 
 ```typescript builder
 .zsh((shell) => shell.completions('completions/_tool.zsh'))
-.bash((shell) => shell.completions('completions/tool.bash'))
+.bash((shell) => shell.completions({ cmd: 'tool completion bash' }))
 ```
 
-> **Lifecycle**: All completions are generated only after `dotfiles install <tool>` succeeds,
-> not during `dotfiles generate`. This ensures cmd-based completions can execute the installed
-> binary.
+`.completions()` is the only supported way to install a completion file. Do not write
+one from a `.once()` script: a once script runs at the next shell start, long after the
+file would have had to exist, and it has to hand-roll the output path that this method
+already knows.
 
 ## Configuration Options
 
-| Property | Description                                                                              |
-| -------- | ---------------------------------------------------------------------------------------- |
-| `source` | Path to completion file (relative to toolDir, or absolute path within extracted archive) |
-| `cmd`    | Command to generate completions dynamically                                              |
-| `bin`    | Binary name for completion filename (when different from tool name)                      |
+| Property | Description                                                                                      |
+| -------- | -------------------------------------------------------------------------------------------------- |
+| `source` | Existing completion file. A relative path resolves against the tool's directory; absolute is used as is |
+| `cmd`    | Command whose standard output becomes the completion file                                        |
+| `bin`    | Binary the completion is for, when it differs from the tool name. It names the generated file    |
 
-**Note**: Use one of these combinations:
+Pass one of `source` or `cmd`, never both: `source` is ignored when `cmd` is set. A
+plain string is shorthand for `{ source }`.
 
-- `'_tool.zsh'` - String path (relative to toolDir or absolute)
-- `{ source }` - Static file (relative to toolDir or absolute)
-- `{ cmd }` - Generate dynamically by running the installed binary
+## Lifecycle
+
+Both `dotfiles generate` and a successful `dotfiles install <tool>` write the tool's
+completion files. The difference is what each can produce:
+
+- A `source` completion is a file that already exists, so it is linked into place as
+  soon as `dotfiles generate` runs.
+- A `cmd` completion has to run the installed binary, so before the tool is installed
+  there is nothing to run: the command is skipped with a debug message, and the file
+  appears the first time the tool installs successfully.
+
+A completion file that is already in place is not regenerated; pass `--overwrite` to
+`dotfiles generate` to replace it.
+
+## Where the File Goes
+
+The file is written to `<shellScriptsDir>/<shell>/completions/`, named `_<bin>` for zsh
+and `<bin>` for bash, where `<bin>` is `bin` if given, otherwise the tool's first
+`.bin()` name, otherwise the tool name.
+
+The generated `main.zsh` adds the zsh directory to `fpath`, so zsh completions load on
+the next shell start; reload the current shell with `autoload -U compinit && compinit`.
+
+Files are produced for zsh and bash only, and only zsh loads them automatically: the
+generated `main.bash` does not source the bash directory, and a `.completions()` call
+inside `.powershell()` produces no file at all.
 
 ## Shell Callback Context
 
@@ -40,29 +66,46 @@ export default defineTool((install, ctx) =>
 
 ## Static Completions (source)
 
-For completion files bundled in tool archives:
+For a completion file that already exists, either shipped next to the `.tool.ts` or
+unpacked from the tool's own archive:
 
 ```typescript builder
-// Simple path relative to extracted archive
+// Next to the .tool.ts file: a relative path resolves against the tool's directory
 .zsh((shell) => shell.completions('completions/_tool.zsh'))
 
-// Glob pattern for versioned directories
-.zsh((shell) => shell.completions('*/complete/_rg'))
+// Inside the installed tree: build an absolute path from ctx
+.zsh((shell) => shell.completions(`${ctx.currentDir}/complete/_tool`))
 ```
 
-**Supported glob patterns**: `*`, `**`, `?`, `[abc]`
+The path is taken literally -- it is not a glob. When the file sits in a directory
+whose name varies with the version, resolve it with
+[`ctx.resolve()`](utilities.md#ctxresolve), which matches a glob against exactly one
+path.
 
-A completion file that must be fetched from elsewhere is downloaded in an `after-install`
-hook with `$`, then referenced here by its path under `ctx.currentDir`.
+A file that exists at neither path when the completions are written is skipped in
+silence, so a completion the tool does not ship has to be produced first: fetch or
+generate it in an `after-install` hook with `$`, then name the resulting path here.
 
 ## Dynamic Completions (cmd)
 
-For tools that generate completions at runtime (recommended for version-dependent completions, since the command runs against the installed binary):
+For a tool that prints its own completion script. This is the way to handle completions
+that depend on the installed version, because the command runs against the binary that
+was installed:
 
 ```typescript builder
 .zsh((shell) => shell.completions({ cmd: 'tool completion zsh' }))
 .bash((shell) => shell.completions({ cmd: 'tool completion bash' }))
 ```
+
+The first word of `cmd` is resolved against this tool's own installed binaries -- the
+`current` directory and the binary paths recorded for the tool -- and never against
+PATH, so it can never run a shim, an older copy or an unrelated program of the same
+name. A command whose first word is not one of this tool's binaries therefore cannot be
+used here: run it from an `after-install` hook instead and pass the file it wrote as
+`source`.
+
+If the command fails or takes too long, the failure is reported as a warning and no
+completion file is written; the rest of the installation still succeeds.
 
 ## Binary Name Override
 

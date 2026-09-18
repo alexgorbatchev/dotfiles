@@ -31,7 +31,7 @@ For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), u
     .sourceFunction('myFunc')           // Source output of a function (source <(myFunc))
     .source('tool env --shell zsh')     // Source output of inline shell code
     .always(`eval "$(tool init)"`)      // Run every shell startup
-    .once(`tool gen-completions`)       // Run once after install
+    .once(`tool cache rebuild`)         // Run once at the next shell start
 )
 ```
 
@@ -218,19 +218,26 @@ For fast inline operations that run on every shell startup:
 
 ### `.once()` - After Installation
 
-For expensive operations:
+For work that is too expensive to repeat on every shell start, such as building a
+cache. The script is written to a generated once-file that runs at the next shell
+start and deletes itself afterwards:
 
 ```typescript
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install("github-release", { repo: "owner/tool" })
     .bin("tool")
     .zsh((shell) =>
       shell.once(`
-        tool gen-completions --zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
+        tool cache rebuild --quiet
       `),
     ),
 );
 ```
+
+Do not generate a completion file this way. `.completions({ cmd })` runs the command
+against the installed binary and owns the output path, while a once script runs at the
+next shell start, after the point where the completion had to exist. See
+[shell-completions.md](shell-completions.md).
 
 ## Cross-Shell Configuration
 
@@ -270,7 +277,7 @@ export default defineTool((install, ctx) =>
 
 - Use declarative methods (`.env()`, `.aliases()`) for simple config
 - Use `.always()` for fast runtime setup only
-- Use `.once()` for expensive operations (completion generation, cache building)
+- Use `.once()` for expensive one-off work such as cache building, never for completions
 - Use context variables for all paths - never hardcode
 
 ## Symbolic Links
