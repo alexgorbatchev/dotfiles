@@ -17,14 +17,16 @@ export default defineTool((install, ctx) =>
 
 ## Parameters
 
-| Parameter      | Type                                             | Required | Description                               |
-| -------------- | ------------------------------------------------ | -------- | ----------------------------------------- |
-| `url`          | `string`                                         | Yes      | URL of the installation script            |
-| `shell`        | `'bash' \| 'sh'`                                 | Yes      | Shell interpreter to use                  |
-| `args`         | `string[] \| (ctx) => string[]`                  | No       | Arguments to pass to the script           |
-| `env`          | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables (static or dynamic) |
-| `versionArgs`  | `string[]`                                       | No       | Args to pass to binary for version check  |
-| `versionRegex` | `string \| RegExp`                               | No       | Regex to extract version from output      |
+| Parameter      | Type                                             | Required | Description                                 |
+| -------------- | ------------------------------------------------ | -------- | ------------------------------------------- |
+| `url`          | `string`                                         | Yes      | URL of the installation script              |
+| `shell`        | `'bash' \| 'sh'`                                 | No       | Shell interpreter to use (defaults to `sh`) |
+| `args`         | `string[] \| (ctx) => string[]`                  | No       | Arguments to pass to the script             |
+| `env`          | `Record<string, string> \| (ctx) => Record<...>` | No       | Environment variables (static or dynamic)   |
+| `versionArgs`  | `string[]`                                       | No       | Args to pass to binary for version check    |
+| `versionRegex` | `string \| RegExp`                               | No       | Regex to extract version from output        |
+
+`env` is honoured only by `curl-script`; every other installation method ignores it. The parameter every method shares, `auto`, is documented under [Base Install Parameters](../api-reference/core-api.md#base-install-parameters).
 
 > **Note:** The `env` and `args` parameters support both static values and dynamic functions. Dynamic functions receive a context with `projectConfig`, `scriptPath`, and `stagingDir`.
 
@@ -77,7 +79,7 @@ export default defineTool((install, ctx) =>
   install("curl-script", {
     url: "https://fnm.vercel.app/install",
     shell: "bash",
-    args: ["--skip-shell", "--install-dir", "$LOCAL_BIN"],
+    args: ["--skip-shell", "--install-dir", "{stagingDir}"],
   }).bin("fnm"),
 );
 ```
@@ -110,11 +112,9 @@ export default defineTool((install, ctx) =>
     url: "https://fly.io/install.sh",
     shell: "sh",
     env: (ctx) => ({ FLYCTL_INSTALL: ctx.stagingDir }),
-  }).bin("flyctl", "fly"),
+  }).bin("flyctl"),
 );
 ```
-
-Note: The fly.io script installs `flyctl` as the main binary. The second argument to `.bin()` creates `fly` as a symlink alias.
 
 The `env` context provides:
 

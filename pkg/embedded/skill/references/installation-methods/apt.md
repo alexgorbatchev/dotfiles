@@ -25,7 +25,6 @@ export default defineTool((install) =>
 | `package` | APT package name (defaults to tool name)                |
 | `version` | Exact package version, installed as `package=version`   |
 | `update`  | Run `apt-get update` before install (defaults to false) |
-| `env`     | Environment variables (static or dynamic function)      |
 
 ## Examples
 

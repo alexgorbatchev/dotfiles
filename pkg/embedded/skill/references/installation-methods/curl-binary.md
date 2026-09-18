@@ -16,12 +16,12 @@ export default defineTool((install) =>
 
 ## Parameters
 
-| Parameter      | Description                                                 |
-| -------------- | ----------------------------------------------------------- |
-| `url`          | **Required**. Direct URL to the binary file                 |
-| `versionArgs`  | Arguments for version check (e.g., `['--version']`)         |
-| `versionRegex` | Regex to extract version from output (`string` or `RegExp`) |
-| `env`          | Environment variables (static or dynamic function)          |
+| Parameter      | Description                                                     |
+| -------------- | --------------------------------------------------------------- |
+| `url`          | **Required**. Direct URL to the binary file                     |
+| `sha256`       | Expected SHA-256 of the download; the install fails on mismatch |
+| `versionArgs`  | Arguments for version check (e.g., `['--version']`)             |
+| `versionRegex` | Regex to extract version from output (`string` or `RegExp`)     |
 
 ## Examples
 

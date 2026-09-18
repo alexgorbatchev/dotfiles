@@ -25,7 +25,6 @@ export default defineTool((install) =>
 | `package` | DNF package spec (defaults to tool name)                     |
 | `version` | Exact version/release suffix, installed as `package-version` |
 | `refresh` | Run `dnf makecache` before install (defaults to false)       |
-| `env`     | Environment variables (static or dynamic function)           |
 
 ## Examples
 

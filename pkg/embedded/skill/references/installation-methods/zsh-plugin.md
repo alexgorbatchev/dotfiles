@@ -151,5 +151,5 @@ git reset --hard origin/HEAD
 
 ## Related
 
-- Manual Installation - For plugins requiring custom setup
-- Shell Integration - How shell configs are generated
+- [Manual Installation](manual.md) - For plugins requiring custom setup
+- [Shell Integration](../api-reference/shell-integration.md) - How shell configs are generated

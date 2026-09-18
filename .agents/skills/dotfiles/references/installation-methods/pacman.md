@@ -25,8 +25,6 @@ export default defineTool((install) =>
 | `package`    | pacman package target (defaults to tool name)                |
 | `version`    | Exact package version, installed as `package=version`        |
 | `sysupgrade` | Run `pacman -Syu` instead of `pacman -S` (defaults to false) |
-| `env`        | Environment variables (static or dynamic function)           |
-| `hooks`      | Lifecycle hooks                                              |
 
 ## Examples
 
