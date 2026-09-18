@@ -247,15 +247,6 @@ func TestFileOperationsTracking(t *testing.T) {
 		t.Errorf("Wrong registered tools output: %v", tools)
 	}
 
-	// Test get stats
-	stats, err := reg.GetStats(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if stats.TotalOperations != 2 || stats.TotalFiles != 2 || stats.TotalTools != 2 || stats.OldestOperation != 1000 || stats.NewestOperation != 2000 {
-		t.Errorf("Wrong stats computed: %v", stats)
-	}
-
 	// Test removal
 	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
 		return reg.RemoveFileOperationsByTool(ctx, tx, "bat")
@@ -456,10 +447,6 @@ func TestErrorPathways(t *testing.T) {
 
 	if _, err := reg.GetRegisteredTools(ctx); err == nil {
 		t.Error("Expected error from GetRegisteredTools with closed DB")
-	}
-
-	if _, err := reg.GetStats(ctx); err == nil {
-		t.Error("Expected error from GetStats with closed DB")
 	}
 
 	if _, err := reg.GetToolInstallation(ctx, "bat"); err == nil {

@@ -300,41 +300,6 @@ func (r *Registry) Validate(ctx context.Context) (*ValidationResult, error) {
 	}, nil
 }
 
-// GetStats returns summary database operation statistics.
-func (r *Registry) GetStats(ctx context.Context) (*Stats, error) {
-	stats := &Stats{}
-
-	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM file_operations").Scan(&stats.TotalOperations)
-	if err != nil {
-		return nil, fmt.Errorf("getting total operations count: %w", err)
-	}
-
-	err = r.db.QueryRowContext(ctx, "SELECT COUNT(DISTINCT file_path) FROM file_operations").Scan(&stats.TotalFiles)
-	if err != nil {
-		return nil, fmt.Errorf("getting total distinct files count: %w", err)
-	}
-
-	err = r.db.QueryRowContext(ctx, "SELECT COUNT(DISTINCT tool_name) FROM file_operations").Scan(&stats.TotalTools)
-	if err != nil {
-		return nil, fmt.Errorf("getting total distinct tools count: %w", err)
-	}
-
-	var oldest, newest sql.NullInt64
-	err = r.db.QueryRowContext(ctx, "SELECT MIN(created_at), MAX(created_at) FROM file_operations").Scan(&oldest, &newest)
-	if err != nil {
-		return nil, fmt.Errorf("getting oldest/newest timestamps: %w", err)
-	}
-
-	if oldest.Valid {
-		stats.OldestOperation = oldest.Int64
-	}
-	if newest.Valid {
-		stats.NewestOperation = newest.Int64
-	}
-
-	return stats, nil
-}
-
 // RecordFileOperation writes a file operation record in a transaction block.
 func (r *Registry) RecordFileOperation(ctx context.Context, tx *sql.Tx, record *FileOperationRecord) error {
 	if tx == nil {

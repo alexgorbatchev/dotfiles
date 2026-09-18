@@ -255,7 +255,7 @@ func TestToolUsageErrorsAndNotFound(t *testing.T) {
 }
 
 func TestRegistryMethodsEdgeCases(t *testing.T) {
-	database, reg := setupTestDB(t)
+	_, reg := setupTestDB(t)
 	ctx := context.Background()
 
 	// OctalToDecimalPerm & DecimalToOctalPerm
@@ -338,12 +338,5 @@ func TestRegistryMethodsEdgeCases(t *testing.T) {
 	res, err := reg.Validate(ctx)
 	if err != nil || res == nil {
 		t.Errorf("Validate failed: res=%v, err=%v", res, err)
-	}
-
-	// Close DB and test error paths
-	_ = database.Close()
-	_, errStats := reg.GetStats(ctx)
-	if errStats == nil {
-		t.Errorf("expected error from GetStats on closed DB")
 	}
 }

@@ -53,14 +53,6 @@ type FileState struct {
 	Permissions   *Permission `json:"permissions" db:"permissions"`
 }
 
-type Stats struct {
-	TotalOperations int64 `json:"totalOperations"`
-	TotalFiles      int64 `json:"totalFiles"`
-	TotalTools      int64 `json:"totalTools"`
-	OldestOperation int64 `json:"oldestOperation"`
-	NewestOperation int64 `json:"newestOperation"`
-}
-
 type FileOperationFilter struct {
 	ToolName      string
 	OperationType string
