@@ -65,6 +65,7 @@ const EMPTY_TREE_RESPONSE: IToolConfigsTree = { roots: [] };
 const noopActions: IUseToolActions = {
   pending: null,
   outcome: null,
+  dismissOutcome: () => {},
   installTool: async () => {},
   updateTool: async () => {},
   checkTool: async () => {},
@@ -157,6 +158,48 @@ describe("ToolsTreeView", () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(screen.getByText("fzf")).toBeInTheDocument();
     expect(screen.getByText(".tool.ts")).toBeInTheDocument();
+  });
+
+  test("sorts tools alphabetically by tool name ignoring subfolders", async () => {
+    mockFetchWith(
+      createTreeResponse([
+        { name: "z-tool.tool.ts", path: "/home/user/tools/z-tool.tool.ts", type: "file", toolName: "z-tool" },
+        {
+          name: "dev",
+          path: "/home/user/tools/dev",
+          type: "directory",
+          children: [
+            {
+              name: "a-tool.tool.ts",
+              path: "/home/user/tools/dev/a-tool.tool.ts",
+              type: "file",
+              toolName: "a-tool",
+            },
+            {
+              name: "m-tool.tool.ts",
+              path: "/home/user/tools/dev/m-tool.tool.ts",
+              type: "file",
+              toolName: "m-tool",
+            },
+          ],
+        },
+      ]),
+    );
+    renderTree([createTool("z-tool"), createTool("a-tool"), createTool("m-tool")]);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const aTool = screen.getByText("a-tool");
+    const mTool = screen.getByText("m-tool");
+    const zTool = screen.getByText("z-tool");
+
+    expect(aTool).toBeInTheDocument();
+    expect(mTool).toBeInTheDocument();
+    expect(zTool).toBeInTheDocument();
+
+    // Verify order in DOM
+    expect(aTool.compareDocumentPosition(mTool) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(mTool.compareDocumentPosition(zTool) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   test("flattens nested folders into rows prefixed with the directory path", async () => {

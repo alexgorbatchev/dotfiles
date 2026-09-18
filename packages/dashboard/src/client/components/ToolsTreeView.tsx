@@ -26,38 +26,51 @@ type ToolTreeLabel = JSX.Element | string;
 
 /**
  * Flatten the API file tree into one row per tool file, carrying the directory
- * path down as a prefix so each row can render as `dir/name`.
+ * path down as a prefix so each row can render as `dir/name`, sorted alphabetically
+ * by tool name (the base name in [toolname].tool.ts), ignoring subfolder location.
  */
 function flattenToolFiles(
   entries: IFileTreeEntry[],
   toolsByName: Map<string, IToolDetail>,
-  dirPath: string,
+  dirPath: string = "",
 ): ITreeItemData<ToolTreeData>[] {
-  return entries.flatMap((entry) => {
-    if (entry.type === "directory") {
-      return entry.children ? flattenToolFiles(entry.children, toolsByName, `${dirPath}${entry.name}/`) : [];
-    }
+  const collect = (list: IFileTreeEntry[], currentDirPath: string): ITreeItemData<ToolTreeData>[] => {
+    return list.flatMap((entry) => {
+      if (entry.type === "directory") {
+        return entry.children ? collect(entry.children, `${currentDirPath}${entry.name}/`) : [];
+      }
 
-    const tool = entry.toolName ? toolsByName.get(entry.toolName) : undefined;
-    const status = tool?.runtime.status;
-    const statusColor =
-      status === "installed" ? "text-green-400" : status === "error" ? "text-red-400" : "text-blue-400";
+      const tool = entry.toolName ? toolsByName.get(entry.toolName) : undefined;
+      const status = tool?.runtime.status;
+      const statusColor =
+        status === "installed" ? "text-green-400" : status === "error" ? "text-red-400" : "text-blue-400";
 
-    return [
-      {
-        id: entry.path,
-        label: entry.name,
-        icon: <FileCode class={`h-4 w-4 ${statusColor}`} />,
-        iconDecorator: <span class={`inline-block w-2 h-2 rounded-full ${getStatusDotClass(status)}`} />,
-        data: {
-          toolName: entry.toolName,
-          isFile: true,
-          dirPath,
-          status,
-          installedVersion: tool?.runtime.installedVersion ?? undefined,
+      return [
+        {
+          id: entry.path,
+          label: entry.name,
+          icon: <FileCode class={`h-4 w-4 ${statusColor}`} />,
+          iconDecorator: <span class={`inline-block w-2 h-2 rounded-full ${getStatusDotClass(status)}`} />,
+          data: {
+            toolName: entry.toolName,
+            isFile: true,
+            dirPath: currentDirPath,
+            status,
+            installedVersion: tool?.runtime.installedVersion ?? undefined,
+          },
         },
-      },
-    ];
+      ];
+    });
+  };
+
+  return collect(entries, dirPath).toSorted((leftItem, rightItem) => {
+    const leftName = leftItem.label.replace(/\.tool\.ts$/, "");
+    const rightName = rightItem.label.replace(/\.tool\.ts$/, "");
+    const nameComparison = leftName.localeCompare(rightName);
+    if (nameComparison !== 0) {
+      return nameComparison;
+    }
+    return (leftItem.data?.dirPath ?? "").localeCompare(rightItem.data?.dirPath ?? "");
   });
 }
 
