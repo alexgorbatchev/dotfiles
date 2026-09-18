@@ -29,12 +29,23 @@ handler that nothing would ever call.
 | ----- | ---------------- | --------------------------------- | ---------------------------------------- |
 | 1     | `before-install` | Before the installer runs         | `stagingDir`                             |
 | 2     | `after-download` | After an asset is fetched to disk | `downloadPath`                           |
-| 3     | `after-extract`  | After an archive is unpacked      | `extractDir`                             |
+| 3     | `after-extract`  | After an archive is unpacked      | `extractDir`, `extractResult`            |
 | 4     | `after-install`  | After the tool is in place        | `installedDir`, `binaryPaths`, `version` |
 
 An installation reaches only the events its method produces: a method that downloads
 nothing never emits `after-download`, and one that extracts no archive never emits
 `after-extract`.
+
+`extractResult` describes what came out of the archive, as `IExtractResult`:
+
+| Field            | Type       | Description                                         |
+| ---------------- | ---------- | --------------------------------------------------- |
+| `extractedFiles` | `string[]` | Every file that was unpacked, as an absolute path.  |
+| `executables`    | `string[]` | The unpacked files the extractor marked executable. |
+
+It is provided only alongside `extractDir`, and never on its own: an empty pair of lists
+handed to an event that extracted nothing would read as "the archive was empty". Either
+guard on `extractDir`, as the examples below do, or guard on `extractResult` itself.
 
 A hook that throws fails the installation. Nothing is swallowed: if the handler rejects,
 the tool is reported as failed with the error the hook raised.
@@ -49,17 +60,18 @@ naming the directory instead of promoting an empty one, and `after-install` does
 
 Every hook receives:
 
-| Property        | Description                                                                                                   |
-| --------------- | ------------------------------------------------------------------------------------------------------------- |
-| `toolName`      | Name of the tool                                                                                              |
-| `currentDir`    | Stable directory for this tool (the `current` symlink)                                                        |
-| `stagingDir`    | Absolute path of the temporary directory the installer stages into                                            |
-| `toolDir`       | Directory holding this tool's `.tool.ts`                                                                      |
-| `systemInfo`    | Platform, architecture and libc                                                                               |
-| `projectConfig` | Project configuration                                                                                         |
-| `fileSystem`    | File operations -- the fifteen methods, their signatures and `IFileStats` are in [ctx.fs](utilities.md#ctxfs) |
-| `log`           | Structured logging (`debug`, `info`, `warn`, `error`)                                                         |
-| `$`             | Shell executor                                                                                                |
+| Property        | Description                                                                                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `toolName`      | Name of the tool                                                                                                           |
+| `currentDir`    | Stable directory for this tool (the `current` symlink)                                                                     |
+| `stagingDir`    | Absolute path of the temporary directory the installer stages into                                                         |
+| `toolDir`       | Directory holding this tool's `.tool.ts`                                                                                   |
+| `systemInfo`    | `os`, `arch`, `libc`, `homeDir` and `hostname` of the target machine -- see [ctx.systemInfo](context-api.md#ctxsysteminfo) |
+| `projectConfig` | Project configuration                                                                                                      |
+| `toolConfig`    | The resolved configuration of the tool being installed, as the installer sees it (`ToolConfig`)                            |
+| `fileSystem`    | File operations -- the fifteen methods, their signatures and `IFileStats` are in [ctx.fs](utilities.md#ctxfs)              |
+| `log`           | Structured logging (`debug`, `info`, `warn`, `error`)                                                                      |
+| `$`             | Shell executor                                                                                                             |
 
 Plus whatever the event itself provides, per the table above. A property an event does
 not provide is `undefined` rather than a misleading empty value, so destructuring
@@ -72,6 +84,13 @@ handler's parameter with it when the handler is declared separately from `.hook(
 
 `$` is available only to hooks. A tool factory does not get one: configuration is read
 on every CLI invocation, so running commands from there would execute them constantly.
+
+`toolConfig` is likewise hook-only, for the same kind of reason: while `defineTool` is
+still building the configuration there is nothing resolved to hand over. It carries the
+tool as the installer sees it -- `name`, `version`, `installationMethod`, `installParams`,
+`binaries`, `dependencies`, `symlinks`, `copies`, `shellConfigs`, `updateCheck`,
+`hostname`, `sudo`, `disabled` and `configFilePath` -- which is how a hook reads back a
+parameter it was configured with, such as the release it was installed from.
 
 ### Working Directory
 
@@ -180,6 +199,21 @@ Full parameters, options and the callback argument are in [utilities.md](utiliti
     await $`cd ${extractDir} && make build`;
     await $`mv ${extractDir}/target/release/tool ${stagingDir}/tool`;
   }
+})
+```
+
+### Inspecting What Was Extracted
+
+`extractResult` saves walking the tree to find out what the archive held, and
+`toolConfig` reads back the parameters the tool was configured with:
+
+```typescript builder
+.hook('after-extract', async ({ extractResult, toolConfig, log }) => {
+  if (!extractResult) return;
+  log.info(
+    `${toolConfig.name} unpacked ${extractResult.extractedFiles.length} files, ` +
+      `${extractResult.executables.length} of them executable`,
+  );
 })
 ```
 

@@ -10,11 +10,31 @@ The `ctx` parameter in `defineTool` provides access to tool and project informat
 | `ctx.toolDir`       | Directory containing the `.tool.ts` file          |
 | `ctx.currentDir`    | Tool's stable `current` directory (after install) |
 | `ctx.projectConfig` | Full project configuration                        |
-| `ctx.systemInfo`    | `os`, `arch` and `libc` of the target machine     |
+| `ctx.systemInfo`    | Description of the target machine                 |
 | `ctx.fs`            | File operations                                   |
 | `ctx.replaceInFile` | Replace text in files using regex patterns        |
 | `ctx.resolve`       | Resolve glob pattern to a single path             |
 | `ctx.log`           | Logger for user-facing output                     |
+
+### ctx.systemInfo
+
+What the runtime reports about the machine a configuration is evaluated for. The same
+object, of type `ISystemInfo`, is on the `defineConfig` context and on every
+[hook context](lifecycle-hooks.md#context-properties). `os` and `arch` follow the
+`--platform` and `--arch` flags when those are given, so a configuration loaded for
+another target describes that target rather than the machine running the CLI.
+
+| Field      | Type     | Value                                                                                                                                                                                                                                                                                     |
+| ---------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `os`       | `string` | `"darwin"`, `"linux"`, `"windows"` or `"unknown"`                                                                                                                                                                                                                                         |
+| `arch`     | `string` | `"amd64"`, `"arm64"` or `"unknown"`                                                                                                                                                                                                                                                       |
+| `libc`     | `string` | The Linux C library: `"glibc"`, `"musl"`, or `"unknown"` when it cannot be told apart. Always `"unknown"` off Linux.                                                                                                                                                                      |
+| `homeDir`  | `string` | The directory a `~` path resolves against. It is the project's `paths.homeDir`, which a configuration may deliberately point somewhere other than the invoking user's own home; inside `defineConfig`, where that value is still being defined, it is the invoking user's home directory. |
+| `hostname` | `string` | Name of the machine, the value `.hostname(pattern)` matches against. Empty when the machine cannot report one.                                                                                                                                                                            |
+
+There is no `platform` field and no `timestamp` field on `systemInfo`. `os` is the
+operating system as a string; `Platform` is a separate bitmask enum, used by `.platform()`
+blocks and documented in [platform-specific.md](../configuration/platform-specific.md).
 
 ### Path Properties via projectConfig
 
