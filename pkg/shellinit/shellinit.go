@@ -225,6 +225,10 @@ func FormatFpath(completionsDir string) string {
 }
 
 // FormatOnceLoop returns the dynamic once-scripts glob matching loop for the given shell.
+// The loop must run in the current shell: once-scripts self-delete after their first
+// run, so an export or function they define has to land in the session that sourced
+// them. The bash form needs nullglob for an empty .once directory and hands the user's
+// own nullglob setting back afterwards through the reusable output of `shopt -p`.
 func FormatOnceLoop(shell, onceDir string) string {
 	switch shell {
 	case "zsh":
@@ -232,7 +236,13 @@ func FormatOnceLoop(shell, onceDir string) string {
   [[ -f "$once_script" ]] && source "$once_script"
 done`, onceDir)
 	case "bash":
-		return fmt.Sprintf(`(shopt -s nullglob; for once_script in %q/*.sh; do [[ -f "$once_script" ]] && source "$once_script"; done)`, onceDir)
+		return fmt.Sprintf(`__dotfiles_nullglob="$(shopt -p nullglob)"
+shopt -s nullglob
+for once_script in %q/*.sh; do
+  [[ -f "$once_script" ]] && source "$once_script"
+done
+eval "$__dotfiles_nullglob"
+unset __dotfiles_nullglob`, onceDir)
 	case "powershell":
 		return fmt.Sprintf(`if (Test-Path %q) {
   Get-ChildItem -Path %q -Filter "*.ps1" | ForEach-Object { & $_.FullName }

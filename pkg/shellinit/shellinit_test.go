@@ -519,10 +519,16 @@ func TestFormatOnceLoop(t *testing.T) {
 done`,
 		},
 		{
-			name:    "bash once loop",
+			name:    "bash once loop runs in the current shell",
 			shell:   "bash",
 			onceDir: "/home/user/.once",
-			want:    `(shopt -s nullglob; for once_script in "/home/user/.once"/*.sh; do [[ -f "$once_script" ]] && source "$once_script"; done)`,
+			want: `__dotfiles_nullglob="$(shopt -p nullglob)"
+shopt -s nullglob
+for once_script in "/home/user/.once"/*.sh; do
+  [[ -f "$once_script" ]] && source "$once_script"
+done
+eval "$__dotfiles_nullglob"
+unset __dotfiles_nullglob`,
 		},
 		{
 			name:    "powershell once loop",

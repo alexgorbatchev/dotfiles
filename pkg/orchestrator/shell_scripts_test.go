@@ -736,3 +736,58 @@ func TestGenerateShellScripts_BashPathPrependIsGuarded(t *testing.T) {
 		}
 	}
 }
+
+// generateBashOnceProject generates a project whose only bash content is one
+// once-script exporting ONCE_MARK, and returns the project and the once-script path.
+func generateBashOnceProject(t *testing.T) (bashRuntimeProject, string) {
+	t.Helper()
+	p := newBashRuntimeProject(t)
+	tools := []*config.ToolConfig{
+		{
+			Name:           "once-tool",
+			ConfigFilePath: filepath.Join(p.homeDir, "tools", "once-tool.tool.ts"),
+			ShellConfigs: &config.ShellConfigs{
+				Bash: &config.ShellTypeConfig{
+					Scripts: []config.ShellScript{{Kind: "once", Value: `export ONCE_MARK="from-once-script"`}},
+				},
+			},
+		},
+	}
+	if err := p.orch.generateShellScripts(context.Background(), tools, p.projCfg); err != nil {
+		t.Fatalf("generateShellScripts: %v", err)
+	}
+	return p, filepath.Join(p.onceDir, "once-001.sh")
+}
+
+func TestGenerateShellScripts_BashOnceScriptsAffectCurrentShell(t *testing.T) {
+	p, onceScript := generateBashOnceProject(t)
+	if _, err := os.Stat(onceScript); err != nil {
+		t.Fatalf("expected %s to be generated: %v", onceScript, err)
+	}
+
+	got := p.runBash(t, `source "`+p.mainBash+`"; printf '%s\n' "${ONCE_MARK:-unset}"; [[ -e "`+onceScript+`" ]] && echo present || echo deleted`)
+	want := "from-once-script\ndeleted"
+	if got != want {
+		t.Errorf("after sourcing main.bash got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestGenerateShellScripts_BashOnceLoopPreservesNullglob(t *testing.T) {
+	tests := []struct {
+		name   string
+		preset string
+		want   string
+	}{
+		{name: "nullglob off", preset: "shopt -u nullglob", want: "off"},
+		{name: "nullglob on", preset: "shopt -s nullglob", want: "on"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p, _ := generateBashOnceProject(t)
+			got := p.runBash(t, tt.preset+`; source "`+p.mainBash+`"; shopt -q nullglob && echo on || echo off`)
+			if got != tt.want {
+				t.Errorf("nullglob after sourcing main.bash = %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
