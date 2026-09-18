@@ -136,7 +136,11 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
           />
         </div>
 
-        <ToolActionBanner outcome={actions.outcome} class="tool-action-banner-page" />
+        <ToolActionBanner
+          outcome={actions.outcome}
+          onDismiss={actions.dismissOutcome}
+          class="tool-action-banner-page"
+        />
 
         <div class={`grid gap-4 ${tool.usage.totalCount > 0 ? "lg:grid-cols-2" : ""}`}>
           <TitledCard title="Overview" icon={<Info class="h-4 w-4" />}>

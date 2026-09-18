@@ -13,6 +13,7 @@ type Story = StoryObj<typeof meta>;
 const idleActions: IUseToolActions = {
   pending: null,
   outcome: null,
+  dismissOutcome: () => {},
   installTool: async () => {},
   updateTool: async () => {},
   checkTool: async () => {},

@@ -30,6 +30,7 @@ export interface IToolActionOutcome {
 export interface IUseToolActions {
   pending: IToolActionPending | null;
   outcome: IToolActionOutcome | null;
+  dismissOutcome: () => void;
   installTool: (toolName: string, force: boolean) => Promise<void>;
   updateTool: (toolName: string) => Promise<void>;
   checkTool: (toolName: string) => Promise<void>;
@@ -155,5 +156,9 @@ export function useToolActions(): IUseToolActions {
     }
   }, []);
 
-  return { pending, outcome, installTool, updateTool, checkTool };
+  const dismissOutcome = useCallback((): void => {
+    setOutcome(null);
+  }, []);
+
+  return { pending, outcome, dismissOutcome, installTool, updateTool, checkTool };
 }

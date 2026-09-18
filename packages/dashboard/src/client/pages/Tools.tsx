@@ -132,7 +132,7 @@ export function Tools(): JSX.Element {
 
   return (
     <div data-testid="Tools" class="space-y-4">
-      <ToolActionBanner outcome={actions.outcome} class="tool-action-banner-page" />
+      <ToolActionBanner outcome={actions.outcome} onDismiss={actions.dismissOutcome} class="tool-action-banner-page" />
 
       <section id="overview" class="grid grid-cols-4 gap-4">
         <StatCard value={toolsList.length} label="Total Tools" color="text-blue-400" />

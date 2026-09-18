@@ -39,5 +39,6 @@ export {
   Terminal,
   Trash2,
   Wrench,
+  X,
   Zap,
 } from "lucide-preact";

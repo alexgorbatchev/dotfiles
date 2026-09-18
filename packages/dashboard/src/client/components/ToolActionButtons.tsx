@@ -29,7 +29,7 @@ type ToolActionButtonsProps = {
 };
 
 export function ToolActionButtons({ toolName, isInstalled, actions, size }: ToolActionButtonsProps): JSX.Element {
-  const { pending, outcome, installTool, updateTool, checkTool } = actions;
+  const { pending, outcome, installTool, updateTool, checkTool, dismissOutcome } = actions;
   const activeKind = pending?.toolName === toolName ? pending.kind : undefined;
   const isBusy = pending !== null;
   const iconClass = size === "xs" ? "size-3" : "size-4";
@@ -75,7 +75,7 @@ export function ToolActionButtons({ toolName, isInstalled, actions, size }: Tool
         {activeKind === "install" ? <RefreshCw class={`${iconClass} animate-spin`} /> : <Download class={iconClass} />}
         {isInstalled ? "Re-install" : "Install"}
       </Button>
-      {ownsOutcome && <ToolActionBanner outcome={outcome} class="tool-action-popover" />}
+      {ownsOutcome && <ToolActionBanner outcome={outcome} onDismiss={dismissOutcome} class="tool-action-popover" />}
     </span>
   );
 }

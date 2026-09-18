@@ -145,6 +145,21 @@ describe("useToolActions", () => {
     });
   });
 
+  test("dismisses outcome when dismissOutcome is called", async () => {
+    mockApiData({ hasUpdate: false, currentVersion: "0.2.0", latestVersion: "0.2.0", supported: true });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.checkTool("eza"));
+
+    expect(result.current.outcome).not.toBeNull();
+
+    act(() => {
+      result.current.dismissOutcome();
+    });
+
+    expect(result.current.outcome).toBeNull();
+  });
+
   // The tree disables every row button off `pending`, so the in-flight window has to be observable.
   test("marks the tool pending for the duration of the install", async () => {
     let sendResponse: SendResponse = () => {};

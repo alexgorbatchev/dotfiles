@@ -2,7 +2,7 @@ import { type JSX } from "preact";
 import { useCallback, useState } from "preact/hooks";
 
 import type { IToolActionOutcome, ToolActionTone } from "../hooks/useToolActions";
-import { Check, Copy } from "../icons";
+import { Check, Copy, X } from "../icons";
 import { cn } from "../lib/utils";
 import { formatError } from "../utils/formatError";
 
@@ -17,11 +17,12 @@ const TONE_CLASS: Record<BannerTone, string> = {
 
 type ToolActionBannerProps = {
   outcome: IToolActionOutcome | null;
+  onDismiss?: () => void;
   /** Placement classes; the caller decides whether this renders in the page flow or beside a button. */
   class?: string;
 };
 
-export function ToolActionBanner({ outcome, class: className }: ToolActionBannerProps): JSX.Element | null {
+export function ToolActionBanner({ outcome, onDismiss, class: className }: ToolActionBannerProps): JSX.Element | null {
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopyCommand = useCallback((command: string) => {
@@ -42,9 +43,26 @@ export function ToolActionBanner({ outcome, class: className }: ToolActionBanner
     return (
       <div
         data-testid="ToolActionBanner"
-        class={cn("px-4 py-2 rounded-md text-sm", TONE_CLASS[outcome.tone], className)}
+        class={cn(
+          "flex items-center justify-between gap-3 px-4 py-2 rounded-md text-sm",
+          TONE_CLASS[outcome.tone],
+          className,
+        )}
       >
-        <span class="font-medium">{outcome.toolName}</span> {outcome.message}
+        <div>
+          <span class="font-medium">{outcome.toolName}</span> {outcome.message}
+        </div>
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            class="flex-shrink-0 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 opacity-70 hover:opacity-100 transition-opacity"
+            title="Dismiss"
+            aria-label="Dismiss"
+          >
+            <X class="h-4 w-4" />
+          </button>
+        )}
       </div>
     );
   }
@@ -59,8 +77,21 @@ export function ToolActionBanner({ outcome, class: className }: ToolActionBanner
         className,
       )}
     >
-      <div>
-        <span class="font-medium">{outcome.toolName}</span> {message}
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <span class="font-medium">{outcome.toolName}</span> {message}
+        </div>
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            class="flex-shrink-0 p-0.5 rounded hover:bg-destructive/20 opacity-70 hover:opacity-100 transition-opacity"
+            title="Dismiss"
+            aria-label="Dismiss"
+          >
+            <X class="h-4 w-4" />
+          </button>
+        )}
       </div>
       {command && (
         <div class="space-y-2">
