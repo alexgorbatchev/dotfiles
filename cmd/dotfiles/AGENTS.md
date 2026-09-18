@@ -26,6 +26,7 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
   - When `AGENT=1`: suppress ANSI colors in logger, format JSON as minified single-line, render directory trees as indented bullets (`*`), omit decorative dividers, and emit compact key-value lines.
   - When `AGENT=0` (or unset): render human-friendly output, pretty-printed JSON (`json.MarshalIndent`), box-drawing tree glyphs (`├─`/`└─`), and formatted lists.
 - Support `--json` flag on query commands (`check-updates`, `files`, `validate`, `detect-conflicts`, `log`, `bin`, `features`, `skill`). All JSON serialization must use `cliout.RenderJSON` so agent mode minifies automatically while human mode pretty-prints.
+- Every command that calls `BootstrapServices` must `defer services.Close()`, never `services.DB.Close()`: `Close` also stops the `DEV_PROXY` caching proxy that the bootstrap owns (`devproxy.go`). A command with its own outbound HTTP and no `Services` (`upgrade`) calls `startDevProxy` itself; one with `Services` uses `services.HTTPClient` when it is non-nil.
 
 ## Local gotchas
 
