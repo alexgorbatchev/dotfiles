@@ -19,6 +19,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
+	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
@@ -47,7 +48,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		if err := sysFS.MkdirAll(projCfg.Paths.TargetDir, 0755); err != nil {
 			return err
 		}
-		usageDir := filepath.Join(projCfg.Paths.GeneratedDir, "usage")
+		usageDir := usagelog.Dir(projCfg.Paths.GeneratedDir)
 		if err := sysFS.MkdirAll(usageDir, 0755); err != nil {
 			return err
 		}
@@ -267,7 +268,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			Sudo:           tool.Sudo,
 			CliCommand:     o.getCliCommand(),
 			ConfigFilePath: o.getConfigFilePath(),
-			UsageLogPath:   filepath.Join(projCfg.Paths.GeneratedDir, "usage", "shim-usage.log"),
+			UsageLogPath:   usagelog.Path(projCfg.Paths.GeneratedDir),
 		}
 
 		// Check for conflict

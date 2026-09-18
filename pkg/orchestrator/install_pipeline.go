@@ -18,6 +18,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
+	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
@@ -355,7 +356,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			Sudo:           tool.Sudo,
 			CliCommand:     o.getCliCommand(),
 			ConfigFilePath: o.getConfigFilePath(),
-			UsageLogPath:   filepath.Join(projCfg.Paths.GeneratedDir, "usage", "shim-usage.log"),
+			UsageLogPath:   usagelog.Path(projCfg.Paths.GeneratedDir),
 		}
 
 		// Check for conflict
