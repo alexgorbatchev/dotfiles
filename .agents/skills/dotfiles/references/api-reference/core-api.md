@@ -54,20 +54,21 @@ export default defineTool((install, ctx) => install("github-release", { repo: "o
 
 ### Builder Methods
 
-| Method                 | Description                                                           |
-| ---------------------- | --------------------------------------------------------------------- |
-| `.bin(name, pattern?)` | Define binary name(s) and optional match pattern (`string \| RegExp`) |
-| `.version(v)`          | Set version (`'latest'` or specific)                                  |
-| `.dependsOn(...bins)`  | Declare binary dependencies                                           |
-| `.symlink(src, dest)`  | Create config file symlink                                            |
-| `.hook(event, fn)`     | Lifecycle hooks (details in Hooks section)                            |
-| `.zsh(fn)`             | Zsh shell configuration                                               |
-| `.bash(fn)`            | Bash shell configuration                                              |
-| `.powershell(fn)`      | PowerShell configuration                                              |
-| `.platform(p, fn)`     | Platform-specific overrides                                           |
-| `.sudo()`              | Require an interactive sudo step during install                       |
-| `.disable()`           | Skip tool during generation (logs warning)                            |
-| `.hostname(pattern)`   | Restrict tool to specific hostname(s) (`string \| RegExp`)            |
+| Method                 | Description                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| `.bin(name, pattern?)` | Define binary name(s) and optional match pattern (`string \| RegExp`)                   |
+| `.bin(name, options)`  | Same, with `{ pattern?, shim? }`; `shim: false` installs the binary without a PATH shim |
+| `.version(v)`          | Set version (`'latest'` or specific)                                                    |
+| `.dependsOn(...bins)`  | Declare binary dependencies                                                             |
+| `.symlink(src, dest)`  | Create config file symlink                                                              |
+| `.hook(event, fn)`     | Lifecycle hooks (details in Hooks section)                                              |
+| `.zsh(fn)`             | Zsh shell configuration                                                                 |
+| `.bash(fn)`            | Bash shell configuration                                                                |
+| `.powershell(fn)`      | PowerShell configuration                                                                |
+| `.platform(p, fn)`     | Platform-specific overrides                                                             |
+| `.sudo()`              | Require an interactive sudo step during install                                         |
+| `.disable()`           | Skip tool during generation (logs warning)                                              |
+| `.hostname(pattern)`   | Restrict tool to specific hostname(s) (`string \| RegExp`)                              |
 
 #### `.bin(name)` runtime behavior
 
@@ -77,6 +78,7 @@ Declaring `.bin(name)` generates a shim for `name` in `paths.targetDir`. The one
 - Running `{binary} @update` triggers a shim-driven update flow
 - Shim executions append usage events to a local log for dashboard analytics
 - Removing a `.bin(name)` declaration and rerunning `dotfiles generate` cleans up the stale shim automatically
+- `.bin(name, { shim: false })` declares the binary without a shim: it is installed under the tool's `current` directory and remains a `dependsOn()` target, but nothing is written to `paths.targetDir` (this is how the scaffolded `typescript.tool.ts` keeps `tsc` off PATH)
 
 Usage tracking is enabled by default. The dashboard imports and compacts the local usage log into SQLite on startup. Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable tracking.
 

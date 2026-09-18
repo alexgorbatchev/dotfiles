@@ -67,6 +67,7 @@ export interface ProjectConfig {
 export interface BinaryConfig {
   name: string;
   pattern: string;
+  shim?: boolean;
 }
 export interface SymlinkConfig {
   source: string;

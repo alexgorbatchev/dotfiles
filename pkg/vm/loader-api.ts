@@ -431,7 +431,19 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
 
     bin(name: unknown, pattern: unknown) {
       let b = (this["binaries"] || []) as unknown[];
-      if (pattern !== undefined) {
+      if (pattern !== null && typeof pattern === "object" && !(pattern instanceof RegExp)) {
+        // An options object: { pattern?, shim? }. Only the members given are recorded,
+        // so Go can tell "shim not mentioned" from "shim: false".
+        const options = pattern as Record<string, unknown>;
+        const entry: Record<string, unknown> = { name: name };
+        if (options["pattern"] !== undefined) {
+          entry["pattern"] = options["pattern"];
+        }
+        if (options["shim"] !== undefined) {
+          entry["shim"] = options["shim"];
+        }
+        b.push(entry);
+      } else if (pattern !== undefined) {
         b.push({ name: name, pattern: pattern });
       } else if (Array.isArray(name)) {
         b = b.concat(name);

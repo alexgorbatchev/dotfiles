@@ -143,12 +143,19 @@ func getBinaryNames(toolBinaries []interface{}) []string {
 //
 // A manual tool without binaryPath has nothing a shim could point at unless a
 // before-install hook stages its files, so it gets none: as in v1, its command is
-// expected to come from shell functions.
+// expected to come from shell functions. A binary declared with `shim: false` is
+// installed but deliberately kept off the target directory.
 func shimBinaries(tool *config.ToolConfig) []string {
 	if isManualWithoutPayload(tool) {
 		return nil
 	}
-	return getBinaryNames(tool.Binaries)
+	var names []string
+	for _, name := range getBinaryNames(tool.Binaries) {
+		if wantsShim(tool.Binaries, name) {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 // isManualWithoutPayload reports whether a manual tool has neither a binaryPath nor
@@ -166,6 +173,33 @@ func (o *Orchestrator) warnUnshimmedBinaries(tool *config.ToolConfig) {
 		return
 	}
 	o.logger.GetSubLogger("", tool.Name).Warn(logger.Message("Skipping shim generation (manual tool has .bin() but no binaryPath: provide the command from shell functions instead)"))
+}
+
+// wantsShim reports whether the binary named binName should get a shim in the target
+// directory. Only an explicit `shim: false` on the binary's declaration turns it off;
+// the binary itself is still installed and reachable under the tool's current
+// directory.
+func wantsShim(toolBinaries []interface{}, binName string) bool {
+	for _, b := range toolBinaries {
+		switch val := b.(type) {
+		case map[string]interface{}:
+			if name, ok := val["name"].(string); ok && name == binName {
+				if shim, ok := val["shim"].(bool); ok {
+					return shim
+				}
+				return true
+			}
+		case config.BinaryConfig:
+			if val.Name == binName {
+				return val.WantsShim()
+			}
+		case *config.BinaryConfig:
+			if val != nil && val.Name == binName {
+				return val.WantsShim()
+			}
+		}
+	}
+	return true
 }
 
 func (o *Orchestrator) resolvePlaceholder(val string, tool *config.ToolConfig, projCfg *config.ProjectConfig) (string, error) {

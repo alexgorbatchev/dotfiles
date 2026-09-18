@@ -26,9 +26,9 @@ func TestRunSelectsTemplatesForTargetOS(t *testing.T) {
 		targetOS string
 		want     []string
 	}{
-		{targetOS: "darwin", want: []string{"brew.tool.ts", "dotfiles.tool.ts"}},
-		{targetOS: "linux", want: []string{"dotfiles.tool.ts"}},
-		{targetOS: "windows", want: []string{"dotfiles.tool.ts"}},
+		{targetOS: "darwin", want: []string{"brew.tool.ts", "dotfiles.tool.ts", "typescript.tool.ts"}},
+		{targetOS: "linux", want: []string{"dotfiles.tool.ts", "typescript.tool.ts"}},
+		{targetOS: "windows", want: []string{"dotfiles.tool.ts", "typescript.tool.ts"}},
 	}
 
 	for _, tt := range tests {
@@ -124,6 +124,20 @@ func TestRunReplacesExistingFilesWithForce(t *testing.T) {
 	}
 	if string(content) != dotfilesToolContent {
 		t.Errorf("expected the template content after --force, got %q", string(content))
+	}
+}
+
+// The compiler tool pins the release tag the emitted declarations track and declares
+// its binary without a shim, so the generated bin directory never carries a `tsc`.
+func TestTypeScriptToolTemplate(t *testing.T) {
+	for _, want := range []string{
+		`repo: "microsoft/typescript-go"`,
+		`version: "typescript/v7.0.2"`,
+		`.bin("tsc", { shim: false })`,
+	} {
+		if !strings.Contains(typescriptToolContent, want) {
+			t.Errorf("typescript.tool.ts template lacks %s:\n%s", want, typescriptToolContent)
+		}
 	}
 }
 

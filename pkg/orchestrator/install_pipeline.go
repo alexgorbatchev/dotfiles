@@ -349,6 +349,11 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 		recordedBinaryPaths = append(recordedBinaryPaths, binaryPath)
 
+		// The binary is installed and recorded either way; only its shim is optional.
+		if !wantsShim(tool.Binaries, binName) {
+			continue
+		}
+
 		shimCfg := shim.Config{
 			ToolName:       tool.Name,
 			BinaryName:     binName,

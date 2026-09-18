@@ -854,6 +854,24 @@ export interface ICompletionsConfig {
   bin?: string;
 }
 
+/**
+ * How a binary declared with `.bin()` is exposed.
+ */
+export interface IBinaryOptions {
+  /**
+   * Glob or regex locating the binary inside an extracted archive, when it is not at
+   * the archive root or one level deep under its own name.
+   */
+  pattern?: string | RegExp;
+  /**
+   * Whether `dotfiles generate` writes a shim for the binary into `paths.targetDir`,
+   * which is on PATH. Defaults to `true`. Set `false` for a binary the CLI itself or
+   * other tools use but that must not shadow the same program elsewhere on the
+   * machine; the binary is still installed under the tool's `current` directory.
+   */
+  shim?: boolean;
+}
+
 export type ShellCallback = (shell: IShellConfigurator) => void;
 export type PlatformCallback = (install: IPlatformInstallFunction) => void;
 export type ArchCallback = (install: IPlatformInstallFunction) => void;
@@ -1015,6 +1033,11 @@ export interface IToolConfigBuilder {
    */
   bin(name: string, pattern?: string | RegExp): this;
   /**
+   * Defines a binary that this tool provides, with options for where it is found and
+   * whether it gets a shim.
+   */
+  bin(name: string, options: IBinaryOptions): this;
+  /**
    * Sets the target binaries of the tool config.
    */
   binaries(binaries: string[]): this;
@@ -1091,6 +1114,11 @@ export interface IPlatformConfigBuilder {
    * Defines a binary that this tool provides on this platform.
    */
   bin(name: string, pattern?: string | RegExp): this;
+  /**
+   * Defines a binary that this tool provides on this platform, with options for where
+   * it is found and whether it gets a shim.
+   */
+  bin(name: string, options: IBinaryOptions): this;
   /**
    * Sets target binaries on this platform.
    */

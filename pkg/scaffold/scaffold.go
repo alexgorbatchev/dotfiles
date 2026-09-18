@@ -124,6 +124,29 @@ export default defineTool((install, _ctx) =>
 );
 `
 
+// typescriptReleaseTag pins the TypeScript 7 release the declarations the CLI emits are
+// written against. The repository also publishes unrelated tags (a vsix pre-release),
+// so "latest" is not a safe choice.
+const typescriptReleaseTag = "typescript/v7.0.2"
+
+// typescriptToolContent installs the native TypeScript compiler `dotfiles validate`
+// type-checks tool configurations with. It is declared without a shim on purpose: the
+// generated bin directory is on PATH, and a TypeScript 7 `tsc` there would shadow the
+// TypeScript other projects on the machine install for themselves. `validate` reaches
+// the compiler through the tool's current directory instead.
+const typescriptToolContent = `import { defineTool } from "@alexgorbatchev/dotfiles";
+
+// The TypeScript compiler that "dotfiles validate" type-checks tool configurations
+// with. It has no shim, so it never shadows another project's TypeScript on PATH;
+// "dotfiles validate" runs it from this tool's current directory.
+export default defineTool((install) =>
+  install("github-release", {
+    repo: "microsoft/typescript-go",
+    version: "` + typescriptReleaseTag + `",
+  }).bin("tsc", { shim: false }),
+);
+`
+
 // legacyBrewToolContent is the brew template this project generated before Homebrew's
 // Intel prefix was accounted for. A file matching it byte for byte was never edited by
 // the user, so replacing it loses nothing.
@@ -153,6 +176,9 @@ var legacyContents = map[string][]string{
 // Templates are provisioned in this order, which is the order results are reported.
 var templates = []template{
 	{name: "dotfiles.tool.ts", content: dotfilesToolContent},
+	// `dotfiles validate` type-checks tool configurations with this compiler on every
+	// platform.
+	{name: "typescript.tool.ts", content: typescriptToolContent},
 	// Homebrew underpins the other macOS installers, so a macOS repository is expected
 	// to define it.
 	{name: "brew.tool.ts", content: brewToolContent, targetOS: "darwin"},

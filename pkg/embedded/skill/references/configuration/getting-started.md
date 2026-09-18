@@ -161,6 +161,10 @@ If the project has no `tsconfig.json`, `dotfiles generate` writes one that only 
 
 Nothing has to be added by hand: the include list lives in the CLI-owned file and follows the configured tool directories. A `tsconfig.json` the CLI wrote before it owned one is updated to this form; a file you edited is left alone.
 
+### Type-Checking
+
+`dotfiles validate` type-checks the configuration with that program, using the TypeScript 7 compiler provisioned like any other tool: `dotfiles scaffold` writes `tools/typescript.tool.ts`, which installs `microsoft/typescript-go` from its GitHub release, and `dotfiles install typescript` installs it. The compiler is declared with `.bin("tsc", { shim: false })`, so it is not put on PATH and cannot shadow the TypeScript your other projects use; `validate` runs it from the tool's `current` directory. Until it is installed, `validate` reports that as an error rather than skipping the type-check. Your editor uses the same program through the extending `tsconfig.json`.
+
 ### Common Type Errors
 
 ```typescript no-typecheck

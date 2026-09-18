@@ -42,6 +42,9 @@ type Services struct {
 	// development proxy, and every installer in Installers already uses it; a
 	// command with its own outbound HTTP must use it too when it is non-nil.
 	HTTPClient *http.Client
+	// InMemory is true when FS and the registry live in memory (dry runs and unit
+	// tests), so nothing generated reaches disk and no external program can read it.
+	InMemory bool
 
 	devProxy *proxy.Server
 }
@@ -128,8 +131,12 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		return nil, fmt.Errorf("failed resolving absolute config path: %w", err)
 	}
 
+	// Dry runs and unit tests operate on an in-memory file system and registry, so
+	// nothing they generate reaches disk.
+	inMemory := dryRun || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true")
+
 	var fsys fs.FS
-	if dryRun || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
+	if inMemory {
 		fsys = fs.NewMemFS()
 	} else {
 		fsys = fs.NewOSFS()
@@ -198,7 +205,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	// For dry-runs and tests, we still open a valid database.
 	// If in unit testing or dry-run, use in-memory SQLite to prevent disk state pollution.
 	var dbPath string
-	if dryRun || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
+	if inMemory {
 		dbPath = ":memory:"
 	} else {
 		dbPath = filepath.Join(projCfg.Paths.GeneratedDir, "registry.db")
@@ -234,7 +241,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	}
 	orch := orchestrator.NewOrchestrator(GetLogger("orchestrator", os.Stderr), trackedFS, runner, reg, instReg)
 	orch.SetConfigFilePath(absConfigPath)
-	if dryRun || (isDevTest() && os.Getenv("DOTFILES_E2E_TEST") != "true") {
+	if inMemory {
 		orch.SetSymlinkFS(fsys)
 	}
 
@@ -317,6 +324,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		Orchestrator:  orch,
 		Installers:    instReg,
 		HTTPClient:    httpClient,
+		InMemory:      inMemory,
 		devProxy:      devProxy,
 	}, nil
 }

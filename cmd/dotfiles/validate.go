@@ -32,6 +32,10 @@ var validateCmd = &cobra.Command{
 	ValidArgsFunction: completeToolName,
 	Long: `Validates tool configuration files (.tool.ts) and project configuration for schema issues, missing parameters, invalid installer methods, and bad shell settings.
 
+It then type-checks the TypeScript configuration with the compiler a configured tool provides
+as the binary "tsc" (the scaffolded typescript.tool.ts), running it from that tool's current
+directory rather than from PATH. A missing or uninstalled compiler is reported as an error.
+
 When run without arguments, 'dotfiles validate' checks all configured tools.
 When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates only that specific tool.`,
 	Example: `  # Validate all tool configurations
@@ -191,6 +195,16 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 				}
 			}
 		}
+
+		var only *config.ToolConfig
+		if len(args) > 0 {
+			only = targetTools[0]
+		}
+		typeErrors, err := typeCheckToolConfigs(ctx, services, log, only)
+		if err != nil {
+			return err
+		}
+		errors = append(errors, typeErrors...)
 
 		out := cmd.OutOrStdout()
 

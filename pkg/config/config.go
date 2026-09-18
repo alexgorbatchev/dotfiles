@@ -224,6 +224,14 @@ func (p *ProjectConfig) ResolvePlaceholders() {
 type BinaryConfig struct {
 	Name    string `json:"name" yaml:"name"`
 	Pattern string `json:"pattern" yaml:"pattern"`
+	// Shim is whether a shim is generated for the binary in the target directory.
+	// Nil means the default, which is to generate one.
+	Shim *bool `json:"shim,omitempty" yaml:"shim,omitempty"`
+}
+
+// WantsShim reports whether a shim should be generated for the binary.
+func (bc *BinaryConfig) WantsShim() bool {
+	return bc.Shim == nil || *bc.Shim
 }
 
 // Validate checks that the BinaryConfig contains required fields.
