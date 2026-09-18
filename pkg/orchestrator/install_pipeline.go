@@ -265,14 +265,19 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		return fmt.Errorf("running after-install hooks: %w", err)
 	}
 
-	// 2. Resolve binaries to shim
+	// 2. Resolve binaries to shim. What the installer reported wins over the declared
+	// names, except for the shape shimBinaries rules out entirely: a shim written here
+	// for a manual tool without binaryPath would be removed as stale on the next run.
 	var binaryNames []string
-	if res != nil {
-		binaryNames = res.Binaries
+	if !isManualWithoutPayload(tool) {
+		if res != nil {
+			binaryNames = res.Binaries
+		}
+		if len(binaryNames) == 0 {
+			binaryNames = getBinaryNames(tool.Binaries)
+		}
 	}
-	if len(binaryNames) == 0 {
-		binaryNames = getBinaryNames(tool.Binaries)
-	}
+	o.warnUnshimmedBinaries(tool)
 
 	// 3. Generate Shims
 	shimGen := shim.NewGenerator(o.fs)

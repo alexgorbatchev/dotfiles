@@ -1465,7 +1465,13 @@ func TestGenerateCompletionsForTool_CmdTimeoutIsReportedAsTimeout(t *testing.T) 
 	}
 }
 
-func TestManualToolWithoutBinaryPath_Logging(t *testing.T) {
+// A manual tool that declares .bin() but has neither a binaryPath nor a before-install
+// hook gets no shim, as in v1: nothing could ever put a binary where the shim would
+// point, so the command is expected to come from shell functions and the author is
+// told so. Generation and the stale-shim cleanup derive the expected set from the
+// same rule, so a second generate has nothing to remove and nothing to regenerate,
+// and an installer result cannot smuggle a shim in either.
+func TestManualToolWithoutBinaryPath_NoShimAndWarning(t *testing.T) {
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Name: "test-manual", Level: logger.LogLevelVerbose, Writer: &logBuf})
@@ -1478,8 +1484,12 @@ func TestManualToolWithoutBinaryPath_Logging(t *testing.T) {
 	}
 	defer sqlDB.Close()
 	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	if err := instReg.Register(&mockInstaller{name: "manual", binaries: []string{"/home/user/.generated/binaries/tmux-sessionx/current/tmux-sessionx"}}); err != nil {
+		t.Fatalf("registering installer: %v", err)
+	}
 
-	orch := NewOrchestrator(log, fsys, runner, reg, nil)
+	orch := NewOrchestrator(log, fsys, runner, reg, instReg)
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
 			HomeDir:         "/home/user",
@@ -1496,15 +1506,76 @@ func TestManualToolWithoutBinaryPath_Logging(t *testing.T) {
 		ConfigFilePath:     "/home/user/tools/tmux-sessionx.tool.ts",
 		InstallationMethod: "manual",
 	}
+	const shimPath = "/home/user/bin/tmux-sessionx"
 
-	err = orch.GenerateTool(ctx, toolManual, projCfg)
-	if err != nil {
-		t.Fatalf("GenerateTool failed for manual tool: %v", err)
+	for run := 1; run <= 2; run++ {
+		if err := orch.GenerateTools(ctx, []*config.ToolConfig{toolManual}, projCfg); err != nil {
+			t.Fatalf("GenerateTools run %d: %v", run, err)
+		}
+		if exists, _ := fsys.Exists(shimPath); exists {
+			t.Fatalf("run %d generated a shim for a manual tool without binaryPath", run)
+		}
+	}
+	if err := orch.InstallTool(ctx, toolManual, projCfg); err != nil {
+		t.Fatalf("InstallTool: %v", err)
+	}
+	if exists, _ := fsys.Exists(shimPath); exists {
+		t.Errorf("install generated a shim for a manual tool without binaryPath")
 	}
 
-	exists, err := fsys.Exists("/home/user/bin/tmux-sessionx")
-	if err != nil || !exists {
-		t.Errorf("expected shim /home/user/bin/tmux-sessionx to be generated")
+	logs := logBuf.String()
+	if !strings.Contains(logs, "Skipping shim generation") {
+		t.Errorf("expected a warning that .bin() produced no shim, got:\n%s", logs)
+	}
+	if strings.Contains(logs, "Removing stale shim") {
+		t.Errorf("generation and cleanup disagree: a shim was removed as stale:\n%s", logs)
+	}
+}
+
+// shimBinaries is the one place that decides which binaries a tool gets shims for,
+// shared by generation and the stale cleanup.
+func TestShimBinaries(t *testing.T) {
+	bins := []interface{}{"foo", "bar"}
+	tests := []struct {
+		name string
+		tool *config.ToolConfig
+		want string
+	}{
+		{
+			name: "manual without binaryPath",
+			tool: &config.ToolConfig{InstallationMethod: "manual", Binaries: bins},
+		},
+		{
+			name: "manual with only an after-install hook",
+			tool: &config.ToolConfig{InstallationMethod: "manual", Binaries: bins, InstallParams: map[string]interface{}{"hooks": []any{"after-install"}}},
+		},
+		{
+			name: "manual with binaryPath",
+			tool: &config.ToolConfig{InstallationMethod: "manual", Binaries: bins, InstallParams: map[string]interface{}{"binaryPath": "./foo"}},
+			want: "foo,bar",
+		},
+		{
+			name: "manual staged by a before-install hook",
+			tool: &config.ToolConfig{InstallationMethod: "manual", Binaries: bins, InstallParams: map[string]interface{}{"hooks": []any{"before-install"}}},
+			want: "foo,bar",
+		},
+		{
+			name: "github release",
+			tool: &config.ToolConfig{InstallationMethod: "github", Binaries: bins},
+			want: "foo,bar",
+		},
+		{
+			name: "no installation method",
+			tool: &config.ToolConfig{Binaries: bins},
+			want: "foo,bar",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := strings.Join(shimBinaries(tt.tool), ","); got != tt.want {
+				t.Errorf("shimBinaries() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 

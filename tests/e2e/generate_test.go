@@ -84,9 +84,9 @@ func TestE2EGenerate_MultipleToolConfigsDirs(t *testing.T) {
 	_ = os.MkdirAll(dir2, 0755)
 
 	tool1Content := `import { defineTool } from "@alexgorbatchev/dotfiles";
-export default defineTool((install) => install("manual", {}).bin("core-bin").version("1.0.0"));`
+export default defineTool((install) => install("manual", { binaryPath: "./core-bin" }).bin("core-bin").version("1.0.0"));`
 	tool2Content := `import { defineTool } from "@alexgorbatchev/dotfiles";
-export default defineTool((install) => install("manual", {}).bin("extra-bin").version("1.0.0"));`
+export default defineTool((install) => install("manual", { binaryPath: "./extra-bin" }).bin("extra-bin").version("1.0.0"));`
 
 	_ = os.WriteFile(filepath.Join(dir1, "core-tool.tool.ts"), []byte(tool1Content), 0644)
 	_ = os.WriteFile(filepath.Join(dir2, "extra-tool.tool.ts"), []byte(tool2Content), 0644)

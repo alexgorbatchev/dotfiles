@@ -952,6 +952,7 @@ func TestInstallToolConflictingShimWarning(t *testing.T) {
 		Name:               "conflict-tool",
 		InstallationMethod: "manual",
 		Binaries:           []interface{}{"cbin"},
+		InstallParams:      map[string]interface{}{"binaryPath": "./cbin"},
 	}
 
 	err = orch.InstallTool(ctx, tConflict, projCfg)

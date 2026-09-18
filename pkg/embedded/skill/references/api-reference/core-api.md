@@ -69,7 +69,7 @@ export default defineTool((install, ctx) => install("github-release", { repo: "o
 
 #### `.bin(name)` runtime behavior
 
-Declaring `.bin(name)` generates a shim for `name` in `paths.targetDir`.
+Declaring `.bin(name)` generates a shim for `name` in `paths.targetDir`. The one exception is a `manual` tool with neither `binaryPath` nor a `before-install` hook: nothing could ever place a binary where the shim would point, so no shim is written and `dotfiles generate` warns; such a command comes from shell functions instead (see [manual.md](../installation-methods/manual.md)).
 
 - Running the shim auto-installs the tool on first use (if needed)
 - Running `{binary} @update` triggers a shim-driven update flow

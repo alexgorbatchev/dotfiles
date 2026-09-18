@@ -22,6 +22,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 // Orchestrator manages tool installation pipelines.
@@ -132,6 +133,37 @@ func getBinaryNames(toolBinaries []interface{}) []string {
 		}
 	}
 	return names
+}
+
+// shimBinaries returns the binaries a tool is expected to have shims for. Shim
+// generation and CleanupStaleShims both derive the set from here so they cannot
+// disagree and undo each other on every run.
+//
+// A manual tool without binaryPath has nothing a shim could point at unless a
+// before-install hook stages its files, so it gets none: as in v1, its command is
+// expected to come from shell functions.
+func shimBinaries(tool *config.ToolConfig) []string {
+	if isManualWithoutPayload(tool) {
+		return nil
+	}
+	return getBinaryNames(tool.Binaries)
+}
+
+// isManualWithoutPayload reports whether a manual tool has neither a binaryPath nor
+// a before-install hook, that is, no way of ever producing a binary to shim.
+func isManualWithoutPayload(tool *config.ToolConfig) bool {
+	return tool.InstallationMethod == "manual" &&
+		getStringParam(tool.InstallParams, "binaryPath", "") == "" &&
+		!vm.HasHook(tool, vm.HookBeforeInstall)
+}
+
+// warnUnshimmedBinaries tells the author of a manual tool without binaryPath that its
+// .bin() declarations produced no shim, so the command has to come from shell functions.
+func (o *Orchestrator) warnUnshimmedBinaries(tool *config.ToolConfig) {
+	if !isManualWithoutPayload(tool) || len(getBinaryNames(tool.Binaries)) == 0 {
+		return
+	}
+	o.logger.GetSubLogger("", tool.Name).Warn(logger.Message("Skipping shim generation (manual tool has .bin() but no binaryPath: provide the command from shell functions instead)"))
 }
 
 func (o *Orchestrator) resolvePlaceholder(val string, tool *config.ToolConfig, projCfg *config.ProjectConfig) (string, error) {

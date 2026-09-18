@@ -181,7 +181,8 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	}
 
 	// 1. Resolve binaries to shim
-	binaryNames := getBinaryNames(tool.Binaries)
+	binaryNames := shimBinaries(tool)
+	o.warnUnshimmedBinaries(tool)
 
 	// Check DB registry for recorded binary paths
 	var recordedBinaryPaths map[string]string
@@ -535,23 +536,11 @@ func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.To
 		}
 
 		expectedShimPaths := make(map[string]bool)
-		binNames := getBinaryNames(tool.Binaries)
-
-		isManualWithoutBinPath := false
-		if tool.InstallationMethod == "manual" {
-			binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")
-			if binaryPath == "" {
-				isManualWithoutBinPath = true
-			}
-		}
-
-		if !isManualWithoutBinPath {
-			for _, binName := range binNames {
-				shimPath := filepath.Join(shimDir, binName)
-				expectedShimPaths[shimPath] = true
-				if abs, err := o.fs.Abs(shimPath); err == nil {
-					expectedShimPaths[abs] = true
-				}
+		for _, binName := range shimBinaries(tool) {
+			shimPath := filepath.Join(shimDir, binName)
+			expectedShimPaths[shimPath] = true
+			if abs, err := o.fs.Abs(shimPath); err == nil {
+				expectedShimPaths[abs] = true
 			}
 		}
 
