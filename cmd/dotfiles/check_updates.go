@@ -31,7 +31,7 @@ var checkUpdatesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("check-updates", cmd.ErrOrStderr())
 		log.Info("Checking for updates across configured tools...")

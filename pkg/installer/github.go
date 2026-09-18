@@ -168,6 +168,11 @@ func (g *GitHubInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, e
 	ApplyDownloadCacheSettings(g.dl, cacheDir, ttl, enabled)
 }
 
+func (g *GitHubInstaller) SetHTTPClient(client *http.Client) {
+	g.httpClient = client
+	g.dl.SetHTTPClient(client)
+}
+
 func (g *GitHubInstaller) SupportsSudo() bool {
 	return false
 }

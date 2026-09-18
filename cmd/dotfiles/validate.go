@@ -45,7 +45,7 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 		if err != nil {
 			return fmt.Errorf("failed loading configuration: %w", err)
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("validate", cmd.ErrOrStderr())
 		log.Info("Validating tool configurations...")

@@ -1,10 +1,17 @@
+// Package proxy is the development HTTP caching proxy behind DEV_PROXY.
+//
+// The server caches every 2xx/3xx upstream response on disk regardless of the
+// origin's cache headers, so repeated development runs against GitHub and other
+// rate-limited APIs are served locally. Client returns an *http.Client that
+// routes ordinary requests through the server using the wire format v1's
+// proxyFetch established: the target URL is carried in the request path, as in
+// http://127.0.0.1:<port>/https://api.github.com/repos/owner/repo.
 package proxy
 
 import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -14,12 +21,23 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+)
+
+const (
+	defaultTTL = 24 * time.Hour
+	// upstreamResponseHeaderTimeout matches the downloader the proxy fronts. There
+	// is deliberately no overall client timeout: the proxy relays whole release
+	// archives and the downloader behind it has none either.
+	upstreamResponseHeaderTimeout = 30 * time.Second
+	shutdownTimeout               = 5 * time.Second
+	loopbackHost                  = "127.0.0.1"
+	cacheStatusHeader             = "X-Dotfiles-Cache"
 )
 
 // CacheEntry represents the cache metadata.
@@ -40,13 +58,13 @@ type CacheStore struct {
 }
 
 // NewCacheStore constructs a new CacheStore.
-func NewCacheStore(cacheDir string, defaultTTL int64) *CacheStore {
-	if defaultTTL <= 0 {
-		defaultTTL = 24 * 60 * 60 * 1000 // 24 hours in ms
+func NewCacheStore(cacheDir string, defaultTTLMillis int64) *CacheStore {
+	if defaultTTLMillis <= 0 {
+		defaultTTLMillis = defaultTTL.Milliseconds()
 	}
 	return &CacheStore{
 		cacheDir:   cacheDir,
-		defaultTTL: defaultTTL,
+		defaultTTL: defaultTTLMillis,
 	}
 }
 
@@ -163,108 +181,13 @@ func (s *CacheStore) Set(method, targetURL string, status int, headers map[strin
 	return nil
 }
 
-func (s *CacheStore) deleteByKey(key string) bool {
+func (s *CacheStore) deleteByKey(key string) {
 	metaPath, bodyPath := s.getPaths(key)
-	deleted := false
-	if err := os.Remove(metaPath); err == nil {
-		deleted = true
-	}
-	if err := os.Remove(bodyPath); err == nil {
-		deleted = true
-	}
-	return deleted
+	_ = os.Remove(metaPath)
+	_ = os.Remove(bodyPath)
 }
 
-// Delete removes an item from cache.
-func (s *CacheStore) Delete(method, targetURL string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	key := s.GenerateKey(method, targetURL)
-	return s.deleteByKey(key)
-}
-
-// Clear clears all cache entries.
-func (s *CacheStore) Clear() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	cleared := 0
-	_ = filepath.Walk(s.cacheDir, func(path string, info os.FileInfo, err error) error {
-		if err == nil && !info.IsDir() && strings.HasSuffix(info.Name(), ".meta.json") {
-			key := strings.TrimSuffix(info.Name(), ".meta.json")
-			if s.deleteByKey(key) {
-				cleared++
-			}
-		}
-		return nil
-	})
-	return cleared
-}
-
-// Stats returns stats on cache.
-type Stats struct {
-	Entries int   `json:"entries"`
-	Size    int64 `json:"size"`
-}
-
-// GetStats returns current cache statistics.
-func (s *CacheStore) GetStats() Stats {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	var count int
-	var size int64
-
-	_ = filepath.Walk(s.cacheDir, func(path string, info os.FileInfo, err error) error {
-		if err == nil && !info.IsDir() {
-			if strings.HasSuffix(info.Name(), ".meta.json") || strings.HasSuffix(info.Name(), ".body") {
-				size += info.Size()
-				if strings.HasSuffix(info.Name(), ".meta.json") {
-					count++
-				}
-			}
-		}
-		return nil
-	})
-
-	return Stats{
-		Entries: count,
-		Size:    size,
-	}
-}
-
-// CacheClearRequest specifies the request payload to clear cache.
-type CacheClearRequest struct {
-	Pattern  string   `json:"pattern,omitempty"`
-	Patterns []string `json:"patterns,omitempty"`
-}
-
-// CacheClearResult represents the response metadata for clearing cache.
-type CacheClearResult struct {
-	Cleared int    `json:"cleared"`
-	Message string `json:"message"`
-}
-
-// CachePopulateRequest represents payload for manual populating.
-type CachePopulateRequest struct {
-	URL          string            `json:"url"`
-	Method       string            `json:"method,omitempty"`
-	Status       int               `json:"status,omitempty"`
-	Headers      map[string]string `json:"headers,omitempty"`
-	Body         string            `json:"body"`
-	BodyIsBase64 bool              `json:"bodyIsBase64,omitempty"`
-	TTL          int64             `json:"ttl,omitempty"`
-}
-
-// CachePopulateResult represents the populate response.
-type CachePopulateResult struct {
-	Success bool   `json:"success"`
-	Key     string `json:"key"`
-	URL     string `json:"url"`
-	Message string `json:"message"`
-}
-
-// Server acts as local HTTP proxy caching server.
+// Server is the local HTTP caching proxy.
 type Server struct {
 	logger *logger.Logger
 	port   int
@@ -275,21 +198,16 @@ type Server struct {
 	client *http.Client
 }
 
-// NewServer creates a new caching proxy Server.
-func NewServer(log *logger.Logger, port int, cacheDir string, ttl int64) *Server {
+// NewServer creates a caching proxy that binds 127.0.0.1:port on Start (port 0
+// picks a free one) and keeps responses under cacheDir for ttlMillis.
+func NewServer(log *logger.Logger, port int, cacheDir string, ttlMillis int64) *Server {
+	upstream := http.DefaultTransport.(*http.Transport).Clone()
+	upstream.ResponseHeaderTimeout = upstreamResponseHeaderTimeout
 	return &Server{
 		logger: log.GetSubLogger("ProxyServer"),
 		port:   port,
-		store:  NewCacheStore(cacheDir, ttl),
-		client: &http.Client{
-			Transport: &http.Transport{
-				DialContext: (&net.Dialer{
-					Timeout: 2 * time.Second,
-				}).DialContext,
-				ResponseHeaderTimeout: 5 * time.Second,
-			},
-			Timeout: 10 * time.Second,
-		},
+		store:  NewCacheStore(cacheDir, ttlMillis),
+		client: &http.Client{Transport: upstream},
 	}
 }
 
@@ -298,27 +216,12 @@ func (s *Server) Port() int {
 	return s.port
 }
 
-// Start launches the proxy server.
+// Start binds the listener synchronously and serves in a goroutine that Stop joins.
 func (s *Server) Start() error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/cache/clear", s.handleClear)
-	mux.HandleFunc("/cache/stats", s.handleStats)
-	mux.HandleFunc("/cache/populate", s.handlePopulate)
-	mux.HandleFunc("/", s.handleProxy)
-
-	s.server = &http.Server{
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodConnect {
-				s.handleProxy(w, r)
-				return
-			}
-			mux.ServeHTTP(w, r)
-		}),
-	}
+	s.server = &http.Server{Handler: http.HandlerFunc(s.handleProxy)}
 	s.server.SetKeepAlivesEnabled(false)
 
-	// Synchronously bind the listener.
-	ln, err := net.Listen("tcp", "127.0.0.1:"+fmt.Sprintf("%d", s.port))
+	ln, err := net.Listen("tcp", net.JoinHostPort(loopbackHost, strconv.Itoa(s.port)))
 	if err != nil {
 		return fmt.Errorf("failed to bind proxy listener on port %d: %w", s.port, err)
 	}
@@ -328,7 +231,7 @@ func (s *Server) Start() error {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		s.logger.Info(logger.Message(fmt.Sprintf("Starting local HTTP cache proxy on http://127.0.0.1:%d", s.port)))
+		s.logger.Info(logger.Message(fmt.Sprintf("Starting local HTTP cache proxy on http://%s", s.addr())))
 		if err := s.server.Serve(s.ln); err != nil && err != http.ErrServerClosed {
 			s.logger.Error(logger.Message(fmt.Sprintf("Proxy server failed: %v", err)))
 		}
@@ -337,10 +240,10 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Stop shuts down the server.
+// Stop shuts down the server and waits for the serving goroutine to exit.
 func (s *Server) Stop() error {
 	if s.server != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
 		if err := s.server.Shutdown(ctx); err != nil {
 			return fmt.Errorf("proxy server shutdown failed: %w", err)
@@ -353,247 +256,69 @@ func (s *Server) Stop() error {
 	return nil
 }
 
-func (s *Server) handleClear(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var req CacheClearRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	patterns := []string{}
-	if req.Pattern != "" {
-		patterns = append(patterns, req.Pattern)
-	}
-	patterns = append(patterns, req.Patterns...)
-
-	cleared := 0
-	if len(patterns) == 0 || (len(patterns) == 1 && patterns[0] == "*") {
-		cleared = s.store.Clear()
-	} else {
-		s.store.mu.Lock()
-		defer s.store.mu.Unlock()
-
-		entries := []string{}
-		_ = filepath.Walk(s.store.cacheDir, func(path string, info os.FileInfo, err error) error {
-			if err == nil && !info.IsDir() && strings.HasSuffix(info.Name(), ".meta.json") {
-				entries = append(entries, path)
-			}
-			return nil
-		})
-
-		for _, metaPath := range entries {
-			metaBytes, err := os.ReadFile(metaPath)
-			if err != nil {
-				continue
-			}
-			var entry CacheEntry
-			if err := json.Unmarshal(metaBytes, &entry); err != nil {
-				continue
-			}
-
-			matched := false
-			for _, pat := range patterns {
-				if matchGlob(entry.URL, entry.Method, pat) {
-					matched = true
-					break
-				}
-			}
-
-			if matched {
-				key := strings.TrimSuffix(filepath.Base(metaPath), ".meta.json")
-				if s.store.deleteByKey(key) {
-					cleared++
-				}
-			}
-		}
-	}
-
-	resp := CacheClearResult{
-		Cleared: cleared,
-		Message: fmt.Sprintf("Cleared %d cache entries", cleared),
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+// Client returns an HTTP client that sends every request through this proxy.
+// Call it after Start, which is what binds the port.
+func (s *Server) Client() *http.Client {
+	return &http.Client{Transport: &transport{proxyHost: s.addr(), base: http.DefaultTransport}}
 }
 
-func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
-	stats := s.store.GetStats()
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(stats)
+func (s *Server) addr() string {
+	return net.JoinHostPort(loopbackHost, strconv.Itoa(s.port))
 }
 
-func (s *Server) handlePopulate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
+// transport is the client side of the proxy's wire format: it rewrites each
+// request to the proxy with the original absolute URL in the request path.
+type transport struct {
+	proxyHost string
+	base      http.RoundTripper
+}
 
-	var req CachePopulateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+// RoundTrip clones the request, as the RoundTripper contract requires, and
+// carries the target URL in Opaque so its escaped path and query bytes reach the
+// proxy exactly as the caller encoded them.
+func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
+	out := req.Clone(req.Context())
+	out.URL = &url.URL{Scheme: "http", Host: t.proxyHost, Opaque: "/" + req.URL.String()}
+	out.Host = ""
+	return t.base.RoundTrip(out)
+}
 
-	if req.URL == "" {
-		http.Error(w, "Missing required field: url", http.StatusBadRequest)
-		return
+// targetFromRequestURI recovers the absolute target URL from a proxied request
+// path. Only the leading-slash form is accepted; anything else is not a request
+// this proxy knows how to forward.
+func targetFromRequestURI(requestURI string) (string, bool) {
+	target := strings.TrimPrefix(requestURI, "/")
+	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
+		return target, true
 	}
-
-	method := req.Method
-	if method == "" {
-		method = "GET"
-	}
-
-	status := req.Status
-	if status == 0 {
-		status = 200
-	}
-
-	headers := req.Headers
-	if headers == nil {
-		headers = make(map[string]string)
-	}
-
-	var bodyBytes []byte
-	var err error
-	if req.BodyIsBase64 {
-		bodyBytes, err = base64.StdEncoding.DecodeString(req.Body)
-		if err != nil {
-			http.Error(w, "Invalid base64 body: "+err.Error(), http.StatusBadRequest)
-			return
-		}
-	} else {
-		bodyBytes = []byte(req.Body)
-	}
-
-	if err := s.store.Set(method, req.URL, status, headers, bodyBytes, req.TTL); err != nil {
-		http.Error(w, "Failed to cache population: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	resp := CachePopulateResult{
-		Success: true,
-		Key:     s.store.GenerateKey(method, req.URL),
-		URL:     req.URL,
-		Message: fmt.Sprintf("Cached %s %s", method, req.URL),
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+	return "", false
 }
 
 func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
-	targetURLStr := r.RequestURI
-	if unescaped, err := url.PathUnescape(targetURLStr); err == nil {
-		targetURLStr = unescaped
-	}
-
-	if r.Method == http.MethodConnect {
-		host := r.Host
-		if host == "" {
-			host = r.URL.Host
-		}
-		if host == "" {
-			host = r.RequestURI
-		}
-		if !strings.Contains(host, ":") {
-			host = net.JoinHostPort(host, "443")
-		}
-
-		destConn, err := net.DialTimeout("tcp", host, 10*time.Second)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to connect to %s: %v", host, err), http.StatusBadGateway)
-			return
-		}
-
-		hijacker, ok := w.(http.Hijacker)
-		if !ok {
-			_ = destConn.Close()
-			http.Error(w, "Hijacking not supported", http.StatusInternalServerError)
-			return
-		}
-
-		clientConn, _, err := hijacker.Hijack()
-		if err != nil {
-			_ = destConn.Close()
-			http.Error(w, fmt.Sprintf("Hijack failed: %v", err), http.StatusInternalServerError)
-			return
-		}
-
-		_, err = clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
-		if err != nil {
-			_ = clientConn.Close()
-			_ = destConn.Close()
-			return
-		}
-
-		closeConns := func() {
-			_ = clientConn.Close()
-			_ = destConn.Close()
-		}
-		go func() {
-			_, _ = io.Copy(destConn, clientConn)
-			closeConns()
-		}()
-		go func() {
-			_, _ = io.Copy(clientConn, destConn)
-			closeConns()
-		}()
+	targetURLStr, ok := targetFromRequestURI(r.RequestURI)
+	if !ok {
+		http.Error(w, "Bad Request: expected the target URL in the path, as in /https://example.com/path", http.StatusBadRequest)
 		return
-	}
-
-	// Normalize and reconstruct target URL
-	if strings.HasPrefix(targetURLStr, "/https://") {
-		targetURLStr = targetURLStr[1:]
-	} else if strings.HasPrefix(targetURLStr, "/http://") {
-		targetURLStr = targetURLStr[1:]
-	} else if strings.HasPrefix(targetURLStr, "/http:/") {
-		targetURLStr = "http://" + targetURLStr[7:]
-	} else if strings.HasPrefix(targetURLStr, "/https:/") {
-		targetURLStr = "https://" + targetURLStr[8:]
-	} else if strings.HasPrefix(targetURLStr, "/") && !strings.HasPrefix(targetURLStr, "//") {
-		// Relative proxying
-		host := r.Header.Get("Host")
-		if host == "" {
-			host = r.Host
-		}
-		if host == "" {
-			http.Error(w, "Missing Host header", http.StatusBadRequest)
-			return
-		}
-		proto := "http"
-		if r.TLS != nil {
-			proto = "https"
-		}
-		targetURLStr = fmt.Sprintf("%s://%s%s", proto, host, targetURLStr)
 	}
 
 	method := r.Method
 
-	// Check Cache Store
 	if entry, body, err := s.store.Get(method, targetURLStr); err == nil {
-		s.logger.Info(logger.Message(fmt.Sprintf("🟢 [HIT] [%s] %s", method, targetURLStr)))
+		s.logger.Info(logger.Message(fmt.Sprintf("[HIT] [%s] %s", method, targetURLStr)))
 		for k, v := range entry.Headers {
 			if !isSkippedHeader(k) {
 				w.Header().Set(k, v)
 			}
 		}
-		w.Header().Set("X-Dotfiles-Cache", "HIT")
-		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(body)))
+		w.Header().Set(cacheStatusHeader, "HIT")
+		w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 		w.WriteHeader(entry.Status)
 		_, _ = w.Write(body)
 		return
 	}
 
-	s.logger.Info(logger.Message(fmt.Sprintf("🔴 [MISS] [%s] %s", method, targetURLStr)))
+	s.logger.Info(logger.Message(fmt.Sprintf("[MISS] [%s] %s", method, targetURLStr)))
 
-	// Miss - forward request
 	targetURL, err := url.Parse(targetURLStr)
 	if err != nil {
 		http.Error(w, "Invalid target URL: "+err.Error(), http.StatusBadRequest)
@@ -613,10 +338,11 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for k, vv := range r.Header {
-		if strings.ToLower(k) != "host" && strings.ToLower(k) != "connection" {
-			for _, v := range vv {
-				req.Header.Add(k, v)
-			}
+		if isHopHeader(k) {
+			continue
+		}
+		for _, v := range vv {
+			req.Header.Add(k, v)
 		}
 	}
 
@@ -633,7 +359,8 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Cache response if status is 2xx or 3xx
+	// Cache 2xx and 3xx responses regardless of the origin's cache headers; that
+	// is the whole point of a development cache in front of rate-limited APIs.
 	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
 		headers := make(map[string]string)
 		for k, vv := range resp.Header {
@@ -649,62 +376,29 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	w.Header().Set("X-Dotfiles-Cache", "MISS")
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(respBodyBytes)))
+	w.Header().Set(cacheStatusHeader, "MISS")
+	w.Header().Set("Content-Length", strconv.Itoa(len(respBodyBytes)))
 	w.WriteHeader(resp.StatusCode)
 	_, _ = w.Write(respBodyBytes)
 }
 
+// isHopHeader names the request headers that belong to the connection between
+// the client and the proxy, not to the origin. Accept-Encoding is among them:
+// the proxy's own transport negotiates compression and transparently decodes
+// the answer, so the buffered body it caches and relays is the decoded payload.
+// Forwarding the client's offer would make Go leave the body compressed while
+// isSkippedHeader drops the Content-Encoding that described it.
+func isHopHeader(key string) bool {
+	switch strings.ToLower(key) {
+	case "host", "connection", "accept-encoding":
+		return true
+	}
+	return false
+}
+
+// isSkippedHeader drops the framing headers that describe the origin's wire
+// encoding; the proxy re-frames the buffered body itself.
 func isSkippedHeader(key string) bool {
 	lk := strings.ToLower(key)
 	return lk == "transfer-encoding" || lk == "content-encoding" || lk == "content-length"
-}
-
-func matchGlob(urlStr, method, pattern string) bool {
-	if pattern == "*" {
-		return true
-	}
-	if strings.Contains(pattern, ":") && !strings.HasPrefix(pattern, "http") {
-		parts := strings.SplitN(pattern, ":", 2)
-		methodPattern := parts[0]
-		urlPattern := parts[1]
-		if strings.ToUpper(method) != strings.ToUpper(methodPattern) {
-			return false
-		}
-		pattern = urlPattern
-	}
-	if pattern == "*" {
-		return true
-	}
-
-	cleanPat := pattern
-	for len(cleanPat) > 0 && (cleanPat[0] == '*' || cleanPat[0] == '/') {
-		cleanPat = cleanPat[1:]
-	}
-	for len(cleanPat) > 0 && (cleanPat[len(cleanPat)-1] == '*' || cleanPat[len(cleanPat)-1] == '/') {
-		cleanPat = cleanPat[:len(cleanPat)-1]
-	}
-
-	if len(cleanPat) == 0 {
-		return true
-	}
-
-	escapedPart := regexp.QuoteMeta(cleanPat)
-	escapedPart = strings.ReplaceAll(escapedPart, "\\*\\*", ".*")
-	escapedPart = strings.ReplaceAll(escapedPart, "\\*", ".*")
-
-	var regPat string
-	if strings.Contains(cleanPat, ".") {
-		// Compile glob into regex that ensures word boundaries:
-		// (^|://|\.|/)[escapedPart]($|\.|/|:||\?)
-		regPat = fmt.Sprintf(`(^|://|\.|/)%s($|\.|/|:|\?)`, escapedPart)
-	} else {
-		regPat = escapedPart
-	}
-
-	re, err := regexp.Compile(regPat)
-	if err != nil {
-		return strings.Contains(urlStr, pattern)
-	}
-	return re.MatchString(urlStr)
 }

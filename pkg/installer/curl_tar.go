@@ -18,13 +18,14 @@ import (
 )
 
 type CurlTarInstaller struct {
-	log       *logger.Logger
-	runner    exec.CommandRunner
-	fsys      fs.FS
-	dl        *downloader.Downloader
-	extractor *archive.Extractor
-	sysCtx    *SystemContext
-	BinDir    string // Destination directory for binaries
+	log        *logger.Logger
+	runner     exec.CommandRunner
+	fsys       fs.FS
+	dl         *downloader.Downloader
+	extractor  *archive.Extractor
+	sysCtx     *SystemContext
+	httpClient *http.Client // Probes the archive type when the URL does not reveal it
+	BinDir     string       // Destination directory for binaries
 }
 
 func NewCurlTarInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downloader, sysCtx *SystemContext) *CurlTarInstaller {
@@ -67,6 +68,11 @@ func (c *CurlTarInstaller) SetLogger(log *logger.Logger) {
 
 func (c *CurlTarInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
 	ApplyDownloadCacheSettings(c.dl, cacheDir, ttl, enabled)
+}
+
+func (c *CurlTarInstaller) SetHTTPClient(client *http.Client) {
+	c.httpClient = client
+	c.dl.SetHTTPClient(client)
 }
 
 func (c *CurlTarInstaller) SupportsSudo() bool {
@@ -171,7 +177,7 @@ func (c *CurlTarInstaller) Install(ctx context.Context, tool *config.ToolConfig)
 		return nil, fmt.Errorf("creating directory %s: %w", destDir, err)
 	}
 
-	ext := detectArchiveExtension(ctx, url, nil)
+	ext := detectArchiveExtension(ctx, url, c.httpClient)
 	archivePath := filepath.Join(destDir, tool.Name+ext)
 	sha256 := getStringParam(tool.InstallParams, "sha256", "")
 

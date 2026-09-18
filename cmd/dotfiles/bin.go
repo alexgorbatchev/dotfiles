@@ -33,7 +33,7 @@ var binCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("bin", cmd.ErrOrStderr())
 		log.Info("Resolving binary path and configuration...")

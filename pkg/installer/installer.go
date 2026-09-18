@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -395,6 +396,13 @@ type DownloadCacheSetter interface {
 	SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool)
 }
 
+// HTTPClientSetter is implemented by installers that talk HTTP. SetHTTPClient
+// must route both their API calls and their downloads through the client, so
+// that a caller who injects one (the development proxy) captures all traffic.
+type HTTPClientSetter interface {
+	SetHTTPClient(client *http.Client)
+}
+
 // SetFS dynamically binds the orchestrator's context-aware TrackedFileSystem to installer plugins prior to execution.
 func SetFS(inst Installer, fsys fs.FS) {
 	if s, ok := inst.(FSSetter); ok {
@@ -413,6 +421,13 @@ func SetLogger(inst Installer, log *logger.Logger) {
 func SetDownloadCache(inst Installer, cacheDir string, ttl time.Duration, enabled bool) {
 	if s, ok := inst.(DownloadCacheSetter); ok {
 		s.SetDownloadCache(cacheDir, ttl, enabled)
+	}
+}
+
+// SetHTTPClient routes an installer's HTTP traffic through client when the installer performs any.
+func SetHTTPClient(inst Installer, client *http.Client) {
+	if s, ok := inst.(HTTPClientSetter); ok {
+		s.SetHTTPClient(client)
 	}
 }
 

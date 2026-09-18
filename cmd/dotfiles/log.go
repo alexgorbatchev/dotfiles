@@ -42,7 +42,7 @@ var logCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("log", cmd.ErrOrStderr())
 		log.Info("Reading operation history and logs...")

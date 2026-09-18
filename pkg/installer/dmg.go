@@ -73,6 +73,11 @@ func (d *DmgInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enab
 	ApplyDownloadCacheSettings(d.dl, cacheDir, ttl, enabled)
 }
 
+func (d *DmgInstaller) SetHTTPClient(client *http.Client) {
+	d.httpClient = client
+	d.dl.SetHTTPClient(client)
+}
+
 func (d *DmgInstaller) SupportsSudo() bool {
 	return false
 }

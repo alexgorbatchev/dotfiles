@@ -19,7 +19,7 @@ var uninstallCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("uninstall", cmd.ErrOrStderr())
 		services.Orchestrator.SetLogger(log)

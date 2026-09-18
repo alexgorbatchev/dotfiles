@@ -25,11 +25,14 @@ var dashboardCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("dashboard", cmd.ErrOrStderr())
 		log.Info("Starting dashboard server...")
 		server := dashboard.NewServer(log, host, port, services.Registry, services.FS, services.ConfigPath, services.ProjectConfig, services.ToolConfigs, services.Orchestrator)
+		if services.HTTPClient != nil {
+			server.SetHTTPClient(services.HTTPClient)
+		}
 		if err := server.Start(); err != nil {
 			return err
 		}

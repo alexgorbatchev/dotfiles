@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,6 +19,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
+	"github.com/alexgorbatchev/dotfiles/pkg/proxy"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
@@ -35,10 +38,33 @@ type Services struct {
 	// in the package-level default registry, so that tests, which are given mock
 	// installers, never reach the real installers' network endpoints.
 	Installers *installer.Registry
+	// HTTPClient is set only when DEV_PROXY is active. It routes through the
+	// development proxy, and every installer in Installers already uses it; a
+	// command with its own outbound HTTP must use it too when it is non-nil.
+	HTTPClient *http.Client
+
+	devProxy *proxy.Server
+}
+
+// Close releases what BootstrapServices opened: the registry database and the
+// development proxy when one was started. Every command defers it.
+func (s *Services) Close() error {
+	var errs []error
+	if s.DB != nil {
+		if err := s.DB.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("closing registry database: %w", err))
+		}
+	}
+	if s.devProxy != nil {
+		if err := s.devProxy.Stop(); err != nil {
+			errs = append(errs, fmt.Errorf("stopping development proxy: %w", err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // BootstrapServices parses config files and initializes core services.
-func BootstrapServices(ctx context.Context, configPath string) (*Services, error) {
+func BootstrapServices(ctx context.Context, configPath string) (services *Services, err error) {
 	repoRoot := os.Getenv("DOTFILES_REPO_ROOT")
 	if repoRoot == "" {
 		// Find repo root from working directory
@@ -212,6 +238,28 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		orch.SetSymlinkFS(fsys)
 	}
 
+	devProxy, err := startDevProxy(GetLogger("proxy", os.Stderr))
+	if err != nil {
+		_ = sqlDB.Close()
+		return nil, err
+	}
+	defer func() {
+		if err != nil && devProxy != nil {
+			_ = devProxy.Stop()
+		}
+	}()
+	var httpClient *http.Client
+	if devProxy != nil {
+		httpClient = devProxy.Client()
+		for _, name := range instReg.List() {
+			inst, err := instReg.Get(name)
+			if err != nil {
+				return nil, fmt.Errorf("routing installer %q through the development proxy: %w", name, err)
+			}
+			installer.SetHTTPClient(inst, httpClient)
+		}
+	}
+
 	// Map binary dependencies to fully-qualified tool names (e.g., fnm -> curl-script--fnm)
 	for _, tc := range toolConfigs {
 		for idx, dep := range tc.Dependencies {
@@ -251,6 +299,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 			}
 			if len(matchingProviders) > 1 {
 				sort.Strings(matchingProviders)
+				_ = sqlDB.Close()
 				return nil, fmt.Errorf("ambiguous dependency: binary %q is provided by multiple tools: %s", dep, strings.Join(matchingProviders, ", "))
 			} else if len(matchingProviders) == 1 {
 				tc.Dependencies[idx] = matchingProviders[0]
@@ -267,6 +316,8 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		Registry:      reg,
 		Orchestrator:  orch,
 		Installers:    instReg,
+		HTTPClient:    httpClient,
+		devProxy:      devProxy,
 	}, nil
 }
 

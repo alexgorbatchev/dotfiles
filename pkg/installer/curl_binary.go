@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -58,6 +59,10 @@ func (c *CurlBinaryInstaller) SetLogger(log *logger.Logger) {
 
 func (c *CurlBinaryInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
 	ApplyDownloadCacheSettings(c.dl, cacheDir, ttl, enabled)
+}
+
+func (c *CurlBinaryInstaller) SetHTTPClient(client *http.Client) {
+	c.dl.SetHTTPClient(client)
 }
 
 func (c *CurlBinaryInstaller) SupportsSudo() bool {

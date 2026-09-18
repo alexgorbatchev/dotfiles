@@ -26,7 +26,7 @@ Existing files are left untouched unless --force is passed.`,
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		dirs := vm.ResolveToolConfigsDirs(services.FS, services.ProjectConfig, filepath.Dir(services.ConfigPath))
 		if len(dirs) == 0 {

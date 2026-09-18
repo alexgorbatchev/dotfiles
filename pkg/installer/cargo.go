@@ -73,6 +73,11 @@ func (c *CargoInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, en
 	ApplyDownloadCacheSettings(c.dl, cacheDir, ttl, enabled)
 }
 
+func (c *CargoInstaller) SetHTTPClient(client *http.Client) {
+	c.httpClient = client
+	c.dl.SetHTTPClient(client)
+}
+
 func (c *CargoInstaller) SupportsSudo() bool {
 	return false
 }

@@ -90,6 +90,15 @@ func NewDownloader(fsys fs.FS, client *http.Client) *Downloader {
 	}
 }
 
+// SetHTTPClient replaces the client every request goes through. The client is
+// used exactly as given, so the caller owns its timeouts; the development proxy
+// relies on this to route downloads through itself.
+func (d *Downloader) SetHTTPClient(client *http.Client) {
+	if d != nil && client != nil {
+		d.client = client
+	}
+}
+
 func (d *Downloader) SetFS(fsys fs.FS) {
 	if d != nil {
 		d.fsys = fsys

@@ -25,7 +25,7 @@ var generateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("generate", cmd.ErrOrStderr())
 		services.Orchestrator.SetLogger(log)

@@ -48,9 +48,16 @@ Use --check to inspect available updates without downloading or modifying the ex
 			}
 		}
 
-		u := updater.New(updater.Config{
-			BaseURL: baseURL,
-		})
+		cfg := updater.Config{BaseURL: baseURL}
+		devProxy, err := startDevProxy(GetLogger("proxy", cmd.ErrOrStderr()))
+		if err != nil {
+			return err
+		}
+		if devProxy != nil {
+			defer devProxy.Stop()
+			cfg.HTTPClient = devProxy.Client()
+		}
+		u := updater.New(cfg)
 
 		opts := updater.Options{
 			CurrentVersion:  Version,

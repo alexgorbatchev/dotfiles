@@ -16,7 +16,7 @@ var cleanupCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("cleanup", cmd.ErrOrStderr())
 		services.Orchestrator.SetLogger(log)

@@ -26,7 +26,7 @@ func loadToolConfigsForCompletion(cmd *cobra.Command) ([]*config.ToolConfig, err
 	if err != nil {
 		return nil, fmt.Errorf("loading configuration for completion: %w", err)
 	}
-	defer services.DB.Close()
+	defer services.Close()
 	return services.ToolConfigs, nil
 }
 

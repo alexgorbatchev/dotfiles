@@ -115,6 +115,22 @@ type Server struct {
 	broadcaster      *LogBroadcaster
 	githubBaseURL    string
 	githubRawBaseURL string
+	// httpClient fetches remote READMEs; nil means the default client with readmeFetchTimeout.
+	httpClient *http.Client
+}
+
+const readmeFetchTimeout = 10 * time.Second
+
+// SetHTTPClient routes the dashboard's outbound GitHub requests through client.
+func (s *Server) SetHTTPClient(client *http.Client) {
+	s.httpClient = client
+}
+
+func (s *Server) outboundClient() *http.Client {
+	if s.httpClient != nil {
+		return s.httpClient
+	}
+	return &http.Client{Timeout: readmeFetchTimeout}
 }
 
 // NewServer constructs a new dashboard server.

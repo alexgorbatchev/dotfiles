@@ -160,6 +160,11 @@ func (g *GiteaInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, en
 	ApplyDownloadCacheSettings(g.dl, cacheDir, ttl, enabled)
 }
 
+func (g *GiteaInstaller) SetHTTPClient(client *http.Client) {
+	g.httpClient = client
+	g.dl.SetHTTPClient(client)
+}
+
 func (g *GiteaInstaller) SupportsSudo() bool {
 	return false
 }

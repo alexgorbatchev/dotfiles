@@ -28,7 +28,7 @@ var detectConflictsCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("detect-conflicts", cmd.ErrOrStderr())
 		log.Info("Detecting file conflicts...")

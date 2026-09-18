@@ -1,418 +1,497 @@
 package proxy
 
 import (
-	"bytes"
-	"encoding/json"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
-func TestProxyServer(t *testing.T) {
-	// Create temp cache dir
-	tempDir, err := os.MkdirTemp("", "proxy-test-")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
+const testTTLMillis = 5000
+
+func newTestServer(t *testing.T) *Server {
+	t.Helper()
+	log := logger.New(logger.Config{Name: "test-proxy", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	srv := NewServer(log, 0, t.TempDir(), testTTLMillis)
+	if err := srv.Start(); err != nil {
+		t.Fatalf("starting proxy: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
-
-	// Create logger
-	log := logger.New(logger.Config{
-		Name:   "test-proxy",
-		Level:  logger.LogLevelQuiet,
-		Writer: io.Discard,
+	t.Cleanup(func() {
+		if err := srv.Stop(); err != nil {
+			t.Errorf("stopping proxy: %v", err)
+		}
 	})
+	return srv
+}
 
-	// Spin up mock backend/target server
-	hitCount := 0
-	targetServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hitCount++
+// upstreamRequest is what the origin saw for one request.
+type upstreamRequest struct {
+	Method     string
+	RequestURI string
+	Header     string
+	Body       string
+}
+
+// newUpstream is an origin that records every request it serves and answers
+// with a body that changes per hit, so a cached answer is distinguishable from
+// a fresh one.
+func newUpstream(t *testing.T) (*httptest.Server, *atomic.Int32, func() []upstreamRequest) {
+	t.Helper()
+	var hits atomic.Int32
+	var mu sync.Mutex
+	var seen []upstreamRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := hits.Add(1)
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		seen = append(seen, upstreamRequest{Method: r.Method, RequestURI: r.RequestURI, Header: r.Header.Get("X-Test"), Body: string(body)})
+		mu.Unlock()
 		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(fmt.Sprintf("backend response %d", hitCount)))
+		w.Header().Set("X-Origin", "yes")
+		fmt.Fprintf(w, "origin response %d", n)
 	}))
-	defer targetServer.Close()
-
-	// Spin up caching proxy server
-	proxy := NewServer(log, 0, tempDir, 5000)
-	if err := proxy.Start(); err != nil {
-		t.Fatalf("failed to start proxy: %v", err)
+	t.Cleanup(server.Close)
+	return server, &hits, func() []upstreamRequest {
+		mu.Lock()
+		defer mu.Unlock()
+		return append([]upstreamRequest(nil), seen...)
 	}
-	defer proxy.Stop()
+}
 
-	proxyURL := fmt.Sprintf("http://127.0.0.1:%d", proxy.Port())
-
-	// Miss test
-	reqURL := fmt.Sprintf("%s/%s", proxyURL, targetServer.URL)
-	resp, err := http.Get(reqURL)
-	if err != nil {
-		t.Fatalf("failed to get via proxy: %v", err)
-	}
+func readBody(t *testing.T, resp *http.Response) string {
+	t.Helper()
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected StatusOK, got %d", resp.StatusCode)
-	}
-
-	body, _ := io.ReadAll(resp.Body)
-	if string(body) != "backend response 1" {
-		t.Errorf("expected 'backend response 1', got '%s'", string(body))
-	}
-
-	cacheHeader := resp.Header.Get("X-Dotfiles-Cache")
-	if cacheHeader != "MISS" {
-		t.Errorf("expected cache status MISS, got %s", cacheHeader)
-	}
-
-	// Hit test
-	resp2, err := http.Get(reqURL)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatalf("failed to get via proxy second time: %v", err)
+		t.Fatalf("reading body: %v", err)
 	}
-	defer resp2.Body.Close()
+	return string(body)
+}
 
-	body2, _ := io.ReadAll(resp2.Body)
-	if string(body2) != "backend response 1" {
-		t.Errorf("expected hit of 'backend response 1', got '%s'", string(body2))
-	}
+func TestServerCachesUpstreamResponses(t *testing.T) {
+	upstream, hits, _ := newUpstream(t)
+	srv := newTestServer(t)
+	viaProxy := fmt.Sprintf("http://127.0.0.1:%d/%s/data", srv.Port(), upstream.URL)
 
-	cacheHeader2 := resp2.Header.Get("X-Dotfiles-Cache")
-	if cacheHeader2 != "HIT" {
-		t.Errorf("expected cache status HIT, got %s", cacheHeader2)
-	}
-
-	// Backend should have only been hit once
-	if hitCount != 1 {
-		t.Errorf("expected backend hit count 1, got %d", hitCount)
-	}
-
-	// Stats test
-	statsResp, err := http.Get(proxyURL + "/cache/stats")
+	first, err := http.Get(viaProxy)
 	if err != nil {
-		t.Fatalf("failed to get stats: %v", err)
+		t.Fatalf("first request: %v", err)
 	}
-	defer statsResp.Body.Close()
-
-	var stats Stats
-	_ = json.NewDecoder(statsResp.Body).Decode(&stats)
-	if stats.Entries != 1 {
-		t.Errorf("expected 1 cache entry, got %d", stats.Entries)
+	if got := readBody(t, first); got != "origin response 1" {
+		t.Fatalf("first body = %q", got)
+	}
+	if first.Header.Get("X-Dotfiles-Cache") != "MISS" {
+		t.Errorf("first X-Dotfiles-Cache = %q, want MISS", first.Header.Get("X-Dotfiles-Cache"))
+	}
+	if first.Header.Get("X-Origin") != "yes" {
+		t.Errorf("origin headers were not relayed: %v", first.Header)
 	}
 
-	// Clear test
-	clearPayload, _ := json.Marshal(CacheClearRequest{Pattern: "*"})
-	clearResp, err := http.Post(proxyURL+"/cache/clear", "application/json", bytes.NewReader(clearPayload))
+	second, err := http.Get(viaProxy)
 	if err != nil {
-		t.Fatalf("failed to clear cache: %v", err)
+		t.Fatalf("second request: %v", err)
 	}
-	defer clearResp.Body.Close()
-
-	var clearRes CacheClearResult
-	_ = json.NewDecoder(clearResp.Body).Decode(&clearRes)
-	if clearRes.Cleared != 1 {
-		t.Errorf("expected cleared count 1, got %d", clearRes.Cleared)
+	if got := readBody(t, second); got != "origin response 1" {
+		t.Fatalf("second body = %q, want the cached first response", got)
 	}
-
-	// Recheck stats
-	statsResp2, _ := http.Get(proxyURL + "/cache/stats")
-	_ = json.NewDecoder(statsResp2.Body).Decode(&stats)
-	statsResp2.Body.Close()
-	if stats.Entries != 0 {
-		t.Errorf("expected 0 entries after clear, got %d", stats.Entries)
+	if second.Header.Get("X-Dotfiles-Cache") != "HIT" {
+		t.Errorf("second X-Dotfiles-Cache = %q, want HIT", second.Header.Get("X-Dotfiles-Cache"))
 	}
-
-	// Populate test
-	popPayload, _ := json.Marshal(CachePopulateRequest{
-		URL:    "http://example.com/test",
-		Method: "GET",
-		Body:   "populated-content",
-	})
-	popResp, err := http.Post(proxyURL+"/cache/populate", "application/json", bytes.NewReader(popPayload))
-	if err != nil {
-		t.Fatalf("failed to populate cache: %v", err)
+	if second.Header.Get("X-Origin") != "yes" {
+		t.Errorf("cached origin headers were not replayed: %v", second.Header)
 	}
-	defer popResp.Body.Close()
-
-	var popRes CachePopulateResult
-	_ = json.NewDecoder(popResp.Body).Decode(&popRes)
-	if !popRes.Success {
-		t.Errorf("expected populate success")
-	}
-
-	// Try getting the populated URL
-	popGetResp, err := http.Get(proxyURL + "/http://example.com/test")
-	if err != nil {
-		t.Fatalf("failed to get populated url: %v", err)
-	}
-	defer popGetResp.Body.Close()
-
-	popGetBody, _ := io.ReadAll(popGetResp.Body)
-	if string(popGetBody) != "populated-content" {
-		t.Errorf("expected 'populated-content', got '%s'", string(popGetBody))
-	}
-	if popGetResp.Header.Get("X-Dotfiles-Cache") != "HIT" {
-		t.Errorf("expected populated response to be a HIT")
+	if hits.Load() != 1 {
+		t.Errorf("origin hits = %d, want 1", hits.Load())
 	}
 }
 
-func TestMatchGlob(t *testing.T) {
-	tests := []struct {
-		url     string
-		method  string
-		pattern string
-		want    bool
-	}{
-		{"http://example.com/foo", "GET", "*", true},
-		{"http://example.com/foo", "GET", "GET:*", true},
-		{"http://example.com/foo", "POST", "GET:*", false},
-		{"http://example.com/foo", "GET", "foo", true},
+// TestClientRoutesThroughProxy is the client side of the proxy: an *http.Client
+// from Server.Client sends ordinary requests for the origin's URL, and they
+// arrive at the origin exactly as issued, via the proxy's cache.
+func TestClientRoutesThroughProxy(t *testing.T) {
+	upstream, hits, seen := newUpstream(t)
+	srv := newTestServer(t)
+	client := srv.Client()
+
+	// Escaped path and query bytes must survive the trip untouched, because
+	// the origin's routing (and the cache key) depends on them.
+	target := upstream.URL + "/repos/a%20b/releases?q=x%26y&per_page=1"
+	send := func() *http.Response {
+		req, err := http.NewRequest(http.MethodPost, target, strings.NewReader("payload"))
+		if err != nil {
+			t.Fatalf("building request: %v", err)
+		}
+		req.Header.Set("X-Test", "header-value")
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("request through proxy client: %v", err)
+		}
+		return resp
 	}
 
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s-%s-%s", tt.url, tt.method, tt.pattern), func(t *testing.T) {
-			got := matchGlob(tt.url, tt.method, tt.pattern)
-			if got != tt.want {
-				t.Errorf("matchGlob(%q, %q, %q) = %v, want %v", tt.url, tt.method, tt.pattern, got, tt.want)
-			}
-		})
+	first := send()
+	if got := readBody(t, first); got != "origin response 1" {
+		t.Fatalf("first body = %q", got)
+	}
+	if first.Header.Get("X-Dotfiles-Cache") != "MISS" {
+		t.Errorf("first X-Dotfiles-Cache = %q, want MISS", first.Header.Get("X-Dotfiles-Cache"))
+	}
+
+	second := send()
+	if got := readBody(t, second); got != "origin response 1" {
+		t.Fatalf("second body = %q, want the cached first response", got)
+	}
+	if second.Header.Get("X-Dotfiles-Cache") != "HIT" {
+		t.Errorf("second X-Dotfiles-Cache = %q, want HIT", second.Header.Get("X-Dotfiles-Cache"))
+	}
+
+	if hits.Load() != 1 {
+		t.Fatalf("origin hits = %d, want 1", hits.Load())
+	}
+	want := upstreamRequest{
+		Method:     http.MethodPost,
+		RequestURI: "/repos/a%20b/releases?q=x%26y&per_page=1",
+		Header:     "header-value",
+		Body:       "payload",
+	}
+	if got := seen(); len(got) != 1 || got[0] != want {
+		t.Errorf("origin saw %+v, want %+v", got, want)
 	}
 }
 
-func TestProxyGet_Concurrency(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "proxy-concurrency-test-")
+func TestClientDoesNotMutateTheCallersRequest(t *testing.T) {
+	upstream, _, _ := newUpstream(t)
+	srv := newTestServer(t)
+
+	target := upstream.URL + "/keep"
+	req, err := http.NewRequest(http.MethodGet, target, nil)
 	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
+		t.Fatalf("building request: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
-
-	store := NewCacheStore(tempDir, 1000)
-
-	// Set an expired entry (TTL = 1ms, then sleep)
-	targetURL := "http://example.com/expired"
-	err = store.Set("GET", targetURL, 200, map[string]string{"Content-Type": "text/plain"}, []byte("expired-content"), 1)
+	resp, err := srv.Client().Do(req)
 	if err != nil {
-		t.Fatalf("failed to set cache entry: %v", err)
+		t.Fatalf("request: %v", err)
 	}
+	readBody(t, resp)
+	if req.URL.String() != target {
+		t.Errorf("caller's URL was rewritten to %q", req.URL.String())
+	}
+}
 
-	time.Sleep(10 * time.Millisecond)
+func TestClientConcurrentRequestsShareOneOriginFetch(t *testing.T) {
+	// The origin is slow so every worker is in flight at once; the cache must
+	// still end up with one entry and every worker must get a full response.
+	var hits atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		time.Sleep(20 * time.Millisecond)
+		fmt.Fprint(w, "slow-origin")
+	}))
+	t.Cleanup(upstream.Close)
+	srv := newTestServer(t)
+	client := srv.Client()
 
-	const numGoroutines = 100
+	const workers = 8
 	var wg sync.WaitGroup
-	startCh := make(chan struct{})
-
-	for i := 0; i < numGoroutines; i++ {
+	errs := make(chan error, workers)
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			<-startCh
-			_, _, _ = store.Get("GET", targetURL)
+			resp, err := client.Get(upstream.URL + "/concurrent")
+			if err != nil {
+				errs <- err
+				return
+			}
+			defer resp.Body.Close()
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				errs <- err
+				return
+			}
+			if string(body) != "slow-origin" {
+				errs <- fmt.Errorf("body = %q", body)
+			}
 		}()
 	}
-
-	// Release all goroutines at once to hit Get() simultaneously
-	close(startCh)
 	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Error(err)
+	}
+	if hits.Load() < 1 || hits.Load() > workers {
+		t.Errorf("origin hits = %d, want between 1 and %d", hits.Load(), workers)
+	}
 
-	// Assert that we don't crash, deadlock, and that the item is deleted safely
-	stats := store.GetStats()
-	if stats.Entries != 0 {
-		t.Errorf("expected 0 cache entries after expiration sweep, got %d", stats.Entries)
+	resp, err := client.Get(upstream.URL + "/concurrent")
+	if err != nil {
+		t.Fatalf("follow-up request: %v", err)
+	}
+	readBody(t, resp)
+	if resp.Header.Get("X-Dotfiles-Cache") != "HIT" {
+		t.Errorf("follow-up X-Dotfiles-Cache = %q, want HIT", resp.Header.Get("X-Dotfiles-Cache"))
 	}
 }
 
-func TestMatchGlob_WordBoundaries(t *testing.T) {
-	tests := []struct {
-		url     string
-		method  string
-		pattern string
-		want    bool
-	}{
-		{"http://github.com/foo", "GET", "github.com", true},
-		{"https://github.com/bar", "GET", "github.com", true},
-		{"http://notgithub.com/foo", "GET", "github.com", false},
-		{"http://mygithub.com/foo", "GET", "github.com", false},
-		{"http://sub.github.com/foo", "GET", "github.com", true},
-		{"http://github.com/foo", "GET", "**github.com**", true},
-		{"http://notgithub.com/foo", "GET", "**github.com**", false},
-		{"http://github.com/foo", "GET", "github.com/foo", true},
-		{"http://notgithub.com/foo", "GET", "github.com/foo", false},
-	}
+// TestServerDeliversDecodedBodies pins content negotiation to the proxy: Go
+// clients advertise gzip, GitHub answers with it, and the buffered body the
+// proxy caches and relays must be the decoded payload, not compressed bytes
+// with their Content-Encoding stripped.
+func TestServerDeliversDecodedBodies(t *testing.T) {
+	const payload = `{"tag_name":"v1.2.3"}`
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			t.Errorf("origin did not see a gzip offer: %q", r.Header.Get("Accept-Encoding"))
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Content-Type", "application/json")
+		gz := gzip.NewWriter(w)
+		_, _ = gz.Write([]byte(payload))
+		_ = gz.Close()
+	}))
+	t.Cleanup(upstream.Close)
+	srv := newTestServer(t)
+	client := srv.Client()
 
+	for _, want := range []string{"MISS", "HIT"} {
+		resp, err := client.Get(upstream.URL + "/releases/latest")
+		if err != nil {
+			t.Fatalf("request: %v", err)
+		}
+		body := readBody(t, resp)
+		if resp.Header.Get("X-Dotfiles-Cache") != want {
+			t.Errorf("X-Dotfiles-Cache = %q, want %s", resp.Header.Get("X-Dotfiles-Cache"), want)
+		}
+		if body != payload {
+			t.Errorf("%s body = %q, want the decoded payload %q", want, body, payload)
+		}
+		if resp.Header.Get("Content-Encoding") != "" {
+			t.Errorf("%s response still claims Content-Encoding %q", want, resp.Header.Get("Content-Encoding"))
+		}
+	}
+}
+
+func TestHandleProxyErrorResponses(t *testing.T) {
+	srv := newTestServer(t)
+	base := fmt.Sprintf("http://127.0.0.1:%d", srv.Port())
+
+	closed := httptest.NewServer(http.NotFoundHandler())
+	closedURL := closed.URL
+	closed.Close()
+
+	tests := []struct {
+		name       string
+		requestURI string
+		wantStatus int
+	}{
+		{"relative path is not a target", "/relative/path", http.StatusBadRequest},
+		{"double slash is not a target", "//http://example.com", http.StatusBadRequest},
+		{"unparseable target", "/http://[::1]:namedport", http.StatusBadRequest},
+		{"unreachable origin", "/" + closedURL, http.StatusBadGateway},
+	}
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s-%s-%s", tt.url, tt.method, tt.pattern), func(t *testing.T) {
-			got := matchGlob(tt.url, tt.method, tt.pattern)
-			if got != tt.want {
-				t.Errorf("matchGlob(%q, %q, %q) = %v, want %v", tt.url, tt.method, tt.pattern, got, tt.want)
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := http.Get(base + tt.requestURI)
+			if err != nil {
+				t.Fatalf("request: %v", err)
+			}
+			readBody(t, resp)
+			if resp.StatusCode != tt.wantStatus {
+				t.Errorf("status = %d, want %d", resp.StatusCode, tt.wantStatus)
 			}
 		})
 	}
 }
 
-func TestProxyServer_ClearGlob_WordBoundaries(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "proxy-clear-test-")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
+func TestServerDoesNotCacheErrorResponses(t *testing.T) {
+	var hits atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		http.Error(w, "not found", http.StatusNotFound)
+	}))
+	t.Cleanup(upstream.Close)
+	srv := newTestServer(t)
+	client := srv.Client()
+
+	for range 2 {
+		resp, err := client.Get(upstream.URL + "/missing")
+		if err != nil {
+			t.Fatalf("request: %v", err)
+		}
+		readBody(t, resp)
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("status = %d, want 404", resp.StatusCode)
+		}
 	}
-	defer os.RemoveAll(tempDir)
-
-	log := logger.New(logger.Config{
-		Name:   "test-proxy-clear",
-		Level:  logger.LogLevelQuiet,
-		Writer: io.Discard,
-	})
-
-	proxy := NewServer(log, 0, tempDir, 5000)
-	if err := proxy.Start(); err != nil {
-		t.Fatalf("failed to start proxy: %v", err)
+	if hits.Load() != 2 {
+		t.Errorf("origin hits = %d, want 2 (404 must not be cached)", hits.Load())
 	}
-	defer proxy.Stop()
-
-	proxyURL := fmt.Sprintf("http://127.0.0.1:%d", proxy.Port())
-
-	// Populate github.com
-	popPayload1, _ := json.Marshal(CachePopulateRequest{
-		URL:    "http://github.com/foo",
-		Method: "GET",
-		Body:   "github-content",
-	})
-	_, err = http.Post(proxyURL+"/cache/populate", "application/json", bytes.NewReader(popPayload1))
-	if err != nil {
-		t.Fatalf("failed to populate github: %v", err)
-	}
-
-	// Populate notgithub.com
-	popPayload2, _ := json.Marshal(CachePopulateRequest{
-		URL:    "http://notgithub.com/bar",
-		Method: "GET",
-		Body:   "notgithub-content",
-	})
-	_, err = http.Post(proxyURL+"/cache/populate", "application/json", bytes.NewReader(popPayload2))
-	if err != nil {
-		t.Fatalf("failed to populate notgithub: %v", err)
-	}
-
-	// Clear pattern "github.com"
-	clearPayload, _ := json.Marshal(CacheClearRequest{Pattern: "github.com"})
-	clearResp, err := http.Post(proxyURL+"/cache/clear", "application/json", bytes.NewReader(clearPayload))
-	if err != nil {
-		t.Fatalf("failed to clear cache: %v", err)
-	}
-	defer clearResp.Body.Close()
-
-	var clearRes CacheClearResult
-	_ = json.NewDecoder(clearResp.Body).Decode(&clearRes)
-	if clearRes.Cleared != 1 {
-		t.Errorf("expected 1 cleared entry, got %d", clearRes.Cleared)
-	}
-
-	// Verify stats
-	statsResp, _ := http.Get(proxyURL + "/cache/stats")
-	var stats Stats
-	_ = json.NewDecoder(statsResp.Body).Decode(&stats)
-	statsResp.Body.Close()
-	if stats.Entries != 1 {
-		t.Errorf("expected 1 entry left, got %d", stats.Entries)
-	}
-
-	// Verify notgithub.com is still a HIT
-	resp, err := http.Get(proxyURL + "/http://notgithub.com/bar")
-	if err != nil {
-		t.Fatalf("failed to check notgithub.com: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.Header.Get("X-Dotfiles-Cache") != "HIT" {
-		t.Errorf("expected notgithub.com to be a HIT, got %s", resp.Header.Get("X-Dotfiles-Cache"))
+	if _, _, err := srv.store.Get(http.MethodGet, upstream.URL+"/missing"); err == nil {
+		t.Error("404 response was written to the cache store")
 	}
 }
 
-func TestProxyServer_ConnectTunneling(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "proxy-connect-test-")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	log := logger.New(logger.Config{
-		Name:   "test-proxy-connect",
-		Level:  logger.LogLevelQuiet,
-		Writer: io.Discard,
+func TestCacheStoreTTL(t *testing.T) {
+	t.Run("non-positive TTL falls back to the default", func(t *testing.T) {
+		store := NewCacheStore(t.TempDir(), 0)
+		if store.defaultTTL <= 0 {
+			t.Fatalf("defaultTTL = %d, want positive", store.defaultTTL)
+		}
+		target := "http://example.com/default-ttl"
+		if err := store.Set(http.MethodGet, target, 200, nil, []byte("data"), 0); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		entry, _, err := store.Get(http.MethodGet, target)
+		if err != nil {
+			t.Fatalf("Get: %v", err)
+		}
+		if entry.TTL != store.defaultTTL {
+			t.Errorf("entry TTL = %d, want default %d", entry.TTL, store.defaultTTL)
+		}
 	})
 
-	// Target TCP server that responds to raw messages
-	targetListener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to start target listener: %v", err)
-	}
-	defer targetListener.Close()
+	t.Run("expired entries are evicted on read", func(t *testing.T) {
+		store := NewCacheStore(t.TempDir(), testTTLMillis)
+		target := "http://example.com/expires"
+		if err := store.Set(http.MethodGet, target, 200, nil, []byte("data"), 1); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		time.Sleep(5 * time.Millisecond)
+		if _, _, err := store.Get(http.MethodGet, target); err == nil {
+			t.Fatal("Get returned an expired entry")
+		}
+		metaPath, bodyPath := store.getPaths(store.GenerateKey(http.MethodGet, target))
+		for _, p := range []string{metaPath, bodyPath} {
+			if _, err := os.Stat(p); !os.IsNotExist(err) {
+				t.Errorf("%s still exists after expiry (err=%v)", filepath.Base(p), err)
+			}
+		}
+	})
+}
 
-	go func() {
-		conn, err := targetListener.Accept()
+func TestCacheStoreReadErrors(t *testing.T) {
+	store := NewCacheStore(t.TempDir(), testTTLMillis)
+
+	t.Run("missing entry", func(t *testing.T) {
+		if _, _, err := store.Get(http.MethodGet, "http://example.com/never-set"); err == nil {
+			t.Error("expected an error for a missing entry")
+		}
+	})
+
+	t.Run("corrupt metadata", func(t *testing.T) {
+		target := "http://example.com/corrupt"
+		metaPath, bodyPath := store.getPaths(store.GenerateKey(http.MethodGet, target))
+		if err := os.MkdirAll(filepath.Dir(metaPath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		_ = os.WriteFile(metaPath, []byte("{invalid-json"), 0o644)
+		_ = os.WriteFile(bodyPath, []byte("body"), 0o644)
+		if _, _, err := store.Get(http.MethodGet, target); err == nil {
+			t.Error("expected an error for corrupt metadata")
+		}
+	})
+
+	t.Run("missing body", func(t *testing.T) {
+		target := "http://example.com/no-body"
+		if err := store.Set(http.MethodGet, target, 200, nil, []byte("body"), 0); err != nil {
+			t.Fatal(err)
+		}
+		_, bodyPath := store.getPaths(store.GenerateKey(http.MethodGet, target))
+		_ = os.Remove(bodyPath)
+		if _, _, err := store.Get(http.MethodGet, target); err == nil {
+			t.Error("expected an error when the body file is missing")
+		}
+	})
+}
+
+func TestCacheStoreWriteErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(t *testing.T) *CacheStore
+	}{
+		{"cache dir blocked by a file", func(t *testing.T) *CacheStore {
+			blocker := filepath.Join(t.TempDir(), "file-not-dir")
+			_ = os.WriteFile(blocker, []byte("file"), 0o644)
+			return NewCacheStore(blocker, testTTLMillis)
+		}},
+		{"metadata path is a directory", func(t *testing.T) *CacheStore {
+			store := NewCacheStore(t.TempDir(), testTTLMillis)
+			metaPath, _ := store.getPaths(store.GenerateKey(http.MethodGet, "http://example.com/blocked"))
+			_ = os.MkdirAll(metaPath, 0o755)
+			return store
+		}},
+		{"body path is a directory", func(t *testing.T) *CacheStore {
+			store := NewCacheStore(t.TempDir(), testTTLMillis)
+			_, bodyPath := store.getPaths(store.GenerateKey(http.MethodGet, "http://example.com/blocked"))
+			_ = os.MkdirAll(bodyPath, 0o755)
+			return store
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := tt.setup(t)
+			if err := store.Set(http.MethodGet, "http://example.com/blocked", 200, nil, []byte("data"), 0); err == nil {
+				t.Error("expected Set to fail")
+			}
+		})
+	}
+}
+
+func TestServerLifecycle(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+
+	t.Run("start fails on a bound port", func(t *testing.T) {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
-			return
+			t.Fatal(err)
 		}
-		defer conn.Close()
-		buf := make([]byte, 1024)
-		n, err := conn.Read(buf)
-		if err != nil {
-			return
+		defer ln.Close()
+		srv := NewServer(log, ln.Addr().(*net.TCPAddr).Port, t.TempDir(), testTTLMillis)
+		if err := srv.Start(); err == nil {
+			_ = srv.Stop()
+			t.Fatal("expected Start to fail on an already bound port")
 		}
-		if string(buf[:n]) == "PING" {
-			_, _ = conn.Write([]byte("PONG"))
+	})
+
+	t.Run("stop is idempotent and safe before start", func(t *testing.T) {
+		srv := NewServer(log, 0, t.TempDir(), testTTLMillis)
+		if err := srv.Stop(); err != nil {
+			t.Errorf("Stop before Start: %v", err)
 		}
-	}()
+		if err := srv.Start(); err != nil {
+			t.Fatal(err)
+		}
+		if err := srv.Stop(); err != nil {
+			t.Errorf("first Stop: %v", err)
+		}
+		if err := srv.Stop(); err != nil {
+			t.Errorf("second Stop: %v", err)
+		}
+	})
 
-	proxy := NewServer(log, 0, tempDir, 5000)
-	if err := proxy.Start(); err != nil {
-		t.Fatalf("failed to start proxy: %v", err)
-	}
-	defer proxy.Stop()
-
-	// Dial proxy server
-	proxyConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", proxy.Port()))
-	if err != nil {
-		t.Fatalf("failed to dial proxy: %v", err)
-	}
-	defer proxyConn.Close()
-
-	// Send CONNECT request to proxy
-	targetAddr := targetListener.Addr().String()
-	reqStr := fmt.Sprintf("CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", targetAddr, targetAddr)
-	_, err = proxyConn.Write([]byte(reqStr))
-	if err != nil {
-		t.Fatalf("failed to write CONNECT request: %v", err)
-	}
-
-	// Read HTTP 200 response from proxy
-	respBuf := make([]byte, 1024)
-	n, err := proxyConn.Read(respBuf)
-	if err != nil {
-		t.Fatalf("failed to read CONNECT response: %v", err)
-	}
-	respStr := string(respBuf[:n])
-	if !strings.Contains(respStr, "200 Connection Established") {
-		t.Fatalf("expected 200 Connection Established, got %q", respStr)
-	}
-
-	// Send raw payload through tunnel
-	_, err = proxyConn.Write([]byte("PING"))
-	if err != nil {
-		t.Fatalf("failed to write PING: %v", err)
-	}
-
-	n, err = proxyConn.Read(respBuf)
-	if err != nil {
-		t.Fatalf("failed to read PONG: %v", err)
-	}
-	if string(respBuf[:n]) != "PONG" {
-		t.Fatalf("expected PONG, got %q", string(respBuf[:n]))
-	}
+	t.Run("stop releases the port", func(t *testing.T) {
+		srv := NewServer(log, 0, t.TempDir(), testTTLMillis)
+		if err := srv.Start(); err != nil {
+			t.Fatal(err)
+		}
+		addr := fmt.Sprintf("127.0.0.1:%d", srv.Port())
+		if err := srv.Stop(); err != nil {
+			t.Fatal(err)
+		}
+		if conn, err := net.DialTimeout("tcp", addr, 200*time.Millisecond); err == nil {
+			_ = conn.Close()
+			t.Fatal("port still accepts connections after Stop")
+		}
+	})
 }

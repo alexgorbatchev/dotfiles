@@ -474,7 +474,7 @@ func getRepoFromToolConfig(tc *config.ToolConfig) string {
 }
 
 func (s *Server) fetchRemoteReadme(ctx context.Context, repo string) (string, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := s.outboundClient()
 
 	apiBase := s.githubBaseURL
 	if apiBase == "" {

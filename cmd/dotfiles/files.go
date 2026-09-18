@@ -54,7 +54,7 @@ var filesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("files", cmd.ErrOrStderr())
 		log.Info("Inspecting managed files...")

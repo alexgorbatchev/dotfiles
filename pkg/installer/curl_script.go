@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -60,6 +61,10 @@ func (c *CurlScriptInstaller) SetLogger(log *logger.Logger) {
 
 func (c *CurlScriptInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
 	ApplyDownloadCacheSettings(c.dl, cacheDir, ttl, enabled)
+}
+
+func (c *CurlScriptInstaller) SetHTTPClient(client *http.Client) {
+	c.dl.SetHTTPClient(client)
 }
 
 func (c *CurlScriptInstaller) SupportsSudo() bool {

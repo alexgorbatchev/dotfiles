@@ -81,7 +81,7 @@ When run without arguments, checks all installed tools for updates and installs 
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("update", cmd.ErrOrStderr())
 		services.Orchestrator.SetLogger(log)

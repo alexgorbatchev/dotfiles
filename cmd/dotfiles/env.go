@@ -50,7 +50,7 @@ var envCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		targetDir := services.ProjectConfig.Paths.TargetDir
 		fmt.Fprintf(cmd.OutOrStdout(), "export PATH=\"%s:$PATH\"\n", targetDir)
@@ -68,7 +68,7 @@ var envCreateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("env", cmd.ErrOrStderr())
 		log.Info("Creating virtual environment...")
@@ -105,7 +105,7 @@ var envDeleteCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		log := GetLogger("env", cmd.ErrOrStderr())
 

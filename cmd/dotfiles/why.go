@@ -23,7 +23,7 @@ var whyCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("bootstrap services: %w", err)
 		}
-		defer services.DB.Close()
+		defer services.Close()
 
 		targetTool := config.FindTool(services.ToolConfigs, query)
 		if targetTool == nil || targetTool.ConfigFilePath == "" {

@@ -73,6 +73,11 @@ func (p *PkgInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enab
 	ApplyDownloadCacheSettings(p.dl, cacheDir, ttl, enabled)
 }
 
+func (p *PkgInstaller) SetHTTPClient(client *http.Client) {
+	p.httpClient = client
+	p.dl.SetHTTPClient(client)
+}
+
 func (p *PkgInstaller) SupportsSudo() bool {
 	return true
 }
