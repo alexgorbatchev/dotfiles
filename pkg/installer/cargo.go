@@ -44,16 +44,21 @@ type CargoInstaller struct {
 	BinDir       string // Optional destination directory
 	BaseURL      string // Override for testing quickinstall and GitHub release downloads
 	CratesIOURL  string // Override for testing the crates.io API
-	GitHubAPIURL string // Override for testing the GitHub releases API
+	GitHubAPIURL string // GitHub API root; empty selects api.github.com
 	GitHubRawURL string // Override for testing raw Cargo.toml fetches
-	// GitHub holds the project configuration's github.token and github.userAgent,
-	// which apply when a crate's version or binary comes from a GitHub release.
+	// GitHub holds the project configuration's github section, which applies when a
+	// crate's version or binary comes from a GitHub release.
 	GitHub GitHubSettings
 }
 
-// SetGitHubSettings applies the project configuration's github section.
+// SetGitHubSettings applies the project configuration's github section. The host
+// governs the release API only: the hosts a crate's archive is downloaded from are
+// the cargo section's own githubRelease and githubRaw settings.
 func (c *CargoInstaller) SetGitHubSettings(settings GitHubSettings) {
 	c.GitHub = settings
+	if settings.Host != "" {
+		c.GitHubAPIURL = settings.Host
+	}
 }
 
 // cargoVersion is a resolved crate version. tag is set when a GitHub release

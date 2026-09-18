@@ -15,6 +15,7 @@ import (
 
 func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, projCfg *config.ProjectConfig) {
 	installer.SetGitHubSettings(inst, installer.GitHubSettings{
+		Host:         projCfg.Github.Host,
 		Token:        projCfg.Github.Token,
 		UserAgent:    projCfg.Github.UserAgent,
 		CacheEnabled: projCfg.Github.Cache.IsEnabled(),
@@ -23,9 +24,6 @@ func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, p
 	switch instInstance := inst.(type) {
 	case *installer.GitHubInstaller:
 		instInstance.BinDir = toolDestDir
-		if projCfg.Github.Host != "" {
-			instInstance.BaseURL = projCfg.Github.Host
-		}
 		if projCfg.Paths.GeneratedDir != "" {
 			instInstance.CacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "github-api")
 		}

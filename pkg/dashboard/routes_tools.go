@@ -749,19 +749,14 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 
 	if targetTool.InstallationMethod != "" {
 		if inst, err := installer.Get(targetTool.InstallationMethod); err == nil {
-			toolDestDir := filepath.Join(s.projectConfig.Paths.BinariesDir, targetTool.Name, "current")
+			// Only the update check runs here; the install directory is set by the
+			// orchestrator when it installs the release this picks.
 			installer.SetGitHubSettings(inst, installer.GitHubSettings{
+				Host:         s.projectConfig.Github.Host,
 				Token:        s.projectConfig.Github.Token,
 				UserAgent:    s.projectConfig.Github.UserAgent,
 				CacheEnabled: s.projectConfig.Github.Cache.IsEnabled(),
 			})
-			switch instInstance := inst.(type) {
-			case *installer.GitHubInstaller:
-				instInstance.BinDir = toolDestDir
-				if s.projectConfig.Github.Host != "" {
-					instInstance.BaseURL = s.projectConfig.Github.Host
-				}
-			}
 			// A release the tool's updateCheck.constraint excludes is not one this
 			// endpoint may install, however new it is.
 			if res, err := inst.CheckUpdate(ctx, targetTool); err == nil && res != nil && res.LatestVersion != "" &&

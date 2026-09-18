@@ -84,7 +84,7 @@ var projectConfigConsumers = map[string]string{
 
 	"system.sudoPrompt": "installer sudo elevation (sudo -p)",
 
-	"github.host":          "orchestrator install pipeline, GitHubInstaller.BaseURL",
+	"github.host":          "installer.GitHubSettings.Host, the release API root of github-release, dmg, pkg and cargo, and the dashboard README lookup",
 	"github.token":         "installer.GitHubSettings.Token, githubToken",
 	"github.userAgent":     "installer.GitHubSettings.UserAgent, githubReleaseClient.agent",
 	"github.cache.enabled": "installer.GitHubSettings.CacheEnabled, GitHubInstaller release metadata cache",

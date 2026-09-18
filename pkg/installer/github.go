@@ -51,8 +51,8 @@ type GitHubInstaller struct {
 	CacheTTL     time.Duration // Time-to-live for cached release metadata
 	CacheEnabled bool          // Whether cached release metadata is reused
 	BinDir       string        // Destination directory for binaries
-	BaseURL      string        // Override for testing
-	// GitHub holds the project configuration's github.token and github.userAgent.
+	BaseURL      string        // GitHub API root; empty selects api.github.com
+	// GitHub holds the project configuration's github section.
 	GitHub GitHubSettings
 }
 
@@ -60,6 +60,9 @@ type GitHubInstaller struct {
 func (g *GitHubInstaller) SetGitHubSettings(settings GitHubSettings) {
 	g.GitHub = settings
 	g.CacheEnabled = settings.CacheEnabled
+	if settings.Host != "" {
+		g.BaseURL = settings.Host
+	}
 }
 
 func NewGitHubInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downloader, sysCtx *SystemContext) *GitHubInstaller {
@@ -267,15 +270,9 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		toolLog.Info(logger.Message(fmt.Sprintf("Fetching release info for %s (%s)...", repo, version)))
 	}
 
-	baseURL := g.BaseURL
-	if baseURL == "" {
-		baseURL = "https://api.github.com"
-	}
-	baseURL = strings.TrimSuffix(baseURL, "/")
-
 	prerelease := getBoolParam(tool.InstallParams, "prerelease", false)
 	ghCli := getBoolParam(tool.InstallParams, "ghCli", false)
-	releaseClient := githubReleaseClient{httpClient: g.httpClient, runner: g.runner, baseURL: baseURL, userAgent: g.GitHub.UserAgent}
+	releaseClient := githubReleaseClient{httpClient: g.httpClient, runner: g.runner, baseURL: g.BaseURL, userAgent: g.GitHub.UserAgent}
 	var release *githubRelease
 	useGhCli := ghCli
 
@@ -378,13 +375,9 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 	if repo == "" {
 		return &UpdateCheckResult{}, nil
 	}
-	baseURL := g.BaseURL
-	if baseURL == "" {
-		baseURL = "https://api.github.com"
-	}
 	ghCli := getBoolParam(tool.InstallParams, "ghCli", false)
 	prerelease := getBoolParam(tool.InstallParams, "prerelease", false)
-	releaseClient := githubReleaseClient{httpClient: g.httpClient, runner: g.runner, baseURL: baseURL, userAgent: g.GitHub.UserAgent}
+	releaseClient := githubReleaseClient{httpClient: g.httpClient, runner: g.runner, baseURL: g.BaseURL, userAgent: g.GitHub.UserAgent}
 
 	var release *githubRelease
 	var isCached bool

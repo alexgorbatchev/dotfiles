@@ -25,15 +25,18 @@ type PkgInstaller struct {
 	sysCtx     *SystemContext
 	httpClient *http.Client
 	BinDir     string // Optional destination dir
-	BaseURL    string // Override for testing
-	// GitHub holds the project configuration's github.token and github.userAgent,
-	// which apply whenever the source is a GitHub release.
+	BaseURL    string // GitHub API root; empty selects api.github.com
+	// GitHub holds the project configuration's github section, which applies
+	// whenever the source is a GitHub release.
 	GitHub GitHubSettings
 }
 
 // SetGitHubSettings applies the project configuration's github section.
 func (p *PkgInstaller) SetGitHubSettings(settings GitHubSettings) {
 	p.GitHub = settings
+	if settings.Host != "" {
+		p.BaseURL = settings.Host
+	}
 }
 
 func NewPkgInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downloader, sysCtx *SystemContext) *PkgInstaller {

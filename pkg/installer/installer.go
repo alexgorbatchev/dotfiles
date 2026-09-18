@@ -409,6 +409,9 @@ type DownloadSettingsSetter interface {
 // `github` section, shared by every installation method that resolves releases
 // through the GitHub API.
 type GitHubSettings struct {
+	// Host is the API root every release lookup addresses, which is how a GitHub
+	// Enterprise instance is reached. Empty selects api.github.com.
+	Host string
 	// Token authenticates API requests and asset downloads for every tool that does
 	// not name a `token` install parameter of its own.
 	Token string

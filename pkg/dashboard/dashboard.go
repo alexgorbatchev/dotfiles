@@ -100,19 +100,21 @@ func (lb *LogBroadcaster) Write(p []byte) (n int, err error) {
 
 // Server hosts the static visualization dashboard.
 type Server struct {
-	logger           *logger.Logger
-	host             string
-	port             int
-	server           *http.Server
-	ln               net.Listener
-	wg               sync.WaitGroup
-	registry         *registry.Registry
-	fsys             fs.FS
-	configPath       string
-	projectConfig    *config.ProjectConfig
-	toolConfigs      []*config.ToolConfig
-	orchestrator     *orchestrator.Orchestrator
-	broadcaster      *LogBroadcaster
+	logger        *logger.Logger
+	host          string
+	port          int
+	server        *http.Server
+	ln            net.Listener
+	wg            sync.WaitGroup
+	registry      *registry.Registry
+	fsys          fs.FS
+	configPath    string
+	projectConfig *config.ProjectConfig
+	toolConfigs   []*config.ToolConfig
+	orchestrator  *orchestrator.Orchestrator
+	broadcaster   *LogBroadcaster
+	// githubBaseURL is the GitHub API root the README lookup addresses; it carries
+	// the project configuration's github.host. Empty selects api.github.com.
 	githubBaseURL    string
 	githubRawBaseURL string
 	// httpClient fetches remote READMEs; nil means the default client with readmeFetchTimeout.
@@ -149,6 +151,9 @@ func NewServer(log *logger.Logger, host string, port int, reg *registry.Registry
 		toolConfigs:   toolConfigs,
 		orchestrator:  orch,
 		broadcaster:   NewLogBroadcaster(),
+	}
+	if projCfg != nil {
+		s.githubBaseURL = projCfg.Github.Host
 	}
 
 	if orch != nil && log != nil {

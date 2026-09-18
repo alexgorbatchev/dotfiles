@@ -115,11 +115,16 @@ catalog file and `dotfiles features` does not report it; both keys default to em
 
 | Key             | Default                     | Effect                                                        |
 | --------------- | --------------------------- | ------------------------------------------------------------- |
-| `host`          | `https://api.github.com`    | API base URL for `github-release`, for GitHub Enterprise      |
+| `host`          | `https://api.github.com`    | API root every release lookup addresses, for GitHub Enterprise |
 | `token`         | none                        | Authenticates API requests and asset downloads for every tool |
 | `userAgent`     | `dotfiles-installer/1.0`    | The `User-Agent` sent with GitHub API requests                |
 | `cache.enabled` | `true`                      | Whether a fetched release description is reused at all        |
 | `cache.ttl`     | `3600000` (one hour), in ms | How long a fetched release description is reused              |
+
+`host` applies to every method that resolves GitHub releases -- `github-release`,
+`cargo`, `dmg` and `pkg` -- and to the dashboard's README lookup. It is the API root
+only; the hosts a `cargo` crate's archive is downloaded from are the `cargo` section's
+own settings.
 
 `token` is the project-wide default. A tool that sets the `token` parameter of its
 installation method overrides it, and when neither names one the `GITHUB_TOKEN` and

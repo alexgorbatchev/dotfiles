@@ -25,15 +25,18 @@ type DmgInstaller struct {
 	sysCtx     *SystemContext
 	httpClient *http.Client
 	BinDir     string // Optional temp staging folder
-	BaseURL    string // Override for testing
-	// GitHub holds the project configuration's github.token and github.userAgent,
-	// which apply whenever the source is a GitHub release.
+	BaseURL    string // GitHub API root; empty selects api.github.com
+	// GitHub holds the project configuration's github section, which applies
+	// whenever the source is a GitHub release.
 	GitHub GitHubSettings
 }
 
 // SetGitHubSettings applies the project configuration's github section.
 func (d *DmgInstaller) SetGitHubSettings(settings GitHubSettings) {
 	d.GitHub = settings
+	if settings.Host != "" {
+		d.BaseURL = settings.Host
+	}
 }
 
 func NewDmgInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downloader, sysCtx *SystemContext) *DmgInstaller {
