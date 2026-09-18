@@ -47,6 +47,7 @@ describe("site build", () => {
     const hrefs = await collectHrefs(await readPage("configuration/common-patterns"), CONTENT_LINK_SELECTOR);
 
     expect(hrefs).toEqual([
+      "/dotfiles/installation-methods/overview/",
       "/dotfiles/configuration/getting-started/",
       "/dotfiles/configuration/project-configuration/",
       "/dotfiles/make-tool/",
