@@ -20,15 +20,21 @@ export default defineTool((install, ctx) =>
 
 ## Hook Events
 
-| Event            | When                              | Adds to the context                      |
-| ---------------- | --------------------------------- | ---------------------------------------- |
-| `before-install` | Before the installer runs         | `stagingDir`                             |
-| `after-download` | After an asset is fetched to disk | `downloadPath`                           |
-| `after-extract`  | After an archive is unpacked      | `extractDir`                             |
-| `after-install`  | After the tool is in place        | `installedDir`, `binaryPaths`, `version` |
+The four events, listed in the order one installation reaches them. An event is
+registered under exactly the name in the first column: the names are kebab-case, and
+registering any other name fails when the configuration is read, rather than leaving a
+handler that nothing would ever call.
 
-Registering any other event name fails when the configuration is read, rather than
-leaving a handler that nothing would ever call.
+| Order | Event            | When                              | Adds to the context                      |
+| ----- | ---------------- | --------------------------------- | ---------------------------------------- |
+| 1     | `before-install` | Before the installer runs         | `stagingDir`                             |
+| 2     | `after-download` | After an asset is fetched to disk | `downloadPath`                           |
+| 3     | `after-extract`  | After an archive is unpacked      | `extractDir`                             |
+| 4     | `after-install`  | After the tool is in place        | `installedDir`, `binaryPaths`, `version` |
+
+An installation reaches only the events its method produces: a method that downloads
+nothing never emits `after-download`, and one that extracts no archive never emits
+`after-extract`.
 
 A hook that throws fails the installation. Nothing is swallowed: if the handler rejects,
 the tool is reported as failed with the error the hook raised.
@@ -273,13 +279,6 @@ export default defineTool((install) =>
 5. **Test your hooks** on different platforms to ensure compatibility
 6. **Keep hooks focused** - each hook should have a single responsibility
 7. **Document complex logic** - explain what your hooks are doing and why
-
-## Hook Execution Order
-
-1. **`beforeInstall`**: Before any installation steps
-2. **`afterDownload`**: After downloading but before extraction
-3. **`afterExtract`**: After extraction but before binary setup
-4. **`afterInstall`**: After all installation steps are complete
 
 ## Complete Example
 
