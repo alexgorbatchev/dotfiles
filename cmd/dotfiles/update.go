@@ -95,7 +95,7 @@ When run without arguments, checks all installed tools for updates and installs 
 					continue // skip uninstalled
 				}
 
-				inst, err := installer.Get(targetTool.InstallationMethod)
+				inst, err := services.Installers.Get(targetTool.InstallationMethod)
 				if err != nil {
 					continue
 				}
@@ -169,7 +169,7 @@ When run without arguments, checks all installed tools for updates and installs 
 		}
 
 		// 3. Get the installer
-		inst, err := installer.Get(targetTool.InstallationMethod)
+		inst, err := services.Installers.Get(targetTool.InstallationMethod)
 		if err != nil {
 			return fmt.Errorf("getting installer for %q: %w", targetTool.Name, err)
 		}

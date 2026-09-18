@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
-	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 	"github.com/spf13/cobra"
@@ -37,7 +36,7 @@ var checkUpdatesCmd = &cobra.Command{
 		log := GetLogger("check-updates", cmd.ErrOrStderr())
 		log.Info("Checking for updates across configured tools...")
 
-		instReg := installer.DefaultRegistry()
+		instReg := services.Installers
 		jsonResults := []ToolUpdateResult{}
 
 		for _, tool := range services.ToolConfigs {

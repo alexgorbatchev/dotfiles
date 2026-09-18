@@ -30,6 +30,11 @@ type Services struct {
 	DB            *sql.DB
 	Registry      *registry.Registry
 	Orchestrator  *orchestrator.Orchestrator
+	// Installers is the registry the Orchestrator installs from. Commands that
+	// need an installer directly (update checks) must resolve it here rather than
+	// in the package-level default registry, so that tests, which are given mock
+	// installers, never reach the real installers' network endpoints.
+	Installers *installer.Registry
 }
 
 // BootstrapServices parses config files and initializes core services.
@@ -261,6 +266,7 @@ func BootstrapServices(ctx context.Context, configPath string) (*Services, error
 		DB:            sqlDB,
 		Registry:      reg,
 		Orchestrator:  orch,
+		Installers:    instReg,
 	}, nil
 }
 

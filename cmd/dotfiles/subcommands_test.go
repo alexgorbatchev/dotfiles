@@ -6,10 +6,14 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -1393,4 +1397,35 @@ func (p e2eProject) seedInstallation(t *testing.T, toolName, version, installPat
 			BinaryPaths:   "[]",
 		})
 	})
+}
+
+// TestUpdateCommands_UseBootstrappedInstallers guards which registry the update
+// commands resolve installers from. BootstrapServices gives tests mock installers
+// whose update check never leaves the process; a lookup in the global registry
+// would reach the real GitHub installer and, outside MOCK_SERVER_PORT, api.github.com.
+func TestUpdateCommands_UseBootstrappedInstallers(t *testing.T) {
+	var hits atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+	u, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatalf("parsing test server URL: %v", err)
+	}
+	t.Setenv("MOCK_SERVER_PORT", u.Port())
+
+	p := newE2EProject(t, `"gh": {"name": "gh", "installationMethod": "github-release", "installParams": {"repo": "acme/never-fetched"}}`)
+	p.seedInstallation(t, "gh", "v1.0.0", filepath.Join(p.Root, "installed", "gh"))
+
+	for _, args := range [][]string{{"check-updates"}, {"update", "gh"}, {"update"}} {
+		out, err := p.run(args...)
+		if err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out.Combined)
+		}
+	}
+	if n := hits.Load(); n != 0 {
+		t.Fatalf("the release server was contacted %d time(s): the commands resolved the real GitHub installer instead of the bootstrapped mock", n)
+	}
 }
