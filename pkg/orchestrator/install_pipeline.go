@@ -59,7 +59,7 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 	}
 
 	if err := o.CleanupStaleArtifacts(ctx, sorted, projCfg); err != nil {
-		o.logger.Error("Cleanup during install warning", err)
+		return fmt.Errorf("cleaning up stale artifacts: %w", err)
 	}
 
 	for _, tool := range sorted {
@@ -347,11 +347,11 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 		if tool.InstallationMethod == "manual" {
 			if manualPath := getStringParam(tool.InstallParams, "binaryPath", ""); manualPath != "" {
-				if projCfg != nil {
-					if resolved, err := config.ResolvePlaceholders(manualPath, tool.Name, projCfg); err == nil {
-						manualPath = resolved
-					}
+				resolved, err := config.ResolvePathPlaceholders(manualPath, tool.Name, projCfg)
+				if err != nil {
+					return fmt.Errorf("%s: install parameter binaryPath %q: %w", tool.Name, manualPath, err)
 				}
+				manualPath = resolved
 				if o.fs.IsAbs(manualPath) {
 					if abs, err := o.fs.Abs(manualPath); err == nil {
 						binaryPath = abs

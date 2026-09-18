@@ -65,6 +65,11 @@ func unresolvedTokens(value string) []string {
 
 // ResolvePlaceholders recursively resolves placeholders in the input string.
 // It supports up to 20 iterations and returns an error if a cyclic token reference is detected.
+//
+// The string it returns alongside an error is the empty one, and it is not a value to
+// carry on with: fs.Abs("") answers with the directory the command was run from, so a
+// caller that ignores the error operates on a path nobody wrote. Every caller has to
+// report the error.
 func ResolvePlaceholders(val string, toolName string, projCfg *ProjectConfig) (string, error) {
 	if projCfg == nil {
 		return val, nil
@@ -113,4 +118,29 @@ func ResolvePlaceholders(val string, toolName string, projCfg *ProjectConfig) (s
 	}
 
 	return "", fmt.Errorf("string token substitution did not converge after %d iterations. Remaining tokens: %s", maxSubstitutionRounds, strings.Join(unresolvedTokens(current), ", "))
+}
+
+// ResolvePathPlaceholders resolves the placeholders of a value that names a filesystem
+// path, and reports a {token} nothing could fill instead of returning it as part of a
+// path.
+//
+// ResolvePlaceholders leaves an unknown token where it is, which is what a shell script
+// needs: "{1..5}" there is the shell's own brace expansion, not a placeholder this
+// loader owns. A path cannot afford the same leniency. A token left in it makes the path
+// relative, so the filesystem resolves it against the directory the command happened to
+// be run from, and the CLI reads, writes or removes something nobody named. The set of
+// placeholders a path may use is also not the set the paths block accepts, so a name
+// carried over from there — {configFileDir}, say — arrives here unfillable.
+//
+// It is the rule checkPathPlaceholders applies to the paths block, one layer up: a
+// placeholder nothing can fill stops the run rather than becoming part of a path.
+func ResolvePathPlaceholders(val string, toolName string, projCfg *ProjectConfig) (string, error) {
+	resolved, err := ResolvePlaceholders(val, toolName, projCfg)
+	if err != nil {
+		return "", err
+	}
+	if tokens := unresolvedTokens(resolved); len(tokens) > 0 {
+		return "", fmt.Errorf("unknown placeholder %s", tokens[0])
+	}
+	return resolved, nil
 }

@@ -2761,3 +2761,232 @@ func TestCleanupStaleShims_DirectoriesAndRemoveFailures(t *testing.T) {
 		t.Errorf("expected the failed removal of %s to be reported, got:\n%s", staleShim, logged)
 	}
 }
+
+// TestGenerateToolsRejectsUnresolvablePlaceholderInRecordedPath pins that a recorded
+// path holding a placeholder nothing can fill stops the run instead of being resolved
+// against the directory the command was run from.
+//
+// {configFileDir} is a setting of the paths block that ResolvePlaceholders does not
+// know, so it survives substitution; joined by fs.Abs it lands under the working
+// directory, and whatever sits there is what the cleanup then removes.
+func TestGenerateToolsRejectsUnresolvablePlaceholderInRecordedPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		fileType string
+	}{
+		{name: "recorded symlink", fileType: "symlink"},
+		{name: "recorded copy", fileType: "copy"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			fsys := fs.NewMemFS()
+			runner := exec.NewMockRunner()
+
+			sqlDB, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatalf("opening the registry database: %v", err)
+			}
+			defer sqlDB.Close()
+
+			reg := registry.NewRegistry(sqlDB)
+			orch := NewOrchestrator(nil, fsys, runner, reg, installer.NewRegistry())
+			orch.SetSymlinkFS(fsys)
+
+			projCfg := &config.ProjectConfig{
+				Paths: config.PathsConfig{
+					HomeDir:      "/home/user",
+					TargetDir:    "/home/user/.generated/bin",
+					BinariesDir:  "/home/user/.generated/binaries",
+					GeneratedDir: "/home/user/.generated",
+				},
+			}
+
+			const recordedPath = "{configFileDir}/bat.conf"
+
+			// What the cleanup reaches when the placeholder is left in place: the
+			// recorded path is relative, so it resolves under the working directory.
+			cwdPath, err := fsys.Abs(recordedPath)
+			if err != nil {
+				t.Fatalf("resolving %q against the working directory: %v", recordedPath, err)
+			}
+			if err := fsys.MkdirAll(filepath.Dir(cwdPath), 0755); err != nil {
+				t.Fatalf("creating %s: %v", filepath.Dir(cwdPath), err)
+			}
+			if err := fsys.WriteFile(cwdPath, []byte("not the CLI's file\n"), 0644); err != nil {
+				t.Fatalf("writing %s: %v", cwdPath, err)
+			}
+
+			if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+				return reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+					ToolName:      "bat",
+					OperationType: "symlink",
+					FilePath:      recordedPath,
+					FileType:      tt.fileType,
+					CreatedAt:     1,
+				})
+			}); err != nil {
+				t.Fatalf("seeding the registry: %v", err)
+			}
+
+			// The tool no longer declares the path, so the cleanup judges it stale.
+			tool := &config.ToolConfig{Name: "bat", Binaries: testutil.DeclaredBinaries("bat")}
+
+			err = orch.GenerateTools(ctx, []*config.ToolConfig{tool}, projCfg)
+			if err == nil {
+				t.Error("GenerateTools() = nil, want it to fail on the unresolvable placeholder")
+			} else {
+				for _, want := range []string{"bat", tt.fileType, "{configFileDir}"} {
+					if !strings.Contains(err.Error(), want) {
+						t.Errorf("GenerateTools() = %v, want it to name %q", err, want)
+					}
+				}
+			}
+
+			if exists, _ := fsys.Exists(cwdPath); !exists {
+				t.Errorf("expected %s under the working directory to be left alone", cwdPath)
+			}
+		})
+	}
+}
+
+// TestManualBinaryPathRejectsUnresolvablePlaceholder pins that a manual tool whose
+// binaryPath holds a placeholder nothing can fill stops the run. Left in place the token
+// makes binaryPath relative, and both pipelines would shim whatever the directory the
+// command was run from happens to hold.
+func TestManualBinaryPathRejectsUnresolvablePlaceholder(t *testing.T) {
+	run := map[string]func(*Orchestrator, context.Context, *config.ToolConfig, *config.ProjectConfig) error{
+		"generate": func(o *Orchestrator, ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
+			return o.GenerateTool(ctx, tool, projCfg)
+		},
+		"install": func(o *Orchestrator, ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
+			return o.InstallTool(ctx, tool, projCfg)
+		},
+	}
+
+	for _, pipeline := range []string{"generate", "install"} {
+		t.Run(pipeline, func(t *testing.T) {
+			ctx := context.Background()
+			fsys := fs.NewMemFS()
+			sqlDB, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatalf("opening the registry database: %v", err)
+			}
+			defer sqlDB.Close()
+
+			instReg := installer.NewRegistry()
+			if err := instReg.Register(&mockInstaller{name: "manual"}); err != nil {
+				t.Fatalf("registering the installer: %v", err)
+			}
+			log := logger.New(logger.Config{Name: "test-manual", Level: logger.LogLevelQuiet, Writer: io.Discard})
+			orch := NewOrchestrator(log, fsys, exec.NewMockRunner(), registry.NewRegistry(sqlDB), instReg)
+
+			projCfg := &config.ProjectConfig{
+				Paths: config.PathsConfig{
+					HomeDir:         "/home/user",
+					TargetDir:       "/home/user/.generated/bin",
+					BinariesDir:     "/home/user/.generated/binaries",
+					ShellScriptsDir: "/home/user/.generated/shell-scripts",
+					GeneratedDir:    "/home/user/.generated",
+				},
+			}
+
+			tool := &config.ToolConfig{
+				Name:               "bat",
+				Binaries:           testutil.DeclaredBinaries("bat"),
+				ConfigFilePath:     "/home/user/tools/bat.tool.ts",
+				InstallationMethod: "manual",
+				InstallParams:      map[string]interface{}{"binaryPath": "{configFileDir}/bat"},
+			}
+
+			err = run[pipeline](orch, ctx, tool, projCfg)
+			if err == nil {
+				t.Fatalf("%s = nil, want it to fail on the unresolvable placeholder", pipeline)
+			}
+			for _, want := range []string{"bat", "binaryPath", "{configFileDir}"} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("%s = %v, want it to name %q", pipeline, err, want)
+				}
+			}
+		})
+	}
+}
+
+// TestGenerateCompletionsForToolRejectsUnresolvablePlaceholder pins that a completion
+// declaration holding a placeholder nothing can fill is reported rather than quietly
+// producing no completion. The generate pipeline decides how loud that is; what matters
+// here is that the resolver's answer reaches it.
+func TestGenerateCompletionsForToolRejectsUnresolvablePlaceholder(t *testing.T) {
+	tests := []struct {
+		name        string
+		completions interface{}
+		wantErr     string
+	}{
+		{
+			name:        "source path",
+			completions: "{configFileDir}/_bat",
+			wantErr:     "completions source",
+		},
+		{
+			name:        "source path in a declaration object",
+			completions: map[string]interface{}{"source": "{configFileDir}/_bat"},
+			wantErr:     "completions source",
+		},
+		{
+			name:        "command",
+			completions: map[string]interface{}{"cmd": "{paths.homeDir} completion zsh"},
+			wantErr:     "completions command",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			fsys := fs.NewMemFS()
+			sqlDB, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatalf("opening the registry database: %v", err)
+			}
+			defer sqlDB.Close()
+
+			log := logger.New(logger.Config{Name: "test-completions", Level: logger.LogLevelQuiet, Writer: io.Discard})
+			orch := NewOrchestrator(log, fsys, exec.NewMockRunner(), registry.NewRegistry(sqlDB), nil)
+
+			projCfg := &config.ProjectConfig{
+				Paths: config.PathsConfig{
+					HomeDir:         "/home/user",
+					TargetDir:       "/home/user/.generated/bin",
+					BinariesDir:     "/home/user/.generated/binaries",
+					ShellScriptsDir: "/home/user/.generated/shell-scripts",
+					GeneratedDir:    "/home/user/.generated",
+				},
+			}
+			// A command is resolvable text, so it takes a cycle rather than an unknown
+			// name to make it unresolvable.
+			if tt.wantErr == "completions command" {
+				projCfg.Paths.HomeDir = "{paths.dotfilesDir}/sub"
+				projCfg.Paths.DotfilesDir = "{paths.homeDir}/dot"
+			}
+
+			tool := &config.ToolConfig{
+				Name:           "bat",
+				Binaries:       testutil.DeclaredBinaries("bat"),
+				ConfigFilePath: "/home/user/tools/bat.tool.ts",
+				ShellConfigs: &config.ShellConfigs{
+					Zsh: &config.ShellTypeConfig{Completions: tt.completions},
+				},
+			}
+
+			err = orch.GenerateCompletionsForTool(ctx, tool, projCfg)
+			if err == nil {
+				t.Fatal("GenerateCompletionsForTool() = nil, want it to report the unresolvable placeholder")
+			}
+			for _, want := range []string{"bat", "zsh", tt.wantErr} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("GenerateCompletionsForTool() = %v, want it to name %q", err, want)
+				}
+			}
+		})
+	}
+}

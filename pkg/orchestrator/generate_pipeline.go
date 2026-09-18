@@ -39,7 +39,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 	}
 
 	if err := o.CleanupStaleArtifacts(ctx, sorted, projCfg); err != nil {
-		o.logger.Error("Cleanup during generate warning", err)
+		return fmt.Errorf("cleaning up stale artifacts: %w", err)
 	}
 
 	if err := o.ensureShimDirs(ctx, projCfg); err != nil {
@@ -227,11 +227,11 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 		if tool.InstallationMethod == "manual" {
 			if manualPath := getStringParam(tool.InstallParams, "binaryPath", ""); manualPath != "" {
-				if projCfg != nil {
-					if resolved, err := config.ResolvePlaceholders(manualPath, tool.Name, projCfg); err == nil {
-						manualPath = resolved
-					}
+				resolved, err := config.ResolvePathPlaceholders(manualPath, tool.Name, projCfg)
+				if err != nil {
+					return fmt.Errorf("%s: install parameter binaryPath %q: %w", tool.Name, manualPath, err)
 				}
+				manualPath = resolved
 				if o.fs.IsAbs(manualPath) {
 					if abs, err := o.fs.Abs(manualPath); err == nil {
 						binaryPath = abs
@@ -663,7 +663,10 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 				continue
 			}
 
-			resolvedFilePath, _ := config.ResolvePlaceholders(state.FilePath, tool.Name, projCfg)
+			resolvedFilePath, err := config.ResolvePathPlaceholders(state.FilePath, tool.Name, projCfg)
+			if err != nil {
+				return fmt.Errorf("%s: recorded %s %q: %w", tool.Name, state.FileType, state.FilePath, err)
+			}
 			absFilePath, err := o.fs.Abs(resolvedFilePath)
 			if err != nil {
 				absFilePath = resolvedFilePath
@@ -761,7 +764,10 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 				continue
 			}
 
-			resolvedFilePath, _ := config.ResolvePlaceholders(state.FilePath, tool.Name, projCfg)
+			resolvedFilePath, err := config.ResolvePathPlaceholders(state.FilePath, tool.Name, projCfg)
+			if err != nil {
+				return fmt.Errorf("%s: recorded %s %q: %w", tool.Name, state.FileType, state.FilePath, err)
+			}
 			absFilePath, err := o.fs.Abs(resolvedFilePath)
 			if err != nil {
 				absFilePath = resolvedFilePath
@@ -787,13 +793,21 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 	return nil
 }
 
-// CleanupStaleArtifacts runs all orchestrator cleanup routines: orphaned tools, stale shims, stale symlinks, and stale copies.
+// CleanupStaleArtifacts runs all orchestrator cleanup routines: orphaned tools, stale
+// shims, stale symlinks, and stale copies. The first routine to fail stops the rest:
+// every one of them removes files, and a routine only fails when it cannot say which
+// file a record names, which is the point at which the run must stop touching the disk.
 func (o *Orchestrator) CleanupStaleArtifacts(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
-	_ = o.CleanupOrphanedTools(ctx, tools, projCfg)
-	_ = o.CleanupStaleShims(ctx, tools, projCfg)
-	_ = o.CleanupStaleSymlinks(ctx, tools, projCfg)
-	_ = o.CleanupStaleCopies(ctx, tools, projCfg)
-	return nil
+	if err := o.CleanupOrphanedTools(ctx, tools, projCfg); err != nil {
+		return err
+	}
+	if err := o.CleanupStaleShims(ctx, tools, projCfg); err != nil {
+		return err
+	}
+	if err := o.CleanupStaleSymlinks(ctx, tools, projCfg); err != nil {
+		return err
+	}
+	return o.CleanupStaleCopies(ctx, tools, projCfg)
 }
 
 func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
@@ -833,77 +847,79 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 				} else {
 					srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), comp)
 				}
-				srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
-				if err == nil {
-					exists, err := fsys.Exists(srcPathResolved)
-					if err == nil && exists {
-						_ = fsys.Remove(completionFilePath)
-						_ = fsys.Symlink(srcPathResolved, completionFilePath)
-					}
+				srcPathResolved, err := config.ResolvePathPlaceholders(srcPath, tool.Name, projCfg)
+				if err != nil {
+					return fmt.Errorf("%s: %s completions source %q: %w", tool.Name, sh, comp, err)
+				}
+				exists, err := fsys.Exists(srcPathResolved)
+				if err == nil && exists {
+					_ = fsys.Remove(completionFilePath)
+					_ = fsys.Symlink(srcPathResolved, completionFilePath)
 				}
 			case map[string]interface{}:
 				if cmdVal, ok := comp["cmd"].(string); ok && cmdVal != "" {
 					cmdValResolved, err := o.resolvePlaceholder(cmdVal, tool, projCfg)
-					if err == nil {
-						parts := strings.Fields(cmdValResolved)
-						if len(parts) > 0 {
-							cmdName := parts[0]
-							var execPath string
-							if strings.Contains(cmdName, "/") || strings.Contains(cmdName, "\\") {
-								if exists, _ := fsys.Exists(cmdName); exists {
-									execPath = cmdName
-								}
-							} else {
-								// Check directly for actual tool binary in binariesDir or recorded DB paths to avoid executing shims or system PATH binaries
-								toolBinPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", cmdName)
-								if exists, err := fsys.Exists(toolBinPath); err == nil && exists {
-									execPath = toolBinPath
-								} else if instRecord, err := o.reg.GetToolInstallation(ctx, tool.Name); err == nil && instRecord != nil && instRecord.BinaryPaths != "" {
-									var paths []string
-									if err := json.Unmarshal([]byte(instRecord.BinaryPaths), &paths); err == nil {
-										for _, p := range paths {
-											if filepath.Base(p) == cmdName || p == cmdName {
-												if exists, _ := fsys.Exists(p); exists {
-													execPath = p
-													break
-												}
+					if err != nil {
+						return fmt.Errorf("%s: %s completions command %q: %w", tool.Name, sh, cmdVal, err)
+					}
+					parts := strings.Fields(cmdValResolved)
+					if len(parts) > 0 {
+						cmdName := parts[0]
+						var execPath string
+						if strings.Contains(cmdName, "/") || strings.Contains(cmdName, "\\") {
+							if exists, _ := fsys.Exists(cmdName); exists {
+								execPath = cmdName
+							}
+						} else {
+							// Check directly for actual tool binary in binariesDir or recorded DB paths to avoid executing shims or system PATH binaries
+							toolBinPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", cmdName)
+							if exists, err := fsys.Exists(toolBinPath); err == nil && exists {
+								execPath = toolBinPath
+							} else if instRecord, err := o.reg.GetToolInstallation(ctx, tool.Name); err == nil && instRecord != nil && instRecord.BinaryPaths != "" {
+								var paths []string
+								if err := json.Unmarshal([]byte(instRecord.BinaryPaths), &paths); err == nil {
+									for _, p := range paths {
+										if filepath.Base(p) == cmdName || p == cmdName {
+											if exists, _ := fsys.Exists(p); exists {
+												execPath = p
+												break
 											}
 										}
 									}
 								}
 							}
+						}
 
-							if execPath == "" {
-								o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Skipping %s completion: binary %q not installed at %s", sh, parts[0], filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))))
-								return nil
-							}
+						if execPath == "" {
+							o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Skipping %s completion: binary %q not installed at %s", sh, parts[0], filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))))
+							return nil
+						}
 
-							if exists, _ := fsys.Exists(completionFilePath); exists && !shouldOverwrite(ctx) {
-								return nil
-							}
+						if exists, _ := fsys.Exists(completionFilePath); exists && !shouldOverwrite(ctx) {
+							return nil
+						}
 
-							cmdName = execPath
-							o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Generating %s completion using: %s", sh, cmdValResolved)))
-							cmdCtx, cancel := context.WithTimeout(ctx, completionCommandTimeout)
-							cmdExec := o.runner.CommandContext(cmdCtx, cmdName, parts[1:]...)
-							cmdExec.SetProcessGroup(true)
-							cmdExec.SetEnv(o.buildHookEnv(tool, projCfg, nil))
-							output, err := cmdExec.Output()
-							// The deadline shows up on the context when the runner kills the
-							// process, and on the error itself when a runner surfaces it directly.
-							timedOut := errors.Is(cmdCtx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded)
-							cancel()
+						cmdName = execPath
+						o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Generating %s completion using: %s", sh, cmdValResolved)))
+						cmdCtx, cancel := context.WithTimeout(ctx, completionCommandTimeout)
+						cmdExec := o.runner.CommandContext(cmdCtx, cmdName, parts[1:]...)
+						cmdExec.SetProcessGroup(true)
+						cmdExec.SetEnv(o.buildHookEnv(tool, projCfg, nil))
+						output, err := cmdExec.Output()
+						// The deadline shows up on the context when the runner kills the
+						// process, and on the error itself when a runner surfaces it directly.
+						timedOut := errors.Is(cmdCtx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded)
+						cancel()
 
-							toolLog := o.logger.GetSubLogger("", tool.Name)
-							switch {
-							case err != nil && timedOut:
-								toolLog.Warn(logger.Message(fmt.Sprintf("Completion command %q timed out after %s; no %s completion generated for %s", cmdValResolved, completionCommandTimeout, sh, tool.Name)))
-							case err != nil:
-								toolLog.Warn(logger.Message(fmt.Sprintf("Completion command %q failed: %v; no %s completion generated for %s", cmdValResolved, err, sh, tool.Name)))
-							default:
-								if err := fsys.WriteFile(completionFilePath, output, 0644); err != nil {
-									toolLog.Warn(logger.Message(fmt.Sprintf("Writing %s completion file %q for %s: %v", sh, completionFilePath, tool.Name, err)))
-								}
+						toolLog := o.logger.GetSubLogger("", tool.Name)
+						switch {
+						case err != nil && timedOut:
+							toolLog.Warn(logger.Message(fmt.Sprintf("Completion command %q timed out after %s; no %s completion generated for %s", cmdValResolved, completionCommandTimeout, sh, tool.Name)))
+						case err != nil:
+							toolLog.Warn(logger.Message(fmt.Sprintf("Completion command %q failed: %v; no %s completion generated for %s", cmdValResolved, err, sh, tool.Name)))
+						default:
+							if err := fsys.WriteFile(completionFilePath, output, 0644); err != nil {
+								toolLog.Warn(logger.Message(fmt.Sprintf("Writing %s completion file %q for %s: %v", sh, completionFilePath, tool.Name, err)))
 							}
 						}
 					}
@@ -914,13 +930,14 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 					} else {
 						srcPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), srcVal)
 					}
-					srcPathResolved, err := o.resolvePlaceholder(srcPath, tool, projCfg)
-					if err == nil {
-						exists, err := fsys.Exists(srcPathResolved)
-						if err == nil && exists {
-							_ = fsys.Remove(completionFilePath)
-							_ = fsys.Symlink(srcPathResolved, completionFilePath)
-						}
+					srcPathResolved, err := config.ResolvePathPlaceholders(srcPath, tool.Name, projCfg)
+					if err != nil {
+						return fmt.Errorf("%s: %s completions source %q: %w", tool.Name, sh, srcVal, err)
+					}
+					exists, err := fsys.Exists(srcPathResolved)
+					if err == nil && exists {
+						_ = fsys.Remove(completionFilePath)
+						_ = fsys.Symlink(srcPathResolved, completionFilePath)
 					}
 				}
 			}

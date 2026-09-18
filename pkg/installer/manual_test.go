@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -180,6 +181,35 @@ func TestManualInstaller(t *testing.T) {
 		data, err := fsys.ReadFile(destPath)
 		if err != nil || string(data) != "manual-payload-placeholder" {
 			t.Errorf("unexpected content: %s", string(data))
+		}
+	})
+
+	// {configFileDir} names a setting of the paths block that binaryPath cannot use,
+	// which is how a placeholder nothing can fill reaches the installer. Left in place
+	// it makes binaryPath relative, and the installer would look for the binary under
+	// the directory the command was run from.
+	t.Run("Install fails on a binaryPath placeholder nothing can fill", func(t *testing.T) {
+		runner.Clear()
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": "{configFileDir}/mybinary",
+			},
+		}
+
+		projCfg := &config.ProjectConfig{}
+		projCfg.Paths.BinariesDir = "/home/user/.binaries"
+		ctx := config.WithProjectConfig(context.Background(), projCfg)
+
+		_, err := inst.Install(ctx, tool)
+		if err == nil {
+			t.Fatal("Install() = nil, want it to fail on the unresolvable placeholder")
+		}
+		for _, want := range []string{"mytool", "binaryPath", "{configFileDir}"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("Install() = %v, want it to name %q", err, want)
+			}
 		}
 	})
 
