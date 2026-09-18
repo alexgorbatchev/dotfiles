@@ -21,10 +21,16 @@ export default defineTool((install) =>
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `instanceUrl`  | **Required**. Base URL of the Gitea/Forgejo instance                                                                               |
 | `repo`         | **Required**. Repository in "owner/repo" format                                                                                    |
+| `version`      | Release tag to install. Takes precedence over `.version()`; without either, the latest release is used.                            |
+| `prerelease`   | Include prereleases when resolving the latest release. Defaults to `false`. Ignored when a tag is named.                           |
 | `assetPattern` | Glob or regex pattern (`string` or `RegExp`) to match release assets. **Optional**. Use only if default automatic selection fails. |
 | `token`        | API token for authentication with the instance                                                                                     |
 
-The release to install is chosen with `.version()`; without it the latest release is used.
+A release is chosen either by tag or by resolving the latest one. Naming a tag
+selects that release; otherwise the newest published release is used, and
+`prerelease: true` widens that to the newest published release of either kind.
+Update checks always resolve the latest release, whether or not a tag is pinned,
+using the same `prerelease` and `token` settings as an install.
 
 ## Examples
 
@@ -50,9 +56,20 @@ install("gitea-release", {
 install("gitea-release", {
   instanceUrl: "https://codeberg.org",
   repo: "owner/tool",
-})
-  .bin("tool")
-  .version("v2.1.0");
+  version: "v2.1.0",
+}).bin("tool");
+```
+
+### Including Prereleases
+
+For repositories that publish only prereleases:
+
+```typescript body
+install("gitea-release", {
+  instanceUrl: "https://codeberg.org",
+  repo: "owner/nightly-only-tool",
+  prerelease: true,
+}).bin("tool");
 ```
 
 ### With Authentication Token
