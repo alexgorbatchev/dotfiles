@@ -63,15 +63,11 @@ expectError(() =>
   ),
 );
 
-// The release is chosen with .version(); prereleases and selector callbacks are not
-// part of the Gitea installer.
-expectError(() =>
-  defineTool((install) =>
-    install("gitea-release", { instanceUrl: "https://codeberg.org", repo: "owner/tool", version: "v2.1.0" }),
-  ),
+// A release is chosen either by tag or by resolving the latest one, optionally
+// including prereleases; both are read by the installer.
+defineTool((install) =>
+  install("gitea-release", { instanceUrl: "https://codeberg.org", repo: "owner/tool", version: "v2.1.0" }),
 );
-expectError(() =>
-  defineTool((install) =>
-    install("gitea-release", { instanceUrl: "https://codeberg.org", repo: "owner/tool", prerelease: true }),
-  ),
+defineTool((install) =>
+  install("gitea-release", { instanceUrl: "https://codeberg.org", repo: "owner/tool", prerelease: true }),
 );

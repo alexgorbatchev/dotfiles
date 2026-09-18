@@ -701,6 +701,10 @@ export interface IGiteaReleaseInstallParams extends ICommonInstallParams {
    */
   repo: string;
   /**
+   * Release tag to install. Defaults to the latest release.
+   */
+  version?: string;
+  /**
    * Glob or regex pattern to select release asset filename.
    */
   assetPattern?: string | RegExp;
@@ -708,6 +712,10 @@ export interface IGiteaReleaseInstallParams extends ICommonInstallParams {
    * API token used to authenticate with the instance.
    */
   token?: string;
+  /**
+   * Include prerelease versions when resolving the latest release.
+   */
+  prerelease?: boolean;
 }
 
 /**
