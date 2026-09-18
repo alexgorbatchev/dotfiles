@@ -34,6 +34,11 @@ func (a *AptInstaller) Name() string {
 	return "apt"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (a *AptInstaller) SetSystemContext(sysCtx *SystemContext) {
+	a.sysCtx = sysCtx
+}
+
 func (a *AptInstaller) SetFS(fsys fs.FS) {
 	a.fsys = fsys
 }

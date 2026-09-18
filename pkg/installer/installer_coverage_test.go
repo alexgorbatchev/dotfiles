@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/internal/testutil"
+	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -504,7 +505,7 @@ func TestInstallerErrorAndCheckUpdatePaths(t *testing.T) {
 	giteaAssets := []giteaAsset{
 		{Name: "unrelated-windows-x86.exe"},
 	}
-	noMatchGitea := matchAsset(giteaAssets, "linux", "amd64", "")
+	noMatchGitea := matchAsset(giteaAssets, arch.SystemInfo{OS: "linux", Arch: "amd64"}, "")
 	if noMatchGitea != nil {
 		t.Errorf("gitea matchAsset expected nil for unmatched asset")
 	}

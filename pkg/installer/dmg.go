@@ -61,6 +61,11 @@ func (d *DmgInstaller) Name() string {
 	return "dmg"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (d *DmgInstaller) SetSystemContext(sysCtx *SystemContext) {
+	d.sysCtx = sysCtx
+}
+
 func (d *DmgInstaller) SetFS(fsys fs.FS) {
 	d.fsys = fsys
 	if d.dl != nil {

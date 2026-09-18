@@ -10,6 +10,7 @@ import (
 	hostarch "github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 	"github.com/spf13/cobra"
 )
 
@@ -83,6 +84,36 @@ func (l libcValue) Set(value string) error {
 	}
 	*l.target = target
 	return nil
+}
+
+// resolveTarget builds the one target a run is carried out for: the --platform, --arch
+// and --libc flags, each falling back to what the machine reports, resolved once so that
+// configuration loading, asset selection and the systemInfo a hook sees cannot disagree.
+//
+// Every flag that overrode detection is reported, as v1 did
+// (packages/cli/src/runtime/createBaseRuntimeContext.ts:50-58): a run resolved for
+// another machine produces output that looks like this machine's and is not.
+func resolveTarget(log *logger.Logger) vm.Target {
+	resolved := vm.Target{OS: platform, Arch: arch, Libc: libc}.Resolve()
+
+	if platform != "" {
+		log.Warn(logger.Message("Platform overridden to: " + resolved.OS))
+	}
+	if arch != "" {
+		log.Warn(logger.Message("Arch overridden to: " + resolved.Arch))
+	}
+	switch {
+	case libc == "":
+	case resolved.OS == hostarch.OSLinux:
+		log.Warn(logger.Message("Libc overridden to: " + resolved.Libc))
+	default:
+		// Which C library is in use is a question only Linux answers, so the flag
+		// selects nothing here. Dropping it without a word is how a run ends up
+		// mixing targets unnoticed.
+		log.Warn(logger.Message(fmt.Sprintf("Libc %s ignored: the %s target has no C library to select", libc, resolved.OS)))
+	}
+
+	return resolved
 }
 
 var Version = "2.2.0"

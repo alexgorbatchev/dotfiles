@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/internal/testutil"
+	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -119,8 +120,8 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 		{Name: "app-v1-darwin-amd64.tar.gz"},
 		{Name: "other.txt"},
 	}
-	_ = matchAsset(giteaAssets, "linux", "amd64", "*.tar.gz")
-	_ = matchAsset(giteaAssets, "linux", "amd64", "")
+	_ = matchAsset(giteaAssets, arch.SystemInfo{OS: "linux", Arch: "amd64"}, "*.tar.gz")
+	_ = matchAsset(giteaAssets, arch.SystemInfo{OS: "linux", Arch: "amd64"}, "")
 
 	_ = gh.matchAsset(assets, "*.tar.gz")
 	_ = gh.matchAsset(assets, "")

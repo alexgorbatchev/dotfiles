@@ -36,6 +36,11 @@ func (z *ZshPluginInstaller) Name() string {
 	return "zsh-plugin"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (z *ZshPluginInstaller) SetSystemContext(sysCtx *SystemContext) {
+	z.sysCtx = sysCtx
+}
+
 func (z *ZshPluginInstaller) SetFS(fsys fs.FS) {
 	z.fsys = fsys
 }

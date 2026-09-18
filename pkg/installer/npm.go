@@ -34,6 +34,11 @@ func (n *NpmInstaller) Name() string {
 	return "npm"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (n *NpmInstaller) SetSystemContext(sysCtx *SystemContext) {
+	n.sysCtx = sysCtx
+}
+
 func (n *NpmInstaller) SetFS(fsys fs.FS) {
 	n.fsys = fsys
 }

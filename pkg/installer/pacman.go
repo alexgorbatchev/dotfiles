@@ -35,6 +35,11 @@ func (p *PacmanInstaller) Name() string {
 	return "pacman"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (p *PacmanInstaller) SetSystemContext(sysCtx *SystemContext) {
+	p.sysCtx = sysCtx
+}
+
 func (p *PacmanInstaller) SetFS(fsys fs.FS) {
 	p.fsys = fsys
 }

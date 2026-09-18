@@ -48,6 +48,11 @@ func (c *CurlTarInstaller) Name() string {
 	return "curl-tar"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (c *CurlTarInstaller) SetSystemContext(sysCtx *SystemContext) {
+	c.sysCtx = sysCtx
+}
+
 func (c *CurlTarInstaller) SetFS(fsys fs.FS) {
 	c.fsys = fsys
 	if c.dl != nil {

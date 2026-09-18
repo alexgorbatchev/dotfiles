@@ -18,6 +18,18 @@ type MockServer struct {
 	ProjectRoot string
 	versions    map[string]string
 	versionsMu  sync.Mutex
+	// downloads records the release assets that were actually fetched, in order. It
+	// is how a test tells which asset an installer selected: by the time the file is
+	// on disk it has been extracted and renamed to the binary's name.
+	downloads   []string
+	downloadsMu sync.Mutex
+}
+
+// Downloads reports the release assets fetched from the server so far.
+func (ms *MockServer) Downloads() []string {
+	ms.downloadsMu.Lock()
+	defer ms.downloadsMu.Unlock()
+	return append([]string(nil), ms.downloads...)
 }
 
 func NewMockServer(t *testing.T, fixtureDir string) *MockServer {
@@ -276,6 +288,10 @@ func (ms *MockServer) serveGitHubRelease(w http.ResponseWriter, r *http.Request,
 }
 
 func (ms *MockServer) serveGitHubDownload(w http.ResponseWriter, r *http.Request, repo, version, filename string) {
+	ms.downloadsMu.Lock()
+	ms.downloads = append(ms.downloads, filename)
+	ms.downloadsMu.Unlock()
+
 	toolName := filepath.Base(repo)
 	filePath := filepath.Join(ms.FixtureDir, "tools", toolName, filename)
 

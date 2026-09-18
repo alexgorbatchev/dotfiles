@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -167,4 +168,60 @@ export default defineTool((install) =>
 			t.Error("expected Linux|MacOS not to match windows")
 		}
 	})
+}
+
+// Which C library a run reports follows the platform it resolved to, not the machine
+// doing the resolving: it is a Linux question, so a macOS or Windows target answers
+// "unknown" however the host is built and whatever --libc named. v1 decided it the same
+// way (packages/cli/src/runtime/createBaseRuntimeContext.ts:59-68).
+func TestTargetResolveDecidesLibcFromTheResolvedPlatform(t *testing.T) {
+	tests := []struct {
+		name   string
+		target Target
+		want   string
+	}{
+		{
+			name:   "a Linux target takes the named C library",
+			target: Target{OS: arch.OSLinux, Arch: arch.ArchAMD64, Libc: arch.LibcMusl},
+			want:   arch.LibcMusl,
+		},
+		{
+			name:   "a macOS target has none to name",
+			target: Target{OS: arch.OSDarwin, Arch: arch.ArchARM64, Libc: arch.LibcMusl},
+			want:   arch.LibcUnknown,
+		},
+		{
+			name:   "a Windows target has none to detect",
+			target: Target{OS: "windows", Arch: arch.ArchAMD64},
+			want:   arch.LibcUnknown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resolved := tt.target.Resolve()
+			if resolved.Libc != tt.want {
+				t.Errorf("Resolve().Libc = %q, want %q", resolved.Libc, tt.want)
+			}
+			if resolved.OS != tt.target.OS || resolved.Arch != tt.target.Arch {
+				t.Errorf("Resolve() = %+v, want the platform and architecture carried through unchanged", resolved)
+			}
+		})
+	}
+}
+
+// What no flag named comes from the host, which is what a run without
+// --platform/--arch/--libc installs for.
+func TestTargetResolveFillsWhatWasNotNamedFromTheHost(t *testing.T) {
+	resolved := Target{}.Resolve()
+
+	if resolved.OS != arch.GetOS() {
+		t.Errorf("Resolve().OS = %q, want the host's %q", resolved.OS, arch.GetOS())
+	}
+	if resolved.Arch != arch.GetArch() {
+		t.Errorf("Resolve().Arch = %q, want the host's %q", resolved.Arch, arch.GetArch())
+	}
+	if want := arch.DetectLibc(arch.FileExists); resolved.Libc != want {
+		t.Errorf("Resolve().Libc = %q, want the detected %q", resolved.Libc, want)
+	}
 }

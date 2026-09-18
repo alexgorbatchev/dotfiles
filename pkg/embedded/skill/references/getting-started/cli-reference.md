@@ -236,10 +236,17 @@ The following flags are available on all commands:
 - `--log <level>`: Set log level (`verbose`, `default`, `quiet`).
 - `--platform <os>`: Override target platform (`macos`, `linux`, `windows`; `darwin` is accepted as a spelling of `macos`). Any other value is rejected.
 - `--arch <arch>`: Override target architecture (`amd64`, `arm64`).
-- `--libc <libc>`: Override the detected C library (`gnu`, `musl`, `unknown`), which is what [`ctx.systemInfo.libc`](../api-reference/context-api.md#ctxsysteminfo) reports. Any other value is rejected.
+- `--libc <libc>`: Override the detected C library (`gnu`, `musl`, `unknown`), which is what [`ctx.systemInfo.libc`](../api-reference/context-api.md#ctxsysteminfo) reports on a Linux target. Off Linux there is no C library to select, so the flag is ignored and `libc` stays `unknown`. Any other value is rejected.
 - `-v, --verbose`: Enable verbose logging.
 - `-q, --quiet`: Enable quiet logging.
 - `--version`: Print the version and exit, like `dotfiles version`.
+
+`--platform`, `--arch` and `--libc` resolve to one target that governs the whole run: the
+configuration is loaded for it, `install` selects release assets for it, and every
+[hook](../api-reference/lifecycle-hooks.md) and function-valued install parameter reports
+it through [`ctx.systemInfo`](../api-reference/context-api.md#ctxsysteminfo). Each flag
+that overrides what the machine reports is warned about, because the output of a run
+carried out for another machine otherwise looks like this machine's.
 
 ## Dual-Mode Output (`AGENT=1`)
 

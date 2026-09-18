@@ -35,6 +35,11 @@ func (m *ManualInstaller) Name() string {
 	return "manual"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (m *ManualInstaller) SetSystemContext(sysCtx *SystemContext) {
+	m.sysCtx = sysCtx
+}
+
 func (m *ManualInstaller) SetFS(fsys fs.FS) {
 	m.fsys = fsys
 }

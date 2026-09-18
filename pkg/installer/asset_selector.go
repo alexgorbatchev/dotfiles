@@ -27,10 +27,13 @@ const (
 // selector can decide on anything the release carries -- a name, a tag, whether it is a
 // prerelease -- rather than only on a filename pattern.
 type assetSelection struct {
-	Log          *logger.Logger
-	FS           fs.FS
-	Runner       exec.CommandRunner
-	Tool         *config.ToolConfig
+	Log    *logger.Logger
+	FS     fs.FS
+	Runner exec.CommandRunner
+	Tool   *config.ToolConfig
+	// Target is what the run was invoked for, so the selector's systemInfo describes
+	// the machine the asset is being chosen for rather than the one choosing.
+	Target       vm.Target
 	Param        string
 	Assets       any
 	Release      any
@@ -64,6 +67,7 @@ func selectAssetByCallback(ctx context.Context, sel assetSelection) (string, err
 		ProjCfg: config.GetProjectConfig(ctx),
 		Param:   sel.Param,
 		Context: selectorContext,
+		Target:  sel.Target,
 	})
 	if err != nil {
 		return "", err
@@ -129,6 +133,7 @@ func (g *GitHubInstaller) selectAsset(ctx context.Context, tool *config.ToolConf
 			FS:           g.fsys,
 			Runner:       g.runner,
 			Tool:         tool,
+			Target:       g.sysCtx.target(),
 			Param:        assetSelectorParam,
 			Assets:       release.Assets,
 			Release:      release,
@@ -165,6 +170,7 @@ func (g *GiteaInstaller) selectAsset(ctx context.Context, tool *config.ToolConfi
 			FS:           g.fsys,
 			Runner:       g.runner,
 			Tool:         tool,
+			Target:       g.sysCtx.target(),
 			Param:        assetSelectorParam,
 			Assets:       release.Assets,
 			Release:      release,
@@ -177,7 +183,7 @@ func (g *GiteaInstaller) selectAsset(ctx context.Context, tool *config.ToolConfi
 		return pickNamedAsset(tool.Name, chosen, release.Assets, giteaAssetName, names)
 	}
 
-	matched := matchAsset(release.Assets, g.sysCtx.OS, g.sysCtx.Arch, assetPattern)
+	matched := matchAsset(release.Assets, g.sysCtx.systemInfo(), assetPattern)
 	if matched == nil {
 		return nil, fmt.Errorf("no matching release asset found for OS %s and Arch %s", g.sysCtx.OS, g.sysCtx.Arch)
 	}
@@ -200,6 +206,7 @@ func (f macPackageFetcher) selectAsset(
 			FS:           f.fsys,
 			Runner:       f.runner,
 			Tool:         tool,
+			Target:       f.sysCtx.target(),
 			Param:        sourceAssetSelectorParam,
 			Assets:       release.Assets,
 			Release:      release,

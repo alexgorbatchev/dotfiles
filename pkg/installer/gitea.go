@@ -188,6 +188,11 @@ func (g *GiteaInstaller) Name() string {
 	return "gitea-release"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (g *GiteaInstaller) SetSystemContext(sysCtx *SystemContext) {
+	g.sysCtx = sysCtx
+}
+
 func (g *GiteaInstaller) SetFS(fsys fs.FS) {
 	g.fsys = fsys
 	if g.dl != nil {
@@ -335,7 +340,7 @@ func (g *GiteaInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfi
 	}, nil
 }
 
-func matchAsset(assets []giteaAsset, osName, archName, assetPattern string) *giteaAsset {
+func matchAsset(assets []giteaAsset, sysInfo arch.SystemInfo, assetPattern string) *giteaAsset {
 	var candidates []giteaAsset
 	if assetPattern != "" {
 		for _, asset := range assets {
@@ -351,11 +356,6 @@ func matchAsset(assets []giteaAsset, osName, archName, assetPattern string) *git
 		return nil
 	}
 
-	sysInfo := arch.SystemInfo{
-		OS:   osName,
-		Arch: archName,
-		Libc: arch.DetectLibc(arch.FileExists),
-	}
 	archRegex := arch.GetArchitectureRegex(sysInfo)
 
 	var strictMatches []giteaAsset

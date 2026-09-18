@@ -156,6 +156,11 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	installer.SetFS(inst, activeFS)
 	installer.SetLogger(inst, o.logger.WithName(inst.Name()))
 
+	// The asset an installer downloads has to be the one the configuration was
+	// resolved for, so the run's target reaches it the same way its file system and
+	// its credentials do.
+	installer.SetSystemContext(inst, installer.NewSystemContext(o.target))
+
 	installer.SetDownloadSettings(inst, downloadSettings(projCfg))
 	installer.SetGitHubSettings(inst, installer.GitHubSettings{
 		Host:         projCfg.Github.Host,
@@ -733,5 +738,5 @@ func (o *Orchestrator) runHooks(ctx context.Context, event string, tool *config.
 	if installer.IsDryRun() || tool == nil {
 		return nil
 	}
-	return vm.RunHook(ctx, o.logger, o.fs, o.runner, tool, projCfg, event, hookCtx, vm.Target{})
+	return vm.RunHook(ctx, o.logger, o.fs, o.runner, tool, projCfg, event, hookCtx, o.target)
 }

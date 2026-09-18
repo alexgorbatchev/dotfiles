@@ -160,6 +160,11 @@ func (g *GitHubInstaller) Name() string {
 	return "github-release"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (g *GitHubInstaller) SetSystemContext(sysCtx *SystemContext) {
+	g.sysCtx = sysCtx
+}
+
 func (g *GitHubInstaller) SetFS(fsys fs.FS) {
 	g.fsys = fsys
 	if g.dl != nil {
@@ -432,12 +437,7 @@ func (g *GitHubInstaller) matchAsset(assets []githubAsset, assetPattern string) 
 		return nil
 	}
 
-	sysInfo := arch.SystemInfo{
-		OS:   sysCtx.OS,
-		Arch: sysCtx.Arch,
-		Libc: arch.DetectLibc(arch.FileExists),
-	}
-
+	sysInfo := sysCtx.systemInfo()
 	archRegex := arch.GetArchitectureRegex(sysInfo)
 
 	// Find strict matches for both OS and CPU architecture

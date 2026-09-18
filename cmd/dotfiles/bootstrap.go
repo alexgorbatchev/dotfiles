@@ -143,6 +143,12 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	}
 	fsys = fs.NewResolvedFS(fsys, "")
 
+	// One resolved target governs the whole run: the configuration is loaded for it,
+	// the installers select assets for it, and the lifecycle hooks report it. Building
+	// it here, where the flags are parsed, is what keeps those three from each
+	// rediscovering the host on their own.
+	target := resolveTarget(GetLogger("config", os.Stderr))
+
 	var projCfg *config.ProjectConfig
 	var toolConfigs []*config.ToolConfig
 
@@ -152,7 +158,6 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		// --platform/--arch/--libc must reach the loader, because .platform() blocks and
 		// everything a tool file derives from ctx.systemInfo are evaluated while the
 		// configuration is being loaded.
-		target := vm.Target{OS: platform, Arch: arch, Libc: libc}
 		projCfg, toolMap, err = vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath, vm.WithTarget(target))
 		if err != nil {
 			return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
@@ -245,6 +250,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	}
 	orch := orchestrator.NewOrchestrator(GetLogger("orchestrator", os.Stderr), trackedFS, runner, reg, instReg)
 	orch.SetConfigFilePath(absConfigPath)
+	orch.SetTarget(target)
 	if inMemory {
 		orch.SetSymlinkFS(fsys)
 	}

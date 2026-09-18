@@ -19,6 +19,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 type InstallResult struct {
@@ -41,16 +42,41 @@ type UpdateCheckResult struct {
 	Cached        bool
 }
 
+// SystemContext is the target an installation is being carried out for: the platform
+// and architecture whose asset is selected, and the C library that decides between a
+// glibc and a musl build of it. It is the run's resolved target (--platform, --arch and
+// --libc, each falling back to detection), not necessarily the host.
 type SystemContext struct {
 	OS   string
 	Arch string
+	Libc string
 }
 
+// NewDefaultSystemContext describes the host, for an installer used outside a CLI run.
 func NewDefaultSystemContext() *SystemContext {
 	return &SystemContext{
 		OS:   arch.GetOS(),
 		Arch: arch.GetArch(),
+		Libc: arch.DetectLibc(arch.FileExists),
 	}
+}
+
+// NewSystemContext describes the target a run was invoked for to the installers.
+func NewSystemContext(target vm.Target) *SystemContext {
+	resolved := target.Resolve()
+	return &SystemContext{OS: resolved.OS, Arch: resolved.Arch, Libc: resolved.Libc}
+}
+
+// systemInfo describes this target in the shape asset matching works with.
+func (s *SystemContext) systemInfo() arch.SystemInfo {
+	return arch.SystemInfo{OS: s.OS, Arch: s.Arch, Libc: s.Libc}
+}
+
+// target describes this target in the shape the configuration runtime works with, so
+// that a hook or a function-valued install parameter evaluated during the installation
+// reports the same systemInfo the asset was selected for.
+func (s *SystemContext) target() vm.Target {
+	return vm.Target{OS: s.OS, Arch: s.Arch, Libc: s.Libc}
 }
 
 type Installer interface {
@@ -426,6 +452,12 @@ type GitHubSettingsSetter interface {
 	SetGitHubSettings(GitHubSettings)
 }
 
+// SystemContextSetter is implemented by every installer, because every installation
+// method is carried out for a particular platform, architecture and C library.
+type SystemContextSetter interface {
+	SetSystemContext(*SystemContext)
+}
+
 // HTTPClientSetter is implemented by installers that talk HTTP. SetHTTPClient
 // must route both their API calls and their downloads through the client, so
 // that a caller who injects one (the development proxy) captures all traffic.
@@ -460,6 +492,18 @@ func SetDownloadSettings(inst Installer, settings downloader.Settings) {
 func SetGitHubSettings(inst Installer, settings GitHubSettings) {
 	if s, ok := inst.(GitHubSettingsSetter); ok {
 		s.SetGitHubSettings(settings)
+	}
+}
+
+// SetSystemContext hands an installer the target the run was invoked for, so that it
+// selects assets and evaluates callbacks for that target instead of rediscovering the
+// host. A nil context is ignored, leaving the installer with the one it was built with.
+func SetSystemContext(inst Installer, sysCtx *SystemContext) {
+	if sysCtx == nil {
+		return
+	}
+	if s, ok := inst.(SystemContextSetter); ok {
+		s.SetSystemContext(sysCtx)
 	}
 }
 

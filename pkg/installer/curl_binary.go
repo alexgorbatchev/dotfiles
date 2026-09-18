@@ -42,6 +42,11 @@ func (c *CurlBinaryInstaller) Name() string {
 	return "curl-binary"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (c *CurlBinaryInstaller) SetSystemContext(sysCtx *SystemContext) {
+	c.sysCtx = sysCtx
+}
+
 func (c *CurlBinaryInstaller) SetFS(fsys fs.FS) {
 	c.fsys = fsys
 	if c.dl != nil {

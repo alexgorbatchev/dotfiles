@@ -34,6 +34,11 @@ func (d *DnfInstaller) Name() string {
 	return "dnf"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (d *DnfInstaller) SetSystemContext(sysCtx *SystemContext) {
+	d.sysCtx = sysCtx
+}
+
 func (d *DnfInstaller) SetFS(fsys fs.FS) {
 	d.fsys = fsys
 }

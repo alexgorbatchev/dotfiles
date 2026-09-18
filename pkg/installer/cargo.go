@@ -107,6 +107,11 @@ func (c *CargoInstaller) Name() string {
 	return "cargo"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (c *CargoInstaller) SetSystemContext(sysCtx *SystemContext) {
+	c.sysCtx = sysCtx
+}
+
 func (c *CargoInstaller) SetFS(fsys fs.FS) {
 	c.fsys = fsys
 	if c.dl != nil {

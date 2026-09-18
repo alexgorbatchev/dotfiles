@@ -37,6 +37,9 @@ type Orchestrator struct {
 	instRegistry   *installer.Registry
 	symlinkFS      fs.FS
 	configFilePath string
+	// target is what the run was invoked for. The zero value means the host, which is
+	// what an installation started without --platform/--arch/--libc targets.
+	target vm.Target
 }
 
 // NewOrchestrator creates a new Orchestrator instance.
@@ -70,6 +73,13 @@ func (o *Orchestrator) getTrackedFS(ctx context.Context, tx *sql.Tx, toolName, f
 		return tfs.WithTx(ctx, tx).WithToolName(toolName).WithFileType(fileType)
 	}
 	return fs.NewTrackedFileSystem(o.fs, o.reg, o.logger, toolName).WithTx(ctx, tx).WithFileType(fileType)
+}
+
+// SetTarget names the platform, architecture and C library this run installs for. It is
+// the same target the configuration was loaded for, so that a lifecycle hook and a
+// function-valued install parameter describe the machine the configuration describes.
+func (o *Orchestrator) SetTarget(target vm.Target) {
+	o.target = target
 }
 
 // SetSymlinkFS allows injecting a custom fs.FS (primarily for testing).

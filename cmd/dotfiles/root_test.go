@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 
 	hostarch "github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 func TestGetLoggerNilWriterAndFlags(t *testing.T) {
@@ -163,14 +165,25 @@ func writeLibcProbeProject(t *testing.T) string {
 // The flag is only worth having if it reaches the loader. --platform and --arch do;
 // --libc was registered, documented and then read by nothing, so a tool evaluated
 // against ctx.systemInfo.libc saw the host's value whatever was asked for.
+//
+// Which C library is in use is a Linux question, so the target's platform answers it
+// before the flag does, as it did in v1
+// (packages/cli/src/runtime/createBaseRuntimeContext.ts:59-68).
 func TestLibcFlagReachesSystemInfo(t *testing.T) {
 	tests := []struct {
-		name  string
-		value string
-		want  string
+		name     string
+		targetOS string
+		value    string
+		want     string
 	}{
-		{name: "musl", value: hostarch.LibcMusl, want: hostarch.LibcMusl},
-		{name: "gnu", value: hostarch.LibcGnu, want: hostarch.LibcGnu},
+		{name: "musl", targetOS: hostarch.OSLinux, value: hostarch.LibcMusl, want: hostarch.LibcMusl},
+		{name: "gnu", targetOS: hostarch.OSLinux, value: hostarch.LibcGnu, want: hostarch.LibcGnu},
+		{
+			name:     "a macOS target has no C library to select",
+			targetOS: hostarch.OSDarwin,
+			value:    hostarch.LibcMusl,
+			want:     hostarch.LibcUnknown,
+		},
 		{name: "detected when the flag is absent", value: "", want: hostarch.DetectLibc(hostarch.FileExists)},
 	}
 
@@ -182,9 +195,12 @@ func TestLibcFlagReachesSystemInfo(t *testing.T) {
 			dryRun = true
 			previousLibc := libc
 			libc = tt.value
+			previousPlatform := platform
+			platform = tt.targetOS
 			t.Cleanup(func() {
 				dryRun = previousDryRun
 				libc = previousLibc
+				platform = previousPlatform
 			})
 
 			services, err := BootstrapServices(context.Background(), configPath)
@@ -198,6 +214,75 @@ func TestLibcFlagReachesSystemInfo(t *testing.T) {
 			}
 			if got := services.ToolConfigs[0].InstallParams["binaryPath"]; got != "/libc/"+tt.want {
 				t.Errorf("systemInfo.libc reached the tool as %v, want %q", got, "/libc/"+tt.want)
+			}
+		})
+	}
+}
+
+// A run carried out for another machine says so, once per flag that overrode detection.
+// v1 warned the same way (packages/cli/src/runtime/createBaseRuntimeContext.ts:50-58):
+// the output of a targeted run is indistinguishable from this machine's, so nothing else
+// tells the reader it describes a different one.
+func TestResolveTargetWarnsPerOverriddenFlag(t *testing.T) {
+	tests := []struct {
+		name        string
+		platform    string
+		arch        string
+		libc        string
+		wantTarget  vm.Target
+		wantWarning []string
+		noWarning   []string
+	}{
+		{
+			name:       "nothing overridden stays quiet",
+			wantTarget: vm.Target{OS: hostarch.GetOS(), Arch: hostarch.GetArch(), Libc: hostarch.DetectLibc(hostarch.FileExists)},
+			noWarning:  []string{"overridden", "ignored"},
+		},
+		{
+			name:       "a Linux target reports all three",
+			platform:   hostarch.OSLinux,
+			arch:       hostarch.ArchARM64,
+			libc:       hostarch.LibcMusl,
+			wantTarget: vm.Target{OS: hostarch.OSLinux, Arch: hostarch.ArchARM64, Libc: hostarch.LibcMusl},
+			wantWarning: []string{
+				"Platform overridden to: linux",
+				"Arch overridden to: arm64",
+				"Libc overridden to: musl",
+			},
+		},
+		{
+			name:        "a C library a macOS target cannot use is reported as ignored",
+			platform:    hostarch.OSDarwin,
+			libc:        hostarch.LibcMusl,
+			wantTarget:  vm.Target{OS: hostarch.OSDarwin, Arch: hostarch.GetArch(), Libc: hostarch.LibcUnknown},
+			wantWarning: []string{"Platform overridden to: darwin", "Libc musl ignored"},
+			noWarning:   []string{"Libc overridden", "Arch overridden"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			previousPlatform, previousArch, previousLibc := platform, arch, libc
+			platform, arch, libc = tt.platform, tt.arch, tt.libc
+			t.Cleanup(func() {
+				platform, arch, libc = previousPlatform, previousArch, previousLibc
+			})
+
+			var out bytes.Buffer
+			got := resolveTarget(logger.New(logger.Config{Name: "test", Writer: &out}))
+
+			if got != tt.wantTarget {
+				t.Errorf("resolveTarget() = %+v, want %+v", got, tt.wantTarget)
+			}
+			for _, want := range tt.wantWarning {
+				if !strings.Contains(out.String(), want) {
+					t.Errorf("expected a warning containing %q, got:\n%s", want, out.String())
+				}
+			}
+			for _, unwanted := range tt.noWarning {
+				if strings.Contains(out.String(), unwanted) {
+					t.Errorf("expected nothing about %q, got:\n%s", unwanted, out.String())
+				}
 			}
 		})
 	}

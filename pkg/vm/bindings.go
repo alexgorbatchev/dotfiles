@@ -44,11 +44,28 @@ func (t Target) arch() string {
 // libc returns the C library this target evaluates against. Detection inspects the
 // running machine's dynamic loaders, which say nothing about a target the caller named,
 // so an override replaces detection rather than being reconciled with it.
+//
+// Which C library a target uses is a question only Linux answers, so the platform this
+// target resolves to decides it before the flag does: a macOS or Windows target reports
+// LibcUnknown however the host is built and whatever --libc named. v1 resolved it the
+// same way (packages/cli/src/runtime/createBaseRuntimeContext.ts:59-68).
 func (t Target) libc() string {
+	if t.os() != arch.OSLinux {
+		return arch.LibcUnknown
+	}
 	if t.Libc != "" {
 		return t.Libc
 	}
 	return arch.DetectLibc(arch.FileExists)
+}
+
+// Resolve returns this target with every field named explicitly: what was left empty is
+// filled in from the host, and the C library follows the resolved platform. A resolved
+// target is what the command layer builds once from --platform/--arch/--libc and hands
+// to configuration loading, to the installers and to the lifecycle hooks, so that one
+// target governs the whole run.
+func (t Target) Resolve() Target {
+	return Target{OS: t.os(), Arch: t.arch(), Libc: t.libc()}
 }
 
 // matchesTarget reports whether a .platform() or .arch() block applies to this target.

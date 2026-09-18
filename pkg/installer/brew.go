@@ -65,6 +65,11 @@ func (b *BrewInstaller) Name() string {
 	return "brew"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (b *BrewInstaller) SetSystemContext(sysCtx *SystemContext) {
+	b.sysCtx = sysCtx
+}
+
 func (b *BrewInstaller) SetFS(fsys fs.FS) {
 	b.fsys = fsys
 }

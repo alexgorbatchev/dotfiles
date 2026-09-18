@@ -61,6 +61,11 @@ func (p *PkgInstaller) Name() string {
 	return "pkg"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (p *PkgInstaller) SetSystemContext(sysCtx *SystemContext) {
+	p.sysCtx = sysCtx
+}
+
 func (p *PkgInstaller) SetFS(fsys fs.FS) {
 	p.fsys = fsys
 	if p.dl != nil {

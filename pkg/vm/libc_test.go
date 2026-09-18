@@ -117,22 +117,27 @@ import { defineTool } from "@alexgorbatchev/dotfiles";
 export default defineTool((install, ctx) => install("manual", { binaryPath: "/libc/" + ctx.systemInfo.libc }));`
 
 // WithTarget backs --libc the way it backs --platform and --arch: the configuration is
-// evaluated for the libc the caller names, and for the host's when it names none.
+// evaluated for the libc the caller names, and for the host's when it names none. Which
+// C library is in use is a Linux question, so the platform the target resolves to
+// answers it first -- a macOS target has none to name.
 func TestWithTargetOverridesLibc(t *testing.T) {
 	tests := []struct {
 		name       string
+		targetOS   string
 		targetLibc string
 		want       string
 	}{
-		{name: "musl override", targetLibc: arch.LibcMusl, want: arch.LibcMusl},
-		{name: "gnu override", targetLibc: arch.LibcGnu, want: arch.LibcGnu},
-		{name: "unknown override", targetLibc: arch.LibcUnknown, want: arch.LibcUnknown},
-		{name: "unset falls back to the host", targetLibc: "", want: arch.DetectLibc(arch.FileExists)},
+		{name: "musl override", targetOS: arch.OSLinux, targetLibc: arch.LibcMusl, want: arch.LibcMusl},
+		{name: "gnu override", targetOS: arch.OSLinux, targetLibc: arch.LibcGnu, want: arch.LibcGnu},
+		{name: "unknown override", targetOS: arch.OSLinux, targetLibc: arch.LibcUnknown, want: arch.LibcUnknown},
+		{name: "a macOS target has none to name", targetOS: arch.OSDarwin, targetLibc: arch.LibcMusl, want: arch.LibcUnknown},
+		{name: "unset falls back to detection", targetOS: arch.OSLinux, targetLibc: "", want: arch.DetectLibc(arch.FileExists)},
+		{name: "unset on the host falls back to the host's", targetOS: "", targetLibc: "", want: arch.DetectLibc(arch.FileExists)},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			toolConfigs, err := loadToolSource(t, libcReportingTool, WithTarget(Target{Libc: tt.targetLibc}))
+			toolConfigs, err := loadToolSource(t, libcReportingTool, WithTarget(Target{OS: tt.targetOS, Libc: tt.targetLibc}))
 			if err != nil {
 				t.Fatalf("load failed: %v", err)
 			}

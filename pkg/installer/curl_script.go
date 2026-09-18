@@ -46,6 +46,11 @@ func (c *CurlScriptInstaller) Name() string {
 	return "curl-script"
 }
 
+// SetSystemContext applies the target the run was invoked for.
+func (c *CurlScriptInstaller) SetSystemContext(sysCtx *SystemContext) {
+	c.sysCtx = sysCtx
+}
+
 func (c *CurlScriptInstaller) SetFS(fsys fs.FS) {
 	c.fsys = fsys
 	if c.dl != nil {
@@ -277,6 +282,7 @@ func (c *CurlScriptInstaller) resolveParam(ctx context.Context, tool *config.Too
 		ProjCfg: config.GetProjectConfig(ctx),
 		Param:   param,
 		Context: map[string]any{"scriptPath": scriptPath, "stagingDir": stagingDir},
+		Target:  c.sysCtx.target(),
 	})
 }
 
