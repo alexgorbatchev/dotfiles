@@ -18,6 +18,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
@@ -175,8 +176,10 @@ func (s *Server) Host() string {
 	return s.host
 }
 
-// Start launches the HTTP server for serving the dashboard.
+// Start imports the shim usage log and launches the HTTP server for serving the dashboard.
 func (s *Server) Start() error {
+	s.importShimUsage()
+
 	subFS, err := iofs.Sub(assets, "dist")
 	if err != nil {
 		return fmt.Errorf("failed to locate embedded dashboard assets: %w", err)
@@ -224,6 +227,21 @@ func (s *Server) Start() error {
 	}()
 
 	return nil
+}
+
+// importShimUsage folds the log that shims append to into the registry so the
+// usage views serve data from invocations made while no dashboard was running.
+// The import is best-effort: a failure is reported and the dashboard still starts.
+func (s *Server) importShimUsage() {
+	if s.registry == nil || s.fsys == nil || s.projectConfig == nil {
+		return
+	}
+	res, err := usagelog.Import(context.Background(), s.fsys, s.registry, s.projectConfig.Paths.GeneratedDir)
+	if err != nil {
+		s.logger.Warn(logger.Message(fmt.Sprintf("Failed to import shim usage log: %v", err)))
+		return
+	}
+	s.logger.Debug(logger.Message(fmt.Sprintf("Imported shim usage log: files=%d events=%d invalid=%d", res.Files, res.Events, res.InvalidLines)))
 }
 
 // Stop shuts down the running dashboard server.

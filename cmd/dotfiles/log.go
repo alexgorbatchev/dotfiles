@@ -10,6 +10,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -163,7 +164,7 @@ var logCmd = &cobra.Command{
 
 		// Fallback to disk logs if no DB operations found or --tail explicitly used
 		logCandidates := []string{
-			filepath.Join(services.ProjectConfig.Paths.GeneratedDir, "usage", "shim-usage.log"),
+			usagelog.Path(services.ProjectConfig.Paths.GeneratedDir),
 			filepath.Join(services.ProjectConfig.Paths.GeneratedDir, "dotfiles.log"),
 		}
 

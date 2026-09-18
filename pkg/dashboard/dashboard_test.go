@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -24,6 +25,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 )
 
 func TestDashboardServer(t *testing.T) {
@@ -1412,4 +1414,152 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 		}
 		assertExactKeys(t, "update", data, "updated")
 	})
+}
+
+// TestServerStart_ImportsShimUsageLog covers the wiring in Start: the log that
+// shims append to is folded into the registry before the first request is served,
+// so the tool detail's usage reflects invocations made while no dashboard ran.
+func TestServerStart_ImportsShimUsageLog(t *testing.T) {
+	log := logger.New(logger.Config{Name: "test", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	ctx := context.Background()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to connect to db: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	root := t.TempDir()
+	generatedDir := filepath.Join(root, ".generated")
+	usagePath := usagelog.Path(generatedDir)
+	if err := os.MkdirAll(filepath.Dir(usagePath), 0755); err != nil {
+		t.Fatalf("creating usage dir: %v", err)
+	}
+	const latestUse = 1700000600
+	shimLog := fmt.Sprintf("v1\t1700000000\tbat\tbat\nv1\t%d\tbat\tbat\nv1\t1700000300\tbat\tbat\n", latestUse)
+	if err := os.WriteFile(usagePath, []byte(shimLog), 0644); err != nil {
+		t.Fatalf("writing usage log: %v", err)
+	}
+
+	toolPath := filepath.Join(root, "bat.tool.ts")
+	if err := os.WriteFile(toolPath, []byte("// bat"), 0644); err != nil {
+		t.Fatalf("writing tool config: %v", err)
+	}
+	toolConfigs := []*config.ToolConfig{{
+		Name:               "bat",
+		InstallationMethod: "manual",
+		ConfigFilePath:     toolPath,
+		Binaries:           []interface{}{"bat"},
+	}}
+	projCfg := &config.ProjectConfig{Paths: config.PathsConfig{
+		DotfilesDir:    root,
+		GeneratedDir:   generatedDir,
+		BinariesDir:    filepath.Join(generatedDir, "binaries"),
+		TargetDir:      filepath.Join(root, "bin"),
+		ToolConfigsDir: root,
+	}}
+
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
+	if err := server.Start(); err != nil {
+		t.Fatalf("failed to start server: %v", err)
+	}
+	defer server.Stop()
+
+	usage := mustUsage(t, reg, "bat", "bat")
+	if usage.UsageCount != 3 || usage.LastUsedAt != time.Unix(latestUse, 0).UnixMilli() {
+		t.Fatalf("registry usage = %+v, want 3 invocations with the latest one as lastUsedAt", usage)
+	}
+
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bat", server.Port()))
+	if err != nil {
+		t.Fatalf("GET /api/tools/bat: %v", err)
+	}
+	defer resp.Body.Close()
+	var body struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Usage struct {
+				TotalCount int `json:"totalCount"`
+				Binaries   []struct {
+					BinaryName string  `json:"binaryName"`
+					Count      int     `json:"count"`
+					LastUsedAt *string `json:"lastUsedAt"`
+				} `json:"binaries"`
+			} `json:"usage"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decoding tool detail: %v", err)
+	}
+	if !body.Success || body.Data.Usage.TotalCount != 3 {
+		t.Fatalf("tool detail usage = %+v, want totalCount 3 from the imported log", body.Data.Usage)
+	}
+	if len(body.Data.Usage.Binaries) != 1 || body.Data.Usage.Binaries[0].BinaryName != "bat" || body.Data.Usage.Binaries[0].Count != 3 {
+		t.Fatalf("binaries = %+v, want bat with count 3", body.Data.Usage.Binaries)
+	}
+	wantLastUsed := time.Unix(latestUse, 0).UTC().Format(time.RFC3339)
+	if got := body.Data.Usage.Binaries[0].LastUsedAt; got == nil || *got != wantLastUsed {
+		t.Fatalf("lastUsedAt = %v, want %s", got, wantLastUsed)
+	}
+
+	if _, err := os.Stat(usagePath); !os.IsNotExist(err) {
+		t.Fatalf("active usage log still present after import (stat err = %v)", err)
+	}
+	entries, err := os.ReadDir(usagelog.Dir(generatedDir))
+	if err != nil {
+		t.Fatalf("listing usage dir: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("usage dir still holds %d entries after import, want none", len(entries))
+	}
+}
+
+// TestServerStart_ReportsFailedUsageImport checks that a broken usage log does not
+// keep the dashboard from starting: the failure is logged as a warning and the
+// server still binds.
+func TestServerStart_ReportsFailedUsageImport(t *testing.T) {
+	var logs bytes.Buffer
+	log := logger.New(logger.Config{Name: "test", Level: logger.LogLevelDefault, Writer: &logs})
+	ctx := context.Background()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to connect to db: %v", err)
+	}
+	defer sqlDB.Close()
+
+	root := t.TempDir()
+	generatedDir := filepath.Join(root, ".generated")
+	// A directory carrying a rotated log's name cannot be read as a log file.
+	bogus := filepath.Join(usagelog.Dir(generatedDir), "shim-usage.log.1.7")
+	if err := os.MkdirAll(bogus, 0755); err != nil {
+		t.Fatalf("creating bogus rotated log: %v", err)
+	}
+
+	server := NewServer(log, "127.0.0.1", 0, registry.NewRegistry(sqlDB), testFS(), "", &config.ProjectConfig{Paths: config.PathsConfig{
+		DotfilesDir:    root,
+		GeneratedDir:   generatedDir,
+		ToolConfigsDir: root,
+	}}, nil, nil)
+	if err := server.Start(); err != nil {
+		t.Fatalf("Start must succeed despite the failed import: %v", err)
+	}
+	defer server.Stop()
+
+	if !strings.Contains(logs.String(), "Failed to import shim usage log") || !strings.Contains(logs.String(), bogus) {
+		t.Fatalf("logs do not report the failed import naming %s:\n%s", bogus, logs.String())
+	}
+}
+
+func mustUsage(t *testing.T, reg *registry.Registry, tool, binary string) *registry.ToolUsageRecord {
+	t.Helper()
+	rec, err := reg.GetToolUsage(context.Background(), tool, binary)
+	if err != nil {
+		t.Fatalf("reading usage of %s/%s: %v", tool, binary, err)
+	}
+	if rec == nil {
+		t.Fatalf("no usage recorded for %s/%s", tool, binary)
+	}
+	return rec
 }
