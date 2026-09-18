@@ -1,10 +1,12 @@
 package installer
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -33,6 +35,7 @@ type githubRelease struct {
 	TagName    string        `json:"tag_name"`
 	Name       string        `json:"name"`
 	Prerelease bool          `json:"prerelease"`
+	Draft      bool          `json:"draft"`
 	Assets     []githubAsset `json:"assets"`
 }
 
@@ -176,6 +179,51 @@ func (g *GitHubInstaller) getToolLogger(toolName string) *logger.Logger {
 	return nil
 }
 
+// releaseListPageSize bounds the releases listing consulted when a tool opts into
+// prereleases. The listing is ordered newest first, so a small page still finds the
+// newest published release even when a few drafts sit at the top of it.
+const releaseListPageSize = 10
+
+// releaseEndpoint returns the GitHub API path that resolves a tool's release, and
+// whether that path responds with a listing rather than a single release.
+//
+// The releases/latest endpoint deliberately excludes prereleases, and answers 404 for
+// a repository that has published nothing else, so opting into prereleases has to
+// change which endpoint is consulted rather than filter what it returns.
+func releaseEndpoint(repo, version string, prerelease bool) (string, bool) {
+	if version != "" && version != "latest" {
+		return fmt.Sprintf("repos/%s/releases/tags/%s", repo, version), false
+	}
+	if prerelease {
+		return fmt.Sprintf("repos/%s/releases?per_page=%d", repo, releaseListPageSize), true
+	}
+	return fmt.Sprintf("repos/%s/releases/latest", repo), false
+}
+
+// decodeRelease reads a release response, which is a listing when the prerelease
+// endpoint was used. Drafts are skipped: GitHub returns them to callers with push
+// access and they carry no downloadable assets.
+func decodeRelease(r io.Reader, isListing bool) (*githubRelease, error) {
+	if !isListing {
+		var rel githubRelease
+		if err := json.NewDecoder(r).Decode(&rel); err != nil {
+			return nil, fmt.Errorf("decoding GitHub release response: %w", err)
+		}
+		return &rel, nil
+	}
+
+	var releases []githubRelease
+	if err := json.NewDecoder(r).Decode(&releases); err != nil {
+		return nil, fmt.Errorf("decoding GitHub releases response: %w", err)
+	}
+	for i := range releases {
+		if !releases[i].Draft {
+			return &releases[i], nil
+		}
+	}
+	return nil, fmt.Errorf("no published release found")
+}
+
 func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
 	if err := ValidateSudo(g, tool); err != nil {
 		return nil, err
@@ -217,10 +265,9 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	}
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
-	apiURL := fmt.Sprintf("%s/repos/%s/releases/latest", baseURL, repo)
-	if version != "latest" {
-		apiURL = fmt.Sprintf("%s/repos/%s/releases/tags/%s", baseURL, repo, version)
-	}
+	prerelease := getBoolParam(tool.InstallParams, "prerelease", false)
+	endpoint, isListing := releaseEndpoint(repo, version, prerelease)
+	apiURL := fmt.Sprintf("%s/%s", baseURL, endpoint)
 
 	ghCli := getBoolParam(tool.InstallParams, "ghCli", false)
 	var release *githubRelease
@@ -261,11 +308,11 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 			} else if resp.StatusCode != http.StatusOK {
 				return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
 			} else {
-				var rel githubRelease
-				if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
-					return nil, fmt.Errorf("decoding GitHub release response: %w", err)
+				rel, err := decodeRelease(resp.Body, isListing)
+				if err != nil {
+					return nil, err
 				}
-				release = &rel
+				release = rel
 				g.setCachedRelease(repo, release.TagName, release)
 				if version != "latest" {
 					g.setCachedRelease(repo, version, release)
@@ -274,7 +321,7 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		}
 
 		if useGhCli {
-			rel, err := g.fetchReleaseViaGhCli(ctx, repo, version, baseURL)
+			rel, err := g.fetchReleaseViaGhCli(ctx, repo, version, baseURL, prerelease)
 			if err != nil {
 				return nil, fmt.Errorf("fetching release via gh CLI: %w", err)
 			}
@@ -395,6 +442,8 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 		baseURL = "https://api.github.com"
 	}
 	ghCli := getBoolParam(tool.InstallParams, "ghCli", false)
+	prerelease := getBoolParam(tool.InstallParams, "prerelease", false)
+	endpoint, isListing := releaseEndpoint(repo, "latest", prerelease)
 
 	var release *githubRelease
 	var isCached bool
@@ -406,13 +455,13 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 
 	if release == nil {
 		if ghCli {
-			rel, err := g.fetchReleaseViaGhCli(ctx, repo, "latest", baseURL)
+			rel, err := g.fetchReleaseViaGhCli(ctx, repo, "latest", baseURL, prerelease)
 			if err != nil {
 				return nil, err
 			}
 			release = rel
 		} else {
-			apiURL := fmt.Sprintf("%s/repos/%s/releases/latest", baseURL, repo)
+			apiURL := fmt.Sprintf("%s/%s", baseURL, endpoint)
 			req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 			if err != nil {
 				return nil, err
@@ -434,7 +483,7 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 			}
 			defer resp.Body.Close()
 			if resp.StatusCode == http.StatusForbidden {
-				rel, err := g.fetchReleaseViaGhCli(ctx, repo, "latest", baseURL)
+				rel, err := g.fetchReleaseViaGhCli(ctx, repo, "latest", baseURL, prerelease)
 				if err != nil {
 					return nil, err
 				}
@@ -442,11 +491,11 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 			} else if resp.StatusCode != http.StatusOK {
 				return nil, fmt.Errorf("GitHub API status %d", resp.StatusCode)
 			} else {
-				var rel githubRelease
-				if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+				rel, err := decodeRelease(resp.Body, isListing)
+				if err != nil {
 					return nil, err
 				}
-				release = &rel
+				release = rel
 			}
 		}
 		if len(release.Assets) > 0 {
@@ -461,11 +510,8 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 	}, nil
 }
 
-func (g *GitHubInstaller) fetchReleaseViaGhCli(ctx context.Context, repo, version, baseURL string) (*githubRelease, error) {
-	endpoint := fmt.Sprintf("repos/%s/releases/latest", repo)
-	if version != "" && version != "latest" {
-		endpoint = fmt.Sprintf("repos/%s/releases/tags/%s", repo, version)
-	}
+func (g *GitHubInstaller) fetchReleaseViaGhCli(ctx context.Context, repo, version, baseURL string, prerelease bool) (*githubRelease, error) {
+	endpoint, isListing := releaseEndpoint(repo, version, prerelease)
 
 	args := []string{"api"}
 	if baseURL != "" && baseURL != "https://api.github.com" {
@@ -481,11 +527,11 @@ func (g *GitHubInstaller) fetchReleaseViaGhCli(ctx context.Context, repo, versio
 		return nil, fmt.Errorf("executing gh api %s: %w", endpoint, err)
 	}
 
-	var rel githubRelease
-	if err := json.Unmarshal(out, &rel); err != nil {
+	rel, err := decodeRelease(bytes.NewReader(out), isListing)
+	if err != nil {
 		return nil, fmt.Errorf("parsing gh api response: %w", err)
 	}
-	return &rel, nil
+	return rel, nil
 }
 
 func (g *GitHubInstaller) downloadAssetViaGhCli(ctx context.Context, repo, tag, pattern, destDir string) error {

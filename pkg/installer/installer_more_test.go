@@ -508,7 +508,7 @@ func TestInstallerEdgeCasesAndFallbacks(t *testing.T) {
 		"tag_name": "v1.2.3",
 		"assets": [{"name": "cli-tool-linux-amd64", "browser_download_url": "http://gh/dl"}]
 	}`), nil)
-	rel, err := gh.fetchReleaseViaGhCli(context.Background(), "owner/cli-tool", "", "")
+	rel, err := gh.fetchReleaseViaGhCli(context.Background(), "owner/cli-tool", "", "", false)
 	if err != nil || rel == nil || rel.TagName != "v1.2.3" {
 		t.Errorf("fetchReleaseViaGhCli failed: rel=%v, err=%v", rel, err)
 	}
