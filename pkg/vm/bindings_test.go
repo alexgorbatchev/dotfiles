@@ -32,12 +32,13 @@ func TestBindingsDirect(t *testing.T) {
 	}
 
 	// RegisterContextBindings with nil log and nil fsys
-	err = RegisterContextBindings(vm, nil, nil)
+	err = RegisterContextBindings(vm, nil, nil, "")
 	if err != nil {
 		t.Fatalf("RegisterContextBindings with nil failed: %v", err)
 	}
 
-	// Exercise nil log and nil fsys JS callbacks
+	// Reads tolerate a VM wired without a logger or file system: they answer "nothing
+	// is there", which is what a caller inspecting an absent tree should see.
 	testScriptCtx := `
 		logInfo("t", "msg");
 		logWarn("t", "msg");
@@ -47,13 +48,24 @@ func TestBindingsDirect(t *testing.T) {
 		var e = fsExists("/p");
 		var rd = fsReadDir("/p");
 		var rf = fsReadFile("/p");
-		fsWriteFile("/p", "c");
-		fsMkdir("/p");
-		fsRm("/p");
 	`
 	_, err = vm.RunString(testScriptCtx)
 	if err != nil {
 		t.Fatalf("executing context bindings with nil failed: %v", err)
+	}
+
+	// Writes do not. A mutation that cannot happen must say so rather than report
+	// success, which is how hook failures used to disappear.
+	for _, mutation := range []string{
+		`fsWriteFile("/p", "c");`,
+		`fsMkdir("/p");`,
+		`fsRm("/p");`,
+		`fsRename("/p", "/q");`,
+		`fsSymlink("/p", "/q");`,
+	} {
+		if _, err := vm.RunString(mutation); err == nil {
+			t.Errorf("%s silently succeeded without a file system", mutation)
+		}
 	}
 }
 
@@ -66,7 +78,7 @@ func TestRegisterContextBindingsWithLogger(t *testing.T) {
 	})
 
 	vm := goja.New()
-	err := RegisterContextBindings(vm, log, nil)
+	err := RegisterContextBindings(vm, log, nil, "")
 	if err != nil {
 		t.Fatalf("RegisterContextBindings failed: %v", err)
 	}

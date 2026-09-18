@@ -153,6 +153,66 @@ export interface IConfigContext {
 }
 
 /**
+ * A single match handed to a replaceInFile callback.
+ */
+export interface IReplaceInFileMatch {
+  /**
+   * The text that matched.
+   */
+  substring: string;
+  /**
+   * Capture groups, in order. A group that did not participate is undefined.
+   */
+  captures: (string | undefined)[];
+  /**
+   * Index in the searched text where the match starts.
+   */
+  offset: number;
+  /**
+   * The text the pattern was applied to.
+   */
+  input: string;
+  /**
+   * Named capture groups, when the pattern declares any.
+   */
+  groups: Record<string, string>;
+}
+
+/**
+ * Options for replaceInFile.
+ */
+export interface IReplaceInFileOptions {
+  /**
+   * Apply the pattern to the whole file (the default) or to each line separately.
+   * Line mode is what makes ^ and $ mean "line" rather than "file".
+   */
+  mode?: "file" | "line";
+  /**
+   * Reported when the pattern matches nothing, explaining what was expected.
+   */
+  errorMessage?: string;
+}
+
+/**
+ * Produces the replacement for one match.
+ */
+export type ReplaceInFileReplacer = (match: IReplaceInFileMatch) => string | Promise<string>;
+
+/**
+ * Replaces text in a file, returning whether anything changed.
+ *
+ * Every match is replaced whether or not the pattern carries the "g" flag. A plain
+ * string pattern is matched literally. The file is not rewritten when nothing matched
+ * or when the result is identical to what was already there.
+ */
+export type ReplaceInFileFn = (
+  filePath: string,
+  from: string | RegExp,
+  to: string | ReplaceInFileReplacer,
+  options?: IReplaceInFileOptions,
+) => Promise<boolean>;
+
+/**
  * Context object for tool configuration.
  */
 export interface IToolConfigContext {
@@ -199,9 +259,9 @@ export interface IToolConfigContext {
    */
   fs: IFileSystem;
   /**
-   * Execute shell commands securely and capture stdout.
+   * Replaces text in a file.
    */
-  $: (strings: TemplateStringsArray | string[], ...values: unknown[]) => Promise<string>;
+  replaceInFile: ReplaceInFileFn;
 }
 
 /**
@@ -750,45 +810,65 @@ export interface IShellConfigurator<KnownFunctions extends string = never> {
  */
 export interface IHookContext extends IToolConfigContext {
   /**
-   * Temporary installation directory.
+   * Temporary installation directory the installer stages into.
    */
   stagingDir: string;
   /**
-   * Installed tool directory (available in after-install).
+   * Stable directory the installed tool now occupies. Only `after-install` provides
+   * it; before the install completes there is nothing installed to point at.
    */
   installedDir?: string;
   /**
-   * Directory where archives are extracted.
-   */
-  extractDir?: string;
-  /**
-   * Path to downloaded asset.
-   */
-  downloadPath?: string;
-  /**
-   * Resolved binary paths.
+   * Paths of the binaries the installer produced. Only `after-install` provides them.
    */
   binaryPaths?: string[];
   /**
-   * Installed tool version.
+   * Version that was installed. Only `after-install` provides it, and only when the
+   * installer resolved one.
    */
   version?: string;
   /**
-   * File operations alias for fs.
+   * File operations. The same bindings as `fs` on the tool context, under the name
+   * hooks use.
    */
-  fileSystem?: IFileSystem;
+  fileSystem: IFileSystem;
   /**
-   * Tool configuration.
+   * Runs a shell command. Available only to hooks: configuration is evaluated on every
+   * CLI invocation, so a tool factory must not be able to execute anything.
    */
-  toolConfig?: Record<string, unknown>;
+  $: (strings: TemplateStringsArray | string[], ...values: unknown[]) => IShellPromise;
+}
+
+/**
+ * Result of a command run from a hook. Awaiting it runs the command; the modifiers
+ * apply beforehand, so `await $`cmd`.quiet()` stays silent.
+ */
+export interface IShellPromise extends PromiseLike<IShellOutput> {
   /**
-   * Helper to replace text in files.
+   * Suppresses echoing the command before it runs.
    */
-  replaceInFile?: (path: string, search: string | RegExp, replace: string) => Promise<void>;
+  quiet(): IShellPromise;
   /**
-   * Additional properties depending on hook lifecycle phase.
+   * Returns the outcome instead of throwing when the command exits non-zero.
    */
-  [key: string]: unknown;
+  noThrow(): IShellPromise;
+  /**
+   * Runs the command and resolves with its standard output.
+   */
+  text(): Promise<string>;
+  /**
+   * Runs the command and parses its standard output as JSON.
+   */
+  json(): Promise<unknown>;
+}
+
+/**
+ * What a command reports once it has run.
+ */
+export interface IShellOutput {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
 }
 
 /**

@@ -16,6 +16,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/lifecycle"
 )
 
 // DownloadOptions configure the download process.
@@ -205,7 +206,7 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 				cachePath := filepath.Join(cacheDir, keyStr)
 				_ = d.fsys.CopyFile(destPath, cachePath)
 			}
-			return nil
+			return lifecycle.Emit(ctx, lifecycle.AfterDownload, lifecycle.Details{DownloadPath: destPath})
 		}
 		lastErr = err
 	}

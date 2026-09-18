@@ -3,11 +3,15 @@ package vm
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/dop251/goja"
 )
 
@@ -97,8 +101,15 @@ func RegisterBindings(vm *goja.Runtime, target Target) error {
 	return nil
 }
 
-// RegisterContextBindings registers logging and filesystem bindings associated with the active execution environment.
-func RegisterContextBindings(vm *goja.Runtime, log *logger.Logger, fsys fs.FS) error {
+// RegisterContextBindings registers logging and filesystem bindings associated with the
+// active execution environment.
+//
+// homeDir is the home directory the project is configured with, which a tool
+// configuration may deliberately point somewhere other than the invoking user's own --
+// a sandboxed home in a test project, for instance. Paths written with "~" resolve
+// against it, so they land where the configuration says rather than where the process
+// happens to be running. An empty homeDir leaves such paths untouched.
+func RegisterContextBindings(vm *goja.Runtime, log *logger.Logger, fsys fs.FS, homeDir string) error {
 	_ = vm.Set("logInfo", func(toolName, msg string) {
 		if log != nil {
 			log.WithName(toolName).Info(logger.Message(msg))
@@ -141,21 +152,125 @@ func RegisterContextBindings(vm *goja.Runtime, log *logger.Logger, fsys fs.FS) e
 		}
 		return ""
 	})
+	// The mutating operations report failure to the caller. A hook that cannot create
+	// the directory it is about to write into has not succeeded, and discarding that
+	// error leaves the tool half-configured with nothing said about it.
 	_ = vm.Set("fsWriteFile", func(path string, content string) {
-		if fsys != nil {
-			_ = fsys.WriteFile(path, []byte(content), 0644)
-		}
+		throwOnFSError(vm, "writeFile", path, writeFileOrMissingFS(fsys, path, content))
 	})
 	_ = vm.Set("fsMkdir", func(path string) {
-		if fsys != nil {
-			_ = fsys.MkdirAll(path, 0755)
-		}
+		throwOnFSError(vm, "mkdir", path, mkdirOrMissingFS(fsys, path))
 	})
 	_ = vm.Set("fsRm", func(path string) {
-		if fsys != nil {
-			_ = fsys.RemoveAll(path)
+		throwOnFSError(vm, "rm", path, removeOrMissingFS(fsys, path))
+	})
+	_ = vm.Set("fsRename", func(from string, to string) {
+		throwOnFSError(vm, "rename", from, renameOrMissingFS(fsys, from, to))
+	})
+	_ = vm.Set("fsSymlink", func(target string, linkPath string) {
+		throwOnFSError(vm, "symlink", linkPath, symlinkOrMissingFS(fsys, target, linkPath))
+	})
+
+	// Resolving a glob belongs in Go, where the file system is. A pattern is required
+	// to identify exactly one path: matching nothing, or matching several, means the
+	// configuration is ambiguous about which file it meant, and guessing would install
+	// something arbitrary.
+	_ = vm.Set("resolveGlob", func(pattern, baseDir string) string {
+		search := utils.ExpandHomePath(homeDir, pattern)
+		if !filepath.IsAbs(search) && baseDir != "" {
+			search = filepath.Join(baseDir, search)
+		}
+		matches, err := filepath.Glob(search)
+		if err != nil {
+			panic(vm.ToValue(fmt.Sprintf("invalid pattern %q: %v", pattern, err)))
+		}
+		switch len(matches) {
+		case 0:
+			panic(vm.ToValue(fmt.Sprintf("No matches found for pattern: %s", pattern)))
+		case 1:
+			return matches[0]
+		default:
+			sort.Strings(matches)
+			panic(vm.ToValue(fmt.Sprintf(
+				"Pattern %q matched %d paths (expected exactly 1): %s",
+				pattern, len(matches), strings.Join(matches, ", "),
+			)))
 		}
 	})
 
+	// The pattern arrives already split into source and flags because a JavaScript
+	// RegExp cannot be handed to Go intact, and the matching itself belongs in Go.
+	_ = vm.Set("replaceInFile", func(
+		toolName, path, patternSource, patternFlags string,
+		literal bool,
+		replacement goja.Value,
+		mode, errorMessage string,
+	) bool {
+		pattern, err := compileReplacePattern(patternSource, patternFlags, literal)
+		if err != nil {
+			panic(vm.ToValue(err.Error()))
+		}
+		changed, err := runReplaceInFile(vm, fsys, log, toolName, replaceRequest{
+			Path:         utils.ExpandHomePath(homeDir, path),
+			Pattern:      pattern,
+			PatternLabel: patternSource,
+			Replacement:  replacement,
+			Mode:         replaceMode(mode),
+			ErrorMessage: errorMessage,
+		})
+		if err != nil {
+			panic(vm.ToValue(err.Error()))
+		}
+		return changed
+	})
+
 	return nil
+}
+
+// errNoFileSystem reports a VM configured without a file system, which is a wiring
+// mistake rather than something a tool author can act on.
+var errNoFileSystem = fmt.Errorf("no file system is available to this VM")
+
+func writeFileOrMissingFS(fsys fs.FS, path, content string) error {
+	if fsys == nil {
+		return errNoFileSystem
+	}
+	return fsys.WriteFile(path, []byte(content), 0644)
+}
+
+func mkdirOrMissingFS(fsys fs.FS, path string) error {
+	if fsys == nil {
+		return errNoFileSystem
+	}
+	return fsys.MkdirAll(path, 0755)
+}
+
+func removeOrMissingFS(fsys fs.FS, path string) error {
+	if fsys == nil {
+		return errNoFileSystem
+	}
+	return fsys.RemoveAll(path)
+}
+
+func renameOrMissingFS(fsys fs.FS, from, to string) error {
+	if fsys == nil {
+		return errNoFileSystem
+	}
+	return fsys.Rename(from, to)
+}
+
+func symlinkOrMissingFS(fsys fs.FS, target, linkPath string) error {
+	if fsys == nil {
+		return errNoFileSystem
+	}
+	return fsys.Symlink(target, linkPath)
+}
+
+// throwOnFSError surfaces a failed file system call as a JavaScript exception, so an
+// await inside a hook rejects and the installation reports which operation failed.
+func throwOnFSError(vm *goja.Runtime, op, path string, err error) {
+	if err == nil {
+		return
+	}
+	panic(vm.ToValue(fmt.Sprintf("file system %s failed for %q: %v", op, path, err)))
 }

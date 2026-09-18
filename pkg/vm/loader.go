@@ -161,7 +161,7 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	}
 
 	// Step 4: Run the unified bundle in Goja and marshal the result
-	fullConfig, err := evaluateUnifiedBundle(log, fsys, bundledJS, configFileDir, projCfg.Paths.GeneratedDir, projCfg.Paths.BinariesDir, target)
+	fullConfig, err := evaluateUnifiedBundle(log, fsys, bundledJS, configFileDir, projCfg.Paths.GeneratedDir, projCfg.Paths.BinariesDir, projCfg.Paths.HomeDir, target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("evaluating unified config bundle: %w", err)
 	}
@@ -272,7 +272,9 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, fmt.Errorf("registering Go bindings: %w", err)
 	}
 
-	if err := RegisterContextBindings(vm, log, fsys); err != nil {
+	// The project configuration is what defines homeDir, so it is not known yet while
+	// that configuration is being evaluated.
+	if err := RegisterContextBindings(vm, log, fsys, ""); err != nil {
 		return nil, fmt.Errorf("registering context bindings: %w", err)
 	}
 
@@ -330,7 +332,7 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 	return &projCfg, nil
 }
 
-func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string, generatedDir string, binariesDir string, target Target) (*unifiedLoaderResult, error) {
+func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string, generatedDir string, binariesDir string, homeDir string, target Target) (*unifiedLoaderResult, error) {
 	vm := goja.New()
 	registry := require.NewRegistry()
 	registry.Enable(vm)
@@ -339,7 +341,7 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, fmt.Errorf("registering Go bindings: %w", err)
 	}
 
-	if err := RegisterContextBindings(vm, log, fsys); err != nil {
+	if err := RegisterContextBindings(vm, log, fsys, homeDir); err != nil {
 		return nil, fmt.Errorf("registering context bindings: %w", err)
 	}
 

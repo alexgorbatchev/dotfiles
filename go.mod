@@ -3,6 +3,7 @@ module github.com/alexgorbatchev/dotfiles
 go 1.26.2
 
 require (
+	github.com/dlclark/regexp2/v2 v2.2.1
 	github.com/dop251/goja v0.0.0-20260618133527-c9b2ea77db59
 	github.com/dop251/goja_nodejs v0.0.0-20260212111938-1f56ff5bcf14
 	github.com/evanw/esbuild v0.28.1
@@ -15,7 +16,6 @@ require (
 )
 
 require (
-	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/google/pprof v0.0.0-20250317173921-a4b03ec1a45e // indirect

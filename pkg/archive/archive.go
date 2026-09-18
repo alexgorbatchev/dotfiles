@@ -16,6 +16,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/lifecycle"
 )
 
 // ErrSymlinkTraversalDetected is returned when a symbolic link target escapes the destination directory.
@@ -102,7 +103,14 @@ func (e *Extractor) Extract(ctx context.Context, src string, dest string) error 
 	}
 
 	// Apply executable heuristics
-	return e.detectAndSetExecutables(dest)
+	if err := e.detectAndSetExecutables(dest); err != nil {
+		return err
+	}
+
+	// The tree is now complete, which is the point an after-extract hook expects to
+	// see. Reporting before the executable bits are set would hand the hook a tree it
+	// could not run anything from.
+	return lifecycle.Emit(ctx, lifecycle.AfterExtract, lifecycle.Details{ExtractDir: dest})
 }
 
 // extractZip extracts standard zip files using Go's archive/zip library with stream buffering and symlink support.

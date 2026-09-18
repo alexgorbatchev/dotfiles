@@ -53,6 +53,48 @@ declare global {
   function fsWriteFile(path: string, content: string): void;
   function fsMkdir(path: string): void;
   function fsRm(path: string): void;
+  function fsRename(from: string, to: string): void;
+  function fsSymlink(target: string, linkPath: string): void;
+  function shellExec(toolName: string, command: string, cwd: string, quiet: boolean, noThrow: boolean): IShellOutput;
+  function resolveGlob(pattern: string, baseDir: string): string;
+  function replaceInFile(
+    toolName: string,
+    path: string,
+    patternSource: string,
+    patternFlags: string,
+    literal: boolean,
+    replacement: unknown,
+    mode: string,
+    errorMessage: string,
+  ): boolean;
+}
+
+/**
+ * A pattern to search for: a literal string, or a regular expression.
+ */
+export type ReplacePattern = string | RegExp;
+
+/**
+ * Options accepted by replaceInFile.
+ */
+export interface IReplaceInFileOptions {
+  /**
+   * Whether the pattern is applied to the whole file or to each line separately.
+   */
+  mode?: "file" | "line";
+  /**
+   * Reported when the pattern matches nothing, to explain what was expected.
+   */
+  errorMessage?: string;
+}
+
+/**
+ * Outcome of a command run by the hook shell, mirroring what the shell reports.
+ */
+export interface IShellOutput {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
 }
 
 type ConfigRunner = (ctx: unknown) => unknown;
@@ -112,6 +154,239 @@ export function dedentString(text: DedentInput, ...values: unknown[]): string {
   }
 
   return lines.join("\n");
+}
+
+export type HookHandlerFn = (context: Record<string, unknown>) => unknown;
+
+/**
+ * Continuations a caller passes when awaiting a command.
+ */
+export type ShellFulfilledFn = (value: IShellOutput) => unknown;
+export type ShellRejectedFn = (reason: unknown) => unknown;
+
+/**
+ * Lifecycle events the installation pipeline emits. Registering anything else is a
+ * mistake worth reporting at load time, because a handler for an event that is never
+ * emitted would simply never run.
+ */
+const SUPPORTED_HOOK_EVENTS = ["before-install", "after-download", "after-extract", "after-install"];
+
+/**
+ * Keys a handler by tool and event. A single VM evaluates every tool file in the
+ * project, so the tool name has to be part of the key.
+ */
+function hookKey(toolName: string, event: string): string {
+  return toolName + "::" + event;
+}
+
+/**
+ * Records a lifecycle handler so Go can invoke it when the installation reaches that
+ * event. Handlers are keyed by tool and event because a single VM evaluates every tool
+ * file in the project.
+ */
+function registerHookHandler(toolName: string, event: string, handler: HookHandlerFn): void {
+  const globals = getGlobals();
+  const registry = (globals["__hookHandlers"] || (globals["__hookHandlers"] = {})) as Record<string, HookHandlerFn[]>;
+  const key = hookKey(toolName, event);
+  const handlers = registry[key] || (registry[key] = []);
+  handlers.push(handler);
+}
+
+/**
+ * Builds the shell executor handed to lifecycle hooks.
+ *
+ * Execution is deferred until the result is awaited so that the chainable modifiers
+ * run before the command does, matching how the shell reads at the call site:
+ * `await $`cmd`.quiet()` must not have executed loudly by the time `.quiet()` is
+ * reached. `shellExec` is a Go binding that runs the command and reports its outcome.
+ */
+function createHookShell(toolName: string, cwd: string) {
+  return (strings: ShellStrings, ...values: unknown[]) => {
+    let command = "";
+    if (Array.isArray(strings)) {
+      for (let i = 0; i < strings.length; i++) {
+        command += strings[i];
+        if (i < values.length) {
+          command += String(values[i]);
+        }
+      }
+    } else if (typeof strings === "string") {
+      command = strings;
+    }
+
+    let quiet = false;
+    let noThrow = false;
+
+    const run = () => shellExec(toolName, command, cwd, quiet, noThrow) as IShellOutput;
+
+    const result = {
+      quiet() {
+        quiet = true;
+        return result;
+      },
+      noThrow() {
+        noThrow = true;
+        return result;
+      },
+      text() {
+        return Promise.resolve(run().stdout);
+      },
+      json() {
+        return Promise.resolve(JSON.parse(run().stdout));
+      },
+      then(onFulfilled?: ShellFulfilledFn, onRejected?: ShellRejectedFn) {
+        let settled: Promise<IShellOutput>;
+        try {
+          settled = Promise.resolve(run());
+        } catch (error) {
+          settled = Promise.reject(error);
+        }
+        return settled.then(onFulfilled, onRejected);
+      },
+    };
+
+    return result;
+  };
+}
+
+/**
+ * Builds the context object handed to a tool factory and to its lifecycle hooks.
+ *
+ * `eventContext` carries the values that only exist once an installation is under way
+ * -- the staging directory, the downloaded archive, the extracted tree, the installed
+ * location -- and is empty while the configuration is merely being read. Everything
+ * else is derived from the project layout and is known at both times.
+ */
+function createToolContext(toolName: string, eventContext: Record<string, unknown>): Record<string, unknown> {
+  const toolPath = globalThis.currentToolPath || "";
+  const toolDir = toolPath
+    ? globalThis.path.dirname(toolPath)
+    : (globalThis.configFileDir || "") + "/tools/" + toolName;
+  const bDir = globalThis.binariesDir || "";
+  const currentDir = bDir ? bDir + "/" + toolName + "/current" : toolDir;
+  const defaultPaths = {
+    dotfilesDir: globalThis.configFileDir || "",
+    toolConfigsDir: (globalThis.configFileDir || "") + "/tools",
+    generatedDir: (globalThis.configFileDir || "") + "/.generated",
+    homeDir: (globalThis.configFileDir || "") + "/.generated/home",
+    targetDir: (globalThis.configFileDir || "") + "/.generated/bin",
+    shellScriptsDir: (globalThis.configFileDir || "") + "/.generated/shell-scripts",
+    binariesDir: (globalThis.configFileDir || "") + "/.generated/binaries",
+  };
+  const activeProjCfg = (getGlobals()["projectConfig"] || {}) as Record<string, unknown>;
+
+  const fileSystem = {
+    exists(p: string) {
+      return Promise.resolve(fsExists(p));
+    },
+    readdir(p: string) {
+      return Promise.resolve(fsReadDir(p));
+    },
+    readFile(p: string, _encoding?: string) {
+      return Promise.resolve(fsReadFile(p));
+    },
+    writeFile(p: string, content: string, _encoding?: string) {
+      fsWriteFile(p, content);
+      return Promise.resolve();
+    },
+    mkdir(p: string) {
+      fsMkdir(p);
+      return Promise.resolve();
+    },
+    ensureDir(p: string) {
+      fsMkdir(p);
+      return Promise.resolve();
+    },
+    rm(p: string) {
+      fsRm(p);
+      return Promise.resolve();
+    },
+    rename(from: string, to: string) {
+      fsRename(from, to);
+      return Promise.resolve();
+    },
+    symlink(target: string, linkPath: string) {
+      fsSymlink(target, linkPath);
+      return Promise.resolve();
+    },
+  };
+
+  const replaceInFileFn = (
+    filePath: string,
+    from: ReplacePattern,
+    to: unknown,
+    options?: IReplaceInFileOptions,
+  ): Promise<boolean> => {
+    const isRegExp = from instanceof RegExp;
+    const source = isRegExp ? from.source : String(from);
+    const flags = isRegExp ? from.flags : "";
+    const opts = options || {};
+    return Promise.resolve(
+      replaceInFile(toolName, filePath, source, flags, !isRegExp, to, opts.mode || "file", opts.errorMessage || ""),
+    );
+  };
+
+  const context: Record<string, unknown> = {
+    replaceInFile: replaceInFileFn,
+    resolve: (pattern: string) => resolveGlob(pattern, toolDir),
+    toolName: toolName,
+    configFileDir: globalThis.configFileDir || "",
+    toolDir: toolDir,
+    projectConfig: activeProjCfg["paths"] ? activeProjCfg : { paths: defaultPaths },
+    currentDir: currentDir,
+    // At configuration time the staging directory does not exist yet, so the tool
+    // context carries the placeholder Go resolves later. A hook runs during an
+    // installation and receives the real path through eventContext instead.
+    stagingDir: "{stagingDir}",
+    systemInfo: {
+      os: getOS(),
+      arch: getArch(),
+      libc: detectLibc(),
+    },
+    log: {
+      info(msg: string) {
+        logInfo(toolName, msg);
+      },
+      warn(msg: string) {
+        logWarn(toolName, msg);
+      },
+      error(msg: string) {
+        logError(toolName, msg);
+      },
+      debug(msg: string) {
+        logDebug(toolName, msg);
+      },
+    },
+    fs: fileSystem,
+    // Documented as `fileSystem` on the hook context and as `fs` on the tool context.
+    // Both names address the same bindings rather than one shadowing the other.
+    fileSystem: fileSystem,
+  };
+
+  // No shell here. Configuration is evaluated on every CLI invocation merely to read
+  // what a tool is, so a tool factory must not be able to run commands. Only a hook,
+  // which runs during an actual installation, is given a shell -- see invokeHook.
+
+  for (const key of Object.keys(eventContext)) {
+    context[key] = eventContext[key];
+  }
+
+  return context;
+}
+
+/**
+ * Invoked from Go when an installation reaches a lifecycle event. Returns a promise
+ * that settles once every handler registered for the event has finished, so a failure
+ * inside a hook surfaces instead of being discarded.
+ */
+function invokeHook(toolName: string, event: string, eventContext: Record<string, unknown>): Promise<unknown> {
+  const registry = (getGlobals()["__hookHandlers"] || {}) as Record<string, HookHandlerFn[]>;
+  const handlers = registry[hookKey(toolName, event)] || [];
+  const context = createToolContext(toolName, eventContext);
+  // Go decides where commands run, because it is the side that can tell whether the
+  // installed tree exists yet.
+  context["$"] = createHookShell(toolName, (getGlobals()["__hookCwd"] as string) || "");
+  return Promise.all(handlers.map((handler) => Promise.resolve(handler(context))));
 }
 
 /**
@@ -225,38 +500,30 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     },
 
     hook(name: string, cb: unknown) {
+      if (SUPPORTED_HOOK_EVENTS.indexOf(name) === -1) {
+        throw new Error(
+          "Unknown lifecycle event " +
+            JSON.stringify(name) +
+            " passed to .hook(): expected one of " +
+            SUPPORTED_HOOK_EVENTS.join(", ") +
+            ". Registering an event nothing emits would leave the handler silently unused.",
+        );
+      }
       if (typeof cb === "function") {
-        const commands: string[] = [];
-        const mockShell = (strings: ShellStrings, ...values: unknown[]) => {
-          let result = "";
-          if (Array.isArray(strings)) {
-            for (let i = 0; i < strings.length; i++) {
-              result += strings[i];
-              if (i < values.length) {
-                result += String(values[i]);
-              }
-            }
-          } else if (typeof strings === "string") {
-            result = strings;
-          }
-          commands.push(result);
-          return Promise.resolve("");
-        };
+        // The handler is kept as a live function and invoked later, when the
+        // installation actually reaches this lifecycle event. Only the set of event
+        // names crosses the JSON boundary into Go, so the orchestrator knows which
+        // events are worth re-entering the VM for.
+        const toolName = (this["name"] as string) || globalThis.currentToolName || "";
+        registerHookHandler(toolName, name, cb as HookHandlerFn);
 
-        const hookCtx = {
-          $: mockShell,
-          toolName: (this["name"] as string) || globalThis.currentToolName || "",
-        };
-
-        cb(hookCtx);
-
-        if (commands.length > 0) {
-          const ip = (this["installParams"] || {}) as Record<string, unknown>;
-          const hooks = (ip["hooks"] || {}) as Record<string, unknown>;
-          hooks[name] = commands;
-          ip["hooks"] = hooks;
-          this["installParams"] = ip;
+        const ip = (this["installParams"] || {}) as Record<string, unknown>;
+        const events = (ip["hooks"] || []) as string[];
+        if (events.indexOf(name) === -1) {
+          events.push(name);
         }
+        ip["hooks"] = events;
+        this["installParams"] = ip;
       }
       return this;
     },
@@ -427,89 +694,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     return builder;
   }
 
-  // Construct toolCtx parameter
-  const toolName = globalThis.currentToolName || "";
-  const toolPath = globalThis.currentToolPath || "";
-  const toolDir = toolPath
-    ? globalThis.path.dirname(toolPath)
-    : (globalThis.configFileDir || "") + "/tools/" + toolName;
-  const bDir = globalThis.binariesDir || "";
-  const currentDir = bDir ? bDir + "/" + toolName + "/current" : toolDir;
-  const defaultPaths = {
-    dotfilesDir: globalThis.configFileDir || "",
-    toolConfigsDir: (globalThis.configFileDir || "") + "/tools",
-    generatedDir: (globalThis.configFileDir || "") + "/.generated",
-    homeDir: (globalThis.configFileDir || "") + "/.generated/home",
-    targetDir: (globalThis.configFileDir || "") + "/.generated/bin",
-    shellScriptsDir: (globalThis.configFileDir || "") + "/.generated/shell-scripts",
-    binariesDir: (globalThis.configFileDir || "") + "/.generated/binaries",
-  };
-  const activeProjCfg = (getGlobals()["projectConfig"] || {}) as Record<string, unknown>;
-
-  const toolCtx = {
-    toolName: toolName,
-    configFileDir: globalThis.configFileDir || "",
-    toolDir: toolDir,
-    projectConfig: activeProjCfg["paths"] ? activeProjCfg : { paths: defaultPaths },
-    currentDir: currentDir,
-    stagingDir: "{stagingDir}",
-    systemInfo: {
-      os: getOS(),
-      arch: getArch(),
-      libc: detectLibc(),
-    },
-    log: {
-      info(msg: string) {
-        logInfo(toolName, msg);
-      },
-      warn(msg: string) {
-        logWarn(toolName, msg);
-      },
-      error(msg: string) {
-        logError(toolName, msg);
-      },
-      debug(msg: string) {
-        logDebug(toolName, msg);
-      },
-    },
-    fs: {
-      exists(p: string) {
-        return Promise.resolve(fsExists(p));
-      },
-      readdir(p: string) {
-        return Promise.resolve(fsReadDir(p));
-      },
-      readFile(p: string, _encoding?: string) {
-        return Promise.resolve(fsReadFile(p));
-      },
-      writeFile(p: string, content: string, _encoding?: string) {
-        fsWriteFile(p, content);
-        return Promise.resolve();
-      },
-      mkdir(p: string) {
-        fsMkdir(p);
-        return Promise.resolve();
-      },
-      rm(p: string) {
-        fsRm(p);
-        return Promise.resolve();
-      },
-    },
-    $: (strings: ShellStrings, ...values: unknown[]) => {
-      let result = "";
-      if (Array.isArray(strings)) {
-        for (let i = 0; i < strings.length; i++) {
-          result += strings[i];
-          if (i < values.length) {
-            result += String(values[i]);
-          }
-        }
-      } else if (typeof strings === "string") {
-        result = strings;
-      }
-      return Promise.resolve(result);
-    },
-  };
+  const toolCtx = createToolContext(globalThis.currentToolName || "", {});
 
   function cleanInternalProps(obj: Record<string, unknown>) {
     delete obj["_version"];
@@ -560,6 +745,8 @@ export const dedentTemplate = dedentString;
 // Ensure global registration
 getGlobals()["defineConfig"] = defineConfig;
 getGlobals()["defineTool"] = defineTool;
+// Go calls this when an installation reaches a lifecycle event.
+getGlobals()["__invokeHook"] = invokeHook;
 getGlobals()["dedentString"] = dedentString;
 getGlobals()["dedentTemplate"] = dedentString;
 getGlobals()["Platform"] = Platform;

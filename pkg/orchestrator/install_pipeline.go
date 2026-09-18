@@ -12,13 +12,14 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
+	"github.com/alexgorbatchev/dotfiles/pkg/lifecycle"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 // InstallTools executes the installation pipeline for all provided tools sequentially in topological order.
@@ -183,11 +184,22 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	// 1. Download, unpack, and install via the native installer plugin
-	if err := o.runHooks(ctx, "before-install", tool, projCfg, nil); err != nil {
+	beforeInstallCtx := vm.HookContext{StagingDir: stagingDir, Env: o.buildHookEnv(tool, projCfg, nil)}
+	if err := o.runHooks(ctx, vm.HookBeforeInstall, tool, projCfg, beforeInstallCtx); err != nil {
 		return fmt.Errorf("running before-install hooks: %w", err)
 	}
 
 	ctx = config.WithProjectConfig(ctx, projCfg)
+	// Downloading and extraction happen inside the installer, so it announces them
+	// through the context rather than the orchestrator guessing when they occurred.
+	ctx = lifecycle.WithEmitter(ctx, func(emitCtx context.Context, event lifecycle.Event, details lifecycle.Details) error {
+		return o.runHooks(emitCtx, string(event), tool, projCfg, vm.HookContext{
+			StagingDir:   stagingDir,
+			DownloadPath: details.DownloadPath,
+			ExtractDir:   details.ExtractDir,
+			Env:          o.buildHookEnv(tool, projCfg, nil),
+		})
+	})
 	res, err := inst.Install(ctx, tool)
 	if err != nil {
 		if !isExternal && stagingDir != "" {
@@ -247,7 +259,16 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	// Run after-install hooks
-	if err := o.runHooks(ctx, "after-install", tool, projCfg, res); err != nil {
+	afterInstallCtx := vm.HookContext{
+		StagingDir:   stagingDir,
+		InstalledDir: toolDestDir,
+		Env:          o.buildHookEnv(tool, projCfg, res),
+	}
+	if res != nil {
+		afterInstallCtx.BinaryPaths = res.Binaries
+		afterInstallCtx.Version = res.Version
+	}
+	if err := o.runHooks(ctx, vm.HookAfterInstall, tool, projCfg, afterInstallCtx); err != nil {
 		return fmt.Errorf("running after-install hooks: %w", err)
 	}
 
@@ -641,68 +662,9 @@ func (o *Orchestrator) buildHookEnv(tool *config.ToolConfig, projCfg *config.Pro
 	return envSlice
 }
 
-func (o *Orchestrator) runHooks(ctx context.Context, hookName string, tool *config.ToolConfig, projCfg *config.ProjectConfig, res *installer.InstallResult) error {
-	if installer.IsDryRun() || tool == nil || tool.InstallParams == nil {
+func (o *Orchestrator) runHooks(ctx context.Context, event string, tool *config.ToolConfig, projCfg *config.ProjectConfig, hookCtx vm.HookContext) error {
+	if installer.IsDryRun() || tool == nil {
 		return nil
 	}
-
-	params, ok := tool.InstallParams["hooks"].(map[string]interface{})
-	if !ok {
-		return nil
-	}
-
-	hooksList, ok := params[hookName].([]interface{})
-	if !ok || len(hooksList) == 0 {
-		return nil
-	}
-
-	var toolDestDir string
-	if projCfg != nil {
-		toolDestDir = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current")
-	}
-	hookEnv := o.buildHookEnv(tool, projCfg, res)
-
-	for _, hook := range hooksList {
-		hookCmdStr, ok := hook.(string)
-		if !ok || hookCmdStr == "" {
-			continue
-		}
-
-		o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ %s", hookCmdStr)))
-
-		var runCmd exec.Cmd
-		if strings.HasPrefix(hookCmdStr, "./") {
-			toolConfigDir := filepath.Dir(tool.ConfigFilePath)
-			scriptPath := filepath.Join(toolConfigDir, hookCmdStr)
-			chmodCmd := o.runner.CommandContext(ctx, "chmod", "+x", scriptPath)
-			_ = chmodCmd.Run()
-			runCmd = o.runner.CommandContext(ctx, scriptPath)
-			runCmd.SetDir(toolConfigDir)
-		} else {
-			runCmd = o.runner.CommandContext(ctx, "bash", "-c", hookCmdStr)
-			runDir := toolDestDir
-			if exists, _ := o.fs.Exists(toolDestDir); !exists || runDir == "" {
-				if tool.ConfigFilePath != "" {
-					runDir = filepath.Dir(tool.ConfigFilePath)
-				} else if projCfg != nil {
-					runDir = projCfg.Paths.DotfilesDir
-				}
-			}
-			runCmd.SetDir(runDir)
-		}
-
-		runCmd.SetEnv(hookEnv)
-
-		writer := logger.NewLineWriter(o.logger.GetSubLogger("", tool.Name), "|")
-		runCmd.SetStdout(writer)
-		runCmd.SetStderr(writer)
-
-		if err := runCmd.Run(); err != nil {
-			writer.PrintError(err)
-			return fmt.Errorf("hook %q failed: %w", hookCmdStr, err)
-		}
-		writer.Flush()
-	}
-
-	return nil
+	return vm.RunHook(ctx, o.logger, o.fs, o.runner, tool, projCfg, event, hookCtx, vm.Target{})
 }

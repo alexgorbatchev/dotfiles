@@ -274,13 +274,13 @@ func TestLoadTypeScriptConfigErrors(t *testing.T) {
 	}
 
 	// 4. Evaluate unified bundle with missing __loaderResult
-	_, err = evaluateUnifiedBundle(log, memFS, "var x = 1;", "/cfg", "/gen", "/bin", Target{})
+	_, err = evaluateUnifiedBundle(log, memFS, "var x = 1;", "/cfg", "/gen", "/bin", "", Target{})
 	if err == nil || !strings.Contains(err.Error(), "missing or undefined") {
 		t.Errorf("expected missing __loaderResult error, got %v", err)
 	}
 
 	// 5. Evaluate unified bundle with unmarshal error
-	_, err = evaluateUnifiedBundle(log, memFS, "var __loaderResult = 12345;", "/cfg", "/gen", "/bin", Target{})
+	_, err = evaluateUnifiedBundle(log, memFS, "var __loaderResult = 12345;", "/cfg", "/gen", "/bin", "", Target{})
 	if err == nil || (!strings.Contains(err.Error(), "unmarshaling") && !strings.Contains(err.Error(), "invalid JSON syntax") && !strings.Contains(err.Error(), "invalid configuration")) {
 		t.Errorf("expected unmarshaling or invalid JSON error, got %v", err)
 	}
@@ -983,14 +983,14 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 	})
 
 	t.Run("evaluateUnifiedBundle with missing __loaderResult", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "var x = 1;", "/tmp", "/tmp/.gen", "/tmp/bin", Target{})
+		_, err := evaluateUnifiedBundle(log, memFS, "var x = 1;", "/tmp", "/tmp/.gen", "/tmp/bin", "", Target{})
 		if err == nil || !strings.Contains(err.Error(), "missing or undefined") {
 			t.Errorf("expected error for missing __loaderResult, got: %v", err)
 		}
 	})
 
 	t.Run("evaluateUnifiedBundle with runtime script error", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "throw new Error('bundle err');", "/tmp", "/tmp/.gen", "/tmp/bin", Target{})
+		_, err := evaluateUnifiedBundle(log, memFS, "throw new Error('bundle err');", "/tmp", "/tmp/.gen", "/tmp/bin", "", Target{})
 		if err == nil || !strings.Contains(err.Error(), "bundle err") {
 			t.Errorf("expected script error, got: %v", err)
 		}
@@ -1031,14 +1031,14 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 	})
 
 	t.Run("evaluateUnifiedBundle json stringify error branch", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { toJSON: function() { throw new Error('json stringify err'); } };", "/tmp", "/tmp/.gen", "/tmp/bin", Target{})
+		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { toJSON: function() { throw new Error('json stringify err'); } };", "/tmp", "/tmp/.gen", "/tmp/bin", "", Target{})
 		if err == nil || !strings.Contains(err.Error(), "stringifying loader result") {
 			t.Errorf("expected stringifying error, got %v", err)
 		}
 	})
 
 	t.Run("evaluateUnifiedBundle unmarshaling error branch", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { projectConfig: 12345 };", "/tmp", "/tmp/.gen", "/tmp/bin", Target{})
+		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { projectConfig: 12345 };", "/tmp", "/tmp/.gen", "/tmp/bin", "", Target{})
 		if err == nil {
 			t.Error("expected error when unifiedLoaderResult has invalid structure")
 		}
