@@ -15,11 +15,11 @@ already knows.
 
 ## Configuration Options
 
-| Property | Description                                                                                      |
-| -------- | -------------------------------------------------------------------------------------------------- |
+| Property | Description                                                                                             |
+| -------- | ------------------------------------------------------------------------------------------------------- |
 | `source` | Existing completion file. A relative path resolves against the tool's directory; absolute is used as is |
-| `cmd`    | Command whose standard output becomes the completion file                                        |
-| `bin`    | Binary the completion is for, when it differs from the tool name. It names the generated file    |
+| `cmd`    | Command whose standard output becomes the completion file                                               |
+| `bin`    | Binary the completion is for, when it differs from the tool name. It names the generated file           |
 
 Pass one of `source` or `cmd`, never both: `source` is ignored when `cmd` is set. A
 plain string is shorthand for `{ source }`.

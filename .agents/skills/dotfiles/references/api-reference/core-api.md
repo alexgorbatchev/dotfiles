@@ -110,11 +110,11 @@ A pattern is matched against each file's path relative to the archive root, with
 nestable `{a,b}` alternation. `**`, numeric ranges such as `{1..3}` and extglob are not
 supported, and directories never match.
 
-| Pattern            | Matches                          |
-| ------------------ | -------------------------------- |
-| `'tool'`           | Exactly `tool` at the archive root |
-| `'*/bin/tool'`     | `tool` in any directory's `bin`   |
-| `'tool-*/bin/tool'` | A versioned directory's `bin`    |
+| Pattern             | Matches                            |
+| ------------------- | ---------------------------------- |
+| `'tool'`            | Exactly `tool` at the archive root |
+| `'*/bin/tool'`      | `tool` in any directory's `bin`    |
+| `'tool-*/bin/tool'` | A versioned directory's `bin`      |
 
 When several files match, the one that is executable and named after the binary wins,
 then any executable, then a file named after the binary, then the first match in path

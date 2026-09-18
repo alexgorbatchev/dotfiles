@@ -65,15 +65,15 @@ Every section is optional, and so is every key inside it.
 Where everything the CLI manages lives. A `~` is expanded, and `{paths.generatedDir}`
 may be used inside the other values.
 
-| Key               | Default                            | Effect                                                                     |
-| ----------------- | ---------------------------------- | -------------------------------------------------------------------------- |
-| `homeDir`         | the account's home directory       | What `~` expands to                                                        |
-| `dotfilesDir`     | none -- paths below become relative to the working directory | Root of the dotfiles repository; set it                   |
-| `generatedDir`    | `<dotfilesDir>/.generated`         | Everything the CLI writes, including the registry database                 |
-| `targetDir`       | `<generatedDir>/bin`               | Where shims are written; this is the directory that has to be on PATH      |
-| `binariesDir`     | `<generatedDir>/binaries`          | Installed tools, one versioned directory and a `current` link per tool     |
-| `shellScriptsDir` | `<generatedDir>/shell-scripts`     | `main.zsh`, `main.bash`, `main.ps1`, once-scripts and completions          |
-| `toolConfigsDir`  | `<config file directory>/tools`    | Where `*.tool.ts` files are found; a string, or an array to search several |
+| Key               | Default                                                      | Effect                                                                     |
+| ----------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `homeDir`         | the account's home directory                                 | What `~` expands to                                                        |
+| `dotfilesDir`     | none -- paths below become relative to the working directory | Root of the dotfiles repository; set it                                    |
+| `generatedDir`    | `<dotfilesDir>/.generated`                                   | Everything the CLI writes, including the registry database                 |
+| `targetDir`       | `<generatedDir>/bin`                                         | Where shims are written; this is the directory that has to be on PATH      |
+| `binariesDir`     | `<generatedDir>/binaries`                                    | Installed tools, one versioned directory and a `current` link per tool     |
+| `shellScriptsDir` | `<generatedDir>/shell-scripts`                               | `main.zsh`, `main.bash`, `main.ps1`, once-scripts and completions          |
+| `toolConfigsDir`  | `<config file directory>/tools`                              | Where `*.tool.ts` files are found; a string, or an array to search several |
 
 ```typescript config
 paths: {
@@ -104,10 +104,10 @@ no command writes a catalog file; both keys default to empty.
 
 ### github
 
-| Key         | Default                     | Effect                                                     |
-| ----------- | --------------------------- | ---------------------------------------------------------- |
-| `host`      | `https://api.github.com`    | API base URL for `github-release`, for GitHub Enterprise   |
-| `cache.ttl` | `3600000` (one hour), in ms | How long a fetched release description is reused           |
+| Key         | Default                     | Effect                                                   |
+| ----------- | --------------------------- | -------------------------------------------------------- |
+| `host`      | `https://api.github.com`    | API base URL for `github-release`, for GitHub Enterprise |
+| `cache.ttl` | `3600000` (one hour), in ms | How long a fetched release description is reused         |
 
 `token`, `userAgent` and `cache.enabled` are accepted and not read. Authenticate with
 the `token` parameter of the installation method, or with `GITHUB_TOKEN` in the
@@ -115,15 +115,15 @@ environment; the metadata cache is always on.
 
 ### system
 
-| Key           | Default              | Effect                                                |
-| ------------- | -------------------- | ----------------------------------------------------- |
-| `sudoPrompt`  | the system's prompt  | Passed to `sudo -p` when a tool declares `.sudo()`    |
+| Key          | Default             | Effect                                             |
+| ------------ | ------------------- | -------------------------------------------------- |
+| `sudoPrompt` | the system's prompt | Passed to `sudo -p` when a tool declares `.sudo()` |
 
 ### downloader
 
-| Key         | Default                        | Effect                                    |
-| ----------- | ------------------------------ | ----------------------------------------- |
-| `cache.ttl` | `2592000000` (30 days), in ms  | How long a downloaded asset is reused     |
+| Key         | Default                       | Effect                                |
+| ----------- | ----------------------------- | ------------------------------------- |
+| `cache.ttl` | `2592000000` (30 days), in ms | How long a downloaded asset is reused |
 
 `timeout`, `retryCount`, `retryDelay` and `cache.enabled` are accepted and not read.
 
