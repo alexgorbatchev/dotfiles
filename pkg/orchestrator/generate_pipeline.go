@@ -482,10 +482,7 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 			}
 		}
 
-		shellScriptsDir := projCfg.Paths.ShellScriptsDir
-		if shellScriptsDir == "" {
-			shellScriptsDir = filepath.Join(projCfg.Paths.GeneratedDir, "shell-scripts")
-		}
+		shellScriptsDir := shellScriptsDirOf(projCfg)
 
 		for _, sh := range []string{"zsh", "bash"} {
 			var stc *config.ShellTypeConfig
@@ -560,10 +557,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 		return nil
 	}
 
-	shellScriptsDir := projCfg.Paths.ShellScriptsDir
-	if shellScriptsDir == "" {
-		shellScriptsDir = filepath.Join(projCfg.Paths.GeneratedDir, "shell-scripts")
-	}
+	shellScriptsDir := shellScriptsDirOf(projCfg)
 
 	for _, sh := range []string{"zsh", "bash"} {
 		var stc *config.ShellTypeConfig

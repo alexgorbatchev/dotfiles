@@ -138,15 +138,11 @@ When tool filename differs from binary name (e.g., `curl-script--fnm.tool.ts` fo
 
 ## CLI Completions
 
-The CLI does not write its own completion file. `dotfiles completion zsh` prints one; add it to the tool configuration that installs the CLI (`dotfiles.tool.ts`, created by `dotfiles scaffold`) like any other cmd-based completion:
+`dotfiles generate` writes the CLI's own zsh completion to `<shellScriptsDir>/zsh/completions/_dotfiles` (`shellScriptsDir` defaults to `<generatedDir>/shell-scripts`). The generated `main.zsh` already adds that directory to `fpath`, so the tool configuration that installs the CLI (`dotfiles.tool.ts`) needs no `.completions()` entry, and one that runs `dotfiles completion zsh` only rewrites the same file.
 
-```typescript
-.zsh((shell) => shell.completions({ cmd: "dotfiles completion zsh" }))
-```
+The file is tracked under the `system` pseudo-tool like `main.zsh`, so per-tool stale cleanup never removes it. It is safe to autoload from `fpath`: its file-scope `compdef _dotfiles dotfiles` runs once when zsh first loads the function, and its trailing `$funcstack` guard skips completion on that load, so no `source` or `compdef` line is needed anywhere.
 
-The file lands at `<shellScriptsDir>/zsh/completions/_dotfiles` (`shellScriptsDir` defaults to `<generatedDir>/shell-scripts`).
-
-Reload completions after the file is generated:
+Reload completions after running `dotfiles generate`:
 
 ```bash
 autoload -U compinit && compinit

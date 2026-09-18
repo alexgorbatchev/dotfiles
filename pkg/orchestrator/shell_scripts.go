@@ -14,10 +14,7 @@ import (
 )
 
 func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
-	shellScriptsDir := projCfg.Paths.ShellScriptsDir
-	if shellScriptsDir == "" {
-		shellScriptsDir = filepath.Join(projCfg.Paths.GeneratedDir, "shell-scripts")
-	}
+	shellScriptsDir := shellScriptsDirOf(projCfg)
 
 	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 		fsys := o.getTrackedFS(ctx, tx, "system", "init")

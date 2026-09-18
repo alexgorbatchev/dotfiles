@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"fmt"
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -32,6 +35,12 @@ var generateCmd = &cobra.Command{
 		err = services.Orchestrator.GenerateTools(ctx, services.ToolConfigs, services.ProjectConfig)
 		if err != nil {
 			return err
+		}
+
+		// Tool completion failures are logged rather than fatal, and the CLI's own
+		// completion follows the same rule: a broken Tab must not fail generation.
+		if err := writeCLICompletion(ctx, services); err != nil {
+			log.Error("Failed to write CLI completion", err)
 		}
 
 		// Run shellinit profile updater if shellInstall features are configured
@@ -90,6 +99,17 @@ var generateCmd = &cobra.Command{
 }
 
 var overwrite bool
+
+// writeCLICompletion renders cobra's zsh completion for this binary and hands it to
+// the orchestrator, which places it where the generated main.zsh's fpath finds it.
+// Rendering here rather than in the orchestrator keeps cobra out of pkg/.
+func writeCLICompletion(ctx context.Context, services *Services) error {
+	var script bytes.Buffer
+	if err := rootCmd.GenZshCompletion(&script); err != nil {
+		return fmt.Errorf("rendering zsh completion: %w", err)
+	}
+	return services.Orchestrator.GenerateCLICompletion(ctx, services.ProjectConfig, script.Bytes())
+}
 
 func init() {
 	generateCmd.Flags().BoolVar(&overwrite, "overwrite", false, "Overwrite conflicting files that were not created by the generator")

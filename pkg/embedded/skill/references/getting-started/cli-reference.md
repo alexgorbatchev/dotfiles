@@ -216,12 +216,9 @@ The CLI automatically adapts its output stream based on the `AGENT` environment 
 
 ## Shell Completions
 
-The CLI does not write its own completion file. `dotfiles completion zsh` prints a completion script; add it to the tool configuration that installs the CLI (`dotfiles.tool.ts`, created by `dotfiles scaffold`) so it is generated like any other tool completion:
-
-```typescript
-.zsh((shell) => shell.completions({ cmd: "dotfiles completion zsh" }))
-```
+`dotfiles generate` writes the CLI's own zsh completion script, so no tool configuration has to declare it.
 
 - The script is written to `${shellScriptsDir}/zsh/completions/_dotfiles`. `shellScriptsDir` defaults to `${generatedDir}/shell-scripts`, and the generated `main.zsh` adds that `completions` directory to `fpath`.
 - Subcommands that take a tool name (`install`, `update`, `uninstall`, `why`, `files`, `log`, `validate`) complete it from the configured tools; `bin` also completes configured binary names.
-- Reload completions with `autoload -U compinit && compinit` (or restart your shell) after the file is generated.
+- Reload completions with `autoload -U compinit && compinit` (or restart your shell) after running `dotfiles generate`.
+- `dotfiles completion zsh` still prints the same script for manual use.

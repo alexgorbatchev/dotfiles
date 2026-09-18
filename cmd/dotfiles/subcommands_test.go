@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -1260,4 +1262,135 @@ func TestCompletion_DescribesInstallationMethod(t *testing.T) {
 			t.Fatalf("stdout = %q, want candidate line %q", out.Stdout, want)
 		}
 	}
+}
+
+// TestGenerateCommand_WritesCLICompletion covers the wiring in generate.go: after
+// tool generation the CLI's own zsh completion lands where main.zsh puts fpath.
+func TestGenerateCommand_WritesCLICompletion(t *testing.T) {
+	p := newE2EProject(t, `"manual-tool": {"name": "manual-tool", "installationMethod": "manual"}`)
+
+	out, err := p.run("generate")
+	if err != nil {
+		t.Fatalf("generate: %v\n%s", err, out.Combined)
+	}
+
+	completionPath := filepath.Join(p.GeneratedDir, "shell-scripts", "zsh", "completions", "_dotfiles")
+	script, err := os.ReadFile(completionPath)
+	if err != nil {
+		t.Fatalf("reading %s: %v\n%s", completionPath, err, out.Combined)
+	}
+	if !strings.HasPrefix(string(script), "#compdef dotfiles\n") {
+		t.Fatalf("%s does not start with cobra's compdef header:\n%.120s", completionPath, script)
+	}
+
+	mainZsh, err := os.ReadFile(filepath.Join(p.GeneratedDir, "shell-scripts", "main.zsh"))
+	if err != nil {
+		t.Fatalf("reading main.zsh: %v", err)
+	}
+	if !strings.Contains(string(mainZsh), filepath.Dir(completionPath)) {
+		t.Fatalf("main.zsh does not put %s on fpath:\n%s", filepath.Dir(completionPath), mainZsh)
+	}
+}
+
+// e2eProject is a self-contained project inside a temp dir for tests that need the
+// commands to read and write real state. With DOTFILES_E2E_TEST set, BootstrapServices
+// uses the real filesystem and an on-disk registry under GeneratedDir instead of the
+// in-memory pair it otherwise gives tests, so what one command (or seedRegistry)
+// writes is what the next command execution sees. Installers stay mocked.
+type e2eProject struct {
+	Root         string
+	HomeDir      string
+	TargetDir    string
+	GeneratedDir string
+	ConfigPath   string
+}
+
+func newE2EProject(t *testing.T, toolConfigs string) e2eProject {
+	t.Helper()
+	t.Setenv("DOTFILES_E2E_TEST", "true")
+	root := t.TempDir()
+	p := e2eProject{
+		Root:         root,
+		HomeDir:      filepath.Join(root, "home"),
+		TargetDir:    filepath.Join(root, "target"),
+		GeneratedDir: filepath.Join(root, "generated"),
+		ConfigPath:   filepath.Join(root, "dotfiles.config.json"),
+	}
+	for _, dir := range []string{p.HomeDir, p.TargetDir, p.GeneratedDir} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("creating %s: %v", dir, err)
+		}
+	}
+	p.writeConfig(t, toolConfigs, "", "")
+	return p
+}
+
+// writeConfig (re)writes the project's configuration. toolConfigs is the body of the
+// "toolConfigs" object; extraPaths is appended inside "paths" and extraProject inside
+// "projectConfig", both as raw JSON members (or empty).
+func (p e2eProject) writeConfig(t *testing.T, toolConfigs, extraPaths, extraProject string) {
+	t.Helper()
+	paths := projectPathsJSON(p.Root)
+	if extraPaths != "" {
+		paths += ", " + extraPaths
+	}
+	project := fmt.Sprintf(`"paths": {%s}`, paths)
+	if extraProject != "" {
+		project += ", " + extraProject
+	}
+	content := fmt.Sprintf(`{"projectConfig": {%s}, "toolConfigs": {%s}}`, project, toolConfigs)
+	if err := os.WriteFile(p.ConfigPath, []byte(content), 0644); err != nil {
+		t.Fatalf("writing config: %v", err)
+	}
+}
+
+// run executes a command line against the project's configuration.
+func (p e2eProject) run(args ...string) (commandOutput, error) {
+	return runCommand(append([]string{"-c", p.ConfigPath}, args...)...)
+}
+
+// seedRegistry opens the project's on-disk registry and runs fn in one transaction.
+func (p e2eProject) seedRegistry(t *testing.T, fn func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error) {
+	t.Helper()
+	ctx := context.Background()
+	conn, err := db.NewConnection(ctx, filepath.Join(p.GeneratedDir, "registry.db"))
+	if err != nil {
+		t.Fatalf("opening registry: %v", err)
+	}
+	defer conn.Close()
+	reg := registry.NewRegistry(conn)
+	if err := reg.WithTx(ctx, func(tx *sql.Tx) error { return fn(ctx, reg, tx) }); err != nil {
+		t.Fatalf("seeding registry: %v", err)
+	}
+}
+
+// installation returns the project's installation record for toolName, or nil.
+func (p e2eProject) installation(t *testing.T, toolName string) *registry.ToolInstallationRecord {
+	t.Helper()
+	ctx := context.Background()
+	conn, err := db.NewConnection(ctx, filepath.Join(p.GeneratedDir, "registry.db"))
+	if err != nil {
+		t.Fatalf("opening registry: %v", err)
+	}
+	defer conn.Close()
+	rec, err := registry.NewRegistry(conn).GetToolInstallation(ctx, toolName)
+	if err != nil {
+		t.Fatalf("reading installation of %s: %v", toolName, err)
+	}
+	return rec
+}
+
+// seedInstallation records toolName as installed at version with installPath.
+func (p e2eProject) seedInstallation(t *testing.T, toolName, version, installPath string) {
+	t.Helper()
+	p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+		method := "manual"
+		return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+			ToolName:      toolName,
+			Version:       version,
+			InstallPath:   installPath,
+			InstallMethod: &method,
+			BinaryPaths:   "[]",
+		})
+	})
 }

@@ -34,6 +34,13 @@ func TestE2EGenerate(t *testing.T) {
 		h.AssertFileExists(".generated/shell-scripts")
 	})
 
+	t.Run("cli completion", func(t *testing.T) {
+		// The CLI installs its own zsh completion where main.zsh puts fpath, so no
+		// tool configuration has to declare it.
+		h.AssertFileContentContains(".generated/shell-scripts/zsh/completions/_dotfiles", "#compdef dotfiles")
+		h.AssertShellInitContains("zsh", "zsh/completions")
+	})
+
 	t.Run("github-release-tool", func(t *testing.T) {
 		h.AssertShimExistsAndExecutable("github-release-tool")
 		h.AssertShellInitContains("zsh", "github-release-tool")
