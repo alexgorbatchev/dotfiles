@@ -33,6 +33,7 @@ type FileStateInfo struct {
 
 var logCmd = &cobra.Command{
 	Use:   "log [tool]",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "Display or tail log output and file registry operation history",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()

@@ -10,6 +10,7 @@ import (
 
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall [tool]",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "Uninstalls a specific tool and cleans up matching shims/symlinks",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()

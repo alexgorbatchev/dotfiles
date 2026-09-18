@@ -24,6 +24,7 @@ type ToolUpdateResult struct {
 
 var checkUpdatesCmd = &cobra.Command{
 	Use:   "check-updates",
+	Args:  cobra.NoArgs,
 	Short: "Check for tool updates across configured tools",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()

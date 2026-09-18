@@ -17,6 +17,7 @@ var (
 
 var dashboardCmd = &cobra.Command{
 	Use:   "dashboard",
+	Args:  cobra.NoArgs,
 	Short: "Starts local HTTP web server and outputs the URL",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()

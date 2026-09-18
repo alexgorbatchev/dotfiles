@@ -86,6 +86,7 @@ func parseSkillDescription(content string) string {
 
 var skillCmd = &cobra.Command{
 	Use:   "skill [path]",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "Manage AI skills or copy dotfiles skill folder to target path",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		log := GetLogger("skill", cmd.ErrOrStderr())

@@ -16,6 +16,7 @@ var (
 
 var envCmd = &cobra.Command{
 	Use:   "env",
+	Args:  cobra.NoArgs,
 	Short: "Outputs export strings for current shell settings or manages virtual environments",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
@@ -33,6 +34,7 @@ var envCmd = &cobra.Command{
 
 var envCreateCmd = &cobra.Command{
 	Use:   "create [name]",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "Create a new virtual environment",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
@@ -69,6 +71,7 @@ var envCreateCmd = &cobra.Command{
 
 var envDeleteCmd = &cobra.Command{
 	Use:   "delete [name]",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "Delete a virtual environment",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()

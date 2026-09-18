@@ -11,6 +11,7 @@ import (
 
 var generateCmd = &cobra.Command{
 	Use:   "generate",
+	Args:  cobra.NoArgs,
 	Short: "Orchestrates shim and symlink generation",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()

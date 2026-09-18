@@ -11,6 +11,7 @@ import (
 
 var upgradeCmd = &cobra.Command{
 	Use:   "upgrade [version]",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "Upgrade dotfiles CLI binary to the latest or specified version",
 	Long: `Checks for and downloads the latest release of the dotfiles executable from GitHub Releases, safely updating the running binary.
 

@@ -10,7 +10,8 @@ import (
 )
 
 var installCmd = &cobra.Command{
-	Use:   "install [tool]",
+	Use:   "install [tool...]",
+	Args:  cobra.ArbitraryArgs,
 	Short: "Installs either a single specified tool or all tools defined in the configuration",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()

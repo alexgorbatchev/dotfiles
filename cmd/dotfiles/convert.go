@@ -16,6 +16,7 @@ var configCmd = &cobra.Command{
 
 var convertCmd = &cobra.Command{
 	Use:   "convert",
+	Args:  cobra.NoArgs,
 	Short: "Helper to migrate a TS config file to JSON",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		log := GetLogger("config", cmd.ErrOrStderr())

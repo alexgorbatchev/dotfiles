@@ -13,9 +13,15 @@ var (
 	featuresJSON   bool
 )
 
+// generateReadmeArg is the one positional word `features` accepts, as an
+// alternative spelling of --generate-readme.
+const generateReadmeArg = "generate-readme"
+
 var featuresCmd = &cobra.Command{
-	Use:   "features",
-	Short: "Feature flag management and readme generator",
+	Use:       "features [" + generateReadmeArg + "]",
+	Short:     "Feature flag management and readme generator",
+	Args:      cobra.MatchAll(cobra.MaximumNArgs(1), cobra.OnlyValidArgs),
+	ValidArgs: []cobra.Completion{generateReadmeArg},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		services, err := BootstrapServices(ctx, cfgFile)
@@ -26,7 +32,8 @@ var featuresCmd = &cobra.Command{
 
 		log := GetLogger("features", cmd.ErrOrStderr())
 
-		if generateReadme || (len(args) > 0 && args[0] == "generate-readme") {
+		// Args validation guarantees that a positional word, when present, is generateReadmeArg.
+		if generateReadme || len(args) > 0 {
 			log.Info("Generating readme documentation for configured tools...")
 			var markdown string
 			markdown += "# Configured Tools & Features\n\n"

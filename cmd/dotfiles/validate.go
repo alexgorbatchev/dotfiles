@@ -27,6 +27,7 @@ type ValidationWarning struct {
 
 var validateCmd = &cobra.Command{
 	Use:   "validate [tool]",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "Validates tool configuration files for schema issues and errors",
 	Long: `Validates tool configuration files (.tool.ts) and project configuration for schema issues, missing parameters, invalid installer methods, and bad shell settings.
 

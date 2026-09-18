@@ -24,6 +24,7 @@ type BinaryInfo struct {
 
 var binCmd = &cobra.Command{
 	Use:   "bin [name]",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "Outputs target bin directory, lists configured binaries, or resolves a binary path",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()

@@ -45,6 +45,7 @@ func buildDirTree(fsys fs.FS, dirPath string) ([]*cliout.TreeNode, error) {
 
 var filesCmd = &cobra.Command{
 	Use:   "files [toolName]",
+	Args:  cobra.MaximumNArgs(1),
 	Short: "Display a tree view of files in the tool installation directory or list managed files",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()

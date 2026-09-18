@@ -1039,3 +1039,52 @@ func findRepoRoot() string {
 	}
 	return "."
 }
+
+// TestPositionalArgumentValidation covers the Args validator of every subcommand.
+// Cobra validates positional arguments before RunE, so a rejected command line
+// never reaches BootstrapServices and no configuration file is needed.
+func TestPositionalArgumentValidation(t *testing.T) {
+	const atMostOne = "accepts at most 1 arg(s), received 2"
+
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{"why requires a tool", []string{"why"}, "accepts 1 arg(s), received 0"},
+		{"why rejects a second tool", []string{"why", "bat", "fd"}, "accepts 1 arg(s), received 2"},
+		{"log rejects a second tool", []string{"log", "bat", "fd"}, atMostOne},
+		{"files rejects a second tool", []string{"files", "bat", "fd"}, atMostOne},
+		{"validate rejects a second tool", []string{"validate", "bat", "fd"}, atMostOne},
+		{"uninstall rejects a second tool", []string{"uninstall", "bat", "fd"}, atMostOne},
+		{"update rejects a second tool", []string{"update", "bat", "fd"}, atMostOne},
+		{"bin rejects a second name", []string{"bin", "bat", "fd"}, atMostOne},
+		{"upgrade rejects a second version", []string{"upgrade", "1.0.0", "2.0.0"}, atMostOne},
+		{"skill rejects a second path", []string{"skill", "a", "b"}, atMostOne},
+		{"env create rejects a second name", []string{"env", "create", "a", "b"}, atMostOne},
+		{"env delete rejects a second name", []string{"env", "delete", "a", "b"}, atMostOne},
+		{"features rejects an unknown word", []string{"features", "readme"}, `invalid argument "readme" for "dotfiles features"`},
+		{"features rejects a second word", []string{"features", "generate-readme", "generate-readme"}, atMostOne},
+		{"generate takes no arguments", []string{"generate", "bat"}, `unknown command "bat" for "dotfiles generate"`},
+		{"cleanup takes no arguments", []string{"cleanup", "bat"}, `unknown command "bat" for "dotfiles cleanup"`},
+		{"dashboard takes no arguments", []string{"dashboard", "bat"}, `unknown command "bat" for "dotfiles dashboard"`},
+		{"check-updates takes no arguments", []string{"check-updates", "bat"}, `unknown command "bat" for "dotfiles check-updates"`},
+		{"detect-conflicts takes no arguments", []string{"detect-conflicts", "bat"}, `unknown command "bat" for "dotfiles detect-conflicts"`},
+		{"version takes no arguments", []string{"version", "bat"}, `unknown command "bat" for "dotfiles version"`},
+		{"scaffold takes no arguments", []string{"scaffold", "bat"}, `unknown command "bat" for "dotfiles scaffold"`},
+		{"env takes no arguments", []string{"env", "bat"}, `unknown command "bat" for "dotfiles env"`},
+		{"config convert takes no arguments", []string{"config", "convert", "bat"}, `unknown command "bat" for "dotfiles config convert"`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := executeCommand(tt.args...)
+			if err == nil {
+				t.Fatalf("%v: expected an argument error", tt.args)
+			}
+			if err.Error() != tt.wantErr {
+				t.Fatalf("%v: error = %q, want %q", tt.args, err.Error(), tt.wantErr)
+			}
+		})
+	}
+}

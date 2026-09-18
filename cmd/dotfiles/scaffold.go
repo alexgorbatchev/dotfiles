@@ -15,6 +15,7 @@ var scaffoldForce bool
 
 var scaffoldCmd = &cobra.Command{
 	Use:   "scaffold",
+	Args:  cobra.NoArgs,
 	Short: "Create starter tool configurations in the tool configs directory",
 	Long: `Creates the starter .tool.ts files a dotfiles repository is expected to have in
 the primary tool configs directory, creating that directory if it does not exist.

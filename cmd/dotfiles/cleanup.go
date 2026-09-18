@@ -8,6 +8,7 @@ import (
 
 var cleanupCmd = &cobra.Command{
 	Use:   "cleanup",
+	Args:  cobra.NoArgs,
 	Short: "Triggers standalone cleanup of orphaned tools and stale artifacts",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()

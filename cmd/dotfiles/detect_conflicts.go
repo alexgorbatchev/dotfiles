@@ -20,6 +20,7 @@ type ConflictItem struct {
 
 var detectConflictsCmd = &cobra.Command{
 	Use:   "detect-conflicts",
+	Args:  cobra.NoArgs,
 	Short: "Detects conflicts with existing non-generator files",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()

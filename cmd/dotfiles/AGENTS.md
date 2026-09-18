@@ -15,6 +15,7 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 - Use `.tmp/` inside the project folder for temporary scripts and sandboxing. Never use global `/tmp`.
 - Set strict execution timeouts on subprocesses (max 1m for CLI generation runs).
 - Register all CLI subcommands on `rootCmd` in `cmd/dotfiles/`.
+- Every runnable subcommand must declare its positional contract with a cobra `Args` validator (`cobra.NoArgs`, `cobra.MaximumNArgs(1)`, `cobra.ExactArgs(1)`, `cobra.ArbitraryArgs`, or `cobra.MatchAll(...)` with `ValidArgs` for a fixed word list) instead of checking `len(args)` inside `RunE`. Cobra validates before `RunE`, so a bad command line fails without bootstrapping services, and extra words are rejected instead of silently ignored.
 - In tests, `executeCommand` returns stdout and stderr interleaved; use `runCommand` and its `Stdout` / `Stderr` fields when the assertion is about which stream output landed on.
 - When `features.shellInstall` is enabled, `generate` must not skip non-existent profile paths; it must either update existing profile files or generate new read-only profile files via `shellinit`.
 - All CLI errors, diagnostics, and status messages must use `pkg/logger` (`GetLogger`). Never use raw `fmt.Print*` or `fmt.Fprint*` on `os.Stderr` for errors.

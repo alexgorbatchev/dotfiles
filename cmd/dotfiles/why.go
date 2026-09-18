@@ -10,13 +10,10 @@ import (
 var whyCmd = &cobra.Command{
 	Use:           "why <tool>",
 	Short:         "Print full path to the .tool.ts file that installs a tool or binary",
+	Args:          cobra.ExactArgs(1),
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			return fmt.Errorf("tool argument required")
-		}
-
 		query := args[0]
 		logLevel = "quiet"
 
