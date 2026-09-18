@@ -399,7 +399,12 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		}
 	}
 
-	// 5. Insert Database Entry for Tool Installation
+	// 5. Apply copies
+	if err := o.applyCopies(ctx, tool); err != nil {
+		return err
+	}
+
+	// 6. Insert Database Entry for Tool Installation
 	if !installer.IsDryRun() {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			now := time.Now().UnixMilli()

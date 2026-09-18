@@ -448,3 +448,52 @@ func TestTrackedFS_ChunkedComparison(t *testing.T) {
 		t.Errorf("Expected identical to be false for differing content of same size")
 	}
 }
+
+// RecordExistingFile registers a file the tool owns without rewriting it, the way
+// RecordExistingSymlink does for a link that is already correct, so a target that
+// already matches its source is still tracked and reaped once its declaration goes.
+func TestTrackedFileSystemRecordExistingFile(t *testing.T) {
+	ctx := context.Background()
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	database, err := db.NewConnection(ctx, dsn)
+	if err != nil {
+		t.Fatalf("Failed to initialize test DB: %v", err)
+	}
+	defer database.Close()
+
+	reg := registry.NewRegistry(database)
+	mem := NewMemFS()
+	_ = mem.MkdirAll("/home", 0755)
+	_ = mem.WriteFile("/home/config.toml", []byte("managed"), 0600)
+	tfs := NewTrackedFileSystem(mem, reg, nil, "copy-tool").WithFileType("copy")
+
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return tfs.WithTx(ctx, tx).RecordExistingFile("/home/config.toml")
+	})
+	if err != nil {
+		t.Fatalf("RecordExistingFile: %v", err)
+	}
+
+	states, err := reg.GetFileStatesForTool(ctx, "copy-tool")
+	if err != nil {
+		t.Fatalf("GetFileStatesForTool: %v", err)
+	}
+	if len(states) != 1 {
+		t.Fatalf("expected one recorded state, got %d", len(states))
+	}
+	state := states[0]
+	if state.FilePath != "/home/config.toml" || state.FileType != "copy" || state.LastOperation != "writeFile" {
+		t.Errorf("unexpected state %+v", state)
+	}
+	if state.SizeBytes == nil || *state.SizeBytes != int64(len("managed")) {
+		t.Errorf("expected size %d to be recorded, got %v", len("managed"), state.SizeBytes)
+	}
+	if state.Permissions == nil || *state.Permissions != registry.Permission("0600") {
+		t.Errorf("expected permissions 0600 to be recorded, got %v", state.Permissions)
+	}
+
+	got, _ := mem.ReadFile("/home/config.toml")
+	if string(got) != "managed" {
+		t.Errorf("RecordExistingFile rewrote the file: %q", string(got))
+	}
+}

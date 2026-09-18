@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -8,10 +9,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
@@ -311,12 +314,197 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		}
 	}
 
-	// 4. Generate completions
+	// 4. Apply copies
+	if err := o.applyCopies(ctx, tool); err != nil {
+		return err
+	}
+
+	// 5. Generate completions
 	if err := o.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
 		o.logger.GetSubLogger("", tool.Name).Error("Failed to generate completions", err)
 	}
 
 	return nil
+}
+
+// applyCopies places every .copy() declaration of a tool at its target. Sources
+// resolve against the tool's directory like symlink sources do, and targets go
+// through the filesystem so ~ expands to the configured home. Copied files are
+// written through the tracked filesystem as "copy", which is the record
+// CleanupStaleCopies reaps once a declaration disappears.
+func (o *Orchestrator) applyCopies(ctx context.Context, tool *config.ToolConfig) error {
+	for _, cp := range tool.Copies {
+		src := cp.Source
+		if !o.fs.IsAbs(src) && tool.ConfigFilePath != "" {
+			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
+		}
+		if err := o.copyPath(ctx, tool.Name, src, cp.Target); err != nil {
+			return fmt.Errorf("copying %q to %q: %w", cp.Source, cp.Target, err)
+		}
+	}
+	return nil
+}
+
+// copyPath copies source to target with v1's overwrite-and-backup policy: whatever
+// already sits at the target is kept as <target>.bak, replacing an older backup.
+// A target that already matches the source is only re-registered, so a repeated
+// generate neither rewrites the copy nor displaces the backup made the first time.
+func (o *Orchestrator) copyPath(ctx context.Context, toolName, source, target string) error {
+	absSource, err := o.fs.Abs(source)
+	if err != nil {
+		return fmt.Errorf("getting absolute source path: %w", err)
+	}
+	absTarget, err := o.fs.Abs(target)
+	if err != nil {
+		return fmt.Errorf("getting absolute target path: %w", err)
+	}
+
+	if _, err := o.fs.Stat(absSource); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("source path does not exist: %s", absSource)
+		}
+		return fmt.Errorf("stat source path: %w", err)
+	}
+
+	_, err = o.fs.Lstat(absTarget)
+	targetExists := err == nil
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("lstat target path: %w", err)
+	}
+
+	if targetExists {
+		same, err := sameContent(o.fs, absSource, absTarget)
+		if err != nil {
+			return err
+		}
+		if !same {
+			if err := o.backupPath(absTarget); err != nil {
+				return err
+			}
+		}
+	}
+
+	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return copyTree(o.fs, o.getTrackedFS(ctx, tx, toolName, "copy"), absSource, absTarget)
+	})
+}
+
+// backupPath moves whatever sits at path to <path>.bak, removing an older backup
+// first, as v1 did before overwriting a symlink or copy target. The rename runs on
+// the plain filesystem on purpose: recorded under the tool, the backup would itself
+// be judged stale and removed on the next run.
+func (o *Orchestrator) backupPath(path string) error {
+	backup := path + ".bak"
+	if _, err := o.fs.Lstat(backup); err == nil {
+		if err := o.fs.RemoveAll(backup); err != nil {
+			return fmt.Errorf("removing previous backup %s: %w", backup, err)
+		}
+	}
+	if err := o.fs.Rename(path, backup); err != nil {
+		return fmt.Errorf("backing up %s: %w", path, err)
+	}
+	return nil
+}
+
+// copyTree copies a file, or a directory recursively, into place. Files go through
+// the tracked filesystem so each one is registered; a file already holding the
+// source content is registered without being rewritten. Directories are created on
+// the plain filesystem, because a recorded directory would be measured against the
+// declared targets by CleanupStaleCopies and the parent of a copied file never is one.
+func copyTree(plain fs.FS, tracked *fs.TrackedFileSystem, source, target string) error {
+	info, err := plain.Stat(source)
+	if err != nil {
+		return fmt.Errorf("stat %s: %w", source, err)
+	}
+
+	if !info.IsDir() {
+		if err := plain.MkdirAll(filepath.Dir(target), 0755); err != nil {
+			return fmt.Errorf("creating %s: %w", filepath.Dir(target), err)
+		}
+		if same, err := sameContent(plain, source, target); err == nil && same {
+			return tracked.RecordExistingFile(target)
+		}
+		if err := tracked.CopyFile(source, target); err != nil {
+			return fmt.Errorf("copying %s: %w", source, err)
+		}
+		return nil
+	}
+
+	if err := plain.MkdirAll(target, 0755); err != nil {
+		return fmt.Errorf("creating %s: %w", target, err)
+	}
+	names, err := plain.ReadDir(source)
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", source, err)
+	}
+	for _, name := range names {
+		if err := copyTree(plain, tracked, filepath.Join(source, name), filepath.Join(target, name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// sameContent reports whether target already holds exactly what source holds: the
+// same bytes for a file, the same members with the same content for a directory. A
+// symlink at the target never counts, whatever it points at.
+func sameContent(fsys fs.FS, source, target string) (bool, error) {
+	srcInfo, err := fsys.Stat(source)
+	if err != nil {
+		return false, fmt.Errorf("stat %s: %w", source, err)
+	}
+	tgtInfo, err := fsys.Lstat(target)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("lstat %s: %w", target, err)
+	}
+	if tgtInfo.Mode()&os.ModeSymlink != 0 || srcInfo.IsDir() != tgtInfo.IsDir() {
+		return false, nil
+	}
+
+	if !srcInfo.IsDir() {
+		srcData, err := fsys.ReadFile(source)
+		if err != nil {
+			return false, fmt.Errorf("reading %s: %w", source, err)
+		}
+		tgtData, err := fsys.ReadFile(target)
+		if err != nil {
+			return false, fmt.Errorf("reading %s: %w", target, err)
+		}
+		return bytes.Equal(srcData, tgtData), nil
+	}
+
+	srcNames, err := fsys.ReadDir(source)
+	if err != nil {
+		return false, fmt.Errorf("reading %s: %w", source, err)
+	}
+	tgtNames, err := fsys.ReadDir(target)
+	if err != nil {
+		return false, fmt.Errorf("reading %s: %w", target, err)
+	}
+	slices.Sort(srcNames)
+	slices.Sort(tgtNames)
+	if !slices.Equal(srcNames, tgtNames) {
+		return false, nil
+	}
+	for _, name := range srcNames {
+		same, err := sameContent(fsys, filepath.Join(source, name), filepath.Join(target, name))
+		if err != nil || !same {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+// isWithin reports whether path is dir itself or lies beneath it.
+func isWithin(dir, path string) bool {
+	rel, err := filepath.Rel(dir, path)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
@@ -472,16 +660,30 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 
 		expectedFiles := make(map[string]bool)
 
+		// A copied directory registers each file beneath the declared target, so a
+		// recorded path counts as expected when it lies inside one of these too.
+		copyTargets := make(map[string]bool)
 		for _, cp := range tool.Copies {
 			expandedTarget := cp.Target
 			if strings.HasPrefix(expandedTarget, "~") {
 				expandedTarget = utils.ExpandHomePath(projCfg.Paths.HomeDir, expandedTarget)
 			}
-			expectedFiles[cp.Target] = true
-			expectedFiles[expandedTarget] = true
+			copyTargets[cp.Target] = true
+			copyTargets[expandedTarget] = true
 			if absTarget, err := o.fs.Abs(expandedTarget); err == nil {
-				expectedFiles[absTarget] = true
+				copyTargets[absTarget] = true
 			}
+		}
+		isExpected := func(path string) bool {
+			if expectedFiles[path] || copyTargets[path] {
+				return true
+			}
+			for dir := range copyTargets {
+				if isWithin(dir, path) {
+					return true
+				}
+			}
+			return false
 		}
 
 		shellScriptsDir := shellScriptsDirOf(projCfg)
@@ -521,7 +723,7 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 				absFilePath = resolvedFilePath
 			}
 
-			if !expectedFiles[absFilePath] && !expectedFiles[resolvedFilePath] && !expectedFiles[state.FilePath] {
+			if !isExpected(absFilePath) && !isExpected(resolvedFilePath) && !isExpected(state.FilePath) {
 				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale file: %s", o.formatPath(projCfg, resolvedFilePath))))
 
 				_ = o.fs.Remove(resolvedFilePath)

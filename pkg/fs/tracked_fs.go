@@ -89,6 +89,22 @@ func (t *TrackedFileSystem) RecordExistingSymlink(target string, linkPath string
 	return t.recordOperation("symlink", linkPath, &target, nil, nil)
 }
 
+// RecordExistingFile logs a file that already holds the wanted content to the registry
+// as if it had just been written, without touching it. It is the file counterpart of
+// RecordExistingSymlink: the tool owns the file either way, and an unrecorded one would
+// escape the stale cleanup once its declaration disappears.
+func (t *TrackedFileSystem) RecordExistingFile(path string) error {
+	var sizeBytes *int64
+	var permVal *registry.Permission
+	if info, err := t.fs.Lstat(path); err == nil {
+		sz := info.Size()
+		sizeBytes = &sz
+		p := registry.Permission(fmt.Sprintf("0%o", info.Mode().Perm()))
+		permVal = &p
+	}
+	return t.recordOperation("writeFile", path, nil, sizeBytes, permVal)
+}
+
 func (t *TrackedFileSystem) recordOperation(opType string, path string, targetPath *string, sizeBytes *int64, permissions *registry.Permission) error {
 	if t.tx == nil || t.reg == nil {
 		return nil
