@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -66,8 +65,8 @@ func (c *CurlTarInstaller) SetLogger(log *logger.Logger) {
 	}
 }
 
-func (c *CurlTarInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
-	ApplyDownloadCacheSettings(c.dl, cacheDir, ttl, enabled)
+func (c *CurlTarInstaller) SetDownloadSettings(settings downloader.Settings) {
+	c.dl.Apply(settings)
 }
 
 func (c *CurlTarInstaller) SetHTTPClient(client *http.Client) {

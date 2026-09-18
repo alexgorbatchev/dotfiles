@@ -69,15 +69,15 @@ names the setting.
 Where everything the CLI manages lives. A `~` is expanded, and `{paths.generatedDir}`
 may be used inside the other values.
 
-| Key               | Default                                                      | Effect                                                                     |
-| ----------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| `homeDir`         | the account's home directory                                 | What `~` expands to                                                        |
-| `dotfilesDir`     | `<config file directory>`                                    | Root of the dotfiles repository; everything below hangs off it             |
-| `generatedDir`    | `<dotfilesDir>/.generated`                                   | Everything the CLI writes, including the registry database                 |
-| `targetDir`       | `<generatedDir>/bin`                                         | Where shims are written; this is the directory that has to be on PATH      |
-| `binariesDir`     | `<generatedDir>/binaries`                                    | Installed tools, one versioned directory and a `current` link per tool     |
-| `shellScriptsDir` | `<generatedDir>/shell-scripts`                               | `main.zsh`, `main.bash`, `main.ps1`, once-scripts and completions          |
-| `toolConfigsDir`  | `<config file directory>/tools`                              | Where `*.tool.ts` files are found; a string, or an array to search several |
+| Key               | Default                         | Effect                                                                     |
+| ----------------- | ------------------------------- | -------------------------------------------------------------------------- |
+| `homeDir`         | the account's home directory    | What `~` expands to                                                        |
+| `dotfilesDir`     | `<config file directory>`       | Root of the dotfiles repository; everything below hangs off it             |
+| `generatedDir`    | `<dotfilesDir>/.generated`      | Everything the CLI writes, including the registry database                 |
+| `targetDir`       | `<generatedDir>/bin`            | Where shims are written; this is the directory that has to be on PATH      |
+| `binariesDir`     | `<generatedDir>/binaries`       | Installed tools, one versioned directory and a `current` link per tool     |
+| `shellScriptsDir` | `<generatedDir>/shell-scripts`  | `main.zsh`, `main.bash`, `main.ps1`, once-scripts and completions          |
+| `toolConfigsDir`  | `<config file directory>/tools` | Where `*.tool.ts` files are found; a string, or an array to search several |
 
 ```typescript config
 paths: {
@@ -108,14 +108,18 @@ no command writes a catalog file; both keys default to empty.
 
 ### github
 
-| Key         | Default                     | Effect                                                   |
-| ----------- | --------------------------- | -------------------------------------------------------- |
-| `host`      | `https://api.github.com`    | API base URL for `github-release`, for GitHub Enterprise |
-| `cache.ttl` | `3600000` (one hour), in ms | How long a fetched release description is reused         |
+| Key             | Default                     | Effect                                                        |
+| --------------- | --------------------------- | ------------------------------------------------------------- |
+| `host`          | `https://api.github.com`    | API base URL for `github-release`, for GitHub Enterprise      |
+| `token`         | none                        | Authenticates API requests and asset downloads for every tool |
+| `userAgent`     | `dotfiles-installer/1.0`    | The `User-Agent` sent with GitHub API requests                |
+| `cache.enabled` | `true`                      | Whether a fetched release description is reused at all        |
+| `cache.ttl`     | `3600000` (one hour), in ms | How long a fetched release description is reused              |
 
-`token`, `userAgent` and `cache.enabled` are accepted and not read. Authenticate with
-the `token` parameter of the installation method, or with `GITHUB_TOKEN` in the
-environment; the metadata cache is always on.
+`token` is the project-wide default. A tool that sets the `token` parameter of its
+installation method overrides it, and when neither names one the `GITHUB_TOKEN` and
+then `GH_TOKEN` environment variables are consulted. It applies to every method that
+resolves GitHub releases: `github-release`, `cargo`, `dmg` and `pkg`.
 
 ### system
 
@@ -125,11 +129,13 @@ environment; the metadata cache is always on.
 
 ### downloader
 
-| Key         | Default                       | Effect                                |
-| ----------- | ----------------------------- | ------------------------------------- |
-| `cache.ttl` | `2592000000` (30 days), in ms | How long a downloaded asset is reused |
-
-`timeout`, `retryCount`, `retryDelay` and `cache.enabled` are accepted and not read.
+| Key             | Default                       | Effect                                                        |
+| --------------- | ----------------------------- | ------------------------------------------------------------- |
+| `timeout`       | none, in ms                   | Bounds one download attempt; a slower download is abandoned   |
+| `retryCount`    | `0`                           | How many times a failed download is attempted again           |
+| `retryDelay`    | `1000` (one second), in ms    | Base delay between attempts, multiplied by the attempt number |
+| `cache.enabled` | `true`                        | Whether a downloaded asset is reused at all                   |
+| `cache.ttl`     | `2592000000` (30 days), in ms | How long a downloaded asset is reused                         |
 
 A download renders a progress line on stderr while it runs, and only when stderr is a
 terminal.

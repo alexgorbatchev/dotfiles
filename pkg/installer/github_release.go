@@ -28,6 +28,9 @@ type githubReleaseClient struct {
 	// baseURL is the API root; empty selects api.github.com. A GitHub Enterprise
 	// host is passed to the gh CLI through --hostname.
 	baseURL string
+	// userAgent identifies the client to the API; empty selects githubUserAgent.
+	// It is the project configuration's github.userAgent.
+	userAgent string
 }
 
 // githubReleaseRequest identifies the release to resolve and how to reach it.
@@ -48,6 +51,14 @@ func (c githubReleaseClient) apiBaseURL() string {
 		return githubAPIBaseURL
 	}
 	return strings.TrimSuffix(c.baseURL, "/")
+}
+
+// agent returns the User-Agent to present to the API.
+func (c githubReleaseClient) agent() string {
+	if c.userAgent == "" {
+		return githubUserAgent
+	}
+	return c.userAgent
 }
 
 // fetch resolves the requested release and reports whether the gh CLI produced
@@ -90,7 +101,7 @@ func (c githubReleaseClient) fetchViaAPI(ctx context.Context, req githubReleaseR
 	if err != nil {
 		return nil, 0, fmt.Errorf("creating GitHub API request: %w", err)
 	}
-	httpReq.Header.Set("User-Agent", githubUserAgent)
+	httpReq.Header.Set("User-Agent", c.agent())
 	if req.token != "" {
 		httpReq.Header.Set("Authorization", "token "+req.token)
 	}
@@ -160,12 +171,19 @@ func (c githubReleaseClient) downloadAssetViaGhCli(ctx context.Context, repo, ta
 	return nil
 }
 
-// githubToken returns the token to authenticate GitHub API requests with: the
-// tool's `token` parameter first, then GITHUB_TOKEN, then GH_TOKEN (the
-// variable the gh CLI itself reads).
-func githubToken(params map[string]interface{}) string {
+// githubToken returns the token to authenticate GitHub API requests and asset
+// downloads with, most specific source first: the tool's `token` parameter, then
+// projectToken (the project configuration's github.token, which applies to every
+// tool), then GITHUB_TOKEN, then GH_TOKEN (the variable the gh CLI itself reads).
+// Configuration beats the environment because it is the deliberate choice of the
+// repository being installed, while the variables are whatever the shell happened
+// to carry.
+func githubToken(params map[string]interface{}, projectToken string) string {
 	if token := getStringParam(params, "token", ""); token != "" {
 		return token
+	}
+	if projectToken != "" {
+		return projectToken
 	}
 	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
 		return token

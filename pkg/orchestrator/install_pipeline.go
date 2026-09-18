@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/lifecycle"
@@ -22,6 +23,32 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
+
+// defaultDownloadCacheTTL is how long a downloaded asset is reused when the project
+// configuration does not say.
+const defaultDownloadCacheTTL = 30 * 24 * time.Hour
+
+// downloadSettings turns the project configuration's `downloader` section into the
+// policy every installer's downloader runs under. Durations are configured in
+// milliseconds, as the cache TTL already was.
+func downloadSettings(projCfg *config.ProjectConfig) downloader.Settings {
+	cacheDir := filepath.Join(".generated", "cache", "downloads")
+	if projCfg.Paths.GeneratedDir != "" {
+		cacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "downloads")
+	}
+	cacheTTL := defaultDownloadCacheTTL
+	if projCfg.Downloader.Cache.TTL > 0 {
+		cacheTTL = time.Duration(projCfg.Downloader.Cache.TTL) * time.Millisecond
+	}
+	return downloader.Settings{
+		CacheDir:     cacheDir,
+		CacheTTL:     cacheTTL,
+		CacheEnabled: projCfg.Downloader.Cache.IsEnabled(),
+		Timeout:      time.Duration(projCfg.Downloader.Timeout) * time.Millisecond,
+		RetryCount:   int(projCfg.Downloader.RetryCount),
+		RetryDelay:   time.Duration(projCfg.Downloader.RetryDelay) * time.Millisecond,
+	}
+}
 
 // InstallTools executes the installation pipeline for all provided tools sequentially in topological order.
 func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
@@ -129,16 +156,12 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	installer.SetFS(inst, activeFS)
 	installer.SetLogger(inst, o.logger.WithName(inst.Name()))
 
-	downloadCacheDir := filepath.Join(".generated", "cache", "downloads")
-	if projCfg.Paths.GeneratedDir != "" {
-		downloadCacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "downloads")
-	}
-	var downloadCacheTTL time.Duration = 30 * 24 * time.Hour
-	if projCfg.Downloader.Cache.TTL > 0 {
-		downloadCacheTTL = time.Duration(projCfg.Downloader.Cache.TTL) * time.Millisecond
-	}
-	downloadCacheEnabled := true
-	installer.SetDownloadCache(inst, downloadCacheDir, downloadCacheTTL, downloadCacheEnabled)
+	installer.SetDownloadSettings(inst, downloadSettings(projCfg))
+	installer.SetGitHubSettings(inst, installer.GitHubSettings{
+		Token:        projCfg.Github.Token,
+		UserAgent:    projCfg.Github.UserAgent,
+		CacheEnabled: projCfg.Github.Cache.IsEnabled(),
+	})
 
 	if !isExternal {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {

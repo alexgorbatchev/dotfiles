@@ -45,6 +45,27 @@ func getCacheKey(url string, headers map[string]string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// defaultRetryDelay is the base delay between download attempts when neither the
+// project configuration nor the call that starts the download names one.
+const defaultRetryDelay = time.Second
+
+// Settings is the project-level download policy: what every download this
+// downloader performs does unless the call that starts it overrides the value.
+// It is what the `downloader` section of a project configuration resolves to.
+type Settings struct {
+	CacheDir     string
+	CacheTTL     time.Duration
+	CacheEnabled bool
+	// Timeout bounds a single attempt; zero leaves the attempt unbounded.
+	Timeout time.Duration
+	// RetryCount is how many times a failed attempt is repeated; zero attempts the
+	// download once.
+	RetryCount int
+	// RetryDelay is the base delay between attempts, multiplied by the attempt
+	// number for linear backoff; zero selects defaultRetryDelay.
+	RetryDelay time.Duration
+}
+
 // Downloader manages file downloads with optional resumption support and SHA256 integrity checks.
 type Downloader struct {
 	fsys         fs.FS
@@ -52,7 +73,38 @@ type Downloader struct {
 	CacheDir     string
 	CacheEnabled bool
 	CacheTTL     time.Duration
-	Quiet        bool
+	// Timeout, RetryCount and RetryDelay are the defaults a DownloadOptions that
+	// leaves the corresponding field zero falls back to. See Settings.
+	Timeout    time.Duration
+	RetryCount int
+	RetryDelay time.Duration
+	Quiet      bool
+}
+
+// Apply installs the project-level download policy on d. A zero value leaves the
+// current setting in place, so a configuration that names one knob does not reset
+// the others; CacheEnabled is always taken from s, because false is a meaningful
+// value for it.
+func (d *Downloader) Apply(s Settings) {
+	if d == nil {
+		return
+	}
+	if s.CacheDir != "" {
+		d.CacheDir = s.CacheDir
+	}
+	if s.CacheTTL > 0 {
+		d.CacheTTL = s.CacheTTL
+	}
+	d.CacheEnabled = s.CacheEnabled
+	if s.Timeout > 0 {
+		d.Timeout = s.Timeout
+	}
+	if s.RetryCount > 0 {
+		d.RetryCount = s.RetryCount
+	}
+	if s.RetryDelay > 0 {
+		d.RetryDelay = s.RetryDelay
+	}
 }
 
 // SetQuiet controls whether progress bar rendering is suppressed.
@@ -182,10 +234,15 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 	}
 
 	var lastErr error
-	retryCount := 0
-	retryDelay := time.Second
+	retryCount := d.RetryCount
+	retryDelay := d.RetryDelay
+	if retryDelay <= 0 {
+		retryDelay = defaultRetryDelay
+	}
 	if len(opts) > 0 {
-		retryCount = opts[0].RetryCount
+		if opts[0].RetryCount > 0 {
+			retryCount = opts[0].RetryCount
+		}
 		if opts[0].RetryDelay > 0 {
 			retryDelay = opts[0].RetryDelay
 		}
@@ -226,8 +283,8 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 }
 
 func (d *Downloader) doDownload(ctx context.Context, url string, destPath string, expectedSHA256 string, opts ...DownloadOptions) error {
-	var timeout time.Duration
-	if len(opts) > 0 {
+	timeout := d.Timeout
+	if len(opts) > 0 && opts[0].Timeout > 0 {
 		timeout = opts[0].Timeout
 	}
 	if timeout > 0 {

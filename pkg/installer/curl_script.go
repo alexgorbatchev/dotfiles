@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -61,8 +60,8 @@ func (c *CurlScriptInstaller) SetLogger(log *logger.Logger) {
 	}
 }
 
-func (c *CurlScriptInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
-	ApplyDownloadCacheSettings(c.dl, cacheDir, ttl, enabled)
+func (c *CurlScriptInstaller) SetDownloadSettings(settings downloader.Settings) {
+	c.dl.Apply(settings)
 }
 
 func (c *CurlScriptInstaller) SetHTTPClient(client *http.Client) {

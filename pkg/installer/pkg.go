@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -27,6 +26,14 @@ type PkgInstaller struct {
 	httpClient *http.Client
 	BinDir     string // Optional destination dir
 	BaseURL    string // Override for testing
+	// GitHub holds the project configuration's github.token and github.userAgent,
+	// which apply whenever the source is a GitHub release.
+	GitHub GitHubSettings
+}
+
+// SetGitHubSettings applies the project configuration's github section.
+func (p *PkgInstaller) SetGitHubSettings(settings GitHubSettings) {
+	p.GitHub = settings
 }
 
 func NewPkgInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downloader, sysCtx *SystemContext) *PkgInstaller {
@@ -68,8 +75,8 @@ func (p *PkgInstaller) SetLogger(log *logger.Logger) {
 	}
 }
 
-func (p *PkgInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
-	ApplyDownloadCacheSettings(p.dl, cacheDir, ttl, enabled)
+func (p *PkgInstaller) SetDownloadSettings(settings downloader.Settings) {
+	p.dl.Apply(settings)
 }
 
 func (p *PkgInstaller) SetHTTPClient(client *http.Client) {
@@ -89,6 +96,7 @@ func (p *PkgInstaller) fetcher(toolName string) macPackageFetcher {
 		runner:     p.runner,
 		httpClient: p.httpClient,
 		baseURL:    p.BaseURL,
+		github:     p.GitHub,
 		sysCtx:     p.sysCtx,
 		log:        toolLogger(p.log, toolName),
 	}

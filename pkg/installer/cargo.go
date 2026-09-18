@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -47,6 +46,14 @@ type CargoInstaller struct {
 	CratesIOURL  string // Override for testing the crates.io API
 	GitHubAPIURL string // Override for testing the GitHub releases API
 	GitHubRawURL string // Override for testing raw Cargo.toml fetches
+	// GitHub holds the project configuration's github.token and github.userAgent,
+	// which apply when a crate's version or binary comes from a GitHub release.
+	GitHub GitHubSettings
+}
+
+// SetGitHubSettings applies the project configuration's github section.
+func (c *CargoInstaller) SetGitHubSettings(settings GitHubSettings) {
+	c.GitHub = settings
 }
 
 // cargoVersion is a resolved crate version. tag is set when a GitHub release
@@ -112,8 +119,8 @@ func (c *CargoInstaller) SetLogger(log *logger.Logger) {
 	}
 }
 
-func (c *CargoInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
-	ApplyDownloadCacheSettings(c.dl, cacheDir, ttl, enabled)
+func (c *CargoInstaller) SetDownloadSettings(settings downloader.Settings) {
+	c.dl.Apply(settings)
 }
 
 func (c *CargoInstaller) SetHTTPClient(client *http.Client) {
@@ -334,11 +341,11 @@ func parseCargoTomlPackageVersion(data []byte) (string, error) {
 
 // fetchGitHubReleaseTag returns the tag of the repository's latest release.
 func (c *CargoInstaller) fetchGitHubReleaseTag(ctx context.Context, tool *config.ToolConfig, githubRepo string) (string, error) {
-	releaseClient := githubReleaseClient{httpClient: c.httpClient, runner: c.runner, baseURL: c.GitHubAPIURL}
+	releaseClient := githubReleaseClient{httpClient: c.httpClient, runner: c.runner, baseURL: c.GitHubAPIURL, userAgent: c.GitHub.UserAgent}
 	release, _, err := releaseClient.fetch(ctx, githubReleaseRequest{
 		repo:    githubRepo,
 		version: "latest",
-		token:   githubToken(tool.InstallParams),
+		token:   githubToken(tool.InstallParams, c.GitHub.Token),
 	})
 	if err != nil {
 		return "", err

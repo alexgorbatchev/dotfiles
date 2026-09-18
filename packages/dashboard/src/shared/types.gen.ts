@@ -1,7 +1,7 @@
 /* Do not change, this code is generated from Golang structs */
 
 export interface CacheConfig {
-  enabled: boolean;
+  enabled?: boolean;
   ttl: number;
 }
 export interface HostConfig {

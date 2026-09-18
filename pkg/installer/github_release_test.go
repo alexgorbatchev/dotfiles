@@ -176,12 +176,16 @@ func TestGithubReleaseClientGhCliArguments(t *testing.T) {
 
 func TestGithubToken(t *testing.T) {
 	tests := []struct {
-		name   string
-		params map[string]interface{}
-		env    map[string]string
-		want   string
+		name string
+		// params is the tool's installParams, projectToken the project
+		// configuration's github.token.
+		params       map[string]interface{}
+		projectToken string
+		env          map[string]string
+		want         string
 	}{
-		{name: "parameter wins", params: map[string]interface{}{"token": "param"}, env: map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"}, want: "param"},
+		{name: "parameter wins", params: map[string]interface{}{"token": "param"}, projectToken: "project", env: map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"}, want: "param"},
+		{name: "github.token before the environment", projectToken: "project", env: map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"}, want: "project"},
 		{name: "GITHUB_TOKEN before GH_TOKEN", env: map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"}, want: "gh"},
 		{name: "GH_TOKEN as last resort", env: map[string]string{"GH_TOKEN": "cli"}, want: "cli"},
 		{name: "nothing configured", want: ""},
@@ -190,7 +194,7 @@ func TestGithubToken(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("GITHUB_TOKEN", tt.env["GITHUB_TOKEN"])
 			t.Setenv("GH_TOKEN", tt.env["GH_TOKEN"])
-			if got := githubToken(tt.params); got != tt.want {
+			if got := githubToken(tt.params, tt.projectToken); got != tt.want {
 				t.Fatalf("githubToken = %q, want %q", got, tt.want)
 			}
 		})

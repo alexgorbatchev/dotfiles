@@ -205,8 +205,8 @@ func (g *GiteaInstaller) SetLogger(log *logger.Logger) {
 	}
 }
 
-func (g *GiteaInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
-	ApplyDownloadCacheSettings(g.dl, cacheDir, ttl, enabled)
+func (g *GiteaInstaller) SetDownloadSettings(settings downloader.Settings) {
+	g.dl.Apply(settings)
 }
 
 func (g *GiteaInstaller) SetHTTPClient(client *http.Client) {

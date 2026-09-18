@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -393,8 +392,29 @@ type LoggerSetter interface {
 	SetLogger(*logger.Logger)
 }
 
-type DownloadCacheSetter interface {
-	SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool)
+// DownloadSettingsSetter is implemented by installers that download files, so that
+// the `downloader` section of the project configuration reaches the downloader they
+// use.
+type DownloadSettingsSetter interface {
+	SetDownloadSettings(downloader.Settings)
+}
+
+// GitHubSettings is the credential and identity half of the project configuration's
+// `github` section, shared by every installation method that resolves releases
+// through the GitHub API.
+type GitHubSettings struct {
+	// Token authenticates API requests and asset downloads for every tool that does
+	// not name a `token` install parameter of its own.
+	Token string
+	// UserAgent identifies the client to the API; empty selects the built-in value.
+	UserAgent string
+	// CacheEnabled reuses previously fetched release descriptions when true.
+	CacheEnabled bool
+}
+
+// GitHubSettingsSetter is implemented by installers that resolve GitHub releases.
+type GitHubSettingsSetter interface {
+	SetGitHubSettings(GitHubSettings)
 }
 
 // HTTPClientSetter is implemented by installers that talk HTTP. SetHTTPClient
@@ -418,10 +438,19 @@ func SetLogger(inst Installer, log *logger.Logger) {
 	}
 }
 
-// SetDownloadCache dynamically configures persistent download caching on installer plugins prior to execution.
-func SetDownloadCache(inst Installer, cacheDir string, ttl time.Duration, enabled bool) {
-	if s, ok := inst.(DownloadCacheSetter); ok {
-		s.SetDownloadCache(cacheDir, ttl, enabled)
+// SetDownloadSettings dynamically configures caching, timeout and retry policy on
+// installer plugins prior to execution.
+func SetDownloadSettings(inst Installer, settings downloader.Settings) {
+	if s, ok := inst.(DownloadSettingsSetter); ok {
+		s.SetDownloadSettings(settings)
+	}
+}
+
+// SetGitHubSettings dynamically configures GitHub API access on installer plugins
+// prior to execution.
+func SetGitHubSettings(inst Installer, settings GitHubSettings) {
+	if s, ok := inst.(GitHubSettingsSetter); ok {
+		s.SetGitHubSettings(settings)
 	}
 }
 
@@ -430,20 +459,6 @@ func SetHTTPClient(inst Installer, client *http.Client) {
 	if s, ok := inst.(HTTPClientSetter); ok {
 		s.SetHTTPClient(client)
 	}
-}
-
-// ApplyDownloadCacheSettings updates downloader configuration with the provided cache directory, TTL, and enabled flag.
-func ApplyDownloadCacheSettings(dl *downloader.Downloader, cacheDir string, ttl time.Duration, enabled bool) {
-	if dl == nil {
-		return
-	}
-	if cacheDir != "" {
-		dl.CacheDir = cacheDir
-	}
-	if ttl > 0 {
-		dl.CacheTTL = ttl
-	}
-	dl.CacheEnabled = enabled
 }
 
 // ValidateSudo checks if a tool requires sudo elevation and verifies whether the installer supports it.

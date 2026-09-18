@@ -14,6 +14,12 @@ import (
 )
 
 func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, projCfg *config.ProjectConfig) {
+	installer.SetGitHubSettings(inst, installer.GitHubSettings{
+		Token:        projCfg.Github.Token,
+		UserAgent:    projCfg.Github.UserAgent,
+		CacheEnabled: projCfg.Github.Cache.IsEnabled(),
+	})
+
 	switch instInstance := inst.(type) {
 	case *installer.GitHubInstaller:
 		instInstance.BinDir = toolDestDir

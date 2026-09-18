@@ -62,6 +62,24 @@ var platformOverrideKeys = []string{"match", "config"}
 // platformMatchKeys are the properties of one matcher in an override's "match" list.
 var platformMatchKeys = []string{"os", "arch"}
 
+// The keys each project configuration section accepts. They are declared here rather
+// than inline in validateProjectSection so that the accepted surface is one readable
+// table, and so that TestEveryAcceptedProjectKeyIsAccountedFor can walk it.
+var (
+	pathsKeys        = []string{"homeDir", "dotfilesDir", "targetDir", "generatedDir", "toolConfigsDir", "shellScriptsDir", "binariesDir"}
+	systemKeys       = []string{"sudoPrompt"}
+	loggingKeys      = []string{"debug"}
+	updatesKeys      = []string{"checkOnRun", "checkInterval"}
+	cargoKeys        = []string{"cratesIo", "githubRaw", "githubRelease", "userAgent"}
+	cargoHostKeys    = []string{"cratesIo", "githubRaw", "githubRelease"}
+	downloaderKeys   = []string{"timeout", "retryCount", "retryDelay", "cache"}
+	featuresKeys     = []string{"catalog", "shellInstall"}
+	catalogKeys      = []string{"generate", "filePath"}
+	shellInstallKeys = []string{"zsh", "bash", "powershell"}
+	hostKeys         = []string{"host", "cache", "token", "userAgent"}
+	cacheKeys        = []string{"enabled", "ttl"}
+)
+
 func validateProjectMap(prefix string, m map[string]interface{}) error {
 	allowedProjectKeys := append(slices.Clone(projectSectionKeys), "platform")
 	for k, v := range m {
@@ -188,29 +206,25 @@ func validateProjectSection(path, key string, v interface{}) error {
 	switch key {
 	case "paths":
 		if sub, ok := v.(map[string]interface{}); ok {
-			allowedPaths := []string{"homeDir", "dotfilesDir", "targetDir", "generatedDir", "toolConfigsDir", "shellScriptsDir", "binariesDir"}
-			if err := checkKeys(path, sub, allowedPaths); err != nil {
+			if err := checkKeys(path, sub, pathsKeys); err != nil {
 				return err
 			}
 		}
 	case "system":
 		if sub, ok := v.(map[string]interface{}); ok {
-			allowedSystem := []string{"sudoPrompt"}
-			if err := checkKeys(path, sub, allowedSystem); err != nil {
+			if err := checkKeys(path, sub, systemKeys); err != nil {
 				return err
 			}
 		}
 	case "logging":
 		if sub, ok := v.(map[string]interface{}); ok {
-			allowedLogging := []string{"debug"}
-			if err := checkKeys(path, sub, allowedLogging); err != nil {
+			if err := checkKeys(path, sub, loggingKeys); err != nil {
 				return err
 			}
 		}
 	case "updates":
 		if sub, ok := v.(map[string]interface{}); ok {
-			allowedUpdates := []string{"checkOnRun", "checkInterval"}
-			if err := checkKeys(path, sub, allowedUpdates); err != nil {
+			if err := checkKeys(path, sub, updatesKeys); err != nil {
 				return err
 			}
 		}
@@ -222,11 +236,10 @@ func validateProjectSection(path, key string, v interface{}) error {
 		}
 	case "cargo":
 		if sub, ok := v.(map[string]interface{}); ok {
-			allowedCargo := []string{"cratesIo", "githubRaw", "githubRelease", "userAgent"}
-			if err := checkKeys(path, sub, allowedCargo); err != nil {
+			if err := checkKeys(path, sub, cargoKeys); err != nil {
 				return err
 			}
-			for _, subHost := range []string{"cratesIo", "githubRaw", "githubRelease"} {
+			for _, subHost := range cargoHostKeys {
 				if hostMap, ok := sub[subHost].(map[string]interface{}); ok {
 					if err := validateHostMap(qualifyPath(path, subHost), hostMap); err != nil {
 						return err
@@ -236,8 +249,7 @@ func validateProjectSection(path, key string, v interface{}) error {
 		}
 	case "downloader":
 		if sub, ok := v.(map[string]interface{}); ok {
-			allowedDownloader := []string{"timeout", "retryCount", "retryDelay", "cache"}
-			if err := checkKeys(path, sub, allowedDownloader); err != nil {
+			if err := checkKeys(path, sub, downloaderKeys); err != nil {
 				return err
 			}
 			if cacheMap, ok := sub["cache"].(map[string]interface{}); ok {
@@ -248,19 +260,16 @@ func validateProjectSection(path, key string, v interface{}) error {
 		}
 	case "features":
 		if sub, ok := v.(map[string]interface{}); ok {
-			allowedFeatures := []string{"catalog", "shellInstall"}
-			if err := checkKeys(path, sub, allowedFeatures); err != nil {
+			if err := checkKeys(path, sub, featuresKeys); err != nil {
 				return err
 			}
 			if catMap, ok := sub["catalog"].(map[string]interface{}); ok {
-				allowedCat := []string{"generate", "filePath"}
-				if err := checkKeys(qualifyPath(path, "catalog"), catMap, allowedCat); err != nil {
+				if err := checkKeys(qualifyPath(path, "catalog"), catMap, catalogKeys); err != nil {
 					return err
 				}
 			}
 			if shMap, ok := sub["shellInstall"].(map[string]interface{}); ok {
-				allowedShell := []string{"zsh", "bash", "powershell"}
-				if err := checkKeys(qualifyPath(path, "shellInstall"), shMap, allowedShell); err != nil {
+				if err := checkKeys(qualifyPath(path, "shellInstall"), shMap, shellInstallKeys); err != nil {
 					return err
 				}
 			}
@@ -331,8 +340,7 @@ func validateToolMap(prefix string, m map[string]interface{}) error {
 }
 
 func validateHostMap(prefix string, m map[string]interface{}) error {
-	allowedHost := []string{"host", "cache", "token", "userAgent"}
-	if err := checkKeys(prefix, m, allowedHost); err != nil {
+	if err := checkKeys(prefix, m, hostKeys); err != nil {
 		return err
 	}
 	if cacheMap, ok := m["cache"].(map[string]interface{}); ok {
@@ -344,8 +352,7 @@ func validateHostMap(prefix string, m map[string]interface{}) error {
 }
 
 func validateCacheMap(prefix string, m map[string]interface{}) error {
-	allowedCache := []string{"enabled", "ttl"}
-	return checkKeys(prefix, m, allowedCache)
+	return checkKeys(prefix, m, cacheKeys)
 }
 
 func checkKeys(prefix string, m map[string]interface{}, allowed []string) error {

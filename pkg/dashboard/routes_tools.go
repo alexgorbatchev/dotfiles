@@ -762,6 +762,11 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 	if targetTool.InstallationMethod != "" {
 		if inst, err := installer.Get(targetTool.InstallationMethod); err == nil {
 			toolDestDir := filepath.Join(s.projectConfig.Paths.BinariesDir, targetTool.Name, "current")
+			installer.SetGitHubSettings(inst, installer.GitHubSettings{
+				Token:        s.projectConfig.Github.Token,
+				UserAgent:    s.projectConfig.Github.UserAgent,
+				CacheEnabled: s.projectConfig.Github.Cache.IsEnabled(),
+			})
 			switch instInstance := inst.(type) {
 			case *installer.GitHubInstaller:
 				instInstance.BinDir = toolDestDir

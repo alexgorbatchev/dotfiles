@@ -90,8 +90,11 @@ type macPackageFetcher struct {
 	runner     exec.CommandRunner
 	httpClient *http.Client
 	baseURL    string
-	sysCtx     *SystemContext
-	log        *logger.Logger // scoped to the tool; nil disables progress lines
+	// github is the project configuration's github section, applied to the release
+	// the source names.
+	github GitHubSettings
+	sysCtx *SystemContext
+	log    *logger.Logger // scoped to the tool; nil disables progress lines
 }
 
 func (f macPackageFetcher) info(msg string) {
@@ -101,7 +104,7 @@ func (f macPackageFetcher) info(msg string) {
 }
 
 func (f macPackageFetcher) releaseClient() githubReleaseClient {
-	return githubReleaseClient{httpClient: f.httpClient, runner: f.runner, baseURL: f.baseURL}
+	return githubReleaseClient{httpClient: f.httpClient, runner: f.runner, baseURL: f.baseURL, userAgent: f.github.UserAgent}
 }
 
 // fetch resolves src for tool into destDir and returns the package with
@@ -127,7 +130,7 @@ func (f macPackageFetcher) fetch(ctx context.Context, tool *config.ToolConfig, s
 			version:    version,
 			prerelease: src.prerelease,
 			ghCli:      src.ghCli,
-			token:      githubToken(tool.InstallParams),
+			token:      githubToken(tool.InstallParams, f.github.Token),
 		})
 		if err != nil {
 			return payload, err
@@ -197,7 +200,7 @@ func (f macPackageFetcher) checkUpdate(ctx context.Context, tool *config.ToolCon
 		version:    "latest",
 		prerelease: src.prerelease,
 		ghCli:      src.ghCli,
-		token:      githubToken(tool.InstallParams),
+		token:      githubToken(tool.InstallParams, f.github.Token),
 	})
 	if err != nil {
 		return nil, err

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -27,6 +26,14 @@ type DmgInstaller struct {
 	httpClient *http.Client
 	BinDir     string // Optional temp staging folder
 	BaseURL    string // Override for testing
+	// GitHub holds the project configuration's github.token and github.userAgent,
+	// which apply whenever the source is a GitHub release.
+	GitHub GitHubSettings
+}
+
+// SetGitHubSettings applies the project configuration's github section.
+func (d *DmgInstaller) SetGitHubSettings(settings GitHubSettings) {
+	d.GitHub = settings
 }
 
 func NewDmgInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downloader, sysCtx *SystemContext) *DmgInstaller {
@@ -68,8 +75,8 @@ func (d *DmgInstaller) SetLogger(log *logger.Logger) {
 	}
 }
 
-func (d *DmgInstaller) SetDownloadCache(cacheDir string, ttl time.Duration, enabled bool) {
-	ApplyDownloadCacheSettings(d.dl, cacheDir, ttl, enabled)
+func (d *DmgInstaller) SetDownloadSettings(settings downloader.Settings) {
+	d.dl.Apply(settings)
 }
 
 func (d *DmgInstaller) SetHTTPClient(client *http.Client) {
@@ -89,6 +96,7 @@ func (d *DmgInstaller) fetcher(toolName string) macPackageFetcher {
 		runner:     d.runner,
 		httpClient: d.httpClient,
 		baseURL:    d.BaseURL,
+		github:     d.GitHub,
 		sysCtx:     d.sysCtx,
 		log:        toolLogger(d.log, toolName),
 	}

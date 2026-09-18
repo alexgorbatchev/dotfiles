@@ -72,8 +72,11 @@ func TestE2EUpdate(t *testing.T) {
 		if err != nil || exitCode != 0 {
 			t.Fatalf("update failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
-		if !strings.Contains(stderr, "Already up to date (2.0.0, cached)") {
-			t.Fatalf("expected 'Already up to date (2.0.0, cached)' in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
+		// The fixture sets github.cache.enabled to false, so the release description
+		// is refetched rather than reused and the line carries no ", cached" suffix.
+		// The cached rendering is covered by cmd/dotfiles/subcommands_test.go.
+		if !strings.Contains(stderr, "Already up to date (2.0.0)") {
+			t.Fatalf("expected 'Already up to date (2.0.0)' in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
 		}
 	})
 

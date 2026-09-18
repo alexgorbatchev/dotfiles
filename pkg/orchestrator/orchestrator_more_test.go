@@ -1998,18 +1998,14 @@ func TestGenerateTools_DependencyAutoInstallFailureCascade(t *testing.T) {
 }
 
 type cacheSpyInstaller struct {
-	name         string
-	cacheDir     string
-	cacheTTL     time.Duration
-	cacheEnabled bool
+	name     string
+	settings downloader.Settings
 }
 
 func (c *cacheSpyInstaller) Name() string       { return c.name }
 func (c *cacheSpyInstaller) SupportsSudo() bool { return false }
-func (c *cacheSpyInstaller) SetDownloadCache(dir string, ttl time.Duration, enabled bool) {
-	c.cacheDir = dir
-	c.cacheTTL = ttl
-	c.cacheEnabled = enabled
+func (c *cacheSpyInstaller) SetDownloadSettings(settings downloader.Settings) {
+	c.settings = settings
 }
 func (c *cacheSpyInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
 	return &installer.InstallResult{
@@ -2049,6 +2045,9 @@ func TestInstallTool_StagingDirectoryAndPersistentDownloadCache(t *testing.T) {
 			ShellScriptsDir: "/home/test/.generated/shell-scripts",
 		},
 		Downloader: config.DownloaderConfig{
+			Timeout:    120000, // 2 minutes in ms
+			RetryCount: 5,
+			RetryDelay: 2500, // ms
 			Cache: config.CacheConfig{
 				TTL: 86400000, // 1 day in ms
 			},
@@ -2067,13 +2066,73 @@ func TestInstallTool_StagingDirectoryAndPersistentDownloadCache(t *testing.T) {
 	}
 
 	expectedCacheDir := "/home/test/.generated/cache/downloads"
-	if spy.cacheDir != expectedCacheDir {
-		t.Errorf("expected cacheDir %q, got %q", expectedCacheDir, spy.cacheDir)
+	if spy.settings.CacheDir != expectedCacheDir {
+		t.Errorf("expected CacheDir %q, got %q", expectedCacheDir, spy.settings.CacheDir)
 	}
-	if spy.cacheTTL != 24*time.Hour {
-		t.Errorf("expected cacheTTL 24h, got %v", spy.cacheTTL)
+	if spy.settings.CacheTTL != 24*time.Hour {
+		t.Errorf("expected CacheTTL 24h, got %v", spy.settings.CacheTTL)
 	}
-	if !spy.cacheEnabled {
-		t.Errorf("expected cacheEnabled true, got %v", spy.cacheEnabled)
+	if !spy.settings.CacheEnabled {
+		t.Errorf("expected CacheEnabled true, got %v", spy.settings.CacheEnabled)
+	}
+	if spy.settings.Timeout != 2*time.Minute {
+		t.Errorf("expected Timeout 2m, got %v", spy.settings.Timeout)
+	}
+	if spy.settings.RetryCount != 5 {
+		t.Errorf("expected RetryCount 5, got %d", spy.settings.RetryCount)
+	}
+	if spy.settings.RetryDelay != 2500*time.Millisecond {
+		t.Errorf("expected RetryDelay 2.5s, got %v", spy.settings.RetryDelay)
+	}
+}
+
+// TestDownloadSettingsFromProjectConfig pins how the `downloader` section of a
+// project configuration becomes the policy installers download under, including the
+// values a configuration that says nothing gets.
+func TestDownloadSettingsFromProjectConfig(t *testing.T) {
+	disabled := false
+
+	tests := []struct {
+		name string
+		cfg  config.DownloaderConfig
+		want downloader.Settings
+	}{
+		{
+			name: "section left out",
+			want: downloader.Settings{
+				CacheDir:     filepath.Join("/gen", "cache", "downloads"),
+				CacheTTL:     30 * 24 * time.Hour,
+				CacheEnabled: true,
+			},
+		},
+		{
+			name: "every key set",
+			cfg: config.DownloaderConfig{
+				Timeout:    300000,
+				RetryCount: 3,
+				RetryDelay: 1000,
+				Cache:      config.CacheConfig{TTL: 3600000, Enabled: &disabled},
+			},
+			want: downloader.Settings{
+				CacheDir:     filepath.Join("/gen", "cache", "downloads"),
+				CacheTTL:     time.Hour,
+				CacheEnabled: false,
+				Timeout:      5 * time.Minute,
+				RetryCount:   3,
+				RetryDelay:   time.Second,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			projCfg := &config.ProjectConfig{
+				Paths:      config.PathsConfig{GeneratedDir: "/gen"},
+				Downloader: tt.cfg,
+			}
+			if got := downloadSettings(projCfg); got != tt.want {
+				t.Errorf("downloadSettings() = %+v, want %+v", got, tt.want)
+			}
+		})
 	}
 }

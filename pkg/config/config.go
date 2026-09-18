@@ -11,8 +11,17 @@ import (
 
 // CacheConfig defines the cache settings.
 type CacheConfig struct {
-	Enabled bool  `json:"enabled" yaml:"enabled"`
-	TTL     int64 `json:"ttl" yaml:"ttl"`
+	// Enabled turns the cache off when false. Nil means the default, which is on.
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+	// TTL is how long a cached entry is reused, in milliseconds. Zero selects the
+	// consumer's own default.
+	TTL int64 `json:"ttl" yaml:"ttl"`
+}
+
+// IsEnabled reports whether the cache is on, which is what a configuration that
+// says nothing about it asks for.
+func (c CacheConfig) IsEnabled() bool {
+	return c.Enabled == nil || *c.Enabled
 }
 
 // HostConfig defines host-specific API and auth settings.
@@ -108,8 +117,14 @@ type CargoConfig struct {
 
 // DownloaderConfig defines general downloader configurations.
 type DownloaderConfig struct {
-	Timeout    int64       `json:"timeout" yaml:"timeout"`
-	RetryCount int64       `json:"retryCount" yaml:"retryCount"`
+	// Timeout bounds a single download attempt, in milliseconds. Zero leaves the
+	// attempt unbounded.
+	Timeout int64 `json:"timeout" yaml:"timeout"`
+	// RetryCount is how many times a failed attempt is repeated. Zero attempts the
+	// download once.
+	RetryCount int64 `json:"retryCount" yaml:"retryCount"`
+	// RetryDelay is the base delay between attempts, in milliseconds, multiplied by
+	// the attempt number for linear backoff.
 	RetryDelay int64       `json:"retryDelay" yaml:"retryDelay"`
 	Cache      CacheConfig `json:"cache" yaml:"cache"`
 }

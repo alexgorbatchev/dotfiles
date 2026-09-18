@@ -1594,3 +1594,75 @@ func TestDownloader_PersistentCacheDefaultsAndHashVerification(t *testing.T) {
 		t.Errorf("expected 2 server hits after corrupted cache bypass, got %d", serverHits)
 	}
 }
+
+// TestSettingsGovernDownloads proves the project-level download policy reaches an
+// actual download: retries are attempted as many times as the policy says, and a
+// timeout shorter than the server's response aborts the attempt. Without it the
+// downloader falls back to its own constants and a configured retryCount changes
+// nothing.
+func TestSettingsGovernDownloads(t *testing.T) {
+	t.Run("RetryCount decides how many attempts a failing download gets", func(t *testing.T) {
+		var attempts int
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			attempts++
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		memFS := fs.NewMemFS()
+		dl := NewDownloader(memFS, server.Client())
+		dl.CacheEnabled = false
+		dl.Apply(Settings{RetryCount: 2, RetryDelay: time.Millisecond})
+
+		if err := dl.Download(context.Background(), server.URL, "/dest.txt", ""); err == nil {
+			t.Fatal("expected the download to fail, got nil")
+		}
+		// One initial attempt plus two retries.
+		if attempts != 3 {
+			t.Errorf("server was hit %d times, want 3", attempts)
+		}
+	})
+
+	t.Run("Timeout bounds an attempt the call does not bound itself", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(200 * time.Millisecond)
+			_, _ = w.Write([]byte("too late"))
+		}))
+		defer server.Close()
+
+		memFS := fs.NewMemFS()
+		dl := NewDownloader(memFS, server.Client())
+		dl.CacheEnabled = false
+		dl.Apply(Settings{Timeout: 10 * time.Millisecond})
+
+		err := dl.Download(context.Background(), server.URL, "/dest.txt", "")
+		if err == nil {
+			t.Fatal("expected the download to time out, got nil")
+		}
+	})
+
+	t.Run("a per-call option still overrides the policy", func(t *testing.T) {
+		var attempts int
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			attempts++
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		memFS := fs.NewMemFS()
+		dl := NewDownloader(memFS, server.Client())
+		dl.CacheEnabled = false
+		dl.Apply(Settings{RetryCount: 5, RetryDelay: time.Millisecond})
+
+		err := dl.Download(context.Background(), server.URL, "/dest.txt", "", DownloadOptions{
+			RetryCount: 1,
+			RetryDelay: time.Millisecond,
+		})
+		if err == nil {
+			t.Fatal("expected the download to fail, got nil")
+		}
+		if attempts != 2 {
+			t.Errorf("server was hit %d times, want 2", attempts)
+		}
+	})
+}

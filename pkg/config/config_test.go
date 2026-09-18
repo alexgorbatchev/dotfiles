@@ -76,6 +76,31 @@ func TestToolConfigUnmarshalJSONRejectsUnknownFields(t *testing.T) {
 	}
 }
 
+func TestCacheConfigIsEnabled(t *testing.T) {
+	on, off := true, false
+
+	tests := []struct {
+		name string
+		cfg  CacheConfig
+		want bool
+	}{
+		// A configuration that says nothing about the cache asks for the default,
+		// which is on; Go's zero value for bool is false, which is why the field is
+		// a pointer rather than a plain bool.
+		{name: "key left out", cfg: CacheConfig{}, want: true},
+		{name: "enabled: true", cfg: CacheConfig{Enabled: &on}, want: true},
+		{name: "enabled: false", cfg: CacheConfig{Enabled: &off}, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.cfg.IsEnabled(); got != tt.want {
+				t.Errorf("IsEnabled() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestProjectConfigInstantiationAndValidation(t *testing.T) {
 	pc := ProjectConfig{
 		Paths: PathsConfig{

@@ -954,3 +954,117 @@ func TestGitHubInstaller_GhCliAndToken(t *testing.T) {
 		t.Errorf("expected CheckUpdate 403 fallback to find v1.1.0, got res=%v, err=%v", res403, err403)
 	}
 }
+
+// TestGitHubSettingsReachTheAPIRequest proves the project configuration's github
+// section governs the API requests the installer makes: github.token authenticates a
+// tool that names no token of its own, and github.userAgent replaces the built-in
+// User-Agent. Without the wiring both fall back to the built-in values and setting
+// them changes nothing.
+func TestGitHubSettingsReachTheAPIRequest(t *testing.T) {
+	tests := []struct {
+		name          string
+		settings      GitHubSettings
+		params        map[string]interface{}
+		wantAuth      string
+		wantUserAgent string
+	}{
+		{
+			name:          "section left out",
+			params:        map[string]interface{}{"repo": "owner/tool"},
+			wantAuth:      "",
+			wantUserAgent: githubUserAgent,
+		},
+		{
+			name:          "github.token and github.userAgent apply",
+			settings:      GitHubSettings{Token: "project-token", UserAgent: "acme-dotfiles/2.0", CacheEnabled: true},
+			params:        map[string]interface{}{"repo": "owner/tool"},
+			wantAuth:      "token project-token",
+			wantUserAgent: "acme-dotfiles/2.0",
+		},
+		{
+			name:          "a tool's own token still wins",
+			settings:      GitHubSettings{Token: "project-token", UserAgent: "acme-dotfiles/2.0", CacheEnabled: true},
+			params:        map[string]interface{}{"repo": "owner/tool", "token": "tool-token"},
+			wantAuth:      "token tool-token",
+			wantUserAgent: "acme-dotfiles/2.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotAuth, gotUserAgent string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotAuth = r.Header.Get("Authorization")
+				gotUserAgent = r.Header.Get("User-Agent")
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(githubRelease{TagName: "v1.0.0"})
+			}))
+			defer server.Close()
+
+			// GITHUB_TOKEN must not stand in for the setting under test.
+			t.Setenv("GITHUB_TOKEN", "")
+			t.Setenv("GH_TOKEN", "")
+
+			inst := NewGitHubInstaller(exec.NewMockRunner(), fs.NewMemFS(), downloader.NewDownloader(fs.NewMemFS(), nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			inst.SetGitHubSettings(tt.settings)
+			inst.httpClient = server.Client()
+			inst.BaseURL = server.URL
+
+			if _, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "tool", InstallParams: tt.params}); err != nil {
+				t.Fatalf("CheckUpdate failed: %v", err)
+			}
+			if gotAuth != tt.wantAuth {
+				t.Errorf("Authorization = %q, want %q", gotAuth, tt.wantAuth)
+			}
+			if gotUserAgent != tt.wantUserAgent {
+				t.Errorf("User-Agent = %q, want %q", gotUserAgent, tt.wantUserAgent)
+			}
+		})
+	}
+}
+
+// TestGitHubCacheEnabledGovernsReleaseMetadata proves github.cache.enabled decides
+// whether a release description fetched once is reused.
+func TestGitHubCacheEnabledGovernsReleaseMetadata(t *testing.T) {
+	tests := []struct {
+		name         string
+		cacheEnabled bool
+		wantRequests int
+	}{
+		{name: "cache on reuses the release", cacheEnabled: true, wantRequests: 1},
+		{name: "cache off refetches it", cacheEnabled: false, wantRequests: 2},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests int
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				w.Header().Set("Content-Type", "application/json")
+				// Only a release that carries assets is worth caching, so the
+				// subject here needs one.
+				_ = json.NewEncoder(w).Encode(githubRelease{
+					TagName: "v1.0.0",
+					Assets:  []githubAsset{{Name: "tool-linux-amd64", BrowserDownloadURL: "http://" + r.Host + "/download"}},
+				})
+			}))
+			defer server.Close()
+
+			memFS := fs.NewMemFS()
+			inst := NewGitHubInstaller(exec.NewMockRunner(), memFS, downloader.NewDownloader(memFS, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			inst.SetGitHubSettings(GitHubSettings{CacheEnabled: tt.cacheEnabled})
+			inst.httpClient = server.Client()
+			inst.BaseURL = server.URL
+
+			tool := &config.ToolConfig{Name: "tool", InstallParams: map[string]interface{}{"repo": "owner/tool"}}
+			for range 2 {
+				if _, err := inst.CheckUpdate(context.Background(), tool); err != nil {
+					t.Fatalf("CheckUpdate failed: %v", err)
+				}
+			}
+			if requests != tt.wantRequests {
+				t.Errorf("API was called %d times, want %d", requests, tt.wantRequests)
+			}
+		})
+	}
+}

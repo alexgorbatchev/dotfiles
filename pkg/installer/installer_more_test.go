@@ -735,7 +735,7 @@ func TestResolveBinaryPaths(t *testing.T) {
 	}
 }
 
-func TestSetDownloadCache_AllInstallers(t *testing.T) {
+func TestSetDownloadSettings_AllInstallers(t *testing.T) {
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	dl := downloader.NewDownloader(memFS, nil)
@@ -756,12 +756,19 @@ func TestSetDownloadCache_AllInstallers(t *testing.T) {
 	}
 
 	for _, inst := range installers {
-		SetDownloadCache(inst, "/custom/cache/dir", 48*time.Hour, true)
+		SetDownloadSettings(inst, downloader.Settings{CacheDir: "/custom/cache/dir", CacheTTL: 48 * time.Hour, CacheEnabled: true})
 	}
 
 	// Verify GitHubInstaller's Downloader received the settings
 	gh := NewGitHubInstaller(runner, memFS, dl, sysCtx)
-	SetDownloadCache(gh, "/custom/gh/cache", 12*time.Hour, false)
+	SetDownloadSettings(gh, downloader.Settings{
+		CacheDir:     "/custom/gh/cache",
+		CacheTTL:     12 * time.Hour,
+		CacheEnabled: false,
+		Timeout:      90 * time.Second,
+		RetryCount:   4,
+		RetryDelay:   3 * time.Second,
+	})
 	if gh.dl.CacheDir != "/custom/gh/cache" {
 		t.Errorf("expected CacheDir /custom/gh/cache, got %s", gh.dl.CacheDir)
 	}
@@ -770,5 +777,14 @@ func TestSetDownloadCache_AllInstallers(t *testing.T) {
 	}
 	if gh.dl.CacheEnabled != false {
 		t.Errorf("expected CacheEnabled false, got %v", gh.dl.CacheEnabled)
+	}
+	if gh.dl.Timeout != 90*time.Second {
+		t.Errorf("expected Timeout 90s, got %v", gh.dl.Timeout)
+	}
+	if gh.dl.RetryCount != 4 {
+		t.Errorf("expected RetryCount 4, got %d", gh.dl.RetryCount)
+	}
+	if gh.dl.RetryDelay != 3*time.Second {
+		t.Errorf("expected RetryDelay 3s, got %v", gh.dl.RetryDelay)
 	}
 }
