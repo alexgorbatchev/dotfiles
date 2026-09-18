@@ -48,16 +48,25 @@ defineTool((install) =>
   }).bin("fnm"),
 );
 
+// A resolver runs when the script is about to be executed, so it is given the script's
+// own path on top of the tool context.
 defineTool((install) =>
   install("curl-script", {
     url: "https://fly.io/install.sh",
     shell: "sh",
-    args: (ctx) => ["--install-dir", ctx.stagingDir],
-    env: (ctx) => ({ FLYCTL_INSTALL: ctx.stagingDir }),
+    args: (ctx) => ["--install-dir", ctx.stagingDir, "--from", ctx.scriptPath],
+    env: async (ctx) => ({ FLYCTL_INSTALL: ctx.stagingDir, FLYCTL_SCRIPT: ctx.scriptPath }),
     versionArgs: "version",
     versionRegex: "v(\\d+\\.\\d+\\.\\d+)",
   }).bin("flyctl"),
 );
+
+// scriptPath belongs to the resolver context, not to the tool context a factory runs
+// with: while the configuration is read there is no downloaded script to point at.
+defineTool((install, ctx) => {
+  expectError(ctx.scriptPath);
+  return install("curl-script", { url: "https://example.com/install.sh" });
+});
 
 // The interpreter defaults to sh when omitted.
 defineTool((install) => install("curl-script", { url: "https://example.com/install.sh" }).bin("tool"));

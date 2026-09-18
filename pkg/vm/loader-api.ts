@@ -217,6 +217,64 @@ function registerHookHandler(toolName: string, event: string, handler: HookHandl
 }
 
 /**
+ * Computes an install parameter's value from the context the installation has by the
+ * time the parameter is used.
+ */
+export type ParamResolverFn = (context: Record<string, unknown>) => unknown;
+
+/**
+ * Install parameters an author may give a function instead of a value. The function
+ * runs when the installer needs the parameter, not when the configuration is read, so
+ * it sees the paths the installation actually produced.
+ */
+const RESOLVABLE_INSTALL_PARAMS = ["args", "env"];
+
+/**
+ * Records the function-valued install parameters so Go can call them later, and drops
+ * them from the parameters themselves: a function serialises to nothing, so leaving it
+ * in place would send Go a parameter that silently disappeared. The names Go needs in
+ * order to know a parameter has one are recorded in their place.
+ */
+function captureParamResolvers(toolName: string, installParams: Record<string, unknown>): void {
+  const globals = getGlobals();
+  const registry = (globals["__paramResolvers"] || (globals["__paramResolvers"] = {})) as Record<
+    string,
+    ParamResolverFn
+  >;
+  const recorded: string[] = [];
+
+  for (const param of RESOLVABLE_INSTALL_PARAMS) {
+    if (typeof installParams[param] !== "function") continue;
+    registry[hookKey(toolName, param)] = installParams[param] as ParamResolverFn;
+    delete installParams[param];
+    recorded.push(param);
+  }
+
+  if (recorded.length > 0) {
+    installParams["resolvers"] = recorded;
+  }
+}
+
+/**
+ * Invoked from Go when an installer needs a function-valued install parameter. Returns
+ * a promise so an async resolver is awaited rather than handed back unresolved.
+ */
+function invokeParamResolver(toolName: string, param: string, context: Record<string, unknown>): Promise<unknown> {
+  const registry = (getGlobals()["__paramResolvers"] || {}) as Record<string, ParamResolverFn>;
+  const resolver = registry[hookKey(toolName, param)];
+  if (!resolver) {
+    throw new Error(
+      "No resolver is registered for the " +
+        JSON.stringify(param) +
+        " install parameter of " +
+        JSON.stringify(toolName) +
+        ".",
+    );
+  }
+  return Promise.resolve(resolver(createToolContext(toolName, context)));
+}
+
+/**
  * Builds the shell executor handed to lifecycle hooks.
  *
  * Execution is deferred until the result is awaited so that the chainable modifiers
@@ -756,13 +814,10 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     const fn = callback as ToolRunner;
     const res = fn(install, toolCtx);
     if (builder["installParams"] && typeof builder["installParams"] === "object") {
-      const ip = builder["installParams"] as Record<string, unknown>;
-      if (typeof ip["args"] === "function") {
-        ip["args"] = (ip["args"] as Function)(toolCtx);
-      }
-      if (typeof ip["env"] === "function") {
-        ip["env"] = (ip["env"] as Function)(toolCtx);
-      }
+      captureParamResolvers(
+        (builder["name"] as string) || globalThis.currentToolName || "",
+        builder["installParams"] as Record<string, unknown>,
+      );
     }
 
     if (
@@ -795,6 +850,8 @@ getGlobals()["defineConfig"] = defineConfig;
 getGlobals()["defineTool"] = defineTool;
 // Go calls this when an installation reaches a lifecycle event.
 getGlobals()["__invokeHook"] = invokeHook;
+// Go calls this when an installer needs a function-valued install parameter.
+getGlobals()["__invokeParamResolver"] = invokeParamResolver;
 getGlobals()["dedentString"] = dedentString;
 getGlobals()["dedentTemplate"] = dedentString;
 getGlobals()["Platform"] = Platform;

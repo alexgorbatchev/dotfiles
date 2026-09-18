@@ -379,6 +379,28 @@ func TestRunHook_ExtractResultAbsentWithoutExtraction(t *testing.T) {
 	}
 }
 
+// A tool file that reads an environment variable does so at its top level, which runs
+// again every time the file is re-entered for a hook or a resolver. Without process.env
+// there the file would evaluate the first time and fail every time after.
+func TestRunHook_ToolFileCanReadProcessEnv(t *testing.T) {
+	t.Setenv("DOTFILES_HOOK_PROBE", "from-the-environment")
+
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		const probe = process.env.DOTFILES_HOOK_PROBE || "missing";
+		export default defineTool((install) =>
+			install("manual").hook("after-install", async ({ fileSystem }) => {
+				await fileSystem.writeFile("/captured", probe);
+			}),
+		);
+	`, HookAfterInstall)
+
+	captured := runHookCapturingFile(t, tool, hookTestProjectConfig(t), HookAfterInstall, HookContext{})
+	if captured != "from-the-environment" {
+		t.Errorf("the tool file read %q from process.env, want %q", captured, "from-the-environment")
+	}
+}
+
 // runHookOnFS runs a hook against a file system the caller prepared and inspects
 // afterwards, which is what a hook placing a binary actually does.
 func runHookOnFS(t *testing.T, memFS fs.FS, tool *config.ToolConfig, hookCtx HookContext) error {

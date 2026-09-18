@@ -812,6 +812,21 @@ export interface ICurlTarInstallParams extends ICommonInstallParams {
 /**
  * Parameters for cURL shell script installer.
  */
+/**
+ * Context given to a curl-script `args` or `env` function.
+ *
+ * It is the tool context, with the members that only exist once the script has been
+ * fetched. Unlike the context a tool factory is evaluated with, `stagingDir` here is
+ * the real directory rather than the `{stagingDir}` placeholder, because the resolver
+ * runs when the script is about to be executed.
+ */
+export interface ICurlScriptResolverContext extends IToolConfigContext {
+  /**
+   * Absolute path of the downloaded installation script, inside `stagingDir`.
+   */
+  scriptPath: string;
+}
+
 export interface ICurlScriptInstallParams extends ICommonInstallParams {
   /**
    * HTTP/HTTPS URL to the installation script.
@@ -822,14 +837,17 @@ export interface ICurlScriptInstallParams extends ICommonInstallParams {
    */
   shell?: "bash" | "sh";
   /**
-   * Arguments passed to the installer script. `{stagingDir}` inside an argument is
-   * replaced with the staging directory.
+   * Arguments passed to the installer script, or a function producing them. A literal
+   * argument may contain `{stagingDir}`, which is replaced with the staging directory;
+   * a function is called when the script is about to run and receives the real paths
+   * in `ICurlScriptResolverContext` instead.
    */
-  args?: Resolvable<IToolConfigContext, string[]>;
+  args?: Resolvable<ICurlScriptResolverContext, string[]>;
   /**
-   * Environment variables set for the installer script.
+   * Environment variables set for the installer script, or a function producing them.
+   * Resolved the same way as `args`.
    */
-  env?: Resolvable<IToolConfigContext, Record<string, string>>;
+  env?: Resolvable<ICurlScriptResolverContext, Record<string, string>>;
   /**
    * CLI flags passed to detect binary version (e.g. "--version").
    */

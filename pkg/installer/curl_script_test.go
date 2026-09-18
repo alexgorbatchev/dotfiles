@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -274,6 +276,138 @@ func TestCurlScriptInstaller(t *testing.T) {
 			t.Error("expected error creating directory, got nil")
 		}
 	})
+}
+
+// v1 resolved args and env when the script was about to run, with the script's own path
+// in the context (installFromCurlScript.ts:135-141). A resolver that interpolates
+// scriptPath must therefore see the downloaded file, not undefined.
+func TestCurlScriptInstaller_ResolvesArgsAndEnvAtInstallTime(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("#!/bin/sh\n"))
+	}))
+	defer server.Close()
+
+	toolDir := t.TempDir()
+	toolPath := filepath.Join(toolDir, "resolver.tool.ts")
+	toolSource := `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("curl-script", {
+				url: "` + server.URL + `",
+				shell: "sh",
+				args: (ctx) => ["--script", ctx.scriptPath, "--prefix", ctx.stagingDir],
+				env: (ctx) => ({ INSTALL_SCRIPT: ctx.scriptPath, PREFIX: ctx.stagingDir }),
+			}).bin("resolver"),
+		);
+	`
+	if err := os.WriteFile(toolPath, []byte(toolSource), 0644); err != nil {
+		t.Fatalf("writing the tool file: %v", err)
+	}
+
+	runner := exec.NewMockRunner()
+	fsys := fs.NewMemFS()
+	inst := NewCurlScriptInstaller(runner, fsys, downloader.NewDownloader(fsys, nil), nil)
+	inst.BinDir = "/staging"
+	_ = fsys.MkdirAll("/staging", 0755)
+	_ = fsys.WriteFile("/staging/resolver", []byte("bin"), 0755)
+
+	tool := &config.ToolConfig{
+		Name:           "resolver",
+		ConfigFilePath: toolPath,
+		InstallParams: map[string]any{
+			"url":       server.URL,
+			"shell":     "sh",
+			"resolvers": []any{"args", "env"},
+		},
+	}
+
+	if _, err := inst.Install(context.Background(), tool); err != nil {
+		t.Fatalf("Install returned error: %v", err)
+	}
+
+	var scriptRun *exec.MockCmd
+	for _, cmd := range runner.History {
+		if cmd.Name == "sh" {
+			scriptRun = cmd
+		}
+	}
+	if scriptRun == nil {
+		t.Fatalf("the install script was never run: %+v", runner.History)
+	}
+
+	wantScriptPath := filepath.Join("/staging", "resolver-install.sh")
+	wantArgs := []string{wantScriptPath, "--script", wantScriptPath, "--prefix", "/staging"}
+	if len(scriptRun.Args) != len(wantArgs) {
+		t.Fatalf("script args = %v, want %v", scriptRun.Args, wantArgs)
+	}
+	for i := range wantArgs {
+		if scriptRun.Args[i] != wantArgs[i] {
+			t.Fatalf("script args = %v, want %v", scriptRun.Args, wantArgs)
+		}
+	}
+
+	env := scriptRun.Env()
+	if !slices.Contains(env, "INSTALL_SCRIPT="+wantScriptPath) {
+		t.Errorf("script environment lacks the resolved INSTALL_SCRIPT: %v", env)
+	}
+	if !slices.Contains(env, "PREFIX=/staging") {
+		t.Errorf("script environment lacks the resolved PREFIX: %v", env)
+	}
+}
+
+// A resolver that fails stops the installation instead of letting the script run with
+// no arguments at all, which would install something the author did not ask for.
+func TestCurlScriptInstaller_ResolverFailureStopsInstall(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("#!/bin/sh\n"))
+	}))
+	defer server.Close()
+
+	toolDir := t.TempDir()
+	toolPath := filepath.Join(toolDir, "broken.tool.ts")
+	toolSource := `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("curl-script", {
+				url: "` + server.URL + `",
+				args: () => {
+					throw new Error("the resolver could not decide");
+				},
+			}).bin("broken"),
+		);
+	`
+	if err := os.WriteFile(toolPath, []byte(toolSource), 0644); err != nil {
+		t.Fatalf("writing the tool file: %v", err)
+	}
+
+	runner := exec.NewMockRunner()
+	fsys := fs.NewMemFS()
+	inst := NewCurlScriptInstaller(runner, fsys, downloader.NewDownloader(fsys, nil), nil)
+	inst.BinDir = "/staging"
+
+	tool := &config.ToolConfig{
+		Name:           "broken",
+		ConfigFilePath: toolPath,
+		InstallParams: map[string]any{
+			"url":       server.URL,
+			"resolvers": []any{"args"},
+		},
+	}
+
+	_, err := inst.Install(context.Background(), tool)
+	if err == nil {
+		t.Fatalf("expected the resolver failure to stop the installation")
+	}
+	if !strings.Contains(err.Error(), "the resolver could not decide") {
+		t.Errorf("error = %v, want it to carry the resolver's own message", err)
+	}
+	for _, cmd := range runner.History {
+		if cmd.Name == "sh" || cmd.Name == "bash" {
+			t.Errorf("the install script ran despite the resolver failing: %+v", cmd)
+		}
+	}
 }
 
 type mockScriptErrorFS struct {

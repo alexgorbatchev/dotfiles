@@ -2,6 +2,7 @@ package installer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 type CurlScriptInstaller struct {
@@ -104,41 +106,28 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 	chmodCmd := c.runner.CommandContext(ctx, "chmod", "+x", scriptPath)
 	_ = chmodCmd.Run()
 
-	// Execute script
-	args := getStringSliceParam(tool.InstallParams, "args")
-	for i, arg := range args {
-		if strings.Contains(arg, "{stagingDir}") {
-			args[i] = strings.ReplaceAll(arg, "{stagingDir}", destDir)
-		}
+	// Execute script. The arguments and environment are resolved here rather than when
+	// the configuration was read, because a resolver is given the script it is about to
+	// run and the directory the installation is staging into -- neither of which exists
+	// until this point.
+	args, err := c.resolveArgs(ctx, tool, scriptPath, destDir)
+	if err != nil {
+		return nil, err
 	}
-	var runCmd exec.Cmd
-	if shell == "bash" {
-		cmdArgs := append([]string{scriptPath}, args...)
-		runCmd = c.runner.CommandContext(ctx, "bash", cmdArgs...)
-	} else {
-		cmdArgs := append([]string{scriptPath}, args...)
-		runCmd = c.runner.CommandContext(ctx, "sh", cmdArgs...)
+	envSlice, err := c.resolveEnv(ctx, tool, scriptPath, destDir)
+	if err != nil {
+		return nil, err
 	}
 
-	if envMap, ok := tool.InstallParams["env"].(map[string]interface{}); ok {
-		keys := make([]string, 0, len(envMap))
-		for k := range envMap {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		var envSlice []string
-		for _, k := range keys {
-			v := envMap[k]
-			if vStr, ok := v.(string); ok {
-				if strings.Contains(vStr, "{stagingDir}") {
-					vStr = strings.ReplaceAll(vStr, "{stagingDir}", destDir)
-				}
-				envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, vStr))
-			}
-		}
-		if len(envSlice) > 0 {
-			runCmd.SetEnv(append(os.Environ(), envSlice...))
-		}
+	var runCmd exec.Cmd
+	cmdArgs := append([]string{scriptPath}, args...)
+	if shell == "bash" {
+		runCmd = c.runner.CommandContext(ctx, "bash", cmdArgs...)
+	} else {
+		runCmd = c.runner.CommandContext(ctx, "sh", cmdArgs...)
+	}
+	if len(envSlice) > 0 {
+		runCmd.SetEnv(append(os.Environ(), envSlice...))
 	}
 
 	var writer *logger.LineWriter
@@ -220,6 +209,85 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 		Binaries: promotedBinaries,
 		Version:  installedVersion,
 	}, nil
+}
+
+// resolveArgs produces the arguments the install script is run with.
+//
+// v1 resolved them at install time with {projectConfig, scriptPath, stagingDir}
+// (installFromCurlScript.ts:135-141), so a resolver could point the script at itself or
+// at the staging tree. A plain list is used as written, with {stagingDir} substituted,
+// which is how the value reaches Go when the author wrote it as a literal built from
+// ctx.stagingDir while the configuration was being read.
+func (c *CurlScriptInstaller) resolveArgs(ctx context.Context, tool *config.ToolConfig, scriptPath, stagingDir string) ([]string, error) {
+	if !vm.HasResolver(tool, "args") {
+		return substituteStagingDir(getStringSliceParam(tool.InstallParams, "args"), stagingDir), nil
+	}
+
+	value, err := c.resolveParam(ctx, tool, "args", scriptPath, stagingDir)
+	if err != nil {
+		return nil, err
+	}
+	var args []string
+	if err := json.Unmarshal(value, &args); err != nil {
+		return nil, fmt.Errorf("the args resolver of %q produced %s, which is not a list of strings", tool.Name, value)
+	}
+	return substituteStagingDir(args, stagingDir), nil
+}
+
+// resolveEnv produces the environment entries the install script is run with, sorted by
+// name so a failing installation is reproducible from its log.
+func (c *CurlScriptInstaller) resolveEnv(ctx context.Context, tool *config.ToolConfig, scriptPath, stagingDir string) ([]string, error) {
+	envMap := map[string]string{}
+
+	if vm.HasResolver(tool, "env") {
+		value, err := c.resolveParam(ctx, tool, "env", scriptPath, stagingDir)
+		if err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(value, &envMap); err != nil {
+			return nil, fmt.Errorf("the env resolver of %q produced %s, which is not a map of strings", tool.Name, value)
+		}
+	} else if declared, ok := tool.InstallParams["env"].(map[string]any); ok {
+		for name, value := range declared {
+			if text, ok := value.(string); ok {
+				envMap[name] = text
+			}
+		}
+	}
+
+	names := make([]string, 0, len(envMap))
+	for name := range envMap {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	entries := make([]string, 0, len(names))
+	for _, name := range names {
+		entries = append(entries, fmt.Sprintf("%s=%s", name, strings.ReplaceAll(envMap[name], "{stagingDir}", stagingDir)))
+	}
+	return entries, nil
+}
+
+// resolveParam calls back into the tool's configuration file for one parameter.
+func (c *CurlScriptInstaller) resolveParam(ctx context.Context, tool *config.ToolConfig, param, scriptPath, stagingDir string) (json.RawMessage, error) {
+	return vm.ResolveInstallParam(ctx, vm.ResolveRequest{
+		Log:     c.log,
+		FS:      c.fsys,
+		Runner:  c.runner,
+		Tool:    tool,
+		ProjCfg: config.GetProjectConfig(ctx),
+		Param:   param,
+		Context: map[string]any{"scriptPath": scriptPath, "stagingDir": stagingDir},
+	})
+}
+
+// substituteStagingDir fills in the placeholder the tool context carries while the
+// configuration is being read, when the staging directory does not exist yet.
+func substituteStagingDir(values []string, stagingDir string) []string {
+	for i, value := range values {
+		values[i] = strings.ReplaceAll(value, "{stagingDir}", stagingDir)
+	}
+	return values
 }
 
 func getSystemBinaryDirs() []string {

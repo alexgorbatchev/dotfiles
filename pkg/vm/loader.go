@@ -293,18 +293,7 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 
 	// Set globals
 	_ = vm.Set("configFileDir", configFileDir)
-
-	// Set process.env
-	envObj := vm.NewObject()
-	for _, kv := range os.Environ() {
-		parts := strings.SplitN(kv, "=", 2)
-		if len(parts) == 2 {
-			_ = envObj.Set(parts[0], parts[1])
-		}
-	}
-	processObj := vm.NewObject()
-	_ = processObj.Set("env", envObj)
-	_ = vm.Set("process", processObj)
+	setProcessEnvGlobal(vm)
 
 	// Set module and exports
 	moduleObj := vm.NewObject()
@@ -379,18 +368,7 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	if err := setJSONGlobal(vm, "projectConfig", projCfg); err != nil {
 		return nil, fmt.Errorf("providing project configuration to tool files: %w", err)
 	}
-
-	// Set process.env
-	envObj := vm.NewObject()
-	for _, kv := range os.Environ() {
-		parts := strings.SplitN(kv, "=", 2)
-		if len(parts) == 2 {
-			_ = envObj.Set(parts[0], parts[1])
-		}
-	}
-	processObj := vm.NewObject()
-	_ = processObj.Set("env", envObj)
-	_ = vm.Set("process", processObj)
+	setProcessEnvGlobal(vm)
 
 	moduleObj := vm.NewObject()
 	exportsObj := vm.NewObject()

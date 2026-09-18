@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -156,65 +157,21 @@ func RunHook(
 	if !HasHook(tool, event) {
 		return nil
 	}
-	if tool.ConfigFilePath == "" {
-		return fmt.Errorf("tool %q registers a %s hook but has no configuration file path", tool.Name, event)
-	}
 
-	jsContent, err := compileFile(tool.ConfigFilePath)
+	vm, err := evaluateToolFile(ctx, toolFileVM{
+		log:     log,
+		fsys:    fsys,
+		runner:  runner,
+		tool:    tool,
+		projCfg: projCfg,
+		env:     hookCtx.Env,
+		target:  target,
+		purpose: event + " hook",
+	})
 	if err != nil {
-		return fmt.Errorf("compiling %q for its %s hook: %w", tool.ConfigFilePath, event, err)
+		return err
 	}
 
-	vm := goja.New()
-	require.NewRegistry().Enable(vm)
-
-	if err := RegisterBindings(vm, target); err != nil {
-		return fmt.Errorf("registering Go bindings: %w", err)
-	}
-	homeDir := ""
-	if projCfg != nil {
-		homeDir = projCfg.Paths.HomeDir
-	}
-	if err := RegisterContextBindings(vm, log, fsys, homeDir); err != nil {
-		return fmt.Errorf("registering context bindings: %w", err)
-	}
-	if err := registerHookShell(ctx, vm, log, runner, hookCtx.Env); err != nil {
-		return fmt.Errorf("registering hook shell: %w", err)
-	}
-	if _, err := vm.RunString(LoaderPolyfills); err != nil {
-		return fmt.Errorf("initializing loader polyfills: %w", err)
-	}
-
-	// The directories the tool context derives its paths from (currentDir among them)
-	// are resolved for the same reason the event context is: the hook's commands do
-	// not run from the directory these are relative to.
-	configFileDir := ""
-	binariesDir := ""
-	generatedDir := ""
-	if projCfg != nil {
-		configFileDir = projCfg.Paths.DotfilesDir
-		binariesDir = projCfg.Paths.BinariesDir
-		generatedDir = projCfg.Paths.GeneratedDir
-	}
-	for _, dir := range []*string{&configFileDir, &binariesDir, &generatedDir} {
-		if *dir, err = absolutePath(fsys, *dir); err != nil {
-			return err
-		}
-	}
-	_ = vm.Set("configFileDir", configFileDir)
-	_ = vm.Set("binariesDir", binariesDir)
-	_ = vm.Set("generatedDir", generatedDir)
-	_ = vm.Set("currentToolName", tool.Name)
-	_ = vm.Set("currentToolPath", tool.ConfigFilePath)
-
-	if err := setJSONGlobal(vm, "projectConfig", projCfg); err != nil {
-		return fmt.Errorf("providing project configuration to the %s hook: %w", event, err)
-	}
-	// The resolved configuration of the tool being installed, so a hook can branch on
-	// the method or on a parameter it was given without re-reading its own file.
-	if err := setJSONGlobal(vm, "currentToolConfig", tool); err != nil {
-		return fmt.Errorf("providing the tool configuration to the %s hook: %w", event, err)
-	}
 	hookCtx, err = hookCtx.absolute(fsys)
 	if err != nil {
 		return err
@@ -223,6 +180,102 @@ func RunHook(
 		return fmt.Errorf("providing %s hook context: %w", event, err)
 	}
 	_ = vm.Set("__hookCwd", hookWorkingDir(tool, projCfg))
+	_ = vm.Set("__hookToolName", tool.Name)
+	_ = vm.Set("__hookEvent", event)
+
+	what := fmt.Sprintf("%s hook for %q", event, tool.Name)
+	if _, err := settleInVM(vm, "__invokeHook(__hookToolName, __hookEvent, __hookEventContext)", what); err != nil {
+		return err
+	}
+	return nil
+}
+
+// toolFileVM describes a VM that a tool's configuration file is evaluated in so that
+// the functions it defines -- lifecycle handlers, install-parameter resolvers -- can be
+// called during the installation. A function cannot survive the JSON boundary the
+// configuration crosses to reach Go, so the file is read again at the moment it is
+// needed. Re-evaluating is cheap next to an installation, and a VM per invocation keeps
+// these calls from sharing mutable state with configuration loading or with each other.
+type toolFileVM struct {
+	log     *logger.Logger
+	fsys    fs.FS
+	runner  exec.CommandRunner
+	tool    *config.ToolConfig
+	projCfg *config.ProjectConfig
+	env     []string
+	target  Target
+	// purpose names what the file is being re-read for, so a failure says which
+	// installation step could not be carried out.
+	purpose string
+}
+
+// evaluateToolFile builds the VM and evaluates the tool's configuration file in it.
+func evaluateToolFile(ctx context.Context, req toolFileVM) (*goja.Runtime, error) {
+	tool := req.tool
+	if tool.ConfigFilePath == "" {
+		return nil, fmt.Errorf("tool %q needs its configuration file for the %s but has no path to it", tool.Name, req.purpose)
+	}
+
+	jsContent, err := compileFile(tool.ConfigFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("compiling %q for its %s: %w", tool.ConfigFilePath, req.purpose, err)
+	}
+
+	vm := goja.New()
+	require.NewRegistry().Enable(vm)
+
+	if err := RegisterBindings(vm, req.target); err != nil {
+		return nil, fmt.Errorf("registering Go bindings: %w", err)
+	}
+	homeDir := ""
+	if req.projCfg != nil {
+		homeDir = req.projCfg.Paths.HomeDir
+	}
+	if err := RegisterContextBindings(vm, req.log, req.fsys, homeDir); err != nil {
+		return nil, fmt.Errorf("registering context bindings: %w", err)
+	}
+	if err := registerHookShell(ctx, vm, req.log, req.runner, req.env); err != nil {
+		return nil, fmt.Errorf("registering hook shell: %w", err)
+	}
+	if _, err := vm.RunString(LoaderPolyfills); err != nil {
+		return nil, fmt.Errorf("initializing loader polyfills: %w", err)
+	}
+
+	// The directories the tool context derives its paths from (currentDir among them)
+	// are resolved for the same reason the event context is: the hook's commands do
+	// not run from the directory these are relative to.
+	configFileDir := ""
+	binariesDir := ""
+	generatedDir := ""
+	if req.projCfg != nil {
+		configFileDir = req.projCfg.Paths.DotfilesDir
+		binariesDir = req.projCfg.Paths.BinariesDir
+		generatedDir = req.projCfg.Paths.GeneratedDir
+	}
+	for _, dir := range []*string{&configFileDir, &binariesDir, &generatedDir} {
+		if *dir, err = absolutePath(req.fsys, *dir); err != nil {
+			return nil, err
+		}
+	}
+	_ = vm.Set("configFileDir", configFileDir)
+	_ = vm.Set("binariesDir", binariesDir)
+	_ = vm.Set("generatedDir", generatedDir)
+	_ = vm.Set("currentToolName", tool.Name)
+	_ = vm.Set("currentToolPath", tool.ConfigFilePath)
+
+	if err := setJSONGlobal(vm, "projectConfig", req.projCfg); err != nil {
+		return nil, fmt.Errorf("providing project configuration to the %s: %w", req.purpose, err)
+	}
+	// The resolved configuration of the tool being installed, so a hook can branch on
+	// the method or on a parameter it was given without re-reading its own file.
+	if err := setJSONGlobal(vm, "currentToolConfig", tool); err != nil {
+		return nil, fmt.Errorf("providing the tool configuration to the %s: %w", req.purpose, err)
+	}
+
+	// The same process.env the configuration was read with. A tool file that reads an
+	// environment variable does so at its top level, which runs again here; without it
+	// the file would fail on the second evaluation but not the first.
+	setProcessEnvGlobal(vm)
 
 	moduleObj := vm.NewObject()
 	exportsObj := vm.NewObject()
@@ -230,54 +283,72 @@ func RunHook(
 	_ = vm.Set("module", moduleObj)
 	_ = vm.Set("exports", exportsObj)
 
-	// Evaluating the tool file registers its handlers.
+	// Evaluating the tool file registers its handlers and resolvers.
 	if _, err := vm.RunString(jsContent); err != nil {
-		return fmt.Errorf("evaluating %q for its %s hook: %w", tool.ConfigFilePath, event, err)
+		return nil, fmt.Errorf("evaluating %q for its %s: %w", tool.ConfigFilePath, req.purpose, err)
 	}
-
-	return invokeRegisteredHook(vm, tool.Name, event)
+	return vm, nil
 }
 
-// invokeRegisteredHook runs the handlers and reports what happened.
+// setProcessEnvGlobal exposes the CLI process's environment as `process.env`, the only
+// member of `process` the configuration runtime provides.
+func setProcessEnvGlobal(vm *goja.Runtime) {
+	envObj := vm.NewObject()
+	for _, entry := range os.Environ() {
+		if name, value, found := strings.Cut(entry, "="); found {
+			_ = envObj.Set(name, value)
+		}
+	}
+	processObj := vm.NewObject()
+	_ = processObj.Set("env", envObj)
+	_ = vm.Set("process", processObj)
+}
+
+// settleInVM evaluates expression, waits for the promise it produces to settle, and
+// returns the fulfilled value encoded as JSON.
 //
 // The call is made from inside RunString because goja drains its promise job queue when
-// the script it is running completes; invoking the handler through a bare Go call would
-// leave the returned promise pending. An unsettled promise afterwards means the hook
-// awaited something that never resolves, which is reported rather than ignored.
-func invokeRegisteredHook(vm *goja.Runtime, toolName, event string) error {
+// the script it is running completes; invoking through a bare Go call would leave the
+// returned promise pending. An unsettled promise afterwards means the code awaited
+// something that never resolves, which is reported rather than ignored.
+//
+// expression is assembled here from globals Go has already set, never from anything a
+// configuration supplied, so nothing a tool author writes is spliced into the script.
+func settleInVM(vm *goja.Runtime, expression, what string) (string, error) {
 	script := `
-		globalThis.__hookOutcome = { settled: false, error: null };
-		Promise.resolve(__invokeHook(__hookToolName, __hookEvent, __hookEventContext)).then(
-			function () { __hookOutcome.settled = true; },
+		globalThis.__vmOutcome = { settled: false, error: null, value: "" };
+		Promise.resolve(` + expression + `).then(
+			function (v) {
+				__vmOutcome.settled = true;
+				__vmOutcome.value = JSON.stringify(
+					v === undefined ? null : v,
+					function (k, val) { return val instanceof RegExp ? val.toString() : val; }
+				);
+			},
 			function (e) {
-				__hookOutcome.settled = true;
-				__hookOutcome.error = (e && (e.stack || e.message)) ? String(e.stack || e.message) : String(e);
+				__vmOutcome.settled = true;
+				__vmOutcome.error = (e && (e.stack || e.message)) ? String(e.stack || e.message) : String(e);
 			}
 		);
 	`
-	_ = vm.Set("__hookToolName", toolName)
-	_ = vm.Set("__hookEvent", event)
 
 	if _, err := vm.RunString(script); err != nil {
-		return fmt.Errorf("running %s hook for %q: %w", event, toolName, err)
+		return "", fmt.Errorf("running %s: %w", what, err)
 	}
 
-	outcomeVal := vm.Get("__hookOutcome")
+	outcomeVal := vm.Get("__vmOutcome")
 	if outcomeVal == nil || goja.IsUndefined(outcomeVal) || goja.IsNull(outcomeVal) {
-		return fmt.Errorf("running %s hook for %q: hook outcome was not recorded", event, toolName)
+		return "", fmt.Errorf("running %s: the outcome was not recorded", what)
 	}
 	outcome := outcomeVal.ToObject(vm)
 
 	if !outcome.Get("settled").ToBoolean() {
-		return fmt.Errorf(
-			"%s hook for %q never finished: it awaited something that never resolves",
-			event, toolName,
-		)
+		return "", fmt.Errorf("%s never finished: it awaited something that never resolves", what)
 	}
 	if errVal := outcome.Get("error"); errVal != nil && !goja.IsNull(errVal) && !goja.IsUndefined(errVal) {
-		return fmt.Errorf("%s hook for %q failed: %s", event, toolName, errVal.String())
+		return "", fmt.Errorf("%s failed: %s", what, errVal.String())
 	}
-	return nil
+	return outcome.Get("value").String(), nil
 }
 
 // hookWorkingDir decides where a hook's commands run.
