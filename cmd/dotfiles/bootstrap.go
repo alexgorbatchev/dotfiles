@@ -149,9 +149,11 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	if strings.HasSuffix(absConfigPath, ".ts") || strings.HasSuffix(absConfigPath, ".js") {
 		var err error
 		var toolMap map[string]*config.ToolConfig
-		// --platform/--arch must reach the loader, because .platform() blocks in tool
-		// files are evaluated while the configuration is being loaded.
-		projCfg, toolMap, err = vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath, vm.WithTarget(platform, arch))
+		// --platform/--arch/--libc must reach the loader, because .platform() blocks and
+		// everything a tool file derives from ctx.systemInfo are evaluated while the
+		// configuration is being loaded.
+		target := vm.Target{OS: platform, Arch: arch, Libc: libc}
+		projCfg, toolMap, err = vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath, vm.WithTarget(target))
 		if err != nil {
 			return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
 		}

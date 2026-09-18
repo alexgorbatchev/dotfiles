@@ -273,7 +273,7 @@ func TestSubcommands(t *testing.T) {
 		},
 		{
 			name:           "global flags platform arch libc",
-			args:           []string{"--platform=linux", "--arch=amd64", "--libc=glibc", "env"},
+			args:           []string{"--platform=linux", "--arch=amd64", "--libc=gnu", "env"},
 			expectedOutput: []string{"export PATH="},
 			expectedErr:    false,
 		},

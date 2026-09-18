@@ -63,7 +63,7 @@ func TestWithTargetSelectsPlatformBlocks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			toolConfigs, err := loadToolSource(t, perArchTool, WithTarget(tt.targetOS, tt.targetArch))
+			toolConfigs, err := loadToolSource(t, perArchTool, WithTarget(Target{OS: tt.targetOS, Arch: tt.targetArch}))
 			if err != nil {
 				t.Fatalf("load failed: %v", err)
 			}
@@ -120,7 +120,7 @@ export default defineTool((install) =>
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := loadToolSource(t, tt.tool, WithTarget("darwin", "arm64"))
+			_, err := loadToolSource(t, tt.tool, WithTarget(Target{OS: "darwin", Arch: "arm64"}))
 			if err == nil {
 				t.Fatal("expected loading to fail")
 			}
@@ -144,7 +144,7 @@ export default defineTool((install) =>
 
 	for _, targetOS := range []string{"darwin", "linux"} {
 		t.Run(targetOS, func(t *testing.T) {
-			toolConfigs, err := loadToolSource(t, unixTool, WithTarget(targetOS, "arm64"))
+			toolConfigs, err := loadToolSource(t, unixTool, WithTarget(Target{OS: targetOS, Arch: "arm64"}))
 			if err != nil {
 				t.Fatalf("load failed: %v", err)
 			}
@@ -159,7 +159,7 @@ export default defineTool((install) =>
 	}
 
 	t.Run("windows is excluded", func(t *testing.T) {
-		toolConfigs, err := loadToolSource(t, unixTool, WithTarget("windows", "amd64"))
+		toolConfigs, err := loadToolSource(t, unixTool, WithTarget(Target{OS: "windows", Arch: "amd64"}))
 		if err != nil {
 			t.Fatalf("load failed: %v", err)
 		}

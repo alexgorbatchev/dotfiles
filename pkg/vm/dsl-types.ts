@@ -257,7 +257,7 @@ export interface IProjectConfig extends DeepPartial<ProjectConfig> {
 
 /**
  * What the runtime reports about the machine a configuration is evaluated for. The
- * values follow the `--platform` and `--arch` flags when those are given.
+ * values follow the `--platform`, `--arch` and `--libc` flags when those are given.
  */
 export interface ISystemInfo {
   /**

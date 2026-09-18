@@ -112,6 +112,41 @@ func TestLibcDeclarationMatchesConstants(t *testing.T) {
 	}
 }
 
+const libcReportingTool = `
+import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install, ctx) => install("manual", { binaryPath: "/libc/" + ctx.systemInfo.libc }));`
+
+// WithTarget backs --libc the way it backs --platform and --arch: the configuration is
+// evaluated for the libc the caller names, and for the host's when it names none.
+func TestWithTargetOverridesLibc(t *testing.T) {
+	tests := []struct {
+		name       string
+		targetLibc string
+		want       string
+	}{
+		{name: "musl override", targetLibc: arch.LibcMusl, want: arch.LibcMusl},
+		{name: "gnu override", targetLibc: arch.LibcGnu, want: arch.LibcGnu},
+		{name: "unknown override", targetLibc: arch.LibcUnknown, want: arch.LibcUnknown},
+		{name: "unset falls back to the host", targetLibc: "", want: arch.DetectLibc(arch.FileExists)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			toolConfigs, err := loadToolSource(t, libcReportingTool, WithTarget(Target{Libc: tt.targetLibc}))
+			if err != nil {
+				t.Fatalf("load failed: %v", err)
+			}
+			tool, ok := toolConfigs["probe"]
+			if !ok {
+				t.Fatalf("expected the probe tool to be loaded, got %v", toolConfigs)
+			}
+			if got := tool.InstallParams["binaryPath"]; got != "/libc/"+tt.want {
+				t.Errorf("systemInfo.libc reported %v, want %q", got, "/libc/"+tt.want)
+			}
+		})
+	}
+}
+
 // Detection reports the spelling release assets use, so an author never has to know that
 // the GNU C library is called glibc internally.
 func TestLibcConstantsUseReleaseAssetSpelling(t *testing.T) {

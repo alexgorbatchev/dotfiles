@@ -236,7 +236,7 @@ The following flags are available on all commands:
 - `--log <level>`: Set log level (`verbose`, `default`, `quiet`).
 - `--platform <os>`: Override target platform (`macos`, `linux`, `windows`; `darwin` is accepted as a spelling of `macos`). Any other value is rejected.
 - `--arch <arch>`: Override target architecture (`amd64`, `arm64`).
-- `--libc <libc>`: Override target C library implementation (`glibc`, `musl`).
+- `--libc <libc>`: Override the detected C library (`gnu`, `musl`, `unknown`), which is what [`ctx.systemInfo.libc`](../api-reference/context-api.md#ctxsysteminfo) reports. Any other value is rejected.
 - `-v, --verbose`: Enable verbose logging.
 - `-q, --quiet`: Enable quiet logging.
 - `--version`: Print the version and exit, like `dotfiles version`.

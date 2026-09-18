@@ -80,7 +80,7 @@ func TestProjectPlatformOverridesFollowTarget(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			projCfg, toolConfigs, err := loadProjectSource(t, platformOverrideConfig, projectPathsProbeTool, WithTarget(tt.targetOS, tt.targetArch))
+			projCfg, toolConfigs, err := loadProjectSource(t, platformOverrideConfig, projectPathsProbeTool, WithTarget(Target{OS: tt.targetOS, Arch: tt.targetArch}))
 			if err != nil {
 				t.Fatalf("load failed: %v", err)
 			}
@@ -160,7 +160,7 @@ export default {
   platform: [{ match: [{ platform: "darwin", arch: "arm64" }], config: {} }],
 };`
 
-	_, _, err := loadProjectSource(t, badMatcher, projectPathsProbeTool, WithTarget("darwin", "arm64"))
+	_, _, err := loadProjectSource(t, badMatcher, projectPathsProbeTool, WithTarget(Target{OS: "darwin", Arch: "arm64"}))
 	if err == nil {
 		t.Fatal("expected loading to fail")
 	}

@@ -16,12 +16,13 @@ import (
 	"github.com/dop251/goja"
 )
 
-// Target selects the OS and architecture that platform-dependent configuration is
-// evaluated against. Empty fields fall back to the host, so the zero Target means
-// "this machine". It backs the --platform and --arch flags.
+// Target selects the OS, architecture and C library that platform-dependent
+// configuration is evaluated against. Empty fields fall back to the host, so the zero
+// Target means "this machine". It backs the --platform, --arch and --libc flags.
 type Target struct {
 	OS   string
 	Arch string
+	Libc string
 }
 
 // os returns the OS this target evaluates against.
@@ -38,6 +39,16 @@ func (t Target) arch() string {
 		return t.Arch
 	}
 	return arch.GetArch()
+}
+
+// libc returns the C library this target evaluates against. Detection inspects the
+// running machine's dynamic loaders, which say nothing about a target the caller named,
+// so an override replaces detection rather than being reconciled with it.
+func (t Target) libc() string {
+	if t.Libc != "" {
+		return t.Libc
+	}
+	return arch.DetectLibc(arch.FileExists)
 }
 
 // matchesTarget reports whether a .platform() or .arch() block applies to this target.
@@ -100,7 +111,7 @@ func RegisterBindings(vm *goja.Runtime, target Target) error {
 		"isMac":         func() bool { return target.os() == arch.OSDarwin },
 		"isLinux":       func() bool { return target.os() == arch.OSLinux },
 		"isWindows":     func() bool { return target.os() == "windows" },
-		"detectLibc":    func() string { return arch.DetectLibc(arch.FileExists) },
+		"detectLibc":    target.libc,
 		"libcConstants": func() map[string]string { return maps.Clone(libcConstants) },
 		"getHostname":   hostname,
 	}

@@ -33,7 +33,7 @@ func loadScaffolded(t *testing.T, targetOS, targetArch string) map[string]*confi
 	}
 
 	log := logger.New(logger.Config{Writer: io.Discard})
-	_, toolConfigs, err := vm.LoadTypeScriptConfig(log, osFS, configPath, vm.WithTarget(targetOS, targetArch))
+	_, toolConfigs, err := vm.LoadTypeScriptConfig(log, osFS, configPath, vm.WithTarget(vm.Target{OS: targetOS, Arch: targetArch}))
 	if err != nil {
 		t.Fatalf("loading scaffolded %s repository failed: %v", targetOS, err)
 	}

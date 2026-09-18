@@ -20,9 +20,9 @@ The `ctx` parameter in `defineTool` provides access to tool and project informat
 
 What the runtime reports about the machine a configuration is evaluated for. The same
 object, of type `ISystemInfo`, is on the `defineConfig` context and on every
-[hook context](lifecycle-hooks.md#context-properties). `os` and `arch` follow the
-`--platform` and `--arch` flags when those are given, so a configuration loaded for
-another target describes that target rather than the machine running the CLI.
+[hook context](lifecycle-hooks.md#context-properties). `os`, `arch` and `libc` follow the
+`--platform`, `--arch` and `--libc` flags when those are given, so a configuration loaded
+for another target describes that target rather than the machine running the CLI.
 
 | Field      | Type     | Value                                                                                                                                                                                                                                                                                     |
 | ---------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

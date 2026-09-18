@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
+	"strings"
 
 	hostarch "github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -50,6 +52,39 @@ func (p platformValue) Set(value string) error {
 	return nil
 }
 
+// libcTargets are the C libraries --libc accepts. They are the members of the authoring
+// API's Libc enum, which are the values pkg/arch detection reports, so a configuration
+// comparing systemInfo.libc against Libc.Musl sees a match for --libc musl. The flag's
+// help text and its rejection message are both built from this list rather than
+// restating it.
+var libcTargets = []string{hostarch.LibcGnu, hostarch.LibcMusl, hostarch.LibcUnknown}
+
+// libcValue is the --libc flag. Like --platform it is validated while the command line
+// is parsed: a value naming no C library would otherwise be accepted and then leave the
+// configuration evaluated against the host after all, which is indistinguishable from
+// the flag working.
+type libcValue struct {
+	target *string
+}
+
+func (l libcValue) String() string { return *l.target }
+
+func (l libcValue) Type() string { return "libc" }
+
+func (l libcValue) Set(value string) error {
+	// The empty default means "detect the host's".
+	if value == "" {
+		*l.target = ""
+		return nil
+	}
+	target := strings.ToLower(strings.TrimSpace(value))
+	if !slices.Contains(libcTargets, target) {
+		return fmt.Errorf("unknown libc %q: accepted values are %s", value, strings.Join(libcTargets, ", "))
+	}
+	*l.target = target
+	return nil
+}
+
 var Version = "2.2.0"
 
 var (
@@ -81,7 +116,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log", "default", "Log level (verbose, default, quiet)")
 	rootCmd.PersistentFlags().Var(platformValue{&platform}, "platform", "Target platform (macos, linux, windows; darwin is accepted for macos)")
 	rootCmd.PersistentFlags().StringVar(&arch, "arch", "", "Target architecture (e.g., amd64, arm64)")
-	rootCmd.PersistentFlags().StringVar(&libc, "libc", "", "Target libc implementation (e.g., glibc, musl)")
+	rootCmd.PersistentFlags().Var(libcValue{&libc}, "libc", "Target C library ("+strings.Join(libcTargets, ", ")+")")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Enable quiet logging")
 }

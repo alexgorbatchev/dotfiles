@@ -85,12 +85,12 @@ type loadOptions struct {
 	target Target
 }
 
-// WithTarget evaluates platform-dependent configuration in tool files against the
-// given OS and architecture rather than the host's. Empty values fall back to the
-// host. It backs the --platform and --arch flags.
-func WithTarget(os, arch string) Option {
+// WithTarget evaluates platform-dependent configuration in tool files against the given
+// target rather than the host. Empty fields fall back to the host. It backs the
+// --platform, --arch and --libc flags.
+func WithTarget(target Target) Option {
 	return func(o *loadOptions) {
-		o.target = Target{OS: os, Arch: arch}
+		o.target = target
 	}
 }
 
