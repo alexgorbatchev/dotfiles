@@ -49,9 +49,12 @@ fix:
 unused:
     bun --bun ./packages/dashboard/node_modules/.bin/ts-unused check packages/dashboard/tsconfig.json
 
-# Typecheck TypeScript client and test-project
+# Typecheck TypeScript client, test-project and the docs site.
+# The docs site has its own Astro tsconfig and needs the synced content and generated `.astro/` types first.
 typecheck:
     ./node_modules/.bin/tsc -p tsconfig.json
+    bun --cwd packages/docs sync
+    cd packages/docs && ./node_modules/.bin/astro sync && ../../node_modules/.bin/tsc -p tsconfig.json
 
 # Generate the assets the Go packages embed (dashboard bundle, generated types, skill).
 # Required before any Go build, vet or test in a fresh checkout.
