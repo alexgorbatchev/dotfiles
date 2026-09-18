@@ -49,17 +49,17 @@ naming the directory instead of promoting an empty one, and `after-install` does
 
 Every hook receives:
 
-| Property        | Description                                                                                                     |
-| --------------- | --------------------------------------------------------------------------------------------------------------- |
-| `toolName`      | Name of the tool                                                                                                |
-| `currentDir`    | Stable directory for this tool (the `current` symlink)                                                          |
-| `stagingDir`    | Absolute path of the temporary directory the installer stages into                                              |
-| `toolDir`       | Directory holding this tool's `.tool.ts`                                                                        |
-| `systemInfo`    | Platform, architecture and libc                                                                                 |
-| `projectConfig` | Project configuration                                                                                           |
-| `fileSystem`    | File operations (`mkdir`, `ensureDir`, `writeFile`, `readFile`, `exists`, `readdir`, `rm`, `rename`, `symlink`) |
-| `log`           | Structured logging (`debug`, `info`, `warn`, `error`)                                                           |
-| `$`             | Shell executor                                                                                                  |
+| Property        | Description                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------- |
+| `toolName`      | Name of the tool                                                                                              |
+| `currentDir`    | Stable directory for this tool (the `current` symlink)                                                        |
+| `stagingDir`    | Absolute path of the temporary directory the installer stages into                                            |
+| `toolDir`       | Directory holding this tool's `.tool.ts`                                                                      |
+| `systemInfo`    | Platform, architecture and libc                                                                               |
+| `projectConfig` | Project configuration                                                                                         |
+| `fileSystem`    | File operations -- the fifteen methods, their signatures and `IFileStats` are in [ctx.fs](utilities.md#ctxfs) |
+| `log`           | Structured logging (`debug`, `info`, `warn`, `error`)                                                         |
+| `$`             | Shell executor                                                                                                |
 
 Plus whatever the event itself provides, per the table above. A property an event does
 not provide is `undefined` rather than a misleading empty value, so destructuring

@@ -11,6 +11,7 @@ The `ctx` parameter in `defineTool` provides access to tool and project informat
 | `ctx.currentDir`    | Tool's stable `current` directory (after install) |
 | `ctx.projectConfig` | Full project configuration                        |
 | `ctx.systemInfo`    | `os`, `arch` and `libc` of the target machine     |
+| `ctx.fs`            | File operations                                   |
 | `ctx.replaceInFile` | Replace text in files using regex patterns        |
 | `ctx.resolve`       | Resolve glob pattern to a single path             |
 | `ctx.log`           | Logger for user-facing output                     |
@@ -73,8 +74,9 @@ export default defineTool((install, ctx) =>
 
 ### Utilities on the Context
 
-`ctx.replaceInFile`, `ctx.resolve` and `ctx.log` are documented in full, with parameters
-and worked examples, in [utilities.md](utilities.md). In short:
+`ctx.fs`, `ctx.replaceInFile`, `ctx.resolve` and `ctx.log` are documented in full, with
+parameters and worked examples, in [utilities.md](utilities.md) -- the file system
+methods under [ctx.fs](utilities.md#ctxfs). In short:
 
 ```typescript
 export default defineTool((install, ctx) =>

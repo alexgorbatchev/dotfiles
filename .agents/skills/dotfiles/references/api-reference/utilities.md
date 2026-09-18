@@ -1,5 +1,84 @@
 # Utilities
 
+The bindings the runtime puts on a context. They are reachable as `ctx.fs`,
+`ctx.replaceInFile`, `ctx.resolve` and `ctx.log` inside a `defineTool` factory, and under
+the same names on every [hook context](lifecycle-hooks.md#context-properties).
+`dedentString` is imported from the package instead.
+
+### ctx.fs
+
+File operations, carried out by the Go runtime. The same object is exposed twice: as
+`ctx.fs`, and as `fileSystem`, which is the name hooks use. Files are read and written as
+UTF-8, a path may start with `~` (expanded against the project's `paths.homeDir`), and
+every method returns a `Promise` so `await` reads naturally at the call site. The type is
+`IFileSystem`, exported from `@alexgorbatchev/dotfiles`.
+
+| Method                          | Returns               | Description                                                                                         |
+| ------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------- |
+| `readFile(path)`                | `Promise<string>`     | Reads the whole file.                                                                               |
+| `writeFile(path, content)`      | `Promise<void>`       | Writes the file, replacing it if it exists.                                                         |
+| `exists(path)`                  | `Promise<boolean>`    | Whether the path is there.                                                                          |
+| `readdir(path)`                 | `Promise<string[]>`   | Entry names of a directory.                                                                         |
+| `mkdir(path)`                   | `Promise<void>`       | Creates a directory and any missing parents. Succeeds when it already exists.                       |
+| `ensureDir(path)`               | `Promise<void>`       | Alias of `mkdir`.                                                                                   |
+| `rm(path)`                      | `Promise<void>`       | Removes a file, or a directory together with everything under it.                                   |
+| `rmdir(path)`                   | `Promise<void>`       | Removes an empty directory, and refuses a path that is not a directory.                             |
+| `rename(from, to)`              | `Promise<void>`       | Moves a file or directory.                                                                          |
+| `copyFile(source, destination)` | `Promise<void>`       | Copies a file, creating the destination's parent directories and replacing an existing destination. |
+| `symlink(target, linkPath)`     | `Promise<void>`       | Creates a symbolic link at `linkPath` pointing at `target`.                                         |
+| `readlink(path)`                | `Promise<string>`     | Reads where a symbolic link points.                                                                 |
+| `chmod(path, mode)`             | `Promise<void>`       | Changes the permission bits, e.g. `0o755` to make a file executable.                                |
+| `stat(path)`                    | `Promise<IFileStats>` | Describes a path, following a symbolic link to what it points at.                                   |
+| `lstat(path)`                   | `Promise<IFileStats>` | Describes a path without following a symbolic link, so a link is reported as the link itself.       |
+
+`rmdir` takes no recursive option, because removing a tree is what `rm` is for. It checks
+the kind of the path before removing it, so a `rmdir` aimed at a file fails with
+`"<path>" is not a directory` instead of quietly deleting the file.
+
+`writeFile`, `mkdir`, `ensureDir`, `rm`, `rmdir`, `rename`, `copyFile`, `symlink`,
+`readlink`, `chmod`, `stat` and `lstat` reject when the operation fails, naming the
+operation and the path, so an unguarded `await` fails the installation instead of
+continuing against a file that is not there. `readFile`, `readdir` and `exists` report an
+absent path instead of failing: a missing file reads as an empty string and a missing
+directory as an empty list. Check with `exists` first where the difference matters.
+
+#### IFileStats
+
+`stat` and `lstat` both resolve to an `IFileStats`:
+
+| Field            | Type      | Description                                                 |
+| ---------------- | --------- | ----------------------------------------------------------- |
+| `isFile`         | `boolean` | True for a regular file.                                    |
+| `isDirectory`    | `boolean` | True for a directory.                                       |
+| `isSymbolicLink` | `boolean` | True for a symbolic link. Only `lstat` ever reports it.     |
+| `mode`           | `number`  | Permission bits alone, in the form `chmod` takes (`0o755`). |
+| `size`           | `number`  | Size in bytes.                                              |
+
+`mode` carries no file-type bits. Go encodes the kind of a path in the high bits of its
+file mode using values of its own, which are not the POSIX `S_IF*` constants a
+configuration author would compare against, so masking `mode` for a type would give a
+wrong answer. The kind is reported through the three booleans instead, and `mode` stays
+the number you can hand straight back to `chmod`.
+
+```typescript builder
+.hook('after-extract', async ({ fileSystem, extractDir, stagingDir, log }) => {
+  if (!extractDir) return;
+  for (const name of await fileSystem.readdir(extractDir)) {
+    const entry = `${extractDir}/${name}`;
+    const info = await fileSystem.lstat(entry);
+    if (info.isSymbolicLink) {
+      log.info(`${name} -> ${await fileSystem.readlink(entry)}`);
+      continue;
+    }
+    if (info.isFile && info.size > 0) {
+      await fileSystem.copyFile(entry, `${stagingDir}/${name}`);
+      await fileSystem.chmod(`${stagingDir}/${name}`, 0o755);
+    }
+  }
+  await fileSystem.rmdir(`${extractDir}/empty-placeholder`);
+})
+```
+
 ### ctx.replaceInFile
 
 Performs a regex-based replacement within a file. Pre-bound with the context's file system.
