@@ -177,6 +177,69 @@ func TestRunHook_FailureIsReported(t *testing.T) {
 	}
 }
 
+// A tool file is evaluated again every time a hook fires, so an asynchronous factory
+// that rejects on that evaluation has to fail the installation the way the same
+// rejection fails the load. Left unobserved it takes every handler registered after its
+// first await with it: the hook never runs, nothing is logged, and the tool reports
+// installed while the work that makes it usable was skipped.
+func TestRunHook_RejectingAsyncFactoryFailsTheHook(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool(async (install) => {
+			const builder = install("manual").hook("after-install", async ({ fileSystem }) => {
+				await fileSystem.writeFile("/captured", "the hook ran");
+			});
+			await Promise.resolve();
+			throw new Error("deliberate factory failure");
+		});
+	`, HookAfterInstall)
+
+	memFS := fs.NewMemFS()
+	err := RunHook(
+		context.Background(),
+		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		memFS,
+		exec.NewMockRunner(),
+		tool,
+		hookTestProjectConfig(t),
+		HookAfterInstall,
+		HookContext{},
+		Target{},
+	)
+	if err == nil {
+		t.Fatalf("expected the rejected tool factory to fail the hook")
+	}
+	if !strings.Contains(err.Error(), tool.ConfigFilePath) {
+		t.Errorf("error = %v, want it to name the tool file %q", err, tool.ConfigFilePath)
+	}
+	if !strings.Contains(err.Error(), "deliberate factory failure") {
+		t.Errorf("error = %v, want it to carry the factory's own message", err)
+	}
+	if exists, _ := memFS.Exists("/captured"); exists {
+		t.Errorf("the hook ran although the tool file it came from never finished evaluating")
+	}
+}
+
+// The counterpart: a factory that resolves registers its handlers wherever they sit in
+// the body, so settling the factory's promise must not turn an await into a failure.
+func TestRunHook_HandlerRegisteredAfterAnAwaitRuns(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool(async (install) => {
+			const builder = install("manual");
+			await Promise.resolve();
+			return builder.hook("after-install", async ({ fileSystem }) => {
+				await fileSystem.writeFile("/captured", "registered after the await");
+			});
+		});
+	`, HookAfterInstall)
+
+	captured := runHookCapturingFile(t, tool, hookTestProjectConfig(t), HookAfterInstall, HookContext{})
+	if captured != "registered after the await" {
+		t.Errorf("the hook wrote %q, want the handler registered after the await to have run", captured)
+	}
+}
+
 // Only the event that was reached runs.
 func TestRunHook_OnlyMatchingEventRuns(t *testing.T) {
 	tool := writeToolFile(t, `

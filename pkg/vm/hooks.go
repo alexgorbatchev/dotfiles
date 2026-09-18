@@ -287,6 +287,15 @@ func evaluateToolFile(ctx context.Context, req toolFileVM) (*goja.Runtime, error
 	if _, err := vm.RunString(jsContent); err != nil {
 		return nil, fmt.Errorf("evaluating %q for its %s: %w", tool.ConfigFilePath, req.purpose, err)
 	}
+	// An asynchronous factory hands the builder back rather than its promise, so nothing
+	// in the VM observes how it ended. A rejection here means the file registered only
+	// the handlers and resolvers that precede its first await: the hook would not run,
+	// the resolver would not answer, and the installation would carry on as if the work
+	// had been done. The load settles these promises for the same reason, so a factory
+	// that fails fails alike whichever evaluation reaches it.
+	if err := settleToolFactories(vm); err != nil {
+		return nil, err
+	}
 	return vm, nil
 }
 
