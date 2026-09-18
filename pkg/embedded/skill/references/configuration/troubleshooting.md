@@ -6,13 +6,32 @@
 dotfiles install tool-name --trace --log=verbose
 ```
 
+`--log=verbose` also shows the `DEBUG` lines that explain why a step was skipped.
+
+## Where Generated Files Live
+
+Every location the CLI writes to comes from the `paths` section of `dotfiles.config.ts`, documented in [Project Configuration](project-configuration.md). The steps below name those keys instead of fixed paths, because a project that customises them has a different layout:
+
+- `paths.targetDir` holds the shims. The generated shell scripts add it to `PATH`.
+- `paths.shellScriptsDir` holds `main.zsh`, `main.bash` and `main.ps1`, plus the `zsh/completions` directory.
+- `paths.binariesDir` holds installed tools as `<tool>/current/<binary>`.
+
+`dotfiles files` (with no argument) prints every file the CLI has written, tagged with its kind, so it is the quickest way to see the resolved locations:
+
+```
+- github-release--rg (shim): <paths.targetDir>/rg
+- system (init): <paths.shellScriptsDir>/main.zsh
+- system (completion): <paths.shellScriptsDir>/zsh/completions/_dotfiles
+```
+
 ## Common Issues
 
 ### Tool Not Found After Installation
 
-1. Verify `.bin()` is called with correct binary names
-2. Check shim exists: `ls -la ~/.generated/usr-local-bin/tool-name`
-3. Ensure PATH includes generated bin directory
+1. Verify `.bin()` names the executables the tool actually ships. `dotfiles bin --list` prints every configured binary with the tool that provides it.
+2. Check the shim exists: `dotfiles files` must show a `(shim)` entry for the binary under `paths.targetDir`. If it is missing, run `dotfiles generate`.
+3. Ensure `PATH` includes `paths.targetDir`. The generated `main.zsh` / `main.bash` add it, so source them as described in [Getting Started](getting-started.md); `command -v tool-name` should then resolve to the shim.
+4. Check the tool itself is installed: `dotfiles bin tool-name` prints the installed binary under `paths.binariesDir`, and fails with `binary path does not exist: ...` when nothing has been installed yet. `dotfiles install tool-name` installs or repairs it.
 
 ### Installation Fails
 
@@ -22,13 +41,13 @@ dotfiles install tool-name --trace --log=verbose
 
 ### Infinite Recursion Error
 
-**Message**: "Recursive installation detected for [TOOL]. Aborting..."
+**Message**: `Recursive installation detected for <tool>. Aborting to prevent infinite loop.`
 
-The installer has built-in recursion guards. If you see this, check that your installation scripts don't call the tool being installed via its shim.
+The shim refuses to run while an installation of the same tool is already in progress. If you see this, check that your installation scripts and hooks don't call the tool being installed via its shim.
 
 ### Disable Shim Usage Tracking
 
-Shim usage tracking is enabled by default and appends to a local usage log. The dashboard imports and compacts that log into SQLite on startup.
+Shim usage tracking is enabled by default: every run of a shim appends a line to `usage/shim-usage.log` under `paths.generatedDir`. See `.bin()` in [Core API](../api-reference/core-api.md).
 
 - Disable temporarily for a single command:
   `DOTFILES_LOCAL_USAGE_TRACKING=0 rg --version`
@@ -37,22 +56,27 @@ Shim usage tracking is enabled by default and appends to a local usage log. The 
 
 ### Dependency Errors
 
-**Messages**: "Missing dependency", "Ambiguous dependency", "Circular dependency"
+**Messages**:
 
-- Ensure every `.dependsOn()` references a binary from `.bin()` in exactly one tool
+- `tool "<tool>" depends on missing dependency "<binary>"`
+- `ambiguous dependency: binary "<binary>" is provided by multiple tools: <tool>, <tool>`
+- `dependency cycle detected among tools: <tool>, <tool>`
+
+- Ensure every `.dependsOn()` references a binary from `.bin()` in exactly one tool; `dotfiles bin --list` shows which tool provides each binary
 - Verify providers include active platform/architecture for platform-specific configs
 
 ### Shell Integration Not Working
 
-1. Source shell scripts: `source ~/.generated/shell-scripts/main.zsh`
-2. Check for syntax errors: `zsh -n ~/.generated/shell-scripts/main.zsh`
-3. Use declarative `.env()` instead of inline exports
+1. Source the generated script for your shell from `paths.shellScriptsDir` (`dotfiles files` lists it as a `system (init)` entry). Setup instructions are in [Getting Started](getting-started.md).
+2. Check for syntax errors: `zsh -n "<paths.shellScriptsDir>/main.zsh"`
+3. Rerun `dotfiles generate` after changing any `.tool.ts` file; the scripts are not regenerated on their own
+4. Use declarative `.env()` instead of inline exports
 
 ### Completions Not Loading
 
-1. Check completion file exists in extracted archive
+1. Check the completion file was generated: `dotfiles files` lists each one as a `(completion)` entry. A completion produced by running the tool (`cmd`) is skipped until the tool is installed; `dotfiles generate --log=verbose` reports it as `Skipping zsh completion: binary "<name>" not installed at ...`
 2. Reload completions: `autoload -U compinit && compinit`
-3. Verify shell completion path is correct
+3. Check the configuration against [Shell Completions](../api-reference/shell-completions.md)
 
 ### Hook Not Executing
 
@@ -67,36 +91,37 @@ Shim usage tracking is enabled by default and appends to a local usage log. The 
 })
 ```
 
-- `$` uses tool directory as cwd
+- `$` runs from the directory containing the `.tool.ts` file; see Working Directory in [Hooks](../api-reference/lifecycle-hooks.md)
 - Always await `$` commands
-- Handle errors with try/catch
+- A rejected hook fails the installation, so handle expected errors with try/catch
 
 ## Testing and Verification
 
-### Type Checking
+### Validate Configuration
 
 ```bash
-bun typecheck
+dotfiles validate            # every configured tool
+dotfiles validate tool-name  # one tool
 ```
 
-### Installation Commands
+Type-check the `.tool.ts` files with the TypeScript compiler against the project's `tsconfig.json` (`tsc -p tsconfig.json`).
+
+### Useful Commands
 
 ```bash
-dotfiles install tool-name           # Install by tool name
-dotfiles install binary-name         # Install by binary name
-dotfiles install tool-name --force   # Force reinstall
+dotfiles install tool-name                        # Install by tool or binary name
+dotfiles install tool-name --force                # Force reinstall
 dotfiles install tool-name --trace --log=verbose  # Debug logging
-dotfiles why tool-or-binary          # Print path to .tool.ts config file
-dotfiles files tool-name             # List generated files
-dotfiles check-updates               # Check all for updates
+dotfiles why tool-or-binary                       # Print path to the .tool.ts that defines it
+dotfiles files tool-name                          # Tree of the installed files
+dotfiles bin tool-or-binary                       # Print path to the installed binary
 ```
 
-For tools configured with `version: "latest"`, `dotfiles check-updates` compares the newest available version against
-the installed version recorded on disk when installation state is available. If no installed version is recorded yet,
-the command falls back to reporting that the tool is configured to track `latest`.
+Every command and flag is documented in the [CLI Reference](../getting-started/cli-reference.md).
 
 ### Verification Steps
 
-1. **Binary works**: `tool-name --version`
-2. **Shim created**: `ls -la ~/.generated/usr-local-bin/tool-name`
-3. **Shell integration**: Source shell scripts and test aliases/environment
+1. **Binary works**: `tool-name --version` (the first run through the shim installs the tool)
+2. **Shim created**: `dotfiles files` shows a `(shim)` entry for it under `paths.targetDir`, and `command -v tool-name` resolves to that path
+3. **Tool installed**: `dotfiles bin tool-name` prints the binary under `paths.binariesDir`
+4. **Shell integration**: Source the generated shell script and test aliases/environment
