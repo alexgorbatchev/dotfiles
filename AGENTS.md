@@ -57,7 +57,8 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Always: run `bun check` before declaring work complete.
 - Always: verify that every release actually produces and uploads all compiled release binary assets via `gh release view vX.Y.Z --json assets`.
 - Ask first: public API or CLI behavior changes, dependency additions or removals, `.github/workflows/*` changes, release or publish logic updates, package version bumps.
-- Never: hand-edit `.dist/` or `test-project/.generated/`; bypass Go abstractions with raw `node:fs` or `fetch`; commit compiled Go binaries; switch to `tsc`.
+- Always: typecheck with `tsc` from `typescript` 7. TypeScript 7 is released, so the native compiler ships as `tsc` in the `typescript` package; the `@typescript/native-preview` package and its `tsgo` binary were the pre-release form and are gone.
+- Never: hand-edit `.dist/` or `test-project/.generated/`; bypass Go abstractions with raw `node:fs` or `fetch`; commit compiled Go binaries.
 
 ## References
 

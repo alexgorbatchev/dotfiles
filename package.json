@@ -37,12 +37,12 @@
     "@alexgorbatchev/typescript-ai-policy": "5.0.2",
     "@dprint/json": "^0.21.1",
     "@dprint/markdown": "^0.20.0",
-    "@typescript/native-preview": "catalog:typescript",
     "bun-plugin-tailwind": "^0.1.2",
     "dprint": "^0.51.1",
     "oxfmt": "0.42.0",
     "oxlint": "^1.57.0",
-    "tsd": "^0.33.0"
+    "tsd": "^0.33.0",
+    "typescript": "catalog:typescript"
   },
   "catalog": {
     "type-fest": "^5.1.0",
@@ -60,8 +60,7 @@
       "@rageltd/bun-test-utils": "^2.0.0"
     },
     "typescript": {
-      "@typescript/native-preview": "7.0.0-dev.20251218.3",
-      "typescript": "^5.9.3"
+      "typescript": "^7.0.2"
     }
   }
 }

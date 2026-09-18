@@ -31,7 +31,6 @@
     "@types/dompurify": "^3.2.0",
     "@types/marked": "^6.0.0",
     "@types/node": "catalog:system",
-    "@typescript/native-preview": "catalog:typescript",
     "bun-plugin-tailwind": "^0.1.2",
     "dompurify": "^3.3.3",
     "marked": "^18.0.0",

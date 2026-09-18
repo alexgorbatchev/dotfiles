@@ -49,7 +49,7 @@ unused:
 
 # Typecheck TypeScript client and test-project
 typecheck:
-    tsgo -p tsconfig.json
+    tsc -p tsconfig.json
 
 # Generate the assets the Go packages embed (dashboard bundle, generated types, skill).
 # Required before any Go build, vet or test in a fresh checkout.
