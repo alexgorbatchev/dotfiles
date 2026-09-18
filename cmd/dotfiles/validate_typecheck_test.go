@@ -180,8 +180,13 @@ func TestValidateTypeCheck_ReportsDiagnosticsPerTool(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "validation failed with 2 error(s)") {
 			t.Fatalf("error = %v, want two type errors\n%s", err, out.Combined)
 		}
+		// The diagnostic code for the excess parameter is the compiler's own choice
+		// between reporting the object literal or the call that takes it, and the
+		// native builds do not agree, so the assertion is on the attribution, the
+		// position and the message the user reads.
 		for _, want := range []string{
-			"broken.tool.ts] broken: TS2769 at line 4, column ",
+			"broken.tool.ts] broken: TS",
+			" at line 4, column ",
 			"Object literal may only specify known properties, and 'notAParameter' does not exist",
 			"broken.tool.ts] broken: TS2551 at line 7, column ",
 			"Property 'nothrow' does not exist on type 'IShellPromise'. Did you mean 'noThrow'?",
@@ -214,7 +219,8 @@ func TestValidateTypeCheck_ReportsDiagnosticsPerTool(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected validate --json to fail:\n%s", out.Combined)
 		}
-		if !strings.Contains(out.Stdout, `"tool": "broken"`) || !strings.Contains(out.Stdout, "TS2769") {
+		if !strings.Contains(out.Stdout, `"tool": "broken"`) ||
+			!strings.Contains(out.Stdout, "'notAParameter' does not exist") {
 			t.Errorf("json lacks the attributed diagnostic:\n%s", out.Stdout)
 		}
 	})
@@ -225,7 +231,7 @@ func TestValidateTypeCheck_ReportsDiagnosticsPerTool(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected validate to fail:\n%s", out.Combined)
 		}
-		if !strings.Contains(out.Stdout, "broken.tool.ts] broken: TS2769") || !strings.Contains(out.Stdout, "ERR: [") {
+		if !strings.Contains(out.Stdout, "broken.tool.ts] broken: TS") || !strings.Contains(out.Stdout, "ERR: [") {
 			t.Errorf("agent output lacks the prefixed diagnostic:\n%s", out.Stdout)
 		}
 	})
