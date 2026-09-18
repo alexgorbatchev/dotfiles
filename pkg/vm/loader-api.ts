@@ -519,6 +519,33 @@ function invokeHook(toolName: string, event: string, eventContext: Record<string
 }
 
 /**
+ * The promise an asynchronous tool factory returned, with the file it came from, so that
+ * a failure can name that file.
+ */
+interface IToolFactoryPromise {
+  path: string;
+  promise: PromiseLike<unknown>;
+}
+
+/**
+ * Records the promise an asynchronous tool factory returned, for Go to settle once the
+ * bundle has run.
+ *
+ * `defineTool` has to hand the builder back to the entry loader rather than the promise,
+ * so nothing in the VM ever observes how the factory ended. Keeping the promise is what
+ * makes a rejection reportable: without it the tool silently loses everything the factory
+ * configured after its first `await`, and the failure leaves no trace at all.
+ */
+function recordToolFactory(result: unknown): void {
+  if (!result || typeof (result as Record<string, unknown>)["then"] !== "function") {
+    return;
+  }
+  const globals = getGlobals();
+  const pending = (globals["__toolFactories"] || (globals["__toolFactories"] = [])) as IToolFactoryPromise[];
+  pending.push({ path: globalThis.currentToolPath || "", promise: result as PromiseLike<unknown> });
+}
+
+/**
  * Defines the main dotfiles project configuration.
  *
  * The returned value is handed back to Go as-is. Go resolves it (platform overrides,
@@ -842,6 +869,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
   if (typeof callback === "function") {
     const fn = callback as ToolRunner;
     const res = fn(install, toolCtx);
+    recordToolFactory(res);
     if (builder["installParams"] && typeof builder["installParams"] === "object") {
       captureParamResolvers(
         (builder["name"] as string) || globalThis.currentToolName || "",

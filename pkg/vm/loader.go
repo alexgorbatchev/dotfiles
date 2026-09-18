@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -452,6 +453,10 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, describeBundleFailure(vm, jsContent, err)
 	}
 
+	if err := settleToolFactories(vm); err != nil {
+		return nil, err
+	}
+
 	// Retrieve dynamic loader results
 	loaderResultVal := vm.Get("__loaderResult")
 	if loaderResultVal == nil || goja.IsUndefined(loaderResultVal) || goja.IsNull(loaderResultVal) {
@@ -489,6 +494,33 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	}
 
 	return &unifiedLoaderResult{ProjectConfig: projectConfig, ToolConfigs: envelope.ToolConfigs}, nil
+}
+
+// settleToolFactories waits for the promise every asynchronous tool factory returned and
+// reports the first one that failed.
+//
+// defineTool returns the builder the entry loader registers rather than the promise, so
+// nothing in the VM observes how an asynchronous factory ended. A rejection would leave
+// the tool in the configuration missing everything the factory configured after its
+// first await, with nothing logged and a successful exit -- the same failure the
+// synchronous path reports by name. The promises are settled here, where the tool file
+// each one came from is still known, so that both paths fail alike.
+func settleToolFactories(vm *goja.Runtime) error {
+	registry := vm.Get("__toolFactories")
+	if registry == nil || goja.IsUndefined(registry) || goja.IsNull(registry) {
+		return nil
+	}
+
+	factories := registry.ToObject(vm)
+	count := factories.Get("length").ToInteger()
+	for i := range count {
+		toolPath := factories.Get(strconv.FormatInt(i, 10)).ToObject(vm).Get("path").String()
+		what := fmt.Sprintf("executing tool file %q", toolPath)
+		if _, err := settleInVM(vm, fmt.Sprintf("__toolFactories[%d].promise", i), what); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // memberCallCallee matches the property name a member call names, so that ".binaries"

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -209,7 +210,7 @@ func TestRegisterContextBindingsLogsAndFS(t *testing.T) {
 		ctx.log.debug("debug msg");
 
 		const exists = await ctx.fs.exists("/sandbox/testdir/read.txt");
-		const entries = await ctx.fs.readDir("/sandbox/testdir");
+		const entries = await ctx.fs.readdir("/sandbox/testdir");
 		const content = await ctx.fs.readFile("/sandbox/testdir/read.txt");
 
 		return install("manual");
@@ -1505,6 +1506,59 @@ func TestEvaluateUnifiedBundleRefusesMissingProjectConfig(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), configPath) || !strings.Contains(err.Error(), "export default defineConfig") {
 				t.Errorf("error = %v, want it to name the file and what it must export", err)
+			}
+		})
+	}
+}
+
+// TestLoadTypeScriptConfigReportsAsyncToolFactoryFailure proves an async tool factory
+// that fails is reported the way the synchronous one is -- naming the tool file and the
+// error -- rather than dropping the tool from the configuration without a word.
+func TestLoadTypeScriptConfigReportsAsyncToolFactoryFailure(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"factory rejects", "throw new Error(\"factory exploded\");", "factory exploded"},
+		{"awaited call rejects", "await Promise.reject(new Error(\"awaited exploded\"));", "awaited exploded"},
+		{"binding does not exist", "await ctx.fs.readDir(\"/sandbox\");", "readDir"},
+		{"factory never settles", "await new Promise(() => {});", "never finished"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+			configSource := "export default { paths: { dotfilesDir: " + strconv.Quote(tmpDir) +
+				", homeDir: " + strconv.Quote(tmpDir) + ", targetDir: " + strconv.Quote(tmpDir) +
+				", toolConfigsDir: \"./tools\" } };"
+			if err := os.WriteFile(configPath, []byte(configSource), 0644); err != nil {
+				t.Fatalf("writing configuration: %v", err)
+			}
+
+			toolsDir := filepath.Join(tmpDir, "tools")
+			if err := os.MkdirAll(toolsDir, 0755); err != nil {
+				t.Fatalf("creating tools directory: %v", err)
+			}
+			toolPath := filepath.Join(toolsDir, "boom.tool.ts")
+			toolSource := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
+				"export default defineTool(async (install, ctx) => {\n" + tt.body + "\nreturn install(\"manual\");\n});"
+			if err := os.WriteFile(toolPath, []byte(toolSource), 0644); err != nil {
+				t.Fatalf("writing tool file: %v", err)
+			}
+
+			_, toolCfgs, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
+			if err == nil {
+				t.Fatalf("expected the load to fail, got tools %v", slices.Sorted(maps.Keys(toolCfgs)))
+			}
+			if !strings.Contains(err.Error(), toolPath) {
+				t.Errorf("error = %v, want it to name %q", err, toolPath)
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("error = %v, want it to report %q", err, tt.want)
 			}
 		})
 	}
