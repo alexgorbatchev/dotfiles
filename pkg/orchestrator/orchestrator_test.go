@@ -1737,3 +1737,140 @@ func TestInstallTool_ExternalToolShimTarget(t *testing.T) {
 		})
 	}
 }
+
+// writeHookedManualTool puts a manual .tool.ts on disk whose before-install hook runs
+// the given body and whose after-install hook records where the tool ended up. The
+// file has to be on the real disk because hooks are re-evaluated from it.
+func writeHookedManualTool(t *testing.T, toolName, beforeInstallBody string) *config.ToolConfig {
+	t.Helper()
+	toolPath := filepath.Join(t.TempDir(), toolName+".tool.ts")
+	body := `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual")
+				.hook("before-install", async ({ stagingDir, fileSystem, log }) => {
+					` + beforeInstallBody + `
+				})
+				.hook("after-install", async ({ installedDir, fileSystem }) => {
+					await fileSystem.mkdir("/home/user/markers");
+					await fileSystem.writeFile("/home/user/markers/after-install", installedDir);
+				}),
+		);
+	`
+	if err := os.WriteFile(toolPath, []byte(body), 0644); err != nil {
+		t.Fatalf("writing tool file: %v", err)
+	}
+	return &config.ToolConfig{
+		Name:               toolName,
+		ConfigFilePath:     toolPath,
+		InstallationMethod: "manual",
+		InstallParams:      map[string]interface{}{"hooks": []any{"before-install", "after-install"}},
+	}
+}
+
+// A manual tool without binaryPath has nothing but its before-install hook to put
+// files into stagingDir. When the hook does so the staged files are promoted and
+// after-install runs; when it leaves the directory empty the install fails outright
+// instead of promoting an empty directory, and after-install never runs.
+func TestInstallTool_BeforeInstallHookStagesThePayload(t *testing.T) {
+	const toolName = "tmux-plugin"
+	stagingDir := "/home/user/.generated/binaries/" + toolName + "/.staging"
+	currentDir := "/home/user/.generated/binaries/" + toolName + "/current"
+	afterInstallMarker := "/home/user/markers/after-install"
+
+	tests := []struct {
+		name              string
+		beforeInstallBody string
+		wantErrContains   string
+	}{
+		{
+			name:              "hook stages files into stagingDir",
+			beforeInstallBody: `await fileSystem.writeFile(stagingDir + "/plugin.tmux", "payload");`,
+		},
+		{
+			name:              "hook leaves stagingDir empty",
+			beforeInstallBody: `log.info("staging nothing");`,
+			wantErrContains:   "staging directory " + stagingDir + " is empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			memFS := fs.NewMemFS()
+			runner := exec.NewMockRunner()
+			sqlDB, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatalf("failed creating DB: %v", err)
+			}
+			defer sqlDB.Close()
+			reg := registry.NewRegistry(sqlDB)
+
+			instReg := installer.NewRegistry()
+			_ = instReg.Register(installer.NewManualInstaller(runner, memFS, nil))
+			log := logger.New(logger.Config{Name: "test-hook-staging", Level: logger.LogLevelQuiet, Writer: io.Discard})
+			orch := NewOrchestrator(log, memFS, runner, reg, instReg)
+
+			projCfg := &config.ProjectConfig{
+				Paths: config.PathsConfig{
+					HomeDir:         "/home/user",
+					DotfilesDir:     "/home/user/dotfiles",
+					TargetDir:       "/home/user/bin",
+					BinariesDir:     "/home/user/.generated/binaries",
+					ShellScriptsDir: "/home/user/.generated/shell-scripts",
+					GeneratedDir:    "/home/user/.generated",
+				},
+			}
+			tool := writeHookedManualTool(t, toolName, tt.beforeInstallBody)
+
+			err = orch.InstallTool(ctx, tool, projCfg)
+
+			if stagingExists, _ := memFS.Exists(stagingDir); stagingExists {
+				t.Errorf("staging directory %s was left behind", stagingDir)
+			}
+			markerExists, _ := memFS.Exists(afterInstallMarker)
+			currentExists, _ := memFS.Exists(currentDir)
+			record, recordErr := reg.GetToolInstallation(ctx, toolName)
+			if recordErr != nil {
+				t.Fatalf("reading installation record: %v", recordErr)
+			}
+
+			if tt.wantErrContains != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErrContains) {
+					t.Fatalf("InstallTool error = %v, want it to contain %q", err, tt.wantErrContains)
+				}
+				if currentExists {
+					t.Errorf("%s exists: an empty staging directory must not be promoted", currentDir)
+				}
+				if markerExists {
+					t.Errorf("after-install ran for an install that failed")
+				}
+				if record != nil {
+					t.Errorf("a failed install was recorded as installed: %+v", record)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("InstallTool failed: %v", err)
+			}
+			payload, readErr := memFS.ReadFile(currentDir + "/plugin.tmux")
+			if readErr != nil {
+				t.Fatalf("staged file was not promoted to %s: %v", currentDir, readErr)
+			}
+			if string(payload) != "payload" {
+				t.Errorf("promoted file contents = %q, want %q", string(payload), "payload")
+			}
+			marker, readErr := memFS.ReadFile(afterInstallMarker)
+			if readErr != nil {
+				t.Fatalf("after-install did not run: %v", readErr)
+			}
+			if string(marker) != currentDir {
+				t.Errorf("after-install installedDir = %q, want %q", string(marker), currentDir)
+			}
+			if record == nil {
+				t.Errorf("successful install was not recorded")
+			}
+		})
+	}
+}

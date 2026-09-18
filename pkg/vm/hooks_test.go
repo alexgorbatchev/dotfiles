@@ -180,3 +180,64 @@ func TestRunHook_OnlyMatchingEventRuns(t *testing.T) {
 		t.Errorf("the after-install hook ran for a before-install event")
 	}
 }
+
+// A before-install hook stages into stagingDir, so it must receive the real path. The
+// hook's commands run from the tool's directory rather than from where the CLI was
+// invoked, which is why every path handed over has to be absolute: a path relative to
+// the CLI's working directory would land the staged files in the wrong tree.
+func TestRunHook_BeforeInstallReceivesAbsoluteStagingDir(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("before-install", async ({ $, stagingDir, currentDir, configFileDir, installedDir }) => {
+				await $`+"`"+`stage ${stagingDir} ${currentDir} ${configFileDir} ${typeof installedDir}`+"`"+`;
+			}),
+		);
+	`, HookBeforeInstall)
+
+	cfg := &config.ProjectConfig{}
+	cfg.Paths.DotfilesDir = "."
+	cfg.Paths.GeneratedDir = filepath.Join(".generated")
+	cfg.Paths.BinariesDir = filepath.Join(".generated", "binaries")
+	relativeStagingDir := filepath.Join(cfg.Paths.BinariesDir, "sample", ".staging")
+
+	runner := exec.NewMockRunner()
+	runner.Register("bash", []byte(""), nil)
+
+	err := RunHook(
+		context.Background(),
+		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		fs.NewMemFS(),
+		runner,
+		tool,
+		cfg,
+		HookBeforeInstall,
+		HookContext{StagingDir: relativeStagingDir},
+		Target{},
+	)
+	if err != nil {
+		t.Fatalf("RunHook returned error: %v", err)
+	}
+
+	absStagingDir, err := filepath.Abs(relativeStagingDir)
+	if err != nil {
+		t.Fatalf("resolving expected staging dir: %v", err)
+	}
+	absBinariesDir, err := filepath.Abs(cfg.Paths.BinariesDir)
+	if err != nil {
+		t.Fatalf("resolving expected binaries dir: %v", err)
+	}
+	absDotfilesDir, err := filepath.Abs(cfg.Paths.DotfilesDir)
+	if err != nil {
+		t.Fatalf("resolving expected dotfiles dir: %v", err)
+	}
+
+	if len(runner.History) == 0 {
+		t.Fatalf("the hook ran no commands")
+	}
+	want := "stage " + absStagingDir + " " + absBinariesDir + "/sample/current " + absDotfilesDir + " undefined"
+	got := runner.History[len(runner.History)-1].Args[len(runner.History[len(runner.History)-1].Args)-1]
+	if got != want {
+		t.Errorf("command = %q, want %q", got, want)
+	}
+}

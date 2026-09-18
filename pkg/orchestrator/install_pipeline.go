@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/lifecycle"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -202,19 +203,16 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	})
 	res, err := inst.Install(ctx, tool)
 	if err != nil {
-		if !isExternal && stagingDir != "" {
-			_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-				activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
-				_ = removeAll(activeFSWithTx, stagingDir)
-				// Try to remove parent tool directory if it is empty
-				toolDir := filepath.Dir(stagingDir)
-				if entries, err := activeFSWithTx.ReadDir(toolDir); err == nil && len(entries) == 0 {
-					_ = activeFSWithTx.Remove(toolDir)
-				}
-				return nil
-			})
+		if !isExternal {
+			o.discardStaging(ctx, tool.Name, stagingDir)
 		}
 		return err
+	}
+
+	if !isExternal && !installer.IsDryRun() {
+		if err := o.requireStagedPayload(ctx, tool, activeFS, stagingDir); err != nil {
+			return err
+		}
 	}
 
 	if isExternal && !installer.IsDryRun() {
@@ -249,11 +247,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			return activeFSWithTx.Rename(stagingDir, toolDestDir)
 		})
 		if err != nil {
-			_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-				activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
-				_ = removeAll(activeFSWithTx, stagingDir)
-				return nil
-			})
+			o.discardStaging(ctx, tool.Name, stagingDir)
 			return fmt.Errorf("promoting staging directory to current: %w", err)
 		}
 	}
@@ -445,6 +439,51 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	return nil
+}
+
+// requireStagedPayload fails an install whose before-install hook was meant to stage
+// the tool's files but left the staging directory empty.
+//
+// A before-install hook is handed stagingDir so it can put files there; for a manual
+// tool without binaryPath it is the only thing that ever does. Promoting an empty
+// directory would make the tool look installed while nothing was, so the attempt is
+// discarded and reported instead.
+func (o *Orchestrator) requireStagedPayload(ctx context.Context, tool *config.ToolConfig, fsys fs.FS, stagingDir string) error {
+	if !vm.HasHook(tool, vm.HookBeforeInstall) {
+		return nil
+	}
+	entries, err := fsys.ReadDir(stagingDir)
+	if err != nil {
+		o.discardStaging(ctx, tool.Name, stagingDir)
+		return fmt.Errorf("inspecting staging directory %s: %w", stagingDir, err)
+	}
+	if len(entries) > 0 {
+		return nil
+	}
+	o.discardStaging(ctx, tool.Name, stagingDir)
+	return fmt.Errorf(
+		"staging directory %s is empty after the before-install hook and the %q installer ran: nothing was staged into stagingDir",
+		stagingDir, tool.InstallationMethod,
+	)
+}
+
+// discardStaging removes a staging directory that will not be promoted, and the tool's
+// directory with it when nothing else is left there, so a failed attempt leaves no
+// trace. Cleanup is best-effort: the error that caused the discard is what the caller
+// reports, and a cleanup failure must not displace it.
+func (o *Orchestrator) discardStaging(ctx context.Context, toolName, stagingDir string) {
+	if stagingDir == "" {
+		return
+	}
+	_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+		activeFSWithTx := o.getTrackedFS(ctx, tx, toolName, "binary")
+		_ = removeAll(activeFSWithTx, stagingDir)
+		toolDir := filepath.Dir(stagingDir)
+		if entries, err := activeFSWithTx.ReadDir(toolDir); err == nil && len(entries) == 0 {
+			_ = activeFSWithTx.Remove(toolDir)
+		}
+		return nil
+	})
 }
 
 // UninstallTool uninstalls a tool, deletes its registered shims, symlinks, and files, and purges its db entries.

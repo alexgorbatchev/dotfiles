@@ -41,6 +41,36 @@ type HookContext struct {
 	Env []string
 }
 
+// absolute returns the context with every directory resolved to an absolute path.
+//
+// The orchestrator addresses these directories relative to the CLI's working directory,
+// which is fine for Go, but a hook's commands run from the tool's own directory (see
+// hookWorkingDir). Handed over unresolved, `${stagingDir}` would be interpreted against
+// that directory and the hook would stage its files into the wrong tree while the real
+// staging directory stayed empty.
+func (h HookContext) absolute(fsys fs.FS) (HookContext, error) {
+	var err error
+	for _, dir := range []*string{&h.StagingDir, &h.DownloadPath, &h.ExtractDir, &h.InstalledDir} {
+		if *dir, err = absolutePath(fsys, *dir); err != nil {
+			return h, err
+		}
+	}
+	return h, nil
+}
+
+// absolutePath resolves a path for a hook, leaving an unset path unset: resolving ""
+// would yield the working directory, which is not a value the hook was ever given.
+func absolutePath(fsys fs.FS, path string) (string, error) {
+	if path == "" {
+		return "", nil
+	}
+	abs, err := fsys.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolving %q for the hook: %w", path, err)
+	}
+	return abs, nil
+}
+
 func (h HookContext) toMap() map[string]any {
 	out := map[string]any{}
 	if h.StagingDir != "" {
@@ -133,6 +163,9 @@ func RunHook(
 		return fmt.Errorf("initializing loader polyfills: %w", err)
 	}
 
+	// The directories the tool context derives its paths from (currentDir among them)
+	// are resolved for the same reason the event context is: the hook's commands do
+	// not run from the directory these are relative to.
 	configFileDir := ""
 	binariesDir := ""
 	generatedDir := ""
@@ -140,6 +173,11 @@ func RunHook(
 		configFileDir = projCfg.Paths.DotfilesDir
 		binariesDir = projCfg.Paths.BinariesDir
 		generatedDir = projCfg.Paths.GeneratedDir
+	}
+	for _, dir := range []*string{&configFileDir, &binariesDir, &generatedDir} {
+		if *dir, err = absolutePath(fsys, *dir); err != nil {
+			return err
+		}
 	}
 	_ = vm.Set("configFileDir", configFileDir)
 	_ = vm.Set("binariesDir", binariesDir)
@@ -150,6 +188,10 @@ func RunHook(
 
 	if err := setJSONGlobal(vm, "projectConfig", projCfg); err != nil {
 		return fmt.Errorf("providing project configuration to the %s hook: %w", event, err)
+	}
+	hookCtx, err = hookCtx.absolute(fsys)
+	if err != nil {
+		return err
 	}
 	if err := setJSONGlobal(vm, "__hookEventContext", hookCtx.toMap()); err != nil {
 		return fmt.Errorf("providing %s hook context: %w", event, err)
