@@ -38,27 +38,27 @@ func TestBindingsDirect(t *testing.T) {
 		t.Fatalf("RegisterContextBindings with nil failed: %v", err)
 	}
 
-	// Reads tolerate a VM wired without a logger or file system: they answer "nothing
-	// is there", which is what a caller inspecting an absent tree should see.
+	// Logging tolerates a VM wired without a logger: a message nobody collects is not
+	// a failure of the tool that wrote it.
 	testScriptCtx := `
 		logInfo("t", "msg");
 		logWarn("t", "msg");
 		logError("t", "msg");
 		logDebug("t", "msg");
-
-		var e = fsExists("/p");
-		var rd = fsReadDir("/p");
-		var rf = fsReadFile("/p");
 	`
 	_, err = vm.RunString(testScriptCtx)
 	if err != nil {
 		t.Fatalf("executing context bindings with nil failed: %v", err)
 	}
 
-	// Writes do not, and neither does inspecting a path: an operation that cannot
-	// happen must say so rather than report success or a made-up answer, which is how
-	// hook failures used to disappear.
+	// No file system operation does: an operation that cannot happen must say so
+	// rather than report success or a made-up answer, which is how hook failures used
+	// to disappear. That includes the reads, whose made-up answers -- false, "" and an
+	// empty list -- are exactly what a caller inspecting a real empty tree would see.
 	for _, operation := range []string{
+		`fsExists("/p");`,
+		`fsReadDir("/p");`,
+		`fsReadFile("/p");`,
 		`fsWriteFile("/p", "c");`,
 		`fsMkdir("/p");`,
 		`fsRm("/p");`,

@@ -62,11 +62,13 @@ export interface IFileStats {
  * `fileSystem`. Every call is carried out by the Go runtime synchronously; the Promise
  * return types keep `await` valid at the call site. Files are read and written as UTF-8.
  * A call that cannot be carried out rejects, so `await` throws rather than continuing
- * against a file that is not there.
+ * against a file that is not there. `exists` is the exception: an absent path is its
+ * answer, not a failure.
  */
 export interface IFileSystem {
   /**
-   * Reads the entire contents of a file.
+   * Reads the entire contents of a file. Rejects when the file is not there, rather
+   * than resolving to an empty string.
    */
   readFile(path: string): Promise<string>;
   /**
@@ -74,7 +76,8 @@ export interface IFileSystem {
    */
   writeFile(path: string, content: string): Promise<void>;
   /**
-   * Checks if a path exists on disk.
+   * Checks if a path exists on disk. Resolves to `false` for an absent path, and
+   * rejects only when the lookup itself cannot be made.
    */
   exists(path: string): Promise<boolean>;
   /**
@@ -87,7 +90,8 @@ export interface IFileSystem {
    */
   ensureDir(path: string): Promise<void>;
   /**
-   * Reads the entry names of a directory.
+   * Reads the entry names of a directory. Rejects when the directory is not there,
+   * rather than resolving to an empty list.
    */
   readdir(path: string): Promise<string[]>;
   /**

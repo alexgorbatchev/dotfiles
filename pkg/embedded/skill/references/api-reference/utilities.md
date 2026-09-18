@@ -35,12 +35,12 @@ every method returns a `Promise` so `await` reads naturally at the call site. Th
 the kind of the path before removing it, so a `rmdir` aimed at a file fails with
 `"<path>" is not a directory` instead of quietly deleting the file.
 
-`writeFile`, `mkdir`, `ensureDir`, `rm`, `rmdir`, `rename`, `copyFile`, `symlink`,
-`readlink`, `chmod`, `stat` and `lstat` reject when the operation fails, naming the
-operation and the path, so an unguarded `await` fails the installation instead of
-continuing against a file that is not there. `readFile`, `readdir` and `exists` report an
-absent path instead of failing: a missing file reads as an empty string and a missing
-directory as an empty list. Check with `exists` first where the difference matters.
+Every method rejects when the operation fails, naming the operation and the path, so an
+unguarded `await` fails the installation instead of continuing against a file that is not
+there. `exists` is the one method for which an absent path is an answer rather than a
+failure: it resolves to `false`. It still rejects when it cannot tell, for instance when
+the parent directory cannot be read. Use it to guard a `readFile` or `readdir` whose path
+is genuinely optional.
 
 #### IFileStats
 

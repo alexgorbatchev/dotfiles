@@ -181,26 +181,28 @@ func RegisterContextBindings(vm *goja.Runtime, log *logger.Logger, fsys fs.FS, h
 		}
 	})
 
+	// exists answers whether a path is there, so an absent path is its answer rather
+	// than a failure. It still reports a lookup it could not make at all -- an
+	// unreadable parent directory, a VM with no file system -- because answering
+	// "not there" would be a guess.
 	_ = vm.Set("fsExists", func(path string) bool {
-		if fsys != nil {
-			exists, _ := fsys.Exists(path)
-			return exists
-		}
-		return false
+		exists, err := existsOrMissingFS(fsys, path)
+		throwOnFSError(vm, "exists", path, err)
+		return exists
 	})
+	// The reads report a path that is not there, the same as every other operation.
+	// Resolving a missing file to "" and a missing directory to [] handed the caller a
+	// made-up answer indistinguishable from an empty file and an empty directory, so a
+	// configuration that read the wrong path carried on and produced the wrong result.
 	_ = vm.Set("fsReadDir", func(path string) []string {
-		if fsys != nil {
-			entries, _ := fsys.ReadDir(path)
-			return entries
-		}
-		return nil
+		entries, err := readDirOrMissingFS(fsys, path)
+		throwOnFSError(vm, "readdir", path, err)
+		return entries
 	})
 	_ = vm.Set("fsReadFile", func(path string) string {
-		if fsys != nil {
-			data, _ := fsys.ReadFile(path)
-			return string(data)
-		}
-		return ""
+		data, err := readFileOrMissingFS(fsys, path)
+		throwOnFSError(vm, "readFile", path, err)
+		return string(data)
 	})
 	// The mutating operations report failure to the caller. A hook that cannot create
 	// the directory it is about to write into has not succeeded, and discarding that
@@ -310,6 +312,27 @@ func RegisterContextBindings(vm *goja.Runtime, log *logger.Logger, fsys fs.FS, h
 // errNoFileSystem reports a VM configured without a file system, which is a wiring
 // mistake rather than something a tool author can act on.
 var errNoFileSystem = fmt.Errorf("no file system is available to this VM")
+
+func existsOrMissingFS(fsys fs.FS, path string) (bool, error) {
+	if fsys == nil {
+		return false, errNoFileSystem
+	}
+	return fsys.Exists(path)
+}
+
+func readDirOrMissingFS(fsys fs.FS, path string) ([]string, error) {
+	if fsys == nil {
+		return nil, errNoFileSystem
+	}
+	return fsys.ReadDir(path)
+}
+
+func readFileOrMissingFS(fsys fs.FS, path string) ([]byte, error) {
+	if fsys == nil {
+		return nil, errNoFileSystem
+	}
+	return fsys.ReadFile(path)
+}
 
 func writeFileOrMissingFS(fsys fs.FS, path, content string) error {
 	if fsys == nil {
