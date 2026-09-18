@@ -14,7 +14,27 @@ defineTool((install) =>
     expectType<boolean>(exists);
     await fileSystem.rename(`${dir}/config.toml`, `${dir}/config.bak`);
     await fileSystem.symlink(`${dir}/config.bak`, `${dir}/config.link`);
+    await fileSystem.copyFile(`${dir}/config.bak`, `${dir}/config.copy`);
+    await fileSystem.chmod(`${dir}/config.copy`, 0o755);
+    const target: string = await fileSystem.readlink(`${dir}/config.link`);
+    expectType<string>(target);
+    await fileSystem.rmdir(dir);
     await fileSystem.rm(dir);
+  }),
+);
+
+// stat follows a symbolic link, lstat describes the link itself.
+defineTool((install) =>
+  install("manual").hook("after-install", async ({ fileSystem, installedDir }) => {
+    const stats = await fileSystem.stat(installedDir ?? "");
+    expectType<boolean>(stats.isFile);
+    expectType<boolean>(stats.isDirectory);
+    expectType<boolean>(stats.isSymbolicLink);
+    expectType<number>(stats.mode);
+    expectType<number>(stats.size);
+
+    const linkStats = await fileSystem.lstat(installedDir ?? "");
+    expectType<boolean>(linkStats.isSymbolicLink);
   }),
 );
 
@@ -36,11 +56,21 @@ expectError(
   ),
 );
 
-// There is no copy primitive on the file system; use rename, or the .copy() builder.
+// The copy primitive is named after the POSIX call it performs, as in v1; `copy` is
+// the builder method that copies a file into the generated tree.
 expectError(
   defineTool((install) =>
     install("manual").hook("after-install", async ({ fileSystem }) => {
       await fileSystem.copy("/tmp/a", "/tmp/b");
+    }),
+  ),
+);
+
+// rmdir takes no recursive option: removing a populated tree is what rm is for.
+expectError(
+  defineTool((install) =>
+    install("manual").hook("after-install", async ({ fileSystem }) => {
+      await fileSystem.rmdir("/tmp/x", { recursive: true });
     }),
   ),
 );

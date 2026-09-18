@@ -30,9 +30,39 @@ export type DeepPartial<T> = T extends Function
       : T;
 
 /**
+ * What `stat` and `lstat` report about a path.
+ */
+export interface IFileStats {
+  /**
+   * True for a regular file.
+   */
+  isFile: boolean;
+  /**
+   * True for a directory.
+   */
+  isDirectory: boolean;
+  /**
+   * True for a symbolic link. Only `lstat` ever reports it: `stat` describes what the
+   * link points at.
+   */
+  isSymbolicLink: boolean;
+  /**
+   * Permission bits alone, in the form `chmod` takes (`0o755`). The kind of the path
+   * is reported by the three flags above rather than folded into this number.
+   */
+  mode: number;
+  /**
+   * Size in bytes.
+   */
+  size: number;
+}
+
+/**
  * File operations available to a tool factory as `ctx.fs` and to lifecycle hooks as
  * `fileSystem`. Every call is carried out by the Go runtime synchronously; the Promise
  * return types keep `await` valid at the call site. Files are read and written as UTF-8.
+ * A call that cannot be carried out rejects, so `await` throws rather than continuing
+ * against a file that is not there.
  */
 export interface IFileSystem {
   /**
@@ -72,6 +102,32 @@ export interface IFileSystem {
    * Creates a symbolic link at `linkPath` pointing at `target`.
    */
   symlink(target: string, linkPath: string): Promise<void>;
+  /**
+   * Removes an empty directory, and refuses a path that is not a directory. Use `rm`
+   * to remove a directory together with what is inside it.
+   */
+  rmdir(path: string): Promise<void>;
+  /**
+   * Changes the permission bits of a path, e.g. `0o755` to make a file executable.
+   */
+  chmod(path: string, mode: number): Promise<void>;
+  /**
+   * Copies a file, replacing the destination if it already exists.
+   */
+  copyFile(source: string, destination: string): Promise<void>;
+  /**
+   * Describes a path, following a symbolic link to what it points at.
+   */
+  stat(path: string): Promise<IFileStats>;
+  /**
+   * Describes a path without following a symbolic link, so a link is reported as the
+   * link itself.
+   */
+  lstat(path: string): Promise<IFileStats>;
+  /**
+   * Reads where a symbolic link points.
+   */
+  readlink(path: string): Promise<string>;
 }
 
 /**

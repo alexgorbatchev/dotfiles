@@ -3,6 +3,7 @@ import type {
   Architecture as DslArchitecture,
   ConfigFactory,
   AsyncConfigureTool,
+  IFileStats,
   IPathModule,
   ISystemInfo,
   ShellStrings,
@@ -58,6 +59,12 @@ declare global {
   function fsRm(path: string): void;
   function fsRename(from: string, to: string): void;
   function fsSymlink(target: string, linkPath: string): void;
+  function fsChmod(path: string, mode: number): void;
+  function fsCopyFile(source: string, destination: string): void;
+  function fsRmdir(path: string): void;
+  function fsReadlink(path: string): string;
+  function fsStat(path: string): IFileStats;
+  function fsLstat(path: string): IFileStats;
   function shellExec(toolName: string, command: string, cwd: string, quiet: boolean, noThrow: boolean): IShellOutput;
   function resolveGlob(pattern: string, baseDir: string): string;
   function replaceInFile(
@@ -325,6 +332,27 @@ function createToolContext(toolName: string, eventContext: Record<string, unknow
     symlink(target: string, linkPath: string) {
       fsSymlink(target, linkPath);
       return Promise.resolve();
+    },
+    chmod(p: string, mode: number) {
+      fsChmod(p, mode);
+      return Promise.resolve();
+    },
+    copyFile(source: string, destination: string) {
+      fsCopyFile(source, destination);
+      return Promise.resolve();
+    },
+    rmdir(p: string) {
+      fsRmdir(p);
+      return Promise.resolve();
+    },
+    readlink(p: string) {
+      return Promise.resolve(fsReadlink(p));
+    },
+    stat(p: string) {
+      return Promise.resolve(fsStat(p));
+    },
+    lstat(p: string) {
+      return Promise.resolve(fsLstat(p));
     },
   };
 

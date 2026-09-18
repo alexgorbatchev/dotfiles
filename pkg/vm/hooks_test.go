@@ -378,3 +378,225 @@ func TestRunHook_ExtractResultAbsentWithoutExtraction(t *testing.T) {
 		t.Errorf("typeof extractResult = %q, want \"undefined\"", captured)
 	}
 }
+
+// runHookOnFS runs a hook against a file system the caller prepared and inspects
+// afterwards, which is what a hook placing a binary actually does.
+func runHookOnFS(t *testing.T, memFS fs.FS, tool *config.ToolConfig, hookCtx HookContext) error {
+	t.Helper()
+	return RunHook(
+		context.Background(),
+		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		memFS,
+		exec.NewMockRunner(),
+		tool,
+		hookTestProjectConfig(t),
+		HookAfterExtract,
+		hookCtx,
+		Target{},
+	)
+}
+
+// Placing a binary is the job an after-extract hook exists for, and it takes a copy
+// and a mode change. Neither was possible without shelling out.
+func TestRunHook_FileSystemCopiesAndChmods(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-extract", async ({ fileSystem, extractDir }) => {
+				await fileSystem.copyFile(extractDir + "/tool", "/opt/bin/tool");
+				await fileSystem.chmod("/opt/bin/tool", 0o755);
+			}),
+		);
+	`, HookAfterExtract)
+
+	memFS := fs.NewMemFS()
+	if err := memFS.MkdirAll("/extracted", 0755); err != nil {
+		t.Fatalf("preparing the tree: %v", err)
+	}
+	if err := memFS.WriteFile("/extracted/tool", []byte("#!/bin/sh\n"), 0644); err != nil {
+		t.Fatalf("preparing the payload: %v", err)
+	}
+	if err := memFS.MkdirAll("/opt/bin", 0755); err != nil {
+		t.Fatalf("preparing the destination: %v", err)
+	}
+
+	if err := runHookOnFS(t, memFS, tool, HookContext{ExtractDir: "/extracted"}); err != nil {
+		t.Fatalf("RunHook returned error: %v", err)
+	}
+
+	data, err := memFS.ReadFile("/opt/bin/tool")
+	if err != nil {
+		t.Fatalf("copyFile placed nothing: %v", err)
+	}
+	if string(data) != "#!/bin/sh\n" {
+		t.Errorf("copied contents = %q", string(data))
+	}
+	info, err := memFS.Stat("/opt/bin/tool")
+	if err != nil {
+		t.Fatalf("stat of the copy: %v", err)
+	}
+	if info.Mode().Perm() != 0755 {
+		t.Errorf("mode after chmod = %o, want 755", info.Mode().Perm())
+	}
+}
+
+// Inspecting a path: stat follows a link to what it points at, lstat describes the
+// link itself, and readlink reports where it goes.
+func TestRunHook_FileSystemInspectsPaths(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-extract", async ({ fileSystem }) => {
+				const stat = await fileSystem.stat("/link");
+				const lstat = await fileSystem.lstat("/link");
+				const dir = await fileSystem.stat("/dir");
+				await fileSystem.writeFile(
+					"/captured",
+					JSON.stringify({
+						stat: stat,
+						lstat: lstat,
+						dir: dir,
+						target: await fileSystem.readlink("/link"),
+					}),
+				);
+			}),
+		);
+	`, HookAfterExtract)
+
+	memFS := fs.NewMemFS()
+	if err := memFS.MkdirAll("/dir", 0755); err != nil {
+		t.Fatalf("preparing the directory: %v", err)
+	}
+	if err := memFS.WriteFile("/target", []byte("abcde"), 0640); err != nil {
+		t.Fatalf("preparing the target: %v", err)
+	}
+	if err := memFS.Symlink("/target", "/link"); err != nil {
+		t.Fatalf("preparing the link: %v", err)
+	}
+
+	if err := runHookOnFS(t, memFS, tool, HookContext{ExtractDir: "/dir"}); err != nil {
+		t.Fatalf("RunHook returned error: %v", err)
+	}
+
+	raw, err := memFS.ReadFile("/captured")
+	if err != nil {
+		t.Fatalf("the hook wrote nothing: %v", err)
+	}
+	var got struct {
+		Stat   fileStatsJSON `json:"stat"`
+		Lstat  fileStatsJSON `json:"lstat"`
+		Dir    fileStatsJSON `json:"dir"`
+		Target string        `json:"target"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("hook wrote %q, which is not JSON: %v", raw, err)
+	}
+
+	if !got.Stat.IsFile || got.Stat.IsSymbolicLink {
+		t.Errorf("stat of a link = %+v, want the file it points at", got.Stat)
+	}
+	if got.Stat.Size != 5 {
+		t.Errorf("stat size = %d, want 5", got.Stat.Size)
+	}
+	if got.Stat.Mode != 0640 {
+		t.Errorf("stat mode = %o, want 640", got.Stat.Mode)
+	}
+	if !got.Lstat.IsSymbolicLink || got.Lstat.IsFile {
+		t.Errorf("lstat of a link = %+v, want the link itself", got.Lstat)
+	}
+	if !got.Dir.IsDirectory || got.Dir.IsFile {
+		t.Errorf("stat of a directory = %+v", got.Dir)
+	}
+	if got.Target != "/target" {
+		t.Errorf("readlink = %q, want %q", got.Target, "/target")
+	}
+}
+
+// fileStatsJSON is the shape stat and lstat report to a hook.
+type fileStatsJSON struct {
+	IsFile         bool  `json:"isFile"`
+	IsDirectory    bool  `json:"isDirectory"`
+	IsSymbolicLink bool  `json:"isSymbolicLink"`
+	Mode           int   `json:"mode"`
+	Size           int64 `json:"size"`
+}
+
+// rmdir removes an empty directory and nothing else: that is what distinguishes it
+// from rm, which takes the whole tree with it.
+func TestRunHook_FileSystemRmdir(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-extract", async ({ fileSystem }) => {
+				await fileSystem.rmdir("/empty");
+				let refused = "";
+				try {
+					await fileSystem.rmdir("/full");
+				} catch (error) {
+					refused = String(error);
+				}
+				await fileSystem.writeFile("/captured", refused);
+			}),
+		);
+	`, HookAfterExtract)
+
+	memFS := fs.NewMemFS()
+	if err := memFS.MkdirAll("/empty", 0755); err != nil {
+		t.Fatalf("preparing the empty directory: %v", err)
+	}
+	if err := memFS.MkdirAll("/full", 0755); err != nil {
+		t.Fatalf("preparing the populated directory: %v", err)
+	}
+	if err := memFS.WriteFile("/full/keep", []byte("x"), 0644); err != nil {
+		t.Fatalf("preparing the populated directory: %v", err)
+	}
+
+	if err := runHookOnFS(t, memFS, tool, HookContext{ExtractDir: "/"}); err != nil {
+		t.Fatalf("RunHook returned error: %v", err)
+	}
+
+	if exists, _ := memFS.Exists("/empty"); exists {
+		t.Errorf("rmdir left the empty directory behind")
+	}
+	if exists, _ := memFS.Exists("/full/keep"); !exists {
+		t.Errorf("rmdir removed a populated directory")
+	}
+	refused, err := memFS.ReadFile("/captured")
+	if err != nil {
+		t.Fatalf("the hook wrote nothing: %v", err)
+	}
+	if !strings.Contains(string(refused), "rmdir") {
+		t.Errorf("rmdir of a populated directory reported %q, want it to name the operation", refused)
+	}
+}
+
+// Inspecting a path that is not there is an error the hook can catch, not a made-up
+// answer that reads as "an empty file".
+func TestRunHook_FileSystemStatReportsMissingPath(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-extract", async ({ fileSystem }) => {
+				let message = "no error";
+				try {
+					await fileSystem.stat("/absent");
+				} catch (error) {
+					message = String(error);
+				}
+				await fileSystem.writeFile("/captured", message);
+			}),
+		);
+	`, HookAfterExtract)
+
+	memFS := fs.NewMemFS()
+	if err := runHookOnFS(t, memFS, tool, HookContext{ExtractDir: "/"}); err != nil {
+		t.Fatalf("RunHook returned error: %v", err)
+	}
+	captured, err := memFS.ReadFile("/captured")
+	if err != nil {
+		t.Fatalf("the hook wrote nothing: %v", err)
+	}
+	if !strings.Contains(string(captured), "/absent") {
+		t.Errorf("stat of a missing path reported %q, want it to name the path", captured)
+	}
+}

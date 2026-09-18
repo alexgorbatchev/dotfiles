@@ -197,6 +197,36 @@ func RegisterContextBindings(vm *goja.Runtime, log *logger.Logger, fsys fs.FS, h
 	_ = vm.Set("fsSymlink", func(target string, linkPath string) {
 		throwOnFSError(vm, "symlink", linkPath, symlinkOrMissingFS(fsys, target, linkPath))
 	})
+	_ = vm.Set("fsChmod", func(path string, mode int) {
+		throwOnFSError(vm, "chmod", path, chmodOrMissingFS(fsys, path, os.FileMode(mode)))
+	})
+	_ = vm.Set("fsCopyFile", func(source string, destination string) {
+		throwOnFSError(vm, "copyFile", source, copyFileOrMissingFS(fsys, source, destination))
+	})
+	// rmdir removes a directory and refuses anything else, which is what separates it
+	// from rm: rm takes the whole tree with it, rmdir only retires a directory the
+	// caller believes is already empty.
+	_ = vm.Set("fsRmdir", func(path string) {
+		throwOnFSError(vm, "rmdir", path, rmdirOrMissingFS(fsys, path))
+	})
+	_ = vm.Set("fsReadlink", func(path string) string {
+		if fsys == nil {
+			throwOnFSError(vm, "readlink", path, errNoFileSystem)
+		}
+		target, err := fsys.Readlink(path)
+		throwOnFSError(vm, "readlink", path, err)
+		return target
+	})
+
+	// stat follows a symbolic link to what it points at; lstat describes the link
+	// itself. Both report a missing path as an error rather than as a zeroed record,
+	// which a hook would read as "an empty file that is there".
+	_ = vm.Set("fsStat", func(path string) goja.Value {
+		return fileStats(vm, fsys, "stat", path, statOrMissingFS)
+	})
+	_ = vm.Set("fsLstat", func(path string) goja.Value {
+		return fileStats(vm, fsys, "lstat", path, lstatOrMissingFS)
+	})
 
 	// Resolving a glob belongs in Go, where the file system is. A pattern is required
 	// to identify exactly one path: matching nothing, or matching several, means the
@@ -291,6 +321,76 @@ func symlinkOrMissingFS(fsys fs.FS, target, linkPath string) error {
 		return errNoFileSystem
 	}
 	return fsys.Symlink(target, linkPath)
+}
+
+func chmodOrMissingFS(fsys fs.FS, path string, mode os.FileMode) error {
+	if fsys == nil {
+		return errNoFileSystem
+	}
+	return fsys.Chmod(path, mode)
+}
+
+func copyFileOrMissingFS(fsys fs.FS, source, destination string) error {
+	if fsys == nil {
+		return errNoFileSystem
+	}
+	return fsys.CopyFile(source, destination)
+}
+
+// rmdirOrMissingFS retires an empty directory. The type is checked first because
+// fs.Remove would happily delete a file, and a call named rmdir that removes a file is
+// doing something the author did not ask for.
+func rmdirOrMissingFS(fsys fs.FS, path string) error {
+	if fsys == nil {
+		return errNoFileSystem
+	}
+	info, err := fsys.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%q is not a directory", path)
+	}
+	return fsys.Remove(path)
+}
+
+func statOrMissingFS(fsys fs.FS, path string) (os.FileInfo, error) {
+	if fsys == nil {
+		return nil, errNoFileSystem
+	}
+	return fsys.Stat(path)
+}
+
+func lstatOrMissingFS(fsys fs.FS, path string) (os.FileInfo, error) {
+	if fsys == nil {
+		return nil, errNoFileSystem
+	}
+	return fsys.Lstat(path)
+}
+
+// fileStats describes a path for a hook.
+//
+// mode carries the permission bits alone. Go encodes the file type in the high bits of
+// os.FileMode with values of its own, which are not the POSIX st_mode constants a
+// configuration author would compare against, so the type is reported through the
+// three booleans instead and mode stays the number chmod takes.
+func fileStats(
+	vm *goja.Runtime,
+	fsys fs.FS,
+	op string,
+	path string,
+	describe func(fs.FS, string) (os.FileInfo, error),
+) goja.Value {
+	info, err := describe(fsys, path)
+	throwOnFSError(vm, op, path, err)
+
+	stats := vm.NewObject()
+	_ = stats.Set("isFile", info.Mode().IsRegular())
+	_ = stats.Set("isDirectory", info.IsDir())
+	_ = stats.Set("isSymbolicLink", info.Mode()&os.ModeSymlink != 0)
+	_ = stats.Set("mode", int(info.Mode().Perm()))
+	_ = stats.Set("size", info.Size())
+	return stats
 }
 
 // throwOnFSError surfaces a failed file system call as a JavaScript exception, so an
