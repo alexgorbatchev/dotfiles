@@ -58,7 +58,11 @@ A configuration may set nine top-level keys: the eight sections below and the
 "unknown property" error that lists the ones that are accepted, so a misspelling is
 never silently ignored.
 
-Every section is optional, and so is every key inside it.
+Every section is optional, and so is every key inside it: each one has a default, and a
+configuration that sets nothing keeps every generated file beside the configuration file
+itself. A setting that ends up with no value after the defaults are applied -- `homeDir`
+on a machine with no discoverable home directory, for instance -- aborts the load and
+names the setting.
 
 ### paths
 
@@ -68,7 +72,7 @@ may be used inside the other values.
 | Key               | Default                                                      | Effect                                                                     |
 | ----------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
 | `homeDir`         | the account's home directory                                 | What `~` expands to                                                        |
-| `dotfilesDir`     | none -- paths below become relative to the working directory | Root of the dotfiles repository; set it                                    |
+| `dotfilesDir`     | `<config file directory>`                                    | Root of the dotfiles repository; everything below hangs off it             |
 | `generatedDir`    | `<dotfilesDir>/.generated`                                   | Everything the CLI writes, including the registry database                 |
 | `targetDir`       | `<generatedDir>/bin`                                         | Where shims are written; this is the directory that has to be on PATH      |
 | `binariesDir`     | `<generatedDir>/binaries`                                    | Installed tools, one versioned directory and a `current` link per tool     |

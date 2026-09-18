@@ -192,7 +192,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		projCfg.Cargo.GithubRelease.Host = mockHost
 	}
 
-	projCfg.ResolvePlaceholders()
+	projCfg.ResolvePlaceholders(filepath.Dir(absConfigPath))
 
 	if rfs, ok := fsys.(*fs.ResolvedFS); ok {
 		rfs.SetHomeDir(projCfg.Paths.HomeDir)

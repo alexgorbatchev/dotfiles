@@ -1330,3 +1330,93 @@ func TestLoaderToolContextSystemInfo(t *testing.T) {
 		t.Errorf("systemInfo.os = %q, want it to stay populated", parts[2])
 	}
 }
+
+// TestLoadTypeScriptConfigPathDefaults pins where a configuration that leaves paths
+// out puts the files the CLI writes. Every paths setting has a default, and the one
+// the rest hang off, dotfilesDir, defaults to the directory of the configuration
+// file, never to the working directory of whatever command triggered the load.
+func TestLoadTypeScriptConfigPathDefaults(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+
+	tests := []struct {
+		name          string
+		configContent string
+	}{
+		{
+			name:          "configuration setting nothing at all",
+			configContent: "import { defineConfig } from \"@alexgorbatchev/dotfiles\";\nexport default defineConfig(() => ({}));",
+		},
+		{
+			// Defaulting is per key: a configuration naming one paths setting still
+			// gets the default of every setting it left out, dotfilesDir included.
+			name:          "configuration setting only keys that have defaults",
+			configContent: "import { defineConfig } from \"@alexgorbatchev/dotfiles\";\nexport default defineConfig(() => ({ paths: { toolConfigsDir: \"./tools\" }, system: { sudoPrompt: \"password:\" } }));",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+			if err := os.WriteFile(configPath, []byte(tt.configContent), 0644); err != nil {
+				t.Fatalf("writing configuration: %v", err)
+			}
+
+			projCfg, _, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
+			if err != nil {
+				t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+			}
+
+			if projCfg.Paths.DotfilesDir != tmpDir {
+				t.Errorf("dotfilesDir = %q, want the configuration file's directory %q", projCfg.Paths.DotfilesDir, tmpDir)
+			}
+			wantGenerated := filepath.Join(tmpDir, ".generated")
+			if projCfg.Paths.GeneratedDir != wantGenerated {
+				t.Errorf("generatedDir = %q, want %q", projCfg.Paths.GeneratedDir, wantGenerated)
+			}
+			for _, derived := range []struct {
+				name string
+				got  string
+				want string
+			}{
+				{"targetDir", projCfg.Paths.TargetDir, filepath.Join(wantGenerated, "bin")},
+				{"binariesDir", projCfg.Paths.BinariesDir, filepath.Join(wantGenerated, "binaries")},
+				{"shellScriptsDir", projCfg.Paths.ShellScriptsDir, filepath.Join(wantGenerated, "shell-scripts")},
+			} {
+				if derived.got != derived.want {
+					t.Errorf("%s = %q, want %q", derived.name, derived.got, derived.want)
+				}
+			}
+			if projCfg.Paths.HomeDir == "" {
+				t.Error("homeDir = \"\", want the account's home directory")
+			}
+		})
+	}
+}
+
+// TestLoadTypeScriptConfigRejectsUnresolvablePath proves the loader validates the
+// configuration it finished assembling. paths.homeDir is the one anchor path whose
+// default comes from the environment rather than from another setting, so emptying
+// every variable os.UserHomeDir consults leaves it with no value to resolve to.
+func TestLoadTypeScriptConfigRejectsUnresolvablePath(t *testing.T) {
+	// One variable per platform family, so the subject is exercised wherever the
+	// test runs instead of only on the platform it was written on.
+	for _, homeVar := range []string{"HOME", "USERPROFILE", "home"} {
+		t.Setenv(homeVar, "")
+	}
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	configContent := "import { defineConfig } from \"@alexgorbatchev/dotfiles\";\nexport default defineConfig(() => ({}));"
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("writing configuration: %v", err)
+	}
+
+	_, _, err := LoadTypeScriptConfig(logger.New(logger.Config{Writer: io.Discard}), fs.NewMemFS(), configPath)
+	if err == nil {
+		t.Fatal("expected the load to fail, got nil")
+	}
+	if !strings.Contains(err.Error(), "paths.homeDir is required") {
+		t.Errorf("error = %v, want it to name paths.homeDir", err)
+	}
+}

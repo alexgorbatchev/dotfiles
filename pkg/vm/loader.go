@@ -128,7 +128,7 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	// Resolve path placeholders and defaults once, here, so tool discovery, the values
 	// handed to the JS VM, and the config the caller receives all agree instead of each
 	// re-deriving them from the raw config.
-	projCfg.ResolvePlaceholders()
+	projCfg.ResolvePlaceholders(configFileDir)
 
 	// Step 2: Resolve the ToolConfigsDir(s) and scan for *.tool.ts files
 	resolvedDirs := ResolveToolConfigsDirs(fsys, projCfg, configFileDir)
@@ -176,8 +176,15 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 		return nil, nil, fmt.Errorf("evaluating unified config bundle: %w", err)
 	}
 
+	// The configuration is only complete here: placeholders are resolved, defaults are
+	// filled in and the project-level platform overrides have been folded in, so this
+	// is the first point at which a required setting can be reported as missing rather
+	// than silently resolved against the working directory.
 	if fullConfig.ProjectConfig != nil {
-		fullConfig.ProjectConfig.ResolvePlaceholders()
+		fullConfig.ProjectConfig.ResolvePlaceholders(configFileDir)
+		if err := fullConfig.ProjectConfig.Validate(); err != nil {
+			return nil, nil, fmt.Errorf("invalid configuration in %q: %w", filepath.Base(absConfigPath), err)
+		}
 	}
 
 	return fullConfig.ProjectConfig, fullConfig.ToolConfigs, nil

@@ -504,7 +504,7 @@ func TestFindTool(t *testing.T) {
 func TestProjectConfig_ResolvePlaceholders(t *testing.T) {
 	t.Run("nil config", func(t *testing.T) {
 		var cfg *ProjectConfig
-		cfg.ResolvePlaceholders() // should not panic
+		cfg.ResolvePlaceholders("") // should not panic
 	})
 
 	t.Run("resolves placeholders across all path fields", func(t *testing.T) {
@@ -520,7 +520,7 @@ func TestProjectConfig_ResolvePlaceholders(t *testing.T) {
 			},
 		}
 
-		cfg.ResolvePlaceholders()
+		cfg.ResolvePlaceholders("")
 
 		if cfg.Paths.HomeDir != "/home/user/.dotfiles/.generated/home" {
 			t.Errorf("HomeDir = %q", cfg.Paths.HomeDir)
@@ -548,7 +548,7 @@ func TestProjectConfig_ResolvePlaceholders(t *testing.T) {
 			},
 		}
 
-		cfg.ResolvePlaceholders()
+		cfg.ResolvePlaceholders("")
 
 		dirs := cfg.Paths.GetToolConfigsDirs()
 		if len(dirs) != 2 || dirs[0] != "/home/user/.dotfiles/.generated/tools-1" || dirs[1] != "/home/user/.dotfiles/.generated/tools-2" {

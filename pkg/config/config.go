@@ -145,7 +145,11 @@ type ProjectConfig struct {
 	Features   FeaturesConfig   `json:"features" yaml:"features"`
 }
 
-// Validate checks the consistency and validity of ProjectConfig properties.
+// Validate reports whether the three anchor paths every other path is derived from
+// hold a value. It runs at the end of a load, after ResolvePlaceholders has applied
+// the defaults, so it fails only for a setting that has neither a value in the
+// configuration nor a default the environment could supply: paths.homeDir when no
+// home directory can be discovered, for instance.
 func (p *ProjectConfig) Validate() error {
 	if p.Paths.HomeDir == "" {
 		return fmt.Errorf("paths.homeDir is required")
@@ -159,8 +163,13 @@ func (p *ProjectConfig) Validate() error {
 	return nil
 }
 
-// ResolvePlaceholders resolves path template variables in ProjectConfig path fields.
-func (p *ProjectConfig) ResolvePlaceholders() {
+// ResolvePlaceholders fills in the default of every path setting that the
+// configuration left out and resolves the path template variables the remaining
+// ones use. configFileDir is the directory holding the configuration file, which
+// is what paths.dotfilesDir defaults to: a configuration that sets no paths keeps
+// everything the CLI writes beside the file that declares it instead of in
+// whatever directory the command happened to run from.
+func (p *ProjectConfig) ResolvePlaceholders(configFileDir string) {
 	if p == nil {
 		return
 	}
@@ -168,6 +177,9 @@ func (p *ProjectConfig) ResolvePlaceholders() {
 		if uHome, err := os.UserHomeDir(); err == nil {
 			p.Paths.HomeDir = uHome
 		}
+	}
+	if p.Paths.DotfilesDir == "" {
+		p.Paths.DotfilesDir = configFileDir
 	}
 	genDir := p.Paths.GeneratedDir
 	if genDir == "" {
