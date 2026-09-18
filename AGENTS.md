@@ -10,8 +10,10 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Format & autofix: `just fix` (or `bun fix`)
 - Lint: `just lint` (or `bun lint`)
 - Typecheck: `just typecheck` (or `bun typecheck`)
-- Go unit tests: `go test ./pkg/... ./cmd/...`
-- Go E2E tests: `go test -count=1 -p 1 ./tests/e2e/...`
+- Go unit tests: `just test-unit` (or `go test ./pkg/... ./cmd/...`)
+- Go E2E tests: `just test-e2e` (or `go test -count=1 -p 1 ./tests/e2e/...`)
+- TypeScript tests: `just test-ts` (or `bun test`)
+- All tests: `just test` (Go unit, Go E2E and TypeScript)
 - Full check: `just check` (or `bun check`)
 - Build / compile binaries: `just compile` (or `bun compile`)
 - CLI against fixture project: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts generate`

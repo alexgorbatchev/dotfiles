@@ -14,10 +14,8 @@ run-ai *args="generate":
 # Full validation check (lint + typecheck + tests)
 check: lint typecheck unused test
 
-# Run Go unit and E2E tests
-test:
-    go test ./pkg/... ./cmd/...
-    go test -count=1 -p 1 ./tests/e2e/...
+# Run Go unit, Go E2E and TypeScript tests
+test: test-unit test-e2e test-ts
 
 # Run Go unit tests only
 test-unit:
@@ -26,6 +24,10 @@ test-unit:
 # Run Go E2E tests only
 test-e2e:
     go test -count=1 -p 1 ./tests/e2e/...
+
+# Run TypeScript tests only
+test-ts:
+    bun test
 
 # Format and lint check
 lint:
