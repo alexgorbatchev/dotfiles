@@ -324,6 +324,17 @@ type ErroringFS struct {
 	errOnExists    bool
 	errOnReadFile  bool
 	errOnWriteFile bool
+	// failChmodPerm makes Chmod fail when asked for exactly this mode, which
+	// distinguishes the unlock (0644) from the relock (original mode) of a read-only
+	// profile. Zero disables the failure.
+	failChmodPerm os.FileMode
+}
+
+func (e *ErroringFS) Chmod(path string, perm os.FileMode) error {
+	if e.failChmodPerm != 0 && perm == e.failChmodPerm {
+		return javaError("chmod error")
+	}
+	return e.FS.Chmod(path, perm)
 }
 
 func (e *ErroringFS) Exists(path string) (bool, error) {
@@ -413,6 +424,35 @@ func TestInjector_Errors(t *testing.T) {
 		})
 		if err == nil {
 			t.Fatal("expected error on WriteFile")
+		}
+	})
+
+	t.Run("chmod errors on a read-only profile are reported", func(t *testing.T) {
+		tests := []struct {
+			name          string
+			failChmodPerm os.FileMode
+			wantMessage   string
+		}{
+			{"unlock fails", 0644, "unlocking read-only profile"},
+			{"relock fails", 0444, "restoring profile permissions"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				mem := fs.NewMemFS()
+				_ = mem.MkdirAll("/home/user", 0755)
+				existing := "# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/old.sh\"\n"
+				_ = mem.WriteFile("/home/user/.zshrc", []byte(existing), 0444)
+
+				inj := NewInjector(&ErroringFS{FS: mem, failChmodPerm: tt.failChmodPerm})
+				_, err := inj.Inject(InjectOptions{
+					ProfilePath: "/home/user/.zshrc",
+					Shell:       "zsh",
+					ScriptPath:  "/home/user/.dotfiles/new.sh",
+				})
+				if err == nil || !strings.Contains(err.Error(), tt.wantMessage) {
+					t.Fatalf("Inject() error = %v, want it to mention %q", err, tt.wantMessage)
+				}
+			})
 		}
 	})
 
