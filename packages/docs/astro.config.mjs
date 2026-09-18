@@ -25,19 +25,19 @@ export default defineConfig({
         { label: "Tool Creation Guide", link: "/make-tool/" },
         {
           label: "Getting Started",
-          autogenerate: { directory: "getting-started" },
+          items: [{ autogenerate: { directory: "getting-started" } }],
         },
         {
           label: "Configuration",
-          autogenerate: { directory: "configuration" },
+          items: [{ autogenerate: { directory: "configuration" } }],
         },
         {
           label: "API Reference",
-          autogenerate: { directory: "api-reference" },
+          items: [{ autogenerate: { directory: "api-reference" } }],
         },
         {
           label: "Installation Methods",
-          autogenerate: { directory: "installation-methods" },
+          items: [{ autogenerate: { directory: "installation-methods" } }],
         },
       ],
     }),
