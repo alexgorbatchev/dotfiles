@@ -226,7 +226,7 @@ func TestSubcommands(t *testing.T) {
 		{
 			name:           "bin command target dir",
 			args:           []string{"bin"},
-			expectedOutput: []string{filepath.Join(tmpDir, "generated")},
+			expectedOutput: []string{"Target bin directory: " + filepath.Join(tmpDir, "target")},
 			expectedErr:    false,
 		},
 		{
@@ -2346,8 +2346,8 @@ func TestBinCommand_Resolution(t *testing.T) {
 		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
 			t.Fatalf("stdout is not a JSON object: %v\n%s", err, out.Stdout)
 		}
-		if got["binDir"] != binariesDir {
-			t.Fatalf("binDir = %q, want %q", got["binDir"], binariesDir)
+		if got["binDir"] != p.TargetDir {
+			t.Fatalf("binDir = %q, want the target dir %q", got["binDir"], p.TargetDir)
 		}
 	})
 
@@ -2362,6 +2362,39 @@ func TestBinCommand_Resolution(t *testing.T) {
 		}
 		if !slices.Contains(got, BinaryInfo{Binary: "ghb", Tool: "gh-tool"}) || !slices.Contains(got, BinaryInfo{Binary: "plain", Tool: "plain"}) {
 			t.Fatalf("binaries = %+v, want ghb (gh-tool) and plain (plain)", got)
+		}
+	})
+}
+
+// TestBinCommand_PrintsTargetDir runs the no-argument form against the on-disk
+// fixture, whose targetDir ({paths.generatedDir}/user-bin) and binariesDir
+// ({paths.generatedDir}/binaries) differ, so printing the wrong one is visible.
+func TestBinCommand_PrintsTargetDir(t *testing.T) {
+	absConfig := filepath.Join(findRepoRoot(), "test-project", "dotfiles.config.ts")
+	wantDir := filepath.Join(findRepoRoot(), "test-project", ".generated", "user-bin")
+
+	t.Run("human", func(t *testing.T) {
+		out, err := runCommand("-c", absConfig, "bin")
+		if err != nil {
+			t.Fatalf("bin: %v\n%s", err, out.Combined)
+		}
+		if out.Stdout != wantDir+"\n" {
+			t.Fatalf("stdout = %q, want the configured target dir %q", out.Stdout, wantDir)
+		}
+		mustContain(t, "stderr", out.Stderr, "Target bin directory: "+wantDir)
+	})
+
+	t.Run("json", func(t *testing.T) {
+		out, err := runCommand("-c", absConfig, "bin", "--json")
+		if err != nil {
+			t.Fatalf("bin --json: %v\n%s", err, out.Combined)
+		}
+		var got map[string]string
+		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
+			t.Fatalf("stdout is not a JSON object: %v\n%s", err, out.Stdout)
+		}
+		if got["binDir"] != wantDir {
+			t.Fatalf("binDir = %q, want the configured target dir %q", got["binDir"], wantDir)
 		}
 	})
 }

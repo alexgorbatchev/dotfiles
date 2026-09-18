@@ -108,10 +108,7 @@ var binCmd = &cobra.Command{
 			fmt.Fprint(cmd.OutOrStdout(), realPath)
 			return nil
 		} else {
-			binDir := services.ProjectConfig.Paths.BinariesDir
-			if binDir == "" {
-				binDir = services.ProjectConfig.Paths.TargetDir
-			}
+			binDir := services.ProjectConfig.Paths.TargetDir
 			log.Info(logger.Message(fmt.Sprintf("Target bin directory: %s", binDir)))
 			if binJSON {
 				return cliout.RenderJSON(cmd.OutOrStdout(), map[string]string{
