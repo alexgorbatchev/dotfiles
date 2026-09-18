@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,9 +17,12 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -1399,6 +1404,75 @@ func (p e2eProject) seedInstallation(t *testing.T, toolName, version, installPat
 	})
 }
 
+// mockRelease is what the release server publishes for one repository: the latest
+// tag and the executables packed into its single tar.gz asset.
+type mockRelease struct {
+	Tag      string
+	Binaries []string
+}
+
+// releaseAssetName is the one asset every mock release lists. Its name carries no
+// platform, so tools select it with assetPattern.
+const releaseAssetName = "tool.tar.gz"
+
+// newReleaseServer serves GitHub-style "latest release" metadata and release
+// assets for the given repositories and points the CLI at it through
+// MOCK_SERVER_PORT, which BootstrapServices maps onto the GitHub host.
+// Repositories not listed answer 500 so a failed update check can be exercised;
+// every other path answers 404. The asset is served from the same server with the
+// release's binaries inside, so the real GitHub installer can install it without
+// leaving the machine. Each release lists that asset because the GitHub installer
+// only caches releases that have one, and the cached branches are part of what
+// is tested.
+//
+// The GitHub installer keeps an in-process release cache keyed by repository, so
+// tests must use repository names that no other test uses.
+func newReleaseServer(t *testing.T, releases map[string]mockRelease) *httptest.Server {
+	t.Helper()
+	assets := make(map[string][]byte, len(releases))
+	for repo, rel := range releases {
+		files := make(map[string]string, len(rel.Binaries))
+		for _, bin := range rel.Binaries {
+			files[bin] = "#!/bin/sh\necho " + bin + " " + rel.Tag + "\n"
+		}
+		assets[repo] = createTestTarGz(t, files)
+	}
+
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		const apiPrefix, apiSuffix = "/repos/", "/releases/latest"
+		if strings.HasPrefix(r.URL.Path, apiPrefix) && strings.HasSuffix(r.URL.Path, apiSuffix) {
+			repo := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, apiPrefix), apiSuffix)
+			rel, ok := releases[repo]
+			if !ok {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{"tag_name": %q, "assets": [{"name": %q, "browser_download_url": "%s/download/%s/%s"}]}`,
+				rel.Tag, releaseAssetName, server.URL, repo, releaseAssetName)
+			return
+		}
+		const downloadPrefix, downloadSuffix = "/download/", "/" + releaseAssetName
+		if strings.HasPrefix(r.URL.Path, downloadPrefix) && strings.HasSuffix(r.URL.Path, downloadSuffix) {
+			repo := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, downloadPrefix), downloadSuffix)
+			if asset, ok := assets[repo]; ok {
+				w.Header().Set("Content-Type", "application/gzip")
+				_, _ = w.Write(asset)
+				return
+			}
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(server.Close)
+	u, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatalf("parsing test server URL: %v", err)
+	}
+	t.Setenv("MOCK_SERVER_PORT", u.Port())
+	return server
+}
+
 // TestUpdateCommands_UseBootstrappedInstallers guards which registry the update
 // commands resolve installers from. BootstrapServices gives tests mock installers
 // whose update check never leaves the process; a lookup in the global registry
@@ -1427,5 +1501,1054 @@ func TestUpdateCommands_UseBootstrappedInstallers(t *testing.T) {
 	}
 	if n := hits.Load(); n != 0 {
 		t.Fatalf("the release server was contacted %d time(s): the commands resolved the real GitHub installer instead of the bootstrapped mock", n)
+	}
+}
+
+// mustContain fails the test unless every want string appears in got.
+func mustContain(t *testing.T, label, got string, want ...string) {
+	t.Helper()
+	for _, w := range want {
+		if !strings.Contains(got, w) {
+			t.Fatalf("%s does not contain %q:\n%s", label, w, got)
+		}
+	}
+}
+
+// mustNotContain fails the test if any unwanted string appears in got.
+func mustNotContain(t *testing.T, label, got string, unwanted ...string) {
+	t.Helper()
+	for _, u := range unwanted {
+		if strings.Contains(got, u) {
+			t.Fatalf("%s must not contain %q:\n%s", label, u, got)
+		}
+	}
+}
+
+func TestConfigureInstallerForUpdate(t *testing.T) {
+	const destDir = "dest"
+
+	t.Run("github installer takes host, cache dir and ttl from the project", func(t *testing.T) {
+		projCfg := &config.ProjectConfig{}
+		projCfg.Github.Host = "http://github.test"
+		projCfg.Github.Cache.TTL = 1500
+		projCfg.Paths.GeneratedDir = filepath.Join("gen")
+
+		gh := &installer.GitHubInstaller{}
+		configureInstallerForUpdate(gh, destDir, projCfg)
+		if gh.BinDir != destDir {
+			t.Errorf("BinDir = %q, want %q", gh.BinDir, destDir)
+		}
+		if gh.BaseURL != "http://github.test" {
+			t.Errorf("BaseURL = %q, want the project github host", gh.BaseURL)
+		}
+		if want := filepath.Join("gen", "cache", "github-api"); gh.CacheDir != want {
+			t.Errorf("CacheDir = %q, want %q", gh.CacheDir, want)
+		}
+		if gh.CacheTTL != 1500*time.Millisecond {
+			t.Errorf("CacheTTL = %v, want 1.5s", gh.CacheTTL)
+		}
+	})
+
+	t.Run("github installer keeps defaults when the project sets none", func(t *testing.T) {
+		gh := &installer.GitHubInstaller{}
+		configureInstallerForUpdate(gh, destDir, &config.ProjectConfig{})
+		if gh.BaseURL != "" || gh.CacheDir != "" || gh.CacheTTL != 0 {
+			t.Errorf("unexpected overrides: BaseURL=%q CacheDir=%q CacheTTL=%v", gh.BaseURL, gh.CacheDir, gh.CacheTTL)
+		}
+	})
+
+	t.Run("gitea installer takes the cache dir from the project", func(t *testing.T) {
+		projCfg := &config.ProjectConfig{}
+		projCfg.Paths.GeneratedDir = "gen"
+		gitea := &installer.GiteaInstaller{}
+		configureInstallerForUpdate(gitea, destDir, projCfg)
+		if gitea.BinDir != destDir {
+			t.Errorf("BinDir = %q, want %q", gitea.BinDir, destDir)
+		}
+		if want := filepath.Join("gen", "cache", "gitea-api"); gitea.CacheDir != want {
+			t.Errorf("CacheDir = %q, want %q", gitea.CacheDir, want)
+		}
+	})
+
+	cargo := &installer.CargoInstaller{}
+	curlBinary := &installer.CurlBinaryInstaller{}
+	curlScript := &installer.CurlScriptInstaller{}
+	curlTar := &installer.CurlTarInstaller{}
+	dmg := &installer.DmgInstaller{}
+	manual := &installer.ManualInstaller{}
+	zshPlugin := &installer.ZshPluginInstaller{}
+	pkg := &installer.PkgInstaller{}
+
+	binDirOnly := []struct {
+		name   string
+		inst   installer.Installer
+		binDir func() string
+	}{
+		{"cargo", cargo, func() string { return cargo.BinDir }},
+		{"curl-binary", curlBinary, func() string { return curlBinary.BinDir }},
+		{"curl-script", curlScript, func() string { return curlScript.BinDir }},
+		{"curl-tar", curlTar, func() string { return curlTar.BinDir }},
+		{"dmg", dmg, func() string { return dmg.BinDir }},
+		{"manual", manual, func() string { return manual.BinDir }},
+		{"zsh-plugin", zshPlugin, func() string { return zshPlugin.BinDir }},
+		{"pkg", pkg, func() string { return pkg.BinDir }},
+	}
+	for _, tt := range binDirOnly {
+		t.Run(tt.name+" installer receives the destination dir", func(t *testing.T) {
+			configureInstallerForUpdate(tt.inst, destDir, &config.ProjectConfig{})
+			if got := tt.binDir(); got != destDir {
+				t.Errorf("BinDir = %q, want %q", got, destDir)
+			}
+		})
+	}
+}
+
+func TestUpdateCommand_InstalledTools(t *testing.T) {
+	// The update check and the reinstall must go through the real installers so the
+	// version comparison, the release cache and the download are what is tested.
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	const repoNewer, repoSame = "acme/update-newer", "acme/update-same"
+	newReleaseServer(t, map[string]mockRelease{
+		repoNewer: {Tag: "v9.9.9", Binaries: []string{"newer-bin", "unknown-current", "sudo-tool"}},
+		repoSame:  {Tag: "v0.1.0", Binaries: []string{"same"}},
+	})
+	manualBin := filepath.Join(t.TempDir(), "manual-bin")
+	if err := os.WriteFile(manualBin, []byte("#!/bin/sh\necho manual\n"), 0755); err != nil {
+		t.Fatalf("writing manual binary: %v", err)
+	}
+
+	p := newE2EProject(t, fmt.Sprintf(`
+		"newer": {"name": "newer", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[3]q}, "binaries": ["newer-bin"]},
+		"unknown-current": {"name": "unknown-current", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[3]q}},
+		"sudo-tool": {"name": "sudo-tool", "installationMethod": "github-release", "sudo": true, "installParams": {"repo": %[1]q, "assetPattern": %[3]q}},
+		"same": {"name": "same", "installationMethod": "github-release", "installParams": {"repo": %[2]q, "assetPattern": %[3]q}},
+		"manual-versioned": {"name": "manual-versioned", "installationMethod": "manual", "installParams": {"binaryPath": %[4]q}},
+		"manual-unversioned": {"name": "manual-unversioned", "installationMethod": "manual", "installParams": {"binaryPath": %[4]q}},
+		"bogus": {"name": "bogus", "installationMethod": "bogus-installer"},
+		"never-installed": {"name": "never-installed", "installationMethod": "manual"}
+	`, repoNewer, repoSame, releaseAssetName, manualBin))
+
+	installRoot := filepath.Join(p.Root, "installed")
+	for name, version := range map[string]string{
+		"newer":              "v0.1.0",
+		"unknown-current":    "unknown",
+		"sudo-tool":          "v0.1.0",
+		"same":               "v0.1.0",
+		"manual-versioned":   "v1.0.0",
+		"manual-unversioned": "",
+		"bogus":              "v1.0.0",
+	} {
+		dir := filepath.Join(installRoot, name)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("creating install dir: %v", err)
+		}
+		p.seedInstallation(t, name, version, dir)
+	}
+
+	t.Run("installs a newer release and records its version", func(t *testing.T) {
+		out, err := p.run("update", "newer")
+		if err != nil {
+			t.Fatalf("update newer: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "New version available: v0.1.0 -> v9.9.9", "Successfully updated to version v9.9.9")
+		if rec := p.installation(t, "newer"); rec == nil || rec.Version != "v9.9.9" {
+			t.Fatalf("installation record after update = %+v, want version v9.9.9", rec)
+		}
+	})
+
+	t.Run("reports an up to date tool from the cached release", func(t *testing.T) {
+		// The previous subtest fetched this repository, so the installer answers from its cache.
+		out, err := p.run("update", "newer")
+		if err != nil {
+			t.Fatalf("update newer again: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "Already up to date (v9.9.9, cached)")
+	})
+
+	t.Run("reports an up to date tool on a fresh fetch", func(t *testing.T) {
+		out, err := p.run("update", "same")
+		if err != nil {
+			t.Fatalf("update same: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "Already up to date (v0.1.0)")
+		mustNotContain(t, "stderr", out.Stderr, "cached")
+	})
+
+	t.Run("treats an unparsable installed version as outdated", func(t *testing.T) {
+		out, err := p.run("update", "unknown-current")
+		if err != nil {
+			t.Fatalf("update unknown-current: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "New version available: unknown -> v9.9.9")
+	})
+
+	t.Run("reports an installed tool without a version as up to date", func(t *testing.T) {
+		out, err := p.run("update", "manual-unversioned")
+		if err != nil {
+			t.Fatalf("update manual-unversioned: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "Already up to date")
+		mustNotContain(t, "stderr", out.Stderr, "Already up to date (")
+	})
+
+	t.Run("force reinstalls the recorded version when nothing is newer", func(t *testing.T) {
+		out, err := p.run("update", "--force", "manual-versioned")
+		if err != nil {
+			t.Fatalf("update --force manual-versioned: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "Force updating: reinstalling version v1.0.0", "Successfully updated to version v1.0.0")
+	})
+
+	t.Run("shim mode is silent", func(t *testing.T) {
+		out, err := p.run("update", "--shim-mode", "manual-versioned")
+		if err != nil {
+			t.Fatalf("update --shim-mode: %v\n%s", err, out.Combined)
+		}
+		if out.Combined != "" {
+			t.Fatalf("expected no output in shim mode, got:\n%s", out.Combined)
+		}
+	})
+
+	t.Run("a failed installation is an error", func(t *testing.T) {
+		out, err := p.run("update", "sudo-tool")
+		if err == nil {
+			t.Fatalf("expected update sudo-tool to fail:\n%s", out.Combined)
+		}
+		mustContain(t, "error", err.Error(), `updating tool "sudo-tool" to version v9.9.9 failed`, "does not support sudo")
+	})
+
+	t.Run("an unknown installer is an error", func(t *testing.T) {
+		_, err := p.run("update", "bogus")
+		if err == nil || !strings.Contains(err.Error(), `getting installer for "bogus"`) {
+			t.Fatalf("error = %v, want installer lookup failure", err)
+		}
+	})
+
+	t.Run("a tool that is not installed is an error", func(t *testing.T) {
+		_, err := p.run("update", "never-installed")
+		if err == nil || !strings.Contains(err.Error(), `tool "never-installed" is not installed`) {
+			t.Fatalf("error = %v, want not-installed failure", err)
+		}
+	})
+
+	t.Run("updating everything skips what it cannot handle and continues past failures", func(t *testing.T) {
+		out, err := p.run("update")
+		if err != nil {
+			t.Fatalf("update: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr,
+			"Checking all configured tools for updates...",
+			"[sudo-tool] Updating to version v9.9.9 failed",
+		)
+		mustNotContain(t, "stderr", out.Stderr, "[never-installed]", "[bogus]")
+	})
+
+	t.Run("force updating everything reinstalls each installed tool", func(t *testing.T) {
+		out, err := p.run("update", "--force")
+		if err != nil {
+			t.Fatalf("update --force: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr,
+			"[same] Force updating: reinstalling version v0.1.0",
+			"[manual-versioned] Force updating: reinstalling version v1.0.0",
+		)
+	})
+}
+
+func TestCheckUpdatesCommand_Statuses(t *testing.T) {
+	// Real installers, so the GitHub release lookup and its cache are what is tested.
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	const repoAvail, repoUpd, repoSame, repoFail = "acme/cu-avail", "acme/cu-upd", "acme/cu-same", "acme/cu-fail"
+	newReleaseServer(t, map[string]mockRelease{repoAvail: {Tag: "v9.9.9"}, repoUpd: {Tag: "v9.9.9"}, repoSame: {Tag: "v0.1.0"}})
+
+	p := newE2EProject(t, fmt.Sprintf(`
+		"avail": {"name": "avail", "installationMethod": "github-release", "installParams": {"repo": %q}},
+		"upd": {"name": "upd", "installationMethod": "github-release", "installParams": {"repo": %q}},
+		"same": {"name": "same", "version": "v0.1.0", "installationMethod": "github-release", "installParams": {"repo": %q}},
+		"fail": {"name": "fail", "installationMethod": "github-release", "installParams": {"repo": %q}},
+		"off": {"name": "off", "disabled": true, "installationMethod": "github-release", "installParams": {"repo": %q}},
+		"noinst": {"name": "noinst", "installationMethod": "bogus-installer"},
+		"shell-only": {"name": "shell-only"}
+	`, repoAvail, repoUpd, repoSame, repoFail, repoAvail))
+	p.seedInstallation(t, "upd", "v0.1.0", filepath.Join(p.Root, "installed", "upd"))
+
+	t.Run("human output on a fresh fetch", func(t *testing.T) {
+		out, err := p.run("check-updates")
+		if err != nil {
+			t.Fatalf("check-updates: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout,
+			"avail: available (v9.9.9)\n",
+			"upd: update available (v0.1.0 -> v9.9.9)\n",
+			"same: up to date (v0.1.0)\n",
+		)
+		mustNotContain(t, "stdout", out.Stdout, "off:", "noinst:", "shell-only:", "fail:")
+		mustContain(t, "stderr", out.Stderr,
+			`Installer "bogus-installer" not found`,
+			"[fail] Update check failed",
+			"[avail] Available: v9.9.9",
+			"[upd] Update available: v0.1.0 -> v9.9.9",
+			"[same] Up to date (v0.1.0)",
+		)
+	})
+
+	t.Run("human output from the cached releases", func(t *testing.T) {
+		out, err := p.run("check-updates")
+		if err != nil {
+			t.Fatalf("check-updates: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout, "same: up to date (v0.1.0, cached)\n")
+		mustContain(t, "stderr", out.Stderr, "[same] Up to date (v0.1.0, cached)")
+	})
+
+	t.Run("agent output", func(t *testing.T) {
+		t.Setenv("AGENT", "1")
+		out, err := p.run("check-updates")
+		if err != nil {
+			t.Fatalf("check-updates: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout,
+			"tool:avail current: latest:v9.9.9 update:true cached:true\n",
+			"tool:upd current:v0.1.0 latest:v9.9.9 update:true cached:true\n",
+			"tool:same current:v0.1.0 latest:v0.1.0 update:false cached:true\n",
+		)
+	})
+
+	t.Run("json output", func(t *testing.T) {
+		out, err := p.run("check-updates", "--json")
+		if err != nil {
+			t.Fatalf("check-updates --json: %v\n%s", err, out.Combined)
+		}
+		var results []ToolUpdateResult
+		if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
+			t.Fatalf("stdout is not a JSON array of results: %v\n%s", err, out.Stdout)
+		}
+		byName := map[string]ToolUpdateResult{}
+		for _, r := range results {
+			byName[r.ToolName] = r
+		}
+		if r := byName["upd"]; !r.HasUpdate || r.CurrentVersion != "v0.1.0" || r.LatestVersion != "v9.9.9" {
+			t.Errorf("upd result = %+v, want an update from v0.1.0 to v9.9.9", r)
+		}
+		if r := byName["same"]; r.HasUpdate || !r.Cached {
+			t.Errorf("same result = %+v, want no update from cache", r)
+		}
+		if _, ok := byName["off"]; ok {
+			t.Errorf("disabled tool must not be checked: %+v", results)
+		}
+	})
+}
+
+func TestLogCommand_OperationsAndStatus(t *testing.T) {
+	p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+
+	existing := filepath.Join(p.TargetDir, "bat")
+	if err := os.WriteFile(existing, []byte("bin!"), 0755); err != nil {
+		t.Fatalf("writing binary: %v", err)
+	}
+	missingLink := filepath.Join(p.TargetDir, "bat-link")
+	missingTarget := filepath.Join(p.Root, "nowhere", "bat")
+	size := int64(4)
+	p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+		if err := reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "bat",
+			OperationType: "write",
+			FilePath:      existing,
+			FileType:      "binary",
+			SizeBytes:     &size,
+			CreatedAt:     time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC).UnixMilli(),
+		}); err != nil {
+			return err
+		}
+		return reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "bat",
+			OperationType: "symlink",
+			FilePath:      missingLink,
+			TargetPath:    &missingTarget,
+			FileType:      "symlink",
+			CreatedAt:     time.Date(2024, 1, 3, 3, 4, 5, 0, time.UTC).UnixMilli(),
+		})
+	})
+
+	t.Run("history in human mode", func(t *testing.T) {
+		out, err := p.run("log")
+		if err != nil {
+			t.Fatalf("log: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout, "[bat] write", "(binary)", "[bat] symlink", "(symlink)")
+		mustContain(t, "stderr", out.Stderr, "Reading operation history and logs")
+	})
+
+	t.Run("history in agent mode", func(t *testing.T) {
+		t.Setenv("AGENT", "1")
+		out, err := p.run("log")
+		if err != nil {
+			t.Fatalf("log: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout, "tool:bat op:write path:", "type:binary", "tool:bat op:symlink path:")
+	})
+
+	t.Run("history as json", func(t *testing.T) {
+		out, err := p.run("log", "--json")
+		if err != nil {
+			t.Fatalf("log --json: %v\n%s", err, out.Combined)
+		}
+		var ops []map[string]any
+		if err := json.Unmarshal([]byte(out.Stdout), &ops); err != nil {
+			t.Fatalf("stdout is not a JSON array: %v\n%s", err, out.Stdout)
+		}
+		if len(ops) != 2 {
+			t.Fatalf("got %d operations, want the 2 seeded ones", len(ops))
+		}
+	})
+
+	t.Run("type filter", func(t *testing.T) {
+		out, err := p.run("log", "--type", "symlink")
+		if err != nil {
+			t.Fatalf("log --type symlink: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout, "[bat] symlink")
+		mustNotContain(t, "stdout", out.Stdout, "[bat] write")
+	})
+
+	t.Run("since filter keeps operations after the date", func(t *testing.T) {
+		out, err := p.run("log", "--since", "2024-01-03")
+		if err != nil {
+			t.Fatalf("log --since: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout, "[bat] symlink")
+		mustNotContain(t, "stdout", out.Stdout, "[bat] write")
+	})
+
+	t.Run("since filter with no matches falls back to disk logs", func(t *testing.T) {
+		out, err := p.run("log", "--since", "2030-01-01")
+		if err != nil {
+			t.Fatalf("log --since: %v\n%s", err, out.Combined)
+		}
+		if out.Stdout != "No log entries found.\n" {
+			t.Fatalf("stdout = %q, want the no-entries message", out.Stdout)
+		}
+	})
+
+	t.Run("an unparsable since date is ignored", func(t *testing.T) {
+		out, err := p.run("log", "--since", "yesterday")
+		if err != nil {
+			t.Fatalf("log --since yesterday: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout, "[bat] write", "[bat] symlink")
+	})
+
+	t.Run("status in human mode", func(t *testing.T) {
+		out, err := p.run("log", "--status")
+		if err != nil {
+			t.Fatalf("log --status: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout,
+			"File states for bat:\n",
+			"[OK] "+existing+" [binary] - exists (4 bytes)\n",
+			"[MISSING] "+missingLink+" [symlink] - MISSING\n",
+			"[MISSING ->] "+missingTarget+"\n",
+		)
+	})
+
+	t.Run("status for one tool", func(t *testing.T) {
+		out, err := p.run("log", "bat", "--status")
+		if err != nil {
+			t.Fatalf("log bat --status: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout, "File states for bat:\n")
+
+		out, err = p.run("log", "ghost", "--status")
+		if err != nil {
+			t.Fatalf("log ghost --status: %v\n%s", err, out.Combined)
+		}
+		if out.Stdout != "" {
+			t.Fatalf("stdout for a tool without states = %q, want empty", out.Stdout)
+		}
+	})
+
+	t.Run("status in agent mode", func(t *testing.T) {
+		t.Setenv("AGENT", "1")
+		out, err := p.run("log", "--status")
+		if err != nil {
+			t.Fatalf("log --status: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout,
+			"tool:bat path:"+existing+" type:binary exists:true size:4 target:\n",
+			"tool:bat path:"+missingLink+" type:symlink exists:false size:0 target:"+missingTarget+"\n",
+		)
+	})
+
+	t.Run("status as json", func(t *testing.T) {
+		out, err := p.run("log", "--status", "--json")
+		if err != nil {
+			t.Fatalf("log --status --json: %v\n%s", err, out.Combined)
+		}
+		var states []FileStateInfo
+		if err := json.Unmarshal([]byte(out.Stdout), &states); err != nil {
+			t.Fatalf("stdout is not a JSON array of states: %v\n%s", err, out.Stdout)
+		}
+		var sawExisting bool
+		for _, s := range states {
+			if s.FilePath == existing && s.Exists && s.SizeBytes != nil && *s.SizeBytes == 4 {
+				sawExisting = true
+			}
+		}
+		if !sawExisting {
+			t.Fatalf("states = %+v, want the existing binary with its size", states)
+		}
+	})
+}
+
+func TestLogCommand_DiskLogFallback(t *testing.T) {
+	p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+
+	t.Run("nothing recorded", func(t *testing.T) {
+		out, err := p.run("log")
+		if err != nil {
+			t.Fatalf("log: %v\n%s", err, out.Combined)
+		}
+		if out.Stdout != "No log entries found.\n" {
+			t.Fatalf("stdout = %q, want the no-entries message", out.Stdout)
+		}
+		out, err = p.run("log", "--json")
+		if err != nil {
+			t.Fatalf("log --json: %v\n%s", err, out.Combined)
+		}
+		if strings.TrimSpace(out.Stdout) != "[]" {
+			t.Fatalf("stdout = %q, want an empty JSON array", out.Stdout)
+		}
+	})
+
+	logPath := filepath.Join(p.GeneratedDir, "dotfiles.log")
+	if err := os.WriteFile(logPath, []byte("one\ntwo\nthree\n"), 0644); err != nil {
+		t.Fatalf("writing log: %v", err)
+	}
+
+	t.Run("tail of the generated log", func(t *testing.T) {
+		out, err := p.run("log", "--tail", "2")
+		if err != nil {
+			t.Fatalf("log --tail 2: %v\n%s", err, out.Combined)
+		}
+		if out.Stdout != "two\nthree\n" {
+			t.Fatalf("stdout = %q, want the last two lines", out.Stdout)
+		}
+		mustContain(t, "stderr", out.Stderr, "Reading log file: "+logPath)
+
+		out, err = p.run("log", "--tail", "0")
+		if err != nil {
+			t.Fatalf("log --tail 0: %v\n%s", err, out.Combined)
+		}
+		if out.Stdout != "one\ntwo\nthree\n" {
+			t.Fatalf("stdout = %q, want every line", out.Stdout)
+		}
+	})
+
+	t.Run("tail as json", func(t *testing.T) {
+		out, err := p.run("log", "--tail", "2", "--json")
+		if err != nil {
+			t.Fatalf("log --tail 2 --json: %v\n%s", err, out.Combined)
+		}
+		var lines []string
+		if err := json.Unmarshal([]byte(out.Stdout), &lines); err != nil {
+			t.Fatalf("stdout is not a JSON array: %v\n%s", err, out.Stdout)
+		}
+		if !slices.Equal(lines, []string{"two", "three"}) {
+			t.Fatalf("lines = %v, want the last two", lines)
+		}
+	})
+
+	t.Run("shim usage log wins over the generated log", func(t *testing.T) {
+		usagePath := filepath.Join(p.GeneratedDir, "usage", "shim-usage.log")
+		if err := os.MkdirAll(filepath.Dir(usagePath), 0755); err != nil {
+			t.Fatalf("creating usage dir: %v", err)
+		}
+		if err := os.WriteFile(usagePath, []byte("bat used\n"), 0644); err != nil {
+			t.Fatalf("writing usage log: %v", err)
+		}
+		out, err := p.run("log")
+		if err != nil {
+			t.Fatalf("log: %v\n%s", err, out.Combined)
+		}
+		if out.Stdout != "bat used\n" {
+			t.Fatalf("stdout = %q, want the shim usage log", out.Stdout)
+		}
+		mustContain(t, "stderr", out.Stderr, "Reading log file: "+usagePath)
+	})
+}
+
+func TestScaffoldCommand(t *testing.T) {
+	p := newE2EProject(t, "")
+	toolsDir := filepath.Join(p.Root, "tools")
+	p.writeConfig(t, "", fmt.Sprintf(`"toolConfigsDir": %q`, toolsDir), "")
+	dotfilesTool := filepath.Join(toolsDir, "dotfiles.tool.ts")
+
+	t.Run("creates the starter files", func(t *testing.T) {
+		out, err := p.run("scaffold")
+		if err != nil {
+			t.Fatalf("scaffold: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "Created "+dotfilesTool)
+		if _, err := os.Stat(dotfilesTool); err != nil {
+			t.Fatalf("expected %s to exist: %v", dotfilesTool, err)
+		}
+	})
+
+	t.Run("leaves existing files alone", func(t *testing.T) {
+		out, err := p.run("scaffold")
+		if err != nil {
+			t.Fatalf("scaffold: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, dotfilesTool+" already exists, skipping")
+	})
+
+	t.Run("force replaces an edited file and keeps a backup", func(t *testing.T) {
+		if err := os.WriteFile(dotfilesTool, []byte("// my edits\n"), 0644); err != nil {
+			t.Fatalf("editing file: %v", err)
+		}
+		out, err := p.run("scaffold", "--force")
+		if err != nil {
+			t.Fatalf("scaffold --force: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr,
+			"Overwrote "+dotfilesTool,
+			"Saved your previous dotfiles.tool.ts to "+dotfilesTool+".bak",
+		)
+		backup, err := os.ReadFile(dotfilesTool + ".bak")
+		if err != nil {
+			t.Fatalf("reading backup: %v", err)
+		}
+		if string(backup) != "// my edits\n" {
+			t.Fatalf("backup = %q, want the edited content", backup)
+		}
+	})
+
+	t.Run("dry run only reports", func(t *testing.T) {
+		fresh := newE2EProject(t, "")
+		freshTools := filepath.Join(fresh.Root, "tools")
+		fresh.writeConfig(t, "", fmt.Sprintf(`"toolConfigsDir": %q`, freshTools), "")
+		out, err := fresh.run("scaffold", "--dry-run")
+		if err != nil {
+			t.Fatalf("scaffold --dry-run: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "Would create "+filepath.Join(freshTools, "dotfiles.tool.ts"))
+		if _, err := os.Stat(freshTools); !os.IsNotExist(err) {
+			t.Fatalf("dry run must not create %s (stat err = %v)", freshTools, err)
+		}
+	})
+}
+
+func TestBootstrapServices_DependencyResolution(t *testing.T) {
+	writeConfig := func(t *testing.T, toolConfigs string) string {
+		t.Helper()
+		dir := t.TempDir()
+		content := fmt.Sprintf(`{"projectConfig": {"paths": {"homeDir": %q, "targetDir": %q, "generatedDir": %q}}, "toolConfigs": {%s}}`,
+			filepath.Join(dir, "home"), filepath.Join(dir, "target"), filepath.Join(dir, "generated"), toolConfigs)
+		path := filepath.Join(dir, "dotfiles.config.json")
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("writing config: %v", err)
+		}
+		return path
+	}
+
+	t.Run("a binary provided by two tools is ambiguous", func(t *testing.T) {
+		path := writeConfig(t, `
+			"alpha": {"name": "alpha", "binaries": ["shared"]},
+			"beta": {"name": "beta", "binaries": [{"name": "shared"}]},
+			"user": {"name": "user", "dependencies": ["shared"]}
+		`)
+		_, err := BootstrapServices(context.Background(), path)
+		if err == nil || !strings.Contains(err.Error(), `ambiguous dependency: binary "shared" is provided by multiple tools: alpha, beta`) {
+			t.Fatalf("error = %v, want the ambiguity report naming both providers", err)
+		}
+	})
+
+	t.Run("dependencies resolve to the providing tool", func(t *testing.T) {
+		path := writeConfig(t, `
+			"object-provider": {"name": "object-provider", "binaries": [{"name": "objbin"}]},
+			"curl-script--fnm": {"name": "curl-script--fnm"},
+			"user": {"name": "user", "dependencies": ["objbin", "fnm", "unknown-dep"]}
+		`)
+		services, err := BootstrapServices(context.Background(), path)
+		if err != nil {
+			t.Fatalf("BootstrapServices: %v", err)
+		}
+		defer services.DB.Close()
+		user := config.FindTool(services.ToolConfigs, "user")
+		if user == nil {
+			t.Fatal("user tool missing")
+		}
+		want := []string{"object-provider", "curl-script--fnm", "unknown-dep"}
+		if !slices.Equal(user.Dependencies, want) {
+			t.Fatalf("dependencies = %v, want %v", user.Dependencies, want)
+		}
+	})
+}
+
+func TestBootstrapServices_DiscoveryAndFailures(t *testing.T) {
+	t.Run("falls back to the repository root for the default config", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		configPath := filepath.Join(repoRoot, "dotfiles.config.json")
+		content := fmt.Sprintf(`{"projectConfig": {"paths": {"homeDir": %q, "generatedDir": %q}}, "toolConfigs": {}}`,
+			filepath.Join(repoRoot, "home"), filepath.Join(repoRoot, "generated"))
+		if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+			t.Fatalf("writing config: %v", err)
+		}
+		enterTempDir(t)
+		t.Setenv("DOTFILES_REPO_ROOT", repoRoot)
+
+		services, err := BootstrapServices(context.Background(), "")
+		if err != nil {
+			t.Fatalf("BootstrapServices: %v", err)
+		}
+		defer services.DB.Close()
+		if services.ConfigPath != configPath {
+			t.Fatalf("ConfigPath = %q, want %q", services.ConfigPath, configPath)
+		}
+	})
+
+	t.Run("malformed json is reported", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "dotfiles.config.json")
+		if err := os.WriteFile(path, []byte("{not json"), 0644); err != nil {
+			t.Fatalf("writing config: %v", err)
+		}
+		_, err := BootstrapServices(context.Background(), path)
+		if err == nil || !strings.Contains(err.Error(), "failed to unmarshal native JSON project config") {
+			t.Fatalf("error = %v, want unmarshal failure", err)
+		}
+	})
+
+	t.Run("an unusable registry location is reported", func(t *testing.T) {
+		// Other tests flip the dryRun global directly; a dry run would use an
+		// in-memory registry and never touch the unusable location.
+		previousDryRun := dryRun
+		dryRun = false
+		t.Cleanup(func() { dryRun = previousDryRun })
+		t.Setenv("DOTFILES_E2E_TEST", "true")
+		dir := t.TempDir()
+		blocker := filepath.Join(dir, "generated")
+		if err := os.WriteFile(blocker, []byte("not a directory"), 0644); err != nil {
+			t.Fatalf("writing blocker: %v", err)
+		}
+		path := filepath.Join(dir, "dotfiles.config.json")
+		content := fmt.Sprintf(`{"projectConfig": {"paths": {"homeDir": %q, "generatedDir": %q}}, "toolConfigs": {}}`, dir, blocker)
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("writing config: %v", err)
+		}
+		_, err := BootstrapServices(context.Background(), path)
+		if err == nil || !strings.Contains(err.Error(), "failed connecting to SQLite database") {
+			t.Fatalf("error = %v, want database connection failure", err)
+		}
+	})
+
+	t.Run("fileExists reports errors other than absence", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "file")
+		if err := os.WriteFile(file, []byte("x"), 0644); err != nil {
+			t.Fatalf("writing file: %v", err)
+		}
+		exists, err := fileExists(filepath.Join(file, "child"))
+		if exists || err == nil {
+			t.Fatalf("fileExists(child of a file) = (%v, %v), want (false, error)", exists, err)
+		}
+	})
+}
+
+func TestMockInstaller_ObjectBinaries(t *testing.T) {
+	memFS := fs.NewMemFS()
+	projCfg := &config.ProjectConfig{}
+	projCfg.Paths.BinariesDir = "/bins"
+	stagingDir := filepath.Join(projCfg.Paths.BinariesDir, "tool", "v1")
+	if err := memFS.MkdirAll(stagingDir, 0755); err != nil {
+		t.Fatalf("creating staging dir: %v", err)
+	}
+
+	m := &mockInstaller{name: "manual", fsys: memFS, projCfg: projCfg}
+	res, err := m.Install(context.Background(), &config.ToolConfig{
+		Name:     "tool",
+		Binaries: []interface{}{map[string]interface{}{"name": "objbin"}, map[string]interface{}{"pattern": "no-name"}},
+	})
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if !slices.Equal(res.Binaries, []string{"objbin"}) {
+		t.Fatalf("Binaries = %v, want the named object binary only", res.Binaries)
+	}
+	if exists, _ := memFS.Exists(filepath.Join(stagingDir, "objbin")); !exists {
+		t.Fatalf("expected the mock binary to be written into %s", stagingDir)
+	}
+}
+
+func TestBinCommand_Resolution(t *testing.T) {
+	p := newE2EProject(t, `
+		"gh-tool": {"name": "gh-tool", "installationMethod": "manual", "binaries": ["ghb"]},
+		"plain": {"name": "plain", "installationMethod": "manual"}
+	`)
+	binariesDir := filepath.Join(p.GeneratedDir, "binaries")
+	ghb := filepath.Join(binariesDir, "gh-tool", "current", "ghb")
+	if err := os.MkdirAll(filepath.Dir(ghb), 0755); err != nil {
+		t.Fatalf("creating binary dir: %v", err)
+	}
+	if err := os.WriteFile(ghb, []byte("bin"), 0755); err != nil {
+		t.Fatalf("writing binary: %v", err)
+	}
+	// The command resolves symlinks, and temp dirs may sit behind one.
+	wantPath, err := filepath.EvalSymlinks(ghb)
+	if err != nil {
+		t.Fatalf("resolving %s: %v", ghb, err)
+	}
+
+	for _, name := range []string{"ghb", "gh-tool"} {
+		t.Run("resolves "+name, func(t *testing.T) {
+			out, err := p.run("bin", name)
+			if err != nil {
+				t.Fatalf("bin %s: %v\n%s", name, err, out.Combined)
+			}
+			if out.Stdout != wantPath {
+				t.Fatalf("stdout = %q, want %q", out.Stdout, wantPath)
+			}
+		})
+	}
+
+	t.Run("resolves as json", func(t *testing.T) {
+		out, err := p.run("bin", "ghb", "--json")
+		if err != nil {
+			t.Fatalf("bin ghb --json: %v\n%s", err, out.Combined)
+		}
+		var got map[string]string
+		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
+			t.Fatalf("stdout is not a JSON object: %v\n%s", err, out.Stdout)
+		}
+		if got["tool"] != "gh-tool" || got["binary"] != "ghb" || got["path"] != wantPath {
+			t.Fatalf("json = %v, want tool gh-tool, binary ghb, path %s", got, wantPath)
+		}
+	})
+
+	t.Run("unknown name", func(t *testing.T) {
+		_, err := p.run("bin", "nope")
+		if err == nil || !strings.Contains(err.Error(), "binary or tool not found: nope") {
+			t.Fatalf("error = %v, want not-found failure", err)
+		}
+	})
+
+	t.Run("binary missing on disk", func(t *testing.T) {
+		_, err := p.run("bin", "plain")
+		if err == nil || !strings.Contains(err.Error(), "binary path does not exist") {
+			t.Fatalf("error = %v, want missing-path failure", err)
+		}
+	})
+
+	t.Run("bin dir as json", func(t *testing.T) {
+		out, err := p.run("bin", "--json")
+		if err != nil {
+			t.Fatalf("bin --json: %v\n%s", err, out.Combined)
+		}
+		var got map[string]string
+		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
+			t.Fatalf("stdout is not a JSON object: %v\n%s", err, out.Stdout)
+		}
+		if got["binDir"] != binariesDir {
+			t.Fatalf("binDir = %q, want %q", got["binDir"], binariesDir)
+		}
+	})
+
+	t.Run("list as json", func(t *testing.T) {
+		out, err := p.run("bin", "--list", "--json")
+		if err != nil {
+			t.Fatalf("bin --list --json: %v\n%s", err, out.Combined)
+		}
+		var got []BinaryInfo
+		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
+			t.Fatalf("stdout is not a JSON array: %v\n%s", err, out.Stdout)
+		}
+		if !slices.Contains(got, BinaryInfo{Binary: "ghb", Tool: "gh-tool"}) || !slices.Contains(got, BinaryInfo{Binary: "plain", Tool: "plain"}) {
+			t.Fatalf("binaries = %+v, want ghb (gh-tool) and plain (plain)", got)
+		}
+	})
+}
+
+func TestFeaturesCommand_Output(t *testing.T) {
+	p := newE2EProject(t, `
+		"gh": {"name": "gh", "installationMethod": "manual", "binaries": ["ghb", {"name": "ghc"}, {"pattern": "unnamed"}]},
+		"sh": {"name": "sh"}
+	`)
+
+	for _, args := range [][]string{{"features", "generate-readme"}, {"features", "--generate-readme"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			out, err := p.run(args...)
+			if err != nil {
+				t.Fatalf("%v: %v\n%s", args, err, out.Combined)
+			}
+			mustContain(t, "stdout", out.Stdout,
+				"# Configured Tools & Features",
+				"| **gh** | manual | `[ghb ghc]` | Managed via dotfiles |",
+				"| **sh** | shell | sh | Managed via dotfiles |",
+			)
+		})
+	}
+
+	t.Run("agent mode text", func(t *testing.T) {
+		t.Setenv("AGENT", "1")
+		out, err := p.run("features")
+		if err != nil {
+			t.Fatalf("features: %v\n%s", err, out.Combined)
+		}
+		if out.Stdout != "catalog.generate:false shellInstall:false\n" {
+			t.Fatalf("stdout = %q, want the compact feature line", out.Stdout)
+		}
+	})
+
+	t.Run("json", func(t *testing.T) {
+		out, err := p.run("features", "--json")
+		if err != nil {
+			t.Fatalf("features --json: %v\n%s", err, out.Combined)
+		}
+		if !json.Valid([]byte(out.Stdout)) {
+			t.Fatalf("stdout is not valid JSON:\n%s", out.Stdout)
+		}
+	})
+}
+
+func TestEnvCommand_Lifecycle(t *testing.T) {
+	p := newE2EProject(t, `"bat": {"name": "bat"}`)
+	enterTempDir(t)
+	// The command reports the working directory as the OS resolves it, which may
+	// differ from the temp dir path when it sits behind a symlink.
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getting working dir: %v", err)
+	}
+
+	out, err := p.run("env", "create", "venv")
+	if err != nil {
+		t.Fatalf("env create venv: %v\n%s", err, out.Combined)
+	}
+	mustContain(t, "stdout", out.Stdout, "Virtual environment created at: "+filepath.Join(cwd, "venv"))
+
+	_, err = p.run("env", "create", "venv")
+	if err == nil || !strings.Contains(err.Error(), "failed to create virtual environment") {
+		t.Fatalf("error = %v, want creation failure for an existing environment", err)
+	}
+
+	_, err = p.run("env", "delete", "missing")
+	if err == nil || !strings.Contains(err.Error(), `virtual environment "missing" not found in `+cwd) {
+		t.Fatalf("error = %v, want not-found failure", err)
+	}
+
+	// An absolute environment path is accepted as-is.
+	envDir := filepath.Join(cwd, "venv")
+	out, err = p.run("env", "delete", envDir)
+	if err != nil {
+		t.Fatalf("env delete %s: %v\n%s", envDir, err, out.Combined)
+	}
+	if out.Stdout != "Deleted virtual environment at "+envDir+"\n" {
+		t.Fatalf("stdout = %q, want the deletion confirmation", out.Stdout)
+	}
+	if _, err := os.Stat(envDir); !os.IsNotExist(err) {
+		t.Fatalf("expected %s to be removed (stat err = %v)", envDir, err)
+	}
+}
+
+func TestInstallCommand_ArgumentHandling(t *testing.T) {
+	p := newE2EProject(t, `
+		"bat": {"name": "bat", "installationMethod": "manual"},
+		"broken": {"name": "broken", "binaries": ["brk"]}
+	`)
+
+	t.Run("KEY=VALUE words are not tool names", func(t *testing.T) {
+		out, err := p.run("install", "FOO=1", "bat")
+		if err != nil {
+			t.Fatalf("install FOO=1 bat: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "[bat] Installing...")
+	})
+
+	t.Run("unknown tool", func(t *testing.T) {
+		_, err := p.run("install", "nope")
+		if err == nil || !strings.Contains(err.Error(), `tool "nope" not found in configuration`) {
+			t.Fatalf("error = %v, want not-found failure", err)
+		}
+	})
+
+	t.Run("a failed installation is logged once and the error silenced", func(t *testing.T) {
+		out, err := p.run("install", "broken")
+		if !errors.Is(err, ErrSilent) {
+			t.Fatalf("error = %v, want ErrSilent", err)
+		}
+		mustContain(t, "stderr", out.Stderr, "[broken] installation method not specified")
+	})
+
+	t.Run("force reinstalls", func(t *testing.T) {
+		out, err := p.run("install", "--force", "bat")
+		if err != nil {
+			t.Fatalf("install --force bat: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "[bat] Installing...")
+	})
+}
+
+func TestUninstallCommand_Errors(t *testing.T) {
+	t.Run("unknown tool", func(t *testing.T) {
+		p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+		_, err := p.run("uninstall", "nope")
+		if err == nil || !strings.Contains(err.Error(), `tool "nope" not found in configuration`) {
+			t.Fatalf("error = %v, want not-found failure", err)
+		}
+	})
+
+	t.Run("a dependency cycle stops uninstalling everything", func(t *testing.T) {
+		p := newE2EProject(t, `
+			"a": {"name": "a", "dependencies": ["b"]},
+			"b": {"name": "b", "dependencies": ["a"]}
+		`)
+		_, err := p.run("uninstall")
+		if err == nil || !strings.Contains(err.Error(), "dependency cycle detected among tools: a, b") {
+			t.Fatalf("error = %v, want cycle detection", err)
+		}
+	})
+}
+
+func TestCleanupCommand_RemovesOrphans(t *testing.T) {
+	p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+	p.seedInstallation(t, "ghost", "v1.0.0", filepath.Join(p.Root, "installed", "ghost"))
+	p.seedInstallation(t, "bat", "v1.0.0", filepath.Join(p.Root, "installed", "bat"))
+
+	out, err := p.run("cleanup")
+	if err != nil {
+		t.Fatalf("cleanup: %v\n%s", err, out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr, "[ghost] Removing orphaned tool...")
+	if rec := p.installation(t, "ghost"); rec != nil {
+		t.Fatalf("ghost is still recorded after cleanup: %+v", rec)
+	}
+	if rec := p.installation(t, "bat"); rec == nil {
+		t.Fatal("bat, which is configured, must survive cleanup")
+	}
+}
+
+func TestGenerateCommand_PowershellProfile(t *testing.T) {
+	p := newE2EProject(t, `"bat": {"name": "bat"}`)
+	p.writeConfig(t, `"bat": {"name": "bat"}`, "", `"features": {"shellInstall": {"powershell": "~/profile.ps1"}}`)
+
+	out, err := p.run("generate")
+	if err != nil {
+		t.Fatalf("generate: %v\n%s", err, out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr, "Integrating generated shell scripts with profiles")
+	profile := filepath.Join(p.HomeDir, "profile.ps1")
+	data, err := os.ReadFile(profile)
+	if err != nil {
+		t.Fatalf("expected %s to be generated: %v", profile, err)
+	}
+	mustContain(t, "profile", string(data), "main.ps1")
+}
+
+func TestWhyCommand_MissingConfigFile(t *testing.T) {
+	p := newE2EProject(t, "")
+	missing := filepath.Join(p.Root, "tools", "bat.tool.ts")
+	p.writeConfig(t, fmt.Sprintf(`"bat": {"name": "bat", "configFilePath": %q}`, missing), "", "")
+
+	_, err := p.run("why", "bat")
+	if err == nil || !strings.Contains(err.Error(), `config file for "bat" does not exist: `+missing) {
+		t.Fatalf("error = %v, want missing config file failure", err)
 	}
 }
