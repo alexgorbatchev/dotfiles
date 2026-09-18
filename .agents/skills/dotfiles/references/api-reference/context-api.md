@@ -10,7 +10,7 @@ The `ctx` parameter in `defineTool` provides access to tool and project informat
 | `ctx.toolDir`       | Directory containing the `.tool.ts` file          |
 | `ctx.currentDir`    | Tool's stable `current` directory (after install) |
 | `ctx.projectConfig` | Full project configuration                        |
-| `ctx.systemInfo`    | Platform, architecture, and home directory        |
+| `ctx.systemInfo`    | `os`, `arch` and `libc` of the target machine     |
 | `ctx.replaceInFile` | Replace text in files using regex patterns        |
 | `ctx.resolve`       | Resolve glob pattern to a single path             |
 | `ctx.log`           | Logger for user-facing output                     |
@@ -108,7 +108,7 @@ ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/
 | --------------------- | --------------- | --------------------------------- |
 | `.symlink(src, dest)` | `src` with `./` | Relative to tool config directory |
 | `.symlink(src, dest)` | `dest`          | Absolute path (`~` expanded)      |
-| `.completions(path)`  | `path`          | Relative to extracted archive     |
+| `.completions(path)`  | `path`          | Relative to tool config directory |
 | `binaryPath`          | github/cargo    | Relative to extracted archive     |
 | `binaryPath`          | manual          | Absolute path                     |
 

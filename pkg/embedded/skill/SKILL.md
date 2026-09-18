@@ -54,7 +54,7 @@ fi
 
 After any `.tool.ts` file change (create, delete, or modify), run `dotfiles generate` to sync generated artifacts.
 
-`dotfiles install <tool-or-binary>` is also a repair command: it verifies the on-disk install payload, reinstalls broken tools, regenerates missing shims for non-externally-managed tools, removes stale temporary shims for externally managed tools, and reconciles the tool's generated artifacts.
+`dotfiles install <tool-or-binary>` is also a repair command: it checks the recorded installation, reinstalls the tool when the payload is missing or broken, and reconciles the tool's generated artifacts either way. What a shim points at, including for externally managed tools, is described under [`.bin(name)` runtime behavior](references/api-reference/core-api.md#binname-runtime-behavior).
 
 ## Reference Files
 
@@ -71,7 +71,7 @@ Read these based on the task at hand:
   - [lifecycle-hooks.md](references/api-reference/lifecycle-hooks.md)
 
 - **Installation Methods** — Parameters and examples for each installation method:
-  - [overview.md](references/installation-methods/overview.md) — Available methods, choosing the right method, manual installation guide, common parameters
+  - [overview.md](references/installation-methods/overview.md) — The method comparison table and how to choose between them
   - [apt.md](references/installation-methods/apt.md) — Debian-family Linux package installation
   - [dnf.md](references/installation-methods/dnf.md) — RPM-family Linux package installation
   - [pacman.md](references/installation-methods/pacman.md) — Arch-family Linux package installation
@@ -97,23 +97,7 @@ Read these based on the task at hand:
   - [advanced-topics.md](references/configuration/advanced-topics.md)
   - [troubleshooting.md](references/configuration/troubleshooting.md)
 
-## Method Selection Quick Reference
+## Choosing an Installation Method
 
-| Use Case               | Method           | Example Tools      |
-| ---------------------- | ---------------- | ------------------ |
-| GitHub releases        | `github-release` | fzf, ripgrep, bat  |
-| Debian packages        | `apt`            | ripgrep, jq        |
-| RPM packages           | `dnf`            | ripgrep, jq        |
-| Arch packages          | `pacman`         | ripgrep, jq        |
-| Gitea/Forgejo/Codeberg | `gitea-release`  | Codeberg tools     |
-| Homebrew               | `brew`           | git, jq            |
-| Rust crates            | `cargo`          | eza, fd            |
-| npm packages           | `npm`            | prettier, eslint   |
-| Install scripts        | `curl-script`    | rustup, nvm        |
-| Tarball URLs           | `curl-tar`       | direct archives    |
-| Direct binaries        | `curl-binary`    | single-file tools  |
-| macOS DMG              | `dmg`            | GUI apps           |
-| macOS PKG              | `pkg`            | installer packages |
-| Custom/scripts         | `manual`         | deployment scripts |
-| Zsh plugins            | `zsh-plugin`     | zsh-vi-mode        |
-| Config only            | `install()`      | aliases, env vars  |
+The comparison table -- every method, the case it is for and example tools -- is in
+[installation-methods/overview.md](references/installation-methods/overview.md).

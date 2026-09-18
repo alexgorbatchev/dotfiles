@@ -102,20 +102,9 @@ export default defineTool((install, ctx) =>
 
 ## Available Methods
 
-After calling `install()`, these methods are available:
-
-| Method                   | Purpose                               |
-| ------------------------ | ------------------------------------- |
-| `.bin(name)`             | Define binary name(s) to expose       |
-| `.version(v)`            | Set version (`'latest'` or specific)  |
-| `.dependsOn(bin)`        | Declare binary dependencies           |
-| `.symlink(src, dest)`    | Create config file symlinks           |
-| `.hook(event, fn)`       | Lifecycle hooks                       |
-| `.zsh(fn)` / `.bash(fn)` | Shell-specific configuration          |
-| `.platform(p, fn)`       | Platform-specific overrides           |
-| `.sudo()`                | Require an interactive sudo step      |
-| `.disable()`             | Skip tool during generation           |
-| `.hostname(pattern)`     | Restrict tool to specific hostname(s) |
+`install()` returns a builder whose methods declare binaries, shell configuration,
+symlinks, copies, hooks and platform overrides. They are listed in the
+[builder method table](../api-reference/core-api.md#builder-methods).
 
 ## TypeScript Setup
 

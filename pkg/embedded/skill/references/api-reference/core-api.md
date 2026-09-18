@@ -81,6 +81,10 @@ do not nest.
 `.depends()` is accepted as another spelling of `.dependsOn()`. Prefer `.dependsOn()`;
 the two record the same thing.
 
+A tool that is `.disable()`d, or whose `.hostname()` pattern does not match the machine,
+is skipped with a warning, and whatever it generated before is removed on the next
+`dotfiles generate` -- the configuration is kept, the artifacts are not.
+
 #### `.bin(name)` runtime behavior
 
 Declaring `.bin(name)` generates a shim for `name` in `paths.targetDir`. The one exception is a `manual` tool with neither `binaryPath` nor a `before-install` hook: nothing could ever place a binary where the shim would point, so no shim is written and `dotfiles generate` warns; such a command comes from shell functions instead (see [manual.md](../installation-methods/manual.md)).
@@ -94,6 +98,27 @@ Externally-managed installers (`apt`, `brew`, `dnf`, `dmg`, `npm`, `pacman`, `pk
 - `.bin(name, { shim: false })` declares the binary without a shim: it is installed under the tool's `current` directory and remains a `dependsOn()` target, but nothing is written to `paths.targetDir` (this is how the scaffolded `typescript.tool.ts` keeps `tsc` off PATH)
 
 Usage tracking is enabled by default. The dashboard imports and compacts the local usage log into SQLite on startup. Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable tracking.
+
+#### Binary patterns
+
+For a method that unpacks an archive, the second argument of `.bin()` says where in the
+unpacked tree the executable is. Without one, the pattern is `{,*/}<name>`: the binary at
+the archive root or exactly one directory down.
+
+A pattern is matched against each file's path relative to the archive root, with `*` and
+`?` matching anything but `/`, `[abc]`, `[a-z]` and `[!abc]` character classes, and
+nestable `{a,b}` alternation. `**`, numeric ranges such as `{1..3}` and extglob are not
+supported, and directories never match.
+
+| Pattern            | Matches                          |
+| ------------------ | -------------------------------- |
+| `'tool'`           | Exactly `tool` at the archive root |
+| `'*/bin/tool'`     | `tool` in any directory's `bin`   |
+| `'tool-*/bin/tool'` | A versioned directory's `bin`    |
+
+When several files match, the one that is executable and named after the binary wins,
+then any executable, then a file named after the binary, then the first match in path
+order.
 
 #### `.copy(src, dest)`
 

@@ -161,22 +161,9 @@ export default defineTool((install) =>
 );
 ```
 
-## Installation Method Quick Reference
-
-| Use Case          | Method           | Example Tools      |
-| ----------------- | ---------------- | ------------------ |
-| GitHub releases   | `github-release` | fzf, ripgrep, bat  |
-| Gitea/Forgejo     | `gitea-release`  | Codeberg tools     |
-| Homebrew          | `brew`           | git, jq            |
-| Rust crates       | `cargo`          | eza, fd, ripgrep   |
-| npm packages      | `npm`            | prettier, eslint   |
-| Custom scripts    | `manual`         | deployment scripts |
-| Shell config only | `install()`      | aliases, env vars  |
-| Installer scripts | `curl-script`    | rustup, nvm        |
-| Direct binaries   | `curl-binary`    | single-file tools  |
-| macOS installer   | `pkg`            | signed macOS tools |
-
 ## Further Reading
+
+- Every installation method, the case it is for and its parameters: [Installation Methods](../installation-methods/overview.md).
 
 - For bootstrap, shell setup, file layout, and your first `.tool.ts`, see [Getting Started](./getting-started.md).
 - For global paths, generated directories, and project-level settings, see [Project Configuration](./project-configuration.md).
