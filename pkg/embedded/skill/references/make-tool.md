@@ -133,7 +133,7 @@ install("github-release", { repo: "owner/tool" }).bin("tool", "*/bin/tool"); // 
 - `ctx.log` → Logger for user-facing messages (debug/info/warn/error)
 - Use `~/` for paths relative to user's home directory (tilde expansion is automatic)
 
-Reference: [API Reference](api-reference.md) and [Context API](api-reference.md#context-api)
+Reference: [Core API](api-reference/core-api.md) and [Context API](api-reference/context-api.md)
 
 ### Step 2.5: Configure the Install Script's Environment (curl-script only)
 
@@ -293,7 +293,7 @@ install("github-release", { repo: "owner/tool" })
 
 Use `.source()` when you need to source command output inline without defining a named function via `.functions()`. The content must **print shell code to stdout** - this output is then sourced (executed) in the current shell.
 
-Reference: [Shell Integration Guide](shell-and-hooks.md) and [Completions Guide](shell-and-hooks.md#completions)
+Reference: [Shell Integration](api-reference/shell-integration.md) and [Shell Completions](api-reference/shell-completions.md)
 
 ### Step 4: Configure File Management (Symlinks)
 
@@ -306,7 +306,7 @@ install("github-release", { repo: "owner/tool" })
   .symlink("./themes/", "~/.config/tool/themes"); // Leading ./ is optional
 ```
 
-Reference: [Shell Integration Guide](shell-and-hooks.md#symbolic-links)
+Reference: [Symbolic Links](api-reference/shell-integration.md#symbolic-links)
 
 ### Step 5: Add Platform Support (only when needed)
 
@@ -424,7 +424,7 @@ install("github-release", { repo: "owner/tool" })
 
 This is useful for referencing files with variable names (versioned directories, platform-specific assets).
 
-Reference: [Hooks Guide](shell-and-hooks.md#hooks) and [API Reference](api-reference.md#hook-event-string-handler-hookhandler)
+Reference: [Lifecycle Hooks](api-reference/lifecycle-hooks.md) and [Hook Events](api-reference/lifecycle-hooks.md#hook-events)
 
 ### Step 7: Disable a Tool (if needed)
 
@@ -828,9 +828,9 @@ Without this step, the generated shims and shell configuration will be out of sy
 
 **Core Documentation**
 
-- [API Reference](api-reference.md) - Complete API with all parameters
+- [Core API](api-reference/core-api.md) - Complete API with all parameters
 - [Getting Started](configuration/getting-started.md) - Basic structure and anatomy
-- [Context API](api-reference.md#context-api) - Path resolution and context variables
+- [Context API](api-reference/context-api.md) - Path resolution and context variables
 
 **Configuration Guides**
 
@@ -856,5 +856,4 @@ Without this step, the generated shims and shell configuration will be out of sy
 **Other Resources**
 
 - [Platform Support](configuration/platform-specific.md) - Platform-specific configurations
-- [Hooks](shell-and-hooks.md#hooks) - Installation lifecycle hooks
 - [Troubleshooting](configuration/troubleshooting.md) - Common issues and solutions
