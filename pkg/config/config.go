@@ -145,6 +145,17 @@ type ProjectConfig struct {
 	Cargo      CargoConfig      `json:"cargo" yaml:"cargo"`
 	Downloader DownloaderConfig `json:"downloader" yaml:"downloader"`
 	Features   FeaturesConfig   `json:"features" yaml:"features"`
+	// ConfigFileDir is the directory holding the configuration file this configuration
+	// was read from. It is what every relative setting is anchored to, and it is what
+	// `__dirname` and `import.meta.dirname` mean inside a configuration or tool file,
+	// so whoever evaluates one of those files later has to be able to ask for it rather
+	// than reach for a setting that merely tends to hold the same value.
+	// ResolvePlaceholders records it, because that is where the directory is known.
+	//
+	// It is not part of the configuration's JSON surface: an author does not write it,
+	// and a configuration that claimed a different directory than the one it was read
+	// from would be describing a layout that does not exist.
+	ConfigFileDir string `json:"-" yaml:"-"`
 }
 
 // Validate reports whether the three anchor paths every other path is derived from

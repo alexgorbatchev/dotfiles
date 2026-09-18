@@ -57,10 +57,16 @@ var pathDefaults = map[string]string{
 //
 // It is idempotent: a resolved configuration holds absolute paths with no placeholders
 // left, so resolving it again changes nothing.
+//
+// configFileDir is also recorded on the configuration, because it outlives this call:
+// the tool files are evaluated again during an installation, and `__dirname` inside one
+// of them means this directory. Deriving it a second time from whichever setting
+// happens to be nearby is how the two evaluations came to disagree.
 func (p *ProjectConfig) ResolvePlaceholders(configFileDir string) error {
 	if p == nil {
 		return nil
 	}
+	p.ConfigFileDir = configFileDir
 
 	systemHome, _ := os.UserHomeDir()
 	values := p.Paths.declaredValues()
