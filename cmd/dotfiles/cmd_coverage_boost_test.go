@@ -44,7 +44,7 @@ func TestCmdCoverageBoost_Subcommands(t *testing.T) {
 	"toolConfigs": {
 		"bat": {
 			"name": "bat",
-			"installer": "github-release",
+			"installationMethod": "github-release",
 			"binaries": ["bat"]
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,7 +26,19 @@ func resetFlags(cmd *cobra.Command) {
 	}
 }
 
-func executeCommand(args ...string) (string, error) {
+// commandOutput is what one rootCmd execution wrote. Stdout and Stderr are kept
+// apart because the package convention keeps stdout clean for pipeline data and
+// sends diagnostics to stderr; Combined interleaves both in write order for tests
+// that only need to know a message appeared somewhere.
+type commandOutput struct {
+	Stdout   string
+	Stderr   string
+	Combined string
+}
+
+// runCommand executes rootCmd with args on a clean flag state and captures each
+// stream separately.
+func runCommand(args ...string) (commandOutput, error) {
 	// Reset global persistent flags before each execution
 	cfgFile = ""
 	dryRun = false
@@ -49,16 +62,29 @@ func executeCommand(args ...string) (string, error) {
 
 	resetFlags(rootCmd)
 
-	buf := new(bytes.Buffer)
-	rootCmd.SetOut(buf)
-	rootCmd.SetErr(buf)
+	var stdout, stderr, combined bytes.Buffer
+	rootCmd.SetOut(io.MultiWriter(&stdout, &combined))
+	rootCmd.SetErr(io.MultiWriter(&stderr, &combined))
 	rootCmd.SetArgs(args)
 
 	err := rootCmd.Execute()
-	return buf.String(), err
+	return commandOutput{
+		Stdout:   stdout.String(),
+		Stderr:   stderr.String(),
+		Combined: combined.String(),
+	}, err
 }
 
-func createTempConfigDir(t *testing.T) string {
+// executeCommand runs rootCmd and returns stdout and stderr interleaved. Use
+// runCommand when a test must assert on one stream alone.
+func executeCommand(args ...string) (string, error) {
+	out, err := runCommand(args...)
+	return out.Combined, err
+}
+
+// enterTempDir creates a temporary directory, makes it the working directory for
+// the rest of the test, and returns it.
+func enterTempDir(t *testing.T) string {
 	t.Helper()
 	tmpDir := t.TempDir()
 	origDir, err := os.Getwd()
@@ -71,19 +97,29 @@ func createTempConfigDir(t *testing.T) string {
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("failed changing dir: %v", err)
 	}
+	return tmpDir
+}
+
+// projectPathsJSON renders the three required "paths" members rooted under root,
+// so fixtures never point at directories outside the test's temp dir.
+func projectPathsJSON(root string) string {
+	return fmt.Sprintf(`"homeDir": %q, "targetDir": %q, "generatedDir": %q`,
+		filepath.Join(root, "home"), filepath.Join(root, "target"), filepath.Join(root, "generated"))
+}
+
+func createTempConfigDir(t *testing.T) string {
+	t.Helper()
+	tmpDir := enterTempDir(t)
 
 	configContent := `{
 	"projectConfig": {
-		"paths": {
-			"homeDir": "/tmp/test-home",
-			"targetDir": "/tmp/test-target",
-			"generatedDir": "/tmp/test-generated"
-		}
+		"paths": {` + projectPathsJSON(tmpDir) + `}
 	},
 	"toolConfigs": {
 		"bat": {
 			"name": "bat",
-			"installer": "github-release"
+			"installationMethod": "github-release",
+			"installParams": {"repo": "sharkdp/bat"}
 		}
 	}
 }`
@@ -95,7 +131,7 @@ func createTempConfigDir(t *testing.T) string {
 }
 
 func TestSubcommands(t *testing.T) {
-	createTempConfigDir(t)
+	tmpDir := createTempConfigDir(t)
 
 	tests := []struct {
 		name           string
@@ -178,7 +214,7 @@ func TestSubcommands(t *testing.T) {
 		{
 			name:           "bin command target dir",
 			args:           []string{"bin"},
-			expectedOutput: []string{"/tmp/test-generated"},
+			expectedOutput: []string{filepath.Join(tmpDir, "generated")},
 			expectedErr:    false,
 		},
 		{
@@ -256,8 +292,11 @@ func TestSubcommands(t *testing.T) {
 func TestBootstrapAndExecutionSideEffects(t *testing.T) {
 	t.Setenv("DOTFILES_DRY_RUN", "true")
 	ctx := context.Background()
-	// Force dryRun = true for in-memory DB and MemFS simulation
+	// Force dryRun = true for in-memory DB and MemFS simulation, and put it back so
+	// later direct BootstrapServices calls do not silently run in memory.
+	previousDryRun := dryRun
 	dryRun = true
+	t.Cleanup(func() { dryRun = previousDryRun })
 	services, err := BootstrapServices(ctx, "test-project/dotfiles.config.ts")
 	if err != nil {
 		t.Fatalf("bootstrap failed: %v", err)
@@ -394,11 +433,11 @@ func TestCandidateFallbackSearch(t *testing.T) {
 
 			filePath := filepath.Join(tmpDir, candName)
 			content := `{
-	"projectConfig": {"paths": {"homeDir": "/tmp/h", "targetDir": "/tmp/t", "generatedDir": "/tmp/g"}},
+	"projectConfig": {"paths": {` + projectPathsJSON(tmpDir) + `}},
 	"toolConfigs": {}
 }`
 			if strings.HasSuffix(candName, ".ts") || strings.HasSuffix(candName, ".js") {
-				content = `export default { paths: { homeDir: "/tmp/h", targetDir: "/tmp/t", generatedDir: "/tmp/g" } };`
+				content = `export default { paths: { ` + projectPathsJSON(tmpDir) + ` } };`
 			}
 			_ = os.WriteFile(filePath, []byte(content), 0644)
 
@@ -441,7 +480,7 @@ func TestRelativeConfigPathResolution(t *testing.T) {
 
 	cfgPath := filepath.Join(subDir, "custom.config.json")
 	content := `{
-	"projectConfig": {"paths": {"homeDir": "/tmp/h", "targetDir": "/tmp/t", "generatedDir": "/tmp/g"}},
+	"projectConfig": {"paths": {` + projectPathsJSON(tmpDir) + `}},
 	"toolConfigs": {}
 }`
 	_ = os.WriteFile(cfgPath, []byte(content), 0644)
@@ -714,7 +753,7 @@ func TestDetectConflictsCommand_ErrorReturn(t *testing.T) {
 	"toolConfigs": {
 		"github-release--bat": {
 			"name": "github-release--bat",
-			"installer": "github-release",
+			"installationMethod": "github-release",
 			"binaries": ["bat"]
 		}
 	}
@@ -752,15 +791,11 @@ func TestBootstrapServices_JSONToolNameDefaulting(t *testing.T) {
 	tmpDir := t.TempDir()
 	configContent := `{
 	"projectConfig": {
-		"paths": {
-			"homeDir": "/tmp/test-home",
-			"targetDir": "/tmp/test-target",
-			"generatedDir": "/tmp/test-generated"
-		}
+		"paths": {` + projectPathsJSON(tmpDir) + `}
 	},
 	"toolConfigs": {
 		"implicit-name-tool": {
-			"installer": "github-release"
+			"installationMethod": "github-release"
 		}
 	}
 }`
