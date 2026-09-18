@@ -88,17 +88,6 @@ func runMain(args []string) error {
 		return fmt.Errorf("error generating %s: %w", dashboardPath, err)
 	}
 	fmt.Printf("Successfully generated TypeScript interfaces at %s\n", dashboardPath)
-
-	distDir := ".dist"
-	if err := os.MkdirAll(distDir, 0755); err != nil {
-		return fmt.Errorf("error creating %s directory: %w", distDir, err)
-	}
-
-	distPath := ".dist/index.d.ts"
-	if err := generateTypes(distPath); err != nil {
-		return fmt.Errorf("error generating %s: %w", distPath, err)
-	}
-	fmt.Printf("Successfully generated TypeScript interfaces at %s\n", distPath)
 	return nil
 }
 

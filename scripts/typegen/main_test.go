@@ -36,30 +36,44 @@ func TestGenerateTypes(t *testing.T) {
 	}
 }
 
-func TestTypegenEmitIndexDts(t *testing.T) {
+func TestRunMainDefaultDoesNotTouchDist(t *testing.T) {
 	tmpDir := t.TempDir()
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get current working dir: %v", err)
+	}
+	defer func() { _ = os.Chdir(originalWd) }()
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir to temp dir: %v", err)
+	}
+
 	distDir := filepath.Join(tmpDir, ".dist")
 	if err := os.MkdirAll(distDir, 0755); err != nil {
 		t.Fatalf("failed to create .dist dir: %v", err)
 	}
-
 	distIndexPath := filepath.Join(distDir, "index.d.ts")
-	if err := generateTypes(distIndexPath); err != nil {
-		t.Fatalf("generateTypes to .dist/index.d.ts failed: %v", err)
+	sentinel := "// original dsl definitions"
+	if err := os.WriteFile(distIndexPath, []byte(sentinel), 0644); err != nil {
+		t.Fatalf("failed to write sentinel index.d.ts: %v", err)
+	}
+
+	// Create packages/dashboard/src/shared so runMain default output succeeds
+	dashDir := filepath.Join(tmpDir, "packages", "dashboard", "src", "shared")
+	if err := os.MkdirAll(dashDir, 0755); err != nil {
+		t.Fatalf("failed to create dashboard dir: %v", err)
+	}
+
+	if err := runMain([]string{}); err != nil {
+		t.Fatalf("runMain([]) failed: %v", err)
 	}
 
 	content, err := os.ReadFile(distIndexPath)
 	if err != nil {
 		t.Fatalf("failed to read .dist/index.d.ts: %v", err)
 	}
-
-	if len(content) == 0 {
-		t.Errorf("expected .dist/index.d.ts to be non-empty")
-	}
-
-	strContent := string(content)
-	if !strings.Contains(strContent, "interface ToolConfig") {
-		t.Errorf("expected .dist/index.d.ts to contain interface ToolConfig")
+	if string(content) != sentinel {
+		t.Fatalf(".dist/index.d.ts was modified by typegen runMain([]): got %q, want %q", string(content), sentinel)
 	}
 }
 
