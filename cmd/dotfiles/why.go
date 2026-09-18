@@ -8,11 +8,12 @@ import (
 )
 
 var whyCmd = &cobra.Command{
-	Use:           "why <tool>",
-	Short:         "Print full path to the .tool.ts file that installs a tool or binary",
-	Args:          cobra.ExactArgs(1),
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	Use:               "why <tool>",
+	Short:             "Print full path to the .tool.ts file that installs a tool or binary",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeToolName,
+	SilenceUsage:      true,
+	SilenceErrors:     true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		query := args[0]
 		logLevel = "quiet"

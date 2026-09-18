@@ -151,3 +151,5 @@ Reload completions after the file is generated:
 ```bash
 autoload -U compinit && compinit
 ```
+
+Subcommands that take a tool name (`install`, `update`, `uninstall`, `why`, `files`, `log`, `validate`) complete it from the configured tools, so `dotfiles install <Tab>` lists tool names rather than files. `bin` also offers the configured binary names. The candidates come from the configuration the CLI would run with, so `--config` on the command line is honoured.

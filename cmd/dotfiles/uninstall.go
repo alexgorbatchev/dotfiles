@@ -9,9 +9,10 @@ import (
 )
 
 var uninstallCmd = &cobra.Command{
-	Use:   "uninstall [tool]",
-	Args:  cobra.MaximumNArgs(1),
-	Short: "Uninstalls a specific tool and cleans up matching shims/symlinks",
+	Use:               "uninstall [tool]",
+	Args:              cobra.MaximumNArgs(1),
+	Short:             "Uninstalls a specific tool and cleans up matching shims/symlinks",
+	ValidArgsFunction: completeToolName,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		services, err := BootstrapServices(ctx, cfgFile)

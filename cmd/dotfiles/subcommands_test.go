@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -1086,5 +1087,177 @@ func TestPositionalArgumentValidation(t *testing.T) {
 				t.Fatalf("%v: error = %q, want %q", tt.args, err.Error(), tt.wantErr)
 			}
 		})
+	}
+}
+
+// createCompletionConfigDir writes a three-tool fixture so tests can assert on
+// prefix filtering, on exclusion of already-typed tool names, and on a tool whose
+// only binary shares its name (brew), which `bin` completion must not list twice.
+func createCompletionConfigDir(t *testing.T) {
+	t.Helper()
+	tmpDir := enterTempDir(t)
+
+	configContent := `{
+	"projectConfig": {
+		"paths": {
+			"homeDir": "` + filepath.Join(tmpDir, "home") + `",
+			"targetDir": "` + filepath.Join(tmpDir, "target") + `",
+			"generatedDir": "` + filepath.Join(tmpDir, "generated") + `"
+		}
+	},
+	"toolConfigs": {
+		"brew": {
+			"name": "brew",
+			"installationMethod": "manual"
+		},
+		"github-release--bat": {
+			"name": "github-release--bat",
+			"installationMethod": "github-release",
+			"binaries": ["bat"]
+		},
+		"github-release--fd": {
+			"name": "github-release--fd",
+			"installationMethod": "github-release",
+			"binaries": ["fd"]
+		}
+	}
+}`
+	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("writing test config: %v", err)
+	}
+}
+
+// parseCompletionOutput splits cobra's __complete stdout into candidate names
+// (descriptions after the tab are dropped) and the trailing ":N" directive line.
+func parseCompletionOutput(t *testing.T, stdout string) ([]string, cobra.ShellCompDirective) {
+	t.Helper()
+	lines := strings.Split(strings.TrimRight(stdout, "\n"), "\n")
+	var directive int
+	if _, err := fmt.Sscanf(lines[len(lines)-1], ":%d", &directive); err != nil {
+		t.Fatalf("__complete stdout does not end with a directive line:\n%s", stdout)
+	}
+	candidates := []string{}
+	for _, line := range lines[:len(lines)-1] {
+		// Cobra prefixes ActiveHelp lines with "_activeHelp_"; only real candidates matter here.
+		if strings.HasPrefix(line, "_activeHelp_") {
+			continue
+		}
+		name, _, _ := strings.Cut(line, "\t")
+		candidates = append(candidates, name)
+	}
+	return candidates, cobra.ShellCompDirective(directive)
+}
+
+func assertCandidates(t *testing.T, got []string, want []string) {
+	t.Helper()
+	if !slices.Equal(got, want) {
+		t.Fatalf("candidates = %v, want %v", got, want)
+	}
+}
+
+func TestCompletion_ToolNamePositionalArgs(t *testing.T) {
+	createCompletionConfigDir(t)
+
+	allTools := []string{"brew", "github-release--bat", "github-release--fd"}
+
+	tests := []struct {
+		name           string
+		args           []string
+		wantCandidates []string
+	}{
+		{"install first arg", []string{"install", ""}, allTools},
+		{"update first arg", []string{"update", ""}, allTools},
+		{"uninstall first arg", []string{"uninstall", ""}, allTools},
+		{"why first arg", []string{"why", ""}, allTools},
+		{"files first arg", []string{"files", ""}, allTools},
+		{"log first arg", []string{"log", ""}, allTools},
+		{"validate first arg", []string{"validate", ""}, allTools},
+		{"prefix filters candidates", []string{"install", "github-release--b"}, []string{"github-release--bat"}},
+		{"install excludes tools already on the line", []string{"install", "github-release--bat", ""}, []string{"brew", "github-release--fd"}},
+		{"install treats KEY=VALUE as not a tool", []string{"install", "FOO=1", ""}, allTools},
+		{"why accepts a single tool only", []string{"why", "github-release--bat", ""}, []string{}},
+		{"update accepts a single tool only", []string{"update", "github-release--bat", ""}, []string{}},
+		{"uninstall accepts a single tool only", []string{"uninstall", "github-release--bat", ""}, []string{}},
+		{"files accepts a single tool only", []string{"files", "github-release--bat", ""}, []string{}},
+		{"log accepts a single tool only", []string{"log", "github-release--bat", ""}, []string{}},
+		{"validate accepts a single tool only", []string{"validate", "github-release--bat", ""}, []string{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := runCommand(append([]string{cobra.ShellCompRequestCmd}, tt.args...)...)
+			if err != nil {
+				t.Fatalf("__complete %v returned error: %v\n%s", tt.args, err, out.Combined)
+			}
+			got, directive := parseCompletionOutput(t, out.Stdout)
+			assertCandidates(t, got, tt.wantCandidates)
+			if directive&cobra.ShellCompDirectiveNoFileComp == 0 {
+				t.Fatalf("directive = %d, want ShellCompDirectiveNoFileComp set so the shell never falls back to file names", directive)
+			}
+			// Cobra's trailing debug line belongs on stderr; stdout must carry only what the shell parses.
+			if !strings.Contains(out.Stderr, "Completion ended with directive") {
+				t.Fatalf("stderr = %q, want cobra's completion debug line there and not on stdout", out.Stderr)
+			}
+		})
+	}
+}
+
+func TestCompletion_BinAcceptsBinaryOrToolName(t *testing.T) {
+	createCompletionConfigDir(t)
+
+	out, err := runCommand(cobra.ShellCompRequestCmd, "bin", "")
+	if err != nil {
+		t.Fatalf("__complete bin returned error: %v\n%s", err, out.Combined)
+	}
+	got, directive := parseCompletionOutput(t, out.Stdout)
+	// brew appears once even though it is both a tool name and that tool's implicit binary.
+	assertCandidates(t, got, []string{"bat", "brew", "fd", "github-release--bat", "github-release--fd"})
+	if directive&cobra.ShellCompDirectiveNoFileComp == 0 {
+		t.Fatalf("directive = %d, want ShellCompDirectiveNoFileComp set", directive)
+	}
+
+	out, err = runCommand(cobra.ShellCompRequestCmd, "bin", "bat", "")
+	if err != nil {
+		t.Fatalf("__complete bin bat returned error: %v\n%s", err, out.Combined)
+	}
+	got, _ = parseCompletionOutput(t, out.Stdout)
+	assertCandidates(t, got, []string{})
+}
+
+func TestCompletion_ConfigLoadFailureReportsError(t *testing.T) {
+	createCompletionConfigDir(t)
+	missingConfig := filepath.Join(t.TempDir(), "missing.config.json")
+
+	// One subcommand per completion variant: repeatable tool, single tool, binary-or-tool.
+	for _, sub := range []string{"install", "why", "bin"} {
+		t.Run(sub, func(t *testing.T) {
+			out, err := runCommand("--config", missingConfig, cobra.ShellCompRequestCmd, sub, "")
+			if err != nil {
+				t.Fatalf("__complete must never fail the process, got error: %v\n%s", err, out.Combined)
+			}
+			got, directive := parseCompletionOutput(t, out.Stdout)
+			assertCandidates(t, got, []string{})
+			if directive&cobra.ShellCompDirectiveError == 0 {
+				t.Fatalf("directive = %d, want ShellCompDirectiveError so the shell discards the result", directive)
+			}
+		})
+	}
+}
+
+// TestCompletion_DescribesInstallationMethod checks the raw candidate line, since
+// parseCompletionOutput drops descriptions: shells that render them (zsh, fish)
+// show where each tool comes from.
+func TestCompletion_DescribesInstallationMethod(t *testing.T) {
+	createCompletionConfigDir(t)
+
+	out, err := runCommand(cobra.ShellCompRequestCmd, "install", "")
+	if err != nil {
+		t.Fatalf("__complete install returned error: %v\n%s", err, out.Combined)
+	}
+	for _, want := range []string{"brew\tmanual\n", "github-release--bat\tgithub-release\n"} {
+		if !strings.Contains(out.Stdout, want) {
+			t.Fatalf("stdout = %q, want candidate line %q", out.Stdout, want)
+		}
 	}
 }

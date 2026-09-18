@@ -51,9 +51,10 @@ func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, p
 }
 
 var updateCmd = &cobra.Command{
-	Use:   "update [tool]",
-	Args:  cobra.MaximumNArgs(1),
-	Short: "Evaluates versions and installs newer software packages if available",
+	Use:               "update [tool]",
+	Args:              cobra.MaximumNArgs(1),
+	Short:             "Evaluates versions and installs newer software packages if available",
+	ValidArgsFunction: completeToolName,
 	Long: `Evaluates tool versions and updates software packages if newer versions are available.
 
 When run without arguments, checks all installed tools for updates and installs newer versions if available. When a tool name is provided, checks and updates only that tool if it is currently installed. Uninstalled tools are skipped.`,

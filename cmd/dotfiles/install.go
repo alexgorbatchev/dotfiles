@@ -10,9 +10,10 @@ import (
 )
 
 var installCmd = &cobra.Command{
-	Use:   "install [tool...]",
-	Args:  cobra.ArbitraryArgs,
-	Short: "Installs either a single specified tool or all tools defined in the configuration",
+	Use:               "install [tool...]",
+	Args:              cobra.ArbitraryArgs,
+	Short:             "Installs either a single specified tool or all tools defined in the configuration",
+	ValidArgsFunction: completeToolNames,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		shimMode, _ := cmd.Flags().GetBool("shim-mode")

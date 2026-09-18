@@ -23,9 +23,10 @@ type BinaryInfo struct {
 }
 
 var binCmd = &cobra.Command{
-	Use:   "bin [name]",
-	Args:  cobra.MaximumNArgs(1),
-	Short: "Outputs target bin directory, lists configured binaries, or resolves a binary path",
+	Use:               "bin [name]",
+	Args:              cobra.MaximumNArgs(1),
+	Short:             "Outputs target bin directory, lists configured binaries, or resolves a binary path",
+	ValidArgsFunction: completeBinaryOrToolName,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		services, err := BootstrapServices(ctx, cfgFile)
