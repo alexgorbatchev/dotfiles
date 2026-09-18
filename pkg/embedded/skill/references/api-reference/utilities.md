@@ -7,7 +7,10 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
 **Key behaviors:**
 
 - Always replaces _all_ matches (global replacement), even if `from` does not include the `g` flag
-- Supports `to` as either a string or a (a)sync callback
+- Patterns follow JavaScript semantics, including lookarounds, backreferences and named capture groups
+- A plain string `from` is matched literally, so characters such as `.` match themselves
+- Supports `to` as either a string or a callback; a string is used literally, so a `$1` in
+  it stays `$1`. Read capture groups with a callback instead
 - Supports `mode: 'file'` (default) and `mode: 'line'` (process each line separately)
 - No-op write: if output equals input, the file is not written
 - Returns `true` if replacements were made, `false` otherwise
@@ -43,7 +46,9 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
 
 - `filePath` - Path to the file (supports `~` expansion)
 - `from` - Pattern to match (string or RegExp, always global)
-- `to` - Replacement string or callback receiving `IReplaceInFileMatch`
+- `to` - Replacement string, or a callback receiving `IReplaceInFileMatch`. The callback
+  produces its value while the match is being built, so it must return without awaiting
+  anything still pending; fetch first and close over the result
 - `options` - Optional settings:
   - `mode` - `'file'` (default) or `'line'` (process each line separately)
   - `errorMessage` - If provided and no matches found, logs error: `Could not find '<pattern>' in <filePath>`
@@ -54,7 +59,7 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
 
 - `substring` - The matched substring
 - `captures` - Array of capture groups (may contain `undefined`)
-- `offset` - Match offset in the input
+- `offset` - Match offset in the input, counted in characters
 - `input` - Original input string
 - `groups` - Named capture groups (if present)
 

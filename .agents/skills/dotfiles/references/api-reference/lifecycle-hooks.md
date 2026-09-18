@@ -20,33 +20,55 @@ export default defineTool((install, ctx) =>
 
 ## Hook Events
 
-| Event            | When                         | Available Properties                       |
-| ---------------- | ---------------------------- | ------------------------------------------ |
-| `before-install` | Before installation starts   | `stagingDir`                               |
-| `after-download` | After file download          | `stagingDir`, `downloadPath`               |
-| `after-extract`  | After archive extraction     | `stagingDir`, `downloadPath`, `extractDir` |
-| `after-install`  | After installation completes | `installedDir`, `binaryPaths`, `version`   |
+| Event            | When                              | Adds to the context                      |
+| ---------------- | --------------------------------- | ---------------------------------------- |
+| `before-install` | Before the installer runs         | `stagingDir`                             |
+| `after-download` | After an asset is fetched to disk | `downloadPath`                           |
+| `after-extract`  | After an archive is unpacked      | `extractDir`                             |
+| `after-install`  | After the tool is in place        | `installedDir`, `binaryPaths`, `version` |
+
+Registering any other event name fails when the configuration is read, rather than
+leaving a handler that nothing would ever call.
+
+A hook that throws fails the installation. Nothing is swallowed: if the handler rejects,
+the tool is reported as failed with the error the hook raised.
 
 ## Context Properties
 
-All hooks receive a context object with:
+Every hook receives:
 
-| Property        | Description                                          |
-| --------------- | ---------------------------------------------------- |
-| `toolName`      | Name of the tool                                     |
-| `currentDir`    | Stable path (symlink) for this tool                  |
-| `stagingDir`    | Temporary installation directory                     |
-| `systemInfo`    | Platform, architecture, home directory               |
-| `fileSystem`    | File operations (mkdir, writeFile, exists, etc.)     |
-| `replaceInFile` | Regex-based file text replacement                    |
-| `log`           | Structured logging (trace, debug, info, warn, error) |
-| `projectConfig` | Project configuration                                |
-| `toolConfig`    | Tool configuration                                   |
-| `$`             | Bun shell executor                                   |
+| Property        | Description                                                                                                     |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| `toolName`      | Name of the tool                                                                                                |
+| `currentDir`    | Stable directory for this tool (the `current` symlink)                                                          |
+| `stagingDir`    | Temporary directory the installer stages into                                                                   |
+| `toolDir`       | Directory holding this tool's `.tool.ts`                                                                        |
+| `systemInfo`    | Platform, architecture and libc                                                                                 |
+| `projectConfig` | Project configuration                                                                                           |
+| `fileSystem`    | File operations (`mkdir`, `ensureDir`, `writeFile`, `readFile`, `exists`, `readdir`, `rm`, `rename`, `symlink`) |
+| `log`           | Structured logging (`debug`, `info`, `warn`, `error`)                                                           |
+| `$`             | Shell executor                                                                                                  |
 
-> **Note:** The `stagingDir` and `projectConfig` properties form the base environment context (`IEnvContext`) that is also available to dynamic `env` functions in install parameters.
+Plus whatever the event itself provides, per the table above. A property an event does
+not provide is `undefined` rather than a misleading empty value, so destructuring
+`installedDir` in a `before-install` hook gives you `undefined` -- there is nothing
+installed yet to point at.
 
-For archive-based installers, `extractDir` is a dedicated subdirectory under `stagingDir` so extracted payloads do not collide with generated binary entrypoints created at the staging root.
+`$` is available only to hooks. A tool factory does not get one: configuration is read
+on every CLI invocation, so running commands from there would execute them constantly.
+
+### Working Directory
+
+Commands run from the directory containing the tool's `.tool.ts`, so a script shipped
+next to it is reached as `./scripts/setup.sh`. Anywhere else you might want is already
+in the context by name, and interpolating it says plainly which tree you mean:
+
+```typescript
+.hook('after-install', async ({ $, installedDir }) => {
+  await $`./scripts/setup.sh`;          // next to the tool config
+  await $`${installedDir}/bin/tool --version`;  // the installed tree
+})
+```
 
 ## Examples
 
@@ -105,7 +127,8 @@ $ my-tool init
 | Configuration complete!
 ```
 
-This logging happens regardless of whether `.quiet()` is used on the shell command, since logging occurs at the hook executor level.
+`.quiet()` suppresses both the echoed command and its output, for commands whose output
+is noise or is being captured with `.text()` instead.
 
 ### Platform-Specific Setup
 
@@ -121,32 +144,17 @@ This logging happens regardless of whether `.quiet()` is used on the shell comma
 
 ### File Text Replacement
 
+`replaceInFile` edits a file in place and returns whether anything changed. Every match
+is replaced with or without the `g` flag, and the file is left alone when nothing matched
+or when the result is identical to what was already there.
+
 ```typescript
 .hook('after-install', async ({ replaceInFile, installedDir }) => {
-  // Replace a config value (returns true if replaced, false otherwise)
-  const wasReplaced = await replaceInFile(
-    `${installedDir}/config.toml`,
-    /theme = ".*"/,
-    'theme = "dark"'
-  );
-
-  // Increment version numbers line-by-line
-  await replaceInFile(
-    `${installedDir}/versions.txt`,
-    /version=(\d+)/,
-    (match) => `version=${Number(match.captures[0]) + 1}`,
-    { mode: 'line' }
-  );
-
-  // Log error if pattern not found (helpful for debugging)
-  await replaceInFile(
-    `${installedDir}/config.toml`,
-    /api_key = ".*"/,
-    'api_key = "secret"',
-    { errorMessage: 'Could not find api_key setting' }
-  );
+  await replaceInFile(`${installedDir}/config.toml`, /theme = ".*"/, 'theme = "dark"');
 })
 ```
+
+Full parameters, options and the callback argument are in [utilities.md](utilities.md).
 
 ### Build from Source
 

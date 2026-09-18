@@ -369,7 +369,7 @@ install("github-release", { repo: "owner/tool" })
   });
 ```
 
-**Hook Events**: `'before-install'`, `'after-download'`, `'after-extract'`, `'after-install'`
+**Hook Events**: `'before-install'`, `'after-download'`, `'after-extract'`, `'after-install'` — see [lifecycle-hooks.md](api-reference/lifecycle-hooks.md) for what each one provides.
 
 **Executing Installed Binaries**: In `after-install` hooks, the shell's PATH is automatically enhanced to include directories containing installed binaries. You can execute freshly installed tools by name:
 
