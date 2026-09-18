@@ -118,6 +118,13 @@ func TestGenerateSchemaTypes(t *testing.T) {
 		t.Fatalf("failed to write dsl-types.ts: %v", err)
 	}
 
+	// The runtime globals travel as their own file beside the authoring declarations,
+	// so the generator copies it and the fixture has to provide it.
+	globalsContent := "declare namespace NodeJS { interface ProcessEnv { [key: string]: string | undefined; } }"
+	if err := os.WriteFile(filepath.Join(pkgVmDir, "globals.d.ts"), []byte(globalsContent), 0644); err != nil {
+		t.Fatalf("failed to write globals.d.ts: %v", err)
+	}
+
 	dashboardTypesDir := filepath.Join(tmpDir, "packages", "dashboard", "src", "shared")
 	if err := os.MkdirAll(dashboardTypesDir, 0755); err != nil {
 		t.Fatalf("failed to create dashboard types dir: %v", err)

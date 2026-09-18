@@ -11,7 +11,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Lint: `just lint` (or `bun lint`)
 - Typecheck: `just typecheck` (or `bun typecheck`)
 - Check skill documentation links, anchors and page reachability: `just docs-links` (runs `scripts/check-docs-links.ts`)
-- Go unit tests: `just test-unit` (or `go test ./pkg/... ./cmd/...`)
+- Go unit tests: `just test-unit` (or `go test ./pkg/... ./cmd/... ./scripts/...`)
 - Go E2E tests: `just test-e2e` (or `go test -count=1 -p 1 ./tests/e2e/...`)
 - TypeScript tests: `just test-ts` (or `bun test`)
 - All tests: `just test` (Go unit, Go E2E and TypeScript)

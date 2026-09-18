@@ -19,7 +19,7 @@ test: test-unit test-e2e test-ts
 
 # Run Go unit tests only
 test-unit:
-    go test ./pkg/... ./cmd/...
+    go test ./pkg/... ./cmd/... ./scripts/...
 
 # Run Go E2E tests only
 test-e2e:
