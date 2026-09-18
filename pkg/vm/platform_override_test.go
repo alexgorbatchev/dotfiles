@@ -129,28 +129,6 @@ func TestEvaluateUnifiedBundleRejectsMalformedToolConfigs(t *testing.T) {
 	}
 }
 
-// A bundle whose configuration file exported nothing has no project configuration to
-// resolve, and the loader result says so with a nil pointer rather than an error.
-func TestEvaluateUnifiedBundleWithoutProjectConfig(t *testing.T) {
-	log := logger.New(logger.Config{Writer: io.Discard})
-	projCfg := &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}
-
-	for name, script := range map[string]string{
-		"absent": "globalThis.__loaderResult = { toolConfigs: {} };",
-		"null":   "globalThis.__loaderResult = { projectConfig: null, toolConfigs: {} };",
-	} {
-		t.Run(name, func(t *testing.T) {
-			res, err := evaluateUnifiedBundle(log, fs.NewMemFS(), script, "/tmp", projCfg, Target{})
-			if err != nil {
-				t.Fatalf("evaluateUnifiedBundle failed: %v", err)
-			}
-			if res.ProjectConfig != nil {
-				t.Errorf("expected no project config, got %+v", res.ProjectConfig)
-			}
-		})
-	}
-}
-
 // A matcher outside the v1 vocabulary is a configuration mistake and is reported at
 // load time rather than silently never matching.
 func TestProjectPlatformOverrideMatcherIsValidated(t *testing.T) {

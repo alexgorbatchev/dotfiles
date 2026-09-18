@@ -120,7 +120,7 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 		return nil, nil, fmt.Errorf("compiling project config %q: %w", absConfigPath, err)
 	}
 
-	projCfg, err := evaluateProjectConfig(log, fsys, configJS, configFileDir, target)
+	projCfg, err := evaluateProjectConfig(log, fsys, configJS, absConfigPath, target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("evaluating project config: %w", err)
 	}
@@ -173,7 +173,7 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	}
 
 	// Step 4: Run the unified bundle in Goja and marshal the result
-	fullConfig, err := evaluateUnifiedBundle(log, fsys, bundledJS, configFileDir, projCfg, target)
+	fullConfig, err := evaluateUnifiedBundle(log, fsys, bundledJS, absConfigPath, projCfg, target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("evaluating unified config bundle: %w", err)
 	}
@@ -182,13 +182,11 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	// filled in and the project-level platform overrides have been folded in, so this
 	// is the first point at which a required setting can be reported as missing rather
 	// than silently resolved against the working directory.
-	if fullConfig.ProjectConfig != nil {
-		if err := fullConfig.ProjectConfig.ResolvePlaceholders(configFileDir); err != nil {
-			return nil, nil, fmt.Errorf("resolving paths in %q: %w", filepath.Base(absConfigPath), err)
-		}
-		if err := fullConfig.ProjectConfig.Validate(); err != nil {
-			return nil, nil, fmt.Errorf("invalid configuration in %q: %w", filepath.Base(absConfigPath), err)
-		}
+	if err := fullConfig.ProjectConfig.ResolvePlaceholders(configFileDir); err != nil {
+		return nil, nil, fmt.Errorf("resolving paths in %q: %w", filepath.Base(absConfigPath), err)
+	}
+	if err := fullConfig.ProjectConfig.Validate(); err != nil {
+		return nil, nil, fmt.Errorf("invalid configuration in %q: %w", filepath.Base(absConfigPath), err)
 	}
 
 	return fullConfig.ProjectConfig, fullConfig.ToolConfigs, nil
@@ -262,7 +260,9 @@ func compileFile(entryPath string) (string, error) {
 	return code, nil
 }
 
-func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string, target Target) (*config.ProjectConfig, error) {
+func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, configPath string, target Target) (*config.ProjectConfig, error) {
+	configFileDir := filepath.Dir(configPath)
+
 	vm := goja.New()
 	registry := require.NewRegistry()
 	registry.Enable(vm)
@@ -297,13 +297,92 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, fmt.Errorf("executing script in Goja VM: %w", err)
 	}
 
-	// Extract and stringify default export using JSON.stringify inside JS with RegExp replacer
-	jsonVal, err := vm.RunString("JSON.stringify(module.exports.default || module.exports, function(k, v) { return v instanceof RegExp ? v.toString() : v; })")
+	configExport, err := exportedProjectConfig(vm, configPath)
+	if err != nil {
+		return nil, err
+	}
+	_ = vm.Set("__configExport", configExport)
+
+	// Stringify with a RegExp replacer, because a pattern only survives the crossing to
+	// Go as its source text.
+	jsonVal, err := vm.RunString("JSON.stringify(__configExport, function(k, v) { return v instanceof RegExp ? v.toString() : v; })")
 	if err != nil {
 		return nil, fmt.Errorf("stringifying project config inside JS VM: %w", err)
 	}
 
 	return decodeProjectConfig([]byte(jsonVal.String()), target)
+}
+
+// exportedProjectConfig returns the configuration object the configuration file
+// exported, and refuses anything else.
+//
+// The refusal belongs here rather than in the callers: this is the last point at which
+// what the file exported is still known, so it is the only place that can say a
+// configuration is missing instead of leaving a nil configuration to be dereferenced by
+// whichever caller reaches it first.
+//
+// A module esbuild compiled from ES module syntax carries its default export as the
+// "default" property (`__esModule` marks it as one even when the property is absent); a
+// file written as CommonJS has no such property and its `module.exports` is the
+// configuration itself.
+func exportedProjectConfig(vm *goja.Runtime, configPath string) (goja.Value, error) {
+	moduleVal := vm.Get("module")
+	if moduleVal == nil || goja.IsUndefined(moduleVal) || goja.IsNull(moduleVal) {
+		return nil, notAConfigurationError(configPath, "no module")
+	}
+
+	exports := moduleVal.ToObject(vm).Get("exports")
+	if exports == nil || goja.IsUndefined(exports) || goja.IsNull(exports) {
+		return nil, notAConfigurationError(configPath, "no default export")
+	}
+
+	value := exports
+	if exportsObj, ok := exports.(*goja.Object); ok {
+		if defaultExport := exportsObj.Get("default"); defaultExport != nil {
+			value = defaultExport
+		} else if esModule := exportsObj.Get("__esModule"); esModule != nil && esModule.ToBoolean() {
+			return nil, notAConfigurationError(configPath, "no default export")
+		}
+	}
+
+	if _, ok := value.Export().(map[string]any); !ok {
+		return nil, notAConfigurationError(configPath, describeExport(value))
+	}
+	return value, nil
+}
+
+// notAConfigurationError reports a configuration file that produced something other than
+// a configuration object, naming the file and what it produced instead.
+func notAConfigurationError(configPath, got string) error {
+	return fmt.Errorf("configuration file %q must export a configuration object with `export default defineConfig(...)`, got %s", configPath, got)
+}
+
+// describeExport names the value a configuration file exported, so that the refusal says
+// what was found rather than only what was expected.
+func describeExport(value goja.Value) string {
+	switch {
+	case value == nil || goja.IsUndefined(value):
+		return "undefined"
+	case goja.IsNull(value):
+		return "null"
+	}
+	switch exported := value.Export().(type) {
+	case func(goja.FunctionCall) goja.Value:
+		return "a function"
+	case *goja.Promise:
+		return "a promise"
+	case []any:
+		return "an array"
+	case string:
+		return fmt.Sprintf("the string %q", exported)
+	case bool:
+		return fmt.Sprintf("the boolean %t", exported)
+	case int64:
+		return fmt.Sprintf("the number %d", exported)
+	case float64:
+		return fmt.Sprintf("the number %v", exported)
+	}
+	return fmt.Sprintf("%v", value)
 }
 
 // decodeProjectConfig validates the JSON a configuration file evaluated to, folds the
@@ -334,7 +413,9 @@ func decodeProjectConfig(jsonBytes []byte, target Target) (*config.ProjectConfig
 // projCfg is the project configuration already resolved from the configuration file,
 // which the bundle hands to tool files as ctx.projectConfig so that they observe the
 // same paths Go does rather than the raw value the file returned.
-func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, configFileDir string, projCfg *config.ProjectConfig, target Target) (*unifiedLoaderResult, error) {
+func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, configPath string, projCfg *config.ProjectConfig, target Target) (*unifiedLoaderResult, error) {
+	configFileDir := filepath.Dir(configPath)
+
 	vm := goja.New()
 	registry := require.NewRegistry()
 	registry.Enable(vm)
@@ -395,17 +476,19 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, fmt.Errorf("unmarshaling loader result: %w", err)
 	}
 
-	res := unifiedLoaderResult{ToolConfigs: envelope.ToolConfigs}
-	// A bundle whose configuration file exports nothing has no project config to decode.
-	if len(envelope.ProjectConfig) > 0 && !bytes.Equal(envelope.ProjectConfig, []byte("null")) {
-		decoded, err := decodeProjectConfig(envelope.ProjectConfig, target)
-		if err != nil {
-			return nil, fmt.Errorf("unmarshaling loader result: %w", err)
-		}
-		res.ProjectConfig = decoded
+	// The bundle imports the configuration file's default export, so a result without a
+	// configuration means that export did not survive evaluation. Refusing it here keeps
+	// the loader from handing back a configuration that is not there.
+	if len(envelope.ProjectConfig) == 0 || bytes.Equal(envelope.ProjectConfig, []byte("null")) {
+		return nil, notAConfigurationError(configPath, "no configuration")
 	}
 
-	return &res, nil
+	projectConfig, err := decodeProjectConfig(envelope.ProjectConfig, target)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshaling loader result: %w", err)
+	}
+
+	return &unifiedLoaderResult{ProjectConfig: projectConfig, ToolConfigs: envelope.ToolConfigs}, nil
 }
 
 // memberCallCallee matches the property name a member call names, so that ".binaries"

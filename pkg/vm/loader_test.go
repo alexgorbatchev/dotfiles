@@ -383,15 +383,21 @@ func TestEvaluateProjectConfigDirectErrors(t *testing.T) {
 	log := logger.New(logger.Config{Writer: io.Discard})
 
 	// 1. Script execution error
-	_, err := evaluateProjectConfig(log, memFS, "throw new Error('fail');", "/cfg", Target{})
+	_, err := evaluateProjectConfig(log, memFS, "throw new Error('fail');", "/cfg/dotfiles.config.ts", Target{})
 	if err == nil || !strings.Contains(err.Error(), "executing script") {
 		t.Errorf("expected executing script error, got %v", err)
 	}
 
-	// 2. Unmarshal error
-	_, err = evaluateProjectConfig(log, memFS, "module.exports = 12345;", "/cfg", Target{})
-	if err == nil || (!strings.Contains(err.Error(), "unmarshaling") && !strings.Contains(err.Error(), "invalid JSON syntax") && !strings.Contains(err.Error(), "invalid project configuration")) {
-		t.Errorf("expected unmarshaling or invalid JSON error, got %v", err)
+	// 2. An export that is not a configuration object
+	_, err = evaluateProjectConfig(log, memFS, "module.exports = 12345;", "/cfg/dotfiles.config.ts", Target{})
+	if err == nil || !strings.Contains(err.Error(), "got the number 12345") {
+		t.Errorf("expected the export to be refused by what it is, got %v", err)
+	}
+
+	// 3. A module the script took away
+	_, err = evaluateProjectConfig(log, memFS, "module = undefined;", "/cfg/dotfiles.config.ts", Target{})
+	if err == nil || !strings.Contains(err.Error(), "got no module") {
+		t.Errorf("expected the missing module to be refused, got %v", err)
 	}
 }
 
@@ -1418,5 +1424,88 @@ func TestLoadTypeScriptConfigRejectsUnresolvablePath(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "paths.homeDir is required") {
 		t.Errorf("error = %v, want it to name paths.homeDir", err)
+	}
+}
+
+// TestLoadTypeScriptConfigRefusesNonConfigurationExport proves a configuration file that
+// does not export a configuration object is refused where the file is still known,
+// naming it and what it exported, rather than being handed on as a nil configuration for
+// a caller to dereference.
+func TestLoadTypeScriptConfigRefusesNonConfigurationExport(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+
+	tests := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{"undefined default export", "export default undefined;", "got undefined"},
+		{"null default export", "export default null;", "got null"},
+		{"number default export", "export default 42;", "got the number 42"},
+		{"string default export", "export default \"nope\";", "got the string \"nope\""},
+		{"array default export", "export default [];", "got an array"},
+		{"function default export", "export default () => ({ paths: {} });", "got a function"},
+		{
+			"promise default export",
+			"import { defineConfig } from \"@alexgorbatchev/dotfiles\";\nexport default defineConfig(async () => ({ paths: {} }));",
+			"got a promise",
+		},
+		{"named exports only", "export const paths = { dotfilesDir: \"/x\" };", "got no default export"},
+		{"nothing exported", "export {};", "got no default export"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configPath := filepath.Join(t.TempDir(), "dotfiles.config.ts")
+			if err := os.WriteFile(configPath, []byte(tt.source), 0644); err != nil {
+				t.Fatalf("writing configuration: %v", err)
+			}
+
+			projCfg, toolCfgs, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
+			if err == nil {
+				t.Fatalf("expected the load to fail, got projCfg = %+v", projCfg)
+			}
+			if projCfg != nil || toolCfgs != nil {
+				t.Errorf("expected no configuration to be returned, got %+v and %+v", projCfg, toolCfgs)
+			}
+			if !strings.Contains(err.Error(), configPath) {
+				t.Errorf("error = %v, want it to name %q", err, configPath)
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("error = %v, want it to report %q", err, tt.want)
+			}
+			if !strings.Contains(err.Error(), "export default defineConfig") {
+				t.Errorf("error = %v, want it to say what the file must export", err)
+			}
+		})
+	}
+}
+
+// TestEvaluateUnifiedBundleRefusesMissingProjectConfig proves the bundle step refuses a
+// loader result without a configuration object as well, so that no path through the
+// loader can return a nil configuration and a nil error.
+func TestEvaluateUnifiedBundleRefusesMissingProjectConfig(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	projCfg := &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}
+	configPath := "/tmp/dotfiles.config.ts"
+
+	tests := []struct {
+		name   string
+		script string
+	}{
+		{"no projectConfig member", "globalThis.__loaderResult = { toolConfigs: {} };"},
+		{"null projectConfig", "globalThis.__loaderResult = { projectConfig: null, toolConfigs: {} };"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := evaluateUnifiedBundle(log, fs.NewMemFS(), tt.script, configPath, projCfg, Target{})
+			if err == nil {
+				t.Fatal("expected evaluateUnifiedBundle to fail, got nil")
+			}
+			if !strings.Contains(err.Error(), configPath) || !strings.Contains(err.Error(), "export default defineConfig") {
+				t.Errorf("error = %v, want it to name the file and what it must export", err)
+			}
+		})
 	}
 }
