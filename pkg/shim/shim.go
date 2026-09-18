@@ -40,6 +40,11 @@ type Config struct {
 }
 
 // Generate creates an executable shell wrapper shim script at the given path.
+//
+// The directory holding the shim and the directory holding cfg.UsageLogPath must
+// already exist: both are shared by every tool, so creating them here would record
+// them, through a caller's tool-scoped tracked filesystem, as shims owned by whichever
+// tool was written first. Provisioning them is the caller's job.
 func (g *Generator) Generate(shimPath string, cfg Config) error {
 	if shimPath == "" {
 		return fmt.Errorf("shim path must not be empty")
@@ -98,22 +103,6 @@ func (g *Generator) Generate(shimPath string, cfg Config) error {
 	var buf bytes.Buffer
 	if err := shimTemplate.Execute(&buf, data); err != nil {
 		return fmt.Errorf("executing shim template: %w", err)
-	}
-
-	if cfg.UsageLogPath != "" {
-		usageLogDir := filepath.Dir(cfg.UsageLogPath)
-		if usageLogDir != "." && usageLogDir != "/" {
-			if err := g.fs.MkdirAll(usageLogDir, 0755); err != nil {
-				return fmt.Errorf("creating usage log directory: %w", err)
-			}
-		}
-	}
-
-	parentDir := filepath.Dir(shimPath)
-	if parentDir != "." && parentDir != "/" {
-		if err := g.fs.MkdirAll(parentDir, 0755); err != nil {
-			return fmt.Errorf("creating parent directory: %w", err)
-		}
 	}
 
 	// A shim already in place with this content is left alone: rewriting it would

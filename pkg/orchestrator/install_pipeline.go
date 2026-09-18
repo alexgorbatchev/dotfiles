@@ -83,6 +83,10 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		return fmt.Errorf("project configuration is nil")
 	}
 
+	if err := o.ensureShimDirs(ctx, projCfg); err != nil {
+		return err
+	}
+
 	skip, err := o.shouldSkipInstallation(ctx, tool, projCfg)
 	if err != nil {
 		return err

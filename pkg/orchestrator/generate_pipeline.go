@@ -42,19 +42,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		o.logger.Error("Cleanup during generate warning", err)
 	}
 
-	// Ensure system directories are created and tracked under "system" name
-	err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-		sysFS := o.getTrackedFS(ctx, tx, "system", "shim")
-		if err := sysFS.MkdirAll(projCfg.Paths.TargetDir, 0755); err != nil {
-			return err
-		}
-		usageDir := usagelog.Dir(projCfg.Paths.GeneratedDir)
-		if err := sysFS.MkdirAll(usageDir, 0755); err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
+	if err := o.ensureShimDirs(ctx, projCfg); err != nil {
 		return err
 	}
 
@@ -178,10 +166,38 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 	return nil
 }
 
+// ensureShimDirs provisions the two directories every shim needs: the target
+// directory the shims live in and the directory the shims append their usage log to.
+// Both hold artifacts of every tool, so they are recorded under the "system" owner;
+// recorded against a tool they would look like that tool's stale shims to
+// CleanupStaleShims the next time it is generated. It is the single place either
+// pipeline creates them, which is why shim.Generator no longer creates them itself.
+func (o *Orchestrator) ensureShimDirs(ctx context.Context, projCfg *config.ProjectConfig) error {
+	if projCfg == nil {
+		return fmt.Errorf("project configuration is nil")
+	}
+
+	dirs := []string{projCfg.Paths.TargetDir, usagelog.Dir(projCfg.Paths.GeneratedDir)}
+
+	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+		sysFS := o.getTrackedFS(ctx, tx, "system", "shim")
+		for _, dir := range dirs {
+			if err := sysFS.MkdirAll(dir, 0755); err != nil {
+				return fmt.Errorf("creating %q: %w", dir, err)
+			}
+		}
+		return nil
+	})
+}
+
 // GenerateTool generates shims and creates symlinks for a tool, recording file operations in the registry.
 func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	if projCfg == nil {
 		return fmt.Errorf("project configuration is nil")
+	}
+
+	if err := o.ensureShimDirs(ctx, projCfg); err != nil {
+		return err
 	}
 
 	// 1. Resolve binaries to shim
@@ -518,6 +534,13 @@ func sameContent(fsys fs.FS, source, target string) (bool, error) {
 	return true, nil
 }
 
+// isDir reports whether path is a directory in its own right. A symlink does not
+// count however it resolves: a shim is allowed to be one, and a directory is not.
+func (o *Orchestrator) isDir(path string) bool {
+	info, err := o.fs.Lstat(path)
+	return err == nil && info.IsDir()
+}
+
 // isWithin reports whether path is dir itself or lies beneath it.
 func isWithin(dir, path string) bool {
 	rel, err := filepath.Rel(dir, path)
@@ -563,11 +586,24 @@ func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.To
 				absFilePath = state.FilePath
 			}
 
+			// A recorded directory is never a shim: a shim is always a regular file or
+			// a symlink. Removing one would take everything it still holds with it.
+			if o.isDir(state.FilePath) || o.isDir(absFilePath) {
+				continue
+			}
+
 			if !expectedShimPaths[absFilePath] && !expectedShimPaths[state.FilePath] {
 				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale shim: %s", o.formatPath(projCfg, state.FilePath))))
 
-				_ = o.fs.Remove(state.FilePath)
-				_ = o.fs.Remove(absFilePath)
+				stalePaths := []string{state.FilePath}
+				if absFilePath != state.FilePath {
+					stalePaths = append(stalePaths, absFilePath)
+				}
+				for _, path := range stalePaths {
+					if err := o.fs.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+						o.logger.GetSubLogger("", tool.Name).Error(logger.Message(fmt.Sprintf("Failed to remove stale shim %s: %v", o.formatPath(projCfg, path), err)))
+					}
+				}
 
 				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 					activeFS := o.getTrackedFS(ctx, tx, tool.Name, "shim")

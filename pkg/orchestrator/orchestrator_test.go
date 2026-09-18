@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 )
 
 // mockInstaller implements installer.Installer for testing
@@ -2572,5 +2574,187 @@ func TestOrchestrator_GenerateTools_DependencyOnDisabledProvider(t *testing.T) {
 	}
 	if strings.Contains(output, "missing dependency") {
 		t.Errorf("expected the disabled provider not to be reported as missing, got:\n%s", output)
+	}
+}
+
+// The target directory and the usage-log directory belong to the project, not to
+// whichever tool happened to be installed first: both hold artifacts of every tool.
+// Recorded as one tool's shims they become stale shims of that tool the moment it is
+// generated, and the cleanup deletes them, taking the usage log with them as soon as
+// the directory is empty enough for Remove to succeed.
+func TestInstallThenGenerate_SystemDirectoriesAreNotToolOwnedShims(t *testing.T) {
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Name: "test-system-dirs", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	if err := instReg.Register(&mockInstaller{name: "manual"}); err != nil {
+		t.Fatalf("registering installer: %v", err)
+	}
+
+	orch := NewOrchestrator(log, fsys, runner, reg, instReg)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			TargetDir:       "/home/user/.generated/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			GeneratedDir:    "/home/user/.generated",
+		},
+	}
+
+	if err := fsys.MkdirAll("/opt/probe", 0755); err != nil {
+		t.Fatalf("creating binary directory: %v", err)
+	}
+	if err := fsys.WriteFile("/opt/probe/probe", []byte("#!/bin/sh\nexit 0\n"), 0755); err != nil {
+		t.Fatalf("writing binary: %v", err)
+	}
+
+	tool := &config.ToolConfig{
+		Name:               "probe",
+		Binaries:           []interface{}{"probe"},
+		ConfigFilePath:     "/home/user/tools/probe.tool.ts",
+		InstallationMethod: "manual",
+		InstallParams:      map[string]interface{}{"binaryPath": "/opt/probe/probe"},
+	}
+
+	// A fresh project: nothing pre-creates the directories the install pipeline needs.
+	if err := orch.InstallTools(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("InstallTools: %v", err)
+	}
+	if exists, _ := fsys.Exists(filepath.Join(projCfg.Paths.TargetDir, "probe")); !exists {
+		t.Fatal("expected install to generate a shim for the declared binary")
+	}
+
+	usageDir := usagelog.Dir(projCfg.Paths.GeneratedDir)
+	usageLogPath := usagelog.Path(projCfg.Paths.GeneratedDir)
+	if err := fsys.WriteFile(usageLogPath, []byte("v1\t1700000000\tprobe\tprobe\n"), 0644); err != nil {
+		t.Fatalf("writing usage log: %v", err)
+	}
+
+	systemDirs := map[string]bool{}
+	for _, dir := range []string{projCfg.Paths.TargetDir, usageDir} {
+		systemDirs[dir] = true
+		systemDirs[orch.formatPath(projCfg, dir)] = true
+	}
+
+	states, err := reg.GetFileStatesForTool(ctx, tool.Name)
+	if err != nil {
+		t.Fatalf("reading file states: %v", err)
+	}
+	for _, state := range states {
+		if systemDirs[state.FilePath] {
+			t.Errorf("install recorded the shared directory %s as a file of tool %q (type %q)", state.FilePath, tool.Name, state.FileType)
+		}
+	}
+
+	logBuf.Reset()
+	if err := orch.GenerateTools(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("GenerateTools: %v", err)
+	}
+
+	const marker = "Removing stale shim: "
+	for _, line := range strings.Split(logBuf.String(), "\n") {
+		idx := strings.Index(line, marker)
+		if idx < 0 {
+			continue
+		}
+		if named := strings.TrimSpace(line[idx+len(marker):]); systemDirs[named] {
+			t.Errorf("generate reported removing the shared directory %s as a stale shim", named)
+		}
+	}
+
+	if exists, _ := fsys.Exists(usageLogPath); !exists {
+		t.Error("expected the usage log written before generate to survive it")
+	}
+	for dir := range systemDirs {
+		if strings.HasPrefix(dir, "~") {
+			continue
+		}
+		if exists, _ := fsys.Exists(dir); !exists {
+			t.Errorf("expected %s to survive generate", dir)
+		}
+	}
+}
+
+// removeErrorFS fails every Remove, standing in for a shim the process may not delete.
+type removeErrorFS struct {
+	fs.FS
+	err error
+}
+
+func (r *removeErrorFS) Remove(path string) error { return r.err }
+
+// A registry written before shim generation stopped creating the shared directories
+// still names them as some tool's shims. Cleanup must leave any recorded directory
+// alone rather than rely on Remove refusing to empty it, and must report a Remove it
+// could not carry out instead of discarding the error.
+func TestCleanupStaleShims_DirectoriesAndRemoveFailures(t *testing.T) {
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			TargetDir:       "/home/user/.generated/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			GeneratedDir:    "/home/user/.generated",
+		},
+	}
+	tool := &config.ToolConfig{Name: "probe", Binaries: []interface{}{"probe"}}
+	usageDir := usagelog.Dir(projCfg.Paths.GeneratedDir)
+	staleShim := filepath.Join(projCfg.Paths.TargetDir, "gone")
+
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Name: "test-cleanup", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	removeErr := errors.New("permission denied")
+	orch := NewOrchestrator(log, &removeErrorFS{FS: fsys, err: removeErr}, runner, reg, installer.NewRegistry())
+
+	// The registry as an older version left it: an empty shared directory and a shim
+	// for a binary the tool no longer declares, both owned by the tool.
+	if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		toolFS := orch.getTrackedFS(ctx, tx, tool.Name, "shim")
+		if err := toolFS.MkdirAll(usageDir, 0755); err != nil {
+			return err
+		}
+		if err := toolFS.MkdirAll(projCfg.Paths.TargetDir, 0755); err != nil {
+			return err
+		}
+		return toolFS.WriteFile(staleShim, []byte("# Generated by Dotfiles Management Tool\n"), 0755)
+	}); err != nil {
+		t.Fatalf("seeding the registry: %v", err)
+	}
+
+	if err := orch.CleanupStaleShims(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("CleanupStaleShims: %v", err)
+	}
+
+	if exists, _ := fsys.Exists(usageDir); !exists {
+		t.Errorf("expected the recorded directory %s to survive cleanup", usageDir)
+	}
+	logged := logBuf.String()
+	if strings.Contains(logged, "Removing stale shim: "+orch.formatPath(projCfg, usageDir)) {
+		t.Errorf("expected cleanup not to treat the recorded directory as a shim, got:\n%s", logged)
+	}
+	if !strings.Contains(logged, "Failed to remove stale shim") || !strings.Contains(logged, removeErr.Error()) {
+		t.Errorf("expected the failed removal of %s to be reported, got:\n%s", staleShim, logged)
 	}
 }

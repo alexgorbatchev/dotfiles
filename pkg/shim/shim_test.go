@@ -33,7 +33,9 @@ func TestGenerator_Generate(t *testing.T) {
 				MissingBinaryMessage: "Custom missing msg",
 			},
 			setupFS: func() fs.FS {
-				return fs.NewMemFS()
+				mem := fs.NewMemFS()
+				_ = mem.MkdirAll("/home/user/bin", 0755)
+				return mem
 			},
 			wantErr: false,
 			wantContent: `#!/usr/bin/env bash
@@ -237,7 +239,6 @@ type ErroringFS struct {
 	errOnExists    bool
 	errOnReadFile  bool
 	errOnWriteFile bool
-	errOnMkdirAll  bool
 	errOnChmod     bool
 	errOnReadlink  bool
 }
@@ -284,31 +285,49 @@ func (e *ErroringFS) WriteFile(path string, data []byte, perm os.FileMode) error
 	return e.FS.WriteFile(path, data, perm)
 }
 
-func (e *ErroringFS) MkdirAll(path string, perm os.FileMode) error {
-	if e.errOnMkdirAll {
-		return fmt.Errorf("mock mkdirall error")
+// The shim directory and the usage-log directory are shared by every tool, so
+// Generate must not create either: a caller writing through a tool-scoped tracked
+// filesystem would have the directories recorded as that tool's own shims.
+func TestGenerator_GenerateCreatesNoDirectories(t *testing.T) {
+	cfg := Config{
+		ToolName:     "mytool",
+		BinaryName:   "mytool",
+		BinaryPath:   "/opt/mytool/bin/mytool",
+		UsageLogPath: "/home/user/.generated/usage/shim-usage.log",
 	}
-	return e.FS.MkdirAll(path, perm)
+
+	t.Run("leaves the usage log directory alone", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		_ = mem.MkdirAll("/home/user/.generated/bin", 0755)
+
+		if err := NewGenerator(mem).Generate("/home/user/.generated/bin/mytool", cfg); err != nil {
+			t.Fatalf("Generate: %v", err)
+		}
+		if exists, _ := mem.Exists("/home/user/.generated/usage"); exists {
+			t.Error("Generate created the usage log directory; provisioning it is the caller's job")
+		}
+	})
+
+	t.Run("fails when the shim directory is missing", func(t *testing.T) {
+		mem := fs.NewMemFS()
+
+		if err := NewGenerator(mem).Generate("/home/user/.generated/bin/mytool", cfg); err == nil {
+			t.Fatal("expected Generate to fail when the shim directory does not exist")
+		}
+		if exists, _ := mem.Exists("/home/user/.generated/bin"); exists {
+			t.Error("Generate created the shim directory; provisioning it is the caller's job")
+		}
+	})
 }
 
 func TestGenerator_Errors(t *testing.T) {
 	mem := fs.NewMemFS()
+	_ = mem.MkdirAll("/home/user/bin", 0755)
 	cfg := Config{
 		ToolName:   "mytool",
 		BinaryName: "mytool",
 		BinaryPath: "/opt/mytool/bin/mytool",
 	}
-
-	t.Run("UsageLogPath MkdirAll error in Generate", func(t *testing.T) {
-		errFS := &ErroringFS{FS: mem, errOnMkdirAll: true}
-		gen := NewGenerator(errFS)
-		cfgWithLog := cfg
-		cfgWithLog.UsageLogPath = "/home/user/logs/usage.log"
-		err := gen.Generate("/home/user/bin/mytool", cfgWithLog)
-		if err == nil {
-			t.Fatal("expected error on UsageLogPath MkdirAll")
-		}
-	})
 
 	t.Run("Chmod error in Generate", func(t *testing.T) {
 		errFS := &ErroringFS{FS: mem, errOnChmod: true}
@@ -371,6 +390,9 @@ func TestGenerator_Errors(t *testing.T) {
 func TestGenerator_GenerateLeavesIdenticalShimAlone(t *testing.T) {
 	dir := t.TempDir()
 	shimPath := filepath.Join(dir, "bin", "mytool")
+	if err := os.MkdirAll(filepath.Dir(shimPath), 0755); err != nil {
+		t.Fatalf("creating shim directory: %v", err)
+	}
 	gen := NewGenerator(fs.NewOSFS())
 	cfg := Config{
 		ToolName:       "mytool",
