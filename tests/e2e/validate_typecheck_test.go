@@ -80,9 +80,11 @@ func TestE2EValidateTypeChecks(t *testing.T) {
 
 	t.Run("a type error is attributed to its tool", func(t *testing.T) {
 		broken := filepath.Join(h.TempDir, "tools", "broken.tool.ts")
+		// A parameter no installer has ever read, so the diagnostic stays TS2353 no
+		// matter which real parameters come and go.
 		content := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n\n" +
 			"export default defineTool((install) =>\n" +
-			"  install(\"github-release\", { repo: \"owner/broken\", assetSelector: \"*.tar.gz\" }).bin(\"broken\"),\n" +
+			"  install(\"github-release\", { repo: \"owner/broken\", notAParameter: \"*.tar.gz\" }).bin(\"broken\"),\n" +
 			");\n"
 		if err := os.WriteFile(broken, []byte(content), 0644); err != nil {
 			t.Fatalf("writing broken tool: %v", err)
@@ -95,7 +97,7 @@ func TestE2EValidateTypeChecks(t *testing.T) {
 		if exitCode == 0 {
 			t.Fatalf("expected validate to fail on the type error:\n%s", stdout)
 		}
-		if !strings.Contains(stdout, "broken.tool.ts] broken: TS2353") || !strings.Contains(stdout, "'assetSelector' does not exist") {
+		if !strings.Contains(stdout, "broken.tool.ts] broken: TS2353") || !strings.Contains(stdout, "'notAParameter' does not exist") {
 			t.Errorf("expected the diagnostic to be attributed to tool broken:\n%s", stdout)
 		}
 		if !strings.Contains(stdout, "1 validation error(s) found") {

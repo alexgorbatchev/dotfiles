@@ -154,7 +154,7 @@ func TestInstallerCoverageCases(t *testing.T) {
 		{Name: "app-v1.0.0-mac-arm64.dmg"},
 		{Name: "app-v1.0.0-mac-x86_64.dmg"},
 	}
-	matchedDmg := matchMacOSAsset(dmgAssets, "App", "arm64", "arm64", ".dmg")
+	matchedDmg := matchMacOSAsset(dmgAssets, "App", "arm64", ".dmg")
 	if matchedDmg.Name != "app-v1.0.0-mac-arm64.dmg" {
 		t.Errorf("Dmg matchAsset failed: %v", matchedDmg)
 	}
@@ -163,7 +163,7 @@ func TestInstallerCoverageCases(t *testing.T) {
 		{Name: "app-v1.0.0-mac-arm64.pkg"},
 		{Name: "app-v1.0.0-mac-x86_64.pkg"},
 	}
-	matchedPkg := matchMacOSAsset(pkgAssets, "App", "arm64", "arm64", ".pkg")
+	matchedPkg := matchMacOSAsset(pkgAssets, "App", "arm64", ".pkg")
 	if matchedPkg.Name != "app-v1.0.0-mac-arm64.pkg" {
 		t.Errorf("Pkg matchAsset failed: %v", matchedPkg)
 	}

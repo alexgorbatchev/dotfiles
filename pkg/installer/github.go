@@ -296,13 +296,9 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	}
 
 	assetPattern := getStringParam(tool.InstallParams, "assetPattern", "")
-	matched := g.matchAsset(release.Assets, assetPattern)
-	if matched == nil {
-		patternStr := ""
-		if assetPattern != "" {
-			patternStr = " and pattern " + assetPattern
-		}
-		return nil, fmt.Errorf("no compatible asset found for release %q matching %s/%s%s", release.TagName, g.sysCtx.OS, g.sysCtx.Arch, patternStr)
+	matched, err := g.selectAsset(ctx, tool, release, assetPattern)
+	if err != nil {
+		return nil, err
 	}
 
 	destDir := g.BinDir

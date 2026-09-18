@@ -18,19 +18,21 @@ import (
 // macPackageSource is the `source` parameter shared by the dmg and pkg
 // installers: either a direct URL or a GitHub release to pick an asset from.
 type macPackageSource struct {
-	url           string
-	repo          string
-	version       string
-	assetPattern  string
-	assetSelector string
-	ghCli         bool
-	prerelease    bool
+	url          string
+	repo         string
+	version      string
+	assetPattern string
+	ghCli        bool
+	prerelease   bool
 }
 
 // parseMacPackageSource reads `source` ({ type: 'url', url } or
 // { type: 'github-release', repo, version?, assetPattern?, assetSelector?,
 // ghCli?, prerelease? }). A bare top-level `url` is accepted as well, which is
 // how configurations written before `source` existed spell the direct form.
+//
+// `assetSelector` is not read here: it is a function, so it never crosses the JSON
+// boundary into these parameters. The fetcher calls it back in the VM instead.
 func parseMacPackageSource(params map[string]interface{}) (macPackageSource, error) {
 	var src macPackageSource
 	if sourceMap, ok := params["source"].(map[string]interface{}); ok {
@@ -38,7 +40,6 @@ func parseMacPackageSource(params map[string]interface{}) (macPackageSource, err
 			src.repo = getStringParam(sourceMap, "repo", "")
 			src.version = getStringParam(sourceMap, "version", "")
 			src.assetPattern = getStringParam(sourceMap, "assetPattern", "")
-			src.assetSelector = getStringParam(sourceMap, "assetSelector", "")
 			src.ghCli = getBoolParam(sourceMap, "ghCli", false)
 			src.prerelease = getBoolParam(sourceMap, "prerelease", false)
 		} else {
@@ -132,9 +133,9 @@ func (f macPackageFetcher) fetch(ctx context.Context, tool *config.ToolConfig, s
 			return payload, err
 		}
 
-		matched := matchMacOSAsset(release.Assets, src.assetPattern, src.assetSelector, f.sysCtx.Arch, ext)
-		if matched == nil {
-			return payload, fmt.Errorf("no matching release asset found for OS %s and Arch %s", f.sysCtx.OS, f.sysCtx.Arch)
+		matched, err := f.selectAsset(ctx, tool, release, src, ext)
+		if err != nil {
+			return payload, err
 		}
 		downloadURL = matched.BrowserDownloadURL
 		downloadName = matched.Name
@@ -259,15 +260,10 @@ func isMacPackageAsset(name, ext string) bool {
 }
 
 // matchMacOSAsset picks the release asset for a macOS-only installer whose
-// package has extension ext. assetPattern (or, failing that, assetSelector)
-// narrows the candidates; among them a macOS build for cpuArch that is a
-// package or an archive wins, then any macOS build, then any package.
-func matchMacOSAsset(assets []githubAsset, assetPattern, assetSelector, cpuArch, ext string) *githubAsset {
-	pattern := assetPattern
-	if pattern == "" {
-		pattern = assetSelector
-	}
-
+// package has extension ext. assetPattern narrows the candidates; among them a
+// macOS build for cpuArch that is a package or an archive wins, then any macOS
+// build, then any package.
+func matchMacOSAsset(assets []githubAsset, pattern, cpuArch, ext string) *githubAsset {
 	candidates := assets
 	if pattern != "" {
 		candidates = nil

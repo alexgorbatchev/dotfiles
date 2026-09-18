@@ -225,9 +225,24 @@ export type ParamResolverFn = (context: Record<string, unknown>) => unknown;
 /**
  * Install parameters an author may give a function instead of a value. The function
  * runs when the installer needs the parameter, not when the configuration is read, so
- * it sees the paths the installation actually produced.
+ * it sees what the installation actually produced -- the downloaded script, the release
+ * being chosen from. A dotted name addresses a parameter nested one level down, which
+ * is where the dmg and pkg installers keep their release settings.
  */
-const RESOLVABLE_INSTALL_PARAMS = ["args", "env"];
+const RESOLVABLE_INSTALL_PARAMS = ["args", "env", "assetSelector", "source.assetSelector"];
+
+/**
+ * Returns the object a resolvable parameter lives on, or undefined when the parameter's
+ * parent is not there at all.
+ */
+function resolvableParent(installParams: Record<string, unknown>, path: string): Record<string, unknown> | undefined {
+  const dot = path.indexOf(".");
+  if (dot === -1) {
+    return installParams;
+  }
+  const parent = installParams[path.slice(0, dot)];
+  return parent && typeof parent === "object" ? (parent as Record<string, unknown>) : undefined;
+}
 
 /**
  * Records the function-valued install parameters so Go can call them later, and drops
@@ -243,11 +258,14 @@ function captureParamResolvers(toolName: string, installParams: Record<string, u
   >;
   const recorded: string[] = [];
 
-  for (const param of RESOLVABLE_INSTALL_PARAMS) {
-    if (typeof installParams[param] !== "function") continue;
-    registry[hookKey(toolName, param)] = installParams[param] as ParamResolverFn;
-    delete installParams[param];
-    recorded.push(param);
+  for (const path of RESOLVABLE_INSTALL_PARAMS) {
+    const parent = resolvableParent(installParams, path);
+    if (!parent) continue;
+    const leaf = path.slice(path.indexOf(".") + 1);
+    if (typeof parent[leaf] !== "function") continue;
+    registry[hookKey(toolName, path)] = parent[leaf] as ParamResolverFn;
+    delete parent[leaf];
+    recorded.push(path);
   }
 
   if (recorded.length > 0) {

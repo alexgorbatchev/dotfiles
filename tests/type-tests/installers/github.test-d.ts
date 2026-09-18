@@ -4,7 +4,7 @@ import {
   type z_internal_IInstallParamsRegistry,
   type z_internal_InstallMethod,
 } from "@alexgorbatchev/dotfiles";
-import { expectError } from "tsd";
+import { expectError, expectType } from "tsd";
 
 type GithubReleaseInstallParams = z_internal_GithubReleaseInstallParams;
 type InstallParamsRegistry = z_internal_IInstallParamsRegistry;
@@ -67,14 +67,45 @@ expectError(() =>
   ),
 );
 
-// Asset selection is pattern-only: the runtime has no selector callback.
-type ReleaseAsset = { name: string };
-type AssetSelection = { assets: ReleaseAsset[] };
+// assetSelector is a callback: it is given the release's assets and must return one of
+// them, or nothing.
+defineTool((install) =>
+  install("github-release", {
+    repo: "owner/tool",
+    assetSelector: ({ assets, release, assetPattern }) => {
+      expectType<string>(release.tag_name);
+      expectType<boolean>(release.prerelease);
+      expectType<string | undefined>(assetPattern);
+      return assets.find((asset) => asset.name.endsWith(".tar.gz"));
+    },
+  }).bin("tool"),
+);
+
+// An async selector is awaited.
+defineTool((install) =>
+  install("github-release", {
+    repo: "owner/tool",
+    assetSelector: async ({ assets }) => assets[0],
+  }).bin("tool"),
+);
+
+// A pattern string is not a selector: the two parameters are separate, and passing one
+// where the other belongs used to silently change which asset was installed.
 expectError(() =>
   defineTool((install) =>
     install("github-release", {
       repo: "owner/tool",
-      assetSelector: ({ assets }: AssetSelection) => assets[0],
+      assetSelector: "*.tar.gz",
+    }),
+  ),
+);
+
+// A selector must return an asset of the release, not a name.
+expectError(() =>
+  defineTool((install) =>
+    install("github-release", {
+      repo: "owner/tool",
+      assetSelector: ({ assets }) => assets[0]?.name,
     }),
   ),
 );

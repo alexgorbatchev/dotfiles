@@ -260,9 +260,9 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	}
 
 	assetPattern := getStringParam(tool.InstallParams, "assetPattern", "")
-	matched := matchAsset(release.Assets, g.sysCtx.OS, g.sysCtx.Arch, assetPattern)
-	if matched == nil {
-		return nil, fmt.Errorf("no matching release asset found for OS %s and Arch %s", g.sysCtx.OS, g.sysCtx.Arch)
+	matched, err := g.selectAsset(ctx, tool, release, assetPattern)
+	if err != nil {
+		return nil, err
 	}
 
 	destDir := g.BinDir

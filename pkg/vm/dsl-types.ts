@@ -603,6 +603,90 @@ export interface IDnfInstallParams extends ICommonInstallParams {
 }
 
 /**
+ * One file attached to a release.
+ */
+export interface IReleaseAsset {
+  /**
+   * The asset's filename, e.g. `ripgrep-14.1.0-aarch64-apple-darwin.tar.gz`.
+   */
+  name: string;
+  /**
+   * Address the asset is downloaded from.
+   */
+  browser_download_url: string;
+  /**
+   * The forge's identifier for the asset.
+   */
+  id: number;
+}
+
+/**
+ * A release, as the forge reported it.
+ */
+export interface IRelease {
+  /**
+   * The forge's identifier for the release.
+   */
+  id: number;
+  /**
+   * Tag the release was cut from, e.g. `v14.1.0`.
+   */
+  tag_name: string;
+  /**
+   * Title of the release.
+   */
+  name: string;
+  /**
+   * Whether the forge marks the release as a prerelease.
+   */
+  prerelease: boolean;
+  /**
+   * Whether the release is still a draft. GitHub reports it; Gitea does not.
+   */
+  draft?: boolean;
+  /**
+   * Every file attached to the release.
+   */
+  assets: IReleaseAsset[];
+}
+
+/**
+ * Context given to an `assetSelector`.
+ *
+ * It is the tool context plus the release the installer resolved, so the choice can
+ * depend on the whole set of assets at once, or on the release's tag -- neither of
+ * which a per-filename `assetPattern` can express.
+ */
+export interface IAssetSelectionContext extends IToolConfigContext {
+  /**
+   * Every asset of the release, to choose one of.
+   */
+  assets: IReleaseAsset[];
+  /**
+   * The release the assets belong to.
+   */
+  release: IRelease;
+  /**
+   * The configured `assetPattern`, when there is one. It is not applied for you: a
+   * selector that wants it narrows the assets itself. A `RegExp` arrives in its
+   * `/source/flags` form.
+   */
+  assetPattern?: string;
+}
+
+/**
+ * Chooses which release asset to install.
+ *
+ * It is called once the release has been resolved, and must return one of the assets it
+ * was given. Returning nothing fails the installation rather than falling back to the
+ * built-in matcher: having asked for a specific asset, quietly installing a different
+ * one is what the parameter exists to prevent.
+ */
+export type AssetSelector = (
+  context: IAssetSelectionContext,
+) => IReleaseAsset | undefined | Promise<IReleaseAsset | undefined>;
+
+/**
  * A macOS `.dmg` / `.pkg` artifact downloaded from a fixed address.
  */
 export interface IMacUrlSource {
@@ -630,6 +714,11 @@ export interface IMacGithubReleaseSource {
    * Glob or regex pattern selecting the release asset.
    */
   assetPattern?: string | RegExp;
+  /**
+   * Chooses the asset yourself, instead of by pattern. Reach for it only when a
+   * pattern cannot express the choice.
+   */
+  assetSelector?: AssetSelector;
   /**
    * Fetch release metadata through the `gh` CLI instead of the GitHub API.
    */
@@ -778,6 +867,11 @@ export interface IGiteaReleaseInstallParams extends ICommonInstallParams {
    */
   assetPattern?: string | RegExp;
   /**
+   * Chooses the asset yourself, instead of by pattern. Reach for it only when a
+   * pattern cannot express the choice.
+   */
+  assetSelector?: AssetSelector;
+  /**
    * API token used to authenticate with the instance.
    */
   token?: string;
@@ -896,6 +990,11 @@ export interface IGithubReleaseInstallParams extends ICommonInstallParams {
    * Glob or regex pattern to select the asset archive/binary.
    */
   assetPattern?: string | RegExp;
+  /**
+   * Chooses the asset yourself, instead of by pattern. Reach for it only when a
+   * pattern cannot express the choice.
+   */
+  assetSelector?: AssetSelector;
   /**
    * Fetch release metadata through the `gh` CLI instead of the GitHub API.
    */

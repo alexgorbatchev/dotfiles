@@ -44,7 +44,7 @@ export default defineTool((install, ctx) =>
 const brokenToolContent = `import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
-  install("github-release", { repo: "owner/broken", assetSelector: "*.tar.gz" })
+  install("github-release", { repo: "owner/broken", notAParameter: "*.tar.gz" })
     .bin("broken")
     .hook("after-install", async ({ $ }) => {
       await $` + "`broken --version`" + `.nothrow();
@@ -182,7 +182,7 @@ func TestValidateTypeCheck_ReportsDiagnosticsPerTool(t *testing.T) {
 		}
 		for _, want := range []string{
 			"broken.tool.ts] broken: TS2769 at line 4, column ",
-			"Object literal may only specify known properties, and 'assetSelector' does not exist",
+			"Object literal may only specify known properties, and 'notAParameter' does not exist",
 			"broken.tool.ts] broken: TS2551 at line 7, column ",
 			"Property 'nothrow' does not exist on type 'IShellPromise'. Did you mean 'noThrow'?",
 		} {
