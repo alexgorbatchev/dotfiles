@@ -28,15 +28,15 @@ export default defineConfig(() => ({
 ### Async Configuration
 
 ```typescript
-async function loadToken(): Promise<string> {
-  return process.env.GITHUB_TOKEN ?? "";
+async function loadGithubHost(): Promise<string> {
+  return process.env.GITHUB_API_HOST ?? "https://api.github.com";
 }
 
 export default defineConfig(async () => {
-  const token = await loadToken();
+  const host = await loadGithubHost();
   return {
     paths: { dotfilesDir: "~/.dotfiles" },
-    github: { token },
+    github: { host },
   };
 });
 ```
@@ -53,85 +53,88 @@ export default defineConfig(({ configFileDir, systemInfo }) => ({
 
 ## Configuration Reference
 
+A configuration may set nine top-level keys: the eight sections below and the
+[`platform`](#platform-overrides) override list. Any other key aborts the load with an
+"unknown property" error that lists the ones that are accepted, so a misspelling is
+never silently ignored.
+
+Every section is optional, and so is every key inside it.
+
 ### paths
 
-Default values shown.
+Where everything the CLI manages lives. A `~` is expanded, and `{paths.generatedDir}`
+may be used inside the other values.
+
+| Key               | Default                            | Effect                                                                     |
+| ----------------- | ---------------------------------- | -------------------------------------------------------------------------- |
+| `homeDir`         | the account's home directory       | What `~` expands to                                                        |
+| `dotfilesDir`     | none -- paths below become relative to the working directory | Root of the dotfiles repository; set it                   |
+| `generatedDir`    | `<dotfilesDir>/.generated`         | Everything the CLI writes, including the registry database                 |
+| `targetDir`       | `<generatedDir>/bin`               | Where shims are written; this is the directory that has to be on PATH      |
+| `binariesDir`     | `<generatedDir>/binaries`          | Installed tools, one versioned directory and a `current` link per tool     |
+| `shellScriptsDir` | `<generatedDir>/shell-scripts`     | `main.zsh`, `main.bash`, `main.ps1`, once-scripts and completions          |
+| `toolConfigsDir`  | `<config file directory>/tools`    | Where `*.tool.ts` files are found; a string, or an array to search several |
 
 ```typescript config
 paths: {
-  homeDir: '~',                                    // User's home directory
-  dotfilesDir: '~/.dotfiles',                      // Root dotfiles directory
-  toolConfigsDir: '~/.dotfiles/tools',             // Directory with *.tool.ts files (string or string[] for multiple directories)
-  generatedDir: '~/.dotfiles/.generated',          // Generated files directory
-  targetDir: '/usr/local/bin',                     // Shim directory (must be in PATH)
-  shellScriptsDir: '~/.dotfiles/.generated/shell-scripts',
-  binariesDir: '~/.dotfiles/.generated/binaries',
+  dotfilesDir: "~/.dotfiles",
+  toolConfigsDir: ["~/.dotfiles/tools", "~/.dotfiles/work-tools"],
 }
 ```
 
 ### features
 
-#### Catalog
-
-Auto-generates a markdown file listing all managed tools:
-
-```typescript config
-features: {
-  catalog: {
-    generate: true,                                // Enable catalog generation
-    filePath: '~/.dotfiles/CATALOG.md',            // Output location
-  },
-}
-```
-
-The generated catalog includes tool names, installation methods, and available binaries.
-
-#### Shell Installation
-
-Automatically adds sourcing to your shell configuration:
-
 ```typescript config
 features: {
   shellInstall: {
-    zsh: '~/.zshrc',                               // Path to zsh config
-    bash: '~/.bashrc',                             // Path to bash config
-    powershell: '~/.config/powershell/profile.ps1', // Path to PowerShell config
+    zsh: "~/.zshrc",
+    bash: "~/.bashrc",
+    powershell: "~/.config/powershell/profile.ps1",
   },
 }
 ```
 
-If a shell path is not provided, initialization for that shell is skipped. Only a profile that already exists is updated: `dotfiles generate` warns about a configured profile that is missing and leaves creating it to you.
+`shellInstall` names the profile of each shell that `dotfiles generate` adds its
+sourcing line to. A shell left out is skipped. Only a profile that already exists is
+updated: `dotfiles generate` warns about a configured profile that is missing and leaves
+creating it to you.
+
+`catalog` (`generate`, `filePath`) is accepted and reported by `dotfiles features`, but
+no command writes a catalog file; both keys default to empty.
 
 ### github
 
-```typescript config
-github: {
-  host: 'https://api.github.com',
-  token: process.env.GITHUB_TOKEN,                 // Recommended for rate limits
-  userAgent: 'dotfiles-generator',
-  cache: {
-    enabled: true,
-    ttl: 86400000,                                 // 24 hours in ms
-  },
-}
-```
+| Key         | Default                     | Effect                                                     |
+| ----------- | --------------------------- | ---------------------------------------------------------- |
+| `host`      | `https://api.github.com`    | API base URL for `github-release`, for GitHub Enterprise   |
+| `cache.ttl` | `3600000` (one hour), in ms | How long a fetched release description is reused           |
+
+`token`, `userAgent` and `cache.enabled` are accepted and not read. Authenticate with
+the `token` parameter of the installation method, or with `GITHUB_TOKEN` in the
+environment; the metadata cache is always on.
 
 ### system
 
-```typescript config
-system: {
-  sudoPrompt: 'Please enter your password to continue:',
-}
-```
+| Key           | Default              | Effect                                                |
+| ------------- | -------------------- | ----------------------------------------------------- |
+| `sudoPrompt`  | the system's prompt  | Passed to `sudo -p` when a tool declares `.sudo()`    |
 
-### updates
+### downloader
 
-```typescript config
-updates: {
-  checkOnRun: true,                                // Check for updates on each run
-  checkInterval: 86400,                            // Seconds between checks (24 hours)
-}
-```
+| Key         | Default                        | Effect                                    |
+| ----------- | ------------------------------ | ----------------------------------------- |
+| `cache.ttl` | `2592000000` (30 days), in ms  | How long a downloaded asset is reused     |
+
+`timeout`, `retryCount`, `retryDelay` and `cache.enabled` are accepted and not read.
+
+A download renders a progress line on stderr while it runs, and only when stderr is a
+terminal.
+
+### logging, updates and cargo
+
+`logging.debug`, `updates.checkOnRun`, `updates.checkInterval` and every key under
+`cargo` are accepted by the loader and read by nothing. Set the log level with the
+`--log` flag or `-v`/`-q` (see the [CLI reference](../getting-started/cli-reference.md)).
 
 ## Platform Overrides
 
@@ -179,187 +182,16 @@ dotfiles install  # Uses dotfiles.config.ts in current directory
 
 ## Directory Structure
 
+With the defaults above and `dotfilesDir: '~/.dotfiles'`:
+
 ```
 ~/.dotfiles/
-├── dotfiles.config.ts     # Project configuration
-├── tools/                 # Tool definitions (*.tool.ts)
-├── CATALOG.md            # Auto-generated
+├── dotfiles.config.ts    # Project configuration
+├── tools/                # Tool definitions (*.tool.ts)
 └── .generated/           # Not version controlled
     ├── bin/              # Shims
     ├── shell-scripts/    # Shell init scripts
-    └── binaries/         # Downloaded binaries
-```
-
-## Complete Reference
-
-The generator can be customized via a `dotfiles.config.ts` file located in your dotfiles directory (e.g., `~/.dotfiles/dotfiles.config.ts`). The following is a reference for all available options.
-
-```typescript
-import { defineConfig } from "@alexgorbatchev/dotfiles";
-
-export default defineConfig(() => ({
-  // ---------------------------------------------------------------------------
-  // File System Paths
-  // ---------------------------------------------------------------------------
-  paths: {
-    // Root directory of the dotfiles repository. You SHOULD set this value.
-    // (string, default: ~/.dotfiles)
-    dotfilesDir: "~/.dotfiles",
-    // Target directory for executable shims. This directory MUST be in your shell's $PATH.
-    // (string, default: /usr/local/bin)
-    targetDir: "/usr/local/bin",
-    // The user's home directory.
-    // (string, default: value of $HOME)
-    homeDir: "~",
-    // Directory where all generated files will be stored.
-    // (string, default: ~/.dotfiles/.generated)
-    generatedDir: "~/.dotfiles/.generated",
-    // Directory containing *.tool.ts tool configuration files.
-    // (string, default: ~/.dotfiles/tools)
-    toolConfigsDir: "~/.dotfiles/tools",
-    // Directory where generated shell scripts are stored.
-    // (string, default: ~/.dotfiles/.generated/shell-scripts)
-    shellScriptsDir: "~/.dotfiles/.generated/shell-scripts",
-    // Directory where downloaded tool binaries are stored.
-    // (string, default: ~/.dotfiles/.generated/binaries)
-    binariesDir: "~/.dotfiles/.generated/binaries",
-  },
-
-  // ---------------------------------------------------------------------------
-  // System Settings
-  // ---------------------------------------------------------------------------
-  system: {
-    // Custom prompt message to display when sudo is required.
-    // (string, default: "Please enter your password to continue:")
-    sudoPrompt: "Please enter your password to continue:",
-  },
-
-  // ---------------------------------------------------------------------------
-  // Logging Configuration
-  // ---------------------------------------------------------------------------
-  logging: {
-    // Controls debug logging output. Set to "*" to enable all debug logs.
-    // (string, default: "")
-    debug: "",
-  },
-
-  // ---------------------------------------------------------------------------
-  // Automatic Updates
-  // ---------------------------------------------------------------------------
-  updates: {
-    // If true, automatically check for tool updates on certain runs.
-    // (boolean, default: true)
-    checkOnRun: true,
-    // Interval in seconds between automatic update checks.
-    // (number, default: 86400, i.e., 24 hours)
-    checkInterval: 86400,
-  },
-
-  // ---------------------------------------------------------------------------
-  // Features Configuration
-  // ---------------------------------------------------------------------------
-  features: {
-    // Configuration for the tool catalog generation.
-    catalog: {
-      // If true, generate a markdown catalog of all tools.
-      // (boolean, default: true)
-      generate: true,
-      // Path where the catalog file will be generated.
-      // (string, default: {paths.dotfilesDir}/CATALOG.md)
-      filePath: "{paths.dotfilesDir}/CATALOG.md",
-    },
-
-    // Configuration for shell initialization.
-    // Controls where the shell initialization scripts are sourced.
-    shellInstall: {
-      // Path to zsh configuration file (e.g., ~/.zshrc).
-      // If not provided, zsh initialization will be skipped.
-      zsh: "~/.zshrc",
-      // Path to bash configuration file (e.g., ~/.bashrc).
-      // If not provided, bash initialization will be skipped.
-      bash: "~/.bashrc",
-      // Path to powershell configuration file (e.g., ~/.config/powershell/profile.ps1).
-      // If not provided, powershell initialization will be skipped.
-      powershell: "~/.config/powershell/profile.ps1",
-    },
-  },
-
-  // ---------------------------------------------------------------------------
-  // API and Service Configurations
-  // ---------------------------------------------------------------------------
-  github: {
-    // GitHub API host.
-    // (string, default: "https://api.github.com")
-    host: "https://api.github.com",
-    // GitHub API token. Can be set via GITHUB_TOKEN environment variable.
-    // (string, optional)
-    token: "",
-    // User-Agent for GitHub API requests.
-    // (string, default: "dotfiles-generator")
-    userAgent: "dotfiles-generator",
-    // Caching for GitHub API requests.
-    cache: {
-      enabled: true,
-      ttl: 86400000, // 24 hours in ms
-    },
-  },
-
-  cargo: {
-    // User-Agent for Cargo-related requests.
-    userAgent: "dotfiles-generator",
-    // Configuration for the crates.io API.
-    cratesIo: {
-      host: "https://crates.io",
-      cache: {
-        enabled: true,
-        ttl: 86400000,
-      },
-    },
-    // Configuration for accessing raw files on GitHub (e.g., Cargo.toml).
-    githubRaw: {
-      host: "https://raw.githubusercontent.com",
-      cache: {
-        enabled: true,
-        ttl: 86400000,
-      },
-    },
-    // Configuration for accessing GitHub releases.
-    githubRelease: {
-      host: "https://github.com",
-      cache: {
-        enabled: true,
-        ttl: 86400000,
-      },
-    },
-  },
-
-  // ---------------------------------------------------------------------------
-  // Downloader Settings
-  // ---------------------------------------------------------------------------
-  downloader: {
-    // Timeout in milliseconds for download operations.
-    // (number, default: 300000, i.e., 5 minutes)
-    timeout: 300000,
-    // Number of retry attempts for failed downloads.
-    // (number, default: 3)
-    retryCount: 3,
-    // Delay in milliseconds between download retry attempts.
-    // (number, default: 1000)
-    retryDelay: 1000,
-    // Caching for downloaded files.
-    cache: {
-      enabled: true,
-      ttl: 86400000, // 24 hours in ms
-    },
-  },
-
-  // Interactive downloads render an inline progress line on stderr. On supported
-  // terminals, the CLI also emits native OSC 9;4 progress updates so the terminal
-  // can surface progress in its own UI. These updates are skipped when stderr is
-  // not a TTY, in CI, or when NO_COLOR is set.
-
-  // ---------------------------------------------------------------------------
-  // Platform-Specific Overrides: see "Platform Overrides" above.
-  // ---------------------------------------------------------------------------
-}));
+    ├── binaries/         # Installed tools
+    ├── cache/            # Downloaded assets and release metadata
+    └── registry.db       # What the CLI has written, per tool
 ```
