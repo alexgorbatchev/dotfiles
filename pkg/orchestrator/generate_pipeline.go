@@ -313,12 +313,12 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	}
 
 	// 3. Create Symlinks
-	if err := o.createSymlinks(ctx, tool); err != nil {
+	if err := o.createSymlinks(ctx, tool, projCfg); err != nil {
 		return err
 	}
 
 	// 4. Apply copies
-	if err := o.applyCopies(ctx, tool); err != nil {
+	if err := o.applyCopies(ctx, tool, projCfg); err != nil {
 		return err
 	}
 
@@ -337,24 +337,33 @@ var symlinkOptions = symlink.Options{Overwrite: true, Backup: true}
 
 // createSymlinks links every .symlink() declaration of a tool into place and records
 // each newly created link under the tool so the stale cleanup can find it later.
-// Sources resolve against the tool's directory.
-func (o *Orchestrator) createSymlinks(ctx context.Context, tool *config.ToolConfig) error {
+// Sources resolve against the tool's directory, and targets resolve path placeholders
+// before being created and recorded.
+func (o *Orchestrator) createSymlinks(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	symEvaluator := o.getSymlinkEvaluator()
 	for _, sym := range tool.Symlinks {
+		target, err := config.ResolvePathPlaceholders(sym.Target, tool.Name, projCfg)
+		if err != nil {
+			return fmt.Errorf("tool %q: symlink target %q: %w", tool.Name, sym.Target, err)
+		}
+		if projCfg != nil {
+			target = utils.ExpandHomePath(projCfg.Paths.HomeDir, target)
+		}
+
 		src := sym.Source
 		if !o.fs.IsAbs(src) && tool.ConfigFilePath != "" {
 			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
 		}
-		wasCreated, err := symEvaluator.CreateSymlink(src, sym.Target, symlinkOptions)
+		wasCreated, err := symEvaluator.CreateSymlink(src, target, symlinkOptions)
 		if err != nil {
-			return fmt.Errorf("creating symlink from %q to %q: %w", sym.Source, sym.Target, err)
+			return fmt.Errorf("creating symlink from %q to %q: %w", sym.Source, target, err)
 		}
 		if !wasCreated {
 			continue
 		}
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
-			return activeFS.RecordExistingSymlink(src, sym.Target)
+			return activeFS.RecordExistingSymlink(src, target)
 		})
 		if err != nil {
 			return fmt.Errorf("recording symlink operation: %w", err)
@@ -364,18 +373,26 @@ func (o *Orchestrator) createSymlinks(ctx context.Context, tool *config.ToolConf
 }
 
 // applyCopies places every .copy() declaration of a tool at its target. Sources
-// resolve against the tool's directory like symlink sources do, and targets go
-// through the filesystem so ~ expands to the configured home. Copied files are
+// resolve against the tool's directory like symlink sources do, targets resolve path
+// placeholders and leading ~ against the configured homeDir, and copied files are
 // written through the tracked filesystem as "copy", which is the record
 // CleanupStaleCopies reaps once a declaration disappears.
-func (o *Orchestrator) applyCopies(ctx context.Context, tool *config.ToolConfig) error {
+func (o *Orchestrator) applyCopies(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	for _, cp := range tool.Copies {
+		target, err := config.ResolvePathPlaceholders(cp.Target, tool.Name, projCfg)
+		if err != nil {
+			return fmt.Errorf("tool %q: copy target %q: %w", tool.Name, cp.Target, err)
+		}
+		if projCfg != nil {
+			target = utils.ExpandHomePath(projCfg.Paths.HomeDir, target)
+		}
+
 		src := cp.Source
 		if !o.fs.IsAbs(src) && tool.ConfigFilePath != "" {
 			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
 		}
-		if err := o.copyPath(ctx, tool.Name, src, cp.Target); err != nil {
-			return fmt.Errorf("copying %q to %q: %w", cp.Source, cp.Target, err)
+		if err := o.copyPath(ctx, tool.Name, src, target); err != nil {
+			return fmt.Errorf("copying %q to %q: %w", cp.Source, target, err)
 		}
 	}
 	return nil
@@ -637,11 +654,16 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 
 		expectedSymlinks := make(map[string]bool)
 		for _, sym := range tool.Symlinks {
-			expandedTarget := sym.Target
+			resolvedTarget, err := config.ResolvePathPlaceholders(sym.Target, tool.Name, projCfg)
+			if err != nil {
+				return fmt.Errorf("%s: symlink target %q: %w", tool.Name, sym.Target, err)
+			}
+			expandedTarget := resolvedTarget
 			if strings.HasPrefix(expandedTarget, "~") {
 				expandedTarget = utils.ExpandHomePath(projCfg.Paths.HomeDir, expandedTarget)
 			}
 			expectedSymlinks[sym.Target] = true
+			expectedSymlinks[resolvedTarget] = true
 			expectedSymlinks[expandedTarget] = true
 			if absTarget, err := o.fs.Abs(expandedTarget); err == nil {
 				expectedSymlinks[absTarget] = true
@@ -711,11 +733,16 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 		// recorded path counts as expected when it lies inside one of these too.
 		copyTargets := make(map[string]bool)
 		for _, cp := range tool.Copies {
-			expandedTarget := cp.Target
+			resolvedTarget, err := config.ResolvePathPlaceholders(cp.Target, tool.Name, projCfg)
+			if err != nil {
+				return fmt.Errorf("%s: copy target %q: %w", tool.Name, cp.Target, err)
+			}
+			expandedTarget := resolvedTarget
 			if strings.HasPrefix(expandedTarget, "~") {
 				expandedTarget = utils.ExpandHomePath(projCfg.Paths.HomeDir, expandedTarget)
 			}
 			copyTargets[cp.Target] = true
+			copyTargets[resolvedTarget] = true
 			copyTargets[expandedTarget] = true
 			if absTarget, err := o.fs.Abs(expandedTarget); err == nil {
 				copyTargets[absTarget] = true

@@ -422,12 +422,12 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	// 4. Create Symlinks
-	if err := o.createSymlinks(ctx, tool); err != nil {
+	if err := o.createSymlinks(ctx, tool, projCfg); err != nil {
 		return err
 	}
 
 	// 5. Apply copies
-	if err := o.applyCopies(ctx, tool); err != nil {
+	if err := o.applyCopies(ctx, tool, projCfg); err != nil {
 		return err
 	}
 
