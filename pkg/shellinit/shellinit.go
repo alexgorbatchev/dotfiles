@@ -202,15 +202,20 @@ func (inj *Injector) Remove(profilePath string) (bool, error) {
 	return false, nil
 }
 
-// FormatPath returns shell script commands ensuring targetDir is placed at the front of PATH,
-// removing any existing or lower-priority duplicate occurrences across *nix and Windows.
+// FormatPath returns shell script commands placing targetDir at the front of PATH.
+// Both branches are idempotent so that sourcing the generated script again (nested
+// shells, `exec zsh`, re-sourcing after generate) never grows PATH: PowerShell filters
+// existing occurrences out before prepending, and the POSIX shells only prepend when
+// the directory is not already present.
 func FormatPath(shell, targetDir string) string {
 	switch shell {
 	case "powershell":
 		return fmt.Sprintf(`$filtered = ($env:PATH -split [IO.Path]::PathSeparator | Where-Object { $_ -and $_ -ne "%s" }) -join [IO.Path]::PathSeparator
 $env:PATH = if ($filtered) { "%s" + [IO.Path]::PathSeparator + $filtered } else { "%s" }`, targetDir, targetDir, targetDir)
 	default: // zsh, bash, sh, etc.
-		return fmt.Sprintf(`export PATH="%s:$PATH"`, targetDir)
+		return fmt.Sprintf(`if [[ ":$PATH:" != *":%s:"* ]]; then
+  export PATH="%s:$PATH"
+fi`, targetDir, targetDir)
 	}
 }
 

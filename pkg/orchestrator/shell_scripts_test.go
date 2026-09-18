@@ -3,6 +3,9 @@ package orchestrator
 import (
 	"bytes"
 	"context"
+	"os"
+	osexec "os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -644,5 +647,92 @@ func TestGenerateShellScripts_CliWrapperConfigFlag(t *testing.T) {
 	ps1Content2 := string(ps1Data2)
 	if !strings.Contains(ps1Content2, `& "/home/user/.generated/user-bin/dotfiles" $args`) {
 		t.Errorf("expected powershell wrapper without --config flag, got:\n%s", ps1Content2)
+	}
+}
+
+// bashRuntimeProject is a project generated onto the real filesystem under a
+// temporary HOME so that the produced main.bash can be executed by bash itself.
+type bashRuntimeProject struct {
+	orch     *Orchestrator
+	projCfg  *config.ProjectConfig
+	homeDir  string
+	mainBash string
+	onceDir  string
+}
+
+func newBashRuntimeProject(t *testing.T) bashRuntimeProject {
+	t.Helper()
+	homeDir := t.TempDir()
+	generatedDir := filepath.Join(homeDir, ".generated")
+	shellScriptsDir := filepath.Join(generatedDir, "shell-scripts")
+	return bashRuntimeProject{
+		orch: newTestOrchestrator(t, fs.NewResolvedFS(fs.NewOSFS(), homeDir), ""),
+		projCfg: &config.ProjectConfig{
+			Paths: config.PathsConfig{
+				HomeDir:         homeDir,
+				GeneratedDir:    generatedDir,
+				ShellScriptsDir: shellScriptsDir,
+				TargetDir:       filepath.Join(generatedDir, "user-bin"),
+			},
+		},
+		homeDir:  homeDir,
+		mainBash: filepath.Join(shellScriptsDir, "main.bash"),
+		onceDir:  filepath.Join(shellScriptsDir, ".once"),
+	}
+}
+
+// runBash executes script in a fresh non-interactive bash whose HOME is the
+// project's temporary home and returns its standard output. The test is skipped
+// when no bash is available on this machine.
+func (p bashRuntimeProject) runBash(t *testing.T, script string) string {
+	t.Helper()
+	bashPath, err := osexec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash is not on PATH")
+	}
+	cmd := osexec.Command(bashPath, "--noprofile", "--norc", "-c", script)
+	cmd.Env = []string{"HOME=" + p.homeDir, "PATH=" + os.Getenv("PATH")}
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bash -c %q failed: %v\n%s", script, err, out)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func countPathEntries(pathValue, dir string) int {
+	count := 0
+	for _, entry := range strings.Split(pathValue, ":") {
+		if entry == dir {
+			count++
+		}
+	}
+	return count
+}
+
+func TestGenerateShellScripts_BashPathPrependIsGuarded(t *testing.T) {
+	p := newBashRuntimeProject(t)
+	toolBin := filepath.Join(p.homeDir, "tool", "bin")
+	tools := []*config.ToolConfig{
+		{
+			Name:           "path-tool",
+			ConfigFilePath: filepath.Join(p.homeDir, "tools", "path-tool.tool.ts"),
+			ShellConfigs: &config.ShellConfigs{
+				Bash: &config.ShellTypeConfig{
+					Paths: []interface{}{toolBin},
+				},
+			},
+		},
+	}
+	if err := p.orch.generateShellScripts(context.Background(), tools, p.projCfg); err != nil {
+		t.Fatalf("generateShellScripts: %v", err)
+	}
+
+	// Sourcing the script twice mirrors nested shells and re-sourcing after
+	// generate; each managed directory must still appear exactly once.
+	pathValue := p.runBash(t, `source "`+p.mainBash+`"; source "`+p.mainBash+`"; printf '%s' "$PATH"`)
+	for _, dir := range []string{p.projCfg.Paths.TargetDir, toolBin} {
+		if got := countPathEntries(pathValue, dir); got != 1 {
+			t.Errorf("PATH contains %s %d times after sourcing main.bash twice, want 1:\n%s", dir, got, pathValue)
+		}
 	}
 }

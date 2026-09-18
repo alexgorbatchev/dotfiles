@@ -460,16 +460,20 @@ func TestFormatPath(t *testing.T) {
 		want      string
 	}{
 		{
-			name:      "zsh path append",
+			name:      "zsh guarded prepend",
 			shell:     "zsh",
 			targetDir: "/home/user/bin",
-			want:      `export PATH="/home/user/bin:$PATH"`,
+			want: `if [[ ":$PATH:" != *":/home/user/bin:"* ]]; then
+  export PATH="/home/user/bin:$PATH"
+fi`,
 		},
 		{
-			name:      "bash path append",
+			name:      "bash guarded prepend",
 			shell:     "bash",
 			targetDir: "/home/user/bin",
-			want:      `export PATH="/home/user/bin:$PATH"`,
+			want: `if [[ ":$PATH:" != *":/home/user/bin:"* ]]; then
+  export PATH="/home/user/bin:$PATH"
+fi`,
 		},
 		{
 			name:      "powershell path append",
