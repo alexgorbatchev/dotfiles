@@ -807,15 +807,8 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 
 	shellScriptsDir := shellScriptsDirOf(projCfg)
 
-	for _, sh := range []string{"zsh", "bash"} {
-		var stc *config.ShellTypeConfig
-		if tool.ShellConfigs != nil {
-			if sh == "zsh" {
-				stc = tool.ShellConfigs.Zsh
-			} else if sh == "bash" {
-				stc = tool.ShellConfigs.Bash
-			}
-		}
+	for _, sh := range []string{"zsh", "bash", "powershell"} {
+		stc := getShellTypeConfig(tool, sh)
 
 		if stc == nil || stc.Completions == nil {
 			continue
@@ -956,10 +949,17 @@ func getCompletionFileName(tool *config.ToolConfig, sh string, stc *config.Shell
 			baseName = bins[0]
 		}
 	}
-	if sh == "zsh" {
+	switch sh {
+	case "zsh":
+		// Zsh autoloads a completion function from a file named after it.
 		return "_" + baseName
+	case "powershell":
+		// main.ps1 dot-sources *.ps1 from the completions directory, so the extension
+		// is what makes the file loadable rather than decoration.
+		return baseName + ".ps1"
+	default:
+		return baseName
 	}
-	return baseName
 }
 
 func getPatternForBinary(toolBinaries []interface{}, binName string) string {

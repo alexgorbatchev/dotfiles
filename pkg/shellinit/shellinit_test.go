@@ -540,6 +540,53 @@ func TestFormatFpath(t *testing.T) {
 	}
 }
 
+func TestFormatCompletionLoad(t *testing.T) {
+	const dir = "/home/user/.generated/shell-scripts/bash/completions"
+	tests := []struct {
+		name  string
+		shell string
+		want  string
+	}{
+		{
+			name:  "zsh puts the directory on fpath",
+			shell: "zsh",
+			want:  FormatFpath(dir),
+		},
+		{
+			name:  "bash sources every file in the current shell",
+			shell: "bash",
+			want: `__dotfiles_completion_nullglob="$(shopt -p nullglob)"
+shopt -s nullglob
+for completion_script in "/home/user/.generated/shell-scripts/bash/completions"/*; do
+  [[ -f "$completion_script" ]] && source "$completion_script"
+done
+eval "$__dotfiles_completion_nullglob"
+unset __dotfiles_completion_nullglob`,
+		},
+		{
+			name:  "powershell dot-sources every script",
+			shell: "powershell",
+			want: `if (Test-Path "/home/user/.generated/shell-scripts/bash/completions") {
+  Get-ChildItem -Path "/home/user/.generated/shell-scripts/bash/completions" -Filter "*.ps1" | ForEach-Object { . $_.FullName }
+}`,
+		},
+		{
+			name:  "unsupported shell",
+			shell: "fish",
+			want:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatCompletionLoad(tt.shell, dir)
+			if got != tt.want {
+				t.Errorf("FormatCompletionLoad(%q, %q) =\n%q\nwant =\n%q", tt.shell, dir, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestFormatOnceLoop(t *testing.T) {
 	tests := []struct {
 		name    string

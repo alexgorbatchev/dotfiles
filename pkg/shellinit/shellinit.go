@@ -215,6 +215,36 @@ func FormatFpath(completionsDir string) string {
 	return fmt.Sprintf("typeset -U fpath\nfpath=(%q $fpath)", completionsDir)
 }
 
+// FormatCompletionLoad returns the code that makes the completion files dotfiles wrote
+// into completionsDir take effect in the given shell.
+//
+// Zsh looks completion functions up by file name on fpath, so the directory is all it
+// needs. Bash has no fpath: each file has to be sourced, which needs nullglob so that an
+// empty directory does not source the literal glob, and the user's own nullglob setting
+// is handed back through the reusable output of `shopt -p`, exactly as the once-script
+// loop does. PowerShell dot-sources each script so the Register-ArgumentCompleter calls
+// inside them register against the current session rather than a child scope.
+func FormatCompletionLoad(shell, completionsDir string) string {
+	switch shell {
+	case "zsh":
+		return FormatFpath(completionsDir)
+	case "bash":
+		return fmt.Sprintf(`__dotfiles_completion_nullglob="$(shopt -p nullglob)"
+shopt -s nullglob
+for completion_script in %q/*; do
+  [[ -f "$completion_script" ]] && source "$completion_script"
+done
+eval "$__dotfiles_completion_nullglob"
+unset __dotfiles_completion_nullglob`, completionsDir)
+	case "powershell":
+		return fmt.Sprintf(`if (Test-Path %q) {
+  Get-ChildItem -Path %q -Filter "*.ps1" | ForEach-Object { . $_.FullName }
+}`, completionsDir, completionsDir)
+	default:
+		return ""
+	}
+}
+
 // FormatOnceLoop returns the dynamic once-scripts glob matching loop for the given shell.
 // The loop must run in the current shell: once-scripts self-delete after their first
 // run, so an export or function they define has to land in the session that sourced

@@ -40,16 +40,18 @@ A completion file that is already in place is not regenerated; pass `--overwrite
 
 ## Where the File Goes
 
-The file is written to `<shellScriptsDir>/<shell>/completions/`, named `_<bin>` for zsh
-and `<bin>` for bash, where `<bin>` is `bin` if given, otherwise the tool's first
-`.bin()` name, otherwise the tool name.
+The file is written to `<shellScriptsDir>/<shell>/completions/`, named `_<bin>` for zsh,
+`<bin>` for bash and `<bin>.ps1` for PowerShell, where `<bin>` is `bin` if given,
+otherwise the tool's first `.bin()` name, otherwise the tool name.
 
-The generated `main.zsh` adds the zsh directory to `fpath`, so zsh completions load on
-the next shell start; reload the current shell with `autoload -U compinit && compinit`.
+Each shell's generated init script loads its own directory, so a completion declared for
+a shell works in that shell on the next shell start:
 
-Files are produced for zsh and bash only, and only zsh loads them automatically: the
-generated `main.bash` does not source the bash directory, and a `.completions()` call
-inside `.powershell()` produces no file at all.
+- `main.zsh` adds the directory to `fpath`; reload the current shell with
+  `autoload -U compinit && compinit`.
+- `main.bash` sources every file in the directory, since bash has no `fpath`.
+- `main.ps1` dot-sources every `.ps1` in the directory, so the
+  `Register-ArgumentCompleter` calls inside register against the current session.
 
 ## Shell Callback Context
 

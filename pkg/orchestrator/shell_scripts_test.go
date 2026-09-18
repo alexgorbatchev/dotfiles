@@ -868,3 +868,123 @@ func TestGenerateShellScripts_BashOnceLoopPreservesNullglob(t *testing.T) {
 		})
 	}
 }
+
+// TestGenerateShellScripts_BashCompletionsAreSourced runs the emitted loop in a real
+// bash: a completion file in the bash completions directory must take effect in the
+// session that sourced main.bash, an empty directory must not be an error, and the
+// user's nullglob setting must survive.
+func TestGenerateShellScripts_BashCompletionsAreSourced(t *testing.T) {
+	newProject := func(t *testing.T) (bashRuntimeProject, string) {
+		t.Helper()
+		p := newBashRuntimeProject(t)
+		tools := []*config.ToolConfig{
+			{
+				Name:           "comp-tool",
+				ConfigFilePath: filepath.Join(p.homeDir, "tools", "comp-tool.tool.ts"),
+				ShellConfigs: &config.ShellConfigs{
+					Bash: &config.ShellTypeConfig{Completions: "completions/comp-tool"},
+				},
+			},
+		}
+		if err := p.orch.generateShellScripts(context.Background(), tools, p.projCfg); err != nil {
+			t.Fatalf("generateShellScripts: %v", err)
+		}
+		return p, filepath.Join(p.projCfg.Paths.ShellScriptsDir, "bash", "completions")
+	}
+
+	t.Run("a completion file is sourced into the current shell", func(t *testing.T) {
+		p, completionsDir := newProject(t)
+		completionFile := filepath.Join(completionsDir, "comp-tool")
+		if err := os.WriteFile(completionFile, []byte("export COMPLETION_MARK=\"from-completion\"\n"), 0644); err != nil {
+			t.Fatalf("writing %s: %v", completionFile, err)
+		}
+
+		got := p.runBash(t, `source "`+p.mainBash+`"; printf '%s\n' "${COMPLETION_MARK:-unset}"`)
+		if got != "from-completion" {
+			t.Errorf("COMPLETION_MARK after sourcing main.bash = %q, want %q", got, "from-completion")
+		}
+	})
+
+	t.Run("an empty completions directory sources nothing and preserves nullglob", func(t *testing.T) {
+		p, _ := newProject(t)
+		got := p.runBash(t, `shopt -u nullglob; source "`+p.mainBash+`"; shopt -q nullglob && echo on || echo off`)
+		if got != "off" {
+			t.Errorf("nullglob after sourcing main.bash = %q, want %q", got, "off")
+		}
+	})
+}
+
+// TestCompletionsAreWrittenAndLoadedPerShell pins the end-to-end contract for
+// .completions(): for each shell that declares one, the file lands in that shell's
+// completions directory and that shell's init script actually loads it. A file no init
+// script references is the bug this covers; zsh worked, bash was written and never
+// sourced, and PowerShell was never written at all.
+func TestCompletionsAreWrittenAndLoadedPerShell(t *testing.T) {
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			GeneratedDir:    "/home/user/.generated",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			TargetDir:       "/home/user/.generated/user-bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+		},
+	}
+
+	// Every shell declares a completion sourced from a file the tool ships.
+	_ = memFS.MkdirAll("/home/user/tools/completions", 0755)
+	for _, name := range []string{"_mytool", "mytool.bash", "mytool.ps1"} {
+		if err := memFS.WriteFile("/home/user/tools/completions/"+name, []byte("# "+name), 0644); err != nil {
+			t.Fatalf("writing %s: %v", name, err)
+		}
+	}
+
+	tool := &config.ToolConfig{
+		Name:           "mytool",
+		Binaries:       []interface{}{"mytool"},
+		ConfigFilePath: "/home/user/tools/mytool.tool.ts",
+		ShellConfigs: &config.ShellConfigs{
+			Zsh:        &config.ShellTypeConfig{Completions: "completions/_mytool"},
+			Bash:       &config.ShellTypeConfig{Completions: "completions/mytool.bash"},
+			Powershell: &config.ShellTypeConfig{Completions: "completions/mytool.ps1"},
+		},
+	}
+
+	if err := orch.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("GenerateCompletionsForTool: %v", err)
+	}
+	if err := orch.generateShellScripts(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("generateShellScripts: %v", err)
+	}
+
+	tests := []struct {
+		shell          string
+		mainFile       string
+		completionFile string
+	}{
+		{shell: "zsh", mainFile: "main.zsh", completionFile: "_mytool"},
+		{shell: "bash", mainFile: "main.bash", completionFile: "mytool"},
+		{shell: "powershell", mainFile: "main.ps1", completionFile: "mytool.ps1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.shell, func(t *testing.T) {
+			completionsDir := filepath.Join(projCfg.Paths.ShellScriptsDir, tt.shell, "completions")
+			completionPath := filepath.Join(completionsDir, tt.completionFile)
+			if exists, err := memFS.Exists(completionPath); err != nil || !exists {
+				t.Fatalf("no %s completion written at %s (err %v)", tt.shell, completionPath, err)
+			}
+
+			mainPath := filepath.Join(projCfg.Paths.ShellScriptsDir, tt.mainFile)
+			data, err := memFS.ReadFile(mainPath)
+			if err != nil {
+				t.Fatalf("reading %s: %v", tt.mainFile, err)
+			}
+			if !strings.Contains(string(data), completionsDir) {
+				t.Errorf("%s never references %s, so the completion it wrote is inert:\n%s", tt.mainFile, completionsDir, data)
+			}
+		})
+	}
+}

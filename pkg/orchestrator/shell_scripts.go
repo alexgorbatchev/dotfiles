@@ -361,15 +361,13 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 			}
 
 			// 7. Shell Completions Setup
-			if sh == "zsh" {
-				scriptLines = append(scriptLines, shellinit.GenerateSectionHeader("Shell Completions Setup"))
-				completionsDir := filepath.Join(shellScriptsDir, "zsh", "completions")
-				if err := fsys.MkdirAll(completionsDir, 0755); err != nil {
-					return err
-				}
-				scriptLines = append(scriptLines, shellinit.FormatFpath(completionsDir))
-				scriptLines = append(scriptLines, "")
+			scriptLines = append(scriptLines, shellinit.GenerateSectionHeader("Shell Completions Setup"))
+			completionsDir := filepath.Join(shellScriptsDir, sh, "completions")
+			if err := fsys.MkdirAll(completionsDir, 0755); err != nil {
+				return err
 			}
+			scriptLines = append(scriptLines, shellinit.FormatCompletionLoad(sh, completionsDir))
+			scriptLines = append(scriptLines, "")
 
 			// 8. End of Generated File
 			scriptLines = append(scriptLines, shellinit.GenerateEndOfFile())
