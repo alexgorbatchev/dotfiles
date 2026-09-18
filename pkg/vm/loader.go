@@ -64,12 +64,9 @@ func transpileTS(tsCode string) (string, error) {
 	return code, nil
 }
 
-// loaderResultEnvelope is the shape of __loaderResult as the bundle produced it. The
-// project configuration is kept raw so that its platform overrides can be resolved
-// against the target before it is decoded.
+// loaderResultEnvelope is the shape of __loaderResult as the bundle produced it.
 type loaderResultEnvelope struct {
-	ProjectConfig json.RawMessage               `json:"projectConfig"`
-	ToolConfigs   map[string]*config.ToolConfig `json:"toolConfigs"`
+	ToolConfigs map[string]*config.ToolConfig `json:"toolConfigs"`
 }
 
 // unifiedLoaderResult holds the returned project config and tool configs from evaluating
@@ -508,11 +505,6 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	if err := setJSONGlobal(vm, "projectConfig", projCfg); err != nil {
 		return nil, fmt.Errorf("providing project configuration to tool files: %w", err)
 	}
-	// The bundle evaluates the configuration file again, so its factory is called again
-	// and needs the same context the pre-evaluation gave it.
-	if err := setJSONGlobal(vm, "configContext", newConfigContext(configFileDir, projCfg.Paths.HomeDir, target)); err != nil {
-		return nil, fmt.Errorf("providing the context to the configuration file: %w", err)
-	}
 	setProcessEnvGlobal(vm)
 
 	moduleObj := vm.NewObject()
@@ -535,12 +527,6 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, fmt.Errorf("loader result __loaderResult is missing or undefined")
 	}
 
-	// The entry loader imports the configuration file's default export as it stands, so
-	// the result carries the factory or the promise until it is resolved here.
-	if err := resolveConfigExport(vm, "__loaderResult.projectConfig", configPath); err != nil {
-		return nil, err
-	}
-
 	jsonVal, err := vm.RunString("JSON.stringify(__loaderResult, function(k, v) { return v instanceof RegExp ? v.toString() : v; })")
 	if err != nil {
 		return nil, fmt.Errorf("stringifying loader result inside JS VM: %w", err)
@@ -559,19 +545,7 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, fmt.Errorf("unmarshaling loader result: %w", err)
 	}
 
-	// The bundle imports the configuration file's default export, so a result without a
-	// configuration means that export did not survive evaluation. Refusing it here keeps
-	// the loader from handing back a configuration that is not there.
-	if len(envelope.ProjectConfig) == 0 || bytes.Equal(envelope.ProjectConfig, []byte("null")) {
-		return nil, notAConfigurationError(configPath, "no configuration")
-	}
-
-	projectConfig, err := decodeProjectConfig(envelope.ProjectConfig, target)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshaling loader result: %w", err)
-	}
-
-	return &unifiedLoaderResult{ProjectConfig: projectConfig, ToolConfigs: envelope.ToolConfigs}, nil
+	return &unifiedLoaderResult{ProjectConfig: projCfg, ToolConfigs: envelope.ToolConfigs}, nil
 }
 
 // settleToolFactories waits for the promise every asynchronous tool factory returned and
@@ -711,11 +685,8 @@ for (const [path, entry] of Object.entries(toolModules)) {
 }
 `)
 
-	configBase := filepath.Base(configPath)
-	sb.WriteString(fmt.Sprintf("import projConfig from \"./%s\";\n", configBase))
 	sb.WriteString(`
 globalThis.__loaderResult = {
-  projectConfig: projConfig,
   toolConfigs: toolConfigs
 };
 `)

@@ -1313,6 +1313,9 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		if !strings.Contains(res, `"./tools/bat.tool.ts"`) {
 			t.Errorf("expected relative path in require map: %s", res)
 		}
+		if strings.Contains(res, `import projConfig`) {
+			t.Errorf("expected generateEntryLoader not to import project config: %s", res)
+		}
 	})
 
 	t.Run("evaluateProjectConfig json stringify error branch", func(t *testing.T) {
@@ -1330,7 +1333,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 	})
 
 	t.Run("evaluateUnifiedBundle unmarshaling error branch", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { projectConfig: 12345 };", "/tmp", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}, Target{})
+		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { toolConfigs: 12345 };", "/tmp", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}, Target{})
 		if err == nil {
 			t.Error("expected error when unifiedLoaderResult has invalid structure")
 		}
@@ -1592,35 +1595,6 @@ func TestLoadTypeScriptConfigRefusesNonConfigurationExport(t *testing.T) {
 	}
 }
 
-// TestEvaluateUnifiedBundleRefusesMissingProjectConfig proves the bundle step refuses a
-// loader result without a configuration object as well, so that no path through the
-// loader can return a nil configuration and a nil error.
-func TestEvaluateUnifiedBundleRefusesMissingProjectConfig(t *testing.T) {
-	log := logger.New(logger.Config{Writer: io.Discard})
-	projCfg := &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}
-	configPath := "/tmp/dotfiles.config.ts"
-
-	tests := []struct {
-		name   string
-		script string
-	}{
-		{"no projectConfig member", "globalThis.__loaderResult = { toolConfigs: {} };"},
-		{"null projectConfig", "globalThis.__loaderResult = { projectConfig: null, toolConfigs: {} };"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := evaluateUnifiedBundle(log, fs.NewMemFS(), tt.script, configPath, projCfg, Target{})
-			if err == nil {
-				t.Fatal("expected evaluateUnifiedBundle to fail, got nil")
-			}
-			if !strings.Contains(err.Error(), configPath) || !strings.Contains(err.Error(), "export default defineConfig") {
-				t.Errorf("error = %v, want it to name the file and what it must export", err)
-			}
-		})
-	}
-}
-
 // TestLoadTypeScriptConfigReportsAsyncToolFactoryFailure proves an async tool factory
 // that fails is reported the way the synchronous one is -- naming the tool file and the
 // error -- rather than dropping the tool from the configuration without a word.
@@ -1802,6 +1776,98 @@ func TestLoadTypeScriptConfigReportsConfigurationFactoryFailure(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), tt.want) {
 				t.Errorf("error = %v, want it to report %q", err, tt.want)
+			}
+		})
+	}
+}
+
+// TestLoadTypeScriptConfigEvaluatesConfigurationOnlyOnce proves the configuration file
+// is evaluated exactly once per load, so that asynchronous factories and top-level side
+// effects are not executed twice.
+func TestLoadTypeScriptConfigEvaluatesConfigurationOnlyOnce(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{
+			name: "async defineConfig factory",
+			source: `import { defineConfig } from "@alexgorbatchev/dotfiles";
+export default defineConfig(async (ctx) => {
+	const counterFile = ctx.configFileDir + "/eval-count.txt";
+	let count = 0;
+	if (fsExists(counterFile)) {
+		count = parseInt(fsReadFile(counterFile), 10) || 0;
+	}
+	fsWriteFile(counterFile, String(count + 1));
+	return { paths: { dotfilesDir: ctx.configFileDir } };
+});`,
+		},
+		{
+			name: "synchronous defineConfig factory",
+			source: `import { defineConfig } from "@alexgorbatchev/dotfiles";
+export default defineConfig((ctx) => {
+	const counterFile = ctx.configFileDir + "/eval-count.txt";
+	let count = 0;
+	if (fsExists(counterFile)) {
+		count = parseInt(fsReadFile(counterFile), 10) || 0;
+	}
+	fsWriteFile(counterFile, String(count + 1));
+	return { paths: { dotfilesDir: ctx.configFileDir } };
+});`,
+		},
+		{
+			name: "bare async function export",
+			source: `export default async (ctx) => {
+	const counterFile = ctx.configFileDir + "/eval-count.txt";
+	let count = 0;
+	if (fsExists(counterFile)) {
+		count = parseInt(fsReadFile(counterFile), 10) || 0;
+	}
+	fsWriteFile(counterFile, String(count + 1));
+	return { paths: { dotfilesDir: ctx.configFileDir } };
+};`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+			if err := os.WriteFile(configPath, []byte(tt.source), 0644); err != nil {
+				t.Fatalf("writing configuration: %v", err)
+			}
+
+			// Add a tool config to verify tool discovery and bundling still work
+			toolsDir := filepath.Join(tmpDir, "tools")
+			if err := os.MkdirAll(toolsDir, 0755); err != nil {
+				t.Fatalf("creating tools dir: %v", err)
+			}
+			toolPath := filepath.Join(toolsDir, "mytool.tool.ts")
+			toolContent := `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install, ctx) => {
+	return install("manual", { dotfilesDir: ctx.projectConfig.paths.dotfilesDir }).bin("mytool");
+});`
+			if err := os.WriteFile(toolPath, []byte(toolContent), 0644); err != nil {
+				t.Fatalf("writing tool file: %v", err)
+			}
+
+			projCfg, toolCfgs, err := LoadTypeScriptConfig(log, fs.NewOSFS(), configPath)
+			if err != nil {
+				t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+			}
+			if projCfg == nil || toolCfgs["mytool"] == nil {
+				t.Fatalf("expected valid projCfg and mytool tool config, got %v and %v", projCfg, toolCfgs)
+			}
+
+			counterPath := filepath.Join(tmpDir, "eval-count.txt")
+			data, err := os.ReadFile(counterPath)
+			if err != nil {
+				t.Fatalf("reading counter file: %v", err)
+			}
+			if got := strings.TrimSpace(string(data)); got != "1" {
+				t.Errorf("configuration was evaluated %s times, want 1", got)
 			}
 		})
 	}
