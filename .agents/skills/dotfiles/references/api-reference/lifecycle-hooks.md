@@ -33,6 +33,12 @@ leaving a handler that nothing would ever call.
 A hook that throws fails the installation. Nothing is swallowed: if the handler rejects,
 the tool is reported as failed with the error the hook raised.
 
+`before-install` is where a tool stages files itself: anything the hook puts into
+`stagingDir` is promoted alongside what the installer produces. For a `manual` tool
+without `binaryPath` the hook is the only thing that populates the staging directory,
+so if it is still empty once the installer has run, the installation fails with an error
+naming the directory instead of promoting an empty one, and `after-install` does not run.
+
 ## Context Properties
 
 Every hook receives:
@@ -41,7 +47,7 @@ Every hook receives:
 | --------------- | --------------------------------------------------------------------------------------------------------------- |
 | `toolName`      | Name of the tool                                                                                                |
 | `currentDir`    | Stable directory for this tool (the `current` symlink)                                                          |
-| `stagingDir`    | Temporary directory the installer stages into                                                                   |
+| `stagingDir`    | Absolute path of the temporary directory the installer stages into                                              |
 | `toolDir`       | Directory holding this tool's `.tool.ts`                                                                        |
 | `systemInfo`    | Platform, architecture and libc                                                                                 |
 | `projectConfig` | Project configuration                                                                                           |

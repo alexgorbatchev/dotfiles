@@ -85,4 +85,5 @@ export default defineTool((install) =>
 - Binary paths are relative to the tool configuration file location
 - Files are copied to the managed installation directory with executable permissions
 - `.sudo()` acquires sudo credentials interactively before Dotfiles registers the manual binary
+- A `before-install` hook can stage files into `stagingDir` in place of `binaryPath`; if it leaves the staging directory empty the installation fails rather than producing an empty payload (see [lifecycle-hooks.md](../api-reference/lifecycle-hooks.md))
 - Configuration-only tools use `install()` with no arguments and must not define `.bin()`
