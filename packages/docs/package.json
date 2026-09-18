@@ -6,7 +6,7 @@
     "sync": "bun sync.ts",
     "dev": "bun sync && astro dev",
     "start": "bun sync && astro dev",
-    "build": "bun sync && astro build",
+    "build": "bun ../../scripts/check-docs-links.ts && bun sync && astro build",
     "preview": "astro preview",
     "astro": "astro"
   },

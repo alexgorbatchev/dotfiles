@@ -11,8 +11,8 @@ run *args="generate":
 run-ai *args="generate":
 	AGENT=1 go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
 
-# Full validation check (lint + typecheck + tests)
-check: lint typecheck unused test
+# Full validation check (lint + typecheck + docs links + tests)
+check: lint typecheck unused docs-links test
 
 # Run Go unit, Go E2E and TypeScript tests
 test: test-unit test-e2e test-ts
@@ -57,6 +57,10 @@ typecheck:
     go run scripts/build/main.go --type-tests
     bun --cwd packages/docs sync
     cd packages/docs && ./node_modules/.bin/astro sync && ../../node_modules/.bin/tsc -p tsconfig.json
+
+# Check skill documentation links, anchors and page reachability (.agents/skills/dotfiles)
+docs-links:
+    bun scripts/check-docs-links.ts
 
 # Generate the assets the Go packages embed (dashboard bundle, generated types, skill).
 # Required before any Go build, vet or test in a fresh checkout.
