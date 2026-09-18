@@ -101,6 +101,45 @@ func TestCacheConfigIsEnabled(t *testing.T) {
 	}
 }
 
+func TestToolConfigUpdateCheckAccessors(t *testing.T) {
+	on, off := true, false
+	constraint, empty := "~1.2.0", ""
+
+	tests := []struct {
+		name           string
+		updateCheck    *ToolConfigUpdateCheck
+		wantEnabled    bool
+		wantConstraint string
+	}{
+		// A tool that says nothing about update checks is checked, and bounds nothing.
+		// Go's zero value for bool is false, which is why both fields are pointers.
+		{name: "no updateCheck block", updateCheck: nil, wantEnabled: true},
+		{name: "empty updateCheck block", updateCheck: &ToolConfigUpdateCheck{}, wantEnabled: true},
+		{name: "enabled: true", updateCheck: &ToolConfigUpdateCheck{Enabled: &on}, wantEnabled: true},
+		{name: "enabled: false", updateCheck: &ToolConfigUpdateCheck{Enabled: &off}, wantEnabled: false},
+		{name: "constraint", updateCheck: &ToolConfigUpdateCheck{Constraint: &constraint}, wantEnabled: true, wantConstraint: constraint},
+		{name: "empty constraint", updateCheck: &ToolConfigUpdateCheck{Constraint: &empty}, wantEnabled: true},
+		{
+			name:           "both fields",
+			updateCheck:    &ToolConfigUpdateCheck{Enabled: &off, Constraint: &constraint},
+			wantEnabled:    false,
+			wantConstraint: constraint,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := &ToolConfig{Name: "tool", UpdateCheck: tt.updateCheck}
+			if got := tc.UpdateCheckEnabled(); got != tt.wantEnabled {
+				t.Errorf("UpdateCheckEnabled() = %v, want %v", got, tt.wantEnabled)
+			}
+			if got := tc.UpdateCheckConstraint(); got != tt.wantConstraint {
+				t.Errorf("UpdateCheckConstraint() = %q, want %q", got, tt.wantConstraint)
+			}
+		})
+	}
+}
+
 func TestProjectConfigInstantiationAndValidation(t *testing.T) {
 	pc := ProjectConfig{
 		Paths: PathsConfig{
