@@ -25,10 +25,10 @@ func TestInstallerCoverageCases(t *testing.T) {
 	dl := downloader.NewDownloader(memFS, nil)
 	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
 
-	// 1. PromoteBinaries with subfolder and pattern matching
+	// 1. PromoteBinaries with a glob pattern reaching two directories down
 	_ = memFS.MkdirAll("/src/bin/sub", 0755)
 	_ = memFS.WriteFile("/src/bin/sub/mytool-bin", []byte("mytool"), 0755)
-	promoted, err := PromoteBinaries(memFS, "/src", "/dest", []interface{}{"mytool-bin"})
+	promoted, err := PromoteBinaries(memFS, "/src", "mytool", []interface{}{config.BinaryConfig{Name: "mytool-bin", Pattern: "bin/*/mytool-bin"}})
 	if err != nil || len(promoted) == 0 {
 		t.Errorf("PromoteBinaries failed: promoted=%v, err=%v", promoted, err)
 	}

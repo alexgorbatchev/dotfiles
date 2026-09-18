@@ -13,7 +13,10 @@ import (
 	"testing"
 )
 
-func createToolchainTarGz(t *testing.T) []byte {
+// createToolchainTarGz builds a tar.gz laid out as <rootDir>/bin/mytool plus
+// <rootDir>/lib/marker, the shape of a toolchain whose binary locates its library
+// directory relative to itself.
+func createToolchainTarGz(t *testing.T, rootDir string) []byte {
 	t.Helper()
 	tmpDir := t.TempDir()
 	tarPath := filepath.Join(tmpDir, "toolchain.tar.gz")
@@ -30,8 +33,8 @@ func createToolchainTarGz(t *testing.T) []byte {
 	binScript := "#!/bin/sh\nPRG=\"$0\"\nwhile [ -h \"$PRG\" ]; do\n  DIR=$(dirname \"$PRG\")\n  TARGET=$(readlink \"$PRG\")\n  if [ \"${TARGET#/}\" = \"$TARGET\" ]; then\n    PRG=\"$DIR/$TARGET\"\n  else\n    PRG=\"$TARGET\"\n  fi\ndone\nSCRIPT_DIR=$(cd \"$(dirname \"$PRG\")\" && pwd -P)\nif [ -f \"$SCRIPT_DIR/../lib/marker\" ]; then\n  echo \"TOOLCHAIN_HEALTHY\"\nelse\n  echo \"TOOLCHAIN_BROKEN: lib/marker missing relative to binary\"\n  exit 1\nfi\n"
 
 	files := map[string]string{
-		"mytool-root/bin/mytool": binScript,
-		"mytool-root/lib/marker": "lib-data",
+		rootDir + "/bin/mytool": binScript,
+		rootDir + "/lib/marker": "lib-data",
 	}
 
 	for name, content := range files {
@@ -62,7 +65,7 @@ func createToolchainTarGz(t *testing.T) []byte {
 func TestE2ENestedToolchain(t *testing.T) {
 	t.Parallel()
 
-	tarData := createToolchainTarGz(t)
+	tarData := createToolchainTarGz(t, "mytool-root")
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/gzip")

@@ -116,7 +116,7 @@ install("github-release", { repo: "owner/tool" }).bin("tool", "*/bin/tool"); // 
 **Binary Pattern Matching (for archive-based installation methods only)**:
 
 - **Default Pattern**: `{,*/}name` - matches binary at root or one level deep
-- **Custom Patterns**: Use [minimatch](https://github.com/isaacs/minimatch) glob patterns with brace expansion
+- **Custom Patterns**: Glob patterns matched against each file's path relative to the extracted archive root. Supported syntax: `*` and `?` (neither matches `/`), `[abc]`, `[a-z]` and `[!abc]` character classes, and nestable `{a,b}` brace alternation; `**`, `{1..3}` ranges and extglob are not supported. Directories never match. When several files match, an executable named `name` wins, then any executable, then a file named `name`, then the first match in path order
   - `'*/bin/tool'` - Binary in bin subdirectory
   - `'tool-*/bin/tool'` - Versioned directory structure
   - `'tool'` - Exact binary at archive root

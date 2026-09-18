@@ -140,33 +140,3 @@ func TestMatchAssetPattern(t *testing.T) {
 		})
 	}
 }
-
-func TestExpandBraces(t *testing.T) {
-	tests := []struct {
-		pattern string
-		want    []string
-	}{
-		{"*.tar.gz", []string{"*.tar.gz"}},
-		{"*.{tar.xz,zip}", []string{"*.tar.xz", "*.zip"}},
-		{"{,*/}tool", []string{"tool", "*/tool"}},
-		{"*.{tar.{gz,xz},zip}", []string{"*.tar.gz", "*.tar.xz", "*.zip"}},
-		{"{a,b}-{1,2}", []string{"a-1", "a-2", "b-1", "b-2"}},
-		{"tool{x}.zip", []string{"tool{x}.zip"}},
-		{"tool{x}.{zip,gz}", []string{"tool{x}.zip", "tool{x}.gz"}},
-		{"tool{a,b", []string{"tool{a,b"}},
-		{"tool}a,b{", []string{"tool}a,b{"}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.pattern, func(t *testing.T) {
-			got := expandBraces(tt.pattern)
-			if len(got) != len(tt.want) {
-				t.Fatalf("expandBraces(%q) = %q, want %q", tt.pattern, got, tt.want)
-			}
-			for i := range got {
-				if got[i] != tt.want[i] {
-					t.Fatalf("expandBraces(%q) = %q, want %q", tt.pattern, got, tt.want)
-				}
-			}
-		})
-	}
-}

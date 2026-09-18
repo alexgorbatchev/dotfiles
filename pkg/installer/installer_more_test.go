@@ -72,12 +72,12 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 		_ = inst.Uninstall(context.Background(), tool)
 	}
 
-	// 4. findFileByPattern & getPatternForBinary
+	// 4. findBinaryByPattern & getPatternForBinary
 	_ = memFS.MkdirAll("/dest/sub", 0755)
 	_ = memFS.WriteFile("/dest/sub/bin", []byte("bin"), 0755)
-	foundPath, _ := findFileByPattern(memFS, "/dest", "sub/bin")
-	if foundPath != "/dest/sub/bin" {
-		t.Errorf("findFileByPattern failed: got %q", foundPath)
+	foundPath, err := findBinaryByPattern(memFS, "/dest", "sub/bin", "bin")
+	if err != nil || foundPath != "/dest/sub/bin" {
+		t.Errorf("findBinaryByPattern failed: got %q, err %v", foundPath, err)
 	}
 
 	binaries := []interface{}{
@@ -688,7 +688,7 @@ func TestPromoteBinaries_NotFound(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error")
 	}
-	expectedMsg := `binary "bun" not found in extracted archive under "~/.dotfiles/.generated/binaries/bun/.staging"`
+	expectedMsg := `binary "bun" not found in extracted archive under "~/.dotfiles/.generated/binaries/bun/.staging": nothing matches pattern "{,*/}bun"`
 	if err.Error() != expectedMsg {
 		t.Errorf("expected error %q, got %q", expectedMsg, err.Error())
 	}

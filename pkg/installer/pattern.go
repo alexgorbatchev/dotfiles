@@ -1,7 +1,6 @@
 package installer
 
 import (
-	"path"
 	"regexp"
 	"strings"
 )
@@ -95,15 +94,11 @@ func MatchAssetPattern(name, pattern string) bool {
 	}
 
 	// Case 2: Glob matching if pattern contains glob metacharacters (*, ?, [, {).
-	// Asset names are not filesystem paths, so path.Match is used rather than
-	// filepath.Match: its escaping does not change with the host's path separator.
+	// Asset names are compared case-insensitively; a malformed glob simply does not
+	// match here and falls through to the regex and substring cases.
 	if strings.ContainsAny(pattern, "*?[{") {
-		globPattern := strings.ReplaceAll(pattern, "[!", "[^")
-		for _, alternative := range expandBraces(globPattern) {
-			matched, err := path.Match(strings.ToLower(alternative), strings.ToLower(name))
-			if err == nil && matched {
-				return true
-			}
+		if matched, err := globMatch(strings.ToLower(pattern), strings.ToLower(name)); err == nil && matched {
+			return true
 		}
 	}
 
@@ -116,58 +111,6 @@ func MatchAssetPattern(name, pattern string) bool {
 
 	// Case 4: Substring matching (case-insensitive)
 	return strings.Contains(strings.ToLower(name), strings.ToLower(pattern))
-}
-
-// expandBraces expands brace alternation the way minimatch (the v1 matcher) does, so
-// "*.{tar.xz,zip}" becomes "*.tar.xz" and "*.zip". Groups may nest and several groups
-// multiply out left to right. A group without a comma and an unbalanced brace are kept as
-// literal text, again matching minimatch. Numeric ranges such as {1..3} are not supported.
-func expandBraces(pattern string) []string {
-	open := strings.IndexByte(pattern, '{')
-	if open < 0 {
-		return []string{pattern}
-	}
-
-	depth := 0
-	segmentStart := open + 1
-	var alternatives []string
-	for i := open; i < len(pattern); i++ {
-		switch pattern[i] {
-		case '{':
-			depth++
-		case ',':
-			if depth == 1 {
-				alternatives = append(alternatives, pattern[segmentStart:i])
-				segmentStart = i + 1
-			}
-		case '}':
-			depth--
-			if depth != 0 {
-				continue
-			}
-			alternatives = append(alternatives, pattern[segmentStart:i])
-			prefix, rest := pattern[:open], pattern[i+1:]
-			if len(alternatives) == 1 {
-				// "{x}" is not an alternation; keep it literally and carry on after it.
-				literal := pattern[:i+1]
-				var out []string
-				for _, tail := range expandBraces(rest) {
-					out = append(out, literal+tail)
-				}
-				return out
-			}
-			var out []string
-			for _, alternative := range alternatives {
-				for _, tail := range expandBraces(alternative + rest) {
-					out = append(out, prefix+tail)
-				}
-			}
-			return out
-		}
-	}
-
-	// The brace never closed at depth zero: treat the pattern as literal text.
-	return []string{pattern}
 }
 
 // matchPattern is a package-internal alias for MatchAssetPattern.

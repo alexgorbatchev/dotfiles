@@ -2,7 +2,11 @@ package installer
 
 import (
 	"context"
+	"errors"
+	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -150,47 +154,186 @@ func TestRegistry_ZeroValue(t *testing.T) {
 	}
 }
 
-func TestPromoteBinaries(t *testing.T) {
-	fsys := fs.NewMemFS()
-	destDir := "/tmp/dest"
-
-	// Setup: flat binary
-	_ = fsys.MkdirAll(destDir, 0755)
-	flatPath := filepath.Join(destDir, "flat-bin")
-	_ = fsys.WriteFile(flatPath, []byte("flat"), 0644)
-
-	// Setup: nested binary
-	nestedPath := filepath.Join(destDir, "nested-dir", "nested-bin")
-	_ = fsys.MkdirAll(filepath.Dir(nestedPath), 0755)
-	_ = fsys.WriteFile(nestedPath, []byte("nested"), 0644)
-
-	// Setup: pattern binary
-	patternPath := filepath.Join(destDir, "go", "bin", "go-real")
-	_ = fsys.MkdirAll(filepath.Dir(patternPath), 0755)
-	_ = fsys.WriteFile(patternPath, []byte("go-real"), 0644)
-
-	toolBinaries := []interface{}{
-		"flat-bin",
-		"nested-bin",
-		config.BinaryConfig{Name: "go-real", Pattern: "go/bin/go-real"},
-	}
-
-	bins, err := PromoteBinaries(fsys, destDir, "test-tool", toolBinaries)
+// assertLink fails unless dest/name is a symlink to target.
+func assertLink(t *testing.T, fsys fs.FS, dest, name, target string) {
+	t.Helper()
+	got, err := fsys.Readlink(filepath.Join(dest, name))
 	if err != nil {
-		t.Fatalf("unexpected error promoting binaries: %v", err)
+		t.Fatalf("expected %s to be a symlink: %v", name, err)
 	}
-
-	if len(bins) != 3 {
-		t.Errorf("expected 3 binaries, got %d", len(bins))
+	if got != filepath.FromSlash(target) {
+		t.Fatalf("%s links to %q, want %q", name, got, target)
 	}
+}
 
-	// Verify all promoted binaries exist at the root
-	for _, binName := range []string{"flat-bin", "nested-bin", "go-real"} {
-		promotedPath := filepath.Join(destDir, binName)
-		exists, err := fsys.Exists(promotedPath)
-		if err != nil || !exists {
-			t.Errorf("expected promoted binary %s to exist at root, got exists=%v, err=%v", binName, exists, err)
-		}
+// assertExecutableFile fails unless dest/name is a regular, executable file.
+func assertExecutableFile(t *testing.T, fsys fs.FS, dest, name string) {
+	t.Helper()
+	info, err := fsys.Lstat(filepath.Join(dest, name))
+	if err != nil {
+		t.Fatalf("expected %s at the root: %v", name, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 || info.IsDir() {
+		t.Fatalf("expected %s to be a regular file, got mode %v", name, info.Mode())
+	}
+	if info.Mode()&0111 == 0 {
+		t.Fatalf("expected %s to be executable, got mode %v", name, info.Mode())
+	}
+}
+
+func TestPromoteBinaries(t *testing.T) {
+	const dest = "/dest"
+	binary := func(name, pattern string) map[string]interface{} {
+		return map[string]interface{}{"name": name, "pattern": pattern}
+	}
+	tests := []struct {
+		name     string
+		files    map[string]os.FileMode
+		symlinks map[string]string
+		binaries []interface{}
+		tool     string
+		want     []string
+		wantErr  string
+		check    func(t *testing.T, fsys fs.FS)
+	}{
+		{
+			name:  "root binary is made executable in place",
+			files: map[string]os.FileMode{"tool": 0644},
+			tool:  "tool",
+			want:  []string{"tool"},
+			check: func(t *testing.T, fsys fs.FS) {
+				assertExecutableFile(t, fsys, dest, "tool")
+			},
+		},
+		{
+			name:  "one-level binary is linked from the root",
+			files: map[string]os.FileMode{"tool-1.0/tool": 0755, "tool-1.0/LICENSE": 0644},
+			tool:  "tool",
+			want:  []string{"tool"},
+			check: func(t *testing.T, fsys fs.FS) {
+				assertLink(t, fsys, dest, "tool", "tool-1.0/tool")
+			},
+		},
+		{
+			name:     "glob pattern reaches a bin subdirectory and keeps the layout",
+			files:    map[string]os.FileMode{"tool-1.2.3/bin/tool": 0644, "tool-1.2.3/lib/marker": 0644},
+			binaries: []interface{}{binary("tool", "tool-*/bin/tool")},
+			tool:     "tool",
+			want:     []string{"tool"},
+			check: func(t *testing.T, fsys fs.FS) {
+				assertLink(t, fsys, dest, "tool", "tool-1.2.3/bin/tool")
+				assertExecutableFile(t, fsys, filepath.Join(dest, "tool-1.2.3", "bin"), "tool")
+				if exists, _ := fsys.Exists(filepath.Join(dest, "tool-1.2.3", "lib", "marker")); !exists {
+					t.Fatal("expected the archive layout next to the binary to survive promotion")
+				}
+			},
+		},
+		{
+			name:  "directory occupying the binary name is moved aside for every binary in it",
+			files: map[string]os.FileMode{"go/bin/go": 0755, "go/bin/gofmt": 0755, "go/src/runtime.go": 0644},
+			binaries: []interface{}{
+				config.BinaryConfig{Name: "go", Pattern: "go/bin/go"},
+				&config.BinaryConfig{Name: "gofmt", Pattern: "go/bin/gofmt"},
+			},
+			tool: "go",
+			want: []string{"go", "gofmt"},
+			check: func(t *testing.T, fsys fs.FS) {
+				assertLink(t, fsys, dest, "go", "go-root/bin/go")
+				assertLink(t, fsys, dest, "gofmt", "go-root/bin/gofmt")
+				if exists, _ := fsys.Exists(filepath.Join(dest, "go-root", "src", "runtime.go")); !exists {
+					t.Fatal("expected the toolchain tree to be preserved under go-root")
+				}
+			},
+		},
+		{
+			name:     "root match under another name is renamed to the binary",
+			files:    map[string]os.FileMode{"hermit-darwin-arm64": 0755, "hermit-darwin-arm64.sha256": 0644},
+			binaries: []interface{}{binary("hermit", "hermit-*")},
+			tool:     "hermit",
+			want:     []string{"hermit"},
+			check: func(t *testing.T, fsys fs.FS) {
+				assertExecutableFile(t, fsys, dest, "hermit")
+				if exists, _ := fsys.Exists(filepath.Join(dest, "hermit-darwin-arm64")); exists {
+					t.Fatal("expected the matched file to be renamed, not copied")
+				}
+			},
+		},
+		{
+			name:     "stale link from an earlier promotion is replaced",
+			files:    map[string]os.FileMode{"tool-2.0/tool": 0755},
+			symlinks: map[string]string{"tool": "tool-1.0/tool"},
+			tool:     "tool",
+			want:     []string{"tool"},
+			check: func(t *testing.T, fsys fs.FS) {
+				assertLink(t, fsys, dest, "tool", "tool-2.0/tool")
+			},
+		},
+		{
+			name:     "promotion is idempotent",
+			files:    map[string]os.FileMode{"tool-1.0/tool": 0755},
+			symlinks: map[string]string{"tool": "tool-1.0/tool"},
+			tool:     "tool",
+			want:     []string{"tool"},
+			check: func(t *testing.T, fsys fs.FS) {
+				assertLink(t, fsys, dest, "tool", "tool-1.0/tool")
+			},
+		},
+		{
+			name:  "every declared binary is promoted",
+			files: map[string]os.FileMode{"flat-bin": 0644, "nested-dir/nested-bin": 0644, "go/bin/go-real": 0644},
+			binaries: []interface{}{
+				"flat-bin",
+				"nested-bin",
+				config.BinaryConfig{Name: "go-real", Pattern: "go/bin/go-real"},
+			},
+			tool: "test-tool",
+			want: []string{"flat-bin", "nested-bin", "go-real"},
+			check: func(t *testing.T, fsys fs.FS) {
+				for _, name := range []string{"flat-bin", "nested-bin", "go-real"} {
+					if exists, err := fsys.Exists(filepath.Join(dest, name)); err != nil || !exists {
+						t.Fatalf("expected %s at the root, got exists=%v err=%v", name, exists, err)
+					}
+				}
+			},
+		},
+		{
+			name:    "binary missing names the pattern",
+			files:   map[string]os.FileMode{"other": 0755},
+			tool:    "tool",
+			wantErr: `binary "tool" not found in extracted archive under "/dest": nothing matches pattern "{,*/}tool"`,
+		},
+		{
+			name:    "default pattern stops one directory deep",
+			files:   map[string]os.FileMode{"tool-1.0/bin/tool": 0755},
+			tool:    "tool",
+			wantErr: `nothing matches pattern "{,*/}tool"`,
+		},
+		{
+			name:     "malformed pattern is reported",
+			files:    map[string]os.FileMode{"tool": 0755},
+			binaries: []interface{}{binary("tool", "tool[")},
+			tool:     "tool",
+			wantErr:  `searching for binary "tool": invalid pattern "tool[": syntax error in pattern`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fsys := extractedTree(t, dest, tt.files, tt.symlinks)
+			got, err := PromoteBinaries(fsys, dest, tt.tool, tt.binaries)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("PromoteBinaries error = %v, want it to contain %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("PromoteBinaries unexpected error: %v", err)
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Fatalf("PromoteBinaries = %q, want %q", got, tt.want)
+			}
+			tt.check(t, fsys)
+		})
 	}
 }
 
@@ -282,6 +425,154 @@ func TestAllInstallers_SupportsSudo(t *testing.T) {
 			if got := tt.inst.SupportsSudo(); got != tt.supportsSudo {
 				t.Errorf("installer %s: SupportsSudo() = %v, want %v", tt.name, got, tt.supportsSudo)
 			}
+		})
+	}
+}
+
+// faultyFS wraps a file system and fails one operation, named by failOp, to exercise the
+// error paths of binary promotion. ReadDir on ghostDir additionally reports an entry that
+// does not exist.
+type faultyFS struct {
+	fs.FS
+	failOp   string
+	failPath string
+	ghostDir string
+}
+
+func (f *faultyFS) fails(op, path string) bool {
+	return f.failOp == op && (f.failPath == "" || f.failPath == path)
+}
+
+func (f *faultyFS) Chmod(path string, perm os.FileMode) error {
+	if f.fails("chmod", path) {
+		return errors.New("chmod denied")
+	}
+	return f.FS.Chmod(path, perm)
+}
+
+func (f *faultyFS) Remove(path string) error {
+	if f.fails("remove", path) {
+		return errors.New("remove denied")
+	}
+	return f.FS.Remove(path)
+}
+
+func (f *faultyFS) RemoveAll(path string) error {
+	if f.fails("removeall", path) {
+		return errors.New("removeall denied")
+	}
+	return f.FS.RemoveAll(path)
+}
+
+func (f *faultyFS) Rename(oldname, newname string) error {
+	if f.fails("rename", oldname) {
+		return errors.New("rename denied")
+	}
+	return f.FS.Rename(oldname, newname)
+}
+
+func (f *faultyFS) Symlink(oldname, newname string) error {
+	if f.fails("symlink", newname) {
+		return errors.New("symlink denied")
+	}
+	return f.FS.Symlink(oldname, newname)
+}
+
+func (f *faultyFS) Lstat(path string) (os.FileInfo, error) {
+	if f.fails("lstat", path) {
+		return nil, errors.New("lstat denied")
+	}
+	return f.FS.Lstat(path)
+}
+
+func (f *faultyFS) ReadDir(path string) ([]string, error) {
+	if f.fails("readdir", path) {
+		return nil, errors.New("readdir denied")
+	}
+	entries, err := f.FS.ReadDir(path)
+	if err == nil && f.ghostDir != "" && path == f.ghostDir {
+		entries = append(entries, "ghost")
+	}
+	return entries, err
+}
+
+func TestPromoteBinariesFileSystemErrors(t *testing.T) {
+	const dest = "/dest"
+	tests := []struct {
+		name     string
+		files    map[string]os.FileMode
+		binaries []interface{}
+		failOp   string
+		failPath string
+		wantErr  string
+		check    func(t *testing.T, fsys fs.FS)
+	}{
+		{
+			name:    "root binary cannot be made executable",
+			files:   map[string]os.FileMode{"tool": 0644},
+			failOp:  "chmod",
+			wantErr: `making "/dest/tool" executable: chmod denied`,
+		},
+		{
+			name:    "stale file occupying the name cannot be removed",
+			files:   map[string]os.FileMode{"tool": 0644, "tool-1.0/tool": 0755},
+			failOp:  "remove",
+			wantErr: `removing stale "/dest/tool": remove denied`,
+		},
+		{
+			name:     "directory occupying the name cannot be moved aside",
+			files:    map[string]os.FileMode{"go/bin/go": 0755},
+			binaries: []interface{}{config.BinaryConfig{Name: "go", Pattern: "go/bin/go"}},
+			failOp:   "rename",
+			wantErr:  `moving directory "/dest/go" aside to "/dest/go-root": rename denied`,
+		},
+		{
+			name:     "previous -root directory cannot be removed",
+			files:    map[string]os.FileMode{"go/bin/go": 0755, "go-root/stale": 0644},
+			binaries: []interface{}{config.BinaryConfig{Name: "go", Pattern: "go/bin/go"}},
+			failOp:   "removeall",
+			wantErr:  `removing "/dest/go-root": removeall denied`,
+		},
+		{
+			name:     "root match under another name cannot be renamed",
+			files:    map[string]os.FileMode{"hermit-darwin-arm64": 0755},
+			binaries: []interface{}{config.BinaryConfig{Name: "hermit", Pattern: "hermit-*"}},
+			failOp:   "rename",
+			wantErr:  `promoting binary from "/dest/hermit-darwin-arm64" to "/dest/hermit": rename denied`,
+		},
+		{
+			name:     "occupant of the name cannot be inspected",
+			files:    map[string]os.FileMode{"tool-1.0/tool": 0755},
+			failOp:   "lstat",
+			failPath: "/dest/tool",
+			wantErr:  `inspecting "/dest/tool": lstat denied`,
+		},
+		{
+			name:   "nested binary is moved when symlinks are unavailable",
+			files:  map[string]os.FileMode{"tool-1.0/tool": 0755},
+			failOp: "symlink",
+			check: func(t *testing.T, fsys fs.FS) {
+				assertExecutableFile(t, fsys, dest, "tool")
+				if exists, _ := fsys.Exists(filepath.Join(dest, "tool-1.0", "tool")); exists {
+					t.Fatal("expected the nested binary to be moved to the root")
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fsys := &faultyFS{FS: extractedTree(t, dest, tt.files, nil), failOp: tt.failOp, failPath: tt.failPath}
+			_, err := PromoteBinaries(fsys, dest, "tool", tt.binaries)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("PromoteBinaries error = %v, want it to contain %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("PromoteBinaries unexpected error: %v", err)
+			}
+			tt.check(t, fsys)
 		})
 	}
 }

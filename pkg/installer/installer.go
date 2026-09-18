@@ -2,6 +2,7 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -457,89 +458,129 @@ func ValidateSudo(inst Installer, tool *config.ToolConfig) error {
 	return nil
 }
 
-// PromoteBinaries searches recursively inside destDir for files matching the expected binary names
-// or their pattern definitions, and promotes (moves) them to the root of destDir.
-// It returns the list of promoted binary names, or an error.
+// PromoteBinaries makes every binary a tool declares with .bin() available at the root of
+// destDir under its declared name and returns the declared names. Each binary is located
+// by its .bin() pattern, or by the default pattern when none was given (see
+// findBinaryByPattern). A match already at the root is made executable in place; a match
+// nested in a subdirectory is reached through a relative symlink at the root so that the
+// files it ships with (lib, src, completions) stay where the binary expects them; a match
+// at the root under another name is renamed.
+//
+// All binaries are located before any is promoted: promoting one may move a directory
+// aside (see clearBinaryName), and a pattern written against the archive layout must not
+// be evaluated against the rearranged tree.
 func PromoteBinaries(fsys fs.FS, destDir string, toolName string, toolBinaries []interface{}) ([]string, error) {
 	binaryNames := GetBinaryNames(toolName, toolBinaries)
 
-	for _, binName := range binaryNames {
-		targetPath := filepath.Join(destDir, binName)
-
-		// 1. If it already exists directly at targetPath as a regular file, nothing to do.
-		targetInfo, statErr := fsys.Stat(targetPath)
-		if statErr == nil && targetInfo.IsDir() {
-			subBin := filepath.Join(targetPath, "bin", binName)
-			if subInfo, subErr := fsys.Stat(subBin); subErr == nil && !subInfo.IsDir() {
-				rootDir := targetPath + "-root"
-				_ = fsys.RemoveAll(rootDir)
-				if err := fsys.Rename(targetPath, rootDir); err == nil {
-					relPath := filepath.Join(filepath.Base(rootDir), "bin", binName)
-					_ = fsys.Chmod(filepath.Join(rootDir, "bin", binName), 0755)
-					if errSym := fsys.Symlink(relPath, targetPath); errSym == nil {
-						continue
-					}
-				}
-			}
-		} else if statErr == nil {
-			_ = fsys.Chmod(targetPath, 0755)
-			continue
+	located := make([]string, len(binaryNames))
+	for i, binName := range binaryNames {
+		pattern := getPatternForBinary(toolBinaries, binName)
+		if pattern == "" {
+			pattern = defaultBinaryPattern(binName)
 		}
-
-		// 2. Otherwise, find it recursively under destDir.
-		foundPath, err := findFileRecursively(fsys, destDir, binName)
+		foundPath, err := findBinaryByPattern(fsys, destDir, pattern, binName)
 		if err != nil {
 			return nil, fmt.Errorf("searching for binary %q: %w", binName, err)
 		}
-
 		if foundPath == "" {
-			// Try with pattern matching from BinaryConfig if present
-			pattern := getPatternForBinary(toolBinaries, binName)
-			if pattern != "" {
-				foundPath, err = findFileByPattern(fsys, destDir, pattern)
-				if err != nil {
-					return nil, fmt.Errorf("searching for binary %q with pattern %q: %w", binName, pattern, err)
-				}
-			}
+			return nil, fmt.Errorf("binary %q not found in extracted archive under %q: nothing matches pattern %q",
+				binName, formatDisplayPath(fsys, destDir), pattern)
 		}
+		located[i] = foundPath
+	}
 
-		if foundPath != "" {
-			if foundPath == targetPath {
-				_ = fsys.Chmod(targetPath, 0755)
-				continue
+	for i, binName := range binaryNames {
+		movedFrom, movedTo, err := promoteBinary(fsys, destDir, binName, located[i])
+		if err != nil {
+			return nil, err
+		}
+		if movedFrom == "" {
+			continue
+		}
+		for j := i + 1; j < len(located); j++ {
+			if rest, ok := strings.CutPrefix(located[j], movedFrom+string(filepath.Separator)); ok {
+				located[j] = movedTo + string(filepath.Separator) + rest
 			}
-
-			// If the binary is nested in a subfolder (like go-root/bin/go or mytool-root/bin/mytool),
-			// create a relative symlink first so toolchain assets (src, pkg, lib) stay intact relative to binary.
-			relPath, errRel := filepath.Rel(destDir, foundPath)
-			if errRel == nil && (strings.Contains(relPath, "/") || strings.Contains(relPath, "\\")) {
-				_ = fsys.Chmod(foundPath, 0755)
-				if exists, _ := fsys.Exists(targetPath); exists {
-					_ = fsys.Remove(targetPath)
-				}
-				if errSym := fsys.Symlink(relPath, targetPath); errSym == nil {
-					continue
-				}
-			}
-
-			// Fallback: move binary directly to root of destDir
-			if err := fsys.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
-				return nil, fmt.Errorf("creating directory for promoted binary %q: %w", binName, err)
-			}
-			if exists, _ := fsys.Exists(targetPath); exists {
-				_ = fsys.Remove(targetPath)
-			}
-			if err := fsys.Rename(foundPath, targetPath); err != nil {
-				return nil, fmt.Errorf("promoting binary from %q to %q: %w", foundPath, targetPath, err)
-			}
-			_ = fsys.Chmod(targetPath, 0755)
-		} else {
-			displayDir := formatDisplayPath(fsys, destDir)
-			return nil, fmt.Errorf("binary %q not found in extracted archive under %q", binName, displayDir)
 		}
 	}
 
 	return binaryNames, nil
+}
+
+// promoteBinary exposes foundPath as destDir/binName. When a directory occupying that
+// name had to be moved aside, the returned pair is its old and new path so that the
+// caller can follow binaries located inside it.
+func promoteBinary(fsys fs.FS, destDir, binName, foundPath string) (movedFrom, movedTo string, err error) {
+	targetPath := filepath.Join(destDir, binName)
+	if foundPath == targetPath {
+		return "", "", makeExecutable(fsys, targetPath)
+	}
+
+	relPath, err := filepath.Rel(destDir, foundPath)
+	if err != nil {
+		return "", "", fmt.Errorf("resolving %q relative to %q: %w", foundPath, destDir, err)
+	}
+	relPath, movedFrom, movedTo, err = clearBinaryName(fsys, destDir, binName, relPath)
+	if err != nil {
+		return "", "", err
+	}
+	foundPath = filepath.Join(destDir, relPath)
+	if err := makeExecutable(fsys, foundPath); err != nil {
+		return "", "", err
+	}
+
+	if strings.ContainsRune(relPath, filepath.Separator) {
+		// A relative symlink keeps the binary inside the layout it was shipped in. A file
+		// system that cannot create symlinks gets the binary moved to the root instead.
+		if err := fsys.Symlink(relPath, targetPath); err == nil {
+			return movedFrom, movedTo, nil
+		}
+	}
+	if err := fsys.Rename(foundPath, targetPath); err != nil {
+		return "", "", fmt.Errorf("promoting binary from %q to %q: %w", foundPath, targetPath, err)
+	}
+	return movedFrom, movedTo, nil
+}
+
+// clearBinaryName frees destDir/binName for the promoted binary and returns where relPath
+// lives afterwards. A stale file or symlink left by an earlier promotion is removed. A
+// directory is moved aside to <binName>-root rather than deleted: an archive laid out as
+// go/bin/go keeps its toolchain in that directory. The moved directory's old and new paths
+// are returned so that binaries located inside it can be followed.
+func clearBinaryName(fsys fs.FS, destDir, binName, relPath string) (newRelPath, movedFrom, movedTo string, err error) {
+	targetPath := filepath.Join(destDir, binName)
+	info, err := fsys.Lstat(targetPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return relPath, "", "", nil
+		}
+		return "", "", "", fmt.Errorf("inspecting %q: %w", targetPath, err)
+	}
+	if !info.IsDir() {
+		if err := fsys.Remove(targetPath); err != nil {
+			return "", "", "", fmt.Errorf("removing stale %q: %w", targetPath, err)
+		}
+		return relPath, "", "", nil
+	}
+
+	rootDir := targetPath + "-root"
+	if err := fsys.RemoveAll(rootDir); err != nil {
+		return "", "", "", fmt.Errorf("removing %q: %w", rootDir, err)
+	}
+	if err := fsys.Rename(targetPath, rootDir); err != nil {
+		return "", "", "", fmt.Errorf("moving directory %q aside to %q: %w", targetPath, rootDir, err)
+	}
+	if rest, ok := strings.CutPrefix(relPath, binName+string(filepath.Separator)); ok {
+		relPath = filepath.Join(filepath.Base(rootDir), rest)
+	}
+	return relPath, targetPath, rootDir, nil
+}
+
+func makeExecutable(fsys fs.FS, path string) error {
+	if err := fsys.Chmod(path, 0755); err != nil {
+		return fmt.Errorf("making %q executable: %w", path, err)
+	}
+	return nil
 }
 
 func formatDisplayPath(fsys fs.FS, path string) string {
@@ -556,44 +597,6 @@ func formatDisplayPath(fsys fs.FS, path string) string {
 		}
 	}
 	return utils.ContractHomePath(home, path)
-}
-
-func findFileRecursively(fsys fs.FS, dir string, name string) (string, error) {
-	entries, err := fsys.ReadDir(dir)
-	if err != nil {
-		return "", err
-	}
-
-	for _, entryName := range entries {
-		path := filepath.Join(dir, entryName)
-		info, err := fsys.Lstat(path)
-		if err != nil {
-			continue
-		}
-
-		if info.IsDir() {
-			found, err := findFileRecursively(fsys, path, name)
-			if err == nil && found != "" {
-				return found, nil
-			}
-		} else {
-			if info.Name() == name {
-				return path, nil
-			}
-		}
-	}
-
-	return "", nil
-}
-
-func findFileByPattern(fsys fs.FS, destDir string, pattern string) (string, error) {
-	normalizedPattern := filepath.Clean(strings.ReplaceAll(pattern, "/", string(filepath.Separator)))
-	path := filepath.Join(destDir, normalizedPattern)
-	exists, err := fsys.Exists(path)
-	if err == nil && exists {
-		return path, nil
-	}
-	return "", nil
 }
 
 func getPatternForBinary(toolBinaries []interface{}, binName string) string {
