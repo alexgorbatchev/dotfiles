@@ -153,6 +153,63 @@ func hostname() string {
 	return name
 }
 
+// effectiveHomeDir reports the home directory paths written with "~" resolve against.
+//
+// The project configuration is what defines the home directory, so while that
+// configuration is itself being evaluated there is nothing to report but the invoking
+// user's own home -- which is the value a configuration typically derives its
+// `paths.homeDir` from in the first place. A machine with no discoverable home
+// directory reports an empty string, which leaves such paths untouched.
+func effectiveHomeDir(homeDir string) string {
+	if homeDir != "" {
+		return homeDir
+	}
+	userHome, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return userHome
+}
+
+// configSystemInfo is ISystemInfo of the authoring DSL: what the runtime reports about
+// the machine a configuration is evaluated for.
+type configSystemInfo struct {
+	OS       string `json:"os"`
+	Arch     string `json:"arch"`
+	Libc     string `json:"libc"`
+	HomeDir  string `json:"homeDir"`
+	Hostname string `json:"hostname"`
+}
+
+// configContext is IConfigContext of the authoring DSL: the context a configuration
+// factory is called with.
+//
+// Go owns every value in it -- the target the --platform, --arch and --libc flags
+// select, the home directory paths resolve against, the directory holding the
+// configuration file -- so it is assembled here and published to the VM as the
+// `configContext` global. `defineConfig` hands that object to its callback and the
+// loader hands the same object to a bare function default export, so the two authoring
+// forms cannot come to disagree about what a factory receives.
+type configContext struct {
+	ConfigFileDir string           `json:"configFileDir"`
+	SystemInfo    configSystemInfo `json:"systemInfo"`
+}
+
+// newConfigContext assembles the context for a configuration file in configFileDir,
+// evaluated for target with paths resolving against homeDir.
+func newConfigContext(configFileDir, homeDir string, target Target) configContext {
+	return configContext{
+		ConfigFileDir: configFileDir,
+		SystemInfo: configSystemInfo{
+			OS:       target.os(),
+			Arch:     target.arch(),
+			Libc:     target.libc(),
+			HomeDir:  effectiveHomeDir(homeDir),
+			Hostname: hostname(),
+		},
+	}
+}
+
 // RegisterContextBindings registers logging and filesystem bindings associated with the
 // active execution environment.
 //
@@ -162,20 +219,7 @@ func hostname() string {
 // against it, so they land where the configuration says rather than where the process
 // happens to be running. An empty homeDir leaves such paths untouched.
 func RegisterContextBindings(vm *goja.Runtime, log *logger.Logger, fsys fs.FS, homeDir string) error {
-	// The project configuration is what defines the home directory, so while that
-	// configuration is itself being evaluated there is nothing to report but the
-	// invoking user's own home -- which is the value a configuration typically derives
-	// its `paths.homeDir` from in the first place.
-	_ = vm.Set("getHomeDir", func() string {
-		if homeDir != "" {
-			return homeDir
-		}
-		userHome, err := os.UserHomeDir()
-		if err != nil {
-			return ""
-		}
-		return userHome
-	})
+	_ = vm.Set("getHomeDir", func() string { return effectiveHomeDir(homeDir) })
 
 	_ = vm.Set("logInfo", func(toolName, msg string) {
 		if log != nil {

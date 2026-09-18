@@ -1445,12 +1445,8 @@ func TestLoadTypeScriptConfigRefusesNonConfigurationExport(t *testing.T) {
 		{"number default export", "export default 42;", "got the number 42"},
 		{"string default export", "export default \"nope\";", "got the string \"nope\""},
 		{"array default export", "export default [];", "got an array"},
-		{"function default export", "export default () => ({ paths: {} });", "got a function"},
-		{
-			"promise default export",
-			"import { defineConfig } from \"@alexgorbatchev/dotfiles\";\nexport default defineConfig(async () => ({ paths: {} }));",
-			"got a promise",
-		},
+		{"factory returning a function", "export default () => () => ({ paths: {} });", "got a function"},
+		{"factory returning a number", "export default () => 42;", "got the number 42"},
 		{"named exports only", "export const paths = { dotfilesDir: \"/x\" };", "got no default export"},
 		{"nothing exported", "export {};", "got no default export"},
 	}
@@ -1556,6 +1552,139 @@ func TestLoadTypeScriptConfigReportsAsyncToolFactoryFailure(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), toolPath) {
 				t.Errorf("error = %v, want it to name %q", err, toolPath)
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("error = %v, want it to report %q", err, tt.want)
+			}
+		})
+	}
+}
+
+// configFactoryContextBody is a configuration built entirely out of the context a
+// configuration factory receives, so that a factory which is never called, or is called
+// with something other than that context, cannot produce the expected path.
+const configFactoryContextBody = "({ paths: { dotfilesDir: ctx.configFileDir + \"/\" + ctx.systemInfo.os + \"/\" + ctx.systemInfo.arch } })"
+
+// TestLoadTypeScriptConfigResolvesConfigurationFactory proves both factory forms reach
+// Go as the configuration they produce: the promise an asynchronous factory returns is
+// settled rather than serialized as an empty object, and a bare function default export
+// is called with the same context defineConfig hands its callback.
+func TestLoadTypeScriptConfigResolvesConfigurationFactory(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+
+	const defineConfigImport = "import { defineConfig } from \"@alexgorbatchev/dotfiles\";\n"
+
+	// The target is given rather than taken from the host so that the expected path is
+	// the same on every platform.
+	target := Target{OS: "linux", Arch: "arm64"}
+
+	tests := []struct {
+		name   string
+		source string
+		want   func(configFileDir string) string
+	}{
+		{
+			name:   "async defineConfig factory",
+			source: defineConfigImport + "export default defineConfig(async () => ({ paths: { dotfilesDir: await Promise.resolve(\"/resolved/dotfiles\") } }));",
+			want:   func(string) string { return "/resolved/dotfiles" },
+		},
+		{
+			name:   "async defineConfig factory reading its context",
+			source: defineConfigImport + "export default defineConfig(async (ctx) => " + configFactoryContextBody + ");",
+			want:   func(dir string) string { return dir + "/linux/arm64" },
+		},
+		{
+			name:   "synchronous defineConfig factory reading its context",
+			source: defineConfigImport + "export default defineConfig((ctx) => " + configFactoryContextBody + ");",
+			want:   func(dir string) string { return dir + "/linux/arm64" },
+		},
+		{
+			name:   "bare function default export reading its context",
+			source: "export default (ctx) => " + configFactoryContextBody + ";",
+			want:   func(dir string) string { return dir + "/linux/arm64" },
+		},
+		{
+			name:   "bare async function default export reading its context",
+			source: "export default async (ctx) => " + configFactoryContextBody + ";",
+			want:   func(dir string) string { return dir + "/linux/arm64" },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+			if err := os.WriteFile(configPath, []byte(tt.source), 0644); err != nil {
+				t.Fatalf("writing configuration: %v", err)
+			}
+
+			projCfg, _, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath, WithTarget(target))
+			if err != nil {
+				t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+			}
+			if want := tt.want(tmpDir); projCfg.Paths.DotfilesDir != want {
+				t.Errorf("paths.dotfilesDir = %q, want %q", projCfg.Paths.DotfilesDir, want)
+			}
+		})
+	}
+}
+
+// TestLoadTypeScriptConfigReportsConfigurationFactoryFailure proves a configuration
+// factory that fails fails the load, naming the configuration file and the error, rather
+// than leaving a configuration in which every setting the file wrote is missing.
+func TestLoadTypeScriptConfigReportsConfigurationFactoryFailure(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+
+	const defineConfigImport = "import { defineConfig } from \"@alexgorbatchev/dotfiles\";\n"
+
+	tests := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{
+			name:   "async defineConfig factory rejects",
+			source: defineConfigImport + "export default defineConfig(async () => { throw new Error(\"config exploded\"); });",
+			want:   "config exploded",
+		},
+		{
+			name:   "async defineConfig factory awaits a rejection",
+			source: defineConfigImport + "export default defineConfig(async () => { await Promise.reject(new Error(\"awaited exploded\")); return {}; });",
+			want:   "awaited exploded",
+		},
+		{
+			name:   "bare async function default export rejects",
+			source: "export default async () => { throw new Error(\"bare exploded\"); };",
+			want:   "bare exploded",
+		},
+		{
+			name:   "bare function default export throws",
+			source: "export default () => { throw new Error(\"sync exploded\"); };",
+			want:   "sync exploded",
+		},
+		{
+			name:   "async defineConfig factory never settles",
+			source: defineConfigImport + "export default defineConfig(async () => { await new Promise(() => {}); return {}; });",
+			want:   "never finished",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configPath := filepath.Join(t.TempDir(), "dotfiles.config.ts")
+			if err := os.WriteFile(configPath, []byte(tt.source), 0644); err != nil {
+				t.Fatalf("writing configuration: %v", err)
+			}
+
+			projCfg, toolCfgs, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
+			if err == nil {
+				t.Fatalf("expected the load to fail, got projCfg = %+v", projCfg)
+			}
+			if projCfg != nil || toolCfgs != nil {
+				t.Errorf("expected no configuration to be returned, got %+v and %+v", projCfg, toolCfgs)
+			}
+			if !strings.Contains(err.Error(), configPath) {
+				t.Errorf("error = %v, want it to name %q", err, configPath)
 			}
 			if !strings.Contains(err.Error(), tt.want) {
 				t.Errorf("error = %v, want it to report %q", err, tt.want)

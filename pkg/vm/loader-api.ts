@@ -2,6 +2,7 @@ import type {
   Platform as DslPlatform,
   Architecture as DslArchitecture,
   ConfigFactory,
+  IConfigContext,
   AsyncConfigureTool,
   IFileStats,
   IPathModule,
@@ -43,6 +44,7 @@ export const Libc: Record<string, string> = libcConstants();
 // Declare the Go-bound environment functions in global scope for TypeScript compilation
 declare global {
   var configFileDir: string;
+  var configContext: IConfigContext;
   var binariesDir: string;
   var currentToolName: string;
   var currentToolPath: string;
@@ -548,19 +550,18 @@ function recordToolFactory(result: unknown): void {
 /**
  * Defines the main dotfiles project configuration.
  *
- * The returned value is handed back to Go as-is. Go resolves it (platform overrides,
- * placeholders, defaults) and provides the result to tool files through the
- * `projectConfig` global, so nothing is captured here.
+ * The callback is called with the context Go published as the `configContext` global,
+ * and the value it returns -- a configuration, or the promise an `async` callback
+ * returns -- is handed back to Go as-is. Go resolves it (settling the promise, then
+ * platform overrides, placeholders, defaults) and provides the result to tool files
+ * through the `projectConfig` global, so nothing is captured here.
  *
  * @param callback Factory function returning project configuration paths, features, and settings.
  */
 export function defineConfig(callback: ConfigFactory): unknown {
   if (typeof callback === "function") {
     const fn = callback as ConfigRunner;
-    return fn({
-      configFileDir: globalThis.configFileDir || "",
-      systemInfo: currentSystemInfo(),
-    });
+    return fn(globalThis.configContext);
   }
   return callback;
 }

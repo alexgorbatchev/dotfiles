@@ -35,6 +35,34 @@ func TestE2EConfigurationFileExportsNoConfiguration(t *testing.T) {
 	}
 }
 
+// An asynchronous configuration factory that fails has to fail the load, naming the
+// configuration file: the settings it never produced would otherwise be replaced by
+// their defaults and the run would carry on against a configuration nobody wrote.
+func TestE2EAsyncConfigurationFailureFailsTheLoad(t *testing.T) {
+	t.Parallel()
+
+	h := NewTestHarness(t, HarnessOptions{
+		ConfigContent: "import { defineConfig } from \"@alexgorbatchev/dotfiles\";\n" +
+			"export default defineConfig(async () => {\n  throw new Error(\"config exploded\");\n});\n",
+	})
+
+	stdout, stderr, exitCode, err := h.Generate()
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	if exitCode == 0 {
+		t.Fatalf("expected generate to fail:\nstdout: %s\nstderr: %s", stdout, stderr)
+	}
+
+	output := stdout + stderr
+	if !strings.Contains(output, h.ConfigPath) {
+		t.Errorf("expected the failure to name %q:\n%s", h.ConfigPath, output)
+	}
+	if !strings.Contains(output, "config exploded") {
+		t.Errorf("expected the failure to carry the error the factory threw:\n%s", output)
+	}
+}
+
 // An asynchronous tool factory that fails is reported the way the synchronous one is.
 // Dropping the tool from the configuration and exiting successfully would leave nothing
 // in the output to search for, and the tool would be missing from every later command.

@@ -285,6 +285,9 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 
 	// Set globals
 	_ = vm.Set("configFileDir", configFileDir)
+	if err := setJSONGlobal(vm, "configContext", newConfigContext(configFileDir, "", target)); err != nil {
+		return nil, fmt.Errorf("providing the context to the configuration file: %w", err)
+	}
 	setProcessEnvGlobal(vm)
 
 	// Set module and exports
@@ -304,6 +307,14 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 	}
 	_ = vm.Set("__configExport", configExport)
 
+	if err := resolveConfigExport(vm, "globalThis.__configExport", configPath); err != nil {
+		return nil, err
+	}
+
+	if resolved := vm.Get("__configExport"); !isConfigurationObject(resolved) {
+		return nil, notAConfigurationError(configPath, describeExport(resolved))
+	}
+
 	// Stringify with a RegExp replacer, because a pattern only survives the crossing to
 	// Go as its source text.
 	jsonVal, err := vm.RunString("JSON.stringify(__configExport, function(k, v) { return v instanceof RegExp ? v.toString() : v; })")
@@ -314,8 +325,9 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 	return decodeProjectConfig([]byte(jsonVal.String()), target)
 }
 
-// exportedProjectConfig returns the configuration object the configuration file
-// exported, and refuses anything else.
+// exportedProjectConfig returns the default export of the configuration file, which is
+// either the configuration itself or the factory that produces it, and refuses a file
+// that exported nothing at all.
 //
 // The refusal belongs here rather than in the callers: this is the last point at which
 // what the file exported is still known, so it is the only place that can say a
@@ -346,10 +358,41 @@ func exportedProjectConfig(vm *goja.Runtime, configPath string) (goja.Value, err
 		}
 	}
 
-	if _, ok := value.Export().(map[string]any); !ok {
-		return nil, notAConfigurationError(configPath, describeExport(value))
-	}
 	return value, nil
+}
+
+// resolveConfigExport turns what a configuration file exported into the configuration
+// itself, in place, so that the caller reads a configuration rather than the factory
+// that produces one or the promise that will.
+//
+// A factory is called with the context Go published as the `configContext` global, which
+// is the same object defineConfig hands its own callback, so that a file written as
+// `export default (ctx) => ({ ... })` receives what one written with defineConfig
+// receives. The promise an asynchronous factory returns is settled here, where the
+// configuration file is still known: JSON.stringify of a pending promise is an empty
+// object, which is a valid configuration, so every setting the file wrote would
+// otherwise be replaced by its default without a word.
+//
+// reference is assembled by the loader from what it has itself set in the VM, never from
+// anything a configuration supplied.
+func resolveConfigExport(vm *goja.Runtime, reference, configPath string) error {
+	expression := fmt.Sprintf(
+		`Promise.resolve(typeof %[1]s === "function" ? %[1]s(configContext) : %[1]s).then(function (resolved) { %[1]s = resolved; return null; })`,
+		reference,
+	)
+	_, err := settleInVM(vm, expression, fmt.Sprintf("executing configuration file %q", configPath))
+	return err
+}
+
+// isConfigurationObject reports whether value is a plain object, which is what a
+// configuration file has to produce once its factory has been called and its promise
+// settled.
+func isConfigurationObject(value goja.Value) bool {
+	if value == nil || goja.IsUndefined(value) || goja.IsNull(value) {
+		return false
+	}
+	_, ok := value.Export().(map[string]any)
+	return ok
 }
 
 // notAConfigurationError reports a configuration file that produced something other than
@@ -370,8 +413,6 @@ func describeExport(value goja.Value) string {
 	switch exported := value.Export().(type) {
 	case func(goja.FunctionCall) goja.Value:
 		return "a function"
-	case *goja.Promise:
-		return "a promise"
 	case []any:
 		return "an array"
 	case string:
@@ -441,6 +482,11 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	if err := setJSONGlobal(vm, "projectConfig", projCfg); err != nil {
 		return nil, fmt.Errorf("providing project configuration to tool files: %w", err)
 	}
+	// The bundle evaluates the configuration file again, so its factory is called again
+	// and needs the same context the pre-evaluation gave it.
+	if err := setJSONGlobal(vm, "configContext", newConfigContext(configFileDir, projCfg.Paths.HomeDir, target)); err != nil {
+		return nil, fmt.Errorf("providing the context to the configuration file: %w", err)
+	}
 	setProcessEnvGlobal(vm)
 
 	moduleObj := vm.NewObject()
@@ -461,6 +507,12 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	loaderResultVal := vm.Get("__loaderResult")
 	if loaderResultVal == nil || goja.IsUndefined(loaderResultVal) || goja.IsNull(loaderResultVal) {
 		return nil, fmt.Errorf("loader result __loaderResult is missing or undefined")
+	}
+
+	// The entry loader imports the configuration file's default export as it stands, so
+	// the result carries the factory or the promise until it is resolved here.
+	if err := resolveConfigExport(vm, "__loaderResult.projectConfig", configPath); err != nil {
+		return nil, err
 	}
 
 	jsonVal, err := vm.RunString("JSON.stringify(__loaderResult, function(k, v) { return v instanceof RegExp ? v.toString() : v; })")
