@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -142,7 +143,7 @@ func TestCargoInstaller(t *testing.T) {
 				_, _ = w.Write([]byte(`{"crate": {"max_version": "0.10.1"}}`))
 				return
 			}
-			if strings.Contains(r.URL.Path, "releases/download") {
+			if r.URL.Path == "/releases/download/exa-0.10.1/exa-0.10.1-x86_64-unknown-linux-gnu.tar.gz" {
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write(tarBytes)
 				return
@@ -173,6 +174,9 @@ func TestCargoInstaller(t *testing.T) {
 
 		if len(res.Binaries) != 1 || res.Binaries[0] != "exa" {
 			t.Errorf("expected exa binary, got %v", res.Binaries)
+		}
+		if res.Version != "0.10.1" {
+			t.Errorf("expected version 0.10.1, got %q", res.Version)
 		}
 
 		destPath := "/test/bin/exa"
@@ -241,41 +245,362 @@ func TestCargoInstaller(t *testing.T) {
 	})
 }
 
-func TestCargoGithubReleases(t *testing.T) {
+// recordingServer is an httptest server that remembers every requested path.
+type recordingServer struct {
+	*httptest.Server
+	mu    sync.Mutex
+	paths []string
+}
+
+func newRecordingServer(t *testing.T, handler func(w http.ResponseWriter, r *http.Request)) *recordingServer {
+	t.Helper()
+	rec := &recordingServer{}
+	rec.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec.mu.Lock()
+		rec.paths = append(rec.paths, r.URL.Path)
+		rec.mu.Unlock()
+		handler(w, r)
+	}))
+	t.Cleanup(rec.Close)
+	return rec
+}
+
+func (rec *recordingServer) requested(path string) bool {
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	for _, p := range rec.paths {
+		if p == path {
+			return true
+		}
+	}
+	return false
+}
+
+func (rec *recordingServer) requestedContaining(fragment string) bool {
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	for _, p := range rec.paths {
+		if strings.Contains(p, fragment) {
+			return true
+		}
+	}
+	return false
+}
+
+// newCargoResolutionServer serves every version source the cargo installer can
+// consult: crates.io (1.5.0), a raw Cargo.toml (2.0.0), a custom Cargo.toml
+// (3.0.0) and the GitHub latest release (v4.0.0).
+func newCargoResolutionServer(t *testing.T) *recordingServer {
+	t.Helper()
+	return newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/crates/mycrate":
+			_, _ = w.Write([]byte(`{"crate":{"max_version":"1.5.0"}}`))
+		case "/raw/owner/repo/main/Cargo.toml":
+			_, _ = w.Write([]byte("[package]\nname = \"mycrate\"\nversion = \"2.0.0\"\n"))
+		case "/custom/Cargo.toml":
+			_, _ = w.Write([]byte("[package]\nname = \"mycrate\"\nversion = \"3.0.0\"\n"))
+		case "/repos/owner/repo/releases/latest":
+			_, _ = w.Write([]byte(`{"tag_name":"v4.0.0","assets":[]}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+}
+
+func newCargoResolutionInstaller(server *recordingServer) *CargoInstaller {
+	fsys := fs.NewMemFS()
+	inst := NewCargoInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, server.Client()), &SystemContext{OS: "linux", Arch: "amd64"})
+	inst.httpClient = server.Client()
+	inst.CratesIOURL = server.URL + "/api/v1/crates"
+	inst.GitHubRawURL = server.URL + "/raw/"
+	inst.GitHubAPIURL = server.URL
+	return inst
+}
+
+// TestCargoResolveVersion pins the v1 versionSource semantics: each explicit
+// source consults its own endpoint, and the default follows what the binary
+// source can actually download (issue #30).
+func TestCargoResolveVersion(t *testing.T) {
+	tests := []struct {
+		name         string
+		binarySource string
+		params       map[string]interface{}
+		want         cargoVersion
+		wantPath     string
+		wantErr      string
+	}{
+		{
+			name:         "explicit crates-io",
+			binarySource: cargoBinarySourceQuickinstall,
+			params:       map[string]interface{}{"versionSource": "crates-io", "githubRepo": "owner/repo"},
+			want:         cargoVersion{version: "1.5.0"},
+			wantPath:     "/api/v1/crates/mycrate",
+		},
+		{
+			name:         "explicit cargo-toml derives the URL from githubRepo",
+			binarySource: cargoBinarySourceQuickinstall,
+			params:       map[string]interface{}{"versionSource": "cargo-toml", "githubRepo": "owner/repo"},
+			want:         cargoVersion{version: "2.0.0"},
+			wantPath:     "/raw/owner/repo/main/Cargo.toml",
+		},
+		{
+			name:         "explicit cargo-toml honours cargoTomlUrl",
+			binarySource: cargoBinarySourceQuickinstall,
+			params:       map[string]interface{}{"versionSource": "cargo-toml", "githubRepo": "owner/repo"},
+			want:         cargoVersion{version: "3.0.0"},
+			wantPath:     "/custom/Cargo.toml",
+		},
+		{
+			name:         "cargo-toml without repo or URL is an error",
+			binarySource: cargoBinarySourceQuickinstall,
+			params:       map[string]interface{}{"versionSource": "cargo-toml"},
+			wantErr:      "requires githubRepo or cargoTomlUrl",
+		},
+		{
+			name:         "explicit github-releases resolves the latest tag",
+			binarySource: cargoBinarySourceQuickinstall,
+			params:       map[string]interface{}{"versionSource": "github-releases", "githubRepo": "owner/repo"},
+			want:         cargoVersion{version: "4.0.0", tag: "v4.0.0"},
+			wantPath:     "/repos/owner/repo/releases/latest",
+		},
+		{
+			name:         "github-releases without githubRepo is an error",
+			binarySource: cargoBinarySourceQuickinstall,
+			params:       map[string]interface{}{"versionSource": "github-releases"},
+			wantErr:      "githubRepo is required",
+		},
+		{
+			name:         "unknown versionSource is an error",
+			binarySource: cargoBinarySourceQuickinstall,
+			params:       map[string]interface{}{"versionSource": "npm"},
+			wantErr:      `unknown versionSource "npm"`,
+		},
+		{
+			name:         "default for quickinstall is crates-io",
+			binarySource: cargoBinarySourceQuickinstall,
+			params:       map[string]interface{}{"githubRepo": "owner/repo"},
+			want:         cargoVersion{version: "1.5.0"},
+			wantPath:     "/api/v1/crates/mycrate",
+		},
+		{
+			name:         "default for github-releases binaries is the release tag",
+			binarySource: cargoBinarySourceGitHub,
+			params:       map[string]interface{}{"githubRepo": "owner/repo"},
+			want:         cargoVersion{version: "4.0.0", tag: "v4.0.0"},
+			wantPath:     "/repos/owner/repo/releases/latest",
+		},
+		{
+			name:         "default with cargoTomlUrl is cargo-toml",
+			binarySource: cargoBinarySourceGitHub,
+			params:       map[string]interface{}{"githubRepo": "owner/repo"},
+			want:         cargoVersion{version: "3.0.0"},
+			wantPath:     "/custom/Cargo.toml",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newCargoResolutionServer(t)
+			inst := newCargoResolutionInstaller(server)
+			inst.SetLogger(logger.New(logger.Config{Writer: io.Discard}))
+			params := map[string]interface{}{}
+			for k, v := range tt.params {
+				params[k] = v
+			}
+			if tt.wantPath == "/custom/Cargo.toml" {
+				params["cargoTomlUrl"] = server.URL + "/custom/Cargo.toml"
+			}
+
+			got, err := inst.resolveVersion(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: params}, "mycrate", tt.binarySource)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("error = %v, want containing %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("resolved %+v, want %+v", got, tt.want)
+			}
+			if !server.requested(tt.wantPath) {
+				t.Fatalf("expected request to %s, got %v", tt.wantPath, server.paths)
+			}
+			if len(server.paths) != 1 {
+				t.Fatalf("expected exactly one request, got %v", server.paths)
+			}
+		})
+	}
+}
+
+func TestParseCargoTomlPackageVersion(t *testing.T) {
+	tests := []struct {
+		name    string
+		toml    string
+		want    string
+		wantErr string
+	}{
+		{
+			name: "basic string",
+			toml: "[package]\nname = \"x\"\nversion = \"1.2.3\"\nedition = \"2021\"\n",
+			want: "1.2.3",
+		},
+		{
+			name: "literal string with trailing comment",
+			toml: "[package] # metadata\nversion = '1.2.3' # release\n",
+			want: "1.2.3",
+		},
+		{
+			name: "package table after another table",
+			toml: "[dependencies]\nserde = { version = \"1\" }\nversion = \"9.9.9\"\n\n[package]\nversion = \"0.5.0\"\n",
+			want: "0.5.0",
+		},
+		{
+			name:    "workspace inherited version",
+			toml:    "[package]\nname = \"x\"\nversion.workspace = true\n",
+			wantErr: "inherited from the workspace",
+		},
+		{
+			name:    "workspace inherited inline table",
+			toml:    "[package]\nversion = { workspace = true }\n",
+			wantErr: "inherited from the workspace",
+		},
+		{
+			name:    "unquoted version",
+			toml:    "[package]\nversion = 1.2.3\n",
+			wantErr: "is not a string",
+		},
+		{
+			name:    "no package table",
+			toml:    "[workspace]\nmembers = [\"a\"]\n",
+			wantErr: "no [package] version found",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseCargoTomlPackageVersion([]byte(tt.toml))
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("error = %v, want containing %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("version = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// newCargoGithubServer serves owner/mycrate's latest release (v1.2.3) and its
+// linux/amd64 asset, and refuses every other download.
+func newCargoGithubServer(t *testing.T, tarData []byte) *recordingServer {
+	t.Helper()
+	return newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/repos/owner/mycrate/releases/latest":
+			_, _ = w.Write([]byte(`{"tag_name":"v1.2.3","assets":[]}`))
+		case strings.HasPrefix(r.URL.Path, "/owner/mycrate/releases/download/v1.2.3/") || strings.HasPrefix(r.URL.Path, "/owner/mycrate/releases/download/v0.10.1/"):
+			_, _ = w.Write(tarData)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+}
+
+func newCargoGithubInstaller(server *recordingServer, runner exec.CommandRunner) (*CargoInstaller, fs.FS) {
+	fsys := fs.NewMemFS()
+	inst := NewCargoInstaller(runner, fsys, downloader.NewDownloader(fsys, server.Client()), &SystemContext{OS: "linux", Arch: "amd64"})
+	inst.httpClient = server.Client()
+	inst.BaseURL = server.URL
+	inst.GitHubAPIURL = server.URL
+	inst.BinDir = "/test/bin"
+	return inst, fsys
+}
+
+// TestCargoGithubReleasesResolvesLatestTag is the regression test for issue #30:
+// with no pinned version the installer must ask GitHub for the real latest tag
+// instead of downloading from a tag literally named "latest".
+func TestCargoGithubReleasesResolvesLatestTag(t *testing.T) {
 	tarData, err := createTarGzBytes(map[string]string{"mycrate": "binary-content"})
 	if err != nil {
 		t.Fatalf("failed to create tar: %v", err)
 	}
+	server := newCargoGithubServer(t, tarData)
+	inst, _ := newCargoGithubInstaller(server, exec.NewMockRunner())
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(tarData)
-	}))
-	defer server.Close()
-
-	runner := exec.NewMockRunner()
-	testFsys := fs.NewMemFS()
-	testDl := downloader.NewDownloader(testFsys, server.Client())
-	testInst := NewCargoInstaller(runner, testFsys, testDl, &SystemContext{OS: "linux", Arch: "amd64"})
-	testInst.httpClient = server.Client()
-	testInst.BaseURL = server.URL
-	testInst.BinDir = "/test/bin"
-
-	tool := &config.ToolConfig{
+	res, err := inst.Install(context.Background(), &config.ToolConfig{
 		Name: "mycrate",
 		InstallParams: map[string]interface{}{
 			"binarySource": "github-releases",
 			"githubRepo":   "owner/mycrate",
 		},
-	}
-
-	res, err := testInst.Install(context.Background(), tool)
+	})
 	if err != nil {
 		t.Fatalf("unexpected error installing from github-releases: %v", err)
 	}
-	if len(res.Binaries) == 0 {
-		t.Errorf("expected binaries returned")
+	if len(res.Binaries) != 1 || res.Binaries[0] != "mycrate" {
+		t.Fatalf("expected mycrate binary, got %v", res.Binaries)
 	}
+	if res.Version != "1.2.3" {
+		t.Fatalf("expected version 1.2.3, got %q", res.Version)
+	}
+	if !server.requested("/repos/owner/mycrate/releases/latest") {
+		t.Fatalf("expected the latest release to be resolved through the API, got %v", server.paths)
+	}
+	wantDownload := "/owner/mycrate/releases/download/v1.2.3/mycrate-1.2.3-unknown-linux-gnu-x86_64.tar.gz"
+	if !server.requested(wantDownload) {
+		t.Fatalf("expected download of %s, got %v", wantDownload, server.paths)
+	}
+	if server.requestedContaining("/download/latest/") {
+		t.Fatalf("download must never target a tag named latest: %v", server.paths)
+	}
+}
+
+func TestCargoGithubReleasesPinnedVersionSkipsResolution(t *testing.T) {
+	tarData, err := createTarGzBytes(map[string]string{"mycrate": "binary-content"})
+	if err != nil {
+		t.Fatalf("failed to create tar: %v", err)
+	}
+	server := newCargoGithubServer(t, tarData)
+	inst, _ := newCargoGithubInstaller(server, exec.NewMockRunner())
+
+	pinned := "0.10.1"
+	res, err := inst.Install(context.Background(), &config.ToolConfig{
+		Name:    "mycrate",
+		Version: &pinned,
+		InstallParams: map[string]interface{}{
+			"binarySource": "github-releases",
+			"githubRepo":   "owner/mycrate",
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Version != "0.10.1" {
+		t.Fatalf("expected pinned version 0.10.1, got %q", res.Version)
+	}
+	if server.requestedContaining("/repos/") {
+		t.Fatalf("a pinned version must not consult the GitHub API: %v", server.paths)
+	}
+	if !server.requested("/owner/mycrate/releases/download/v0.10.1/mycrate-0.10.1-unknown-linux-gnu-x86_64.tar.gz") {
+		t.Fatalf("expected download from tag v0.10.1, got %v", server.paths)
+	}
+}
+
+func TestCargoGithubReleases(t *testing.T) {
+	tarData, err := createTarGzBytes(map[string]string{"mycrate": "binary-content"})
+	if err != nil {
+		t.Fatalf("failed to create tar: %v", err)
+	}
+	server := newCargoGithubServer(t, tarData)
+	runner := exec.NewMockRunner()
+	testInst, testFsys := newCargoGithubInstaller(server, runner)
+	testDl := testInst.dl
 
 	t.Run("Github releases missing repo error fallback", func(t *testing.T) {
 		runner.Clear()
@@ -291,6 +616,29 @@ func TestCargoGithubReleases(t *testing.T) {
 		_, err := testInst.Install(context.Background(), toolNoRepo)
 		if err != nil {
 			t.Fatalf("expected fallback to cargo install on missing githubRepo, got %v", err)
+		}
+		if len(runner.History) == 0 || runner.History[0].Name != "cargo" {
+			t.Fatalf("expected cargo install fallback, got %v", runner.History)
+		}
+	})
+
+	t.Run("Github releases version resolution failure falls back to cargo install", func(t *testing.T) {
+		runner.Clear()
+		_ = testFsys.MkdirAll("/test/bin/bin", 0755)
+		_ = testFsys.WriteFile("/test/bin/bin/mycrate", []byte("bin"), 0755)
+
+		_, err := testInst.Install(context.Background(), &config.ToolConfig{
+			Name: "mycrate",
+			InstallParams: map[string]interface{}{
+				"binarySource": "github-releases",
+				"githubRepo":   "owner/unknown",
+			},
+		})
+		if err != nil {
+			t.Fatalf("expected fallback to cargo install when the release lookup fails, got %v", err)
+		}
+		if len(runner.History) == 0 || runner.History[0].Name != "cargo" {
+			t.Fatalf("expected cargo install fallback, got %v", runner.History)
 		}
 	})
 
@@ -337,7 +685,10 @@ func TestCargoGithubReleases(t *testing.T) {
 
 	t.Run("Github releases unsupported Arch and non-v version prefix", func(t *testing.T) {
 		badArchGH := NewCargoInstaller(runner, testFsys, testDl, &SystemContext{OS: "linux", Arch: "unknownarch"})
-		_, err := badArchGH.tryGithubReleases(context.Background(), &config.ToolConfig{Name: "crate"}, "crate", "1.0.0")
+		_, err := badArchGH.tryGithubReleases(context.Background(), &config.ToolConfig{
+			Name:          "crate",
+			InstallParams: map[string]interface{}{"githubRepo": "owner/crate"},
+		}, "crate", cargoVersion{version: "1.0.0"})
 		if err == nil {
 			t.Errorf("expected error on unsupported Arch for gh releases")
 		}
@@ -363,7 +714,7 @@ func TestCargoGithubReleases(t *testing.T) {
 			InstallParams: map[string]interface{}{
 				"githubRepo": "owner/vcrate",
 			},
-		}, "vcrate", "1.2.3")
+		}, "vcrate", cargoVersion{version: "1.2.3"})
 		if err != nil {
 			t.Errorf("expected tryGithubReleases to succeed with non-v version, got %v", err)
 		}
@@ -377,7 +728,7 @@ func TestCargoGithubReleases(t *testing.T) {
 			_, _ = cInst.tryGithubReleases(context.Background(), &config.ToolConfig{
 				Name:          "crate",
 				InstallParams: map[string]interface{}{"githubRepo": "owner/crate"},
-			}, "crate", "1.0.0")
+			}, "crate", cargoVersion{version: "1.0.0"})
 		}
 	})
 
@@ -393,8 +744,10 @@ func TestCargoGithubReleases(t *testing.T) {
 
 		// 1. github-releases failure fallback to cargo install with logger set
 		runner.Clear()
+		pinned := "1.0.0"
 		_, err := cInst.Install(context.Background(), &config.ToolConfig{
-			Name: "errcrate",
+			Name:    "errcrate",
+			Version: &pinned,
 			InstallParams: map[string]interface{}{
 				"binarySource": "github-releases",
 				"githubRepo":   "owner/nonexistent",
@@ -404,7 +757,7 @@ func TestCargoGithubReleases(t *testing.T) {
 			t.Fatalf("expected fallback to cargo install, got %v", err)
 		}
 
-		// 3. quickinstall with version="latest" fetching crates.io
+		// 2. crates-io resolution through the injected HTTP client
 		cratesIOServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.Contains(r.URL.Path, "/api/v1/crates/latestcrate") {
 				w.Header().Set("Content-Type", "application/json")
@@ -416,7 +769,11 @@ func TestCargoGithubReleases(t *testing.T) {
 		defer cratesIOServer.Close()
 
 		cInst.CratesIOURL = cratesIOServer.URL + "/api/v1/crates"
-		_, _ = cInst.tryQuickinstall(context.Background(), &config.ToolConfig{Name: "latestcrate"}, "latestcrate", "latest")
+		cInst.httpClient = cratesIOServer.Client()
+		ver, err := cInst.resolveVersion(context.Background(), &config.ToolConfig{Name: "latestcrate"}, "latestcrate", cargoBinarySourceQuickinstall)
+		if err != nil || ver.version != "2.5.0" {
+			t.Fatalf("expected crates.io to resolve 2.5.0, got %+v, %v", ver, err)
+		}
 	})
 
 	t.Run("Github releases custom assetPattern", func(t *testing.T) {
@@ -441,26 +798,10 @@ func TestCargoGithubReleases(t *testing.T) {
 				"githubRepo":   "owner/patcrate",
 				"assetPattern": "custom-{crateName}-{version}.tar.gz",
 			},
-		}, "patcrate", "1.0.0")
+		}, "patcrate", cargoVersion{version: "v1.0.0", tag: "v1.0.0"})
 		if err != nil {
 			t.Errorf("expected tryGithubReleases to succeed with custom assetPattern, got %v", err)
 		}
-	})
-
-	t.Run("Github releases version empty", func(t *testing.T) {
-		runner.Clear()
-		badExtFS := fs.NewMemFS()
-		badExtDL := downloader.NewDownloader(badExtFS, nil)
-		cInst := NewCargoInstaller(runner, badExtFS, badExtDL, &SystemContext{OS: "linux", Arch: "amd64"})
-		cInst.BinDir = "/test/badext"
-
-		// Version empty test
-		_, _ = cInst.tryGithubReleases(context.Background(), &config.ToolConfig{
-			Name: "vcrate2",
-			InstallParams: map[string]interface{}{
-				"githubRepo": "owner/vcrate2",
-			},
-		}, "vcrate2", "")
 	})
 }
 

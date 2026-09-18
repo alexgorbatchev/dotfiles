@@ -515,7 +515,7 @@ func TestInstallerErrorAndCheckUpdatePaths(t *testing.T) {
 		t.Errorf("tryQuickinstall expected error on missing download")
 	}
 
-	_, errGH := cargo.tryGithubReleases(ctx, badTool, "crate", "1.0.0")
+	_, errGH := cargo.tryGithubReleases(ctx, badTool, "crate", cargoVersion{version: "1.0.0"})
 	if errGH == nil {
 		t.Errorf("tryGithubReleases expected error on missing repo")
 	}
@@ -722,7 +722,7 @@ func TestCargoQuickinstallAndGithubReleasesSuccess(t *testing.T) {
 	}
 
 	// tryGithubReleases success
-	resGH, errGH := cargo.tryGithubReleases(ctx, tCargo, "cargocrate", "1.0.0")
+	resGH, errGH := cargo.tryGithubReleases(ctx, tCargo, "cargocrate", cargoVersion{version: "1.0.0"})
 	if errGH != nil || resGH == nil {
 		t.Fatalf("tryGithubReleases success failed: %v", errGH)
 	}
