@@ -292,26 +292,8 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	}
 
 	// 3. Create Symlinks
-	symEvaluator := o.getSymlinkEvaluator()
-	for _, sym := range tool.Symlinks {
-		src := sym.Source
-		if !o.fs.IsAbs(src) && tool.ConfigFilePath != "" {
-			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
-		}
-		wasCreated, err := symEvaluator.CreateSymlink(src, sym.Target, symlink.Options{Overwrite: true})
-		if err != nil {
-			return fmt.Errorf("creating symlink from %q to %q: %w", sym.Source, sym.Target, err)
-		}
-
-		if wasCreated {
-			err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-				activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
-				return activeFS.RecordExistingSymlink(src, sym.Target)
-			})
-			if err != nil {
-				return fmt.Errorf("recording symlink operation: %w", err)
-			}
-		}
+	if err := o.createSymlinks(ctx, tool); err != nil {
+		return err
 	}
 
 	// 4. Apply copies
@@ -324,6 +306,39 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		o.logger.GetSubLogger("", tool.Name).Error("Failed to generate completions", err)
 	}
 
+	return nil
+}
+
+// symlinkOptions is v1's policy for .symlink() targets: a wrong or broken link is
+// replaced, and a regular file or directory already at the target is kept as
+// <target>.bak rather than deleted.
+var symlinkOptions = symlink.Options{Overwrite: true, Backup: true}
+
+// createSymlinks links every .symlink() declaration of a tool into place and records
+// each newly created link under the tool so the stale cleanup can find it later.
+// Sources resolve against the tool's directory.
+func (o *Orchestrator) createSymlinks(ctx context.Context, tool *config.ToolConfig) error {
+	symEvaluator := o.getSymlinkEvaluator()
+	for _, sym := range tool.Symlinks {
+		src := sym.Source
+		if !o.fs.IsAbs(src) && tool.ConfigFilePath != "" {
+			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
+		}
+		wasCreated, err := symEvaluator.CreateSymlink(src, sym.Target, symlinkOptions)
+		if err != nil {
+			return fmt.Errorf("creating symlink from %q to %q: %w", sym.Source, sym.Target, err)
+		}
+		if !wasCreated {
+			continue
+		}
+		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+			activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
+			return activeFS.RecordExistingSymlink(src, sym.Target)
+		})
+		if err != nil {
+			return fmt.Errorf("recording symlink operation: %w", err)
+		}
+	}
 	return nil
 }
 

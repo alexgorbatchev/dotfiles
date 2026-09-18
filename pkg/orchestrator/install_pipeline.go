@@ -18,7 +18,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
-	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
@@ -377,26 +376,8 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	// 4. Create Symlinks
-	symEvaluator := o.getSymlinkEvaluator()
-	for _, sym := range tool.Symlinks {
-		src := sym.Source
-		if !o.fs.IsAbs(src) && tool.ConfigFilePath != "" {
-			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
-		}
-		wasCreated, err := symEvaluator.CreateSymlink(src, sym.Target, symlink.Options{Overwrite: true})
-		if err != nil {
-			return fmt.Errorf("creating symlink from %q to %q: %w", sym.Source, sym.Target, err)
-		}
-
-		if wasCreated {
-			err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-				activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
-				return activeFS.RecordExistingSymlink(src, sym.Target)
-			})
-			if err != nil {
-				return fmt.Errorf("recording symlink operation: %w", err)
-			}
-		}
+	if err := o.createSymlinks(ctx, tool); err != nil {
+		return err
 	}
 
 	// 5. Apply copies

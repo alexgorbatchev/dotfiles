@@ -2222,3 +2222,121 @@ func TestIsWithin(t *testing.T) {
 		}
 	}
 }
+
+// Symlink targets already holding a regular file or directory are kept as
+// <target>.bak before the link is created, as v1 did, instead of being deleted. An
+// older backup makes way for the displaced content, and a repeated run leaves the
+// backup alone because the link is already correct.
+func TestSymlinkTargetIsBackedUpNotDeleted(t *testing.T) {
+	tests := []struct {
+		name       string
+		pipeline   string
+		existing   map[string]string
+		runs       int
+		wantBackup map[string]string
+	}{
+		{
+			name:       "a regular file at the target is kept as .bak",
+			pipeline:   "generate",
+			existing:   map[string]string{"config.yml": "user"},
+			runs:       1,
+			wantBackup: map[string]string{"config.yml.bak": "user"},
+		},
+		{
+			name:       "an older backup makes way for the displaced file",
+			pipeline:   "generate",
+			existing:   map[string]string{"config.yml": "user", "config.yml.bak": "older"},
+			runs:       1,
+			wantBackup: map[string]string{"config.yml.bak": "user"},
+		},
+		{
+			name:       "a directory at the target is kept whole",
+			pipeline:   "generate",
+			existing:   map[string]string{"config.yml/inner.yml": "inside"},
+			runs:       1,
+			wantBackup: map[string]string{"config.yml.bak/inner.yml": "inside"},
+		},
+		{
+			name:       "a repeated generate leaves the backup alone",
+			pipeline:   "generate",
+			existing:   map[string]string{"config.yml": "user"},
+			runs:       2,
+			wantBackup: map[string]string{"config.yml.bak": "user"},
+		},
+		{
+			name:       "the install pipeline backs up too",
+			pipeline:   "install",
+			existing:   map[string]string{"config.yml": "user"},
+			runs:       1,
+			wantBackup: map[string]string{"config.yml.bak": "user"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			root := t.TempDir()
+			home := filepath.Join(root, "home")
+			toolDir := filepath.Join(root, "tools", "link-tool")
+			targetDir := filepath.Join(home, ".config", "link-tool")
+			source := filepath.Join(toolDir, "config.yml")
+			target := filepath.Join(targetDir, "config.yml")
+
+			osFS := fs.NewResolvedFS(fs.NewOSFS(), home)
+			orch := newTestOrchestrator(t, osFS, "")
+			if err := orch.instRegistry.Register(&mockInstaller{name: "mock-link"}); err != nil {
+				t.Fatalf("registering installer: %v", err)
+			}
+			writeMemFile(t, osFS, source, "managed")
+			for rel, content := range tt.existing {
+				writeMemFile(t, osFS, filepath.Join(targetDir, rel), content)
+			}
+
+			projCfg := &config.ProjectConfig{
+				Paths: config.PathsConfig{
+					HomeDir:      home,
+					TargetDir:    filepath.Join(root, ".generated", "user-bin"),
+					BinariesDir:  filepath.Join(root, ".generated", "binaries"),
+					GeneratedDir: filepath.Join(root, ".generated"),
+				},
+			}
+			tool := &config.ToolConfig{
+				Name:           "link-tool",
+				ConfigFilePath: filepath.Join(toolDir, "link-tool.tool.ts"),
+				Symlinks:       []config.SymlinkConfig{{Source: "./config.yml", Target: "~/.config/link-tool/config.yml"}},
+			}
+			if tt.pipeline == "install" {
+				tool.InstallationMethod = "mock-link"
+			}
+
+			for run := 1; run <= tt.runs; run++ {
+				var err error
+				if tt.pipeline == "install" {
+					err = orch.InstallTool(ctx, tool, projCfg)
+				} else {
+					err = orch.GenerateTool(ctx, tool, projCfg)
+				}
+				if err != nil {
+					t.Fatalf("%s run %d: %v", tt.pipeline, run, err)
+				}
+			}
+
+			info, err := os.Lstat(target)
+			if err != nil || info.Mode()&os.ModeSymlink == 0 {
+				t.Fatalf("expected a symlink at %s, got %v, %v", target, info, err)
+			}
+			if linkTarget, _ := os.Readlink(target); linkTarget != source {
+				t.Errorf("symlink points at %q, want %q", linkTarget, source)
+			}
+			for rel, want := range tt.wantBackup {
+				got, err := os.ReadFile(filepath.Join(targetDir, rel))
+				if err != nil {
+					t.Fatalf("backup %s is missing: %v", rel, err)
+				}
+				if string(got) != want {
+					t.Errorf("backup %s = %q, want %q", rel, string(got), want)
+				}
+			}
+		})
+	}
+}
