@@ -34,6 +34,21 @@ export default defineTool((install) =>
 export default defineTool((install, ctx) => install().zsh((shell) => shell.aliases({ ll: "ls -la" })));
 ```
 
+## When to Use
+
+Use `install("manual", { binaryPath })` for binaries that ship with your dotfiles:
+
+- You have custom scripts or binaries to include with your dotfiles
+- You want the system to manage and version your tool files
+- You need shims generated for your custom tools
+- You want to distribute pre-built binaries with your dotfiles
+
+Use `install()` with no arguments for configuration-only tools:
+
+- You only need shell configuration (aliases, environment, symlinks)
+- Tools are managed entirely outside the dotfiles system
+- You don't want any binary installation or management
+
 ## Parameters
 
 | Parameter    | Type                                             | Required | Description                                                  |
