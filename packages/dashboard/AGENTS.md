@@ -5,7 +5,7 @@ Dashboard Preact client and asset bundler for dotfiles state, health, and usage 
 ## Commands
 
 - Run all client tests: `bun test packages/dashboard`
-- Focused client test: `bun test packages/dashboard/src/client/pages/__tests__/ToolDetail.test.tsx`
+- Focused client test: `bun test packages/dashboard/src/client/__tests__/ToolDetail.test.tsx`
 - Dashboard dev server: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard`
 - Bundle client assets: `bun compile` (runs `go run scripts/build/main.go` from root)
 - End-to-end browser verification: `bun packages/dashboard/scripts/verify-dashboard.ts` (requires `agent-browser` CLI)

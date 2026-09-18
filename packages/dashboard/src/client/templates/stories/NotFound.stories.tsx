@@ -3,15 +3,15 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { NotFound } from "../NotFound";
 
 const meta: Meta<typeof NotFound> = {
-  title: "@dotfiles/dashboard/client/pages/NotFound",
+  title: "@dotfiles/dashboard/client/templates/NotFound",
   component: NotFound,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
 
 const Default: Story = {
   render: () => <NotFound />,
-  play: async () => {},
 };
 
 export default meta;

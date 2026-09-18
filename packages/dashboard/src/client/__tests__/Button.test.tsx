@@ -1,11 +1,11 @@
 // UI test setup - registers DOM and exports testing utilities
-import { fireEvent, render, screen, setupUITests } from "../../../../testing/ui-setup";
+import { fireEvent, render, screen, setupUITests } from "../../testing/ui-setup";
 
 import { describe, expect, mock, test } from "bun:test";
 
 setupUITests();
 
-import { Button } from "../Button";
+import { Button } from "../components/ui/Button";
 
 describe("Button", () => {
   test("renders children", () => {

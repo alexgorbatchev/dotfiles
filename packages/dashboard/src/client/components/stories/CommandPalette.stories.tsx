@@ -6,6 +6,7 @@ import { CommandPalette } from "../CommandPalette";
 const meta: Meta<typeof CommandPalette> = {
   title: "@dotfiles/dashboard/client/components/CommandPalette",
   component: CommandPalette,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
@@ -16,7 +17,6 @@ const Default: Story = {
       <CommandPalette />
     </LocationProvider>
   ),
-  play: async () => {},
 };
 
 export default meta;

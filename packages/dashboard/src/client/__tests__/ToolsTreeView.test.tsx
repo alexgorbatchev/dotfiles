@@ -1,14 +1,14 @@
 // UI test setup - registers DOM and exports testing utilities
-import { fireEvent, render, screen, setupUITests } from "../../../testing/ui-setup";
+import { fireEvent, render, screen, setupUITests } from "../../testing/ui-setup";
 
 import assert from "node:assert";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 setupUITests();
 
-import type { IFileTreeEntry, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../../shared/types";
-import type { IUseToolActions } from "../../hooks/useToolActions";
-import { ToolsTreeView } from "../ToolsTreeView";
+import type { IFileTreeEntry, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../shared/types";
+import type { IUseToolActions } from "../hooks/useToolActions";
+import { ToolsTreeView } from "../components/ToolsTreeView";
 
 const installedVersionByStatus: Record<ToolRuntimeStatus, string | null> = {
   installed: "1.0.0",

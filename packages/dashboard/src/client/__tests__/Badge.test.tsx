@@ -1,11 +1,11 @@
 // UI test setup - registers DOM and exports testing utilities
-import { render, screen, setupUITests } from "../../../../testing/ui-setup";
+import { render, screen, setupUITests } from "../../testing/ui-setup";
 
 import { describe, expect, test } from "bun:test";
 
 setupUITests();
 
-import { Badge } from "../Badge";
+import { Badge } from "../components/ui/Badge";
 
 describe("Badge", () => {
   test("renders children", () => {

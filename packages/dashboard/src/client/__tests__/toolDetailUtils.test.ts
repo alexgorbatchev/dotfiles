@@ -1,14 +1,14 @@
 import assert from "node:assert";
 import { describe, expect, test } from "bun:test";
 
-import type { ISerializableToolConfig, IToolDetail } from "../../../shared/types";
+import type { ISerializableToolConfig, IToolDetail } from "../../shared/types";
 import {
   buildBinaryToToolMap,
   findDependentTools,
   getBinaryName,
   getReadmeRepo,
   getSourceInfo,
-} from "../tool-detail-utils";
+} from "../utils/toolDetailUtils";
 
 type ToolDetailStub = Partial<ISerializableToolConfig> & {
   name: string;

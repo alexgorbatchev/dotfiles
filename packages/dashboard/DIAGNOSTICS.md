@@ -39,7 +39,7 @@ Useful browser checks:
 
 Useful repo commands:
 
-- `bun test:native packages/dashboard/src/client/components/__tests__/ToolSourceCard.test.tsx packages/dashboard/src/client/pages/__tests__/ToolDetail.test.tsx packages/dashboard/src/server/routes/__tests__/recent-tools.test.ts packages/dashboard/src/server/routes/__tests__/tool-configs-tree.test.ts`
+- `bun test:native packages/dashboard/src/client/__tests__/ToolSourceCard.test.tsx packages/dashboard/src/client/__tests__/ToolDetail.test.tsx packages/dashboard/src/server/routes/__tests__/recent-tools.test.ts packages/dashboard/src/server/routes/__tests__/tool-configs-tree.test.ts`
 - `bun lint`
 - `bun compile`
 
@@ -130,7 +130,7 @@ Symptoms:
 
 Why this happens:
 
-- `packages/dashboard/src/client/pages/ToolDetail.tsx` renders the source card before the README card.
+- `packages/dashboard/src/client/templates/ToolDetail.tsx` renders the source card before the README card.
 - There is no client error boundary around that section.
 - A source-card crash can stop later UI from rendering, which makes README look broken even when the API is fine.
 
@@ -253,7 +253,7 @@ Practical rule:
 - `pkg/dashboard/server.go`
 - `packages/dashboard/src/client/components/ToolSourceCard.tsx`
 - `packages/dashboard/src/client/components/ReadmeCard.tsx`
-- `packages/dashboard/src/client/pages/ToolDetail.tsx`
+- `packages/dashboard/src/client/templates/ToolDetail.tsx`
 - `scripts/build/main.go`
 
 ## Guardrails

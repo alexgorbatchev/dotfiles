@@ -25,7 +25,7 @@ import {
   getBinaryName,
   getReadmeRepo,
   getSourceInfo,
-} from "./tool-detail-utils";
+} from "../utils/toolDetailUtils";
 
 function getSourceDisplay(config: ISerializableToolConfig): JSX.Element | null {
   const sourceInfo = getSourceInfo(config);

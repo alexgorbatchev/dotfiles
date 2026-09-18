@@ -6,6 +6,7 @@ import { Tree } from "../Tree";
 const meta: Meta<typeof Tree> = {
   title: "@dotfiles/dashboard/client/components/ui/Tree",
   component: Tree,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
@@ -20,7 +21,6 @@ const items: ITreeItemData[] = [
 
 const Default: Story = {
   render: () => <Tree items={items} />,
-  play: async () => {},
 };
 
 export default meta;

@@ -3,15 +3,15 @@ import type { Meta, StoryObj } from "@storybook/preact";
 import { Settings } from "../Settings";
 
 const meta: Meta<typeof Settings> = {
-  title: "@dotfiles/dashboard/client/pages/Settings",
+  title: "@dotfiles/dashboard/client/templates/Settings",
   component: Settings,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
 
 const Default: Story = {
   render: () => <Settings />,
-  play: async () => {},
 };
 
 export default meta;

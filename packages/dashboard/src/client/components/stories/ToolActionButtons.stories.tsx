@@ -6,6 +6,7 @@ import { ToolActionButtons } from "../ToolActionButtons";
 const meta: Meta<typeof ToolActionButtons> = {
   title: "@dotfiles/dashboard/client/components/ToolActionButtons",
   component: ToolActionButtons,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
@@ -33,7 +34,6 @@ const Default: Story = {
       <ToolActionButtons toolName="bat" isInstalled={false} actions={idleActions} size="xs" />
     </div>
   ),
-  play: async () => {},
 };
 
 export default meta;

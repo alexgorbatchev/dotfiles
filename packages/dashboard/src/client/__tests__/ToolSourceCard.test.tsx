@@ -1,8 +1,8 @@
 // UI test setup - registers DOM and exports testing utilities
-import { render, screen, setupUITests } from "../../../testing/ui-setup";
+import { render, screen, setupUITests } from "../../testing/ui-setup";
 
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { ToolSourceCard } from "../ToolSourceCard";
+import { ToolSourceCard } from "../components/ToolSourceCard";
 
 setupUITests();
 

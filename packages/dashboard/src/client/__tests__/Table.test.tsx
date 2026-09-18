@@ -1,11 +1,20 @@
 // UI test setup - registers DOM and exports testing utilities
-import { render, screen, setupUITests } from "../../../../testing/ui-setup";
+import { render, screen, setupUITests } from "../../testing/ui-setup";
 
 import { describe, expect, test } from "bun:test";
 
 setupUITests();
 
-import { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "../Table";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/Table";
 
 describe("Table", () => {
   test("renders table element", () => {

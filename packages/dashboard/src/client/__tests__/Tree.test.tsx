@@ -1,12 +1,12 @@
 // UI test setup - registers DOM and exports testing utilities
-import { fireEvent, render, screen, setupUITests } from "../../../../testing/ui-setup";
+import { fireEvent, render, screen, setupUITests } from "../../testing/ui-setup";
 
 import { describe, expect, mock, test } from "bun:test";
 
 setupUITests();
-import { File, Folder } from "../../../icons";
+import { File, Folder } from "../icons";
 
-import { Tree, type ITreeItemData } from "../Tree";
+import { Tree, type ITreeItemData } from "../components/ui/Tree";
 
 describe("Tree", () => {
   const simpleItems: ITreeItemData[] = [

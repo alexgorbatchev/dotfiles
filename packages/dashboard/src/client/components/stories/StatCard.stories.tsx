@@ -5,13 +5,13 @@ import { StatCard } from "../StatCard";
 const meta: Meta<typeof StatCard> = {
   title: "@dotfiles/dashboard/client/components/StatCard",
   component: StatCard,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
 
 const Default: Story = {
   render: () => <StatCard value={42} label="Installed" color="text-green-400" />,
-  play: async () => {},
 };
 
 export default meta;

@@ -1,6 +1,6 @@
 import { useEffect } from "preact/hooks";
 
-import { readHash, writeHash } from "./urlState";
+import { readHash, writeHash } from "../utils/urlState";
 
 export function useSectionHash(sectionIds: readonly string[], enabled = true): void {
   useEffect(() => {

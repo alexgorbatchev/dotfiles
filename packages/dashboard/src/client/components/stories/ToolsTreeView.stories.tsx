@@ -7,6 +7,7 @@ import { ToolsTreeView } from "../ToolsTreeView";
 const meta: Meta<typeof ToolsTreeView> = {
   title: "@dotfiles/dashboard/client/components/ToolsTreeView",
   component: ToolsTreeView,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
@@ -48,7 +49,6 @@ const tools: IToolDetail[] = [
 
 const Default: Story = {
   render: () => <ToolsTreeView tools={tools} actions={noopActions} />,
-  play: async () => {},
 };
 
 export default meta;

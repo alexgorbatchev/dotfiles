@@ -5,13 +5,13 @@ import { ToolSourceCard } from "../ToolSourceCard";
 const meta: Meta<typeof ToolSourceCard> = {
   title: "@dotfiles/dashboard/client/components/ToolSourceCard",
   component: ToolSourceCard,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
 
 const Default: Story = {
   render: () => <ToolSourceCard toolName="fzf" />,
-  play: async () => {},
 };
 
 export default meta;

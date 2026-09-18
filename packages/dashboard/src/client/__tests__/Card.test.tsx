@@ -1,11 +1,19 @@
 // UI test setup - registers DOM and exports testing utilities
-import { render, screen, setupUITests } from "../../../../testing/ui-setup";
+import { render, screen, setupUITests } from "../../testing/ui-setup";
 
 import { describe, expect, test } from "bun:test";
 
 setupUITests();
 
-import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../Card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/Card";
 
 describe("Card", () => {
   test("renders children", () => {

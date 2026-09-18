@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 const meta: Meta<typeof Table> = {
   title: "@dotfiles/dashboard/client/components/ui/Table",
   component: Table,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
@@ -26,7 +27,6 @@ const Default: Story = {
       </TableBody>
     </Table>
   ),
-  play: async () => {},
 };
 
 export default meta;

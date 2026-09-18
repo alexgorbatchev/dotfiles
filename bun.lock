@@ -5,7 +5,7 @@
     "": {
       "name": "dotfiles",
       "devDependencies": {
-        "@alexgorbatchev/typescript-ai-policy": "5.0.3",
+        "@alexgorbatchev/typescript-ai-policy": "13.0.0",
         "@dprint/json": "^0.24.0",
         "@dprint/markdown": "^0.24.0",
         "bun-plugin-tailwind": "^0.1.2",
@@ -94,7 +94,7 @@
 
     "@alexgorbatchev/dotfiles": ["dotfiles@root:", {}],
 
-    "@alexgorbatchev/typescript-ai-policy": ["@alexgorbatchev/typescript-ai-policy@5.0.3", "", { "peerDependencies": { "@typescript/native-preview": "^7.0.0-dev.20260330.1", "oxfmt": "^0.42.0", "oxlint": "^1.57.0", "typescript": "^6" }, "optionalPeers": ["@typescript/native-preview", "typescript"], "bin": { "typescript-ai-policy-fix-semantic": "dist/bin/typescript-ai-policy-fix-semantic.js" } }, "sha512-R+jle287+dhBLA0u0hbeS1BbHNLi3IlyjiMND2xvp62Vy3w/PRAgMOtUI062RdhJtABv/yjrWKUbsvE4vWL+2g=="],
+    "@alexgorbatchev/typescript-ai-policy": ["@alexgorbatchev/typescript-ai-policy@13.0.0", "", { "dependencies": { "commander": "^14.0.3", "minimatch": "^10.2.5", "package-manager-detector": "^1.6.0" }, "peerDependencies": { "@typescript/native-preview": "*", "oxfmt": "^0.49.0", "oxlint": "^1.64.0", "typescript": ">=6.0.3" }, "optionalPeers": ["@typescript/native-preview", "typescript"], "bin": { "typescript-ai-policy": "dist/bin/typescript-ai-policy.js" } }, "sha512-i4uMBfqDLrn8GiK8ABL28eAT0WjKrqIQeIx8vqn1NhxsQMigGhSBvNieNeyWuUzOZR7JM2Luw4RWmsimEaa36A=="],
 
     "@astrojs/compiler-binding": ["@astrojs/compiler-binding@0.4.1", "", { "optionalDependencies": { "@astrojs/compiler-binding-android-arm64": "0.4.1", "@astrojs/compiler-binding-darwin-arm64": "0.4.1", "@astrojs/compiler-binding-darwin-x64": "0.4.1", "@astrojs/compiler-binding-linux-arm64-gnu": "0.4.1", "@astrojs/compiler-binding-linux-arm64-musl": "0.4.1", "@astrojs/compiler-binding-linux-x64-gnu": "0.4.1", "@astrojs/compiler-binding-linux-x64-musl": "0.4.1", "@astrojs/compiler-binding-wasm32-wasi": "0.4.1", "@astrojs/compiler-binding-win32-arm64-msvc": "0.4.1", "@astrojs/compiler-binding-win32-x64-msvc": "0.4.1" } }, "sha512-ZYVDW1P58OXyxqZbOMp+/2U9KA7y2esIx9r4pWdpZ/l6fCZhaw4ul+D7EgpRVxYLkyTWqzANbTTUFGPFP8zDHA=="],
 
@@ -722,7 +722,7 @@
 
     "comma-separated-tokens": ["comma-separated-tokens@2.0.3", "", {}, "sha512-Fu4hJdvzeylCfQPp9SGWidpzrMs7tTrlu6Vb8XGaRGck8QSNZJJp538Wrb60Lax4fPwR64ViY468OIUTbRlGZg=="],
 
-    "commander": ["commander@11.1.0", "", {}, "sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ=="],
+    "commander": ["commander@14.0.3", "", {}, "sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw=="],
 
     "common-ancestor-path": ["common-ancestor-path@2.0.0", "", {}, "sha512-dnN3ibLeoRf2HNC+OlCiNc5d2zxbLJXOtiZUudNFSXZrNSydxcCsSpRzXwfu7BBWCIfHPw+xTayeBvJCP/D8Ng=="],
 
@@ -1625,6 +1625,8 @@
     "read-pkg-up/type-fest": ["type-fest@0.8.1", "", {}, "sha512-4dbzIzqvjtgiM5rw1k5rEHtBANKmdudhGyBEajN01fEyhaAIhsoKNy6y7+IN93IfpFtwY9iqi7kD+xwKhQsNJA=="],
 
     "sitemap/@types/node": ["@types/node@24.13.5", "", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-TXyindR+lBr22aJIdMQzCFHPHR6cR4js838mRDCSz5hOKWZvZwsXSSiXDmjRj4iJmgl+sR9O+1mkoVBSMadNug=="],
+
+    "svgo/commander": ["commander@11.1.0", "", {}, "sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ=="],
 
     "ts-unused/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 

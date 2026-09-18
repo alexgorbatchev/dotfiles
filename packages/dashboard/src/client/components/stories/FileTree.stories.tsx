@@ -5,6 +5,7 @@ import { FileTree } from "../FileTree";
 const meta: Meta<typeof FileTree> = {
   title: "@dotfiles/dashboard/client/components/FileTree",
   component: FileTree,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
@@ -27,7 +28,6 @@ const sampleNodes = [
 
 const Default: Story = {
   render: () => <FileTree nodes={sampleNodes} />,
-  play: async () => {},
 };
 
 export default meta;

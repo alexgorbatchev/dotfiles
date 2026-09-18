@@ -7,11 +7,13 @@ declare module "@storybook/preact" {
   export interface Meta<TComponent = unknown> {
     title: string;
     component?: TComponent;
+    tags?: string[];
     render?: StoryRender;
     parameters?: Record<string, unknown>;
   }
 
   export interface StoryObj<TMeta = unknown> {
+    tags?: string[];
     render?: StoryRender;
     play?: StoryPlay;
     parameters?: Record<string, unknown>;

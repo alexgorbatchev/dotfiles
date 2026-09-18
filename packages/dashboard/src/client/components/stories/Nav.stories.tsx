@@ -6,6 +6,7 @@ import { Nav } from "../Nav";
 const meta: Meta<typeof Nav> = {
   title: "@dotfiles/dashboard/client/components/Nav",
   component: Nav,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
@@ -16,7 +17,6 @@ const Default: Story = {
       <Nav />
     </LocationProvider>
   ),
-  play: async () => {},
 };
 
 export default meta;

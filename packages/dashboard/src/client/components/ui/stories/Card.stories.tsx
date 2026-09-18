@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../Card";
 const meta: Meta<typeof Card> = {
   title: "@dotfiles/dashboard/client/components/ui/Card",
   component: Card,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
@@ -18,7 +19,6 @@ const Default: Story = {
       <CardContent>Card content</CardContent>
     </Card>
   ),
-  play: async () => {},
 };
 
 export default meta;

@@ -1,12 +1,12 @@
 // UI test setup - registers DOM and exports testing utilities
-import { fireEvent, render, screen, setupUITests } from "../../../testing/ui-setup";
+import { fireEvent, render, screen, setupUITests } from "../../testing/ui-setup";
 
 import { describe, expect, mock, test } from "bun:test";
 
 setupUITests();
 
-import type { IUseToolActions } from "../../hooks/useToolActions";
-import { ToolActionButtons } from "../ToolActionButtons";
+import type { IUseToolActions } from "../hooks/useToolActions";
+import { ToolActionButtons } from "../components/ToolActionButtons";
 
 describe("ToolActionButtons", () => {
   const defaultActions: IUseToolActions = {

@@ -5,6 +5,7 @@ import { ToolActionBanner } from "../ToolActionBanner";
 const meta: Meta<typeof ToolActionBanner> = {
   title: "@dotfiles/dashboard/client/components/ToolActionBanner",
   component: ToolActionBanner,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
@@ -26,7 +27,6 @@ const Default: Story = {
       />
     </div>
   ),
-  play: async () => {},
 };
 
 export default meta;

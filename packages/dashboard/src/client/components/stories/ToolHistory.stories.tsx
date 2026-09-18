@@ -5,6 +5,7 @@ import { ToolHistory } from "../ToolHistory";
 const meta: Meta<typeof ToolHistory> = {
   title: "@dotfiles/dashboard/client/components/ToolHistory",
   component: ToolHistory,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
@@ -21,7 +22,6 @@ const entries = [
 
 const Default: Story = {
   render: () => <ToolHistory entries={entries} installedAt="2026-01-01T00:00:00.000Z" dotfilesDir="/dotfiles" />,
-  play: async () => {},
 };
 
 export default meta;

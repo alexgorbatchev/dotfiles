@@ -1,11 +1,11 @@
 // UI test setup - registers DOM and exports testing utilities
-import { render, screen, setupUITests } from "../../../testing/ui-setup";
+import { render, screen, setupUITests } from "../../testing/ui-setup";
 
 import { describe, expect, test } from "bun:test";
 
 setupUITests();
 
-import { InstallMethodBadge } from "../InstallMethodBadge";
+import { InstallMethodBadge } from "../components/InstallMethodBadge";
 
 describe("InstallMethodBadge", () => {
   test("renders github-release method with icon", () => {

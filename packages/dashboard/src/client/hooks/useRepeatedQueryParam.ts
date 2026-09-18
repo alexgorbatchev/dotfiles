@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 
-import { readQueryParamValues, writeQueryParamValues } from "./urlState";
+import { readQueryParamValues, writeQueryParamValues } from "../utils/urlState";
 
 export type RepeatedQueryParamValueUpdater = (previousValues: ReadonlySet<string>) => Iterable<string>;
 export type RepeatedQueryParamValues = Iterable<string> | RepeatedQueryParamValueUpdater;

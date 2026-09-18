@@ -1,11 +1,11 @@
 // UI test setup - registers DOM and exports testing utilities
-import { render, screen, setupUITests } from "../../../testing/ui-setup";
+import { render, screen, setupUITests } from "../../testing/ui-setup";
 
 import assert from "node:assert";
 import { describe, expect, test } from "bun:test";
 
-import type { ISerializableToolConfig } from "../../../shared/types";
-import { getSourceInfo, type ISourceInfo } from "../tool-detail-utils";
+import type { ISerializableToolConfig } from "../../shared/types";
+import { getSourceInfo, type ISourceInfo } from "../utils/toolDetailUtils";
 
 setupUITests();
 

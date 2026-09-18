@@ -34,7 +34,7 @@
     "docs": "bun --cwd packages/docs build"
   },
   "devDependencies": {
-    "@alexgorbatchev/typescript-ai-policy": "5.0.3",
+    "@alexgorbatchev/typescript-ai-policy": "13.0.0",
     "@dprint/json": "^0.24.0",
     "@dprint/markdown": "^0.24.0",
     "bun-plugin-tailwind": "^0.1.2",

@@ -19,11 +19,9 @@ if (typeof document === "undefined") {
 // Now we can safely import testing-library (it checks for document at import time)
 const jestDomMatchers = await import("@testing-library/jest-dom/matchers");
 const testingLibrary = await import("@testing-library/preact");
-const userEventLib = await import("@testing-library/user-event");
 const { afterEach, beforeEach, expect } = await import("bun:test");
 
 const { cleanup, fireEvent, render, screen } = testingLibrary;
-const userEvent = userEventLib.default;
 
 // Extend expect with jest-dom matchers (exclude 'default' key from namespace import)
 const { default: _, ...matchers } = jestDomMatchers;
@@ -45,4 +43,4 @@ function setupUITests(): void {
 }
 
 // Re-export testing utilities
-export { fireEvent, render, screen, setupUITests, userEvent };
+export { fireEvent, render, screen, setupUITests };

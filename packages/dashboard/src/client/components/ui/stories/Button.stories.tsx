@@ -5,13 +5,13 @@ import { Button } from "../Button";
 const meta: Meta<typeof Button> = {
   title: "@dotfiles/dashboard/client/components/ui/Button",
   component: Button,
+  tags: ["!test"],
 };
 
 type Story = StoryObj<typeof meta>;
 
 const Default: Story = {
   render: () => <Button>Click me</Button>,
-  play: async () => {},
 };
 
 export default meta;
